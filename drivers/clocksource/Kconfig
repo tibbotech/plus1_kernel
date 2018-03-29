@@ -612,4 +612,7 @@ config CLKSRC_ST_LPC
 	  Enable this option to use the Low Power controller timer
 	  as clocksource.
 
+config CLKSRC_SP_TIMER
+	bool "Clocksource using Sunplus STC timer"
+
 endmenu
