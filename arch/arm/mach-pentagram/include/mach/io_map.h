@@ -3,7 +3,8 @@
 
 #include <asm/sizes.h>
 
-#if defined(CONFIG_MACH_PENTAGRAM_8388_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_8388_BCHIP)
+#if defined(CONFIG_MACH_PENTAGRAM_8388_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_8388_BCHIP) || \
+    defined(CONFIG_MACH_PENTAGRAM_3502_ACHIP)
 #include "io_map_8388.h"
 #endif
 

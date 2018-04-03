@@ -126,7 +126,11 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 	void __iomem *regs = (void __iomem *)SYSTEM_BASE;
 
 	/* MOON1: enable watchdog reset */
+#ifdef CONFIG_MACH_PENTAGRAM_3502_ACHIP
+	writel(BIT(10) | BIT(1), regs + 0xA0); /* G1.8 */
+#else
 	writel(BIT(10) | BIT(1), regs + 0xA8); /* G1.10 */
+#endif
 
 	/* STC: watchdog control */
 	writel(0x3877, regs + 0x0630); /* stop */
@@ -136,6 +140,7 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 }
 
 static char const *achip_compat[] __initconst = {
+	"sunplus,3502-achip",
 	"sunplus,8388-achip",
 	NULL
 };

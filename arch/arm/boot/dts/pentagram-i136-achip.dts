@@ -31,13 +31,14 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
-#ifdef CONFIG_SMP
+
 		cpu@1 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <1>;
+			enable-method = "sunplus,sc-smp";
+			cpu-boot-reg = <0x9e007ff4>;
 		};
-#endif
 	};
 
 	clocks {

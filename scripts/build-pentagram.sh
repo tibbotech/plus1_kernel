@@ -2,6 +2,7 @@
 
 opt=$1
 
+export PATH="../../build/tools/armv7-eabihf--glibc--stable/bin/:$PATH"
 export CROSS_COMPILE=armv7hf-glibc-linux-
 
 # Load CFG=xxx if exists
@@ -27,6 +28,7 @@ if [ "$cfg_num" != "" ];then
 		echo " [4] 8388 bchip "
 		echo " [5] i136 achip "
 		echo " [6] i137 bchip "
+		echo " [7] 3502 achip "
 		echo -n " -> "
 		read cfg_num
 	else
@@ -51,6 +53,9 @@ if [ "$cfg_num" != "" ];then
 			;;
 		6)
 			CFG=pentagram_i137_bchip
+			;;
+		7)
+			CFG=pentagram_3502_achip
 			;;
 		*)
 			echo "Error: bad number!!"

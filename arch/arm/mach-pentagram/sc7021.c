@@ -52,6 +52,13 @@ static struct map_desc sp_io_desc[] __initdata = {
 		.length  = SIZE_B_REG,
 		.type    = MT_DEVICE
 	},
+	{
+		/* B SRAM0 */
+		.virtual = VA_B_SRAM0,
+		.pfn     = __phys_to_pfn(PA_B_SRAM0),
+		.length  = SIZE_B_SRAM0,
+		.type    = MT_DEVICE
+	},
 #ifdef CONFIG_MACH_PENTAGRAM_SC7021_ACHIP
 	{	/* A RGST Bus */
 		.virtual = VA_A_REG,

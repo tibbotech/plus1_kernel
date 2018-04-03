@@ -35,6 +35,17 @@ config MACH_PENTAGRAM_I137_BCHIP
         select SP_INTC
 	select CLKSRC_SP_TIMER
 
+config MACH_PENTAGRAM_3502_ACHIP
+	bool "3502 A support"
+	select CPU_V7
+	select ARM_GIC
+	select HAVE_SMP
+	select USE_OF
+	select MIGHT_HAVE_CACHE_L2X0
+	select CLKSRC_SP_TIMER
+	select HAVE_ARM_SCU
+	select ARM_GLOBAL_TIMER
+
 config MACH_PENTAGRAM_SC7021_ACHIP
         bool "SC7021 A+B support"
         select CPU_V7

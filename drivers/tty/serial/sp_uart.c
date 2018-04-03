@@ -208,15 +208,6 @@ static inline void wait_for_xmitr(struct uart_port *port)
 	} while (!(status & SP_UART_LSR_TX));
 }
 
-#if 0
-int console_flush(void)
-{
-	/* TBD, only required in DMA mode. */
-	return 0;
-}
-EXPORT_SYMBOL(console_flush);
-#endif
-
 static void sunplus_uart_console_putchar(struct uart_port *port, int ch)
 {
 	wait_for_xmitr(port);

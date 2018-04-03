@@ -25,11 +25,11 @@
 static void __iomem *sp_timer_base;
 
 enum {
-    SP_TIMER_AV2_TIMER0,
-    SP_TIMER_AV2_TIMER1,
-    SP_TIMER_AV2_TIMER2,
-    SP_TIMER_AV2_TIMER3,
-    SP_TIMER_NR_IRQS,
+	SP_TIMER_AV2_TIMER0,
+	SP_TIMER_AV2_TIMER1,
+	SP_TIMER_AV2_TIMER2,
+	SP_TIMER_AV2_TIMER3,
+	SP_TIMER_NR_IRQS,
 };
 static int sp_timer_irqs[SP_TIMER_NR_IRQS];
 
@@ -95,6 +95,13 @@ static int sp_stc_av2_timer3_set_period(struct clock_event_device *evt)
 	return 0;
 }
 
+static int sp_stc_av2_timer3_shutdown(struct clock_event_device *clkevt)
+{
+	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+	pstc_avReg->timer3_ctrl = 0;
+	return 0;
+}
+
 static struct clock_event_device sp_clockevent_dev_av2_timer3 = {
 	.name		= "sp_stc_av2_timer3_event",
 	.features	= CLOCK_EVT_FEAT_ONESHOT | CLOCK_EVT_FEAT_PERIODIC,
@@ -102,6 +109,7 @@ static struct clock_event_device sp_clockevent_dev_av2_timer3 = {
 	.set_next_event	= sp_stc_av2_timer3_event_set_next_event,
 	.set_state_periodic = sp_stc_av2_timer3_set_period,
 	.set_state_oneshot = sp_stc_av2_timer3_set_oneshot,
+	.set_state_shutdown = sp_stc_av2_timer3_shutdown,
 };
 
 static irqreturn_t sp_stc_av2_timer3_isr(int irq, void *dev_id)
@@ -123,16 +131,14 @@ static struct irqaction sp_stc_av2_timer3_irq = {
 static void sp_clockevent_init(void)
 {
 	int ret;
+	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+
+	pstc_avReg->timer3_ctrl = 0;
 
 	sp_stc_av2_timer3_irq.irq = sp_timer_irqs[SP_TIMER_AV2_TIMER3];
-
 	BUG_ON(!sp_stc_av2_timer3_irq.irq);
 
-	ret = setup_irq(sp_stc_av2_timer3_irq.irq, &sp_stc_av2_timer3_irq);
-	if (ret) {
-		printk(KERN_ERR "%s, %d: reg = %d\n", __FILE__, __LINE__, ret);
-		BUG();
-	}
+	sp_clockevent_dev_av2_timer3.cpumask = cpumask_of(0);
 
 #if (SP_STC_AV2_FREQ == 1000000)
 	clockevents_config_and_register(&sp_clockevent_dev_av2_timer3, SP_STC_AV2_FREQ, 1, ((1 << 16) - 1));
@@ -145,6 +151,14 @@ static void sp_clockevent_init(void)
 #else
 #error Unexpected STC frequency
 #endif
+
+	sp_clockevent_dev_av2_timer3.cpumask = cpu_possible_mask;
+
+	ret = setup_irq(sp_stc_av2_timer3_irq.irq, &sp_stc_av2_timer3_irq);
+	if (ret) {
+		printk(KERN_ERR "%s, %d: reg = %d\n", __FILE__, __LINE__, ret);
+		BUG();
+	}
 }
 
 u64 sp_read_sched_clock(void)
