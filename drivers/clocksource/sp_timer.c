@@ -138,7 +138,8 @@ static void sp_clockevent_init(void)
 	sp_stc_av2_timer3_irq.irq = sp_timer_irqs[SP_TIMER_AV2_TIMER3];
 	BUG_ON(!sp_stc_av2_timer3_irq.irq);
 
-	sp_clockevent_dev_av2_timer3.cpumask = cpumask_of(0);
+	sp_clockevent_dev_av2_timer3.irq = sp_stc_av2_timer3_irq.irq;
+	sp_clockevent_dev_av2_timer3.cpumask = cpu_possible_mask;
 
 #if (SP_STC_AV2_FREQ == 1000000)
 	clockevents_config_and_register(&sp_clockevent_dev_av2_timer3, SP_STC_AV2_FREQ, 1, ((1 << 16) - 1));
@@ -151,8 +152,6 @@ static void sp_clockevent_init(void)
 #else
 #error Unexpected STC frequency
 #endif
-
-	sp_clockevent_dev_av2_timer3.cpumask = cpu_possible_mask;
 
 	ret = setup_irq(sp_stc_av2_timer3_irq.irq, &sp_stc_av2_timer3_irq);
 	if (ret) {
