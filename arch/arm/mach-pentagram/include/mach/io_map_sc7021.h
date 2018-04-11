@@ -38,6 +38,6 @@
  *****************/
 #define B_SYSTEM_BASE           VA_IOB_ADDR(0 * 32 * 4)
 #define A_SYSTEM_BASE           VA_IOA_ADDR(0 * 32 * 4)
-#define A_SYS_COUNTER_BASE      (A_SYSTEM_BASE + 0x28000) /* 9ec2_8000 */
+#define A_SYS_COUNTER_BASE      (A_SYSTEM_BASE + 0x10a000) /* 9ed0_a000 */
 
 #endif

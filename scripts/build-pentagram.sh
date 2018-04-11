@@ -22,9 +22,9 @@ if [ "$cfg_num" != "" ];then
 		cfg_num=
 		echo "* Select config:"
 		echo "--------------------"
-		echo " [1] sc7021 achip "
-		echo " [2] sc7021 bchip "
-		echo " [3] 8388 achip "
+		echo " [1] sc7021 achip emu"
+		echo " [2] sc7021 bchip emu"
+		echo " [3] 8388 achip emu"
 		echo " [4] 8388 bchip "
 		echo " [5] i136 achip "
 		echo " [6] i137 bchip "
@@ -37,13 +37,13 @@ if [ "$cfg_num" != "" ];then
 
 	case "$cfg_num" in
 		1)
-			CFG=pentagram_sc7021_achip
+			CFG=pentagram_sc7021_achip_emu
 			;;
 		2)
-			CFG=pentagram_sc7021_bchip
+			CFG=pentagram_sc7021_bchip_emu
 			;;
 		3)
-			CFG=pentagram_8388_achip
+			CFG=pentagram_8388_achip_emu
 			;;
 		4)
 			CFG=pentagram_8388_bchip

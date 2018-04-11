@@ -14,14 +14,6 @@
 		serial0 = &uart0;
 	};
 
-	chosen {
-		bootargs = "console=ttyS0 root=/dev/ram rw loglevel=8 earlyprintk";
-	};
-
-	memory {
-		reg = <0x00000000 0x04000000>;
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;

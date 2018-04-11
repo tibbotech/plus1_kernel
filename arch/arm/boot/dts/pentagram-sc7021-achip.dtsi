@@ -14,14 +14,6 @@
 		serial0 = &uart0;
 	};
 
-	chosen {
-		bootargs = "console=ttyS0 root=/dev/ram rw loglevel=8 earlyprintk";
-	};
-
-	memory {
-		reg = <0x00000000 0x04000000>;
-	};
-
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -31,7 +23,6 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
-#ifdef CONFIG_SMP
 		cpu@1 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
@@ -39,6 +30,7 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9e809ff0>;
 		};
+#if 0
 		cpu@2 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
