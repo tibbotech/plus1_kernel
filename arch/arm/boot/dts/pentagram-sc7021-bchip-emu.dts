@@ -1,15 +1,13 @@
 /dts-v1/;
 
-#include "skeleton.dtsi"
-
-#include <dt-bindings/interrupt-controller/irq.h>
+#include "pentagram-sc7021-bchip.dtsi"
 
 / {
 	model = "Sunplus SC7021 EMU (ARM926)";
 	compatible = "sunplus,sc7021-bchip";
 
 	chosen {
-		bootargs = "console=ttyS0 root=/dev/ram rw loglevel=8 earlyprintk";
+		bootargs = "console=ttyS0,921600 root=/dev/ram rw loglevel=8 earlyprintk";
 	};
 
 	memory {

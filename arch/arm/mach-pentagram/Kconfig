@@ -9,7 +9,6 @@ config MACH_PENTAGRAM_8388_ACHIP
         select CPU_V7
         select ARM_GIC
 	select HAVE_SMP
-	select USE_OF
 	select MIGHT_HAVE_CACHE_L2X0
 	select CLKSRC_SP_TIMER
 
@@ -25,7 +24,6 @@ config MACH_PENTAGRAM_I136_ACHIP
         select ARM_GIC
 	select SP_INTC
 	select HAVE_SMP
-	select USE_OF
 	select HAVE_ARM_ARCH_TIMER
 	select CLKSRC_SP_TIMER
 
@@ -40,7 +38,6 @@ config MACH_PENTAGRAM_3502_ACHIP
 	select CPU_V7
 	select ARM_GIC
 	select HAVE_SMP
-	select USE_OF
 	select MIGHT_HAVE_CACHE_L2X0
 	select CLKSRC_SP_TIMER
 	select HAVE_ARM_SCU
@@ -52,7 +49,6 @@ config MACH_PENTAGRAM_SC7021_ACHIP
         select ARM_GIC
         select SP_INTC
 	select HAVE_SMP
-	select USE_OF
 	select CLKSRC_SP_TIMER
 
 config MACH_PENTAGRAM_SC7021_BCHIP
