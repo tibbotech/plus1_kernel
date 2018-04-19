@@ -30,7 +30,6 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9e809ff0>;
 		};
-#if 0
 		cpu@2 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
@@ -45,7 +44,6 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9e809fe8>;
 		};
-#endif
 	};
 
 	clocks {
