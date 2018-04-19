@@ -119,22 +119,18 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 	case IRQ_TYPE_EDGE_RISING:
 		writel((edge_type | mask), &sp_intc.g0->intr_type[idx]);
 		writel((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
-		irq_set_chip_and_handler(data->irq, &sp_intc_chip, handle_edge_irq);
 		break;
 	case IRQ_TYPE_EDGE_FALLING:
 		writel((edge_type | mask), &sp_intc.g0->intr_type[idx]);
 		writel((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
-		irq_set_chip_and_handler(data->irq, &sp_intc_chip, handle_edge_irq);
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 		writel((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		writel((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
-		irq_set_chip_and_handler(data->irq, &sp_intc_chip, handle_level_irq);
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
 		writel((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		writel((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
-		irq_set_chip_and_handler(data->irq, &sp_intc_chip, handle_level_irq);
 		break;
 	default:
 		pr_err("%s: type=%d\n", __func__, flow_type);
@@ -217,10 +213,21 @@ static void __exception_irq_entry sp_intc_handle_irq(struct pt_regs *regs)
 }
 
 static int sp_intc_irq_domain_map(struct irq_domain *domain, unsigned int irq,
-                                   irq_hw_number_t hwirq)
+                                  irq_hw_number_t hwirq)
 {
+	struct irq_data *data;
+
 	dprn("%s: irq=%d hwirq=%lu\n", __func__, irq, hwirq);
-	irq_set_chip_and_handler(irq, &sp_intc_chip, handle_level_irq);
+
+	data = irq_domain_get_irq_data(domain, irq);
+
+	if (irqd_get_trigger_type(data) & IRQ_TYPE_EDGE_BOTH) {
+		dprn("%s: irq=%d edge type\n", __func__, irq, hwirq);
+		irq_set_chip_and_handler(irq, &sp_intc_chip, handle_edge_irq);
+	} else {
+		irq_set_chip_and_handler(irq, &sp_intc_chip, handle_level_irq);
+	}
+
 	irq_set_chip_data(irq, &sp_intc_chip);
 	irq_set_noprobe(irq);
 
