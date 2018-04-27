@@ -12,6 +12,7 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <mach/io_map.h>
+#include <mach/misc.h>
 
 #define SYSTEM_BASE		VA_IO_ADDR(0 * 32 * 4)
 
@@ -91,6 +92,8 @@ static void __init sp_init(void)
 {
 	early_printk("%s\n", __func__);
 	pm_power_off = sp_power_off;
+
+	sp_prn_uptime();
 }
 
 static struct map_desc sp_io_desc[] __initdata = {

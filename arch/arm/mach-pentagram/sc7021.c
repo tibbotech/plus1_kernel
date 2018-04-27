@@ -12,6 +12,7 @@
 #include <asm/mach/map.h>
 #include <mach/io_map.h>
 #include <mach/clk.h>
+#include <mach/misc.h>
 
 static void __init sp_power_off(void)
 {
@@ -26,6 +27,9 @@ static void __init sp_init(void)
 #endif
 
 	early_printk("%s\n", __func__);
+
+	sp_prn_uptime();
+
 	pm_power_off = sp_power_off;
 
 	io_ctrl = readl((void __iomem *)B_SYSTEM_BASE + 0x105030);
