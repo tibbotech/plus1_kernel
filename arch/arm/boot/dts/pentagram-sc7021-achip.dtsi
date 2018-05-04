@@ -142,5 +142,12 @@
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
 		};
+
+		crypto0: crypto@G84 {
+			compatible = "sunplus,sp-crypto";
+			reg = <0x9c002a00 0x100>; /* G84 - G85 */
+			interrupt-parent = <&intc>;
+			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 };

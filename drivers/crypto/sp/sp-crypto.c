@@ -7,9 +7,9 @@
 #include <linux/types.h>
 #include <linux/crypto.h>
 #include <linux/interrupt.h>
-#include <linux/dma-direction.h>
-#include <linux/dma-mapping.h>
-#include <asm/cacheflush.h>
+#include <linux/of_platform.h>
+#include <linux/io.h>
+#include <mach/io_map.h>
 
 #include "sp-crypto.h"
 #include "sp-aes.h"
@@ -20,32 +20,35 @@
 #include "sp-crypto-test.c"
 #endif
 
-#define IO_BASE0                (0x9c0c0000)
-//#define CRYPTO_IRQ_NUM    		(116 + 32)
-//#define CRYPTO_REG_BASE   		(IO_BASE0 + 84*32*4)
-#define CRYPTO_IRQ_NUM    		(91)
-#define CRYPTO_REG_BASE   		(0x40000000)
+#if 0
+#define IO_BASE0                (0x9c000000)
+#define CRYPTO_IRQ_NUM    		(148)
+#define CRYPTO_REG_BASE   		(IO_BASE0 + 84*32*4)
+//#define CRYPTO_IRQ_NUM    		(91)
+//#define CRYPTO_REG_BASE   		(0x40000000)
+#endif
 
-static struct sp_crypto_dev sp_dd_tb[] =
-{
-	{
-		.irq = CRYPTO_IRQ_NUM,
-		.reg = (void *)CRYPTO_REG_BASE,
-		.devid = 0,
-	},
-};
+static struct sp_crypto_dev sp_dd_tb[1];
 
 void dump_buf(u8 *buf, u32 len)
 {
 	static char s[] = "       |       \n";
-	u32 i = 0;
+	char ss[52] = "";
+	u32 i = 0, j;
 	printk("buf:%p, len:%d\n", buf, len);
 	while (i < len) {
-		printk("%02x%c", buf[i], s[i & 0x0F]);
+		j = i & 0x0F;
+		sprintf(ss + j * 3, "%02x%c", buf[i], s[j]);
 		i++;
+		if ((i & 0x0F) == 0) {
+			printk(ss);
+			ss[0] = 0;
+		}
 	}
-    if (len & 0x0F)
-        printk("\n");
+	if (i & 0x0F) {
+		//strcat(ss, "\n");
+		printk(ss);
+	}
 }
 EXPORT_SYMBOL(dump_buf);
 
@@ -432,13 +435,45 @@ void sp_crypto_free_dev(struct sp_crypto_dev *dev, u32 type)
 
 static int sp_crypto_probe(struct platform_device *pdev)
 {
-	int ret = 0;
-	struct sp_crypto_dev *dev = platform_get_drvdata(pdev);
-	volatile struct sp_crypto_reg *reg = dev->reg;
+	struct resource *res_irq;
+	volatile struct sp_crypto_reg *reg;
 	trb_ring_t *ring;
 	u32 phy_addr;
+	struct sp_crypto_dev *dev = sp_dd_tb;//platform_get_drvdata(pdev);
+	int ret = 0;
 
 	SP_CRYPTO_TRACE();
+
+#ifdef VA_B_REG
+	dev->reg = (void *)(VA_B_REG + 84 * 32 * 4);
+#else
+	{
+		struct resource *res_mem;
+		void __iomem *membase;
+
+		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res_mem)
+			return -ENODEV;
+
+		membase = devm_ioremap_resource(&pdev->dev, res_mem);
+		if (IS_ERR(membase))
+			return PTR_ERR(membase);
+
+		dev->reg = membase;
+	}
+#endif
+
+	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (!res_irq)
+		return -ENODEV;
+
+	dev->irq = res_irq->start;
+
+	platform_set_drvdata(pdev, dev);
+	reg = dev->reg;
+	SP_CRYPTO_INF("SP_CRYPTO_ENGINE @ %p =================\n", reg);
+
+	/////////////////////////////////////////////////////////////////////////////////
 
 	dev->version = reg->VERSION;
 	SP_CRYPTO_INF("devid %d version %0x\n", dev->devid, dev->version);
@@ -529,26 +564,36 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	reg->AESDMA_CRCR  |= AUTODMA_CRCR_CS;
 	reg->AESDMA_RCSR  &= ~AUTODMA_RCSR_EN;
 
-	/*  free ring resource*/
+	/*  free resource*/
 	free_irq(dev->irq, dev);
 	trb_ring_free(AES_RING(dev));
 	trb_ring_free(HASH_RING(dev));
+#ifndef VA_B_REG
+	devm_iounmap(&pdev->dev, (void *)dev->reg);
+#endif
 
 	return 0;
 }
 
+static const struct of_device_id sp_crypto_of_match[] = {
+	{ .compatible = "sunplus,sp-crypto" },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, sp_crypto_of_match);
+
 static struct platform_driver sp_crtpto_driver = {
 	.probe		= sp_crypto_probe,
-	.remove		=sp_crypto_remove,
+	.remove		= sp_crypto_remove,
 	.driver		= {
 		.name	= "sp_crypto",
 		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(sp_crypto_of_match),
 	},
 };
 
 static int __init sp_crypto_module_init(void)
 {
-	int i, ret = 0;
+	int ret = 0;
 
 	SP_CRYPTO_TRACE();
 
@@ -558,6 +603,7 @@ static int __init sp_crypto_module_init(void)
 	ERR_OUT(ret, out1, "sp_aes_init");
 
 	platform_driver_register(&sp_crtpto_driver);
+#if 0
 	for (i = 0; i < ARRAY_SIZE(sp_dd_tb); ++i) {
 		struct platform_device *pdev = platform_device_alloc("sp_crypto", i);
 		sp_dd_tb[i].device = &pdev->dev;
@@ -572,6 +618,8 @@ static int __init sp_crypto_module_init(void)
 	}
 
 	// must after reg ioremap, it's used in sp_rsa_init()
+#endif
+	SP_CRYPTO_TRACE();
 	ret = sp_rsa_init();
 	ERR_OUT(ret, out2, "sp_rsa_init");
 
@@ -587,15 +635,14 @@ out0:
 
 static void __exit sp_crypto_module_exit(void)
 {
-	int i;
-
 	SP_CRYPTO_TRACE();
+#if 0
 	for (i = 0; i < ARRAY_SIZE(sp_dd_tb); ++i) {
 		platform_device_del(to_platform_device(sp_dd_tb[i].device));
 		platform_device_put(to_platform_device(sp_dd_tb[i].device));
 		iounmap((void *)sp_dd_tb[i].reg);
 	}
-
+#endif
 	platform_driver_unregister(&sp_crtpto_driver);
 
 	sp_rsa_finit();
@@ -606,6 +653,6 @@ static void __exit sp_crypto_module_exit(void)
 module_init(sp_crypto_module_init);
 module_exit(sp_crypto_module_exit);
 
-MODULE_DESCRIPTION("sunplus aes sha2 rsa hw acceleration support.");
+MODULE_DESCRIPTION("sunplus aes sha3 rsa hw acceleration support.");
 MODULE_LICENSE("GPL v2");
 MODULE_AUTHOR("sunplus ltd jz.xiang");
