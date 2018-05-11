@@ -14,10 +14,18 @@
 #include <linux/serial_core.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/dma-mapping.h>
 #include <mach/sp_uart.h>
 
-#define NUM_UART	6
+#define NUM_UART	6	/* serial0,  ... */
+#define NUM_UARTDMARX	2	/* serial10, ... */
+#define NUM_UARTDMATX	2	/* serial20, ... */
 
+#define ID_BASE_DMARX	10
+#define ID_BASE_DMATX	20
+
+#define IS_UARTDMARX_ID(X)		(((X) >= (ID_BASE_DMARX)) && ((X) < (ID_BASE_DMARX + NUM_UARTDMARX)))
+#define IS_UARTDMATX_ID(X)		(((X) >= (ID_BASE_DMATX)) && ((X) < (ID_BASE_DMATX + NUM_UARTDMATX)))
 /* ---------------------------------------------------------------------------------------------- */
 #define TTYS_KDBG_INFO
 #define TTYS_KDBG_ERR
@@ -93,9 +101,28 @@ static struct uarxdma_info uarxdma[] = {
 	},
 };
 
-static struct uart_hw_binding sp_uart[NUM_UART];
-
+static struct uart_hw_binding sp_uart[] = {
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+	{
+		.uarxdma = (struct uarxdma_info *)(NULL),
+	},
+};
 #endif /* ENABLE_UARXDMA */
+
 
 #if defined(CONFIG_MAGIC_SYSRQ)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
@@ -198,6 +225,16 @@ struct sunplus_uart_port {
 };
 
 struct sunplus_uart_port sunplus_uart_ports[NUM_UART];
+
+struct sunplus_uartdma_info {
+	void __iomem *membase;	/* virtual address */
+	unsigned long addr_phy;
+	int irq;
+	int which_uart;
+	/* TBD: binding to UARTx ...*/
+};
+
+static struct sunplus_uartdma_info sunplus_uartdma[NUM_UARTDMARX + NUM_UARTDMATX];
 
 static inline void wait_for_xmitr(struct uart_port *port)
 {
@@ -1021,7 +1058,6 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
  * Documentation/serial/driver:
  * N/A.
  */
-//static void sunplus_uart_ops_set_ldisc(struct uart_port *port, int new)
 static void sunplus_uart_ops_set_ldisc(struct uart_port *port,
 				       struct ktermios *termios)
 {
@@ -1319,26 +1355,14 @@ static void sunplus_uart_init_config(void)
 #endif
 }
 
-//TODO: move clk info to dts
-#if 0
-u32 sp_uart_get_clk(void)
-{
-	u32 clk;
-#if defined(CONFIG_MACH_PENTAGRAM_8388_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_8388_BCHIP)
-	clk = 270 * 1000 * 1000; // sysslow 270M
-#else
-	clk = 27 * 1000 * 1000; // extclk 27M
-#endif
-	return clk;
-}
-#endif
-
 static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 {
-	struct resource *res_mem, *res_irq;
+	struct resource *res_mem;
 	struct uart_port *port;
 	struct clk *clk;
-	int ret;
+	int ret, irq;
+	int idx_offset, idx;
+	int idx_which_uart;
 
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "serial");
@@ -1346,8 +1370,58 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			pdev->id = of_alias_get_id(pdev->dev.of_node, "uart");
 	}
 
-	if (pdev->id < 0 || pdev->id >= NUM_UART)
+	idx_offset = -1;
+	if (IS_UARTDMARX_ID(pdev->id)) {
+		idx_offset = 0;
+		DBG_INFO("Setup DMA Rx %d\n", (pdev->id - ID_BASE_DMARX));
+	} else if (IS_UARTDMATX_ID(pdev->id)) {
+		idx_offset = NUM_UARTDMARX;
+		DBG_INFO("Setup DMA Tx %d\n", (pdev->id - ID_BASE_DMATX));
+	}
+	if (idx_offset >= 0) {
+		if (idx_offset == 0) {
+			idx = idx_offset + pdev->id - ID_BASE_DMARX;
+		} else {
+			idx = idx_offset + pdev->id - ID_BASE_DMATX;
+		}
+
+		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res_mem) {
+			return -ENODEV;
+		}
+
+		sunplus_uartdma[idx].addr_phy = (unsigned long)(res_mem->start);
+		sunplus_uartdma[idx].membase = devm_ioremap_resource(&pdev->dev, res_mem);
+		if (IS_ERR(sunplus_uartdma[idx].membase)) {
+			return PTR_ERR(sunplus_uartdma[idx].membase);
+		}
+
+		irq = platform_get_irq(pdev, 0);
+		if (irq < 0) {
+			return -ENODEV;
+		}
+		sunplus_uartdma[idx].irq = irq;
+
+		if(of_property_read_u32(pdev->dev.of_node, "which-uart", &idx_which_uart) != 0) {
+			DBG_ERR("\"which-uart\" is not assigned.");
+			return -EINVAL;
+		}
+		if (idx_which_uart >= NUM_UART) {
+			DBG_ERR("\"which-uart\" is not valid.");
+			return -EINVAL;
+		}
+		sunplus_uartdma[idx].which_uart = idx_which_uart;
+
+		DBG_INFO("addr_phy: 0x%lx, membase: 0x%p, irq: %d, which-uart: %d\n",
+			  sunplus_uartdma[idx].addr_phy,
+			  sunplus_uartdma[idx].membase,
+			  sunplus_uartdma[idx].irq,
+			  sunplus_uartdma[idx].which_uart);
+
+		return 0;
+	} else if (pdev->id < 0 || pdev->id >= NUM_UART) {
 		return -EINVAL;
+	}
 
 	port = &sunplus_uart_ports[pdev->id].uport;
 	if (port->membase) {
@@ -1364,8 +1438,8 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (IS_ERR(port->membase))
 		return PTR_ERR(port->membase);
 
-	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-	if (!res_irq)
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
 		return -ENODEV;
 
 	clk = devm_clk_get(&pdev->dev, NULL);
@@ -1376,7 +1450,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	}
 
 	port->iotype = UPIO_MEM;
-	port->irq = res_irq->start;
+	port->irq = irq;
 	port->ops = &sunplus_uart_ops;
 	port->flags = UPF_BOOT_AUTOCONF;
 	port->dev = &pdev->dev;
@@ -1417,10 +1491,10 @@ static int __init sunplus_uart_init(void)
 {
 	int ret;
 
+	memset(sunplus_uartdma, 0, sizeof(sunplus_uartdma));
+
 	/* DBG_INFO("uart0_as_console: %X\n", uart0_as_console); */
-
 	sunplus_uart_init_config();
-
 	if (!uart0_as_console || !(uart_enable_status & 0x01))
 		sunplus_uart_driver.cons = NULL;
 

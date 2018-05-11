@@ -3,27 +3,9 @@
 
 #include <mach/io_map.h>
 
-#if 1 //FIXME: move to dts
-/*
- * Refer to regfile
- * Group 16 UART2, Address: 0x9C000800
- * Group 17 UART3, Address: 0x9C000880
- * Group 18 UART0, Address: 0x9C000900
- * Group 19 UART1, Address: 0x9C000980
- */
-#define LL_UART_PADDR       PA_IOB_ADDR(18 * 32 * 4)
-#define LL_UART_VADDR       VA_IOB_ADDR(18 * 32 * 4)
-
-#define LOGI_ADDR_UART0_REG     VA_IOB_ADDR(18 * 32 * 4)
-#define LOGI_ADDR_UART1_REG     VA_IOB_ADDR(19 * 32 * 4)
-#define LOGI_ADDR_UART2_REG     VA_IOB_ADDR(16 * 32 * 4)
-#define LOGI_ADDR_UART3_REG     VA_IOB_ADDR(17 * 32 * 4)
-#define LOGI_ADDR_UART4_REG     VA_IOB_ADDR(271 * 32 * 4)
-#define LOGI_ADDR_UART5_REG     VA_IOB_ADDR(272 * 32 * 4)
-
-#define LOGI_ADDR_UADMA0_REG    VA_IOB_ADDR(275 * 32 * 4)
-#define LOGI_ADDR_UADMA1_REG    VA_IOB_ADDR(275 * 32 * 4 + 16 * 4)
-#endif
+#define LL_UART_PADDR		PA_IOB_ADDR(18 * 32 * 4)
+#define LL_UART_VADDR		VA_IOB_ADDR(18 * 32 * 4)
+#define LOGI_ADDR_UART0_REG	VA_IOB_ADDR(18 * 32 * 4)
 
 /* uart register map */
 #define SP_UART_DATA		0x00

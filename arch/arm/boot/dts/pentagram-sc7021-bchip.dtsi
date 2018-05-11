@@ -12,6 +12,7 @@
 
 	aliases {
 		serial0 = &uart0;
+		serial1 = &uart1;
 	};
 
 	cpus {
@@ -87,11 +88,19 @@
 				<167 IRQ_TYPE_EDGE_RISING>; /* AV2 timer3 */
 		};
 
-		uart0: serial@G18 {
+		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
+		uart1: serial@sp_uart1 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c000980 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
 		};
 	};

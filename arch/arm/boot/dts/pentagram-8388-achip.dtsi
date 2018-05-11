@@ -1,8 +1,9 @@
 /dts-v1/;
 
 #include "skeleton.dtsi"
-
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+#define ENABLE_DMARX
 
 / {
 	model = "Sunplus 8388 (CA9)";
@@ -11,7 +12,13 @@
 	interrupt-parent = <&gic>;
 
 	aliases {
+#ifdef ENABLE_DMARX
+		serial10 = &uartdmarx0;
+		serial11 = &uartdmarx1;
+#endif
+
 		serial0 = &uart0;
+		serial3 = &uart3;
 	};
 
 	cpus {
@@ -94,12 +101,42 @@
 		};
 #endif
 
-		uart0: serial@G18 {
+#ifdef ENABLE_DMARX
+		/* DMA Rx for UARTx */
+		uartdmarx0: serial@sp_uartdmarx0 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c008980 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+			which-uart = <3>;
+		};
+
+		uartdmarx1: serial@sp_uartdmarx1 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c0089c0 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+			which-uart = <4>;
+		};
+#endif
+
+		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sysslow>;
 		};
+
+		uart3: serial@sp_uart3 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c000880 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+		};
+
 	};
 };
