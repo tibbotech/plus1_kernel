@@ -31,15 +31,15 @@
 #define TTYS_KDBG_ERR
 
 #ifdef TTYS_KDBG_INFO
-	#define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_TTYS: " fmt, ## args)
+#define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_TTYS: " fmt, ## args)
 #else
-	#define DBG_INFO(fmt, args ...)
+#define DBG_INFO(fmt, args ...)
 #endif
 
 #ifdef TTYS_KDBG_ERR
-	#define DBG_ERR(fmt, args ...)	printk(KERN_ERR "K_TTYS: " fmt, ## args)
+#define DBG_ERR(fmt, args ...)	printk(KERN_ERR "K_TTYS: " fmt, ## args)
 #else
-	#define DBG_ERR(fmt, args ...)
+#define DBG_ERR(fmt, args ...)
 #endif
 /* ---------------------------------------------------------------------------------------------- */
 #define DEVICE_NAME			"ttyS"
@@ -48,82 +48,9 @@
 
 #define SP_UART_CREAD_DISABLED	(1 << 16)
 /* ---------------------------------------------------------------------------------------------- */
-#define UARXDMA0			(-1)	/* Which port to use UARXDMA0, (-1) => disabled */
-#define UARXDMA1			(-1)	/* Which port to use UARXDMA1, (-1) => disabled */
-
-#if ((UARXDMA0 != -1) || (UARXDMA1 != -1))
-#define ENABLE_UARXDMA
-#endif
-
-#define UARXDMA0_BUF_SZ			PAGE_SIZE
-#define UARXDMA1_BUF_SZ			PAGE_SIZE
+#define UARXDMA_BUF_SZ			PAGE_SIZE
 #define MAX_SZ_RXDMA_ISR		(1 << 9)
 /* ---------------------------------------------------------------------------------------------- */
-
-struct uarxdma_info {
-	struct regs_uarxdma *rxdma_reg;
-	unsigned int irq_num;
-	struct uart_port *port;
-	irq_handler_t handler;
-	char *irq_name;
-	unsigned int buf_sz;
-	void *addr_va;
-	void *addr_pa;
-};
-
-struct uart_hw_binding {
-	struct uarxdma_info *uarxdma;
-};
-
-#ifdef ENABLE_UARXDMA
-static irqreturn_t sunplus_uart_rxdma0_irq(int irq, void *args);	/* forward declaration */
-static irqreturn_t sunplus_uart_rxdma1_irq(int irq, void *args);	/* forward declaration */
-static struct uarxdma_info uarxdma[] = {
-	{
-		.rxdma_reg = ((struct regs_uarxdma *)(LOGI_ADDR_UADMA0_REG)),
-		.irq_num   = SP_IRQ_DMA0,		/* (SP_IRQ_GIC_START + 138) */
-		.port      = NULL,			/* assigned after binding to UARTx */
-		.handler   = sunplus_uart_rxdma0_irq,
-		.irq_name  = "UARXDMA0",
-		.buf_sz    = UARXDMA0_BUF_SZ,
-		.addr_va   = NULL,			/* allocated after first time of executing .startup() */
-		.addr_pa   = NULL,
-	},
-	{
-		.rxdma_reg = ((struct regs_uarxdma *)(LOGI_ADDR_UADMA1_REG)),
-		.irq_num   = SP_IRQ_DMA1,		/* (SP_IRQ_GIC_START + 139) */
-		.port      = NULL,			/* assigned after binding to UARTx */
-		.handler   = sunplus_uart_rxdma1_irq,
-		.irq_name  = "UARXDMA1",
-		.buf_sz    = UARXDMA1_BUF_SZ,
-		.addr_va   = NULL,			/* allocated after first time of executing .startup() */
-		.addr_pa   = NULL,
-	},
-};
-
-static struct uart_hw_binding sp_uart[] = {
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-	{
-		.uarxdma = (struct uarxdma_info *)(NULL),
-	},
-};
-#endif /* ENABLE_UARXDMA */
-
-
 #if defined(CONFIG_MAGIC_SYSRQ)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
 #endif
@@ -212,7 +139,7 @@ static inline unsigned sp_uart_get_modem_ctrl(unsigned char __iomem *base)
  *     In /etc/inittab, there is no something like "ttyS0::respawn:/bin/sh"
  */
 unsigned int uart0_as_console = ~0;
-unsigned int uart_enable_status = 0;	/* bit 0: UART0, bit 1: UART1, ... */
+unsigned int uart_enable_status = ~0;	/* bit 0: UART0, bit 1: UART1, ... */
 
 #if defined(CONFIG_MAGIC_SYSRQ)
 extern int sysrqCheckState(char, struct uart_port *);
@@ -221,9 +148,9 @@ extern int sysrqCheckState(char, struct uart_port *);
 struct sunplus_uart_port {
 	char name[16];	/* Sunplus_UARTx */
 	struct uart_port uport;
-	struct uarxdma_info *uarxdma;
+	struct sunplus_uartdma_info *uartdma_rx;
+	struct sunplus_uartdma_info *uartdma_tx;
 };
-
 struct sunplus_uart_port sunplus_uart_ports[NUM_UART];
 
 struct sunplus_uartdma_info {
@@ -231,10 +158,38 @@ struct sunplus_uartdma_info {
 	unsigned long addr_phy;
 	int irq;
 	int which_uart;
-	/* TBD: binding to UARTx ...*/
+	struct sunplus_uart_port *binding_port;
+	void *buf_va;
+	void *buf_pa;
+	dma_addr_t dma_handle;
 };
-
 static struct sunplus_uartdma_info sunplus_uartdma[NUM_UARTDMARX + NUM_UARTDMATX];
+
+static struct sunplus_uartdma_info *sunplus_uartdma_rx_binding(int id)
+{
+	int i;
+
+	for (i = 0; i < NUM_UARTDMARX; i++) {
+		if ((sunplus_uartdma[i].which_uart == id) && (sunplus_uartdma[i].membase)) {
+			sunplus_uartdma[i].binding_port = &sunplus_uart_ports[id];
+			return (&sunplus_uartdma[i]);
+		}
+	}
+	return NULL;
+}
+
+static struct sunplus_uartdma_info *sunplus_uartdma_tx_binding(int id)
+{
+	int i;
+
+	for (i = NUM_UARTDMARX; i < (NUM_UARTDMARX + NUM_UARTDMATX); i++) {
+		if ((sunplus_uartdma[i].which_uart == id) && (sunplus_uartdma[i].membase)) {
+			sunplus_uartdma[i].binding_port = &sunplus_uart_ports[id];
+			return (&sunplus_uartdma[i]);
+		}
+	}
+	return NULL;
+}
 
 static inline void wait_for_xmitr(struct uart_port *port)
 {
@@ -580,7 +535,7 @@ static void receive_chars(struct uart_port *port)	/* called by ISR */
 		ch = sp_uart_get_char(port->membase);
 
 #if defined(CONFIG_MAGIC_SYSRQ)
-		if ( sysrqCheckState(ch, port) != 0)
+		if (sysrqCheckState(ch, port) != 0)
 			goto ignore_char;
 #endif
 
@@ -661,15 +616,12 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 	return IRQ_HANDLED;
 }
 
-#ifdef ENABLE_UARXDMA
 static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 {
 	struct sunplus_uart_port *sp_port =
 		(struct sunplus_uart_port *)(port->private_data);
-	struct uarxdma_info *uarxdma =
-		(struct uarxdma_info *)(sp_port->uarxdma);
-	struct regs_uarxdma *rxdma_reg =
-		(struct regs_uarxdma *)(sp_port->uarxdma->rxdma_reg);
+	struct sunplus_uartdma_info *uartdma_rx;
+	struct regs_uarxdma *rxdma_reg;
 	struct tty_struct *tty = port->state->port.tty;
 	u32 offset_sw, offset_hw, rx_size;
 	u8 *sw_ptr, *buf_end_ptr, *u8_ptr;
@@ -677,6 +629,9 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	u32 tmp_u32;
 	u8 tmp_buf[32];
 	int i;
+
+	uartdma_rx = sp_port->uartdma_rx;
+	rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
 
 	rx_size = rxdma_reg->rxdma_databytes;
 	offset_sw = rxdma_reg->rxdma_rd_adr - rxdma_reg->rxdma_start_addr;
@@ -688,14 +643,14 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 			BUG_ON(1);
 		}
 	} else {
-		if (rx_size != (offset_hw + uarxdma->buf_sz - offset_sw)) {
+		if (rx_size != (offset_hw + UARXDMA_BUF_SZ - offset_sw)) {
 			DBG_ERR("\n%s, %d\n\n", __FILE__, __LINE__);
 			BUG_ON(1);
 		}
 	}
 
-	sw_ptr = (u8 *)(uarxdma->addr_va + offset_sw);
-	buf_end_ptr = (u8 *)(uarxdma->addr_va + uarxdma->buf_sz);
+	sw_ptr = (u8 *)(uartdma_rx->buf_va + offset_sw);
+	buf_end_ptr = (u8 *)(uartdma_rx->buf_va + UARXDMA_BUF_SZ);
 
 	/*
 	 * Retrive all data in ISR.
@@ -722,21 +677,24 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 				u8_ptr++;
 			}
 			sw_ptr += 32;
-			icount_rx +=32;
+			icount_rx += 32;
 		} else {
 			port->icount.rx++;
 			uart_insert_char(port, 0, SP_UART_LSR_OE, (unsigned int)(*sw_ptr), TTY_NORMAL);
 			sw_ptr++;
 			icount_rx++;
 		}
-		if (sw_ptr >= buf_end_ptr)
-			sw_ptr = (u8 *)(uarxdma->addr_va);
+		if (sw_ptr >= buf_end_ptr) {
+			sw_ptr = (u8 *)(uartdma_rx->buf_va);
+		}
 	}
 	tmp_u32 = rxdma_reg->rxdma_rd_adr + rx_size;
-	if (tmp_u32 <= rxdma_reg->rxdma_end_addr)
+	if (tmp_u32 <= rxdma_reg->rxdma_end_addr) {
 		rxdma_reg->rxdma_rd_adr = tmp_u32;
-	else
-		rxdma_reg->rxdma_rd_adr = tmp_u32 - uarxdma->buf_sz;
+	}
+	else {
+		rxdma_reg->rxdma_rd_adr = tmp_u32 - UARXDMA_BUF_SZ;
+	}
 
 	spin_unlock(&port->lock);
 	tty_flip_buffer_push(tty->port);
@@ -746,7 +704,7 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	rxdma_reg->rxdma_enable_sel |= DMA_GO;
 }
 
-static irqreturn_t sunplus_uart_rxdma_irq_common(int irq, void *args)
+static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 {
 	struct uart_port *port = (struct uart_port *)args;
 	unsigned long flags;
@@ -757,17 +715,6 @@ static irqreturn_t sunplus_uart_rxdma_irq_common(int irq, void *args)
 
 	return IRQ_HANDLED;
 }
-
-static irqreturn_t sunplus_uart_rxdma0_irq(int irq, void *args)
-{
-	return sunplus_uart_rxdma_irq_common(irq, args);
-}
-
-static irqreturn_t sunplus_uart_rxdma1_irq(int irq, void *args)
-{
-	return sunplus_uart_rxdma_irq_common(irq, args);
-}
-#endif /* ENABLE_UARXDMA */
 
 /*
  * Documentation/serial/driver:
@@ -786,73 +733,73 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	int ret;
 	struct sunplus_uart_port *sp_port =
 		(struct sunplus_uart_port *)(port->private_data);
-
-#ifdef ENABLE_UARXDMA
-	struct uarxdma_info *uarxdma =
-		(struct uarxdma_info *)(sp_port->uarxdma);
+	struct sunplus_uartdma_info *uartdma_rx;
 	struct regs_uarxdma *rxdma_reg;
-#endif /* ENABLE_UARXDMA */
 
 	ret = request_irq(port->irq, sunplus_uart_irq, 0, sp_port->name, port);
-	if (ret)
+	if (ret) {
 		return ret;
+	}
 
-#ifdef ENABLE_UARXDMA
-	if (uarxdma) {
-		rxdma_reg = (struct regs_uarxdma *)(sp_port->uarxdma->rxdma_reg);
+	uartdma_rx = sp_port->uartdma_rx;
+	if (uartdma_rx) {
+		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
+		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, uartdma_rx->irq);
+		ret = request_irq(uartdma_rx->irq, sunplus_uart_rxdma_irq, 0, "UARTDMA_RX", port);
+		if (ret) {
+			goto error_00;
+		}
 
-		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, (int)(uarxdma->irq_num));
-		ret = request_irq(uarxdma->irq_num, uarxdma->handler, 0,
-				  uarxdma->irq_name, port);
-		if (ret)
-			return ret;
-
-		if (uarxdma->addr_va == NULL) {
+		if (uartdma_rx->buf_va == NULL) {
 			/* Allocate buffer and keep it forever */
-			uarxdma->addr_va = sp_chunk_malloc_nocache(0, 0, uarxdma->buf_sz);
-			if (uarxdma->addr_va == NULL)
-				DBG_ERR("Can't allocate buffer for %s\n", uarxdma->irq_name);
+			uartdma_rx->buf_va = dma_alloc_coherent(port->dev, UARXDMA_BUF_SZ, &(uartdma_rx->dma_handle), GFP_KERNEL);
+			if (uartdma_rx->buf_va == NULL) {
+				DBG_ERR("%s, %d, Can't allocation buffer for %s\n", __func__, __LINE__, sp_port->name);
+				ret = -ENOMEM;
+				goto error_01;
+			}
+			DBG_INFO("DMA buffer (Rx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, uartdma_rx->buf_va, (u32)(uartdma_rx->dma_handle));
 
-			uarxdma->addr_pa = (void *)(sp_chunk_pa(uarxdma->addr_va));
-			DBG_INFO("%s: va: 0x%08X, pa:0x%08X\n", __func__,
-				 (u32)(uarxdma->addr_va), (u32)(uarxdma->addr_pa));
-
-			rxdma_reg->rxdma_start_addr  = (u32)(uarxdma->addr_pa);
-			rxdma_reg->rxdma_rd_adr      = (u32)(uarxdma->addr_pa);
-			rxdma_reg->rxdma_timeout_set = 0x0001A5E0;
-			/* 0x0001A5E0 * 2 / 270000000 = 800 usec */
+			rxdma_reg->rxdma_start_addr  = (u32)(uartdma_rx->dma_handle);
+			rxdma_reg->rxdma_rd_adr      = (u32)(uartdma_rx->dma_handle);
+			rxdma_reg->rxdma_timeout_set = 0x0001A5E0;	/* 0x0001A5E0 * 2 / 270000000 = 800 usec */
 
 			/*
 			 * When there are only rxdma_length_thr[15:0] bytes of free buffer
 			 * => Trigger interrupt
 			 */
-			rxdma_reg->rxdma_length_thr = (uarxdma->buf_sz << 16)
-						      | (uarxdma->buf_sz - MAX_SZ_RXDMA_ISR);
+			rxdma_reg->rxdma_length_thr = (UARXDMA_BUF_SZ << 16)
+						      | (UARXDMA_BUF_SZ - MAX_SZ_RXDMA_ISR);
 
 			rxdma_reg->rxdma_enable_sel &= ~DMA_SEL_UARTX_MASK;
 			rxdma_reg->rxdma_enable_sel |= DMA_INIT
-						       | (port->line << DMA_SEL_UARTX_SHIFT);
+						       | (uartdma_rx->which_uart << DMA_SEL_UARTX_SHIFT);
 			rxdma_reg->rxdma_enable_sel &= ~DMA_INIT;
 			rxdma_reg->rxdma_enable_sel |= DMA_SW_RST_B | DMA_AUTO_ENABLE
 						       | DMA_TIMEOUT_INT_EN | DMA_ENABLE;
 			rxdma_reg->rxdma_enable_sel |= DMA_GO;
 		}
 	}
-#endif /* ENABLE_UARXDMA */
 
 	spin_lock_irq(&port->lock);	/* don't need to use spin_lock_irqsave() because interrupts are globally disabled */
 
-#ifdef ENABLE_UARXDMA
-	if (uarxdma)
+	if (uartdma_rx) {
 		sp_uart_set_int_en(port->membase, SP_UART_ISC_TXM);
-	else
+	}
+	else {
 		sp_uart_set_int_en(port->membase, SP_UART_ISC_TXM | SP_UART_ISC_RXM);
-#else
-	sp_uart_set_int_en(port->membase, SP_UART_ISC_TXM | SP_UART_ISC_RXM);
-#endif /* ENABLE_UARXDMA */
+	}
 
 	spin_unlock_irq(&port->lock);
 	return 0;
+
+error_01:
+	if (uartdma_rx) {
+		free_irq(uartdma_rx->irq, port);
+	}
+error_00:
+	free_irq(port->irq, port);
+	return ret;
 }
 
 /*
@@ -875,6 +822,7 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 {
 	unsigned long flags;
 	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
+	struct sunplus_uartdma_info *uartdma_rx;
 
 	spin_lock_irqsave(&port->lock, flags);
 	sp_uart_set_int_en(port->membase, 0);	/* disable all interrupt */
@@ -882,11 +830,12 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 
 	free_irq(port->irq, port);
 
-	if (sp_port->uarxdma) {
-		free_irq(sp_port->uarxdma->irq_num, port);
-		DBG_INFO("free_irq(%d)\n", (int)(sp_port->uarxdma->irq_num));
-
+	uartdma_rx = sp_port->uartdma_rx;
+	if (uartdma_rx) {
+		free_irq(uartdma_rx->irq, port);
+		DBG_INFO("free_irq(%d)\n", uartdma_rx->irq);
 		/* Buffer for UARXDMA is kept */
+		/* dma_free_coherent() */
 	}
 }
 
@@ -1335,26 +1284,6 @@ static struct uart_driver sunplus_uart_driver = {
 
 struct platform_device *sunpluse_uart_platform_device;
 
-static void sunplus_uart_init_config(void)
-{
-	/* Enable all uart ports */
-	uart_enable_status = ~0;
-	/* DBG_INFO("uart_enable_status: 0x%08X\n", uart_enable_status); */
-
-	/*
-	 * Bind DMA-RX by setting
-	 * sp_uart[x].uarxdma = (struct uarxdma_info *)(&uarxdma[n]), where n = 0, 1.
-	 */
-#if (UARXDMA0 != -1)
-	sp_uart[UARXDMA0].uarxdma = (struct uarxdma_info *)(&uarxdma[0]);
-	sunplus_uart_ports[UARXDMA0].uarxdma = (struct uarxdma_info *)(&uarxdma[0]);
-#endif
-#if (UARXDMA1 != -1)
-	sp_uart[UARXDMA1].uarxdma = (struct uarxdma_info *)(&uarxdma[1]);
-	sunplus_uart_ports[UARXDMA1].uarxdma = (struct uarxdma_info *)(&uarxdma[1]);
-#endif
-}
-
 static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 {
 	struct resource *res_mem;
@@ -1402,7 +1331,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		}
 		sunplus_uartdma[idx].irq = irq;
 
-		if(of_property_read_u32(pdev->dev.of_node, "which-uart", &idx_which_uart) != 0) {
+		if (of_property_read_u32(pdev->dev.of_node, "which-uart", &idx_which_uart) != 0) {
 			DBG_ERR("\"which-uart\" is not assigned.");
 			return -EINVAL;
 		}
@@ -1413,10 +1342,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		sunplus_uartdma[idx].which_uart = idx_which_uart;
 
 		DBG_INFO("addr_phy: 0x%lx, membase: 0x%p, irq: %d, which-uart: %d\n",
-			  sunplus_uartdma[idx].addr_phy,
-			  sunplus_uartdma[idx].membase,
-			  sunplus_uartdma[idx].irq,
-			  sunplus_uartdma[idx].which_uart);
+			 sunplus_uartdma[idx].addr_phy,
+			 sunplus_uartdma[idx].membase,
+			 sunplus_uartdma[idx].irq,
+			 sunplus_uartdma[idx].which_uart);
 
 		return 0;
 	} else if (pdev->id < 0 || pdev->id >= NUM_UART) {
@@ -1463,6 +1392,20 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->private_data = container_of(&sunplus_uart_ports[pdev->id].uport, struct sunplus_uart_port, uport);
 	sprintf(sunplus_uart_ports[pdev->id].name, "sp_uart%d", pdev->id);
 
+	sunplus_uart_ports[pdev->id].uartdma_rx = sunplus_uartdma_rx_binding(pdev->id);
+	if (sunplus_uart_ports[pdev->id].uartdma_rx) {
+		DBG_INFO("%s's Rx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
+	} else {
+		DBG_INFO("%s's Rx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
+	}
+
+	sunplus_uart_ports[pdev->id].uartdma_tx = sunplus_uartdma_tx_binding(pdev->id);
+	if (sunplus_uart_ports[pdev->id].uartdma_tx) {
+		DBG_INFO("%s's Tx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
+	} else {
+		DBG_INFO("%s's Tx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
+	}
+
 	ret = uart_add_one_port(&sunplus_uart_driver, port);
 	if (ret) {
 		port->membase = NULL;
@@ -1491,10 +1434,10 @@ static int __init sunplus_uart_init(void)
 {
 	int ret;
 
+	memset(sunplus_uart_ports, 0, sizeof(sunplus_uart_ports));
 	memset(sunplus_uartdma, 0, sizeof(sunplus_uartdma));
 
 	/* DBG_INFO("uart0_as_console: %X\n", uart0_as_console); */
-	sunplus_uart_init_config();
 	if (!uart0_as_console || !(uart_enable_status & 0x01))
 		sunplus_uart_driver.cons = NULL;
 

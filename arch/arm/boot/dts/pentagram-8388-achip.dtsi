@@ -3,7 +3,8 @@
 #include "skeleton.dtsi"
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
-#define ENABLE_DMARX
+#define ENABLE_DMARX0
+/* #define ENABLE_DMARX1 */
 
 / {
 	model = "Sunplus 8388 (CA9)";
@@ -12,8 +13,10 @@
 	interrupt-parent = <&gic>;
 
 	aliases {
-#ifdef ENABLE_DMARX
+#ifdef ENABLE_DMARX0
 		serial10 = &uartdmarx0;
+#endif
+#ifdef ENABLE_DMARX1
 		serial11 = &uartdmarx1;
 #endif
 
@@ -101,7 +104,7 @@
 		};
 #endif
 
-#ifdef ENABLE_DMARX
+#ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
 			compatible = "sunplus,sp-uart";
@@ -111,7 +114,8 @@
 			clocks = <&sysslow>;
 			which-uart = <3>;
 		};
-
+#endif
+#ifdef ENABLE_DMARX1
 		uartdmarx1: serial@sp_uartdmarx1 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c0089c0 0x40>;
