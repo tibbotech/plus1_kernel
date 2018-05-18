@@ -106,6 +106,20 @@ struct regs_uarxdma {
 	volatile u32 rxdma_databytes;
 	volatile u32 rxdma_debug_info;
 };
+
+struct regs_uatxdma {
+	volatile u32 txdma_enable;
+	volatile u32 txdma_sel;
+	volatile u32 txdma_start_addr;
+	volatile u32 txdma_end_addr;
+	volatile u32 txdma_wr_adr;
+	volatile u32 txdma_rd_adr;
+	volatile u32 txdma_status;
+	volatile u32 txdma_tmr_unit;
+	volatile u32 txdma_tmr_cnt;
+	volatile u32 txdma_rst_done;
+};
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* __SP_UART_H__ */
