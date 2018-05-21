@@ -143,7 +143,17 @@
 			clocks = <&extclk>;
 		};
 
-		crypto0: crypto@G84 {
+		icm: icm@G81 {
+			compatible = "sunplus,sp-icm";
+			reg = <0x9c002880 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <92 IRQ_TYPE_EDGE_RISING>, /* icm0 */
+					<93 IRQ_TYPE_EDGE_RISING>, /* icm1 */
+					<94 IRQ_TYPE_EDGE_RISING>, /* icm2 */
+					<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
+		};
+
+		crypto: crypto@G84 {
 			compatible = "sunplus,sp-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 - G85 */
 			interrupt-parent = <&intc>;
