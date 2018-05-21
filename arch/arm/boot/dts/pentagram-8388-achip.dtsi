@@ -1,8 +1,12 @@
 /dts-v1/;
 
 #include "skeleton.dtsi"
-
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+#define ENABLE_DMARX0
+/* #define ENABLE_DMARX1 */
+/* #define ENABLE_DMATX0 */
+/* #define ENABLE_DMATX1 */
 
 / {
 	model = "Sunplus 8388 (CA9)";
@@ -11,7 +15,22 @@
 	interrupt-parent = <&gic>;
 
 	aliases {
+
+#ifdef ENABLE_DMARX0
+		serial10 = &uartdmarx0;
+#endif
+#ifdef ENABLE_DMARX1
+		serial11 = &uartdmarx1;
+#endif
+#ifdef ENABLE_DMATX0
+		serial20 = &uartdmatx0;
+#endif
+#ifdef ENABLE_DMATX1
+		serial21 = &uartdmatx1;
+#endif
+
 		serial0 = &uart0;
+		serial3 = &uart3;
 	};
 
 	cpus {
@@ -94,12 +113,60 @@
 		};
 #endif
 
-		uart0: serial@G18 {
+#ifdef ENABLE_DMARX0
+		/* DMA Rx for UARTx */
+		uartdmarx0: serial@sp_uartdmarx0 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c008980 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 138 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+			which-uart = <3>;
+		};
+#endif
+#ifdef ENABLE_DMARX1
+		uartdmarx1: serial@sp_uartdmarx1 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c0089c0 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 139 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+			which-uart = <4>;
+		};
+#endif
+#ifdef ENABLE_DMATX0
+		/* DMA Tx for UARTx */
+		uartdmatx0: serial@sp_uartdmatx0 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c008a00 0x40>;
+			clocks = <&sysslow>;
+			which-uart = <3>;
+		};
+#endif
+#ifdef ENABLE_DMATX1
+		uartdmatx1: serial@sp_uartdmatx1 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c008a40 0x40>;
+			clocks = <&sysslow>;
+			which-uart = <4>;
+		};
+#endif
+
+		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sysslow>;
 		};
+
+		uart3: serial@sp_uart3 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c000880 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&sysslow>;
+		};
+
 	};
 };
