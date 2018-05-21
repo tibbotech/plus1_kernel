@@ -144,13 +144,14 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 static int sp_intc_get_hwirq(void)
 {
 	int hwirq, mask;
+	int i;
 
-#ifdef CONFIG_MACH_PENTAGRAM_SC7021
-	mask = (readl(&sp_intc.g1->intr_group) >> 8) && 0x7f; /* [14:8] for irq group */
+	/* look up reg number i */
+#if defined(CONFIG_MACH_PENTAGRAM_SC7021_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)
+	mask = (readl(&sp_intc.g1->intr_group) >> 8) & 0x7f; /* [14:8] for irq group */
 	if (mask) {
 		i = fls(mask) - 1;
 #else
-	int i;
 	for (i = 0; i < 7; i++) {
 #endif
 		mask = readl(&sp_intc.g1->masked_irqs[i]);
