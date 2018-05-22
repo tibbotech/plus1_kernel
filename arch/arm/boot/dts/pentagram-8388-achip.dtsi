@@ -113,6 +113,44 @@
 		};
 #endif
 
+/* Timer tests: */
+/* 1. Enable device tree for timers. */
+/* 2. Enable sp_timer_test in drivers/misc/Makefile */
+#if 0
+		sp_tmr_tst0: sp_tmr_tst@9c000600 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c000600 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts =
+				<GIC_SPI 151 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<GIC_SPI 152 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<GIC_SPI 153 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<GIC_SPI 154 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+
+		sp_tmr_tst1: sp_tmr_tst@9c003000 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c003000 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts =
+				<GIC_SPI 155 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<GIC_SPI 156 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<GIC_SPI 157 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<GIC_SPI 158 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+
+		sp_tmr_tst2: sp_tmr_tst@9c003080 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c003080 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts =
+				<GIC_SPI 159 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<GIC_SPI 160 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<GIC_SPI 161 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<GIC_SPI 162 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+#endif
+
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {

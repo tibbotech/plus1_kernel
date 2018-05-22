@@ -126,6 +126,8 @@
 			clock-frequency = <27000000>;
 		};
 
+#if 0		/* Each Cortex A-7 has its own system timer, it's not required here */
+		/* This timer will be used in sp_timer_test.c */
 		timer@A_G19 {
 			compatible = "sunplus,sp-stc";
 			reg = <0x9ec00980 0x80>;
@@ -135,6 +137,8 @@
 				     <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				     <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
+#endif
+
 	};
 
 	soc@B {
@@ -195,8 +199,6 @@
 		};
 #endif
 
-
-
 		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c000900 0x80>;
@@ -237,5 +239,54 @@
 			interrupt-parent = <&intc>;
 			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
 		};
+
+/* Timer tests: */
+/* 1. Enable device tree for timers. */
+/* 2. Enable sp_timer_test in drivers/misc/Makefile */
+#if 0
+		sp_tmr_tst0: sp_tmr_tst@9c000600 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c000600 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<151 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<152 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<153 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<154 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+
+		sp_tmr_tst1: sp_tmr_tst@9c003000 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c003000 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<155 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<156 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<157 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<158 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+
+		sp_tmr_tst2: sp_tmr_tst@9c003080 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c003080 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<159 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<160 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<161 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<162 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+
+		sp_tmr_tst3: sp_tmr_tst@9c003180 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9c003180 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<164 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				<165 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				<166 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				<167 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+#endif
 	};
 };

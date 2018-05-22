@@ -728,6 +728,12 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 
 	spin_lock_irqsave(&port->lock, flags);
 
+#if 0	/* force Tx data loopbacks to Rx except UART0 */
+	if (((u32)(port->membase)) != LOGI_ADDR_UART0_REG) {
+		sp_uart_set_modem_ctrl(port->membase, (sp_uart_get_modem_ctrl(port->membase)) | (1 << 4));
+	}
+#endif
+
 	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {
 		receive_chars(port);
 	}
