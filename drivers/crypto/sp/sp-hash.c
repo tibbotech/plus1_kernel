@@ -485,11 +485,7 @@ EXPORT_SYMBOL(sp_hash_finit);
 
 int sp_hash_init(void)
 {
-	int i;
 	SP_CRYPTO_TRACE();
-	for (i = 0; i < ARRAY_SIZE(sp_shash_alg); i++) {
-		sp_shash_alg[i].base.cra_flags &= ~CRYPTO_ALG_DEAD;
-	}
 	return crypto_register_shashes(sp_shash_alg, ARRAY_SIZE(sp_shash_alg));
 }
 EXPORT_SYMBOL(sp_hash_init);

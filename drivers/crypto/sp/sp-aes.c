@@ -301,6 +301,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 			SP_CRYPTO_TRACE();
 			ret = crypto_ctx_exec(ctx0);
 			if (ret) {
+				//if (ret == -ERESTARTSYS) ret = 0;
 				goto out;
 			}
 
@@ -435,13 +436,8 @@ EXPORT_SYMBOL(sp_aes_finit);
 
 int sp_aes_init(void)
 {
-	int i;
 	SP_CRYPTO_TRACE();
-	for (i = 0; i < ARRAY_SIZE(sp_aes_alg); i++) {
-		sp_aes_alg[i].cra_flags &= ~CRYPTO_ALG_DEAD;
-	}
 	return  crypto_register_algs(sp_aes_alg, ARRAY_SIZE(sp_aes_alg));
-
 }
 EXPORT_SYMBOL(sp_aes_init);
 
@@ -473,7 +469,10 @@ void sp_aes_irq(void *devid, u32 flag)
 					ctx->done = true;
 					wake_up(&ctx->wait);
 				}
-				else printk("AES_SKIP\n");
+				else {
+					printk("\nAES_SKIP: %08x\n", ctx->type);
+					dump_trb(trb);
+				}
 			}
 			trb = trb_put(ring);
 		}

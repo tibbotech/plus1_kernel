@@ -52,7 +52,31 @@ void dump_buf(u8 *buf, u32 len)
 }
 EXPORT_SYMBOL(dump_buf);
 
-void dump_hw(trb_t *trb)
+#define OUT(fmt, args...) \
+do {	\
+	p += sprintf(p, fmt, ##args); \
+} while (0);
+
+static char *print_trb(char *p, trb_t * trb)
+{
+	OUT("trb ========== %p\n", trb);
+	OUT(" c:0x%x\n", trb->c);
+	OUT("cc:0x%x\n", trb->cc);
+	OUT("tc:0x%x\n", trb->tc);
+	OUT("ioc:0x%x\n", trb->ioc);
+	OUT("type:0x%x\n", trb->type);
+	OUT("size:0x%x\n", trb->size);
+	OUT("sptr:0x%0x\n", trb->sptr);
+	OUT("dptr:0x%0x\n", trb->dptr);
+	OUT("mode:0x%x\n", trb->mode);
+	OUT("iptr:0x%x\n", trb->iptr);
+	OUT("kptr:0x%x\n", trb->kptr);
+	OUT("priv:%p\n", trb->priv);
+
+	return p;
+}
+
+static char *print_hw(char *p, trb_t *trb)
 {
 	volatile struct sp_crypto_reg *reg = sp_dd_tb->reg;
 	trb_ring_t *ring;
@@ -60,118 +84,88 @@ void dump_hw(trb_t *trb)
 
 	// AES
 	ring = AES_RING(sp_dd_tb);
-	printk("AES_CR	 : %08x\n", reg->AES_CR);
-	printk("AES_ER	 : %08x\n", reg->AES_ER);
-	printk("AES_CRCR : %08x\n", reg->AESDMA_CRCR);
-	printk("sem.count: %d\n", ring->trb_sem.count);
-	printk("head	 : %p\n", ring->head);
-	printk("tail	 : %p\n", ring->tail);
-	printk("triggers : %d\n", ring->trigger_count);
-	printk("irqs     : %d\n", ring->irq_count);
+	OUT("AES_CR	 : %08x\n", reg->AES_CR);
+	OUT("AES_ER	 : %08x\n", reg->AES_ER);
+	OUT("AES_CRCR : %08x\n", reg->AESDMA_CRCR);
+	OUT("sem.count: %d\n", ring->trb_sem.count);
+	OUT("head	 : %p\n", ring->head);
+	OUT("tail	 : %p\n", ring->tail);
+	OUT("triggers : %d\n", ring->trigger_count);
+	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
-	printk("wait.len : %d\n", kfifo_len(&ring->f));
+	OUT("wait.len : %d\n", kfifo_len(&ring->f));
 #endif
 	//if (trb || (reg->AESDMA_CRCR & AUTODMA_CRCR_CRR)) // dump_trb || running
 	{
 		//i = (trb ? trb : (trb_t *)__va(reg->AES_CR)) - ring->trb;
 		i = ring->head - ring->trb;
 		for (j = -2; j < 3; j++) {
-			dump_trb(ring->trb + ((i + j + 127) % 127));
+			p = print_trb(p, ring->trb + ((i + j + 127) % 127));
 		}
 	}
-	printk("\n");
 
+	OUT("\n");
 	// HASH
 	ring = HASH_RING(sp_dd_tb);
-	printk("HASH_CR	 : %08x\n", reg->HASH_CR);
-	printk("HASH_ER	 : %08x\n", reg->HASH_ER);
-	printk("HAHS_CRCR: %08x\n", reg->HASHDMA_CRCR);
-	printk("sem.count: %d\n", ring->trb_sem.count);
-	printk("head	 : %p\n", ring->head);
-	printk("tail	 : %p\n", ring->tail);
-	printk("triggers : %d\n", ring->trigger_count);
-	printk("irqs     : %d\n", ring->irq_count);
+	OUT("HASH_CR	 : %08x\n", reg->HASH_CR);
+	OUT("HASH_ER	 : %08x\n", reg->HASH_ER);
+	OUT("HAHS_CRCR: %08x\n", reg->HASHDMA_CRCR);
+	OUT("sem.count: %d\n", ring->trb_sem.count);
+	OUT("head	 : %p\n", ring->head);
+	OUT("tail	 : %p\n", ring->tail);
+	OUT("triggers : %d\n", ring->trigger_count);
+	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
-	printk("wait.len : %d\n", kfifo_len(&ring->f));
+	OUT("wait.len : %d\n", kfifo_len(&ring->f));
 #endif
 	//if (trb || (reg->HASHDMA_CRCR & AUTODMA_CRCR_CRR)) // dump_trb || running
 	{
 		//i = (trb ? trb : (trb_t *)__va(reg->HASH_CR)) - ring->trb;
 		i = ring->head - ring->trb;
 		for (j = -2; j < 3; j++) {
-			dump_trb(ring->trb + ((i + j + 127) % 127));
+			p = print_trb(p, ring->trb + ((i + j + 127) % 127));
 		}
 	}
+
+	return p;
 }
 
 void dump_trb(trb_t *trb)
 {
-#if 1
-#define DUMP printk//SP_CRYPTO_INF
-
-	DUMP("trb ========== %p\n", trb);
-	DUMP(" c:0x%x\n", trb->c);
-	DUMP("cc:0x%x\n", trb->cc);
-	DUMP("tc:0x%x\n", trb->tc);
-	DUMP("ioc:0x%x\n", trb->ioc);
-	DUMP("type:0x%x\n", trb->type);
-	DUMP("size:0x%x\n", trb->size);
-	DUMP("sptr:0x%0x\n", trb->sptr);
-	DUMP("dptr:0x%0x\n", trb->dptr);
-	DUMP("mode:0x%x\n", trb->mode);
-	DUMP("iptr:0x%x\n", trb->iptr);
-	DUMP("kptr:0x%x\n", trb->kptr);
-	DUMP("priv:%p\n", trb->priv);
-#endif
+	char s[300];
+	print_trb(s, trb);
+	printk(s);
 }
 
-static int toggle_aes(const char *val, const struct kernel_param *kp)
+static int hwcfg_set(const char *val, const struct kernel_param *kp)
 {
-	static int enable = 1;
+	int en_aes = -1, en_hash = -1;
 	int ret;
 
-	if (*val == 'd') {
-		dump_hw(NULL);
-		return 0;
+	sscanf(val, "%d %d", &en_aes, &en_hash);
+
+	if (en_aes >= 0) {
+		ret = en_aes ? sp_aes_init() : sp_aes_finit();
+		printk("sp_aes %s: %d\n", en_aes ? "enable": "disable", ret);
+	}
+	if (en_hash >= 0) {
+		ret = en_hash ? sp_hash_init() : sp_hash_finit();
+		printk("sp_hash %s: %d\n", en_hash ? "enable": "disable", ret);
 	}
 
-	if (enable) {
-		ret = sp_aes_finit();
-		if (*val != 'S') printk("sp_aes disable: %d\n", ret);
-	}
-	else {
-		ret = sp_aes_init();
-		if (*val != 'S') printk("sp_aes enable: %d\n", ret);
-	}
-	enable = !enable;
 	return 0;
 }
 
-static const struct kernel_param_ops toggle_aes_ops = {
-	.set = toggle_aes,
-};
-module_param_cb(toggle_aes, &toggle_aes_ops, NULL, 0600);
-
-static int toggle_hash(const char *val, const struct kernel_param *kp)
+static int hwcfg_get(char *buffer, const struct kernel_param *kp)
 {
-	static int enable = 1;
-	int ret;
-	if (enable) {
-		ret = sp_hash_finit();
-		if (*val != 'S') printk("sp_hash disable: %d\n", ret);
-	}
-	else {
-		ret = sp_hash_init();
-		if (*val != 'S') printk("sp_hash enable: %d\n", ret);
-	}
-	enable = !enable;
-	return 0;
+	return print_hw(buffer, NULL) - buffer;
 }
 
-static const struct kernel_param_ops toggle_hash_ops = {
-	.set = toggle_hash,
+static const struct kernel_param_ops hwcfg_ops = {
+	.set = hwcfg_set,
+	.get = hwcfg_get,
 };
-module_param_cb(toggle_hash, &toggle_hash_ops, NULL, 0600);
+module_param_cb(hwcfg, &hwcfg_ops, NULL, 0600);
 
 int crypto_ctx_init(crypto_ctx_t *ctx, crypto_type_t type)
 {
@@ -494,13 +488,13 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	reg->HASHDMA_ERBAR = phy_addr;
 #ifdef USE_ERF
 	reg->HASHDMA_ERDPR = phy_addr + (HASH_EVENT_RING_SIZE - 1) * TRB_SIZE;
-	reg->HASHDMA_RCSR  = (HASH_EVENT_RING_SIZE - 1);// * TRB_SIZE;
 #else
 	reg->HASHDMA_ERDPR = phy_addr + HASH_EVENT_RING_SIZE * TRB_SIZE;
-	reg->HASHDMA_RCSR  = (HASH_EVENT_RING_SIZE - 1) * TRB_SIZE;
 #endif
+	reg->HASHDMA_RCSR  = (HASH_EVENT_RING_SIZE - 1);
 	reg->HASHDMA_RCSR |= AUTODMA_RCSR_ERF;
 	reg->HASHDMA_RCSR |= AUTODMA_RCSR_EN; // TODO: HW issue, autodma enable must be alone
+	SP_CRYPTO_INF("HASH_RING === VA:%p PA:%08x\n", ring->trb, phy_addr);
 	SP_CRYPTO_INF("HASH_RCSR: %08x\n", reg->HASHDMA_RCSR);
 	SP_CRYPTO_INF("HASH_RING: %08x %d\n", phy_addr, ring->trb_sem.count);
 	SP_CRYPTO_INF("HASH_CR  : %08x\n", reg->HASH_CR);
@@ -515,13 +509,13 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	reg->AESDMA_ERBAR = phy_addr;
 #ifdef USE_ERF
 	reg->AESDMA_ERDPR = phy_addr + (AES_EVENT_RING_SIZE - 1) * TRB_SIZE;
-	reg->AESDMA_RCSR  = (AES_EVENT_RING_SIZE - 1);// * TRB_SIZE;
 #else
 	reg->AESDMA_ERDPR = phy_addr + AES_EVENT_RING_SIZE * TRB_SIZE;
-	reg->AESDMA_RCSR  = (AES_EVENT_RING_SIZE - 1) * TRB_SIZE;
 #endif
+	reg->AESDMA_RCSR  = (AES_EVENT_RING_SIZE - 1);
 	reg->AESDMA_RCSR |= AUTODMA_RCSR_ERF;
 	reg->AESDMA_RCSR |= AUTODMA_RCSR_EN; // TODO: same as above
+	SP_CRYPTO_INF("AES_RING  === VA:%p PA:%08x\n", ring->trb, phy_addr);
 	SP_CRYPTO_INF("AES_RCSR : %08x\n", reg->AESDMA_RCSR);
 	SP_CRYPTO_INF("AES_RING : %08x %d\n", phy_addr, ring->trb_sem.count);
 	SP_CRYPTO_INF("AES_CR   : %08x\n", reg->AES_CR);

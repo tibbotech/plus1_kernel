@@ -378,7 +378,7 @@ struct sp_crypto_reg {
 	   Reserved    29:16   RO  Reserved
 	   Size        15:0    RW Event Ring Size
 	   	HWwill write to ERBA if the size reaches this value
-	   	and ERDP != ERBA
+	   	and ERDP != ERBA (number of trbs)
 	 */
 	dev_reg AESDMA_RCSR;
 
@@ -518,7 +518,6 @@ trb_t *trb_put(trb_ring_t *ring);		/* USE_IN_IRQ, move ring tail to next */
 void trb_ring_reset(trb_ring_t *ring);	/* USE_IN_IRQ, reset ring head & tail to base addr */
 
 void dump_trb(trb_t *trb);
-void dump_hw(trb_t *trb);
 
 extern void dump_buf(u8 *buf, u32 len);
 
@@ -534,6 +533,7 @@ static inline void DCACHE_FLUSH(void *start, size_t size)
 	local_irq_restore(flags);
 }
 #endif
+
 static inline void DCACHE_CLEAN(void *start, size_t size)
 {
 	unsigned long flags;
@@ -554,8 +554,5 @@ static inline void DCACHE_INVALIDATE(void *start, size_t size)
 	//dmac_unmap_area(start, size, DMA_FROM_DEVICE);
 	local_irq_restore(flags);
 }
-
-#define CRYPTO_V2P(x)  __pa(x)
-#define CRYPTO_P2V(x)  __va(x)
 
 #endif //__SP_CRYPTO_H__
