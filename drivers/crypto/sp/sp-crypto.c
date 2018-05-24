@@ -137,19 +137,31 @@ void dump_trb(trb_t *trb)
 	printk(s);
 }
 
+/* hwcfg: enable/disable aes/hash hw
+echo <aes:-1~2> [hash:-1~2] > /sys/module/spcrypto/parameters/hwcfg
+-1: no change
+ 0: disable
+ 1: enable
+ 2: toggle
+*/
 static int hwcfg_set(const char *val, const struct kernel_param *kp)
 {
+	static int f_aes = 1, f_hash = 1; // initial status: aes & hash enabled
 	int en_aes = -1, en_hash = -1;
 	int ret;
 
 	sscanf(val, "%d %d", &en_aes, &en_hash);
 
 	if (en_aes >= 0) {
+		if (en_aes > 1) en_aes = 1 - f_aes; // toggle
 		ret = en_aes ? sp_aes_init() : sp_aes_finit();
+		f_aes = en_aes;
 		printk("sp_aes %s: %d\n", en_aes ? "enable": "disable", ret);
 	}
 	if (en_hash >= 0) {
+		if (en_hash > 1) en_hash = 1 - f_hash; // toggle
 		ret = en_hash ? sp_hash_init() : sp_hash_finit();
+		f_hash = en_hash;
 		printk("sp_hash %s: %d\n", en_hash ? "enable": "disable", ret);
 	}
 
