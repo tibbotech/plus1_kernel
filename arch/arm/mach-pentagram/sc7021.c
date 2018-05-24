@@ -33,7 +33,7 @@ static void __init sp_init(void)
 	pm_power_off = sp_power_off;
 
 	io_ctrl = readl((void __iomem *)B_SYSTEM_BASE + 0x105030);
-	b_sysclk = CLK_B_PLLSYS >> ((readl((void __iomem *)B_SYSTEM_BASE + 0x14) >> 4) & 7);
+	b_sysclk = CLK_B_PLLSYS >> ((readl((void __iomem *)B_SYSTEM_BASE + 0x26c) >> 4) & 7); /* G4.27 */
 
 	early_printk("B: b_sysclk=%uM abio_ctrl=(%ubit, %s)\n", b_sysclk / 1000000,
 		(io_ctrl & 2) ? 16 : 8, (io_ctrl & 1) ? "DDR" : "SDR");
@@ -104,8 +104,8 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 {
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 
-	/* MOON1: enable watchdog reset */
-	writel(BIT(10) | BIT(1), regs + 0xA8); /* G1.10 */
+	/* MOON : enable watchdog reset */
+	writel(0x00120012, regs + 0x0274); /* G4.29 misc_ctl */
 
 	/* STC: watchdog control */
 	writel(0x3877, regs + 0x0630); /* stop */
