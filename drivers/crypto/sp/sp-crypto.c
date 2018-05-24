@@ -84,12 +84,12 @@ static char *print_hw(char *p, trb_t *trb)
 
 	// AES
 	ring = AES_RING(sp_dd_tb);
-	OUT("AES_CR	 : %08x\n", reg->AES_CR);
-	OUT("AES_ER	 : %08x\n", reg->AES_ER);
+	OUT("AES_CR   : %08x\n", reg->AES_CR);
+	OUT("AES_ER   : %08x\n", reg->AES_ER);
 	OUT("AES_CRCR : %08x\n", reg->AESDMA_CRCR);
 	OUT("sem.count: %d\n", ring->trb_sem.count);
-	OUT("head	 : %p\n", ring->head);
-	OUT("tail	 : %p\n", ring->tail);
+	OUT("head     : %p\n", ring->head);
+	OUT("tail     : %p\n", ring->tail);
 	OUT("triggers : %d\n", ring->trigger_count);
 	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
@@ -107,12 +107,12 @@ static char *print_hw(char *p, trb_t *trb)
 	OUT("\n");
 	// HASH
 	ring = HASH_RING(sp_dd_tb);
-	OUT("HASH_CR	 : %08x\n", reg->HASH_CR);
-	OUT("HASH_ER	 : %08x\n", reg->HASH_ER);
+	OUT("HASH_CR  : %08x\n", reg->HASH_CR);
+	OUT("HASH_ER  : %08x\n", reg->HASH_ER);
 	OUT("HAHS_CRCR: %08x\n", reg->HASHDMA_CRCR);
 	OUT("sem.count: %d\n", ring->trb_sem.count);
-	OUT("head	 : %p\n", ring->head);
-	OUT("tail	 : %p\n", ring->tail);
+	OUT("head     : %p\n", ring->head);
+	OUT("tail     : %p\n", ring->tail);
 	OUT("triggers : %d\n", ring->trigger_count);
 	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
@@ -190,6 +190,7 @@ int crypto_ctx_exec(crypto_ctx_t *ctx)
 	ring->tail->c = 0; // clear tail_trb.c for HW stop
 	ctx->done = false;
 	smp_wmb();
+	ring->trigger_count++;
 	if (ctx->type == SP_CRYPTO_HASH) {
 		SP_CRYPTO_INF("HASH_CR  : %08x\n", reg->HASH_CR);
 		SP_CRYPTO_INF("HASH_ER  : %08x\n", reg->HASH_ER);
@@ -198,7 +199,8 @@ int crypto_ctx_exec(crypto_ctx_t *ctx)
 			reg->HASHDMA_RTR |= AUTODMA_TRIGGER;		// trigger autodma run
 		}
 #if 1
-		if (!(ctx->mode & M_FINAL)) { // busy-waiting, can't sleep in hash update
+		//if (!(ctx->mode & M_FINAL))
+		{ // busy-waiting, can't sleep in hash //update
 			while (!ctx->done); // TODO: handle timeout
 			return 0;
 		}
@@ -211,7 +213,6 @@ int crypto_ctx_exec(crypto_ctx_t *ctx)
 			reg->AESDMA_RTR |= AUTODMA_TRIGGER;
 		}
 	}
-	ring->trigger_count++;
 
 #if 1
 	{
@@ -258,7 +259,7 @@ trb_t *crypto_ctx_queue(crypto_ctx_t *ctx,
 inline trb_t *trb_next(trb_t *trb)
 {
 	trb++;
-	return (trb->type == TRB_LINK) ? (trb_t *)__va(trb->sptr) : trb;
+	return (trb->type == TRB_LINK) ? (trb_t *)(trb->dptr) : trb;
 }
 
 inline trb_t *trb_get(trb_ring_t *ring)
@@ -312,7 +313,8 @@ static trb_ring_t *trb_ring_new(u32 size)
 	size--;
 	ring->link = ring->trb + size;
 	ring->link->type = TRB_LINK;
-	ring->link->sptr = ring->pa;
+	ring->link->sptr = ring->pa;				// PA
+	ring->link->dptr = (dma_addr_t)ring->trb;	// VA
 	while (size--) {
 		ring->trb[size].type = TRB_NORMAL;
 	}
