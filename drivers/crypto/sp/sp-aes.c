@@ -143,7 +143,6 @@ static int sp_blk_aes_set_key(struct crypto_tfm *tfm,
 	ctx->keylen = key_len;
 	ctx->base.mode |= (key_len / 4) << 16; // AESPAR0_NK
 	memcpy(ctx->iv + ctx->ivlen, in_key, key_len); // key: iv + ivlen
-	DCACHE_CLEAN(ctx->iv + ctx->ivlen, key_len);
 
 	return 0;
 }
@@ -196,15 +195,14 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 	} else {
 		memcpy(ctx->iv, desc->info, ctx->ivlen);
 	}
-	DCACHE_CLEAN(ctx->iv, ctx->ivlen);
 
-	iv_phy = __pa(ctx->iv);//dma_map_single(NULL, ctx->iv, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
+	iv_phy = dma_map_single(NULL, ctx->iv, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
 	key_phy = iv_phy + ctx->ivlen;
 	sp = src;
 	dp = dst;
 
 	if (mutex_lock_interruptible(&ring->lock)) {
-		//dma_unmap_single(NULL, iv_phy, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
+		dma_unmap_single(NULL, iv_phy, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
 		dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
 		dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
 		return -EINTR;
@@ -277,7 +275,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 		process = min_t(u32, process, nbytes - processed);
 		if (process < AES_BLOCK_SIZE) {
-			tmp_phy = __pa(ctx->tmp);//dma_map_single(NULL, ctx->tmp, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
+			tmp_phy = dma_map_single(NULL, ctx->tmp, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
 		} else if (process % AES_BLOCK_SIZE) {
 			process &= ~(AES_BLOCK_SIZE - 1);
 			flag = NO_WALK;
@@ -308,8 +306,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 			SP_CRYPTO_TRACE();
 
 			if (tmp_phy) {
-				DCACHE_INVALIDATE(ctx->tmp, AES_BLOCK_SIZE);
-				//dma_unmap_single(NULL, tmp_phy, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
+				dma_unmap_single(NULL, tmp_phy, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
 				scatterwalk_map_and_copy(ctx->tmp, dst, nbytes - process, process, 1);
 			}
 		}
@@ -326,7 +323,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 out:
 	mutex_unlock(&ring->lock);
-	//dma_unmap_single(NULL, key_phy - ctx->ivlen, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
+	dma_unmap_single(NULL, key_phy - ctx->ivlen, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
 	dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
  	dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
 

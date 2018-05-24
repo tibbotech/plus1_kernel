@@ -532,8 +532,7 @@ static inline void DCACHE_FLUSH(void *start, size_t size)
 	outer_flush_range(__pa(start), __pa(start) + size);
 	local_irq_restore(flags);
 }
-#endif
-
+//#endif
 static inline void DCACHE_CLEAN(void *start, size_t size)
 {
 	unsigned long flags;
@@ -554,5 +553,6 @@ static inline void DCACHE_INVALIDATE(void *start, size_t size)
 	//dmac_unmap_area(start, size, DMA_FROM_DEVICE);
 	local_irq_restore(flags);
 }
+#endif
 
 #endif //__SP_CRYPTO_H__
