@@ -18,10 +18,17 @@
 #include <linux/irq.h>
 #include <linux/of_irq.h>
 
+#define WATCHDOG_CMD_CNT_WR_UNLOCK	0xAB00
+#define WATCHDOG_CMD_CNT_WR_LOCK	0xAB01
+#define WATCHDOG_CMD_CNT_WR_MAX		0xDEAF
+#define WATCHDOG_CMD_PAUSE		0x3877
+#define WATCHDOG_CMD_RESUME		0x4A4B
+#define WATCHDOG_CMD_INTR_CLR		0x7482
+
 struct stc_reg {
 	volatile unsigned int stc_15_0;
 	volatile unsigned int stc_31_16;
-	volatile unsigned int stc_32or64;
+	volatile unsigned int stc_64;
 	volatile unsigned int stc_divisor;
 	volatile unsigned int rtc_15_0;
 	volatile unsigned int rtc_23_16;
@@ -31,10 +38,10 @@ struct stc_reg {
 	volatile unsigned int timer0_cnt;
 	volatile unsigned int timer1_ctrl;
 	volatile unsigned int timer1_cnt;
-	volatile unsigned int timerw_ctrl;	/* Not available for all STCs */
-	volatile unsigned int timerw_cnt;	/* Not available for all STCs */
-	volatile unsigned int stc_47_32;	/* Not available for all STCs */
-	volatile unsigned int stc_63_48;	/* Not available for all STCs */
+	volatile unsigned int timerw_ctrl;	/* Only STCs @ 0x9C000600 and 0x9C003000 */
+	volatile unsigned int timerw_cnt;	/* Only STCs @ 0x9C000600 and 0x9C003000 */
+	volatile unsigned int stc_47_32;
+	volatile unsigned int stc_63_48;
 	volatile unsigned int timer2_ctrl;
 	volatile unsigned int timer2_divisor;
 	volatile unsigned int timer2_reload;
@@ -91,7 +98,10 @@ static irqreturn_t sp_tmr_tst_irq(int irq, void *args)
 			for (j = 0; j < NUM_IRQ; j++) {
 				if (irq == stc_info[i].irq[j]) {
 					stc_info[i].interrupt_cnt[j]++;
-					if ((stc_info[i].interrupt_cnt[j] & 0x003F) == 0) {	/* limits output messages */
+					if (j == (NUM_IRQ - 1)) {
+						panic("Watchdog timeout, die here\n");
+						while(1);
+					} else  if ((stc_info[i].interrupt_cnt[j] & 0x003F) == 0) {	/* limits output messages */
 						printk(KERN_INFO "%s, %s, %u\n", __func__, stc_info[i].irq_name[j], stc_info[i].interrupt_cnt[j]);
 					}
 				}
@@ -148,19 +158,19 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 
 	stc_ptr = (struct stc_reg *)(membase);
 	writel((0x1000 - 1), &(stc_ptr->stc_divisor));
-	writel(0, &(stc_ptr->stc_32or64));		/* reset STC */
+	writel(0, &(stc_ptr->stc_64));	/* reset STC */
 
 	/* timer0: src: STC, repeat mode, start */
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer0_cnt));
 	writel(val, &(stc_ptr->timer0_reload));
-	writel((1 << 14) | (1 << 13) | (1 << 11) | val, &(stc_ptr->timer0_ctrl));
+	writel((1 << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer0_ctrl));
 
 	/* timer1: src: STC, repeat mode, start */
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer1_cnt));
 	writel(val, &(stc_ptr->timer1_reload));
-	writel((1 << 14) | (1 << 13) | (1 << 11) | val, &(stc_ptr->timer1_ctrl));
+	writel((1 << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer1_ctrl));
 
 	/* timer2: src: STC, repeat mode, start */
 	writel(0x0002 - 1, &(stc_ptr->timer2_divisor));
@@ -190,6 +200,19 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 		}
 		printk(KERN_INFO "%s, %d, irq[%d]: %d, %s\n", __func__, __LINE__, i, stc_info[idx_stc].irq[i], stc_info[idx_stc].irq_name[i]);
 	}
+#if 0
+	/* Watchdog timer */
+	/* Need to enable bit 2 and 4 of G(4, 29) to cause chip reset:
+	 * If set them in iboot:
+	 *     MOON4_REG->misc_ctl_0 = RF_MASK_V((0x1 << 2), (1 << 2));
+	 *     MOON4_REG->misc_ctl_0 = RF_MASK_V((0x1 << 4), (1 << 4));
+	 */
+	writel(WATCHDOG_CMD_CNT_WR_UNLOCK, &(stc_ptr->timerw_ctrl));
+	writel(WATCHDOG_CMD_PAUSE, &(stc_ptr->timerw_ctrl));
+	writel(0x0800, &(stc_ptr->timerw_cnt));
+	writel(WATCHDOG_CMD_RESUME, &(stc_ptr->timerw_ctrl));
+	writel(WATCHDOG_CMD_CNT_WR_LOCK, &(stc_ptr->timerw_ctrl));
+#endif
 	idx_stc++;
 	return 0;
 
