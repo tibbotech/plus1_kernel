@@ -18,12 +18,14 @@
 #include <crypto/aes.h>
 #include "sp-crypto.h"
 
+#define WORKBUF_SIZE (AES_BLOCK_SIZE + AES_BLOCK_SIZE + AES_MAX_KEYLENGTH)	// tmp + iv + key
+
 /* structs */
 struct sp_aes_ctx {
 	crypto_ctx_t base;
 
-	u8 buf[32 + AES_BLOCK_SIZE + AES_MAX_KEYLENGTH + 31 ]; // tmp(32) + iv + key + padding for 32bytes aligned
 	u8 *tmp, *iv;
+	dma_addr_t pa; // workbuf phy addr
 	u32 ivlen, keylen;
 };
 
@@ -35,8 +37,9 @@ static int sp_cra_aes_init(struct crypto_tfm *tfm, u32 mode)
 
 	ctx->base.mode = mode;
 	ctx->ivlen = AES_BLOCK_SIZE;
-	ctx->tmp = PTR_ALIGN((u8*)(ctx->buf), 32);
-	ctx->iv = ctx->tmp + 32;
+
+	ctx->tmp = dma_alloc_coherent(NULL, WORKBUF_SIZE, &ctx->pa, GFP_KERNEL);
+	ctx->iv = ctx->tmp + AES_BLOCK_SIZE;
 
 	return crypto_ctx_init(&ctx->base, SP_CRYPTO_AES);
 }
@@ -58,6 +61,9 @@ static int sp_cra_aes_ctr_init(struct crypto_tfm *tfm)
 
 static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 {
+	struct sp_aes_ctx *ctx = crypto_tfm_ctx(tfm);
+
+	dma_free_coherent(NULL, WORKBUF_SIZE, ctx->tmp, ctx->pa);
 	crypto_ctx_exit(crypto_tfm_ctx(tfm));
 }
 
@@ -196,13 +202,12 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 		memcpy(ctx->iv, desc->info, ctx->ivlen);
 	}
 
-	iv_phy = dma_map_single(NULL, ctx->iv, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
+	iv_phy = ctx->pa + AES_BLOCK_SIZE;
 	key_phy = iv_phy + ctx->ivlen;
 	sp = src;
 	dp = dst;
 
 	if (mutex_lock_interruptible(&ring->lock)) {
-		dma_unmap_single(NULL, iv_phy, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
 		dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
 		dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
 		return -EINTR;
@@ -275,7 +280,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 		process = min_t(u32, process, nbytes - processed);
 		if (process < AES_BLOCK_SIZE) {
-			tmp_phy = dma_map_single(NULL, ctx->tmp, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
+			tmp_phy = ctx->pa;
 		} else if (process % AES_BLOCK_SIZE) {
 			process &= ~(AES_BLOCK_SIZE - 1);
 			flag = NO_WALK;
@@ -302,13 +307,6 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 				//if (ret == -ERESTARTSYS) ret = 0;
 				goto out;
 			}
-
-			SP_CRYPTO_TRACE();
-
-			if (tmp_phy) {
-				dma_unmap_single(NULL, tmp_phy, AES_BLOCK_SIZE, DMA_FROM_DEVICE);
-				scatterwalk_map_and_copy(ctx->tmp, dst, nbytes - process, process, 1);
-			}
 		}
 	};
 	SP_CRYPTO_TRACE();
@@ -323,9 +321,13 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 out:
 	mutex_unlock(&ring->lock);
-	dma_unmap_single(NULL, key_phy - ctx->ivlen, ctx->ivlen + ctx->keylen, DMA_TO_DEVICE);
 	dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
  	dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
+
+	if (tmp_phy) {
+		//dump_buf(ctx->tmp, AES_BLOCK_SIZE);
+		scatterwalk_map_and_copy(ctx->tmp, dst, nbytes - process, process, 1);
+	}
 
 	// update iv for return
 	if (mode == M_AES_CBC) {
