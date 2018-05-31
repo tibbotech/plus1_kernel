@@ -1,7 +1,7 @@
 
 ifneq ($(KERNELRELEASE),)
-	obj-$(CONFIG_CRYPTO_DEV_SP) = spcrypto.o
-	spcrypto-objs := sp-crypto.o \
+	obj-$(CONFIG_CRYPTO_DEV_SP) = sp_crypto.o
+	sp_crypto-objs := sp-crypto.o \
 		sp-aes.o \
 		sp-hash.o \
 		sp-rsa.o 
