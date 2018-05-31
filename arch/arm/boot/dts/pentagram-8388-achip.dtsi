@@ -117,6 +117,7 @@
 /* 1. Enable device tree for timers. */
 /* 2. Enable sp_timer_test in drivers/misc/Makefile */
 #if 0
+#if 0
 		sp_tmr_tst0: sp_tmr_tst@9c000600 {
 			compatible = "sunplus,sp-tmr-tst";
 			reg = <0x9c000600 0x80>;
@@ -127,7 +128,7 @@
 				<GIC_SPI 153 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<GIC_SPI 154 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
-
+#endif
 		sp_tmr_tst1: sp_tmr_tst@9c003000 {
 			compatible = "sunplus,sp-tmr-tst";
 			reg = <0x9c003000 0x80>;
@@ -149,6 +150,28 @@
 				<GIC_SPI 161 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<GIC_SPI 162 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
+#endif
+
+/* CBDMA tests: */
+/* 1. Enable device tree for CBDMA. */
+/* 2. Enable sp_cbdma_test in drivers/misc/Makefile */
+#if 0
+#if 1
+		sp_cbdma_tst0: sp_cbdma_tst@9c000d00 {
+			compatible = "sunplus,sp-cbdma-tst";
+			reg = <0x9c000d00 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 128 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
+#if 1
+		sp_cbdma_tst1: sp_cbdma_tst@9c000d80 {
+			compatible = "sunplus,sp-cbdma-tst";
+			reg = <0x9c000d80 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 129 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
 #endif
 
 #ifdef ENABLE_DMARX0

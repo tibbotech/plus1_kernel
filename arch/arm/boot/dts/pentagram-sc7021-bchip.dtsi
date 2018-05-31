@@ -159,6 +159,28 @@
 				<167 IRQ_TYPE_EDGE_RISING>; /* AV2 timer3 */
 		};
 
+/* CBDMA tests: */
+/* 1. Enable device tree for CBDMA. */
+/* 2. Enable sp_cbdma_test in drivers/misc/Makefile */
+#if 0
+#if 1
+		sp_cbdma_tst0: sp_cbdma_tst@9c000d00 {
+			compatible = "sunplus,sp-cbdma-tst";
+			reg = <0x9c000d00 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
+#if 1
+		sp_cbdma_tst1: sp_cbdma_tst@9c000d80 {
+			compatible = "sunplus,sp-cbdma-tst";
+			reg = <0x9c000d80 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <129 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
+#endif
+
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
@@ -167,7 +189,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
-			which-uart = <1>;
+			which-uart = <2>;
 		};
 #endif
 #ifdef ENABLE_DMARX1
@@ -177,7 +199,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
-			which-uart = <2>;
+			which-uart = <1>;
 		};
 #endif
 #ifdef ENABLE_DMATX0

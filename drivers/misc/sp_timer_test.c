@@ -123,6 +123,7 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 	static int idx_stc = 0;
 	struct stc_reg *stc_ptr;
 	void __iomem *membase;
+	u32 counter_src;
 
 	if (idx_stc >= NUM_STC) {
 		printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
@@ -158,33 +159,38 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 
 	stc_ptr = (struct stc_reg *)(membase);
 	writel((0x1000 - 1), &(stc_ptr->stc_divisor));
-	writel(0, &(stc_ptr->stc_64));	/* reset STC */
+	writel(0, &(stc_ptr->stc_64));		/* reset STC */
 
-	/* timer0: src: STC, repeat mode, start */
+	writel((0x0002 - 1), &(stc_ptr->rtc_divisor));
+	writel(0, &(stc_ptr->rtc_23_16));	/* reset RTC */
+
+	counter_src = 1;	/* 0: system clock, 1: STC, 2: RTC, 3: ... */
+
+	/* timer0: repeat mode, start */
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer0_cnt));
 	writel(val, &(stc_ptr->timer0_reload));
-	writel((1 << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer0_ctrl));
+	writel((counter_src << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer0_ctrl));
 
-	/* timer1: src: STC, repeat mode, start */
+	/* timer1: repeat mode, start */
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer1_cnt));
 	writel(val, &(stc_ptr->timer1_reload));
-	writel((1 << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer1_ctrl));
+	writel((counter_src << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer1_ctrl));
 
-	/* timer2: src: STC, repeat mode, start */
+	/* timer2: repeat mode, start */
 	writel(0x0002 - 1, &(stc_ptr->timer2_divisor));
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer2_cnt));
 	writel(val, &(stc_ptr->timer2_reload));
-	writel((1 << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer2_ctrl));
+	writel((counter_src << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer2_ctrl));
 
-	/* timer3: src: STC, repeat mode, start */
+	/* timer3: repeat mode, start */
 	writel(0x0004 - 1, &(stc_ptr->timer3_divisor));
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer3_cnt));
 	writel(val, &(stc_ptr->timer3_reload));
-	writel((1 << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer3_ctrl));
+	writel((counter_src << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer3_ctrl));
 
 	for (i = 0; i < num_irq; i++) {
 		stc_info[idx_stc].irq[i] = platform_get_irq(pdev, i);
