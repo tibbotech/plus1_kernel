@@ -88,8 +88,8 @@ struct cbdma_sg_lli {
 	u32 sg_src_adr;
 	u32 sg_des_adr;
 	u32 sg_memset_val;
+	u32 sg_lp_mode;
 };
-
 
 #define MIN(X, Y)		((X) < (Y) ? (X): (Y))
 
@@ -134,6 +134,7 @@ static void sp_cbdma_tst_basic(void *data)
 {
 	int i, j, val;
 	u32 *u32_ptr, expected_u32, val_u32, test_size;
+	u32 *sram_ptr;
 
 	printk(KERN_INFO "%s(), start\n", __func__);
 
@@ -164,7 +165,7 @@ static void sp_cbdma_tst_basic(void *data)
 
 				break;
 			}
-			dump_data(cbdma_info[i].buf_va, 0x40);
+			dump_data(cbdma_info[i].buf_va, 0x20);
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
 			expected_u32 = PATTERN4TEST(i);
 			for (j = 0 ; j < (BUF_SIZE_DRAM >> 2); j++) {
@@ -172,6 +173,27 @@ static void sp_cbdma_tst_basic(void *data)
 				u32_ptr++;
 			}
 			printk(KERN_INFO "MEMSET test: OK\n\n");
+
+			printk(KERN_INFO "SRAM r/w test\n");
+			sram_ptr = (u32 *)ioremap(cbdma_info[i].sram_addr, cbdma_info[i].sram_size);
+			BUG_ON(!sram_ptr);
+			u32_ptr = sram_ptr;
+			val_u32 = (u32)(cbdma_info[i].sram_addr);
+			test_size = cbdma_info[i].sram_size - (1 << 10);
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				*u32_ptr = val_u32;
+				u32_ptr++;
+				val_u32 += 4;
+			}
+			dump_data((u8 *)sram_ptr, 0x20);
+			u32_ptr = sram_ptr;
+			val_u32 = (u32)(cbdma_info[i].sram_addr);
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				BUG_ON(*u32_ptr != val_u32);
+				u32_ptr++;
+				val_u32 += 4;
+			}
+			printk(KERN_INFO "SRAM r/w test: OK\n\n");
 
 			printk(KERN_INFO "R/W test\n");
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
@@ -183,7 +205,7 @@ static void sp_cbdma_tst_basic(void *data)
 				u32_ptr++;
 				val_u32 += 4;
 			}
-			dump_data(cbdma_info[i].buf_va, 0x40);
+			dump_data(cbdma_info[i].buf_va, 0x20);
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
@@ -203,9 +225,20 @@ static void sp_cbdma_tst_basic(void *data)
 					/* ISR not served */
 					continue;
 				}
-
 				break;
 			}
+
+			dump_data((u8 *)(sram_ptr), 0x20);
+			u32_ptr = sram_ptr;
+			val_u32 = (u32)(cbdma_info[i].buf_va);
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				/* Compare (test_size) bytes of data in DRAM */
+				BUG_ON(*u32_ptr != val_u32);
+				u32_ptr++;
+				val_u32 += 4;
+			}
+			printk(KERN_INFO "Data in SRAM: OK\n");
+			iounmap(sram_ptr);
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
@@ -228,7 +261,7 @@ static void sp_cbdma_tst_basic(void *data)
 
 				break;
 			}
-			dump_data(cbdma_info[i].buf_va + test_size, 0x40);
+			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
 
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va + test_size);
 			val_u32 = (u32)(cbdma_info[i].buf_va);
@@ -249,7 +282,7 @@ static void sp_cbdma_tst_basic(void *data)
 				u32_ptr++;
 				val_u32 += 4;
 			}
-			dump_data(cbdma_info[i].buf_va + test_size, 0x40);
+			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
@@ -273,7 +306,7 @@ static void sp_cbdma_tst_basic(void *data)
 
 				break;
 			}
-			dump_data(cbdma_info[i].buf_va, 0x40);
+			dump_data(cbdma_info[i].buf_va, 0x20);
 
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
 			expected_u32 = (u32)(cbdma_info[i].buf_va) + test_size;
@@ -290,6 +323,14 @@ static void sp_cbdma_tst_basic(void *data)
 
 static void sp_cbdma_sg_lli(u32 sg_idx, volatile struct cbdma_reg *cbdma_ptr, struct cbdma_sg_lli *cbdma_sg_lli_ptr)
 {
+	if (cbdma_sg_lli_ptr->sg_lp_mode) {
+		cbdma_ptr->sg_lp_mode = 0x00000001;
+		cbdma_ptr->sg_lp_sram_start = 0x00000000;
+		cbdma_ptr->sg_lp_sram_size = CBDMA_SG_LP_SZ_4KB;
+	} else {
+		cbdma_ptr->sg_lp_mode = 0x00000000;
+	}
+
 	cbdma_ptr->sg_en_go	 = CBDMA_SG_EN_GO_EN;
 	cbdma_ptr->sg_idx	 = sg_idx;
 	cbdma_ptr->sg_length	 = cbdma_sg_lli_ptr->sg_length;
@@ -308,6 +349,7 @@ static void sp_cbdma_tst_sg_memset_00(void *data)
 
 	printk(KERN_INFO "%s(), start\n", __func__);
 
+	memset(&sg_lli, 0, sizeof(sg_lli));
 	for (i = 0; i < NUM_CBDMA; i++) {
 		if (cbdma_info[i].sram_size) {
 			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
@@ -354,7 +396,7 @@ static void sp_cbdma_tst_sg_memset_00(void *data)
 			}
 
 			/* Verification of the 1st of LLI */
-			dump_data(cbdma_info[i].buf_va, 0x40);
+			dump_data(cbdma_info[i].buf_va, 0x20);
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
 			expected_u32 = PATTERN4TEST(0x5A);
 			for (j = 0 ; j < (test_size >> 2); j++) {
@@ -363,7 +405,7 @@ static void sp_cbdma_tst_sg_memset_00(void *data)
 			}
 
 			/* Verification of the 2nd of LLI */
-			dump_data(cbdma_info[i].buf_va + test_size, 0x40);
+			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va + test_size);
 			expected_u32 = PATTERN4TEST(0xA5);
 			for (j = 0 ; j < (test_size >> 2); j++) {
@@ -385,6 +427,7 @@ static void sp_cbdma_tst_sg_memset_01(void *data)
 
 	printk(KERN_INFO "%s(), start\n", __func__);
 
+	memset(&sg_lli, 0, sizeof(sg_lli));
 	for (i = 0; i < NUM_CBDMA; i++) {
 		if (cbdma_info[i].sram_size) {
 			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
@@ -426,12 +469,420 @@ static void sp_cbdma_tst_sg_memset_01(void *data)
 
 			/* Verification */
 			for (j = 0; j < NUM_SG_IDX; j++) {
-				dump_data(cbdma_info[i].buf_va + j * test_size, 0x40);
+				dump_data(cbdma_info[i].buf_va + j * test_size, 0x20);
 				u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + j * test_size);
 				expected_u32 = PATTERN4TEST((((i << 4) | j) ^ 0x5A) & 0xFF);
 				for (k = 0 ; k < (test_size >> 2); k++) {
 					BUG_ON(*u32_ptr != expected_u32);
 					u32_ptr++;
+				}
+			}
+		}
+	}
+	printk(KERN_INFO "%s(), end\n", __func__);
+}
+
+static void sp_cbdma_tst_sg_rw_00(void *data)
+{
+	int i, j, k, val;
+	u32 sg_idx, test_size, expected_u32, val_u32;
+	u32 *u32_ptr;
+	struct cbdma_sg_lli sg_lli;
+	const u32 sg_idx_used = 4;
+
+	printk(KERN_INFO "%s(), start\n", __func__);
+
+	memset(&sg_lli, 0, sizeof(sg_lli));
+	for (i = 0; i < NUM_CBDMA; i++) {
+		if (cbdma_info[i].sram_size) {
+			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
+			test_size = MIN(BUF_SIZE_DRAM, cbdma_info[i].sram_size) / sg_idx_used / 2;
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			val_u32 = (u32)(u32_ptr);
+			expected_u32 = val_u32;
+			for (k = 0; k < sg_idx_used; k++) {
+				for (j = 0; j < (test_size >> 2); j++) {
+					/* Fill (test_size) bytes of data to DRAM */
+					*u32_ptr = val_u32;
+					u32_ptr++;
+					val_u32 += 4;
+				}
+			}
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				u32_ptr += (test_size >> 2);
+			}
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			for (j = 0; j < sg_idx_used; j++) {
+				sg_idx = j;
+				sg_lli.sg_length	= test_size;
+				sg_lli.sg_src_adr	= (u32)(cbdma_info[i].dma_handle) + j * test_size;
+				sg_lli.sg_des_adr	= j * test_size;
+				sg_lli.sg_cfg		= (j != (sg_idx_used - 1)) ?
+							  (CBDMA_SG_CFG_NOT_LAST | CBDMA_SG_CFG_RD) :
+							  (CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_RD);
+				sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+			}
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+
+				break;
+			}
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			for (j = 0; j < sg_idx_used; j++) {
+				sg_idx = j;
+				sg_lli.sg_length	= test_size;
+				sg_lli.sg_src_adr	= j * test_size;
+				sg_lli.sg_des_adr	= (u32)(cbdma_info[i].dma_handle) + (j + sg_idx_used) * test_size;
+				sg_lli.sg_cfg		= (j != (sg_idx_used - 1)) ?
+							  (CBDMA_SG_CFG_NOT_LAST | CBDMA_SG_CFG_WR) :
+							  (CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_WR);
+				sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+			}
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+
+				break;
+			}
+
+			u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + sg_idx_used * test_size);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				for (j = 0; j < (test_size >> 2); j++) {
+					BUG_ON(*u32_ptr != expected_u32);
+					u32_ptr++;
+					expected_u32 += 4;
+				}
+			}
+		}
+	}
+	printk(KERN_INFO "%s(), end\n", __func__);
+}
+
+static void sp_cbdma_tst_sg_cp_00(void *data)
+{
+	int i, j, val;
+	u32 sg_idx, test_size, expected_u32, val_u32;
+	u32 *u32_ptr;
+	struct cbdma_sg_lli sg_lli;
+
+	printk(KERN_INFO "%s(), start\n", __func__);
+
+	memset(&sg_lli, 0, sizeof(sg_lli));
+	for (i = 0; i < NUM_CBDMA; i++) {
+		if (cbdma_info[i].sram_size) {
+			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			val_u32 = (u32)(u32_ptr);
+			expected_u32 = val_u32;
+			test_size = BUF_SIZE_DRAM >> 1;
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				/* Fill (test_size) bytes of data to DRAM */
+				*u32_ptr = val_u32;
+				u32_ptr++;
+				val_u32 += 4;
+			}
+			dump_data(cbdma_info[i].buf_va, 0x20);
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			/* 1st of LLI, last one */
+			sg_idx = 0;
+			sg_lli.sg_length	= test_size;
+			sg_lli.sg_src_adr	= (u32)(cbdma_info[i].dma_handle);
+			sg_lli.sg_des_adr	= (u32)(cbdma_info[i].dma_handle) + test_size;
+			sg_lli.sg_cfg		= CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_CP;
+
+			sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+				break;
+			}
+
+			/* Verification of the 1st of LLI */
+			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
+			u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + test_size);
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				BUG_ON(*u32_ptr != expected_u32);
+				u32_ptr++;
+				expected_u32 += 4;
+			}
+		}
+	}
+	printk(KERN_INFO "%s(), end\n", __func__);
+}
+
+static void sp_cbdma_tst_sg_cp_01(void *data)
+{
+	int i, j, k, val;
+	u32 sg_idx, test_size, expected_u32, val_u32;
+	u32 *u32_ptr;
+	struct cbdma_sg_lli sg_lli;
+	const u32 sg_idx_used = 8;
+
+	printk(KERN_INFO "%s(), start\n", __func__);
+
+	memset(&sg_lli, 0, sizeof(sg_lli));
+	for (i = 0; i < NUM_CBDMA; i++) {
+		if (cbdma_info[i].sram_size) {
+			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
+			test_size = BUF_SIZE_DRAM / sg_idx_used / 2;
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			val_u32 = (u32)(u32_ptr);
+			expected_u32 = val_u32;
+			for (k = 0; k < sg_idx_used; k++) {
+				for (j = 0; j < (test_size >> 2); j++) {
+					/* Fill (test_size) bytes of data to DRAM */
+					*u32_ptr = val_u32;
+					u32_ptr++;
+					val_u32 += 4;
+				}
+			}
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				u32_ptr += (test_size >> 2);
+			}
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			for (j = 0; j < sg_idx_used; j++) {
+				sg_idx = j;
+				sg_lli.sg_length	= test_size;
+				sg_lli.sg_src_adr	= (u32)(cbdma_info[i].dma_handle) + j * test_size;
+				sg_lli.sg_des_adr	= (u32)(cbdma_info[i].dma_handle) + (j + sg_idx_used) * test_size;
+				sg_lli.sg_cfg		= (j != (sg_idx_used - 1)) ?
+							  (CBDMA_SG_CFG_NOT_LAST | CBDMA_SG_CFG_CP) :
+							  (CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_CP);
+				sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+			}
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+
+				break;
+			}
+
+			u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + sg_idx_used * test_size);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				for (j = 0; j < (test_size >> 2); j++) {
+					BUG_ON(*u32_ptr != expected_u32);
+					u32_ptr++;
+					expected_u32 += 4;
+				}
+			}
+		}
+	}
+	printk(KERN_INFO "%s(), end\n", __func__);
+}
+
+static void sp_cbdma_tst_sg_lp_cp_00(void *data)
+{
+	int i, j, val;
+	u32 sg_idx, test_size, expected_u32, val_u32;
+	u32 *u32_ptr;
+	struct cbdma_sg_lli sg_lli;
+
+	printk(KERN_INFO "%s(), start\n", __func__);
+
+	memset(&sg_lli, 0, sizeof(sg_lli));
+	for (i = 0; i < NUM_CBDMA; i++) {
+		if (cbdma_info[i].sram_size) {
+			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			val_u32 = (u32)(u32_ptr);
+			expected_u32 = val_u32;
+			test_size = BUF_SIZE_DRAM >> 1;
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				/* Fill (test_size) bytes of data to DRAM */
+				*u32_ptr = val_u32;
+				u32_ptr++;
+				val_u32 += 4;
+			}
+			dump_data(cbdma_info[i].buf_va, 0x20);
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			/* 1st of LLI, last one */
+			sg_idx = 0;
+			sg_lli.sg_length	= test_size;
+			sg_lli.sg_src_adr	= (u32)(cbdma_info[i].dma_handle);
+			sg_lli.sg_des_adr	= (u32)(cbdma_info[i].dma_handle) + test_size;
+			sg_lli.sg_cfg		= CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_CP;
+			sg_lli.sg_lp_mode	= 1;
+
+			sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+				break;
+			}
+
+			/* Verification of the 1st of LLI */
+			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
+			u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + test_size);
+			for (j = 0 ; j < (test_size >> 2); j++) {
+				BUG_ON(*u32_ptr != expected_u32);
+				u32_ptr++;
+				expected_u32 += 4;
+			}
+		}
+	}
+	printk(KERN_INFO "%s(), end\n", __func__);
+}
+
+static void sp_cbdma_tst_sg_lp_cp_01(void *data)
+{
+	int i, j, k, val;
+	u32 sg_idx, test_size, expected_u32, val_u32;
+	u32 *u32_ptr;
+	struct cbdma_sg_lli sg_lli;
+	const u32 sg_idx_used = 8;
+
+	printk(KERN_INFO "%s(), start\n", __func__);
+
+	memset(&sg_lli, 0, sizeof(sg_lli));
+	for (i = 0; i < NUM_CBDMA; i++) {
+		if (cbdma_info[i].sram_size) {
+			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
+			test_size = BUF_SIZE_DRAM / sg_idx_used / 2;
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			val_u32 = (u32)(u32_ptr);
+			expected_u32 = val_u32;
+			for (k = 0; k < sg_idx_used; k++) {
+				for (j = 0; j < (test_size >> 2); j++) {
+					/* Fill (test_size) bytes of data to DRAM */
+					*u32_ptr = val_u32;
+					u32_ptr++;
+					val_u32 += 4;
+				}
+			}
+
+			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				u32_ptr += (test_size >> 2);
+			}
+
+			val = atomic_read(&isr_cnt);
+			cbdma_info[i].cbdma_ptr->int_en = 0;
+
+			for (j = 0; j < sg_idx_used; j++) {
+				sg_idx = j;
+				sg_lli.sg_length	= test_size;
+				sg_lli.sg_src_adr	= (u32)(cbdma_info[i].dma_handle) + j * test_size;
+				sg_lli.sg_des_adr	= (u32)(cbdma_info[i].dma_handle) + (j + sg_idx_used) * test_size;
+				sg_lli.sg_cfg		= (j != (sg_idx_used - 1)) ?
+							  (CBDMA_SG_CFG_NOT_LAST | CBDMA_SG_CFG_CP) :
+							  (CBDMA_SG_CFG_LAST | CBDMA_SG_CFG_CP);
+				sg_lli.sg_lp_mode	= 1;
+				sp_cbdma_sg_lli(sg_idx, cbdma_info[i].cbdma_ptr, &sg_lli);
+			}
+
+			cbdma_info[i].cbdma_ptr->sg_idx = 0;	/* Start from index-0 */
+			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
+			wmb();
+			cbdma_info[i].cbdma_ptr->sg_en_go = CBDMA_SG_EN_GO_EN | CBDMA_SG_EN_GO_GO;
+			wmb();
+			while (1) {
+				if (cbdma_info[i].cbdma_ptr->sg_en_go & CBDMA_SG_EN_GO_GO) {
+					/* Still running */
+					continue;
+				}
+				if (atomic_read(&isr_cnt) == val) {
+					/* ISR not served */
+					continue;
+				}
+
+				break;
+			}
+
+			u32_ptr = (u32 *)((u32)(cbdma_info[i].buf_va) + sg_idx_used * test_size);
+			for (k = 0; k < sg_idx_used; k++) {
+				dump_data((u8 *)u32_ptr, 0x20);
+				for (j = 0; j < (test_size >> 2); j++) {
+					BUG_ON(*u32_ptr != expected_u32);
+					u32_ptr++;
+					expected_u32 += 4;
 				}
 			}
 		}
@@ -449,6 +900,11 @@ static int sp_cbdma_tst_thread(void *data)
 	sp_cbdma_tst_basic(data);
 	sp_cbdma_tst_sg_memset_00(data);
 	sp_cbdma_tst_sg_memset_01(data);
+	sp_cbdma_tst_sg_rw_00(data);
+	sp_cbdma_tst_sg_cp_00(data);
+	sp_cbdma_tst_sg_cp_01(data);
+	sp_cbdma_tst_sg_lp_cp_00(data);
+	sp_cbdma_tst_sg_lp_cp_01(data);
 
 	for (i = 0; i < NUM_CBDMA; i++) {
 		if (cbdma_info[i].buf_va) {
