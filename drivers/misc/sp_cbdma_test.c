@@ -49,6 +49,13 @@ struct cbdma_reg {
 	volatile unsigned int rsv_23_31[9];
 };
 
+/* Unaligned test */
+#define UNALIGNED_DROP_S	0	/* 0, 1, 2, 3 */
+#define UNALIGNED_DROP_E	0	/* 0, 1, 2, 3 */
+#define UNALIGNED_ADDR_S(X)	(X + UNALIGNED_DROP_S)
+#define UNALIGNED_ADDR_E(X)	(X - UNALIGNED_DROP_E)
+
+
 #define NUM_CBDMA		2
 #define BUF_SIZE_DRAM		(PAGE_SIZE * 2)
 
@@ -145,10 +152,10 @@ static void sp_cbdma_tst_basic(void *data)
 			printk(KERN_INFO "MEMSET test\n");
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
-			cbdma_info[i].cbdma_ptr->length = BUF_SIZE_DRAM;
-			cbdma_info[i].cbdma_ptr->src_adr = (u32)(cbdma_info[i].dma_handle);
-			cbdma_info[i].cbdma_ptr->des_adr = (u32)(cbdma_info[i].dma_handle);
-			cbdma_info[i].cbdma_ptr->memset_val = PATTERN4TEST(i);
+			cbdma_info[i].cbdma_ptr->length = BUF_SIZE_DRAM - UNALIGNED_DROP_S - UNALIGNED_DROP_E;
+			cbdma_info[i].cbdma_ptr->src_adr = UNALIGNED_ADDR_S((u32)(cbdma_info[i].dma_handle));
+			cbdma_info[i].cbdma_ptr->des_adr = UNALIGNED_ADDR_S((u32)(cbdma_info[i].dma_handle));
+			cbdma_info[i].cbdma_ptr->memset_val = PATTERN4TEST(i ^ 0xaa);
 			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
 			wmb();
 			cbdma_info[i].cbdma_ptr->config = CBDMA_CONFIG_DEFAULT | CBDMA_CONFIG_GO | CBDMA_CONFIG_MEMSET;
@@ -166,9 +173,18 @@ static void sp_cbdma_tst_basic(void *data)
 				break;
 			}
 			dump_data(cbdma_info[i].buf_va, 0x20);
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+			dump_data(((u8 *)cbdma_info[i].buf_va + BUF_SIZE_DRAM - 0x20), 0x20);
+#endif
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
-			expected_u32 = PATTERN4TEST(i);
+			expected_u32 = PATTERN4TEST(i ^ 0xaa);
 			for (j = 0 ; j < (BUF_SIZE_DRAM >> 2); j++) {
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+				if ((j == 0) || ((j + 1) >= (BUF_SIZE_DRAM >> 2))) {
+					u32_ptr++;
+					continue;
+				}
+#endif
 				BUG_ON(*u32_ptr != expected_u32);
 				u32_ptr++;
 			}
@@ -179,7 +195,7 @@ static void sp_cbdma_tst_basic(void *data)
 			BUG_ON(!sram_ptr);
 			u32_ptr = sram_ptr;
 			val_u32 = (u32)(cbdma_info[i].sram_addr);
-			test_size = cbdma_info[i].sram_size - (1 << 10);
+			test_size = cbdma_info[i].sram_size - 256; /* last 256 bytes is reserved for COPY, access it will trigger a ISR */
 			for (j = 0 ; j < (test_size >> 2); j++) {
 				*u32_ptr = val_u32;
 				u32_ptr++;
@@ -209,9 +225,9 @@ static void sp_cbdma_tst_basic(void *data)
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
-			cbdma_info[i].cbdma_ptr->length = test_size;
+			cbdma_info[i].cbdma_ptr->length = test_size - UNALIGNED_DROP_S - UNALIGNED_DROP_E;
 			cbdma_info[i].cbdma_ptr->des_adr = 0;
-			cbdma_info[i].cbdma_ptr->src_adr = (u32)(cbdma_info[i].dma_handle);
+			cbdma_info[i].cbdma_ptr->src_adr = UNALIGNED_ADDR_S((u32)(cbdma_info[i].dma_handle));
 			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
 			wmb();
 			cbdma_info[i].cbdma_ptr->config = CBDMA_CONFIG_DEFAULT | CBDMA_CONFIG_GO | CBDMA_CONFIG_RD;
@@ -229,6 +245,7 @@ static void sp_cbdma_tst_basic(void *data)
 			}
 
 			dump_data((u8 *)(sram_ptr), 0x20);
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) == 0)
 			u32_ptr = sram_ptr;
 			val_u32 = (u32)(cbdma_info[i].buf_va);
 			for (j = 0 ; j < (test_size >> 2); j++) {
@@ -238,12 +255,17 @@ static void sp_cbdma_tst_basic(void *data)
 				val_u32 += 4;
 			}
 			printk(KERN_INFO "Data in SRAM: OK\n");
+#endif
 			iounmap(sram_ptr);
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
-			cbdma_info[i].cbdma_ptr->length = test_size;
+			cbdma_info[i].cbdma_ptr->length = test_size - UNALIGNED_DROP_S - UNALIGNED_DROP_E;
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) == 0)
 			cbdma_info[i].cbdma_ptr->des_adr = ((u32)(cbdma_info[i].dma_handle)) + test_size;
+#else
+			cbdma_info[i].cbdma_ptr->des_adr = ((u32)(cbdma_info[i].dma_handle)) + test_size - (4 - UNALIGNED_DROP_S);
+#endif
 			cbdma_info[i].cbdma_ptr->src_adr = 0;
 			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
 			wmb();
@@ -262,11 +284,21 @@ static void sp_cbdma_tst_basic(void *data)
 				break;
 			}
 			dump_data(cbdma_info[i].buf_va + test_size, 0x20);
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+			dump_data((u8 *)((u32)(cbdma_info[i].buf_va) + test_size * 2 - 0x20), 0x20);
+#endif
 
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va + test_size);
 			val_u32 = (u32)(cbdma_info[i].buf_va);
 			for (j = 0 ; j < (test_size >> 2); j++) {
 				/* Compare (test_size) bytes of data in DRAM */
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+				if (j == 0) {
+					val_u32 += 4;
+				} else if ((j + 2) >= (test_size >> 2)) {
+					break;
+				}
+#endif
 				BUG_ON(*u32_ptr != val_u32);
 				u32_ptr++;
 				val_u32 += 4;
@@ -286,9 +318,9 @@ static void sp_cbdma_tst_basic(void *data)
 
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
-			cbdma_info[i].cbdma_ptr->length = test_size;
-			cbdma_info[i].cbdma_ptr->src_adr = (u32)(cbdma_info[i].dma_handle) + test_size;
-			cbdma_info[i].cbdma_ptr->des_adr = (u32)(cbdma_info[i].dma_handle);
+			cbdma_info[i].cbdma_ptr->length = test_size - UNALIGNED_DROP_S;
+			cbdma_info[i].cbdma_ptr->src_adr = UNALIGNED_ADDR_S((u32)(cbdma_info[i].dma_handle) + test_size);
+			cbdma_info[i].cbdma_ptr->des_adr = UNALIGNED_ADDR_S((u32)(cbdma_info[i].dma_handle));
 			cbdma_info[i].cbdma_ptr->int_en = ~0;	/* Enable all interrupts */
 			wmb();
 			cbdma_info[i].cbdma_ptr->config = CBDMA_CONFIG_DEFAULT | CBDMA_CONFIG_GO | CBDMA_CONFIG_CP;
@@ -311,7 +343,13 @@ static void sp_cbdma_tst_basic(void *data)
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
 			expected_u32 = (u32)(cbdma_info[i].buf_va) + test_size;
 			for (j = 0 ; (j < test_size >> 2); j++) {
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+				if (j != 0) {
+					BUG_ON(*u32_ptr != cpu_to_be32(expected_u32));
+				}
+#else
 				BUG_ON(*u32_ptr != cpu_to_be32(expected_u32));
+#endif
 				u32_ptr++;
 				expected_u32 += 4;
 			}
@@ -898,6 +936,9 @@ static int sp_cbdma_tst_thread(void *data)
 	printk(KERN_INFO "%s, %d\n", __func__, __LINE__);
 
 	sp_cbdma_tst_basic(data);
+#if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
+	return 0;
+#endif
 	sp_cbdma_tst_sg_memset_00(data);
 	sp_cbdma_tst_sg_memset_01(data);
 	sp_cbdma_tst_sg_rw_00(data);
