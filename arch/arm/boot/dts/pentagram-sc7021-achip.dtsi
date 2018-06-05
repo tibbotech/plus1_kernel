@@ -49,21 +49,21 @@
 			device_type = "cpu";
 			reg = <1>;
 			enable-method = "sunplus,sc-smp";
-			cpu-boot-reg = <0x9e809ff0>;
+			cpu-boot-reg = <0x9ea7fff0>;
 		};
 		cpu@2 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <2>;
 			enable-method = "sunplus,sc-smp";
-			cpu-boot-reg = <0x9e809fec>;
+			cpu-boot-reg = <0x9ea7ffec>;
 		};
 		cpu@3 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <3>;
 			enable-method = "sunplus,sc-smp";
-			cpu-boot-reg = <0x9e809fe8>;
+			cpu-boot-reg = <0x9ea7ffe8>;
 		};
 	};
 
