@@ -40,7 +40,7 @@ static void __init sp_init(void)
 
 #ifdef CONFIG_MACH_PENTAGRAM_SC7021_ACHIP
 	clk_cfg = readl((void __iomem *)A_SYSTEM_BASE + 0xc);
-	a_pllclk = ((readl((void __iomem *)A_SYSTEM_BASE + 0x2c) >> 16) & 0xff) * (27 * 1000 * 1000);
+	a_pllclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x2c) >> 16) + 1) & 0xff) * (27 * 1000 * 1000);
 	coreclk = a_pllclk / (1 + ((clk_cfg >> 10) & 1));
 	ioclk = a_pllclk / (20 + 5 * ((clk_cfg >> 4) & 7)) / ((clk_cfg >> 16) & 0xff) * 10;
 	sysclk = coreclk / (1 + ((clk_cfg >> 3) & 1));
