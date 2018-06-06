@@ -7,7 +7,6 @@
 #endif
 
 #if defined(CONFIG_MACH_PENTAGRAM_SC7021_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)
-#define CLK_A_PLLCLK            2000000000      /* 2GHz */
 #define CLK_B_PLLSYS            202500000       /* 202.5MHz */
 #endif
 
