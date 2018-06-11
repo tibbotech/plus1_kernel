@@ -8,7 +8,7 @@
 
 #define NUM_ICM 4
 
-#define TRACE	printk("[SP_ICM_0529]%s:%d\n", __FUNCTION__, __LINE__)
+#define TRACE	printk("[SP_ICM]%s:%d\n", __FUNCTION__, __LINE__)
 
 // cfg0
 #define ICM_ENABLE		0x00010001	// enable icm
@@ -88,7 +88,7 @@ static irqreturn_t sp_icm_isr(int irq, void *dev_id)
 	volatile struct sp_icm_reg *icm = &sp_icm.reg[i];
 	u32 cnt, fstate;
 
-	TRACE;
+	//TRACE;
 	icm->cfg0 = ICM_INTCLR; // clear interrupt
 
 	while (!((fstate = icm->cfg1) & ICM_FEMPTY)) { // fifo not empty
@@ -97,7 +97,6 @@ static irqreturn_t sp_icm_isr(int irq, void *dev_id)
 			(*cbfs[i])(i, cnt, fstate & ICM_FMASK); // callback
 		}
 	}
-	TRACE;
 
 	return IRQ_HANDLED;
 }
@@ -187,10 +186,15 @@ int sp_icm_pwidth(int i, u32 *pwh, u32 *pwl)
 EXPORT_SYMBOL(sp_icm_pwidth);
 
 
+//#ifdef CONFIG_ICM_TEST // test & example
+#if 1
+static u32 tscnt = 0; // test signal counter
 
 static void test_cbf(int i, u32 cnt, u32 fstate)
 {
-	printk("icm%d: %08x %08x\n", i, cnt, fstate);
+	u32 pwh, pwl;
+	sp_icm_pwidth(i, &pwh, &pwl);
+	printk("icm%d_%05u: %10u %04x %u %u\n", i, ++tscnt, cnt, fstate, pwh, pwl);
 }
 
 static void test_help(void)
@@ -221,12 +225,15 @@ static int test_set(const char *val, const struct kernel_param *kp)
 
 	if (i >= 0 && i < NUM_ICM) {
 		switch (f) {
-		case 0:
+		case 0: // disable
+disable:
 			sp_icm_disable(i);
+			printk("icm%d: tscnt = %u\n", i, tscnt);
+			tscnt = 0;
 			return 0;
 
-		case 1:
-		case 2:
+		case 1: // enable
+		case 2: // reload
 			sp_icm_getcfg(i, &cfg);
 			if (muxsel != -1) cfg.muxsel = (u32)muxsel;
 			if (clksel != -1) cfg.clksel = (u32)clksel;
@@ -239,8 +246,8 @@ static int test_set(const char *val, const struct kernel_param *kp)
 			if (f == 1) {
 				sp_icm_enable(i, test_cbf);
 				if (tstime > 0) {
-					msleep(tstime);
-					sp_icm_disable(i);
+					mdelay(tstime);
+					goto disable;
 				}
 			} else
 				sp_icm_reload(i);
@@ -272,7 +279,7 @@ static const struct kernel_param_ops test_ops = {
 	.set = test_set,
 };
 module_param_cb(test, &test_ops, NULL, 0600);
-
+#endif
 
 
 static int sp_icm_probe(struct platform_device *pdev)
