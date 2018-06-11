@@ -650,6 +650,7 @@ config ARCH_PENTAGRAM
 	select SERIAL_CORE_CONSOLE
 	select SERIAL_SP_UART
 	select USE_OF
+	select RTC_CLASS
 
 endchoice
 
