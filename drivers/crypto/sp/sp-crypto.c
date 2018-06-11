@@ -346,9 +346,9 @@ irqreturn_t sp_crypto_irq(int irq, void *dev_id)
 	u32 secif = dev->reg->SECIF;
 	u32 flag;
 
-	dev->reg->SECIF |= secif; // clear int
+	dev->reg->SECIF = secif; // clear int
+	//printk(KERN_ERR "<%04x>", secif);
 
-	SP_CRYPTO_TRACE();
 	/* aes hash rsa may come at one irq */
 	flag = secif & (AES_TRB_IF | AES_ERF_IF | AES_DMA_IF | AES_CMD_RD_IF);
 	if (flag)
