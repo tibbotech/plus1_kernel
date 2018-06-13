@@ -1601,7 +1601,7 @@ static const struct of_device_id sp_uart_of_match[] = {
 	{ .compatible = "sunplus,sp-uart" },
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, sp_serial_of_match);
+MODULE_DEVICE_TABLE(of, sp_uart_of_match);
 
 static struct platform_driver sunplus_uart_platform_driver = {
 	.probe		= sunplus_uart_platform_driver_probe_of,

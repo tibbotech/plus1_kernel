@@ -600,7 +600,7 @@ static const struct of_device_id sp_gpio_of_match[] = {
 	{ .compatible = "sunplus,sp-gpio" },
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, sp_serial_of_match);
+MODULE_DEVICE_TABLE(of, sp_gpio_of_match);
 
 static struct file_operations fops = {
 	.owner          = THIS_MODULE,
