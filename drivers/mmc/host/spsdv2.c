@@ -19,11 +19,12 @@
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
 #include <linux/of_irq.h>
+
+#include <asm-generic/io.h>
 #include <asm/bitops.h>
 #include "spsdv2.h"
 
-#define SP_SD_DEBUG_SELF
-
+#define Q628_ZEBU
 /******************************************************************************
 *                          MACRO Function Define
 *******************************************************************************/
@@ -49,10 +50,10 @@
 
 /* Disabled fatal error messages temporarily */
 static u32 loglevel = 0x002;
-//static u32 loglevel = 0x001;
-//static u32 loglevel = 0x033;
-//static u32 loglevel = 0xefff;
-//static u32 loglevel = 0xffff;
+/* static u32 loglevel = 0x001; */
+/* static u32 loglevel = 0x033; */
+/* static u32 loglevel = 0xefff; */
+/* static u32 loglevel = 0xffff; */
 
 
 #define MMC_LOGLEVEL_FATAL		0x01
@@ -70,7 +71,6 @@ static u32 loglevel = 0x002;
 #define MMC_LOGLEVEL_MINI		0x2000
 
 #if 1
-//#define FATAL(fmt, args...) printk(KERN_ERR "[SD FATAL]: %s: " fmt, __func__ , ## args)
 
 #define FATAL(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_FATAL)) \
 		printk(KERN_ERR "[SD FATAL]: %s: " fmt, __func__ , ## args)
@@ -159,6 +159,21 @@ static void sphe_mmc_finish_request(SPSDHOST *, struct mmc_request *);
 
 static int pinmux_enable(void *host)
 {
+#define REG_BASE					0x9c000000
+#define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
+#define RF_MASK_V(_mask, _val)      (((_mask) << 16) | (_val))
+#define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
+#define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
+
+	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
+	if (reg) {
+		writel(RF_MASK_V(1 << 6, 1 << 6), reg);
+	}
+	else {
+		printk("ioremap fail\n");
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
@@ -221,7 +236,7 @@ static void spsdv2_controller_init(SPSDHOST *host)
 		host->base->sdmmcmode = SP_MMC_MODE;
 	else
 		host->base->sdmmcmode = SP_SD_MODE;
-	host->base->sdrxdattmr_sel = 3;
+	host->base->sdrxdattmr_sel = SP_SD_RXDATTMR_MAX;
 	host->base->mediatype = 6;
 }
 /*
@@ -245,13 +260,12 @@ static void spsdv2_set_clock(SPSDHOST *host, struct mmc_ios *ios)
 
 	/* Calculate the actual clock for the divider used */
 	act_clock = sys_clk / (clkrt + 1);
-	//printk("sys_clk =%u, act_clock=%u, clkrt = %u\n", sys_clk, act_clock, clkrt);
+	/* printk("sys_clk =%u, act_clock=%u, clkrt = %u\n", sys_clk, act_clock, clkrt); */
 	/* check clock divider boundary and correct it */
 	if (clkrt > 0xFFF)
 		clkrt = 0xFFF;
 
 	host->base->sdfqsel = clkrt;
-
 
 	/* Delay 4 msecs for now (wait till clk stabilizes?) */
 	mdelay(4);
@@ -275,6 +289,9 @@ static void spsdv2_set_clock(SPSDHOST *host, struct mmc_ios *ios)
 	if (ios->timing != MMC_TIMING_LEGACY) {
 		host->base->sd_high_speed_en = 1;
 		wr_dly = rd_dly;
+#ifdef Q628_ZEBU
+		rd_dly = 0;	
+#endif
 	} else {
 		host->base->sd_high_speed_en = 0;
 	}
@@ -297,17 +314,14 @@ static void spsdv2_set_bus_width(SPSDHOST *host, u32 bus_width)
 {
 	switch (bus_width) {
 	case MMC_BUS_WIDTH_8:
-		//printk("mmc use 8 bit\n");
 		host->base->sddatawd = 0;
 		host->base->mmc8_en = 1;
 		break;
 	case MMC_BUS_WIDTH_4:
-		//printk("mmc use 4 bit\n");
 		host->base->sddatawd = 1;
 		host->base->mmc8_en = 0;
 		break;
 	case MMC_BUS_WIDTH_1:
-		//printk("mmc use 1 bit\n");
 		host->base->sddatawd = 0;
 		host->base->mmc8_en = 0;
 		break;
@@ -497,6 +511,19 @@ static void spsdv2_get_response_48(SPSDHOST *host)
 	return;
 }
 
+
+void dump_all_regs(SPSDHOST *host)
+{
+	volatile unsigned int *reg = (volatile unsigned int *)host->base;
+	int i, j;
+	for (i =  0; i < 5; i++){
+		for (j =  0; j < 32; j++){
+			printk("g%d.%d = 0x%08x\n", i, j, *reg);	
+			reg++;
+		}	
+	}	
+}
+
 static void spsdv2_irq_normDMA(SPSDHOST *host)
 {
 	struct mmc_data *data = host->mrq->data;
@@ -507,9 +534,7 @@ static void spsdv2_irq_normDMA(SPSDHOST *host)
 	spsdv2_check_sdstatus_errors(host);
 
 	if (host->base->sdstate_new & SDSTATE_NEW_FINISH_IDLE) {
-		//data->bytes_xfered = host->base->dmasize * SD_PAGE_NUM_GET(host->base);
 		data->bytes_xfered = data->blocks * data->blksz;
-		//printk("bytes transferred :%u\n", hw_len[0]);
 	} else {
 		EPRINTK("normal DMA error!\n");
 		Sd_Bus_Reset_Channel(host);
@@ -552,6 +577,7 @@ irqreturn_t spsdv2_irq(int irq, void *dev_id)
 			host->base->sdio_int_clr = 1;
 			mmc_signal_sdio_irq(mmc);
 		}
+		sphe_mmc_finish_request(host, host->mrq);
 	} else {
 		if(!host->base->sd_cmp &&
 				!host->base->hw_dma_en)
@@ -588,7 +614,10 @@ static void sphe_mmc_finish_request(SPSDHOST *host, struct mmc_request *mrq)
 		dma_unmap_sg(mmc_dev(host->mmc), mrq->data->sg,
 					host->dma_sgcount,
 					spsdv2_get_dma_dir(host, mrq->data));
+		IFPRINTK("data err %d\n", mrq->data->error);
 	}
+	IFPRINTK("cmd err %d\n",mrq->cmd->error);
+
 	host->mrq = NULL;
 
 	up(&host->req_sem);
@@ -612,8 +641,8 @@ static inline void spsdv2_set_data_timeout(SPSDHOST *host)
 	timeout_clks = host->mrq->data->timeout_ns / cycle_ns;
 	timeout_clks +=  host->mrq->data->timeout_clks;
 
-	// kernel set max read timeout to for SDHC 100ms,
-	// mult 10 to  Improve compatibility for some unstandard card
+	/*  kernel set max read timeout to for SDHC 100ms, */
+	/*  mult 10 to  Improve compatibility for some unstandard card */
 	if (host->mrq->data->flags & MMC_DATA_READ)
 		timeout_clks *= READ_TIMEOUT_MULT;
 	else {
@@ -660,13 +689,13 @@ static void spsdv2_proc_normDMA(SPSDHOST *host)
 		Reset_Controller(host);
 
 		/* Configure Group SD Registers */
-		host->base->sd_cmdbuf[0] = (u8)(host->mrq->cmd->opcode | 0x40);	//add start bit, according to spec, command format
+		host->base->sd_cmdbuf[0] = (u8)(host->mrq->cmd->opcode | 0x40);	/* add start bit, according to spec, command format */
 		host->base->sd_cmdbuf[1] = (u8)((host->mrq->cmd->arg >> 24) & 0x000000ff);
 		host->base->sd_cmdbuf[2] = (u8)((host->mrq->cmd->arg >> 16) & 0x000000ff);
 		host->base->sd_cmdbuf[3] = (u8)((host->mrq->cmd->arg >>  8) & 0x000000ff);
 		host->base->sd_cmdbuf[4] = (u8)((host->mrq->cmd->arg >>  0) & 0x000000ff);
 
-		SD_PAGE_NUM_SET(host->base, 1);
+		SD_PAGE_NUM_SET(host->base, data->blocks);
 		if (host->mrq->cmd->flags & MMC_RSP_CRC && !(host->mrq->cmd->flags & MMC_RSP_136))
 			host->base->sdrspchk_en = 0x1;
 		else
@@ -681,9 +710,12 @@ static void spsdv2_proc_normDMA(SPSDHOST *host)
 			host->base->sdautorsp = 1;
 			host->base->sd_trans_mode = 1;
 		}
-		host->base->sd_len_mode = 1;
-		host->base->sdpiomode = 0;
+		if (mrq->stop)
+			host->base->sd_len_mode = 0;
+		else
+			host->base->sd_len_mode = 1;
 
+		host->base->sdpiomode = 0;
 		host->base->sdcrctmren = 1;
 		host->base->sdrsptmren = 1;
 		host->base->hw_dma_en = 0;
@@ -693,7 +725,7 @@ static void spsdv2_proc_normDMA(SPSDHOST *host)
 		else
 			host->base->sdrsptype = 0x0;
 
-		SDDATALEN_SET(host->base, hw_len[0]);
+		SDDATALEN_SET(host->base, data->blksz);
 
 		/* Configure Group DMA Registers */
 		if (data->flags & MMC_DATA_WRITE) {
@@ -703,20 +735,14 @@ static void spsdv2_proc_normDMA(SPSDHOST *host)
 			host->base->dmadst = 0x1;
 			host->base->dmasrc = 0x2;
 		}
-		DMASIZE_SET(host->base, hw_len[0]);
+		DMASIZE_SET(host->base, data->blksz);
 		SET_HW_DMA_BASE_ADDR(host->base, hw_address[0]);
 
 		/* Configure SD INT reg */
 		/* Disable HW DMA data transfer complete interrupt (when using sdcmpen) */
-		if (data->flags & MMC_DATA_WRITE) {
-			host->base->dmacmpen_interrupt = 0;
-			host->base->sdcmpen = 0x1;
-		} else {
-			host->base->dmacmpen_interrupt = 0;
-			host->base->sdcmpen = 0;
-		}
+		host->base->dmacmpen_interrupt = 0;
+		host->base->sdcmpen = 0x1;
 		/* Start Transaction */
-		//spsdv2_print_regs_dma(host);
 		host->base->sdctrl_trigger_cmd = 1;
 	} else {
 		/* Should be implemented to fallback and use PIO transfer mode in the future */
@@ -733,12 +759,11 @@ static void spsdv2_prepare_cmd_rsp(SPSDHOST *host)
 {
 	struct mmc_request *mrq = host->mrq;
 
-	//printk("Process Command & Response (No Data)\n");
 	/* Reset */
 	Reset_Controller(host);
 
 	/* Configure Group SD Registers */
-	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	//add start bit, according to spec, command format
+	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	/* add start bit, according to spec, command format */
 	host->base->sd_cmdbuf[1] = (u8)((mrq->cmd->arg >> 24) & 0x000000ff);
 	host->base->sd_cmdbuf[2] = (u8)((mrq->cmd->arg >> 16) & 0x000000ff);
 	host->base->sd_cmdbuf[3] = (u8)((mrq->cmd->arg >>  8) & 0x000000ff);
@@ -779,7 +804,7 @@ static void spsdv2_mmc_proc_cmd_rsp_intr(SPSDHOST *host)
 	Reset_Controller(host);
 
 	/* Configure Group SD Registers */
-	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	//add start bit, according to spec, command format
+	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	/* add start bit, according to spec, command format */
 	host->base->sd_cmdbuf[1] = (u8)((mrq->cmd->arg >> 24) & 0x000000ff);
 	host->base->sd_cmdbuf[2] = (u8)((mrq->cmd->arg >> 16) & 0x000000ff);
 	host->base->sd_cmdbuf[3] = (u8)((mrq->cmd->arg >>  8) & 0x000000ff);
@@ -818,12 +843,11 @@ static void spsdv2_mmc_proc_cmd(SPSDHOST *host)
 {
 	struct mmc_request *mrq = host->mrq;
 
-	//printk("Process cmd (no rsp)\n");
 	/* Reset */
 	Reset_Controller(host);
 
 	/* Configure Group SD Registers */
-	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	//add start bit, according to spec, command format
+	host->base->sd_cmdbuf[0] = (u8)(mrq->cmd->opcode | 0x40);	/* add start bit, according to spec, command format */
 	host->base->sd_cmdbuf[1] = (u8)((mrq->cmd->arg >> 24) & 0x000000ff);
 	host->base->sd_cmdbuf[2] = (u8)((mrq->cmd->arg >> 16) & 0x000000ff);
 	host->base->sd_cmdbuf[3] = (u8)((mrq->cmd->arg >>  8) & 0x000000ff);
@@ -842,10 +866,9 @@ static void spsdv2_mmc_proc_cmd(SPSDHOST *host)
 	host->base->sdctrl_trigger_cmd = 1;
 
 	while((host->base->sdstate_new & SDSTATE_NEW_FINISH_IDLE) != 0x40) {
-	//while(host->base->hwsd_sm != SP_SD_HW_DMA_DONE && host->base->hwsd_sm != SP_SD_HW_DMA_ERROR) {
-		//printk("Waiting! sd_hw_state : 0x%x   LMST_SM:0x%x   Data In Counter :%u Data Out Counter: %u\n", host->base->hwsd_sm, host->base->lmst_sm, host->base->incnt, host->base->outcnt);
-		//printk("sd status:0x%x, state:0x%x, state new:0x%x\n", host->base->sdstatus, host->base->sdstate, host->base->sdstate_new);
-		//printk("Waiting\n");
+		/* printk("Waiting! sd_hw_state : 0x%x   LMST_SM:0x%x   Data In Counter :%u Data Out Counter: %u\n", host->base->hwsd_sm, host->base->lmst_sm, host->base->incnt, host->base->outcnt); */
+		/* printk("sd status:0x%x, state:0x%x, state new:0x%x\n", host->base->sdstatus, host->base->sdstate, host->base->sdstate_new); */
+		/* printk("Waiting\n"); */
 	}
 
 	sphe_mmc_finish_request(host, host->mrq);
@@ -892,7 +915,7 @@ void spsdv2_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		}
 	} else {
 			spsdv2_proc_normDMA(host);
-			if(-EINVAL == host->mrq->data->error) { // para is not correct return
+			if(-EINVAL == host->mrq->data->error) { /*  para is not correct return */
 				sphe_mmc_finish_request(host, host->mrq);
 			}
 	}
@@ -914,7 +937,7 @@ void spsdv2_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	/* TODO: Cleanup power_mode functions */
 	switch (ios->power_mode) {
-	//power off->up->on
+	/* power off->up->on */
 	case MMC_POWER_ON:
 		DPRINTK("set MMC_POWER_ON\n");
 		spsdv2_controller_init(host);
@@ -942,9 +965,9 @@ void spsdv2_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 int spsdv2_mmc_read_only(struct mmc_host *mmc)
 {
-	//return  > 0 :support read only
-	//        < 0 :not support RO
-	//        = 0 :no action
+	/* return  > 0 :support read only */
+	/*         < 0 :not support RO */
+	/*         = 0 :no action */
 	return -ENOSYS;
 }
 
@@ -958,7 +981,7 @@ int spsdv2_mmc_read_only(struct mmc_host *mmc)
  */
 int spsdv2_mmc_card_detect(struct mmc_host *mmc)
 {
-	SPSDHOST *host = mmc_priv(mmc);
+	// SPSDHOST *host = mmc_priv(mmc);
 
 	return 1;
 }
@@ -1001,15 +1024,12 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	SPSDHOST *host;
 	spsdv2_dridata_t *priv = NULL;
 
-	printk("------------------in-------------------\n");
-
 	if (pdev->dev.of_node) {
 		const struct of_device_id *match;
 		match = of_match_node(spsdv2_of_id, pdev->dev.of_node);
 		if (match)
 			priv = (spsdv2_dridata_t *)match->data;
 	}
-
 
 	mmc = mmc_alloc_host(sizeof(SPSDHOST), &pdev->dev);
 	if (!mmc) {
@@ -1024,8 +1044,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	if (priv)
 		host->id  = priv->id;
 
-	printk("------------------id:%d-------------------\n", host->id);
-
+	printk("sd slot id:%d\n", host->id);
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(resource)) {
@@ -1034,7 +1053,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-	if ((resource->end - resource->start + 1) != sizeof(SDREG)) {
+	if ((resource->end - resource->start + 1) < sizeof(SDREG)) {
 		EPRINTK("register size not right e:%d:r:%d\n",
 			resource->end - resource->start + 1, sizeof(SDREG));
 		ret = -EINVAL;
@@ -1050,7 +1069,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, host size:%d\n", host->id, resource->start, resource->end - resource->start);
 
-	//host->irq = of_irq_get(pdev->dev.of_node, 0);
+	/* host->irq = of_irq_get(pdev->dev.of_node, 0); */
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
 		EPRINTK("get sd %d irq resource fail\n", host->id);
@@ -1098,8 +1117,9 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 
 	mmc->max_seg_size = 65536 * 512;            /* Size per segment is limited via host controller's
 	                                               ((sdram_sector_#_size max value) * 512) */
-	mmc->max_segs = SP_HW_DMA_MEMORY_SECTORS;   /* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS",
-	                                               a.k.a. max scattered memory segments per request */
+	/* mmc->max_segs = SP_HW_DMA_MEMORY_SECTORS; */ 
+	/* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS", a.k.a. max scattered memory segments per request */
+	mmc->max_segs = 1; 
 	mmc->max_req_size = 65536 * 512;			/* Decided by hw_page_num0 * SDHC's blk size */
 	mmc->max_blk_size = 512;                   /* Limited by host's dma_size & data_length max value, set it to 512 bytes for now */
 	mmc->max_blk_count = 65536;                 /* Limited by sdram_sector_#_size max value */
