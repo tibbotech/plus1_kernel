@@ -8,18 +8,17 @@ config SP_SDMMCV2
     default y
     help
 	  If you say yes here, you will get support for the Secure Digital Host
-	  Interface on Sunplus Gemini SoCs. This includes support for SD cards.
+	  Interface on Sunplus SoCs. This includes support for SD cards.
 
 	  If unsure, say N.
 
-config SP_SDEMMCV2
-	bool "Sunplus Gemini eMMC Host Controller support"
-	default N
-	depends on SP_SDMMCV2
+config SP_SDEMMC
+	bool "Sunplus Gemini eMMC Host Controller v4.51 support"
+	default y
 	help
-		If you say yes here, you will set SD slot0 as eMMC host.
+		If you say yes here, you will get support for eMMC host interface 
+		on sunplus Socs.
 		If unsure, say N.
-
 
 config MMC_ARMMMCI
 	tristate "ARM AMBA Multimedia Card Interface support"
