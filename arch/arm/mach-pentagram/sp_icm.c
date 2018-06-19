@@ -341,7 +341,7 @@ static const struct of_device_id sp_icm_of_match[] = {
 	{ .compatible = "sunplus,sp-icm" },
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, sp_crypto_of_match);
+MODULE_DEVICE_TABLE(of, sp_icm_of_match);
 
 static struct platform_driver sp_icm_driver = {
 	.probe		= sp_icm_probe,
