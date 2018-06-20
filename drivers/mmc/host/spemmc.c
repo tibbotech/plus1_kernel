@@ -230,6 +230,8 @@ static void spemmc_set_ac_timing(SPEMMCHOST *host, struct mmc_ios *ios)
 
 	/* Calculate the actual clock for the divider used */
 	act_clock = sys_clk / (clkrt + 1);
+	if (act_clock > clock)
+		clkrt++;
 	/* printk("sys_clk =%u, act_clock=%u, clkrt = %u\n", sys_clk, act_clock, clkrt); */
 	/* check clock divider boundary and correct it */
 	if (clkrt > 0xFFF)
@@ -573,8 +575,8 @@ static void sphe_mmc_finish_request(SPEMMCHOST *host, struct mmc_request *mrq)
 
 #ifdef SP_MMC_ZEBU_SUPPORT_DEVICE_DDR_MODE		
 		if ((mrq->data->flags & MMC_DATA_WRITE) && host->base->sdddrmode) {
-			host->base->sd_rd_dly_sel =host->wrdly;
-			host->base->sd_wr_dly_sel =host->rddly;
+			host->base->sd_rd_dly_sel =host->rddly;
+			host->base->sd_wr_dly_sel =host->wrdly;
 		}
 #endif
 

@@ -260,6 +260,8 @@ static void spsdv2_set_clock(SPSDHOST *host, struct mmc_ios *ios)
 
 	/* Calculate the actual clock for the divider used */
 	act_clock = sys_clk / (clkrt + 1);
+	if (act_clock > clock)
+		clkrt++;
 	/* printk("sys_clk =%u, act_clock=%u, clkrt = %u\n", sys_clk, act_clock, clkrt); */
 	/* check clock divider boundary and correct it */
 	if (clkrt > 0xFFF)

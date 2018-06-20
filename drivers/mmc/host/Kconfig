@@ -3,7 +3,7 @@
 #
 
 comment "MMC/SD/SDIO Host Controller Drivers"
-config SP_SDMMCV2
+config SP_SDV2
     tristate "Sunplus Gemini SoC SD Host Controller support"
     default y
     help
@@ -12,7 +12,7 @@ config SP_SDMMCV2
 
 	  If unsure, say N.
 
-config SP_SDEMMC
+config SP_EMMC
 	bool "Sunplus Gemini eMMC Host Controller v4.51 support"
 	default y
 	help
