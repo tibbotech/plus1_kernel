@@ -91,6 +91,7 @@ struct regs_uart {
 	volatile u32 uart_tx_residue;
 	volatile u32 uart_rx_residue;
 	volatile u32 uart_rx_threshold;
+	volatile u32 uart_clk_src;
 };
 typedef struct regs_uart regs_uart_t;
 

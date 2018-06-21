@@ -52,6 +52,8 @@
 #define MAX_SZ_RXDMA_ISR		(1 << 9)
 #define UATXDMA_BUF_SZ			PAGE_SIZE
 /* ---------------------------------------------------------------------------------------------- */
+#define CLK_HIGH_UART			202500000
+/* ---------------------------------------------------------------------------------------------- */
 #if defined(CONFIG_MAGIC_SYSRQ)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
 #endif
@@ -201,6 +203,11 @@ static inline void sp_uart_set_modem_ctrl(unsigned char __iomem *base, unsigned 
 static inline unsigned sp_uart_get_modem_ctrl(unsigned char __iomem *base)
 {
 	return readl(&((struct regs_uart *)base)->uart_mcr);
+}
+
+static inline void sp_uart_set_clk_src(unsigned char __iomem *base, unsigned val)
+{
+	writel(val, &((struct regs_uart *)base)->uart_clk_src);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -866,6 +873,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	struct sunplus_uartdma_info *uartdma_rx, *uartdma_tx;
 	volatile struct regs_uarxdma *rxdma_reg;
 	volatile struct regs_uatxdma *txdma_reg;
+	unsigned int ch;
 
 	ret = request_irq(port->irq, sunplus_uart_irq, 0, sp_port->name, port);
 	if (ret) {
@@ -874,6 +882,11 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
+		/* Drop data in Rx FIFO */
+		while (sp_uart_get_line_status(port->membase) & SP_UART_LSR_RX) {
+			ch = sp_uart_get_char(port->membase);
+		}
+
 		rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, uartdma_rx->irq);
 		ret = request_irq(uartdma_rx->irq, sunplus_uart_rxdma_irq, 0, "UARTDMA_RX", port);
@@ -893,7 +906,11 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_start_addr));
 			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_rd_adr));
-			timeout = (port->uartclk / 2) / 1000000 * 1000;	/* 1 msec */
+
+			/* Force to use CLK_HIGH_UART in this mode */
+			/* Switch clock source when setting baud rate */
+			timeout = (CLK_HIGH_UART / 2) / 1000000 * 1000;	/* 1 msec */
+
 			/* DBG_INFO("timeout: 0x%x\n", timeout); */
 			writel(timeout, &(rxdma_reg->rxdma_timeout_set));
 
@@ -1075,10 +1092,38 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	u32 clk, ext, div, div_l, div_h, baud;
 	u32 lcr;
 	unsigned long flags;
+	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
+
+	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
+
+#if 1	/* For Zebu only, disable this in real chip */
+	if (baud == 921600) {
+		/*
+		 * Refer to Zebu's testbench/uart.cc
+		 * UART_RATIO should be 220 (CLK_HIGH_UART / 921600)
+		 * If change it to correct value, IBOOT must be changed.
+		 * (Clock should be switched to CLK_HIGH_UART)
+		 * For real chip, the baudrate is 115200.
+		 * */
+		baud = CLK_HIGH_UART / 232;
+	}
+#endif
+
 
 	clk = port->uartclk;
+	if ((baud > 115200) || (sp_port->uartdma_rx)) {
+		while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
+			/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
+		}
 
-	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (clk / (1 << 4)));
+		clk = CLK_HIGH_UART;
+		/* Don't change port->uartclk to CLK_HIGH_UART, keep the value of lower clk src */
+		/* Switch clock source */
+		sp_uart_set_clk_src(port->membase, 0);
+	} else {
+		sp_uart_set_clk_src(port->membase, ~0);
+	}
+
 	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
 	clk += baud >> 1;
 	div = clk / baud;
