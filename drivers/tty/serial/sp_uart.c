@@ -948,8 +948,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			}
 			DBG_INFO("DMA buffer (Tx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, uartdma_tx->buf_va, (u32)(uartdma_tx->dma_handle));
 
+			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
 			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
-			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
 			writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
 
 			writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
