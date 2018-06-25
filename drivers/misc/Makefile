@@ -56,6 +56,7 @@ obj-$(CONFIG_ASPEED_LPC_CTRL)	+= aspeed-lpc-ctrl.o
 obj-$(CONFIG_PCI_ENDPOINT_TEST)	+= pci_endpoint_test.o
 # obj-y				+= sp_timer_test.o
 # obj-y				+= sp_cbdma_test.o
+# obj-y				+= sp_rtc_isr_test.o
 
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_core.o
 lkdtm-$(CONFIG_LKDTM)		+= lkdtm_bugs.o

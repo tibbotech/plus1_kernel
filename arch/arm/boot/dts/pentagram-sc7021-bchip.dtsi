@@ -181,6 +181,18 @@
 #endif
 #endif
 
+/* RTC ISR tests: */
+/* 1. Enable device tree for RTC ISR test. */
+/* 2. Enable sp_rct_isr_test in drivers/misc/Makefile */
+#if 0
+		sp_rtc_isr_tst0: sp_rtc_isr_tst@9c003a00 {
+			compatible = "sunplus,sp-rtc-isr-tst";
+			reg = <0x9c003a00 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
+		};
+#endif
+
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
