@@ -13,6 +13,10 @@
  * hwclock -w # Set the Hardware Clock to the current System Time
  * (for i in `seq 10000`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
  *
+ *
+ * How to setup alarm (e.g., 10 sec later):
+ *     echo 0 > /sys/class/rtc/rtc0/wakealarm && \
+ *     nnn=`date '+%s'` && echo $nnn && nnn=`expr $nnn + 10` && echo $nnn > /sys/class/rtc/rtc0/wakealarm
  */
 
 #include <linux/module.h>
@@ -126,9 +130,40 @@ static int sp_rtc_set_mmss(struct device *dev, unsigned long secs)
 	return 0;
 }
 
+
+static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
+{
+	unsigned long alarm_time;
+
+	alarm_time = rtc_tm_to_time64(&alrm->time);
+	printk("%s, alarm_time: %u\n", __func__, (u32)(alarm_time));
+
+	if (alarm_time > 0xFFFFFFFF)
+		return -EINVAL;
+
+	rtc_reg_ptr->rtc_alarm_set = (u32)(alarm_time);
+	rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+
+	return 0;
+}
+
+static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
+{
+	unsigned int alarm_time;
+
+	alarm_time = rtc_reg_ptr->rtc_alarm_set;
+	printk("%s, alarm_time: %u\n", __func__, alarm_time);
+	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
+
+	return 0;
+}
+
+
 static const struct rtc_class_ops sp_rtc_ops = {
 	.read_time = sp_rtc_read_time,
 	.set_mmss = sp_rtc_set_mmss,
+	.set_alarm = sp_rtc_set_alarm,
+	.read_alarm = sp_rtc_read_alarm,
 };
 
 static int sp_rtc_probe(struct platform_device *plat_dev)
@@ -182,6 +217,10 @@ static int __init sp_rtc_init(void)
 
 	if ((err = platform_device_add(sp_rtc_device0)))
 		goto exit_free_sp_rtc_device0;
+
+	if (device_init_wakeup(&(sp_rtc_device0->dev), true)) {
+		printk(KERN_WARNING "dev_init_wakeup() fails.\n");
+	}
 
 	return 0;
 
