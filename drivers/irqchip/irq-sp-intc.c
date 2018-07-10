@@ -180,14 +180,15 @@ static void sp_intc_handle_irq_cascaded(struct irq_desc *desc)
 
 static int sp_intc_handle_one_round(struct pt_regs *regs)
 {
-	int handled = 0;
+	int ret = -EINVAL;
 	int hwirq;
 
 	while ((hwirq = sp_intc_get_hwirq()) >= 0) {
-		handled |= handle_domain_irq(sp_intc.domain, hwirq, regs);
+		handle_domain_irq(sp_intc.domain, hwirq, regs);
+		ret = 0;
 	}
 
-	return handled;
+	return ret;
 }
 
 /* 8388: level-triggered hwirq# may come slower than IRQ */
@@ -195,22 +196,23 @@ static int sp_intc_handle_one_round(struct pt_regs *regs)
 
 static void __exception_irq_entry sp_intc_handle_irq(struct pt_regs *regs)
 {
-	int handled = 0;
+	int err;
 	int first_int = 1;
 	int retry = 0;
 
 	dprn("%s\n", __func__);
 	do {
-		handled = sp_intc_handle_one_round(regs);
+		err = sp_intc_handle_one_round(regs);
 
-		if (handled)
+		if (!err)
 			first_int = 0;
 
-		if (first_int && !handled) { /* spurious irq */
+		if (first_int && err) { /* spurious irq */
+			dprn("+");
 			if (retry++ < SPURIOUS_RETRY)
 				continue;
 		}
-	} while (handled);
+	} while (!err);
 }
 
 static int sp_intc_irq_domain_map(struct irq_domain *domain, unsigned int irq,
