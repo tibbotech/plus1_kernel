@@ -110,6 +110,14 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 	if ((data->hwirq < sp_intc.hwirq_start) || (data->hwirq >= sp_intc.hwirq_end))
 		return -EBADR;
 
+	/* update the chip/handler */
+	if (flow_type & IRQ_TYPE_LEVEL_MASK)
+		irq_set_chip_handler_name_locked(data, &sp_intc_chip,
+						   handle_level_irq, NULL);
+	else
+		irq_set_chip_handler_name_locked(data, &sp_intc_chip,
+						   handle_edge_irq, NULL);
+
 	idx = data->hwirq / 32;
 	edge_type = readl(&sp_intc.g0->intr_type[idx]);
 	trig_lvl = readl(&sp_intc.g0->intr_polarity[idx]);
@@ -218,19 +226,9 @@ static void __exception_irq_entry sp_intc_handle_irq(struct pt_regs *regs)
 static int sp_intc_irq_domain_map(struct irq_domain *domain, unsigned int irq,
                                   irq_hw_number_t hwirq)
 {
-	struct irq_data *data;
-
 	dprn("%s: irq=%d hwirq=%lu\n", __func__, irq, hwirq);
 
-	data = irq_domain_get_irq_data(domain, irq);
-
-	if (irqd_get_trigger_type(data) & IRQ_TYPE_EDGE_BOTH) {
-		dprn("%s: irq=%d edge type\n", __func__, irq, hwirq);
-		irq_set_chip_and_handler(irq, &sp_intc_chip, handle_edge_irq);
-	} else {
-		irq_set_chip_and_handler(irq, &sp_intc_chip, handle_level_irq);
-	}
-
+	irq_set_chip_and_handler(irq, &sp_intc_chip, handle_level_irq);
 	irq_set_chip_data(irq, &sp_intc_chip);
 	irq_set_noprobe(irq);
 
@@ -256,6 +254,8 @@ static void __init sp_intc_chip_init(int hwirq_start, int hwirq_end,
 		writel_relaxed(0, &sp_intc.g0->intr_polarity[i]);
 		/* all irq */
 		writel_relaxed(~0, &sp_intc.g0->priority[i]);
+		/* all clear */
+		writel_relaxed(~0, &sp_intc.g1->intr_clr[i]);
 	}
 }
 
