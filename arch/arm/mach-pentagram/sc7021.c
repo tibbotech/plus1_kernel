@@ -5,6 +5,7 @@
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/io.h>
+#include <linux/memblock.h>
 #include <asm/memory.h>
 #include <asm/setup.h>
 #include <asm/mach-types.h>
@@ -92,8 +93,15 @@ static void __init sp_map_io(void)
 
 void __init sp_reserve(void)
 {
+	unsigned int addr, size;
+
 	early_printk("%s\n", __func__);
-	return;
+
+	addr = SP_IOP_RESERVE_BASE;
+	size = SP_IOP_RESERVE_SIZE;
+
+	printk("reserve mem for iop: 0x%08x-%08x\n", addr, addr + size);
+	memblock_reserve(addr, size);
 }
 
 static void __init sp_fixup(void)

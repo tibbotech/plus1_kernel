@@ -13,4 +13,8 @@
 #define VA_IO_ADDR(x)		((x) + VA_REG)
 #define VA_IOB_ADDR(x)		VA_IO_ADDR(x)
 
+/* Reserved RAM */
+#define SP_IOP_RESERVE_BASE	0x01000000
+#define SP_IOP_RESERVE_SIZE	0x00100000
+
 #endif
