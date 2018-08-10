@@ -186,8 +186,7 @@ int sp_icm_pwidth(int i, u32 *pwh, u32 *pwl)
 EXPORT_SYMBOL(sp_icm_pwidth);
 
 
-//#ifdef CONFIG_ICM_TEST // test & example
-#if 1
+#ifdef CONFIG_SP_ICM_TEST // test & example
 static u32 tscnt = 0; // test signal counter
 
 static void test_cbf(int i, u32 cnt, u32 fstate)
@@ -353,19 +352,7 @@ static struct platform_driver sp_icm_driver = {
 	},
 };
 
-static int __init sp_icm_module_init(void)
-{
-	platform_driver_register(&sp_icm_driver);
-	return 0;
-}
-
-static void __exit sp_icm_module_exit(void)
-{
-	platform_driver_unregister(&sp_icm_driver);
-}
-
-module_init(sp_icm_module_init);
-module_exit(sp_icm_module_exit);
+module_platform_driver(sp_icm_driver);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");
