@@ -248,8 +248,7 @@ void DCACHE_INVALIDATE(u32 pa, void *start, int size)
 	local_irq_restore(oldIrq);
 }
 
-//#ifdef CONFIG_IPC_TEST // test & example
-#if 1
+#ifdef CONFIG_SP_IPC_TEST // test & example
 /*************************** IPC KERNEL API TEST **************************/
 
 #ifdef _SP_CHUNKMEM_H_
@@ -1145,23 +1144,11 @@ static struct platform_driver sp_ipc_driver = {
     .driver     = {
         .name   = "sp_ipc",
         .owner  = THIS_MODULE,
-       .of_match_table = of_match_ptr(sp_ipc_of_match),
+        .of_match_table = of_match_ptr(sp_ipc_of_match),
     },
 };
 
-static int __init sp_ipc_module_init(void)
-{
-	platform_driver_register(&sp_ipc_driver);
-	return 0;
-}
-
-static void __exit sp_ipc_module_exit(void)
-{
-	platform_driver_unregister(&sp_ipc_driver);
-}
-
-module_init(sp_ipc_module_init);
-module_exit(sp_ipc_module_exit);
+module_platform_driver(sp_ipc_driver);
 
 /**************************************************************************
  *                  M O D U L E    D E C L A R A T I O N                  *

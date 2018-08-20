@@ -149,6 +149,21 @@
 				     <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
 #endif
+
+		dma0@A_G11 {
+			compatible = "sunplus,sp-dma0";
+			reg = <0x9ec00580 0x180>; /* G11 ~ G13 */
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 8  IRQ_TYPE_EDGE_RISING>, /* ch0_job_done */
+                                     <GIC_SPI 9  IRQ_TYPE_EDGE_RISING>, /* ch1_job_done */
+                                     <GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* ch2_job_done */
+                                     <GIC_SPI 11 IRQ_TYPE_EDGE_RISING>, /* ch3_job_done */
+                                     <GIC_SPI 12 IRQ_TYPE_EDGE_RISING>, /* ch4_job_done */
+                                     <GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* ch5_job_done */
+                                     <GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* ch6_job_done */
+                                     <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
+                                     <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
+		};
 	};
 
 	soc@B {
