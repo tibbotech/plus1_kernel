@@ -339,5 +339,12 @@
 				<167 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
 #endif
+
+		pwm: pwm@0x9c007a00 {
+			#pwm-cells = <2>;
+			 compatible = "sunplus,sc7021-pwm";
+			 reg = <0x9c007a00 0x80>;
+			 clocks = <&extclk>;
+		 };
 	};
 };

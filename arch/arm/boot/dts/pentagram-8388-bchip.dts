@@ -95,5 +95,12 @@
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&sysslow>;
 		};
+
+		pwm: pwm@0x9c007480 {
+			#pwm-cells = <2>;
+			compatible = "sunplus,sc7021-pwm";
+			reg = <0x9c007480 0x80>;
+			clocks = <&sysslow>;
+		};
 	};
 };
