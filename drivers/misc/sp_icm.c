@@ -300,8 +300,7 @@ static int sp_icm_probe(struct platform_device *pdev)
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res_irq) {
-		ret = -ENODEV;
-		goto out;
+		return -ENODEV;
 	}
 
 	dev->reg = membase;
@@ -309,31 +308,15 @@ static int sp_icm_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, dev);
 
 	while (i < NUM_ICM) {
-		ret = request_irq(dev->irq + i, sp_icm_isr, IRQF_TRIGGER_RISING, "sp_icm", dev);
-		if (ret) goto out;
+		ret = devm_request_irq(&pdev->dev, dev->irq + i, sp_icm_isr, IRQF_TRIGGER_RISING, "sp_icm", dev);
+		if (ret) {
+			return -ENODEV;
+		}
 		i++;
 	}
 	TRACE;
 
-out:
-	if (ret) {
-		TRACE;
-		while (i--) free_irq(dev->irq + i, dev);
-		devm_iounmap(&pdev->dev, membase);
-	}
-
 	return ret;
-}
-
-static int sp_icm_remove(struct platform_device *pdev)
-{
-	struct sp_icm_dev *dev = platform_get_drvdata(pdev);
-	int i = NUM_ICM;
-
-	while (i--) free_irq(dev->irq + i, dev);
-	devm_iounmap(&pdev->dev, (void *)dev->reg);
-
-	return 0;
 }
 
 static const struct of_device_id sp_icm_of_match[] = {
@@ -344,7 +327,6 @@ MODULE_DEVICE_TABLE(of, sp_icm_of_match);
 
 static struct platform_driver sp_icm_driver = {
 	.probe		= sp_icm_probe,
-	.remove		= sp_icm_remove,
 	.driver		= {
 		.name	= "sp_icm",
 		.owner	= THIS_MODULE,

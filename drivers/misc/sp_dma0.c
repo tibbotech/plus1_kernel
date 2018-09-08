@@ -252,46 +252,27 @@ static int sp_dma0_probe(struct platform_device *pdev)
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res_irq) {
-		ret = -ENODEV;
-		goto out;
+		return -ENODEV;
 	}
 
 	dev->reg = membase;
 	dev->irq = res_irq->start;
 	dev->bio = (struct bio_cfg *)(VA_B_REG + 261 * 4096);
-	dev->membase = ioremap(WORKMEM_BASE, WORKMEM_SIZE);
-	//dev->membase = memremap(WORKMEM_BASE, WORKMEM_SIZE, MEMREMAP_WB);
+	dev->membase = devm_ioremap(&pdev->dev, WORKMEM_BASE, WORKMEM_SIZE); // workmem sram
+	//dev->membase = devm_memremap(&pdev->dev, WORKMEM_BASE, WORKMEM_SIZE, MEMREMAP_WB);
 	//*(REG *)(VA_A_REG + 83 * 128 + 4) = 0xffffffff; // disable workmem security
 	platform_set_drvdata(pdev, dev);
 
 	while (i < DMA0_IRQS) {
-		ret = request_irq(dev->irq + i, sp_dma0_isr, IRQF_TRIGGER_RISING, "sp_dma0", dev);
-		if (ret) goto out;
+		ret = devm_request_irq(&pdev->dev, dev->irq + i, sp_dma0_isr, IRQF_TRIGGER_RISING, "sp_dma0", dev);
+		if (ret) {
+			return -ENODEV;
+		}
 		i++;
 	}
 	TRACE;
 
-out:
-	if (ret) {
-		TRACE;
-		while (i--) free_irq(dev->irq + i, dev);
-		devm_iounmap(&pdev->dev, membase);
-	}
-
 	return ret;
-}
-
-static int sp_dma0_remove(struct platform_device *pdev)
-{
-	struct sp_dma0_dev *dev = platform_get_drvdata(pdev);
-	int i = DMA0_IRQS;
-
-	while (i--) free_irq(dev->irq + i, dev);
-	devm_iounmap(&pdev->dev, (void *)dev->reg);
-	iounmap(dev->membase);
-	//memunmap(dev->membase);
-
-	return 0;
 }
 
 static const struct of_device_id sp_dma0_of_match[] = {
@@ -302,7 +283,6 @@ MODULE_DEVICE_TABLE(of, sp_dma0_of_match);
 
 static struct platform_driver sp_dma0_driver = {
 	.probe		= sp_dma0_probe,
-	.remove		= sp_dma0_remove,
 	.driver		= {
 		.name	= "sp_dma0",
 		.owner	= THIS_MODULE,

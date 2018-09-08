@@ -1040,13 +1040,13 @@ static struct file_operations sp_ipc_fops = {
 /**************************************************************************/
 
 /**
- * @brief   IPC driver init function
+ * @brief   IPC driver probe function
  */
-static int sp_ipc_init(void)
+static int sp_ipc_probe(struct platform_device *pdev)
 {
 	int ret = -ENXIO;
 
-	ipc = (sp_ipc_t *)ZALLOC(sizeof(sp_ipc_t));
+	ipc = (sp_ipc_t *)devm_kzalloc(&pdev->dev, sizeof(sp_ipc_t), GFP_KERNEL);
 	if (ipc == NULL) {
 		printf("sp_ipc_t malloc fail\n");
 		ret	= -ENOMEM;
@@ -1057,7 +1057,7 @@ static int sp_ipc_init(void)
     mutex_init(&ipc->write_lock);
 	ipc->rpc_res = kthread_run(rpc_res_thread, NULL, "RpcRes");
 
-	ret = request_irq(IRQ_RPC, rpc_isr, IRQF_TRIGGER_RISING, "rpc", NULL);
+	ret = devm_request_irq(&pdev->dev, IRQ_RPC, rpc_isr, IRQF_TRIGGER_RISING, "rpc", NULL);
 	if (ret != 0) {
 		printf("sp_ipc request_irq fail!\n");
 		goto fail_reqirq;
@@ -1095,11 +1095,9 @@ fail_findcbdmadev:
 	misc_deregister(&ipc->dev);
 #endif
 fail_regdev:
-	free_irq(IRQ_RPC, ipc);
 fail_reqirq:
 	kthread_stop(ipc->rpc_res);
     mutex_destroy(&ipc->write_lock);
-	FREE(ipc);
 fail_kmalloc:
 	return ret;
 }
@@ -1107,10 +1105,9 @@ fail_kmalloc:
 /**
  * @brief   IPC driver exit function
  */
-static void sp_ipc_exit(void)
+static int sp_ipc_remove(struct platform_device *pdev)
 {
 	misc_deregister(&ipc->dev);
-	free_irq(IRQ_RPC, ipc);
 	kthread_stop(ipc->rpc_res);
     mutex_destroy(&ipc->write_lock);
 #ifdef IPC_USE_CBDMA
@@ -1118,18 +1115,8 @@ static void sp_ipc_exit(void)
 #else
 	ipc_seq_finit(&ipc->seq);
 #endif
-	FREE(ipc);
-}
 
-static int sp_ipc_probe(struct platform_device *pdev)
-{
-    return sp_ipc_init();
-}
-
-static int sp_ipc_remove(struct platform_device *pdev)
-{
-	sp_ipc_exit();
-    return 0;
+	return 0;
 }
 
 static const struct of_device_id sp_ipc_of_match[] = {
