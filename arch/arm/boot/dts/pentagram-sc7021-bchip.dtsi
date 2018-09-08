@@ -287,6 +287,20 @@
 			spi-max-frequency = <50000000>;
 		};
 
+		spinand0: spinand@sp_spinand {
+			compatible = "sunplus,sp_spinand";
+			reg = <0x9c000AE0 0x50>;
+			interrupt-parent = <&intc>;
+			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
+		};		
+
+		bch0: bch@sp_bch {
+			compatible = "sunplus,sp_bch";
+			reg = <0x9c101000 0x20>;
+			interrupt-parent = <&intc>;
+			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
+		};
+		
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp_i2cm";
 			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>;
