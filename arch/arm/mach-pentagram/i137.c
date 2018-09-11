@@ -78,7 +78,12 @@ static void __init sp_map_io(void)
 	printk("B_REG %08x -> [%08x-%08x]\n", PA_B_REG, VA_B_REG, VA_B_REG + SIZE_B_REG);
 #ifdef CONFIG_MACH_PENTAGRAM_I136_ACHIP
         printk("A_REG %08x -> [%08x-%08x]\n", PA_A_REG, VA_A_REG, VA_A_REG + SIZE_A_REG);
+#endif
+}
 
+static void __init sp_init_early(void)
+{
+#ifdef CONFIG_MACH_PENTAGRAM_I136_ACHIP
 	/* enable counter before timer_init */
 	writel(3, (void __iomem *)A_SYS_COUNTER_BASE); /* CNTCR: EN=1 HDBG=1 */
 	mb();
@@ -121,6 +126,7 @@ DT_MACHINE_START(I137_BCHIP_DT, "I137_BCHIP")
 	.dt_fixup	= sp_fixup,
 	.reserve	= sp_reserve,
 	.map_io		= sp_map_io,
+	.init_early	= sp_init_early,
 	.init_machine	= sp_init,
 	.restart	= sp_restart,
 MACHINE_END
@@ -137,6 +143,7 @@ DT_MACHINE_START(I136_ACHIP_DT, "I136_ACHIP")
 	.dt_fixup	= sp_fixup,
 	.reserve	= sp_reserve,
 	.map_io		= sp_map_io,
+	.init_early	= sp_init_early,
 	.init_machine	= sp_init,
 	.restart	= sp_restart,
 MACHINE_END
