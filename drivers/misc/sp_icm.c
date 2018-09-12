@@ -1,14 +1,37 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/io.h>
+#include <linux/irq.h>
+#include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
 #include <linux/delay.h>
+#include <mach/io_map.h>
 #include <mach/sp_icm.h>
 
 #define NUM_ICM 4
 
-#define TRACE	printk("[SP_ICM]%s:%d\n", __FUNCTION__, __LINE__)
+#define REG(g, i)	VA_IOB_ADDR((g * 32 + i) * 4)
+#define ICMCLK(en)	\
+do { \
+	printk("ICM_CLKEN: %d\n", en); \
+	*(volatile u32 *)REG(0, 10) = (1 << 24) | (en << 8); \
+} while (0)
+
+//#define TRACE(s) printk("### %s:%d %s\n", __FUNCTION__, __LINE__, s)
+#define TRACE(s)
+
+#define RPM_GET(dev) \
+do { \
+	TRACE("RPM_GET"); \
+	pm_runtime_get_sync(dev); \
+} while (0)
+
+#define RPM_PUT(dev) \
+do { \
+	TRACE("RPM_PUT"); \
+	pm_runtime_put(dev); \
+} while (0)
 
 // cfg0
 #define ICM_ENABLE		0x00010001	// enable icm
@@ -77,6 +100,7 @@ struct sp_icm_reg {
 struct sp_icm_dev {
 	volatile struct sp_icm_reg *reg;
 	int irq;
+	struct device *dev;
 };
 
 static struct sp_icm_dev sp_icm;
@@ -88,7 +112,7 @@ static irqreturn_t sp_icm_isr(int irq, void *dev_id)
 	volatile struct sp_icm_reg *icm = &sp_icm.reg[i];
 	u32 cnt, fstate;
 
-	//TRACE;
+	//TRACE("");
 	icm->cfg0 = ICM_INTCLR; // clear interrupt
 
 	while (!((fstate = icm->cfg1) & ICM_FEMPTY)) { // fifo not empty
@@ -109,6 +133,7 @@ int sp_icm_setcfg(int i, struct sp_icm_cfg *cfg)
 
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
 
+	RPM_GET(sp_icm.dev);
 	icm = &sp_icm.reg[i];
 	ICM_SETCFG(0, MUXSEL, cfg->muxsel);
 	ICM_SETCFG(0, CLKSEL, cfg->clksel);
@@ -117,6 +142,7 @@ int sp_icm_setcfg(int i, struct sp_icm_cfg *cfg)
 	ICM_SETCFG(1, DTIMES, cfg->dtimes);
 	icm->cntscl = cfg->cntscl;
 	icm->tstscl = cfg->tstscl;
+	RPM_PUT(sp_icm.dev);
 
 	return 0;
 }
@@ -128,6 +154,7 @@ int sp_icm_getcfg(int i, struct sp_icm_cfg *cfg)
 
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
 
+	RPM_GET(sp_icm.dev);
 	icm = &sp_icm.reg[i];
 	cfg->muxsel = ICM_GETCFG(0, MUXSEL);
 	cfg->clksel = ICM_GETCFG(0, CLKSEL);
@@ -136,6 +163,7 @@ int sp_icm_getcfg(int i, struct sp_icm_cfg *cfg)
 	cfg->dtimes = ICM_GETCFG(1, DTIMES);
 	cfg->cntscl = icm->cntscl;
 	cfg->tstscl = icm->tstscl;
+	RPM_PUT(sp_icm.dev);
 
 	return 0;
 }
@@ -144,7 +172,9 @@ EXPORT_SYMBOL(sp_icm_getcfg);
 int sp_icm_reload(int i)
 {
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
+	RPM_GET(sp_icm.dev);
 	sp_icm.reg[i].cfg0 = ICM_RELOAD;
+	RPM_PUT(sp_icm.dev);
 	return 0;
 }
 EXPORT_SYMBOL(sp_icm_reload);
@@ -153,6 +183,7 @@ int sp_icm_enable(int i, sp_icm_cbf cbf)
 {
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
 	cbfs[i] = cbf;
+	RPM_GET(sp_icm.dev);
 	sp_icm.reg[i].cfg0 = ICM_ENABLE;
 	return 0;
 }
@@ -163,6 +194,7 @@ int sp_icm_disable(int i)
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
 	sp_icm.reg[i].cfg0 = ICM_DISABLE;
 	sp_icm.reg[i].cfg1 = ICM_FCLEAR; // clear fifo
+	RPM_PUT(sp_icm.dev);
 	cbfs[i] = NULL;
 	return 0;
 }
@@ -171,7 +203,9 @@ EXPORT_SYMBOL(sp_icm_disable);
 int sp_icm_fstate(int i, u32 *fstate)
 {
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
+	RPM_GET(sp_icm.dev);
 	*fstate = sp_icm.reg[i].cfg1 & ICM_FMASK;
+	RPM_PUT(sp_icm.dev);
 	return 0;
 }
 EXPORT_SYMBOL(sp_icm_fstate);
@@ -179,8 +213,10 @@ EXPORT_SYMBOL(sp_icm_fstate);
 int sp_icm_pwidth(int i, u32 *pwh, u32 *pwl)
 {
 	if (i < 0 || i >= NUM_ICM) return -EINVAL;
+	RPM_GET(sp_icm.dev);
 	*pwh = sp_icm.reg[i].pwh;
 	*pwl = sp_icm.reg[i].pwl;
+	RPM_PUT(sp_icm.dev);
 	return 0;
 }
 EXPORT_SYMBOL(sp_icm_pwidth);
@@ -289,7 +325,7 @@ static int sp_icm_probe(struct platform_device *pdev)
 	int i = 0;
 	int ret = 0;
 
-	TRACE;
+	TRACE("");
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem)
 		return -ENODEV;
@@ -307,6 +343,12 @@ static int sp_icm_probe(struct platform_device *pdev)
 	dev->irq = res_irq->start;
 	platform_set_drvdata(pdev, dev);
 
+	dev->dev = &pdev->dev;
+	pm_runtime_set_active(dev->dev);
+	pm_runtime_enable(dev->dev);
+	RPM_GET(dev->dev);
+	RPM_PUT(dev->dev);
+
 	while (i < NUM_ICM) {
 		ret = devm_request_irq(&pdev->dev, dev->irq + i, sp_icm_isr, IRQF_TRIGGER_RISING, "sp_icm", dev);
 		if (ret) {
@@ -314,9 +356,46 @@ static int sp_icm_probe(struct platform_device *pdev)
 		}
 		i++;
 	}
-	TRACE;
 
 	return ret;
+}
+
+static int __maybe_unused sp_icm_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	int irq = platform_get_irq(pdev, 0);
+	struct irq_data *data = irq_get_irq_data(irq);
+
+	if (!irqd_is_wakeup_set(data))
+		return pm_runtime_force_suspend(dev);
+
+	return 0;
+}
+
+static int __maybe_unused sp_icm_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	int irq = platform_get_irq(pdev, 0);
+	struct irq_data *data = irq_get_irq_data(irq);
+
+	if (!irqd_is_wakeup_set(data))
+		return pm_runtime_force_resume(dev);
+
+	return 0;
+}
+
+static int __maybe_unused sp_icm_runtime_suspend(struct device *dev)
+{
+	TRACE("");
+	ICMCLK(0); // disable ICM HW clock
+	return 0;
+}
+
+static int __maybe_unused sp_icm_runtime_resume(struct device *dev)
+{
+	TRACE("");
+	ICMCLK(1); // enable ICM HW clock
+	return 0;
 }
 
 static const struct of_device_id sp_icm_of_match[] = {
@@ -325,11 +404,18 @@ static const struct of_device_id sp_icm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_icm_of_match);
 
+static const struct dev_pm_ops sp_icm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sp_icm_suspend, sp_icm_resume)
+	SET_RUNTIME_PM_OPS(sp_icm_runtime_suspend,
+		sp_icm_runtime_resume, NULL)
+};
+
 static struct platform_driver sp_icm_driver = {
 	.probe		= sp_icm_probe,
 	.driver		= {
 		.name	= "sp_icm",
 		.owner	= THIS_MODULE,
+		.pm     = &sp_icm_pm_ops,
 		.of_match_table = of_match_ptr(sp_icm_of_match),
 	},
 };
