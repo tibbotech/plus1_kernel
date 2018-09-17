@@ -164,6 +164,12 @@
                                      <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
                                      <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
 		};
+		sd0: mmc@sdcard {
+			compatible = "sunplus,sp_card0";
+			reg = <0x9c003e80 0x280 0x9c00f180 0x4>;
+			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&B_pllsys>;
+		};
 	};
 
 	soc@B {

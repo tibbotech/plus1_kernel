@@ -547,8 +547,20 @@ typedef struct spsd_general_regs {
 #define SD_PAGE_NUM_SET(base, x)		(base->sd_page_num = ((x)-1))
 #define SD_PAGE_NUM_GET(base)			(base->sd_page_num +1)
 
+struct qctl_sd {
+	dv_reg qaccept:1; /*read only*/
+	dv_reg qdeny:1;   /*read only*/
+	dv_reg qactive:1; /*read only*/
+	dv_reg qreq:1;
+	dv_reg rst:1;
+	dv_reg clken:1;
+	dv_reg :10; /*not used for sd*/
+	dv_reg mask:16;
+};
+
 typedef struct spsdhost {
 	volatile struct spsd_general_regs *base;
+	volatile struct qctl_sd *qctl_sd;
 	uint id;
 	char *name;
 	struct mmc_host *mmc;
@@ -563,6 +575,7 @@ typedef struct spsdhost {
 
 	uint wrdly;
 	uint rddly;
+	int power_state;
 }SPSDHOST;
 
 typedef struct spsdv2_dridata {
