@@ -166,7 +166,7 @@
 		};
 		sd0: mmc@sdcard {
 			compatible = "sunplus,sp_card0";
-			reg = <0x9c003e80 0x280 0x9c00f180 0x4>;
+			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&B_pllsys>;
 		};
