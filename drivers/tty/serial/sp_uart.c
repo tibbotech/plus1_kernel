@@ -54,7 +54,7 @@
 /* ---------------------------------------------------------------------------------------------- */
 #define CLK_HIGH_UART			202500000
 /* ---------------------------------------------------------------------------------------------- */
-#if defined(CONFIG_MAGIC_SYSRQ)
+#if defined(CONFIG_SP_MON)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
 #endif
 
@@ -102,8 +102,8 @@ static inline void sp_uart_put_char(struct uart_port *port, unsigned ch)
 	u32 offset_sw;
 	u8 *byte_ptr;
 
-#if defined(CONFIG_MAGIC_SYSRQ)
-	if ((uart0_mask_tx == 1) && (base == LOGI_ADDR_UART0_REG)) {
+#if defined(CONFIG_SP_MON)
+	if ((uart0_mask_tx == 1) && ((u32)base == LOGI_ADDR_UART0_REG)) {
 		return;
 	}
 #endif
@@ -221,7 +221,7 @@ static inline void sp_uart_set_clk_src(unsigned char __iomem *base, unsigned val
 unsigned int uart0_as_console = ~0;
 unsigned int uart_enable_status = ~0;	/* bit 0: UART0, bit 1: UART1, ... */
 
-#if defined(CONFIG_MAGIC_SYSRQ)
+#if defined(CONFIG_SP_MON)
 extern int sysrqCheckState(char, struct uart_port *);
 #endif
 
@@ -273,7 +273,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 
 	local_irq_save(flags);
 
-#if defined(CONFIG_MAGIC_SYSRQ)
+#if defined(SUPPORT_SYSRQ)
 	if (sunplus_uart_ports[co->index].uport.sysrq)
 #else
 	if (0)
@@ -664,7 +664,7 @@ static void receive_chars(struct uart_port *port)	/* called by ISR */
 	do {
 		ch = sp_uart_get_char(port->membase);
 
-#if defined(CONFIG_MAGIC_SYSRQ)
+#if defined(CONFIG_SP_MON)
 		if (sysrqCheckState(ch, port) != 0)
 			goto ignore_char;
 #endif
