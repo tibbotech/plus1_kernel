@@ -7,6 +7,7 @@
 #include <linux/kernel.h>
 #include <linux/string.h>
 #include <linux/vmalloc.h>
+#include <linux/pm_runtime.h>
 #include <asm/uaccess.h>
 
 #include <linux/mmc/sd.h>
@@ -154,17 +155,17 @@ MODULE_DEVICE_TABLE(of, spsdv2_of_id);
 /******************************************************************************
 *                         Function Prototype
 *******************************************************************************/
-static int spsdv2_get_dma_dir(SPSDHOST *, struct mmc_data *);
-static void sphe_mmc_finish_request(SPSDHOST *, struct mmc_request *);
-
-static int pinmux_enable(void *host)
-{
 #define REG_BASE					0x9c000000
 #define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
 #define RF_MASK_V(_mask, _val)      (((_mask) << 16) | (_val))
 #define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
 #define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
 
+static int spsdv2_get_dma_dir(SPSDHOST *, struct mmc_data *);
+static void sphe_mmc_finish_request(SPSDHOST *, struct mmc_request *);
+
+static int pinmux_enable(void *host)
+{
 	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
 	if (reg) {
 		writel(RF_MASK_V(1 << 6, 1 << 6), reg);
@@ -173,7 +174,33 @@ static int pinmux_enable(void *host)
 		printk("ioremap fail\n");
 		return -ENOMEM;
 	}
+	iounmap(reg);
+	return 0;
+}
 
+static int ctlr_clk_enable(void)
+{
+	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
+	if (reg) {
+		writel(RF_MASK_V_SET(1 << 15), reg);
+	}	else {
+		printk("ioremap fail\n");
+		return -ENOMEM;
+	}
+	iounmap(reg);
+	return 0;
+}
+
+static int ctlr_clk_disable(void)
+{
+	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
+	if (reg) {
+		writel(RF_MASK_V_CLR(1 << 15), reg);
+	}	else {
+		printk("ioremap fail\n");
+		return -ENOMEM;
+	}
+	iounmap(reg);
 	return 0;
 }
 
@@ -186,8 +213,6 @@ static int sd_get_in_clock(void *host)
 {
 	return SPSD_CLK_SOURCE;
 }
-
-
 
 void tx_dummy(SPSDHOST *host, u32 rounds)
 {
@@ -239,6 +264,33 @@ static void spsdv2_controller_init(SPSDHOST *host)
 	host->base->sdrxdattmr_sel = SP_SD_RXDATTMR_MAX;
 	host->base->mediatype = 6;
 }
+
+static void spsdv2_set_power_mode(SPSDHOST *host, struct mmc_ios *ios)
+{
+	if (host->power_state == ios->power_mode)
+		return;
+
+	switch (ios->power_mode) {
+		/* power off->up->on */
+	case MMC_POWER_ON:
+		DPRINTK("set MMC_POWER_ON\n");
+		spsdv2_controller_init(host);
+		//pm_runtime_get_sync(&pdev->dev);
+		break;
+	case MMC_POWER_UP:
+		/* Set default control register */
+		DPRINTK("set MMC_POWER_UP\n");
+		Reset_Controller(host);
+		break;
+	case MMC_POWER_OFF:
+		Reset_Controller(host);
+		DPRINTK("set MMC_POWER_OFF\n");
+		//pm_runtime_put(&pdev->dev);
+		break;
+	}
+	host->power_state = ios->power_mode;
+}
+
 /*
  * Set SD card clock divider value based on the required clock in HZ
  * TODO: Linux passes clock as 0, look into it
@@ -292,7 +344,7 @@ static void spsdv2_set_clock(SPSDHOST *host, struct mmc_ios *ios)
 		host->base->sd_high_speed_en = 1;
 		wr_dly = rd_dly;
 #ifdef Q628_ZEBU
-		rd_dly = 0;	
+		rd_dly = 0;
 #endif
 	} else {
 		host->base->sd_high_speed_en = 0;
@@ -520,10 +572,10 @@ void dump_all_regs(SPSDHOST *host)
 	int i, j;
 	for (i =  0; i < 5; i++){
 		for (j =  0; j < 32; j++){
-			printk("g%d.%d = 0x%08x\n", i, j, *reg);	
+			printk("g%d.%d = 0x%08x\n", i, j, *reg);
 			reg++;
-		}	
-	}	
+		}
+	}
 }
 
 static void spsdv2_irq_normDMA(SPSDHOST *host)
@@ -937,27 +989,9 @@ void spsdv2_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	down(&host->req_sem);
 
-	/* TODO: Cleanup power_mode functions */
-	switch (ios->power_mode) {
-	/* power off->up->on */
-	case MMC_POWER_ON:
-		DPRINTK("set MMC_POWER_ON\n");
-		spsdv2_controller_init(host);
-		break;
-	case MMC_POWER_UP:
-		/* Set default control register */
-		DPRINTK("set MMC_POWER_UP\n");
-		Reset_Controller(host);
-		break;
-	case MMC_POWER_OFF:
-		Reset_Controller(host);
-		DPRINTK("set MMC_POWER_OFF\n");
-		break;
-	}
-
+	spsdv2_set_power_mode(host, ios);
 	spsdv2_set_clock(host, ios);
 	spsdv2_set_bus_width(host, ios->bus_width);
-
 
 	up(&host->req_sem);
 	IFPRINTK("----- \n\n");
@@ -1042,12 +1076,14 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	host = (SPSDHOST *)mmc_priv(mmc);
 	host->mmc = mmc;
 	host->pdev = pdev;
+	host->power_state = MMC_POWER_UNDEFINED;
 
 	if (priv)
 		host->id  = priv->id;
 
 	printk("sd slot id:%d\n", host->id);
 
+	/*sd controller register*/
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(resource)) {
 		EPRINTK("get sd %d register resource fail\n", host->id);
@@ -1068,7 +1104,6 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		ret = PTR_ERR((void *)host->base);
 		goto probe_free_host;
 	}
-
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, host size:%d\n", host->id, resource->start, resource->end - resource->start);
 
 	/* host->irq = of_irq_get(pdev->dev.of_node, 0); */
@@ -1119,9 +1154,9 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 
 	mmc->max_seg_size = 65536 * 512;            /* Size per segment is limited via host controller's
 	                                               ((sdram_sector_#_size max value) * 512) */
-	/* mmc->max_segs = SP_HW_DMA_MEMORY_SECTORS; */ 
+	/* mmc->max_segs = SP_HW_DMA_MEMORY_SECTORS; */
 	/* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS", a.k.a. max scattered memory segments per request */
-	mmc->max_segs = 1; 
+	mmc->max_segs = 1;
 	mmc->max_req_size = 65536 * 512;			/* Decided by hw_page_num0 * SDHC's blk size */
 	mmc->max_blk_size = 512;                   /* Limited by host's dma_size & data_length max value, set it to 512 bytes for now */
 	mmc->max_blk_count = 65536;                 /* Limited by sdram_sector_#_size max value */
@@ -1138,7 +1173,8 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, mmc);
 
 	mmc_add_host(mmc);
-
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 	return 0;
 
 probe_free_host:
@@ -1159,13 +1195,14 @@ int spsdv2_drv_remove(struct platform_device *dev)
 		return -EINVAL;
 
 	host = (SPSDHOST *)mmc_priv(mmc);
+	devm_iounmap(&dev->dev, (void *)host->base);
 	platform_set_drvdata(dev, NULL);
 
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
 	mmc_free_host(mmc);
 
- 	return 0;
+	return 0;
 }
 
 
@@ -1208,43 +1245,92 @@ int spsdv2_drv_resume(struct platform_device *dev)
 }
 #ifdef CONFIG_PM
 
-int spsdv2_pm_suspend(struct device *dev)
+static int spsdv2_pm_suspend(struct device *dev)
 {
-	struct mmc_host *mmc;
-	SPSDHOST *host;
-
-	mmc = platform_get_drvdata(to_platform_device(dev));
-	if (!mmc)
-		return -EINVAL;
-
-	host = (SPSDHOST *)mmc_priv(mmc);
-
-	printk("Sunplus SD %d driver suspend.\n", host->id);
-
-	down(&host->req_sem);
-	up(&host->req_sem);
-
+	pm_runtime_force_suspend(dev);
 	return 0;
 }
 
-int spsdv2_pm_resume(struct device *dev)
+static int spsdv2_pm_resume(struct device *dev)
 {
+	pm_runtime_force_resume(dev);
+	return 0;
+}
+
+static int spsdv2_pm_runtime_suspend(struct device *dev)
+{
+	int qctl_val, ret = 0, retry = 1000;
 	struct mmc_host *mmc;
 	SPSDHOST *host;
-
+	volatile void __iomem *reg;
 	mmc = platform_get_drvdata(to_platform_device(dev));
 	if (!mmc)
 		return -EINVAL;
-
 	host = (SPSDHOST *)mmc_priv(mmc);
+	down(&host->req_sem);
+	if (ctlr_clk_disable()) {
+		EPRINTK("fail to disable card controller clock!\n");
+		ret = -EIO;
+		goto out;
+	}
+	reg = ioremap_nocache(RF_GRP(30, 1), 4);
+	if (!reg) {
+		EPRINTK("map Q-channel register failed!\n");
+		ret = -EIO;
+		goto out;
+	}
+	writel(RF_MASK_V_CLR(1 << 11), reg);
+	qctl_val = readl(reg);
+	while((qctl_val & (1 << 8)) && retry--)
+		qctl_val = readl(reg);
+	if ((qctl_val & (1 << 10)) || !retry) {
+		EPRINTK("[SD]q-channel unable to enter quiescence state\n");
+		writel(RF_MASK_V_SET(1 << 11), reg);
+		ret = -EIO;
+	}
+	iounmap(reg);
+out:
+	up(&host->req_sem);
+	return ret;
+}
 
-	printk("Sunplus SD%d driver resume.\n", host->id);
-	return 0;
+static int spsdv2_pm_runtime_resume(struct device *dev)
+{
+	int qctl_val, ret = 0, retry = 1000;
+	struct mmc_host *mmc;
+	SPSDHOST *host;
+	volatile void __iomem *reg;
+	mmc = platform_get_drvdata(to_platform_device(dev));
+	if (!mmc)
+		return -EINVAL;
+	host = (SPSDHOST *)mmc_priv(mmc);
+	reg = ioremap_nocache(RF_GRP(30, 1), 4);
+	if (!reg) {
+		EPRINTK("map Q-channel register failed!\n");
+		ret = -EIO;
+		goto out;
+	}
+	writel(RF_MASK_V_SET(1 << 11), reg);
+	qctl_val = readl(reg);
+	while(!(qctl_val & (1 << 8)) && retry--)
+		qctl_val = readl(reg);
+	iounmap(reg);
+	if (!retry) {
+		EPRINTK("[SD]q-channel unable to exit quiescence state\n");
+		ret = -EIO;
+		goto out;
+	}
+	if (ctlr_clk_enable()) {
+		EPRINTK("fail to enable card controller clock!\n");
+		ret = -EIO;
+	}
+out:
+	return ret;
 }
 
 const struct dev_pm_ops sphe_mmc2_pm_ops = {
-	.suspend	= spsdv2_pm_suspend,
-	.resume		= spsdv2_pm_resume,
+	SET_SYSTEM_SLEEP_PM_OPS(spsdv2_pm_suspend, spsdv2_pm_resume)
+	SET_RUNTIME_PM_OPS(spsdv2_pm_runtime_suspend, spsdv2_pm_runtime_resume, NULL)
 };
 #endif
 

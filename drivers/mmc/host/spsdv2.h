@@ -563,6 +563,7 @@ typedef struct spsdhost {
 
 	uint wrdly;
 	uint rddly;
+	int power_state;
 }SPSDHOST;
 
 typedef struct spsdv2_dridata {
