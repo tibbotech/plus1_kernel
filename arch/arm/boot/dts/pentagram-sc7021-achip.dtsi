@@ -101,6 +101,18 @@
 			clock-frequency = <202500000>;
 			clock-output-names = "B_pllsys";
 		};
+
+		clkc: clkc@G4 {
+			#clock-cells = <1>;
+			compatible = "sunplus,sp-clkc";
+			reg = <0x9c000200 0x80>; /* G4 */
+			clock-output-names =
+				"plla",											/* G4.7 */
+				"plle", "plle_2p5", "plle_25", "plle_112p5",	/* G4.12 */
+				"pllf",											/* G4.13 */
+				"plltv", "plltv_a",								/* G4.14 */
+				"pllsys";										/* G4.26 */
+		};
 	};
 
 	soc@A {
@@ -166,7 +178,7 @@
 		};
 		sd0: mmc@sdcard {
 			compatible = "sunplus,sp_card0";
-			reg = <0x9c003e80 0x280 0x9c00f180 0x4>;
+			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&B_pllsys>;
 		};

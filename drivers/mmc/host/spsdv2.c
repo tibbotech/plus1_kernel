@@ -155,17 +155,17 @@ MODULE_DEVICE_TABLE(of, spsdv2_of_id);
 /******************************************************************************
 *                         Function Prototype
 *******************************************************************************/
-static int spsdv2_get_dma_dir(SPSDHOST *, struct mmc_data *);
-static void sphe_mmc_finish_request(SPSDHOST *, struct mmc_request *);
-
-static int pinmux_enable(void *host)
-{
 #define REG_BASE					0x9c000000
 #define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
 #define RF_MASK_V(_mask, _val)      (((_mask) << 16) | (_val))
 #define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
 #define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
 
+static int spsdv2_get_dma_dir(SPSDHOST *, struct mmc_data *);
+static void sphe_mmc_finish_request(SPSDHOST *, struct mmc_request *);
+
+static int pinmux_enable(void *host)
+{
 	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
 	if (reg) {
 		writel(RF_MASK_V(1 << 6, 1 << 6), reg);
@@ -174,7 +174,33 @@ static int pinmux_enable(void *host)
 		printk("ioremap fail\n");
 		return -ENOMEM;
 	}
+	iounmap(reg);
+	return 0;
+}
 
+static int ctlr_clk_enable(void)
+{
+	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
+	if (reg) {
+		writel(RF_MASK_V_SET(1 << 15), reg);
+	}	else {
+		printk("ioremap fail\n");
+		return -ENOMEM;
+	}
+	iounmap(reg);
+	return 0;
+}
+
+static int ctlr_clk_disable(void)
+{
+	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
+	if (reg) {
+		writel(RF_MASK_V_CLR(1 << 15), reg);
+	}	else {
+		printk("ioremap fail\n");
+		return -ENOMEM;
+	}
+	iounmap(reg);
 	return 0;
 }
 
@@ -187,8 +213,6 @@ static int sd_get_in_clock(void *host)
 {
 	return SPSD_CLK_SOURCE;
 }
-
-
 
 void tx_dummy(SPSDHOST *host, u32 rounds)
 {
@@ -1052,7 +1076,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	host = (SPSDHOST *)mmc_priv(mmc);
 	host->mmc = mmc;
 	host->pdev = pdev;
-	host->power_state = MMC_POWER_OFF;
+	host->power_state = MMC_POWER_UNDEFINED;
 
 	if (priv)
 		host->id  = priv->id;
@@ -1081,18 +1105,6 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, host size:%d\n", host->id, resource->start, resource->end - resource->start);
-
-	/*q-channel control register for sd0*/
-	resource = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (IS_ERR(resource)) {
-		EPRINTK("get qctl_sd register resource failed.\n");
-	} else {
-		host->qctl_sd = devm_ioremap_resource(&pdev->dev, resource);
-		if (IS_ERR((void *)host->qctl_sd)) {
-			EPRINTK("devm_ioremap_resource for qctl_sd failed: %ld\n", PTR_ERR((void *)host->qctl_sd));
-			host->qctl_sd = NULL;
-		}
-	}
 
 	/* host->irq = of_irq_get(pdev->dev.of_node, 0); */
 	host->irq = platform_get_irq(pdev, 0);
@@ -1184,8 +1196,6 @@ int spsdv2_drv_remove(struct platform_device *dev)
 
 	host = (SPSDHOST *)mmc_priv(mmc);
 	devm_iounmap(&dev->dev, (void *)host->base);
-	if (NULL != host->qctl_sd)
-		devm_iounmap(&dev->dev, (void *)host->qctl_sd);
 	platform_set_drvdata(dev, NULL);
 
 	mmc_remove_host(mmc);
@@ -1249,49 +1259,73 @@ static int spsdv2_pm_resume(struct device *dev)
 
 static int spsdv2_pm_runtime_suspend(struct device *dev)
 {
-	int retry = 1000;
+	int qctl_val, ret = 0, retry = 1000;
 	struct mmc_host *mmc;
 	SPSDHOST *host;
+	volatile void __iomem *reg;
 	mmc = platform_get_drvdata(to_platform_device(dev));
 	if (!mmc)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
-	if (!host->qctl_sd)
-		printk("[SD] can not access Q-channel register, "
-					"RPM for sd is not supported.");
 	down(&host->req_sem);
-	host->qctl_sd->qreq = 0;
-	host->qctl_sd->mask = 1;
-	while(host->qctl_sd->qaccept && retry--);
-	if (!retry) {
-		EPRINTK("[SD]unable to transfer to quiescence state\n");
-		up(&host->req_sem);
-		return -1;
+	if (ctlr_clk_disable()) {
+		EPRINTK("fail to disable card controller clock!\n");
+		ret = -EIO;
+		goto out;
 	}
+	reg = ioremap_nocache(RF_GRP(30, 1), 4);
+	if (!reg) {
+		EPRINTK("map Q-channel register failed!\n");
+		ret = -EIO;
+		goto out;
+	}
+	writel(RF_MASK_V_CLR(1 << 11), reg);
+	qctl_val = readl(reg);
+	while((qctl_val & (1 << 8)) && retry--)
+		qctl_val = readl(reg);
+	if ((qctl_val & (1 << 10)) || !retry) {
+		EPRINTK("[SD]q-channel unable to enter quiescence state\n");
+		writel(RF_MASK_V_SET(1 << 11), reg);
+		ret = -EIO;
+	}
+	iounmap(reg);
+out:
 	up(&host->req_sem);
-	return 0;
+	return ret;
 }
 
 static int spsdv2_pm_runtime_resume(struct device *dev)
 {
-	int retry = 1000;
+	int qctl_val, ret = 0, retry = 1000;
 	struct mmc_host *mmc;
 	SPSDHOST *host;
+	volatile void __iomem *reg;
 	mmc = platform_get_drvdata(to_platform_device(dev));
 	if (!mmc)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
-	if (!host->qctl_sd)
-		printk("[SD] can not access Q-channel register, "
-					 "RPM for sd is not supported.");
-	host->qctl_sd->qreq = 1;
-	host->qctl_sd->mask = 1;
-	while(!host->qctl_sd->qaccept && retry--);
-	if (!retry) {
-		EPRINTK("[SD]fail to wake up from quiesence state!\n");
-		return -1;
+	reg = ioremap_nocache(RF_GRP(30, 1), 4);
+	if (!reg) {
+		EPRINTK("map Q-channel register failed!\n");
+		ret = -EIO;
+		goto out;
 	}
-	return 0;
+	writel(RF_MASK_V_SET(1 << 11), reg);
+	qctl_val = readl(reg);
+	while(!(qctl_val & (1 << 8)) && retry--)
+		qctl_val = readl(reg);
+	iounmap(reg);
+	if (!retry) {
+		EPRINTK("[SD]q-channel unable to exit quiescence state\n");
+		ret = -EIO;
+		goto out;
+	}
+	if (ctlr_clk_enable()) {
+		EPRINTK("fail to enable card controller clock!\n");
+		ret = -EIO;
+	}
+out:
+	return ret;
 }
 
 const struct dev_pm_ops sphe_mmc2_pm_ops = {

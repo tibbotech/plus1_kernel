@@ -59,4 +59,14 @@ config MACH_PENTAGRAM_SC7021_BCHIP
 
 endchoice
 
+menu "Pentagram options"
+
+config SP_MON
+	bool "Sunplus MON (SysRq:a)"
+	select MAGIC_SYSRQ
+	help
+	  Enable Sunplus MON shell in SysRq.
+
+endmenu
+
 endif
