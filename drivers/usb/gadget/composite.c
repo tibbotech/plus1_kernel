@@ -2003,7 +2003,7 @@ void composite_disconnect(struct usb_gadget *gadget)
 }
 
 /*-------------------------------------------------------------------------*/
-
+#if 0
 static ssize_t suspended_show(struct device *dev, struct device_attribute *attr,
 			      char *buf)
 {
@@ -2013,7 +2013,7 @@ static ssize_t suspended_show(struct device *dev, struct device_attribute *attr,
 	return sprintf(buf, "%d\n", cdev->suspended);
 }
 static DEVICE_ATTR_RO(suspended);
-
+#endif
 static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
@@ -2098,11 +2098,11 @@ int composite_dev_prepare(struct usb_composite_driver *composite,
 	cdev->req->buf = kmalloc(USB_COMP_EP0_BUFSIZ, GFP_KERNEL);
 	if (!cdev->req->buf)
 		goto fail;
-
+#if 0
 	ret = device_create_file(&gadget->dev, &dev_attr_suspended);
 	if (ret)
 		goto fail_dev;
-
+#endif
 	cdev->req->complete = composite_setup_complete;
 	cdev->req->context = cdev;
 	gadget->ep0->driver_data = cdev;
@@ -2178,7 +2178,7 @@ void composite_dev_cleanup(struct usb_composite_dev *cdev)
 		usb_ep_free_request(cdev->gadget->ep0, cdev->req);
 	}
 	cdev->next_string_id = 0;
-	device_remove_file(&cdev->gadget->dev, &dev_attr_suspended);
+	//device_remove_file(&cdev->gadget->dev, &dev_attr_suspended);
 }
 
 static int composite_bind(struct usb_gadget *gadget,

@@ -6,12 +6,35 @@
 #ifndef __G_ZERO_H
 #define __G_ZERO_H
 
+#include <linux/usb/composite.h>
+
+#define USB_BUFSIZ	1024
+
 #define GZERO_BULK_BUFLEN	4096
 #define GZERO_QLEN		32
 #define GZERO_ISOC_INTERVAL	4
 #define GZERO_ISOC_MAXPACKET	1024
 #define GZERO_SS_BULK_QLEN	1
 #define GZERO_SS_ISO_QLEN	8
+
+extern uint buflen;
+
+#ifdef CONFIG_USB_OTG
+static struct usb_otg_descriptor otg_descriptor = {
+	.bLength = sizeof otg_descriptor,
+	.bDescriptorType = USB_DT_OTG,
+
+	/* REVISIT SRP-only hardware is possible, although
+	 * it would not be called "OTG" ...
+	 */
+	.bmAttributes = USB_OTG_SRP | USB_OTG_HNP,
+};
+
+static const struct usb_descriptor_header *otg_desc[] = {
+	(struct usb_descriptor_header *)&otg_descriptor,
+	NULL,
+};
+#endif
 
 struct usb_zero_options {
 	unsigned pattern;
@@ -65,8 +88,14 @@ void lb_modexit(void);
 int lb_modinit(void);
 
 /* common utilities */
+
+
 void disable_endpoints(struct usb_composite_dev *cdev,
-		struct usb_ep *in, struct usb_ep *out,
-		struct usb_ep *iso_in, struct usb_ep *iso_out);
+		       struct usb_ep *in, struct usb_ep *out);
+
+struct usb_request *alloc_ep_req(struct usb_ep *ep);
+
+/* Frees a usb_request previously allocated by alloc_ep_req() */
+void free_ep_req(struct usb_ep *ep, struct usb_request *req);
 
 #endif /* __G_ZERO_H */

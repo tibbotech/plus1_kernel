@@ -1054,7 +1054,7 @@ static inline int usb_gadget_udc_start(struct usb_udc *udc)
  */
 static inline void usb_gadget_udc_stop(struct usb_udc *udc)
 {
-	udc->gadget->ops->udc_stop(udc->gadget);
+	udc->gadget->ops->udc_stop(udc->driver);
 }
 
 /**
@@ -1221,7 +1221,47 @@ EXPORT_SYMBOL_GPL(usb_get_gadget_udc_name);
  */
 int usb_add_gadget_udc(struct device *parent, struct usb_gadget *gadget)
 {
+#ifdef CONFIG_USB_GADGET_8388
+	struct usb_udc		*udc;
+	int			ret = -ENOMEM;
+
+	udc = kzalloc(sizeof(*udc), GFP_KERNEL);
+	if (!udc)
+		goto err1;
+
+	device_initialize(&udc->dev);
+	udc->dev.release = usb_udc_release;
+	udc->dev.class = udc_class;
+	udc->dev.groups = usb_udc_attr_groups;
+	udc->dev.parent = parent;
+	ret = dev_set_name(&udc->dev, "%s", kobject_name(&parent->kobj));
+	if (ret)
+		goto err2;
+
+	udc->gadget = gadget;
+
+	mutex_lock(&udc_lock);
+	list_add_tail(&udc->list, &udc_list);
+
+	ret = device_add(&udc->dev);
+	if (ret)
+		goto err3;
+
+	mutex_unlock(&udc_lock);
+
+	return 0;
+err3:
+	list_del(&udc->list);
+	mutex_unlock(&udc_lock);
+
+err2:
+	put_device(&udc->dev);
+
+err1:
+	return ret;
+#else
 	return usb_add_gadget_udc_release(parent, gadget, NULL);
+#endif
 }
 EXPORT_SYMBOL_GPL(usb_add_gadget_udc);
 

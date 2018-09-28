@@ -467,6 +467,9 @@ struct usb_bus {
 	struct mon_bus *mon_bus;	/* non-null when associated */
 	int monitored;			/* non-zero when monitored */
 #endif
+#ifdef	CONFIG_USB_BC
+	int iphone_host;
+#endif
 };
 
 struct usb_dev_state;
@@ -542,6 +545,8 @@ struct usb3_lpm_parameters {
 	 */
 	int timeout;
 };
+
+//#define CONFIG_RETRY_TIMES
 
 /**
  * struct usb_device - kernel's representation of a USB device
@@ -688,6 +693,15 @@ struct usb_device {
 	struct usb3_lpm_parameters u1_params;
 	struct usb3_lpm_parameters u2_params;
 	unsigned lpm_disable_count;
+#ifdef	CONFIG_RETRY_TIMES
+	int reset_count;
+	struct timespec t_prev;
+#endif
+	struct urb* current_urb;
+#ifdef CONFIG_USB_AOA
+	struct urb* aoa_read_current_urb;
+	struct task_struct *aoa_read_thread;
+#endif
 };
 #define	to_usb_device(d) container_of(d, struct usb_device, dev)
 
@@ -1559,6 +1573,7 @@ struct urb {
 	usb_complete_t complete;	/* (in) completion routine */
 	struct usb_iso_packet_descriptor iso_frame_desc[0];
 					/* (in) ISO ONLY */
+	u8 uphy_stuck_flag;
 };
 
 /* ----------------------------------------------------------------------- */

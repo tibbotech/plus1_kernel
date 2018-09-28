@@ -78,6 +78,9 @@ struct usb_hub {
 	struct delayed_work	init_work;
 	struct work_struct      events;
 	struct usb_port		**ports;
+#ifdef	CONFIG_USB_LOGO_TEST
+	struct task_struct	*usb_logo_thread;
+#endif
 };
 
 /**

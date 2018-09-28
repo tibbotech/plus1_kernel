@@ -13,6 +13,8 @@
 # both kinds of controller can also support "USB On-the-Go" (CONFIG_USB_OTG).
 #
 
+if USB_GADGET_ENABLED
+
 menuconfig USB_GADGET
 	tristate "USB Gadget Support"
 	select USB_COMMON
@@ -127,6 +129,25 @@ config USB_GADGET_STORAGE_NUM_BUFFERS
 	   If selecting USB_GADGET_DEBUG_FILES this value may be set by
 	   a module parameter as well.
 	   If unsure, say 2.
+
+config GADGET_USB0
+	bool
+	default y if USB_GADGET_PORT0_ENABLED
+
+config USB_GADGET_8388
+	tristate "Sunplus Gemini USB Device Controller"
+	select USB_GADGET_DUALSPEED
+	default n
+
+# Deal with ean function transfer data will be lose a packet after set_interface
+config USB_DEVICE_LOSE_PACKET_AFTER_SET_INTERFACE_WORKAROUN
+	bool "Enable Workaround USB Device Lose Packet After Set Interface"
+	depends on USB
+
+# Deal with ep11 auto switch buffer invaild
+config USB_DEVICE_EP11_NOT_AUTO_SWITCH_WORKAROUN
+	bool "Enable Workaround USB Device EP11 Not Auto Switch Ping Pong Buffer"
+	depends on USB
 
 config U_SERIAL_CONSOLE
 	bool "Serial gadget console support"
@@ -488,3 +509,5 @@ source "drivers/usb/gadget/legacy/Kconfig"
 endchoice
 
 endif # USB_GADGET
+
+endif # USB_GADGET_ENABLED
