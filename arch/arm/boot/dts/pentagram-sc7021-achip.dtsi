@@ -44,6 +44,7 @@
 			device_type = "cpu";
 			reg = <0>;
 		};
+#if 0
 		cpu@1 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
@@ -65,6 +66,7 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7ffe8>;
 		};
+#endif
 	};
 
 	clocks {
@@ -129,6 +131,7 @@
 			      <0x9f102000 0x2000>;
 		};
 
+#if 0
 		timer: timer@CPU {
 			compatible = "arm,armv7-timer";
 			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
@@ -137,8 +140,9 @@
 				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
 			clock-frequency = <27000000>;
 		};
+#endif
 
-#if 0		/* Each Cortex A-7 has its own system timer, it's not required here */
+#if 1		/* Each Cortex A-7 has its own system timer, it's not required if armv7-timer is enabled. */
 		/* This timer will be used in sp_timer_test.c */
 		timer@A_G19 {
 			compatible = "sunplus,sp-stc";
