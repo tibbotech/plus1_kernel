@@ -20,6 +20,16 @@ static void __init sp_power_off(void)
 	early_printk("%s\n", __func__);
 }
 
+static unsigned int b_pllsys_get_rate(void)
+{
+	unsigned int reg = readl((void __iomem *)B_SYSTEM_BASE + 0x268); /* G4.26 */
+	unsigned int reg2 = readl((void __iomem *)B_SYSTEM_BASE + 0x26c); /* G4.27 */
+
+	if ((reg >> 9) & 1) /* bypass? */
+		return 27000000;
+	return (((reg & 0xf) + 1) * 13500000) >> ((reg2 >> 4) & 0xf);
+}
+
 static void __init sp_init(void)
 {
 	unsigned int b_sysclk, io_ctrl;
@@ -34,7 +44,8 @@ static void __init sp_init(void)
 	pm_power_off = sp_power_off;
 
 	io_ctrl = readl((void __iomem *)B_SYSTEM_BASE + 0x105030);
-	b_sysclk = CLK_B_PLLSYS >> ((readl((void __iomem *)B_SYSTEM_BASE + 0x26c) >> 4) & 7); /* G4.27 */
+
+	b_sysclk = b_pllsys_get_rate();
 
 	early_printk("B: b_sysclk=%uM abio_ctrl=(%ubit, %s)\n", b_sysclk / 1000000,
 		(io_ctrl & 2) ? 16 : 8, (io_ctrl & 1) ? "DDR" : "SDR");
