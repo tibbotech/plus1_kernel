@@ -251,6 +251,9 @@ static int _sc7021_setpwm(struct pwm_chip *chip,
 	if ((dd_sel_old != dd_sel_new) && (dd_sel_old != ePWM_DD_MAX))
 		pPWMReg->grp244_1 &= ~(1 << dd_sel_old);
 
+	dev_dbg(chip->dev, "%s:%d pwm:%d, output freq:%d Hz, duty:%d%%\n",
+			__func__, __LINE__, pwm->hwpwm, clk_get_rate(pdata->clk) / (dd_freq * 256), (duty * 100) / 256);
+
 	return 0;
 }
 
