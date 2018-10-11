@@ -360,5 +360,44 @@
 			reg = <0x9c004980 0x80>;
 			clocks = <&extclk>;
 		};
+
+		usb_phy: phy{
+			compatible = "sunplus,sunplus-usb-phy";
+		};
+
+		sp_ehci0: usb@9C102100 {
+			compatible = "sunplus,sunplus-q628-usb-ehci0";
+			reg = <0x9C102100 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_ehci1: usb@9C103100 {
+			compatible = "sunplus,sunplus-q628-usb-ehci1";
+			reg = <0x9C103100 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_ohci0: usb@0x9C102080 {
+			compatible = "sunplus,sunplus-q628-usb-ohci0";
+			reg = <0x9C102080 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_ohci1: usb@0x9C103080 {
+			compatible = "sunplus,sunplus-q628-usb-ohci1";
+			reg = <0x9C103080 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_udc0: usb@0x9c102800 {
+			compatible = "sunplus,sunplus-q628-usb-udc0";
+			reg = <0x9c102800 0x400>;
+			interrupt-parent = <&intc>;
+			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 };
