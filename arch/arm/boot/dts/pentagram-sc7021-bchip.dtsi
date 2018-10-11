@@ -89,6 +89,19 @@
 			clock-frequency = <202500000>;
 			clock-output-names = "B_pllsys";
 		};
+
+		clkc: clkc@G4 {
+			#clock-cells = <1>;
+			compatible = "sunplus,sp-clkc";
+			reg = <0x9c000200 0x80>; /* G4 */
+			clock-output-names =
+				"plla",                                         /* G4.7 */
+				"plle", "plle_2p5", "plle_25", "plle_112p5",    /* G4.12 */
+				"pllf",                                         /* G4.13 */
+				"plltv", "plltv_a",                             /* G4.14 */
+				"pllsys";                                       /* G4.26 */
+		};
+
 	};
 
 	soc@B {
