@@ -2,6 +2,7 @@
 
 #include "skeleton.dtsi"
 
+#include <dt-bindings/clock/sp-q628.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
 #define ENABLE_DMARX0
@@ -277,14 +278,14 @@
 			compatible = "sunplus,sp_emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc 8>;
+			clocks = <&clkc PLL_SYS>;
 		};
 
 		mmc1: mmc@sdcard {
 			compatible = "sunplus,sp_card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc 8>;
+			clocks = <&clkc PLL_SYS>;
 		};
 
 		spinor0: spinor@sp_spinor {

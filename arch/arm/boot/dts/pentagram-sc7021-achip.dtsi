@@ -2,6 +2,7 @@
 
 #include "skeleton.dtsi"
 
+#include <dt-bindings/clock/sp-q628.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 #define ENABLE_DMARX0
@@ -176,7 +177,7 @@
 			compatible = "sunplus,sp_card0";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc 8>;
+			clocks = <&clkc PLL_SYS>;
 		};
 	};
 
@@ -358,7 +359,7 @@
 			#pwm-cells = <2>;
 			compatible = "sunplus,sc7021-pwm";
 			reg = <0x9c007a00 0x80>;
-			clocks = <&clkc 8>;
+			clocks = <&clkc PLL_SYS>;
 		 };
 	};
 };
