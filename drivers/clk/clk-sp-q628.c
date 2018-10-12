@@ -423,12 +423,12 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 	u32 reg = clk_readl(clk->reg);
 	unsigned long ret;
 
-	TRACE;
+	//TRACE;
 	if (reg & BIT(clk->bp_bit))
 		ret = prate; /* bypass */
 	else if (clk->div_width == DIV_A) {
-		//ret = pa[clk->p[0]].rate;
-		reg = clk_readl(clk->reg + 12); // G4.10 K_SDM_A
+		ret = pa[clk->p[0]].rate;
+		//reg = clk_readl(clk->reg + 12); // G4.10 K_SDM_A
 	} else if (clk->div_width == DIV_TV) {
 		u32 m, r, reg2;
 
