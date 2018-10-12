@@ -113,16 +113,12 @@ struct sp8388_udc {
 #ifdef CONFIG_FIQ_GLUE
 	struct fiq_glue_handler handler;
 #endif
-	bool ep0_handle_flag;
-	bool ep8_nak_handle_flag;
-	bool suspend_handle_flag;
 
 	struct work_struct work_ep3;
 	struct workqueue_struct *qwork_ep3;
 	struct work_struct work_ep9;
 	struct workqueue_struct *qwork_ep9;
 	struct work_struct work_configure;
-	struct workqueue_struct *qwork_configure;
 };
 
 extern int Q571_get_platform(void);

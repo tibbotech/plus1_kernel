@@ -139,6 +139,10 @@ config USB_GADGET_8388
 	select USB_GADGET_DUALSPEED
 	default n
 
+# Selected by UDC drivers that support high-speed operation.
+config USB_GADGET_DUALSPEED
+	bool
+
 # Deal with ean function transfer data will be lose a packet after set_interface
 config USB_DEVICE_LOSE_PACKET_AFTER_SET_INTERFACE_WORKAROUN
 	bool "Enable Workaround USB Device Lose Packet After Set Interface"

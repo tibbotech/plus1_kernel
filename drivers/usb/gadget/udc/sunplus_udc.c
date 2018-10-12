@@ -39,11 +39,6 @@ char *g_hw;
 #endif
 
 #include <linux/vmalloc.h>
-/* G0.0 */
-#define MO_STAMP   VA_IOB_ADDR((0*32 + 0)*4)
-/* G2.3 */
-#define USBC_CTL   VA_IOB_ADDR((2*32 + 3)*4)
-
 
 #define EP1_DMA
 
@@ -51,7 +46,7 @@ char *g_hw;
 #ifdef CONFIG_GADGET_USB0
 #define USB0
 #endif
-/*#define INT_TEST*/
+#define INT_TEST
 
 #ifdef CONFIG_USB_ZERO
 #define USBTEST_ZERO
@@ -158,6 +153,10 @@ module_param(is_vera, uint, 0644);
 u32 is_ean = 0;
 /*coverity[declared_but_not_referenced]*/
 module_param(is_ean, uint, 0644);
+EXPORT_SYMBOL_GPL(is_vera);
+EXPORT_SYMBOL_GPL(is_ean);
+EXPORT_SYMBOL_GPL(dma_fail);
+
 
 static u64 sp8388_udc_dma_mask = DMA_BIT_MASK(32);
 static const char gadget_name[] = "sp8388_udc";
@@ -180,6 +179,8 @@ int in_p_num;
 static inline u32 udc_read(u32 reg);
 static inline void udc_write(u32 value, u32 reg);
 static void udc_work(void);
+void detech_start(void);
+
 
 static void reset_global_value(void)
 {
@@ -236,7 +237,9 @@ static ssize_t store_udc_ctrl(struct device *dev,
 	ret = udc_read(UDLCSET) & SIM_MODE;
 	if (*buffer == 's') {	/*s:switch uphy to divice*/
 		DEBUG_NOTICE("user switch \n");
-			usb_switch(TO_DEVICE);
+		usb_switch(TO_DEVICE);
+		msleep(1);
+		detech_start();
 		return count;
 	} else if (*buffer == '1') { /* support SET_DESC COMMND */
 		ret |= SUPP_SETDESC;
@@ -2770,32 +2773,6 @@ static void ep11_handle(struct sp8388_udc *dev)
 	return;
 }
 
-static void sphe8388_udc_configure_work(struct work_struct *work)
-{
-	struct sp8388_udc *udc = the_controller;
-
-	if(udc){
-		if(udc->suspend_handle_flag){
-			udc->driver->suspend(&udc->gadget);
-			udc->driver->disconnect(&udc->gadget);	/*jump to android_disconnect*/
-			udc->suspend_handle_flag = false;
-		}
-		else if(udc->ep0_handle_flag){
-			sp8388_udc_handle_ep0s(udc);
-			udc->ep0_handle_flag = false;
-			enable_irq(irq_num);
-		}
-		else if(udc->ep8_nak_handle_flag){
-			sp8388_reinit_iap(&memory.ep[9],
-					   list_entry((&memory.ep[9])->queue.next,
-					   struct sp8388_request,queue), 0xFF);
-			udc->ep8_nak_handle_flag = false;
-		}
-	}
-
-	return;
-}
-
 static void sphe8388_udc_ep9_work(struct work_struct *work)
 {
 	struct sp8388_udc *udc = the_controller;
@@ -3326,7 +3303,6 @@ static irqreturn_t sp8388_udc_irq(int irq, void *_dev)
 	u32 irq_en1_flags;
 	u32 irq_en2_flags;
 	unsigned long flags;
-	bool has_disable_irq_flag = false;
 	struct sp8388_udc *dev = (struct sp8388_udc *)_dev;
 
 	spin_lock_irqsave(&dev->lock, flags);
@@ -3398,17 +3374,21 @@ static irqreturn_t sp8388_udc_irq(int irq, void *_dev)
 		dev->suspend_sta++;
 		queue_work(dev->qwork_otg, &dev->work_otg);
 #endif
-		if ( /*is_config&& */ dev->driver && dev->driver->disconnect){
-			dev->suspend_handle_flag = true;
-			queue_work(dev->qwork_configure, &dev->work_configure);
+		if (dev->driver){
+			if (dev->driver->suspend){
+				dev->driver->suspend(&dev->gadget);
+			}
+			if (dev->driver->disconnect){
+				dev->driver->disconnect(&dev->gadget);
+			}
 		}
 	}
 
 	if (irq_en2_flags & RESET_IF) {
 		DEBUG_DBG("reset irq\n");
 #ifdef CONFIG_USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
-		udelay(BUS_RESET_FOR_CHIRP_DELAY);
-		udc_write(udc_read(UEP12DMACS) & (~RX_STEP7), UEP12DMACS);	/*control rx signal */
+		//udelay(BUS_RESET_FOR_CHIRP_DELAY);
+		//udc_write(udc_read(UEP12DMACS) & (~RX_STEP7), UEP12DMACS);	/*control rx signal */
 #endif
 		/* two kind of reset :
 		 * - reset start -> pwr reg = 8
@@ -3432,22 +3412,14 @@ static irqreturn_t sp8388_udc_irq(int irq, void *_dev)
 			udc_write(udc_read(UDEP0CS) | CLR_EP0_OUT_VLD, UDEP0CS);
 			/*DEBUG_ERR("why EP0_OVLD|EP0_OUT_EMPTY\n");*/
 		}
-		has_disable_irq_flag = true;
-		disable_irq_nosync(irq_num);
-		dev->ep0_handle_flag = true;
-		queue_work(dev->qwork_configure, &dev->work_configure);
+		sp8388_udc_handle_ep0s(dev);
 	}
 
 	if ((irq_en2_flags & EP0I_IF)) {
 		DEBUG_DBG("IRQ:UDLC_EP0I_IE\n");
 		udc_write(EP0I_IF, UDLIF);
 		if (dev->ep0state != EP0_IDLE){
-			if(!has_disable_irq_flag){
-				has_disable_irq_flag = true;
-				disable_irq_nosync(irq_num);
-			}
-			dev->ep0_handle_flag = true;
-			queue_work(dev->qwork_configure, &dev->work_configure);
+			sp8388_udc_handle_ep0s(dev);
 		}
 		else
 			udc_write(udc_read(UDEP0CS) & (~EP_DIR), UDEP0CS);
@@ -3456,11 +3428,7 @@ static irqreturn_t sp8388_udc_irq(int irq, void *_dev)
 		DEBUG_DBG("IRQ:UDLC_EP0O_IE maybe fix\n");
 		udc_write(EP0O_IF, UDLIF);
 		if (dev->ep0state == EP0_OUT_DATA_PHASE){
-			if(!has_disable_irq_flag){
-				disable_irq_nosync(irq_num);
-			}
-			dev->ep0_handle_flag = true;
-			queue_work(dev->qwork_configure, &dev->work_configure);
+			sp8388_udc_handle_ep0s(dev);
 		}
 	}
 	if (irq_en1_flags & EPB_DMA_IF) {
@@ -3546,9 +3514,10 @@ static irqreturn_t sp8388_udc_irq(int irq, void *_dev)
 		udc_write(EP8N_IF, UDNBIF);
 		if (is_config == 1) {
 			is_config = 2;
-			dev->ep8_nak_handle_flag = true;
 			DEBUG_NOTICE("will create /dev/iap!\n");
-			queue_work(dev->qwork_configure, &dev->work_configure);
+			sp8388_reinit_iap(&memory.ep[9],
+					   list_entry((&memory.ep[9])->queue.next,
+					   struct sp8388_request,queue), 0xFF);
 		}
 	} else if (udc_epnb_irq_flags & EP9N_IF) {
 		DEBUG_DBG("IRQ:ep9 out NAK %x\n", udc_read(UDEP9FS));
@@ -4426,7 +4395,7 @@ static int sp8388_udc_probe(struct platform_device *pdev)
 	}
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	DEBUG_ERR("udc-line:%d %llu %llu\n", __LINE__, rsrc_start, rsrc_len);
+	printk("udc-line:%d,0x%x,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		ret = -ENOMEM;
@@ -4473,14 +4442,6 @@ static int sp8388_udc_probe(struct platform_device *pdev)
 	}
 	INIT_WORK(&udc->work_ep1, sphe8388_udc_ep1_work);
 #endif
-
-	udc->qwork_configure = create_singlethread_workqueue("sp8388-udc-configure");
-	if (!udc->qwork_configure) {
-		DEBUG_ERR("cannot create workqueue sp8388-udc-configure\n");
-		ret = -ENOMEM;
-	}
-	INIT_WORK(&udc->work_configure, sphe8388_udc_configure_work);
-
 	udc->qwork_ep3 = create_singlethread_workqueue("sp8388-udc-ep3");
 	if (!udc->qwork_ep3) {
 		DEBUG_ERR("cannot create workqueue sp8388-udc-ep3\n");
@@ -4542,9 +4503,6 @@ static int sp8388_udc_probe(struct platform_device *pdev)
 	udc_write(EP_ENA | EP_DIR, UDEP89C);
 	udc_write(udc_read(UDNBIE) | EP9N_IF | EP9O_IF, UDNBIE);
 
-	udc->ep0_handle_flag = false;
-	udc->ep8_nak_handle_flag = false;
-	udc->suspend_handle_flag = false;
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
 
 	return 0;
@@ -4732,34 +4690,22 @@ static void udc_work(void)
 	}
 }
 
+#define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
+#define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
+
 void usb_switch(int device)
 {
-	u32 value;
-#ifdef RUNTIME_TRACKING_USB
-	RTTrack_Status_e track_status;
-#endif
+	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 
 	if (device) {
-		value = readl((void *)USBC_CTL);
 		if (accessory_port_id == 0) {
-			value &= ~(7 << 4);
-			value |= (1u << 6) | (0u << 5) | (1u << 4);
+				writel(RF_MASK_V_SET(1 << 4), regs + 0x244);
+				writel(RF_MASK_V_CLR(1 << 5), regs + 0x244);
 		} else {
-			value &= ~(7 << 12);
-			value |= (1u << 14) | (0u << 13) | (1u << 12);
+				writel(RF_MASK_V_SET(1 << 12), regs + 0x244);
+				writel(RF_MASK_V_CLR(1 << 13), regs + 0x244);
 		}
-		writel(value, (void *)USBC_CTL);
-		DEBUG_ERR("host to device !\n");
-#ifdef RUNTIME_TRACKING_USB
-		track_status = RTTrack_SetParam_Int(usb_dTrackIdx,
-					USB_RTTRACK_PLATFORM_MODE,
-					"Platform Mode", PLATFORM_DEVICE_MODE);
-		if(track_status != RTTRACK_SUCCESS){
-			printk(KERN_NOTICE "+%s.%d,error status:%d\n",
-					__FUNCTION__, __LINE__,track_status);
-		}
-#endif
-
+		DEBUG_ERR("host to device\n");
 	} else {
 		udc_write(udc_read(UDLCSET) | SOFT_DISC, UDLCSET);
 		if (is_config) {
@@ -4770,27 +4716,14 @@ void usb_switch(int device)
 						list_entry((&memory.ep[9])->queue.next,
 						struct sp8388_request, queue), -ESHUTDOWN);*/
 		}
-		value = readl((void *)USBC_CTL);
 		if (accessory_port_id == 0) {
-			value |= (3 << 5);
+			writel(RF_MASK_V_SET(1 << 5), regs + 0x244);
 		} else {
-			value |= (3 << 13);
+			writel(RF_MASK_V_SET(1 << 13), regs + 0x244);
 		}
-		udc_write((udc_read(UDLCSET) | 8) & 0xFE, UDLCSET);
-
-		writel(value, (void *)USBC_CTL);
 		bus_reset_finish_flag = false;
 		platform_device_handle_flag = false;
 		DEBUG_ERR("device to host!\n");
-#ifdef RUNTIME_TRACKING_USB
-		track_status = RTTrack_SetParam_Int(usb_dTrackIdx,
-					USB_RTTRACK_PLATFORM_MODE,
-					"Platform Mode", PLATFORM_HOST_MODE);
-		if(track_status != RTTRACK_SUCCESS){
-			printk(KERN_NOTICE "+%s.%d,error status:%d\n",
-					__FUNCTION__, __LINE__,track_status);
-		}
-#endif
 	}
 }
 
@@ -4806,7 +4739,7 @@ EXPORT_SYMBOL(ctrl_rx_squelch);
 
 void detech_start(void)
 {
-	if (first_usb_device_mode_flag) {
+	if (0) {
 		first_usb_device_mode_flag = false;
 		down(&android_enable_sem);
 	}
@@ -4816,8 +4749,8 @@ void detech_start(void)
 	platform_device_handle_flag = true;
 	first_enter_polling_timer_flag = true;
 	reset_global_value();
-	mod_timer(&vbus_polling_timer, jiffies + d_time0);
-	mod_timer(&sof_polling_timer, jiffies + HZ / 10);
+	//mod_timer(&vbus_polling_timer, jiffies + d_time0);
+	//mod_timer(&sof_polling_timer, jiffies + HZ / 10);
 	DEBUG_ERR("detech_start......\n");
 }
 EXPORT_SYMBOL(detech_start);
@@ -4898,11 +4831,13 @@ static int __init udc_init(void)
 
 	/*switch usbX phy to host for CarPlay ,move to ehci/ohci reset thread*/
 	/*usb_switch(1); */
+#if 0
 	if (readl((void *)MO_STAMP) == IC_VERSION_A) {
 		is_vera = 1;
 		dma_fail = 1;
 		DEBUG_ERR("IC VerA\n");
 	}
+#endif
 
 	return 0;
 

@@ -970,8 +970,8 @@ static void usb_gadget_state_work(struct work_struct *work)
 void usb_gadget_set_state(struct usb_gadget *gadget,
 		enum usb_device_state state)
 {
-	gadget->state = state;
-	schedule_work(&gadget->work);
+	//gadget->state = state;
+	//schedule_work(&gadget->work);
 }
 EXPORT_SYMBOL_GPL(usb_gadget_set_state);
 
@@ -1328,17 +1328,19 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 
 	udc->driver = driver;
 	udc->dev.driver = &driver->driver;
+#if 0
 	udc->gadget->dev.driver = &driver->driver;
 
 	ret = driver->bind(udc->gadget, driver);
 	if (ret)
 		goto err1;
+#endif
 	ret = usb_gadget_udc_start(udc);
 	if (ret) {
 		driver->unbind(udc->gadget);
 		goto err1;
 	}
-	usb_udc_connect_control(udc);
+	/*usb_udc_connect_control(udc);*/
 
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
 	return 0;
