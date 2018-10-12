@@ -97,13 +97,6 @@
 			clock-output-names = "A_pll0";
 		};
 
-		B_pllsys: clk@B_pllsys {
-			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <202500000>;
-			clock-output-names = "B_pllsys";
-		};
-
 		clkc: clkc@G4 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
@@ -183,7 +176,7 @@
 			compatible = "sunplus,sp_card0";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&B_pllsys>;
+			clocks = <&clkc 8>;
 		};
 	};
 
@@ -365,7 +358,7 @@
 			#pwm-cells = <2>;
 			compatible = "sunplus,sc7021-pwm";
 			reg = <0x9c007a00 0x80>;
-			clocks = <&B_pllsys>;
+			clocks = <&clkc 8>;
 		 };
 	};
 };

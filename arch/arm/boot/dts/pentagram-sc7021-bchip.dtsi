@@ -83,13 +83,6 @@
 			clock-output-names = "A_pll0";
 		};
 
-		B_pllsys: clk@B_pllsys {
-			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <202500000>;
-			clock-output-names = "B_pllsys";
-		};
-
 		clkc: clkc@G4 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
@@ -284,14 +277,14 @@
 			compatible = "sunplus,sp_emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&B_pllsys>;
+			clocks = <&clkc 8>;
 		};
 
 		mmc1: mmc@sdcard {
 			compatible = "sunplus,sp_card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&B_pllsys>;
+			clocks = <&clkc 8>;
 		};
 
 		spinor0: spinor@sp_spinor {
