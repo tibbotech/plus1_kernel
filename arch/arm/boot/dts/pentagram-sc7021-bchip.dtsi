@@ -406,5 +406,12 @@
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 		};
+
+		sp_udc1: usb@0x9c103800 {
+			compatible = "sunplus,sunplus-q628-usb-udc1";
+			reg = <0x9c103800 0x400>;
+			interrupt-parent = <&intc>;
+			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 };

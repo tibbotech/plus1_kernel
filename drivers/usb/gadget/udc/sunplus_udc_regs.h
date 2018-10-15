@@ -1,5 +1,5 @@
-#ifndef _SP8388_UDC_REGS_H
-#define _SP8388_UDC_REGS_H
+#ifndef _SUNPLUS_UDC_REGS_H
+#define _SUNPLUS_UDC_REGS_H
 /*USB_DEV_REG.pdf*/
 //#define AHB_USBD_BASE 0x40000800
 #undef AHB_USBD_BASE
@@ -369,4 +369,4 @@
 #define RX_STEP6        ((1 << 25) | (1 << 26))
 #define RX_STEP7        ((1 << 24) | (1 << 25) | (1 << 26))
 
-#endif /*_SP8388_UDC_REGS_H*/
+#endif /*_SUNPLUS_UDC_REGS_H*/

@@ -10,7 +10,7 @@ config USB_LOGO_TEST
 
 # workaround hw bug that randomly happen abnormal when host controller send packet
 config USB_HOST_RESET_SP
-	bool "Enable Reset SPHE8388 usb host controllor with wait_event"
+	bool "Enable Reset SUNPLUS usb host controllor with wait_event"
 	depends on USB
 
 config USB_OHCI_MSI_WORKAROUND
@@ -19,11 +19,6 @@ config USB_OHCI_MSI_WORKAROUND
 
 config USB_USE_PLATFORM_RESOURCE
 	bool "GEMINI Use USB Platfrom Resource"
-	depends on USB
-	default n
-
-config SWITCH_USB_ROLE
-	bool "Support Switch usb role"
 	depends on USB
 	default n
 

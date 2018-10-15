@@ -288,8 +288,8 @@ struct usb_ep *usb_ep_autoconfig_ss(
 			goto found_ep;
 #endif
 
-#ifdef CONFIG_USB_GADGET_8388
-	} else if (gadget_is_sp8388(gadget)) {
+#ifdef CONFIG_USB_GADGET_SUNPLUS
+	} else if (gadget_is_sp628(gadget)) {
 		ep = NULL;printk("wei ep config\n");
 		if (USB_ENDPOINT_XFER_BULK == type) {
 			if (desc->bInterval == 0xDC) { // Function: MSDC

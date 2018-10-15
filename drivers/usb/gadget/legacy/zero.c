@@ -214,7 +214,7 @@ static void zero_autoresume(unsigned long _c)
 	 */
 	if (g->speed != USB_SPEED_UNKNOWN) {
 		int status = usb_gadget_wakeup(g);
-		printk("%s --> %d\n", __func__, status);
+		printk(KERN_NOTICE "%s --> %d\n", __func__, status);
 	}
 }
 
@@ -225,14 +225,14 @@ static void zero_suspend(struct usb_composite_dev *cdev)
 
 	if (autoresume) {
 		mod_timer(&autoresume_timer, jiffies + (HZ * autoresume));
-		printk("suspend, wakeup in %d seconds\n", autoresume);
+		printk(KERN_NOTICE "suspend, wakeup in %d seconds\n", autoresume);
 	} else
-		printk("%s\n", __func__);
+		printk(KERN_NOTICE "%s\n", __func__);
 }
 
 static void zero_resume(struct usb_composite_dev *cdev)
 {
-	printk("%s\n", __func__);
+	printk(KERN_NOTICE "%s\n", __func__);
 	del_timer(&autoresume_timer);
 }
 
@@ -289,12 +289,12 @@ static int __init zero_bind(struct usb_composite_dev *cdev)
 		 * things like configuration and altsetting numbering
 		 * can need hardware-specific attention though.
 		 */
-		printk("%s: controller '%s' not recognized\n",
+		printk(KERN_NOTICE "%s: controller '%s' not recognized\n",
 			   longname, gadget->name);
 		device_desc.bcdDevice = cpu_to_le16(0x9999);
 	}
 
-	printk("%s, version: " DRIVER_VERSION "\n", longname);
+	printk(KERN_NOTICE "%s, version: " DRIVER_VERSION "\n", longname);
 
 	snprintf(manufacturer, sizeof manufacturer, "%s %s with %s",
 		 init_utsname()->sysname, init_utsname()->release,

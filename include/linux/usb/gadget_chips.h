@@ -51,10 +51,10 @@
 #define gadget_is_s3c_hsotg(g)		(!strcmp("s3c-hsotg", (g)->name))
 #define gadget_is_s3c_hsudc(g)		(!strcmp("s3c-hsudc", (g)->name))
 
-#ifdef CONFIG_USB_GADGET_8388
-#define gadget_is_sp8388(g)     !strcmp("sp8388_udc", (g)->name)
+#ifdef CONFIG_USB_GADGET_SUNPLUS
+#define gadget_is_sp628(g)     !strcmp("sp_udc", (g)->name)
 #else
-#define gadget_is_sp8388(g)     0
+#define gadget_is_sp628(g)     0
 #endif
 #ifdef CONFIG_USB_GADGET_3502
 #define gadget_is_sp3502(g)	!strcmp("sp3502_udc", (g)->name)
@@ -130,7 +130,7 @@ static inline int usb_gadget_controller_number(struct usb_gadget *gadget)
 		return 0x32;
 	else if (gadget_is_sp3502(gadget))		
 		return 0x33;
-	else if (gadget_is_sp8388(gadget))
+	else if (gadget_is_sp628(gadget))
                 return 0x34;
 
 	return -ENOENT;

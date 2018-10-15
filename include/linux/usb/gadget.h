@@ -498,9 +498,9 @@ static inline int gadget_is_dualspeed(struct usb_gadget *g)
 	/* runtime test would check "g->max_speed" ... that might be
 	 * useful to work around hardware bugs, but is mostly pointless
 	 */
-	return 1;
+	return true;
 #else
-	return 0;
+	return false;
 #endif
 }
 

@@ -56,12 +56,12 @@ struct usb_otg_caps {
 	bool adp_support;
 };
 
-#ifdef CONFIG_USB_SPHE8388_OTG
-extern int usb_set_transceiver_8388(struct usb_phy *, int);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+extern int usb_set_transceiver_sunplus(struct usb_phy *, int);
 #endif
 
-#ifdef CONFIG_USB_SPHE8388_OTG
-extern struct usb_phy *usb_get_transceiver_8388(int bus_num);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+extern struct usb_phy *usb_get_transceiver_sunplus(int bus_num);
 #endif
 
 extern const char *usb_otg_state_string(enum usb_otg_state state);

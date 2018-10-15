@@ -91,7 +91,7 @@ void uphy_init(void)
 		group_base = (u32 *)VA_IOB_ADDR(MONG2_REG_BASE * REG_BASE_PARAM);
 		group_base[USB_UPHY_OTG_REG] |= PORT0_SWITCH_HOST;
 
-#ifdef CONFIG_USB_SPHE8388_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 		group_base = (u32 *)VA_IOB_ADDR(MONG2_REG_BASE * REG_BASE_PARAM);
 		group_base[USB_UPHY_OTG_REG] &= ~(OTG0_SELECTED_BY_HW);
 		mdelay(UPHY_HANDLE_DELAY_TIME);
@@ -152,7 +152,7 @@ void uphy_init(void)
 		group_base = (u32 *)VA_IOB_ADDR(MONG2_REG_BASE * REG_BASE_PARAM);
 		group_base[USB_UPHY_OTG_REG] |= PORT1_SWITCH_HOST;
 
-#ifdef CONFIG_USB_SPHE8388_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 		group_base = (u32 *)VA_IOB_ADDR(MONG2_REG_BASE * REG_BASE_PARAM);
 		group_base[USB_UPHY_OTG_REG] &= ~(OTG1_SELECTED_BY_HW);
 		mdelay(UPHY_HANDLE_DELAY_TIME);

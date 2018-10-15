@@ -214,7 +214,7 @@ sourcesink_bind(struct usb_configuration *c, struct usb_function *f)
 	ss->in_ep = usb_ep_autoconfig(cdev->gadget, &fs_source_desc);
 	if (!ss->in_ep) {
 autoconf_fail:
-		printk("%s: can't autoconfigure on %s\n",
+		printk(KERN_NOTICE "%s: can't autoconfigure on %s\n",
 		      f->name, cdev->gadget->name);
 		return -ENODEV;
 	}
@@ -248,7 +248,7 @@ autoconf_fail:
 		f->ss_descriptors = ss_source_sink_descs;
 	}
 
-	printk("%s speed %s: IN/%s, OUT/%s\n",
+	printk(KERN_NOTICE "%s speed %s: IN/%s, OUT/%s\n",
 	    (gadget_is_superspeed(c->cdev->gadget) ? "super" :
 	     (gadget_is_dualspeed(c->cdev->gadget) ? "dual" : "full")),
 	    f->name, ss->in_ep->name, ss->out_ep->name);
@@ -290,7 +290,7 @@ static int check_read_data(struct f_sourcesink *ss, struct usb_request *req)
 				continue;
 			break;
 		}
-		printk("bad OUT byte, buf[%d] = %d\n", i, *buf);
+		printk(KERN_NOTICE "bad OUT byte, buf[%d] = %d\n", i, *buf);
 		usb_ep_set_halt(ss->out_ep);
 		check_pattern++;
 		return -EINVAL;
@@ -334,7 +334,7 @@ static void source_sink_complete(struct usb_ep *ep, struct usb_request *req)
 	case -ECONNABORTED:	/* hardware forced ep reset */
 	case -ECONNRESET:	/* request dequeued */
 	case -ESHUTDOWN:	/* disconnect from host */
-		printk("%s gone (%d), %d/%d\n", ep->name, status,
+		printk(KERN_NOTICE "%s gone (%d), %d/%d\n", ep->name, status,
 		     req->actual, req->length);
 		if (ep == ss->out_ep)
 			check_read_data(ss, req);
@@ -347,16 +347,16 @@ static void source_sink_complete(struct usb_ep *ep, struct usb_request *req)
 				 */
 	default:
 #if 1
-		printk("%s complete --> %d, %d/%d\n", ep->name,
+		printk(KERN_NOTICE "%s complete --> %d, %d/%d\n", ep->name,
 		    status, req->actual, req->length);
 #endif
 	case -EREMOTEIO:	/* short read */
 		break;
 	}
-	printk("****source_sink_complete &&&&&\n");
+	printk(KERN_NOTICE "****source_sink_complete &&&&&\n");
 	status = usb_ep_queue(ep, req, GFP_ATOMIC);
 	if (status) {
-		printk("kill %s:  resubmit %d bytes --> %d\n",
+		printk(KERN_NOTICE "kill %s:  resubmit %d bytes --> %d\n",
 		      ep->name, req->length, status);
 		usb_ep_set_halt(ep);
 		/* FIXME recover later ... somehow */
@@ -380,13 +380,13 @@ static int source_sink_start_ep(struct f_sourcesink *ss, bool is_in)
 	else
 		memset(req->buf, 0x55, req->length);
 #if 1
-	printk("is_in = %d ep addr %x\n", is_in, ep->address);
+	printk(KERN_NOTICE "is_in = %d ep addr %x\n", is_in, ep->address);
 	status = usb_ep_queue(ep, req, GFP_ATOMIC);
 	if (status) {
 		struct usb_composite_dev *cdev;
 
 		cdev = ss->function.config->cdev;
-		printk("start %s %s --> %d\n",
+		printk(KERN_NOTICE "start %s %s --> %d\n",
 		      is_in ? "IN" : "OUT", ep->name, status);
 		free_ep_req(ep, req);
 	}
@@ -403,7 +403,7 @@ static void disable_source_sink(struct f_sourcesink *ss)
 
 	cdev = ss->function.config->cdev;
 	disable_endpoints(cdev, ss->in_ep, ss->out_ep);
-	printk("%s disabled\n", ss->function.name);
+	printk(KERN_NOTICE "%s disabled\n", ss->function.name);
 }
 
 static int
@@ -448,7 +448,7 @@ fail:
 		goto fail;
 	}
 
-	printk("%s enabled\n", ss->function.name);
+	printk(KERN_NOTICE "%s enabled\n", ss->function.name);
 	return result;
 }
 
@@ -543,14 +543,14 @@ static int sourcesink_setup(struct usb_configuration *c,
 
 	default:
 unknown:
-		printk("unknown control req%02x.%02x v%04x i%04x l%d\n",
+		printk(KERN_NOTICE "unknown control req%02x.%02x v%04x i%04x l%d\n",
 		     ctrl->bRequestType, ctrl->bRequest,
 		     w_value, w_index, w_length);
 	}
 
 	/* respond with data transfer or status phase? */
 	if (value >= 0) {
-		printk("source/sink req%02x.%02x v%04x i%04x l%d\n",
+		printk(KERN_NOTICE "source/sink req%02x.%02x v%04x i%04x l%d\n",
 		     ctrl->bRequestType, ctrl->bRequest,
 		     w_value, w_index, w_length);
 		req->zero = 0;
