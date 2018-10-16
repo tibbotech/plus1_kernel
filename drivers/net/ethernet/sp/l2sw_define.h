@@ -138,7 +138,6 @@
 
 /*define rx descriptor bit*/
 #define ERR_CODE	 	(0xf<<26)	
-#define RX_FAE_BIT		(0x3<<26)	
 #define RX_TU_BIT		(0x1<<23)	
 
 

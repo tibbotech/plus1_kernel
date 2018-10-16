@@ -406,5 +406,12 @@
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 		};
+		
+		l2sw: l2sw@0x9c108000 {
+			compatible = "sunplus,sp-l2sw";
+			reg = <0x9c108000 0x400>;
+			interrupt-parent = <&intc>;
+			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 };

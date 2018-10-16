@@ -8,8 +8,7 @@
 #define MAC_ADDR_BYTES   6		//MAC address is 6 bytes
 #define MAC_MAX_MTU		2048		//2k memeory space for data
 #define MAX_PKG_SIZE     1500
-#define PHY0_ADDR		0x0
-#define PHY1_ADDR		0x0
+
 
 //Descritpor parameters
 #define RX_DESC_QUEUE_NUM 2

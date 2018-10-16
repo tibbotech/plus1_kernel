@@ -3,11 +3,11 @@
 
 //static struct gmac_reg* gmac_reg_base = (struct gmac_reg*)GMAC_REG_BASE;
 static struct l2sw_reg* ls2w_reg_base = NULL;
-static struct G1* g1_base = NULL;
+
 
 int l2sw_reg_base_set(void __iomem *baseaddr)
 {
-	printk("@@@@@@@@@l2sw l2sw_reg_base_set =[%x]\n", baseaddr);
+	printk("@@@@@@@@@l2sw l2sw_reg_base_set =[%x]\n", (int)baseaddr);
     ls2w_reg_base = (struct l2sw_reg*)baseaddr;
 	if (ls2w_reg_base == NULL){
 		return -1;
@@ -20,6 +20,7 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 #if 0
 int mac_g1_base_set(void __iomem *baseaddr)
 {
+	static struct G1* g1_base = NULL;
     g1_base = (struct G1*)baseaddr;
 	if (g1_base == NULL){
 		return -1;
@@ -30,7 +31,7 @@ int mac_g1_base_set(void __iomem *baseaddr)
 }
 #endif
 
-inline void mac_hw_stop(struct l2sw_mac *mac)
+void mac_hw_stop(struct l2sw_mac *mac)
 {
     u32 reg;
     
@@ -47,9 +48,9 @@ inline void mac_hw_stop(struct l2sw_mac *mac)
 
 void mac_hw_reset(struct l2sw_mac *mac)
 {
-	u32 reg;
 	
 	#if 0
+	u32 reg;
     wmb();
     
 	reg = ls2w_reg_base->mac_glb_sys_cfgcmd;
@@ -61,7 +62,7 @@ void mac_hw_reset(struct l2sw_mac *mac)
 	#endif
 }
 
-inline void mac_hw_start(struct l2sw_mac *mac)
+void mac_hw_start(struct l2sw_mac *mac)
 {
 	u32 reg;
 	
@@ -100,10 +101,13 @@ inline void mac_hw_start(struct l2sw_mac *mac)
 	HWREG_W(port_cntl0,reg&(~(0x1<<24)));
 	
 
-	reg=HWREG_R(cpu_cntl);
-	HWREG_W(cpu_cntl,reg|0x2a);
+	//reg=HWREG_R(cpu_cntl);
+	//HWREG_W(cpu_cntl,reg|0x2a);
 
-	tx_mib_counter_print();
+	reg=HWREG_R(cpu_cntl);
+	HWREG_W(cpu_cntl,reg&(~(0x3F<<0)));
+
+	//tx_mib_counter_print();
 
 
 	ls2w_reg_base->sw_int_mask_0 = 0x00000000;
@@ -111,8 +115,11 @@ inline void mac_hw_start(struct l2sw_mac *mac)
 
 void mac_hw_addr_set(struct l2sw_mac *mac)
 {
-	u32 reg;
+
 #if 0
+
+	u32 reg;
+
 	reg = ((u32)(mac->mac_addr[3]) << 24) | ((u32)(mac->mac_addr[2]) << 16)
 	      | ((u32)(mac->mac_addr[1]) << 8) | ((u32)(mac->mac_addr[0]));
 	ls2w_reg_base->mac_glb_macaddr0 = reg;
@@ -447,20 +454,14 @@ void l2sw_enable_port()
 
 }
 
-void l2sw_hw_frist_init()
-{
-    u32 reg;
-
-    reg = reg_control(REG_READ, MAC_GLB_PHY_ADDR, 0);
-	reg = (reg&(~(0x1f<<16)))|(PHY0_ADDR<<16);
-    reg_control(REG_WRITE, MAC_GLB_PHY_ADDR, reg);
-}
 
 
 
 int phy_cfg()
 {
     unsigned int reg;
+	
+	#if 0 // for zy702 fpga ephy init
 	mdio_write(0x0,0x1f,0x013d);
     mdio_write(0x0,0x10,0x3ffe);
     mdio_write(0x0,0x1f,0x063d);
@@ -482,11 +483,13 @@ int phy_cfg()
 	
     mdio_write(0x0,0x1f,0x003d);
     mdio_write(0x0,0x13,0x3102);
-
+	#endif
+	
 	//phy address
 	reg=HWREG_R(mac_force_mode);
 	HWREG_W(mac_force_mode,(reg&(~(0x1f<<16)))|(PHY0_ADDR<<16));
 	reg=HWREG_R(mac_force_mode);
 	HWREG_W(mac_force_mode,(reg&(~(0x1f<<24)))|(PHY1_ADDR<<24));
 
+	return 0;
 }

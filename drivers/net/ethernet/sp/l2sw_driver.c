@@ -74,8 +74,8 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 	
 		rx_pos = mac->rx_pos[queue];
         rx_count =  mac->rx_desc_num[queue];
-		DEBUG0("@@@@@@@@@ethernet_interrupt rx_pos 	 = [%d]\n",rx_pos);
-		DEBUG0("@@@@@@@@@ethernet_interrupt rx_count = [%d]\n",rx_count);
+		//DEBUG0("@@@@@@@@@ethernet_interrupt rx_pos 	 = [%d]\n",rx_pos);
+		//DEBUG0("@@@@@@@@@ethernet_interrupt rx_count = [%d]\n",rx_count);
 		
 		for (num = 0; num < rx_count; num++) {
 			sinfo = mac->rx_skb_info[queue] + rx_pos;
@@ -138,6 +138,9 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 				mac->dev_stats.rx_dropped++;
 				goto NEXT;
 			}
+
+			mac->dev_stats.rx_packets++;
+			mac->dev_stats.rx_bytes += pkg_len;
 
 			dma_unmap_single(&mac->pdev->dev, sinfo->mapping, mac->rx_desc_buff_size, DMA_FROM_DEVICE);
 
@@ -211,10 +214,10 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 	
     
 	tx_done_pos = mac->tx_done_pos;
-	DEBUG0("@@@@@@@@@tx_interrupt tx_done_pos = [%d]\n",tx_done_pos);
+	//DEBUG0("@@@@@@@@@tx_interrupt tx_done_pos = [%d]\n",tx_done_pos);
     while (tx_done_pos != mac->tx_pos || (mac->tx_desc_full == 1)) {
 		cmd = mac->tx_desc[tx_done_pos ].cmd1;
-		DEBUG0("@@@@@@@@@tx_interrupt1 tx_done_pos = [%d]\n",tx_done_pos);
+		//DEBUG0("@@@@@@@@@tx_interrupt1 tx_done_pos = [%d]\n",tx_done_pos);
 		skbinfo = &mac->tx_temp_skb_info[tx_done_pos];
     	if (skbinfo->skb == NULL) {
 			ERROR0("[%s][%d] skb is null\n", __FUNCTION__, __LINE__);
@@ -290,7 +293,7 @@ void tx_mib_counter(void)
     tx_mib_counter_print();
 }
 
-static irqreturn_t ethernet_interrupt(u32 irq, void *dev_id)
+static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 {
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
@@ -313,7 +316,7 @@ static irqreturn_t ethernet_interrupt(u32 irq, void *dev_id)
         */
     reg_control(REG_WRITE, MAC_GLB_INT_MASK, 0xffffffff); /* mask interrupt */
     status =  reg_control(REG_READ, MAC_GLB_INT_STATUS, 0);
-	DEBUG0("@@@@@@@@@ethernet_interrupt status = [%x]\n",status);
+	//DEBUG0("@@@@@@@@@ethernet_interrupt status = [%x]\n",status);
     rmb();
     if (status == 0){
         reg_control(REG_WRITE, MAC_GLB_INT_MASK, 0x00000000);
@@ -326,7 +329,7 @@ static irqreturn_t ethernet_interrupt(u32 irq, void *dev_id)
 
 #ifndef RX_POLLING
 	if (status & MAC_INT_RX) {
-        
+       // DEBUG0("@@@@@@@@@ethernet_interrupt RX!!!!!!!!!!!!!!!!!!!!! = [%x]\n",status);
 		if ( MAC_INT_RX0_LAN_FULL & status ) {
             ERROR0("[%s][%d] MAC_INT_RX0_LAN_FULL status = [%x]\n", __FUNCTION__, __LINE__,status);
 		}
@@ -352,7 +355,7 @@ static irqreturn_t ethernet_interrupt(u32 irq, void *dev_id)
 #endif /* RX_POLLING */
 
 	if (status & MAC_INT_TX) {
-		ERROR0("[%s][%d] MAC_INT_RX_DES_ER status = [%x]\n", __FUNCTION__, __LINE__, status);
+		ERROR0("[%s][%d] MAC_INT_TX status = [%x]\n", __FUNCTION__, __LINE__, status);
         if (MAC_INT_TX_DES_ER & status) {
             ERROR0("[%s][%d] Send Descriptor Error\n", __FUNCTION__, __LINE__);
             mac_soft_reset(mac);
@@ -684,14 +687,14 @@ static u32 netdev_init(struct platform_device *pdev)
 	struct resource *res;
 	struct resource *r_mem = NULL;
 
-	DEBUG0("@@@@@@@@@l2sw netdev_init \n");
+	DEBUG0("l2sw netdev_init \n");
 	/* allocate the devices, and also allocate l2sw_mac, we can get it by  netdev_priv() */
 	if ((net_dev = alloc_etherdev(sizeof(struct l2sw_mac))) == NULL) {
 		return -ENOMEM;
 	}
 
 	platform_set_drvdata(pdev, net_dev);
-	printk("@@@@@@@@@l2sw l2sw ndev->name =[%s]\n", net_dev->name);
+	printk("l2sw l2sw ndev->name =[%s]\n", net_dev->name);
 	mac = netdev_priv(net_dev);
 	mac->net_dev = net_dev;
     mac->pdev = pdev;
@@ -703,7 +706,7 @@ static u32 netdev_init(struct platform_device *pdev)
         */
 
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
-		printk("@@@@@@@@@l2sw l2sw r_mem->start =[%x]\n", r_mem->start);
+		printk("l2sw l2sw r_mem->start =[%x]\n", r_mem->start);
 		if (l2sw_reg_base_set(ioremap(r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ERROR0("[%s][%d] remap fail!\n", __FUNCTION__, __LINE__);
 			goto out_freedev;
@@ -716,8 +719,8 @@ static u32 netdev_init(struct platform_device *pdev)
 	
 
 	if ((res = platform_get_resource(pdev, IORESOURCE_IRQ, 0)) != NULL) {
-		printk("@@@@@@@@@l2sw res->start =[%x]\n", res->start);
-		printk("@@@@@@@@@l2sw res->name =[%s]\n", res->name);
+		printk("l2sw res->start =[%x]\n", res->start);
+		printk("l2sw res->name =[%s]\n", res->name);
 		net_dev->irq = res->start;
 
 	} else {
@@ -725,7 +728,7 @@ static u32 netdev_init(struct platform_device *pdev)
 		goto out_freedev;
 	}
 	l2sw_enable_port();
-	//l2sw_hw_frist_init();
+
 	phy_cfg();
 
 
@@ -769,7 +772,7 @@ static u32 netdev_init(struct platform_device *pdev)
 #endif
 	
 
-	DEBUG0("@@@@@@@@@l2sw netdev_init end\n");
+	DEBUG0("l2sw netdev_init su\n");
 	return 0;
 
 out_freemdio:
@@ -786,15 +789,31 @@ out_freedev:
 
 static int l2sw_probe(struct platform_device *pdev)
 {	
-	DEBUG0("@@@@@@@@@l2sw_probe \n");
+	DEBUG0("l2sw_probe \n");
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
+
+#if 0
+	struct moon2_regs * MOON2_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(2, 0), 64);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[0]= %x\n", MOON2_REG->sft_cfg[0]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[1]= %x\n", MOON2_REG->sft_cfg[1]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[2]= %x\n", MOON2_REG->sft_cfg[2]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[3]= %x\n", MOON2_REG->sft_cfg[3]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[4]= %x\n", MOON2_REG->sft_cfg[4]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[5]= %x\n", MOON2_REG->sft_cfg[5]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[6]= %x\n", MOON2_REG->sft_cfg[6]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[7]= %x\n", MOON2_REG->sft_cfg[7]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[8]= %x\n", MOON2_REG->sft_cfg[8]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[9]= %x\n", MOON2_REG->sft_cfg[9]);
+	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[10]= %x\n", MOON2_REG->sft_cfg[10]);
+
+#endif
 	
 	return netdev_init(pdev);
 }
 
-static u32 l2sw_remove(struct platform_device *pdev)
+static int l2sw_remove(struct platform_device *pdev)
 {
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
@@ -872,7 +891,7 @@ static struct platform_driver l2sw_driver = {
 static int __init l2sw_init(void)
 {
     u32 status;
-	DEBUG0("@@@@@@@@@l2sw init \n");
+	DEBUG0("l2sw init \n");
     status = platform_driver_register(&l2sw_driver);
 
     return status;

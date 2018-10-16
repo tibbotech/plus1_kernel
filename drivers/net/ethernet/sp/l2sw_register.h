@@ -1,7 +1,7 @@
 #ifndef __L2SW_REGISTER_H__
 #define __L2SW_REGISTER_H__
 
-#define REGISTER_BASE   0x43C00000
+#define REGISTER_BASE   0x9c108000
 
 typedef unsigned char       BYTE    ;
 typedef unsigned short      WORD    ;
@@ -100,6 +100,12 @@ UINT32 cpu_port_cntl_reg_1;
 
 };
 
+#define REG_BASE           0x9c000000
+#define RF_GRP(_grp, _reg) ((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
+
+struct moon2_regs {
+	unsigned int sft_cfg[32];
+};
 
 
 

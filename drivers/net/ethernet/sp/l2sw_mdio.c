@@ -101,7 +101,7 @@ static void mii_linkchange(struct net_device *netdev)
 
 int mac_phy_probe(struct net_device *netdev)
 {
-    u32 phyaddr, reg;
+
     struct l2sw_mac *mac = netdev_priv(netdev);
     struct phy_device *phydev = NULL;
 
