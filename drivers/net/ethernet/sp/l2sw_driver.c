@@ -436,8 +436,8 @@ static int ethernet_open(struct net_device *net_dev)
 	mac_hw_stop(mac);
 
 	/*register interrupt function to system*/
-	DEBUG0("@@@@@@@@@request_irq net_dev->irq= [%d] \n", net_dev->irq);
-	DEBUG0("@@@@@@@@@request_irq net_dev->name= [%s] \n", net_dev->name);
+	//DEBUG0("@@@@@@@@@request_irq net_dev->irq= [%d] \n", net_dev->irq);
+	//DEBUG0("@@@@@@@@@request_irq net_dev->name= [%s] \n", net_dev->name);
 	rc = request_irq(net_dev->irq, ethernet_interrupt, IRQF_TRIGGER_HIGH, net_dev->name, net_dev);
 	if (rc != 0) {
         ERROR0("[%s][%d] ethernet driver request irq %d fialed...rc [%d]\n", __FUNCTION__, __LINE__, net_dev->irq, rc);
@@ -719,8 +719,8 @@ static u32 netdev_init(struct platform_device *pdev)
 	
 
 	if ((res = platform_get_resource(pdev, IORESOURCE_IRQ, 0)) != NULL) {
-		printk("l2sw res->start =[%x]\n", res->start);
-		printk("l2sw res->name =[%s]\n", res->name);
+		//printk("l2sw res->start =[%x]\n", res->start);
+		//printk("l2sw res->name =[%s]\n", res->name);
 		net_dev->irq = res->start;
 
 	} else {

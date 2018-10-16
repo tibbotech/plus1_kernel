@@ -212,6 +212,9 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 	 * If set them in iboot:
 	 *     MOON4_REG->misc_ctl_0 = RF_MASK_V((0x1 << 2), (1 << 2));
 	 *     MOON4_REG->misc_ctl_0 = RF_MASK_V((0x1 << 4), (1 << 4));
+	 * Or enable them in U-Boot's arch_misc_init() in arch/arm/mach-pentagram/cpu.c:
+	 *     ptr = (volatile unsigned int *)(PENTAGRAM_BASE_ADDR + (4 << 7) + (29 << 2));
+	 *     *ptr = (0x0014 << 16) | (0x0014);
 	 */
 	writel(WATCHDOG_CMD_CNT_WR_UNLOCK, &(stc_ptr->timerw_ctrl));
 	writel(WATCHDOG_CMD_PAUSE, &(stc_ptr->timerw_ctrl));

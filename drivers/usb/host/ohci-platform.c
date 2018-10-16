@@ -206,7 +206,7 @@ NEXT_LOOP:
 
 #elif defined(CONFIG_USB_HOST_RESET_SP)
 
-#ifdef CONFIG_USB_GADGET_8388
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 extern void usb_switch(int device);
 #ifdef CONFIG_USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
 extern void ctrl_rx_squelch(void);
@@ -269,7 +269,7 @@ NEXT_LOOP:
 			disable_irq(hcd->irq);
 			usb_remove_hcd(hcd);
 
-#ifndef CONFIG_USB_SPHE8388_OTG
+#ifndef CONFIG_USB_SUNPLUS_OTG
 			if (flag & RESET_UPHY_SIGN) {
 				grop_base =
 				    (u32 *) VA_IOB_ADDR((149 + pdev->id - 1) *
@@ -284,7 +284,7 @@ NEXT_LOOP:
 				    hcd->uphy_disconnect_level[pdev->id - 1];
 				/*tell ehci reset controllor */
 				sp_ohci->flag = RESET_SENDER;
-#ifdef CONFIG_USB_GADGET_8388
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 				printk(KERN_NOTICE
 				       "port_num:%d,device_mode_flag:%d\n",
 				       pdev->id - 1,

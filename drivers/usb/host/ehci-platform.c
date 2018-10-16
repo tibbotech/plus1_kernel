@@ -110,7 +110,7 @@ static const struct hc_driver ehci_platform_hc_driver = {
 #ifdef	CONFIG_USB_HOST_RESET_SP
 extern void reset_usb_powerx(struct usb_hcd *hcd, int delayms);
 
-#ifdef CONFIG_USB_GADGET_8388
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 extern void usb_switch(int device);
 #ifdef FIX_MULTIPLE_RESET_PROBLEM
 extern void ctrl_rx_squelch(void);
@@ -213,7 +213,7 @@ NEXT_LOOP:
 				    hcd->uphy_disconnect_level[pdev->id - 1];
 				/*tell ohci reset controllor */
 				sp_ehci->flag = RESET_SENDER;
-#ifdef CONFIG_USB_GADGET_8388
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 				printk(KERN_NOTICE
 				       "port_num:%d,device_mode_flag:%d\n",
 				       pdev->id - 1,
@@ -510,7 +510,7 @@ int ehci_platform_probe(struct platform_device *dev)
 	struct resource *res_mem;
 	int irq;
 	int err = -ENOMEM;
-#ifdef CONFIG_USB_SPHE8388_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 	struct usb_phy *otg_phy;
 #endif
 
@@ -570,9 +570,9 @@ int ehci_platform_probe(struct platform_device *dev)
 	ehci_sp = (struct ehci_hcd_sp *)hcd_to_ehci(hcd);
 #endif
 
-#ifdef CONFIG_USB_SPHE8388_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 	if (dev->id < 3) {
-		otg_phy = usb_get_transceiver_8388(dev->id - 1);
+		otg_phy = usb_get_transceiver_sunplus(dev->id - 1);
 		err = otg_set_host(otg_phy->otg, &hcd->self);
 		if (err < 0) {
 			dev_err(&pdev->dev,

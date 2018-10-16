@@ -1,15 +1,15 @@
-#ifndef _SP8388_UDC_H
-#define _SP8388_UDC_H
+#ifndef _SUNPLUS_UDC_H
+#define _SUNPLUS_UDC_H
 
 #include <linux/wakelock.h>
 
-#define SP8388_MAXENDPOINTS      13
+#define SP_MAXENDPOINTS      13
 #define EP0_FIFO_SIZE		 64	/*control Endpoint */
 #define EP12_FIFO_SIZE64	 64	/*full speed */
 #define EP_FIFO_SIZE		 64
-#define CONFIG_USB_SPHE8388_EP11
-//#define CONFIG_USB_SPHE8388_EP1
-#define CONFIG_USB_SPHE8388_EP2
+#define CONFIG_USB_SUNPLUS_EP11
+#define CONFIG_USB_SUNPLUS_EP1
+#define CONFIG_USB_SUNPLUS_EP2
 #undef CONFIG_FIQ_GLUE
 
 static const char ep0name[] = "ep0";
@@ -30,11 +30,11 @@ static const char *ep0states[] = {
 	"EP0_STALL",
 };
 
-struct sp8388_ep {
+struct sp_ep {
 	struct list_head queue;
 	unsigned long last_io;	/* jiffies timestamp */
 	struct usb_gadget *gadget;
-	struct sp8388_udc *dev;
+	struct sp_udc *dev;
 	const struct usb_endpoint_descriptor *desc;
 	struct usb_ep ep;
 	u8 num;
@@ -49,20 +49,20 @@ struct sp8388_ep {
 	spinlock_t lock;
 };
 
-struct sp8388_request {
+struct sp_request {
 	struct list_head queue;	/* ep's requests */
 	struct usb_request req;
 	u8 *cmd_trb;
 };
 
-struct sp8388_udc {
+struct sp_udc {
 	spinlock_t lock;
 
-	struct sp8388_ep ep[SP8388_MAXENDPOINTS];
+	struct sp_ep ep[SP_MAXENDPOINTS];
 	int address;
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
-	struct sp8388_request fifo_req;
+	struct sp_request fifo_req;
 
 	u8 fifo_buf[EP_FIFO_SIZE];
 	u16 devstatus;
@@ -70,7 +70,7 @@ struct sp8388_udc {
 	u32 port_status;
 	int ep0state;
 
-#ifdef CONFIG_USB_SPHE8388_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 
 #define		ID_PIN					(1 << 16)
 #define		OTG_INT_ST_REG			(3)
@@ -81,15 +81,15 @@ struct sp8388_udc {
 	struct work_struct work_otg;
 	struct workqueue_struct *qwork_otg;
 #endif
-#ifdef CONFIG_USB_SPHE8388_EP1
+#ifdef CONFIG_USB_SUNPLUS_EP1
 	struct work_struct work_ep1;
 	struct workqueue_struct *qwork_ep1;
 #endif
-#ifdef CONFIG_USB_SPHE8388_EP2
+#ifdef CONFIG_USB_SUNPLUS_EP2
 	struct work_struct work_ep2;
 	struct workqueue_struct *qwork_ep2;
 #endif
-#ifdef CONFIG_USB_SPHE8388_EP11
+#ifdef CONFIG_USB_SUNPLUS_EP11
 	struct work_struct work_ep11;
 	struct workqueue_struct *qwork_ep11;
 	struct work_struct work_ep11_dma;

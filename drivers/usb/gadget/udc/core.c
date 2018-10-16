@@ -970,8 +970,10 @@ static void usb_gadget_state_work(struct work_struct *work)
 void usb_gadget_set_state(struct usb_gadget *gadget,
 		enum usb_device_state state)
 {
-	//gadget->state = state;
-	//schedule_work(&gadget->work);
+#if 0
+	gadget->state = state;
+	schedule_work(&gadget->work);
+#endif
 }
 EXPORT_SYMBOL_GPL(usb_gadget_set_state);
 
@@ -1221,7 +1223,7 @@ EXPORT_SYMBOL_GPL(usb_get_gadget_udc_name);
  */
 int usb_add_gadget_udc(struct device *parent, struct usb_gadget *gadget)
 {
-#ifdef CONFIG_USB_GADGET_8388
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 	struct usb_udc		*udc;
 	int			ret = -ENOMEM;
 

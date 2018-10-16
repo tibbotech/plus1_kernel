@@ -1,22 +1,16 @@
 #include <linux/types.h>
-#include <linux/kdev_t.h>
-#include <linux/slab.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/init.h>
 #include <linux/fs.h>
-#include <asm/uaccess.h>
 #include <linux/uaccess.h>
-#include <linux/platform_device.h>
-#include <linux/cdev.h>
 #include <asm/io.h>
-//#include <mach/hardware.h>
-#include <mach/gpio_drv.h>
-//#include <mach/sp_tset.h>
-//#include <mach/module.h>
 #include <mach/io_map.h>
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
+#include <linux/gpio/driver.h>
+#include <linux/of_gpio.h>
+#include <linux/platform_device.h>
+#include <mach/gpio_drv.h>
 
 /* #define GPIO_FUNC_DEBUG */
 #define GPIO_KDBG_INFO
@@ -40,9 +34,7 @@
 	#define DBG_ERR(fmt, args ...)
 #endif
 
-#define NUM_GPIO    (1)
 #define DEVICE_NAME             "sp_gpio"
-#define NUM_GPIO_MAX    (256)
 #define REG_GRP_OFS(GRP, OFFSET)        VA_IOB_ADDR((GRP) * 32 * 4 + (OFFSET) * 4) 
 #define GPIO_FIRST(X)   (REG_GRP_OFS(101, (25+X)))
 #define GPIO_MASTER(X)  (REG_GRP_OFS(6, (0+X)))
@@ -53,13 +45,15 @@
 #define GPIO_O_INV(X)   (REG_GRP_OFS(7, (8+X)))
 #define GPIO_OD(X)      (REG_GRP_OFS(7, (16+X)))
 #define GPIO_SFT_CFG(G,X)      (REG_GRP_OFS(G, (0+X)))
-
+#define NUM_GPIO_MAX    (256)
 static DEFINE_SPINLOCK(slock_gpio);
-static int dev_major;
-static int dev_minor;
-static struct cdev *dev_cdevp = NULL;
-static struct class *p_gpio_class = NULL;
 
+struct sp_gpio {
+	struct gpio_chip chip;
+	void __iomem *base;
+	int irq;
+	struct device		*dev;
+};
 
 long gpio_input_invert_1(u32 bit)
 {
@@ -391,6 +385,16 @@ long gpio_in(u32 bit, u32 *gpio_in_value)
 }
 EXPORT_SYMBOL(gpio_in);
 
+u32 gpio_in_val(u32 bit)
+{
+	u32 value = 0;
+
+	gpio_in(bit, &value);
+
+	return value;
+}
+EXPORT_SYMBOL(gpio_in_val);
+
 long gpio_pin_mux_sel(PMXSEL_ID id, u32 sel)
 {
 	u32 grp ,idx, max_value, reg_val, mask, bit_num;
@@ -562,7 +566,6 @@ static irqreturn_t sunplus_gpio_irq(int irq, void *args)
 	return IRQ_HANDLED;
 }
 
-
 static int gpio_open(struct inode *inode, struct file *filp)
 {
 	FUNC_DEBUG();
@@ -575,32 +578,138 @@ static int gpio_release(struct inode *inode, struct file *filp)
 	return 0;
 }
 
-static int sunplus_gpio_platform_driver_probe_of(struct platform_device *pdev)
+static int sp_gpio_dir_in(struct gpio_chip *chip, unsigned int gpio)
 {
-#if 0
+	//struct sp_gpio *gpio = gpiochip_get_data(chip);
+	GPIO_F_SET(gpio, GPIO_FUNC_GPIO);
+	GPIO_M_SET(gpio, 1);
+	GPIO_E_SET(gpio, GPIO_DIR_INPUT);
+	return 0;
+}
+
+static int sp_gpio_dir_out(struct gpio_chip *gc, unsigned int gpio,
+				int val)
+{
+
+	GPIO_F_SET(gpio, GPIO_FUNC_GPIO);
+	GPIO_M_SET(gpio, 1);
+	GPIO_E_SET(gpio, GPIO_DIR_OUTPUT);
+	return 0;
+}
+
+static int sp_gpio_get(struct gpio_chip *gc, unsigned int gpio)
+{
+	GPIO_E_SET(gpio, GPIO_DIR_INPUT);
+	return GPIO_I_GET(gpio);
+}
+
+static void sp_gpio_set(struct gpio_chip *gc, unsigned int gpio, int val)
+{
+	GPIO_E_SET(gpio, GPIO_DIR_OUTPUT);
+	GPIO_O_SET(gpio, val);
+}
+
+static int sunplus_gpio_platform_driver_probe(struct platform_device *pdev)
+{
+	struct sp_gpio *pdata;
+	struct gpio_chip *chip;
+	struct resource *res;
+	struct device_node *np = pdev->dev.of_node;
+	int err = 0;
+	
 	int ret,npins,i;
 	struct resource *ires;
+	if (!np) {
+		dev_err(&pdev->dev, "invalid devicetree node\n");
+		return -EINVAL;
+	}
+
+	if (!of_device_is_available(np)) {
+		dev_err(&pdev->dev, "devicetree status is not available\n");
+		return -ENODEV;
+	}
+	
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (pdata == NULL)
+		return -ENOMEM;
+	chip = &pdata->chip;
+	
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (IS_ERR(res)) {
+		dev_err(&pdev->dev, "get resource memory from devicetree node\n");
+		return PTR_ERR(res);
+	}
+
+	pdata->base = devm_ioremap_resource(&pdev->dev, res);
+	pdev->dev.platform_data = chip;
+	chip->label = DEVICE_NAME;
+	chip->parent = &pdev->dev;
+	chip->owner = THIS_MODULE;
+	chip->direction_input = sp_gpio_dir_in;
+	chip->get = sp_gpio_get;
+	chip->direction_output = sp_gpio_dir_out;
+	chip->set = sp_gpio_set;
+	chip->base = -1;
+	chip->ngpio = NUM_GPIO_MAX;
+	if (IS_ERR(pdata->base)) {
+		dev_err(&pdev->dev, "mapping resource memory\n");
+		return PTR_ERR(pdata->base);
+	}	
+
+	err = devm_gpiochip_add_data(&pdev->dev, chip, pdata);
+	if (err < 0) {
+		dev_err(&pdev->dev, "failed to add gpio chip\n");
+		return err;
+	}
+
+	dev_info(&pdev->dev, "SP GPIO driver probed.\n");
 	
 	npins = platform_irq_count(pdev);
+
 	for (i = 0; i < npins; i++) {
 		ires = platform_get_resource(pdev, IORESOURCE_IRQ, i);
-		if (!ires) {
+		if (!res) {
 			return -ENODEV;
 		}		
-		ret = request_irq(ires->start, sunplus_gpio_irq, 0, "sp-gpio", ires);
+		ret = request_irq(ires->start, sunplus_gpio_irq, 0, DEVICE_NAME, ires);
 		if (ret) { 
 			printk("request_irq() failed (%d)\n", ret); 
 		}
 	}
-#endif
 	return 0;
 }
 
+	
+#if 0
+static int sp_gpio_remove(struct platform_device *pdev)
+{
+	struct sp_gpio *pdata;
+	pdata = platform_get_drvdata(pdev);
+	if (pdata == NULL)
+		return -ENODEV;
+
+	return gpiochip_remove(&pdata->chip);
+}
+#endif
+/**************************************************************************
+ *                         G L O B A L    D A T A                         *
+ **************************************************************************/
+
 static const struct of_device_id sp_gpio_of_match[] = {
-	{ .compatible = "sunplus,sp-gpio" },
-	{ /* sentinel */ }
+	{ .compatible = "sunplus,sp_gpio", },
+	{ /* Sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_gpio_of_match);
+
+static struct platform_driver sp_gpio_driver = {
+	.probe		= sunplus_gpio_platform_driver_probe,
+	.driver = {
+		.name	= DEVICE_NAME,
+		.owner	= THIS_MODULE,
+		.of_match_table = sp_gpio_of_match,
+	}
+};
+module_platform_driver(sp_gpio_driver);
 
 static struct file_operations fops = {
 	.owner          = THIS_MODULE,
@@ -609,85 +718,9 @@ static struct file_operations fops = {
 	.release        = gpio_release
 };
 
-static struct platform_driver sp_gpio_driver = {
-	.probe		= sunplus_gpio_platform_driver_probe_of,
-	.driver = {
-		.name	= DEVICE_NAME,
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(sp_gpio_of_match),
-	}
-};
-
-static struct platform_device sp_gpio_device = {
-	.name	= "sp_gpio",
-	.id	= 0,
-};
-
-
-
-static int __init gpio_drv_init(void)
-{
-	dev_t dev = 0;
-	int ret;
-	ret = alloc_chrdev_region(&dev, 0, NUM_GPIO, DEVICE_NAME);
-	if (ret) {
-		return ret;
-	}
-
-  dev_major = MAJOR(dev);
-	dev_minor = MINOR(dev);
-	
-	dev_cdevp = kzalloc(sizeof(struct cdev), GFP_KERNEL);
-	if (dev_cdevp == NULL) {
-		goto failed00;
-	}
-	
-	p_gpio_class = class_create(THIS_MODULE, DEVICE_NAME);
-	cdev_init(dev_cdevp, &fops);
-	dev_cdevp->owner = THIS_MODULE;
-	ret = cdev_add(dev_cdevp, dev, NUM_GPIO);
-	if (ret < 0) {
-		goto failed00;
-	}
-	device_create(p_gpio_class, NULL, dev, NULL, DEVICE_NAME);
-	
-	platform_device_register(&sp_gpio_device);
-	platform_driver_register(&sp_gpio_driver);
-
-	return 0;	
-	
-	failed00:
-	if (dev_cdevp) {
-		kfree(dev_cdevp);
-		dev_cdevp = NULL;
-	}
-
-	unregister_chrdev_region(dev, NUM_GPIO);
-	return -ENODEV;
-}
- 
-static void __exit gpio_drv_exit(void)
-{
-	dev_t dev;
-
-	FUNC_DEBUG();
-
-	dev = MKDEV(dev_major, dev_minor);
-	if (dev_cdevp) {
-		cdev_del(dev_cdevp);
-		kfree(dev_cdevp);
-		dev_cdevp = NULL;
-	}
-
-	unregister_chrdev_region(dev, NUM_GPIO);
-	platform_device_unregister(&sp_gpio_device);
-	platform_driver_unregister(&sp_gpio_driver);
-}
- 
-
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");
 MODULE_DESCRIPTION("Sunplus GPIO driver");
  
-module_init(gpio_drv_init);
-module_exit(gpio_drv_exit);
+
+
