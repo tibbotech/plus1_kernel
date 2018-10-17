@@ -4615,9 +4615,6 @@ void sp_sof_state_polling(unsigned long data)
 	}
 }
 
-#define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
-#define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
-
 void usb_switch(int device)
 {
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;

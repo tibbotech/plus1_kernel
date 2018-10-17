@@ -146,11 +146,11 @@ static char enum_retry_status_string[STRING_NUM][STRING_MAX_LENGTH] = {
 	"fs_first_enum"
 };
 
-static bool rx_active_not_run_ehci_flag[USB_HOST_NUM] = { false };
+static bool rx_active_not_run_ehci_flag[USB_PORT_NUM] = { false };
 
 static bool bad_dev_info_flag = false;
-static int enum_retry_status[USB_HOST_NUM] = { HS_FIRST_START };
-static int enum_success_times[USB_HOST_NUM] = { 0 };
+static int enum_retry_status[USB_PORT_NUM] = { HS_FIRST_START };
+static int enum_success_times[USB_PORT_NUM] = { 0 };
 
 static bool handle_power_reset_retry_enum = true;
 module_param(handle_power_reset_retry_enum, bool, S_IRUGO | S_IWUSR);
@@ -295,7 +295,7 @@ static void enum_success_not_run_top_speed_handle(struct usb_hub *hub)
 	port_num = pdev->id - 1;
 
 	retry_status = get_enum_retry_status(port_num);
-	if (handle_power_reset_retry_enum && (port_num < USB_PORT2_ID)) {
+	if (handle_power_reset_retry_enum) {
 		if (test_bit(USB_EHCI_LOADED, &usb_hcds_loaded)) {
 			/* did not reset vbus power when at HS_FIRST_ENUM state */
 			if ((HS_FIRST_ENUM == retry_status) && (!tid_test_flag)){
@@ -342,7 +342,7 @@ static void enum_fail_not_rx_active_handle(struct usb_hub *hub)
 	}
 
 	retry_status = get_enum_retry_status(port_num);
-	if (handle_power_reset_retry_enum && (port_num < USB_PORT2_ID)) {
+	if (handle_power_reset_retry_enum) {
 		switch (retry_status) {
 		case HS_FIRST_ENUM:
 			if(!tid_test_flag) {
@@ -4926,11 +4926,12 @@ static int usb_logo_thread(void *arg)
 
 	if (udev->speed == USB_SPEED_LOW) {
 #include <mach/io_map.h>
-		volatile u32 *grop_base = (u32 *)VA_IOB_ADDR(1 * 32 * 4);
+		void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 
-		grop_base[14] = 0x80000002;
-		grop_base[15] = 0x80000004;
-		grop_base[18] = 0x80000006;
+		writel(RF_MASK_V(0xffff, 0x0002), regs + UPHY0_CTL0_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY0_CTL1_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x0004), regs + UPHY1_CTL0_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY1_CTL1_OFFSET);
 	}
 
 	while (usb_logo_test_start == 0) {
@@ -5794,7 +5795,7 @@ done:
 	printk(KERN_DEBUG "[usbENUM]%s [%d] status:%d----\n",
 	       __FUNCTION__, __LINE__, status);
 	hub_port_disable(hub, port1, 1);
-	#ifdef CONFIG_USB_HOST_ENUM_RETRY
+#ifdef CONFIG_USB_HOST_ENUM_RETRY
 	if (!hub->hdev->parent && !enum_rx_active_flag[port_num]) {
 		enum_event_handle(hub, ENUM_FAIL_NOT_RX_ACTIVE);
 	}

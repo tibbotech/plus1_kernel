@@ -91,21 +91,31 @@
 u8 sp_port_enabled = 0;
 EXPORT_SYMBOL_GPL(sp_port_enabled);
 
-struct semaphore uphy_init_sem = __SEMAPHORE_INITIALIZER(uphy_init_sem, 0);
-EXPORT_SYMBOL_GPL(uphy_init_sem);
-
-bool enum_rx_active_flag[USB_HOST_NUM] = { false };
+bool enum_rx_active_flag[USB_PORT_NUM] = { false };
 EXPORT_SYMBOL(enum_rx_active_flag);
 
-struct semaphore enum_rx_active_reset_sem[USB_HOST_NUM];
+struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];
 EXPORT_SYMBOL_GPL(enum_rx_active_reset_sem);
 
-uint accessory_port_id = ACC_PORT1;
+uint accessory_port_id = USB_PORT0_ID;
 module_param(accessory_port_id, uint, 0644);
 EXPORT_SYMBOL_GPL(accessory_port_id);
 
-bool platform_device_mode_flag[USB_HOST_NUM] = { false };
+bool platform_device_mode_flag[USB_PORT_NUM] = { false };
 EXPORT_SYMBOL_GPL(platform_device_mode_flag);
+
+int uphy0_irq_num = -1;
+int uphy1_irq_num = -1;
+void __iomem *uphy0_base_addr = NULL;
+void __iomem *uphy1_base_addr = NULL;
+EXPORT_SYMBOL_GPL(uphy0_irq_num);
+EXPORT_SYMBOL_GPL(uphy1_irq_num);
+EXPORT_SYMBOL_GPL(uphy0_base_addr);
+EXPORT_SYMBOL_GPL(uphy1_base_addr);
+
+
+
+
 
 /* Keep track of which host controller drivers are loaded */
 unsigned long usb_hcds_loaded;
@@ -2261,7 +2271,7 @@ void Reset_usb_host_ctrler(struct usb_device *udev)
 	hcd = bus_to_hcd(udev->bus);
 
 	if (hcd) {
-		printk("%s wake USB ctrl\n", __FUNCTION__);
+		printk(KERN_NOTICE "%s wake USB ctrl\n", __FUNCTION__);
 		*(hcd->ptr_flag) |= (RESET_HC_DEAD | RESET_UPHY_SIGN);
 		wake_up_interruptible(&hcd->reset_queue);
 	}
@@ -2273,15 +2283,15 @@ void reset_usb_powerx(struct usb_hcd *hcd, int delayms)
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
 	int port = pdev->id - 1;
 
-	if (port > 1) {		/*0 or 1 */
-		printk("power port=%d\n", port);
+	if (port > USB_PORT1_ID) {		/*0 or 1 */
+		printk(KERN_NOTICE "power port=%d\n", port);
 		return;
 	}
-	printk("USB power ++ %d\n", delayms);
+	printk(KERN_NOTICE "USB power ++ %d\n", delayms);
 	DISABLE_VBUS_POWER(port);
 	uphy_force_disc(1, port);
 	msleep(delayms);
-	printk("USB power -- %d\n", delayms);
+	printk(KERN_NOTICE "USB power -- %d\n", delayms);
 	uphy_force_disc(0, port);
 	ENABLE_VBUS_POWER(port);
 }
@@ -2289,9 +2299,9 @@ EXPORT_SYMBOL_GPL(reset_usb_powerx);
 
 void Reset_Usb_PowerCtrl(int port, int on)
 {
-	if (port > 1)		/*0 or 1 */
+	if (port > USB_PORT1_ID)		/*0 or 1 */
 		return;
-	printk("USB power %d %s\n", port, on ? "on" : "off");
+		printk(KERN_NOTICE "USB power %d %s\n", port, on ? "on" : "off");
 	if (!on) {
 		DISABLE_VBUS_POWER(port);
 		uphy_force_disc(1, port);
@@ -2498,7 +2508,7 @@ EXPORT_SYMBOL_GPL(usb_bus_start_enum);
 
 #ifdef CONFIG_USB_PHY_RX_ACTIVE_QUESTION_WORKAROUND
 #define	UPHY_IRQ_OFFSET		19
-extern bool enum_rx_active_flag[USB_HOST_NUM];
+extern bool enum_rx_active_flag[USB_PORT_NUM];
 irqreturn_t usb_uphy_irq(int irq, void *__hcd)
 {
 	u32 uphy_val;
@@ -2506,23 +2516,29 @@ irqreturn_t usb_uphy_irq(int irq, void *__hcd)
 	volatile u32 *uphy_disc;
 	unsigned long flags;
 	struct usb_hcd *hcd = __hcd;
+	void __iomem *reg_addr;
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
 
 	local_irq_save(flags);
 
 	port_num = pdev->id - 1;
-	uphy_disc = (u32 *)VA_IOB_ADDR((149 + port_num) * 32 * 4);
-	uphy_val = ioread32(uphy_disc + UPHY_IRQ_OFFSET);
+	if(USB_PORT0_ID == port_num){
+		reg_addr = uphy0_base_addr;
+	} else if(USB_PORT1_ID == port_num){
+		reg_addr = uphy1_base_addr;
+	}
+
+	uphy_val = readl(reg_addr + UPHY_INTR_OFFSET);
 	uphy_val |= 0x02;
-	iowrite32(uphy_val, uphy_disc + UPHY_IRQ_OFFSET);
-	uphy_val = ioread32(uphy_disc + UPHY_IRQ_OFFSET);
+	writel(uphy_val, reg_addr + UPHY_INTR_OFFSET);
+	uphy_val = readl(reg_addr + UPHY_INTR_OFFSET);
 	while (uphy_val & 0x80) {
 		printk(KERN_NOTICE "usb_uphy_irq,v:0x%x\n", uphy_val);
-		uphy_val = ioread32(uphy_disc + UPHY_IRQ_OFFSET);
+		uphy_val = readl(reg_addr + UPHY_INTR_OFFSET);
 	}
 
 	uphy_val &= ~0x02;
-	iowrite32(uphy_val, uphy_disc + UPHY_IRQ_OFFSET);
+	writel(uphy_val, reg_addr + UPHY_INTR_OFFSET);
 
 	if (hcd->enum_flag[pdev->id - 1]) {
 		hcd->enum_flag[pdev->id - 1] = false;
@@ -2687,7 +2703,7 @@ struct usb_hcd *__usb_create_hcd(const struct hc_driver *driver,
 	hcd->current_active_urb = NULL;
 	hcd->enum_msg_flag = false;
 	hcd->enum_flag = (bool *) kmalloc(sizeof(*hcd->enum_flag)
-					  * USB_HOST_NUM, GFP_KERNEL);
+					  * USB_PORT_NUM, GFP_KERNEL);
 	if (!hcd->enum_flag) {
 		kfree(hcd);
 		dev_dbg(dev, "hcd enum_flag alloc failed\n");
@@ -2695,13 +2711,13 @@ struct usb_hcd *__usb_create_hcd(const struct hc_driver *driver,
 	}
 	hcd->uphy_disconnect_level =
 	    (u32 *)kmalloc(sizeof(*hcd->uphy_disconnect_level)
-			    * USB_HOST_NUM, GFP_KERNEL);
+			    * USB_PORT_NUM, GFP_KERNEL);
 	if (!hcd->uphy_disconnect_level) {
 		kfree(hcd);
 		dev_dbg(dev, "hcd uphy_disconnect_level alloc failed\n");
 		return NULL;
 	}
-	for (i = 0; i < USB_HOST_NUM; i++) {
+	for (i = 0; i < USB_PORT_NUM; i++) {
 		hcd->enum_flag[i] = false;
 		hcd->uphy_disconnect_level[i] = 0;
 	}
@@ -3065,19 +3081,19 @@ int usb_add_hcd(struct usb_hcd *hcd,
 		port_num = pdev->id - 1;
 		switch (port_num) {
 		case 0:
-			hcd->uphy_irq_num = SP_IRQ_UPHY0;
+			hcd->uphy_irq_num = uphy0_irq_num;
+			uphy_val = readl(uphy0_base_addr + UPHY_INTR_OFFSET);
+			uphy_val |= 0x01;
+			writel(uphy_val, uphy0_base_addr + UPHY_INTR_OFFSET);
 			break;
 		case 1:
-			hcd->uphy_irq_num = SP_IRQ_UPHY1;
-			break;
-		case 2:
-			hcd->uphy_irq_num = SP_IRQ_UPHY2;
+			hcd->uphy_irq_num = uphy1_irq_num;
+			uphy_val = readl(uphy1_base_addr + UPHY_INTR_OFFSET);
+			uphy_val |= 0x01;
+			writel(uphy_val, uphy1_base_addr + UPHY_INTR_OFFSET);
 			break;
 		}
-		uphy_disc = (u32 *)VA_IOB_ADDR((149 + port_num) * 32 * 4);
-		uphy_val = ioread32(uphy_disc + UPHY_IRQ_OFFSET);
-		uphy_val |= 0x01;
-		iowrite32(uphy_val, uphy_disc + UPHY_IRQ_OFFSET);
+
 		uphy_irq_ret = request_irq(hcd->uphy_irq_num,
 					   &usb_uphy_irq, IRQF_SHARED,
 					   "uphy-irq", hcd);
@@ -3208,7 +3224,6 @@ void usb_remove_hcd(struct usb_hcd *hcd)
 	del_timer_sync(&hcd->rh_timer);
 
 	if (usb_hcd_is_primary_hcd(hcd)) {
-		printk("hcd_irq_re:%d\n",hcd->irq);
 		if (hcd->irq > 0)
 			free_irq(hcd->irq, hcd);
 #ifdef CONFIG_USB_PHY_RX_ACTIVE_QUESTION_WORKAROUND

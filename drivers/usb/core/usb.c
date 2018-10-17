@@ -73,10 +73,6 @@ EXPORT_SYMBOL_GPL(tid_test_flag);
 EXPORT_SYMBOL_GPL(max_topo_level);
 #endif
 
-#ifdef RUNTIME_TRACKING_USB
-int usb_dTrackIdx = -1;
-EXPORT_SYMBOL_GPL(usb_dTrackIdx);
-#endif
 
 const char *usbcore_name = "usbcore";
 
@@ -1365,8 +1361,20 @@ static void proc_entry_remove(void)
 }
 #endif
 
+static void sp_get_port_state(void)
+{
+#ifdef CONFIG_USB_PORT0
+	sp_port_enabled |= 0x01;
+#endif
+
+#ifdef CONFIG_USB_PORT1
+	sp_port_enabled |= 0x02;
+#endif
+}
+
 static int __init usb_init(void)
 {
+	int i;
 	int retval;
 	if (usb_disabled()) {
 		pr_info("%s: USB support disabled\n", usbcore_name);
@@ -1404,8 +1412,20 @@ static int __init usb_init(void)
 	if (retval)
 		goto hub_init_failed;
 	retval = usb_register_device_driver(&usb_generic_driver, THIS_MODULE);
-	if (!retval)
+	if (!retval){
+		for (i = 0; i < USB_PORT_NUM; i++) {
+			sema_init(&enum_rx_active_reset_sem[i], 0);
+		}
+#ifdef CONFIG_GADGET_USB0
+		accessory_port_id = USB_PORT0_ID;
+#else
+		accessory_port_id = USB_PORT1_ID;
+#endif
+		printk(KERN_NOTICE "usb acc config port= %d\n",accessory_port_id);
+		sp_get_port_state();
+
 		goto out;
+	}
 
 	usb_hub_cleanup();
 hub_init_failed:
