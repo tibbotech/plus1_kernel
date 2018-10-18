@@ -43,7 +43,6 @@ static int ehci_platform_reset(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
-	
 	if (pdata->port_power_on)
 		ehci_port_power(ehci, port_num, 1);
 	if (pdata->port_power_off)
@@ -98,11 +97,11 @@ static const struct hc_driver ehci_platform_hc_driver = {
 
 #ifdef	CONFIG_USB_HOST_RESET_SP
 #define 	RESET_UPHY(x,ret,addr)	{				\
-				ret	 = ioread32(addr);		\
+				ret	 = readl(addr);		\
 				ret |= (1<<(9+x))|(1<<(12+x));		\
-				iowrite32(ret,addr);			\
+				writel(ret,addr);			\
 				ret &= ~((1<<(9+x))|(1<<(12+x)));	\
-				iowrite32(ret,addr);			\
+				writel(ret,addr);			\
 			}
 #define		REG_UPHY_RESET_OFFSET	(18)
 #endif
@@ -124,6 +123,7 @@ extern u32 usb_logo_test_start;
 
 static void ctrl_reset(struct platform_device *pdev, int period_ms)
 {
+#if 0
 	volatile u32 *reset_addr;
 	volatile u32 reg_val;
 
@@ -139,7 +139,7 @@ static void ctrl_reset(struct platform_device *pdev, int period_ms)
 	mdelay(period_ms);
 	reg_val &= (~(1 << (10 + pdev->id - 1)));
 	iowrite32(reg_val, reset_addr);
-
+#endif
 }
 
 static int ehci_reset_thread(void *arg)
@@ -147,15 +147,13 @@ static int ehci_reset_thread(void *arg)
 	struct ehci_hcd *ehci = (struct ehci_hcd *)arg;
 	struct ehci_hcd_sp *sp_ehci = (struct ehci_hcd_sp *)arg;
 	struct usb_hcd *hcd = ehci_to_hcd(ehci);
-
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
-	volatile u32 *grop0 = (u32 *) VA_IOB_ADDR(0 * 32 * 4);
 
 	int i;
 	u32 flag;
 	u32 val;
 	int retval;
-	volatile u32 *grop_base;
+	void __iomem *reg_addr;
 
 	do {
 
@@ -200,17 +198,11 @@ NEXT_LOOP:
 			usb_remove_hcd(hcd);
 
 			if (flag & RESET_UPHY_SIGN) {
-				grop_base =
-				    (u32 *) VA_IOB_ADDR((149 + pdev->id - 1) *
-							32 * 4);
-				hcd->uphy_disconnect_level[pdev->id - 1] =
-				    grop_base[DISC_LEVEL_OFFSET];
-				/*grop(0.17) reset uphy reg */
-				RESET_UPHY(pdev->id,
-					   val, grop0 + REG_UPHY_RESET_OFFSET);
+				reg_addr = (pdev->id - 1) ? uphy1_base_addr : uphy0_base_addr;
+				hcd->uphy_disconnect_level[pdev->id - 1] = readl(reg_addr + DISC_LEVEL_OFFSET);
+				reset_uphy(pdev->id - 1);
 				reinit_uphy(pdev->id - 1);
-				grop_base[DISC_LEVEL_OFFSET] =
-				    hcd->uphy_disconnect_level[pdev->id - 1];
+				writel(hcd->uphy_disconnect_level[pdev->id - 1], reg_addr + DISC_LEVEL_OFFSET);
 				/*tell ohci reset controllor */
 				sp_ehci->flag = RESET_SENDER;
 #ifdef CONFIG_USB_GADGET_SUNPLUS
@@ -310,6 +302,7 @@ static ssize_t store_usb_role(struct device *dev,
 			      struct device_attribute *attr,
 			      const char *buf, size_t count)
 {
+#if 0
 	struct platform_device *pdev = to_platform_device(dev);
 	//struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
 	//struct ehci_hcd *ehci = hcd_to_ehci(hcd);
@@ -333,7 +326,7 @@ static ssize_t store_usb_role(struct device *dev,
 		//printk("usb ret -> %x\n", ret);
 		iowrite32(ret, grop1 + USB_UPHY_REG);
 	}
-
+#endif
 	return count;
 }
 

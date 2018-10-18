@@ -362,8 +362,18 @@
 			clocks = <&clkc PLL_SYS>;
 		 };
 
-		 usb_phy: phy{
-			compatible = "sunplus,sunplus-usb-phy";
+		sp_uphy0: uphy@0x9C004A80 {
+			compatible = "sunplus,sunplus-usb-phy0";
+			reg = <0x9C004A80 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_uphy1: uphy@0x9C004B00 {
+			compatible = "sunplus,sunplus-usb-phy1";
+			reg = <0x9C004B00 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_ehci0: usb@9C102100 {

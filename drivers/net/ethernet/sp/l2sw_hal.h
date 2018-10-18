@@ -16,8 +16,8 @@
 #define REG_WRITE 0
 #define REG_READ  1
 
-#define PHY0_ADDR		0x0
-#define PHY1_ADDR		0x0
+#define PHY0_ADDR		0x1
+#define PHY1_ADDR		0x2
 
 
 #define MAC_GLB_INT_STATUS 15100
@@ -38,11 +38,11 @@ int l2sw_reg_base_set( void __iomem *baseaddr);
 
 int mac_g1_base_set(void __iomem *baseaddr);
 
-inline void mac_hw_stop(struct l2sw_mac *mac);
+void mac_hw_stop(struct l2sw_mac *mac);
 
 void mac_hw_reset(struct l2sw_mac *mac);
 
-inline void mac_hw_start(struct l2sw_mac *mac);
+void mac_hw_start(struct l2sw_mac *mac);
 
 void mac_hw_addr_set(struct l2sw_mac *mac);
 
@@ -67,8 +67,6 @@ void rx_mib_counter_print(void);
 void tx_mib_counter_print(void);
 
 int phy_cfg(void);
-
-void l2sw_hw_frist_init(void);
 
 void l2sw_enable_port(void);
 

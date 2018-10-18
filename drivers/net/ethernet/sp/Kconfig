@@ -4,7 +4,7 @@
 
 config L2SW_DRIVER
     tristate "L2SW support"
-	depends on ARCH_ZYNQ
+	depends on ETHERNET
 	select PHYLIB
         help
           This driver supports L2SW.

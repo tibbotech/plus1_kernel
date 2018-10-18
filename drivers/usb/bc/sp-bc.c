@@ -18,7 +18,7 @@ struct bc_hcd {
 #define bc_debug(fmt, args...)
 
 #define CDP_OFFSET		0
-#define BC_NUM			(USB_HOST_NUM - 1)
+#define BC_NUM			(USB_PORT_NUM - 1)
 
 #define USB0_PORT_NUM		0
 #define USB1_PORT_NUM		1
@@ -33,11 +33,11 @@ struct bc_hcd {
 u32 bc_switch = 0;
 EXPORT_SYMBOL_GPL(bc_switch);
 
-static int cdp[USB_HOST_NUM] = { 1, 1, 1 };
+static int cdp[USB_PORT_NUM] = { 1, 1, 1 };
 
-static struct bc_hcd sp_bc_hcd[USB_HOST_NUM];
-static u32 *hw_port_sta[USB_HOST_NUM];
-static u32 *udc_port_sta[USB_HOST_NUM];
+static struct bc_hcd sp_bc_hcd[USB_PORT_NUM];
+static u32 *hw_port_sta[USB_PORT_NUM];
+static u32 *udc_port_sta[USB_PORT_NUM];
 
 static bool bc_polling_enable = true;
 module_param(bc_polling_enable, bool, 0644);
@@ -68,35 +68,33 @@ EXPORT_SYMBOL_GPL(sdp_cfg17_value);
  */
 static void battery_charging_state_init(int port)
 {
-	volatile u32 *bc_cdp_addr;
-	volatile u32 *bc_ref_addr;
+	void __iomem *reg_addr;
 	u32 val;
 
-	bc_cdp_addr = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4) + 16;
-	bc_ref_addr = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4) + 17;
+	reg_addr = port ? uphy1_base_addr : uphy0_base_addr;
 
-	val = ioread32(bc_cdp_addr);
+	val = readl(reg_addr + CDP_REG_OFFSET);
 	val |= (3 << 3);
 	val &= ~(1u << CDP_OFFSET);
-	iowrite32(val, bc_cdp_addr);
+	writel(val, reg_addr + CDP_REG_OFFSET);
 
-	val = ioread32(bc_ref_addr);
+	val = readl(reg_addr + DCP_REG_OFFSET);
 	val = 0x92;
-	iowrite32(val, bc_ref_addr);
+	writel(val, reg_addr + DCP_REG_OFFSET);
 
-	iowrite32(0x17, bc_cdp_addr - 16 + 3);
+	writel(0x17, reg_addr + UPHY_INTER_SIGNAL_REG_OFFSET);
 }
 
 static void battery_charging_disinit(int port)
 {
-	volatile u32 *bc_cdp_addr;
+	void __iomem *reg_addr;
 	u32 val;
 
-	bc_cdp_addr = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4) + 16;
+	reg_addr = port ? uphy1_base_addr : uphy0_base_addr;
 
-	val = ioread32(bc_cdp_addr);
+	val = readl(reg_addr + CDP_REG_OFFSET);
 	val &= ~(1u << CDP_OFFSET);
-	iowrite32(val, bc_cdp_addr);
+	writel(val, reg_addr + CDP_REG_OFFSET);
 }
 
 static int is_udc_connect(int port)
@@ -111,9 +109,9 @@ static int is_udc_connect(int port)
 	if (USB2_PORT_NUM == port)
 		return 0;
 
-	sta_val[0] = ioread32(udc_port_sta[port]);
+	sta_val[0] = readl(udc_port_sta[port]);
 	msleep(3);
-	sta_val[1] = ioread32(udc_port_sta[port]);
+	sta_val[1] = readl(udc_port_sta[port]);
 
 	if (sta_val[1] == sta_val[0])
 		return 0;
@@ -130,7 +128,7 @@ static int is_hw_connect(int port)
 		return 0;
 	}
 
-	sta_val = ioread32(hw_port_sta[port]);
+	sta_val = readl(hw_port_sta[port]);
 
 	return sta_val & 0x01;
 }
@@ -138,7 +136,7 @@ static int is_hw_connect(int port)
 /* Make sure BC status back to normal. Call the func every 100 ms */
 static void battery_charging_reset(int port)
 {
-	volatile u32 *bc_cdp_addr;
+	void __iomem *reg_addr;
 	u32 val;
 
 	if (BC_NUM < port) {
@@ -146,21 +144,22 @@ static void battery_charging_reset(int port)
 		return;
 	}
 
-	bc_cdp_addr = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4) + 16;
+	reg_addr = port ? uphy1_base_addr : uphy0_base_addr;
+
 	/* disable & enable CDP to reset BC status */
-	val = ioread32(bc_cdp_addr);
+	val = readl(reg_addr + CDP_REG_OFFSET);
 	val &= ~(0x01);
-	iowrite32(val, bc_cdp_addr);
+	writel(val, reg_addr + CDP_REG_OFFSET);
 
 	msleep(1);
 
 	val |= (0x01);
-	iowrite32(val, bc_cdp_addr);
+	writel(val, reg_addr + CDP_REG_OFFSET);
 }
 
 static int battery_charging_enable(int port, int enable)
 {
-	volatile u32 *bc_cdp_addr;
+	void __iomem *reg_addr;
 	u32 val;
 
 	if (BC_NUM < port) {
@@ -168,16 +167,16 @@ static int battery_charging_enable(int port, int enable)
 		return 0;
 	}
 
-	bc_cdp_addr = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4) + 16;
+	reg_addr = port ? uphy1_base_addr : uphy0_base_addr;
 	/* disable & enable CDP to reset BC status */
-	val = ioread32(bc_cdp_addr);
+	val = readl(reg_addr + CDP_REG_OFFSET);
 
 	if (enable)
 		val |= (0x01);
 	else
 		val &= ~(0x01);
 
-	iowrite32(val, bc_cdp_addr);
+	writel(val, reg_addr + CDP_REG_OFFSET);
 
 	return 1;
 }
@@ -187,7 +186,7 @@ static int battery_charging_enable(int port, int enable)
  */
 static int battery_charging_current_state(int port)
 {
-	volatile u32 *bc_status_fsm;
+	void __iomem *reg_addr;
 	u32 val;
 
 	if (BC_NUM < port) {
@@ -195,15 +194,14 @@ static int battery_charging_current_state(int port)
 		return 0;
 	}
 
-	bc_status_fsm = (u32 *)VA_IOB_ADDR((149 + port) * 32 * 4);
-
-	val = ioread32(bc_status_fsm + 12);
+	reg_addr = port ? uphy1_base_addr : uphy0_base_addr;
+	val = readl(reg_addr + UPHY_DEBUG_SIGNAL_REG_OFFSET);
 
 	if (((val & 0x07) == 0x04)
 	    && (is_hw_connect(port) == 0)
 	    && (is_udc_connect(port) == 0)) {
 		battery_charging_reset(port);
-		val = ioread32(bc_status_fsm + 12);
+		val = readl(reg_addr + UPHY_DEBUG_SIGNAL_REG_OFFSET);
 	}
 
 	if ((val & 0x07) == 0x03) {
@@ -266,7 +264,7 @@ static ssize_t store_bc_switch(struct module_attribute *mattr,
 	 */
 	u8 bc_mode;
 	u8 certification_mode;
-	volatile u32 *uphy;
+	void __iomem *reg_addr;
 
 	if (kstrtouint(buffer, 0, &bc_switch) == 0) {
 		if (0 == ((sp_port_enabled >> (bc_switch & 0x03)) & 0x01)) {
@@ -279,15 +277,15 @@ static ssize_t store_bc_switch(struct module_attribute *mattr,
 		certification_mode = (bc_switch >> 16) & 0xFF;
 
 		printk(KERN_NOTICE "BC switch %x %x\n", bc_switch, bc_mode);
-		uphy = (u32 *)VA_IOB_ADDR((149 + (bc_switch & 0x03)) * 32 * 4);
+		reg_addr = (bc_switch & 0x03) ? uphy1_base_addr : uphy0_base_addr;
 
 		switch ((bc_switch >> 8) & 0xFF) {
 		case 0:
 			printk(KERN_NOTICE "Enable port %d CDP\n",
 			       bc_switch & 0x03);
 			cdp[bc_switch & 0x03] = 1;
-			iowrite32(cdp_cfg16_value, uphy + CDP_REG_OFFSET);
-			iowrite32(cdp_cfg17_value, uphy + DCP_REG_OFFSET);
+			writel(cdp_cfg16_value, reg_addr + CDP_REG_OFFSET);
+			writel(cdp_cfg17_value, reg_addr + DCP_REG_OFFSET);
 
 			/* 0x4F is 'O', 0x6F is 'o', Both said general mode. */
 			if ((0x4F != certification_mode)
@@ -301,15 +299,15 @@ static ssize_t store_bc_switch(struct module_attribute *mattr,
 			printk(KERN_NOTICE "Enable port %d DCP\n",
 			       bc_switch & 0x03);
 			cdp[bc_switch & 0x03] = 0;
-			iowrite32(dcp_cfg16_value, uphy + CDP_REG_OFFSET);
-			iowrite32(dcp_cfg17_value, uphy + DCP_REG_OFFSET);
+			writel(dcp_cfg16_value, reg_addr + CDP_REG_OFFSET);
+			writel(dcp_cfg17_value, reg_addr + DCP_REG_OFFSET);
 			break;
 		case 2:
 			cdp[bc_switch & 0x03] = 0;
 			printk(KERN_NOTICE "Enable port %d SDP\n",
 			       bc_switch & 0x03);
-			iowrite32(sdp_cfg16_value, uphy + CDP_REG_OFFSET);
-			iowrite32(sdp_cfg17_value, uphy + DCP_REG_OFFSET);
+			writel(sdp_cfg16_value, reg_addr + CDP_REG_OFFSET);
+			writel(sdp_cfg17_value, reg_addr + DCP_REG_OFFSET);
 			break;
 		default:
 			break;
@@ -330,8 +328,7 @@ static int __init sp_bc_init(void)
 	int retval;
 	int i;
 
-	down(&uphy_init_sem);
-	for (i = 0; i < USB_HOST_NUM; i++) {
+	for (i = 0; i < USB_PORT_NUM; i++) {
 		if (0 == ((sp_port_enabled >> i) & 0x01)) {
 			continue;
 		}
@@ -382,7 +379,7 @@ static void __exit sp_bc_cleanup(void)
 	int retval;
 	struct bc_hcd *bc_hcd = NULL;
 
-	for (i = 0; i < USB_HOST_NUM; i++) {
+	for (i = 0; i < USB_PORT_NUM; i++) {
 		if (0 == ((sp_port_enabled >> i) & 0x01)) {
 			continue;
 		}
