@@ -173,12 +173,6 @@
                                      <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
                                      <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
 		};
-		sd0: mmc@sdcard {
-			compatible = "sunplus,sp_card0";
-			reg = <0x9c003e80 0x280>;
-			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc PLL_SYS>;
-		};
 	};
 
 	soc@B {
@@ -362,8 +356,18 @@
 			clocks = <&clkc PLL_SYS>;
 		 };
 
-		 usb_phy: phy{
-			compatible = "sunplus,sunplus-usb-phy";
+		sp_uphy0: uphy@0x9C004A80 {
+			compatible = "sunplus,sunplus-usb-phy0";
+			reg = <0x9C004A80 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_uphy1: uphy@0x9C004B00 {
+			compatible = "sunplus,sunplus-usb-phy1";
+			reg = <0x9C004B00 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_ehci0: usb@9C102100 {
@@ -413,6 +417,21 @@
 			reg = <0x9c108000 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
+		};
+		
+		mmc0: mmc@emmc {
+			compatible = "sunplus,sp_emmc";
+			reg = <0x9c003b00 0x180>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
+		};
+
+		mmc1: mmc@sdcard {
+			compatible = "sunplus,sp_card1";
+			reg = <0x9c003e80 0x280>;
+			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
+
 		};
 	};
 };

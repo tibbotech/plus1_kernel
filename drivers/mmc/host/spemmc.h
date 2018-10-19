@@ -9,6 +9,7 @@
 #include <mach/irqs.h>
 
 /////////////////////////////////////////////////////////////////
+#define SP_MMC_SUPPORT_DDR_MODE
 #define SPEMMC_SUCCESS			0x00000000
 #define SPEMMC_FAIL				0x00000001
 #define SPEMMC_RSP_TIMEOUT		0x00000002
@@ -560,6 +561,12 @@ typedef struct spsdhost {
 
 	uint wrdly;
 	uint rddly;
+#ifdef SP_MMC_SUPPORT_DDR_MODE
+	uint ddr_rd_crc_token_dly;
+	uint ddr_wr_data_dly;
+#endif
+	int need_tune_cmd_timing;
+	int need_tune_dat_timing;
 }SPEMMCHOST;
 
 typedef struct spemmc_dridata {

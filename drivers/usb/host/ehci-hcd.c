@@ -1674,11 +1674,10 @@ void Test_FEATURE_EHCI(struct ehci_hcd *ehci)
 static int ehci_usb_logo_test(struct usb_hcd *hcd, int idProduct)
 {
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
+	void __iomem *reg_addr;
 	u32 command = 0;
 	u32 port_status = 0;
 	int tmp = 0;
-	volatile u32 *grop_base =
-	    (u32 *) VA_IOB_ADDR((148 + hcd->self.busnum) * 32 * 4);
 
 	printk(">>> usb_logo_test ...\n");
 
@@ -1745,12 +1744,11 @@ static int ehci_usb_logo_test(struct usb_hcd *hcd, int idProduct)
 		break;
 	case 0x0104:
 		printk("test packet\n");
-
-		grop_base =
-		    (u32 *) VA_IOB_ADDR((148 + hcd->self.busnum) * 32 * 4);
 		port_status |= TEST_Packet;
 		printk("port_status = 0x%08x\n", port_status);
-		iowrite32(0xa1, &grop_base[4]);
+
+		reg_addr = (hcd->self.busnum - 1) ? uphy1_base_addr : uphy0_base_addr;
+		writel(0xa1, reg_addr + BIT_TEST_OFFSET);
 		//ehci_writel(ehci, port_status, &ehci->regs->port_status[0]);
 		break;
 	default:

@@ -151,9 +151,7 @@ static int ohci_reset_thread(void *arg)
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
 
-	u32 *grop0 = (u32 *) VA_IOB_ADDR(0 * 32 * 4);
 	u32 val;
-
 	int i;
 	//int flag = 1;
 
@@ -182,8 +180,7 @@ static int ohci_reset_thread(void *arg)
 			}
 
 			if (sp_ohci->flag & RESET_UPHY_SIGN) {
-				RESET_UPHY(pdev->id, val,
-					   grop0 + REG_UPHY_RESET_OFFSET);
+				reset_uphy(pdev->id - 1);
 				sp_ohci->flag = RESET_SENDER;
 			} else {
 				sp_ohci->flag = 0;
@@ -224,12 +221,11 @@ static int ohci_reset_thread(void *arg)
 	struct ohci_hcd_sp *sp_ohci = (struct ohci_hcd_sp *)arg;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
-	volatile u32 *grop0 = (u32 *) VA_IOB_ADDR(0 * 32 * 4);
 	u32 val;
 	u32 flag;
 	int i;
 	int retval;
-	volatile u32 *grop_base;
+	void __iomem *reg_addr;
 	struct usb_hcd *prior_hcd = NULL;
 
 	do {
@@ -271,17 +267,11 @@ NEXT_LOOP:
 
 #ifndef CONFIG_USB_SUNPLUS_OTG
 			if (flag & RESET_UPHY_SIGN) {
-				grop_base =
-				    (u32 *) VA_IOB_ADDR((149 + pdev->id - 1) *
-							32 * 4);
-				hcd->uphy_disconnect_level[pdev->id - 1] =
-				    grop_base[DISC_LEVEL_OFFSET];
-				/*grop(0.17) reset uphy reg */
-				RESET_UPHY(pdev->id,
-					   val, grop0 + REG_UPHY_RESET_OFFSET);
+				reg_addr = (pdev->id - 1) ? uphy1_base_addr : uphy0_base_addr;
+				hcd->uphy_disconnect_level[pdev->id - 1] = readl(reg_addr + DISC_LEVEL_OFFSET);
+				reset_uphy(pdev->id - 1);
 				reinit_uphy(pdev->id - 1);
-				grop_base[DISC_LEVEL_OFFSET] =
-				    hcd->uphy_disconnect_level[pdev->id - 1];
+				writel(hcd->uphy_disconnect_level[pdev->id - 1], reg_addr + DISC_LEVEL_OFFSET);
 				/*tell ehci reset controllor */
 				sp_ohci->flag = RESET_SENDER;
 #ifdef CONFIG_USB_GADGET_SUNPLUS

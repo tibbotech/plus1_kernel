@@ -24,10 +24,9 @@
 #include <asm/bitops.h>
 #include "spemmc.h"
 
-#define SP_MMC_ZEBU_SUPPORT_DEVICE_DDR_MODE
-#ifdef SP_MMC_ZEBU_SUPPORT_DEVICE_DDR_MODE
-#define SP_MMC_DDR_ZEBU_WRITE_CRC_STATUS_DLY 2
-#define SP_MMC_ZEBU_DDR_WRITE_DLY			 0
+#ifdef SP_MMC_SUPPORT_DDR_MODE
+#define SP_MMC_DDR_READ_CRC_STATUS_DLY 0
+#define SP_MMC_DDR_WRITE_DLY 1
 #endif
 
 /******************************************************************************
@@ -38,36 +37,28 @@
 #define SPEMMCV2_SDC_NAME "sunplus,sp_emmc"
 #define MAX_SDDEVICES   2
 #define SPEMMC_DEVICE_MASK 1
-#define SPEMMC_READ_DELAY  0		/* delay for sampling data */
-#define SPEMMC_WRITE_DELAY 2		/* delay for output data   */
+#define SPEMMC_READ_DELAY  2		/* delay for sampling data */
+#define SPEMMC_WRITE_DELAY 1		/* delay for output data   */
 #define DUMMY_COCKS_AFTER_DATA     8
 
 #define MAX_DLY_CLK     7 		/* max  delay clocks */
+#define ENABLE_TIMING_TUNING 0
 
-/* Disabled fatal error messages temporarily */
-static u32 loglevel = 0x000;
-/* static u32 loglevel = 0x001; */
-/* static u32 loglevel = 0x033; */
-/* static u32 loglevel = 0xefff; */
-/* static u32 loglevel = 0xffff; */
-
-
+/* log levels */
 #define MMC_LOGLEVEL_FATAL		0x01
 #define MMC_LOGLEVEL_ERROR		0x02
 #define MMC_LOGLEVEL_DEBUG		0x04
-
-
 #define MMC_LOGLEVEL_IF 		0x10
 #define MMC_LOGLEVEL_PK 		0x20
-
 #define MMC_LOGLEVEL_COUNTER	0x100
 #define MMC_LOGLEVEL_WAITTIME	0x200
-
 #define MMC_LOGLEVEL_DUMPREG	0x1000
 #define MMC_LOGLEVEL_MINI		0x2000
 
-#if 1
+/* enable fatal error messages temporarily */
+static u32 loglevel = 0x003;
 
+#if 1
 #define FATAL(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_FATAL)) \
 		printk(KERN_ERR "[SD FATAL]: %s: " fmt, __func__ , ## args)
 
@@ -100,21 +91,16 @@ static u32 loglevel = 0x000;
 #define FATAL(fmt, args...)
 #define EPRINTK(fmt, args...)
 #define DPRINTK(fmt, args...)
-
 #define IFPRINTK(fmt, args...)
 #define pk(fmt, args...)
-
 #define CPRINTK(fmt, args...)
 #define WPRINTK(fmt, args...)
-
-
 #define REGPRINTK(fmt, args...)
 #define MPRINTK(fmt, args...)
 
 #endif
 
 #define IS_DMA_ADDR_2BYTE_ALIGNED(x)  (!((x) & 0x1))
-
 
 
 /******************************************************************************
@@ -143,6 +129,13 @@ MODULE_DEVICE_TABLE(of, spemmc_of_id);
 static int spemmc_get_dma_dir(SPEMMCHOST *, struct mmc_data *);
 static void sphe_mmc_finish_request(SPEMMCHOST *, struct mmc_request *);
 static void spemmc_set_cmd(SPEMMCHOST *host, struct mmc_request *mrq);
+static void spemmc_set_data_info(SPEMMCHOST *host, struct mmc_data * data);
+static void spemmc_prepare_cmd_rsp(SPEMMCHOST *host);
+
+static inline bool is_crc_token_valid(SPEMMCHOST *host)
+{
+	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
+}
 
 static int pinmux_enable(void *host)
 {
@@ -255,6 +248,10 @@ static void spemmc_set_ac_timing(SPEMMCHOST *host, struct mmc_ios *ios)
 	host->base->sd_wr_dly_sel = wr_dly;
 	/* Read delay: Controls timing to sample SD card's CMD, DATA signals */
 	host->base->sd_rd_dly_sel = rd_dly;
+	#ifdef SP_MMC_SUPPORT_DDR_MODE
+	host->ddr_rd_crc_token_dly = SP_MMC_DDR_READ_CRC_STATUS_DLY;
+	host->ddr_wr_data_dly = SP_MMC_DDR_WRITE_DLY;
+	#endif
 
 	return;
 }
@@ -364,10 +361,10 @@ static void spemmc_get_rsp_136(SPEMMCHOST *host)
 	 * Pass response back to Linux
 	 * Function runs to here only if no error occurs
 	 */
-	cmd->resp[0] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf))); 
-	cmd->resp[1] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 4))); 
-	cmd->resp[2] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 8))); 
-	cmd->resp[3] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 12))); 
+	cmd->resp[0] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf)));
+	cmd->resp[1] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 4)));
+	cmd->resp[2] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 8)));
+	cmd->resp[3] = SP_MMC_SWAP32(*((unsigned int *)(rspBuf + 12)));
 
 	return;
 }
@@ -433,6 +430,8 @@ EILSEQ       Basic format problem with the received or sent data
 static void spemmc_check_sdstatus_errors(SPEMMCHOST *host)
 {
 	if (host->base->sdstate_new & SDSTATE_NEW_ERROR_TIMEOUT) {
+		EPRINTK("cmd %d error with sdstate = %x, sdstatus = %x\n",
+			host->mrq->cmd->opcode, host->base->sd_state, host->base->sdstatus);
 		/* Response related errors */
 		if (host->base->sdstatus & SP_SDSTATUS_WAIT_RSP_TIMEOUT)
 			host->mrq->cmd->error = -ETIMEDOUT;
@@ -490,10 +489,10 @@ void dump_emmc_all_regs(SPEMMCHOST *host)
 	int i, j;
 	for (i =  0; i < 5; i++){
 		for (j =  0; j < 32; j++){
-			printk("g%d.%d = 0x%08x\n", i, j, *reg);	
+			printk("g%d.%d = 0x%08x\n", i, j, *reg);
 			reg++;
-		}	
-	}	
+		}
+	}
 }
 
 static void spemmc_irq_normDMA(SPEMMCHOST *host)
@@ -573,17 +572,28 @@ static void sphe_mmc_finish_request(SPEMMCHOST *host, struct mmc_request *mrq)
 				host->dma_sgcount,
 				spemmc_get_dma_dir(host, mrq->data));
 
-#ifdef SP_MMC_ZEBU_SUPPORT_DEVICE_DDR_MODE		
+#ifdef SP_MMC_SUPPORT_DDR_MODE
 		if ((mrq->data->flags & MMC_DATA_WRITE) && host->base->sdddrmode) {
 			host->base->sd_rd_dly_sel =host->rddly;
 			host->base->sd_wr_dly_sel =host->wrdly;
 		}
 #endif
-
-		IFPRINTK("data err %d\n", mrq->data->error);
+		if(mrq->data->error && -EINVAL != mrq->data->error) {
+			#if (ENABLE_TIMING_TUNING == 1)
+			/* tune next data request timing */
+			host->need_tune_dat_timing = 1;
+			#endif
+			EPRINTK("data err(%d)\n", mrq->data->error);
+		}
 	}
 
-	IFPRINTK("cmd err %d\n",mrq->cmd->error);
+	if(mrq->cmd->error) {
+		#if (ENABLE_TIMING_TUNING == 1)
+		/* tune next cmd request timing */
+		host->need_tune_cmd_timing = 1;
+		#endif
+		EPRINTK("cmd err(%d)\n",mrq->cmd->error);
+	}
 
 	host->mrq = NULL;
 
@@ -627,89 +637,17 @@ static void spemmc_proc_normDMA(SPEMMCHOST *host)
 {
 	struct mmc_request *mrq = host->mrq;
 	struct mmc_data *data = mrq->data;
-	int i, count = dma_map_sg(mmc_dev(host->mmc), data->sg,
-							  data->sg_len,
-							  spemmc_get_dma_dir(host, data));
-	struct scatterlist *sg;
-	unsigned int hw_address[SP_HW_DMA_MEMORY_SECTORS] = {0}, hw_len[SP_HW_DMA_MEMORY_SECTORS] = {0};
+	spemmc_prepare_cmd_rsp(host);
+	spemmc_set_data_info(host, data);
 
-	/* Store the dma_mapped memory segment count, it will be used when calling dma_unmap_sg */
-	host->dma_sgcount = count;
-
-	/* retreive physical memory address & size of the fragmented memory blocks */
-	for_each_sg(data->sg, sg, count, i) {
-		hw_address[i] = sg_dma_address(sg);
-		hw_len[i] = sg_dma_len(sg);
-		if(unlikely(!IS_DMA_ADDR_2BYTE_ALIGNED(hw_address[i]))) {
-			printk("[sd err]dma addr is not 2 bytes aligned\n");
-			data->error = -EINVAL;
-			return;
-		}
-	}
-
-	/* Due to host limitations, normal DMA transfer mode only supports 1 consecutive physical memory area */
-	if (count == 1) {
-		/* Reset */
-		Reset_Controller(host);
-
-		/* Configure Group SD Registers */
-		spemmc_set_cmd(host, mrq);
-
-		EMMC_PAGE_NUM_SET(host->base, data->blocks);
-		if (host->mrq->cmd->flags & MMC_RSP_CRC && !(host->mrq->cmd->flags & MMC_RSP_136))
-			host->base->sdrspchk_en = 0x1;
-		else
-			host->base->sdrspchk_en = 0x0;
-
-		if (data->flags & MMC_DATA_READ) {
-			host->base->sdcmddummy = 0;
-			host->base->sdautorsp = 0;
-			host->base->sd_trans_mode = 2;
-		} else {
-			host->base->sdcmddummy = 1;
-			host->base->sdautorsp = 1;
-			host->base->sd_trans_mode = 1;
-		}
-		if (mrq->stop)
-			host->base->sd_len_mode = 0;
-		else
-			host->base->sd_len_mode = 1;
-
-		host->base->sdpiomode = 0;
-		host->base->sdcrctmren = 1;
-		host->base->sdrsptmren = 1;
-		host->base->hw_dma_en = 0;
-		/* Set response type */
-		if(host->mrq->cmd->flags & MMC_RSP_136)
-			host->base->sdrsptype = 0x1;
-		else
-			host->base->sdrsptype = 0x0;
-
-		SDDATALEN_SET(host->base, data->blksz);
-
-		/* Configure Group DMA Registers */
-		if (data->flags & MMC_DATA_WRITE) {
-			host->base->dmadst = 0x2;
-			host->base->dmasrc = 0x1;
-		} else {
-			host->base->dmadst = 0x1;
-			host->base->dmasrc = 0x2;
-		}
-		SET_DMA_BASE_ADDR(host->base, hw_address[0]);
-
+	if (!data->error) {
 		/* Configure SD INT reg */
 		/* Disable HW DMA data transfer complete interrupt (when using sdcmpen) */
 		host->base->hwdmacmpen = 0;
 		host->base->sdcmpen = 0x1;
 		/* Start Transaction */
 		host->base->sdctrl0 = 1;
-	} else {
-		/* Should be implemented to fallback and use PIO transfer mode in the future */
-		printk("Error! SD Card DMA memory segment > 1, not supported!\n");
-		data->error = -EINVAL;
 	}
-
-
 	return;
 }
 
@@ -754,6 +692,76 @@ static void spemmc_prepare_cmd_rsp(SPEMMCHOST *host)
 	host->base->hwdmacmpen = 0;
 	host->base->sdcmpen = 0x0;
 
+	return;
+}
+
+static void spemmc_set_data_info(SPEMMCHOST *host, struct mmc_data * data)
+{
+	int i, count = dma_map_sg(mmc_dev(host->mmc), data->sg,
+							  data->sg_len,
+							  spemmc_get_dma_dir(host, data));
+	struct scatterlist *sg;
+	unsigned int hw_address[SP_HW_DMA_MEMORY_SECTORS] = {0}, hw_len[SP_HW_DMA_MEMORY_SECTORS] = {0};
+
+	/* Store the dma_mapped memory segment count, it will be used when calling dma_unmap_sg */
+	host->dma_sgcount = count;
+
+	/* retreive physical memory address & size of the fragmented memory blocks */
+	for_each_sg(data->sg, sg, count, i) {
+		hw_address[i] = sg_dma_address(sg);
+		hw_len[i] = sg_dma_len(sg);
+		if(unlikely(!IS_DMA_ADDR_2BYTE_ALIGNED(hw_address[i]))) {
+			EPRINTK("dma addr is not 2 bytes aligned!\n");
+			data->error = -EINVAL;
+			return;
+		}
+	}
+
+	/* Due to host limitations, normal DMA transfer mode only supports 1 consecutive physical memory area */
+	if (count == 1) {
+		DPRINTK("page num = %d\n", data->blocks);
+		EMMC_PAGE_NUM_SET(host->base, data->blocks);
+		if (data->flags & MMC_DATA_READ) {
+			host->base->sdcmddummy = 0;
+			host->base->sdautorsp = 0;
+			host->base->sd_trans_mode = 2;
+		} else {
+			host->base->sdcmddummy = 1;
+			host->base->sdautorsp = 1;
+			host->base->sd_trans_mode = 1;
+		}
+		if (host->mrq->stop)
+			host->base->sd_len_mode = 0;
+		else
+			host->base->sd_len_mode = 1;
+
+		host->base->sdpiomode = 0;
+		host->base->hw_dma_en = 0;
+		SDDATALEN_SET(host->base, data->blksz);
+
+		/* Configure Group DMA Registers */
+		if (data->flags & MMC_DATA_WRITE) {
+			host->base->dmadst = 0x2;
+			host->base->dmasrc = 0x1;
+		} else {
+			host->base->dmadst = 0x1;
+			host->base->dmasrc = 0x2;
+		}
+		SET_DMA_BASE_ADDR(host->base, hw_address[0]);
+
+#ifdef SP_MMC_SUPPORT_DDR_MODE
+		if ((data->flags & MMC_DATA_WRITE) && host->base->sdddrmode) {
+			host->wrdly = host->base->sd_wr_dly_sel;
+			host->rddly = host->base->sd_rd_dly_sel;
+			host->base->sd_rd_dly_sel = host->ddr_rd_crc_token_dly;
+			host->base->sd_wr_dly_sel = host->ddr_wr_data_dly;
+		}
+#endif
+	} else {
+		/* Should be implemented to fallback and use PIO transfer mode in the future */
+		EPRINTK("SD Card DMA memory segment > 1, not supported!\n");
+		data->error = -EINVAL;
+	}
 	return;
 }
 
@@ -840,46 +848,85 @@ static void spemmc_mmc_proc_cmd(SPEMMCHOST *host)
 void spemmc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 {
 	SPEMMCHOST *host = mmc_priv(mmc);
+	int retry_count = (host->need_tune_cmd_timing || host->need_tune_dat_timing) ? MAX_DLY_CLK : 0;
 
-	IFPRINTK("\n<----- mrq:0x%x, cmd:%d, arg:0x%08x, data len:%d, stop:0x%x\n",
-		(unsigned int)mrq, mrq->cmd->opcode&0xfff, mrq->cmd->arg,
-		(mrq->data)?(mrq->data->blocks*mrq->data->blksz):0, (unsigned int)mrq->stop);
+	DPRINTK("\n<-- cmd:%d, arg:0x%08x, data len:%d, stop:%s\n",
+		mrq->cmd->opcode, mrq->cmd->arg,
+		mrq->data ? (mrq->data->blocks * mrq->data->blksz) : 0,
+		mrq->stop ? "true" : "false");
 
 	/*
 	 * The below semaphore is released when "sphe_mmc_finish_request" is called
 	 * TODO: Observe if the below semaphore is necessary
 	 */
 	down(&host->req_sem);
-
 	host->mrq = mrq;
-	DPRINTK("host->mrq->cmd->opcode:%d\n", host->mrq->cmd->opcode);
 
-	if (host->mrq->data == NULL) {
+	if (mrq->data == NULL) {
 		if (host->mrq->cmd->flags & MMC_RSP_PRESENT) {
-			if (host->mrq->cmd->flags & MMC_RSP_136) {
-				spemmc_prepare_cmd_rsp(host);
-				spemmc_trigger_sdstate(host);
-				spemmc_get_rsp(host); /* Makes sure host returns to an idle or error state */
-				spemmc_check_sdstatus_errors(host);
+			if (unlikely(host->need_tune_cmd_timing || host->mrq->cmd->flags & MMC_RSP_136)) {
+				do {
+					spemmc_prepare_cmd_rsp(host);
+					spemmc_trigger_sdstate(host);
+					spemmc_get_rsp(host); /* Makes sure host returns to an idle or error state */
+					spemmc_check_sdstatus_errors(host);
+					if (-EILSEQ == mrq->cmd->error) {
+						host->base->sd_rd_dly_sel++;
+					} else if (-ETIMEDOUT == mrq->cmd->error) {
+						host->base->sd_wr_dly_sel++;
+					} else {
+						break;
+					}
+				} while(retry_count--);
+				if (!mrq->cmd->error)
+					host->need_tune_cmd_timing = 0;
 				sphe_mmc_finish_request(host, host->mrq);
 			} else {
 				spemmc_mmc_proc_cmd_rsp_intr(host);
 			}
-		} else { 
+		} else {
 			spemmc_mmc_proc_cmd(host);
 		}
 	} else {
-#ifdef SP_MMC_ZEBU_SUPPORT_DEVICE_DDR_MODE		
-		if ((mrq->data->flags & MMC_DATA_WRITE) && host->base->sdddrmode) {
-			host->wrdly = host->base->sd_wr_dly_sel;
-			host->rddly = host->base->sd_rd_dly_sel;
-			host->base->sd_rd_dly_sel = SP_MMC_DDR_ZEBU_WRITE_CRC_STATUS_DLY;
-			host->base->sd_wr_dly_sel = SP_MMC_ZEBU_DDR_WRITE_DLY;
-		}
-#endif
-		spemmc_proc_normDMA(host);
-		if(-EINVAL == host->mrq->data->error) { /*  para is not correct return */
+		if (unlikely(host->need_tune_dat_timing)) {
+			do {
+				spemmc_prepare_cmd_rsp(host);
+				spemmc_set_data_info(host, mrq->data);
+				if(-EINVAL == mrq->data->error) {
+					break;
+				}
+				spemmc_trigger_sdstate(host);
+				spemmc_get_rsp(host); /* Makes sure host returns to an idle or error state */
+				spemmc_check_sdstatus_errors(host);
+				if (-EILSEQ == mrq->data->error) {
+					if (mrq->data->flags & MMC_DATA_WRITE) {
+						if (is_crc_token_valid(host))
+							host->base->sd_wr_dly_sel++;
+						else
+							host->base->sd_rd_dly_sel++;
+					} else {
+						host->base->sd_rd_dly_sel++;
+					}
+				} else if (-ETIMEDOUT == mrq->data->error) {
+					host->base->sd_wr_dly_sel++;
+				} else {
+					break;
+				}
+				#ifdef SP_MMC_SUPPORT_DDR_MODE
+				if ((mrq->data->flags & MMC_DATA_WRITE) && host->base->sdddrmode) {
+					host->ddr_rd_crc_token_dly = host->base->sd_rd_dly_sel;
+					host->ddr_wr_data_dly = host->base->sd_wr_dly_sel;
+				}
+				#endif
+			} while(retry_count--);
+			if (!mrq->data->error)
+				host->need_tune_dat_timing = 0;
 			sphe_mmc_finish_request(host, host->mrq);
+		} else {
+			spemmc_proc_normDMA(host);
+			if(-EINVAL == host->mrq->data->error) { /*  para is not correct return */
+				sphe_mmc_finish_request(host, host->mrq);
+			}
 		}
 	}
 }
@@ -918,6 +965,8 @@ void spemmc_mmc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 
 	spemmc_set_ac_timing(host, ios);
 	spemmc_set_bus_width(host, ios->bus_width);
+	host->need_tune_cmd_timing = 0;
+	host->need_tune_dat_timing = 0;
 
 	up(&host->req_sem);
 	IFPRINTK("----- \n\n");
@@ -1075,7 +1124,7 @@ int spemmc_drv_probe(struct platform_device *pdev)
 	mmc->max_seg_size = 65536 * 512;            /* Size per segment is limited via host controller's
 	                                               ((sdram_sector_#_size max value) * 512) */
 	/* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS", a.k.a. max scattered memory segments per request */
-	mmc->max_segs = 1; 
+	mmc->max_segs = 1;
 	mmc->max_req_size = 65536 * 512;			/* Decided by hw_page_num0 * SDHC's blk size */
 	mmc->max_blk_size = 512;                   /* Limited by host's dma_size & data_length max value, set it to 512 bytes for now */
 	mmc->max_blk_count = 65536;                 /* Limited by sdram_sector_#_size max value */
@@ -1113,7 +1162,7 @@ int spemmc_drv_remove(struct platform_device *dev)
 	free_irq(host->irq, mmc);
 	mmc_free_host(mmc);
 
- 	return 0;
+	return 0;
 }
 
 

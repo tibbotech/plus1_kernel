@@ -34,7 +34,7 @@ static void __init sp_init(void)
 {
 	unsigned int b_sysclk, io_ctrl;
 #ifdef CONFIG_MACH_PENTAGRAM_SC7021_ACHIP
-	unsigned int a_pllclk, coreclk, ioclk, sysclk, clk_cfg;
+	unsigned int a_pllclk, coreclk, ioclk, sysclk, clk_cfg, a_pllioclk;
 #endif
 
 	early_printk("%s\n", __func__);
@@ -54,10 +54,11 @@ static void __init sp_init(void)
 	clk_cfg = readl((void __iomem *)A_SYSTEM_BASE + 0xc);
 	a_pllclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x2c) >> 16) + 1) & 0xff) * (27 * 1000 * 1000);
 	coreclk = a_pllclk / (1 + ((clk_cfg >> 10) & 1));
-	ioclk = a_pllclk / (20 + 5 * ((clk_cfg >> 4) & 7)) / ((clk_cfg >> 16) & 0xff) * 10;
 	sysclk = coreclk / (1 + ((clk_cfg >> 3) & 1));
-	early_printk("A: coreclk=%uM a_sysclk=%uM abio_bus=%uM\n",
-		coreclk / 1000000, sysclk / 1000000, ioclk / 1000000);
+	a_pllioclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x54) >> 16) & 0xff) + 1) * (27 * 1000 * 1000);
+	ioclk = a_pllioclk / (20 + 5 * ((clk_cfg >> 4) & 7)) / ((clk_cfg >> 16) & 0xff) * 10;
+	early_printk("A: core=%uM a_sysclk=%uM a_pllio=%uM abio_bus=%uM\n",
+		coreclk / 1000000, sysclk / 1000000, a_pllioclk / 1000000, ioclk / 1000000);
 
 #endif
 }
