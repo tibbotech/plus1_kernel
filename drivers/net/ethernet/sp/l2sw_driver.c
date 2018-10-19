@@ -355,7 +355,7 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #endif /* RX_POLLING */
 
 	if (status & MAC_INT_TX) {
-		ERROR0("[%s][%d] MAC_INT_TX status = [%x]\n", __FUNCTION__, __LINE__, status);
+		//DEBUG0("[%s][%d] MAC_INT_TX status = [%x]\n", __FUNCTION__, __LINE__, status);
         if (MAC_INT_TX_DES_ER & status) {
             ERROR0("[%s][%d] Send Descriptor Error\n", __FUNCTION__, __LINE__);
             mac_soft_reset(mac);
