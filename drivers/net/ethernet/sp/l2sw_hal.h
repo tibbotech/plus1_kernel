@@ -16,8 +16,8 @@
 #define REG_WRITE 0
 #define REG_READ  1
 
-#define PHY0_ADDR		0x1
-#define PHY1_ADDR		0x2
+#define PHY0_ADDR		0x2
+#define PHY1_ADDR		0x3
 
 
 #define MAC_GLB_INT_STATUS 15100
