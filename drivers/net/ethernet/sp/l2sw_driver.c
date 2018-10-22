@@ -789,10 +789,33 @@ out_freedev:
 
 static int l2sw_probe(struct platform_device *pdev)
 {	
+
+	int reg;
+	
 	DEBUG0("l2sw_probe \n");
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
+	
+	
+	struct moon2_regs * MOON2_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(2, 0), 64);
+	struct moon2_regs * MOON5_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(5, 0), 64);
+
+	MOON2_REG->sft_cfg[0] = 0x22282228;
+	MOON2_REG->sft_cfg[1] = 0x17231723;
+	MOON2_REG->sft_cfg[2] = 0x202C202C;
+	MOON2_REG->sft_cfg[3] = 0x2B212B21;
+	MOON2_REG->sft_cfg[4] = 0x2A292A29;
+	MOON2_REG->sft_cfg[5] = 0x26252625;
+	MOON2_REG->sft_cfg[6] = 0x24272427;
+	MOON2_REG->sft_cfg[7] = 0x1D1F1D1F;
+	MOON2_REG->sft_cfg[8] = 0x191E191E;
+	MOON2_REG->sft_cfg[9] = 0x1B1A1B1A;
+	MOON2_REG->sft_cfg[10] = 0x01180118;
+
+
+	reg = MOON5_REG->sft_cfg[5];
+	MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
 
 #if 0
 	struct moon2_regs * MOON2_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(2, 0), 64);
