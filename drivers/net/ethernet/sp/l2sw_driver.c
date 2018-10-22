@@ -905,7 +905,9 @@ static struct platform_driver l2sw_driver = {
 		.name  = "sp_l2sw",
 		.owner = THIS_MODULE,
 		.of_match_table = sp_l2sw_of_match,
-		.pm = &l2sw_pm_ops, // not sure	
+#ifdef CONFIG_PM
+		.pm = &l2sw_pm_ops, // not sure
+#endif
 	},
 };
 

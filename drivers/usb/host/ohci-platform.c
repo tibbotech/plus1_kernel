@@ -225,6 +225,7 @@ static int ohci_reset_thread(void *arg)
 	u32 flag;
 	int i;
 	int retval;
+	int irq_num = 0;
 	void __iomem *reg_addr;
 	struct usb_hcd *prior_hcd = NULL;
 
@@ -257,6 +258,7 @@ NEXT_LOOP:
 
 		printk("### %s  devicemap=%lx +\n", __FUNCTION__, hcd->self.devmap.devicemap[0]);
 		if (hcd->self.devmap.devicemap[0] == 2) {
+			irq_num = hcd->irq;
 			flag = sp_ohci->flag;
 			/*Clear flag  */
 			clear_bit(HCD_FLAG_RH_RUNNING, &hcd->flags);
@@ -297,7 +299,7 @@ NEXT_LOOP:
 #endif
 			msleep(100);
 
-			usb_add_hcd(hcd, hcd->irq, IRQF_DISABLED | IRQF_SHARED);
+			usb_add_hcd(hcd, irq_num, IRQF_DISABLED | IRQF_SHARED);
 
 			sp_ohci->flag &= ~RESET_HC_SIGN;
 
