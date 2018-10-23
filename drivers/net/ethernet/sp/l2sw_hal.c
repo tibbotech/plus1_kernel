@@ -17,6 +17,37 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 	}
 }
 
+int l2sw_pinmux_set()
+{
+	int reg;
+
+	GPIO_PIN_MUX_SEL(PMX_L2SW_CLK_OUT,40);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_MAC_SMI_MDC,34);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_LED_FLASH0,35);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_LED_FLASH1,23);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_LED_ON0,44);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_LED_ON1,32);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_MAC_SMI_MDIO,33);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_TXEN,43);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_TXD0,41);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_TXD1,42);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_CRSDV,37);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_RXD0,38);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_RXD1,39);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P0_MAC_RMII_RXER,36);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_TXEN,31);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_TXD0,29);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_TXD1,30);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_CRSDV,25);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_RXD0,26);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_RXD1,27);
+	GPIO_PIN_MUX_SEL(PMX_L2SW_P1_MAC_RMII_RXER,24);
+	GPIO_PIN_MUX_SEL(PMX_DAISY_MODE,1);
+
+
+}
+
+
 #if 0
 int mac_g1_base_set(void __iomem *baseaddr)
 {
@@ -155,12 +186,14 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	reg=HWREG_R(mac_force_mode);
 	HWREG_W(mac_force_mode,(reg&(~(0x1f<<16)))|(PHY0_ADDR<<16));
+	reg=HWREG_R(mac_force_mode);
+	HWREG_W(mac_force_mode,(reg&(~(0x1f<<24)))|(PHY1_ADDR<<24));
 	//enable soc port0 crc padding
 	reg=HWREG_R(cpu_cntl);
 	HWREG_W(cpu_cntl,(reg&(~(0x1<<6)))|(0x1<<8));
 	//enable port0
 	reg=HWREG_R(port_cntl0);
-	HWREG_W(port_cntl0,reg&(~(0x1<<24)));
+	HWREG_W(port_cntl0,reg&(~(0x3<<24)));
 
 	//MAC address initial
 	//soc port MAC address config
@@ -449,8 +482,21 @@ void l2sw_enable_port()
 {
     u32 reg;
 
+		
+	struct moon_regs * MOON5_REG = (volatile struct moon_regs *)ioremap(RF_GRP(5, 0), 32);
+	//set clock
+	reg = MOON5_REG->sft_cfg[5];
+	MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
+	//enable port
     reg=HWREG_R(port_cntl0);
     HWREG_W(port_cntl0,reg&(~(0x3<<24)));
+
+
+	//phy address
+	reg=HWREG_R(mac_force_mode);
+	HWREG_W(mac_force_mode,(reg&(~(0x1f<<16)))|(PHY0_ADDR<<16));
+	reg=HWREG_R(mac_force_mode);
+	HWREG_W(mac_force_mode,(reg&(~(0x1f<<24)))|(PHY1_ADDR<<24));
 
 }
 
@@ -485,11 +531,7 @@ int phy_cfg()
     mdio_write(0x0,0x13,0x3102);
 	#endif
 	
-	//phy address
-	reg=HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode,(reg&(~(0x1f<<16)))|(PHY0_ADDR<<16));
-	reg=HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode,(reg&(~(0x1f<<24)))|(PHY1_ADDR<<24));
+
 
 	return 0;
 }

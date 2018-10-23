@@ -727,7 +727,10 @@ static u32 netdev_init(struct platform_device *pdev)
 		ERROR0("[%s][%d] no IRQ resource!\n", __FUNCTION__, __LINE__);
 		goto out_freedev;
 	}
+
+	l2sw_pinmux_set();
 	l2sw_enable_port();
+	
 
 	phy_cfg();
 
@@ -796,42 +799,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
-	
-	
-	struct moon2_regs * MOON2_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(2, 0), 64);
-	struct moon2_regs * MOON5_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(5, 0), 64);
-
-	MOON2_REG->sft_cfg[0] = 0x22282228;
-	MOON2_REG->sft_cfg[1] = 0x17231723;
-	MOON2_REG->sft_cfg[2] = 0x202C202C;
-	MOON2_REG->sft_cfg[3] = 0x2B212B21;
-	MOON2_REG->sft_cfg[4] = 0x2A292A29;
-	MOON2_REG->sft_cfg[5] = 0x26252625;
-	MOON2_REG->sft_cfg[6] = 0x24272427;
-	MOON2_REG->sft_cfg[7] = 0x1D1F1D1F;
-	MOON2_REG->sft_cfg[8] = 0x191E191E;
-	MOON2_REG->sft_cfg[9] = 0x1B1A1B1A;
-	MOON2_REG->sft_cfg[10] = 0x01180118;
-
-
-	reg = MOON5_REG->sft_cfg[5];
-	MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
-
-#if 0
-	struct moon2_regs * MOON2_REG = (volatile struct moon2_regs *)ioremap(RF_GRP(2, 0), 64);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[0]= %x\n", MOON2_REG->sft_cfg[0]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[1]= %x\n", MOON2_REG->sft_cfg[1]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[2]= %x\n", MOON2_REG->sft_cfg[2]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[3]= %x\n", MOON2_REG->sft_cfg[3]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[4]= %x\n", MOON2_REG->sft_cfg[4]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[5]= %x\n", MOON2_REG->sft_cfg[5]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[6]= %x\n", MOON2_REG->sft_cfg[6]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[7]= %x\n", MOON2_REG->sft_cfg[7]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[8]= %x\n", MOON2_REG->sft_cfg[8]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[9]= %x\n", MOON2_REG->sft_cfg[9]);
-	DEBUG0("@@@@@@@@@l2sw_probe MOON2_REG->sft_cfg[10]= %x\n", MOON2_REG->sft_cfg[10]);
-
-#endif
 	
 	return netdev_init(pdev);
 }

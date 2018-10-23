@@ -4,6 +4,7 @@
 #include "l2sw_register.h"
 #include "l2sw_define.h"
 #include "l2sw_desc.h"
+#include <mach/gpio_drv.h>
 
 #define GMAC_REG_BASE 0x40004b80
 
@@ -35,6 +36,8 @@
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
 
 int l2sw_reg_base_set( void __iomem *baseaddr);
+
+int l2sw_pinmux_set(void);
 
 int mac_g1_base_set(void __iomem *baseaddr);
 
