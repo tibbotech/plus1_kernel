@@ -171,10 +171,17 @@ static void dump_buf(u8 *buf, u32 len)
 #define RESULT	(memcmp(src, dst, size) ? "FAIL" : "PASS")
 #endif
 
+#define UG_SLOP		0x4
+#define UG_BD_UP	0x200
+#define UG_BD_DOWN	0x0
+#define UG_DATA_TH	0x2b0
+#define UG_CTRL0	((1<<31) | (UG_SLOP<<20) | (UG_BD_UP<<10) | UG_BD_DOWN)
+
 static int test_set(const char *val, const struct kernel_param *kp)
 {
-	u32 src_pa, dst_pa, size;
+	u32 src_pa, dst_pa, size, sz;
 	void *src, *dst;
+	int i;
 
 	// A -> A
 	size   = SZ_128K;
@@ -210,6 +217,26 @@ static int test_set(const char *val, const struct kernel_param *kp)
 
 	sp_dma0_copy(1, src_pa, dst_pa, size, true);
 	printk("DMA0 B:%08x -> A:%08x test: %s\n", dst_pa, src_pa, RESULT);
+
+	// A -> B (Urgent)
+	sz = SZ_16K;
+	memset(dst, 0xdd, 6 * sz);
+
+	// initial urgent config for 6 channels
+	for (i = 0; i < 6; i++) {
+		sp_dma0.reg->ug[i].cfg0 = UG_CTRL0;
+		sp_dma0.reg->ug[i].cfg1 = UG_DATA_TH;
+	}
+
+	// start 6 channels to transfer 6*16KB data
+	for (i = 0; i < 6; i++) {
+		sp_dma0_copy(i, dst_pa + (i * sz), src_pa + (i * sz), sz, false);
+	}
+	// wait all 6 channels done
+	for (i = 0; i < 6; i++) {
+		sp_dma0_wait(i);
+	}
+    printk("DMA0 A:%08x -> B:%08x test (urgent): %s\n", src_pa, dst_pa, RESULT);
 
 	dma_free_coherent(NULL, size, dst, dst_pa);
 
