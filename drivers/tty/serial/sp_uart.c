@@ -771,20 +771,13 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	uartdma_rx = sp_port->uartdma_rx;
 	rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 
-	rx_size = readl(&(rxdma_reg->rxdma_databytes));
 	offset_sw = readl(&(rxdma_reg->rxdma_rd_adr)) - readl(&(rxdma_reg->rxdma_start_addr));
 	offset_hw = readl(&(rxdma_reg->rxdma_wr_adr)) - readl(&(rxdma_reg->rxdma_start_addr));
 
 	if (offset_hw >= offset_sw) {
-		if (rx_size != offset_hw - offset_sw) {
-			DBG_ERR("\n%s, %d\n\n", __FILE__, __LINE__);
-			BUG_ON(1);
-		}
+		rx_size = offset_hw - offset_sw;
 	} else {
-		if (rx_size != (offset_hw + UARXDMA_BUF_SZ - offset_sw)) {
-			DBG_ERR("\n%s, %d\n\n", __FILE__, __LINE__);
-			BUG_ON(1);
-		}
+		rx_size = offset_hw + UARXDMA_BUF_SZ - offset_sw;
 	}
 
 	sw_ptr = (u8 *)(uartdma_rx->buf_va + offset_sw);
@@ -888,14 +881,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 		}
 
 		rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
-		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, uartdma_rx->irq);
-		ret = request_irq(uartdma_rx->irq, sunplus_uart_rxdma_irq, 0, "UARTDMA_RX", port);
-		if (ret) {
-			goto error_00;
-		}
 
 		if (uartdma_rx->buf_va == NULL) {
-			/* Allocate buffer and keep it forever */
 			uartdma_rx->buf_va = dma_alloc_coherent(port->dev, UARXDMA_BUF_SZ, &(uartdma_rx->dma_handle), GFP_KERNEL);
 			if (uartdma_rx->buf_va == NULL) {
 				DBG_ERR("%s, %d, Can't allocation buffer for %s\n", __func__, __LINE__, sp_port->name);
@@ -931,6 +918,13 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_GO)),
 			       &(rxdma_reg->rxdma_enable_sel));
 		}
+		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, uartdma_rx->irq);
+		ret = request_irq(uartdma_rx->irq, sunplus_uart_rxdma_irq, 0, "UARTDMA_RX", port);
+		if (ret) {
+			dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
+			goto error_00;
+		}
+
 	}
 
 	uartdma_tx = sp_port->uartdma_tx;
@@ -939,7 +933,6 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 		DBG_INFO("Enalbe TXDMA for %s\n", sp_port->name);
 
 		if (uartdma_tx->buf_va == NULL) {
-			/* Allocate buffer and keep it forever */
 			uartdma_tx->buf_va = dma_alloc_coherent(port->dev, UATXDMA_BUF_SZ, &(uartdma_tx->dma_handle), GFP_KERNEL);
 			if (uartdma_tx->buf_va == NULL) {
 				DBG_ERR("%s, %d, Can't allocation buffer for %s\n", __func__, __LINE__, sp_port->name);
@@ -970,6 +963,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 error_01:
 	if (uartdma_rx) {
+		dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
 		free_irq(uartdma_rx->irq, port);
 	}
 error_00:
@@ -998,7 +992,9 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 	unsigned long flags;
 	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
 	struct sunplus_uartdma_info *uartdma_rx;
-	// volatile struct regs_uarxdma *rxdma_reg;
+	volatile struct regs_uarxdma *rxdma_reg;
+	// struct sunplus_uartdma_info *uartdma_tx;
+	// volatile struct regs_uatxdma *txdma_reg;
 
 	spin_lock_irqsave(&port->lock, flags);
 	sp_uart_set_int_en(port->membase, 0);	/* disable all interrupt */
@@ -1008,16 +1004,34 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
-#if 0	/* TODO: stop DMA-RX, remember to reinitialize DMA-RX in sunplus_uart_ops_startup() */
 		rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
-		writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B)),
-		       &(rxdma_reg->rxdma_enable_sel));
-#endif
+
+		/* Drop whatever is still in buffer */
+		writel(readl(&(rxdma_reg->rxdma_wr_adr)), &(rxdma_reg->rxdma_rd_adr));
+		// writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B)), &(rxdma_reg->rxdma_enable_sel));
+
 		free_irq(uartdma_rx->irq, port);
 		DBG_INFO("free_irq(%d)\n", uartdma_rx->irq);
-		/* Buffer for UARXDMA is kept */
-		/* dma_free_coherent() */
+		// dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
+		// uartdma_rx->buf_va = NULL;
 	}
+
+#if 0
+	uartdma_tx = sp_port->uartdma_tx;
+	if (uartdma_tx) {
+		writel(0, &((struct regs_uart *)(port->membase))->uart_tx_residue);	/* It will cause UARTDMA-Tx module' s/w reset */
+		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
+		while ((readl(&(txdma_reg->txdma_rst_done)) & 0x00000001) == 0) {
+			/* Wait for s/w reset done. */
+		}
+		writel(0x00000000, &(txdma_reg->txdma_enable));
+		writel(0, &(txdma_reg->txdma_wr_adr));		/* must be set before txdma_start_addr */
+		writel(0, &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
+		writel(0, &(txdma_reg->txdma_end_addr));
+		dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_tx->buf_va, uartdma_tx->dma_handle);
+		uartdma_tx->buf_va = NULL;
+	}
+#endif
 }
 
 /*
@@ -1096,7 +1110,7 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
-#if 1	/* For Zebu only, disable this in real chip */
+#if 0	/* For Zebu only, disable this in real chip */
 	if (baud == 921600) {
 		/*
 		 * Refer to Zebu's testbench/uart.cc

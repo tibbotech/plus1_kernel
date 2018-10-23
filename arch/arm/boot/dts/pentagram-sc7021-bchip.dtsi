@@ -33,6 +33,8 @@
 		serial0 = &uart0;
 		serial1 = &uart1;
 		serial2 = &uart2;
+		serial3 = &uart3;
+		serial4 = &uart4;
 
 		i2c0 = &i2cm0;
 		i2c1 = &i2cm1;
@@ -218,7 +220,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
-			which-uart = <2>;
+			which-uart = <1>;
 		};
 #endif
 #ifdef ENABLE_DMARX1
@@ -228,7 +230,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
-			which-uart = <1>;
+			which-uart = <2>;
 		};
 #endif
 #ifdef ENABLE_DMATX0
@@ -237,7 +239,7 @@
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a00 0x40>;
 			clocks = <&extclk>;
-			which-uart = <1>;
+			which-uart = <3>;
 		};
 #endif
 #ifdef ENABLE_DMATX1
@@ -245,7 +247,7 @@
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a40 0x40>;
 			clocks = <&extclk>;
-			which-uart = <2>;
+			which-uart = <4>;
 		};
 #endif
 
@@ -274,6 +276,22 @@
 			clocks = <&extclk>;
 		};
 
+		uart3: serial@sp_uart3 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c000880 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
+		uart4: serial@sp_uart4 {
+			compatible = "sunplus,sp-uart";
+			reg = <0x9c008780 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
 		mmc0: mmc@emmc {
 			compatible = "sunplus,sp_emmc";
 			reg = <0x9c003b00 0x180>;
@@ -299,7 +317,7 @@
 			reg = <0x9c000AE0 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
-		};		
+		};
 
 		bch0: bch@sp_bch {
 			compatible = "sunplus,sp_bch";
@@ -307,7 +325,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
 		};
-		
+
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp_i2cm";
 			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>;
@@ -417,7 +435,7 @@
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		
+
 		l2sw: l2sw@0x9c108000 {
 			compatible = "sunplus,sp-l2sw";
 			reg = <0x9c108000 0x400>;
@@ -431,20 +449,20 @@
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};
-		
+
 		gpio: gpio@0x9C000300 {
 			compatible = "sunplus,sp_gpio";
 			reg = <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts =
-				<120 IRQ_TYPE_LEVEL_HIGH>, 
+				<120 IRQ_TYPE_LEVEL_HIGH>,
 				<121 IRQ_TYPE_LEVEL_HIGH>,
 				<122 IRQ_TYPE_LEVEL_HIGH>,
 				<123 IRQ_TYPE_LEVEL_HIGH>,
 				<124 IRQ_TYPE_LEVEL_HIGH>,
 				<125 IRQ_TYPE_LEVEL_HIGH>,
 				<126 IRQ_TYPE_LEVEL_HIGH>,
-				<127 IRQ_TYPE_LEVEL_HIGH>; 
+				<127 IRQ_TYPE_LEVEL_HIGH>;
 		};
 	};
 };
