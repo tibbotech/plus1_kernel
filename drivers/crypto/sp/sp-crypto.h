@@ -498,8 +498,8 @@ do { \
 #define SP_CRYPTO_TRACE()
 #define SP_CRYPTO_ERR(fmt, ...)  printk(KERN_ERR fmt, ##__VA_ARGS__)
 #define SP_CRYPTO_WAR(fmt, ...)  printk(KERN_WARNING fmt, ##__VA_ARGS__)
-#define SP_CRYPTO_INF(fmt, ...)  printk(KERN_INFO fmt, ##__VA_ARGS__)
-#define SP_CRYPTO_DBG(fmt, ...)  printk(KERN_DEBUG fmt, ##__VA_ARGS__)
+#define SP_CRYPTO_INF(fmt, ...)  //printk(KERN_INFO fmt, ##__VA_ARGS__)
+#define SP_CRYPTO_DBG(fmt, ...)  //printk(KERN_DEBUG fmt, ##__VA_ARGS__)
 
 void sp_crypto_free_dev(struct sp_crypto_dev *dev, u32 type);
 struct sp_crypto_dev *sp_crypto_alloc_dev(int type);

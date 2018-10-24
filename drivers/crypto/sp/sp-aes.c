@@ -200,6 +200,10 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 		reverse_iv(ctx->iv, desc->info);
 	} else {
 		memcpy(ctx->iv, desc->info, ctx->ivlen);
+		if (mode == M_AES_CBC && enc == M_DEC) {
+			scatterwalk_map_and_copy(desc->info, src,
+				nbytes - ctx->ivlen, ctx->ivlen, 0);
+		}
 	}
 
 	iv_phy = ctx->pa + AES_BLOCK_SIZE;
@@ -213,6 +217,7 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 		return -EINTR;
 	}
 	//mutex_lock(&ring->lock);
+	if (src == dst) dma_sync_sg_for_device(NULL, src, src_cnt, DMA_TO_DEVICE); // FIXME: workaround for GCM call AES-CTR decrypt fail
 
 	while (processed < nbytes) {
 		u32 reast;
@@ -330,8 +335,8 @@ out:
 	}
 
 	// update iv for return
-	if (mode == M_AES_CBC) {
-		scatterwalk_map_and_copy(desc->info, (enc == M_DEC) ? src : dst,
+	if (mode == M_AES_CBC && enc == M_ENC) {
+		scatterwalk_map_and_copy(desc->info, dst,
 			nbytes - ctx->ivlen, ctx->ivlen, 0);
 	} else if (mode == M_AES_CTR) {
 		ctr_inc(ctx->iv, ctx->ivlen, nbytes / AES_BLOCK_SIZE);
