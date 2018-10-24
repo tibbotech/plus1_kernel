@@ -221,13 +221,10 @@ static int ohci_reset_thread(void *arg)
 	struct ohci_hcd_sp *sp_ohci = (struct ohci_hcd_sp *)arg;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
-	u32 val;
 	u32 flag;
 	int i;
-	int retval;
 	int irq_num = 0;
 	void __iomem *reg_addr;
-	struct usb_hcd *prior_hcd = NULL;
 
 	do {
 

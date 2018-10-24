@@ -152,7 +152,6 @@ static char enum_retry_status_string[STRING_NUM][STRING_MAX_LENGTH] = {
 
 static bool rx_active_not_run_ehci_flag[USB_PORT_NUM] = { false };
 
-static bool bad_dev_info_flag = false;
 static int enum_retry_status[USB_PORT_NUM] = { HS_FIRST_START };
 static int enum_success_times[USB_PORT_NUM] = { 0 };
 
@@ -5189,7 +5188,7 @@ hub_port_init(struct usb_hub *hub, struct usb_device *udev, int port1,
 					printk(KERN_NOTICE
 					       "\n### Check your USB cable(ret=%d)... retry[%d]\n",
 					       r, operations);
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 					if (-ENOTCONN == r) {
 						printk(KERN_NOTICE
 						       "***Warn,dev disc during get dev descriptor***\n");
@@ -6083,7 +6082,7 @@ static void hub_events(void)
 		}
 
 		/* deal with port status changes */
-		printk(KERN_NOTICE "%s,hub:%x\n",__FUNCTION__,hub);
+		printk(KERN_NOTICE "%s,hub:%p\n",__FUNCTION__,hub);
 		for (i = 1; i <= hdev->maxchild; i++) {
 			struct usb_port *port_dev = hub->ports[i - 1];
 

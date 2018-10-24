@@ -848,7 +848,7 @@ dead:
 		ehci_work (ehci);
 	spin_unlock_irqrestore(&ehci->lock, flags);
 	if (pcd_status){
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 		port_status = ehci_readl(ehci, &ehci->regs->port_status[0]);
 		if ((!(port_status & PORT_CONNECT))
 		    || (port_status & PORT_CSC)) {
@@ -860,7 +860,7 @@ dead:
 	return IRQ_HANDLED;
 }
 
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 struct api_context {
 	struct completion done;
 	int status;
@@ -1817,6 +1817,7 @@ MODULE_LICENSE ("GPL");
 #include "ehci-platform.c"
 #endif
 
+#if 0
 static int __init ehci_hcd_init(void)
 {
 	int retval = 0;
@@ -1915,3 +1916,4 @@ static void __exit ehci_hcd_cleanup(void)
 	clear_bit(USB_EHCI_LOADED, &usb_hcds_loaded);
 }
 /*module_exit(ehci_hcd_cleanup);*/
+#endif

@@ -124,7 +124,7 @@ config USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
 	bool "Enable USB Multiple Reset Problem Workaround"
 	depends on USB
 
-config USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+config USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 	bool "Enable Workaround USB Host Not Finish QTD When Disconnect"
 	depends on USB
 

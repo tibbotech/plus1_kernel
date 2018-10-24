@@ -2123,7 +2123,7 @@ int composite_dev_prepare(struct usb_composite_driver *composite,
 	 */
 	usb_ep_autoconfig_reset(gadget);
 	return 0;
-fail_dev:
+
 	kfree(cdev->req->buf);
 fail:
 	usb_ep_free_request(gadget->ep0, cdev->req);

@@ -78,8 +78,6 @@ static void uphy0_init(void)
 
 static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 {
-	int ret = -1;
-
 	uphy0_irq_num = platform_get_irq(pdev, 0);
 	if (uphy0_irq_num < 0) {
 		printk(KERN_NOTICE "no irq provieded,ret:%d\n",uphy0_irq_num);

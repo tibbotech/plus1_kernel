@@ -267,7 +267,6 @@ static int check_read_data(struct f_sourcesink *ss, struct usb_request *req)
 {
 	unsigned i;
 	u8 *buf = req->buf;
-	struct usb_composite_dev *cdev = ss->function.config->cdev;
 
 	for (i = check_pattern; i < req->actual + check_pattern; i++, buf++) {
 		switch (pattern) {
@@ -317,7 +316,6 @@ static void reinit_write_data(struct usb_ep *ep, struct usb_request *req)
 static void source_sink_complete(struct usb_ep *ep, struct usb_request *req)
 {
 	struct f_sourcesink *ss = ep->driver_data;
-	struct usb_composite_dev *cdev = ss->function.config->cdev;
 	int status = req->status;
 
 	switch (status) {

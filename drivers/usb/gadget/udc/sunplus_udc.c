@@ -154,7 +154,6 @@ EXPORT_SYMBOL_GPL(is_ean);
 EXPORT_SYMBOL_GPL(dma_fail);
 
 
-static u64 sp_udc_dma_mask = DMA_BIT_MASK(32);
 static const char gadget_name[] = "sp_udc";
 static struct semaphore ep1_ack_sem, ep1_dma_sem;
 static struct semaphore ep12_bulk_out_ack_sem, ep12_bulk_out_nak_sem;
@@ -186,11 +185,10 @@ static void reset_global_value(void)
 static void udc_clean_dcache_range(unsigned int start,unsigned int start_pa,unsigned int size){
 	unsigned long oldIrq;
 	void* vaddr = (void *)start;
-	unsigned int pa = 0;
 
 	local_irq_save(oldIrq);
 	/* flush L1 cache by range */
-	dmac_flush_range(start,start+size);
+	dmac_flush_range(vaddr,vaddr+size);
 	/* flush L2 cache by range */
 	outer_flush_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -201,7 +199,7 @@ static void udc_invalidate_dcache_range(unsigned int start,unsigned int start_pa
 
 	local_irq_save(oldIrq);
 	/* invalidate L1 cache by range */
-	dmac_unmap_area(start,size,2);
+	dmac_unmap_area((void *)start,size,2);
 	/* invalidate L2 cache by range */
 	outer_inv_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -956,7 +954,7 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 			crq->wValue = 0;	/*interface namber */
 			crq->wIndex = 0;	/*altersetting */
 		}
-#ifdef USB_DEVICE_LOSE_PACKET_AFTER_SET_INTERFACE_WORKAROUN
+#ifdef CONFIG_USB_DEVICE_LOSE_PACKET_AFTER_SET_INTERFACE_WORKAROUND
 		udc_write(udc_read(UDLCADDR) | (1 << 18), UDLCADDR);
 #endif
 		break;
@@ -2251,7 +2249,7 @@ static int sp_ep11_bulkout(struct sp_ep *ep, struct sp_request *req)
 _RX_BULKOUT_DATA_AGAIN_11:
 	if (!(udc_read(UDEPBFS) & 0x2)) {
 		DEBUG_DBG("ep11 fifo not valid\n");
-#ifdef CONFIG_USB_DEVICE_EP11_NOT_AUTO_SWITCH_WORKAROUN
+#ifdef CONFIG_USB_DEVICE_EP11_NOT_AUTO_SWITCH_WORKAROUND
 		if ((udc_read(UDEPBFS) & 0x22) == 0x20) {
 			udc_write(udc_read(UDEPBPPC) | SWITCH_BUFF, UDEPBPPC);
 		} else
@@ -2650,7 +2648,7 @@ static void sp_udc_ep1_work(struct work_struct *work)
 		} else
 			req = list_entry(ep->queue.next, struct sp_request, queue);
 
-		if ((udc_read(UDEP12FS) & 0x1) != 0x1 && req)
+		if (((udc_read(UDEP12FS) & 0x1) != 0x1) && req) {
 #ifdef EP1_DMA
 			if (is_vera)
 				ret = sp_ep1_bulkin(ep, req);
@@ -2659,6 +2657,7 @@ static void sp_udc_ep1_work(struct work_struct *work)
 #else
 			ret = sp_ep1_bulkin(ep, req);
 #endif
+		}
 		up(&ep1_ack_sem);
 		DEBUG_DBG("1 unlock >>\n");
 	} while (ret && ((udc_read(UDEP12FS) & 0x1) != 0x1));
@@ -4390,7 +4389,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	}
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	printk("udc-line:%d,0x%x,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq);
+	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		ret = -ENOMEM;

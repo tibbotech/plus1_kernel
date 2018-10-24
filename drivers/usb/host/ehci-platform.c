@@ -121,27 +121,6 @@ extern void detech_start(void);
 extern u32 usb_logo_test_start;
 #endif
 
-static void ctrl_reset(struct platform_device *pdev, int period_ms)
-{
-#if 0
-	volatile u32 *reset_addr;
-	volatile u32 reg_val;
-
-	if (NULL == pdev) {
-		return;
-	}
-	printk("reset usb host %d (1~)\n", pdev->id);
-	reset_addr = (u32 *) VA_IOB_ADDR((0) * 32 * 4) + 18;
-	reg_val = ioread32(reset_addr);
-	reg_val |= (1 << (10 + pdev->id - 1));
-	iowrite32(reg_val, reset_addr);
-	wmb();
-	mdelay(period_ms);
-	reg_val &= (~(1 << (10 + pdev->id - 1)));
-	iowrite32(reg_val, reset_addr);
-#endif
-}
-
 static int ehci_reset_thread(void *arg)
 {
 	struct ehci_hcd *ehci = (struct ehci_hcd *)arg;
@@ -151,8 +130,6 @@ static int ehci_reset_thread(void *arg)
 
 	int i;
 	u32 flag;
-	u32 val;
-	int retval;
 	void __iomem *reg_addr;
 
 	do {
@@ -478,9 +455,6 @@ static ssize_t store_usb_ctrl_reset(struct device *dev,
 		printk("%s wake usb ctrl\n", __FUNCTION__);
 		*(hcd->ptr_flag) |= (RESET_HC_DEAD | RESET_UPHY_SIGN);
 		wake_up_interruptible(&hcd->reset_queue);
-	} else if ((val > 2) && (val < 500)) {
-		printk("ctrl reset %d..\n", val);
-		ctrl_reset(pdev, val);
 	} else if (val > 500) {
 		printk("power reset %d ms \n", val);
 		reset_usb_powerx(hcd, val);

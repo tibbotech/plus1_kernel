@@ -1305,6 +1305,7 @@ MODULE_LICENSE ("GPL");
 #include "ohci-platform.c"
 #endif
 
+#if 0
 static int __init ohci_hcd_mod_init(void)
 {
 	int retval = 0;
@@ -1419,4 +1420,4 @@ static void __exit ohci_hcd_mod_exit(void)
 	clear_bit(USB_OHCI_LOADED, &usb_hcds_loaded);
 }
 /*module_exit(ohci_hcd_mod_exit);*/
-
+#endif

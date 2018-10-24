@@ -52,7 +52,7 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	unsigned long expire;
 	int retval;
 	struct usb_device *dev;
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 	struct usb_hcd *hcd = bus_to_hcd(urb->dev->bus);
 #endif
 
@@ -65,7 +65,7 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 	retval = usb_submit_urb(urb, GFP_NOIO);
 	if (unlikely(retval))
 		goto out;
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 	do {
 		if (hcd->enum_msg_flag && hcd->hub_thread == current) {
 			int port_status;
@@ -115,7 +115,7 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 			urb->transfer_buffer_length);
 	} else {
 		retval = ctx.status;
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 		if (-ENOTCONN_IRQ == retval) {
 			printk(KERN_NOTICE "\n***Warn, stop urb wait***\n");
 			retval = -ENOTCONN;
@@ -124,7 +124,7 @@ static int usb_start_wait_urb(struct urb *urb, int timeout, int *actual_length)
 #endif
 	}
 
-#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUN
+#ifdef CONFIG_USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
 	if (hcd->enum_msg_flag && hcd->hub_thread == current)
 		hcd->current_active_urb = NULL;
 #endif
