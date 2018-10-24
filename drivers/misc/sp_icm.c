@@ -14,8 +14,11 @@
 #define REG(g, i)	VA_IOB_ADDR((g * 32 + i) * 4)
 #define ICMCLK(en)	\
 do { \
+	u32 g = sp_icm.clken >> 16; \
+	u32 i = (sp_icm.clken >> 8) & 0xff; \
+	u32 s = sp_icm.clken & 0xff; \
 	printk("ICM_CLKEN: %d\n", en); \
-	*(volatile u32 *)REG(0, 10) = (1 << 24) | (en << 8); \
+	*(volatile u32 *)REG(g, i) = (1 << (16 + s)) | (en << s); \
 } while (0)
 
 //#define TRACE(s) printk("### %s:%d %s\n", __FUNCTION__, __LINE__, s)
@@ -100,6 +103,7 @@ struct sp_icm_reg {
 struct sp_icm_dev {
 	volatile struct sp_icm_reg *reg;
 	int irq;
+	u32 clken;
 	struct device *dev;
 };
 
@@ -317,6 +321,12 @@ module_param_cb(test, &test_ops, NULL, 0600);
 #endif
 
 
+static const struct of_device_id sp_icm_of_match[] = {
+	{ .compatible = "sunplus,sp-icm" },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, sp_icm_of_match);
+
 static int sp_icm_probe(struct platform_device *pdev)
 {
 	struct sp_icm_dev *dev = &sp_icm;
@@ -324,6 +334,10 @@ static int sp_icm_probe(struct platform_device *pdev)
 	void __iomem *membase;
 	int i = 0;
 	int ret = 0;
+	struct device_node *np;
+
+	np = of_find_compatible_node(NULL, NULL, sp_icm_of_match->compatible);
+	of_property_read_u32(np, "clken", &dev->clken);
 
 	TRACE("");
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -397,12 +411,6 @@ static int __maybe_unused sp_icm_runtime_resume(struct device *dev)
 	ICMCLK(1); // enable ICM HW clock
 	return 0;
 }
-
-static const struct of_device_id sp_icm_of_match[] = {
-	{ .compatible = "sunplus,sp-icm" },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, sp_icm_of_match);
 
 static const struct dev_pm_ops sp_icm_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(sp_icm_suspend, sp_icm_resume)

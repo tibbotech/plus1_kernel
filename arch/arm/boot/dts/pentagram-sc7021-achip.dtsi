@@ -259,6 +259,8 @@
 
 		icm: icm@G81 {
 			compatible = "sunplus,sp-icm";
+			/* clken format: (group << 16) | (index << 8) | shift */
+			clken = <0x00000a08>; /* 0.10.8 */
 			reg = <0x9c002880 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts =
