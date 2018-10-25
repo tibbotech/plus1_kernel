@@ -9,6 +9,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <mach/io_map.h>
+#include <dt-bindings/clock/sp-q628.h>
 
 #define TRACE	pr_info("### %s:%d (%d)\n", __FUNCTION__, __LINE__, (clk->reg - REG(4, 0)) / 4)
 //#define TRACE
@@ -20,7 +21,7 @@
 })
 #define MASK_GET(shift, width, value)	(((value) >> (shift)) & ((1 << (width)) - 1))
 
-#define REG(g, i)	((void __iomem *)VA_IOB_ADDR((g * 32 + i) * 4))
+#define REG(g, i)	((void __iomem *)VA_IOB_ADDR(((g) * 32 + (i)) * 4))
 
 #define PLLA_CTL	REG(4, 7)
 #define PLLE_CTL	REG(4, 12)
@@ -59,16 +60,92 @@ struct sp_pll {
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
-enum sp_clk {
-	plla,
-	plle, plle_2p5, plle_25, plle_112p5,
-	pllf,
-	plltv, plltv_a,
-	pllsys,
-	clk_max
-};
+static u32 gates[] = {
+	SYSTEM,
+	RTC,
+	IOCTL,
+	IOP,
+	OTPRX,
+	NOC,
+	BR,
+	RBUS_L00,
+	SPIFL,
+	SDCTRL0,
+	PERI0,
+	A926,
+	UMCTL2,
+	PERI1,
 
-static struct clk *clks[clk_max];
+	DDR_PHY0,
+	ACHIP,
+	STC0,
+	STC_AV0,
+	STC_AV1,
+	STC_AV2,
+	UA0,
+	UA1,
+	UA2,
+	UA3,
+	UA4,
+	HWUA,
+	DDC0,
+	UADMA,
+
+	CBDMA0,
+	CBDMA1,
+	SPI_COMBO_0,
+	SPI_COMBO_1,
+	SPI_COMBO_2,
+	SPI_COMBO_3,
+	AUD,
+	USBC0,
+	USBC1,
+	UPHY0,
+	UPHY1,
+
+	I2CM0,
+	I2CM1,
+	I2CM2,
+	I2CM3,
+	PMC,
+	CARD_CTL0,
+	CARD_CTL1,
+
+	CARD_CTL4,
+	BCH,
+	DDFCH,
+	CSIIW0,
+	CSIIW1,
+	MIPICSI0,
+	MIPICSI1,
+
+	HDMI_TX,
+	VPOST,
+
+	TGEN,
+	DMIX,
+	TCON,
+	INTERRUPT,
+
+	RGST,
+	GPIO,
+	RBUS_TOP,
+
+	MAILBOX,
+	SPIND,
+	I2C2CBUS,
+
+	OSD0,
+	DISP_PWN,
+	UADBG,
+	DUMMY_MASTER,
+	FIO_CTL,
+	FPGA,
+	L2SW,
+	ICM,
+	AXI_GLOBAL,
+};
+static struct clk *clks[CLK_MAX];
 static struct clk_onecell_data clk_data;
 
 static DEFINE_SPINLOCK(plla_lock);
@@ -581,39 +658,51 @@ struct clk *clk_register_sp_pll(const char *name, const char *parent,
 
 static void __init sp_clk_setup(struct device_node *np)
 {
+	int i, j;
 	pr_info("@@@ Sunplus clock init\n");
 
 	/* TODO: PLLs initial */
 
 	/* PLL_A */
-	clks[plla] = clk_register_sp_pll("plla", EXTCLK,
+	clks[PLL_A] = clk_register_sp_pll("plla", EXTCLK,
 			PLLA_CTL, 11, 12, 27000000, 0, DIV_A, &plla_lock);
 
 	/* PLL_E */
-	clks[plle] = clk_register_sp_pll("plle", EXTCLK,
+	clks[PLL_E] = clk_register_sp_pll("plle", EXTCLK,
 			PLLE_CTL, 6, 2, 50000000, 0, 0, &plle_lock);
-	clks[plle_2p5] = clk_register_sp_pll("plle_2p5", "plle",
+	clks[PLL_E_2P5] = clk_register_sp_pll("plle_2p5", "plle",
 			PLLE_CTL, 13, -1, 2500000, 0, 0, &plle_lock);
-	clks[plle_25] = clk_register_sp_pll("plle_25", "plle",
+	clks[PLL_E_25] = clk_register_sp_pll("plle_25", "plle",
 			PLLE_CTL, 12, -1, 25000000, 0, 0, &plle_lock);
-	clks[plle_112p5] = clk_register_sp_pll("plle_112p5", "plle",
+	clks[PLL_E_112P5] = clk_register_sp_pll("plle_112p5", "plle",
 			PLLE_CTL, 11, -1, 112500000, 0, 0, &plle_lock);
 
 	/* PLL_F */
-	clks[pllf] = clk_register_sp_pll("pllf", EXTCLK,
+	clks[PLL_F] = clk_register_sp_pll("pllf", EXTCLK,
 			PLLF_CTL, 0, 10, 13500000, 1, 4, &pllf_lock);
 
 	/* PLL_TV */
-	clks[plltv] = clk_register_sp_pll("plltv", EXTCLK,
+	clks[PLL_TV] = clk_register_sp_pll("plltv", EXTCLK,
 			PLLTV_CTL, 0, 15, 27000000, 0, DIV_TV, &plltv_lock);
-	clks[plltv_a] = clk_register_divider(NULL, "plltv_a", "plltv", 0,
+	clks[PLL_TV_A] = clk_register_divider(NULL, "plltv_a", "plltv", 0,
 			PLLTV_CTL + 4, 5, 1,
 			CLK_DIVIDER_POWER_OF_TWO, &plltv_lock);
-	clk_register_clkdev(clks[plltv_a], NULL, "plltv_a");
+	clk_register_clkdev(clks[PLL_TV_A], NULL, "plltv_a");
 
 	/* PLL_SYS */
-	clks[pllsys] = clk_register_sp_pll("pllsys", EXTCLK,
+	clks[PLL_SYS] = clk_register_sp_pll("pllsys", EXTCLK,
 			PLLSYS_CTL, 10, 9, 13500000, 0, 4, &pllsys_lock);
+
+	/* gates */
+	for (i = 0; i < ARRAY_SIZE(gates); i++) {
+		char s[10];
+		j = gates[i];
+		sprintf(s, "clken%02x", j);
+		clks[j] = clk_register_gate(NULL, s, NULL, CLK_IGNORE_UNUSED,
+			REG(0, j >> 4), j & 0x0f,
+			CLK_GATE_HIWORD_MASK, NULL);
+		//printk("%02x %p %p.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);
+	}
 
 	clk_data.clks = clks;
 	clk_data.clk_num = ARRAY_SIZE(clks);

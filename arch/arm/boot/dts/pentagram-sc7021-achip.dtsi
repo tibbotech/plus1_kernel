@@ -98,16 +98,9 @@
 			clock-output-names = "A_pll0";
 		};
 
-		clkc: clkc@G4 {
+		clkc: clkc@0 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
-			reg = <0x9c000200 0x80>; /* G4 */
-			clock-output-names =
-				"plla",											/* G4.7 */
-				"plle", "plle_2p5", "plle_25", "plle_112p5",	/* G4.12 */
-				"pllf",											/* G4.13 */
-				"plltv", "plltv_a",								/* G4.14 */
-				"pllsys";										/* G4.26 */
 		};
 	};
 
@@ -259,6 +252,7 @@
 
 		icm: icm@G81 {
 			compatible = "sunplus,sp-icm";
+			clocks = <&clkc ICM>;
 			/* clken format: (group << 16) | (index << 8) | shift */
 			clken = <0x00000a08>; /* 0.10.8 */
 			reg = <0x9c002880 0x80>;
