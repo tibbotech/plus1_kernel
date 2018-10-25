@@ -1012,22 +1012,20 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 
 		free_irq(uartdma_rx->irq, port);
 		DBG_INFO("free_irq(%d)\n", uartdma_rx->irq);
-		// dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
-		// uartdma_rx->buf_va = NULL;
+#if 0
+		dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
+		uartdma_rx->buf_va = NULL;
+#endif
 	}
+
+	/* Disable flow control of Tx, so that queued data can be sent out */
+	/* There is no way for s/w to let h/w abort in the middle of transaction. */
+	/* Don't reset module except it's in idle state. Otherwise, it might cause bus to hang. */
+	sp_uart_set_modem_ctrl(port->membase, sp_uart_get_modem_ctrl(port->membase) & (~(SP_UART_MCR_AC)));
 
 #if 0
 	uartdma_tx = sp_port->uartdma_tx;
 	if (uartdma_tx) {
-		writel(0, &((struct regs_uart *)(port->membase))->uart_tx_residue);	/* It will cause UARTDMA-Tx module' s/w reset */
-		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		while ((readl(&(txdma_reg->txdma_rst_done)) & 0x00000001) == 0) {
-			/* Wait for s/w reset done. */
-		}
-		writel(0x00000000, &(txdma_reg->txdma_enable));
-		writel(0, &(txdma_reg->txdma_wr_adr));		/* must be set before txdma_start_addr */
-		writel(0, &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
-		writel(0, &(txdma_reg->txdma_end_addr));
 		dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_tx->buf_va, uartdma_tx->dma_handle);
 		uartdma_tx->buf_va = NULL;
 	}
