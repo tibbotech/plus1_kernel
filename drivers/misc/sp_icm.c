@@ -318,8 +318,6 @@ static const struct of_device_id sp_icm_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_icm_of_match);
 
-#define REG(g, i)	((volatile u32 *)VA_IOB_ADDR(((g) * 32 + (i)) * 4))
-
 static int sp_icm_probe(struct platform_device *pdev)
 {
 	struct sp_icm_dev *dev = &sp_icm;
@@ -333,6 +331,7 @@ static int sp_icm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "not found clk source\n");
 		return PTR_ERR(dev->clk);
 	}
+	clk_prepare(dev->clk);
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem)
@@ -353,13 +352,6 @@ static int sp_icm_probe(struct platform_device *pdev)
 	dev->dev = &pdev->dev;
 	pm_runtime_set_active(dev->dev);
 	pm_runtime_enable(dev->dev);
-	printk("G0.10(%p): %04X\n", REG(0, 10), *REG(0, 10));
-	*REG(0, 10) = 0x01000000;
-	printk("G0.10: %04X\n", *REG(0, 10));
-	clk_prepare_enable(dev->clk);
-	printk("G0.10: %04X\n", *REG(0, 10));
-	clk_disable(dev->clk);
-	printk("G0.10: %04X\n", *REG(0, 10));
 	RPM_GET(dev->dev);
 	RPM_PUT(dev->dev);
 
