@@ -2,6 +2,7 @@
 #include <linux/types.h>
 #include <linux/io.h>
 #include <linux/irq.h>
+#include <linux/clk.h>
 #include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
@@ -10,16 +11,6 @@
 #include <mach/sp_icm.h>
 
 #define NUM_ICM 4
-
-#define REG(g, i)	VA_IOB_ADDR((g * 32 + i) * 4)
-#define ICMCLK(en)	\
-do { \
-	u32 g = sp_icm.clken >> 16; \
-	u32 i = (sp_icm.clken >> 8) & 0xff; \
-	u32 s = sp_icm.clken & 0xff; \
-	printk("ICM_CLKEN: %d\n", en); \
-	*(volatile u32 *)REG(g, i) = (1 << (16 + s)) | (en << s); \
-} while (0)
 
 //#define TRACE(s) printk("### %s:%d %s\n", __FUNCTION__, __LINE__, s)
 #define TRACE(s)
@@ -103,7 +94,7 @@ struct sp_icm_reg {
 struct sp_icm_dev {
 	volatile struct sp_icm_reg *reg;
 	int irq;
-	u32 clken;
+	struct clk *clk;
 	struct device *dev;
 };
 
@@ -331,29 +322,30 @@ static int sp_icm_probe(struct platform_device *pdev)
 {
 	struct sp_icm_dev *dev = &sp_icm;
 	struct resource *res_mem, *res_irq;
-	void __iomem *membase;
 	int i = 0;
 	int ret = 0;
-	struct device_node *np;
-
-	np = of_find_compatible_node(NULL, NULL, sp_icm_of_match->compatible);
-	of_property_read_u32(np, "clken", &dev->clken);
 
 	TRACE("");
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(dev->clk)) {
+		dev_err(&pdev->dev, "not found clk source\n");
+		return PTR_ERR(dev->clk);
+	}
+	clk_prepare(dev->clk);
+
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem)
 		return -ENODEV;
 
-	membase = devm_ioremap_resource(&pdev->dev, res_mem);
-	if (IS_ERR(membase))
-		return PTR_ERR(membase);
+	dev->reg = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR((void *)dev->reg))
+		return PTR_ERR((void *)dev->reg);
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res_irq) {
 		return -ENODEV;
 	}
 
-	dev->reg = membase;
 	dev->irq = res_irq->start;
 	platform_set_drvdata(pdev, dev);
 
@@ -401,14 +393,14 @@ static int __maybe_unused sp_icm_resume(struct device *dev)
 static int __maybe_unused sp_icm_runtime_suspend(struct device *dev)
 {
 	TRACE("");
-	ICMCLK(0); // disable ICM HW clock
+	clk_disable(sp_icm.clk);
 	return 0;
 }
 
 static int __maybe_unused sp_icm_runtime_resume(struct device *dev)
 {
 	TRACE("");
-	ICMCLK(1); // enable ICM HW clock
+	clk_enable(sp_icm.clk);
 	return 0;
 }
 
