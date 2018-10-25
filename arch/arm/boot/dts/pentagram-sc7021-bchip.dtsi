@@ -59,9 +59,9 @@
 	};
 
 	clocks {
-                #address-cells = <1>;
-                #size-cells = <1>;
-                ranges;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
 
 		extclk: clk@osc0 {
 			#clock-cells = <0>;
@@ -86,18 +86,10 @@
 			clock-output-names = "A_pll0";
 		};
 
-		clkc: clkc@G4 {
+		clkc: clkc@0 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
-			reg = <0x9c000200 0x80>; /* G4 */
-			clock-output-names =
-				"plla",                                         /* G4.7 */
-				"plle", "plle_2p5", "plle_25", "plle_112p5",    /* G4.12 */
-				"pllf",                                         /* G4.13 */
-				"plltv", "plltv_a",                             /* G4.14 */
-				"pllsys";                                       /* G4.26 */
 		};
-
 	};
 
 	soc@B {
@@ -290,6 +282,27 @@
 			interrupt-parent = <&intc>;
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&extclk>;
+		};
+
+		icm: icm@G81 {
+			compatible = "sunplus,sp-icm";
+			clocks = <&clkc ICM>;
+			/* clken format: (group << 16) | (index << 8) | shift */
+			clken = <0x00000a08>; /* 0.10.8 */
+			reg = <0x9c002880 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<92 IRQ_TYPE_EDGE_RISING>, /* icm0 */
+				<93 IRQ_TYPE_EDGE_RISING>, /* icm1 */
+				<94 IRQ_TYPE_EDGE_RISING>, /* icm2 */
+				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
+		};
+
+		crypto: crypto@G84 {
+			compatible = "sunplus,sp-crypto";
+			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
+			interrupt-parent = <&intc>;
+			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		mmc0: mmc@emmc {
