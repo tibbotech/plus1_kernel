@@ -178,6 +178,21 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 	//printk(">>>>> %08x <<<<<\n", mm);
 	//dump_stack();
+	if (mode == M_AES_CTR) { // CTR mode: reverse iv byte-order for HW
+		reverse_iv(ctx->iv, desc->info);
+	} else {
+		memcpy(ctx->iv, desc->info, ctx->ivlen);
+		if (mode == M_AES_CBC && enc == M_DEC) {
+			scatterwalk_map_and_copy(desc->info, src,
+				nbytes - ctx->ivlen, ctx->ivlen, 0);
+		}
+	}
+
+	iv_phy = ctx->pa + AES_BLOCK_SIZE;
+	key_phy = iv_phy + ctx->ivlen;
+	sp = src;
+	dp = dst;
+
 	src_cnt = sg_nents(src);
 	dst_cnt = sg_nents(dst);
 
@@ -195,21 +210,6 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 		return -EINVAL;
 	}
 	dump_sglist(dst, dst_cnt);
-
-	if (mode == M_AES_CTR) { // CTR mode: reverse iv byte-order for HW
-		reverse_iv(ctx->iv, desc->info);
-	} else {
-		memcpy(ctx->iv, desc->info, ctx->ivlen);
-		if (mode == M_AES_CBC && enc == M_DEC) {
-			scatterwalk_map_and_copy(desc->info, src,
-				nbytes - ctx->ivlen, ctx->ivlen, 0);
-		}
-	}
-
-	iv_phy = ctx->pa + AES_BLOCK_SIZE;
-	key_phy = iv_phy + ctx->ivlen;
-	sp = src;
-	dp = dst;
 
 	if (mutex_lock_interruptible(&ring->lock)) {
 		dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
