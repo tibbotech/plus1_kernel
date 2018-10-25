@@ -159,7 +159,6 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 	}
 }
 
-
 static inline void sp_uart_set_line_ctrl(unsigned char __iomem *base, unsigned ctrl)
 {
 	writel(ctrl, &((struct regs_uart *)base)->uart_lcr);
@@ -875,14 +874,14 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
-		/* Drop data in Rx FIFO */
-		while (sp_uart_get_line_status(port->membase) & SP_UART_LSR_RX) {
-			ch = sp_uart_get_char(port->membase);
-		}
-
 		rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 
 		if (uartdma_rx->buf_va == NULL) {
+			/* Drop data in Rx FIFO (PIO mode) */
+			while (sp_uart_get_line_status(port->membase) & SP_UART_LSR_RX) {
+				ch = sp_uart_get_char(port->membase);
+			}
+
 			uartdma_rx->buf_va = dma_alloc_coherent(port->dev, UARXDMA_BUF_SZ, &(uartdma_rx->dma_handle), GFP_KERNEL);
 			if (uartdma_rx->buf_va == NULL) {
 				DBG_ERR("%s, %d, Can't allocation buffer for %s\n", __func__, __LINE__, sp_port->name);
@@ -924,7 +923,6 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			dma_free_coherent(port->dev, UARXDMA_BUF_SZ, uartdma_rx->buf_va, uartdma_rx->dma_handle);
 			goto error_00;
 		}
-
 	}
 
 	uartdma_tx = sp_port->uartdma_tx;
