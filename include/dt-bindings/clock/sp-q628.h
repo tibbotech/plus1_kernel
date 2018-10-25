@@ -88,7 +88,7 @@
 #define I2C2CBUS	0x9b
 
 #define OSD0		0xa0
-#define DISP_PWN	0xa2
+#define DISP_PWM	0xa2
 #define UADBG		0xa3
 #define DUMMY_MASTER	0xa4
 #define FIO_CTL		0xa5

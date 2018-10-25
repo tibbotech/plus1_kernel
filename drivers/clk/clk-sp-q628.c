@@ -136,7 +136,7 @@ static u32 gates[] = {
 	I2C2CBUS,
 
 	OSD0,
-	DISP_PWN,
+	DISP_PWM,
 	UADBG,
 	DUMMY_MASTER,
 	FIO_CTL,
@@ -636,6 +636,9 @@ struct clk *clk_register_sp_pll(const char *name, const char *parent,
 	if (!pll)
 		return ERR_PTR(-ENOMEM);
 
+	if (reg == PLLSYS_CTL)
+		initd.flags |= CLK_IS_CRITICAL;
+
 	pll->hw.init = &initd;
 	pll->reg = reg;
 	pll->pd_bit = pd_bit;
@@ -698,7 +701,7 @@ static void __init sp_clk_setup(struct device_node *np)
 		char s[10];
 		j = gates[i];
 		sprintf(s, "clken%02x", j);
-		clks[j] = clk_register_gate(NULL, s, NULL, CLK_IGNORE_UNUSED,
+		clks[j] = clk_register_gate(NULL, s, "pllsys", CLK_IGNORE_UNUSED,
 			REG(0, j >> 4), j & 0x0f,
 			CLK_GATE_HIWORD_MASK, NULL);
 		//printk("%02x %p %p.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);
