@@ -192,7 +192,8 @@ typedef struct spsd_general_regs {
 	dv_reg sus_req:1;
 	dv_reg con_req:1;
 	dv_reg sus_data_flag:1;
-	dv_reg reserved_sdio_ctrl:26;
+	dv_reg int_multi_trig:1;
+	dv_reg reserved_sdio_ctrl:25;
 
 	dv_reg sdrst:1;					/* 16. */
 	dv_reg sdcrcrst:1;
@@ -241,16 +242,21 @@ typedef struct spsd_general_regs {
 
 	dv_reg reserved_sd_status:16;
 
-	dv_reg sdstate:3;				/* 20. */
-	dv_reg reserved0_sd_state:1;
-	dv_reg sdcrdcrc:3;
+	union {
+		struct {
+			dv_reg sdstate:3;				/* 20. */
+			dv_reg reserved0_sd_state:1;
+			dv_reg sdcrdcrc:3;
 #define WRITE_CRC_TOKEN_CORRECT		2
 #define WRITE_CRC_TOKEN_ERROR		5
-	dv_reg reserved1_sd_state:1;
-	dv_reg sdstate_new:7;
+			dv_reg reserved1_sd_state:1;
+			dv_reg sdstate_new:7;
 #define SDSTATE_NEW_FINISH_IDLE 		BIT(6)
 #define SDSTATE_NEW_ERROR_TIMEOUT 		BIT(5)
-	dv_reg reserved2_sd_state:17;
+			dv_reg reserved2_sd_state:17;
+		};
+		dv_reg sd_state;
+	};
 
 	dv_reg sddatalen:11;			/* 21. */
 	dv_reg reserved_sd_blocksize:21;
@@ -559,10 +565,12 @@ typedef struct spsdhost {
 	int dma_sgcount;   /* Used to store dma_mapped sg count */
 	int irq;
 	uint InsertGPIO;
-	int cd_sta;
+	int cd_state;
 
 	uint wrdly;
 	uint rddly;
+	int need_tune_cmd_timing;
+	int need_tune_dat_timing;
 	int power_state;
 }SPSDHOST;
 

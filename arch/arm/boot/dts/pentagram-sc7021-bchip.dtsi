@@ -306,16 +306,23 @@
 		};
 
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp_emmc";
+			compatible = "sunplus,sp-emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,sp_card1";
+			compatible = "sunplus,sp-card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
+		};
+
+		sdio: sdio@sdcard {
+			compatible = "sunplus,sp-sdio";
+			reg = <0x9c008400 0x280>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 		};
 
