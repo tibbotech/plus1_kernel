@@ -452,7 +452,7 @@ CONFIG_ATAGS=y
 CONFIG_ZBOOT_ROM_TEXT=0x98307000
 CONFIG_ZBOOT_ROM_BSS=0x03400000
 # CONFIG_ARM_APPENDED_DTB is not set
-CONFIG_CMDLINE="root=/dev/ram rw init=/init console=ttyS0,115200 earlyprintk mem=60M@0x0 res_chunkmem_addr=0x3C00000 res_chunkmem_size=0x300000"
+CONFIG_CMDLINE="root=/dev/ram rw init=/init console=ttyS0,115200 earlyprintk mem=256M@0x0"
 CONFIG_CMDLINE_FROM_BOOTLOADER=y
 # CONFIG_CMDLINE_EXTEND is not set
 # CONFIG_CMDLINE_FORCE is not set
