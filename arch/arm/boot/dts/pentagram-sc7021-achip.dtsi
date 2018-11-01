@@ -353,7 +353,7 @@
 			#pwm-cells = <2>;
 			compatible = "sunplus,sc7021-pwm";
 			reg = <0x9c007a00 0x80>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc DISP_PWM>;
 		 };
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -411,7 +411,18 @@
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};
-				
+
+		display0: display@0x9c005c80 {
+			compatible = "sunplus,sp-display";
+			reg = <0x9c005c80 0x1980>,
+				<0x9c105000 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <0 IRQ_TYPE_EDGE_RISING>,
+					   <1 IRQ_TYPE_EDGE_RISING>,
+					   <4 IRQ_TYPE_EDGE_RISING>,
+					   <5 IRQ_TYPE_EDGE_RISING>;
+		};
+
 		l2sw: l2sw@0x9c108000 {
 			compatible = "sunplus,sp-l2sw";
 			reg = <0x9c108000 0x400>;

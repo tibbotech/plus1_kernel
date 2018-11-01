@@ -9,3 +9,5 @@ obj-$(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)	+= sc7021.o
 
 # Monitor utility
 obj-$(CONFIG_SP_MON) += sp_uart_sysrq.o sp_mon.o
+
+obj-$(CONFIG_SP_DISP_SC7021_TEST) += display/
