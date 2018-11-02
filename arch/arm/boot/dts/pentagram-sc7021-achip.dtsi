@@ -44,6 +44,7 @@
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <0>;
+			clock-frequency = <931000000>;
 		};
 #if 1
 		cpu@1 {
@@ -52,6 +53,7 @@
 			reg = <1>;
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7fff0>;
+			clock-frequency = <931000000>;
 		};
 		cpu@2 {
 			compatible = "arm,cortex-a7";
@@ -59,6 +61,7 @@
 			reg = <2>;
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7ffec>;
+			clock-frequency = <931000000>;
 		};
 		cpu@3 {
 			compatible = "arm,cortex-a7";
@@ -66,6 +69,7 @@
 			reg = <3>;
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7ffe8>;
+			clock-frequency = <931000000>;
 		};
 #endif
 	};
@@ -349,7 +353,7 @@
 			#pwm-cells = <2>;
 			compatible = "sunplus,sc7021-pwm";
 			reg = <0x9c007a00 0x80>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc DISP_PWM>;
 		 };
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -407,7 +411,18 @@
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};
-				
+
+		display0: display@0x9c005c80 {
+			compatible = "sunplus,sp-display";
+			reg = <0x9c005c80 0x1980>,
+				<0x9c105000 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <0 IRQ_TYPE_EDGE_RISING>,
+					   <1 IRQ_TYPE_EDGE_RISING>,
+					   <4 IRQ_TYPE_EDGE_RISING>,
+					   <5 IRQ_TYPE_EDGE_RISING>;
+		};
+
 		l2sw: l2sw@0x9c108000 {
 			compatible = "sunplus,sp-l2sw";
 			reg = <0x9c108000 0x400>;
@@ -416,18 +431,25 @@
 		};
 		
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp_emmc";
+			compatible = "sunplus,sp-emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,sp_card1";
+			compatible = "sunplus,sp-card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 
+		};
+
+		sdio: sdio@sdcard {
+			compatible = "sunplus,sp-sdio";
+			reg = <0x9c008400 0x280>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
 		};
 
 		gpio: gpio@0x9C000300 {

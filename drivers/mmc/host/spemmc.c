@@ -34,7 +34,7 @@
 *******************************************************************************/
 #define SPEMMC_MAX_CLOCK  CLOCK_52M     /* Max supported SD Card frequency */
 #define SPEMMC_CLK_SOURCE CLOCK_202M    /* Host controller's clk source */
-#define SPEMMCV2_SDC_NAME "sunplus,sp_emmc"
+#define SPEMMCV2_SDC_NAME "sunplus,sp-emmc"
 #define MAX_SDDEVICES   2
 #define SPEMMC_DEVICE_MASK 1
 #define SPEMMC_READ_DELAY  2		/* delay for sampling data */
@@ -60,31 +60,31 @@ static u32 loglevel = 0x003;
 
 #if 1
 #define FATAL(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_FATAL)) \
-		printk(KERN_ERR "[SD FATAL]: %s: " fmt, __func__ , ## args)
+		printk(KERN_ERR "[eMMC FATAL]: %s: " fmt, __func__ , ## args)
 
 #define EPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_ERROR)) \
-		printk(KERN_ERR "[SD ERROR]: %s: " fmt, __func__ , ## args)
+		printk(KERN_ERR "[eMMC ERROR]: %s: " fmt, __func__ , ## args)
 
 #define DPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_DEBUG)) \
-		printk(KERN_INFO "[SD DBG]: %s: " fmt, __func__ , ## args)
+		printk(KERN_INFO "[eMMC DBG]: %s: " fmt, __func__ , ## args)
 
 #define IFPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_IF)) \
-		printk(KERN_NOTICE "[SD IF]: %s:" fmt, __func__, ## args)
+		printk(KERN_NOTICE "[eMMC IF]: %s:" fmt, __func__, ## args)
 
 #define pk(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_PK)) \
-		printk(KERN_NOTICE "[SD PK]: %s: " fmt, __func__ , ## args)
+		printk(KERN_NOTICE "[eMMC PK]: %s: " fmt, __func__ , ## args)
 
 #define CPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_COUNTER)) \
-		printk(KERN_INFO "[SD COUNTER]: %s: " fmt, __func__ , ## args)
+		printk(KERN_INFO "[eMMC COUNTER]: %s: " fmt, __func__ , ## args)
 
 #define WPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_WAITTIME)) \
-		printk(KERN_INFO "[SD WAITTIME]: %s: " fmt, __func__ , ## args)
+		printk(KERN_INFO "[eMMC WAITTIME]: %s: " fmt, __func__ , ## args)
 
 #define REGPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_DUMPREG)) \
-		printk(KERN_INFO "[SD REG]: %s: " fmt, __func__ , ## args)
+		printk(KERN_INFO "[eMMC REG]: %s: " fmt, __func__ , ## args)
 
 #define MPRINTK(fmt, args...) if(unlikely(loglevel & MMC_LOGLEVEL_MINI)) \
-		printk(KERN_INFO "[SD]: %s: " fmt, __func__ , ## args)
+		printk(KERN_INFO "[eMMC]: %s: " fmt, __func__ , ## args)
 
 #else
 
@@ -113,8 +113,8 @@ const static spemmc_dridata_t spemmc_driv_data[] = {
 
 static const struct of_device_id spemmc_of_id[] = {
 	{
-		.compatible = "sunplus,sp_emmc",
-	  	.data = &spemmc_driv_data[0],
+		.compatible = "sunplus,sp-emmc",
+		.data = &spemmc_driv_data[0],
 	},
 	{}
 
@@ -1023,7 +1023,7 @@ static uint get_max_sd_freq(SPEMMCHOST *host)
 	/* fix me read from device tree */
 	max_freq = SPEMMC_MAX_CLOCK;
 
-	printk("[SDCard] Slot %d, actually use max_freq #%d M\n", host->id, max_freq/CLOCK_1M);
+	printk("[eMMC] Slot %d, actually use max_freq #%d M\n", host->id, max_freq/CLOCK_1M);
 	return max_freq;
 }
 
@@ -1105,7 +1105,7 @@ int spemmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-	DPRINTK("[SDCard] Slot %d driver probe, host:0x%x, base:0x%x\n", host->id, (unsigned int)host,(unsigned int)host->base);
+	DPRINTK("Slot %d driver probe, host:0x%x, base:0x%x\n", host->id, (unsigned int)host,(unsigned int)host->base);
 
 
 	sema_init(&host->req_sem, 1);
