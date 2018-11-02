@@ -564,7 +564,7 @@ typedef struct spsdhost {
 
 	int dma_sgcount;   /* Used to store dma_mapped sg count */
 	int irq;
-	uint InsertGPIO;
+	uint cd_gpio; /* gpio used for card sense */
 	int cd_state;
 
 	uint wrdly;

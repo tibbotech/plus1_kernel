@@ -47,11 +47,7 @@
 #define SP_EMMCSLOT_ID  (~0)
 #endif
 #define SP_SDIO_SLOT_ID  4
-
 #define SP_SDCARD_SENSE_WITH_GPIO
-#ifdef SP_SDCARD_SENSE_WITH_GPIO
-#define SDCARD_SENSE_PIN 64
-#endif
 
 /* Disabled fatal error messages temporarily */
 static u32 loglevel = 0x002;
@@ -651,6 +647,7 @@ irqreturn_t spsdv2_irq(int irq, void *dev_id)
 	struct mmc_host *mmc = dev_id;
 
 	SPSDHOST *host = (SPSDHOST *)mmc_priv(mmc);
+
 	/*ignore unexpected irq */
 	if (SP_SDIO_SLOT_ID == host->id) {
 		if (host->base->sd_cmp) {
@@ -1081,7 +1078,7 @@ int spsdv2_mmc_card_detect(struct mmc_host *mmc)
 
 	int ret = 0;
 	#ifdef SP_SDCARD_SENSE_WITH_GPIO
-	ret = !GPIO_I_GET(SDCARD_SENSE_PIN);
+	ret = !GPIO_I_GET(host->cd_gpio);
 	#endif
 	host->cd_state = ret;
 	return ret;
@@ -1235,9 +1232,14 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED | MMC_CAP_NEEDS_POLL;
 		mmc->caps2 = MMC_CAP2_NO_SDIO | MMC_CAP2_NO_MMC;
 		#ifdef SP_SDCARD_SENSE_WITH_GPIO
-		GPIO_F_SET(SDCARD_SENSE_PIN, 1);
-		GPIO_M_SET(SDCARD_SENSE_PIN, 1);
-		GPIO_E_SET(SDCARD_SENSE_PIN, 0);
+		if (of_property_read_u32(pdev->dev.of_node, "sense-gpio", &host->cd_gpio)) {
+			printk(KERN_ERR "Failed to get card detect gpio pin configuration!\n");
+			ret = -ENOENT;
+			goto probe_free_host;
+		}
+		GPIO_F_SET(host->cd_gpio, 1);
+		GPIO_M_SET(host->cd_gpio, 1);
+		GPIO_E_SET(host->cd_gpio, 0);
 		#endif
 	}
 	dev_set_drvdata(&pdev->dev, mmc);
