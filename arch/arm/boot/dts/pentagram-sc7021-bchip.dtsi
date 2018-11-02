@@ -317,7 +317,7 @@
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
-			sense-gpio = <71>
+			sense-gpio = <71>;
 		};
 
 		sdio: sdio@sdcard {
