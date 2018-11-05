@@ -38,6 +38,22 @@
 		serial4 = &uart4;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		iop_reserve: iop_device {
+			no-map;
+			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
+		};
+	};
+
+	iop_device {
+		compatible = "sunplus,iop_device";
+		memory-region = <&iop_reserve>;
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;

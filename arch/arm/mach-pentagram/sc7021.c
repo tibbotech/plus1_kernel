@@ -110,15 +110,6 @@ static void __init sp_init_early(void)
 
 void __init sp_reserve(void)
 {
-	unsigned int addr, size;
-
-	early_printk("%s\n", __func__);
-
-	addr = SP_IOP_RESERVE_BASE;
-	size = SP_IOP_RESERVE_SIZE;
-
-	printk("reserve mem for iop: 0x%08x-%08x\n", addr, addr + size);
-	memblock_reserve(addr, size);
 }
 
 static void __init sp_fixup(void)

@@ -40,8 +40,4 @@
 #define A_SYSTEM_BASE           VA_IOA_ADDR(0 * 32 * 4)
 #define A_SYS_COUNTER_BASE      (A_SYSTEM_BASE + 0x10a000) /* 9ed0_a000 */
 
-/* Reserved RAM */
-#define SP_IOP_RESERVE_BASE  0x01000000
-#define SP_IOP_RESERVE_SIZE  0x00100000
-
 #endif
