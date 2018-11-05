@@ -217,7 +217,9 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 		return -EINTR;
 	}
 	//mutex_lock(&ring->lock);
-	if (src == dst) dma_sync_sg_for_device(NULL, src, src_cnt, DMA_TO_DEVICE); // FIXME: workaround for GCM call AES-CTR decrypt fail
+#ifdef CONFIG_MACH_PENTAGRAM_SC7021_ACHIP
+	if (src == dst) dma_sync_sg_for_device(NULL, src, 1, DMA_TO_DEVICE); // FIXME: workaround for GCM call AES-CTR decrypt fail
+#endif
 
 	while (processed < nbytes) {
 		u32 reast;
