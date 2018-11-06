@@ -41,10 +41,12 @@
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
 
+		#if 0
 		i2c10 = &i2cdma0;
 		i2c11 = &i2cdma1;
 		i2c12 = &i2cdma2;
 		i2c13 = &i2cdma3;
+		#endif
 	};
 
 	cpus {
@@ -383,6 +385,7 @@
 			clocks = <&extclk>;
 		};
 
+		#if 0
 		i2cdma0: i2c@sp_i2cdma0 {
 			compatible = "sunplus,sp_i2cm";
 			reg = <0x9c004680 0x80>;
@@ -406,6 +409,7 @@
 			reg = <0x9c004980 0x80>;
 			clocks = <&extclk>;
 		};
+		#endif
 
 		sp_uphy0: uphy@0x9C004A80 {
 			compatible = "sunplus,sunplus-usb-phy0";

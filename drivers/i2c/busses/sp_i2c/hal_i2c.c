@@ -2,21 +2,20 @@
 #include <linux/io.h>
 #include "hal_i2c.h"
 
-#define I2C_CLK_SOURCE_FREQ	27000	// KHz(27MHz)
+#define I2C_CLK_SOURCE_FREQ         27000  // KHz(27MHz)
 
-#define I2C_RESET(id)		(1 << (16 + id))
-#define I2C_CLKEN(id)		(1 << (16 + id))
-#define I2C_GCLKEN(id)		(1 << (16 + id))
-#define I2C_PINMUX_SET(scl, sda)	((scl << 0) | (sda << 8))
+#define I2C_RESET(id, val)          ((1 << (16 + id)) | (val << id))
+#define I2C_CLKEN(id, val)          ((1 << (16 + id)) | (val << id))
+#define I2C_GCLKEN(id, val)         ((1 << (16 + id)) | (val << id))
+#define I2C_PINMUX_SET(scl, sda)    (0x7F7F0000 | (scl << 0) | (sda << 8))
 
-#define I2C_CTL0_FREQ_MASK			(0x7)		// 3 bit
-#define I2C_CTL0_SLAVE_ADDR_MASK		(0x7F)		// 7 bit
-#define I2C_CTL2_FREQ_CUSTOM_MASK		(0x7FF)		// 11 bit
-#define I2C_CTL2_SCL_DELAY_MASK			(0x3)		// 2 bit
-#define I2C_CTL7_RW_COUNT_MASK			(0xFFFF)	// 16 bit
-#define I2C_EN0_CTL_EMPTY_THRESHOLD_MASK	(0x7)		// 3 bit
-#define I2C_SG_DMA_LLI_INDEX_MASK		(0x1F)		// 5 bit
-#define I2C_PINMUX_MASK				(0x7F)		// 7 bit
+#define I2C_CTL0_FREQ_MASK                  (0x7)     // 3 bit
+#define I2C_CTL0_SLAVE_ADDR_MASK            (0x7F)    // 7 bit
+#define I2C_CTL2_FREQ_CUSTOM_MASK           (0x7FF)   // 11 bit
+#define I2C_CTL2_SCL_DELAY_MASK             (0x3)     // 2 bit
+#define I2C_CTL7_RW_COUNT_MASK              (0xFFFF)  // 16 bit
+#define I2C_EN0_CTL_EMPTY_THRESHOLD_MASK    (0x7)     // 3 bit
+#define I2C_SG_DMA_LLI_INDEX_MASK           (0x1F)    // 5 bit
 
 
 static regs_i2cm_t *pI2cMReg[I2C_MASTER_NUM];
@@ -257,7 +256,7 @@ void hal_i2cm_dma_mode_enable(unsigned int device_id)
 EXPORT_SYMBOL(hal_i2cm_dma_mode_enable);
 #endif
 
-void hal_i2cm_scl_delay_set(unsigned int device_id, I2C_DELAY_e delay)
+void hal_i2cm_scl_delay_set(unsigned int device_id, unsigned int delay)
 {
 	unsigned int ctl2;
 
@@ -266,6 +265,7 @@ void hal_i2cm_scl_delay_set(unsigned int device_id, I2C_DELAY_e delay)
 		ctl2 &= (~I2C_CTL2_SCL_DELAY(I2C_CTL2_SCL_DELAY_MASK));
 		ctl2 |= I2C_CTL2_SCL_DELAY(delay);
 		writel(ctl2, &(pI2cMReg[device_id]->control2));
+		//printk("hal_i2cm_scl_delay_set control2: 0x%x\n", readl(&(pI2cMReg[device_id]->control2)));
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_scl_delay_set);
@@ -339,6 +339,7 @@ void hal_i2cm_int_en0_set(unsigned int device_id, unsigned int int0)
 {
 	if (device_id < I2C_MASTER_NUM) {
 		writel(int0, &(pI2cMReg[device_id]->int_en0));
+		//printk("hal_i2cm_int_en0_set int_en0: 0x%x\n", readl(&(pI2cMReg[device_id]->int_en0)));
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_int_en0_set);
@@ -355,18 +356,17 @@ void hal_i2cm_int_en0_disable(unsigned int device_id, unsigned int int0)
 }
 EXPORT_SYMBOL(hal_i2cm_int_en0_disable);
 
-void hal_i2cm_ctrl_empty_thershold_set(unsigned int device_id, unsigned char threshold)
+void hal_i2cm_int_en0_with_thershold_set(unsigned int device_id, unsigned int int0, unsigned char threshold)
 {
 	unsigned int val;
 
 	if (device_id < I2C_MASTER_NUM) {
-		val = readl(&(pI2cMReg[device_id]->int_en0));
-		val &= (~I2C_EN0_CTL_EMPTY_THRESHOLD(I2C_EN0_CTL_EMPTY_THRESHOLD_MASK));
-		val |= I2C_EN0_CTL_EMPTY_THRESHOLD(threshold);
+		val = (int0 | I2C_EN0_CTL_EMPTY_THRESHOLD(threshold));
 		writel(val, &(pI2cMReg[device_id]->int_en0));
+		//printk("hal_i2cm_int_en0_with_thershold_set int_en0: 0x%x\n", readl(&(pI2cMReg[device_id]->int_en0)));
 	}
 }
-EXPORT_SYMBOL(hal_i2cm_ctrl_empty_thershold_set);
+EXPORT_SYMBOL(hal_i2cm_int_en0_with_thershold_set);
 
 void hal_i2cm_data_get(unsigned int device_id, unsigned int index, unsigned int *rdata)
 {
@@ -407,6 +407,7 @@ void hal_i2cm_data_get(unsigned int device_id, unsigned int index, unsigned int 
 			default:
 				break;
 		}
+		//printk("hal_i2cm_data_get index: %d, data 0x%x\n", index, *rdata);
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_data_get);
@@ -527,6 +528,7 @@ void hal_i2cm_clock_freq_set(unsigned int device_id, unsigned int freq)
 
 	if (device_id < I2C_MASTER_NUM) {
 		div = I2C_CLK_SOURCE_FREQ / freq;
+		div -= 1;
 		if (0 != I2C_CLK_SOURCE_FREQ % freq) {
 			div += 1;
 		}
@@ -575,9 +577,7 @@ void hal_i2cm_disable(unsigned int device_id, void __iomem *membase)
 	unsigned int reset;
 
 	if (device_id < I2C_MASTER_NUM) {
-		reset = readl(&(pMoon0Reg->reset[3]));
-		reset |= I2C_RESET(device_id);
-		writel(reset, &(pMoon0Reg->reset[3]));
+		writel(I2C_RESET(device_id, 1), &(pMoon0Reg->reset[3]));
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_disable);
@@ -588,17 +588,9 @@ void hal_i2cm_enable(unsigned int device_id, void __iomem *membase)
 	unsigned int reset, clken, gclken;
 
 	if (device_id < I2C_MASTER_NUM) {
-		reset = readl(&(pMoon0Reg->reset[3]));
-		reset &= (~I2C_RESET(device_id));
-		writel(reset, &(pMoon0Reg->reset[3]));
-
-		clken = readl(&(pMoon0Reg->clken[3]));
-		clken |= I2C_CLKEN(device_id);
-		writel(clken, &(pMoon0Reg->clken[3]));
-
-		gclken = readl(&(pMoon0Reg->gclken[3]));
-		gclken &= (~I2C_GCLKEN(device_id));
-		writel(gclken, &(pMoon0Reg->gclken[3]));
+		writel(I2C_RESET(device_id, 0), &(pMoon0Reg->reset[3]));
+		writel(I2C_CLKEN(device_id, 1), &(pMoon0Reg->clken[3]));
+		writel(I2C_GCLKEN(device_id, 0), &(pMoon0Reg->gclken[3]));
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_enable);
@@ -606,38 +598,33 @@ EXPORT_SYMBOL(hal_i2cm_enable);
 void hal_i2cm_pinmux_set(unsigned int device_id, void __iomem *membase)
 {
 	regs_moon3_t *pMoon3Reg = (regs_moon3_t *)membase;
-	unsigned int scl_cfg = 1;
-	unsigned int sda_cfg = 1;
-	unsigned int val;
+	unsigned int scl_cfg;
+	unsigned int sda_cfg;
 
 	if (device_id < I2C_MASTER_NUM) {
 		switch (device_id) {
 			case 0:
-				val = readl(&(pMoon3Reg->sft_cfg_42)); //G3.10
-				val &= (~I2C_PINMUX_SET(I2C_PINMUX_MASK, I2C_PINMUX_MASK));
-				val |= I2C_PINMUX_SET(scl_cfg, sda_cfg);
-				writel(val, &(pMoon3Reg->sft_cfg_42));
+				scl_cfg = 1;
+				sda_cfg = 2; //G3.10
+				writel(I2C_PINMUX_SET(scl_cfg, sda_cfg), &(pMoon3Reg->sft_cfg_42));
 				break;
 
 			case 1:
-				val = readl(&(pMoon3Reg->sft_cfg_43)); //G3.11
-				val &= (~I2C_PINMUX_SET(I2C_PINMUX_MASK, I2C_PINMUX_MASK));
-				val |= I2C_PINMUX_SET(scl_cfg, sda_cfg);
-				writel(val, &(pMoon3Reg->sft_cfg_43));
+				scl_cfg = 3;
+				sda_cfg = 4; //G3.11
+				writel(I2C_PINMUX_SET(scl_cfg, sda_cfg), &(pMoon3Reg->sft_cfg_43));
 				break;
 
 			case 2:
-				val = readl(&(pMoon3Reg->sft_cfg_44)); //G3.12
-				val &= (~I2C_PINMUX_SET(I2C_PINMUX_MASK, I2C_PINMUX_MASK));
-				val |= I2C_PINMUX_SET(scl_cfg, sda_cfg);
-				writel(val, &(pMoon3Reg->sft_cfg_44));
+				scl_cfg = 5;
+				sda_cfg = 6; //G3.12
+				writel(I2C_PINMUX_SET(scl_cfg, sda_cfg), &(pMoon3Reg->sft_cfg_44));
 				break;
 
 			case 3:
-				val = readl(&(pMoon3Reg->sft_cfg_45)); //G3.13
-				val &= (~I2C_PINMUX_SET(I2C_PINMUX_MASK, I2C_PINMUX_MASK));
-				val |= I2C_PINMUX_SET(scl_cfg, sda_cfg);
-				writel(val, &(pMoon3Reg->sft_cfg_45));
+				scl_cfg = 7;
+				sda_cfg = 8; //G3.13
+				writel(I2C_PINMUX_SET(scl_cfg, sda_cfg), &(pMoon3Reg->sft_cfg_45));
 				break;
 
 			default:

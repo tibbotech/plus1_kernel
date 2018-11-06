@@ -13,56 +13,57 @@
 #include "sp_i2c.h"
 
 
-#define I2C_FUNC_DEBUG
+//#define I2C_FUNC_DEBUG
 #define I2C_DBG_INFO
 #define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
-	#define FUNC_DEBUG()	printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+	#define FUNC_DEBUG()    printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
 	#define FUNC_DEBUG()
 #endif
 
 #ifdef I2C_DBG_INFO
-	#define DBG_INFO(fmt, args ...)	printk(KERN_INFO "[I2C] Info: " fmt, ## args)
+	#define DBG_INFO(fmt, args ...)    printk(KERN_INFO "[I2C] Info: " fmt, ## args)
 #else
 	#define DBG_INFO(fmt, args ...)
 #endif
 
 #ifdef I2C_DBG_ERR
-	#define DBG_ERR(fmt, args ...)	printk(KERN_ERR "[I2C] Error: " fmt, ## args)
+	#define DBG_ERR(fmt, args ...)    printk(KERN_ERR "[I2C] Error: " fmt, ## args)
 #else
 	#define DBG_ERR(fmt, args ...)
 #endif
 
-#define I2C_FREQ			100
-#define I2C_SLEEP_TIMEOUT		200
+#define I2C_FREQ             100
+#define I2C_SLEEP_TIMEOUT    200
+#define I2C_SCL_DELAY        0  //SCl dalay xT
 
-#define I2CM_REG_NAME			"i2cm"
-#define MOON0_REG_NAME			"moon0"
-#define MOON3_REG_NAME			"moon3"
+#define I2CM_REG_NAME        "i2cm"
+#define MOON0_REG_NAME       "moon0"
+#define MOON3_REG_NAME       "moon3"
 
-#define DEVICE_NAME			"sp_i2cm"
+#define DEVICE_NAME          "sp_i2cm"
 
 //burst write use
-#define I2C_EMPTY_THRESHOLD_VALUE	4
+#define I2C_EMPTY_THRESHOLD_VALUE    4
 
 //burst read use
 #define I2C_IS_READ16BYTE
 
 #ifdef I2C_IS_READ16BYTE
-#define I2C_BURST_RDATA_BYTES		16
-#define I2C_BURST_RDATA_FLAG		0x80008000
+#define I2C_BURST_RDATA_BYTES        16
+#define I2C_BURST_RDATA_FLAG         0x80008000
 #else
-#define I2C_BURST_RDATA_BYTES		4
-#define I2C_BURST_RDATA_FLAG		0x88888888
+#define I2C_BURST_RDATA_BYTES        4
+#define I2C_BURST_RDATA_FLAG         0x88888888
 #endif
 
-#define I2C_BURST_RDATA_ALL_FLAG	0xFFFFFFFF
+#define I2C_BURST_RDATA_ALL_FLAG     0xFFFFFFFF
 
 
 typedef struct SpI2C_If_t_ {
-	struct i2c_msg *msgs;	/* messages currently handled */
+	struct i2c_msg *msgs;  /* messages currently handled */
 	struct i2c_adapter adap;
 	I2C_Cmd_t stCmdInfo;
 	void __iomem *i2c_regs;
@@ -86,7 +87,7 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 	unsigned int overflow_flag = 0;
 
 	hal_i2cm_status_get(device_id, &int_flag);
-
+	//printk("I2C int_flag = 0x%x !!\n", int_flag);
 	if (int_flag & I2C_INT_DONE_FLAG) {
 		DBG_INFO("I2C is done !!\n");
 		pstIrqEvent->stIrqFlag.bActiveDone = 1;
@@ -108,6 +109,7 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 		pstIrqEvent->stIrqFlag.bDataNack = 0;
 	}
 
+	// write use
 	if (int_flag & I2C_INT_EMPTY_THRESHOLD_FLAG) {
 		//DBG_INFO("I2C empty threshold occur !!\n");
 		pstIrqEvent->stIrqFlag.bEmptyThreshold = 1;
@@ -115,17 +117,34 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 		pstIrqEvent->stIrqFlag.bEmptyThreshold = 0;
 	}
 
+	// write use
 	if (int_flag & I2C_INT_EMPTY_FLAG) {
-		//DBG_INFO("I2C FIFO empty !!\n");
+		DBG_INFO("I2C FIFO empty occur !!\n");
 		pstIrqEvent->stIrqFlag.bFiFoEmpty = 1;
 	} else {
 		pstIrqEvent->stIrqFlag.bFiFoEmpty = 0;
 	}
-	hal_i2cm_status_clear(device_id, 0xFFFFFFFF); //nelson add
 
+	// write use (for debug)
+	if (int_flag & I2C_INT_FULL_FLAG) {
+		DBG_INFO("I2C FIFO full occur !!\n");
+		pstIrqEvent->stIrqFlag.bFiFoFull = 1;
+	} else {
+		pstIrqEvent->stIrqFlag.bFiFoFull = 0;
+	}
+
+	if (int_flag & I2C_INT_SCL_HOLD_TOO_LONG_FLAG) {
+		DBG_INFO("I2C SCL hold too long occur !!\n");
+		pstIrqEvent->stIrqFlag.bSCLHoldTooLong = 1;
+	} else {
+		pstIrqEvent->stIrqFlag.bSCLHoldTooLong = 0;
+	}
+	hal_i2cm_status_clear(device_id, I2C_CTL1_ALL_CLR);
+
+	// read use
 	hal_i2cm_roverflow_flag_get(device_id, &overflow_flag);
 	if (overflow_flag) {
-		DBG_INFO("I2C burst read data overflow !! overflow_flag = 0x%x\n", overflow_flag);
+		DBG_ERR("I2C burst read data overflow !! overflow_flag = 0x%x\n", overflow_flag);
 		pstIrqEvent->stIrqFlag.bRdOverflow = 1;
 	} else {
 		pstIrqEvent->stIrqFlag.bRdOverflow = 0;
@@ -139,7 +158,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 	unsigned char w_data[32] = {0};
 	unsigned char r_data[I2C_BURST_RDATA_BYTES] = {0};
 	unsigned int rdata_flag = 0;
-	unsigned int regdata_index = 0, bit_index = 0;
+	unsigned int bit_index = 0;
 	int i = 0, j = 0, k = 0;
 
 	device_id = pstIrqEvent->dDevId;
@@ -151,14 +170,22 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 				DBG_INFO("I2C write success !!\n");
 				pstIrqEvent->bRet = I2C_SUCCESS;
 				wake_up(&i2cm_event_wait[device_id]);
-			}
-			else if (pstIrqEvent->stIrqFlag.bAddrNack || pstIrqEvent->stIrqFlag.bDataNack) {
-				DBG_INFO("I2C reveive NACk !!\n");
+			} else if (pstIrqEvent->stIrqFlag.bAddrNack || pstIrqEvent->stIrqFlag.bDataNack) {
+				DBG_ERR("I2C reveive NACK !!\n");
 				pstIrqEvent->bRet = I2C_ERR_RECEIVE_NACK;
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
 				wake_up(&i2cm_event_wait[device_id]);
-			}
-			else if (pstIrqEvent->dBurstCount > 0) {
+			} else if (pstIrqEvent->stIrqFlag.bSCLHoldTooLong) {
+				DBG_ERR("I2C SCL hold too long !!\n");
+				pstIrqEvent->bRet = I2C_ERR_SCL_HOLD_TOO_LONG;
+				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+				wake_up(&i2cm_event_wait[device_id]);
+			} else if (pstIrqEvent->stIrqFlag.bFiFoEmpty) {
+				DBG_ERR("I2C FIFO empty !!\n");
+				pstIrqEvent->bRet = I2C_ERR_FIFO_EMPTY;
+				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+				wake_up(&i2cm_event_wait[device_id]);
+			} else if (pstIrqEvent->dBurstCount > 0) {
 				if (pstIrqEvent->stIrqFlag.bEmptyThreshold) {
 					for (i = 0; i < I2C_EMPTY_THRESHOLD_VALUE; i++) {
 						for (j = 0; j < 4; j++) {
@@ -184,8 +211,13 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 
 		case I2C_READ_STATE:
 			if (pstIrqEvent->stIrqFlag.bAddrNack || pstIrqEvent->stIrqFlag.bDataNack) {
-				DBG_INFO("I2C reveive NACk !!\n");
+				DBG_ERR("I2C reveive NACK !!\n");
 				pstIrqEvent->bRet = I2C_ERR_RECEIVE_NACK;
+				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+				wake_up(&i2cm_event_wait[device_id]);
+			} else if (pstIrqEvent->stIrqFlag.bSCLHoldTooLong) {
+				DBG_ERR("I2C SCL hold too long !!\n");
+				pstIrqEvent->bRet = I2C_ERR_SCL_HOLD_TOO_LONG;
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
 				wake_up(&i2cm_event_wait[device_id]);
 			} else if (pstIrqEvent->stIrqFlag.bRdOverflow) {
@@ -200,7 +232,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 						bit_index = (I2C_BURST_RDATA_BYTES - 1) + (I2C_BURST_RDATA_BYTES * i);
 						if (rdata_flag & (1 << bit_index)) {
 							for (j = 0; j < (I2C_BURST_RDATA_BYTES / 4); j++) {
-								k = regdata_index + j;
+								k = pstIrqEvent->dRegDataIndex + j;
 								if (k >= 8) {
 									k -= 8;
 								}
@@ -209,9 +241,9 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 								pstIrqEvent->dDataIndex += 4;
 							}
 							hal_i2cm_rdata_flag_clear(device_id, (((1 << I2C_BURST_RDATA_BYTES) - 1) << (I2C_BURST_RDATA_BYTES * i)));
-							regdata_index += (I2C_BURST_RDATA_BYTES / 4);
-							if (regdata_index >= 8) {
-								regdata_index -= 8;
+							pstIrqEvent->dRegDataIndex += (I2C_BURST_RDATA_BYTES / 4);
+							if (pstIrqEvent->dRegDataIndex >= 8) {
+								pstIrqEvent->dRegDataIndex -= 8;
 							}
 							pstIrqEvent->dBurstCount --;
 						}
@@ -222,7 +254,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 					if (pstIrqEvent->dBurstRemainder) {
 						j = 0;
 						for (i = 0; i < (I2C_BURST_RDATA_BYTES / 4); i++) {
-							k = regdata_index + i;
+							k = pstIrqEvent->dRegDataIndex + i;
 							if (k >= 8) {
 								k -= 8;
 							}
@@ -438,7 +470,7 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 	DBG_INFO("write_cnt = %d, read_cnt = %d, burst_cnt = %d, burst_r = %d\n",
 			write_cnt, read_cnt, burst_cnt, burst_r);
 
-	int0 = (I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
 			| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT );
 	if (burst_cnt) {
 		int1 = I2C_BURST_RDATA_FLAG;
@@ -449,12 +481,14 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 	pstIrqEvent->dBurstCount = burst_cnt;
 	pstIrqEvent->dBurstRemainder = burst_r;
 	pstIrqEvent->dDataIndex = 0;
+	pstIrqEvent->dRegDataIndex = 0;
 	pstIrqEvent->dDataTotalLen = read_cnt;
 	pstIrqEvent->pDataBuf = pstCmdInfo->pRdData;
 
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
+	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, read_cnt);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 
@@ -538,12 +572,11 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 	}
 	DBG_INFO("write_cnt = %d, burst_cnt = %d\n", write_cnt, burst_cnt);
 
-	int0 = (I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
 			| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT );
-	if (burst_cnt) {
+
+	if (burst_cnt)
 		int0 |= I2C_EN0_EMPTY_THRESHOLD_INT;
-		hal_i2cm_ctrl_empty_thershold_set(pstCmdInfo->dDevId, I2C_EMPTY_THRESHOLD_VALUE);
-	}
 
 	pstIrqEvent->eRWState = I2C_WRITE_STATE;
 	pstIrqEvent->dBurstCount = burst_cnt;
@@ -554,11 +587,17 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
+	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, 0);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 	hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_WRITE_MODE);
 	hal_i2cm_data_set(pstCmdInfo->dDevId, (unsigned int *)w_data);
+
+	if (burst_cnt)
+		hal_i2cm_int_en0_with_thershold_set(pstCmdInfo->dDevId, int0, I2C_EMPTY_THRESHOLD_VALUE);
+	else
 	hal_i2cm_int_en0_set(pstCmdInfo->dDevId, int0);
+
 	hal_i2cm_manual_trigger(pstCmdInfo->dDevId);	//start send data
 
 	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqFlag.bActiveDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
