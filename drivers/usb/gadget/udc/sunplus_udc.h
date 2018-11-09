@@ -8,7 +8,7 @@
 #define EP12_FIFO_SIZE64	 64	/*full speed */
 #define EP_FIFO_SIZE		 64
 #define CONFIG_USB_SUNPLUS_EP11
-#define CONFIG_USB_SUNPLUS_EP1
+//#define CONFIG_USB_SUNPLUS_EP1
 #define CONFIG_USB_SUNPLUS_EP2
 #undef CONFIG_FIQ_GLUE
 

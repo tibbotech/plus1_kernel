@@ -101,21 +101,7 @@ EXPORT_SYMBOL_GPL(usb_ep_set_maxpacket_limit);
  */
 int usb_ep_enable(struct usb_ep *ep)
 {
-	int ret = 0;
-
-	if (ep->enabled)
-		goto out;
-
-	ret = ep->ops->enable(ep, ep->desc);
-	if (ret)
-		goto out;
-
-	ep->enabled = true;
-
-out:
-	trace_usb_ep_enable(ep, ret);
-
-	return ret;
+	return ep->ops->enable(ep, ep->desc);
 }
 EXPORT_SYMBOL_GPL(usb_ep_enable);
 
@@ -133,23 +119,7 @@ EXPORT_SYMBOL_GPL(usb_ep_enable);
  */
 int usb_ep_disable(struct usb_ep *ep)
 {
-	int ret = 0;
-
-	if (!ep->enabled)
-		goto out;
-
-	ret = ep->ops->disable(ep);
-	if (ret) {
-		ret = ret;
-		goto out;
-	}
-
-	ep->enabled = false;
-
-out:
-	trace_usb_ep_disable(ep, ret);
-
-	return ret;
+	return ep->ops->disable(ep);
 }
 EXPORT_SYMBOL_GPL(usb_ep_disable);
 
@@ -257,19 +227,7 @@ EXPORT_SYMBOL_GPL(usb_ep_free_request);
 int usb_ep_queue(struct usb_ep *ep,
 			       struct usb_request *req, gfp_t gfp_flags)
 {
-	int ret = 0;
-
-	if (WARN_ON_ONCE(!ep->enabled && ep->address)) {
-		ret = -ESHUTDOWN;
-		goto out;
-	}
-
-	ret = ep->ops->queue(ep, req, gfp_flags);
-
-out:
-	trace_usb_ep_queue(ep, req, ret);
-
-	return ret;
+	return ep->ops->queue(ep, req, gfp_flags);
 }
 EXPORT_SYMBOL_GPL(usb_ep_queue);
 
@@ -290,12 +248,7 @@ EXPORT_SYMBOL_GPL(usb_ep_queue);
  */
 int usb_ep_dequeue(struct usb_ep *ep, struct usb_request *req)
 {
-	int ret;
-
-	ret = ep->ops->dequeue(ep, req);
-	trace_usb_ep_dequeue(ep, req, ret);
-
-	return ret;
+	return ep->ops->dequeue(ep, req);
 }
 EXPORT_SYMBOL_GPL(usb_ep_dequeue);
 

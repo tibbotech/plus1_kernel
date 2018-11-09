@@ -8,7 +8,7 @@
  */
 
 /* #define VERBOSE_DEBUG */
-#define INT_TEST
+//#define INT_TEST
 
 #include <linux/slab.h>
 #include <linux/kernel.h>
@@ -457,7 +457,7 @@ static int sourcesink_set_alt(struct usb_function *f,
 	struct usb_composite_dev *cdev = f->config->cdev;
 
 	/* we know alt is zero */
-	if (ss->in_ep->driver_data)
+	if (!ss->in_ep->driver_data)
 		disable_source_sink(ss);
 	return enable_source_sink(cdev, ss);
 }

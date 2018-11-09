@@ -44,6 +44,7 @@
 #include <linux/utsname.h>
 #include <linux/device.h>
 
+
 #include "g_zero.h"
 #include <linux/usb/gadget_chips.h>
 
@@ -61,7 +62,8 @@
 #include "../config.c"
 #include "../epautoconf.c"
 
-#include "../function/f_sourcesink_iso.c"
+#include "../function/f_sourcesink.c"
+//#include "../function/f_sourcesink_iso.c"
 #include "../function/f_loopback.c"
 
 /*-------------------------------------------------------------------------*/
