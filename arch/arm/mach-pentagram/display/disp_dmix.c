@@ -234,7 +234,7 @@ DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode, DRV_DMIX_InputSe
 	if (((int)LayerMode < DRV_DMIX_AlphaBlend) || ((int)LayerMode > DRV_DMIX_Opacity) ||
 			(((int)FG_Sel != DRV_DMIX_VPP0) && ((int)FG_Sel != DRV_DMIX_OSD0) && ((int)FG_Sel != DRV_DMIX_PTG)))
 	{
-		ERRDISP("DMIX%d, Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
+		ERRDISP("Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
 		return DRV_ERR_INVALID_PARAM;
 	}
 
