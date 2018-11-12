@@ -92,6 +92,7 @@ void hdmitx_enable_video(enum hdmitx_video_timing_e timing)
 	hal_hdmi_tx_config_video(&video_attr);
 	hal_hdmi_tx_enable();
 }
+EXPORT_SYMBOL(hdmitx_enable_video);
 
 static int hdmitx_probe(struct platform_device *dev)
 {
@@ -131,3 +132,4 @@ module_init(hdmitx_init);
 module_exit(hdmitx_exit);
 MODULE_DESCRIPTION("HDMI TX driver");
 MODULE_LICENSE("GPL");
+
