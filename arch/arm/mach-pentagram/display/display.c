@@ -46,6 +46,8 @@
 #include "reg_disp.h"
 #include "hal_disp.h"
 
+#include "mach/hdmi_tx.h"
+
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -68,7 +70,7 @@
 	#define MON_CMD_LEN			(256)
 #endif
 
-#define FAKE_DMA	//DMA driver for test
+//#define FAKE_DMA	//DMA driver for test
 
 #define DMA_WIDTH	512
 #define DMA_HEIGHT	300
@@ -191,6 +193,9 @@ static void bio_wreg(UINT32 index, UINT32 value)
 	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	volatile UINT32 *bio = (UINT32 *)pDispWorkMem->bio;
 
+	if (IS_ERR(pDispWorkMem->bio))
+		return;
+
 	*(bio+index) = value;
 	//DEBUG("bio[%d] = 0x%x (%d)\n", index, *(bio+index), *(bio+index));
 }
@@ -202,6 +207,9 @@ volatile UINT32 aio_lreg(UINT32 index)
 
 static void aio_wreg(UINT32 index, UINT32 value)
 {
+	if (IS_ERR((const void *)aio))
+		return;
+
 	//DEBUG("aio[%d](0x%x) = 0x%x (%d)\n", index, (UINT32)aio + index*4, value, value);
 	*(aio+index) = value;
 	//DEBUG("aio[%d](0x%x) = 0x%x (%d)\n", index, (UINT32)aio + index*4, *(aio+index), *(aio+index));
@@ -350,8 +358,11 @@ static irqreturn_t _display_irq_field_end(int irq, void *param)
 	//if (mac_test == 14)
 	//	DERROR("%s:%d mac dma times=0x%x\n", __FUNCTION__, __LINE__, DMA_times);
 
-	aio_wreg(32+32+12, 0x40000 | (1<<8));
-	bio_wreg(1, 0x00000000 | (1<<19) | (1<<17));
+	if (mac_test)
+	{
+		aio_wreg(32+32+12, 0x40000 | (1<<8));
+		bio_wreg(1, 0x00000000 | (1<<19) | (1<<17));
+	}
 
 	return IRQ_HANDLED;
 }
@@ -822,6 +833,10 @@ static void _debug_cmd(char *tmpbuf)
 			DRV_OSD_HDR_Write(offset, value);
 		}
 	}
+	else if (!strncasecmp(tmpbuf, "hdmi", 4))
+	{
+		hdmitx_enable_video(HDMITX_VIDEO_TIMING_480P);
+	}
 #if 0
 	else if (!strncasecmp(tmpbuf, "test", 4))
 	{
@@ -1054,6 +1069,18 @@ char *_gdisp_irq_name[] = {
 };
 #endif
 
+static void _display_destory_irq(struct platform_device *pdev)
+{
+	int i, irq;
+	int num_irq = of_irq_count(pdev->dev.of_node);
+
+	for (i = 0; i < num_irq; ++i) {
+		irq = platform_get_irq(pdev, i);
+
+		devm_free_irq(&pdev->dev, irq, pdev);
+	}
+}
+
 static int _display_init_irq(struct platform_device *pdev)
 {
 	int irq;
@@ -1114,6 +1141,7 @@ static int _display_init_irq(struct platform_device *pdev)
 ERROR:
 	return -1;
 }
+#if 0
 char yuy2_array[768*480*2] __attribute__((aligned(1024)))= {
 //	#include "vpp_pattern/YUY2_720x480.h"
 };
@@ -1122,7 +1150,8 @@ char yuv444_array[768*480*3] __attribute__((aligned(1024)));
 char yuv422_array[768*480*2] __attribute__((aligned(1024))) = {
 	//#include "vpp_pattern/yuv422_NV16_720x480.h"
 };
-char yuv420_array[1024*600*3/2] __attribute__((aligned(1024))) = {
+#endif
+char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
 	#include "vpp_pattern/yuv420_NV12_720x480.h"
 //	#include "vpp_pattern/vpp_test_512x300_420.h"
 //	#include "vpp_pattern/vpp_test_1024x600_420.h"
@@ -1155,7 +1184,7 @@ static int _display_probe(struct platform_device *pdev)
 		G12 = ioremap(0x9c000600, 32*4);
 		aio = ioremap(0x9ec00580, 3*32*4);
 	}
-	
+
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res_mem)) {
 		DERROR("Error: %s, %d\n", __func__, __LINE__);
@@ -1287,12 +1316,26 @@ static int _display_probe(struct platform_device *pdev)
 
 	ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, 0);
 	}
+
+#ifdef SUPPORT_DEBUG_MON
+	entry = proc_create(MON_PROC_NAME, S_IRUGO, NULL, &proc_fops);
+#endif
+
 	return 0;
 }
 
 static int _display_remove(struct platform_device *pdev)
 {
 	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
+
+	_display_destory_irq(pdev);
+	iounmap(G12);
+	iounmap(aio);
+
+#ifdef SUPPORT_DEBUG_MON
+	if (entry)
+		remove_proc_entry(MON_PROC_NAME, NULL);
+#endif
 
 	return 0;
 }
@@ -1311,34 +1354,26 @@ static int _display_resume(struct platform_device *pdev)
 	return 0;
 }
 
-static int __init _display_init(void)
-{
-	DEBUG("[%s:%d] in %s testtest\n", __FUNCTION__, __LINE__, "32");
+#if 1
 
-#ifdef SUPPORT_DEBUG_MON
-	entry = proc_create(MON_PROC_NAME, S_IRUGO, NULL, &proc_fops);
-#endif
+static int set_debug_cmd(const char *val, const struct kernel_param *kp)
+{
+	_debug_cmd((char *)val);
 
 	return 0;
 }
 
-static void __exit _display_exit(void)
-{
-	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
+static struct kernel_param_ops debug_param_ops = {
+	.set = set_debug_cmd,
+//	.get = param_get_bool,
+};
 
-#ifdef SUPPORT_DEBUG_MON
-	if (entry)
-		remove_proc_entry(MON_PROC_NAME, NULL);
-#endif
-
-	return;
-}
+module_param_cb(debug, &debug_param_ops, NULL, 0644);
+#endif
 
 /**************************************************************************
  *                     P U B L I C   F U N C T I O N                      *
  **************************************************************************/
 
-module_init(_display_init);
-module_exit(_display_exit);
 MODULE_LICENSE("GPL");
 

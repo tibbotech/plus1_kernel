@@ -735,7 +735,7 @@ static u32 netdev_init(struct platform_device *pdev)
 	phy_cfg();
 
 
-#if 1 // phy_probe??
+#if 0 // phy_probe??
 #ifdef PHY_CONFIG
     mac->phy_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
 #endif
@@ -819,8 +819,8 @@ static int l2sw_remove(struct platform_device *pdev)
 	tasklet_kill(&mac->tx_tasklet);
 #endif
 
-	mac_phy_remove(net_dev);
-	mdio_remove(mac);
+	//mac_phy_remove(net_dev);
+	//mdio_remove(mac);
 	unregister_netdev(net_dev);
 	free_netdev(net_dev);
 	platform_set_drvdata(pdev, NULL);
@@ -897,3 +897,6 @@ static void __exit l2sw_exit(void)
 
 module_init(l2sw_init);
 module_exit(l2sw_exit);
+
+MODULE_LICENSE("GPL v2");
+

@@ -30,7 +30,6 @@
 *                          MACRO Function Define
 *******************************************************************************/
 #define SPSD_MAX_CLOCK  CLOCK_52M     /* Max supported SD Card frequency */
-#define SPSD_CLK_SOURCE CLOCK_202M    /* Host controller's clk source */
 #define SPSDV2_SDC_NAME "sunplus,sp-cardx"
 #define MAX_SDDEVICES   2
 #define SPSD_DEVICE_MASK 1
@@ -172,23 +171,26 @@ static inline bool is_crc_token_valid(SPSDHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
-static int pinmux_enable(void *host)
+static int enable_pinmux_and_clock(SPSDHOST *host, int enable)
 {
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
-	if (reg) {
-		writel(RF_MASK_V(1 << 6, 1 << 6), reg);
-	}
-	else {
-		printk("ioremap fail\n");
+	int ret = 0;
+	volatile void __iomem  *reg = ioremap_nocache(RF_GRP(1, 1), 4);
+	if (!reg) {
+		EPRINTK("ioremap for pinmux setting failed!\n");
 		return -ENOMEM;
+	}
+	if (enable) {
+		writel(RF_MASK_V_SET(1 << 6), reg);
+	} else {
+		writel(RF_MASK_V_CLR(1 << 6), reg);
 	}
 	iounmap(reg);
 	/* fully pin-mux configuration */
 	if (SP_SDIO_SLOT_ID == ((SPSDHOST *)host)->id) {
 		reg = ioremap_nocache(RF_GRP(2, 0), 128);
 		if (!reg) {
-			printk("trying to set sdio pinmux failed at ioremap!\n");
-			return -1;
+			EPRINTK("trying to set sdio pinmux failed at ioremap!\n");
+			return -ENOMEM;
 		}
 		writel(0x7f << 16 | 14, REGn(reg, 11)); /* CLK */
 		writel(0x7f << 24 | 16 << 8, REGn(reg, 11)); /* CMD */
@@ -198,43 +200,16 @@ static int pinmux_enable(void *host)
 		writel(0x7f << 24 | 18 << 8, REGn(reg, 13)); /* DAT3 */
 		iounmap(reg);
 	}
-	return 0;
+	if (enable)
+		ret = clk_enable(host->clk);
+	else
+		clk_disable(host->clk);
+	return ret;
 }
 
-static int ctlr_clk_enable(void)
+static inline int sd_get_in_clock(SPSDHOST *host)
 {
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
-	if (reg) {
-		writel(RF_MASK_V_SET(1 << 15), reg);
-	}	else {
-		printk("ioremap fail\n");
-		return -ENOMEM;
-	}
-	iounmap(reg);
-	return 0;
-}
-
-static int ctlr_clk_disable(void)
-{
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
-	if (reg) {
-		writel(RF_MASK_V_CLR(1 << 15), reg);
-	}	else {
-		printk("ioremap fail\n");
-		return -ENOMEM;
-	}
-	iounmap(reg);
-	return 0;
-}
-
-static int sd_set_in_clock(void *host)
-{
-	return 0;
-}
-
-static int sd_get_in_clock(void *host)
-{
-	return SPSD_CLK_SOURCE;
+	return clk_get_rate(host->clk);
 }
 
 void tx_dummy(SPSDHOST *host, u32 rounds)
@@ -1142,47 +1117,55 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 
 	if (priv)
 		host->id  = priv->id;
-
 	printk("sd slot id:%d\n", host->id);
+
+	host->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(host->clk)) {
+		EPRINTK("Can not find clock source!\n");
+		ret = PTR_ERR(host->clk);
+		goto probe_free_host;
+	}
 
 	/*sd controller register*/
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(resource)) {
 		EPRINTK("get sd %d register resource fail\n", host->id);
 		ret = PTR_ERR(resource);
-		goto probe_free_host;
+		goto probe_clk_put;
 	}
 
 	if ((resource->end - resource->start + 1) < sizeof(SDREG)) {
 		EPRINTK("register size not right e:%d:r:%d\n",
 			resource->end - resource->start + 1, sizeof(SDREG));
 		ret = -EINVAL;
-		goto probe_free_host;
+		goto probe_clk_put;
 	}
 
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
 	if (IS_ERR((void *)host->base)) {
 		EPRINTK("devm_ioremap_resource fail\n");
 		ret = PTR_ERR((void *)host->base);
-		goto probe_free_host;
+		goto probe_clk_put;
 	}
-	DPRINTK("SD card driver probe, sd %d, base:0x%x, host size:%d\n", host->id, resource->start, resource->end - resource->start);
 
-	/* host->irq = of_irq_get(pdev->dev.of_node, 0); */
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
 		EPRINTK("get sd %d irq resource fail\n", host->id);
 		ret = -EINVAL;
-		goto probe_free_host;
+		goto probe_iounmap;
 	}
-	DPRINTK("irq  %d\n",	host->irq);
+	if (request_irq(host->irq, spsdv2_irq, IRQF_SHARED, dev_name(&pdev->dev), mmc)) {
+		EPRINTK("Failed to request sd card interrupt.\n");
+		ret = -ENOENT;
+		goto probe_iounmap;
+	}
+	DPRINTK("SD card driver probe, sd %d, base:0x%x, reg size:%d, irq:%d\n",
+		host->id, resource->start, resource->end - resource->start, host->irq);
 
 	/*
 	 * fix me read from device tree after clock pinmux device tree ok
 	 */
-	pinmux_enable(host);
-
-	sd_set_in_clock(host);
+	enable_pinmux_and_clock(host, 1);
 
 	if(SP_EMMCSLOT_ID == host->id) {
 		host->wrdly = host->base->sd_wr_dly_sel;
@@ -1192,24 +1175,11 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		host->rddly = 0;
 	}
 
-	if (request_irq(host->irq, spsdv2_irq, IRQF_SHARED, dev_name(&pdev->dev), mmc)) {
-		printk("\nFailed to request sd card interrupt.\n");
-		ret = -ENOENT;
-		goto probe_free_host;
-	}
-
-	DPRINTK("[SDCard] Slot %d driver probe, host:0x%x, base:0x%x\n", host->id, (unsigned int)host,(unsigned int)host->base);
-
-
 	sema_init(&host->req_sem, 1);
 
 	mmc->ops = &spsdv2_sdc_ops;
 
-	/*
-	 * freq_divisor[11:10] = sdfreq[1:0]
-	 * freq_divisor[9:0] = sdfqsel[9:0]
-	 */
-	mmc->f_min = (SPSD_CLK_SOURCE / (0x0FFF + 1));
+	mmc->f_min = sd_get_in_clock(host) / (0x0FFF + 1);
 	mmc->f_max = get_max_sd_freq(host);
 
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
@@ -1235,7 +1205,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		if (of_property_read_u32(pdev->dev.of_node, "sense-gpio", &host->cd_gpio)) {
 			printk(KERN_ERR "Failed to get card detect gpio pin configuration!\n");
 			ret = -ENOENT;
-			goto probe_free_host;
+			goto probe_iounmap;
 		}
 		GPIO_F_SET(host->cd_gpio, 1);
 		GPIO_M_SET(host->cd_gpio, 1);
@@ -1249,6 +1219,12 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	return 0;
 
+probe_iounmap:
+	if (host->base)
+		devm_iounmap(&pdev->dev, (void *)host->base);
+probe_clk_put:
+	if (host->clk)
+		devm_clk_put(&pdev->dev, host->clk);
 probe_free_host:
 	if (mmc)
 		mmc_free_host(mmc);
@@ -1267,11 +1243,12 @@ int spsdv2_drv_remove(struct platform_device *dev)
 		return -EINVAL;
 
 	host = (SPSDHOST *)mmc_priv(mmc);
-	devm_iounmap(&dev->dev, (void *)host->base);
-	platform_set_drvdata(dev, NULL);
-
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
+	enable_pinmux_and_clock(host, 0);
+	devm_iounmap(&dev->dev, (void *)host->base);
+	devm_clk_put(&dev->dev, host->clk);
+	platform_set_drvdata(dev, NULL);
 	mmc_free_host(mmc);
 
 	return 0;
@@ -1331,21 +1308,24 @@ static int spsdv2_pm_resume(struct device *dev)
 
 static int spsdv2_pm_runtime_suspend(struct device *dev)
 {
-	#if 0
-	int qctl_val, ret = 0, retry = 1000;
+	/*
+	int qctl_val, retry = 1000;
+	volatile void __iomem *reg;
+	*/
+	int ret = 0;
 	struct mmc_host *mmc;
 	SPSDHOST *host;
-	volatile void __iomem *reg;
 	mmc = platform_get_drvdata(to_platform_device(dev));
 	if (!mmc)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
 	down(&host->req_sem);
-	if (ctlr_clk_disable()) {
-		EPRINTK("fail to disable card controller clock!\n");
-		ret = -EIO;
+	ret = clk_disable(host->clk);
+	if (ret) {
+		EPRINTK("Fail to disable card controller clock!\n");
 		goto out;
 	}
+	#if 0
 	reg = ioremap_nocache(RF_GRP(30, 1), 4);
 	if (!reg) {
 		EPRINTK("map Q-channel register failed!\n");
@@ -1362,24 +1342,26 @@ static int spsdv2_pm_runtime_suspend(struct device *dev)
 		ret = -EIO;
 	}
 	iounmap(reg);
+	#endif
 out:
 	up(&host->req_sem);
 	return ret;
-	#endif
-	return 0;
 }
 
 static int spsdv2_pm_runtime_resume(struct device *dev)
 {
-	#if 0
-	int qctl_val, ret = 0, retry = 1000;
+	/*
+	int qctl_val, retry = 1000;
+	volatile void __iomem *reg;
+	*/
+	int ret = 0;
 	struct mmc_host *mmc;
 	SPSDHOST *host;
-	volatile void __iomem *reg;
 	mmc = platform_get_drvdata(to_platform_device(dev));
 	if (!mmc)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
+	#if 0
 	reg = ioremap_nocache(RF_GRP(30, 1), 4);
 	if (!reg) {
 		EPRINTK("map Q-channel register failed!\n");
@@ -1396,14 +1378,13 @@ static int spsdv2_pm_runtime_resume(struct device *dev)
 		ret = -EIO;
 		goto out;
 	}
-	if (ctlr_clk_enable()) {
-		EPRINTK("fail to enable card controller clock!\n");
-		ret = -EIO;
+	#endif
+	ret = clk_enable(host->clk);
+	if (ret) {
+		EPRINTK("Fail to enable card controller clock!\n");
 	}
 out:
 	return ret;
-	#endif
-	return 0;
 }
 
 const struct dev_pm_ops sphe_mmc2_pm_ops = {

@@ -25,4 +25,6 @@ endif
 ccflags-y += -Werror
 ccflags-y += -Wformat-security
 
-obj-$(CONFIG_SP_DISP_SC7021_TEST) += display.o disp_dve.o disp_dmix.o disp_tgen.o disp_osd.o disp_vpp.o
+obj-$(CONFIG_SP_DISP_SC7021_TEST) += display_sc7021.o
+display_sc7021-objs := display.o disp_dve.o disp_dmix.o disp_tgen.o disp_osd.o disp_vpp.o
+

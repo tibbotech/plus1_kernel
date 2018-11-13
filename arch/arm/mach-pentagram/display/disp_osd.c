@@ -168,7 +168,7 @@ void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 #define OSD_WIDTH	720
 #define OSD_HEIGHT	480
 
-static UINT8 _gOSD_header[128 + 1024 + OSD_WIDTH * OSD_HEIGHT * 4] __attribute__((aligned(32))) = {
+static UINT8 _gOSD_header[128 + 1024 + OSD_WIDTH * OSD_HEIGHT] __attribute__((aligned(32))) = {
 //#include "osd_pattern/osd_header_1152.h"
 //#include "osd_pattern/ARGB8888_720x480.h"	//0xe
 //#include "osd_pattern/RGBA8888_720x480.h"	//0xd
