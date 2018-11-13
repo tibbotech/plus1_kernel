@@ -181,6 +181,9 @@ struct proc_dir_entry *entry = NULL;
  **************************************************************************/
 static volatile int mac_test = 0;
 static volatile UINT32 *G12;
+#ifdef MODULE
+static UINT32 *yuv420;
+#endif
 static volatile UINT32 *aio;
 
 int getstc(void)
@@ -1314,7 +1317,13 @@ static int _display_probe(struct platform_device *pdev)
 	vpost_setting(0, 0, VPP_WIDTH, VPP_HEIGHT, 720, 480);
 	//vpost_dma();
 
+	#ifdef MODULE
+	yuv420 = ioremap(0x01000000, 768*480*3/2);
+	memcpy(yuv420, yuv420_array, 768*480*3/2);
+	ddfch_setting(0x01000000, 0x01000000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
+	#else
 	ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, 0);
+	#endif
 	}
 
 #ifdef SUPPORT_DEBUG_MON
@@ -1331,6 +1340,10 @@ static int _display_remove(struct platform_device *pdev)
 	_display_destory_irq(pdev);
 	iounmap(G12);
 	iounmap(aio);
+#ifdef MODULE
+	iounmap(yuv420);
+#endif
+
 
 #ifdef SUPPORT_DEBUG_MON
 	if (entry)
