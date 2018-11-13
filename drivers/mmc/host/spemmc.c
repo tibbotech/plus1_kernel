@@ -136,7 +136,7 @@ static inline bool is_crc_token_valid(SPEMMCHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
-static int enable_pinmux_and_clock(SPEMMCHOST *host, int enable)
+static int enable_pinmux(SPEMMCHOST *host, int enable)
 {
 #define REG_BASE					0x9c000000
 #define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
@@ -158,12 +158,6 @@ static int enable_pinmux_and_clock(SPEMMCHOST *host, int enable)
 		writel(RF_MASK_V_CLR(1 << 5), reg);
 	}
 	iounmap(reg);
-
-	if (enable)
-		ret = clk_enable(host->clk);
-	else
-		clk_disable(host->clk);
-
 	return ret;
 }
 
@@ -1071,41 +1065,47 @@ int spemmc_drv_probe(struct platform_device *pdev)
 	if (IS_ERR(resource)) {
 		EPRINTK("get sd %d register resource fail\n", host->id);
 		ret = PTR_ERR(resource);
-		goto probe_clk_put;
+		goto probe_free_host;
 	}
 
 	if ((resource->end - resource->start + 1) < sizeof(EMMCREG)) {
 		EPRINTK("register size not right e:%d:r:%d\n",
 			resource->end - resource->start + 1, sizeof(EMMCREG));
 		ret = -EINVAL;
-		goto probe_clk_put;
+		goto probe_free_host;
 	}
 
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
 	if (IS_ERR((void *)host->base)) {
 		EPRINTK("devm_ioremap_resource fail\n");
 		ret = PTR_ERR((void *)host->base);
-		goto probe_clk_put;
+		goto probe_free_host;
 	}
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
 		EPRINTK("get sd %d irq resource fail\n", host->id);
 		ret = -EINVAL;
-		goto probe_iounmap;
+		goto probe_free_host;
 	}
 	if (request_irq(host->irq, spemmc_irq, IRQF_SHARED, dev_name(&pdev->dev), mmc)) {
 		EPRINTK("Failed to request sd card interrupt.\n");
 		ret = -ENOENT;
-		goto probe_iounmap;
+		goto probe_free_host;
 	}
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, reg size:%d, irq: %d\n",
 		host->id, resource->start, resource->end - resource->start, host->irq);
 
-	/*
-	 * fix me read from device tree after clock pinmux device tree ok
-	 */
-	enable_pinmux_and_clock(host, 1);
+	if (enable_pinmux(host, 1)) {
+		EPRINTK("trying to enable pinmux failed!\n");
+		goto probe_free_host;
+	}
+	ret = clk_prepare(host->clk);
+	if (ret)
+		goto probe_free_host;
+	ret = clk_enable(host->clk);
+	if (ret)
+		goto probe_clk_unprepare;
 
 	host->wrdly = host->base->sd_wr_dly_sel;
 	host->rddly = host->base->sd_rd_dly_sel;
@@ -1140,12 +1140,9 @@ int spemmc_drv_probe(struct platform_device *pdev)
 
 	return 0;
 
-probe_iounmap:
-	if (host->base)
-		devm_iounmap(&pdev->dev, (void *)host->base);
-probe_clk_put:
-	if (host->clk)
-		devm_clk_put(&pdev->dev, host->clk);
+probe_clk_unprepare:
+	EPRINTK("unable to enable controller clock\n");
+	clk_unprepare(host->clk);
 probe_free_host:
 	if (mmc)
 		mmc_free_host(mmc);
@@ -1166,9 +1163,9 @@ int spemmc_drv_remove(struct platform_device *dev)
 	host = (SPEMMCHOST *)mmc_priv(mmc);
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
-	enable_pinmux_and_clock(host, 0);
-	devm_iounmap(&dev->dev, (void *)host->base);
-	devm_clk_put(&dev->dev, host->clk);
+	enable_pinmux(host, 0);
+	clk_disable(host->clk);
+	clk_unprepare(host->clk);
 	platform_set_drvdata(dev, NULL);
 	mmc_free_host(mmc);
 
