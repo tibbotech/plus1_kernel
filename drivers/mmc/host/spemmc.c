@@ -137,7 +137,7 @@ static inline bool is_crc_token_valid(SPEMMCHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
-static int pinmux_enable(void *host)
+static int set_pinmux_and_clock(void *host, int enable)
 {
 #define REG_BASE					0x9c000000
 #define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
@@ -146,14 +146,31 @@ static int pinmux_enable(void *host)
 #define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
 
 	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
-	if (reg) {
-		writel(RF_MASK_V_CLR(1 << 4), reg);
-		writel(RF_MASK_V(1 << 5, 1 << 5), reg);
-	}
-	else {
-		printk("ioremap fail\n");
+	/* pinmux */
+	if (!reg) {
+		EPRINTK("ioremap for pinmux set failed!\n");
 		return -ENOMEM;
 	}
+	if (enable) {
+		writel(RF_MASK_V_CLR(1 << 4), reg);
+		writel(RF_MASK_V(1 << 5, 1 << 5), reg);
+	} else {
+		writel(RF_MASK_V_CLR(1 << 5), reg);
+	}
+	iounmap(reg);
+
+	/* controller clock */
+	reg = ioremap_nocache(RF_GRP(0, 4), 4);
+	if (!reg) {
+		EPRINTK("ioremap for card controller clock set failed!\n");
+		return -ENOMEM;
+	}
+	if (enable) {
+		writel(RF_MASK_V(1 << 14, 1 << 14), reg);
+	} else {
+		writel(RF_MASK_V_CLR(1 << 14), reg);
+	}
+	iounmap(reg);
 
 	return 0;
 }
@@ -1092,7 +1109,7 @@ int spemmc_drv_probe(struct platform_device *pdev)
 	/*
 	 * fix me read from device tree after clock pinmux device tree ok
 	 */
-	pinmux_enable(host);
+	set_pinmux_and_clock(host, 1);
 
 	emmc_set_in_clock(host);
 
@@ -1156,10 +1173,11 @@ int spemmc_drv_remove(struct platform_device *dev)
 		return -EINVAL;
 
 	host = (SPEMMCHOST *)mmc_priv(mmc);
-	platform_set_drvdata(dev, NULL);
-
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
+	set_pinmux_and_clock(host, 0);
+	devm_iounmap(&dev->dev, (void *)host->base);
+	platform_set_drvdata(dev, NULL);
 	mmc_free_host(mmc);
 
 	return 0;

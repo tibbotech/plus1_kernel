@@ -1335,8 +1335,8 @@ CONFIG_MMC=y
 #
 # MMC/SD/SDIO Host Controller Drivers
 #
-CONFIG_SP_SDV2=y
-CONFIG_SP_EMMC=y
+CONFIG_SP_SDV2=m
+CONFIG_SP_EMMC=m
 
 # CONFIG_UWB is not set
 # CONFIG_MEMSTICK is not set
