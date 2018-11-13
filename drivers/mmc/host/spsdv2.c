@@ -172,23 +172,53 @@ static inline bool is_crc_token_valid(SPSDHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
-static int pinmux_enable(void *host)
+static int controller_clock_enable(SPSDHOST *host, int enable)
 {
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
-	if (reg) {
-		writel(RF_MASK_V(1 << 6, 1 << 6), reg);
+	volatile void __iomem  *reg;
+	if (SP_SDIO_SLOT_ID == ((SPSDHOST *)host)->id) {
+		reg = ioremap_nocache(RF_GRP(0, 5), 4);
+		if (!reg) {
+			EPRINTK("ioremap for controller clock setting failed!\n");
+			return -ENOMEM;
+		}
+		if (enable)
+			writel(RF_MASK_V_SET(1 << 2), reg);
+		else
+			writel(RF_MASK_V_CLR(1 << 2), reg);
+	} else {
+		reg = ioremap_nocache(RF_GRP(0, 4), 4);
+		if (!reg) {
+			EPRINTK("ioremap for controller clock setting failed!\n");
+			return -ENOMEM;
+		}
+		if (enable)
+			writel(RF_MASK_V_SET(1 << 15), reg);
+		else
+			writel(RF_MASK_V_CLR(1 << 15), reg);
 	}
-	else {
-		printk("ioremap fail\n");
+	iounmap(reg);
+	return 0;
+}
+
+static int set_pinmux_and_clock(SPSDHOST *host, int enable)
+{
+	volatile void __iomem  *reg = ioremap_nocache(RF_GRP(1, 1), 4);
+	if (!reg) {
+		EPRINTK("ioremap for pinmux setting failed!\n");
 		return -ENOMEM;
+	}
+	if (enable) {
+		writel(RF_MASK_V_SET(1 << 6), reg);
+	} else {
+		writel(RF_MASK_V_CLR(1 << 6), reg);
 	}
 	iounmap(reg);
 	/* fully pin-mux configuration */
 	if (SP_SDIO_SLOT_ID == ((SPSDHOST *)host)->id) {
 		reg = ioremap_nocache(RF_GRP(2, 0), 128);
 		if (!reg) {
-			printk("trying to set sdio pinmux failed at ioremap!\n");
-			return -1;
+			EPRINTK("trying to set sdio pinmux failed at ioremap!\n");
+			return -ENOMEM;
 		}
 		writel(0x7f << 16 | 14, REGn(reg, 11)); /* CLK */
 		writel(0x7f << 24 | 16 << 8, REGn(reg, 11)); /* CMD */
@@ -198,33 +228,7 @@ static int pinmux_enable(void *host)
 		writel(0x7f << 24 | 18 << 8, REGn(reg, 13)); /* DAT3 */
 		iounmap(reg);
 	}
-	return 0;
-}
-
-static int ctlr_clk_enable(void)
-{
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
-	if (reg) {
-		writel(RF_MASK_V_SET(1 << 15), reg);
-	}	else {
-		printk("ioremap fail\n");
-		return -ENOMEM;
-	}
-	iounmap(reg);
-	return 0;
-}
-
-static int ctlr_clk_disable(void)
-{
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 4), 4);
-	if (reg) {
-		writel(RF_MASK_V_CLR(1 << 15), reg);
-	}	else {
-		printk("ioremap fail\n");
-		return -ENOMEM;
-	}
-	iounmap(reg);
-	return 0;
+	return controller_clock_enable(host, enable);
 }
 
 static int sd_set_in_clock(void *host)
@@ -1180,7 +1184,7 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	/*
 	 * fix me read from device tree after clock pinmux device tree ok
 	 */
-	pinmux_enable(host);
+	set_pinmux_and_clock(host, 1);
 
 	sd_set_in_clock(host);
 
@@ -1267,11 +1271,11 @@ int spsdv2_drv_remove(struct platform_device *dev)
 		return -EINVAL;
 
 	host = (SPSDHOST *)mmc_priv(mmc);
-	devm_iounmap(&dev->dev, (void *)host->base);
-	platform_set_drvdata(dev, NULL);
-
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
+	set_pinmux_and_clock(host, 0);
+	devm_iounmap(&dev->dev, (void *)host->base);
+	platform_set_drvdata(dev, NULL);
 	mmc_free_host(mmc);
 
 	return 0;
@@ -1331,8 +1335,7 @@ static int spsdv2_pm_resume(struct device *dev)
 
 static int spsdv2_pm_runtime_suspend(struct device *dev)
 {
-	#if 0
-	int qctl_val, ret = 0, retry = 1000;
+	/* int qctl_val, ret = 0, retry = 1000; */
 	struct mmc_host *mmc;
 	SPSDHOST *host;
 	volatile void __iomem *reg;
@@ -1341,11 +1344,12 @@ static int spsdv2_pm_runtime_suspend(struct device *dev)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
 	down(&host->req_sem);
-	if (ctlr_clk_disable()) {
+	if (controller_clock_enable(host, 0)) {
 		EPRINTK("fail to disable card controller clock!\n");
 		ret = -EIO;
 		goto out;
 	}
+	#if 0
 	reg = ioremap_nocache(RF_GRP(30, 1), 4);
 	if (!reg) {
 		EPRINTK("map Q-channel register failed!\n");
@@ -1362,17 +1366,15 @@ static int spsdv2_pm_runtime_suspend(struct device *dev)
 		ret = -EIO;
 	}
 	iounmap(reg);
+	#endif
 out:
 	up(&host->req_sem);
 	return ret;
-	#endif
-	return 0;
 }
 
 static int spsdv2_pm_runtime_resume(struct device *dev)
 {
-	#if 0
-	int qctl_val, ret = 0, retry = 1000;
+	/* int qctl_val, ret = 0, retry = 1000; */
 	struct mmc_host *mmc;
 	SPSDHOST *host;
 	volatile void __iomem *reg;
@@ -1380,6 +1382,7 @@ static int spsdv2_pm_runtime_resume(struct device *dev)
 	if (!mmc)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
+	#if 0
 	reg = ioremap_nocache(RF_GRP(30, 1), 4);
 	if (!reg) {
 		EPRINTK("map Q-channel register failed!\n");
@@ -1396,14 +1399,13 @@ static int spsdv2_pm_runtime_resume(struct device *dev)
 		ret = -EIO;
 		goto out;
 	}
-	if (ctlr_clk_enable()) {
+	#endif
+	if (controller_clock_enable(host, 1)) {
 		EPRINTK("fail to enable card controller clock!\n");
 		ret = -EIO;
 	}
 out:
 	return ret;
-	#endif
-	return 0;
 }
 
 const struct dev_pm_ops sphe_mmc2_pm_ops = {
