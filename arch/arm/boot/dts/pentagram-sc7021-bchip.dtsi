@@ -311,14 +311,14 @@
 			compatible = "sunplus,sp-emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc CARD_CTL0>;
 		};
 
 		mmc1: mmc@sdcard {
 			compatible = "sunplus,sp-card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc CARD_CTL1>;
 			sense-gpio = <71>;
 		};
 
@@ -326,7 +326,7 @@
 			compatible = "sunplus,sp-sdio";
 			reg = <0x9c008400 0x280>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc CARD_CTL4>;
 		};
 
 		spinor0: spinor@sp_spinor {

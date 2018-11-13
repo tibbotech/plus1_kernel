@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/mmc/mmc.h>
 #include <mach/irqs.h>
+#include <linux/clk.h>
 
 /////////////////////////////////////////////////////////////////
 #define SP_MMC_SUPPORT_DDR_MODE
@@ -547,6 +548,7 @@ typedef struct  spemmc_general_regs{
 
 typedef struct spsdhost {
 	volatile struct spemmc_general_regs *base;
+	struct clk *clk;
 	uint id;
 	char *name;
 	struct mmc_host *mmc;

@@ -7,6 +7,7 @@
 #include <linux/platform_device.h>
 #include <linux/mmc/mmc.h>
 #include <mach/irqs.h>
+#include <linux/clk.h>
 
 /////////////////////////////////////////////////////////////////
 #define SPSD_SUCCESS			0x00000000
@@ -555,6 +556,7 @@ typedef struct spsd_general_regs {
 
 typedef struct spsdhost {
 	volatile struct spsd_general_regs *base;
+	struct clk *clk;
 	uint id;
 	char *name;
 	struct mmc_host *mmc;
