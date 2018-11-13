@@ -102,6 +102,7 @@ struct regs_gdma {
 };
 
 #define GDMA_CFG_VAL		0x0105		/* Go, not buffered, DMA_WR */
+#define GDMA_CFG_GO		(1 << 8)
 
 #define GDMA_INT_FLG_IP_TO	(1 << 4)
 #define GDMA_INT_FLG_DONE	(1 << 0)
@@ -142,7 +143,7 @@ struct sunplus_uartdma_info {
 	void *buf_va;
 	dma_addr_t dma_handle;
 	int tx_1_rx_0;
-	int current_buf;		/* for HWBUF-Rx mode, the buffer is split into two buffers, each of them is (UARXDMA_BUF_SZ >> 1) bytes */
+	unsigned int current_buf;	/* for HWBUF-Rx mode, the buffer is split into two buffers, each of them is (UARXDMA_BUF_SZ >> 1) bytes */
 };
 
 static struct sunplus_uartdma_info sunplus_uartdma[NUM_UARTDMARX + NUM_HWBUF];
@@ -747,21 +748,29 @@ static void receive_chars(struct uart_port *port)	/* called by ISR */
 	volatile struct regs_hwbuf *hwbuf_reg;
 	volatile struct regs_gdma *gdma_reg;
 	u32 int_flag;
+	unsigned char *u8_ptr;
+	u32 rx_data;
+	u32 hwbuf_rx_size;
+	u32 flag_restart_gdma;
 
+	hwbuf_rx_size = 0;
 	hwbuf_rx = sp_port->hwbuf_rx;
 	if (hwbuf_rx) {
 		gdma_reg = (volatile struct regs_gdma *)(hwbuf_rx->membase_gdma);
 		int_flag = readl(&(gdma_reg->int_flag));
 
+		flag_restart_gdma = 0;
 		hwbuf_reg = (volatile struct regs_hwbuf *)(hwbuf_rx->membase);
 		if (int_flag) {
-			DBG_INFO("HWBUF-Rx, int_flag: 0x%x\n", int_flag);
+			// DBG_INFO("HWBUF-Rx, int_flag: 0x%x\n", int_flag);
 
-			if (int_flag & GDMA_INT_FLG_IP_TO) {
-				DBG_INFO("HWBUF-Rx, sw_rst_wr_cnt_dbg: 0x%x\n", readl(&(gdma_reg->sw_rst_wr_cnt_dbg)));
-
+			if (readl(&(gdma_reg->config)) & GDMA_CFG_GO) {
+				/* ISR isn't caused by it, do nothing */
+			} else if (int_flag & GDMA_INT_FLG_IP_TO) {
+				hwbuf_rx_size = readl(&(gdma_reg->sw_rst_wr_cnt_dbg));
+				// DBG_INFO("HWBUF-Rx, sw_rst_wr_cnt_dbg: 0x%x\n", hwbuf_rx_size);
 				writel(GDMA_INT_FLG_IP_TO, &(gdma_reg->int_flag));
-
+#if 0				/* flush will cause data loss */
 				sp_uart_set_rx_residue(port->membase, 0);	/* flush rx data FIFO */
 				while (!(readl(&(hwbuf_reg->hwbuf_rst_done)) & 0x0001)) {
 					/* wait for s/w reset done */
@@ -769,113 +778,114 @@ static void receive_chars(struct uart_port *port)	/* called by ISR */
 				while (!(readl(&(gdma_reg->sw_rst_state)) & 0x0001)) {
 					/* wait for s/w reset done */
 				}
+#endif
+				flag_restart_gdma = 1;
+			} else if (int_flag & GDMA_INT_FLG_DONE) {
+				hwbuf_rx_size = readl(&(gdma_reg->length));
+				writel(GDMA_INT_FLG_DONE, &(gdma_reg->int_flag));
+				flag_restart_gdma = 1;
 			}
 
 			/* clean other flags */
-			int_flag = readl(&(gdma_reg->int_flag));
+			int_flag &= ~(GDMA_INT_EN_IP_TO | GDMA_INT_FLG_DONE);
 			writel(int_flag, &(gdma_reg->int_flag));
 
-			// DEBUG_HWBUF
-			{
-				int i;
-				u32 *ptr = hwbuf_rx->buf_va;
-
-				for (i = 0; i < 4; i++) {
-					DBG_INFO("Rx data: 0x%08x\n", *ptr);
-					ptr++;
-				}
-
-				ptr = hwbuf_rx->buf_va;
-				for (i = 0; i < 4; i++) {
-					*ptr = 0x20202020;
-					ptr++;
+			if (hwbuf_rx_size) {
+				if (hwbuf_rx->current_buf == 0) {
+					u8_ptr = (unsigned char *)(hwbuf_rx->buf_va);
+					writel(((u32)(hwbuf_rx->dma_handle) + (UARXDMA_BUF_SZ >> 1)), &(gdma_reg->mem_adr));
+					hwbuf_rx->current_buf = 1;
+				} else {
+					u8_ptr = (unsigned char *)(hwbuf_rx->buf_va);
+					u8_ptr += (UARXDMA_BUF_SZ >> 1);
+					writel((u32)(hwbuf_rx->dma_handle), &(gdma_reg->mem_adr));
+					hwbuf_rx->current_buf = 0;
 				}
 			}
 
-
-			// TBD: switch buffer, pass data, ...
-
-			/* Start GDMA again */
-			writel(GDMA_CFG_VAL, &(gdma_reg->config));
+			if (flag_restart_gdma) {
+				/* Start GDMA again */
+				writel(GDMA_CFG_VAL, &(gdma_reg->config));
+			}
 		}
 	}
-#if 0	// DEBUG_HWBUF
-			// = readl(&(gdma_reg->));
-			// = readl(&(gdma_reg->));
-			//
-			// = readl(&(hwbuf_reg->));
-			// = readl(&(hwbuf_reg->));
-			//
-			// writel((u32)(hwbuf_rx->dma_handle), &(gdma_reg->));
-			// writel((u32)(hwbuf_rx->dma_handle), &(gdma_reg->));
-			// writel((u32)(hwbuf_rx->dma_handle), &(hwbuf_reg->));
-#endif
 
-if (hwbuf_rx == NULL) { // DEBUG_HWBUF
+	if (hwbuf_rx == NULL) {
+		while (1) {
+			lsr = sp_uart_get_line_status(port->membase);
+			if (!(lsr & SP_UART_LSR_RX)) {
+				break;
+			}
 
-	do {
-		ch = sp_uart_get_char(port->membase);
+			ch = sp_uart_get_char(port->membase);
 
 #if defined(CONFIG_SP_MON)
-		if (sysrqCheckState(ch, port) != 0)
-			goto ignore_char;
+			if (sysrqCheckState(ch, port) != 0)
+				goto ignore_char;
 #endif
 
-		flag = TTY_NORMAL;
-		port->icount.rx++;
+			flag = TTY_NORMAL;
+			port->icount.rx++;
 
-		if (unlikely(lsr & SP_UART_LSR_BRK_ERROR_BITS)) {
-			if (port->cons == NULL)
-				DBG_ERR("UART%d, SP_UART_LSR_BRK_ERROR_BITS, lsr = 0x%08X\n", port->line, lsr);
+			if (unlikely(lsr & SP_UART_LSR_BRK_ERROR_BITS)) {
+				if (port->cons == NULL)
+					DBG_ERR("UART%d, SP_UART_LSR_BRK_ERROR_BITS, lsr = 0x%08X\n", port->line, lsr);
 
-			if (lsr & SP_UART_LSR_BC) {
-				lsr &= ~(SP_UART_LSR_FE | SP_UART_LSR_PE);
-				port->icount.brk++;
-				if (uart_handle_break(port))
-					goto ignore_char;
-			} else if (lsr & SP_UART_LSR_PE) {
-				if (port->cons == NULL)
-					DBG_ERR("UART%d, SP_UART_LSR_PE\n", port->line);
-				port->icount.parity++;
-			} else if (lsr & SP_UART_LSR_FE) {
-				if (port->cons == NULL)
-					DBG_ERR("UART%d, SP_UART_LSR_FE\n", port->line);
-				port->icount.frame++;
+				if (lsr & SP_UART_LSR_BC) {
+					lsr &= ~(SP_UART_LSR_FE | SP_UART_LSR_PE);
+					port->icount.brk++;
+					if (uart_handle_break(port))
+						goto ignore_char;
+				} else if (lsr & SP_UART_LSR_PE) {
+					if (port->cons == NULL)
+						DBG_ERR("UART%d, SP_UART_LSR_PE\n", port->line);
+					port->icount.parity++;
+				} else if (lsr & SP_UART_LSR_FE) {
+					if (port->cons == NULL)
+						DBG_ERR("UART%d, SP_UART_LSR_FE\n", port->line);
+					port->icount.frame++;
+				}
+				if (lsr & SP_UART_LSR_OE) {
+					if (port->cons == NULL)
+						DBG_ERR("UART%d, SP_UART_LSR_OE\n", port->line);
+					port->icount.overrun++;
+				}
+
+				/*
+				 * Mask off conditions which should be ignored.
+				 */
+
+				/* lsr &= port->read_status_mask; */
+
+				if (lsr & SP_UART_LSR_BC)
+					flag = TTY_BREAK;
+				else if (lsr & SP_UART_LSR_PE)
+					flag = TTY_PARITY;
+				else if (lsr & SP_UART_LSR_FE)
+					flag = TTY_FRAME;
 			}
-			if (lsr & SP_UART_LSR_OE) {
-				if (port->cons == NULL)
-					DBG_ERR("UART%d, SP_UART_LSR_OE\n", port->line);
-				port->icount.overrun++;
+
+			if (port->ignore_status_mask & SP_UART_CREAD_DISABLED) {
+				goto ignore_char;
 			}
 
-			/*
-			 * Mask off conditions which should be ignored.
-			 */
+			if (uart_handle_sysrq_char(port, ch))
+				goto ignore_char;
 
-			/* lsr &= port->read_status_mask; */
-
-			if (lsr & SP_UART_LSR_BC)
-				flag = TTY_BREAK;
-			else if (lsr & SP_UART_LSR_PE)
-				flag = TTY_PARITY;
-			else if (lsr & SP_UART_LSR_FE)
-				flag = TTY_FRAME;
-		}
-
-		if (port->ignore_status_mask & SP_UART_CREAD_DISABLED) {
-			goto ignore_char;
-		}
-
-		if (uart_handle_sysrq_char(port, ch))
-			goto ignore_char;
-
-		uart_insert_char(port, lsr, SP_UART_LSR_OE, ch, flag);
-
+			uart_insert_char(port, lsr, SP_UART_LSR_OE, ch, flag);
 ignore_char:
-		lsr = sp_uart_get_line_status(port->membase);
-	} while (lsr & SP_UART_LSR_RX);
-
-} // DEBUG_HWBUF
+			nop();
+		}
+	} else {
+		while (hwbuf_rx_size) {
+			port->icount.rx++;
+			rx_data = (u32)(*u8_ptr);
+			// DBG_INFO("Rx: 0x%02x\n", rx_data);
+			uart_insert_char(port, 0, SP_UART_LSR_OE, rx_data, TTY_NORMAL);
+			u8_ptr++;
+			hwbuf_rx_size--;
+		}
+	}
 
 	spin_unlock(&port->lock);
 	tty_flip_buffer_push(tty->port);
@@ -895,9 +905,7 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 	}
 #endif
 
-	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {
-		receive_chars(port);
-	}
+	receive_chars(port);
 
 	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_TX) {
 		transmit_chars(port);
@@ -1095,16 +1103,6 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			}
 			DBG_INFO("DMA buffer (HWBUF-Rx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, hwbuf_rx->buf_va, (u32)(hwbuf_rx->dma_handle));
 
-			// DEBUG_HWBUF
-			{
-				int i;
-				u32 *ptr = hwbuf_rx->buf_va;
-				for (i = 0; i < 4; i++) {
-					*ptr = 0x20202020;
-					ptr++;
-				}
-			}
-
 			writel((hwbuf_rx->which_uart << 16), &(hwbuf_reg->hwbuf_sel));
 			writel(0x00000002, &(hwbuf_reg->hwbuf_enable));		/* Use GDMA's write => UART's Rx */
 
@@ -1119,6 +1117,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			writel(timeout, &(gdma_reg->ip_rd_timeout));
 			writel(timeout, &(gdma_reg->ip_wr_timeout));
 
+			writel(readl(&(gdma_reg->int_flag)), &(gdma_reg->int_flag));	/* clear all interrupt flags */
 			writel((GDMA_INT_EN_IP_TO | GDMA_INT_EN_DONE), &(gdma_reg->int_en));
 			writel(GDMA_CFG_VAL, &(gdma_reg->config));
 		}
