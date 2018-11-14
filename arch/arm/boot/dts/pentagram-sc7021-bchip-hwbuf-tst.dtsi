@@ -5,8 +5,8 @@
 #include <dt-bindings/clock/sp-q628.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
-#define ENABLE_DMARX0
-#define ENABLE_DMARX1
+/* #define ENABLE_DMARX0 */
+/* #define ENABLE_DMARX1 */
 #define ENABLE_HW_BUF_UA0
 #define ENABLE_HW_BUF_UA1
 
@@ -41,10 +41,12 @@
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
 
+		#if 0
 		i2c10 = &i2cdma0;
 		i2c11 = &i2cdma1;
 		i2c12 = &i2cdma2;
 		i2c13 = &i2cdma3;
+		#endif
 	};
 
 	cpus {
@@ -309,16 +311,24 @@
 		};
 
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp_emmc";
+			compatible = "sunplus,sp-emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,sp_card1";
+			compatible = "sunplus,sp-card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
+			sense-gpio = <71>;
+		};
+
+		sdio: sdio@sdcard {
+			compatible = "sunplus,sp-sdio";
+			reg = <0x9c008400 0x280>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc PLL_SYS>;
 		};
 
@@ -378,6 +388,7 @@
 			clocks = <&extclk>;
 		};
 
+		#if 0
 		i2cdma0: i2c@sp_i2cdma0 {
 			compatible = "sunplus,sp_i2cm";
 			reg = <0x9c004680 0x80>;
@@ -401,6 +412,7 @@
 			reg = <0x9c004980 0x80>;
 			clocks = <&extclk>;
 		};
+		#endif
 
 		sp_uphy0: uphy@0x9C004A80 {
 			compatible = "sunplus,sunplus-usb-phy0";
