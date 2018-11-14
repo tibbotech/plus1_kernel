@@ -119,6 +119,7 @@ struct sp_udc {
 	struct work_struct work_ep9;
 	struct workqueue_struct *qwork_ep9;
 	struct work_struct work_configure;
+	struct clk *clk;
 };
 
 extern int Q571_get_platform(void);

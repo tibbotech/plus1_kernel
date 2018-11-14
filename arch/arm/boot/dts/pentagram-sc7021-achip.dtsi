@@ -392,6 +392,7 @@
 
 		sp_uphy0: uphy@0x9C004A80 {
 			compatible = "sunplus,sunplus-usb-phy0";
+			clocks = <&clkc UPHY0>;
 			reg = <0x9C004A80 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
@@ -399,6 +400,7 @@
 
 		sp_uphy1: uphy@0x9C004B00 {
 			compatible = "sunplus,sunplus-usb-phy1";
+			clocks = <&clkc UPHY1>;
 			reg = <0x9C004B00 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
@@ -406,6 +408,7 @@
 
 		sp_ehci0: usb@9C102100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci0";
+			clocks = <&clkc USBC0>;
 			reg = <0x9C102100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
@@ -413,6 +416,7 @@
 
 		sp_ehci1: usb@9C103100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci1";
+			clocks = <&clkc USBC1>;
 			reg = <0x9C103100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
@@ -420,6 +424,7 @@
 
 		sp_ohci0: usb@0x9C102080 {
 			compatible = "sunplus,sunplus-q628-usb-ohci0";
+			clocks = <&clkc USBC0>;
 			reg = <0x9C102080 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
@@ -427,6 +432,7 @@
 
 		sp_ohci1: usb@0x9C103080 {
 			compatible = "sunplus,sunplus-q628-usb-ohci1";
+			clocks = <&clkc USBC1>;
 			reg = <0x9C103080 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
@@ -434,6 +440,7 @@
 
 		sp_udc0: usb@0x9c102800 {
 			compatible = "sunplus,sunplus-q628-usb-udc0";
+			clocks = <&clkc USBC0>;
 			reg = <0x9c102800 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
@@ -441,6 +448,7 @@
 
 		sp_udc1: usb@0x9c103800 {
 			compatible = "sunplus,sunplus-q628-usb-udc1";
+			clocks = <&clkc USBC1>;
 			reg = <0x9c103800 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;

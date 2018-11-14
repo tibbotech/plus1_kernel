@@ -1176,7 +1176,6 @@ EXPORT_SYMBOL_GPL(usb_get_gadget_udc_name);
  */
 int usb_add_gadget_udc(struct device *parent, struct usb_gadget *gadget)
 {
-#ifdef CONFIG_USB_GADGET_SUNPLUS
 	struct usb_udc		*udc;
 	int			ret = -ENOMEM;
 
@@ -1214,9 +1213,6 @@ err2:
 
 err1:
 	return ret;
-#else
-	return usb_add_gadget_udc_release(parent, gadget, NULL);
-#endif
 }
 EXPORT_SYMBOL_GPL(usb_add_gadget_udc);
 

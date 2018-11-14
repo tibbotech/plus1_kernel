@@ -38,6 +38,7 @@ char *g_hw;
 #include "usb_device.c"
 #endif
 
+#include <linux/clk.h>
 #include <linux/vmalloc.h>
 
 #define EP1_DMA
@@ -48,13 +49,12 @@ char *g_hw;
 #endif
 //#define INT_TEST
 
-#ifdef CONFIG_USB_ZERO
 #define USBTEST_ZERO
-#endif
+
 #define MANUAL_EP11
 #define  SW_IRQ
 static u32 is_ncm = 0;
-#ifndef CONFIG_USB_ZERO
+#ifndef USBTEST_ZERO
 struct tasklet_struct *t_task;
 EXPORT_SYMBOL(t_task);
 #endif
@@ -184,11 +184,11 @@ static void reset_global_value(void)
 
 static void udc_clean_dcache_range(unsigned int start,unsigned int start_pa,unsigned int size){
 	unsigned long oldIrq;
-	void* vaddr = (void *)start;
+	/*void* vaddr = (void *)start;*/
 
 	local_irq_save(oldIrq);
 	/* flush L1 cache by range */
-	dmac_flush_range(vaddr,vaddr+size);
+	/*dmac_flush_range(vaddr,vaddr+size);*/
 	/* flush L2 cache by range */
 	outer_flush_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -199,7 +199,7 @@ static void udc_invalidate_dcache_range(unsigned int start,unsigned int start_pa
 
 	local_irq_save(oldIrq);
 	/* invalidate L1 cache by range */
-	dmac_unmap_area((void *)start,size,2);
+	/*dmac_unmap_area((void *)start,size,2);*/
 	/* invalidate L2 cache by range */
 	outer_inv_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -3659,7 +3659,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 /*		DEBUG_DBG("IRQ:sof\n");*/
 		udc_write(SOF_IF, UDNBIF);
 		udc_write(udc_read(UDNBIE) | (SOF_IF), UDNBIE);
-#ifndef CONFIG_USB_ZERO
+#ifndef USBTEST_ZERO
 		if (t_task && sof_n++ % 2 && ncm_initialize_finish_flag){
 			tasklet_schedule(t_task);
 		}
@@ -4422,6 +4422,15 @@ static int sp_udc_probe(struct platform_device *pdev)
 	struct usb_phy *otg_phy;
 #endif
 
+	/*enable usb controller clock*/
+	udc->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(udc->clk)) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(udc->clk);
+	}
+	clk_prepare(udc->clk);
+	clk_enable(udc->clk);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq = platform_get_irq(pdev, 0);
 	if (!res || !irq) {
@@ -4540,6 +4549,8 @@ static int sp_udc_remove(struct platform_device *pdev)
 		return -EBUSY;
 	free_irq(irq_num, udc);
 	platform_set_drvdata(pdev, NULL);
+	/*disable usb controller clock*/
+	clk_disable(udc->clk);
 	DEBUG_INFO("sp_udc remove ok\n");
 	return 0;
 }
@@ -4705,13 +4716,13 @@ static const struct of_device_id sunplus_udc0_ids[] = {
 	{ .compatible = "sunplus,sunplus-q628-usb-udc0" },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, sunplus_udc0_ids);
+MODULE_DEVICE_TABLE(of, sunplus_udc0_ids);
 
 static const struct of_device_id sunplus_udc1_ids[] = {
 	{ .compatible = "sunplus,sunplus-q628-usb-udc1", },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, sunplus_udc1_ids);
+MODULE_DEVICE_TABLE(of, sunplus_udc1_ids);
 
 static struct platform_driver sunplus_udc0_driver = {
 	.driver		= {

@@ -4,8 +4,7 @@
 menu "USB Physical Layer drivers"
 
 config SUNPLUS_USB_PHY
-	boolean "Sunplus USB PHY"
-	default y
+	tristate "Sunplus USB PHY"
 
 config USB_PHY
 	def_bool n

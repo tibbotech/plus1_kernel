@@ -5,10 +5,12 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/of.h>
+#include <linux/clk.h>
 #include <linux/platform_device.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/sp_usb.h>
 
+static struct clk *uphy0_clk;
 static struct resource *uphy0_res_mem;
 
 static void uphy0_init(void)
@@ -78,6 +80,15 @@ static void uphy0_init(void)
 
 static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 {
+	/*enable uphy0 system clock*/
+	uphy0_clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(uphy0_clk)) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(uphy0_clk);
+	}
+	clk_prepare(uphy0_clk);
+	clk_enable(uphy0_clk);
+
 	uphy0_irq_num = platform_get_irq(pdev, 0);
 	if (uphy0_irq_num < 0) {
 		printk(KERN_NOTICE "no irq provieded,ret:%d\n",uphy0_irq_num);
@@ -101,16 +112,32 @@ static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 		release_mem_region(uphy0_res_mem->start, resource_size(uphy0_res_mem));
 		 return -EFAULT;
 	}
-	
+
 	uphy0_init();
+
+	writel(0x19, uphy0_base_addr + CDP_REG_OFFSET);
+	writel(0x92, uphy0_base_addr + DCP_REG_OFFSET);
+	writel(0x17, uphy0_base_addr + UPHY_INTER_SIGNAL_REG_OFFSET);
 
 	return 0;
 }
 
 static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 {
+	u32 val;
+	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+
+	val = readl(uphy0_base_addr + CDP_REG_OFFSET);
+	val &= ~(1u << CDP_OFFSET);
+	writel(val, uphy0_base_addr + CDP_REG_OFFSET);
+
 	iounmap(uphy0_base_addr);
 	release_mem_region(uphy0_res_mem->start, resource_size(uphy0_res_mem));
+
+	/* pll power off */
+	writel(RF_MASK_V(0xffff, 0x88), regs + UPHY0_CTL3_OFFSET);
+	/*disable uphy0 system clock*/
+	clk_disable(uphy0_clk);
 
 	return 0;
 }
@@ -142,7 +169,7 @@ static int __init usb_phy0_sunplus_init(void)
 		return 0;
 	}
 }
-subsys_initcall(usb_phy0_sunplus_init);
+module_init(usb_phy0_sunplus_init);
 
 static void __exit usb_phy0_sunplus_exit(void)
 {
@@ -158,6 +185,4 @@ module_exit(usb_phy0_sunplus_exit);
 
 
 MODULE_ALIAS("sunplus_usb_phy0");
-MODULE_AUTHOR("qiang.deng");
 MODULE_LICENSE("GPL");
-

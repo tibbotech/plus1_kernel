@@ -23,8 +23,10 @@
 #include <linux/kthread.h>
 #include <linux/usb/otg.h>
 #include <mach/io_map.h>
+#include <linux/clk.h>
 #include <linux/usb/sp_usb.h>
 
+static struct clk *ehci_clk[USB_PORT_NUM];
 static int ehci_platform_reset(struct usb_hcd *hcd)
 {
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
@@ -108,15 +110,6 @@ static const struct hc_driver ehci_platform_hc_driver = {
 
 #ifdef	CONFIG_USB_HOST_RESET_SP
 extern void reset_usb_powerx(struct usb_hcd *hcd, int delayms);
-
-#ifdef CONFIG_USB_GADGET_SUNPLUS
-extern void usb_switch(int device);
-#ifdef FIX_MULTIPLE_RESET_PROBLEM
-extern void ctrl_rx_squelch(void);
-#endif
-extern void detech_start(void);
-#endif
-
 #ifdef CONFIG_USB_LOGO_TEST
 extern u32 usb_logo_test_start;
 #endif
@@ -182,25 +175,6 @@ NEXT_LOOP:
 				writel(hcd->uphy_disconnect_level[pdev->id - 1], reg_addr + DISC_LEVEL_OFFSET);
 				/*tell ohci reset controllor */
 				sp_ehci->flag = RESET_SENDER;
-#ifdef CONFIG_USB_GADGET_SUNPLUS
-				printk(KERN_NOTICE
-				       "port_num:%d,device_mode_flag:%d\n",
-				       pdev->id - 1,
-				       platform_device_mode_flag[pdev->id - 1]);
-				if (platform_device_mode_flag[pdev->id - 1]) {
-					platform_device_mode_flag[pdev->id -
-								  1] = false;
-					msleep(1);
-					usb_switch(1);
-					msleep(1);
-#ifdef FIX_MULTIPLE_RESET_PROBLEM
-					/*control squelch signal */
-					ctrl_rx_squelch();
-					msleep(1);
-#endif
-					detech_start();
-				}
-#endif
 			}
 
 			msleep(100);
@@ -480,7 +454,6 @@ int ehci_platform_probe(struct platform_device *dev)
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	struct usb_phy *otg_phy;
 #endif
-
 #ifdef CONFIG_USB_HOST_RESET_SP
 	struct ehci_hcd_sp *ehci_sp;
 #endif
@@ -491,6 +464,16 @@ int ehci_platform_probe(struct platform_device *dev)
 		return -ENODEV;
 
 	dev->dev.platform_data = &usb_ehci_pdata;
+
+	/*enable usb controller clock*/
+	ehci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
+	if (IS_ERR(ehci_clk[dev->id - 1])) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(ehci_clk[dev->id - 1]);
+	}
+	clk_prepare(ehci_clk[dev->id - 1]);
+	clk_enable(ehci_clk[dev->id - 1]);
+
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
 		pr_err("no irq provieded,ret:%d\n",irq);
@@ -600,6 +583,7 @@ err_put_hcd:
 	usb_put_hcd(hcd);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ehci_platform_probe);
 
 int ehci_platform_remove(struct platform_device *dev)
 {
@@ -637,8 +621,13 @@ int ehci_platform_remove(struct platform_device *dev)
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 
+	/*disable usb controller clock*/
+	clk_disable(ehci_clk[dev->id - 1]);
+
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ehci_platform_remove);
+
 
 #ifdef CONFIG_PM
 

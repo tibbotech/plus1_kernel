@@ -1994,12 +1994,17 @@ void composite_disconnect(struct usb_gadget *gadget)
 	/* REVISIT:  should we have config and device level
 	 * disconnect callbacks?
 	 */
-	spin_lock_irqsave(&cdev->lock, flags);
-	if (cdev->config)
-		reset_config(cdev);
-	if (cdev->driver->disconnect)
-		cdev->driver->disconnect(cdev);
-	spin_unlock_irqrestore(&cdev->lock, flags);
+	if(cdev){
+		spin_lock_irqsave(&cdev->lock, flags);
+		if (cdev->config){
+			reset_config(cdev);
+		}
+
+		if (cdev->driver->disconnect){
+			cdev->driver->disconnect(cdev);
+		}
+		spin_unlock_irqrestore(&cdev->lock, flags);
+	}
 }
 
 /*-------------------------------------------------------------------------*/
@@ -2018,27 +2023,29 @@ static void __composite_unbind(struct usb_gadget *gadget, bool unbind_driver)
 {
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 
-	/* composite_disconnect() must already have been called
-	 * by the underlying peripheral controller driver!
-	 * so there's no i/o concurrency that could affect the
-	 * state protected by cdev->lock.
-	 */
-	WARN_ON(cdev->config);
+	if(cdev){
+		/* composite_disconnect() must already have been called
+		 * by the underlying peripheral controller driver!
+		 * so there's no i/o concurrency that could affect the
+		 * state protected by cdev->lock.
+		 */
+		WARN_ON(cdev->config);
 
-	while (!list_empty(&cdev->configs)) {
-		struct usb_configuration	*c;
-		c = list_first_entry(&cdev->configs,
-				struct usb_configuration, list);
-		remove_config(cdev, c);
+		while (!list_empty(&cdev->configs)) {
+			struct usb_configuration	*c;
+			c = list_first_entry(&cdev->configs,
+					struct usb_configuration, list);
+			remove_config(cdev, c);
+		}
+		if (cdev->driver->unbind && unbind_driver)
+			cdev->driver->unbind(cdev);
+
+		composite_dev_cleanup(cdev);
+
+		kfree(cdev->def_manufacturer);
+		kfree(cdev);
+		set_gadget_data(gadget, NULL);
 	}
-	if (cdev->driver->unbind && unbind_driver)
-		cdev->driver->unbind(cdev);
-
-	composite_dev_cleanup(cdev);
-
-	kfree(cdev->def_manufacturer);
-	kfree(cdev);
-	set_gadget_data(gadget, NULL);
 }
 
 static void composite_unbind(struct usb_gadget *gadget)
