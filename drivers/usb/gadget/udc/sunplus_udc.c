@@ -228,11 +228,15 @@ static ssize_t store_udc_ctrl(struct device *dev,
 	static char irq_i = 0;
 
 	ret = udc_read(UDLCSET) & SIM_MODE;
-	if (*buffer == 's') {	/*s:switch uphy to divice*/
+	if (*buffer == 'd') {	/*d:switch uphy to device*/
 		DEBUG_NOTICE("user switch \n");
 		usb_switch(TO_DEVICE);
 		msleep(1);
 		detech_start();
+		return count;
+	} else if (*buffer == 'h') {	/*h:switch uphy to host*/
+		DEBUG_NOTICE("user switch \n");
+		usb_switch(TO_HOST);
 		return count;
 	} else if (*buffer == '1') { /* support SET_DESC COMMND */
 		ret |= SUPP_SETDESC;
