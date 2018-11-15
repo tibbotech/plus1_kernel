@@ -70,7 +70,19 @@
 	#define MON_CMD_LEN			(256)
 #endif
 
-//#define FAKE_DMA	//DMA driver for test
+//#define TEST_DMA
+
+#ifdef TEST_DMA
+	#define VPP_WIDTH	512
+	#define VPP_HEIGHT	300
+#else
+	#define VPP_WIDTH	720//512//242
+	#define VPP_HEIGHT	480//300//255
+#endif
+
+#ifdef TEST_DMA
+	#define FAKE_DMA	//DMA driver for test
+#endif
 
 #define DMA_WIDTH	512
 #define DMA_HEIGHT	300
@@ -85,9 +97,8 @@ static int DMA_id = 0;
 static int DMA_pos = 0;
 static int DMA_len = DMA_WIDTH*DMA_HEIGHT*2;
 static int DMA_times = 0;
+static volatile int DMA_safe_line[2] = {38 + 32 + 32 + ((480-VPP_HEIGHT)>>1), 38 + 32 + 32 + 32 + ((480-VPP_HEIGHT)>>1)};
 
-#define VPP_WIDTH	720//512//242
-#define VPP_HEIGHT	480//300//255
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
@@ -366,6 +377,9 @@ static irqreturn_t _display_irq_field_end(int irq, void *param)
 		aio_wreg(32+32+12, 0x40000 | (1<<8));
 		bio_wreg(1, 0x00000000 | (1<<19) | (1<<17));
 	}
+
+	DMA_safe_line[0] = 38 + 32 + 32 + ((480-VPP_HEIGHT)>>1);
+	DMA_safe_line[1] = 38 + 32 + 32 + 32 + ((480-VPP_HEIGHT)>>1);
 
 	return IRQ_HANDLED;
 }
@@ -988,6 +1002,9 @@ static irqreturn_t _dma_irq_jobdown0(int irq, void *param)
 			dma_offset = 0;
 			DMA_id = 0;
 		}
+		if (DRV_TGEN_GetLineCntNow() >= DMA_safe_line[DMA_id])
+			DERROR("%s:%d detect DMA job down error id: %d times: 0x%x: at %d >= %d\n", __FUNCTION__, __LINE__, DMA_id, DMA_times, DRV_TGEN_GetLineCntNow(), DMA_safe_line[DMA_id]);
+		DMA_safe_line[DMA_id] += 32*2;
 #endif
 
 		DMA_times += 1 << (dma_offset>>1);
@@ -1144,7 +1161,7 @@ static int _display_init_irq(struct platform_device *pdev)
 ERROR:
 	return -1;
 }
-#if 0
+#ifdef TEST_DMA
 char yuy2_array[768*480*2] __attribute__((aligned(1024)))= {
 //	#include "vpp_pattern/YUY2_720x480.h"
 };
@@ -1160,7 +1177,9 @@ char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
 //	#include "vpp_pattern/vpp_test_1024x600_420.h"
 };
 
+#ifdef TEST_DMA
 //#include "vpp_pattern/disp_patgen.in"
+#endif
 
 static int _display_probe(struct platform_device *pdev)
 {
@@ -1290,17 +1309,24 @@ static int _display_probe(struct platform_device *pdev)
 	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_AlphaBlend, DRV_DMIX_VPP0);
 	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_Transparent, DRV_DMIX_OSD0);
 
-#if 0
+#ifdef TEST_DMA
 	{
 		void __iomem *achipwm = ioremap_nocache(0x9EA00000 + AIO_DATA_OFFSET, 512*1024 - AIO_DATA_OFFSET);
+
+		extern void _gen_checkerboard(int *ptr, int w, int h, int line_pitch);
+		extern void _rgb_to_yuv444_planar(int *ptr_rgb, unsigned char *ptr_yuv444, int width, int height, int line_pitch);
+		extern void _yuv444_to_yuv422_NV16(unsigned char *ptr_yuv444, unsigned char *ptr_yuv422_NV16, int width, int height, int line_pitch);
+		extern void _yuv422_NV16_to_packed(unsigned char *ptr_yuv422_NV16, unsigned char *ptr_yuv422_packed, int width, int height, int line_pitch);
+		extern void _yuv444_to_yuv420_NV12(unsigned char *ptr_yuv444, unsigned char *ptr_yuv420_NV12, int width, int height, int line_pitch);
+
 		diag_printf("gen rgb\n");
-		_gen_checkerboard(rgb_array, DMA_WIDTH, DMA_HEIGHT, ALIGN(DMA_WIDTH, 128));
+		_gen_checkerboard(rgb_array, DMA_WIDTH, DMA_HEIGHT, DISP_ALIGN(DMA_WIDTH, 128));
 		diag_printf("gen yuv444\n");
-		_rgb_to_yuv444_planar(rgb_array, yuv444_array, DMA_WIDTH, DMA_HEIGHT, ALIGN(DMA_WIDTH, 128));
+		_rgb_to_yuv444_planar(rgb_array, yuv444_array, DMA_WIDTH, DMA_HEIGHT, DISP_ALIGN(DMA_WIDTH, 128));
 		diag_printf("gen yuv422\n");
-		_yuv444_to_yuv422_NV16(yuv444_array, yuv422_array, DMA_WIDTH, DMA_HEIGHT, ALIGN(DMA_WIDTH, 128));
+		_yuv444_to_yuv422_NV16(yuv444_array, yuv422_array, DMA_WIDTH, DMA_HEIGHT, DISP_ALIGN(DMA_WIDTH, 128));
 		diag_printf("gen yuv422 packed\n");
-		_yuv422_NV16_to_packed(yuv422_array, yuy2_array, DMA_WIDTH, DMA_HEIGHT, DMA_WIDTH);
+		_yuv422_NV16_to_packed(yuv422_array, yuy2_array, DMA_WIDTH, DMA_HEIGHT, DISP_ALIGN(DMA_WIDTH, 128));
 		diag_printf("copy yuy2 to achip workmemory\n");
 		memcpy(achipwm, yuy2_array, DMA_WIDTH * DMA_HEIGHT * 2);
 		diag_printf("copy yuy2 to achip workmemory finish\n");
@@ -1314,9 +1340,11 @@ static int _display_probe(struct platform_device *pdev)
 
 	DRV_OSD_InitTest();
 
-	vpost_setting(0, 0, VPP_WIDTH, VPP_HEIGHT, 720, 480);
-	//vpost_dma();
+	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
 
+#ifdef TEST_DMA
+	vpost_dma();
+#else
 	#ifdef MODULE
 	yuv420 = ioremap(0x01000000, 768*480*3/2);
 	memcpy(yuv420, yuv420_array, 768*480*3/2);
@@ -1324,6 +1352,7 @@ static int _display_probe(struct platform_device *pdev)
 	#else
 	ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, 0);
 	#endif
+#endif
 	}
 
 #ifdef SUPPORT_DEBUG_MON
