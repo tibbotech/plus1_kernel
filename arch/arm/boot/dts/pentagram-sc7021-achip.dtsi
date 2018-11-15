@@ -3,7 +3,9 @@
 #include "skeleton.dtsi"
 
 #include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
 
 #define ENABLE_DMARX0
 #define ENABLE_DMARX1
@@ -206,7 +208,10 @@
 			reg = <0x9c000780 0x80>, /* G15 */
 			      <0x9c000a80 0x80>; /* G21 */
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT0 */
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
+				     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
+			ext0-mask = <0xf>; /* core0-3 */
+			ext1-mask = <0xe>; /* core1-3 */
 		};
 
 #ifdef ENABLE_DMARX0
