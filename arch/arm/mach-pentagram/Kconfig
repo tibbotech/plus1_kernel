@@ -61,6 +61,13 @@ endchoice
 
 menu "Pentagram options"
 
+config SP_PARTIAL_CLKEN
+	bool "Use partial clken to save power"
+	default n
+	help
+	  Only enable partial clken in moon settings to save power.
+	  Device drivers should enable their own clken during driver init.
+
 config SP_MON
 	bool "Sunplus MON (SysRq:a)"
 	select MAGIC_SYSRQ
