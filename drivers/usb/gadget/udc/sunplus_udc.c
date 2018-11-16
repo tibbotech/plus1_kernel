@@ -74,7 +74,7 @@ struct timer_list vbus_polling_timer;
 struct timer_list sof_polling_timer;
 char is_config = 0;
 static u32 sof_value = 0x1000;
-static int irq_num = 45;
+static int irq_num = 0;
 static u32 temp_sof_value;
 static u8 platform_device_handle_flag = false;
 static u8 first_enter_polling_timer_flag = false;
@@ -4417,7 +4417,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 	struct sp_udc *udc = &memory;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-	u32 irq;
 	int ret;
 
 	static u64 rsrc_start, rsrc_len;
@@ -4436,15 +4435,15 @@ static int sp_udc_probe(struct platform_device *pdev)
 	clk_enable(udc->clk);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	irq = platform_get_irq(pdev, 0);
-	if (!res || !irq) {
+	irq_num = platform_get_irq(pdev, 0);
+	if (!res || !irq_num) {
 		DEBUG_ERR("Not enough platform resources.\n");
 		ret = -ENODEV;
 		goto error;
 	}
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq);
+	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq_num);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		ret = -ENOMEM;
@@ -4489,13 +4488,13 @@ static int sp_udc_probe(struct platform_device *pdev)
 	ret = fiq_glue_register_handler(&udc->handler);
 	if (ret != 0)
 		printk("udc fiq fail\n");
-	ret = request_threaded_irq(irq, 0,
+	ret = request_threaded_irq(irq_num, 0,
 							udcThreadHandler, IRQF_DISABLED , gadget_name, udc);/*udcThreadHandler*/
 #else
-	ret = request_irq(irq, sp_udc_irq, IRQF_DISABLED, gadget_name, udc);
+	ret = request_irq(irq_num, sp_udc_irq, IRQF_DISABLED, gadget_name, udc);
 #endif
 	if (ret != 0) {
-		DEBUG_ERR("cannot get irq %i, err %d\n", irq, ret);
+		DEBUG_ERR("cannot get irq %i, err %d\n", irq_num, ret);
 		ret = -EBUSY;
 		goto err_map;
 	}
@@ -4531,7 +4530,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	return 0;
 err_add_udc:
-	free_irq(irq_num, udc);
+	if(irq_num)
+		free_irq(irq_num, udc);
 err_map:
 	DEBUG_INFO("probe sp udc fail\n");
 	return ret;
@@ -4551,11 +4551,27 @@ static int sp_udc_remove(struct platform_device *pdev)
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver)
 		return -EBUSY;
-	free_irq(irq_num, udc);
+
+	if(irq_num)
+		free_irq(irq_num, udc);
+
+	if (udc->qwork_ep9)
+		destroy_workqueue(udc->qwork_ep9);
+	if (udc->qwork_ep3)
+		destroy_workqueue(udc->qwork_ep3);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	if (udc->qwork_otg)
+		destroy_workqueue(udc->qwork_otg);
+#endif
+
+	if(base_addr)
+		iounmap(base_addr);
+
 	platform_set_drvdata(pdev, NULL);
 	/*disable usb controller clock*/
 	clk_disable(udc->clk);
 	DEBUG_INFO("sp_udc remove ok\n");
+
 	return 0;
 }
 

@@ -605,10 +605,8 @@ int ehci_platform_remove(struct platform_device *dev)
 #endif
 
 #ifdef	CONFIG_USB_HOST_RESET_SP
-	if (dev->id < 3) {
-		//kthread_stop(ehci_sp->reset_thread);
-		usb_unregister_notify(&ehci_sp->ehci_notifier);
-	}
+	kthread_stop(ehci_sp->reset_thread);
+	usb_unregister_notify(&ehci_sp->ehci_notifier);
 #endif
 
 	usb_remove_hcd(hcd);

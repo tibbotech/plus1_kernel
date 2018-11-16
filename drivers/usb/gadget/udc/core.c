@@ -1242,6 +1242,7 @@ static void usb_gadget_remove_driver(struct usb_udc *udc)
  */
 void usb_del_gadget_udc(struct usb_gadget *gadget)
 {
+#if 0
 	struct usb_udc *udc = gadget->udc;
 
 	if (!udc)
@@ -1265,6 +1266,31 @@ void usb_del_gadget_udc(struct usb_gadget *gadget)
 	device_unregister(&udc->dev);
 	device_unregister(&gadget->dev);
 	memset(&gadget->dev, 0x00, sizeof(gadget->dev));
+#else
+	struct usb_udc		*udc = NULL;
+
+	mutex_lock(&udc_lock);
+	list_for_each_entry(udc, &udc_list, list)
+		if (udc->gadget == gadget)
+			goto found;
+
+	dev_err(gadget->dev.parent, "gadget not registered.\n");
+	mutex_unlock(&udc_lock);
+
+	return;
+
+found:
+	dev_vdbg(gadget->dev.parent, "unregistering gadget\n");
+
+	list_del(&udc->list);
+	mutex_unlock(&udc_lock);
+
+	if (udc->driver)
+		usb_gadget_remove_driver(udc);
+
+	kobject_uevent(&udc->dev.kobj, KOBJ_REMOVE);
+	device_unregister(&udc->dev);
+#endif
 }
 EXPORT_SYMBOL_GPL(usb_del_gadget_udc);
 
