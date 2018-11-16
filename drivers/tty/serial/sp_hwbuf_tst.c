@@ -66,6 +66,8 @@
 #define MAX_SZ_RXDMA_ISR		(1 << 9)
 #define UATXDMA_BUF_SZ			PAGE_SIZE
 /* ---------------------------------------------------------------------------------------------- */
+// #define HWBUF_TX_MODE_RING_BUF		/* Use ring buffer for Tx */
+/* ---------------------------------------------------------------------------------------------- */
 #define CLK_HIGH_UART			202500000
 /* ---------------------------------------------------------------------------------------------- */
 #if defined(CONFIG_SP_MON)
@@ -101,8 +103,9 @@ struct regs_gdma {
 	volatile u32 rsv_25_31[7];
 };
 
-#define GDMA_CFG_VAL		0x0105		/* Go, not buffered, DMA_WR */
 #define GDMA_CFG_GO		(1 << 8)
+#define GDMA_CFG_VAL4RX		(GDMA_CFG_GO | 0x05)	/* GO, not buffered, DMA_WR */
+#define GDMA_CFG_VAL4TX		GDMA_CFG_GO		/* GO, DMA_RD */
 
 #define GDMA_INT_FLG_IP_TO	(1 << 4)
 #define GDMA_INT_FLG_DONE	(1 << 0)
@@ -143,7 +146,7 @@ struct sunplus_uartdma_info {
 	void *buf_va;
 	dma_addr_t dma_handle;
 	int tx_1_rx_0;
-	unsigned int current_buf;	/* for HWBUF-Rx mode, the buffer is split into two buffers, each of them is (UARXDMA_BUF_SZ >> 1) bytes */
+	unsigned int current_buf;	/* for HWBUF mode, the buffer is split into two buffers, each of them is (UARXDMA_BUF_SZ >> 1) bytes */
 };
 
 static struct sunplus_uartdma_info sunplus_uartdma[NUM_UARTDMARX + NUM_HWBUF];
@@ -178,7 +181,6 @@ static inline void sp_uart_put_char(struct uart_port *port, unsigned ch)
 		return;
 	}
 #endif
-
 	if (!hwbuf_tx) {
 		writel_relaxed(ch,  &((struct regs_uart *)base)->uart_data);
 	} else {
@@ -204,12 +206,17 @@ static inline unsigned sp_uart_get_line_status(unsigned char __iomem *base)
 static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 {
 	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
-	struct sunplus_uartdma_info *hwbuf_tx = sp_port->hwbuf_tx;
-	volatile struct regs_hwbuf *hwbuf_reg;
-	unsigned char __iomem *base = port->membase;
+#ifdef HWBUF_TX_MODE_RING_BUF
 	u32 addr_sw, addr_hw;
+	volatile struct regs_hwbuf *hwbuf_reg;
+#else
+	volatile struct regs_gdma *gdma_reg;
+#endif
+	unsigned char __iomem *base = port->membase;
+	struct sunplus_uartdma_info *hwbuf_tx = sp_port->hwbuf_tx;
 
 	if (hwbuf_tx) {
+#ifdef HWBUF_TX_MODE_RING_BUF
 		hwbuf_reg = (volatile struct regs_hwbuf *)(hwbuf_tx->membase);
 		addr_sw = readl(&(hwbuf_reg->hwbuf_wr_adr));
 		addr_hw = readl(&(hwbuf_reg->hwbuf_rd_adr));
@@ -220,7 +227,15 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 		} else {
 			return (addr_hw - addr_sw);
 		}
-	} else {
+#else
+		gdma_reg = (volatile struct regs_gdma *)(hwbuf_tx->membase_gdma);
+		if (readl(&(gdma_reg->config)) & GDMA_CFG_GO) {
+			return 0;
+		} else {
+			return (UATXDMA_BUF_SZ >> 1);
+		}
+#endif
+	} else {	/* PIO mode */
 		if (readl(&((struct regs_uart *)base)->uart_lsr) & SP_UART_LSR_TX) {
 			/* In PIO mode, just return 1 byte becauase exactly number is unknown */
 			return 1;
@@ -415,18 +430,30 @@ static int __init sunplus_console_setup(struct console *co, char *options)
  */
 static unsigned int sunplus_uart_ops_tx_empty(struct uart_port *port)
 {
+#ifdef HWBUF_TX_MODE_RING_BUF
+	volatile struct regs_hwbuf *hwbuf_reg;
+#else
+	volatile struct regs_gdma *gdma_reg;
+#endif
 	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
 	struct sunplus_uartdma_info *hwbuf_tx = sp_port->hwbuf_tx;
-	volatile struct regs_hwbuf *hwbuf_reg;
 
 	if (hwbuf_tx) {
+#ifdef HWBUF_TX_MODE_RING_BUF
 		hwbuf_reg = (volatile struct regs_hwbuf *)(hwbuf_tx->membase);
 		if (readl(&(hwbuf_reg->hwbuf_wr_adr)) == readl(&(hwbuf_reg->hwbuf_rd_adr))) {
 			return TIOCSER_TEMT;
 		} else {
 			return 0;
 		}
-
+#else
+		gdma_reg = (volatile struct regs_gdma *)(hwbuf_tx->membase_gdma);
+		if (readl(&(gdma_reg->config)) & GDMA_CFG_GO) {
+			return 0;
+		} else {
+			return TIOCSER_TEMT;
+		}
+#endif
 	} else {
 		return ((sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE) ? TIOCSER_TEMT : 0);
 	}
@@ -670,14 +697,23 @@ static void sunplus_uart_ops_break_ctl(struct uart_port *port, int ctl)
 
 static void transmit_chars(struct uart_port *port)	/* called by ISR */
 {
-	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
-	struct sunplus_uartdma_info *hwbuf_tx = sp_port->hwbuf_tx;
-	u32 tx_buf_available;
-	volatile struct regs_hwbuf *hwbuf_reg;
+#ifdef HWBUF_TX_MODE_RING_BUF
 	u32 addr_sw, addr_start;
 	u32 offset_sw;
+	volatile struct regs_hwbuf *hwbuf_reg;
+#else
+	u32 int_flag;
+	volatile struct regs_gdma *gdma_reg;
+#endif
 	u8 *byte_ptr;
+	u32 tx_buf_available;
+	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
+	struct sunplus_uartdma_info *hwbuf_tx = sp_port->hwbuf_tx;
 	struct circ_buf *xmit = &port->state->xmit;
+
+	if (!(sp_uart_get_int_en(port->membase) & SP_UART_ISC_TXM)) {
+		return;
+	}
 
 	if (port->x_char) {
 		sp_uart_put_char(port, port->x_char);
@@ -692,41 +728,82 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	}
 
 	if (hwbuf_tx) {
-		hwbuf_reg = (volatile struct regs_hwbuf *)(hwbuf_tx->membase);
-		addr_sw = readl(&(hwbuf_reg->hwbuf_wr_adr));
-		addr_start = readl(&(hwbuf_reg->hwbuf_start_addr));
-		offset_sw = addr_sw - addr_start;
-		byte_ptr = (u8 *)(hwbuf_tx->buf_va + offset_sw);
-		tx_buf_available = sp_uart_line_status_tx_buf_not_full(port);
-		while (tx_buf_available) {
-			*byte_ptr = xmit->buf[xmit->tail];
-			xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
-			port->icount.tx++;
+#ifdef HWBUF_TX_MODE_RING_BUF
+		if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_TX) {
+			hwbuf_reg = (volatile struct regs_hwbuf *)(hwbuf_tx->membase);
+			addr_sw = readl(&(hwbuf_reg->hwbuf_wr_adr));
+			addr_start = readl(&(hwbuf_reg->hwbuf_start_addr));
+			offset_sw = addr_sw - addr_start;
+			byte_ptr = (u8 *)(hwbuf_tx->buf_va + offset_sw);
+			tx_buf_available = sp_uart_line_status_tx_buf_not_full(port);
+			while (tx_buf_available) {
+				*byte_ptr = xmit->buf[xmit->tail];
+				xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+				port->icount.tx++;
 
-			byte_ptr++;
-			addr_sw++;
-			offset_sw++;
-			tx_buf_available--;
-			if (offset_sw == UATXDMA_BUF_SZ) {
-				offset_sw = 0;
-				addr_sw = (u32)(hwbuf_tx->dma_handle);
-				byte_ptr = (u8 *)(hwbuf_tx->buf_va);
-			}
+				byte_ptr++;
+				addr_sw++;
+				offset_sw++;
+				tx_buf_available--;
+				if (offset_sw == UATXDMA_BUF_SZ) {
+					offset_sw = 0;
+					addr_sw = (u32)(hwbuf_tx->dma_handle);
+					byte_ptr = (u8 *)(hwbuf_tx->buf_va);
+				}
 
-			if (uart_circ_empty(xmit)) {
-				break;
+				if (uart_circ_empty(xmit)) {
+					break;
+				}
 			}
+			writel(addr_sw, &(hwbuf_reg->hwbuf_wr_adr));
 		}
-		writel(addr_sw, &(hwbuf_reg->hwbuf_wr_adr));
-	} else {
-		do {
-			sp_uart_put_char(port, xmit->buf[xmit->tail]);
-			xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
-			port->icount.tx++;
+#else	/* !HWBUF_TX_MODE_RING_BUF */
+		gdma_reg = (volatile struct regs_gdma *)(hwbuf_tx->membase_gdma);
 
-			if (uart_circ_empty(xmit))
-				break;
-		} while (sp_uart_line_status_tx_buf_not_full(port));
+		if (readl(&(gdma_reg->config)) & GDMA_CFG_GO) {
+			/* GDMA is still busy */
+		} else {
+			int_flag = readl(&(gdma_reg->int_flag));
+			// DBG_INFO("HWBUF-Tx, int_flag: 0x%x\n", int_flag);
+
+#if 0
+			// TODO: double buffers
+#else
+			writel((u32)(hwbuf_tx->dma_handle), &(gdma_reg->mem_adr));
+			byte_ptr = (unsigned char *)(hwbuf_tx->buf_va);
+#endif
+			tx_buf_available = (UATXDMA_BUF_SZ >> 1);
+			while (tx_buf_available) {
+				if (uart_circ_empty(xmit)) {
+					break;
+				}
+
+				*byte_ptr = xmit->buf[xmit->tail];
+				xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+				port->icount.tx++;
+				byte_ptr++;
+				tx_buf_available--;
+			}
+			writel(((UATXDMA_BUF_SZ >> 1) - tx_buf_available), &(gdma_reg->length));
+
+			/* clean other flags */
+			writel(int_flag, &(gdma_reg->int_flag));
+
+			/* Start GDMA */
+			writel(GDMA_CFG_VAL4TX, &(gdma_reg->config));
+		}
+#endif	/* HWBUF_TX_MODE_RING_BUF */
+	} else {	/* PIO mode */
+		if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_TX) {
+			do {
+				sp_uart_put_char(port, xmit->buf[xmit->tail]);
+				xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+				port->icount.tx++;
+
+				if (uart_circ_empty(xmit))
+					break;
+			} while (sp_uart_line_status_tx_buf_not_full(port));
+		}
 	}
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS) {
@@ -805,7 +882,7 @@ static void receive_chars(struct uart_port *port)	/* called by ISR */
 
 			if (flag_restart_gdma) {
 				/* Start GDMA again */
-				writel(GDMA_CFG_VAL, &(gdma_reg->config));
+				writel(GDMA_CFG_VAL4RX, &(gdma_reg->config));
 			}
 		}
 	}
@@ -906,10 +983,7 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 #endif
 
 	receive_chars(port);
-
-	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_TX) {
-		transmit_chars(port);
-	}
+	transmit_chars(port);
 
 	spin_unlock_irqrestore(&port->lock, flags);
 
@@ -1118,8 +1192,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			writel(timeout, &(gdma_reg->ip_wr_timeout));
 
 			writel(readl(&(gdma_reg->int_flag)), &(gdma_reg->int_flag));	/* clear all interrupt flags */
-			writel((GDMA_INT_EN_IP_TO | GDMA_INT_EN_DONE), &(gdma_reg->int_en));
-			writel(GDMA_CFG_VAL, &(gdma_reg->config));
+			writel(0, &(gdma_reg->int_en));					/* Disable GDMA's default interrupts */
+			writel(GDMA_CFG_VAL4RX, &(gdma_reg->config));
 		}
 	}
 
@@ -1136,23 +1210,46 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 				goto error_01;
 			}
 			DBG_INFO("DMA buffer (HWBUF-Tx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, hwbuf_tx->buf_va, (u32)(hwbuf_tx->dma_handle));
-
+#ifdef HWBUF_TX_MODE_RING_BUF
 			writel((u32)(hwbuf_tx->dma_handle), &(hwbuf_reg->hwbuf_wr_adr));	/* must be set before hwbuf_start_addr */
 			writel((u32)(hwbuf_tx->dma_handle), &(hwbuf_reg->hwbuf_start_addr));	/* hwbuf_reg->hwbuf_rd_adr is updated by h/w too */
 			writel(((u32)(hwbuf_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(hwbuf_reg->hwbuf_end_addr));
 
 			writel(0x00000005, &(hwbuf_reg->hwbuf_enable));		/* Use ring buffer for UART's Tx */
 			writel(hwbuf_tx->which_uart, &(hwbuf_reg->hwbuf_sel));
+#else
+			gdma_reg = (volatile struct regs_gdma *)(hwbuf_tx->membase_gdma);
+
+			hwbuf_tx->current_buf = 0;
+			writel((u32)(hwbuf_tx->dma_handle), &(gdma_reg->mem_adr));
+			// writel((UATXDMA_BUF_SZ >> 1), &(gdma_reg->length));		/* double buffers */
+			writel((UATXDMA_BUF_SZ << 1), &(gdma_reg->sg_threshold));	/* make it never happen */
+
+			timeout = (CLK_HIGH_UART / 2) / 1000;		/* 1 msec */
+			writel(timeout, &(gdma_reg->ip_rd_timeout));
+			writel(timeout, &(gdma_reg->ip_wr_timeout));
+
+			writel(readl(&(gdma_reg->int_flag)), &(gdma_reg->int_flag));	/* clear all interrupt flags */
+			writel(0, &(gdma_reg->int_en));		/* Disable GDMA's default interrupts, PIO mode's signal is used for getting into ISR */
+
+			writel(0x00000004, &(hwbuf_reg->hwbuf_enable));		/* Use non ring buffer for UART's Tx */
+			writel(hwbuf_tx->which_uart, &(hwbuf_reg->hwbuf_sel));
+#endif
 		}
 	}
 
 	spin_lock_irq(&port->lock);	/* don't need to use spin_lock_irqsave() because interrupts are globally disabled */
 
-	interrupt_en |= SP_UART_ISC_TXM;	/* Even if (hwbuf_tx != NULL), "BUF_NOT_FULL" interrupt is used for getting into ISR */
+	/* SP_UART_ISC_TXM is enabled in .start_tx() */
 	if (uartdma_rx == NULL) {
 		interrupt_en |= SP_UART_ISC_RXM;
 	}
 	sp_uart_set_int_en(port->membase, interrupt_en);
+
+	if (hwbuf_rx) {
+		gdma_reg = (volatile struct regs_gdma *)(hwbuf_rx->membase_gdma);
+		writel((GDMA_INT_EN_IP_TO | GDMA_INT_EN_DONE), &(gdma_reg->int_en));
+	}
 
 	spin_unlock_irq(&port->lock);
 	return 0;
