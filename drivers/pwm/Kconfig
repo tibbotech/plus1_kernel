@@ -387,14 +387,7 @@ config PWM_SAMSUNG
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-samsung.
 
-config PWM_SC7021
-	tristate "SC7021 PWM support"
-	depends on ARCH_PENTAGRAM
-	help
-	  Generic PWM framework driver for SC7021.
-
-	  To compile this driver as a module, choose M here: the module
-	  will be called pwm-sc7021.
+source "drivers/pwm/pwm_sc7021/Kconfig"
 
 config PWM_SPEAR
 	tristate "STMicroelectronics SPEAr PWM support"
