@@ -52,6 +52,15 @@ typedef struct {
 
 	//void *aio;
 	void *bio;
+
+	struct clk *tgen_clk;
+	struct clk *dmix_clk;
+	struct clk *osd0_clk;
+	struct clk *gpost0_clk;
+	struct clk *vpost_clk;
+	struct clk *ddfch_clk;
+	struct clk *dve_clk;
+	struct clk *hdmi_clk;
 #if 0
 	GL_Semaphore_t field_end[DRV_Disp_Out_MAX];
 	GL_Semaphore_t field_start[DRV_Disp_Out_MAX];

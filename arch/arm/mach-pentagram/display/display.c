@@ -37,6 +37,7 @@
 #include <asm/io.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
+#include <linux/clk.h>
 
 #include <linux/fs.h>
 #include <asm/uaccess.h>
@@ -759,7 +760,7 @@ static void _debug_cmd(char *tmpbuf)
 			DERROR("disable intr debug\n");
 	}
 	else if (!strncasecmp(tmpbuf, "mac", 3))
-	{
+	{
 		extern void vpost_dma(void);
 	DERROR("dma debug\n");
 
@@ -785,7 +786,7 @@ static void _debug_cmd(char *tmpbuf)
 		tmpbuf = _mon_readint(tmpbuf + 3, (int *)&mac_test);
 	}
 	else if (!strncasecmp(tmpbuf, "fc", 2))
-	{
+	{
 		int mode = 0;
 		UINT32 ret;
 		DRV_SetTGEN_t SetTGEN;
@@ -1043,6 +1044,14 @@ static int _dma_init_irq(struct platform_device *pdev)
 
 	irq = platform_get_irq(pdev, 0);
 	if (irq != -ENXIO) {
+	
+		if (num_online_cpus() > 1)
+			ret = irq_set_affinity(irq, cpumask_of(1));
+		if (ret) {
+			DERROR("request_irq error: %d, irq_num: %d\n", ret, irq);
+			goto ERROR;
+		}
+
 		ret = devm_request_irq(&pdev->dev, irq, _dma_irq_jobdown0, IRQF_TRIGGER_RISING, "sp_dma_jobdown0", pdev);
 		if (ret) {
 			DERROR("request_irq error: %d, irq_num: %d\n", ret, irq);
@@ -1177,9 +1186,83 @@ char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
 //	#include "vpp_pattern/vpp_test_1024x600_420.h"
 };
 
-#ifdef TEST_DMA
-//#include "vpp_pattern/disp_patgen.in"
-#endif
+static void _display_destory_clk(void)
+{
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+
+	clk_disable_unprepare(pDispWorkMem->tgen_clk);
+	clk_disable_unprepare(pDispWorkMem->dmix_clk);
+	clk_disable_unprepare(pDispWorkMem->osd0_clk);
+	clk_disable_unprepare(pDispWorkMem->gpost0_clk);
+	clk_disable_unprepare(pDispWorkMem->vpost_clk);
+	clk_disable_unprepare(pDispWorkMem->ddfch_clk);
+	clk_disable_unprepare(pDispWorkMem->dve_clk);
+	clk_disable_unprepare(pDispWorkMem->hdmi_clk);
+}
+
+static int _display_init_clk(struct platform_device *pdev)
+{
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	int ret;
+
+	pDispWorkMem->tgen_clk = devm_clk_get(&pdev->dev, "DISP_TGEN");
+	if (IS_ERR(pDispWorkMem->tgen_clk))
+		return PTR_ERR(pDispWorkMem->tgen_clk);
+	ret = clk_prepare_enable(pDispWorkMem->tgen_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->dmix_clk = devm_clk_get(&pdev->dev, "DISP_DMIX");
+	if (IS_ERR(pDispWorkMem->dmix_clk))
+		return PTR_ERR(pDispWorkMem->dmix_clk);
+	ret = clk_prepare_enable(pDispWorkMem->dmix_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->osd0_clk = devm_clk_get(&pdev->dev, "DISP_OSD0");
+	if (IS_ERR(pDispWorkMem->osd0_clk))
+		return PTR_ERR(pDispWorkMem->osd0_clk);
+	ret = clk_prepare_enable(pDispWorkMem->osd0_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->gpost0_clk = devm_clk_get(&pdev->dev, "DISP_GPOST0");
+	if (IS_ERR(pDispWorkMem->gpost0_clk))
+		return PTR_ERR(pDispWorkMem->gpost0_clk);
+	ret = clk_prepare_enable(pDispWorkMem->gpost0_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->vpost_clk = devm_clk_get(&pdev->dev, "DISP_VPOST");
+	if (IS_ERR(pDispWorkMem->vpost_clk))
+		return PTR_ERR(pDispWorkMem->vpost_clk);
+	ret = clk_prepare_enable(pDispWorkMem->vpost_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->ddfch_clk = devm_clk_get(&pdev->dev, "DISP_DDFCH");
+	if (IS_ERR(pDispWorkMem->ddfch_clk))
+		return PTR_ERR(pDispWorkMem->ddfch_clk);
+	ret = clk_prepare_enable(pDispWorkMem->ddfch_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->dve_clk = devm_clk_get(&pdev->dev, "DISP_DVE");
+	if (IS_ERR(pDispWorkMem->dve_clk))
+		return PTR_ERR(pDispWorkMem->dve_clk);
+	ret = clk_prepare_enable(pDispWorkMem->dve_clk);
+	if (ret)
+		return ret;
+
+	pDispWorkMem->hdmi_clk = devm_clk_get(&pdev->dev, "DISP_HDMI");
+	if (IS_ERR(pDispWorkMem->hdmi_clk))
+		return PTR_ERR(pDispWorkMem->hdmi_clk);
+	ret = clk_prepare_enable(pDispWorkMem->hdmi_clk);
+	if (ret)
+		return ret;
+
+	return 0;
+}
 
 static int _display_probe(struct platform_device *pdev)
 {
@@ -1187,6 +1270,7 @@ static int _display_probe(struct platform_device *pdev)
 	DISP_REG_t *pTmpRegBase = NULL;
 	struct resource *res_mem;
 	const struct of_device_id *match;
+	int ret;
 
 	DEBUG("[%s:%d] in 2\n", __FUNCTION__, __LINE__);
 	if (pdev->dev.of_node) {
@@ -1236,6 +1320,14 @@ static int _display_probe(struct platform_device *pdev)
 	}
 	pDispWorkMem->pHWRegBase = pTmpRegBase;
 
+	DERROR("%s:%d mac test\n", __func__, __LINE__);
+
+	ret = _display_init_clk(pdev);
+	if (ret)
+	{
+		DERROR("init clk error.\n");
+		return ret;
+	}
 	//HDMI init
 	{
 		//extern void hdmi_tx_init(void);
@@ -1346,9 +1438,9 @@ static int _display_probe(struct platform_device *pdev)
 	vpost_dma();
 #else
 	#ifdef MODULE
-	yuv420 = ioremap(0x01000000, 768*480*3/2);
+	yuv420 = ioremap(0x00100000, 768*480*3/2);
 	memcpy(yuv420, yuv420_array, 768*480*3/2);
-	ddfch_setting(0x01000000, 0x01000000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
+	ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
 	#else
 	ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, 0);
 	#endif
@@ -1367,6 +1459,7 @@ static int _display_remove(struct platform_device *pdev)
 	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
 
 	_display_destory_irq(pdev);
+	_display_destory_clk();
 	iounmap(G12);
 	iounmap(aio);
 #ifdef MODULE

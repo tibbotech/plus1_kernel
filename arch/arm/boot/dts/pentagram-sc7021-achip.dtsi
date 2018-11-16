@@ -464,10 +464,26 @@
 			reg = <0x9c005c80 0x1980>,
 				<0x9c105000 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <0 IRQ_TYPE_EDGE_RISING>,
-					   <1 IRQ_TYPE_EDGE_RISING>,
-					   <4 IRQ_TYPE_EDGE_RISING>,
-					   <5 IRQ_TYPE_EDGE_RISING>;
+			interrupts = <0 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+					   <1 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+					   <4 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+					   <5 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>;
+			clocks = <&clkc TGEN>,
+					<&clkc DMIX>,
+					<&clkc OSD0>,
+					<&clkc GPOST0>,
+					<&clkc VPOST>,
+					<&clkc DDFCH>,
+					<&clkc DVE>,
+					<&clkc HDMI_TX>;
+			clock-names = "DISP_TGEN",
+					"DISP_DMIX",
+					"DISP_OSD0",
+					"DISP_GPOST0",
+					"DISP_VPOST",
+					"DISP_DDFCH",
+					"DISP_DVE",
+					"DISP_HDMI";
 		};
 
 		l2sw: l2sw@0x9c108000 {
