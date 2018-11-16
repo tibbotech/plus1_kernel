@@ -32,7 +32,6 @@ menu "USB Peripheral Controller"
 config USB_GADGET_SUNPLUS
 	tristate "Sunplus Gemini USB Device Controller"
 	select USB_GADGET_DUALSPEED
-	default n
 
 config USB_AT91
 	tristate "Atmel AT91 USB Device Port"

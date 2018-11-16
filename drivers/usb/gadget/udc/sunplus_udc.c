@@ -38,6 +38,7 @@ char *g_hw;
 #include "usb_device.c"
 #endif
 
+#include <linux/clk.h>
 #include <linux/vmalloc.h>
 
 #define EP1_DMA
@@ -48,13 +49,12 @@ char *g_hw;
 #endif
 //#define INT_TEST
 
-#ifdef CONFIG_USB_ZERO
 #define USBTEST_ZERO
-#endif
+
 #define MANUAL_EP11
 #define  SW_IRQ
 static u32 is_ncm = 0;
-#ifndef CONFIG_USB_ZERO
+#ifndef USBTEST_ZERO
 struct tasklet_struct *t_task;
 EXPORT_SYMBOL(t_task);
 #endif
@@ -74,7 +74,7 @@ struct timer_list vbus_polling_timer;
 struct timer_list sof_polling_timer;
 char is_config = 0;
 static u32 sof_value = 0x1000;
-static int irq_num = 45;
+static int irq_num = 0;
 static u32 temp_sof_value;
 static u8 platform_device_handle_flag = false;
 static u8 first_enter_polling_timer_flag = false;
@@ -184,11 +184,11 @@ static void reset_global_value(void)
 
 static void udc_clean_dcache_range(unsigned int start,unsigned int start_pa,unsigned int size){
 	unsigned long oldIrq;
-	void* vaddr = (void *)start;
+	/*void* vaddr = (void *)start;*/
 
 	local_irq_save(oldIrq);
 	/* flush L1 cache by range */
-	dmac_flush_range(vaddr,vaddr+size);
+	/*dmac_flush_range(vaddr,vaddr+size);*/
 	/* flush L2 cache by range */
 	outer_flush_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -199,7 +199,7 @@ static void udc_invalidate_dcache_range(unsigned int start,unsigned int start_pa
 
 	local_irq_save(oldIrq);
 	/* invalidate L1 cache by range */
-	dmac_unmap_area((void *)start,size,2);
+	/*dmac_unmap_area((void *)start,size,2);*/
 	/* invalidate L2 cache by range */
 	outer_inv_range(start_pa, start_pa+size);
 	local_irq_restore(oldIrq);
@@ -228,11 +228,15 @@ static ssize_t store_udc_ctrl(struct device *dev,
 	static char irq_i = 0;
 
 	ret = udc_read(UDLCSET) & SIM_MODE;
-	if (*buffer == 's') {	/*s:switch uphy to divice*/
+	if (*buffer == 'd') {	/*d:switch uphy to device*/
 		DEBUG_NOTICE("user switch \n");
 		usb_switch(TO_DEVICE);
 		msleep(1);
 		detech_start();
+		return count;
+	} else if (*buffer == 'h') {	/*h:switch uphy to host*/
+		DEBUG_NOTICE("user switch \n");
+		usb_switch(TO_HOST);
 		return count;
 	} else if (*buffer == '1') { /* support SET_DESC COMMND */
 		ret |= SUPP_SETDESC;
@@ -3659,7 +3663,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 /*		DEBUG_DBG("IRQ:sof\n");*/
 		udc_write(SOF_IF, UDNBIF);
 		udc_write(udc_read(UDNBIE) | (SOF_IF), UDNBIE);
-#ifndef CONFIG_USB_ZERO
+#ifndef USBTEST_ZERO
 		if (t_task && sof_n++ % 2 && ncm_initialize_finish_flag){
 			tasklet_schedule(t_task);
 		}
@@ -4413,7 +4417,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 	struct sp_udc *udc = &memory;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-	u32 irq;
 	int ret;
 
 	static u64 rsrc_start, rsrc_len;
@@ -4422,16 +4425,25 @@ static int sp_udc_probe(struct platform_device *pdev)
 	struct usb_phy *otg_phy;
 #endif
 
+	/*enable usb controller clock*/
+	udc->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(udc->clk)) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(udc->clk);
+	}
+	clk_prepare(udc->clk);
+	clk_enable(udc->clk);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	irq = platform_get_irq(pdev, 0);
-	if (!res || !irq) {
+	irq_num = platform_get_irq(pdev, 0);
+	if (!res || !irq_num) {
 		DEBUG_ERR("Not enough platform resources.\n");
 		ret = -ENODEV;
 		goto error;
 	}
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq);
+	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq_num);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		ret = -ENOMEM;
@@ -4476,13 +4488,13 @@ static int sp_udc_probe(struct platform_device *pdev)
 	ret = fiq_glue_register_handler(&udc->handler);
 	if (ret != 0)
 		printk("udc fiq fail\n");
-	ret = request_threaded_irq(irq, 0,
+	ret = request_threaded_irq(irq_num, 0,
 							udcThreadHandler, IRQF_DISABLED , gadget_name, udc);/*udcThreadHandler*/
 #else
-	ret = request_irq(irq, sp_udc_irq, IRQF_DISABLED, gadget_name, udc);
+	ret = request_irq(irq_num, sp_udc_irq, IRQF_DISABLED, gadget_name, udc);
 #endif
 	if (ret != 0) {
-		DEBUG_ERR("cannot get irq %i, err %d\n", irq, ret);
+		DEBUG_ERR("cannot get irq %i, err %d\n", irq_num, ret);
 		ret = -EBUSY;
 		goto err_map;
 	}
@@ -4518,7 +4530,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	return 0;
 err_add_udc:
-	free_irq(irq_num, udc);
+	if(irq_num)
+		free_irq(irq_num, udc);
 err_map:
 	DEBUG_INFO("probe sp udc fail\n");
 	return ret;
@@ -4538,9 +4551,27 @@ static int sp_udc_remove(struct platform_device *pdev)
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver)
 		return -EBUSY;
-	free_irq(irq_num, udc);
+
+	if(irq_num)
+		free_irq(irq_num, udc);
+
+	if (udc->qwork_ep9)
+		destroy_workqueue(udc->qwork_ep9);
+	if (udc->qwork_ep3)
+		destroy_workqueue(udc->qwork_ep3);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	if (udc->qwork_otg)
+		destroy_workqueue(udc->qwork_otg);
+#endif
+
+	if(base_addr)
+		iounmap(base_addr);
+
 	platform_set_drvdata(pdev, NULL);
+	/*disable usb controller clock*/
+	clk_disable(udc->clk);
 	DEBUG_INFO("sp_udc remove ok\n");
+
 	return 0;
 }
 
@@ -4705,13 +4736,13 @@ static const struct of_device_id sunplus_udc0_ids[] = {
 	{ .compatible = "sunplus,sunplus-q628-usb-udc0" },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, sunplus_udc0_ids);
+MODULE_DEVICE_TABLE(of, sunplus_udc0_ids);
 
 static const struct of_device_id sunplus_udc1_ids[] = {
 	{ .compatible = "sunplus,sunplus-q628-usb-udc1", },
 	{ }
 };
-MODULE_DEVICE_TABLE(platform, sunplus_udc1_ids);
+MODULE_DEVICE_TABLE(of, sunplus_udc1_ids);
 
 static struct platform_driver sunplus_udc0_driver = {
 	.driver		= {

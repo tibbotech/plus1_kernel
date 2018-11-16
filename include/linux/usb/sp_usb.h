@@ -46,6 +46,8 @@
 #define UPHY1_CTL2_OFFSET					0x260
 #define UPHY1_CTL3_OFFSET					0x264
 
+#define CLK_REG_OFFSET						0xc
+
 #define	POWER_SAVING_OFFSET					0x4
 
 #define DISC_LEVEL_OFFSET					0x1c
@@ -55,6 +57,7 @@
 #define CDP_REG_OFFSET						0x40
 #define	DCP_REG_OFFSET						0x44
 #define	UPHY_INTR_OFFSET					0x4c
+#define CDP_OFFSET             				0
 
 #define	UPHY_DEBUG_SIGNAL_REG_OFFSET		0x30
 #define UPHY_INTER_SIGNAL_REG_OFFSET		0xC
@@ -89,7 +92,6 @@ extern bool tid_test_flag;
 extern u8 sp_port_enabled;
 extern uint accessory_port_id;
 extern bool enum_rx_active_flag[USB_PORT_NUM];
-extern bool platform_device_mode_flag[USB_PORT_NUM];
 extern struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];
 
 typedef enum {
@@ -251,22 +253,9 @@ static inline void reinit_uphy(int port)
 	writel(val, reg_addr + POWER_SAVING_OFFSET);
 
 #ifdef CONFIG_USB_BC
-	switch (bc_switch & GET_BC_MODE) {
-	case CDP_MODE_VALUE:
-		writel(cdp_cfg16_value, reg_addr + CDP_REG_OFFSET);
-		writel(cdp_cfg17_value, reg_addr + DCP_REG_OFFSET);
-		break;
-	case DCP_MODE_VALUE:
-		writel(dcp_cfg16_value, reg_addr + CDP_REG_OFFSET);
-		writel(dcp_cfg17_value, reg_addr + DCP_REG_OFFSET);
-		break;
-	case SDP_MODE_VALUE:
-		writel(sdp_cfg16_value, reg_addr + CDP_REG_OFFSET);
-		writel(sdp_cfg17_value, reg_addr + DCP_REG_OFFSET);
-		break;
-	default:
-		break;
-	}
+	writel(0x19, reg_addr + CDP_REG_OFFSET);
+	writel(0x92, reg_addr + DCP_REG_OFFSET);
+	writel(0x17, reg_addr + UPHY_INTER_SIGNAL_REG_OFFSET);
 #endif
 }
 

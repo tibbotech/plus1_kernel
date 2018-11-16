@@ -1,9 +1,9 @@
 #ifndef __EHCI_PLATFORM_H
 #define __EHCI_PLATFORM_H
 
-int ehci_platform_probe(struct platform_device *dev);
+extern int ehci_platform_probe(struct platform_device *dev);
 
-int ehci_platform_remove(struct platform_device *dev);
+extern int ehci_platform_remove(struct platform_device *dev);
 
 
 #ifdef CONFIG_PM_WARP

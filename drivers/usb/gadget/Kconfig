@@ -162,7 +162,7 @@ source "drivers/usb/gadget/udc/Kconfig"
 
 # composite based drivers
 config USB_LIBCOMPOSITE
-	tristate
+	bool
 	select CONFIGFS_FS
 	depends on USB_GADGET
 

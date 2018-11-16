@@ -101,9 +101,6 @@ uint accessory_port_id = USB_PORT0_ID;
 module_param(accessory_port_id, uint, 0644);
 EXPORT_SYMBOL_GPL(accessory_port_id);
 
-bool platform_device_mode_flag[USB_PORT_NUM] = { false };
-EXPORT_SYMBOL_GPL(platform_device_mode_flag);
-
 int uphy0_irq_num = -1;
 int uphy1_irq_num = -1;
 void __iomem *uphy0_base_addr = NULL;

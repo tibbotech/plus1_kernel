@@ -58,9 +58,9 @@
  * a "gcc --combine ... part1.c part2.c part3.c ... " build would.
  */
 #include <linux/usb/composite.h>
-#include "../usbstring.c"
-#include "../config.c"
-#include "../epautoconf.c"
+//#include "../usbstring.c"
+//#include "../config.c"
+//#include "../epautoconf.c"
 
 #include "../function/f_sourcesink.c"
 //#include "../function/f_sourcesink_iso.c"

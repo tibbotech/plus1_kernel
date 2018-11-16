@@ -98,4 +98,14 @@ struct usb_request *alloc_ep_req(struct usb_ep *ep);
 /* Frees a usb_request previously allocated by alloc_ep_req() */
 void free_ep_req(struct usb_ep *ep, struct usb_request *req);
 
+extern int usb_add_config(struct usb_composite_dev *cdev,
+		struct usb_configuration *config,
+		int (*bind)(struct usb_configuration *));
+extern int usb_composite_probe(struct usb_composite_driver *driver);
+extern int usb_add_function(struct usb_configuration *config, struct usb_function *function);
+extern int config_ep_by_speed(struct usb_gadget *g, struct usb_function *f, struct usb_ep *_ep);
+extern int usb_interface_id(struct usb_configuration *config, struct usb_function *function);
+extern void usb_composite_unregister(struct usb_composite_driver *driver);
+extern int usb_string_id(struct usb_composite_dev *c);
+
 #endif /* __G_ZERO_H */

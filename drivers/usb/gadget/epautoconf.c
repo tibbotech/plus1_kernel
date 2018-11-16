@@ -19,6 +19,7 @@
 
 #include <linux/usb/ch9.h>
 #include <linux/usb/gadget.h>
+#include <linux/usb/gadget_chips.h>
 
 static unsigned epnum;
 
@@ -287,8 +288,6 @@ struct usb_ep *usb_ep_autoconfig_ss(
 		if (ep && ep_matches(gadget, ep, desc, ep_comp))
 			goto found_ep;
 #endif
-
-#ifdef CONFIG_USB_GADGET_SUNPLUS
 	} else if (gadget_is_sp628(gadget)) {
 		ep = NULL;printk("wei ep config\n");
 		if (USB_ENDPOINT_XFER_BULK == type) {
@@ -315,7 +314,6 @@ struct usb_ep *usb_ep_autoconfig_ss(
 		}
 		if (ep && ep_matches(gadget, ep, desc,ep_comp))
 			goto found_ep;
-#endif
 	}
 
 	/* Second, look at endpoints until an unclaimed one looks usable */

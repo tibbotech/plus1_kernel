@@ -55,6 +55,5 @@ static void __exit ehci1_sunplus_cleanup(void)
 module_exit(ehci1_sunplus_cleanup);
 
 MODULE_ALIAS("platform:ehci1-sunplus");
-MODULE_DESCRIPTION(DRIVER_DESC);
 MODULE_LICENSE("GPL");
 

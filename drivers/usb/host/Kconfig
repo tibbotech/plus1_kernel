@@ -344,7 +344,7 @@ config USB_EHCI_ATH79
 	  on the Atheros AR7XXX/AR9XXX SoCs.
 
 config USB_EHCI_HCD_PLATFORM
-	tristate "Generic EHCI driver for a platform device"
+	bool "Generic EHCI driver for a platform device"
 	default n
 	---help---
 	  Adds an EHCI host driver for a generic platform device, which
@@ -612,7 +612,7 @@ config USB_CNS3XXX_OHCI
 	  It is needed for low-speed USB 1.0 device support.
 
 config USB_OHCI_HCD_PLATFORM
-	tristate "Generic OHCI driver for a platform device"
+	bool "Generic OHCI driver for a platform device"
 	default n
 	---help---
 	  Adds an OHCI host driver for a generic platform device, which

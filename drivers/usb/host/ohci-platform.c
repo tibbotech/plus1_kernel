@@ -15,7 +15,7 @@
  */
 #include <linux/platform_device.h>
 #include <linux/usb/ohci_pdriver.h>
-
+#include <linux/clk.h>
 #include <linux/kthread.h>
 #include <linux/notifier.h>
 //#include "ohci.h"
@@ -61,6 +61,8 @@ struct ohci_hcd_sp {
 */
 s32 get_td_retry_time = 24;
 #endif
+
+static struct clk *ohci_clk[USB_PORT_NUM];
 
 static int ohci_platform_reset(struct usb_hcd *hcd)
 {
@@ -202,15 +204,6 @@ NEXT_LOOP:
 }
 
 #elif defined(CONFIG_USB_HOST_RESET_SP)
-
-#ifdef CONFIG_USB_GADGET_SUNPLUS
-extern void usb_switch(int device);
-#ifdef CONFIG_USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
-extern void ctrl_rx_squelch(void);
-#endif
-extern void detech_start(void);
-#endif
-
 #ifdef CONFIG_USB_LOGO_TEST
 extern u32 usb_logo_test_start;
 #endif
@@ -273,25 +266,6 @@ NEXT_LOOP:
 				writel(hcd->uphy_disconnect_level[pdev->id - 1], reg_addr + DISC_LEVEL_OFFSET);
 				/*tell ehci reset controllor */
 				sp_ohci->flag = RESET_SENDER;
-#ifdef CONFIG_USB_GADGET_SUNPLUS
-				printk(KERN_NOTICE
-				       "port_num:%d,device_mode_flag:%d\n",
-				       pdev->id - 1,
-				       platform_device_mode_flag[pdev->id - 1]);
-				if (platform_device_mode_flag[pdev->id - 1]) {
-					platform_device_mode_flag[pdev->id -
-								  1] = false;
-					msleep(1);
-					usb_switch(1);
-					msleep(1);
-#ifdef CONFIG_USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
-					/*control squelch signal */
-					ctrl_rx_squelch();
-					msleep(1);
-#endif
-					detech_start();
-				}
-#endif
 			}
 #endif
 			msleep(100);
@@ -471,6 +445,16 @@ int ohci_platform_probe(struct platform_device *dev)
 		return -ENODEV;
 
 	dev->dev.platform_data = &usb_ohci_pdata;
+
+	/*enable usb controller clock*/
+	ohci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
+	if (IS_ERR(ohci_clk[dev->id - 1])) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(ohci_clk[dev->id - 1]);
+	}
+	clk_prepare(ohci_clk[dev->id - 1]);
+	clk_enable(ohci_clk[dev->id - 1]);
+
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
 		pr_err("no irq provieded");
@@ -573,6 +557,7 @@ err_put_hcd:
 	usb_put_hcd(hcd);
 	return err;
 }
+EXPORT_SYMBOL_GPL(ohci_platform_probe);
 
 int ohci_platform_remove(struct platform_device *dev)
 {
@@ -605,8 +590,12 @@ int ohci_platform_remove(struct platform_device *dev)
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 
+	/*disable usb controller clock*/
+	clk_disable(ohci_clk[dev->id - 1]);
+
 	return 0;
 }
+EXPORT_SYMBOL_GPL(ohci_platform_remove);
 
 #ifdef CONFIG_PM
 

@@ -30,6 +30,24 @@ static unsigned int b_pllsys_get_rate(void)
 	return (((reg & 0xf) + 1) * 13500000) >> ((reg2 >> 4) & 0xf);
 }
 
+#ifdef CONFIG_SP_PARTIAL_CLKEN
+/* power saving, provided by yuwen + CARD_CTL4 */
+static void apply_partial_clken(void)
+{
+	int i;
+	const int ps_clken[] = {
+		0x67ef, 0xffff, 0xff03, 0xfff0, 0x0004, /* G0.1~5  */
+		0x0000, 0x8000, 0xffff, 0x0040, 0x0000, /* G0.6~10 */
+	};
+
+	printk("apply partial clken to save power\n");
+
+	for (i = 0; i < sizeof(ps_clken) / 4; i++) {
+		writel(0xffff0000 | ps_clken[i], (void __iomem *)(B_SYSTEM_BASE + 4 * (1 + i)));
+	}
+}
+#endif
+
 static void __init sp_init(void)
 {
 	unsigned int b_sysclk, io_ctrl;
@@ -60,6 +78,10 @@ static void __init sp_init(void)
 	early_printk("A: core=%uM a_sysclk=%uM a_pllio=%uM abio_bus=%uM\n",
 		coreclk / 1000000, sysclk / 1000000, a_pllioclk / 1000000, ioclk / 1000000);
 
+#endif
+
+#ifdef CONFIG_SP_PARTIAL_CLKEN
+	apply_partial_clken();
 #endif
 }
 

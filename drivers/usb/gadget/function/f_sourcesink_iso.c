@@ -318,6 +318,7 @@ static void source_sink_complete(struct usb_ep *ep, struct usb_request *req)
 	struct f_sourcesink *ss = ep->driver_data;
 	int status = req->status;
 
+	printk(KERN_NOTICE "source_sink_complete,s:%d,ep_n:%s\n",status,ep->name);
 	switch (status) {
 
 	case 0:		/* normal completion? */

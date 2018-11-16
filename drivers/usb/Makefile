@@ -15,9 +15,8 @@ obj-$(CONFIG_USB_MON)		+= mon/
 obj-$(CONFIG_USB_MTU3)		+= mtu3/
 
 obj-$(CONFIG_USB_PCI)		+= host/
-obj-$(CONFIG_USB_EHCI_HCD)	+= host/
+obj-y	+= host/
 obj-$(CONFIG_USB_ISP116X_HCD)	+= host/
-obj-$(CONFIG_USB_OHCI_HCD)	+= host/
 obj-$(CONFIG_USB_UHCI_HCD)	+= host/
 obj-$(CONFIG_USB_FHCI_HCD)	+= host/
 obj-$(CONFIG_USB_XHCI_HCD)	+= host/
@@ -60,7 +59,6 @@ obj-$(CONFIG_USB_RENESAS_USBHS)	+= renesas_usbhs/
 obj-$(CONFIG_USB_GADGET)	+= gadget/
 
 obj-$(CONFIG_USB_COMMON)	+= common/
-obj-y				+= bc/
 
 obj-$(CONFIG_USBIP_CORE)	+= usbip/
 
