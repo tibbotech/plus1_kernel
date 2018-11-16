@@ -99,8 +99,4 @@
 
 #define CLK_MAX		0xb0
 
-/* reserved memory */
-#define SP_IOP_RESERVE_BASE     0x01000000
-#define SP_IOP_RESERVE_SIZE     0x00100000
-
 #endif
