@@ -33,6 +33,7 @@
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/clk.h>
+#include <linux/pm_runtime.h>
 #include "pwm-sc7021.h"
 
 /**************************************************************************
@@ -77,6 +78,7 @@ enum {
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
+static void _sc7021_pwm_unexport(struct pwm_chip *chip, struct pwm_device *pwm);
 static int _sc7021_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm);
 static void _sc7021_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm);
 static int _sc7021_pwm_config(struct pwm_chip *chip,
@@ -87,10 +89,18 @@ static int _sc7021_pwm_config(struct pwm_chip *chip,
 static int _sc7021_pwm_probe(struct platform_device *pdev);
 static int _sc7021_pwm_remove(struct platform_device *pdev);
 
+#ifdef CONFIG_PM
+static int __maybe_unused _sc7021_pwm_suspend(struct device *dev);
+static int __maybe_unused _sc7021_pwm_resume(struct device *dev);
+static int __maybe_unused _sc7021_pwm_runtime_suspend(struct device *dev);
+static int __maybe_unused _sc7021_pwm_runtime_resume(struct device *dev);
+#endif
+
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 static const struct pwm_ops _sc7021_pwm_ops = {
+	.free = _sc7021_pwm_unexport,
 	.enable = _sc7021_pwm_enable,
 	.disable = _sc7021_pwm_disable,
 	.config = _sc7021_pwm_config,
@@ -103,12 +113,24 @@ static const struct of_device_id _sc7021_pwm_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, _sc7021_pwm_dt_ids);
 
+#ifdef CONFIG_PM
+static const struct dev_pm_ops _sc7021_pwm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(_sc7021_pwm_suspend, _sc7021_pwm_resume)
+	SET_RUNTIME_PM_OPS(_sc7021_pwm_runtime_suspend,
+				_sc7021_pwm_runtime_resume, NULL)
+};
+#endif
+
 static struct platform_driver _sc7021_pwm_driver = {
 	.probe		= _sc7021_pwm_probe,
 	.remove		= _sc7021_pwm_remove,
 	.driver		= {
 		.name	= "sc7021-pwm",
-		.of_match_table = _sc7021_pwm_dt_ids,
+		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(_sc7021_pwm_dt_ids),
+#ifdef CONFIG_PM
+		.pm		= &_sc7021_pwm_pm_ops,
+#endif
 	},
 };
 module_platform_driver(_sc7021_pwm_driver);
@@ -259,6 +281,11 @@ static int _sc7021_setpwm(struct pwm_chip *chip,
 	return 0;
 }
 
+static int _sc7021_pwm_pinmux(void)
+{
+	return 0;
+}
+
 static int _sc7021_pwm_config(struct pwm_chip *chip,
 		struct pwm_device *pwm,
 		int duty_ns,
@@ -266,10 +293,10 @@ static int _sc7021_pwm_config(struct pwm_chip *chip,
 {
 	dev_dbg(chip->dev, "%s:%d set pwm:%d enable:%d duty_ns:%d period_ns:%d\n",
 			__func__, __LINE__,
-			pwm->hwpwm, pwm->state.enabled,
+			pwm->hwpwm, pwm_is_enabled(pwm),
 			duty_ns, period_ns);
 
-	if (pwm->state.enabled) {
+	if (pwm_is_enabled(pwm)) {
 		if (_sc7021_setpwm(chip, pwm, duty_ns, period_ns))
 			return -EBUSY;
 	}
@@ -277,21 +304,39 @@ static int _sc7021_pwm_config(struct pwm_chip *chip,
 	return 0;
 }
 
+static void _sc7021_pwm_unexport(struct pwm_chip *chip, struct pwm_device *pwm)
+{
+	dev_dbg(chip->dev, "%s:%d unexport pwm:%d\n",
+		__func__, __LINE__, pwm->hwpwm);
+
+	if (pwm_is_enabled(pwm)) {
+		struct pwm_state state;
+
+		pwm_get_state(pwm, &state);
+		state.enabled = 0;
+		pwm_apply_state(pwm, &state);
+	}
+}
+
 static int _sc7021_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 {
 	struct sc7021_pwm *pdata = to_sc7021_pwm(chip);
 	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
-	u32 period = pwm->state.period;
-	u32 duty_cycle = pwm->state.duty_cycle;
+	u32 period = pwm_get_period(pwm);
+	u32 duty_cycle = pwm_get_duty_cycle(pwm);
 
 	dev_dbg(chip->dev, "%s:%d duty_ns:%d period_ns:%d\n",
 			__func__, __LINE__,
 			duty_cycle, period);
 
+	pm_runtime_get_sync(chip->dev);
+
 	if (!_sc7021_setpwm(chip, pwm, duty_cycle, period))
 		pPWMReg->pwm_en |= (1 << pwm->hwpwm);
-	else
+	else {
+		pm_runtime_put(chip->dev);
 		return -EBUSY;
+	}
 
 	return 0;
 }
@@ -301,8 +346,12 @@ static void _sc7021_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
 	struct sc7021_pwm *pdata = to_sc7021_pwm(chip);
 	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
 
+	dev_dbg(chip->dev, "%s:%d pwm:%d\n", __func__, __LINE__, pwm->hwpwm);
+
 	pPWMReg->pwm_en &= ~(1 << pwm->hwpwm);
 	_sc7021_savepwmclk(chip, pwm);
+
+	pm_runtime_put(chip->dev);
 }
 
 static int _sc7021_pwm_probe(struct platform_device *pdev)
@@ -322,9 +371,14 @@ static int _sc7021_pwm_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	if (_sc7021_pwm_pinmux()) {
+		dev_err(&pdev->dev, "devicetree pinmux error.\n");
+		return -EINVAL;
+	}
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node\n");
+		dev_err(&pdev->dev, "get resource memory from devicetree node.\n");
 		return PTR_ERR(res);
 	}
 
@@ -340,14 +394,19 @@ static int _sc7021_pwm_probe(struct platform_device *pdev)
 
 	pdata->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(pdata->base)) {
-		dev_err(&pdev->dev, "mapping resource memory\n");
+		dev_err(&pdev->dev, "mapping resource memory.\n");
 		return PTR_ERR(pdata->base);
 	}
 
 	pdata->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(pdata->clk)) {
-		dev_err(&pdev->dev, "not found clk source\n");
+		dev_err(&pdev->dev, "not found clk source.\n");
 		return PTR_ERR(pdata->clk);
+	}
+	ret = clk_prepare_enable(pdata->clk);
+	if (ret) {
+		dev_err(&pdev->dev, "failed to enable clk source.\n");
+		return ret;
 	}
 
 	/* init module reg */
@@ -356,24 +415,65 @@ static int _sc7021_pwm_probe(struct platform_device *pdev)
 	ret = pwmchip_add(&pdata->chip);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "failed to add PWM chip\n");
+		clk_disable_unprepare(pdata->clk);
 		return ret;
 	}
 
 	platform_set_drvdata(pdev, pdata);
 
-	return ret;
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+	pm_runtime_get_sync(&pdev->dev);
+	pm_runtime_put(&pdev->dev);
+
+	return 0;
 }
 
 static int _sc7021_pwm_remove(struct platform_device *pdev)
 {
 	struct sc7021_pwm *pdata;
+	int ret;
+
+	pm_runtime_disable(&pdev->dev);
 
 	pdata = platform_get_drvdata(pdev);
 	if (pdata == NULL)
 		return -ENODEV;
 
-	return pwmchip_remove(&pdata->chip);
+	ret = pwmchip_remove(&pdata->chip);
+
+#ifndef CONFIG_PM
+	clk_disable_unprepare(pdata->clk);
+#endif
+	return ret;
 }
+
+#ifdef CONFIG_PM
+static int __maybe_unused _sc7021_pwm_suspend(struct device *dev)
+{
+	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
+	return pm_runtime_force_suspend(dev);
+}
+
+static int __maybe_unused _sc7021_pwm_resume(struct device *dev)
+{
+	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
+	return pm_runtime_force_resume(dev);
+}
+
+static int __maybe_unused _sc7021_pwm_runtime_suspend(struct device *dev)
+{
+	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
+	clk_disable(devm_clk_get(dev, NULL));
+	return 0;
+}
+
+static int __maybe_unused _sc7021_pwm_runtime_resume(struct device *dev)
+{
+	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
+	return clk_enable(devm_clk_get(dev, NULL));
+}
+#endif
 
 MODULE_DESCRIPTION("SC7021 PWM Driver");
 MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");
