@@ -671,13 +671,13 @@ static void sphe_mmc_finish_request(SPSDHOST *host, struct mmc_request *mrq)
 		if(mrq->data->error && -EINVAL != mrq->data->error) {
 			/* tune next data request timing */
 			host->need_tune_dat_timing = 1;
-			EPRINTK("data err(%d)\n", mrq->data->error);
+			DPRINTK("data err(%d)\n", mrq->data->error);
 		}
 	}
 	if(mrq->cmd->error) {
 		/* tune next cmd request timing */
 		host->need_tune_cmd_timing = 1;
-		EPRINTK("cmd err(%d)\n",mrq->cmd->error);
+		DPRINTK("cmd err(%d)\n",mrq->cmd->error);
 	}
 
 	host->mrq = NULL;

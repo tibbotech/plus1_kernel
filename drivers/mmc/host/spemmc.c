@@ -428,7 +428,7 @@ EILSEQ       Basic format problem with the received or sent data
 static void spemmc_check_sdstatus_errors(SPEMMCHOST *host)
 {
 	if (host->base->sdstate_new & SDSTATE_NEW_ERROR_TIMEOUT) {
-		EPRINTK("cmd %d error with sdstate = %x, sdstatus = %x\n",
+		DPRINTK("cmd %d error with sdstate = %x, sdstatus = %x\n",
 			host->mrq->cmd->opcode, host->base->sd_state, host->base->sdstatus);
 		/* Response related errors */
 		if (host->base->sdstatus & SP_SDSTATUS_WAIT_RSP_TIMEOUT)
@@ -581,7 +581,7 @@ static void sphe_mmc_finish_request(SPEMMCHOST *host, struct mmc_request *mrq)
 			/* tune next data request timing */
 			host->need_tune_dat_timing = 1;
 			#endif
-			EPRINTK("data err(%d)\n", mrq->data->error);
+			DPRINTK("data err(%d)\n", mrq->data->error);
 		}
 	}
 
@@ -590,7 +590,7 @@ static void sphe_mmc_finish_request(SPEMMCHOST *host, struct mmc_request *mrq)
 		/* tune next cmd request timing */
 		host->need_tune_cmd_timing = 1;
 		#endif
-		EPRINTK("cmd err(%d)\n",mrq->cmd->error);
+		DPRINTK("cmd err(%d)\n",mrq->cmd->error);
 	}
 
 	host->mrq = NULL;
