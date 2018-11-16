@@ -134,6 +134,8 @@ static u32 gates[] = {
 	MAILBOX,
 	SPIND,
 	I2C2CBUS,
+	GPOST0,
+	DVE,
 
 	OSD0,
 	DISP_PWM,
