@@ -1,4 +1,5 @@
 #include "l2sw_driver.h"
+#include <linux/clk.h>
 
 #if 1
 
@@ -387,6 +388,7 @@ OUT:
 static int ethernet_open(struct net_device *net_dev)
 {
     struct l2sw_mac *mac;
+	struct platform_device *pdev;
 	u32 rc, i, reg;
 	
 	DEBUG0("@@@@@@@@@ethernet_open \n");
@@ -396,6 +398,7 @@ static int ethernet_open(struct net_device *net_dev)
 #endif
 
 	mac = (struct l2sw_mac*)netdev_priv(net_dev);
+	pdev = mac->pdev;
 
 #ifdef RX_POLLING
     napi_enable(&mac->napi);
@@ -436,9 +439,7 @@ static int ethernet_open(struct net_device *net_dev)
 	mac_hw_stop(mac);
 
 	/*register interrupt function to system*/
-	//DEBUG0("@@@@@@@@@request_irq net_dev->irq= [%d] \n", net_dev->irq);
-	//DEBUG0("@@@@@@@@@request_irq net_dev->name= [%s] \n", net_dev->name);
-	rc = request_irq(net_dev->irq, ethernet_interrupt, IRQF_TRIGGER_HIGH, net_dev->name, net_dev);
+	rc = devm_request_irq(&pdev->dev, net_dev->irq, ethernet_interrupt, IRQF_TRIGGER_HIGH, net_dev->name, net_dev);
 	if (rc != 0) {
         ERROR0("[%s][%d] ethernet driver request irq %d fialed...rc [%d]\n", __FUNCTION__, __LINE__, net_dev->irq, rc);
 		goto REQUEST_IRQ_FAIL;
@@ -452,33 +453,8 @@ static int ethernet_open(struct net_device *net_dev)
 
 	/*start hardware port,open interrupt, start system tx queue*/
 	mac_init(mac);
-	DEBUG1();
-	//phy_cfg();
+
 	mac_hw_start(mac);
-	DEBUG1();
-
-#if 0
-    /* wait phy link*/
-	while(1){
-        reg = reg_control(REG_READ, MAC_GLB_PORT_STA, 0);
-		if (reg & PHY_LINK){
-            DEBUG0("[%s][%d] phy link ok, reg = 0x%x\n", __FUNCTION__, __LINE__, reg);	
-			break;
-		}
-		else{
-			udelay(1000);
-            DEBUG0("[%s][%d] phy link failed, reg = 0x%x\n", __FUNCTION__, __LINE__, reg);	
-		}
-	}
-#else
-   // reg = mdio_read(MAC_PHY_ADDR, 1);
-   // while((reg & (1 << 5)) == 0x0){
-   //     reg = mdio_read(MAC_PHY_ADDR, 1);
-   // }
-#endif
-
-	DEBUG1();
-
 
 	if (netif_carrier_ok(net_dev)) {
 		netif_start_queue(net_dev);
@@ -512,8 +488,8 @@ static int ethernet_stop(struct net_device *net_dev)
 	mac_phy_stop(net_dev);
 	mac_hw_stop(mac);
 
-	synchronize_irq(net_dev->irq);
-	free_irq(net_dev->irq, net_dev);
+	//synchronize_irq(net_dev->irq);
+	//devm_free_irq(net_dev->irq, net_dev);
 	descs_free(mac);
 	return 0;
 
@@ -603,8 +579,9 @@ static int ethernet_set_mac_address(struct net_device *ndev, void *addr)
 {
 	struct sockaddr *hwaddr = (struct sockaddr *)addr;
 	struct l2sw_mac *mac = netdev_priv(ndev);
-
+	DEBUG0("@@@@@@@@@l2sw ethernet_set_mac_address \n");
 	if (netif_running(ndev)) {
+		DEBUG0("@@@@@@@@@l2sw Ebusy \n");
 		return -EBUSY;
 	}
 
@@ -613,6 +590,7 @@ static int ethernet_set_mac_address(struct net_device *ndev, void *addr)
 	/* set the Ethernet address */
 	memcpy(mac->mac_addr, hwaddr->sa_data, ndev->addr_len);
 	mac_hw_addr_set(mac);
+	DEBUG0("@@@@@@@@@l2sw ethernet_set_mac_address end\n");
 
 	return 0;
 }
@@ -707,7 +685,7 @@ static u32 netdev_init(struct platform_device *pdev)
 
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
 		printk("l2sw l2sw r_mem->start =[%x]\n", r_mem->start);
-		if (l2sw_reg_base_set(ioremap(r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev,r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ERROR0("[%s][%d] remap fail!\n", __FUNCTION__, __LINE__);
 			goto out_freedev;
 		}
@@ -729,7 +707,7 @@ static u32 netdev_init(struct platform_device *pdev)
 	}
 
 	l2sw_pinmux_set();
-	l2sw_enable_port();
+	l2sw_enable_port(pdev);
 	
 
 	phy_cfg();
@@ -793,14 +771,34 @@ out_freedev:
 static int l2sw_probe(struct platform_device *pdev)
 {	
 
-	int reg;
+	int ret;
+	struct net_device *net_dev;
+	struct l2sw_mac *mac;
 	
 	DEBUG0("l2sw_probe \n");
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
+	ret = netdev_init(pdev);
+
 	
-	return netdev_init(pdev);
+	if ((net_dev = platform_get_drvdata(pdev)) == NULL) {
+		return 0;
+	}
+
+	mac = (struct l2sw_mac*)netdev_priv(net_dev);
+
+
+	mac->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(mac->clk)) {
+		dev_err(&pdev->dev, "not found clk source\n");
+		return PTR_ERR(mac->clk);
+	}
+
+	clk_prepare_enable(mac->clk);
+
+	return ret;
+	
 }
 
 static int l2sw_remove(struct platform_device *pdev)
@@ -821,6 +819,7 @@ static int l2sw_remove(struct platform_device *pdev)
 
 	//mac_phy_remove(net_dev);
 	//mdio_remove(mac);
+	clk_disable(mac->clk);
 	unregister_netdev(net_dev);
 	free_netdev(net_dev);
 	platform_set_drvdata(pdev, NULL);

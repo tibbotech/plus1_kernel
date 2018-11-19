@@ -325,6 +325,7 @@ struct l2sw_mac {
 	void *desc_base;
 	dma_addr_t desc_dma;
 	s32 desc_size;
+	struct clk *clk;
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
 	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];

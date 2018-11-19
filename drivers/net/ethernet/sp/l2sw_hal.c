@@ -475,19 +475,32 @@ void tx_mib_counter_print()
 
 #endif
 }
+void l2sw_dump_moon(struct platform_device *pdev)
+{
+	u32 i,j = 0;
+	
+	for(i=0;i<6;i++)
+	{
+		struct moon_regs * MOON_REG = (volatile struct moon_regs *)devm_ioremap(&pdev->dev,RF_GRP(i, 0), 32);
+		for(j=0;j<32;j++)
+		{
+			DEBUG0("MOON[%d]sft_cfg[%d] = %x\n",i,j, MOON_REG->sft_cfg[j]);
+		}
+	}
+}
 
 
-
-void l2sw_enable_port()
+void l2sw_enable_port(struct platform_device *pdev)
 {
     u32 reg;
-
 		
-	struct moon_regs * MOON5_REG = (volatile struct moon_regs *)ioremap(RF_GRP(5, 0), 32);
+	struct moon_regs * MOON5_REG = (volatile struct moon_regs *)devm_ioremap(&pdev->dev ,RF_GRP(5, 0), 32);
 	//set clock
 	reg = MOON5_REG->sft_cfg[5];
 	MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
 	//enable port
+
+	//l2sw_dump_moon(pdev);
     reg=HWREG_R(port_cntl0);
     HWREG_W(port_cntl0,reg&(~(0x3<<24)));
 
@@ -505,33 +518,6 @@ void l2sw_enable_port()
 
 int phy_cfg()
 {
-    unsigned int reg;
-	
-	#if 0 // for zy702 fpga ephy init
-	mdio_write(0x0,0x1f,0x013d);
-    mdio_write(0x0,0x10,0x3ffe);
-    mdio_write(0x0,0x1f,0x063d);
-    mdio_write(0x0,0x13,0x8000);
-
-    mdio_write(0x0,0x1f,0x023d);
-    mdio_write(0x0,0x18,0x1000);
-    mdio_write(0x0,0x1f,0x063d);
-    mdio_write(0x0,0x15,0x132c);
-
-    mdio_write(0x0,0x1f,0x013d);
-    mdio_write(0x0,0x17,0x003b);
-    mdio_write(0x0,0x1f,0x063d);
-    mdio_write(0x0,0x14,0x7088);
-
-    mdio_write(0x0,0x1f,0x033d);
-    mdio_write(0x0,0x11,0x8530);
-    mdio_write(0x0,0x1f,0x003d);
-	
-    mdio_write(0x0,0x1f,0x003d);
-    mdio_write(0x0,0x13,0x3102);
-	#endif
-	
-
-
+    //mac_hw_addr_set(mac);	
 	return 0;
 }
