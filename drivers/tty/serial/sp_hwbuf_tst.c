@@ -1211,6 +1211,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			}
 			DBG_INFO("DMA buffer (HWBUF-Tx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, hwbuf_tx->buf_va, (u32)(hwbuf_tx->dma_handle));
 #ifdef HWBUF_TX_MODE_RING_BUF
+			writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
 			writel((u32)(hwbuf_tx->dma_handle), &(hwbuf_reg->hwbuf_wr_adr));	/* must be set before hwbuf_start_addr */
 			writel((u32)(hwbuf_tx->dma_handle), &(hwbuf_reg->hwbuf_start_addr));	/* hwbuf_reg->hwbuf_rd_adr is updated by h/w too */
 			writel(((u32)(hwbuf_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(hwbuf_reg->hwbuf_end_addr));
@@ -1241,6 +1242,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	spin_lock_irq(&port->lock);	/* don't need to use spin_lock_irqsave() because interrupts are globally disabled */
 
 	/* SP_UART_ISC_TXM is enabled in .start_tx() */
+	interrupt_en = 0;
 	if (uartdma_rx == NULL) {
 		interrupt_en |= SP_UART_ISC_RXM;
 	}
