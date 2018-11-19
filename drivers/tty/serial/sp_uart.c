@@ -295,6 +295,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) { 		/* ring buffer for UART's Tx has been enabled */
 			uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
 		} else {
+#if 0
 			/* Drop messages if .statup(), ... are not executed yet */
 			/* Note:
 			 *	Console's .startup() is executed at end of built-in kernel.
@@ -303,6 +304,23 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 			 *	=> Please use PIO mode to debug built-in kernel drivers' initializations,
 			 *	   or implement special code for console port.
 			 */
+#else
+			/* Refer to .startup() */
+			if (uartdma_tx->buf_va == NULL) {
+				uartdma_tx->buf_va = dma_alloc_coherent(sunplus_uart_ports[co->index].uport.dev, UATXDMA_BUF_SZ, &(uartdma_tx->dma_handle), GFP_KERNEL);
+				if (uartdma_tx->buf_va == NULL) {
+					panic("Die here.");	/* This message can't be sent to console because it's not ready yet */
+				}
+
+				writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
+				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
+				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
+				writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
+
+				writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
+				writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
+			}
+#endif
 		}
 	} else {
 		uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
