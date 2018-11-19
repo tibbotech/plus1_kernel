@@ -71,7 +71,7 @@ void tx_mib_counter_print(void);
 
 int phy_cfg(void);
 
-void l2sw_enable_port(void);
+void l2sw_enable_port(struct platform_device *pdev);
 
 void l2sw_mac_set(void);
 
