@@ -488,8 +488,8 @@ static int ethernet_stop(struct net_device *net_dev)
 	mac_phy_stop(net_dev);
 	mac_hw_stop(mac);
 
-	synchronize_irq(net_dev->irq);
-	free_irq(net_dev->irq, net_dev);
+	//synchronize_irq(net_dev->irq);
+	//devm_free_irq(net_dev->irq, net_dev);
 	descs_free(mac);
 	return 0;
 
@@ -796,7 +796,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 	clk_prepare_enable(mac->clk);
-	clk_enable(mac->clk);
 
 	return ret;
 	
