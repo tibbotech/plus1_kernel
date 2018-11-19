@@ -950,7 +950,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 	spin_lock_irq(&port->lock);	/* don't need to use spin_lock_irqsave() because interrupts are globally disabled */
 
-	interrupt_en |= SP_UART_ISC_TXM;	/* Even if (uartdma_tx != NULL), "BUF_NOT_FULL" interrupt is used for getting into ISR */
+	/* SP_UART_ISC_TXM is enabled in .start_tx() */
 	if (uartdma_rx == NULL) {
 		interrupt_en |= SP_UART_ISC_RXM;
 	}
