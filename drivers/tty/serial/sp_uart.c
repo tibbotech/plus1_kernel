@@ -269,6 +269,9 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 {
 	unsigned long flags;
 	int locked = 1;
+	struct sunplus_uart_port *sp_port;
+	struct sunplus_uartdma_info *uartdma_tx;
+	volatile struct regs_uatxdma *txdma_reg;
 
 	local_irq_save(flags);
 
@@ -285,7 +288,25 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 		spin_lock(&sunplus_uart_ports[co->index].uport.lock);
 	}
 
-	uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
+	sp_port = (struct sunplus_uart_port *)(sunplus_uart_ports[co->index].uport.private_data);
+	uartdma_tx = sp_port->uartdma_tx;
+	if (uartdma_tx) {
+		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
+		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) { 		/* ring buffer for UART's Tx has been enabled */
+			uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
+		} else {
+			/* Drop messages if .statup(), ... are not executed yet */
+			/* Note:
+			 *	Console's .startup() is executed at end of built-in kernel.
+			 *	=> There are a lot of messages would be dropped.
+			 *	   But they're still in printk buffer (Can use dmesg to dump them)
+			 *	=> Please use PIO mode to debug built-in kernel drivers' initializations,
+			 *	   or implement special code for console port.
+			 */
+		}
+	} else {
+		uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
+	}
 
 	if (locked) {
 		spin_unlock(&sunplus_uart_ports[co->index].uport.lock);
