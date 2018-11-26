@@ -79,7 +79,7 @@ static void sp_intc_ack_irq(struct irq_data *data)
 	mask = (1 << (data->hwirq % 32));
 
 	spin_lock(&sp_intc.lock);
-	writel(mask, &sp_intc.g1->intr_clr[idx]);
+	writel_relaxed(mask, &sp_intc.g1->intr_clr[idx]);
 	spin_unlock(&sp_intc.lock);
 }
 
@@ -95,9 +95,9 @@ static void sp_intc_mask_irq(struct irq_data *data)
 	idx = data->hwirq / 32;
 
 	spin_lock(&sp_intc.lock);
-	mask = readl(&sp_intc.g0->intr_mask[idx]);
+	mask = readl_relaxed(&sp_intc.g0->intr_mask[idx]);
 	mask &= ~(1 << (data->hwirq % 32));
-	writel(mask, &sp_intc.g0->intr_mask[idx]);
+	writel_relaxed(mask, &sp_intc.g0->intr_mask[idx]);
 	spin_unlock(&sp_intc.lock);
 }
 
@@ -112,9 +112,9 @@ static void sp_intc_unmask_irq(struct irq_data *data)
 
 	idx = data->hwirq / 32;
 	spin_lock(&sp_intc.lock);
-	mask = readl(&sp_intc.g0->intr_mask[idx]);
+	mask = readl_relaxed(&sp_intc.g0->intr_mask[idx]);
 	mask |= (1 << (data->hwirq % 32));
-	writel(mask, &sp_intc.g0->intr_mask[idx]);
+	writel_relaxed(mask, &sp_intc.g0->intr_mask[idx]);
 	spin_unlock(&sp_intc.lock);
 }
 
@@ -142,26 +142,26 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 
 	spin_lock_irqsave(&sp_intc.lock, flags);
 
-	edge_type = readl(&sp_intc.g0->intr_type[idx]);
-	trig_lvl = readl(&sp_intc.g0->intr_polarity[idx]);
+	edge_type = readl_relaxed(&sp_intc.g0->intr_type[idx]);
+	trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
 	mask = (1 << (data->hwirq % 32));
 
 	switch (flow_type) {
 	case IRQ_TYPE_EDGE_RISING:
-		writel((edge_type | mask), &sp_intc.g0->intr_type[idx]);
-		writel((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
+		writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
+		writel_relaxed((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	case IRQ_TYPE_EDGE_FALLING:
-		writel((edge_type | mask), &sp_intc.g0->intr_type[idx]);
-		writel((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
+		writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
+		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
-		writel((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
-		writel((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
+		writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
+		writel_relaxed((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
-		writel((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
-		writel((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
+		writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
+		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	default:
 		spin_unlock_irqrestore(&sp_intc.lock, flags);
@@ -187,12 +187,12 @@ static void sp_intc_set_prio(u32 hwirq, u32 prio)
 	idx = hwirq / 32;
 
 	spin_lock(&sp_intc.lock);
-	mask = readl(&sp_intc.g0->priority[idx]);
+	mask = readl_relaxed(&sp_intc.g0->priority[idx]);
 	if (prio)
 		mask |= (1 << (hwirq % 32));
 	else
 		mask &= ~(1 << (hwirq % 32));
-	writel(mask, &sp_intc.g0->priority[idx]);
+	writel_relaxed(mask, &sp_intc.g0->priority[idx]);
 	spin_unlock(&sp_intc.lock);
 }
 
@@ -203,13 +203,13 @@ static int sp_intc_get_ext0_irq(void)
 	int i;
 
 #ifdef SUPPORT_IRQ_GRP_REG
-	mask = (readl(&sp_intc.g1->intr_group) >> 8) & 0x7f; /* [14:8] for irq group */
+	mask = (readl_relaxed(&sp_intc.g1->intr_group) >> 8) & 0x7f; /* [14:8] for irq group */
 	if (mask) {
 		i = fls(mask) - 1;
 #else
 	for (i = 0; i < 7; i++) {
 #endif
-		mask = readl(&sp_intc.g1->masked_irqs[i]);
+		mask = readl_relaxed(&sp_intc.g1->masked_irqs[i]);
 		if (mask) {
 			hwirq = (i << 5) + fls(mask) - 1;
 			dprn(" I[%d]", hwirq);
@@ -225,13 +225,13 @@ static int sp_intc_get_ext1_irq(void)
 	int i;
 
 #ifdef SUPPORT_IRQ_GRP_REG
-	mask = (readl(&sp_intc.g1->intr_group) >> 0) & 0x7f; /* [6:0] for fiq group */
+	mask = (readl_relaxed(&sp_intc.g1->intr_group) >> 0) & 0x7f; /* [6:0] for fiq group */
 	if (mask) {
 		i = fls(mask) - 1;
 #else
 	for (i = 0; i < 7; i++) {
 #endif
-		mask = readl(&sp_intc.g1->masked_fiqs[i]);
+		mask = readl_relaxed(&sp_intc.g1->masked_fiqs[i]);
 		if (mask) {
 			hwirq = (i << 5) + fls(mask) - 1;
 			dprn(" F[%d]", hwirq);
