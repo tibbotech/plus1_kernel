@@ -79,12 +79,12 @@ static struct sunplus_uartdma_info sunplus_uartdma[NUM_UARTDMARX + NUM_UARTDMATX
 
 static inline void sp_uart_set_int_en(unsigned char __iomem *base, unsigned int_state)
 {
-	writel(int_state, &((struct regs_uart *)base)->uart_isc);
+	writel_relaxed(int_state, &((struct regs_uart *)base)->uart_isc);
 }
 
 static inline unsigned sp_uart_get_int_en(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_isc);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_isc);
 }
 
 static inline int sp_uart_get_char(unsigned char __iomem *base)
@@ -112,22 +112,22 @@ static inline void sp_uart_put_char(struct uart_port *port, unsigned ch)
 		writel_relaxed(ch,  &((struct regs_uart *)base)->uart_data);
 	} else {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		addr_sw = readl(&(txdma_reg->txdma_wr_adr));
-		addr_start = readl(&(txdma_reg->txdma_start_addr));
+		addr_sw = readl_relaxed(&(txdma_reg->txdma_wr_adr));
+		addr_start = readl_relaxed(&(txdma_reg->txdma_start_addr));
 		offset_sw = addr_sw - addr_start;
 		byte_ptr = (u8 *)(uartdma_tx->buf_va + offset_sw);
 		*byte_ptr = (u8)(ch);
 		if (offset_sw == (UATXDMA_BUF_SZ - 1)) {
-			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
+			writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
 		}  else {
-			writel((addr_sw + 1), &(txdma_reg->txdma_wr_adr));
+			writel_relaxed((addr_sw + 1), &(txdma_reg->txdma_wr_adr));
 		}
 	}
 }
 
 static inline unsigned sp_uart_get_line_status(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_lsr);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_lsr);
 }
 
 static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
@@ -140,8 +140,8 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		addr_sw = readl(&(txdma_reg->txdma_wr_adr));
-		addr_hw = readl(&(txdma_reg->txdma_rd_adr));
+		addr_sw = readl_relaxed(&(txdma_reg->txdma_wr_adr));
+		addr_hw = readl_relaxed(&(txdma_reg->txdma_rd_adr));
 		if (addr_sw == addr_hw) {
 			return UATXDMA_BUF_SZ;
 		} else if (addr_sw >= addr_hw) {
@@ -150,7 +150,7 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 			return (addr_hw - addr_sw);
 		}
 	} else {
-		if (readl(&((struct regs_uart *)base)->uart_lsr) & SP_UART_LSR_TX) {
+		if (readl_relaxed(&((struct regs_uart *)base)->uart_lsr) & SP_UART_LSR_TX) {
 			/* In PIO mode, just return 1 byte becauase exactly number is unknown */
 			return 1;
 		} else {
@@ -161,52 +161,52 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 
 static inline void sp_uart_set_line_ctrl(unsigned char __iomem *base, unsigned ctrl)
 {
-	writel(ctrl, &((struct regs_uart *)base)->uart_lcr);
+	writel_relaxed(ctrl, &((struct regs_uart *)base)->uart_lcr);
 }
 
 static inline unsigned sp_uart_get_line_ctrl(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_lcr);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_lcr);
 }
 
 static inline void sp_uart_set_divider_low_register(unsigned char __iomem *base, unsigned val)
 {
-	writel(val, &((struct regs_uart *)base)->uart_div_l);
+	writel_relaxed(val, &((struct regs_uart *)base)->uart_div_l);
 }
 
 static inline unsigned sp_uart_get_divider_low_register(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_div_l);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_div_l);
 }
 
 static inline void sp_uart_set_divider_high_register(unsigned char __iomem *base, unsigned val)
 {
-	writel(val, &((struct regs_uart *)base)->uart_div_h);
+	writel_relaxed(val, &((struct regs_uart *)base)->uart_div_h);
 }
 
 static inline unsigned sp_uart_get_divider_high_register(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_div_h);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_div_h);
 }
 
 static inline void sp_uart_set_rx_residue(unsigned char __iomem *base, unsigned val)
 {
-	writel(val, &((struct regs_uart *)base)->uart_rx_residue);
+	writel_relaxed(val, &((struct regs_uart *)base)->uart_rx_residue);
 }
 
 static inline void sp_uart_set_modem_ctrl(unsigned char __iomem *base, unsigned val)
 {
-	writel(val, &((struct regs_uart *)base)->uart_mcr);
+	writel_relaxed(val, &((struct regs_uart *)base)->uart_mcr);
 }
 
 static inline unsigned sp_uart_get_modem_ctrl(unsigned char __iomem *base)
 {
-	return readl(&((struct regs_uart *)base)->uart_mcr);
+	return readl_relaxed(&((struct regs_uart *)base)->uart_mcr);
 }
 
 static inline void sp_uart_set_clk_src(unsigned char __iomem *base, unsigned val)
 {
-	writel(val, &((struct regs_uart *)base)->uart_clk_src);
+	writel_relaxed(val, &((struct regs_uart *)base)->uart_clk_src);
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -292,7 +292,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 	uartdma_tx = sp_port->uartdma_tx;
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) { 		/* ring buffer for UART's Tx has been enabled */
+		if (readl_relaxed(&(txdma_reg->txdma_enable)) == 0x00000005) { 		/* ring buffer for UART's Tx has been enabled */
 			uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
 		} else {
 #if 0
@@ -312,13 +312,13 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 					panic("Die here.");	/* This message can't be sent to console because it's not ready yet */
 				}
 
-				writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
-				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
-				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
-				writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
+				writel_relaxed((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
+				writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
+				writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
+				writel_relaxed(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
 
-				writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
-				writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
+				writel_relaxed(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
+				writel_relaxed(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
 			}
 #endif
 		}
@@ -376,7 +376,7 @@ static unsigned int sunplus_uart_ops_tx_empty(struct uart_port *port)
 
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		if (readl(&(txdma_reg->txdma_wr_adr)) == readl(&(txdma_reg->txdma_rd_adr))) {
+		if (readl_relaxed(&(txdma_reg->txdma_wr_adr)) == readl_relaxed(&(txdma_reg->txdma_rd_adr))) {
 			return TIOCSER_TEMT;
 		} else {
 			return 0;
@@ -648,8 +648,8 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		addr_sw = readl(&(txdma_reg->txdma_wr_adr));
-		addr_start = readl(&(txdma_reg->txdma_start_addr));
+		addr_sw = readl_relaxed(&(txdma_reg->txdma_wr_adr));
+		addr_start = readl_relaxed(&(txdma_reg->txdma_start_addr));
 		offset_sw = addr_sw - addr_start;
 		byte_ptr = (u8 *)(uartdma_tx->buf_va + offset_sw);
 		tx_buf_available = sp_uart_line_status_tx_buf_not_full(port);
@@ -672,7 +672,7 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 				break;
 			}
 		}
-		writel(addr_sw, &(txdma_reg->txdma_wr_adr));
+		writel_relaxed(addr_sw, &(txdma_reg->txdma_wr_adr));
 	} else {
 		do {
 			sp_uart_put_char(port, xmit->buf[xmit->tail]);
@@ -809,8 +809,8 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	uartdma_rx = sp_port->uartdma_rx;
 	rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 
-	offset_sw = readl(&(rxdma_reg->rxdma_rd_adr)) - readl(&(rxdma_reg->rxdma_start_addr));
-	offset_hw = readl(&(rxdma_reg->rxdma_wr_adr)) - readl(&(rxdma_reg->rxdma_start_addr));
+	offset_sw = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
+	offset_hw = readl_relaxed(&(rxdma_reg->rxdma_wr_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
 
 	if (offset_hw >= offset_sw) {
 		rx_size = offset_hw - offset_sw;
@@ -857,19 +857,19 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 			sw_ptr = (u8 *)(uartdma_rx->buf_va);
 		}
 	}
-	tmp_u32 = readl(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
-	if (tmp_u32 <= readl(&(rxdma_reg->rxdma_end_addr))) {
-		writel(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
+	tmp_u32 = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
+	if (tmp_u32 <= readl_relaxed(&(rxdma_reg->rxdma_end_addr))) {
+		writel_relaxed(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
 	} else {
-		writel((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
+		writel_relaxed((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
 	}
 
 	spin_unlock(&port->lock);
 	tty_flip_buffer_push(tty->port);
 	spin_lock(&port->lock);
 
-	writel(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
-	writel(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
 }
 
 static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
@@ -929,31 +929,31 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			}
 			DBG_INFO("DMA buffer (Rx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, uartdma_rx->buf_va, (u32)(uartdma_rx->dma_handle));
 
-			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_start_addr));
-			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_rd_adr));
+			writel_relaxed((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_start_addr));
+			writel_relaxed((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_rd_adr));
 
 			/* Force to use CLK_HIGH_UART in this mode */
 			/* Switch clock source when setting baud rate */
 			timeout = (CLK_HIGH_UART / 2) / 1000000 * 1000;	/* 1 msec */
 
 			/* DBG_INFO("timeout: 0x%x\n", timeout); */
-			writel(timeout, &(rxdma_reg->rxdma_timeout_set));
+			writel_relaxed(timeout, &(rxdma_reg->rxdma_timeout_set));
 
 			/*
 			 * When there are only rxdma_length_thr[15:0] bytes of free buffer
 			 * => Trigger interrupt
 			 */
-			writel(((UARXDMA_BUF_SZ << 16) | (UARXDMA_BUF_SZ - MAX_SZ_RXDMA_ISR)),
+			writel_relaxed(((UARXDMA_BUF_SZ << 16) | (UARXDMA_BUF_SZ - MAX_SZ_RXDMA_ISR)),
 			       &(rxdma_reg->rxdma_length_thr));
-			writel((readl(&(rxdma_reg->rxdma_enable_sel)) & (~DMA_SEL_UARTX_MASK)),
+			writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) & (~DMA_SEL_UARTX_MASK)),
 			       &(rxdma_reg->rxdma_enable_sel));
-			writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_INIT | (uartdma_rx->which_uart << DMA_SEL_UARTX_SHIFT))),
+			writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | (DMA_INIT | (uartdma_rx->which_uart << DMA_SEL_UARTX_SHIFT))),
 			       &(rxdma_reg->rxdma_enable_sel));
-			writel((readl(&(rxdma_reg->rxdma_enable_sel)) & (~DMA_INIT)),
+			writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) & (~DMA_INIT)),
 			       &(rxdma_reg->rxdma_enable_sel));
-			writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B | DMA_AUTO_ENABLE | DMA_TIMEOUT_INT_EN | DMA_ENABLE)),
+			writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B | DMA_AUTO_ENABLE | DMA_TIMEOUT_INT_EN | DMA_ENABLE)),
 			       &(rxdma_reg->rxdma_enable_sel));
-			writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_GO)),
+			writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | (DMA_GO)),
 			       &(rxdma_reg->rxdma_enable_sel));
 		}
 		DBG_INFO("Enalbe RXDMA for %s (irq=%d)\n", sp_port->name, uartdma_rx->irq);
@@ -978,13 +978,13 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			}
 			DBG_INFO("DMA buffer (Tx) for %s: VA: 0x%p, PA: 0x%x\n", sp_port->name, uartdma_tx->buf_va, (u32)(uartdma_tx->dma_handle));
 
-			writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
-			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
-			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
-			writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
+			writel_relaxed((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));		/* 1 msec */
+			writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
+			writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
+			writel_relaxed(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
 
-			writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
-			writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
+			writel_relaxed(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
+			writel_relaxed(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
 		}
 	}
 
@@ -1046,8 +1046,8 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 		rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 
 		/* Drop whatever is still in buffer */
-		writel(readl(&(rxdma_reg->rxdma_wr_adr)), &(rxdma_reg->rxdma_rd_adr));
-		// writel((readl(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B)), &(rxdma_reg->rxdma_enable_sel));
+		writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_wr_adr)), &(rxdma_reg->rxdma_rd_adr));
+		// writel_relaxed((readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | (DMA_SW_RST_B)), &(rxdma_reg->rxdma_enable_sel));
 
 		free_irq(uartdma_rx->irq, port);
 		DBG_INFO("free_irq(%d)\n", uartdma_rx->irq);
