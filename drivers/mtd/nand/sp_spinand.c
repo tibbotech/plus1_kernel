@@ -1,12 +1,22 @@
-#include <common.h>
-#include <malloc.h>
-//#include <asm/io.h>
-#include <nand.h>
-
+#include <linux/device.h>
+#include <linux/mtd/mtd.h>
+#include <linux/mtd/partitions.h>
 #include <linux/mtd/nand.h>
-#include <dm.h>
-#include <linux/io.h>
 #include <linux/ioport.h>
+//nclude <asm-generic/io.h>
+#include <linux/vmalloc.h>
+#include <linux/semaphore.h>
+#include <linux/irqreturn.h>
+#include <linux/wait.h>
+#include <linux/io.h>
+#include <linux/delay.h>
+#include <linux/slab.h>
+#include <linux/of.h>
+#include <linux/ioport.h>
+#include <linux/platform_device.h>
+#include <linux/interrupt.h>
+#include <linux/module.h>
+#include <linux/kernel.h>
 
 #include "sp_bch.h"
 #include "sp_spinand.h"
@@ -19,8 +29,6 @@
 /* #define CFG_BBT_USE_FLASH */
 #define CFG_BUFF_MAX		(18 << 10)
 #define CONFIG_MTD_SP_NAND_SRAM_BASE	(0x9e800000)
-#define QUADIO_DIS_ECC 	(0x01)
-#define WB_BUF1_DIS_ECC (0x08)
 
 /* device id */
 #define ESMT1G_ID 0x21C8
@@ -38,6 +46,50 @@ static void wait_spi_idle(struct sp_spinand_info *info)
 	do {
 		retry++;
 	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 100));
+}
+
+static int spi_nand_getfeatures(struct sp_spinand_info *info, uint32_t addr)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	int value = 0;
+	
+	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_GETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPINAND_CUSTCMD_1_ADDR);
+	writel(value ,&regs->spi_ctrl);
+
+	writel(addr ,&regs->spi_page_addr);
+
+	value = SPINAND_CFG01_DEFAULT;
+	writel(value ,&regs->spi_cfg[1]);
+
+	value = SPINAND_AUTOCFG_CMDEN;
+	writel(value ,&regs->spi_auto_cfg);
+
+	wait_spi_idle(info);
+
+	return (readl(&regs->spi_data) & 0xFF);
+}
+
+static void spi_nand_setfeatures(struct sp_spinand_info *info,uint32_t addr, uint32_t data)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	int value = 0;
+
+	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_SETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPI_NAND_WRITE_MDOE)|(SPINAND_CUSTCMD_1_ADDR);
+	writel(value ,&regs->spi_ctrl);
+
+	writel(addr ,&regs->spi_page_addr);
+
+	writel(data ,&regs->spi_data);
+
+	value = SPINAND_CFG01_DEFAULT1;
+	writel(value ,&regs->spi_cfg[1]);
+
+	value = SPINAND_AUTOCFG_CMDEN;
+	writel(value ,&regs->spi_auto_cfg);
+
+	wait_spi_idle(info);
+	
+	return ;
 }
 
 static int sp_spinand_reset(struct sp_spinand_info *info)
@@ -103,48 +155,21 @@ static void spi_nand_readid(struct sp_spinand_info *info, uint32_t addr, uint32_
 	return ;
 }
 
-static int spi_nand_getfeatures(struct sp_spinand_info *info, uint32_t addr)
+static int sp_spinand_wait(struct sp_spinand_info *info)
 {
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	
-	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_GETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPINAND_CUSTCMD_1_ADDR);
-	writel(value ,&regs->spi_ctrl);
+	int ret = 0;
 
-	writel(addr ,&regs->spi_page_addr);
+	if (!wait_event_timeout(info->wq, !info->busy, HZ/10)) {
+		/*HZ=100, means timeout=100*jiffies, jiffies=every 10ms plus one */
+		if (info->busy == 0) {
+			printk(KERN_WARNING "sp_nand ..system irq busy?\n");
+			return ret;
+		}
+		ret = -1;
+		printk("\n\nERROR!!!! sp_nand_wait timeout\n\n");		
+	}	
 
-	value = SPINAND_CFG01_DEFAULT;
-	writel(value ,&regs->spi_cfg[1]);
-
-	value = SPINAND_AUTOCFG_CMDEN;
-	writel(value ,&regs->spi_auto_cfg);
-
-	wait_spi_idle(info);
-
-	return (readl(&regs->spi_data) & 0xFF);
-}
-
-static void spi_nand_setfeatures(struct sp_spinand_info *info,uint32_t addr, uint32_t data)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-
-	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_SETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPI_NAND_WRITE_MDOE)|(SPINAND_CUSTCMD_1_ADDR);
-	writel(value ,&regs->spi_ctrl);
-
-	writel(addr ,&regs->spi_page_addr);
-
-	writel(data ,&regs->spi_data);
-
-	value = SPINAND_CFG01_DEFAULT1;
-	writel(value ,&regs->spi_cfg[1]);
-
-	value = SPINAND_AUTOCFG_CMDEN;
-	writel(value ,&regs->spi_auto_cfg);
-
-	wait_spi_idle(info);
-	
-	return ;
+	return ret;
 }
 
 static int spi_nand_blkerase(struct sp_spinand_info *info, uint32_t addr)
@@ -186,7 +211,7 @@ static void spi_nanddma_pageread_prep(struct sp_spinand_info *info, uint32_t add
 {
 	struct sp_spinand_regs *regs = info->regs;
 	int value = 0;
-	int retry;
+	int retry = 0;
 	
 	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
 		retry++;
@@ -203,8 +228,10 @@ static void spi_nanddma_pageread_prep(struct sp_spinand_info *info, uint32_t add
 
 	writel(addr, &regs->spi_page_addr);
 
-	value = 0x08350095; // 4 bit data 8 dummy clock 1bit cmd  1bit addr
+	value = 0x08150095; // 4 bit data 8 dummy clock 1bit cmd  1bit addr
 	writel(value, &regs->spi_cfg[1]);
+	writel(value, &regs->spi_cfg[2]);
+
 
 	value = readl(&regs->spi_cfg[0]);
 	value = value|size; // 1k data len
@@ -229,7 +256,7 @@ static void spi_nanddma_pageread_prep(struct sp_spinand_info *info, uint32_t add
 	value = 0x7;
 	writel(value, &regs->spi_intr_sts);
 	
-	value = (0x6b<<24)|(1<<20)|(1<18);
+	value = (0x3<<24)|(1<<20)|(1<18);
 	writel(value, &regs->spi_auto_cfg);
 	
 	return ;
@@ -245,7 +272,7 @@ static void spi_nanddma_run(struct sp_spinand_info *info)
 
 	return ;
 }
-
+#if 0
 static void spi_nanddma_down(struct sp_spinand_info *info)
 {
 	int ret;
@@ -262,7 +289,7 @@ static void spi_nanddma_down(struct sp_spinand_info *info)
 	
 	return ;
 }
-
+#endif
 #if 0
 static void spi_nanddma_pageread(struct sp_spinand_info *info, uint32_t addr, unsigned int size, uint32_t *pbuf)
 {
@@ -325,7 +352,7 @@ static void spi_nanddma_pageprogram_prep(struct sp_spinand_info *info, uint32_t 
 {
 	struct sp_spinand_regs *regs = info->regs;
 	int value = 0;	
-	int retry;
+	int retry = 0;
 	
 	/* polling DMA_OWNER == 0 */
 	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
@@ -338,7 +365,7 @@ static void spi_nanddma_pageprogram_prep(struct sp_spinand_info *info, uint32_t 
 		return ;
 	}
 
-	value = (1<<24)|(7<<16)|(1<<7)|(1<<2)|(2);
+	value = (1<<24)|(2<<16)|(1<<7)|(1<<2)|(2);
 	writel(value, &regs->spi_ctrl);
 
 	writel(addr, &regs->spi_page_addr);
@@ -347,7 +374,7 @@ static void spi_nanddma_pageprogram_prep(struct sp_spinand_info *info, uint32_t 
 	//set cfg[1]= cmd 1 bit addr 1 bit data 1 bit	
 	value = 0x150095;
 	writel(value, &regs->spi_cfg[1]);
-
+	writel(value, &regs->spi_cfg[2]);
 	//read 2k data
 	value = readl(&regs->spi_cfg[0]);
 	value |= size; 
@@ -449,8 +476,8 @@ static void spi_nanddma_pageprogram(struct sp_spinand_info *info, uint32_t addr,
 
 static irqreturn_t sp_nand_irq(int irq, void *dev)
 {
-	struct sp_nand_info *info = dev;
-	struct sp_nand_regs *regs = info->regs;
+	struct sp_spinand_info *info = dev;
+	struct sp_spinand_regs *regs = info->regs;
 	uint32_t st;
 	unsigned long timeout;
 
@@ -471,26 +498,12 @@ static irqreturn_t sp_nand_irq(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
-static int sp_spinand_wait(struct sp_spinand_info *info)
+
+
+static int sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t * buf, int oob_required, int page)
 {
-	int ret = 0;
-
-	if (!wait_event_timeout(info->wq, !info->busy, HZ/10)) {
-		/*HZ=100, means timeout=100*jiffies, jiffies=every 10ms plus one */
-		if (info->busy == 0) {
-			printk(KERN_WARNING "sp_nand ..system irq busy?\n");
-			return ret;
-		}
-		ret = -1;
-		printk("\n\nERROR!!!! sp_nand_wait timeout\n\n");		
-	}	
-
-	return ret;
-}
-
-static void sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t * buf)
-{
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
+	struct sp_spinand_info *info = container_of(chip, struct sp_spinand_info, nand);
+	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
 
 	down(&info->spnand_sem);
 	chip->write_buf(mtd, buf, mtd->writesize);
@@ -499,11 +512,12 @@ static void sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip, 
 	sp_bch_encode(mtd, info->buff.phys, info->buff.phys + mtd->writesize);
 
 	up(&info->spnand_sem);
+	return 0;
 }
 
-static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip, uint8_t * buf, int page)
+static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip, uint8_t * buf, int oob_required, int page)
 {
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
+	struct sp_spinand_info *info = container_of(chip, struct sp_spinand_info, nand);
 	int ret = 0;
 
 	down(&info->spnand_sem);
@@ -547,14 +561,14 @@ exit_pp:
 
 static void sp_spinand_write_buf(struct mtd_info *mtd, const u_char * buf, int len)
 {
-	dma_addr_t src, dst;
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
-
+//	dma_addr_t src, dst;
+	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
+#if 0 //sunplus
 	if (virt_addr_valid(buf) || virt_addr_valid(buf + len - 1)) {
 		printk("buf addr valid \n");
 		return;
 	}
-
+#endif
 	memcpy(info->buff.virt + info->buff.idx, buf, len);
 
 	info->buff.idx += len;
@@ -562,15 +576,15 @@ static void sp_spinand_write_buf(struct mtd_info *mtd, const u_char * buf, int l
 
 static void sp_spinand_read_buf(struct mtd_info *mtd, u_char * buf, int len)
 {
-	dma_addr_t src, dst;
+//	dma_addr_t src, dst;
 
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
-
+	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
+#if 0 //sunplus
 	if (virt_addr_valid(buf) || virt_addr_valid(buf + len - 1)) {
 		printk("buf addr valid \n");
 		return;
 	}
-
+#endif
 	memcpy(buf, info->buff.virt + info->buff.idx, len);
 
 	info->buff.idx += len;
@@ -578,7 +592,7 @@ static void sp_spinand_read_buf(struct mtd_info *mtd, u_char * buf, int len)
 
 static uint8_t sp_spinand_read_byte(struct mtd_info *mtd)
 {
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
+	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
 	uint8_t ret = 0;
 
 	switch (info->cmd) {
@@ -611,30 +625,31 @@ static void sp_spinand_desc_prep(struct sp_spinand_info *info, uint8_t cmd, int 
 	mutex_lock(&info->lock);
 	switch (cmd) {
 		case NAND_CMD_READOOB:	/* 0x50 */
-			col += info->mtd.writesize;
+			col += info->mtd->writesize;
 		/* fall through */
 
 		case NAND_CMD_READ0:	/* 0x00 */
-			info->cmd = SPINAND_CMD_PAGE2CACHE;
+			//info->cmd = SPINAND_CMD_PAGE2CACHE;
 			info->buff.idx = col;
 			info->row = row;
 			//spi_nanddma_pageread(info, row, ((info->mtd.writesize) + (info->mtd.oobsize)), (unsigned int *)info->buff.phys);	
-			spi_nanddma_pageread_prep(info, row, ((info->mtd.writesize) + (info->mtd.oobsize)), (unsigned int *)info->buff.phys);
+			spi_nanddma_pageread_prep(info, row, ((info->mtd->writesize) + (info->mtd->oobsize)), (unsigned int *)info->buff.phys);
 			break;
 
 		case NAND_CMD_SEQIN:	/* 0x80 */
-			info->cmd = SPINAND_CMD_PROLOADx4;
+			//info->cmd = SPINAND_CMD_PROLOADx4;
 			info->buff.idx = col;
-			spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
-			spi_nand_wren(info);
+//			spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
+//			spi_nand_wren(info);
 			info->row = row;
+			spi_nanddma_pageprogram_prep(info,row,((info->mtd->writesize) + (info->mtd->oobsize)),(unsigned int *)info->buff.phys);
 			break;
 
 		case NAND_CMD_ERASE1:	/* 0x60 */
-			info->cmd = SPINAND_CMD_BLKERASE;
-			spi_nand_wren(info);	/* for MXIC,ESMT */
+			//info->cmd = SPINAND_CMD_BLKERASE;
+//			spi_nand_wren(info);	/* for MXIC,ESMT */
 			spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
-			spi_nand_wren(info);
+//			spi_nand_wren(info);
 			if (spi_nand_blkerase(info, row)) {
 				pr_err("block erase fail! \n");
 				info->err |= SPI_NAND_ERASE_FAIL;
@@ -642,7 +657,7 @@ static void sp_spinand_desc_prep(struct sp_spinand_info *info, uint8_t cmd, int 
 			break;
 
 		case NAND_CMD_STATUS:	/* 0x70 */
-			info->cmd = SPINAND_CMD_GETFEATURES;
+			//info->cmd = SPINAND_CMD_GETFEATURES;
 			info->buff.idx = 0;
 
 			/*get protection info*/
@@ -666,7 +681,7 @@ static void sp_spinand_desc_prep(struct sp_spinand_info *info, uint8_t cmd, int 
 		case NAND_CMD_RESET:	/* 0xFF */
 			break;
 		default:
-			BUG();
+			//BUG();
 			break;
 	}
 
@@ -695,9 +710,9 @@ static int sp_spinand_desc_send(struct sp_spinand_info *info)
 
 	do {
 		retry++;
-	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 100));
+	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 10000));
 
-	if (retry >= 100) {
+	if (retry >= 10000) {
 		ret = 0x01;
 	}
 
@@ -712,7 +727,7 @@ static int sp_spinand_desc_send(struct sp_spinand_info *info)
 
 static void sp_spinand_cmdfunc(struct mtd_info *mtd, unsigned cmd, int col, int row)
 {
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
+	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
 	int ret = 0;
 
 	if (cmd == NAND_CMD_STATUS) {
@@ -824,7 +839,7 @@ static void sp_spinand_cmdfunc(struct mtd_info *mtd, unsigned cmd, int col, int 
  */
 static void sp_spinand_select_chip(struct mtd_info *mtd, int chipnr)
 {
-	struct sp_spinand_info *info = container_of(mtd, struct sp_spinand_info, mtd);
+	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
 
 	switch (chipnr) {
 		case -1:
@@ -836,6 +851,7 @@ static void sp_spinand_select_chip(struct mtd_info *mtd, int chipnr)
 			break;
 
 		default:
+			break;
 			BUG();
 	}
 }
@@ -845,23 +861,41 @@ static void sp_spinand_select_chip(struct mtd_info *mtd, int chipnr)
 		{ name, id, pgsz, size, bksz, LP_OPTIONS, ext_id }
 
 struct nand_flash_dev spinand_flash_ids2[] = {
-/* GigaDevice SPI NAND  */
-	NAND_LP("GD5F1GQ4UAYIG", 0xC8D1, 0x0, (2048 + 128), SZ_128K, 128),
-	NAND_LP("GD5F2GQ4UAYIG", 0xC8D2, 0x0, (2048 + 128), SZ_128K, 256),
-
-/* MXIC  */
-	NAND_LP("MX30LF1G18AC", 0xC2F1, 0x80950200, (2048 + 64), SZ_128K, 128),
-
-/* Winbond SPI NAND  */
-	NAND_LP("W25N01GVxx1G", 0xEFAA, 0, (2048 + 64), SZ_128K, 128),
-	NAND_LP("W25N02GVxx2G", 0xEFAB, 0, (2048 + 64), SZ_128K, 256),
-
-/* MXIC SPI NAND  */
-	NAND_LP("MX35LF1GE4AB", 0xC212, 0, (2048 + 64), SZ_128K, 128),
-	NAND_LP("MX35LF2GE4AB", 0xC222, 0, (2048 + 64), SZ_128K, 256),
-
-/* ESMT SPI NAND  */
-	NAND_LP("ESMTF50L1G41A", 0xC821, 0, (2048 + 64), SZ_128K, 128)
+	/* Micron */
+	{.name="MT29F1G01ABADD",{.mfr_id=0x2c,.dev_id=0x14},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="MT29F2G01ABADD",{.mfr_id=0x2c,.dev_id=0x24},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* MXIC */
+	{.name="MX35LF1GE4AB",{.mfr_id=0xc2,.dev_id=0x12},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="MX35LF2GE4AB",{.mfr_id=0xc2,.dev_id=0x22},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* Etron */
+	{.name="EM73C044VCC-H",{.mfr_id=0xd5,.dev_id=0x22},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="EM73D044VCE-H",{.mfr_id=0xd5,.dev_id=0x20},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* Winbond */
+	{.name="25N01GVxx1G",{.mfr_id=0xef,.dev_id=0xaa},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="25N01GVxx2G",{.mfr_id=0xef,.dev_id=0xab},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* GiGA */
+	{.name="GD5F1GQ4UBYIG",{.mfr_id=0xc8,.dev_id=0xd1},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="GD5F2GQ4UBYIG",{.mfr_id=0xc8,.dev_id=0xd2},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* ESMT */
+	{.name="F50L1G41LB",{.mfr_id=0xc8,.dev_id=0x01},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	{.name="F50L2G41LB",{.mfr_id=0xc8,.dev_id=0x0a},.pagesize=SZ_2K,.chipsize=SZ_2K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	/* ISSI */
+	{.name="IS38SML01G1-LLA1",{.mfr_id=0xc8,.dev_id=0x21},.pagesize=SZ_2K,.chipsize=SZ_1K, 
+	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},	
+	/*other */
+	{NULL} 
 };
 static int sp_spinand_loadids(struct sp_spinand_info *info, const char *fn)
 {
@@ -894,38 +928,53 @@ static int sp_spinand_loadids(struct sp_spinand_info *info, const char *fn)
 
 static int sp_spinand_fixup(struct sp_spinand_info *info)
 {
-	struct mtd_info *mtd = &info->mtd;
-	struct nand_chip *chip = mtd->priv;
-	uint64_t nrpg;
-
 	info->cac = 2;
-
-	/* row address */
-	nrpg = lldiv(chip->chipsize, mtd->writesize);
-	if (nrpg & 0xFF000000)
-		info->rac = 4;
-	else if (nrpg & 0xFFFF0000)
-		info->rac = 3;
-	else
-		info->rac = 2;
-
 	return 0;
 }
 
+static int sunplus_parse_cfg_partitions(struct mtd_info *master,
+					const struct mtd_partition **pparts,
+					struct mtd_part_parser_data *data)
+{
+	int ret = 0;
+	struct mtd_partition *sunplus_parts;	
+	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
+
+	sunplus_parts = kzalloc(sizeof(*sunplus_parts) * 2, GFP_KERNEL);
+	if (!sunplus_parts)
+		return -ENOMEM;
+	sunplus_parts[0].name = "Linux";
+	sunplus_parts[0].offset = 0;
+	sunplus_parts[0].size = master->erasesize*4096;
+	sunplus_parts[0].mask_flags = MTD_NO_ERASE;
+
+	sunplus_parts[1].name = "User";
+	sunplus_parts[1].offset = master->erasesize*4096;
+	sunplus_parts[1].size = master->erasesize*4096;
+	sunplus_parts[1].mask_flags = MTD_WRITEABLE;
+
+	*pparts = sunplus_parts;
+	ret = 2;
+	return ret;
+};
+
+static struct mtd_part_parser sunplus_nand_parser = {
+	.parse_fn = sunplus_parse_cfg_partitions,
+	.name = "sunplus_part",
+};
+
 static int sp_spinand_probe(struct platform_device *pdev)
 {
-	int i, ret = 0;
+	int ret = 0;
 	unsigned int id;
 	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
 	struct sp_spinand_info *info;
-	struct mtd_part_parser_data data;
 
 	const char *part_types[] = {
-#ifdef CONFIG_MTD_CMDLINE_PARTS
-		"cmdlinepart",
-#endif
+		//"cmdlinepart",
+		"sunplus_part",
 		NULL
 	};
 
@@ -944,26 +993,27 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	/* get module reg addr */	
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);	
 	if (!res) {
-		devm_kfree(info);
+		devm_kfree(dev, (void *)info);
 		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		return -ENXIO;
 	}	
 	
-	info->regs = devm_ioremap_resource(dev, res);
+	info->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(info->regs))
 	{
-		devm_kfree(info);
+		devm_kfree(dev, (void *)info);
 		return PTR_ERR(info->regs);	
 	}
 	
 	/* get irp */
 	info->irq = platform_get_irq(pdev, 0);
+	init_waitqueue_head(&info->wq);
 	if (info->irq <= 0) {
-		devm_kfree(info);
+		devm_kfree(dev, (void *)info);
 		printk("get spi nand irq resource fail\n");
 		return -EINVAL;
 	}else {
-		ret = request_irq(info->irq, sp_nand_irq, 0, "sp_spinand", info);
+		ret = request_irq(info->irq, sp_nand_irq, IRQF_SHARED, "sp_spinand", info);
 		if (ret) {
 			printk("sp_spinand: unable to register IRQ(%d) \n", info->irq);
 		}
@@ -972,10 +1022,11 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, info);
 	
 	info->hdr = dev->platform_data;
-	info->mtd.priv = &info->nand;
-	info->mtd.name = dev_name(info->dev);
-	info->mtd.owner = THIS_MODULE;
-	init_waitqueue_head(&info->wq);
+	info->mtd = &info->nand.mtd;
+	info->mtd->priv = &info->nand;
+	info->mtd->name = dev_name(info->dev);
+	info->mtd->owner = THIS_MODULE;
+	
 	
 	if (sp_spinand_reset(info) < 0) {
 		ret = -ENXIO;
@@ -995,6 +1046,8 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	printk("sp_spinand: buff=0x%p@0x%08x size=%u\n",
 	       info->buff.virt, info->buff.phys, info->buff.size);	
 	
+	nand_set_flash_node(&info->nand, np);
+	
 	info->nand.select_chip = sp_spinand_select_chip;
 	//info->nand.cmd_ctrl = sp_spinand_cmd_ctrl;
 	info->nand.cmdfunc = sp_spinand_cmdfunc;
@@ -1008,8 +1061,10 @@ static int sp_spinand_probe(struct platform_device *pdev)
 
 	info->nand.ecc.read_page = sp_spinand_read_page;
 	info->nand.ecc.write_page = sp_spinand_write_page;
-	info->nand.ecc.layout = &info->ecc_layout;
+	info->nand.ecc.strength = 4;
+	info->nand.ecc.size = 512;
 	info->nand.ecc.mode = NAND_ECC_HW;
+	info->nand.bbt_options = NAND_BBT_USE_FLASH|NAND_BBT_NO_OOB;
 
 	/* Read ID */
 	spi_nand_readid(info, 0, &id);	
@@ -1035,7 +1090,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 	
-	if (nand_scan_ident(&info->mtd, CONFIG_MTD_SP_NAND_CSNR, info->ids)) {
+	if (nand_scan_ident(info->mtd, 1, info->ids)) {
 		ret = -ENXIO;
 		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
@@ -1047,20 +1102,26 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	if (sp_bch_init(&info->mtd) < 0) {
+	if (sp_bch_dev_probe() < 0) {
 		ret = -ENXIO;
 		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
 	}
 
-	if (nand_scan_tail(&info->mtd)) {
+	if (sp_bch_init(info->mtd) < 0) {
 		ret = -ENXIO;
 		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
 	}	
-	
-	data.origin = (unsigned long)info->hdr;
-	ret = mtd_device_parse_register(&info->mtd, part_types, &data, NULL, 0);	
+
+	if (nand_scan_tail(info->mtd)) {
+		ret = -ENXIO;
+		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
+		goto err1;
+	}	
+
+	register_mtd_parser(&sunplus_nand_parser);
+	ret = mtd_device_parse_register(info->mtd, part_types, NULL, NULL, 0);	
 	
 	return ret;
 err1:
@@ -1070,20 +1131,28 @@ err1:
 	if (info->buff.virt)
 		iounmap(info->buff.virt);
 	
-	devm_kfree(info);
+	devm_kfree(dev, (void *)info);
 	
 	return ret;
 }
 
+int sp_spinand_remove(struct platform_device *pdev)
+{
+	int ret = 0;
 
+	sp_bch_dev_remove();
+	
+	deregister_mtd_parser(&sunplus_nand_parser);
+	return ret;
+}
 #define sp_spinand_suspend	NULL
 #define sp_spinand_resume	NULL
 
-static const struct of_device_id of_fun_match[] = {
+static const struct of_device_id sunplus_nand_of_match[] = {
 	{ .compatible = "sunplus,sp_spinand" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, of_fun_match);
+MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
 
 static struct platform_driver sp_spinand_driver = {
 	.probe = sp_spinand_probe,
@@ -1094,14 +1163,13 @@ static struct platform_driver sp_spinand_driver = {
 	.driver = {
 			.name = "sunplus,sp_spinand",
 			.owner = THIS_MODULE,
-			.of_match_table = of_fun_match,
+			.of_match_table = sunplus_nand_of_match,
 		   },
 };
 
 module_platform_driver(sp_spinand_driver);
 
-MODULE_ALIAS("platform:sp_spinand");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Sunplus SPINAND flash controller");
 
 

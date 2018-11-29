@@ -1041,7 +1041,7 @@ static int nand_wait(struct mtd_info *mtd, struct nand_chip *chip)
 
 	status = (int)chip->read_byte(mtd);
 	/* This can happen if in case of timeout or buggy dev_ready */
-	WARN_ON(!(status & NAND_STATUS_READY));
+	//WARN_ON(!(status & NAND_STATUS_READY));
 	return status;
 }
 

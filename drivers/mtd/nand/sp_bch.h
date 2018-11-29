@@ -69,6 +69,8 @@ struct sp_bch_chip {
 	int irq;
 	int busy;
 	uint32_t cr0;
+	int pssz;
+	int free;
 	struct mutex lock;
 	wait_queue_head_t wq;
 };
@@ -78,6 +80,8 @@ struct sp_bch_req {
 	uint8_t ecc[128];
 };
 
+int sp_bch_dev_probe(void);
+int sp_bch_dev_remove(void);
 int sp_bch_init(struct mtd_info *mtd);
 int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc);
 int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc);

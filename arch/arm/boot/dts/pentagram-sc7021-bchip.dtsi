@@ -337,10 +337,11 @@
 
 		spinand0: spinand@sp_spinand {
 			compatible = "sunplus,sp_spinand";
-			reg = <0x9c000AE0 0x50>;
+			reg = <0x9c002B80 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
-		};
+			linux,part-probe = "ofpart", "sunplus_part";
+		};		
 
 		bch0: bch@sp_bch {
 			compatible = "sunplus,sp_bch";
