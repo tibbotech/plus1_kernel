@@ -10,7 +10,7 @@ config MTD_NAND_ECC_SMC
 	  The original Linux implementation had byte 0 and 1 swapped.
 
 
-config MTD_NAND
+menuconfig MTD_NAND
 	tristate "NAND Device Support"
 	depends on MTD
 	select MTD_NAND_ECC
@@ -562,13 +562,6 @@ config MTD_NAND_MTK
 
 config MTD_NAND_SP
 	tristate "Support for NAND controller on SUNPLUS SoCs"
-	select MTD
-	select MTD_CHAR
-	select MTD_BLOCK
-	select MTD_BLKDEVS
-	select MTD_NAND
-	select MTD_NAND_IDS
-	select MTD_NAND_ECC
 	help
 	  Enables support for NAND controller on SUNPLUS SoCs.
 	  This controller is found on Sunplus SoCs.	  
