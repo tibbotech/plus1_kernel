@@ -10,7 +10,7 @@ config MTD_NAND_ECC_SMC
 	  The original Linux implementation had byte 0 and 1 swapped.
 
 
-menuconfig MTD_NAND
+config MTD_NAND
 	tristate "NAND Device Support"
 	depends on MTD
 	select MTD_NAND_ECC
