@@ -294,6 +294,7 @@ CONFIG_SP_DISP_SC7021_TEST=m
 #
 # Pentagram options
 #
+CONFIG_SP_PARTIAL_CLKEN=y
 # CONFIG_SP_MON is not set
 
 #
