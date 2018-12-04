@@ -32,7 +32,7 @@ unsigned int spi_page_size;  // 87.19
 #define SPI_NAND_ENABLE  	(1<<11)
 #define SPI_NAND_CHIP_A	 	(1<<24)	
 #define SPI_NAND_AUTO_WEL	(1<<19)
-#define SPI_NAND_CLK_32DIV	(0x7<<16)
+#define SPI_NAND_CLK_32DIV	(0x2<<16)
 #define SPI_NAND_DMA_OWNER	(0x1<<17)
 
 #define SPI_CUSTCMD_SHIFT          8
@@ -83,6 +83,9 @@ unsigned int spi_page_size;  // 87.19
 /*block erase status */
 #define ERASE_STATUS		0x04
 
+/* page program status */
+#define PROGRAM_STATUS 0x08
+
 /*protect status */
 #define PROTECT_STATUS		0x38
 
@@ -111,10 +114,14 @@ unsigned int spi_page_size;  // 87.19
 
 extern const struct nand_flash_dev sp_nand_ids[];
 
+#define SPI_NAND_READ_FAIL	0x1
+#define SPI_NAND_WRITE_FAIL	0x2
+#define SPI_NAND_ERASE_FAIL	0x4
+
 struct sp_spinand_info {
 	struct device *dev;
 	struct device *dma;
-	struct mtd_info mtd;
+	struct mtd_info *mtd;
 	struct nand_chip nand;
 	wait_queue_head_t wq;
 	void __iomem *regs;
@@ -127,7 +134,6 @@ struct sp_spinand_info {
 		dma_addr_t phys;
 	} buff;
 
-	struct nand_ecclayout ecc_layout;
 	int busy;
 	int cmd;		/* current command code */
 	int cac;		/* col address cycles */

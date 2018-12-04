@@ -22,13 +22,11 @@ if [ "$cfg_num" != "" ];then
 		cfg_num=
 		echo "* Select config:"
 		echo "--------------------"
-		echo " [1] sc7021 achip emu"
-		echo " [2] sc7021 bchip emu"
+		echo " [1] sc7021 achip emu (rootfs)"
+		echo " [2] sc7021 bchip emu (initramfs)"
 		echo " [3] 8388 achip emu"
 		echo " [4] 8388 bchip "
-		echo " [5] i136 achip "
-		echo " [6] i137 bchip "
-		echo " [7] 3502 achip "
+		echo " [5] sc7021 achip emu (initramfs)"
 		echo -n " -> "
 		read cfg_num
 	else
@@ -49,13 +47,7 @@ if [ "$cfg_num" != "" ];then
 			CFG=pentagram_8388_bchip
 			;;
 		5)
-			CFG=pentagram_i136_achip
-			;;
-		6)
-			CFG=pentagram_i137_bchip
-			;;
-		7)
-			CFG=pentagram_3502_achip
+			CFG=pentagram_sc7021_achip_emu_initramfs
 			;;
 		*)
 			echo "Error: bad number!!"
