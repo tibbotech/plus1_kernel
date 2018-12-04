@@ -25,7 +25,7 @@
 void  AUD_Set_PLL(unsigned int SAMPLE_RATE)
 {
 	//	 //Set PLLA
-	volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)REG(4,0);
+	volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)audio_plla_base;//(volatile RegisterFile_G4 *)REG(4,0);
 
 #if 1
 	if( (SAMPLE_RATE==48000) || (SAMPLE_RATE==96000) || (SAMPLE_RATE==192000))  //147.456M
@@ -128,7 +128,7 @@ void  AUD_Set_PLL(unsigned int SAMPLE_RATE)
 
 void aud_clk_cfg(unsigned int SAMPLE_RATE)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
 
    // 147M Setting
 	if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 48000))
@@ -209,7 +209,7 @@ void aud_clk_cfg(unsigned int SAMPLE_RATE)
 
 void  AUDHW_Set_PLL(void)
 {
-	volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)REG(4,0);
+	volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)audio_plla_base;//(volatile RegisterFile_G4 *)REG(4,0);
     regs0->rf_pad_ctl7 = ((regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFF7FF); // PLLA Disable 4.7 [11]
     regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) &0xFFFFEFFF;	// Disable Bypass PLLA 4.7[12]
     regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFBFFF; // 4.7 [14]
@@ -253,7 +253,7 @@ void AUDHW_pin_mx(void)
 
 void AUDHW_clk_cfg(void)
 {
-    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
     // 147M Setting
     regs0->aud_hdmi_tx_mclk_cfg = 0x6883;  //PLLA, 256FS
     regs0->aud_ext_adc_xck_cfg = 0x6883;   //PLLA, 256FS
@@ -274,7 +274,7 @@ void AUDHW_clk_cfg(void)
 void AUDHW_Mixer_Setting(void)
 {
     UINT32 val;
-    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
     //67. 0~4
     regs0->aud_grm_master_gain = 0x80000000;    //aud_grm_master_gain
     regs0->aud_grm_gain_control_0 = 0x80808080; //aud_grm_gain_control_0
@@ -307,7 +307,7 @@ void AUDHW_Mixer_Setting(void)
 
 void AUDHW_int_dac_adc_Setting(void)
 {
-    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
     regs0->int_dac_ctrl1 |= (0x1<<31);	//ADAC reset (normal mode)
     regs0->int_dac_ctrl0 = 0xC41B8F5F;							//power down DA0, DA1 & DA2, enable auto sleep
     regs0->int_dac_ctrl0 |= (0x7<<23);	//DAC op power on
@@ -324,7 +324,7 @@ void AUDHW_int_dac_adc_Setting(void)
 void AUDHW_Cfg_AdcIn(void)
 {
    int val;
-   volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+   volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
    regs0->adcp_ch_enable = 0x0;     //adcp_ch_enable
@@ -337,7 +337,7 @@ void AUDHW_Cfg_AdcIn(void)
 
 void AUDHW_SystemInit(void)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
     //reset aud fifo
     regs0->audif_ctrl  = 0x1;      //aud_ctrl=1
@@ -375,7 +375,7 @@ void AUDHW_SystemInit(void)
 
 INT32 AUD_Set_DacAnalogGain( AUD_ChannelIdx_e tag, int pgaGain)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	switch( tag )
 	{
@@ -410,7 +410,7 @@ INT32 AUD_Set_DacAnalogGain( AUD_ChannelIdx_e tag, int pgaGain)
 
 void snd_aud_config( void)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	regs0->aud_audhwya = aud_param.fifoInfo.pcmtx_physAddrBase;
 
 	/****************************************
@@ -428,7 +428,7 @@ void snd_aud_config( void)
 
 void AUD_hw_free(void)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	regs0->aud_grm_master_gain = 0;
 }
 

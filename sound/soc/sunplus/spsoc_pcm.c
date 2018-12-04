@@ -76,7 +76,7 @@ static struct cdev spaud_fops_cdev;	// for file operation
 
 static void hrtimer_pcm_tasklet(unsigned long priv)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	struct spsoc_runtime_data *iprtd = (struct spsoc_runtime_data *)priv;
 	struct snd_pcm_substream *substream = iprtd->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -266,7 +266,7 @@ static int spsoc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_p
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	AUD_INFO("%s IN,params_rate=%d,stream=%d\n", __func__,params_rate(params),substream->stream);
 
@@ -327,7 +327,7 @@ static int spsoc_pcm_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *iprtd = runtime->private_data;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
 
@@ -368,7 +368,7 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;
 	unsigned int startthreshold=0;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
 	switch (cmd) {
@@ -503,7 +503,7 @@ static int spsoc_pcm_copy(struct snd_pcm_substream *substream, int channel,
 		    snd_pcm_uframes_t pos,
 		    void __user *buf, snd_pcm_uframes_t count)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	int ret = 0;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;

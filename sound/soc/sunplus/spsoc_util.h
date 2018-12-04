@@ -9,6 +9,8 @@
 #include "types.h"
 
 //#define En_AUD_FPGA
+extern void __iomem *audio_base;
+extern void __iomem *audio_plla_base;
 
 /**********************************************************
  * 			BASE

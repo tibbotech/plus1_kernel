@@ -26,7 +26,7 @@ void F_ConfigSpdif( UINT32 user_disc_fmt )
 {
 	unsigned int Disc_Format;
 	unsigned int Spidf_cfg;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
 	if( aud_param.spdif_mode == SPDIF_MODE_NONE )
@@ -95,7 +95,7 @@ void F_ConfigHdmi(UINT32 user_disc_fmt , UINT16 CodecCapability)
 {
 	unsigned int Disc_Format;
 	unsigned int Spidf_cfg;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	if( aud_param.hdmi_mode== HDMI_MODE_NONE)
 	{
@@ -184,7 +184,7 @@ void F_ConfigHdmi(UINT32 user_disc_fmt , UINT16 CodecCapability)
 void F_DisHBRMode(void)
 {
    	unsigned int HBR_MODE;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
    	HBR_MODE = regs0->aud_misc_ctrl;
    	HBR_MODE &= 0xfffff9ff; 		// disable Bit9,Bit10
@@ -201,7 +201,7 @@ void F_EnaHBRMode(void)
 	 * bit10: HDMI data source from IEC1 or PCM
 	 */
 	unsigned int HBR_MODE;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
 	HBR_MODE = regs0->aud_misc_ctrl;
@@ -214,7 +214,7 @@ void F_EnaHBRMode(void)
 void F_UpdateCGMS( void )
 {
 	UINT32 AUD_IEC0_OUT_PAR0 = 0;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	AUD_IEC0_OUT_PAR0 = regs0->iec0_par0_out;
 	AUD_IEC0_OUT_PAR0 |= (0x1<< 5);
@@ -277,7 +277,7 @@ void F_UpdateIEC0_ChannelStatus( UINT32 user_disc_fmt )
 	unsigned int ChannelStaus_SampleRate;
 	unsigned int Pre_ChannelStaus;
 	unsigned int New_ChannelStaus;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	F_ConfigSpdif(user_disc_fmt);
 	F_UpdateCGMS();
@@ -354,7 +354,7 @@ void F_UpdateIEC1_ChannelStatus( UINT32 user_disc_fmt, UINT16 CodecCapability)
 	UINT32 Pre_ChannelStaus;
 	UINT32 New_ChannelStaus;
 	int fs_id = 0;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	F_ConfigHdmi(user_disc_fmt, CodecCapability);
 
