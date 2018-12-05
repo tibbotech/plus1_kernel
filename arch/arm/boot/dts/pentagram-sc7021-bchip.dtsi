@@ -335,6 +335,25 @@
 			spi-max-frequency = <50000000>;
 		};
 
+        spi_master0: spi@sp_spi_master {
+			compatible = "sunplus,pentagram-spi-master";
+			reg = <0x9C002D80 0x80>, <0x9c000100 0x80>;
+			reg-names = "spi_combo0", "grp2_sft";
+			interrupt-parent = <&intc>;
+			interrupt-names = "dma_w_intr",
+							  "mas_risc_intr";
+			interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
+						 <146 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc PLL_SYS>;
+			clock-names = "sys_pll";
+			spi-max-frequency = <10000000>;
+			spi0: spi@0 {
+				compatible = "spidev";
+				reg = <0>;
+				spi-max-frequency = <10000000>;
+			};
+		};
+
 		spinand0: spinand@sp_spinand {
 			compatible = "sunplus,sp_spinand";
 			reg = <0x9c002B80 0x50>;
