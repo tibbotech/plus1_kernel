@@ -63,7 +63,7 @@ static const struct hc_driver ehci_platform_hc_driver = {
 #endif
 
 	.irq = ehci_irq,
-	.flags = HCD_MEMORY | HCD_USB2,
+	.flags = HCD_MEMORY | HCD_USB2 | HCD_BH,
 
 	.reset = ehci_platform_reset,
 	.start = ehci_run,
