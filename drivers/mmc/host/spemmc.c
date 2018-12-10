@@ -33,7 +33,7 @@
 *                          MACRO Function Define
 *******************************************************************************/
 #define SPEMMC_MAX_CLOCK  CLOCK_52M     /* Max supported SD Card frequency */
-#define SPEMMCV2_SDC_NAME "sunplus,sp-emmc"
+#define SPEMMCV2_SDC_NAME "sp-emmc"
 #define MAX_SDDEVICES   2
 #define SPEMMC_DEVICE_MASK 1
 #define SPEMMC_READ_DELAY  2		/* delay for sampling data */
@@ -120,6 +120,10 @@ static const struct of_device_id spemmc_of_id[] = {
 };
 MODULE_DEVICE_TABLE(of, spemmc_of_id);
 
+static int max_seg_size = (32 * 1024);
+static int dma_mode = 1;
+module_param(max_seg_size, int, 0444);
+module_param(dma_mode, int, 0664);
 
 
 /******************************************************************************
@@ -649,6 +653,109 @@ static void spemmc_proc_normDMA(SPEMMCHOST *host)
 	return;
 }
 
+/* Send data in @buf out with pio.
+  * @host: the host
+  * @buf: data buf
+  * @len data len
+  *
+  * return: the count of transfered data, or -1 if error occured.
+  */
+static int spemmc_pio_tx(SPEMMCHOST *host, char *buf, int len)
+{
+	int count = 0;
+	while (len > 0) {
+		host->base->sd_piodatatx = *(u32 *)buf;
+		buf += 4;
+		len -= 4;
+		count += 4;
+		while (1) {
+			if (host->base->sdstatus & SP_SDSTATUS_TX_DATA_BUF_EMPTY)
+				break;
+			if (host->base->sdstate_new & SDSTATE_NEW_FINISH_IDLE)
+				return count;
+			if (host->base->sdstate_new & SDSTATE_NEW_ERROR_TIMEOUT) {
+				spemmc_check_sdstatus_errors(host);
+				return -1;
+			}
+		}
+	}
+	return count;
+}
+
+/* Receive data to @buf with pio.
+  * @host: the host
+  * @buf: data buf
+  * @len data len
+  *
+  * return: the count of transfered data, or -1 if error occured.
+  */
+static int spemmc_pio_rx(SPEMMCHOST *host, char *buf, int len)
+{
+	int count = 0;
+	while (len > 0) {
+		while (1) {
+			if (host->base->sdstatus & SP_SDSTATUS_RX_DATA_BUF_FULL)
+				break;
+			if (host->base->sdstate_new & SDSTATE_NEW_FINISH_IDLE)
+				return count;
+			if (host->base->sdstate_new & SDSTATE_NEW_ERROR_TIMEOUT) {
+				spemmc_check_sdstatus_errors(host);
+				return -1;
+			}
+		}
+		*(u32 *)buf = host->base->sd_piodatarx;
+		buf += 4;
+		len -= 4;
+		count += 4;
+	}
+	return count;
+
+}
+
+static void spemmc_proc_pio(SPEMMCHOST *host)
+{
+	struct mmc_request *mrq = host->mrq;
+	struct mmc_data *data = mrq->data;
+	struct scatterlist *sg;
+	int nents = sg_nents(data->sg);
+	int write = data->flags & MMC_DATA_WRITE;
+	int i;
+
+	spemmc_prepare_cmd_rsp(host);
+	EMMC_PAGE_NUM_SET(host->base, data->blocks);
+	if (!write) {
+		host->base->sdcmddummy = 0;
+		host->base->sdautorsp = 0;
+		host->base->sd_trans_mode = 2;
+	} else {
+		host->base->sdcmddummy = 1;
+		host->base->sdautorsp = 1;
+		host->base->sd_trans_mode = 1;
+	}
+	if (host->mrq->stop)
+		host->base->sd_len_mode = 0;
+	else
+		host->base->sd_len_mode = 1;
+
+	host->base->sdpiomode = 1;
+	SDDATALEN_SET(host->base, data->blksz);
+
+	/* Start Transaction */
+	host->base->sdctrl0 = 1;
+
+	for_each_sg(data->sg, sg, nents, i) {
+		if (write) {
+			if (-1 == spemmc_pio_tx(host, (char *)sg_virt(sg), sg->length))
+				return;
+		} else {
+			if (-1 == spemmc_pio_rx(host, (char *)sg_virt(sg), sg->length))
+				return;
+		}
+	}
+	spemmc_get_response_48(host);
+	data->bytes_xfered = data->blocks * data->blksz;
+}
+
 static void spemmc_set_cmd(SPEMMCHOST *host, struct mmc_request *mrq)
 {
 	host->base->sd_cmdbuf[3] = (u8)(mrq->cmd->opcode | 0x40);	/* add start bit, according to spec, command format */
@@ -920,11 +1027,16 @@ void spemmc_mmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 			if (!mrq->data->error)
 				host->need_tune_dat_timing = 0;
 			sphe_mmc_finish_request(host, host->mrq);
-		} else {
+		} else if (likely(dma_mode)){
 			spemmc_proc_normDMA(host);
 			if(-EINVAL == host->mrq->data->error) { /*  para is not correct return */
 				sphe_mmc_finish_request(host, host->mrq);
 			}
+		} else {
+			spemmc_proc_pio(host);
+			host->mrq = NULL;
+			up(&host->req_sem);
+			mmc_request_done(host->mmc, mrq);
 		}
 	}
 }
@@ -1123,11 +1235,11 @@ int spemmc_drv_probe(struct platform_device *pdev)
 
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
 
-	mmc->max_seg_size = 65536 * 512;            /* Size per segment is limited via host controller's
+	mmc->max_seg_size = max_seg_size;            /* Size per segment is limited via host controller's
 	                                               ((sdram_sector_#_size max value) * 512) */
 	/* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS", a.k.a. max scattered memory segments per request */
 	mmc->max_segs = 1;
-	mmc->max_req_size = 65536 * 512;			/* Decided by hw_page_num0 * SDHC's blk size */
+	mmc->max_req_size = max_seg_size;			/* Decided by hw_page_num0 * SDHC's blk size */
 	mmc->max_blk_size = 512;                   /* Limited by host's dma_size & data_length max value, set it to 512 bytes for now */
 	mmc->max_blk_count = 65536;                 /* Limited by sdram_sector_#_size max value */
 	mmc->caps =  MMC_CAP_MMC_HIGHSPEED | MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE;
