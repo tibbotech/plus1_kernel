@@ -77,22 +77,22 @@ typedef struct{
 }SPI_MAS;
 
 struct pentagram_spi_master {
-	struct spi_master	*master;
-	void				__iomem *mas_base;
-	void				__iomem *sft_base;
-	int					dma_irq;
-	int					mas_irq;
-	struct clk			*spi_clk;
-	spinlock_t			lock;
-	unsigned int		spi_max_frequency;
-	dma_addr_t			tx_dma_phy_base;
-	dma_addr_t			rx_dma_phy_base;
-	void *				tx_dma_vir_base;
-	void *				rx_dma_vir_base;
+	struct spi_master *master;
+	void __iomem *mas_base;
+	void __iomem *sft_base;
+	int dma_irq;
+	int mas_irq;
+	struct clk *spi_clk;
+	spinlock_t lock;
+	unsigned int spi_max_frequency;
+	dma_addr_t tx_dma_phy_base;
+	dma_addr_t rx_dma_phy_base;
+	void * tx_dma_vir_base;
+	void * rx_dma_vir_base;
+	struct completion isr_done;
+	int isr_flag;
 };
 
-static volatile int isr_flag = SPIM_IDLE;
-static volatile int isr_done = 0;
 static unsigned bufsiz = 4096;
 
 static irqreturn_t pentagram_spi_master_dma_irq(int irq, void *dev)
@@ -106,9 +106,9 @@ static irqreturn_t pentagram_spi_master_dma_irq(int irq, void *dev)
 	reg_temp = readl(&spim_reg->DMA_CTRL);
 	reg_temp |= CLEAR_DMA_W_INT;
 	writel(reg_temp, &spim_reg->DMA_CTRL);
-	isr_done = 1;
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
+	complete(&pspim->isr_done);
 	return IRQ_HANDLED;
 }
 static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
@@ -122,25 +122,29 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 	reg_temp = readl(&spim_reg->SPI_INT_BUSY);
 	reg_temp |= CLEAR_MASTER_INT;
 	writel(reg_temp, &spim_reg->SPI_INT_BUSY);
-	if(isr_flag == SPIM_WRITE)
+	if(pspim->isr_flag == SPIM_WRITE)
 	{
 		reg_temp = readl(&spim_reg->SPI_CTRL_CLKSEL);
 		reg_temp |= SPI_START;
 		writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
 	}else
-		isr_flag = SPIM_READ;
-	isr_done = 1;
+		pspim->isr_flag = SPIM_READ;
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
+	complete(&pspim->isr_done);
 	return IRQ_HANDLED;
 }
-static int pentagram_spi_master_dma_write(SPI_MAS* spim_reg, struct device dev,
-			char *buf,char *dma_buf, char *dma_vir_buf, unsigned int len)
+static int pentagram_spi_master_dma_write(struct spi_master *master, char *buf, unsigned int len)
 {
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	struct device dev = master->dev;
 	unsigned int addr;
 	unsigned int valid = 0;
 	unsigned int data_len = len;
 	unsigned int reg_temp = 0;
+	unsigned long timeout = msecs_to_jiffies(200);
+	unsigned long flags;
 	int buf_offset = 0;
 	switch(buf[0])
 	{
@@ -169,39 +173,57 @@ static int pentagram_spi_master_dma_write(SPI_MAS* spim_reg, struct device dev,
 			return 1;
 			break;
 	}
-	memcpy(dma_vir_buf, buf + buf_offset, len);
-	isr_done = 0;
-	isr_flag = SPIM_WRITE;
+	memcpy(pspim->tx_dma_vir_base, buf + buf_offset, len);
+	reinit_completion(&pspim->isr_done);
+
+	spin_lock_irqsave(&pspim->lock, flags);
+	pspim->isr_flag = SPIM_WRITE;
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
 	writel(addr & valid, &spim_reg->MST_TX_DATA_ADDR);
 	writel(data_len, &spim_reg->DMA_LENGTH);
-	writel(dma_buf , &spim_reg->DMA_ADDR);
+	writel(pspim->tx_dma_phy_base , &spim_reg->DMA_ADDR);
+
+	spin_lock_irqsave(&pspim->lock, flags);
 	writel(DMA_WRITE, &spim_reg->DMA_CTRL);
 	reg_temp = readl(&spim_reg->SPI_CTRL_CLKSEL);
 	reg_temp &= CLEAR_ADDR_BIT;
 	reg_temp |= ADDR_BIT(buf[0]);
+	writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
 	writel(DMA_DATA_RDY, &spim_reg->MST_DMA_DATA_RDY);
-	while(isr_done != 1)
+	if(!wait_for_completion_timeout(&pspim->isr_done, timeout))
 	{
-		dev_dbg(&dev,"wait isr_done 0x%x\n",isr_done);
-	};
+		dev_err(&dev,"wait_for_completion_timeout\n");
+		return 1;
+	}
 	while((readl(&spim_reg->SPI_INT_BUSY) & SPI_BUSY) == SPI_BUSY)
 	{
 		dev_dbg(&dev,"spim_reg->SPI_INT_BUSY 0x%x\n",readl(&spim_reg->SPI_INT_BUSY));
 	};
-	isr_flag = SPIM_IDLE;
+
+	spin_lock_irqsave(&pspim->lock, flags);
+	pspim->isr_flag = SPIM_IDLE;
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
 	return 0;
 }
-static int pentagram_spi_master_dma_read(SPI_MAS* spim_reg, struct device dev,
-			char *cmd, char *buf, unsigned int len)
+static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, unsigned int len)
 {
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	struct device dev = master->dev;
 	unsigned int addr;
 	unsigned int valid = 0;
 	unsigned int data_len = len;
 	unsigned int reg_temp = 0;
+	unsigned long timeout = msecs_to_jiffies(200);
+	unsigned long flags;
 	#ifdef SLAVE_INT_IN
-	while(isr_flag != SPIM_READ)
+	while(pspim->isr_flag != SPIM_READ)
 	{
-		dev_dbg(&dev,"wait read isr %d\n",isr_flag);
+		dev_dbg(&dev,"wait read isr %d\n",pspim->isr_flag);
 	};
 	//while((readl(&spim_reg->SPI_INT_BUSY) & MASTER_INT) == 0x0)
 	//{
@@ -234,25 +256,34 @@ static int pentagram_spi_master_dma_read(SPI_MAS* spim_reg, struct device dev,
 			return 1;
 			break;
 	}
-	isr_done = 0;
+	reinit_completion(&pspim->isr_done);
 	writel(addr & valid, &spim_reg->MST_TX_DATA_ADDR);
 	writel(data_len, &spim_reg->DMA_LENGTH);
-	writel(buf, &spim_reg->DMA_ADDR);
+	writel(pspim->rx_dma_phy_base, &spim_reg->DMA_ADDR);
+
+	spin_lock_irqsave(&pspim->lock, flags);
 	writel(DMA_READ, &spim_reg->DMA_CTRL);
 	reg_temp = readl(&spim_reg->SPI_CTRL_CLKSEL);
 	reg_temp &= CLEAR_ADDR_BIT;
 	reg_temp |= ADDR_BIT(cmd[0]);
 	reg_temp |= SPI_START;
 	writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
-	while(isr_done != 1)
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
+	if(!wait_for_completion_timeout(&pspim->isr_done,timeout))
 	{
-		dev_dbg(&dev,"wait isr_done 0x%x\n",isr_done);
-	};
+		dev_err(&dev,"wait_for_completion_timeout\n");
+		return 1;
+	}
 	while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
 	{
 		dev_dbg(&dev,"spim_reg->DMA_CTRL 0x%x\n",readl(&spim_reg->DMA_CTRL));
 	};
-	isr_flag = SPIM_IDLE;
+
+	spin_lock_irqsave(&pspim->lock, flags);
+	pspim->isr_flag = SPIM_IDLE;
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
 	return 0;
 }
 static int pentagram_spi_master_setup(struct spi_device *spi)
@@ -265,6 +296,7 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	unsigned int div;
 	unsigned int clk_sel;
 	unsigned int reg_temp;
+	unsigned long flags;
 	dev_dbg(&dev,"%s\n",__FUNCTION__);
 
 	//set clock
@@ -272,7 +304,11 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	div = clk_rate / pspim->spi_max_frequency;
 	clk_sel = (div / 2) - 1;
 	reg_temp = PENTAGRAM_SPI_SLAVE_SET | ((clk_sel & 0x3fff) << 16);
+
+	spin_lock_irqsave(&pspim->lock, flags);
 	writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
 	dev_dbg(&dev,"clk_sel 0x%x\n",readl(&spim_reg->SPI_CTRL_CLKSEL));
 
 	//set pinmux
@@ -283,7 +319,9 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	dev_dbg(&dev,"grp2_sft_cfg[23] 0x%x\n",grp2_sft_cfg[23]);
 	dev_dbg(&dev,"grp2_sft_cfg[24] 0x%x\n",grp2_sft_cfg[24]);
 
-	isr_flag = SPIM_IDLE;
+	spin_lock_irqsave(&pspim->lock, flags);
+	pspim->isr_flag = SPIM_IDLE;
+	spin_unlock_irqrestore(&pspim->lock, flags);
 
 	return 0;
 }
@@ -314,8 +352,8 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 	unsigned int len;
 	unsigned int temp_reg;
 	int mode;
+	int ret;
 	unsigned char *temp;
-	dma_addr_t dma_addr;
 
 	if((xfer->tx_buf)&&(!xfer->rx_buf))
 	{
@@ -343,15 +381,15 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 
 	if(mode == SPIM_WRITE)
 	{
-		pentagram_spi_master_dma_write(spim_reg, dev, data_buf, pspim->tx_dma_phy_base,
-									pspim->tx_dma_vir_base, len);
+		ret = pentagram_spi_master_dma_write(master, data_buf, len);
 	}else if(mode == SPIM_READ)
 	{
-		pentagram_spi_master_dma_read(spim_reg, dev, cmd_buf, pspim->rx_dma_phy_base, len);
-		memcpy(data_buf, pspim->rx_dma_vir_base, len);
+		ret = pentagram_spi_master_dma_read(master, cmd_buf, len);
+		if(ret == 0)
+			memcpy(data_buf, pspim->rx_dma_vir_base, len);
 	}
 
-	return 0;
+	return ret;
 }
 static int pentagram_spi_master_probe(struct platform_device *pdev)
 {
@@ -389,6 +427,7 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 		pspim->spi_max_frequency = 25000000;
 
 	spin_lock_init(&pspim->lock);
+	init_completion(&pspim->isr_done);
 
 	/* find and map our resources */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, MAS_REG_NAME);
@@ -463,7 +502,7 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 					&pspim->rx_dma_phy_base, GFP_ATOMIC);
 	if(!pspim->rx_dma_vir_base) {
 		dev_err(&pdev->dev, "dma_alloc_coherent fail\n");
-		goto free_clk;
+		goto free_tx_dma;
 	}
 	dev_dbg(&pdev->dev, "rx_dma vir 0x%x\n",pspim->rx_dma_vir_base);
 	dev_dbg(&pdev->dev, "rx_dma phy 0x%x\n",pspim->rx_dma_phy_base);
@@ -471,11 +510,14 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 	ret = spi_register_master(master);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "spi_register_master fail\n");
-		goto free_clk;
+		goto free_rx_dma;
 	}
+	return 0;
 
-free_tx_dma:
+free_rx_dma:
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->rx_dma_vir_base, pspim->rx_dma_phy_base);
+free_tx_dma:
+	dma_free_coherent(&pdev->dev, bufsiz, pspim->tx_dma_vir_base, pspim->tx_dma_phy_base);
 free_clk:
 	clk_disable_unprepare(pspim->spi_clk);
 free_alloc:
