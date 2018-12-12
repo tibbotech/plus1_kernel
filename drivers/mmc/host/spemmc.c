@@ -120,9 +120,7 @@ static const struct of_device_id spemmc_of_id[] = {
 };
 MODULE_DEVICE_TABLE(of, spemmc_of_id);
 
-static int max_seg_size = (32 * 1024);
 static int dma_mode = 1;
-module_param(max_seg_size, int, 0444);
 module_param(dma_mode, int, 0664);
 
 
@@ -140,16 +138,16 @@ static inline bool is_crc_token_valid(SPEMMCHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
+#define REG_BASE 0x9c000000
+#define RF_GRP(_grp, _reg) ((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
+#define RF_MASK_V(_mask, _val) (((_mask) << 16) | (_val))
+#define RF_MASK_V_SET(_mask) (((_mask) << 16) | (_mask))
+#define RF_MASK_V_CLR(_mask) (((_mask) << 16) | 0)
+
 static int enable_pinmux(SPEMMCHOST *host, int enable)
 {
-#define REG_BASE					0x9c000000
-#define RF_GRP(_grp, _reg)			((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
-#define RF_MASK_V(_mask, _val)      (((_mask) << 16) | (_val))
-#define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
-#define RF_MASK_V_CLR(_mask)        (((_mask) << 16) | 0)
-
 	int ret = 0;
-	volatile void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
+	void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
 	/* pinmux */
 	if (!reg) {
 		EPRINTK("ioremap for pinmux set failed!\n");
@@ -165,11 +163,24 @@ static int enable_pinmux(SPEMMCHOST *host, int enable)
 	return ret;
 }
 
+static int reset_controller(SPEMMCHOST *host)
+{
+	void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 24), 4);
+	if (!reg) {
+		EPRINTK("ioremap for reset failed!\n");
+		return -ENOMEM;
+	}
+	writel(RF_MASK_V_SET(1<<14), reg);
+	mdelay(10);
+	writel(RF_MASK_V_CLR(1<<14), reg);
+	iounmap(reg);
+	return 0;
+}
+
 static inline int emmc_get_in_clock(SPEMMCHOST *host)
 {
 	return clk_get_rate(host->clk);
 }
-
 
 static int Sd_Bus_Reset_Channel(SPEMMCHOST *host)
 {
@@ -1235,11 +1246,11 @@ int spemmc_drv_probe(struct platform_device *pdev)
 
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
 
-	mmc->max_seg_size = max_seg_size;            /* Size per segment is limited via host controller's
+	mmc->max_seg_size = 65536 * 512;            /* Size per segment is limited via host controller's
 	                                               ((sdram_sector_#_size max value) * 512) */
 	/* Host controller supports up to "SP_HW_DMA_MEMORY_SECTORS", a.k.a. max scattered memory segments per request */
 	mmc->max_segs = 1;
-	mmc->max_req_size = max_seg_size;			/* Decided by hw_page_num0 * SDHC's blk size */
+	mmc->max_req_size = 65536 * 512;			/* Decided by hw_page_num0 * SDHC's blk size */
 	mmc->max_blk_size = 512;                   /* Limited by host's dma_size & data_length max value, set it to 512 bytes for now */
 	mmc->max_blk_count = 65536;                 /* Limited by sdram_sector_#_size max value */
 	mmc->caps =  MMC_CAP_MMC_HIGHSPEED | MMC_CAP_4_BIT_DATA | MMC_CAP_8_BIT_DATA | MMC_CAP_NONREMOVABLE;
@@ -1247,6 +1258,11 @@ int spemmc_drv_probe(struct platform_device *pdev)
 	mmc->caps2 = MMC_CAP2_NO_SDIO | MMC_CAP2_NO_SD;
 
 	dev_set_drvdata(&pdev->dev, mmc);
+	/* FIXME: change to  make use of reset_control_assert/deassert
+	  * when some day reset driver is ready.
+	  */
+	if (reset_controller(host))
+		printk(KERN_WARNING "Reset card controller failed!\n");
 
 	mmc_add_host(mmc);
 

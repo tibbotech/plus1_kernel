@@ -202,6 +202,20 @@ static int enable_pinmux(SPSDHOST *host, int enable)
 	return 0;
 }
 
+static int reset_controller(SPSDHOST *host)
+{
+	void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 24), 4);
+	if (!reg) {
+		EPRINTK("ioremap for reset failed!\n");
+		return -ENOMEM;
+	}
+	writel(RF_MASK_V_SET(1<<15), reg);
+	mdelay(10);
+	writel(RF_MASK_V_CLR(1<<15), reg);
+	iounmap(reg);
+	return 0;
+}
+
 static inline int sd_get_in_clock(SPSDHOST *host)
 {
 	return clk_get_rate(host->clk);
@@ -1214,6 +1228,11 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		#endif
 	}
 	dev_set_drvdata(&pdev->dev, mmc);
+	/* FIXME: change to  make use of reset_control_assert/deassert
+	  * when some day reset driver is ready.
+	  */
+	if (reset_controller(host))
+		printk(KERN_WARNING "Reset card controller failed!\n");
 
 	mmc_add_host(mmc);
 	pm_runtime_set_active(&pdev->dev);
