@@ -204,14 +204,22 @@ static int enable_pinmux(SPSDHOST *host, int enable)
 
 static int reset_controller(SPSDHOST *host)
 {
-	void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 24), 4);
+	int bitn, regn;
+	void __iomem  *reg;
+	if (SP_SDIO_SLOT_ID == host->id)
+		bitn = 2, regn = 25;
+	else if (SP_EMMCSLOT_ID == host->id)
+		bitn = 14, regn = 24;
+	else
+		bitn = 15, regn = 24;
+	reg  = ioremap_nocache(RF_GRP(0, regn), 4);
 	if (!reg) {
 		EPRINTK("ioremap for reset failed!\n");
 		return -ENOMEM;
 	}
-	writel(RF_MASK_V_SET(1<<15), reg);
+	writel(RF_MASK_V_SET(1<<bitn), reg);
 	mdelay(10);
-	writel(RF_MASK_V_CLR(1<<15), reg);
+	writel(RF_MASK_V_CLR(1<<bitn), reg);
 	iounmap(reg);
 	return 0;
 }
