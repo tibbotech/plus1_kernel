@@ -437,13 +437,14 @@ static int ethernet_open(struct net_device *net_dev)
 	}
 
 	mac_hw_stop(mac);
-
+#if 0
 	/*register interrupt function to system*/
 	rc = devm_request_irq(&pdev->dev, net_dev->irq, ethernet_interrupt, IRQF_TRIGGER_HIGH, net_dev->name, net_dev);
 	if (rc != 0) {
         ERROR0("[%s][%d] ethernet driver request irq %d fialed...rc [%d]\n", __FUNCTION__, __LINE__, net_dev->irq, rc);
 		goto REQUEST_IRQ_FAIL;
 	}
+#endif
 	DEBUG1();
 	mac->tx_desc_full = 0;
 
@@ -455,8 +456,10 @@ static int ethernet_open(struct net_device *net_dev)
 	mac_init(mac);
 
 	mac_hw_start(mac);
+	netif_carrier_on(net_dev);
 
 	if (netif_carrier_ok(net_dev)) {
+		DEBUG0("l2sw open netif_start_queue \n");
 		netif_start_queue(net_dev);
 	}
 
@@ -485,7 +488,7 @@ static int ethernet_stop(struct net_device *net_dev)
 
 	spin_unlock_irqrestore(&mac->lock, flags);
 
-	mac_phy_stop(net_dev);
+	//mac_phy_stop(net_dev);
 	mac_hw_stop(mac);
 
 	//synchronize_irq(net_dev->irq);
@@ -664,7 +667,7 @@ static u32 netdev_init(struct platform_device *pdev)
 	struct net_device *net_dev;
 	struct resource *res;
 	struct resource *r_mem = NULL;
-
+	u32 rc= 0;
 	DEBUG0("l2sw netdev_init \n");
 	/* allocate the devices, and also allocate l2sw_mac, we can get it by  netdev_priv() */
 	if ((net_dev = alloc_etherdev(sizeof(struct l2sw_mac))) == NULL) {
@@ -706,6 +709,8 @@ static u32 netdev_init(struct platform_device *pdev)
 		goto out_freedev;
 	}
 
+
+
 	l2sw_pinmux_set();
 	l2sw_enable_port(pdev);
 	
@@ -742,6 +747,13 @@ static u32 netdev_init(struct platform_device *pdev)
 	if ((ret = register_netdev(net_dev))) {
 		ERROR0("[%s][%d] error %i registering device \"%s\"\n", __FUNCTION__, __LINE__, ret, net_dev->name);
 		goto out_freemdio;
+	}
+
+	/*register interrupt function to system*/
+	rc = devm_request_irq(&pdev->dev, net_dev->irq, ethernet_interrupt, IRQF_TRIGGER_HIGH, net_dev->name, net_dev);
+	if (rc != 0) {
+		ERROR0("[%s][%d] ethernet driver request irq %d fialed...rc [%d]\n", __FUNCTION__, __LINE__, net_dev->irq, rc);
+		goto  out_freedev;
 	}
 
 #ifndef INTERRUPT_IMMEDIATELY
