@@ -38,6 +38,11 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
+
+		i2c0 = &i2cm0;
+		i2c1 = &i2cm1;
+		i2c2 = &i2cm2;
+		i2c3 = &i2cm3;
 	};
 
 	reserved-memory {
@@ -387,6 +392,41 @@
 				<167 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
 #endif
+		i2cm0: i2c@sp_i2cm0 {
+			compatible = "sunplus,sp_i2cm";
+			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>;
+			reg-names = "i2cm", "moon0", "moon3";
+			interrupt-parent = <&intc>;
+			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
+		i2cm1: i2c@sp_i2cm1 {
+			compatible = "sunplus,sp_i2cm";
+			reg = <0x9c004700 0x80>;
+			reg-names = "i2cm";
+			interrupt-parent = <&intc>;
+			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
+		i2cm2: i2c@sp_i2cm2 {
+			compatible = "sunplus,sp_i2cm";
+			reg = <0x9c004800 0x80>;
+			reg-names = "i2cm";
+			interrupt-parent = <&intc>;
+			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
+
+		i2cm3: i2c@sp_i2cm3 {
+			compatible = "sunplus,sp_i2cm";
+			reg = <0x9c004900 0x80>;
+			reg-names = "i2cm";
+			interrupt-parent = <&intc>;
+			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&extclk>;
+		};
 
 		pwm: pwm@0x9c007a00 {
 			#pwm-cells = <2>;
