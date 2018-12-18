@@ -24,13 +24,12 @@ struct platform_driver ehci0_hcd_sunplus_driver = {
 	.probe			= ehci0_sunplus_platform_probe,
 	.remove			= ehci_platform_remove,
 	.shutdown		= usb_hcd_platform_shutdown,
-#ifdef CONFIG_PM_WARP
-	.resume 		= sp_ehci_fb_resume,
-	.suspend 		= sp_ehci_fb_suspend,
-#endif
 	.driver = {
 		.name		= "ehci0-sunplus",
 		.of_match_table = ehci0_sunplus_dt_ids,
+#ifdef CONFIG_PM
+		.pm = &ehci_sunplus_pm_ops,
+#endif
 	}
 };
 

@@ -26,7 +26,7 @@
 #include <linux/clk.h>
 #include <linux/usb/sp_usb.h>
 
-static struct clk *ehci_clk[USB_PORT_NUM];
+struct clk *ehci_clk[USB_PORT_NUM];
 static int ehci_platform_reset(struct usb_hcd *hcd)
 {
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
@@ -234,10 +234,6 @@ static int ehci_notifier_call(struct notifier_block *self,
 #endif
 
 #ifdef CONFIG_SWITCH_USB_ROLE
-
-#ifdef CONFIG_PM_WARP
-static u32 fb_restore = 0;
-#endif
 
 #define USB_UPHY_REG	(3)
 
@@ -626,88 +622,41 @@ int ehci_platform_remove(struct platform_device *dev)
 }
 EXPORT_SYMBOL_GPL(ehci_platform_remove);
 
-
 #ifdef CONFIG_PM
-
-static int ehci_platform_suspend(struct device *dev)
+static int ehci_sunplus_drv_suspend(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	bool wakeup = device_may_wakeup(dev);
+	bool do_wakeup = device_may_wakeup(dev);
+	int rc;
 
-	ehci_prepare_ports_for_controller_suspend(hcd_to_ehci(hcd), wakeup);
+	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	rc = ehci_suspend(hcd, do_wakeup);
+	if (rc)
+		return rc;
+
+	/*disable usb controller clock*/
+	clk_disable(ehci_clk[dev->id - 1]);
+	
 	return 0;
 }
 
-static int ehci_platform_resume(struct device *dev)
+static int ehci_sunplus_drv_resume(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 
-	ehci_prepare_ports_for_controller_resume(hcd_to_ehci(hcd));
-	return 0;
-}
+	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	/*enable usb controller clock*/
+	clk_prepare(ehci_clk[dev->id - 1]);
+	clk_enable(ehci_clk[dev->id - 1]);
 
-#ifdef CONFIG_PM_WARP
-
-int sp_ehci_fb_resume(struct platform_device *dev)
-{
-	struct usb_hcd *hcd = platform_get_drvdata(dev);
-	extern int warp_fastboot;
-
-#ifdef CONFIG_USB_HOST_RESET_SP
-	struct ehci_hcd_sp *ehci_sp = (struct ehci_hcd_sp *)hcd_to_ehci(hcd);
-#endif
-
-	if (warp_fastboot) {
-
-		usb_add_hcd(hcd, hcd->irq, IRQF_DISABLED | IRQF_SHARED);
-
-#ifdef CONFIG_USB_HOST_RESET_SP
-
-		ehci_sp->reset_thread = kthread_create(ehci_reset_thread,
-						       hcd_to_ehci(hcd),
-						       "ehci_reset_wait_event");
-
-		ehci_sp->ehci_notifier.notifier_call = ehci_notifier_call;
-		usb_register_notify(&ehci_sp->ehci_notifier);
-
-		wake_up_process(ehci_sp->reset_thread);
-#endif
-
-	}
-
-	else {
-		ehci_platform_resume(&dev->dev);
-	}
+	ehci_resume(hcd, false);
 
 	return 0;
 }
 
-int sp_ehci_fb_suspend(struct platform_device *dev, pm_message_t state)
-{
-	struct usb_hcd *hcd = platform_get_drvdata(dev);
-	extern int warp_fastboot;
-
-#ifdef CONFIG_USB_HOST_RESET_SP
-	struct ehci_hcd_sp *ehci_sp = (struct ehci_hcd_sp *)hcd_to_ehci(hcd);
+struct dev_pm_ops ehci_sunplus_pm_ops = {
+	.suspend = ehci_sunplus_drv_suspend,
+	.resume = ehci_sunplus_drv_resume,
+};
 #endif
 
-	if (warp_fastboot) {
-#ifdef CONFIG_USB_HOST_RESET_SP
-		kthread_stop(ehci_sp->reset_thread);
-		usb_unregister_notify(&ehci_sp->ehci_notifier);
-#endif
-		usb_remove_hcd(hcd);
-	}
-
-	else {
-		ehci_platform_suspend(&dev->dev);
-	}
-
-	return 0;
-}
-#endif
-
-#else /* !CONFIG_PM */
-#define ehci_platform_suspend	NULL
-#define ehci_platform_resume	NULL
-#endif /* CONFIG_PM */

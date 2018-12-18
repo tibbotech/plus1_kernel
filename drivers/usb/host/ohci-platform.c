@@ -598,22 +598,39 @@ int ohci_platform_remove(struct platform_device *dev)
 EXPORT_SYMBOL_GPL(ohci_platform_remove);
 
 #ifdef CONFIG_PM
-
-static int ohci_platform_suspend(struct device *dev)
-{
-	return 0;
-}
-
-static int ohci_platform_resume(struct device *dev)
+static int ohci_sunplus_drv_suspend(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	bool do_wakeup = device_may_wakeup(dev);
+	int rc; 
 
-	ohci_finish_controller_resume(hcd);
+	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	rc = ohci_suspend(hcd, do_wakeup);
+	if (rc)
+		return rc;
+
+	/*disable usb controller clock*/
+	clk_disable(ohci_clk[dev->id - 1]);
+
 	return 0;
 }
 
-#else /* !CONFIG_PM */
-#define ohci_platform_suspend	NULL
-#define ohci_platform_resume	NULL
-#endif /* CONFIG_PM */
+static int ohci_sunplus_drv_resume(struct device *dev)
+{
+	struct usb_hcd *hcd			= dev_get_drvdata(dev);
 
+	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	/*enable usb controller clock*/
+	clk_prepare(ohci_clk[dev->id - 1]);
+	clk_enable(ohci_clk[dev->id - 1]);
+	
+	ohci_resume(hcd, false);
+
+	return 0;
+}
+
+struct dev_pm_ops ohci_sunplus_pm_ops = {
+	.suspend = ohci_sunplus_drv_suspend,
+	.resume = ohci_sunplus_drv_resume,
+};
+#endif

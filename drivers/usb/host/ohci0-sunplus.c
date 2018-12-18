@@ -27,6 +27,9 @@ static struct platform_driver ohci0_hcd_sunplus_driver = {
 	.driver = {
 		.name		= "ohci0-sunplus",
 		.of_match_table = ohci0_sunplus_dt_ids,
+#ifdef CONFIG_PM
+		.pm = &ohci_sunplus_pm_ops,
+#endif
 	}
 };
 
