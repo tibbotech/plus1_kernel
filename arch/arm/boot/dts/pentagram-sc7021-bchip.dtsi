@@ -3,6 +3,7 @@
 #include "skeleton.dtsi"
 
 #include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
 #define ENABLE_DMARX0
@@ -47,6 +48,22 @@
 		i2c12 = &i2cdma2;
 		i2c13 = &i2cdma3;
 		#endif
+	};
+
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		iop_reserve: iop_device {
+			no-map;
+			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
+		};
+	};
+
+	iop_device {
+		compatible = "sunplus,iop_device";
+		memory-region = <&iop_reserve>;
 	};
 
 	cpus {
