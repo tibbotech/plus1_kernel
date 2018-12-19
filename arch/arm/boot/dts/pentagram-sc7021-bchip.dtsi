@@ -366,7 +366,6 @@
 			spi-max-frequency = <10000000>;
 			spi0: spi@0 {
 				compatible = "spidev";
-				reg = <0>;
 				spi-max-frequency = <10000000>;
 			};
 		};
