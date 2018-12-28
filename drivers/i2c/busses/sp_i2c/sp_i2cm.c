@@ -299,7 +299,14 @@ static void _sp_i2cm_init_irqevent(unsigned int device_id)
 		case 1:
 			pstIrqEvent->dDevId = 1;
 			break;
+			
+		case 2:
+			pstIrqEvent->dDevId = 2;
+			break;
 
+		case 3:
+			pstIrqEvent->dDevId = 3;
+			break;
 		default:
 			break;
 	}
