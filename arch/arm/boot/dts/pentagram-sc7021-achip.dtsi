@@ -457,6 +457,14 @@
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		hdmitx: hdmitx@0x9C00BE00 {
+			compatible = "sunplus,sp-hdmitx";
+			clocks = <&clkc UPHY1>;
+			reg = <0x9C00BE00 0x3FC>;
+			interrupt-parent = <&intc>;
+			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		sp_ehci0: usb@9C102100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci0";
 			clocks = <&clkc USBC0>;
