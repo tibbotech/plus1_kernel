@@ -658,7 +658,7 @@ static int hdmitx_probe(struct platform_device *pdev)
 	g_cur_hdmi_cfg.mode              = HDMITX_MODE_HDMI;
 	g_cur_hdmi_cfg.video.timing      = HDMITX_TIMING_480P;
 	g_cur_hdmi_cfg.video.color_depth = HDMITX_COLOR_DEPTH_24BITS;
-	g_cur_hdmi_cfg.video.conversion  = HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_RGB;
+	g_cur_hdmi_cfg.video.conversion  = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
 	g_cur_hdmi_cfg.audio.chl         = HDMITX_AUDIO_CHL_I2S;
 	g_cur_hdmi_cfg.audio.type        = HDMITX_AUDIO_TYPE_LPCM;
 	g_cur_hdmi_cfg.audio.sample_size = HDMITX_AUDIO_SAMPLE_SIZE_16BITS;

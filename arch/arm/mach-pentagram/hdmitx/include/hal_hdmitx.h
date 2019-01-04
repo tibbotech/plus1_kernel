@@ -30,7 +30,7 @@
 #define FALSE (0)
 #define TRUE (1)
 
-#define HDMITX_PTG
+//#define HDMITX_PTG
 
 /*----------------------------------------------------------------------------*
  *					DATA TYPES
