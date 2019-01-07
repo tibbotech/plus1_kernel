@@ -99,6 +99,14 @@
 #endif
 	};
 
+	arm-pmu {
+		compatible = "arm,cortex-a7-pmu";
+		interrupts = <GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	clocks {
 		#address-cells = <1>;
 		#size-cells = <1>;
