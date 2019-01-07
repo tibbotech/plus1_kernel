@@ -540,5 +540,14 @@
 				<126 IRQ_TYPE_LEVEL_HIGH>,
 				<127 IRQ_TYPE_LEVEL_HIGH>;
 		};
+		
+		mipicsi: mipicsi@0x9C005280 {
+			compatible = "sunplus,mipicsi";
+			reg = <0x9C005280 0x0>;
+			interrupt-parent = <&intc>;
+			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
+						 <50 IRQ_TYPE_EDGE_RISING>;
+		};
+		
 	};
 };
