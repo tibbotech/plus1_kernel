@@ -1,6 +1,6 @@
 
-config MIPI_VIDEO_TEST
-	tristate "MIPICSI vidoe test"
+config MIPICSI
+	tristate "MIPICSI support"
 	select VIDEOBUF2_VMALLOC
 	default y
 

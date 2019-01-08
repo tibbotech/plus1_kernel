@@ -183,4 +183,4 @@ obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 
 # MIPICSI driver
-obj-y 	+=mipicsi/
+obj-$(CONFIG_MIPICSI) 	+=mipicsi/
