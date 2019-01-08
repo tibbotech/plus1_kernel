@@ -2,6 +2,5 @@
 config MIPICSI
 	tristate "MIPICSI support"
 	select VIDEOBUF2_VMALLOC
-	default y
-
+        default n
 
