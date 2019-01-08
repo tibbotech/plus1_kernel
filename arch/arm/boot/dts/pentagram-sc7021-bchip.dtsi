@@ -10,7 +10,7 @@
 #define ENABLE_DMARX1
 #define ENABLE_DMATX0
 #define ENABLE_DMATX1
-
+//#define ENABLE_QTEST_CBDMA
 / {
 	model = "Sunplus SC7021 (ARM926)";
 	compatible = "sunplus,sc7021-bchip";
@@ -65,7 +65,27 @@
 		compatible = "sunplus,iop_device";
 		memory-region = <&iop_reserve>;
 	};
-
+	iop: iop@sp_iop {
+		compatible = "sunplus,sp_iop";
+		reg = <0x9c000400 0x80>, <0x9c000000 0x80>, <0x9c000F00 0x80>, <0x9c003100 0x80>, <0x9c003A00 0x80>;
+		reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "iop_rtc";
+		interrupt-parent = <&intc>;
+		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#ifdef ENABLE_QTEST_CBDMA
+	sp_qtest_cbdma_tst0: sp_qtest_cbdma_tst@9c000d00 {
+		compatible = "sunplus,sp_qtest_cbdma";
+		reg = <0x9c000d00 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+	};
+	sp_qtest_cbdma_tst1: sp_qtest_cbdma_tst@9c000d80 {
+		compatible = "sunplus,sp_qtest_cbdma";
+		reg = <0x9c000d80 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <129 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
