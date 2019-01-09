@@ -554,6 +554,10 @@ void hdmitx_disable_pattern(void)
 	hal_hdmitx_disable_pattern();
 }
 
+EXPORT_SYMBOL(hdmitx_enable_display);
+EXPORT_SYMBOL(hdmitx_disable_display);
+EXPORT_SYMBOL(hdmitx_set_timming);
+
 static int hdmitx_fops_open(struct inode *inode, struct file *pfile)
 {
 	int minor, err = 0;
