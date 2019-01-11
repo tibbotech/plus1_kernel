@@ -445,8 +445,8 @@
 
 		audio: audio@0x9c001e00 {
 			compatible = "sunplus,sc7021-audio";
-			reg = <0x9c001e00 0x680>,
-						<0x9c000200 0x80>;
+			reg = <0x9c001e00 0x680>,<0x9c000200 0x80>,<0x9c000000 0x80>;
+			reg-names = "audio", "moon4", "moon0";
 		 };
 		 
 		sp_uphy0: uphy@0x9C004A80 {
