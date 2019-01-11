@@ -11,6 +11,7 @@
 //#define En_AUD_FPGA
 extern void __iomem *audio_base;
 extern void __iomem *audio_plla_base;
+extern void __iomem *moon0_base;
 
 /**********************************************************
  * 			BASE
@@ -53,39 +54,39 @@ extern void __iomem *audio_plla_base;
  **********************************************************/
 typedef struct
 {
-    // GROUP 000 : Chip Information
+    // GROUP 000 : MOON0
     UINT32  stamp                                 ; // 00  (ADDR : 0x9C00_0000)
-    UINT32  emulation                             ; // 01  (ADDR : 0x9C00_0004)
-    UINT32  G000_reserved_2                       ; // 02  (ADDR : 0x9C00_0008)
-    UINT32  G000_reserved_3                       ; // 03  (ADDR : 0x9C00_000C)
-    UINT32  clk_sel0                              ; // 04  (ADDR : 0x9C00_0010)
-    UINT32  clk_sel1                              ; // 05  (ADDR : 0x9C00_0014)
-    UINT32  sspll_cfg                             ; // 06  (ADDR : 0x9C00_0018)
-    UINT32  clken0                                ; // 07  (ADDR : 0x9C00_001C)
-    UINT32  clken1                                ; // 08  (ADDR : 0x9C00_0020)
-    UINT32  clken2                                ; // 09  (ADDR : 0x9C00_0024)
-    UINT32  clken3                                ; // 10  (ADDR : 0x9C00_0028)
-    UINT32  clken4                                ; // 11  (ADDR : 0x9C00_002C)
-    UINT32  gclken0                               ; // 12  (ADDR : 0x9C00_0030)
-    UINT32  gclken1                               ; // 13  (ADDR : 0x9C00_0034)
-    UINT32  gclken2                               ; // 14  (ADDR : 0x9C00_0038)
-    UINT32  gclken3                               ; // 15  (ADDR : 0x9C00_003C)
-    UINT32  gclken4                               ; // 16  (ADDR : 0x9C00_0040)
-    UINT32  reset0                                ; // 17  (ADDR : 0x9C00_0044)
-    UINT32  reset1                                ; // 18  (ADDR : 0x9C00_0048)
-    UINT32  reset2                                ; // 19  (ADDR : 0x9C00_004C)
-    UINT32  reset3                                ; // 20  (ADDR : 0x9C00_0050)
-    UINT32  reset4                                ; // 21  (ADDR : 0x9C00_0054)
-    UINT32  pwr_iso                               ; // 22  (ADDR : 0x9C00_0058)
-    UINT32  pwr_ctl                               ; // 23  (ADDR : 0x9C00_005C)
-    UINT32  hw_bo0                                ; // 24  (ADDR : 0x9C00_0060)
-    UINT32  hw_bo1                                ; // 25  (ADDR : 0x9C00_0064)
-    UINT32  hw_bo2                                ; // 26  (ADDR : 0x9C00_0068)
-    UINT32  hw_bo3                                ; // 27  (ADDR : 0x9C00_006C)
-    UINT32  hw_cfg                                ; // 28  (ADDR : 0x9C00_0070)
-    UINT32  hw_cfg_chg                            ; // 29  (ADDR : 0x9C00_0074)
-    UINT32  G000_reserved_30                      ; // 30  (ADDR : 0x9C00_0078)
-    UINT32  show_bo_stamp                         ; // 31  (ADDR : 0x9C00_007C)
+    UINT32  clken0                                ; // 01  (ADDR : 0x9C00_0004)
+    UINT32  clken1                                ; // 02  (ADDR : 0x9C00_0008)
+    UINT32  clken2                                ; // 03  (ADDR : 0x9C00_000C)
+    UINT32  clken3                                ; // 04  (ADDR : 0x9C00_0010)
+    UINT32  clken4                                ; // 05  (ADDR : 0x9C00_0014)
+    UINT32  clken5                                ; // 06  (ADDR : 0x9C00_0018)
+    UINT32  clken6                                ; // 07  (ADDR : 0x9C00_001C)
+    UINT32  clken7                                ; // 08  (ADDR : 0x9C00_0020)
+    UINT32  clken8                                ; // 09  (ADDR : 0x9C00_0024)
+    UINT32  clken9                                ; // 10  (ADDR : 0x9C00_0028)
+    UINT32  gclken0                               ; // 11  (ADDR : 0x9C00_002C)
+    UINT32  gclken1                               ; // 12  (ADDR : 0x9C00_0030)
+    UINT32  gclken2                               ; // 13  (ADDR : 0x9C00_0034)
+    UINT32  gclken3                               ; // 14  (ADDR : 0x9C00_0038)
+    UINT32  gclken4                               ; // 15  (ADDR : 0x9C00_003C)
+    UINT32  gclken5                               ; // 16  (ADDR : 0x9C00_0040)
+    UINT32  gclken6                               ; // 17  (ADDR : 0x9C00_0044)
+    UINT32  gclken7                               ; // 18  (ADDR : 0x9C00_0048)
+    UINT32  gclken8                               ; // 19  (ADDR : 0x9C00_004C)
+    UINT32  gclken9                               ; // 20  (ADDR : 0x9C00_0050)
+    UINT32  reset0                                ; // 21  (ADDR : 0x9C00_0054)
+    UINT32  reset1                                ; // 22  (ADDR : 0x9C00_0058)
+    UINT32  reset2                                ; // 23  (ADDR : 0x9C00_005C)
+    UINT32  reset3                                ; // 24  (ADDR : 0x9C00_0060)
+    UINT32  reset4                                ; // 25  (ADDR : 0x9C00_0064)
+    UINT32  reset5                                ; // 26  (ADDR : 0x9C00_0068)
+    UINT32  reset6                                ; // 27  (ADDR : 0x9C00_006C)
+    UINT32  reset7                                ; // 28  (ADDR : 0x9C00_0070)
+    UINT32  reset8                                ; // 29  (ADDR : 0x9C00_0074)
+    UINT32  reset9                                ; // 30  (ADDR : 0x9C00_0078)
+    UINT32  hw_cfg                                ; // 31  (ADDR : 0x9C00_007C)
 } RegisterFile_G0;
 
 typedef struct
