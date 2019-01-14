@@ -90,10 +90,17 @@ static I2C_Irq_Event_t stIrqEvent[I2C_MASTER_NUM];
 wait_queue_head_t i2cm_event_wait[I2C_MASTER_NUM];
 
 
+#ifdef I2C_RETEST
+int test_count;
+#endif
+
 static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstIrqEvent)
 {
 	unsigned int int_flag = 0;
 	unsigned int overflow_flag = 0;
+	#ifdef I2C_RETEST
+	unsigned int scl_belay = 0;
+       #endif
 
 	hal_i2cm_status_get(device_id, &int_flag);
 	//printk("I2C int_flag = 0x%x !!\n", int_flag);
@@ -106,6 +113,15 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 
 	if (int_flag & I2C_INT_ADDRESS_NACK_FLAG) {
 		DBG_INFO("I2C slave address NACK !!\n");
+		#ifdef I2C_RETEST
+		hal_i2cm_scl_delay_read(device_id, &scl_belay);
+		if (scl_belay == 0x00){
+		     test_count++;
+	       }
+		else if (test_count > 9){
+		    test_count = 1;
+		}
+        #endif		
 		pstIrqEvent->stIrqFlag.bAddrNack = 1;
 	} else {
 		pstIrqEvent->stIrqFlag.bAddrNack = 0;
@@ -607,7 +623,14 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	    DBG_INFO("test_count = %d", test_count);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, read_cnt);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 
@@ -706,7 +729,14 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, 0);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 	hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_WRITE_MODE);
@@ -816,7 +846,14 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo)
 	
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_AUTO);
 	hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_WRITE_MODE);
 	hal_i2cm_int_en0_set(pstCmdInfo->dDevId, int0);
@@ -913,7 +950,14 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_dma_mode_enable(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 
 	if (pstCmdInfo->dRestartEn) {
 		DBG_INFO("I2C_RESTART_MODE\n");
@@ -1038,7 +1082,14 @@ int sp_i2cm_sg_dma_write(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 	hal_i2cm_dma_mode_enable(dDevId);
 	hal_i2cm_clock_freq_set(dDevId, dFreq);
 	hal_i2cm_slave_addr_set(dDevId, dSlaveAddr);
-	hal_i2cm_scl_delay_set(dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_active_mode_set(dDevId, I2C_AUTO);
 	hal_i2cm_rw_mode_set(dDevId, I2C_WRITE_MODE);
 	hal_i2cm_int_en0_set(dDevId, int0);
@@ -1167,7 +1218,14 @@ int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 	hal_i2cm_dma_mode_enable(dDevId);
 	hal_i2cm_clock_freq_set(dDevId, dFreq);
 	hal_i2cm_slave_addr_set(dDevId, dSlaveAddr);
-	hal_i2cm_scl_delay_set(dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	
 	if(pstI2CCmd->dRestartEn)
 	{

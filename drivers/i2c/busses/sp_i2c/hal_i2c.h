@@ -10,6 +10,8 @@
 
 #define SUPPORT_I2C_GDMA
 
+#define I2C_RETEST  (0)
+
 #ifdef SUPPORT_I2C_GDMA
 typedef enum
 {	

@@ -256,6 +256,18 @@ void hal_i2cm_dma_mode_enable(unsigned int device_id)
 EXPORT_SYMBOL(hal_i2cm_dma_mode_enable);
 #endif
 
+
+#ifdef I2C_RETEST
+void hal_i2cm_scl_delay_read(unsigned int device_id, unsigned int *delay)
+{
+	if (device_id < I2C_MASTER_NUM) {
+		*delay = readl(&(pI2cMReg[device_id]->control2));
+		*delay &= I2C_CTL2_SCL_DELAY(I2C_CTL2_SCL_DELAY_MASK);
+	}
+}
+EXPORT_SYMBOL(hal_i2cm_scl_delay_read);
+#endif
+
 void hal_i2cm_scl_delay_set(unsigned int device_id, unsigned int delay)
 {
 	unsigned int ctl2;
