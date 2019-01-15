@@ -8,12 +8,12 @@
 #define M_ORG "Tibbo Tech."
 #define M_CPR "(C) 2019-2019"
 
-#define FW_DEFNAME "sppctl.bin"
+//#define FW_DEFNAME "sppctl.bin"
+#define FW_DEFNAME NULL
 
 #include "sppctl_syshdrs.h"
 #include "sppctl_defs.h"
 
-#include "sppctl_procfs.h"
 #include "sppctl_sysfs.h"
 
 #include <mach/io_map.h>

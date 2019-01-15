@@ -8,7 +8,6 @@
 #include <linux/of_gpio.h>
 
 #include "sppctl.h"
-#include "sppctl_procfs.h"
 #include "sppctl_sysfs.h"
 
 #define DV_DRV_NAME "sppctl"
@@ -177,6 +176,7 @@ void sppctl_loadfw( struct device *_dev, const char *_fwname) {
  int ret;
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_dev->platform_data;
  if ( !_fwname) return;
+ if ( strlen( _fwname) < 1) return;
  KINF( "fw:%s", _fwname);
  ret = request_firmware_nowait( THIS_MODULE, true, _fwname, _dev, GFP_KERNEL, p, sppctl_fwload_cb);
  if ( ret) KERR( "Can't load '%s'\n", _fwname);
@@ -205,9 +205,10 @@ static int sppctl_probe( struct platform_device *_pdev) {
    KINF( "of mapped:%X, size:%d\n", res.start, resource_size( &res));
  }
  _pdev->dev.platform_data = p;
- sppctl_procfs_init( _pdev);
  sppctl_sysfs_init( _pdev);
- of_property_read_string( np, "fwload", &fwfname);
+#if defined(CONFIG_OF)
+ of_property_read_string( np, "fwname", &fwfname);
+#endif
  if ( fwfname) strcpy( p->fwname, fwfname);
  sppctl_loadfw( &( _pdev->dev), p->fwname);
  return( 0);
@@ -216,7 +217,6 @@ static int sppctl_probe( struct platform_device *_pdev) {
 
 static int sppctl_remove( struct platform_device *_pdev) {
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_pdev->dev.platform_data;
- sppctl_procfs_clean( _pdev);
  sppctl_sysfs_clean( _pdev);
  kfree( p);
  return( 0);  }
@@ -244,22 +244,6 @@ static struct platform_driver sppctl_driver = {
 };
 
 module_platform_driver(sppctl_driver);
-
-//static int __init sppctl_init( void) {
-// int ret = 0;
-// moon_base = ioremap( PA_IOB_ADDR(0), SZ_512);
-// KINF( "%p mapped to %p\n", PA_IOB_ADDR(0), moon_base);
-// sppctl_procfs_init();
-// sppctl_sysfs_init();
-// return( ret);  }
-//
-//static void __exit sppctl_exit( void) {
-// sppctl_procfs_clean();
-// sppctl_sysfs_clean();
-// return;  }
-//
-//module_init(sppctl_init);
-//module_exit(sppctl_exit);
 
 MODULE_AUTHOR(M_AUT);
 MODULE_DESCRIPTION(M_NAM);
