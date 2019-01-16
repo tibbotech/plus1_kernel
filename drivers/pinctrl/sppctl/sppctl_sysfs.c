@@ -207,5 +207,5 @@ void sppctl_sysfs_clean( struct platform_device *_pdev) {
    device_remove_bin_file( &( _pdev->dev), &( sppctl_sysfs_Fap[ i]));
  }
  kfree( sppctl_sysfs_Fap);
- kfree( ( ( sppctl_sdata_t *))( _p->sysfs_sdp));
+ kfree( ( sppctl_sdata_t *))( _p->sysfs_sdp));
  return;  }
