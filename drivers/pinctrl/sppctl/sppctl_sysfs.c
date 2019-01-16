@@ -1,3 +1,19 @@
+/*
+ * Driver for SunPlus/Tibbo SC7021 additional pin multiplexing controller
+ *
+ * Copyright (C) 2019 Dvorkin Dmitry <dvorkin@tibbo.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
 #include "sppctl_sysfs.h"
 
 static ssize_t sppctl_sop_name_R( struct device *_d, struct device_attribute *_a, char *_b) {
@@ -173,9 +189,11 @@ void sppctl_sysfs_init( struct platform_device *_pdev) {
    ret = device_create_bin_file( &( _pdev->dev), &( sppctl_sysfs_Fap[ i]));
    if ( ret) KERR( "createF[%d,%s] error\n", i, tmpp);
  }
+ _p->sysfs_sdp = sdp;
  return;  }
 
 void sppctl_sysfs_clean( struct platform_device *_pdev) {
+ sppctl_pdata_t *_p = ( sppctl_pdata_t *)_pdev->dev.platform_data;
  int i;
  char *tmpp;
  for ( i = 0; i < ARRAY_SIZE( sppctl_sysfs_attrsD); i++) {
@@ -189,6 +207,5 @@ void sppctl_sysfs_clean( struct platform_device *_pdev) {
    device_remove_bin_file( &( _pdev->dev), &( sppctl_sysfs_Fap[ i]));
  }
  kfree( sppctl_sysfs_Fap);
- // FIX:
-// kfree( sdp);
+ kfree( ( ( sppctl_sdata_t *))( _p->sysfs_sdp));
  return;  }
