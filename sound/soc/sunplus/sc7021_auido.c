@@ -118,6 +118,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 
 	// Enable AUD hardware clock.
 	regs0 = (volatile RegisterFile_G0 *)moon0_base;
+	regs0->clken0 = 0x08000800;
 	regs0->clken2 = 0x00400040;
 
 	AUD_INFO("audio_base = %08x, audio_plla_base = %08x, moon0_base = %08x\n", audio_base, audio_plla_base, moon0_base);
