@@ -2,8 +2,8 @@
 
 opt=$1
 
-export PATH="../../build/tools/armv7-eabihf--glibc--stable/bin/:$PATH"
-export CROSS_COMPILE=armv7hf-glibc-linux-
+export PATH="../../build/tools/arm-linux-gnueabihf/bin/:$PATH"
+export CROSS_COMPILE=arm-linux-gnueabihf-
 
 # Load CFG=xxx if exists
 BUILD_CFG=build.cfg
