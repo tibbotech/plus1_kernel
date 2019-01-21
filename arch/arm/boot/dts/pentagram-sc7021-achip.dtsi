@@ -43,6 +43,12 @@
 		i2c1 = &i2cm1;
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
+		
+		spi0 = &spi_master0;
+		spi1 = &spi_master1;
+		spi2 = &spi_master2;
+		spi3 = &spi_master3;		
+		
 	};
 
 	reserved-memory {
@@ -617,20 +623,80 @@
 			clocks = <&clkc CARD_CTL4>;
 		};
 
-		spi_master0: spi@sp_spi_master {
+		spi_master0: spi@sp_spi_master0 {
 			compatible = "sunplus,pentagram-spi-master";
 			reg = <0x9C002D80 0x80>, <0x9c000100 0x80>;
-			reg-names = "spi_combo0", "grp2_sft";
+			reg-names = "spi_combo", "grp2_sft";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 							  "mas_risc_intr";
 			interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
 						 <146 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc PLL_SYS>;
+			clocks = <&clkc SPI_COMBO_0>;
 			clock-names = "sys_pll";
 			spi-max-frequency = <10000000>;
-			spi0: spi@0 {
+			spi0: spi@ {
 				compatible = "spidev";
+				reg = <0x0>;
+				spi-max-frequency = <10000000>;
+			};
+		};
+
+
+		spi_master1: spi@sp_spi_master1 {
+			compatible = "sunplus,pentagram-spi-master";
+			reg = <0x9C00F480 0x80>;
+			reg-names = "spi_combo";
+			interrupt-parent = <&intc>;
+			interrupt-names = "dma_w_intr",
+							  "mas_risc_intr";
+			interrupts = <67 IRQ_TYPE_LEVEL_HIGH>,
+						 <69 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc SPI_COMBO_1>;
+			clock-names = "sys_pll";
+			spi-max-frequency = <10000000>;
+			spi1: spi@ {
+				compatible = "spidev";
+				reg = <0x0>;
+				spi-max-frequency = <10000000>;
+			};					
+		};
+
+		spi_master2: spi@sp_spi_master2 {
+			compatible = "sunplus,pentagram-spi-master";
+			reg = <0x9C00F600 0x80>;
+			reg-names = "spi_combo";
+			interrupt-parent = <&intc>;
+			interrupt-names = "dma_w_intr",
+							  "mas_risc_intr";
+			interrupts = <70 IRQ_TYPE_LEVEL_HIGH>,
+						 <72 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc SPI_COMBO_2>;
+			clock-names = "sys_pll";
+			spi-max-frequency = <10000000>;
+			spi2: spi@ {
+				compatible = "spidev";
+				reg = <0x0>;
+				spi-max-frequency = <10000000>;
+			};
+		};
+
+
+		spi_master3: spi@sp_spi_master3 {
+			compatible = "sunplus,pentagram-spi-master";
+			reg = <0x9C00F780 0x80>;
+			reg-names = "spi_combo";
+			interrupt-parent = <&intc>;
+			interrupt-names = "dma_w_intr",
+							  "mas_risc_intr";
+			interrupts = <73 IRQ_TYPE_LEVEL_HIGH>,
+						 <75 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc SPI_COMBO_3>;
+			clock-names = "sys_pll";
+			spi-max-frequency = <10000000>;
+			spi3: spi@ {
+				compatible = "spidev";
+				reg = <0x0>;
 				spi-max-frequency = <10000000>;
 			};
 		};
