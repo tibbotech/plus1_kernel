@@ -10,6 +10,8 @@
 
 #define SUPPORT_I2C_GDMA
 
+#define I2C_RETEST  (0)
+
 #ifdef SUPPORT_I2C_GDMA
 typedef enum
 {	
@@ -52,6 +54,9 @@ void hal_i2cm_dma_mode_disable(unsigned int device_id);
 void hal_i2cm_dma_mode_enable(unsigned int device_id);
 #endif
 
+#ifdef I2C_RETEST
+void hal_i2cm_scl_delay_read(unsigned int device_id, unsigned int *delay);
+#endif
 void hal_i2cm_scl_delay_set(unsigned int device_id, unsigned int delay);
 void hal_i2cm_roverflow_flag_get(unsigned int device_id, unsigned int *flag);
 void hal_i2cm_rdata_flag_clear(unsigned int device_id, unsigned int flag);

@@ -3,13 +3,14 @@
 #include "skeleton.dtsi"
 
 #include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 
 #define ENABLE_DMARX0
 #define ENABLE_DMARX1
 #define ENABLE_DMATX0
 #define ENABLE_DMATX1
-
+//#define ENABLE_QTEST_CBDMA
 / {
 	model = "Sunplus SC7021 (ARM926)";
 	compatible = "sunplus,sc7021-bchip";
@@ -49,6 +50,42 @@
 		#endif
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		iop_reserve: iop_device {
+			no-map;
+			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
+		};
+	};
+
+	iop_device {
+		compatible = "sunplus,iop_device";
+		memory-region = <&iop_reserve>;
+	};
+	iop: iop@sp_iop {
+		compatible = "sunplus,sp_iop";
+		reg = <0x9c000400 0x80>, <0x9c000000 0x80>, <0x9c000F00 0x80>, <0x9c003100 0x80>, <0x9c003A00 0x80>;
+		reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "iop_rtc";
+		interrupt-parent = <&intc>;
+		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#ifdef ENABLE_QTEST_CBDMA
+	sp_qtest_cbdma_tst0: sp_qtest_cbdma_tst@9c000d00 {
+		compatible = "sunplus,sp_qtest_cbdma";
+		reg = <0x9c000d00 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+	};
+	sp_qtest_cbdma_tst1: sp_qtest_cbdma_tst@9c000d80 {
+		compatible = "sunplus,sp_qtest_cbdma";
+		reg = <0x9c000d80 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <129 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -349,7 +386,6 @@
 			spi-max-frequency = <10000000>;
 			spi0: spi@0 {
 				compatible = "spidev";
-				reg = <0>;
 				spi-max-frequency = <10000000>;
 			};
 		};
@@ -447,6 +483,14 @@
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		hdmitx: hdmitx@0x9C00BE00 {
+			compatible = "sunplus,sp-hdmitx";
+			clocks = <&clkc UPHY1>;
+			reg = <0x9C00BE00 0x3FC>;
+			interrupt-parent = <&intc>;
+			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		sp_ehci0: usb@9C102100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci0";
 			clocks = <&clkc USBC0>;
@@ -516,5 +560,14 @@
 				<126 IRQ_TYPE_LEVEL_HIGH>,
 				<127 IRQ_TYPE_LEVEL_HIGH>;
 		};
+		
+		mipicsi: mipicsi@0x9C005280 {
+			compatible = "sunplus,mipicsi";
+			reg = <0x9C005280 0x0>;
+			interrupt-parent = <&intc>;
+			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
+						 <50 IRQ_TYPE_EDGE_RISING>;
+		};
+		
 	};
 };

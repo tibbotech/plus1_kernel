@@ -12,6 +12,9 @@
 #include "hal_i2c.h"
 #include "sp_i2c.h"
 
+#ifdef SUPPORT_I2C_GDMA
+#include <linux/dma-mapping.h>   
+#endif
 
 //#define I2C_FUNC_DEBUG
 #define I2C_DBG_INFO
@@ -44,6 +47,9 @@
 #define MOON3_REG_NAME       "moon3"
 
 #define DEVICE_NAME          "sp_i2cm"
+#ifdef SUPPORT_I2C_GDMA
+#define I2CM_DMA_REG_NAME    "i2cmdma"
+#endif
 
 //burst write use
 #define I2C_EMPTY_THRESHOLD_VALUE    4
@@ -67,6 +73,9 @@ typedef struct SpI2C_If_t_ {
 	struct i2c_adapter adap;
 	I2C_Cmd_t stCmdInfo;
 	void __iomem *i2c_regs;
+#ifdef SUPPORT_I2C_GDMA
+	void __iomem *i2c_dma_regs;
+#endif
 	int irq;
 } SpI2C_If_t;
 
@@ -81,10 +90,17 @@ static I2C_Irq_Event_t stIrqEvent[I2C_MASTER_NUM];
 wait_queue_head_t i2cm_event_wait[I2C_MASTER_NUM];
 
 
+#ifdef I2C_RETEST
+int test_count;
+#endif
+
 static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstIrqEvent)
 {
 	unsigned int int_flag = 0;
 	unsigned int overflow_flag = 0;
+	#ifdef I2C_RETEST
+	unsigned int scl_belay = 0;
+       #endif
 
 	hal_i2cm_status_get(device_id, &int_flag);
 	//printk("I2C int_flag = 0x%x !!\n", int_flag);
@@ -97,6 +113,15 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 
 	if (int_flag & I2C_INT_ADDRESS_NACK_FLAG) {
 		DBG_INFO("I2C slave address NACK !!\n");
+		#ifdef I2C_RETEST
+		hal_i2cm_scl_delay_read(device_id, &scl_belay);
+		if (scl_belay == 0x00){
+		     test_count++;
+	       }
+		else if (test_count > 9){
+		    test_count = 1;
+		}
+        #endif		
 		pstIrqEvent->stIrqFlag.bAddrNack = 1;
 	} else {
 		pstIrqEvent->stIrqFlag.bAddrNack = 0;
@@ -150,6 +175,62 @@ static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstI
 		pstIrqEvent->stIrqFlag.bRdOverflow = 0;
 	}
 }
+
+#ifdef SUPPORT_I2C_GDMA
+static void _sp_i2cm_dma_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstIrqEvent)
+{
+	unsigned int int_flag = 0;
+
+	hal_i2cm_dma_int_flag_get(device_id, &int_flag);
+	//printk("I2C int_flag = 0x%x !!\n", int_flag);
+	if (int_flag & I2C_DMA_INT_DMA_DONE_FLAG) {
+		DBG_INFO("I2C DMA is done !!\n");
+		pstIrqEvent->stIrqDmaFlag.bDmaDone = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bDmaDone = 0;
+	}
+	
+	if (int_flag & I2C_DMA_INT_WCNT_ERROR_FLAG) {
+		DBG_INFO("I2C DMA WCNT ERR !!\n");
+		pstIrqEvent->stIrqDmaFlag.bWCntError = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bWCntError = 0;
+	}
+	if (int_flag & I2C_DMA_INT_WB_EN_ERROR_FLAG) {
+		DBG_INFO("I2C DMA WB EN ERR !!\n");
+		pstIrqEvent->stIrqDmaFlag.bWBEnError = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bWBEnError = 0;
+	}
+	if (int_flag & I2C_DMA_INT_GDMA_TIMEOUT_FLAG) {
+		DBG_INFO("I2C DMA timeout !!\n");
+		pstIrqEvent->stIrqDmaFlag.bGDmaTimeout = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bGDmaTimeout = 0;
+	}
+	if (int_flag & I2C_DMA_INT_IP_TIMEOUT_FLAG) {
+		DBG_INFO("I2C IP timeout !!\n");
+		pstIrqEvent->stIrqDmaFlag.bIPTimeout = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bIPTimeout = 0;
+	}
+//	if (int_flag & I2C_DMA_INT_THRESHOLD_FLAG) {
+//		DBG_INFO("I2C Threshold reach !!\n");
+//		pstIrqEvent->stIrqDmaFlag.bThreshold = 1;
+//	} else {
+//		pstIrqEvent->stIrqDmaFlag.bThreshold = 0;
+//	}
+	if (int_flag & I2C_DMA_INT_LENGTH0_FLAG) {
+		DBG_INFO("I2C Length is zero !!\n");
+		pstIrqEvent->stIrqDmaFlag.bLength0 = 1;
+	} else {
+		pstIrqEvent->stIrqDmaFlag.bLength0 = 0;
+	}
+	
+  hal_i2cm_dma_int_flag_clear(device_id, int_flag);
+
+}
+#endif
 
 static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 {
@@ -279,6 +360,34 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			break;
 	}//switch case
 
+#ifdef SUPPORT_I2C_GDMA
+	_sp_i2cm_dma_intflag_check(device_id, pstIrqEvent);   
+
+	DBG_INFO("[I2C adapter] pstIrqEvent->eRWState= 0x%x\n", pstIrqEvent->eRWState);
+	switch (pstIrqEvent->eRWState) {
+		case I2C_DMA_WRITE_STATE:
+					DBG_INFO("I2C_DMA_WRITE_STATE !!\n");
+			if (pstIrqEvent->stIrqDmaFlag.bDmaDone) {
+					DBG_INFO("I2C dma write success !!\n");
+					pstIrqEvent->bRet = I2C_SUCCESS;
+	        //return I2C_SUCCESS;
+	    }    
+			break;
+			
+		case I2C_DMA_READ_STATE:
+					DBG_INFO("I2C_DMA_READ_STATE !!\n");
+			if (pstIrqEvent->stIrqDmaFlag.bDmaDone) {
+					DBG_INFO("I2C dma read success !!\n");
+					//hal_i2cm_dma_int_flag_clear(device_id, I2C_DMA_INT_DMA_DONE_FLAG);
+					pstIrqEvent->bRet = I2C_SUCCESS;
+	        //return I2C_SUCCESS;
+	    }    
+			break;
+
+		default:
+			break;
+	}//switch case
+#endif			
 	return IRQ_HANDLED;
 }
 
@@ -299,7 +408,14 @@ static void _sp_i2cm_init_irqevent(unsigned int device_id)
 		case 1:
 			pstIrqEvent->dDevId = 1;
 			break;
+			
+		case 2:
+			pstIrqEvent->dDevId = 2;
+			break;
 
+		case 3:
+			pstIrqEvent->dDevId = 3;
+			break;
 		default:
 			break;
 	}
@@ -319,9 +435,17 @@ static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 
 	hal_i2cm_pinmux_set(device_id, pstMoonRegBase->moon3_regs);
 	hal_i2cm_enable(device_id, pstMoonRegBase->moon0_regs);
+#ifdef SUPPORT_I2C_GDMA
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
+	hal_i2cm_dma_base_set(device_id, pstSpI2CInfo->i2c_dma_regs);
+	DBG_INFO("[I2C adapter] i2c_regs= 0x%x\n", pstSpI2CInfo->i2c_regs);
+	DBG_INFO("[I2C adapter] i2c_dma_regs= 0x%x\n", pstSpI2CInfo->i2c_dma_regs);
+#else
+	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
+	DBG_INFO("[I2C adapter] i2c_regs= 0x%x\n", pstSpI2CInfo->i2c_regs);
+#endif
 	hal_i2cm_reset(device_id);
-
+	
 	_sp_i2cm_init_irqevent(device_id);
 	init_waitqueue_head(&i2cm_event_wait[device_id]);
 
@@ -411,6 +535,17 @@ static int _sp_i2cm_get_resources(struct platform_device *pdev, SpI2C_If_t *pstS
 	else {
 		pstSpI2CInfo->i2c_regs = (void __iomem *)membase;
 	}
+	
+#ifdef SUPPORT_I2C_GDMA
+	ret = _sp_i2cm_get_register_base(pdev, &membase, I2CM_DMA_REG_NAME);
+	if (ret) {
+		DBG_ERR("[I2C adapter] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+		return ret;
+	}
+	else {
+		pstSpI2CInfo->i2c_dma_regs = (void __iomem *)membase;
+	}
+#endif
 
 	ret = _sp_i2cm_get_irq(pdev, pstSpI2CInfo);
 	if (ret) {
@@ -488,7 +623,14 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	    DBG_INFO("test_count = %d", test_count);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, read_cnt);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 
@@ -587,7 +729,14 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 	hal_i2cm_reset(pstCmdInfo->dDevId);
 	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
 	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
-	hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
 	hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, 0);
 	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
 	hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_WRITE_MODE);
@@ -613,6 +762,573 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 
 	return ret;
 }
+
+#ifdef SUPPORT_I2C_GDMA
+int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo)
+{
+	I2C_Irq_Event_t *pstIrqEvent = NULL;
+	unsigned char w_data[32] = {0};
+	unsigned int write_cnt = 0;
+	unsigned int burst_cnt = 0;
+	unsigned int int0 = 0;
+	int ret = I2C_SUCCESS;
+	int i = 0;
+	unsigned int dma_int = 0;
+	dma_addr_t dma_handle;
+
+	FUNC_DEBUG();
+
+	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
+		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+	} else {
+		return I2C_ERR_INVALID_DEVID;
+	}
+
+	if (pstIrqEvent->bI2CBusy) {
+		DBG_ERR("I2C is busy !!\n");
+		return I2C_ERR_I2C_BUSY;
+	}
+	_sp_i2cm_init_irqevent(pstCmdInfo->dDevId);
+	pstIrqEvent->bI2CBusy = 1;
+
+	write_cnt = pstCmdInfo->dWrDataCnt;
+
+	if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+		pstIrqEvent->bI2CBusy = 0;
+		DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
+		return I2C_ERR_INVALID_CNT;
+	}
+
+	if (write_cnt > 32) {
+		burst_cnt = (write_cnt - 32) / 4;
+		if ((write_cnt - 32) % 4) {
+			burst_cnt += 1;
+		}
+
+		for (i = 0; i < 32; i++) {
+			w_data[i] = pstCmdInfo->pWrData[i];
+		}
+	} else {
+		for(i = 0; i < write_cnt; i++){
+			w_data[i] = pstCmdInfo->pWrData[i];
+		}
+	}
+	DBG_INFO("write_cnt = %d, burst_cnt = %d\n", write_cnt, burst_cnt);
+
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+			| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT );
+
+	if (burst_cnt)
+		int0 |= I2C_EN0_EMPTY_THRESHOLD_INT;
+		
+  dma_int = I2C_DMA_EN_DMA_DONE_INT;
+
+	pstIrqEvent->eRWState = I2C_DMA_WRITE_STATE;
+	pstIrqEvent->dBurstCount = burst_cnt;
+	pstIrqEvent->dDataIndex = i;
+	pstIrqEvent->dDataTotalLen = write_cnt;
+	pstIrqEvent->pDataBuf = pstCmdInfo->pWrData;
+
+
+  //request dma addr map to logical addr
+  pstCmdInfo->pWrData=dma_alloc_coherent(pstCmdInfo->dDevId, write_cnt, &(dma_handle), GFP_KERNEL);
+	//DBG_INFO("[I2C adapter] pstCmdInfo->pWrData adr= 0x%x\n", pstCmdInfo->pWrData);
+	//DBG_INFO("[I2C adapter] dma_handle= 0x%x\n", dma_handle);
+
+	for(i = 0; i < write_cnt; i++){
+			pstCmdInfo->pWrData[i] = w_data[i];  //fill data to new logical addr
+	}
+
+  
+	hal_i2cm_reset(pstCmdInfo->dDevId);
+	
+	hal_i2cm_dma_mode_enable(pstCmdInfo->dDevId);
+	
+	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
+	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
+	hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_AUTO);
+	hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_WRITE_MODE);
+	hal_i2cm_int_en0_set(pstCmdInfo->dDevId, int0);
+
+	hal_i2cm_dma_addr_set(pstCmdInfo->dDevId, (unsigned int)dma_handle);
+	hal_i2cm_dma_length_set(pstCmdInfo->dDevId, write_cnt);
+	hal_i2cm_dma_rw_mode_set(pstCmdInfo->dDevId, I2C_DMA_READ_MODE);
+	hal_i2cm_dma_int_en_set(pstCmdInfo->dDevId, dma_int);
+	hal_i2cm_dma_go_set(pstCmdInfo->dDevId);
+  
+  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
+  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
+  
+	if (ret == 1) { //IRQ_HANDLED
+	   ret = pstIrqEvent->bRet;  //if i2c dma write success, return I2C_SUCCESS
+  }
+
+	pstIrqEvent->eRWState = I2C_IDLE_STATE;
+	pstIrqEvent->bI2CBusy = 0;
+	
+  dma_free_coherent(pstCmdInfo->dDevId, write_cnt,pstCmdInfo->pWrData, (dma_handle));
+
+	return ret;
+}
+
+int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo)
+{
+	I2C_Irq_Event_t *pstIrqEvent = NULL;
+	unsigned char w_data[32] = {0};
+	unsigned int read_cnt = 0;
+	unsigned int write_cnt = 0;
+	unsigned int burst_cnt = 0, burst_r = 0;
+	unsigned int int0 = 0, int1 = 0, int2 = 0;
+	unsigned int dma_int = 0;
+	int ret = I2C_SUCCESS;
+	int i = 0;
+	dma_addr_t dma_handle;
+
+	FUNC_DEBUG();
+
+	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
+		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+	} else {
+		return I2C_ERR_INVALID_DEVID;
+	}
+
+	if (pstIrqEvent->bI2CBusy) {
+		DBG_ERR("I2C is busy !!\n");
+		return I2C_ERR_I2C_BUSY;
+	}
+	_sp_i2cm_init_irqevent(pstCmdInfo->dDevId);
+	pstIrqEvent->bI2CBusy = 1;
+
+	write_cnt = pstCmdInfo->dWrDataCnt;
+	read_cnt = pstCmdInfo->dRdDataCnt;
+
+	if (pstCmdInfo->dRestartEn)
+	{
+		if ((write_cnt > 32) || (write_cnt == 0)) {
+			pstIrqEvent->bI2CBusy = 0;
+			DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
+			return I2C_ERR_INVALID_CNT;
+		}
+	}
+
+	if ((read_cnt > 0xFFFF)  || (read_cnt == 0)) {
+		pstIrqEvent->bI2CBusy = 0;
+		DBG_ERR("I2C read count is invalid !! read count=%d\n", read_cnt);
+		return I2C_ERR_INVALID_CNT;
+	}
+
+	burst_cnt = read_cnt / I2C_BURST_RDATA_BYTES;
+	burst_r = read_cnt % I2C_BURST_RDATA_BYTES;
+	DBG_INFO("write_cnt = %d, read_cnt = %d, burst_cnt = %d, burst_r = %d\n",
+			write_cnt, read_cnt, burst_cnt, burst_r);
+
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+			| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT );
+	if (burst_cnt) {
+		int1 = I2C_BURST_RDATA_FLAG;
+		int2 = I2C_BURST_RDATA_ALL_FLAG;
+	}
+
+  dma_int = I2C_DMA_EN_DMA_DONE_INT;
+  
+	pstIrqEvent->eRWState = I2C_DMA_READ_STATE;
+	pstIrqEvent->dBurstCount = burst_cnt;
+	pstIrqEvent->dBurstRemainder = burst_r;
+	pstIrqEvent->dDataIndex = 0;
+	pstIrqEvent->dRegDataIndex = 0;
+	pstIrqEvent->dDataTotalLen = read_cnt;
+
+	hal_i2cm_reset(pstCmdInfo->dDevId);
+	hal_i2cm_dma_mode_enable(pstCmdInfo->dDevId);
+	hal_i2cm_clock_freq_set(pstCmdInfo->dDevId, pstCmdInfo->dFreq);
+	hal_i2cm_slave_addr_set(pstCmdInfo->dDevId, pstCmdInfo->dSlaveAddr);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
+
+	if (pstCmdInfo->dRestartEn) {
+		DBG_INFO("I2C_RESTART_MODE\n");
+	  hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_TRIGGER);
+		hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_RESTART_MODE);
+	  hal_i2cm_trans_cnt_set(pstCmdInfo->dDevId, write_cnt, read_cnt);
+		for (i = 0; i < write_cnt; i++) {
+			w_data[i] = pstCmdInfo->pWrData[i];
+		}
+		hal_i2cm_data_set(pstCmdInfo->dDevId, (unsigned int *)w_data);
+	} else {
+		DBG_INFO("I2C_READ_MODE\n");
+	  hal_i2cm_active_mode_set(pstCmdInfo->dDevId, I2C_AUTO);
+		hal_i2cm_rw_mode_set(pstCmdInfo->dDevId, I2C_READ_MODE);
+	}
+
+	hal_i2cm_int_en0_set(pstCmdInfo->dDevId, int0);
+	hal_i2cm_int_en1_set(pstCmdInfo->dDevId, int1);
+	hal_i2cm_int_en2_set(pstCmdInfo->dDevId, int2);
+	
+  //request dma addr map to logical addr
+  pstIrqEvent->pDataBuf = dma_alloc_coherent(pstCmdInfo->dDevId, read_cnt, &(dma_handle), GFP_KERNEL);
+	//DBG_INFO("[I2C adapter] pstCmdInfo->pRdData adr= 0x%x\n", pstCmdInfo->pRdData);
+	//DBG_INFO("[I2C adapter] dma_handle= 0x%x\n", dma_handle);
+
+	hal_i2cm_dma_addr_set(pstCmdInfo->dDevId, (unsigned int) dma_handle);  //data will save to dma_handle and mapping to pstCmdInfo->pRdData
+	hal_i2cm_dma_length_set(pstCmdInfo->dDevId, pstCmdInfo->dRdDataCnt);
+	hal_i2cm_dma_rw_mode_set(pstCmdInfo->dDevId, I2C_DMA_WRITE_MODE);
+	hal_i2cm_dma_int_en_set(pstCmdInfo->dDevId, dma_int);
+	hal_i2cm_dma_go_set(pstCmdInfo->dDevId);
+
+	if (pstCmdInfo->dRestartEn) {
+	  hal_i2cm_manual_trigger(pstCmdInfo->dDevId);  //start send data
+  }
+  
+  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
+	if (ret == 1) { //IRQ_HANDLED
+	   ret = pstIrqEvent->bRet; //if i2c dma read success, return I2C_SUCCESS
+  }
+  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
+  
+	for (i=0 ; i<pstCmdInfo->dRdDataCnt ; i++)
+	{
+		pstCmdInfo->pRdData[i] = pstIrqEvent->pDataBuf[i]; //copy pDataBuf to pRdData
+	}
+
+	pstIrqEvent->eRWState = I2C_IDLE_STATE;
+	pstIrqEvent->bI2CBusy = 0;
+	
+  dma_free_coherent(pstCmdInfo->dDevId, pstCmdInfo->dRdDataCnt,pstIrqEvent->pDataBuf, (dma_handle));
+
+	return ret;
+}
+#endif
+
+#ifdef SUPPORT_I2C_GDMA
+int sp_i2cm_sg_dma_write(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
+{
+	I2C_Cmd_t * pstI2CCmd = NULL;
+	unsigned int dDevId = 0;
+	unsigned int dFreq = 0;
+	unsigned int dSlaveAddr = 0;
+	unsigned int int0 = 0;
+	int ret = I2C_SUCCESS;
+	int i = 0;
+	dma_addr_t dma_handle,dma_handle1;
+	I2C_Irq_Event_t *pstIrqEvent = NULL;
+	unsigned char w_data[32] = {0};
+	unsigned int write_cnt = 0;
+	int j = 0;
+
+	FUNC_DEBUG();
+
+	pstI2CCmd = pstCmdInfo;
+	dDevId = pstI2CCmd->dDevId;
+	dFreq = pstI2CCmd->dFreq;
+	dSlaveAddr = pstI2CCmd->dSlaveAddr;
+	
+	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
+		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+	} else {
+		return I2C_ERR_INVALID_DEVID;
+	}
+
+	if(pstIrqEvent->bI2CBusy){
+		DBG_ERR("I2C is busy !!\n");
+		return I2C_ERR_I2C_BUSY;
+	}
+	_sp_i2cm_init_irqevent(pstCmdInfo->dDevId);
+	pstIrqEvent->bI2CBusy = 1;
+	
+	if(dCmdNum == 0){
+		pstIrqEvent->bI2CBusy = 0;
+		DBG_ERR("I2C SG DMA count is invalid !! dCmdNum=%d\n", dCmdNum);
+		return I2C_ERR_INVALID_CNT;
+	}
+
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+				| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT );
+
+	pstIrqEvent->eRWState = I2C_DMA_WRITE_STATE;
+	
+#if 0//test hard code for 2 dma block case
+//dma1
+  //request dma addr map to logical addr
+  pstCmdInfo->pWrData=dma_alloc_coherent(pstCmdInfo->dDevId, 2, &(dma_handle), GFP_KERNEL);
+	//DBG_INFO("[I2C adapter] pstCmdInfo->pWrData adr= 0x%x\n", pstCmdInfo->pWrData);
+	//DBG_INFO("[I2C adapter] dma_handle= 0x%x\n", dma_handle);
+	pstCmdInfo->pWrData[0] = 0x2e;  
+	pstCmdInfo->pWrData[1] = 0x99; 
+	 
+//dma2	
+  //request dma addr map to logical addr
+  pstI2CCmd->pWrData=dma_alloc_coherent(pstCmdInfo->dDevId, 2, &(dma_handle1), GFP_KERNEL);
+	//DBG_INFO("[I2C adapter] pstI2CCmd->pWrData adr= 0x%x\n", pstI2CCmd->pWrData);
+	//DBG_INFO("[I2C adapter] dma_handle1= 0x%x\n", dma_handle1);
+	pstI2CCmd->pWrData[0] = 0x2e;  
+	pstI2CCmd->pWrData[1] = 0x99;  
+#endif
+
+	hal_i2cm_reset(dDevId);
+	hal_i2cm_dma_mode_enable(dDevId);
+	hal_i2cm_clock_freq_set(dDevId, dFreq);
+	hal_i2cm_slave_addr_set(dDevId, dSlaveAddr);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
+	hal_i2cm_active_mode_set(dDevId, I2C_AUTO);
+	hal_i2cm_rw_mode_set(dDevId, I2C_WRITE_MODE);
+	hal_i2cm_int_en0_set(dDevId, int0);
+	
+	hal_i2cm_sg_dma_enable(dDevId);
+	
+	//set LLI
+	for(i = 0; i < dCmdNum; i++)
+	{
+#if 0//test hard code for 2 dma block case
+		hal_i2cm_sg_dma_access_lli_set(dDevId, i);
+		if (i==0)
+		   hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)dma_handle);
+		else if (i==1)
+		   hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)dma_handle1);
+		else
+		   hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)dma_handle);
+		   
+		hal_i2cm_sg_dma_length_set(dDevId, 2);
+#else
+		pstI2CCmd = pstCmdInfo + i;
+		if(pstI2CCmd->dWrDataCnt == 0){
+			pstIrqEvent->bI2CBusy = 0;
+			DBG_ERR("I2C write count is invalid !! dWrDataCnt=%d\n", pstI2CCmd->dWrDataCnt);
+			return I2C_ERR_INVALID_CNT;
+		}
+		
+	  write_cnt = pstCmdInfo->dWrDataCnt;
+	  for(j = 0; j < write_cnt; j++){
+	  	w_data[j] = pstI2CCmd->pWrData[j];
+	  }
+	  DBG_INFO("write_cnt = %d\n", write_cnt);		
+
+		hal_i2cm_sg_dma_access_lli_set(dDevId, i);
+    //request dma addr map to logical addr
+    pstI2CCmd->pWrData=dma_alloc_coherent(pstCmdInfo->dDevId, pstI2CCmd->dWrDataCnt, &(dma_handle), GFP_KERNEL);
+	  for(j = 0; j < write_cnt; j++){
+       pstI2CCmd->pWrData[j] = w_data[j];
+		}
+		
+		hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)dma_handle);
+		hal_i2cm_sg_dma_length_set(dDevId, pstI2CCmd->dWrDataCnt);
+#endif		
+		hal_i2cm_sg_dma_rw_mode_set(dDevId, I2C_DMA_READ_MODE);
+
+		if(i == (dCmdNum - 1))
+			hal_i2cm_sg_dma_last_lli_set(dDevId);
+	}
+	hal_i2cm_sg_dma_start_lli_set(dDevId, 0);
+	hal_i2cm_sg_dma_go_set(dDevId);
+
+	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
+	if (ret == 1) { //IRQ_HANDLED
+	   ret = pstIrqEvent->bRet; //if i2c sg dma write success, return I2C_SUCCESS
+  }
+	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+	
+	pstIrqEvent->eRWState = I2C_IDLE_STATE;
+	pstIrqEvent->bI2CBusy = 0;
+	
+	return ret;
+}
+
+int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
+{
+	I2C_Cmd_t * pstI2CCmd = NULL;	
+	I2C_Cmd_t * pstI2CCmd1 = NULL;	
+	unsigned char w_data[32] = {0};
+	unsigned int dDevId = 0;
+	unsigned int dFreq = 0;
+	unsigned int dSlaveAddr = 0;
+	unsigned int int0 = 0;
+	unsigned int dma_int = 0;
+	int ret = I2C_SUCCESS;
+	int i = 0;
+	int j = 0;
+	I2C_Irq_Event_t *pstIrqEvent = NULL;
+	dma_addr_t dma_handle;
+	unsigned int sgAddr[32];
+	unsigned int sgDataCnt[32];
+	unsigned int * NewAddr;
+
+	FUNC_DEBUG();
+	
+	pstI2CCmd = pstCmdInfo;
+	dDevId = pstI2CCmd->dDevId;
+	dFreq = pstI2CCmd->dFreq;
+	dSlaveAddr = pstI2CCmd->dSlaveAddr;
+	
+	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
+		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+	} else {
+		return I2C_ERR_INVALID_DEVID;
+	}
+
+	if(pstIrqEvent->bI2CBusy){
+		DBG_ERR("I2C is busy !!\n");
+		return I2C_ERR_I2C_BUSY;
+	}
+	_sp_i2cm_init_irqevent(pstCmdInfo->dDevId);
+	pstIrqEvent->bI2CBusy = 1;
+
+	if(pstI2CCmd->dRestartEn)
+	{
+		if((pstI2CCmd->dWrDataCnt > 32) || (pstI2CCmd->dWrDataCnt == 0)){
+			pstIrqEvent->bI2CBusy = 0;
+			DBG_ERR("I2C write count is invalid !! write count=%d\n", pstI2CCmd->dWrDataCnt);
+			return I2C_ERR_INVALID_CNT;
+		}
+	}
+
+	if(dCmdNum == 0){
+		pstIrqEvent->bI2CBusy = 0;
+		DBG_ERR("I2C SG DMA count is invalid !! dCmdNum=%d\n", dCmdNum);
+		return I2C_ERR_INVALID_CNT;
+	}
+
+	int0 = (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT
+				| I2C_EN0_ADDRESS_NACK_INT );
+
+	dma_int = I2C_DMA_EN_DMA_DONE_INT;
+			
+	pstIrqEvent->eRWState = I2C_DMA_READ_STATE;
+
+	hal_i2cm_reset(dDevId);
+	hal_i2cm_dma_mode_enable(dDevId);
+	hal_i2cm_clock_freq_set(dDevId, dFreq);
+	hal_i2cm_slave_addr_set(dDevId, dSlaveAddr);
+	#ifdef I2C_RETEST
+	if((test_count > 1) && (test_count%3 == 0)){
+	    DBG_INFO("test_count = %d", test_count);
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, 0x01);
+	}else{
+	    hal_i2cm_scl_delay_set(pstCmdInfo->dDevId, I2C_SCL_DELAY);
+       }
+	#endif
+	
+	if(pstI2CCmd->dRestartEn)
+	{
+		hal_i2cm_active_mode_set(dDevId, I2C_TRIGGER);
+		hal_i2cm_rw_mode_set(dDevId, I2C_RESTART_MODE);
+		hal_i2cm_trans_cnt_set(dDevId, pstI2CCmd->dWrDataCnt, 0);
+		DBG_INFO("I2C_RESTART_MODE\n");
+		for(i = 0; i < pstI2CCmd->dWrDataCnt; i++){
+			w_data[i] = pstI2CCmd->pWrData[i];
+		}
+		hal_i2cm_data_set(dDevId, (unsigned int *)w_data);
+	}
+	else
+	{
+		DBG_INFO("I2C_READ_MODE\n");
+		hal_i2cm_active_mode_set(dDevId, I2C_AUTO);
+		hal_i2cm_rw_mode_set(dDevId, I2C_READ_MODE);
+	}
+	
+	hal_i2cm_int_en0_set(dDevId, int0);
+
+ 	hal_i2cm_sg_dma_enable(dDevId);
+
+	//set LLI
+	for(i = 0; i < dCmdNum; i++)
+	{
+#if 0//test hard code for 2 dma block case
+		pstI2CCmd1 = (pstCmdInfo + i);
+		pstI2CCmd1->dRdDataCnt = 2;
+		sgDataCnt[i] = pstI2CCmd1->dRdDataCnt;
+		pstI2CCmd1 = (pstCmdInfo + i + 1);
+#else		
+		pstI2CCmd1 = (pstCmdInfo + i);
+		sgDataCnt[i] = pstI2CCmd1->dRdDataCnt;
+		pstI2CCmd1 = (pstCmdInfo + i + 1);
+#endif
+		if(pstI2CCmd->dRdDataCnt == 0){
+			pstIrqEvent->bI2CBusy = 0;
+			DBG_ERR("I2C read count is invalid !! dRdDataCnt=%d\n", pstI2CCmd->dRdDataCnt);
+			return I2C_ERR_INVALID_CNT;
+		}
+
+		hal_i2cm_sg_dma_access_lli_set(dDevId, i);
+
+    //request dma addr map to logical addr
+    pstI2CCmd1->pRdData=dma_alloc_coherent(pstCmdInfo->dDevId, pstI2CCmd->dRdDataCnt, &(dma_handle), GFP_KERNEL);
+	  //DBG_INFO("[I2C adapter] pstI2CCmd->pRdData adr= 0x%x\n", pstI2CCmd->pRdData);
+	  //DBG_INFO("[I2C adapter] dma_handle= 0x%x\n", dma_handle);
+		sgAddr[i] = pstI2CCmd1->pRdData;
+#if 0//test hard code for 2 dma block case
+		sgAddr[i+10] = &(pstI2CCmd1->pRdData[1]);
+#endif
+		//sgDataCnt[i] = pstI2CCmd->dRdDataCnt;
+		//hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)pstI2CCmd->pRdData);
+		hal_i2cm_sg_dma_addr_set(dDevId, (unsigned int)dma_handle);
+		//hal_i2cm_sg_dma_length_set(dDevId, pstI2CCmd->dRdDataCnt);
+		hal_i2cm_sg_dma_length_set(dDevId, sgDataCnt[i]);
+		hal_i2cm_sg_dma_rw_mode_set(dDevId, I2C_DMA_WRITE_MODE);
+
+		if(i == (dCmdNum - 1))
+			hal_i2cm_sg_dma_last_lli_set(dDevId);
+	}	
+	hal_i2cm_dma_int_en_set(dDevId, dma_int);
+	hal_i2cm_sg_dma_start_lli_set(dDevId, 0);
+	hal_i2cm_sg_dma_go_set(dDevId);
+
+	if(pstCmdInfo->dRestartEn)
+	{
+		hal_i2cm_manual_trigger(pstCmdInfo->dDevId); //start send data
+	}
+	
+	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
+	if (ret == 1) { //IRQ_HANDLED
+	   ret = pstIrqEvent->bRet;
+  }
+	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+	
+#if 0//test hard code for 2 dma block case
+	NewAddr = sgAddr[0];
+	pstCmdInfo->pRdData[0] = *(NewAddr); //copy pDataBuf to pRdData
+	NewAddr = sgAddr[10];
+	pstCmdInfo->pRdData[1] = *(NewAddr); 
+	NewAddr = sgAddr[1];
+	pstCmdInfo->pRdData[2] = *(NewAddr); //copy pDataBuf to pRdData
+	NewAddr = sgAddr[11];
+	pstCmdInfo->pRdData[3] = *(NewAddr); 
+#else
+	for(i = 0; i < dCmdNum; i++)
+	{
+		 NewAddr = sgAddr[i];
+   	 for (j=0 ; j<sgDataCnt[i] ; j++)
+	   {
+		    (pstCmdInfo+i)->pRdData[j] = *(NewAddr+j); //copy pDataBuf to pRdData
+	   }
+  }
+#endif
+
+	pstIrqEvent->eRWState = I2C_IDLE_STATE;
+	pstIrqEvent->bI2CBusy = 0;
+	
+	return ret;
+}
+#endif
 
 static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int num)
 {
@@ -647,11 +1363,28 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		if ( msgs[i].flags & I2C_M_RD) {
 			pstCmdInfo->dRdDataCnt = msgs[i].len;
 			pstCmdInfo->pRdData = msgs[i].buf;
+#ifdef SUPPORT_I2C_GDMA
+      if (pstCmdInfo->dRdDataCnt < 4)
+			   ret = sp_i2cm_read(pstCmdInfo);
+			else   
+			   ret = sp_i2cm_dma_read(pstCmdInfo);
+			//ret = sp_i2cm_sg_dma_read(pstCmdInfo,2);  //test code for sg dma and 2dma case
+			//msgs[i].buf = pstCmdInfo->pRdData;
+#else	
 			ret = sp_i2cm_read(pstCmdInfo);
+#endif	
 		} else {
 			pstCmdInfo->dWrDataCnt = msgs[i].len;
 			pstCmdInfo->pWrData = msgs[i].buf;
+#ifdef SUPPORT_I2C_GDMA
+      if (pstCmdInfo->dWrDataCnt < 4)
+			   ret = sp_i2cm_write(pstCmdInfo);
+			else   
+			   ret = sp_i2cm_dma_write(pstCmdInfo);
+			//ret = sp_i2cm_sg_dma_write(pstCmdInfo,2);  //test code for sg dma and 2dma case
+#else	
 			ret = sp_i2cm_write(pstCmdInfo);
+#endif	
 		}
 
 		if (ret != I2C_SUCCESS) {

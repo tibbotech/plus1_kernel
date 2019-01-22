@@ -45,7 +45,7 @@ static int _sc7021_audio_remove(struct platform_device *pdev);
  **************************************************************************/
 void __iomem *audio_base;
 void __iomem *audio_plla_base;
-
+void __iomem *moon0_base;
 
 
 static const struct of_device_id _sc7021_audio_dt_ids[] = {
@@ -69,6 +69,8 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct device_node *np = pdev->dev.of_node;
+	volatile RegisterFile_G0 *regs0;
+
 	AUD_INFO("%s IN\n", __func__);
 
 	if (!np) {
@@ -83,28 +85,43 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node.\n");
+		dev_err(&pdev->dev, "get resource memory from devicetree node 0.\n");
 		return PTR_ERR(res);
 	}
 	audio_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(audio_base)) {
-		dev_err(&pdev->dev, "mapping resource memory.\n");
+		dev_err(&pdev->dev, "mapping resource memory 0.\n");
 		return PTR_ERR(audio_base);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node1.\n");
+		dev_err(&pdev->dev, "get resource memory from devicetree node 1.\n");
 		return PTR_ERR(res);
 	}
 	audio_plla_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(audio_plla_base)) {
-		dev_err(&pdev->dev, "mapping resource memory1.\n");
+		dev_err(&pdev->dev, "mapping resource memory 1.\n");
 		return PTR_ERR(audio_plla_base);
 	}
 
-	
-	AUD_INFO("audio_reg_base = %08x, = %08x\n", audio_base,audio_plla_base);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (IS_ERR(res)) {
+		dev_err(&pdev->dev, "get resource memory from devicetree node 1.\n");
+		return PTR_ERR(res);
+	}
+	moon0_base = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(moon0_base)) {
+		dev_err(&pdev->dev, "mapping resource memory 2.\n");
+		return PTR_ERR(moon0_base);
+	}
+
+	// Enable AUD hardware clock.
+	regs0 = (volatile RegisterFile_G0 *)moon0_base;
+	regs0->clken0 = 0x08000800;
+	regs0->clken2 = 0x00400040;
+
+	AUD_INFO("audio_base = %08x, audio_plla_base = %08x, moon0_base = %08x\n", audio_base, audio_plla_base, moon0_base);
 	return 0;
 }
 
@@ -114,9 +131,6 @@ static int _sc7021_audio_remove(struct platform_device *pdev)
 	audio_base = NULL;
 	return 0;
 }
-
-
-
 
 
 MODULE_DESCRIPTION("SC7021 audio Driver");

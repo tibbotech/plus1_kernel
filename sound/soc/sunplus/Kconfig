@@ -1,7 +1,7 @@
 menuconfig SND_SOC_SUNPLUS
 	tristate "ASoC support for Sunplus"
 	#depends on ARCH_SUNPLUS
-	select SND_SOC_SPDIF	
+	select SND_SOC_SPDIF
 	default y
 	help
 	  Say Y or M if you want to add support for codecs attached to
@@ -13,6 +13,3 @@ config SND_SOC_AUD628
 	depends on SND_SOC_SUNPLUS
 	default y
 
-
-
-	

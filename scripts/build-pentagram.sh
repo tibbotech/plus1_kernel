@@ -2,8 +2,8 @@
 
 opt=$1
 
-export PATH="../../build/tools/armv7-eabihf--glibc--stable/bin/:$PATH"
-export CROSS_COMPILE=armv7hf-glibc-linux-
+export PATH="../../build/tools/arm-linux-gnueabihf/bin/:$PATH"
+export CROSS_COMPILE=arm-linux-gnueabihf-
 
 # Load CFG=xxx if exists
 BUILD_CFG=build.cfg
@@ -23,10 +23,11 @@ if [ "$cfg_num" != "" ];then
 		echo "* Select config:"
 		echo "--------------------"
 		echo " [1] sc7021 achip emu (rootfs)"
-		echo " [2] sc7021 bchip emu (initramfs)"
+		echo " [2] sc7021 bchip emu (rootfs)"
 		echo " [3] 8388 achip emu"
 		echo " [4] 8388 bchip "
 		echo " [5] sc7021 achip emu (initramfs)"
+		echo " [6] sc7021 bchip emu (initramfs)"
 		echo -n " -> "
 		read cfg_num
 	else
@@ -48,6 +49,9 @@ if [ "$cfg_num" != "" ];then
 			;;
 		5)
 			CFG=pentagram_sc7021_achip_emu_initramfs
+			;;
+		6)
+			CFG=pentagram_sc7021_bchip_emu_initramfs
 			;;
 		*)
 			echo "Error: bad number!!"

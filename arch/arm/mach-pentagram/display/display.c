@@ -47,7 +47,7 @@
 #include "reg_disp.h"
 #include "hal_disp.h"
 
-#include "mach/hdmi_tx.h"
+#include "mach/hdmitx.h"
 
 /**************************************************************************
  *                              M A C R O S                               *
@@ -853,7 +853,9 @@ static void _debug_cmd(char *tmpbuf)
 	}
 	else if (!strncasecmp(tmpbuf, "hdmi", 4))
 	{
-		hdmitx_enable_video(HDMITX_VIDEO_TIMING_480P);
+		hdmitx_disable_display();
+		hdmitx_set_timming(HDMITX_TIMING_480P);
+		hdmitx_enable_display();
 	}
 #if 0
 	else if (!strncasecmp(tmpbuf, "test", 4))

@@ -21,6 +21,10 @@ typedef enum I2C_State_e_ {
 	I2C_WRITE_STATE,  /* i2c is write */
 	I2C_READ_STATE,   /* i2c is read */
 	I2C_IDLE_STATE,   /* i2c is idle */
+#ifdef SUPPORT_I2C_GDMA
+	I2C_DMA_WRITE_STATE,/* i2c is dma write */
+	I2C_DMA_READ_STATE, /* i2c is dma read */
+#endif
 } I2C_State_e;
 
 typedef struct I2C_Cmd_t_ {

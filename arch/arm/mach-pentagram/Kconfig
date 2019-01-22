@@ -63,7 +63,7 @@ menu "Pentagram options"
 
 config SP_PARTIAL_CLKEN
 	bool "Use partial clken to save power"
-	default n
+	default y
 	help
 	  Only enable partial clken in moon settings to save power.
 	  Device drivers should enable their own clken during driver init.
