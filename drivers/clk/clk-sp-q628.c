@@ -439,6 +439,16 @@ struct {
 			0x33e9
 		}
 	},
+	{
+		.rate = 196608000,
+		.regs = {
+			0x4801,
+			0x42ef,
+			0x2495,
+			0x01c6,
+			0x33e9
+		}
+	},
 };
 
 static void plla_set_rate(struct sp_pll *clk)
@@ -454,8 +464,14 @@ static void plla_set_rate(struct sp_pll *clk)
 
 static long plla_round_rate(struct sp_pll *clk, unsigned long rate)
 {
-	clk->p[0] = (rate >= 140000000);
-	return pa[clk->p[0]].rate;
+	int i = ARRAY_SIZE(pa);
+
+	while (--i) {
+		if (rate >= pa[i].rate)
+			break;
+	}
+	clk->p[0] = i;
+	return pa[i].rate;
 }
 
 /************************************************* SP_PLL *************************************************/
