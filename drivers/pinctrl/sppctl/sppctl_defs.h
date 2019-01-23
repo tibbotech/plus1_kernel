@@ -20,17 +20,16 @@
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
+#define KINF(fmt,args...) printk( KERN_INFO MNAME": "fmt,##args)
+#define KERR(fmt,args...) printk( KERN_ERR MNAME": "fmt,##args)
+
 #ifdef SPPCTL_DEBUG
 #define DBGM(x) ( debug_mask & x)
 //#define DBGM(x) true
 #define KDBG(fmt,args...) printk( KERN_DEBUG MNAME": "fmt,##args)
-#define KINF(fmt,args...) printk( KERN_INFO MNAME": "fmt,##args)
-#define KERR(fmt,args...) printk( KERN_ERR MNAME": "fmt,##args)
 #else
 #define DBGM(x) false
 #define KDBG(fmt,args...) 
-#define KINF(fmt,args...) 
-#define KERR(fmt,args...) 
 #endif
 
 typedef struct sppctl_pdata_T {
