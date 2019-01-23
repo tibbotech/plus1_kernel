@@ -636,7 +636,7 @@
 			clock-names = "sys_pll";
 			spi-max-frequency = <10000000>;
 			spi0: spi@ {
-				compatible = "spidev";
+				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <10000000>;
 			};
@@ -656,7 +656,7 @@
 			clock-names = "sys_pll";
 			spi-max-frequency = <10000000>;
 			spi1: spi@ {
-				compatible = "spidev";
+				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <10000000>;
 			};					
@@ -675,7 +675,7 @@
 			clock-names = "sys_pll";
 			spi-max-frequency = <10000000>;
 			spi2: spi@ {
-				compatible = "spidev";
+				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <10000000>;
 			};
@@ -695,7 +695,7 @@
 			clock-names = "sys_pll";
 			spi-max-frequency = <10000000>;
 			spi3: spi@ {
-				compatible = "spidev";
+				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <10000000>;
 			};
