@@ -50,6 +50,7 @@ config MACH_PENTAGRAM_SC7021_ACHIP
         select SP_INTC
 	select HAVE_SMP
 	select CLKSRC_SP_TIMER
+	select GPIO_SC7021
 
 config MACH_PENTAGRAM_SC7021_BCHIP
         bool "SC7021 B support"
