@@ -1,0 +1,116 @@
+---------------------------------------------
+  SoC SunPlus/Tibbo SC7021 pinmux driver (sppctl)
+---------------------------------------------
+
+This document outlines the additional pin control subsystem available on 
+SunPlus SC7021 SoC.
+
+Available functions:
+
+- list all peripheral functions that may be assigned
+- individual and bulk pin-function assignment
+- human-readable representation of the current pinmux mapping
+- firmware dump and load
+
+SC7021 platform has 64 pins and 120 different functions.
+
+------
+Files
+------
+
+The driver directory is /sys/devices/platform/soc@B/9c000100.sppctl.
+
+Several files are created after driver initialization:
+
+- dbgi (txt, read/write) - the debug level
+  (0 - no debug, 1 - main messages, 2 - verbose)
+
+- list_funcs (txt, read only) - full list of available functions in a 
+  certain order
+  (L2SW_CLK_OUT, L2SW_MAC_SMI_MDC,..., PWM0,..., SPIM0_INT, SPIM0_CLK, SPIM0_DO, 
+  SPIM0_DI, etc.)
+
+- txt_map (txt, read only) - human-readable pin assignment
+  (for ex.: 040 L2SW_CLK_OUT - pin#40 assigned to L2SW_CLK_OUT function)
+
+- fwname (txt, read/write) - firmware filename relative to /lib/firmware
+
+- fw (bin, read/write) - firmware file
+
+- 120 function-named files (bin, read/write)
+
+---------
+DTS file
+---------
+
+A driver is platform dependent, requested by DTS node.
+
+Example:
+
+        sppctl: sppctl@0x9C000100 {
+                compatible = "sunplus,sppctl";
+                reg = <0x9C000100 0x100>;
+                fwname = "sppctl.bin";
+        };
+
+All properties are optional and has compile-time default values.
+
+The compatible key may have one of the following values:
+
+- pentagram,sppctl
+- sunplus,sppctl
+- tps,sppctl
+- tibbo,sppctl
+
+The reg key should contain 1 entry - the physical address and length of the 
+sppctl registers.
+
+The fwname define a path to the firmware relative to /lib/firmware.
+
+--------------
+Firmware file
+--------------
+
+At driver start-up loads default pins layout from firmware file defined in 
+DTS file.
+
+The lack of firmware does not affect the functionality.
+
+The firmware may be applied in two ways:
+
+- to write a file name into /sys/devices/platform/soc@B/9c000100.sppctl/fwname
+- to write binary pinmux data into /sys/devices/platform/soc@B/9c000100.sppctl/fw
+
+The firmware file must be at least 120 bytes (1 byte per function). All 
+bytes after 120'th will be ignored. The data must be written in binary form.
+Each byte is the pin number.
+
+Functions are listed in file "list_funcs" in the certain order.
+For example byte#0 - L2SW_CLK_OUT, byte#1 - L2SW_MAC_SMI_MDC etc. 
+Byte#0 = 0x10 means, that pin #16 (0x10 in hex) assigned to function 
+L2SW_CLK_OUT (position #0 in list_funcs).
+0x00 in position #0 means no pin is assigned to L2SW_MAC_SMI_MDC function.
+
+-------------------
+Pins configuration
+-------------------
+
+File txt_map is the human-readable format of the current pinmux mapping.
+Cut from this file:
+
+040 L2SW_CLK_OUT
+034 L2SW_MAC_SMI_MDC
+035 L2SW_LED_FLASH0
+
+Legend:
+Pin #40 assigned to L2SW_CLK_OUT function,
+pin #34 assigned to L2SW_MAC_SMI_MDC,
+pin #35 assigned to L2SW_LED_FLASH0, etc.
+
+Alternatively, you can read the binary 1-byte value from function files, i.e.
+L2SW_CLK_OUT, L2SW_MAC_SMI_MDC, L2SW_LED_FLASH0 etc. from the driver directory.
+
+To assign certain function to a pin one-byte value must be written to the function file.
+For ex., to assign pin #1 (G_MX8) to L2SW_LED_ON0 function:
+
+# echo -e "\01" > /sys/device/platform/soc@B/9c000100/L2SW_LED_ON0.
