@@ -1566,6 +1566,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int ret, irq;
 	int idx_offset, idx;
 	int idx_which_uart;
+	char peri_name[16];
 
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "serial");
@@ -1605,6 +1606,20 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 		if (!res_mem) {
 			return -ENODEV;
+		}
+
+		sprintf(peri_name, "PERI%d", (idx & 0x01));
+		DBG_INFO("Enable clock %s\n", peri_name);
+		clk = devm_clk_get(&pdev->dev, peri_name);
+		if (IS_ERR(clk)) {
+			DBG_ERR("Can't find clock source: %s\n", peri_name);
+			return PTR_ERR(clk);
+		} else {
+			ret = clk_prepare_enable(clk);
+			if (ret) {
+				DBG_ERR("%s can't be enabled correctly\n", peri_name);
+				return ret;
+			}
 		}
 
 		sunplus_uartdma[idx].addr_phy = (unsigned long)(res_mem->start);
@@ -1662,12 +1677,16 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (irq < 0)
 		return -ENODEV;
 
+#if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(clk)) {
 		port->uartclk = (27 * 1000 * 1000); /* default */
 	} else {
 		port->uartclk = clk_get_rate(clk);
 	}
+#else
+	port->uartclk = clk_get_rate(clk);
+#endif
 
 	port->iotype = UPIO_MEM;
 	port->irq = irq;

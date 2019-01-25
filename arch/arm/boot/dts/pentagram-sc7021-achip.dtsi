@@ -242,6 +242,8 @@
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UADMA>,
 				 <&clkc PERI0>;
+			clock-names = "UADMA",
+				      "PERI0";
 			which-uart = <1>;
 		};
 #endif
@@ -253,6 +255,8 @@
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UADMA>,
 				 <&clkc PERI1>;
+			clock-names = "UADMA",
+				      "PERI1";
 			which-uart = <2>;
 		};
 #endif
@@ -263,6 +267,8 @@
 			reg = <0x9c008a00 0x40>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI0>;
+			clock-names = "HWUA",
+				      "PERI0";
 			which-uart = <1>;
 		};
 #endif
@@ -272,6 +278,8 @@
 			reg = <0x9c008a40 0x40>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI1>;
+			clock-names = "HWUA",
+				      "PERI1";
 			which-uart = <2>;
 		};
 #endif
