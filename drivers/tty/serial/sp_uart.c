@@ -1574,6 +1574,19 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		}
 	}
 
+	DBG_INFO("Enable clock(s)\n");
+	clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(clk)) {
+		DBG_ERR("Can't find clock source\n");
+		return PTR_ERR(clk);
+	} else {
+		ret = clk_prepare_enable(clk);
+		if (ret) {
+			DBG_ERR("Clock can't be enabled correctly\n");
+			return ret;
+		}
+	}
+
 	idx_offset = -1;
 	if (IS_UARTDMARX_ID(pdev->id)) {
 		idx_offset = 0;
