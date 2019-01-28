@@ -47,8 +47,6 @@
 #include "reg_disp.h"
 #include "hal_disp.h"
 
-#include "mach/hdmitx.h"
-
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -92,13 +90,14 @@
 #if 0
 #define DMA_MAX_BLOCK			(1920 * 2 * 32)		//yuy2, one line 1920, 32lines
 #else
-static int DMA_MAX_BLOCK = DMA_WIDTH*32*2;//(DMA_WIDTH*2*32);
+static int DMA_LINES = 32;
+static int DMA_MAX_BLOCK;// = DMA_WIDTH*DMA_LINES*2;//(DMA_WIDTH*2*32);
 #endif
 static int DMA_id = 0;
 static int DMA_pos = 0;
 static int DMA_len = DMA_WIDTH*DMA_HEIGHT*2;
 static int DMA_times = 0;
-static volatile int DMA_safe_line[2] = {38 + 32 + 32 + ((480-VPP_HEIGHT)>>1), 38 + 32 + 32 + 32 + ((480-VPP_HEIGHT)>>1)};
+static volatile int DMA_safe_line[2];// = {38 + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1), 38 + DMA_LINES + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1)};
 
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
@@ -123,13 +122,8 @@ static int _dma_probe(struct platform_device *pdev);
  **************************************************************************/
 DISPLAY_WORKMEM gDispWorkMem = {0};
 
-static struct platform_device_id _display_devtypes[] = {
-	{ .name = "sp_display" },
-	{ /* sentinel */ }
-};
-
 static struct of_device_id _display_ids[] = {
-	{ .compatible = "sunplus,sp-display"},
+	{ .compatible = "sunplus,sc7021-display"},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, _display_ids);
@@ -140,9 +134,8 @@ static struct platform_driver _display_driver = {
 	.remove		= _display_remove,
 	.suspend	= _display_suspend,
 	.resume		= _display_resume,
-	.id_table	= _display_devtypes,
 	.driver		= {
-		.name	= "sp_display",
+		.name	= "sc7021_display",
 		.of_match_table	= of_match_ptr(_display_ids),
 	},
 };
@@ -348,6 +341,8 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 
 static irqreturn_t _display_irq_field_end(int irq, void *param)
 {
+	DRV_OSD_IRQ();
+
 	if (mac_test == 2)
 		DERROR("%s:%d mac test line:%d %d\n", __FUNCTION__, __LINE__, DRV_TGEN_GetLineCntNow(), getstc());
 #if 0
@@ -379,8 +374,8 @@ static irqreturn_t _display_irq_field_end(int irq, void *param)
 		bio_wreg(1, 0x00000000 | (1<<19) | (1<<17));
 	}
 
-	DMA_safe_line[0] = 38 + 32 + 32 + ((480-VPP_HEIGHT)>>1);
-	DMA_safe_line[1] = 38 + 32 + 32 + 32 + ((480-VPP_HEIGHT)>>1);
+	DMA_safe_line[0] = 38 + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1);
+	DMA_safe_line[1] = 38 + DMA_LINES + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1);
 
 	return IRQ_HANDLED;
 }
@@ -777,8 +772,19 @@ static void _debug_cmd(char *tmpbuf)
 	}
 	else if (!strncasecmp(tmpbuf, "block", 5))
 	{
-		tmpbuf = _mon_readint(tmpbuf + 5, (int *)&DMA_MAX_BLOCK);
-		DERROR("dma block %d\n", DMA_MAX_BLOCK);
+		int tmp;
+		tmpbuf = _mon_readint(tmpbuf + 5, (int *)&tmp);
+
+		if (tmp % 16)
+			DERROR("dma block size(%d) must 16 bytes alignment.\n", tmp);
+		if (tmp % (DMA_WIDTH * 2))
+			DERROR("dma block size(%d) must %d bytes alignment.\n", tmp, DMA_WIDTH * 2);
+		if (tmp > DMA_len)
+			DERROR("dma block size(%d) large than dma length(%d).\n", tmp, DMA_len);
+
+		DMA_MAX_BLOCK = tmp;
+		DMA_LINES = DMA_MAX_BLOCK / DMA_WIDTH / 2;
+		DERROR("dma block %d bytes, dma lines = %d\n", DMA_MAX_BLOCK, DMA_LINES);
 	}
 	else if (!strncasecmp(tmpbuf, "dma", 3))
 	{
@@ -850,12 +856,6 @@ static void _debug_cmd(char *tmpbuf)
 			tmpbuf = _mon_readint(tmpbuf, (int *)&value);
 			DRV_OSD_HDR_Write(offset, value);
 		}
-	}
-	else if (!strncasecmp(tmpbuf, "hdmi", 4))
-	{
-		hdmitx_disable_display();
-		hdmitx_set_timming(HDMITX_TIMING_480P);
-		hdmitx_enable_display();
 	}
 #if 0
 	else if (!strncasecmp(tmpbuf, "test", 4))
@@ -1007,7 +1007,7 @@ static irqreturn_t _dma_irq_jobdown0(int irq, void *param)
 		}
 		if (DRV_TGEN_GetLineCntNow() >= DMA_safe_line[DMA_id])
 			DERROR("%s:%d detect DMA job down error id: %d times: 0x%x: at %d >= %d\n", __FUNCTION__, __LINE__, DMA_id, DMA_times, DRV_TGEN_GetLineCntNow(), DMA_safe_line[DMA_id]);
-		DMA_safe_line[DMA_id] += 32*2;
+		DMA_safe_line[DMA_id] += DMA_LINES*2;
 #endif
 
 		DMA_times += 1 << (dma_offset>>1);
@@ -1172,6 +1172,7 @@ static int _display_init_irq(struct platform_device *pdev)
 ERROR:
 	return -1;
 }
+
 #ifdef TEST_DMA
 char yuy2_array[768*480*2] __attribute__((aligned(1024)))= {
 //	#include "vpp_pattern/YUY2_720x480.h"
@@ -1271,17 +1272,9 @@ static int _display_probe(struct platform_device *pdev)
 	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	DISP_REG_t *pTmpRegBase = NULL;
 	struct resource *res_mem;
-	const struct of_device_id *match;
 	int ret;
 
 	DEBUG("[%s:%d] in 2\n", __FUNCTION__, __LINE__);
-	if (pdev->dev.of_node) {
-		match = of_match_node(_display_ids, pdev->dev.of_node);
-		if (match == NULL) {
-			DERROR("Error: %s, %d\n", __func__, __LINE__);
-			return -ENODEV;
-		}
-	}
 
 	if (_display_init_irq(pdev)) {
 		DERROR("Error: %s, %d\n", __func__, __LINE__);
@@ -1330,11 +1323,7 @@ static int _display_probe(struct platform_device *pdev)
 		DERROR("init clk error.\n");
 		return ret;
 	}
-	//HDMI init
-	{
-		//extern void hdmi_tx_init(void);
-		//hdmi_tx_init();
-	}
+
 	//DMIX must first init
 	DRV_DMIX_Init((void *)&pTmpRegBase->dmix);
 	DRV_TGEN_Init((void *)&pTmpRegBase->tgen);
@@ -1400,8 +1389,8 @@ static int _display_probe(struct platform_device *pdev)
 	* L6: OSD0
 	*****************************************/
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_AlphaBlend, DRV_DMIX_VPP0);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_Transparent, DRV_DMIX_OSD0);
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Transparent, DRV_DMIX_VPP0);
+	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_AlphaBlend, DRV_DMIX_OSD0);
 
 #ifdef TEST_DMA
 	{
@@ -1412,6 +1401,10 @@ static int _display_probe(struct platform_device *pdev)
 		extern void _yuv444_to_yuv422_NV16(unsigned char *ptr_yuv444, unsigned char *ptr_yuv422_NV16, int width, int height, int line_pitch);
 		extern void _yuv422_NV16_to_packed(unsigned char *ptr_yuv422_NV16, unsigned char *ptr_yuv422_packed, int width, int height, int line_pitch);
 		extern void _yuv444_to_yuv420_NV12(unsigned char *ptr_yuv444, unsigned char *ptr_yuv420_NV12, int width, int height, int line_pitch);
+
+		DMA_MAX_BLOCK = DMA_WIDTH*DMA_LINES*2;
+		DMA_safe_line[0] = 38 + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1);
+		DMA_safe_line[1] = 38 + DMA_LINES + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1);
 
 		diag_printf("gen rgb\n");
 		_gen_checkerboard(rgb_array, DMA_WIDTH, DMA_HEIGHT, DISP_ALIGN(DMA_WIDTH, 128));
@@ -1429,10 +1422,7 @@ static int _display_probe(struct platform_device *pdev)
 #endif
 
 	{
-	extern void DRV_OSD_InitTest(void);
 	extern void vpost_dma(void);
-
-	DRV_OSD_InitTest();
 
 	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
 
@@ -1502,7 +1492,6 @@ static int set_debug_cmd(const char *val, const struct kernel_param *kp)
 
 static struct kernel_param_ops debug_param_ops = {
 	.set = set_debug_cmd,
-//	.get = param_get_bool,
 };
 
 module_param_cb(debug, &debug_param_ops, NULL, 0644);
@@ -1512,5 +1501,7 @@ module_param_cb(debug, &debug_param_ops, NULL, 0644);
  *                     P U B L I C   F U N C T I O N                      *
  **************************************************************************/
 
+MODULE_DESCRIPTION("SC7021 Display Driver");
+MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");
 MODULE_LICENSE("GPL");
 

@@ -8,8 +8,8 @@
 #include "disp_dmix.h"
 #include "disp_tgen.h"
 #include "disp_dve.h"
-#include "disp_osd.h"
-#include "disp_vpp.h"
+#include "mach/display/disp_osd.h"
+#include "mach/display/disp_vpp.h"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -121,6 +121,9 @@ typedef struct {
 	//VPP end
 #endif
 } DISPLAY_WORKMEM;
+
+
+extern DISPLAY_WORKMEM gDispWorkMem;
 
 #endif	//__HAL_DISP_H__
 
