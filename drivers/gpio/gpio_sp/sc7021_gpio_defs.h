@@ -49,7 +49,7 @@ typedef struct sc7021gpio_chip_T {
  void __iomem *base0;   // MASTER , OE , OUT , IN
  void __iomem *base1;   // I_INV , O_INV , OD
  void __iomem *base2;   // GPIO_FIRST
- int irq;
+ int irq[ 8];
  struct device *devp;
 } sc7021gpio_chip_t;
 
