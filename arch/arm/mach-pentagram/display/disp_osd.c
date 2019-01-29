@@ -28,7 +28,7 @@
  *                         H E A D E R   F I L E S
  **************************************************************************/
 #include <asm/io.h>
-#include <asm/cacheflush.h>
+#include <linux/dma-mapping.h>
 #include "reg_disp.h"
 #include "hal_disp.h"
 
@@ -149,15 +149,22 @@ static DISP_OSD_REG_t *pOSDReg;
 static DISP_GPOST_REG_t *pGPOSTReg;
 
 static Region_Manager_t *gpWinRegion;
+static u32 gpWinRegion_phy;
 static u8 *gpOsdHeader;
+static u32 gpOsdHeader_phy;
 
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
 void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+
 	pOSDReg = (DISP_OSD_REG_t *)pInHWReg1;
 	pGPOSTReg = (DISP_GPOST_REG_t *)pInHWReg2;
+
+	init_waitqueue_head(&pDispWorkMem->osd_wait);
+	spin_lock_init(&pDispWorkMem->osd_lock);
 }
 
 DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, UINT32 *pClutDataPtr)
@@ -189,9 +196,11 @@ void DRV_OSD_IRQ(void)
 {
 	Region_Manager_t *pRegionManager = gpWinRegion;
 	HW_OSD_Header_t *pHWOSDhdr;
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
 		return;
+	spin_lock(&pDispWorkMem->osd_lock);
 
 	if (pRegionManager->pHWRegionHdr)
 	{
@@ -203,9 +212,15 @@ void DRV_OSD_IRQ(void)
 			pHWOSDhdr->link_data = SWAP32((UINT32)((UINT32)pRegionManager->DataPhyAddr + pRegionManager->BmpSize * (pRegionManager->CurrBufID & 0xf)));
 			if (pRegionManager->PaletteAddr)
 				(void)DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager, (UINT32 *)pRegionManager->PaletteAddr);
-			flush_cache_all();
 		}
 	}
+
+	if (pDispWorkMem->osd_field_end_protect) {
+		pDispWorkMem->osd_field_end_protect &= ~(1 << DRV_OSD0);
+		wake_up_interruptible(&pDispWorkMem->osd_wait);
+	}
+
+	spin_unlock(&pDispWorkMem->osd_lock);
 }
 
 void DRV_OSD_Info(void)
@@ -353,25 +368,36 @@ int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 	return 0;
 }
 
+EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
+void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo)
+{
+	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
+		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, gpOsdHeader, gpOsdHeader_phy);
+	else
+		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t), gpOsdHeader, gpOsdHeader_phy);
+
+	dma_free_coherent(NULL, sizeof(Region_Manager_t), gpWinRegion, gpWinRegion_phy);
+}
+
 EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
 	u32 *osd_header;
 
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
-		gpOsdHeader = kzalloc(sizeof(HW_OSD_Header_t) + 1024, GFP_KERNEL);
+		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, &gpOsdHeader_phy, GFP_KERNEL);
 	else
-		gpOsdHeader = kzalloc(sizeof(HW_OSD_Header_t), GFP_KERNEL);
+		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t), &gpOsdHeader_phy, GFP_KERNEL);
 
 	if (!gpOsdHeader) {
-		diag_printf("kmalloc osd header fail\n");
+		diag_printf("malloc osd header fail\n");
 		return;
 	}
 
-	gpWinRegion = kzalloc(sizeof(Region_Manager_t), GFP_KERNEL);
+	gpWinRegion = dma_zalloc_coherent(NULL, sizeof(Region_Manager_t), &gpWinRegion_phy, GFP_KERNEL);
 
 	if (!gpWinRegion) {
-		diag_printf("kmalloc region header fail\n");
+		diag_printf("malloc region header fail\n");
 		return;
 	}
 
@@ -387,7 +413,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	gpWinRegion->PaletteAddr = (u8 *)pinfo->UI_bufAddr_pal;
 	gpWinRegion->pHWRegionHdr = (HW_OSD_Header_t *)gpOsdHeader;
 
-	diag_printf("osd_header=0x%x 0x%x addr=0x%x\n", (u32)gpOsdHeader, __pa(gpOsdHeader), pinfo->UI_bufAddr);
+	//diag_printf("osd_header=0x%x 0x%x addr=0x%x\n", (u32)gpOsdHeader, gpOsdHeader_phy, pinfo->UI_bufAddr);
 
 	osd_header = (u32 *)gpOsdHeader;
 
@@ -409,7 +435,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 
 	//OSD
 	pOSDReg->osd_ctrl = OSD_CTRL_COLOR_MODE_RGB | OSD_CTRL_CLUT_FMT_ARGB | OSD_CTRL_LATCH_EN | OSD_CTRL_A32B32_EN | OSD_CTRL_FIFO_DEPTH;
-	pOSDReg->osd_base_addr = __pa(gpOsdHeader);
+	pOSDReg->osd_base_addr = gpOsdHeader_phy;
 	pOSDReg->osd_hvld_offset = 0;
 	pOSDReg->osd_vvld_offset = 0;
 	pOSDReg->osd_hvld_width = pinfo->UI_width;
@@ -430,81 +456,28 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	pGPOSTReg->gpost0_contrast_config = 0x0;
 }
 
-#if 0
-UINT32 DRV_OSD_QueryUpdating(u32 region_handle)
+void DRV_OSD_WaitVSync(void)
 {
-	Region_Manager_t *pRegionManager = (Region_Manager_t *)region_handle;
-	enum DRV_OsdWindow_e win_id;
-	int IsUpdated = 0;
+	Region_Manager_t *pRegionManager = gpWinRegion;
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
-		return 0;
+		return;
 
-	for (win_id = DRV_OSD0; win_id < DRV_OSD_MAX; ++win_id)
-	{
-		Region_Manager_t *pFindRegion = gWinInfo[win_id].pWinRegion;
+	if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY)
+		pDispWorkMem->osd_field_end_protect |= 1 << DRV_OSD0;
 
-		while(pFindRegion)
-		{
-			if (pRegionManager->DataPhyAddr == pFindRegion->DataPhyAddr)
-			{
-				if (pFindRegion->DirtyFlag & REGION_ADDR_DIRTY)
-				{
-					IsUpdated |= (1 << win_id);
-					break;
-				}
-			}
-			pFindRegion = pFindRegion->pNextRegion;
-		}
-	}
-
-	return IsUpdated;
+	wait_event_interruptible_timeout(pDispWorkMem->osd_wait,
+					!pDispWorkMem->osd_field_end_protect,
+					msecs_to_jiffies(50));
 }
-#endif
-
-#if 0
-EXPORT_SYMBOL(DRV_OSD_WaitVSync);
-UINT32 DRV_OSD_WaitVSync(u32 region_handle)
-{
-	Region_Manager_t *pRegionManager = (Region_Manager_t *)region_handle;
-	enum DRV_OsdWindow_e win_id;
-	int IsUpdated = 0;
-
-	if (!pRegionManager)
-		return 0;
-
-	for (win_id = DRV_OSD0; win_id < DRV_OSD_MAX; ++win_id)
-	{
-		Region_Manager_t *pFindRegion = gWinInfo[win_id].pWinRegion;
-
-		while(pFindRegion)
-		{
-			if (pRegionManager->DataPhyAddr == pFindRegion->DataPhyAddr)
-			{
-				if (pFindRegion->DirtyFlag & REGION_ADDR_DIRTY)
-				{
-					IsUpdated |= (1 << win_id);
-					break;
-				}
-			}
-			pFindRegion = pFindRegion->pNextRegion;
-		}
-	}
-
-	return IsUpdated;
-}
-#endif
 
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 {
 	Region_Manager_t *pRegionManager = gpWinRegion;
 
-	if (!pRegionManager) {
-		//ERRDISP("Invalid handle\n");
+	if (!pRegionManager)
 		return -1;
-	}
-
-	//DEBUG("bBufferId %d\n", bBufferId);
 
 	pRegionManager->DirtyFlag |= REGION_ADDR_DIRTY;
 	pRegionManager->CurrBufID = bBufferId;

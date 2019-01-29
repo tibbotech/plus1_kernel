@@ -43,7 +43,6 @@
 /**************************************************************************
  * Constants
  **************************************************************************/
-#define IPC_FunctionCall(...)	0
 
 /**************************************************************************
  * Macros
@@ -93,9 +92,10 @@ struct dma_coherent_mem {
  **************************************************************************/
 static int _sc7021_fb_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *fbinfo);
-static int _sc7021_fb_waitVsync(struct fb_info *info);
 static int _sc7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info);
-
+static int _sc7021_fb_ioctl(struct fb_info *fbinfo,
+		unsigned int cmd,
+		unsigned long arg);
 static int _sc7021_fb_rmem_device_init(struct reserved_mem *rmem,
 		struct device *dev);
 static void _sc7021_fb_rmem_device_release(struct reserved_mem *rmem,
@@ -113,8 +113,8 @@ struct fb_info *gFB_INFO;
 static struct fb_ops framebuffer_ops = {
 	.owner				= THIS_MODULE,
 	.fb_pan_display		= _sc7021_fb_pan_display,
-	.fb_sync			= _sc7021_fb_waitVsync,
 	.fb_setcmap			= _sc7021_fb_setcmap,
+	.fb_ioctl			= _sc7021_fb_ioctl,
 };
 
 static const struct of_device_id _sc7021_fb_dt_ids[] = {
@@ -403,41 +403,31 @@ static int _sc7021_fb_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *fbinfo)
 {
 	struct framebuffer_t *fb_par = (struct framebuffer_t *)fbinfo->par;
-	struct FB_IPC_Info_t ipc_data = {.win_id = -1};
 	struct platform_device *pdev = to_platform_device(fbinfo->dev);
-	int retIPC = 0;
+	int ret = 0;
 
 	fbinfo->var.xoffset = var->xoffset;
 	fbinfo->var.yoffset = var->yoffset;
 
-	ipc_data.buf_id = fbinfo->var.yoffset / fbinfo->var.yres;
-	ipc_data.win_id = 0;
+	ret = sc7021_fb_swapbuf(
+			fbinfo->var.yoffset / fbinfo->var.yres,
+			fb_par->fbpagenum);
 
-	retIPC = sc7021_fb_swapbuf(&ipc_data, fb_par->fbpagenum);
-
-	if (retIPC)
+	if (ret)
 		mod_err(pdev, "swap buffer fails");
 
-	return retIPC;
+	return ret;
 }
 
-static int _sc7021_fb_waitVsync(struct fb_info *info)
+static int _sc7021_fb_ioctl(struct fb_info *fbinfo,
+		unsigned int cmd,
+		unsigned long arg)
 {
-	struct FB_IPC_Info_t ipc_data = {.win_id = -1};
-	struct platform_device *pdev = to_platform_device(info->dev);
-	int retIPC;
-
-	ipc_data.win_id = 0;
-	mod_dbg(pdev, "Wait Vsync: %d\n", ipc_data.win_id);
-
-	retIPC = IPC_FunctionCall(IPC_CMD_DISP_WAIT_VSYNC,
-			&ipc_data,
-			sizeof(struct FB_IPC_Info_t));
-
-	if (retIPC)
-		mod_err(pdev,
-			"IPC fail(IPC_CMD_DISP_WAIT_VSYNC) = %d\n",
-			retIPC);
+	switch (cmd) {
+	case FBIO_WAITFORVSYNC:
+		DRV_OSD_WaitVSync();
+		break;
+	}
 
 	return 0;
 }
@@ -479,12 +469,24 @@ static int _sc7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 
 static int _sc7021_fb_remove(struct platform_device *pdev)
 {
+	struct UI_FB_Info_t Info;
+	int ret;
+
 	if (gFB_INFO) {
 		if (unregister_framebuffer(gFB_INFO))
 			mod_err(pdev, "unregister framebuffer error\n");
 		framebuffer_release(gFB_INFO);
 		gFB_INFO = NULL;
 	}
+
+	ret = DRV_OSD_Get_UI_Res(&Info);
+	if (ret) {
+		mod_err(pdev, "Get UI resolution fails");
+		return -EPROBE_DEFER;
+	}
+
+	DRV_OSD_Set_UI_UnInit(&Info);
+
 	return 0;
 }
 
@@ -556,36 +558,14 @@ unsigned int sc7021_fb_chan_by_field(unsigned char chan,
 	return ret_chan << bf->offset;
 }
 
-int sc7021_fb_swapbuf(struct FB_IPC_Info_t *info, int buf_max)
+int sc7021_fb_swapbuf(u32 buf_id, int buf_max)
 {
 	int ret = 0;
 
-	if (!info) {
-		/*mod_err("IPC info is NULL\n");*/
+	if (buf_id >= buf_max)
 		return -1;
-	}
 
-	if (info->buf_id >= buf_max) {
-#if 0
-		mod_err("buffer ID >= max buffer num(%d >= %d)\n",
-				info->buf_id,
-				buf_max);
-#endif
-		return -1;
-	}
-
-#if 0
-	mod_dbg("Swap buffer ID = %d, win_id = %d\n",
-			info->buf_id,
-			info->win_id);
-#endif
-
-	ret = DRV_OSD_SetVisibleBuffer(info->buf_id);
-
-#if 0
-	if (ret)
-		mod_err("IPC fail(IPC_CMD_DISP_SWAP_BUFF) = %d\n", ret);
-#endif
+	ret = DRV_OSD_SetVisibleBuffer(buf_id);
 
 	return ret;
 }

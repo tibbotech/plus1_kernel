@@ -532,17 +532,13 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		/* update palette */
 		if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
-			struct FB_IPC_Info_t ipc_data = {.win_id = -1};
-			int retIPC;
+			int ret;
 
-			ipc_data.buf_id = fbinfo->var.yoffset
-					/ fbinfo->var.yres;
-			ipc_data.win_id = 0;
-
-			retIPC = sc7021_fb_swapbuf(&ipc_data,
+			ret = sc7021_fb_swapbuf(
+					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			pr_err("update palette by swapbuf ipc:%d\n",
-					retIPC);
+			pr_err("update palette by swapbuf ret:%d\n",
+					ret);
 		}
 		flush_cache_all();
 	} else if (!strncasecmp(tmpbuf, "fill", 4)) {
@@ -558,17 +554,14 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		/* update palette */
 		if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
-			struct FB_IPC_Info_t ipc_data = {.win_id = -1};
-			int retIPC;
+			int ret;
 
-			ipc_data.buf_id = fbinfo->var.yoffset
-					/ fbinfo->var.yres;
-			ipc_data.win_id = 0;
 
-			retIPC = sc7021_fb_swapbuf(&ipc_data,
+			ret = sc7021_fb_swapbuf(
+					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			pr_err("update palette by swapbuf ipc:%d\n",
-					retIPC);
+			pr_err("update palette by swapbuf ret:%d\n",
+					ret);
 		}
 		pr_err("fill all by color(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
 				ARGB_GETA(argb),
@@ -626,43 +619,41 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 			pr_err(" 0x%08x\n", *(palette_ptr++));
 		}
 	} else if (!strncasecmp(tmpbuf, "sb", 2)) {
-		struct FB_IPC_Info_t ipc_data = {.win_id = 0};
-		int retIPC = 0;
+		int ret = 0;
+		u32 buf_id;
 
-		tmpbuf = _mon_readint(tmpbuf + 2, (int *)&ipc_data.buf_id);
+		tmpbuf = _mon_readint(tmpbuf + 2, (int *)&buf_id);
 
-		retIPC = sc7021_fb_swapbuf(&ipc_data, fb_par->fbpagenum);
+		ret = sc7021_fb_swapbuf(buf_id, fb_par->fbpagenum);
 
-		pr_err("force win_id:%d show buffer_ID:%d, ipc:%d\n",
-				ipc_data.win_id,
-				ipc_data.buf_id,
-				retIPC);
+		pr_err("force show buffer_ID:%d, ret:%d\n",
+				buf_id,
+				ret);
 	} else if (!strncasecmp(tmpbuf, "sw", 2)) {
-		struct FB_IPC_Info_t ipc_data = {.win_id = 0};
-		int retIPC = 0;
+		int ret = 0;
 
 		if (!fbinfo->var.yoffset)
 			fbinfo->var.yoffset = fbinfo->var.yres;
 		else
 			fbinfo->var.yoffset = 0;
 
-		ipc_data.buf_id = fbinfo->var.yoffset / fbinfo->var.yres;
 
-		retIPC = sc7021_fb_swapbuf(&ipc_data, fb_par->fbpagenum);
-		pr_err("swap win_id:%d buffer now use ID:%d, ipc:%d\n",
-				ipc_data.win_id,
-				ipc_data.buf_id,
-				retIPC);
+		ret = sc7021_fb_swapbuf(
+				fbinfo->var.yoffset / fbinfo->var.yres,
+				fb_par->fbpagenum);
+		pr_err("swap buffer now use ID:%d, ret:%d\n",
+				fbinfo->var.yoffset / fbinfo->var.yres,
+				ret);
 	} else if (!strncasecmp(tmpbuf, "info", 4)) {
 		_device_info();
 	} else if (!strncasecmp(tmpbuf, "getUI", 5)) {
 		struct UI_FB_Info_t Info;
-		int i;
+		int ret;
 
-		//i = _Get_UI_Res(Info);
+		ret = DRV_OSD_Get_UI_Res(&Info);
 
-		if (i)
-			mod_err("Get UI IPC error\n");
+		if (ret)
+			mod_err("Get UI error\n");
 		else
 			_print_UI_info(&Info);
 	}

@@ -81,7 +81,9 @@ void DRV_OSD_IRQ(void);
 void DRV_OSD_HDR_Show(void);
 void DRV_OSD_HDR_Write(int offset, int value);
 
+void DRV_OSD_WaitVSync(void);
 int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo);
+void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo);
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo);
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId);
 

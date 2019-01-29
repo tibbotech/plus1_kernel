@@ -5,19 +5,11 @@
 extern "C" {
 #endif
 
-#define DEBUG_MSG
+/* #define DEBUG_MSG */
 
 #define FB_PALETTE_LEN		(1024)
 
 #define DISP_ALIGN(x, n)		(((x) + ((n) - 1)) & ~((n) - 1))
-
-/* S+ Compare Start */
-struct FB_IPC_Info_t {
-	int win_id;
-	unsigned int buf_id;
-};
-/* S+ Compare End */
-/* please ref ecos setting end */
 
 struct framebuffer_t {
 	struct fb_info			*fb;
@@ -38,7 +30,7 @@ struct framebuffer_t {
 
 unsigned int sc7021_fb_chan_by_field(unsigned char chan,
 	struct fb_bitfield *bf);
-int sc7021_fb_swapbuf(struct FB_IPC_Info_t *info, int buf_max);
+int sc7021_fb_swapbuf(u32 buf_id, int buf_max);
 
 extern struct fb_info *gFB_INFO;
 
