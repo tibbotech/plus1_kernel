@@ -1,7 +1,8 @@
 /*
  * GPIO Driver for SunPlus/Tibbo SC7021 controller - internal functions
  * Copyright (C) 2019 SunPlus Tech.
- * TODO: get rid of it
+ * TODO: get rid of it : it is used by drivers/net/ethernet/sp/l2sw_hal.c:     
+ * GPIO_PIN_MUX_SEL(PMX_L2SW_CLK_OUT,40);
  */
 
 #define REG_GRP_OFS(GRP, OFFSET)        VA_IOB_ADDR((GRP) * 32 * 4 + (OFFSET) * 4) 

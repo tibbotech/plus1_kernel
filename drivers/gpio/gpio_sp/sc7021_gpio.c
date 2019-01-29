@@ -13,7 +13,7 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
- * TODO: irq hanling, pinconf (inv), MASTER/FIRST state save
+ * TODO: pinconf (inv), MASTER/FIRST state save
  */
 
 #include <linux/module.h>
@@ -141,13 +141,14 @@ static void sc7021gpio_f_set( struct gpio_chip *_c, unsigned int _n, int _v) {
  writel( r, pc->base0 + SC7021_GPIO_OFF_OUT + R16_ROF(_n));
  return;  }
 
- // FIX: define later
+ // FIX: test in-depth
 static int sc7021gpio_f_scf( struct gpio_chip *_c, unsigned _n, unsigned long _conf) {
  u32 r;
+ int ret = 0;
  enum pin_config_param cp = pinconf_to_config_param( _conf);
  u16 ca = pinconf_to_config_argument( _conf);
  sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
- KDBG( "%s(%03d,%lX) p:%d a:%d\n", __FUNCTION__, _n, _conf, cp, ca);
+ KDBG( "f_scf(%03d,%lX) p:%d a:%d\n", _n, _conf, cp, ca);
  switch ( cp) {
    case PIN_CONFIG_DRIVE_OPEN_DRAIN:
           r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
@@ -157,15 +158,14 @@ static int sc7021gpio_f_scf( struct gpio_chip *_c, unsigned _n, unsigned long _c
           KERR( "f_scf(%03d,%lX) input enable arg:%d\n", _n, _conf, ca);
           break;
    case PIN_CONFIG_OUTPUT:
-          return( sc7021gpio_f_sou( _c, _n, 0));
+          ret = sc7021gpio_f_sou( _c, _n, 0);
           break;
    default:
        KERR( "f_scf(%03d,%lX) unknown pinconf:%d\n", _n, _conf, cp);
-       return( -EINVAL);  break;
+       ret = -EINVAL;  break;
  }
- return( 0);  }
+ return( ret);  }
 
- // dbg show
 #ifdef CONFIG_DEBUG_FS
 static void sc7021gpio_f_dsh( struct seq_file *_s, struct gpio_chip *_c) {
  int i;
@@ -197,13 +197,7 @@ static int sc7021gpio_xlate( struct gpio_chip *_c,
 static int sc7021gpio_i_map( struct gpio_chip *_c, unsigned _off) {
  sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
  if ( _off >= 8 && _off < 15) return( pc->irq[ _off - 8]);
- // immediately after this callback:
- // genirq: Setting trigger mode 3 for irq 120 failed (sp_intc_set_type+0x1/0xd4)
  return( -ENXIO);  }
-
-static irqreturn_t sc7021gpio_f_irq( int _irq, void *_dp) {
- KDBG("%s(%03d)\n", __FUNCTION__, _irq);
- return( IRQ_HANDLED);  }
 
 int sc7021_gpio_resmap( struct platform_device *_pd, sc7021gpio_chip_t *_pc) {
  struct resource *rp;
@@ -273,19 +267,11 @@ static int sc7021_gpio_probe( struct platform_device *_pd) {
  if ( ( err = devm_gpiochip_add_data( &( _pd->dev), gchip, pc)) < 0) {
    dev_err( &_pd->dev, "gpiochip add failed\n");
    return( err);  }
- dev_info( &_pd->dev, "initialized\n");
  npins = platform_irq_count( _pd);
  for ( i = 0; i < npins; i++) {
     pc->irq[ i] = irq_of_parse_and_map( np, i);
     KDBG( "setting up irq#%d -> %d\n", i, pc->irq[ i]);
  }
-//for ( i = 0; i < npins; i++) {
-//   KINF( "setting up irq#%d\n", i);
-//   if ( !( rp = platform_get_resource( _pd, IORESOURCE_IRQ, i))) {
-//     KERR( "No irq#%d res\n", i);  continue;  }
-//   if ( ( err = request_irq( rp->start, sc7021gpio_f_irq, 0, MNAME, rp))) {
-//     KERR( "irq#%d req err:%d\n", i, err);  }
-// }
  spin_lock_init( &( pc->lock));
  return( 0);  }
 

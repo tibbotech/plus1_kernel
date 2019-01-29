@@ -12,8 +12,6 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- *
- * TODO: irq hanling, pinconf (inv)
  */
 
 #ifndef SC7021_GPIO_DEFS_H
