@@ -19,8 +19,8 @@
 #endif
 
 //#define I2C_FUNC_DEBUG
-#define I2C_DBG_INFO
-#define I2C_DBG_ERR
+//#define I2C_DBG_INFO
+//#define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
 	#define FUNC_DEBUG()    printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -591,7 +591,8 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 
 	if (pstCmdInfo->dRestartEn)
 	{
-		if ((write_cnt > 32) || (write_cnt == 0)) {
+		//if ((write_cnt > 32) || (write_cnt == 0)) {
+		if (write_cnt > 32) {
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 			return I2C_ERR_INVALID_CNT;
@@ -696,7 +697,8 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 
 	write_cnt = pstCmdInfo->dWrDataCnt;
 
-	if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	//if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	if (write_cnt > 0xFFFF) {
 		pstIrqEvent->bI2CBusy = 0;
 		DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 		return I2C_ERR_INVALID_CNT;
@@ -797,7 +799,7 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo)
 
 	write_cnt = pstCmdInfo->dWrDataCnt;
 
-	if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	if (write_cnt > 0xFFFF) {
 		pstIrqEvent->bI2CBusy = 0;
 		DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 		return I2C_ERR_INVALID_CNT;
@@ -916,7 +918,7 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo)
 
 	if (pstCmdInfo->dRestartEn)
 	{
-		if ((write_cnt > 32) || (write_cnt == 0)) {
+		if (write_cnt > 32) {
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 			return I2C_ERR_INVALID_CNT;
@@ -1198,7 +1200,8 @@ int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 
 	if(pstI2CCmd->dRestartEn)
 	{
-		if((pstI2CCmd->dWrDataCnt > 32) || (pstI2CCmd->dWrDataCnt == 0)){
+		//if((pstI2CCmd->dWrDataCnt > 32) || (pstI2CCmd->dWrDataCnt == 0)){
+		if(pstI2CCmd->dWrDataCnt > 32){
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", pstI2CCmd->dWrDataCnt);
 			return I2C_ERR_INVALID_CNT;
