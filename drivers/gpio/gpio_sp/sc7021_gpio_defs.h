@@ -27,8 +27,6 @@
 #define KDBG(fmt,args...) 
 #endif
 
-#define SC7021_GPIO_MAXN 128
-
 #define SC7021_GPIO_OFF_GFR 0x00
 #define SC7021_GPIO_OFF_CTL 0x00
 #define SC7021_GPIO_OFF_OE 0x20

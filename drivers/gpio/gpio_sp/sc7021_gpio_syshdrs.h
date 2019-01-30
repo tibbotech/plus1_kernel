@@ -32,7 +32,6 @@
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
-#include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/gpio/driver.h>
 
