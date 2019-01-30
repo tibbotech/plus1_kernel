@@ -1,9 +1,2 @@
-#
-# Makefile for the gpio module drivers.
-#
-
-obj-y += gpio-sp.o
-
-clean:
-	rm -rf *.o *~ core .depend .*.cmd *.ko *.mod.c .tmp_versions
-
+obj-$(CONFIG_GPIO_SC7021) += sc7021_gpio.o
+obj-$(CONFIG_GPIO_SC7021) += sc7021_gpio_exp.o
