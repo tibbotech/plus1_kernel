@@ -242,42 +242,58 @@ void rx_mode_set(struct l2sw_mac *mac)
 	}
 }
 
+#define MDIO_READ_CMD 0x02
+#define MDIO_WRITE_CMD 0x01
+
+
+static int mdio_access(BYTE op_cd, 
+						BYTE dev_reg_addr,
+						BYTE phy_addr, 
+						UINT32 wdata){
+	UINT32 value, time=0;
+
+	HWREG_W(phy_cntl_reg0, (wdata << 16) | (op_cd << 13) | (dev_reg_addr << 8) | phy_addr);
+	do {
+		if (++time > MDIO_RW_TIMEOUT_RETRY_NUMBERS)
+		{
+			printk("mdio operating...\n\r");
+			time = 0;
+		}
+
+		value = HWREG_R(phy_cntl_reg1);
+	}while ((value & 0x3)==0);
+
+	if (time == 0)
+		return -1;
+		
+	return value >> 16;
+}
+
 u32 mdio_read(u32 phy_id, u16 regnum)
 {
-    u32 val, time;
-	DEBUG1();
+	int sdVal = 0;
 
-    ls2w_reg_base->phy_cntl_reg0 = ((regnum << 8) & PHY_REG_MASK) | PHY_RD_CMD | PHY_CMD_TRI | (phy_id & PHY_ADR_MASK) | (0 << 15);
-    //gmac_reg_base->mac_glb_phy_cmd = ((regnum << 8) & PHY_REG_MASK) | PHY_RD_CMD | PHY_CMD_TRI | MAC_PHY_ADDR | (0 << 15);
-    DEBUG1();
-    time = MDIO_RW_TIMEOUT_RETRY_NUMBERS;
-    do {
-        val = ls2w_reg_base->phy_cntl_reg1;
-        if (val & PHY_RD_RDY) {
-            return val >> 16;
-        }
-    } while (--time);
-	DEBUG1();
+	sdVal = mdio_access(MDIO_READ_CMD,regnum,phy_id,0);
 
-    return (val >> 16);
+	if (sdVal < 0)
+		return -EIO;
+	
+    return sdVal;
 }
+
+
+
 
 u32 mdio_write(u32 phy_id, u32 regnum, u16 val)
 {
-        u32 time, regval;
+	
+	int sdVal = 0;
 
-        ls2w_reg_base->phy_cntl_reg0 = ((val << 16) & PHY_WT_DATA_MASK) | PHY_WT_CMD | ((regnum << 8) & PHY_REG_MASK) | PHY_CMD_TRI | (phy_id & PHY_ADR_MASK) | (0 << 15);
-        //gmac_reg_base->mac_glb_phy_cmd = ((val << 16) & PHY_WT_DATA_MASK) | PHY_WT_CMD | ((regnum << 8) & PHY_REG_MASK) | PHY_CMD_TRI | MAC_PHY_ADDR | (0 << 15);
-    
-        time = MDIO_RW_TIMEOUT_RETRY_NUMBERS;
-        do {
-            regval = ls2w_reg_base->phy_cntl_reg1;
-            if (regval & PHY_WT_DONE) {
-                return 0;
-            }
-        } while (--time);
+	sdVal = mdio_access(MDIO_WRITE_CMD,regnum,phy_id,val);
 
-        return -EIO;
+	if (sdVal < 0)
+		return -EIO;
+	return 0;
 }
 
 inline void rx_finished(u32 queue, u32 rx_count)
@@ -482,7 +498,7 @@ void l2sw_dump_moon(struct platform_device *pdev)
 	for(i=0;i<6;i++)
 	{
 		struct moon_regs * MOON_REG = (volatile struct moon_regs *)devm_ioremap(&pdev->dev,RF_GRP(i, 0), 32);
-		for(j=0;j<32;j++)
+		for(j=0; j< 32; j++)
 		{
 			DEBUG0("MOON[%d]sft_cfg[%d] = %x\n",i,j, MOON_REG->sft_cfg[j]);
 		}

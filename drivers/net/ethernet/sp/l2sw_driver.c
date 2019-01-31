@@ -602,25 +602,43 @@ static int ethernet_do_ioctl(struct net_device *dev, struct ifreq *ifr, int cmd)
 {
     struct l2sw_mac *mac = netdev_priv(dev);
     struct phy_device *phydev = mac->phy_dev;
+	struct mii_ioctl_data *data = if_mii(ifr);
 
-	DEBUG0("@@@@@@@@@l2sw ethernet_do_ioctl \n");
+//	DEBUG0("@@@@@@@@@l2sw ethernet_do_ioctl \n");
+//	DEBUG0("%s, if=%s, cmd = 0x%x\n", __FUNCTION__, ifr->ifr_ifrn.ifrn_name, cmd);
+#if 0	
     if (!netif_running(dev))
+    {
+    	DEBUG0("%s, %d\n", __FUNCTION__, __LINE__);
         return -EINVAL;
-
+    }
+	
+	DEBUG0("%s, %d\n", __FUNCTION__, __LINE__);
     if (!phydev)
         return -ENODEV;
+	DEBUG0("%s, %d\n", __FUNCTION__, __LINE__);
+#endif
 
     switch (cmd) {
     case SIOCGMIIPHY:
+		return 0;
     case SIOCGMIIREG:
+		 /*tmp for SMII AC timing measure,only for port0 phy0*/
+		data->val_out =  mdio_read(PHY0_ADDR, data->reg_num);
+		break;
+		
     case SIOCSMIIREG:
-        return phy_mii_ioctl(phydev, ifr, cmd);
+				
+        //return phy_mii_ioctl(phydev, ifr, cmd);
+        /*tmp for SMII AC timing measure,only for port0 phy0*/
+		mdio_write(PHY0_ADDR, data->reg_num,data->val_in);
+        break;
 
     default:
         printk(KERN_INFO "GEM: ioctl %d not implemented.\n", cmd);
         return -EOPNOTSUPP;
     }
-
+	return 0;
 }
 
 static int ethernet_change_mtu(struct net_device *dev, int new_mtu)
@@ -788,6 +806,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	struct l2sw_mac *mac;
 	
 	DEBUG0("l2sw_probe \n");
+	
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
