@@ -60,6 +60,13 @@ struct sp_pll {
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
+#define P_EXTCLK	(1 << 16)
+static char *parents[] = {
+	"pllsys",
+	"extclk",
+};
+
+/* FIXME: parent clk incorrect cause clk_get_rate got error value */
 static u32 gates[] = {
 	SYSTEM,
 	RTC,
@@ -71,10 +78,10 @@ static u32 gates[] = {
 	RBUS_L00,
 	SPIFL,
 	SDCTRL0,
-	PERI0,
+	PERI0 | P_EXTCLK,
 	A926,
 	UMCTL2,
-	PERI1,
+	PERI1 | P_EXTCLK,
 
 	DDR_PHY0,
 	ACHIP,
@@ -82,14 +89,14 @@ static u32 gates[] = {
 	STC_AV0,
 	STC_AV1,
 	STC_AV2,
-	UA0,
-	UA1,
-	UA2,
-	UA3,
-	UA4,
-	HWUA,
+	UA0 | P_EXTCLK,
+	UA1 | P_EXTCLK,
+	UA2 | P_EXTCLK,
+	UA3 | P_EXTCLK,
+	UA4 | P_EXTCLK,
+	HWUA | P_EXTCLK,
 	DDC0,
-	UADMA,
+	UADMA | P_EXTCLK,
 
 	CBDMA0,
 	CBDMA1,
@@ -481,10 +488,9 @@ static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 	u32 fbdiv;
 	u32 max = 1 << clk->div_width;
 
-    fbdiv = DIV_ROUND_CLOSEST(rate, clk->brate);
-    if (fbdiv > max)
-        fbdiv = max;
-
+	fbdiv = DIV_ROUND_CLOSEST(rate, clk->brate);
+	if (fbdiv > max)
+		fbdiv = max;
 	return fbdiv;
 }
 
@@ -549,8 +555,8 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		}
 	} else {
 		u32 fbdiv = MASK_GET(clk->div_shift, clk->div_width, reg) + 1;
- 		ret = clk->brate * fbdiv;
- 	}
+		ret = clk->brate * fbdiv;
+	}
 	//pr_info("recalc_rate: %lu -> %lu\n", prate, ret);
 
 	return ret;
@@ -717,9 +723,9 @@ static void __init sp_clk_setup(struct device_node *np)
 	/* gates */
 	for (i = 0; i < ARRAY_SIZE(gates); i++) {
 		char s[10];
-		j = gates[i];
+		j = gates[i] & 0xffff;
 		sprintf(s, "clken%02x", j);
-		clks[j] = clk_register_gate(NULL, s, "pllsys", CLK_IGNORE_UNUSED,
+		clks[j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
 			REG(0, j >> 4), j & 0x0f,
 			CLK_GATE_HIWORD_MASK, NULL);
 		//printk("%02x %p %p.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);

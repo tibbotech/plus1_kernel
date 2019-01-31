@@ -9,6 +9,8 @@
 #include <linux/kernel.h>
 #include <linux/interrupt.h>
 #include <linux/i2c.h>
+#include <linux/clk.h>   
+#include <linux/reset.h> 
 #include "hal_i2c.h"
 #include "sp_i2c.h"
 
@@ -17,8 +19,8 @@
 #endif
 
 //#define I2C_FUNC_DEBUG
-#define I2C_DBG_INFO
-#define I2C_DBG_ERR
+//#define I2C_DBG_INFO
+//#define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
 	#define FUNC_DEBUG()    printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -76,6 +78,8 @@ typedef struct SpI2C_If_t_ {
 #ifdef SUPPORT_I2C_GDMA
 	void __iomem *i2c_dma_regs;
 #endif
+	struct clk *clk;
+	struct reset_control *rstc;
 	int irq;
 } SpI2C_If_t;
 
@@ -587,7 +591,8 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 
 	if (pstCmdInfo->dRestartEn)
 	{
-		if ((write_cnt > 32) || (write_cnt == 0)) {
+		//if ((write_cnt > 32) || (write_cnt == 0)) {
+		if (write_cnt > 32) {
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 			return I2C_ERR_INVALID_CNT;
@@ -692,7 +697,8 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 
 	write_cnt = pstCmdInfo->dWrDataCnt;
 
-	if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	//if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	if (write_cnt > 0xFFFF) {
 		pstIrqEvent->bI2CBusy = 0;
 		DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 		return I2C_ERR_INVALID_CNT;
@@ -793,7 +799,7 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo)
 
 	write_cnt = pstCmdInfo->dWrDataCnt;
 
-	if ((write_cnt > 0xFFFF) || (write_cnt == 0)) {
+	if (write_cnt > 0xFFFF) {
 		pstIrqEvent->bI2CBusy = 0;
 		DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 		return I2C_ERR_INVALID_CNT;
@@ -912,7 +918,7 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo)
 
 	if (pstCmdInfo->dRestartEn)
 	{
-		if ((write_cnt > 32) || (write_cnt == 0)) {
+		if (write_cnt > 32) {
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", write_cnt);
 			return I2C_ERR_INVALID_CNT;
@@ -1194,7 +1200,8 @@ int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 
 	if(pstI2CCmd->dRestartEn)
 	{
-		if((pstI2CCmd->dWrDataCnt > 32) || (pstI2CCmd->dWrDataCnt == 0)){
+		//if((pstI2CCmd->dWrDataCnt > 32) || (pstI2CCmd->dWrDataCnt == 0)){
+		if(pstI2CCmd->dWrDataCnt > 32){
 			pstIrqEvent->bI2CBusy = 0;
 			DBG_ERR("I2C write count is invalid !! write count=%d\n", pstI2CCmd->dWrDataCnt);
 			return I2C_ERR_INVALID_CNT;
@@ -1413,6 +1420,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	struct i2c_adapter *p_adap;
 	int device_id = 0;
 	int ret = I2C_SUCCESS;
+	struct device *dev = &pdev->dev;   
 
 	FUNC_DEBUG();
 
@@ -1438,7 +1446,35 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		DBG_ERR("[I2C adapter] get resources fail !\n");
 		return ret;
 	}
-
+	
+	pstSpI2CInfo->clk = devm_clk_get(dev, NULL);
+	//printk(KERN_INFO "pstSpI2CInfo->clk : 0x%x \n",pstSpI2CInfo->clk);
+	if (IS_ERR(pstSpI2CInfo->clk)) {
+		ret = PTR_ERR(pstSpI2CInfo->clk);
+		dev_err(dev, "failed to retrieve clk: %d\n", ret);
+		goto err_clk_disable;
+	}
+	ret = clk_prepare_enable(pstSpI2CInfo->clk);
+	//printk(KERN_INFO "clk ret : 0x%x \n",ret);
+	if (ret) {
+		dev_err(dev, "failed to enable clk: %d\n", ret);
+		goto err_clk_disable;
+	}
+	
+	pstSpI2CInfo->rstc = devm_reset_control_get(dev, NULL);
+	//printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n",pstSpI2CInfo->rstc);
+	if (IS_ERR(pstSpI2CInfo->rstc)) {
+		ret = PTR_ERR(pstSpI2CInfo->rstc);
+		dev_err(dev, "failed to retrieve reset controller: %d\n", ret);
+		goto err_reset_assert;
+	}
+	ret = reset_control_deassert(pstSpI2CInfo->rstc);
+	//printk(KERN_INFO "reset ret : 0x%x \n",ret);
+	if (ret) {
+		dev_err(dev, "failed to deassert reset line: %d\n", ret);
+		goto err_reset_assert;
+	}
+	
 	ret = _sp_i2cm_init(device_id, pstSpI2CInfo);
 	if (ret != 0) {
 		DBG_ERR("[I2C adapter] i2c master %d init error\n", device_id);
@@ -1470,11 +1506,18 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	}
 
 	return ret;
+	
+err_reset_assert:
+	reset_control_assert(pstSpI2CInfo->rstc);
+
+err_clk_disable:
+	clk_disable_unprepare(pstSpI2CInfo->clk);
+
+	return ret;
 }
 
 static int sp_i2c_remove(struct platform_device *pdev)
 {
-	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
 	SpI2C_If_t *pstSpI2CInfo = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
@@ -1482,7 +1525,7 @@ static int sp_i2c_remove(struct platform_device *pdev)
 
 	i2c_del_adapter(p_adap);
 	if (p_adap->nr < I2C_MASTER_NUM) {
-		hal_i2cm_disable(p_adap->nr, pstMoonRegBase->moon0_regs);
+	  reset_control_assert(pstSpI2CInfo->rstc);
 		free_irq(pstSpI2CInfo->irq, NULL);
 	}
 
@@ -1491,14 +1534,13 @@ static int sp_i2c_remove(struct platform_device *pdev)
 
 static int sp_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
 	SpI2C_If_t *pstSpI2CInfo = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
 	FUNC_DEBUG();
 
 	if (p_adap->nr < I2C_MASTER_NUM) {
-		hal_i2cm_disable(p_adap->nr, pstMoonRegBase->moon0_regs);
+	  reset_control_assert(pstSpI2CInfo->rstc);
 	}
 
 	return 0;
@@ -1514,6 +1556,10 @@ static int sp_i2c_resume(struct platform_device *pdev)
 
 	if (p_adap->nr < I2C_MASTER_NUM) {
 		hal_i2cm_enable(p_adap->nr, pstMoonRegBase->moon0_regs);
+//#Below three function will instead of hal_i2cm_enable in the future
+//	  reset_control_deassert(pstSpI2CInfo->rstc);
+//    wait CLKGN code
+//    wait GCLKEN code
 	}
 
 	return 0;

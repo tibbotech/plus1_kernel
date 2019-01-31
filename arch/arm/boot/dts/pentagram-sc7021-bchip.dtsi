@@ -250,7 +250,10 @@
 			reg = <0x9c008980 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UADMA>,
+				 <&clkc PERI0>;
+			clock-names = "UADMA",
+				      "PERI0";
 			which-uart = <1>;
 		};
 #endif
@@ -260,7 +263,10 @@
 			reg = <0x9c0089c0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UADMA>,
+				 <&clkc PERI1>;
+			clock-names = "UADMA",
+				      "PERI1";
 			which-uart = <2>;
 		};
 #endif
@@ -269,7 +275,10 @@
 		uartdmatx0: serial@sp_uartdmatx0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a00 0x40>;
-			clocks = <&extclk>;
+			clocks = <&clkc HWUA>,
+				 <&clkc PERI0>;
+			clock-names = "HWUA",
+				      "PERI0";
 			which-uart = <3>;
 		};
 #endif
@@ -277,7 +286,10 @@
 		uartdmatx1: serial@sp_uartdmatx1 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a40 0x40>;
-			clocks = <&extclk>;
+			clocks = <&clkc HWUA>,
+				 <&clkc PERI1>;
+			clock-names = "HWUA",
+				      "PERI1";
 			which-uart = <4>;
 		};
 #endif
@@ -288,7 +300,7 @@
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA0>;
 		};
 
 		uart1: serial@sp_uart1 {
@@ -296,7 +308,7 @@
 			reg = <0x9c000980 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA1>;
 		};
 
 		uart2: serial@sp_uart2 {
@@ -304,7 +316,7 @@
 			reg = <0x9c000800 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA2>;
 		};
 
 		uart3: serial@sp_uart3 {
@@ -312,7 +324,7 @@
 			reg = <0x9c000880 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA3>;
 		};
 
 		uart4: serial@sp_uart4 {
@@ -320,7 +332,7 @@
 			reg = <0x9c008780 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA4>;
 		};
 
 		icm: icm@G81 {

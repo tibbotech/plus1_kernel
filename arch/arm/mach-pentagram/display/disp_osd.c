@@ -24,10 +24,11 @@
  * @brief
  * @author PoChou Chen
  */
-/*******************************************************************************
+/**************************************************************************
  *                         H E A D E R   F I L E S
- *******************************************************************************/
+ **************************************************************************/
 #include <asm/io.h>
+#include <linux/dma-mapping.h>
 #include "reg_disp.h"
 #include "hal_disp.h"
 
@@ -53,6 +54,10 @@
 #define OSD_CTRL_A32B32_EN			(1 << 4)
 #define OSD_CTRL_FIFO_DEPTH			(7 << 0)
 
+// OSD region dirty flag for SW latch
+#define REGION_ADDR_DIRTY			(1 << 0)
+#define REGION_GSCL_DIRTY			(1 << 1)
+
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -72,15 +77,15 @@
  **************************************************************************/
 typedef struct HW_OSD_Header_s   
 {
-	UINT8 config0;	//config0 includes:
+	u8 config0;	//config0 includes:
 	// [bit 7] cu	: color table update
 	// [bit 6] ft	: force transparency
 	// [bit 5:4]	: reserved
 	// [bit 3:0] md : bitmap format (color mode)
 
-	UINT8 reserved0; // reserved bits.
+	u8 reserved0; // reserved bits.
 
-	UINT8 config1;	//config1 includes:
+	u8 config1;	//config1 includes:
 	// [bit 7:5]	: reserved
 	// [bit 4] b_s	: byte swap enable
 	// [bit 3] KY	: reserved
@@ -88,63 +93,52 @@ typedef struct HW_OSD_Header_s
 	// [bit 1]		: reserved
 	// [bit 0] bl	: region blend alpha enable (replace)
 
-	UINT8 blend_level;	//region blend level value
+	u8 blend_level;	//region blend level value
 
-	UINT16 v_size;		//vertical display region size (line number)
-	UINT16 h_size;		//horizontal display region size (pixel number)
+	u16 v_size;		//vertical display region size (line number)
+	u16 h_size;		//horizontal display region size (pixel number)
 
-	UINT16 disp_start_row;		//region vertical start row (0~(y-1))
-	UINT16 disp_start_column;	//region horizontal start column (0~(x-1))
+	u16 disp_start_row;		//region vertical start row (0~(y-1))
+	u16 disp_start_column;	//region horizontal start column (0~(x-1))
 
-	UINT8 keying_R;
-	UINT8 keying_G;
-	UINT8 keying_B;
-	UINT8 keying_A;
+	u8 keying_R;
+	u8 keying_G;
+	u8 keying_B;
+	u8 keying_A;
 
-	UINT16 data_start_row;
-	UINT16 data_start_column;
+	u16 data_start_row;
+	u16 data_start_column;
 
-	UINT8 reserved2;
-	UINT8 csc_mode_sel; //color space converter mode sel
-	UINT16 data_width;	//source bitmap crop width
+	u8 reserved2;
+	u8 csc_mode_sel; //color space converter mode sel
+	u16 data_width;	//source bitmap crop width
 
-	UINT32 link_next;
-	UINT32 link_data;
+	u32 link_next;
+	u32 link_data;
 
-	UINT32 reserved3[24];	// need 128 bytes for HDR
+	u32 reserved3[24];	// need 128 bytes for HDR
 } HW_OSD_Header_t;
 STATIC_ASSERT(sizeof(HW_OSD_Header_t) == 128);
 
 typedef struct _Region_Manager_t_
 {
-	DRV_OsdWindow_e				WinID;
+	DRV_Region_Info_t			RegionInfo;
 
-	//DRV_Region_Info_t			RegionInfo;
-
-	DRV_OsdRegionFormat_e		Format;
-	UINT32						Align;
-	UINT16						NumBuff;
-	UINT16						AlloceInside;
-	UINT32						DataPhyAddr;
-	UINT8						*DataAddr;
-	UINT8						*Hdr_ClutAddr;	//palette addr in osd header
-	UINT32						BmpSize;
-	UINT32						CurrBufID;
-	UINT32						ForceTrans;		//ignore transmode dirtyflag
+	enum DRV_OsdRegionFormat_e	Format;
+	u32							Align;
+	u32							NumBuff;
+	u32							DataPhyAddr;
+	u8							*DataAddr;
+	u8							*Hdr_ClutAddr;	//palette addr in osd header
+	u32							BmpSize;
+	u32							CurrBufID;
 
 	// SW latch
-	DRV_OsdTransparencyMode_e	TransMode;
-	//DRV_Region_Info_t			Src_crop;
-	UINT8						EnByteSwap;
-	UINT8						EnOSDBlend;
-	UINT8						BlendLevel;
-	UINT8						DirtyFlag;
-	DRV_OsdBlendMethod_e		BlendMethod;
-	UINT8						*PaletteAddr;	//other side palette addr, Gearing with swap buffer.
+	u32							DirtyFlag;
+	u8							*PaletteAddr;	//other side palette addr, Gearing with swap buffer.
 
 	HW_OSD_Header_t				*pHWRegionHdr;
-	struct _Region_Manager_t_	*pNextRegion;
-	UINT32 reserved[4]; //For gsl allocate buffer case. The structure size should be 32 alignment.
+	u32 reserved[4]; //For gsl allocate buffer case. The structure size should be 32 alignment.
 } Region_Manager_t;
 STATIC_ASSERT((sizeof(Region_Manager_t) % 4) == 0);
 
@@ -154,57 +148,298 @@ STATIC_ASSERT((sizeof(Region_Manager_t) % 4) == 0);
 static DISP_OSD_REG_t *pOSDReg;
 static DISP_GPOST_REG_t *pGPOSTReg;
 
-extern DISPLAY_WORKMEM gDispWorkMem;
+static Region_Manager_t *gpWinRegion;
+static u32 gpWinRegion_phy;
+static u8 *gpOsdHeader;
+static u32 gpOsdHeader_phy;
 
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
 void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+
 	pOSDReg = (DISP_OSD_REG_t *)pInHWReg1;
 	pGPOSTReg = (DISP_GPOST_REG_t *)pInHWReg2;
+
+	init_waitqueue_head(&pDispWorkMem->osd_wait);
+	spin_lock_init(&pDispWorkMem->osd_lock);
 }
 
-#define OSD_WIDTH	720
-#define OSD_HEIGHT	480
-
-static UINT8 _gOSD_header[128 + 1024 + OSD_WIDTH * OSD_HEIGHT] __attribute__((aligned(32))) = {
-//#include "osd_pattern/osd_header_1152.h"
-//#include "osd_pattern/ARGB8888_720x480.h"	//0xe
-//#include "osd_pattern/RGBA8888_720x480.h"	//0xd
-//#include "osd_pattern/ARGB4444_720x480.h"	//0xb
-//#include "osd_pattern/RGBA4444_720x480.h"	//0xa
-//#include "osd_pattern/ARGB1555_720x480.h"	//0x9
-//#include "osd_pattern/RGB565_720x480.h"	//0x8
-//#include "osd_pattern/YUY2_720x480.h"	//0x4
-//#include "osd_pattern/8BPP_720x480.h"	//0x2
-};
-
-void DRV_OSD_InitTest(void)
+DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, UINT32 *pClutDataPtr)
 {
-	UINT32 *osd_header = (UINT32 *)_gOSD_header;
-	diag_printf("osd_header=0x%x 0x%x\n", (UINT32)_gOSD_header, virt_to_phys(_gOSD_header));
+	Region_Manager_t *pRegionManager = (Region_Manager_t *)region;
+	UINT32 copysize = 0;
 
-#if 0
-	osd_header[0] = SWAP32(0x0e001000);
-#else
-	osd_header[0] = SWAP32(0x82001000);
-#endif
-	osd_header[1] = SWAP32((OSD_HEIGHT << 16) | OSD_WIDTH);
+	if (pRegionManager && pClutDataPtr)
+	{
+		switch(pRegionManager->Format)
+		{
+			case DRV_OSD_REGION_FORMAT_8BPP:
+				copysize = 256 * 4;
+				break;
+			default:
+				goto Return;
+		}
+		memcpy(pRegionManager->Hdr_ClutAddr, pClutDataPtr, copysize);
+
+		return DRV_SUCCESS;
+	}
+
+Return:
+	ERRDISP("Incorrect region handle, pClutDataPtr 0x%x\n", (UINT32)pClutDataPtr);
+	return DRV_ERR_INVALID_HANDLE;
+}
+
+void DRV_OSD_IRQ(void)
+{
+	Region_Manager_t *pRegionManager = gpWinRegion;
+	HW_OSD_Header_t *pHWOSDhdr;
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+
+	if (!pRegionManager)
+		return;
+	spin_lock(&pDispWorkMem->osd_lock);
+
+	if (pRegionManager->pHWRegionHdr)
+	{
+		pHWOSDhdr = (HW_OSD_Header_t *)pRegionManager->pHWRegionHdr;
+
+		if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY)
+		{
+			pRegionManager->DirtyFlag &= ~REGION_ADDR_DIRTY;
+			pHWOSDhdr->link_data = SWAP32((UINT32)((UINT32)pRegionManager->DataPhyAddr + pRegionManager->BmpSize * (pRegionManager->CurrBufID & 0xf)));
+			if (pRegionManager->PaletteAddr)
+				(void)DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager, (UINT32 *)pRegionManager->PaletteAddr);
+		}
+	}
+
+	if (pDispWorkMem->osd_field_end_protect) {
+		pDispWorkMem->osd_field_end_protect &= ~(1 << DRV_OSD0);
+		wake_up_interruptible(&pDispWorkMem->osd_wait);
+	}
+
+	spin_unlock(&pDispWorkMem->osd_lock);
+}
+
+void DRV_OSD_Info(void)
+{
+	HW_OSD_Header_t *pOsdHdr = (HW_OSD_Header_t *)gpOsdHeader;
+
+	ERRDISP("Region display-order is as follows:\n");
+
+	diag_printf("    Check osd output: %d %d, region ouput:%d %d\n",
+		pOSDReg->osd_hvld_width,
+		pOSDReg->osd_vvld_height,
+		SWAP16(pOsdHdr->h_size),
+		SWAP16(pOsdHdr->v_size));
+
+	diag_printf("header: (x, y)=(%d, %d) (w, h)=(%d, %d) data(x, y)=(%d, %d) data width=%d\n",
+				SWAP16(pOsdHdr->disp_start_column), SWAP16(pOsdHdr->disp_start_row),
+				SWAP16(pOsdHdr->h_size), SWAP16(pOsdHdr->v_size),
+				SWAP16(pOsdHdr->data_start_column), SWAP16(pOsdHdr->data_start_row), SWAP16(pOsdHdr->data_width));
+	diag_printf("cu:%d ft:%d bit format:%d link data:0x%x\n\n", (pOsdHdr->config0 & 0x80)?1:0, (pOsdHdr->config0 & 0x40)?1:0, (pOsdHdr->config0 & 0xf), SWAP32(pOsdHdr->link_data));
+}
+
+void DRV_OSD_HDR_Show(void)
+{
+	int *ptr = (int *)gpOsdHeader;
+	int i;
+
+	for (i = 0; i < 8; ++i)
+		diag_printf("%d: 0x%08x\n", i, *(ptr+i));
+}
+
+void DRV_OSD_HDR_Write(int offset, int value)
+{
+	int *ptr = (int *)gpOsdHeader;
+
+	*(ptr+offset) = value;
+}
+
+void DRV_OSD_GetColormode_Vars(struct colormode_t *var, enum DRV_OsdRegionFormat_e Fmt)
+{
+	switch(Fmt)
+	{
+		case DRV_OSD_REGION_FORMAT_8BPP:
+			strcpy(var->name, "256color index");
+			var->red.length		= 8;
+			var->green.length	= 8;
+			var->blue.length	= 8;
+			var->transp.length	= 8;
+			var->red.offset		= 8;
+			var->green.offset	= 16;
+			var->blue.offset	= 24;
+			var->transp.offset	= 0;
+			var->bits_per_pixel = 8;
+			break;
+		case DRV_OSD_REGION_FORMAT_RGB_565:
+			strcpy(var->name, "RGB565");
+			var->red.length		= 5;
+			var->green.length	= 6;
+			var->blue.length	= 5;
+			var->transp.length	= 0;
+			var->red.offset		= 11;
+			var->green.offset	= 5;
+			var->blue.offset	= 0;
+			var->transp.offset	= 0;
+			var->bits_per_pixel = 16;
+			break;
+		case DRV_OSD_REGION_FORMAT_ARGB_1555:
+			strcpy(var->name, "ARGB1555");
+			var->red.length		= 5;
+			var->green.length	= 5;
+			var->blue.length	= 5;
+			var->transp.length	= 1;
+			var->red.offset		= 10;
+			var->green.offset	= 5;
+			var->blue.offset	= 0;
+			var->transp.offset	= 15;
+			var->bits_per_pixel = 16;
+			break;
+		case DRV_OSD_REGION_FORMAT_RGBA_4444:
+			strcpy(var->name, "RGBA4444");
+			var->red.length		= 4;
+			var->green.length	= 4;
+			var->blue.length	= 4;
+			var->transp.length	= 4;
+			var->red.offset		= 12;
+			var->green.offset	= 8;
+			var->blue.offset	= 4;
+			var->transp.offset	= 0;
+			var->bits_per_pixel = 16;
+			break;
+		case DRV_OSD_REGION_FORMAT_ARGB_4444:
+			strcpy(var->name, "ARGB4444");
+			var->red.length		= 4;
+			var->green.length	= 4;
+			var->blue.length	= 4;
+			var->transp.length	= 4;
+			var->red.offset		= 8;
+			var->green.offset	= 4;
+			var->blue.offset	= 0;
+			var->transp.offset	= 12;
+			var->bits_per_pixel = 16;
+			break;
+		case DRV_OSD_REGION_FORMAT_RGBA_8888:
+			strcpy(var->name, "RGBA8888");
+			var->red.length		= 8;
+			var->green.length	= 8;
+			var->blue.length	= 8;
+			var->transp.length	= 8;
+			var->red.offset		= 24;
+			var->green.offset	= 16;
+			var->blue.offset	= 8;
+			var->transp.offset	= 0;
+			var->bits_per_pixel = 32;
+			break;
+		default:
+		case DRV_OSD_REGION_FORMAT_ARGB_8888:
+			strcpy(var->name, "ARGB8888");
+			var->red.length		= 8;
+			var->green.length	= 8;
+			var->blue.length	= 8;
+			var->transp.length	= 8;
+			var->red.offset		= 16;
+			var->green.offset	= 8;
+			var->blue.offset	= 0;
+			var->transp.offset	= 24;
+			var->bits_per_pixel = 32;
+			break;
+	}
+}
+
+EXPORT_SYMBOL(DRV_OSD_Get_UI_Res);
+int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
+{
+	if (!pOSDReg || !pGPOSTReg)
+		return 1;
+
+	/* todo reference Output size */
+	pinfo->UI_width = 720;
+	pinfo->UI_height = 480;
+	pinfo->UI_bufNum = 2;
+	pinfo->UI_bufAlign = 4096;
+	pinfo->UI_ColorFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+
+	DRV_OSD_GetColormode_Vars(&pinfo->UI_Colormode, pinfo->UI_ColorFmt);
+
+	return 0;
+}
+
+EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
+void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo)
+{
+	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
+		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, gpOsdHeader, gpOsdHeader_phy);
+	else
+		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t), gpOsdHeader, gpOsdHeader_phy);
+
+	dma_free_coherent(NULL, sizeof(Region_Manager_t), gpWinRegion, gpWinRegion_phy);
+}
+
+EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
+void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
+{
+	u32 *osd_header;
+
+	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
+		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, &gpOsdHeader_phy, GFP_KERNEL);
+	else
+		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t), &gpOsdHeader_phy, GFP_KERNEL);
+
+	if (!gpOsdHeader) {
+		diag_printf("malloc osd header fail\n");
+		return;
+	}
+
+	gpWinRegion = dma_zalloc_coherent(NULL, sizeof(Region_Manager_t), &gpWinRegion_phy, GFP_KERNEL);
+
+	if (!gpWinRegion) {
+		diag_printf("malloc region header fail\n");
+		return;
+	}
+
+	//gpWinRegion->RegionInfo
+
+	gpWinRegion->Format = pinfo->UI_ColorFmt;
+	gpWinRegion->Align = pinfo->UI_bufAlign;
+	gpWinRegion->NumBuff = pinfo->UI_bufNum;
+	gpWinRegion->DataPhyAddr = pinfo->UI_bufAddr;
+	gpWinRegion->DataAddr = (u8 *)pinfo->UI_bufAddr;
+	gpWinRegion->Hdr_ClutAddr = gpOsdHeader + sizeof(HW_OSD_Header_t);
+	gpWinRegion->BmpSize = EXTENDED_ALIGNED(pinfo->UI_height * pinfo->UI_width * (pinfo->UI_Colormode.bits_per_pixel>>3), pinfo->UI_bufAlign);
+	gpWinRegion->PaletteAddr = (u8 *)pinfo->UI_bufAddr_pal;
+	gpWinRegion->pHWRegionHdr = (HW_OSD_Header_t *)gpOsdHeader;
+
+	//diag_printf("osd_header=0x%x 0x%x addr=0x%x\n", (u32)gpOsdHeader, gpOsdHeader_phy, pinfo->UI_bufAddr);
+
+	osd_header = (u32 *)gpOsdHeader;
+
+	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
+		osd_header[0] = SWAP32(0x82001000);
+	else
+		osd_header[0] = SWAP32(0x00001000 | (pinfo->UI_ColorFmt << 24));
+
+	osd_header[1] = SWAP32((pinfo->UI_height<< 16) | pinfo->UI_width);
 	osd_header[2] = 0;
 	osd_header[3] = 0;
 	osd_header[4] = 0;
-	osd_header[5] = SWAP32(0x00010000 | OSD_WIDTH);
+	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_YUY2)
+		osd_header[5] = SWAP32(0x00040000 | pinfo->UI_width);
+	else
+		osd_header[5] = SWAP32(0x00010000 | pinfo->UI_width);
 	osd_header[6] = SWAP32(0xFFFFFFE0);
-	osd_header[7] = SWAP32(virt_to_phys(_gOSD_header) + 128 + 1024);
+	osd_header[7] = SWAP32(pinfo->UI_bufAddr);
 
 	//OSD
 	pOSDReg->osd_ctrl = OSD_CTRL_COLOR_MODE_RGB | OSD_CTRL_CLUT_FMT_ARGB | OSD_CTRL_LATCH_EN | OSD_CTRL_A32B32_EN | OSD_CTRL_FIFO_DEPTH;
-	pOSDReg->osd_base_addr = virt_to_phys(_gOSD_header);
+	pOSDReg->osd_base_addr = gpOsdHeader_phy;
 	pOSDReg->osd_hvld_offset = 0;
 	pOSDReg->osd_vvld_offset = 0;
-	pOSDReg->osd_hvld_width = OSD_WIDTH;
-	pOSDReg->osd_vvld_height = OSD_HEIGHT;
+	pOSDReg->osd_hvld_width = pinfo->UI_width;
+	pOSDReg->osd_vvld_height = pinfo->UI_height;
 	pOSDReg->osd_bist_ctrl = 0x0;
 	pOSDReg->osd_3d_h_offset = 0x0;
 	pOSDReg->osd_src_decimation_sel = 0x0;
@@ -221,78 +456,32 @@ void DRV_OSD_InitTest(void)
 	pGPOSTReg->gpost0_contrast_config = 0x0;
 }
 
-void DRV_OSD_Info(void)
+void DRV_OSD_WaitVSync(void)
 {
-	DRV_OsdWindow_e id;
-	UINT32 j;
-	//DRV_OsdRegionHandle_t region;
+	Region_Manager_t *pRegionManager = gpWinRegion;
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 
-	ERRDISP("Region display-order is as follows:\n");
+	if (!pRegionManager)
+		return;
 
-	for (id = DRV_OSD0; id < DRV_OSD_MAX; ++id)
-	{
-		//Region_Manager_t *pRegionManager = NULL;
-		HW_OSD_Header_t *pOsdHdr = NULL;
+	if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY)
+		pDispWorkMem->osd_field_end_protect |= 1 << DRV_OSD0;
 
-		//(void)DRV_OSD_GetMainRegion(id, &region);
-
-		diag_printf("******osd layer:%d******\n", id);
-
-		//if (!region)
-		//	continue;
-
-		//pRegionManager = (Region_Manager_t *)region;
-		//pOsdHdr = pRegionManager->pHWRegionHdr;
-		pOsdHdr = (HW_OSD_Header_t *)_gOSD_header;
-
-		diag_printf("    Check osd output: %d %d, region ouput:%d %d\n",
-			pOSDReg[id].osd_hvld_width,
-			pOSDReg[id].osd_vvld_height,
-			SWAP16(pOsdHdr->h_size),
-			SWAP16(pOsdHdr->v_size));
-
-		j = 0;
-		//while (pRegionManager != NULL)
-		{
-#if 0
-			pOsdHdr = pRegionManager->pHWRegionHdr;
-			diag_printf("Region[%d]: (x, y)=(%d, %d) (w, h)=(%d, %d) (buf_w, buf_h)=(%d, %d)\n",
-						j++,
-						pRegionManager->RegionInfo.startX, pRegionManager->RegionInfo.startY,
-						pRegionManager->RegionInfo.actW, pRegionManager->RegionInfo.actH,
-						pRegionManager->RegionInfo.bufW, pRegionManager->RegionInfo.bufH);
-			diag_printf("GSCL out: (x, y)=(%d, %d) (w, h)=(%d, %d) (buf_w, buf_h)=(%d, %d)\n",
-						pRegionManager->OutInfo.startX, pRegionManager->OutInfo.startY,
-						pRegionManager->OutInfo.actW, pRegionManager->OutInfo.actH,
-						pRegionManager->OutInfo.bufW, pRegionManager->OutInfo.bufH);
-			diag_printf("PalletteAddr: 0x%x\n", (UINT32)pRegionManager->PaletteAddr);
-			diag_printf("Region DataAddr: 0x%x, Hdr_ClutAddr: 0x%x, ID: %d, Size: %d\n", (UINT32)pRegionManager->DataAddr, (UINT32)pRegionManager->Hdr_ClutAddr, pRegionManager->CurrBufID, pRegionManager->BmpSize);
-			diag_printf("Region Hdl: 0x%x, forcetrans: %d, osd header: 0x%x\n", (UINT32)pRegionManager, pRegionManager->ForceTrans, (UINT32)pRegionManager->pHWRegionHdr);
-#endif
-			diag_printf("header: (x, y)=(%d, %d) (w, h)=(%d, %d) data(x, y)=(%d, %d) data width=%d\n",
-						SWAP16(pOsdHdr->disp_start_column), SWAP16(pOsdHdr->disp_start_row),
-						SWAP16(pOsdHdr->h_size), SWAP16(pOsdHdr->v_size),
-						SWAP16(pOsdHdr->data_start_column), SWAP16(pOsdHdr->data_start_row), SWAP16(pOsdHdr->data_width));
-			diag_printf("cu:%d ft:%d bit format:%d link data:0x%x\n\n", (pOsdHdr->config0 & 0x80)?1:0, (pOsdHdr->config0 & 0x40)?1:0, (pOsdHdr->config0 & 0xf), SWAP32(pOsdHdr->link_data));
-
-			//pRegionManager = pRegionManager->pNextRegion;
-		}
-	}
+	wait_event_interruptible_timeout(pDispWorkMem->osd_wait,
+					!pDispWorkMem->osd_field_end_protect,
+					msecs_to_jiffies(50));
 }
 
-void DRV_OSD_HDR_Show(void)
+u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 {
-	int *ptr = (int *)_gOSD_header;
-	int i;
+	Region_Manager_t *pRegionManager = gpWinRegion;
 
-	for (i = 0; i < 8; ++i)
-		diag_printf("%d: 0x%08x\n", i, *(ptr+i));
-}
+	if (!pRegionManager)
+		return -1;
 
-void DRV_OSD_HDR_Write(int offset, int value)
-{
-	int *ptr = (int *)_gOSD_header;
+	pRegionManager->DirtyFlag |= REGION_ADDR_DIRTY;
+	pRegionManager->CurrBufID = bBufferId;
 
-	*(ptr+offset) = value;
+	return 0;
 }
 

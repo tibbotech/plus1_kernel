@@ -6,6 +6,7 @@
 #include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
+#include <dt-bindings/reset/sp-q628.h>
 
 #define ENABLE_DMARX0
 #define ENABLE_DMARX1
@@ -47,7 +48,7 @@
 		spi0 = &spi_master0;
 		spi1 = &spi_master1;
 		spi2 = &spi_master2;
-		spi3 = &spi_master3;		
+		spi3 = &spi_master3;
 		
 	};
 
@@ -59,6 +60,13 @@
 		iop_reserve: iop_device {
 			no-map;
 			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
+		};
+
+		fb_reserve: fb_device {
+			compatible = "sunplus,sc7021_fb_device_mem";
+			size = <0x802000>;	//1366*768*4 alignment 1024, and double buffer.
+			alignment = <1024>;
+			reusable;
 		};
 	};
 
@@ -240,7 +248,11 @@
 			reg = <0x9c008980 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UADMA>,
+				 <&clkc PERI0>;
+			clock-names = "UADMA",
+				      "PERI0";
+			resets = <&rstc RST_UADMA>;
 			which-uart = <1>;
 		};
 #endif
@@ -250,7 +262,11 @@
 			reg = <0x9c0089c0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UADMA>,
+				 <&clkc PERI1>;
+			clock-names = "UADMA",
+				      "PERI1";
+			resets = <&rstc RST_UADMA>;
 			which-uart = <2>;
 		};
 #endif
@@ -259,7 +275,11 @@
 		uartdmatx0: serial@sp_uartdmatx0 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a00 0x40>;
-			clocks = <&extclk>;
+			clocks = <&clkc HWUA>,
+				 <&clkc PERI0>;
+			clock-names = "HWUA",
+				      "PERI0";
+			resets = <&rstc RST_UADMA>;
 			which-uart = <1>;
 		};
 #endif
@@ -267,7 +287,11 @@
 		uartdmatx1: serial@sp_uartdmatx1 {
 			compatible = "sunplus,sp-uart";
 			reg = <0x9c008a40 0x40>;
-			clocks = <&extclk>;
+			clocks = <&clkc HWUA>,
+				 <&clkc PERI1>;
+			clock-names = "HWUA",
+				      "PERI1";
+			resets = <&rstc RST_UADMA>;
 			which-uart = <2>;
 		};
 #endif
@@ -277,7 +301,8 @@
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA0>;
+			resets = <&rstc RST_UA0>;
 		};
 
 		uart1: serial@sp_uart1 {
@@ -285,7 +310,8 @@
 			reg = <0x9c000980 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA1>;
+			resets = <&rstc RST_UA1>;
 		};
 
 		uart2: serial@sp_uart2 {
@@ -293,7 +319,8 @@
 			reg = <0x9c000800 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA2>;
+			resets = <&rstc RST_UA2>;
 		};
 
 		uart3: serial@sp_uart3 {
@@ -301,7 +328,8 @@
 			reg = <0x9c000880 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA3>;
+			resets = <&rstc RST_UA3>;
 		};
 
 		uart4: serial@sp_uart4 {
@@ -309,12 +337,14 @@
 			reg = <0x9c008780 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc UA4>;
+			resets = <&rstc RST_UA4>;
 		};
 
 		icm: icm@G81 {
 			compatible = "sunplus,sp-icm";
 			clocks = <&clkc ICM>;
+			resets = <&rstc RST_ICM>;
 			/* clken format: (group << 16) | (index << 8) | shift */
 			clken = <0x00000a08>; /* 0.10.8 */
 			reg = <0x9c002880 0x80>;
@@ -406,15 +436,22 @@
 				<167 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
 #endif
-//#ifdef SUPPORT_I2C_GDMA
-#if  1  //For i2c dma function
+
+		rstc: reset@0x9c000054 {
+			compatible = "sunplus,sp7021-reset";
+			#reset-cells = <1>;
+			reg = <0x9c000054 0x0A>;
+			reg-names = "reset";
+		};
+
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp_i2cm";
 			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>, <0x9c004680 0x80>;
 			reg-names = "i2cm", "moon0", "moon3", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc I2CM0>;
+			resets = <&rstc RST_I2CM0>;
 		};
 
 		i2cm1: i2c@sp_i2cm1 {
@@ -423,7 +460,8 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc I2CM1>;
+			resets = <&rstc RST_I2CM1>;
 		};
 
 		i2cm2: i2c@sp_i2cm2 {
@@ -432,7 +470,8 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc I2CM2>;
+			resets = <&rstc RST_I2CM2>;
 		};
 
 		i2cm3: i2c@sp_i2cm3 {
@@ -441,61 +480,29 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
-		};
-#else
-		i2cm0: i2c@sp_i2cm0 {
-			compatible = "sunplus,sp_i2cm";
-			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>;
-			reg-names = "i2cm", "moon0", "moon3";
-			interrupt-parent = <&intc>;
-			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
+			clocks = <&clkc I2CM3>;
+			resets = <&rstc RST_I2CM3>;
 		};
 
-		i2cm1: i2c@sp_i2cm1 {
-			compatible = "sunplus,sp_i2cm";
-			reg = <0x9c004700 0x80>;
-			reg-names = "i2cm";
-			interrupt-parent = <&intc>;
-			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
-		};
-
-		i2cm2: i2c@sp_i2cm2 {
-			compatible = "sunplus,sp_i2cm";
-			reg = <0x9c004800 0x80>;
-			reg-names = "i2cm";
-			interrupt-parent = <&intc>;
-			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
-		};
-
-		i2cm3: i2c@sp_i2cm3 {
-			compatible = "sunplus,sp_i2cm";
-			reg = <0x9c004900 0x80>;
-			reg-names = "i2cm";
-			interrupt-parent = <&intc>;
-			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&extclk>;
-		};
-#endif
 		pwm: pwm@0x9c007a00 {
 			#pwm-cells = <2>;
 			compatible = "sunplus,sc7021-pwm";
 			reg = <0x9c007a00 0x80>;
 			clocks = <&clkc DISP_PWM>;
+			resets = <&rstc RST_DISP_PWM>;
 		 };
 
 		audio: audio@0x9c001e00 {
 			compatible = "sunplus,sc7021-audio";
 			reg = <0x9c001e00 0x680>,<0x9c000200 0x80>,<0x9c000000 0x80>;
 			reg-names = "audio", "moon4", "moon0";
+			resets = <&rstc RST_AUD>;
 		 };
 		 
 		sp_uphy0: uphy@0x9C004A80 {
 			compatible = "sunplus,sunplus-usb-phy0";
 			clocks = <&clkc UPHY0>;
+			resets = <&rstc RST_UPHY0>;
 			reg = <0x9C004A80 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
@@ -504,6 +511,7 @@
 		sp_uphy1: uphy@0x9C004B00 {
 			compatible = "sunplus,sunplus-usb-phy1";
 			clocks = <&clkc UPHY1>;
+			resets = <&rstc RST_UPHY1>;
 			reg = <0x9C004B00 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
@@ -512,6 +520,7 @@
 		hdmitx: hdmitx@0x9C00BE00 {
 			compatible = "sunplus,sp-hdmitx";
 			clocks = <&clkc UPHY1>;
+			resets = <&rstc RST_HDMI_TX>;
 			reg = <0x9C00BE00 0x3FC>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
@@ -520,6 +529,7 @@
 		sp_ehci0: usb@9C102100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci0";
 			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
 			reg = <0x9C102100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
@@ -528,6 +538,7 @@
 		sp_ehci1: usb@9C103100 {
 			compatible = "sunplus,sunplus-q628-usb-ehci1";
 			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
 			reg = <0x9C103100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
@@ -536,6 +547,7 @@
 		sp_ohci0: usb@0x9C102080 {
 			compatible = "sunplus,sunplus-q628-usb-ohci0";
 			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
 			reg = <0x9C102080 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
@@ -544,6 +556,7 @@
 		sp_ohci1: usb@0x9C103080 {
 			compatible = "sunplus,sunplus-q628-usb-ohci1";
 			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
 			reg = <0x9C103080 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
@@ -552,6 +565,7 @@
 		sp_udc0: usb@0x9c102800 {
 			compatible = "sunplus,sunplus-q628-usb-udc0";
 			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
 			reg = <0x9c102800 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
@@ -560,13 +574,19 @@
 		sp_udc1: usb@0x9c103800 {
 			compatible = "sunplus,sunplus-q628-usb-udc1";
 			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
 			reg = <0x9c103800 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		fb_device {
+			compatible = "sunplus,sc7021-fb";
+			memory-region = <&fb_reserve>;
+		};
+
 		display0: display@0x9c005c80 {
-			compatible = "sunplus,sp-display";
+			compatible = "sunplus,sc7021-display";
 			reg = <0x9c005c80 0x1980>,
 				<0x9c105000 0x80>;
 			interrupt-parent = <&intc>;
@@ -590,6 +610,14 @@
 					"DISP_DDFCH",
 					"DISP_DVE",
 					"DISP_HDMI";
+			resets = <&rstc RST_TGEN>,
+					     <&rstc RST_DMIX>,
+					     <&rstc RST_OSD0>,
+					     <&rstc RST_GPOST0>,
+					     <&rstc RST_VPOST>,
+					     <&rstc RST_DDFCH>,
+					     <&rstc RST_DVE>,
+					     <&rstc RST_HDMI_TX>;
 		};
 
 		l2sw: l2sw@0x9c108000 {
@@ -598,6 +626,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc L2SW>;
+			resets = <&rstc RST_L2SW>;
 		};
 		
 		mmc0: mmc@emmc {
@@ -605,6 +634,7 @@
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL0>;
+			resets = <&rstc RST_CARD_CTL0>;
 		};
 
 		mmc1: mmc@sdcard {
@@ -612,6 +642,7 @@
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
+			resets = <&rstc RST_CARD_CTL1>;
 			sense-gpio = <71>;
 
 		};
@@ -621,6 +652,7 @@
 			reg = <0x9c008400 0x280>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
+			resets = <&rstc RST_CARD_CTL4>;
 		};
 
 		spi_master0: spi@sp_spi_master0 {
@@ -634,6 +666,7 @@
 						 <146 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_0>;
 			clock-names = "sys_pll";
+			resets = <&rstc RST_SPI_COMBO_0>;
 			spi-max-frequency = <10000000>;
 			spi0: spi@ {
 				compatible = "rohm,dh2228fv";
@@ -654,6 +687,7 @@
 						 <69 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_1>;
 			clock-names = "sys_pll";
+			resets = <&rstc RST_SPI_COMBO_1>;
 			spi-max-frequency = <10000000>;
 			spi1: spi@ {
 				compatible = "rohm,dh2228fv";
@@ -673,6 +707,7 @@
 						 <72 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_2>;
 			clock-names = "sys_pll";
+			resets = <&rstc RST_SPI_COMBO_2>;
 			spi-max-frequency = <10000000>;
 			spi2: spi@ {
 				compatible = "rohm,dh2228fv";
@@ -693,6 +728,7 @@
 						 <75 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_3>;
 			clock-names = "sys_pll";
+			resets = <&rstc RST_SPI_COMBO_3>;
 			spi-max-frequency = <10000000>;
 			spi3: spi@ {
 				compatible = "rohm,dh2228fv";
@@ -707,6 +743,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			linux,part-probe = "ofpart", "sunplus_part";
+			resets = <&rstc RST_SPIND>;
 		};		
 
 		bch0: bch@sp_bch {
@@ -714,6 +751,7 @@
 			reg = <0x9c101000 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&rstc RST_BCH>;
 		};
 
 
@@ -731,6 +769,7 @@
 				<125 IRQ_TYPE_LEVEL_HIGH>,
 				<126 IRQ_TYPE_LEVEL_HIGH>,
 				<127 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&rstc RST_GPIO>;
 		};
 		
 		
@@ -740,6 +779,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
 						 <50 IRQ_TYPE_EDGE_RISING>;
+			resets = <&rstc RST_MIPICSI0>;
 		};
 		
 		sppctl: sppctl@0x9C000100 {

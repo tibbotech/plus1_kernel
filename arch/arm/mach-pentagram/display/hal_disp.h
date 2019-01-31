@@ -8,8 +8,8 @@
 #include "disp_dmix.h"
 #include "disp_tgen.h"
 #include "disp_dve.h"
-#include "disp_osd.h"
-#include "disp_vpp.h"
+#include "mach/display/disp_osd.h"
+#include "mach/display/disp_vpp.h"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -50,9 +50,15 @@ typedef struct _display_size_t {
 typedef struct {
 	void *pHWRegBase;
 
+	//OSD
+	spinlock_t osd_lock;
+	wait_queue_head_t osd_wait;
+	UINT32 osd_field_end_protect;
+
 	//void *aio;
 	void *bio;
 
+	//clk
 	struct clk *tgen_clk;
 	struct clk *dmix_clk;
 	struct clk *osd0_clk;
@@ -62,11 +68,6 @@ typedef struct {
 	struct clk *dve_clk;
 	struct clk *hdmi_clk;
 #if 0
-	GL_Semaphore_t field_end[DRV_Disp_Out_MAX];
-	GL_Semaphore_t field_start[DRV_Disp_Out_MAX];
-	UINT32 field_end_protect;
-	UINT32 field_start_protect;
-
 	DRV_DISP_SYS_MODE_e SysMode;
 
 	DRV_DISP_Scan_Info_t OutputScanInfo[4];// 0 and 1 : original scan info,    2 : NTSC cvbs out,  3:PAL cvbs out
@@ -81,46 +82,16 @@ typedef struct {
 	DRV_Sys_OutMode_Info_t DispOutMode;
 	UINT8 DispOutModeUpdated;
 
-	//TGEN start
-	UINT8 bTGEN_SYS_SyncMode;
-	//TGEN end
-
-	//DMIX start
-	UINT16 TCON_BP;
-	UINT32 display_mode_bgc[DRV_Disp_Out_MAX];
-	UINT8 display_mode[DRV_Disp_Out_MAX];
-	//UINT32 display_dmix_backup[DRV_Disp_Out_MAX];
-	//DMIX end
-
-	//PQ start
-	UINT32 ScenNum; //used for PQ tool. Number of scenario
-	UINT32 OrgScene;
-	UINT32 PQ_Flag[2];
-	UINT32 ScenSelect;
-	UINT8 *PQBuff;
-	void *PQPackage[BIN_NUM_MAX]; //PQPackage[0] is reserved
-	UINT8 PQ_Version_ID;
-	DRV_VPP_Favorite_Color VideoFCA[DRV_VPP_MODULE_NUM];
-	UINT8 pq_scene_chg_idx;
-	DRV_DMIX_PQ_Adj_t dmix_adj[2];
-	//PQ end
-
 	//VPP start
 	DRV_VPP_OutputWin_t VPP1_output;
 	DRV_VPP_Param_t* pgVppInfo[4];
-	//UINT32 RCS_BufCount;
 	//UINT32 IsRearView;
 	DRV_VPP_Luma_Adj_t VPP_Luma[2];
-	UINT8 acfg_overscan_by_scaling;
-	int acfg_overscan_ntsc;
-	int acfg_overscan_pal;
-	UINT32 VideoSrcToDispCurr[2];
-	UINT32 VideoSrcToDispId[Video_Source_Num];
-	UINT32 VppRcsId;
-	UINT8 vpp_aspect_spec;
 	//VPP end
 #endif
 } DISPLAY_WORKMEM;
+
+extern DISPLAY_WORKMEM gDispWorkMem;
 
 #endif	//__HAL_DISP_H__
 
