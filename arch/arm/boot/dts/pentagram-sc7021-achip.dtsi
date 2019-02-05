@@ -784,7 +784,7 @@
 		
 		sppctl: sppctl@0x9C000100 {
 			compatible = "sunplus,sppctl";
-			reg = <0x9C000100 0x100>;
+			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C0032e4 0x80>;
 		};
 
 	};
