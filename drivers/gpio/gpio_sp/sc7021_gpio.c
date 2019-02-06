@@ -189,9 +189,9 @@ static void sc7021gpio_f_dsh( struct seq_file *_s, struct gpio_chip *_c) {
 #ifdef CONFIG_OF_GPIO
 static int sc7021gpio_xlate( struct gpio_chip *_c,
         const struct of_phandle_args *_a, u32 *_flags) {
- sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
- KERR( "%s(%lX)\n", __FUNCTION__, *_flags);
- return;  }
+ // sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
+ KERR( "%s(%X)\n", __FUNCTION__, *_flags);
+ return( 0);  }
 #endif
 
 static int sc7021gpio_i_map( struct gpio_chip *_c, unsigned _off) {
@@ -228,7 +228,6 @@ static int sc7021_gpio_probe( struct platform_device *_pd) {
  struct device_node *np = _pd->dev.of_node;
  sc7021gpio_chip_t *pc;
  struct gpio_chip *gchip;
- struct resource *rp;
  int err = 0, i, npins;
  if ( !np) {
    dev_err( &_pd->dev, "invalid devicetree node\n");
