@@ -190,8 +190,10 @@ static void sc7021gpio_f_dsh( struct seq_file *_s, struct gpio_chip *_c) {
 static int sc7021gpio_xlate( struct gpio_chip *_c,
         const struct of_phandle_args *_a, u32 *_flags) {
  // sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
- KERR( "%s(%X)\n", __FUNCTION__, *_flags);
- return( 0);  }
+ KDBG( "%s(%X) %d\n", __FUNCTION__, _a->args[ 0], _a->args[ 1]);
+ //if ( _a->args[ 0] > ARRAY_SIZE( sc7021gpio_list_names)) return( -EINVAL);
+ //if ( _flags) *_flags = _a->args[ 1];
+ return( of_gpio_simple_xlate( _c, _a, _flags));  }
 #endif
 
 static int sc7021gpio_i_map( struct gpio_chip *_c, unsigned _off) {
