@@ -1582,18 +1582,16 @@ static int sp_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int sp_i2c_resume(struct platform_device *pdev)
 {
-	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
+	//Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
 	SpI2C_If_t *pstSpI2CInfo = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
 	FUNC_DEBUG();
 
 	if (p_adap->nr < I2C_MASTER_NUM) {
-		hal_i2cm_enable(p_adap->nr, pstMoonRegBase->moon0_regs);
-//#Below three function will instead of hal_i2cm_enable in the future
-//	  reset_control_deassert(pstSpI2CInfo->rstc);
-//    wait CLKGN code
-//    wait GCLKEN code
+		//hal_i2cm_enable(p_adap->nr, pstMoonRegBase->moon0_regs);
+	  reset_control_deassert(pstSpI2CInfo->rstc);   //release reset
+	  clk_prepare_enable(pstSpI2CInfo->clk);        //enable clken and disable gclken
 	}
 
 	return 0;
