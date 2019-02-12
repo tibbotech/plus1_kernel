@@ -377,6 +377,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			if (pstIrqEvent->stIrqDmaFlag.bDmaDone) {
 					DBG_INFO("I2C dma write success !!\n");
 					pstIrqEvent->bRet = I2C_SUCCESS;
+				  wake_up(&i2cm_event_wait[device_id]);
 	        //return I2C_SUCCESS;
 	    }    
 			break;
@@ -387,6 +388,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 					DBG_INFO("I2C dma read success !!\n");
 					//hal_i2cm_dma_int_flag_clear(device_id, I2C_DMA_INT_DMA_DONE_FLAG);
 					pstIrqEvent->bRet = I2C_SUCCESS;
+				  wake_up(&i2cm_event_wait[device_id]);
 	        //return I2C_SUCCESS;
 	    }    
 			break;
@@ -877,12 +879,19 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 	hal_i2cm_dma_int_en_set(pstCmdInfo->dDevId, dma_int);
 	hal_i2cm_dma_go_set(pstCmdInfo->dDevId);
   
-  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
+//  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
+//  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
+//	if (ret == 1) { //IRQ_HANDLED
+//	   ret = pstIrqEvent->bRet;  //if i2c dma write success, return I2C_SUCCESS
+//  }
+	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
+	if (ret == 0) {
+		DBG_ERR("I2C write timeout !!\n");
+		ret = I2C_ERR_TIMEOUT_OUT;
+	} else {
+		ret = pstIrqEvent->bRet;
+	}
   hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
-  
-	if (ret == 1) { //IRQ_HANDLED
-	   ret = pstIrqEvent->bRet;  //if i2c dma write success, return I2C_SUCCESS
-  }
 
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
@@ -1008,10 +1017,18 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 	  hal_i2cm_manual_trigger(pstCmdInfo->dDevId);  //start send data
   }
   
-  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
-	if (ret == 1) { //IRQ_HANDLED
-	   ret = pstIrqEvent->bRet; //if i2c dma read success, return I2C_SUCCESS
-  }
+//  ret = _sp_i2cm_irqevent_handler(pstCmdInfo->dDevId, &pstIrqEvent); 
+//	if (ret == 1) { //IRQ_HANDLED
+//	   ret = pstIrqEvent->bRet; //if i2c dma read success, return I2C_SUCCESS
+//  }
+//  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
+	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
+	if (ret == 0) {
+		DBG_ERR("I2C read timeout !!\n");
+		ret = I2C_ERR_TIMEOUT_OUT;
+	} else {
+		ret = pstIrqEvent->bRet;
+	}
   hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
   
 	//for (i=0 ; i<pstCmdInfo->dRdDataCnt ; i++)
@@ -1159,11 +1176,19 @@ int sp_i2cm_sg_dma_write(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 	hal_i2cm_sg_dma_start_lli_set(dDevId, 0);
 	hal_i2cm_sg_dma_go_set(dDevId);
 
-	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
-	if (ret == 1) { //IRQ_HANDLED
-	   ret = pstIrqEvent->bRet; //if i2c sg dma write success, return I2C_SUCCESS
-  }
-	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+//	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
+//	if (ret == 1) { //IRQ_HANDLED
+//	   ret = pstIrqEvent->bRet; //if i2c sg dma write success, return I2C_SUCCESS
+//  }
+//	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
+	if (ret == 0) {
+		DBG_ERR("I2C write timeout !!\n");
+		ret = I2C_ERR_TIMEOUT_OUT;
+	} else {
+		ret = pstIrqEvent->bRet;
+	}
+  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
 	
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
@@ -1316,11 +1341,19 @@ int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 		hal_i2cm_manual_trigger(pstCmdInfo->dDevId); //start send data
 	}
 	
-	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
-	if (ret == 1) { //IRQ_HANDLED
-	   ret = pstIrqEvent->bRet;
-  }
-	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+//	ret = _sp_i2cm_irqevent_handler(dDevId, &pstIrqEvent);
+//	if (ret == 1) { //IRQ_HANDLED
+//	   ret = pstIrqEvent->bRet;
+//  }
+//	hal_i2cm_status_clear(dDevId, 0xFFFFFFFF);
+	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
+	if (ret == 0) {
+		DBG_ERR("I2C read timeout !!\n");
+		ret = I2C_ERR_TIMEOUT_OUT;
+	} else {
+		ret = pstIrqEvent->bRet;
+	}
+  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
 	
 #if 0//test hard code for 2 dma block case
 	NewAddr = sgAddr[0];
