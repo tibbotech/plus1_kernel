@@ -19,8 +19,8 @@
 #endif
 
 //#define I2C_FUNC_DEBUG
-//#define I2C_DBG_INFO
-//#define I2C_DBG_ERR
+#define I2C_DBG_INFO
+#define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
 	#define FUNC_DEBUG()    printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
