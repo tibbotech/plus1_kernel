@@ -1,103 +1,88 @@
 #ifndef __L2SW_REGISTER_H__
 #define __L2SW_REGISTER_H__
 
-#define REGISTER_BASE   0x9c108000
+#include "l2sw_define.h"
 
-typedef unsigned char       BYTE    ;
-typedef unsigned short      WORD    ;
-typedef unsigned long       DWORD   ;
-
-typedef unsigned long long  UINT64  ;
-typedef unsigned int        UINT32  ;
-typedef unsigned short      UINT16  ;
-typedef unsigned char       UINT8   ;
-
-typedef long long           INT64   ;
-typedef int                 INT32   ;
-typedef short               INT16   ;
-typedef signed char         INT8    ;
 
 //=================================================================================================
 /*
  * TYPE: RegisterFile_L2SW
  */
 struct l2sw_reg {
-
-UINT32 sw_int_status_0;
-UINT32 sw_int_mask_0;
-UINT32 fl_cntl_th;
-UINT32 cpu_fl_cntl_th;
-UINT32 pri_fl_cntl;
-UINT32 vlan_pri_th;
-UINT32 En_tos_bus;
-UINT32 Tos_map0;
-UINT32 Tos_map1;
-UINT32 Tos_map2;
-UINT32 Tos_map3;
-UINT32 Tos_map4;
-UINT32 Tos_map5;
-UINT32 Tos_map6;
-UINT32 Tos_map7;
-UINT32 global_que_status;
-UINT32 addr_tbl_srch;
-UINT32 addr_tbl_st;
-UINT32 MAC_ad_ser0;
-UINT32 MAC_ad_ser1;
-UINT32 wt_mac_ad0;
-UINT32 w_mac_15_0_bus;
-UINT32 w_mac_47_16;
-UINT32 PVID_config0;
-UINT32 PVID_config1;
-UINT32 VLAN_memset_config0;
-UINT32 VLAN_memset_config1;
-UINT32 port_ability;
-UINT32 port_st;
-UINT32 cpu_cntl;
-UINT32 port_cntl0;
-UINT32 port_cntl1;
-UINT32 port_cntl2;
-UINT32 sw_glb_cntl;
-UINT32 l2sw_rsv1;
-UINT32 led_port0;
-UINT32 led_port1;
-UINT32 led_port2;
-UINT32 led_port3;
-UINT32 led_port4;
-UINT32 watch_dog_trig_rst;
-UINT32 watch_dog_stop_cpu;
-UINT32 phy_cntl_reg0;
-UINT32 phy_cntl_reg1;
-UINT32 mac_force_mode;
-UINT32 VLAN_group_config0;
-UINT32 VLAN_group_config1;
-UINT32 flow_ctrl_th3;
-UINT32 queue_status_0;
-UINT32 debug_cntl;
-UINT32 l2sw_rsv2;
-UINT32 mem_test_info;
-UINT32 sw_int_status_1;
-UINT32 sw_int_mask_1;
-UINT32 l2sw_rsv3[76];
-UINT32 cpu_tx_trig;
-UINT32 tx_hbase_addr_0;
-UINT32 tx_lbase_addr_0;
-UINT32 rx_hbase_addr_0;
-UINT32 rx_lbase_addr_0;
-UINT32 tx_hw_addr_0;
-UINT32 tx_lw_addr_0;
-UINT32 rx_hw_addr_0;
-UINT32 rx_lw_addr_0;
-UINT32 cpu_port_cntl_reg_0;
-UINT32 tx_hbase_addr_1;
-UINT32 tx_lbase_addr_1;
-UINT32 rx_hbase_addr_1;
-UINT32 rx_lbase_addr_1;
-UINT32 tx_hw_addr_1;
-UINT32 tx_lw_addr_1;
-UINT32 rx_hw_addr_1;
-UINT32 rx_lw_addr_1;
-UINT32 cpu_port_cntl_reg_1;
-
+	u32 sw_int_status_0;
+	u32 sw_int_mask_0;
+	u32 fl_cntl_th;
+	u32 cpu_fl_cntl_th;
+	u32 pri_fl_cntl;
+	u32 vlan_pri_th;
+	u32 En_tos_bus;
+	u32 Tos_map0;
+	u32 Tos_map1;
+	u32 Tos_map2;
+	u32 Tos_map3;
+	u32 Tos_map4;
+	u32 Tos_map5;
+	u32 Tos_map6;
+	u32 Tos_map7;
+	u32 global_que_status;
+	u32 addr_tbl_srch;
+	u32 addr_tbl_st;
+	u32 MAC_ad_ser0;
+	u32 MAC_ad_ser1;
+	u32 wt_mac_ad0;
+	u32 w_mac_15_0_bus;
+	u32 w_mac_47_16;
+	u32 PVID_config0;
+	u32 PVID_config1;
+	u32 VLAN_memset_config0;
+	u32 VLAN_memset_config1;
+	u32 port_ability;
+	u32 port_st;
+	u32 cpu_cntl;
+	u32 port_cntl0;
+	u32 port_cntl1;
+	u32 port_cntl2;
+	u32 sw_glb_cntl;
+	u32 l2sw_rsv1;
+	u32 led_port0;
+	u32 led_port1;
+	u32 led_port2;
+	u32 led_port3;
+	u32 led_port4;
+	u32 watch_dog_trig_rst;
+	u32 watch_dog_stop_cpu;
+	u32 phy_cntl_reg0;
+	u32 phy_cntl_reg1;
+	u32 mac_force_mode;
+	u32 VLAN_group_config0;
+	u32 VLAN_group_config1;
+	u32 flow_ctrl_th3;
+	u32 queue_status_0;
+	u32 debug_cntl;
+	u32 l2sw_rsv2;
+	u32 mem_test_info;
+	u32 sw_int_status_1;
+	u32 sw_int_mask_1;
+	u32 l2sw_rsv3[76];
+	u32 cpu_tx_trig;
+	u32 tx_hbase_addr_0;
+	u32 tx_lbase_addr_0;
+	u32 rx_hbase_addr_0;
+	u32 rx_lbase_addr_0;
+	u32 tx_hw_addr_0;
+	u32 tx_lw_addr_0;
+	u32 rx_hw_addr_0;
+	u32 rx_lw_addr_0;
+	u32 cpu_port_cntl_reg_0;
+	u32 tx_hbase_addr_1;
+	u32 tx_lbase_addr_1;
+	u32 rx_hbase_addr_1;
+	u32 rx_lbase_addr_1;
+	u32 tx_hw_addr_1;
+	u32 tx_lw_addr_1;
+	u32 rx_hw_addr_1;
+	u32 rx_lw_addr_1;
+	u32 cpu_port_cntl_reg_1;
 };
 
 #define REG_BASE           0x9c000000
@@ -106,9 +91,6 @@ UINT32 cpu_port_cntl_reg_1;
 struct moon_regs {
 	unsigned int sft_cfg[32];
 };
-
-
-
 
 #endif
 

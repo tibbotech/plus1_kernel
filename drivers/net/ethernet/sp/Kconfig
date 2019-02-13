@@ -3,7 +3,7 @@
 #
 
 config L2SW_DRIVER
-    tristate "L2SW support"
+    tristate "Sunplus L2SW device"
 	depends on ETHERNET
 	select PHYLIB
         help

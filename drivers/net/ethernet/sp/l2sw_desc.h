@@ -3,8 +3,6 @@
 
 #include "l2sw_define.h"
 
-u32 fix_net_dma(void *addr);
-
 void rx_descs_flush(struct l2sw_mac *mac);
 
 void tx_descs_clean(struct l2sw_mac *mac);
