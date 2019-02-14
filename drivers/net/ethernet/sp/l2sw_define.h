@@ -78,6 +78,9 @@
 #define MAC_INT_TX                      (MAC_INT_TX_DONE | MAC_INT_TX_DES_ER | MAC_INT_TX_H_DESCF | MAC_INT_TX_L_DESCF)
 
 
+/*define port ability*/
+#define PORT_ABILITY_LINK_ST    (1<<24)
+
 /*define PHY command bit*/
 #define PHY_WT_DATA_MASK        0xffff0000
 #define PHY_RD_CMD              0x00004000
@@ -124,35 +127,27 @@
 #define RX_TU_BIT               (0x1<<23)
 
 
-#define TAGA_BIT                (1<<27)
 #define PPPA                    (1<<26)
-#define AMT                     (3<<24)
 #define RX_CRC_BIT              (1<<18)
 #define RX_FAE_BIT              (1<<22)
 #define RX_RWT_BIT              (1<<21)
 #define RX_PLE_BIT              (1<<20)
-#define L3TP                    (3<<18)
 #define IPCE                    (1<<17)
-#define L4TP                    (1<<16)
 #define L4CE                    (1<<15)
 
 /*define tx descriptor bit*/
 #define OWN_BIT                 (1<<31)
 #define EOR_BIT                 (1<<31)
-
 #define FS_BIT                  (1<<25)
 #define LS_BIT                  (1<<24)
+#define LEN_MASK                0x000007FF
 
+#define OWC_BIT                 (1<<31)
 #define TXOK_BIT                (1<<26)
 #define LNKF_BIT                (1<<25)
-#define OWC_BIT                 (1<<31)
-#define EXC_BIT                 (1<<23)
 #define BUR_BIT                 (1<<22)
 #define TWDE_BIT                (1<<20)
-
 #define CC_MASK                 0x000f0000
-#define PDI_MASK                0x00030000
-#define LEN_MASK                0x000007FF
 #define TBE_MASK                0x00070000
 
 #define MAC_PHY_ADDR            0x01    /* define by hardware */

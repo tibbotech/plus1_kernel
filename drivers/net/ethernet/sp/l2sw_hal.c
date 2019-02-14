@@ -75,8 +75,12 @@ void mac_hw_start(struct l2sw_mac *mac)
 {
 	u32 reg;
 
-	HWREG_W(PVID_config0,(1<<4)+0);
-	HWREG_W(VLAN_memset_config0,(6<<8)+9);
+	//port 0: VLAN group 0
+	//port 1: VLAN group 0
+	HWREG_W(PVID_config0,(0<<4)+0);
+
+	//VLAN group 0: soc0+port1+port0
+	HWREG_W(VLAN_memset_config0,(0<<8)+0xb);
 
 	//enable soc port0 crc padding
 	reg=HWREG_R(cpu_cntl);
@@ -85,9 +89,6 @@ void mac_hw_start(struct l2sw_mac *mac)
 	//enable port0
 	reg=HWREG_R(port_cntl0);
 	HWREG_W(port_cntl0,reg&(~(0x1<<24)));
-
-	//reg=HWREG_R(cpu_cntl);
-	//HWREG_W(cpu_cntl,reg|0x2a);
 
 	reg=HWREG_R(cpu_cntl);
 	HWREG_W(cpu_cntl,reg&(~(0x3F<<0)));
@@ -99,17 +100,6 @@ void mac_hw_start(struct l2sw_mac *mac)
 
 void mac_hw_addr_set(struct l2sw_mac *mac)
 {
-#if 0
-	u32 reg;
-
-	reg = ((u32)(mac->mac_addr[3]) << 24) | ((u32)(mac->mac_addr[2]) << 16)
-	      | ((u32)(mac->mac_addr[1]) << 8) | ((u32)(mac->mac_addr[0]));
-	ls2w_reg_base->mac_glb_macaddr0 = reg;
-
-	reg = ((u32)(mac->mac_addr[5]) << 8) | ((u32)(mac->mac_addr[4]));
-	ls2w_reg_base->mac_glb_macaddr1 = reg;
-#endif
-
 	HWREG_W(w_mac_15_0_bus,mac->mac_addr[0]+(mac->mac_addr[1]<<8));
 	HWREG_W(w_mac_47_16,mac->mac_addr[2]+(mac->mac_addr[3]<<8)+(mac->mac_addr[4]<<16)+(mac->mac_addr[5]<<24));
 }
@@ -128,7 +118,7 @@ void mac_hw_init(struct l2sw_mac *mac)
 	ls2w_reg_base->rx_lbase_addr_0 = mac->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM);
 	ls2w_reg_base->rx_hbase_addr_0 = mac->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM);
 
-	/* TX Configuration Register */
+	/* phy address */
 	reg=HWREG_R(mac_force_mode);
 	HWREG_W(mac_force_mode,(reg&(~(0x1f<<16)))|(PHY0_ADDR<<16));
 	reg=HWREG_R(mac_force_mode);
@@ -143,8 +133,8 @@ void mac_hw_init(struct l2sw_mac *mac)
 	HWREG_W(port_cntl0,reg&(~(0x3<<24)));
 
 	//MAC address initial
-	//soc port MAC address config
 	mac_hw_addr_set(mac);
+
 	HWREG_W(wt_mac_ad0,(port_map<<12)+(cpu_port<<10)+(mac->vlan_id<<7)+(age<<4)+(proxy<<3)+(mc_ingress<<2)+0x1);
 	reg=HWREG_R(wt_mac_ad0);
 	while ((reg&(0x1<<1))==0x0) {
@@ -194,14 +184,13 @@ static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata){
 
 	HWREG_W(phy_cntl_reg0, (wdata << 16) | (op_cd << 13) | (dev_reg_addr << 8) | phy_addr);
 	do {
-		if (++time > MDIO_RW_TIMEOUT_RETRY_NUMBERS)
-		{
+		if (++time > MDIO_RW_TIMEOUT_RETRY_NUMBERS) {
 			printk("mdio operating...\n\r");
 			time = 0;
 		}
 
 		value = HWREG_R(phy_cntl_reg1);
-	}while ((value & 0x3)==0);
+	} while ((value & 0x3)==0);
 
 	if (time == 0)
 		return -1;
@@ -233,26 +222,6 @@ u32 mdio_write(u32 phy_id, u32 regnum, u16 val)
 
 inline void rx_finished(u32 queue, u32 rx_count)
 {
-#if 0
-	u32 reg, rx_desc_sw_addr[RX_DESC_QUEUE_NUM], rx_desc_sw_addr_next;
-
-	if (queue) {
-		reg = ls2w_reg_base->rx_hbase_addr_0;
-		rx_desc_sw_addr[1] = (reg >> 16) & 0x1ff;
-		reg &= ~(0x1ff<<16);
-		rx_desc_sw_addr_next = ((rx_desc_sw_addr[1] + rx_count));
-		reg |=  rx_desc_sw_addr_next << 16;
-		ls2w_reg_base->rx_hbase_addr_0 = reg;
-	}
-	else {
-		reg = ls2w_reg_base->rx_lbase_addr_0;
-		rx_desc_sw_addr[0] = (reg >> 16) & 0x1ff;
-		reg &= ~(0x1ff<<16);
-		rx_desc_sw_addr_next = ((rx_desc_sw_addr[0] + rx_count));
-		reg |= rx_desc_sw_addr_next << 16;
-		ls2w_reg_base->rx_lbase_addr_0 = reg;
-	}
-#endif
 }
 
 inline void tx_trigger(u32 tx_pos)
@@ -378,20 +347,6 @@ void tx_mib_counter_print()
 	DEBUG0("cpu_port_cntl_reg_0 = %x\r\n",ls2w_reg_base->cpu_port_cntl_reg_0);
 #endif
 }
-void l2sw_dump_moon(struct platform_device *pdev)
-{
-	u32 i, j = 0;
-
-	for (i = 0; i < 6; i++)
-	{
-		volatile struct moon_regs * MOON_REG = (volatile struct moon_regs *)devm_ioremap(&pdev->dev,RF_GRP(i, 0), 32);
-
-		for (j = 0; j< 32; j++)
-		{
-			DEBUG0("MOON[%d]sft_cfg[%d] = %x\n",i,j, MOON_REG->sft_cfg[j]);
-		}
-	}
-}
 
 void l2sw_enable_port(struct platform_device *pdev)
 {
@@ -403,7 +358,6 @@ void l2sw_enable_port(struct platform_device *pdev)
 	MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
 
 	//enable port
-	//l2sw_dump_moon(pdev);
 	reg=HWREG_R(port_cntl0);
 	HWREG_W(port_cntl0,reg&(~(0x3<<24)));
 

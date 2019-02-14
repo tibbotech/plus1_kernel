@@ -30,7 +30,7 @@ static inline void interrupt_finish(struct l2sw_mac *mac)
 
 	if (status & MAC_INT_PSC) { /* link status changed*/
 		reg = reg_control(REG_READ, MAC_PORT_ABILITY, 0);
-		if (!netif_carrier_ok(net_dev) && (reg & (1<<24))) {
+		if (!netif_carrier_ok(net_dev) && (reg & PORT_ABILITY_LINK_ST)) {
 			netif_carrier_on(net_dev);
 			netif_start_queue(net_dev);
 		}
@@ -219,10 +219,11 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 
 		if (cmd & (ERR_CODE)) {
 			mac->dev_stats.tx_errors++;
-			/*
+#if 0
 			if (status & OWC_BIT) {
 				mac->dev_stats.tx_window_errors++;
-			}*/
+			}
+#endif
 			ERROR0("[%s][%d] tx  error [%x]\n", __FUNCTION__, __LINE__,cmd);
 #if 0
 			if (cmd & BUR_BIT) {
@@ -242,15 +243,16 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 #endif
 		}
 		else {
-			mac->dev_stats.collisions
-				+= (cmd & CC_MASK) >> 16;
+#if 0
+			mac->dev_stats.collisions += (cmd & CC_MASK) >> 16;
+#endif
 			mac->dev_stats.tx_packets++;
 			mac->dev_stats.tx_bytes += skbinfo->len;
 		}
 
 		dma_unmap_single(&mac->pdev->dev, skbinfo->mapping, skbinfo->len, DMA_TO_DEVICE);
 		skbinfo->mapping = 0;
-		dev_kfree_skb_irq(skbinfo->skb); //dev_kfree_skb
+		dev_kfree_skb_irq(skbinfo->skb);
 		skbinfo->skb = NULL;
 
 		NEXT_TX(tx_done_pos);
@@ -484,8 +486,8 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	u32 tx_pos;
 	u32 cmd1;
 	u32 cmd2;
-	u32 force_dp=0x1;
-	u32 to_vlan=0x1;
+	u32 force_dp = 0x3;  // forward to both ports for daisy-chain operation by default
+	u32 to_vlan = 0x1;   // VLAN group 0
 	volatile struct mac_desc *txdesc;
 
 	cmd1 = 0;
@@ -523,7 +525,6 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	mac->tx_temp_skb_info[tx_pos].len = skb->len;
 	mac->tx_temp_skb_info[tx_pos].skb = skb;
 	mac->tx_temp_skb_info[tx_pos].mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
-	//cmd1 = FS_BIT | LS_BIT | (skb->len & LEN_MASK);
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (force_dp<<18) | (to_vlan<<12)| (skb->len& LEN_MASK));
 	cmd2 = (mac->tx_pos+1==TX_DESC_NUM)?EOR_BIT|(skb->len&LEN_MASK):(skb->len&LEN_MASK);
 
