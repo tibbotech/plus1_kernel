@@ -16,13 +16,20 @@
 #include <linux/spi/spi.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
+#include <linux/io.h>
 
 #define SLAVE_INT_IN
 
-#define MAS_REG_NAME "spi_combo"
-#define PIN_MUX_REG_NAME "grp2_sft"
+#define MAS_REG_NAME "spi_master"
+#define SLA_REG_NAME "spi_slave"
+
+#define PIN_MUX_MAS_REG_NAME "grp2_sft"
+#define PIN_MUX_SLA_REG_NAME "grp3_sft"
+
 #define DMA_IRQ_NAME "dma_w_intr"
 #define MAS_IRQ_NAME "mas_risc_intr"
+
+#define SLA_IRQ_NAME "slave_risc_intr"
 
 #define CLEAR_MASTER_INT (1<<6)
 #define MASTER_INT (1<<7)
@@ -39,12 +46,23 @@
 
 #define SPI_MASTER_NUM (4)
 
+/* slave*/
+#define CLEAR_SLAVE_INT (1<<8)
+#define SLAVE_DATA_RDY (1<<0)
+
 enum SPI_MASTER_MODE
 {
 	SPIM_READ = 0,
 	SPIM_WRITE = 1,
 	SPIM_IDLE = 2
 };
+
+enum SPI_SLAVE_MODE
+{
+	SPIS_READ = 0,
+	SPIS_WRITE = 1,
+};
+
 
 typedef struct{
 	// Group 091 : SPI_MASTER
@@ -78,13 +96,72 @@ typedef struct{
     unsigned int  MST_DMA_DATA_RDY                      ; // 31  (ADDR : 0x9C00_2DFC)
 }SPI_MAS;
 
-	void __iomem *sft_base;
+
+typedef struct{
+	// Group 092 : SPI_SLAVE
+	unsigned int SLV_TX_DATA_2_1_0                     ; // 00  (ADDR : 0x9C00_2E00) 
+	unsigned int SLV_TX_DATA_6_5_4_3                   ; // 01  (ADDR : 0x9C00_2E04)
+	unsigned int SLV_TX_DATA_10_9_8_7                  ; // 02  (ADDR : 0x9C00_2E08)
+	unsigned int SLV_TX_DATA_14_13_12_11               ; // 03  (ADDR : 0x9C00_2E0C)
+	unsigned int SLV_TX_DATA_15                        ; // 04  (ADDR : 0x9C00_2E10)
+	unsigned int G092_RESERVED_0[4]                    ; //     (ADDR : 0x9C00_2E14) ~ (ADDR : 0x9C00_2E20)
+	unsigned int SLV_RX_DATA_3_2_1_0                   ; // 09  (ADDR : 0x9C00_2E24)
+	unsigned int SLV_RX_DATA_7_6_5_4                   ; // 10  (ADDR : 0x9C00_2E28)
+	unsigned int SLV_RX_DATA_11_10_9_8                 ; // 11  (ADDR : 0x9C00_2E2C)
+	unsigned int SLV_RX_DATA_15_14_13_12               ; // 12  (ADDR : 0x9C00_2E30)
+	unsigned int G092_RESERVED_1[4]                    ; //     (ADDR : 0x9C00_2E34) ~ (ADDR : 0x9C00_2E40)
+	unsigned int RISC_INT_DATA_RDY                     ; // 17  (ADDR : 0x9C00_2E44)
+	unsigned int SLV_DMA_CTRL                          ; // 18  (ADDR : 0x9C00_2E48)
+	unsigned int SLV_DMA_LENGTH                        ; // 19  (ADDR : 0x9C00_2E4C)
+	unsigned int SLV_DMA_INI_ADDR                      ; // 20  (ADDR : 0x9C00_2E50)
+	unsigned int G092_RESERVED_2[2]                    ; //     (ADDR : 0x9C00_2E54) ~ (ADDR : 0x9C00_2E58)
+	unsigned int ADDR_SPI_BUSY                         ; // 23  (ADDR : 0x9C00_2E5C)
+	unsigned int G092_RESERVED_3[8]                    ; //     (ADDR : 0x9C00_2E60) ~ (ADDR : 0x9C00_2E7C)
+	
+}SPI_SLA;
+
+
+typedef struct  {
+	volatile unsigned int sft_cfg_22;    /* 00 */
+	volatile unsigned int sft_cfg_23;    /* 01 */
+	volatile unsigned int sft_cfg_24;    /* 02 */
+	volatile unsigned int sft_cfg_25;    /* 03 */
+	volatile unsigned int sft_cfg_26;    /* 04 */
+	volatile unsigned int sft_cfg_27;    /* 05 */
+	volatile unsigned int sft_cfg_28;    /* 06 */
+	volatile unsigned int sft_cfg_29;    /* 07 */
+	volatile unsigned int sft_cfg_30;    /* 06 */
+	volatile unsigned int sft_cfg_31;    /* 07 */	
+} SPI_MAS_PIN;
+
+
+typedef struct  {
+	volatile unsigned int sft_cfg_0;    /* 00 */
+	volatile unsigned int sft_cfg_1;    /* 01 */
+	volatile unsigned int sft_cfg_2;    /* 02 */
+	volatile unsigned int sft_cfg_3;    /* 03 */
+	volatile unsigned int sft_cfg_4;    /* 04 */
+	volatile unsigned int sft_cfg_5;    /* 05 */
+	volatile unsigned int sft_cfg_6;    /* 06 */
+	volatile unsigned int sft_cfg_7;    /* 07 */
+	volatile unsigned int sft_cfg_8;    /* 06 */
+	volatile unsigned int sft_cfg_9;    /* 07 */	
+} SPI_SLA_PIN;
+
 
 struct pentagram_spi_master {
 	struct spi_master *master;
 	void __iomem *mas_base;
+
+	void __iomem *sla_base;	
+	void __iomem *sft_base;
+	void __iomem *sft3_base;
+	
 	int dma_irq;
 	int mas_irq;
+
+	int sla_irq;
+	
 	struct clk *spi_clk;
 	spinlock_t lock;
 	struct mutex		buf_lock;
@@ -94,10 +171,99 @@ struct pentagram_spi_master {
 	void * tx_dma_vir_base;
 	void * rx_dma_vir_base;
 	struct completion isr_done;
+	
+	struct completion sla_isr;
+	unsigned int bufsiz;	
+	
 	int isr_flag;
 };
 
 static unsigned bufsiz = 4096;
+
+static irqreturn_t pentagram_spi_slave_sla_irq(int irq, void *dev)
+{
+	unsigned long flags;
+	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)dev;
+	SPI_SLA* spis_reg = (SPI_SLA *)pspim->sla_base;
+	unsigned int reg_temp;
+
+//	printk("pentagram_spi_slave_sla_irq\n");
+	spin_lock_irqsave(&pspim->lock, flags);
+	reg_temp = readl(&spis_reg->RISC_INT_DATA_RDY);
+	reg_temp |= CLEAR_SLAVE_INT;
+	writel(reg_temp, &spis_reg->RISC_INT_DATA_RDY);
+	spin_unlock_irqrestore(&pspim->lock, flags);
+
+	complete(&pspim->sla_isr);
+//	printk("pentagram_spi_slave_sla_irq done\n");
+	return IRQ_HANDLED;
+}
+int pentagram_spi_slave_dma_rw(struct spi_device *spi,char *buf, unsigned int len, int RW_phase)
+{
+
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(spi->master);
+
+	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
+	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
+	struct device dev = spi->dev;
+	unsigned int reg_temp;
+	unsigned long timeout = msecs_to_jiffies(2000);
+
+
+
+
+
+	if(RW_phase == SPIS_WRITE) {
+
+			  
+		memcpy(pspim->tx_dma_vir_base, buf, len);
+		writel_relaxed(DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
+		writel_relaxed(len, &spis_reg->SLV_DMA_LENGTH);
+		writel_relaxed(pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
+		reg_temp = readl(&spis_reg->RISC_INT_DATA_RDY);
+		reg_temp |= SLAVE_DATA_RDY;
+		writel(reg_temp, &spis_reg->RISC_INT_DATA_RDY);
+		//regs1->SLV_DMA_CTRL = 0x4d;
+		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_INI_ADDR = 0x300;
+		//regs1->RISC_INT_DATA_RDY |= 0x1;
+	}else if (RW_phase == SPIS_READ) {
+
+		//reinit_completion(&pspim->dma_isr);
+		reinit_completion(&pspim->isr_done);
+		writel(DMA_READ, &spis_reg->SLV_DMA_CTRL);
+		writel(len, &spis_reg->SLV_DMA_LENGTH);
+		writel(pspim->rx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
+		if(!wait_for_completion_timeout(&pspim->sla_isr,timeout)){
+			dev_err(&dev,"wait_for_completion_timeout\n");
+			return 1;
+		}
+
+	      if(!wait_for_completion_timeout(&pspim->isr_done,timeout)){
+			dev_err(&dev,"wait_for_completion_timeout\n");
+			return 1;
+		}
+
+		while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
+		{
+			dev_dbg(&dev,"spim_reg->DMA_CTRL 0x%x\n",readl(&spim_reg->DMA_CTRL));
+		};
+
+		printk(KERN_INFO "[SPI_slave] spi_slave_read 005\n");
+		memcpy(buf, pspim->rx_dma_vir_base, len);
+		printk(KERN_INFO "[SPI_slave] spi_slave_read 006\n");
+		/* read*/
+		//regs1->SLV_DMA_CTRL = 0xd;
+		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_INI_ADDR = 0x400;
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(pentagram_spi_slave_dma_rw);
+
+
+
+
 
 static irqreturn_t pentagram_spi_master_dma_irq(int irq, void *dev)
 {
@@ -149,8 +315,8 @@ static int pentagram_spi_master_dma_write(struct spi_master *master, char *buf, 
 	unsigned int reg_temp = 0;
 	unsigned long timeout = msecs_to_jiffies(200);
 	unsigned long flags;
-	int buf_offset = 0;
-    unsigned int *grp2_sft_cfg = (unsigned int *)sft_base;	
+	int buf_offset = 0;	
+
 
 
     mutex_lock(&pspim->buf_lock);
@@ -231,7 +397,7 @@ static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, u
 	unsigned int reg_temp = 0;
 	unsigned long timeout = msecs_to_jiffies(200);
 	unsigned long flags;
-    unsigned int *grp2_sft_cfg = (unsigned int *)sft_base;
+
    
     mutex_lock(&pspim->buf_lock);
 	#ifdef SLAVE_INT_IN
@@ -284,13 +450,11 @@ static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, u
 	writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
-	if(!wait_for_completion_timeout(&pspim->isr_done,timeout))
-	{
+	if(!wait_for_completion_timeout(&pspim->isr_done,timeout)){
 		dev_err(&dev,"wait_for_completion_timeout\n");
 		return 1;
 	}
-	while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
-	{
+	while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT){
 		dev_dbg(&dev,"spim_reg->DMA_CTRL 0x%x\n",readl(&spim_reg->DMA_CTRL));
 	};
 
@@ -308,7 +472,9 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	struct device dev = spi->dev;
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(spi->master);
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
-	unsigned int *grp2_sft_cfg = (unsigned int *) sft_base;
+	SPI_MAS_PIN *grp2_sft_cfg = (SPI_MAS_PIN *) pspim->sft_base;
+	SPI_SLA_PIN *grp3_sft_cfg = (SPI_SLA_PIN *) pspim->sft3_base;
+
 	unsigned int spi_id;
 	unsigned int clk_rate;
 	unsigned int div;
@@ -325,37 +491,78 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 
 
 	//set pinmux
+//if( spi_id < SPI_MASTER_NUM){
+if(0){
+	switch(spi_id)
+	{
+		case 0:			
+	writel(0x02010201, &(grp2_sft_cfg->sft_cfg_22));
+	writel(0x04030403, &(grp2_sft_cfg->sft_cfg_23));
+	writel(0x00050005, &(grp2_sft_cfg->sft_cfg_24));	
+	
 
-
-    if( spi_id < SPI_MASTER_NUM){
-	    switch(spi_id)
-    	{
-	   	case 0:			
-        	writel(0x02010201, &grp2_sft_cfg[22]);
-        	writel(0x04030403, &grp2_sft_cfg[23]);
-        	writel(0x00050005, &grp2_sft_cfg[24]);	
-		break;
+	writel(0x18171817, &(grp3_sft_cfg->sft_cfg_0));
+	writel(0x1A191A19, &(grp3_sft_cfg->sft_cfg_1));
+	writel(0x001B001B, &(grp3_sft_cfg->sft_cfg_2));	
+	
+			break;
 		case 1:
-				
-        	writel(0x06000600, &grp2_sft_cfg[24]);
-        	writel(0x08070807, &grp2_sft_cfg[25]);
-        	writel(0x0A090A09, &grp2_sft_cfg[26]);	
-		break;
-		case 2:			
-        	writel(0x0E0B0E0B, &grp2_sft_cfg[27]);
-        	writel(0x100F100F, &grp2_sft_cfg[28]);
-        	writel(0x00110011, &grp2_sft_cfg[29]);	
-		break;
-		case 3:
-        	writel(0x12001200, &grp2_sft_cfg[29]);
-        	writel(0x14131413, &grp2_sft_cfg[30]);
-        	writel(0x16151615, &grp2_sft_cfg[31]);	
-		break;
+	writel(0x12001200, &(grp2_sft_cfg->sft_cfg_24));
+	writel(0x14131413, &(grp2_sft_cfg->sft_cfg_25));
+	writel(0x16151615, &(grp2_sft_cfg->sft_cfg_26));	
+
+	writel(0x26002600, &(grp3_sft_cfg->sft_cfg_2));
+	writel(0x28272827, &(grp3_sft_cfg->sft_cfg_3));
+	writel(0x2A292A29, &(grp3_sft_cfg->sft_cfg_4));
+
+//	writel(0x06000600, &(grp2_sft_cfg->sft_cfg_24));
+//	writel(0x08070807, &(grp2_sft_cfg->sft_cfg_25));
+//	writel(0x0A090A09, &(grp2_sft_cfg->sft_cfg_26));	
+
+//	writel(0x1C001C00, &(grp3_sft_cfg->sft_cfg_2));
+//	writel(0x1E1D1E1D, &(grp3_sft_cfg->sft_cfg_3));
+//	writel(0x201F201F, &(grp3_sft_cfg->sft_cfg_4));	
+			break;
+		case 2:						
+	writel(0x0E0B0E0B, &(grp2_sft_cfg->sft_cfg_27));   // GPIO_P2_3[0x0C] : TCLK  ;  GPIO_P2_4[0x0D] : RCLK  ; 
+	writel(0x100F100F, &(grp2_sft_cfg->sft_cfg_28));
+	writel(0x00110011, &(grp2_sft_cfg->sft_cfg_29));	
+
+	writel(0x22212221, &(grp3_sft_cfg->sft_cfg_5));
+	writel(0x24232423, &(grp3_sft_cfg->sft_cfg_6));
+	writel(0x00250025, &(grp3_sft_cfg->sft_cfg_7));		
+			break;
+		case 3:	
+	writel(0x06000600, &(grp2_sft_cfg->sft_cfg_29));
+	writel(0x08070807, &(grp2_sft_cfg->sft_cfg_30));
+	writel(0x0A090A09, &(grp2_sft_cfg->sft_cfg_31));	
+
+	writel(0x1C001C00, &(grp3_sft_cfg->sft_cfg_7));
+	writel(0x1E1D1E1D, &(grp3_sft_cfg->sft_cfg_8));
+	writel(0x201F201F, &(grp3_sft_cfg->sft_cfg_9));
+			
+//	writel(0x12001200, &(grp2_sft_cfg->sft_cfg_29));
+//	writel(0x14131413, &(grp2_sft_cfg->sft_cfg_30));
+//	writel(0x16151615, &(grp2_sft_cfg->sft_cfg_31));	
+
+//	writel(0x26002600, &(grp3_sft_cfg->sft_cfg_7));
+//	writel(0x28272827, &(grp3_sft_cfg->sft_cfg_8));
+//	writel(0x2A292A29, &(grp3_sft_cfg->sft_cfg_9));		
+			break;
 		default:
 			dev_err(&dev,"wrong pin mux\n");
 			return 1;
 			break;
         	}
+
+	dev_dbg(&dev,"grp2_sft_cfg[22] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
+	dev_dbg(&dev,"grp2_sft_cfg[23] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
+	dev_dbg(&dev,"grp2_sft_cfg[24] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
+
+	dev_dbg(&dev,"grp3_sft_cfg[7] 0x%x\n",grp3_sft_cfg->sft_cfg_7);
+	dev_dbg(&dev,"grp3_sft_cfg[8] 0x%x\n",grp3_sft_cfg->sft_cfg_8);
+	dev_dbg(&dev,"grp3_sft_cfg[9] 0x%x\n",grp3_sft_cfg->sft_cfg_9);
+	
      }
 
 
@@ -374,15 +581,7 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
 	dev_dbg(&dev,"clk_sel 0x%x\n",readl(&spim_reg->SPI_CTRL_CLKSEL));
-
-	//set pinmux
-	writel(0x2010201, &grp2_sft_cfg[22]);
-	writel(0x4030403, &grp2_sft_cfg[23]);
-	writel(0x50005, &grp2_sft_cfg[24]);
-	dev_dbg(&dev,"grp2_sft_cfg[22] 0x%x\n",grp2_sft_cfg[22]);
-	dev_dbg(&dev,"grp2_sft_cfg[23] 0x%x\n",grp2_sft_cfg[23]);
-	dev_dbg(&dev,"grp2_sft_cfg[24] 0x%x\n",grp2_sft_cfg[24]);
-
+	
 	spin_lock_irqsave(&pspim->lock, flags);
 	pspim->isr_flag = SPIM_IDLE;
 	spin_unlock_irqrestore(&pspim->lock, flags);
@@ -409,16 +608,19 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
 	struct device dev = master->dev;
-	dev_dbg(&dev,"%s\n",__FUNCTION__);	
+
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 //	unsigned int *grp2_sft_cfg = (unsigned int *)sft_base;
 	unsigned char *data_buf;
 	unsigned char *cmd_buf;
 	unsigned int len;
-	unsigned int temp_reg;
+	//unsigned int temp_reg;
 	int mode;
 	int ret;
 	unsigned char *temp;
+
+	dev_dbg(&dev,"%s\n",__FUNCTION__);	
+
 
 	if((xfer->tx_buf)&&(!xfer->rx_buf))
 	{
@@ -502,22 +704,10 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 	spin_lock_init(&pspim->lock);
 	mutex_init(&pspim->buf_lock);
 	init_completion(&pspim->isr_done);
+	init_completion(&pspim->sla_isr);
 
 
 
-       if(pdev->id == 0){
-	       res = platform_get_resource_byname(pdev, IORESOURCE_MEM, PIN_MUX_REG_NAME);
-	       if (res) {
-	              sft_base = devm_ioremap_resource(&pdev->dev, res);
-	       	if (IS_ERR(sft_base)) {
-	       		dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",PIN_MUX_REG_NAME);
-	       		goto free_alloc;
-		       }
-       	}
-       	dev_dbg(&pdev->dev,"sft_base 0x%x\n",sft_base);
-		//printk(KERN_INFO "[SPI_master] sft_base 0x%x\n",sft_base);
-       	}
-	 
 	/* find and map our resources */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, MAS_REG_NAME);
 	if (res) {
@@ -527,9 +717,42 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 			goto free_alloc;
 		}
 	}
-	dev_dbg(&pdev->dev,"mas_base 0x%x\n",pspim->mas_base);
-	printk(KERN_INFO "[SPI_master] mas_base 0x%x\n",pspim->mas_base);
+	dev_dbg(&pdev->dev,"mas_base 0x%x\n",(unsigned int)pspim->mas_base);
 
+
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, SLA_REG_NAME);
+	if (res) {
+		pspim->sla_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+		if (IS_ERR(pspim->sla_base)) {
+			dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",SLA_REG_NAME);
+			goto free_alloc;
+		}
+	}
+	dev_dbg(&pdev->dev,"sla_base 0x%x\n",(unsigned int)pspim->sla_base);
+
+
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, PIN_MUX_MAS_REG_NAME);
+	if (res) {
+		pspim->sft_base = devm_ioremap(&pdev->dev, res->start, resource_size(res) );
+		if (IS_ERR(pspim->sft_base)) {
+			dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",PIN_MUX_MAS_REG_NAME);
+			goto free_alloc;
+		}
+	}
+	dev_dbg(&pdev->dev,"sft_base 0x%x\n",(unsigned int)pspim->sft_base);
+
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, PIN_MUX_SLA_REG_NAME);
+	if (res) {
+		pspim->sft3_base = devm_ioremap(&pdev->dev, res->start, resource_size(res) );
+		if (IS_ERR(pspim->sft_base)) {
+			dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",PIN_MUX_SLA_REG_NAME);
+			goto free_alloc;
+		}
+	}
+	dev_dbg(&pdev->dev,"sft3_base 0x%x\n",(unsigned int)pspim->sft3_base);
 
 
 	/* irq*/
@@ -540,8 +763,15 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 	}
 
 	pspim->mas_irq = platform_get_irq_byname(pdev, MAS_IRQ_NAME);
-	if (pspim->dma_irq < 0) {
+	if (pspim->mas_irq < 0) {
 		dev_err(&pdev->dev, "failed to get %s\n", MAS_IRQ_NAME);
+		goto free_alloc;
+	}
+
+
+	pspim->sla_irq = platform_get_irq_byname(pdev, SLA_IRQ_NAME);
+	if (pspim->sla_irq < 0) {
+		dev_err(&pdev->dev, "failed to get %s\n", SLA_IRQ_NAME);
 		goto free_alloc;
 	}
 
@@ -557,6 +787,14 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 						, IRQF_TRIGGER_RISING, pdev->name, pspim);
 	if (ret) {
 		dev_err(&pdev->dev, "%s devm_request_irq fail\n", MAS_IRQ_NAME);
+		goto free_alloc;
+	}
+
+
+	ret = devm_request_irq(&pdev->dev, pspim->sla_irq, pentagram_spi_slave_sla_irq
+						, IRQF_TRIGGER_RISING, pdev->name, pspim);
+	if (ret) {
+		dev_err(&pdev->dev, "%s devm_request_irq fail\n", SLA_IRQ_NAME);
 		goto free_alloc;
 	}
 
@@ -577,8 +815,8 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "dma_alloc_coherent fail\n");
 		goto free_clk;
 	}
-	dev_dbg(&pdev->dev, "tx_dma vir 0x%x\n",pspim->tx_dma_vir_base);
-	dev_dbg(&pdev->dev, "tx_dma phy 0x%x\n",pspim->tx_dma_phy_base);
+	dev_dbg(&pdev->dev, "tx_dma vir 0x%x\n",(unsigned int)pspim->tx_dma_vir_base);
+	dev_dbg(&pdev->dev, "tx_dma phy 0x%x\n",(unsigned int)pspim->tx_dma_phy_base);
 
 	pspim->rx_dma_vir_base = dma_alloc_coherent(&pdev->dev, bufsiz,
 					&pspim->rx_dma_phy_base, GFP_ATOMIC);
@@ -586,8 +824,9 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "dma_alloc_coherent fail\n");
 		goto free_tx_dma;
 	}
-	dev_dbg(&pdev->dev, "rx_dma vir 0x%x\n",pspim->rx_dma_vir_base);
-	dev_dbg(&pdev->dev, "rx_dma phy 0x%x\n",pspim->rx_dma_phy_base);
+	dev_dbg(&pdev->dev, "rx_dma vir 0x%x\n",(unsigned int)pspim->rx_dma_vir_base);
+	dev_dbg(&pdev->dev, "rx_dma phy 0x%x\n",(unsigned int)pspim->rx_dma_phy_base);
+
 	
 	ret = spi_register_master(master);
 	if (ret != 0) {
