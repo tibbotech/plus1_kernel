@@ -580,6 +580,14 @@
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
 						 <50 IRQ_TYPE_EDGE_RISING>;
 		};
-		
+
+		otp: otp@0x9C00AF00 {
+			compatible = "sunplus,ocotp";
+			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;			
+			reg-names = "hb_gpio", "otprx";
+			clocks = <&clkc OTPRX>;
+			resets = <&rstc RST_OTPRX>;
+		};
+				
 	};
 };

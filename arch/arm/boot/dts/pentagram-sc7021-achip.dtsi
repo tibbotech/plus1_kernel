@@ -797,5 +797,13 @@
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C0032e4 0x80>;
 		};
 
+		otp: otp@0x9C00AF00 {
+			compatible = "sunplus,ocotp";
+			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;			
+			reg-names = "hb_gpio", "otprx";
+			clocks = <&clkc OTPRX>;
+			resets = <&rstc RST_OTPRX>;
+		};
+		
 	};
 };
