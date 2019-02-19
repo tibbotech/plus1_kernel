@@ -751,6 +751,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			linux,part-probe = "ofpart", "sunplus_part";
+			clocks = <&clkc SPIND>;
 			resets = <&rstc RST_SPIND>;
 		};		
 
@@ -759,6 +760,7 @@
 			reg = <0x9c101000 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc BCH>;
 			resets = <&rstc RST_BCH>;
 		};
 
@@ -779,6 +781,7 @@
 				<125 IRQ_TYPE_LEVEL_HIGH>,
 				<126 IRQ_TYPE_LEVEL_HIGH>,
 				<127 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc GPIO>;
 			resets = <&rstc RST_GPIO>;
 		};
 		
@@ -789,6 +792,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
 						 <50 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&clkc MIPICSI0>;
 			resets = <&rstc RST_MIPICSI0>;
 		};
 		
