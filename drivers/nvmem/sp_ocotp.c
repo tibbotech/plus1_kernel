@@ -111,7 +111,7 @@ struct sp_ocotp {
 	struct nvmem_config *config;
 };
 
-int readOTPData(int addr, char *value);
+int read_otp_data(int addr, char *value);
 
 static int sp_ocotp_read(void *context, unsigned int offset,
 			             void *val, size_t bytes)
@@ -136,7 +136,7 @@ static int sp_ocotp_read(void *context, unsigned int offset,
 
 	*buf = 0;
 	for (addr = offset; addr < (offset + bytes); addr++) {
-		ret = readOTPData(addr, value);
+		ret = read_otp_data(addr, value);
 		if (ret < 0)
 	        goto disable_clk;
 
@@ -193,7 +193,7 @@ static int sp_ocotp_wait(void)
 	return 0;
 }
 	
-int readOTPData(int addr, char *value)
+int read_otp_data(int addr, char *value)
 {
     struct sp_ocotp *otp = sp_ocotp_nvmem_config.priv;
 	unsigned int addr_data;
@@ -222,7 +222,7 @@ int readOTPData(int addr, char *value)
 
 	return ret;
 }
-EXPORT_SYMBOL(readOTPData);
+EXPORT_SYMBOL(read_otp_data);
 
 static int sp_ocotp_probe(struct platform_device *pdev)
 {
