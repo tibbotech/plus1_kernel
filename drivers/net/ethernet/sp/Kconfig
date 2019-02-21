@@ -6,5 +6,6 @@ config L2SW_DRIVER
     tristate "Sunplus L2SW device"
 	depends on ETHERNET
 	select PHYLIB
+	select GPIO_SC7021
         help
           This driver supports L2SW.

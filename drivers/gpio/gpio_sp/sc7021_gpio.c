@@ -19,6 +19,7 @@
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
+#include <linux/seq_file.h>
 #include <asm/io.h>
 
 #include "sc7021_gpio.h"
