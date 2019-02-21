@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
 #include <dt-bindings/reset/sp-q628.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/sc7021.h>
 
 #define ENABLE_DMARX0
 #define ENABLE_DMARX1
