@@ -114,6 +114,7 @@
 		interrupt-parent = <&intc>;
 
 		/* B modules */
+#if  0
 		intc: interrupt-controller@G15 {
 			compatible = "sunplus,sp-intc";
 			interrupt-controller;
@@ -126,6 +127,7 @@
 			ext0-mask = <0xf>; /* core0-3 */
 			ext1-mask = <0xe>; /* core1-3 */
 		};
+#endif
 
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
