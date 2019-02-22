@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "pentagram-sc7021-achip.dtsi"
+#include "pentagram-sp7021-achip.dtsi"
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 

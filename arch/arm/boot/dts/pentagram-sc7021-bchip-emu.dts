@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "pentagram-sc7021-bchip.dtsi"
+#include "pentagram-sp7021-bchip.dtsi"
 
 / {
 	model = "Sunplus SC7021 EMU (ARM926)";
