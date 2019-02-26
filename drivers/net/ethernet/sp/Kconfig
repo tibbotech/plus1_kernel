@@ -1,11 +1,39 @@
 #
-# L2SW device configuration
+# Sunplus Ethernet device configuration
 #
 
-config L2SW_DRIVER
-    tristate "Sunplus L2SW device"
+config NET_VENDOR_SUNPLUS
+	tristate "Sunplus devices"
 	depends on ETHERNET
+	---help---
+	  If you have a network (Ethernet) device belonging to this class, say Y.
+
+	  Note that the answer to this question doesn't directly affect
+	  the kernel: saying N will just case the configurator to skip all
+	  the questions about Sunplus device. If you say Y, you will be asked
+	  for your specific device in the following questions.
+
+choice
+	prompt "Selected Mode"
+	depends on NET_VENDOR_SUNPLUS
+	default AN_NIC_WITH_DAISY_CHAIN_MODE
+
+config AN_NIC_WITH_DAISY_CHAIN
+	bool "An NIC with Daisy-chain Mode"
 	select PHYLIB
 	select GPIO_SC7021
-        help
-          This driver supports L2SW.
+	select SUNPLUS_SP7021_RESET
+	select NVMEM_SUNPLUS_OCOTP
+	---help---
+	  This mode supports an NIC with daisy-chain support on the other port.
+
+config DUAL_NIC
+	bool "Dual NIC Mode"
+	select PHYLIB
+	select GPIO_SC7021
+	select SUNPLUS_SP7021_RESET
+	select NVMEM_SUNPLUS_OCOTP
+	---help---
+	  This mode supports dual NIC.
+
+endchoice
