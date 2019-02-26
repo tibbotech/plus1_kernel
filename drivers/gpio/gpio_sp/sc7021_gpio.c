@@ -162,7 +162,7 @@ static int sc7021gpio_f_scf( struct gpio_chip *_c, unsigned _n, unsigned long _c
           ret = sc7021gpio_f_sou( _c, _n, 0);
           break;
    default:
-       KERR( "f_scf(%03d,%lX) unknown pinconf:%d\n", _n, _conf, cp);
+       KDBG( "f_scf(%03d,%lX) unknown pinconf:%d\n", _n, _conf, cp);
        ret = -EINVAL;  break;
  }
  return( ret);  }
