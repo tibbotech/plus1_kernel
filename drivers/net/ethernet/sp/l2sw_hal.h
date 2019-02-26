@@ -30,19 +30,19 @@ int l2sw_reg_base_set( void __iomem *baseaddr);
 
 void l2sw_pinmux_set(void);
 
-int mac_g1_base_set(void __iomem *baseaddr);
-
-void mac_hw_stop(struct l2sw_mac *mac);
+void mac_hw_stop(void);
 
 void mac_hw_reset(struct l2sw_mac *mac);
 
-void mac_hw_start(struct l2sw_mac *mac);
+void mac_hw_start(void);
 
 void mac_hw_addr_set(struct l2sw_mac *mac);
 
-void mac_hw_init(struct l2sw_mac *mac);
+void mac_hw_addr_del(struct l2sw_mac *mac);
 
-u32 mac_hw_addr_update(struct l2sw_mac *mac);
+//void mac_hw_addr_print(void);
+
+void mac_hw_init(struct l2sw_mac *mac);
 
 void rx_mode_set(struct l2sw_mac *mac);
 
@@ -54,16 +54,19 @@ void rx_finished(u32 queue, u32 rx_count);
 
 void tx_trigger(u32 tx_pos);
 
-u32 reg_control(u8 mode, u32 reg, u32 value);
+void write_sw_int_mask0(u32 value);
 
-void tx_mib_counter_print(void);
+void write_sw_int_status0(u32 value);
+
+u32 read_sw_int_status0(void);
+
+u32 read_port_ability(void);
 
 int phy_cfg(void);
 
 void l2sw_enable_port(struct platform_device *pdev);
 
-void l2sw_mac_set(void);
+void regs_print(void);
 
 
 #endif
-

@@ -4,6 +4,7 @@
 #include "l2sw_define.h"
 #include "l2sw_hal.h"
 
+
 bool mac_init(struct l2sw_mac *mac);
 
 void mac_soft_reset(struct l2sw_mac *mac);
@@ -19,4 +20,3 @@ void mac_soft_reset(struct l2sw_mac *mac);
 
 
 #endif
-

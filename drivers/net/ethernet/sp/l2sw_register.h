@@ -30,7 +30,7 @@ struct l2sw_reg {
 	u32 MAC_ad_ser0;
 	u32 MAC_ad_ser1;
 	u32 wt_mac_ad0;
-	u32 w_mac_15_0_bus;
+	u32 w_mac_15_0;
 	u32 w_mac_47_16;
 	u32 PVID_config0;
 	u32 PVID_config1;
