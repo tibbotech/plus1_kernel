@@ -132,7 +132,7 @@
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008980 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
@@ -146,7 +146,7 @@
 #endif
 #ifdef ENABLE_DMARX1
 		uartdmarx1: serial@sp_uartdmarx1 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c0089c0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
@@ -161,7 +161,7 @@
 #ifdef ENABLE_DMATX0
 		/* DMA Tx for UARTx */
 		uartdmatx0: serial@sp_uartdmatx0 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008a00 0x40>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI0>;
@@ -173,7 +173,7 @@
 #endif
 #ifdef ENABLE_DMATX1
 		uartdmatx1: serial@sp_uartdmatx1 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008a40 0x40>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI1>;
@@ -185,7 +185,7 @@
 #endif
 
 		uart0: serial@sp_uart0 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c000900 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
@@ -194,7 +194,7 @@
 		};
 
 		uart1: serial@sp_uart1 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c000980 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
@@ -203,7 +203,7 @@
 		};
 
 		uart2: serial@sp_uart2 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c000800 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
@@ -212,7 +212,7 @@
 		};
 
 		uart3: serial@sp_uart3 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c000880 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
@@ -221,7 +221,7 @@
 		};
 
 		uart4: serial@sp_uart4 {
-			compatible = "sunplus,sp-uart";
+			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008780 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
@@ -230,7 +230,7 @@
 		};
 
 		icm: icm@G81 {
-			compatible = "sunplus,sp-icm";
+			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;
 			resets = <&rstc RST_ICM>;
 			/* clken format: (group << 16) | (index << 8) | shift */
@@ -245,14 +245,14 @@
 		};
 
 		crypto: crypto@G84 {
-			compatible = "sunplus,sp-crypto";
+			compatible = "sunplus,sp7021-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
 			interrupt-parent = <&intc>;
 			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		ipc: ipc@G258 {
-			compatible = "sunplus,sp-ipc";
+			compatible = "sunplus,sp7021-ipc";
 			reg = <0x9c008100 0x100>; /* G258 ~ G259 */
 			interrupt-parent = <&intc>;
 			interrupts =
@@ -333,7 +333,7 @@
 		};
 
 		i2cm0: i2c@sp_i2cm0 {
-			compatible = "sunplus,sp_i2cm";
+			compatible = "sunplus,sp7021-i2cm";
 			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>, <0x9c004680 0x80>;
 			reg-names = "i2cm", "moon0", "moon3", "i2cmdma";
 			interrupt-parent = <&intc>;
@@ -343,7 +343,7 @@
 		};
 
 		i2cm1: i2c@sp_i2cm1 {
-			compatible = "sunplus,sp_i2cm";
+			compatible = "sunplus,sp7021-i2cm";
 			reg = <0x9c004700 0x80>, <0x9c004780 0x80>;
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
@@ -353,7 +353,7 @@
 		};
 
 		i2cm2: i2c@sp_i2cm2 {
-			compatible = "sunplus,sp_i2cm";
+			compatible = "sunplus,sp7021-i2cm";
 			reg = <0x9c004800 0x80>, <0x9c004880 0x80>;
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
@@ -363,7 +363,7 @@
 		};
 
 		i2cm3: i2c@sp_i2cm3 {
-			compatible = "sunplus,sp_i2cm";
+			compatible = "sunplus,sp7021-i2cm";
 			reg = <0x9c004900 0x80>, <0x9c004980 0x80>;
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
@@ -381,14 +381,14 @@
 		 };
 
 		audio: audio@0x9c001e00 {
-			compatible = "sunplus,sc7021-audio";
+			compatible = "sunplus,sp7021-audio";
 			reg = <0x9c001e00 0x680>,<0x9c000200 0x80>,<0x9c000000 0x80>;
 			reg-names = "audio", "moon4", "moon0";
 			resets = <&rstc RST_AUD>;
 		 };
 		 
 		sp_uphy0: uphy@0x9C004A80 {
-			compatible = "sunplus,sunplus-usb-phy0";
+			compatible = "sunplus,sp7021-usb-phy0";
 			clocks = <&clkc UPHY0>;
 			resets = <&rstc RST_UPHY0>;
 			reg = <0x9C004A80 0x80>;
@@ -397,7 +397,7 @@
 		};
 
 		sp_uphy1: uphy@0x9C004B00 {
-			compatible = "sunplus,sunplus-usb-phy1";
+			compatible = "sunplus,sp7021-usb-phy1";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_UPHY1>;
 			reg = <0x9C004B00 0x80>;
@@ -406,7 +406,7 @@
 		};
 
 		hdmitx: hdmitx@0x9C00BE00 {
-			compatible = "sunplus,sp-hdmitx";
+			compatible = "sunplus,sp7021-hdmitx";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_HDMI_TX>;
 			reg = <0x9C00BE00 0x3FC>;
@@ -415,7 +415,7 @@
 		};
 
 		sp_ehci0: usb@9C102100 {
-			compatible = "sunplus,sunplus-q628-usb-ehci0";
+			compatible = "sunplus,sp7021-usb-ehci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
 			reg = <0x9C102100 0x68>;
@@ -424,7 +424,7 @@
 		};
 
 		sp_ehci1: usb@9C103100 {
-			compatible = "sunplus,sunplus-q628-usb-ehci1";
+			compatible = "sunplus,sp7021-usb-ehci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
 			reg = <0x9C103100 0x68>;
@@ -433,7 +433,7 @@
 		};
 
 		sp_ohci0: usb@0x9C102080 {
-			compatible = "sunplus,sunplus-q628-usb-ohci0";
+			compatible = "sunplus,sp7021-usb-ohci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
 			reg = <0x9C102080 0x68>;
@@ -442,7 +442,7 @@
 		};
 
 		sp_ohci1: usb@0x9C103080 {
-			compatible = "sunplus,sunplus-q628-usb-ohci1";
+			compatible = "sunplus,sp7021-usb-ohci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
 			reg = <0x9C103080 0x68>;
@@ -451,7 +451,7 @@
 		};
 
 		sp_udc0: usb@0x9c102800 {
-			compatible = "sunplus,sunplus-q628-usb-udc0";
+			compatible = "sunplus,sp7021-usb-udc0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
 			reg = <0x9c102800 0x400>;
@@ -460,7 +460,7 @@
 		};
 
 		sp_udc1: usb@0x9c103800 {
-			compatible = "sunplus,sunplus-q628-usb-udc1";
+			compatible = "sunplus,sp7021-usb-udc1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
 			reg = <0x9c103800 0x400>;
@@ -469,12 +469,12 @@
 		};
 
 		fb_device {
-			compatible = "sunplus,sc7021-fb";
+			compatible = "sunplus,sp7021-fb";
 			memory-region = <&fb_reserve>;
 		};
 
 		display0: display@0x9c005c80 {
-			compatible = "sunplus,sc7021-display";
+			compatible = "sunplus,sp7021-display";
 			reg = <0x9c005c80 0x1980>,
 				<0x9c105000 0x80>;
 			interrupt-parent = <&intc>;
@@ -509,7 +509,7 @@
 		};
 
 		l2sw: l2sw@0x9c108000 {
-			compatible = "sunplus,sp-l2sw";
+			compatible = "sunplus,sp7021-l2sw";
 			reg = <0x9c108000 0x400>;
 			interrupt-parent = <&intc>;
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
@@ -518,7 +518,7 @@
 		};
 		
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp-emmc";
+			compatible = "sunplus,sp7021-emmc";
 			reg = <0x9c003b00 0x180>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL0>;
@@ -526,7 +526,7 @@
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,sp-card1";
+			compatible = "sunplus,sp7021-card1";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
@@ -536,7 +536,7 @@
 		};
 
 		sdio: sdio@sdcard {
-			compatible = "sunplus,sp-sdio";
+			compatible = "sunplus,sp7021-sdio";
 			reg = <0x9c008400 0x280>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
@@ -544,7 +544,7 @@
 		};
 
 		spi_master0: spi@sp_spi_master0 {
-			compatible = "sunplus,pentagram-spi-master";
+			compatible = "sunplus,sp7021-spi-master";
 			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
 			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
 			interrupt-parent = <&intc>;
@@ -567,7 +567,7 @@
 
 
 		spi_master1: spi@sp_spi_master1 {
-			compatible = "sunplus,pentagram-spi-master";
+			compatible = "sunplus,sp7021-spi-master";
 			reg = <0x9C00F480 0x80>,<0x9C00F500 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
 			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
 			interrupt-parent = <&intc>;
@@ -589,7 +589,7 @@
 		};
 
 		spi_master2: spi@sp_spi_master2 {
-			compatible = "sunplus,pentagram-spi-master";
+			compatible = "sunplus,sp7021-spi-master";
 			reg = <0x9C00F600 0x80>,<0x9C00F680 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
 			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";			
 			interrupt-parent = <&intc>;
@@ -612,7 +612,7 @@
 
 
 		spi_master3: spi@sp_spi_master3 {
-			compatible = "sunplus,pentagram-spi-master";
+			compatible = "sunplus,sp7021-spi-master";
 			reg = <0x9C00F780 0x80>,<0x9C00F800 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
 			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";				
 			interrupt-parent = <&intc>;
@@ -633,7 +633,7 @@
 
 
 		spinand0: spinand@sp_spinand {
-			compatible = "sunplus,sp_spinand";
+			compatible = "sunplus,sp7021-spinand";
 			reg = <0x9c002B80 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
@@ -643,7 +643,7 @@
 		};		
 
 		bch0: bch@sp_bch {
-			compatible = "sunplus,sp_bch";
+			compatible = "sunplus,sp7021-bch";
 			reg = <0x9c101000 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
@@ -654,7 +654,7 @@
 
 
 		gpio: gpio@0x9C000300 {
-			compatible = "sunplus,sp_gpio";
+			compatible = "sunplus,sp7021-gpio";
 			gpio-controller;
 			#gpio-cells = <2>;
 			reg = <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x80>;
@@ -674,7 +674,7 @@
 		
 		
 		mipicsi: mipicsi@0x9C005280 {
-			compatible = "sunplus,mipicsi";
+			compatible = "sunplus,sp7021-mipicsi";
 			reg = <0x9C005280 0x0>;
 			interrupt-parent = <&intc>;
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
@@ -689,7 +689,7 @@
 		};
 
 		otp: otp@0x9C00AF00 {
-			compatible = "sunplus,ocotp";
+			compatible = "sunplus,sp7021-ocotp";
 			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;			
 			reg-names = "hb_gpio", "otprx";
 			clocks = <&clkc OTPRX>;

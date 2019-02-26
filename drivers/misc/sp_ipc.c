@@ -1120,7 +1120,7 @@ static int sp_ipc_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id sp_ipc_of_match[] = {
-	{ .compatible = "sunplus,sp-ipc" },
+	{ .compatible = "sunplus,sp7021-ipc" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_ipc_of_match);

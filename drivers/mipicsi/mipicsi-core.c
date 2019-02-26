@@ -537,7 +537,7 @@ static int MIPI_CSIIW_intr_init(void)
 	int ret; 
 	struct device_node *np = NULL; 
 
-	np = of_find_compatible_node(NULL, NULL, "sunplus,mipicsi"); 
+	np = of_find_compatible_node(NULL, NULL, "sunplus,sp7021-mipicsi"); 
 
 	irq_fs_num = irq_of_parse_and_map(np, 0);  
 			

@@ -1149,7 +1149,7 @@ int sp_spinand_remove(struct platform_device *pdev)
 #define sp_spinand_resume	NULL
 
 static const struct of_device_id sunplus_nand_of_match[] = {
-	{ .compatible = "sunplus,sp_spinand" },
+	{ .compatible = "sunplus,sp7021-spinand" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
@@ -1161,7 +1161,7 @@ static struct platform_driver sp_spinand_driver = {
 	.suspend = sp_spinand_suspend,
 	.resume = sp_spinand_resume,
 	.driver = {
-			.name = "sunplus,sp_spinand",
+			.name = "sunplus,sp7021-spinand",
 			.owner = THIS_MODULE,
 			.of_match_table = sunplus_nand_of_match,
 		   },

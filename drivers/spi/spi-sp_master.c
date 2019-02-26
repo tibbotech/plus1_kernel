@@ -861,7 +861,7 @@ static int pentagram_spi_master_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id pentagram_spi_master_ids[] = {
-	{.compatible = "sunplus,pentagram-spi-master"},
+	{.compatible = "sunplus,sp7021-spi-master"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
@@ -870,7 +870,7 @@ static struct platform_driver pentagram_spi_master_driver = {
 	.probe = pentagram_spi_master_probe,
 	.remove = pentagram_spi_master_remove,
 	.driver = {
-		.name = "pentagram-spi-master",
+		.name = "sunplus,sp7021-spi-master",
 		.of_match_table = pentagram_spi_master_ids,
 	},
 };

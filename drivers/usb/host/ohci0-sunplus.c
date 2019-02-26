@@ -14,7 +14,7 @@ static int ohci0_sunplus_platform_probe(struct platform_device *dev){
 
 
 static const struct of_device_id ohci0_sunplus_dt_ids[] = {
-	{ .compatible = "sunplus,sunplus-q628-usb-ohci0" },
+	{ .compatible = "sunplus,sp7021-usb-ohci0" },
 	{ }
 };
 

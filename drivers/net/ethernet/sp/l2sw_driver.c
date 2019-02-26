@@ -1158,7 +1158,7 @@ static const struct dev_pm_ops l2sw_pm_ops = {
 
 #ifdef PHY_CONFIG
 static const struct of_device_id sp_l2sw_of_match[] = {
-	{ .compatible = "sunplus,sp-l2sw" },
+	{ .compatible = "sunplus,sp7021-l2sw" },
 	{ /* sentinel */ }
 };
 

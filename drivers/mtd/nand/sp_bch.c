@@ -705,7 +705,7 @@ static int sp_bch_resume(struct platform_device *pdev)
 #endif
 
 static const struct of_device_id of_fun_match[] = {
-	{ .compatible = "sunplus,sp_bch" },
+	{ .compatible = "sunplus,sp7021-bch" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, of_fun_match);
@@ -717,7 +717,7 @@ static struct platform_driver sp_bch_driver = {
 	.suspend = sp_bch_suspend,
 	.resume = sp_bch_resume,
 	.driver = {
-			.name = "sunplus,sp_bch",
+			.name = "sunplus,sp7021-bch",
 			.owner = THIS_MODULE,
 			.of_match_table = of_fun_match,
 		   },

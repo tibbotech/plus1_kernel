@@ -95,7 +95,7 @@ static int hdmitx_remove(struct platform_device *dev);
 
 // device id
 static struct of_device_id g_hdmitx_ids[] = {
-	{.compatible = "sunplus,sp-hdmitx"},
+	{.compatible = "sunplus,sp7021-hdmitx"},
 };
 
 // device driver operation functions

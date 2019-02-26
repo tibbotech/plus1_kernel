@@ -143,7 +143,7 @@ static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id phy0_sunplus_dt_ids[] = {
-	{ .compatible = "sunplus,sunplus-usb-phy0" },
+	{ .compatible = "sunplus,sp7021-usb-phy0" },
 	{ }
 };
 
