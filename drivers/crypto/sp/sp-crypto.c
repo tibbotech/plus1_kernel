@@ -584,7 +584,7 @@ static int sp_crypto_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id sp_crypto_of_match[] = {
-	{ .compatible = "sunplus,sp-crypto" },
+	{ .compatible = "sunplus,sp7021-crypto" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_crypto_of_match);

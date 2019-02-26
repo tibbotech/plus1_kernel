@@ -285,7 +285,7 @@ static int sc7021_gpio_remove( struct platform_device *_pd) {
  return( 0);  }
 
 static const struct of_device_id sc7021_gpio_of_match[] = {
- { .compatible = "sunplus,sp_gpio", },
+ { .compatible = "sunplus,sp7021-gpio", },
  { .compatible = "pentagram,sp_gpio", },
  { .compatible = "tps,spgpio", },
  { .compatible = "tibbo,spgpio", },

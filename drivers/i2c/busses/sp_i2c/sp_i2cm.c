@@ -48,7 +48,7 @@
 #define MOON0_REG_NAME       "moon0"
 #define MOON3_REG_NAME       "moon3"
 
-#define DEVICE_NAME          "sp_i2cm"
+#define DEVICE_NAME          "sp7021-i2cm"
 #ifdef SUPPORT_I2C_GDMA
 #define I2CM_DMA_REG_NAME    "i2cmdma"
 #endif
@@ -1631,7 +1631,7 @@ static int sp_i2c_resume(struct platform_device *pdev)
 }
 
 static const struct of_device_id sp_i2c_of_match[] = {
-	{ .compatible = "sunplus,sp_i2cm" },
+	{ .compatible = "sunplus,sp7021-i2cm" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_i2c_of_match);

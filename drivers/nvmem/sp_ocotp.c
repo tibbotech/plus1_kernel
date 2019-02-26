@@ -169,7 +169,7 @@ static const struct otp_data sp_data = {
 };
 
 static const struct of_device_id sp_ocotp_dt_ids[] = {
-	{ .compatible = "sunplus,ocotp", .data = &sp_data },
+	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_data },
 	{ }
 };
 
@@ -295,7 +295,7 @@ static struct platform_driver sp_ocotp_driver = {
 	.probe = sp_ocotp_probe,
 	.remove = sp_ocotp_remove,
 	.driver = {
-		.name = "sunplus,ocotp",
+		.name = "sunplus,sp7021-ocotp",
 		.of_match_table = sp_ocotp_dt_ids,
 	},
 };

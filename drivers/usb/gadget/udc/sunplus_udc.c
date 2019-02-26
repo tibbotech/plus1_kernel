@@ -4733,13 +4733,13 @@ void detech_start(void)
 EXPORT_SYMBOL(detech_start);
 
 static const struct of_device_id sunplus_udc0_ids[] = {
-	{ .compatible = "sunplus,sunplus-q628-usb-udc0" },
+	{ .compatible = "sunplus,sp7021-usb-udc0" },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sunplus_udc0_ids);
 
 static const struct of_device_id sunplus_udc1_ids[] = {
-	{ .compatible = "sunplus,sunplus-q628-usb-udc1", },
+	{ .compatible = "sunplus,sp7021-usb-udc1", },
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sunplus_udc1_ids);

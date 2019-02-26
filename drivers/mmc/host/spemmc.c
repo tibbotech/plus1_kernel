@@ -33,7 +33,7 @@
 *                          MACRO Function Define
 *******************************************************************************/
 #define SPEMMC_MAX_CLOCK  CLOCK_52M     /* Max supported SD Card frequency */
-#define SPEMMCV2_SDC_NAME "sp-emmc"
+#define SPEMMCV2_SDC_NAME "sp7021-emmc"
 #define MAX_SDDEVICES   2
 #define SPEMMC_DEVICE_MASK 1
 #define SPEMMC_READ_DELAY  2		/* delay for sampling data */
@@ -112,7 +112,7 @@ const static spemmc_dridata_t spemmc_driv_data[] = {
 
 static const struct of_device_id spemmc_of_id[] = {
 	{
-		.compatible = "sunplus,sp-emmc",
+		.compatible = "sunplus,sp7021-emmc",
 		.data = &spemmc_driv_data[0],
 	},
 	{}

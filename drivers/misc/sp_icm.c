@@ -313,7 +313,7 @@ module_param_cb(test, &test_ops, NULL, 0600);
 
 
 static const struct of_device_id sp_icm_of_match[] = {
-	{ .compatible = "sunplus,sp-icm" },
+	{ .compatible = "sunplus,sp7021-icm" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_icm_of_match);

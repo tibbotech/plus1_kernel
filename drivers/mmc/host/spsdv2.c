@@ -30,7 +30,7 @@
 *                          MACRO Function Define
 *******************************************************************************/
 #define SPSD_MAX_CLOCK  CLOCK_52M     /* Max supported SD Card frequency */
-#define SPSDV2_SDC_NAME "sunplus,sp-cardx"
+#define SPSDV2_SDC_NAME "sunplus,sp7021-cardx"
 #define MAX_SDDEVICES   2
 #define SPSD_DEVICE_MASK 1
 #define SPSD_READ_DELAY  0		/* delay for sampling data */
@@ -133,15 +133,15 @@ const static spsdv2_dridata_t spsdv2_driv_data[] = {
 
 static const struct of_device_id spsdv2_of_id[] = {
 	{
-		.compatible = "sunplus,sp-card0",
+		.compatible = "sunplus,sp7021-card0",
 	  	.data = &spsdv2_driv_data[0],
 	},
 	{
-		.compatible = "sunplus,sp-card1",
+		.compatible = "sunplus,sp7021-card1",
 		.data = &spsdv2_driv_data[1],
 	},
 	{
-		.compatible = "sunplus,sp-sdio",
+		.compatible = "sunplus,sp7021-sdio",
 		.data = &spsdv2_driv_data[2],
 	},
 	{}

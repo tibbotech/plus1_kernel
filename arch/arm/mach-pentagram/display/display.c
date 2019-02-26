@@ -123,7 +123,7 @@ static int _dma_probe(struct platform_device *pdev);
 DISPLAY_WORKMEM gDispWorkMem = {0};
 
 static struct of_device_id _display_ids[] = {
-	{ .compatible = "sunplus,sc7021-display"},
+	{ .compatible = "sunplus,sp7021-display"},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, _display_ids);
