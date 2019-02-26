@@ -1769,7 +1769,8 @@ CONFIG_ARM_PMU=y
 #
 # CONFIG_ANDROID is not set
 # CONFIG_DAX is not set
-# CONFIG_NVMEM is not set
+CONFIG_NVMEM=y
+CONFIG_NVMEM_SUNPLUS_OCOTP=y
 # CONFIG_STM is not set
 # CONFIG_INTEL_TH is not set
 
