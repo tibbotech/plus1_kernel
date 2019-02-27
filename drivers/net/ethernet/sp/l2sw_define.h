@@ -169,6 +169,7 @@ struct l2sw_mac_common {
 	dma_addr_t desc_dma;
 	s32 desc_size;
 	struct clk *clk;
+	struct reset_control *rstc;
 	int irq_type;
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];

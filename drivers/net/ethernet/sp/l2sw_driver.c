@@ -19,11 +19,10 @@ static void print_packet(struct sk_buff *skb)
 
 	printk("MAC: DA=%02x:%02x:%02x:%02x:%02x:%02x, "
 		    "SA=%02x:%02x:%02x:%02x:%02x:%02x, "
-		    "Len/Type=%04x, CRC=%08x, len=%d\n",
+		    "Len/Type=%04x, len=%d\n",
 		(u32)p[0],(u32)p[1],(u32)p[2],(u32)p[3],(u32)p[4],(u32)p[5],
 		(u32)p[6],(u32)p[7],(u32)p[8],(u32)p[9],(u32)p[10],(u32)p[11],
 		(u32)((((u32)p[12])<<8)+p[13]),
-		(u32)((((u32)p[skb->len-4])<<24)+(((u32)p[skb->len-3])<<16)+(((u32)p[skb->len-2])<<8)+p[skb->len-1]),
 		(int)skb->len);
 }
 #endif
@@ -714,7 +713,7 @@ static u32 init_netdev(struct platform_device *pdev)
 	mac->mac_comm->pdev = pdev;
 	mac->mac_comm->net_dev = net_dev;
 
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
+	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
 	/*
 	 * spin_lock:         return if i
@@ -868,7 +867,7 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 	mac->next_netdev = NULL;
 	mac->mac_comm = ((struct l2sw_mac*)netdev_priv(pre_ndev))->mac_comm;
 	net_dev->irq = pre_ndev->irq;
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
+	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
 	/*
 	 * spin_lock:         return if i
@@ -1008,27 +1007,25 @@ static int l2sw_probe(struct platform_device *pdev)
 	int ret;
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
-	//struct reset_control *rstc;
+	struct reset_control *rstc;
 
 	//ETH_INFO("[%s] IN\n", __func__);
 
 	if (platform_get_drvdata(pdev) != NULL) {
 		return -ENODEV;
 	}
-#if 0
+
 	rstc = devm_reset_control_get(&pdev->dev, NULL);
-	ETH_INFO(" rstc=0x%08x \n", (int)rstc);
 	if (IS_ERR(rstc)) {
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
 		return PTR_ERR(rstc);
 	}
 	ret = reset_control_deassert(rstc);
-	ETH_INFO("reset ret : 0x%x \n",ret);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err=%d)!\n", ret);
 		return -ENODEV;
 	}
-#endif
+
 	ret = init_netdev(pdev);
 	if (ret != 0) {
 		return ret;
@@ -1039,7 +1036,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 	mac = netdev_priv(net_dev);
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x\n", __func__, (int)net_dev, (int)mac);
 
 	mac->cpu_port = 0x1;    // soc0
 #ifdef CONFIG_DUAL_NIC
@@ -1050,6 +1046,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac->to_vlan = 0x1;     // vlan group: 0
 	mac->vlan_id = 0x0;     // vlan group: 0
 
+	mac->mac_comm->rstc = rstc;
 	mac->mac_comm->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(mac->mac_comm->clk)) {
 		dev_err(&pdev->dev, "Failed to retrieve clock controller!\n");
@@ -1072,10 +1069,6 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	net_dev = mac->next_netdev;
 	mac = netdev_priv(net_dev);
-	if (mac == NULL) {
-		goto fail_to_init_2nd_port;
-	}
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x\n", __func__, (int)net_dev, (int)mac);
 
 	mac->cpu_port = 0x1;    // soc0
 	mac->lan_port = 0x2;    // forward to port 1
