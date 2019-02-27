@@ -108,7 +108,7 @@ static const struct pwm_ops _sc7021_pwm_ops = {
 };
 
 static const struct of_device_id _sc7021_pwm_dt_ids[] = {
-	{ .compatible = "sunplus,sc7021-pwm", },
+	{ .compatible = "sunplus,sp7021-pwm", },
 	{ /* Sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, _sc7021_pwm_dt_ids);
@@ -125,7 +125,7 @@ static struct platform_driver _sc7021_pwm_driver = {
 	.probe		= _sc7021_pwm_probe,
 	.remove		= _sc7021_pwm_remove,
 	.driver		= {
-		.name	= "sc7021-pwm",
+		.name	= "sp7021-pwm",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(_sc7021_pwm_dt_ids),
 #ifdef CONFIG_PM

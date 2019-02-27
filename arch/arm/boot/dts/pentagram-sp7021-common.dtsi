@@ -374,7 +374,7 @@
 
 		pwm: pwm@0x9c007a00 {
 			#pwm-cells = <2>;
-			compatible = "sunplus,sc7021-pwm";
+			compatible = "sunplus,sp7021-pwm";
 			reg = <0x9c007a00 0x80>;
 			clocks = <&clkc DISP_PWM>;
 			resets = <&rstc RST_DISP_PWM>;
@@ -684,7 +684,7 @@
 		};
 		
 		sppctl: sppctl@0x9C000100 {
-			compatible = "sunplus,sppctl";
+			compatible = "sunplus,sp7021-sppctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C0032e4 0x80>;
 		};
 

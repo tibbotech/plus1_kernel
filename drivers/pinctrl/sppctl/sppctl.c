@@ -238,7 +238,7 @@ static int sppctl_remove( struct platform_device *_pdev) {
 #if defined(CONFIG_OF)
 static const struct of_device_id sppctl_dt_ids[] = {
  { .compatible = "pentagram,sppctl", },
- { .compatible = "sunplus,sppctl", },
+ { .compatible = "sunplus,sp7021-sppctl", },
  { .compatible = "tps,sppctl", },
  { .compatible = "tibbo,sppctl", },
  { /* zero */ }

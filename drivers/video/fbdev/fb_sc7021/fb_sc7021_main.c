@@ -118,7 +118,7 @@ static struct fb_ops framebuffer_ops = {
 };
 
 static const struct of_device_id _sc7021_fb_dt_ids[] = {
-	{ .compatible = "sunplus,sc7021-fb", },
+	{ .compatible = "sunplus,sp7021-fb", },
 	{ /* Sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, _sc7021_fb_dt_ids);
@@ -127,7 +127,7 @@ static struct platform_driver _sc7021_fb_driver = {
 	.probe		= _sc7021_fb_probe,
 	.remove		= _sc7021_fb_remove,
 	.driver		= {
-		.name	= "sc7021-fb",
+		.name	= "sp7021-fb",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(_sc7021_fb_dt_ids),
 #if 0
