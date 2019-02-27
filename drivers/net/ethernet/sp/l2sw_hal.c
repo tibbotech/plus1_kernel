@@ -105,7 +105,7 @@ void mac_hw_addr_set(struct l2sw_mac *mac)
 		udelay(1);
 		//ETH_INFO(" wt_mac_ad0 = 0x%08x\n", reg);
 	} while ((reg&(0x1<<1)) == 0x0);
-	ETH_INFO(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
+	//ETH_INFO(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
 
 	//mac_hw_addr_print();
 }
@@ -123,7 +123,7 @@ void mac_hw_addr_del(struct l2sw_mac *mac)
 		udelay(1);
 		//ETH_INFO(" wt_mac_ad0 = 0x%08x\n", reg);
 	} while ((reg&(0x1<<1)) == 0x0);
-	ETH_INFO(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
+	//ETH_INFO(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
 
 	//mac_hw_addr_print();
 }

@@ -896,7 +896,7 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 		}
 	} else {
 		i = -1;
-		ETH_INFO(" Cannot get OTP address of 'mac-addr1', use default mac address!\n");
+		ETH_INFO(" Cannot get OTP address of 'mac-addr2', use default mac address!\n");
 	}
 	if (i != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);

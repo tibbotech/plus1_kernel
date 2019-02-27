@@ -515,6 +515,8 @@
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc L2SW>;
 			resets = <&rstc RST_L2SW>;
+			mac-addr1 = <51>;
+			mac-addr2 = <57>;
 		};
 		
 		mmc0: mmc@emmc {
