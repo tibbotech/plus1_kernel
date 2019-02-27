@@ -22,6 +22,7 @@
 #include <linux/of.h> 
 #include <linux/platform_device.h> 
 #include <linux/reset-controller.h> 
+#include <dt-bindings/reset/sp-q628.h>
 
 #define BITASSERT(id, val)          ((1 << (16 + id)) | (val << id))
 
@@ -121,7 +122,11 @@ static int sp7021_reset_probe(struct platform_device *pdev)
 
 	data->membase = membase; 
 	data->rcdev.owner = THIS_MODULE; 
- 	data->rcdev.nr_resets = resource_size(res) * BITS_PER_BYTE; 
+ 	//data->rcdev.nr_resets = resource_size(res) * BITS_PER_BYTE;
+	//printk(KERN_INFO "data->rcdev.nr_resets : 0x%x \n", data->rcdev.nr_resets);
+	//printk(KERN_INFO "resource_size(res) : 0x%x \n", resource_size(res));
+ 	//RST_MAX get from dt-bindings/reset/sp-q628.h 
+ 	data->rcdev.nr_resets = RST_MAX; 
  	data->rcdev.ops = &sp7021_reset_ops; 
  	data->rcdev.of_node = dev->of_node; 
  

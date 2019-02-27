@@ -89,5 +89,6 @@
 #define RST_ICM			      0x98
 #define RST_AXI_GLOBAL	  0x99
 
+#define RST_MAX		      0xA0
 
 #endif
