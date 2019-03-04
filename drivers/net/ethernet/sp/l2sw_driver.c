@@ -94,6 +94,16 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 
 	// Process high-priority queue and then low-priority queue.
 	for (queue = RX_DESC_QUEUE_NUM - 1; queue >= 0; queue--) {
+		// Skip processing high-priority queue if MAC_INT_RX_DONE_H == 0
+		if ((queue == 1) && ((irq_status & MAC_INT_RX_DONE_H) == 0)) {
+			continue;
+		}
+
+		// Skip processing low-priority queue if MAC_INT_RX_DONE_L == 0
+		if ((queue == 0) && ((irq_status & MAC_INT_RX_DONE_L) == 0)){
+			continue;
+		}
+
 		rx_pos = mac_comm->rx_pos[queue];
 		rx_count =  mac_comm->rx_desc_num[queue];
 		//ETH_INFO(" rx_pos = %d, rx_count = %d\n", rx_pos, rx_count);
@@ -354,15 +364,7 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	}
 
 	mac = netdev_priv(net_dev);
-	spin_lock(&(mac->lock));
-
-	/*
-	if (unlikely(!netif_running(net_dev))) {
-		spin_unlock(&mac->lock);
-		ETH_ERR(" %s interrupt occurs when network device is not running!\n", net_dev->name);
-		return -1;
-	}
-	*/
+	spin_lock(&mac->mac_comm->lock);
 
 	write_sw_int_mask0(0xffffffff); /* mask interrupt */
 	status =  read_sw_int_status0();
@@ -384,11 +386,11 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #else /* RX_POLLING */
 	if (status & MAC_INT_RX) {
 		if (status & MAC_INT_RX_L_DESCF) {
-			ETH_ERR(" RX Low-priority Descriptor full!\n");
+			ETH_INFO(" RX Low-priority Descriptor full!\n");
 		}
 
 		if (status & MAC_INT_RX_H_DESCF) {
-			ETH_ERR(" RX High-priority Descriptor full!\n");
+			ETH_INFO(" RX High-priority Descriptor full!\n");
 		}
 
 		if (status & MAC_INT_RX_DES_ER) {
@@ -407,12 +409,16 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #endif /* RX_POLLING */
 
 	if (status & MAC_INT_TX) {
-		if (status & MAC_INT_TX1_LAN_FULL) {
-			ETH_ERR(" Lan Port 1 Queue Full!\n");
+		if (status & MAC_INT_TX_LAN1_QUE_FULL) {
+			ETH_INFO(" Lan Port 1 Queue Full!\n");
 		}
 
-		if (status & MAC_INT_TX0_LAN_FULL) {
-			ETH_ERR(" Lan Port 0 Queue Full!\n");
+		if (status & MAC_INT_TX_LAN0_QUE_FULL) {
+			ETH_INFO(" Lan Port 0 Queue Full!\n");
+		}
+
+		if (status & MAC_INT_TX_SOC0_QUE_FULL) {
+			ETH_INFO(" CPU Port 0 Queue Full!\n");
 		}
 
 		if (status & MAC_INT_TX_DES_ER) {
@@ -432,9 +438,13 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #endif
 	}
 
+	if (status & MAC_INT_GLOBAL_QUE_FULL) {
+		ETH_INFO(" Global Queue Full!\n");
+	}
+
 OUT:
 	write_sw_int_mask0(0x00000000);
-	spin_unlock(&(mac->lock));
+	spin_unlock(&mac->mac_comm->lock);
 	return IRQ_HANDLED;
 }
 
@@ -469,13 +479,13 @@ static int ethernet_stop(struct net_device *net_dev)
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
 
-	spin_lock_irqsave(&mac->lock, flags);
+	spin_lock_irqsave(&mac->mac_comm->lock, flags);
 	netif_stop_queue(net_dev);
 	netif_carrier_off(net_dev);
 
-	spin_unlock_irqrestore(&mac->lock, flags);
-
 	mac->mac_comm->enable &= ~mac->lan_port;
+
+	spin_unlock_irqrestore(&mac->mac_comm->lock, flags);
 
 	if (mac->mac_comm->enable == 0) {
 		//mac_phy_stop(net_dev);
@@ -488,29 +498,22 @@ static int ethernet_stop(struct net_device *net_dev)
 /* Transmit a packet (called by the kernel) */
 static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 {
-	struct l2sw_mac *mac;
-	struct l2sw_mac_common *mac_comm;
+	struct l2sw_mac *mac = netdev_priv(net_dev);
+	struct l2sw_mac_common *mac_comm = mac->mac_comm;
 	u32 tx_pos;
 	u32 cmd1;
 	u32 cmd2;
 	struct mac_desc *txdesc;
+	unsigned long flags;
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
-
-	cmd1 = 0;
-	cmd2 = 0;
-	mac = netdev_priv(net_dev);
-	mac_comm = mac->mac_comm;
 	//print_packet(skb);
 
-	spin_lock_irq(&mac->lock); //or use spin_lock_irqsave ?
 	if (mac_comm->tx_desc_full == 1) { /* no desc left, wait for tx interrupt*/
-		spin_unlock_irq(&mac->lock);
 		ETH_ERR("[%s] Cannot transmit (no tx descriptor)!\n", __FUNCTION__);
 		return -1;
 	}
 
-	tx_pos = mac_comm->tx_pos;
 	//ETH_INFO("[%s] skb->len = %d\n", __FUNCTION__, skb->len);
 
 	/* if skb size shorter than 60, fill it with '\0' */
@@ -531,6 +534,8 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 		}
 	}
 
+	spin_lock_irqsave(&mac->mac_comm->lock, flags);
+	tx_pos = mac_comm->tx_pos;
 	txdesc = &mac_comm->tx_desc[tx_pos];
 	mac_comm->tx_temp_skb_info[tx_pos].len = skb->len;
 	mac_comm->tx_temp_skb_info[tx_pos].skb = skb;
@@ -558,7 +563,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	tx_trigger(tx_pos);
 	wmb();
 
-	spin_unlock_irq(&mac->lock);
+	spin_unlock_irqrestore(&mac->mac_comm->lock, flags);
 	return 0;
 }
 
@@ -716,12 +721,11 @@ static u32 init_netdev(struct platform_device *pdev)
 	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
 	/*
-	 * spin_lock:         return if i
-	 t obtain spin lock, or it will wait (not sleep)
+	 * spin_lock:         return if it obtain spin lock, or it will wait (not sleep)
 	 * spin_lock_irqsave: save flags, disable interrupt, obtain spin lock
 	 * spin_lock_irq:     disable interrupt, obtain spin lock, if in a interrupt, don't need to use spin_lock_irqsave
 	 */
-	spin_lock_init(&mac->lock);
+	spin_lock_init(&mac->mac_comm->lock);
 
 	// Get memory resoruce from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
@@ -869,14 +873,6 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 	net_dev->irq = pre_ndev->irq;
 	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
-	/*
-	 * spin_lock:         return if i
-	 t obtain spin lock, or it will wait (not sleep)
-	 * spin_lock_irqsave: save flags, disable interrupt, obtain spin lock
-	 * spin_lock_irq:     disable interrupt, obtain spin lock, if in a interrupt, don't need to use spin_lock_irqsave
-	 */
-	spin_lock_init(&mac->lock);
-
 	net_dev->netdev_ops = &netdev_ops;
 
 	// Get property 'mac-addr2' from dts.
@@ -928,58 +924,27 @@ out_freedev:
 
 static int soc0_open(struct l2sw_mac *mac)
 {
-	struct l2sw_mac_common *mac_comm;
-	u32 rc, i;
+	struct l2sw_mac_common *mac_comm = mac->mac_comm;
+	u32 rc;
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
 
 	mac_hw_stop();
 
 #ifndef INTERRUPT_IMMEDIATELY
-	//tasklet_enable(&mac->mac_comm->rx_tasklet);
-	//tasklet_enable(&mac->mac_comm->tx_tasklet);
+	//tasklet_enable(&mac_comm->rx_tasklet);
+	//tasklet_enable(&mac_comm->tx_tasklet);
 #endif
-
-	mac_comm = mac->mac_comm;
 
 #ifdef RX_POLLING
 	napi_enable(&mac_comm->napi);
 #endif
 
-	mac_comm->rx_desc_num[0] = RX_QUEUE0_DESC_NUM;
-#if RX_DESC_QUEUE_NUM > 1
-	mac_comm->rx_desc_num[1] = RX_QUEUE1_DESC_NUM;
-#endif
-
-	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
-		mac_comm->rx_desc[i] = NULL;
-		mac_comm->rx_skb_info[i] = NULL;
-		mac_comm->rx_pos[i] = 0;
-	}
-
-	mac_comm->rx_desc_buff_size = MAC_RX_LEN_MAX;
-	mac_comm->tx_done_pos = 0;
-	mac_comm->tx_desc = NULL;
-	mac_comm->tx_pos = 0;
-	mac_comm->tx_desc_full = 0;
-	for (i = 0; i < TX_DESC_NUM; i++) {
-		mac_comm->tx_temp_skb_info[i].skb = NULL;
-	}
-
-	rc = descs_alloc(mac_comm);
-	if (rc) {
-		ETH_ERR("[%s] Failed to allocate mac descriptors!\n", __FUNCTION__);
-		return rc;
-	}
-
 	rc = descs_init(mac_comm);
 	if (rc) {
-	ETH_ERR("[%s] Fail to initialize mac descriptors!\n", __FUNCTION__);
+		ETH_ERR("[%s] Fail to initialize mac descriptors!\n", __FUNCTION__);
 		goto INIT_DESC_FAIL;
 	}
-
-	mac_comm->tx_desc_full = 0;
-	wmb();
 
 	/*start hardware port,open interrupt, start system tx queue*/
 	mac_init(mac);

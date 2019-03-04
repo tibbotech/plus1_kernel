@@ -49,8 +49,11 @@
 #define MAC_INT_ETH1_LINK               (1<<25)
 #define MAC_INT_WDOG1_TMR_EXP           (1<<22)
 #define MAC_INT_WDOG0_TMR_EXP           (1<<21)
-#define MAC_INT_TX1_LAN_FULL            (1<<9)
-#define MAC_INT_TX0_LAN_FULL            (1<<8)
+#define MAC_INT_GLOBAL_QUE_FULL         (1<<16)
+#define MAC_INT_TX_SOC0_PAUSE_ON        (1<<15)
+#define MAC_INT_TX_SOC0_QUE_FULL        (1<<14)
+#define MAC_INT_TX_LAN1_QUE_FULL        (1<<9)
+#define MAC_INT_TX_LAN0_QUE_FULL        (1<<8)
 #define MAC_INT_RX_L_DESCF              (1<<7)
 #define MAC_INT_RX_H_DESCF              (1<<6)
 #define MAC_INT_RX_DONE_L               (1<<5)
@@ -64,7 +67,7 @@
 #define MAC_INT_TX_DONE                 (MAC_INT_TX_DONE_H | MAC_INT_TX_DONE_L)
 
 #define MAC_INT_RX                      (MAC_INT_RX_DONE | MAC_INT_RX_DES_ER | MAC_INT_RX_H_DESCF | MAC_INT_RX_L_DESCF)
-#define MAC_INT_TX                      (MAC_INT_TX_DONE | MAC_INT_TX_DES_ER | MAC_INT_TX1_LAN_FULL | MAC_INT_TX0_LAN_FULL)
+#define MAC_INT_TX                      (MAC_INT_TX_DONE | MAC_INT_TX_DES_ER | MAC_INT_TX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL)
 
 
 /*define port ability*/
@@ -192,6 +195,8 @@ struct l2sw_mac_common {
 	struct tasklet_struct rx_tasklet;
 	struct tasklet_struct tx_tasklet;
 #endif
+
+	spinlock_t lock;
 	volatile u32 int_status;
 
 #ifdef RX_POLLING
@@ -209,8 +214,6 @@ struct l2sw_mac {
 	struct platform_device *pdev;
 	struct net_device *net_dev;
 	struct net_device_stats dev_stats;
-
-	spinlock_t lock;
 
 	u8 mac_addr[ETHERNET_MAC_ADDR_LEN];
 

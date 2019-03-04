@@ -8,12 +8,10 @@ bool mac_init(struct l2sw_mac *mac)
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
 		mac->mac_comm->rx_pos[i] = 0;
 	}
-	//ETH_INFO();
 	mb();
 
 	//mac_hw_reset(mac);
 	mac_hw_init(mac);
-	//ETH_INFO();
 	mb();
 
 	return 1;

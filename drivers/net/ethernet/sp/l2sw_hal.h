@@ -18,13 +18,8 @@
 #define PHY0_ADDR               0x0
 #define PHY1_ADDR               0x1
 
-
-#define MAC_SW_INT_STATUS0      15100
-#define MAC_SW_INT_MASK0        15101
-#define MAC_PORT_ABILITY        15106
-
-
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
+
 
 int l2sw_reg_base_set( void __iomem *baseaddr);
 

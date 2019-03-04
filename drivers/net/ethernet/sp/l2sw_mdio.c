@@ -112,7 +112,7 @@ int mac_phy_probe(struct net_device *netdev)
 					PHY_INTERFACE_MODE_RGMII_ID);
 	}
 	if (!phydev) {
-		ETH_ERR("\"%s\" has no phy found\n", netdev->name);
+		ETH_ERR(" \"%s\" has no phy found\n", netdev->name);
 		return -1;
 	}
 #else
