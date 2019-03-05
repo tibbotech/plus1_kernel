@@ -305,12 +305,14 @@ static struct platform_driver sc7021_gpio_driver = {
 };
 module_platform_driver(sc7021_gpio_driver);
 
+#if defined(NO_SC7021_GPIO)
 static int __init sc7021_gpio_drv_reg( void) {
  return platform_driver_register( &sc7021_gpio_driver);  }
 postcore_initcall( sc7021_gpio_drv_reg);
 static void __exit sc7021_gpio_exit( void) {
  platform_driver_unregister( &sc7021_gpio_driver);  }
 module_exit(sc7021_gpio_exit);
+#endif
 
 MODULE_LICENSE(M_LIC);
 MODULE_AUTHOR(M_AUT);
