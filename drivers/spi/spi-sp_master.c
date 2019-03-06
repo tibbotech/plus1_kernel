@@ -15,10 +15,17 @@
 #include <linux/platform_device.h>
 #include <linux/spi/spi.h>
 #include <linux/clk.h>
+#include <linux/reset.h> 
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 
 #define SLAVE_INT_IN
+
+//#define SPI_FUNC_DEBUG
+//#define SPI_DBG_INFO
+//#define SPI_DBG_ERR
+
+//#define SPI_PIN_SETTING
 
 #define MAS_REG_NAME "spi_master"
 #define SLA_REG_NAME "spi_slave"
@@ -76,10 +83,10 @@ typedef struct{
     unsigned int  MST_RX_DATA_7_6_5_4                   ; // 10  (ADDR : 0x9C00_2DA8)
     unsigned int  MST_RX_DATA_11_10_9_8                 ; // 11  (ADDR : 0x9C00_2DAC)
     unsigned int  MST_RX_DATA_15_14_13_12               ; // 12  (ADDR : 0x9C00_2DB0)
-	unsigned int  FIFO_DATA                             ; // 13  (ADDR : 0x9C00_2DB4)
-	unsigned int  SPI_FD_STATUS                         ; // 14  (ADDR : 0x9C00_2DB8)
-	unsigned int  SPI_FD_CONFIG                         ; // 15  (ADDR : 0x9C00_2DBC)
-	unsigned int  G091_RESERVED_1                       ; // 16  (ADDR : 0x9C00_2DC0)
+	  unsigned int  FIFO_DATA                             ; // 13  (ADDR : 0x9C00_2DB4)
+  	unsigned int  SPI_FD_STATUS                         ; // 14  (ADDR : 0x9C00_2DB8)
+  	unsigned int  SPI_FD_CONFIG                         ; // 15  (ADDR : 0x9C00_2DBC)
+	  unsigned int  G091_RESERVED_1                       ; // 16  (ADDR : 0x9C00_2DC0)
     unsigned int  SPI_CTRL_CLKSEL                       ; // 17  (ADDR : 0x9C00_2DC4)
     unsigned int  BYTE_NO                               ; // 18  (ADDR : 0x9C00_2DC8)
     unsigned int  SPI_INT_BUSY                          ; // 19  (ADDR : 0x9C00_2DCC)
@@ -163,6 +170,8 @@ struct pentagram_spi_master {
 	int sla_irq;
 	
 	struct clk *spi_clk;
+	struct reset_control *rstc;	
+	
 	spinlock_t lock;
 	struct mutex		buf_lock;
 	unsigned int spi_max_frequency;
@@ -491,8 +500,10 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 
 
 	//set pinmux
-//if( spi_id < SPI_MASTER_NUM){
-if(0){
+
+#ifdef SPI_PIN_SETTING	
+	
+if( spi_id < SPI_MASTER_NUM){
 	switch(spi_id)
 	{
 		case 0:			
@@ -500,11 +511,9 @@ if(0){
 	writel(0x04030403, &(grp2_sft_cfg->sft_cfg_23));
 	writel(0x00050005, &(grp2_sft_cfg->sft_cfg_24));	
 	
-
 	writel(0x18171817, &(grp3_sft_cfg->sft_cfg_0));
 	writel(0x1A191A19, &(grp3_sft_cfg->sft_cfg_1));
-	writel(0x001B001B, &(grp3_sft_cfg->sft_cfg_2));	
-	
+	writel(0x001B001B, &(grp3_sft_cfg->sft_cfg_2));		
 			break;
 		case 1:
 	writel(0x12001200, &(grp2_sft_cfg->sft_cfg_24));
@@ -564,10 +573,7 @@ if(0){
 	dev_dbg(&dev,"grp3_sft_cfg[9] 0x%x\n",grp3_sft_cfg->sft_cfg_9);
 	
      }
-
-
-
-
+#endif
 
 
 	//set clock
@@ -808,12 +814,25 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 	if (ret)
 		goto free_alloc;
 
+	/* reset*/
+	pspim->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	//printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n",pstSpI2CInfo->rstc);
+	if (IS_ERR(pspim->rstc)) {
+		ret = PTR_ERR(pspim->rstc);
+		dev_err(&pdev->dev, "SPI failed to retrieve reset controller: %d\n", ret);
+		goto free_clk;
+	}
+	ret = reset_control_deassert(pspim->rstc);
+	if (ret)
+		goto free_clk;
+
+
 	/* dma alloc*/
 	pspim->tx_dma_vir_base = dma_alloc_coherent(&pdev->dev, bufsiz,
 					&pspim->tx_dma_phy_base, GFP_ATOMIC);
 	if(!pspim->tx_dma_vir_base) {
 		dev_err(&pdev->dev, "dma_alloc_coherent fail\n");
-		goto free_clk;
+		goto free_reset_assert;
 	}
 	dev_dbg(&pdev->dev, "tx_dma vir 0x%x\n",(unsigned int)pspim->tx_dma_vir_base);
 	dev_dbg(&pdev->dev, "tx_dma phy 0x%x\n",(unsigned int)pspim->tx_dma_phy_base);
@@ -839,6 +858,8 @@ free_rx_dma:
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->rx_dma_vir_base, pspim->rx_dma_phy_base);
 free_tx_dma:
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->tx_dma_vir_base, pspim->tx_dma_phy_base);
+free_reset_assert:
+	reset_control_assert(pspim->rstc);
 free_clk:
 	clk_disable_unprepare(pspim->spi_clk);
 free_alloc:
@@ -857,6 +878,7 @@ static int pentagram_spi_master_remove(struct platform_device *pdev)
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->rx_dma_vir_base, pspim->rx_dma_phy_base);
 
 	clk_disable_unprepare(pspim->spi_clk);
+	reset_control_assert(pspim->rstc);
 	spi_unregister_master(pspim->master);
 }
 
