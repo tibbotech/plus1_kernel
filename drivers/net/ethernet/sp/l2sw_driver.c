@@ -756,7 +756,6 @@ static u32 init_netdev(struct platform_device *pdev)
 		goto out_free_mac_comm;
 	}
 
-	l2sw_pinmux_set();
 	l2sw_enable_port(pdev);
 
 	phy_cfg();

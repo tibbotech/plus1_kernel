@@ -23,8 +23,6 @@
 
 int l2sw_reg_base_set( void __iomem *baseaddr);
 
-void l2sw_pinmux_set(void);
-
 void mac_hw_stop(void);
 
 void mac_hw_reset(struct l2sw_mac *mac);
