@@ -20,8 +20,8 @@ static void print_packet(struct sk_buff *skb)
 	printk("MAC: DA=%02x:%02x:%02x:%02x:%02x:%02x, "
 		    "SA=%02x:%02x:%02x:%02x:%02x:%02x, "
 		    "Len/Type=%04x, len=%d\n",
-		(u32)p[0],(u32)p[1],(u32)p[2],(u32)p[3],(u32)p[4],(u32)p[5],
-		(u32)p[6],(u32)p[7],(u32)p[8],(u32)p[9],(u32)p[10],(u32)p[11],
+		(u32)p[0], (u32)p[1], (u32)p[2], (u32)p[3], (u32)p[4], (u32)p[5],
+		(u32)p[6], (u32)p[7], (u32)p[8], (u32)p[9], (u32)p[10], (u32)p[11],
 		(u32)((((u32)p[12])<<8)+p[13]),
 		(int)skb->len);
 }
@@ -115,7 +115,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
 
 			if (cmd & OWN_BIT) {
-				//ETH_INFO(" RX: is owned by NIC, rx_pos=%d, desc=%p", rx_pos, desc);
+				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %p", rx_pos, desc);
 				break;
 			}
 
@@ -181,7 +181,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 			skb->ip_summed = CHECKSUM_NONE;
 
 			/*skb_put will judge if tail exceeds end, but __skb_put won't*/
-			__skb_put(skb, (pkg_len - 4 > mac_comm->rx_desc_buff_size) ? mac_comm->rx_desc_buff_size : pkg_len - 4);
+			__skb_put(skb, (pkg_len - 4 > mac_comm->rx_desc_buff_size)? mac_comm->rx_desc_buff_size: pkg_len - 4);
 
 			sinfo->mapping = dma_map_single(&mac->pdev->dev, new_skb->data, mac_comm->rx_desc_buff_size, DMA_FROM_DEVICE);
 			sinfo->skb = new_skb;
@@ -264,10 +264,14 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 
 	tx_done_pos = mac_comm->tx_done_pos;
 	//ETH_INFO(" tx_done_pos = %d\n", tx_done_pos);
-	while (tx_done_pos != mac_comm->tx_pos || (mac_comm->tx_desc_full == 1)) {
+	while ((tx_done_pos != mac_comm->tx_pos) || (mac_comm->tx_desc_full == 1)) {
 		cmd = mac_comm->tx_desc[tx_done_pos].cmd1;
+		if (cmd & OWN_BIT) {
+			break;
+		}
 		//ETH_INFO(" tx_done_pos = %d\n", tx_done_pos);
 		//ETH_INFO(" TX2: cmd1 = %08x, cmd2 = %08x\n", cmd, mac_comm->tx_desc[tx_done_pos].cmd2);
+
 		skbinfo = &mac_comm->tx_temp_skb_info[tx_done_pos];
 		if (skbinfo->skb == NULL) {
 			ETH_ERR(" skb is null!\n");
@@ -280,7 +284,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 		}
 #endif
 		if (cmd & (ERR_CODE)) {
-			ETH_ERR(" TX Error [%x]\n", cmd);
+			//ETH_ERR(" TX Error = %x\n", cmd);
 
 			smac->dev_stats.tx_errors++;
 #if 0
@@ -354,6 +358,7 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 {
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
+	struct l2sw_mac_common *mac_comm;
 	u32 status;
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
@@ -364,11 +369,12 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	}
 
 	mac = netdev_priv(net_dev);
-	spin_lock(&mac->mac_comm->lock);
+	mac_comm = mac->mac_comm;
+	spin_lock(&mac_comm->lock);
 
 	write_sw_int_mask0(0xffffffff); /* mask interrupt */
 	status =  read_sw_int_status0();
-	//ETH_INFO(" Int Status = [%08x]\n", status);
+	//ETH_INFO(" Int Status = %08x\n", status);
 	rmb();
 	if (status == 0){
 		write_sw_int_mask0(0x00000000);
@@ -377,51 +383,31 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	}
 	write_sw_int_status0(status);
 	wmb();
-	mac->mac_comm->int_status = status;
+	mac_comm->int_status = status;
 
 #ifdef RX_POLLING
-	if (napi_schedule_prep(&mac->mac_comm->napi)) {
-		__napi_schedule(&mac->mac_comm->napi);
+	if (napi_schedule_prep(&mac_comm->napi)) {
+		__napi_schedule(&mac_comm->napi);
 	}
 #else /* RX_POLLING */
 	if (status & MAC_INT_RX) {
-		if (status & MAC_INT_RX_L_DESCF) {
-			ETH_INFO(" RX Low-priority Descriptor full!\n");
-		}
-
-		if (status & MAC_INT_RX_H_DESCF) {
-			ETH_INFO(" RX High-priority Descriptor full!\n");
-		}
-
-		if (status & MAC_INT_RX_DES_ER) {
+		if (status & MAC_INT_RX_DES_ERR) {
 			ETH_ERR(" Illegal RX Descriptor!\n");
 			mac->dev_stats.rx_fifo_errors++;
 		}
 
 	#ifdef INTERRUPT_IMMEDIATELY
 		rx_interrupt(mac, status);
-		//write_sw_int_status0(mac->mac_comm->int_status & MAC_INT_RX);
+		//write_sw_int_status0(mac_comm->int_status & MAC_INT_RX);
 		interrupt_finish(mac);
 	#else
-		tasklet_schedule(&mac->mac_comm->rx_tasklet);
+		tasklet_schedule(&mac_comm->rx_tasklet);
 	#endif
 	}
 #endif /* RX_POLLING */
 
 	if (status & MAC_INT_TX) {
-		if (status & MAC_INT_TX_LAN1_QUE_FULL) {
-			ETH_INFO(" Lan Port 1 Queue Full!\n");
-		}
-
-		if (status & MAC_INT_TX_LAN0_QUE_FULL) {
-			ETH_INFO(" Lan Port 0 Queue Full!\n");
-		}
-
-		if (status & MAC_INT_TX_SOC0_QUE_FULL) {
-			ETH_INFO(" CPU Port 0 Queue Full!\n");
-		}
-
-		if (status & MAC_INT_TX_DES_ER) {
+		if (status & MAC_INT_TX_DES_ERR) {
 			ETH_ERR(" Illegal TX Descriptor Error\n");
 			mac->dev_stats.tx_fifo_errors++;
 			mac_soft_reset(mac);
@@ -430,21 +416,40 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 
 #ifdef INTERRUPT_IMMEDIATELY
 		tx_interrupt(mac);
-		write_sw_int_status0(mac->mac_comm->int_status & MAC_INT_TX);
+		write_sw_int_status0(mac_comm->int_status & MAC_INT_TX);
 		wmb();
 		interrupt_finish(mac);
 #else
-		tasklet_schedule(&mac->mac_comm->tx_tasklet);
+		tasklet_schedule(&mac_comm->tx_tasklet);
 #endif
 	}
-
+#if 0
+	if (status & MAC_INT_RX_H_DESCF) {
+		ETH_INFO(" RX High-priority Descriptor Full!\n");
+	}
+	if (status & MAC_INT_RX_L_DESCF) {
+		ETH_INFO(" RX Low-priority Descriptor Full!\n");
+	}
+	if (status & MAC_INT_TX_LAN0_QUE_FULL) {
+		ETH_INFO(" Lan Port 0 Queue Full!\n");
+	}
+	if (status & MAC_INT_TX_LAN1_QUE_FULL) {
+		ETH_INFO(" Lan Port 1 Queue Full!\n");
+	}
+	if (status & MAC_INT_RX_SOC0_QUE_FULL) {
+		ETH_INFO(" CPU Port 0 RX Queue Full!\n");
+	}
+	if (status & MAC_INT_TX_SOC0_PAUSE_ON) {
+		ETH_INFO(" CPU Port 0 TX Pause On!\n");
+	}
 	if (status & MAC_INT_GLOBAL_QUE_FULL) {
 		ETH_INFO(" Global Queue Full!\n");
 	}
+#endif
 
 OUT:
 	write_sw_int_mask0(0x00000000);
-	spin_unlock(&mac->mac_comm->lock);
+	spin_unlock(&mac_comm->lock);
 	return IRQ_HANDLED;
 }
 
@@ -510,7 +515,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	//print_packet(skb);
 
 	if (mac_comm->tx_desc_full == 1) { /* no desc left, wait for tx interrupt*/
-		ETH_ERR("[%s] Cannot transmit (no tx descriptor)!\n", __FUNCTION__);
+		//ETH_INFO("[%s] TX Descriptor Queue Full!\n", __FUNCTION__);
 		return -1;
 	}
 
@@ -541,7 +546,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	mac_comm->tx_temp_skb_info[tx_pos].skb = skb;
 	mac_comm->tx_temp_skb_info[tx_pos].mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
-	cmd2 = (mac_comm->tx_pos+1==TX_DESC_NUM)? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
+	cmd2 = (mac_comm->tx_pos==(TX_DESC_NUM-1))? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
 	//ETH_INFO(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
 
 	txdesc->addr1 = mac_comm->tx_temp_skb_info[tx_pos].mapping;
@@ -556,6 +561,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	if (mac_comm->tx_pos == mac_comm->tx_done_pos) {
 		netif_stop_queue(net_dev);
 		mac_comm->tx_desc_full = 1;
+		//ETH_INFO("[%s] TX Descriptor Queue Full!\n", __FUNCTION__);
 	}
 	wmb();
 
@@ -592,8 +598,8 @@ static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
 	memcpy(net_dev->dev_addr, hwaddr->sa_data, net_dev->addr_len);
 
 	/* Delete the old Ethernet MAC address */
-	//ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0],mac->mac_addr[1],
-	//       mac->mac_addr[2],mac->mac_addr[3],mac->mac_addr[4],mac->mac_addr[5]);
+	//ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
+	//       mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
 	if (is_valid_ether_addr(mac->mac_addr)) {
 		mac_hw_addr_del(mac);
 	}
@@ -614,7 +620,7 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 	struct mii_ioctl_data *data = if_mii(ifr);
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
-	//ETH_INFO("[%s] if=%s, cmd = 0x%x\n", __FUNCTION__, ifr->ifr_ifrn.ifrn_name, cmd);
+	//ETH_INFO("[%s] if = %s, cmd = 0x%x\n", __FUNCTION__, ifr->ifr_ifrn.ifrn_name, cmd);
 #if 0
 	if (!netif_running(dev))
 	{
@@ -633,14 +639,14 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 		return 0;
 
 	case SIOCGMIIREG:
-		 /*tmp for SMII AC timing measure,only for port0 phy0*/
+		 /*tmp for SMII AC timing measure, only for port0 phy0*/
 		data->val_out =  mdio_read(PHY0_ADDR, data->reg_num);
 		break;
 
 	case SIOCSMIIREG:
 		//return phy_mii_ioctl(phydev, ifr, cmd);
-		/*tmp for SMII AC timing measure,only for port0 phy0*/
-		mdio_write(PHY0_ADDR, data->reg_num,data->val_in);
+		/*tmp for SMII AC timing measure, only for port0 phy0*/
+		mdio_write(PHY0_ADDR, data->reg_num, data->val_in);
 		break;
 
 	default:
@@ -718,7 +724,7 @@ static u32 init_netdev(struct platform_device *pdev)
 	mac->mac_comm->pdev = pdev;
 	mac->mac_comm->net_dev = net_dev;
 
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
+	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, mac_comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
 	/*
 	 * spin_lock:         return if it obtain spin lock, or it will wait (not sleep)
@@ -730,7 +736,7 @@ static u32 init_netdev(struct platform_device *pdev)
 	// Get memory resoruce from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
 		ETH_INFO(" r_mem->start = 0x%08x\n", r_mem->start);
-		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev,r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ETH_ERR("[%s] ioremap failed!\n", __FUNCTION__);
 			goto out_free_mac_comm;
 		}
@@ -750,7 +756,6 @@ static u32 init_netdev(struct platform_device *pdev)
 		goto out_free_mac_comm;
 	}
 
-	l2sw_pinmux_set();
 	l2sw_enable_port(pdev);
 
 	phy_cfg();
@@ -787,7 +792,7 @@ static u32 init_netdev(struct platform_device *pdev)
 
 		// Check if mac-address is valid or not. If not, copy from default.
 		if ((i != 6) || !is_valid_ether_addr(mac->mac_addr)) {
-			ETH_INFO(" Invalid mac addr from OTP[%d:%d]=%02x:%02x:%02x:%02x:%02x:%02x, use default!\n", rc, rc+5, mac->mac_addr[0],
+			ETH_INFO(" Invalid mac addr from OTP[%d:%d] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", rc, rc+5, mac->mac_addr[0],
 				mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
 			i = -1;
 		}
@@ -799,12 +804,12 @@ static u32 init_netdev(struct platform_device *pdev)
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
 	}
 
-	ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0],mac->mac_addr[1],
-		mac->mac_addr[2],mac->mac_addr[3],mac->mac_addr[4],mac->mac_addr[5]);
+	ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
+		mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
 
 	memcpy(net_dev->dev_addr, mac->mac_addr, ETHERNET_MAC_ADDR_LEN);
 	if ((ret = register_netdev(net_dev)) != 0) {
-		ETH_ERR("[%s] Failed to register device \"%s\" (ret=%d)\n", __FUNCTION__, net_dev->name, ret);
+		ETH_ERR("[%s] Failed to register device \"%s\" (ret = %d)\n", __FUNCTION__, net_dev->name, ret);
 		goto out_freemdio;
 	}
 	ETH_INFO("[%s] Registered device \"%s\"\n", __FUNCTION__, net_dev->name);
@@ -812,7 +817,7 @@ static u32 init_netdev(struct platform_device *pdev)
 	/*register interrupt function to system*/
 	rc = devm_request_irq(&pdev->dev, net_dev->irq, ethernet_interrupt, mac->mac_comm->irq_type, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d (type=0x%01x) for \"%s\" (rc=%d)!\n", __FUNCTION__,
+		ETH_ERR("[%s] Failed to request irq #%d (type = 0x%01x) for \"%s\" (rc = %d)!\n", __FUNCTION__,
 			net_dev->irq, mac->mac_comm->irq_type, net_dev->name, rc);
 		goto out_unregister_dev;
 	}
@@ -871,7 +876,7 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 	mac->next_netdev = NULL;
 	mac->mac_comm = ((struct l2sw_mac*)netdev_priv(pre_ndev))->mac_comm;
 	net_dev->irq = pre_ndev->irq;
-	ETH_INFO("[%s] net_dev=0x%08x, mac=0x%08x, mac_comm=0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
+	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, mac_comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->mac_comm);
 
 	net_dev->netdev_ops = &netdev_ops;
 
@@ -885,7 +890,7 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 
 		// Check if mac-address is valid or not. If not, copy from default.
 		if ((i != 6) || !is_valid_ether_addr(mac->mac_addr)) {
-			ETH_INFO(" Invalid mac addr from OTP[%d:%d]=%02x:%02x:%02x:%02x:%02x:%02x, use default!\n", rc, rc+5, mac->mac_addr[0],
+			ETH_INFO(" Invalid mac addr from OTP[%d:%d] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", rc, rc+5, mac->mac_addr[0],
 				mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
 			i = -1;
 		}
@@ -902,12 +907,12 @@ static u32 init_2nd_netdev(struct platform_device *pdev, struct net_device *pre_
 	mac->mac_addr[0] = 0x00; mac->mac_addr[1] = 0x22; mac->mac_addr[2] = 0x60;
 	mac->mac_addr[3] = 0x00; mac->mac_addr[4] = 0x81; mac->mac_addr[5] = 0xb7;
 #endif
-	ETH_INFO(" HW Addr2 = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0],mac->mac_addr[1],
-		 mac->mac_addr[2],mac->mac_addr[3],mac->mac_addr[4],mac->mac_addr[5]);
+	ETH_INFO(" HW Addr2 = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
+		 mac->mac_addr[2] ,mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
 
 	memcpy(net_dev->dev_addr, mac->mac_addr, ETHERNET_MAC_ADDR_LEN);
 	if ((ret = register_netdev(net_dev)) != 0) {
-		ETH_ERR("[%s] Failed to register device \"%s\" (ret=%d)\n", __FUNCTION__, net_dev->name, ret);
+		ETH_ERR("[%s] Failed to register device \"%s\" (ret = %d)\n", __FUNCTION__, net_dev->name, ret);
 		goto out_freedev;
 	}
 	ETH_INFO("[%s] Registered device \"%s\"\n", __FUNCTION__, net_dev->name);
@@ -946,7 +951,7 @@ static int soc0_open(struct l2sw_mac *mac)
 		goto INIT_DESC_FAIL;
 	}
 
-	/*start hardware port,open interrupt, start system tx queue*/
+	/*start hardware port, open interrupt, start system tx queue*/
 	mac_init(mac);
 	return 0;
 
@@ -985,9 +990,12 @@ static int l2sw_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
 		return PTR_ERR(rstc);
 	}
+
+	//ret = reset_control_assert(rstc);
+	//udelay(10);
 	ret = reset_control_deassert(rstc);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to deassert reset line (err=%d)!\n", ret);
+		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
 		return -ENODEV;
 	}
 
@@ -1012,12 +1020,15 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac->vlan_id = 0x0;     // vlan group: 0
 
 	mac->mac_comm->rstc = rstc;
+
+	// Get resource of clock controller
 	mac->mac_comm->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(mac->mac_comm->clk)) {
 		dev_err(&pdev->dev, "Failed to retrieve clock controller!\n");
 		return PTR_ERR(mac->mac_comm->clk);
 	}
 
+	// Enable clock.
 	clk_prepare_enable(mac->mac_comm->clk);
 
 	soc0_open(mac);

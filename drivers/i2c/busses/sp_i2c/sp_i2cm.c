@@ -40,6 +40,8 @@
 	#define DBG_ERR(fmt, args ...)
 #endif
 
+//#define I2C_PINMUX_SET
+
 #define I2C_FREQ             100
 #define I2C_SLEEP_TIMEOUT    200
 #define I2C_SCL_DELAY        0  //SCl dalay xT
@@ -100,6 +102,13 @@ wait_queue_head_t i2cm_event_wait[I2C_MASTER_NUM];
 #ifdef I2C_RETEST
 int test_count;
 #endif
+
+
+unsigned char restart_w_data[32] = {0};
+unsigned int  restart_write_cnt = 0;
+unsigned int  restart_en = 0;
+
+
 
 static void _sp_i2cm_intflag_check(unsigned int device_id, I2C_Irq_Event_t *pstIrqEvent)
 {
@@ -262,16 +271,19 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 				DBG_ERR("I2C reveive NACK !!\n");
 				pstIrqEvent->bRet = I2C_ERR_RECEIVE_NACK;
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+			//	hal_i2cm_reset(device_id);
 				wake_up(&i2cm_event_wait[device_id]);
 			} else if (pstIrqEvent->stIrqFlag.bSCLHoldTooLong) {
 				DBG_ERR("I2C SCL hold too long !!\n");
 				pstIrqEvent->bRet = I2C_ERR_SCL_HOLD_TOO_LONG;
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+			//	hal_i2cm_reset(device_id);
 				wake_up(&i2cm_event_wait[device_id]);
 			} else if (pstIrqEvent->stIrqFlag.bFiFoEmpty) {
 				DBG_ERR("I2C FIFO empty !!\n");
 				pstIrqEvent->bRet = I2C_ERR_FIFO_EMPTY;
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
+			//	hal_i2cm_reset(device_id);
 				wake_up(&i2cm_event_wait[device_id]);
 			} else if (pstIrqEvent->dBurstCount > 0) {
 				if (pstIrqEvent->stIrqFlag.bEmptyThreshold) {
@@ -442,7 +454,10 @@ static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 		return I2C_ERR_INVALID_DEVID;
 	}
 
+#ifdef I2C_PINMUX_SET
 	hal_i2cm_pinmux_set(device_id, pstMoonRegBase->moon3_regs);
+#endif
+	
 	hal_i2cm_enable(device_id, pstMoonRegBase->moon0_regs);
 #ifdef SUPPORT_I2C_GDMA
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
@@ -668,7 +683,7 @@ int sp_i2cm_read(I2C_Cmd_t *pstCmdInfo)
 	} else {
 		ret = pstIrqEvent->bRet;
 	}
-
+    hal_i2cm_reset(pstCmdInfo->dDevId);
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
 
@@ -767,7 +782,7 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 	} else {
 		ret = pstIrqEvent->bRet;
 	}
-
+    hal_i2cm_reset(pstCmdInfo->dDevId);
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
 
@@ -1406,15 +1421,28 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		pstCmdInfo->dSlaveAddr = msgs[i].addr;
 
 		if(msgs[i].flags & I2C_M_NOSTART){
-			pstCmdInfo->dWrDataCnt = msgs[i].len;
-			pstCmdInfo->pWrData = msgs[i].buf;
-			pstCmdInfo->dRestartEn = 1;
+			//pstCmdInfo->dWrDataCnt = msgs[i].len;
+			//pstCmdInfo->pWrData = msgs[i].buf;
+            restart_write_cnt = msgs[i].len;
+	    	for (i = 0; i < restart_write_cnt; i++) {
+		   	restart_w_data[i] = msgs[i].buf[i];
+	    	}
+        	restart_en = 1;						
 			continue;
 		}
 
 		if ( msgs[i].flags & I2C_M_RD) {
 			pstCmdInfo->dRdDataCnt = msgs[i].len;
 			pstCmdInfo->pRdData = msgs[i].buf;
+			if(restart_en == 1){
+		    	pstCmdInfo->dWrDataCnt = restart_write_cnt;
+		    	pstCmdInfo->pWrData = restart_w_data;				
+		    	DBG_INFO("I2C_M_RD dWrDataCnt =%d ",pstCmdInfo->dWrDataCnt);
+		    	DBG_INFO("I2C_M_RD pstCmdInfo->pWrData[0] =%x ",pstCmdInfo->pWrData[0]);
+			    DBG_INFO("I2C_M_RD pstCmdInfo->pWrData[1] =%x ",pstCmdInfo->pWrData[1]);	
+		    	restart_en = 0;			
+			    pstCmdInfo->dRestartEn = 1;
+	    	}
 #ifdef SUPPORT_I2C_GDMA
       if (pstCmdInfo->dRdDataCnt < 4)
 			   ret = sp_i2cm_read(pstCmdInfo);
@@ -1548,10 +1576,12 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	p_adap->class = 0;
 	p_adap->retries = 5;
 	p_adap->dev.parent = &pdev->dev;
+	p_adap->dev.of_node = pdev->dev.of_node; 
 
 	ret = i2c_add_numbered_adapter(p_adap);
 	if (ret < 0) {
 		DBG_ERR("[I2C adapter] error add adapter %s\n", p_adap->name);
+		goto free_dma;
 	} else {
 		DBG_INFO("[I2C adapter] add adapter %s success\n", p_adap->name);
 		platform_set_drvdata(pdev, pstSpI2CInfo);
@@ -1592,6 +1622,7 @@ static int sp_i2c_remove(struct platform_device *pdev)
 
 	i2c_del_adapter(p_adap);
 	if (p_adap->nr < I2C_MASTER_NUM) {
+		clk_disable_unprepare(pstSpI2CInfo->clk);
 	  reset_control_assert(pstSpI2CInfo->rstc);
 		free_irq(pstSpI2CInfo->irq, NULL);
 	}
