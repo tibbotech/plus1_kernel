@@ -9,8 +9,8 @@
 #include "l2sw_desc.h"
 
 
-#define NEXT_TX(N)              ((N) = ((N)+1 == TX_DESC_NUM ? 0 : (N)+1))
-#define NEXT_RX(QUEUE, N)       (N = ((N)+1 == mac->mac_comm->rx_desc_num[QUEUE]) ? 0 : (N)+1)
+#define NEXT_TX(N)              ((N) = (((N)+1) == TX_DESC_NUM)? 0: (N)+1)
+#define NEXT_RX(QUEUE, N)       ((N) = (((N)+1) == mac->mac_comm->rx_desc_num[QUEUE])? 0: (N)+1)
 
 #define RX_NAPI_WEIGHT          64
 

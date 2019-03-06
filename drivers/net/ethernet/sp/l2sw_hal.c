@@ -7,7 +7,7 @@ static struct l2sw_reg* ls2w_reg_base = NULL;
 int l2sw_reg_base_set(void __iomem *baseaddr)
 {
 	ls2w_reg_base = (struct l2sw_reg*)baseaddr;
-	ETH_INFO("[%s] ls2w_reg_base =0x%08x\n", __FUNCTION__, (int)ls2w_reg_base);
+	ETH_INFO("[%s] ls2w_reg_base = 0x%08x\n", __FUNCTION__, (int)ls2w_reg_base);
 
 	if (ls2w_reg_base == NULL){
 		return -1;
@@ -123,7 +123,7 @@ void mac_hw_addr_del(struct l2sw_mac *mac)
 	HWREG_W(w_mac_47_16, mac->mac_addr[2]+(mac->mac_addr[3]<<8)+(mac->mac_addr[4]<<16)+(mac->mac_addr[5]<<24));
 	wmb();
 
-	HWREG_W(wt_mac_ad0,(0x1<<12)+(mac->vlan_id<<7)+0x1);
+	HWREG_W(wt_mac_ad0, (0x1<<12)+(mac->vlan_id<<7)+0x1);
 	wmb();
 	do {
 		reg = HWREG_R(wt_mac_ad0);
@@ -237,8 +237,9 @@ void rx_mode_set(struct l2sw_mac *mac)
 #define MDIO_WRITE_CMD  0x01
 
 
-static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata){
-	u32 value, time=0;
+static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata)
+{
+	u32 value, time = 0;
 
 	HWREG_W(phy_cntl_reg0, (wdata << 16) | (op_cd << 13) | (dev_reg_addr << 8) | phy_addr);
 	wmb();
@@ -261,7 +262,7 @@ u32 mdio_read(u32 phy_id, u16 regnum)
 {
 	int sdVal = 0;
 
-	sdVal = mdio_access(MDIO_READ_CMD,regnum,phy_id,0);
+	sdVal = mdio_access(MDIO_READ_CMD, regnum, phy_id, 0);
 	if (sdVal < 0)
 		return -EIO;
 
@@ -272,7 +273,7 @@ u32 mdio_write(u32 phy_id, u32 regnum, u16 val)
 {
 	int sdVal = 0;
 
-	sdVal = mdio_access(MDIO_WRITE_CMD,regnum,phy_id,val);
+	sdVal = mdio_access(MDIO_WRITE_CMD, regnum, phy_id, val);
 	if (sdVal < 0)
 		return -EIO;
 
@@ -286,7 +287,7 @@ inline void rx_finished(u32 queue, u32 rx_count)
 inline void tx_trigger(u32 tx_pos)
 {
 	wmb();
-	HWREG_W(cpu_tx_trig,(0x1<<0));
+	HWREG_W(cpu_tx_trig, (0x1<<0));
 	wmb();
 }
 
