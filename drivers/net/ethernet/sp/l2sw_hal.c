@@ -17,31 +17,6 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 	}
 }
 
-void l2sw_pinmux_set()
-{
-	gpio_pin_mux_sel(PMX_L2SW_CLK_OUT,40);
-	gpio_pin_mux_sel(PMX_L2SW_MAC_SMI_MDC,34);
-	gpio_pin_mux_sel(PMX_L2SW_LED_FLASH0,35);
-	gpio_pin_mux_sel(PMX_L2SW_LED_FLASH1,23);
-	gpio_pin_mux_sel(PMX_L2SW_LED_ON0,44);
-	gpio_pin_mux_sel(PMX_L2SW_LED_ON1,32);
-	gpio_pin_mux_sel(PMX_L2SW_MAC_SMI_MDIO,33);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_TXEN,43);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_TXD0,41);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_TXD1,42);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_CRSDV,37);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_RXD0,38);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_RXD1,39);
-	gpio_pin_mux_sel(PMX_L2SW_P0_MAC_RMII_RXER,36);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_TXEN,31);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_TXD0,29);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_TXD1,30);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_CRSDV,25);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_RXD0,26);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_RXD1,27);
-	gpio_pin_mux_sel(PMX_L2SW_P1_MAC_RMII_RXER,24);
-}
-
 void mac_hw_stop(void)
 {
 	u32 reg;
