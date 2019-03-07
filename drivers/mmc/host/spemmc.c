@@ -511,6 +511,7 @@ void dump_emmc_all_regs(SPEMMCHOST *host)
 static void spemmc_irq_normDMA(SPEMMCHOST *host)
 {
 	struct mmc_data *data = host->mrq->data;
+	struct mmc_command *stop = host->mrq->stop;
 
 	/* Get response */
 	spemmc_get_response_48(host);
@@ -521,8 +522,34 @@ static void spemmc_irq_normDMA(SPEMMCHOST *host)
 		data->bytes_xfered = data->blocks * data->blksz;
 	} else {
 		EPRINTK("normal DMA error!\n");
-		Sd_Bus_Reset_Channel(host);
+		Reset_Controller(host);
 		data->bytes_xfered = 0;
+	}
+
+	if (stop) {
+		/* Configure Group SD Registers */
+		host->base->sd_cmdbuf[3] = (u8)(stop->opcode | 0x40);	/* add start bit, according to spec, command format */
+		host->base->sd_cmdbuf[2] = (u8)((stop->arg >> 24) & 0x000000ff);
+		host->base->sd_cmdbuf[1] = (u8)((stop->arg >> 16) & 0x000000ff);
+		host->base->sd_cmdbuf[0] = (u8)((stop->arg >>  8) & 0x000000ff);
+		host->base->sd_cmdbuf[4] = (u8)((stop->arg >>  0) & 0x000000ff);
+		host->base->sd_trans_mode = 0x0;
+		host->base->sdautorsp = 1;
+		host->base->sdcmddummy = 1;
+		host->base->sdrspchk_en = 0x1;
+		host->base->sdrsptype = 0x0;
+
+		/* Configure SD INT reg (Disable them) */
+		host->base->hwdmacmpen = 0;
+		host->base->sdcmpen = 0x0;
+
+		host->base->sdctrl0 = 1;   /* Start transaction */
+		while (1) {
+			if (host->base->sdstate_new & SDSTATE_NEW_FINISH_IDLE)
+				break;
+			if (host->base->sdstate_new & SDSTATE_NEW_ERROR_TIMEOUT)
+				break;
+		}
 	}
 
 	host->base->sd_cmp_clr = 1;
@@ -846,10 +873,13 @@ static void spemmc_set_data_info(SPEMMCHOST *host, struct mmc_data * data)
 			host->base->sdautorsp = 1;
 			host->base->sd_trans_mode = 1;
 		}
+		host->base->sd_len_mode = 1;
+		#if 0
 		if (host->mrq->stop)
 			host->base->sd_len_mode = 0;
 		else
 			host->base->sd_len_mode = 1;
+		#endif
 
 		host->base->sdpiomode = 0;
 		host->base->hw_dma_en = 0;

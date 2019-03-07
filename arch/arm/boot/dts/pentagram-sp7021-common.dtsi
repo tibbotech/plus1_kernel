@@ -560,6 +560,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_0>;
 			spi-max-frequency = <10000000>;
+ 		  #address-cells = <1>;
+		  #size-cells = <0>;
 			spi0: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
@@ -583,6 +585,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_1>;
 			spi-max-frequency = <10000000>;
+ 		  #address-cells = <1>;
+		  #size-cells = <0>;
 			spi1: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
@@ -605,6 +609,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_2>;
 			spi-max-frequency = <10000000>;
+ 		  #address-cells = <1>;
+		  #size-cells = <0>;
 			spi2: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
