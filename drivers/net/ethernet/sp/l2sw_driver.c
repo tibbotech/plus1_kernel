@@ -613,40 +613,50 @@ static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
 
 static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int cmd)
 {
-#if 0
 	struct l2sw_mac *mac = netdev_priv(net_dev);
-	struct phy_device *phydev = mac->mac_comm->phy_dev;
-#endif
 	struct mii_ioctl_data *data = if_mii(ifr);
+	unsigned long flags;
 
 	//ETH_INFO("[%s] IN\n", __FUNCTION__);
-	//ETH_INFO("[%s] if = %s, cmd = 0x%x\n", __FUNCTION__, ifr->ifr_ifrn.ifrn_name, cmd);
-#if 0
-	if (!netif_running(dev))
-	{
-		ETH_ERR("[%s] Interface is running!\n", __FUNCTION__);
-		return -EINVAL;
-	}
+	//ETH_INFO("[%s] if = %s, cmd = 0x%04x\n", __FUNCTION__, ifr->ifr_ifrn.ifrn_name, cmd);
+	//ETH_INFO(" phy_id = %d, reg_num = %d, val_in = %04x\n", data->phy_id, data->reg_num, data->val_in);
 
-	ETH_INFO("[%s] L:%d\n", __FUNCTION__, __LINE__);
-	if (!phydev)
-		return -ENODEV;
-	ETH_INFO("[%s] L:%d\n", __FUNCTION__, __LINE__);
-#endif
+	// Check parameters' range.
+	if ((cmd == SIOCGMIIREG) || (cmd == SIOCSMIIREG)) {
+		if (data->phy_id > 1) {
+			ETH_ERR("[%s] phy_id (= %d) excesses range!\n", __func__, (int)data->phy_id);
+			return -EINVAL;
+		}
+
+		if (data->reg_num > 31) {
+			ETH_ERR("[%s] reg_num (= %d) excesses range!\n", __func__, (int)data->reg_num);
+			return -EINVAL;
+		}
+	}
 
 	switch (cmd) {
 	case SIOCGMIIPHY:
-		return 0;
+#ifdef CONFIG_DUAL_NIC
+		if (mac->lan_port == 1) {
+			return PHY1_ADDR;
+		} else {
+			return PHY0_ADDR;       // Always return Phy 0.
+		}
+#else
+		return PHY0_ADDR;               // Always return Phy 0.
+#endif
 
 	case SIOCGMIIREG:
-		 /*tmp for SMII AC timing measure, only for port0 phy0*/
-		data->val_out =  mdio_read(PHY0_ADDR, data->reg_num);
+		spin_lock_irqsave(&mac->mac_comm->lock, flags);
+		data->val_out =  mdio_read(data->phy_id, data->reg_num);
+		spin_unlock_irqrestore(&mac->mac_comm->lock, flags);
+		//ETH_INFO(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
-		//return phy_mii_ioctl(phydev, ifr, cmd);
-		/*tmp for SMII AC timing measure, only for port0 phy0*/
-		mdio_write(PHY0_ADDR, data->reg_num, data->val_in);
+		spin_lock_irqsave(&mac->mac_comm->lock, flags);
+		mdio_write(data->phy_id, data->reg_num, data->val_in);
+		spin_unlock_irqrestore(&mac->mac_comm->lock, flags);
 		break;
 
 	default:
