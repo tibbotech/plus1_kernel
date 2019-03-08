@@ -743,15 +743,27 @@ static u32 init_netdev(struct platform_device *pdev)
 	 */
 	spin_lock_init(&mac->mac_comm->lock);
 
-	// Get memory resoruce from dts.
+	// Get memory resoruce 0 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
-		ETH_INFO(" r_mem->start = 0x%08x\n", r_mem->start);
+		//ETH_INFO(" r_mem->start = 0x%08x\n", r_mem->start);
 		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ETH_ERR("[%s] ioremap failed!\n", __FUNCTION__);
 			goto out_free_mac_comm;
 		}
 	} else {
-		ETH_ERR("[%s] No MEM resource found!\n", __FUNCTION__);
+		ETH_ERR("[%s] No MEM resource 0 found!\n", __FUNCTION__);
+		goto out_free_mac_comm;
+	}
+
+	// Get memory resoruce 1 from dts.
+	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
+		//ETH_INFO(" r_mem->start = 0x%08x\n", r_mem->start);
+		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+			ETH_ERR("[%s] ioremap failed!\n", __FUNCTION__);
+			goto out_free_mac_comm;
+		}
+	} else {
+		ETH_ERR("[%s] No MEM resource 1 found!\n", __FUNCTION__);
 		goto out_free_mac_comm;
 	}
 

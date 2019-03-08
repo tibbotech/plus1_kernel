@@ -2,6 +2,7 @@
 
 
 static struct l2sw_reg* ls2w_reg_base = NULL;
+static struct moon5_reg* moon5_reg_base = NULL;
 
 
 int l2sw_reg_base_set(void __iomem *baseaddr)
@@ -10,6 +11,19 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 	ETH_INFO("[%s] ls2w_reg_base = 0x%08x\n", __FUNCTION__, (int)ls2w_reg_base);
 
 	if (ls2w_reg_base == NULL){
+		return -1;
+	}
+	else{
+		return 0;
+	}
+}
+
+int moon5_reg_base_set(void __iomem *baseaddr)
+{
+	moon5_reg_base = (struct moon5_reg*)baseaddr;
+	ETH_INFO("[%s] moon5_reg_base = 0x%08x\n", __FUNCTION__, (int)moon5_reg_base);
+
+	if (moon5_reg_base == NULL){
 		return -1;
 	}
 	else{
@@ -289,11 +303,10 @@ inline u32 read_port_ability(void)
 void l2sw_enable_port(struct platform_device *pdev)
 {
 	u32 reg;
-	//volatile struct moon_regs * MOON5_REG = (volatile struct moon_regs *)devm_ioremap(&pdev->dev ,RF_GRP(5, 0), 32);
 
 	//set clock
-	//reg = MOON5_REG->sft_cfg[5];
-	//MOON5_REG->sft_cfg[5] = (reg|0xF<<16|0xF);
+	reg = MOON5REG_R(mo4_l2sw_clksw_ctl);
+	MOON5REG_W(mo4_l2sw_clksw_ctl, reg | (0xf<<16) | 0xf);
 
 	//phy address
 	reg = HWREG_R(mac_force_mode);

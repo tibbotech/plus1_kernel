@@ -85,11 +85,17 @@ struct l2sw_reg {
 	u32 cpu_port_cntl_reg_1;
 };
 
-#define REG_BASE           0x9c000000
-#define RF_GRP(_grp, _reg) ((((_grp) * 32 + (_reg)) * 4) + REG_BASE)
-
-struct moon_regs {
-	unsigned int sft_cfg[32];
+//=================================================================================================
+/*
+ * TYPE: RegisterFile_MOON5
+ */
+struct moon5_reg {
+	u32 mo5_thermal_ctl_0;
+	u32 mo5_thermal_ctl_1;
+	u32 mo4_thermal_ctl_2;
+	u32 mo4_thermal_ctl_3;
+	u32 mo4_tmds_l2sw_ctl;
+	u32 mo4_l2sw_clksw_ctl;
 };
 
 #endif

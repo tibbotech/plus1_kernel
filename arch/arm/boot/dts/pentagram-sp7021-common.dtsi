@@ -510,7 +510,8 @@
 
 		l2sw: l2sw@0x9c108000 {
 			compatible = "sunplus,sp7021-l2sw";
-			reg = <0x9c108000 0x400>;
+			reg = <0x9c108000 0x400>, <0x9c000280 0x80>;
+			reg-names = "l2sw", "moon5";
 			interrupt-parent = <&intc>;
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc L2SW>;
