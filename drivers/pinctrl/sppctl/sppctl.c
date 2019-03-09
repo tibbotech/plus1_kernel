@@ -241,6 +241,7 @@ static const struct of_device_id sppctl_dt_ids[] = {
  { .compatible = "sunplus,sp7021-sppctl", },
  { .compatible = "tps,sppctl", },
  { .compatible = "tibbo,sppctl", },
+ { .compatible = "sunplus,sc7021-pctl", },
  { /* zero */ }
 };
 MODULE_DEVICE_TABLE(of, sppctl_dt_ids);
