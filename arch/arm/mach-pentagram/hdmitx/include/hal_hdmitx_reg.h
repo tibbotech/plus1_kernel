@@ -6,10 +6,10 @@
 typedef volatile struct reg_hdmitx_s
 {
 	// GROUP 380 HDMI G0
-	unsigned int hdmi_vendor_id;                          //0, 0x0, 0xbffe3e00
-	unsigned int hdmi_device_id;                          //1, 0x1, 0xbffe3e04
-	unsigned int hdmi_revision;                           //2, 0x2, 0xbffe3e08
-	unsigned int hdmi_reserved_0003;                      //3, 0x3 0xbffe3e0c
+	unsigned int hdmi_vendor_id;                          //0, 0x0
+	unsigned int hdmi_device_id;                          //1, 0x1
+	unsigned int hdmi_revision;                           //2, 0x2
+	unsigned int hdmi_reserved_0003;                      //3, 0x3
 	unsigned int hdmi_reserved_0004;                      //4, 0x4
 	unsigned int hdmi_pwr_ctrl;                           //5, 0x5
 	unsigned int hdmi_sw_reset;                           //6, 0x6
@@ -308,15 +308,6 @@ typedef volatile struct reg_moon4_s
 
 typedef volatile struct reg_moon5_s {
 	unsigned int sft_cfg[32];
-} reg_moon5_s;
-
-#define MOON0_REGISTER_OFFSET VA_IOB_ADDR(0x0)
-#define MOON4_REGISTER_OFFSET VA_IOB_ADDR(0x200)
-#define MOON5_REGISTER_OFFSET VA_IOB_ADDR(0x280)
-#define HDMITX_REGISTER_OFFSET VA_IOB_ADDR(0xbe00)
-#define hdmitx_regs ((volatile reg_hdmitx_t *) HDMITX_REGISTER_OFFSET)
-#define moon0_regs ((volatile reg_moon0_t *) MOON0_REGISTER_OFFSET)
-#define moon4_regs ((volatile reg_moon4_t *) MOON4_REGISTER_OFFSET)
-#define moon5_regs ((volatile reg_moon5_s *) MOON5_REGISTER_OFFSET)
+} reg_moon5_t;
 
 #endif // end of #ifndef __REG_HDMITX_H__

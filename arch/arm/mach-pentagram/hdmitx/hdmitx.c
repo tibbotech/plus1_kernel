@@ -16,6 +16,9 @@
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
 #include <mach/hdmitx.h>
+#include <linux/of_device.h>
+#include <linux/clk.h>
+#include <linux/reset.h>
 #include "include/hal_hdmitx.h"
 
 /*----------------------------------------------------------------------------*
@@ -141,6 +144,18 @@ static unsigned char g_hpd_in = FALSE;
 static unsigned char g_rx_ready = FALSE;
 static struct hdmitx_config g_cur_hdmi_cfg;
 static struct hdmitx_config g_new_hdmi_cfg;
+
+typedef struct {
+	void __iomem *moon4base;
+	void __iomem *moon5base;
+	void __iomem *hdmitxbase;	
+	struct miscdevice *hdmitx_misc;
+	struct clk *clk;
+	struct device *dev;
+} sp_hdmitx_t;
+
+static sp_hdmitx_t *sp_hdmitx;
+
 /*----------------------------------------------------------------------------*
  *					EXTERNAL DECLARATIONS
  *---------------------------------------------------------------------------*/
@@ -191,7 +206,7 @@ static void config_video(struct hdmitx_video_attribute *video)
 			attr.input_fmt    = PIXEL_FORMAT_RGB;
 			attr.output_fmt   = PIXEL_FORMAT_YUV444;
 			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV222:
+		case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV422:
 			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
 			attr.output_range = QUANTIZATION_RANGE_LIMITED;
 			attr.input_fmt    = PIXEL_FORMAT_RGB;
@@ -230,7 +245,7 @@ static void config_video(struct hdmitx_video_attribute *video)
 		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_FULL_RGB:
 			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
 			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
+			attr.input_fmt    = PIXEL_FORMAT_YUV422;
 			attr.output_fmt   = PIXEL_FORMAT_RGB;
 			break;
 		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_YUV444:
@@ -356,17 +371,17 @@ static void config_audio(struct hdmitx_audio_attribute *audio)
 
 static void start(void)
 {
-	hal_hdmitx_start();
+	hal_hdmitx_start(sp_hdmitx->moon4base, sp_hdmitx->moon5base, sp_hdmitx->hdmitxbase);
 }
 
 static void stop(void)
 {
-	hal_hdmitx_stop();
+	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
-static void process_hdp_state(void)
+static void process_hpd_state(void)
 {
-	HDMITX_DBG("HDP State\n");
+	HDMITX_DBG("HPD State\n");
 
 	if (get_hpd_in()) {
 	#ifdef EDID_READ
@@ -440,26 +455,26 @@ static void process_hdcp_state(void)
 
 static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 {
-	if (hal_hdmitx_get_interrupt0_status(INTERRUPT0_HDP)) {
+	if (hal_hdmitx_get_interrupt0_status(INTERRUPT0_HDP, sp_hdmitx->hdmitxbase)) {
 
-		if (hal_hdmitx_get_system_status(SYSTEM_STUS_HPD_IN)) {
+		if (hal_hdmitx_get_system_status(SYSTEM_STUS_HPD_IN, sp_hdmitx->hdmitxbase)) {
 			g_hpd_in = TRUE;
 		} else {
 			g_hpd_in = FALSE;
 		}
 
-		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_HDP);
+		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_HDP, sp_hdmitx->hdmitxbase);
 	}
 
-	if (hal_hdmitx_get_interrupt0_status(INTERRUPT0_RSEN)) {
+	if (hal_hdmitx_get_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase)) {
 
-		if (hal_hdmitx_get_system_status(SYSTEM_STUS_RSEN_IN)) {
+		if (hal_hdmitx_get_system_status(SYSTEM_STUS_RSEN_IN, sp_hdmitx->hdmitxbase)) {
 			g_rx_ready = TRUE;
 		} else {
 			g_rx_ready = FALSE;
 		}
 
-		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN);
+		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase);
 	}
 
 	return IRQ_HANDLED;
@@ -471,7 +486,7 @@ static int hdmitx_state_handler(void *data)
 
 		switch (g_hdmitx_state) {
 			case FSM_HPD:
-				process_hdp_state();
+				process_hpd_state();
 				break;
 			case FSM_RSEN:
 				process_rsen_state();
@@ -546,12 +561,12 @@ void hdmitx_disable_display(void)
 
 void hdmitx_enable_pattern(void)
 {
-	hal_hdmitx_enable_pattern();
+	hal_hdmitx_enable_pattern(sp_hdmitx->hdmitxbase);
 }
 
 void hdmitx_disable_pattern(void)
 {
-	hal_hdmitx_disable_pattern();
+	hal_hdmitx_disable_pattern(sp_hdmitx->hdmitxbase);
 }
 
 EXPORT_SYMBOL(hdmitx_enable_display);
@@ -653,10 +668,56 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 static int hdmitx_probe(struct platform_device *pdev)
 {
 	int err, irq;
+	const struct of_device_id *match;
+	struct device *dev = &pdev->dev;
+	struct resource *res;
+	struct reset_control *rstc;
+	int ret;
+
+	match = of_match_device(dev->driver->of_match_table, dev);
+	if (!match) {
+		return -EINVAL;
+	}
+
+	sp_hdmitx = (sp_hdmitx_t *)devm_kzalloc(&pdev->dev, sizeof(sp_hdmitx_t), GFP_KERNEL);
+	if (!sp_hdmitx) {
+		return -ENOMEM;
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	sp_hdmitx->hdmitxbase = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sp_hdmitx->hdmitxbase)) {
+		return PTR_ERR(sp_hdmitx->hdmitxbase);
+	}
+	
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	sp_hdmitx->moon4base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sp_hdmitx->moon4base)) {
+		return PTR_ERR(sp_hdmitx->moon4base);
+	}
+
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	sp_hdmitx->moon5base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sp_hdmitx->moon5base)) {
+		return PTR_ERR(sp_hdmitx->moon5base);
+	}	
+	
+	rstc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(rstc)) {
+		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
+		return PTR_ERR(rstc);
+	}
+
+	ret = reset_control_deassert(rstc);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
+		return -ENODEV;
+	}
+	
 	printk("================== hdmitx_probe1\n");
 	/*initialize hardware settings*/
-	hal_hdmitx_init();
-
+	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
+	
 	/*initialize software settings*/
 	// reset hdmi config
 	g_cur_hdmi_cfg.mode              = HDMITX_MODE_HDMI;
@@ -682,7 +743,7 @@ static int hdmitx_probe(struct platform_device *pdev)
 		HDMITX_ERR("devm_request_irq failed: %d\n", err);
 		return err;
 	}
-
+	
 	// create thread
 	g_hdmitx_task = kthread_run(hdmitx_state_handler, NULL, "hdmitx_task");
 	if (IS_ERR(g_hdmitx_task)) {
@@ -692,18 +753,29 @@ static int hdmitx_probe(struct platform_device *pdev)
 	}
 
 	// registry device
+	sp_hdmitx->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(sp_hdmitx->clk)) {
+		return PTR_ERR(sp_hdmitx->clk);
+	}
+
+	clk_prepare_enable(sp_hdmitx->clk);
+	
+	sp_hdmitx->dev = dev;
+	sp_hdmitx->hdmitx_misc = &g_hdmitx_misc;
 	err = misc_register(&g_hdmitx_misc);
 	if (err) {
 		HDMITX_ERR("misc_register failed: %d\n", err);
 		return err;
 	}
-
+	
 	// init mutex
 	mutex_init(&g_hdmitx_mutex);
 
 	//
 	wake_up_process(g_hdmitx_task);
 	g_hdmitx_state = FSM_HPD;
+
+	//platform_set_drvdata(pdev, sp_hdmitx);
 
 	return 0;
 }
@@ -713,8 +785,9 @@ static int hdmitx_remove(struct platform_device *pdev)
 	int err = 0;
 
 	/*deinitialize hardware settings*/
-	hal_hdmitx_deinit();
-
+	hal_hdmitx_deinit(sp_hdmitx->hdmitxbase);
+        clk_disable(sp_hdmitx->clk);
+	
 	/*deinitialize software settings*/
 	if (g_hdmitx_task) {
 		err = kthread_stop(g_hdmitx_task);

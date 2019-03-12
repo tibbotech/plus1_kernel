@@ -146,15 +146,15 @@ struct hal_hdmitx_audio_attribute {
  *					FUNCTION DECLARATIONS
  *---------------------------------------------------------------------------*/
 
-void hal_hdmitx_init(void);
+void hal_hdmitx_init(void __iomem *hdmitxbase);
 
-void hal_hdmitx_deinit(void);
+void hal_hdmitx_deinit(void __iomem *hdmitxbase);
 
-unsigned char hal_hdmitx_get_interrupt0_status(enum hal_hdmitx_interrupt0 intr);
+unsigned char hal_hdmitx_get_interrupt0_status(enum hal_hdmitx_interrupt0 intr, void __iomem *hdmitxbase);
 
-void hal_hdmitx_clear_interrupt0_status(enum hal_hdmitx_interrupt0 intr);
+void hal_hdmitx_clear_interrupt0_status(enum hal_hdmitx_interrupt0 intr, void __iomem *hdmitxbase);
 
-unsigned char hal_hdmitx_get_system_status(enum hal_hdmitx_system_status sys);
+unsigned char hal_hdmitx_get_system_status(enum hal_hdmitx_system_status sys, void __iomem *hdmitxbase);
 
 void hal_hdmitx_set_hdmi_mode(unsigned char is_hdmi);
 
@@ -166,13 +166,13 @@ void hal_hdmitx_get_audio(struct hal_hdmitx_audio_attribute *audio);
 
 void hal_hdmitx_config_audio(struct hal_hdmitx_audio_attribute *audio);
 
-void hal_hdmitx_start(void);
+void hal_hdmitx_start(void __iomem *moon4base, void __iomem *moon5base, void __iomem *hdmitxbase);
 
-void hal_hdmitx_stop(void);
+void hal_hdmitx_stop(void __iomem *hdmitxbase);
 
-void hal_hdmitx_enable_pattern(void);
+void hal_hdmitx_enable_pattern(void __iomem *hdmitxbase);
 
-void hal_hdmitx_disable_pattern(void);
+void hal_hdmitx_disable_pattern(void __iomem *hdmitxbase);
 
 #endif // __HAL_HDMITX_H__
 
