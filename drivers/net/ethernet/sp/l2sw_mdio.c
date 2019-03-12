@@ -20,7 +20,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *netdev)
 
 #ifdef PHY_CONFIG
 	struct resource res;
-	struct device_node *np = of_get_parent(mac->mac_comm->phy_node);
+	struct device_node *np = of_get_parent(mac->comm->phy_node);
 #endif
 
 	if ((mii_bus = mdiobus_alloc()) == NULL) {
@@ -33,7 +33,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *netdev)
 	mii_bus->priv = mac;
 	mii_bus->read = mii_read;
 	mii_bus->write = mii_write;
-	//mii_bus->irq = mac->mac_comm->phy_irq;
+	//mii_bus->irq = mac->comm->phy_irq;
 	for (i = 0; i < PHY_MAX_ADDR; ++i) {
 		mii_bus->irq[i] = PHY_POLL;
 	}
@@ -51,13 +51,13 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *netdev)
 #ifdef PHY_CONFIG
 	of_address_to_resource(np, 0, &res);
 	snprintf(mii_bus->id, MII_BUS_ID_SIZE, "%.8llx", (unsigned long long)res.start);
-	if (mac->mac_comm->phy_node) {
+	if (mac->comm->phy_node) {
 		if (of_mdiobus_register(mii_bus, np)) {
 			ETH_ERR("[%s] Failed to register mii bus (ret = %d)!\n", __FUNCTION__, ret);
 			mdiobus_free(mii_bus);
 		}
 	}else{
-		mac->mac_comm->mii_bus = mii_bus;
+		mac->comm->mii_bus = mii_bus;
 		return 0;
 	}
 	//if (ret = of_mdiobus_register(mii_bus, np)){
@@ -73,16 +73,16 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *netdev)
 	}
 #endif
 
-	mac->mac_comm->mii_bus = mii_bus;
+	mac->comm->mii_bus = mii_bus;
 	return ret;
 }
 
 void mdio_remove(struct l2sw_mac *mac)
 {
-	if (mac->mac_comm->mii_bus != NULL) {
-		mdiobus_unregister(mac->mac_comm->mii_bus);
-		mdiobus_free(mac->mac_comm->mii_bus);
-		mac->mac_comm->mii_bus = NULL;
+	if (mac->comm->mii_bus != NULL) {
+		mdiobus_unregister(mac->comm->mii_bus);
+		mdiobus_free(mac->comm->mii_bus);
+		mac->comm->mii_bus = NULL;
 	}
 }
 
@@ -98,15 +98,15 @@ int mac_phy_probe(struct net_device *netdev)
 	struct l2sw_mac *mac = netdev_priv(netdev);
 	struct phy_device *phydev = NULL;
 
-	if (!mac->mac_comm->phy_node) {
+	if (!mac->comm->phy_node) {
 		ETH_ERR("[%s] No PHY setup!\n", __FUNCTION__);
 		return 0;
 	}
 
 #ifdef PHY_CONFIG
-	if (mac->mac_comm->phy_node) {
+	if (mac->comm->phy_node) {
 		phydev = of_phy_connect(mac->net_dev,
-					mac->mac_comm->phy_node,
+					mac->comm->phy_node,
 					mii_linkchange,
 					0,
 					PHY_INTERFACE_MODE_RGMII_ID);
@@ -118,8 +118,8 @@ int mac_phy_probe(struct net_device *netdev)
 #else
 	/* find the first (lowest address) PHY on the current MAC's MII bus */
 	for (phyaddr = 0; phyaddr < PHY_MAX_ADDR; phyaddr++) {
-		if (mac->mac_comm->mii_bus->phy_map[phyaddr]) {
-			phydev = mac->mac_comm->mii_bus->phy_map[phyaddr];
+		if (mac->comm->mii_bus->phy_map[phyaddr]) {
+			phydev = mac->comm->mii_bus->phy_map[phyaddr];
 			break; /* break out with first one found */
 		}
 	}
@@ -143,7 +143,7 @@ int mac_phy_probe(struct net_device *netdev)
 
 	phydev->advertising = phydev->supported;
 	phydev->irq = PHY_IGNORE_INTERRUPT;
-	mac->mac_comm->phy_dev = phydev;
+	mac->comm->phy_dev = phydev;
 #endif /* PHY_RUN_STATEMACHINE */
 
 	return 0;
@@ -154,15 +154,15 @@ void mac_phy_start(struct net_device *netdev)
 	struct l2sw_mac *mac = netdev_priv(netdev);
 
 #ifdef PHY_RUN_STATEMACHINE
-	phy_start(mac->mac_comm->phy_dev);
+	phy_start(mac->comm->phy_dev);
 #else
 	u32 phyaddr;
 	struct phy_device *phydev = NULL;
 
 	/* find the first (lowest address) PHY on the current MAC's MII bus */
 	for (phyaddr = 0; phyaddr < PHY_MAX_ADDR; phyaddr++) {
-		if (mac->mac_comm->mii_bus->phy_map[phyaddr]) {
-			phydev = mac->mac_comm->mii_bus->phy_map[phyaddr];
+		if (mac->comm->mii_bus->phy_map[phyaddr]) {
+			phydev = mac->comm->mii_bus->phy_map[phyaddr];
 			break; /* break out with first one found */
 		}
 	}
@@ -177,7 +177,7 @@ void mac_phy_start(struct net_device *netdev)
 			      SUPPORTED_Asym_Pause);
 	phydev->advertising = phydev->supported;
 	phydev->irq = PHY_IGNORE_INTERRUPT;
-	mac->mac_comm->phy_dev = phydev;
+	mac->comm->phy_dev = phydev;
 
 	phy_start_aneg(phydev);
 #endif
@@ -187,12 +187,12 @@ void mac_phy_stop(struct net_device *netdev)
 {
 	struct l2sw_mac *mac = netdev_priv(netdev);
 
-	if (mac->mac_comm->phy_dev != NULL) {
+	if (mac->comm->phy_dev != NULL) {
 #ifdef PHY_RUN_STATEMACHINE
-		phy_stop(mac->mac_comm->phy_dev);
+		phy_stop(mac->comm->phy_dev);
 #else
-		phy_detach(mac->mac_comm->phy_dev);
-		mac->mac_comm->phy_dev = NULL;
+		phy_detach(mac->comm->phy_dev);
+		mac->comm->phy_dev = NULL;
 #endif
 	}
 }
@@ -201,11 +201,11 @@ void mac_phy_remove(struct net_device *netdev)
 {
 	struct l2sw_mac *mac = netdev_priv(netdev);
 
-	if (mac->mac_comm->phy_dev != NULL) {
+	if (mac->comm->phy_dev != NULL) {
 #ifdef PHY_RUN_STATEMACHINE
-		phy_disconnect(mac->mac_comm->phy_dev);
+		phy_disconnect(mac->comm->phy_dev);
 #endif
-		mac->mac_comm->phy_dev = NULL;
+		mac->comm->phy_dev = NULL;
 	}
 }
 

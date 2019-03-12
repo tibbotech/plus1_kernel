@@ -31,15 +31,23 @@ void mac_hw_stop(void);
 
 void mac_hw_reset(struct l2sw_mac *mac);
 
-void mac_hw_start(void);
+void mac_hw_start(struct l2sw_mac *mac);
 
 void mac_hw_addr_set(struct l2sw_mac *mac);
 
 void mac_hw_addr_del(struct l2sw_mac *mac);
 
+void mac_addr_table_del_all(void);
+
 //void mac_hw_addr_print(void);
 
 void mac_hw_init(struct l2sw_mac *mac);
+
+void mac_switch_mode(struct l2sw_mac *mac);
+
+void mac_disable_port_sa_learning(void);
+
+void mac_enable_port_sa_learning(void);
 
 void rx_mode_set(struct l2sw_mac *mac);
 

@@ -50,26 +50,9 @@ void mac_hw_reset(struct l2sw_mac *mac)
 {
 }
 
-void mac_hw_start(void)
+void mac_hw_start(struct l2sw_mac *mac)
 {
 	u32 reg;
-
-#ifdef CONFIG_DUAL_NIC
-	//port 0: VLAN group 0
-	//port 1: VLAN group 1
-	HWREG_W(PVID_config0, (1<<4)+0);
-
-	//VLAN group 0: cpu0+port0
-	//VLAN group 1: cpu0+port1
-	HWREG_W(VLAN_memset_config0, (0xa<<8)+0x9);
-#else
-	//port 0: VLAN group 0
-	//port 1: VLAN group 0
-	HWREG_W(PVID_config0, (0<<4)+0);
-
-	//VLAN group 0: cpu0+port1+port0
-	HWREG_W(VLAN_memset_config0, (0x0<<8)+0xb);
-#endif
 
 	//enable cpu port 0 (6) & port 0 crc padding (8)
 	reg = HWREG_R(cpu_cntl);
@@ -124,6 +107,58 @@ void mac_hw_addr_del(struct l2sw_mac *mac)
 	//mac_hw_addr_print();
 }
 
+void mac_addr_table_del_all(void)
+{
+	u32 reg;
+
+	// Wait for address table being idle.
+	do {
+		reg = HWREG_R(addr_tbl_srch);
+		ndelay(10);
+	} while (!(reg & MAC_ADDR_LOOKUP_IDLE));
+
+	// Search address table from start.
+	HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_BEGIN_SEARCH_ADDR);
+	mb();
+	while (1){
+		do {
+			reg = HWREG_R(addr_tbl_st);
+			ndelay(10);
+			//ETH_INFO(" addr_tbl_st = %08x\n", reg);
+		} while (!(reg & (MAC_AT_TABLE_END|MAC_AT_DATA_READY)));
+
+		if (reg & MAC_AT_TABLE_END) {
+			break;
+		}
+
+		//ETH_INFO(" addr_tbl_st = %08x\n", reg);
+		//ETH_INFO(" @AT #%u: port=0x%01x, cpu=0x%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u\n",
+		//	(reg>>22)&0x3ff, (reg>>12)&0x3, (reg>>10)&0x3, (reg>>7)&0x7,
+		//	(reg>>4)&0x7, (reg>>3)&0x1, (reg>>2)&0x1);
+
+		// Delete all entries which are learnt from lan ports.
+		if ((reg>>12)&0x3) {
+			HWREG_W(w_mac_15_0, HWREG_R(MAC_ad_ser0));
+			wmb();
+			HWREG_W(w_mac_47_16, HWREG_R(MAC_ad_ser1));
+			wmb();
+
+			HWREG_W(wt_mac_ad0, (0x1<<12)+(reg&(0x7<<7))+0x1);
+			wmb();
+			do {
+				reg = HWREG_R(wt_mac_ad0);
+				ndelay(10);
+				//ETH_INFO(" wt_mac_ad0 = 0x%08x\n", reg);
+			} while ((reg&(0x1<<1)) == 0x0);
+			//ETH_INFO(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
+		}
+
+		// Search next.
+		wmb();
+		HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_SEARCH_NEXT_ADDR);
+	}
+}
+
 #if 0
 void mac_hw_addr_print(void)
 {
@@ -176,10 +211,10 @@ void mac_hw_init(struct l2sw_mac *mac)
 	wmb();
 
 	/* descriptor base address */
-	HWREG_W(tx_hbase_addr_0, mac->mac_comm->desc_dma);
-	HWREG_W(tx_lbase_addr_0, mac->mac_comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
-	HWREG_W(rx_lbase_addr_0, mac->mac_comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
-	HWREG_W(rx_hbase_addr_0, mac->mac_comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
+	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma);
+	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
+	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
+	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
 
 	/* phy address */
@@ -194,22 +229,82 @@ void mac_hw_init(struct l2sw_mac *mac)
 	reg = HWREG_R(cpu_cntl);
 	HWREG_W(cpu_cntl, (reg & (~((0x1<<14)|(0x3c<<0)))) | (0x1<<12));
 
-#ifdef CONFIG_DUAL_NIC
-	//RMC forward: to cpu
-	//LED: 60mS
-	//BC storm prev: 31 BC
-	reg = HWREG_R(sw_glb_cntl);
-	HWREG_W(sw_glb_cntl, (reg & (~((0x3<<25)|(0x3<<23)|(0x3<<4)))) | (0x1<<25)|(0x1<<23)|(0x1<<4));
-#else
-	//RMC forward: broadcast
-	//LED: 60mS
-	//BC storm prev: 31 BC
-	reg = HWREG_R(sw_glb_cntl);
-	HWREG_W(sw_glb_cntl, (reg & (~((0x3<<25)|(0x3<<23)|(0x3<<4)))) | (0x0<<25)|(0x1<<23)|(0x1<<4));
-#endif
+	mac_switch_mode(mac);
 
 	wmb();
 	HWREG_W(sw_int_mask_0, 0x00000000);
+}
+
+void mac_switch_mode(struct l2sw_mac *mac)
+{
+	struct l2sw_common *comm = mac->comm;
+	u32 reg;
+
+	if (comm->dual_nic) {
+		mac->cpu_port = 0x1;            // soc0
+		mac->lan_port = 0x1;            // forward to port 0
+		mac->to_vlan = 0x1;             // vlan group: 0
+		mac->vlan_id = 0x0;             // vlan group: 0
+
+		if (mac->next_netdev) {
+			struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
+
+			mac2->cpu_port = 0x1;   // soc0
+			mac2->lan_port = 0x2;   // forward to port 1
+			mac2->to_vlan = 0x2;    // vlan group: 1
+			mac2->vlan_id = 0x1;    // vlan group: 1
+		}
+
+		//port 0: VLAN group 0
+		//port 1: VLAN group 1
+		HWREG_W(PVID_config0, (1<<4)+0);
+
+		//VLAN group 0: cpu0+port0
+		//VLAN group 1: cpu0+port1
+		HWREG_W(VLAN_memset_config0, (0xa<<8)+0x9);
+
+		//RMC forward: to cpu
+		//LED: 60mS
+		//BC storm prev: 31 BC
+		reg = HWREG_R(sw_glb_cntl);
+		HWREG_W(sw_glb_cntl, (reg & (~((0x3<<25)|(0x3<<23)|(0x3<<4)))) | (0x1<<25)|(0x1<<23)|(0x1<<4));
+	} else {
+		mac->cpu_port = 0x1;            // soc0
+		mac->lan_port = 0x3;            // forward to port 0 and 1
+		mac->to_vlan = 0x1;             // vlan group: 0
+		mac->vlan_id = 0x0;             // vlan group: 0
+
+		//port 0: VLAN group 0
+		//port 1: VLAN group 0
+		HWREG_W(PVID_config0, (0<<4)+0);
+
+		//VLAN group 0: cpu0+port1+port0
+		HWREG_W(VLAN_memset_config0, (0x0<<8)+0xb);
+
+		//RMC forward: broadcast
+		//LED: 60mS
+		//BC storm prev: 31 BC
+		reg = HWREG_R(sw_glb_cntl);
+		HWREG_W(sw_glb_cntl, (reg & (~((0x3<<25)|(0x3<<23)|(0x3<<4)))) | (0x0<<25)|(0x1<<23)|(0x1<<4));
+	}
+}
+
+void mac_disable_port_sa_learning(void)
+{
+	u32 reg;
+
+	// Disable lan port SA learning.
+	reg = HWREG_R(port_cntl1);
+	HWREG_W(port_cntl1, reg | (0x3<<8));
+}
+
+void mac_enable_port_sa_learning(void)
+{
+	u32 reg;
+
+	// Disable lan port SA learning.
+	reg = HWREG_R(port_cntl1);
+	HWREG_W(port_cntl1, reg & (~(0x3<<8)));
 }
 
 void rx_mode_set(struct l2sw_mac *mac)

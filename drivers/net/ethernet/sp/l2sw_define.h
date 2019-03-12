@@ -161,15 +161,18 @@ struct skb_info {
 	u32 len;
 };
 
-struct l2sw_mac_common {
+struct l2sw_common {
 	struct net_device *net_dev;
 	struct platform_device *pdev;
+	int dual_nic;
+	int sa_learning;
 
 	void *desc_base;
 	dma_addr_t desc_dma;
 	s32 desc_size;
 	struct clk *clk;
 	struct reset_control *rstc;
+	int irq;
 	int irq_type;
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
@@ -194,6 +197,8 @@ struct l2sw_mac_common {
 #endif
 
 	spinlock_t lock;
+	spinlock_t ioctl_lock;
+	struct mutex store_mode;
 	volatile u32 int_status;
 
 #ifdef RX_POLLING
@@ -219,11 +224,9 @@ struct l2sw_mac {
 	u8 cpu_port;
 	u8 vlan_id;
 
-	struct l2sw_mac_common *mac_comm;
+	struct l2sw_common *comm;
 
-#ifdef CONFIG_DUAL_NIC
 	struct net_device *next_netdev;
-#endif
 };
 
 

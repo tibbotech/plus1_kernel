@@ -2,7 +2,7 @@
 #include "l2sw_define.h"
 
 
-void rx_descs_flush(struct l2sw_mac_common *mac)
+void rx_descs_flush(struct l2sw_common *mac)
 {
 	u32 i, j;
 	struct mac_desc *rx_desc;
@@ -20,7 +20,7 @@ void rx_descs_flush(struct l2sw_mac_common *mac)
 	}
 }
 
-void tx_descs_clean(struct l2sw_mac_common *mac)
+void tx_descs_clean(struct l2sw_common *mac)
 {
 	u32 i;
 	s32 buflen;
@@ -49,7 +49,7 @@ void tx_descs_clean(struct l2sw_mac_common *mac)
 	}
 }
 
-void rx_descs_clean(struct l2sw_mac_common *mac)
+void rx_descs_clean(struct l2sw_common *mac)
 {
 	u32 i, j;
 	struct skb_info *skbinfo;
@@ -79,13 +79,13 @@ void rx_descs_clean(struct l2sw_mac_common *mac)
 	}
 }
 
-void descs_clean(struct l2sw_mac_common *mac)
+void descs_clean(struct l2sw_common *mac)
 {
 	rx_descs_clean(mac);
 	tx_descs_clean(mac);
 }
 
-void descs_free(struct l2sw_mac_common *mac)
+void descs_free(struct l2sw_common *mac)
 {
 	u32 i;
 
@@ -104,13 +104,13 @@ void descs_free(struct l2sw_mac_common *mac)
 	}
 }
 
-u32 tx_descs_init(struct l2sw_mac_common *mac)
+u32 tx_descs_init(struct l2sw_common *mac)
 {
 	memset(mac->tx_desc, '\0', sizeof(struct mac_desc) * (TX_DESC_NUM+MAC_GUARD_DESC_NUM));
 	return 0;
 }
 
-u32 rx_descs_init(struct l2sw_mac_common *mac)
+u32 rx_descs_init(struct l2sw_common *mac)
 {
 	struct sk_buff *skb;
 	u32 i, j;
@@ -151,7 +151,7 @@ MEM_ALLOC_FAIL:
 	return -ENOMEM;
 }
 
-u32 descs_alloc(struct l2sw_mac_common *mac)
+u32 descs_alloc(struct l2sw_common *mac)
 {
 	u32 i;
 	s32 desc_size;
@@ -180,7 +180,7 @@ u32 descs_alloc(struct l2sw_mac_common *mac)
 	return 0;
 }
 
-u32 descs_init(struct l2sw_mac_common *mac)
+u32 descs_init(struct l2sw_common *mac)
 {
 	u32 i, rc;
 
