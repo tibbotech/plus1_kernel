@@ -32,6 +32,7 @@
 /*----------------------------------------------------------------------------*
  *					DATA TYPES
  *---------------------------------------------------------------------------*/
+
 struct hal_hdmitx_config {
 	unsigned char is_hdmi;
 	struct hal_hdmitx_video_attribute video;
@@ -76,8 +77,10 @@ static unsigned char hdmi_audio_infoframe[HDMI_INFOFRAME_SIZE(AUDIO)] = {HDMI_IN
 /*----------------------------------------------------------------------------*
  *					FUNCTION DECLARATIONS
  *---------------------------------------------------------------------------*/
-static void apply_pixel_clock(void)
+
+static void apply_pixel_clock(void __iomem *moon4base)
 {
+	reg_moon4_t *pMoon4Reg = (reg_moon4_t *)moon4base;
 	enum pixel_clk_mode clk_mode = PIXEL_CLK_MODE_27_MHZ;
 
 	switch (g_hdmitx_cfg.video.timing) {
@@ -95,16 +98,18 @@ static void apply_pixel_clock(void)
 	}
 
 	if (g_pll_tv_cfg[clk_mode].bypass == ENABLE) {
-		moon4_regs->plltv_ctl[0] = 0x80000000 | (0x1 << 15);
+		pMoon4Reg->plltv_ctl[0] = 0x80000000 | (0x1 << 15);
 	} else {
-		moon4_regs->plltv_ctl[0] = 0x80000000;
-		moon4_regs->plltv_ctl[1] = 0x01800000 | (g_pll_tv_cfg[clk_mode].r << 7);
-		moon4_regs->plltv_ctl[2] = 0x7fff0000 | (g_pll_tv_cfg[clk_mode].m << 8) | (g_pll_tv_cfg[clk_mode].n);
+		pMoon4Reg->plltv_ctl[0] = 0x80000000;
+		pMoon4Reg->plltv_ctl[1] = 0x01800000 | (g_pll_tv_cfg[clk_mode].r << 7);
+		pMoon4Reg->plltv_ctl[2] = 0x7fff0000 | (g_pll_tv_cfg[clk_mode].m << 8) | (g_pll_tv_cfg[clk_mode].n);
 	}
 }
 
-void apply_phy(void)
+void apply_phy(void __iomem *moon5base, void __iomem *hdmitxbase)
 {
+	reg_moon5_t *pMoon5Reg = (reg_moon5_t *)moon5base;
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int value, mask;
 	struct phy_param *phy_cfg;
 	enum hal_hdmitx_timing timing;
@@ -124,14 +129,14 @@ void apply_phy(void)
 
 	phy_cfg = &g_phy_cfg[timing][depth];
 
-	moon5_regs->sft_cfg[4] = 0x1f70000 | ((phy_cfg->aclk_mode & 0x3) << 7) \
+	pMoon5Reg->sft_cfg[4] = 0x1f70000 | ((phy_cfg->aclk_mode & 0x3) << 7) \
 								| ((phy_cfg->is_data_double & 0x1) << 6) \
 								| ((phy_cfg->kv_mode & 0x3) << 4) \
 								| ((phy_cfg->term_mode & 0x7) << 0);
 
-	value = hdmitx_regs->hdmi_tmdstx_ctrl1;
+	value = pHdmitxReg->hdmi_tmdstx_ctrl1;
 	mask  = 0xfff3;
-	hdmitx_regs->hdmi_tmdstx_ctrl1 = (value & (~mask)) | ((phy_cfg->ectr_mode & 0xf) << 12) \
+	pHdmitxReg->hdmi_tmdstx_ctrl1 = (value & (~mask)) | ((phy_cfg->ectr_mode & 0xf) << 12) \
 										| ((phy_cfg->is_emp & 0x1) << 11) \
 										| ((phy_cfg->is_clk_detector & 0x1) << 10) \
 										| ((phy_cfg->fckdv_mode & 0x3) << 8) \
@@ -139,31 +144,32 @@ void apply_phy(void)
 										| ((phy_cfg->is_from_odd & 0x1) << 1) \
 										| ((phy_cfg->is_clk_inv & 0x1) << 0);
 
-	value = hdmitx_regs->hdmi_tmdstx_ctrl2;
+	value = pHdmitxReg->hdmi_tmdstx_ctrl2;
 	mask  = 0xf7f2;
-	hdmitx_regs->hdmi_tmdstx_ctrl2 = (value & (~mask)) | ((phy_cfg->icp_mod_mode & 0xf) << 12) \
+	pHdmitxReg->hdmi_tmdstx_ctrl2 = (value & (~mask)) | ((phy_cfg->icp_mod_mode & 0xf) << 12) \
 										| ((phy_cfg->pd_d_mode & 0x7) << 8) \
 										| ((phy_cfg->cpst_mode & 0xf) << 4) \
 										| ((phy_cfg->icp_mode & 0x1) << 1);
 
-	value = hdmitx_regs->hdmi_tmdstx_ctrl3;
+	value = pHdmitxReg->hdmi_tmdstx_ctrl3;
 	mask  = 0xef1f;
-	hdmitx_regs->hdmi_tmdstx_ctrl3 = (value & (~mask)) | ((phy_cfg->bgr_mode & 0x7) << 13) \
+	pHdmitxReg->hdmi_tmdstx_ctrl3 = (value & (~mask)) | ((phy_cfg->bgr_mode & 0x7) << 13) \
 										| ((phy_cfg->sw_ctrl & 0xf) << 8) \
 										| ((phy_cfg->dsel_mode & 0x1f) << 0);
 
-	value = hdmitx_regs->hdmi_tmdstx_ctrl4;
+	value = pHdmitxReg->hdmi_tmdstx_ctrl4;
 	mask  = 0xfc3f;
-	hdmitx_regs->hdmi_tmdstx_ctrl4 = (value & (~mask)) | ((phy_cfg->irt_mode & 0x3f) << 10) \
+	pHdmitxReg->hdmi_tmdstx_ctrl4 = (value & (~mask)) | ((phy_cfg->irt_mode & 0x3f) << 10) \
 										| ((phy_cfg->dcnst_mode & 0x3f) << 0);
 
-	value = hdmitx_regs->hdmi_tmdstx_ctrl5;
+	value = pHdmitxReg->hdmi_tmdstx_ctrl5;
 	mask  = 0x2;
-	hdmitx_regs->hdmi_tmdstx_ctrl5 = (value & (~mask)) | ((phy_cfg->rv_model & 0x1) << 1);
+	pHdmitxReg->hdmi_tmdstx_ctrl5 = (value & (~mask)) | ((phy_cfg->rv_model & 0x1) << 1);
 }
 
-static void apply_test_pattern(unsigned char enable)
+static void apply_test_pattern(unsigned char enable, void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int inter_mode = 0, step = 0, is_709 = 0, hv_sycn_inv = 0, is_rgb, is_yuv444, video_mode;
 	unsigned int value;
 	unsigned char is_manual = 0;
@@ -208,22 +214,23 @@ static void apply_test_pattern(unsigned char enable)
 	}
 
 	value = ((inter_mode << 11) | (video_mode << 8) | (step << 6) | (is_709 << 5) | (is_yuv444 << 4) | (is_rgb << 3) | (hv_sycn_inv << 1) | enable);
-	hdmitx_regs->hdmi_video_pat_gen1 = value;
+	pHdmitxReg->hdmi_video_pat_gen1 = value;
 
 	if (is_manual) {
-		hdmitx_regs->hdmi_video_pat_gen2 = 0x360;
-		hdmitx_regs->hdmi_video_pat_gen3 = 0x271;
-		hdmitx_regs->hdmi_video_pat_gen4 = 0x40;
-		hdmitx_regs->hdmi_video_pat_gen5 = 0x4;
-		hdmitx_regs->hdmi_video_pat_gen6 = 0x84;
-		hdmitx_regs->hdmi_video_pat_gen7 = 0x353;
-		hdmitx_regs->hdmi_video_pat_gen8 = 0x2c;
-		hdmitx_regs->hdmi_video_pat_gen9 = 0x26c;
+		pHdmitxReg->hdmi_video_pat_gen2 = 0x360;
+		pHdmitxReg->hdmi_video_pat_gen3 = 0x271;
+		pHdmitxReg->hdmi_video_pat_gen4 = 0x40;
+		pHdmitxReg->hdmi_video_pat_gen5 = 0x4;
+		pHdmitxReg->hdmi_video_pat_gen6 = 0x84;
+		pHdmitxReg->hdmi_video_pat_gen7 = 0x353;
+		pHdmitxReg->hdmi_video_pat_gen8 = 0x2c;
+		pHdmitxReg->hdmi_video_pat_gen9 = 0x26c;
 	}
 }
 
-static void apply_avi_inforame(void)
+static void apply_avi_infoframe(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	enum hdmi_colorspace color_space;
 	enum hdmi_picture_aspect aspect;
 	enum hdmi_colorimetry colorimetry;
@@ -285,17 +292,18 @@ static void apply_avi_inforame(void)
 
 	crc = 0x100 - crc;
 
-	hdmitx_regs->hdmi_avi_infoframe01   = crc + (hdmi_avi_infoframe[4] << 8);
-	hdmitx_regs->hdmi_avi_infoframe23   = hdmi_avi_infoframe[5] + (hdmi_avi_infoframe[6]<<8);
-	hdmitx_regs->hdmi_avi_infoframe45   = hdmi_avi_infoframe[7] + (hdmi_avi_infoframe[8]<<8);
-	hdmitx_regs->hdmi_avi_infoframe67   = hdmi_avi_infoframe[9] + (hdmi_avi_infoframe[10]<<8);
-	hdmitx_regs->hdmi_avi_infoframe89   = hdmi_avi_infoframe[11] + (hdmi_avi_infoframe[12]<<8);
-	hdmitx_regs->hdmi_avi_infoframe1011 = hdmi_avi_infoframe[13] + (hdmi_avi_infoframe[14]<<8);
-	hdmitx_regs->hdmi_avi_infoframe1213 = hdmi_avi_infoframe[15] + (hdmi_avi_infoframe[16]<<8);
+	pHdmitxReg->hdmi_avi_infoframe01   = crc + (hdmi_avi_infoframe[4] << 8);
+	pHdmitxReg->hdmi_avi_infoframe23   = hdmi_avi_infoframe[5] + (hdmi_avi_infoframe[6]<<8);
+	pHdmitxReg->hdmi_avi_infoframe45   = hdmi_avi_infoframe[7] + (hdmi_avi_infoframe[8]<<8);
+	pHdmitxReg->hdmi_avi_infoframe67   = hdmi_avi_infoframe[9] + (hdmi_avi_infoframe[10]<<8);
+	pHdmitxReg->hdmi_avi_infoframe89   = hdmi_avi_infoframe[11] + (hdmi_avi_infoframe[12]<<8);
+	pHdmitxReg->hdmi_avi_infoframe1011 = hdmi_avi_infoframe[13] + (hdmi_avi_infoframe[14]<<8);
+	pHdmitxReg->hdmi_avi_infoframe1213 = hdmi_avi_infoframe[15] + (hdmi_avi_infoframe[16]<<8);
 }
 
-static void apply_audio_inforame(void)
+static void apply_audio_infoframe(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	enum hdmi_audio_channel_count chl_cnt;
 	unsigned char crc;
 	int i;
@@ -325,16 +333,17 @@ static void apply_audio_inforame(void)
 
 	crc = 0x100 - crc;
 
-	hdmitx_regs->hdmi_audio_infoframe01   = crc + (hdmi_audio_infoframe[4]<<8);
-	hdmitx_regs->hdmi_audio_infoframe23   = hdmi_audio_infoframe[5] + (hdmi_audio_infoframe[6] << 8);
-	hdmitx_regs->hdmi_audio_infoframe45   = hdmi_audio_infoframe[7] + (hdmi_audio_infoframe[8] << 8);
-	hdmitx_regs->hdmi_audio_infoframe67   = hdmi_audio_infoframe[9] + (hdmi_audio_infoframe[10] << 8);
-	hdmitx_regs->hdmi_audio_infoframe89   = hdmi_audio_infoframe[11] + (hdmi_audio_infoframe[12] << 8);
-	hdmitx_regs->hdmi_audio_infoframe1011 = hdmi_audio_infoframe[13];
+	pHdmitxReg->hdmi_audio_infoframe01   = crc + (hdmi_audio_infoframe[4]<<8);
+	pHdmitxReg->hdmi_audio_infoframe23   = hdmi_audio_infoframe[5] + (hdmi_audio_infoframe[6] << 8);
+	pHdmitxReg->hdmi_audio_infoframe45   = hdmi_audio_infoframe[7] + (hdmi_audio_infoframe[8] << 8);
+	pHdmitxReg->hdmi_audio_infoframe67   = hdmi_audio_infoframe[9] + (hdmi_audio_infoframe[10] << 8);
+	pHdmitxReg->hdmi_audio_infoframe89   = hdmi_audio_infoframe[11] + (hdmi_audio_infoframe[12] << 8);
+	pHdmitxReg->hdmi_audio_infoframe1011 = hdmi_audio_infoframe[13];
 }
 
-static void apply_color_space_conversion(void)
+static void apply_color_space_conversion(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int value, mode;
 	unsigned char is_up, is_down;
 	enum color_space in_cs, out_cs;
@@ -395,7 +404,7 @@ static void apply_color_space_conversion(void)
 			break;
 	}
 
-	value = hdmitx_regs->hdmi_video_ctrl1 & (~((0x3 << 11) | (0x3f << 4)));
+	value = pHdmitxReg->hdmi_video_ctrl1 & (~((0x3 << 11) | (0x3f << 4)));
 
 	mode = ((g_csc_cfg[in_cs][out_cs].ycc_range & 0x1)
 				| ((g_csc_cfg[in_cs][out_cs].rgb_range & 0x1) << 1)
@@ -408,7 +417,7 @@ static void apply_color_space_conversion(void)
 
 	value |= ((is_up << 11) | (is_down << 12));
 
-	hdmitx_regs->hdmi_video_ctrl1 = value;
+	pHdmitxReg->hdmi_video_ctrl1 = value;
 
 	if (g_csc_cfg[in_cs][out_cs].manual)
 	{
@@ -420,12 +429,13 @@ static void apply_color_space_conversion(void)
 	}
 }
 
-static void apply_video(void)
+static void apply_video(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int value, cd, hv_pol;
 
 
-	apply_color_space_conversion();
+	apply_color_space_conversion(hdmitxbase);
 
 	switch (g_hdmitx_cfg.video.color_depth) {
 		case COLOR_DEPTH_30BITS:
@@ -460,16 +470,17 @@ static void apply_video(void)
 	}
 
 	value = ((cd << 4) | hv_pol);
-	hdmitx_regs->hdmi_video_format = value;
+	pHdmitxReg->hdmi_video_format = value;
 
 	value = ((1 << 12) | g_hdmitx_cfg.is_hdmi);
-	hdmitx_regs->hdmi_system_ctrl1 = value;
+	pHdmitxReg->hdmi_system_ctrl1 = value;
 
-	hdmitx_regs->hdmi_infoframe_ctrl2 = 0x1013;
+	pHdmitxReg->hdmi_infoframe_ctrl2 = 0x1013;
 }
 
-static void apply_audio(void)
+static void apply_audio(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int value, chl_en;
 	unsigned short chl_sts, cts_n;
 	unsigned char is_spdif;
@@ -516,57 +527,53 @@ static void apply_audio(void)
 			break;
 	}
 
-	hdmitx_regs->hdmi_audio_ctrl1      = value;
-	hdmitx_regs->hdmi_audio_ctrl2      = 0x01b5;
-	hdmitx_regs->hdmi_audio_chnl_sts2  = chl_sts;
-	hdmitx_regs->hdmi_audio_spdif_ctrl = ((0x3f << 1) | is_spdif) ;
-	hdmitx_regs->hdmi_arc_config1      = 0x1;
-	hdmitx_regs->hdmi_arc_n_value1     = cts_n;
+	pHdmitxReg->hdmi_audio_ctrl1      = value;
+	pHdmitxReg->hdmi_audio_ctrl2      = 0x01b5;
+	pHdmitxReg->hdmi_audio_chnl_sts2  = chl_sts;
+	pHdmitxReg->hdmi_audio_spdif_ctrl = ((0x3f << 1) | is_spdif) ;
+	pHdmitxReg->hdmi_arc_config1      = 0x1;
+	pHdmitxReg->hdmi_arc_n_value1     = cts_n;
 }
 
-void hal_hdmitx_init(void)
-{
-	/*enable clock*/
-	moon0_regs->clken[5]  = (0x10000) | (0x1);
-	moon0_regs->gclken[5] = (0x10000) | (0x1);
-	moon0_regs->reset[5]  = (0x10000) | (0x0);
-
+void hal_hdmitx_init(void __iomem *hdmitxbase)
+{	
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	
 	/*apply phy general configures*/
 
 	/*enable all power on bits*/
-	hdmitx_regs->hdmi_pwr_ctrl |= 0x1f;
+	pHdmitxReg->hdmi_pwr_ctrl |= 0x1F;
+	
 
 	/*apply software reset*/
-	hdmitx_regs->hdmi_sw_reset = 0;
-	hdmitx_regs->hdmi_sw_reset = 0xff;
-
+	pHdmitxReg->hdmi_sw_reset = 0;
+	pHdmitxReg->hdmi_sw_reset = 0xFF;
+	
 	/*enable interrupt*/
-	hdmitx_regs->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);
+	pHdmitxReg->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);
 }
 
-void hal_hdmitx_deinit(void)
+void hal_hdmitx_deinit(void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	
 	/*disable interrupt*/
-	hdmitx_regs->hdmi_intr0_unmask &= (~(HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN));
+	pHdmitxReg->hdmi_intr0_unmask &= (~(HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN));
 
 	/*disable all power on bits*/
-	hdmitx_regs->hdmi_pwr_ctrl &= (~0x1f);
-
+	pHdmitxReg->hdmi_pwr_ctrl &= (~0x1f);
+	
 	/*apply software reset*/
-	hdmitx_regs->hdmi_sw_reset = 0;
-
-	/*disable clock*/
-	moon0_regs->clken[5]  = (0x10000) | (0x0);
-	moon0_regs->gclken[5] = (0x10000) | (0x0);
-	moon0_regs->reset[5]  = (0x10000) | (0x1);
+	pHdmitxReg->hdmi_sw_reset = 0;	
 }
 
-unsigned char hal_hdmitx_get_interrupt0_status(enum hal_hdmitx_interrupt0 intr)
+unsigned char hal_hdmitx_get_interrupt0_status(enum hal_hdmitx_interrupt0 intr, void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned char stus;
-	unsigned int value;
+	unsigned int value;        
 
-	value = hdmitx_regs->hdmi_intr0_sts;
+	value = pHdmitxReg->hdmi_intr0_sts;
 
 	switch (intr) {
 		case INTERRUPT0_HDP:
@@ -603,11 +610,12 @@ unsigned char hal_hdmitx_get_interrupt0_status(enum hal_hdmitx_interrupt0 intr)
 	return stus;
 }
 
-void hal_hdmitx_clear_interrupt0_status(enum hal_hdmitx_interrupt0 intr)
+void hal_hdmitx_clear_interrupt0_status(enum hal_hdmitx_interrupt0 intr, void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned int value;
 
-	value = hdmitx_regs->hdmi_intr0_sts;
+	value = pHdmitxReg->hdmi_intr0_sts;
 
 	switch (intr) {
 		case INTERRUPT0_HDP:
@@ -638,15 +646,16 @@ void hal_hdmitx_clear_interrupt0_status(enum hal_hdmitx_interrupt0 intr)
 			break;
 	}
 
-	hdmitx_regs->hdmi_intr0_sts = value;
+	pHdmitxReg->hdmi_intr0_sts = value;
 }
 
-unsigned char hal_hdmitx_get_system_status(enum hal_hdmitx_system_status sys)
+unsigned char hal_hdmitx_get_system_status(enum hal_hdmitx_system_status sys, void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
 	unsigned char stus;
 	unsigned int value;
 
-	value = hdmitx_regs->hdmi_system_status;
+	value = pHdmitxReg->hdmi_system_status;
 
 	switch (sys) {
 		case SYSTEM_STUS_RSEN_IN:
@@ -712,47 +721,51 @@ void hal_hdmitx_config_audio(struct hal_hdmitx_audio_attribute *audio)
 	memcpy(&g_hdmitx_cfg.audio, audio, sizeof(struct hal_hdmitx_audio_attribute));
 }
 
-void hal_hdmitx_start(void)
+void hal_hdmitx_start(void __iomem *moon4base, void __iomem *moon5base, void __iomem *hdmitxbase)
 {
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	
 	// apply clock
-	apply_pixel_clock();
+	apply_pixel_clock(moon4base);
 
 	// apply phy
-	apply_phy();
+	apply_phy(moon5base, hdmitxbase);
 
 	// apply test pattern
 #ifdef HDMITX_PTG
-	apply_test_pattern(ENABLE);
+	apply_test_pattern(ENABLE, hdmitxbase);
 #endif
 
 	// apply AVI infoframe
-	apply_avi_inforame();
+	apply_avi_infoframe(hdmitxbase);
 
 	// apply Audio infoframe
-	apply_audio_inforame();
+	apply_audio_infoframe(hdmitxbase);
 
 	// apply video configurations
-	apply_video();
+	apply_video(hdmitxbase);
 
 	// apply audio configurations
-	apply_audio();
+	apply_audio(hdmitxbase);
 
-	hdmitx_regs->hdmi_infoframe_ctrl1 |= (0x1b1b);
-	hdmitx_regs->hdmi_tmdstx_ctrl3 = ((1 << 8) | (1 << 4) | (1 << 2) | 1);
+	pHdmitxReg->hdmi_infoframe_ctrl1 |= (0x1b1b);
+	pHdmitxReg->hdmi_tmdstx_ctrl3 = ((1 << 8) | (1 << 4) | (1 << 2) | 1);
 }
 
-void hal_hdmitx_stop(void)
+void hal_hdmitx_stop(void __iomem *hdmitxbase)
 {
-	hdmitx_regs->hdmi_infoframe_ctrl1 = 0x1010;
-	hdmitx_regs->hdmi_infoframe_ctrl2 = 0x1010;
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	
+	pHdmitxReg->hdmi_infoframe_ctrl1 = 0x1010;
+	pHdmitxReg->hdmi_infoframe_ctrl2 = 0x1010;
 }
 
-void hal_hdmitx_enable_pattern(void)
+void hal_hdmitx_enable_pattern(void __iomem *hdmitxbase)
 {
-	apply_test_pattern(ENABLE);
+	apply_test_pattern(ENABLE, hdmitxbase);
 }
 
-void hal_hdmitx_disable_pattern(void)
+void hal_hdmitx_disable_pattern(void __iomem *hdmitxbase)
 {
-	apply_test_pattern(DISABLE);
+	apply_test_pattern(DISABLE, hdmitxbase);
 }

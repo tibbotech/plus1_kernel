@@ -22,6 +22,7 @@
 			device_type = "cpu";
 			reg = <0>;
 			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
 #if 1
 		cpu@1 {
@@ -31,6 +32,7 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7fff0>;
 			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
 		cpu@2 {
 			compatible = "arm,cortex-a7";
@@ -39,6 +41,7 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7ffec>;
 			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
 		cpu@3 {
 			compatible = "arm,cortex-a7";
@@ -47,6 +50,27 @@
 			enable-method = "sunplus,sc-smp";
 			cpu-boot-reg = <0x9ea7ffe8>;
 			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
+		};
+#endif
+#if  1
+		idle-states {
+			CLUSTER_SLEEP_BIG: cluster-sleep-big {
+				compatible = "sp7021,idle-state";
+				local-timer-stop;
+				entry-latency-us = <1000>;
+				exit-latency-us = <700>;
+				min-residency-us = <2000>;
+			};
+#if  0
+			CLUSTER_SLEEP_LITTLE: cluster-sleep-little {
+				compatible = "sp7021,idle-state";
+				local-timer-stop;
+				entry-latency-us = <1000>;
+				exit-latency-us = <500>;
+				min-residency-us = <2500>;
+			};
+#endif
 		};
 #endif
 	};

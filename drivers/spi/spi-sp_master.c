@@ -481,8 +481,11 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	struct device dev = spi->dev;
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(spi->master);
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+
+#ifdef SPI_PIN_SETTING		
 	SPI_MAS_PIN *grp2_sft_cfg = (SPI_MAS_PIN *) pspim->sft_base;
 	SPI_SLA_PIN *grp3_sft_cfg = (SPI_SLA_PIN *) pspim->sft3_base;
+#endif
 
 	unsigned int spi_id;
 	unsigned int clk_rate;
@@ -615,10 +618,12 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
 	struct device dev = master->dev;
 
-	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+//	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 //	unsigned int *grp2_sft_cfg = (unsigned int *)sft_base;
 	unsigned char *data_buf;
 	unsigned char *cmd_buf;
+	//const u8 *data_buf;
+	//u8 *cmd_buf;
 	unsigned int len;
 	//unsigned int temp_reg;
 	int mode;
@@ -666,12 +671,14 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 }
 static int pentagram_spi_master_probe(struct platform_device *pdev)
 {
-	dev_dbg(&pdev->dev,"pentagram_spi_master_probe\n");
-	struct pentagram_spi_master *pspim;
-	struct spi_master *master;
 	struct resource *res;
 	int ret;
 	unsigned int max_freq;
+	struct spi_master *master;
+	struct pentagram_spi_master *pspim;	
+
+
+	dev_dbg(&pdev->dev,"pentagram_spi_master_probe\n");
 
 	master = spi_alloc_master(&pdev->dev, sizeof(pspim));
 	if (!master) {
@@ -877,9 +884,38 @@ static int pentagram_spi_master_remove(struct platform_device *pdev)
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->tx_dma_vir_base, pspim->tx_dma_phy_base);
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->rx_dma_vir_base, pspim->rx_dma_phy_base);
 
+
+	spi_unregister_master(pspim->master);
 	clk_disable_unprepare(pspim->spi_clk);
 	reset_control_assert(pspim->rstc);
-	spi_unregister_master(pspim->master);
+
+	return 0;
+	
+}
+
+static int pentagram_spi_master_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct spi_master *master = platform_get_drvdata(pdev);
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+
+	reset_control_assert(pspim->rstc);
+
+
+	return 0;
+	
+}
+
+static int pentagram_spi_master_resume(struct platform_device *pdev)
+{
+	struct spi_master *master = platform_get_drvdata(pdev);
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	
+	reset_control_deassert(pspim->rstc);
+	clk_prepare_enable(pspim->spi_clk);
+
+
+	return 0;
+	
 }
 
 static const struct of_device_id pentagram_spi_master_ids[] = {
@@ -891,6 +927,8 @@ MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
 static struct platform_driver pentagram_spi_master_driver = {
 	.probe = pentagram_spi_master_probe,
 	.remove = pentagram_spi_master_remove,
+	.suspend	= pentagram_spi_master_suspend,
+	.resume		= pentagram_spi_master_resume,	
 	.driver = {
 		.name = "sunplus,sp7021-spi-master",
 		.of_match_table = pentagram_spi_master_ids,

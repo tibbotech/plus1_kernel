@@ -13,6 +13,7 @@
 #endif
 #include <linux/serial_core.h>
 #include <linux/clk.h>
+#include <linux/reset.h> 
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
 #include <mach/sp_uart.h>
@@ -63,6 +64,10 @@ struct sunplus_uart_port {
 	struct uart_port uport;
 	struct sunplus_uartdma_info *uartdma_rx;
 	struct sunplus_uartdma_info *uartdma_tx;
+	
+	struct clk *clk;
+	struct reset_control *rstc;
+		
 };
 struct sunplus_uart_port sunplus_uart_ports[NUM_UART];
 
@@ -1575,19 +1580,6 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		}
 	}
 
-	DBG_INFO("Enable clock(s)\n");
-	clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(clk)) {
-		DBG_ERR("Can't find clock source\n");
-		return PTR_ERR(clk);
-	} else {
-		ret = clk_prepare_enable(clk);
-		if (ret) {
-			DBG_ERR("Clock can't be enabled correctly\n");
-			return ret;
-		}
-	}
-
 	idx_offset = -1;
 	if (IS_UARTDMARX_ID(pdev->id)) {
 		idx_offset = 0;
@@ -1684,9 +1676,43 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	} else {
 		port->uartclk = clk_get_rate(clk);
 	}
-#else
-	port->uartclk = clk_get_rate(clk);
+	
 #endif
+
+
+	DBG_INFO("Enable clock(s)\n");
+	sunplus_uart_ports[pdev->id].clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(sunplus_uart_ports[pdev->id].clk)) {
+		DBG_ERR("Can't find clock source\n");
+		return PTR_ERR(sunplus_uart_ports[pdev->id].clk);
+	} else {
+		ret = clk_prepare_enable(sunplus_uart_ports[pdev->id].clk);
+		if (ret) {
+			DBG_ERR("Clock can't be enabled correctly\n");
+			return ret;
+      }
+   }
+
+	DBG_INFO("Enable Rstc(s)\n");
+	//DBG_INFO("Enable Rstc-ID = %d\n",pdev->id);
+	sunplus_uart_ports[pdev->id].rstc = devm_reset_control_get(&pdev->dev, NULL);
+	//printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n",pstSpI2CInfo->rstc);
+	if (IS_ERR(sunplus_uart_ports[pdev->id].rstc)) {
+		DBG_ERR("failed to retrieve reset controller: %d\n", ret);
+		return PTR_ERR(sunplus_uart_ports[pdev->id].rstc);
+	} else {
+	ret = reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
+	//printk(KERN_INFO "reset ret : 0x%x \n",ret);
+	if (ret) {
+		DBG_ERR("failed to deassert reset line: %d\n", ret);
+            return ret;
+	}
+      }
+
+	clk = sunplus_uart_ports[pdev->id].clk;
+
+	port->uartclk = clk_get_rate(clk);
+
 
 	port->iotype = UPIO_MEM;
 	port->irq = irq;
@@ -1725,6 +1751,41 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	return 0;
 }
 
+
+static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
+{
+
+  uart_remove_one_port(&sunplus_uart_driver, &sunplus_uart_ports[pdev->id].uport);
+
+	if (pdev->id < NUM_UART) {
+		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
+            reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+	}
+
+	return 0;
+}
+
+static int sunplus_uart_platform_driver_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	
+	if (pdev->id < NUM_UART) {
+		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
+             reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+	}
+
+	return 0;
+}
+
+static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
+{
+	if (pdev->id < NUM_UART) {
+		clk_prepare_enable(sunplus_uart_ports[pdev->id].clk);
+            reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
+	}
+	return 0;
+}
+
+
 static const struct of_device_id sp_uart_of_match[] = {
 	{ .compatible = "sunplus,sp7021-uart" },
 	{ /* sentinel */ }
@@ -1733,6 +1794,9 @@ MODULE_DEVICE_TABLE(of, sp_uart_of_match);
 
 static struct platform_driver sunplus_uart_platform_driver = {
 	.probe		= sunplus_uart_platform_driver_probe_of,
+	.remove		= sunplus_uart_platform_driver_remove,
+	.suspend	      = sunplus_uart_platform_driver_suspend,
+	.resume		= sunplus_uart_platform_driver_resume,	
 	.driver = {
 		.name	= DEVICE_NAME,
 		.owner	= THIS_MODULE,

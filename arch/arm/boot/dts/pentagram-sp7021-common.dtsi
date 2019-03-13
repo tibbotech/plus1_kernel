@@ -407,9 +407,8 @@
 
 		hdmitx: hdmitx@0x9C00BE00 {
 			compatible = "sunplus,sp7021-hdmitx";
-			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_HDMI_TX>;
-			reg = <0x9C00BE00 0x3FC>;
+			reg = <0x9C00BE00 0x3FC>,<0x9C000200 0x80>,<0x9C000280 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
 		};
