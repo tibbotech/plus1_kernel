@@ -150,7 +150,6 @@ typedef struct {
 	void __iomem *moon5base;
 	void __iomem *hdmitxbase;	
 	struct miscdevice *hdmitx_misc;
-	struct clk *clk;
 	struct device *dev;
 } sp_hdmitx_t;
 
@@ -753,13 +752,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 	}
 
 	// registry device
-	sp_hdmitx->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(sp_hdmitx->clk)) {
-		return PTR_ERR(sp_hdmitx->clk);
-	}
-
-	clk_prepare_enable(sp_hdmitx->clk);
-	
 	sp_hdmitx->dev = dev;
 	sp_hdmitx->hdmitx_misc = &g_hdmitx_misc;
 	err = misc_register(&g_hdmitx_misc);
@@ -775,8 +767,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 	wake_up_process(g_hdmitx_task);
 	g_hdmitx_state = FSM_HPD;
 
-	//platform_set_drvdata(pdev, sp_hdmitx);
-
 	return 0;
 }
 
@@ -786,7 +776,6 @@ static int hdmitx_remove(struct platform_device *pdev)
 
 	/*deinitialize hardware settings*/
 	hal_hdmitx_deinit(sp_hdmitx->hdmitxbase);
-        clk_disable(sp_hdmitx->clk);
 	
 	/*deinitialize software settings*/
 	if (g_hdmitx_task) {
@@ -803,17 +792,5 @@ static int hdmitx_remove(struct platform_device *pdev)
 	return err;
 }
 
-static int __init hdmitx_init(void)
-{
-	return 0;
-}
-
-static void __exit hdmitx_exit(void)
-{
-
-}
-
-module_init(hdmitx_init);
-module_exit(hdmitx_exit);
 MODULE_DESCRIPTION("HDMITX driver");
 MODULE_LICENSE("GPL");
