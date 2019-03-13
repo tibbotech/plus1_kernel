@@ -40,7 +40,7 @@
 	#define DBG_ERR(fmt, args ...)
 #endif
 
-//#define I2C_PINMUX_SET
+//#define I2C_PINMUX_SET    //disable this define and instead set pinmux in \boot\uboot\arch\arm\dts\pentagram-sc70xx.dtsi and enable sppctrl in \boot\uboot$ make menuconfig
 
 #define I2C_FREQ             100
 #define I2C_SLEEP_TIMEOUT    200
@@ -444,7 +444,9 @@ static void _sp_i2cm_init_irqevent(unsigned int device_id)
 
 static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 {
+#ifdef I2C_PINMUX_SET
 	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
+#endif
 
 	FUNC_DEBUG();
 
@@ -456,9 +458,9 @@ static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 
 #ifdef I2C_PINMUX_SET
 	hal_i2cm_pinmux_set(device_id, pstMoonRegBase->moon3_regs);
+	hal_i2cm_enable(device_id, pstMoonRegBase->moon0_regs);
 #endif
 	
-	hal_i2cm_enable(device_id, pstMoonRegBase->moon0_regs);
 #ifdef SUPPORT_I2C_GDMA
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
 	hal_i2cm_dma_base_set(device_id, pstSpI2CInfo->i2c_dma_regs);
@@ -1489,7 +1491,9 @@ static struct i2c_algorithm sp_algorithm = {
 
 static int sp_i2c_probe(struct platform_device *pdev)
 {
+#ifdef I2C_PINMUX_SET
 	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
+#endif	
 	SpI2C_If_t *pstSpI2CInfo = NULL;
 	I2C_Irq_Event_t *pstIrqEvent = NULL;
 	struct i2c_adapter *p_adap;
@@ -1505,6 +1509,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		device_id = pdev->id;
 	}
 
+#ifdef I2C_PINMUX_SET
 	if(pdev->id == 0) {
 		ret = _sp_i2cm_get_moon_resources(pdev, pstMoonRegBase);
 		if (ret) {
@@ -1512,6 +1517,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
+#endif	
 
 	pstSpI2CInfo = &stSpI2CInfo[device_id];
 	memset(pstSpI2CInfo, 0, sizeof(SpI2C_If_t));
