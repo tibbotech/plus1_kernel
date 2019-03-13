@@ -518,8 +518,21 @@
 			resets = <&rstc RST_L2SW>;
 			mac-addr1 = <52>;
 			mac-addr2 = <58>;
+			phy-handle = <&eth_phy0>;
 		};
-		
+
+		mdio {
+			compatible = "sunplus,sp7021-mdio";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			eth_phy0: ethernet-phy@0 {
+				reg = <0>;
+			};
+			eth_phy1: ethernet-phy@1 {
+				reg = <1>;
+			};
+		};
+
 		mmc0: mmc@emmc {
 			compatible = "sunplus,sp7021-emmc";
 			reg = <0x9c003b00 0x180>;

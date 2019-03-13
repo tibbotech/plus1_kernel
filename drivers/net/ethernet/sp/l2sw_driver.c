@@ -1025,21 +1025,22 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	phy_cfg();
 
-#if 0 // phy_probe??
-	#ifdef PHY_CONFIG
-	comm->phy_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
-	#endif
+	comm->phy0_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
+	if (comm->phy0_node) {
+		ret = mdio_init(pdev, net_dev);
+		if (ret) {
+			ETH_ERR("[%s] Failed to initialize mdio!\n", __FUNCTION__);
+			goto out_unregister_dev;
+		}
 
-	if ((ret = mdio_init(pdev, net_dev))) {
-		ETH_ERR("[%s] Failed to initialize mdio!\n", __FUNCTION__);
-		goto out_free_comm;
+		ret = mac_phy_probe(net_dev);
+		if (ret) {
+			ETH_ERR("[%s] Failed to probe phy!\n", __FUNCTION__);
+			goto out_freemdio;
+		}
+	} else {
+		ETH_INFO("[%s] Failed to get phy-handle!\n", __func__);
 	}
-
-	if ((ret = mac_phy_probe(net_dev))) {
-		ETH_ERR("[%s] Failed to probe phy!\n", __FUNCTION__);
-		goto out_freemdio;
-	}
-#endif
 
 #ifdef RX_POLLING
 	netif_napi_add(net_dev, &comm->napi, rx_poll, RX_NAPI_WEIGHT);
@@ -1051,7 +1052,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		ETH_ERR("[%s] Failed to request irq #%d (type = 0x%01x) for \"%s\" (rc = %d)!\n", __FUNCTION__,
 			net_dev->irq, comm->irq_type, net_dev->name, rc);
 		ret = -ENODEV;
-		goto out_unregister_dev;
+		goto out_freemdio;
 	}
 
 #ifndef INTERRUPT_IMMEDIATELY
@@ -1104,13 +1105,13 @@ static int l2sw_probe(struct platform_device *pdev)
 fail_to_init_2nd_port:
 	return 0;
 
+out_freemdio:
+	if (comm->mii_bus) {
+		mdio_remove(net_dev);
+	}
+
 out_unregister_dev:
 	unregister_netdev(net_dev);
-
-//out_freemdio:
-//      if (comm->mii_bus != NULL) {
-//              mdio_remove(mac);
-//      }
 
 out_free_comm:
 	kfree(comm);
@@ -1149,12 +1150,13 @@ static int l2sw_remove(struct platform_device *pdev)
 	soc0_stop(mac);
 
 	//mac_phy_remove(net_dev);
-	//mdio_remove(mac);
-	clk_disable(mac->comm->clk);
+	mdio_remove(net_dev);
 
 	// Unregister and free 1st net device.
 	unregister_netdev(net_dev);
 	free_netdev(net_dev);
+
+	clk_disable(mac->comm->clk);
 
 	// Free 'common' area.
 	kfree(mac->comm);
@@ -1186,14 +1188,12 @@ static const struct dev_pm_ops l2sw_pm_ops = {
 };
 #endif
 
-#ifdef PHY_CONFIG
 static const struct of_device_id sp_l2sw_of_match[] = {
 	{ .compatible = "sunplus,sp7021-l2sw" },
 	{ /* sentinel */ }
 };
 
 MODULE_DEVICE_TABLE(of, sp_l2sw_of_match);
-#endif
 
 static struct platform_driver l2sw_driver = {
 	.probe   = l2sw_probe,

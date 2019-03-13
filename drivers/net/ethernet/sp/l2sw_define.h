@@ -30,7 +30,6 @@
 //#define CONFIG_PM
 #define INTERRUPT_IMMEDIATELY
 //#define RX_POLLING
-#define PHY_CONFIG
 
 
 /**********************************************************
@@ -189,7 +188,6 @@ struct l2sw_common {
 
 	struct mii_bus *mii_bus;
 	struct phy_device *phy_dev;
-	int phy_irq[PHY_MAX_ADDR];
 
 #ifndef INTERRUPT_IMMEDIATELY
 	struct tasklet_struct rx_tasklet;
@@ -205,9 +203,7 @@ struct l2sw_common {
 	struct napi_struct napi;
 #endif
 
-#ifdef PHY_CONFIG
-	struct device_node *phy_node;
-#endif
+	struct device_node *phy0_node;
 
 	u8 enable;
 };

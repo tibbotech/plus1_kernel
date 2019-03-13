@@ -6,9 +6,9 @@
 
 #define PHY_RUN_STATEMACHINE
 
-u32 mdio_init(struct platform_device *pdev, struct net_device *netdev);
+u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev);
 
-void mdio_remove(struct l2sw_mac *mac);
+void mdio_remove(struct net_device *net_dev);
 
 int mac_phy_probe(struct net_device *netdev);
 
