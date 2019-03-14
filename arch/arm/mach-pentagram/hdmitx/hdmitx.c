@@ -95,6 +95,8 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 // platform driver functions
 static int hdmitx_probe(struct platform_device *dev);
 static int hdmitx_remove(struct platform_device *dev);
+static int hdmitx_suspend(struct platform_device *dev,  pm_message_t state);
+static int hdmitx_resume(struct platform_device *dev);
 
 // device id
 static struct of_device_id g_hdmitx_ids[] = {
@@ -126,8 +128,8 @@ static struct miscdevice g_hdmitx_misc = {
 static struct platform_driver g_hdmitx_driver = {
 	.probe    = hdmitx_probe,
 	.remove   = hdmitx_remove,
-	// .suspend  = hdmitx_suspend,
-	// .resume   = hdmitx_resume,
+	.suspend  = hdmitx_suspend,
+	.resume   = hdmitx_resume,
 	// .shutdown = hdmitx_shotdown,
 	.driver   = {
 		.name           = "hdmitx",
@@ -151,6 +153,7 @@ typedef struct {
 	void __iomem *hdmitxbase;	
 	struct miscdevice *hdmitx_misc;
 	struct device *dev;
+	struct reset_control *rstc;
 } sp_hdmitx_t;
 
 static sp_hdmitx_t *sp_hdmitx;
@@ -458,8 +461,10 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 
 		if (hal_hdmitx_get_system_status(SYSTEM_STUS_HPD_IN, sp_hdmitx->hdmitxbase)) {
 			g_hpd_in = TRUE;
+			printk("hot plug in\n");
 		} else {
 			g_hpd_in = FALSE;
+			printk("hot plug out\n");
 		}
 
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_HDP, sp_hdmitx->hdmitxbase);
@@ -469,8 +474,10 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 
 		if (hal_hdmitx_get_system_status(SYSTEM_STUS_RSEN_IN, sp_hdmitx->hdmitxbase)) {
 			g_rx_ready = TRUE;
+			printk("rx ready\n");
 		} else {
 			g_rx_ready = FALSE;
+			printk("rx not ready\n");
 		}
 
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase);
@@ -670,7 +677,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	struct device *dev = &pdev->dev;
 	struct resource *res;
-	struct reset_control *rstc;
 	int ret;
 
 	match = of_match_device(dev->driver->of_match_table, dev);
@@ -700,20 +706,21 @@ static int hdmitx_probe(struct platform_device *pdev)
 	if (IS_ERR(sp_hdmitx->moon5base)) {
 		return PTR_ERR(sp_hdmitx->moon5base);
 	}	
-	
-	rstc = devm_reset_control_get(&pdev->dev, NULL);
-	if (IS_ERR(rstc)) {
+
+	sp_hdmitx->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(sp_hdmitx->rstc)) {
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
-		return PTR_ERR(rstc);
+		return PTR_ERR(sp_hdmitx->rstc);
 	}
 
-	ret = reset_control_deassert(rstc);
+	ret = reset_control_deassert(sp_hdmitx->rstc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
 		return -ENODEV;
 	}
 	
-	printk("================== hdmitx_probe1\n");
+	HDMITX_INFO("HDMITX installed\n");
+	
 	/*initialize hardware settings*/
 	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
 	
@@ -767,11 +774,14 @@ static int hdmitx_probe(struct platform_device *pdev)
 	wake_up_process(g_hdmitx_task);
 	g_hdmitx_state = FSM_HPD;
 
+	platform_set_drvdata(pdev, sp_hdmitx->hdmitx_misc);
+
 	return 0;
 }
 
 static int hdmitx_remove(struct platform_device *pdev)
 {
+	struct miscdevice *misc = platform_get_drvdata(pdev);
 	int err = 0;
 
 	/*deinitialize hardware settings*/
@@ -788,8 +798,25 @@ static int hdmitx_remove(struct platform_device *pdev)
 	}
 
 	g_hdmitx_state = FSM_INIT;
-
+	misc_deregister(misc);
+	reset_control_assert(sp_hdmitx->rstc);
+	HDMITX_INFO("HDMITX uninstalled\n");
+	
 	return err;
+}
+
+static int hdmitx_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	reset_control_assert(sp_hdmitx->rstc);
+	
+	return 0;
+}
+
+static int hdmitx_resume(struct platform_device *pdev)
+{
+	reset_control_deassert(sp_hdmitx->rstc);
+
+	return 0;
 }
 
 MODULE_DESCRIPTION("HDMITX driver");

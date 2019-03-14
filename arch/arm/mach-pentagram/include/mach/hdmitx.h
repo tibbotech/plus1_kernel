@@ -138,7 +138,7 @@ enum hdmitx_audio_sample_rate {
 /*about print msg*/
 #define _HDMITX_ERR_MSG_
 #define _HDMITX_WARNING_MSG_
-// #define _HDMITX_INFO_MSG_
+#define _HDMITX_INFO_MSG_
 // #define _HDMITX_DBG_MSG_
 
 /*----------------------------------------------------------------------------*
