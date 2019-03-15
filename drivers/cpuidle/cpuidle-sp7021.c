@@ -41,7 +41,8 @@ static int sp7021_enter_idle_state(struct cpuidle_device *dev,
 	 * will call the CPU ops suspend protocol with idle index as a
 	 * parameter.
 	 */
-	return CPU_PM_CPU_IDLE_ENTER(arm_cpuidle_suspend, idx);
+	return 0;                                                   //need review later 20190315 
+//	return CPU_PM_CPU_IDLE_ENTER(arm_cpuidle_suspend, idx);   //function at ~arch\arm\kernel\cpuidle.c
 }
 
 static struct cpuidle_driver sp7021_idle_driver = {
@@ -54,14 +55,16 @@ static struct cpuidle_driver sp7021_idle_driver = {
 	 * to work around this issue and allow installing a special
 	 * handler for idle state index 0.
 	 */
-	.states[0] = {
+	.states[0]		= ARM_CPUIDLE_WFI_STATE,
+	.states[1] = {
 		.enter                  = sp7021_enter_idle_state,
-		.exit_latency           = 1,
-		.target_residency       = 1,
-		.power_usage		= UINT_MAX,
-		.name                   = "WFI",
-		.desc                   = "ARM WFI",
-	}
+		.exit_latency           = 10,
+		.target_residency       = 10000,
+//		.power_usage		= UINT_MAX,
+		.name			= "C1",
+		.desc			= "C1 cpuidle",
+	},
+	.state_count = 2,
 };
 
 static const struct of_device_id sp7021_idle_state_match[] __initconst = {
@@ -104,8 +107,8 @@ static int __init sp7021_idle_init(void)
 	 * idle states suspend back-end specific data
 	 */
 	for_each_possible_cpu(cpu) {
-		ret = arm_cpuidle_init(cpu);
-//		ret = sp7021_cpuidle_init(cpu); //need review later 20190313
+//		ret = arm_cpuidle_init(cpu);    //function at ~arch\arm\kernel\cpuidle.c
+//		ret = sp7021_cpuidle_init(cpu); //need review later 20190315
 
 		/*
 		 * Skip the cpuidle device initialization if the reported
