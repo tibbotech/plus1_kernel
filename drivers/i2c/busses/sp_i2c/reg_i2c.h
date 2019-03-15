@@ -139,35 +139,10 @@ typedef struct regs_moon0_t_ {
 } regs_moon0_t;
 
 typedef struct regs_moon3_t_ {
-	volatile unsigned int sft_cfg_32;    /* 00 */
-	volatile unsigned int sft_cfg_33;    /* 01 */
-	volatile unsigned int sft_cfg_34;    /* 02 */
-	volatile unsigned int sft_cfg_35;    /* 03 */
-	volatile unsigned int sft_cfg_36;    /* 04 */
-	volatile unsigned int sft_cfg_37;    /* 05 */
-	volatile unsigned int sft_cfg_38;    /* 06 */
-	volatile unsigned int sft_cfg_39;    /* 07 */
-	volatile unsigned int sft_cfg_40;    /* 08 */
-	volatile unsigned int sft_cfg_41;    /* 09 */
 	volatile unsigned int sft_cfg_42;    /* 10 */
 	volatile unsigned int sft_cfg_43;    /* 11 */
 	volatile unsigned int sft_cfg_44;    /* 12 */
 	volatile unsigned int sft_cfg_45;    /* 13 */
-	volatile unsigned int sft_cfg_46;    /* 14 */
-	volatile unsigned int sft_cfg_47;    /* 15 */
-	volatile unsigned int sft_cfg_48;    /* 16 */
-	volatile unsigned int sft_cfg_49;    /* 17 */
-	volatile unsigned int sft_cfg_50;    /* 18 */
-	volatile unsigned int sft_cfg_51;    /* 19 */
-	volatile unsigned int sft_cfg_52;    /* 20 */
-	volatile unsigned int sft_cfg_53;    /* 21 */
-	volatile unsigned int sft_cfg_54;    /* 22 */
-	volatile unsigned int sft_cfg_55;    /* 23 */
-	volatile unsigned int sft_cfg_56;    /* 24 */
-	volatile unsigned int sft_cfg_57;    /* 25 */
-	volatile unsigned int sft_cfg_58;    /* 26 */
-	volatile unsigned int sft_cfg_59;    /* 27 */
-	volatile unsigned int reserved[4];   /* 28~31 */
 } regs_moon3_t;
 
 typedef struct regs_i2cm_t_ {

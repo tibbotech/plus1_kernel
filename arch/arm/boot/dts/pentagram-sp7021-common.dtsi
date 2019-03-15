@@ -229,6 +229,18 @@
 			resets = <&rstc RST_UA4>;
 		};
 
+
+
+		rtc: serial@sp_rtc{
+			compatible = "sunplus,sp7021-rtc";
+			reg = <0x9c003A00 0x80>;
+			reg-names = "rtc_reg";		
+			clocks = <&clkc RTC>;
+			resets = <&rstc RST_RTC>;
+		};
+
+
+
 		icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;
@@ -334,7 +346,7 @@
 
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c000180 0x80>, <0x9c004680 0x80>;
+			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c0001A8 0x04>, <0x9c004680 0x80>;
 			reg-names = "i2cm", "moon0", "moon3", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;

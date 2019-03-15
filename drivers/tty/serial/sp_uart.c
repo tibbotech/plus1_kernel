@@ -1573,12 +1573,18 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int idx_which_uart;
 	char peri_name[16];
 
+
+      DBG_INFO("sunplus_uart_platform_driver_probe_of");
+
+
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "serial");
 		if (pdev->id < 0) {
 			pdev->id = of_alias_get_id(pdev->dev.of_node, "uart");
 		}
 	}
+
+	DBG_INFO("sunplus_uart-ID = %d\n",pdev->id);
 
 	idx_offset = -1;
 	if (IS_UARTDMARX_ID(pdev->id)) {
@@ -1589,6 +1595,21 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		DBG_INFO("Setup DMA Tx %d\n", (pdev->id - ID_BASE_DMATX));
 	}
 	if (idx_offset >= 0) {
+	
+		DBG_INFO("Enable DMA clock(s)\n");
+	clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(clk)) {
+		DBG_ERR("Can't find clock source\n");
+		return PTR_ERR(clk);
+	} else {
+		ret = clk_prepare_enable(clk);
+		if (ret) {
+			DBG_ERR("Clock can't be enabled correctly\n");
+			return ret;
+		}
+	}
+	
+	
 		if (idx_offset == 0) {
 			idx = idx_offset + pdev->id - ID_BASE_DMARX;
 		} else {
@@ -1680,7 +1701,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 #endif
 
 
-	DBG_INFO("Enable clock(s)\n");
+	DBG_INFO("Enable UART clock(s)\n");
 	sunplus_uart_ports[pdev->id].clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(sunplus_uart_ports[pdev->id].clk)) {
 		DBG_ERR("Can't find clock source\n");
@@ -1711,7 +1732,11 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 
 	clk = sunplus_uart_ports[pdev->id].clk;
 
-	port->uartclk = clk_get_rate(clk);
+	if (IS_ERR(clk)) {
+		port->uartclk = (27 * 1000 * 1000); /* default */
+	} else {
+		port->uartclk = clk_get_rate(clk);
+	}
 
 
 	port->iotype = UPIO_MEM;

@@ -24,13 +24,54 @@
 #include <linux/rtc.h>
 #include <linux/platform_device.h>
 #include <mach/io_map.h>
+#include <linux/clk.h>
+#include <linux/reset.h> 
 
 #if 0
 /* For code development on SPHE8388 */
 #define VA_B_REG		0xF8000000
 #endif
 
-#define VIRT_ADDR_RTC		(VA_B_REG + (116 << 7))
+
+/* ---------------------------------------------------------------------------------------------- */
+#define RTC_FUNC_DEBUG
+//#define RTC_DBG_INFO
+//#define RTC_DBG_ERR
+
+#ifdef RTC_FUNC_DEBUG
+	#define FUNC_DEBUG()    printk(KERN_INFO "[RTC] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+#else
+	#define FUNC_DEBUG()
+#endif
+
+#ifdef RTC_DBG_INFO
+#define DBG_INFO(fmt, args ...)	printk(KERN_INFO "[RTC] Info: " fmt, ## args)
+#else
+#define DBG_INFO(fmt, args ...)
+#endif
+
+#ifdef RTC_DBG_ERR
+#define DBG_ERR(fmt, args ...)	printk(KERN_ERR  "[RTC] Error: " fmt, ## args)
+#else
+#define DBG_ERR(fmt, args ...)
+#endif
+/* ---------------------------------------------------------------------------------------------- */
+
+struct sunplus_rtc {
+
+	struct clk *rtcclk;
+	struct reset_control *rstc;
+		
+};
+
+struct sunplus_rtc sp_rtc;
+//static struct sunplus_rtc *sp_rtc;
+
+//static struct clk *rtc_clk;
+
+//#define VIRT_ADDR_RTC		(VA_B_REG + (116 << 7))
+
+#define RTC_REG_NAME             "rtc_reg"
 
 struct sp_rtc_reg {
 	volatile unsigned int rsv00;
@@ -68,7 +109,7 @@ struct sp_rtc_reg {
 };
 static volatile struct sp_rtc_reg *rtc_reg_ptr = NULL;
 
-static struct platform_device *sp_rtc_device0;
+//static struct platform_device *sp_rtc_device0;
 
 static void sp_get_seconds(unsigned long *secs)
 {
@@ -106,7 +147,10 @@ EXPORT_SYMBOL(sp_rtc_get_time);
 
 static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	printk("%s\n", __func__);
+	FUNC_DEBUG();
+
+       reset_control_assert(sp_rtc.rstc); 
+	
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
 
 	return 0;
@@ -118,7 +162,10 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	 * Because RTC is still powered during suspend,
 	 * there is nothing to do here.
 	 */
-	printk("%s\n", __func__);
+	FUNC_DEBUG();
+	
+	reset_control_deassert(sp_rtc.rstc);   //release reset
+	
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
 	return 0;
 }
@@ -168,29 +215,89 @@ static const struct rtc_class_ops sp_rtc_ops = {
 
 static int sp_rtc_probe(struct platform_device *plat_dev)
 {
-	int err;
+	int ret;
 	struct rtc_device *rtc;
+	struct resource *res;
+	void __iomem *reg_base;
 
-	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(VIRT_ADDR_RTC);
+      FUNC_DEBUG();
+
+	//memset(sp_rtc, 0, sizeof(sp_rtc));
+
+	/* find and map our resources */
+	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);
+	DBG_INFO("res 0x%x\n",res->start);
+	if (res) {
+		reg_base = devm_ioremap_resource(&plat_dev->dev, res);
+		if (IS_ERR(reg_base)) {
+			dev_err(&plat_dev->dev,"%s devm_ioremap_resource fail\n",RTC_REG_NAME);
+		}
+	}
+        DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
+
+
+      /* clk*/
+	DBG_INFO("Enable RTC clock\n");
+	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev,NULL);
+	DBG_INFO("sp_rtc->clk = %x\n",sp_rtc.rtcclk);
+	if(IS_ERR(sp_rtc.rtcclk)) {
+		dev_err(&plat_dev->dev, "devm_clk_get fail\n");
+	}
+	ret = clk_prepare_enable(sp_rtc.rtcclk);
+
+
+	/* reset*/
+	DBG_INFO("Enable RTC reset function\n");	
+	sp_rtc.rstc = devm_reset_control_get(&plat_dev->dev, NULL);
+	DBG_INFO( "sp_rtc->rstc : 0x%x \n",sp_rtc.rstc);
+	if (IS_ERR(sp_rtc.rstc)) {
+		ret = PTR_ERR(sp_rtc.rstc);
+		dev_err(&plat_dev->dev, "SPI failed to retrieve reset controller: %d\n", ret);
+		goto free_clk;
+	}
+	ret = reset_control_deassert(sp_rtc.rstc);
+	if (ret)
+		goto free_clk;
+
+	DBG_INFO("sp_rtc->rstc002\n");
+	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
 
-	rtc = rtc_device_register("sp-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
+	rtc = rtc_device_register("sp7021-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc)) {
-		err = PTR_ERR(rtc);
-		return err;
+		ret = PTR_ERR(rtc);
+		goto free_reset_assert;
 	}
 
 	platform_set_drvdata(plat_dev, rtc);
 
 	return 0;
+
+
+free_reset_assert:
+	reset_control_assert(sp_rtc.rstc);
+free_clk:
+	clk_disable_unprepare(sp_rtc.rtcclk);
+
+		return ret;	
+	
 }
 
 static int sp_rtc_remove(struct platform_device *plat_dev)
 {
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
+
+	reset_control_assert(sp_rtc.rstc);
+	
 	rtc_device_unregister(rtc);
 	return 0;
 }
+
+static const struct of_device_id sp_rtc_of_match[] = {
+	{ .compatible = "sunplus,sp7021-rtc" },
+	{ /* sentinel */ }
+};
+MODULE_DEVICE_TABLE(of, sp_rtc_of_match);
 
 static struct platform_driver sp_rtc_driver = {
 	.probe		= sp_rtc_probe,
@@ -198,43 +305,49 @@ static struct platform_driver sp_rtc_driver = {
 	.suspend	= sp_rtc_suspend,
 	.resume 	= sp_rtc_resume,
 	.driver 	= {
-		.name = "sp-rtc",
+		.name = "sp7021-rtc",
 		.owner = THIS_MODULE,
+		.of_match_table = sp_rtc_of_match,
 	},
 };
+
+
 
 static int __init sp_rtc_init(void)
 {
 	int err;
 
+      FUNC_DEBUG();
+
 	if ((err = platform_driver_register(&sp_rtc_driver)))
 		return err;
 
-	if ((sp_rtc_device0 = platform_device_alloc("sp-rtc", 0)) == NULL) {
-		err = -ENOMEM;
-		goto exit_driver_unregister;
-	}
+//	if ((sp_rtc_device0 = platform_device_alloc("sp7021-rtc", 0)) == NULL) {
+//		err = -ENOMEM;
 
-	if ((err = platform_device_add(sp_rtc_device0)))
-		goto exit_free_sp_rtc_device0;
+//		goto exit_driver_unregister;
+//	}
 
-	if (device_init_wakeup(&(sp_rtc_device0->dev), true)) {
-		printk(KERN_WARNING "dev_init_wakeup() fails.\n");
-	}
+//	if ((err = platform_device_add(sp_rtc_device0)))
+//		goto exit_free_sp_rtc_device0;
+
+//	if (device_init_wakeup(&(sp_rtc_device0->dev), true)) {
+//		printk(KERN_WARNING "dev_init_wakeup() fails.\n");
+//	}
 
 	return 0;
 
-exit_free_sp_rtc_device0:
-	platform_device_put(sp_rtc_device0);
+//exit_free_sp_rtc_device0:
+//	platform_device_put(sp_rtc_device0);
 
-exit_driver_unregister:
-	platform_driver_unregister(&sp_rtc_driver);
-	return err;
+//exit_driver_unregister:
+//	platform_driver_unregister(&sp_rtc_driver);
+//	return err;
 }
 
 static void __exit sp_rtc_exit(void)
 {
-	platform_device_unregister(sp_rtc_device0);
+	//platform_device_unregister(sp_rtc_device0);
 	platform_driver_unregister(&sp_rtc_driver);
 }
 
