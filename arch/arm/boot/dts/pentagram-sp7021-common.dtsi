@@ -529,7 +529,8 @@
 			resets = <&rstc RST_L2SW>;
 			mac-addr1 = <52>;
 			mac-addr2 = <58>;
-			phy-handle = <&eth_phy0>;
+			phy-handle1 = <&eth_phy0>;
+			phy-handle2 = <&eth_phy1>;
 		};
 
 		mdio {

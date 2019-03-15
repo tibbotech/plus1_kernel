@@ -31,7 +31,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 	mii_bus->write = mii_write;
 	snprintf(mii_bus->id, MII_BUS_ID_SIZE, "%s-mii", dev_name(&pdev->dev));
 
-	mdio_node = of_get_parent(mac->comm->phy0_node);
+	mdio_node = of_get_parent(mac->comm->phy1_node);
 	ret = of_mdiobus_register(mii_bus, mdio_node);
 	if (ret) {
 		ETH_ERR("[%s] Failed to register mii bus (ret = %d)!\n", __FUNCTION__, ret);
@@ -63,11 +63,16 @@ int mac_phy_probe(struct net_device *netdev)
 	struct l2sw_mac *mac = netdev_priv(netdev);
 	struct phy_device *phydev;
 
-	phydev = of_phy_connect(mac->net_dev, mac->comm->phy0_node, mii_linkchange,
+	phydev = of_phy_connect(mac->net_dev, mac->comm->phy1_node, mii_linkchange,
 				0, PHY_INTERFACE_MODE_RGMII_ID);
 	if (!phydev) {
 		ETH_ERR(" \"%s\" has no phy found\n", netdev->name);
 		return -1;
+	}
+
+	if (mac->comm->phy2_node) {
+		of_phy_connect(mac->net_dev, mac->comm->phy2_node, mii_linkchange,
+				0, PHY_INTERFACE_MODE_RGMII_ID);
 	}
 
 #ifdef PHY_RUN_STATEMACHINE

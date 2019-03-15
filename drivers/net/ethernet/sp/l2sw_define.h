@@ -203,7 +203,8 @@ struct l2sw_common {
 	struct napi_struct napi;
 #endif
 
-	struct device_node *phy0_node;
+	struct device_node *phy1_node;
+	struct device_node *phy2_node;
 
 	u8 enable;
 };

@@ -1025,8 +1025,9 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	phy_cfg();
 
-	comm->phy0_node = of_parse_phandle(pdev->dev.of_node, "phy-handle", 0);
-	if (comm->phy0_node) {
+	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
+	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
+	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
 		if (ret) {
 			ETH_ERR("[%s] Failed to initialize mdio!\n", __FUNCTION__);
