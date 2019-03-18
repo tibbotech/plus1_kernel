@@ -5,6 +5,7 @@
  *					INCLUDE DECLARATIONS
  *---------------------------------------------------------------------------*/
 #include <linux/kernel.h>
+#include <mach/hdmitx.h>
 
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
@@ -146,7 +147,11 @@ struct hal_hdmitx_audio_attribute {
  *					FUNCTION DECLARATIONS
  *---------------------------------------------------------------------------*/
 
+#ifdef HPD_DETECTION
+void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase);
+#else
 void hal_hdmitx_init(void __iomem *hdmitxbase);
+#endif
 
 void hal_hdmitx_deinit(void __iomem *hdmitxbase);
 
