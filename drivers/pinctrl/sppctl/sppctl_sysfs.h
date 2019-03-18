@@ -1,7 +1,7 @@
 /*
- * Driver for SunPlus/Tibbo SC7021 additional pin multiplexing controller
- *
- * Copyright (C) 2019 Dvorkin Dmitry <dvorkin@tibbo.com>
+ * SC7021 pinmux controller driver.
+ * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
+ * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,12 +17,7 @@
 #ifndef SPPCTL_SYSFS_H
 #define SPPCTL_SYSFS_H
 
-#include "sppctl_syshdrs.h"
-
 #include "sppctl.h"
-#include <linux/sysfs.h>
-#include <linux/kobject.h>
-#include <linux/device.h>
 
 typedef struct sppctl_sdata_T {
  uint8_t i;

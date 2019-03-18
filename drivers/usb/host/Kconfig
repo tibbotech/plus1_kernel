@@ -12,7 +12,7 @@ config USB_LOGO_TEST
 config USB_HOST_RESET_SP
 	bool "Enable Reset SUNPLUS usb host controllor with wait_event"
 	depends on USB
-	select GPIO_SC7021
+	select PINCTRL_SPPCTL
 
 config USB_OHCI_MSI_WORKAROUND
 	bool "Enable Workaround USB Ohci Msi Problem"
