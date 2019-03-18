@@ -697,7 +697,7 @@
 			resets = <&rstc RST_MIPICSI0>;
 		};
 		
-		sppctl: sppctl@0x9C000100 {
+		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sc7021-pctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x80>;
 			gpio-controller;
