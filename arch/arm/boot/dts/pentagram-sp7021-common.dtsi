@@ -697,7 +697,11 @@
 			resets = <&rstc RST_BCH>;
 		};
 
-
+    sp_spinor0: spinor@9C000B00 {
+		    compatible = "sunplus,sp-spi-nor";
+		    reg = <0x9C000B00 0x80>,<0x9c000080 0x80>;
+		    spi-max-frequency = <50000000>;
+	  };
 
 		gpio: gpio@0x9C000300 {
 			compatible = "sunplus,sp7021-gpio";
