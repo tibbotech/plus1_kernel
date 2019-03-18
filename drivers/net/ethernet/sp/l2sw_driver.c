@@ -629,9 +629,9 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 	switch (cmd) {
 	case SIOCGMIIPHY:
 		if ((comm->dual_nic) && (mac->lan_port == 1)) {
-			return PHY1_ADDR;
+			return comm->phy2_addr;
 		} else {
-			return PHY0_ADDR;
+			return comm->phy1_addr;
 		}
 
 	case SIOCGMIIREG:
@@ -1021,12 +1021,28 @@ static int l2sw_probe(struct platform_device *pdev)
 	comm->net_dev = net_dev;
 	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
 
-	l2sw_enable_port(pdev);
+	l2sw_enable_port(mac);
 
 	phy_cfg();
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
+
+	// Get address of phy of ethernet from dts.
+	if (of_property_read_u32(comm->phy1_node, "reg", &rc) == 0) {
+		comm->phy1_addr = rc;
+	} else {
+		comm->phy1_addr = 0;
+		ETH_INFO(" Cannot get address of phy of ethernet 1! Set to 0 by default.\n");
+	}
+
+	if (of_property_read_u32(comm->phy2_node, "reg", &rc) == 0) {
+		comm->phy2_addr = rc;
+	} else {
+		comm->phy2_addr = 1;
+		ETH_INFO(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
+	}
+
 	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
 		if (ret) {

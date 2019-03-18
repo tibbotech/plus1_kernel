@@ -205,6 +205,8 @@ struct l2sw_common {
 
 	struct device_node *phy1_node;
 	struct device_node *phy2_node;
+	u8 phy1_addr;
+	u8 phy2_addr;
 
 	u8 enable;
 };

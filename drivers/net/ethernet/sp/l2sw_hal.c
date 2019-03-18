@@ -219,9 +219,9 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	/* phy address */
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | (PHY0_ADDR<<16));
+	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | (PHY1_ADDR<<24));
+	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
 
 	//disable cpu port0 aging (12)
 	//disable cpu port0 learning (14)
@@ -395,7 +395,7 @@ inline u32 read_port_ability(void)
 	return HWREG_R(port_ability);
 }
 
-void l2sw_enable_port(struct platform_device *pdev)
+void l2sw_enable_port(struct l2sw_mac *mac)
 {
 	u32 reg;
 
@@ -405,9 +405,9 @@ void l2sw_enable_port(struct platform_device *pdev)
 
 	//phy address
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | (PHY0_ADDR<<16));
+	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | (PHY1_ADDR<<24));
+	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
 	wmb();
 }
 

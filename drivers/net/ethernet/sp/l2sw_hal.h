@@ -17,9 +17,6 @@
 #define REG_WRITE               0
 #define REG_READ                1
 
-#define PHY0_ADDR               0x0
-#define PHY1_ADDR               0x1
-
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
 
 
@@ -69,7 +66,7 @@ u32 read_port_ability(void);
 
 int phy_cfg(void);
 
-void l2sw_enable_port(struct platform_device *pdev);
+void l2sw_enable_port(struct l2sw_mac *mac);
 
 void regs_print(void);
 
