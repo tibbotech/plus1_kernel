@@ -69,13 +69,6 @@
 			no-map;
 			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
 		};
-
-		fb_reserve: fb_device {
-			compatible = "sunplus,sc7021_fb_device_mem";
-			size = <0x802000>;	//1366*768*4 alignment 1024, and double buffer.
-			alignment = <1024>;
-			reusable;
-		};
 	};
 
 	iop_device {
@@ -501,10 +494,9 @@
 
 		fb_device {
 			compatible = "sunplus,sp7021-fb";
-			memory-region = <&fb_reserve>;
 		};
 
-		display0: display@0x9c005c80 {
+		sp_display: display@0x9c005c80 {
 			compatible = "sunplus,sp7021-display";
 			reg = <0x9c005c80 0x1980>,
 				<0x9c105000 0x80>;

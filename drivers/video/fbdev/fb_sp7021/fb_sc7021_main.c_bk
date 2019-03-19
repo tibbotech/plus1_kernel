@@ -26,30 +26,36 @@
  * @author PoChou Chen
  */
 /**************************************************************************
- * Header Files
+ *                         H E A D E R   F I L E S
  **************************************************************************/
 #include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/platform_device.h>
 #include <linux/fb.h>
-#include <linux/of.h>
-#include <linux/of_address.h>
-#include <linux/of_reserved_mem.h>
-#include <linux/dma-mapping.h>
-
-#include "mach/display/disp_osd.h"
 #include "fb_sc7021_main.h"
 
 /**************************************************************************
- * Constants
+ *                           C O N S T A N T S                            *
  **************************************************************************/
+/* create FB device number(MAX==3) */
+#define FB_DEV_NUM			3
+#if (FB_DEV_NUM > 3)
+	#error "FB device can't large than 3"
+#endif
+
+#define FB_PALETTE_LEN		(1024)
+
+#define CMD_LEN				(256)
+
+#define IPC_FunctionCall(...)	0
 
 /**************************************************************************
- * Macros
+ *                              M A C R O S                               *
  **************************************************************************/
+#define DISP_ALIGN(x, n)		(((x) + ((n) - 1)) & ~((n) - 1))
+
+/* #define DEBUG_MSG */
 #ifdef DEBUG_MSG
-	#define mod_dbg(pdev, fmt, arg...)	dev_dbg(&pdev->dev, \
-			"[%s:%d] "fmt, \
+	#define mod_dbg(fmt, arg...)	pr_debug("[%s:%d] "fmt, \
 			__func__, \
 			__LINE__, \
 			##arg)
@@ -57,68 +63,69 @@
 	#define mod_dbg(...)
 #endif
 
-#define mod_err(pdev, fmt, arg...)	dev_err(&pdev->dev, \
-		"[%s:%d] Error! "fmt, \
+#define mod_err(fmt, arg...)		pr_err("[%s:%d] Error! "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
-#define mod_warn(pdev, fmt, arg...)	dev_warn(&pdev->dev, \
-		"[%s:%d] Warning! "fmt, \
+#define mod_warn(fmt, arg...)	pr_warn("[%s:%d] Warning! "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
-#define mod_info(pdev, fmt, arg...)	dev_info(&pdev->dev, \
-		"[%s:%d] "fmt, \
+#define mod_info(fmt, arg...)		pr_info("[%s:%d] "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
 
 /**************************************************************************
- * Data Types
+ *                          D A T A    T Y P E S                          *
  **************************************************************************/
-//todo resvered memory
-struct dma_coherent_mem {
-	void			*virt_base;
-	dma_addr_t		device_base;
-	unsigned long	pfn_base;
-	int				size;
-	int				flags;
-	unsigned long	*bitmap;
-	spinlock_t		spinlock;
-};
+typedef struct _framebuffer_t {
+	struct fb_info			*fb;
+
+	int						win_id;
+	int						win_handle;
+	int						fbwidth;
+	int						fbheight;
+
+	DRV_OsdRegionFormat_e	ColorFmt;
+	char					ColorFmtName[24];
+	int						fbpagesize;
+	int						fbpagenum;
+	int						fbsize;
+	void __iomem			*fbmem;
+	void __iomem			*fbmem_palette;
+} framebuffer_t;
 
 /**************************************************************************
- * Static Functions
+ *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
-static int _sc7021_fb_pan_display(struct fb_var_screeninfo *var,
+static int fbdss_open(struct fb_info *fbinfo, int user);
+static int fbdss_release(struct fb_info *fbinfo, int user);
+static int fbdss_set_par(struct fb_info *fbinfo);
+static int fbdss_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *fbinfo);
-static int _sc7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info);
-static int _sc7021_fb_ioctl(struct fb_info *fbinfo,
-		unsigned int cmd,
-		unsigned long arg);
-static int _sc7021_fb_rmem_device_init(struct reserved_mem *rmem,
-		struct device *dev);
-static void _sc7021_fb_rmem_device_release(struct reserved_mem *rmem,
-		struct device *dev);
-static int _sc7021_fb_rmem_fbpr(struct reserved_mem *rmem);
+static int fbdss_waitVsync(struct fb_info *info);
+static int fbdss_setcmap(struct fb_cmap *cmap, struct fb_info *info);
 
-static int _sc7021_fb_remove(struct platform_device *pdev);
-static int _sc7021_fb_probe(struct platform_device *pdev);
+static int _ipc_swapbuf(FB_IPC_Info_t *info, int buf_max);
 
 /**************************************************************************
- * Global Data
+ *                         G L O B A L    D A T A                         *
  **************************************************************************/
-struct fb_info *gFB_INFO;
+static struct fb_info *gFB_INFO[FB_DEV_NUM] = {NULL};
 
 static struct fb_ops framebuffer_ops = {
 	.owner				= THIS_MODULE,
-	.fb_pan_display		= _sc7021_fb_pan_display,
-	.fb_setcmap			= _sc7021_fb_setcmap,
-	.fb_ioctl			= _sc7021_fb_ioctl,
+	.fb_open			= fbdss_open,
+	.fb_release			= fbdss_release,
+	.fb_set_par			= fbdss_set_par,
+	.fb_pan_display		= fbdss_pan_display,
+	.fb_sync			= fbdss_waitVsync,
+	.fb_setcmap			= fbdss_setcmap,
 };
 
 static const struct of_device_id _sc7021_fb_dt_ids[] = {
-	{ .compatible = "sunplus,sp7021-fb", },
+	{ .compatible = "sunplus,sc7021-fb", },
 	{ /* Sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, _sc7021_fb_dt_ids);
@@ -127,108 +134,91 @@ static struct platform_driver _sc7021_fb_driver = {
 	.probe		= _sc7021_fb_probe,
 	.remove		= _sc7021_fb_remove,
 	.driver		= {
-		.name	= "sp7021-fb",
+		.name	= "sc7021-fb",
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(_sc7021_fb_dt_ids),
 #if 0
 #ifdef CONFIG_PM
-		.pm		= &
+		.pm		= &_sc7021_pwm_pm_ops,
 #endif
 #endif
 	},
 };
 module_platform_driver(_sc7021_fb_driver);
 
-static const struct reserved_mem_ops _sc7021_fb_rmem_ops = {
-	.device_init	= _sc7021_fb_rmem_device_init,
-	.device_release	= _sc7021_fb_rmem_device_release,
-};
-
-RESERVEDMEM_OF_DECLARE(sc7021_fb,
-		"sunplus,sc7021_fb_device_mem",
-		_sc7021_fb_rmem_fbpr);
-
 /**************************************************************************
- * Function Implementations
+ *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
-static int _sc7021_fb_rmem_device_init(struct reserved_mem *rmem,
-		struct device *dev)
+static inline unsigned int _chan_by_field(unsigned char chan,
+		struct fb_bitfield *bf)
 {
-	struct dma_coherent_mem *dma_mem = NULL;
-	void __iomem *mem_base = NULL;
-	int pages = rmem->size >> PAGE_SHIFT;
-	int bitmap_size = BITS_TO_LONGS(pages) * sizeof(long);
+	unsigned int ret_chan = (unsigned int)chan;
 
-	if (!&rmem->priv)
-		return -ENODEV;
+	ret_chan >>= 8 - bf->length;
 
-	if (!rmem->size)
-		return -ENODEV;
-
-	mem_base = __va(rmem->base);
-
-	if (!mem_base)
-		return -ENODEV;
-
-	dma_mem = kzalloc(sizeof(struct dma_coherent_mem), GFP_KERNEL);
-	if (!dma_mem)
-		return -ENODEV;
-	dma_mem->bitmap = kzalloc(bitmap_size, GFP_KERNEL);
-	if (!dma_mem->bitmap)
-		return -ENODEV;
-
-	dma_mem->virt_base = mem_base;
-	dma_mem->device_base = rmem->base;
-	dma_mem->pfn_base = PFN_DOWN(rmem->base);
-	dma_mem->size = pages;
-	dma_mem->flags = DMA_MEMORY_IO | DMA_MEMORY_EXCLUSIVE;
-	spin_lock_init(&dma_mem->spinlock);
-
-	rmem->priv = dma_mem;
-
-	dev->dma_mem = rmem->priv;
-
-	return 0;
+	return ret_chan << bf->offset;
 }
 
-static void _sc7021_fb_rmem_device_release(struct reserved_mem *rmem,
-		struct device *dev)
+static int _ipc_swapbuf(FB_IPC_Info_t *info, int buf_max)
 {
-	dev->dma_mem = NULL;
+	int retIPC = 0;
+
+	if (!info) {
+		mod_err("IPC info is NULL\n");
+		return -1;
+	}
+
+	if (info->buf_id >= buf_max) {
+		mod_err("buffer ID >= max buffer num(%d >= %d)\n",
+				info->buf_id,
+				buf_max);
+		return -1;
+	}
+
+	mod_dbg("Swap buffer ID = %d, win_id = %d\n",
+			info->buf_id,
+			info->win_id);
+
+	retIPC = IPC_FunctionCall(IPC_CMD_DISP_SWAP_BUFF,
+			info,
+			sizeof(FB_IPC_Info_t));
+	if (retIPC)
+		mod_err("IPC fail(IPC_CMD_DISP_SWAP_BUFF) = %d\n", retIPC);
+
+	return retIPC;
 }
 
-static int _sc7021_fb_rmem_fbpr(struct reserved_mem *rmem)
-{
-	rmem->ops = &_sc7021_fb_rmem_ops;
-
-	return 0;
-}
-
-static int _sc7021_fb_create_device(struct platform_device *pdev,
-		struct UI_FB_Info_t *Info,
-		int phy_mem_addr,
-		int phy_mem_size)
+static int _create_device(int device_id, UI_FB_Info *Info)
 {
 	struct fb_info *fbinfo = NULL;
-	struct framebuffer_t *fbWorkMem = NULL;
+	framebuffer_t *fbWorkMem = NULL;
 
 	if (!Info) {
-		mod_err(pdev, "FB info is NULL\n");
+		mod_err("FB info is NULL\n");
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
-	fbinfo = framebuffer_alloc(sizeof(struct framebuffer_t), NULL);
+	if (!(Info->UI_winid >= 0 && Info->UI_winid < DRV_OSD_MAX)) {
+		mod_err("win_id:%d, must smaller then %d\n",
+				Info->UI_winid,
+				DRV_OSD_MAX);
+		goto ERROR_HANDLE_FB_INIT;
+	}
+
+	fbinfo = framebuffer_alloc(sizeof(framebuffer_t), NULL);
 
 	if (fbinfo == NULL) {
-		mod_err(pdev, "framebuffer_alloc failed\n");
+		mod_err("win_id:%d, framebuffer_alloc failed\n",
+				Info->UI_winid);
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
 	fbWorkMem = fbinfo->par;
-	memset(fbWorkMem, 0, sizeof(struct framebuffer_t));
+	memset(fbWorkMem, 0, sizeof(framebuffer_t));
 	fbWorkMem->fb = fbinfo;
 
 	/* Initial our framebuffer context */
+	fbWorkMem->win_id = Info->UI_winid;
 	fbWorkMem->ColorFmt = Info->UI_ColorFmt;
 	snprintf(fbWorkMem->ColorFmtName,
 			sizeof(fbWorkMem->ColorFmtName) - 1,
@@ -238,7 +228,7 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 	fbWorkMem->fbheight = Info->UI_height;
 
 	if (Info->UI_bufAlign % PAGE_SIZE) {
-		mod_err(pdev, "UI buf align: %d, Linux page align: %d\n",
+		mod_err("UI buf align: %d, Linux page align: %d\n",
 				Info->UI_bufAlign,
 				(int)PAGE_SIZE);
 		goto ERROR_HANDLE_FB_INIT;
@@ -251,18 +241,12 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 	fbWorkMem->fbpagenum = Info->UI_bufNum;
 	fbWorkMem->fbsize = fbWorkMem->fbpagesize * fbWorkMem->fbpagenum;
 
-	if (fbWorkMem->fbsize > phy_mem_size) {
-		mod_err(pdev, "reserved mem size(%d) < UI mem size(%d)\n",
-				phy_mem_size,
-				fbWorkMem->fbsize);
-		goto ERROR_HANDLE_FB_INIT;
-	}
-
 	/* Allocate Buffer */
-	fbWorkMem->fbmem = __va(phy_mem_addr);
+	fbWorkMem->fbmem = chunk_malloc(DRAM_B, fbWorkMem->fbsize);
 
 	if (fbWorkMem->fbmem == NULL) {
-		mod_err(pdev, "malloc failed, size %d(%dx%dx(%d/8)*%d)\n",
+		mod_err("win_id:%d, malloc failed, size %d(%dx%dx(%d/8)*%d)\n",
+			fbWorkMem->win_id,
 			fbWorkMem->fbsize,
 			fbWorkMem->fbwidth,
 			fbWorkMem->fbheight,
@@ -273,12 +257,15 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 	memset(fbWorkMem->fbmem, 0, fbWorkMem->fbsize);
 
 	if (fbWorkMem->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
-		fbWorkMem->fbmem_palette = kzalloc(FB_PALETTE_LEN, GFP_KERNEL);
+		fbWorkMem->fbmem_palette = chunk_malloc(DRAM_B, FB_PALETTE_LEN);
 
-		if (fbWorkMem->fbmem_palette == NULL)
+		if (fbWorkMem->fbmem_palette == NULL) {
+			mod_err("win_id:%d, malloc failed, size %d\n",
+					fbWorkMem->win_id, FB_PALETTE_LEN);
 			goto ERROR_HANDLE_FB_INIT;
-	} else
-		fbWorkMem->fbmem_palette = NULL;
+		}
+		memset(fbWorkMem->fbmem_palette, 0, FB_PALETTE_LEN);
+	}
 
 	fbinfo->fbops = &framebuffer_ops;
 	fbinfo->flags = FBINFO_FLAG_DEFAULT;
@@ -339,7 +326,8 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 	/* fixed info */
 	snprintf(fbinfo->fix.id,
 			sizeof(fbinfo->fix.id) - 1,
-			"FB-%dx%d",
+			"FB-O%d-%dx%d",
+			fbWorkMem->win_id,
 			fbWorkMem->fbwidth,
 			fbWorkMem->fbheight);
 	fbinfo->fix.mmio_start	= 0;
@@ -355,27 +343,27 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 	fbinfo->fix.ypanstep	= 1;
 	fbinfo->fix.ywrapstep	= 0;
 	fbinfo->fix.accel		= FB_ACCEL_NONE;
-	fbinfo->fix.smem_start	= phy_mem_addr;
+	fbinfo->fix.smem_start	= chunk_pa(fbWorkMem->fbmem);
 	fbinfo->fix.smem_len	= fbWorkMem->fbsize;
 	fbinfo->fix.line_length	= fbinfo->var.xres_virtual
 		* (Info->UI_Colormode.bits_per_pixel >> 3);
 
 	if (register_framebuffer(fbinfo) != 0) {
-		mod_err(pdev, "register framebuffer failed\n");
+		mod_err("win_id:%d, register framebuffer failed\n",
+				fbWorkMem->win_id);
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
-	Info->UI_bufAddr = (u32)fbinfo->fix.smem_start;
-	if (fbinfo->pseudo_palette)
-		Info->UI_bufAddr_pal = __pa(fbWorkMem->fbmem_palette);
-	else
-		Info->UI_bufAddr_pal = 0;
+	Info->UI_bufAddr = (UINT32)fbinfo->fix.smem_start;
+	Info->UI_bufAddr_pal = chunk_pa(fbWorkMem->fbmem_palette);
 	Info->UI_bufsize = fbWorkMem->fbsize;
 
-	mod_info(pdev, "mem VA 0x%x(PA 0x%x), Palette VA 0x%x(PA 0x%x), UI Res %dx%d, size %d + %d\n",
-			(u32)fbWorkMem->fbmem,
+	mod_info("fb%d, win_id %d, mem VA 0x%x(PA 0x%x), Palette VA 0x%x(PA 0x%x), UI Res %dx%d, size %d + %d\n",
+			device_id,
+			fbWorkMem->win_id,
+			(UINT32)fbWorkMem->fbmem,
 			Info->UI_bufAddr,
-			(u32)fbWorkMem->fbmem_palette,
+			(UINT32)fbWorkMem->fbmem_palette,
 			Info->UI_bufAddr_pal,
 			fbWorkMem->fbwidth,
 			fbWorkMem->fbheight,
@@ -383,58 +371,138 @@ static int _sc7021_fb_create_device(struct platform_device *pdev,
 			(fbWorkMem->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
 			? FB_PALETTE_LEN : 0);
 
-	gFB_INFO = fbinfo;
+	gFB_INFO[device_id] = fbinfo;
 
 	return 0;
 
 ERROR_HANDLE_FB_INIT:
 	if (Info)
-		mod_err(pdev, "Create device error\n");
+		mod_err("win_id:%d, Have error\n", Info->UI_winid);
 
-	kfree(fbWorkMem->fbmem_palette);
-
+	if (fbWorkMem) {
+		if (fbWorkMem->fbmem)
+			chunk_free(fbWorkMem->fbmem);
+		if (fbWorkMem->fbmem_palette)
+			chunk_free(fbWorkMem->fbmem_palette);
+	}
 	if (fbinfo)
 		framebuffer_release(fbinfo);
-
 	return -1;
 }
 
-static int _sc7021_fb_pan_display(struct fb_var_screeninfo *var,
+static void _WakeUpEcosDisplay(UI_FB_Info *pInfo)
+{
+	int retIPC = 0;
+
+	retIPC = IPC_FunctionCall(IPC_CMD_DISP_INIT,
+			pInfo,
+			sizeof(UI_FB_Info) * UI_FB_INFO_NUM);
+	if (retIPC)
+		mod_err("IPC fail(IPC_CMD_DISP_INIT) = %d\n", retIPC);
+}
+
+#if 0
+static int _Get_UI_Res(UI_FB_Info *pInfo)
+{
+	int retIPC = 0;
+
+	retIPC = IPC_FunctionCall(IPC_CMD_DISP_GET_FB_INFO,
+			pInfo,
+			sizeof(UI_FB_Info) * UI_FB_INFO_NUM);
+
+	if (retIPC)
+		mod_err("IPC fail(IPC_CMD_DISP_GET_FB_mod_info) = %d\n",
+				retIPC);
+
+	return retIPC;
+}
+
+static void _Set_UI_handle(UI_FB_Info *pInfo)
+{
+	framebuffer_t *fb_par = NULL;
+	int i, j;
+
+	for (i = 0; i < FB_DEV_NUM; ++i) {
+		for (j = 0; j < UI_FB_INFO_NUM; ++j) {
+			if (!gFB_INFO[i])
+				break;
+			fb_par = gFB_INFO[i]->par;
+			if (fb_par->win_id == pInfo[j].UI_winid)
+				fb_par->win_handle = pInfo[j].UI_OsdHandle;
+		}
+	}
+}
+#endif
+
+static int fbdss_open(struct fb_info *fbinfo, int user)
+{
+	/* Do nothing */
+	return 0;
+}
+
+static int fbdss_release(struct fb_info *fbinfo, int user)
+{
+	/* Not supported release */
+	return 0;
+}
+
+static int fbdss_set_par(struct fb_info *fbinfo)
+{
+	return 0;
+}
+
+static int fbdss_pan_display(struct fb_var_screeninfo *var,
 		struct fb_info *fbinfo)
 {
-	struct framebuffer_t *fb_par = (struct framebuffer_t *)fbinfo->par;
-	struct platform_device *pdev = to_platform_device(fbinfo->dev);
-	int ret = 0;
+	framebuffer_t *fb_par = (framebuffer_t *)fbinfo->par;
+	FB_IPC_Info_t ipc_data = {.win_id = -1};
+	int retIPC = 0;
 
 	fbinfo->var.xoffset = var->xoffset;
 	fbinfo->var.yoffset = var->yoffset;
 
-	ret = sc7021_fb_swapbuf(
-			fbinfo->var.yoffset / fbinfo->var.yres,
-			fb_par->fbpagenum);
+	ipc_data.buf_id = fbinfo->var.yoffset / fbinfo->var.yres;
+	ipc_data.win_id = fb_par->win_id;
 
-	if (ret)
-		mod_err(pdev, "swap buffer fails");
+	retIPC = _ipc_swapbuf(&ipc_data, fb_par->fbpagenum);
 
-	return ret;
+	if (!retIPC) {
+		if (!fb_par->win_handle) {
+//			UI_FB_Info Info[UI_FB_INFO_NUM] = { {0} };
+
+//			retIPC = _Get_UI_Res(Info);
+			if (retIPC) {
+				mod_err("Get UI info fails");
+				retIPC = 0;
+			} else {
+//				_Set_UI_handle(Info);
+			}
+		}
+	}
+
+	return retIPC;
 }
 
-static int _sc7021_fb_ioctl(struct fb_info *fbinfo,
-		unsigned int cmd,
-		unsigned long arg)
+static int fbdss_waitVsync(struct fb_info *info)
 {
-	switch (cmd) {
-	case FBIO_WAITFORVSYNC:
-		DRV_OSD_WaitVSync();
-		break;
-	}
+	FB_IPC_Info_t ipc_data = {.win_id = -1};
+	int retIPC;
+
+	ipc_data.win_id = ((framebuffer_t *)(info->par))->win_id;
+	mod_dbg("Wait Vsync: %d\n", ipc_data.win_id);
+
+	retIPC = IPC_FunctionCall(IPC_CMD_DISP_WAIT_VSYNC,
+			&ipc_data,
+			sizeof(FB_IPC_Info_t));
+	if (retIPC)
+		mod_err("IPC fail(IPC_CMD_DISP_WAIT_VSYNC) = %d\n", retIPC);
 
 	return 0;
 }
 
-static int _sc7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
+static int fbdss_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 {
-	struct framebuffer_t *fb_par = (struct framebuffer_t *)info->par;
+	framebuffer_t *fb_par = (framebuffer_t *)info->par;
 	int i;
 	unsigned short *red, *green, *blue, *transp;
 	unsigned short trans = 0xffff;
@@ -455,120 +523,79 @@ static int _sc7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 		if (transp)
 			trans = *(transp++);
 
-		palette[i] = sc7021_fb_chan_by_field((unsigned char)trans,
+		palette[i] = _chan_by_field((unsigned char)trans,
 				&info->var.transp);
-		palette[i] |= sc7021_fb_chan_by_field((unsigned char)*(red++),
+		palette[i] |= _chan_by_field((unsigned char)*(red++),
 				&info->var.red);
-		palette[i] |= sc7021_fb_chan_by_field((unsigned char)*(green++),
+		palette[i] |= _chan_by_field((unsigned char)*(green++),
 				&info->var.green);
-		palette[i] |= sc7021_fb_chan_by_field((unsigned char)*(blue++),
+		palette[i] |= _chan_by_field((unsigned char)*(blue++),
 				&info->var.blue);
 	}
 	return 0;
 }
 
-static int _sc7021_fb_remove(struct platform_device *pdev)
+static void _sc7021_fb_remove(void)
 {
-	struct UI_FB_Info_t Info;
-	int ret;
+	int i;
 
-	if (gFB_INFO) {
-		if (unregister_framebuffer(gFB_INFO))
-			mod_err(pdev, "unregister framebuffer error\n");
-		framebuffer_release(gFB_INFO);
-		gFB_INFO = NULL;
+	for (i = 0; i < FB_DEV_NUM; ++i) {
+		if (gFB_INFO[i]) {
+			if (unregister_framebuffer(gFB_INFO[i]))
+				mod_err("unregister framebuffer error\n");
+			chunk_free(gFB_INFO[i]->screen_base);
+			framebuffer_release(gFB_INFO[i]);
+			gFB_INFO[i] = NULL;
+		}
 	}
-
-	ret = DRV_OSD_Get_UI_Res(&Info);
-	if (ret) {
-		mod_err(pdev, "Get UI resolution fails");
-		return -EPROBE_DEFER;
-	}
-
-	DRV_OSD_Set_UI_UnInit(&Info);
-
-	return 0;
 }
 
-static int _sc7021_fb_probe(struct platform_device *pdev)
+static int _sc7021_fb_probe(void)
 {
-	struct UI_FB_Info_t Info;
-	struct framebuffer_t *fb_par = NULL;
-	int ret;
+//	int ret = 0;
+	int device_id = 0;
+	UI_FB_Info Info = {0, 800, 480, 2, 4096, 0, 0xe, {.bits_per_pixel = 0,}, 0, 0, 0, 0};
 
-	if (!pdev->dev.of_node) {
-		mod_err(pdev, "invalid devicetree node\n");
-		return -EINVAL;
-	}
-
-	if (!of_device_is_available(pdev->dev.of_node)) {
-		mod_err(pdev, "devicetree status is not available\n");
-		return -ENODEV;
-	}
-
-	ret = DRV_OSD_Get_UI_Res(&Info);
+#if 0
+	ret = _Get_UI_Res(Info);
 
 	if (ret) {
-		mod_err(pdev, "Get UI resolution fails");
-		return -EPROBE_DEFER;
+		mod_err("Get UI resolution fails");
+		goto ERROR_HANDLE_FB_INIT;
 	}
+#endif
+	mod_err("mac test");
 
-	if (of_reserved_mem_device_init(&pdev->dev)) {
-		mod_err(pdev, "fb memory-region is not available\n");
-		return -EINVAL;
-	}
-
-	mod_dbg(pdev, "try Create device %dx%d mem_addr:0x%x mem_size:%d\n",
+	mod_dbg("try Create device %d: win_id = %d, %dx%d\n",
+			device_id, Info.UI_winid,
 			Info.UI_width,
-			Info.UI_height,
-			pdev->dev.dma_mem->device_base,
-			pdev->dev.dma_mem->size << PAGE_SHIFT);
-
+			Info.UI_height);
 	if (!(Info.UI_width == 0 || Info.UI_height == 0)) {
-		if (_sc7021_fb_create_device(pdev,
-					&Info,
-					pdev->dev.dma_mem->device_base,
-					pdev->dev.dma_mem->size << PAGE_SHIFT))
+		if (_create_device(device_id, &Info))
 			goto ERROR_HANDLE_FB_INIT;
+		++device_id;
+	} else {
+		Info.UI_winid = -1;
 	}
 
-	DRV_OSD_Set_UI_Init(&Info);
-
-	fb_par = (struct framebuffer_t *)gFB_INFO->par;
-	fb_par->OsdHandle = Info.UI_handle;
+	_WakeUpEcosDisplay(&Info);
 
 	return 0;
 
 ERROR_HANDLE_FB_INIT:
-	_sc7021_fb_remove(pdev);
-
+	_sc7021_fb_remove();
 	return -1;
 }
 
-/****************************************************************************
- * Public Function
- ****************************************************************************/
-unsigned int sc7021_fb_chan_by_field(unsigned char chan,
-		struct fb_bitfield *bf)
-{
-	unsigned int ret_chan = (unsigned int)chan;
-
-	ret_chan >>= 8 - bf->length;
-
-	return ret_chan << bf->offset;
-}
-
-int sc7021_fb_swapbuf(u32 buf_id, int buf_max)
-{
-	int ret = 0;
-
-	if (buf_id >= buf_max)
-		return -1;
-
-	ret = DRV_OSD_SetVisibleBuffer(buf_id);
-
-	return ret;
-}
+#if 0
+/* coverity issue */
+#ifdef MODULE
+//static inline initcall_t __inittest(void) __attribute__((used));
+//static inline exitcall_t __exittest(void) __attribute__((used));
+#endif
+module_init(fbdss_init);
+module_exit(fbdss_exit);
+#endif
 
 MODULE_DESCRIPTION("SC7021 Framebuffer Driver");
 MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");

@@ -1,5 +1,5 @@
-#ifndef __FB_SC7021_H__
-#define __FB_SC7021_H__
+#ifndef __FB_SP7021_H__
+#define __FB_SP7021_H__
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,9 +28,9 @@ struct framebuffer_t {
 	u32						OsdHandle;
 };
 
-unsigned int sc7021_fb_chan_by_field(unsigned char chan,
+unsigned int sp7021_fb_chan_by_field(unsigned char chan,
 	struct fb_bitfield *bf);
-int sc7021_fb_swapbuf(u32 buf_id, int buf_max);
+int sp7021_fb_swapbuf(u32 buf_id, int buf_max);
 
 extern struct fb_info *gFB_INFO;
 
@@ -38,5 +38,5 @@ extern struct fb_info *gFB_INFO;
 };
 #endif
 
-#endif	/* __FB_SC7021_H__ */
+#endif	/* __FB_SP7021_H__ */
 

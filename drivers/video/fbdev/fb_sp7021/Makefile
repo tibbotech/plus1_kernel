@@ -1,7 +1,7 @@
 #
-# Makefile for the SC7021 framebuffer driver
+# Makefile for the SP7021 framebuffer driver
 #
-SUPPORT_CHECK_CODING_STYLE=1
+SUPPORT_CHECK_CODING_STYLE=0
 
 #check linux kernel coding style start
 ifeq ($(SUPPORT_CHECK_CODING_STYLE), 1)
@@ -15,10 +15,10 @@ endif
 ccflags-y += -Werror
 ccflags-y += -Wformat-security
 
-obj-$(CONFIG_FB_SC7021) += fb_sc7021.o
-fb_sc7021-objs := fb_sc7021_main.o
+obj-$(CONFIG_FB_SP7021) += fb_sp7021.o
+fb_sp7021-objs := fb_sp7021_main.o
 
-ifdef CONFIG_FB_SC7021_DEBUG
-	fb_sc7021-objs += fb_sc7021_debug.o
+ifdef CONFIG_FB_SP7021_DEBUG
+	fb_sp7021-objs += fb_sp7021_debug.o
 endif
 

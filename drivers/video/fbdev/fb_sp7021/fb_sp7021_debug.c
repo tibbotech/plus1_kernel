@@ -21,7 +21,7 @@
  **************************************************************************/
 
 /**
- * @file fb_sc7021_debug.c
+ * @file fb_sp7021_debug.c
  * @brief linux kernel framebuffer debug driver
  * @author PoChou Chen
  */
@@ -35,7 +35,7 @@
 #include <asm/cacheflush.h>
 
 #include "mach/display/disp_osd.h"
-#include "fb_sc7021_main.h"
+#include "fb_sp7021_main.h"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -131,7 +131,7 @@ module_param_cb(debug, &fb_debug_param_ops, NULL, 0644);
  **************************************************************************/
 static int _set_debug_cmd(const char *val, const struct kernel_param *kp)
 {
-	_fb_debug_cmd((char *)val, gFB_INFO);
+	_fb_debug_cmd(strstrip((char *)val), gFB_INFO);
 
 	return 0;
 }
@@ -150,10 +150,7 @@ static void _deinitKernelEnv(mm_segment_t *oldfs)
 
 static int _readFile(struct file *fp, char *buf, int readlen)
 {
-	if (fp->f_op && fp->f_op->read)
-		return fp->f_op->read(fp, buf, readlen, &fp->f_pos);
-	else
-		return -1;
+	return vfs_read(fp, buf, readlen, &fp->f_pos);
 }
 
 static int _closeFile(struct file *fp)
@@ -244,17 +241,17 @@ static void _Draw_Bmpfile(char *filename,
 			for (x = 0; x < bmp.width; x++) {
 				line_index = (line_pitch * y + x) * bpp;
 
-				color = sc7021_fb_chan_by_field(
+				color = sp7021_fb_chan_by_field(
 						(bmp.bpp == 24) ?
 						0xff : tmpbuf[line_index + 3],
 						&fbinfo->var.transp);
-				color |= sc7021_fb_chan_by_field(
+				color |= sp7021_fb_chan_by_field(
 						tmpbuf[line_index + 2],
 						&fbinfo->var.red);
-				color |= sc7021_fb_chan_by_field(
+				color |= sp7021_fb_chan_by_field(
 						tmpbuf[line_index + 1],
 						&fbinfo->var.green);
-				color |= sc7021_fb_chan_by_field(
+				color |= sp7021_fb_chan_by_field(
 						tmpbuf[line_index],
 						&fbinfo->var.blue);
 
@@ -273,7 +270,7 @@ static void _Draw_Bmpfile(char *filename,
 			fb_ptr += (fbinfo->var.xres - bmp.width) * pixel_len;
 		}
 	} else {
-		mod_err("Can't open %s\n", filename);
+		mod_err("Can't open \"%s\"\n", filename);
 		goto Failed;
 	}
 
@@ -375,13 +372,13 @@ static void _gen_colorbar_data(struct fb_info *info,
 	unsigned int color[sizeof(gColorbar) / sizeof(unsigned int)];
 
 	for (k = 0; k < sizeof(color) / sizeof(unsigned int); ++k) {
-		color[k] = sc7021_fb_chan_by_field(ARGB_GETA(gColorbar[k]),
+		color[k] = sp7021_fb_chan_by_field(ARGB_GETA(gColorbar[k]),
 				&info->var.transp);
-		color[k] |= sc7021_fb_chan_by_field(ARGB_GETR(gColorbar[k]),
+		color[k] |= sp7021_fb_chan_by_field(ARGB_GETR(gColorbar[k]),
 				&info->var.red);
-		color[k] |= sc7021_fb_chan_by_field(ARGB_GETG(gColorbar[k]),
+		color[k] |= sp7021_fb_chan_by_field(ARGB_GETG(gColorbar[k]),
 				&info->var.green);
-		color[k] |= sc7021_fb_chan_by_field(ARGB_GETB(gColorbar[k]),
+		color[k] |= sp7021_fb_chan_by_field(ARGB_GETB(gColorbar[k]),
 				&info->var.blue);
 	}
 
@@ -430,10 +427,10 @@ static void _fill_color(char *ptr, int size, int argb, struct fb_info *info)
 	int i, k;
 	unsigned int color;
 
-	color = sc7021_fb_chan_by_field(ARGB_GETA(argb), &info->var.transp);
-	color |= sc7021_fb_chan_by_field(ARGB_GETR(argb), &info->var.red);
-	color |= sc7021_fb_chan_by_field(ARGB_GETG(argb), &info->var.green);
-	color |= sc7021_fb_chan_by_field(ARGB_GETB(argb), &info->var.blue);
+	color = sp7021_fb_chan_by_field(ARGB_GETA(argb), &info->var.transp);
+	color |= sp7021_fb_chan_by_field(ARGB_GETR(argb), &info->var.red);
+	color |= sp7021_fb_chan_by_field(ARGB_GETG(argb), &info->var.green);
+	color |= sp7021_fb_chan_by_field(ARGB_GETB(argb), &info->var.blue);
 
 	if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
 		memset(ptr, 0, size);
@@ -446,16 +443,15 @@ static void _fill_color(char *ptr, int size, int argb, struct fb_info *info)
 	}
 }
 
-static void _device_info(void)
+static void _device_info(struct fb_info *fbinfo)
 {
-	struct framebuffer_t *fb_par = NULL;
+	struct framebuffer_t *fb_par = (struct framebuffer_t *)fbinfo->par;
 
-	fb_par = (struct framebuffer_t *)gFB_INFO->par;
 	if (!fb_par)
 		return;
 	pr_err("\n=======================\n");
 	pr_err("ID: %16s, ColorFormat: %s(%d), page size:%d buffer page:%d",
-			gFB_INFO->fix.id,
+			fbinfo->fix.id,
 			fb_par->ColorFmtName,
 			fb_par->ColorFmt,
 			fb_par->fbpagesize,
@@ -467,8 +463,8 @@ static void _device_info(void)
 	pr_err("Base addr: 0x%x, Phy addr: 0x%x, now show buf id=%d\n",
 			(u32)fb_par->fbmem,
 			__pa(fb_par->fbmem),
-			gFB_INFO->var.yoffset
-			/ gFB_INFO->var.yres);
+			fbinfo->var.yoffset
+			/ fbinfo->var.yres);
 	if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
 		pr_err("palette Base addr: 0x%x, Phy addr: 0x%x\n",
 				(u32)fb_par->fbmem_palette,
@@ -534,13 +530,12 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 		if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
 			int ret;
 
-			ret = sc7021_fb_swapbuf(
+			ret = sp7021_fb_swapbuf(
 					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			pr_err("update palette by swapbuf ret:%d\n",
+			mod_err("update palette by swapbuf ret:%d\n",
 					ret);
 		}
-		flush_cache_all();
 	} else if (!strncasecmp(tmpbuf, "fill", 4)) {
 		unsigned int argb = 0;
 
@@ -557,13 +552,13 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 			int ret;
 
 
-			ret = sc7021_fb_swapbuf(
+			ret = sp7021_fb_swapbuf(
 					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			pr_err("update palette by swapbuf ret:%d\n",
+			mod_err("update palette by swapbuf ret:%d\n",
 					ret);
 		}
-		pr_err("fill all by color(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
+		mod_err("fill all by color(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
 				ARGB_GETA(argb),
 				ARGB_GETR(argb),
 				ARGB_GETG(argb),
@@ -576,7 +571,7 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		if ((fb_par->ColorFmt != DRV_OSD_REGION_FORMAT_8BPP)
 				|| (!palette_ptr)) {
-			pr_err("your color format unsupported.\n");
+			mod_err("your color format unsupported.\n");
 			return;
 		}
 
@@ -584,20 +579,20 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 		tmpbuf = _mon_readint(tmpbuf, (int *)&argb);
 
 		if (index >= (FB_PALETTE_LEN / sizeof(unsigned int))) {
-			pr_err("your color format unsupported.\n");
+			mod_err("your color format unsupported.\n");
 			return;
 		}
 
-		palette[index] = sc7021_fb_chan_by_field(ARGB_GETA(argb),
+		palette[index] = sp7021_fb_chan_by_field(ARGB_GETA(argb),
 				&fbinfo->var.transp);
-		palette[index] |= sc7021_fb_chan_by_field(ARGB_GETR(argb),
+		palette[index] |= sp7021_fb_chan_by_field(ARGB_GETR(argb),
 				&fbinfo->var.red);
-		palette[index] |= sc7021_fb_chan_by_field(ARGB_GETG(argb),
+		palette[index] |= sp7021_fb_chan_by_field(ARGB_GETG(argb),
 				&fbinfo->var.green);
-		palette[index] |= sc7021_fb_chan_by_field(ARGB_GETB(argb),
+		palette[index] |= sp7021_fb_chan_by_field(ARGB_GETB(argb),
 				&fbinfo->var.blue);
 
-		pr_err("set palette[%d] = 0x%x(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
+		mod_err("set palette[%d] = 0x%x(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
 				index,
 				argb,
 				ARGB_GETA(argb),
@@ -609,14 +604,14 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		if ((fb_par->ColorFmt != DRV_OSD_REGION_FORMAT_8BPP)
 				|| (!palette_ptr)) {
-			pr_err("your color format unsupported.\n");
+			mod_err("your color format unsupported.\n");
 			return;
 		}
 
 		for (i = 0; i < (FB_PALETTE_LEN / sizeof(unsigned int)); ++i) {
 			if (!(i % 16))
-				pr_err("%3d\n", i);
-			pr_err(" 0x%08x\n", *(palette_ptr++));
+				mod_err("%3d\n", i);
+			mod_err(" 0x%08x\n", *(palette_ptr++));
 		}
 	} else if (!strncasecmp(tmpbuf, "sb", 2)) {
 		int ret = 0;
@@ -624,9 +619,9 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		tmpbuf = _mon_readint(tmpbuf + 2, (int *)&buf_id);
 
-		ret = sc7021_fb_swapbuf(buf_id, fb_par->fbpagenum);
+		ret = sp7021_fb_swapbuf(buf_id, fb_par->fbpagenum);
 
-		pr_err("force show buffer_ID:%d, ret:%d\n",
+		mod_err("force show buffer_ID:%d, ret:%d\n",
 				buf_id,
 				ret);
 	} else if (!strncasecmp(tmpbuf, "sw", 2)) {
@@ -638,14 +633,14 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 			fbinfo->var.yoffset = 0;
 
 
-		ret = sc7021_fb_swapbuf(
+		ret = sp7021_fb_swapbuf(
 				fbinfo->var.yoffset / fbinfo->var.yres,
 				fb_par->fbpagenum);
-		pr_err("swap buffer now use ID:%d, ret:%d\n",
+		mod_err("swap buffer now use ID:%d, ret:%d\n",
 				fbinfo->var.yoffset / fbinfo->var.yres,
 				ret);
 	} else if (!strncasecmp(tmpbuf, "info", 4)) {
-		_device_info();
+		_device_info(fbinfo);
 	} else if (!strncasecmp(tmpbuf, "getUI", 5)) {
 		struct UI_FB_Info_t Info;
 		int ret;

@@ -77,10 +77,10 @@ config SP_MON
 	help
 	  Enable Sunplus MON shell in SysRq.
 
-config SP_DISP_SC7021_TEST
-	tristate "SC7021 DISP Test Code"
+config SP_DISP_SP7021_TEST
+	tristate "SP7021 DISP Test Code"
 	help
-		TEST display driver for SC7021.
+		TEST display driver for SP7021.
 
 endmenu
 
