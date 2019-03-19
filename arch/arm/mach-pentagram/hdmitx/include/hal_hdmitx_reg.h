@@ -2,6 +2,7 @@
 #define __REG_HDMITX_H__
 
 #include <mach/io_map.h>
+#include <mach/hdmitx.h>
 
 typedef volatile struct reg_hdmitx_s
 {
@@ -309,5 +310,11 @@ typedef volatile struct reg_moon4_s
 typedef volatile struct reg_moon5_s {
 	unsigned int sft_cfg[32];
 } reg_moon5_t;
+
+	#ifdef HPD_DETECTION
+typedef volatile struct reg_moon1_s {
+	unsigned int sft_cfg[32];
+} reg_moon1_t;
+	#endif
 
 #endif // end of #ifndef __REG_HDMITX_H__

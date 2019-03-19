@@ -24,11 +24,6 @@
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
-/*about misc*/
-// #define HPD_DETECTION
-// #define EDID_READ
-// #define HDCP_AUTH
-
 /*about print msg*/
 #ifdef _HDMITX_ERR_MSG_
 #define HDMITX_ERR(fmt, args...) printk(KERN_ERR fmt, ##args)
@@ -150,6 +145,9 @@ static struct hdmitx_config g_new_hdmi_cfg;
 typedef struct {
 	void __iomem *moon4base;
 	void __iomem *moon5base;
+#ifdef HPD_DETECTION
+	void __iomem *moon1base;
+#endif
 	void __iomem *hdmitxbase;	
 	struct miscdevice *hdmitx_misc;
 	struct device *dev;
@@ -461,10 +459,10 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 
 		if (hal_hdmitx_get_system_status(SYSTEM_STUS_HPD_IN, sp_hdmitx->hdmitxbase)) {
 			g_hpd_in = TRUE;
-			printk("hot plug in\n");
+			HDMITX_INFO("HDMI plug in\n");
 		} else {
 			g_hpd_in = FALSE;
-			printk("hot plug out\n");
+			HDMITX_INFO("HDMI plug out\n");
 		}
 
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_HDP, sp_hdmitx->hdmitxbase);
@@ -474,10 +472,10 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 
 		if (hal_hdmitx_get_system_status(SYSTEM_STUS_RSEN_IN, sp_hdmitx->hdmitxbase)) {
 			g_rx_ready = TRUE;
-			printk("rx ready\n");
+			HDMITX_INFO("HDMI rsen in\n");
 		} else {
 			g_rx_ready = FALSE;
-			printk("rx not ready\n");
+			HDMITX_INFO("HDMI rsen out\n");
 		}
 
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase);
@@ -707,6 +705,14 @@ static int hdmitx_probe(struct platform_device *pdev)
 		return PTR_ERR(sp_hdmitx->moon5base);
 	}	
 
+#ifdef HPD_DETECTION
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	sp_hdmitx->moon1base = devm_ioremap_resource(dev, res);
+	if (IS_ERR(sp_hdmitx->moon1base)) {
+		return PTR_ERR(sp_hdmitx->moon1base);
+	}
+#endif
+
 	sp_hdmitx->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(sp_hdmitx->rstc)) {
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
@@ -722,8 +728,12 @@ static int hdmitx_probe(struct platform_device *pdev)
 	HDMITX_INFO("HDMITX installed\n");
 	
 	/*initialize hardware settings*/
+#ifdef HPD_DETECTION	
+	hal_hdmitx_init(sp_hdmitx->moon1base, sp_hdmitx->hdmitxbase);
+#else
 	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
-	
+#endif
+
 	/*initialize software settings*/
 	// reset hdmi config
 	g_cur_hdmi_cfg.mode              = HDMITX_MODE_HDMI;

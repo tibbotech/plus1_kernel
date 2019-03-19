@@ -2,6 +2,7 @@
  *					INCLUDE DECLARATIONS
  *---------------------------------------------------------------------------*/
 #include <linux/string.h>
+#include <mach/hdmitx.h>
 #include "include/hal_hdmitx.h"
 #include "include/hal_hdmitx_reg.h"
 #include "include/param_cfg.inc"
@@ -535,10 +536,17 @@ static void apply_audio(void __iomem *hdmitxbase)
 	pHdmitxReg->hdmi_arc_n_value1     = cts_n;
 }
 
+#ifdef HPD_DETECTION
+void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase)
+#else
 void hal_hdmitx_init(void __iomem *hdmitxbase)
+#endif
 {	
 	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
-	
+#ifdef HPD_DETECTION
+	reg_moon1_t *pMoon1Reg = (reg_moon1_t *)moon1base;
+#endif
+
 	/*apply phy general configures*/
 
 	/*enable all power on bits*/
@@ -551,6 +559,11 @@ void hal_hdmitx_init(void __iomem *hdmitxbase)
 	
 	/*enable interrupt*/
 	pHdmitxReg->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);
+
+#ifdef HPD_DETECTION
+	/*configure HDMI_HPD to GPIO_P7_4 (G_MX[60])*/
+	pMoon1Reg->sft_cfg[1] = 0x60006000;
+#endif
 }
 
 void hal_hdmitx_deinit(void __iomem *hdmitxbase)
