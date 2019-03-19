@@ -18,6 +18,36 @@
 #include <linux/irq.h>
 #include <linux/of_irq.h>
 
+#include <linux/clk.h>
+#include <linux/reset.h> 
+
+
+
+/* ---------------------------------------------------------------------------------------------- */
+#define STC_FUNC_DEBUG
+#define STC_DBG_INFO
+#define RTC_DBG_ERR
+
+#ifdef STC_FUNC_DEBUG
+	#define FUNC_DEBUG()    printk(KERN_INFO "[STC] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+#else
+	#define FUNC_DEBUG()
+#endif
+
+#ifdef STC_DBG_INFO
+#define DBG_INFO(fmt, args ...)	printk(KERN_INFO "[STC] Info: " fmt, ## args)
+#else
+#define DBG_INFO(fmt, args ...)
+#endif
+
+#ifdef STC_DBG_ERR
+#define DBG_ERR(fmt, args ...)	printk(KERN_ERR  "[STC] Error: " fmt, ## args)
+#else
+#define DBG_ERR(fmt, args ...)
+#endif
+/* ---------------------------------------------------------------------------------------------- */
+
+
 #define WATCHDOG_CMD_CNT_WR_UNLOCK	0xAB00
 #define WATCHDOG_CMD_CNT_WR_LOCK	0xAB01
 #define WATCHDOG_CMD_CNT_WR_MAX		0xDEAF
@@ -67,6 +97,10 @@ struct stc_info_s {
 	char irq_name[NUM_IRQ][32];
 	int irq[NUM_IRQ];
 	u32 interrupt_cnt[NUM_IRQ];
+
+	struct clk *clk;
+	struct reset_control *rstc;
+	
 };
 static struct stc_info_s stc_info[NUM_STC];
 
@@ -91,6 +125,9 @@ static irqreturn_t sp_tmr_tst_irq(int irq, void *args)
 {
 	int i, j;
 	struct stc_info_s *ptr;
+
+	FUNC_DEBUG();
+
 
 	ptr = (struct stc_info_s *)(args);
 	for (i = 0; i < NUM_STC; i++) {
@@ -125,35 +162,81 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 	void __iomem *membase;
 	u32 counter_src;
 
+
+
+	FUNC_DEBUG();
+
+
+	if (pdev->dev.of_node) {
+		pdev->id = of_alias_get_id(pdev->dev.of_node, "stc");
+		DBG_INFO(" pdev->id=%d\n", pdev->id);
+	}
+
+	idx_stc = pdev->id;
+
+
 	if (idx_stc >= NUM_STC) {
 		printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	printk(KERN_INFO "%s, %d\n", __func__, __LINE__);
+
 
 	memset(&stc_info[idx_stc], 0, sizeof(stc_info[0]));
 	if (pdev->dev.of_node) {
 		match = of_match_node(sp_tmr_tst_dt_ids, pdev->dev.of_node);
 		if (match == NULL) {
-			printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
+			DBG_ERR( "Error: %s, %d\n", __func__, __LINE__);
 			return -ENODEV;
 		}
 		num_irq = of_irq_count(pdev->dev.of_node);
 		if (num_irq > NUM_IRQ) {
-			printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
+			DBG_ERR( "Error: %s, %d\n", __func__, __LINE__);
 		}
 	}
 
+
+
+	 DBG_INFO("Enable timer clock(s)\n");
+	 stc_info[pdev->id].clk = devm_clk_get(&pdev->dev, NULL);
+	 if (IS_ERR(stc_info[pdev->id].clk)) {
+		 DBG_ERR("Can't find clock source\n");
+		 return PTR_ERR(stc_info[pdev->id].clk);
+	 } else {
+		 ret = clk_prepare_enable(stc_info[pdev->id].clk);
+		 if (ret) {
+			 DBG_ERR("Clock can't be enabled correctly\n");
+			 return ret;
+	   }
+	}
+	
+	 DBG_INFO("Enable timer Rstc(s)\n");
+	 //DBG_INFO("Enable Rstc-ID = %d\n",pdev->id);
+	 stc_info[pdev->id].rstc = devm_reset_control_get(&pdev->dev, NULL);
+	 //printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n",pstSpI2CInfo->rstc);
+	 if (IS_ERR(stc_info[pdev->id].rstc)) {
+		 DBG_ERR("failed to retrieve reset controller: %d\n", ret);
+		 return PTR_ERR(stc_info[pdev->id].rstc);
+	 } else {
+	 ret = reset_control_deassert(stc_info[pdev->id].rstc);
+	 //printk(KERN_INFO "reset ret : 0x%x \n",ret);
+	 if (ret) {
+		 DBG_ERR("failed to deassert reset line: %d\n", ret);
+			 return ret;
+	 }
+	 }
+
+
+
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res_mem)) {
-		printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
+		DBG_ERR( "Error: %s, %d\n", __func__, __LINE__);
 		return PTR_ERR(res_mem);
 	}
 
 	membase = devm_ioremap_resource(&pdev->dev, res_mem);
 	if (IS_ERR(membase)) {
-		printk(KERN_ERR "Error: %s, %d\n", __func__, __LINE__);
+		DBG_ERR( "Error: %s, %d\n", __func__, __LINE__);
 		return PTR_ERR(membase);
 	}
 
@@ -170,41 +253,41 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer0_cnt));
 	writel(val, &(stc_ptr->timer0_reload));
-	writel((counter_src << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer0_ctrl));
+	writel((counter_src << 14) | (1 << 13) | (0 << 11), &(stc_ptr->timer0_ctrl));
 
 	/* timer1: repeat mode, start */
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer1_cnt));
 	writel(val, &(stc_ptr->timer1_reload));
-	writel((counter_src << 14) | (1 << 13) | (1 << 11), &(stc_ptr->timer1_ctrl));
+	writel((counter_src << 14) | (1 << 13) | (0 << 11), &(stc_ptr->timer1_ctrl));
 
 	/* timer2: repeat mode, start */
 	writel(0x0002 - 1, &(stc_ptr->timer2_divisor));
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer2_cnt));
 	writel(val, &(stc_ptr->timer2_reload));
-	writel((counter_src << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer2_ctrl));
+	writel((counter_src << 2) | (1 << 1) | (0 << 0), &(stc_ptr->timer2_ctrl));
 
 	/* timer3: repeat mode, start */
 	writel(0x0004 - 1, &(stc_ptr->timer3_divisor));
 	val = 0x0100 - 1;
 	writel(val, &(stc_ptr->timer3_cnt));
 	writel(val, &(stc_ptr->timer3_reload));
-	writel((counter_src << 2) | (1 << 1) | (1 << 0), &(stc_ptr->timer3_ctrl));
+	writel((counter_src << 2) | (1 << 1) | (0 << 0), &(stc_ptr->timer3_ctrl));
 
 	for (i = 0; i < num_irq; i++) {
 		stc_info[idx_stc].irq[i] = platform_get_irq(pdev, i);
 		if (stc_info[idx_stc].irq[i] < 0) {
-			printk(KERN_ERR "Error: %s, %d, irq[%d]\n", __func__, __LINE__, i);
+			DBG_ERR( "Error: %s, %d, irq[%d]\n", __func__, __LINE__, i);
 			return -ENODEV;
 		}
 		sprintf(stc_info[idx_stc].irq_name[i], "irq%d_%x", i, (u32)(res_mem->start));
 		ret = request_irq(stc_info[idx_stc].irq[i], sp_tmr_tst_irq, 0, stc_info[idx_stc].irq_name[i], &stc_info[idx_stc]);
 		if (ret) {
-			printk(KERN_ERR "Error: %s, %d, irq[%d]\n", __func__, __LINE__, i);
+			DBG_ERR( "Error: %s, %d, irq[%d]\n", __func__, __LINE__, i);
 			return ret;
 		}
-		printk(KERN_INFO "%s, %d, irq[%d]: %d, %s\n", __func__, __LINE__, i, stc_info[idx_stc].irq[i], stc_info[idx_stc].irq_name[i]);
+		DBG_INFO( "%s, %d, irq[%d]: %d, %s\n", __func__, __LINE__, i, stc_info[idx_stc].irq[i], stc_info[idx_stc].irq_name[i]);
 	}
 #if 0
 	/* Watchdog timer */
@@ -227,6 +310,40 @@ static int sp_tmr_tst_probe(struct platform_device *pdev)
 
 }
 
+static int sp_tmr_tst_remove(struct platform_device *pdev)
+{
+
+
+	if (pdev->id < NUM_STC) {
+		clk_disable_unprepare(stc_info[pdev->id].clk);
+        reset_control_assert(stc_info[pdev->id].rstc);
+	}
+
+	return 0;
+}
+
+static int sp_tmr_tst_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	
+	if (pdev->id < NUM_STC) {
+        reset_control_assert(stc_info[pdev->id].rstc);
+	}
+
+	return 0;
+}
+
+static int sp_tmr_tst_resume(struct platform_device *pdev)
+{
+	if (pdev->id < NUM_STC) {
+		clk_prepare_enable(stc_info[pdev->id].clk);
+        reset_control_deassert(stc_info[pdev->id].rstc);
+	}
+	return 0;
+}
+
+
+
+
 static struct platform_driver ssc_driver = {
 	.driver		= {
 		.name		= "sp_tmr_tst",
@@ -234,6 +351,11 @@ static struct platform_driver ssc_driver = {
 	},
 	.id_table	= sp_tmr_tst_devtypes,
 	.probe		= sp_tmr_tst_probe,
+	.remove 	= sp_tmr_tst_remove,
+	.suspend	= sp_tmr_tst_suspend,
+	.resume 	= sp_tmr_tst_resume,	
+
+		
 };
 module_platform_driver(ssc_driver);
 

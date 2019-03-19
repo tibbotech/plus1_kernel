@@ -223,6 +223,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
       FUNC_DEBUG();
 
 	//memset(sp_rtc, 0, sizeof(sp_rtc));
+	memset(&sp_rtc, 0, sizeof(sp_rtc));
 
 	/* find and map our resources */
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);

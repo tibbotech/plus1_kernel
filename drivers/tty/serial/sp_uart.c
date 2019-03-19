@@ -1574,7 +1574,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	char peri_name[16];
 
 
-      DBG_INFO("sunplus_uart_platform_driver_probe_of");
+  //    DBG_INFO("sunplus_uart_platform_driver_probe_of");
 
 
 	if (pdev->dev.of_node) {
@@ -1728,7 +1728,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		DBG_ERR("failed to deassert reset line: %d\n", ret);
             return ret;
 	}
-      }
+    }
 
 	clk = sunplus_uart_ports[pdev->id].clk;
 
@@ -1784,7 +1784,7 @@ static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
 
 	if (pdev->id < NUM_UART) {
 		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
-            reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+        reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
 	}
 
 	return 0;
@@ -1794,8 +1794,7 @@ static int sunplus_uart_platform_driver_suspend(struct platform_device *pdev, pm
 {
 	
 	if (pdev->id < NUM_UART) {
-		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
-             reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+        reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
 	}
 
 	return 0;
@@ -1805,7 +1804,7 @@ static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
 {
 	if (pdev->id < NUM_UART) {
 		clk_prepare_enable(sunplus_uart_ports[pdev->id].clk);
-            reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
+        reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
 	}
 	return 0;
 }

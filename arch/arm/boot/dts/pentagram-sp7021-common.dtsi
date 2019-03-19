@@ -36,6 +36,18 @@
 		serial3 = &uart3;
 		serial4 = &uart4;
 
+/* Timer tests: */
+/* 1. Enable device tree for timers. */
+/* 2. Enable sp_timer_test in drivers/misc/Makefile */
+#if 0
+
+		stc0 = &sp_tmr_tst0;
+		stc1 = &sp_tmr_tst1;
+		stc2 = &sp_tmr_tst2;
+		stc3 = &sp_tmr_tst3;
+
+#endif
+
 		i2c0 = &i2cm0;
 		i2c1 = &i2cm1;
 		i2c2 = &i2cm2;
@@ -301,6 +313,8 @@
 				<152 IRQ_TYPE_EDGE_RISING>, /* timer1 */
 				<153 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<154 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+			clocks = <&clkc STC0>;
+			resets = <&rstc RST_STC0>;
 		};
 
 		sp_tmr_tst1: sp_tmr_tst@9c003000 {
@@ -312,6 +326,8 @@
 				<156 IRQ_TYPE_EDGE_RISING>, /* timer1 */
 				<157 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<158 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+			clocks = <&clkc STC_AV0>;
+			resets = <&rstc RST_STC_AV0>;
 		};
 
 		sp_tmr_tst2: sp_tmr_tst@9c003080 {
@@ -323,6 +339,8 @@
 				<160 IRQ_TYPE_EDGE_RISING>, /* timer1 */
 				<161 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<162 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+			clocks = <&clkc STC_AV1>;
+			resets = <&rstc RST_STC_AV1>;
 		};
 
 		sp_tmr_tst3: sp_tmr_tst@9c003180 {
@@ -334,6 +352,8 @@
 				<165 IRQ_TYPE_EDGE_RISING>, /* timer1 */
 				<166 IRQ_TYPE_EDGE_RISING>, /* timer2 */
 				<167 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+			clocks = <&clkc STC_AV2>;
+			resets = <&rstc RST_STC_AV2>;
 		};
 #endif
 
