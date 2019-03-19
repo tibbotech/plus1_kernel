@@ -178,8 +178,8 @@ static int _sp7021_fb_create_device(struct platform_device *pdev,
 	fbWorkMem->fbsize = fbWorkMem->fbpagesize * fbWorkMem->fbpagenum;
 
 	/* Allocate Buffer */
-	fbWorkMem->fbmem = (void __iomem *)dma_zalloc_coherent(&pdev->dev, fbWorkMem->fbsize,
-			&fb_phymem, GFP_KERNEL);
+	fbWorkMem->fbmem = (void __iomem *)dma_zalloc_coherent(&pdev->dev,
+			fbWorkMem->fbsize, &fb_phymem, GFP_KERNEL);
 
 	if (!fbWorkMem->fbmem) {
 		mod_err(pdev, "malloc failed, size %d(%dx%dx(%d/8)*%d)\n",
