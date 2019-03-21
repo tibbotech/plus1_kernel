@@ -1,6 +1,13 @@
 ---------------------------------------------
-  SoC SunPlus/Tibbo SC7021 pinmux driver (sppctl)
+ SoC SunPlus/Tibbo SC7021 pinmux driver
 ---------------------------------------------
+
+NOTE
+------------
+This document describes the pinctrl (managment) part of sc7021pctl driver
+that includes GPIO functions described in 
+ Documentation/devicetree/bindings/gpio/sunplus,sc7021-gpio.txt
+------------
 
 This document outlines the additional pin control subsystem available on 
 SunPlus SC7021 SoC.
@@ -11,6 +18,8 @@ Available functions:
 - individual and bulk pin-function assignment
 - human-readable representation of the current pinmux mapping
 - firmware dump and load
+- traditional PinMux API
+- DTS bindings
 
 SC7021 platform has 64 pins and 120 different functions.
 
@@ -18,9 +27,22 @@ SC7021 platform has 64 pins and 120 different functions.
 Files
 ------
 
-The driver directory is /sys/devices/platform/soc@B/9c000100.sppctl.
+The driver directories are:
 
-Several files are created after driver initialization:
+/sys/devices/platform/soc\@B/9c000100.pctl/
+- direct "hacker" pinmux functions bindings interface
+/sys/kernel/debug/pinctrl/
+- traditional pinctrl sysfs API
+/sys/firmware/devicetree/base/soc\@B/pctl\@0x9C000100/
+- main pinctrl DTS node;
+
+------
+Direct "hacker" pinmux functions bindings interface
+------
+
+/sys/devices/platform/soc\@B/9c000100.pctl/
+
+Files are created after driver initialization:
 
 - dbgi (txt, read/write) - the debug level
   (0 - no debug, 1 - main messages, 2 - verbose)
@@ -37,33 +59,69 @@ Several files are created after driver initialization:
 
 - fw (bin, read/write) - firmware file
 
-- 120 function-named files (bin, read/write)
+- 120 function-named files (bin, read/write), for ex:
+L2SW_CLK_OUT
+L2SW_LED_FLASH0
+...
+UA4_TX
+  
+  Each file is the function. Write binary pin number into the function file
+  to set mux. Allowed to use the same pin number in several functions.
 
 ---------
-DTS file
+Traditional pinctrl sysfs infomational API
 ---------
+
+/sys/kernel/debug/pinctrl/
+
+- pinctrl-handles: active pinctrl dts status information
+- pctl/pins: pins list
+- pctl/pinmux-functions: list of pins available for each function
+- pctl/pinconf-pins: pins additional properties (OD,etc)
+- pctl/pinmux-pins: current pin-functions assigment
+
+---------
+Device Tree bindings
+---------
+
+/sys/firmware/devicetree/base/soc\@B/pctl\@0x9C000100/
++
+find /sys/firmware/ -name "*pin*"
 
 A driver is platform dependent, requested by DTS node.
 
-Example:
+Full PinCtl node example:
 
-        sppctl: sppctl@0x9C000100 {
-                compatible = "sunplus,sppctl";
-                reg = <0x9C000100 0x100>;
+	pctl: pctl@0x9C000100 {
+		compatible = "sunplus,sc7021-pctl";
+		reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x80>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-parent = <&intc>;
+		interrupts =
+			<120 IRQ_TYPE_LEVEL_HIGH>,
+			<121 IRQ_TYPE_LEVEL_HIGH>,
+			<122 IRQ_TYPE_LEVEL_HIGH>,
+			<123 IRQ_TYPE_LEVEL_HIGH>,
+			<124 IRQ_TYPE_LEVEL_HIGH>,
+			<125 IRQ_TYPE_LEVEL_HIGH>,
+			<126 IRQ_TYPE_LEVEL_HIGH>,
+			<127 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc GPIO>;
+		resets = <&rstc RST_GPIO>;
                 fwname = "sppctl.bin";
-        };
+	};
 
-All properties are optional and has compile-time default values.
+
+Mandatory options are:
+ compatible, reg.
+All other properties are optional.
 
 The compatible key may have one of the following values:
 
-- pentagram,sppctl
-- sunplus,sppctl
-- tps,sppctl
-- tibbo,sppctl
+- sunplus,sc7021-pctl
 
-The reg key should contain 1 entry - the physical address and length of the 
-sppctl registers.
+The reg key should contain 4 entries - the physical regs for SC7021 
 
 The fwname define a path to the firmware relative to /lib/firmware.
 
