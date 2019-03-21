@@ -171,4 +171,9 @@ L2SW_CLK_OUT, L2SW_MAC_SMI_MDC, L2SW_LED_FLASH0 etc. from the driver directory.
 To assign certain function to a pin one-byte value must be written to the function file.
 For ex., to assign pin #1 (G_MX8) to L2SW_LED_ON0 function:
 
+// in octal:
 # echo -e "\01" > /sys/device/platform/soc@B/9c000100/L2SW_LED_ON0.
+// in hex:
+# echo -e "\x0A" > /sys/device/platform/soc@B/9c000100/L2SW_LED_ON0.
+// the other form:
+printf "%b" '\x66\x6f\x6f' > ....
