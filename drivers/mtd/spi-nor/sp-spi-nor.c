@@ -20,6 +20,7 @@
 #include <linux/sizes.h>
 #include <linux/time.h>
 #include <linux/dma-mapping.h>
+#include <linux/wait.h>
 
 #define SP_SPINOR_DMA 1
 #define CFG_BUFF_MAX		(18 << 10)
@@ -267,13 +268,33 @@ struct sp_spi_nor
 	  }buff;
 #endif
 	  struct mutex lock;
+	  int irq;
+	  wait_queue_head_t wq;
+	  int busy;
 };
+
+static irqreturn_t sp_nor_int(int irq, void *dev)
+{
+	struct sp_spi_nor *pspi = dev;
+	SPI_NOR_REG *spi_reg = pspi->io_base;
+	uint32_t value;
+	
+	/* clear intrrupt flag */	
+	value = readl(&spi_reg->spi_intr_sts);
+	//dev_dbg(pspi->dev,"int 0x%x\n",value);
+	writel(value, &spi_reg->spi_intr_sts);
+
+	pspi->busy = 0;
+	wake_up(&pspi->wq);
+
+	return IRQ_HANDLED;
+}
 
 static int sp_spi_nor_init(SPI_NOR_REG *spi_reg)
 {
 	unsigned int reg_temp;
 	
-	writel(A_CHIP | SPI_CLK_D_16,&spi_reg->spi_ctrl);
+	writel(A_CHIP | SPI_CLK_D_4,&spi_reg->spi_ctrl);
 
 	writel(SPI_CMD_OEN_1b | SPI_ADDR_OEN_1b | SPI_DATA_OEN_1b | SPI_CMD_1b | SPI_ADDR_1b
 		| SPI_DATA_1b | SPI_ENHANCE_NO | SPI_DUMMY_CYC(0) | SPI_DATA_IEN_DQ1,&spi_reg->spi_cfg1);
@@ -471,9 +492,9 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
         autocfg = DMA_TRIGGER|(cmd<<8)|(1); 
         value = (readl(&spi_reg->spi_auto_cfg)&(~(0xff<<8))) | autocfg;
         
-        writel((0x2<<1), &spi_reg->spi_intr_msk);
+        writel(0x5, &spi_reg->spi_intr_msk);
         writel(0x07, &spi_reg->spi_intr_sts);
-
+        pspi->busy = 1;
         writel(value, &spi_reg->spi_auto_cfg);
     #if 0
         value = readl(&spi_reg->spi_auto_cfg);
@@ -484,12 +505,10 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
         dev_dbg(pspi->dev,"w spi_cfg1 0x%x\n", value);
         value = readl(&spi_reg->spi_cfg2);
         dev_dbg(pspi->dev,"w spi_cfg2 0x%x\n", value);
-    #endif   
-        dev_dbg(pspi->dev,"wait intr\n");
-        while((readl(&spi_reg->spi_intr_sts) & 0x2) == 0x0);
+    #endif
+        dev_dbg(pspi->dev,"wait intr, busy 0x%x\n", pspi->busy);
+        wait_event(pspi->wq, !pspi->busy); 
         
-        value = readl(&spi_reg->spi_intr_sts) | 0x02;
-        writel(value, &spi_reg->spi_intr_sts);
         writel(0, &spi_reg->spi_intr_msk);
         time = 0;
         while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
@@ -574,9 +593,9 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
         autocfg =  (opcode<<24) | (1<<20) | DMA_TRIGGER ;   
         value = (readl(&spi_reg->spi_auto_cfg)&(~(0xff<<24))) | autocfg ; 
     
-        writel((0x2<<1), &spi_reg->spi_intr_msk) ;
+        writel(0x5, &spi_reg->spi_intr_msk) ;
         writel(0x07, &spi_reg->spi_intr_sts);
-	
+	      pspi->busy = 1;
         writel(value, &spi_reg->spi_auto_cfg);
     #if 0  
         value = readl(&spi_reg->spi_auto_cfg);
@@ -588,11 +607,9 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
         value = readl(&spi_reg->spi_cfg2);
         dev_dbg(pspi->dev,"r spi_cfg2 0x%x\n", value);
     #endif
-        dev_dbg(pspi->dev,"wait intr\n");
-        while((readl(&spi_reg->spi_intr_sts) & 0x2) == 0x0);
-           
-        value = readl(&spi_reg->spi_intr_sts) | 0x02;
-        writel(value, &spi_reg->spi_intr_sts);
+        dev_dbg(pspi->dev,"wait intr, busy 0x%x\n", pspi->busy);   
+        wait_event(pspi->wq, !pspi->busy); 
+             
         writel(0, &spi_reg->spi_intr_msk);
         time = 0;
         while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
@@ -1061,6 +1078,19 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     pspi->io_base = devm_ioremap_resource(dev, res);
     if (IS_ERR(pspi->io_base))
 		    return PTR_ERR(pspi->io_base);
+		
+		pspi->irq = platform_get_irq(pdev, 0);
+	  init_waitqueue_head(&pspi->wq);
+	  if (pspi->irq <= 0) {
+		    devm_kfree(dev, (void *)pspi);
+		    dev_dbg(pspi->dev,"get spi nor irq resource fail\n");
+		    return -EINVAL;
+	  }else {
+		    ret = request_irq(pspi->irq, sp_nor_int, IRQF_SHARED, "sp_nor", pspi);
+		    if (ret) {
+			      dev_dbg(pspi->dev,"sp_spinor: unable to register IRQ(%d) \n", pspi->irq);
+		    }
+	  }
 #if (SP_SPINOR_DMA)
     pspi->buff.size =CFG_BUFF_MAX;
     pspi->buff.virt = (void *)dma_alloc_coherent(NULL, PAGE_ALIGN(pspi->buff.size), \
@@ -1197,6 +1227,7 @@ static struct platform_driver sp_spi_nor_driver = {
 	.remove	= sp_spi_nor_remove,
 	.driver	= {
 		.name = "sp-spi-nor",
+		.owner = THIS_MODULE,
 		.of_match_table = sp_spi_nor_ids,
 	},
 };

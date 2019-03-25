@@ -700,6 +700,8 @@
     sp_spinor0: spinor@9C000B00 {
 		    compatible = "sunplus,sp-spi-nor";
 		    reg = <0x9C000B00 0x80>,<0x9c000080 0x80>;
+		    interrupt-parent = <&intc>;
+			  interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 		    spi-max-frequency = <50000000>;
 	  };
 
