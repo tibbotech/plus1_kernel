@@ -1,154 +1,141 @@
 /*
- * ARM/ARM64 generic CPU idle driver.
  *
- * Copyright (C) 2014 ARM Ltd.
- * Author: Lorenzo Pieralisi <lorenzo.pieralisi@arm.com>
+ * Coupled cpuidle support based on the work of:
+ *	Colin Cross <ccross@android.com>
+ *	Daniel Lezcano <daniel.lezcano@linaro.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
- */
-
-#define pr_fmt(fmt) "CPUidle arm: " fmt
+*/
 
 #include <linux/cpuidle.h>
-#include <linux/cpumask.h>
 #include <linux/cpu_pm.h>
-#include <linux/kernel.h>
-#include <linux/module.h>
+#include <linux/export.h>
+#include <linux/init.h>
+#include <linux/platform_device.h>
 #include <linux/of.h>
-#include <linux/slab.h>
+#include <linux/platform_data/cpuidle-sp7021.h>
 
+#include <asm/suspend.h>
 #include <asm/cpuidle.h>
 
-#include "dt_idle_states.h"
+static int tmp_state1;
+extern int tmp_state1;
 
-/*
- * arm_enter_idle_state - Programs CPU to enter the specified state
- *
- * dev: cpuidle device
- * drv: cpuidle driver
- * idx: state index
- *
- * Called from the CPUidle framework to program the device to the
- * specified target state selected by the governor.
- */
-static int sp7021_enter_idle_state(struct cpuidle_device *dev,
-				struct cpuidle_driver *drv, int idx)
+static struct cpuidle_sp7021_data *sp7021_cpuidle_pdata;
+
+static int sp7021_enter_coupled_lowpower(struct cpuidle_device *dev,
+					 struct cpuidle_driver *drv,
+					 int index)
 {
+	int ret;
+	unsigned int cpuid = smp_processor_id();
+
+    if (tmp_state1 != index){
+    	 tmp_state1 = index;
+	     printk("index= %x \n",index);
+	     printk("cpuid= %x \n",cpuid);
+	     printk("dev->cpu= %x \n",dev->cpu);
+	  }
+
+	sp7021_cpuidle_pdata->pre_enter_aftr();
+
+
 	/*
-	 * Pass idle state index to arm_cpuidle_suspend which in turn
-	 * will call the CPU ops suspend protocol with idle index as a
-	 * parameter.
+	 * Both cpus will reach this point at the same time
 	 */
-	return 0;                                                   //need review later 20190315 
-//	return CPU_PM_CPU_IDLE_ENTER(arm_cpuidle_suspend, idx);   //function at ~arch\arm\kernel\cpuidle.c
+	if ((dev->cpu == 2)||(dev->cpu == 3)){
+//	if ((dev->cpu == 0)||(dev->cpu == 1)){
+	   ret = sp7021_cpuidle_pdata->cpu23_powerdown();
+	}
+//	ret = dev->cpu ? exynos_cpuidle_pdata->cpu1_powerdown()
+//		       : exynos_cpuidle_pdata->cpu0_enter_aftr();
+	if (ret)
+		index = ret;
+
+
+	sp7021_cpuidle_pdata->post_enter_aftr();
+
+	return index;
 }
 
-static struct cpuidle_driver sp7021_idle_driver = {
-	.name = "sp7021_idle",
-	.owner = THIS_MODULE,
-	/*
-	 * State at index 0 is standby wfi and considered standard
-	 * on all ARM platforms. If in some platforms simple wfi
-	 * can't be used as "state 0", DT bindings must be implemented
-	 * to work around this issue and allow installing a special
-	 * handler for idle state index 0.
-	 */
-	.states[0]		= ARM_CPUIDLE_WFI_STATE,
-	.states[1] = {
-		.enter                  = sp7021_enter_idle_state,
-		.exit_latency           = 10,
-		.target_residency       = 10000,
-//		.power_usage		= UINT_MAX,
-		.name			= "C1",
-		.desc			= "C1 cpuidle",
+//static int sp7021_enter_lowpower(struct cpuidle_device *dev,
+//				struct cpuidle_driver *drv,
+//				int index)
+//{
+//	int new_index = index;
+//
+//	/* AFTR can only be entered when cores other than CPU0 are offline */
+//	if (num_online_cpus() > 1 || dev->cpu != 0)
+//		new_index = drv->safe_state_index;
+//
+//	if (new_index == 0)
+//		return arm_cpuidle_simple_enter(dev, drv, new_index);
+//
+//	sp7021_enter_aftr();
+//
+//	return new_index;
+//}
+
+//static struct cpuidle_driver sp7021_idle_driver = {
+//	.name			= "sp7021_idle",
+//	.owner			= THIS_MODULE,
+//	.states = {
+//		[0] = ARM_CPUIDLE_WFI_STATE,
+//		[1] = {
+//			.enter			= sp7021_enter_lowpower,
+//			.exit_latency		= 300,
+//			.target_residency	= 100000,
+//			.name			= "C1",
+//			.desc			= "ARM power down",
+//		},
+//	},
+//	.state_count = 2,
+//	.safe_state_index = 0,
+//};
+
+static struct cpuidle_driver sp7021_coupled_idle_driver = {
+	.name			= "sp7021_coupled_idle",
+	.owner			= THIS_MODULE,
+	.states = {
+		[0] = ARM_CPUIDLE_WFI_STATE,
+		[1] = {
+			.enter			= sp7021_enter_coupled_lowpower,
+			.exit_latency		= 500,
+			.target_residency	= 1000,
+			.flags			= CPUIDLE_FLAG_COUPLED,
+//			.flags			= CPUIDLE_FLAG_COUPLED |
+//						  CPUIDLE_FLAG_TIMER_STOP,
+			.name			= "C1",
+			.desc			= "ARM power down",
+		},
 	},
 	.state_count = 2,
+	.safe_state_index = 0,
 };
 
-static const struct of_device_id sp7021_idle_state_match[] __initconst = {
-	{ .compatible = "sp7021,idle-state",
-	  .data = sp7021_enter_idle_state },
-	{ },
-};
-
-/*
- * arm_idle_init
- *
- * Registers the arm specific cpuidle driver with the cpuidle
- * framework. It relies on core code to parse the idle states
- * and initialize them using driver data structures accordingly.
- */
-static int __init sp7021_idle_init(void)
+static int sp7021_cpuidle_probe(struct platform_device *pdev)
 {
-	int cpu, ret;
-	struct cpuidle_driver *drv = &sp7021_idle_driver;
-	struct cpuidle_device *dev;
+	int ret;
 
-	/*
-	 * Initialize idle states data, starting at index 1.
-	 * This driver is DT only, if no DT idle states are detected (ret == 0)
-	 * let the driver initialization fail accordingly since there is no
-	 * reason to initialize the idle driver if only wfi is supported.
-	 */
-	ret = dt_init_idle_driver(drv, sp7021_idle_state_match, 1);
-	if (ret <= 0)
-		return ret ? : -ENODEV;
+		sp7021_cpuidle_pdata = pdev->dev.platform_data;
 
-	ret = cpuidle_register_driver(drv);
+		ret = cpuidle_register(&sp7021_coupled_idle_driver,
+				       cpu_possible_mask);
+				       
 	if (ret) {
-		pr_err("Failed to register cpuidle driver\n");
+		dev_err(&pdev->dev, "failed to register cpuidle driver\n");
 		return ret;
 	}
 
-	/*
-	 * Call arch CPU operations in order to initialize
-	 * idle states suspend back-end specific data
-	 */
-	for_each_possible_cpu(cpu) {
-//		ret = arm_cpuidle_init(cpu);    //function at ~arch\arm\kernel\cpuidle.c
-//		ret = sp7021_cpuidle_init(cpu); //need review later 20190315
-
-		/*
-		 * Skip the cpuidle device initialization if the reported
-		 * failure is a HW misconfiguration/breakage (-ENXIO).
-		 */
-		if (ret == -ENXIO)
-			continue;
-
-		if (ret) {
-			pr_err("CPU %d failed to init idle CPU ops\n", cpu);
-			goto out_fail;
-		}
-
-		dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-		if (!dev) {
-			pr_err("Failed to allocate cpuidle device\n");
-			ret = -ENOMEM;
-			goto out_fail;
-		}
-		dev->cpu = cpu;
-
-		ret = cpuidle_register_device(dev);
-		if (ret) {
-			pr_err("Failed to register cpuidle device for CPU %d\n",
-			       cpu);
-			kfree(dev);
-			goto out_fail;
-		}
-	}
-
 	return 0;
-out_fail:
-	while (--cpu >= 0) {
-		dev = per_cpu(cpuidle_devices, cpu);
-		cpuidle_unregister_device(dev);
-		kfree(dev);
-	}
-
-	cpuidle_unregister_driver(drv);
-
-	return ret;
 }
-device_initcall(sp7021_idle_init);
+
+static struct platform_driver sp7021_cpuidle_driver = {
+	.probe	= sp7021_cpuidle_probe,
+	.driver = {
+		.name = "sp7021_cpuidle",
+	},
+};
+builtin_platform_driver(sp7021_cpuidle_driver);

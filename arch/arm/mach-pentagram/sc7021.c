@@ -15,6 +15,8 @@
 #include <mach/clk.h>
 #include <mach/misc.h>
 
+#include "common.h"
+
 static void __init sp_power_off(void)
 {
 	early_printk("%s\n", __func__);
@@ -47,6 +49,12 @@ static void apply_partial_clken(void)
 	}
 }
 #endif
+
+static struct platform_device sp7021_cpuidle = {
+	.name              = "sp7021_cpuidle",
+	.dev.platform_data = sp7021_enter_aftr,
+	.id                = -1,
+};
 
 static void __init sp_init(void)
 {
@@ -83,6 +91,9 @@ static void __init sp_init(void)
 #ifdef CONFIG_SP_PARTIAL_CLKEN
 	apply_partial_clken();
 #endif
+
+		sp7021_cpuidle.dev.platform_data = &cpuidle_coupled_sp7021_data;
+		platform_device_register(&sp7021_cpuidle);
 }
 
 static struct map_desc sp_io_desc[] __initdata = {

@@ -57,10 +57,10 @@
 		idle-states {
 			CLUSTER_SLEEP_BIG: cluster-sleep-big {
 				compatible = "sp7021,idle-state";
-				local-timer-stop;
-				entry-latency-us = <1000>;
+/*				local-timer-stop;*/
+				entry-latency-us = <8000>;
 				exit-latency-us = <700>;
-				min-residency-us = <2000>;
+				min-residency-us = <9000>;
 			};
 #if  0
 			CLUSTER_SLEEP_LITTLE: cluster-sleep-little {
