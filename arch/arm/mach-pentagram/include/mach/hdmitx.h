@@ -9,11 +9,10 @@
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
-/*HDMI_HPD -> GPIO_P7_4 (G_MX[60])*/
-//#define HPD_DETECTION
-
-//#define EDID_READ
-//#define HDCP_AUTH
+/* DDC parameters */
+#define DDC_FIFO_CAPACITY		 16
+#define EDID_CAPACITY			 128
+#define DDC_SLV_DEVICE_ADDR              0xA0
 
 /*----------------------------------------------------------------------------*
  *					DATA TYPES

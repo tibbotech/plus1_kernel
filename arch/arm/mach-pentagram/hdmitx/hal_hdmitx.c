@@ -14,7 +14,7 @@
 /*about misc*/
 #define mask_pack(src, mask, bit, value) (((src) & (~((mask) << (bit)))) + (((value) & (mask)) << (bit)))
 
-/*about interrupt mask*/
+/*about interrupt0 mask*/
 #define HDMITX_INTERRUPT0_MASK_HDP (1 << INTERRUPT0_HDP)
 #define HDMITX_INTERRUPT0_MASK_RSEN (1 << INTERRUPT0_RSEN)
 #define HDMITX_INTERRUPT0_MASK_TCLK_FREQ (1 << INTERRUPT0_TCLK_FREQ)
@@ -24,11 +24,32 @@
 #define HDMITX_INTERRUPT0_MASK_AUDIO_FIFO_EMPTY (1 << INTERRUPT0_AUDIO_FIFO_EMPTY)
 #define HDMITX_INTERRUPT0_MASK_AUDIO_FIFO_FULL (1 << INTERRUPT0_AUDIO_FIFO_FULL)
 
+/*about interrupt1 mask*/
+#define HDMITX_INTERRUPT1_MASK_128_HDCP_FRAMES (1 << INTERRUPT1_128_HDCP_FRAMES)
+#define HDMITX_INTERRUPT1_MASK_16_HDCP_FRAMES (1 << INTERRUPT1_16_HDCP_FRAMES)
+#define HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL (1 << INTERRUPT1_DDC_FIFO_FULL)
+#define HDMITX_INTERRUPT1_MASK_DDC_FIFO_EMPTY (1 << INTERRUPT1_DDC_FIFO_EMPTY)
+#define HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME0 (1 << INTERRUPT1_RI_FAIL_FRAME0)
+#define HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME127 (1 << INTERRUPT1_RI_FAIL_FRAME127)
+#define HDMITX_INTERRUPT1_MASK_TXRI_NOT_CHG (1 << INTERRUPT1_TXRI_NOT_CHG)
+#define HDMITX_INTERRUPT1_MASK_RIPJ_NOT_READ_DDC_BUS_ERR (1 << INTERRUPT1_RIPJ_NOT_READ_DDC_BUS_ERR)
+#define HDMITX_INTERRUPT1_MASK_PJ_FAIL_FRAME15 (1 << INTERRUPT1_PJ_FAIL_FRAME15)
+#define HDMITX_INTERRUPT1_MASK_TXPJ_NOT_CHG (1 << INTERRUPT1_TXPJ_NOT_CHG)
+
 /*about system status mask*/
 #define HDMITX_SYSTEM_STUS_MASK_RSEN_IN (1 << SYSTEM_STUS_RSEN_IN)
 #define HDMITX_SYSTEM_STUS_MASK_HPD_IN (1 << SYSTEM_STUS_HPD_IN)
 #define HDMITX_SYSTEM_STUS_MASK_PLL_READY (1 << SYSTEM_STUS_PLL_READY)
 #define HDMITX_SYSTEM_STUS_MASK_TMDS_CLK_DETECT (1 << SYSTEM_STUS_TMDS_CLK_DETECT)
+
+/*about ddc status mask*/
+#define HDMITX_DDC_STUS_MASK_CMD_DONE (1 << DDC_STUS_CMD_DONE)
+#define HDMITX_DDC_STUS_MASK_DDC_BUS_LOW (1 << DDC_STUS_DDC_BUS_LOW)
+#define HDMITX_DDC_STUS_MASK_BUS_NONACK (1 << DDC_STUS_DDC_BUS_NONACK)
+#define HDMITX_DDC_STUS_MASK_FIFO_WRITE (1 << DDC_STUS_DDC_FIFO_WRITE)
+#define HDMITX_DDC_STUS_MASK_FIFO_READ (1 << DDC_STUS_DDC_FIFO_READ)
+#define HDMITX_DDC_STUS_MASK_FIFO_FULL (1 << DDC_STUS_DDC_FIFO_FULL)
+#define HDMITX_DDC_STUS_MASK_FIFO_EMPTY (1 << DDC_STUS_DDC_FIFO_EMPTY)
 
 /*----------------------------------------------------------------------------*
  *					DATA TYPES
@@ -536,16 +557,10 @@ static void apply_audio(void __iomem *hdmitxbase)
 	pHdmitxReg->hdmi_arc_n_value1     = cts_n;
 }
 
-#ifdef HPD_DETECTION
 void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase)
-#else
-void hal_hdmitx_init(void __iomem *hdmitxbase)
-#endif
 {	
 	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
-#ifdef HPD_DETECTION
 	reg_moon1_t *pMoon1Reg = (reg_moon1_t *)moon1base;
-#endif
 
 	/*apply phy general configures*/
 
@@ -558,12 +573,20 @@ void hal_hdmitx_init(void __iomem *hdmitxbase)
 	pHdmitxReg->hdmi_sw_reset = 0xFF;
 	
 	/*enable interrupt*/
-	pHdmitxReg->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);
+	pHdmitxReg->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);	
+	pHdmitxReg->hdmi_intr1_unmask |= (HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL | HDMITX_INTERRUPT1_MASK_DDC_FIFO_EMPTY);
 
-#ifdef HPD_DETECTION
-	/*configure HDMI_HPD to GPIO_P7_4 (G_MX[60])*/
+	/*configure DDC_SDA, DDC_SCL, HDMI_HPD and HDMI_CEC*/
 	pMoon1Reg->sft_cfg[1] = 0x60006000;
-#endif
+
+	/*enable HW DDC mode*/
+	pHdmitxReg->hdmi_ddc_master_set |= 0x00;
+
+	/*set DDC i2c slave device address*/
+	pHdmitxReg->hdmi_ddc_slv_device_addr = DDC_SLV_DEVICE_ADDR;
+
+	/*set total DDC transfer data count*/
+	pHdmitxReg->hdmi_ddc_data_cnt = DDC_FIFO_CAPACITY;
 }
 
 void hal_hdmitx_deinit(void __iomem *hdmitxbase)
@@ -782,3 +805,163 @@ void hal_hdmitx_disable_pattern(void __iomem *hdmitxbase)
 {
 	apply_test_pattern(DISABLE, hdmitxbase);
 }
+
+unsigned char hal_hdmitx_get_interrupt1_status(enum hal_hdmitx_interrupt1 intr, void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	unsigned char stus;
+	unsigned int value;        
+
+	value = pHdmitxReg->hdmi_intr1_sts;
+
+	switch (intr) {
+		case INTERRUPT1_128_HDCP_FRAMES:
+			value &= HDMITX_INTERRUPT1_MASK_128_HDCP_FRAMES;
+			break;
+		case INTERRUPT1_16_HDCP_FRAMES:
+			value &= HDMITX_INTERRUPT1_MASK_16_HDCP_FRAMES;
+			break;
+		case INTERRUPT1_DDC_FIFO_FULL:
+			value &= HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL;
+			break;
+		case INTERRUPT1_DDC_FIFO_EMPTY:
+			value &= HDMITX_INTERRUPT1_MASK_DDC_FIFO_EMPTY;
+			break;
+		case INTERRUPT1_RI_FAIL_FRAME0:
+			value &= HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME0;
+			break;
+		case INTERRUPT1_RI_FAIL_FRAME127:
+			value &= HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME127;
+			break;
+		case INTERRUPT1_TXRI_NOT_CHG:
+			value &= HDMITX_INTERRUPT1_MASK_TXRI_NOT_CHG;
+			break;
+		case INTERRUPT1_RIPJ_NOT_READ_DDC_BUS_ERR:
+			value &= HDMITX_INTERRUPT1_MASK_RIPJ_NOT_READ_DDC_BUS_ERR;
+			break;
+		case INTERRUPT1_PJ_FAIL_FRAME15:
+			value &= HDMITX_INTERRUPT1_MASK_PJ_FAIL_FRAME15;
+			break;
+		case INTERRUPT1_TXPJ_NOT_CHG:
+			value &= HDMITX_INTERRUPT1_MASK_TXPJ_NOT_CHG;
+			break;	
+		default:
+			value = 0;
+			break;
+	}
+
+	stus = value ? 1 : 0;
+
+	return stus;
+}
+
+void hal_hdmitx_clear_interrupt1_status(enum hal_hdmitx_interrupt1 intr, void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	unsigned int value;
+
+	value = pHdmitxReg->hdmi_intr1_sts;
+
+	switch (intr) {
+		case INTERRUPT1_128_HDCP_FRAMES:
+			value &= (~HDMITX_INTERRUPT1_MASK_128_HDCP_FRAMES);
+			break;
+		case INTERRUPT1_16_HDCP_FRAMES:
+			value &= (~HDMITX_INTERRUPT1_MASK_16_HDCP_FRAMES);
+			break;
+		case INTERRUPT1_DDC_FIFO_FULL:
+			value &= (~HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL);
+			break;
+		case INTERRUPT1_DDC_FIFO_EMPTY:
+			value &= (~HDMITX_INTERRUPT1_MASK_DDC_FIFO_EMPTY);
+			break;
+		case INTERRUPT1_RI_FAIL_FRAME0:
+			value &= (~HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME0);
+			break;
+		case INTERRUPT1_RI_FAIL_FRAME127:
+			value &= (~HDMITX_INTERRUPT1_MASK_RI_FAIL_FRAME127);
+			break;
+		case INTERRUPT1_TXRI_NOT_CHG:
+			value &= (~HDMITX_INTERRUPT1_MASK_TXRI_NOT_CHG);
+			break;
+		case INTERRUPT1_RIPJ_NOT_READ_DDC_BUS_ERR:
+			value &= (~HDMITX_INTERRUPT1_MASK_RIPJ_NOT_READ_DDC_BUS_ERR);
+			break;
+		case INTERRUPT1_PJ_FAIL_FRAME15:
+			value &= (~HDMITX_INTERRUPT1_MASK_PJ_FAIL_FRAME15);
+			break;
+		case INTERRUPT1_TXPJ_NOT_CHG:
+			value &= (~HDMITX_INTERRUPT1_MASK_TXPJ_NOT_CHG);
+			break;
+		default:
+			break;
+	}
+
+	pHdmitxReg->hdmi_intr1_sts = value;
+}
+
+unsigned char hal_hdmitx_get_ddc_status(enum hal_hdmitx_ddc_status ddc, void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+	unsigned char stus;
+	unsigned int value;
+
+	value = pHdmitxReg->hdmi_ddc_sts;
+
+	switch (ddc) {
+		case DDC_STUS_CMD_DONE:
+			value &= HDMITX_DDC_STUS_MASK_CMD_DONE;
+			break;
+		case DDC_STUS_DDC_BUS_LOW:
+			value &= HDMITX_DDC_STUS_MASK_DDC_BUS_LOW;
+			break;
+		case DDC_STUS_DDC_BUS_NONACK:
+			value &= HDMITX_DDC_STUS_MASK_BUS_NONACK;
+			break;
+		case DDC_STUS_DDC_FIFO_WRITE:
+			value &= HDMITX_DDC_STUS_MASK_FIFO_WRITE;
+			break;
+		case DDC_STUS_DDC_FIFO_READ:
+			value &= HDMITX_DDC_STUS_MASK_FIFO_READ;
+			break;
+		case DDC_STUS_DDC_FIFO_FULL:
+			value &= HDMITX_DDC_STUS_MASK_FIFO_FULL;
+			break;
+		case DDC_STUS_DDC_FIFO_EMPTY:
+			value &= HDMITX_DDC_STUS_MASK_FIFO_EMPTY;
+			break;
+		default:
+			value = 0;
+			break;
+	}
+
+	stus = value ? 1 : 0;
+
+	return stus;
+}
+
+unsigned char hal_hdmitx_get_edid(void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+
+	return pHdmitxReg->hdmi_ddc_data;
+}
+
+unsigned int hal_hdmitx_get_fifodata_cnt(void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+
+	return pHdmitxReg->hdmi_ddc_fifodata_cnt;
+}
+
+void hal_hdmitx_ddc_cmd(enum hdmitx_ddc_command cmd, unsigned int ofs, void __iomem *hdmitxbase)
+{
+	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
+
+	//command
+	pHdmitxReg->hdmi_ddc_cmd = cmd;
+
+	//register offset
+	pHdmitxReg->hdmi_ddc_slv_reg_offset = ofs;
+}
+
