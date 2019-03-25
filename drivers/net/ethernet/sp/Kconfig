@@ -32,7 +32,7 @@ choice
 config AN_NIC_WITH_DAISY_CHAIN
 	bool "An NIC with Daisy-chain Mode"
 	select PHYLIB
-	select GPIO_SC7021
+	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
 	default y
@@ -42,7 +42,7 @@ config AN_NIC_WITH_DAISY_CHAIN
 config DUAL_NIC
 	bool "Dual NIC Mode"
 	select PHYLIB
-	select GPIO_SC7021
+	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
 	default n
@@ -52,7 +52,7 @@ config DUAL_NIC
 config AN_NIC_WITH_DAISY_CHAIN2
 	bool "An NIC with Daisy-chain Mode 2"
 	select PHYLIB
-	select GPIO_SC7021
+	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
 	default n

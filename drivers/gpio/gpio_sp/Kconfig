@@ -1,6 +1,0 @@
-config GPIO_SC7021
-	bool "SunPlus SC7021 GPIO"
-	depends on ARCH_PENTAGRAM && OF_GPIO
-	select GENERIC_IRQ_CHIP
-	help
-	  Say yes here to support the SC7021 SunPlus GPIO device.

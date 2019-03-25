@@ -1,6 +1,15 @@
 ---------------------------------------------
-  SoC SunPlus/Tibbo SC7021 gpio driver (sc7021_gpio)
+  SoC SunPlus/Tibbo SC7021 gpio driver
 ---------------------------------------------
+
+NOTE
+------------
+This driver is the part of sc7021pctl driver at
+ drivers/pinctrl/sppctl/sc7021_gpio*
+but may be separated and used along. Take a look at
+ Documentation/devicetree/bindings/pinctrl/sunplus,sc7021-pctl.txt
+for information about the PinCtrl managment part.
+------------
 
 This document outlines the gpio subsystem available on SC7021 SoC.
 
@@ -54,11 +63,7 @@ All properties are optional and has compile-time default values.
 
 The compatible key may have one of the following values:
 
-- sunplus,sp_gpio
-- pentagram,sp_gpio
-- tps,spgpio
-- tibbo,spgpio
-- sc7021,sp_gpio
+- sunplus,sc7021-gpio
 
 The reg key should contain 3 entries - the physical addresses of GPIO control 
 register groups.

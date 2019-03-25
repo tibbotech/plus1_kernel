@@ -1,11 +1,11 @@
 /*
  * GPIO Driver for SunPlus/Tibbo SC7021 controller - internal functions
  * Copyright (C) 2019 SunPlus Tech.
- * TODO: get rid of it : it is used by drivers/net/ethernet/sp/l2sw_hal.c:     
+ * TODO: get rid of it : it is used by drivers/net/ethernet/sp/l2sw_hal.c:
  * GPIO_PIN_MUX_SEL(PMX_L2SW_CLK_OUT,40);
  */
 
-#define REG_GRP_OFS(GRP, OFFSET)        VA_IOB_ADDR((GRP) * 32 * 4 + (OFFSET) * 4) 
+#define REG_GRP_OFS(GRP, OFFSET)        VA_IOB_ADDR((GRP) * 32 * 4 + (OFFSET) * 4)
 #define GPIO_FIRST(X)   (REG_GRP_OFS(101, (25+X)))
 #define GPIO_MASTER(X)  (REG_GRP_OFS(6, (0+X)))
 #define GPIO_OE(X)      (REG_GRP_OFS(6, (8+X)))
@@ -16,8 +16,12 @@
 #define GPIO_OD(X)      (REG_GRP_OFS(7, (16+X)))
 #define GPIO_SFT_CFG(G,X)      (REG_GRP_OFS(G, (0+X)))
 
-#include "sc7021_gpio.h"
+#include <linux/errno.h>
+#include <linux/types.h>
+#include <linux/spinlock.h>
+#include <linux/io.h>
 
+#include <mach/io_map.h>
 #include "mach/gpio_drv.h"
 
 static DEFINE_SPINLOCK(slock_gpio);
