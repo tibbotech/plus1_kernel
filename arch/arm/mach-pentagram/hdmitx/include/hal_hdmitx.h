@@ -121,6 +121,40 @@ enum hal_hdmitx_audio_sample_rate {
 	AUDIO_SAMPLE_RATE_MAX,
 };
 
+enum hal_hdmitx_interrupt1 {
+	INTERRUPT1_128_HDCP_FRAMES = 0,
+	INTERRUPT1_16_HDCP_FRAMES,
+	INTERRUPT1_DDC_FIFO_FULL,
+	INTERRUPT1_DDC_FIFO_EMPTY,
+	INTERRUPT1_RI_FAIL_FRAME0,
+	INTERRUPT1_RI_FAIL_FRAME127,
+	INTERRUPT1_TXRI_NOT_CHG,
+	INTERRUPT1_RIPJ_NOT_READ_DDC_BUS_ERR,
+	INTERRUPT1_PJ_FAIL_FRAME15,
+	INTERRUPT1_TXPJ_NOT_CHG,
+};
+
+enum hal_hdmitx_ddc_status {
+	DDC_STUS_CMD_DONE = 0,
+	DDC_STUS_DDC_BUS_LOW,
+	DDC_STUS_DDC_BUS_NONACK,
+	DDC_STUS_DDC_FIFO_WRITE,
+	DDC_STUS_DDC_FIFO_READ,
+	DDC_STUS_DDC_FIFO_FULL,
+	DDC_STUS_DDC_FIFO_EMPTY,
+};
+
+enum hdmitx_ddc_command {
+	HDMITX_DDC_CMD_FAST_READ = 0,
+	HDMITX_DDC_CMD_SEQ_READ,
+	HDMITX_DDC_CMD_SEQ_WRITE_ACK,
+	HDMITX_DDC_CMD_SEQ_WRITE_NO_ACK,
+	HDMITX_DDC_CMD_SEG_READ,
+	HDMITX_DDC_CMD_CLEAR_FIFO,
+	HDMITX_DDC_CMD_CLOCK_SCL,
+	HDMITX_DDC_CMD_ABORT,
+};
+
 struct hal_hdmitx_video_attribute {
 	enum hal_hdmitx_timing timing;
 	enum hal_hdmitx_color_depth color_depth;
@@ -146,12 +180,7 @@ struct hal_hdmitx_audio_attribute {
 /*----------------------------------------------------------------------------*
  *					FUNCTION DECLARATIONS
  *---------------------------------------------------------------------------*/
-
-#ifdef HPD_DETECTION
 void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase);
-#else
-void hal_hdmitx_init(void __iomem *hdmitxbase);
-#endif
 
 void hal_hdmitx_deinit(void __iomem *hdmitxbase);
 
@@ -178,6 +207,18 @@ void hal_hdmitx_stop(void __iomem *hdmitxbase);
 void hal_hdmitx_enable_pattern(void __iomem *hdmitxbase);
 
 void hal_hdmitx_disable_pattern(void __iomem *hdmitxbase);
+
+unsigned char hal_hdmitx_get_interrupt1_status(enum hal_hdmitx_interrupt1 intr, void __iomem *hdmitxbase);
+
+void hal_hdmitx_clear_interrupt1_status(enum hal_hdmitx_interrupt1 intr, void __iomem *hdmitxbase);
+
+unsigned char hal_hdmitx_get_ddc_status(enum hal_hdmitx_ddc_status ddc, void __iomem *hdmitxbase);
+
+unsigned char hal_hdmitx_get_edid(void __iomem *hdmitxbase);
+
+unsigned int hal_hdmitx_get_fifodata_cnt(void __iomem *hdmitxbase);
+
+void hal_hdmitx_ddc_cmd(enum hdmitx_ddc_command cmd, unsigned int ofs, void __iomem *hdmitxbase);
 
 #endif // __HAL_HDMITX_H__
 

@@ -24,6 +24,11 @@
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
+/*about misc*/
+//#define HPD_DETECTION
+//#define EDID_READ
+//#define HDCP_AUTH
+
 /*about print msg*/
 #ifdef _HDMITX_ERR_MSG_
 #define HDMITX_ERR(fmt, args...) printk(KERN_ERR fmt, ##args)
@@ -141,13 +146,13 @@ static unsigned char g_hpd_in = FALSE;
 static unsigned char g_rx_ready = FALSE;
 static struct hdmitx_config g_cur_hdmi_cfg;
 static struct hdmitx_config g_new_hdmi_cfg;
+static unsigned char edid[256];
+static unsigned int edid_data_ofs;
 
 typedef struct {
 	void __iomem *moon4base;
 	void __iomem *moon5base;
-#ifdef HPD_DETECTION
 	void __iomem *moon1base;
-#endif
 	void __iomem *hdmitxbase;	
 	struct miscdevice *hdmitx_misc;
 	struct device *dev;
@@ -455,6 +460,8 @@ static void process_hdcp_state(void)
 
 static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 {
+	unsigned int cnt;
+	
 	if (hal_hdmitx_get_interrupt0_status(INTERRUPT0_HDP, sp_hdmitx->hdmitxbase)) {
 
 		if (hal_hdmitx_get_system_status(SYSTEM_STUS_HPD_IN, sp_hdmitx->hdmitxbase)) {
@@ -481,6 +488,27 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase);
 	}
 
+	if (hal_hdmitx_get_interrupt1_status(INTERRUPT1_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase)) {
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase)) {
+			if (edid_data_ofs < EDID_CAPACITY) {
+				hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+			}
+		}
+
+		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase);
+	}
+	
+	if (hal_hdmitx_get_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
+			edid_data_ofs += hal_hdmitx_get_fifodata_cnt(sp_hdmitx->hdmitxbase);
+			for (cnt = edid_data_ofs - DDC_FIFO_CAPACITY; cnt < edid_data_ofs; cnt++) {
+				edid[cnt] = hal_hdmitx_get_edid(sp_hdmitx->hdmitxbase);
+			}
+		}
+
+		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase);
+	}	
+	
 	return IRQ_HANDLED;
 }
 
@@ -705,13 +733,11 @@ static int hdmitx_probe(struct platform_device *pdev)
 		return PTR_ERR(sp_hdmitx->moon5base);
 	}	
 
-#ifdef HPD_DETECTION
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
 	sp_hdmitx->moon1base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(sp_hdmitx->moon1base)) {
 		return PTR_ERR(sp_hdmitx->moon1base);
 	}
-#endif
 
 	sp_hdmitx->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(sp_hdmitx->rstc)) {
@@ -726,13 +752,12 @@ static int hdmitx_probe(struct platform_device *pdev)
 	}
 	
 	HDMITX_INFO("HDMITX installed\n");
-	
-	/*initialize hardware settings*/
-#ifdef HPD_DETECTION	
+
+	edid_data_ofs = 0;
+	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_CLEAR_FIFO, edid_data_ofs, sp_hdmitx->hdmitxbase);
+
+	/*initialize hardware settings*/	
 	hal_hdmitx_init(sp_hdmitx->moon1base, sp_hdmitx->hdmitxbase);
-#else
-	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
-#endif
 
 	/*initialize software settings*/
 	// reset hdmi config

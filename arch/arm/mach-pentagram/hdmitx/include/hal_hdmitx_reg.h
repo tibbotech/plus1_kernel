@@ -311,10 +311,8 @@ typedef volatile struct reg_moon5_s {
 	unsigned int sft_cfg[32];
 } reg_moon5_t;
 
-	#ifdef HPD_DETECTION
 typedef volatile struct reg_moon1_s {
 	unsigned int sft_cfg[32];
 } reg_moon1_t;
-	#endif
 
 #endif // end of #ifndef __REG_HDMITX_H__
