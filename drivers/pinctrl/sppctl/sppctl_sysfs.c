@@ -15,6 +15,7 @@
  */
 
 #include "sppctl_sysfs.h"
+#include "sc7021_gpio_ops.h"
 
 static ssize_t sppctl_sop_name_R( struct device *_d, struct device_attribute *_a, char *_b) {
  sppctl_pdata_t *_p = ( sppctl_pdata_t *)_d->platform_data;
@@ -50,7 +51,7 @@ static ssize_t sppctl_sop_list_funcs_R(
  struct device *_pdev = container_of( _k, struct device, kobj);
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- while ( ( tmpp = list_funcs[ ++i + 1])) {
+ while ( ( tmpp = list_funcs[ ++i + 2])) {
    if ( pos > 0) {  pos -= ( strlen( tmpp) + 1);  continue;  }
    sprintf( _b + ret, "%s\n", tmpp);
    ret += strlen( tmpp) + 1;
@@ -69,7 +70,7 @@ static ssize_t sppctl_sop_txt_map_R(
  struct device *_pdev = container_of( _k, struct device, kobj);
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- while ( ( tmpp = list_funcs[ ++i + 1])) {
+ while ( ( tmpp = list_funcs[ ++i + 2])) {
    pin = sppctl_fun_get( _p, i);
    memset( tmps, 0, SPPCTL_MAX_NAM + 3);
    sprintf( tmps, "%03d %s", pin, tmpp);
@@ -121,7 +122,7 @@ static ssize_t sppctl_sop_fw_R(
  struct device *_pdev = container_of( _k, struct device, kobj);
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- while ( ( tmpp = list_funcs[ ++i + 1])) {
+ while ( ( tmpp = list_funcs[ ++i + 2])) {
    pin = sppctl_fun_get( _p, i);
    if ( pos > 0) {  pos -= sizeof( pin);  continue;  }
    _b[ ret] = pin;
@@ -137,14 +138,41 @@ static ssize_t sppctl_sop_fw_W(
  sppctl_sdata_t *sdp = NULL;
  sppctl_pdata_t *_p = NULL;
  struct device *_pdev = container_of( _k, struct device, kobj);
- if ( _off + _count < sizeof_listF - 2) {
-   KERR( _pdev, "%s() fw size %lld < %d\n", __FUNCTION__, _off + _count, sizeof_listF - 2);
+ if ( _off + _count < sizeof_listF - 3) {
+   KERR( _pdev, "%s() fw size %lld < %d\n", __FUNCTION__, _off + _count, sizeof_listF - 3);
    return( -ENXIO);  }
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
  sdp = ( sppctl_sdata_t *)_a->private;
- while ( list_funcs[ ++i + 1] && i < _count) sppctl_pin_set( _p, _b[ i], sdp->i);
+ while ( list_funcs[ ++i + 2] && i < _count) sppctl_pin_set( _p, _b[ i], sdp->i);
  return( i);  }
+
+static ssize_t sppctl_sop_mode_R(
+ struct file *filp, struct kobject *_k, struct bin_attribute *_a,
+ char *_b, loff_t off, size_t count) {
+ int i = -1, ret = 0, pos = off;
+ const char * tmpp;
+ char tmps[ SPPCTL_MAX_NAM + 3];
+ uint8_t pin = 0, g_f, g_m;
+ sppctl_pdata_t *_p = NULL;
+ struct device *_pdev = container_of( _k, struct device, kobj);
+ if ( !_pdev) return( -ENXIO);
+ if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
+while ( ( pin = sc7021pins_G[ ++i]) >= 0 && pin < 70) {
+   g_f = sc7021gpio_u_gfrst( &( _p->gpiod->chip), pin);
+   g_m = sc7021gpio_u_magpi( &( _p->gpiod->chip), pin);
+   tmpp = "?";
+   if (  g_f &&  g_m) tmpp = "GPIO";
+   if (  g_f && !g_m) tmpp = " IOP";
+   if ( !g_f) tmpp = " MUX";
+   memset( tmps, 0, SPPCTL_MAX_NAM + 3);
+   sprintf( tmps, "%03d %s", pin, tmpp);
+   if ( pos > 0) {  pos -= ( strlen( tmps) + 1);  continue;  }
+   sprintf( _b + ret, "%s\n", tmps);
+   ret += strlen( tmps) + 1;
+   if ( ret > SPPCTL_MAX_BUF - SPPCTL_MAX_NAM) break;
+ }
+ return( ret);  }
 
 static struct device_attribute sppctl_sysfs_attrsD[] = {
  __ATTR(     name,0444,sppctl_sop_name_R,       NULL),
@@ -156,6 +184,7 @@ static struct bin_attribute sppctl_sysfs_attrsB[] = {
  __BIN_ATTR( list_funcs,0444,sppctl_sop_list_funcs_R, NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( txt_map   ,0444,sppctl_sop_txt_map_R,    NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( fw        ,0444,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
+ __BIN_ATTR( mode      ,0444,sppctl_sop_mode_R,       NULL, SPPCTL_MAX_BUF),
 };
 
 struct bin_attribute *sppctl_sysfs_Fap;
@@ -177,7 +206,7 @@ void sppctl_sysfs_init( struct platform_device *_pd) {
  i = -1;
  sppctl_sysfs_Fap = ( struct bin_attribute *)kzalloc( ( sizeof_listF)*sizeof( struct bin_attribute), GFP_KERNEL);
  sdp = ( sppctl_sdata_t *)kzalloc( ( sizeof_listF)*sizeof( sppctl_sdata_t), GFP_KERNEL);
- while ( ( tmpp = list_funcs[ ++i + 1])) {
+ while ( ( tmpp = list_funcs[ ++i + 2])) {
    sdp[ i].i = i;
    sdp[ i].pdata = _p;
    sysfs_bin_attr_init( sppctl_sysfs_Fap[ i]);
@@ -204,7 +233,7 @@ void sppctl_sysfs_clean( struct platform_device *_pd) {
    device_remove_bin_file( &( _pd->dev), &sppctl_sysfs_attrsB[i]);
  }
  i = -1;
- while ( ( tmpp = list_funcs[ ++i + 1])) {
+ while ( ( tmpp = list_funcs[ ++i + 2])) {
    device_remove_bin_file( &( _pd->dev), &( sppctl_sysfs_Fap[ i]));
  }
  kfree( sppctl_sysfs_Fap);

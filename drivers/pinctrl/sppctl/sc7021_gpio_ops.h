@@ -28,6 +28,9 @@ int sc7021gpio_u_gfrst( struct gpio_chip *_c, unsigned int _n);
 // who is master: GPIO(1) | IOP(0)
 int sc7021gpio_u_magpi( struct gpio_chip *_c, unsigned int _n);
 
+// set MASTER and FIRST
+void sc7021gpio_u_magpi_set( struct gpio_chip *_c, unsigned int _n, muxF_MG_t _f, muxM_IG_t _m);
+
 // is inv: INVERTED(1) | NORMAL(0)
 int sc7021gpio_u_isinv( struct gpio_chip *_c, unsigned int _n);
 // set (I|O)inv

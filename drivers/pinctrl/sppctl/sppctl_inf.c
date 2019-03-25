@@ -18,6 +18,7 @@
 
 const char * const list_funcs[] = {
  "GPIO",
+ "IOP",
  "L2SW_CLK_OUT",
  "L2SW_MAC_SMI_MDC",
  "L2SW_LED_FLASH0",

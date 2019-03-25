@@ -82,4 +82,20 @@ int sc7021_gpio_del( struct platform_device *_pd, void *_datap);
 
 #define D_PIS(x,y) "P" __stringify(x) "_0" __stringify(y)
 
+// FIRST: MUX=0, GPIO=1
+enum muxF_MG {
+  muxF_M = 0,
+  muxF_G = 1,
+  muxFKEEP = 2,
+};
+// MASTER: IOP=0,GPIO=1
+enum muxM_IG {
+  muxM_I = 0,
+  muxM_G = 1,
+  muxMKEEP = 2,
+};
+
+typedef enum muxF_MG muxF_MG_t;
+typedef enum muxM_IG muxM_IG_t;
+
 #endif // SC7021_GPIO_H

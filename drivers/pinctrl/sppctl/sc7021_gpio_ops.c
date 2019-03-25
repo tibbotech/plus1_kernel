@@ -58,6 +58,27 @@ int sc7021gpio_u_magpi( struct gpio_chip *_c, unsigned int _n) {
  r = readl( pc->base0 + SC7021_GPIO_OFF_CTL + R16_ROF(_n));
  return( R32_VAL(r,R16_BOF(_n)));  }
 
+// set master: GPIO(1)|IOP(0), first:GPIO(1)|MUX(0)
+void sc7021gpio_u_magpi_set( struct gpio_chip *_c, unsigned int _n, muxF_MG_t _f, muxM_IG_t _m) {
+ u32 r;
+ sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
+ // FIRST
+ if ( _f != muxFKEEP) {
+   r = readl( pc->base2 + SC7021_GPIO_OFF_GFR + R32_ROF(_n));
+   if ( _f != R32_VAL(r,R32_BOF(_n))) {
+     if ( _f == muxF_G) r |= BIT(R32_BOF(_n));
+     else r &= ~BIT(R32_BOF(_n));
+     writel( r, pc->base2 + SC7021_GPIO_OFF_GFR + R32_ROF(_n));
+   }
+ } 
+ // MASTER
+ if ( _m != muxMKEEP) {
+   r = (BIT(R16_BOF(_n))<<16);
+   if ( _m == muxM_G) r |= BIT(R16_BOF(_n));
+   writel( r, pc->base0 + SC7021_GPIO_OFF_CTL + R16_ROF(_n));
+ }
+ return;  }
+
 // is inv: INVERTED(1) | NORMAL(0)
 int sc7021gpio_u_isinv( struct gpio_chip *_c, unsigned int _n) {
  u32 r;
@@ -97,6 +118,7 @@ int sc7021gpio_u_isodr( struct gpio_chip *_c, unsigned int _n) {
 int sc7021gpio_f_req( struct gpio_chip *_c, unsigned _n) {
  u32 r;
  sc7021gpio_chip_t *pc = ( sc7021gpio_chip_t *)gpiochip_get_data( _c);
+KINF( _c->parent, "f_req(%03d)\n", _n);
  // get GPIO_FIRST:32
  r = readl( pc->base2 + SC7021_GPIO_OFF_GFR + R32_ROF(_n));
  // set GPIO_FIRST(1):32

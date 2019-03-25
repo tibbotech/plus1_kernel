@@ -22,4 +22,6 @@
 void sppctl_pinctrl_init( struct platform_device *_pdev);
 void sppctl_pinctrl_clea( struct platform_device *_pdev);
 
+extern const unsigned sc7021pins_G[];
+
 #endif // SPPCTL_PINCTRL_H

@@ -73,10 +73,10 @@ static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
  int i = -1;
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_ctx;
  if ( !_fw) {  KERR( p->pcdp->dev, "Firmare not found\n");  return;  }
- if ( _fw->size < sizeof_listF - 2) {
-   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, sizeof_listF - 2);  return;
+ if ( _fw->size < sizeof_listF - 3) {
+   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, sizeof_listF - 3);  return;
    goto out;  }
- while ( list_funcs[ ++i + 1] && i < _fw->size) sppctl_pin_set( p, _fw->data[ i], i);
+ while ( list_funcs[ ++i + 2] && i < _fw->size) sppctl_pin_set( p, _fw->data[ i], i);
  out:
  release_firmware( _fw);
  return;  }

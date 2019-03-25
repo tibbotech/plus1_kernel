@@ -100,32 +100,32 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  int i = 0;
  KDBG( _pd->dev, "%s(%d,%ld,%d)\n", __FUNCTION__, _pin, *_ca, _clen);
  for ( i = 0; i < _clen; i++) {
-   if ( _ca[ i] & SC7021_PCTL_L_OUT) {  KINF( _pd->dev, "%d:OUT\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
-   if ( _ca[ i] & SC7021_PCTL_L_OU1) {  KINF( _pd->dev, "%d:OU1\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
-   if ( _ca[ i] & SC7021_PCTL_L_INV) {  KINF( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SC7021_PCTL_L_ODR) {  KINF( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SC7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
+   if ( _ca[ i] & SC7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SC7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SC7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
    // FIXME: add PIN_CONFIG_DRIVE_OPEN_DRAIN
  }
  return( 0);  }
 int stpctl_c_g_get( struct pinctrl_dev *_pd, unsigned _gid, unsigned long *_config) {
- KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
+// KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
  // FIXME: add data
  return( 0);  }
 int stpctl_c_g_set( struct pinctrl_dev *_pd, unsigned _gid, unsigned long *_configs, unsigned _num_configs) {
- KINF( _pd->dev, "%s(%d,,%d)\n", __FUNCTION__, _gid, _num_configs);
+// KINF( _pd->dev, "%s(%d,,%d)\n", __FUNCTION__, _gid, _num_configs);
  // FIXME: delete
  return( 0);  }
 #ifdef CONFIG_DEBUG_FS
 void stpctl_c_d_show( struct pinctrl_dev *_pd, struct seq_file *s, unsigned _off) {
- KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _off);
+// KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _off);
  seq_printf(s, " %s", dev_name( _pd->dev));
  return;  }
 void stpctl_c_d_group_show( struct pinctrl_dev *_pd, struct seq_file *s, unsigned _gid) {
  // group: freescale/pinctrl-imx.c, 448
- KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
+// KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
  return;  }
 void stpctl_c_d_config_show( struct pinctrl_dev *_pd, struct seq_file *s, unsigned long _config) {
- KINF( _pd->dev, "%s(%ld)\n", __FUNCTION__, _config);
+// KINF( _pd->dev, "%s(%ld)\n", __FUNCTION__, _config);
  return;  }
 #else
 #define stpctl_c_d_show NULL
@@ -152,10 +152,10 @@ int stpctl_m_fre( struct pinctrl_dev *_pd, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  // FIXME: define
  return( 0);  }
-int stpctl_m_f_cnt( struct pinctrl_dev *_pd) {  return( sizeof_listF - 1);  }
+int stpctl_m_f_cnt( struct pinctrl_dev *_pd) {  return( sizeof_listF - 2);  }
 const char *stpctl_m_f_nam( struct pinctrl_dev *_pd, unsigned _fid) {  return( list_funcs[ _fid]);  }
 int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const **groups, unsigned *_galen) {
- if ( _fid == 0) {
+ if ( _fid == 0 || _fid == 1) {
    *_galen = sizeof_listG - 1;
    *groups = sc7021gpio_list_names;
  } else {
@@ -167,11 +167,18 @@ int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const *
 int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  int i = -1;
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
- KDBG( _pd->dev, "%s(fun:%d,pin:%d)\n", __FUNCTION__, _fid, _gid);
- if ( _fid != 0) {
-   sppctl_pin_set( pctrl, _gid, _fid - 1);    // pin, fun
+ KINF( _pd->dev, "%s(fun:%d,pin:%d)\n", __FUNCTION__, _fid, _gid);
+ // set function
+ if ( _fid > 1) {
+   sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
+   sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
    return( 0);  }
- // switch pin to GPIO (detouch from all funcs)
+ // set IOP
+ if ( _fid == 1) {
+   sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_I);
+   return( 0);  }
+ // set GPIO and detouch from all funcs
+ sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_G);
  while ( list_funcs[ ++i]) {
    if ( sppctl_fun_get( pctrl, i) != _gid) continue;
    sppctl_pin_set( pctrl, _gid, i);  }
