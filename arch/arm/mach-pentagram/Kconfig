@@ -52,6 +52,7 @@ config MACH_PENTAGRAM_SC7021_ACHIP
 	select CLKSRC_SP_TIMER
 	select PINCTRL
 	select PINCTRL_SPPCTL
+	select OF_OVERLAY
 
 config MACH_PENTAGRAM_SC7021_BCHIP
         bool "SC7021 B support"
