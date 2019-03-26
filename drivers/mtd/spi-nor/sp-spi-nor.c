@@ -980,7 +980,7 @@ static int sp_spi_nor_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 {
     struct sp_spi_nor *pspi = nor->priv;
     
-    dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__,opcode,len);   
+    dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__, opcode, len);   
 #if (SP_SPINOR_DMA)
     sp_spi_nor_xfer_dmaread(nor, opcode, 0, 0, buf, len);
 #else
@@ -997,7 +997,7 @@ static int sp_spi_nor_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len
     int addr_len = 0;
     int data_len = 0;
 
-    dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__,opcode,len);
+    dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__, opcode, len);
     switch(opcode)
     {
         case SPINOR_OP_BE_4K:
@@ -1054,6 +1054,40 @@ static void sp_spi_nor_unprep(struct spi_nor *nor, enum spi_nor_ops ops)
 	  dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
 	  return ;
 }
+
+static int sp_spi_nor_erase(struct spi_nor *nor, loff_t offs)
+{
+	  struct sp_spi_nor *pspi = nor->priv;
+	  
+	  dev_dbg(pspi->dev,"%s 0x%x 0x%x\n",__FUNCTION__,nor->erase_opcode, (u32)offs);
+	  sp_spi_nor_xfer_dmawrite(nor, nor->erase_opcode, offs, 3, 0, 0);
+	  return ;
+}
+#if 0
+static int sp_spi_nor_flashlock(struct spi_nor *nor, loff_t offs, uint64_t len)
+{
+	  struct sp_spi_nor *pspi = nor->priv;
+	  
+	  dev_dbg(pspi->dev,"%s 0x%x\n",__FUNCTION__, nor->program_opcode);
+	  return ;
+}
+
+static int sp_spi_nor_flashunlock(struct spi_nor *nor, loff_t offs, uint64_t len)
+{
+	  struct sp_spi_nor *pspi = nor->priv;
+	  
+	  printk("%s 0x%x\n",__FUNCTION__, nor->program_opcode);
+	  return ;
+}
+
+static int sp_spi_nor_flashlocked(struct spi_nor *nor, loff_t offs, uint64_t len)
+{
+	  struct sp_spi_nor *pspi = nor->priv;
+	  
+	  printk("%s 0x%x\n",__FUNCTION__, nor->program_opcode);
+	  return ;
+}
+#endif
 static int sp_spi_nor_probe(struct platform_device *pdev)
 {
     struct device_node *np = pdev->dev.of_node;
@@ -1164,8 +1198,12 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     nor->write_reg = sp_spi_nor_write_reg;
     nor->read = sp_spi_nor_read;
     nor->write = sp_spi_nor_write;
-    //nor->erase = sp_spi_nor_erase;
-
+    nor->erase = sp_spi_nor_erase;
+#if 0
+    nor->flash_lock = sp_spi_nor_flashlock;
+    nor->flash_unlock = sp_spi_nor_flashunlock;
+    nor->flash_is_locked = sp_spi_nor_flashlocked;
+#endif
     nor->prepare = sp_spi_nor_prep;
     nor->unprepare = sp_spi_nor_unprep;
 
