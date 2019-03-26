@@ -1021,8 +1021,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	comm->net_dev = net_dev;
 	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
 
-	l2sw_enable_port(mac);
-
 	phy_cfg();
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
@@ -1042,6 +1040,8 @@ static int l2sw_probe(struct platform_device *pdev)
 		comm->phy2_addr = 1;
 		ETH_INFO(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
 	}
+
+	l2sw_enable_port(mac);
 
 	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
