@@ -384,6 +384,27 @@ static void stop(void)
 	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
+static void read_edid(void)
+{
+	unsigned int timeout = EDID_TIMEOUT;
+	unsigned int i;
+	
+	edid_data_ofs = 0;
+	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+	
+	do {
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase)) {
+			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);			
+		}
+		
+		udelay(10);
+		if (timeout-- == 0) {
+			HDMITX_INFO("EDID read timeout\n");
+			break;
+		}
+	} while(edid_data_ofs != EDID_CAPACITY);
+}
+
 static void process_hpd_state(void)
 {
 	HDMITX_DBG("HPD State\n");
@@ -392,8 +413,7 @@ static void process_hpd_state(void)
 	#ifdef EDID_READ
 		// send AV mute
 		// read EDID
-		edid_data_ofs = 0;
-		hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+		read_edid();
 		// parser EDID
 	#else
 		// send AV mute
@@ -497,15 +517,9 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 			for (cnt = edid_data_ofs - DDC_FIFO_CAPACITY; cnt < edid_data_ofs; cnt++) {
 				edid[cnt] = hal_hdmitx_get_edid(sp_hdmitx->hdmitxbase);
 			}
-
-			udelay(50);
 		}
 
 		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase);
-
-		if (edid_data_ofs < EDID_CAPACITY) {
-			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
-		}
 	}	
 	
 	return IRQ_HANDLED;
