@@ -20,7 +20,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 
 	mii_bus = mdiobus_alloc();
 	if (mii_bus == NULL) {
-		ETH_ERR("[%s] Failed to allocate mdio_bus memory!\n", __FUNCTION__);
+		ETH_ERR("[%s] Failed to allocate mdio_bus memory!\n", __func__);
 		return -ENOMEM;
 	}
 
@@ -34,7 +34,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 	mdio_node = of_get_parent(mac->comm->phy1_node);
 	ret = of_mdiobus_register(mii_bus, mdio_node);
 	if (ret) {
-		ETH_ERR("[%s] Failed to register mii bus (ret = %d)!\n", __FUNCTION__, ret);
+		ETH_ERR("[%s] Failed to register mii bus (ret = %d)!\n", __func__, ret);
 		mdiobus_free(mii_bus);
 		return ret;
 	}
@@ -107,7 +107,7 @@ void mac_phy_start(struct net_device *netdev)
 
 	phydev = phy_attach(netdev, dev_name(&phydev->dev), 0, PHY_INTERFACE_MODE_GMII);
 	if (IS_ERR(phydev)) {
-		ETH_ERR("[%s] Failed to attach phy!\n", __FUNCTION__);
+		ETH_ERR("[%s] Failed to attach phy!\n", __func__);
 		return;
 	}
 
