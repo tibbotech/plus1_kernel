@@ -498,18 +498,13 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 				edid[cnt] = hal_hdmitx_get_edid(sp_hdmitx->hdmitxbase);
 			}
 
-			mdelay(1);
+			udelay(50);
 		}
 
 		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase);
 
 		if (edid_data_ofs < EDID_CAPACITY) {
 			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
-		}
-		else {	//shih test
-			for (cnt = 18; cnt <= 19; cnt++) {
-				printk("EDID[%u] = 0x%02X\n", cnt, edid[cnt]);
-			}
 		}
 	}	
 	
