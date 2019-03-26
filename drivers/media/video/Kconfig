@@ -1,0 +1,5 @@
+config VIDEO_SENSOR_OV9281
+	tristate "Video Sensor (OV9281) Driver"
+	default y
+	---help---
+	  Video sensor for OV9281
