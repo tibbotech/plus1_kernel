@@ -29,11 +29,11 @@ Files
 
 The driver directories are:
 
-/sys/devices/platform/soc\@B/9c000100.pctl/
+/sys/devices/platform/soc@B/9c000100.pctl/
 - direct "hacker" pinmux functions bindings interface
 /sys/kernel/debug/pinctrl/
 - traditional pinctrl sysfs API
-/sys/firmware/devicetree/base/soc\@B/pctl\@0x9C000100/
+/sys/firmware/devicetree/base/soc@B/pctl@0x9C000100/
 - main pinctrl DTS node;
 
 ------
@@ -136,8 +136,8 @@ The lack of firmware does not affect the functionality.
 
 The firmware may be applied in two ways:
 
-- to write a file name into /sys/devices/platform/soc@B/9c000100.sppctl/fwname
-- to write binary pinmux data into /sys/devices/platform/soc@B/9c000100.sppctl/fw
+- to write a file name into /sys/devices/platform/soc@B/9c000100.pctl/fwname
+- to write binary pinmux data into /sys/devices/platform/soc@B/9c000100.pctl/fw
 
 The firmware file must be at least 120 bytes (1 byte per function). All 
 bytes after 120'th will be ignored. The data must be written in binary form.
@@ -172,8 +172,8 @@ To assign certain function to a pin one-byte value must be written to the functi
 For ex., to assign pin #1 (G_MX8) to L2SW_LED_ON0 function:
 
 // in octal:
-# echo -e "\01" > /sys/device/platform/soc@B/9c000100/L2SW_LED_ON0.
+# echo -e "\01" > /sys/devices/platform/soc\@B/9c000100.pctl/L2SW_LED_ON0.
 // in hex:
-# echo -e "\x0A" > /sys/device/platform/soc@B/9c000100/L2SW_LED_ON0.
+# echo -e "\x0A" > /sys/devices/platform/soc\@B/9c000100.pctl/L2SW_LED_ON0.
 // the other form:
 printf "%b" '\x66\x6f\x6f' > ....
