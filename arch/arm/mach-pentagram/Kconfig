@@ -59,6 +59,8 @@ config MACH_PENTAGRAM_SC7021_BCHIP
         select CPU_ARM926T
         select SP_INTC
 	select CLKSRC_SP_TIMER
+	select PINCTRL
+	select PINCTRL_SPPCTL
 
 endchoice
 
