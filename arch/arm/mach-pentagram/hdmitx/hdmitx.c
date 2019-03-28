@@ -146,7 +146,7 @@ static unsigned char g_hpd_in = FALSE;
 static unsigned char g_rx_ready = FALSE;
 static struct hdmitx_config g_cur_hdmi_cfg;
 static struct hdmitx_config g_new_hdmi_cfg;
-static unsigned char edid[256];
+static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
 
 typedef struct {
@@ -384,6 +384,27 @@ static void stop(void)
 	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
+static void read_edid(void)
+{
+	unsigned int timeout = EDID_TIMEOUT;
+	unsigned int i;
+	
+	edid_data_ofs = 0;
+	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+	
+	do {
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase)) {
+			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);			
+		}
+		
+		udelay(10);
+		if (timeout-- == 0) {
+			HDMITX_INFO("EDID read timeout\n");
+			break;
+		}
+	} while(edid_data_ofs != EDID_CAPACITY);
+}
+
 static void process_hpd_state(void)
 {
 	HDMITX_DBG("HPD State\n");
@@ -392,6 +413,7 @@ static void process_hpd_state(void)
 	#ifdef EDID_READ
 		// send AV mute
 		// read EDID
+		read_edid();
 		// parser EDID
 	#else
 		// send AV mute
@@ -487,19 +509,10 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 
 		hal_hdmitx_clear_interrupt0_status(INTERRUPT0_RSEN, sp_hdmitx->hdmitxbase);
 	}
-
-	if (hal_hdmitx_get_interrupt1_status(INTERRUPT1_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase)) {
-		if (hal_hdmitx_get_ddc_status(DDC_STUS_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase)) {
-			if (edid_data_ofs < EDID_CAPACITY) {
-				hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
-			}
-		}
-
-		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_EMPTY, sp_hdmitx->hdmitxbase);
-	}
 	
 	if (hal_hdmitx_get_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
-		if (hal_hdmitx_get_ddc_status(DDC_STUS_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
+		
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
 			edid_data_ofs += hal_hdmitx_get_fifodata_cnt(sp_hdmitx->hdmitxbase);
 			for (cnt = edid_data_ofs - DDC_FIFO_CAPACITY; cnt < edid_data_ofs; cnt++) {
 				edid[cnt] = hal_hdmitx_get_edid(sp_hdmitx->hdmitxbase);
@@ -752,9 +765,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 	}
 	
 	HDMITX_INFO("HDMITX installed\n");
-
-	edid_data_ofs = 0;
-	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_CLEAR_FIFO, edid_data_ofs, sp_hdmitx->hdmitxbase);
 
 	/*initialize hardware settings*/	
 	hal_hdmitx_init(sp_hdmitx->moon1base, sp_hdmitx->hdmitxbase);

@@ -67,27 +67,14 @@ typedef struct {
 	struct clk *ddfch_clk;
 	struct clk *dve_clk;
 	struct clk *hdmi_clk;
-#if 0
-	DRV_DISP_SYS_MODE_e SysMode;
 
-	DRV_DISP_Scan_Info_t OutputScanInfo[4];// 0 and 1 : original scan info,    2 : NTSC cvbs out,  3:PAL cvbs out
-#endif
 	display_size_t		panelRes;
 #if 0
 	display_size_t		UIRes;
-	DRV_FrameRate_e		curr_panel_fps;
-	DRV_DISP_SYS_ASPECT_RATIO_e AspectRatio[2];
 
-	UINT8 rcs_cvbs_black;
 	DRV_Sys_OutMode_Info_t DispOutMode;
 	UINT8 DispOutModeUpdated;
 
-	//VPP start
-	DRV_VPP_OutputWin_t VPP1_output;
-	DRV_VPP_Param_t* pgVppInfo[4];
-	//UINT32 IsRearView;
-	DRV_VPP_Luma_Adj_t VPP_Luma[2];
-	//VPP end
 #endif
 } DISPLAY_WORKMEM;
 

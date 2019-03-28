@@ -375,6 +375,11 @@
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM1>;
 			resets = <&rstc RST_I2CM1>;
+			
+			camera: ov9281@0x60 {
+				compatible = "ovti,ov9281";
+				reg = <0x60>;
+			};
 		};
 
 		i2cm2: i2c@sp_i2cm2 {
@@ -700,16 +705,20 @@
     sp_spinor0: spinor@9C000B00 {
 		    compatible = "sunplus,sp-spi-nor";
 		    reg = <0x9C000B00 0x80>,<0x9c000080 0x80>;
+		    interrupt-parent = <&intc>;
+			  interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 		    spi-max-frequency = <50000000>;
 	  };
 
 		mipicsi: mipicsi@0x9C005280 {
 			compatible = "sunplus,sp7021-mipicsi";
-			reg = <0x9C005280 0x0>;
+			reg = <0x9C005280 0x80>, <0x9C005300 0x80>;
+			reg-names = "mipicsi", "csiiw";
 			interrupt-parent = <&intc>;
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
 						 <50 IRQ_TYPE_EDGE_RISING>;
-			clocks = <&clkc MIPICSI0>;
+			clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
+			clock-names = "clk_mipicsi_0", "clk_csiiw_0";
 			resets = <&rstc RST_MIPICSI0>;
 		};
 		

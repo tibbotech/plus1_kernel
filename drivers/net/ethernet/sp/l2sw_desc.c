@@ -209,7 +209,7 @@ u32 descs_init(struct l2sw_common *mac)
 	// Allocate tx & rx descriptors.
 	rc = descs_alloc(mac);
 	if (rc) {
-		ETH_ERR("[%s] Failed to allocate mac descriptors!\n", __FUNCTION__);
+		ETH_ERR("[%s] Failed to allocate mac descriptors!\n", __func__);
 		return rc;
 	}
 

@@ -1,0 +1,9 @@
+config VIDEO_SP_VOUT
+	tristate "SP Video Out Driver"
+	select VIDEO_V4L2
+	select VIDEOBUF_GEN
+	select VIDEOBUF_DMA_CONTIG
+	select VIDEOBUF_DMA_SG
+	default y
+	---help---
+	  Video out driver support for SP based boards.

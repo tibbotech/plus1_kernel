@@ -13,6 +13,7 @@
 #define DDC_FIFO_CAPACITY		 16
 #define EDID_CAPACITY			 128
 #define DDC_SLV_DEVICE_ADDR              0xA0
+#define EDID_TIMEOUT                     10000
 
 /*----------------------------------------------------------------------------*
  *					DATA TYPES

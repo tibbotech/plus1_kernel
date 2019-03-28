@@ -44,12 +44,12 @@
 
 /*about ddc status mask*/
 #define HDMITX_DDC_STUS_MASK_CMD_DONE (1 << DDC_STUS_CMD_DONE)
-#define HDMITX_DDC_STUS_MASK_DDC_BUS_LOW (1 << DDC_STUS_DDC_BUS_LOW)
-#define HDMITX_DDC_STUS_MASK_BUS_NONACK (1 << DDC_STUS_DDC_BUS_NONACK)
-#define HDMITX_DDC_STUS_MASK_FIFO_WRITE (1 << DDC_STUS_DDC_FIFO_WRITE)
-#define HDMITX_DDC_STUS_MASK_FIFO_READ (1 << DDC_STUS_DDC_FIFO_READ)
-#define HDMITX_DDC_STUS_MASK_FIFO_FULL (1 << DDC_STUS_DDC_FIFO_FULL)
-#define HDMITX_DDC_STUS_MASK_FIFO_EMPTY (1 << DDC_STUS_DDC_FIFO_EMPTY)
+#define HDMITX_DDC_STUS_MASK_BUS_LOW (1 << DDC_STUS_BUS_LOW)
+#define HDMITX_DDC_STUS_MASK_BUS_NONACK (1 << DDC_STUS_BUS_NONACK)
+#define HDMITX_DDC_STUS_MASK_FIFO_WRITE (1 << DDC_STUS_FIFO_WRITE)
+#define HDMITX_DDC_STUS_MASK_FIFO_READ (1 << DDC_STUS_FIFO_READ)
+#define HDMITX_DDC_STUS_MASK_FIFO_FULL (1 << DDC_STUS_FIFO_FULL)
+#define HDMITX_DDC_STUS_MASK_FIFO_EMPTY (1 << DDC_STUS_FIFO_EMPTY)
 
 /*----------------------------------------------------------------------------*
  *					DATA TYPES
@@ -574,13 +574,10 @@ void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase)
 	
 	/*enable interrupt*/
 	pHdmitxReg->hdmi_intr0_unmask |= (HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN);	
-	pHdmitxReg->hdmi_intr1_unmask |= (HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL | HDMITX_INTERRUPT1_MASK_DDC_FIFO_EMPTY);
+	pHdmitxReg->hdmi_intr1_unmask |= (HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL);
 
 	/*configure DDC_SDA, DDC_SCL, HDMI_HPD and HDMI_CEC*/
 	pMoon1Reg->sft_cfg[1] = 0x60006000;
-
-	/*enable HW DDC mode*/
-	pHdmitxReg->hdmi_ddc_master_set |= 0x00;
 
 	/*set DDC i2c slave device address*/
 	pHdmitxReg->hdmi_ddc_slv_device_addr = DDC_SLV_DEVICE_ADDR;
@@ -595,6 +592,7 @@ void hal_hdmitx_deinit(void __iomem *hdmitxbase)
 	
 	/*disable interrupt*/
 	pHdmitxReg->hdmi_intr0_unmask &= (~(HDMITX_INTERRUPT0_MASK_HDP | HDMITX_INTERRUPT0_MASK_RSEN));
+	pHdmitxReg->hdmi_intr1_unmask &= (~HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL);
 
 	/*disable all power on bits*/
 	pHdmitxReg->hdmi_pwr_ctrl &= (~0x1f);
@@ -912,22 +910,22 @@ unsigned char hal_hdmitx_get_ddc_status(enum hal_hdmitx_ddc_status ddc, void __i
 		case DDC_STUS_CMD_DONE:
 			value &= HDMITX_DDC_STUS_MASK_CMD_DONE;
 			break;
-		case DDC_STUS_DDC_BUS_LOW:
-			value &= HDMITX_DDC_STUS_MASK_DDC_BUS_LOW;
+		case DDC_STUS_BUS_LOW:
+			value &= HDMITX_DDC_STUS_MASK_BUS_LOW;
 			break;
-		case DDC_STUS_DDC_BUS_NONACK:
+		case DDC_STUS_BUS_NONACK:
 			value &= HDMITX_DDC_STUS_MASK_BUS_NONACK;
 			break;
-		case DDC_STUS_DDC_FIFO_WRITE:
+		case DDC_STUS_FIFO_WRITE:
 			value &= HDMITX_DDC_STUS_MASK_FIFO_WRITE;
 			break;
-		case DDC_STUS_DDC_FIFO_READ:
+		case DDC_STUS_FIFO_READ:
 			value &= HDMITX_DDC_STUS_MASK_FIFO_READ;
 			break;
-		case DDC_STUS_DDC_FIFO_FULL:
+		case DDC_STUS_FIFO_FULL:
 			value &= HDMITX_DDC_STUS_MASK_FIFO_FULL;
 			break;
-		case DDC_STUS_DDC_FIFO_EMPTY:
+		case DDC_STUS_FIFO_EMPTY:
 			value &= HDMITX_DDC_STUS_MASK_FIFO_EMPTY;
 			break;
 		default:

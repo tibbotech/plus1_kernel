@@ -27,7 +27,7 @@
 /**************************************************************************
  *                         H E A D E R   F I L E S
  **************************************************************************/
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/dma-mapping.h>
 #include "reg_disp.h"
 #include "hal_disp.h"
@@ -38,12 +38,12 @@
 // OSD Header config0
 #define OSD_HDR_C0_CULT				0x80
 #define OSD_HDR_C0_TRANS			0x40
-	
+
 // OSD Header config1
 #define OSD_HDR_C1_BS				0x10
 #define OSD_HDR_C1_BL2				0x04
 #define OSD_HDR_C1_BL				0x01
-	
+
 // OSD control register
 #define OSD_CTRL_COLOR_MODE_YUV		(0 << 10)
 #define OSD_CTRL_COLOR_MODE_RGB		(1 << 10)
@@ -62,21 +62,20 @@
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
+	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
 #else
 	#define DEBUG(fmt, arg...)
 	#define MSG(fmt, arg...)
 #endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
+#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
+#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
  **************************************************************************/
-typedef struct HW_OSD_Header_s   
-{
+typedef struct HW_OSD_Header_s {
 	u8 config0;	//config0 includes:
 	// [bit 7] cu	: color table update
 	// [bit 6] ft	: force transparency
@@ -120,8 +119,7 @@ typedef struct HW_OSD_Header_s
 } HW_OSD_Header_t;
 STATIC_ASSERT(sizeof(HW_OSD_Header_t) == 128);
 
-typedef struct _Region_Manager_t_
-{
+typedef struct _Region_Manager_t_ {
 	DRV_Region_Info_t			RegionInfo;
 
 	enum DRV_OsdRegionFormat_e	Format;
@@ -172,15 +170,13 @@ DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, UINT32 *pClutDataPtr)
 	Region_Manager_t *pRegionManager = (Region_Manager_t *)region;
 	UINT32 copysize = 0;
 
-	if (pRegionManager && pClutDataPtr)
-	{
-		switch(pRegionManager->Format)
-		{
-			case DRV_OSD_REGION_FORMAT_8BPP:
-				copysize = 256 * 4;
-				break;
-			default:
-				goto Return;
+	if (pRegionManager && pClutDataPtr) {
+		switch (pRegionManager->Format) {
+		case DRV_OSD_REGION_FORMAT_8BPP:
+			copysize = 256 * 4;
+			break;
+		default:
+			goto Return;
 		}
 		memcpy(pRegionManager->Hdr_ClutAddr, pClutDataPtr, copysize);
 
@@ -202,12 +198,10 @@ void DRV_OSD_IRQ(void)
 		return;
 	spin_lock(&pDispWorkMem->osd_lock);
 
-	if (pRegionManager->pHWRegionHdr)
-	{
+	if (pRegionManager->pHWRegionHdr) {
 		pHWOSDhdr = (HW_OSD_Header_t *)pRegionManager->pHWRegionHdr;
 
-		if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY)
-		{
+		if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY) {
 			pRegionManager->DirtyFlag &= ~REGION_ADDR_DIRTY;
 			pHWOSDhdr->link_data = SWAP32((UINT32)((UINT32)pRegionManager->DataPhyAddr + pRegionManager->BmpSize * (pRegionManager->CurrBufID & 0xf)));
 			if (pRegionManager->PaletteAddr)
@@ -260,97 +254,100 @@ void DRV_OSD_HDR_Write(int offset, int value)
 
 void DRV_OSD_GetColormode_Vars(struct colormode_t *var, enum DRV_OsdRegionFormat_e Fmt)
 {
-	switch(Fmt)
-	{
-		case DRV_OSD_REGION_FORMAT_8BPP:
-			strcpy(var->name, "256color index");
-			var->red.length		= 8;
-			var->green.length	= 8;
-			var->blue.length	= 8;
-			var->transp.length	= 8;
-			var->red.offset		= 8;
-			var->green.offset	= 16;
-			var->blue.offset	= 24;
-			var->transp.offset	= 0;
-			var->bits_per_pixel = 8;
-			break;
-		case DRV_OSD_REGION_FORMAT_RGB_565:
-			strcpy(var->name, "RGB565");
-			var->red.length		= 5;
-			var->green.length	= 6;
-			var->blue.length	= 5;
-			var->transp.length	= 0;
-			var->red.offset		= 11;
-			var->green.offset	= 5;
-			var->blue.offset	= 0;
-			var->transp.offset	= 0;
-			var->bits_per_pixel = 16;
-			break;
-		case DRV_OSD_REGION_FORMAT_ARGB_1555:
-			strcpy(var->name, "ARGB1555");
-			var->red.length		= 5;
-			var->green.length	= 5;
-			var->blue.length	= 5;
-			var->transp.length	= 1;
-			var->red.offset		= 10;
-			var->green.offset	= 5;
-			var->blue.offset	= 0;
-			var->transp.offset	= 15;
-			var->bits_per_pixel = 16;
-			break;
-		case DRV_OSD_REGION_FORMAT_RGBA_4444:
-			strcpy(var->name, "RGBA4444");
-			var->red.length		= 4;
-			var->green.length	= 4;
-			var->blue.length	= 4;
-			var->transp.length	= 4;
-			var->red.offset		= 12;
-			var->green.offset	= 8;
-			var->blue.offset	= 4;
-			var->transp.offset	= 0;
-			var->bits_per_pixel = 16;
-			break;
-		case DRV_OSD_REGION_FORMAT_ARGB_4444:
-			strcpy(var->name, "ARGB4444");
-			var->red.length		= 4;
-			var->green.length	= 4;
-			var->blue.length	= 4;
-			var->transp.length	= 4;
-			var->red.offset		= 8;
-			var->green.offset	= 4;
-			var->blue.offset	= 0;
-			var->transp.offset	= 12;
-			var->bits_per_pixel = 16;
-			break;
-		case DRV_OSD_REGION_FORMAT_RGBA_8888:
-			strcpy(var->name, "RGBA8888");
-			var->red.length		= 8;
-			var->green.length	= 8;
-			var->blue.length	= 8;
-			var->transp.length	= 8;
-			var->red.offset		= 24;
-			var->green.offset	= 16;
-			var->blue.offset	= 8;
-			var->transp.offset	= 0;
-			var->bits_per_pixel = 32;
-			break;
-		default:
-		case DRV_OSD_REGION_FORMAT_ARGB_8888:
-			strcpy(var->name, "ARGB8888");
-			var->red.length		= 8;
-			var->green.length	= 8;
-			var->blue.length	= 8;
-			var->transp.length	= 8;
-			var->red.offset		= 16;
-			var->green.offset	= 8;
-			var->blue.offset	= 0;
-			var->transp.offset	= 24;
-			var->bits_per_pixel = 32;
-			break;
+	switch (Fmt) {
+	case DRV_OSD_REGION_FORMAT_8BPP:
+		strcpy(var->name, "256color index");
+		var->red.length		= 8;
+		var->green.length	= 8;
+		var->blue.length	= 8;
+		var->transp.length	= 8;
+		var->red.offset		= 8;
+		var->green.offset	= 16;
+		var->blue.offset	= 24;
+		var->transp.offset	= 0;
+		var->bits_per_pixel = 8;
+		break;
+	case DRV_OSD_REGION_FORMAT_YUY2:
+		strcpy(var->name, "YUY2");
+		var->nonstd			= 1;
+		var->bits_per_pixel = 16;
+		break;
+	case DRV_OSD_REGION_FORMAT_RGB_565:
+		strcpy(var->name, "RGB565");
+		var->red.length		= 5;
+		var->green.length	= 6;
+		var->blue.length	= 5;
+		var->transp.length	= 0;
+		var->red.offset		= 11;
+		var->green.offset	= 5;
+		var->blue.offset	= 0;
+		var->transp.offset	= 0;
+		var->bits_per_pixel = 16;
+		break;
+	case DRV_OSD_REGION_FORMAT_ARGB_1555:
+		strcpy(var->name, "ARGB1555");
+		var->red.length		= 5;
+		var->green.length	= 5;
+		var->blue.length	= 5;
+		var->transp.length	= 1;
+		var->red.offset		= 10;
+		var->green.offset	= 5;
+		var->blue.offset	= 0;
+		var->transp.offset	= 15;
+		var->bits_per_pixel = 16;
+		break;
+	case DRV_OSD_REGION_FORMAT_RGBA_4444:
+		strcpy(var->name, "RGBA4444");
+		var->red.length		= 4;
+		var->green.length	= 4;
+		var->blue.length	= 4;
+		var->transp.length	= 4;
+		var->red.offset		= 12;
+		var->green.offset	= 8;
+		var->blue.offset	= 4;
+		var->transp.offset	= 0;
+		var->bits_per_pixel = 16;
+		break;
+	case DRV_OSD_REGION_FORMAT_ARGB_4444:
+		strcpy(var->name, "ARGB4444");
+		var->red.length		= 4;
+		var->green.length	= 4;
+		var->blue.length	= 4;
+		var->transp.length	= 4;
+		var->red.offset		= 8;
+		var->green.offset	= 4;
+		var->blue.offset	= 0;
+		var->transp.offset	= 12;
+		var->bits_per_pixel = 16;
+		break;
+	case DRV_OSD_REGION_FORMAT_RGBA_8888:
+		strcpy(var->name, "RGBA8888");
+		var->red.length		= 8;
+		var->green.length	= 8;
+		var->blue.length	= 8;
+		var->transp.length	= 8;
+		var->red.offset		= 24;
+		var->green.offset	= 16;
+		var->blue.offset	= 8;
+		var->transp.offset	= 0;
+		var->bits_per_pixel = 32;
+		break;
+	default:
+	case DRV_OSD_REGION_FORMAT_ARGB_8888:
+		strcpy(var->name, "ARGB8888");
+		var->red.length		= 8;
+		var->green.length	= 8;
+		var->blue.length	= 8;
+		var->transp.length	= 8;
+		var->red.offset		= 16;
+		var->green.offset	= 8;
+		var->blue.offset	= 0;
+		var->transp.offset	= 24;
+		var->bits_per_pixel = 32;
+		break;
 	}
 }
 
-EXPORT_SYMBOL(DRV_OSD_Get_UI_Res);
 int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 {
 	if (!pOSDReg || !pGPOSTReg)
@@ -367,8 +364,8 @@ int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 
 	return 0;
 }
+EXPORT_SYMBOL(DRV_OSD_Get_UI_Res);
 
-EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
 void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo)
 {
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
@@ -378,8 +375,8 @@ void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo)
 
 	dma_free_coherent(NULL, sizeof(Region_Manager_t), gpWinRegion, gpWinRegion_phy);
 }
+EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
 
-EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
 	u32 *osd_header;
@@ -422,7 +419,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	else
 		osd_header[0] = SWAP32(0x00001000 | (pinfo->UI_ColorFmt << 24));
 
-	osd_header[1] = SWAP32((pinfo->UI_height<< 16) | pinfo->UI_width);
+	osd_header[1] = SWAP32((pinfo->UI_height << 16) | pinfo->UI_width);
 	osd_header[2] = 0;
 	osd_header[3] = 0;
 	osd_header[4] = 0;
@@ -455,6 +452,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	//GPOST PQ disable
 	pGPOSTReg->gpost0_contrast_config = 0x0;
 }
+EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
 
 void DRV_OSD_WaitVSync(void)
 {
