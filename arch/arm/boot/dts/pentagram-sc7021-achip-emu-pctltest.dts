@@ -17,6 +17,10 @@
 	};
 };
 
+&sdio {
+ pinctrl-names = "default";
+ pinctrl-0 = <&sdio_pins>;
+};
 &l2sw {
  pinctrl-names = "default";
  pinctrl-0 = <&ethA_pins>;
@@ -35,6 +39,17 @@
  /* pinctrl-names = "default"; */
  /* pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>; */
 
+ /* for all eth */
+ sdio_pins: pinmux_sdio_pins {
+  sppctl,pins = <
+       SC7021_IOPAD(17,SC7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+       SC7021_IOPAD(19,SC7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+       SC7021_IOPAD(21,SC7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+       SC7021_IOPAD(23,SC7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+       SC7021_IOPAD(25,SC7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+       SC7021_IOPAD(27,SC7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+  >;
+ };
  /* for all eth */
  ethA_pins: pinmux_ethA_pins {
   sppctl,pins = <
