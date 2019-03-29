@@ -707,7 +707,24 @@
 		    reg = <0x9C000B00 0x80>,<0x9c000080 0x80>;
 		    interrupt-parent = <&intc>;
 			  interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
+			  clocks = <&clkc SPIFL>;
+			  resets = <&rstc RST_SPIFL>;
 		    spi-max-frequency = <50000000>;
+        spi-chip-selection = <0>;
+	      
+	      partitions{
+		        compatible = "fixed-partitions";
+		        #address-cell = <1>;
+		        #size-cell = <1>;
+		        partition@0{
+		            label = "data";
+		            reg = <0 0x200000>;
+		        };
+		        partition@200000{
+		            label = "data1";
+		            reg = <0x200000 0xdff000>;
+		        };
+		    };
 	  };
 
 		mipicsi: mipicsi@0x9C005280 {
