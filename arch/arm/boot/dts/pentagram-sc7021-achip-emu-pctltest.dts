@@ -23,7 +23,7 @@
 };
 &l2sw {
  pinctrl-names = "default";
- pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
+ pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
 &pctl {
