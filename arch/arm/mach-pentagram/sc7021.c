@@ -17,9 +17,28 @@
 
 #include "common.h"
 
-static void __init sp_power_off(void)
+static void sp_power_off(void)
 {
+	void __iomem *regs = (void __iomem *)A_SYSTEM_BASE;
+//	int i;
+
 	early_printk("%s\n", __func__);
+	
+	printk("PD RG_PLL_PDN and RG_PLLIO_PDN to save power\n");
+	writel(0, regs + 0x54); /* bit0 RG_PLLIO_PDN */
+	writel(0, regs + 0x2C); /* bit0 RG_PLL_PDN */
+
+//	printk("PD Achip mo_gclk_en0/mo_clk_en0 to save power \n");
+//	writel(0, regs + 0x28); 
+//	writel(0, regs + 0x24); 
+//	
+//	printk("disable Q628 clk and enable reset to save power\n");
+//	for (i = 0; i < 20; i++) {
+//		writel(0xffff0000 , (void __iomem *)(B_SYSTEM_BASE + 4 * (1 + i)));
+//	}
+//	for (i = 0; i < 10; i++) {
+//		writel(0xffffffff , (void __iomem *)(B_SYSTEM_BASE + 4 * (21 + i)));
+//	}
 }
 
 static unsigned int b_pllsys_get_rate(void)
