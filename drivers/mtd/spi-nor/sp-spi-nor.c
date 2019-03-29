@@ -1,26 +1,15 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/interrupt.h>
-#include <linux/errno.h>
 #include <linux/platform_device.h>
-#include <linux/sched.h>
-#include <linux/delay.h>
-#include <linux/io.h>
 #include <linux/clk.h>
-#include <linux/err.h>
-#include <linux/of.h>
-#include <linux/of_device.h>
-#include <linux/timer.h>
-#include <linux/jiffies.h>
-#include <linux/completion.h>
 #include <linux/mtd/mtd.h>
-#include <linux/mtd/partitions.h>
 #include <linux/mtd/spi-nor.h>
 #include <linux/mutex.h>
-#include <linux/sizes.h>
-#include <linux/time.h>
 #include <linux/dma-mapping.h>
 #include <linux/wait.h>
+#include <linux/reset.h>
+#include <linux/of.h>
 
 #define SP_SPINOR_DMA 1
 #define CFG_BUFF_MAX		(18 << 10)
@@ -225,27 +214,27 @@ enum SPI_INTR_STATUS
 
 typedef struct{
 	// Group 022 : SPI_FLASH
-	  unsigned int  spi_ctrl							; 
-	  unsigned int  spi_timing						; 
+	  unsigned int  spi_ctrl							  ; 
+	  unsigned int  spi_timing						  ; 
 	  unsigned int  spi_page_addr						; 
-	  unsigned int  spi_data							; 
-	  unsigned int  spi_status						; 
+	  unsigned int  spi_data							  ; 
+	  unsigned int  spi_status						  ; 
 	  unsigned int  spi_auto_cfg						; 
-	  unsigned int  spi_cfg0							; 
-	  unsigned int  spi_cfg1							; 
-	  unsigned int  spi_cfg2							; 
-	  unsigned int  spi_data64						; 
+	  unsigned int  spi_cfg0							  ; 
+	  unsigned int  spi_cfg1							  ; 
+	  unsigned int  spi_cfg2							  ; 
+	  unsigned int  spi_data64						  ; 
 	  unsigned int  spi_buf_addr						; 
 	  unsigned int  spi_status_2						; 
 	  unsigned int  spi_err_status					; 
-	  unsigned int  spi_mem_data_addr					; 
-	  unsigned int  spi_mem_parity_addr				; 
+	  unsigned int  spi_mem_data_addr				; 
+	  unsigned int  spi_mem_parity_addr			; 
 	  unsigned int  spi_col_addr						; 
-	  unsigned int  spi_bch							; 
+	  unsigned int  spi_bch							    ; 
 	  unsigned int  spi_intr_msk						; 
 	  unsigned int  spi_intr_sts						; 
 	  unsigned int  spi_page_size						; 
-	  unsigned int  G22_RESERVED[12]					; 
+	  unsigned int  G22_RESERVED[12]				; 
 }SPI_NOR_REG;
 
 struct sp_spi_nor 
@@ -256,9 +245,10 @@ struct sp_spi_nor
     struct clk *ctrl_clk;
     struct clk *nor_clk;
     u32 clk_rate;
-    u32 clk_src;
+    struct reset_control *clk_rst;
     u32 read_mode;
     u32 nor_size;
+    u32 chipsel;
 #if (SP_SPINOR_DMA)
     struct{
     	  uint32_t idx;
@@ -290,11 +280,45 @@ static irqreturn_t sp_nor_int(int irq, void *dev)
 	return IRQ_HANDLED;
 }
 
-static int sp_spi_nor_init(SPI_NOR_REG *spi_reg)
+static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 {
 	unsigned int reg_temp;
+	SPI_NOR_REG *spi_reg;
+	u32 value = 0;
 	
-	writel(A_CHIP | SPI_CLK_D_4,&spi_reg->spi_ctrl);
+	dev_dbg(pspi->dev,"chip 0x%x freq %d", pspi->chipsel, pspi->clk_rate);
+	if (pspi->chipsel == 0)
+	    value = A_CHIP;
+	else
+		  value = B_CHIP;
+  
+  switch (pspi->clk_rate)
+  {  
+  	  case 100000000:
+  	  	value |= SPI_CLK_D_2;
+  	  	break;
+  	  case 50000000:
+  	  	value |= SPI_CLK_D_4;
+  	  	break;
+  	  case 33000000:
+  	  	value |= SPI_CLK_D_6;
+  	  	break;
+  	  case 25000000:
+  	  	value |= SPI_CLK_D_8;
+  	  	break;
+  	  case 12000000:
+  	  	value |= SPI_CLK_D_16;
+  	  	break;
+  	  case  8000000:
+  	  	value |= SPI_CLK_D_24;
+  	  	break;
+  	  case  6000000:
+  	  default:
+  	  	value |= SPI_CLK_D_32;
+  	  	break;
+  }
+	spi_reg = (SPI_NOR_REG *)pspi->io_base;
+	writel(value,&spi_reg->spi_ctrl);
 
 	writel(SPI_CMD_OEN_1b | SPI_ADDR_OEN_1b | SPI_DATA_OEN_1b | SPI_CMD_1b | SPI_ADDR_1b
 		| SPI_DATA_1b | SPI_ENHANCE_NO | SPI_DUMMY_CYC(0) | SPI_DATA_IEN_DQ1,&spi_reg->spi_cfg1);
@@ -1061,7 +1085,7 @@ static int sp_spi_nor_erase(struct spi_nor *nor, loff_t offs)
 	  
 	  dev_dbg(pspi->dev,"%s 0x%x 0x%x\n",__FUNCTION__,nor->erase_opcode, (u32)offs);
 	  sp_spi_nor_xfer_dmawrite(nor, nor->erase_opcode, offs, 3, 0, 0);
-	  return ;
+	  return 0;
 }
 #if 0
 static int sp_spi_nor_flashlock(struct spi_nor *nor, loff_t offs, uint64_t len)
@@ -1092,11 +1116,10 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 {
     struct device_node *np = pdev->dev.of_node;
     struct device *dev = &pdev->dev;
-    struct sp_spi_nor *pspi ;
+    struct sp_spi_nor *pspi;
     struct resource *res;
     struct spi_nor *nor;
     struct mtd_info *mtd;
-    SPI_NOR_REG *spi_reg;
     int ret;
     volatile MOON1_REG *moon1;
 
@@ -1144,47 +1167,28 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     moon1 =  (volatile MOON1_REG *) moon1_base;
     dev_dbg(pspi->dev,"sft_cfg1 0x%x\n",moon1->sft_cfg1);
     moon1->sft_cfg1= 0xf000a;
-#if 0
-	  /* find the clocks */
-	  pspi->ctrl_clk = devm_clk_get(dev, "sysslow");
-	  if (IS_ERR(pspi->ctrl_clk))
+   
+    /* clk*/
+	  pspi->ctrl_clk = devm_clk_get(&pdev->dev,NULL);
+	  if(IS_ERR(pspi->ctrl_clk)) {
+		    dev_err(&pdev->dev, "devm_clk_get fail\n");
 		    return PTR_ERR(pspi->ctrl_clk);
-
-	  pspi->nor_clk = devm_clk_get(dev, "sysslow");
-	  if (IS_ERR(pspi->nor_clk))
-		  return PTR_ERR(pspi->nor_clk);
-
+	  }
 	  ret = clk_prepare_enable(pspi->ctrl_clk);
 	  if (ret)
-	  {
-		    dev_err(dev, "can not enable the clock\n");
-		    goto clk_failed;
+		    dev_err(&pdev->dev, "devm_clk_enable fail\n");
+		    
+		/* reset*/
+	  pspi->clk_rst = devm_reset_control_get(&pdev->dev, NULL);
+	  if (IS_ERR(pspi->clk_rst)) {
+		    ret = PTR_ERR(pspi->clk_rst);
+		    dev_err(&pdev->dev, "SPI failed to retrieve reset controller: %d\n", ret);
+		    return PTR_ERR(pspi->clk_rst);
 	  }
-
-	  ret = clk_prepare_enable(pspi->nor_clk);
+	  ret = reset_control_deassert(pspi->clk_rst);
 	  if (ret)
-	  {
-		    goto clk_failed_nor;
-	  }
-#endif
+		    dev_err(&pdev->dev, "reset deassert fail\n");
 	
-	/* find the irq */
-#if 0
-	  ret = platform_get_irq(pdev, 0);
-	  if (ret < 0) 
-	  {
-		    dev_err(dev, "failed to get the irq: %d\n", ret);
-		    goto irq_failed;
-	  }
-
-	  ret = devm_request_irq(dev, ret,fsl_qspi_irq_handler, 0, pdev->name, pspi);
-	  if (ret) 
-	  {
-		    dev_err(dev, "failed to request irq: %d\n", ret);
-		    goto irq_failed;
-	  }
-#endif
-
     nor = &pspi->nor;
     mtd = &nor->mtd;
 
@@ -1210,9 +1214,11 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     ret = of_property_read_u32(np, "spi-max-frequency",&pspi->clk_rate);
     if (ret < 0)
         goto mutex_failed;
-
-    spi_reg = (SPI_NOR_REG *)pspi->io_base;
-    sp_spi_nor_init(spi_reg);
+    ret = of_property_read_u32(np, "spi-chip-selection",&pspi->chipsel);
+    if (ret < 0)
+        goto mutex_failed;
+		    
+    sp_spi_nor_init(pspi);
 
     ret = spi_nor_scan(nor, NULL, SPI_NOR_NORMAL);
     if (ret)
@@ -1230,16 +1236,10 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 mutex_failed:
 	mutex_destroy(&pspi->lock);
   goto exit;
-#if 0
-clk_failed:
-clk_failed_nor:
-	clk_disable_unprepare(pspi->nor_clk);
-	clk_disable_unprepare(pspi->ctrl_clk);
-irq_failed:
-#endif
 exit:
 	return 0;
 }
+
 static int sp_spi_nor_remove(struct platform_device *pdev)
 {
 	  struct sp_spi_nor *pspi = platform_get_drvdata(pdev);
@@ -1248,9 +1248,19 @@ static int sp_spi_nor_remove(struct platform_device *pdev)
 
 	  mutex_destroy(&pspi->lock);
 
-	  clk_disable_unprepare(pspi->ctrl_clk);
-	  clk_disable_unprepare(pspi->nor_clk);
+	  //clk_disable_unprepare(pspi->ctrl_clk);
+	  //clk_disable_unprepare(pspi->nor_clk);
 	
+	  return 0;
+}
+
+static int sp_spi_nor_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	  return 0;
+}
+
+static int sp_spi_nor_resume(struct platform_device *pdev)
+{
 	  return 0;
 }
 
@@ -1263,6 +1273,8 @@ MODULE_DEVICE_TABLE(of, sp_spi_nor_ids);
 static struct platform_driver sp_spi_nor_driver = {
 	.probe	= sp_spi_nor_probe,
 	.remove	= sp_spi_nor_remove,
+	.suspend = sp_spi_nor_suspend,
+	.resume = sp_spi_nor_resume,
 	.driver	= {
 		.name = "sp-spi-nor",
 		.owner = THIS_MODULE,
