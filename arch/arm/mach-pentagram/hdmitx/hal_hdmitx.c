@@ -313,7 +313,7 @@ static void apply_avi_infoframe(void __iomem *hdmitxbase)
 	}
 
 	crc = 0x100 - crc;
-
+	
 	pHdmitxReg->hdmi_avi_infoframe01   = crc + (hdmi_avi_infoframe[4] << 8);
 	pHdmitxReg->hdmi_avi_infoframe23   = hdmi_avi_infoframe[5] + (hdmi_avi_infoframe[6]<<8);
 	pHdmitxReg->hdmi_avi_infoframe45   = hdmi_avi_infoframe[7] + (hdmi_avi_infoframe[8]<<8);
@@ -960,6 +960,7 @@ void hal_hdmitx_ddc_cmd(enum hdmitx_ddc_command cmd, unsigned int ofs, void __io
 	pHdmitxReg->hdmi_ddc_cmd = cmd;
 
 	//register offset
-	pHdmitxReg->hdmi_ddc_slv_reg_offset = ofs;
+	if (cmd == HDMITX_DDC_CMD_SEQ_READ) {
+		pHdmitxReg->hdmi_ddc_slv_reg_offset = ofs;
+	}
 }
-

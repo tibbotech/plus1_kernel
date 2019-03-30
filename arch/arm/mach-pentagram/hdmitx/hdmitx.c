@@ -387,10 +387,9 @@ static void stop(void)
 static void read_edid(void)
 {
 	unsigned int timeout = EDID_TIMEOUT;
-	unsigned int i;
 	
 	edid_data_ofs = 0;
-	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_CLEAR_FIFO, edid_data_ofs, sp_hdmitx->hdmitxbase);
 	
 	do {
 		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase)) {
@@ -399,10 +398,60 @@ static void read_edid(void)
 		
 		udelay(10);
 		if (timeout-- == 0) {
-			HDMITX_INFO("EDID read timeout\n");
+			HDMITX_WARNING("EDID read timeout\n");
 			break;
 		}
 	} while(edid_data_ofs != EDID_CAPACITY);
+}
+
+static void parse_edid(void)
+{
+	unsigned int i, j;
+	unsigned sum = 0;
+	unsigned int data;
+	char name[13];
+	
+	HDMITX_DBG("\n");
+	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {		
+		HDMITX_DBG("EDID[%03u] ~ EDID[%03u] : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+			                          i, i + 7,
+			                         edid[i],  edid[i+1],  edid[i+2],  edid[i+3],
+			                       edid[i+4],  edid[i+5],  edid[i+6],  edid[i+7]);
+
+		HDMITX_DBG("EDID[%03u] ~ EDID[%03u] : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+			                          i + 8, i + DDC_FIFO_CAPACITY - 1,
+			                       edid[i+8],  edid[i+9], edid[i+10], edid[i+11],
+			                      edid[i+12], edid[i+13], edid[i+14], edid[i+15]);	
+
+		for (j = i; j < (i + DDC_FIFO_CAPACITY); j++) {
+			sum = sum + edid[j];
+		}
+	}
+	HDMITX_DBG("Checksum = 0x%04X\n", sum);
+
+	for (i = 95, j = 0; i <= 107; i++, j++) {
+		if (i != 0x0A) {
+			name[j] = edid[i];
+		} else {
+			name[j] = 0;;
+		}
+	}
+	HDMITX_DBG("Monitor name : %s", name);
+
+	//
+	data = (edid[61] & 0xF0);
+	data = ((data << 4) | edid[59]);
+	HDMITX_DBG("Vertical Active = %u\n", data);
+
+	if (data <= 480) {
+		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
+	} else if (data <= 576) {
+		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
+	} else if (data <= 720) {
+		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
+	} else {
+		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
+	}
 }
 
 static void process_hpd_state(void)
@@ -412,9 +461,12 @@ static void process_hpd_state(void)
 	if (get_hpd_in()) {
 	#ifdef EDID_READ
 		// send AV mute
+		
 		// read EDID
 		read_edid();
+		
 		// parser EDID
+		parse_edid();
 	#else
 		// send AV mute
 	#endif
