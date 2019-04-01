@@ -999,15 +999,17 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Enable clock.
 	clk_prepare_enable(comm->clk);
+	udelay(1);
 
-	//ret = reset_control_assert(rstc);
-	//udelay(10);
+	ret = reset_control_assert(comm->rstc);
+	udelay(1);
 	ret = reset_control_deassert(comm->rstc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
 		ret = -ENODEV;
 		goto out_free_comm;
 	}
+	udelay(1);
 
 	ret = init_netdev(pdev, 0, &net_dev);   // Initialize the 1st net device (eth0)
 	if (net_dev == NULL) {

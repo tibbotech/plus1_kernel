@@ -35,7 +35,6 @@ config AN_NIC_WITH_DAISY_CHAIN
 	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
-	default y
 	---help---
 	  This mode supports an NIC with daisy-chain support on the other port.
 
@@ -45,7 +44,6 @@ config DUAL_NIC
 	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
-	default n
 	---help---
 	  This mode supports dual NIC.
 
@@ -55,7 +53,6 @@ config AN_NIC_WITH_DAISY_CHAIN2
 	select PINCTRL_SPPCTL
 	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
-	default n
 	---help---
 	  This mode supports an NIC with daisy-chain support on the other port.
 	  SA learning function is turned off in this mode.

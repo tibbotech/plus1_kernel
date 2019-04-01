@@ -42,6 +42,22 @@ static struct sp_fmt formats[] = {
 	},
 };
 
+static struct sp_fmt *get_format(struct v4l2_format *f)
+{
+	struct sp_fmt *fmt;
+	unsigned int k;
+
+	for (k = 0; k < ARRAY_SIZE(formats); k++) {
+		fmt = &formats[k];
+		if (fmt->fourcc == f->fmt.pix.pixelformat)
+			break;
+	}
+
+	if (k == ARRAY_SIZE(formats))
+		return NULL;
+
+	return &formats[k];
+}
 //===================================================================================   
 /* ------------------------------------------------------------------
 	SP7021 function
@@ -160,6 +176,7 @@ static void sp_vout_process_buffer_complete(struct sp_vout_device *vout)
 irqreturn_t csiiw_fs_isr(int irq, void *dev_instance) 
 {
 	struct sp_vout_device *vout = dev_instance;
+
 	if (vout->started) {
 
 	}
@@ -170,6 +187,7 @@ irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 irqreturn_t csiiw_fe_isr(int irq, void *dev_instance) 
 {	
 	struct sp_vout_device *vout  = dev_instance;
+
 	if (vout->started) {
 		spin_lock(&vout->dma_queue_lock);
 		if (!list_empty(&vout->dma_queue) &&
@@ -214,7 +232,7 @@ static int buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned
 	//struct sp_vout_fh *fh = vq->priv_data;
 	//struct sp_vout_device *vout = fh->vout;
 
-	*size = norm_maxw() * norm_maxh();
+	*size = VOUT_WIDTH * VOUT_HEIGHT;
 
 	if (0 == *count)
 		*count = 32;
@@ -341,26 +359,64 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
 	return 0;
 }
 
-static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
-				struct v4l2_format *f)
-{	
-	struct sp_vout_device *vout = video_drvdata(file);
+static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
+			struct v4l2_format *f)
+{
+	struct sp_fmt *fmt;
+	enum v4l2_field field;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
-	f->fmt.pix.width        = vout->fmt.fmt.pix.width;
-	f->fmt.pix.height       = vout->fmt.fmt.pix.height;
-	f->fmt.pix.pixelformat  = formats[0].fourcc;
-	f->fmt.pix.field        = V4L2_FIELD_NONE;
-	f->fmt.pix.bytesperline = mEXTENDED_ALIGNED(f->fmt.pix.width,16) * formats[0].depth;
-	f->fmt.pix.sizeimage 	= f->fmt.pix.height * f->fmt.pix.bytesperline;
+	fmt = get_format(f);
 
-	if (formats[0].fourcc == V4L2_PIX_FMT_YUYV ||
-	    formats[0].fourcc == V4L2_PIX_FMT_UYVY)
+	field = f->fmt.pix.field;
+	if (field == V4L2_FIELD_ANY) {
+		field = V4L2_FIELD_INTERLACED;
+	} 
+	f->fmt.pix.field = field;
+
+	v4l_bound_align_image(&f->fmt.pix.width, 48, norm_maxw(), 2,
+			      &f->fmt.pix.height, 32, norm_maxh(), 0, 0);
+	f->fmt.pix.bytesperline =
+		(f->fmt.pix.width * fmt->depth) >> 3;
+	f->fmt.pix.sizeimage =
+		f->fmt.pix.height * f->fmt.pix.bytesperline;
+	if (fmt->fourcc == V4L2_PIX_FMT_YUYV ||
+	    fmt->fourcc == V4L2_PIX_FMT_UYVY)
 		f->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
 	else
 		f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
-	
-	memcpy(&vout->fmt, f, sizeof(*f));
+
+	return 0;
+}
+
+static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
+					struct v4l2_format *f)
+{
+	int ret;
+	struct sp_vout_device *vout = video_drvdata(file);
+
+	DBG_INFO(" %s \n", __FUNCTION__);
+	ret = vidioc_try_fmt_vid_cap(file, vout, f);
+
+	vout->fmt.type = f->type;
+	vout->fmt.fmt.pix.width = f->fmt.pix.width;
+	vout->fmt.fmt.pix.height = f->fmt.pix.height;
+	vout->fmt.fmt.pix.pixelformat = f->fmt.pix.pixelformat; // from vidioc_try_fmt_vid_cap
+	vout->fmt.fmt.pix.field = f->fmt.pix.field;	
+	vout->fmt.fmt.pix.bytesperline = f->fmt.pix.bytesperline;
+	vout->fmt.fmt.pix.sizeimage = f->fmt.pix.sizeimage ;
+	vout->fmt.fmt.pix.colorspace = f->fmt.pix.colorspace;
+
+	return 0;
+}
+
+static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
+				struct v4l2_format *f)
+{
+	struct sp_vout_device *vout = video_drvdata(file);
+
+	memcpy(f, &vout->fmt, sizeof(*f));
+
 	return 0;
 }
 
@@ -465,7 +521,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-//	struct sp_vout_subdev_info *sdinfo;
+	//struct sp_vout_subdev_info *sdinfo;
 	int ret;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
@@ -497,7 +553,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 		return -EIO;
 	}
 
-	writel(0x00002700, &(pCSIIWReg->csiiw_config0));	// Disable CSIIW and enable fs_irq & fe_irq
+	//writel(0x00002700, &(pCSIIWReg->csiiw_config0));	// Disable CSIIW and enable fs_irq & fe_irq
 
 	/* Call videobuf_streamon to start streaming * in videobuf */
 	ret = videobuf_streamon(&vout->buffer_queue);
@@ -547,7 +603,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-//	struct vout *sdinfo;
+	//struct vout *sdinfo;
 	int ret;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
@@ -584,6 +640,9 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 		v4l2_err(&vpfe_dev->v4l2_dev, "stream off failed in subdev\n");
 #endif
 	vout->started = 0;
+	// FW must mask irq to avoid unmap issue (for test code)
+	writel(0x00032700,
+			&(pCSIIWReg->csiiw_config0));				// Disable CSIIW and mask fs_irq & fe_irq
 	ret = videobuf_streamoff(&vout->buffer_queue);
 	mutex_unlock(&vout->lock);
 	return ret;
@@ -592,8 +651,10 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 static const struct v4l2_ioctl_ops sp_mipi_ioctl_ops = {
 	.vidioc_querycap			= vidioc_querycap,
 	.vidioc_enum_fmt_vid_cap 	= vidioc_enum_fmt_vid_cap,
+	.vidioc_try_fmt_vid_cap   	= vidioc_try_fmt_vid_cap,
+	.vidioc_s_fmt_vid_cap     	= vidioc_s_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap		= vidioc_g_fmt_vid_cap,
-	.vidioc_reqbufs       		= vidioc_reqbufs,
+	.vidioc_reqbufs				= vidioc_reqbufs,
 	.vidioc_querybuf			= vidioc_querybuf,
 	.vidioc_qbuf          		= vidioc_qbuf,
 	.vidioc_dqbuf         		= vidioc_dqbuf,
@@ -665,8 +726,11 @@ static int sp_vout_release(struct file *file)
 			vpfe_detach_irq(vout);
 #endif
 			vout->started = 0;
-			free_irq(vout->fs_irq, vout);
-			free_irq(vout->fe_irq, vout);
+			writel(0x00032700,
+					&(pCSIIWReg->csiiw_config0));	// Disable CSIIW and mask fs_irq & fe_irq
+
+			//free_irq(vout->fs_irq, vout);
+			//free_irq(vout->fe_irq, vout);
 			videobuf_streamoff(&vout->buffer_queue);
 		}
 		videobuf_stop(&vout->buffer_queue);
@@ -777,7 +841,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vfd->release		= video_device_release;
 	vfd->fops			= &sp_mipi_fops;
 	vfd->ioctl_ops		= &sp_mipi_ioctl_ops;
-//	vfd->tvnorms		= 0;
+	//vfd->tvnorms		= 0;
 	vfd->v4l2_dev 		= &vout->v4l2_dev;
 	strlcpy(vfd->name, VOUT_NAME, sizeof(vfd->name));
 
@@ -787,15 +851,14 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto probe_err0;
 	}
 
+	// init V4L2_format
+	vout->fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	vout->fmt.fmt.pix.width = norm_maxw();
 	vout->fmt.fmt.pix.height = norm_maxh();	
 	vout->fmt.fmt.pix.pixelformat = formats[0].fourcc;
 	vout->fmt.fmt.pix.field = V4L2_FIELD_NONE;
-	vout->fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-#if 0 //phtsai, set by vidioc_g_fmt_vid_cap()
 	vout->fmt.fmt.pix.bytesperline = (vout->fmt.fmt.pix.width * formats[0].depth) >> 3;
-	vout->fmt.fmt.pix.sizeimage = vout->fmt.fmt.pix.height * vout->fmt.fmt.pix.bytesperline;
-#endif
+	vout->fmt.fmt.pix.sizeimage = vout->fmt.fmt.pix.height * vout->fmt.fmt.pix.bytesperline ;
 	vout->fmt.fmt.pix.colorspace = V4L2_COLORSPACE_JPEG;
 	vout->fmt.fmt.pix.priv = 0;
 
@@ -844,7 +907,7 @@ static int sp_mipi_remove(struct platform_device *pdev)
 	struct sp_vout_device *vout = platform_get_drvdata(pdev);
 
 	DBG_INFO(" %s \n", __FUNCTION__);
-//	kfree(vpfe_dev->sd);
+	//kfree(vpfe_dev->sd);
 	v4l2_device_unregister(&vout->v4l2_dev);
 	video_unregister_device(&vout->video_dev);
 	kfree(vout);

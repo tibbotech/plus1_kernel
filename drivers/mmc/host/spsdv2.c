@@ -1346,7 +1346,7 @@ static int spsdv2_pm_runtime_suspend(struct device *dev)
 		return -EINVAL;
 	host = (SPSDHOST *)mmc_priv(mmc);
 	down(&host->req_sem);
-	ret = clk_disable(host->clk);
+	clk_disable(host->clk);
 	if (ret) {
 		EPRINTK("Fail to disable card controller clock!\n");
 		goto out;
