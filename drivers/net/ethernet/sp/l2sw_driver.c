@@ -1001,8 +1001,8 @@ static int l2sw_probe(struct platform_device *pdev)
 	clk_prepare_enable(comm->clk);
 	udelay(1);
 
-	ret = reset_control_assert(comm->rstc);
-	udelay(1);
+	//ret = reset_control_assert(comm->rstc);
+	//udelay(1);
 	ret = reset_control_deassert(comm->rstc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
