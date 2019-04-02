@@ -225,6 +225,10 @@ void mac_hw_init(struct l2sw_mac *mac)
 	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
 
+	// High-active LED
+	reg = HWREG_R(led_port0);
+	HWREG_W(led_port0, reg | (1<<28));
+
 	/* phy address */
 	reg = HWREG_R(mac_force_mode);
 	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
