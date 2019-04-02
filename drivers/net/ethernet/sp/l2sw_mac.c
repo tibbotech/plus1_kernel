@@ -36,7 +36,7 @@ void mac_soft_reset(struct l2sw_mac *mac)
 	}
 
 	mac_hw_reset(mac);
-	mac_hw_stop();
+	mac_hw_stop(mac);
 	mb();
 
 	//descs_clean(mac->comm);

@@ -24,7 +24,7 @@ int l2sw_reg_base_set(void __iomem *baseaddr);
 
 int moon5_reg_base_set(void __iomem *baseaddr);
 
-void mac_hw_stop(void);
+void mac_hw_stop(struct l2sw_mac *mac);
 
 void mac_hw_reset(struct l2sw_mac *mac);
 
