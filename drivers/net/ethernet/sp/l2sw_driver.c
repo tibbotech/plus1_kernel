@@ -733,6 +733,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	}
 	if (i != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
+		mac->mac_addr[5] += eth_no;
 	}
 
 	ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
