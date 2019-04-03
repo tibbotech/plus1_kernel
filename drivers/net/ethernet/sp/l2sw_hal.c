@@ -437,7 +437,7 @@ int phy_cfg()
 	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
 	// to the bit to decide to enable or disable flow-control.
 	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
-	mdio_write(1, 4, mdio_read(0, 4) | (1<<10));
+	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
 
 	return 0;
 }

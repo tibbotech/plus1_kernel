@@ -1015,8 +1015,8 @@ static int l2sw_probe(struct platform_device *pdev)
 	clk_prepare_enable(comm->clk);
 	udelay(1);
 
-	//ret = reset_control_assert(comm->rstc);
-	//udelay(1);
+	ret = reset_control_assert(comm->rstc);
+	udelay(1);
 	ret = reset_control_deassert(comm->rstc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
@@ -1036,8 +1036,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac->comm = comm;
 	comm->net_dev = net_dev;
 	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
-
-	phy_cfg();
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
@@ -1074,6 +1072,8 @@ static int l2sw_probe(struct platform_device *pdev)
 	} else {
 		ETH_INFO("[%s] Failed to get phy-handle!\n", __func__);
 	}
+
+	phy_cfg();
 
 #ifdef RX_POLLING
 	netif_napi_add(net_dev, &comm->napi, rx_poll, RX_NAPI_WEIGHT);
