@@ -1793,7 +1793,7 @@ static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
 static int sunplus_uart_platform_driver_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	
-	if (pdev->id < NUM_UART) {
+	if ((pdev->id < NUM_UART)&&(pdev->id > 0)) {  //Don't suspend uart0 for cmd line usage
         reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
 	}
 
