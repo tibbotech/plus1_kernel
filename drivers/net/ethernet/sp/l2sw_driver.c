@@ -454,6 +454,8 @@ static int ethernet_open(struct net_device *net_dev)
 	//netif_carrier_off(net_dev);
 	//mac_phy_start(net_dev);
 
+	mac->comm->enable |= mac->lan_port;
+
 	mac_hw_start(mac);
 
 	netif_carrier_on(net_dev);
@@ -462,8 +464,6 @@ static int ethernet_open(struct net_device *net_dev)
 		//ETH_INFO(" Open netif_start_queue.\n");
 		netif_start_queue(net_dev);
 	}
-
-	mac->comm->enable |= mac->lan_port;
 
 	return 0;
 }
@@ -483,10 +483,8 @@ static int ethernet_stop(struct net_device *net_dev)
 
 	spin_unlock_irqrestore(&mac->comm->lock, flags);
 
-	if (mac->comm->enable == 0) {
-		//mac_phy_stop(net_dev);
-		mac_hw_stop();
-	}
+	//mac_phy_stop(net_dev);
+	mac_hw_stop(mac);
 
 	return 0;
 }
@@ -735,6 +733,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	}
 	if (i != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
+		mac->mac_addr[5] += eth_no;
 	}
 
 	ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
@@ -775,6 +774,8 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 		// Switch to dual NIC mode.
 		mutex_lock(&comm->store_mode);
 		if (!comm->dual_nic) {
+			mac_hw_stop(mac);
+
 			comm->dual_nic = 1;
 			comm->sa_learning = 0;
 			//mac_hw_addr_print();
@@ -794,6 +795,9 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				mac_hw_addr_set(mac2);
 				//mac_hw_addr_print();
 			}
+
+			comm->enable &= 0x1;                    // Keep lan 0, but always turn off lan 1.
+			mac_hw_start(mac);
 		}
 		mutex_unlock(&comm->store_mode);
 	} else if ((buf[0] == '0') || (buf[0] == '2')) {
@@ -820,6 +824,8 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 			struct net_device *net_dev2 = mac->next_netdev;
 
 			if (!netif_running(net_dev2)) {
+				mac_hw_stop(mac);
+
 				mac2 = netdev_priv(net_dev2);
 
 				// unregister and free net device.
@@ -832,6 +838,15 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				mac_switch_mode(mac);
 				mac_hw_addr_del(mac2);
 				//mac_hw_addr_print();
+
+				// If eth0 is up, turn on lan 0 and 1 when switching to daisy-chain mode.
+				if (comm->enable & 0x1) {
+					comm->enable = 0x3;
+				} else {
+					comm->enable = 0;
+				}
+
+				mac_hw_start(mac);
 			} else {
 				ETH_ERR("[%s] Error: Net device \"%s\" is running!\n", __func__, net_dev2->name);
 			}
@@ -863,7 +878,7 @@ static int soc0_open(struct l2sw_mac *mac)
 
 	//ETH_INFO("[%s] IN\n", __func__);
 
-	mac_hw_stop();
+	mac_hw_stop(mac);
 
 #ifndef INTERRUPT_IMMEDIATELY
 	//tasklet_enable(&comm->rx_tasklet);
@@ -895,7 +910,7 @@ static int soc0_stop(struct l2sw_mac *mac)
 	napi_disable(&mac->comm->napi);
 #endif
 
-	mac_hw_stop();
+	mac_hw_stop(mac);
 
 	descs_free(mac->comm);
 	return 0;
@@ -1023,8 +1038,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	comm->net_dev = net_dev;
 	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
 
-	phy_cfg();
-
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
 
@@ -1060,6 +1073,8 @@ static int l2sw_probe(struct platform_device *pdev)
 	} else {
 		ETH_INFO("[%s] Failed to get phy-handle!\n", __func__);
 	}
+
+	phy_cfg();
 
 #ifdef RX_POLLING
 	netif_napi_add(net_dev, &comm->napi, rx_poll, RX_NAPI_WEIGHT);
@@ -1166,6 +1181,7 @@ static int l2sw_remove(struct platform_device *pdev)
 	tasklet_kill(&mac->comm->tx_tasklet);
 #endif
 
+	mac->comm->enable = 0;
 	soc0_stop(mac);
 
 	//mac_phy_remove(net_dev);

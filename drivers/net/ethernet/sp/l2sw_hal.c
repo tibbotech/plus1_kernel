@@ -31,19 +31,25 @@ int moon5_reg_base_set(void __iomem *baseaddr)
 	}
 }
 
-void mac_hw_stop(void)
+void mac_hw_stop(struct l2sw_mac *mac)
 {
-	u32 reg;
+	struct l2sw_common *comm = mac->comm;
+	u32 reg, disable;
 
-	HWREG_W(sw_int_mask_0, 0xffffffff);
-	HWREG_W(sw_int_status_0, 0xffffffff & (~MAC_INT_PORT_ST_CHG));
+	if (comm->enable == 0) {
+		HWREG_W(sw_int_mask_0, 0xffffffff);
+		HWREG_W(sw_int_status_0, 0xffffffff & (~MAC_INT_PORT_ST_CHG));
 
-	reg = HWREG_R(cpu_cntl);
-	HWREG_W(cpu_cntl, (0x3<<6) | reg);      // Disable cpu0 and cpu 1.
+		reg = HWREG_R(cpu_cntl);
+		HWREG_W(cpu_cntl, (0x3<<6) | reg);      // Disable cpu 0 and cpu 1.
+	}
 
-	reg = HWREG_R(port_cntl0);
-	HWREG_W(port_cntl0, (0x3<<24) | reg);   // Disable port 0 and port 1.
-	wmb();
+	if (comm->dual_nic) {
+		disable = ((~comm->enable)&0x3) << 24;
+		reg = HWREG_R(port_cntl0);
+		HWREG_W(port_cntl0, disable | reg);     // Disable lan 0 and lan 1.
+		wmb();
+	}
 }
 
 void mac_hw_reset(struct l2sw_mac *mac)
@@ -52,6 +58,7 @@ void mac_hw_reset(struct l2sw_mac *mac)
 
 void mac_hw_start(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
 	//enable cpu port 0 (6) & port 0 crc padding (8)
@@ -59,9 +66,9 @@ void mac_hw_start(struct l2sw_mac *mac)
 	HWREG_W(cpu_cntl, (reg & (~(0x1<<6))) | (0x1<<8));
 	wmb();
 
-	//enable lan port0 & port 1
+	//enable lan 0 & lan 1
 	reg = HWREG_R(port_cntl0);
-	HWREG_W(port_cntl0, reg & (~(0x3<<24)));
+	HWREG_W(port_cntl0, reg & (~(comm->enable<<24)));
 	wmb();
 
 	//regs_print();
@@ -204,6 +211,7 @@ void mac_hw_addr_print(void)
 
 void mac_hw_init(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
 	reg = HWREG_R(cpu_cntl);
@@ -216,6 +224,10 @@ void mac_hw_init(struct l2sw_mac *mac)
 	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
 	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
+
+	// High-active LED
+	reg = HWREG_R(led_port0);
+	HWREG_W(led_port0, reg | (1<<28));
 
 	/* phy address */
 	reg = HWREG_R(mac_force_mode);
@@ -230,6 +242,13 @@ void mac_hw_init(struct l2sw_mac *mac)
 	HWREG_W(cpu_cntl, (reg & (~((0x1<<14)|(0x3c<<0)))) | (0x1<<12));
 
 	mac_switch_mode(mac);
+
+	if (!comm->dual_nic) {
+		//enable lan 0 & lan 1
+		reg = HWREG_R(port_cntl0);
+		HWREG_W(port_cntl0, reg & (~(0x3<<24)));
+		wmb();
+	}
 
 	wmb();
 	HWREG_W(sw_int_mask_0, 0x00000000);
@@ -273,6 +292,7 @@ void mac_switch_mode(struct l2sw_mac *mac)
 		mac->lan_port = 0x3;            // forward to port 0 and 1
 		mac->to_vlan = 0x1;             // vlan group: 0
 		mac->vlan_id = 0x0;             // vlan group: 0
+		comm->enable = 0x3;             // enable lan 0 and 1
 
 		//port 0: VLAN group 0
 		//port 1: VLAN group 0
@@ -417,7 +437,7 @@ int phy_cfg()
 	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
 	// to the bit to decide to enable or disable flow-control.
 	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
-	mdio_write(1, 4, mdio_read(0, 4) | (1<<10));
+	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
 
 	return 0;
 }

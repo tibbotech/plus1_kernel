@@ -22,14 +22,8 @@
 #include "sp_bch.h"
 
 static struct sp_bch_chip __this;
-unsigned int* sp_bch_ftl_info;
-unsigned int* Get_SP_BCH_Info(void)
-{
-	return sp_bch_ftl_info;
-}
-EXPORT_SYMBOL(Get_SP_BCH_Info);
 
-static int get_setbits(uint32_t n)
+/*static int get_setbits(uint32_t n)
 {
 	n = n - ((n >> 1) & 0x55555555);
 	n = (n & 0x33333333) + ((n >> 2) & 0x33333333);
@@ -39,7 +33,7 @@ static int get_setbits(uint32_t n)
 static int sp_bch_blank(dma_addr_t ecc, int len)
 {
 	uint8_t *oob = ioremap(ecc, len);
-	int mbe = 4; /* Max. BIT errors */
+	int mbe = 4;
 	int ret = 0;
 	int i, n;
 
@@ -60,6 +54,7 @@ static int sp_bch_blank(dma_addr_t ecc, int len)
 
 	return ret;
 }
+*/
 
 static int sp_bch_reset(struct sp_bch_chip *chip)
 {
@@ -74,12 +69,13 @@ static int sp_bch_reset(struct sp_bch_chip *chip)
 		cpu_relax();
 	}
 	if (jiffies >= timeout) {
-		printk("sp_bch: reset timeout\n");
+		pr_warn("sp_bch: reset timeout\n");
 		return -1;
 	}
 
 	/* reset interrupts */
-	writel(IER_FAIL, &regs->ier);
+	writel(~(IER_FAIL|IER_DONE), &regs->ier);
+	writel(SR_DONE|SR_FAIL, &regs->sr);
 	writel(ISR_BCH, &regs->isr);
 
 	return 0;
@@ -88,14 +84,13 @@ static int sp_bch_reset(struct sp_bch_chip *chip)
 static int sp_bch_wait(struct sp_bch_chip *chip)
 {
 	int ret = 0;
-
 	if (!wait_event_timeout(chip->wq, !chip->busy, HZ/10)) {
 		if (chip->busy == 0) {
 			printk(KERN_WARNING "sp_bch 2..system irq busy\n");
 			return 0;
 		}
-			ret = -EBUSY;
-		}
+		ret = -ETIME;
+	}
 	return ret;
 }
 
@@ -103,23 +98,23 @@ static irqreturn_t sp_bch_irq(int irq, void *dev)
 {
 	struct sp_bch_chip *chip = dev;
 	struct sp_bch_regs *regs = chip->regs;
-	unsigned long timeout;
+	u32 value;
 
-	timeout = jiffies + msecs_to_jiffies(1);
-	writel(ISR_BCH, &regs->sr);
-	writel(ISR_BCH, &regs->isr);
 	chip->busy = 0;
-	wake_up(&chip->wq);
 
-	if (time_after(jiffies, timeout)) {
-		printk(KERN_ERR "more 1ms");
-	}
+	value = readl(&regs->sr);
+	writel(value, &regs->sr);
+
+	value = readl(&regs->isr);
+	writel(value, &regs->isr);
+
+	wake_up(&chip->wq);
 
 	return IRQ_HANDLED;
 }
 
 static int sunplus_ooblayout_free(struct mtd_info *mtd, int section,
-				      struct mtd_oob_region *oobregion)
+					struct mtd_oob_region *oobregion)
 {
 	struct nand_chip *nand = mtd_to_nand(mtd);
 	struct sp_bch_chip *chip = &__this;
@@ -129,25 +124,24 @@ static int sunplus_ooblayout_free(struct mtd_info *mtd, int section,
 
 	oobregion->offset = section * chip->pssz;
 	oobregion->length = chip->free;
-	
+
 	if (section == 0) {
 		/* skip bad block 2 byte flag */
-		oobregion->offset += 2; 
+		oobregion->offset += 2;
 		oobregion->length -= 2;
 	}
 	return 0;
 }
 
 static int sunplus_ooblayout_ecc(struct mtd_info *mtd, int section,
-				      struct mtd_oob_region *oobregion)
+					struct mtd_oob_region *oobregion)
 {
-	//struct nand_chip *nand = mtd_to_nand(mtd);
 	struct sp_bch_chip *chip = &__this;
 
 	oobregion->offset = section * chip->pssz + chip->free;
 	oobregion->length = chip->pssz - chip->free;
 
-	return 0;	
+	return 0;
 }
 
 static const struct mtd_ooblayout_ops sunplus_ooblayout_ops = {
@@ -155,13 +149,10 @@ static const struct mtd_ooblayout_ops sunplus_ooblayout_ops = {
 	.free = sunplus_ooblayout_free,
 };
 
-int sp_bch_init(struct mtd_info *mtd)
+int sp_bch_init(struct mtd_info *mtd, int *parity_sector_sz)
 {
 	struct sp_bch_chip *chip = &__this;
 	struct nand_chip *nand = mtd_to_nand(mtd);
-	//struct mtd_oob_region *oobfree;
-	//struct mtd_ooblayout_ops *ooblayout = mtd->ooblayout;
-	//int i;
 	int oobsz;
 	int pgsz;
 	int rsvd;  /* Reserved bytes for YAFFS2 */
@@ -179,7 +170,7 @@ int sp_bch_init(struct mtd_info *mtd)
 	rsvd = 32;
 	oobsz = mtd->oobsize;
 	pgsz = mtd->writesize;
-	
+
 	/* 1024x60 */
 	size = 1024;
 	bits = 60;
@@ -296,13 +287,15 @@ int sp_bch_init(struct mtd_info *mtd)
 	}
 
 ecc_detected:
-	printk("sp_bch: ecc mode=%ux%u, cr0=0x%x\n", size, bits, chip->cr0);
 	chip->pssz = pssz;
 	chip->free = free;
 	nand->ecc.size = size;
 	nand->ecc.steps = nrps;
 	nand->ecc.strength = bits;
 	nand->ecc.bytes = ((12 + (size >> 9)) * bits + 7) >> 3;
+
+	if(parity_sector_sz)
+			*parity_sector_sz = pssz;
 
 	/* sanity check */
 	if (nand->ecc.steps > MTD_MAX_OOBFREE_ENTRIES_LARGE)
@@ -314,19 +307,6 @@ ecc_detected:
 	mtd->ooblayout = &sunplus_ooblayout_ops;
 
 	mtd->oobavail = nand->ecc.steps*free - 2;
-
-	printk("sp_bch: oob avail=%u\n", mtd->oobavail);
-	sp_bch_ftl_info = (unsigned int *)nand;
-	/* printk("sp_bch chip addr:0x%p,0x%p\n", chip,sp_bch_ftl_info); */
-
-#if 0
-	for (i = 0; i < nand->ecc.steps; ++i) {
-		printk("off=%u, len=%u\n",
-			nand->ecc.layout->oobfree[i].offset,
-			nand->ecc.layout->oobfree[i].length);
-	}
-	printk("\n");
-#endif
 
 	mutex_lock(&chip->lock);
 	sp_bch_reset(chip);
@@ -349,12 +329,11 @@ int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 		BUG();
 
 	if (chip->mtd != mtd)
-		sp_bch_init(mtd);
-	
-	sp_bch_reset(chip);
+		sp_bch_init(mtd, NULL);
 
 	mutex_lock(&chip->lock);
 
+	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
 
@@ -362,7 +341,7 @@ int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(CR0_START | CR0_ENCODE | chip->cr0, &regs->cr0);
 	ret = sp_bch_wait(chip);
 	if (ret)
-		printk("sp_bch: encode timeout\n");
+		pr_warn("sp_bch: encode timeout\n");
 
 	mutex_unlock(&chip->lock);
 
@@ -379,16 +358,15 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	struct sp_bch_regs *regs = chip->regs;
 	uint32_t status;
 	int ret;
-
 	if (!mtd)
 		BUG();
 
 	if (chip->mtd != mtd)
-		sp_bch_init(mtd);
+		sp_bch_init(mtd, NULL);
 
-	sp_bch_reset(chip);
 	mutex_lock(&chip->lock);
 
+	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
 
@@ -397,21 +375,17 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	ret = sp_bch_wait(chip);
 	status = readl(&regs->sr);
 	if (ret) {
-		printk("sp_bch: decode timeout\n");
-	} else if (status & SR_FAIL) {
-#if 0
-		if ((status & SR_BLANK_FF) || (status & SR_BLANK_00)) {
-#else
-		if (sp_bch_blank(ecc, mtd->oobsize)) {
-#endif
-			/* printk("sp_bch: decode All FF or 00!\n"); */
+		pr_warn("sp_bch: decode timeout\n");
+	} else if (readl(&regs->fsr) != 0) {
+		if((status & SR_BLANK_FF)) {
+			//printk("sp_bch: decode All FF!\n");
 			ret = 0;
 		} else {
-			printk("sp_bch: decode failed.\n");
+			pr_warn(KERN_WARNING "sp_bch: decode failed.\n");
 			mtd->ecc_stats.failed += SR_ERR_BITS(status);
-			sp_bch_reset(chip);
-			ret = 2;
+			ret = -1;
 		}
+		sp_bch_reset(chip);
 	} else {
 		mtd->ecc_stats.corrected += SR_ERR_BITS(status);
 	}
@@ -422,6 +396,112 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 }
 EXPORT_SYMBOL(sp_bch_decode);
 
+int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc)
+{
+	struct sp_bch_chip *chip = &__this;
+	struct sp_bch_regs *regs = chip->regs;
+	int value;
+
+	mutex_lock(&chip->lock);
+
+	writel(SRR_RESET, &regs->srr);
+	writel((uint32_t) buf, &regs->buf);
+	writel((uint32_t) ecc, &regs->ecc);
+
+	value = chip->cr0
+		| (enc ? CR0_ENCODE : CR0_DECODE)
+		| CR0_AUTOSTART;
+	writel(value, &regs->cr0);
+
+	mutex_unlock(&chip->lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(sp_autobch_config);
+
+
+int sp_autobch_result(struct mtd_info *mtd)
+{
+	struct sp_bch_chip *chip = &__this;
+	struct sp_bch_regs *regs = chip->regs;
+	int ret = 0;
+	int status;
+
+	status = readl(&regs->sr);
+	if (readl(&regs->fsr) != 0) {
+		if((status & SR_BLANK_FF)) {
+			//printk("sp_bch: decode All FF!\n");
+			ret = 0;
+		} else {
+			pr_warn("sp_bch: decode failed.\n");
+			mtd->ecc_stats.failed += SR_ERR_BITS(status);
+			ret = -1;
+		}
+		sp_bch_reset(chip);
+	} else {
+		mtd->ecc_stats.corrected += SR_ERR_BITS(status);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(sp_autobch_result);
+
+int sp_bch_dev_probe(void)
+{
+	struct sp_bch_chip *chip = &__this;
+	int ret = 0;
+
+	memset(chip, 0, sizeof(*chip));
+	mutex_init(&chip->lock);
+	init_waitqueue_head(&chip->wq);
+
+	chip->regs = ioremap(SP_BCH_REG, sizeof(struct sp_bch_regs));
+	if (!chip->regs) {
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	if (sp_bch_reset(chip)) {
+		ret = -ENXIO;
+		goto err1;
+	}
+
+	if (request_irq(SP_BCH_IRQ, sp_bch_irq, 0, "sp_bch", chip)) {
+		pr_err("sp_bch: unable to register IRQ(%d)\n", chip->irq);
+		ret = -EBUSY;
+		goto err1;
+	}
+	chip->irq = SP_BCH_IRQ;
+	return 0;
+err1:
+	mutex_destroy(&chip->lock);
+
+	return ret;
+}
+EXPORT_SYMBOL(sp_bch_dev_probe);
+
+int sp_bch_dev_remove(void)
+{
+	struct sp_bch_chip *chip = &__this;
+	if (!chip)
+		BUG();
+
+	if (chip->regs)
+		iounmap(chip->regs);
+
+	if (chip->irq)
+		free_irq(chip->irq, chip);
+
+	wake_up(&chip->wq);
+	mutex_destroy(&chip->lock);
+
+	return 0;
+}
+EXPORT_SYMBOL(sp_bch_dev_remove);
+
+#ifdef CONFIG_SPBCH_AS_MODULE
+
+#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
 static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct sp_bch_chip *chip = &__this;
@@ -467,7 +547,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		chip->busy = 1;
 		writel(CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
 		if (sp_bch_wait(chip)) {
-			printk("sp_bch: 1k60 encode timeout\n");
+			pr_err("sp_bch: 1k60 encode timeout\n");
 			ret = -EFAULT;
 		}
 
@@ -497,7 +577,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		chip->busy = 1;
 		writel(CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
 		if (sp_bch_wait(chip)) {
-			printk("sp_bch: 1k60 decode timeout\n");
+			pr_err("sp_bch: 1k60 decode timeout\n");
 			ret = -EFAULT;
 		}
 
@@ -531,146 +611,77 @@ static struct miscdevice sp_bch_dev = {
 	.name = "sp_bch",
 	.fops = &sp_bch_fops,
 };
-
-#define SP_BCH_REG 		0x9c101000
-#define	SP_BCH_REG_SIZE	0x20
-#define SP_BCH_IRQ		58
-
-int sp_bch_dev_probe(void)
-{
-	struct sp_bch_chip *chip = &__this;
-	int ret = 0;
-	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
-
-	memset(chip, 0, sizeof(*chip));	
-	mutex_init(&chip->lock);
-	init_waitqueue_head(&chip->wq);
-
-	chip->regs = ioremap(SP_BCH_REG, SP_BCH_REG_SIZE);
-	if (!chip->regs) {
-		ret = -ENOMEM;
-		goto err1;
-	}	
-
-	chip->irq = SP_BCH_IRQ;
-
-	if (sp_bch_reset(chip)) {
-		ret = -ENXIO;
-		goto err1;
-	}
-	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
-
-	if (request_irq(chip->irq, sp_bch_irq, 0, "sp_bch", chip)) {
-		printk("sp_bch: unable to register IRQ(%d)\n", chip->irq);
-		ret = -EBUSY;
-		goto err1;
-	}
-
-	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
-err1:
-
-	return ret;
-}
-EXPORT_SYMBOL(sp_bch_dev_probe);
-
-int sp_bch_dev_remove(void)
-{
-	struct sp_bch_chip *chip = &__this;
-	if (!chip)
-		BUG();
-
-	if (chip->regs)
-		iounmap(chip->regs);
-
-	if (chip->irq)
-		free_irq(chip->irq, "sp_bch");
-
-	wake_up(&chip->wq);
-	mutex_destroy(&chip->lock);
-
-	return 0;
-}
-EXPORT_SYMBOL(sp_bch_dev_remove);
+#endif
 
 static int sp_bch_probe(struct platform_device *pdev)
 {
 	struct sp_bch_chip *chip = &__this;
-	struct resource *res;
+	struct resource *res_mem;
+	struct resource *res_irq;
 	int ret = 0;
 
-	/*
-	 * use reasonable defaults so platforms don't have to provide these.
-	 * with DT probing on ARM, none of these are set.
-	 */
-	#if 0
-	if (!pdev->dev.dma_mask)
-		pdev->dev.dma_mask = &pdev->dev.coherent_dma_mask;
-	if (!pdev->dev.coherent_dma_mask)
-		pdev->dev.coherent_dma_mask = DMA_BIT_MASK(32);
-	#endif
 	memset(chip, 0, sizeof(*chip));
-
 	mutex_init(&chip->lock);
 	init_waitqueue_head(&chip->wq);
 
-	chip->dev = &pdev->dev;
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		ret = -ENXIO;
-		return ret;
-	}
-	if (!request_mem_region(res->start, resource_size(res), "sp_bch")) {
-		ret = -EBUSY;
-		goto err;
-	}
-	chip->regs = ioremap(res->start, resource_size(res));
-	if (!chip->regs) {
-		ret = -ENOMEM;
-		goto err;
-	}
-
-	chip->irq = platform_get_irq(pdev, 0);
-	if (chip->irq <= 0) {
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res_mem) {
+		pr_err("get memory resource fail\n");
 		ret = -ENXIO;
 		goto err;
 	}
 
-	printk("sp_bch: mmio=0x%p, irq=%d\n", chip->regs, chip->irq);
+	chip->regs = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR(chip->regs)) {
+		pr_err("memory remap fail!\n");
+		ret = PTR_ERR(chip->regs);
+		goto err;
+	}
+
+	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res_irq <= 0) {
+		pr_err("get irq resource fail\n");
+		ret = -ENXIO;
+		goto err;
+	}
 
 	if (sp_bch_reset(chip)) {
+		pr_err("reset bch hw fail!\n");
 		ret = -ENXIO;
 		goto err;
 	}
 
-	if (request_irq(chip->irq, sp_bch_irq, 0, "sp_bch", chip)) {
-		printk("sp_bch: unable to register IRQ(%d)\n", chip->irq);
-		ret = -EBUSY;
+	ret = request_irq(res_irq->start,sp_bch_irq,IRQF_SHARED,"sp_bch",chip);
+	if(ret) {
+		pr_err("request IRQ(%d) fail!\n", res_irq->start);
 		goto err;
 	}
+
+	chip->irq = res_irq->start;
+	chip->dev = &pdev->dev;
 
 	platform_set_drvdata(pdev, chip);
 
+	#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
 	ret = misc_register(&sp_bch_dev);
+	#endif
 
 	return ret;
 
 err:
-	release_mem_region(res->start, resource_size(res));
+	if (chip->regs)
+		iounmap(chip->regs);
+	mutex_destroy(&chip->lock);
 	return ret;
 }
 
 static int sp_bch_remove(struct platform_device *pdev)
 {
 	struct sp_bch_chip *chip = platform_get_drvdata(pdev);
-	struct resource *res;
 
+	#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
 	misc_deregister(&sp_bch_dev);
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-
-	if (res)
-		release_mem_region(res->start, resource_size(res));
+	#endif
 
 	if (!chip)
 		BUG();
@@ -689,41 +700,66 @@ static int sp_bch_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_PM
-static int sp_bch_suspend(struct platform_device *pdev, pm_message_t mesg)
-{
-	return 0;
-}
+#ifndef CONFIG_SPBCH_DEV_IN_DTS
+static struct resource sp_bch_res[] = {
+	{
+		.start = SP_BCH_REG,
+		.end   = SP_BCH_REG + sizeof(struct sp_bch_regs),
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = SP_BCH_IRQ,
+		.end   = SP_BCH_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
 
-static int sp_bch_resume(struct platform_device *pdev)
-{
-	return 0;
-}
-#else
-#define sp_bch_suspend	NULL
-#define sp_bch_resume	NULL
+static struct platform_device sp_bch_device = {
+	.name  = "sunplus,sp_bch",
+	.id    = 0,
+	.num_resources = ARRAY_SIZE(sp_bch_res),
+	.resource  = sp_bch_res,
+};
 #endif
 
-static const struct of_device_id of_fun_match[] = {
-	{ .compatible = "sunplus,sp7021-bch" },
+static const struct of_device_id sp_bch_of_match[] = {
+	{ .compatible = "sunplus,sp_bch" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, of_fun_match);
+MODULE_DEVICE_TABLE(of, sp_bch_of_match);
 
 static struct platform_driver sp_bch_driver = {
 	.probe = sp_bch_probe,
 	.remove = sp_bch_remove,
-	.shutdown = NULL,
-	.suspend = sp_bch_suspend,
-	.resume = sp_bch_resume,
 	.driver = {
-			.name = "sunplus,sp7021-bch",
-			.owner = THIS_MODULE,
-			.of_match_table = of_fun_match,
-		   },
+		.name = "sunplus,sp_bch",
+		.owner = THIS_MODULE,
+		.of_match_table = sp_bch_of_match,
+	},
 };
 
-//module_platform_driver(sp_bch_driver);
+static int __init sp_bch_module_init(void)
+{
+	#ifndef CONFIG_SPBCH_DEV_IN_DTS
+	platform_device_register(&sp_bch_device);
+	#endif
+	platform_driver_register(&sp_bch_driver);
+	return 0;
+}
+
+static void __exit sp_bch_module_exit(void)
+{
+	platform_driver_unregister(&sp_bch_driver);
+	#ifndef CONFIG_SPBCH_DEV_IN_DTS
+	platform_device_unregister(&sp_bch_device);
+	#endif
+}
+
+module_init(sp_bch_module_init);
+module_exit(sp_bch_module_exit);
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Sunplus BCH controller");
+
+

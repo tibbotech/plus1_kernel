@@ -49,7 +49,7 @@ void __iomem *moon0_base;
 
 
 static const struct of_device_id _sc7021_audio_dt_ids[] = {
-	{ .compatible = "sunplus,sc7021-audio", },
+	{ .compatible = "sunplus,sp7021-audio", },
 };
 MODULE_DEVICE_TABLE(of, _sc7021_audio_dt_ids);
 

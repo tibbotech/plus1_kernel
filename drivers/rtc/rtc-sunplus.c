@@ -148,8 +148,6 @@ EXPORT_SYMBOL(sp_rtc_get_time);
 static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
-
-       reset_control_assert(sp_rtc.rstc); 
 	
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
 
@@ -163,8 +161,6 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	 * there is nothing to do here.
 	 */
 	FUNC_DEBUG();
-	
-	reset_control_deassert(sp_rtc.rstc);   //release reset
 	
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
 	return 0;

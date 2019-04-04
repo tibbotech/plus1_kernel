@@ -4,6 +4,6 @@ config VIDEO_SP_VOUT
 	select VIDEOBUF_GEN
 	select VIDEOBUF_DMA_CONTIG
 	select VIDEOBUF_DMA_SG
-	default y
+	default n
 	---help---
 	  Video out driver support for SP based boards.
