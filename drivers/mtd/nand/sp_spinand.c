@@ -1,3 +1,6 @@
+#define pr_fmt(fmt) "["KBUILD_MODNAME"] "fmt
+
+#include <linux/dma-mapping.h>
 #include <linux/device.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
@@ -17,940 +20,1017 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
-
 #include "sp_bch.h"
 #include "sp_spinand.h"
-
 
 /**************************************************************************
  *                             M A C R O S                                *
  **************************************************************************/
-/* SRAM */
-/* #define CFG_BBT_USE_FLASH */
-#define CFG_BUFF_MAX		(18 << 10)
-#define CONFIG_MTD_SP_NAND_SRAM_BASE	(0x9e800000)
 
-/* device id */
-#define ESMT1G_ID 0x21C8
-#define GD_ID 0xC8
-#define GD_ID_HIGH 0x2100
-#define WB_ID 0xEF
-#define MXIC_ID 0xC2
-
-
-static void wait_spi_idle(struct sp_spinand_info *info)
+/**************************************************************************
+ *                        F U N C T I O N S                               *
+ **************************************************************************/
+/*static*/ void dump_spi_regs(struct sp_spinand_info *info)
 {
 	struct sp_spinand_regs *regs = info->regs;
-	int retry = 0;
-	
-	do {
-		retry++;
-	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 100));
+	u32 *p = (u32 *)regs;
+	int i, value;
+	const char *reg_name[] = {
+		"spi_ctrl",
+		"spi_timing",
+		"spi_page_addr",
+		"spi_data",
+		"spi_status",
+		"spi_auto_cfg",
+		"spi_cfg0",
+		"spi_cfg1",
+		"spi_cfg2",
+		"spi_data_64",
+		"spi_buf_addr",
+		"spi_statu_2",
+		"spi_err_status",
+		"mem_data_addr",
+		"mem_parity_addr",
+		"spi_col_addr",
+		"spi_bch",
+		"spi_intr_msk",
+		"spi_intr_sts",
+		"spi_page_size",
+	};
+
+	for (i=0; i<sizeof(reg_name)/sizeof(reg_name[0]); i++, p++) {
+		value = readl(p);
+		pr_info("%s = 0x%08X\n", reg_name[i], value);
+	}
 }
 
-static int spi_nand_getfeatures(struct sp_spinand_info *info, uint32_t addr)
+static int get_iomode_cfg(u32 io_mode)
+{
+	int cfg = -1;
+	if (io_mode == SPINAND_1BIT_MODE) {
+		cfg = SPINAND_CMD_BITMODE(1)
+			| SPINAND_CMD_DQ(1)
+			| SPINAND_ADDR_BITMODE(1)
+			| SPINAND_ADDR_DQ(1)
+			| SPINAND_DATA_BITMODE(1)
+			| SPINAND_DATAOUT_DQ(1)
+			| SPINAND_DATAIN_DQ(2);
+	} else if (io_mode == SPINAND_2BIT_MODE) {
+		cfg = SPINAND_CMD_BITMODE(1)
+			| SPINAND_CMD_DQ(1)
+			| SPINAND_ADDR_BITMODE(1)
+			| SPINAND_ADDR_DQ(1)
+			| SPINAND_DATA_BITMODE(2);
+	} else if (io_mode == SPINAND_4BIT_MODE) {
+		cfg = SPINAND_CMD_BITMODE(1)
+			| SPINAND_CMD_DQ(1)
+			| SPINAND_ADDR_BITMODE(1)
+			| SPINAND_ADDR_DQ(1)
+			| SPINAND_DATA_BITMODE(3);
+	} else if (io_mode == SPINAND_DUAL_MODE) {
+		cfg = SPINAND_CMD_BITMODE(1)
+			| SPINAND_ADDR_BITMODE(2)
+			| SPINAND_DATA_BITMODE(2);
+	} else if (io_mode == SPINAND_QUAD_MODE) {
+		cfg = SPINAND_CMD_BITMODE(1)
+			| SPINAND_ADDR_BITMODE(3)
+			| SPINAND_DATA_BITMODE(3);
+	}
+
+	return cfg;
+}
+
+static int get_iomode_readcmd(u32 io_mode)
+{
+	int cmd = -1;
+	if (io_mode == SPINAND_1BIT_MODE) {
+		cmd = SPINAND_CMD_PAGEREAD;
+	} else if (io_mode == SPINAND_2BIT_MODE) {
+		cmd = SPINAND_CMD_PAGEREAD_X2;
+	} else if (io_mode == SPINAND_4BIT_MODE) {
+		cmd = SPINAND_CMD_PAGEREAD_X4;
+	} else if (io_mode == SPINAND_DUAL_MODE) {
+		cmd = SPINAND_CMD_PAGEREAD_DUAL;
+	} else if (io_mode == SPINAND_QUAD_MODE) {
+		cmd = SPINAND_CMD_PAGEREAD_QUAD;
+	}
+	return cmd;
+}
+
+static int get_iomode_writecmd(u32 io_mode)
+{
+	int cmd = -1;
+	if (io_mode == SPINAND_1BIT_MODE) {
+		cmd = SPINAND_CMD_PROGLOAD;
+	} else if (io_mode == SPINAND_4BIT_MODE) {
+		cmd = SPINAND_CMD_PROGLOAD_X4;
+	}
+	return cmd;
+}
+
+static int wait_spi_idle(struct sp_spinand_info *info)
+{
+	volatile struct sp_spinand_regs *regs = info->regs;
+	unsigned long timeout;
+	int ret = -1;
+
+	timeout = jiffies + msecs_to_jiffies(CONFIG_SPINAND_TIMEOUT);
+	do {
+		if (!(readl(&regs->spi_ctrl) & SPINAND_BUSY_MASK)) {
+			ret = 0;
+			break;
+		}
+	} while (time_before(jiffies, timeout));
+
+	if (ret < 0) {
+		pr_warn("%s timeout \n", __FUNCTION__);
+		//dump_spi_regs(info);
+	}
+
+	return ret;
+}
+
+int spi_nand_trigger_and_wait_dma(struct sp_spinand_info *info)
 {
 	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	
-	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_GETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPINAND_CUSTCMD_1_ADDR);
-	writel(value ,&regs->spi_ctrl);
+	u32 value;
+	int ret;
 
-	writel(addr ,&regs->spi_page_addr);
+	value = ~SPINAND_DMA_DONE_MASK;
+	writel(value, &regs->spi_intr_msk);
 
-	value = SPINAND_CFG01_DEFAULT;
-	writel(value ,&regs->spi_cfg[1]);
+	value = readl(&regs->spi_intr_sts);
+	writel(value, &regs->spi_intr_sts);
 
-	value = SPINAND_AUTOCFG_CMDEN;
-	writel(value ,&regs->spi_auto_cfg);
+	info->busy = 1;
+
+	value = readl(&regs->spi_auto_cfg);
+	value |= SPINAND_DMA_TRIGGER;
+	writel(value, &regs->spi_auto_cfg);
+
+	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	if (!ret) {
+		if(info->busy) {
+			pr_warn("wait dma done timeout!\n");
+			//dump_spi_regs(info);
+			ret = -ETIME;
+		}
+	} else {
+		ret = 0;
+	}
+
+	/* disable all interrupt */
+	writel(0xff, &regs->spi_intr_msk);
+
+	return ret;
+}
+
+int spi_nand_trigger_and_wait_pio(struct sp_spinand_info *info)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 value;
+	int ret;
+
+	value = ~SPINAND_PIO_DONE_MASK;
+	writel(value, &regs->spi_intr_msk);
+
+	value = readl(&regs->spi_intr_sts);
+	writel(value, &regs->spi_intr_sts);
+
+	info->busy = 1;
+
+	value = readl(&regs->spi_auto_cfg)
+		| SPINAND_USR_CMD_TRIGGER;
+	writel(value, &regs->spi_auto_cfg);
+
+	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	if (!ret) {
+		if(info->busy) {
+			pr_warn("wait pio done timeout!\n");
+			//dump_spi_regs(info);
+			ret = -ETIME;
+		}
+	} else {
+		ret = 0;
+	}
+
+	/* disable all interrupt */
+	writel(0xff, &regs->spi_intr_msk);
+
+	return ret;
+}
+
+int spi_nand_getfeatures(struct sp_spinand_info *info, u32 addr)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 value = 0;
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(info->spi_clk_div)
+		| SPINAND_USR_CMD(SPINAND_CMD_GETFEATURES)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_DATASZ(1)
+		| SPINAND_READ_MODE
+		| SPINAND_USRCMD_ADDRSZ(1);
+	writel(value, &regs->spi_ctrl);
+
+	writel(addr, &regs->spi_page_addr);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE;
+	writel(value, &regs->spi_cfg[0]);
+
+	value = SPINAND_CMD_BITMODE(1)
+		| SPINAND_CMD_DQ(1)
+		| SPINAND_ADDR_BITMODE(1)
+		| SPINAND_ADDR_DQ(1)
+		| SPINAND_DATA_BITMODE(1)
+		| SPINAND_DATAIN_DQ(2);
+	writel(value, &regs->spi_cfg[1]);
+
+	value = SPINAND_USR_CMD_TRIGGER;
+	writel(value, &regs->spi_auto_cfg);
 
 	wait_spi_idle(info);
 
 	return (readl(&regs->spi_data) & 0xFF);
 }
 
-static void spi_nand_setfeatures(struct sp_spinand_info *info,uint32_t addr, uint32_t data)
+void spi_nand_setfeatures(struct sp_spinand_info *info, u32 addr, u32 data)
 {
 	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
+	u32 value = 0;
 
-	value = (SPI_NAND_CHIP_A)|(SPI_NAND_AUTO_WEL)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_SETFEATURES<<8)|(SPI_NAND_CTRL_EN)|(SPINAND_CUSTCMD_1_DATA)|(SPI_NAND_WRITE_MDOE)|(SPINAND_CUSTCMD_1_ADDR);
-	writel(value ,&regs->spi_ctrl);
-
-	writel(addr ,&regs->spi_page_addr);
-
-	writel(data ,&regs->spi_data);
-
-	value = SPINAND_CFG01_DEFAULT1;
-	writel(value ,&regs->spi_cfg[1]);
-
-	value = SPINAND_AUTOCFG_CMDEN;
-	writel(value ,&regs->spi_auto_cfg);
-
-	wait_spi_idle(info);
-	
-	return ;
-}
-
-static int sp_spinand_reset(struct sp_spinand_info *info)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	int ret = -1;
-	int retry = 0;
-	//initial
-	do {
-		retry++;
-	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 100));
-	
-	/* ==== Flash reset ==== */
-	value = (SPI_NAND_CHIP_A)|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_RESET<<8)|(SPI_NAND_CTRL_EN)|(SPI_NAND_WRITE_MDOE);
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_AUTOWEL_EN
+		| SPINAND_SCK_DIV(7)
+		| SPINAND_USR_CMD(SPINAND_CMD_SETFEATURES)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_DATASZ(1)
+		| SPINAND_WRITE_MODE
+		| SPINAND_USRCMD_ADDRSZ(1);
 	writel(value, &regs->spi_ctrl);
 
-	value = SPINAND_CFG01_DEFAULT3;
-	writel(value, &regs->spi_cfg[1]);	
+	writel(addr, &regs->spi_page_addr);
 
-	value = SPINAND_AUTOCFG_CMDEN;
+	writel(data, &regs->spi_data);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE;
+	writel(value, &regs->spi_cfg[0]);
+
+	value = SPINAND_CMD_BITMODE(1)
+		| SPINAND_CMD_DQ(1)
+		| SPINAND_ADDR_BITMODE(1)
+		| SPINAND_ADDR_DQ(1)
+		| SPINAND_DATA_BITMODE(1)
+		| SPINAND_DATAOUT_DQ(1);
+	writel(value, &regs->spi_cfg[1]);
+
+	value = SPINAND_USR_CMD_TRIGGER;
+	writel(value, &regs->spi_auto_cfg);
+
+	wait_spi_idle(info);
+}
+
+int spi_nand_reset(struct sp_spinand_info *info)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 value = 0;
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(7)
+		| SPINAND_USR_CMD(SPINAND_CMD_RESET)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_DATASZ(0)
+		| SPINAND_WRITE_MODE
+		| SPINAND_USRCMD_ADDRSZ(0);
+	writel(value, &regs->spi_ctrl);
+
+	value = SPINAND_READ_TIMING(CONFIG_READ_TIMING_SEL);;
+	writel(value ,&regs->spi_timing);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE;
+	writel(value, &regs->spi_cfg[0]);
+
+	value = SPINAND_CMD_BITMODE(1)
+		| SPINAND_CMD_DQ(1)
+		| SPINAND_ADDR_BITMODE(0)
+		| SPINAND_ADDR_DQ(0)
+		| SPINAND_DATA_BITMODE(0)
+		| SPINAND_DATAIN_DQ(0)
+		| SPINAND_DATAOUT_DQ(0);
+	writel(value, &regs->spi_cfg[1]);
+
+	/* disable all interrupt */
+	writel(0xff, &regs->spi_intr_msk);
+
+	value = SPINAND_USR_CMD_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
 	wait_spi_idle(info);
 
-	retry = 0;	
-	do {
-		ret = spi_nand_getfeatures(info, DEVICE_STATUS_ADDR);
-		retry++;
-	} while ((ret & 0x01) && (retry < 100));
+	value = SPINAND_CHECK_OIP_EN;
+	writel(value, &regs->spi_auto_cfg);
 
-	return ret;
+	return wait_spi_idle(info);
 }
 
-static void spi_nand_readid(struct sp_spinand_info *info, uint32_t addr, uint32_t *data)
+void spi_nand_readid(struct sp_spinand_info *info, u32 addr, u8 *data)
 {
 	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
+	u32 value = 0;
 
-	writel(addr, &regs->spi_page_addr);
 	/*read 3 byte cycle same to 8388 */
-	value = SPI_NAND_CHIP_A|SPI_NAND_AUTO_WEL|(SPI_NAND_CLK_32DIV)|(SPINAND_CMD_READID<<8)|SPI_NAND_CTRL_EN|(SPINAND_CUSTCMD_3_DATA)|(SPINAND_CUSTCMD_1_ADDR);
+	value = SPINAND_SEL_CHIP_A
+	        | SPINAND_SCK_DIV(7)
+	        | SPINAND_USR_CMD(SPINAND_CMD_READID)
+	        | SPINAND_CTRL_EN
+	        | SPINAND_USRCMD_DATASZ(3)
+	        | SPINAND_READ_MODE
+	        | SPINAND_USRCMD_ADDRSZ(1);
 	writel(value, &regs->spi_ctrl);
 
-	value = SPINAND_CFG01_DEFAULT;
-	writel(value ,&regs->spi_cfg[1]);
+	writel(addr, &regs->spi_page_addr);
 
-	value = SPINAND_AUTOCFG_CMDEN;
-	writel(value ,&regs->spi_auto_cfg);
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE;
+	writel(value, &regs->spi_cfg[0]);
+
+	value = SPINAND_CMD_BITMODE(1)
+		| SPINAND_CMD_DQ(1)
+		| SPINAND_ADDR_BITMODE(1)
+		| SPINAND_ADDR_DQ(1)
+		| SPINAND_DATA_BITMODE(1)
+		| SPINAND_DATAIN_DQ(2)
+		| SPINAND_DATAOUT_DQ(0);
+	writel(value, &regs->spi_cfg[1]);
+
+	value = SPINAND_USR_CMD_TRIGGER;
+	writel(value, &regs->spi_auto_cfg);
 
 	wait_spi_idle(info);
 
 	value = readl(&regs->spi_data);
 
-	printk("\nReadID:0x%02x,0x%02x,0x%02x,0x%02x\n",
-	       (value & 0xFF),
-	       ((value >> 8) & 0xFF),
-	       ((value >> 16) & 0xFF),
-	       ((value >> 24) & 0xFF));
+	value &= 0xffff;
 
-	*data = value;
-	
-	return ;
+	*(u32 *)data = value;
 }
 
-static int sp_spinand_wait(struct sp_spinand_info *info)
+int spi_nand_blkerase(struct sp_spinand_info *info, u32 row)
 {
+	struct sp_spinand_regs *regs = info->regs;
+	u32 value = 0;
 	int ret = 0;
 
-	if (!wait_event_timeout(info->wq, !info->busy, HZ/10)) {
-		/*HZ=100, means timeout=100*jiffies, jiffies=every 10ms plus one */
-		if (info->busy == 0) {
-			printk(KERN_WARNING "sp_nand ..system irq busy?\n");
-			return ret;
-		}
-		ret = -1;
-		printk("\n\nERROR!!!! sp_nand_wait timeout\n\n");		
-	}	
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_AUTOWEL_EN
+		| SPINAND_SCK_DIV(7)
+		| SPINAND_USR_CMD(SPINAND_CMD_BLKERASE)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_DATASZ(0)
+		| SPINAND_WRITE_MODE
+		| SPINAND_USRCMD_ADDRSZ(3);
+	writel(value, &regs->spi_ctrl);
+
+	writel(row, &regs->spi_page_addr);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE;
+	writel(value, &regs->spi_cfg[0]);
+
+	value = SPINAND_CMD_BITMODE(1)
+		| SPINAND_CMD_DQ(1)
+		| SPINAND_ADDR_BITMODE(1)
+		| SPINAND_ADDR_DQ(1)
+		| SPINAND_DATA_BITMODE(1)
+		| SPINAND_DATAIN_DQ(2)
+		| SPINAND_DATAOUT_DQ(1);
+	writel(value, &regs->spi_cfg[1]);
+
+	value = SPINAND_AUTO_RDSR_EN;
+	writel(value, &regs->spi_auto_cfg);
+
+	ret = spi_nand_trigger_and_wait_pio(info);
+
+	if (!ret) {
+		value = readl(&regs->spi_status);
+		ret = (value&ERASE_STATUS) ? (-EIO) : 0;
+	}
+	return ret;
+}
+
+int spi_nand_read_by_dma(struct sp_spinand_info *info, u32 io_mode,
+				u32 row, u32 col, u8 *buf, u32 size)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 plane_sel_mode = info->plane_sel_mode;
+	u32 page_size = info->page_size;
+	int cmd = get_iomode_readcmd(io_mode);
+	int cfg = get_iomode_cfg(io_mode);
+	u32 value = 0;
+
+	if (cmd < 0 || cfg < 0)
+		return -1;
+
+	while (readl(&regs->spi_auto_cfg) & SPINAND_DMA_OWNER_MASK);
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(info->spi_clk_div)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_ADDRSZ(2);
+	writel(value, &regs->spi_ctrl);
+
+	writel(row, &regs->spi_page_addr);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE
+		| SPINAND_DATA_LEN(size);
+	writel(value, &regs->spi_cfg[0]);
+
+	value = cfg | SPINAND_DUMMY_CYCLES(8);
+	writel(value, &regs->spi_cfg[1]);
+
+	if ((plane_sel_mode & 0x1) != 0) {
+		u32 pagemark = (plane_sel_mode>>2)&0xfff;
+		u32 colmark = (plane_sel_mode>>16)&0xffff;
+		col |= ((row & pagemark) != 0) ? colmark : 0;
+		page_size += ((row & pagemark) != 0) ? colmark : 0;
+	}
+	writel(col, &regs->spi_col_addr);
+
+	value = SPINAND_SPARE_SIZE(info->oob_size)
+		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
+	writel(value, &regs->spi_page_size);
+
+	writel((u32)buf, &regs->mem_data_addr);
+
+	value = SPINAND_USR_READCACHE_CMD(cmd)
+		| SPINAND_USR_READCACHE_EN;
+	writel(value, &regs->spi_auto_cfg);
+
+	return spi_nand_trigger_and_wait_dma(info);
+}
+
+int spi_nand_write_by_dma(struct sp_spinand_info *info, u32 io_mode,
+				u32 row, u32 col, u8 *buf, u32 size)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 plane_sel_mode = info->plane_sel_mode;
+	u32 page_size = info->page_size;
+	int cmd = get_iomode_writecmd(io_mode);
+	int cfg = get_iomode_cfg(io_mode);
+	u32 value = 0;
+	int ret;
+
+	if (cmd < 0 || cfg < 0)
+		return -1;
+
+	while (readl(&regs->spi_auto_cfg) & SPINAND_DMA_OWNER_MASK);
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(info->spi_clk_div)
+		| SPINAND_CTRL_EN
+		| SPINAND_WRITE_MODE
+		| SPINAND_USRCMD_ADDRSZ(2);
+	writel(value, &regs->spi_ctrl);
+
+	writel(row, &regs->spi_page_addr);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE
+		| SPINAND_DATA_LEN(size);
+	writel(value, &regs->spi_cfg[0]);
+
+	writel(cfg, &regs->spi_cfg[1]);
+
+	if ((plane_sel_mode & 0x1) != 0) {
+		u32 pagemark = (plane_sel_mode>>2)&0xfff;
+		u32 colmark = (plane_sel_mode>>16)&0xffff;
+		col |= (row & pagemark) ? colmark : 0;
+		page_size += (row & pagemark) ? colmark : 0;
+	}
+	writel(col, &regs->spi_col_addr);
+
+	value = SPINAND_SPARE_SIZE(info->oob_size)
+		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
+	writel(value, &regs->spi_page_size);
+
+	writel((u32)buf, &regs->mem_data_addr);
+
+	value = SPINAND_USR_PRGMLOAD_CMD(cmd)
+		| SPINAND_USR_PRGMLOAD_EN
+		| SPINAND_AUTOWEL_BF_PRGMLOAD;
+	writel(value, &regs->spi_auto_cfg);
+
+	ret = spi_nand_trigger_and_wait_dma(info);
+
+	if(!ret) {
+		value = readl(&regs->spi_status);
+		ret = (value&0x08) ? (-EIO) : 0;
+	}
+	return ret;
+}
+
+int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
+				u32 row, u8 *buf)
+{
+	struct sp_spinand_regs *regs = info->regs;
+	u32 plane_sel_mode = info->plane_sel_mode;
+	u32 page_size = info->page_size;
+	int cmd = get_iomode_readcmd(io_mode);
+	int cfg = get_iomode_cfg(io_mode);
+	u32 value = 0;
+	int ret;
+
+	if (cmd < 0 || cfg < 0)
+		return -1;
+
+	while (readl(&regs->spi_auto_cfg) & SPINAND_DMA_OWNER_MASK);
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(info->spi_clk_div)
+		| SPINAND_CTRL_EN
+		| SPINAND_USRCMD_ADDRSZ(2);
+	writel(value, &regs->spi_ctrl);
+
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE
+		| SPINAND_DATA_LEN(info->page_size);
+	writel(value, &regs->spi_cfg[0]);
+
+	value = cfg | SPINAND_DUMMY_CYCLES(8);
+	writel(value, &regs->spi_cfg[1]);
+
+	writel(row, &regs->spi_page_addr);
+
+	value = 0;
+	if ((plane_sel_mode & 0x1) != 0) {
+		u32 pagemark = (plane_sel_mode>>2)&0xfff;
+		u32 colmark = (plane_sel_mode>>16)&0xffff;
+		value |= ((row & pagemark) != 0) ? colmark : 0;
+		page_size += ((row & pagemark) != 0) ? colmark : 0;
+	}
+	writel(value, &regs->spi_col_addr);
+
+	value = SPINAND_SPARE_SIZE(info->oob_size)
+		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
+	writel(value, &regs->spi_page_size);
+
+	writel((u32)buf, &regs->mem_data_addr);
+	writel((u32)buf+info->page_size, &regs->mem_parity_addr);
+
+	value = SPINAND_BCH_DATA_LEN(info->parity_sector_size)
+		| SPINAND_BCH_BLOCKS(info->nand.ecc.steps - 1)
+		| SPINAND_BCH_AUTO_EN;
+	value |= (info->parity_sector_size & 31) ?
+			SPINAND_BCH_ALIGN_16B : SPINAND_BCH_ALIGN_32B;
+	value |= (info->nand.ecc.size == 1024) ?
+			SPINAND_BCH_1K_MODE : SPINAND_BCH_512B_MODE;
+	writel(value, &regs->spi_bch);
+
+	value = SPINAND_USR_READCACHE_CMD(cmd)
+		| SPINAND_USR_READCACHE_EN;
+	writel(value, &regs->spi_auto_cfg);
+
+	sp_autobch_config(info->mtd, buf, buf+info->page_size, 0);
+
+	ret = spi_nand_trigger_and_wait_dma(info);
+
+	if(!ret)
+		ret = sp_autobch_result(info->mtd);
+
+	writel(0, &regs->spi_bch); /* close auto bch */
 
 	return ret;
 }
 
-static int spi_nand_blkerase(struct sp_spinand_info *info, uint32_t addr)
-{	
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	
-	value = (1<<24)|(1<<20)|(1<<19)|(7<<16)|(0xd8<<8)|(1<<7)|(0<<4)|(1<<2)|(3);
-	writel(value ,&regs->spi_ctrl);
-
-	writel(addr ,&regs->spi_page_addr);
-
-	value = 0x150095;
-	writel(value ,&regs->spi_cfg[1]);
-
-	value = (1<<21);
-	writel(value ,&regs->spi_auto_cfg);
-
-	wait_spi_idle(info);
-
-	value = (1<<21)|(1<<19);
-	writel(value ,&regs->spi_auto_cfg);
-
-	wait_spi_idle(info);
-	
-	value = readl(&regs->spi_status);
-
-	if (value & ERASE_STATUS) {
-		printk("\nErase Fail!\n");
-		value = 0x1;
-	} else {
-		value = 0x0;
-	}
-	
-	return value;
-}
-
-static void spi_nanddma_pageread_prep(struct sp_spinand_info *info, uint32_t addr, unsigned int size, uint32_t *pbuf)
+int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
+				u32 row, u8 *buf)
 {
 	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	int retry = 0;
-	
-	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
-		retry++;
-	}
+	u32 plane_sel_mode = info->plane_sel_mode;
+	u32 page_size = info->page_size;
+	int cmd = get_iomode_writecmd(io_mode);
+	int cfg = get_iomode_cfg(io_mode);
+	u32 value = 0;
+	int ret = 0;
 
-	if (retry >= 100) {
-		printk("sp_spinand: dma busy timeout \n");
-		info->err |= SPI_NAND_READ_FAIL;
-		return ;
-	}
-	
-	value = SPI_NAND_CHIP_A|SPI_NAND_CLK_32DIV|SPI_NAND_CTRL_EN|(2);
+	if (cmd < 0 || cfg < 0)
+		return -1;
+
+	while (readl(&regs->spi_auto_cfg) & SPINAND_DMA_OWNER_MASK);
+
+	value = SPINAND_SEL_CHIP_A
+		| SPINAND_SCK_DIV(info->spi_clk_div)
+		| SPINAND_USR_CMD(SPINAND_CMD_PROGEXEC)
+		| SPINAND_CTRL_EN
+		| SPINAND_WRITE_MODE
+		| SPINAND_USRCMD_ADDRSZ(2);
 	writel(value, &regs->spi_ctrl);
 
-	writel(addr, &regs->spi_page_addr);
-
-	value = 0x08150095; // 4 bit data 8 dummy clock 1bit cmd  1bit addr
-	writel(value, &regs->spi_cfg[1]);
-	writel(value, &regs->spi_cfg[2]);
-
-
-	value = readl(&regs->spi_cfg[0]);
-	value = value|size; // 1k data len
+	value = SPINAND_LITTLE_ENDIAN
+		| SPINAND_TRS_MODE
+		| SPINAND_DATA_LEN(info->page_size);
 	writel(value, &regs->spi_cfg[0]);
 
-	if ((addr & 0x40) && (((info->id & 0xFF) == 0xC2)||((info->id & 0xFF) == 0x2C)))		
-		value = 0x1000;
-	else
-		value = 0x0;
-	
-	writel(value, &regs->spi_col_addr);
-
-	value = (0x40<<4)|(0x1);
-	writel(value, &regs->spi_page_size);
-
-	writel((uint32_t)pbuf, &regs->mem_data_addr);
-
-	//config ctrl info	
-	//set auto cfg
-	value = 0x5;
-	writel(value, &regs->spi_intr_msk);
-	value = 0x7;
-	writel(value, &regs->spi_intr_sts);
-	
-	value = (0x3<<24)|(1<<20)|(1<18);
-	writel(value, &regs->spi_auto_cfg);
-	
-	return ;
-}
-
-static void spi_nanddma_run(struct sp_spinand_info *info)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-
-	value = (1<<17);
-	writel(value, &regs->spi_auto_cfg);
-
-	return ;
-}
-#if 0
-static void spi_nanddma_down(struct sp_spinand_info *info)
-{
-	int ret;
-	
-	info->busy = 1;
-	
-	spi_nanddma_run(info);
-
-	ret = sp_spinand_wait(info);
-	if (ret) {
-		printk("sp_spinand: descriptor timeout, cmd=0x%x\n", info->cmd);
-		sp_spinand_reset(info);
-	}
-	
-	return ;
-}
-#endif
-#if 0
-static void spi_nanddma_pageread(struct sp_spinand_info *info, uint32_t addr, unsigned int size, uint32_t *pbuf)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;
-	int retry;
-	
-	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
-		retry++;
-	}
-
-	if (retry >= 100) {
-		printk("sp_spinand: dma busy timeout \n");
-		info->err |= SPI_NAND_READ_FAIL;
-		return ;
-	}
-	
-	value = SPI_NAND_CHIP_A|SPI_NAND_CLK_32DIV|SPI_NAND_CTRL_EN|(2);
-	writel(value, &regs->spi_ctrl);
-
-	writel(addr, &regs->spi_page_addr);
-
-	value = 0x08350095; // 4 bit data 8 dummy clock 1bit cmd  1bit addr
+	value = cfg;
 	writel(value, &regs->spi_cfg[1]);
 
-	value = readl(&regs->spi_cfg[0]);
-	value = value|size; // 1k data len
-	writel(value, &regs->spi_cfg[0]);
+	writel(row, &regs->spi_page_addr);
 
-	if ((addr & 0x40) && (((info->id & 0xFF) == 0xC2)||((info->id & 0xFF) == 0x2C)))		
-		value = 0x1000;
-	else
-		value = 0x0;
-	
+	value = 0;
+	if ((plane_sel_mode & 0x1) != 0) {
+		u32 pagemark = (plane_sel_mode>>2)&0xfff;
+		u32 colmark = (plane_sel_mode>>16)&0xffff;
+		value |= ((row & pagemark) != 0) ? colmark : 0;
+		page_size += ((row & pagemark) != 0) ? colmark : 0;
+	}
 	writel(value, &regs->spi_col_addr);
 
-	value = (0x40<<4)|(0x1);
+	value = SPINAND_SPARE_SIZE(info->oob_size)
+		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
 	writel(value, &regs->spi_page_size);
 
-	writel((uint32_t)pbuf, &regs->mem_data_addr);
+	writel((u32)buf, &regs->mem_data_addr);
+	writel((u32)buf+info->page_size, &regs->mem_parity_addr);
 
-	//config ctrl info	
-	//set auto cfg
-	value = 0x5;
-	writel(value, &regs->spi_intr_msk);
-	value = 0x7;
-	writel(value, &regs->spi_intr_sts);
-	
-	value = (0x6b<<24)|(1<<20)|(1<18)|(1<<17);
+	value = SPINAND_BCH_DATA_LEN(info->parity_sector_size)
+		| SPINAND_BCH_BLOCKS(info->nand.ecc.steps - 1)
+		| SPINAND_BCH_AUTO_EN;
+	value |= (info->parity_sector_size & 31) ?
+			SPINAND_BCH_ALIGN_16B : SPINAND_BCH_ALIGN_32B;
+	value |= (info->nand.ecc.size == 1024) ?
+			SPINAND_BCH_1K_MODE : SPINAND_BCH_512B_MODE;
+
+	writel(value, &regs->spi_bch);
+
+	value = SPINAND_USR_PRGMLOAD_CMD(cmd)
+		| SPINAND_USR_PRGMLOAD_EN
+		| SPINAND_AUTOWEL_BF_PRGMLOAD;
 	writel(value, &regs->spi_auto_cfg);
 
-	/* porting  dma ready */
-	//while((readl(&regs->spi_intr_sts) & 0x2) == 0x0);
+	sp_autobch_config(info->mtd, buf, buf+info->page_size, 1);
 
-	return ;
-}
-#endif 
+	ret = spi_nand_trigger_and_wait_dma(info);
 
-static void spi_nanddma_pageprogram_prep(struct sp_spinand_info *info, uint32_t addr, unsigned int size, uint32_t *pbuf)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;	
-	int retry = 0;
-	
-	/* polling DMA_OWNER == 0 */
-	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
-		retry++;
-	}
-	
-	if (retry >= 100) {
-		printk("sp_spinand: dma busy timeout \n");
-		info->err |= SPI_NAND_WRITE_FAIL;
-		return ;
-	}
+	if(!ret)
+		ret = sp_autobch_result(info->mtd);
 
-	value = (1<<24)|(2<<16)|(1<<7)|(1<<2)|(2);
-	writel(value, &regs->spi_ctrl);
+	writel(0, &regs->spi_bch);
 
-	writel(addr, &regs->spi_page_addr);
-
-	// config device info
-	//set cfg[1]= cmd 1 bit addr 1 bit data 1 bit	
-	value = 0x150095;
-	writel(value, &regs->spi_cfg[1]);
-	writel(value, &regs->spi_cfg[2]);
-	//read 2k data
-	value = readl(&regs->spi_cfg[0]);
-	value |= size; 
-	writel(value, &regs->spi_cfg[0]);
-	
-	// col addr set
-	if ((addr & 0x40) && (((info->id & 0xFF) == 0xC2)||((info->id & 0xFF) == 0x2C)))		
-		value = 0x1000;
-	else
-		value = 0x0;
-	writel(value, &regs->spi_col_addr);
-
-	//set nand page size
-	value = (0x0<<15)|(0x40<<4)|(0x1); 
-	writel(value, &regs->spi_page_size);
-
-	//page size 2K
-	writel((uint32_t)pbuf, &regs->mem_data_addr);
-
-	//config ctrl info	
-	//set auto cfg 	
-	value = 0x5;	
-	writel((uint32_t)value, &regs->spi_intr_msk);
-	value = 0x7;	
-	writel((uint32_t)value, &regs->spi_intr_sts);
-
-	value = (1<18)|(0x02<<8)|(1);
-	writel(value, &regs->spi_auto_cfg);
-
-	//polling dma operation done bit	
-	//while((readl(&regs->spi_intr_sts) & 0x2) == 0x0);
-
-	return;
+	return ret;
 }
 
-#if 0
-static void spi_nanddma_pageprogram(struct sp_spinand_info *info, uint32_t addr, unsigned int size, uint32_t *pbuf)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int value = 0;	
-	int retry;
-	
-	/* polling DMA_OWNER == 0 */
-	while ((readl(&regs->spi_auto_cfg) & SPI_NAND_DMA_OWNER) && (retry < 100)) {
-		retry++;
-	}
-	
-	if (retry >= 100) {
-		printk("sp_spinand: dma busy timeout \n");
-		info->err |= SPI_NAND_WRITE_FAIL;
-		return ;
-	}
-
-	value = (1<<24)|(7<<16)|(1<<7)|(1<<2)|(2);
-	writel(value, &regs->spi_ctrl);
-
-	writel(addr, &regs->spi_page_addr);
-
-	// config device info
-	//set cfg[1]= cmd 1 bit addr 1 bit data 1 bit	
-	value = 0x150095;
-	writel(value, &regs->spi_cfg[1]);
-
-	//read 2k data
-	value = readl(&regs->spi_cfg[0]);
-	value |= size; 
-	writel(value, &regs->spi_cfg[0]);
-	
-	// col addr set
-	if ((addr & 0x40) && (((info->id & 0xFF) == 0xC2)||((info->id & 0xFF) == 0x2C)))		
-		value = 0x1000;
-	else
-		value = 0x0;
-	writel(value, &regs->spi_col_addr);
-
-	//set nand page size
-	value = (0x0<<15)|(0x40<<4)|(0x1); 
-	writel(value, &regs->spi_page_size);
-
-	//page size 2K
-	writel((uint32_t)pbuf, &regs->mem_data_addr);
-
-	//config ctrl info	
-	//set auto cfg 	
-	value = 0x5;	
-	writel((uint32_t)value, &regs->spi_intr_msk);
-	value = 0x7;	
-	writel((uint32_t)value, &regs->spi_intr_sts);
-
-	value = (1<18)|(1<<17)|(0x02<<8)|(1);
-	writel(value, &regs->spi_auto_cfg);
-
-	//polling dma operation done bit	
-	//while((readl(&regs->spi_intr_sts) & 0x2) == 0x0);
-
-	return;
-}
-#endif
-
-static irqreturn_t sp_nand_irq(int irq, void *dev)
+static irqreturn_t spi_nand_irq(int irq, void *dev)
 {
 	struct sp_spinand_info *info = dev;
-	struct sp_spinand_regs *regs = info->regs;
-	uint32_t st;
-	unsigned long timeout;
+	volatile struct sp_spinand_regs *regs = info->regs;
+	u32 value;
 
-	timeout = jiffies + msecs_to_jiffies(1);
-
-	/* clear intrrupt flag */	
-	st = readl(&regs->spi_intr_sts);
-	writel(st, &regs->spi_intr_sts);
+	/* clear intrrupt flag */
+	value = readl(&regs->spi_intr_sts);
+	writel(value, &regs->spi_intr_sts);
 
 	info->busy = 0;
 	wake_up(&info->wq);
 
-	if (time_after(jiffies, timeout))
-	{
-		printk(KERN_ERR "more 1ms");
-	}
-
 	return IRQ_HANDLED;
 }
 
-
-
-static int sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip, const uint8_t * buf, int oob_required, int page)
+static int sp_spinand_read_raw(struct sp_spinand_info *info,
+				u32 row, u32 col, u32 size)
 {
-	struct sp_spinand_info *info = container_of(chip, struct sp_spinand_info, nand);
-	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
+	int ret = -1;
+	u8 io = info->read_bitmode;
+	u8 trsmode = info->raw_trs_mode;
+	//u8 *va = info->buff.virt + info->buff.idx;
+	u8 *pa = (u8*)info->buff.phys + info->buff.idx;
 
-	down(&info->spnand_sem);
-	chip->write_buf(mtd, buf, mtd->writesize);
-	chip->write_buf(mtd, chip->oob_poi, mtd->oobsize);
-
-	sp_bch_encode(mtd, info->buff.phys, info->buff.phys + mtd->writesize);
-
-	up(&info->spnand_sem);
-	return 0;
-}
-
-static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip, uint8_t * buf, int oob_required, int page)
-{
-	struct sp_spinand_info *info = container_of(chip, struct sp_spinand_info, nand);
-	int ret = 0;
-
-	down(&info->spnand_sem);
-
-	ret = sp_spinand_wait(info);
-	if (ret) {
-		printk("sp_spinand: descriptor timeout, cmd=0x%x\n", info->cmd);
-		sp_spinand_reset(info);
-		goto exit_pp;
+	if (trsmode == SPINAND_TRS_DMA) {
+		ret = spi_nand_read_by_dma(info, io, row, col, pa, size);
+	} else if (trsmode == SPINAND_TRS_PIO_AUTO) {
+		//ret = spi_nand_read_by_pio_auto(info, io, row, col, va, size);
+	} else if (trsmode == SPINAND_TRS_PIO) {
+		//ret = spi_nand_read_by_pio(info, io, row, col, va, size);
 	}
-	
-	if ((info->cmd == NAND_CMD_READ0)||(info->cmd == NAND_CMD_READOOB)) {
-		/*check spi nand control busy/ready status */
-		if (info->err&SPI_NAND_READ_FAIL) {
-			info->err&=~SPI_NAND_READ_FAIL;
-			goto exit_pp;
-		}
-	}
-
-	ret = sp_bch_decode(mtd, info->buff.phys, info->buff.phys + mtd->writesize);
-	if (ret) {
-		printk("sp_spinand: bch decode failed at page=%d\n", page);
-		goto exit_pp;
-	}
-
-	chip->read_buf(mtd, buf, mtd->writesize);
-
-	if (page < 0)
-		up(&info->spnand_sem);
-	else {
-		chip->read_buf(mtd, chip->oob_poi, mtd->oobsize);
-		up(&info->spnand_sem);
-	}
-	return ret;
-
-exit_pp:
-	ret = -1;
-	up(&info->spnand_sem);
 	return ret;
 }
 
-static void sp_spinand_write_buf(struct mtd_info *mtd, const u_char * buf, int len)
+static int sp_spinand_write_raw(struct sp_spinand_info *info,
+				u32 row, u32 col, u32 size)
 {
-//	dma_addr_t src, dst;
-	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
-#if 0 //sunplus
-	if (virt_addr_valid(buf) || virt_addr_valid(buf + len - 1)) {
-		printk("buf addr valid \n");
-		return;
+	int ret = -1;
+	u8 io = info->write_bitmode;
+	u8 trsmode = info->raw_trs_mode;
+	//u8 *va = info->buff.virt + info->buff.idx;
+	u8 *pa = (u8*)info->buff.phys + info->buff.idx;
+
+	if (trsmode == SPINAND_TRS_DMA) {
+		ret = spi_nand_write_by_dma(info, io, row, col, pa, size);
+	} else if (trsmode == SPINAND_TRS_PIO_AUTO) {
+		//ret = spi_nand_write_by_pio_auto(info, io, row, col, va, size);
+	} else if (trsmode == SPINAND_TRS_PIO) {
+		//ret = spi_nand_write_by_pio(info, io, row, col, va, size);
 	}
-#endif
-	memcpy(info->buff.virt + info->buff.idx, buf, len);
-
-	info->buff.idx += len;
-}
-
-static void sp_spinand_read_buf(struct mtd_info *mtd, u_char * buf, int len)
-{
-//	dma_addr_t src, dst;
-
-	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
-#if 0 //sunplus
-	if (virt_addr_valid(buf) || virt_addr_valid(buf + len - 1)) {
-		printk("buf addr valid \n");
-		return;
-	}
-#endif
-	memcpy(buf, info->buff.virt + info->buff.idx, len);
-
-	info->buff.idx += len;
-}
-
-static uint8_t sp_spinand_read_byte(struct mtd_info *mtd)
-{
-	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
-	uint8_t ret = 0;
-
-	switch (info->cmd) {
-		case NAND_CMD_STATUS:
-			ret = readb(info->buff.virt);
-			break;
-
-		default:
-			if (info->buff.idx < info->buff.size) {
-				ret = readb(info->buff.virt + info->buff.idx);
-				info->buff.idx += 1;
-			}
-			break;
-	}
-
 	return ret;
-}
-
-/*
- * Check hardware register for wait status. Returns 1 if device is ready,
- * 0 if it is still busy.
- */
-static int sp_spinand_dev_ready(struct mtd_info *mtd)
-{
-	return 1;
-}
-
-static void sp_spinand_desc_prep(struct sp_spinand_info *info, uint8_t cmd, int col, int row)
-{
-	mutex_lock(&info->lock);
-	switch (cmd) {
-		case NAND_CMD_READOOB:	/* 0x50 */
-			col += info->mtd->writesize;
-		/* fall through */
-
-		case NAND_CMD_READ0:	/* 0x00 */
-			//info->cmd = SPINAND_CMD_PAGE2CACHE;
-			info->buff.idx = col;
-			info->row = row;
-			//spi_nanddma_pageread(info, row, ((info->mtd.writesize) + (info->mtd.oobsize)), (unsigned int *)info->buff.phys);	
-			spi_nanddma_pageread_prep(info, row, ((info->mtd->writesize) + (info->mtd->oobsize)), (unsigned int *)info->buff.phys);
-			break;
-
-		case NAND_CMD_SEQIN:	/* 0x80 */
-			//info->cmd = SPINAND_CMD_PROLOADx4;
-			info->buff.idx = col;
-//			spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
-//			spi_nand_wren(info);
-			info->row = row;
-			spi_nanddma_pageprogram_prep(info,row,((info->mtd->writesize) + (info->mtd->oobsize)),(unsigned int *)info->buff.phys);
-			break;
-
-		case NAND_CMD_ERASE1:	/* 0x60 */
-			//info->cmd = SPINAND_CMD_BLKERASE;
-//			spi_nand_wren(info);	/* for MXIC,ESMT */
-			spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
-//			spi_nand_wren(info);
-			if (spi_nand_blkerase(info, row)) {
-				pr_err("block erase fail! \n");
-				info->err |= SPI_NAND_ERASE_FAIL;
-			}
-			break;
-
-		case NAND_CMD_STATUS:	/* 0x70 */
-			//info->cmd = SPINAND_CMD_GETFEATURES;
-			info->buff.idx = 0;
-
-			/*get protection info*/
-			if (spi_nand_getfeatures(info, DEVICE_PROTECTION_ADDR) & PROTECT_STATUS) {
-				*(unsigned int *)info->buff.virt = 0x0;	/* protected */
-			} else {
-				/* not protectd. comply w/ raw NAND */
-				*(unsigned int *)info->buff.virt = 0x80;
-			}
-
-			/*get erase & program status*/
-			if (spi_nand_getfeatures(info, DEVICE_STATUS_ADDR) & (PROGRAM_STATUS|ERASE_STATUS)) {
-				*(unsigned int *)info->buff.virt |= 0x01;	/*return status is fail */
-			}
-			break;
-
-		case NAND_CMD_READID:	/* 0x90 */
-		case NAND_CMD_PARAM:	/* 0xEC */
-		case NAND_CMD_GET_FEATURES:	/* 0xEE */
-		case NAND_CMD_SET_FEATURES:	/* 0xEF */
-		case NAND_CMD_RESET:	/* 0xFF */
-			break;
-		default:
-			//BUG();
-			break;
-	}
-
-}
-EXPORT_SYMBOL(sp_spinand_desc_prep);
-
-static int sp_spinand_desc_send(struct sp_spinand_info *info)
-{
-	struct sp_spinand_regs *regs = info->regs;
-	int ret = 0;
-	int retry = 0;	
-	
-	/*clear status.  start dma. check flag */ 
-	if ( (info->cmd == NAND_CMD_READ0) || (info->cmd == NAND_CMD_READOOB) || (info->cmd == NAND_CMD_PAGEPROG)) {
-		info->busy = 1;
-		spi_nanddma_run(info);
-		ret = sp_spinand_wait(info);
-		if (ret) {
-			printk("sp_spinand: descriptor timeout, cmd=0x%x\n", info->cmd);
-			sp_spinand_reset(info);
-			/* set err flag */
-			ret = 0x01;
-			return ret;
-		}	
-	}
-
-	do {
-		retry++;
-	} while((readl(&regs->spi_ctrl) & SPI_DEVICE_IDLE) && (retry < 10000));
-
-	if (retry >= 10000) {
-		ret = 0x01;
-	}
-
-	mutex_unlock(&info->lock);
-	if (ret) {
-		pr_info("sp_spinand: timeout, cmd=0x%x\n", info->cmd);
-		sp_spinand_reset(info);
-	}
-
-	return ret;
-}
-
-static void sp_spinand_cmdfunc(struct mtd_info *mtd, unsigned cmd, int col, int row)
-{
-	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
-	int ret = 0;
-
-	if (cmd == NAND_CMD_STATUS) {
-		if (info->cmd == SPINAND_CMD_PROEXECUTE) {
-			/*check spi nand control busy/ready  status */
-			if (info->err&SPI_NAND_WRITE_FAIL) {
-				info->err &= ~SPI_NAND_WRITE_FAIL;
-				*(unsigned int *)info->buff.virt = 0x1;
-				return;
-			}
-		}
-
-		if ((info->cmd == SPINAND_CMD_BLKERASE)||(info->cmd == NAND_CMD_ERASE2)) {
-			/*check spi nand control busy/ready  status */
-			if (info->err&SPI_NAND_ERASE_FAIL) {
-				info->err &= ~SPI_NAND_ERASE_FAIL;
-				*(unsigned int *)info->buff.virt = 0x1;
-				return;
-			}
-		}
-	}
-
-	info->cmd = cmd;
-
-	switch (cmd) {
-		case NAND_CMD_READ0:	/* 0x00 */
-			sp_spinand_desc_prep(info, cmd, col, row);
-			ret=sp_spinand_desc_send(info);
-			if (ret&0x1) {
-				info->err |= SPI_NAND_READ_FAIL;
-				break;
-			}
-
-			if (readb(info->buff.virt + mtd->writesize + 1) == 0xFF)
-				break;
-
-		case NAND_CMD_READOOB:	/* 0x50 */
-			sp_spinand_desc_prep(info, cmd, col, row);
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				info->err |= SPI_NAND_READ_FAIL;
-			break;
-
-		case NAND_CMD_SEQIN:	/* 0x80 */
-			sp_spinand_desc_prep(info, cmd, col, row);
-			break;
-
-		case NAND_CMD_PAGEPROG:	/* 0x10 */
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				info->err |= SPI_NAND_WRITE_FAIL;
-			break;
-
-		case NAND_CMD_ERASE1:	/* 0x60 */
-			sp_spinand_desc_prep(info, cmd, col, row);
-			break;
-
-		case NAND_CMD_ERASE2:	/* 0xD0 */
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				info->err |= SPI_NAND_ERASE_FAIL;
-			break;
-
-		case NAND_CMD_STATUS:	/* 0x70 */
-			sp_spinand_desc_prep(info, cmd, -1, -1);
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				pr_err("get status fail\n");
-			break;
-
-		case NAND_CMD_RESET:	/* 0xFF */
-			ret=sp_spinand_reset(info);
-			if (ret & 0x1)
-				pr_err("reset nand fail\n");
-			mdelay(5);
-			break;
-
-		case NAND_CMD_READID:	/* 0x90 */
-			info->buff.idx = 0;
-			spi_nand_readid(info, 0, info->buff.virt);
-			break;
-
-		case NAND_CMD_PARAM:	/* 0xEC */
-		case NAND_CMD_GET_FEATURES:	/* 0xEE */
-			sp_spinand_desc_prep(info, cmd, col, -1);
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				pr_err("get feature fail!\n");
-			/* mdelay(5); */
-			break;
-
-		case NAND_CMD_SET_FEATURES:	/* 0xEF */
-			sp_spinand_desc_prep(info, cmd, col, -1);
-			ret=sp_spinand_desc_send(info);
-			if(ret&0x1)
-				pr_err("set feature fail!\n");
-			/* mdelay(5); */
-			break;
-
-		default:
-			break;
-	}
 }
 
 /*
  * nand_select_chip - control CE line
- * @mtd:	MTD device structure
- * @chipnr:	chipnumber to select, -1 for deselect
+ * @mtd:    MTD device structure
+ * @chipnr: chipnumber to select, -1 for deselect
  */
 static void sp_spinand_select_chip(struct mtd_info *mtd, int chipnr)
 {
-	struct sp_spinand_info *info = container_of(mtd->priv, struct sp_spinand_info, nand);
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	info->cs = chipnr;
+}
 
-	switch (chipnr) {
-		case -1:
-		case 0:
-		case 1:
-		case 2:
-		case 3:
-			info->cs = chipnr;
+static void sp_spinand_cmd_ctrl(struct mtd_info *mtd, int cmd, u32 ctrl)
+{
+	return;
+}
+
+static void sp_spinand_cmdfunc(struct mtd_info *mtd, u32 cmd, int col, int row)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+
+	info->cmd = cmd;
+	switch (cmd) {
+	case NAND_CMD_READOOB:
+		info->buff.idx = 0;
+		info->col = col + info->mtd->writesize;
+		info->row = row;
+		break;
+	case NAND_CMD_READ0:
+		info->buff.idx = 0;
+		info->col = col;
+		info->row = row;
+		break;
+	case NAND_CMD_SEQIN:
+		info->buff.idx = 0;
+		info->col = col;
+		info->row = row;
+		break;
+	case NAND_CMD_PAGEPROG:
+		if(info->buff.idx) {
+			u32 size = info->buff.idx;
+			info->buff.idx = 0;
+			sp_spinand_write_raw(info, info->row, info->col, size);
+		}
+		break;
+	case NAND_CMD_ERASE1:
+		row &= ~(info->mtd->erasesize / info->mtd->writesize - 1);
+		spi_nand_blkerase(info, row);
+		break;
+	case NAND_CMD_ERASE2:
+		break;
+	case NAND_CMD_STATUS:
+		info->buff.idx = 0;
+		break;
+	case NAND_CMD_RESET:
+		spi_nand_reset(info);
+		break;
+	case NAND_CMD_READID:
+		info->buff.idx = 0;
+		info->col = col;
+		break;
+	case NAND_CMD_PARAM:
+	case NAND_CMD_GET_FEATURES:
+	case NAND_CMD_SET_FEATURES:
+		/* these cmds are p-nand related, ignore them */
+		break;
+	default:
+		pr_warn("unknown command=0x%02x.\n", cmd);
+		break;
+	}
+}
+
+static int sp_spinand_dev_ready(struct mtd_info *mtd)
+{
+	//struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	//return ((spi_nand_getfeatures(info, DEVICE_STATUS_ADDR) & 0x01) == 0);
+	return 1;
+}
+
+static int sp_spinand_waitfunc(struct mtd_info *mtd, struct nand_chip *chip)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	unsigned long timeout = jiffies + msecs_to_jiffies(10);
+	int status;
+	int ret;
+
+	do {
+		status = spi_nand_getfeatures(info, DEVICE_STATUS_ADDR);
+		if ((status & 0x01) == 0)
 			break;
+		cond_resched();
+	} while (time_before(jiffies, timeout));
 
+	/* program/erase fail bit */
+	if (info->cmd == NAND_CMD_PAGEPROG && (status&0x08))
+		ret = 1;
+	else if ((info->cmd == NAND_CMD_ERASE2) && (status&0x04))
+		ret = 1;
+	else
+		ret = (status & 0x0c) ? 0x01 : 0x00;
+
+	/* ready bit */
+	ret |= (status & 0x01) ? 0x00 : 0x40;
+
+	/* write protection bit */
+	ret |= (info->dev_protection & PROTECT_STATUS) ? 0x00 : 0x80;
+
+	return ret;
+}
+
+static void sp_spinand_read_buf(struct mtd_info *mtd, u8 *buf, int len)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	u32 value;
+	u32 size;
+
+	if (info->buff.idx == 0) {
+		switch (info->cmd) {
+		case NAND_CMD_READOOB:
+		case NAND_CMD_READ0: {
+			size = info->page_size + info->oob_size - info->col;
+			sp_spinand_read_raw(info, info->row, info->col, size);
+			break;
+		}
+		case NAND_CMD_READID:
+			spi_nand_readid(info, info->col, info->buff.virt);
+			break;
+		case NAND_CMD_STATUS:
+			value = spi_nand_getfeatures(info, DEVICE_STATUS_ADDR);
+			*(u32 *)info->buff.virt  = (value&0x0c) ? 0x01 : 0x00;
+			*(u32 *)info->buff.virt |= (value&0x01) ? 0x00 : 0x40;
+			if(!(info->dev_protection & PROTECT_STATUS))
+				*(u32 *)info->buff.virt |= 0X80;
+			memcpy(buf, info->buff.virt + info->buff.idx, len);
+			return;
 		default:
 			break;
-			BUG();
+		}
 	}
+
+	memcpy(buf, info->buff.virt + info->buff.idx, len);
+	info->buff.idx += len;
 }
 
-#define LP_OPTIONS  (0x00000004|0x00000008|0x00000010)
-#define NAND_LP(name, id, ext_id, pgsz, bksz, size) \
-		{ name, id, pgsz, size, bksz, LP_OPTIONS, ext_id }
+static u8 sp_spinand_read_byte(struct mtd_info *mtd)
+{
+	u8 ret = 0;
+	sp_spinand_read_buf(mtd, &ret, 1);
+	return ret;
+}
 
-struct nand_flash_dev spinand_flash_ids2[] = {
+static void sp_spinand_write_buf(struct mtd_info *mtd, const u8 *buf, int len)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+
+	memcpy(info->buff.virt + info->buff.idx, buf, len);
+	info->buff.idx += len;
+}
+
+static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
+				u8 *buf, int oob_required, int page)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	void *data_va = info->buff.virt;
+	void *oob_va = info->buff.virt + mtd->writesize;
+	dma_addr_t data_pa = info->buff.phys;
+	dma_addr_t oob_pa = info->buff.phys + mtd->writesize;
+	int ret;
+
+	if (info->trs_mode == SPINAND_TRS_DMA_AUTOBCH) {
+		ret = spi_nand_pageread_autobch(info,
+			info->read_bitmode, page, (u8*)data_pa);
+	} else {
+		ret = sp_spinand_read_raw(info,
+			info->row, 0, mtd->writesize+mtd->oobsize);
+		if(ret == 0)
+			ret = sp_bch_decode(mtd, data_pa, oob_pa);
+	}
+
+	if (ret < 0)
+		return ret;
+
+	memcpy(buf, data_va, mtd->writesize);
+	if (oob_required)
+		memcpy(chip->oob_poi, oob_va, mtd->oobsize);
+	return 0;
+}
+
+static int sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
+				 const u8 *buf, int oob_required, int page)
+{
+	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
+	u8 *data_va = info->buff.virt;
+	u8 *oob_va = info->buff.virt + mtd->writesize;
+	dma_addr_t data_pa = info->buff.phys;
+	dma_addr_t oob_pa = info->buff.phys + mtd->writesize;
+	int ret;
+
+	memcpy(data_va, buf, mtd->writesize);
+	memcpy(oob_va, chip->oob_poi, mtd->oobsize);
+	if (info->trs_mode == SPINAND_TRS_DMA_AUTOBCH) {
+		ret = spi_nand_pagewrite_autobch(info,
+			info->write_bitmode, page, (u8*)data_pa);
+	} else {
+		sp_bch_encode(mtd, data_pa, oob_pa);
+		ret = sp_spinand_write_raw(info,
+			info->row, 0, mtd->writesize+mtd->oobsize);
+	}
+	return ret;
+}
+
+
+#define NAND_ID(nm, mid, did, pgsz, oobsz, bksz, chipsz, drvopt)               \
+	{.name=(nm),{{.mfr_id=mid, .dev_id=did}}, .pagesize=pgsz,              \
+	.chipsize=chipsz, .erasesize=bksz, .options=0, .id_len=2,              \
+	.oobsize=oobsz, .drv_options=drvopt,}
+/*
+ * Chip ID list
+ *
+ * nm     - nand chip name.
+ * mid    - manufacture id.
+ * did    - device id.
+ * pgsz   - page size. (unit: byte)
+ * oobsz  - oob size. (unit: byte)
+ * bksz   - block/erase size. (unit: byte)
+ * chipsz - chip size. (unit: mega byte)
+ * drvopt - driver option. refer to SPINAND_OPT_*
+ */
+struct nand_flash_dev sp_spinand_ids[] = {
+	/*
+	NAND_ID(           name,  mid,  did,  pgsz,  oobsz, bksz,    chipsz, drvopt)
+	*/
+	NAND_ID("CS11G1-S0A0AA",  0xff, 0xff, SZ_2K, SZ_64, SZ_128K, SZ_128, 0),
+
 	/* Micron */
-	{.name="MT29F1G01ABADD",{.mfr_id=0x2c,.dev_id=0x14},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="MT29F2G01ABADD",{.mfr_id=0x2c,.dev_id=0x24},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("MT29F1G01ABADD", 0x2c, 0x14, SZ_2K, SZ_64, SZ_128K, SZ_128, 0),
+	NAND_ID("MT29F2G01ABADD", 0x2c, 0x24, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_TWO_PLANE),
+	NAND_ID("MT29F4G01ABAFD", 0x2c, 0x34, SZ_4K, SZ_256,SZ_256K, SZ_512, SPINAND_OPT_HAS_CONTI_RD),
+
 	/* MXIC */
-	{.name="MX35LF1GE4AB",{.mfr_id=0xc2,.dev_id=0x12},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="MX35LF2GE4AB",{.mfr_id=0xc2,.dev_id=0x22},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("MX35LF1GE4AB",   0xc2, 0x12, SZ_2K, SZ_64, SZ_128K, SZ_128, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("MX35LF2GE4AB",   0xc2, 0x22, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_QE_BIT|SPINAND_OPT_HAS_TWO_PLANE),
+
 	/* Etron */
-	{.name="EM73C044VCC-H",{.mfr_id=0xd5,.dev_id=0x22},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="EM73D044VCE-H",{.mfr_id=0xd5,.dev_id=0x20},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("EM73C044VCC-H",  0xd5, 0x22, SZ_2K, SZ_64, SZ_128K, SZ_128, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("EM73D044VCE-H",  0xd5, 0x20, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_QE_BIT),
+
 	/* Winbond */
-	{.name="25N01GVxx1G",{.mfr_id=0xef,.dev_id=0xaa},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="25N01GVxx2G",{.mfr_id=0xef,.dev_id=0xab},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("25N01GVxx1G",    0xef, 0xaa, SZ_2K, SZ_64, SZ_128K, SZ_128, SPINAND_OPT_HAS_BUF_BIT),
+	NAND_ID("25N01GVxx2G",    0xef, 0xab, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_BUF_BIT),
+
 	/* GiGA */
-	{.name="GD5F1GQ4UBYIG",{.mfr_id=0xc8,.dev_id=0xd1},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="GD5F2GQ4UBYIG",{.mfr_id=0xc8,.dev_id=0xd2},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("GD5F1GQ4UBYIG",  0xc8, 0xd1, SZ_2K, SZ_64, SZ_128K, SZ_128, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("GD5F2GQ4UBYIG",  0xc8, 0xd2, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("GD5F4GQ4UBYIG",  0xc8, 0xd2, SZ_4K, SZ_256,SZ_256K, SZ_512, SPINAND_OPT_HAS_QE_BIT),
+
 	/* ESMT */
-	{.name="F50L1G41LB",{.mfr_id=0xc8,.dev_id=0x01},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
-	{.name="F50L2G41LB",{.mfr_id=0xc8,.dev_id=0x0a},.pagesize=SZ_2K,.chipsize=SZ_2K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},
+	NAND_ID("F50L1G41LB",     0xc8, 0x01, SZ_2K, SZ_64, SZ_128K, SZ_128, 0),
+	NAND_ID("F50L2G41LB",     0xc8, 0x0a, SZ_2K, SZ_64, SZ_128K, SZ_256, 0),
+
 	/* ISSI */
-	{.name="IS38SML01G1-LLA1",{.mfr_id=0xc8,.dev_id=0x21},.pagesize=SZ_2K,.chipsize=SZ_1K, 
-	 .erasesize=SZ_128K, .options=LP_OPTIONS,.id_len=2,.oobsize=64},	
-	/*other */
-	{NULL} 
+	NAND_ID("IS38SML01G1-LLA1",0xc8,0x21, SZ_2K, SZ_64, SZ_128K, SZ_128, 0),
+
+	/*phison*/
+	NAND_ID("CS11G0-S0A0AA",  0x6b, 0x20, SZ_2K, SZ_64, SZ_128K, SZ_128, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("CS11G1-S0A0AA",  0x6b, 0x21, SZ_2K, SZ_64, SZ_128K, SZ_256, SPINAND_OPT_HAS_QE_BIT),
+	NAND_ID("CS11G2-S0A0AA",  0x6b, 0x22, SZ_2K, SZ_64, SZ_128K, SZ_512, SPINAND_OPT_HAS_QE_BIT),
+
+	/*Toshiba*/
+	NAND_ID("TC58CVG0S3H",    0x98, 0xc2, SZ_2K, SZ_128,SZ_128K, SZ_128, SPINAND_OPT_NO_4BIT_PROGRAM),
+	NAND_ID("TC58CVG1S3H",    0x98, 0xcb, SZ_2K, SZ_128,SZ_128K, SZ_256, SPINAND_OPT_NO_4BIT_PROGRAM),
+	NAND_ID("TC58CVG1S3H",    0x98, 0xcd, SZ_4K, SZ_128,SZ_256K, SZ_512, SPINAND_OPT_NO_4BIT_PROGRAM),
+
+	{NULL},
 };
-static int sp_spinand_loadids(struct sp_spinand_info *info, const char *fn)
-{
-	int num, num_spinand_flash_ids;
-	struct nand_flash_dev *ptr;
-
-	num_spinand_flash_ids = 0;
-	for (ptr = nand_flash_ids; ptr->name; ptr++) {
-		num_spinand_flash_ids++;
-	}
-
-	num = ARRAY_SIZE(spinand_flash_ids2) + num_spinand_flash_ids;
-
-	info->ids = kzalloc(num * sizeof(struct nand_flash_dev), GFP_KERNEL);
-	if (!info->ids) {
-		printk("sp_spinand: out of memory\n");
-		info->ids = nand_flash_ids;
-		printk("sp_spinand: %s\n", __func__);
-		printk("\nsp_spinand: %s:%d\t%s return -ENOMEM", __FILE__, __LINE__, __FUNCTION__);
-		return -ENOMEM;
-	}
-
-	memcpy(info->ids, spinand_flash_ids2, sizeof(spinand_flash_ids2));
-
-	memcpy(&(info->ids[ARRAY_SIZE(spinand_flash_ids2)]), nand_flash_ids,
-	       num_spinand_flash_ids * sizeof(struct nand_flash_dev));
-
-	return 0;
-}
-
-static int sp_spinand_fixup(struct sp_spinand_info *info)
-{
-	info->cac = 2;
-	return 0;
-}
 
 static int sunplus_parse_cfg_partitions(struct mtd_info *master,
 					const struct mtd_partition **pparts,
 					struct mtd_part_parser_data *data)
 {
 	int ret = 0;
-	struct mtd_partition *sunplus_parts;	
-	printk("[%s]%d: \n",__FUNCTION__,__LINE__);
+	struct mtd_partition *sunplus_parts;
 
 	sunplus_parts = kzalloc(sizeof(*sunplus_parts) * 2, GFP_KERNEL);
 	if (!sunplus_parts)
 		return -ENOMEM;
 	sunplus_parts[0].name = "Linux";
 	sunplus_parts[0].offset = 0;
-	sunplus_parts[0].size = master->erasesize*4096;
+	sunplus_parts[0].size = master->size>>1;
 	sunplus_parts[0].mask_flags = MTD_NO_ERASE;
 
 	sunplus_parts[1].name = "User";
-	sunplus_parts[1].offset = master->erasesize*4096;
-	sunplus_parts[1].size = master->erasesize*4096;
+	sunplus_parts[1].offset = sunplus_parts[0].offset+sunplus_parts[0].size;
+	sunplus_parts[1].size = master->size>>1;
 	sunplus_parts[1].mask_flags = MTD_WRITEABLE;
 
 	*pparts = sunplus_parts;
@@ -966,190 +1046,274 @@ static struct mtd_part_parser sunplus_nand_parser = {
 static int sp_spinand_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	unsigned int id;
-	struct device_node *np = pdev->dev.of_node;
+	u32 value;
+	u32 id;
 	struct device *dev = &pdev->dev;
-	struct resource *res;
+	struct resource *res_mem;
+	struct resource *res_irq;
 	struct sp_spinand_info *info;
-
 	const char *part_types[] = {
-		//"cmdlinepart",
+	#ifdef CONFIG_MTD_CMDLINE_PARTS
+		"cmdlinepart",
+	#else
 		"sunplus_part",
-		NULL
+	#endif
+		NULL,
 	};
 
-	info = devm_kzalloc(dev, sizeof(*info), GFP_KERNEL);
-	if (!info)
-		return -ENOMEM;
+	pr_info("%s in\n", __FUNCTION__);
 
-	info->dev = dev;	
-	
-	/* init sema */
-	sema_init(&info->spnand_sem, 1);
-	
-	/* init mutex */
-	mutex_init(&info->lock);
-	
-	/* get module reg addr */	
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);	
-	if (!res) {
-		devm_kfree(dev, (void *)info);
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
-		return -ENXIO;
-	}	
-	
-	info->regs = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(info->regs))
-	{
-		devm_kfree(dev, (void *)info);
-		return PTR_ERR(info->regs);	
+	info = devm_kzalloc(dev, sizeof(*info), GFP_KERNEL);
+	if (!info) {
+		pr_err("all memory(size=0x%x) fail", sizeof(*info));
+		return -ENOMEM;
 	}
-	
-	/* get irp */
-	info->irq = platform_get_irq(pdev, 0);
+
 	init_waitqueue_head(&info->wq);
-	if (info->irq <= 0) {
-		devm_kfree(dev, (void *)info);
-		printk("get spi nand irq resource fail\n");
-		return -EINVAL;
-	}else {
-		ret = request_irq(info->irq, sp_nand_irq, IRQF_SHARED, "sp_spinand", info);
-		if (ret) {
-			printk("sp_spinand: unable to register IRQ(%d) \n", info->irq);
-		}
-	}
-	
 	platform_set_drvdata(pdev, info);
-	
-	info->hdr = dev->platform_data;
-	info->mtd = &info->nand.mtd;
-	info->mtd->priv = &info->nand;
-	info->mtd->name = dev_name(info->dev);
-	info->mtd->owner = THIS_MODULE;
-	
-	
-	if (sp_spinand_reset(info) < 0) {
+
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res_mem) {
+		pr_err("get memory resource fail!\n");
 		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
-	}	
-	
-	info->buff.size = CFG_BUFF_MAX;
-	info->buff.phys = CONFIG_MTD_SP_NAND_SRAM_BASE;
+	}
+
+	info->regs = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR(info->regs)) {
+		pr_err("memory remap fail!\n");
+		ret = PTR_ERR(info->regs);
+		goto err1;
+	}
+
+	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
+	if (res_irq <= 0) {
+		pr_err("get irq resource fail\n");
+		ret = -ENXIO;
+		goto err1;
+	}
+
+	ret = request_irq(res_irq->start, spi_nand_irq,
+				IRQF_SHARED, "sp_spinand", info);
+	if (ret) {
+		pr_err("request IRQ(%d) fail\n", res_irq->start);
+		goto err1;
+	}
+
+	info->irq = res_irq->start;
+	info->dev = dev;
+	info->mtd = &info->nand.mtd;
+	info->mtd->priv = info;
+	info->mtd->name = dev_name(dev);
+	info->mtd->owner = THIS_MODULE;
+
+	info->buff.size = CONFIG_SPINAND_BUF_SZ;
+	#ifdef CONFIG_SPINAND_USE_SRAM
+	info->buff.phys = (dma_addr_t)CONFIG_SPINAND_SRAM_ADDR;
 	info->buff.virt = ioremap(info->buff.phys, info->buff.size);
+	#else
+	info->buff.virt = dma_alloc_coherent(dev, info->buff.size,
+		&info->buff.phys, GFP_KERNEL);
+	#endif
+
 	if (!info->buff.virt) {
+		pr_err("alloc memory(size=0x%x) fail\n",info->buff.size);
 		ret = -ENOMEM;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
-	}	
-	
-	printk("sp_spinand: buff=0x%p@0x%08x size=%u\n",
-	       info->buff.virt, info->buff.phys, info->buff.size);	
-	
-	nand_set_flash_node(&info->nand, np);
-	
+	}
+
+	if (spi_nand_reset(info) < 0) {
+		pr_err("reset device fail\n");
+		ret = -ENXIO;
+		goto err1;
+	}
+
+	nand_set_flash_node(&info->nand, dev->of_node);
+	info->nand.options = NAND_NO_SUBPAGE_WRITE;
 	info->nand.select_chip = sp_spinand_select_chip;
-	//info->nand.cmd_ctrl = sp_spinand_cmd_ctrl;
+	info->nand.cmd_ctrl = sp_spinand_cmd_ctrl;
 	info->nand.cmdfunc = sp_spinand_cmdfunc;
 	info->nand.dev_ready = sp_spinand_dev_ready;
+	info->nand.waitfunc = sp_spinand_waitfunc;
 	info->nand.chip_delay = 0;
-
 	info->nand.read_byte = sp_spinand_read_byte;
 	info->nand.read_buf = sp_spinand_read_buf;
 	info->nand.write_buf = sp_spinand_write_buf;
-	//info->nand.verify_buf = sp_spinand_verify_buf;
-
 	info->nand.ecc.read_page = sp_spinand_read_page;
 	info->nand.ecc.write_page = sp_spinand_write_page;
-	info->nand.ecc.strength = 4;
-	info->nand.ecc.size = 512;
 	info->nand.ecc.mode = NAND_ECC_HW;
 	info->nand.bbt_options = NAND_BBT_USE_FLASH|NAND_BBT_NO_OOB;
 
-	/* Read ID */
-	spi_nand_readid(info, 0, &id);	
-	
-	if ((id & 0xFF) == WB_ID) {
-		info->id = (id & 0xff);
-		/* disable ecc , enable BUF mode */
-		spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, WB_BUF1_DIS_ECC);
-	} else if(((id & 0xFF) == GD_ID)||((id & 0xFF) == MXIC_ID)||((id & 0xFFFF) == ESMT1G_ID)) {
-		info->id = (id & 0xff);
-		/* disable ecc , enable QE mode */
-		spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, QUADIO_DIS_ECC);		
-	} else {
-		info->id = (id & 0xff);
-		/* disable ecc */
-		spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, 0);			
-	}
-	
-	spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
-	
-	ret = sp_spinand_loadids(info, "name");	
-	if (ret < 0) {
-		goto err1;
-	}
-	
-	if (nand_scan_ident(info->mtd, 1, info->ids)) {
+	spi_nand_readid(info, 0, (u8*)&id);
+
+	if (nand_scan_ident(info->mtd, 1, sp_spinand_ids)) {
+		pr_err("unsupport spinand,(device id:0x%08x)\n", id);
 		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
 	}
 
-	if (sp_spinand_fixup(info) < 0) {
-		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
+	if (info->nand.drv_options & SPINAND_OPT_HAS_TWO_PLANE) {
+		info->plane_sel_mode = (0x1000<<16) | (0x40<<2) | 3;
+	} else {
+		info->plane_sel_mode = 0;
+	}
+
+	info->page_size = info->mtd->writesize;
+	info->oob_size = info->mtd->oobsize;
+	if(info->page_size+info->oob_size > info->buff.size) {
+		pr_err("device page size is larger than buffer!\n");
 		goto err1;
 	}
+
+	info->spi_clk_div = 1;
+	info->trs_mode = CONFIG_DEFAULT_TRSMODE;
+	info->raw_trs_mode = SPINAND_TRS_DMA;
+	info->read_bitmode = SPINAND_4BIT_MODE;
+	info->write_bitmode = SPINAND_4BIT_MODE;
+	if (info->nand.drv_options & SPINAND_OPT_NO_4BIT_PROGRAM)
+		info->write_bitmode = SPINAND_1BIT_MODE;
+
+	value = spi_nand_getfeatures(info, DEVICE_FEATURE_ADDR);
+	value &= ~0x10;          /* disable internal ECC */
+	if (info->nand.drv_options & SPINAND_OPT_HAS_BUF_BIT)
+		value |= 0x08;   /* use buffer read mode */
+	if (info->nand.drv_options & SPINAND_OPT_HAS_CONTI_RD)
+		value &= ~0x01;  /* disable continuous read mode */
+	if (info->nand.drv_options & SPINAND_OPT_HAS_QE_BIT)
+		value |= 0x01;   /* enable quad io */
+	spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, value);
+
+	/* close write protection */
+	spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
+	info->dev_protection=spi_nand_getfeatures(info, DEVICE_PROTECTION_ADDR);
 
 	if (sp_bch_dev_probe() < 0) {
 		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
+		pr_err("sp_bch_dev_probe fail\n");
 		goto err1;
 	}
 
-	if (sp_bch_init(info->mtd) < 0) {
+	if (sp_bch_init(info->mtd, &info->parity_sector_size) < 0) {
 		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
+		pr_err("sp_bch_init fail\n");
 		goto err1;
-	}	
+	}
 
 	if (nand_scan_tail(info->mtd)) {
+		pr_err("nand_scan_tail fail\n");
 		ret = -ENXIO;
-		printk("sp_spinand: %s:[%d]\n", __FILE__, __LINE__);
 		goto err1;
-	}	
+	}
 
 	register_mtd_parser(&sunplus_nand_parser);
-	ret = mtd_device_parse_register(info->mtd, part_types, NULL, NULL, 0);	
-	
+	ret = mtd_device_parse_register(info->mtd, part_types, NULL, NULL, 0);
+	if (ret) {
+		pr_err("mtd_device_parse_register fail!\n");
+		ret = -ENXIO;
+		goto err1;
+	}
+
+	pr_info("====Sunplus SPI-NAND Driver====\n\n");
+	pr_info("==spi nand driver info==\n");
+	pr_info("regs = 0x%p@0x%08x, size = %d\n",
+		info->regs, res_mem->start, res_mem->end-res_mem->start);
+	pr_info("buffer = 0x%p@0x%08x, size = %d\n",
+		info->buff.virt, info->buff.phys, info->buff.size);
+	pr_info("irq = %d\n", info->irq);
+	pr_info("==spi nand device info==\n");
+	pr_info("device name : %s\n", info->mtd->name);
+	pr_info("device id   : 0x%08x\n", id);
+	pr_info("options     : 0x%08x\n", info->nand.options);
+	pr_info("drv options : 0x%08x\n", info->nand.drv_options);
+	pr_info("block size  : %d\n", info->mtd->erasesize);
+	pr_info("page size   : %d\n", info->mtd->writesize);
+	pr_info("oob size    : %d\n", info->mtd->oobsize);
+	pr_info("oob avail   : %d\n", info->mtd->oobavail);
+	pr_info("ecc size    : %d\n", info->nand.ecc.size);
+	pr_info("ecc strength: %d\n", info->nand.ecc.strength);
+	pr_info("ecc steps   : %d\n", info->nand.ecc.steps);
+	pr_info("ecc options : 0x%08x\n\n", info->nand.ecc.options);
+
 	return ret;
+
 err1:
 	if (info->regs)
 		iounmap(info->regs);
 
-	if (info->buff.virt)
+	if (info->buff.virt) {
+		#ifdef CONFIG_SPINAND_USE_SRAM
 		iounmap(info->buff.virt);
-	
+		#else
+		dma_free_coherent(dev, info->buff.size,
+			info->buff.virt, info->buff.phys);
+		#endif
+	}
+
+	//crash here!!!
+	//pr_info("irq:%d\n", info->irq);
+	//if (info->irq > 0)
+	//	free_irq(info->irq, dev);
+
 	devm_kfree(dev, (void *)info);
-	
+
 	return ret;
 }
 
 int sp_spinand_remove(struct platform_device *pdev)
 {
 	int ret = 0;
+	struct sp_spinand_info *info = platform_get_drvdata(pdev);
+
+	wake_up(&info->wq);
 
 	sp_bch_dev_remove();
-	
+	mtd_device_unregister(info->mtd);
 	deregister_mtd_parser(&sunplus_nand_parser);
+
+	if (info->regs)
+		iounmap(info->regs);
+
+	if (info->buff.virt) {
+		#ifdef CONFIG_SPINAND_USE_SRAM
+		iounmap(info->buff.virt);
+		#else
+		dma_free_coherent(&pdev->dev, info->buff.size,
+			info->buff.virt, info->buff.phys);
+		#endif
+	}
+
+	if (info->irq > 0)
+		free_irq(info->irq, &pdev->dev);
+
+	devm_kfree(&pdev->dev, (void *)info);
+
 	return ret;
 }
-#define sp_spinand_suspend	NULL
-#define sp_spinand_resume	NULL
+
+#ifndef CONFIG_SPINAND_DEV_IN_DTS
+static struct resource sp_spinand_res[] = {
+	{
+		.start = SP_SPINAND_REG_BASE,
+		.end   = SP_SPINAND_REG_BASE + sizeof(struct sp_spinand_regs),
+		.flags = IORESOURCE_MEM,
+	},
+	{
+		.start = SP_SPINAND_IRQ,
+		.end   = SP_SPINAND_IRQ,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device sp_spinand_device = {
+	.name  = "sunplus,sp_spinand",
+	.id    = 0,
+	.num_resources = ARRAY_SIZE(sp_spinand_res),
+	.resource  = sp_spinand_res,
+};
+#endif
 
 static const struct of_device_id sunplus_nand_of_match[] = {
-	{ .compatible = "sunplus,sp7021-spinand" },
+	{ .compatible = "sunplus,sp_spinand" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
@@ -1157,19 +1321,35 @@ MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
 static struct platform_driver sp_spinand_driver = {
 	.probe = sp_spinand_probe,
 	.remove = sp_spinand_remove,
-	.shutdown = NULL,
-	.suspend = sp_spinand_suspend,
-	.resume = sp_spinand_resume,
 	.driver = {
-			.name = "sunplus,sp7021-spinand",
-			.owner = THIS_MODULE,
-			.of_match_table = sunplus_nand_of_match,
-		   },
+		.name = "sunplus,sp_spinand",
+		.owner = THIS_MODULE,
+		.of_match_table = sunplus_nand_of_match,
+	},
 };
 
-module_platform_driver(sp_spinand_driver);
+static int __init sp_spinand_module_init(void)
+{
+	#ifndef CONFIG_SPINAND_DEV_IN_DTS
+	platform_device_register(&sp_spinand_device);
+	#endif
+	platform_driver_register(&sp_spinand_driver);
+	return 0;
+}
+
+static void __exit sp_spinand_module_exit(void)
+{
+	platform_driver_unregister(&sp_spinand_driver);
+	#ifndef CONFIG_SPINAND_DEV_IN_DTS
+	platform_device_unregister(&sp_spinand_device);
+	#endif
+}
+
+module_init(sp_spinand_module_init);
+module_exit(sp_spinand_module_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Sunplus SPINAND flash controller");
+
 
 
