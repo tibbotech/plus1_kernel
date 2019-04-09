@@ -1,14 +1,12 @@
 #ifndef __SP_BCH_H
 #define __SP_BCH_H
+#include <linux/clk.h>
 
 #define SP_BCH_REG           0x9c101000
 #define SP_BCH_IRQ           58
 
-//#define CONFIG_SPBCH_AS_MODULE
-#ifdef CONFIG_SPBCH_AS_MODULE
-#define CONFIG_SPBCH_DEV_IN_DTS     /* open if the dts has describled the dev */
+#define CONFIG_SPBCH_DEV_IN_DTS     /* open if the dev is describled in dts */
 #define CONFIG_SPBCH_SUPPORT_IOCTL  /* open to support ioctl */
-#endif
 
 struct sp_bch_regs {
 	uint32_t cr0;   /* 0.0 bch control register */
@@ -78,6 +76,7 @@ struct sp_bch_regs {
 struct sp_bch_chip {
 	struct device *dev;
 	struct mtd_info *mtd;
+	struct clk *clk;
 	void __iomem *regs;
 	int irq;
 	int busy;
@@ -93,8 +92,6 @@ struct sp_bch_req {
 	uint8_t ecc[128];
 };
 
-int sp_bch_dev_probe(void);
-int sp_bch_dev_remove(void);
 int sp_bch_init(struct mtd_info *mtd, int *parity_sector_sz);
 int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc);
 int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc);
