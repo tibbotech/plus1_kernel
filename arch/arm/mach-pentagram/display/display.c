@@ -1355,30 +1355,44 @@ static int _display_probe(struct platform_device *pdev)
 			case 0:
 				SetTGEN.fmt = DRV_FMT_480P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 720;
+				pDispWorkMem->panelRes.height = 480;
 				break;
 			case 1:
 				SetTGEN.fmt = DRV_FMT_576P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 720;
+				pDispWorkMem->panelRes.height = 576;
 				break;
 			case 2:
 				SetTGEN.fmt = DRV_FMT_720P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 1280;
+				pDispWorkMem->panelRes.height = 720;
 				break;
 			case 3:
 				SetTGEN.fmt = DRV_FMT_720P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 1280;
+				pDispWorkMem->panelRes.height = 720;
 				break;
 			case 4:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 5:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 6:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_24Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 7:
 				diag_printf("user mode unsupport\n");

@@ -422,6 +422,7 @@ EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
 
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	u32 *osd_header;
 
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
@@ -479,7 +480,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	else
 		osd_header[0] = SWAP32(0x00001000 | (pinfo->UI_ColorFmt << 24));
 
-	osd_header[1] = SWAP32((480 << 16) | 720);
+	osd_header[1] = SWAP32((pDispWorkMem->panelRes.height << 16) | pDispWorkMem->panelRes.width);
 	osd_header[2] = 0;
 	osd_header[3] = 0;
 	osd_header[4] = 0;
@@ -499,8 +500,8 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	pOSDReg->osd_base_addr = gpOsdHeader_phy;
 	pOSDReg->osd_hvld_offset = 0;
 	pOSDReg->osd_vvld_offset = 0;
-	pOSDReg->osd_hvld_width = 720;
-	pOSDReg->osd_vvld_height = 480;
+	pOSDReg->osd_hvld_width = pDispWorkMem->panelRes.width;
+	pOSDReg->osd_vvld_height = pDispWorkMem->panelRes.height;
 	pOSDReg->osd_bist_ctrl = 0x0;
 	pOSDReg->osd_3d_h_offset = 0x0;
 	pOSDReg->osd_src_decimation_sel = 0x0;
