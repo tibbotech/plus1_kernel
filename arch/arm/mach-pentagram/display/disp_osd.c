@@ -480,7 +480,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	else
 		osd_header[0] = SWAP32(0x00001000 | (pinfo->UI_ColorFmt << 24));
 
-	osd_header[1] = SWAP32((pDispWorkMem->panelRes.height << 16) | pDispWorkMem->panelRes.width);
+	osd_header[1] = SWAP32((min(pinfo->UI_height, pDispWorkMem->panelRes.height) << 16) | min(pinfo->UI_width, pDispWorkMem->panelRes.width));
 	osd_header[2] = 0;
 	osd_header[3] = 0;
 	osd_header[4] = 0;
