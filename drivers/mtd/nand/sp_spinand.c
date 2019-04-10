@@ -322,7 +322,8 @@ int spi_nand_reset(struct sp_spinand_info *info)
 
 	wait_spi_idle(info);
 
-	value = SPINAND_CHECK_OIP_EN;
+	value = SPINAND_CHECK_OIP_EN
+		| SPINAND_USR_CMD_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
 	return wait_spi_idle(info);
