@@ -53,26 +53,22 @@
 #define ARGB_GETG(pixel)		(((pixel) >> 8) & 0xff)
 #define ARGB_GETB(pixel)		(((pixel) >> 0) & 0xff)
 
-#define CMD_LEN				(256)
+#define CMD_LEN					(256)
 
-#ifdef DEBUG_MSG
-	#define mod_dbg(fmt, arg...)	pr_debug("[%s:%d] "fmt, \
-			__func__, \
-			__LINE__, \
-			##arg)
-#else
-	#define mod_dbg(...)
-#endif
-
-#define mod_err(fmt, arg...)		pr_err("[%s:%d] Error! "fmt, \
+#define mod_dbg(fmt, arg...)	pr_debug("[%s:%d] "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
-#define mod_warn(fmt, arg...)		pr_warn("[%s:%d] Warning! "fmt, \
+
+#define mod_err(fmt, arg...)	pr_err("[%s:%d] Error! "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
-#define mod_info(fmt, arg...)		pr_info("[%s:%d] "fmt, \
+#define mod_warn(fmt, arg...)	pr_warn("[%s:%d] Warning! "fmt, \
+		__func__, \
+		__LINE__, \
+		##arg)
+#define mod_info(fmt, arg...)	pr_info("[%s:%d] "fmt, \
 		__func__, \
 		__LINE__, \
 		##arg)
@@ -533,7 +529,7 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 			ret = sp7021_fb_swapbuf(
 					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			mod_err("update palette by swapbuf ret:%d\n",
+			mod_info("update palette by swapbuf ret:%d\n",
 					ret);
 		}
 	} else if (!strncasecmp(tmpbuf, "fill", 4)) {
@@ -555,10 +551,10 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 			ret = sp7021_fb_swapbuf(
 					fbinfo->var.yoffset / fbinfo->var.yres,
 					fb_par->fbpagenum);
-			mod_err("update palette by swapbuf ret:%d\n",
+			mod_info("update palette by swapbuf ret:%d\n",
 					ret);
 		}
-		mod_err("fill all by color(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
+		mod_info("fill all by color(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
 				ARGB_GETA(argb),
 				ARGB_GETR(argb),
 				ARGB_GETG(argb),
@@ -592,7 +588,7 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 		palette[index] |= sp7021_fb_chan_by_field(ARGB_GETB(argb),
 				&fbinfo->var.blue);
 
-		mod_err("set palette[%d] = 0x%x(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
+		mod_info("set palette[%d] = 0x%x(A:0x%02x, R:0x%02x, G:0x%02x, B:0x%02x)\n",
 				index,
 				argb,
 				ARGB_GETA(argb),
@@ -610,8 +606,8 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		for (i = 0; i < (FB_PALETTE_LEN / sizeof(unsigned int)); ++i) {
 			if (!(i % 16))
-				mod_err("%3d\n", i);
-			mod_err(" 0x%08x\n", *(palette_ptr++));
+				mod_info("%3d\n", i);
+			mod_info(" 0x%08x\n", *(palette_ptr++));
 		}
 	} else if (!strncasecmp(tmpbuf, "sb", 2)) {
 		int ret = 0;
@@ -621,7 +617,7 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 
 		ret = sp7021_fb_swapbuf(buf_id, fb_par->fbpagenum);
 
-		mod_err("force show buffer_ID:%d, ret:%d\n",
+		mod_info("force show buffer_ID:%d, ret:%d\n",
 				buf_id,
 				ret);
 	} else if (!strncasecmp(tmpbuf, "sw", 2)) {
@@ -636,7 +632,7 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 		ret = sp7021_fb_swapbuf(
 				fbinfo->var.yoffset / fbinfo->var.yres,
 				fb_par->fbpagenum);
-		mod_err("swap buffer now use ID:%d, ret:%d\n",
+		mod_info("swap buffer now use ID:%d, ret:%d\n",
 				fbinfo->var.yoffset / fbinfo->var.yres,
 				ret);
 	} else if (!strncasecmp(tmpbuf, "info", 4)) {

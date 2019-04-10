@@ -135,7 +135,7 @@ static struct platform_driver _display_driver = {
 	.suspend	= _display_suspend,
 	.resume		= _display_resume,
 	.driver		= {
-		.name	= "sc7021_display",
+		.name	= "sp7021_display",
 		.of_match_table	= of_match_ptr(_display_ids),
 	},
 };
@@ -1315,6 +1315,15 @@ static int _display_probe(struct platform_device *pdev)
 	}
 	pDispWorkMem->pHWRegBase = pTmpRegBase;
 
+	if (of_property_read_u32(pdev->dev.of_node, "ui_width", &pDispWorkMem->UIRes.width))
+		pDispWorkMem->UIRes.width = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_height", &pDispWorkMem->UIRes.height))
+		pDispWorkMem->UIRes.height = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_format", &pDispWorkMem->UIFmt))
+		pDispWorkMem->UIFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+
 	DERROR("%s:%d mac test\n", __func__, __LINE__);
 
 	ret = _display_init_clk(pdev);
@@ -1482,7 +1491,6 @@ static int _display_resume(struct platform_device *pdev)
 }
 
 #if 1
-
 static int set_debug_cmd(const char *val, const struct kernel_param *kp)
 {
 	_debug_cmd((char *)val);
@@ -1501,7 +1509,7 @@ module_param_cb(debug, &debug_param_ops, NULL, 0644);
  *                     P U B L I C   F U N C T I O N                      *
  **************************************************************************/
 
-MODULE_DESCRIPTION("SC7021 Display Driver");
+MODULE_DESCRIPTION("SP7021 Display Driver");
 MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");
 MODULE_LICENSE("GPL");
 

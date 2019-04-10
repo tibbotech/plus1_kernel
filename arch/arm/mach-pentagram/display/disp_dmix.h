@@ -80,12 +80,17 @@ typedef struct DRV_DMIX_Layer_Set_s {
 
 void DRV_DMIX_Pixel_En_Sel(void);
 void DRV_DMIX_Init(void *pInReg);
-DRV_Status_e DRV_DMIX_PTG_ColorBar(DRV_DMIX_TPG_e tpg_sel, int bg_color_yuv, int border_len);
+DRV_Status_e DRV_DMIX_PTG_ColorBar(DRV_DMIX_TPG_e tpg_sel,
+		int bg_color_yuv,
+		int border_len);
 void DRV_DMIX_PTG_Color_Set(UINT32 color);
 void DRV_DMIX_PTG_Color_Set_YCbCr(UINT8 enable, UINT8 Y, UINT8 Cb, UINT8 Cr);
-DRV_Status_e DRV_DMIX_Layer_Init(DRV_DMIX_LayerId_e Layer, DRV_DMIX_LayerMode_e LayerMode, DRV_DMIX_InputSel_e FG_Sel);
-DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode, DRV_DMIX_InputSel_e FG_Sel);
-void DRV_DMIX_Layer_Get(DRV_DMIX_Layer_Set_t* pLayerInfo);
+DRV_Status_e DRV_DMIX_Layer_Init(DRV_DMIX_LayerId_e Layer,
+		DRV_DMIX_LayerMode_e LayerMode,
+		DRV_DMIX_InputSel_e FG_Sel);
+DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode,
+		DRV_DMIX_InputSel_e FG_Sel);
+void DRV_DMIX_Layer_Get(DRV_DMIX_Layer_Set_t *pLayerInfo);
 DRV_Status_e DRV_DMIX_Plane_Alpha_Set(DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo);
 void DRV_DMIX_PQ_OnOff(int OutId, int enable);
 void DRV_DMIX_Luma_Adjust_Set(DRV_DMIX_Luma_Adj_t *LumaAdjInfo);
