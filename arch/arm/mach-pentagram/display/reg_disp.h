@@ -18,7 +18,7 @@ typedef int				INT32;
 typedef unsigned int	UINT32;
 typedef unsigned char	BOOL;
 
-typedef struct _DISP_DDFCH_REG_ {
+typedef volatile struct _DISP_DDFCH_REG_ {
 	u32 ddfch_latch_en					; // 00
 	u32 ddfch_mode_option				; // 01
 	u32 ddfch_enable					; // 02
@@ -50,7 +50,7 @@ typedef struct _DISP_DDFCH_REG_ {
 } DISP_DDFCH_REG_t;
 STATIC_ASSERT(sizeof(DISP_DDFCH_REG_t) == (32 * 4));
 
-typedef struct _DISP_VPOST_REG_ {
+typedef volatile struct _DISP_VPOST_REG_ {
 	u32 vpost_config1					; // 00
 	u32 vpost_i_xlen					; // 01
 	u32 vpost_i_ylen					; // 02
@@ -70,7 +70,7 @@ typedef struct _DISP_VPOST_REG_ {
 } DISP_VPOST_REG_t;
 STATIC_ASSERT(sizeof(DISP_VPOST_REG_t) == (32 * 4));
 
-typedef struct _DISP_OSD_REG_ {
+typedef volatile struct _DISP_OSD_REG_ {
 	u32 osd_ctrl						; // 00
 	u32 osd_en							; // 01
 	u32 osd_base_addr					; // 02
@@ -104,7 +104,7 @@ typedef struct _DISP_OSD_REG_ {
 } DISP_OSD_REG_t;
 STATIC_ASSERT(sizeof(DISP_OSD_REG_t) == (32 * 4));
 
-typedef struct _DISP_GPOST_REG_ {
+typedef volatile struct _DISP_GPOST_REG_ {
 	u32 gpost0_config					; // 00
 	u32 gpost0_mskl						; // 01
 	u32 gpost0_mskr						; // 02
@@ -130,7 +130,7 @@ typedef struct _DISP_GPOST_REG_ {
 } DISP_GPOST_REG_t;
 STATIC_ASSERT(sizeof(DISP_GPOST_REG_t) == (32 * 4));
 
-typedef struct _DISP_TGEN_REG_ {
+typedef volatile struct _DISP_TGEN_REG_ {
 	u32 tgen_config						; // 00
 	u32 tgen_reset						; // 01
 	u32 tgen_user_int1_config			; // 02
@@ -162,7 +162,7 @@ typedef struct _DISP_TGEN_REG_ {
 } DISP_TGEN_REG_t;
 STATIC_ASSERT(sizeof(DISP_TGEN_REG_t) == (32 * 4));
 
-typedef struct _DISP_DMIX_REG_ {
+typedef volatile struct _DISP_DMIX_REG_ {
 	u32 dmix_config0					; // 00
 	u32 dmix_config1					; // 01
 	u32 dmix_config2					; // 02
@@ -193,7 +193,7 @@ typedef struct _DISP_DMIX_REG_ {
 } DISP_DMIX_REG_t;
 STATIC_ASSERT(sizeof(DISP_DMIX_REG_t) == (32 * 4));
 
-typedef struct _DISP_DVE_REG_ {
+typedef volatile struct _DISP_DVE_REG_ {
 	u32 dve_vsync_start_top				; // 00
 	u32 dve_vsync_start_bot				; // 01
 	u32 dve_vsync_h_point				; // 02
