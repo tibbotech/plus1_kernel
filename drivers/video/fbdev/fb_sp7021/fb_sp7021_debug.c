@@ -511,7 +511,7 @@ static void _fill_color(char *ptr, int size, int argb, struct fb_info *info)
 		memset(ptr, 0, size);
 		memcpy(info->pseudo_palette, &color, sizeof(color));
 	} else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_YUY2) {
-		for (i = 0; i < size; i += 4) {
+		for (i = 0; i < (size << 1); i += 4) {
 			*(ptr++) = YUV_GETY(color);
 			*(ptr++) = YUV_GETU(color);
 			*(ptr++) = YUV_GETY(color);
