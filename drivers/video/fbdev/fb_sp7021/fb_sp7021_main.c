@@ -402,6 +402,7 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	memset(&Info, 0, sizeof(struct UI_FB_Info_t));
 	ret = DRV_OSD_Get_UI_Res(&Info);
 
 	if (ret) {

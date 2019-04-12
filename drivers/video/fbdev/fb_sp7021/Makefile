@@ -19,6 +19,8 @@ obj-$(CONFIG_FB_SP7021) += fb_sp7021.o
 fb_sp7021-objs := fb_sp7021_main.o
 
 ifdef CONFIG_FB_SP7021_DEBUG
+	FONT_LIB = libFontAPI.lib
 	fb_sp7021-objs += fb_sp7021_debug.o
+	fb_sp7021-objs += $(FONT_LIB)
 endif
 
