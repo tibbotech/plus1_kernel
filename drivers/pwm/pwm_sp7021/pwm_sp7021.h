@@ -1,5 +1,5 @@
-#ifndef __PWM_SC7021_H__
-#define __PWM_SC7021_H__
+#ifndef __PWM_SP7021_H__
+#define __PWM_SP7021_H__
 
 #define STATIC_ASSERT(b) extern int _static_assert[b ? 1 : -1]
 
@@ -63,5 +63,5 @@ struct _PWM_REG_ {
 };
 STATIC_ASSERT(sizeof(struct _PWM_REG_) == (32 * 4));
 
-#endif	/*__PWM_SC7021_H__ */
+#endif	/*__PWM_SP7021_H__ */
 

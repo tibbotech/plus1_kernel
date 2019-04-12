@@ -1399,7 +1399,6 @@ static int _display_probe(struct platform_device *pdev)
 				break;
 		}
 
-
 		ret = DRV_TGEN_Set(&SetTGEN);
 		if (ret != DRV_SUCCESS)
 			diag_printf("TGEN Set failed, ret = %d\n", ret);
@@ -1412,7 +1411,7 @@ static int _display_probe(struct platform_device *pdev)
 	* L6: OSD0
 	*****************************************/
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Transparent, DRV_DMIX_VPP0);
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
 	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_AlphaBlend, DRV_DMIX_OSD0);
 
 #ifdef TEST_DMA
