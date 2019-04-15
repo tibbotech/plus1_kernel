@@ -577,7 +577,7 @@ void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase)
 	pHdmitxReg->hdmi_intr1_unmask |= (HDMITX_INTERRUPT1_MASK_DDC_FIFO_FULL);
 
 	/*configure DDC_SDA, DDC_SCL, HDMI_HPD and HDMI_CEC*/
-	pMoon1Reg->sft_cfg[1] = 0x60006000;
+	//pMoon1Reg->sft_cfg[1] = 0x60006000;
 
 	/*set DDC i2c slave device address*/
 	pHdmitxReg->hdmi_ddc_slv_device_addr = DDC_SLV_DEVICE_ADDR;

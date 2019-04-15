@@ -25,8 +25,8 @@
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
 /*about misc*/
-//#define HPD_DETECTION
-//#define EDID_READ
+#define HPD_DETECTION
+#define EDID_READ
 //#define HDCP_AUTH
 
 /*about print msg*/
