@@ -47,7 +47,7 @@ void print_device_tree_node( struct device_node *node, int depth) {
  }
  return;  }
 
-void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval) {
+void sppctl_gmx_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval) {
  uint32_t *r;
  sppctl_reg_t x = {  .m = ( ~(~0 << _bsiz)) << _boff, .v = ( ( uint16_t)_rval) << _boff  };
  if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X,%X) m:%X v:%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
@@ -55,7 +55,7 @@ void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _
  writel( *r, _p->baseI + ( _roff << 2));
  return;  }
 
-uint8_t sppctl_iop_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz) {
+uint8_t sppctl_gmx_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz) {
  uint8_t rval;
  sppctl_reg_t *x;
  uint32_t r = readl( _p->baseI + ( _roff << 2));

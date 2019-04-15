@@ -50,6 +50,10 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
  int i = 0;
  KDBG( _pd->dev, "%s(%d,%ld,%d)\n", __FUNCTION__, _pin, *_ca, _clen);
+ // special handling for IOP
+ if ( _ca[ i] & 0xFF) {
+   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
+   return( 0);  }
  for ( i = 0; i < _clen; i++) {
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
    if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
@@ -111,6 +115,7 @@ int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const *
  func_t f = list_funcs[ _fid];
  *_gnum = 0;
  switch ( f.freg) {
+   case fOFF_I:
    case fOFF_0:   // gen GPIO/IOP: all groups = all pins
         *_gnum = GPIS_listSZ;
         *grps = sp7021gpio_list_s;
@@ -119,7 +124,7 @@ int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const *
         *_gnum = PMUX_listSZ;
         *grps = sp7021pmux_list_s;
         break;
-   case fOFF_I:   // some IOP func 
+   case fOFF_G:   // some IOP func 
         if ( !f.grps) break;
         *_gnum = f.gnum;
         *grps = ( const char * const *)f.grps_sa;
@@ -150,16 +155,17 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
         sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
         sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
         break;
-   case fOFF_I:   // IOP
-        sppctl_iop_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
-        break;
-   default:
-        // FIXME: add fOFF_G:
+   case fOFF_G:   // GROUP
         for ( i = 0; i < f.grps[ g2fpm.g_idx].pnum; i++) {
           f.grps[ g2fpm.g_idx].pins;
-          sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), f.grps[ g2fpm.g_idx].pins[ i], muxF_G, muxM_I);
+          sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), f.grps[ g2fpm.g_idx].pins[ i], muxF_M, muxMKEEP);
         }
-        // FIXME: add fOFF_G: /
+        sppctl_gmx_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
+        break;
+   case fOFF_I:   // IOP
+        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_I);
+        break;
+   default:
         KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
         break;
  }
@@ -254,7 +260,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  const __be32 *list = of_get_property( _dn, "sppctl,pins", &size);
  struct property *prop;
  const char *s_f, *s_g;
-print_device_tree_node( _dn, 0);
+//print_device_tree_node( _dn, 0);
 // KDBG( _pd->dev, "%s() np_c->n:%s ->t:%s ->fn:%s\n", __FUNCTION__, _dn->name, _dn->type, _dn->full_name);
 // int ret = pinconf_generic_dt_node_to_map_pin( _pd, _dn, _map, num_maps);
  parent = of_get_parent( _dn);
@@ -274,6 +280,13 @@ print_device_tree_node( _dn, 0);
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
       configs[ i] = p_l;
+      (* _map)[ i].data.configs.configs = &( configs[ i]);
+      KDBG( _pd->dev, "%s(%d) = %X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
+    } else if ( p_g == SP7021_PCTL_G_IOPP) {
+      (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
+      (* _map)[ i].data.configs.num_configs = 1;
+      (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
+      configs[ i] = 0xFF;
       (* _map)[ i].data.configs.configs = &( configs[ i]);
       KDBG( _pd->dev, "%s(%d) = %X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else {
@@ -326,7 +339,7 @@ void group_groups( struct platform_device *_pd) {
  unq_grpsSZ = GPIS_listSZ;
  // calc unique group names array size
  for ( i = 0; i < list_funcsSZ; i++) {
-   if ( list_funcs[ i].freg != fOFF_I) continue;
+   if ( list_funcs[ i].freg != fOFF_G) continue;
    unq_grpsSZ += list_funcs[ i].gnum;  }
  // fill up unique group names array
  unq_grps = ( char const **)devm_kzalloc( &( _pd->dev), ( unq_grpsSZ + 1)*sizeof( char *), GFP_KERNEL);
@@ -340,7 +353,7 @@ void group_groups( struct platform_device *_pd) {
  j = GPIS_listSZ;
  // +IOP groups
  for ( i = 0; i < list_funcsSZ; i++) {
-   if ( list_funcs[ i].freg != fOFF_I) continue;
+   if ( list_funcs[ i].freg != fOFF_G) continue;
 //   list_funcs[ i].grps_sa = ( char const **)kzalloc( ( list_funcs[ i].gnum)*sizeof( char *), GFP_KERNEL);
    for ( k = 0; k < list_funcs[ i].gnum; k++) {
      list_funcs[ i].grps_sa[ k] = ( char *)list_funcs[ i].grps[ k].name;

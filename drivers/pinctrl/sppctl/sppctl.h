@@ -102,8 +102,8 @@ typedef struct sppctl_reg_T {
 #include "sppctl_sysfs.h"
 #include "sppctl_pinctrl.h"
 
-void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
-uint8_t sppctl_iop_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);
+void sppctl_gmx_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
+uint8_t sppctl_gmx_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);
 void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun);
 uint8_t sppctl_fun_get( sppctl_pdata_t *_p, uint8_t _pin);
 void sppctl_loadfw( struct device *_dev, const char *_fwname);
@@ -111,6 +111,7 @@ void sppctl_loadfw( struct device *_dev, const char *_fwname);
 typedef enum {
  fOFF_0,    // nowhere
  fOFF_M,    // in mux registers
+ fOFF_G,    // mux group registers
  fOFF_I,    // in iop registers
 } fOFF_t;
 

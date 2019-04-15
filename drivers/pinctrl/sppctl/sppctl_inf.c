@@ -267,23 +267,23 @@ func_t list_funcs[] = {
  FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
  FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
  
- FNCN("SPI_FLASH",       fOFF_I, 0x01, 0, 2),   // offset from 0x9C000080
- FNCN("SPI_FLASH_4BIT",  fOFF_I, 0x01, 2, 2),
- FNCN("SPI_NAND",        fOFF_I, 0x01, 4, 1),
- FNCN("CARD_EMMC",       fOFF_I, 0x01, 5, 1),
- FNCN("SD_CARD",         fOFF_I, 0x01, 6, 1),
- FNCN("UA0",             fOFF_I, 0x01, 7, 1),
- FNCE("FPGA_IFX",        fOFF_I, 0x01,12, 1, sp7021grps_fpga),
- FNCE("HDMI_TX",         fOFF_I, 0x01,13, 2, sp7021grps_hdmi),
+ FNCN("SPI_FLASH",       fOFF_G, 0x01, 0, 2),   // offset from 0x9C000080
+ FNCN("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2),
+ FNCN("SPI_NAND",        fOFF_G, 0x01, 4, 1),
+ FNCN("CARD_EMMC",       fOFF_G, 0x01, 5, 1),
+ FNCN("SD_CARD",         fOFF_G, 0x01, 6, 1),
+ FNCN("UA0",             fOFF_G, 0x01, 7, 1),
+ FNCE("FPGA_IFX",        fOFF_G, 0x01,12, 1, sp7021grps_fpga),
+ FNCE("HDMI_TX",         fOFF_G, 0x01,13, 2, sp7021grps_hdmi),
 
- FNCN("AUD_EXT_ADC_IFX0",fOFF_I, 0x01,15, 1),   // I2S audio in
- FNCN("AUD_EXT_DAC_IFX0",fOFF_I, 0x02, 0, 1),   // I2S audio out
- FNCN("SPDIF_RX",        fOFF_I, 0x02, 2, 1),
- FNCN("SPDIF_TX",        fOFF_I, 0x02, 3, 1),
- FNCN("PCM_TX",          fOFF_I, 0x02, 7, 1),
- FNCE("LCDIF",           fOFF_I, 0x04, 6, 1, sp7021grps_lcdif),
- FNCN("I2CS",            fOFF_I, 0x02,10, 1),   // I2C slave
- FNCE("WAKEUP",          fOFF_I, 0x02,11, 1, sp7021grps_wkp),
+ FNCN("AUD_EXT_ADC_IFX0",fOFF_G, 0x01,15, 1),   // I2S audio in
+ FNCN("AUD_EXT_DAC_IFX0",fOFF_G, 0x02, 0, 1),   // I2S audio out
+ FNCN("SPDIF_RX",        fOFF_G, 0x02, 2, 1),
+ FNCN("SPDIF_TX",        fOFF_G, 0x02, 3, 1),
+ FNCN("PCM_TX",          fOFF_G, 0x02, 7, 1),
+ FNCE("LCDIF",           fOFF_G, 0x04, 6, 1, sp7021grps_lcdif),
+ FNCN("I2CS",            fOFF_G, 0x02,10, 1),   // I2C slave
+ FNCE("WAKEUP",          fOFF_G, 0x02,11, 1, sp7021grps_wkp),
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE( list_funcs);
