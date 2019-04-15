@@ -96,6 +96,13 @@
       SP7021_IOPAD(9,SP7021_PCTL_G_GPIO,0,0)
     >;
  };
+ 
+ iop_example: iop_example_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(97,SP7021_PCTL_G_IOPP,0,0)
+      SP7021_IOPAD(98,SP7021_PCTL_G_IOPP,0,0)
+    >;
+ };
 
  hdmi_A_tx1: hdmi_A_tx1_pins {
     sppctl,groups = "HDMI_TX1";

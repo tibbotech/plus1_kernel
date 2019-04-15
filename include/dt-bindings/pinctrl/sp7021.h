@@ -30,12 +30,12 @@
 #define SP7021_PCTLD_L(v) (((v) >>0) & 0xFF)
 
 /* pack into 32-bit value :
-  pin#{8bit} . iop{8bit} . function{8bit} . flags{8bit}
+  pin#{8bit} . typ{8bit} . function{8bit} . flags{8bit}
  */
-#define SP7021_IOPAD(pin,iop,fun,fls) (((pin)<<24)|((iop)<<16)|((fun)<<8)|(fls))
+#define SP7021_IOPAD(pin,typ,fun,fls) (((pin)<<24)|((typ)<<16)|((fun)<<8)|(fls))
 
 #define MUXF_GPIO 0
-#define MUXF_PIO 1
+#define MUXF_IOP 1
 #define MUXF_L2SW_CLK_OUT 2
 #define MUXF_L2SW_MAC_SMI_MDC 3
 #define MUXF_L2SW_LED_FLASH0 4
