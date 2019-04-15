@@ -38,7 +38,9 @@
 &pctl {
  /*** non-device binded ***/
  /* pinctrl-names = "default"; */
+ pinctrl-names = "default";
  /* pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>; */
+ pinctrl-0 = <&hdmi_A_tx1>;
 
  /* for all eth */
  ethA_pins: pinmux_ethA_pins {
