@@ -1,5 +1,5 @@
 /*
- * GPIO Driver for SunPlus/Tibbo SC7021 controller
+ * GPIO Driver for SunPlus/Tibbo SP7021 controller
  * Copyright (C) 2019 SunPlus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -15,10 +15,10 @@
  *
  */
 
-#ifndef SC7021_GPIO_H
-#define SC7021_GPIO_H
+#ifndef SP7021_GPIO_H
+#define SP7021_GPIO_H
 
-#define SC7021_GPIO_IRQS 8
+#define SP7021_GPIO_IRQS 8
 
 #include <linux/kernel.h>
 #include <linux/module.h>
@@ -42,10 +42,10 @@
 
 #ifndef SPPCTL_H
 
-#define MNAME "sc7021_gpio"
+#define MNAME "sp7021_gpio"
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
-#define M_NAM "SC7021 GPIO"
+#define M_NAM "SP7021 GPIO"
 #define M_ORG "SunPlus/Tibbo Tech."
 #define M_CPR "(C) 2019-2019"
 
@@ -65,20 +65,20 @@
 
 #endif // SPPCTL_H
 
-typedef struct sc7021gpio_chip_T {
+typedef struct sp7021gpio_chip_T {
  spinlock_t lock;
  struct gpio_chip chip;
  void __iomem *base0;   // MASTER , OE , OUT , IN
  void __iomem *base1;   // I_INV , O_INV , OD
  void __iomem *base2;   // GPIO_FIRST
- int irq[ SC7021_GPIO_IRQS];
-} sc7021gpio_chip_t;
+ int irq[ SP7021_GPIO_IRQS];
+} sp7021gpio_chip_t;
 
-extern const char * const sc7021gpio_list_names[];
-extern const size_t sizeof_listG;
+extern const char * const sp7021gpio_list_s[];
+extern const size_t GPIS_listSZ;
 
-int sc7021_gpio_new( struct platform_device *_pd, void *_datap);
-int sc7021_gpio_del( struct platform_device *_pd, void *_datap);
+int sp7021_gpio_new( struct platform_device *_pd, void *_datap);
+int sp7021_gpio_del( struct platform_device *_pd, void *_datap);
 
 #define D_PIS(x,y) "P" __stringify(x) "_0" __stringify(y)
 
@@ -98,4 +98,4 @@ enum muxM_IG {
 typedef enum muxF_MG muxF_MG_t;
 typedef enum muxM_IG muxM_IG_t;
 
-#endif // SC7021_GPIO_H
+#endif // SP7021_GPIO_H

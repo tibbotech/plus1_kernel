@@ -1,5 +1,5 @@
 /*
- * SC7021 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -20,7 +20,7 @@
 #define MNAME "sppctl"
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
-#define M_NAM "SC7021 PinCtl"
+#define M_NAM "SP7021 PinCtl"
 #define M_ORG "SunPlus/Tibbo Tech."
 #define M_CPR "(C) 2019-2019"
 
@@ -50,7 +50,7 @@
 #include <linux/pinctrl/pinconf-generic.h>
 
 #include <mach/io_map.h>
-#include <dt-bindings/pinctrl/sc7021.h>
+#include <dt-bindings/pinctrl/sp7021.h>
 
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
@@ -69,13 +69,13 @@
 #define KDBG(pd,fmt,args...) 
 #endif
 
-#include "sc7021_gpio.h"
+#include "sp7021_gpio.h"
 
 //#define MOON_REG_BASE 0x9C000000
 //#define MOON_REG_N(n) 0x80*(n)+MOON_REG_BASE
 #define MOON_REG_N(n) PA_IOB_ADDR(0x80*(n))
 
-typedef struct sc7021gpio_chip_T sc7021gpio_chip_t;
+typedef struct sp7021gpio_chip_T sp7021gpio_chip_t;
 
 typedef struct sppctl_pdata_T {
  char name[ SPPCTL_MAX_NAM];
@@ -86,11 +86,12 @@ typedef struct sppctl_pdata_T {
  void __iomem *base0;   // MASTER , OE , OUT , IN
  void __iomem *base1;   // I_INV , O_INV , OD
  void __iomem *base2;   // GPIO_FIRST
+ void __iomem *baseI;   // IOP
  // pinctrl-related
  struct pinctrl_desc pdesc;
  struct pinctrl_dev *pcdp;
  struct pinctrl_gpio_range gpio_range;
- sc7021gpio_chip_t *gpiod;
+ sp7021gpio_chip_t *gpiod;
 } sppctl_pdata_t;
 
 typedef struct sppctl_reg_T {
@@ -101,12 +102,73 @@ typedef struct sppctl_reg_T {
 #include "sppctl_sysfs.h"
 #include "sppctl_pinctrl.h"
 
+void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
+uint8_t sppctl_iop_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);
 void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun);
 uint8_t sppctl_fun_get( sppctl_pdata_t *_p, uint8_t _pin);
 void sppctl_loadfw( struct device *_dev, const char *_fwname);
 
-extern const char * const list_funcs[];
-extern const size_t sizeof_listF;
+typedef enum {
+ fOFF_0,    // nowhere
+ fOFF_M,    // in mux registers
+ fOFF_I,    // in iop registers
+} fOFF_t;
+
+typedef struct {
+ const char *name;
+ uint8_t gval;                          // value for register
+ const unsigned *pins;   // list of pins
+ const unsigned pnum;                   // number of pins
+} sp7021grp_t;
+
+#define EGRP(n,v,p) { \
+    .name = n, \
+    .gval = (v), \
+    .pins = (p), \
+    .pnum = ARRAY_SIZE(p), \
+}
+
+typedef struct {
+ const char *name;
+ fOFF_t freg;               // function register type
+ uint8_t roff;              // +register offset
+ uint8_t boff;              // bit offset
+ uint8_t blen;              // number of bits
+ const sp7021grp_t *grps;   // list of groups
+ const unsigned gnum;       // number of groups
+ char *grps_sa[100];     // array of pointers to func's grps names
+// char **grps_sa;     // array of pointers to func's grps names
+} func_t;
+
+#define FNCE(n,r,o,bo,bl,g) { \
+    .name = n, \
+    .freg = r, \
+    .roff = o, \
+    .boff = bo, \
+    .blen = bl, \
+    .grps = (g), \
+    .gnum = ARRAY_SIZE(g), \
+}
+
+#define FNCN(n,r,o,bo,bl) { \
+    .name = n, \
+    .freg = r, \
+    .roff = o, \
+    .boff = bo, \
+    .blen = bl, \
+    .grps = NULL, \
+    .gnum = 0, \
+}
+extern func_t list_funcs[];
+extern const size_t list_funcsSZ;
+
+extern const char * const sp7021pmux_list_s[];
+extern const size_t PMUX_listSZ;
+
+typedef struct grp2fp_map_T {
+ uint16_t f_idx;        // function index
+ uint16_t g_idx;        // pins/group index inside function
+} grp2fp_map_t;
 
 // for debug
 void print_device_tree_node(struct device_node *node, int depth);

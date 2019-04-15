@@ -1,5 +1,5 @@
 /*
- * SC7021 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -22,6 +22,12 @@
 void sppctl_pinctrl_init( struct platform_device *_pdev);
 void sppctl_pinctrl_clea( struct platform_device *_pdev);
 
-extern const unsigned sc7021pins_G[];
+#define D_PIN(x,y) (x)*8+(y)
+
+extern const struct pinctrl_pin_desc sp7021pins_mux[];
+extern const size_t sp7021pins_muxSZ;
+extern const struct pinctrl_pin_desc sp7021pins_all[];
+extern const size_t sp7021pins_allSZ;
+extern const unsigned sp7021pins_G[];
 
 #endif // SPPCTL_PINCTRL_H

@@ -1,5 +1,5 @@
 /*
- * SC7021 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -16,130 +16,274 @@
 
 #include "sppctl.h"
 
-const char * const list_funcs[] = {
- "GPIO",
- "IOP",
- "L2SW_CLK_OUT",
- "L2SW_MAC_SMI_MDC",
- "L2SW_LED_FLASH0",
- "L2SW_LED_FLASH1",
- "L2SW_LED_ON0",
- "L2SW_LED_ON1",
- "L2SW_MAC_SMI_MDIO",
- "L2SW_P0_MAC_RMII_TXEN",
- "L2SW_P0_MAC_RMII_TXD0",
- "L2SW_P0_MAC_RMII_TXD1",
- "L2SW_P0_MAC_RMII_CRSDV",
- "L2SW_P0_MAC_RMII_RXD0",
- "L2SW_P0_MAC_RMII_RXD1",
- "L2SW_P0_MAC_RMII_RXER",
- "L2SW_P1_MAC_RMII_TXEN",
- "L2SW_P1_MAC_RMII_TXD0",
- "L2SW_P1_MAC_RMII_TXD1",
- "L2SW_P1_MAC_RMII_CRSDV",
- "L2SW_P1_MAC_RMII_RXD0",
- "L2SW_P1_MAC_RMII_RXD1",
- "L2SW_P1_MAC_RMII_RXER",
- "DAISY_MODE",
- "SDIO_CLK",
- "SDIO_CMD",
- "SDIO_D0",
- "SDIO_D1",
- "SDIO_D2",
- "SDIO_D3",
- "PWM0",
- "PWM1",
- "PWM2",
- "PWM3",
- "PWM4",
- "PWM5",
- "PWM6",
- "PWM7",
- "ICM0_D",
- "ICM1_D",
- "ICM2_D",
- "ICM3_D",
- "ICM0_CLK",
- "ICM1_CLK",
- "ICM2_CLK",
- "ICM3_CLK",
- "SPIM0_INT",
- "SPIM0_CLK",
- "SPIM0_EN",
- "SPIM0_DO",
- "SPIM0_DI",
- "SPIM1_INT",
- "SPIM1_CLK",
- "SPIM1_CEN",
- "SPIM1_DO",
- "SPIM1_DI",
- "SPIM2_INT",
- "SPIM2_CLK",
- "SPIM2_CEN",
- "SPIM2_DO",
- "SPIM2_DI",
- "SPIM3_INT",
- "SPIM3_CLK",
- "SPIM3_CEN",
- "SPIM3_DO",
- "SPIM3_DI",
- "SPI0S_INT",
- "SPI0S_CLK",
- "SPI0S_EN",
- "SPI0S_DO",
- "SPI0S_DI",
- "SPI1S_INT",
- "SPI1S_CLK",
- "SPI1S_EN",
- "SPI1S_DO",
- "SPI1S_DI",
- "SPI2S_INT",
- "SPI2S_CLK",
- "SPI2S_EN",
- "SPI2S_DO",
- "SPI2S_DI",
- "SPI3S_INT",
- "SPI3S_CLK",
- "SPI3S_EN",
- "SPI3S_DO",
- "SPI3S_DI",
- "I2CM0_CK",
- "I2CM0_DAT",
- "I2CM1_CK",
- "I2CM1_DAT",
- "I2CM2_CK",
- "I2CM2_D",
- "I2CM3_CK",
- "I2CM3_D",
- "UA1_TX",
- "UA1_RX",
- "UA1_CTS",
- "UA1_RTS",
- "UA2_TX",
- "UA2_RX",
- "UA2_CTS",
- "UA2_RTS",
- "UA3_TX",
- "UA3_RX",
- "UA3_CTS",
- "UA3_RTS",
- "UA4_TX",
- "UA4_RX",
- "UA4_CTS",
- "UA4_RTS",
- "TIMER0_INT",
- "TIMER1_INT",
- "TIMER2_INT",
- "TIMER3_INT",
- "GPIO_INT0",
- "GPIO_INT1",
- "GPIO_INT2",
- "GPIO_INT3",
- "GPIO_INT4",
- "GPIO_INT5",
- "GPIO_INT6",
- "GPIO_INT7",
- NULL
+// function: GPIO. list of groups (pins)
+const unsigned sp7021pins_G[] = {
+ D_PIN(0,0), D_PIN(0,1), D_PIN(0,2), D_PIN(0,3), D_PIN(0,4), D_PIN(0,5), D_PIN(0,6), D_PIN(0,7),
+ D_PIN(1,0), D_PIN(1,1), D_PIN(1,2), D_PIN(1,3), D_PIN(1,4), D_PIN(1,5), D_PIN(1,6), D_PIN(1,7),
+ D_PIN(2,0), D_PIN(2,1), D_PIN(2,2), D_PIN(2,3), D_PIN(2,4), D_PIN(2,5), D_PIN(2,6), D_PIN(2,7),
+ D_PIN(3,0), D_PIN(3,1), D_PIN(3,2), D_PIN(3,3), D_PIN(3,4), D_PIN(3,5), D_PIN(3,6), D_PIN(3,7),
+ D_PIN(4,0), D_PIN(4,1), D_PIN(4,2), D_PIN(4,3), D_PIN(4,4), D_PIN(4,5), D_PIN(4,6), D_PIN(4,7),
+ D_PIN(5,0), D_PIN(5,1), D_PIN(5,2), D_PIN(5,3), D_PIN(5,4), D_PIN(5,5), D_PIN(5,6), D_PIN(5,7),
+ D_PIN(6,0), D_PIN(6,1), D_PIN(6,2), D_PIN(6,3), D_PIN(6,4), D_PIN(6,5), D_PIN(6,6), D_PIN(6,7),
+ D_PIN(7,0), D_PIN(7,1), D_PIN(7,2), D_PIN(7,3), D_PIN(7,4), D_PIN(7,5), D_PIN(7,6), D_PIN(7,7),
+ D_PIN(8,0), D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5), D_PIN(8,6), D_PIN(8,7),
+ D_PIN(9,0), D_PIN(9,1), D_PIN(9,2), D_PIN(9,3), D_PIN(9,4), D_PIN(9,5), D_PIN(9,6), D_PIN(9,7),
+ D_PIN(10,0), D_PIN(10,1), D_PIN(10,2), D_PIN(10,3), D_PIN(10,4), D_PIN(10,5), D_PIN(10,6), D_PIN(10,7),
+ D_PIN(11,0), D_PIN(11,1), D_PIN(11,2), D_PIN(11,3), D_PIN(11,4), D_PIN(11,5), D_PIN(11,6), D_PIN(11,7),
+ D_PIN(11,0), D_PIN(11,1), D_PIN(11,2),
 };
 
-const size_t sizeof_listF = sizeof( list_funcs)/sizeof( *( list_funcs));
+#define P(x,y) PINCTRL_PIN(D_PIN(x,y),D_PIS(x,y))
+
+const struct pinctrl_pin_desc sp7021pins_all[] = {
+ // gpio and iop only
+ P( 0,0), P( 0,1), P( 0,2), P( 0,3), P( 0,4), P( 0,5), P( 0,6), P( 0,7),
+ // gpio, iop, muxable
+ P( 1,0), P( 1,1), P( 1,2), P( 1,3), P( 1,4), P( 1,5), P( 1,6), P( 1,7),
+ P( 2,0), P( 2,1), P( 2,2), P( 2,3), P( 2,4), P( 2,5), P( 2,6), P( 2,7),
+ P( 3,0), P( 3,1), P( 3,2), P( 3,3), P( 3,4), P( 3,5), P( 3,6), P( 3,7),
+ P( 4,0), P( 4,1), P( 4,2), P( 4,3), P( 4,4), P( 4,5), P( 4,6), P( 4,7),
+ P( 5,0), P( 5,1), P( 5,2), P( 5,3), P( 5,4), P( 5,5), P( 5,6), P( 5,7),
+ P( 6,0), P( 6,1), P( 6,2), P( 6,3), P( 6,4), P( 6,5), P( 6,6), P( 6,7),
+ P( 7,0), P( 7,1), P( 7,2), P( 7,3), P( 7,4), P( 7,5), P( 7,6), P( 7,7),
+ P( 8,0), P( 8,1), P( 8,2), P( 8,3), P( 8,4), P( 8,5), P( 8,6), P( 8,7),
+ // gpio (not wired) and iop only
+ P( 9,0), P( 9,1), P( 9,2), P( 9,3), P( 9,4), P( 9,5), P( 9,6), P( 9,7),
+ P(10,0), P(10,1), P(10,2), P(10,3), P(10,4), P(10,5), P(10,6), P(10,7),
+ P(11,0), P(11,1), P(11,2), P(11,3), P(11,4), P(11,5), P(11,6), P(11,7),
+ P(12,0), P(12,1), P(12,2),
+};
+const size_t sp7021pins_allSZ = ARRAY_SIZE( sp7021pins_all);
+
+const struct pinctrl_pin_desc sp7021pins_mux[] = {
+// // gpio and iop only
+// P(0,0), P(0,1), P(0,2), P(0,3), P(0,4), P(0,5), P(0,6), P(0,7),
+ // gpio, iop, muxable
+ P(1,0), P(1,1), P(1,2), P(1,3), P(1,4), P(1,5), P(1,6), P(1,7),
+ P(2,0), P(2,1), P(2,2), P(2,3), P(2,4), P(2,5), P(2,6), P(2,7),
+ P(3,0), P(3,1), P(3,2), P(3,3), P(3,4), P(3,5), P(3,6), P(3,7),
+ P(4,0), P(4,1), P(4,2), P(4,3), P(4,4), P(4,5), P(4,6), P(4,7),
+ P(5,0), P(5,1), P(5,2), P(5,3), P(5,4), P(5,5), P(5,6), P(5,7),
+ P(6,0), P(6,1), P(6,2), P(6,3), P(6,4), P(6,5), P(6,6), P(6,7),
+ P(7,0), P(7,1), P(7,2), P(7,3), P(7,4), P(7,5), P(7,6), P(7,7),
+ P(8,0), P(8,1), P(8,2), P(8,3), P(8,4), P(8,5), P(8,6), P(8,7),
+ // gpio (not wired) and iop only
+ P( 9,0), P( 9,1), P( 9,2), P( 9,3), P( 9,4), P( 9,5), P( 9,6), P( 9,7),
+ P(10,0), P(10,1), P(10,2), P(10,3), P(10,4), P(10,5), P(10,6), P(10,7),
+ P(11,0), P(11,1), P(11,2), P(11,3), P(11,4), P(11,5), P(11,6), P(11,7),
+ P(12,0), P(12,1), P(12,2),
+};
+const size_t sp7021pins_muxSZ = ARRAY_SIZE( sp7021pins_mux);
+
+// pmux groups: some pins are muxable. group = pin
+const char * const sp7021pmux_list_s[] = {
+ //D_PIS(0,0), D_PIS(0,1), D_PIS(0,2), D_PIS(0,3), D_PIS(0,4), D_PIS(0,5), D_PIS(0,6), D_PIS(0,7),
+ D_PIS( 1,0), D_PIS( 1,1), D_PIS( 1,2), D_PIS( 1,3), D_PIS( 1,4), D_PIS( 1,5), D_PIS( 1,6), D_PIS( 1,7),
+ D_PIS( 2,0), D_PIS( 2,1), D_PIS( 2,2), D_PIS( 2,3), D_PIS( 2,4), D_PIS( 2,5), D_PIS( 2,6), D_PIS( 2,7),
+ D_PIS( 3,0), D_PIS( 3,1), D_PIS( 3,2), D_PIS( 3,3), D_PIS( 3,4), D_PIS( 3,5), D_PIS( 3,6), D_PIS( 3,7),
+ D_PIS( 4,0), D_PIS( 4,1), D_PIS( 4,2), D_PIS( 4,3), D_PIS( 4,4), D_PIS( 4,5), D_PIS( 4,6), D_PIS( 4,7),
+ D_PIS( 5,0), D_PIS( 5,1), D_PIS( 5,2), D_PIS( 5,3), D_PIS( 5,4), D_PIS( 5,5), D_PIS( 5,6), D_PIS( 5,7),
+ D_PIS( 6,0), D_PIS( 6,1), D_PIS( 6,2), D_PIS( 6,3), D_PIS( 6,4), D_PIS( 6,5), D_PIS( 6,6), D_PIS( 6,7),
+ D_PIS( 7,0), D_PIS( 7,1), D_PIS( 7,2), D_PIS( 7,3), D_PIS( 7,4), D_PIS( 7,5), D_PIS( 7,6), D_PIS( 7,7),
+ D_PIS( 8,0), D_PIS( 8,1), D_PIS( 8,2), D_PIS( 8,3), D_PIS( 8,4), D_PIS( 8,5), D_PIS( 8,6), D_PIS( 8,7),
+// D_PIS( 9,0), D_PIS( 9,1), D_PIS( 9,2), D_PIS( 9,3), D_PIS( 9,4), D_PIS( 9,5), D_PIS( 9,6), D_PIS( 9,7),
+// D_PIS(10,0), D_PIS(10,1), D_PIS(10,2), D_PIS(10,3), D_PIS(10,4), D_PIS(10,5), D_PIS(10,6), D_PIS(10,7),
+// D_PIS(11,0), D_PIS(11,1), D_PIS(11,2), D_PIS(11,3), D_PIS(11,4), D_PIS(11,5), D_PIS(11,6), D_PIS(11,7),
+// D_PIS(12,0), D_PIS(12,1), D_PIS(12,2),
+};
+// gpio: is defined in sp7021_gpio_inf.c
+const size_t PMUX_listSZ = sizeof( sp7021pmux_list_s)/sizeof( *( sp7021pmux_list_s));
+
+static const unsigned sp7021pins_hdmi1[] = {
+ D_PIN(10,6), D_PIN(10,7), D_PIN(12,2), D_PIN(12,1),
+};
+static const unsigned sp7021pins_hdmi2[] = {
+ D_PIN( 8,3), D_PIN( 8,4), D_PIN( 8,5), D_PIN( 8,6),
+};
+static const unsigned sp7021pins_hdmi3[] = {
+ D_PIN( 7,4), D_PIN( 7,5), D_PIN( 7,6),D_PIN( 7,7),
+};
+static const sp7021grp_t sp7021grps_hdmi[] = {
+ EGRP( "HDMI_TX1", 1, sp7021pins_hdmi1),
+ EGRP( "HDMI_TX2", 2, sp7021pins_hdmi2),
+ EGRP( "HDMI_TX3", 3, sp7021pins_hdmi3),
+};
+
+static const unsigned sp7021pins_fpga[] = {
+ D_PIN( 0,2), D_PIN( 0,3), D_PIN( 0,4), D_PIN( 0,5), D_PIN( 0,6), D_PIN( 0,7),
+ D_PIN( 1,0), D_PIN( 1,1), D_PIN( 1,2), D_PIN( 1,3), D_PIN( 1,4), D_PIN( 1,5), 
+ D_PIN( 1,6), D_PIN( 1,7), D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), 
+ D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7), D_PIN( 3,0), D_PIN( 3,1), 
+ D_PIN( 3,2), D_PIN( 3,3), D_PIN( 3,4), D_PIN( 3,5), D_PIN( 3,6), D_PIN( 3,7),
+ D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), 
+ D_PIN( 4,6), D_PIN( 4,7), D_PIN( 5,0), D_PIN( 5,1), D_PIN( 5,2),
+};
+static const sp7021grp_t sp7021grps_fpga[] = {
+ EGRP( "FPGA_IFX", 1, sp7021pins_fpga),
+};
+
+static const unsigned sp7021pins_lcdif[] = {
+ D_PIN( 1,4), D_PIN( 1,5), 
+ D_PIN( 1,6), D_PIN( 1,7), D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), 
+ D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7), D_PIN( 3,0), D_PIN( 3,1), 
+ D_PIN( 3,2), D_PIN( 3,3), D_PIN( 3,4), D_PIN( 3,5), D_PIN( 3,6), D_PIN( 3,7),
+ D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), 
+ D_PIN( 4,6), D_PIN( 4,7),
+};
+static const sp7021grp_t sp7021grps_lcdif[] = {
+ EGRP( "LCDIF", 1, sp7021pins_lcdif),
+};
+
+static const unsigned sp7021pins_wkp[] = {  D_PIN(10,5),  };
+static const sp7021grp_t sp7021grps_wkp[] = {
+ EGRP( "WAKEUP", 1, sp7021pins_wkp),
+};
+
+func_t list_funcs[] = {
+ FNCN("GPIO",            fOFF_0, 0x00, 0, 0),
+ FNCN("IOP",             fOFF_0, 0x00, 0, 0),
+
+ FNCN("L2SW_CLK_OUT",        fOFF_M, 0x00, 0, 7),
+ FNCN("L2SW_MAC_SMI_MDC",    fOFF_M, 0x00, 8, 7),
+ FNCN("L2SW_LED_FLASH0",     fOFF_M, 0x01, 0, 7),
+ FNCN("L2SW_LED_FLASH1",     fOFF_M, 0x01, 8, 7),
+ FNCN("L2SW_LED_ON0",        fOFF_M, 0x02, 0, 7),
+ FNCN("L2SW_LED_ON1",        fOFF_M, 0x02, 8, 7),
+ FNCN("L2SW_MAC_SMI_MDIO",   fOFF_M, 0x03, 0, 7),
+ FNCN("L2SW_P0_MAC_RMII_TXEN",   fOFF_M, 0x03, 8, 7),
+ FNCN("L2SW_P0_MAC_RMII_TXD0",   fOFF_M, 0x04, 0, 7),
+ FNCN("L2SW_P0_MAC_RMII_TXD1",   fOFF_M, 0x04, 8, 7),
+ FNCN("L2SW_P0_MAC_RMII_CRSDV",  fOFF_M, 0x05, 0, 7),
+ FNCN("L2SW_P0_MAC_RMII_RXD0",   fOFF_M, 0x05, 8, 7),
+ FNCN("L2SW_P0_MAC_RMII_RXD1",   fOFF_M, 0x06, 0, 7),
+ FNCN("L2SW_P0_MAC_RMII_RXER",   fOFF_M, 0x06, 8, 7),
+ FNCN("L2SW_P1_MAC_RMII_TXEN",   fOFF_M, 0x07, 0, 7),
+ FNCN("L2SW_P1_MAC_RMII_TXD0",   fOFF_M, 0x07, 8, 7),
+ FNCN("L2SW_P1_MAC_RMII_TXD1",   fOFF_M, 0x08, 0, 7),
+ FNCN("L2SW_P1_MAC_RMII_CRSDV",  fOFF_M, 0x08, 8, 7),
+ FNCN("L2SW_P1_MAC_RMII_RXD0",   fOFF_M, 0x09, 0, 7),
+ FNCN("L2SW_P1_MAC_RMII_RXD1",   fOFF_M, 0x09, 8, 7),
+ FNCN("L2SW_P1_MAC_RMII_RXER",   fOFF_M, 0x0A, 0, 7),
+ FNCN("DAISY_MODE",      fOFF_M, 0x0A, 8, 7),    // mux has no effect now
+ FNCN("SDIO_CLK",        fOFF_M, 0x0B, 0, 7),
+ FNCN("SDIO_CMD",        fOFF_M, 0x0B, 8, 7),
+ FNCN("SDIO_D0",         fOFF_M, 0x0C, 0, 7),
+ FNCN("SDIO_D1",         fOFF_M, 0x0C, 8, 7),
+ FNCN("SDIO_D2",         fOFF_M, 0x0D, 0, 7),
+ FNCN("SDIO_D3",         fOFF_M, 0x0D, 8, 7),
+ FNCN("PWM0",            fOFF_M, 0x0E, 0, 7),
+ FNCN("PWM1",            fOFF_M, 0x0E, 8, 7),
+ FNCN("PWM2",            fOFF_M, 0x0F, 0, 7),
+ FNCN("PWM3",            fOFF_M, 0x0F, 8, 7),
+
+ FNCN("PWM4",            fOFF_M, 0x10, 0, 7),
+ FNCN("PWM5",            fOFF_M, 0x10, 8, 7),
+ FNCN("PWM6",            fOFF_M, 0x11, 0, 7),
+ FNCN("PWM7",            fOFF_M, 0x11, 8, 7),
+ FNCN("ICM0_D",          fOFF_M, 0x12, 0, 7),    // 4x Input captures
+ FNCN("ICM1_D",          fOFF_M, 0x12, 8, 7),
+ FNCN("ICM2_D",          fOFF_M, 0x13, 0, 7),
+ FNCN("ICM3_D",          fOFF_M, 0x13, 8, 7),
+ FNCN("ICM0_CLK",        fOFF_M, 0x14, 0, 7),
+ FNCN("ICM1_CLK",        fOFF_M, 0x14, 8, 7),
+ FNCN("ICM2_CLK",        fOFF_M, 0x15, 0, 7),
+ FNCN("ICM3_CLK",        fOFF_M, 0x15, 8, 7),
+ FNCN("SPIM0_INT",       fOFF_M, 0x16, 0, 7),    // 4x SPI masters
+ FNCN("SPIM0_CLK",       fOFF_M, 0x16, 8, 7),
+ FNCN("SPIM0_EN",        fOFF_M, 0x17, 0, 7),
+ FNCN("SPIM0_DO",        fOFF_M, 0x17, 8, 7),
+ FNCN("SPIM0_DI",        fOFF_M, 0x18, 0, 7),
+ FNCN("SPIM1_INT",       fOFF_M, 0x18, 8, 7),
+ FNCN("SPIM1_CLK",       fOFF_M, 0x19, 0, 7),
+ FNCN("SPIM1_CEN",       fOFF_M, 0x19, 8, 7),
+ FNCN("SPIM1_DO",        fOFF_M, 0x1A, 0, 7),
+ FNCN("SPIM1_DI",        fOFF_M, 0x1A, 8, 7),
+ FNCN("SPIM2_INT",       fOFF_M, 0x1B, 0, 7),
+ FNCN("SPIM2_CLK",       fOFF_M, 0x1B, 8, 7),
+ FNCN("SPIM2_CEN",       fOFF_M, 0x1C, 0, 7),
+ FNCN("SPIM2_DO",        fOFF_M, 0x1C, 8, 7),
+ FNCN("SPIM2_DI",        fOFF_M, 0x1D, 0, 7),
+ FNCN("SPIM3_INT",       fOFF_M, 0x1D, 8, 7),
+ FNCN("SPIM3_CLK",       fOFF_M, 0x1E, 0, 7),
+ FNCN("SPIM3_CEN",       fOFF_M, 0x1E, 8, 7),
+ FNCN("SPIM3_DO",        fOFF_M, 0x1F, 0, 7),
+ FNCN("SPIM3_DI",        fOFF_M, 0x1F, 8, 7),
+
+ FNCN("SPI0S_INT",       fOFF_M, 0x20, 0, 7),    // 4x SPI slaves
+ FNCN("SPI0S_CLK",       fOFF_M, 0x20, 8, 7),
+ FNCN("SPI0S_EN",        fOFF_M, 0x21, 0, 7),
+ FNCN("SPI0S_DO",        fOFF_M, 0x21, 8, 7),
+ FNCN("SPI0S_DI",        fOFF_M, 0x22, 0, 7),
+ FNCN("SPI1S_INT",       fOFF_M, 0x22, 8, 7),
+ FNCN("SPI1S_CLK",       fOFF_M, 0x23, 0, 7),
+ FNCN("SPI1S_EN",        fOFF_M, 0x23, 8, 7),
+ FNCN("SPI1S_DO",        fOFF_M, 0x24, 0, 7),
+ FNCN("SPI1S_DI",        fOFF_M, 0x24, 8, 7),
+ FNCN("SPI2S_INT",       fOFF_M, 0x25, 0, 7),
+ FNCN("SPI2S_CLK",       fOFF_M, 0x25, 8, 7),
+ FNCN("SPI2S_EN",        fOFF_M, 0x26, 0, 7),
+ FNCN("SPI2S_DO",        fOFF_M, 0x26, 8, 7),
+ FNCN("SPI2S_DI",        fOFF_M, 0x27, 0, 7),
+ FNCN("SPI3S_INT",       fOFF_M, 0x27, 8, 7),
+ FNCN("SPI3S_CLK",       fOFF_M, 0x28, 0, 7),
+ FNCN("SPI3S_EN",        fOFF_M, 0x28, 8, 7),
+ FNCN("SPI3S_DO",        fOFF_M, 0x29, 0, 7),
+ FNCN("SPI3S_DI",        fOFF_M, 0x29, 8, 7),
+ FNCN("I2CM0_CK",        fOFF_M, 0x2A, 0, 7),    // 4x I2C masters
+ FNCN("I2CM0_DAT",       fOFF_M, 0x2A, 8, 7),
+ FNCN("I2CM1_CK",        fOFF_M, 0x2B, 0, 7),
+ FNCN("I2CM1_DAT",       fOFF_M, 0x2B, 8, 7),
+ FNCN("I2CM2_CK",        fOFF_M, 0x2C, 0, 7),
+ FNCN("I2CM2_D",         fOFF_M, 0x2C, 8, 7),
+ FNCN("I2CM3_CK",        fOFF_M, 0x2D, 0, 7),
+ FNCN("I2CM3_D",         fOFF_M, 0x2D, 8, 7),
+ FNCN("UA1_TX",          fOFF_M, 0x2E, 0, 7),    // +4x muxable UARTS (#0 is not muxable)
+ FNCN("UA1_RX",          fOFF_M, 0x2E, 8, 7),
+ FNCN("UA1_CTS",         fOFF_M, 0x2F, 0, 7),
+ FNCN("UA1_RTS",         fOFF_M, 0x2F, 8, 7),
+
+ FNCN("UA2_TX",          fOFF_M, 0x30, 0, 7),
+ FNCN("UA2_RX",          fOFF_M, 0x30, 8, 7),
+ FNCN("UA2_CTS",         fOFF_M, 0x31, 0, 7),
+ FNCN("UA2_RTS",         fOFF_M, 0x31, 8, 7),
+ FNCN("UA3_TX",          fOFF_M, 0x32, 0, 7),
+ FNCN("UA3_RX",          fOFF_M, 0x32, 8, 7),
+ FNCN("UA3_CTS",         fOFF_M, 0x33, 0, 7),
+ FNCN("UA3_RTS",         fOFF_M, 0x33, 8, 7),
+ FNCN("UA4_TX",          fOFF_M, 0x34, 0, 7),
+ FNCN("UA4_RX",          fOFF_M, 0x34, 8, 7),
+ FNCN("UA4_CTS",         fOFF_M, 0x35, 0, 7),
+ FNCN("UA4_RTS",         fOFF_M, 0x35, 8, 7),
+ FNCN("TIMER0_INT",      fOFF_M, 0x36, 0, 7),    // 4x timers interrupts
+ FNCN("TIMER1_INT",      fOFF_M, 0x36, 8, 7),
+ FNCN("TIMER2_INT",      fOFF_M, 0x37, 0, 7),
+ FNCN("TIMER3_INT",      fOFF_M, 0x37, 8, 7),
+ FNCN("GPIO_INT0",       fOFF_M, 0x38, 0, 7),    // 8x GPIO interrupts
+ FNCN("GPIO_INT1",       fOFF_M, 0x38, 8, 7),
+ FNCN("GPIO_INT2",       fOFF_M, 0x39, 0, 7),
+ FNCN("GPIO_INT3",       fOFF_M, 0x39, 8, 7),
+ FNCN("GPIO_INT4",       fOFF_M, 0x3A, 0, 7),
+ FNCN("GPIO_INT5",       fOFF_M, 0x3A, 8, 7),
+ FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
+ FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
+ 
+ FNCN("SPI_FLASH",       fOFF_I, 0x01, 0, 2),   // offset from 0x9C000080
+ FNCN("SPI_FLASH_4BIT",  fOFF_I, 0x01, 2, 2),
+ FNCN("SPI_NAND",        fOFF_I, 0x01, 4, 1),
+ FNCN("CARD_EMMC",       fOFF_I, 0x01, 5, 1),
+ FNCN("SD_CARD",         fOFF_I, 0x01, 6, 1),
+ FNCN("UA0",             fOFF_I, 0x01, 7, 1),
+ FNCE("FPGA_IFX",        fOFF_I, 0x01,12, 1, sp7021grps_fpga),
+ FNCE("HDMI_TX",         fOFF_I, 0x01,13, 2, sp7021grps_hdmi),
+
+ FNCN("AUD_EXT_ADC_IFX0",fOFF_I, 0x01,15, 1),   // I2S audio in
+ FNCN("AUD_EXT_DAC_IFX0",fOFF_I, 0x02, 0, 1),   // I2S audio out
+ FNCN("SPDIF_RX",        fOFF_I, 0x02, 2, 1),
+ FNCN("SPDIF_TX",        fOFF_I, 0x02, 3, 1),
+ FNCN("PCM_TX",          fOFF_I, 0x02, 7, 1),
+ FNCE("LCDIF",           fOFF_I, 0x04, 6, 1, sp7021grps_lcdif),
+ FNCN("I2CS",            fOFF_I, 0x02,10, 1),   // I2C slave
+ FNCE("WAKEUP",          fOFF_I, 0x02,11, 1, sp7021grps_wkp),
+};
+
+const size_t list_funcsSZ = ARRAY_SIZE( list_funcs);

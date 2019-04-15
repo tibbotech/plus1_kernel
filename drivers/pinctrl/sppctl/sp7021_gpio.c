@@ -1,5 +1,5 @@
 /*
- * GPIO Driver for SunPlus/Tibbo SC7021 controller
+ * GPIO Driver for SunPlus/Tibbo SP7021 controller
  * Copyright (C) 2019 SunPlus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -21,10 +21,10 @@
 #include <linux/seq_file.h>
 #include <asm/io.h>
 
-#include "sc7021_gpio_ops.h"
-#include "sc7021_gpio.h"
+#include "sp7021_gpio_ops.h"
+#include "sp7021_gpio.h"
 
-int sc7021_gpio_resmap( struct platform_device *_pd, sc7021gpio_chip_t *_pc) {
+int sp7021_gpio_resmap( struct platform_device *_pd, sp7021gpio_chip_t *_pc) {
  struct resource *rp;
  // res0
  if ( IS_ERR( rp = platform_get_resource( _pd, IORESOURCE_MEM, 1))) {
@@ -58,9 +58,9 @@ int sc7021_gpio_resmap( struct platform_device *_pd, sc7021gpio_chip_t *_pc) {
    return( PTR_ERR( _pc->base2));  }
  return( 0);  }
 
-int sc7021_gpio_new( struct platform_device *_pd, void *_datap) {
+int sp7021_gpio_new( struct platform_device *_pd, void *_datap) {
  struct device_node *np = _pd->dev.of_node, *npi;
- sc7021gpio_chip_t *pc = NULL;
+ sp7021gpio_chip_t *pc = NULL;
  struct gpio_chip *gchip = NULL;
  int err = 0, i = 0, npins;
 #ifdef SPPCTL_H
@@ -88,7 +88,7 @@ int sc7021_gpio_new( struct platform_device *_pd, void *_datap) {
  pc->base2 = _pctrlp->base2;
  _pctrlp->gpiod = pc;
 #else
- if ( ( err = sc7021_gpio_resmap( _pd, pc)) != 0) {
+ if ( ( err = sp7021_gpio_resmap( _pd, pc)) != 0) {
    devm_kfree( &( _pd->dev), pc);
    return( err);  }
 #endif
@@ -96,29 +96,29 @@ int sc7021_gpio_new( struct platform_device *_pd, void *_datap) {
  gchip->parent = &( _pd->dev);
  gchip->owner = THIS_MODULE;
 #ifndef SPPCTL_H
- gchip->request =           sc7021gpio_f_req;
- gchip->free =              sc7021gpio_f_fre;
+ gchip->request =           sp7021gpio_f_req;
+ gchip->free =              sp7021gpio_f_fre;
 #else
  gchip->request =           gpiochip_generic_request; // place new calls there
  gchip->free =              gpiochip_generic_free;
 #endif
- gchip->get_direction =     sc7021gpio_f_gdi;
- gchip->direction_input =   sc7021gpio_f_sin;
- gchip->direction_output =  sc7021gpio_f_sou;
- gchip->get =               sc7021gpio_f_get;
- gchip->set =               sc7021gpio_f_set;
- gchip->set_config =        sc7021gpio_f_scf;
- gchip->dbg_show =          sc7021gpio_f_dsh;
+ gchip->get_direction =     sp7021gpio_f_gdi;
+ gchip->direction_input =   sp7021gpio_f_sin;
+ gchip->direction_output =  sp7021gpio_f_sou;
+ gchip->get =               sp7021gpio_f_get;
+ gchip->set =               sp7021gpio_f_set;
+ gchip->set_config =        sp7021gpio_f_scf;
+ gchip->dbg_show =          sp7021gpio_f_dsh;
  gchip->base = 0; // it is main platform GPIO controller
- gchip->ngpio = sizeof_listG;
- gchip->names = sc7021gpio_list_names;
+ gchip->ngpio =             GPIS_listSZ;
+ gchip->names =             sp7021gpio_list_s;
  gchip->can_sleep = 0;
 #if defined(CONFIG_OF_GPIO)
  gchip->of_node = np;
  gchip->of_gpio_n_cells = 2;
- gchip->of_xlate =          sc7021gpio_xlate;
+ gchip->of_xlate =          sp7021gpio_xlate;
 #endif
- gchip->to_irq =            sc7021gpio_i_map;
+ gchip->to_irq =            sp7021gpio_i_map;
 #ifdef SPPCTL_H
  _pctrlp->gpio_range.npins =    gchip->ngpio;
  _pctrlp->gpio_range.base =     gchip->base;
@@ -130,7 +130,7 @@ int sc7021_gpio_new( struct platform_device *_pd, void *_datap) {
    KERR( &( _pd->dev), "gpiochip add failed\n");
    return( err);  }
  npins = platform_irq_count( _pd);
- for ( i = 0; i < npins && i < SC7021_GPIO_IRQS; i++) {
+ for ( i = 0; i < npins && i < SP7021_GPIO_IRQS; i++) {
     pc->irq[ i] = irq_of_parse_and_map( np, i);
     KDBG( &( _pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[ i]);
  }
@@ -140,51 +140,51 @@ int sc7021_gpio_new( struct platform_device *_pd, void *_datap) {
 #endif
  return( 0);  }
 
-static int sc7021_gpio_probe( struct platform_device *_pd) {
- return( sc7021_gpio_new( _pd, NULL));  }
+static int sp7021_gpio_probe( struct platform_device *_pd) {
+ return( sp7021_gpio_new( _pd, NULL));  }
 
-int sc7021_gpio_del( struct platform_device *_pd, void *_datap) {
+int sp7021_gpio_del( struct platform_device *_pd, void *_datap) {
 #ifdef SPPCTL_H
  sppctl_pdata_t *_pctrlp = ( sppctl_pdata_t *)_datap;
 #endif
- sc7021gpio_chip_t *cp;
+ sp7021gpio_chip_t *cp;
  // FIXME: can't use globally now
  if ( ( cp = platform_get_drvdata( _pd)) == NULL) return( -ENODEV);
  gpiochip_remove( &( cp->chip));
  // FIX: remove spinlock_t
  return( 0);  }
 
-static int sc7021_gpio_remove( struct platform_device *_pd, void *_data) {
- return( sc7021_gpio_del( _pd, NULL));  }
+static int sp7021_gpio_remove( struct platform_device *_pd, void *_data) {
+ return( sp7021_gpio_del( _pd, NULL));  }
 
-static const struct of_device_id sc7021_gpio_of_match[] = {
- { .compatible = "sunplus,sc7021-gpio", },
+static const struct of_device_id sp7021_gpio_of_match[] = {
+ { .compatible = "sunplus,sp7021-gpio", },
  { /* null */ }
 };
 
 #ifdef SPPCTL_H
 #else
-MODULE_DEVICE_TABLE(of, sc7021_gpio_of_match);
+MODULE_DEVICE_TABLE(of, sp7021_gpio_of_match);
 MODULE_ALIAS( "platform:" MNAME);
-static struct platform_driver sc7021_gpio_driver = {
+static struct platform_driver sp7021_gpio_driver = {
  .driver = {
 	.name	= MNAME,
 	.owner	= THIS_MODULE,
-	.of_match_table = sc7021_gpio_of_match,
+	.of_match_table = sp7021_gpio_of_match,
  },
- .probe		= sc7021_gpio_probe,
- .remove	= sc7021_gpio_remove,
+ .probe		= sp7021_gpio_probe,
+ .remove	= sp7021_gpio_remove,
 };
-module_platform_driver(sc7021_gpio_driver);
+module_platform_driver(sp7021_gpio_driver);
 #endif
 
 #if 0
-static int __init sc7021_gpio_drv_reg( void) {
- return platform_driver_register( &sc7021_gpio_driver);  }
-postcore_initcall( sc7021_gpio_drv_reg);
-static void __exit sc7021_gpio_exit( void) {
- platform_driver_unregister( &sc7021_gpio_driver);  }
-module_exit(sc7021_gpio_exit);
+static int __init sp7021_gpio_drv_reg( void) {
+ return platform_driver_register( &sp7021_gpio_driver);  }
+postcore_initcall( sp7021_gpio_drv_reg);
+static void __exit sp7021_gpio_exit( void) {
+ platform_driver_unregister( &sp7021_gpio_driver);  }
+module_exit(sp7021_gpio_exit);
 #endif
 
 MODULE_LICENSE(M_LIC);

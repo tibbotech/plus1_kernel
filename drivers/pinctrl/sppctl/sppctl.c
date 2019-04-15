@@ -1,5 +1,5 @@
 /*
- * SC7021 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -47,6 +47,24 @@ void print_device_tree_node( struct device_node *node, int depth) {
  }
  return;  }
 
+void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval) {
+ uint32_t *r;
+ sppctl_reg_t x = {  .m = ( ~(~0 << _bsiz)) << _boff, .v = ( ( uint16_t)_rval) << _boff  };
+ if ( _p->debug > 1 || 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X,%X) m:%X v:%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
+ r = ( uint32_t *)&x;
+ writel( *r, _p->baseI + _roff);
+ KDBG( _p->pcdp->dev, "%s() retv:%d\n", sppctl_iop_get( _p, _roff, _boff, _bsiz));
+ return;  }
+
+uint8_t sppctl_iop_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz) {
+ uint8_t rval;
+ sppctl_reg_t *x;
+ uint32_t r = readl( _p->baseI + _roff);
+ x = ( sppctl_reg_t *)&r;
+ rval = ( x->v >> _boff) & ( ~( ~0 << _bsiz));
+ if ( _p->debug > 1 || 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X) v:%X rval:%X\n", __FUNCTION__, _roff, _boff, _bsiz, x->v, rval);
+ return( rval);  }
+
 void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun) {
  uint32_t *r;
  sppctl_reg_t x = {  .m = 0x007F, .v = ( uint16_t)_pin  };
@@ -70,13 +88,17 @@ uint8_t sppctl_fun_get( sppctl_pdata_t *_p,  uint8_t _fun) {
  return( pin);  }
 
 static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
- int i = -1;
+ int i = -1, j = 0;
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_ctx;
  if ( !_fw) {  KERR( p->pcdp->dev, "Firmare not found\n");  return;  }
- if ( _fw->size < sizeof_listF - 3) {
-   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, sizeof_listF - 3);  return;
+ if ( _fw->size < list_funcsSZ) {
+   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);  return;
    goto out;  }
- while ( list_funcs[ ++i + 2] && i < _fw->size) sppctl_pin_set( p, _fw->data[ i], i);
+ for ( i = 0; i < list_funcsSZ && i < _fw->size; i++) {
+   if ( list_funcs[ i].freg != fOFF_M) continue;
+   sppctl_pin_set( p, _fw->data[ i], i);
+   j++;
+}
  out:
  release_firmware( _fw);
  return;  }
@@ -91,7 +113,7 @@ void sppctl_loadfw( struct device *_dev, const char *_fwname) {
  if ( ret) KERR( _dev, "Can't load '%s'\n", _fwname);
  return;  }
 
-int sc7021_pctl_resmap( struct platform_device *_pd, sppctl_pdata_t *_pc) {
+int sp7021_pctl_resmap( struct platform_device *_pd, sppctl_pdata_t *_pc) {
  struct resource *rp;
  // resF
  if ( IS_ERR( rp = platform_get_resource( _pd, IORESOURCE_MEM, 0))) {
@@ -133,6 +155,16 @@ int sc7021_pctl_resmap( struct platform_device *_pd, sppctl_pdata_t *_pc) {
  if ( IS_ERR( _pc->base2 = devm_ioremap_resource( &( _pd->dev), rp))) {
    KERR( &( _pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
    return( PTR_ERR( _pc->base2));  }
+ // iop
+ if ( IS_ERR( rp = platform_get_resource( _pd, IORESOURCE_MEM, 4))) {
+   KERR( &( _pd->dev), "%s get res#I ERR\n", __FUNCTION__);
+   return( PTR_ERR( rp));  }
+ KDBG( &( _pd->dev), "mres #I:%p\n", rp);
+ if ( !rp) return( -EFAULT);
+ KDBG( &( _pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+ if ( IS_ERR( _pc->baseI = devm_ioremap_resource( &( _pd->dev), rp))) {
+   KERR( &( _pd->dev), "%s map res#I ERR\n", __FUNCTION__);
+   return( PTR_ERR( _pc->base2));  }
  return( 0);  }
  
 static int sppctl_dnew( struct platform_device *_pd) {
@@ -152,7 +184,7 @@ static int sppctl_dnew( struct platform_device *_pd) {
  if ( np) strcpy( p->name, np->name);
  else strcpy( p->name, MNAME);
  dev_set_name( &( _pd->dev), "%s", p->name);
- if ( ( ret = sc7021_pctl_resmap( _pd, p)) != 0) {
+ if ( ( ret = sp7021_pctl_resmap( _pd, p)) != 0) {
    devm_kfree( &( _pd->dev), p);
    return( ret);  }
  // set gpio_chip
@@ -162,21 +194,21 @@ static int sppctl_dnew( struct platform_device *_pd) {
  if ( fwfname) strcpy( p->fwname, fwfname);
  sppctl_loadfw( &( _pd->dev), p->fwname);
  sppctl_pinctrl_init( _pd);
- sc7021_gpio_new( _pd, p);
+ sp7021_gpio_new( _pd, p);
  pinctrl_add_gpio_range( p->pcdp, &( p->gpio_range));
  printk( KERN_INFO M_NAM" by "M_ORG""M_CPR);
  return( 0);   }
 
 static int sppctl_ddel( struct platform_device *_pd) {
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_pd->dev.platform_data;
- sc7021_gpio_del( _pd, p);
+ sp7021_gpio_del( _pd, p);
  sppctl_sysfs_clean( _pd);
  sppctl_pinctrl_clea( _pd);
  devm_kfree( &( _pd->dev), p);
  return( 0);  }
 
 static const struct of_device_id sppctl_dt_ids[] = {
- { .compatible = "sunplus,sc7021-pctl", },
+ { .compatible = "sunplus,sp7021-pctl", },
  { /* zero */ }
 };
 MODULE_DEVICE_TABLE(of, sppctl_dt_ids);

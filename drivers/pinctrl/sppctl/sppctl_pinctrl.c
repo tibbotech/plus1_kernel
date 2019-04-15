@@ -1,5 +1,5 @@
 /*
- * SC7021 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -19,60 +19,11 @@
 #include "../pinctrl-utils.h"
 #include "../devicetree.h"
 
-#include "sc7021_gpio_ops.h"
+#include "sp7021_gpio_ops.h"
 
-// pmux: pin names - char *
-const char * const sc7021pmux_list_names[] = {
- //D_PIS(0,0), D_PIS(0,1), D_PIS(0,2), D_PIS(0,3), D_PIS(0,4), D_PIS(0,5), D_PIS(0,6), D_PIS(0,7),
- D_PIS(1,0), D_PIS(1,1), D_PIS(1,2), D_PIS(1,3), D_PIS(1,4), D_PIS(1,5), D_PIS(1,6), D_PIS(1,7),
- D_PIS(2,0), D_PIS(2,1), D_PIS(2,2), D_PIS(2,3), D_PIS(2,4), D_PIS(2,5), D_PIS(2,6), D_PIS(2,7),
- D_PIS(3,0), D_PIS(3,1), D_PIS(3,2), D_PIS(3,3), D_PIS(3,4), D_PIS(3,5), D_PIS(3,6), D_PIS(3,7),
- D_PIS(4,0), D_PIS(4,1), D_PIS(4,2), D_PIS(4,3), D_PIS(4,4), D_PIS(4,5), D_PIS(4,6), D_PIS(4,7),
- D_PIS(5,0), D_PIS(5,1), D_PIS(5,2), D_PIS(5,3), D_PIS(5,4), D_PIS(5,5), D_PIS(5,6), D_PIS(5,7),
- D_PIS(6,0), D_PIS(6,1), D_PIS(6,2), D_PIS(6,3), D_PIS(6,4), D_PIS(6,5), D_PIS(6,6), D_PIS(6,7),
- D_PIS(7,0), D_PIS(7,1), D_PIS(7,2), D_PIS(7,3), D_PIS(7,4), D_PIS(7,5), D_PIS(7,6), D_PIS(7,7),
- D_PIS(8,0), D_PIS(8,1), D_PIS(8,2), D_PIS(8,3), D_PIS(8,4), D_PIS(8,5), D_PIS(8,6), D_PIS(8,7),
-};
-// gpio: is defined in sc7021_gpio_inf.c
-
-#define D_PIN(x,y) 8*x+y
-// function: GPIO. list of groups (pins)
-const unsigned sc7021pins_G[] = {
- D_PIN(0,0), D_PIN(0,1), D_PIN(0,2), D_PIN(0,3), D_PIN(0,4), D_PIN(0,5), D_PIN(0,6), D_PIN(0,7),
- D_PIN(1,0), D_PIN(1,1), D_PIN(1,2), D_PIN(1,3), D_PIN(1,4), D_PIN(1,5), D_PIN(1,6), D_PIN(1,7),
- D_PIN(2,0), D_PIN(2,1), D_PIN(2,2), D_PIN(2,3), D_PIN(2,4), D_PIN(2,5), D_PIN(2,6), D_PIN(2,7),
- D_PIN(3,0), D_PIN(3,1), D_PIN(3,2), D_PIN(3,3), D_PIN(3,4), D_PIN(3,5), D_PIN(3,6), D_PIN(3,7),
- D_PIN(4,0), D_PIN(4,1), D_PIN(4,2), D_PIN(4,3), D_PIN(4,4), D_PIN(4,5), D_PIN(4,6), D_PIN(4,7),
- D_PIN(5,0), D_PIN(5,1), D_PIN(5,2), D_PIN(5,3), D_PIN(5,4), D_PIN(5,5), D_PIN(5,6), D_PIN(5,7),
- D_PIN(6,0), D_PIN(6,1), D_PIN(6,2), D_PIN(6,3), D_PIN(6,4), D_PIN(6,5), D_PIN(6,6), D_PIN(6,7),
- D_PIN(7,0), D_PIN(7,1), D_PIN(7,2), D_PIN(7,3), D_PIN(7,4), D_PIN(7,5), D_PIN(7,6), D_PIN(7,7),
- D_PIN(8,0), D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5), D_PIN(8,6), D_PIN(8,7),
-};
-// function: non-gpio. list of groups (pins)
-const unsigned sc7021pins_M[] = {
- //D_PIN(0,0), D_PIN(0,1), D_PIN(0,2), D_PIN(0,3), D_PIN(0,4), D_PIN(0,5), D_PIN(0,6), D_PIN(0,7),
- D_PIN(1,0), D_PIN(1,1), D_PIN(1,2), D_PIN(1,3), D_PIN(1,4), D_PIN(1,5), D_PIN(1,6), D_PIN(1,7),
- D_PIN(2,0), D_PIN(2,1), D_PIN(2,2), D_PIN(2,3), D_PIN(2,4), D_PIN(2,5), D_PIN(2,6), D_PIN(2,7),
- D_PIN(3,0), D_PIN(3,1), D_PIN(3,2), D_PIN(3,3), D_PIN(3,4), D_PIN(3,5), D_PIN(3,6), D_PIN(3,7),
- D_PIN(4,0), D_PIN(4,1), D_PIN(4,2), D_PIN(4,3), D_PIN(4,4), D_PIN(4,5), D_PIN(4,6), D_PIN(4,7),
- D_PIN(5,0), D_PIN(5,1), D_PIN(5,2), D_PIN(5,3), D_PIN(5,4), D_PIN(5,5), D_PIN(5,6), D_PIN(5,7),
- D_PIN(6,0), D_PIN(6,1), D_PIN(6,2), D_PIN(6,3), D_PIN(6,4), D_PIN(6,5), D_PIN(6,6), D_PIN(6,7),
- D_PIN(7,0), D_PIN(7,1), D_PIN(7,2), D_PIN(7,3), D_PIN(7,4), D_PIN(7,5), D_PIN(7,6), D_PIN(7,7),
- D_PIN(8,0), D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5), D_PIN(8,6), D_PIN(8,7),
-};
-
-#define XPIN(x,y) PINCTRL_PIN(8*x+y,D_PIS(x,y))
-const struct pinctrl_pin_desc sc7021pmux_list_pins[] = {
- XPIN(0,0), XPIN(0,1), XPIN(0,2), XPIN(0,3), XPIN(0,4), XPIN(0,5), XPIN(0,6), XPIN(0,7),
- XPIN(1,0), XPIN(1,1), XPIN(1,2), XPIN(1,3), XPIN(1,4), XPIN(1,5), XPIN(1,6), XPIN(1,7),
- XPIN(2,0), XPIN(2,1), XPIN(2,2), XPIN(2,3), XPIN(2,4), XPIN(2,5), XPIN(2,6), XPIN(2,7),
- XPIN(3,0), XPIN(3,1), XPIN(3,2), XPIN(3,3), XPIN(3,4), XPIN(3,5), XPIN(3,6), XPIN(3,7),
- XPIN(4,0), XPIN(4,1), XPIN(4,2), XPIN(4,3), XPIN(4,4), XPIN(4,5), XPIN(4,6), XPIN(4,7),
- XPIN(5,0), XPIN(5,1), XPIN(5,2), XPIN(5,3), XPIN(5,4), XPIN(5,5), XPIN(5,6), XPIN(5,7),
- XPIN(6,0), XPIN(6,1), XPIN(6,2), XPIN(6,3), XPIN(6,4), XPIN(6,5), XPIN(6,6), XPIN(6,7),
- XPIN(7,0), XPIN(7,1), XPIN(7,2), XPIN(7,3), XPIN(7,4), XPIN(7,5), XPIN(7,6), XPIN(7,7),
- XPIN(8,0), XPIN(8,1), XPIN(8,2), XPIN(8,3), XPIN(8,4), XPIN(8,5), XPIN(8,6), XPIN(8,7),
-};
+char const ** unq_grps = NULL;
+size_t unq_grpsSZ = 0;
+grp2fp_map_t *g2fp_maps;
 
 int stpctl_c_p_get( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_cfg) {
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
@@ -81,13 +32,13 @@ int stpctl_c_p_get( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_cfg)
 // KINF( _pd, "%s(%d)\n", __FUNCTION__, _pin);
  switch ( param) {
    case PIN_CONFIG_DRIVE_OPEN_DRAIN:
-        if ( !sc7021gpio_u_isodr( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
+        if ( !sp7021gpio_u_isodr( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
         break;
    case PIN_CONFIG_OUTPUT:
-        if ( !sc7021gpio_u_gfrst( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
-        if ( !sc7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
-        if ( sc7021gpio_f_gdi( &( pctrl->gpiod->chip), _pin) != 0) return( -EINVAL);
-        arg = sc7021gpio_f_get( &( pctrl->gpiod->chip), _pin);
+        if ( !sp7021gpio_u_gfrst( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
+        if ( !sp7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
+        if ( sp7021gpio_f_gdi( &( pctrl->gpiod->chip), _pin) != 0) return( -EINVAL);
+        arg = sp7021gpio_f_get( &( pctrl->gpiod->chip), _pin);
         break;
    default:
 //       KINF( _pd, "%s(%d) wtf:%X\n", __FUNCTION__, _pin, param);
@@ -100,10 +51,10 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  int i = 0;
  KDBG( _pd->dev, "%s(%d,%ld,%d)\n", __FUNCTION__, _pin, *_ca, _clen);
  for ( i = 0; i < _clen; i++) {
-   if ( _ca[ i] & SC7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
-   if ( _ca[ i] & SC7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sc7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
-   if ( _ca[ i] & SC7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SC7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:INV\n", i);  sc7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
+   if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SP7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
    // FIXME: add PIN_CONFIG_DRIVE_OPEN_DRAIN
  }
  return( 0);  }
@@ -145,52 +96,83 @@ static struct pinconf_ops sppctl_pconf_ops = {
 };
 
 int stpctl_m_req( struct pinctrl_dev *_pd, unsigned _pin) {
+// sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  // FIXME: define
+// sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  return( 0);  }
 int stpctl_m_fre( struct pinctrl_dev *_pd, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  // FIXME: define
  return( 0);  }
-int stpctl_m_f_cnt( struct pinctrl_dev *_pd) {  return( sizeof_listF - 2);  }
-const char *stpctl_m_f_nam( struct pinctrl_dev *_pd, unsigned _fid) {  return( list_funcs[ _fid]);  }
-int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const **groups, unsigned *_galen) {
- if ( _fid == 0 || _fid == 1) {
-   *_galen = sizeof_listG - 1;
-   *groups = sc7021gpio_list_names;
- } else {
-   *_galen = ARRAY_SIZE( sc7021pmux_list_names);
-   *groups = sc7021pmux_list_names;
+int stpctl_m_f_cnt( struct pinctrl_dev *_pd) {  return( list_funcsSZ);  }
+const char *stpctl_m_f_nam( struct pinctrl_dev *_pd, unsigned _fid) {  return( list_funcs[ _fid].name);  }
+int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const **grps, unsigned *_gnum) {
+ func_t f = list_funcs[ _fid];
+ *_gnum = 0;
+ switch ( f.freg) {
+   case fOFF_0:   // gen GPIO/IOP: all groups = all pins
+        *_gnum = GPIS_listSZ;
+        *grps = sp7021gpio_list_s;
+        break;
+   case fOFF_M:   // MUX : 
+        *_gnum = PMUX_listSZ;
+        *grps = sp7021pmux_list_s;
+        break;
+   case fOFF_I:   // some IOP func 
+        if ( !f.grps) break;
+        *_gnum = f.gnum;
+        *grps = ( const char * const *)f.grps_sa;
+        break;
+   default:
+        KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
+        break;
  }
- KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_galen);
+ KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_gnum);
  return( 0);  }
 int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
- int i = -1;
+ int i = -1, j = -1;
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
- KINF( _pd->dev, "%s(fun:%d,pin:%d)\n", __FUNCTION__, _fid, _gid);
- // set function
- if ( _fid > 1) {
-   sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
-   sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
-   return( 0);  }
- // set IOP
- if ( _fid == 1) {
-   sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_I);
-   return( 0);  }
- // set GPIO and detouch from all funcs
- sc7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_G);
- while ( list_funcs[ ++i]) {
-   if ( sppctl_fun_get( pctrl, i) != _gid) continue;
-   sppctl_pin_set( pctrl, _gid, i);  }
+ func_t f = list_funcs[ _fid];
+ grp2fp_map_t g2fpm = g2fp_maps[ _gid];
+ KINF( _pd->dev, "%s(fun:%d,grp:%d)\n", __FUNCTION__, _fid, _gid);
+ switch ( f.freg) {
+     case fOFF_0:   // GPIO. detouch from all funcs - ?
+        // not there now
+        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_G);
+        for ( i = 0; i < list_funcsSZ; i++) {
+          if ( list_funcs[ i].freg != fOFF_M) continue;
+          j++;
+          if ( sppctl_fun_get( pctrl, j) != _gid) continue;
+          sppctl_pin_set( pctrl, _gid, j);  }
+        break;
+   case fOFF_M:   // MUX : 
+        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
+        sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
+        break;
+   case fOFF_I:   // IOP
+       // FIXME:
+        for ( i = 0; i < f.grps[ g2fpm.g_idx].pnum; i++) {
+          f.grps[ g2fpm.g_idx].pins;
+          sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), f.grps[ g2fpm.g_idx].pins[ i], muxF_G, muxM_I);
+        }
+        sppctl_iop_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
+        break;
+   default:
+        KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
+        break;
+ }
  return( 0);  }
-int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _off) {
- KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _off);
+int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
+ sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
+ KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
+ sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  return( 0);  }
-void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _off) {
- KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _off);
+void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
+ KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  return;  }
-int stpctl_m_gpio_sdir( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _off, bool _in) {
- KDBG( _pd->dev, "%s(%d,%d)\n", __FUNCTION__, _off, _in);
+int stpctl_m_gpio_sdir( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin, bool _in) {
+ KDBG( _pd->dev, "%s(%d,%d)\n", __FUNCTION__, _pin, _in);
  return( 0);  }
 
 static struct pinmux_ops sppctl_pinmux_ops = {
@@ -208,12 +190,35 @@ static struct pinmux_ops sppctl_pinmux_ops = {
 
 // all groups
 int stpctl_o_g_cnt( struct pinctrl_dev *_pd) {
- return( sizeof_listG);  }
+ // FIXME: add sizeof(IOP groups)
+ return( unq_grpsSZ);  }
 const char *stpctl_o_g_nam( struct pinctrl_dev *_pd, unsigned _gid) {
- return( sc7021gpio_list_names[ _gid]);  }
+ // FIXME: add IOP groups
+ return( unq_grps[ _gid]);  }
 int stpctl_o_g_pins( struct pinctrl_dev *_pd, unsigned _gid, const unsigned **pins, unsigned *num_pins) {
- *num_pins = 1;
- *pins = &sc7021pins_G[ _gid];
+ // FIXME: HERE
+ int i;
+ grp2fp_map_t g2fpm = g2fp_maps[ _gid];
+ func_t f = list_funcs[ g2fpm.f_idx];
+ KDBG( _pd->dev, " grp-pins g:%d f_idx:%d,g_idx:%d freg:%d...\n", _gid, g2fpm.f_idx, g2fpm.g_idx, f.freg);
+ *num_pins = 0;
+// // GPIO(+IOP base type), handled in gpio driver
+// if ( f.freg == fOFF_0) return( 0);
+ // MUX | GPIO: 1 pin -> 1 group
+ if ( f.freg == fOFF_M || f.freg == fOFF_0) {
+ KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
+   *num_pins = 1;
+   *pins = &sp7021pins_G[ _gid];
+   return( 0);  }
+ KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
+ // IOP (several pins at once in a group)
+ if ( !f.grps) return( 0);
+ if ( f.gnum < 1) return( 0);
+ KDBG( _pd->dev, " grp-pins f:%s l:%d\n",f.name, __LINE__);
+ *num_pins = f.grps[ g2fpm.g_idx].pnum;
+ *pins = f.grps[ g2fpm.g_idx].pins;
+ KDBG( _pd->dev, " grp-pins g:%s num_pins:%d... l:%d\n", f.grps[ g2fpm.g_idx].name, *num_pins, __LINE__);
+ for ( i = 0; i < *num_pins; i++) KDBG( _pd->dev, " grp-pins p:%d\n", (*pins)[ i]);
  return( 0);  }
 // /sys/kernel/debug/pinctrl/sppctl/pins add: gpio_first and ctrl_sel
 #ifdef CONFIG_DEBUG_FS
@@ -225,13 +230,30 @@ void stpctl_o_show( struct pinctrl_dev *_pd, struct seq_file *_s, unsigned _n) {
 #define stpctl_ops_show NULL
 #endif
 
+int reserve_map( struct device *_d, struct pinctrl_map **map,
+		       unsigned int *reserved_maps, unsigned int *num_maps,
+		       unsigned int reserve)  {
+ unsigned int num_old = *num_maps, num_new = *num_maps + reserve;
+ struct pinctrl_map *new_map;
+ if ( num_old >= num_new) return 0;
+ if ( !( new_map = krealloc( *map, sizeof( *new_map)*num_new, GFP_KERNEL))) {
+   dev_err( _d, "krealloc(map) failed\n");
+   return( -ENOMEM);  }
+ memset( new_map + num_old, 0, ( num_new - num_old) * sizeof(*new_map));
+ *map = new_map;
+ *reserved_maps = num_new;
+ return( 0);  }
+
 int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pinctrl_map **_map, unsigned *_nm) {
  struct device_node *parent;
  u32 dt_pin;
  u8 p_p, p_g, p_f, p_l;
  unsigned long *configs;
- int i, size = 0;
+ int i, size = 0, ret, reserved_maps;
  const __be32 *list = of_get_property( _dn, "sppctl,pins", &size);
+ struct property *prop;
+ const char *s_f, *s_g;
+print_device_tree_node( _dn, 0);
 // KDBG( _pd->dev, "%s() np_c->n:%s ->t:%s ->fn:%s\n", __FUNCTION__, _dn->name, _dn->type, _dn->full_name);
 // int ret = pinconf_generic_dt_node_to_map_pin( _pd, _dn, _map, num_maps);
  parent = of_get_parent( _dn);
@@ -240,13 +262,13 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  configs = devm_kcalloc( _pd->dev, *_nm, sizeof( *configs), GFP_KERNEL);
  for ( i = 0; i < ( *_nm); i++) {
     dt_pin = be32_to_cpu( list[ i]);
-    p_p = SC7021_PCTLD_P(dt_pin);
-    p_g = SC7021_PCTLD_G(dt_pin);
-    p_f = SC7021_PCTLD_F(dt_pin);
-    p_l = SC7021_PCTLD_L(dt_pin);
+    p_p = SP7021_PCTLD_P(dt_pin);
+    p_g = SP7021_PCTLD_G(dt_pin);
+    p_f = SP7021_PCTLD_F(dt_pin);
+    p_l = SP7021_PCTLD_L(dt_pin);
     (* _map)[ i].name = parent->name;
     KDBG( _pd->dev, "map [%d]=%d p=%d g=%d f=%d l=%d\n", i, dt_pin, p_p, p_g, p_f, p_l);
-    if ( p_g == SC7021_PCTL_G_GPIO) {
+    if ( p_g == SP7021_PCTL_G_GPIO) {
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
@@ -255,10 +277,24 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
       KDBG( _pd->dev, "%s(%d) = %X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else {
       (* _map)[ i].type = PIN_MAP_TYPE_MUX_GROUP;
-      (* _map)[ i].data.mux.function = list_funcs[ p_f];
+      (* _map)[ i].data.mux.function = list_funcs[ p_f].name;
       (* _map)[ i].data.mux.group = pin_get_name( _pd, p_p);
       KDBG( _pd->dev, "f->p: %s(%d)->%s(%d)\n", (* _map)[ i].data.mux.function, p_f, (* _map)[ i].data.mux.group, p_p);
     }
+ }
+ // handle function and group (IOP)
+ ret = of_property_count_strings( _dn, "sppctl,groups");
+ if ( ret > 0 && of_property_read_string( _dn, "sppctl,function", &s_f) == 0) {
+   KDBG( _pd->dev, "found func: %s\n", s_f);
+   reserve_map( _pd->dev, _map, &reserved_maps, _nm, ret);
+   of_property_for_each_string( _dn, "sppctl,groups", prop, s_g) {
+     KDBG( _pd->dev, " %s: %s\n", s_f, s_g);
+     (* _map)[ *_nm].type = PIN_MAP_TYPE_MUX_GROUP;
+     (* _map)[ *_nm].data.mux.function = s_f;
+     (* _map)[ *_nm].data.mux.group = s_g;
+     KDBG( _pd->dev, "f->g: %s->%s\n", (* _map)[ *_nm].data.mux.function, (* _map)[ *_nm].data.mux.group);
+     ( *_nm)++;
+   }
  }
  of_node_put( parent);
 // parse_dt_cfg(np, pctldev->desc->custom_params,
@@ -279,6 +315,42 @@ static struct pinctrl_ops sppctl_pctl_ops = {
  .dt_free_map =         stpctl_o_mfre,
 };
 
+// creates unq_grps[] uniq group names array char *
+// sets unq_grpsSZ
+// creates XXX[ group_idx]{func_idx, pins_idx}
+void group_groups( struct platform_device *_pd) {
+ int i, k, j = 0;
+ // fill array of all groups
+ unq_grps = NULL;
+ unq_grpsSZ = GPIS_listSZ;
+ // calc unique group names array size
+ for ( i = 0; i < list_funcsSZ; i++) {
+   if ( list_funcs[ i].freg != fOFF_I) continue;
+   unq_grpsSZ += list_funcs[ i].gnum;  }
+ // fill up unique group names array
+ unq_grps = ( char const **)devm_kzalloc( &( _pd->dev), ( unq_grpsSZ + 1)*sizeof( char *), GFP_KERNEL);
+ g2fp_maps = devm_kzalloc( &( _pd->dev), ( unq_grpsSZ + 1)*sizeof( grp2fp_map_t), GFP_KERNEL);
+ // groups == pins
+ j = 0;
+ for ( i = 0; i < GPIS_listSZ; i++) {
+   unq_grps[ i] = sp7021gpio_list_s[ i];
+   g2fp_maps[ i].f_idx = 0;
+   g2fp_maps[ i].g_idx = i;  }
+ j = GPIS_listSZ;
+ // +IOP groups
+ for ( i = 0; i < list_funcsSZ; i++) {
+   if ( list_funcs[ i].freg != fOFF_I) continue;
+//   list_funcs[ i].grps_sa = ( char const **)kzalloc( ( list_funcs[ i].gnum)*sizeof( char *), GFP_KERNEL);
+   for ( k = 0; k < list_funcs[ i].gnum; k++) {
+     list_funcs[ i].grps_sa[ k] = ( char *)list_funcs[ i].grps[ k].name;
+     unq_grps[ j] = list_funcs[ i].grps[ k].name;
+     g2fp_maps[ j].f_idx = i;
+     g2fp_maps[ j].g_idx = k;
+     j++;  }
+ }
+ KINF( &( _pd->dev), "funcs:%d unq_grps:%d\n", list_funcsSZ, unq_grpsSZ);
+ return;  }
+
 // ---------- main (exported) functions
 void sppctl_pinctrl_init( struct platform_device *_pd) {
  int err;
@@ -288,12 +360,16 @@ void sppctl_pinctrl_init( struct platform_device *_pd) {
  // init pdesc
  _p->pdesc.owner = THIS_MODULE;
  _p->pdesc.name = dev_name( &( _pd->dev));
- _p->pdesc.pins = &( sc7021pmux_list_pins[ 0]);
- _p->pdesc.npins = ARRAY_SIZE( sc7021pmux_list_pins);
+// _p->pdesc.pins = &( sp7021pins_mux[ 0]);
+// _p->pdesc.npins = sp7021pins_muxSZ;
+ _p->pdesc.pins = &( sp7021pins_all[ 0]);
+ _p->pdesc.npins = sp7021pins_allSZ;
  _p->pdesc.pctlops = &sppctl_pctl_ops;
  _p->pdesc.confops = &sppctl_pconf_ops;
  _p->pdesc.pmxops = &sppctl_pinmux_ops;
- 
+
+ group_groups( _pd);
+
  if ( ( err = devm_pinctrl_register_and_init( &( _pd->dev), &( _p->pdesc), _p, &( _p->pcdp)))) {
    KERR( &( _pd->dev), "Failed to register\n");
    of_node_put( np);  }
