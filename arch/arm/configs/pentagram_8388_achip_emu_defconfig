@@ -824,7 +824,6 @@ CONFIG_BCMA_POSSIBLE=y
 # Graphics support
 #
 # CONFIG_DRM is not set
-CONFIG_SP7021_HDMITX=m
 
 #
 # ACP (Audio CoProcessor) Configuration
