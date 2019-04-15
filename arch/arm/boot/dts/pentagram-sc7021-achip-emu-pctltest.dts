@@ -17,6 +17,11 @@
 	};
 };
 
+&hdmitx {
+ pinctrl-names = "default";
+ pinctrl-0 = <&hdmi_A_tx1>;
+};
+
 &sdio {
  pinctrl-names = "default";
  pinctrl-0 = <&sdio_pins>;
@@ -90,6 +95,11 @@
       SP7021_IOPAD(8,SP7021_PCTL_G_GPIO,0,0)
       SP7021_IOPAD(9,SP7021_PCTL_G_GPIO,0,0)
     >;
+ };
+
+ hdmi_A_tx1: hdmi_A_tx1_pins {
+    sppctl,groups = "HDMI_TX1";
+    sppctl,function = "HDMI_TX";
  };
 };
 
