@@ -151,14 +151,15 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
         sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
         break;
    case fOFF_I:   // IOP
-       // FIXME:
+        sppctl_iop_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
+        break;
+   default:
+        // FIXME: add fOFF_G:
         for ( i = 0; i < f.grps[ g2fpm.g_idx].pnum; i++) {
           f.grps[ g2fpm.g_idx].pins;
           sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), f.grps[ g2fpm.g_idx].pins[ i], muxF_G, muxM_I);
         }
-        sppctl_iop_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
-        break;
-   default:
+        // FIXME: add fOFF_G: /
         KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
         break;
  }

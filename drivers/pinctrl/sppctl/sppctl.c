@@ -50,19 +50,18 @@ void print_device_tree_node( struct device_node *node, int depth) {
 void sppctl_iop_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval) {
  uint32_t *r;
  sppctl_reg_t x = {  .m = ( ~(~0 << _bsiz)) << _boff, .v = ( ( uint16_t)_rval) << _boff  };
- if ( _p->debug > 1 || 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X,%X) m:%X v:%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X,%X) m:%X v:%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
  r = ( uint32_t *)&x;
- writel( *r, _p->baseI + _roff);
- KDBG( _p->pcdp->dev, "%s() retv:%d\n", sppctl_iop_get( _p, _roff, _boff, _bsiz));
+ writel( *r, _p->baseI + ( _roff << 2));
  return;  }
 
 uint8_t sppctl_iop_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz) {
  uint8_t rval;
  sppctl_reg_t *x;
- uint32_t r = readl( _p->baseI + _roff);
+ uint32_t r = readl( _p->baseI + ( _roff << 2));
  x = ( sppctl_reg_t *)&r;
  rval = ( x->v >> _boff) & ( ~( ~0 << _bsiz));
- if ( _p->debug > 1 || 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X) v:%X rval:%X\n", __FUNCTION__, _roff, _boff, _bsiz, x->v, rval);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X) v:%X rval:%X\n", __FUNCTION__, _roff, _boff, _bsiz, x->v, rval);
  return( rval);  }
 
 void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun) {
