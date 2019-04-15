@@ -560,7 +560,7 @@ static void apply_audio(void __iomem *hdmitxbase)
 void hal_hdmitx_init(void __iomem *moon1base, void __iomem *hdmitxbase)
 {	
 	reg_hdmitx_t *pHdmitxReg = (reg_hdmitx_t *)hdmitxbase;
-	reg_moon1_t *pMoon1Reg = (reg_moon1_t *)moon1base;
+//	reg_moon1_t *pMoon1Reg = (reg_moon1_t *)moon1base;
 
 	/*apply phy general configures*/
 
