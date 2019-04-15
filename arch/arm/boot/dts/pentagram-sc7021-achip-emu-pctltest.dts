@@ -19,7 +19,7 @@
 
 &hdmitx {
  pinctrl-names = "default";
- pinctrl-0 = <&hdmi_A_tx1>;
+ pinctrl-0 = <&hdmi_A_tx3>;
 };
 
 &sdio {
@@ -99,6 +99,14 @@
 
  hdmi_A_tx1: hdmi_A_tx1_pins {
     sppctl,groups = "HDMI_TX1";
+    sppctl,function = "HDMI_TX";
+ };
+ hdmi_A_tx2: hdmi_A_tx2_pins {
+    sppctl,groups = "HDMI_TX2";
+    sppctl,function = "HDMI_TX";
+ };
+ hdmi_A_tx3: hdmi_A_tx3_pins {
+    sppctl,groups = "HDMI_TX3";
     sppctl,function = "HDMI_TX";
  };
 };
