@@ -5,6 +5,7 @@
 
 #ifndef __SP_SPINAND_H
 #define __SP_SPINAND_H
+#include <linux/clk.h>
 
 /*
  *  spi nand platform related configs
@@ -15,7 +16,7 @@
 #endif
 #define SPI_NAND_DIRECT_MAP       0x9dff0000
 #define SP_SPINAND_REG_BASE       0x9C002B80  //RF_GRP(87, 0)
-#define SP_SPINAND_IRQ            149   //8269:55,  q628:149
+#define SP_SPINAND_IRQ            149
 #define CONFIG_SPINAND_DEV_IN_DTS
 
 /*
@@ -269,6 +270,7 @@ struct sp_spinand_regs {
 
 struct sp_spinand_info {
 	struct device *dev;
+	struct clk *clk;
 	struct mtd_info* mtd;
 	struct nand_chip nand;
 	void __iomem *regs;

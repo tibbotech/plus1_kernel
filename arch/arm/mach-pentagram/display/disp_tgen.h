@@ -27,22 +27,22 @@ typedef enum {
 typedef struct DRV_SetTGEN_s {
 	DRV_VideoFormat_e fmt;
 	DRV_FrameRate_e fps;
-	UINT16 htt;
-	UINT16 vtt;
-	UINT16 hactive;
-	UINT16 vactive;
-	UINT16 v_bp;
+	u16 htt;
+	u16 vtt;
+	u16 hactive;
+	u16 vactive;
+	u16 v_bp;
 } DRV_SetTGEN_t;
 
 void DRV_TGEN_Init(void *pInHWReg);
 void DRV_TGEN_GetFmtFps(DRV_VideoFormat_e *fmt, DRV_FrameRate_e *fps);
-unsigned int DRV_TGEN_GetLineCntNow(void);
-void DRV_TGEN_SetUserInt1(UINT32 count);
-void DRV_TGEN_SetUserInt2(UINT32 count);
-DRV_Status_e DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN);
+extern unsigned int DRV_TGEN_GetLineCntNow(void);
+void DRV_TGEN_SetUserInt1(u32 count);
+void DRV_TGEN_SetUserInt2(u32 count);
+int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN);
 void DRV_TGEN_Get(DRV_SetTGEN_t *GetTGEN);
 void DRV_TGEN_Reset(void);
-DRV_Status_e DRV_TGEN_Adjust(DRV_TGEN_Input_e Input, UINT32 Adjust);
+int DRV_TGEN_Adjust(DRV_TGEN_Input_e Input, u32 Adjust);
 
 #endif	//__DISP_TGEN_H__
 

@@ -1,25 +1,16 @@
 #define pr_fmt(fmt) "["KBUILD_MODNAME"] "fmt
 
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/interrupt.h>
+#include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
-#include <linux/device.h>
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/partitions.h>
 #include <linux/mtd/nand.h>
-#include <linux/ioport.h>
-//nclude <asm-generic/io.h>
-#include <linux/vmalloc.h>
-#include <linux/semaphore.h>
-#include <linux/irqreturn.h>
 #include <linux/wait.h>
-#include <linux/io.h>
-#include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-#include <linux/ioport.h>
-#include <linux/platform_device.h>
-#include <linux/interrupt.h>
-#include <linux/module.h>
-#include <linux/kernel.h>
 #include "sp_bch.h"
 #include "sp_spinand.h"
 
@@ -331,7 +322,8 @@ int spi_nand_reset(struct sp_spinand_info *info)
 
 	wait_spi_idle(info);
 
-	value = SPINAND_CHECK_OIP_EN;
+	value = SPINAND_CHECK_OIP_EN
+		| SPINAND_USR_CMD_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
 	return wait_spi_idle(info);
@@ -1051,6 +1043,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct resource *res_mem;
 	struct resource *res_irq;
+	struct clk *clk;
 	struct sp_spinand_info *info;
 	const char *part_types[] = {
 	#ifdef CONFIG_MTD_CMDLINE_PARTS
@@ -1083,6 +1076,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	if (IS_ERR(info->regs)) {
 		pr_err("memory remap fail!\n");
 		ret = PTR_ERR(info->regs);
+		info->regs = NULL;
 		goto err1;
 	}
 
@@ -1093,19 +1087,21 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	ret = request_irq(res_irq->start, spi_nand_irq,
-				IRQF_SHARED, "sp_spinand", info);
-	if (ret) {
-		pr_err("request IRQ(%d) fail\n", res_irq->start);
-		goto err1;
+	clk = devm_clk_get(&pdev->dev, NULL);
+	if (!IS_ERR(clk)) {
+		ret = clk_prepare(clk);
+		if (ret) {
+			pr_err("clk_prepare fail\n");
+			goto err1;
+		}
+		ret = clk_enable(clk);
+		if (ret) {
+			pr_err("clk_enable fail\n");
+			clk_unprepare(clk);
+			goto err1;
+		}
+		info->clk = clk;
 	}
-
-	info->irq = res_irq->start;
-	info->dev = dev;
-	info->mtd = &info->nand.mtd;
-	info->mtd->priv = info;
-	info->mtd->name = dev_name(dev);
-	info->mtd->owner = THIS_MODULE;
 
 	info->buff.size = CONFIG_SPINAND_BUF_SZ;
 	#ifdef CONFIG_SPINAND_USE_SRAM
@@ -1115,12 +1111,19 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	info->buff.virt = dma_alloc_coherent(dev, info->buff.size,
 		&info->buff.phys, GFP_KERNEL);
 	#endif
-
 	if (!info->buff.virt) {
 		pr_err("alloc memory(size=0x%x) fail\n",info->buff.size);
 		ret = -ENOMEM;
 		goto err1;
 	}
+
+	ret = request_irq(res_irq->start, spi_nand_irq,
+			IRQF_SHARED, "sp_spinand", info);
+	if (ret) {
+		pr_err("request IRQ(%d) fail\n", res_irq->start);
+		goto err1;
+	}
+	info->irq = res_irq->start;
 
 	if (spi_nand_reset(info) < 0) {
 		pr_err("reset device fail\n");
@@ -1128,7 +1131,11 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	nand_set_flash_node(&info->nand, dev->of_node);
+	info->dev = dev;
+	info->mtd = &info->nand.mtd;
+	info->mtd->priv = info;
+	info->mtd->name = dev_name(dev);
+	info->mtd->owner = THIS_MODULE;
 	info->nand.options = NAND_NO_SUBPAGE_WRITE;
 	info->nand.select_chip = sp_spinand_select_chip;
 	info->nand.cmd_ctrl = sp_spinand_cmd_ctrl;
@@ -1143,6 +1150,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	info->nand.ecc.write_page = sp_spinand_write_page;
 	info->nand.ecc.mode = NAND_ECC_HW;
 	info->nand.bbt_options = NAND_BBT_USE_FLASH|NAND_BBT_NO_OOB;
+	nand_set_flash_node(&info->nand, dev->of_node);
 
 	spi_nand_readid(info, 0, (u8*)&id);
 
@@ -1186,12 +1194,6 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	/* close write protection */
 	spi_nand_setfeatures(info, DEVICE_PROTECTION_ADDR, 0x0);
 	info->dev_protection=spi_nand_getfeatures(info, DEVICE_PROTECTION_ADDR);
-
-	if (sp_bch_dev_probe() < 0) {
-		ret = -ENXIO;
-		pr_err("sp_bch_dev_probe fail\n");
-		goto err1;
-	}
 
 	if (sp_bch_init(info->mtd, &info->parity_sector_size) < 0) {
 		ret = -ENXIO;
@@ -1237,6 +1239,11 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	return ret;
 
 err1:
+	if(info->clk) {
+		clk_disable(info->clk);
+		clk_unprepare(info->clk);
+	}
+
 	if (info->regs)
 		iounmap(info->regs);
 
@@ -1249,10 +1256,8 @@ err1:
 		#endif
 	}
 
-	//crash here!!!
-	//pr_info("irq:%d\n", info->irq);
-	//if (info->irq > 0)
-	//	free_irq(info->irq, dev);
+	if (info->irq > 0)
+		free_irq(info->irq, info);
 
 	devm_kfree(dev, (void *)info);
 
@@ -1266,9 +1271,13 @@ int sp_spinand_remove(struct platform_device *pdev)
 
 	wake_up(&info->wq);
 
-	sp_bch_dev_remove();
 	mtd_device_unregister(info->mtd);
 	deregister_mtd_parser(&sunplus_nand_parser);
+
+	if (info->clk) {
+		clk_disable(info->clk);
+		clk_unprepare(info->clk);
+	}
 
 	if (info->regs)
 		iounmap(info->regs);
@@ -1283,11 +1292,24 @@ int sp_spinand_remove(struct platform_device *pdev)
 	}
 
 	if (info->irq > 0)
-		free_irq(info->irq, &pdev->dev);
+		free_irq(info->irq, info);
 
 	devm_kfree(&pdev->dev, (void *)info);
 
 	return ret;
+}
+
+int sp_spinand_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	//struct sp_spinand_info *info = platform_get_drvdata(pdev);
+	return 0;
+
+}
+
+int sp_spinand_resume(struct platform_device *pdev)
+{
+	//struct sp_spinand_info *info = platform_get_drvdata(pdev);
+	return 0;
 }
 
 #ifndef CONFIG_SPINAND_DEV_IN_DTS
@@ -1305,7 +1327,7 @@ static struct resource sp_spinand_res[] = {
 };
 
 static struct platform_device sp_spinand_device = {
-	.name  = "sunplus,sp_spinand",
+	.name  = "sunplus,sp7021-spinand",
 	.id    = 0,
 	.num_resources = ARRAY_SIZE(sp_spinand_res),
 	.resource  = sp_spinand_res,
@@ -1313,7 +1335,7 @@ static struct platform_device sp_spinand_device = {
 #endif
 
 static const struct of_device_id sunplus_nand_of_match[] = {
-	{ .compatible = "sunplus,sp_spinand" },
+	{ .compatible = "sunplus,sp7021-spinand" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
@@ -1321,6 +1343,8 @@ MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);
 static struct platform_driver sp_spinand_driver = {
 	.probe = sp_spinand_probe,
 	.remove = sp_spinand_remove,
+	.suspend = sp_spinand_suspend,
+	.resume = sp_spinand_resume,
 	.driver = {
 		.name = "sunplus,sp_spinand",
 		.owner = THIS_MODULE,

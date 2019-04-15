@@ -62,20 +62,31 @@
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
+	#define mod_dbg(fmt, arg...)	pr_dbg("[%s:%d] "fmt, \
+			__func__, \
+			__LINE__, \
+			##arg)
 #else
-	#define DEBUG(fmt, arg...)
-	#define MSG(fmt, arg...)
+	#define mod_dbg(fmt, arg...)
 #endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
+
+#define mod_err(fmt, arg...)		pr_err("[%s:%d] Error! "fmt, \
+		__func__, \
+		__LINE__, \
+		##arg)
+#define mod_warn(fmt, arg...)		pr_warn("[%s:%d] Warning! "fmt, \
+		__func__, \
+		__LINE__, \
+		##arg)
+#define mod_info(fmt, arg...)		pr_info("[%s:%d] "fmt, \
+		__func__, \
+		__LINE__, \
+		##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
  **************************************************************************/
-typedef struct HW_OSD_Header_s {
+struct HW_OSD_Header_s {
 	u8 config0;	//config0 includes:
 	// [bit 7] cu	: color table update
 	// [bit 6] ft	: force transparency
@@ -116,29 +127,32 @@ typedef struct HW_OSD_Header_s {
 	u32 link_data;
 
 	u32 reserved3[24];	// need 128 bytes for HDR
-} HW_OSD_Header_t;
-STATIC_ASSERT(sizeof(HW_OSD_Header_t) == 128);
+};
+STATIC_ASSERT(sizeof(struct HW_OSD_Header_s) == 128);
 
-typedef struct _Region_Manager_t_ {
-	DRV_Region_Info_t			RegionInfo;
+struct Region_Manager_s {
+	DRV_Region_Info_t	RegionInfo;
 
 	enum DRV_OsdRegionFormat_e	Format;
-	u32							Align;
-	u32							NumBuff;
-	u32							DataPhyAddr;
-	u8							*DataAddr;
-	u8							*Hdr_ClutAddr;	//palette addr in osd header
-	u32							BmpSize;
-	u32							CurrBufID;
+	u32					Align;
+	u32					NumBuff;
+	u32					DataPhyAddr;
+	u8					*DataAddr;
+	//palette addr in osd header
+	u8					*Hdr_ClutAddr;
+	u32					BmpSize;
+	u32					CurrBufID;
 
 	// SW latch
-	u32							DirtyFlag;
-	u8							*PaletteAddr;	//other side palette addr, Gearing with swap buffer.
+	u32					DirtyFlag;
+	//other side palette addr, Gearing with swap buffer.
+	u8					*PaletteAddr;
 
-	HW_OSD_Header_t				*pHWRegionHdr;
-	u32 reserved[4]; //For gsl allocate buffer case. The structure size should be 32 alignment.
-} Region_Manager_t;
-STATIC_ASSERT((sizeof(Region_Manager_t) % 4) == 0);
+	struct HW_OSD_Header_s		*pHWRegionHdr;
+	//structure size should be 32 alignment.
+	u32 reserved[4];
+};
+STATIC_ASSERT((sizeof(struct Region_Manager_s) % 4) == 0);
 
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
@@ -146,7 +160,7 @@ STATIC_ASSERT((sizeof(Region_Manager_t) % 4) == 0);
 static DISP_OSD_REG_t *pOSDReg;
 static DISP_GPOST_REG_t *pGPOSTReg;
 
-static Region_Manager_t *gpWinRegion;
+static struct Region_Manager_s *gpWinRegion;
 static u32 gpWinRegion_phy;
 static u8 *gpOsdHeader;
 static u32 gpOsdHeader_phy;
@@ -165,10 +179,11 @@ void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 	spin_lock_init(&pDispWorkMem->osd_lock);
 }
 
-DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, UINT32 *pClutDataPtr)
+DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, u32 *pClutDataPtr)
 {
-	Region_Manager_t *pRegionManager = (Region_Manager_t *)region;
-	UINT32 copysize = 0;
+	struct Region_Manager_s *pRegionManager =
+		(struct Region_Manager_s *)region;
+	u32 copysize = 0;
 
 	if (pRegionManager && pClutDataPtr) {
 		switch (pRegionManager->Format) {
@@ -184,29 +199,34 @@ DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, UINT32 *pClutDataPtr)
 	}
 
 Return:
-	ERRDISP("Incorrect region handle, pClutDataPtr 0x%x\n", (UINT32)pClutDataPtr);
+	mod_err("Incorrect region handle, pClutDataPtr 0x%x\n",
+			(u32)pClutDataPtr);
+
 	return DRV_ERR_INVALID_HANDLE;
 }
 
 void DRV_OSD_IRQ(void)
 {
-	Region_Manager_t *pRegionManager = gpWinRegion;
-	HW_OSD_Header_t *pHWOSDhdr;
+	struct Region_Manager_s *pRegionManager = gpWinRegion;
+	struct HW_OSD_Header_s *pHWOSDhdr;
 	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
 		return;
 	spin_lock(&pDispWorkMem->osd_lock);
 
-	if (pRegionManager->pHWRegionHdr) {
-		pHWOSDhdr = (HW_OSD_Header_t *)pRegionManager->pHWRegionHdr;
-
-		if (pRegionManager->DirtyFlag & REGION_ADDR_DIRTY) {
-			pRegionManager->DirtyFlag &= ~REGION_ADDR_DIRTY;
-			pHWOSDhdr->link_data = SWAP32((UINT32)((UINT32)pRegionManager->DataPhyAddr + pRegionManager->BmpSize * (pRegionManager->CurrBufID & 0xf)));
-			if (pRegionManager->PaletteAddr)
-				(void)DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager, (UINT32 *)pRegionManager->PaletteAddr);
-		}
+	pHWOSDhdr = (struct HW_OSD_Header_s *)
+		pRegionManager->pHWRegionHdr;
+	if (pHWOSDhdr &&
+			(pRegionManager->DirtyFlag & REGION_ADDR_DIRTY)) {
+		pRegionManager->DirtyFlag &= ~REGION_ADDR_DIRTY;
+		pHWOSDhdr->link_data = SWAP32(
+				(u32)((u32)pRegionManager->DataPhyAddr
+					+ (pRegionManager->BmpSize
+					* (pRegionManager->CurrBufID & 0xf))));
+		if (pRegionManager->PaletteAddr)
+			DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager,
+					(u32 *)pRegionManager->PaletteAddr);
 	}
 
 	if (pDispWorkMem->osd_field_end_protect) {
@@ -219,21 +239,29 @@ void DRV_OSD_IRQ(void)
 
 void DRV_OSD_Info(void)
 {
-	HW_OSD_Header_t *pOsdHdr = (HW_OSD_Header_t *)gpOsdHeader;
+	struct HW_OSD_Header_s *pOsdHdr = (struct HW_OSD_Header_s *)gpOsdHeader;
 
-	ERRDISP("Region display-order is as follows:\n");
+	mod_err("Region display-order is as follows:\n");
 
-	diag_printf("    Check osd output: %d %d, region ouput:%d %d\n",
+	pr_info("    Check osd output: %d %d, region ouput:%d %d\n",
 		pOSDReg->osd_hvld_width,
 		pOSDReg->osd_vvld_height,
 		SWAP16(pOsdHdr->h_size),
 		SWAP16(pOsdHdr->v_size));
 
-	diag_printf("header: (x, y)=(%d, %d) (w, h)=(%d, %d) data(x, y)=(%d, %d) data width=%d\n",
-				SWAP16(pOsdHdr->disp_start_column), SWAP16(pOsdHdr->disp_start_row),
-				SWAP16(pOsdHdr->h_size), SWAP16(pOsdHdr->v_size),
-				SWAP16(pOsdHdr->data_start_column), SWAP16(pOsdHdr->data_start_row), SWAP16(pOsdHdr->data_width));
-	diag_printf("cu:%d ft:%d bit format:%d link data:0x%x\n\n", (pOsdHdr->config0 & 0x80)?1:0, (pOsdHdr->config0 & 0x40)?1:0, (pOsdHdr->config0 & 0xf), SWAP32(pOsdHdr->link_data));
+	pr_info("header: (x, y)=(%d, %d) (w, h)=(%d, %d) data(x, y)=(%d, %d) data width=%d\n",
+				SWAP16(pOsdHdr->disp_start_column),
+				SWAP16(pOsdHdr->disp_start_row),
+				SWAP16(pOsdHdr->h_size),
+				SWAP16(pOsdHdr->v_size),
+				SWAP16(pOsdHdr->data_start_column),
+				SWAP16(pOsdHdr->data_start_row),
+				SWAP16(pOsdHdr->data_width));
+	pr_info("cu:%d ft:%d bit format:%d link data:0x%x\n\n",
+			(pOsdHdr->config0 & 0x80) ? 1 : 0,
+			(pOsdHdr->config0 & 0x40) ? 1 : 0,
+			(pOsdHdr->config0 & 0xf),
+			SWAP32(pOsdHdr->link_data));
 }
 
 void DRV_OSD_HDR_Show(void)
@@ -242,7 +270,7 @@ void DRV_OSD_HDR_Show(void)
 	int i;
 
 	for (i = 0; i < 8; ++i)
-		diag_printf("%d: 0x%08x\n", i, *(ptr+i));
+		pr_info("%d: 0x%08x\n", i, *(ptr+i));
 }
 
 void DRV_OSD_HDR_Write(int offset, int value)
@@ -252,7 +280,8 @@ void DRV_OSD_HDR_Write(int offset, int value)
 	*(ptr+offset) = value;
 }
 
-void DRV_OSD_GetColormode_Vars(struct colormode_t *var, enum DRV_OsdRegionFormat_e Fmt)
+void DRV_OSD_GetColormode_Vars(struct colormode_t *var,
+		enum DRV_OsdRegionFormat_e Fmt)
 {
 	switch (Fmt) {
 	case DRV_OSD_REGION_FORMAT_8BPP:
@@ -350,15 +379,17 @@ void DRV_OSD_GetColormode_Vars(struct colormode_t *var, enum DRV_OsdRegionFormat
 
 int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+
 	if (!pOSDReg || !pGPOSTReg)
 		return 1;
 
 	/* todo reference Output size */
-	pinfo->UI_width = 720;
-	pinfo->UI_height = 480;
+	pinfo->UI_width = pDispWorkMem->UIRes.width;
+	pinfo->UI_height = pDispWorkMem->UIRes.height;
 	pinfo->UI_bufNum = 2;
 	pinfo->UI_bufAlign = 4096;
-	pinfo->UI_ColorFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+	pinfo->UI_ColorFmt = pDispWorkMem->UIFmt;
 
 	DRV_OSD_GetColormode_Vars(&pinfo->UI_Colormode, pinfo->UI_ColorFmt);
 
@@ -366,38 +397,61 @@ int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 }
 EXPORT_SYMBOL(DRV_OSD_Get_UI_Res);
 
-void DRV_OSD_Set_UI_UnInit(struct UI_FB_Info_t *pinfo)
+void DRV_OSD_Set_UI_UnInit(void)
 {
-	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
-		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, gpOsdHeader, gpOsdHeader_phy);
-	else
-		dma_free_coherent(NULL, sizeof(HW_OSD_Header_t), gpOsdHeader, gpOsdHeader_phy);
+	if (!gpOsdHeader || !gpWinRegion)
+		return;
 
-	dma_free_coherent(NULL, sizeof(Region_Manager_t), gpWinRegion, gpWinRegion_phy);
+	if (gpWinRegion->Format == DRV_OSD_REGION_FORMAT_8BPP)
+		dma_free_coherent(NULL,
+				sizeof(struct HW_OSD_Header_s) + 1024,
+				gpOsdHeader,
+				gpOsdHeader_phy);
+	else
+		dma_free_coherent(NULL,
+				sizeof(struct HW_OSD_Header_s),
+				gpOsdHeader,
+				gpOsdHeader_phy);
+
+	dma_free_coherent(NULL,
+			sizeof(struct Region_Manager_s),
+			gpWinRegion,
+			gpWinRegion_phy);
 }
 EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
 
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	u32 *osd_header;
 
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
-		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t) + 1024, &gpOsdHeader_phy, GFP_KERNEL);
+		gpOsdHeader = dma_zalloc_coherent(NULL,
+				sizeof(struct HW_OSD_Header_s) + 1024,
+				&gpOsdHeader_phy,
+				GFP_KERNEL);
 	else
-		gpOsdHeader = dma_zalloc_coherent(NULL, sizeof(HW_OSD_Header_t), &gpOsdHeader_phy, GFP_KERNEL);
+		gpOsdHeader = dma_zalloc_coherent(NULL,
+				sizeof(struct HW_OSD_Header_s),
+				&gpOsdHeader_phy,
+				GFP_KERNEL);
 
 	if (!gpOsdHeader) {
-		diag_printf("malloc osd header fail\n");
+		mod_err("malloc osd header fail\n");
 		return;
 	}
 
-	gpWinRegion = dma_zalloc_coherent(NULL, sizeof(Region_Manager_t), &gpWinRegion_phy, GFP_KERNEL);
+	gpWinRegion = dma_zalloc_coherent(NULL,
+			sizeof(struct Region_Manager_s),
+			&gpWinRegion_phy,
+			GFP_KERNEL);
 
 	if (!gpWinRegion) {
-		diag_printf("malloc region header fail\n");
+		mod_err("malloc region header fail\n");
 		return;
 	}
 
+	//todo
 	//gpWinRegion->RegionInfo
 
 	gpWinRegion->Format = pinfo->UI_ColorFmt;
@@ -405,12 +459,19 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	gpWinRegion->NumBuff = pinfo->UI_bufNum;
 	gpWinRegion->DataPhyAddr = pinfo->UI_bufAddr;
 	gpWinRegion->DataAddr = (u8 *)pinfo->UI_bufAddr;
-	gpWinRegion->Hdr_ClutAddr = gpOsdHeader + sizeof(HW_OSD_Header_t);
-	gpWinRegion->BmpSize = EXTENDED_ALIGNED(pinfo->UI_height * pinfo->UI_width * (pinfo->UI_Colormode.bits_per_pixel>>3), pinfo->UI_bufAlign);
+	gpWinRegion->Hdr_ClutAddr = gpOsdHeader
+		+ sizeof(struct HW_OSD_Header_s);
+	gpWinRegion->BmpSize = EXTENDED_ALIGNED(pinfo->UI_height
+			* pinfo->UI_width
+			* (pinfo->UI_Colormode.bits_per_pixel >> 3),
+			pinfo->UI_bufAlign);
 	gpWinRegion->PaletteAddr = (u8 *)pinfo->UI_bufAddr_pal;
-	gpWinRegion->pHWRegionHdr = (HW_OSD_Header_t *)gpOsdHeader;
+	gpWinRegion->pHWRegionHdr = (struct HW_OSD_Header_s *)gpOsdHeader;
 
-	//diag_printf("osd_header=0x%x 0x%x addr=0x%x\n", (u32)gpOsdHeader, gpOsdHeader_phy, pinfo->UI_bufAddr);
+	mod_dbg("osd_header=0x%x 0x%x addr=0x%x\n",
+			(u32)gpOsdHeader,
+			gpOsdHeader_phy,
+			pinfo->UI_bufAddr);
 
 	osd_header = (u32 *)gpOsdHeader;
 
@@ -419,7 +480,7 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	else
 		osd_header[0] = SWAP32(0x00001000 | (pinfo->UI_ColorFmt << 24));
 
-	osd_header[1] = SWAP32((pinfo->UI_height << 16) | pinfo->UI_width);
+	osd_header[1] = SWAP32((min(pinfo->UI_height, pDispWorkMem->panelRes.height) << 16) | min(pinfo->UI_width, pDispWorkMem->panelRes.width));
 	osd_header[2] = 0;
 	osd_header[3] = 0;
 	osd_header[4] = 0;
@@ -431,12 +492,16 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	osd_header[7] = SWAP32(pinfo->UI_bufAddr);
 
 	//OSD
-	pOSDReg->osd_ctrl = OSD_CTRL_COLOR_MODE_RGB | OSD_CTRL_CLUT_FMT_ARGB | OSD_CTRL_LATCH_EN | OSD_CTRL_A32B32_EN | OSD_CTRL_FIFO_DEPTH;
+	pOSDReg->osd_ctrl = OSD_CTRL_COLOR_MODE_RGB
+		| OSD_CTRL_CLUT_FMT_ARGB
+		| OSD_CTRL_LATCH_EN
+		| OSD_CTRL_A32B32_EN
+		| OSD_CTRL_FIFO_DEPTH;
 	pOSDReg->osd_base_addr = gpOsdHeader_phy;
 	pOSDReg->osd_hvld_offset = 0;
 	pOSDReg->osd_vvld_offset = 0;
-	pOSDReg->osd_hvld_width = pinfo->UI_width;
-	pOSDReg->osd_vvld_height = pinfo->UI_height;
+	pOSDReg->osd_hvld_width = pDispWorkMem->panelRes.width;
+	pOSDReg->osd_vvld_height = pDispWorkMem->panelRes.height;
 	pOSDReg->osd_bist_ctrl = 0x0;
 	pOSDReg->osd_3d_h_offset = 0x0;
 	pOSDReg->osd_src_decimation_sel = 0x0;
@@ -456,7 +521,7 @@ EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
 
 void DRV_OSD_WaitVSync(void)
 {
-	Region_Manager_t *pRegionManager = gpWinRegion;
+	struct Region_Manager_s *pRegionManager = gpWinRegion;
 	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
@@ -472,7 +537,7 @@ void DRV_OSD_WaitVSync(void)
 
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 {
-	Region_Manager_t *pRegionManager = gpWinRegion;
+	struct Region_Manager_s *pRegionManager = gpWinRegion;
 
 	if (!pRegionManager)
 		return -1;

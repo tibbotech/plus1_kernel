@@ -135,7 +135,7 @@ static struct platform_driver _display_driver = {
 	.suspend	= _display_suspend,
 	.resume		= _display_resume,
 	.driver		= {
-		.name	= "sc7021_display",
+		.name	= "sp7021_display",
 		.of_match_table	= of_match_ptr(_display_ids),
 	},
 };
@@ -1315,6 +1315,15 @@ static int _display_probe(struct platform_device *pdev)
 	}
 	pDispWorkMem->pHWRegBase = pTmpRegBase;
 
+	if (of_property_read_u32(pdev->dev.of_node, "ui_width", &pDispWorkMem->UIRes.width))
+		pDispWorkMem->UIRes.width = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_height", &pDispWorkMem->UIRes.height))
+		pDispWorkMem->UIRes.height = 0;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_format", &pDispWorkMem->UIFmt))
+		pDispWorkMem->UIFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+
 	DERROR("%s:%d mac test\n", __func__, __LINE__);
 
 	ret = _display_init_clk(pdev);
@@ -1346,36 +1355,49 @@ static int _display_probe(struct platform_device *pdev)
 			case 0:
 				SetTGEN.fmt = DRV_FMT_480P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 720;
+				pDispWorkMem->panelRes.height = 480;
 				break;
 			case 1:
 				SetTGEN.fmt = DRV_FMT_576P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 720;
+				pDispWorkMem->panelRes.height = 576;
 				break;
 			case 2:
 				SetTGEN.fmt = DRV_FMT_720P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 1280;
+				pDispWorkMem->panelRes.height = 720;
 				break;
 			case 3:
 				SetTGEN.fmt = DRV_FMT_720P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 1280;
+				pDispWorkMem->panelRes.height = 720;
 				break;
 			case 4:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 5:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_50Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 6:
 				SetTGEN.fmt = DRV_FMT_1080P;
 				SetTGEN.fps = DRV_FrameRate_24Hz;
+				pDispWorkMem->panelRes.width = 1920;
+				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 7:
 				diag_printf("user mode unsupport\n");
 				break;
 		}
-
 
 		ret = DRV_TGEN_Set(&SetTGEN);
 		if (ret != DRV_SUCCESS)
@@ -1389,7 +1411,7 @@ static int _display_probe(struct platform_device *pdev)
 	* L6: OSD0
 	*****************************************/
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Transparent, DRV_DMIX_VPP0);
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
 	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_AlphaBlend, DRV_DMIX_OSD0);
 
 #ifdef TEST_DMA
@@ -1482,7 +1504,6 @@ static int _display_resume(struct platform_device *pdev)
 }
 
 #if 1
-
 static int set_debug_cmd(const char *val, const struct kernel_param *kp)
 {
 	_debug_cmd((char *)val);
@@ -1501,7 +1522,7 @@ module_param_cb(debug, &debug_param_ops, NULL, 0644);
  *                     P U B L I C   F U N C T I O N                      *
  **************************************************************************/
 
-MODULE_DESCRIPTION("SC7021 Display Driver");
+MODULE_DESCRIPTION("SP7021 Display Driver");
 MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");
 MODULE_LICENSE("GPL");
 

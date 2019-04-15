@@ -2,7 +2,7 @@
 #define __HAL_DISP_H__
 /**
  * @file hal_disp.h
- * @brief 
+ * @brief
  * @author PoChou Chen
  */
 #include "disp_dmix.h"
@@ -15,7 +15,6 @@
  *                           C O N S T A N T S                            *
  **************************************************************************/
 #define REG_START_Q628_B			(0x9c000000)
-#define REG_START_Q628_A			(0x9ec00000)
 
 #define ALIGNED(x, n)				((x) & (~(n - 1)))
 #define EXTENDED_ALIGNED(x, n)		(((x) + ((n) - 1)) & (~(n - 1)))
@@ -43,12 +42,15 @@ extern int printk(const char *fmt, ...);
  *                          D A T A    T Y P E S                          *
  **************************************************************************/
 typedef struct _display_size_t {
-	UINT16 width;
-	UINT16 height;
+	UINT32 width;
+	UINT32 height;
 } display_size_t;
 
 typedef struct {
 	void *pHWRegBase;
+
+	display_size_t		UIRes;
+	UINT32				UIFmt;
 
 	//OSD
 	spinlock_t osd_lock;
@@ -70,11 +72,7 @@ typedef struct {
 
 	display_size_t		panelRes;
 #if 0
-	display_size_t		UIRes;
-
 	DRV_Sys_OutMode_Info_t DispOutMode;
-	UINT8 DispOutModeUpdated;
-
 #endif
 } DISPLAY_WORKMEM;
 

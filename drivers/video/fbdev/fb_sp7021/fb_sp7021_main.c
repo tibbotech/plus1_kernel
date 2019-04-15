@@ -46,15 +46,11 @@
 /**************************************************************************
  * Macros
  **************************************************************************/
-#ifdef DEBUG_MSG
-	#define mod_dbg(pdev, fmt, arg...)	dev_dbg(&pdev->dev, \
-			"[%s:%d] "fmt, \
-			__func__, \
-			__LINE__, \
-			##arg)
-#else
-	#define mod_dbg(...)
-#endif
+#define mod_dbg(pdev, fmt, arg...)	dev_dbg(&pdev->dev, \
+		"[%s:%d] "fmt, \
+		__func__, \
+		__LINE__, \
+		##arg)
 
 #define mod_err(pdev, fmt, arg...)	dev_err(&pdev->dev, \
 		"[%s:%d] Error! "fmt, \
@@ -75,16 +71,6 @@
 /**************************************************************************
  * Data Types
  **************************************************************************/
-//todo resvered memory
-struct dma_coherent_mem {
-	void			*virt_base;
-	dma_addr_t		device_base;
-	unsigned long	pfn_base;
-	int				size;
-	int				flags;
-	unsigned long	*bitmap;
-	spinlock_t		spinlock;
-};
 
 /**************************************************************************
  * Static Functions
@@ -286,7 +272,7 @@ static int _sp7021_fb_create_device(struct platform_device *pdev,
 
 	Info->UI_bufAddr = (u32)fbinfo->fix.smem_start;
 	if (fbinfo->pseudo_palette)
-		Info->UI_bufAddr_pal = __pa(fbWorkMem->fbmem_palette);
+		Info->UI_bufAddr_pal = (u32)fbinfo->pseudo_palette;
 	else
 		Info->UI_bufAddr_pal = 0;
 	Info->UI_bufsize = fbWorkMem->fbsize;
@@ -295,7 +281,7 @@ static int _sp7021_fb_create_device(struct platform_device *pdev,
 			(u32)fbWorkMem->fbmem,
 			Info->UI_bufAddr,
 			(u32)fbWorkMem->fbmem_palette,
-			Info->UI_bufAddr_pal,
+			__pa(fbWorkMem->fbmem_palette),
 			fbWorkMem->fbwidth,
 			fbWorkMem->fbheight,
 			fbWorkMem->fbsize,
@@ -356,7 +342,7 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 	struct framebuffer_t *fb_par = (struct framebuffer_t *)info->par;
 	int i;
 	unsigned short *red, *green, *blue, *transp;
-	unsigned short trans = 0xffff;
+	unsigned short trans = ~0;
 	unsigned int *palette = (unsigned int *)info->pseudo_palette;
 
 	if ((fb_par->ColorFmt != DRV_OSD_REGION_FORMAT_8BPP) || (!palette))
@@ -388,9 +374,6 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 
 static int _sp7021_fb_remove(struct platform_device *pdev)
 {
-	struct UI_FB_Info_t Info;
-	int ret;
-
 	if (gFB_INFO) {
 		if (unregister_framebuffer(gFB_INFO))
 			mod_err(pdev, "unregister framebuffer error\n");
@@ -398,13 +381,7 @@ static int _sp7021_fb_remove(struct platform_device *pdev)
 		gFB_INFO = NULL;
 	}
 
-	ret = DRV_OSD_Get_UI_Res(&Info);
-	if (ret) {
-		mod_err(pdev, "Get UI resolution fails");
-		return -EPROBE_DEFER;
-	}
-
-	DRV_OSD_Set_UI_UnInit(&Info);
+	DRV_OSD_Set_UI_UnInit();
 
 	return 0;
 }
@@ -425,6 +402,7 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	memset(&Info, 0, sizeof(struct UI_FB_Info_t));
 	ret = DRV_OSD_Get_UI_Res(&Info);
 
 	if (ret) {
@@ -432,15 +410,16 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 		return -EPROBE_DEFER;
 	}
 
-	mod_dbg(pdev, "try Create device %dx%d\n",
+	mod_dbg(pdev, "try Create device %dx%d, fmt %d\n",
 			Info.UI_width,
-			Info.UI_height);
+			Info.UI_height,
+			Info.UI_ColorFmt);
 
-	if (!(Info.UI_width == 0 || Info.UI_height == 0)) {
-		if (_sp7021_fb_create_device(pdev,
-					&Info))
-			goto ERROR_HANDLE_FB_INIT;
-	}
+	if (Info.UI_width == 0 || Info.UI_height == 0)
+		goto ERROR_HANDLE_FB_INIT;
+
+	if (_sp7021_fb_create_device(pdev, &Info))
+		goto ERROR_HANDLE_FB_INIT;
 
 	DRV_OSD_Set_UI_Init(&Info);
 

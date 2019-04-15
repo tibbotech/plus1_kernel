@@ -384,6 +384,7 @@ static void stop(void)
 	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
+#ifdef EDID_READ
 static void read_edid(void)
 {
 	unsigned int timeout = EDID_TIMEOUT;
@@ -408,8 +409,10 @@ static void parse_edid(void)
 {
 	unsigned int i, j;
 	unsigned sum = 0;
-	unsigned int data;
+	unsigned int data, pre_data, d;
 	char name[13];
+	unsigned int audio = FALSE,  yuv444 = FALSE, yuv422 = FALSE;
+	unsigned int rgb_limit = FALSE, yuv_limit = FALSE;
 	
 	HDMITX_DBG("\n");
 	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {		
@@ -429,30 +432,139 @@ static void parse_edid(void)
 	}
 	HDMITX_DBG("Checksum = 0x%04X\n", sum);
 
-	for (i = 95, j = 0; i <= 107; i++, j++) {
-		if (i != 0x0A) {
-			name[j] = edid[i];
-		} else {
-			name[j] = 0;;
+	//monitor
+	i = 72;
+	while (i < 126) {
+		if (edid[i+3] == 0xFC) {
+			for (i += 5, j = 0; j < 13; i++, j++) {
+				if (edid[i] != 0x0A) {
+					name[j] = edid[i];
+				} else {
+					name[j] = 0;;
+				}
+			}
+
+			break;
+		}
+		else {
+			i += 18;
 		}
 	}
-	HDMITX_DBG("Monitor name : %s", name);
+	HDMITX_INFO("Monitor %s", name);
+	
+	//mode
+	if (edid[126] == 0) {
+		g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
+	} else if (edid[126] == 1) {
+		g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
+	}
 
-	//
-	data = (edid[61] & 0xF0);
-	data = ((data << 4) | edid[59]);
-	HDMITX_DBG("Vertical Active = %u\n", data);
+	if (g_cur_hdmi_cfg.mode == HDMITX_MODE_DVI) {
+		//timing
+		data = (edid[61] & 0xF0);
+		data = ((data << 4) | edid[59]);
+		HDMITX_INFO("DVI Max. Timing : %up\n", data);
 
-	if (data <= 480) {
-		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
-	} else if (data <= 576) {
-		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
-	} else if (data <= 720) {
-		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
-	} else {
-		g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
+		if (data <= 480) {
+			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
+		} else if (data <= 576) {
+			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
+		} else if (data <= 720) {
+			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
+		} else {
+			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
+		}
+	}
+	else if (g_cur_hdmi_cfg.mode == HDMITX_MODE_HDMI) {
+		d = edid[130];
+		
+		if (edid[131] & 0x40) {
+			audio = TRUE;
+		}
+		
+		if (edid[131] & 0x20) {
+			yuv444 = TRUE;
+		}
+		
+		if (edid[131] & 0x10) {
+			yuv422 = TRUE;
+		}
+
+		i = 132;
+		
+		//data blocks from byte 132 to byte (128+d-1)
+		if (d != 4) {
+			while (i < (128 + d - 1)) {
+				data = edid[i];
+				
+				if (((data & 0xE0) >> 5) == EDID_USE_EXTENDED_TAG) {
+					i++;
+					
+					if (edid[i+1] == EDID_VIDEO_CAPABILITY_DATA_BLOCK) {
+						if (!(edid[i+4] & 0x80)) {
+							yuv_limit = TRUE;
+						}
+
+						if (!(edid[i+4] & 0x40)) {
+							rgb_limit = TRUE;
+						}
+					} else {
+						yuv_limit = TRUE;
+						rgb_limit = TRUE;
+					}
+				} else {
+					yuv_limit = TRUE;
+					rgb_limit = TRUE;
+				}
+
+				i = i + (data & 0x1F) + 1;
+			}
+		}
+
+		if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB) {
+			if (rgb_limit == TRUE) {
+				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+			}
+		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444) {
+			if (yuv444 == FALSE) {	
+				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+			}
+		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422) {
+			if (yuv422 == FALSE) {	
+				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+			}
+		}
+		
+		//detailed timing descriptors
+		if (d != 0) {
+			pre_data = 0;
+			while ((i < (EDID_CAPACITY - 1)) && (edid[i] != 0)) {
+				//timing
+				data = (edid[i+7] & 0xF0);
+				data = ((data << 4) | edid[i+5]);
+
+				if (data > pre_data) {
+					pre_data = data;	
+				}
+
+				i += 18;
+			}
+
+			HDMITX_INFO("HDMI Max. Timing : %up\n", pre_data);
+			
+			if (pre_data <= 480) {
+				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
+			} else if (pre_data <= 576) {
+				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
+			} else if (pre_data <= 720) {
+				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
+			} else {
+				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
+			}
+		}
 	}
 }
+#endif
 
 static void process_hpd_state(void)
 {
