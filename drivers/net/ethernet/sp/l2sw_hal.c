@@ -221,8 +221,8 @@ void mac_hw_init(struct l2sw_mac *mac)
 	/* descriptor base address */
 	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma);
 	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
-	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
-	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
+	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
+	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
 
 	// High-active LED

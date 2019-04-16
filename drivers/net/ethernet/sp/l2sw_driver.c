@@ -84,6 +84,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 	struct sk_buff *skb, *new_skb;
 	struct skb_info *sinfo;
 	volatile struct mac_desc *desc;
+	volatile struct mac_desc *h_desc;
 	u32 rx_pos, pkg_len;
 	u32 cmd;
 	u32 num, rx_count;
@@ -92,17 +93,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 	int ndev2_pkt;
 
 	// Process high-priority queue and then low-priority queue.
-	for (queue = RX_DESC_QUEUE_NUM - 1; queue >= 0; queue--) {
-		// Skip processing high-priority queue if MAC_INT_RX_DONE_H == 0
-		if ((queue == 1) && ((irq_status & MAC_INT_RX_DONE_H) == 0)) {
-			continue;
-		}
-
-		// Skip processing low-priority queue if MAC_INT_RX_DONE_L == 0
-		if ((queue == 0) && ((irq_status & MAC_INT_RX_DONE_L) == 0)){
-			continue;
-		}
-
+	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
 		rx_pos = comm->rx_pos[queue];
 		rx_count = comm->rx_desc_num[queue];
 		//ETH_INFO(" rx_pos = %d, rx_count = %d\n", rx_pos, rx_count);
@@ -214,12 +205,19 @@ NEXT:
 			desc->cmd1 = (OWN_BIT | (comm->rx_desc_buff_size & LEN_MASK));
 
 			NEXT_RX(queue, rx_pos);
+
+			// If there are packets in high-priority queue, stop processing low-priority queue.
+			if ((queue == 1) && ((h_desc->cmd1 & OWN_BIT) == 0)) {
+				break;
+			}
 		}
 
-		/* notify gmac how many desc(rx_count) we can use again */
-		//  rx_finished(queue, rx_count);
-
 		comm->rx_pos[queue] = rx_pos;
+
+		// Save pointer to last rx descriptor of high-priority queue.
+		if (queue == 0) {
+			h_desc = comm->rx_desc[queue] + rx_pos;
+		}
 	}
 }
 
