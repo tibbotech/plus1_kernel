@@ -140,9 +140,6 @@ int sp7021_gpio_new( struct platform_device *_pd, void *_datap) {
 #endif
  return( 0);  }
 
-static int sp7021_gpio_probe( struct platform_device *_pd) {
- return( sp7021_gpio_new( _pd, NULL));  }
-
 int sp7021_gpio_del( struct platform_device *_pd, void *_datap) {
 #ifdef SPPCTL_H
  sppctl_pdata_t *_pctrlp = ( sppctl_pdata_t *)_datap;
@@ -154,9 +151,6 @@ int sp7021_gpio_del( struct platform_device *_pd, void *_datap) {
  // FIX: remove spinlock_t
  return( 0);  }
 
-static int sp7021_gpio_remove( struct platform_device *_pd, void *_data) {
- return( sp7021_gpio_del( _pd, NULL));  }
-
 static const struct of_device_id sp7021_gpio_of_match[] = {
  { .compatible = "sunplus,sp7021-gpio", },
  { /* null */ }
@@ -164,6 +158,10 @@ static const struct of_device_id sp7021_gpio_of_match[] = {
 
 #ifdef SPPCTL_H
 #else
+static int sp7021_gpio_probe( struct platform_device *_pd) {
+ return( sp7021_gpio_new( _pd, NULL));  }
+static int sp7021_gpio_remove( struct platform_device *_pd, void *_data) {
+ return( sp7021_gpio_del( _pd, NULL));  }
 MODULE_DEVICE_TABLE(of, sp7021_gpio_of_match);
 MODULE_ALIAS( "platform:" MNAME);
 static struct platform_driver sp7021_gpio_driver = {

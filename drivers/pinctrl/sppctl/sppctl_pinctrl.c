@@ -51,8 +51,8 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  int i = 0;
  KDBG( _pd->dev, "%s(%d,%ld,%d)\n", __FUNCTION__, _pin, *_ca, _clen);
  // special handling for IOP
- if ( _ca[ i] & 0xFF) {
-   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
+ if ( _ca[ i] == 0xFF) {
+//   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
    return( 0);  }
  for ( i = 0; i < _clen; i++) {
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
@@ -149,15 +149,14 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
           if ( list_funcs[ i].freg != fOFF_M) continue;
           j++;
           if ( sppctl_fun_get( pctrl, j) != _gid) continue;
-          sppctl_pin_set( pctrl, _gid, j);  }
+          sppctl_pin_set( pctrl, _gid, j);  }   // FIXME: what is it?!
         break;
    case fOFF_M:   // MUX : 
-        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
-        sppctl_pin_set( pctrl, _gid, _fid - 2);    // pin, fun
+        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid - 7, muxF_M, muxMKEEP);
+        sppctl_pin_set( pctrl, _gid - 7, _fid - 2);    // pin, fun FIXME
         break;
    case fOFF_G:   // GROUP
         for ( i = 0; i < f.grps[ g2fpm.g_idx].pnum; i++) {
-          f.grps[ g2fpm.g_idx].pins;
           sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), f.grps[ g2fpm.g_idx].pins[ i], muxF_M, muxMKEEP);
         }
         sppctl_gmx_set( pctrl, f.roff, f.boff, f.blen, f.grps[ g2fpm.g_idx].gval);
@@ -374,8 +373,6 @@ void sppctl_pinctrl_init( struct platform_device *_pd) {
  // init pdesc
  _p->pdesc.owner = THIS_MODULE;
  _p->pdesc.name = dev_name( &( _pd->dev));
-// _p->pdesc.pins = &( sp7021pins_mux[ 0]);
-// _p->pdesc.npins = sp7021pins_muxSZ;
  _p->pdesc.pins = &( sp7021pins_all[ 0]);
  _p->pdesc.npins = sp7021pins_allSZ;
  _p->pdesc.pctlops = &sppctl_pctl_ops;

@@ -77,7 +77,7 @@ static ssize_t sppctl_sop_txt_map_R(
    f = &( list_funcs[ i]);
    if ( f->freg == fOFF_0) continue;
    memset( tmps, 0, SPPCTL_MAX_NAM + 3);
-   if ( f->freg == fOFF_M) pin = sppctl_fun_get( _p, j++);   // FIXME: index
+   if ( f->freg == fOFF_M) pin = sppctl_fun_get( _p, j++);   // FIXME: change index
    if ( f->freg == fOFF_G) pin = sppctl_gmx_get( _p, f->roff, f->boff, f->blen);
    sprintf( tmps, "%03d %s", pin, f->name);
    if ( pos > 0) {  pos -= ( strlen( tmps) + 1);  continue;  }
