@@ -271,9 +271,9 @@ func_t list_funcs[] = {
  FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
  FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
  // offset from 0x9C000080
- FNCN("SPI_FLASH",       fOFF_G, 0x01, 0, 2, sp7021grps_spif),
- FNCN("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2, sp7021grps_spi4),
- FNCN("SPI_NAND",        fOFF_G, 0x01, 4, 1, sp7021grps_snan),
+ FNCE("SPI_FLASH",       fOFF_G, 0x01, 0, 2, sp7021grps_spif),
+ FNCE("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2, sp7021grps_spi4),
+ FNCE("SPI_NAND",        fOFF_G, 0x01, 4, 1, sp7021grps_snan),
  FNCN("CARD_EMMC",       fOFF_G, 0x01, 5, 1),
  FNCN("SD_CARD",         fOFF_G, 0x01, 6, 1),
  FNCN("UA0",             fOFF_G, 0x01, 7, 1),
