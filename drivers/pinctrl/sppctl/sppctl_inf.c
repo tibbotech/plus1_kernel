@@ -95,7 +95,52 @@ static const sp7021grp_t sp7021grps_spi4[] = {
 static const unsigned sp7021pins_snan[] = {
  D_PIN( 9,4), D_PIN(9,5), D_PIN(9,6), D_PIN(9,7), D_PIN(10,0), D_PIN(10,1),  };
 static const sp7021grp_t sp7021grps_snan[] = {
- EGRP( "SPI_NAND_1", 1, sp7021pins_snan),
+ EGRP( "SPI_NAND", 1, sp7021pins_snan),
+};
+
+static const unsigned sp7021pins_emmc[] = {
+ D_PIN( 9,0), D_PIN(9,1), D_PIN(9,2), D_PIN(9,3), D_PIN(9,4), D_PIN(9,5),
+ D_PIN( 9,6), D_PIN( 9,7), D_PIN( 10,0), D_PIN(10,1),  };
+static const sp7021grp_t sp7021grps_emmc[] = {
+ EGRP( "CARD0_EMMC", 1, sp7021pins_emmc),
+};
+
+static const unsigned sp7021pins_sdsd[] = {
+ D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5), D_PIN(8,6),  };
+static const sp7021grp_t sp7021grps_sdsd[] = {
+ EGRP( "SD_CARD", 1, sp7021pins_sdsd),
+};
+
+static const unsigned sp7021pins_uar0[] = {  D_PIN(11,0), D_PIN(11,1),  };
+static const sp7021grp_t sp7021grps_uar0[] = {
+ EGRP( "UA0", 1, sp7021pins_uar0),
+};
+
+static const unsigned sp7021pins_adbg1[] = {  D_PIN(10,2), D_PIN(10,3),  };
+static const unsigned sp7021pins_adbg2[] = {  D_PIN( 7,1), D_PIN( 7,2),  };
+static const sp7021grp_t sp7021grps_adbg[] = {
+ EGRP( "ACHIP_DEBUG1", 1, sp7021pins_adbg1),
+ EGRP( "ACHIP_DEBUG2", 2, sp7021pins_adbg2),
+};
+
+static const unsigned sp7021pins_aua2axi1[] = {  D_PIN(2,0), D_PIN(2,1), D_PIN(2,2),  };
+static const unsigned sp7021pins_aua2axi2[] = {  D_PIN(1,0), D_PIN(1,1), D_PIN(1,2),  };
+static const sp7021grp_t sp7021grps_au2x[] = {
+ EGRP( "ACHIP_UA2AXI1", 1, sp7021pins_aua2axi1),
+ EGRP( "ACHIP_UA2AXI2", 2, sp7021pins_aua2axi2),
+};
+
+static const unsigned sp7021pins_fpga[] = {
+ D_PIN( 0,2), D_PIN( 0,3), D_PIN( 0,4), D_PIN( 0,5), D_PIN( 0,6), D_PIN( 0,7),
+ D_PIN( 1,0), D_PIN( 1,1), D_PIN( 1,2), D_PIN( 1,3), D_PIN( 1,4), D_PIN( 1,5), 
+ D_PIN( 1,6), D_PIN( 1,7), D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), 
+ D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7), D_PIN( 3,0), D_PIN( 3,1), 
+ D_PIN( 3,2), D_PIN( 3,3), D_PIN( 3,4), D_PIN( 3,5), D_PIN( 3,6), D_PIN( 3,7),
+ D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), 
+ D_PIN( 4,6), D_PIN( 4,7), D_PIN( 5,0), D_PIN( 5,1), D_PIN( 5,2),
+};
+static const sp7021grp_t sp7021grps_fpga[] = {
+ EGRP( "FPGA_IFX", 1, sp7021pins_fpga),
 };
 
 static const unsigned sp7021pins_hdmi1[] = {
@@ -113,17 +158,49 @@ static const sp7021grp_t sp7021grps_hdmi[] = {
  EGRP( "HDMI_TX3", 3, sp7021pins_hdmi3),
 };
 
-static const unsigned sp7021pins_fpga[] = {
- D_PIN( 0,2), D_PIN( 0,3), D_PIN( 0,4), D_PIN( 0,5), D_PIN( 0,6), D_PIN( 0,7),
- D_PIN( 1,0), D_PIN( 1,1), D_PIN( 1,2), D_PIN( 1,3), D_PIN( 1,4), D_PIN( 1,5), 
- D_PIN( 1,6), D_PIN( 1,7), D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), 
- D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7), D_PIN( 3,0), D_PIN( 3,1), 
- D_PIN( 3,2), D_PIN( 3,3), D_PIN( 3,4), D_PIN( 3,5), D_PIN( 3,6), D_PIN( 3,7),
- D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), 
- D_PIN( 4,6), D_PIN( 4,7), D_PIN( 5,0), D_PIN( 5,1), D_PIN( 5,2),
+static const unsigned sp7021pins_eadc[] = {
+ D_PIN(1,0), D_PIN(1,1), D_PIN(1,2), D_PIN(1,3), D_PIN(1,4), D_PIN(1,5), D_PIN(1,6),  };
+static const sp7021grp_t sp7021grps_eadc[] = {
+ EGRP( "AUD_EXT_ADC_IFX0", 1, sp7021pins_eadc),
 };
-static const sp7021grp_t sp7021grps_fpga[] = {
- EGRP( "FPGA_IFX", 1, sp7021pins_fpga),
+
+static const unsigned sp7021pins_edac[] = {
+ D_PIN(2,5), D_PIN(2,6), D_PIN(2,7), D_PIN(3,0), D_PIN(3,1), D_PIN(3,2), D_PIN(3,4),  };
+static const sp7021grp_t sp7021grps_edac[] = {
+ EGRP( "AUD_EXT_DAC_IFX0", 1, sp7021pins_edac),
+};
+
+static const unsigned sp7021pins_spdi[] = {  D_PIN(2,4),  };
+static const sp7021grp_t sp7021grps_spdi[] = {
+ EGRP( "AUD_IEC_RX0", 1, sp7021pins_spdi),
+};
+static const unsigned sp7021pins_spdo[] = {  D_PIN(3,6),  };
+static const sp7021grp_t sp7021grps_spdo[] = {
+ EGRP( "AUD_IEC_TX0", 1, sp7021pins_spdo),
+};
+
+static const unsigned sp7021pins_tdmt[] = {
+ D_PIN(2,5), D_PIN(2,6), D_PIN(2,7), D_PIN(3,0), D_PIN(3,1), D_PIN(3,2),  };
+static const sp7021grp_t sp7021grps_tdmt[] = {
+ EGRP( "TDMTX_IFX0", 1, sp7021pins_tdmt),
+};
+
+static const unsigned sp7021pins_tdmr[] = {
+ D_PIN(1,7), D_PIN(2,0), D_PIN(2,1), D_PIN(2,2),  };
+static const sp7021grp_t sp7021grps_tdmr[] = {
+ EGRP( "TDMRX_IFX0", 1, sp7021pins_tdmr),
+};
+
+static const unsigned sp7021pins_pdmr[] = {
+ D_PIN(1,7), D_PIN(2,0), D_PIN(2,1), D_PIN(2,2), D_PIN(2,3),  };
+static const sp7021grp_t sp7021grps_pdmr[] = {
+ EGRP( "PDMRX_IFX0", 1, sp7021pins_pdmr),
+};
+
+static const unsigned sp7021pins_pcmt[] = {
+ D_PIN(3,7), D_PIN(4,0), D_PIN(4,1), D_PIN(4,2), D_PIN(4,3), D_PIN(4,4),  };
+static const sp7021grp_t sp7021grps_pcmt[] = {
+ EGRP( "PDMRX_IFX0", 1, sp7021pins_pcmt),
 };
 
 static const unsigned sp7021pins_lcdif[] = {
@@ -274,17 +351,22 @@ func_t list_funcs[] = {
  FNCE("SPI_FLASH",       fOFF_G, 0x01, 0, 2, sp7021grps_spif),
  FNCE("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2, sp7021grps_spi4),
  FNCE("SPI_NAND",        fOFF_G, 0x01, 4, 1, sp7021grps_snan),
- FNCN("CARD_EMMC",       fOFF_G, 0x01, 5, 1),
- FNCN("SD_CARD",         fOFF_G, 0x01, 6, 1),
- FNCN("UA0",             fOFF_G, 0x01, 7, 1),
+ FNCE("CARD0_EMMC",      fOFF_G, 0x01, 5, 1, sp7021grps_emmc),
+ FNCE("SD_CARD",         fOFF_G, 0x01, 6, 1, sp7021grps_sdsd),
+ FNCE("UA0",             fOFF_G, 0x01, 7, 1, sp7021grps_uar0),
+ FNCE("ACHIP_DEBUG",     fOFF_G, 0x01, 8, 2, sp7021grps_adbg),
+ FNCE("ACHIP_UA2AXI",    fOFF_G, 0x01,10, 2, sp7021grps_au2x),
  FNCE("FPGA_IFX",        fOFF_G, 0x01,12, 1, sp7021grps_fpga),
  FNCE("HDMI_TX",         fOFF_G, 0x01,13, 2, sp7021grps_hdmi),
 
- FNCN("AUD_EXT_ADC_IFX0",fOFF_G, 0x01,15, 1),   // I2S audio in
- FNCN("AUD_EXT_DAC_IFX0",fOFF_G, 0x02, 0, 1),   // I2S audio out
- FNCN("SPDIF_RX",        fOFF_G, 0x02, 2, 1),
- FNCN("SPDIF_TX",        fOFF_G, 0x02, 3, 1),
- FNCN("PCM_TX",          fOFF_G, 0x02, 7, 1),
+ FNCE("AUD_EXT_ADC_IFX0",fOFF_G, 0x01,15, 1, sp7021grps_eadc),   // I2S audio in
+ FNCE("AUD_EXT_DAC_IFX0",fOFF_G, 0x02, 0, 1, sp7021grps_edac),   // I2S audio out
+ FNCE("SPDIF_RX",        fOFF_G, 0x02, 2, 1, sp7021grps_spdi),
+ FNCE("SPDIF_TX",        fOFF_G, 0x02, 3, 1, sp7021grps_spdo),
+ FNCE("TDMTX_IFX0",      fOFF_G, 0x02, 4, 1, sp7021grps_tdmt),
+ FNCE("TDMRX_IFX0",      fOFF_G, 0x02, 5, 1, sp7021grps_tdmr),
+ FNCE("PDMRX_IFX0",      fOFF_G, 0x02, 6, 1, sp7021grps_pdmr),
+ FNCE("PCM_IEC_TX",      fOFF_G, 0x02, 7, 1, sp7021grps_pcmt),
  FNCE("LCDIF",           fOFF_G, 0x04, 6, 1, sp7021grps_lcdif),
  FNCN("I2CS",            fOFF_G, 0x02,10, 1),   // I2C slave
  FNCE("WAKEUP",          fOFF_G, 0x02,11, 1, sp7021grps_wkp),
