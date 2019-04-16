@@ -50,6 +50,9 @@
 
 //#define SPI_PIN_SETTING
 
+#define SPI_FULL_DUPLEX
+
+
 #define MAS_REG_NAME "spi_master"
 #define SLA_REG_NAME "spi_slave"
 
@@ -61,9 +64,18 @@
 
 #define SLA_IRQ_NAME "slave_risc_intr"
 
+#define SPI_MASTER_NUM (4)
+#define SPI_MSG_DATA_SIZE (255)
+
+
+
 #define CLEAR_MASTER_INT (1<<6)
 #define MASTER_INT (1<<7)
+
 #define DMA_READ (0xd)
+#define SLA_SW_RST (1<<1)
+
+
 #define DMA_WRITE (0x4d)
 #define SPI_START (1<<0)
 #define SPI_BUSY (1<<0)
@@ -74,7 +86,57 @@
 #define DMA_DATA_RDY (1<<0)
 #define PENTAGRAM_SPI_SLAVE_SET (0x2c)
 
-#define SPI_MASTER_NUM (4)
+
+
+#define TOTAL_LENGTH(x) (x<<24)
+#define TX_LENGTH(x) (x<<16)
+#define GET_TX_LENGTH(x)  ((x>>16)&0xFF)
+
+
+#define FINISH_FLAG (1<<6)
+#define FINISH_FLAG_MASK (1<<15)
+#define RX_FULL_FLAG (1<<5)
+#define RX_FULL_FLAG_MASK (1<<14)
+#define RX_EMP_FLAG (1<<4)
+#define RX_EMP_FLAG_MASK (1<<13)
+#define TX_FULL_FLAG (1<<3)
+#define TX_FULL_FLAG_MASK (1<<12)
+#define TX_EMP_FLAG (1<<2)
+#define TX_EMP_FLAG_MASK (1<<11)
+#define SPI_START_FD (1<<0)
+#define FD_SEL (1<<6)
+#define LSB_SEL (1<<4)
+#define WRITE_BYTE(x) (x<<9)
+#define READ_BYTE(x) (x<<7)
+#define CLK_DIVIDER(x) (x<<16)
+#define INIT_SPI_MODE (~0x7F)
+#define CLEAN_RW_BYTE (~0x780)
+#define CLEAN_FLUG_MASK (~0xF800)
+
+
+#define DELAY_ENABLE (1<<3)
+#define CPOL_FD (1<<0)
+#define CPHA_R (1<<1)
+#define CPHA_W (1<<2)
+#define SPI_FD_BUSY (1<<7)
+#define SPI_FD_INTR (1<<7)
+
+#define FD_SW_RST (1<<1)
+
+#define RX_CNT (0xF<<12)
+#define RX_CNT_MASK(x) (x>>12)
+#define TX_CNT (0xF<<8)
+#define TX_CNT_MASK(x) (x>>8)
+
+#define DEG_CORE_SPI_LATCH0 (0xB<<8)
+#define DEG_CORE_SPI_LATCH1 (0xC<<8)
+
+#define LSB_SEL_MST (1<<1)
+
+#define SPI_DEG_SEL(x) (x<<0)
+#define DEG_SPI_MST_MASK (0xFF<<2)
+#define DEG_SPI_MST(x) (x>>2)
+
 
 /* slave*/
 #define CLEAR_SLAVE_INT (1<<8)
@@ -84,7 +146,8 @@ enum SPI_MASTER_MODE
 {
 	SPIM_READ = 0,
 	SPIM_WRITE = 1,
-	SPIM_IDLE = 2
+	SPIM_RW = 2,	
+	SPIM_IDLE = 3
 };
 
 enum SPI_SLAVE_MODE
@@ -121,7 +184,8 @@ typedef struct{
     unsigned int  G091_RESERVED_3[1]                    ; // 25  (ADDR : 0x9C00_2DE4)
     unsigned int  UART_DMA_CTRL                         ; // 26  (ADDR : 0x9C00_2DE8)
     unsigned int  G091_RESERVED_4[1]                    ; // 27  (ADDR : 0x9C00_2DEC)
-    unsigned int  G091_RESERVED_5[2]                    ; //     (ADDR : 0x9C00_2DF4) ~ (ADDR : 0x9C00_2DF4)
+    unsigned int  SPI_MST_DEBUG_SEL                     ; // 28  (ADDR : 0x9C00_2DF0) 
+    unsigned int  SPI_COM_DEBUG_SEL                     ; // 29  (ADDR : 0x9C00_2DF4)
     unsigned int  SPI_EXTRA_CYCLE                       ; // 30  (ADDR : 0x9C00_2DF8)
     unsigned int  MST_DMA_DATA_RDY                      ; // 31  (ADDR : 0x9C00_2DFC)
 }SPI_MAS;
@@ -209,6 +273,18 @@ struct pentagram_spi_master {
 	
 	int isr_flag;
 };
+
+
+u8 tx_data_buf[SPI_MSG_DATA_SIZE];
+u8 rx_data_buf[SPI_MSG_DATA_SIZE];
+
+
+unsigned int  rx_cur_len;
+unsigned int  tx_cur_len;
+unsigned int  data_total_len;
+unsigned int  data_unit;
+
+
 
 static unsigned bufsiz = 4096;
 
@@ -322,8 +398,89 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)dev;
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 	unsigned int reg_temp;
+	unsigned int i;
+	unsigned int tx_lenght;
+
+    FUNC_DEBUG();
+
 
 	spin_lock_irqsave(&pspim->lock, flags);
+
+    tx_lenght = GET_TX_LENGTH(readl(&spim_reg->SPI_FD_STATUS));
+	DBG_INFO("get tx_lenght = 0x%x \n",tx_lenght); 
+
+	if((readl(&spim_reg->SPI_FD_STATUS) & FINISH_FLAG) == FINISH_FLAG){
+	
+		DBG_INFO("FINISH_FLAG");
+	
+	
+			 while(readl(&spim_reg->SPI_FD_STATUS) & RX_CNT){	
+				 rx_data_buf[rx_cur_len] = (char)readl(&spim_reg->FIFO_DATA);
+				 DBG_INFO("RXcnt480 data 0x%x ,tx_cur_len %d rx_cur_len = %d \n",rx_data_buf[rx_cur_len],tx_cur_len,rx_cur_len); 
+				 rx_cur_len++;
+			 }
+			 printk( "[SPI_FD]483 set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+			 spin_unlock_irqrestore(&pspim->lock, flags);
+			 complete(&pspim->isr_done);
+			 return IRQ_HANDLED;		 
+	
+	}else if(((readl(&spim_reg->SPI_FD_STATUS) & TX_EMP_FLAG) == TX_EMP_FLAG) || (tx_cur_len < tx_lenght) ){
+
+	DBG_INFO("TX_EMP_FLAG");
+
+	   if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG){
+			for(i=0;i<16;i++){	 // if READ_BYTE(0) i<16  can set the condition at here
+			    rx_data_buf[rx_cur_len] = (char)readl(&spim_reg->FIFO_DATA);
+			    DBG_INFO("RXcnt492 data 0x%x  rx_cur_len = %d \n",rx_data_buf[rx_cur_len],rx_cur_len);		   
+			    rx_cur_len++;
+			    if(tx_cur_len < tx_lenght){
+		            writel(tx_data_buf[tx_cur_len], &spim_reg->FIFO_DATA);
+		            tx_cur_len++;				
+				}
+			}
+		}
+	   
+	    while(readl(&spim_reg->SPI_FD_STATUS) & RX_CNT){   
+		    rx_data_buf[rx_cur_len] = (char)readl(&spim_reg->FIFO_DATA);
+		    DBG_INFO("RXcnt517 data 0x%x tx_cur_len = %d rx_cur_len = %d \n",rx_data_buf[rx_cur_len],tx_cur_len,rx_cur_len); 
+		    rx_cur_len++;
+			if((tx_cur_len < tx_lenght) &&  ((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) != TX_FULL_FLAG)){
+		        writel(tx_data_buf[tx_cur_len], &spim_reg->FIFO_DATA);
+		        tx_cur_len++;				
+			}			
+	    }
+
+ 		for(i=0;i<(data_total_len-tx_cur_len);i++){
+			DBG_INFO("tx_data_buf509 0x%x  ,tx_cur_len %d data_total_len  %d  \n",tx_data_buf[tx_cur_len],tx_cur_len,data_total_len);
+		    writel(tx_data_buf[tx_cur_len], &spim_reg->FIFO_DATA);
+		    tx_cur_len++;
+			if((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
+				break;
+		}  
+
+
+	spin_unlock_irqrestore(&pspim->lock, flags);
+	return IRQ_HANDLED;
+    }else if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG)==RX_FULL_FLAG){
+
+	DBG_INFO("RX_FULL_FLAG");
+
+	
+           for(i=0;i<16;i++){    // if READ_BYTE(0) i<16  can set the condition at here
+            //DBG_INFO("rx_cur_len %d",rx_cur_len);
+           //char_temp= (char)readl(&spim_reg->FIFO_DATA);
+		   //DBG_INFO("001 char_temp %d",char_temp);
+		    //rx_data_buf[rx_cur_len] = (char)readl(&spim_reg->FIFO_DATA);
+			rx_data_buf[rx_cur_len] = readl(&spim_reg->FIFO_DATA);
+		   DBG_INFO("RXcnt492 data 0x%x  rx_cur_len = %d \n",rx_data_buf[rx_cur_len],rx_cur_len);		   
+           rx_cur_len++;
+           }
+		   spin_unlock_irqrestore(&pspim->lock, flags);
+		   return IRQ_HANDLED;
+
+	}
+	
+
 	reg_temp = readl(&spim_reg->SPI_INT_BUSY);
 	reg_temp |= CLEAR_MASTER_INT;
 	writel(reg_temp, &spim_reg->SPI_INT_BUSY);
@@ -351,10 +508,17 @@ static int pentagram_spi_master_dma_write(struct spi_master *master, char *buf, 
 	unsigned long timeout = msecs_to_jiffies(200);
 	unsigned long flags;
 	int buf_offset = 0;	
+	int ret;
 
     FUNC_DEBUG();
 
     mutex_lock(&pspim->buf_lock);
+
+
+	reg_temp = readl(&spim_reg->SPI_FD_CONFIG);  
+	reg_temp &= ~FD_SEL;
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);     // Change to Normal mode
+
 
 
 	switch(buf[0])
@@ -407,7 +571,8 @@ static int pentagram_spi_master_dma_write(struct spi_master *master, char *buf, 
 	if(!wait_for_completion_timeout(&pspim->isr_done, timeout))
 	{
 		dev_err(&dev,"wait_for_completion_timeout\n");
-		return 1;
+		ret = 1;
+		goto free_master_dma_write;
 	}
 	while((readl(&spim_reg->SPI_INT_BUSY) & SPI_BUSY) == SPI_BUSY)
 	{
@@ -418,8 +583,13 @@ static int pentagram_spi_master_dma_write(struct spi_master *master, char *buf, 
 	pspim->isr_flag = SPIM_IDLE;
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
-	mutex_unlock(&pspim->buf_lock);
-	return 0;
+		ret = 0;
+	
+	
+free_master_dma_write:
+		mutex_unlock(&pspim->buf_lock);
+		return ret;
+
 }
 static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, unsigned int len)
 {
@@ -432,10 +602,16 @@ static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, u
 	unsigned int reg_temp = 0;
 	unsigned long timeout = msecs_to_jiffies(200);
 	unsigned long flags;
+	int ret;
 
     FUNC_DEBUG();
    
     mutex_lock(&pspim->buf_lock);
+
+	reg_temp = readl(&spim_reg->SPI_FD_CONFIG);  
+	reg_temp &= ~FD_SEL;
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);     // Change to Normal mode
+	
 	#ifdef SLAVE_INT_IN
 	while(pspim->isr_flag != SPIM_READ)
 	{
@@ -488,7 +664,9 @@ static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, u
 
 	if(!wait_for_completion_timeout(&pspim->isr_done,timeout)){
 		dev_err(&dev,"wait_for_completion_timeout\n");
-		return 1;
+		ret = 1;
+		goto free_master_dma_read;
+
 	}
 	while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT){
 		dev_dbg(&dev,"spim_reg->DMA_CTRL 0x%x\n",readl(&spim_reg->DMA_CTRL));
@@ -498,11 +676,305 @@ static int pentagram_spi_master_dma_read(struct spi_master *master, char *cmd, u
 	pspim->isr_flag = SPIM_IDLE;
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
+	ret = 0;
+
+
+free_master_dma_read:
+    mutex_unlock(&pspim->buf_lock);
+	return ret;
+	
+}
+
+
+
+static int pentagram_spi_master_fullduplex_write_read(struct spi_master *master, char *buf, char  *data_buf , unsigned int len)
+{
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	//struct device dev = master->dev;
+	//unsigned int addr;
+	//unsigned int valid = 0;
+	unsigned int data_len = len;
+	unsigned int reg_temp = 0;
+	unsigned long timeout = msecs_to_jiffies(200);
+	//unsigned long flags;
+	//int buf_offset = 0;	
+	unsigned int i;
+	int ret;	
+
+    FUNC_DEBUG();
+
+	data_total_len = len;
+	memcpy(&tx_data_buf[0], buf, data_len);
+	
+	DBG_INFO("data_buf 0x%x ,tx_cur_len %d \n",buf[0],tx_cur_len);		
+	DBG_INFO("tx_data_buf init 0x%x ,tx_cur_len %d ,data_total_len	%d \n",tx_data_buf[0],tx_cur_len,data_total_len);	
+	
+	mutex_lock(&pspim->buf_lock);
+	
+	
+	// set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
+	//writel(buf[0], &spim_reg->FIFO_DATA); 
+    if(tx_cur_len < data_len){
+        if(data_len >= 16){
+		    for(i=0;i<16;i++){
+		    DBG_INFO("tx_data_buf1143 0x%x  ,tx_cur_len %d data_total_len  %d  \n",tx_data_buf[i],tx_cur_len,data_total_len);	
+		    writel(tx_data_buf[i], &spim_reg->FIFO_DATA);
+	    	tx_cur_len++;
+	    	}
+        }else{
+ 		    for(i=0;i<data_total_len;i++){
+		    DBG_INFO("tx_data_buf1150 0x%x  ,cur_len %d data_total_len  %d  \n",tx_data_buf[i],tx_cur_len,data_total_len);		
+		    writel(tx_data_buf[i], &spim_reg->FIFO_DATA);
+		    tx_cur_len++;
+		    }   
+        }
+    }
+	
+    // initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
+	reg_temp = readl(&spim_reg->SPI_FD_CONFIG); 
+	reg_temp &= INIT_SPI_MODE;	
+	reg_temp &= CLEAN_RW_BYTE;
+	reg_temp &= CLEAN_FLUG_MASK;	
+	reg_temp |= FD_SEL;
+
+    // set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
+	reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK | CPOL_FD   | CPHA_W  | CPHA_R;    //   | CPHA_R for sunplus slave | CPHA_W
+	reg_temp |= WRITE_BYTE(0) | READ_BYTE(0) ;  // set read write byte from fifo
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);    
+
+
+	DBG_INFO("SPI_FD_CONFIG =0x%x\n",readl(&spim_reg->SPI_FD_CONFIG));
+
+
+	
+	//printk( "[SPI_FD] set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+
+    // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
+	writel(TOTAL_LENGTH(data_len) | TX_LENGTH(data_len),&spim_reg->SPI_FD_STATUS);
+
+	printk( "[SPI_FD] set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+
+	
+    reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+	reg_temp |= SPI_START_FD;
+	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+
+	
+		if(!wait_for_completion_timeout(&pspim->isr_done, timeout))
+		{
+			DBG_INFO("wait_for_completion_timeout\n");
+			ret = 1;
+			goto free_master_write;
+		}
+		
+		memcpy(data_buf, &rx_data_buf[0], rx_cur_len);
+		ret = 0;
+		
+	free_master_write:
+	
+		// reset SPI
+		reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+		reg_temp |= FD_SW_RST;
+		writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+		DBG_INFO("finish FD write\n");
+	
+		mutex_unlock(&pspim->buf_lock);
+		
+		return ret;
+
+}
+
+
+
+static int pentagram_spi_master_read(struct spi_master *master, char *buf, char  *data_buf , unsigned int len)
+{
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	//struct device dev = master->dev;
+	//unsigned int addr;
+	//unsigned int valid = 0;
+	unsigned int data_len = len;
+	unsigned int reg_temp = 0;
+	unsigned long timeout = msecs_to_jiffies(200);
+	//unsigned long flags;
+	//int buf_offset = 0;	
+	int ret;
+
+
+
+    FUNC_DEBUG();
+
+
+	data_total_len = len;
+
+    mutex_lock(&pspim->buf_lock);
+
+    // initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
+	reg_temp = readl(&spim_reg->SPI_FD_CONFIG);  
+	reg_temp &= INIT_SPI_MODE;	
+	reg_temp &= CLEAN_RW_BYTE;
+	reg_temp &= CLEAN_FLUG_MASK;
+	reg_temp |= FD_SEL;
+
+    // set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
+	reg_temp |= FINISH_FLAG_MASK | RX_FULL_FLAG_MASK  | CPOL_FD  | CPHA_W  | CPHA_R;   //  set read write byte from fifo  | CPHA_R for sunplus slave
+	reg_temp |= WRITE_BYTE(0) | READ_BYTE(0) ;  // set read write byte from fifo
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);    
+
+
+	DBG_INFO("SPI_FD_CONFIG =0x%x\n",readl(&spim_reg->SPI_FD_CONFIG));
+
+    // set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
+	writel(0, &spim_reg->FIFO_DATA);     // keep tx not empty in only read mode
+
+    // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
+	writel(TOTAL_LENGTH(data_len) | TX_LENGTH(0),&spim_reg->SPI_FD_STATUS);
+
+	printk( "[SPI_FD] set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+
+	// start SPI transfer
+    reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+	reg_temp |= SPI_START_FD;
+	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+
+
+
+	if(!wait_for_completion_timeout(&pspim->isr_done, timeout))
+	{
+		DBG_INFO("wait_for_completion_timeout\n");
+		ret = 1;
+		goto free_master_read;
+	}
+
+	memcpy(data_buf, &rx_data_buf[0], rx_cur_len);
+	ret = 0;
+	
+free_master_read:
+
+    // reset SPI
+    reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+	reg_temp |= FD_SW_RST;
+	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+	DBG_INFO("finish FD read\n");
+
 	mutex_unlock(&pspim->buf_lock);
+	
+	return ret;
 
 
 	return 0;
 }
+
+
+static int pentagram_spi_master_write(struct spi_master *master, char *buf, char  *data_buf , unsigned int len)
+{
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	//struct device dev = master->dev;
+	//unsigned int addr;
+	//unsigned int valid = 0;
+	unsigned int data_len = len;
+	unsigned int reg_temp = 0;
+	unsigned long timeout = msecs_to_jiffies(200);
+	//unsigned long flags;
+	//int buf_offset = 0;	
+	unsigned int i;
+	int ret;	
+
+    FUNC_DEBUG();
+
+    
+	data_total_len = len;
+	memcpy(&tx_data_buf[0], buf, data_len);
+
+	DBG_INFO("data_buf 0x%x	,tx_cur_len %d \n",buf[0],tx_cur_len);		
+	DBG_INFO("tx_data_buf init 0x%x	,tx_cur_len %d ,data_total_len  %d \n",tx_data_buf[0],tx_cur_len,data_total_len);	
+
+	DBG_INFO("SPI_FD_CONFIG1198 =0x%x\n",readl(&spim_reg->SPI_FD_CONFIG));
+
+
+
+    mutex_lock(&pspim->buf_lock);
+
+
+    // set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
+	//writel(buf[0], &spim_reg->FIFO_DATA); 
+    if(tx_cur_len < data_len){
+        if(data_len >= 16){
+		    for(i=0;i<16;i++){
+		    DBG_INFO("tx_data_buf1143 0x%x  ,tx_cur_len %d data_total_len  %d  \n",tx_data_buf[i],tx_cur_len,data_total_len);	
+		    writel(tx_data_buf[i], &spim_reg->FIFO_DATA);
+	    	tx_cur_len++;
+	    	}
+        }else{
+ 		    for(i=0;i<data_total_len;i++){
+		    DBG_INFO("tx_data_buf1150 0x%x  ,cur_len %d data_total_len  %d  \n",tx_data_buf[i],tx_cur_len,data_total_len);		
+		    writel(tx_data_buf[i], &spim_reg->FIFO_DATA);
+		    tx_cur_len++;
+		    }   
+        }
+    }
+	
+    // initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
+	reg_temp = readl(&spim_reg->SPI_FD_CONFIG); 
+	reg_temp &= INIT_SPI_MODE;	
+	reg_temp &= CLEAN_RW_BYTE;
+	reg_temp &= CLEAN_FLUG_MASK;	
+	reg_temp |= FD_SEL;
+
+    // set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
+	reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK | CPOL_FD  | CPHA_W  | CPHA_R;   //   | CPHA_R for sunplus slave | CPHA_W
+	reg_temp |= WRITE_BYTE(0) | READ_BYTE(0) ;  // set read write byte from fifo
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);    
+
+
+	DBG_INFO("SPI_FD_CONFIG =0x%x\n",readl(&spim_reg->SPI_FD_CONFIG));
+
+
+	
+	//printk( "[SPI_FD] set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+
+    // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
+	writel(TOTAL_LENGTH(data_len) | TX_LENGTH(data_len),&spim_reg->SPI_FD_STATUS);
+
+	printk( "[SPI_FD] set SPI_FD_STATUS =0x%x\n",readl(&spim_reg->SPI_FD_STATUS));
+
+	
+    reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+	reg_temp |= SPI_START_FD;
+	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+
+	
+		if(!wait_for_completion_timeout(&pspim->isr_done, timeout))
+		{
+			DBG_INFO("wait_for_completion_timeout\n");
+			ret = 1;
+			goto free_master_write;
+		}
+
+		ret = 0;
+		
+	free_master_write:
+	
+		// reset SPI
+		reg_temp = readl(&spim_reg->SPI_FD_STATUS);
+		reg_temp |= FD_SW_RST;
+		writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
+		DBG_INFO("finish FD write\n");
+	
+		mutex_unlock(&pspim->buf_lock);
+		
+		return ret;
+
+
+
+}
+
+
+
+
+
 static int pentagram_spi_master_setup(struct spi_device *spi)
 {
 	struct device dev = spi->dev;
@@ -596,8 +1068,8 @@ if( spi_id < SPI_MASTER_NUM){
         	}
 
 	dev_dbg(&dev,"grp2_sft_cfg[22] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
-	dev_dbg(&dev,"grp2_sft_cfg[23] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
-	dev_dbg(&dev,"grp2_sft_cfg[24] 0x%x\n",grp2_sft_cfg->sft_cfg_22);
+	dev_dbg(&dev,"grp2_sft_cfg[23] 0x%x\n",grp2_sft_cfg->sft_cfg_23);
+	dev_dbg(&dev,"grp2_sft_cfg[24] 0x%x\n",grp2_sft_cfg->sft_cfg_24);
 
 	dev_dbg(&dev,"grp3_sft_cfg[7] 0x%x\n",grp3_sft_cfg->sft_cfg_7);
 	dev_dbg(&dev,"grp3_sft_cfg[8] 0x%x\n",grp3_sft_cfg->sft_cfg_8);
@@ -615,6 +1087,12 @@ if( spi_id < SPI_MASTER_NUM){
 
 	spin_lock_irqsave(&pspim->lock, flags);
 	writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
+
+
+	reg_temp = FD_SEL | ((clk_sel & 0xffff) << 16);                     //set up full duplex frequency and enable  full duplex 
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);
+
+	
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
 	dev_dbg(&dev,"clk_sel 0x%x\n",readl(&spim_reg->SPI_CTRL_CLKSEL));
@@ -646,37 +1124,72 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
 	struct device dev = master->dev;
 
-//	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 //	unsigned int *grp2_sft_cfg = (unsigned int *)sft_base;
-	unsigned char *data_buf;
-	unsigned char *cmd_buf;
-	//const u8 *data_buf;
-	//u8 *cmd_buf;
+	//unsigned char *data_buf;
+	//unsigned char *cmd_buf;
+	const u8 *cmd_buf;
+	u8 *data_buf;
 	unsigned int len;
 	//unsigned int temp_reg;
 	int mode;
 	int ret;
 	unsigned char *temp;
 
+	unsigned int reg_temp = 0;
+	unsigned int clk_rate;
+	unsigned int div;
+	unsigned int clk_sel;
+
+
 
     FUNC_DEBUG();
 
+	tx_cur_len = 0;
+	rx_cur_len = 0;
+	//memset(tx_data_buf,0,255);
+	//memset(rx_data_buf,0,255);
 
-	dev_dbg(&dev,"%s\n",__FUNCTION__);	
+	//hw->bpw = xfer->bits_per_word;
+	//spi->bits_per_word
+	//	div = mclk_rate / (2 * tfr->speed_hz);
 
 
-	if((xfer->tx_buf)&&(!xfer->rx_buf))
-	{
-		dev_dbg(&dev,"tx\n");
-		data_buf = xfer->tx_buf;
-		temp = xfer->tx_buf;
-		dev_dbg(&dev,"tx %x %x\n",*temp,*(temp+1));
-		len = xfer->len;
-		dev_dbg(&dev,"len %d\n",len);
-		mode = SPIM_WRITE;
+	//dev_dbg(&dev,"%s\n",__FUNCTION__);	
+
+	DBG_INFO( "setup %d bpw, %scpol, %scpha, %dHz\n",
+		spi->bits_per_word,
+		spi->mode & SPI_CPOL ? "" : "~",
+		spi->mode & SPI_CPHA ? "" : "~",
+		spi->max_speed_hz);
+
+
+	DBG_INFO( "transfer_one txrx: tx %p, rx %p, len %d\n",xfer->tx_buf, xfer->rx_buf, xfer->len);
+	DBG_INFO( "transfer_one cs_chang: %d  speed_hz %dHz   per_word %d  \n",xfer->cs_change,xfer->speed_hz,xfer->bits_per_word);
+
+
+	//set clock
+	clk_rate = clk_get_rate(pspim->spi_clk);
+	if(xfer->speed_hz < spi->max_speed_hz){
+       div = clk_rate / xfer->speed_hz;
+	}else if(spi->max_speed_hz < pspim->spi_max_frequency){
+	   div = clk_rate / spi->max_speed_hz;
+	}else{
+	   div = clk_rate / pspim->spi_max_frequency;
 	}
-	if(xfer->rx_buf)
-	{
+
+	clk_sel = (div / 2) - 1;
+	reg_temp = FD_SEL | ((clk_sel & 0xffff) << 16);                     //set up full duplex frequency and enable  full duplex 
+	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);
+
+
+
+    data_unit = 32 / xfer->bits_per_word;
+
+	//memcpy(rx_data_buf, 0x00, SPI_MSG_DATA_SIZE);
+	//memcpy(tx_data_buf, 0x00, SPI_MSG_DATA_SIZE);
+
+	if((xfer->tx_buf)&&(xfer->rx_buf)){
 		dev_dbg(&dev,"rx\n");
 		data_buf = xfer->rx_buf;
 		cmd_buf = xfer->tx_buf;
@@ -686,8 +1199,47 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 		dev_dbg(&dev,"tx %x %x\n",*temp,*(temp+1));
 		len = xfer->len;
 		dev_dbg(&dev,"len %d\n",len);
+		mode = SPIM_RW;
+	}else if(xfer->tx_buf){
+		dev_dbg(&dev,"tx\n");
+		cmd_buf = xfer->tx_buf;
+		temp = xfer->tx_buf;
+		dev_dbg(&dev,"tx %x %x\n",*temp,*(temp+1));
+		len = xfer->len;
+		dev_dbg(&dev,"len %d\n",len);
+		mode = SPIM_WRITE;
+	}else if(xfer->rx_buf){
+		dev_dbg(&dev,"rx\n");
+		data_buf = xfer->rx_buf;
+		temp = xfer->rx_buf;
+		dev_dbg(&dev,"rx %x %x\n",*temp,*(temp+1));
+		len = xfer->len;
+		dev_dbg(&dev,"len %d\n",len);
 		mode = SPIM_READ;
 	}
+
+//	DBG_INFO("sp_spi_combo_master_slave_dma_WR");
+
+//	sp_spi_combo_master_slave_dma_WR(master, cmd_buf, len);
+
+//	return 0;
+
+
+	if(mode == SPIM_RW){
+		ret = pentagram_spi_master_fullduplex_write_read(master, cmd_buf , data_buf , len);
+	}else if(mode == SPIM_WRITE){
+		ret = pentagram_spi_master_write(master, cmd_buf , data_buf , len);
+	}else if(mode == SPIM_READ){
+		ret = pentagram_spi_master_read(master, cmd_buf , data_buf , len);
+	}
+
+
+//	pentagram_spi_master_fullduplex_write_read(master, cmd_buf , data_buf , len);
+
+
+	return ret;
+
+
 
 	if(mode == SPIM_WRITE)
 	{
@@ -699,7 +1251,9 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 			memcpy(data_buf, pspim->rx_dma_vir_base, len);
 	}
 
-	return ret;
+	return 0;
+
+
 }
 static int pentagram_spi_master_probe(struct platform_device *pdev)
 {
