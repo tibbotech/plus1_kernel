@@ -331,16 +331,21 @@ static void spmmc_select_mode(struct spmmc_host *host, int mode)
 	switch(mode) {
 	case SPMMC_MODE_EMMC:
 		value = bitfield_replace(value, 9, 1, 0);
+		writel(value, &host->base->sd_config0);
 		break;
 	case SPMMC_MODE_SDIO:
 		value = bitfield_replace(value, 9, 1, 1);
+		writel(value, &host->base->sd_config0);
+		value = readl(&host->base->sdio_ctrl);
+		value = bitfield_replace(value, 6, 1, 1); /* int_multi_trig */
+		writel(value, &host->base->sdio_ctrl);
 		break;
 	case SPMMC_MODE_SD:
 	default:
 		value = bitfield_replace(value, 9, 1, 0);
+		writel(value, &host->base->sd_config0);
 		break;
 	}
-	writel(value, &host->base->sd_config0);
 }
 
 static void spmmc_sw_reset(struct spmmc_host *host)
@@ -711,10 +716,13 @@ static void spmmc_set_power_mode(struct spmmc_host *host, struct mmc_ios *ios)
  */
 static void spmmc_finish_request(struct spmmc_host *host, struct mmc_request *mrq)
 {
-	struct mmc_command *cmd = mrq->cmd;
-	struct mmc_data *data = mrq->data;
+	struct mmc_command *cmd;
+	struct mmc_data *data;
 	if (!mrq)
 		return;
+
+	cmd = mrq->cmd;
+	data = mrq->data;
 
 	if (data && SPMMC_DMA_MODE == host->dmapio_mode) {
 		int dma_direction = data->flags & MMC_DATA_READ ? DMA_FROM_DEVICE : DMA_TO_DEVICE;
@@ -736,7 +744,8 @@ irqreturn_t spmmc_irq(int irq, void *dev_id)
 	u32 value = readl(&host->base->sd_int);
 
 	spin_lock(&host->lock);
-	if (value & SPMMC_SDINT_SDCMP) {
+	if ((value & SPMMC_SDINT_SDCMP) &&
+		(value & SPMMC_SDINT_SDCMPEN)) {
 		value = bitfield_replace(value, 0, 1, 0); /* disable sdcmp */
 		value = bitfield_replace(value, 2, 1, 1); /* sd_cmp_clr */
 		writel(value, &host->base->sd_int);
@@ -747,10 +756,9 @@ irqreturn_t spmmc_irq(int irq, void *dev_id)
 		else
 			spmmc_finish_request(host, host->mrq);
 	}
-	if (value & SPMMC_SDINT_SDIO) {
+	if (value & SPMMC_SDINT_SDIO &&
+		(value & SPMMC_SDINT_SDIOEN)) {
 		mmc_signal_sdio_irq(host->mmc);
-		value = bitfield_replace(value, 6, 1, 1); /* sdio_int_clr */
-		writel(value, &host->base->sd_int);
 	}
 	spin_unlock(&host->lock);
 	return IRQ_HANDLED;
@@ -981,6 +989,7 @@ static void spmmc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct spmmc_host *host = mmc_priv(mmc);
 	u32 value = readl(&host->base->sd_int);
+	value = bitfield_replace(value, 5, 1, 1); /* sdio_int_clr */
 	if (enable)
 		value = bitfield_replace(value, 3, 1, 1);
 	else
@@ -1421,6 +1430,7 @@ static int spmmc_drv_remove(struct platform_device *dev)
 	mmc_remove_host(host->mmc);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
+	pm_runtime_disable(&dev->dev);
 	platform_set_drvdata(dev, NULL);
 	mmc_free_host(host->mmc);
 	spmmc_device_remove_sysfs(dev);

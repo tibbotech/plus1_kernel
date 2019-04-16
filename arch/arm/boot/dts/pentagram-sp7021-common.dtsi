@@ -590,6 +590,8 @@
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
 			resets = <&rstc RST_CARD_CTL1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&mmc1_mux>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
 			cd-gpio = <&pctl 71 GPIO_ACTIVE_LOW>;
@@ -606,6 +608,8 @@
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
 			resets = <&rstc RST_CARD_CTL4>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&sdio_pins>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
 			non-removable;
@@ -780,6 +784,20 @@
 			emmc_mux: emmc_mux {
 				sppctl,groups = "CARD0_EMMC";
 				sppctl,function = "CARD0_EMMC";
+			};
+			mmc1_mux: mmc1_mux {
+				sppctl,groups = "SD_CARD";
+				sppctl,function = "SD_CARD";
+				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
+			};
+			sdio_pins: pinmux_sdio_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+					SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+					SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+					SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0) >;
 			};
 		};
 

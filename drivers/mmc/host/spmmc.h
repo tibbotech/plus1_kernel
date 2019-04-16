@@ -70,7 +70,9 @@ struct spmmc_regs {
 #define SPMMC_SWITCH_VOLTAGE_1V8_ERROR		2
 #define SPMMC_SWITCH_VOLTAGE_1V8_TIMEOUT	3
 	u32 sd_vol_ctrl;
+#define SPMMC_SDINT_SDCMPEN	BIT(0)
 #define SPMMC_SDINT_SDCMP	BIT(1)
+#define SPMMC_SDINT_SDIOEN	BIT(3)
 #define SPMMC_SDINT_SDIO	BIT(4)
 	u32 sd_int;
 	u32 sd_page_num;
