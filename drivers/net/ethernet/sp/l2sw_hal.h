@@ -46,7 +46,7 @@ void mac_disable_port_sa_learning(void);
 
 void mac_enable_port_sa_learning(void);
 
-void rx_mode_set(struct l2sw_mac *mac);
+void rx_mode_set(struct net_device *net_dev);
 
 u32 mdio_read(u32 phy_id, u16 regnum);
 

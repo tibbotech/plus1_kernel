@@ -327,14 +327,29 @@ void mac_enable_port_sa_learning(void)
 	HWREG_W(port_cntl1, reg & (~(0x3<<8)));
 }
 
-void rx_mode_set(struct l2sw_mac *mac)
+void rx_mode_set(struct net_device *net_dev)
 {
-	struct net_device *netdev;
+	struct l2sw_mac *mac = netdev_priv(net_dev);
+	u32 mask, reg, rx_mode;
 
-	netdev = mac->net_dev;
-	if (netdev == NULL) {
-		return;
+	//ETH_INFO(" net_dev->flags = %08x\n", net_dev->flags);
+
+	mask = (mac->lan_port<<2) | (mac->lan_port<<0);
+	reg = HWREG_R(cpu_cntl);
+
+	if (net_dev->flags & IFF_PROMISC) {     /* Set promiscuous mode */
+		// Allow MC and unknown UC packets
+		rx_mode = (mac->lan_port<<2) | (mac->lan_port<<0);
+	} else if ((!netdev_mc_empty(net_dev) && (net_dev->flags & IFF_MULTICAST)) || (net_dev->flags & IFF_ALLMULTI)) {
+		// Allow MC packets
+		rx_mode = (mac->lan_port<<2);
+	} else {
+		// Disable MC and unknown UC packets
+		rx_mode = 0;
 	}
+
+	HWREG_W(cpu_cntl, (reg & (~mask)) | ((~rx_mode) & mask));
+	//ETH_INFO(" cpu_cntl = %08x\n", HWREG_R(cpu_cntl));
 }
 
 #define MDIO_READ_CMD   0x02

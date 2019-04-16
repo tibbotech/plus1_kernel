@@ -564,12 +564,15 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 
 static void ethernet_set_rx_mode(struct net_device *net_dev)
 {
-	struct l2sw_mac *mac;
+	if (net_dev) {
+		struct l2sw_mac *mac = netdev_priv(net_dev);
+		struct l2sw_common *comm = mac->comm;
+		unsigned long flags;
 
-	//ETH_INFO("[%s] IN\n", __func__);
-
-	mac = netdev_priv(net_dev);
-	rx_mode_set(mac);
+		spin_lock_irqsave(&comm->ioctl_lock, flags);
+		rx_mode_set(net_dev);
+		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
+	}
 }
 
 static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
@@ -782,6 +785,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 			mac_disable_port_sa_learning();
 			mac_addr_table_del_all();
 			mac_switch_mode(mac);
+			rx_mode_set(net_dev);
 			//mac_hw_addr_print();
 
 			init_netdev(mac->pdev, 1, &net_dev2);   // Initialize the 2nd net device (eth1)
@@ -792,6 +796,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				net_dev2->irq = comm->irq;
 
 				mac_switch_mode(mac);
+				rx_mode_set(net_dev2);
 				mac_hw_addr_set(mac2);
 				//mac_hw_addr_print();
 			}
@@ -836,6 +841,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
+				rx_mode_set(net_dev);
 				mac_hw_addr_del(mac2);
 				//mac_hw_addr_print();
 
@@ -1117,6 +1123,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	} else {
 		mac_disable_port_sa_learning();
 	}
+	rx_mode_set(net_dev);
 	//mac_hw_addr_print();
 
 	if (comm->dual_nic) {
@@ -1132,6 +1139,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev2, (int)mac2, (int)mac2->comm);
 
 		mac_switch_mode(mac);
+		rx_mode_set(net_dev2);
 		mac_hw_addr_set(mac2);          // Set MAC address for the second net device.
 		//mac_hw_addr_print();
 	}
