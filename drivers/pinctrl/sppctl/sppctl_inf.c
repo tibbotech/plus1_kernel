@@ -55,26 +55,6 @@ const struct pinctrl_pin_desc sp7021pins_all[] = {
 };
 const size_t sp7021pins_allSZ = ARRAY_SIZE( sp7021pins_all);
 
-const struct pinctrl_pin_desc sp7021pins_mux[] = {
-// // gpio and iop only
-// P(0,0), P(0,1), P(0,2), P(0,3), P(0,4), P(0,5), P(0,6), P(0,7),
- // gpio, iop, muxable
- P(1,0), P(1,1), P(1,2), P(1,3), P(1,4), P(1,5), P(1,6), P(1,7),
- P(2,0), P(2,1), P(2,2), P(2,3), P(2,4), P(2,5), P(2,6), P(2,7),
- P(3,0), P(3,1), P(3,2), P(3,3), P(3,4), P(3,5), P(3,6), P(3,7),
- P(4,0), P(4,1), P(4,2), P(4,3), P(4,4), P(4,5), P(4,6), P(4,7),
- P(5,0), P(5,1), P(5,2), P(5,3), P(5,4), P(5,5), P(5,6), P(5,7),
- P(6,0), P(6,1), P(6,2), P(6,3), P(6,4), P(6,5), P(6,6), P(6,7),
- P(7,0), P(7,1), P(7,2), P(7,3), P(7,4), P(7,5), P(7,6), P(7,7),
- P(8,0), P(8,1), P(8,2), P(8,3), P(8,4), P(8,5), P(8,6), P(8,7),
- // gpio (not wired) and iop only
- P( 9,0), P( 9,1), P( 9,2), P( 9,3), P( 9,4), P( 9,5), P( 9,6), P( 9,7),
- P(10,0), P(10,1), P(10,2), P(10,3), P(10,4), P(10,5), P(10,6), P(10,7),
- P(11,0), P(11,1), P(11,2), P(11,3), P(11,4), P(11,5), P(11,6), P(11,7),
- P(12,0), P(12,1), P(12,2),
-};
-const size_t sp7021pins_muxSZ = ARRAY_SIZE( sp7021pins_mux);
-
 // pmux groups: some pins are muxable. group = pin
 const char * const sp7021pmux_list_s[] = {
  //D_PIS(0,0), D_PIS(0,1), D_PIS(0,2), D_PIS(0,3), D_PIS(0,4), D_PIS(0,5), D_PIS(0,6), D_PIS(0,7),
@@ -93,6 +73,30 @@ const char * const sp7021pmux_list_s[] = {
 };
 // gpio: is defined in sp7021_gpio_inf.c
 const size_t PMUX_listSZ = sizeof( sp7021pmux_list_s)/sizeof( *( sp7021pmux_list_s));
+
+static const unsigned sp7021pins_spif1[] = {
+ D_PIN(10,3), D_PIN(10,4), D_PIN(10,6), D_PIN(10,7),
+};
+static const unsigned sp7021pins_spif2[] = {
+ D_PIN( 9,4), D_PIN( 9,6), D_PIN( 9,7), D_PIN( 10,1),
+};
+static const sp7021grp_t sp7021grps_spif[] = {
+ EGRP( "SPI_FLASH1", 1, sp7021pins_spif1),
+ EGRP( "SPI_FLASH2", 2, sp7021pins_spif2),
+};
+
+static const unsigned sp7021pins_spi41[] = {  D_PIN(10,2), D_PIN(10,5),  };
+static const unsigned sp7021pins_spi42[] = {  D_PIN( 9,5), D_PIN( 9,8),  };
+static const sp7021grp_t sp7021grps_spi4[] = {
+ EGRP( "SPI_FLASH_4BIT1", 1, sp7021pins_spi41),
+ EGRP( "SPI_FLASH_4BIT2", 2, sp7021pins_spi42),
+};
+
+static const unsigned sp7021pins_snan[] = {
+ D_PIN( 9,4), D_PIN(9,5), D_PIN(9,6), D_PIN(9,7), D_PIN(10,0), D_PIN(10,1),  };
+static const sp7021grp_t sp7021grps_snan[] = {
+ EGRP( "SPI_NAND_1", 1, sp7021pins_snan),
+};
 
 static const unsigned sp7021pins_hdmi1[] = {
  D_PIN(10,6), D_PIN(10,7), D_PIN(12,2), D_PIN(12,1),
@@ -266,10 +270,10 @@ func_t list_funcs[] = {
  FNCN("GPIO_INT5",       fOFF_M, 0x3A, 8, 7),
  FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
  FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
- 
- FNCN("SPI_FLASH",       fOFF_G, 0x01, 0, 2),   // offset from 0x9C000080
- FNCN("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2),
- FNCN("SPI_NAND",        fOFF_G, 0x01, 4, 1),
+ // offset from 0x9C000080
+ FNCN("SPI_FLASH",       fOFF_G, 0x01, 0, 2, sp7021grps_spif),
+ FNCN("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2, sp7021grps_spi4),
+ FNCN("SPI_NAND",        fOFF_G, 0x01, 4, 1, sp7021grps_snan),
  FNCN("CARD_EMMC",       fOFF_G, 0x01, 5, 1),
  FNCN("SD_CARD",         fOFF_G, 0x01, 6, 1),
  FNCN("UA0",             fOFF_G, 0x01, 7, 1),

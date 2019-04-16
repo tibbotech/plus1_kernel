@@ -24,8 +24,6 @@ void sppctl_pinctrl_clea( struct platform_device *_pdev);
 
 #define D_PIN(x,y) (x)*8+(y)
 
-extern const struct pinctrl_pin_desc sp7021pins_mux[];
-extern const size_t sp7021pins_muxSZ;
 extern const struct pinctrl_pin_desc sp7021pins_all[];
 extern const size_t sp7021pins_allSZ;
 extern const unsigned sp7021pins_G[];
