@@ -41,7 +41,7 @@ int stpctl_c_p_get( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_cfg)
         arg = sp7021gpio_f_get( &( pctrl->gpiod->chip), _pin);
         break;
    default:
-       KINF( _pd->dev, "%s(%d) skipping:%X\n", __FUNCTION__, _pin, param);
+       //KINF( _pd->dev, "%s(%d) skipping:%X\n", __FUNCTION__, _pin, param);
        return( -ENOTSUPP);  break;
  }
  *_cfg = pinconf_to_config_packed( param, arg);
@@ -168,9 +168,12 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  return( 0);  }
 int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
+ int g_f, g_m;
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
- sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
- return( 0);  }
+ g_f = sp7021gpio_u_gfrst( &( pctrl->gpiod->chip), _pin);
+ g_m = sp7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin);
+ if (  g_f == muxF_G && g_m == muxM_G) return( 0);
+ return( -EACCES);  }
 void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  return;  }
@@ -247,8 +250,6 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  struct property *prop;
  const char *s_f, *s_g;
 //print_device_tree_node( _dn, 0);
-// KDBG( _pd->dev, "%s() np_c->n:%s ->t:%s ->fn:%s\n", __FUNCTION__, _dn->name, _dn->type, _dn->full_name);
-// int ret = pinconf_generic_dt_node_to_map_pin( _pd, _dn, _map, num_maps);
  parent = of_get_parent( _dn);
  *_nm = size/sizeof( *list);
  *_map = devm_kcalloc( _pd->dev, *_nm, sizeof( **_map), GFP_KERNEL);
@@ -262,6 +263,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
     (* _map)[ i].name = parent->name;
     KDBG( _pd->dev, "map [%d]=%d p=%d g=%d f=%d l=%d\n", i, dt_pin, p_p, p_g, p_f, p_l);
     if ( p_g == SP7021_PCTL_G_GPIO) {
+      // look into parse_dt_cfg(),
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
@@ -297,7 +299,6 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
    }
  }
  of_node_put( parent);
-// parse_dt_cfg(np, pctldev->desc->custom_params,
  KDBG( _pd->dev, "%d pins mapped\n", *_nm);
  return( 0);  }
 void stpctl_o_mfre( struct pinctrl_dev *_pd, struct pinctrl_map *_map, unsigned num_maps) {
