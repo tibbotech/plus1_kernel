@@ -54,6 +54,7 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  if ( _ca[ i] == 0xFF) {
    sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
    return( 0);  }
+ sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  for ( i = 0; i < _clen; i++) {
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
    if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
@@ -67,7 +68,7 @@ int stpctl_c_g_get( struct pinctrl_dev *_pd, unsigned _gid, unsigned long *_conf
  return( 0);  }
 int stpctl_c_g_set( struct pinctrl_dev *_pd, unsigned _gid, unsigned long *_configs, unsigned _num_configs) {
 // KINF( _pd->dev, "%s(%d,,%d)\n", __FUNCTION__, _gid, _num_configs);
- // FIXME: delete
+ // FIXME: delete ?
  return( 0);  }
 #ifdef CONFIG_DEBUG_FS
 void stpctl_c_d_show( struct pinctrl_dev *_pd, struct seq_file *s, unsigned _off) {
@@ -102,7 +103,6 @@ int stpctl_m_req( struct pinctrl_dev *_pd, unsigned _pin) {
 // sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  // FIXME: define
-// sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  return( 0);  }
 int stpctl_m_fre( struct pinctrl_dev *_pd, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
@@ -132,7 +132,7 @@ int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const *
         KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
         break;
  }
-// KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_gnum);
+ KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_gnum);
  return( 0);  }
 int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  int i = -1, j = -1;
