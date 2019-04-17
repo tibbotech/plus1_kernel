@@ -32,9 +32,23 @@
 };
 
 &pctl {
- /*** non-device binded ***/
+ /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
- pinctrl-0 = <&iop_example>;
+ pinctrl-0 = <&nodevbinded_iop_example &nodevbinded_gpio_example>;
+
+ nodevbinded_iopp_example: nodevbinded_iopp_example {
+    sppctl,pins = <
+      SP7021_IOPAD(97,SP7021_PCTL_G_IOPP,0,0)
+      SP7021_IOPAD(98,SP7021_PCTL_G_IOPP,0,0)
+    >;
+ };
+
+ nodevbinded_gpio_example: nodevbinded_gpio_example {
+    sppctl,pins = <
+      SP7021_IOPAD(95,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(96,SP7021_PCTL_G_GPIO,0,0)
+    >;
+ };
 
  /* for all eth */
  sdio_pins: pinmux_sdio_pins {
@@ -97,13 +111,6 @@
     >;
  };
  
- iop_example: iop_example_pins {
-    sppctl,pins = <
-      SP7021_IOPAD(97,SP7021_PCTL_G_IOPP,0,0)
-      SP7021_IOPAD(98,SP7021_PCTL_G_IOPP,0,0)
-    >;
- };
-
  hdmi_A_tx1: hdmi_A_tx1_pins {
     sppctl,groups = "HDMI_TX1";
     sppctl,function = "HDMI_TX";
