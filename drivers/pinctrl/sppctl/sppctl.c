@@ -192,8 +192,8 @@ static int sppctl_dnew( struct platform_device *_pd) {
  of_property_read_string( np, "fwname", &fwfname);
  if ( fwfname) strcpy( p->fwname, fwfname);
  sppctl_loadfw( &( _pd->dev), p->fwname);
- sppctl_pinctrl_init( _pd);
  sp7021_gpio_new( _pd, p);
+ sppctl_pinctrl_init( _pd);
  pinctrl_add_gpio_range( p->pcdp, &( p->gpio_range));
  printk( KERN_INFO M_NAM" by "M_ORG""M_CPR);
  return( 0);   }

@@ -29,7 +29,7 @@ int stpctl_c_p_get( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_cfg)
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
  unsigned int param = pinconf_to_config_param( *_cfg);
  unsigned int arg = 0;
-// KINF( _pd, "%s(%d)\n", __FUNCTION__, _pin);
+ KINF( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  switch ( param) {
    case PIN_CONFIG_DRIVE_OPEN_DRAIN:
         if ( !sp7021gpio_u_isodr( &( pctrl->gpiod->chip), _pin)) return( -EINVAL);
@@ -52,7 +52,7 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  KDBG( _pd->dev, "%s(%d,%ld,%d)\n", __FUNCTION__, _pin, *_ca, _clen);
  // special handling for IOP
  if ( _ca[ i] == 0xFF) {
-//   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
+   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
    return( 0);  }
  for ( i = 0; i < _clen; i++) {
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
@@ -133,7 +133,7 @@ int stpctl_m_f_grp( struct pinctrl_dev *_pd, unsigned _fid, const char * const *
         KERR( _pd->dev, "%s(_fid:%d) unknown fOFF %d\n", __FUNCTION__, _fid, f.freg);
         break;
  }
- KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_gnum);
+// KDBG( _pd->dev, "%s(_fid:%d) %d\n", __FUNCTION__, _fid, *_gnum);
  return( 0);  }
 int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  int i = -1, j = -1;
@@ -143,8 +143,6 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  KINF( _pd->dev, "%s(fun:%d,grp:%d)\n", __FUNCTION__, _fid, _gid);
  switch ( f.freg) {
      case fOFF_0:   // GPIO. detouch from all funcs - ?
-        // not there now
-        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_G, muxM_G);
         for ( i = 0; i < list_funcsSZ; i++) {
           if ( list_funcs[ i].freg != fOFF_M) continue;
           j++;
@@ -206,25 +204,25 @@ int stpctl_o_g_pins( struct pinctrl_dev *_pd, unsigned _gid, const unsigned **pi
  int i;
  grp2fp_map_t g2fpm = g2fp_maps[ _gid];
  func_t f = list_funcs[ g2fpm.f_idx];
- KDBG( _pd->dev, " grp-pins g:%d f_idx:%d,g_idx:%d freg:%d...\n", _gid, g2fpm.f_idx, g2fpm.g_idx, f.freg);
+// KDBG( _pd->dev, " grp-pins g:%d f_idx:%d,g_idx:%d freg:%d...\n", _gid, g2fpm.f_idx, g2fpm.g_idx, f.freg);
  *num_pins = 0;
 // // GPIO(+IOP base type), handled in gpio driver
 // if ( f.freg == fOFF_0) return( 0);
  // MUX | GPIO: 1 pin -> 1 group
- if ( f.freg == fOFF_M || f.freg == fOFF_0) {
- KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
+ if ( f.freg != fOFF_G) {
+// KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
    *num_pins = 1;
    *pins = &sp7021pins_G[ _gid];
    return( 0);  }
- KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
+// KDBG( _pd->dev, " grp-pins %d... l:%d\n", _gid, __LINE__);
  // IOP (several pins at once in a group)
  if ( !f.grps) return( 0);
  if ( f.gnum < 1) return( 0);
- KDBG( _pd->dev, " grp-pins f:%s l:%d\n",f.name, __LINE__);
+// KDBG( _pd->dev, " grp-pins f:%s l:%d\n",f.name, __LINE__);
  *num_pins = f.grps[ g2fpm.g_idx].pnum;
  *pins = f.grps[ g2fpm.g_idx].pins;
- KDBG( _pd->dev, " grp-pins g:%s num_pins:%d... l:%d\n", f.grps[ g2fpm.g_idx].name, *num_pins, __LINE__);
- for ( i = 0; i < *num_pins; i++) KDBG( _pd->dev, " grp-pins p:%d\n", (*pins)[ i]);
+// KDBG( _pd->dev, " grp-pins g:%s num_pins:%d... l:%d\n", f.grps[ g2fpm.g_idx].name, *num_pins, __LINE__);
+// for ( i = 0; i < *num_pins; i++) KDBG( _pd->dev, " grp-pins p:%d\n", (*pins)[ i]);
  return( 0);  }
 // /sys/kernel/debug/pinctrl/sppctl/pins add: gpio_first and ctrl_sel
 #ifdef CONFIG_DEBUG_FS
@@ -353,7 +351,6 @@ void group_groups( struct platform_device *_pd) {
  // +IOP groups
  for ( i = 0; i < list_funcsSZ; i++) {
    if ( list_funcs[ i].freg != fOFF_G) continue;
-//   list_funcs[ i].grps_sa = ( char const **)kzalloc( ( list_funcs[ i].gnum)*sizeof( char *), GFP_KERNEL);
    for ( k = 0; k < list_funcs[ i].gnum; k++) {
      list_funcs[ i].grps_sa[ k] = ( char *)list_funcs[ i].grps[ k].name;
      unq_grps[ j] = list_funcs[ i].grps[ k].name;
