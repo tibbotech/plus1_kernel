@@ -39,6 +39,7 @@ int sp7021gpio_u_soinv( struct gpio_chip *_c, unsigned int _n);
 
 // is open-drain: YES(1) | NON(0)
 int sp7021gpio_u_isodr( struct gpio_chip *_c, unsigned int _n);
+void sp7021gpio_u_seodr( struct gpio_chip *_c, unsigned int _n, unsigned _v);
 
 // --- in callbacks
 

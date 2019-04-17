@@ -115,6 +115,13 @@ int sp7021gpio_u_isodr( struct gpio_chip *_c, unsigned int _n) {
  r = readl( pc->base1 + SP7021_GPIO_OFF_OD + R16_ROF(_n));
  return( R32_VAL(r,R16_BOF(_n)));  }
 
+void sp7021gpio_u_seodr( struct gpio_chip *_c, unsigned int _n, unsigned _v) {
+ u32 r;
+ sp7021gpio_chip_t *pc = ( sp7021gpio_chip_t *)gpiochip_get_data( _c);
+ r = (BIT(R16_BOF(_n))<<16) | ( ( _v & BIT(0)) << R16_BOF(_n));
+ writel( r, pc->base1 + SP7021_GPIO_OFF_OD + R16_ROF(_n));
+ return;  }
+
 // --- in callbacks
 
 // take pin (export/open for ex.): set GPIO_FIRST=1,GPIO_MASTER=1
@@ -123,7 +130,7 @@ int sp7021gpio_u_isodr( struct gpio_chip *_c, unsigned int _n) {
 int sp7021gpio_f_req( struct gpio_chip *_c, unsigned _n) {
  u32 r;
  sp7021gpio_chip_t *pc = ( sp7021gpio_chip_t *)gpiochip_get_data( _c);
-KINF( _c->parent, "f_req(%03d)\n", _n);
+ //KINF( _c->parent, "f_req(%03d)\n", _n);
  // get GPIO_FIRST:32
  r = readl( pc->base2 + SP7021_GPIO_OFF_GFR + R32_ROF(_n));
  // set GPIO_FIRST(1):32

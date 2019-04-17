@@ -172,10 +172,10 @@ static int sppctl_dnew( struct platform_device *_pd) {
  sppctl_pdata_t *p = NULL;
  const char *fwfname = FW_DEFNAME;
  if ( !np) {
-   KERR( &( _pd->dev), "invalid devicetree node\n");
+   KERR( &( _pd->dev), "Invalid dtb node\n");
    return( -EINVAL);  }
  if ( !of_device_is_available( np)) {
-   KERR( &( _pd->dev), "devicetree is not available\n");
+   KERR( &( _pd->dev), "dtb is not available\n");
    return( -ENODEV);  }
 // print_device_tree_node( np, 0);
  if ( !( p = devm_kzalloc( &( _pd->dev), sizeof( *p), GFP_KERNEL))) return( -ENOMEM);

@@ -34,7 +34,7 @@
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
- pinctrl-0 = <&nodevbinded_iop_example &nodevbinded_gpio_example>;
+ pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;
 
  nodevbinded_iopp_example: nodevbinded_iopp_example {
     sppctl,pins = <
