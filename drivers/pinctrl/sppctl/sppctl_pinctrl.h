@@ -22,7 +22,7 @@
 void sppctl_pinctrl_init( struct platform_device *_pdev);
 void sppctl_pinctrl_clea( struct platform_device *_pdev);
 
-#define D_PIN(x,y) (x)*8+(y)
+#define D(x,y) (x)*8+(y)
 
 extern const struct pinctrl_pin_desc sp7021pins_all[];
 extern const size_t sp7021pins_allSZ;
