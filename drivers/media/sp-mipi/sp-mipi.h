@@ -1,3 +1,10 @@
+#include <media/v4l2-dev.h>
+#include <linux/videodev2.h>
+#include <linux/clk.h>
+#include <linux/i2c.h>
+#include <media/v4l2-fh.h>
+#include <media/v4l2-ioctl.h>
+#include <media/v4l2-device.h>
 
 
 #define VOUT_NAME		        "sp_vout"
@@ -13,7 +20,7 @@
     (w%n)?((w/n)*n+n):(w)
 
 
-#define FUNC_DEBUG()    printk(KERN_INFO "[MIPI] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+#define FUNC_DEBUG()    //printk(KERN_INFO "[MIPI] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
 #define DBG_INFO(fmt, args ...)    printk(KERN_INFO "[MIPI] Info: " fmt, ## args)
 #define DBG_ERR(fmt, args ...)    printk(KERN_ERR "[MIPI] Error: " fmt, ## args)
 
@@ -43,6 +50,36 @@ typedef enum
 	CAM_Capture_DONE = 3,
 } DRV_CAMERA_Capture_Staute;
 
+struct sp_vout_subdev_info {	
+	char name[32];				/* Sub device name */	
+	int grp_id;					/* Sub device group id */	
+	struct i2c_board_info board_info;	/* i2c subdevice board info */
+};
+
+struct sp_vout_subdev_info sp_vout_sub_devs[] = {
+	{
+		.name = "ov9281",
+		.grp_id = 0,
+		.board_info = {
+			I2C_BOARD_INFO("ov9281", 0x60),
+		},
+	}
+};
+
+struct sp_vout_config {
+	
+	int num_subdevs;					/* Number of sub devices connected to vpfe */	
+	int i2c_adapter_id;					/* i2c bus adapter no */	
+	struct sp_vout_subdev_info *sub_devs;	/* information about each subdev */	
+
+};
+
+struct sp_vout_config psp_vout_cfg = {
+	.num_subdevs = ARRAY_SIZE(sp_vout_sub_devs),
+	.i2c_adapter_id = 1,
+	.sub_devs = sp_vout_sub_devs,
+};
+
 struct sp_vout_device {
 	struct device 			*pdev;			/* parent device */
 	struct video_device 	video_dev;
@@ -58,6 +95,7 @@ struct sp_vout_device {
 	struct v4l2_control 	ctrl;
 	enum v4l2_buf_type 		type;
 	enum v4l2_memory 		memory;
+	struct v4l2_subdev 		**sd;
 	struct sp_vout_subdev_info *current_subdev;	/* ptr to currently selected sub device */
 
 	spinlock_t irqlock;						/* Used in video-buf */	
@@ -72,6 +110,7 @@ struct sp_vout_device {
 	u8 						capture_status;
 //	u32 usrs;								/* number of open instances of the channel */	
 //	u8 initialized;							/* flag to indicate whether decoder is initialized */
+
 };
 
 /* File handle structure */

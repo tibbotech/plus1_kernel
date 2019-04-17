@@ -36,10 +36,6 @@
 
 /* OV9281 Registers */
 
-//#define OV9281_SC_CHIP_ID_HIGH_ADDR	0x300A	
-//#define OV9281_SC_CHIP_ID_LOW_ADDR	0x300B
-
-
 #define OV9281_SC_CTRL_SCCB_ID_ADDR	0x302B
 
 #if 0 //phtsai	not use
@@ -112,7 +108,9 @@ static const char * const ov9281_supply_names[] = {
 };
 #endif
 
-#define OV9281_NUM_SUPPLIES ARRAY_SIZE(ov9281_supply_names)
+#define FUNC_DEBUG()    printk(KERN_INFO "[OV9281] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+#define DBG_INFO(fmt, args ...)    printk(KERN_INFO "[OV9281] Info: " fmt, ## args)
+#define DBG_ERR(fmt, args ...)    printk(KERN_ERR "[OV9281] Error: " fmt, ## args)
 
 #define REG_NULL			0xFFFF
 /* OV9281 Registers */
@@ -151,9 +149,6 @@ struct ov9281 {
 	// add
 	struct gpio_desc 	*pwr_gpio;
 	struct gpio_desc	*pwr_snd_gpio;
-
-//	struct regulator_bulk_data supplies[OV9281_NUM_SUPPLIES];
-
 	struct pinctrl		*pinctrl;
 	struct pinctrl_state	*pins_default;
 	struct pinctrl_state	*pins_sleep;
@@ -427,6 +422,8 @@ static int ov9281_write_array(struct i2c_client *client,
 	u32 i;
 	int ret = 0;
 
+	FUNC_DEBUG();
+
 	for (i = 0; ret == 0 && regs[i].addr != REG_NULL; i++)
 		ret = ov9281_write_reg(client, regs[i].addr,
 					OV9281_REG_VALUE_08BIT,
@@ -439,16 +436,11 @@ static int __ov9281_start_stream(struct ov9281 *ov9281)
 {
 	int ret;		
 
-	ret = ov9281_write_array(ov9281->client, ov9281->cur_mode->reg_list);		
+	FUNC_DEBUG();
+
+	ret = ov9281_write_array(ov9281->client, ov9281->cur_mode->reg_list);	
 	if (ret)
 		return ret;		
-
-	/* In case these controls are set before streaming */
-	mutex_unlock(&ov9281->mutex);
-	ret = v4l2_ctrl_handler_setup(&ov9281->ctrl_handler);
-	mutex_lock(&ov9281->mutex);
-	if (ret)
-		return ret;
 
 	return ov9281_write_reg(ov9281->client,
 				 OV9281_REG_CTRL_MODE,
@@ -458,6 +450,7 @@ static int __ov9281_start_stream(struct ov9281 *ov9281)
 
 static int __ov9281_stop_stream(struct ov9281 *ov9281)
 {
+	FUNC_DEBUG();
 	return ov9281_write_reg(ov9281->client,
 				 OV9281_REG_CTRL_MODE,
 				 OV9281_REG_VALUE_08BIT,
@@ -467,30 +460,24 @@ static int __ov9281_stop_stream(struct ov9281 *ov9281)
 static int ov9281_s_stream(struct v4l2_subdev *sd, int on)
 {
 	struct ov9281 *ov9281 = to_ov9281(sd);
-	struct i2c_client *client = ov9281->client;
+	//struct i2c_client *client = ov9281->client;
 	int ret = 0;
 
+	FUNC_DEBUG();
+
 	mutex_lock(&ov9281->mutex);
-	on = !!on;
+	//on = !!on;
 	if (on == ov9281->streaming)
 		goto unlock_and_return;
 
 	if (on) {
-		ret = pm_runtime_get_sync(&client->dev);
-		if (ret < 0) {
-			pm_runtime_put_noidle(&client->dev);
-			goto unlock_and_return;
-		}
-
 		ret = __ov9281_start_stream(ov9281);
 		if (ret) {
-			v4l2_err(sd, "start stream failed while write regs\n");
-			pm_runtime_put(&client->dev);
+			DBG_ERR("start stream failed while write regs\n");
 			goto unlock_and_return;
 		}
 	} else {
 		__ov9281_stop_stream(ov9281);
-		pm_runtime_put(&client->dev);
 	}
 
 	ov9281->streaming = on;
@@ -508,6 +495,27 @@ static struct v4l2_subdev_ops ov9281_subdev_ops = {
 	.video		= &ov9281_subdev_video_ops,
 };
 
+#define CHIP_ID				0x9281
+#define OV9281_REG_CHIP_ID		0x300A
+
+static int ov9281_check_sensor_id(struct ov9281 *ov9281,
+				   struct i2c_client *client)
+{
+	//struct device *dev = &ov9281->client->dev;
+	u32 val = 0;
+	int ret;
+	
+	ret = ov9281_read_reg(client, OV9281_REG_CHIP_ID,
+			       OV9281_REG_VALUE_16BIT, &val);				   
+	if (val != CHIP_ID) {
+		DBG_ERR("Unexpected sensor id(%06x), ret(%d)\n", val, ret);
+		return ret;
+	}
+	DBG_INFO("Check sensor id success.(ID=0x%x)\n", val);
+
+	return 0;
+}
+
 static int ov9281_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
@@ -515,6 +523,8 @@ static int ov9281_probe(struct i2c_client *client,
 	struct ov9281 *ov9281;
 	struct v4l2_subdev *sd;
 	int ret;
+
+	FUNC_DEBUG();
 
 	ov9281 = devm_kzalloc(dev, sizeof(*ov9281), GFP_KERNEL);
 	if (!ov9281)
@@ -526,37 +536,25 @@ static int ov9281_probe(struct i2c_client *client,
 	mutex_init(&ov9281->mutex);
 	sd = &ov9281->subdev;
 	v4l2_i2c_subdev_init(sd, client, &ov9281_subdev_ops);
-	
-#if 0
+	DBG_INFO("V4L2 i2c subdev init.\n");
+
 	ret = ov9281_check_sensor_id(ov9281, client);
-	if (ret)
-		goto err_power_off;
-#endif
-		
+	if (ret) {
+		DBG_ERR("Get sensor_id failed.\n");
+		return ret;
+	}
+
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	sd->internal_ops = &ov9281_internal_ops;
 	sd->flags |= V4L2_SUBDEV_FL_HAS_DEVNODE;
 #endif
 
-#if 0 //defined(CONFIG_MEDIA_CONTROLLER)
-	ov9281->pad.flags = MEDIA_PAD_FL_SOURCE;
-	sd->entity.type = MEDIA_ENT_T_V4L2_SUBDEV_SENSOR;
-	ret = media_entity_init(&sd->entity, 1, &ov9281->pad, 0);
-	if (ret < 0)
-		goto err_power_off;
-#endif
-
 	ret = v4l2_async_register_subdev(sd);		
 	if (ret) {
-		dev_err(dev, "v4l2 async register subdev failed\n");
+		DBG_ERR("v4l2 async register subdev failed.\n");
 		goto err_clean_entity;
 	}
-
-#if 1 //phtsai, hardcode init
-	ret = ov9281_write_array(ov9281->client, ov9281->cur_mode->reg_list);		
-	if (ret)
-		return ret;	
-#endif
+	DBG_INFO("V4L2 sub-device register success.\n");
 
 	return 0;
 	
@@ -572,6 +570,8 @@ static int ov9281_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct ov9281 *ov9281 = to_ov9281(sd);
+
+	FUNC_DEBUG();
 
 	v4l2_async_unregister_subdev(sd);
 #if defined(CONFIG_MEDIA_CONTROLLER)
@@ -619,7 +619,6 @@ static void __exit sensor_mod_exit(void)
 	i2c_del_driver(&ov9281_i2c_driver);
 }
 
-//device_initcall_sync(sensor_mod_init);
 module_init(sensor_mod_init);
 module_exit(sensor_mod_exit);
 

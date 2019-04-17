@@ -182,5 +182,3 @@ obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_FSI)		+= fsi/
 obj-$(CONFIG_TEE)		+= tee/
 
-# MIPICSI driver
-obj-$(CONFIG_MIPICSI) 	+=mipicsi/

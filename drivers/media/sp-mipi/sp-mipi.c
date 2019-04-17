@@ -32,6 +32,7 @@
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf-core.h>
 #include <media/v4l2-common.h>
+#include <linux/i2c.h>
 #include "sp-mipi.h"
 
 static struct sp_fmt formats[] = {
@@ -213,18 +214,26 @@ static int CSIIW0_irq_init(struct sp_vout_device *vout)
 	ret = request_irq(vout->fs_irq, csiiw_fs_isr, IRQF_SHARED, "CSIIW0_FS", vout); 	
 	if (ret) { 
 		DBG_ERR("request_irq() failed (%d)\n", ret);
-		return (ret); 
+		goto err_fs_irq;
 	} 
 
 	vout->fe_irq = irq_of_parse_and_map(np, 1); 
 	ret = request_irq(vout->fe_irq, csiiw_fe_isr, IRQF_SHARED, "CSIIW0_FE", vout); 	
 	if (ret) { 
 		DBG_ERR("request_irq() failed (%d)\n", ret); 
-		return (ret); 
+		goto err_fe_irq;
 	} 
 	DBG_INFO("MIPICSIIW interrupt installed. (fs_irq=%d, fe_irq=%d)\n", vout->fs_irq , vout->fe_irq);
 
 	return 0; 
+
+err_fe_irq:
+	free_irq(vout->fe_irq, vout); 
+err_fs_irq:
+	free_irq(vout->fs_irq, vout); 
+	return ret; 
+
+
 }
 
 static int buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
@@ -521,7 +530,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-	//struct sp_vout_subdev_info *sdinfo;
+	struct sp_vout_subdev_info *sdinfo;
 	int ret;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
@@ -537,15 +546,13 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 		return -EACCES;
 	}
 
-#if 0 //phtsai
 	sdinfo = vout->current_subdev;
 	ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 1);
 	if (ret && (ret != -ENOIOCTLCMD)) {
-		DBG_ERR("stream on failed in subdev\n");
+		v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
 		return -EINVAL;
 	}
-#endif
 
 	/* If buffer queue is empty, return error */
 	if (list_empty(&vout->buffer_queue.stream)) {
@@ -603,7 +610,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-	//struct vout *sdinfo;
+	struct sp_vout_subdev_info *sdinfo;
 	int ret;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
@@ -629,16 +636,14 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 	if (ret)
 		return ret;
 
-#if 0 //phtsai
-	vpfe_stop_ccdc_capture(vpfe_dev);
-	vpfe_detach_irq(vpfe_dev);
-
-	sdinfo = vpfe_dev->current_subdev;
-	ret = v4l2_device_call_until_err(&vpfe_dev->v4l2_dev, sdinfo->grp_id,
+	sdinfo = vout->current_subdev;
+	ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 0);
-	if (ret && (ret != -ENOIOCTLCMD))
-		v4l2_err(&vpfe_dev->v4l2_dev, "stream off failed in subdev\n");
-#endif
+	if (ret && (ret != -ENOIOCTLCMD)) {
+		v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
+		return -EINVAL;
+	}
+
 	vout->started = 0;
 	// FW must mask irq to avoid unmap issue (for test code)
 	writel(0x00032700,
@@ -704,8 +709,8 @@ static int sp_vout_release(struct file *file)
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-	//struct vpfe_subdev_info *sdinfo;
-	//int ret;
+	struct sp_vout_subdev_info *sdinfo;
+	int ret;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
 
@@ -714,17 +719,14 @@ static int sp_vout_release(struct file *file)
 	/* if this instance is doing IO */
 	if (fh->io_allowed) {
 		if (vout->started) {
-#if 0
 			sdinfo = vout->current_subdev;
-			ret = v4l2_device_call_until_err(&vpfe_dev->v4l2_dev,
-							 sdinfo->grp_id,
-							 video, s_stream, 0);
-			if (ret && (ret != -ENOIOCTLCMD))
-				v4l2_err(&vout->v4l2_dev,
-				"stream off failed in subdev\n");
-			vpfe_stop_ccdc_capture(vout);
-			vpfe_detach_irq(vout);
-#endif
+			ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
+							video, s_stream, 0);
+			if (ret && (ret != -ENOIOCTLCMD)) {
+				v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
+				return -EINVAL;
+			}
+
 			vout->started = 0;
 			writel(0x00032700,
 					&(pCSIIWReg->csiiw_config0));	// Disable CSIIW and mask fs_irq & fe_irq
@@ -779,12 +781,19 @@ static const struct v4l2_file_operations sp_mipi_fops = {
 /* ------------------------------------------------------------------
 	SP-MIPI driver probe
    ------------------------------------------------------------------*/
+struct clk *clk_mipicsi_0;
+struct clk *clk_csiiw_0;
 static int sp_mipi_probe(struct platform_device *pdev)
 {
 	struct sp_vout_device *vout;
 	struct video_device *vfd;
 	struct device *dev = &pdev->dev;  
-	int ret;
+	struct sp_vout_config *sp_vout_cfg;
+	struct sp_vout_subdev_info *sdinfo;
+	struct i2c_adapter *i2c_adap;
+	int num_subdevs = 0;
+	int ret, i;
+
 	SP_MIPI_t *pstSpMIPIInfo = NULL;
 
 	DBG_INFO(" %s \n", __FUNCTION__);
@@ -802,25 +811,28 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	if (IS_ERR(pstSpMIPIInfo->clk_mipicsi_0)) {
 		ret = PTR_ERR(pstSpMIPIInfo->clk_mipicsi_0);
 		DBG_ERR("failed to retrieve clk_mipicsi_0\n");
-		goto err_clk_disable;
+		goto err_get_mipicsi_clk;
 	}
+
+	clk_mipicsi_0 = pstSpMIPIInfo->clk_mipicsi_0;
 	ret = clk_prepare_enable(pstSpMIPIInfo->clk_mipicsi_0);
 	if (ret) {
 		DBG_ERR("failed to enable clk_mipicsi_0\n");
-		goto err_clk_disable;
+		goto err_en_mipicsi_clk;
 	}
 
 	pstSpMIPIInfo->clk_csiiw_0 = devm_clk_get(dev, "clk_csiiw_0");
 	if (IS_ERR(pstSpMIPIInfo->clk_csiiw_0)) {
 		ret = PTR_ERR(pstSpMIPIInfo->clk_csiiw_0);
 		DBG_ERR("failed to retrieve clk_csiiw_0\n");
-		goto err_clk_disable;
+		goto err_get_csiiw_clk;
 	}
 
+	clk_csiiw_0 = pstSpMIPIInfo->clk_csiiw_0;
 	ret = clk_prepare_enable(pstSpMIPIInfo->clk_csiiw_0);
 	if (ret) {
 		DBG_ERR("failed to enable clk_csiiw_0\n");
-		goto err_clk_disable;
+		goto err_en_csiiw_clk;
 	}	
 	pMIPICSIReg = (regs_mipicsi_t *)pstSpMIPIInfo->mipicsi_regs;
 	pCSIIWReg = (regs_csiiw_t *)pstSpMIPIInfo->csiiw_regs;
@@ -830,8 +842,9 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 	vout = kzalloc(sizeof(struct sp_vout_device), GFP_KERNEL);
 	if (!vout) {
-		DBG_ERR("Failed to allocate memory for vpfe_dev\n");
-		return -ENOMEM;
+		DBG_ERR("Failed to allocate memory for sp_vout_dev\n");
+		ret = -ENOMEM;
+		goto err_alloc;
 	}
 
 	vout->pdev = &pdev->dev;
@@ -848,7 +861,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	ret = v4l2_device_register(&pdev->dev, &vout->v4l2_dev);
 	if (ret) {
 		DBG_ERR("Unable to register v4l2 device.\n");
-		goto probe_err0;
+		goto err_v4l2_register;
 	}
 
 	// init V4L2_format
@@ -873,7 +886,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		DBG_ERR("Unable to register video device.\n");
 		vfd->minor = -1;
 		ret = -ENODEV;
-		goto probe_err1;
+		goto err_video_register;
 	}
 
 	/* set the driver data in platform device */
@@ -883,22 +896,63 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	DBG_INFO("registered and initialized"
 				" video device %d\n", vfd->minor);
 
+	// Get i2c_info for sub-device.
+	sp_vout_cfg = kmalloc(sizeof(*sp_vout_cfg), GFP_KERNEL);
+	memcpy (sp_vout_cfg, &psp_vout_cfg, sizeof(*sp_vout_cfg));
+	i2c_adap = i2c_get_adapter(sp_vout_cfg->i2c_adapter_id);
+	num_subdevs = sp_vout_cfg->num_subdevs;
+	vout->sd = kmalloc_array(num_subdevs,
+				     sizeof(*vout->sd),
+				     GFP_KERNEL);
+
+	if (!vout->sd) {
+		ret = -ENOMEM;
+		goto err_subdev_register;
+	}
+
+	for (i = 0; i < num_subdevs; i++) {
+		sdinfo = &sp_vout_cfg->sub_devs[i];
+		/* Load up the subdevice */
+		vout->sd[i] =
+			v4l2_i2c_new_subdev_board(&vout->v4l2_dev,
+						  i2c_adap,
+						  &sdinfo->board_info,
+						  NULL);
+		if (vout->sd[i]) {
+			v4l2_info(&vout->v4l2_dev,
+				  "v4l2 sub device %s registered\n",
+				  sdinfo->name);
+			vout->sd[i]->grp_id = sdinfo->grp_id;
+		} else {
+			v4l2_info(&vout->v4l2_dev,
+				  "v4l2 sub device %s register fails\n",
+				  sdinfo->name);
+			ret = -ENXIO;
+			goto err_subdev_register;
+		}
+	}
+	/* set first sub device as current one */
+	vout->current_subdev = &sp_vout_cfg->sub_devs[0];
+	vout->v4l2_dev.ctrl_handler = vout->sd[0]->ctrl_handler;
+
 	MIPI_CSI_init();
 	MIPI_CSIIW_init();
 	CSIIW0_irq_init(vout);
 	return 0;
 
-probe_err0:
-	kfree(vout);
-	return ret;
-probe_err1:
-	video_device_release(vfd);
+err_subdev_register:
+err_video_register:
+	video_unregister_device(&vout->video_dev);
+err_v4l2_register:
 	v4l2_device_unregister(&vout->v4l2_dev);
-	return ret;
-
-err_clk_disable:
-	clk_disable_unprepare(pstSpMIPIInfo->clk_mipicsi_0);
+err_alloc:
+	kfree(vout);
+err_en_csiiw_clk:
 	clk_disable_unprepare(pstSpMIPIInfo->clk_csiiw_0);
+err_get_csiiw_clk:
+err_en_mipicsi_clk:
+	clk_disable_unprepare(pstSpMIPIInfo->clk_mipicsi_0);
+err_get_mipicsi_clk:
 	return ret;
 }
 
@@ -907,13 +961,13 @@ static int sp_mipi_remove(struct platform_device *pdev)
 	struct sp_vout_device *vout = platform_get_drvdata(pdev);
 
 	DBG_INFO(" %s \n", __FUNCTION__);
-	//kfree(vpfe_dev->sd);
+	free_irq(vout->fs_irq, vout); 
+	free_irq(vout->fe_irq, vout); 
 	v4l2_device_unregister(&vout->v4l2_dev);
 	video_unregister_device(&vout->video_dev);
 	kfree(vout);
-
-	free_irq(vout->fs_irq, vout); 
-	free_irq(vout->fe_irq, vout); 
+	clk_disable_unprepare(clk_csiiw_0);
+	clk_disable_unprepare(clk_mipicsi_0);
 
 	return 0;
 }

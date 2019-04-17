@@ -374,12 +374,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM1>;
-			resets = <&rstc RST_I2CM1>;
-			
-			camera: ov9281@0x60 {
-				compatible = "ovti,ov9281";
-				reg = <0x60>;
-			};
+			resets = <&rstc RST_I2CM1>;			
 		};
 
 		i2cm2: i2c@sp_i2cm2 {
