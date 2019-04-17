@@ -18,16 +18,16 @@
 
 // function: GPIO. list of groups (pins)
 const unsigned sp7021pins_G[] = {
- D_PIN(0,0), D_PIN(0,1), D_PIN(0,2), D_PIN(0,3), D_PIN(0,4), D_PIN(0,5), D_PIN(0,6), D_PIN(0,7),
- D_PIN(1,0), D_PIN(1,1), D_PIN(1,2), D_PIN(1,3), D_PIN(1,4), D_PIN(1,5), D_PIN(1,6), D_PIN(1,7),
- D_PIN(2,0), D_PIN(2,1), D_PIN(2,2), D_PIN(2,3), D_PIN(2,4), D_PIN(2,5), D_PIN(2,6), D_PIN(2,7),
- D_PIN(3,0), D_PIN(3,1), D_PIN(3,2), D_PIN(3,3), D_PIN(3,4), D_PIN(3,5), D_PIN(3,6), D_PIN(3,7),
- D_PIN(4,0), D_PIN(4,1), D_PIN(4,2), D_PIN(4,3), D_PIN(4,4), D_PIN(4,5), D_PIN(4,6), D_PIN(4,7),
- D_PIN(5,0), D_PIN(5,1), D_PIN(5,2), D_PIN(5,3), D_PIN(5,4), D_PIN(5,5), D_PIN(5,6), D_PIN(5,7),
- D_PIN(6,0), D_PIN(6,1), D_PIN(6,2), D_PIN(6,3), D_PIN(6,4), D_PIN(6,5), D_PIN(6,6), D_PIN(6,7),
- D_PIN(7,0), D_PIN(7,1), D_PIN(7,2), D_PIN(7,3), D_PIN(7,4), D_PIN(7,5), D_PIN(7,6), D_PIN(7,7),
- D_PIN(8,0), D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5), D_PIN(8,6), D_PIN(8,7),
- D_PIN(9,0), D_PIN(9,1), D_PIN(9,2), D_PIN(9,3), D_PIN(9,4), D_PIN(9,5), D_PIN(9,6), D_PIN(9,7),
+ D_PIN( 0,0), D_PIN( 0,1), D_PIN( 0,2), D_PIN( 0,3), D_PIN( 0,4), D_PIN( 0,5), D_PIN( 0,6), D_PIN( 0,7),
+ D_PIN( 1,0), D_PIN( 1,1), D_PIN( 1,2), D_PIN( 1,3), D_PIN( 1,4), D_PIN( 1,5), D_PIN( 1,6), D_PIN( 1,7),
+ D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7),
+ D_PIN( 3,0), D_PIN( 3,1), D_PIN( 3,2), D_PIN( 3,3), D_PIN( 3,4), D_PIN( 3,5), D_PIN( 3,6), D_PIN( 3,7),
+ D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), D_PIN( 4,6), D_PIN( 4,7),
+ D_PIN( 5,0), D_PIN( 5,1), D_PIN( 5,2), D_PIN( 5,3), D_PIN( 5,4), D_PIN( 5,5), D_PIN( 5,6), D_PIN( 5,7),
+ D_PIN( 6,0), D_PIN( 6,1), D_PIN( 6,2), D_PIN( 6,3), D_PIN( 6,4), D_PIN( 6,5), D_PIN( 6,6), D_PIN( 6,7),
+ D_PIN( 7,0), D_PIN( 7,1), D_PIN( 7,2), D_PIN( 7,3), D_PIN( 7,4), D_PIN( 7,5), D_PIN( 7,6), D_PIN( 7,7),
+ D_PIN( 8,0), D_PIN( 8,1), D_PIN( 8,2), D_PIN( 8,3), D_PIN( 8,4), D_PIN( 8,5), D_PIN( 8,6), D_PIN( 8,7),
+ D_PIN( 9,0), D_PIN( 9,1), D_PIN( 9,2), D_PIN( 9,3), D_PIN( 9,4), D_PIN( 9,5), D_PIN( 9,6), D_PIN( 9,7),
  D_PIN(10,0), D_PIN(10,1), D_PIN(10,2), D_PIN(10,3), D_PIN(10,4), D_PIN(10,5), D_PIN(10,6), D_PIN(10,7),
  D_PIN(11,0), D_PIN(11,1), D_PIN(11,2), D_PIN(11,3), D_PIN(11,4), D_PIN(11,5), D_PIN(11,6), D_PIN(11,7),
  D_PIN(11,0), D_PIN(11,1), D_PIN(11,2),
@@ -203,7 +203,7 @@ static const sp7021grp_t sp7021grps_pcmt[] = {
  EGRP( "PDMRX_IFX0", 1, sp7021pins_pcmt),
 };
 
-static const unsigned sp7021pins_lcdif[] = {
+static const unsigned sp7021pins_lcdi[] = {
  D_PIN( 1,4), D_PIN( 1,5), 
  D_PIN( 1,6), D_PIN( 1,7), D_PIN( 2,0), D_PIN( 2,1), D_PIN( 2,2), D_PIN( 2,3), 
  D_PIN( 2,4), D_PIN( 2,5), D_PIN( 2,6), D_PIN( 2,7), D_PIN( 3,0), D_PIN( 3,1), 
@@ -211,13 +211,52 @@ static const unsigned sp7021pins_lcdif[] = {
  D_PIN( 4,0), D_PIN( 4,1), D_PIN( 4,2), D_PIN( 4,3), D_PIN( 4,4), D_PIN( 4,5), 
  D_PIN( 4,6), D_PIN( 4,7),
 };
-static const sp7021grp_t sp7021grps_lcdif[] = {
- EGRP( "LCDIF", 1, sp7021pins_lcdif),
+static const sp7021grp_t sp7021grps_lcdi[] = {
+ EGRP( "LCDIF", 1, sp7021pins_lcdi),
 };
 
-static const unsigned sp7021pins_wkp[] = {  D_PIN(10,5),  };
-static const sp7021grp_t sp7021grps_wkp[] = {
- EGRP( "WAKEUP", 1, sp7021pins_wkp),
+static const unsigned sp7021pins_dvdd[] = {
+ D_PIN(7,0), D_PIN(7,1), D_PIN(7,2), D_PIN(7,3), D_PIN(7,4), D_PIN(7,5), D_PIN(7,6), D_PIN(7,7),
+ D_PIN(8,0), D_PIN(8,1), D_PIN(8,2), D_PIN(8,3), D_PIN(8,4), D_PIN(8,5),
+};
+static const sp7021grp_t sp7021grps_dvdd[] = {
+ EGRP( "DVD_DSP_DEBUG", 1, sp7021pins_dvdd),
+};
+
+static const unsigned sp7021pins_i2cd[] = {  D_PIN(1,0), D_PIN(1,1),  };
+static const sp7021grp_t sp7021grps_i2cd[] = {
+ EGRP( "I2C_DEBUG", 1, sp7021pins_i2cd),
+};
+
+static const unsigned sp7021pins_i2cs[] = {  D_PIN(0,0), D_PIN(0,1),  };
+static const sp7021grp_t sp7021grps_i2cs[] = {
+ EGRP( "I2C_SLAVE", 1, sp7021pins_i2cs),
+};
+
+static const unsigned sp7021pins_wakp[] = {  D_PIN(10,5),  };
+static const sp7021grp_t sp7021grps_wakp[] = {
+ EGRP( "WAKEUP", 1, sp7021pins_wakp),
+};
+
+static const unsigned sp7021pins_u2ax[] = {
+ D_PIN(2,0), D_PIN(2,1), D_PIN(3,0), D_PIN(3,1),
+};
+static const sp7021grp_t sp7021grps_u2ax[] = {
+ EGRP( "UART2AXI", 1, sp7021pins_u2ax),
+};
+
+static const unsigned sp7021pins_u0ic[] = {
+ D_PIN(0,0), D_PIN(0,1), D_PIN(0,4), D_PIN(0,5), D_PIN(1,0), D_PIN(1,1),
+};
+static const sp7021grp_t sp7021grps_u0ic[] = {
+ EGRP( "USB0_I2C", 1, sp7021pins_u0ic),
+};
+
+static const unsigned sp7021pins_u1ic[] = {
+ D_PIN(0,2), D_PIN(0,3), D_PIN(0,6), D_PIN(0,7), D_PIN(1,2), D_PIN(1,3),
+};
+static const sp7021grp_t sp7021grps_u1ic[] = {
+ EGRP( "USB1_I2C", 1, sp7021pins_u1ic),
 };
 
 func_t list_funcs[] = {
@@ -347,7 +386,7 @@ func_t list_funcs[] = {
  FNCN("GPIO_INT5",       fOFF_M, 0x3A, 8, 7),
  FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
  FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
- // offset from 0x9C000080
+ // offset from 0x9C000080 
  FNCE("SPI_FLASH",       fOFF_G, 0x01, 0, 2, sp7021grps_spif),
  FNCE("SPI_FLASH_4BIT",  fOFF_G, 0x01, 2, 2, sp7021grps_spi4),
  FNCE("SPI_NAND",        fOFF_G, 0x01, 4, 1, sp7021grps_snan),
@@ -367,9 +406,14 @@ func_t list_funcs[] = {
  FNCE("TDMRX_IFX0",      fOFF_G, 0x02, 5, 1, sp7021grps_tdmr),
  FNCE("PDMRX_IFX0",      fOFF_G, 0x02, 6, 1, sp7021grps_pdmr),
  FNCE("PCM_IEC_TX",      fOFF_G, 0x02, 7, 1, sp7021grps_pcmt),
- FNCE("LCDIF",           fOFF_G, 0x04, 6, 1, sp7021grps_lcdif),
- FNCN("I2CS",            fOFF_G, 0x02,10, 1),   // I2C slave
- FNCE("WAKEUP",          fOFF_G, 0x02,11, 1, sp7021grps_wkp),
+ FNCE("LCDIF",           fOFF_G, 0x04, 6, 1, sp7021grps_lcdi),
+ FNCE("DVD_DSP_DEBUG",   fOFF_G, 0x02, 8, 1, sp7021grps_dvdd),
+ FNCE("I2C_DEBUG",       fOFF_G, 0x02, 9, 1, sp7021grps_i2cd),
+ FNCE("I2C_SLAVE",       fOFF_G, 0x02,10, 1, sp7021grps_i2cs),   // I2C slave
+ FNCE("WAKEUP",          fOFF_G, 0x02,11, 1, sp7021grps_wakp),
+ FNCE("UART2AXI",        fOFF_G, 0x02,12, 2, sp7021grps_u2ax),
+ FNCE("USB0_I2C",        fOFF_G, 0x02,14, 2, sp7021grps_u0ic),
+ FNCE("USB1_I2C",        fOFF_G, 0x03, 0, 2, sp7021grps_u1ic),
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE( list_funcs);
