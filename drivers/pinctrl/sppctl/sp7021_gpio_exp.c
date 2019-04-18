@@ -163,6 +163,9 @@ long gpio_clr_oe(u32 bit)
 }
 EXPORT_SYMBOL(gpio_clr_oe);
 
+// used as GPIO_O_SET in 
+// include/linux/usb/sp_usb.h
+// drivers/mipicsi/mipicsi-core.c
 long gpio_out_1(u32 bit)
 {
 	u32 idx, value;
@@ -194,6 +197,9 @@ long gpio_out_1(u32 bit)
 }
 EXPORT_SYMBOL(gpio_out_1);
 
+// used as GPIO_O_SET in 
+// include/linux/usb/sp_usb.h
+// drivers/mipicsi/mipicsi-core.c
 long gpio_out_0(u32 bit)
 {
 	u32 idx, value;
@@ -254,86 +260,3 @@ u32 gpio_in_val(u32 bit)
 	return value;
 }
 EXPORT_SYMBOL(gpio_in_val);
-
-long gpio_pin_mux_sel(PMXSEL_ID id, u32 sel)
-{
-	u32 grp ,idx, max_value, reg_val, mask, bit_num;
-	unsigned long flags;
-	
-	grp = (id >> 24) & 0xff;
-	if (grp > 0x03) {
-		return -EINVAL;
-	}	
-	
-	idx = (id >> 16) & 0xff;
-	if (idx > 0x1f) {
-		return -EINVAL;
-	}
-	
-	max_value = (id >> 8) & 0xff;
-	if (sel > max_value) {
-		return -EINVAL;
-	}
-	
-	bit_num = id & 0xff;
-	
-	if (max_value == 1) {
-		mask = 0x01 << bit_num;
-	}
-	else if ((max_value == 2) || (max_value == 3)) {
-		mask = 0x03 << bit_num;
-	}
-	else {
-		mask = 0x7f << bit_num;
-	}	
-
-	spin_lock_irqsave(&slock_gpio, flags);	
-	reg_val = ioread32(GPIO_SFT_CFG(grp,idx));
-	reg_val |= mask << 0x10 ;
-	reg_val &= (~mask);	
-	reg_val = ((sel << bit_num) | (mask << 0x10));		
-	iowrite32(reg_val, GPIO_SFT_CFG(grp,idx));
-	spin_unlock_irqrestore(&slock_gpio, flags);
-	
-
-	return 0;
-}
-EXPORT_SYMBOL(gpio_pin_mux_sel);
-
-long gpio_pin_mux_get(PMXSEL_ID id, u32 *sel)
-{
-	u32 grp , idx, max_value, reg_val, mask, bit_num;
-	unsigned long flags;
-	
-	grp = (id >> 24) & 0xff;
-	
-	idx = (id >> 16) & 0xff;
-	if (idx > 0x11) {
-		return -EINVAL;
-	}
-
-	max_value = (id >> 8) & 0xff;
-	if (sel > max_value) {
-		return -EINVAL;
-	}
-	
-	bit_num = id & 0xff;
-
-	if (max_value == 1) {
-		mask = 0x01 << bit_num;
-	}
-	else if ((max_value == 2) || (max_value == 3)) {
-		mask = 0x03 << bit_num;
-	}
-	else {
-		mask = 0x7f << bit_num;
-	}
-
-	spin_lock_irqsave(&slock_gpio, flags);
-	reg_val = ioread32(GPIO_SFT_CFG(grp,idx));
-	reg_val &= mask;
-	*sel = (reg_val >> bit_num);
-	spin_unlock_irqrestore(&slock_gpio, flags);
-	return 0;
-}
-EXPORT_SYMBOL(gpio_pin_mux_get);
