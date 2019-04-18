@@ -100,13 +100,10 @@ static struct pinconf_ops sppctl_pconf_ops = {
 };
 
 int stpctl_m_req( struct pinctrl_dev *_pd, unsigned _pin) {
-// sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
- // FIXME: define
  return( 0);  }
 int stpctl_m_fre( struct pinctrl_dev *_pd, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
- // FIXME: define
  return( 0);  }
 int stpctl_m_f_cnt( struct pinctrl_dev *_pd) {  return( list_funcsSZ);  }
 const char *stpctl_m_f_nam( struct pinctrl_dev *_pd, unsigned _fid) {  return( list_funcs[ _fid].name);  }
@@ -200,7 +197,6 @@ int stpctl_o_g_cnt( struct pinctrl_dev *_pd) {
 const char *stpctl_o_g_nam( struct pinctrl_dev *_pd, unsigned _gid) {
  return( unq_grps[ _gid]);  }
 int stpctl_o_g_pins( struct pinctrl_dev *_pd, unsigned _gid, const unsigned **pins, unsigned *num_pins) {
- int i;
  grp2fp_map_t g2fpm = g2fp_maps[ _gid];
  func_t f = list_funcs[ g2fpm.f_idx];
  KDBG( _pd->dev, " grp-pins g:%d f_idx:%d,g_idx:%d freg:%d...\n", _gid, g2fpm.f_idx, g2fpm.g_idx, f.freg);
