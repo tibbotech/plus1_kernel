@@ -198,9 +198,6 @@ extern long gpio_out_1(u032 bit);
 extern long gpio_out_0(u032 bit);
 extern u032 gpio_in_val(u032 bit);
 
-extern long gpio_pin_mux_sel(PMXSEL_ID id, u032 sel);
-extern long gpio_pin_mux_get(PMXSEL_ID id, u032 *sel);
-
 
 
 #define GPIO_E_SET(a,d) do { \
@@ -236,8 +233,6 @@ extern long gpio_pin_mux_get(PMXSEL_ID id, u032 *sel);
                         } while(0)
 
 #define GPIO_I_GET(a)   gpio_in_val(a)
-
-#define GPIO_PIN_MUX_SEL(a,d) gpio_pin_mux_sel(a, d)
 
 
 #endif /* _SP_GPIO_H_ */
