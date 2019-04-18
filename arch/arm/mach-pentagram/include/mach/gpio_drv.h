@@ -188,8 +188,6 @@ typedef struct PMXSEL_S {
 	u032 val;
 }PMXSEL_T;
 
-extern long gpio_open_drain_1(u032 bit);
-extern long gpio_open_drain_0(u032 bit);
 extern long gpio_first_1(u032 bit);
 extern long gpio_first_0(u032 bit);
 extern long gpio_master_1(u032 bit);
@@ -204,14 +202,6 @@ extern long gpio_pin_mux_sel(PMXSEL_ID id, u032 sel);
 extern long gpio_pin_mux_get(PMXSEL_ID id, u032 *sel);
 
 
-
-#define GPIO_OD_INV_SET(a,d) do { \
-                            if(d) { \
-                                gpio_open_drain_1(a); \
-                            } else { \
-                                gpio_open_drain_0(a); \
-                            } \
-                        } while(0)
 
 #define GPIO_E_SET(a,d) do { \
                             if(d) { \
