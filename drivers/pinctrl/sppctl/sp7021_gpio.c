@@ -145,7 +145,7 @@ int sp7021_gpio_del( struct platform_device *_pd, void *_datap) {
  // FIXME: can't use globally now
  if ( ( cp = platform_get_drvdata( _pd)) == NULL) return( -ENODEV);
  gpiochip_remove( &( cp->chip));
- // FIX: remove spinlock_t
+ // FIX: remove spinlock_t ?
  return( 0);  }
 
 static const struct of_device_id sp7021_gpio_of_match[] = {
