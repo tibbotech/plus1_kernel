@@ -141,9 +141,6 @@ int sp7021_gpio_new( struct platform_device *_pd, void *_datap) {
  return( 0);  }
 
 int sp7021_gpio_del( struct platform_device *_pd, void *_datap) {
-#ifdef SPPCTL_H
- sppctl_pdata_t *_pctrlp = ( sppctl_pdata_t *)_datap;
-#endif
  sp7021gpio_chip_t *cp;
  // FIXME: can't use globally now
  if ( ( cp = platform_get_drvdata( _pd)) == NULL) return( -ENODEV);
