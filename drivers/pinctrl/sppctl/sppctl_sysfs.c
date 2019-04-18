@@ -167,39 +167,10 @@ static ssize_t sppctl_sop_fw_W(
    f = &( list_funcs[ i]);
    if ( list_funcs[ i].freg == fOFF_0) continue;
    if ( list_funcs[ i].freg == fOFF_I) continue;
-   // FIXME: add G
    if ( list_funcs[ i].freg == fOFF_M) sppctl_pin_set( _p, _b[ j++], sdp->i);
    if ( list_funcs[ i].freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ j++]);
   }
  return( i);  }
-
-static ssize_t sppctl_sop_mode_R(
- struct file *filp, struct kobject *_k, struct bin_attribute *_a,
- char *_b, loff_t off, size_t count) {
- int i = -1, ret = 0, pos = off;
- const char * tmpp;
- char tmps[ SPPCTL_MAX_NAM + 3];
- uint8_t pin = 0, g_f, g_m;
- sppctl_pdata_t *_p = NULL;
- struct device *_pdev = container_of( _k, struct device, kobj);
- if ( !_pdev) return( -ENXIO);
- if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- for ( i = 0; i < sp7021pins_allSZ; i++) {
-   pin = ( sp7021pins_all[ i]).number;
-   g_f = sp7021gpio_u_gfrst( &( _p->gpiod->chip), pin);
-   g_m = sp7021gpio_u_magpi( &( _p->gpiod->chip), pin);
-   tmpp = "?";
-   if (  g_f &&  g_m) tmpp = "GPIO";
-   if (  g_f && !g_m) tmpp = " IOP";
-   if ( !g_f) tmpp = " MUX";
-   memset( tmps, 0, SPPCTL_MAX_NAM + 3);
-   sprintf( tmps, "%03d %s", pin, tmpp);
-   if ( pos > 0) {  pos -= ( strlen( tmps) + 1);  continue;  }
-   sprintf( _b + ret, "%s\n", tmps);
-   ret += strlen( tmps) + 1;
-   if ( ret > SPPCTL_MAX_BUF - SPPCTL_MAX_NAM) break;
- }
- return( ret);  }
 
 static struct device_attribute sppctl_sysfs_attrsD[] = {
  __ATTR(     name,0444,sppctl_sop_name_R,       NULL),
@@ -211,7 +182,6 @@ static struct bin_attribute sppctl_sysfs_attrsB[] = {
  __BIN_ATTR( list_muxes,0444,sppctl_sop_list_muxes_R, NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( txt_map   ,0444,sppctl_sop_txt_map_R,    NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( fw        ,0444,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
- __BIN_ATTR( mode      ,0444,sppctl_sop_mode_R,       NULL, SPPCTL_MAX_BUF),
 };
 
 struct bin_attribute *sppctl_sysfs_Fap;

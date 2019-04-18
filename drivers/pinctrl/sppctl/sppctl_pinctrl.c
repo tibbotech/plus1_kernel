@@ -215,8 +215,17 @@ int stpctl_o_g_pins( struct pinctrl_dev *_pd, unsigned _gid, const unsigned **pi
 // /sys/kernel/debug/pinctrl/sppctl/pins add: gpio_first and ctrl_sel
 #ifdef CONFIG_DEBUG_FS
 void stpctl_o_show( struct pinctrl_dev *_pd, struct seq_file *_s, unsigned _n) {
+ sppctl_pdata_t *p = pinctrl_dev_get_drvdata( _pd);
+ const char * tmpp;
+ uint8_t g_f, g_m;
  seq_printf( _s, "%s", dev_name( _pd->dev));
- // FIXME: add: gpio_first and ctrl_sel
+ g_f = sp7021gpio_u_gfrst( &( p->gpiod->chip), _n);
+ g_m = sp7021gpio_u_magpi( &( p->gpiod->chip), _n);
+ tmpp = "?";
+ if (  g_f &&  g_m) tmpp = "GPIO";
+ if (  g_f && !g_m) tmpp = " IOP";
+ if ( !g_f) tmpp = " MUX";
+ seq_printf( _s, " %s", tmpp);
  return;  }
 #else
 #define stpctl_ops_show NULL
