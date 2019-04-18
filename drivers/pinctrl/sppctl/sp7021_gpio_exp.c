@@ -26,43 +26,6 @@
 
 static DEFINE_SPINLOCK(slock_gpio);
 
-long gpio_output_invert_1(u32 bit)
-{
-	u32 idx, value;
-	unsigned long flags;
-
-	idx = bit >> 4;
-	if (idx > 8) {
-		return -EINVAL;
-	}
-
-	value = (1 << (bit & 0x0f) | 1 << ((bit & 0x0f) + 0x10));
-	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_O_INV(idx)) | value), GPIO_O_INV(idx));
-	spin_unlock_irqrestore(&slock_gpio, flags);
-
-	return 0;
-}
-EXPORT_SYMBOL(gpio_output_invert_1);
-
-long gpio_output_invert_0(u32 bit)
-{
-	u32 idx, value;
-	unsigned long flags;
-
-	idx = bit >> 4;
-	if (idx > 8) {
-		return -EINVAL;
-	}
-	value = ((ioread32(GPIO_O_INV(idx)) | (1 << ((bit & 0x0f) + 0x10))) & ~( 1 << (bit & 0x0f)));
-	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32(value, GPIO_O_INV(idx));
-	spin_unlock_irqrestore(&slock_gpio, flags);
-
-	return 0;
-}
-EXPORT_SYMBOL(gpio_output_invert_0);
-
 long gpio_open_drain_1(u32 bit)
 {
 	u32 idx, value;
