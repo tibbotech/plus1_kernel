@@ -172,11 +172,16 @@ static void sp_clockevent_init(void)
 u64 sp_read_sched_clock(void)
 {
 	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+	u32 val;
 
 	pstc_avReg->stcl_2 = 0;
 	wmb();		/* Let the STC register accesses be in-order */
 
-	return ((pstc_avReg->stcl_0) | ((pstc_avReg->stcl_1) << 16));
+	do {
+		val = pstc_avReg->stcl_0 | (pstc_avReg->stcl_1 << 16);
+	} while ((val >> 16) != pstc_avReg->stcl_1); /* latched by others ? */
+
+	return (u64)val;
 }
 
 u64 sp_clocksource_hz_read(struct clocksource *cs)
