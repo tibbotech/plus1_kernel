@@ -574,6 +574,14 @@
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL0>;
 			resets = <&rstc RST_CARD_CTL0>;
+			bus-width = <8>;
+			max-frequency = <52000000>;
+			non-removable;
+			disable-wp;
+			cap-mmc-highspeed;
+			mmc-ddr-3_3v;
+			no-sdio;
+			no-sd;
 		};
 
 		mmc1: mmc@sdcard {
@@ -582,7 +590,14 @@
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
 			resets = <&rstc RST_CARD_CTL1>;
-			sense-gpio = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			bus-width = <4>;
+			max-frequency = <52000000>;
+			cd-gpio = <&pctl 71 GPIO_ACTIVE_LOW>;
+			broken-cd;
+			disable-wp;
+			cap-sd-highspeed;
+			no-sdio;
+			no-mmc;
 		};
 
 		sdio: sdio@sdcard {
@@ -591,6 +606,14 @@
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
 			resets = <&rstc RST_CARD_CTL4>;
+			bus-width = <4>;
+			max-frequency = <52000000>;
+			non-removable;
+			disable-wp;
+			cap-sd-highspeed;
+			cap-sdio-irq;
+			no-sd;
+			no-mmc;
 		};
 
 		spi_master0: spi@sp_spi_master0 {
@@ -754,6 +777,10 @@
 				<127 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc GPIO>;
 			resets = <&rstc RST_GPIO>;
+			emmc_mux: emmc_mux {
+				sppctl,groups = "CARD0_EMMC";
+				sppctl,function = "CARD0_EMMC";
+			};
 		};
 
 		otp: otp@0x9C00AF00 {
