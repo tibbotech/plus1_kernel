@@ -725,7 +725,7 @@
 			};
 		};
 
-		mipicsi: mipicsi@0x9C005280 {
+		mipicsi0: mipicsi@0x9C005280 {
 			compatible = "sunplus,sp7021-mipicsi";
 			reg = <0x9C005280 0x80>, <0x9C005300 0x80>;
 			reg-names = "mipicsi", "csiiw";
@@ -733,10 +733,26 @@
 			interrupts = <49 IRQ_TYPE_EDGE_RISING>,
 				     <50 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
-			clock-names = "clk_mipicsi_0", "clk_csiiw_0";
-			resets = <&rstc RST_MIPICSI0>;
+			clock-names = "clk_mipicsi", "clk_csiiw";
+			resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
+			reset-names = "rstc_mipicsi", "rstc_csiiw";
+			i2c-id = <1>;
 		};
-
+/*
+		mipicsi1: mipicsi@0x9C005380 {
+			compatible = "sunplus,sp7021-mipicsi";
+			reg = <0x9C005380 0x80>, <0x9C005400 0x80>;
+			reg-names = "mipicsi", "csiiw";
+			interrupt-parent = <&intc>;
+			interrupts = <51 IRQ_TYPE_LEVEL_HIGH>,
+				     <52 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
+			clock-names = "clk_mipicsi", "clk_csiiw";
+			resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
+			reset-names = "rstc_mipicsi", "rstc_csiiw";
+			i2c-id = <2>;
+		};
+*/
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sp7021-pctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x80>, <0x9C000080 0x20>;
