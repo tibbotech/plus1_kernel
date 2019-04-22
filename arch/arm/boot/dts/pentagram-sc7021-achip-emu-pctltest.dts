@@ -31,6 +31,25 @@
  pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
+/*
+&i2cm0 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&i2cm0_pins>;
+};
+&i2cm1 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&i2cm1_pins>;
+};
+&i2cm2 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&i2cm2_pins>;
+};
+&i2cm3 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&i2cm3_pins>;
+};
+*/
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -123,6 +142,32 @@
     sppctl,groups = "HDMI_TX3";
     sppctl,function = "HDMI_TX";
  };
+
+ i2cm0_pins: i2cm0_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(1,SP7021_PCTL_G_PMUX,MUXF_ICM0_D,0)
+      SP7021_IOPAD(2,SP7021_PCTL_G_PMUX,MUXF_ICM0_CLK,0)
+    >;
+ };
+ i2cm1_pins: i2cm1_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(3,SP7021_PCTL_G_PMUX,MUXF_ICM1_D,0)
+      SP7021_IOPAD(4,SP7021_PCTL_G_PMUX,MUXF_ICM1_CLK,0)
+    >;
+ };
+ i2cm2_pins: i2cm2_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(5,SP7021_PCTL_G_PMUX,MUXF_ICM2_D,0)
+      SP7021_IOPAD(6,SP7021_PCTL_G_PMUX,MUXF_ICM2_CLK,0)
+    >;
+ };
+ i2cm3_pins: i2cm3_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(7,SP7021_PCTL_G_PMUX,MUXF_ICM3_D,0)
+      SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_ICM3_CLK,0)
+    >;
+ };
+
 };
 
 /* ----

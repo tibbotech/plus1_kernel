@@ -130,21 +130,6 @@
 #define I2C_SG_DMA_SET_DMA_GO             (1<<0)
 
 
-typedef struct regs_moon0_t_ {
-	volatile unsigned int stamp;         /* 00 */
-	volatile unsigned int clken[10];     /* 01~10 */
-	volatile unsigned int gclken[10];    /* 11~20 */
-	volatile unsigned int reset[10];     /* 21~30 */
-	volatile unsigned int sfg_cfg_mode;  /* 31 */
-} regs_moon0_t;
-
-typedef struct regs_moon3_t_ {
-	volatile unsigned int sft_cfg_42;    /* 10 */
-	volatile unsigned int sft_cfg_43;    /* 11 */
-	volatile unsigned int sft_cfg_44;    /* 12 */
-	volatile unsigned int sft_cfg_45;    /* 13 */
-} regs_moon3_t;
-
 typedef struct regs_i2cm_t_ {
 	volatile unsigned int control0;      /* 00 */
 	volatile unsigned int control1;      /* 01 */

@@ -40,15 +40,11 @@
 	#define DBG_ERR(fmt, args ...)
 #endif
 
-//#define I2C_PINMUX_SET    //disable this define and instead set pinmux in \boot\uboot\arch\arm\dts\pentagram-sc70xx.dtsi and enable sppctrl in \boot\uboot$ make menuconfig
-
 #define I2C_FREQ             100
 #define I2C_SLEEP_TIMEOUT    200
 #define I2C_SCL_DELAY        0  //SCl dalay xT
 
 #define I2CM_REG_NAME        "i2cm"
-#define MOON0_REG_NAME       "moon0"
-#define MOON3_REG_NAME       "moon3"
 
 #define DEVICE_NAME          "sp7021-i2cm"
 #ifdef SUPPORT_I2C_GDMA
@@ -88,12 +84,6 @@ typedef struct SpI2C_If_t_ {
 	int irq;
 } SpI2C_If_t;
 
-typedef struct Moon_RegBase_t_ {
-	void __iomem *moon0_regs;
-	void __iomem *moon3_regs;
-} Moon_RegBase_t;
-
-static Moon_RegBase_t stMoonRegBase;
 static SpI2C_If_t stSpI2CInfo[I2C_MASTER_NUM];
 static I2C_Irq_Event_t stIrqEvent[I2C_MASTER_NUM];
 wait_queue_head_t i2cm_event_wait[I2C_MASTER_NUM];
@@ -444,10 +434,6 @@ static void _sp_i2cm_init_irqevent(unsigned int device_id)
 
 static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 {
-#ifdef I2C_PINMUX_SET
-	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
-#endif
-
 	FUNC_DEBUG();
 
 	if (device_id >= I2C_MASTER_NUM)
@@ -456,11 +442,6 @@ static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 		return I2C_ERR_INVALID_DEVID;
 	}
 
-#ifdef I2C_PINMUX_SET
-	hal_i2cm_pinmux_set(device_id, pstMoonRegBase->moon3_regs);
-	hal_i2cm_enable(device_id, pstMoonRegBase->moon0_regs);
-#endif
-	
 #ifdef SUPPORT_I2C_GDMA
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
 	hal_i2cm_dma_base_set(device_id, pstSpI2CInfo->i2c_dma_regs);
@@ -516,32 +497,6 @@ static int _sp_i2cm_get_register_base(struct platform_device *pdev, unsigned int
 
 	DBG_INFO("[I2C adapter] ioremap addr : 0x%x!!\n", (unsigned int)p);
 	*membase = (unsigned int)p;
-
-	return I2C_SUCCESS;
-}
-
-static int _sp_i2cm_get_moon_resources(struct platform_device *pdev, Moon_RegBase_t *pstMoonRegBase)
-{
-	int ret;
-	unsigned int membase = 0;
-
-	FUNC_DEBUG();
-
-	ret = _sp_i2cm_get_register_base(pdev, &membase, MOON0_REG_NAME);
-	if (ret) {
-		DBG_ERR("[I2C adapter] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstMoonRegBase->moon0_regs = (void __iomem *)membase;
-	}
-
-	ret = _sp_i2cm_get_register_base(pdev, &membase, MOON3_REG_NAME);
-	if (ret) {
-		DBG_ERR("[I2C adapter] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstMoonRegBase->moon3_regs = (void __iomem *)membase;
-	}
 
 	return I2C_SUCCESS;
 }
@@ -1491,9 +1446,6 @@ static struct i2c_algorithm sp_algorithm = {
 
 static int sp_i2c_probe(struct platform_device *pdev)
 {
-#ifdef I2C_PINMUX_SET
-	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
-#endif	
 	SpI2C_If_t *pstSpI2CInfo = NULL;
 	I2C_Irq_Event_t *pstIrqEvent = NULL;
 	struct i2c_adapter *p_adap;
@@ -1508,16 +1460,6 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		DBG_INFO("[I2C adapter] pdev->id=%d\n", pdev->id);
 		device_id = pdev->id;
 	}
-
-#ifdef I2C_PINMUX_SET
-	if(pdev->id == 0) {
-		ret = _sp_i2cm_get_moon_resources(pdev, pstMoonRegBase);
-		if (ret) {
-			DBG_ERR("[I2C adapter] get moon resources fail !\n");
-			return ret;
-		}
-	}
-#endif	
 
 	pstSpI2CInfo = &stSpI2CInfo[device_id];
 	memset(pstSpI2CInfo, 0, sizeof(SpI2C_If_t));
@@ -1652,14 +1594,12 @@ static int sp_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int sp_i2c_resume(struct platform_device *pdev)
 {
-	//Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
 	SpI2C_If_t *pstSpI2CInfo = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
 	FUNC_DEBUG();
 
 	if (p_adap->nr < I2C_MASTER_NUM) {
-		//hal_i2cm_enable(p_adap->nr, pstMoonRegBase->moon0_regs);
 	  reset_control_deassert(pstSpI2CInfo->rstc);   //release reset
 	  clk_prepare_enable(pstSpI2CInfo->clk);        //enable clken and disable gclken
 	}
