@@ -31,6 +31,11 @@
  pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
+&mmc1 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&mmc1_mux>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -122,6 +127,11 @@
  hdmi_A_tx3: hdmi_A_tx3_pins {
     sppctl,groups = "HDMI_TX3";
     sppctl,function = "HDMI_TX";
+ };
+
+ mmc1_mux: mmc1_mux {
+    sppctl,groups = "SD_CARD";
+    sppctl,function = "SD_CARD";
  };
 };
 

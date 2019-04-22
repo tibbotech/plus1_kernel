@@ -171,37 +171,6 @@ static inline bool is_crc_token_valid(SPSDHOST *host)
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
 }
 
-static int enable_pinmux(SPSDHOST *host, int enable)
-{
-	volatile void __iomem  *reg = ioremap_nocache(RF_GRP(1, 1), 4);
-	if (!reg) {
-		EPRINTK("ioremap for pinmux setting failed!\n");
-		return -ENOMEM;
-	}
-	if (enable) {
-		writel(RF_MASK_V_SET(1 << 6), reg);
-	} else {
-		writel(RF_MASK_V_CLR(1 << 6), reg);
-	}
-	iounmap(reg);
-	/* fully pin-mux configuration */
-	if (SP_SDIO_SLOT_ID == ((SPSDHOST *)host)->id) {
-		reg = ioremap_nocache(RF_GRP(2, 0), 128);
-		if (!reg) {
-			EPRINTK("trying to set sdio pinmux failed at ioremap!\n");
-			return -ENOMEM;
-		}
-		writel(0x7f << 16 | 14, REGn(reg, 11)); /* CLK */
-		writel(0x7f << 24 | 16 << 8, REGn(reg, 11)); /* CMD */
-		writel(0x7f << 16 | 12, REGn(reg, 12)); /* DAT0 */
-		writel(0x7f << 24 | 10 << 8, REGn(reg, 12)); /* DAT1 */
-		writel(0x7f << 16 | 20, REGn(reg, 13)); /* DAT2 */
-		writel(0x7f << 24 | 18 << 8, REGn(reg, 13)); /* DAT3 */
-		iounmap(reg);
-	}
-	return 0;
-}
-
 static int reset_controller(SPSDHOST *host)
 {
 	int bitn, regn;
@@ -1179,10 +1148,6 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, reg size:%d, irq:%d\n",
 		host->id, resource->start, resource->end - resource->start, host->irq);
 
-	if (enable_pinmux(host, 1)) {
-		EPRINTK("trying to enable pinmux failed!\n");
-		goto probe_free_host;
-	}
 	ret = clk_prepare(host->clk);
 	if (ret)
 		goto probe_free_host;
@@ -1271,7 +1236,6 @@ int spsdv2_drv_remove(struct platform_device *dev)
 	host = (SPSDHOST *)mmc_priv(mmc);
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
-	enable_pinmux(host, 0);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
 	platform_set_drvdata(dev, NULL);
