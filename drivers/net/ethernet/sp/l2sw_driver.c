@@ -991,10 +991,9 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Get irq resource from dts.
 	if ((res = platform_get_resource(pdev, IORESOURCE_IRQ, 0)) != NULL) {
-		//ETH_INFO(" res->name = \"%s\", res->start = 0x%08x, res->end = 0x%08x, res->flags = 0x%08lx\n",
-		//      res->name, res->start, res->end, res->flags);
+		//ETH_INFO(" res->name = \"%s\", res->start = 0x%08x, res->end = 0x%08x\n",
+		//      res->name, res->start, res->end);
 		comm->irq = res->start;
-		comm->irq_type = res->flags & IORESOURCE_BITS;
 	} else {
 		ETH_ERR("[%s] No IRQ resource found!\n", __func__);
 		ret = -ENXIO;
@@ -1085,10 +1084,10 @@ static int l2sw_probe(struct platform_device *pdev)
 #endif
 
 	// Register irq to system.
-	rc = devm_request_irq(&pdev->dev, comm->irq, ethernet_interrupt, comm->irq_type, net_dev->name, net_dev);
+	rc = devm_request_irq(&pdev->dev, comm->irq, ethernet_interrupt, 0, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d (type = 0x%01x) for \"%s\" (rc = %d)!\n", __func__,
-			net_dev->irq, comm->irq_type, net_dev->name, rc);
+		ETH_ERR("[%s] Failed to request irq #%d for \"%s\" (rc = %d)!\n", __func__,
+			net_dev->irq, net_dev->name, rc);
 		ret = -ENODEV;
 		goto out_freemdio;
 	}
