@@ -23,7 +23,6 @@
 
 #include <asm-generic/io.h>
 #include <asm/bitops.h>
-#include "mach/gpio_drv.h" /* for card sense */
 #include "spsdv2.h"
 
 /******************************************************************************
@@ -1039,7 +1038,7 @@ int spsdv2_mmc_card_detect(struct mmc_host *mmc)
 
 	int ret = 0;
 	#ifdef SP_SDCARD_SENSE_WITH_GPIO
-	ret = !GPIO_I_GET(host->cd_gpio);
+	ret = !gpio_get_value(host->cd_gpio);
 	#endif
 	host->cd_state = ret;
 	return ret;
@@ -1190,14 +1189,17 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED | MMC_CAP_NEEDS_POLL;
 		mmc->caps2 = MMC_CAP2_NO_SDIO | MMC_CAP2_NO_MMC;
 		#ifdef SP_SDCARD_SENSE_WITH_GPIO
-		if (of_property_read_u32(pdev->dev.of_node, "sense-gpio", &host->cd_gpio)) {
-			printk(KERN_ERR "Failed to get card detect gpio pin configuration!\n");
+		host->cd_gpio = of_get_named_gpio( pdev->dev.of_node, "sense-gpio", 0);
+		if ( !gpio_is_valid( host->cd_gpio)) {
+			printk(KERN_ERR "CD pin %d is invalid\n", host->cd_gpio);
 			ret = -ENOENT;
 			goto probe_clk_disable;
 		}
-		GPIO_F_SET(host->cd_gpio, 1);
-		GPIO_M_SET(host->cd_gpio, 1);
-		GPIO_E_SET(host->cd_gpio, 0);
+		if ( devm_gpio_request( &( pdev->dev), host->cd_gpio, "cd") < 0) {
+			printk(KERN_ERR "CD pin %d req fail\n", host->cd_gpio);
+			ret = -ENOENT;
+			goto probe_clk_disable;
+		}
 		#endif
 	}
 	dev_set_drvdata(&pdev->dev, mmc);

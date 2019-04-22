@@ -132,6 +132,9 @@
  mmc1_mux: mmc1_mux {
     sppctl,groups = "SD_CARD";
     sppctl,function = "SD_CARD";
+    sppctl,pins = <
+      SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0)
+    >;
  };
 };
 
