@@ -31,6 +31,11 @@
  pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
+&sp_spinor0 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -122,6 +127,15 @@
  hdmi_A_tx3: hdmi_A_tx3_pins {
     sppctl,groups = "HDMI_TX3";
     sppctl,function = "HDMI_TX";
+ };
+
+ spi_flash2_mux: spi_flash2_mux {
+    sppctl,groups = "SPI_FLASH2";
+    sppctl,function = "SPI_FLASH";
+ };
+ spi_fla4b2_mux: spi_fla4b2_mux {
+    sppctl,groups = "SPI_FLASH_4BIT2";
+    sppctl,function = "SPI_FLASH_4BIT";
  };
 };
 
