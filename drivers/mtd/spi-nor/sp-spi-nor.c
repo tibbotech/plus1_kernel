@@ -13,16 +13,6 @@
 
 #define SP_SPINOR_DMA 1
 #define CFG_BUFF_MAX		(18 << 10)
-typedef struct 
-{
-    unsigned int sft_cfg0;
-    unsigned int sft_cfg1;
-    unsigned int sft_cfg2;
-    unsigned int sft_cfg3;
-    unsigned int sft_cfg4;
-    unsigned int sft_reserve[27];
-}MOON1_REG;
-void __iomem *moon1_base;
 
 //spi_ctrl
 #define SPI_CTRL_BUSY (1<<31)
@@ -1121,7 +1111,6 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     struct spi_nor *nor;
     struct mtd_info *mtd;
     int ret;
-    volatile MOON1_REG *moon1;
 
     dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
     pspi = devm_kzalloc(dev, sizeof(*pspi), GFP_KERNEL);
@@ -1159,14 +1148,6 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 		    return (ret);
 	  }	
 #endif
-    /* pinmux settings*/ 
-    res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-    moon1_base = devm_ioremap_resource(dev, res);
-    if (IS_ERR(moon1_base))
-        return PTR_ERR(moon1_base);
-    moon1 =  (volatile MOON1_REG *) moon1_base;
-    dev_dbg(pspi->dev,"sft_cfg1 0x%x\n",moon1->sft_cfg1);
-    moon1->sft_cfg1= 0xf000a;
    
     /* clk*/
 	  pspi->ctrl_clk = devm_clk_get(&pdev->dev,NULL);
