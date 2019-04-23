@@ -582,7 +582,7 @@
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
 			resets = <&rstc RST_CARD_CTL1>;
-			sense-gpio = <71>;
+			sense-gpio = <&pctl 71 GPIO_ACTIVE_HIGH>;
 		};
 
 		sdio: sdio@sdcard {

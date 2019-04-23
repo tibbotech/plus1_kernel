@@ -55,6 +55,10 @@
  pinctrl-names = "default";
  pinctrl-0 = <&emmc_mux>;
 };
+&mmc1 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&mmc1_mux>;
+};
 
 &pctl {
  /*** all non-device binded that you want to set mode ***/
@@ -177,6 +181,13 @@
  emmc_mux: emmc_mux {
     sppctl,groups = "CARD0_EMMC";
     sppctl,function = "CARD0_EMMC";
+ };
+ mmc1_mux: mmc1_mux {
+    sppctl,groups = "SD_CARD";
+    sppctl,function = "SD_CARD";
+    sppctl,pins = <
+      SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0)
+    >;
  };
 };
 
