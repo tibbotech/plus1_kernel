@@ -23,6 +23,9 @@
 
 #include <asm-generic/io.h>
 #include <asm/bitops.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+
 #include "spsdv2.h"
 
 /******************************************************************************
