@@ -66,6 +66,7 @@
  /* pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>; */
  /* second NOR pinout - for test in parallel with EMMC */
  pinctrl-0 = <&spi_flash1_mux &spi_fla4b1_mux>;
+ status = "disabled";
 };
 
 &spi_master0 {
@@ -75,14 +76,17 @@
 &spi_master1 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim1_pins>;
+ status = "disabled";
 };
 &spi_master2 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim2_pins>;
+ status = "disabled";
 };
 &spi_master3 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim3_pins>;
+ status = "disabled";
 };
 
 &pctl {
@@ -241,7 +245,6 @@
        SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
   >;
  };
- 
  spim1_pins: spim1_pins {
   sppctl,pins = <
        SP7021_IOPAD(18,SP7021_PCTL_G_PMUX,MUXF_SPIM1_INT,0)
@@ -251,7 +254,6 @@
        SP7021_IOPAD(22,SP7021_PCTL_G_PMUX,MUXF_SPIM1_DI,0)
   >;
  };
- 
  spim2_pins: spim2_pins {
   sppctl,pins = <
        SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_SPIM2_INT,0)
@@ -261,7 +263,6 @@
        SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SPIM2_DI,0)
   >;
  };
- 
  spim3_pins: spim3_pins {
   sppctl,pins = <
        SP7021_IOPAD(6,SP7021_PCTL_G_PMUX,MUXF_SPIM3_INT,0)
