@@ -31,7 +31,6 @@
  pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
-/*
 &i2cm0 {
  pinctrl-names = "default";
  pinctrl-0 = <&i2cm0_pins>;
@@ -39,16 +38,18 @@
 &i2cm1 {
  pinctrl-names = "default";
  pinctrl-0 = <&i2cm1_pins>;
+ status = "disabled";
 };
 &i2cm2 {
  pinctrl-names = "default";
  pinctrl-0 = <&i2cm2_pins>;
+ status = "disabled";
 };
 &i2cm3 {
  pinctrl-names = "default";
  pinctrl-0 = <&i2cm3_pins>;
+ status = "disabled";
 };
-*/
 
 &pctl {
  /*** all non-device binded that you want to set mode ***/
