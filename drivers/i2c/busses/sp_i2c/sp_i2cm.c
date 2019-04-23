@@ -409,6 +409,8 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			break;
 	}//switch case
 #endif			
+  //disable int_en0 for prevent intr not stop in some case , they will be enable again before read/write			
+	hal_i2cm_int_en0_disable(device_id, (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT ));
 	return IRQ_HANDLED;
 }
 
