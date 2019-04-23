@@ -172,7 +172,6 @@ struct l2sw_common {
 	struct clk *clk;
 	struct reset_control *rstc;
 	int irq;
-	int irq_type;
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
 	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];

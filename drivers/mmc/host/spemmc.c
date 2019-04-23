@@ -144,25 +144,6 @@ static inline bool is_crc_token_valid(SPEMMCHOST *host)
 #define RF_MASK_V_SET(_mask) (((_mask) << 16) | (_mask))
 #define RF_MASK_V_CLR(_mask) (((_mask) << 16) | 0)
 
-static int enable_pinmux(SPEMMCHOST *host, int enable)
-{
-	int ret = 0;
-	void __iomem  *reg  = ioremap_nocache(RF_GRP(1, 1), 4);
-	/* pinmux */
-	if (!reg) {
-		EPRINTK("ioremap for pinmux set failed!\n");
-		return -ENOMEM;
-	}
-	if (enable) {
-		writel(RF_MASK_V_CLR(1 << 4), reg);
-		writel(RF_MASK_V(1 << 5, 1 << 5), reg);
-	} else {
-		writel(RF_MASK_V_CLR(1 << 5), reg);
-	}
-	iounmap(reg);
-	return ret;
-}
-
 static int reset_controller(SPEMMCHOST *host)
 {
 	void __iomem  *reg  = ioremap_nocache(RF_GRP(0, 24), 4);
@@ -1249,10 +1230,6 @@ int spemmc_drv_probe(struct platform_device *pdev)
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, reg size:%d, irq: %d\n",
 		host->id, resource->start, resource->end - resource->start, host->irq);
 
-	if (enable_pinmux(host, 1)) {
-		EPRINTK("trying to enable pinmux failed!\n");
-		goto probe_free_host;
-	}
 	ret = clk_prepare(host->clk);
 	if (ret)
 		goto probe_free_host;
@@ -1321,7 +1298,6 @@ int spemmc_drv_remove(struct platform_device *dev)
 	host = (SPEMMCHOST *)mmc_priv(mmc);
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
-	enable_pinmux(host, 0);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
 	platform_set_drvdata(dev, NULL);

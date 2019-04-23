@@ -51,6 +51,11 @@
  status = "disabled";
 };
 
+&mmc0 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&emmc_mux>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -144,6 +149,7 @@
     sppctl,function = "HDMI_TX";
  };
 
+<<<<<<< HEAD
  i2cm0_pins: i2cm0_pins {
     sppctl,pins = <
       SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_ICM0_D,0)
@@ -169,6 +175,10 @@
     >;
  };
 
+ emmc_mux: emmc_mux {
+    sppctl,groups = "CARD0_EMMC";
+    sppctl,function = "CARD0_EMMC";
+ };
 };
 
 /* ----
