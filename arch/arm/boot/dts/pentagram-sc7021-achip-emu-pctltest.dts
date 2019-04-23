@@ -62,7 +62,10 @@
 
 &sp_spinor0 {
  pinctrl-names = "default";
- pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+ /* this is default main boot for NOR without EMMC */
+ /* pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>; */
+ /* second NOR pinout - for test in parallel with EMMC */
+ pinctrl-0 = <&spi_flash1_mux &spi_fla4b1_mux>;
 };
 
 &pctl {
@@ -195,12 +198,20 @@
     >;
  };
 
+ spi_flash1_mux: spi_flash1_mux {
+    sppctl,groups = "SPI_FLASH1";
+    sppctl,function = "SPI_FLASH";
+ };
  spi_flash2_mux: spi_flash2_mux {
     sppctl,groups = "SPI_FLASH2";
     sppctl,function = "SPI_FLASH";
  };
  spi_fla4b2_mux: spi_fla4b2_mux {
     sppctl,groups = "SPI_FLASH_4BIT2";
+    sppctl,function = "SPI_FLASH_4BIT";
+ };
+ spi_fla4b1_mux: spi_fla4b1_mux {
+    sppctl,groups = "SPI_FLASH_4BIT1";
     sppctl,function = "SPI_FLASH_4BIT";
  };
 };
