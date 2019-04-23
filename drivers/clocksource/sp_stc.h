@@ -96,6 +96,7 @@ typedef struct stc_avReg_s {
 
 #define SP_STC_AV_TIMER23_CTL_SRC_SYS		(0 << 2)
 #define SP_STC_AV_TIMER23_CTL_SRC_STC		(1 << 2)
+#define SP_STC_AV_TIMER23_CTL_SRC_EXT		(3 << 2)
 #define SP_STC_AV_TIMER23_CTL_RPT		(1 << 1)
 #define SP_STC_AV_TIMER23_CTL_GO		(1 << 0)
 
