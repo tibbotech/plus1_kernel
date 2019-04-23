@@ -149,7 +149,6 @@
     sppctl,function = "HDMI_TX";
  };
 
-<<<<<<< HEAD
  i2cm0_pins: i2cm0_pins {
     sppctl,pins = <
       SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_ICM0_D,0)
