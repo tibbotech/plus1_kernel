@@ -31,7 +31,6 @@
  pinctrl-0 = <&ethA_pins &eth0_pins/* &eth1_pins*/>;
 };
 
-<<<<<<< HEAD
 &i2cm0 {
  pinctrl-names = "default";
  pinctrl-0 = <&i2cm0_pins>;
