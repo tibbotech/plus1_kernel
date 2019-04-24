@@ -23,7 +23,9 @@
 
 #include <asm-generic/io.h>
 #include <asm/bitops.h>
-#include "mach/gpio_drv.h" /* for card sense */
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+
 #include "spsdv2.h"
 
 /******************************************************************************
@@ -169,37 +171,6 @@ static void spsdv2_prepare_cmd_rsp(SPSDHOST *, struct mmc_command *);
 static inline bool is_crc_token_valid(SPSDHOST *host)
 {
 	return (host->base->sdcrdcrc == 0x2 || host->base->sdcrdcrc == 0x5);
-}
-
-static int enable_pinmux(SPSDHOST *host, int enable)
-{
-	volatile void __iomem  *reg = ioremap_nocache(RF_GRP(1, 1), 4);
-	if (!reg) {
-		EPRINTK("ioremap for pinmux setting failed!\n");
-		return -ENOMEM;
-	}
-	if (enable) {
-		writel(RF_MASK_V_SET(1 << 6), reg);
-	} else {
-		writel(RF_MASK_V_CLR(1 << 6), reg);
-	}
-	iounmap(reg);
-	/* fully pin-mux configuration */
-	if (SP_SDIO_SLOT_ID == ((SPSDHOST *)host)->id) {
-		reg = ioremap_nocache(RF_GRP(2, 0), 128);
-		if (!reg) {
-			EPRINTK("trying to set sdio pinmux failed at ioremap!\n");
-			return -ENOMEM;
-		}
-		writel(0x7f << 16 | 14, REGn(reg, 11)); /* CLK */
-		writel(0x7f << 24 | 16 << 8, REGn(reg, 11)); /* CMD */
-		writel(0x7f << 16 | 12, REGn(reg, 12)); /* DAT0 */
-		writel(0x7f << 24 | 10 << 8, REGn(reg, 12)); /* DAT1 */
-		writel(0x7f << 16 | 20, REGn(reg, 13)); /* DAT2 */
-		writel(0x7f << 24 | 18 << 8, REGn(reg, 13)); /* DAT3 */
-		iounmap(reg);
-	}
-	return 0;
 }
 
 static int reset_controller(SPSDHOST *host)
@@ -1070,7 +1041,7 @@ int spsdv2_mmc_card_detect(struct mmc_host *mmc)
 
 	int ret = 0;
 	#ifdef SP_SDCARD_SENSE_WITH_GPIO
-	ret = !GPIO_I_GET(host->cd_gpio);
+	ret = !gpio_get_value(host->cd_gpio);
 	#endif
 	host->cd_state = ret;
 	return ret;
@@ -1179,10 +1150,6 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 	DPRINTK("SD card driver probe, sd %d, base:0x%x, reg size:%d, irq:%d\n",
 		host->id, resource->start, resource->end - resource->start, host->irq);
 
-	if (enable_pinmux(host, 1)) {
-		EPRINTK("trying to enable pinmux failed!\n");
-		goto probe_free_host;
-	}
 	ret = clk_prepare(host->clk);
 	if (ret)
 		goto probe_free_host;
@@ -1225,14 +1192,17 @@ int spsdv2_drv_probe(struct platform_device *pdev)
 		mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED | MMC_CAP_NEEDS_POLL;
 		mmc->caps2 = MMC_CAP2_NO_SDIO | MMC_CAP2_NO_MMC;
 		#ifdef SP_SDCARD_SENSE_WITH_GPIO
-		if (of_property_read_u32(pdev->dev.of_node, "sense-gpio", &host->cd_gpio)) {
-			printk(KERN_ERR "Failed to get card detect gpio pin configuration!\n");
+		host->cd_gpio = of_get_named_gpio( pdev->dev.of_node, "sense-gpio", 0);
+		if ( !gpio_is_valid( host->cd_gpio)) {
+			printk(KERN_ERR "CD pin %d is invalid\n", host->cd_gpio);
 			ret = -ENOENT;
 			goto probe_clk_disable;
 		}
-		GPIO_F_SET(host->cd_gpio, 1);
-		GPIO_M_SET(host->cd_gpio, 1);
-		GPIO_E_SET(host->cd_gpio, 0);
+		if ( devm_gpio_request( &( pdev->dev), host->cd_gpio, "cd") < 0) {
+			printk(KERN_ERR "CD pin %d req fail\n", host->cd_gpio);
+			ret = -ENOENT;
+			goto probe_clk_disable;
+		}
 		#endif
 	}
 	dev_set_drvdata(&pdev->dev, mmc);
@@ -1271,7 +1241,6 @@ int spsdv2_drv_remove(struct platform_device *dev)
 	host = (SPSDHOST *)mmc_priv(mmc);
 	mmc_remove_host(mmc);
 	free_irq(host->irq, mmc);
-	enable_pinmux(host, 0);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
 	platform_set_drvdata(dev, NULL);

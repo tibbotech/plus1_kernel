@@ -359,8 +359,8 @@
 
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c0001A8 0x04>, <0x9c004680 0x80>;
-			reg-names = "i2cm", "moon0", "moon3", "i2cmdma";
+			reg = <0x9c004600 0x80>, <0x9c000000 0x80>, <0x9c004680 0x80>;
+			reg-names = "i2cm", "moon0", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM0>;
@@ -582,7 +582,7 @@
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
 			resets = <&rstc RST_CARD_CTL1>;
-			sense-gpio = <71>;
+			sense-gpio = <&pctl 71 GPIO_ACTIVE_HIGH>;
 		};
 
 		sdio: sdio@sdcard {
