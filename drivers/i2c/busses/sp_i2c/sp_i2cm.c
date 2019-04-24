@@ -243,7 +243,7 @@ static void _sp_i2cm_dma_intflag_check(unsigned int device_id, I2C_Irq_Event_t *
 		pstIrqEvent->stIrqDmaFlag.bLength0 = 0;
 	}
 	
-  hal_i2cm_dma_int_flag_clear(device_id, int_flag);
+  hal_i2cm_dma_int_flag_clear(device_id, 0x7F);  //write 1 to clear 
 
 }
 #endif
@@ -263,6 +263,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 
 	switch (pstIrqEvent->eRWState) {
 		case I2C_WRITE_STATE:
+		case I2C_DMA_WRITE_STATE:
 			if (pstIrqEvent->stIrqFlag.bActiveDone) {
 				DBG_INFO("I2C write success !!\n");
 				pstIrqEvent->bRet = I2C_SUCCESS;
@@ -285,7 +286,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
 			//	hal_i2cm_reset(device_id);
 				wake_up(&i2cm_event_wait[device_id]);
-			} else if (pstIrqEvent->dBurstCount > 0) {
+			} else if ((pstIrqEvent->dBurstCount > 0)&&(pstIrqEvent->eRWState == I2C_WRITE_STATE)) {
 				if (pstIrqEvent->stIrqFlag.bEmptyThreshold) {
 					for (i = 0; i < I2C_EMPTY_THRESHOLD_VALUE; i++) {
 						for (j = 0; j < 4; j++) {
@@ -310,6 +311,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			break;
 
 		case I2C_READ_STATE:
+		case I2C_DMA_READ_STATE:
 			if (pstIrqEvent->stIrqFlag.bAddrNack || pstIrqEvent->stIrqFlag.bDataNack) {
 				DBG_ERR("I2C reveive NACK !!\n");
 				pstIrqEvent->bRet = I2C_ERR_RECEIVE_NACK;
@@ -326,7 +328,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 				pstIrqEvent->stIrqFlag.bActiveDone = 1;
 				wake_up(&i2cm_event_wait[device_id]);
 			} else {
-				if (pstIrqEvent->dBurstCount > 0) {
+				if ((pstIrqEvent->dBurstCount > 0)&&(pstIrqEvent->eRWState == I2C_READ_STATE)) {
 					hal_i2cm_rdata_flag_get(device_id, &rdata_flag);
 					for (i = 0; i < (32 / I2C_BURST_RDATA_BYTES); i++) {
 						bit_index = (I2C_BURST_RDATA_BYTES - 1) + (I2C_BURST_RDATA_BYTES * i);
@@ -351,7 +353,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 				}
 
 				if (pstIrqEvent->stIrqFlag.bActiveDone) {
-					if (pstIrqEvent->dBurstRemainder) {
+					if ((pstIrqEvent->dBurstRemainder)&&(pstIrqEvent->eRWState == I2C_READ_STATE)) {
 						j = 0;
 						for (i = 0; i < (I2C_BURST_RDATA_BYTES / 4); i++) {
 							k = pstIrqEvent->dRegDataIndex + i;
@@ -385,7 +387,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 	DBG_INFO("[I2C adapter] pstIrqEvent->eRWState= 0x%x\n", pstIrqEvent->eRWState);
 	switch (pstIrqEvent->eRWState) {
 		case I2C_DMA_WRITE_STATE:
-					DBG_INFO("I2C_DMA_WRITE_STATE !!\n");
+			DBG_INFO("I2C_DMA_WRITE_STATE !!\n");
 			if (pstIrqEvent->stIrqDmaFlag.bDmaDone) {
 					DBG_INFO("I2C dma write success !!\n");
 					pstIrqEvent->bRet = I2C_SUCCESS;
@@ -395,7 +397,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			break;
 			
 		case I2C_DMA_READ_STATE:
-					DBG_INFO("I2C_DMA_READ_STATE !!\n");
+			DBG_INFO("I2C_DMA_READ_STATE !!\n");
 			if (pstIrqEvent->stIrqDmaFlag.bDmaDone) {
 					DBG_INFO("I2C dma read success !!\n");
 					//hal_i2cm_dma_int_flag_clear(device_id, I2C_DMA_INT_DMA_DONE_FLAG);
