@@ -51,7 +51,7 @@ static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
 	}
 };
 
-static struct sp_vout_config psp_vout_cfg = {
+static const struct sp_vout_config psp_vout_cfg = {
 	.num_subdevs    = ARRAY_SIZE(sp_vout_sub_devs),
 	.i2c_adapter_id = 1,
 	.sub_devs       = sp_vout_sub_devs,
@@ -61,7 +61,7 @@ static const struct sp_fmt formats[] = {
 	{
 		.name     = "GREY",
 		.fourcc   = V4L2_PIX_FMT_GREY,
-		.depth    = 1,
+		.depth    = 8,
 	},
 };
 
@@ -91,21 +91,21 @@ static int sp_mipi_get_register_base(struct platform_device *pdev, void **membas
 	struct resource *r;
 	void __iomem *p;
 
-	//DBG_INFO("Resource name: %s\n", res_name);
+	DBG_INFO("Resource name: %s\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if (r == NULL) {
-		DBG_ERR("platform_get_resource_byname failed!\n");
+		MIP_ERR("platform_get_resource_byname failed!\n");
 		return -ENODEV;
 	}
 
 	p = devm_ioremap_resource(&pdev->dev, r);
 	if (IS_ERR(p)) {
-		DBG_ERR("devm_ioremap_resource failed!\n");
+		MIP_ERR("devm_ioremap_resource failed!\n");
 		return PTR_ERR(p);
 	}
 
-	//DBG_INFO("ioremap address = 0x%08x\n", (unsigned int)p);
+	DBG_INFO("ioremap address = 0x%08x\n", (unsigned int)p);
 	*membase = p;
 
 	return 0;
@@ -135,7 +135,7 @@ static void csiiw_init(struct sp_vout_device *vout)
 	writel(0x00000100, &vout->csiiw_regs->csiiw_frame_buf);         // set offset to trigger DRAM write
 
 	//raw8 (0x2701); raw10 (10bit two byte space:0x2731, 8bit one byte space:0x2701)
-	writel(0x32700, &vout->csiiw_regs->csiiw_config0);              // Disable CSIIW and mask fs_irq & fe_irq
+	writel(0x32700, &vout->csiiw_regs->csiiw_config0);              // Disable csiiw, fs_irq and fe_irq
 }
 
 static void sp_vout_schedule_next_buffer(struct sp_vout_device *vout)
@@ -206,35 +206,35 @@ static int csiiw_irq_init(struct sp_vout_device *vout)
 		goto err_fe_irq;
 	}
 
-	DBG_INFO("Installed csiiw interrupts (fs_irq=%d, fe_irq=%d).\n", vout->fs_irq , vout->fe_irq);
+	MIP_INFO("Installed csiiw interrupts (fs_irq=%d, fe_irq=%d).\n", vout->fs_irq , vout->fe_irq);
 	return 0;
 
 err_fe_irq:
 err_fs_irq:
-	DBG_ERR("request_irq failed (%d)!\n", ret);
+	MIP_ERR("request_irq failed (%d)!\n", ret);
 	return ret;
 }
 
 static int buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned int *size)
 {
-	//struct sp_vout_fh *fh = vq->priv_data;
-	//struct sp_vout_device *vout = fh->vout;
+	struct sp_vout_fh *fh = vq->priv_data;
+	struct sp_vout_device *vout = fh->vout;
 
-	*size = VOUT_WIDTH * VOUT_HEIGHT;
+	*size = vout->fmt.fmt.pix.sizeimage;
 
-	if (0 == *count)
+	if (0 == (*count)) {
 		*count = 32;
+	}
 
-	while (*size * *count > vid_limit * 1024 * 1024)
+	while (((*size)*(*count)) > (vid_limit * 1024 * 1024))
 		(*count)--;
 
-	DBG_INFO("%s: count=%d, size =%d\n", __FUNCTION__,  *count, *size);
+	DBG_INFO("%s: count = %d, size = %d\n", __FUNCTION__,  *count, *size);
 
 	return 0;
 }
 
-static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
-						enum v4l2_field field)
+static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb, enum v4l2_field field)
 {
 	struct sp_vout_fh *fh = vq->priv_data;
 	struct sp_vout_device *vout = fh->vout;
@@ -243,10 +243,10 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 
 	/* If buffer is not initialized, initialize it */
 	if (VIDEOBUF_NEEDS_INIT == vb->state) {
-		vb->width = vout->fmt.fmt.pix.width;
+		vb->width  = vout->fmt.fmt.pix.width;
 		vb->height = vout->fmt.fmt.pix.height;
-		vb->size = vout->fmt.fmt.pix.sizeimage;
-		vb->field = field;
+		vb->size   = vout->fmt.fmt.pix.sizeimage;
+		vb->field  = field;
 
 		ret = videobuf_iolock(vq, vb, NULL);
 		if (ret < 0)
@@ -260,7 +260,7 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 
 		vb->state = VIDEOBUF_PREPARED;
 	}
-	DBG_INFO("%s (video_buffer): width=%d, height=%d, size=%lx, field=%d, state=%d\n",
+	DBG_INFO("%s (video_buffer): width = %d, height = %d, size = %lx, field = %d, state = %d\n",
 		 __FUNCTION__,  vb->width, vb->height, vb->size, vb->field, vb->state);
 
 	return 0;
@@ -282,7 +282,7 @@ static void buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 
 	/* Change state of the buffer */
 	vb->state = VIDEOBUF_QUEUED;
-	DBG_INFO("%s (video_buffer): state=%d\n", __FUNCTION__, vb->state);
+	DBG_INFO("%s (video_buffer): state = %d\n", __FUNCTION__, vb->state);
 }
 
 static void buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb)
@@ -303,7 +303,7 @@ static void buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb
 
 	videobuf_dma_contig_free(vq, vb);
 	vb->state = VIDEOBUF_NEEDS_INIT;
-	DBG_INFO("%s (video_buffer): state=%d\n", __FUNCTION__, vb->state);
+	DBG_INFO("%s (video_buffer): state = %d\n", __FUNCTION__, vb->state);
 }
 
 static struct videobuf_queue_ops sp_video_qops = {
@@ -324,8 +324,10 @@ static int vidioc_querycap(struct file *file, void *priv, struct v4l2_capability
 	strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
 	strlcpy(vcap->card, "SP MIPI Camera Card", sizeof(vcap->card));
 	strlcpy(vcap->bus_info, "SP MIPI Camera BUS", sizeof(vcap->bus_info));
+
+	// report capabilities
 	vcap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
-	vcap->capabilities = vcap->device_caps| V4L2_CAP_DEVICE_CAPS ; // report capabilities
+	vcap->capabilities = vcap->device_caps| V4L2_CAP_DEVICE_CAPS ;
 	return 0;
 }
 
@@ -333,8 +335,9 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fm
 {
 	const struct sp_fmt *fmt;
 
+	DBG_INFO("%s: index = %d\n", __FUNCTION__, fmtdesc->index);
+
 	if (fmtdesc->index >= ARRAY_SIZE(formats)) {
-		DBG_INFO("%s stop\n", __FUNCTION__);
 		return -EINVAL;
 	}
 
@@ -342,7 +345,6 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fm
 	strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 	fmtdesc->pixelformat = fmt->fourcc;
 
-	DBG_INFO("%s: index=%d\n", __FUNCTION__, fmtdesc->index);
 	return 0;
 }
 
@@ -352,6 +354,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
 	enum v4l2_field field;
 
 	DBG_INFO("%s\n", __FUNCTION__);
+
 	fmt = get_format(f);
 
 	field = f->fmt.pix.field;
@@ -362,14 +365,15 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
 
 	v4l_bound_align_image(&f->fmt.pix.width, 48, norm_maxw(), 2,
 			      &f->fmt.pix.height, 32, norm_maxh(), 0, 0);
-	f->fmt.pix.bytesperline =
-		(f->fmt.pix.width * fmt->depth) >> 3;
-	f->fmt.pix.sizeimage =
-		f->fmt.pix.height * f->fmt.pix.bytesperline;
-	if ((fmt->fourcc == V4L2_PIX_FMT_YUYV) || (fmt->fourcc == V4L2_PIX_FMT_UYVY))
+
+	f->fmt.pix.bytesperline = (f->fmt.pix.width * fmt->depth) >> 3;
+	f->fmt.pix.sizeimage    = f->fmt.pix.height * f->fmt.pix.bytesperline;
+
+	if ((fmt->fourcc == V4L2_PIX_FMT_YUYV) || (fmt->fourcc == V4L2_PIX_FMT_UYVY)) {
 		f->fmt.pix.colorspace = V4L2_COLORSPACE_SMPTE170M;
-	else
+	} else {
 		f->fmt.pix.colorspace = V4L2_COLORSPACE_SRGB;
+	}
 
 	return 0;
 }
@@ -380,16 +384,17 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 	struct sp_vout_device *vout = video_drvdata(file);
 
 	DBG_INFO("%s\n", __FUNCTION__);
+
 	ret = vidioc_try_fmt_vid_cap(file, vout, f);
 
-	vout->fmt.type = f->type;
-	vout->fmt.fmt.pix.width = f->fmt.pix.width;
-	vout->fmt.fmt.pix.height = f->fmt.pix.height;
-	vout->fmt.fmt.pix.pixelformat = f->fmt.pix.pixelformat; // from vidioc_try_fmt_vid_cap
-	vout->fmt.fmt.pix.field = f->fmt.pix.field;
+	vout->fmt.type                 = f->type;
+	vout->fmt.fmt.pix.width        = f->fmt.pix.width;
+	vout->fmt.fmt.pix.height       = f->fmt.pix.height;
+	vout->fmt.fmt.pix.pixelformat  = f->fmt.pix.pixelformat; // from vidioc_try_fmt_vid_cap
+	vout->fmt.fmt.pix.field        = f->fmt.pix.field;
 	vout->fmt.fmt.pix.bytesperline = f->fmt.pix.bytesperline;
-	vout->fmt.fmt.pix.sizeimage = f->fmt.pix.sizeimage ;
-	vout->fmt.fmt.pix.colorspace = f->fmt.pix.colorspace;
+	vout->fmt.fmt.pix.sizeimage    = f->fmt.pix.sizeimage ;
+	vout->fmt.fmt.pix.colorspace   = f->fmt.pix.colorspace;
 
 	return 0;
 }
@@ -397,6 +402,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f)
 {
 	struct sp_vout_device *vout = video_drvdata(file);
+
+	DBG_INFO("%s\n", __FUNCTION__);
 
 	memcpy(f, &vout->fmt, sizeof(*f));
 
@@ -412,13 +419,15 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (V4L2_BUF_TYPE_VIDEO_CAPTURE != req_buf->type) {
-		v4l2_err(&vout->v4l2_dev, "Invalid buffer type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
+	/* Lock for entering critical section */
 	ret = mutex_lock_interruptible(&vout->lock);
-	if (ret)
+	if (ret) {
 		return ret;
+	}
 
 	vout->memory = req_buf->memory;
 	videobuf_queue_dma_contig_init(&vout->buffer_queue,
@@ -435,6 +444,8 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 	DBG_INFO("%s: init_list\n", __FUNCTION__);
 	print_List(&vout->dma_queue);
 	ret = videobuf_reqbufs(&vout->buffer_queue, req_buf);
+
+	/* Unlock after leaving critical section */
 	mutex_unlock(&vout->lock);
 
 	return ret;
@@ -447,12 +458,12 @@ static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *bu
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		DBG_ERR("Invalid buf type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return  -EINVAL;
 	}
 
 	if (vout->memory != V4L2_MEMORY_MMAP) {
-		DBG_ERR("Invalid memory\n");
+		MIP_ERR("Invalid V4L2 memory type!\n");
 		return -EINVAL;
 	}
 
@@ -468,7 +479,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		DBG_ERR("Invalid buf type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
@@ -477,7 +488,7 @@ static int vidioc_qbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	 * return error
 	 */
 	if (!fh->io_allowed) {
-		DBG_ERR("fh->io_allowed\n");
+		MIP_ERR("IO is not allowed!\n");
 		return -EACCES;
 	}
 
@@ -491,7 +502,7 @@ static int vidioc_dqbuf(struct file *file, void *priv, struct v4l2_buffer *buf)
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		DBG_ERR("Invalid buf type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
@@ -508,13 +519,13 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
-		DBG_ERR("Invalid buf type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
 	/* If file handle is not allowed IO, return error */
 	if (!fh->io_allowed) {
-		DBG_ERR("fh->io_allowed\n");
+		MIP_ERR("IO is not allowed!\n");
 		return -EACCES;
 	}
 
@@ -522,17 +533,17 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 	ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 1);
 	if (ret && (ret != -ENOIOCTLCMD)) {
-		v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
+		MIP_ERR("streamon failed in subdevice!\n");
 		return -EINVAL;
 	}
 
 	/* If buffer queue is empty, return error */
 	if (list_empty(&vout->buffer_queue.stream)) {
-		DBG_ERR("buffer queue is empty\n");
+		MIP_ERR("Buffer queue is empty!\n");
 		return -EIO;
 	}
 
-	//writel(0x02700, &vout->csiiw_regs->csiiw_config0);      // Disable CSIIW and enable fs_irq & fe_irq
+	//writel(0x02700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, but enable fs_irq & fe_irq
 
 	/* Call videobuf_streamon to start streaming * in videobuf */
 	ret = videobuf_streamon(&vout->buffer_queue);
@@ -561,9 +572,9 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 	writel(mEXTENDED_ALIGNED(vout->fmt.fmt.pix.width, 16), &vout->csiiw_regs->csiiw_stride);                // line pitch
 	writel((vout->fmt.fmt.pix.height<<16)|vout->fmt.fmt.pix.width, &vout->csiiw_regs->csiiw_frame_size);    // hv size
 
-	writel(0x02701, &vout->csiiw_regs->csiiw_config0);                                                      // Enable CSIIW and fs_irq & ge_irq
+	writel(0x02701, &vout->csiiw_regs->csiiw_config0);                                                      // Enable csiiw, fs_irq and fe_irq
 
-	DBG_INFO("%s: cur_frm=%p, next_frm=%p, baddr=%x\n",
+	DBG_INFO("%s: cur_frm = %p, next_frm = %p, baddr = %x\n",
 		__FUNCTION__, vout->cur_frm, vout->next_frm, vout->baddr);
 
 	vout->started = 1;
@@ -585,19 +596,19 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	if (V4L2_BUF_TYPE_VIDEO_CAPTURE != buf_type) {
-		DBG_ERR("Invalid buf type\n");
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
 	/* If io is allowed for this file handle, return error */
 	if (!fh->io_allowed) {
-		DBG_ERR("fh->io_allowed\n");
+		MIP_ERR("IO is not allowed!\n");
 		return -EACCES;
 	}
 
 	/* If streaming is not started, return error */
 	if (!vout->started) {
-		DBG_ERR("device started\n");
+		MIP_ERR("Device has started already!\n");
 		return -EINVAL;
 	}
 
@@ -609,14 +620,14 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 	ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 0);
 	if (ret && (ret != -ENOIOCTLCMD)) {
-		v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
+		MIP_ERR("streamon failed in subdevice!\n");
 		return -EINVAL;
 	}
 
 	vout->started = 0;
 
 	// FW must mask irq to avoid unmap issue (for test code)
-	writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable CSIIW and mask fs_irq & fe_irq
+	writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
 
 	ret = videobuf_streamoff(&vout->buffer_queue);
 	mutex_unlock(&vout->lock);
@@ -648,17 +659,11 @@ static int sp_vout_open(struct file *file)
 	struct sp_vout_fh *fh;
 
 	DBG_INFO("%s\n", __FUNCTION__);
-#if 0
-	if (!vpfe_dev->cfg->num_subdevs) {
-		DBG_ERR("No decoder registered\n");
-		return -ENODEV;
-	}
-#endif
 
 	/* Allocate memory for the file handle object */
 	fh = kmalloc(sizeof(struct sp_vout_fh), GFP_KERNEL);
 	if (!fh) {
-		DBG_ERR("Allocate memory fail\n");
+		MIP_ERR("Failed to allocate memory for file handle object!\n");
 		return -ENOMEM;
 	}
 
@@ -667,11 +672,14 @@ static int sp_vout_open(struct file *file)
 	fh->vout = vout;
 	v4l2_fh_init(&fh->fh, vdev);
 
+	/* Get the device lock */
 	mutex_lock(&vout->lock);
 
 	/* Set io_allowed member to false */
 	fh->io_allowed = 0;
 	v4l2_fh_add(&fh->fh);
+
+	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
 	return 0;
 }
@@ -693,14 +701,14 @@ static int sp_vout_release(struct file *file)
 		if (vout->started) {
 			sdinfo = vout->current_subdev;
 			ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
-							video, s_stream, 0);
+							 video, s_stream, 0);
 			if (ret && (ret != -ENOIOCTLCMD)) {
-				v4l2_err(&vout->v4l2_dev, "stream on failed in subdev\n");
+				MIP_ERR("streamon failed in subdevice!\n");
 				return -EINVAL;
 			}
 
 			vout->started = 0;
-			writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable CSIIW and mask fs_irq & fe_irq
+			writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
 
 			videobuf_streamoff(&vout->buffer_queue);
 		}
@@ -711,6 +719,8 @@ static int sp_vout_release(struct file *file)
 	/* Decrement device usrs counter */
 	v4l2_fh_del(&fh->fh);
 	v4l2_fh_exit(&fh->fh);
+
+	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
 
 	file->private_data = NULL;
@@ -765,12 +775,12 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	int num_subdevs = 0;
 	int ret, i;
 
-	//DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __FUNCTION__);
 
 	// Allocate memory for 'sp_vout_device'.
 	vout = kzalloc(sizeof(struct sp_vout_device), GFP_KERNEL);
 	if (!vout) {
-		DBG_ERR("Failed to allocate memory for \'sp_vout_dev\'!\n");
+		MIP_ERR("Failed to allocate memory for \'sp_vout_dev\'!\n");
 		ret = -ENOMEM;
 		goto err_alloc;
 	}
@@ -785,24 +795,22 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Get and set 'mipicsi' register base.
 	ret = sp_mipi_get_register_base(pdev, (void**)&vout->mipicsi_regs, MIPICSI_REG_NAME);
 	if (ret) {
-		DBG_ERR("%s (L:%d), ret = %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	}
 
 	// Get and set 'csiiw' register base.
 	ret = sp_mipi_get_register_base(pdev, (void**)&vout->csiiw_regs, CSIIW_REG_NAME);
 	if (ret) {
-		DBG_ERR("%s (L:%d), ret = %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	}
-	DBG_INFO("%s: mipicsi_regs = 0x%p, csiiw_regs = 0x%p\n",
+	MIP_INFO("%s: mipicsi_regs = 0x%p, csiiw_regs = 0x%p\n",
 		__FUNCTION__, vout->mipicsi_regs, vout->csiiw_regs);
 
 	// Get clock resource 'clk_mipicsi'.
 	vout->mipicsi_clk = devm_clk_get(dev, "clk_mipicsi");
 	if (IS_ERR(vout->mipicsi_clk)) {
 		ret = PTR_ERR(vout->mipicsi_clk);
-		DBG_ERR("Failed to retrieve clock resource \'clk_mipicsi\'!\n");
+		MIP_ERR("Failed to retrieve clock resource \'clk_mipicsi\'!\n");
 		goto err_get_mipicsi_clk;
 	}
 
@@ -810,7 +818,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vout->csiiw_clk = devm_clk_get(dev, "clk_csiiw");
 	if (IS_ERR(vout->csiiw_clk)) {
 		ret = PTR_ERR(vout->csiiw_clk);
-		DBG_ERR("Failed to retrieve clock resource \'clk_csiiw\'!\n");
+		MIP_ERR("Failed to retrieve clock resource \'clk_csiiw\'!\n");
 		goto err_get_csiiw_clk;
 	}
 
@@ -833,45 +841,45 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Get i2c id.
 	ret = of_property_read_u32(pdev->dev.of_node, "i2c-id", &vout->i2c_id);
 	if (ret) {
-		DBG_ERR("Failed to retrieve \'i2c-id\'!\n");
+		MIP_ERR("Failed to retrieve \'i2c-id\'!\n");
 		goto err_get_i2c_id;
 	}
 
 	// Enable 'mipicsi' clock.
 	ret = clk_prepare_enable(vout->mipicsi_clk);
 	if (ret) {
-		DBG_ERR("Failed to enable \'mipicsi\' clock!\n");
+		MIP_ERR("Failed to enable \'mipicsi\' clock!\n");
 		goto err_en_mipicsi_clk;
 	}
 
 	// Enable 'csiiw' clock.
 	ret = clk_prepare_enable(vout->csiiw_clk);
 	if (ret) {
-		DBG_ERR("Failed to enable \'csiiw\' clock!\n");
+		MIP_ERR("Failed to enable \'csiiw\' clock!\n");
 		goto err_en_csiiw_clk;
 	}
 
 	// De-assert 'mipicsi' reset controller.
 	ret = reset_control_deassert(vout->mipicsi_rstc);
 	if (ret) {
-		DBG_ERR("Failed to deassert 'mipicsi' reset controller!\n");
+		MIP_ERR("Failed to deassert 'mipicsi' reset controller!\n");
 		goto err_deassert_mipicsi_rstc;
 	}
 
 	// De-assert 'csiiw' reset controller.
 	ret = reset_control_deassert(vout->csiiw_rstc);
 	if (ret) {
-		DBG_ERR("Failed to deassert 'csiiw' reset controller!\n");
+		MIP_ERR("Failed to deassert 'csiiw' reset controller!\n");
 		goto err_deassert_csiiw_rstc;
 	}
 
 	// Register V4L2 device.
 	ret = v4l2_device_register(&pdev->dev, &vout->v4l2_dev);
 	if (ret) {
-		DBG_ERR("Unable to register V4L2 device!\n");
+		MIP_ERR("Unable to register V4L2 device!\n");
 		goto err_v4l2_register;
 	}
-	DBG_INFO("Registered V4L2 device.\n");
+	MIP_INFO("Registered V4L2 device.\n");
 
 	/* Initialize field of video device */
 	vfd = &vout->video_dev;
@@ -901,17 +909,17 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Register video device.
 	ret = video_register_device(&vout->video_dev, VFL_TYPE_GRABBER, -1);
 	if (ret) {
-		DBG_ERR("Unable to register video device!\n");
+		MIP_ERR("Unable to register video device!\n");
 		vfd->minor = -1;
 		ret = -ENODEV;
 		goto err_video_register;
 	}
-	DBG_INFO("Registered video device \'/dev/video%d\'.\n", vfd->minor);
+	MIP_INFO("Registered video device \'/dev/video%d\'.\n", vfd->minor);
 
 	// Get i2c_info for sub-device.
 	sp_vout_cfg = kmalloc(sizeof(*sp_vout_cfg), GFP_KERNEL);
 	if (!sp_vout_cfg) {
-		DBG_ERR("Failed to allocate memory for \'sp_vout_cfg\'!\n");
+		MIP_ERR("Failed to allocate memory for \'sp_vout_cfg\'!\n");
 		ret = -ENOMEM;
 		goto err_alloc_vout_cfg;
 	}
@@ -923,16 +931,16 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Get i2c adapter.
 	i2c_adap = i2c_get_adapter(sp_vout_cfg->i2c_adapter_id);
 	if (!i2c_adap) {
-		DBG_ERR("Failed to get i2c adapter %d!\n", sp_vout_cfg->i2c_adapter_id);
+		MIP_ERR("Failed to get i2c adapter #%d!\n", sp_vout_cfg->i2c_adapter_id);
 		ret = -ENODEV;
 		goto err_i2c_get_adapter;
 	}
 	vout->i2c_adap = i2c_adap;
-	DBG_INFO("i2c_adapter_id = %d, num_subdevs = %d\n", sp_vout_cfg->i2c_adapter_id, num_subdevs);
+	MIP_INFO("Got i2c adapter #%d.\n", sp_vout_cfg->i2c_adapter_id);
 
 	vout->sd = kmalloc_array(num_subdevs, sizeof(*vout->sd), GFP_KERNEL);
 	if (!vout->sd) {
-		DBG_ERR("Failed to allocate memory for V4L2 subdevice!\n");
+		MIP_ERR("Failed to allocate memory for V4L2 subdevice!\n");
 		ret = -ENOMEM;
 		goto err_alloc_subdev;
 	}
@@ -946,14 +954,10 @@ static int sp_mipi_probe(struct platform_device *pdev)
 							&sdinfo->board_info,
 							NULL);
 		if (vout->sd[i]) {
-			v4l2_info(&vout->v4l2_dev,
-				  "Registered V4L2 subdevice \'%s\'.\n",
-				  sdinfo->name);
+			MIP_INFO("Registered V4L2 subdevice \'%s\'.\n", sdinfo->name);
 			vout->sd[i]->grp_id = sdinfo->grp_id;
 		} else {
-			v4l2_info(&vout->v4l2_dev,
-				  "Failed to register V4L2 subdevice \'%s\'!\n",
-				  sdinfo->name);
+			MIP_ERR("Failed to register V4L2 subdevice \'%s\'!\n", sdinfo->name);
 			ret = -ENXIO;
 			goto err_subdev_register;
 		}
@@ -1044,6 +1048,6 @@ static struct platform_driver sp_mipi_driver = {
 
 module_platform_driver(sp_mipi_driver);
 
-MODULE_DESCRIPTION("SP_MIPI driver");
+MODULE_DESCRIPTION("Sunplus MIPI-CSI driver");
 MODULE_LICENSE("GPL");
 

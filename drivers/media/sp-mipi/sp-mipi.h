@@ -13,8 +13,6 @@
 #define VOUT_NAME                       "sp_vout"
 #define MIPICSI_REG_NAME                "mipicsi"
 #define CSIIW_REG_NAME                  "csiiw"
-#define VOUT_WIDTH                      1280
-#define VOUT_HEIGHT                     800
 
 #define norm_maxw()                     1280
 #define norm_maxh()                     800
@@ -22,24 +20,27 @@
 #define mEXTENDED_ALIGNED(w,n)          (w%n)? ((w/n)*n+n): (w)
 
 
+#if 0
 #define DBG_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
+#else
+#define DBG_INFO(fmt, args ...)
+#endif
+#define MIP_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
+#define MIP_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
 
 
 static void print_List(struct list_head *head){
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
 
-	printk("\n*********************************************************************************\n");
-	printk("(HEAD addr =  %p, next = %p, prev = %p)\n",head, head->next, head->prev);
+	DBG_INFO("\n*********************************************************************************\n");
+	DBG_INFO("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);
-		printk("list addr = %p | next = %p | prev = %p\n",
-			&entry->stream,
-			entry->stream.next,
-			entry->stream.prev);
+		DBG_INFO("list addr = %p | next = %p | prev = %p\n", &entry->stream, entry->stream.next,
+			 entry->stream.prev);
 	}
-	printk("*********************************************************************************\n");
+	DBG_INFO("*********************************************************************************\n");
 }
 
 static unsigned int vid_limit = 16;     //16M
