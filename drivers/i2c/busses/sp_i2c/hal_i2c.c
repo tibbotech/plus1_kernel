@@ -192,7 +192,7 @@ void hal_i2cm_dma_rw_mode_set(unsigned int device_id, I2C_DMA_RW_Mode_e rw_mode)
 				break;
 		}
 		writel(val, &(pI2cMGdmaReg[device_id]->dma_config));
-		printk("%s(%d) dma_config = 0x%x\n", __FUNCTION__, __LINE__, pI2cMGdmaReg[device_id]->dma_config);
+		//printk("%s(%d) dma_config = 0x%x\n", __FUNCTION__, __LINE__, pI2cMGdmaReg[device_id]->dma_config);
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_dma_rw_mode_set);
@@ -271,6 +271,11 @@ void hal_i2cm_scl_delay_set(unsigned int device_id, unsigned int delay)
 		ctl2 = readl(&(pI2cMReg[device_id]->control2));
 		ctl2 &= (~I2C_CTL2_SCL_DELAY(I2C_CTL2_SCL_DELAY_MASK));
 		ctl2 |= I2C_CTL2_SCL_DELAY(delay);
+
+		//ctl2 |= I2C_CTL2_SDA_HALF_ENABLE;
+		ctl2 &= (~(I2C_CTL2_SDA_HALF_ENABLE));
+
+		
 		writel(ctl2, &(pI2cMReg[device_id]->control2));
 		//printk("hal_i2cm_scl_delay_set control2: 0x%x\n", readl(&(pI2cMReg[device_id]->control2)));
 	}

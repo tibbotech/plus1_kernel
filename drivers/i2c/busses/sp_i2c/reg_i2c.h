@@ -31,6 +31,7 @@
 //control2
 #define I2C_CTL2_FREQ_CUSTOM(x)           (x<<0)   //bit[10:0]
 #define I2C_CTL2_SCL_DELAY(x)             (x<<24)  //bit[25:24]
+#define I2C_CTL2_SDA_HALF_ENABLE          (1<<31)
 
 //control6
 #define I2C_CTL6_BURST_RDATA_CLR          I2C_EN1_BURST_RDATA_INT
