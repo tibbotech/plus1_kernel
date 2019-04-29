@@ -1,9 +1,10 @@
 config VIDEO_SP_VOUT
-	tristate "SP Video Out Driver"
+	tristate "Sunplus MIPI-CSI Driver"
 	select VIDEO_V4L2
 	select VIDEOBUF_GEN
 	select VIDEOBUF_DMA_CONTIG
 	select VIDEOBUF_DMA_SG
 	default n
 	---help---
-	  Video out driver support for SP based boards.
+	  MIPI-CSI driver support for Sunplus SP7021 based boards.
+

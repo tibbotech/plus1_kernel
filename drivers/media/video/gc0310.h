@@ -1,38 +1,36 @@
-#ifndef __OV9281_H__
-#define __OV9281_H__
+#ifndef __GC0310_H__
+#define __GC0310_H__
 
 
 #if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[OV9281] %s (L:%d)\n", __FUNCTION__, __LINE__)
+#define FUNC_DEBUG()                            printk(KERN_INFO "[GC0310] %s (L:%d)\n", __FUNCTION__, __LINE__)
 #else
 #define FUNC_DEBUG()
 #endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[OV9281] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[OV9281] ERR: " fmt, ## args)
-
-#define REG_NULL                                0xFFFF
+#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[GC0310] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[GC0310] ERR: " fmt, ## args)
 
 
-/* OV9281 Registers */
-#define OV9281_REG_CHIP_ID                      0x300A
-#define CHIP_ID                                 0x9281
-#define OV9281_REG_CTRL_MODE                    0x0100
-#define OV9281_MODE_SW_STANDBY                  0x0
-#define OV9281_MODE_STREAMING                   BIT(0)
+/* GC0310 Registers */
+#define GC0310_REG_CHIP_ID                      0xF0
+#define CHIP_ID                                 0xa310
+#define GC0310_REG_CTRL_MODE                    0x00
+#define GC0310_MODE_SW_STANDBY                  0x0
+#define GC0310_MODE_STREAMING                   BIT(0)
 
-#define OV9281_REG_VALUE_08BIT                  1
-#define OV9281_REG_VALUE_16BIT                  2
-#define OV9281_REG_VALUE_24BIT                  3
+#define GC0310_REG_VALUE_08BIT                  1
+#define GC0310_REG_VALUE_16BIT                  2
+#define GC0310_REG_VALUE_24BIT                  3
 
-#define to_ov9281(sd)                           container_of(sd, struct ov9281, subdev)
+#define to_gc0310(sd)                           container_of(sd, struct gc0310, subdev)
 
 
 struct regval {
-	u16     addr;
+	u8      addr;
 	u8      val;
 };
 
-struct ov9281_mode {
+struct gc0310_mode {
 	u32                     width;
 	u32                     height;
 	u32                     max_fps;
@@ -40,9 +38,10 @@ struct ov9281_mode {
 	u32                     vts_def;
 	u32                     exp_def;
 	const struct regval     *reg_list;
+	u32                     reg_num;
 };
 
-struct ov9281 {
+struct gc0310 {
 	struct i2c_client               *client;
 
 	struct gpio_desc                *reset_gpio;
@@ -64,7 +63,7 @@ struct ov9281 {
 
 	struct mutex                    mutex;
 	bool                            streaming;
-	const struct ov9281_mode        *cur_mode;
+	const struct gc0310_mode        *cur_mode;
 };
 
 #endif

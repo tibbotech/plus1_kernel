@@ -1,5 +1,21 @@
+menuconfig SUNPLUS_VIDEO_SENSOR_SUPPORT
+	bool "Sunplus Video Sensor Support"
+	help
+	  Enable video sensor support.
+	  If you have such devices, say Y.
+
+if SUNPLUS_VIDEO_SENSOR_SUPPORT
+
 config VIDEO_SENSOR_OV9281
 	tristate "Video Sensor (OV9281) Driver"
 	default n
 	---help---
 	  Video sensor for OV9281
+
+config VIDEO_SENSOR_GC0310
+	tristate "Video Sensor (GC0310) Driver"
+	default n
+	---help---
+	  Video sensor for GC0310
+
+endif

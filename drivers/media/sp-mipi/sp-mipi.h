@@ -18,6 +18,7 @@
 #define norm_maxh()                     800
 
 #define mEXTENDED_ALIGNED(w,n)          (w%n)? ((w/n)*n+n): (w)
+#define FRAME_BUFFER_ALIGN              256
 
 
 #if 0
@@ -33,7 +34,7 @@ static void print_List(struct list_head *head){
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
 
-	DBG_INFO("\n*********************************************************************************\n");
+	DBG_INFO("*********************************************************************************\n");
 	DBG_INFO("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);

@@ -1,5 +1,5 @@
 /*
- * ov9281.c - ov9281 sensor driver
+ * ov9281.c - ov9281 Image Sensor Driver
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms and conditions of the GNU General Public License,
