@@ -106,9 +106,12 @@ static irqreturn_t sp_icm_isr(int irq, void *dev_id)
 	int i = irq - sp_icm.irq;
 	volatile struct sp_icm_reg *icm = &sp_icm.reg[i];
 	u32 cnt, fstate;
-
+	int clk_bk;
 	//TRACE("");
+	clk_bk = icm->cfg0 & 0x000001C0;
+	icm->cfg0 = 0x01C00100;
 	icm->cfg0 = ICM_INTCLR; // clear interrupt
+	icm->cfg0 = 0x01C00000 | clk_bk;
 
 	while (!((fstate = icm->cfg1) & ICM_FEMPTY)) { // fifo not empty
 		cnt = icm->cnt; // read counter from fifo
