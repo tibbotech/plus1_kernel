@@ -156,6 +156,7 @@ typedef struct {
 	void __iomem *hdmitxbase;	
 	struct miscdevice *hdmitx_misc;
 	struct device *dev;
+	struct clk *clk;
 	struct reset_control *rstc;
 } sp_hdmitx_t;
 
@@ -916,6 +917,18 @@ static int hdmitx_probe(struct platform_device *pdev)
 //		return PTR_ERR(sp_hdmitx->moon1base);
 //	}
 
+	sp_hdmitx->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(sp_hdmitx->clk)) {
+		return PTR_ERR(sp_hdmitx->clk);
+	}
+
+	ret = clk_prepare(sp_hdmitx->clk);
+	if (ret < 0) {
+		dev_err(dev, "failed to prepare clk: %d\n", ret);
+		return ret;
+	}
+	clk_enable(sp_hdmitx->clk);
+	
 	sp_hdmitx->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(sp_hdmitx->rstc)) {
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
@@ -1009,6 +1022,7 @@ static int hdmitx_remove(struct platform_device *pdev)
 	g_hdmitx_state = FSM_INIT;
 	misc_deregister(misc);
 	reset_control_assert(sp_hdmitx->rstc);
+	clk_disable(sp_hdmitx->clk);
 	HDMITX_INFO("HDMITX uninstalled\n");
 	
 	return err;
