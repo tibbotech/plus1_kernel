@@ -70,6 +70,11 @@ static const struct sp_fmt formats[] = {
 		.fourcc   = V4L2_PIX_FMT_GREY,
 		.depth    = 8,
 	},
+	{
+		.name     = "4:2:2, packed, YUYV",
+		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.depth    = 16,
+	},
 };
 
 
@@ -122,14 +127,23 @@ static int sp_mipi_get_register_base(struct platform_device *pdev, void **membas
 
 static void mipicsi_init(struct sp_vout_device *vout)
 {
+#if 1	//10-bit
+	writel(0X1F,
+			&vout->mipicsi_regs->mipicsi_sof_sol_syncword);	// raw10:0x2B, YUV422_10bit:0x1F
+	writel(0x118104,
+			&vout->mipicsi_regs->mipicsi_mix_cfg);			// 1 lane, raw10:0x018104
+															// 2 lane, raw10:0x118104
+#else	//8-bit
+	writel(0x2A,
+			&vout->mipicsi_regs->mipicsi_sof_sol_syncword);	// raw8:0x2A, YUV422_8bit:0x1E
+	writel(0x128104,
+			&vout->mipicsi_regs->mipicsi_mix_cfg);			// 1 lane, raw8:0x028104 (for GC0310)
+															// 2 lane, raw8:0x128104 (for ov9281)
+#endif
 	writel(0x1f, &vout->mipicsi_regs->mipi_analog_cfg2);
-	writel(0x118104, &vout->mipicsi_regs->mipicsi_mix_cfg);         // raw10:0x118104, raw8:0x128104
-
 	writel(0x1000, &vout->mipicsi_regs->mipi_analog_cfg1);
 	writel(0x1001, &vout->mipicsi_regs->mipi_analog_cfg1);
 	writel(0x1000, &vout->mipicsi_regs->mipi_analog_cfg1);
-
-	writel(0x2b, &vout->mipicsi_regs->mipicsi_sof_sol_syncword);    // raw10:0x2B, raw8:0x2A
 	writel(0x1, &vout->mipicsi_regs->mipicsi_enable);               // Enable MIPICSI
 }
 
@@ -978,13 +992,14 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		} else {
 			MIP_ERR("Failed to register V4L2 subdevice \'%s\'!\n", sdinfo->name);
 			ret = -ENXIO;
-			goto err_subdev_register;
+			if (i == (num_subdevs-1))
+				goto err_subdev_register;
 		}
 	}
 
 	/* set first sub device as current one */
-	vout->current_subdev = &sp_vout_cfg->sub_devs[0];
-	vout->v4l2_dev.ctrl_handler = vout->sd[0]->ctrl_handler;
+	vout->current_subdev = &sp_vout_cfg->sub_devs[i];
+	vout->v4l2_dev.ctrl_handler = vout->sd[i]->ctrl_handler;
 
 	mipicsi_init(vout);
 	csiiw_init(vout);
