@@ -46,6 +46,7 @@
 
 #include "reg_disp.h"
 #include "hal_disp.h"
+#include "mach/display/display.h"
 
 /**************************************************************************
  *                              M A C R O S                               *
@@ -75,8 +76,13 @@
 	#define VPP_WIDTH	512
 	#define VPP_HEIGHT	300
 #else
+#if 0 //TTL_MODE_SUPPORT
+	#define VPP_WIDTH	320
+	#define VPP_HEIGHT	240
+#else
 	#define VPP_WIDTH	720//512//242
 	#define VPP_HEIGHT	480//300//255
+#endif
 #endif
 
 #ifdef TEST_DMA
@@ -186,6 +192,10 @@ struct proc_dir_entry *entry = NULL;
  **************************************************************************/
 static volatile int mac_test = 0;
 static volatile UINT32 *G12;
+#ifdef TTL_MODE_SUPPORT
+static volatile UINT32 *G1;
+static volatile UINT32 *G4;
+#endif
 #ifdef MODULE
 static UINT32 *yuv420;
 #endif
@@ -1284,6 +1294,13 @@ static int _display_probe(struct platform_device *pdev)
 	{
 		G12 = ioremap(0x9c000600, 32*4);
 		aio = ioremap(0x9ec00580, 3*32*4);
+#ifdef TTL_MODE_SUPPORT
+		G1 = ioremap(0x9c000080, 32*4);
+		G4 = ioremap(0x9c000200, 32*4);
+		G1[4] = 0x00400040; //en LCDIF
+		G4[14] = 0x80418041; //en pll , clk = 27M
+		G4[31] = 0x00200020; //clk div4
+#endif
 	}
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
@@ -1341,7 +1358,11 @@ static int _display_probe(struct platform_device *pdev)
 	DRV_OSD_Init((void *)&pTmpRegBase->osd, (void *)&pTmpRegBase->gpost);
 
 	{
+#ifdef TTL_MODE_SUPPORT
+		int mode = 7;
+#else
 		int mode = 0;
+#endif
 		// TGEN setting
 		UINT32 ret;
 		DRV_SetTGEN_t SetTGEN;
@@ -1395,7 +1416,20 @@ static int _display_probe(struct platform_device *pdev)
 				pDispWorkMem->panelRes.height = 1080;
 				break;
 			case 7:
+#ifdef TTL_MODE_SUPPORT
+				SetTGEN.fmt = DRV_FMT_USER_MODE;
+				SetTGEN.fps = DRV_FrameRate_5994Hz;
+				SetTGEN.htt = 408;
+				SetTGEN.vtt = 262;
+				SetTGEN.v_bp = 19;
+				SetTGEN.hactive = 320;
+				SetTGEN.vactive = 240;
+				pDispWorkMem->panelRes.width = 320;
+				pDispWorkMem->panelRes.height = 240;
+				diag_printf("set TGEN user mode\n");
+#else
 				diag_printf("user mode unsupport\n");
+#endif
 				break;
 		}
 
@@ -1446,7 +1480,11 @@ static int _display_probe(struct platform_device *pdev)
 	{
 	extern void vpost_dma(void);
 
+#if 0 //#ifdef TTL_MODE_SUPPORT
+	vpost_setting((320-VPP_WIDTH)>>1, (240-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 320, 240);
+#else
 	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
+#endif
 
 #ifdef TEST_DMA
 	vpost_dma();

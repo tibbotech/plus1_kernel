@@ -89,6 +89,12 @@ static void wreg_b(UINT32 group, UINT32 index, UINT32 value)
 
 int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h)
 {
+#ifdef TTL_MODE_SUPPORT
+		wreg_b(199, 10, 0x1); //en user mode 
+		wreg_b(199, 11, 0); //x active
+		wreg_b(199, 12, 21); //y active
+#endif
+
 	if ((input_w != output_w) || (input_h != output_h))
 	{
 		wreg_b(199, 0, 0x11); 
@@ -101,11 +107,17 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 		wreg_b(199, 3, 0);
 		wreg_b(199, 4, 0);
 	}
-
+#ifdef TTL_MODE_SUPPORT
+	wreg_b(199, 1, 320);
+	wreg_b(199, 2, 240);
+	wreg_b(199, 5, 320);
+	wreg_b(199, 6, 240);
+#else
 	wreg_b(199, 1, input_w);
 	wreg_b(199, 2, input_h);
 	wreg_b(199, 5, output_w);
 	wreg_b(199, 6, output_h);
+#endif
 	wreg_b(199, 9, 4);
 	//wreg_b(199, 9, 7);	//border test pattern
 	return 0;
@@ -128,6 +140,24 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422)
 
 	diag_printf("ddfch luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
 
+#ifdef TTL_MODE_SUPPORT
+	diag_printf("ddfch setting for LCD \n");
+	wreg_b(185, 0, 1);
+	if (is_yuv422)
+		wreg_b(185, 1, 0x400);	//source yuv422
+	else
+		wreg_b(185, 1, 0x0);	//source yuv420
+	wreg_b(185, 2, 0xd0);
+	wreg_b(185, 6, luma_addr>>10);
+	wreg_b(185, 9, chroma_addr>>10);
+	wreg_b(185, 20, 384);	//video line pitch
+	//wreg_b(185, 21, 0x01e002d0);	//y size & x size
+	wreg_b(185, 22, (0 << 16) | 0);
+	wreg_b(185, 23, 0x10000);
+	wreg_b(185, 28, 0x80801002);
+	wreg_b(185, 21, 0x00f00140);	//y size & x size
+#else
+	diag_printf("ddfch setting for HDMI \n");
 	wreg_b(185, 0, 1);
 	if (is_yuv422)
 		wreg_b(185, 1, 0x400);	//source yuv422
@@ -141,6 +171,7 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422)
 	wreg_b(185, 22, (0 << 16) | 0);
 	wreg_b(185, 23, 0x10000);
 	wreg_b(185, 28, 0x80801002);
+#endif
 
 	return 0;
 }

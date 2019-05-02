@@ -1,6 +1,8 @@
 #ifndef __DISP_TGEN_H__
 #define __DISP_TGEN_H__
 
+#include "mach/display/display.h"
+
 typedef enum {
 	DRV_TGEN_VPP0 = 0,
 	DRV_TGEN_OSD0,

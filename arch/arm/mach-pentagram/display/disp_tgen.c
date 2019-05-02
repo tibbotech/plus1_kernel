@@ -29,6 +29,7 @@
  **************************************************************************/
 #include "reg_disp.h"
 #include "hal_disp.h"
+#include "disp_tgen.h"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -72,6 +73,17 @@ void DRV_TGEN_Init(void *pInHWReg)
 	pTGENReg->tgen_config = 0x0007;		// latch mode on
 	pTGENReg->tgen_source_sel = 0x0;
 	pTGENReg->tgen_user_int2_config = 400;
+
+#if 0 //#ifdef TTL_MODE_SUPPORT
+	pTGENReg->tgen_dtg_config = 1; //TGEN USER MODE
+	pTGENReg->tgen_dtg_total_pixel = 408; //Total pixel
+	pTGENReg->tgen_dtg_ds_line_start_cd_point = 320; //line start
+	pTGENReg->tgen_dtg_total_line = 262; //Total line
+	pTGENReg->tgen_dtg_field_end_line = 260; //field end line
+	pTGENReg->tgen_dtg_start_line = 19; //start line
+	//pTGENReg->tgen_reset = 1;
+#endif
+
 }
 
 void DRV_TGEN_GetFmtFps(DRV_VideoFormat_e *fmt, DRV_FrameRate_e *fps)
