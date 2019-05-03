@@ -17,6 +17,9 @@
 #ifdef SUPPORT_I2C_GDMA
 #include <linux/dma-mapping.h>   
 #endif
+#ifdef PM_RUNTIME_I2C
+#include <linux/pm_runtime.h>
+#endif
 
 //#define I2C_FUNC_DEBUG
 //#define I2C_DBG_INFO
@@ -1367,6 +1370,11 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 
 	FUNC_DEBUG();
 
+#ifdef PM_RUNTIME_I2C
+  ret = pm_runtime_get_sync(&adap->dev);
+  if (ret < 0)
+  	goto out;  
+#endif
 	if (num == 0) {
 		return -EINVAL;
 	}
@@ -1435,6 +1443,11 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		}
 	}
 
+#ifdef PM_RUNTIME_I2C
+out :
+	pm_runtime_mark_last_busy(&adap->dev);
+  pm_runtime_put_autosuspend(&adap->dev);
+#endif
 	return num;
 }
 
@@ -1546,6 +1559,13 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		return I2C_ERR_REQUESET_IRQ;
 	}
 
+#ifdef PM_RUNTIME_I2C
+  pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+  pm_runtime_use_autosuspend(&pdev->dev);
+  pm_runtime_set_active(&pdev->dev);
+  pm_runtime_enable(&pdev->dev);
+#endif
+
 	return ret;
 	
 #ifdef SUPPORT_I2C_GDMA
@@ -1568,6 +1588,10 @@ static int sp_i2c_remove(struct platform_device *pdev)
 
 	FUNC_DEBUG();
 	
+#ifdef PM_RUNTIME_I2C
+  pm_runtime_disable(&pdev->dev);
+  pm_runtime_set_suspended(&pdev->dev);
+#endif
 #ifdef SUPPORT_I2C_GDMA   
 	dma_free_coherent(&pdev->dev, bufsiz, pstSpI2CInfo->dma_vir_base, pstSpI2CInfo->dma_phy_base);
 #endif
@@ -1617,6 +1641,43 @@ static const struct of_device_id sp_i2c_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_i2c_of_match);
 
+#ifdef PM_RUNTIME_I2C
+static int sp_i2c_runtime_suspend(struct device *dev)
+{
+	SpI2C_If_t *pstSpI2CInfo = dev_get_drvdata(dev);
+	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
+
+	FUNC_DEBUG();
+
+	if (p_adap->nr < I2C_MASTER_NUM) {
+	  reset_control_assert(pstSpI2CInfo->rstc);
+	}
+
+	return 0;
+}
+
+static int sp_i2c_runtime_resume(struct device *dev)
+{
+	SpI2C_If_t *pstSpI2CInfo = dev_get_drvdata(dev);
+	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
+
+	FUNC_DEBUG();
+
+	if (p_adap->nr < I2C_MASTER_NUM) {
+	  reset_control_deassert(pstSpI2CInfo->rstc);   //release reset
+	  clk_prepare_enable(pstSpI2CInfo->clk);        //enable clken and disable gclken
+	}
+
+	return 0;
+}
+static const struct dev_pm_ops sp7021_i2c_pm_ops = {
+	.runtime_suspend = sp_i2c_runtime_suspend,
+	.runtime_resume  = sp_i2c_runtime_resume,
+};
+
+#define sp_i2c_pm_ops  (&sp7021_i2c_pm_ops)
+#endif
+
 static struct platform_driver sp_i2c_driver = {
 	.probe		= sp_i2c_probe,
 	.remove		= sp_i2c_remove,
@@ -1626,6 +1687,9 @@ static struct platform_driver sp_i2c_driver = {
 		.owner		= THIS_MODULE,
 		.name		= DEVICE_NAME,
 		.of_match_table = sp_i2c_of_match,
+#ifdef PM_RUNTIME_I2C
+		.pm     = sp_i2c_pm_ops,
+#endif
 	},
 };
 
