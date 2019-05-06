@@ -10,8 +10,12 @@
 #include <linux/usb/phy.h>
 #include <linux/usb/sp_usb.h>
 
+
 static struct clk *uphy0_clk;
 static struct resource *uphy0_res_mem;
+
+extern int gpio_request(unsigned gpio, const char *label);
+extern void gpio_free(unsigned gpio);
 
 static void uphy0_init(void)
 {
@@ -80,6 +84,18 @@ static void uphy0_init(void)
 
 static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 {
+	s32 ret;
+	u32 port_id = 0;
+	struct device *dev = &pdev->dev;
+
+	usb_vbus_gpio[port_id] = of_get_named_gpio(pdev->dev.of_node, "vbus-gpio", 0);
+	if ( !gpio_is_valid( usb_vbus_gpio[port_id]))
+		printk(KERN_NOTICE "Wrong pin %d configured for vbus", usb_vbus_gpio[port_id]);
+	ret = gpio_request( usb_vbus_gpio[port_id], "usb0-vbus");
+	if ( ret < 0)
+		printk(KERN_NOTICE "Can't get vbus pin %d", usb_vbus_gpio[port_id]);
+	printk(KERN_NOTICE "%s,usb0_vbus_gpio_pin:%d\n",__FUNCTION__,usb_vbus_gpio[port_id]);
+
 	/*enable uphy0 system clock*/
 	uphy0_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(uphy0_clk)) {
@@ -125,6 +141,7 @@ static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 {
 	u32 val;
+	u32 port_id = 0;
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 
 	val = readl(uphy0_base_addr + CDP_REG_OFFSET);
@@ -138,7 +155,8 @@ static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 	writel(RF_MASK_V(0xffff, 0x88), regs + UPHY0_CTL3_OFFSET);
 	/*disable uphy0 system clock*/
 	clk_disable(uphy0_clk);
-
+	gpio_free(usb_vbus_gpio[port_id]);
+	 
 	return 0;
 }
 

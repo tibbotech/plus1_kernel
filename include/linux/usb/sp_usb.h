@@ -7,6 +7,11 @@
 #include <mach/gpio_drv.h>
 #include <linux/semaphore.h>
 #include <linux/io.h>
+#include <linux/regulator/consumer.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+
 
 #define RF_MASK_V(_mask, _val)       (((_mask) << 16) | (_val))
 #define RF_MASK_V_SET(_mask)        (((_mask) << 16) | (_mask))
@@ -86,6 +91,7 @@ extern int uphy0_irq_num;
 extern int uphy1_irq_num;
 extern void __iomem *uphy0_base_addr;
 extern void __iomem *uphy1_base_addr;
+extern u32 usb_vbus_gpio[USB_PORT_NUM];
 
 extern u8 max_topo_level;
 extern bool tid_test_flag;
@@ -126,11 +132,9 @@ typedef enum {
 	GPIO_O_SET((gpio), (Val) & 0x01);		\
 } while (0)
 
-const static u8 USB_VBUS_PORT_NUM[2] = {VBUS_GPIO_CTRL_0, VBUS_GPIO_CTRL_1};
+#define	ENABLE_VBUS_POWER(port) gpio_set_value(usb_vbus_gpio[port], eHW_GPIO_STS_LOW)
 
-#define	ENABLE_VBUS_POWER(port) SET_USB_VBUS(USB_VBUS_PORT_NUM[port], eHW_GPIO_STS_HIGH)
-
-#define	DISABLE_VBUS_POWER(port) SET_USB_VBUS(USB_VBUS_PORT_NUM[port], eHW_GPIO_STS_LOW)
+#define	DISABLE_VBUS_POWER(port) gpio_set_value(usb_vbus_gpio[port], eHW_GPIO_STS_HIGH)
 
 
 static inline void uphy_force_disc(int en, int port)

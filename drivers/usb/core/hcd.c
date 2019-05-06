@@ -110,6 +110,9 @@ EXPORT_SYMBOL_GPL(uphy1_irq_num);
 EXPORT_SYMBOL_GPL(uphy0_base_addr);
 EXPORT_SYMBOL_GPL(uphy1_base_addr);
 
+u32 usb_vbus_gpio[USB_PORT_NUM];
+EXPORT_SYMBOL(usb_vbus_gpio);
+
 
 
 
