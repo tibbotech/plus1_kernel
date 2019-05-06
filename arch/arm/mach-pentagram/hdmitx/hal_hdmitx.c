@@ -174,10 +174,10 @@ void apply_phy(void __iomem *moon5base, void __iomem *hdmitxbase)
 										| ((phy_cfg->icp_mode & 0x1) << 1);
 
 	value = pHdmitxReg->hdmi_tmdstx_ctrl3;
-	mask  = 0xef1f;
+	mask  = 0xef3f;
 	pHdmitxReg->hdmi_tmdstx_ctrl3 = (value & (~mask)) | ((phy_cfg->bgr_mode & 0x7) << 13) \
 										| ((phy_cfg->sw_ctrl & 0xf) << 8) \
-										| ((phy_cfg->dsel_mode & 0x1f) << 0);
+										| ((phy_cfg->dsel_mode & 0x3f) << 0);
 
 	value = pHdmitxReg->hdmi_tmdstx_ctrl4;
 	mask  = 0xfc3f;
@@ -783,7 +783,6 @@ void hal_hdmitx_start(void __iomem *moon4base, void __iomem *moon5base, void __i
 	apply_audio(hdmitxbase);
 
 	pHdmitxReg->hdmi_infoframe_ctrl1 |= (0x1b1b);
-	pHdmitxReg->hdmi_tmdstx_ctrl3 = ((1 << 8) | (1 << 4) | (1 << 2) | 1);
 }
 
 void hal_hdmitx_stop(void __iomem *hdmitxbase)
