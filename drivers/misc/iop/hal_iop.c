@@ -51,11 +51,11 @@ EXPORT_SYMBOL(hal_iop_init);
 #define IOP_READY	0x4
 #define RISC_READY	0x8
 
-void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase ,void __iomem *ioprtcbase)
+void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
 	regs_iop_pmc_t *pIopPmcReg = (regs_iop_pmc_t *)ioppmcbase;
-	regs_iop_rtc_t *pIopRtcReg = (regs_iop_rtc_t *)ioprtcbase;
+	//regs_iop_rtc_t *pIopRtcReg = (regs_iop_rtc_t *)ioprtcbase;
 	unsigned int reg;
 
 
@@ -76,24 +76,24 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase ,void __iom
 	
 		//RTC set
 
-	early_printk("Leon  hal_iop_suspend rtc_timer_out=0x%x\n",pIopRtcReg->rtc_timer_out);
+	//early_printk("Leon  hal_iop_suspend rtc_timer_out=0x%x\n",pIopRtcReg->rtc_timer_out);
 	
 	//RTC set
 	//*RTC_TIMER_SET = *RTC_TIMER_OUT;
 	//*RTC_ALARM_SET = (unsigned int)(*RTC_TIMER_SET +1);
 
 
-	pIopRtcReg->rtc_timer_set= 0x0;
+	//pIopRtcReg->rtc_timer_set= 0x0;
 	
-	early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
-	early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
-	early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
+	//early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
+	//early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
+	//early_printk("Leon  hal_iop_suspend rtc_timer_set=0x%x\n",pIopRtcReg->rtc_timer_set);
 
-	pIopRtcReg->rtc_alarm_set =0x100;
+	//pIopRtcReg->rtc_alarm_set =0x100;
 
-	early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
-	early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
-	early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
+	//early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
+	//early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
+	//early_printk("Leon  hal_iop_suspend rtc_alarm_set=0x%x\n",pIopRtcReg->rtc_alarm_set);
 
 	pIopReg->iop_data5=0x00;
 	pIopReg->iop_data6=0x60;
@@ -101,9 +101,9 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase ,void __iom
 
 	//*RTC_CTRL|=0xffff0012;//disable system reset RTC, enable Alarm for PMC
 
-	pIopRtcReg->rtc_ctrl|=0xffff0012;//disable system reset RTC, enable Alarm for PMC
+	//pIopRtcReg->rtc_ctrl|=0xffff0012;//disable system reset RTC, enable Alarm for PMC
 
-	early_printk("Leon  hal_iop_suspend rtc_ctrl=0x%x\n",pIopRtcReg->rtc_ctrl);
+	//early_printk("Leon  hal_iop_suspend rtc_ctrl=0x%x\n",pIopRtcReg->rtc_ctrl);
 
 	//PMC set
 	//*PMC_TIMER=0x00010001; //0x0a0a

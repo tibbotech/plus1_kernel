@@ -47,7 +47,7 @@
 #define IOP_PMC_REG_NAME       "iop_pmc"
 #define IOP_RTC_REG_NAME       "iop_rtc"
 
-#define DEVICE_NAME			"sunplus,sp_iop"
+#define DEVICE_NAME			"sunplus,sp7021-iop"
 
 
 typedef struct {
@@ -230,13 +230,13 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 		pstSpIOPInfo->pmc_regs = (void __iomem *)membase;
 	}
 
-	ret = _sp_iop_get_register_base(pdev, &membase, IOP_RTC_REG_NAME);
-	if (ret) {
-		DBG_ERR("[IOP] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->rtc_regs = (void __iomem *)membase;
-	}	
+	//ret = _sp_iop_get_register_base(pdev, &membase, IOP_RTC_REG_NAME);
+	//if (ret) {
+	//	DBG_ERR("[IOP] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+	//	return ret;
+	//} else {
+	//	pstSpIOPInfo->rtc_regs = (void __iomem *)membase;
+	//}	
 
 
 	return IOP_SUCCESS;
@@ -268,7 +268,7 @@ static int sp_iop_suspend(sp_iop_t *iopbase)
 	FUNC_DEBUG();
 	
 
-	hal_iop_suspend(iopbase->iop_regs, iopbase->pmc_regs, iopbase->rtc_regs);
+	hal_iop_suspend(iopbase->iop_regs, iopbase->pmc_regs);
 
 
 	return IOP_SUCCESS;
@@ -381,7 +381,7 @@ static int sp_iop_platform_driver_resume(struct platform_device *pdev)
 
 
 static const struct of_device_id sp_iop_of_match[] = {
-	{ .compatible = "sunplus,sp_iop" },
+	{ .compatible = "sunplus,sp7021-iop" },
 	{ /* sentinel */ },
 };
 

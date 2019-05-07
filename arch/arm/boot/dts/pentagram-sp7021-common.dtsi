@@ -244,7 +244,13 @@
 			resets = <&rstc RST_RTC>;
 		};
 
-
+		iop: iop@sp_iop {
+		compatible = "sunplus,sp7021-iop";
+		reg = <0x9c000400 0x80>, <0x9c000000 0x80>, <0x9c000F00 0x80>, <0x9c003100 0x80>, <0x9c012B80 0x80>;
+		reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "axi_mon";
+		interrupt-parent = <&intc>;
+		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
+	    };
 
 		icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
