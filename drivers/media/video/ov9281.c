@@ -60,7 +60,7 @@ static const struct regval ov9281_1280x800_regs[] = {
 	{0x4601, 0x04}, {0x470f, 0x00}, {0x4f07, 0x00}, {0x4800, 0x00},
 	{0x5000, 0x9f}, {0x5001, 0x00}, {0x5e00, 0x00}, {0x5d00, 0x07},
 	{0x5d01, 0x00}, {0x4f00, 0x04}, {0x4f10, 0x00}, {0x4f11, 0x98},
-	{0x4f12, 0x0f}, {0x4f13, 0xc4}, {0x0100, 0x01}, 
+	{0x4f12, 0x0f}, {0x4f13, 0xc4}, {0x0100, 0x01},
 	{0x3501, 0x38},
 	{0x3502, 0x20},
 	{0x5000, 0x87},
@@ -70,7 +70,7 @@ static const struct regval ov9281_1280x800_regs[] = {
 #endif
 #if 0
 	// from raw10 to raw8
-	{0x0100, 0x00}, {0x3662, 0x07}, {0x4837, 0x14},  {0x4601, 0x4f}, 
+	{0x0100, 0x00}, {0x3662, 0x07}, {0x4837, 0x14},  {0x4601, 0x4f},
 	{0x0100, 0x01},
 #endif
 	{ REG_NULL, 0x00}
@@ -80,10 +80,6 @@ static const struct ov9281_mode supported_modes[] = {
 	{
 		.width = 1280,
 		.height = 800,
-		.max_fps = 120,
-		.exp_def = 0x0600,
-		.hts_def = 0x02D8,              //Timing_HTS, 0x380C/0x380D
-		.vts_def = 0x038E,              //Timing_VTS, 0x380E/0x380F
 		.reg_list = ov9281_1280x800_regs,
 	},
 };
@@ -263,7 +259,8 @@ static int ov9281_probe(struct i2c_client *client, const struct i2c_device_id *i
 	}
 
 	ov9281->client = client;
-	ov9281->cur_mode = &supported_modes[0];
+	ov9281->sensor_data.mode = 0;
+	ov9281->cur_mode = &supported_modes[ov9281->sensor_data.mode];
 
 	mutex_init(&ov9281->mutex);
 
@@ -287,6 +284,8 @@ static int ov9281_probe(struct i2c_client *client, const struct i2c_device_id *i
 		goto err_clean_entity;
 	}
 	DBG_INFO("Registered V4L2 sub-device successfully.\n");
+
+	v4l2_set_subdevdata(sd, &ov9281->sensor_data);
 
 	return 0;
 

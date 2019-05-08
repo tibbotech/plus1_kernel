@@ -33,12 +33,12 @@ struct regval {
 struct gc0310_mode {
 	u32                     width;
 	u32                     height;
-	u32                     max_fps;
-	u32                     hts_def;
-	u32                     vts_def;
-	u32                     exp_def;
 	const struct regval     *reg_list;
 	u32                     reg_num;
+};
+
+struct sp_subdev_sensor_data {
+	int                     mode;
 };
 
 struct gc0310 {
@@ -63,7 +63,9 @@ struct gc0310 {
 
 	struct mutex                    mutex;
 	bool                            streaming;
+
 	const struct gc0310_mode        *cur_mode;
+	struct sp_subdev_sensor_data    sensor_data;
 };
 
 #endif
