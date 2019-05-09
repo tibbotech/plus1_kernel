@@ -54,7 +54,7 @@ static const struct sp_fmt ov9281_raw10_formats[] = {
 static const struct sp_fmt gc0310_bayer_raw8_formats[] = {
 	{
 		.name     = "BAYER, RAW8",
-		.fourcc   = V4L2_PIX_FMT_GREY,
+		.fourcc   = V4L2_PIX_FMT_SRGGB8,
 		.width    = 640,
 		.height   = 480,
 		.depth    = 8,
@@ -167,18 +167,24 @@ static int sp_mipi_get_register_base(struct platform_device *pdev, void **membas
 
 static void mipicsi_init(struct sp_vout_device *vout)
 {
-	u32 val;
+	u32 val, val2;
 
-	val = 0x8104;   // Normal mode, LSB first, Auto
+	val = 0x8104;   // Normal mode, MSB first, Auto
 
 	switch (vout->cur_sensor_fmt->mipi_lane) {
 	default:
-	case 1:
-		val |= 0; break;
-	case 2:
-		val |= (1<<20); break;
-	case 4:
-		val |= (2<<20); break;
+	case 1: // 1 lane
+		val |= 0;
+		val2 = 0x11;
+		break;
+	case 2: // 2 lanes
+		val |= (1<<20);
+		val2 = 0x13;
+		break;
+	case 4: // 4 lanes
+		val |= (2<<20);
+		val2 = 0x1f;
+		break;
 	}
 
 	switch (vout->cur_sensor_fmt->sol_sync) {
@@ -192,7 +198,8 @@ static void mipicsi_init(struct sp_vout_device *vout)
 
 	writel(val, &vout->mipicsi_regs->mipicsi_mix_cfg);
 	writel(vout->cur_sensor_fmt->sol_sync, &vout->mipicsi_regs->mipicsi_sof_sol_syncword);
-	writel(0x1f, &vout->mipicsi_regs->mipi_analog_cfg2);
+	writel(val2, &vout->mipicsi_regs->mipi_analog_cfg2);
+	writel(0x110, &vout->mipicsi_regs->mipicsi_ecc_cfg);
 	writel(0x1000, &vout->mipicsi_regs->mipi_analog_cfg1);
 	writel(0x1001, &vout->mipicsi_regs->mipi_analog_cfg1);
 	writel(0x1000, &vout->mipicsi_regs->mipi_analog_cfg1);
