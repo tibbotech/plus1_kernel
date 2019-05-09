@@ -6,7 +6,7 @@
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
 #include <asm/irq.h>
-
+#include <linux/sysfs.h>
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
@@ -105,7 +105,61 @@ struct iop_cbdma_reg {
 
 static sp_iop_t *iop;
 
+#define CODE_SIZE	4096
+unsigned char SourceCode[CODE_SIZE];
 
+static ssize_t iop_show_updatecode(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+    printk("iop_show_updatecode\n");
+	return len;
+}
+
+static ssize_t iop_store_updatecode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int length = 0x10;
+	//printk("count=%x \n",count);		    
+	if(count>=length)
+	{
+	    int i,index;
+	    index = CODE_SIZE-count;
+		for(i=0;i<length;i++)
+		{
+			char temp;
+			
+			temp = buf[i];
+			SourceCode[index] = temp;
+			index += 1;
+			//printk("index=%x\n",index);
+		}		
+
+		if(CODE_SIZE == index)
+		{		    
+			printk("source code size=%x \n",index);	
+			hal_iop_load_normal_code(iop->iop_regs);			
+			hal_iop_get_iop_data(iop->iop_regs);
+			printk("update code success\n");
+		}
+	}
+	else
+	{		
+		printk("source code incorrect\n");
+	}
+	//printk("iop_store_updatecode\n");
+	return length;
+}
+
+
+
+static DEVICE_ATTR(updatecode, S_IWUSR|S_IRUGO, iop_show_updatecode, iop_store_updatecode);
+static struct attribute *iop_sysfs_entries[] = {
+	&dev_attr_updatecode.attr,
+	NULL,
+};
+
+static struct attribute_group iop_attribute_group = {
+	.attrs = iop_sysfs_entries,
+};
 
 static int sp_iop_open(struct inode *inode, struct file *pfile)
 {
@@ -144,7 +198,7 @@ static struct file_operations sp_iop_fops = {
 };
 
 
-
+#if 0
 static int _sp_iop_get_irq(struct platform_device *pdev, sp_iop_t *pstSpIOPInfo)
 {
 	int irq;
@@ -160,6 +214,7 @@ static int _sp_iop_get_irq(struct platform_device *pdev, sp_iop_t *pstSpIOPInfo)
 	pstSpIOPInfo->irq = irq;
 	return IOP_SUCCESS;
 }
+#endif 
 
 static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int *membase, const char *res_name)
 {
@@ -277,8 +332,8 @@ static int sp_iop_suspend(sp_iop_t *iopbase)
 
 static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 {
-	int ret = -ENXIO;
-	
+	int ret = -ENXIO;	
+	int rc;
 	DBG_ERR("Leon sp_iop_platform_driver_probe\n");
 	FUNC_DEBUG();
 
@@ -322,6 +377,12 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	}
 	#endif
 
+
+	rc = sysfs_create_group(&pdev->dev.kobj, &iop_attribute_group);
+	if (rc) {
+		dev_err(&pdev->dev, "Error creating sysfs files!\n");
+	}
+
 	
 	return 0;
 
@@ -354,7 +415,7 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 	{	
 		checksum+=*(IOP_base+i);			
 	}
-	early_printk("\n Leon IOP standby checksum=%x IOP_base=%x\n",checksum,IOP_base);	
+	early_printk("\n Leon IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
 
 	FUNC_DEBUG();
 	ret = _sp_iop_get_resources(pdev, iop);
