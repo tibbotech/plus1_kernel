@@ -15,8 +15,6 @@
 #define GC0310_REG_CHIP_ID                      0xF0
 #define CHIP_ID                                 0xa310
 #define GC0310_REG_CTRL_MODE                    0x00
-#define GC0310_MODE_SW_STANDBY                  0x0
-#define GC0310_MODE_STREAMING                   BIT(0)
 
 #define GC0310_REG_VALUE_08BIT                  1
 #define GC0310_REG_VALUE_16BIT                  2
