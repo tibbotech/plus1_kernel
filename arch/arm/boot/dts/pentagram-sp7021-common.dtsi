@@ -629,8 +629,8 @@
 
 		spi_master0: spi@sp_spi_master0 {
 			compatible = "sunplus,sp7021-spi-master";
-			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
-			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
+			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
+			reg-names = "spi_master", "spi_slave" ;
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 					  "mas_risc_intr",
@@ -641,20 +641,20 @@
 			clocks = <&clkc SPI_COMBO_0>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_0>;
-			spi-max-frequency = <10000000>;
+			spi-max-frequency = <50000000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi0: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <25000000>;
 			};
 		};
 
 		spi_master1: spi@sp_spi_master1 {
 			compatible = "sunplus,sp7021-spi-master";
-			reg = <0x9C00F480 0x80>,<0x9C00F500 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
-			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
+			reg = <0x9C00F480 0x80>,<0x9C00F500 0x80>;
+			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 					  "mas_risc_intr",
@@ -665,20 +665,20 @@
 			clocks = <&clkc SPI_COMBO_1>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_1>;
-			spi-max-frequency = <10000000>;
+			spi-max-frequency = <50000000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi1: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <25000000>;
 			};
 		};
 
 		spi_master2: spi@sp_spi_master2 {
 			compatible = "sunplus,sp7021-spi-master";
-			reg = <0x9C00F600 0x80>,<0x9C00F680 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
-			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
+			reg = <0x9C00F600 0x80>,<0x9C00F680 0x80>;
+			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 					  "mas_risc_intr",
@@ -689,20 +689,20 @@
 			clocks = <&clkc SPI_COMBO_2>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_2>;
-			spi-max-frequency = <10000000>;
+			spi-max-frequency = <50000000>;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi2: spi@ {
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
-				spi-max-frequency = <10000000>;
+				spi-max-frequency = <25000000>;
 			};
 		};
 
 		spi_master3: spi@sp_spi_master3 {
 			compatible = "sunplus,sp7021-spi-master";
-			reg = <0x9C00F780 0x80>,<0x9C00F800 0x80>, <0x9c000158 0x0A>, <0x9c000180 0x0A>;
-			reg-names = "spi_master", "spi_slave" , "grp2_sft" , "grp3_sft";
+			reg = <0x9C00F780 0x80>,<0x9C00F800 0x80>;
+			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 					  "mas_risc_intr",
@@ -713,7 +713,7 @@
 			clocks = <&clkc SPI_COMBO_3>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_3>;
-			spi-max-frequency = <10000000>;
+			spi-max-frequency = <50000000>;
 		};
 
 		spinand0: spinand@sp_spinand {

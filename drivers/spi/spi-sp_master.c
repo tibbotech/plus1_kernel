@@ -18,9 +18,12 @@
 #include <linux/reset.h> 
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
+//#include <linux/pm_runtime.h>
 
 #define SLAVE_INT_IN
 
+
+//#define PM_RUNTIME_SPI
 
 /* ---------------------------------------------------------------------------------------------- */
 
@@ -247,6 +250,9 @@ typedef struct  {
 
 
 struct pentagram_spi_master {
+
+	struct device dev;
+	
 	struct spi_master *master;
 	void __iomem *mas_base;
 
@@ -1192,6 +1198,13 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 
 
      FUNC_DEBUG();
+
+#ifdef PM_RUNTIME_SPI
+        ret = pm_runtime_get_sync(&pspim->dev);
+	if (ret < 0)
+	oto pm_out;  
+#endif
+
      DBG_INFO(" spi_id  = %d\n",spi_id);
 
 
@@ -1219,6 +1232,16 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	spin_unlock_irqrestore(&pspim->lock, flags);
 
 	return 0;
+
+#ifdef PM_RUNTIME_SPI
+									pm_out:
+	pm_runtime_mark_last_busy(&spi->dev);
+	pm_runtime_put_autosuspend(&spi->dev);
+				
+	DBG_INFO( "pm_out");
+	return 0;								  
+#endif
+
 }
 static int pentagram_spi_master_prepare_message(struct spi_master *master,
 				    struct spi_message *msg)
@@ -1282,10 +1305,13 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_mast
 	
 	   //set clock
 	   clk_rate = clk_get_rate(pspim->spi_clk);
-	   if(t->speed_hz < spi->max_speed_hz){
+	   
+	   if(t->speed_hz <= spi->max_speed_hz){
 		  div = clk_rate / t->speed_hz;
-	   }else if(spi->max_speed_hz < pspim->spi_max_frequency){
+	   }else if(spi->max_speed_hz <= master->max_speed_hz){
 		  div = clk_rate / spi->max_speed_hz;
+	   }else if(master->max_speed_hz < pspim->spi_max_frequency){
+		  div = clk_rate / master->max_speed_hz;
 	   }else{
 		  div = clk_rate / pspim->spi_max_frequency;
 	   }
@@ -1405,25 +1431,24 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 
 //	pentagram_spi_master_fullduplex_write_read(master, cmd_buf , data_buf , len);
 
-
-	return ret;
-
-
-
-	if(mode == SPIM_WRITE)
-	{
-		ret = pentagram_spi_master_dma_write(master, data_buf, len);
-	}else if(mode == SPIM_READ)
-	{
-		ret = pentagram_spi_master_dma_read(master, cmd_buf, len);
-		if(ret == 0)
-			memcpy(data_buf, pspim->rx_dma_vir_base, len);
-	}
-
-	return 0;
+       spi_finalize_current_transfer(master);
 
 
 	return ret;
+
+
+
+	//if(mode == SPIM_WRITE)
+	//{
+	//	ret = pentagram_spi_master_dma_write(master, data_buf, len);
+	//}else if(mode == SPIM_READ)
+	//{
+	//	ret = pentagram_spi_master_dma_read(master, cmd_buf, len);
+	//	if(ret == 0)
+	//		memcpy(data_buf, pspim->rx_dma_vir_base, len);
+	//}
+
+	//return ret;
 }
 
 
@@ -1590,11 +1615,13 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 	master->max_message_size = pentagram_spi_max_length;
 	master->num_chipselect = 1;
 	master->dev.of_node = pdev->dev.of_node;
+	master->max_speed_hz = 50000000;
 
 	platform_set_drvdata(pdev, master);
 	pspim = spi_master_get_devdata(master);
 
 	pspim->master = master;
+	//pspim->dev = pdev->dev;
 	if(!of_property_read_u32(pdev->dev.of_node, "spi-max-frequency", &max_freq)) {
 		dev_dbg(&pdev->dev,"max_freq %d\n",max_freq);
 		pspim->spi_max_frequency = max_freq;
@@ -1746,6 +1773,16 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "spi_register_master fail\n");
 		goto free_rx_dma;
 	}
+
+#ifdef PM_RUNTIME_SPI
+	  pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+	  pm_runtime_use_autosuspend(&pdev->dev);
+	  pm_runtime_set_active(&pdev->dev);
+	  pm_runtime_enable(&pdev->dev);
+	  dev_dbg(&pdev->dev, "1974\n");
+#endif
+
+	
 	return 0;
 
 free_rx_dma:
@@ -1769,6 +1806,11 @@ static int pentagram_spi_master_remove(struct platform_device *pdev)
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
 
     FUNC_DEBUG();
+
+#ifdef PM_RUNTIME_SPI
+	  pm_runtime_disable(&pdev->dev);
+	  pm_runtime_set_suspended(&pdev->dev);
+#endif
 
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->tx_dma_vir_base, pspim->tx_dma_phy_base);
 	dma_free_coherent(&pdev->dev, bufsiz, pspim->rx_dma_vir_base, pspim->rx_dma_phy_base);
@@ -1817,6 +1859,51 @@ static const struct of_device_id pentagram_spi_master_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
 
+
+#ifdef PM_RUNTIME_SPI
+static int sp_spi_runtime_suspend(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+
+    FUNC_DEBUG();
+		//dev_dbg(dev, "2064\n");
+
+
+	    //DBG_INFO( "dev2070 %s %d\n",dev->init_name,dev->id);
+
+	reset_control_assert(pspim->rstc);
+
+
+	return 0;
+
+}
+
+static int sp_spi_runtime_resume(struct device *dev)
+{
+	struct spi_master *master = dev_get_drvdata(dev);
+	struct pentagram_spi_master *pspim = spi_master_get_devdata(master);
+
+    FUNC_DEBUG();
+
+		//	dev_dbg(dev, "2089\n");
+			//DBG_INFO( "dev2073 %s %d\n",dev->init_name,dev->id);
+	reset_control_deassert(pspim->rstc);
+	clk_prepare_enable(pspim->spi_clk);
+
+
+	return 0;
+
+}
+static const struct dev_pm_ops sp7021_spi_pm_ops = {
+	.runtime_suspend = sp_spi_runtime_suspend,
+	.runtime_resume  = sp_spi_runtime_resume,
+};
+
+#define sp_spi_pm_ops  (&sp7021_spi_pm_ops)
+#endif
+
+
 static struct platform_driver pentagram_spi_master_driver = {
 	.probe = pentagram_spi_master_probe,
 	.remove = pentagram_spi_master_remove,
@@ -1825,6 +1912,9 @@ static struct platform_driver pentagram_spi_master_driver = {
 	.driver = {
 		.name = "sunplus,sp7021-spi-master",
 		.of_match_table = pentagram_spi_master_ids,
+	#ifdef PM_RUNTIME_SPI
+		.pm     = sp_spi_pm_ops,
+    #endif		
 	},
 };
 module_platform_driver(pentagram_spi_master_driver);
