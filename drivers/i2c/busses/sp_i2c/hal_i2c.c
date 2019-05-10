@@ -364,6 +364,7 @@ void hal_i2cm_int_en0_disable(unsigned int device_id, unsigned int int0)
 		val = readl(&(pI2cMReg[device_id]->int_en0));
 		val &= (~int0);
 		writel(val, &(pI2cMReg[device_id]->int_en0));
+		//printk("hal_i2cm_int_en0_disable int_en0: 0x%x\n", readl(&(pI2cMReg[device_id]->int_en0)));
 	}
 }
 EXPORT_SYMBOL(hal_i2cm_int_en0_disable);

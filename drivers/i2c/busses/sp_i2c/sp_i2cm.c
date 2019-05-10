@@ -405,7 +405,9 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 	}//switch case
 #endif			
   //disable int_en0 for prevent intr not stop in some case , they will be enable again before read/write			
-	hal_i2cm_int_en0_disable(device_id, (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT ));
+    // if(pstIrqEvent->stIrqFlag.bActiveDone == 1){	
+    //        hal_i2cm_int_en0_disable(device_id, (I2C_EN0_SCL_HOLD_TOO_LONG_INT | I2C_EN0_EMPTY_INT | I2C_EN0_DATA_NACK_INT| I2C_EN0_ADDRESS_NACK_INT | I2C_EN0_DONE_INT ));
+    //}
 	return IRQ_HANDLED;
 }
 
@@ -870,12 +872,14 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 	} else {
 		ret = pstIrqEvent->bRet;
 	}
-  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
+       hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
 
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
 	
   //dma_free_coherent(pstCmdInfo->dDevId, write_cnt,pstCmdInfo->pWrData, (dma_handle));
+
+        hal_i2cm_reset(pstCmdInfo->dDevId);
 
 	return ret;
 }
@@ -1022,6 +1026,8 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 	pstIrqEvent->bI2CBusy = 0;
 	
   //dma_free_coherent(pstCmdInfo->dDevId, pstCmdInfo->dRdDataCnt,pstIrqEvent->pDataBuf, (dma_handle));
+
+  hal_i2cm_reset(pstCmdInfo->dDevId);
 
 	return ret;
 }
@@ -1170,8 +1176,9 @@ int sp_i2cm_sg_dma_write(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
   hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
 	
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
-	pstIrqEvent->bI2CBusy = 0;
-	
+	pstIrqEvent->bI2CBusy = 0;	
+	hal_i2cm_reset(pstCmdInfo->dDevId);
+
 	return ret;
 }
 
@@ -1356,7 +1363,7 @@ int sp_i2cm_sg_dma_read(I2C_Cmd_t *pstCmdInfo, unsigned int dCmdNum)
 
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
-	
+	hal_i2cm_reset(pstCmdInfo->dDevId);
 	return ret;
 }
 #endif
