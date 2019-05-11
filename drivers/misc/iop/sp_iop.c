@@ -149,11 +149,56 @@ static ssize_t iop_store_updatecode(struct device *dev, struct device_attribute 
 	return length;
 }
 
+static ssize_t iop_show_getdata(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+    printk("iop_show_getdata\n");
+	hal_iop_get_iop_data(iop->iop_regs);
+	return len;
+}
 
+static ssize_t iop_store_getdata(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+   	int ret = count;
+	printk("iop_store_getdata\n");	
+	return ret;
+}
 
+static ssize_t iop_show_setdata(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+    printk("iop_show_setdata\n");
+	return len;
+}
+
+static ssize_t iop_store_setdata(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+   	unsigned char num[1], value[4];
+	unsigned char ret = count;
+    unsigned int i, setnum, setvalue; 
+
+    num[0] = buf[0];
+    for(i=0;i<4;i++)
+    {
+		value[i] = buf[2+i]; 
+    }
+
+	setnum = (unsigned int)num[0];
+	setvalue = simple_strtol(value, NULL, 16);
+	printk("setnum=%x \n",setnum); 	
+	printk("setvalue=%x \n",setvalue); 
+	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
+	return ret;
+}
+ 
 static DEVICE_ATTR(updatecode, S_IWUSR|S_IRUGO, iop_show_updatecode, iop_store_updatecode);
+static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
+static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
+
 static struct attribute *iop_sysfs_entries[] = {
 	&dev_attr_updatecode.attr,
+	&dev_attr_getdata.attr,
+	&dev_attr_setdata.attr,
 	NULL,
 };
 

@@ -11,9 +11,9 @@ void hal_iop_init(void __iomem *iopbase)
 
 	volatile unsigned int*   IOP_base =(volatile unsigned int*)0x100000;
 	unsigned char * IOP_kernel_base;
-	unsigned int reg;
+	//unsigned int reg;
 	
-	int wLen = IOP_CODE_SIZE;	
+	//int wLen = IOP_CODE_SIZE;	
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
@@ -105,6 +105,54 @@ void hal_iop_get_iop_data(void __iomem *iopbase)
 			pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
 }
 EXPORT_SYMBOL(hal_iop_get_iop_data);
+
+void hal_iop_set_iop_data(void __iomem *iopbase, unsigned int num, unsigned int value)
+{
+	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
+	switch (num) {
+		case '0':
+			pIopReg->iop_data0 = value;
+			break;
+		case '1':
+			pIopReg->iop_data1 = value;
+			break;
+		case '2':
+			pIopReg->iop_data2 = value;
+			break;
+		case '3':
+			pIopReg->iop_data3 = value;
+			break;
+		case '4':
+			pIopReg->iop_data4 = value;
+			break;
+		case '5':
+			pIopReg->iop_data5 = value;
+			break;
+		case '6':
+			pIopReg->iop_data6 = value;
+			break;
+		case '7':
+			pIopReg->iop_data7 = value;
+			break;
+		case '8':
+			pIopReg->iop_data8 = value;
+			break;
+		case '9':
+			pIopReg->iop_data9 = value;
+			break;
+		case 'A':
+			pIopReg->iop_data10 = value;
+			break;	
+		case 'B':
+			pIopReg->iop_data11 = value;
+			break;
+	}		
+	printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
+			pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2,pIopReg->iop_data3,pIopReg->iop_data4,pIopReg->iop_data5);
+	printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __FUNCTION__, __LINE__, 
+			pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
+}
+EXPORT_SYMBOL(hal_iop_set_iop_data);
 
 
 
