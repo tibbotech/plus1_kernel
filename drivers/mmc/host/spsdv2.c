@@ -1216,6 +1216,7 @@ static int spsdc_pm_runtime_suspend(struct device *dev)
 static int spsdc_pm_runtime_resume(struct device *dev)
 {
 	struct spsdc_host *host;
+	int ret = 0;
 
 	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
