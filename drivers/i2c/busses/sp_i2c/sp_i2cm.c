@@ -17,7 +17,7 @@
 #ifdef SUPPORT_I2C_GDMA
 #include <linux/dma-mapping.h>   
 #endif
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
 #include <linux/pm_runtime.h>
 #endif
 
@@ -1377,7 +1377,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 
 	FUNC_DEBUG();
 
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
   ret = pm_runtime_get_sync(&adap->dev);
   if (ret < 0)
   	goto out;  
@@ -1450,7 +1450,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		}
 	}
 
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
 out :
 	pm_runtime_mark_last_busy(&adap->dev);
   pm_runtime_put_autosuspend(&adap->dev);
@@ -1566,7 +1566,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		return I2C_ERR_REQUESET_IRQ;
 	}
 
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
   pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
   pm_runtime_use_autosuspend(&pdev->dev);
   pm_runtime_set_active(&pdev->dev);
@@ -1595,7 +1595,7 @@ static int sp_i2c_remove(struct platform_device *pdev)
 
 	FUNC_DEBUG();
 	
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
   pm_runtime_disable(&pdev->dev);
   pm_runtime_set_suspended(&pdev->dev);
 #endif
@@ -1648,7 +1648,7 @@ static const struct of_device_id sp_i2c_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_i2c_of_match);
 
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
 static int sp_i2c_runtime_suspend(struct device *dev)
 {
 	SpI2C_If_t *pstSpI2CInfo = dev_get_drvdata(dev);
@@ -1694,7 +1694,7 @@ static struct platform_driver sp_i2c_driver = {
 		.owner		= THIS_MODULE,
 		.name		= DEVICE_NAME,
 		.of_match_table = sp_i2c_of_match,
-#ifdef PM_RUNTIME_I2C
+#ifdef CONFIG_PM_RUNTIME_I2C
 		.pm     = sp_i2c_pm_ops,
 #endif
 	},
