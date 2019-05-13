@@ -116,6 +116,11 @@ config PM_RUNTIME_I2C
 	depends on PM_RUNTIME
 	default n
 
+config PM_RUNTIME_SPI
+	bool "PM_RUNTIME_SPI"
+	depends on PM_RUNTIME
+	default n
+
 config PM_SLEEP
 	def_bool y
 	depends on SUSPEND || HIBERNATE_CALLBACKS

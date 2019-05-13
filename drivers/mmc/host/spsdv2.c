@@ -15,6 +15,7 @@
 #include <linux/reset.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/slot-gpio.h>
+#include <linux/clk.h>     
 #include <asm/bitops.h>
 #include <asm/uaccess.h>
 #include "spsdv2.h"
@@ -1200,29 +1201,40 @@ static int spsdc_pm_resume(struct device *dev)
 }
 #endif /* ifdef CONFIG_PM_SLEEP */
 
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM_RUNTIME_SD
 static int spsdc_pm_runtime_suspend(struct device *dev)
 {
 	struct spsdc_host *host;
-	spsdc_pr(DEBUG, "%s\n", __func__);
 
+  spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
-	clk_disable(host->clk);
+  if (__clk_is_enabled(host->clk))
+	   clk_disable(host->clk);
 	return 0;
 }
 
 static int spsdc_pm_runtime_resume(struct device *dev)
 {
-	spsdc_pr(DEBUG, "%s\n", __func__);
 	struct spsdc_host *host;
+
+	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
+	if (!host->mmc)
+		return -EINVAL;
+	if (mmc_can_gpio_cd(host->mmc)){
+		ret = mmc_gpio_get_cd(host->mmc);
+		if (!ret){
+	     spsdc_pr(DEBUG, "No card insert\n");
+		   return 0;
+		}
+	}
 	return clk_enable(host->clk);
 }
-#endif /* ifdef CONFIG_PM_RUNTIME */
+#endif /* ifdef CONFIG_PM_RUNTIME_SD */
 
 static struct dev_pm_ops spsdc_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(spsdc_pm_suspend, spsdc_pm_resume)
-#ifdef CONFIG_PM_RUNTIME
+#ifdef CONFIG_PM_RUNTIME_SD
 	SET_RUNTIME_PM_OPS(spsdc_pm_runtime_suspend, spsdc_pm_runtime_resume, NULL)
 #endif
 };
