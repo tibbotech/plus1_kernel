@@ -101,6 +101,21 @@ config PM_STD_PARTITION
 	  suspended image to. It will simply pick the first available swap 
 	  device.
 
+config PM_RUNTIME
+	bool "PM_RUNTIME"
+	depends on PM
+	default n
+
+config PM_RUNTIME_SD
+	bool "PM_RUNTIME_SD"
+	depends on PM_RUNTIME
+	default n
+	
+config PM_RUNTIME_I2C
+	bool "PM_RUNTIME_I2C"
+	depends on PM_RUNTIME
+	default n
+
 config PM_SLEEP
 	def_bool y
 	depends on SUSPEND || HIBERNATE_CALLBACKS
