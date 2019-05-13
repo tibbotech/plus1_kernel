@@ -108,14 +108,14 @@ static sp_iop_t *iop;
 #define CODE_SIZE	4096
 unsigned char SourceCode[CODE_SIZE];
 
-static ssize_t iop_show_updatecode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t iop_show_normalcode(struct device *dev, struct device_attribute *attr, char *buf)
 {   
 	ssize_t len = 0;
-    printk("iop_show_updatecode\n");
+    printk("iop_show_normalcode\n");
 	return len;
 }
 
-static ssize_t iop_store_updatecode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t iop_store_normalcode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
 	int length = 0x10;
 	//printk("count=%x \n",count);		    
@@ -138,12 +138,53 @@ static ssize_t iop_store_updatecode(struct device *dev, struct device_attribute 
 			printk("source code size=%x \n",index);	
 			hal_iop_load_normal_code(iop->iop_regs);			
 			hal_iop_get_iop_data(iop->iop_regs);
-			printk("update code success\n");
+			printk("normal code success\n");
 		}
 	}
 	else
 	{		
-		printk("source code incorrect\n");
+		printk("normal code incorrect\n");
+	}
+	//printk("iop_store_normalcode\n");
+	return length;
+}
+
+static ssize_t iop_show_standbycode(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+    printk("iop_show_standbycode\n");
+	return len;
+}
+
+static ssize_t iop_store_standbycode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int length = 0x10;
+	//printk("count=%x \n",count);		    
+	if(count>=length)
+	{
+	    int i,index;
+	    index = CODE_SIZE-count;
+		for(i=0;i<length;i++)
+		{
+			char temp;
+			
+			temp = buf[i];
+			SourceCode[index] = temp;
+			index += 1;
+			//printk("index=%x\n",index);
+		}		
+
+		if(CODE_SIZE == index)
+		{		    
+			printk("source code size=%x \n",index);	
+			hal_iop_load_standby_code(iop->iop_regs);			
+			hal_iop_get_iop_data(iop->iop_regs);
+			printk("standby code success\n");
+		}
+	}
+	else
+	{		
+		printk("standby code incorrect\n");
 	}
 	//printk("iop_store_updatecode\n");
 	return length;
@@ -191,12 +232,14 @@ static ssize_t iop_store_setdata(struct device *dev, struct device_attribute *at
 	return ret;
 }
  
-static DEVICE_ATTR(updatecode, S_IWUSR|S_IRUGO, iop_show_updatecode, iop_store_updatecode);
+static DEVICE_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_show_normalcode, iop_store_normalcode);
+static DEVICE_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_show_standbycode, iop_store_standbycode);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
 
 static struct attribute *iop_sysfs_entries[] = {
-	&dev_attr_updatecode.attr,
+	&dev_attr_normalcode.attr,
+	&dev_attr_standbycode.attr,
 	&dev_attr_getdata.attr,
 	&dev_attr_setdata.attr,
 	NULL,
