@@ -488,6 +488,10 @@ static int gc0310_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 #ifdef CONFIG_GC0310_YUY2
 	gc0310->sensor_data.mode = 1;
+	gc0310->sensor_data.fourcc = V4L2_PIX_FMT_YUYV;
+#else
+	gc0310->sensor_data.mode = 0;
+	gc0310->sensor_data.fourcc = V4L2_PIX_FMT_SRGGB8;
 #endif
 	gc0310->client = client;
 	gc0310->cur_mode = &supported_modes[gc0310->sensor_data.mode];

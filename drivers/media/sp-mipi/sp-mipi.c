@@ -41,55 +41,37 @@
 /* ------------------------------------------------------------------
 	Constants
    ------------------------------------------------------------------*/
-static const struct sp_fmt ov9281_raw10_formats[] = {
+static const struct sp_fmt ov9281_formats[] = {
 	{
 		.name     = "GREY, RAW10",
 		.fourcc   = V4L2_PIX_FMT_GREY,
 		.width    = 1280,
 		.height   = 800,
 		.depth    = 8,
+		.mipi_lane = 2,
+		.sol_sync = SYNC_RAW10,
 	},
 };
 
-static const struct sp_fmt gc0310_bayer_raw8_formats[] = {
+static const struct sp_fmt gc0310_formats[] = {
 	{
 		.name     = "BAYER, RAW8",
 		.fourcc   = V4L2_PIX_FMT_SRGGB8,
 		.width    = 640,
 		.height   = 480,
 		.depth    = 8,
+		.mipi_lane = 1,
+		.sol_sync = SYNC_RAW8,
 	},
-};
-
-static const struct sp_fmt gc0310_yuy2_formats[] = {
 	{
 		.name     = "YUYV/YUY2, YUV422",
 		.fourcc   = V4L2_PIX_FMT_YUYV,
 		.width    = 640,
 		.height   = 480,
 		.depth    = 16,
+		.mipi_lane = 1,
+		.sol_sync = SYNC_YUY2,
 	},
-};
-
-static const struct sp_sensor_format ov9281_sensor_raw10 = {
-	.mipi_lane = 2,
-	.sol_sync = SYNC_RAW10,
-	.formats = ov9281_raw10_formats,
-	.formats_size = ARRAY_SIZE(ov9281_raw10_formats),
-};
-
-static const struct sp_sensor_format gc0310_sensor_raw8 = {
-	.mipi_lane = 1,
-	.sol_sync = SYNC_RAW8,
-	.formats = gc0310_bayer_raw8_formats,
-	.formats_size = ARRAY_SIZE(gc0310_bayer_raw8_formats),
-};
-
-static const struct sp_sensor_format gc0310_sensor_yuy2 = {
-	.mipi_lane = 1,
-	.sol_sync = SYNC_YUY2,
-	.formats = gc0310_yuy2_formats,
-	.formats_size = ARRAY_SIZE(gc0310_yuy2_formats),
 };
 
 static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
@@ -99,7 +81,8 @@ static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
 		.board_info = {
 			I2C_BOARD_INFO("ov9281", 0x60),
 		},
-		.sensor_fmt = {&ov9281_sensor_raw10},
+		.formats = ov9281_formats,
+		.formats_size = ARRAY_SIZE(ov9281_formats),
 	},
 	{
 		.name = "gc0310",
@@ -107,7 +90,8 @@ static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
 		.board_info = {
 			I2C_BOARD_INFO("gc0310", 0x21),
 		},
-		.sensor_fmt = {&gc0310_sensor_raw8, &gc0310_sensor_yuy2},
+		.formats = gc0310_formats,
+		.formats_size = ARRAY_SIZE(gc0310_formats),
 	}
 };
 
@@ -121,14 +105,14 @@ static const struct sp_vout_config psp_vout_cfg = {
 /* ------------------------------------------------------------------
 	SP7021 function
    ------------------------------------------------------------------*/
-static const struct sp_fmt *get_format(const struct sp_sensor_format *cur_sensor_fmt, struct v4l2_format *f)
+static const struct sp_fmt *get_format(const struct sp_vout_subdev_info *sdinfo, u32 pixel_fmt)
 {
-	const struct sp_fmt *formats = cur_sensor_fmt->formats;
-	int size = cur_sensor_fmt->formats_size;
+	const struct sp_fmt *formats = sdinfo->formats;
+	int size = sdinfo->formats_size;
 	unsigned int k;
 
 	for (k = 0; k < size; k++) {
-		if (formats[k].fourcc == f->fmt.pix.pixelformat) {
+		if (formats[k].fourcc == pixel_fmt) {
 			break;
 		}
 	}
@@ -171,7 +155,7 @@ static void mipicsi_init(struct sp_vout_device *vout)
 
 	val = 0x8104;   // Normal mode, MSB first, Auto
 
-	switch (vout->cur_sensor_fmt->mipi_lane) {
+	switch (vout->cur_format->mipi_lane) {
 	default:
 	case 1: // 1 lane
 		val |= 0;
@@ -187,7 +171,7 @@ static void mipicsi_init(struct sp_vout_device *vout)
 		break;
 	}
 
-	switch (vout->cur_sensor_fmt->sol_sync) {
+	switch (vout->cur_format->sol_sync) {
 	default:
 	case SYNC_RAW8:	        // 8 bits
 	case SYNC_YUY2:
@@ -197,7 +181,7 @@ static void mipicsi_init(struct sp_vout_device *vout)
 	}
 
 	writel(val, &vout->mipicsi_regs->mipicsi_mix_cfg);
-	writel(vout->cur_sensor_fmt->sol_sync, &vout->mipicsi_regs->mipicsi_sof_sol_syncword);
+	writel(vout->cur_format->sol_sync, &vout->mipicsi_regs->mipicsi_sof_sol_syncword);
 	writel(val2, &vout->mipicsi_regs->mipi_analog_cfg2);
 	writel(0x110, &vout->mipicsi_regs->mipicsi_ecc_cfg);
 	writel(0x1000, &vout->mipicsi_regs->mipi_analog_cfg1);
@@ -422,11 +406,11 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fm
 
 	DBG_INFO("%s: index = %d\n", __FUNCTION__, fmtdesc->index);
 
-	if (fmtdesc->index >= vout->cur_sensor_fmt->formats_size) {
+	if (fmtdesc->index >= vout->current_subdev->formats_size) {
 		return -EINVAL;
 	}
 
-	fmt = &vout->cur_sensor_fmt->formats[fmtdesc->index];
+	fmt = &vout->current_subdev->formats[fmtdesc->index];
 	strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 	fmtdesc->pixelformat = fmt->fourcc;
 
@@ -441,7 +425,10 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
-	fmt = get_format(vout->cur_sensor_fmt, f);
+	fmt = get_format(vout->current_subdev, f->fmt.pix.pixelformat);
+	if (fmt == NULL) {
+		return -EINVAL;
+	}
 
 	field = f->fmt.pix.field;
 	if (field == V4L2_FIELD_ANY) {
@@ -472,6 +459,9 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 	DBG_INFO("%s\n", __FUNCTION__);
 
 	ret = vidioc_try_fmt_vid_cap(file, vout, f);
+	if (ret != 0) {
+		return ret;
+	}
 
 	vout->fmt.type                 = f->type;
 	vout->fmt.fmt.pix.width        = f->fmt.pix.width;
@@ -1046,8 +1036,13 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vout->current_subdev = &sp_vout_cfg->sub_devs[i];
 	vout->v4l2_dev.ctrl_handler = subdev->ctrl_handler;
 	sensor_data = v4l2_get_subdevdata(subdev);
-	vout->cur_sensor_mode = sensor_data->mode;
-	vout->cur_sensor_fmt = vout->current_subdev->sensor_fmt[vout->cur_sensor_mode];
+	vout->cur_mode = sensor_data->mode;
+
+	cur_fmt = get_format(vout->current_subdev, sensor_data->fourcc);
+	if (cur_fmt == NULL) {
+		goto err_get_format;
+	}
+	vout->cur_format = cur_fmt;
 
 	mipicsi_init(vout);
 	csiiw_init(vout);
@@ -1058,7 +1053,6 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	}
 
 	// Initialize video format (V4L2_format).
-	cur_fmt = &vout->cur_sensor_fmt->formats[0];
 	vout->fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
 	vout->fmt.fmt.pix.width = cur_fmt->width;
 	vout->fmt.fmt.pix.height = cur_fmt->height;
@@ -1070,6 +1064,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vout->fmt.fmt.pix.priv = 0;
 	return 0;
 
+err_get_format:
 err_csiiw_irq_init:
 err_subdev_register:
 	i2c_put_adapter(i2c_adap);

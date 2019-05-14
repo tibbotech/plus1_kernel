@@ -37,6 +37,7 @@ struct gc0310_mode {
 
 struct sp_subdev_sensor_data {
 	int                     mode;
+	u32                     fourcc;
 };
 
 struct gc0310 {

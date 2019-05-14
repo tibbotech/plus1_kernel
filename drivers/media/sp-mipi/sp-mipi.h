@@ -54,20 +54,16 @@ struct sp_fmt {
 	int     width;
 	int     height;
 	int     depth;
-};
-
-struct sp_sensor_format {
-	int                             mipi_lane;              /* number of data lane of mipi */
-	int                             sol_sync;               /* sync of start of line */
-	const struct sp_fmt             *formats;               /* pointer to video formats */
-	int                             formats_size;           /* number of format */
+	int     mipi_lane;                                      /* number of data lanes of mipi */
+	int     sol_sync;                                       /* sync of start of line */
 };
 
 struct sp_vout_subdev_info {
 	char                            name[32];               /* Sub device name */
 	int                             grp_id;                 /* Sub device group id */
 	struct i2c_board_info           board_info;             /* i2c subdevice board info */
-	const struct sp_sensor_format   *sensor_fmt[8];         /* pointer to sensor formats */
+	const struct sp_fmt             *formats;               /* pointer to video formats */
+	int                             formats_size;           /* number of formats */
 };
 
 struct sp_vout_config {
@@ -103,8 +99,8 @@ struct sp_vout_device {
 	struct i2c_adapter              *i2c_adap;
 	struct sp_vout_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
 	struct sp_vout_config           *cfg;
-	const struct sp_sensor_format   *cur_sensor_fmt;
-	int                             cur_sensor_mode;
+	const struct sp_fmt             *cur_format;
+	int                             cur_mode;
 
 	spinlock_t                      irqlock;                /* Used in video-buf */
 	spinlock_t                      dma_queue_lock;         /* IRQ lock for DMA queue */
@@ -127,6 +123,7 @@ struct sp_vout_fh {
 /* sensor subdev private data */
 struct sp_subdev_sensor_data {
 	int     mode;
+	u32     fourcc;
 };
 
 /* mipi-csi registers */

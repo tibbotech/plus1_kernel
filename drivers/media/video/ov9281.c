@@ -260,6 +260,7 @@ static int ov9281_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 	ov9281->client = client;
 	ov9281->sensor_data.mode = 0;
+	ov9281->sensor_data.fourcc = V4L2_PIX_FMT_GREY;
 	ov9281->cur_mode = &supported_modes[ov9281->sensor_data.mode];
 
 	mutex_init(&ov9281->mutex);
