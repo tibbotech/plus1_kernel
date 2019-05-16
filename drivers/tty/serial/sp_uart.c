@@ -17,6 +17,9 @@
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
 #include <mach/sp_uart.h>
+#ifdef CONFIG_PM_RUNTIME_UART
+#include <linux/pm_runtime.h>
+#endif
 
 #define NUM_UART	6	/* serial0,  ... */
 #define NUM_UARTDMARX	2	/* serial10, ... */
@@ -911,6 +914,13 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	volatile struct regs_uatxdma *txdma_reg;
 	unsigned int ch;
 
+#ifdef CONFIG_PM_RUNTIME_UART
+  if (port->line > 0){
+    ret = pm_runtime_get_sync(port->dev);
+    if (ret < 0)
+  	  goto out;  
+  }
+#endif
 	ret = request_irq(port->irq, sunplus_uart_irq, 0, sp_port->name, port);
 	if (ret) {
 		return ret;
@@ -1003,6 +1013,20 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	sp_uart_set_int_en(port->membase, interrupt_en);
 
 	spin_unlock_irq(&port->lock);
+	
+#ifdef CONFIG_PM_RUNTIME_UART
+  if (port->line > 0){
+    pm_runtime_put(port->dev);
+  }
+	return 0;
+
+out :
+  if (port->line > 0){
+  	printk("pm_out \n");
+	  pm_runtime_mark_last_busy(port->dev);
+    pm_runtime_put_autosuspend(port->dev);
+  }
+#endif
 	return 0;
 
 error_01:
@@ -1773,6 +1797,15 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		return ret;
 	}
 	platform_set_drvdata(pdev, port);
+	
+#ifdef CONFIG_PM_RUNTIME_UART
+  if (pdev->id != 0){
+    pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+    pm_runtime_use_autosuspend(&pdev->dev);
+    pm_runtime_set_active(&pdev->dev);
+    pm_runtime_enable(&pdev->dev);
+  }
+#endif
 	return 0;
 }
 
@@ -1780,6 +1813,12 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
 {
 
+#ifdef CONFIG_PM_RUNTIME_UART
+  if (pdev->id != 0){
+    pm_runtime_disable(&pdev->dev);
+    pm_runtime_set_suspended(&pdev->dev);
+  }
+#endif
   uart_remove_one_port(&sunplus_uart_driver, &sunplus_uart_ports[pdev->id].uport);
 
 	if (pdev->id < NUM_UART) {
@@ -1816,6 +1855,38 @@ static const struct of_device_id sp_uart_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_uart_of_match);
 
+#ifdef CONFIG_PM_RUNTIME_UART
+static int sunplus_uart_runtime_suspend(struct device *dev)
+{
+  struct platform_device *uartpdev = to_platform_device(dev);
+
+	printk("sunplus_uart_runtime_suspend \n");
+	if ((uartpdev->id < NUM_UART)&&(uartpdev->id > 0)) {  //Don't suspend uart0 for cmd line usage
+        reset_control_assert(sunplus_uart_ports[uartpdev->id].rstc);
+	}
+
+	return 0;
+}
+
+static int sunplus_uart_runtime_resume(struct device *dev)
+{
+  struct platform_device *uartpdev = to_platform_device(dev);
+
+	printk("sunplus_uart_runtime_resume \n");
+	if (uartpdev->id < NUM_UART) {
+		clk_prepare_enable(sunplus_uart_ports[uartpdev->id].clk);
+    reset_control_deassert(sunplus_uart_ports[uartpdev->id].rstc);
+	}
+
+	return 0;
+}
+static const struct dev_pm_ops sp7021_uart_pm_ops = {
+	.runtime_suspend = sunplus_uart_runtime_suspend,
+	.runtime_resume  = sunplus_uart_runtime_resume,
+};
+#define sunplus_uart_pm_ops  (&sp7021_uart_pm_ops)
+#endif
+
 static struct platform_driver sunplus_uart_platform_driver = {
 	.probe		= sunplus_uart_platform_driver_probe_of,
 	.remove		= sunplus_uart_platform_driver_remove,
@@ -1825,6 +1896,9 @@ static struct platform_driver sunplus_uart_platform_driver = {
 		.name	= DEVICE_NAME,
 		.owner	= THIS_MODULE,
 		.of_match_table = of_match_ptr(sp_uart_of_match),
+#ifdef CONFIG_PM_RUNTIME_UART
+		.pm     = sunplus_uart_pm_ops,
+#endif
 	}
 };
 

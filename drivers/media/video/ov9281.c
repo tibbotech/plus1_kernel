@@ -234,7 +234,7 @@ static int ov9281_check_sensor_id(struct ov9281 *ov9281, struct i2c_client *clie
 
 	ret = ov9281_read_reg(client, OV9281_REG_CHIP_ID,
 			      OV9281_REG_VALUE_16BIT, &val);
-	if (val != CHIP_ID) {
+	if ((ret != 0) || (val != CHIP_ID)) {
 		DBG_ERR("Unexpected sensor (id = 0x%04x, ret = %d)!\n", val, ret);
 		return -1;
 	}
