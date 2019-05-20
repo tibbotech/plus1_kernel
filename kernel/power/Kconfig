@@ -126,6 +126,11 @@ config PM_RUNTIME_UART
 	depends on PM_RUNTIME
 	default n
 
+config PM_RUNTIME_DISP
+	bool "PM_RUNTIME_DISP"
+	depends on PM_RUNTIME
+	default n
+
 config PM_SLEEP
 	def_bool y
 	depends on SUSPEND || HIBERNATE_CALLBACKS
