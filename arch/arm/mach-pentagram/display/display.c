@@ -38,6 +38,7 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 
 #include <linux/fs.h>
 #include <asm/uaccess.h>
@@ -141,13 +142,19 @@ MODULE_DEVICE_TABLE(of, _display_ids);
 #ifdef CONFIG_PM_RUNTIME_DISP
 static int sp_disp_runtime_suspend(struct device *dev)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	//DEBUG("[%s:%d] runtime suppend \n", __FUNCTION__, __LINE__);
+	reset_control_assert(pDispWorkMem->rstc);
+	
 	return 0;
 }
 
 static int sp_disp_runtime_resume(struct device *dev)
 {
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
 	//DEBUG("[%s:%d] runtime resume \n", __FUNCTION__, __LINE__);
+	reset_control_deassert(pDispWorkMem->rstc);
+	
 	return 0;
 }
 static const struct dev_pm_ops sp7021_disp_pm_ops = {
@@ -1570,15 +1577,19 @@ static int _display_remove(struct platform_device *pdev)
 
 static int _display_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
-
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;	
+	//DEBUG("[%s:%d] suspend \n", __FUNCTION__, __LINE__);
+	reset_control_assert(pDispWorkMem->rstc);
+		
 	return 0;
 }
 
 static int _display_resume(struct platform_device *pdev)
 {
-	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
-
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	//DEBUG("[%s:%d] resume \n", __FUNCTION__, __LINE__);
+	reset_control_deassert(pDispWorkMem->rstc);
+	
 	return 0;
 }
 

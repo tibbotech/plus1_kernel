@@ -70,6 +70,8 @@ typedef struct {
 	struct clk *dve_clk;
 	struct clk *hdmi_clk;
 
+	struct reset_control *rstc;
+	
 	display_size_t		panelRes;
 #if 0
 	DRV_Sys_OutMode_Info_t DispOutMode;
