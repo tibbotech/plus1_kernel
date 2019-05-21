@@ -20,7 +20,7 @@
 
 #include "spsoc_util.h"
 
-#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S24_3BE )
+#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
 
 
 
@@ -69,6 +69,7 @@ static const struct snd_soc_dai_ops aud_dai_ops = {
 };
 
 static struct snd_soc_dai_driver audcodec_dai[] = {
+	#if 1
 	{
 		.name = "aud-codec-dai",
 		.playback = {
@@ -81,21 +82,42 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 
 		.ops = &aud_dai_ops,
 	},
-
-		{
-		.name = "aud-codec-capture-dai",
-
-		.capture = {
-			.stream_name = "AUD Capture",
+	#endif
+	{
+		.name = "aud-codec-tdm-dai",
+		#if 1
+		.playback = {
+			.stream_name = "TDM playback",
 			.channels_min = 2,
-			.channels_max = 2,
+			.channels_max = 12,
+			.rates = AUD_RATES_C,
+			.formats = AUD_FORMATS,
+		},
+		#endif
+		.capture = {
+			.stream_name = "TDM Capture",
+			.channels_min = 2,
+			.channels_max = 8,
 			.rates = AUD_RATES_C,
 			.formats = AUD_FORMATS,
 		 },
 
 		.ops = &aud_dai_ops,
 	},
+	#if 1
+  {
+		.name = "aud-codec-pdm-dai",
+		.capture = {
+			.stream_name = "PDM Capture",
+			.channels_min = 2,
+			.channels_max = 8,
+			.rates = AUD_RATES_C,
+			.formats = AUD_FORMATS,
+		},
 
+		.ops = &aud_dai_ops,
+	},
+	#endif
 };
 
 static int aud_probe(struct snd_soc_codec *codec)
@@ -287,7 +309,7 @@ static int __devinit aud_codec_probe(struct platform_device *pdev)
 	AUD_INFO("%s IN\n", __func__);
 
 	ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_aud,
-		audcodec_dai, ARRAY_SIZE(audcodec_dai));
+		                           audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
 	return ret;
 }

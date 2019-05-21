@@ -61,17 +61,8 @@ void AUDHW_int_dac_adc_Setting(void);
 void AUDHW_SystemInit(void);
 void AUD_hw_free(void);
 void snd_aud_config( void);
-
-
-
-void  AUD_Set_PLL(unsigned int SAMPLE_RATE);
+void AUD_Set_PLL(unsigned int SAMPLE_RATE);
 void aud_clk_cfg(unsigned int SAMPLE_RATE);
-
-
-
-
-
-
 void internal_dac_setting( unsigned int fs );
 void pcm_format_setting( void );
 void plla_clk_setting(int index);
