@@ -44,9 +44,9 @@ static int _sc7021_audio_remove(struct platform_device *pdev);
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 void __iomem *audio_base;
-void __iomem *audio_plla_base;
-void __iomem *moon0_base;
-
+struct clk *peri0_clocken;
+struct clk *aud_clocken;
+struct clk *plla_clocken;
 
 static const struct of_device_id _sc7021_audio_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-audio", },
@@ -67,68 +67,84 @@ module_platform_driver(_sc7021_audio_driver);
 
 static int _sc7021_audio_probe(struct platform_device *pdev)
 {
-	struct resource *res;
-	struct device_node *np = pdev->dev.of_node;
-	volatile RegisterFile_G0 *regs0;
+	  struct resource *res;
+	  struct device_node *np = pdev->dev.of_node;   
+  
+	  AUD_INFO("%s IN\n", __func__);
 
-	AUD_INFO("%s IN\n", __func__);
+	  if (!np) {
+		    dev_err(&pdev->dev, "invalid devicetree node\n");
+		    return -EINVAL;
+	  }
 
-	if (!np) {
-		dev_err(&pdev->dev, "invalid devicetree node\n");
-		return -EINVAL;
-	}
+	  if (!of_device_is_available(np)) {
+		    dev_err(&pdev->dev, "devicetree status is not available\n");
+		    return -ENODEV;
+	  }
 
-	if (!of_device_is_available(np)) {
-		dev_err(&pdev->dev, "devicetree status is not available\n");
-		return -ENODEV;
-	}
+	  res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	  if (IS_ERR(res)) {
+		    dev_err(&pdev->dev, "get resource memory from devicetree node 0.\n");
+		    return PTR_ERR(res);
+	  }
+	  audio_base = devm_ioremap_resource(&pdev->dev, res);
+	  if (IS_ERR(audio_base)) {
+		    dev_err(&pdev->dev, "mapping resource memory 0.\n");
+		    return PTR_ERR(audio_base);
+	  }
+	  
+    peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
+    if (IS_ERR(peri0_clocken)) {
+		    dev_err(&pdev->dev, "get clock from devicetree node 1.\n");
+		    return PTR_ERR(peri0_clocken);
+	  }
+	  res = clk_prepare_enable(peri0_clocken);
+	  if (res) {
+	  	  dev_err(&pdev->dev, "enable clock 1 false.\n");
+		    return res;
+	  }
+	  
+    aud_clocken = devm_clk_get(&pdev->dev, "aud");
+    if (IS_ERR(aud_clocken)) {
+		    dev_err(&pdev->dev, "get clock from devicetree node 0.\n");
+		    return PTR_ERR(aud_clocken);
+	  }
+	  res = clk_prepare_enable(aud_clocken);
+	  if (res) {
+	  	  dev_err(&pdev->dev, "enable clock 0 false.\n");
+		    return res;
+	  }  
+ 
+	  AUD_INFO("audio_base=%08x\n", audio_base);
+	  
+	  plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
+    if (IS_ERR(plla_clocken)) {
+		    dev_err(&pdev->dev, "get clock from devicetree node 2.\n");
+		    return PTR_ERR(plla_clocken);
+	  }
+	  
+	  res = clk_set_rate(plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz, //driver/clk-sp-q628.c
+	  if (res) {
+	  	  dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
+		    return res;
+	  }
+	  
+	  res = clk_prepare_enable(plla_clocken);
+	  if (res) {
+	  	  dev_err(&pdev->dev, "enable clock 2 false.\n");
+		    return res;
+	  }  
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node 0.\n");
-		return PTR_ERR(res);
-	}
-	audio_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(audio_base)) {
-		dev_err(&pdev->dev, "mapping resource memory 0.\n");
-		return PTR_ERR(audio_base);
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node 1.\n");
-		return PTR_ERR(res);
-	}
-	audio_plla_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(audio_plla_base)) {
-		dev_err(&pdev->dev, "mapping resource memory 1.\n");
-		return PTR_ERR(audio_plla_base);
-	}
-
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	if (IS_ERR(res)) {
-		dev_err(&pdev->dev, "get resource memory from devicetree node 1.\n");
-		return PTR_ERR(res);
-	}
-	moon0_base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(moon0_base)) {
-		dev_err(&pdev->dev, "mapping resource memory 2.\n");
-		return PTR_ERR(moon0_base);
-	}
-
-	// Enable AUD hardware clock.
-	regs0 = (volatile RegisterFile_G0 *)moon0_base;
-	regs0->clken0 = 0x08000800;
-	regs0->clken2 = 0x00400040;
-
-	AUD_INFO("audio_base = %08x, audio_plla_base = %08x, moon0_base = %08x\n", audio_base, audio_plla_base, moon0_base);
-	return 0;
+	  return 0;
 }
 
 static int _sc7021_audio_remove(struct platform_device *pdev)
 {
 	AUD_INFO("%s IN\n", __func__);
 	audio_base = NULL;
+	clk_disable(peri0_clocken);
+	clk_disable(aud_clocken);
+	clk_disable(plla_clocken);
 	return 0;
 }
 

@@ -222,185 +222,14 @@ static inline u32 sp_tdm_readl(struct sp_tdm_info *tdm, u16 reg)
     return readl_relaxed(tdm->reg_base + reg);
 }
 
-static inline u32 sp_plla_readl(struct sp_tdm_info *tdm, u16 reg)
-{
-    return readl_relaxed(tdm->plla_reg_base + reg);
-}
-
 static inline void sp_tdm_writel(struct sp_tdm_info *tdm, u16 reg, u32 val)
 {
     writel_relaxed(val, tdm->reg_base + reg);
 }
 
-static inline void sp_plla_writel(struct sp_tdm_info *tdm, u16 reg, u32 val)
-{
-    writel_relaxed(val, tdm->plla_reg_base + reg);
-}
-
-
 void aud_tdm_set_plla(struct sp_tdm_info *tdm, unsigned int SAMPLE_RATE)
 {
-    unsigned long val;
-
-    AUD_INFO("%s , SAMPLE_RATE=%d\n", __func__, SAMPLE_RATE);
-
-    // Set PLLA
-    if( (SAMPLE_RATE==48000) || (SAMPLE_RATE==96000) || (SAMPLE_RATE==192000))
-    {
-        // PLLA Freq = 147.456000MHz
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffF7FF;      // 4.7[11]: PLLA Disable
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffEFFF;      // 4.7[12]: Disable Bypass PLLA
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffBFFF;      // 4.7[14]: PLLA Frequency Selection
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffF3FF;      // 4.9[10:9]: PLLA DIVM
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFFC0;      // 4.9[5:0]: DIVN
-        val |= 0x05;
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL1);
-        val = (val | 0xffff0000) & 0xffff87FF;      // 4.8[14:11]: PH_SEL
-        val |= (0x4<<11);
-        sp_plla_writel(tdm, PLLACTL1, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffff9FFF;      // 4.9[14:13]: PH_STEP_SEL
-        val |= (0x1<<13);
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL3);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.10[10:0]: K_SDM
-        val |= 0x273;
-        sp_plla_writel(tdm, PLLACTL3, val);
-
-        val = sp_plla_readl(tdm, PLLACTL4);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.11[10:0]: M_SDM
-        val |= 0x3FF;
-        sp_plla_writel(tdm, PLLACTL4, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFF3F;      // 4.9 [8:7]: DIVR
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) | (0x01<<11);      // 4.7[11]: PLLA Disable
-        sp_plla_writel(tdm, PLLACTL0, val);
-    }
-    else if( (SAMPLE_RATE==44100) || (SAMPLE_RATE==88200) || (SAMPLE_RATE==176400))
-    {
-        // PLLA Freq = 135.475200MHz
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffF7FF;      // 4.7[11]: PLLA Disable
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffEFFF;      // 4.7[12]: Disable Bypass PLLA
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffBFFF;      // 4.7[14]: PLLA Frequency Selection
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffF3FF;      // 4.9[10:9]: PLLA DIVM
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFFC0;      // 4.9[5:0]: DIVN
-        val |= 0x05;
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL1);
-        val = (val | 0xffff0000) & 0xffff87FF;      // 4.8[14:11]: PH_SEL
-        val |= (0x0<<11);
-        sp_plla_writel(tdm, PLLACTL1, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffff9FFF;      // 4.9[14:13]: PH_STEP_SEL
-        val |= (0x1<<13);
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL3);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.10[10:0]: K_SDM
-        val |= 0xB4;
-        sp_plla_writel(tdm, PLLACTL3, val);
-
-        val = sp_plla_readl(tdm, PLLACTL4);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.11[10:0]: M_SDM
-        val |= 0x3FF;
-        sp_plla_writel(tdm, PLLACTL4, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFF3F;      // 4.9 [8:7]: DIVR
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) | (0x01<<11);      // 4.7[11]: PLLA Enable
-        sp_plla_writel(tdm, PLLACTL0, val);
-    }
-    else if( (SAMPLE_RATE==32000) || (SAMPLE_RATE==64000) || (SAMPLE_RATE==128000))
-    {
-        // PLLA Freq = 196.608000MHz
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffF7FF;      // 4.7[11]: PLLA Disable
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffEFFF;      // 4.7[12]: Disable Bypass PLLA
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) & 0xffffBFFF;      // 4.7[14]: PLLA Frequency Selection
-        sp_plla_writel(tdm, PLLACTL0, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffF3FF;      // 4.9[10:9]: PLLA DIVM
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFFC0;      // 4.9[5:0]: DIVN
-        val |= 0x07;
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL1);
-        val = (val | 0xffff0000) & 0xffff87FF;      // 4.8[14:11]: PH_SEL
-        val |= (0x2<<11);
-        sp_plla_writel(tdm, PLLACTL1, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffff9FFF;      // 4.9[14:13]: PH_STEP_SEL
-        val |= (0x1<<13);
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL3);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.10[10:0]: K_SDM
-        val |= 0x345;
-        sp_plla_writel(tdm, PLLACTL3, val);
-
-        val = sp_plla_readl(tdm, PLLACTL4);
-        val = (val | 0xffff0000) & 0xffffF800;      // 4.11[10:0]: M_SDM
-        val |= 0x3FF;
-        sp_plla_writel(tdm, PLLACTL4, val);
-
-        val = sp_plla_readl(tdm, PLLACTL2);
-        val = (val | 0xffff0000) & 0xffffFF3F;      // 4.9 [8:7]: DIVR
-        sp_plla_writel(tdm, PLLACTL2, val);
-
-        val = sp_plla_readl(tdm, PLLACTL0);
-        val = (val | 0xffff0000) | (0x01<<11);      // 4.7[11]: PLLA Disable
-        sp_plla_writel(tdm, PLLACTL0, val);
-    }
+    AUD_INFO("%s , SAMPLE_RATE=%d\n", __func__, SAMPLE_RATE);      
 }
 
 
@@ -878,9 +707,8 @@ static int sp_tdm_probe(struct platform_device *pdev)
     sp_tdm->dev = dev;
 
     sp_tdm->reg_base = audio_base;
-    sp_tdm->plla_reg_base = audio_plla_base;
 
-    AUD_NOTICE("%s, reg_base=%08x, plla_reg_base=%08x\n", __func__, sp_tdm->reg_base, sp_tdm->plla_reg_base);
+    AUD_NOTICE("%s, reg_base=%08x\n", __func__, sp_tdm->reg_base);
 
     sp_tdm_init_state(sp_tdm);
     platform_set_drvdata(pdev, sp_tdm);

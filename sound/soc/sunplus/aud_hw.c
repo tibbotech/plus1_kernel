@@ -21,101 +21,6 @@
 void  AUD_Set_PLL(unsigned int SAMPLE_RATE)
 {
 	//	 //Set PLLA
-	volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)audio_plla_base;//(volatile RegisterFile_G4 *)REG(4,0);
-
-#if 1
-	if( (SAMPLE_RATE==48000) || (SAMPLE_RATE==96000) || (SAMPLE_RATE==192000))  //147.456M
-	{
-		regs0->rf_pad_ctl7 = ((regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFF7FF); // PLLA Disable 4.7 [11]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) &0xFFFFEFFF;	// Disable Bypass PLLA 4.7[12]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFBFFF; // 4.7 [14]
-		//regs0->rf_pad_ctl7 |= (0x1 << 14);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFF3FF;	// DIVM 4.9 [10:9]
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFFC0;	// DIVN 4.9 [5:0]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | 0x5;
-
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) & 0xFFFF87FF;	//PH_SEL 4.8[14:11]
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) | (0x4<<11);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFF9FFF;	// PH_STEP_SEL 4.9[14:13]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | (0x1<<13);
-
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) & 0xFFFFF800;	// K_SDM 4.10[10:0]
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) | 0x273;
-
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) & 0xFFFFF800;	// M_SDM 4.11 [10:0]
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) | 0x3FF;
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFF3F; // DIVR 4.9 [12:11]
-
-		regs0->rf_pad_ctl7 |= (regs0->rf_pad_ctl7 | 0xffff0000) | (1<<11); // PLLA Enable 4.7[11]
-	}
-	else if( (SAMPLE_RATE==44100) || (SAMPLE_RATE==88200) || (SAMPLE_RATE==176400))  // 135.4752M
-	{
-		regs0->rf_pad_ctl7 = ((regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFF7FF); // PLLA Disable 4.7 [11]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) &0xFFFFEFFF;	// Disable Bypass PLLA 4.7[12]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFBFFF; // 4.7 [14]
-		//regs0->rf_pad_ctl7 |= (0x1 << 14);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFF3FF;	// DIVM 4.9 [10:9]
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFFC0;	// DIVN 4.9 [5:0]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | 0x5;
-
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) & 0xFFFF87FF;	//PH_SEL 4.8[14:11]
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) | (0x0<<11);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFF9FFF;	// PH_STEP_SEL 4.9[14:13]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | (0x1<<13);
-
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) & 0xFFFFF800;	// K_SDM 4.10[10:0]
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) | 0xB4;
-
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) & 0xFFFFF800;	// M_SDM 4.11 [10:0]
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) | 0x3FF;
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFF3F; // DIVR 4.9 [12:11]
-
-		regs0->rf_pad_ctl7 |= (regs0->rf_pad_ctl7 | 0xffff0000) | (1<<11); // PLLA Enable 4.7[11]
-	}
-	else if( (SAMPLE_RATE==32000) || (SAMPLE_RATE==64000) || (SAMPLE_RATE==128000)) // 196.608M
-	{
-		regs0->rf_pad_ctl7 = ((regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFF7FF); // PLLA Disable 4.7 [11]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) &0xFFFFEFFF;	// Disable Bypass PLLA 4.7[12]
-
-		regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFBFFF; // 4.7 [14]
-		//regs0->rf_pad_ctl7 |= (0x1 << 14);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFF3FF;	// DIVM 4.9 [10:9]
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFFC0;	// DIVN 4.9 [5:0]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | 0x7;
-
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) & 0xFFFF87FF;	//PH_SEL 4.8[14:11]
-		regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) | (0x2<<11);
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFF9FFF;	// PH_STEP_SEL 4.9[14:13]
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | (0x1<<13);
-
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) & 0xFFFFF800;	// K_SDM 4.10[10:0]
-		regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) | 0x345;
-
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) & 0xFFFFF800;	// M_SDM 4.11 [10:0]
-		regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) | 0x3FF;
-
-		regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFF3F; // DIVR 4.9 [12:11]
-
-		regs0->rf_pad_ctl7 |= (regs0->rf_pad_ctl7 | 0xffff0000) | (1<<11); // PLLA Enable 4.7[11]
-	}
-
-#endif
 	return;
 }
 
@@ -194,31 +99,6 @@ void aud_clk_cfg(unsigned int SAMPLE_RATE)
 
 void  AUDHW_Set_PLL(void)
 {
-	  volatile RegisterFile_G4 * regs0 = (volatile RegisterFile_G4 *)audio_plla_base;//(volatile RegisterFile_G4 *)REG(4,0);
-    regs0->rf_pad_ctl7 = ((regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFF7FF); // PLLA Disable 4.7 [11]
-    regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) &0xFFFFEFFF;	// Disable Bypass PLLA 4.7[12]
-    regs0->rf_pad_ctl7 = (regs0->rf_pad_ctl7 | 0xffff0000) & 0xFFFFBFFF; // 4.7 [14]
-
-
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFF3FF;	// DIVM 1.9 [10:9]
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFFC0;	// DIVN 1.9 [5:0]
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | 0x5;
-
-    regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) & 0xFFFF87FF;	//PH_SEL 1.8[14:11]
-    regs0->rf_pad_ctl8 = (regs0->rf_pad_ctl8 | 0xffff0000) | (0x4<<11);
-
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFF9FFF;	// PH_STEP_SEL 1.9[14:13]
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) | (0x1<<13);
-
-    regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) & 0xFFFFF800;	// K_SDM 1.10[10:0]
-    regs0->rf_pad_ctl10 = (regs0->rf_pad_ctl10 | 0xffff0000) | 0x273;
-
-    regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) & 0xFFFFF800;	// M_SDM 1.11 [10:0]
-    regs0->rf_pad_ctl11 = (regs0->rf_pad_ctl11 | 0xffff0000) | 0x3FF;
-
-    regs0->rf_pad_ctl9 = (regs0->rf_pad_ctl9 | 0xffff0000) & 0xFFFFFF3F; // DIVR 1.9 [12:11]
-
-    regs0->rf_pad_ctl7 |= (regs0->rf_pad_ctl7 | 0xffff0000) | (1<<11); // PLLA Enable 4.7[11]
     return;
 }
 

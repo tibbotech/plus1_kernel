@@ -437,9 +437,8 @@ static int sp_pdm_probe(struct platform_device *pdev)
     sp_pdm->dev = dev;
 
     sp_pdm->reg_base = audio_base;
-    sp_pdm->plla_reg_base = audio_plla_base;
 
-    AUD_NOTICE("%s, reg_base=%08x, plla_reg_base=%08x\n", __func__, sp_pdm->reg_base, sp_pdm->plla_reg_base);
+    AUD_NOTICE("%s, reg_base=%08x\n", __func__, sp_pdm->reg_base);
 
     sp_pdm_init_state(sp_pdm);
     platform_set_drvdata(pdev, sp_pdm);
