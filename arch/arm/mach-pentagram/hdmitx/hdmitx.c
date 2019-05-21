@@ -19,6 +19,9 @@
 #include <linux/of_device.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+#include <linux/pm_runtime.h>
+#endif
 #include "include/hal_hdmitx.h"
 
 /*----------------------------------------------------------------------------*
@@ -98,6 +101,12 @@ static int hdmitx_remove(struct platform_device *dev);
 static int hdmitx_suspend(struct platform_device *dev,  pm_message_t state);
 static int hdmitx_resume(struct platform_device *dev);
 
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+// runtime power management functions
+static int sp_hdmitx_runtime_suspend(struct device *dev);
+static int sp_hdmitx_runtime_resume(struct device *dev);
+#endif
+
 // device id
 static struct of_device_id g_hdmitx_ids[] = {
 	{.compatible = "sunplus,sp7021-hdmitx"},
@@ -124,6 +133,15 @@ static struct miscdevice g_hdmitx_misc = {
 // 	.id   = -1,
 // };
 
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+static const struct dev_pm_ops sp7021_hdmitx_pm_ops = {
+	.runtime_suspend    = sp_hdmitx_runtime_suspend,
+	.runtime_resume     = sp_hdmitx_runtime_resume,
+};
+
+#define sp_hdmitx_pm_ops (&sp7021_hdmitx_pm_ops)
+#endif
+
 // platform driver
 static struct platform_driver g_hdmitx_driver = {
 	.probe    = hdmitx_probe,
@@ -135,6 +153,9 @@ static struct platform_driver g_hdmitx_driver = {
 		.name           = "hdmitx",
 		.of_match_table = of_match_ptr(g_hdmitx_ids),
 		.owner          = THIS_MODULE,
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+		.pm		= sp_hdmitx_pm_ops,
+#endif			
 	},
 };
 module_platform_driver(g_hdmitx_driver);
@@ -569,10 +590,24 @@ static void parse_edid(void)
 
 static void process_hpd_state(void)
 {
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+	int ret;
+	static int runtime_put = FALSE;
+#endif
+
 	HDMITX_DBG("HPD State\n");
 
 	if (get_hpd_in()) {
-	#ifdef EDID_READ
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+		runtime_put = TRUE ;
+
+		ret = pm_runtime_get_sync(sp_hdmitx->dev);
+		if (ret < 0) {
+			pm_runtime_mark_last_busy(sp_hdmitx->dev);
+		}
+#endif
+
+#ifdef EDID_READ
 		// send AV mute
 		
 		// read EDID
@@ -580,14 +615,21 @@ static void process_hpd_state(void)
 		
 		// parser EDID
 		parse_edid();
-	#else
+#else
 		// send AV mute
-	#endif
+#endif
 		// update state
 		mutex_lock(&g_hdmitx_mutex);
 		g_hdmitx_state = FSM_RSEN;
 		mutex_unlock(&g_hdmitx_mutex);
-	}
+	} else {
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+		if (runtime_put == TRUE) {
+			pm_runtime_put(sp_hdmitx->dev);
+			runtime_put = FALSE;
+		}
+#endif
+	}	
 }
 
 static void process_rsen_state(void)
@@ -624,12 +666,12 @@ static void process_hdcp_state(void)
 	HDMITX_DBG("HDCP State\n");
 
 	if (get_hpd_in() && get_rx_ready()) {
-	#ifdef HDCP_AUTH
+#ifdef HDCP_AUTH
 		// auth.
 		// clear AV mute
-	#else
+#else
 		// clear AV mute
-	#endif
+#endif
 	} else {
 		mutex_lock(&g_hdmitx_mutex);
 		if (!get_hpd_in()) {
@@ -998,6 +1040,11 @@ static int hdmitx_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, sp_hdmitx->hdmitx_misc);
 
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+#endif
+
 	return 0;
 }
 
@@ -1023,6 +1070,13 @@ static int hdmitx_remove(struct platform_device *pdev)
 	misc_deregister(misc);
 	reset_control_assert(sp_hdmitx->rstc);
 	clk_disable(sp_hdmitx->clk);
+
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+	pm_runtime_put(&pdev->dev);
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
+#endif
+
 	HDMITX_INFO("HDMITX uninstalled\n");
 	
 	return err;
@@ -1041,6 +1095,25 @@ static int hdmitx_resume(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_PM_RUNTIME_HDMITX
+static int sp_hdmitx_runtime_suspend(struct device *dev)
+{
+	//reset_control_assert(sp_hdmitx->rstc);
+	//clk_disable(sp_hdmitx->clk);
+	HDMITX_DBG("HPD RPM SUSPEND\n");
+	
+	return 0;
+}
+
+static int sp_hdmitx_runtime_resume(struct device *dev)
+{
+	reset_control_deassert(sp_hdmitx->rstc);
+	HDMITX_DBG("HPD RPM RESUME\n");
+	
+	return 0;
+}
+#endif
 
 MODULE_DESCRIPTION("HDMITX driver");
 MODULE_LICENSE("GPL");
