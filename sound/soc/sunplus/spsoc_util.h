@@ -5,13 +5,10 @@
 #include <asm/io.h>		/* for virt_to_phys */
 #include <linux/mm.h>
 #include <mach/io_map.h>
-
 #include "types.h"
 
-//#define En_AUD_FPGA
 extern void __iomem *audio_base;
 extern void __iomem *audio_plla_base;
-extern void __iomem *moon0_base;
 
 /**********************************************************
  * 			BASE
@@ -28,8 +25,8 @@ extern void __iomem *moon0_base;
  *
  **********************************************************/
 #define AUD_RATES		(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000|SNDRV_PCM_RATE_64000|\
-	                    SNDRV_PCM_RATE_64000|SNDRV_PCM_RATE_88200|SNDRV_PCM_RATE_96000|\
-	                    SNDRV_PCM_RATE_176400|SNDRV_PCM_RATE_192000)
+	                   SNDRV_PCM_RATE_64000|SNDRV_PCM_RATE_88200|SNDRV_PCM_RATE_96000|\
+	                   SNDRV_PCM_RATE_176400|SNDRV_PCM_RATE_192000)
 
 #define AUD_RATES_C		(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000)
 
@@ -41,7 +38,7 @@ extern void __iomem *moon0_base;
 #define AUD_WARNING(fmt, arg...)	printk(KERN_WARNING "[alsa] " fmt, ##arg)
 #define AUD_NOTICE(fmt, arg...)	printk(KERN_NOTICE "[alsa] " fmt, ##arg)
 #define AUD_INFO(fmt, arg...)	printk(KERN_INFO "[alsa] " fmt, ##arg)//((void)0)
-#define AUD_DEBUG(fmt, arg...)	printk(KERN_DEBUG "[alsa] " fmt, ##arg)
+#define AUD_DEBUG(fmt, arg...) ((void)0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
 
 /**********************************************************
  *
@@ -129,7 +126,7 @@ typedef struct
 typedef struct
 {
     // Group 002 : Reserved
-    UINT32  G002_RESERVED[32]                     ; //     (ADDR : 0x9C00_0100) ~ (ADDR : 0x9C00_017C)
+    UINT32  G002_RESERVED[64]                     ; //     (ADDR : 0x9C00_0100) ~ (ADDR : 0x9C00_017C)
 } RegisterFile_G2;
 
 typedef struct
@@ -397,6 +394,7 @@ typedef struct
     UINT32  aud_a21_length                        ; // 21
     UINT32  aud_a21_ptr                           ; // 22
     UINT32  aud_a21_cnt                           ; // 23
+ #if 0
     UINT32  G066_reserved_24                      ; // 24
     UINT32  G066_reserved_25                      ; // 25
     UINT32  G066_reserved_26                      ; // 26
@@ -405,6 +403,16 @@ typedef struct
     UINT32  G066_reserved_29                      ; // 29
     UINT32  G066_reserved_30                      ; // 30
     UINT32  G066_reserved_31                      ; // 31
+ #else
+    UINT32  aud_a22_base                          ; // 24
+    UINT32  aud_a22_length                        ; // 25
+    UINT32  aud_a22_ptr                           ; // 26
+    UINT32  aud_a22_cnt                           ; // 27
+    UINT32  aud_a23_base                          ; // 28
+    UINT32  aud_a23_length                        ; // 29
+    UINT32  aud_a23_ptr                           ; // 30
+    UINT32  aud_a23_cnt                           ; // 31
+ #endif
 
     // Group 067 : AUD
     UINT32  aud_grm_master_gain                   ; // 00 Gain Control
@@ -481,11 +489,102 @@ typedef struct
     UINT32  G070_RESERVED[32]                     ;
 
     // Group 071 : Reserved
+#if 0
     UINT32  G071_RESERVED[32]                     ;
+#else
+    UINT32  aud_a24_base                          ; // 00
+    UINT32  aud_a24_length                        ; // 01
+    UINT32  aud_a24_ptr                           ; // 02
+    UINT32  aud_a24_cnt                           ; // 03
+    UINT32  aud_a25_base                          ; // 04
+    UINT32  aud_a25_length                        ; // 05
+    UINT32  aud_a25_ptr                           ; // 06
+    UINT32  aud_a25_cnt                           ; // 07
+    UINT32  aud_a26_base                          ; // 08
+    UINT32  aud_a26_length                        ; // 09
+    UINT32  aud_a26_ptr                           ; // 10
+    UINT32  aud_a26_cnt                           ; // 11
+    UINT32  aud_a27_base                          ; // 12
+    UINT32  aud_a27_length                        ; // 13
+    UINT32  aud_a27_ptr                           ; // 14
+    UINT32  aud_a27_cnt                           ; // 15
+    UINT32  aud_a28_base                          ; // 16
+    UINT32  aud_a28_length                        ; // 17
+    UINT32  aud_a28_ptr                           ; // 18
+    UINT32  aud_a28_cnt                           ; // 19
+    UINT32  aud_a29_base                          ; // 20
+    UINT32  aud_a29_length                        ; // 21
+    UINT32  aud_a29_ptr                           ; // 22
+    UINT32  aud_a29_cnt                           ; // 23
+    UINT32  G071_reserved_24                      ; // 24
+    UINT32  G071_reserved_25                      ; // 25
+    UINT32  G071_reserved_26                      ; // 26
+    UINT32  G071_reserved_27                      ; // 27
+    UINT32  G071_reserved_28                      ; // 28
+    UINT32  G071_reserved_29                      ; // 29
+    UINT32  G071_reserved_30                      ; // 30
+    UINT32  G071_reserved_31                      ; // 31
+#endif
 
     // Group 072 : Reserved
-    UINT32  G072_RESERVED[32]                     ;
+    UINT32  tdm_rx_cfg0                           ;//0
+    UINT32  tdm_rx_cfg1                           ;//1
+    UINT32  tdm_rx_cfg2                           ;//2
+    UINT32  tdm_rx_cfg3                           ;//3
+    UINT32  G72_reserved_4                        ;//4
+    UINT32  G72_reserved_5                        ;//5
+    UINT32  tdm_tx_cfg0                           ;//6
+    UINT32  tdm_tx_cfg1                           ;//7
+    UINT32  tdm_tx_cfg2                           ;//8
+    UINT32  tdm_tx_cfg3                           ;//9
+    UINT32  tdm_tx_cfg4                           ;//10
+    UINT32  G72_reserved_11                       ;//11
+    UINT32  G72_reserved_12                       ;//12
+    UINT32  G72_reserved_13                       ;//13
+    UINT32  pdm_rx_cfg0                           ;//14 
+    UINT32  pdm_rx_cfg1                           ;//15
+    UINT32  pdm_rx_cfg2                           ;//16
+    UINT32  pdm_rx_cfg3                           ;//17
+    UINT32  pdm_rx_cfg4                           ;//18
+    UINT32  pdm_rx_cfg5                           ;//19
+    UINT32  G72_reserved_20                       ;//20
+    UINT32  G72_reserved_21                       ;//21
+    UINT32  tdm_tx_xck_cfg                        ;//22
+    UINT32  tdm_tx_bck_cfg                        ;//23
+    UINT32  tdm_rx_xck_cfg                        ;//24
+    UINT32  tdm_rx_bck_cfg                        ;//25 TDM_RX_BCK_CFG
+    UINT32  G72_reserved_26                       ;//26
+    UINT32  G72_reserved_27                       ;//27
+    UINT32  G72_reserved_28                       ;//28
+    UINT32  G72_reserved_29                       ;//29
+    UINT32  tdmpdm_tx_sel                         ;//30
+    UINT32  G72_reserved_31                       ;//31
 } RegisterFile_Audio;
+
+typedef struct {
+	unsigned int ch0_addr; // 0x9c10_6000
+	unsigned int ch0_ctrl; // 0x9c10_6004
+	unsigned int ch1_addr; // 0x9c10_6008
+	unsigned int ch1_ctrl; // 0x9c10_600c
+	unsigned int ch2_addr; // 0x9c10_6010
+	unsigned int ch2_ctrl; // 0x9c10_6014
+	unsigned int ch3_addr; // 0x9c10_6018
+	unsigned int ch3_ctrl; // 0x9c10_601c
+	unsigned int ch4_addr; // 0x9c10_6020
+	unsigned int ch4_ctrl; // 0x9c10_6024
+	unsigned int ch5_addr; // 0x9c10_6028
+	unsigned int ch5_ctrl; // 0x9c10_602c
+	unsigned int io_ctrl ; // 0x9c10_6030
+	unsigned int io_tctl ; // 0x9c10_6034
+	unsigned int macro_c0; // 0x9c10_6038
+	unsigned int macro_c1; // 0x9c10_603c
+	unsigned int macro_c2; // 0x9c10_6040
+	unsigned int io_tpctl; // 0x9c10_6044
+	unsigned int io_rpctl; // 0x9c10_6048
+	unsigned int boot_ra ; // 0x9c10_604c
+	unsigned int io_tdat0; // 0x9c10_6050
+	unsigned int reserved[11];
+}RegisterFile_Fbio;
 
 //group 67
 #define reg_aud_grm_master_gain		    6700
