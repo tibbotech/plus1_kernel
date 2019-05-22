@@ -38,11 +38,16 @@
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 
 #include <linux/fs.h>
 #include <asm/uaccess.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+#include <linux/pm_runtime.h>
+#endif
 
 #include "reg_disp.h"
 #include "hal_disp.h"
@@ -134,6 +139,32 @@ static struct of_device_id _display_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, _display_ids);
 
+#ifdef CONFIG_PM_RUNTIME_DISP
+static int sp_disp_runtime_suspend(struct device *dev)
+{
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	//DEBUG("[%s:%d] runtime suppend \n", __FUNCTION__, __LINE__);
+	reset_control_assert(pDispWorkMem->rstc);
+	
+	return 0;
+}
+
+static int sp_disp_runtime_resume(struct device *dev)
+{
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	//DEBUG("[%s:%d] runtime resume \n", __FUNCTION__, __LINE__);
+	reset_control_deassert(pDispWorkMem->rstc);
+	
+	return 0;
+}
+static const struct dev_pm_ops sp7021_disp_pm_ops = {
+	.runtime_suspend = sp_disp_runtime_suspend,
+	.runtime_resume  = sp_disp_runtime_resume,
+};
+
+#define sp_disp_pm_ops  (&sp7021_disp_pm_ops)
+#endif
+
 // platform driver
 static struct platform_driver _display_driver = {
 	.probe		= _display_probe,
@@ -143,6 +174,9 @@ static struct platform_driver _display_driver = {
 	.driver		= {
 		.name	= "sp7021_display",
 		.of_match_table	= of_match_ptr(_display_ids),
+#ifdef CONFIG_PM_RUNTIME_DISP
+		.pm			= sp_disp_pm_ops,
+#endif
 	},
 };
 module_platform_driver(_display_driver);
@@ -1503,6 +1537,14 @@ static int _display_probe(struct platform_device *pdev)
 	entry = proc_create(MON_PROC_NAME, S_IRUGO, NULL, &proc_fops);
 #endif
 
+#ifdef CONFIG_PM_RUNTIME_DISP
+	//DEBUG("[%s:%d] runtime enable \n", __FUNCTION__, __LINE__);
+  pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+  pm_runtime_use_autosuspend(&pdev->dev);
+  pm_runtime_set_active(&pdev->dev);
+  pm_runtime_enable(&pdev->dev);
+#endif
+
 	return 0;
 }
 
@@ -1524,20 +1566,30 @@ static int _display_remove(struct platform_device *pdev)
 		remove_proc_entry(MON_PROC_NAME, NULL);
 #endif
 
+#ifdef CONFIG_PM_RUNTIME_DISP
+	//DEBUG("[%s:%d] runtime disable \n", __FUNCTION__, __LINE__);
+  pm_runtime_disable(&pdev->dev);
+  pm_runtime_set_suspended(&pdev->dev);
+#endif
+
 	return 0;
 }
 
 static int _display_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
-
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;	
+	//DEBUG("[%s:%d] suspend \n", __FUNCTION__, __LINE__);
+	reset_control_assert(pDispWorkMem->rstc);
+		
 	return 0;
 }
 
 static int _display_resume(struct platform_device *pdev)
 {
-	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
-
+	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	//DEBUG("[%s:%d] resume \n", __FUNCTION__, __LINE__);
+	reset_control_deassert(pDispWorkMem->rstc);
+	
 	return 0;
 }
 

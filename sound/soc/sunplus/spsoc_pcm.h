@@ -15,10 +15,12 @@
 #define PERIOD_BYTES_MIN_CONS 128
 #define PERIOD_BYTES_MAX_CONS 64*1024
 
-#define NUM_FIFO_TX		4	// A0~A3
-#define NUM_FIFO_RX		3	
+#define NUM_FIFO_TX		6	// A0~A4, A20
+#define NUM_FIFO_RX		4 // A22~A25	
 #define NUM_FIFO	(NUM_FIFO_TX+NUM_FIFO_RX)	
 
+#define TDMPDM_C_INC0 (0xf<<22)
+#define TDM_P_INC0    ((0x1<<20) | 0x1f)
 
 
 #define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)

@@ -462,7 +462,7 @@ static int gc0310_check_sensor_id(struct gc0310 *gc0310, struct i2c_client *clie
 
 	ret = gc0310_read_reg(client, GC0310_REG_CHIP_ID,
 			      GC0310_REG_VALUE_16BIT, &val);
-	if (val != CHIP_ID) {
+	if ((ret != 0) || (val != CHIP_ID)) {
 		DBG_ERR("Unexpected sensor (id = 0x%04x, ret = %d)!\n", val, ret);
 		return -1;
 	}

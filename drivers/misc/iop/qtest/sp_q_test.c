@@ -1200,9 +1200,7 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 	unsigned int reg;
 
 	while(1)
-	{
-
-			#if 1
+	{			
 			sram_ptr0 = (u32 *)ioremap(cbdma_info[0].sram_addr, 40*1024);
 			for(i=0;i<20;i++)
 			{
@@ -1259,9 +1257,13 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 				}
 
 			}
-		#endif
+			
 
-			reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));
+			reg=readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2
+			printk(KERN_INFO "%s() Power Domain=%x\n", __func__,reg);
+
+			reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));//0x9C000424, iop_data1			
+			printk(KERN_INFO "iop_data1=%x \n",reg);
 			if(reg==0xdd)
 			{
 				#if 1
@@ -1272,11 +1274,14 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 
 				while(1)
 				{
-					printk(KERN_INFO "%s() clk run->stop QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
+					//printk(KERN_INFO "%s() clk run->stop QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 
-					reg=readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
+					reg=readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2
+					printk(KERN_INFO "%s() Power Domain Group 2 =%x\n", __func__,reg);
+
 					if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_STOP_CTL0)
-					{
+					{					
+						printk(KERN_INFO "%s() Q_STOP_CTL0\n", __func__); 		
 						//writel(0x00200000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
 						writel(0x00010000, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3));				
 						printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
@@ -1311,11 +1316,29 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 						
 						break;
 					}
-					else
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_DENIED_CTL0)
 					{
-						writel(0x00080000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
+						printk(KERN_INFO "%s() QCBDMA0 Q_DENIED_CTL0\n", __func__);		
+						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
 					}
-					//msleep(100);
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_CONTINUE_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA0 Q_CONTINUE_CTL0\n", __func__);		
+					}
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_RNU_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA0 Q_RNU_CTL0\n", __func__);	
+						break;
+					}
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_REQUEST_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA0 Q_REQUEST_CTL0\n", __func__);		
+					}
+					//else
+					//{
+					//	writel(0x00080000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
+					//}
+					msleep(500);
 				}
 				#endif
 				#if 1
@@ -1362,11 +1385,29 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 						
 						break;
 					}
-					else
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_DENIED_CTL0)
 					{
-						writel(0x08000000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
+						printk(KERN_INFO "%s() QCBDMA1 Q_DENIED_CTL0\n", __func__);		
+						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
 					}
-					//msleep(100);
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_CONTINUE_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA1 Q_CONTINUE_CTL0\n", __func__);		
+					}
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_RNU_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA1 Q_RNU_CTL0\n", __func__);	
+						break;
+					}
+					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_REQUEST_CTL0)
+					{
+						printk(KERN_INFO "%s() QCBDMA1 Q_REQUEST_CTL0\n", __func__);		
+					}
+					//else
+					//{
+					//	writel(0x08000000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
+					//}
+					msleep(500);
 				}
 				#endif
 				//writel(0xaa, (void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));

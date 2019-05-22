@@ -24,7 +24,7 @@
 
 
 
-#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S24_3BE )
+#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
 
 static struct platform_device *spsoc_pcm_device1;
 
@@ -37,26 +37,26 @@ static int aud_cpudai_startup(struct snd_pcm_substream *substream, struct snd_so
 static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-
+	AUD_INFO("%s IN\n", __func__ );
 	return 0;
 }
 
 static int spsoc_cpu_set_fmt(struct snd_soc_dai *codec_dai,unsigned int fmt)
 {
-	AUD_INFO("%s \n", __func__ );
+	AUD_INFO("%s IN\n", __func__ );
 
 	return 0;
 }
 
 static int spsoc_cpu_set_sysclk(struct snd_soc_dai *cpu_dai,int clk_id, unsigned int freq, int dir)
 {
-	AUD_INFO("%s \n", __func__ );
+	AUD_INFO("%s IN\n", __func__ );
 	return 0;
 }
 
 static int spsoc_cpu_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsigned int freq_in, unsigned int freq_out)
 {
-	AUD_INFO("%s \n", __func__ );
+	AUD_INFO("%s IN\n", __func__ );
 	AUD_Set_PLL(freq_out);
 	aud_clk_cfg(freq_out);
 	return 0;
@@ -97,30 +97,25 @@ static const struct snd_soc_component_driver sunplus_i2s_component = {
 
 static int __devinit aud_cpu_dai_probe(struct platform_device *pdev)
 {
-	int ret=0;
-	AUD_INFO("%s\n",__func__);
+	  int ret=0;
+	  AUD_INFO("%s\n",__func__);
 
-	AUDHW_Set_PLL();
-	AUDHW_pin_mx();
-	AUDHW_clk_cfg();
-	AUDHW_Mixer_Setting();
-	AUDHW_int_dac_adc_Setting();
-	AUDHW_SystemInit();
-	snd_aud_config();
-	AUD_INFO("Q628 aud set done\n");
+	  AUDHW_Set_PLL();
+	  AUDHW_pin_mx();
+	  AUDHW_clk_cfg();
+	  AUDHW_Mixer_Setting();
+	  AUDHW_int_dac_adc_Setting();
+	  AUDHW_SystemInit();
+	  snd_aud_config();
+	  AUD_INFO("Q628 aud set done\n");
 
+	  ret = devm_snd_soc_register_component(&pdev->dev,
+					                                &sunplus_i2s_component,
+					                                &aud_cpu_dai[0],1);
+	  if (ret)
+		    pr_err("failed to register the dai\n");
 
-
-
-	ret = devm_snd_soc_register_component(&pdev->dev,
-					   &sunplus_i2s_component,
-					   &aud_cpu_dai[0],1);
-	if (ret)
-		pr_err("failed to register the dai\n");
-
-
-
-	return ret;
+	  return ret;
 }
 
 static int __devexit aud_cpudai_remove(struct platform_device *pdev)
