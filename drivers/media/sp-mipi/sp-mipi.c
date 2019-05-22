@@ -37,7 +37,9 @@
 #include <linux/i2c.h>
 #include "sp-mipi.h"
 
-
+#ifdef CONFIG_PM_RUNTIME_MIPI
+#include <linux/pm_runtime.h>
+#endif
 /* ------------------------------------------------------------------
 	Constants
    ------------------------------------------------------------------*/
@@ -714,6 +716,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 
 	/* Unlock after leaving critical section */
 	mutex_unlock(&vout->lock);
+
 	return ret;
 }
 
@@ -740,8 +743,15 @@ static int sp_vout_open(struct file *file)
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct video_device *vdev = video_devdata(file);
 	struct sp_vout_fh *fh;
+	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+	ret = pm_runtime_get_sync(vout->pdev);
+	if (ret < 0)
+		goto out;  
+#endif
 
 	/* Allocate memory for the file handle object */
 	fh = kmalloc(sizeof(struct sp_vout_fh), GFP_KERNEL);
@@ -764,7 +774,15 @@ static int sp_vout_open(struct file *file)
 
 	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
+
 	return 0;
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+out :
+	pm_runtime_mark_last_busy(vout->pdev);
+	pm_runtime_put_autosuspend(vout->pdev);
+	return -ENOMEM;
+#endif
 }
 
 static int sp_vout_release(struct file *file)
@@ -803,6 +821,11 @@ static int sp_vout_release(struct file *file)
 	v4l2_fh_del(&fh->fh);
 	v4l2_fh_exit(&fh->fh);
 
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+	pm_runtime_put(vout->pdev);		// Starting count timeout.
+#endif
+
 	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
 
@@ -810,6 +833,7 @@ static int sp_vout_release(struct file *file)
 
 	/* Free memory allocated to file handle object */
 	kfree(fh);
+
 	return 0;
 }
 
@@ -1062,6 +1086,13 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vout->fmt.fmt.pix.sizeimage = vout->fmt.fmt.pix.height * vout->fmt.fmt.pix.bytesperline;
 	vout->fmt.fmt.pix.colorspace = V4L2_COLORSPACE_JPEG;
 	vout->fmt.fmt.pix.priv = 0;
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+	pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
+#endif
 	return 0;
 
 err_get_format:
@@ -1113,8 +1144,114 @@ static int sp_mipi_remove(struct platform_device *pdev)
 	clk_disable_unprepare(vout->mipicsi_clk);
 
 	kfree(vout);
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
+#endif
+
 	return 0;
 }
+
+static int sp_mipi_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct sp_vout_device *vout = platform_get_drvdata(pdev);
+
+	MIP_INFO("MIPI suspend.\n");
+
+	clk_disable(vout->mipicsi_clk);
+	clk_disable(vout->csiiw_clk);
+
+	return 0;
+}
+
+static int sp_mipi_resume(struct platform_device *pdev)
+{
+	struct sp_vout_device *vout = platform_get_drvdata(pdev);
+	int ret;
+
+	MIP_INFO("MIPI resume.\n");
+
+	// De-assert 'mipicsi' reset controller.
+	ret = reset_control_deassert(vout->mipicsi_rstc);
+	if (ret) {
+		MIP_ERR("Failed to deassert 'mipicsi' reset controller!\n");
+	}
+
+	// De-assert 'csiiw' reset controller.
+	ret = reset_control_deassert(vout->csiiw_rstc);
+	if (ret) {
+		MIP_ERR("Failed to deassert 'csiiw' reset controller!\n");
+	}
+
+	// Enable 'mipicsi' clock.
+	ret = clk_prepare_enable(vout->mipicsi_clk);
+	if (ret) {
+		MIP_ERR("Failed to enable \'mipicsi\' clock!\n");
+	}
+
+	// Enable 'csiiw' clock.
+	ret = clk_prepare_enable(vout->csiiw_clk);
+	if (ret) {
+		MIP_ERR("Failed to enable \'csiiw\' clock!\n");
+	}
+
+	return 0;
+}
+
+#ifdef CONFIG_PM_RUNTIME_MIPI
+static int sp_mipi_runtime_suspend(struct device *dev)
+{
+	struct sp_vout_device *vout = dev_get_drvdata(dev);
+
+	MIP_INFO("MIPI runtime suspend.\n");
+
+	clk_disable(vout->mipicsi_clk);
+	clk_disable(vout->csiiw_clk);
+
+	return 0;
+}
+
+static int sp_mipi_runtime_resume(struct device *dev)
+{
+	struct sp_vout_device *vout = dev_get_drvdata(dev);
+	int ret;
+
+	MIP_INFO("MIPI runtime resume.\n");
+
+	// De-assert 'mipicsi' reset controller.
+	ret = reset_control_deassert(vout->mipicsi_rstc);
+	if (ret) {
+		MIP_ERR("Failed to deassert 'mipicsi' reset controller!\n");
+	}
+
+	// De-assert 'csiiw' reset controller.
+	ret = reset_control_deassert(vout->csiiw_rstc);
+	if (ret) {
+		MIP_ERR("Failed to deassert 'csiiw' reset controller!\n");
+	}
+
+	// Enable 'mipicsi' clock.
+	ret = clk_prepare_enable(vout->mipicsi_clk);
+	if (ret) {
+		MIP_ERR("Failed to enable \'mipicsi\' clock!\n");
+	}
+
+	// Enable 'csiiw' clock.
+	ret = clk_prepare_enable(vout->csiiw_clk);
+	if (ret) {
+		MIP_ERR("Failed to enable \'csiiw\' clock!\n");
+	}
+
+	return 0;
+}
+static const struct dev_pm_ops sp7021_mipi_pm_ops = {
+	.runtime_suspend = sp_mipi_runtime_suspend,
+	.runtime_resume  = sp_mipi_runtime_resume,
+};
+
+#define sp_mipi_pm_ops  (&sp7021_mipi_pm_ops)
+#endif
 
 static const struct of_device_id sp_mipi_of_match[] = {
 	{ .compatible = "sunplus,sp7021-mipicsi", },
@@ -1126,9 +1263,14 @@ static struct platform_driver sp_mipi_driver = {
 		.owner = THIS_MODULE,
 		.name = VOUT_NAME,
 		.of_match_table = sp_mipi_of_match,
+#ifdef CONFIG_PM_RUNTIME_MIPI
+		.pm = sp_mipi_pm_ops,
+#endif
 	},
 	.probe = sp_mipi_probe,
 	.remove = sp_mipi_remove,
+	.suspend	= sp_mipi_suspend,
+	.resume		= sp_mipi_resume,
 };
 
 module_platform_driver(sp_mipi_driver);
