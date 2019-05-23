@@ -18,6 +18,8 @@
 #define FRAME_BUFFER_ALIGN              256
 
 /* SOL Sync */
+#define SYNC_RGB565                     0x22
+#define SYNC_RGB888                     0x24
 #define SYNC_RAW8                       0x2A
 #define SYNC_RAW10                      0x2B
 #define SYNC_YUY2                       0x1E
@@ -53,6 +55,8 @@ struct sp_fmt {
 	u32     fourcc;                                         /* v4l2 format id */
 	int     width;
 	int     height;
+	int     walign;
+	int     halign;
 	int     depth;
 	int     mipi_lane;                                      /* number of data lanes of mipi */
 	int     sol_sync;                                       /* sync of start of line */
@@ -84,7 +88,6 @@ struct sp_vout_device {
 	struct device                   *pdev;                  /* parent device */
 	struct video_device             video_dev;
 	struct videobuf_buffer          *cur_frm;               /* Pointer pointing to current v4l2_buffer */
-	struct videobuf_buffer          *next_frm;              /* Pointer pointing to next v4l2_buffer */
 	struct videobuf_queue           buffer_queue;           /* Buffer queue used in video-buf */
 	struct list_head                dma_queue;              /* Queue of filled frames */
 
@@ -104,13 +107,12 @@ struct sp_vout_device {
 
 	spinlock_t                      irqlock;                /* Used in video-buf */
 	spinlock_t                      dma_queue_lock;         /* IRQ lock for DMA queue */
-	struct                          mutex lock;             /* lock used to access this structure */
+	struct mutex                    lock;                   /* lock used to access this structure */
 
-	int                             baddr;
 	int                             fs_irq;
 	int                             fe_irq;
-	u8                              started;                /* Indicates whether streaming started */
-	u8                              capture_status;
+	u8                              streaming;              /* Indicates whether streaming started */
+	u8                              skip_first_int;
 };
 
 /* File handle structure */

@@ -35,11 +35,12 @@
 #include <media/videobuf-core.h>
 #include <media/v4l2-common.h>
 #include <linux/i2c.h>
-#include "sp-mipi.h"
-
 #ifdef CONFIG_PM_RUNTIME_MIPI
 #include <linux/pm_runtime.h>
 #endif
+#include "sp-mipi.h"
+
+
 /* ------------------------------------------------------------------
 	Constants
    ------------------------------------------------------------------*/
@@ -50,6 +51,8 @@ static const struct sp_fmt ov9281_formats[] = {
 		.width    = 1280,
 		.height   = 800,
 		.depth    = 8,
+		.walign   = 1,
+		.halign   = 1,
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW10,
 	},
@@ -62,6 +65,8 @@ static const struct sp_fmt gc0310_formats[] = {
 		.width    = 640,
 		.height   = 480,
 		.depth    = 8,
+		.walign   = 2,
+		.halign   = 2,
 		.mipi_lane = 1,
 		.sol_sync = SYNC_RAW8,
 	},
@@ -71,6 +76,8 @@ static const struct sp_fmt gc0310_formats[] = {
 		.width    = 640,
 		.height   = 480,
 		.depth    = 16,
+		.walign   = 2,
+		.halign   = 1,
 		.mipi_lane = 1,
 		.sol_sync = SYNC_YUY2,
 	},
@@ -199,40 +206,17 @@ static void csiiw_init(struct sp_vout_device *vout)
 	writel(0x500, &vout->csiiw_regs->csiiw_stride);
 	writel(0x3200500, &vout->csiiw_regs->csiiw_frame_size);
 
-	// buffer_number (1:0x00000100, 2:0x011f4000, 3:0x021f4000)
 	writel(0x00000100, &vout->csiiw_regs->csiiw_frame_buf);         // set offset to trigger DRAM write
 
 	//raw8 (0x2701); raw10 (10bit two byte space:0x2731, 8bit one byte space:0x2701)
 	writel(0x32700, &vout->csiiw_regs->csiiw_config0);              // Disable csiiw, fs_irq and fe_irq
 }
 
-static void sp_vout_schedule_next_buffer(struct sp_vout_device *vout)
-{
-	vout->next_frm = list_entry(vout->dma_queue.next, struct videobuf_buffer, queue);
-	list_del(&vout->next_frm->queue);
-
-	vout->next_frm->state = VIDEOBUF_ACTIVE;
-	vout->baddr = videobuf_to_dma_contig(vout->next_frm);
-	writel(vout->baddr, &vout->csiiw_regs->csiiw_base_addr);        // base address
-
-	DBG_INFO("%s: baddr = %08x\n", __FUNCTION__, vout->baddr);
-}
-
-static void sp_vout_process_buffer_complete(struct sp_vout_device *vout)
-{
-	v4l2_get_timestamp(&vout->cur_frm->ts);
-	vout->cur_frm->state = VIDEOBUF_DONE;
-	vout->cur_frm->size = vout->fmt.fmt.pix.sizeimage;
-	wake_up_interruptible(&vout->cur_frm->done);
-	vout->cur_frm = vout->next_frm;
-}
-
 irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 {
 	struct sp_vout_device *vout = dev_instance;
 
-	if (vout->started) {
-
+	if (vout->streaming) {
 	}
 
 	return IRQ_HANDLED;
@@ -241,15 +225,38 @@ irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 irqreturn_t csiiw_fe_isr(int irq, void *dev_instance)
 {
 	struct sp_vout_device *vout = dev_instance;
+	struct videobuf_buffer *next_frm;
+	int addr;
 
-	if (vout->started) {
+	if (vout->skip_first_int) {
+		vout->skip_first_int = 0;
+		return IRQ_HANDLED;
+	}
+
+	if (vout->streaming) {
 		spin_lock(&vout->dma_queue_lock);
 
-		if (!list_empty(&vout->dma_queue) && (vout->cur_frm == vout->next_frm))
-			sp_vout_schedule_next_buffer(vout);
+		if (!list_empty(&vout->dma_queue))
+		{
+			// One video frame is just being captured, if next frame
+			// is available, delete the frame from queue.
+			next_frm = list_entry(vout->dma_queue.next, struct videobuf_buffer, queue);
+			list_del(&next_frm->queue);
 
-		if (vout->cur_frm != vout->next_frm)
-			sp_vout_process_buffer_complete(vout);
+			// Set active-buffer to 'next frame'.
+			next_frm->state = VIDEOBUF_ACTIVE;
+			addr = videobuf_to_dma_contig(next_frm);
+			writel(addr, &vout->csiiw_regs->csiiw_base_addr);        // base address
+
+			// Then, release current frame.
+			v4l2_get_timestamp(&vout->cur_frm->ts);
+			vout->cur_frm->state = VIDEOBUF_DONE;
+			vout->cur_frm->size = vout->fmt.fmt.pix.sizeimage;
+			wake_up_interruptible(&vout->cur_frm->done);
+
+			// Finally, move on.
+			vout->cur_frm = next_frm;
+		}
 
 		spin_unlock(&vout->dma_queue_lock);
 	}
@@ -305,11 +312,11 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 {
 	struct sp_vout_fh *fh = vq->priv_data;
 	struct sp_vout_device *vout = fh->vout;
-	unsigned long addr;
+	unsigned long addr = 0;
 	int ret;
 
 	/* If buffer is not initialized, initialize it */
-	if (VIDEOBUF_NEEDS_INIT == vb->state) {
+	if (vb->state == VIDEOBUF_NEEDS_INIT) {
 		vb->width  = vout->fmt.fmt.pix.width;
 		vb->height = vout->fmt.fmt.pix.height;
 		vb->size   = vout->fmt.fmt.pix.sizeimage;
@@ -317,6 +324,7 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 
 		ret = videobuf_iolock(vq, vb, NULL);
 		if (ret < 0) {
+			MIP_ERR("videobuf_iolock failed!\n");
 			return ret;
 		}
 
@@ -330,8 +338,8 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 
 		vb->state = VIDEOBUF_PREPARED;
 	}
-	DBG_INFO("%s (video_buffer): width = %d, height = %d, size = %lx, field = %d, state = %d\n",
-		 __FUNCTION__, vb->width, vb->height, vb->size, vb->field, vb->state);
+	DBG_INFO("%s: addr = %08lx, width = %d, height = %d, size = %ld, field = %d, state = %d\n",
+		 __FUNCTION__, addr, vb->width, vb->height, vb->size, vb->field, vb->state);
 
 	return 0;
 }
@@ -343,16 +351,19 @@ static void buffer_queue(struct videobuf_queue *vq, struct videobuf_buffer *vb)
 	struct sp_vout_device *vout = fh->vout;
 	unsigned long flags;
 
-	/* add the buffer to the DMA queue */
 	spin_lock_irqsave(&vout->dma_queue_lock, flags);
+
+	/* add the buffer to the DMA queue */
 	list_add_tail(&vb->queue, &vout->dma_queue);
 	DBG_INFO("%s: list_add\n", __FUNCTION__);
 	print_List(&vout->dma_queue);
-	spin_unlock_irqrestore(&vout->dma_queue_lock, flags);
 
 	/* Change state of the buffer */
 	vb->state = VIDEOBUF_QUEUED;
-	DBG_INFO("%s (video_buffer): state = %d\n", __FUNCTION__, vb->state);
+
+	spin_unlock_irqrestore(&vout->dma_queue_lock, flags);
+
+	DBG_INFO("%s: state = %d\n", __FUNCTION__, vb->state);
 }
 
 static void buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb)
@@ -373,7 +384,7 @@ static void buffer_release(struct videobuf_queue *vq, struct videobuf_buffer *vb
 
 	videobuf_dma_contig_free(vq, vb);
 	vb->state = VIDEOBUF_NEEDS_INIT;
-	DBG_INFO("%s (video_buffer): state = %d\n", __FUNCTION__, vb->state);
+	DBG_INFO("%s: state = %d\n", __FUNCTION__, vb->state);
 }
 
 static struct videobuf_queue_ops sp_video_qops = {
@@ -397,7 +408,7 @@ static int vidioc_querycap(struct file *file, void *priv, struct v4l2_capability
 
 	// report capabilities
 	vcap->device_caps = V4L2_CAP_VIDEO_CAPTURE | V4L2_CAP_STREAMING | V4L2_CAP_READWRITE;
-	vcap->capabilities = vcap->device_caps| V4L2_CAP_DEVICE_CAPS ;
+	vcap->capabilities = vcap->device_caps | V4L2_CAP_DEVICE_CAPS;
 	return 0;
 }
 
@@ -409,6 +420,11 @@ static int vidioc_enum_fmt_vid_cap(struct file *file, void *priv, struct v4l2_fm
 	DBG_INFO("%s: index = %d\n", __FUNCTION__, fmtdesc->index);
 
 	if (fmtdesc->index >= vout->current_subdev->formats_size) {
+		return -EINVAL;
+	}
+
+	if (fmtdesc->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
 
@@ -427,6 +443,11 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
+	if (f->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
+		MIP_ERR("Invalid V4L2 buffer type!\n");
+		return -EINVAL;
+	}
+
 	fmt = get_format(vout->current_subdev, f->fmt.pix.pixelformat);
 	if (fmt == NULL) {
 		return -EINVAL;
@@ -438,8 +459,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_for
 	}
 	f->fmt.pix.field = field;
 
-	v4l_bound_align_image(&f->fmt.pix.width, 48, fmt->width, 2,
-			      &f->fmt.pix.height, 32, fmt->height, 2, 0);
+	v4l_bound_align_image(&f->fmt.pix.width, 48, fmt->width, fmt->walign,
+			      &f->fmt.pix.height, 32, fmt->height, fmt->halign, 0);
 
 	f->fmt.pix.bytesperline = (f->fmt.pix.width * fmt->depth) >> 3;
 	f->fmt.pix.sizeimage    = f->fmt.pix.height * f->fmt.pix.bytesperline;
@@ -460,6 +481,11 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
+	if (vout->streaming) {
+		MIP_ERR("Device has started streaming!\n");
+		return -EBUSY;
+	}
+
 	ret = vidioc_try_fmt_vid_cap(file, vout, f);
 	if (ret != 0) {
 		return ret;
@@ -471,7 +497,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 	vout->fmt.fmt.pix.pixelformat  = f->fmt.pix.pixelformat; // from vidioc_try_fmt_vid_cap
 	vout->fmt.fmt.pix.field        = f->fmt.pix.field;
 	vout->fmt.fmt.pix.bytesperline = f->fmt.pix.bytesperline;
-	vout->fmt.fmt.pix.sizeimage    = f->fmt.pix.sizeimage ;
+	vout->fmt.fmt.pix.sizeimage    = f->fmt.pix.sizeimage;
 	vout->fmt.fmt.pix.colorspace   = f->fmt.pix.colorspace;
 
 	return 0;
@@ -496,7 +522,12 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
-	if (V4L2_BUF_TYPE_VIDEO_CAPTURE != req_buf->type) {
+	if (vout->streaming) {
+		MIP_ERR("Device has started streaming!\n");
+		return -EBUSY;
+	}
+
+	if (req_buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
 	}
@@ -534,6 +565,11 @@ static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *bu
 	struct sp_vout_device *vout = video_drvdata(file);
 
 	DBG_INFO("%s\n", __FUNCTION__);
+
+	if (vout->streaming) {
+		MIP_ERR("Device has started streaming!\n");
+		return -EBUSY;
+	}
 
 	if (buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		MIP_ERR("Invalid V4L2 buffer type!\n");
@@ -591,9 +627,15 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
 	struct sp_vout_subdev_info *sdinfo;
+	unsigned long addr;
 	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
+
+	if (vout->streaming) {
+		MIP_ERR("Device has started streaming!\n");
+		return -EBUSY;
+	}
 
 	if (buf_type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		MIP_ERR("Invalid V4L2 buffer type!\n");
@@ -620,8 +662,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 		return -EIO;
 	}
 
-	//writel(0x02700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, but enable fs_irq & fe_irq
-
 	/* Call videobuf_streamon to start streaming in videobuf */
 	ret = videobuf_streamon(&vout->buffer_queue);
 	if (ret) {
@@ -634,32 +674,32 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 		goto streamoff;
 	}
 
-	/* Get the next frame from the buffer queue */
-	vout->next_frm = list_entry(vout->dma_queue.next, struct videobuf_buffer, queue);
-	vout->cur_frm = vout->next_frm;
+	/* Get the next video-buffer from the video-buffer queue */
+	vout->cur_frm = list_entry(vout->dma_queue.next, struct videobuf_buffer, queue);
 
-	/* Remove buffer from the buffer queue */
+	/* Remove current video-buffer (frame) from the video-buffer queue */
 	list_del(&vout->cur_frm->queue);
 	DBG_INFO("%s: list_del\n", __FUNCTION__);
 	print_List(&vout->dma_queue);
 
-	/* Mark state of the current frame to active */
+	/* Mark state of the current video-buffer (frame) to active */
 	vout->cur_frm->state = VIDEOBUF_ACTIVE;
-	vout->baddr = videobuf_to_dma_contig(vout->cur_frm);
+	addr = videobuf_to_dma_contig(vout->cur_frm);
 
-	writel(vout->baddr, &vout->csiiw_regs->csiiw_base_addr);
+	writel(addr, &vout->csiiw_regs->csiiw_base_addr);
 	writel(mEXTENDED_ALIGNED(vout->fmt.fmt.pix.bytesperline, 16), &vout->csiiw_regs->csiiw_stride);
 	writel((vout->fmt.fmt.pix.height<<16)|vout->fmt.fmt.pix.bytesperline, &vout->csiiw_regs->csiiw_frame_size);
 
-	writel(0x02701, &vout->csiiw_regs->csiiw_config0);      // Enable csiiw, fs_irq and fe_irq
+	writel(0x12701, &vout->csiiw_regs->csiiw_config0);      // Enable csiiw and fe_irq
 
-	DBG_INFO("%s: cur_frm = %p, next_frm = %p, baddr = %x\n",
-		__FUNCTION__, vout->cur_frm, vout->next_frm, vout->baddr);
-
-	vout->started = 1;
+	vout->streaming = 1;
+	vout->skip_first_int = 1;
 
 	/* Unlock after leaving critical section */
 	mutex_unlock(&vout->lock);
+
+	DBG_INFO("%s: cur_frm = %p, addr = %08lx\n", __FUNCTION__, vout->cur_frm, addr);
+
 	return ret;
 
 streamoff:
@@ -688,7 +728,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 	}
 
 	/* If streaming is not started, return error */
-	if (!vout->started) {
+	if (!vout->streaming) {
 		MIP_ERR("Device has started already!\n");
 		return -EINVAL;
 	}
@@ -707,7 +747,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 		return -EINVAL;
 	}
 
-	vout->started = 0;
+	vout->streaming = 0;
 
 	// FW must mask irq to avoid unmap issue (for test code)
 	writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
@@ -743,14 +783,12 @@ static int sp_vout_open(struct file *file)
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct video_device *vdev = video_devdata(file);
 	struct sp_vout_fh *fh;
-	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
-	ret = pm_runtime_get_sync(vout->pdev);
-	if (ret < 0)
-		goto out;  
+	if (pm_runtime_get_sync(vout->pdev) < 0)
+		goto out;
 #endif
 
 	/* Allocate memory for the file handle object */
@@ -774,11 +812,10 @@ static int sp_vout_open(struct file *file)
 
 	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
-
 	return 0;
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
-out :
+out:
 	pm_runtime_mark_last_busy(vout->pdev);
 	pm_runtime_put_autosuspend(vout->pdev);
 	return -ENOMEM;
@@ -799,7 +836,7 @@ static int sp_vout_release(struct file *file)
 
 	/* if this instance is doing IO */
 	if (fh->io_allowed) {
-		if (vout->started) {
+		if (vout->streaming) {
 			sdinfo = vout->current_subdev;
 			ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 							 video, s_stream, 0);
@@ -808,11 +845,12 @@ static int sp_vout_release(struct file *file)
 				return -EINVAL;
 			}
 
-			vout->started = 0;
+			vout->streaming = 0;
 			writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
 
 			videobuf_streamoff(&vout->buffer_queue);
 		}
+
 		videobuf_stop(&vout->buffer_queue);
 		videobuf_mmap_free(&vout->buffer_queue);
 	}
@@ -820,7 +858,7 @@ static int sp_vout_release(struct file *file)
 	/* Decrement device usrs counter */
 	v4l2_fh_del(&fh->fh);
 	v4l2_fh_exit(&fh->fh);
-
+	file->private_data = NULL;
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
 	pm_runtime_put(vout->pdev);		// Starting count timeout.
@@ -829,21 +867,24 @@ static int sp_vout_release(struct file *file)
 	/* Get the device unlock */
 	mutex_unlock(&vout->lock);
 
-	file->private_data = NULL;
-
 	/* Free memory allocated to file handle object */
 	kfree(fh);
-
 	return 0;
 }
 
 static int sp_vout_mmap(struct file *file, struct vm_area_struct *vma)
 {
 	struct sp_vout_device *vout = video_drvdata(file);
+	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
-	return videobuf_mmap_mapper(&vout->buffer_queue, vma);
+	ret = videobuf_mmap_mapper(&vout->buffer_queue, vma);
+
+	DBG_INFO("vma_start = 0x%08lx, size=%ld, ret=%d\n",
+		vma->vm_start, vma->vm_end-vma->vm_start, ret);
+
+	return ret;
 }
 
 static unsigned int sp_vout_poll(struct file *file, poll_table *wait)
@@ -852,7 +893,7 @@ static unsigned int sp_vout_poll(struct file *file, poll_table *wait)
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
-	if (vout->started)
+	if (vout->streaming)
 		return videobuf_poll_stream(file, &vout->buffer_queue, wait);
 
 	return 0;
@@ -1159,6 +1200,7 @@ static int sp_mipi_suspend(struct platform_device *pdev, pm_message_t state)
 
 	MIP_INFO("MIPI suspend.\n");
 
+	// Disable 'mipicsi' and 'csiiw' clock.
 	clk_disable(vout->mipicsi_clk);
 	clk_disable(vout->csiiw_clk);
 
@@ -1171,18 +1213,6 @@ static int sp_mipi_resume(struct platform_device *pdev)
 	int ret;
 
 	MIP_INFO("MIPI resume.\n");
-
-	// De-assert 'mipicsi' reset controller.
-	ret = reset_control_deassert(vout->mipicsi_rstc);
-	if (ret) {
-		MIP_ERR("Failed to deassert 'mipicsi' reset controller!\n");
-	}
-
-	// De-assert 'csiiw' reset controller.
-	ret = reset_control_deassert(vout->csiiw_rstc);
-	if (ret) {
-		MIP_ERR("Failed to deassert 'csiiw' reset controller!\n");
-	}
 
 	// Enable 'mipicsi' clock.
 	ret = clk_prepare_enable(vout->mipicsi_clk);
@@ -1206,6 +1236,7 @@ static int sp_mipi_runtime_suspend(struct device *dev)
 
 	MIP_INFO("MIPI runtime suspend.\n");
 
+	// Disable 'mipicsi' and 'csiiw' clock.
 	clk_disable(vout->mipicsi_clk);
 	clk_disable(vout->csiiw_clk);
 
@@ -1218,18 +1249,6 @@ static int sp_mipi_runtime_resume(struct device *dev)
 	int ret;
 
 	MIP_INFO("MIPI runtime resume.\n");
-
-	// De-assert 'mipicsi' reset controller.
-	ret = reset_control_deassert(vout->mipicsi_rstc);
-	if (ret) {
-		MIP_ERR("Failed to deassert 'mipicsi' reset controller!\n");
-	}
-
-	// De-assert 'csiiw' reset controller.
-	ret = reset_control_deassert(vout->csiiw_rstc);
-	if (ret) {
-		MIP_ERR("Failed to deassert 'csiiw' reset controller!\n");
-	}
 
 	// Enable 'mipicsi' clock.
 	ret = clk_prepare_enable(vout->mipicsi_clk);
@@ -1245,12 +1264,11 @@ static int sp_mipi_runtime_resume(struct device *dev)
 
 	return 0;
 }
+
 static const struct dev_pm_ops sp7021_mipi_pm_ops = {
 	.runtime_suspend = sp_mipi_runtime_suspend,
 	.runtime_resume  = sp_mipi_runtime_resume,
 };
-
-#define sp_mipi_pm_ops  (&sp7021_mipi_pm_ops)
 #endif
 
 static const struct of_device_id sp_mipi_of_match[] = {
@@ -1264,13 +1282,13 @@ static struct platform_driver sp_mipi_driver = {
 		.name = VOUT_NAME,
 		.of_match_table = sp_mipi_of_match,
 #ifdef CONFIG_PM_RUNTIME_MIPI
-		.pm = sp_mipi_pm_ops,
+		.pm = &sp7021_mipi_pm_ops,
 #endif
 	},
 	.probe = sp_mipi_probe,
 	.remove = sp_mipi_remove,
-	.suspend	= sp_mipi_suspend,
-	.resume		= sp_mipi_resume,
+	.suspend = sp_mipi_suspend,
+	.resume	= sp_mipi_resume,
 };
 
 module_platform_driver(sp_mipi_driver);
