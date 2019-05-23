@@ -12,6 +12,12 @@ config VIDEO_SENSOR_OV9281
 	---help---
 	  Supports video sensor OV9281.
 
+config VIDEO_SENSOR_OV9281_ISP
+	tristate "Video Sensor (OV9281_ISP) Driver"
+	default n
+	---help---
+	  Supports video sensor OV9281_ISP(SunplusIT). Please disable other Video Sensor Driver.
+
 config VIDEO_SENSOR_GC0310
 	tristate "Video Sensor (GC0310) Driver"
 	default n

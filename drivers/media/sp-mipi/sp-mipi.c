@@ -56,6 +56,17 @@ static const struct sp_fmt ov9281_formats[] = {
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW10,
 	},
+	{
+		.name     = "GREY, YUV422",	// for SunplusIT ov9281_isp
+		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.width    = 1280,
+		.height   = 720,
+		.depth    = 16,
+		.walign   = 2,
+		.halign   = 1,
+		.mipi_lane = 4,
+		.sol_sync = SYNC_YUY2,
+	},
 };
 
 static const struct sp_fmt gc0310_formats[] = {
@@ -101,6 +112,15 @@ static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
 		},
 		.formats = gc0310_formats,
 		.formats_size = ARRAY_SIZE(gc0310_formats),
+	},
+	{
+		.name = "ov9281_isp",
+		.grp_id = 0,
+		.board_info = {
+			I2C_BOARD_INFO("ov9281_isp", 0x60),
+		},
+		.formats = ov9281_formats,
+		.formats_size = ARRAY_SIZE(ov9281_formats),
 	}
 };
 
