@@ -251,8 +251,31 @@
 		interrupt-parent = <&intc>;
 		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
 	    };
-
-		icm: icm@G81 {
+	
+	 
+		axi: axi@sp_axi {
+		compatible = "sunplus,sp7021-axi";
+		reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>, 
+		      <0x9c013200 0x80>, <0x9c013680 0x80>, <0x9c013700 0x80>,
+			  <0x9c013980 0x80>, <0x9c013A00 0x80>, <0x9c013B80 0x80>, 		
+			  <0x9c013C00 0x80>, <0x9c013C80 0x80>, <0x9c013D00 0x80>, 	
+		      <0x9c014080 0x80>, <0x9c014100 0x80>, <0x9c014180 0x80>, 	
+              <0x9c014280 0x80>, <0x9c014300 0x80>, <0x9c014380 0x80>, 				  
+			  <0x9c014480 0x80>;
+		reg-names = "axi_mon", "axi_4", "axi_5", 
+		            "axi_12", "axi_21", "axi_22", 
+					"axi_27", "axi_28", "axi_31", 
+					"axi_32", "axi_33", "axi_34", 
+					"axi_41", "axi_42", "axi_43", 
+					"axi_45", "axi_46", "axi_47", 
+					"axi_49";
+		interrupt-parent = <&intc>;
+		interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc AXI_GLOBAL>;
+		resets = <&rstc RST_AXI_GLOBAL>;
+	    };
+	 
+			icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;
 			resets = <&rstc RST_ICM>;
