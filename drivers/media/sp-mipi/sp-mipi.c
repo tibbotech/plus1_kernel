@@ -56,17 +56,6 @@ static const struct sp_fmt ov9281_formats[] = {
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW10,
 	},
-	{
-		.name     = "GREY, YUV422",	// for SunplusIT ov9281_isp
-		.fourcc   = V4L2_PIX_FMT_YUYV,
-		.width    = 1280,
-		.height   = 720,
-		.depth    = 16,
-		.walign   = 2,
-		.halign   = 1,
-		.mipi_lane = 4,
-		.sol_sync = SYNC_YUY2,
-	},
 };
 
 static const struct sp_fmt gc0310_formats[] = {
@@ -90,6 +79,20 @@ static const struct sp_fmt gc0310_formats[] = {
 		.walign   = 2,
 		.halign   = 1,
 		.mipi_lane = 1,
+		.sol_sync = SYNC_YUY2,
+	},
+};
+
+static const struct sp_fmt ov9281_isp_formats[] = {
+	{
+		.name     = "YUYV/YUY2, YUV422",        // for SunplusIT ov9281_isp
+		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.width    = 1280,
+		.height   = 720,
+		.depth    = 16,
+		.walign   = 2,
+		.halign   = 1,
+		.mipi_lane = 4,
 		.sol_sync = SYNC_YUY2,
 	},
 };
@@ -119,8 +122,8 @@ static struct sp_vout_subdev_info sp_vout_sub_devs[] = {
 		.board_info = {
 			I2C_BOARD_INFO("ov9281_isp", 0x60),
 		},
-		.formats = ov9281_formats,
-		.formats_size = ARRAY_SIZE(ov9281_formats),
+		.formats = ov9281_isp_formats,
+		.formats_size = ARRAY_SIZE(ov9281_isp_formats),
 	}
 };
 
@@ -316,15 +319,16 @@ static int buffer_setup(struct videobuf_queue *vq, unsigned int *count, unsigned
 
 	*size = vout->fmt.fmt.pix.sizeimage;
 
-	if (0 == (*count)) {
-		*count = 32;
+	if (((*count) == 0) || ((*count) >= VIDEO_MAX_FRAME)) {
+		*count = VIDEO_MAX_FRAME;
+	} else if ((*count) < 2) {
+		*count = 2;     // At least, we need 2 video buffers.
 	}
 
 	while (((*size)*(*count)) > (vid_limit * 1024 * 1024))
 		(*count)--;
 
 	DBG_INFO("%s: count = %d, size = %d\n", __FUNCTION__, *count, *size);
-
 	return 0;
 }
 
@@ -332,7 +336,7 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 {
 	struct sp_vout_fh *fh = vq->priv_data;
 	struct sp_vout_device *vout = fh->vout;
-	unsigned long addr = 0;
+	unsigned long addr;
 	int ret;
 
 	/* If buffer is not initialized, initialize it */
@@ -357,9 +361,10 @@ static int buffer_prepare(struct videobuf_queue *vq, struct videobuf_buffer *vb,
 		}
 
 		vb->state = VIDEOBUF_PREPARED;
+
+		DBG_INFO("%s: addr = %08lx, width = %d, height = %d, size = %ld, field = %d, state = %d\n",
+			 __FUNCTION__, addr, vb->width, vb->height, vb->size, vb->field, vb->state);
 	}
-	DBG_INFO("%s: addr = %08lx, width = %d, height = %d, size = %ld, field = %d, state = %d\n",
-		 __FUNCTION__, addr, vb->width, vb->height, vb->size, vb->field, vb->state);
 
 	return 0;
 }

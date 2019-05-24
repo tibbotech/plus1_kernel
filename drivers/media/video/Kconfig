@@ -16,7 +16,10 @@ config VIDEO_SENSOR_OV9281_ISP
 	tristate "Video Sensor (OV9281_ISP) Driver"
 	default n
 	---help---
-	  Supports video sensor OV9281_ISP(SunplusIT). Please disable other Video Sensor Driver.
+	  Supports SunplusIT 3D Eye-tracker (video sensor OV9281 + ISP) board.
+	  This driver does not support auto sensor detection.
+	  It will be loaded in unconditionally when it is enabled.
+	  Please disable other video sensor drivers.
 
 config VIDEO_SENSOR_GC0310
 	tristate "Video Sensor (GC0310) Driver"
