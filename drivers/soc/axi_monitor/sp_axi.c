@@ -119,8 +119,8 @@ void Get_Monitor_Event(void __iomem *axi_id_regs)
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
 	
 	printk("current_id_regs=%p\n",axi_id_regs);	
-	printk("axi_id ip monitor: %p\n", readl(&axi_id->sub_ip_monitor));
-	printk("axi_id event infomation: %p\n", readl(&axi_id->sub_event));	
+	printk("axi_id ip monitor: %d\n", readl(&axi_id->sub_ip_monitor));
+	printk("axi_id event infomation: %d\n", readl(&axi_id->sub_event));	
 }
 
 void Event_Monitor_Clear(void __iomem *axi_mon_regs, void __iomem *axi_id_regs)
@@ -244,7 +244,6 @@ static int Check_current_id(unsigned char device_id)
 
 static irqreturn_t axi_irq_handler(int irq, void *data)
 {
-	unsigned int cnt;	
 	printk("axi_monitor_irq");
 	printk("AXI device_id=%d \n",AxiDeviceID);	 
 	Get_current_id(AxiDeviceID); 
@@ -259,8 +258,8 @@ void axi_mon_special_data(void __iomem *axi_mon_regs, void __iomem *axi_id_regs,
 {
 	regs_axi_t *axi = (regs_axi_t *)axi_mon_regs;
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
-	printk("axi=0x%x \n",axi); 
-	printk("axi_id=0x%x \n",axi_id); 
+	printk("axi=0x%p \n",axi); 
+	printk("axi_id=0x%p \n",axi_id); 
 
 	writel(data,&axi->axi_special_data);
 
@@ -276,8 +275,8 @@ void axi_mon_unexcept_access_sAddr(void __iomem *axi_mon_regs, void __iomem *axi
 {
 	regs_axi_t *axi = (regs_axi_t *)axi_mon_regs;
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
-	printk("axi=0x%x \n",axi); 
-	printk("axi_id=0x%x \n",axi_id); 
+	printk("axi=0x%p \n",axi); 
+	printk("axi_id=0x%p \n",axi_id); 
 
 	writel((data>>16),&axi->axi_valid_start_add);
 	printk("unexpect_access_sAddr=0x%x \n",(data>>16)); 
@@ -311,8 +310,8 @@ void axi_mon_timeout(void __iomem *axi_mon_regs, void __iomem *axi_id_regs, unsi
 {
 	regs_axi_t *axi = (regs_axi_t *)axi_mon_regs;
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
-	printk("axi_mon_regs=0x%x \n",axi); 
-	printk("axi_id=0x%x \n",axi_id); 
+	printk("axi_mon_regs=0x%p \n",axi); 
+	printk("axi_id=0x%p \n",axi_id); 
 
 	// about 4.95ns, configure Timeout cycle	
 	writel(data,&axi->axi_time_out);
@@ -469,9 +468,9 @@ static struct attribute_group axi_attribute_group = {
 
 /*AXI Monitor Validation end*/
 /* ---------------------------------------------------------------------------------------------- */
-#define AXI_FUNC_DEBUG
-#define AXI_KDBG_INFO
-#define AXI_KDBG_ERR
+//#define AXI_FUNC_DEBUG
+//#define AXI_KDBG_INFO
+//#define AXI_KDBG_ERR
 
 #ifdef AXI_FUNC_DEBUG
 	#define FUNC_DEBUG()    printk(KERN_INFO "[AXI] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -749,6 +748,7 @@ static int sp_axi_start(sp_axi_t *iopbase)
 	return IOP_SUCCESS;
 }
 
+#if 0
 static int sp_axi_suspend(sp_axi_t *iopbase)
 {
 	DBG_ERR("sp_axi_suspend\n");
@@ -757,7 +757,7 @@ static int sp_axi_suspend(sp_axi_t *iopbase)
 	FUNC_DEBUG();
 	return IOP_SUCCESS;
 }
-
+#endif
 
 static int sp_axi_platform_driver_probe(struct platform_device *pdev)
 {
@@ -842,9 +842,8 @@ fail_regdev:
 fail_kmalloc:
 	return ret;
 free_clk:
-	clk_disable_unprepare(sp_axi.axiclk);
-	
-
+	clk_disable_unprepare(sp_axi.axiclk);	
+	return ret;
 
 }
 

@@ -190,6 +190,40 @@ static ssize_t iop_store_standbycode(struct device *dev, struct device_attribute
 	return length;
 }
 
+static ssize_t iop_show_normalmode(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+	hal_iop_normalmode(iop->iop_regs);	
+    printk("Switch to normal mode\n");
+	return len;
+}
+
+static ssize_t iop_store_normalmode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int length = 0x10;
+	//printk("count=%x \n",count);		    	
+	printk("iop_store_normalmode\n");
+	return length;
+}
+
+static ssize_t iop_show_standbymode(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;	
+	hal_iop_standbymode(iop->iop_regs);	
+    printk("Switch to standby mode\n");
+	return len;
+}
+
+static ssize_t iop_store_standbymode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	int length = 0x10;
+	//printk("count=%x \n",count);				
+	printk("iop_store_standbymode\n");
+	return length;
+}
+
+
+
 static ssize_t iop_show_getdata(struct device *dev, struct device_attribute *attr, char *buf)
 {   
 	ssize_t len = 0;
@@ -234,12 +268,16 @@ static ssize_t iop_store_setdata(struct device *dev, struct device_attribute *at
  
 static DEVICE_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_show_normalcode, iop_store_normalcode);
 static DEVICE_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_show_standbycode, iop_store_standbycode);
+static DEVICE_ATTR(normalmode, S_IWUSR|S_IRUGO, iop_show_normalmode, iop_store_normalmode);
+static DEVICE_ATTR(standbymode, S_IWUSR|S_IRUGO, iop_show_standbymode, iop_store_standbymode);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
 
 static struct attribute *iop_sysfs_entries[] = {
 	&dev_attr_normalcode.attr,
 	&dev_attr_standbycode.attr,
+	&dev_attr_normalmode.attr,
+	&dev_attr_standbymode.attr,
 	&dev_attr_getdata.attr,
 	&dev_attr_setdata.attr,
 	NULL,
@@ -445,26 +483,12 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 		goto fail_regdev;
 	}
 
-	#if 1
-	ret = _sp_iop_get_resources(pdev, iop);
-
-	
+	ret = _sp_iop_get_resources(pdev, iop);	
 	ret = sp_iop_start(iop);
 	if (ret != 0) {
 		DBG_ERR("[IOP] sp iop init err=%d\n", ret);
 		return ret;
 	}
-
-	#else
-	ret = _sp_iop_get_resources(pdev, iop);
-
-	ret = sp_iop_suspend(iop);
-	if (ret != 0) {
-		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
-		return ret;
-	}
-	#endif
-
 
 	rc = sysfs_create_group(&pdev->dev.kobj, &iop_attribute_group);
 	if (rc) {
