@@ -1099,8 +1099,7 @@ static int hdmitx_resume(struct platform_device *pdev)
 #ifdef CONFIG_PM_RUNTIME_HDMITX
 static int sp_hdmitx_runtime_suspend(struct device *dev)
 {
-	//reset_control_assert(sp_hdmitx->rstc);
-	//clk_disable(sp_hdmitx->clk);
+	clk_disable(sp_hdmitx->clk);	
 	HDMITX_DBG("HPD RPM SUSPEND\n");
 	
 	return 0;
@@ -1108,7 +1107,7 @@ static int sp_hdmitx_runtime_suspend(struct device *dev)
 
 static int sp_hdmitx_runtime_resume(struct device *dev)
 {
-	reset_control_deassert(sp_hdmitx->rstc);
+	clk_enable(sp_hdmitx->clk);	
 	HDMITX_DBG("HPD RPM RESUME\n");
 	
 	return 0;
