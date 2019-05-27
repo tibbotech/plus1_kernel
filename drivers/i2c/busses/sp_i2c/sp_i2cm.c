@@ -45,7 +45,7 @@
 
 #define I2C_FREQ             100
 #define I2C_SLEEP_TIMEOUT    200
-#define I2C_SCL_DELAY        0  //SCl dalay xT
+#define I2C_SCL_DELAY        1  //SCl dalay xT
 
 #define I2CM_REG_NAME        "i2cm"
 
