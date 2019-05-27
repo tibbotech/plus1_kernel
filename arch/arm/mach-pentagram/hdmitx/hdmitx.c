@@ -1069,9 +1069,10 @@ static int hdmitx_remove(struct platform_device *pdev)
 	g_hdmitx_state = FSM_INIT;
 	misc_deregister(misc);
 	reset_control_assert(sp_hdmitx->rstc);
-	clk_disable(sp_hdmitx->clk);
 
-#ifdef CONFIG_PM_RUNTIME_HDMITX
+#ifndef CONFIG_PM_RUNTIME_HDMITX
+	clk_disable(sp_hdmitx->clk);
+#else 
 	pm_runtime_put(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
@@ -1099,8 +1100,7 @@ static int hdmitx_resume(struct platform_device *pdev)
 #ifdef CONFIG_PM_RUNTIME_HDMITX
 static int sp_hdmitx_runtime_suspend(struct device *dev)
 {
-	//clk_disable() will cause system hang-up during re-installing (when plug out) after removing
-	//clk_disable(sp_hdmitx->clk);
+	clk_disable(sp_hdmitx->clk);
 	HDMITX_DBG("HPD RPM SUSPEND\n");
 	
 	return 0;
