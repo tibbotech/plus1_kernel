@@ -440,18 +440,24 @@ static int sp_iop_start(sp_iop_t *iopbase)
 	return IOP_SUCCESS;
 }
 
+#if 0
 static int sp_iop_suspend(sp_iop_t *iopbase)
 {
-	DBG_ERR("Leon sp_iop_suspend\n");
+	DBG_ERR("sp_iop_suspend\n");
 	//early_printk("[MBOX_%d] %08x (%u)\n", i, d, d);
-	early_printk("Leon  sp_iop_suspend\n");
-
+	early_printk("sp_iop_suspend\n");
 	FUNC_DEBUG();
-	
-
 	hal_iop_suspend(iopbase->iop_regs, iopbase->pmc_regs);
-
-
+	return IOP_SUCCESS;
+}
+#endif 
+static int sp_iop_shutdown(sp_iop_t *iopbase)
+{
+	DBG_ERR("sp_iop_shutdown\n");
+	//early_printk("[MBOX_%d] %08x (%u)\n", i, d, d);
+	early_printk("sp_iop_shutdown\n");
+	FUNC_DEBUG();
+	hal_iop_shutdown(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
 }
 
@@ -517,11 +523,12 @@ static int sp_iop_platform_driver_remove(struct platform_device *pdev)
 
 static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_message_t state)
 {
+    #if 0
 	int ret;
 	unsigned int*   IOP_base;	
 	unsigned int checksum=0;	
 	int i;	
-	
+
 	IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
 	for(i=0;i<0x400;i++)
 	{	
@@ -537,9 +544,35 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
 		return ret;
 	}
-
-
 	return 0;
+	#else
+	FUNC_DEBUG();
+	return 0;
+	#endif 
+}
+
+static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
+{
+	int ret;
+	unsigned int*   IOP_base;	
+	unsigned int checksum=0;	
+	int i;	
+	
+	IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
+	for(i=0;i<0x400;i++)
+	{	
+		checksum+=*(IOP_base+i);			
+	}
+	early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
+
+	FUNC_DEBUG();
+	ret = _sp_iop_get_resources(pdev, iop);
+
+	ret = sp_iop_shutdown(iop);
+	if (ret != 0) {
+		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
+		//return ret;
+	}
 }
 
 static int sp_iop_platform_driver_resume(struct platform_device *pdev)
@@ -563,8 +596,9 @@ MODULE_DEVICE_TABLE(of, sp_iop_of_match);
 static struct platform_driver sp_iop_platform_driver = {
 	.probe		= sp_iop_platform_driver_probe,
 	.remove		= sp_iop_platform_driver_remove,
-	.suspend		= sp_iop_platform_driver_suspend,
-	.resume		= sp_iop_platform_driver_resume,
+	.suspend	= sp_iop_platform_driver_suspend,
+	.shutdown	= sp_iop_platform_driver_shutdown,
+	.resume		= sp_iop_platform_driver_resume,	
 	.driver = {
 		.name	= DEVICE_NAME,
 		.owner	= THIS_MODULE,
