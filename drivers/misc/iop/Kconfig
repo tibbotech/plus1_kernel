@@ -6,7 +6,7 @@ menu "IOP support"
 
 config SUNPLUS_IOP
 	tristate "IOP support"
-	default y
+	default n
 	help
 		IOP support Q channel detection
 source "drivers/misc/iop/qtest/Kconfig"
