@@ -543,7 +543,6 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 {
 	struct sp_vout_device *vout = video_drvdata(file);
 	struct sp_vout_fh *fh = file->private_data;
-	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
 
@@ -555,12 +554,6 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 	if (req_buf->type != V4L2_BUF_TYPE_VIDEO_CAPTURE) {
 		MIP_ERR("Invalid V4L2 buffer type!\n");
 		return -EINVAL;
-	}
-
-	/* Lock for entering critical section */
-	ret = mutex_lock_interruptible(&vout->lock);
-	if (ret) {
-		return ret;
 	}
 
 	vout->memory = req_buf->memory;
@@ -577,12 +570,8 @@ static int vidioc_reqbufs(struct file *file, void *priv, struct v4l2_requestbuff
 	INIT_LIST_HEAD(&vout->dma_queue);
 	DBG_INFO("%s: init_list\n", __FUNCTION__);
 	print_List(&vout->dma_queue);
-	ret = videobuf_reqbufs(&vout->buffer_queue, req_buf);
 
-	/* Unlock after leaving critical section */
-	mutex_unlock(&vout->lock);
-
-	return ret;
+	return videobuf_reqbufs(&vout->buffer_queue, req_buf);
 }
 
 static int vidioc_querybuf(struct file *file, void *priv, struct v4l2_buffer *buf)
@@ -693,12 +682,6 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 		return ret;
 	}
 
-	/* Lock for entering critical section */
-	ret = mutex_lock_interruptible(&vout->lock);
-	if (ret) {
-		goto streamoff;
-	}
-
 	/* Get the next video-buffer from the video-buffer queue */
 	vout->cur_frm = list_entry(vout->dma_queue.next, struct videobuf_buffer, queue);
 
@@ -720,15 +703,7 @@ static int vidioc_streamon(struct file *file, void *priv, enum v4l2_buf_type buf
 	vout->streaming = 1;
 	vout->skip_first_int = 1;
 
-	/* Unlock after leaving critical section */
-	mutex_unlock(&vout->lock);
-
 	DBG_INFO("%s: cur_frm = %p, addr = %08lx\n", __FUNCTION__, vout->cur_frm, addr);
-
-	return ret;
-
-streamoff:
-	ret = videobuf_streamoff(&vout->buffer_queue);
 	return ret;
 }
 
@@ -758,12 +733,6 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 		return -EINVAL;
 	}
 
-	/* Lock for entering critical section */
-	ret = mutex_lock_interruptible(&vout->lock);
-	if (ret) {
-		return ret;
-	}
-
 	sdinfo = vout->current_subdev;
 	ret = v4l2_device_call_until_err(&vout->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 0);
@@ -777,12 +746,7 @@ static int vidioc_streamoff(struct file *file, void *priv, enum v4l2_buf_type bu
 	// FW must mask irq to avoid unmap issue (for test code)
 	writel(0x32700, &vout->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
 
-	ret = videobuf_streamoff(&vout->buffer_queue);
-
-	/* Unlock after leaving critical section */
-	mutex_unlock(&vout->lock);
-
-	return ret;
+	return videobuf_streamoff(&vout->buffer_queue);
 }
 
 static const struct v4l2_ioctl_ops sp_mipi_ioctl_ops = {
@@ -828,15 +792,9 @@ static int sp_vout_open(struct file *file)
 	fh->vout = vout;
 	v4l2_fh_init(&fh->fh, vdev);
 
-	/* Get the device lock */
-	mutex_lock(&vout->lock);
-
 	/* Set io_allowed member to false */
 	fh->io_allowed = 0;
 	v4l2_fh_add(&fh->fh);
-
-	/* Get the device unlock */
-	mutex_unlock(&vout->lock);
 	return 0;
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
@@ -855,9 +813,6 @@ static int sp_vout_release(struct file *file)
 	int ret;
 
 	DBG_INFO("%s\n", __FUNCTION__);
-
-	/* Get the device lock */
-	mutex_lock(&vout->lock);
 
 	/* if this instance is doing IO */
 	if (fh->io_allowed) {
@@ -888,9 +843,6 @@ static int sp_vout_release(struct file *file)
 #ifdef CONFIG_PM_RUNTIME_MIPI
 	pm_runtime_put(vout->pdev);		// Starting count timeout.
 #endif
-
-	/* Get the device unlock */
-	mutex_unlock(&vout->lock);
 
 	/* Free memory allocated to file handle object */
 	kfree(fh);
@@ -1069,6 +1021,8 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	spin_lock_init(&vout->irqlock);
 	spin_lock_init(&vout->dma_queue_lock);
 	mutex_init(&vout->lock);
+
+	vfd->lock = &vout->lock;
 	vfd->minor = -1;
 
 	// Register video device.
