@@ -2,6 +2,7 @@
 #define __FONT_API_H__
 
 extern int FONT_init(void);
+extern int FONT_SetSize(int size);
 extern void FONT_GetString_Size(char *src_str, int len, int *w, int *h);
 extern void FONT_GetString_ptr(char *src_str,
 		int len,

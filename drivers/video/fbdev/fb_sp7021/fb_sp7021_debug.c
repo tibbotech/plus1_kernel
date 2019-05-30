@@ -773,7 +773,16 @@ static void _fb_debug_cmd(char *tmpbuf, struct fb_info *fbinfo)
 	}
 #endif
 #ifdef SUPPORT_FONT
-	else if (!strncasecmp(tmpbuf, "str_color", 9)) {
+	else if (!strncasecmp(tmpbuf, "str_size", 8)) {
+		int size;
+
+		tmpbuf = _mon_readint(tmpbuf + 8, (int *)&size);
+
+		if (FONT_SetSize(size))
+			pr_err("Setting Font Size: %d NG\n", size);
+		else
+			pr_err("Setting Font Size: %d OK\n", size);
+	} else if (!strncasecmp(tmpbuf, "str_color", 9)) {
 		tmpbuf = _mon_readint(tmpbuf + 9, (int *)&gFont_color);
 		tmpbuf = _mon_readint(tmpbuf, (int *)&gFont_bg_color);
 
