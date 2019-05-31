@@ -38,7 +38,7 @@ long gpio_first_1(u32 bit)
 	
 	value = 1 << (bit & 0x1f);
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_FIRST(idx)) | value), GPIO_FIRST(idx));
+	iowrite32((ioread32((const volatile void *)GPIO_FIRST(idx)) | value), (volatile void *)GPIO_FIRST(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -57,7 +57,7 @@ long gpio_first_0(u32 bit)
 
 	value = 1 << (bit & 0x1f);
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_FIRST(idx)) & (~value)), GPIO_FIRST(idx));
+	iowrite32((ioread32((const volatile void *)GPIO_FIRST(idx)) & (~value)), (volatile void *)GPIO_FIRST(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 	return 0;
 }
@@ -78,7 +78,7 @@ long gpio_master_1(u32 bit)
 	//	return -EINVAL;
 	//}
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_MASTER(idx)) | value), GPIO_MASTER(idx));
+	iowrite32((ioread32((const volatile void *)GPIO_MASTER(idx)) | value), (volatile void *)GPIO_MASTER(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -95,13 +95,13 @@ long gpio_master_0(u32 bit)
 		return -EINVAL;
 	}
 	
-	value = ((ioread32(GPIO_MASTER(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
+	value = ((ioread32((const volatile void *)GPIO_MASTER(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
 	//if (gpio_check_first(idx, value) == -EINVAL) {
 	//	return -EINVAL;
 	//}
 		
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32(value, GPIO_MASTER(idx));
+	iowrite32(value, (volatile void *)GPIO_MASTER(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -129,7 +129,7 @@ long gpio_set_oe(u32 bit)
 	}
 #endif
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_OE(idx)) | value), GPIO_OE(idx));
+	iowrite32((ioread32((const volatile void *)GPIO_OE(idx)) | value), (volatile void *)GPIO_OE(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -146,7 +146,7 @@ long gpio_clr_oe(u32 bit)
 		return -EINVAL;
 	}
 	
-	value = ((ioread32(GPIO_OE(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
+	value = ((ioread32((const volatile void *)GPIO_OE(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
 #if 0
 	if (gpio_check_first(idx, value) == -EINVAL) {
 		return -EINVAL;
@@ -156,7 +156,7 @@ long gpio_clr_oe(u32 bit)
 	}
 #endif
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32(value, GPIO_OE(idx));
+	iowrite32(value, (volatile void *)GPIO_OE(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -190,7 +190,7 @@ long gpio_out_1(u32 bit)
 	}
 #endif
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32((ioread32(GPIO_OUT(idx)) | value), GPIO_OUT(idx));
+	iowrite32((ioread32((const volatile void *)GPIO_OUT(idx)) | value), (volatile void *)GPIO_OUT(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -210,7 +210,7 @@ long gpio_out_0(u32 bit)
 		return -EINVAL;
 	}
 
-	value = ((ioread32(GPIO_OUT(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
+	value = ((ioread32((const volatile void *)GPIO_OUT(idx)) | (1 << ((bit & 0x0f) + 0x10)) ) & ~( 1 << (bit & 0x0f)));
 #if 0
 	if (gpio_check_first(idx, value) == -EINVAL) {
 		return -EINVAL;
@@ -223,7 +223,7 @@ long gpio_out_0(u32 bit)
 	}
 #endif
 	spin_lock_irqsave(&slock_gpio, flags);
-	iowrite32(value, GPIO_OUT(idx));
+	iowrite32(value, (volatile void *)GPIO_OUT(idx));
 	spin_unlock_irqrestore(&slock_gpio, flags);
 
 	return 0;
@@ -244,7 +244,7 @@ long gpio_in(u32 bit, u32 *gpio_in_value)
 	value = 1 << (bit & 0x1f);
 	
 	spin_lock_irqsave(&slock_gpio, flags);
-	*gpio_in_value = (ioread32(GPIO_IN(idx)) & value) ? 1 : 0;
+	*gpio_in_value = (ioread32((const volatile void *)GPIO_IN(idx)) & value) ? 1 : 0;
 	spin_unlock_irqrestore(&slock_gpio, flags);
 		
 	return 0;
