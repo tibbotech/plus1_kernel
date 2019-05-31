@@ -53,6 +53,9 @@
 #include "hal_disp.h"
 #include "mach/display/display.h"
 
+#ifdef TIMING_SYNC_720P60
+#include <mach/hdmitx.h>
+#endif
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -128,6 +131,10 @@ static ssize_t _write_flush_proc(struct file *filp, const char __user *buffer, s
 static int _dma_probe(struct platform_device *pdev);
 #endif
 
+#ifdef TIMING_SYNC_720P60
+extern int hdmitx_enable_display(void);
+extern void hdmitx_set_timming(enum hdmitx_timing timing);
+#endif
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
@@ -1400,6 +1407,15 @@ static int _display_probe(struct platform_device *pdev)
 		// TGEN setting
 		UINT32 ret;
 		DRV_SetTGEN_t SetTGEN;
+
+#ifdef TIMING_SYNC_720P60
+		if((pDispWorkMem->UIRes.width == 1280)&&(pDispWorkMem->UIRes.height == 720))
+		{
+			mode = 2;
+			hdmitx_set_timming(HDMITX_TIMING_720P60);
+			hdmitx_enable_display();
+		}
+#endif	
 
 		DRV_DVE_SetMode(mode);
 		//DRV_DVE_SetColorbar(ENABLE);

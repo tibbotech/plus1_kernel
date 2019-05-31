@@ -23,7 +23,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-
+#include "mach/display/display.h" //#ifdef TIMING_SYNC_720P60
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
@@ -158,7 +158,21 @@ static struct platform_driver g_hdmitx_driver = {
 #endif			
 	},
 };
+#ifdef TIMING_SYNC_720P60
+static int __init sp_hdmitx_init(void)
+{
+	return platform_driver_register(&g_hdmitx_driver);
+}
+fs_initcall(sp_hdmitx_init);
+
+static void __exit sp_hdmitx_exit(void)
+{
+	platform_driver_unregister(&g_hdmitx_driver);
+}
+module_exit(sp_hdmitx_exit);
+#else
 module_platform_driver(g_hdmitx_driver);
+#endif
 
 static struct task_struct *g_hdmitx_task;
 static struct mutex g_hdmitx_mutex;

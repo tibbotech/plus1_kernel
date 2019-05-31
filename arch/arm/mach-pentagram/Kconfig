@@ -84,6 +84,13 @@ config SP_DISP_SP7021_TEST
 	help
 		TEST display driver for SP7021.
 
+config SP7021_HDMITX
+	tristate "SP7021 HDMITX driver"
+	select PINCTRL
+	select PINCTRL_SPPCTL
+	help
+		TEST hdmitx driver for SP7021.
+
 endmenu
 
 endif

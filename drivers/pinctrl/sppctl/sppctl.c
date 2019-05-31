@@ -222,9 +222,9 @@ static struct platform_driver sppctl_driver = {
  .remove	= sppctl_ddel,
 };
 
-module_platform_driver(sppctl_driver);
+//module_platform_driver(sppctl_driver);
 
-#if 0
+#if 1
 static int __init sppctl_drv_reg( void) {
  return platform_driver_register( &sppctl_driver);  }
 postcore_initcall( sppctl_drv_reg);
