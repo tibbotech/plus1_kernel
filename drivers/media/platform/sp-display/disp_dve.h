@@ -1,7 +1,7 @@
 #ifndef __DISP_DVE_H__
 #define __DISP_DVE_H__
 
-#include "display.h"
+#include "mach/display/display.h"
 
 void DRV_DVE_Init(void *pInHWReg);
 void DRV_DVE_SetMode(int mode);
