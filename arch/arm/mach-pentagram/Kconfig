@@ -81,6 +81,7 @@ config SP_MON
 
 config SP_DISP_SP7021_TEST
 	tristate "SP7021 DISP Test Code"
+	default n
 	help
 		TEST display driver for SP7021.
 
