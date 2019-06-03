@@ -24,6 +24,15 @@
 #include "sp7021_gpio_ops.h"
 #include "sp7021_gpio.h"
 
+#if 0 //Test code for GPIO_INT0
+static irqreturn_t gpio_int_0(int irq, void *data)
+{
+	printk(KERN_INFO "register gpio int0 trigger \n");
+	return IRQ_HANDLED;
+}
+
+#endif
+
 int sp7021_gpio_resmap( struct platform_device *_pd, sp7021gpio_chip_t *_pc) {
  struct resource *rp;
  // res0
@@ -134,6 +143,16 @@ int sp7021_gpio_new( struct platform_device *_pd, void *_datap) {
     pc->irq[ i] = irq_of_parse_and_map( np, i);
     KDBG( &( _pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[ i]);
  }
+
+#if 0 //Test code for GPIO_INT0
+	err = devm_request_irq(&( _pd->dev), pc->irq[ 0], gpio_int_0, IRQF_TRIGGER_RISING, "sppctl_gpio_int0", _pd);
+	KDBG( &( _pd->dev), "register gpio int0 irq \n");
+	if (err) {
+		KDBG( &( _pd->dev), "register gpio int0 irq err \n");
+		return err;
+	}
+#endif
+
  spin_lock_init( &( pc->lock));
 #ifndef SPPCTL_H
  printk( KERN_INFO M_NAM" by "M_ORG" "M_CPR);
