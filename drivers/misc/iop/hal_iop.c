@@ -1,6 +1,7 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <dt-bindings/memory/sp-q628-mem.h> 
+#include <mach/gpio_drv.h>
 #include "hal_iop.h"
 //#include <mach/io_map.h> 
 #define IOP_CODE_SIZE	4096
@@ -54,6 +55,15 @@ void hal_iop_init(void __iomem *iopbase)
 }
 EXPORT_SYMBOL(hal_iop_init);
 
+void hal_gpio_init(void __iomem *iopbase, unsigned char gpio_number)
+{
+	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
+	GPIO_E_SET(gpio_number,1);
+	GPIO_F_SET(gpio_number,1);
+	GPIO_M_SET(gpio_number,0);	
+	writel((0xFE00|gpio_number),&pIopReg->iop_data0);	
+}
+EXPORT_SYMBOL(hal_gpio_init);
 
 extern unsigned char SourceCode[IOP_CODE_SIZE];
 void hal_iop_load_normal_code(void __iomem *iopbase)
@@ -270,7 +280,7 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//reg|=0x00100010;
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 
-	early_printk("hal_iop_suspend\n");
+	//early_printk("hal_iop_suspend\n");
 	//early_printk("[IOP iopbase: 0x%x  ioppmcbase: 0x%x   ioprtcbase: 0x%x!!\n", (unsigned int)(iopbase)
 	//	,(unsigned int)(ioppmcbase),(unsigned int)(ioprtcbase));
 
@@ -334,8 +344,8 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	pIopPmcReg->CLK27M_PASSWORD_II=0x5500aaff;
 	pIopPmcReg->PMC_TIMER2=0x01000100;
 
-	early_printk("hal_iop_suspend PMC_TIMER=0x%x\n",pIopPmcReg->PMC_TIMER);
-	early_printk("hal_iop_suspend PMC_CTRL=0x%x\n",pIopPmcReg->PMC_CTRL);
+	//early_printk("hal_iop_suspend PMC_TIMER=0x%x\n",pIopPmcReg->PMC_TIMER);
+	//early_printk("hal_iop_suspend PMC_CTRL=0x%x\n",pIopPmcReg->PMC_CTRL);
 	#if 0
 	early_printk("Leon  hal_iop_suspend XTAL27M_PASSWORD_I=0x%x\n",pIopPmcReg->XTAL27M_PASSWORD_I);
 	early_printk("Leon  hal_iop_suspend XTAL27M_PASSWORD_II=0x%x\n",pIopPmcReg->XTAL27M_PASSWORD_II);
@@ -462,7 +472,7 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 		pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
 	#endif
 	
-	early_printk("hal_iop_suspend end\n");
+	//early_printk("hal_iop_suspend end\n");
 	printk("hal_iop_suspend end\n");
 
 	
@@ -598,7 +608,7 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 		pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
 	#endif
 	
-	early_printk("hal_iop_shutdown end\n");
+	//early_printk("hal_iop_shutdown end\n");
 	printk("hal_iop_shutdown end\n");
 
 	

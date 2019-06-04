@@ -265,6 +265,28 @@ static ssize_t iop_store_setdata(struct device *dev, struct device_attribute *at
 	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
 	return ret;
 }
+
+static ssize_t iop_show_setgpio(struct device *dev, struct device_attribute *attr, char *buf)
+{	
+	ssize_t len = 0;
+	printk("iop_store_setgpio\n");
+	return len;
+}
+
+static ssize_t iop_store_setgpio(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+   	int ret = count;
+	unsigned char num[1];
+	unsigned int setnum; 
+	printk("iop_store_setgpio\n");
+	num[0] = buf[0];
+	setnum = simple_strtol(num, NULL, 16);
+	printk("set gpio number = %x \n",setnum);	
+	hal_gpio_init(iop->iop_regs,setnum);
+	return ret;
+}
+
+
  
 static DEVICE_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_show_normalcode, iop_store_normalcode);
 static DEVICE_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_show_standbycode, iop_store_standbycode);
@@ -272,6 +294,7 @@ static DEVICE_ATTR(normalmode, S_IWUSR|S_IRUGO, iop_show_normalmode, iop_store_n
 static DEVICE_ATTR(standbymode, S_IWUSR|S_IRUGO, iop_show_standbymode, iop_store_standbymode);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
+static DEVICE_ATTR(setgpio, S_IWUSR|S_IRUGO, iop_show_setgpio, iop_store_setgpio);
 
 static struct attribute *iop_sysfs_entries[] = {
 	&dev_attr_normalcode.attr,
@@ -280,6 +303,7 @@ static struct attribute *iop_sysfs_entries[] = {
 	&dev_attr_standbymode.attr,
 	&dev_attr_getdata.attr,
 	&dev_attr_setdata.attr,
+	&dev_attr_setgpio.attr,
 	NULL,
 };
 
@@ -455,7 +479,7 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 {
 	DBG_ERR("sp_iop_shutdown\n");
 	//early_printk("[MBOX_%d] %08x (%u)\n", i, d, d);
-	early_printk("sp_iop_shutdown\n");
+	//early_printk("sp_iop_shutdown\n");
 	FUNC_DEBUG();
 	hal_iop_shutdown(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
@@ -563,7 +587,7 @@ static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 	{	
 		checksum+=*(IOP_base+i);			
 	}
-	early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
+	//early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
 
 	FUNC_DEBUG();
 	ret = _sp_iop_get_resources(pdev, iop);
