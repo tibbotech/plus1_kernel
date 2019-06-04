@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 #
-# Makefile for the sp video out drivers.
+# Makefile for the Sunplus MIPI/CSI-RX drivers.
 #
 
-obj-$(CONFIG_VIDEO_SP_VOUT) += sp-mipi.o
-
+obj-$(CONFIG_VIDEO_SP_MIPICSI_RX) += sp-mipi.o
 

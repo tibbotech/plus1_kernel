@@ -10,7 +10,7 @@
 #include <media/v4l2-device.h>
 
 
-#define VOUT_NAME                       "sp_vout"
+#define MIPI_CSI_RX_NAME                "sp_mipi_csi-rx"
 #define MIPICSI_REG_NAME                "mipicsi"
 #define CSIIW_REG_NAME                  "csiiw"
 
@@ -62,7 +62,7 @@ struct sp_fmt {
 	int     sol_sync;                                       /* sync of start of line */
 };
 
-struct sp_vout_subdev_info {
+struct sp_mipi_subdev_info {
 	char                            name[32];               /* Sub device name */
 	int                             grp_id;                 /* Sub device group id */
 	struct i2c_board_info           board_info;             /* i2c subdevice board info */
@@ -70,13 +70,13 @@ struct sp_vout_subdev_info {
 	int                             formats_size;           /* number of formats */
 };
 
-struct sp_vout_config {
+struct sp_mipi_config {
 	int                             i2c_adapter_id;         /* i2c bus adapter no */
-	struct sp_vout_subdev_info      *sub_devs;              /* information about each subdev */
+	struct sp_mipi_subdev_info      *sub_devs;              /* information about each subdev */
 	int                             num_subdevs;            /* Number of sub devices connected to vpfe */
 };
 
-struct sp_vout_device {
+struct sp_mipi_device {
 	struct mipicsi_reg              *mipicsi_regs;
 	struct csiiw_reg                *csiiw_regs;
 	struct clk                      *mipicsi_clk;
@@ -100,8 +100,8 @@ struct sp_vout_device {
 	enum v4l2_memory                memory;
 
 	struct i2c_adapter              *i2c_adap;
-	struct sp_vout_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
-	struct sp_vout_config           *cfg;
+	struct sp_mipi_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
+	struct sp_mipi_config           *cfg;
 	const struct sp_fmt             *cur_format;
 	int                             cur_mode;
 
@@ -116,9 +116,9 @@ struct sp_vout_device {
 };
 
 /* File handle structure */
-struct sp_vout_fh {
+struct sp_mipi_fh {
 	struct v4l2_fh          fh;
-	struct sp_vout_device   *vout;
+	struct sp_mipi_device   *mipi;
 	u8                      io_allowed;                     /* Indicates whether this file handle is doing IO */
 };
 

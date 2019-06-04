@@ -812,8 +812,8 @@
 			};
 		};
 
-		mipicsi0: mipicsi@0x9C005280 {
-			compatible = "sunplus,sp7021-mipicsi";
+		mipicsi0: mipicsirx@0x9C005280 {
+			compatible = "sunplus,sp7021-mipicsi-rx";
 			reg = <0x9C005280 0x80>, <0x9C005300 0x80>;
 			reg-names = "mipicsi", "csiiw";
 			interrupt-parent = <&intc>;
@@ -826,8 +826,8 @@
 			i2c-id = <1>;
 		};
 /*
-		mipicsi1: mipicsi@0x9C005380 {
-			compatible = "sunplus,sp7021-mipicsi";
+		mipicsi1: mipicsirx@0x9C005380 {
+			compatible = "sunplus,sp7021-mipicsi-rx";
 			reg = <0x9C005380 0x80>, <0x9C005400 0x80>;
 			reg-names = "mipicsi", "csiiw";
 			interrupt-parent = <&intc>;
