@@ -607,17 +607,20 @@ static void process_hpd_state(void)
 #ifdef CONFIG_PM_RUNTIME_HDMITX
 	int ret;
 	static int runtime_put = FALSE;
+  static int runtime_put1 = TRUE;
 #endif
 
 	HDMITX_DBG("HPD State\n");
 
 	if (get_hpd_in()) {
 #ifdef CONFIG_PM_RUNTIME_HDMITX
-		runtime_put = TRUE ;
+		if (runtime_put1 == TRUE) { 
+			runtime_put = TRUE;
 
-		ret = pm_runtime_get_sync(sp_hdmitx->dev);
-		if (ret < 0) {
-			pm_runtime_mark_last_busy(sp_hdmitx->dev);
+			ret = pm_runtime_get_sync(sp_hdmitx->dev);
+			if (ret < 0) {
+				pm_runtime_mark_last_busy(sp_hdmitx->dev);
+			}
 		}
 #endif
 
@@ -641,6 +644,19 @@ static void process_hpd_state(void)
 		if (runtime_put == TRUE) {
 			pm_runtime_put(sp_hdmitx->dev);
 			runtime_put = FALSE;
+      runtime_put1 = TRUE;
+		}
+		
+		msleep(2000);
+
+		if (runtime_put1 == TRUE) {
+			runtime_put = TRUE ;
+			runtime_put1 = FALSE;
+			
+			ret = pm_runtime_get_sync(sp_hdmitx->dev);
+			if (ret < 0) {
+				pm_runtime_mark_last_busy(sp_hdmitx->dev);
+			}
 		}
 #endif
 	}	
@@ -1115,7 +1131,7 @@ static int hdmitx_resume(struct platform_device *pdev)
 static int sp_hdmitx_runtime_suspend(struct device *dev)
 {
 	clk_disable(sp_hdmitx->clk);
-	HDMITX_DBG("HPD RPM SUSPEND\n");
+	HDMITX_DBG("RPM SUSPEND\n");
 	
 	return 0;
 }
@@ -1123,7 +1139,7 @@ static int sp_hdmitx_runtime_suspend(struct device *dev)
 static int sp_hdmitx_runtime_resume(struct device *dev)
 {
 	clk_enable(sp_hdmitx->clk);
-	HDMITX_DBG("HPD RPM RESUME\n");
+	HDMITX_DBG("RPM RESUME\n");
 	
 	return 0;
 }
