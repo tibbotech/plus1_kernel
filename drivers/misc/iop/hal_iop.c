@@ -58,10 +58,11 @@ EXPORT_SYMBOL(hal_iop_init);
 void hal_gpio_init(void __iomem *iopbase, unsigned char gpio_number)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	GPIO_E_SET(gpio_number,1);
-	GPIO_F_SET(gpio_number,1);
-	GPIO_M_SET(gpio_number,0);	
-	writel((0xFE00|gpio_number),&pIopReg->iop_data0);	
+	//GPIO_E_SET(gpio_number,1);
+	//GPIO_F_SET(gpio_number,1);
+	//GPIO_M_SET(gpio_number,0);	
+	writel(0xFE02,&pIopReg->iop_data0);	
+	writel(gpio_number,&pIopReg->iop_data1);	
 }
 EXPORT_SYMBOL(hal_gpio_init);
 
@@ -261,7 +262,29 @@ void hal_iop_set_iop_data(void __iomem *iopbase, unsigned int num, unsigned int 
 }
 EXPORT_SYMBOL(hal_iop_set_iop_data);
 
+void hal_iop_set_reserve_base(void __iomem *iopbase)
+{
+	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
+	
+	writel(0xFD04,&pIopReg->iop_data0);	
+	writel(((SP_IOP_RESERVE_BASE>>16)&0xFFFF),&pIopReg->iop_data1);	
+	writel((SP_IOP_RESERVE_BASE&0xFFFF),&pIopReg->iop_data2);	
+	printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x \n", __FUNCTION__, __LINE__, 
+			pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2);
+}
+EXPORT_SYMBOL(hal_iop_set_reserve_base);
 
+void hal_iop_set_reserve_size(void __iomem *iopbase)
+{
+	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
+	
+	writel(0xFC04,&pIopReg->iop_data0);	
+	writel(((SP_IOP_RESERVE_SIZE>>16)&0xFFFF),&pIopReg->iop_data1);	
+	writel((SP_IOP_RESERVE_SIZE&0xFFFF),&pIopReg->iop_data2);	
+	printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x \n", __FUNCTION__, __LINE__, 
+			pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2);
+}
+EXPORT_SYMBOL(hal_iop_set_reserve_size);
 
 #define IOP_READY	0x4
 #define RISC_READY	0x8

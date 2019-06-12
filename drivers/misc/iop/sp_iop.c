@@ -15,12 +15,21 @@
 #include <dt-bindings/memory/sp-q628-mem.h> 
 #include <linux/delay.h>
 
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
+
 #include <linux/of_irq.h>
 #include <linux/kthread.h>
 /* ---------------------------------------------------------------------------------------------- */
 #define IOP_FUNC_DEBUG
 #define IOP_KDBG_INFO
 #define IOP_KDBG_ERR
+//#define IOP_GET_GPIO
+
+extern int gpio_request(unsigned gpio, const char *label);
+extern void gpio_free(unsigned gpio);
+int IOP_GPIO;
 
 
 #ifdef IOP_FUNC_DEBUG
@@ -281,9 +290,9 @@ static ssize_t iop_store_setgpio(struct device *dev, struct device_attribute *at
 	printk("iop_store_setgpio\n");
 	num[0] = buf[0];
 	setnum = simple_strtol(num, NULL, 16);
-	printk("set gpio number = %x \n",setnum);	
-	hal_gpio_init(iop->iop_regs,setnum);
-	return ret;
+	printk("set gpio number = %x \n",IOP_GPIO);	
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+ 	return ret;
 }
 
 
@@ -485,12 +494,29 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 	return IOP_SUCCESS;
 }
 
+static int sp_iop_reserve_base(sp_iop_t *iopbase)
+{
+	DBG_ERR("sp_iop_reserve_base\n");
+	
+	FUNC_DEBUG();
+	hal_iop_set_reserve_base(iopbase->iop_regs);	
+	return IOP_SUCCESS;
+}
+static int sp_iop_reserve_size(sp_iop_t *iopbase)
+{
+	DBG_ERR("sp_iop_reserve_size\n");
+	
+	FUNC_DEBUG();		
+	hal_iop_set_reserve_size(iopbase->iop_regs);		
+	return IOP_SUCCESS;
+}
 
 static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 {
 	int ret = -ENXIO;	
 	int rc;
-	DBG_ERR("Leon sp_iop_platform_driver_probe\n");
+
+	DBG_ERR("sp_iop_platform_driver_probe\n");
 	FUNC_DEBUG();
 
 
@@ -525,7 +551,30 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Error creating sysfs files!\n");
 	}
 
+
+	#ifdef IOP_GET_GPIO /*Get GPIO number form DTS*/
+	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio0", 0);
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	DBG_ERR("[IOP] GPIO0 pin number %d\n",IOP_GPIO);
+	if ( !gpio_is_valid(IOP_GPIO))
+		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+
+	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio1", 0);
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	DBG_ERR("[IOP] GPIO1 pin number %d\n",IOP_GPIO);
+	if ( !gpio_is_valid(IOP_GPIO))
+		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+
+	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio2", 0);
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	DBG_ERR("[IOP] GPIO2 pin number %d\n",IOP_GPIO);
+	if ( !gpio_is_valid(IOP_GPIO))
+		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+    #endif 
 	
+	sp_iop_reserve_base(iop);
+	sp_iop_reserve_size(iop);
+
 	return 0;
 
 
@@ -541,6 +590,7 @@ static int sp_iop_platform_driver_remove(struct platform_device *pdev)
 {
 
 	FUNC_DEBUG();
+	gpio_free(IOP_GPIO);
 
 	return 0;
 }
