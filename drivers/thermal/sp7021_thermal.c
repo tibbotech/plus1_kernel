@@ -19,16 +19,19 @@
 #include "thermal_core.h"
 
 
-#if 1
+#if 0
 /* For code development on SP7021 */
 #define VA_B_REG		0xF8000000
+
+#define MOON5_ADDR		(VA_B_REG + (0x80 * 5))
+
 #endif
 
 
 /* ---------------------------------------------------------------------------------------------- */
-#define THERMAL_FUNC_DEBUG
-#define THERMAL_DBG_INFO
-#define THERMAL_DBG_ERR
+//#define THERMAL_FUNC_DEBUG
+//#define THERMAL_DBG_INFO
+//#define THERMAL_DBG_ERR
 
 #ifdef THERMAL_FUNC_DEBUG
 	#define FUNC_DEBUG()    printk(KERN_INFO "[THERMAL] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -53,11 +56,22 @@
 #define DISABLE_THREMAL  (1<<31 | 1<<15)
 #define ENABLE_THREMAL  (1<<31)
 
+#define THERMAL_M_MODE_EN  (1<<30 | 1<<14)
+#define THERMAL_M_MODE_DISABLE (1<<30)
+
+
+
 #define TEMP_MASK  (0x7FF)
+#define OTP_THERMAL_L  20
+#define OTP_THERMAL_H  21
+#define OTP_THERMAL_FT  22
 
 
-#define TEMP_RATE  740
 
+
+#define TEMP_RATE  608
+
+extern int read_otp_data(int addr, char *value);
 
 
 /* common data structures */
@@ -81,9 +95,11 @@ struct sp_thermal_data sp_thermal;
 
 //static struct clk *rtc_clk;
 
-#define MOON5_ADDR		(VA_B_REG + (0x80 * 5))
-
 #define MOO5_REG_NAME             "thermal_reg"
+
+
+#define MOO4_REG_NAME             "thermal_moon4"
+
 
 struct sp_thermal_reg {
 	volatile unsigned int mo5_thermal_ctl0;
@@ -123,20 +139,107 @@ struct sp_thermal_reg {
 static volatile struct sp_thermal_reg *thermal_reg_ptr = NULL;
 
 
+struct sp_ctl_reg {
+	volatile unsigned int mo4_pllsp_ctl0;
+	volatile unsigned int mo4_pllsp_ctl1;
+	volatile unsigned int mo4_pllsp_ctl2;
+	volatile unsigned int mo4_pllsp_ctl3;
+	volatile unsigned int mo4_pllsp_ctl4;
+	volatile unsigned int mo4_pllsp_ctl5;
+	volatile unsigned int mo4_pllsp_ctl6;
+	volatile unsigned int mo5_pfcnt_ctl;
+	volatile unsigned int mo4_plla_ctl0;
+	volatile unsigned int mo4_plla_ctl1;
+	volatile unsigned int mo4_plla_ctl2;
+	volatile unsigned int mo4_plla_ctl3;
+	volatile unsigned int mo4_plla_ctl4;
+	volatile unsigned int mo4_plle_ctl;
+	volatile unsigned int mo4_pllf_ctl;
+	volatile unsigned int mo4_plltv_ctl0;
+	volatile unsigned int mo4_plltv_ctl1;
+	volatile unsigned int mo4_plltv_ctl2;
+	volatile unsigned int mo4_usbc_ctl;
+	volatile unsigned int mo4_uphy0_ctl0;
+	volatile unsigned int mo4_uphy0_ctl1;
+	volatile unsigned int mo4_uphy0_ctl2;
+	volatile unsigned int mo4_uphy1_ctl0;
+	volatile unsigned int mo4_uphy1_ctl1;
+	volatile unsigned int mo4_uphy1_ctl2;	
+	volatile unsigned int mo4_uphy1_ctl3;
+	volatile unsigned int mo4_pllsys;
+	volatile unsigned int mo_clk_sel0;
+	volatile unsigned int mo_probe_sel;
+	volatile unsigned int mo4_misc_ctl0;
+	volatile unsigned int mo4_uphy0_sts;
+	volatile unsigned int otp_st;
+
+};
+
+static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
+
+
+int thermal_count = 0;
+
+
+
+
 int sp_thermal_get_temp(int *temp)
 {
-    int temp_code,temp1000;
+    int temp_code,temp100;
+	int otp_thermal_t0,otp_thermal_t1;
+    char otp_temp[3];
 
     FUNC_DEBUG();
 
+
+	read_otp_data(OTP_THERMAL_L, &otp_temp[0]);
+	read_otp_data(OTP_THERMAL_H, &otp_temp[1]);
+    read_otp_data(OTP_THERMAL_FT, &otp_temp[2]);
+
+	otp_thermal_t0 = otp_temp[0] | (otp_temp[1] << 8);
+	otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
+	DBG_INFO("otp_thermal_t0 %x  ",otp_thermal_t0 );
+
+	otp_thermal_t1 = (otp_temp[1] >> 3) | (otp_temp[2] << 5);
+	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
+
+	//DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal_t1 %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal_t1);
+
+    if(otp_thermal_t0 == 0)
+		otp_thermal_t0 = 1488;
+	//otp_thermal = 1550;
+
+
 	temp_code = TEMP_MASK & readl(&thermal_reg_ptr->mo5_thermal_sts0);
-    temp1000 = (1760 - temp_code)*10000/740;
-    //temp1000 = 25000-temp1000;
+    temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
+    //temp100 = ((temp_code*10000)/608)+2500;
 
-	*temp =  temp1000;
+    //temp100 = 25000-temp100;
 
-	DBG_INFO("temp_code %d , temp1000 %d",temp_code,temp1000 );
+	*temp =  temp100;
 
+#if(0)  
+
+
+    if((temp100 >= 4500) & (thermal_count < 5)){
+		
+	//writel(0x78F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	writel(0x00F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	thermal_count++ ;
+    	}
+	else{
+	//writel(0x78F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	writel(0x00F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+		thermal_count++ ;
+	if(thermal_count >= 10)
+		thermal_count = 0;
+		}
+
+#endif
+
+
+
+	DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
 
 	
 	return 0;
@@ -144,32 +247,103 @@ int sp_thermal_get_temp(int *temp)
 EXPORT_SYMBOL(sp_thermal_get_temp);
 
 
+
 static int sp_thermal_get_senser_temp(void *_data, int *temp)
 {
 
+#if(0)
 	struct sp_thermal_data *data = _data;
 
 
-    int temp_code,temp1000;
+    int temp_code,temp100;
 
     FUNC_DEBUG();
 
 	mutex_lock(&data->thermal_lock);
 
 	temp_code = TEMP_MASK & readl(&thermal_reg_ptr->mo5_thermal_sts0);
-    temp1000 = (1760 - temp_code)*10000/740;
-    //temp1000 = 25000-temp1000;
+    temp100 = (1760 - temp_code)*10000/740;
+    //temp100 = 25000-temp100;
 
-	*temp =  temp1000;
+	*temp =  temp100;
 
 	mutex_unlock(&data->thermal_lock);
 
 
-	DBG_INFO("temp_code %d , temp1000 %d",temp_code,temp1000 );
+	DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
 
 
 	
 	return 0;
+
+#endif
+
+	struct sp_thermal_data *data = _data;
+	struct sp_thermal_reg *thermal_reg = data->regs;
+
+
+    int temp_code,temp100;
+	int otp_thermal_t0,otp_thermal_t1;
+    char otp_temp[3];
+
+   // FUNC_DEBUG();
+
+	mutex_lock(&data->thermal_lock);
+
+	read_otp_data(OTP_THERMAL_L, &otp_temp[0]);
+	read_otp_data(OTP_THERMAL_H, &otp_temp[1]);
+    read_otp_data(OTP_THERMAL_FT, &otp_temp[2]);
+
+	otp_thermal_t0 = otp_temp[0] | (otp_temp[1] << 8);
+	otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
+	//DBG_INFO("otp_thermal_t0 %x  ",otp_thermal_t0 );
+
+	otp_thermal_t1 = (otp_temp[1] >> 3) | (otp_temp[2] << 5);
+	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
+
+
+    //DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal	);
+
+    if(otp_thermal_t0 == 0)
+		otp_thermal_t0 = 1488;
+
+
+	temp_code = TEMP_MASK & readl(&thermal_reg->mo5_thermal_sts0);
+    temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
+    //temp100 = ((temp_code*10000)/608)+2500;
+
+    //temp100 = 25000-temp100;
+
+	*temp =  temp100;
+
+#if(0)  
+
+    if((temp100 >= 4500) & (thermal_count < 5)){
+		
+	//writel(0x78F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	writel(0x00F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	thermal_count++ ;
+    	}
+	else{
+	//writel(0x78F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+	writel(0x00F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
+		thermal_count++ ;
+	if(thermal_count >= 10)
+		thermal_count = 0;
+		}
+
+#endif
+
+	mutex_unlock(&data->thermal_lock);
+
+
+    DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
+
+
+return 0;
+
+
+	
 }
 
 
@@ -221,9 +395,12 @@ static int sp_thermal_probe(struct platform_device *plat_dev)
 
 	int ret;
 	int temp;
-	struct sp_thermal_reg *thermal;
+	//struct sp_thermal_reg *thermal;
 	struct resource *res;
 	void __iomem *reg_base;
+	void __iomem *ctl_base;
+
+	int ctl_code;
 
     FUNC_DEBUG();
 
@@ -245,41 +422,59 @@ static int sp_thermal_probe(struct platform_device *plat_dev)
 		}
 	}
 	dev_dbg(&plat_dev->dev,"reg_base 0x%x\n",(unsigned int)reg_base);
+	sp_data->regs = reg_base;
 
 
 	DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
-	
+	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MOO4_REG_NAME);
+	if (res) {
+		ctl_base = devm_ioremap(&plat_dev->dev, res->start, resource_size(res));
+		if (IS_ERR(reg_base)) {
+			dev_err(&plat_dev->dev,"%s devm_ioremap_resource fail\n",MOO4_REG_NAME);
+		}
+	}
+	dev_dbg(&plat_dev->dev,"reg_base 0x%x\n",(unsigned int)ctl_base);
+
+
 
 	thermal_reg_ptr = (volatile struct sp_thermal_reg *)(reg_base);
+	sp_ctl_reg_ptr = (volatile struct sp_ctl_reg *)(ctl_base);	
 	
     writel(ENABLE_THREMAL , &thermal_reg_ptr->mo5_thermal_ctl0);  // enable thermal function
+   // writel(THERMAL_M_MODE_EN , &thermal_reg_ptr->mo5_thermal_ctl0);  // enable thermal m mode
    // writel(0x00060002 , &thermal_reg_ptr->mo5_thermal_ctl0);  // enable thermal function
 
 
-	platform_set_drvdata(plat_dev, thermal);
+   //ctl_code = 0xFFFF & readl(&sp_ctl_reg_ptr->mo_clk_sel0);
 
+  // writel(0x78F07810 , &sp_ctl_reg_ptr->mo_clk_sel0);  // enable thermal function
+
+   ctl_code = 0xFFFF & readl(&sp_ctl_reg_ptr->mo_clk_sel0);
+
+
+   DBG_INFO("ctl_code %x ",ctl_code );
+
+
+	platform_set_drvdata(plat_dev, sp_data);
 
 
 	ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
 
-
+	DBG_INFO(" ret %d",ret );
 
     ret =  sp_thermal_get_temp(&temp);
 
 
 	DBG_INFO(" temp %d",temp );
 	
-
-	return 0;
-
-		return ret;	
+	return ret;	
 	
 }
 
 static int sp_thermal_remove(struct platform_device *plat_dev)
 {
-	struct sp_thermal_data *sp_thermal = platform_get_drvdata(plat_dev);
+	//struct sp_thermal_data *sp_data = platform_get_drvdata(plat_dev);
 
 	//reset_control_assert(sp_rtc.rstc);
 	
