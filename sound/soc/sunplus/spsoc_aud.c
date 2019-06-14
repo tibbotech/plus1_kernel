@@ -25,8 +25,6 @@
 #include "spsoc_pcm.h"
 #include "aud_hw.h"
 
-
-
 /***********************************************************
 *		Feature Definition
 ************************************************************/
@@ -95,7 +93,7 @@ static struct snd_soc_ops spsoc_aud_ops = {
 static struct snd_soc_dai_link spsoc_aud_dai[] = {
 	#if 1
 	{
-		.name = "aud_playback",
+		.name = "aud_i2s",
 		.stream_name	= "aud_dac0",
 		.codec_name = "aud-codec",
 		.codec_dai_name = "aud-codec-dai",
@@ -124,6 +122,15 @@ static struct snd_soc_dai_link spsoc_aud_dai[] = {
 		.ops = &spsoc_aud_ops,
 	},
 	#endif
+	{
+		.name = "aud_spdif",
+		.stream_name	= "aud_spdif0",
+		.codec_name = "aud-codec",
+		.codec_dai_name = "aud-spdif-dai",
+		.cpu_dai_name= "spsoc-spdif-dai",
+		.platform_name = "spsoc-pcm-driver",
+		.ops = &spsoc_aud_ops,
+	},
 };
 static struct snd_soc_card spsoc_smdk = {
 	.name = "sp-aud",		// card name

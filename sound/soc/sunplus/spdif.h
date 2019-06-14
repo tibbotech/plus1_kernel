@@ -11,35 +11,35 @@
 
 
 /* SPDIF_MODE  */
-#define SPDIF_MODE_NONE		0 
-#define SPDIF_MODE_PCM			1 
-#define SPDIF_MODE_RAW			2 
-#define SPDIF_MODE_REENC		3 
-#define SPDIF_MODE_IECRX		4 
-#define SPDIF_MODE_PCM_DECAY	5 
-#define SPDIF_MODE_MAX			5
+#define SPDIF_MODE_NONE		   0 
+#define SPDIF_MODE_PCM			 1 
+#define SPDIF_MODE_RAW			 2 
+#define SPDIF_MODE_REENC		 3 
+#define SPDIF_MODE_IECRX		 4 
+#define SPDIF_MODE_PCM_DECAY 5 
+#define SPDIF_MODE_MAX			 5
 
 /* HDMI_MODE */
-#define HDMI_MODE_NONE		0
-#define HDMI_MODE_PCM			1
-#define HDMI_MODE_RAW			2
-#define HDMI_MODE_REENC		3
-#define HDMI_MODE_RAWHD		4
+#define HDMI_MODE_NONE		  0
+#define HDMI_MODE_PCM			  1
+#define HDMI_MODE_RAW			  2
+#define HDMI_MODE_REENC		  3
+#define HDMI_MODE_RAWHD		  4
 #define HDMI_MODE_PCM8CH		5
 #define HDMI_MODE_PCM_DECAY	6
-#define HDMI_MODE_MAX			6
+#define HDMI_MODE_MAX			  6
 
 /* DISC_FORMAT */
-#define DISC_FORMAT_DVD	0 
+#define DISC_FORMAT_DVD	  0 
 #define DISC_FORMAT_CD		1
 #define DISC_FORMAT_DTSCD	2
 
 /* Codec Capability */
 #define CodecNotSupportHBR	0
-#define CodecSupportHBR		1
+#define CodecSupportHBR		  1
 
 /* Channel status : Category code (bit8 - bit15) */
-#define CATEGORY_CD	0x80
+#define CATEGORY_CD	  0x80
 #define CATEGORY_DVD	0x98
 
 /* Channel status : Sampling Rate (bit28 - bit31)  */   
@@ -57,18 +57,18 @@
 
 typedef enum _CGMSMode
 {
-	CGMS_Init				= 0x0,
-	CGMS_unlimited_copy	= 0x1,
+	CGMS_Init				      = 0x0,
+	CGMS_unlimited_copy	  = 0x1,
 	CGMS_one_copy_allowed	= 0x2,
 	CGMS_no_copy_allowed	= 0x3,
-	bit_resolution			= 0x4,
-	category_code			= 0x5,
+	bit_resolution			  = 0x4,
+	category_code			    = 0x5,
 }CGMSMode;
 
 typedef enum _CCA_Type
 {
 	unlimited_copy		= 0x0,
-	//no_use				= 0x1,	
+	//no_use				  = 0x1,	
 	one_copy_allowed	= 0x2,
 	no_copy_allowed		= 0x3,	
 }CCA_Type;

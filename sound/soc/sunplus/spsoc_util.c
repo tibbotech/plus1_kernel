@@ -13,10 +13,8 @@
 
 #include "spsoc_util.h"
 
-
 //#define SYNCHRONIZE_IO		__asm__ __volatile__ ("dmb" : : : "memory")
 #define SYNCHRONIZE_IO		__asm__ __volatile__ ("" : : : "memory")
-
 
 #if 0
 UINT32 HWREG_R(UINT32 reg_name)

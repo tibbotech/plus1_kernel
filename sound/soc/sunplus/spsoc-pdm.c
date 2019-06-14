@@ -57,59 +57,39 @@
 #include "aud_hw.h"
 #include "spdif.h"
 
-
-// PLLA Registers
-#define PLLACTL0                          0x001C
-#define PLLACTL1                          0x0020
-#define PLLACTL2                          0x0024
-#define PLLACTL3                          0x0028
-#define PLLACTL4                          0x002C
-
-
 // Audio Registers
-#define Audio_Interface_Control           0x0000
+//#define Audio_Interface_Control           0x0000
 #define FIFO_RST_B                        BIT(0)
 
-#define Audio_FIFO_Request_Enable         0x0004
+//#define Audio_FIFO_Request_Enable         0x0004
 #define TDM_PDM_IN_ENABLE                 BIT(12)
 //#define PCM_ENABLE                        BIT(0)
 #define PCM_ENABLE                        BIT(0)
 
-#define Audio_DRAM_Base_Address_Offset    0x00D0
+//#define Audio_DRAM_Base_Address_Offset    0x00D0
 #define Audio_Inc_0                       0x00D4
 #define Audio_Delta_0                     0x00D8
 
-#define Audio_FIFO_Enable                 0x00DC
+//#define Audio_FIFO_Enable                 0x00DC
 #define TDM_PDM_RX3                       BIT(25)
 #define TDM_PDM_RX2                       BIT(24)
 #define TDM_PDM_RX1                       BIT(23)
 #define TDM_PDM_RX0                       BIT(22)
 
-#define Host_FIFO_Reset                   0x00E8
+//#define Host_FIFO_Reset                   0x00E8
 #define HOST_FIFO_RST                     GENMASK(29, 0)
 #define HOST_FIFO_RST_SHIFT               0
 
-#define AUD_A22_Base                      0x0360
-#define AUD_A22_Length                    0x0364
-#define AUD_A23_Base                      0x0370
-#define AUD_A23_Length                    0x0374
-#define AUD_A23_1                         0x0378
-#define AUD_A23_2                         0x037C
-#define AUD_A24_Base                      0x0580
-#define AUD_A24_Length                    0x0584
-#define AUD_A25_Base                      0x0590
-#define AUD_A25_Length                    0x0594
-
-#define PDM_RXCFG0                        0x0638
+//#define PDM_RXCFG0                        0x0638
 #define CFG_PDM_RGST_SET                  BIT(20)
 #define CFG_PDM_BIST_EN                   BIT(16)
 #define CFG_DALIGN_LSB                    BIT(12)
-#define PDM_RXCFG1                        0x063C
-#define PDM_RXCFG2                        0x0640
+//#define PDM_RXCFG1                        0x063C
+//#define PDM_RXCFG2                        0x0640
 
-#define PDM_RX_XCK_CFG                    0x0668    //G72.26
-#define PDM_RX_BCK_CFG                    0x066C    //G72.27
-#define TDM_PDM_TX_SEL                    0x0678
+//#define PDM_RX_XCK_CFG                    0x0668    //G72.26
+//#define PDM_RX_BCK_CFG                    0x066C    //G72.27
+//#define TDM_PDM_TX_SEL                    0x0678
 
 
 struct sp_pdm_info {
@@ -123,107 +103,86 @@ struct sp_pdm_info {
     struct device       *dev;
 };
 
-static inline u32 sp_pdm_readl(struct sp_pdm_info *pdm, u16 reg)
+void aud_pdm_clk_cfg(unsigned int SAMPLE_RATE)
 {
-    return readl_relaxed(pdm->reg_base + reg);
-}
-
-static inline void sp_pdm_writel(struct sp_pdm_info *pdm, u16 reg, u32 val)
-{
-    writel_relaxed(val, pdm->reg_base + reg);
-}
-
-void aud_pdm_clk_cfg(struct sp_pdm_info *pdm, unsigned int SAMPLE_RATE)
-{
-    //volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
+    volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
 
     AUD_INFO("%s %d\n", __func__, SAMPLE_RATE );
 
     if (SAMPLE_RATE == 32000) {
-        sp_pdm_writel(pdm,PDM_RX_XCK_CFG, 0x6883);
-        sp_pdm_writel(pdm,PDM_RX_BCK_CFG, 0x6003); 
+    	  regs0->pdm_rx_xck_cfg = 0x6883;
+    	  regs0->pdm_rx_bck_cfg = 0x6003;
     }
     else if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
-        sp_pdm_writel(pdm,PDM_RX_XCK_CFG, 0x6883);
-        sp_pdm_writel(pdm,PDM_RX_BCK_CFG, 0x6003);   
+        regs0->pdm_rx_xck_cfg = 0x6883;
+    	  regs0->pdm_rx_bck_cfg = 0x6003;
     }
     else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
-        sp_pdm_writel(pdm,PDM_RX_XCK_CFG, 0x6883);
-        sp_pdm_writel(pdm,PDM_RX_BCK_CFG, 0x6003); 
+        regs0->pdm_rx_xck_cfg = 0x6883;
+    	  regs0->pdm_rx_bck_cfg = 0x6003;
     }
     else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
-        sp_pdm_writel(pdm,PDM_RX_XCK_CFG, 0x6883);
-        sp_pdm_writel(pdm,PDM_RX_BCK_CFG, 0x6003); 
+        regs0->pdm_rx_xck_cfg = 0x6883;
+    	  regs0->pdm_rx_bck_cfg = 0x6003; 
     }
     else
     {
-    	  sp_pdm_writel(pdm,PDM_RX_XCK_CFG, 0);
-        sp_pdm_writel(pdm,PDM_RX_BCK_CFG, 0); 
+    	  regs0->pdm_rx_xck_cfg = 0;
+    	  regs0->pdm_rx_bck_cfg = 0;
     }    	
 }
 
-static void sp_pdm_rx_en(struct sp_pdm_info *pdm, bool on)
+static void sp_pdm_rx_en(bool on)
 {
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
     unsigned long val;
     
-    val = sp_pdm_readl(pdm, PDM_RXCFG0);
+    val = regs0->pdm_rx_cfg0;//sp_pdm_readl(pdm, PDM_RXCFG0);
     if (on){
         val |= CFG_PDM_RGST_SET;
-        sp_pdm_writel(pdm, TDM_PDM_TX_SEL, 0x00);
+        regs0->tdmpdm_tx_sel = 0;
     }else
         val = CFG_PDM_RGST_SET;
-    sp_pdm_writel(pdm, PDM_RXCFG0, val);
-    val = sp_pdm_readl(pdm, PDM_RXCFG0);
-    AUD_INFO("TDM_RXCFG0 0x%x\n", val);
+    regs0->pdm_rx_cfg0 = val;
+    val = regs0->pdm_rx_cfg0;
+    AUD_INFO("pdm_rx_cfg0 0x%x\n", val);
 }
 
-static void sp_pdm_rx_dma_en(struct sp_pdm_info *pdm, bool on)
+static void sp_pdm_rx_dma_en(bool on)
 {
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
     unsigned long val;
 
-    val = sp_pdm_readl(pdm, Audio_FIFO_Enable);
+    val = regs0->aud_fifo_enable;
     if (on)
         val |= (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
     else
         val &= ~(TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
-    sp_pdm_writel(pdm, Audio_FIFO_Enable, val);
-    val = sp_pdm_readl(pdm, Audio_FIFO_Enable);
-    AUD_INFO("Audio_FIFO_Enable 0x%x\n", val);
+    regs0->aud_fifo_enable = val;
+    val = regs0->aud_fifo_enable;
+    AUD_INFO("aud_fifo_enable 0x%x\n", val);
 #if 1
     if (on){      
-        val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
-        sp_pdm_writel(pdm, Host_FIFO_Reset, val);
-        val = sp_pdm_readl(pdm, Host_FIFO_Reset);
-        AUD_INFO("Host_FIFO_Reset 0x%x\n", val);
-        do{
-            val = sp_pdm_readl(pdm, Host_FIFO_Reset);
-        }while(val&(TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0));
-
-        //val = sp_pdm_readl(pdm, Audio_FIFO_Enable);
-        //AUD_INFO("Audio_FIFO_Enable 0x%x\n", val);
-        val = sp_pdm_readl(pdm, Audio_DRAM_Base_Address_Offset);
-        AUD_INFO("aud_audhwya 0x%lx\n", val);
-        val = sp_pdm_readl(pdm, AUD_A23_Base);
-	      AUD_INFO("aud_a23_base 0x%lx\n", val);
-        val = sp_pdm_readl(pdm, AUD_A23_Length);
-	      AUD_INFO("aud_a23_length 0x%lx\n", val);
-        val = sp_pdm_readl(pdm, AUD_A23_1);
-	      AUD_INFO("AUD_A23_1 0x%lx\n", val);
-        val = sp_pdm_readl(pdm, AUD_A23_2);
-        AUD_INFO("AUD_A23_2 0x%lx\n", val);
-        // val = sp_pdm_readl(pdm, Audio_Delta_0);
-        //AUD_INFO("Audio_Delta_0 0x%x\n", val);
-        //sp_pdm_writel(pdm, Audio_Inc_0, 0x3c00000);
+        //val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
+        regs0->aud_fifo_reset = val;
+        AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
+        while ((regs0->aud_fifo_reset & val));
+       
+        AUD_INFO("aud_audhwya 0x%lx\n", regs0->aud_audhwya);
+	      AUD_INFO("aud_a23_base 0x%lx\n", regs0->aud_a23_base);
+	      AUD_INFO("aud_a23_length 0x%lx\n", regs0->aud_a23_length);
+	      AUD_INFO("aud_a23_ptr 0x%lx\n", regs0->aud_a23_ptr);
+        AUD_INFO("aud_a23_cnt 0x%lx\n", regs0->aud_a23_cnt);
     }
 #endif
-    val = sp_pdm_readl(pdm, Audio_FIFO_Request_Enable);
+    val = regs0->aud_enable;
     if (on)
         val |= TDM_PDM_IN_ENABLE;
     else
         val &= (~TDM_PDM_IN_ENABLE);
-    sp_pdm_writel(pdm, Audio_FIFO_Request_Enable, val);
-    val = sp_pdm_readl(pdm, Audio_FIFO_Request_Enable);
-    AUD_INFO("Audio_FIFO_Request_Enable 0x%x\n", val);
+    regs0->aud_enable = val;
+    val = regs0->aud_enable;
+    AUD_INFO("aud_enable 0x%x\n", val);
 }
 
 #define SP_pdm_RATES    SNDRV_PCM_RATE_44100//(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000)
@@ -252,6 +211,7 @@ static int sp_pdm_dai_probe(struct snd_soc_dai *dai)
 
 static int sp_pdm_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
 {
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
     struct sp_pdm_info *pdm = snd_soc_dai_get_drvdata(cpu_dai);
     unsigned long val;
 
@@ -260,7 +220,7 @@ static int sp_pdm_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
     pdm->master = 1;
     //val = sp_pdm_readl(pdm, TDM_RXCFG0);
     val = 0x04;
-    sp_pdm_writel(pdm, PDM_RXCFG0, val);
+    regs0->pdm_rx_cfg0 = val;
     
     return 0;
 }
@@ -269,13 +229,14 @@ static int sp_pdm_hw_params(struct snd_pcm_substream *substream,
                             struct snd_pcm_hw_params *params,
                             struct snd_soc_dai *socdai)
 {
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
 	  struct snd_pcm_runtime *runtime = substream->runtime;
     struct sp_pdm_info *pdm = snd_soc_dai_get_drvdata(socdai);
     struct snd_dmaengine_dai_dma_data *dma_data;
     unsigned int ch_num = 32;
     //unsigned int mask = 0;
     unsigned int ret = 0;
-    unsigned long val;
+    //unsigned long val;
 
     AUD_INFO("%s IN\n", __func__ );
     AUD_INFO("%s, stream=%d, pdm->dma_capture=0x%08x\n", __func__, substream->stream, pdm->dma_capture);
@@ -287,13 +248,11 @@ static int sp_pdm_hw_params(struct snd_pcm_substream *substream,
     AUD_INFO("ts_width=%d\n", runtime->frame_bits);
     
     if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-        sp_pdm_writel(pdm, PDM_RXCFG1, 0x76543210);     // slot delay = 1T
-        sp_pdm_writel(pdm, PDM_RXCFG2, 0);     // FSYNC_HI_WIDTH = 1
+    	  regs0->pdm_rx_cfg1 = 0x76543210;
+    	  regs0->pdm_rx_cfg2 = 0;
         
-        val = sp_pdm_readl(pdm, PDM_RXCFG1);
-        AUD_INFO("PDM_RXCFG1 0x%x\n", val);
-        val = sp_pdm_readl(pdm, PDM_RXCFG2);
-        AUD_INFO("PDM_RXCFG2 0x%x\n", val);        
+        AUD_INFO("pdm_rx_cfg1 0x%x\n", regs0->pdm_rx_cfg1);
+        AUD_INFO("pdm_rx_cfg2 0x%x\n", regs0->pdm_rx_cfg2);        
     }
 
     return ret;
@@ -302,9 +261,10 @@ static int sp_pdm_hw_params(struct snd_pcm_substream *substream,
 static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
               struct snd_soc_dai *dai)
 {
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
     int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
-    struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
-    unsigned int val;
+    //struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
+    //unsigned int val;
     int ret = 0;
 
     AUD_INFO("%s IN, cmd=%d, capture=%d\n", __func__, cmd, capture);
@@ -312,28 +272,30 @@ static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
     switch (cmd) {
     case SNDRV_PCM_TRIGGER_START:
         if (capture) {
-            sp_pdm_rx_dma_en(sp_pdm, true);
-            sp_pdm_rx_en(sp_pdm, true);
+            sp_pdm_rx_dma_en(true);
+            sp_pdm_rx_en(true);//Need to add this.
         } 
         break;
 
     case SNDRV_PCM_TRIGGER_RESUME:
     case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
         if (capture)
-            sp_pdm_rx_dma_en(sp_pdm, true);
+            sp_pdm_rx_dma_en(true);
         
         break;
 
     case SNDRV_PCM_TRIGGER_STOP:
-        if (capture)
-            sp_pdm_rx_dma_en(sp_pdm, false);
+        if (capture){
+            sp_pdm_rx_dma_en(false);
+            //sp_pdm_rx_en(false);
+        }
         
         break;
 
     case SNDRV_PCM_TRIGGER_SUSPEND:
     case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
         if (capture)
-            sp_pdm_rx_dma_en(sp_pdm, false);
+            sp_pdm_rx_dma_en(false);
         
         break;
 
@@ -341,8 +303,8 @@ static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
         ret = -EINVAL;
         break;
     }
-    val = sp_pdm_readl(sp_pdm,TDM_PDM_TX_SEL);
-    AUD_INFO("TDM_PDM_TX_SEL 0x%x\n", val);
+
+    AUD_INFO("TDM_PDM_TX_SEL 0x%x\n", regs0->tdmpdm_tx_sel);
     return ret;
 }
 
@@ -350,13 +312,13 @@ static int sp_pdm_startup(struct snd_pcm_substream *substream,
                           struct snd_soc_dai *dai)
 {
     int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
-    struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
+    //struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
     //int ret;
 
     AUD_INFO("%s IN, operation c or p %d\n", __func__, capture);
 
-    //if (capture)
-    //    sp_pdm_rx_en(sp_pdm, true);
+    if (capture)
+        sp_pdm_rx_en(true);
     
     return 0;
 }
@@ -364,23 +326,22 @@ static int sp_pdm_startup(struct snd_pcm_substream *substream,
 static void sp_pdm_shutdown(struct snd_pcm_substream *substream,
                             struct snd_soc_dai *dai)
 {
-    struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
+    //struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
     int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 
     AUD_INFO("%s IN\n", __func__ );
     if (capture)
-        sp_pdm_rx_en(sp_pdm, false);    
-    aud_pdm_clk_cfg(sp_pdm, 0);
+        sp_pdm_rx_en(false);    
+    aud_pdm_clk_cfg(0);
 }
 
 static int sp_pdm_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsigned int freq_in, unsigned int freq_out)
 {
-    struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
+    //struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
 
     AUD_INFO("%s IN, freq_out=%d\n", __func__, freq_out);
 
-    AUD_Set_PLL(freq_out);
-    aud_pdm_clk_cfg(sp_pdm, freq_out);
+    aud_pdm_clk_cfg(freq_out);
     return 0;
 }
 
@@ -399,18 +360,18 @@ static const struct snd_soc_component_driver sp_pdm_component = {
 
 static void sp_pdm_init_state(struct sp_pdm_info *pdm)
 {
-	  int val;
+	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
 	 
-    sp_pdm_writel(pdm, PDM_RXCFG0, 0);
-    sp_pdm_writel(pdm, PDM_RXCFG1, 0x76543210);
-    sp_pdm_writel(pdm, PDM_RXCFG2, 0);
-    val = sp_pdm_readl(pdm,PDM_RXCFG1);
-    AUD_INFO("%s, TDM_RXCFG1 0x%x\n",__func__, val);
+	  regs0->pdm_rx_cfg0 = 0;
+	  regs0->pdm_rx_cfg1 = 0x76543210;
+	  regs0->pdm_rx_cfg2 = 0;
+
+    AUD_INFO("%s, TDM_RXCFG1 0x%x\n",__func__, regs0->pdm_rx_cfg1);
 }
 
 #define AUD_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_S24_3BE )
 static struct snd_soc_dai_driver sp_pdm_dai = {
-    .name   = "spsoc-pdm-c-driver-dai",
+    .name   = "spsoc-pdm-driver-dai",
     //.id   = 2,
     .probe  = sp_pdm_dai_probe,
     .capture = {

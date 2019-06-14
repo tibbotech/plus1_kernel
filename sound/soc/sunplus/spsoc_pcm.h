@@ -13,14 +13,18 @@
 #define DRAM_PCM_BUF_LENGTH	(128*1024)
 
 #define PERIOD_BYTES_MIN_CONS 128
-#define PERIOD_BYTES_MAX_CONS 64*1024
+#define PERIOD_BYTES_MAX_CONS (64*1024)
 
 #define NUM_FIFO_TX		6	// A0~A4, A20
 #define NUM_FIFO_RX		4 // A22~A25	
 #define NUM_FIFO	(NUM_FIFO_TX+NUM_FIFO_RX)	
 
+#define I2S_P_INC0    0x1f
+#define I2S_C_INC0    ((0x7<<16) | (0x1<<21))
 #define TDMPDM_C_INC0 (0xf<<22)
 #define TDM_P_INC0    ((0x1<<20) | 0x1f)
+#define SPDIF_P_INC0  (0x1<<5)
+#define SPDIF_C_INC0  (0x1<<13)
 
 
 #define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)
@@ -48,7 +52,7 @@ struct spsoc_runtime_data {
 	unsigned char start_oncetime;
 	unsigned int last_remainder;
 	unsigned int Oldoffset;
-	unsigned int cnt_for_test;
+	unsigned int fifosize_from_user;
 	atomic_t running;
 
 };

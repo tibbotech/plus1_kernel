@@ -9,13 +9,13 @@ snd-soc-spdif-objs := spdif.o
 snd_soc_audio-objs := sc7021_auido.o
 
 obj-$(CONFIG_SND_SOC_AUD628)	+= snd_soc_audio.o
-obj-$(CONFIG_SND_SOC_AUD628)	+= snd-soc-spsoc-tdm.o
-obj-$(CONFIG_SND_SOC_AUD628)	+= snd-soc-spsoc-pdm.o
 obj-$(CONFIG_SND_SOC_AUD628)	+= snd-soc-aud3502.o
 
 ifeq ($(CONFIG_SND_SOC_AUD628), y)
 obj-y	+= snd-soc-spsoc_pcm.o
 obj-y	+= cpu_dai.o
+obj-y	+= snd-soc-spsoc-tdm.o
+obj-y	+= snd-soc-spsoc-pdm.o
 obj-y	+= snd-soc-spsoc_aud3502.o
 obj-y	+= snd-soc-spsoc_util.o
 obj-y	+= snd-soc-aud_hw.o

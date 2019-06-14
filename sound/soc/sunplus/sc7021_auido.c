@@ -33,7 +33,6 @@
 #include <linux/pm_runtime.h>
 #include "spsoc_util.h"
 
-
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
@@ -52,7 +51,6 @@ static const struct of_device_id _sc7021_audio_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-audio", },
 };
 MODULE_DEVICE_TABLE(of, _sc7021_audio_dt_ids);
-
 
 static struct platform_driver _sc7021_audio_driver = {
 	.probe		= _sc7021_audio_probe,

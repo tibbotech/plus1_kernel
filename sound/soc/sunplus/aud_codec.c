@@ -16,16 +16,9 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 #include <sound/tlv.h>
-
-
 #include "spsoc_util.h"
 
 #define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
-
-
-
-
-
 
 #if 0
 /*================================================================
@@ -33,15 +26,15 @@
  *===============================================================*/
 static int aud_dai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_dai_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+	                           struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 #else
 /*================================================================
@@ -49,17 +42,17 @@ static int aud_dai_hw_params(struct snd_pcm_substream *substream,
  *===============================================================*/
 static int aud_dai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_dai_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+	                           struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
-	int rate = params_rate(params);
+	  int rate = params_rate(params);
 
-	AUD_INFO("%s IN, rate %d\n", __func__, rate );
-	return 0;
+	  AUD_INFO("%s IN, rate %d\n", __func__, rate );
+	  return 0;
 }
 
 #endif
@@ -73,9 +66,16 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 	{
 		.name = "aud-codec-dai",
 		.playback = {
-			.stream_name = "AUD Playback",
+			.stream_name = "I2S Playback",
 			.channels_min = 2,
-			.channels_max = 2,
+			.channels_max = 10,
+			.rates = AUD_RATES,
+			.formats = AUD_FORMATS,
+		},
+		.capture = {
+			.stream_name = "I2S Capture",
+			.channels_min = 2,
+			.channels_max = 8,
 			.rates = AUD_RATES,
 			.formats = AUD_FORMATS,
 		},
@@ -118,54 +118,68 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.ops = &aud_dai_ops,
 	},
 	#endif
+	{
+		.name = "aud-spdif-dai",
+		.playback = {
+			.stream_name = "spdif Playback",
+			.channels_min = 2,
+			.channels_max = 2,
+			.rates = AUD_RATES,
+			.formats = AUD_FORMATS,
+		},
+		.capture = {
+			.stream_name = "spdif Capture",
+			.channels_min = 2,
+			.channels_max = 2,
+			.rates = AUD_RATES,
+			.formats = AUD_FORMATS,
+		},
+
+		.ops = &aud_dai_ops,
+	},
 };
 
 static int aud_probe(struct snd_soc_codec *codec)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_suspend(struct snd_soc_codec *codec)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_resume(struct snd_soc_codec *codec)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_remove(struct snd_soc_codec *codec)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_set_sysclk(struct snd_soc_codec *codec, int clk_id,
-			     int source, unsigned int freq, int dir)
+			                    int source, unsigned int freq, int dir)
 {
-
-	AUD_INFO("%s IN\n", __func__);
-
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
 
 static int aud_set_pll(struct snd_soc_codec *codec, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
+	  AUD_INFO("%s IN\n", __func__);
+	  return 0;
 }
-
-
-
+ 
 static const DECLARE_TLV_DB_SCALE(volume_tlv, -6000, 0, 1);
 static const char *cpm0_5_out[]={"pcm0","pcm5"};
 
-static const struct soc_enum cpm0_5_out_enum =
-	SOC_ENUM_DOUBLE(reg_aud_grm_gain_control_8, 16,17, 2, cpm0_5_out);
+static const struct soc_enum cpm0_5_out_enum = SOC_ENUM_DOUBLE(reg_aud_grm_gain_control_8, 16,17, 2, cpm0_5_out);
 
 
 static const struct snd_kcontrol_new aud_snd_controls[] = {
@@ -277,13 +291,13 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 };
 static unsigned int audreg_read(struct snd_soc_codec *codec,unsigned int reg)
 {
-	return HWREG_R(reg);
+	  return HWREG_R(reg);
 }
 
 static int audreg_write(struct snd_soc_codec *codec, unsigned int reg,unsigned int value)
 {
-	HWREG_W(reg,value);
-	return 0;
+	  HWREG_W(reg,value);
+	  return 0;
 }
 
 
@@ -305,20 +319,20 @@ static struct snd_soc_codec_driver soc_codec_dev_aud = {
 
 static int __devinit aud_codec_probe(struct platform_device *pdev)
 {
-	int ret=0;
-	AUD_INFO("%s IN\n", __func__);
+	  int ret=0;
+	  AUD_INFO("%s IN\n", __func__);
 
-	ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_aud,
-		                           audcodec_dai, ARRAY_SIZE(audcodec_dai));
+	  ret = snd_soc_register_codec(&pdev->dev, &soc_codec_dev_aud,
+		                             audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
 	return ret;
 }
 
 static int __devexit aud_codec_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_codec(&pdev->dev);
+	  snd_soc_unregister_codec(&pdev->dev);
 
-	return 0;
+	  return 0;
 }
 
 static struct platform_driver aud_codec_driver = {
@@ -334,25 +348,25 @@ static struct platform_driver aud_codec_driver = {
 static struct platform_device *spsoc_pcm_device;
 static int __init aud_modinit(void)
 {
-	int ret = platform_driver_register(&aud_codec_driver);
+	  int ret = platform_driver_register(&aud_codec_driver);
 
-	spsoc_pcm_device = platform_device_alloc("aud-codec", -1);
-	if (!spsoc_pcm_device)
-		return -ENOMEM;
+	  spsoc_pcm_device = platform_device_alloc("aud-codec", -1);
+	  if (!spsoc_pcm_device)
+		    return -ENOMEM;
 
-	AUD_INFO("%s IN, create soc_card\n", __func__);
+	  AUD_INFO("%s IN, create soc_card\n", __func__);
 
-	ret = platform_device_add(spsoc_pcm_device);
-	if (ret)
-		platform_device_put(spsoc_pcm_device);
+	  ret = platform_device_add(spsoc_pcm_device);
+	  if (ret)
+		    platform_device_put(spsoc_pcm_device);
 
-	return ret;
+	  return ret;
 }
 module_init(aud_modinit);
 
 static void __exit aud_modexit(void)
 {
-	platform_driver_unregister(&aud_codec_driver);
+	  platform_driver_unregister(&aud_codec_driver);
 }
 module_exit(aud_modexit);
 

@@ -28,23 +28,23 @@ extern void __iomem *audio_plla_base;
 	                   SNDRV_PCM_RATE_64000|SNDRV_PCM_RATE_88200|SNDRV_PCM_RATE_96000|\
 	                   SNDRV_PCM_RATE_176400|SNDRV_PCM_RATE_192000)
 
-#define AUD_RATES_C		(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000)
+#define AUD_RATES_C	(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000)
 
 
 /**********************************************************
  *
  **********************************************************/
-#define AUD_ERR(fmt, arg...)		printk(KERN_ERR "[alsa] " fmt, ##arg)
+#define AUD_ERR(fmt, arg...)		  printk(KERN_ERR "[alsa] " fmt, ##arg)
 #define AUD_WARNING(fmt, arg...)	printk(KERN_WARNING "[alsa] " fmt, ##arg)
-#define AUD_NOTICE(fmt, arg...)	printk(KERN_NOTICE "[alsa] " fmt, ##arg)
-#define AUD_INFO(fmt, arg...)	printk(KERN_INFO "[alsa] " fmt, ##arg)//((void)0)
-#define AUD_DEBUG(fmt, arg...) ((void)0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
+#define AUD_NOTICE(fmt, arg...)	  printk(KERN_NOTICE "[alsa] " fmt, ##arg)
+#define AUD_INFO(fmt, arg...)	    printk(KERN_INFO "[alsa] " fmt, ##arg)//((void)0)
+#define AUD_DEBUG(fmt, arg...)    ((void)0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
 
 /**********************************************************
  *
  **********************************************************/
 #define ADCP_WAIT_INIT_DONE()  \
-    while( HWREG_R(adcp_init_ctrl) & 0x1000){}
+        while( HWREG_R(adcp_init_ctrl) & 0x1000){}
 
 /**********************************************************
  * 			Register Definition
@@ -553,8 +553,8 @@ typedef struct
     UINT32  tdm_tx_bck_cfg                        ;//23
     UINT32  tdm_rx_xck_cfg                        ;//24
     UINT32  tdm_rx_bck_cfg                        ;//25 TDM_RX_BCK_CFG
-    UINT32  G72_reserved_26                       ;//26
-    UINT32  G72_reserved_27                       ;//27
+    UINT32  pdm_rx_xck_cfg                        ;//26
+    UINT32  pdm_rx_bck_cfg                        ;//27
     UINT32  G72_reserved_28                       ;//28
     UINT32  G72_reserved_29                       ;//29
     UINT32  tdmpdm_tx_sel                         ;//30
