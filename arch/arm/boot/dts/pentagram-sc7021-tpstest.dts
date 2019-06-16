@@ -1,0 +1,131 @@
+/dts-v1/;
+
+#include "pentagram-sp7021-achip.dtsi"
+
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
+/ {
+	model = "SC7021 TPS test dts";
+	compatible = "sunplus,sc7021-achip";
+
+	chosen {
+		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
+	};
+
+	memory {
+		reg = <0x00000000 0x20000000>; /* 512MB */
+	};
+};
+
+&l2sw {
+ pinctrl-names = "default";
+ pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
+};
+
+&pctl {
+ /*** all non-device binded that you want to set mode ***/
+ pinctrl-names = "default";
+/* pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;*/
+ 
+  leds_s0_def: user_leds_s0_def {
+    sppctl,pins = <
+      SP7021_IOPAD(6,SP7021_PCTL_G_GPIO,MUXF_GPIO,SP7021_PCTL_L_INV)
+      SP7021_IOPAD(7,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_INV)
+    >;
+ };
+ leds_s0_slp: user_leds_s0_slp {
+    sppctl,pins = <
+      SP7021_IOPAD(6,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(7,SP7021_PCTL_G_GPIO,0,0)
+    >;
+ };
+ buzzer0_pins: user_buzzer0_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(48,SP7021_PCTL_G_GPIO,0,0)
+    >;
+ };
+ /* for all eth */
+ ethA_pins: pinmux_ethA_pins {
+  sppctl,pins = <
+       SP7021_IOPAD(63,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+       SP7021_IOPAD(71,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+       SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+  >;
+ };
+ eth0_pins: pinmux_eth0_pins {
+  sppctl,pins = <
+/*
+        SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+        SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+*/
+       SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+       SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+       SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+       SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+       SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+       SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+       SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+  >;
+ };
+ eth1_pins: pinmux_eth1_pins {
+  sppctl,pins = <
+/*
+       SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
+       SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
+*/
+       SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
+       SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
+       SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
+       SP7021_IOPAD(52,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_CRSDV,0)
+       SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
+       SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
+       SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
+  >;
+ };
+
+ mmc1_mux: mmc1_mux {
+	sppctl,groups = "SD_CARD";
+	sppctl,function = "SD_CARD";
+	sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,0) >;
+ };
+ sdio_pins: pinmux_sdio_pins {
+	sppctl,pins = <
+		SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+		SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+		SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+		SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+		SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+		SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0) >;
+ };
+
+};
+
+/ {
+	soc@B {
+		leds {
+		    pinctrl-names = "default", "sleep";
+		    pinctrl-0 = <&leds_s0_def>;
+		    pinctrl-1 = <&leds_s0_slp>;
+		    compatible = "gpio-leds";
+		    led@1 {
+                label = "SR";
+                gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+                linux,default-trigger = "heartbeat";
+                default-state = "off";
+		    };
+		    led@2 {
+                label = "SG";
+                gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+                linux,default-trigger = "mmc0";
+                default-state = "off";
+		    };
+		};
+/*
+		buzzer0 {
+            compatible = "pwm-beeper";
+            pinctrl-names = "default";
+            pinctrl-0 = <&buzzer0_pins>;
+            pwms = <&ehrpwm0 1 1000000 0>;
+	};
+*/
+};
