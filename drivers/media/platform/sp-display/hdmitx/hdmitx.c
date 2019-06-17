@@ -29,7 +29,6 @@
  *---------------------------------------------------------------------------*/
 /*about misc*/
 //#define HPD_DETECTION
-//#define EDID_READ
 //#define HDCP_AUTH
 
 /*about print msg*/
@@ -183,6 +182,7 @@ static struct hdmitx_config g_cur_hdmi_cfg;
 static struct hdmitx_config g_new_hdmi_cfg;
 static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
+static unsigned char edid_read_timeout = FALSE;
 
 typedef struct {
 	void __iomem *moon4base;
@@ -193,6 +193,7 @@ typedef struct {
 	struct device *dev;
 	struct clk *clk;
 	struct reset_control *rstc;
+	unsigned int mode;
 } sp_hdmitx_t;
 
 static sp_hdmitx_t *sp_hdmitx;
@@ -420,7 +421,6 @@ static void stop(void)
 	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
-#ifdef EDID_READ
 static void read_edid(void)
 {
 	unsigned int timeout = EDID_TIMEOUT;
@@ -435,6 +435,7 @@ static void read_edid(void)
 		
 		udelay(10);
 		if (timeout-- == 0) {
+			edid_read_timeout = TRUE;
 			HDMITX_WARNING("EDID read timeout\n");
 			break;
 		}
@@ -451,7 +452,7 @@ static void parse_edid(void)
 	unsigned int rgb_limit = FALSE, yuv_limit = FALSE;
 	
 	HDMITX_DBG("\n");
-	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {		
+	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {
 		HDMITX_DBG("EDID[%03u] ~ EDID[%03u] : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
 			                          i, i + 7,
 			                         edid[i],  edid[i+1],  edid[i+2],  edid[i+3],
@@ -464,6 +465,12 @@ static void parse_edid(void)
 
 		for (j = i; j < (i + DDC_FIFO_CAPACITY); j++) {
 			sum = sum + edid[j];
+		}
+
+		if (i == 112) {
+			if (edid[i + DDC_FIFO_CAPACITY - 2] == 0) {
+				break;
+			}
 		}
 	}
 	HDMITX_DBG("Checksum = 0x%04X\n", sum);
@@ -486,7 +493,7 @@ static void parse_edid(void)
 			i += 18;
 		}
 	}
-	HDMITX_INFO("Monitor %s", name);
+	HDMITX_DBG("Monitor %s", name);
 	
 	//mode
 	if (edid[126] == 0) {
@@ -501,6 +508,7 @@ static void parse_edid(void)
 		data = ((data << 4) | edid[59]);
 		HDMITX_INFO("DVI Max. Timing : %up\n", data);
 
+	#if 0
 		if (data <= 480) {
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
 		} else if (data <= 576) {
@@ -510,6 +518,7 @@ static void parse_edid(void)
 		} else {
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
 		}
+	#endif	
 	}
 	else if (g_cur_hdmi_cfg.mode == HDMITX_MODE_HDMI) {
 		d = edid[130];
@@ -557,6 +566,8 @@ static void parse_edid(void)
 			}
 		}
 
+
+	#if 0
 		if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB) {
 			if (rgb_limit == TRUE) {
 				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
@@ -570,7 +581,8 @@ static void parse_edid(void)
 				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
 			}
 		}
-		
+	#endif
+	
 		//detailed timing descriptors
 		if (d != 0) {
 			pre_data = 0;
@@ -587,7 +599,8 @@ static void parse_edid(void)
 			}
 
 			HDMITX_INFO("HDMI Max. Timing : %up\n", pre_data);
-			
+
+	#if 0	
 			if (pre_data <= 480) {
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
 			} else if (pre_data <= 576) {
@@ -597,17 +610,17 @@ static void parse_edid(void)
 			} else {
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
 			}
+	#endif		
 		}
 	}
 }
-#endif
 
 static void process_hpd_state(void)
 {
 #ifdef CONFIG_PM_RUNTIME_HDMITX
 	int ret;
 	static int runtime_put = FALSE;
-  static int runtime_put1 = TRUE;
+	static int runtime_put1 = TRUE;
 #endif
 
 	HDMITX_DBG("HPD State\n");
@@ -624,17 +637,15 @@ static void process_hpd_state(void)
 		}
 #endif
 
-#ifdef EDID_READ
 		// send AV mute
 		
 		// read EDID
 		read_edid();
 		
 		// parser EDID
-		parse_edid();
-#else
-		// send AV mute
-#endif
+		if (edid_read_timeout == FALSE)
+			parse_edid();
+
 		// update state
 		mutex_lock(&g_hdmitx_mutex);
 		g_hdmitx_state = FSM_RSEN;
@@ -644,7 +655,7 @@ static void process_hpd_state(void)
 		if (runtime_put == TRUE) {
 			pm_runtime_put(sp_hdmitx->dev);
 			runtime_put = FALSE;
-      runtime_put1 = TRUE;
+			runtime_put1 = TRUE;
 		}
 		
 		msleep(2000);
@@ -1012,6 +1023,11 @@ static int hdmitx_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
 		return -ENODEV;
 	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "mode", &sp_hdmitx->mode);
+	if (ret) {
+		dev_err(&pdev->dev, "Failed to retrieve \'mode\'\n");
+	}
 	
 	HDMITX_INFO("HDMITX installed\n");
 
@@ -1020,7 +1036,11 @@ static int hdmitx_probe(struct platform_device *pdev)
 
 	/*initialize software settings*/
 	// reset hdmi config
-	g_cur_hdmi_cfg.mode              = HDMITX_MODE_HDMI;
+	if (sp_hdmitx->mode == HDMITX_MODE_HDMI) {
+		g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
+	} else if (sp_hdmitx->mode == HDMITX_MODE_DVI) {
+		g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
+	}
 	g_cur_hdmi_cfg.video.timing      = HDMITX_TIMING_480P;
 	g_cur_hdmi_cfg.video.color_depth = HDMITX_COLOR_DEPTH_24BITS;
 	g_cur_hdmi_cfg.video.conversion  = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
