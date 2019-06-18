@@ -26,6 +26,11 @@
  cd-gpio = <&pctl 0 GPIO_ACTIVE_LOW>;
 };
 
+&hdmitx {
+ pinctrl-names = "default";
+ pinctrl-0 = <&hdmi_A_tx1>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -47,6 +52,10 @@
     sppctl,pins = <
       SP7021_IOPAD(48,SP7021_PCTL_G_GPIO,0,0)
     >;
+ };
+ hdmi_A_tx1: hdmi_A_tx1_pins {
+    sppctl,groups = "HDMI_TX1";
+    sppctl,function = "HDMI_TX";
  };
  /* for all eth */
  ethA_pins: pinmux_ethA_pins {
