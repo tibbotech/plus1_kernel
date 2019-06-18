@@ -22,6 +22,10 @@
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
 };
 
+&mmc1 {
+ cd-gpio = <&pctl 0 GPIO_ACTIVE_LOW>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
