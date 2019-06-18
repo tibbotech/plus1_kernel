@@ -110,8 +110,9 @@ void AUDHW_pin_mx(void)
 
 	  //regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
 	  regs0->rf_sft_cfg2 = 0xffff0041;//I2STX, PDMRX
-	  AUD_INFO("rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
-	  AUD_INFO("rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
+	  AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
+	  AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
+	
 	  for(i=0; i<64; i++)
 	  {
 		    regs1->G002_RESERVED[i] = 0xffff0000;
@@ -167,6 +168,7 @@ void AUDHW_Mixer_Setting(void)
     regs0->aud_grm_delta_ramp_risc   = 0x8000;    //aud_grm_delta_ramp_risc
     regs0->aud_grm_delta_ramp_linein = 0x8000;  //aud_grm_delta_ramp_linein
     regs0->aud_grm_other             = 0x4;				    //aud_grm_other for A20
+    
     regs0->aud_grm_switch_hdmi_tx    = 0x76543210; //aud_grm_switch_hdmi_tx
 }
 
@@ -206,7 +208,9 @@ void AUDHW_Cfg_AdcIn(void)
 void AUDHW_SystemInit(void)
 {
     volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
-      
+     
+    AUD_INFO("!!!audio_base 0x%x\n", regs0);
+    AUD_INFO("!!!aud_fifo_reset 0x%x\n", &(regs0->aud_fifo_reset)); 
     //reset aud fifo
     regs0->audif_ctrl  = 0x1;      //aud_ctrl=1
     AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);

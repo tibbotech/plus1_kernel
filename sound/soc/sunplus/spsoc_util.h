@@ -593,28 +593,27 @@ typedef struct {
 #define reg_aud_grm_gain_control_2		6703
 #define reg_aud_grm_gain_control_3		6704
 #define reg_aud_grm_gain_control_4		6705
-#define reg_aud_grm_mix_control_0		6706
-#define reg_aud_grm_mix_control_1		6707
-#define reg_aud_grm_mix_control_2		6708
-#define reg_aud_grm_switch_0			6709
-#define reg_aud_grm_switch_1			6710
-#define reg_aud_grm_switch_int			6711
-#define reg_aud_grm_delta_volume		6712
+#define reg_aud_grm_mix_control_0		  6706
+#define reg_aud_grm_mix_control_1		  6707
+#define reg_aud_grm_mix_control_2		  6708
+#define reg_aud_grm_switch_0		    	6709
+#define reg_aud_grm_switch_1			    6710
+#define reg_aud_grm_switch_int		   	6711
+#define reg_aud_grm_delta_volume		  6712
 #define reg_aud_grm_delta_ramp_pcm		6713
 #define reg_aud_grm_delta_ramp_risc		6714
 #define reg_aud_grm_delta_ramp_linein	6715
-#define reg_aud_grm_other				6716
+#define reg_aud_grm_other				      6716
 #define reg_aud_grm_gain_control_5		6717
 #define reg_aud_grm_gain_control_6		6718
 #define reg_aud_grm_gain_control_7		6719
 #define reg_aud_grm_gain_control_8		6720
-#define reg_aud_grm_fifo_eflag			6721
-#define reg_iec_tx_interfacegain		6722
-#define reg_i2s_tx_interfacegain		6723
-#define reg_aud_grm_switch_hdmi			6724
+#define reg_aud_grm_fifo_eflag			  6721
+#define reg_iec_tx_interfacegain		  6722
+#define reg_i2s_tx_interfacegain		  6723
+#define reg_aud_grm_switch_hdmi			  6724
 #define reg_aud_grm_switch_hdmi_tx		6724
-
-
+#define reg_aud_grm_gain_control_10		6725
 
 #if 0
 //group 00

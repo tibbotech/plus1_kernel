@@ -27,10 +27,6 @@
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
-/*about misc*/
-//#define HPD_DETECTION
-//#define HDCP_AUTH
-
 /*about print msg*/
 #ifdef _HDMITX_ERR_MSG_
 #define HDMITX_ERR(fmt, args...) printk(KERN_ERR fmt, ##args)
@@ -193,7 +189,6 @@ typedef struct {
 	struct device *dev;
 	struct clk *clk;
 	struct reset_control *rstc;
-	unsigned int mode;
 } sp_hdmitx_t;
 
 static sp_hdmitx_t *sp_hdmitx;
@@ -207,7 +202,7 @@ static sp_hdmitx_t *sp_hdmitx;
  *---------------------------------------------------------------------------*/
 static unsigned char get_hpd_in(void)
 {
-#ifdef HPD_DETECTION
+#ifdef CONFIG_HPD_DETECTION
 	return g_hpd_in;
 #else
 	return TRUE;
@@ -421,6 +416,7 @@ static void stop(void)
 	hal_hdmitx_stop(sp_hdmitx->hdmitxbase);
 }
 
+#ifdef CONFIG_EDID_READ
 static void read_edid(void)
 {
 	unsigned int timeout = EDID_TIMEOUT;
@@ -435,7 +431,8 @@ static void read_edid(void)
 		
 		udelay(10);
 		if (timeout-- == 0) {
-			edid_read_timeout = TRUE;
+			edid_read_timeout = true;
+			g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
 			HDMITX_WARNING("EDID read timeout\n");
 			break;
 		}
@@ -506,7 +503,7 @@ static void parse_edid(void)
 		//timing
 		data = (edid[61] & 0xF0);
 		data = ((data << 4) | edid[59]);
-		HDMITX_INFO("DVI Max. Timing : %up\n", data);
+		HDMITX_DBG("DVI Max. Timing : %up\n", data);
 
 	#if 0
 		if (data <= 480) {
@@ -598,7 +595,7 @@ static void parse_edid(void)
 				i += 18;
 			}
 
-			HDMITX_INFO("HDMI Max. Timing : %up\n", pre_data);
+			HDMITX_DBG("HDMI Max. Timing : %up\n", pre_data);
 
 	#if 0	
 			if (pre_data <= 480) {
@@ -614,6 +611,7 @@ static void parse_edid(void)
 		}
 	}
 }
+#endif
 
 static void process_hpd_state(void)
 {
@@ -637,6 +635,7 @@ static void process_hpd_state(void)
 		}
 #endif
 
+#ifdef CONFIG_EDID_READ
 		// send AV mute
 		
 		// read EDID
@@ -645,6 +644,9 @@ static void process_hpd_state(void)
 		// parser EDID
 		if (edid_read_timeout == FALSE)
 			parse_edid();
+#else
+		// send AV mute
+#endif
 
 		// update state
 		mutex_lock(&g_hdmitx_mutex);
@@ -1024,11 +1026,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	ret = of_property_read_u32(pdev->dev.of_node, "mode", &sp_hdmitx->mode);
-	if (ret) {
-		dev_err(&pdev->dev, "Failed to retrieve \'mode\'\n");
-	}
-	
 	HDMITX_INFO("HDMITX installed\n");
 
 	/*initialize hardware settings*/	
@@ -1036,11 +1033,14 @@ static int hdmitx_probe(struct platform_device *pdev)
 
 	/*initialize software settings*/
 	// reset hdmi config
-	if (sp_hdmitx->mode == HDMITX_MODE_HDMI) {
-		g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
-	} else if (sp_hdmitx->mode == HDMITX_MODE_DVI) {
-		g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
-	}
+#ifdef CONFIG_HDMI_MODE
+	g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
+#endif
+
+#ifdef CONFIG_DVI_MODE
+	g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
+#endif
+
 	g_cur_hdmi_cfg.video.timing      = HDMITX_TIMING_480P;
 	g_cur_hdmi_cfg.video.color_depth = HDMITX_COLOR_DEPTH_24BITS;
 	g_cur_hdmi_cfg.video.conversion  = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
