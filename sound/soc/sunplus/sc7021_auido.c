@@ -89,8 +89,9 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 	  if (IS_ERR(audio_base)) {
 		    dev_err(&pdev->dev, "mapping resource memory 0.\n");
 		    return PTR_ERR(audio_base);
-	  }
-	  
+	  }	  
+	  AUD_INFO("audio_base=%08x\n", audio_base);
+	    
     peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
     if (IS_ERR(peri0_clocken)) {
 		    dev_err(&pdev->dev, "get clock from devicetree node 1.\n");
@@ -111,9 +112,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 	  if (res) {
 	  	  dev_err(&pdev->dev, "enable clock 0 false.\n");
 		    return res;
-	  }  
- 
-	  AUD_INFO("audio_base=%08x\n", audio_base);
+	  }  	  
 	  
 	  plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
     if (IS_ERR(plla_clocken)) {
