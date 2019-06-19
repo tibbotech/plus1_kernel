@@ -48,9 +48,15 @@
       SP7021_IOPAD(7,SP7021_PCTL_G_GPIO,0,0)
     >;
  };
+ tpsleds_pins: user_tpsleds_pins {
+    sppctl,pins = <
+      SP7021_IOPAD(4,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(5,SP7021_PCTL_G_GPIO,0,0)
+    >;
+ };
  buzzer0_pins: user_buzzer0_pins {
     sppctl,pins = <
-      SP7021_IOPAD(48,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_PWM0,0)
     >;
  };
  hdmi_A_tx1: hdmi_A_tx1_pins {
@@ -133,13 +139,21 @@
                 default-state = "off";
 		    };
 		};
-/*
+        tpsleds: tpsleds {
+            compatible = "tpsleds";
+            pinctrl-names = "default";
+            pinctrl-0 = <&tpsleds_pins>;
+            status = "okay";
+            init-val = <0x0>;
+            gpios = <&pctl 5 GPIO_ACTIVE_HIGH
+                     &pctl 4 GPIO_ACTIVE_HIGH
+            >;
+        };
 	    buzzer0 {
         	compatible = "pwm-beeper";
         	pinctrl-names = "default";
         	pinctrl-0 = <&buzzer0_pins>;
-        	pwms = <&ehrpwm0 1 1000000 0>;
+        	pwms = <&pwm 0 1000000 0>;
 	    };
-*/
 	};
 };
