@@ -16,7 +16,7 @@ config EDID_READ
 	depends on HPD_DETECTION
 	default y
 
-if !EDID_READ
+if !EDID_READ && VIDEO_SP_HDMITX
 
 config MODE_SELECT
 	bool "Mode Select"
