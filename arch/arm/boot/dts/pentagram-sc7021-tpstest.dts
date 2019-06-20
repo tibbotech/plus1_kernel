@@ -173,7 +173,6 @@
             gpios = <&pctl 1 GPIO_ACTIVE_HIGH     /* i2c_soft0.scl */
                      &pctl 2 GPIO_ACTIVE_HIGH     /* i2c_soft0.sda */
                     >;
-            tps: tps@2d {  reg = <0x2d>;  };
             eeprom: eeprom@50 {
                 compatible = "at,24c16";
                 reg = <0x50>;
