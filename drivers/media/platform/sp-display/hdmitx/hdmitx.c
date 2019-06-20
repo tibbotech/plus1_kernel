@@ -431,7 +431,7 @@ static void read_edid(void)
 		
 		udelay(10);
 		if (timeout-- == 0) {
-			edid_read_timeout = true;
+			edid_read_timeout = TRUE;
 			g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
 			HDMITX_WARNING("EDID read timeout\n");
 			break;
@@ -637,7 +637,8 @@ static void process_hpd_state(void)
 
 #ifdef CONFIG_EDID_READ
 		// send AV mute
-		
+
+		edid_read_timeout = FALSE;
 		// read EDID
 		read_edid();
 		
