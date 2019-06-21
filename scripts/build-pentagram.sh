@@ -2,7 +2,7 @@
 
 opt=$1
 
-export PATH="../../build/tools/arm-linux-gnueabihf/bin/:$PATH"
+export PATH="../../crossgcc/arm-linux-gnueabihf/bin/:$PATH"
 export CROSS_COMPILE=arm-linux-gnueabihf-
 
 # Load CFG=xxx if exists
