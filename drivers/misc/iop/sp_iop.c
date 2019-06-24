@@ -5,6 +5,7 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <linux/of_platform.h>
+#include <linux/firmware.h>
 #include <asm/irq.h>
 #include <linux/sysfs.h>
 #include <linux/clk.h>
@@ -12,6 +13,8 @@
 #include <linux/dma-mapping.h>
 #include "hal_iop.h"
 #include "sp_iop.h"
+#include "iop_ioctl.h"
+
 #include <dt-bindings/memory/sp-q628-mem.h> 
 #include <linux/delay.h>
 
@@ -26,6 +29,8 @@
 #define IOP_KDBG_INFO
 #define IOP_KDBG_ERR
 //#define IOP_GET_GPIO
+//#define IOP_UPDATE_FW
+
 
 extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
@@ -323,7 +328,33 @@ static struct attribute_group iop_attribute_group = {
 static int sp_iop_open(struct inode *inode, struct file *pfile)
 {
 	printk("Sunplus IOP module open\n");
+	return 0;
+}
 
+static ssize_t sp_iop_read(struct file *pfile, char __user *ubuf,
+			size_t length, loff_t *offset)
+{
+	printk("Sunplus IOP module read\n");
+	return 0;
+}
+
+static ssize_t sp_iop_write(struct file *pfile, const char __user *ubuf, size_t length, loff_t *offset)
+{
+
+	unsigned char num[3];
+	char *tmp;
+    unsigned int setnum, setvalue; 
+	tmp = memdup_user(ubuf, length);
+	num[0] = tmp[0];
+   	num[1] = tmp[1];
+   	num[2] = tmp[2];
+	
+	setnum = (unsigned int)num[0];
+	setvalue = ((num[1]<<8)|num[2]);
+	printk("setnum=%x \n",setnum); 	
+	printk("setvalue=%x \n",setvalue); 
+	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
+	printk("Sunplus IOP module write\n");	
 	return 0;
 }
 
@@ -336,9 +367,80 @@ static int sp_iop_release(struct inode *inode, struct file *pfile)
 static long sp_iop_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg)
 {
 	int ret = 0;
+    printk("cmd=%x\n", cmd);
+    printk("arg=%lx\n", arg);
 
 	switch (cmd)
 	{
+	    case IOCTL_VALGET:	
+			#ifdef IOP_UPDATE_FW
+			if(arg == 1)
+			{
+		    	struct platform_device *pdev;
+				const struct firmware *fw;
+				const char fwname[] = "normal.bin";
+				unsigned int err,i;
+			    printk("normal code\n");
+				err = request_firmware(&fw, fwname, &pdev->dev);				
+			    printk("5555\n");
+				if (err) {
+					printk("get bin file\n");
+					return err;
+				}				
+				printk("err=%x  \n",err);
+				printk("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",  
+					fw->data[0],fw->data[1],fw->data[2],fw->data[3],fw->data[4]);
+					release_firmware(fw);	
+
+				for(i=0;i<CODE_SIZE;i++)	
+				{
+					char temp;		
+					temp = fw->data[i];		
+					SourceCode[i] = temp;		
+				}
+				hal_iop_load_normal_code(iop->iop_regs);				
+            }
+			else if(arg == 2)
+			{
+				struct platform_device *pdev;
+				const struct firmware *fw;
+				const char fwname[] = "standby.bin";
+				unsigned int err,i;			
+
+				printk("standby code\n");
+				err = request_firmware(&fw, fwname, &pdev->dev);				
+			    printk("3333\n");
+				if (err) {
+					printk("get bin file\n");
+					return err;
+				}				
+				printk("err=%x  \n",err);
+				printk("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",  
+					fw->data[0],fw->data[1],fw->data[2],fw->data[3],fw->data[4]);
+					release_firmware(fw);	
+
+				for(i=0;i<CODE_SIZE;i++)	
+				{
+					char temp;		
+					temp = fw->data[i];		
+					SourceCode[i] = temp;		
+				}								
+				hal_iop_load_standby_code(iop->iop_regs);
+            }	
+			else
+			#endif 	
+			if(arg == 3)
+			{
+			    printk("get iop data\n");
+				hal_iop_get_iop_data(iop->iop_regs);
+            }	
+			else if(arg == 4)
+			{
+			    printk("set iop data1 = 0xaaaa\n");						
+				//hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
+			}		
+			break;
+			
 		default:
 			printk("Unknow command\n");
 			break;
@@ -347,10 +449,13 @@ static long sp_iop_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg
 	return ret;
 }
 
-static struct file_operations sp_iop_fops = {
+
+static const struct file_operations sp_iop_fops = {
 	.owner          	= THIS_MODULE,
 	.open           = sp_iop_open,
-	.release        = sp_iop_release,
+	.read           = sp_iop_read,
+	.write          = sp_iop_write,
+    .release        = sp_iop_release,
 	.unlocked_ioctl = sp_iop_ioctl,
 
 
