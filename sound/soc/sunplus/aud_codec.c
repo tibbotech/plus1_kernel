@@ -122,14 +122,14 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.name = "aud-spdif-dai",
 		.playback = {
 			.stream_name = "spdif Playback",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = AUD_RATES,
 			.formats = AUD_FORMATS,
 		},
 		.capture = {
 			.stream_name = "spdif Capture",
-			.channels_min = 2,
+			.channels_min = 1,
 			.channels_max = 2,
 			.rates = AUD_RATES,
 			.formats = AUD_FORMATS,

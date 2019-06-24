@@ -335,7 +335,7 @@ static void sp_pdm_shutdown(struct snd_pcm_substream *substream,
     aud_pdm_clk_cfg(0);
 }
 
-static int sp_pdm_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsigned int freq_in, unsigned int freq_out)
+static int sp_pdm_set_pll(struct snd_soc_dai *dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
     //struct sp_pdm_info *sp_pdm = dev_get_drvdata(dai->dev);
 

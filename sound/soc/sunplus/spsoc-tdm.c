@@ -234,6 +234,8 @@ void aud_tdm_clk_cfg(unsigned int SAMPLE_RATE)
     	  regs0->tdm_tx_bck_cfg = 0x6001;
     	  regs0->tdm_rx_xck_cfg = 0x6883;
     	  regs0->tdm_rx_bck_cfg = 0x6001;
+    	  regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS //??? need to check
+    	  regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS //??? need to check
     }
     else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
     	  regs0->tdm_tx_xck_cfg = 0x6801;
@@ -253,6 +255,8 @@ void aud_tdm_clk_cfg(unsigned int SAMPLE_RATE)
     	  regs0->tdm_tx_bck_cfg = 0;
     	  regs0->tdm_rx_xck_cfg = 0;
     	  regs0->tdm_rx_bck_cfg = 0;
+    	  regs0->aud_ext_dac_xck_cfg  = 0;   //PLLA, 256FS //??? need to check
+    	  regs0->aud_ext_dac_bck_cfg  = 0;   //64FS //??? need to check
     }    	
 }
 

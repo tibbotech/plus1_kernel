@@ -219,33 +219,43 @@ void hal_iop_set_iop_data(void __iomem *iopbase, unsigned int num, unsigned int 
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
 	switch (num) {
 		case '0':
+		case 0:
 			pIopReg->iop_data0 = value;
 			break;
 		case '1':
+		case 1:
 			pIopReg->iop_data1 = value;
 			break;
 		case '2':
+		case 2:
 			pIopReg->iop_data2 = value;
 			break;
 		case '3':
+		case 3:
 			pIopReg->iop_data3 = value;
 			break;
 		case '4':
+		case 4:
 			pIopReg->iop_data4 = value;
 			break;
 		case '5':
+		case 5:
 			pIopReg->iop_data5 = value;
 			break;
 		case '6':
+		case 6:
 			pIopReg->iop_data6 = value;
 			break;
 		case '7':
+		case 7:
 			pIopReg->iop_data7 = value;
 			break;
 		case '8':
+		case 8:
 			pIopReg->iop_data8 = value;
 			break;
 		case '9':
+		case 9:
 			pIopReg->iop_data9 = value;
 			break;
 		case 'A':
