@@ -1778,6 +1778,12 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 	case USB_REQ_SET_FEATURE:
 		if (!gadget_is_superspeed(gadget))
 			goto unknown;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+		if((0 == ctrl->bRequestType) && (3 == ctrl->wValue) && (0 == ctrl->wIndex) && (0 == ctrl->wLength)){
+			value = 0;
+			break;
+		}
+#endif
 		if (ctrl->bRequestType != (USB_DIR_OUT | USB_RECIP_INTERFACE))
 			goto unknown;
 		switch (w_value) {

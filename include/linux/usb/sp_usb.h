@@ -21,8 +21,8 @@
 #define USB_PORT1_ID						1
 #define USB_PORT_NUM						3
 
-#define	VBUS_GPIO_CTRL_0					7
-#define	VBUS_GPIO_CTRL_1					87
+#define	VBUS_GPIO_CTRL_0					90
+#define	VBUS_GPIO_CTRL_1					91
 
 #define CDP_MODE_VALUE						0
 #define DCP_MODE_VALUE						1
@@ -99,6 +99,9 @@ extern u8 sp_port_enabled;
 extern uint accessory_port_id;
 extern bool enum_rx_active_flag[USB_PORT_NUM];
 extern struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];
+#ifdef CONFIG_USB_SUNPLUS_OTG
+extern struct timer_list hnp_polling_timer;;
+#endif
 
 typedef enum {
 	eHW_GPIO_FIRST_FUNC = 0,

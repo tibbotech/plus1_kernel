@@ -22,6 +22,7 @@
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
 #include "usb.h"
+#include "../phy/sunplus-otg.h"
 
 static inline const char *plural(int n)
 {
@@ -159,9 +160,64 @@ int usb_choose_configuration(struct usb_device *udev)
 }
 EXPORT_SYMBOL_GPL(usb_choose_configuration);
 
+#define SWITCH_DEVICE_REQ		0x51
+#define SWITCH_DEVICE_TYPE		0x40
+
+extern void detech_start(void);
+
+static int usb_carplay_configuration(struct usb_device *dev)
+{
+	int ret;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	struct usb_phy *otg_phy;
+#endif
+
+	if (dev->descriptor.idVendor != 0x5ac ){
+		printk("Not a apple device\n");
+		return 1;
+	}
+
+	if(dev->parent != dev->bus->root_hub){
+		printk("Not in roothub\n");
+		return 1;
+	}
+
+	if ((dev->descriptor.idProduct >> 8) != 0x12){
+		printk("This apple device not support host mode\n");
+		return 1;
+	}
+
+	//USB Role switch
+	ret = usb_control_msg(dev, usb_sndctrlpipe(dev, 0), SWITCH_DEVICE_REQ, 
+							SWITCH_DEVICE_TYPE, cpu_to_be16(0x0100), cpu_to_be16(0), NULL, 0, 1000);
+	if(ret < 0){
+		printk(KERN_NOTICE "Warn,usb control role switch msg fail,ret:%d\n",ret);
+		return ret;
+	}
+
+	msleep(200);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	otg_phy = usb_get_transceiver_sp(dev->bus->busnum-1);
+	if(!otg_phy){
+		printk("Get otg control fail(busnum:%d)!\n", dev->bus->busnum);
+		return 1;
+	}
+	otg_start_hnp(otg_phy->otg);
+	msleep(1);
+	detech_start();
+#endif
+
+	return 0;
+}
+
 static int generic_probe(struct usb_device *udev)
 {
 	int err, c;
+
+	if (usb_carplay_configuration(udev) == 0){
+		printk("Usb geric: Carplay mode starting!");
+		return 0;
+	}
 
 	/* Choose and set the configuration.  This registers the interfaces
 	 * with the driver core and lets interface drivers bind to them.

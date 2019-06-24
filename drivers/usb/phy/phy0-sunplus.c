@@ -75,6 +75,7 @@ static void uphy0_init(void)
 	writel(RF_MASK_V_SET(3 << 4), regs + USBC_CTL_OFFSET);
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
+	writel(RF_MASK_V_SET(1 << 2), regs + 0x8c);
 	writel(RF_MASK_V_CLR(1 << 4), regs + USBC_CTL_OFFSET);
 	mdelay(1);
 #endif

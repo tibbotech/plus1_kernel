@@ -19,7 +19,7 @@
 #include <linux/usb/sp_usb.h>
 #include <asm/cacheflush.h>
 #include "../../../../arch/arm/mm/dma.h"
-
+#include "../../phy/sunplus-otg.h"
 
 #ifdef CONFIG_FIQ_GLUE
 #include <asm/fiq.h>
@@ -152,7 +152,10 @@ module_param(is_ean, uint, 0644);
 EXPORT_SYMBOL_GPL(is_vera);
 EXPORT_SYMBOL_GPL(is_ean);
 EXPORT_SYMBOL_GPL(dma_fail);
-
+#ifdef CONFIG_USB_SUNPLUS_OTG
+static u32 dev_otg_status = 0;
+module_param(dev_otg_status, uint, 0644);
+#endif
 
 static const char gadget_name[] = "sp_udc";
 static struct semaphore ep1_ack_sem, ep1_dma_sem;
@@ -174,6 +177,9 @@ int in_p_num;
 static inline u32 udc_read(u32 reg);
 static inline void udc_write(u32 value, u32 reg);
 void detech_start(void);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+extern void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
+#endif
 
 
 static void reset_global_value(void)
@@ -854,8 +860,10 @@ static int vbusInt_handle(void)
 	/*host present */
 	if (udc_read(UDCCS) & VBUS) {
 		/*IF soft discconect ->force connect */
+#if 0
 		if (udc_read(UDLCSET) & SOFT_DISC)
 			udc_write(udc_read(UDLCSET) & 0xFE, UDLCSET);
+#endif
 	} else {		/*host absent */
 		/*soft connect ->force disconnect */
 		if (!(udc_read(UDLCSET) & SOFT_DISC))
@@ -991,6 +999,20 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 
 	case USB_REQ_GET_STATUS:
 		DEBUG_INFO("USB_REQ_GET_STATUS ... \n");
+#ifdef CONFIG_USB_SUNPLUS_OTG
+		if((0x80 == crq->bRequestType) && (0 == crq->wValue) && (0xf000 == crq->wIndex) && (4 == crq->wLength)){
+			u32 status = 0;
+			status = dev_otg_status;
+			udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
+			udc_write(((1 << 2) - 1), UDEP0VB);
+			printk("get otg status,%d,%d\n",dev_otg_status,status);
+			memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
+			udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
+			udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
+			return;
+		}
+#endif
+
 		if (dev->req_std) {
 			if (!sp_udc_get_status(dev, crq)) {
 				return;
@@ -1002,6 +1024,19 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 		break;
 
 	case USB_REQ_SET_FEATURE:
+#ifdef CONFIG_USB_SUNPLUS_OTG
+		if((0 == crq->bRequestType) && (3 == crq->wValue) && (0 == crq->wIndex) && (0 == crq->wLength)){
+			printk("set hnp featrue\n");
+			struct usb_phy *otg_phy;
+			otg_phy = usb_get_transceiver_sp(0);
+			if (!otg_phy) {
+				printk("Get otg control fail\n");
+			} else {
+				sp_accept_b_hnp_en_feature(otg_phy->otg);
+			}
+		}
+#endif
+
 		break;
 
 	default:
@@ -3410,10 +3445,13 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	if (irq_en2_flags & SUS_IF) {
 		DEBUG_NOTICE("IRQ:UDC Suspent Event\n");
 		udc_write(SUS_IF, UDLIF);
-#ifdef CONFIG_USB_SUNPLUS_OTG
-		dev->suspend_sta++;
-		queue_work(dev->qwork_otg, &dev->work_otg);
+#if CONFIG_USB_SUNPLUS_OTG
+		if(is_config){
+			//dev->suspend_sta++;
+			//queue_work(dev->qwork_otg, &dev->work_otg);
+		}
 #endif
+
 		if (dev->driver){
 			if (dev->driver->suspend){
 				dev->driver->suspend(&dev->gadget);
@@ -4329,6 +4367,7 @@ static void sp_udc_reinit(struct sp_udc *udc)
 	}
 }
 
+#if 0
 #ifdef CONFIG_USB_SUNPLUS_OTG
 
 static void sp_udc_otg_work(struct work_struct *work)
@@ -4383,6 +4422,8 @@ static void sp_udc_otg_work(struct work_struct *work)
 	}
 }
 #endif
+#endif
+
 #ifdef CONFIG_FIQ_GLUE
 static int fiq_isr(int fiq, void *data)
 {
@@ -4434,6 +4475,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 	clk_prepare(udc->clk);
 	clk_enable(udc->clk);
 
+	pdev->id = 1;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq_num = platform_get_irq(pdev, 0);
 	if (!res || !irq_num) {
@@ -4456,17 +4499,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 	device_initialize(&udc->gadget.dev);
 	udc->gadget.dev.parent = dev;
 	udc->gadget.dev.dma_mask = dev->dma_mask;
-
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	udc->suspend_sta = 0;
-	udc->qwork_otg = create_singlethread_workqueue("sp-udc-otg");
-	if (!udc->qwork_otg) {
-		DEBUG_ERR("cannot create workqueue sp-udc-otg\n");
-		ret = -ENOMEM;
-	}
-	INIT_WORK(&udc->work_otg, sp_udc_otg_work);
-#endif
-
 	udc->qwork_ep3 = create_singlethread_workqueue("sp-udc-ep3");
 	if (!udc->qwork_ep3) {
 		DEBUG_ERR("cannot create workqueue sp-udc-ep3\n");
@@ -4507,7 +4539,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	udc->bus_num = pdev->id;
-	otg_phy = usb_get_transceiver_sunplus(pdev->id - 1);
+	otg_phy = usb_get_transceiver_sp(pdev->id - 1);
 	ret = otg_set_peripheral(otg_phy->otg, &udc->gadget);
 	if (ret < 0) {
 		goto err_add_udc;

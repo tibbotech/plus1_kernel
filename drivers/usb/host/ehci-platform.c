@@ -25,6 +25,7 @@
 #include <mach/io_map.h>
 #include <linux/clk.h>
 #include <linux/usb/sp_usb.h>
+#include "../phy/sunplus-otg.h"
 
 struct clk *ehci_clk[USB_PORT_NUM];
 static int ehci_platform_reset(struct usb_hcd *hcd)
@@ -518,13 +519,16 @@ int ehci_platform_probe(struct platform_device *dev)
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	if (dev->id < 3) {
-		otg_phy = usb_get_transceiver_sunplus(dev->id - 1);
-		err = otg_set_host(otg_phy->otg, &hcd->self);
-		if (err < 0) {
-			dev_err(&pdev->dev,
-				"unable to register with transceiver\n");
-			goto err_iounmap;
+		otg_phy = usb_get_transceiver_sp(dev->id - 1);
+		if(otg_phy){
+			err = otg_set_host(otg_phy->otg, &hcd->self);
+			if (err < 0) {
+				dev_err(&dev->dev,
+					"unable to register with transceiver\n");
+				goto err_iounmap;
+			}
 		}
+		hcd->self.otg_port = 1;
 	}
 #endif
 

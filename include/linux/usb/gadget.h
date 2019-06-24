@@ -510,7 +510,11 @@ static inline int gadget_is_dualspeed(struct usb_gadget *g)
  */
 static inline int gadget_is_superspeed(struct usb_gadget *g)
 {
+#if 1
+	return 1;
+#else
 	return g->max_speed >= USB_SPEED_SUPER;
+#endif
 }
 
 /**
@@ -532,10 +536,14 @@ static inline int gadget_is_superspeed_plus(struct usb_gadget *g)
  */
 static inline int gadget_is_otg(struct usb_gadget *g)
 {
+#if 1
+	return 1;
+#else
 #ifdef CONFIG_USB_OTG
 	return g->is_otg;
 #else
 	return 0;
+#endif
 #endif
 }
 

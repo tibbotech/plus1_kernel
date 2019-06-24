@@ -436,7 +436,8 @@ struct usb_bus {
 					 * Does the host controller use PIO
 					 * for control transfers?
 					 */
-	u8 otg_port;			/* 0, or number of OTG/HNP port */
+	u8 otg_port:1; 	  		/* 0, or number of OTG/HNP port */
+
 	unsigned is_b_host:1;		/* true during some HNP roleswitches */
 	unsigned b_hnp_enable:1;	/* OTG: did A-Host enable HNP? */
 	unsigned no_stop_on_short:1;    /*
@@ -697,6 +698,10 @@ struct usb_device {
 	struct timespec t_prev;
 #endif
 	struct urb* current_urb;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	bool device_support_hnp_flag;
+	struct task_struct	  	*hnp_polling_timer;
+#endif
 };
 #define	to_usb_device(d) container_of(d, struct usb_device, dev)
 

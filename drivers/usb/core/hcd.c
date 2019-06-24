@@ -113,9 +113,10 @@ EXPORT_SYMBOL_GPL(uphy1_base_addr);
 u32 usb_vbus_gpio[USB_PORT_NUM];
 EXPORT_SYMBOL(usb_vbus_gpio);
 
-
-
-
+#ifdef CONFIG_USB_SUNPLUS_OTG
+struct timer_list hnp_polling_timer;
+EXPORT_SYMBOL_GPL(hnp_polling_timer);
+#endif
 
 /* Keep track of which host controller drivers are loaded */
 unsigned long usb_hcds_loaded;

@@ -37,6 +37,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb/sp_usb.h>
 
+#include "../phy/sunplus-otg.h"
 #include "hub.h"
 #include "otg_whitelist.h"
 
@@ -153,11 +154,12 @@ static char enum_retry_status_string[STRING_NUM][STRING_MAX_LENGTH] = {
 static bool rx_active_not_run_ehci_flag[USB_PORT_NUM] = { false };
 
 static int enum_retry_status[USB_PORT_NUM] = { HS_FIRST_START };
-static int enum_success_times[USB_PORT_NUM] = { 0 };
 
 static bool handle_power_reset_retry_enum = true;
 module_param(handle_power_reset_retry_enum, bool, S_IRUGO | S_IWUSR);
 #endif
+
+static int enum_success_times[USB_PORT_NUM] = { 0 };
 
 #ifdef CONFIG_USB_LOGO_TEST
 unsigned short usb_idVendor = 0;
@@ -185,6 +187,57 @@ static struct usb_hub *hdev_to_hub(struct usb_device *hdev)
 		return NULL;
 	return usb_get_intfdata(hdev->actconfig->interface[0]);
 }
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+extern void detech_start(void);
+static int hnp_polling_watchdog(void *arg)
+{
+	struct usb_device *udev = (struct usb_device *)arg;
+	struct usb_phy *otg_phy;
+	bool host_req_flag = false;
+	u32 otg_status;
+	int ret;
+
+	while(1){
+		ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+							  0, 0x80, 0, 0xf000, &otg_status, 4, 5000);
+		if(ret < 0) {
+			printk("polling otg status fail,ret:%d\n",ret);
+			return -1;
+		} else {
+			host_req_flag = otg_status & 0x1;
+			if(host_req_flag) {
+#ifdef CONFIG_USB_SUNPLUS_OTG
+				otg_phy = usb_get_transceiver_sp(udev->bus->busnum-1);
+				if(!otg_phy){
+					printk("Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
+					return 1;
+				}
+				ret = usb_control_msg(udev,
+				usb_sndctrlpipe(udev, 0),
+				USB_REQ_SET_FEATURE, 0,
+				USB_DEVICE_B_HNP_ENABLE,
+				0, NULL, 0,
+				USB_CTRL_SET_TIMEOUT);
+				if (ret < 0) {
+					/*
+					 * OTG MESSAGE: report errors here,
+					 * customize to match your product.
+					 */
+					printk("can't set HNP mode: %d\n",ret);
+				}
+				otg_start_hnp(otg_phy->otg);
+				msleep(1);
+				detech_start();
+				break;
+#endif
+			} else {
+			  msleep(1000);
+			}
+		}
+	}
+}
+#endif
 
 #ifdef CONFIG_USB_HOST_ENUM_RETRY
 static int get_enum_retry_status(int port_num)
@@ -2621,13 +2674,15 @@ void usb_disconnect(struct usb_device **pdev)
 	release_devnum(udev);
 
 #ifdef CONFIG_USB_HOST_RESET_SP
-#ifdef CONFIG_RETRY_TIMES
+	#ifdef CONFIG_RETRY_TIMES
 	if (udev->reset_count != 0 || !is_usb_high_bus(udev->bus)) {
 		reset_usb_wake_up(udev);
 	}
-#else
+	#else
+		#if 0
 	reset_usb_wake_up(udev);
-#endif
+		#endif
+	#endif
 #endif
 
 	/* Avoid races with recursively_mark_NOTATTACHED() */
@@ -2696,6 +2751,10 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 		unsigned			port1 = udev->portnum;
 
 		/* descriptor may appear anywhere in config */
+	#if CONFIG_USB_SUNPLUS_OTG
+		udev->device_support_hnp_flag = true;
+	#endif
+
 		err = __usb_get_extra_descriptor(udev->rawdescriptors[0],
 				le16_to_cpu(udev->config[0].desc.wTotalLength),
 				USB_DT_OTG, (void **) &desc);
@@ -2725,6 +2784,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 			}
 		} else if (desc->bLength == sizeof
 				(struct usb_otg_descriptor)) {
+	#if 0
 			/* Set a_alt_hnp_support for legacy otg device */
 			err = usb_control_msg(udev,
 				usb_sndctrlpipe(udev, 0),
@@ -2736,6 +2796,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 				dev_err(&udev->dev,
 					"set a_alt_hnp_support failed: %d\n",
 					err);
+	#endif
 		}
 	}
 #endif
@@ -5791,6 +5852,13 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		}
 #endif
 		if (!hub->hdev->parent) {
+#ifdef CONFIG_USB_SUNPLUS_OTG
+			if(udev->device_support_hnp_flag){
+				udev->hnp_polling_timer = kthread_create(hnp_polling_watchdog,udev,"hnp_polling");
+				wake_up_process(udev->hnp_polling_timer);
+			}
+#endif
+
 			enum_success_times[port_num]++;
 			printk(KERN_DEBUG "port_num:%d,enum success times:%d\n",
 			       port_num, enum_success_times[port_num]);
