@@ -18,6 +18,10 @@
 #endif
 #define __LOG_NAME__	"audhw"
 
+#define ONEHOT_B10 0x00000400
+#define ONEHOT_B11 0x00000800
+#define ONEHOT_B12 0x00001000
+
 void  AUD_Set_PLL(unsigned int SAMPLE_RATE)
 {
 	//	 //Set PLLA
@@ -109,14 +113,14 @@ void AUDHW_pin_mx(void)
 	  volatile RegisterFile_G2 * regs1 = (volatile RegisterFile_G2 *)REG(2,0);
 
 	  //regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
-	  regs0->rf_sft_cfg2 = 0xffff0041;//I2STX, PDMRX
+	  regs0->rf_sft_cfg2 = 0xffff0045;//I2STX, PDMRX, SPDIFRX
 	  AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
 	  AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
 	
 	  for(i=0; i<64; i++)
 	  {
 		    regs1->G002_RESERVED[i] = 0xffff0000;
-	  }
+	  }	  
 }
 
 void AUDHW_clk_cfg(void)
@@ -124,7 +128,7 @@ void AUDHW_clk_cfg(void)
     volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
     // 147M Setting
     regs0->aud_hdmi_tx_mclk_cfg = 0x6883;  //PLLA, 256FS
-    regs0->aud_ext_adc_xck_cfg  = 0x6883;   //PLLA, 256FS
+    regs0->aud_ext_adc_xck_cfg  = 0xC883;   //PLLA, 256FS
     regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS
     regs0->aud_int_dac_xck_cfg  = 0x6887;   //PLLA, 128FS
     regs0->aud_int_adc_xck_cfg  = 0x6883;   //PLLA, 256FS
@@ -151,8 +155,9 @@ void AUDHW_Mixer_Setting(void)
     regs0->aud_grm_gain_control_3 = 0x80808080; //aud_grm_gain_control_3
     regs0->aud_grm_gain_control_4 = 0x0000007f; //aud_grm_gain_control_4
 
-    val = 0x204;                                //1=pcm, mix75, mix73
-    val = val|0x08100000;                       //1=pcm, mix79, mix77
+    //val = 0x204;                                //1=pcm, mix75, mix73
+    //val = val|0x08100000;                       //1=pcm, mix79, mix77
+    val = 0x20402040;
     regs0->aud_grm_mix_control_1 = val;         //aud_grm_mix_control_1
     val = 0;
     regs0->aud_grm_mix_control_2 = val;	        //aud_grm_mix_control_2
@@ -175,6 +180,7 @@ void AUDHW_Mixer_Setting(void)
 void AUDHW_int_dac_adc_Setting(void)
 {
     volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+    
     regs0->int_dac_ctrl1 |= (0x1<<31);	//ADAC reset (normal mode)
     regs0->int_dac_ctrl0  = 0xC41B8F5F;							//power down DA0, DA1 & DA2, enable auto sleep
     regs0->int_dac_ctrl0 |= (0x7<<23);	//DAC op power on
@@ -200,8 +206,49 @@ void AUDHW_Cfg_AdcIn(void)
    regs0->adcp_fubypass    = 0x7777;   //adcp_fubypass
    regs0->adcp_risc_gain   = 0x1111;  //adcp_risc_gain, all gains are 1x
    regs0->G069_reserved_00 = 0x3;   //adcprc A16~18
-   val                     =0x650100;                    //steplen0=0, Eth_off=0x65, Eth_on=0x100, steplen0=0
+   val                     = 0x650100;                    //steplen0=0, Eth_off=0x65, Eth_on=0x100, steplen0=0
    regs0->adcp_agc_cfg     = val;      //adcp_agc_cfg0
+   
+   //ch0
+   val = (1<<6)|ONEHOT_B11;
+   regs0->adcp_init_ctrl = val;
+   
+   do {
+       val = regs0->adcp_init_ctrl;    	
+   } while ((val&ONEHOT_B12) != 0);
+   
+   val = (1<<6)|2|ONEHOT_B10;
+   
+   regs0->adcp_init_ctrl = val;
+   
+   val = 0x800000;
+   regs0->adcp_gain_0 = val;
+   
+   val = regs0->adcp_risc_gain;
+   val = val&0xfff0;
+   val = val | 1;
+   regs0->adcp_risc_gain = val;
+   
+   //ch1
+   val = (1<<6)|(1<<4)|ONEHOT_B11;
+   regs0->adcp_init_ctrl = val;
+   
+   do {
+       val = regs0->adcp_init_ctrl;    	
+   } while ((val&ONEHOT_B12) != 0);
+   
+   val = (1<<6)|(1<<4)|2|ONEHOT_B10;
+   
+   regs0->adcp_init_ctrl = val;
+   
+   val = 0x800000;
+   regs0->adcp_gain_1 = val;
+   
+   val = regs0->adcp_risc_gain;
+   val = val&0xff0f;
+   val = val | 0x10;
+   regs0->adcp_risc_gain = val;
+   
    
 }
 
@@ -250,9 +297,15 @@ void AUDHW_SystemInit(void)
     regs0->int_dac_ctrl1 &= 0x7fffffff;
     regs0->int_dac_ctrl1 |= (0x1<<31);
     
+    regs0->int_adc_ctrl = 0x80000726;
+    regs0->int_adc_ctrl2 = 0x26;
+    regs0->int_adc_ctrl1 = 0x20;
+    regs0->int_adc_ctrl &= 0x7fffffff;
+    regs0->int_adc_ctrl |= (1<<31);
+    
     regs0->aud_fifo_mode  = 0x20000;
-    regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
-		regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable 
+    //regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
+		//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable 
 }
 
 

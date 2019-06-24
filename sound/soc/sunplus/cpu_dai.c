@@ -31,7 +31,7 @@ void aud_i2s_clk_cfg(unsigned int SAMPLE_RATE)
     if (SAMPLE_RATE != 0){
         // 147M Setting
         regs0->aud_hdmi_tx_mclk_cfg = 0x6883;  //PLLA, 256FS
-        regs0->aud_ext_adc_xck_cfg  = 0x6883;   //PLLA, 256FS
+        regs0->aud_ext_adc_xck_cfg  = 0xC883;   //PLLA, 256FS
         regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS
         regs0->aud_int_dac_xck_cfg  = 0x6887;   //PLLA, 128FS
         regs0->aud_int_adc_xck_cfg  = 0x6883;   //PLLA, 256FS
@@ -40,10 +40,18 @@ void aud_i2s_clk_cfg(unsigned int SAMPLE_RATE)
         regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS
         regs0->aud_int_dac_bck_cfg  = 0x6001;   //64FS
         regs0->aud_ext_adc_bck_cfg  = 0x6003;   //64FS
-        regs0->aud_bt_bck_cfg       = 0x6007;   //32FS, 16/16, 2 slot
-        regs0->aud_iec0_bclk_cfg    = 0x6001;   //XCK from EXT_DAC_XCK, 128FS
-        regs0->aud_iec1_bclk_cfg    = 0x6001;   //XCK from EXT_DAC_XCK, 128FS (HDMI SPDIF)
-        regs0->aud_pcm_iec_bclk_cfg = 0x6001;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->aud_bt_bck_cfg       = 0x6007;   //32FS, 16/16, 2 slot
+        //regs0->aud_iec0_bclk_cfg    = 0x6001;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->aud_iec1_bclk_cfg    = 0x6001;   //XCK from EXT_DAC_XCK, 128FS (HDMI SPDIF)
+        //regs0->aud_pcm_iec_bclk_cfg = 0x6001;   //XCK from EXT_DAC_XCK, 128FS
+        
+        //regs0->aud_pwm_xck_cfg = 0x6801;
+        //regs0->aud_pwm_bck_cfg = 0x460ff;
+        //regs0->I2S_PWM_CONTROL_1 = 0x4041;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->I2S_PWM_CONTROL_2 = 0x4041;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->I2S_PWM_CONTROL_3 = 0x4041;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->I2S_PWM_CONTROL_4 = 0x4041;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->CLASSD_MOS_CONTROL = 1;
     }else{
     	  regs0->aud_hdmi_tx_mclk_cfg = 0;  //PLLA, 256FS
         regs0->aud_ext_adc_xck_cfg  = 0;   //PLLA, 256FS
@@ -55,10 +63,10 @@ void aud_i2s_clk_cfg(unsigned int SAMPLE_RATE)
         regs0->aud_ext_dac_bck_cfg  = 0;   //64FS
         regs0->aud_int_dac_bck_cfg  = 0;   //64FS
         regs0->aud_ext_adc_bck_cfg  = 0;   //64FS
-        regs0->aud_bt_bck_cfg       = 0;   //32FS, 16/16, 2 slot
-        regs0->aud_iec0_bclk_cfg    = 0;   //XCK from EXT_DAC_XCK, 128FS
-        regs0->aud_iec1_bclk_cfg    = 0;   //XCK from EXT_DAC_XCK, 128FS (HDMI SPDIF)
-        regs0->aud_pcm_iec_bclk_cfg = 0;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->aud_bt_bck_cfg       = 0;   //32FS, 16/16, 2 slot
+        //regs0->aud_iec0_bclk_cfg    = 0;   //XCK from EXT_DAC_XCK, 128FS
+        //regs0->aud_iec1_bclk_cfg    = 0;   //XCK from EXT_DAC_XCK, 128FS (HDMI SPDIF)
+        //regs0->aud_pcm_iec_bclk_cfg = 0;   //XCK from EXT_DAC_XCK, 128FS
     }
 }
 
@@ -104,10 +112,10 @@ void sp_i2s_spdif_rx_dma_en(int dev_no, bool on)
 	  	      regs0->aud_fifo_enable = I2S_C_INC0;
 	          regs0->aud_fifo_reset = I2S_C_INC0;
             while ((regs0->aud_fifo_reset & I2S_C_INC0)){};
-	          //regs0->aud_enable = (0x01 | (0x5f<<16));//need to check
+	          regs0->aud_enable = 0x5fffff;//regs0->aud_enable = (0x01 | (0x5f<<16));//need to check
 	      }else{
 	  	      regs0->aud_fifo_enable &= (~I2S_C_INC0);
-	  	      //regs0->aud_enable &= (~(0x01 | (0x5f<<16)));//need to check
+	  	      regs0->aud_enable = 0;//regs0->aud_enable &= (~(0x01 | (0x5f<<16)));//need to check
 	      }
 	  }else{
 	      if (on){
@@ -116,10 +124,10 @@ void sp_i2s_spdif_rx_dma_en(int dev_no, bool on)
 	  	      regs0->aud_fifo_enable = SPDIF_C_INC0;
 	          regs0->aud_fifo_reset = SPDIF_C_INC0;
             while ((regs0->aud_fifo_reset & SPDIF_C_INC0)){};
-	          regs0->aud_enable = 0x200;//need to check
+	          regs0->aud_enable = (0x1<<6);
 	      }else{
 	  	      regs0->aud_fifo_enable &= (~SPDIF_C_INC0);
-	  	      regs0->aud_enable &= (~(0x200));//need to check
+	  	      regs0->aud_enable = (~(0x1<<6));
 	      }
 	  }
 }
@@ -136,10 +144,16 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 {
 	  volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio *)audio_base;
 	  
-	  sp_i2s_spdif_tx_dma_en(substream->pcm->device, true);
-	  regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
-	  regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable 
-	  AUD_INFO("%s IN\n", __func__);
+	  //sp_i2s_spdif_tx_dma_en(substream->pcm->device, true);
+	  if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
+	      if (substream->pcm->device == 0){
+	          regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
+	          regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable 
+	      } 
+	  }else
+	  	  sp_i2s_spdif_tx_dma_en(substream->pcm->device, true);  
+
+	  AUD_INFO("%s IN! G063_reserved_7 0x%x\n", __func__, regs0->G063_reserved_7);
 	  return 0;
 }
 static int aud_cpudai_trigger(struct snd_pcm_substream *substream, int cmd,
@@ -155,9 +169,9 @@ static int aud_cpudai_trigger(struct snd_pcm_substream *substream, int cmd,
     switch (cmd){
     case SNDRV_PCM_TRIGGER_START:
         if (capture){
-                sp_i2s_spdif_rx_dma_en(substream->pcm->device, true);
+            sp_i2s_spdif_rx_dma_en(substream->pcm->device, true);
         }else{
-                sp_i2s_spdif_tx_dma_en(substream->pcm->device, true); 
+            sp_i2s_spdif_tx_dma_en(substream->pcm->device, true); 
         }
         break;
 
@@ -204,22 +218,23 @@ static int spsoc_cpu_set_fmt(struct snd_soc_dai *codec_dai,unsigned int fmt)
 
 static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-    //int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
+    int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 
     AUD_INFO("%s IN\n", __func__ );
-    //if (capture)
-    //    sp_i2s_spdif_rx_dma_en(substream->pcm->device, false);
-    //else
-    //    sp_i2s_spdif_tx_dma_en(substream->pcm->device, false);
-    //aud_i2s_clk_cfg(0);//Need to check
-
+    if (capture)
+        sp_i2s_spdif_rx_dma_en(substream->pcm->device, false);
+    else
+        sp_i2s_spdif_tx_dma_en(substream->pcm->device, false);
+    if (substream->pcm->device == 0)
+        aud_i2s_clk_cfg(0);
 }
 
-static int spsoc_cpu_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsigned int freq_in, unsigned int freq_out)
+static int spsoc_cpu_set_pll(struct snd_soc_dai *dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
 	  AUD_INFO("%s IN\n", __func__ );
 	  //AUD_Set_PLL(freq_out);
-	  aud_i2s_clk_cfg(freq_out);
+	  if (pll_id == 0)
+	      aud_i2s_clk_cfg(freq_out);
 	  return 0;
 }
 
@@ -254,13 +269,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 	  {
 		    .name = "spsoc-spdif-dai",
 		    .playback = {
-			      .channels_min = 2,
+			      .channels_min = 1,
 			      .channels_max = 2,
 			      .rates = AUD_RATES,
 			      .formats = AUD_FORMATS,
 		    },
 		    .capture = {
-			      .channels_min = 2,
+			      .channels_min = 1,
 			      .channels_max = 2,
 			      .rates = AUD_RATES_C,
 			      .formats = AUD_FORMATS,

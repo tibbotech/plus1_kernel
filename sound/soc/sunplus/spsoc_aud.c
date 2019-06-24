@@ -41,7 +41,7 @@
 #endif
 
 static int spsoc_hw_params(struct snd_pcm_substream *substream,
-	struct snd_pcm_hw_params *params)
+	                         struct snd_pcm_hw_params *params)
 {
 	  struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	  struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
@@ -64,14 +64,14 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 		    case 96000:
 		    case 128000:
 		    case 192000:
-			      ret=snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, PLLA,PLLA_FRE, pll_out);
+			      ret = snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, PLLA, PLLA_FRE, pll_out);
 			      break;
 		    case 11025:
 		    case 22050:
 		    case 44100:
 		    case 88200:
 		    case 176400:
-			      ret=snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, DPLL,DPLL_FRE, pll_out);
+			      ret = snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, DPLL, DPLL_FRE, pll_out);
 			      break;
 		    default:
 			      AUD_INFO("NO support the rate");
