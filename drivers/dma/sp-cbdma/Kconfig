@@ -1,0 +1,11 @@
+#
+# CBDMA subsystem configuration
+#
+
+menu "Sunplus CBDMA"
+
+config SUNPLUS_CBDMA
+	tristate "CBDMA Driver support"
+	help
+		Enable to support Sunplus CBDMA drivers
+endmenu

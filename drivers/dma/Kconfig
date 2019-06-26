@@ -590,6 +590,8 @@ source "drivers/dma/hsu/Kconfig"
 
 source "drivers/dma/sh/Kconfig"
 
+source "drivers/dma/sp-cbdma/Kconfig"
+
 # clients
 comment "DMA Clients"
 	depends on DMA_ENGINE
