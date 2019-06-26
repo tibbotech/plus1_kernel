@@ -102,10 +102,10 @@ static ssize_t sppctl_sop_func_R(
  sdp = ( sppctl_sdata_t *)_a->private;
  if ( !( sdp = ( sppctl_sdata_t *)_a->private)) return( -ENXIO);
  f = &( list_funcs[ sdp->i]);
- if ( f->freg == fOFF_M) _b[ 0] = sppctl_fun_get( _p, sdp->i);
+ if ( f->freg == fOFF_M) _b[ 0] = sppctl_fun_get( _p, sdp->ridx);
  if ( f->freg == fOFF_G) _b[ 0] = sppctl_gmx_get( _p, f->roff, f->boff, f->blen);
  _b[ 1] = 0x00;
- if ( _p->debug) KDBG( _pdev, "%s(%s,i:%d) _b:%d\n", __FUNCTION__, _a->attr.name, sdp->i, _b[ 0]);
+ if ( _p->debug) KDBG( _pdev, "%s(%s,i:%d) _b:%d\n", __FUNCTION__, _a->attr.name, sdp->ridx, _b[ 0]);
  return( 1);  }
 
 static ssize_t sppctl_sop_func_W(
@@ -121,9 +121,9 @@ static ssize_t sppctl_sop_func_W(
  sdp = ( sppctl_sdata_t *)_a->private;
  if ( !( sdp = ( sppctl_sdata_t *)_a->private)) return( -ENXIO);
  f = &( list_funcs[ sdp->i]);
- if ( f->freg == fOFF_M) sppctl_pin_set( _p, _b[ 0], sdp->i);
+ if ( f->freg == fOFF_M) sppctl_pin_set( _p, _b[ 0], sdp->ridx);
  if ( f->freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ 0]);
- if ( _p->debug) KDBG( _pdev, "%s(%s,i:%d) _b:%d\n", __FUNCTION__, _a->attr.name, sdp->i, _b[ 0]);
+ if ( _p->debug) KDBG( _pdev, "%s(%s,i:%d) _b:%d\n", __FUNCTION__, _a->attr.name, sdp->ridx, _b[ 0]);
  return( _count);  }
 
 static ssize_t sppctl_sop_fw_R(
@@ -167,7 +167,7 @@ static ssize_t sppctl_sop_fw_W(
    f = &( list_funcs[ i]);
    if ( list_funcs[ i].freg == fOFF_0) continue;
    if ( list_funcs[ i].freg == fOFF_I) continue;
-   if ( list_funcs[ i].freg == fOFF_M) sppctl_pin_set( _p, _b[ j++], sdp->i);
+   if ( list_funcs[ i].freg == fOFF_M) sppctl_pin_set( _p, _b[ j++], sdp->ridx);
    if ( list_funcs[ i].freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ j++]);
   }
  return( i);  }
@@ -190,7 +190,7 @@ struct bin_attribute *sppctl_sysfs_Fap;
 void sppctl_sysfs_init( struct platform_device *_pd) {
  sppctl_pdata_t *_p = ( sppctl_pdata_t *)_pd->dev.platform_data;
  sppctl_sdata_t *sdp = NULL;
- int i, ret;
+ int i, ret, ridx = 0;
  const char * tmpp;
  for ( i = 0; i < ARRAY_SIZE( sppctl_sysfs_attrsD); i++) {
    ret = device_create_file( &( _pd->dev), &sppctl_sysfs_attrsD[i]);
@@ -208,6 +208,7 @@ void sppctl_sysfs_init( struct platform_device *_pd) {
    if ( list_funcs[ i].freg == fOFF_I) continue;
    tmpp = list_funcs[ i].name;
    sdp[ i].i = i;
+   sdp[ i].ridx = ridx++;
    sdp[ i].pdata = _p;
    sysfs_bin_attr_init( sppctl_sysfs_Fap[ i]);
    sppctl_sysfs_Fap[ i].attr.name = tmpp;

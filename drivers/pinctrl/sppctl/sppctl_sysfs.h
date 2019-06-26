@@ -21,6 +21,7 @@
 
 typedef struct sppctl_sdata_T {
  uint8_t i;
+ uint8_t ridx;
  sppctl_pdata_t *pdata;
 } sppctl_sdata_t;
 
