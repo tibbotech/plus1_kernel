@@ -1,6 +1,6 @@
 config FB_SP7021
 	tristate "SP7021 Graphics Backend framebuffer support"
-	depends on FB && ARCH_PENTAGRAM && (SP_DISP_SP7021_TEST || VIDEO_SP_DISP)
+	depends on FB && ARCH_PENTAGRAM && VIDEO_SP_DISP
 	help
 	  This is the frame buffer device driver for the SP7021 Graphics
 	  hardware.

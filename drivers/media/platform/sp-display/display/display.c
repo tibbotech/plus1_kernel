@@ -132,7 +132,7 @@ static int _dma_probe(struct platform_device *pdev);
 #endif
 
 #ifdef TIMING_SYNC_720P60
-extern int hdmitx_enable_display(void);
+extern int hdmitx_enable_display(int);
 extern void hdmitx_set_timming(enum hdmitx_timing timing);
 #endif
 /**************************************************************************
@@ -1421,7 +1421,7 @@ static int _display_probe(struct platform_device *pdev)
 		{
 			mode = 2;
 			hdmitx_set_timming(HDMITX_TIMING_720P60);
-			hdmitx_enable_display();
+			hdmitx_enable_display(1);
 		}
 #endif	
 

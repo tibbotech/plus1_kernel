@@ -305,7 +305,7 @@ unsigned char hdmitx_get_rx_ready(void);
  * \note none
  *
  *****************************************************************************/
-int hdmitx_enable_display(void);
+int hdmitx_enable_display(int);
 
 /******************************************************************************
  *
