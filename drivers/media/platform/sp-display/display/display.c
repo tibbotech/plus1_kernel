@@ -84,7 +84,7 @@
 	#define VPP_WIDTH	512
 	#define VPP_HEIGHT	300
 #else
-#if 0 //TTL_MODE_SUPPORT
+#ifdef TTL_MODE_SUPPORT
 	#define VPP_WIDTH	320
 	#define VPP_HEIGHT	240
 #else
@@ -1234,11 +1234,19 @@ char yuv422_array[768*480*2] __attribute__((aligned(1024))) = {
 	//#include "vpp_pattern/yuv422_NV16_720x480.h"
 };
 #endif
+#ifdef TTL_MODE_SUPPORT
+char yuv420_array[384*240*3/2] __attribute__((aligned(1024))) = {
+	#include "vpp_pattern/yuv420_NV12_320x240.h"
+//	#include "vpp_pattern/vpp_test_512x300_420.h"
+//	#include "vpp_pattern/vpp_test_1024x600_420.h"
+};
+#else
 char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
 	#include "vpp_pattern/yuv420_NV12_720x480.h"
 //	#include "vpp_pattern/vpp_test_512x300_420.h"
 //	#include "vpp_pattern/vpp_test_1024x600_420.h"
 };
+#endif
 
 static void _display_destory_clk(void)
 {
@@ -1530,7 +1538,7 @@ static int _display_probe(struct platform_device *pdev)
 	{
 	extern void vpost_dma(void);
 
-#if 0 //#ifdef TTL_MODE_SUPPORT
+#ifdef TTL_MODE_SUPPORT
 	vpost_setting((320-VPP_WIDTH)>>1, (240-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 320, 240);
 #else
 	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
