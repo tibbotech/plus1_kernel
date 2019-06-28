@@ -12,23 +12,30 @@
 
 #define DRAM_PCM_BUF_LENGTH	(128*1024)
 
-#define PERIOD_BYTES_MIN_CONS 128
-#define PERIOD_BYTES_MAX_CONS (64*1024)
+#define PERIOD_BYTES_MIN_CONS 	128
+#define PERIOD_BYTES_MAX_CONS 	(64*1024)
 
 #define NUM_FIFO_TX		6	// A0~A4, A20
 #define NUM_FIFO_RX		4 // A22~A25	
-#define NUM_FIFO	(NUM_FIFO_TX+NUM_FIFO_RX)	
+#define NUM_FIFO		(NUM_FIFO_TX+NUM_FIFO_RX)	
 
-#define I2S_P_INC0    0x1f
-#define I2S_C_INC0    ((0x7<<16) | (0x1<<21))
-#define TDMPDM_C_INC0 (0xf<<22)
-#define TDM_P_INC0    ((0x1<<20) | 0x1f)
-#define SPDIF_P_INC0  (0x1<<5)
-#define SPDIF_C_INC0  (0x1<<13)
+#define I2S_P_INC0		0x1f
+#define I2S_C_INC0    		((0x7<<16) | (0x1<<21))
+#define TDMPDM_C_INC0 		(0xf<<22)
+#define TDM_P_INC0    		((0x1<<20) | 0x1f)
+#define SPDIF_P_INC0  		(0x1<<5)
+#define SPDIF_C_INC0  		(0x1<<13)
+
+#define aud_enable_i2stdm_p	(0x01 | (0x5f<<16))
+#define aud_enable_i2s_c    	(0x1<<11)
+#define aud_enable_spdif_p  	(0x1<<1)
+#define aud_enable_spdif_c  	(0x1<<6)
+//#define aud_enable_tdm_p    	(0x01 | (0x5f<<16))
+#define aud_enable_tdmpdm_c 	(0x01<<12)
 
 
 #define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)
-#define MIC_Delay_Byte			(DRAM_PCM_BUF_LENGTH*0.75)
+#define MIC_Delay_Byte		(DRAM_PCM_BUF_LENGTH*0.75)
 
 struct spsoc_runtime_data {
 	spinlock_t	lock;
@@ -65,14 +72,14 @@ struct spsoc_runtime_data {
 typedef enum
 {
 	/* fifo */
-	AUDDRV_IOCTL1_FIFO_ENABLE = 0x9001,
+	AUDDRV_IOCTL1_FIFO_ENABLE	= 0x9001,
 	AUDDRV_IOCTL1_FIFO_DISABLE,
 	AUDDRV_IOCTL1_FIFO_PAUSE,
 	AUDDRV_IOCTL1_FIFO_RESET,
 	AUDDRV_IOCTL1_GET_FIFOFLAG,
 	AUDDRV_IOCTL1_GETINFO_FIFO,
 	/* gain */
-	AUDDRV_IOCTL1_RAMPUP         = 0x9101,
+	AUDDRV_IOCTL1_RAMPUP         	= 0x9101,
 	AUDDRV_IOCTL1_RAMPDOWN,
 	AUDDRV_IOCTL1_Mute,
 	AUDDRV_IOCTL1_Demute,
@@ -81,7 +88,7 @@ typedef enum
 	AUDDRV_IOCTL1_SET_FIFOGAIN,
 	AUDDRV_IOCTL1_GET_FIFOGAIN,
 	/* clock */
-	AUDDRV_IOCTL1_SET_SAMPLERATE = 0x9201,
+	AUDDRV_IOCTL1_SET_SAMPLERATE 	= 0x9201,
 	AUDDRV_IOCTL1_SET_IntDAC_FS,
 	AUDDRV_IOCTL1_SET_ExtDAC_FS,
 	AUDDRV_IOCTL1_SET_SPDIF_FS,
@@ -90,14 +97,14 @@ typedef enum
 	AUDDRV_IOCTL1_SET_FreqMask,
 	AUDDRV_IOCTL1_GETINFO_FS,
 	/* data format */
-	AUDDRV_IOCTL1_GET_I2SCFG   = 0x9301,
+	AUDDRV_IOCTL1_GET_I2SCFG   	= 0x9301,
 	AUDDRV_IOCTL1_SET_PCMFMT,
 	/* audio pts */
-	AUDDRV_IOCTL1_SET_APT        = 0x9401,
+	AUDDRV_IOCTL1_SET_APT        	= 0x9401,
 	AUDDRV_IOCTL1_SET_PTS,
 	AUDDRV_IOCTL1_GET_PTS,
 	/* spdif/hdmi */
-	AUDDRV_IOCTL1_Set_CMGS	= 0x9501,
+	AUDDRV_IOCTL1_Set_CMGS		= 0x9501,
 	AUDDRV_IOCTL1_UpdateIEC0_ChannelStatus,
 	AUDDRV_IOCTL1_UpdateIEC1_ChannelStatus,
 	AUDDRV_IOCTL1_SET_SPDIF_MODE,
@@ -105,9 +112,9 @@ typedef enum
 	AUDDRV_IOCTL1_SET_HDMI_MODE,
 	AUDDRV_IOCTL1_GET_HDMI_MODE,
 	/* bluetooth */
-	AUDDRV_IOCTL1_SET_BT_CFG = 0x9601,
+	AUDDRV_IOCTL1_SET_BT_CFG 	= 0x9601,
 	/* GRM switch */
-	AUDDRV_IOCTL1_SET_VCDMIX = 0x9701,
+	AUDDRV_IOCTL1_SET_VCDMIX 	= 0x9701,
 	AUDDRV_IOCTL1_SET_OUTPUT_MODE,
 }IOCTL_command;
 
@@ -143,7 +150,7 @@ typedef struct  t_AUD_FIFO_PARAMS{
 	unsigned int Buf_TotalLen;
 }AUD_FIFO_PARAMS;
 
-#define PCM_RAMPUP		1
+#define PCM_RAMPUP	1
 #define PCM_RAMPDOWN	0
 
 typedef struct t_AUD_GAIN_PARAMS {
