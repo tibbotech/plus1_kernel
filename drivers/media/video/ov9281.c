@@ -28,7 +28,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 #include <linux/pinctrl/consumer.h>
-#include <mach/gpio_drv.h>
 #include "ov9281.h"
 
 // 1280x800/ raw10/ 120fps/ 2 lane

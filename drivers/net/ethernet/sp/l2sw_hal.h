@@ -4,7 +4,6 @@
 #include "l2sw_register.h"
 #include "l2sw_define.h"
 #include "l2sw_desc.h"
-#include <mach/gpio_drv.h>
 
 
 #define HWREG_W(M, N)           (ls2w_reg_base->M = N)
