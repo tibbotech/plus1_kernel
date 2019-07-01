@@ -21,6 +21,7 @@
 
 //#define IPC_TIMEOUT_DEBUG
 //#define IPC_REG_OVERWRITE
+#define EXAMPLE_CODE_FOR_USER_GUIDE
 #ifdef CONFIG_ARCH_ZYNQ
 #define LOCAL_TEST
 #endif
@@ -330,7 +331,7 @@ module_param_cb(test, &test_ops, NULL, 0600);
 /**************************************************************************/
 
 #ifdef LOCAL_TEST
-#include <asm/hardware/gic.h>
+//#include <asm/hardware/gic.h>
 static irqreturn_t rpc_isr(int irq, void *dev_id);
 
 static void irq_trigger(int irq)
@@ -412,7 +413,7 @@ static void ipc_memcpy(void *dst, void *src, u32 len)
 static void rpc_copy(rpc_t *dst, rpc_t *src)
 {
 	int len;
-
+	trace();
 	ipc_memcpy(dst, src, REG_ALIGN(RPC_HEAD_SIZE));
 	if (src == &IPC_REMOTE->RPC) {	// reg read IMPORTANT: DON'T read IPC_REMOTE twice!!!
 #ifdef IPC_REG_OVERWRITE
@@ -420,6 +421,7 @@ static void rpc_copy(rpc_t *dst, rpc_t *src)
 			printk("F_OVERWRITE:%08x\n", IPC_REMOTE->F_OVERWRITE);
 		}
 #endif
+		trace();
 		len = dst->DATA_LEN;
 		if (len > RPC_DATA_SIZE) {
 			u32 pa = (u32) src->DATA_PTR;
@@ -441,7 +443,8 @@ static void rpc_copy(rpc_t *dst, rpc_t *src)
 		} else {
 			ipc_memcpy(dst->DATA, src->DATA, REG_ALIGN(len));
 		}
-	} else {		// nomal copy
+	} else {		// nomal copy	
+		trace();
 		len = src->DATA_LEN;
 		if (len > RPC_DATA_SIZE) {
 			dst->DATA_PTR = src->DATA_PTR;
@@ -453,8 +456,15 @@ static void rpc_copy(rpc_t *dst, rpc_t *src)
 
 static void rpc_read_hw(rpc_t *rpc)
 {
-	rpc_copy(rpc, &IPC_REMOTE->RPC);
-	rpc_dump("RD_HW", rpc);
+	trace();
+	rpc_copy(rpc, &IPC_REMOTE->RPC);	
+	rpc_dump("RD_HW_ACHIP", rpc);
+}
+
+static void rpc_read_hw_of_926(rpc_t *rpc)
+{
+	rpc_copy(rpc, &IPC_LOCAL->RPC);	
+	rpc_dump("RD_HW_926", rpc);
 }
 
 static int WAIT_IPC_WRITEABLE(u32 mask)
@@ -475,6 +485,7 @@ static int WAIT_IPC_WRITEABLE(u32 mask)
 static int rpc_write_hw(rpc_t *rpc)
 {
 	int ret = IPC_SUCCESS;
+	trace();
 #ifndef IPC_USE_CBDMA
 	if(rpc->DATA_LEN > RPC_DATA_SIZE) {
 		rpc_add_seq(rpc);
@@ -505,7 +516,8 @@ out:
 
 static int rpc_fifo_get(rpc_fifo_t *fifo, rpc_t *rpc)
 {
-	DOWN(&fifo->wait);
+	trace();
+DOWN(&fifo->wait);
 
 	if ((fifo->in - fifo->out) == 0) {				// fifo is empty
 		return IPC_FAIL;
@@ -520,16 +532,17 @@ static int rpc_fifo_get(rpc_fifo_t *fifo, rpc_t *rpc)
 
 static int rpc_fifo_put(rpc_fifo_t *fifo, rpc_t *rpc)
 {
+	trace();
 	if ((fifo->in - fifo->out) == FIFO_SIZE) {		// fifo is full
 		return IPC_FAIL;
 	}
-
+	trace();
 	rpc_copy(&fifo->data[fifo->in & FIFO_MASK], rpc);
 	smp_wmb();
 	fifo->in++;
 
 	UP(&fifo->wait);
-
+	trace();
 	return IPC_SUCCESS;
 }
 
@@ -549,13 +562,15 @@ static irqreturn_t rpc_isr(int irq, void *dev_id)
 	if (rpc.F_DIR == RPC_REQUEST) {
 		int sid = rpc.CMD >> SERVER_ID_OFFSET;		// server id
 		rpc_fifo_t *fifo = ipc->fifo[sid];
-
-		if (fifo == NULL) {
+		trace();
+		if (fifo == NULL) 
+		{
 			print("RPC SERVER #%d NOT RUNNING!!!\n", sid);
 			RESPONSE(&rpc, IPC_FAIL_NOSERV);
 			trace();
-		} else
-		if (rpc_fifo_put(fifo, &rpc) != IPC_SUCCESS) {	// put new rpc into fifo
+		} 
+		else if (rpc_fifo_put(fifo, &rpc) != IPC_SUCCESS) 
+		{	// put new rpc into fifo
 			print("RPC SERVER #%d FIFO FULL!!!\n", sid);
 			RESPONSE(&rpc, IPC_FAIL_BUSY);
 		}
@@ -576,6 +591,16 @@ static irqreturn_t rpc_isr(int irq, void *dev_id)
 
 	return IRQ_HANDLED;
 }
+
+static irqreturn_t rpc_isr_926(int irq, void *dev_id)
+{
+	rpc_t rpc;
+
+	trace();
+	rpc_read_hw_of_926(&rpc);
+	return IRQ_HANDLED;
+}
+
 
 static int rpc_res_thread(void *param)
 {
@@ -643,6 +668,7 @@ static int rpc_to_user(rpc_t __user *rpc_user, rpc_t *rpc)
 {
 	int ret = IPC_SUCCESS;
 	u32 len = rpc->DATA_LEN;
+	trace();
 
 	if (rpc->F_DIR == RPC_REQUEST) {
 		if (len > RPC_DATA_SIZE) {
@@ -692,6 +718,7 @@ static int rpc_read(rpc_t __user *rpc_user)
 	request_t *req;
 	int ret = get_user(req, &rpc_user->REQ_H);
 	u32 sid = (u32)req;								// server id
+	trace();
 
 	if (sid > SERVER_NUMS) {						// read deferred response
 		DOWN(&req->wait_response);
@@ -713,6 +740,7 @@ static int rpc_write(rpc_t __user *rpc_user)
 	request_t *req = (request_t *)MALLOC(sizeof(request_t));
 	rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user(rpc, rpc_user);
+	trace();
 
 	if (rpc->F_DIR == RPC_REQUEST) {
 		rpc->REQ_H = req;
@@ -747,6 +775,7 @@ static int rpc_write_new(rpc_new_t __user *rpc_user)
 	rpc_user_t user = {0};
 	rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user_new(rpc, &user,rpc_user);
+	trace();
 	if (rpc->F_DIR == RPC_REQUEST) {
 		rpc->REQ_H = req;
 		if (rpc->F_TYPE != REQ_NO_REP) {
@@ -940,6 +969,7 @@ EXPORT_SYMBOL(IPC_FunctionCall_timeout);
 static int reg_server(int sid)
 {
 	rpc_fifo_t *fifo = ipc->fifo[sid];
+	trace();
 
 	if (fifo) {
 		struct task_struct *task;
@@ -970,6 +1000,7 @@ static int sp_ipc_release(struct inode *inode, struct file *file)
 {
 	u32 pid = current->tgid;
 	int i = SERVER_NUMS;
+	trace();
 
 	while (i--) {
 		if (ipc->pid[i] == pid) {		// remove server
@@ -986,19 +1017,38 @@ static int sp_ipc_release(struct inode *inode, struct file *file)
 static ssize_t sp_ipc_read(struct file *filp, char __user *buffer,
 							 size_t length, loff_t *offset)
 {
-	int ret = IPC_FAIL_INVALID;
+#ifdef EXAMPLE_CODE_FOR_USER_GUIDE
+	printk("sp_ipc_read: %d\n", readl(&IPC_LOCAL->RPC));
+	printk("Sunplus mailbox read\n");
+	return 0;	
 
+#else
+	int ret = IPC_FAIL_INVALID;
+	trace(); 
 	if (length == sizeof(rpc_t)) {
 		ret = rpc_read((rpc_t __user *)buffer);
 	}
 
 	return (ret ? RET_K(ret) : length);
+#endif 
 }
 
 static ssize_t sp_ipc_write(struct file *filp, const char __user *buffer,
 							 size_t length, loff_t *offset)
 {
+#ifdef EXAMPLE_CODE_FOR_USER_GUIDE
+	unsigned char num[2];
+	char *tmp;
+    unsigned int setnum, setvalue; 
+	tmp = memdup_user(buffer, length);
+	num[0] = tmp[0];
+   	num[1] = tmp[1];	
+	writel(num[1],&IPC_LOCAL->RPC);
+	printk("Sunplus mailbox write\n");	
+	return 0;	
+#else
 	int ret = IPC_FAIL_INVALID;
+	trace();
 
 	if (length == sizeof(int)) {		// register server
 		int sid;
@@ -1012,6 +1062,7 @@ static ssize_t sp_ipc_write(struct file *filp, const char __user *buffer,
 	}
 
 	return (ret ? RET_K(ret) : length);
+#endif 
 }
 
 static int sp_ipc_mmap(struct file *file, struct vm_area_struct *vma)
@@ -1062,7 +1113,13 @@ static int sp_ipc_probe(struct platform_device *pdev)
 		printf("sp_ipc request_irq fail!\n");
 		goto fail_reqirq;
 	}
-
+	#if 0
+	ret = devm_request_irq(&pdev->dev, IRQ_A926, rpc_isr_926, IRQF_TRIGGER_RISING, "rpc", NULL);
+	if (ret != 0) {
+		printf("sp_ipc rpc_isr_926 fail!\n");
+		goto fail_reqirq;
+	}
+    #endif 
 	/* register device */
 	ipc->dev.name  = "sp_ipc";
 	ipc->dev.minor = MISC_DYNAMIC_MINOR;
