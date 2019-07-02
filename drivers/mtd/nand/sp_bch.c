@@ -1,5 +1,3 @@
-#define pr_fmt(fmt) "["KBUILD_MODNAME"] "fmt
-
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/sched.h>
@@ -51,6 +49,7 @@ static int sp_bch_blank(dma_addr_t ecc, int len)
 	return ret;
 }
 */
+
 static int sp_bch_reset(struct sp_bch_chip *chip)
 {
 	struct sp_bch_regs *regs = chip->regs;
@@ -64,7 +63,7 @@ static int sp_bch_reset(struct sp_bch_chip *chip)
 		cpu_relax();
 	}
 	if (jiffies >= timeout) {
-		pr_warn("reset timeout\n");
+		printk(KERN_WARNING "sp_bch: reset timeout\n");
 		return -1;
 	}
 
@@ -335,7 +334,7 @@ int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(CR0_START | CR0_ENCODE | chip->cr0, &regs->cr0);
 	ret = sp_bch_wait(chip);
 	if (ret)
-		pr_warn("encode timeout\n");
+		printk(KERN_WARNING "sp_bch: encode timeout\n");
 
 	mutex_unlock(&chip->lock);
 
@@ -369,13 +368,13 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	ret = sp_bch_wait(chip);
 	status = readl(&regs->sr);
 	if (ret) {
-		pr_warn("decode timeout\n");
+		printk(KERN_WARNING "sp_bch: decode timeout\n");
 	} else if (readl(&regs->fsr) != 0) {
 		if((status & SR_BLANK_FF)) {
-			//pr_warn("sp_bch: decode All FF!\n");
+			//printk("sp_bch: decode all FF!\n");
 			ret = 0;
 		} else {
-			pr_warn("decode failed.\n");
+			printk(KERN_WARNING "sp_bch: decode failed.\n");
 			mtd->ecc_stats.failed += SR_ERR_BITS(status);
 			ret = -1;
 		}
@@ -424,10 +423,10 @@ int sp_autobch_result(struct mtd_info *mtd)
 	status = readl(&regs->sr);
 	if (readl(&regs->fsr) != 0) {
 		if((status & SR_BLANK_FF)) {
-			//pr_warn("decode All FF!\n");
+			//printk("decode all FF!\n");
 			ret = 0;
 		} else {
-			pr_warn("decode failed.\n");
+			printk(KERN_WARNING "sp_bch: decode failed.\n");
 			mtd->ecc_stats.failed += SR_ERR_BITS(status);
 			ret = -1;
 		}
@@ -486,7 +485,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		chip->busy = 1;
 		writel(CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
 		if (sp_bch_wait(chip)) {
-			pr_err("1k60 encode timeout\n");
+			printk(KERN_ERR "sp_bch: 1k60 encode timeout\n");
 			ret = -EFAULT;
 		}
 
@@ -516,7 +515,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		chip->busy = 1;
 		writel(CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
 		if (sp_bch_wait(chip)) {
-			pr_err("1k60 decode timeout\n");
+			printk(KERN_ERR "sp_bch: 1k60 decode timeout\n");
 			ret = -EFAULT;
 		}
 
@@ -560,7 +559,7 @@ static int sp_bch_probe(struct platform_device *pdev)
 	struct clk *clk;
 	int ret = 0;
 
-	pr_info("%s in\n", __FUNCTION__);
+	printk(KERN_INFO "%s in\n", __FUNCTION__);
 
 	memset(chip, 0, sizeof(*chip));
 	mutex_init(&chip->lock);
@@ -568,14 +567,14 @@ static int sp_bch_probe(struct platform_device *pdev)
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
-		pr_err("get memory resource fail\n");
+		printk(KERN_ERR "sp_bch: get memory resource fail\n");
 		ret = -ENXIO;
 		goto err;
 	}
 
 	chip->regs = devm_ioremap_resource(&pdev->dev, res_mem);
 	if (IS_ERR(chip->regs)) {
-		pr_err("memory remap fail!\n");
+		printk(KERN_ERR "sp_bch: memory remap fail!\n");
 		ret = PTR_ERR(chip->regs);
 		chip->regs = NULL;
 		goto err;
@@ -583,7 +582,7 @@ static int sp_bch_probe(struct platform_device *pdev)
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (res_irq <= 0) {
-		pr_err("get irq resource fail\n");
+		printk(KERN_ERR "sp_bch: get irq resource fail!\n");
 		ret = -ENXIO;
 		goto err;
 	}
@@ -592,12 +591,12 @@ static int sp_bch_probe(struct platform_device *pdev)
 	if (!IS_ERR(clk)) {
 		ret = clk_prepare(clk);
 		if (ret) {
-			pr_err("clk_prepare fail!\n");
+			printk(KERN_ERR "sp_bch: clk_prepare fail!\n");
 			goto err;
 		}
 		ret = clk_enable(clk);
 		if (ret) {
-			pr_err("clk_enable fail!\n");
+			printk(KERN_ERR "sp_bch: clk_enable fail!\n");
 			clk_unprepare(clk);
 			goto err;
 		}
@@ -605,14 +604,14 @@ static int sp_bch_probe(struct platform_device *pdev)
 	}
 
 	if (sp_bch_reset(chip)) {
-		pr_err("reset bch hw fail!\n");
+		printk(KERN_ERR "sp_bch: reset bch hw fail!\n");
 		ret = -ENXIO;
 		goto err;
 	}
 
 	ret = request_irq(res_irq->start,sp_bch_irq,IRQF_SHARED,"sp_bch",chip);
 	if(ret) {
-		pr_err("request IRQ(%d) fail!\n", res_irq->start);
+		printk(KERN_ERR"sp_bch: request IRQ(%d) fail\n",res_irq->start);
 		goto err;
 	}
 
@@ -683,7 +682,6 @@ int sp_bch_resume(struct platform_device *pdev)
 	return 0;
 }
 
-
 #ifndef CONFIG_SPBCH_DEV_IN_DTS
 static struct resource sp_bch_res[] = {
 	{
@@ -746,5 +744,4 @@ module_exit(sp_bch_module_exit);
 
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("Sunplus BCH controller");
-
 

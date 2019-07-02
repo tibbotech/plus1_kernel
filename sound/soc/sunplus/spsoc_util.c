@@ -39,7 +39,6 @@ void ADCP_INITIAL_BUFFER(UINT32 chan, UINT32 Fn)
 }
 
 void ADCP_INITIAL_COEFF_INDEX(UINT32 chan, UINT32 Fn, UINT32 coeff_index, UINT32 ena_inc)
-
 {
 	AUD_INFO("%s IN\n", __func__);
 }

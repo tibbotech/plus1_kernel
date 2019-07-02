@@ -833,11 +833,11 @@ unsigned char hdmitx_get_rx_ready(void)
 	return get_rx_ready();
 }
 
-int hdmitx_enable_display(void)
+int hdmitx_enable_display(int enforced)
 {
 	int err = 0;
 
-	if (get_rx_ready()) {
+	if (get_rx_ready() || enforced == 1) {
 
 		mutex_lock(&g_hdmitx_mutex);
 		memcpy(&g_cur_hdmi_cfg, &g_new_hdmi_cfg, sizeof(struct hdmitx_config));
@@ -935,7 +935,7 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 				err = -1;
 			} else {
 				if (enable) {
-					hdmitx_enable_display();
+					hdmitx_enable_display(0);
 				} else {
 					hdmitx_disable_display();
 				}
