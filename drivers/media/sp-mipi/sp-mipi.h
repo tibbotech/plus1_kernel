@@ -15,7 +15,7 @@
 #define CSIIW_REG_NAME                  "csiiw"
 
 #define mEXTENDED_ALIGNED(w,n)          (w%n)? ((w/n)*n+n): (w)
-#define FRAME_BUFFER_ALIGN              256
+#define MIN_BUFFERS                     2
 
 /* SOL Sync */
 #define SYNC_RGB565                     0x22
@@ -32,7 +32,9 @@
 #define MIP_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
 #define MIP_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
 
-
+#if 0
+#define print_List()
+#else
 static void print_List(struct list_head *head){
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
@@ -46,8 +48,7 @@ static void print_List(struct list_head *head){
 	}
 	DBG_INFO("*********************************************************************************\n");
 }
-
-static unsigned int vid_limit = 16;     //16M
+#endif
 
 
 struct sp_fmt {
@@ -87,17 +88,16 @@ struct sp_mipi_device {
 
 	struct device                   *pdev;                  /* parent device */
 	struct video_device             video_dev;
-	struct videobuf_buffer          *cur_frm;               /* Pointer pointing to current v4l2_buffer */
-	struct videobuf_queue           buffer_queue;           /* Buffer queue used in video-buf */
+	struct sp_buffer                *cur_frm;               /* Pointer pointing to current v4l2_buffer */
+	struct vb2_queue                buffer_queue;           /* Buffer queue used in video-buf2 */
 	struct list_head                dma_queue;              /* Queue of filled frames */
 
 	struct v4l2_device              v4l2_dev;
 	struct v4l2_format              fmt;                    /* Used to store pixel format */
 	struct v4l2_rect                crop;
 	struct v4l2_rect                win;
-	struct v4l2_control             ctrl;
-	enum v4l2_buf_type              type;
-	enum v4l2_memory                memory;
+	u32                             caps;
+	unsigned                        sequence;
 
 	struct i2c_adapter              *i2c_adap;
 	struct sp_mipi_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
@@ -105,21 +105,20 @@ struct sp_mipi_device {
 	const struct sp_fmt             *cur_format;
 	int                             cur_mode;
 
-	spinlock_t                      irqlock;                /* Used in video-buf */
 	spinlock_t                      dma_queue_lock;         /* IRQ lock for DMA queue */
 	struct mutex                    lock;                   /* lock used to access this structure */
 
 	int                             fs_irq;
 	int                             fe_irq;
-	u8                              streaming;              /* Indicates whether streaming started */
-	u8                              skip_first_int;
+	bool                            streaming;              /* Indicates whether streaming started */
+	bool                            skip_first_int;
 };
 
-/* File handle structure */
-struct sp_mipi_fh {
-	struct v4l2_fh          fh;
-	struct sp_mipi_device   *mipi;
-	u8                      io_allowed;                     /* Indicates whether this file handle is doing IO */
+/* buffer for one video frame */
+struct sp_buffer {
+	/* common v4l buffer stuff -- must be first */
+	struct vb2_v4l2_buffer          vb;
+	struct list_head                list;
 };
 
 /* sensor subdev private data */
