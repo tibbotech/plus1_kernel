@@ -58,7 +58,7 @@ static struct platform_driver _sc7021_audio_driver = {
 	.driver	= {
 		.name		= "sc7021-audio",
 		.owner		= THIS_MODULE,
-		.of_match_table = of_match_ptr(_sc7021_audio_dt_ids),
+		.of_match_table	= of_match_ptr(_sc7021_audio_dt_ids),
 	},
 };
 module_platform_driver(_sc7021_audio_driver);
@@ -79,7 +79,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "devicetree status is not available\n");
 		return -ENODEV;
 	}
-
+        //audio register base
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res)) {
 		dev_err(&pdev->dev, "get resource memory from devicetree node 0.\n");
@@ -91,7 +91,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 		return PTR_ERR(audio_base);
 	}	  
 	AUD_INFO("audio_base=%08x\n", audio_base);
-	    
+	//clock enable    
     	peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
     	if (IS_ERR(peri0_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 1.\n");
@@ -102,7 +102,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 	  	dev_err(&pdev->dev, "enable clock 1 false.\n");
 		return res;
 	}
-	  
+	//clock enable  
     	aud_clocken = devm_clk_get(&pdev->dev, "aud");
     	if (IS_ERR(aud_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 0.\n");
@@ -113,19 +113,17 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 	  	dev_err(&pdev->dev, "enable clock 0 false.\n");
 		return res;
 	}  	  
-	  
+	//plla setting  
 	plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
     	if (IS_ERR(plla_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 2.\n");
 		return PTR_ERR(plla_clocken);
-	}
-	  
+	}	  
 	res = clk_set_rate(plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz, //driver/clk-sp-q628.c
 	if (res) {
 	  	dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
 		return res;
-	}
-	  
+	}	  
 	res = clk_prepare_enable(plla_clocken);
 	if (res) {
 	  	dev_err(&pdev->dev, "enable clock 2 false.\n");

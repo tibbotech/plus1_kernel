@@ -108,25 +108,11 @@ void aud_pdm_clk_cfg(unsigned int SAMPLE_RATE)
     	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
 
    	 AUD_INFO("%s %d\n", __func__, SAMPLE_RATE );
-
-    	if (SAMPLE_RATE == 32000) {
-    	  	regs0->pdm_rx_xck_cfg = 0x6883;
-    	  	regs0->pdm_rx_bck_cfg = 0x6003;
-    	}
-    	else if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
+        //147M settings    	
+        if(SAMPLE_RATE > 0) {
         	regs0->pdm_rx_xck_cfg = 0x6883;
-    	  	regs0->pdm_rx_bck_cfg = 0x6003;
-    	}
-    	else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
-        	regs0->pdm_rx_xck_cfg = 0x6883;
-    	  	regs0->pdm_rx_bck_cfg = 0x6003;
-    	}
-    	else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
-        	regs0->pdm_rx_xck_cfg = 0x6883;
-    	  	regs0->pdm_rx_bck_cfg = 0x6003; 
-    	}
-    	else
-    	{
+    	  	regs0->pdm_rx_bck_cfg = 0x6003;   	
+    	}else{
     	  	regs0->pdm_rx_xck_cfg = 0;
     	 	regs0->pdm_rx_bck_cfg = 0;
     	}    	
@@ -204,7 +190,7 @@ static int sp_pdm_dai_probe(struct snd_soc_dai *dai)
     	sp_pdm->dma_capture.addr = aud_param.fifoInfo.mic_physAddrBase;
     	sp_pdm->dma_capture.maxburst = 16;
     	snd_soc_dai_init_dma_data(dai, &sp_pdm->dma_playback,
-                              &sp_pdm->dma_capture);
+                                  &sp_pdm->dma_capture);
     	AUD_INFO("%s, phy_addr=%08x\n", __func__, sp_pdm->phy_addr);
     	return 0;
 }

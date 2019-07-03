@@ -217,40 +217,48 @@ struct sp_tdm_info {
     	struct device       *dev;
 };
 
-void aud_tdm_clk_cfg(unsigned int SAMPLE_RATE)
+void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 {
     	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
-
-    	AUD_INFO("%s %d\n", __func__, SAMPLE_RATE );
-
+        int capture = (source == SNDRV_PCM_STREAM_CAPTURE);
+    	AUD_INFO("%s rate %d capture %d\n", __func__, SAMPLE_RATE, capture);
+        //147M settings
     	if (SAMPLE_RATE == 32000) {
-    	  	regs0->tdm_tx_xck_cfg = 0x6807;
-    	  	regs0->tdm_tx_bck_cfg = 0x6807;
-    	  	regs0->tdm_rx_xck_cfg = 0x6807;
-    	  	regs0->tdm_rx_bck_cfg = 0x6807;
-    	}
-    	else if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
-        	regs0->tdm_tx_xck_cfg = 0x6883;
-    	  	regs0->tdm_tx_bck_cfg = 0x6001;
-    	  	regs0->tdm_rx_xck_cfg = 0x6883;
-    	  	regs0->tdm_rx_bck_cfg = 0x6001;
-    	  	regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS //??? need to check
-    	  	regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS //??? need to check
-    	}
-    	else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
-    	  	regs0->tdm_tx_xck_cfg = 0x6801;
-    	  	regs0->tdm_tx_bck_cfg = 0x6801;
-    	  	regs0->tdm_rx_xck_cfg = 0x6801;
-    	  	regs0->tdm_rx_bck_cfg = 0x6801;        
-    	}
-    	else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
-    	  	regs0->tdm_tx_xck_cfg = 0x6800;
-    	  	regs0->tdm_tx_bck_cfg = 0x6800;
-    	  	regs0->tdm_rx_xck_cfg = 0x6800;
-    	  	regs0->tdm_rx_bck_cfg = 0x6800;
-    	}
-    	else
-    	{
+    		if (capture){
+    			regs0->tdm_rx_xck_cfg = 0x6981;
+    	  		regs0->tdm_rx_bck_cfg = 0x6001;
+    		}else{
+    			regs0->tdm_tx_xck_cfg = 0x6981;
+    	  		regs0->tdm_tx_bck_cfg = 0x6001;
+    		}    	  	    	  	
+    	}else if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
+    		if (capture){
+    			regs0->tdm_rx_xck_cfg = 0x6883;
+    	  		regs0->tdm_rx_bck_cfg = 0x6001;
+    		}else{
+    			regs0->tdm_tx_xck_cfg = 0x6883;
+    	  		regs0->tdm_tx_bck_cfg = 0x6001;
+    	  	
+    	  		regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS //??? need to check
+    	  		regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS //??? need to check
+    		}        	
+    	}else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
+    		if (capture){
+    			regs0->tdm_rx_xck_cfg = 0x6881;
+    	  		regs0->tdm_rx_bck_cfg = 0x6001; 
+    		}else{
+    			regs0->tdm_tx_xck_cfg = 0x6881;
+    	  		regs0->tdm_tx_bck_cfg = 0x6001;
+    		}    	  	       
+    	}else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
+    		if (capture){
+    			regs0->tdm_rx_xck_cfg = 0x6881;
+    	  		regs0->tdm_rx_bck_cfg = 0x6000;
+    		}else{
+    			regs0->tdm_tx_xck_cfg = 0x6881;
+    	  		regs0->tdm_tx_bck_cfg = 0x6001;
+    		}    	  	    	  	
+    	}else{
     	  	regs0->tdm_tx_xck_cfg = 0;
     	  	regs0->tdm_tx_bck_cfg = 0;
     	  	regs0->tdm_rx_xck_cfg = 0;
@@ -510,36 +518,36 @@ static int sp_tdm_trigger(struct snd_pcm_substream *substream, int cmd,
             			//sp_tdm_writel(sp_tdm, Host_FIFO_Reset, val);
          
             			sp_tdm_rx_dma_en(true);
-        		} else {
+        		} //else {
             			//val = sp_tdm_readl(sp_tdm, Host_FIFO_Reset);
             			//val |= Main_PCM5;
             			//sp_tdm_writel(sp_tdm, Host_FIFO_Reset, val);
 
-            			sp_tdm_tx_dma_en(true);
-        		}
+            		//	sp_tdm_tx_dma_en(true);
+        		//}
         		break;
 
     		case SNDRV_PCM_TRIGGER_RESUME:
     		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
         		if (capture)
             			sp_tdm_rx_dma_en(true);
-        		else
-            			sp_tdm_tx_dma_en(true);
+        		//else
+            		//	sp_tdm_tx_dma_en(true);
         		break;
 
     		case SNDRV_PCM_TRIGGER_STOP:
         		if (capture)
             			sp_tdm_rx_dma_en(false);
-        		else
-            			sp_tdm_tx_dma_en(false);
+        		//else
+            		//	sp_tdm_tx_dma_en(false);
         		break;
 
     		case SNDRV_PCM_TRIGGER_SUSPEND:
     		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
         		if (capture)
             			sp_tdm_rx_dma_en(false);
-        		else
-            			sp_tdm_tx_dma_en(false);
+        		//else
+            		//	sp_tdm_tx_dma_en(false);
         		break;
 
     		default:
@@ -579,7 +587,7 @@ static void sp_tdm_shutdown(struct snd_pcm_substream *substream,
         	sp_tdm_rx_en(false);
     	else
         	sp_tdm_tx_en(false);
-    	aud_tdm_clk_cfg(0);
+    	aud_tdm_clk_cfg(0, 0, 0);
 }
 
 static int sp_tdm_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsigned int freq_in, unsigned int freq_out)
@@ -588,7 +596,7 @@ static int sp_tdm_set_pll(struct snd_soc_dai *dai, int pll_id, int source,unsign
 
     	AUD_INFO("%s IN, freq_out=%d\n", __func__, freq_out);
 
-    	aud_tdm_clk_cfg(freq_out);
+    	aud_tdm_clk_cfg(pll_id, source, freq_out);
     	return 0;
 }
 

@@ -62,7 +62,7 @@ void delay_ms(UINT32 ms_count)
 
 UINT32 HWREG_R(UINT32 reg_name)
 {
-	UINT32 rdata = 0, addr= 0;
+	UINT32 rdata = 0, addr = 0;
 	UINT32 group = 0, reg = 0;
 
 	reg = reg_name % 100;
@@ -70,7 +70,7 @@ UINT32 HWREG_R(UINT32 reg_name)
 
 	addr = (REG_BASEADDR);
 	addr = addr + group*32*4 + reg*4;
-	addr =  (unsigned int)ioremap(addr, 4);
+	addr = (unsigned int)ioremap(addr, 4);
 	rdata = (*(volatile unsigned int *)(addr));
 	SYNCHRONIZE_IO;
 
@@ -89,7 +89,7 @@ void HWREG_W(UINT32 reg_name, UINT32 val)
 
 	addr = (REG_BASEADDR);
 	addr = addr + group*32*4 + reg*4;
-	addr =  (unsigned int)ioremap(addr, 4);
+	addr = (unsigned int)ioremap(addr, 4);
 	(*(volatile unsigned int *)(addr)) = val;
 	//SYNCHRONIZE_IO;
 	iounmap((volatile unsigned int *)(addr));

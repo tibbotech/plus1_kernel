@@ -127,6 +127,15 @@ static struct snd_soc_dai_link spsoc_aud_dai[] = {
 		.platform_name 	= "spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
+	{
+		.name 		= "aud_i2s_hdmi",
+		.stream_name	= "aud_i2s",
+		.codec_name 	= "aud-codec",
+		.codec_dai_name = "aud-i2s-hdmi-dai",
+		.cpu_dai_name	= "spsoc-i2s-hdmi-dai",
+		.platform_name 	= "spsoc-pcm-driver",
+		.ops 		= &spsoc_aud_ops,
+	},
 };
 static struct snd_soc_card spsoc_smdk = {
 	.name		= "sp-aud",		// card name
@@ -156,7 +165,6 @@ static int __init snd_spsoc_audio_init(void)
 		platform_device_put(spsoc_snd_device);
 
 	//AUD_INFO("platform_device_add:: %d\n", ret );
-
 //********************************************************************
 	return ret;
 

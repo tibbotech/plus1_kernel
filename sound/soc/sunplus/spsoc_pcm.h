@@ -25,6 +25,7 @@
 #define TDM_P_INC0    		((0x1<<20) | 0x1f)
 #define SPDIF_P_INC0  		(0x1<<5)
 #define SPDIF_C_INC0  		(0x1<<13)
+#define SPDIF_HDMI_P_INC0  	(0x1<<6)
 
 #define aud_enable_i2stdm_p	(0x01 | (0x5f<<16))
 #define aud_enable_i2s_c    	(0x1<<11)

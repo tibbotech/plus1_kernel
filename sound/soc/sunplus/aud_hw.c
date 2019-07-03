@@ -24,7 +24,7 @@
 
 void  AUD_Set_PLL(unsigned int SAMPLE_RATE)
 {
-	//	 //Set PLLA
+	//Set PLLA
 	return;
 }
 #if 0
@@ -149,31 +149,31 @@ void AUDHW_Mixer_Setting(void)
         UINT32 val;
         volatile RegisterFile_Audio	* regs0	= (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
         //67. 0~4
-        regs0->aud_grm_master_gain	= 0x80000000;	   //aud_grm_master_gain
+        regs0->aud_grm_master_gain	= 0x80000000;	//aud_grm_master_gain
         regs0->aud_grm_gain_control_0 	= 0x80808080;	//aud_grm_gain_control_0
         regs0->aud_grm_gain_control_1 	= 0x80808080;	//aud_grm_gain_control_1
         regs0->aud_grm_gain_control_2 	= 0x808000;	//aud_grm_gain_control_2
         regs0->aud_grm_gain_control_3 	= 0x80808080;	//aud_grm_gain_control_3
         regs0->aud_grm_gain_control_4 	= 0x0000007f;	//aud_grm_gain_control_4
 
-        //val = 0x204;				  //1=pcm, mix75, mix73
-        //val = val|0x08100000;			  //1=pcm, mix79, mix77
+        //val = 0x204;				  	//1=pcm, mix75, mix73
+        //val = val|0x08100000;			  	//1=pcm, mix79, mix77
         val = 0x20402040;
-        regs0->aud_grm_mix_control_1 = val;		//aud_grm_mix_control_1
+        regs0->aud_grm_mix_control_1 	= val;		//aud_grm_mix_control_1
         val = 0;
-        regs0->aud_grm_mix_control_2 = val;		//aud_grm_mix_control_2
+        regs0->aud_grm_mix_control_2 	= val;		//aud_grm_mix_control_2
 
         //EXT DAC I2S
         regs0->aud_grm_switch_0 	= 0x76543210;	//aud_grm_switch_0
-        regs0->aud_grm_switch_1 	= 0xBA98;		    //aud_grm_switch_1
+        regs0->aud_grm_switch_1 	= 0xBA98;	//aud_grm_switch_1
 
         //INT DAC I2S
-        regs0->aud_grm_switch_int	= 0x76543210;     //aud_grm_switch_int
-        regs0->aud_grm_delta_volume	= 0x8000;	    //aud_grm_delta_volume
-        regs0->aud_grm_delta_ramp_pcm   = 0x8000;	    //aud_grm_delta_ramp_pcm
-        regs0->aud_grm_delta_ramp_risc  = 0x8000;	  //aud_grm_delta_ramp_risc
+        regs0->aud_grm_switch_int	= 0x76543210;	//aud_grm_switch_int
+        regs0->aud_grm_delta_volume	= 0x8000;	//aud_grm_delta_volume
+        regs0->aud_grm_delta_ramp_pcm   = 0x8000;	//aud_grm_delta_ramp_pcm
+        regs0->aud_grm_delta_ramp_risc  = 0x8000;	//aud_grm_delta_ramp_risc
         regs0->aud_grm_delta_ramp_linein= 0x8000;	//aud_grm_delta_ramp_linein
-        regs0->aud_grm_other	     	= 0x4;				    //aud_grm_other for	A20
+        regs0->aud_grm_other	     	= 0x4;		//aud_grm_other for A20
 
         regs0->aud_grm_switch_hdmi_tx   = 0x76543210; //aud_grm_switch_hdmi_tx
 }
@@ -183,14 +183,14 @@ void AUDHW_int_dac_adc_Setting(void)
         volatile RegisterFile_Audio	* regs0	= (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
         regs0->int_dac_ctrl1	|= (0x1<<31);	//ADAC reset (normal mode)
-        regs0->int_dac_ctrl0  	= 0xC41B8F5F;							//power	down DA0, DA1 &	DA2, enable auto sleep
-        regs0->int_dac_ctrl0 	|= (0x7<<23);	//DAC op power on
-        regs0->int_dac_ctrl0 	&= 0xffffffe0;	//DAC power on
-        regs0->int_dac_ctrl0  	= 0xC0201010;	 // enable ref voltage
-        regs0->int_dac_ctrl1 	|= 0x3f;			//demute DA0, DA1 & DA2
-        regs0->int_adc_ctrl	|= (1<<31);		//ACODEC RESET
-        regs0->int_adc_ctrl	= 0x4F064F1E;							//enable ADC0 &	ADC1 VREF, ADC0L pga gain +6dB
-        regs0->int_adc_ctrl3 	= 0x3F244F06;							//enable ADC2 VREF and
+        regs0->int_dac_ctrl0	= 0xC41B8F5F;	//power	down DA0, DA1 &	DA2, enable auto sleep
+        regs0->int_dac_ctrl0	|= (0x7<<23);	//DAC op power on
+        regs0->int_dac_ctrl0	&= 0xffffffe0;	//DAC power on
+        regs0->int_dac_ctrl0	= 0xC0201010;	//enable ref voltage
+        regs0->int_dac_ctrl1	|= 0x3f;	//demute DA0, DA1 & DA2
+        regs0->int_adc_ctrl	|= (1<<31);	//ACODEC RESET
+        regs0->int_adc_ctrl	= 0x4F064F1E;	//enable ADC0 &	ADC1 VREF, ADC0L pga gain +6dB
+        regs0->int_adc_ctrl3	= 0x3F244F06;	//enable ADC2 VREF and
         regs0->int_adc_ctrl	&= 0xF3FFF3FF;	//ADC0 & ADC1 power on
         regs0->int_adc_ctrl3	&= 0xFFFFF3FF;	//ADC2 power on
 }
@@ -203,12 +203,12 @@ void AUDHW_Cfg_AdcIn(void)
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
-	regs0->adcp_ch_enable   = 0x0;     //adcp_ch_enable
-	regs0->adcp_fubypass	= 0x7777;   //adcp_fubypass
-	regs0->adcp_risc_gain   = 0x1111;  //adcp_risc_gain,	all gains are 1x
-	regs0->G069_reserved_00 = 0x3;   //adcprc A16~18
-	val			= 0x650100;			  //steplen0=0,	Eth_off=0x65, Eth_on=0x100, steplen0=0
-	regs0->adcp_agc_cfg	= val;      //adcp_agc_cfg0
+	regs0->adcp_ch_enable   = 0x0;		//adcp_ch_enable
+	regs0->adcp_fubypass	= 0x7777;	//adcp_fubypass
+	regs0->adcp_risc_gain   = 0x1111;	//adcp_risc_gain, all gains are 1x
+	regs0->G069_reserved_00 = 0x3;		//adcprc A16~18
+	val			= 0x650100;	//steplen0=0, Eth_off=0x65, Eth_on=0x100, steplen0=0
+	regs0->adcp_agc_cfg	= val;		//adcp_agc_cfg0
 
    //ch0
 	val = (1<<6)|ONEHOT_B11;
@@ -235,7 +235,7 @@ void AUDHW_Cfg_AdcIn(void)
 	regs0->adcp_init_ctrl = val;
 
 	do {
-	val = regs0->adcp_init_ctrl;
+		val = regs0->adcp_init_ctrl;
 	} while ((val&ONEHOT_B12) !=	0);
 
 	val = (1<<6)|(1<<4)|2|ONEHOT_B10;
@@ -253,11 +253,11 @@ void AUDHW_Cfg_AdcIn(void)
 
 void AUDHW_SystemInit(void)
 {
-        volatile RegisterFile_Audio	* regs0	= (volatile RegisterFile_Audio *)audio_base;//(volatile	RegisterFile_Audio *)REG(60,0);
+        volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *)audio_base;//(volatile	RegisterFile_Audio *)REG(60,0);
 
         AUD_INFO("!!!audio_base 0x%x\n", regs0);
         AUD_INFO("!!!aud_fifo_reset	0x%x\n", &(regs0->aud_fifo_reset));
-        //reset aud	fifo
+        //reset aud fifo
         regs0->audif_ctrl	= 0x1;	   //aud_ctrl=1
         AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
         regs0->audif_ctrl	= 0x0;	   //aud_ctrl=0
@@ -275,22 +275,22 @@ void AUDHW_SystemInit(void)
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
 
 
-        regs0->iec0_par0_out 	= 0x40009800;	    //config PCM_IEC_TX, pcm_iec_par0_out
-        regs0->iec0_par1_out 	= 0x00000000;	    //pcm_iec_par1_out
+        regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
+        regs0->iec0_par1_out 	= 0x00000000;	//pcm_iec_par1_out
 
         AUDHW_Cfg_AdcIn();
 
-        regs0->iec_cfg 		= 0x4002;		    //iec_cfg
+        regs0->iec_cfg 		= 0x4002;	//iec_cfg
 
         // config playback timer //
-        regs0->aud_apt_mode	= 1;			   // aud_apt_mode, reset mode
-        regs0->aud_apt_data	= 0x00f0001e;	   // aud_apt_parameter, parameter for 48khz
+        regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
+        regs0->aud_apt_data	= 0x00f0001e;	// aud_apt_parameter, parameter for 48khz
 
-        regs0->adcp_ch_enable  	= 0x3;		   //adcp_ch_enable, Only enable ADCP ch0&1
-        regs0->aud_apt_mode	= 0;			       //clear reset of	PTimer before enable FIFO
+        regs0->adcp_ch_enable  	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1
+        regs0->aud_apt_mode	= 0;		//clear reset of PTimer before enable FIFO
 
-        regs0->aud_fifo_enable 	= 0x0;	       //aud_fifo_enable
-        regs0->aud_enable	= 0x0;	       //aud_enable  [21]PWM 5f
+        regs0->aud_fifo_enable 	= 0x0;		//aud_fifo_enable
+        regs0->aud_enable	= 0x0;		//aud_enable  [21]PWM 5f
 
         regs0->int_dac_ctrl1 	&= 0x7fffffff;
         regs0->int_dac_ctrl1 	|= (0x1<<31);
@@ -304,8 +304,9 @@ void AUDHW_SystemInit(void)
 	regs0->aud_fifo_mode  	= 0x20000;
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
+	AUD_INFO("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
+	//regs0->aud_misc_ctrl |= 0x2;
 }
-
 
 INT32 AUD_Set_DacAnalogGain( AUD_ChannelIdx_e tag, int pgaGain)
 {
@@ -340,9 +341,10 @@ INT32 AUD_Set_DacAnalogGain( AUD_ChannelIdx_e tag, int pgaGain)
 	return 0;
 }
 
-void snd_aud_config( void)
+void snd_aud_config(void)
 {
-	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio	*)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*)audio_base;
+	int dma_initial;
 #if 0
 	regs0->aud_audhwya = aud_param.fifoInfo.pcmtx_physAddrBase;
 #endif
@@ -352,28 +354,36 @@ void snd_aud_config( void)
 	****************************************/
 #if 0
 	regs0->aud_a0_base	= 0;
-	regs0->aud_a1_base 	= 0;//regs0->aud_a0_base +	DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a2_base 	= 0;//regs0->aud_a1_base +	DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a3_base 	= 0;//0->aud_a2_base + DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a4_base 	= 0;//0->aud_a3_base + DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a1_base 	= 0;	//regs0->aud_a0_base +	DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a2_base 	= 0;	//regs0->aud_a1_base +	DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a3_base 	= 0;	//0->aud_a2_base + DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a4_base 	= 0;	//0->aud_a3_base + DRAM_PCM_BUF_LENGTH;
 #else
+        dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1); 
 	regs0->aud_audhwya 	= aud_param.fifoInfo.pcmtx_physAddrBase;
-        regs0->aud_a0_base 	= 0;
-        regs0->aud_a1_base 	= regs0->aud_a0_base + DRAM_PCM_BUF_LENGTH;
-        regs0->aud_a2_base 	= regs0->aud_a1_base + DRAM_PCM_BUF_LENGTH;
-        regs0->aud_a3_base 	= regs0->aud_a2_base + DRAM_PCM_BUF_LENGTH;
-        regs0->aud_a4_base 	= regs0->aud_a3_base + DRAM_PCM_BUF_LENGTH;
-        regs0->aud_a20_base	= regs0->aud_a4_base + DRAM_PCM_BUF_LENGTH;
-
-	regs0->aud_a22_base	= regs0->aud_a20_base + DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a23_base 	= regs0->aud_a22_base + DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a24_base 	= regs0->aud_a23_base + DRAM_PCM_BUF_LENGTH;
-	regs0->aud_a25_base 	= regs0->aud_a24_base + DRAM_PCM_BUF_LENGTH;
+        regs0->aud_a0_base 	= dma_initial;
+        regs0->aud_a1_base 	= dma_initial;
+        regs0->aud_a2_base 	= dma_initial;
+        regs0->aud_a3_base 	= dma_initial;
+        regs0->aud_a4_base 	= dma_initial;
+        regs0->aud_a5_base 	= dma_initial;
+        regs0->aud_a6_base	= dma_initial;
+        regs0->aud_a20_base	= dma_initial;
+        
+        dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
+        regs0->aud_a13_base	= dma_initial;
+        regs0->aud_a16_base	= dma_initial;
+        regs0->aud_a17_base	= dma_initial;
+        regs0->aud_a18_base	= dma_initial;
+        regs0->aud_a21_base	= dma_initial;
+	regs0->aud_a22_base	= dma_initial;
+	regs0->aud_a23_base 	= dma_initial;
+	regs0->aud_a24_base 	= dma_initial;
+	regs0->aud_a25_base 	= dma_initial;
 	//regs0->aud_delta_0 = 0x10;
 #endif
 	return;
 }
-
 
 void AUD_hw_free(void)
 {

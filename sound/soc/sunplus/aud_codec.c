@@ -62,7 +62,6 @@ static const struct snd_soc_dai_ops aud_dai_ops = {
 };
 
 static struct snd_soc_dai_driver audcodec_dai[] = {
-	#if 1
 	{
 		.name = "aud-codec-dai",
 		.playback = {
@@ -81,7 +80,6 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		},
 		.ops = &aud_dai_ops,
 	},
-	#endif
 	{
 		.name = "aud-codec-tdm-dai",
 		#if 1
@@ -102,7 +100,6 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		 },
 		.ops = &aud_dai_ops,
 	},
-	#if 1
   	{
 		.name = "aud-codec-pdm-dai",
 		.capture = {
@@ -114,7 +111,6 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		},
 		.ops = &aud_dai_ops,
 	},
-	#endif
 	{
 		.name = "aud-spdif-dai",
 		.playback = {
@@ -131,6 +127,17 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
+		.ops = &aud_dai_ops,
+	},
+	{
+		.name = "aud-i2s-hdmi-dai",
+		.playback = {
+			.stream_name 	= "i2s hdmi Playback",
+			.channels_min 	= 1,
+			.channels_max 	= 2,
+			.rates 		= AUD_RATES,
+			.formats 	= AUD_FORMATS,
+		},		
 		.ops = &aud_dai_ops,
 	},
 };
@@ -173,13 +180,13 @@ static int aud_set_pll(struct snd_soc_codec *codec, int pll_id, int source, unsi
 }
  
 static const DECLARE_TLV_DB_SCALE(volume_tlv, -6000, 0, 1);
-static const char *cpm0_5_out[]={"pcm0","pcm5"};
+static const char *cpm0_5_out[] = {"pcm0","pcm5"};
 
 static const struct soc_enum cpm0_5_out_enum = SOC_ENUM_DOUBLE(reg_aud_grm_gain_control_8, 16,17, 2, cpm0_5_out);
 
 
 static const struct snd_kcontrol_new aud_snd_controls[] = {
-	  /* master gains */
+	/* master gains */
 	SOC_SINGLE_TLV("Master Playback Volume", reg_aud_grm_master_gain, 8, 2<<22, 0, volume_tlv),
 	/* Playback gains */
 	SOC_DOUBLE_TLV("A0 Playback Volume", reg_aud_grm_gain_control_5,  0,  8, 0x80, 0, volume_tlv),
