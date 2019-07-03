@@ -46,7 +46,7 @@ typedef struct _display_size_t {
 	UINT32 height;
 } display_size_t;
 
-typedef struct {
+struct sp_disp_device {
 	void *pHWRegBase;
 
 	display_size_t		UIRes;
@@ -76,9 +76,9 @@ typedef struct {
 #if 0
 	DRV_Sys_OutMode_Info_t DispOutMode;
 #endif
-} DISPLAY_WORKMEM;
+};
 
-extern DISPLAY_WORKMEM gDispWorkMem;
+extern struct sp_disp_device gDispWorkMem;
 
 #endif	//__HAL_DISP_H__
 

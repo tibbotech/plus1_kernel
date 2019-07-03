@@ -138,7 +138,7 @@ extern void hdmitx_set_timming(enum hdmitx_timing timing);
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-DISPLAY_WORKMEM gDispWorkMem = {0};
+struct sp_disp_device gDispWorkMem = {0};
 
 static struct of_device_id _display_ids[] = {
 	{ .compatible = "sunplus,sp7021-display"},
@@ -149,7 +149,7 @@ MODULE_DEVICE_TABLE(of, _display_ids);
 #ifdef CONFIG_PM_RUNTIME_DISP
 static int sp_disp_runtime_suspend(struct device *dev)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	//DEBUG("[%s:%d] runtime suppend \n", __FUNCTION__, __LINE__);
 	reset_control_assert(pDispWorkMem->rstc);
 	
@@ -158,7 +158,7 @@ static int sp_disp_runtime_suspend(struct device *dev)
 
 static int sp_disp_runtime_resume(struct device *dev)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	//DEBUG("[%s:%d] runtime resume \n", __FUNCTION__, __LINE__);
 	reset_control_deassert(pDispWorkMem->rstc);
 	
@@ -249,7 +249,7 @@ int getstc(void)
 
 static void bio_wreg(UINT32 index, UINT32 value)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	volatile UINT32 *bio = (UINT32 *)pDispWorkMem->bio;
 
 	if (IS_ERR(pDispWorkMem->bio))
@@ -1250,7 +1250,7 @@ char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
 
 static void _display_destory_clk(void)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	clk_disable_unprepare(pDispWorkMem->tgen_clk);
 	clk_disable_unprepare(pDispWorkMem->dmix_clk);
@@ -1264,7 +1264,7 @@ static void _display_destory_clk(void)
 
 static int _display_init_clk(struct platform_device *pdev)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	int ret;
 
 	pDispWorkMem->tgen_clk = devm_clk_get(&pdev->dev, "DISP_TGEN");
@@ -1328,7 +1328,7 @@ static int _display_init_clk(struct platform_device *pdev)
 
 static int _display_probe(struct platform_device *pdev)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	DISP_REG_t *pTmpRegBase = NULL;
 	struct resource *res_mem;
 	int ret;
@@ -1601,7 +1601,7 @@ static int _display_remove(struct platform_device *pdev)
 
 static int _display_suspend(struct platform_device *pdev, pm_message_t state)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;	
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;	
 	//DEBUG("[%s:%d] suspend \n", __FUNCTION__, __LINE__);
 	reset_control_assert(pDispWorkMem->rstc);
 		
@@ -1610,7 +1610,7 @@ static int _display_suspend(struct platform_device *pdev, pm_message_t state)
 
 static int _display_resume(struct platform_device *pdev)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	//DEBUG("[%s:%d] resume \n", __FUNCTION__, __LINE__);
 	reset_control_deassert(pDispWorkMem->rstc);
 	

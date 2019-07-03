@@ -39,8 +39,8 @@
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __func__, __LINE__, ##arg)
+	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
+	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
 #else
 	#define DEBUG(fmt, arg...)
 	#define MSG(fmt, arg...)
@@ -119,7 +119,7 @@ void DRV_TGEN_SetUserInt2(UINT32 count)
 
 int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 {
-//	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+//	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	if (SetTGEN->fmt >= DRV_FMT_MAX) {
 		ERRDISP("Timing format:%d error\n", SetTGEN->fmt);

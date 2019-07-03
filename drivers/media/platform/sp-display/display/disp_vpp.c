@@ -40,8 +40,8 @@
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
 #else
 	#define DEBUG(fmt, arg...)
 	#define MSG(fmt, arg...)
@@ -60,7 +60,7 @@
 static volatile DISP_VPOST_REG_t *pVPOSTReg;
 static volatile DISP_DDFCH_REG_t *pDDFCHReg;
 
-extern DISPLAY_WORKMEM gDispWorkMem;
+extern struct sp_disp_device gDispWorkMem;
 
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
@@ -74,7 +74,7 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2)
 //test start
 static void wreg_b(UINT32 group, UINT32 index, UINT32 value)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	//UINT32 *base = (UINT32 *)0x9c000000;
 	UINT32 *base = (UINT32 *)pDispWorkMem->pHWRegBase;
 

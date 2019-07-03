@@ -170,7 +170,7 @@ static u32 gpOsdHeader_phy;
  **************************************************************************/
 void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	pOSDReg = (DISP_OSD_REG_t *)pInHWReg1;
 	pGPOSTReg = (DISP_GPOST_REG_t *)pInHWReg2;
@@ -209,7 +209,7 @@ void DRV_OSD_IRQ(void)
 {
 	struct Region_Manager_s *pRegionManager = gpWinRegion;
 	struct HW_OSD_Header_s *pHWOSDhdr;
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
 		return;
@@ -241,7 +241,7 @@ void DRV_OSD_Info(void)
 {
 	struct HW_OSD_Header_s *pOsdHdr = (struct HW_OSD_Header_s *)gpOsdHeader;
 
-	mod_err("Region display-order is as follows:\n");
+	pr_info("Region display-order is as follows:\n");
 
 	pr_info("    Check osd output: %d %d, region ouput:%d %d\n",
 		pOSDReg->osd_hvld_width,
@@ -379,7 +379,7 @@ void DRV_OSD_GetColormode_Vars(struct colormode_t *var,
 
 int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	if (!pOSDReg || !pGPOSTReg)
 		return 1;
@@ -422,7 +422,7 @@ EXPORT_SYMBOL(DRV_OSD_Set_UI_UnInit);
 
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	u32 *osd_header;
 
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
@@ -522,7 +522,7 @@ EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
 void DRV_OSD_WaitVSync(void)
 {
 	struct Region_Manager_s *pRegionManager = gpWinRegion;
-	DISPLAY_WORKMEM *pDispWorkMem = &gDispWorkMem;
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 
 	if (!pRegionManager)
 		return;

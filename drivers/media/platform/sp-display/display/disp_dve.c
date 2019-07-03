@@ -39,8 +39,8 @@
  *                              M A C R O S                               *
  **************************************************************************/
 #ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
+	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
 #else
 	#define DEBUG(fmt, arg...)
 	#define MSG(fmt, arg...)
@@ -57,7 +57,7 @@
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 static DISP_DVE_REG_t *pDVEReg;
-extern DISPLAY_WORKMEM gDispWorkMem;
+extern struct sp_disp_device gDispWorkMem;
 
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
