@@ -28,7 +28,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 #include <linux/pinctrl/consumer.h>
-#include <mach/gpio_drv.h>
 #include "ov9281_isp.h"
 
 static const struct ov9281_mode supported_modes[] = {

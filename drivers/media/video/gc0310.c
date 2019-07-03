@@ -28,7 +28,6 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 #include <linux/pinctrl/consumer.h>
-#include <mach/gpio_drv.h>
 #include "gc0310.h"
 
 // Bayer RAW8 (RGGB pattern)

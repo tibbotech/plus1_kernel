@@ -4,7 +4,6 @@
 #include <asm/io.h>
 #include <mach/irqs.h>
 #include <mach/io_map.h>
-#include <mach/gpio_drv.h>
 #include <linux/semaphore.h>
 #include <linux/io.h>
 #include <linux/regulator/consumer.h>
@@ -127,13 +126,6 @@ typedef enum {
 	eHW_GPIO_STS_NULL
 } eHW_IO_STS;
 
-
-#define SET_USB_VBUS(gpio, Val) do {			\
-	GPIO_F_SET((gpio), eHW_GPIO_FIRST_GPIO);	\
-	GPIO_M_SET((gpio), eHW_GPIO_RISC);		\
-	GPIO_E_SET((gpio), eHW_GPIO_OUT);		\
-	GPIO_O_SET((gpio), (Val) & 0x01);		\
-} while (0)
 
 #define	ENABLE_VBUS_POWER(port) gpio_set_value(usb_vbus_gpio[port], eHW_GPIO_STS_LOW)
 

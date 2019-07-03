@@ -1,7 +1,6 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <dt-bindings/memory/sp-q628-mem.h> 
-#include <mach/gpio_drv.h>
 #include "hal_iop.h"
 //#include <mach/io_map.h> 
 #define IOP_CODE_SIZE	4096
@@ -58,9 +57,9 @@ EXPORT_SYMBOL(hal_iop_init);
 void hal_gpio_init(void __iomem *iopbase, unsigned char gpio_number)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	//GPIO_E_SET(gpio_number,1);
-	//GPIO_F_SET(gpio_number,1);
-	//GPIO_M_SET(gpio_number,0);	
+	//gpio_output_enable(gpio_number,1);
+	//gpio_first(gpio_number,1);
+	//gpio_master(gpio_number,0);	
 	writel(0xFE02,&pIopReg->iop_data0);	
 	writel(gpio_number,&pIopReg->iop_data1);	
 }
