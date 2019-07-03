@@ -8,6 +8,7 @@ obj-$(CONFIG_MACH_PENTAGRAM_SC7021_ACHIP)	+= sc7021.o
 obj-$(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)	+= sc7021.o
 obj-$(CONFIG_MACH_PENTAGRAM_SC7021_ACHIP) += pm.o
 obj-$(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)	+= pm.o
+obj-$(CONFIG_HOTPLUG_CPU)               	+= hotplug.o
 
 # Monitor utility
 obj-$(CONFIG_SP_MON) += sp_uart_sysrq.o sp_mon.o
