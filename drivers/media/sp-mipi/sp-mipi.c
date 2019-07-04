@@ -481,7 +481,7 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 		buf = list_entry(mipi->dma_queue.next, struct sp_buffer, list);
 		list_del(&buf->list);
 		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-		MIP_INFO("video buffer #%d is done!\n", buf->vb.vb2_buf.index);
+		DBG_INFO("video buffer #%d is done!\n", buf->vb.vb2_buf.index);
 	}
 
 	spin_unlock_irqrestore(&mipi->dma_queue_lock, flags);
@@ -916,6 +916,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 						    &sdinfo->board_info,
 						    NULL);
 		if (subdev) {
+			subdev->grp_id = sdinfo->grp_id;
 			MIP_INFO("Registered V4L2 subdevice \'%s\'.\n", sdinfo->name);
 			break;
 		}
@@ -929,7 +930,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Set current sub device.
 	mipi->current_subdev = &sp_mipi_cfg->sub_devs[i];
 	mipi->v4l2_dev.ctrl_handler = subdev->ctrl_handler;
-	sensor_data = v4l2_get_subdevdata(subdev);
+	sensor_data = v4l2_get_subdev_hostdata(subdev);
 	mipi->cur_mode = sensor_data->mode;
 
 	cur_fmt = get_format(mipi->current_subdev, sensor_data->fourcc);

@@ -518,7 +518,7 @@ static int gc0310_probe(struct i2c_client *client, const struct i2c_device_id *i
 	}
 	DBG_INFO("Registered V4L2 sub-device successfully.\n");
 
-	v4l2_set_subdevdata(sd, &gc0310->sensor_data);
+	v4l2_set_subdev_hostdata(sd, &gc0310->sensor_data);
 
 	return 0;
 
