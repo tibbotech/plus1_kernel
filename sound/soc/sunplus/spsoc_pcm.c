@@ -312,20 +312,12 @@ static int spsoc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_p
 	prtd->start_threshold = 0;
 	atomic_set(&prtd->running, 0);    
     
-	prtd->poll_time_ns = div_u64((u64)params_period_size(params) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
-   	//prtd->poll_time_ns =div_u64((u64)params_period_size(params) * 1000000000UL +  96000 - 1, 480000);
-	AUD_INFO("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d poll_time_ns 0x%lx\n",prtd->size,prtd->periods,\
-		  prtd->period, params_period_size(params), prtd->poll_time_ns);
-
     	regs0->aud_audhwya = aud_param.fifoInfo.pcmtx_physAddrBase;
     	prtd->fifosize_from_user = prtd->size;
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
     	{ 
-    		reserve_buf = params_rate(params);
-    		if (reserve_buf < 48000)
-    			reserve_buf = 200;
-    		else
-    			reserve_buf = 100;  
+    		reserve_buf = 4800000/params_rate(params); //100*48000/rate
+    		
     	  	prtd->poll_time_ns =div_u64((u64)(params_period_size(params)-reserve_buf) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
         	//prtd->poll_time_ns =div_u64((u64)params_period_size(params) * 1000000000UL +  96000 - 1, 480000);
 	      	AUD_INFO("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d reserve_buf %d\n",prtd->size,prtd->periods,\
@@ -365,7 +357,10 @@ static int spsoc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_p
 			      	AUD_INFO("###Wrong device no.\n");
 			      	break;		    
 		}
-    	}else{               
+    	}else{
+    		prtd->poll_time_ns = div_u64((u64)(params_period_size(params)) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
+		AUD_INFO("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d poll_time_ns 0x%lx\n",prtd->size,prtd->periods,\
+		  	 prtd->period, params_period_size(params), prtd->poll_time_ns);               
         	switch (substream->pcm->device){
         		case 0:
         	  	  	regs0->aud_a16_base = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
@@ -611,12 +606,9 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				AUD_INFO("C:prtd->start_threshold=0x%x, startthreshold=0x%x",prtd->start_threshold, startthreshold);
                 		regs0->aud_delta_0 = startthreshold;
 			      	prtd->start_threshold = 0;
-			      	#if 1 //for test
-			        if(substream->pcm->device == 1)
-			           	regs0->aud_embedded_input_ctrl = (0x1<<12);
-			       	else 
-			         	regs0->aud_embedded_input_ctrl = 0;
-			        AUD_INFO("aud_embedded_input_ctrl = 0x%x\n", regs0->aud_embedded_input_ctrl);
+			      	#if (aud_test_mode) //for test			        
+			        regs0->aud_embedded_input_ctrl = aud_test_mode;			       	
+			        AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
 			      	#endif
 		        }
 		        
@@ -658,7 +650,6 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		        	  	while ((regs0->aud_inc_0 & TDMPDM_C_INC0) != 0){}; 
 		        	}
 		        }
-                        AUD_INFO("stop\n");
 		        break;
 	      	default:
 		        AUD_INFO("%s out \n",__func__ );
