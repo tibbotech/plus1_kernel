@@ -34,6 +34,7 @@
 //#define aud_enable_tdm_p    	(0x01 | (0x5f<<16))
 #define aud_enable_tdmpdm_c 	(0x01<<12)
 
+#define aud_test_mode		0
 
 #define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)
 #define MIC_Delay_Byte		(DRAM_PCM_BUF_LENGTH*0.75)
