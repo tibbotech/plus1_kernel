@@ -9,7 +9,7 @@
 	compatible = "sunplus,sc7021-achip";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
+		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
 	};
 
 	memory {
