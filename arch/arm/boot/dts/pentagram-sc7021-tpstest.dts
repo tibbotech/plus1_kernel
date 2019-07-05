@@ -35,6 +35,8 @@
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
 /* pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;*/
+ /* set eth* leds to non-muxed manually case it is muxed by HW */
+ pinctrl-0 = <&eth0_leds_zero &eth1_leds_zero>;
  
   leds_s0_def: user_leds_s0_def {
     sppctl,pins = <
@@ -77,12 +79,14 @@
        SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
   >;
  };
+ eth0_leds_zero: pinmux_eth0_leds_zero {
+  sppctl,pins = <
+       SP7021_IOPAD(0,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+       SP7021_IOPAD(0,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+  >;
+ };
  eth0_pins: pinmux_eth0_pins {
   sppctl,pins = <
-/*
-        SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
-        SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
-*/
        SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
        SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
        SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
@@ -92,12 +96,14 @@
        SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
   >;
  };
+ eth1_leds_zero: pinmux_eth1_leds_zero {
+  sppctl,pins = <
+       SP7021_IOPAD(0,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
+       SP7021_IOPAD(0,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
+  >;
+ };
  eth1_pins: pinmux_eth1_pins {
   sppctl,pins = <
-/*
-       SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
-       SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
-*/
        SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
        SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
        SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
