@@ -56,6 +56,22 @@
 #ifdef TIMING_SYNC_720P60
 #include <mach/hdmitx.h>
 #endif
+
+#ifdef SP_DISP_V4L2_SUPPORT
+#include <linux/mutex.h>
+#include <linux/videodev2.h>
+#include <linux/dma-mapping.h>
+//#include <linux/interrupt.h>
+#include <linux/highmem.h>
+#include <linux/freezer.h>
+#include <mach/io_map.h>
+#include <media/videobuf-dma-contig.h>
+#include <media/v4l2-device.h>
+#include <media/v4l2-ioctl.h>
+#include <media/videobuf-core.h>
+#include <media/v4l2-common.h>
+#include <media/videobuf2-v4l2.h>
+#endif
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
@@ -113,6 +129,9 @@ static int DMA_len = DMA_WIDTH*DMA_HEIGHT*2;
 static int DMA_times = 0;
 static volatile int DMA_safe_line[2];// = {38 + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1), 38 + DMA_LINES + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1)};
 
+#ifdef SP_DISP_V4L2_SUPPORT
+#define DISP_NAME		        "sp_disp"
+#endif
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
@@ -150,18 +169,74 @@ MODULE_DEVICE_TABLE(of, _display_ids);
 static int sp_disp_runtime_suspend(struct device *dev)
 {
 	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
-	//DEBUG("[%s:%d] runtime suppend \n", __FUNCTION__, __LINE__);
-	reset_control_assert(pDispWorkMem->rstc);
+	DEBUG("[%s:%d] runtime suppend \n", __FUNCTION__, __LINE__);
+	//reset_control_assert(pDispWorkMem->rstc);
 	
+#if 1
+	// Disable 'dispplay' and 'hdmitx' clock.
+	//clk_disable(&pDispWorkMem->mipicsi_clk);
+	//clk_disable(&pDispWorkMem->csiiw_clk);
+
+	clk_disable(pDispWorkMem->tgen_clk);
+	clk_disable(pDispWorkMem->dmix_clk);
+	clk_disable(pDispWorkMem->osd0_clk);
+	clk_disable(pDispWorkMem->gpost0_clk);
+	clk_disable(pDispWorkMem->vpost_clk);
+	clk_disable(pDispWorkMem->ddfch_clk);
+	clk_disable(pDispWorkMem->dve_clk);
+	//clk_disable(pDispWorkMem->hdmi_clk);
+
+#endif
+
 	return 0;
 }
 
 static int sp_disp_runtime_resume(struct device *dev)
 {
 	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
-	//DEBUG("[%s:%d] runtime resume \n", __FUNCTION__, __LINE__);
-	reset_control_deassert(pDispWorkMem->rstc);
-	
+	int ret;
+	DEBUG("[%s:%d] runtime resume \n", __FUNCTION__, __LINE__);
+	//reset_control_deassert(pDispWorkMem->rstc);
+
+#if 1
+	// Enable 'display' clock.
+	ret = clk_prepare_enable(pDispWorkMem->tgen_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable tgen_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->dmix_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable dmix_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->osd0_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable osd0_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->gpost0_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable gpost0_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->vpost_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable vpost_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->ddfch_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable ddfch_clk! \n", __FUNCTION__, __LINE__);
+	}
+	ret = clk_prepare_enable(pDispWorkMem->dve_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable dve_clk! \n", __FUNCTION__, __LINE__);
+	}
+#if 0
+	// Enable 'hdmitx' clock.
+	ret = clk_prepare_enable(pDispWorkMem->hdmi_clk);
+	if (ret) {
+		DERROR("[%s:%d] Failed to enable hdmi_clk! \n", __FUNCTION__, __LINE__);
+	}
+#endif	
+#endif
+
 	return 0;
 }
 static const struct dev_pm_ops sp7021_disp_pm_ops = {
@@ -228,6 +303,330 @@ static const struct file_operations proc_fops = {
 struct proc_dir_entry *entry = NULL;
 #endif
 
+#ifdef SP_DISP_V4L2_SUPPORT
+static int sp_disp_open(struct file *file)
+{
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct video_device *vdev = video_devdata(file);
+	struct sp_disp_fh *fh;
+
+	DEBUG("%s:%d sp_disp_open \n", __FUNCTION__, __LINE__);
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+	if (pm_runtime_get_sync(disp_dev->pdev) < 0)
+		goto out;
+#endif
+
+	/* Allocate memory for the file handle object */
+	fh = kmalloc(sizeof(struct sp_disp_device), GFP_KERNEL);
+	if (!fh) {
+		DERROR("[%s:%d] Allocate memory fail\n", __FUNCTION__, __LINE__);
+		return -ENOMEM;
+	}
+
+	/* store pointer to fh in private_data member of file */
+	file->private_data = fh;
+	fh->disp_dev = disp_dev;
+	v4l2_fh_init(&fh->fh, vdev);
+
+	mutex_lock(&disp_dev->lock);
+	/* Set io_allowed member to false */
+	fh->io_allowed = 0;
+	v4l2_fh_add(&fh->fh);
+	mutex_unlock(&disp_dev->lock);
+
+	return 0;
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+out:
+	pm_runtime_mark_last_busy(disp_dev->pdev);
+	pm_runtime_put_autosuspend(disp_dev->pdev);
+	return -ENOMEM;
+#endif
+
+}
+static int sp_disp_release(struct file *file)
+{
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct sp_disp_fh *fh = file->private_data;
+
+	DEBUG("%s:%d sp_disp_release \n", __FUNCTION__, __LINE__);
+
+	/* Get the device lock */
+	mutex_lock(&disp_dev->lock);
+	/* if this instance is doing IO */
+	if (fh->io_allowed) {
+		if (disp_dev->started) {
+			disp_dev->started = 0;
+			free_irq(disp_dev->fs_irq, disp_dev);
+			free_irq(disp_dev->fe_irq, disp_dev);
+			//videobuf_streamoff(&disp_dev->buffer_queue);
+		}
+		//videobuf_stop(&disp_dev->buffer_queue);
+		//videobuf_mmap_free(&disp_dev->buffer_queue);
+	}
+	/* Decrement device usrs counter */
+	v4l2_fh_del(&fh->fh);
+	v4l2_fh_exit(&fh->fh);
+	mutex_unlock(&disp_dev->lock);
+
+	file->private_data = NULL;
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+	pm_runtime_put(disp_dev->pdev);		// Starting count timeout.
+#endif
+
+	/* Free memory allocated to file handle object */
+	kfree(fh);
+
+	return 0;
+}
+
+static const struct v4l2_file_operations sp_disp_fops = {
+	.owner				= THIS_MODULE,
+	.open				= sp_disp_open,
+	.release			= sp_disp_release,
+	.unlocked_ioctl		= video_ioctl2,
+	.mmap 				= vb2_fop_mmap,
+	.poll 				= vb2_fop_poll,
+};
+
+static int sp_vidioc_querycap(struct file *file, void *priv, struct v4l2_capability *vcap)
+{
+	DEBUG("%s:%d sp_vidioc_querycap \n", __FUNCTION__, __LINE__);
+
+	strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
+	strlcpy(vcap->card, "SP DISPLAY Card", sizeof(vcap->card));
+	strlcpy(vcap->bus_info, "SP DISP Device BUS", sizeof(vcap->bus_info));
+	vcap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
+	vcap->capabilities = vcap->device_caps | V4L2_CAP_DEVICE_CAPS;
+
+	return 0;
+}
+
+static const char * const StrFmt[] = {"480P", "576P", "720P", "1080P", "User Mode"};
+static const char * const StrFps[] = {"60Hz", "50Hz", "24Hz"};
+
+static int sp_display_g_fmt(struct file *file, void *priv,
+				struct v4l2_format *fmt)
+{
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct v4l2_format *fmt1 = &disp_dev->fmt;
+	char fmtstr[8];
+	DRV_VideoFormat_e tgen_fmt;
+	DRV_FrameRate_e tgen_fps;
+
+	DEBUG("%s:%d sp_display_g_fmt \n", __FUNCTION__, __LINE__);
+
+	DRV_TGEN_GetFmtFps(&tgen_fmt,&tgen_fps);
+	DEBUG("[%s:%d] tgen.fmt = %s \n", __FUNCTION__, __LINE__,StrFmt[tgen_fmt]);
+	DEBUG("[%s:%d] tgen.fps = %s \n", __FUNCTION__, __LINE__,StrFps[tgen_fps]);
+
+    memset(fmtstr, 0, 8);
+    memcpy(fmtstr, &disp_dev->fmt.fmt.pix.pixelformat, 4);
+	/* If buffer type is video output */
+	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != fmt->type) {
+		DERROR("[%s:%d] invalid type\n", __FUNCTION__, __LINE__);
+		return -EINVAL;
+	}
+	/* Fill in the information about format */
+	fmt->fmt.pix = fmt1->fmt.pix;
+
+	return 0;
+}
+
+static struct sp_fmt osd_formats[] = {
+	{
+		.name     = "RGB1", /* ui_format 0x2 = 8bpp (ARGB) */
+		.fourcc   = V4L2_PIX_FMT_RGB332,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "YUYV", /* ui_format 0x4 = YUY2 */
+		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "RGBP", /* ui_format 0x8 = RGB565 */
+		.fourcc   = V4L2_PIX_FMT_RGB565,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "AR15", /* ui_format 0x9 = ARGB1555 */
+		.fourcc   = V4L2_PIX_FMT_ARGB555,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "R444", /* ui_format 0xa = RGBA4444 */
+		.fourcc   = V4L2_PIX_FMT_RGB444,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "AR12", /* ui_format 0xb = ARGB4444 */
+		.fourcc   = V4L2_PIX_FMT_ARGB444,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "AR24", /* ui_format 0xd = RGBA8888 */
+		.fourcc   = V4L2_PIX_FMT_ABGR32,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "BA24", /* ui_format 0xe = ARGB8888 */
+		.fourcc   = V4L2_PIX_FMT_ARGB32,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 1,
+		.walign   = 1,
+		.halign   = 1,
+	},	
+};
+
+static struct sp_vout_layer_info sp_vout_layer[] = {
+	{
+		.name = "osd0",
+		.formats = osd_formats,
+		.formats_size = ARRAY_SIZE(osd_formats),
+	},
+};
+
+static int sp_display_enum_fmt(struct file *file, void  *priv,
+				   struct v4l2_fmtdesc *fmtdesc)
+{
+	struct sp_fmt *fmt;
+	DEBUG("[%s:%d] sp_display_enum_fmt\n", __FUNCTION__, __LINE__);
+	DEBUG("[%s:%d] Support-formats = %d \n", __FUNCTION__, __LINE__,ARRAY_SIZE(osd_formats));
+
+	if (fmtdesc->index >= ARRAY_SIZE(osd_formats)) {
+		//DERROR("[%s:%d] stop\n", __FUNCTION__, __LINE__);
+		return -EINVAL;
+	}
+	fmt = &osd_formats[fmtdesc->index];
+	strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
+	fmtdesc->pixelformat = fmt->fourcc;
+
+	return 0;
+}
+
+static int sp_try_format(struct sp_disp_device *disp_dev,
+			struct v4l2_pix_format *pixfmt, int check)
+{
+	struct sp_vout_layer_info *pixfmt0 = &sp_vout_layer[0];
+	struct sp_fmt *pixfmt1 = &osd_formats[0];
+	int i,match=0;
+
+	if (pixfmt0->formats_size <= 0) {
+		DERROR("[%s:%d] invalid formats \n", __FUNCTION__, __LINE__);
+		return -EINVAL;
+	}
+
+	for(i = 0; i < (pixfmt0->formats_size) ; i++)
+	{
+		pixfmt1 = &osd_formats[i];
+		if(pixfmt->pixelformat == pixfmt1->fourcc) {
+			match = 1;
+			DEBUG("[%s:%d] found match \n", __FUNCTION__, __LINE__);
+			break;
+		}
+	}
+	if(!match) {
+		DEBUG("[%s:%d] not found match \n", __FUNCTION__, __LINE__);
+	}
+
+	return 0;
+}
+
+static int sp_display_try_fmt(struct file *file, void *priv,
+				  struct v4l2_format *fmt)
+{
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
+	int ret;
+
+	DEBUG("[%s:%d] sp_display_try_fmt \n", __FUNCTION__, __LINE__);
+
+	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+		DERROR("[%s:%d] Invalid V4L2 buffer type!\n", __FUNCTION__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* Check for valid pixel format */
+	ret = sp_try_format(disp_dev, pixfmt, 1);
+	if (ret)
+		return ret;
+
+	return 0;
+
+}
+
+static int sp_display_s_fmt(struct file *file, void *priv,
+				struct v4l2_format *fmt)
+{
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
+	int ret;
+
+	DEBUG("[%s:%d] sp_display_s_fmt \n", __FUNCTION__, __LINE__);
+
+	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+		DERROR("[%s:%d] invalid type \n", __FUNCTION__, __LINE__);
+		return -EINVAL;
+	}
+
+	/* Check for valid pixel format */
+	ret = sp_try_format(disp_dev, pixfmt, 1);
+	if (ret)
+		return ret;
+
+	disp_dev->fmt.type                 = fmt->type;
+	disp_dev->fmt.fmt.pix.width        = pixfmt->width;
+	disp_dev->fmt.fmt.pix.height       = pixfmt->height;
+	disp_dev->fmt.fmt.pix.pixelformat  = pixfmt->pixelformat; // from sp_try_format
+	disp_dev->fmt.fmt.pix.field        = pixfmt->field;
+	//disp_dev->fmt.fmt.pix.bytesperline = pixfmt->bytesperline;
+	disp_dev->fmt.fmt.pix.bytesperline = (pixfmt->width)*2;
+	disp_dev->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
+	disp_dev->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
+
+	return 0;
+}
+
+static const struct v4l2_ioctl_ops sp_disp_ioctl_ops = {
+	.vidioc_querycap                = sp_vidioc_querycap,
+	.vidioc_g_fmt_vid_out    		= sp_display_g_fmt,
+	.vidioc_enum_fmt_vid_out 		= sp_display_enum_fmt,
+	.vidioc_s_fmt_vid_out    		= sp_display_s_fmt,
+	.vidioc_try_fmt_vid_out  		= sp_display_try_fmt,
+};
+#endif
 /**************************************************************************
  *                     S T A T I C   F U N C T I O N                      *
  **************************************************************************/
@@ -1332,7 +1731,9 @@ static int _display_probe(struct platform_device *pdev)
 	DISP_REG_t *pTmpRegBase = NULL;
 	struct resource *res_mem;
 	int ret;
-
+#ifdef SP_DISP_V4L2_SUPPORT
+	struct video_device *vfd;
+#endif
 	DEBUG("[%s:%d] in 2\n", __FUNCTION__, __LINE__);
 
 	if (_display_init_irq(pdev)) {
@@ -1381,6 +1782,57 @@ static int _display_probe(struct platform_device *pdev)
 	}
 	pDispWorkMem->pHWRegBase = pTmpRegBase;
 
+#ifdef SP_DISP_V4L2_SUPPORT
+	/* Initialize field of video device */
+	pDispWorkMem->pdev = &pdev->dev;
+	vfd = &pDispWorkMem->video_dev;
+	vfd->release    = video_device_release_empty;
+	vfd->fops       = &sp_disp_fops;
+	vfd->ioctl_ops  = &sp_disp_ioctl_ops;
+	vfd->tvnorms  = 0;
+	vfd->v4l2_dev   = &pDispWorkMem->v4l2_dev;
+	strlcpy(vfd->name, DISP_NAME, sizeof(vfd->name));
+	vfd->vfl_dir	= VFL_DIR_TX;
+	
+	// Register V4L2 device.
+	ret = v4l2_device_register(&pdev->dev, &pDispWorkMem->v4l2_dev);
+	if (ret) {
+		DERROR("Unable to register v4l2 device!\n");
+		goto err_v4l2_register;
+	}
+#endif
+#ifdef SP_DISP_V4L2_SUPPORT
+	if (of_property_read_u32(pdev->dev.of_node, "ui_width", &pDispWorkMem->UIRes.width))
+		pDispWorkMem->UIRes.width = 0;
+	else
+		pDispWorkMem->fmt.fmt.pix.width = pDispWorkMem->UIRes.width;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_height", &pDispWorkMem->UIRes.height))
+		pDispWorkMem->UIRes.height = 0;
+	else
+		pDispWorkMem->fmt.fmt.pix.height = pDispWorkMem->UIRes.height;
+
+	if (of_property_read_u32(pdev->dev.of_node, "ui_format", &pDispWorkMem->UIFmt)) {
+		pDispWorkMem->UIFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
+	}
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_8BPP) /* 8 bit/pixel with CLUT */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB332;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_YUY2) /* 16 bit/pixel YUY2 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_RGB_565) /* 16 bit/pixel RGB 5:6:5 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_1555) /* 16 bit/pixel ARGB 1:5:5:5 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB555;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_4444) /* 16 bit/pixel RGBA 4:4:4:4 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB444;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_4444) /* 16 bit/pixel ARGB 4:4:4:4 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB444;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_8888) /* 32 bit/pixel RGBA 8:8:8:8 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ABGR32;
+	else if (pDispWorkMem->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_8888) /* 32 bit/pixel ARGB 8:8:8:8 */
+		pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
+#else
 	if (of_property_read_u32(pdev->dev.of_node, "ui_width", &pDispWorkMem->UIRes.width))
 		pDispWorkMem->UIRes.width = 0;
 
@@ -1389,6 +1841,35 @@ static int _display_probe(struct platform_device *pdev)
 
 	if (of_property_read_u32(pdev->dev.of_node, "ui_format", &pDispWorkMem->UIFmt))
 		pDispWorkMem->UIFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
+#endif
+#ifdef SP_DISP_V4L2_SUPPORT
+	pDispWorkMem->fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+	//pDispWorkMem->fmt.fmt.pix.width = norm_maxw();
+	//pDispWorkMem->fmt.fmt.pix.height = norm_maxh();
+	//pDispWorkMem->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
+	pDispWorkMem->fmt.fmt.pix.field = V4L2_FIELD_NONE;
+	pDispWorkMem->fmt.fmt.pix.colorspace = V4L2_COLORSPACE_JPEG;
+	pDispWorkMem->fmt.fmt.pix.priv = 0;
+
+	spin_lock_init(&pDispWorkMem->irqlock);
+	spin_lock_init(&pDispWorkMem->dma_queue_lock);
+	mutex_init(&pDispWorkMem->lock);
+	vfd->minor = -1;
+
+	// Register video device.
+	ret = video_register_device(&pDispWorkMem->video_dev, VFL_TYPE_GRABBER, -1);
+	if (ret) {
+		DERROR("Unable to register video device!\n");
+		vfd->minor = -1;
+		ret = -ENODEV;
+		goto err_video_register;
+	}
+
+	/* set the driver data in platform device */
+	platform_set_drvdata(pdev, pDispWorkMem);
+	/* set driver private data */
+	video_set_drvdata(&pDispWorkMem->video_dev, pDispWorkMem);
+#endif
 
 	DERROR("%s:%d mac test\n", __func__, __LINE__);
 
@@ -1562,18 +2043,31 @@ static int _display_probe(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	//DEBUG("[%s:%d] runtime enable \n", __FUNCTION__, __LINE__);
-  pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
-  pm_runtime_use_autosuspend(&pdev->dev);
-  pm_runtime_set_active(&pdev->dev);
-  pm_runtime_enable(&pdev->dev);
+	DEBUG("[%s:%d] runtime enable \n", __FUNCTION__, __LINE__);
+	pm_runtime_set_autosuspend_delay(&pdev->dev,10000);
+	pm_runtime_use_autosuspend(&pdev->dev);
+	pm_runtime_set_active(&pdev->dev);
+	pm_runtime_enable(&pdev->dev);
 #endif
 
 	return 0;
+
+#ifdef SP_DISP_V4L2_SUPPORT
+err_video_register:
+	video_unregister_device(&pDispWorkMem->video_dev);
+err_v4l2_register:
+	v4l2_device_unregister(&pDispWorkMem->v4l2_dev);
+
+	return ret;
+#endif
 }
 
 static int _display_remove(struct platform_device *pdev)
 {
+	#ifdef SP_DISP_V4L2_SUPPORT
+	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
+	#endif
+
 	DEBUG("[%s:%d]\n", __FUNCTION__, __LINE__);
 
 	_display_destory_irq(pdev);
@@ -1584,6 +2078,10 @@ static int _display_remove(struct platform_device *pdev)
 	iounmap(yuv420);
 #endif
 
+#ifdef SP_DISP_V4L2_SUPPORT
+	video_unregister_device(&pDispWorkMem->video_dev);
+	v4l2_device_unregister(&pDispWorkMem->v4l2_dev);
+#endif
 
 #ifdef SUPPORT_DEBUG_MON
 	if (entry)
@@ -1591,9 +2089,9 @@ static int _display_remove(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	//DEBUG("[%s:%d] runtime disable \n", __FUNCTION__, __LINE__);
-  pm_runtime_disable(&pdev->dev);
-  pm_runtime_set_suspended(&pdev->dev);
+	DEBUG("[%s:%d] runtime disable \n", __FUNCTION__, __LINE__);
+	pm_runtime_disable(&pdev->dev);
+	pm_runtime_set_suspended(&pdev->dev);
 #endif
 
 	return 0;
