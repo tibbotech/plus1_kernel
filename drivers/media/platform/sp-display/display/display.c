@@ -2044,7 +2044,7 @@ static int _display_probe(struct platform_device *pdev)
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 	DEBUG("[%s:%d] runtime enable \n", __FUNCTION__, __LINE__);
-	pm_runtime_set_autosuspend_delay(&pdev->dev,10000);
+	pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);

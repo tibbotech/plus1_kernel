@@ -33,7 +33,7 @@
 #include "hal_disp.h"
 #ifdef CONFIG_PM_RUNTIME_DISP
 #include <linux/clk.h>
-//#include <linux/pm_runtime.h>
+#include <linux/pm_runtime.h>
 #endif
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -427,9 +427,21 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 {
 	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
 	u32 *osd_header;
+#if 0 //#ifdef CONFIG_PM_RUNTIME_DISP
+	int ret;
+#endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	int ret;
+	if (pm_runtime_get_sync(pDispWorkMem->pdev) < 0)
+		goto out;
+#endif
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+	pm_runtime_put(pDispWorkMem->pdev);		// Starting count timeout.
+#endif
+
+#if 0 //#ifdef CONFIG_PM_RUNTIME_DISP
+	//int ret;
 	// Enable 'display' clock.
 	ret = clk_prepare_enable(pDispWorkMem->tgen_clk);
 	if (ret) {
@@ -559,6 +571,13 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 
 	//GPOST PQ disable
 	pGPOSTReg->gpost0_contrast_config = 0x0;
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+out:
+	pm_runtime_mark_last_busy(pDispWorkMem->pdev);
+	pm_runtime_put_autosuspend(pDispWorkMem->pdev);
+	//return -ENOMEM;
+#endif
 
 }
 EXPORT_SYMBOL(DRV_OSD_Set_UI_Init);
