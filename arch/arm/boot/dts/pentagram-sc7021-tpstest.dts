@@ -34,9 +34,21 @@
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
-/* pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;*/
- 
-  leds_s0_def: user_leds_s0_def {
+ pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;
+
+ nodevbinded_iopp_example: nodevbinded_iopp_example {
+    sppctl,pins = <>;
+ };
+ nodevbinded_gpio_example: nodevbinded_gpio_example {
+    sppctl,pins = <
+      SP7021_IOPAD(42,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_FLASH0 */
+      SP7021_IOPAD(51,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_ON0 */
+      SP7021_IOPAD(30,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_FLASH1 */
+      SP7021_IOPAD(39,SP7021_PCTL_G_GPIO,0,0)   /* on L2SW_LED_ON1  */
+    >;
+ };
+
+ leds_s0_def: user_leds_s0_def {
     sppctl,pins = <
       SP7021_IOPAD(6,SP7021_PCTL_G_GPIO,MUXF_GPIO,SP7021_PCTL_L_INV)
       SP7021_IOPAD(7,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_INV)
