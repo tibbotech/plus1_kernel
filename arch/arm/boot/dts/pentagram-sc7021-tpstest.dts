@@ -73,10 +73,10 @@
       SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_PWM0,0)
     >;
  };
- i2ctps_pins: user_i2ctps_pins {
+ pins_i2ctps: pins_i2ctps {
     sppctl,pins = <
-      SP7021_IOPAD(1,SP7021_PCTL_G_GPIO,0,0)
-      SP7021_IOPAD(2,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(1,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_ODR)
+      SP7021_IOPAD(2,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_ODR)
     >;
  };
  hdmi_A_tx1: hdmi_A_tx1_pins {
@@ -169,13 +169,13 @@
 	    };
 	    i2c_tps: i2c-tps { /* eeprom */
             compatible = "i2c-gpio";
-/*          i2c-gpio,scl-open-drain;*/
-/*          i2c-gpio,sda-open-drain;*/
+            i2c-gpio,scl-open-drain;
+            i2c-gpio,sda-open-drain;
             i2c-gpio,delay-us = <2>;/* ~100 kHz */
             #address-cells = <1>;
             #size-cells = <0>;
             pinctrl-names = "default";
-            pinctrl-0 = <&i2ctps_pins>;
+            pinctrl-0 = <&pins_i2ctps>;
             gpios = <&pctl 1 GPIO_ACTIVE_HIGH     /* i2c_soft0.scl */
                      &pctl 2 GPIO_ACTIVE_HIGH     /* i2c_soft0.sda */
                     >;
