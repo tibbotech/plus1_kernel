@@ -174,7 +174,9 @@ int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range
  if (  g_f == muxF_G &&  g_m == muxM_G) return( 0);
  pdesc = pin_desc_get( _pd, _pin);
  // is in MUX state, but not claimed by any function
- if (  g_f == muxF_M && !( pdesc->mux_owner)) return( 0);
+ if (  g_f == muxF_M && !( pdesc->mux_owner)) {
+   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
+   return( 0);  }
  return( -EACCES);  }
 void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
