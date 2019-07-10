@@ -34,17 +34,19 @@
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
- pinctrl-0 = <&nodevbinded_iopp_example &nodevbinded_gpio_example>;
+ pinctrl-0 = <&pins_iopp_nobinded &pins_gpio_nobinded>;
 
- nodevbinded_iopp_example: nodevbinded_iopp_example {
-    sppctl,pins = <>;
- };
- nodevbinded_gpio_example: nodevbinded_gpio_example {
+ pins_iopp_nobinded: pins_iopp_nobinded {
     sppctl,pins = <
-      SP7021_IOPAD(42,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_FLASH0 */
-      SP7021_IOPAD(51,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_ON0 */
-      SP7021_IOPAD(30,SP7021_PCTL_G_GPIO,0,0)   /* L2SW_LED_FLASH1 */
-      SP7021_IOPAD(39,SP7021_PCTL_G_GPIO,0,0)   /* on L2SW_LED_ON1  */
+    /* SP7021_IOPAD(97,SP7021_PCTL_G_IOPP,0,0) */
+    >;
+ };
+ pins_gpio_nobinded: pins_gpio_nobinded {
+    sppctl,pins = <
+      SP7021_IOPAD(42,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH0 */
+      SP7021_IOPAD(51,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_ON0 */
+      SP7021_IOPAD(30,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH1 */
+      SP7021_IOPAD(39,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_ON1  */
     >;
  };
 
@@ -91,10 +93,6 @@
  };
  eth0_pins: pinmux_eth0_pins {
   sppctl,pins = <
-/*
-        SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
-        SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
-*/
        SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
        SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
        SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
@@ -106,10 +104,6 @@
  };
  eth1_pins: pinmux_eth1_pins {
   sppctl,pins = <
-/*
-       SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
-       SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
-*/
        SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
        SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
        SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
@@ -125,7 +119,7 @@
 	sppctl,function = "SD_CARD";
 	sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,0) >;
  };
- sdio_pins: pinmux_sdio_pins {
+ pins_sdio: pins_sdio {
 	sppctl,pins = <
 		SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
 		SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)

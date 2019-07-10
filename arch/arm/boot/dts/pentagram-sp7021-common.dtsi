@@ -677,7 +677,7 @@
 			clocks = <&clkc CARD_CTL4>;
 			resets = <&rstc RST_CARD_CTL4>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&sdio_pins>;
+			pinctrl-0 = <&pins_sdio>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
 			non-removable;
@@ -874,7 +874,7 @@
 				sppctl,function = "SD_CARD";
 				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
 			};
-			sdio_pins: pinmux_sdio_pins {
+			pins_sdio: pins_sdio {
 				sppctl,pins = <
 					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
 					SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
