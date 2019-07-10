@@ -166,11 +166,15 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  return( 0);  }
 int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
+ struct pin_desc *pdesc;
  int g_f, g_m;
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  g_f = sp7021gpio_u_gfrst( &( pctrl->gpiod->chip), _pin);
  g_m = sp7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin);
- if (  g_f == muxF_G && g_m == muxM_G) return( 0);
+ if (  g_f == muxF_G &&  g_m == muxM_G) return( 0);
+ pdesc = pin_desc_get( _pd, _pin);
+ // is in MUX state, but not claimed by any function
+ if (  g_f == muxF_M && !( pdesc->mux_owner)) return( 0);
  return( -EACCES);  }
 void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
