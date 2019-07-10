@@ -59,7 +59,7 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
    if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
    if ( _ca[ i] & SP7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:ODR\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
    // FIXME: add pullup/pulldown, irq enable/disable
  }
  return( 0);  }
