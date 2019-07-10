@@ -17,7 +17,8 @@
 #define SP7021_PCTL_L_OUT 0x01<<0
 #define SP7021_PCTL_L_OU1 0x01<<1
 #define SP7021_PCTL_L_INV 0x01<<2
-#define SP7021_PCTL_L_ODR 0x01<<3
+#define SP7021_PCTL_L_ONV 0x01<<3
+#define SP7021_PCTL_L_ODR 0x01<<4
 
 #define SP7021_PCTLE_P(v) ((v)<<24)
 #define SP7021_PCTLE_G(v) ((v)<<16)
