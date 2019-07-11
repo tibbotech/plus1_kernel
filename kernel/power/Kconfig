@@ -129,7 +129,7 @@ config PM_RUNTIME_UART
 config PM_RUNTIME_DISP
 	bool "PM_RUNTIME_DISP"
 	depends on PM_RUNTIME
-	default n
+	default y
 
 config PM_RUNTIME_HDMITX
 	bool "PM_RUNTIME_HDMITX"
