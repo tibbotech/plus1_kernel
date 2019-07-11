@@ -440,46 +440,6 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	pm_runtime_put(pDispWorkMem->pdev);		// Starting count timeout.
 #endif
 
-#if 0 //#ifdef CONFIG_PM_RUNTIME_DISP
-	//int ret;
-	// Enable 'display' clock.
-	ret = clk_prepare_enable(pDispWorkMem->tgen_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable tgen_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->dmix_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable dmix_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->osd0_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable osd0_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->gpost0_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable gpost0_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->vpost_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable vpost_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->ddfch_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable ddfch_clk! \n", __FUNCTION__, __LINE__);
-	}
-	ret = clk_prepare_enable(pDispWorkMem->dve_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable dve_clk! \n", __FUNCTION__, __LINE__);
-	}
-#if 0
-	// Enable 'hdmitx' clock.
-	ret = clk_prepare_enable(pDispWorkMem->hdmi_clk);
-	if (ret) {
-		mod_err("[%s:%d] Failed to enable hdmi_clk! \n", __FUNCTION__, __LINE__);
-	}
-#endif	
-#endif
-
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
 		gpOsdHeader = dma_zalloc_coherent(NULL,
 				sizeof(struct HW_OSD_Header_s) + 1024,
