@@ -62,7 +62,7 @@
  };
 
  /* for all eth */
- sdio_pins: pinmux_sdio_pins {
+ pins_sdio: pins_sdio {
   sppctl,pins = <
        SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
        SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)

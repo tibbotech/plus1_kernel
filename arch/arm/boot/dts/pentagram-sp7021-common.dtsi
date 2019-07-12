@@ -281,8 +281,8 @@
 		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
 	    };
 	
-	 
-		axi: axi@sp_axi {
+	 #if 1
+	    axi: axi@sp_axi {
 		compatible = "sunplus,sp7021-axi";
 		reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>, 
 		      <0x9c013200 0x80>, <0x9c013680 0x80>, <0x9c013700 0x80>,
@@ -290,19 +290,38 @@
 			  <0x9c013C00 0x80>, <0x9c013C80 0x80>, <0x9c013D00 0x80>, 	
 		      <0x9c014080 0x80>, <0x9c014100 0x80>, <0x9c014180 0x80>, 	
               <0x9c014280 0x80>, <0x9c014300 0x80>, <0x9c014380 0x80>, 				  
-			  <0x9c014480 0x80>;
+			  <0x9c014480 0x80>, <0x9c000D00 0x80>;
 		reg-names = "axi_mon", "axi_4", "axi_5", 
 		            "axi_12", "axi_21", "axi_22", 
 					"axi_27", "axi_28", "axi_31", 
 					"axi_32", "axi_33", "axi_34", 
 					"axi_41", "axi_42", "axi_43", 
 					"axi_45", "axi_46", "axi_47", 
-					"axi_49";
+					"axi_49", "axi_cbdma";
 		interrupt-parent = <&intc>;
 		interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc AXI_GLOBAL>;
 		resets = <&rstc RST_AXI_GLOBAL>;
 	    };
+	 #else
+		axi: axi@sp_axi {
+		compatible = "sunplus,sp7021-axi";
+		reg = <0x9ec12B80 0x80>, <0x9ec12C00 0x80>, <0x9ec12C80 0x80>, 
+		      <0x9ec12D00 0x80>, <0x9ec12D80 0x80>, <0x9ec12E00 0x80>,
+			  <0x9ec12E80 0x80>, <0x9ec12F00 0x80>, <0x9ec12F80 0x80>, 		
+			  <0x9ec13000 0x80>, <0x9ec13080 0x80>, <0x9ec13100 0x80>, 
+			  <0x9c000D00 0x80>;
+		reg-names = "axi_mon", "axi_0", "axi_1", 
+		            "axi_2", "axi_3", "axi_4", 
+					"axi_5", "axi_6", "axi_7", 
+					"axi_8", "axi_9", "axi_10",
+					"axi_cbdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
+		clocks = <&clkc AXI_GLOBAL>;
+		resets = <&rstc RST_AXI_GLOBAL>;
+	    };
+	#endif
 	 
 			icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
@@ -470,6 +489,8 @@
 			clocks = <&clkc AUD>,<&clkc PERI0>,<&clkc PLL_A>;
 			clock-names = "aud","peri0","pll_a";
 			resets = <&rstc RST_AUD>;
+			pinctrl-names = "default";
+  			pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
 		 };
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -677,7 +698,7 @@
 			clocks = <&clkc CARD_CTL4>;
 			resets = <&rstc RST_CARD_CTL4>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&sdio_pins>;
+			pinctrl-0 = <&pins_sdio>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
 			non-removable;
@@ -803,6 +824,8 @@
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;
 			resets = <&rstc RST_SPIFL>;
+			pinctrl-names = "default";
+  			pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
 			partitions {
@@ -874,7 +897,7 @@
 				sppctl,function = "SD_CARD";
 				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
 			};
-			sdio_pins: pinmux_sdio_pins {
+			pins_sdio: pins_sdio {
 				sppctl,pins = <
 					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
 					SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
@@ -883,6 +906,52 @@
 					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
 					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0) >;
 			};
+			
+			aud_i2s_in: aud_i2s_in {
+				sppctl,groups = "AUD_EXT_ADC_IFX0";
+				sppctl,function = "AUD_EXT_ADC_IFX0";
+			};			
+			aud_i2s_out: aud_i2s_out {
+				sppctl,groups = "AUD_EXT_DAC_IFX0";
+				sppctl,function = "AUD_EXT_DAC_IFX0";
+			};
+			aud_spdi: aud_spdi {
+				sppctl,groups = "AUD_IEC_RX0";
+				sppctl,function = "SPDIF_RX";
+			};
+			aud_spdo: aud_spdo {
+				sppctl,groups = "AUD_IEC_TX0";
+				sppctl,function = "SPDIF_TX";
+			};
+			aud_tdmr: aud_tdmr {
+				sppctl,groups = "TDMRX_IFX0";
+				sppctl,function = "TDMRX_IFX0";
+			};
+			aud_tdmt: aud_tdmt {
+				sppctl,groups = "TDMTX_IFX0";
+				sppctl,function = "TDMTX_IFX0";
+			};
+			aud_pdmr: aud_pdmr {
+				sppctl,groups = "PDMRX_IFX0";
+				sppctl,function = "PDMRX_IFX0";
+			};
+			
+			spi_flash1_mux: spi_flash1_mux {
+    				sppctl,groups = "SPI_FLASH1";
+    				sppctl,function = "SPI_FLASH";
+ 			};
+ 			spi_flash2_mux: spi_flash2_mux {
+    				sppctl,groups = "SPI_FLASH2";
+    				sppctl,function = "SPI_FLASH";
+ 			};
+ 			spi_fla4b2_mux: spi_fla4b2_mux {
+    				sppctl,groups = "SPI_FLASH_4BIT2";
+    				sppctl,function = "SPI_FLASH_4BIT";
+ 			};
+ 			spi_fla4b1_mux: spi_fla4b1_mux {
+    				sppctl,groups = "SPI_FLASH_4BIT1";
+    				sppctl,function = "SPI_FLASH_4BIT";
+ 			};			
 		};
 
 		otp: otp@0x9C00AF00 {

@@ -107,21 +107,21 @@ void  AUDHW_Set_PLL(void)
 
 void AUDHW_pin_mx(void)
 {
-	int i;
+	//int i;
 	volatile RegisterFile_G1 * regs0 = (volatile RegisterFile_G1 *)REG(1,0);
 	volatile RegisterFile_G2 * regs1 = (volatile RegisterFile_G2 *)REG(2,0);
 
-	i = regs0->rf_sft_cfg1;
-	regs0->rf_sft_cfg1 = (0xFFFF0000 | i | (0x1 << 15));
-	//regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
-	regs0->rf_sft_cfg2 = 0xffff004d;//I2STX, PDMRX,	SPDIFRX
+	//i = regs0->rf_sft_cfg1;
+	//regs0->rf_sft_cfg1 = (0xFFFF0000 | i | (0x1 << 15));
+	////regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
+	//regs0->rf_sft_cfg2 = 0xffff004d;//I2STX, PDMRX,	SPDIFRX
 	AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
 	AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
 
-	for(i=0; i<64; i++)
-	{
-		regs1->G002_RESERVED[i]	= 0xffff0000;
-	}
+	//for(i=0; i<64; i++)
+	//{
+	//	regs1->G002_RESERVED[i]	= 0xffff0000;
+	//}
 }
 
 void AUDHW_clk_cfg(void)
@@ -147,7 +147,7 @@ void AUDHW_clk_cfg(void)
 void AUDHW_Mixer_Setting(void)
 {
         UINT32 val;
-        volatile RegisterFile_Audio	* regs0	= (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+        volatile RegisterFile_Audio	*regs0 = (volatile RegisterFile_Audio*)audio_base;
         //67. 0~4
         regs0->aud_grm_master_gain	= 0x80000000;	//aud_grm_master_gain
         regs0->aud_grm_gain_control_0 	= 0x80808080;	//aud_grm_gain_control_0

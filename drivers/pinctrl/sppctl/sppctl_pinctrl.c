@@ -59,7 +59,8 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
    if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
    if ( _ca[ i] & SP7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SP7021_PCTL_L_ONV) {  KDBG( _pd->dev, "%d:ONV\n", i);  sp7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:ODR\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
    // FIXME: add pullup/pulldown, irq enable/disable
  }
  return( 0);  }
@@ -166,11 +167,17 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
  return( 0);  }
 int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
+ struct pin_desc *pdesc;
  int g_f, g_m;
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
  g_f = sp7021gpio_u_gfrst( &( pctrl->gpiod->chip), _pin);
  g_m = sp7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin);
- if (  g_f == muxF_G && g_m == muxM_G) return( 0);
+ if (  g_f == muxF_G &&  g_m == muxM_G) return( 0);
+ pdesc = pin_desc_get( _pd, _pin);
+ // is in MUX state, but not claimed by any function
+ if (  g_f == muxF_M && !( pdesc->mux_owner)) {
+   sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
+   return( 0);  }
  return( -EACCES);  }
 void stpctl_m_gpio_fre( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin) {
  KDBG( _pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
@@ -304,6 +311,11 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
      ( *_nm)++;
    }
  }
+ // handle zero function
+// list = of_get_property( _dn, "sppctl,zero", &size);
+// *_nm = size/sizeof( *list);
+// for ( i = 0; i < ( *_nm); i++) {
+// }
  of_node_put( parent);
  KDBG( _pd->dev, "%d pins mapped\n", *_nm);
  return( 0);  }
