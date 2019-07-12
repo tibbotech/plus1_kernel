@@ -28,6 +28,71 @@
 #include "reg_axi.h"
 
 //#define IOP_REG_NAME        "iop"
+
+//#define C_CHIP
+#define P_CHIP
+
+#ifdef C_CHIP
+/*for AXI monitor*/
+#define AXI_MONITOR_REG_NAME      "axi_mon"
+#define AXI_IP_00_REG_NAME		  "axi_0"
+#define AXI_IP_01_REG_NAME		  "axi_1" 
+#define AXI_IP_02_REG_NAME		  "axi_2"
+#define AXI_IP_03_REG_NAME		  "axi_3" 	
+#define AXI_IP_04_REG_NAME        "axi_4"
+#define AXI_IP_05_REG_NAME        "axi_5"
+#define AXI_IP_06_REG_NAME	      "axi_6"
+#define AXI_IP_07_REG_NAME		  "axi_7"
+#define AXI_IP_08_REG_NAME		  "axi_8" 	
+#define AXI_IP_09_REG_NAME        "axi_9"
+#define AXI_IP_10_REG_NAME        "axi_10"
+#define AXI_CBDMA_REG_NAME	      "axi_cbdma"
+#define DEVICE_NAME			"sunplus,sp7021-axi"
+
+/*Device ID*/
+#define CA7_M0		0
+#define CSDBG_M1	1
+#define CSETR_M2    2
+#define DMA0_MA		3
+#define DSPC_MA     4
+#define DSPD_MA		5
+#define IO_CTL_MA	6
+#define UART2AXI_MA	7
+#define MEM_SL 		8
+#define IO_CTL_SL	9
+#define RB_SL		10
+#define valid_id 	1
+#define invalid_id 	0
+
+typedef struct {
+	struct miscdevice dev;			// iop device
+	struct mutex write_lock;
+	//void __iomem *iop_regs;	
+	//void __iomem *moon0_regs;
+	//void __iomem *qctl_regs;
+	//void __iomem *pmc_regs;
+	//void __iomem *rtc_regs;
+	/*for AXI monitor*/
+	void __iomem *axi_mon_regs;
+	void __iomem *axi_id0_regs;
+	void __iomem *axi_id1_regs;
+	void __iomem *axi_id2_regs;
+	void __iomem *axi_id3_regs;
+	void __iomem *axi_id4_regs;
+	void __iomem *axi_id5_regs;
+	void __iomem *axi_id6_regs;
+	void __iomem *axi_id7_regs;
+	void __iomem *axi_id8_regs;
+	void __iomem *axi_id9_regs;
+	void __iomem *axi_id10_regs;
+	void __iomem *axi_cbdma_regs;
+	void __iomem *current_id_regs;	
+	int irq;
+} sp_axi_t;
+static sp_axi_t *axi_monitor;
+#endif
+
+#ifdef P_CHIP
 /*for AXI monitor*/
 #define AXI_MONITOR_REG_NAME      "axi_mon"
 #define AXI_IP_04_REG_NAME		  "axi_4"
@@ -48,6 +113,7 @@
 #define AXI_IP_46_REG_NAME        "axi_46"
 #define AXI_IP_47_REG_NAME	      "axi_47"
 #define AXI_IP_49_REG_NAME	      "axi_49"
+#define AXI_CBDMA_REG_NAME	      "axi_cbdma"
 #define DEVICE_NAME			"sunplus,sp7021-axi"
 
 /*Device ID*/
@@ -99,11 +165,15 @@ typedef struct {
 	void __iomem *axi_id45_regs;
 	void __iomem *axi_id46_regs;
 	void __iomem *axi_id47_regs;
-	void __iomem *axi_id49_regs;
+	void __iomem *axi_id49_regs;	
+	void __iomem *axi_cbdma_regs;
 	void __iomem *current_id_regs;	
 	int irq;
 } sp_axi_t;
 static sp_axi_t *axi_monitor;
+#endif
+
+
 
 unsigned char AxiDeviceID;
 struct sunplus_axi {
@@ -114,13 +184,99 @@ struct sunplus_axi {
 struct sunplus_axi sp_axi;
 
 
+#define CBDMA0_SRAM_ADDRESS (0x9E800000) // 40KB
+#define CBDMA1_SRAM_ADDRESS (0x9E820000) // 4KB
+#define CBDMA_TEST_SOURCE      ((void *) 0x9EA00000)
+#define CBDMA_TEST_DESTINATION ((void *) 0x9EA01000)
+//#define CBDMA_TEST_SOURCE      ((void *) 0x00000000)
+//#define CBDMA_TEST_DESTINATION ((void *) 0x00020000)
+//#define CBDMA_TEST_SIZE        (128 << 10)
+//#define CBDMA_TEST_SIZE        (8 << 20)
+#define CBDMA_TEST_SIZE       0x1000
+void cbdma_memcpy(void __iomem *axi_cbdma_regs, int id, void *dst, void *src, unsigned length)
+{	
+	printk("[CBDMA:%d]: Copy %d KB from 0x%08x to 0x%08x\n", id, length>>10, (unsigned) src, (unsigned)dst);	
+	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;	
+	//volatile struct cbdma_regs *cbdma;	
+	//if (id)	
+	//	cbdma = CBDMA1_REG;	
+	//else	
+	//	cbdma = CBDMA0_REG;	
+	// clear all int status		
+	//cbdma->int_status = 0x7f;	
+	writel(0x7f,&axi_cbdma->int_flag);	
+	// set copy mode		
+	//cbdma->config = 0x00030003;	
+	writel(0x00030003,&axi_cbdma->config);	
+	// set write data length	
+	//cbdma->dma_length = length;	
+	writel(length,&axi_cbdma->length);	
+	// set write start address	
+	//cbdma->src_adr = (unsigned) src;	
+	writel( (unsigned) src,&axi_cbdma->src_adr);	
+	// set write end address	
+	//cbdma->des_adr = (unsigned) dst;	
+	writel( (unsigned) dst,&axi_cbdma->des_adr);
+}
+
+void cbdma_kick_go(void __iomem *axi_cbdma_regs, int id)
+{	
+	printk("[CBDMA:%d]: Start\n", id);	
+	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;	
+	//volatile struct cbdma_regs *cbdma;	
+	//if (id)	
+	//	cbdma = CBDMA1_REG;	
+	//else	
+	//	cbdma = CBDMA0_REG;	
+	//cbdma->config |= 0x00000100;	
+	writel(0x00030103,&axi_cbdma->config);
+}
+
+void cbdma_test(void __iomem *axi_cbdma_regs)
+{	
+	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;	
+	//create_sequential_pattern(CBDMA_TEST_SOURCE, CBDMA_TEST_SIZE);	
+	//dcache_disable();	
+	// cbdma 0 test	
+	//read data from main memory then write to other space of main memory	
+	cbdma_memcpy(axi_monitor->axi_cbdma_regs, 0, CBDMA_TEST_DESTINATION, CBDMA_TEST_SOURCE, CBDMA_TEST_SIZE);
+	// polling
+	#if 1
+	//printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", cbdma_get_interrupt_status(0));	
+	//cbdma_enable_interrupt(iop->axi_cbdma_regs, 0, 0);	
+	cbdma_kick_go(axi_monitor->axi_cbdma_regs, 0);	
+	readl(&axi_cbdma->int_flag);		
+	printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));	
+	printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));	
+	printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));	
+	printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));	
+	while(readl(&axi_cbdma->int_flag) & 0x1 == 0)	
+	{		
+		printk(".");	
+	}		
+	printk("\n");	
+	printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));	
+	//cbdma_clear_interrupt_status(0);
+	#else	
+	g_cbmda_finished = 0;	
+	cbdma_interrupt_control_mask(0, 1);
+	cbdma_kick_go(0);    
+	printf("g_cbmda_transfer\n");	
+	while(g_cbmda_finished == 0);	
+	printf("g_cbmda_finished\n");
+	#endif	
+	//check_sequential_pattern(CBDMA_TEST_DESTINATION, CBDMA_TEST_SIZE);	
+	//dcache_enable();	
+	printk("CBDMA test finished.\n");
+}
+
 void Get_Monitor_Event(void __iomem *axi_id_regs)
 {
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
 	
 	printk("current_id_regs=%p\n",axi_id_regs);	
-	printk("axi_id ip monitor: %d\n", readl(&axi_id->sub_ip_monitor));
-	printk("axi_id event infomation: %d\n", readl(&axi_id->sub_event));	
+	printk("axi_id ip monitor: 0x%X\n", readl(&axi_id->sub_ip_monitor));
+	printk("axi_id event infomation: 0x%X\n", readl(&axi_id->sub_event));	
 }
 
 void Event_Monitor_Clear(void __iomem *axi_mon_regs, void __iomem *axi_id_regs)
@@ -135,85 +291,159 @@ void Event_Monitor_Clear(void __iomem *axi_mon_regs, void __iomem *axi_id_regs)
 void Get_current_id(unsigned char device_id)
 {
 #if 1
+#ifdef C_CHIP
 	switch (device_id) {
-		case CBDMA0_MB:
-			printk("CBDMA0_MB\n"); 
+		case CA7_M0:
+			printk("CA7_M0\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id0_regs;
+			break;
+		case CSDBG_M1:			
+			printk("CSDBG_M1\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id1_regs;
+			break;
+		case CSETR_M2:
+			printk("CSETR_M2\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id2_regs;
+			break;
+		case DMA0_MA:
+			printk("DMA0_MA\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id3_regs;
+			break;
+		case DSPC_MA:			
+			printk("DSPC_MA\n"); 
 			axi_monitor->current_id_regs = axi_monitor->axi_id4_regs;
 			break;
-		case CBDMA1_MB:			
-			printk("CBDMA1_MB\n"); 
+		case DSPD_MA:			
+			printk("DSPD_MA\n"); 
 			axi_monitor->current_id_regs = axi_monitor->axi_id5_regs;
 			break;
-		case UART2AXI_MA:
+		case IO_CTL_MA:
+			printk("IO_CTL_MA\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id6_regs;;
+			break;
+		case UART2AXI_MA:			
 			printk("UART2AXI_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id12_regs;
+			axi_monitor->current_id_regs = axi_monitor->axi_id7_regs;
 			break;
-		case NBS_MA:
-			printk("NBS_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id21_regs;
+		case MEM_SL:			
+			printk("MEM_SL\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id8_regs;
 			break;
-		case SPI_NOR_MA:			
-			printk("SPI_NOR_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id22_regs;
+		case IO_CTL_SL:			
+			printk("IO_CTL_SL\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id9_regs;
 			break;
-		case BIO0_MA:			
-			printk("BIO0_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id27_regs;
+		case RB_SL:			
+			printk("RB_SL\n"); 
+			axi_monitor->current_id_regs = axi_monitor->axi_id10_regs;
 			break;
-		case BIO1_MA:
-			printk("BIO1_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id28_regs;;
-			break;
-		case I2C2CBUS_CB:			
-			printk("I2C2CBUS_CB\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id31_regs;
-			break;
-		case CARD0_MA:			
-			printk("CARD0_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id32_regs;
-			break;
-		case CARD1_MA:			
-			printk("CARD1_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id33_regs;
-			break;
-		case CARD4_MA:			
-			printk("CARD4_MA\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id34_regs;
-			break;
-		case BR_CB:
-			printk("BR_CB\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id41_regs;
-			break;
-		case SPI_ND_SL:
-			printk("SPI_ND_SL\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id42_regs;
-			break;
-		case SPI_NOR_SL:
-			printk("SPI_NOR_SL\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id43_regs;
-			break;		
-		case CBDMA0_CB:
-			printk("CBDMA0_CB\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id45_regs;
-			break;
-		case CBDMA1_CB:
-			printk("CBDMA1_CB\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id46_regs;
-			break;
-		case BIO_SL:
-			printk("BIO_SL\n"); 
- 			axi_monitor->current_id_regs = axi_monitor->axi_id47_regs;
-			break;
-		case SD0_SL:
-			printk("SD0_SL\n"); 
-			axi_monitor->current_id_regs = axi_monitor->axi_id49_regs;
-			break;
-	}	
+	}
+#endif 
+
+#ifdef P_CHIP
+		switch (device_id) {
+			case CBDMA0_MB:
+				printk("CBDMA0_MB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id4_regs;
+				break;
+			case CBDMA1_MB: 		
+				printk("CBDMA1_MB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id5_regs;
+				break;
+			case UART2AXI_MA:
+				printk("UART2AXI_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id12_regs;
+				break;
+			case NBS_MA:
+				printk("NBS_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id21_regs;
+				break;
+			case SPI_NOR_MA:			
+				printk("SPI_NOR_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id22_regs;
+				break;
+			case BIO0_MA:			
+				printk("BIO0_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id27_regs;
+				break;
+			case BIO1_MA:
+				printk("BIO1_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id28_regs;;
+				break;
+			case I2C2CBUS_CB:			
+				printk("I2C2CBUS_CB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id31_regs;
+				break;
+			case CARD0_MA:			
+				printk("CARD0_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id32_regs;
+				break;
+			case CARD1_MA:			
+				printk("CARD1_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id33_regs;
+				break;
+			case CARD4_MA:			
+				printk("CARD4_MA\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id34_regs;
+				break;
+			case BR_CB:
+				printk("BR_CB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id41_regs;
+				break;
+			case SPI_ND_SL:
+				printk("SPI_ND_SL\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id42_regs;
+				break;
+			case SPI_NOR_SL:
+				printk("SPI_NOR_SL\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id43_regs;
+				break;		
+			case CBDMA0_CB:
+				printk("CBDMA0_CB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id45_regs;
+				break;
+			case CBDMA1_CB:
+				printk("CBDMA1_CB\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id46_regs;
+				break;
+			case BIO_SL:
+				printk("BIO_SL\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id47_regs;
+				break;
+			case SD0_SL:
+				printk("SD0_SL\n"); 
+				axi_monitor->current_id_regs = axi_monitor->axi_id49_regs;
+				break;
+		}
+#endif 
+
 	#endif 
 }
 
 static int Check_current_id(unsigned char device_id)
 {
+#ifdef C_CHIP
+	switch (device_id) {
+		case CA7_M0:			
+		case CSDBG_M1:						
+		case CSETR_M2:
+		case DMA0_MA:			
+		case DSPC_MA:				
+		case DSPD_MA:					
+		case IO_CTL_MA:			
+		case UART2AXI_MA:			
+		case MEM_SL:				
+		case IO_CTL_SL:				
+		case RB_SL:				
+			printk("valid_id");
+			return valid_id;
+		default:			
+			printk("invalid_id");
+			return invalid_id;
+	}	
+#endif 
+
+#ifdef P_CHIP
 	switch (device_id) {
 		case CBDMA0_MB:			
 		case CBDMA1_MB:						
@@ -239,6 +469,8 @@ static int Check_current_id(unsigned char device_id)
 			printk("invalid_id");
 			return invalid_id;
 	}	
+#endif
+
 }
 
 
@@ -288,7 +520,7 @@ void axi_mon_unexcept_access_sAddr(void __iomem *axi_mon_regs, void __iomem *axi
 	//bit20: timeout=0, bit16:unexpect_r_access=1, bit12:unexpect_w_access=1, 
 	//bit8: special_r_data=0, bit4: special_w_data=0, bit0: monitor enable=1.
 	//writel(0x00011001,&axi_id->sub_ip_monitor);	
-	writel(0x00000001,&axi_id->sub_ip_monitor);	
+	writel(0x00011001,&axi_id->sub_ip_monitor);	
 }
 
 void axi_mon_unexcept_access_eAddr(void __iomem *axi_mon_regs, void __iomem *axi_id_regs, unsigned int data)
@@ -446,11 +678,28 @@ static ssize_t axi_store_time_out(struct device *dev, struct device_attribute *a
 	return ret;
 }
 
+static ssize_t axi_show_cbdma_test(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;
+    printk("axi_show_cbdma_test\n");
+	return len;
+}
+
+static ssize_t axi_store_cbdma_test(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned char ret = count;	
+	cbdma_test((axi_monitor->axi_cbdma_regs));
+    printk("axi_store_cbdma_test\n");	
+	return ret;
+}
+
+
 static DEVICE_ATTR(device_id, S_IWUSR|S_IRUGO, axi_show_device_id, axi_store_device_id);
 static DEVICE_ATTR(special_data, S_IWUSR|S_IRUGO, axi_show_special_data, axi_store_special_data);
 static DEVICE_ATTR(unexpect_access, S_IWUSR|S_IRUGO, axi_show_unexpect_access, axi_store_unexpect_access);
 //static DEVICE_ATTR(unexpect_access_eAddr, S_IWUSR|S_IRUGO, axi_show_unexpect_access_eAddr, axi_store_unexpect_access_eAddr);
 static DEVICE_ATTR(time_out, S_IWUSR|S_IRUGO, axi_show_time_out, axi_store_time_out);
+static DEVICE_ATTR(cbdma_test, S_IWUSR|S_IRUGO, axi_show_cbdma_test, axi_store_cbdma_test);
 
 static struct attribute *axi_sysfs_entries[] = {
 	&dev_attr_device_id.attr,
@@ -458,6 +707,7 @@ static struct attribute *axi_sysfs_entries[] = {
 	&dev_attr_unexpect_access.attr,
 	//&dev_attr_unexpect_access_eAddr.attr,
 	&dev_attr_time_out.attr,
+	&dev_attr_cbdma_test.attr,
 	NULL,
 };
 
@@ -576,167 +826,285 @@ static int _sp_axi_get_resources(struct platform_device *pdev, sp_axi_t *pstSpIO
 	unsigned int membase = 0;
 
 	FUNC_DEBUG();
-
-	/*for AXI monitor*/
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_mon_regs = (void __iomem *)membase;
-	}	
-
-    ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_04_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id4_regs = (void __iomem *)membase;
-	}	
+#ifdef C_CHIP
+		/*for AXI monitor*/
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_mon_regs = (void __iomem *)membase;
+		}	
 	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_05_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id5_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_12_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id12_regs = (void __iomem *)membase;
-	}	
-
-    ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_21_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id21_regs = (void __iomem *)membase;
-	}	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_00_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id0_regs = (void __iomem *)membase;
+		}	
+		
 	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_22_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id22_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_27_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id27_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_28_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id28_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_31_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id31_regs = (void __iomem *)membase;
-	}	
-
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_32_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id32_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_33_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id33_regs = (void __iomem *)membase;
-	}	
-
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_01_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id1_regs = (void __iomem *)membase;
+		}	
 	
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_34_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id34_regs = (void __iomem *)membase;
-	}
- 
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_41_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id41_regs = (void __iomem *)membase;
-	}	
-
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_02_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id2_regs = (void __iomem *)membase;
+		}	
 	
-    ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_42_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id42_regs = (void __iomem *)membase;
-	}	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_03_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id3_regs = (void __iomem *)membase;
+		}	
+		
 	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_43_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id43_regs = (void __iomem *)membase;
-	}	
-
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_45_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id45_regs = (void __iomem *)membase;
-	}	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_04_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id4_regs = (void __iomem *)membase;
+		}	
 	
-    ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_46_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id46_regs = (void __iomem *)membase;
-	}	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_05_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id5_regs = (void __iomem *)membase;
+		}	
 	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_06_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id6_regs = (void __iomem *)membase;
+		}	
+	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_07_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id7_regs = (void __iomem *)membase;
+		}	
+	
+	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_08_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id8_regs = (void __iomem *)membase;
+		}	
+	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_09_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id9_regs = (void __iomem *)membase;
+		}	
+	
+		
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_10_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+			return ret;
+		} else {
+			pstSpIOPInfo->axi_id10_regs = (void __iomem *)membase;
+		}	
 
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_47_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id47_regs = (void __iomem *)membase;
-	}	
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_CBDMA_REG_NAME);	
+		if (ret) {		
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);		
+			return ret;	
+		} else {		
+			pstSpIOPInfo->axi_cbdma_regs = (void __iomem *)membase;	
+		}	
+#endif 	
+#ifdef P_CHIP
+			/*for AXI monitor*/
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_mon_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_04_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id4_regs = (void __iomem *)membase;
+			}	
+			
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_05_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id5_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_12_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id12_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_21_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id21_regs = (void __iomem *)membase;
+			}	
+			
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_22_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id22_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_27_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id27_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_28_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id28_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_31_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id31_regs = (void __iomem *)membase;
+			}	
+		
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_32_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id32_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_33_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id33_regs = (void __iomem *)membase;
+			}	
+		
+			
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_34_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id34_regs = (void __iomem *)membase;
+			}
+		 
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_41_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id41_regs = (void __iomem *)membase;
+			}	
+		
+			
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_42_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id42_regs = (void __iomem *)membase;
+			}	
+			
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_43_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id43_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_45_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id45_regs = (void __iomem *)membase;
+			}	
+			
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_46_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id46_regs = (void __iomem *)membase;
+			}	
+			
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_47_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id47_regs = (void __iomem *)membase;
+			}	
+		
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_49_REG_NAME);
+			if (ret) {
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+				return ret;
+			} else {
+				pstSpIOPInfo->axi_id49_regs = (void __iomem *)membase;
+			}	
 
-	ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_49_REG_NAME);
-	if (ret) {
-		DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	} else {
-		pstSpIOPInfo->axi_id49_regs = (void __iomem *)membase;
-	}	
- 
+			ret = _sp_axi_get_register_base(pdev, &membase, AXI_CBDMA_REG_NAME);	
+			if (ret) {		
+				DBG_ERR("[AXI] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);		
+				return ret;	
+			} else {		
+				pstSpIOPInfo->axi_cbdma_regs = (void __iomem *)membase;	
+			}	
+#endif 	
 	return IOP_SUCCESS;
 }
 
@@ -800,7 +1168,7 @@ static int sp_axi_platform_driver_probe(struct platform_device *pdev)
 		printk("platform_get_irq failed\n");
 		return -ENODEV;
 	}
-    
+
 	err = devm_request_irq(&pdev->dev, irq, axi_irq_handler, IRQF_TRIGGER_HIGH, "axi irq", pdev);
 	if (err) {
 		printk("devm_request_irq failed: %d\n", err);
