@@ -34,8 +34,18 @@
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
- pinctrl-0 = <&pins_iopp_nobinded &pins_gpio_nobinded>;
+ pinctrl-0 = <&pins_iopp_nobinded &pins_gpio_nobinded &func_zero>;
 
+ /* detouch any preset pins from this functions */
+ func_zero: func_zero {
+   sppctl,zero = <
+     MUXF_L2SW_LED_FLASH0
+     MUXF_L2SW_LED_ON0
+     MUXF_L2SW_LED_FLASH1
+     MUXF_L2SW_LED_ON1
+   >;
+ }
+ 
  pins_iopp_nobinded: pins_iopp_nobinded {
     sppctl,pins = <
     /* SP7021_IOPAD(97,SP7021_PCTL_G_IOPP,0,0) */
