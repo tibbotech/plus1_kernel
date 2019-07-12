@@ -489,6 +489,8 @@
 			clocks = <&clkc AUD>,<&clkc PERI0>,<&clkc PLL_A>;
 			clock-names = "aud","peri0","pll_a";
 			resets = <&rstc RST_AUD>;
+			pinctrl-names = "default";
+  			pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
 		 };
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -822,6 +824,8 @@
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;
 			resets = <&rstc RST_SPIFL>;
+			pinctrl-names = "default";
+  			pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
 			partitions {
@@ -902,6 +906,52 @@
 					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
 					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0) >;
 			};
+			
+			aud_i2s_in: aud_i2s_in {
+				sppctl,groups = "AUD_EXT_ADC_IFX0";
+				sppctl,function = "AUD_EXT_ADC_IFX0";
+			};			
+			aud_i2s_out: aud_i2s_out {
+				sppctl,groups = "AUD_EXT_DAC_IFX0";
+				sppctl,function = "AUD_EXT_DAC_IFX0";
+			};
+			aud_spdi: aud_spdi {
+				sppctl,groups = "AUD_IEC_RX0";
+				sppctl,function = "SPDIF_RX";
+			};
+			aud_spdo: aud_spdo {
+				sppctl,groups = "AUD_IEC_TX0";
+				sppctl,function = "SPDIF_TX";
+			};
+			aud_tdmr: aud_tdmr {
+				sppctl,groups = "TDMRX_IFX0";
+				sppctl,function = "TDMRX_IFX0";
+			};
+			aud_tdmt: aud_tdmt {
+				sppctl,groups = "TDMTX_IFX0";
+				sppctl,function = "TDMTX_IFX0";
+			};
+			aud_pdmr: aud_pdmr {
+				sppctl,groups = "PDMRX_IFX0";
+				sppctl,function = "PDMRX_IFX0";
+			};
+			
+			spi_flash1_mux: spi_flash1_mux {
+    				sppctl,groups = "SPI_FLASH1";
+    				sppctl,function = "SPI_FLASH";
+ 			};
+ 			spi_flash2_mux: spi_flash2_mux {
+    				sppctl,groups = "SPI_FLASH2";
+    				sppctl,function = "SPI_FLASH";
+ 			};
+ 			spi_fla4b2_mux: spi_fla4b2_mux {
+    				sppctl,groups = "SPI_FLASH_4BIT2";
+    				sppctl,function = "SPI_FLASH_4BIT";
+ 			};
+ 			spi_fla4b1_mux: spi_fla4b1_mux {
+    				sppctl,groups = "SPI_FLASH_4BIT1";
+    				sppctl,function = "SPI_FLASH_4BIT";
+ 			};			
 		};
 
 		otp: otp@0x9C00AF00 {
