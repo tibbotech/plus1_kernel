@@ -17,6 +17,8 @@
 	};
 };
 
+&sp_spinor0 {  status = "disabled";  };
+
 &l2sw {
  pinctrl-names = "default";
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
