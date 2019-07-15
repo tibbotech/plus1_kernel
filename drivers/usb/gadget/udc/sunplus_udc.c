@@ -19,7 +19,9 @@
 #include <linux/usb/sp_usb.h>
 #include <asm/cacheflush.h>
 #include "../../../../arch/arm/mm/dma.h"
+#ifdef CONFIG_USB_SUNPLUS_OTG
 #include "../../phy/sunplus-otg.h"
+#endif
 
 #ifdef CONFIG_FIQ_GLUE
 #include <asm/fiq.h>
@@ -931,6 +933,10 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 {
 	int len;
 	int ret;
+#ifdef CONFIG_USB_SUNPLUS_OTG	//shih test
+	struct usb_phy *otg_phy;
+#endif
+
 	DEBUG_INFO(">>>sp_udc_handle_ep0s_idle...\n");
 	/* start control request? */
 	sp_udc_nuke(dev, ep, -EPROTO);
@@ -1027,7 +1033,6 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 #ifdef CONFIG_USB_SUNPLUS_OTG
 		if((0 == crq->bRequestType) && (3 == crq->wValue) && (0 == crq->wIndex) && (0 == crq->wLength)){
 			printk("set hnp featrue\n");
-			struct usb_phy *otg_phy;
 			otg_phy = usb_get_transceiver_sp(0);
 			if (!otg_phy) {
 				printk("Get otg control fail\n");
@@ -3443,9 +3448,9 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 			  udc_read(UDEPCDMA_RCSR), udc_read(UDEPCDMA_RTR));
 	}
 	if (irq_en2_flags & SUS_IF) {
-		DEBUG_NOTICE("IRQ:UDC Suspent Event\n");
+		DEBUG_NOTICE("IRQ:UDC Suspend Event\n");
 		udc_write(SUS_IF, UDLIF);
-#if CONFIG_USB_SUNPLUS_OTG
+#ifdef CONFIG_USB_SUNPLUS_OTG
 		if(is_config){
 			//dev->suspend_sta++;
 			//queue_work(dev->qwork_otg, &dev->work_otg);
@@ -4591,10 +4596,6 @@ static int sp_udc_remove(struct platform_device *pdev)
 		destroy_workqueue(udc->qwork_ep9);
 	if (udc->qwork_ep3)
 		destroy_workqueue(udc->qwork_ep3);
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	if (udc->qwork_otg)
-		destroy_workqueue(udc->qwork_otg);
-#endif
 
 	if(base_addr)
 		iounmap(base_addr);
@@ -4638,6 +4639,10 @@ static int udc_init_c(void)
 	udc_write(udc_read(UDNBIE) | EP9N_IF | EP9O_IF, UDNBIE);
 	/*pullup */
 	udc_write((udc_read(UDLCSET) | 8) & 0xFE, UDLCSET);
+	udc_write(udc_read(UDCIE) & (~VBUS_IF), UDCIE);
+	udc_write(udc_read(UDCIE) & (~EPC_TRB_IF), UDCIE);
+	udc_write(udc_read(UDCIE) & (~EPC_ERF_IF), UDCIE);
+	
 	return 0;
 }
 #endif
@@ -4784,7 +4789,7 @@ static struct platform_driver sunplus_udc0_driver = {
 	.probe		= sp_udc_probe,
 	.remove		= sp_udc_remove,
 	.suspend	= sp_udc_suspend,
-	.resume		= sp_udc_remove,
+	.resume		= sp_udc_resume,
 };
 
 static struct platform_driver sunplus_udc1_driver = {
@@ -4795,7 +4800,7 @@ static struct platform_driver sunplus_udc1_driver = {
 	.probe		= sp_udc_probe,
 	.remove		= sp_udc_remove,
 	.suspend	= sp_udc_suspend,
-	.resume		= sp_udc_remove,
+	.resume		= sp_udc_resume,
 };
 
 static int __init udc_init(void)

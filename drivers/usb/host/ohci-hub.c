@@ -337,6 +337,7 @@ static int ohci_bus_resume (struct usb_hcd *hcd)
 	return rc;
 }
 
+#if 0
 /* Carry out the final steps of resuming the controller device */
 static void ohci_finish_controller_resume(struct usb_hcd *hcd)
 {
@@ -378,6 +379,7 @@ static void ohci_finish_controller_resume(struct usb_hcd *hcd)
 
 	usb_hcd_resume_root_hub(hcd);
 }
+#endif
 
 /* Carry out polling-, autostop-, and autoresume-related state changes */
 static int ohci_root_hub_state_changes(struct ohci_hcd *ohci, int changed,

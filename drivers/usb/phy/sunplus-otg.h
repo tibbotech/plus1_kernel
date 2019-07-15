@@ -60,10 +60,8 @@ struct sp_otg {
 	struct usb_phy otg;
 
 	struct sp_regs_otg __iomem *regs_otg;
-#if 1	//shih test
 	struct sp_regs_udsdi __iomem *regs_udsdi;
 	struct sp_regs_moon4 __iomem *regs_moon4;
-#endif
 
 	int irq;
 
@@ -111,7 +109,6 @@ struct sp_regs_otg {
 	u32 adp_debug_reg;
 };
 
-#if 1	//shih test
 struct sp_regs_udsdi {
 	u32 udccs;
 };
@@ -150,7 +147,6 @@ struct sp_regs_moon4 {
 	u32 mo4_uphy0_sts;
 	u32 otp_sp;
 };
-#endif
 
 /* Context: can sleep */
 static inline int

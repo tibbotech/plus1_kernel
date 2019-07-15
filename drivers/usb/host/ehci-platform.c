@@ -120,11 +120,15 @@ static int ehci_reset_thread(void *arg)
 	struct ehci_hcd *ehci = (struct ehci_hcd *)arg;
 	struct ehci_hcd_sp *sp_ehci = (struct ehci_hcd_sp *)arg;
 	struct usb_hcd *hcd = ehci_to_hcd(ehci);
+#ifndef CONFIG_USB_SUNPLUS_OTG
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
+#endif
 
 	int i;
 	u32 flag;
+#ifndef CONFIG_USB_SUNPLUS_OTG
 	void __iomem *reg_addr;
+#endif
 
 	do {
 
@@ -168,6 +172,7 @@ NEXT_LOOP:
 
 			usb_remove_hcd(hcd);
 
+#ifndef CONFIG_USB_SUNPLUS_OTG
 			if (flag & RESET_UPHY_SIGN) {
 				reg_addr = (pdev->id - 1) ? uphy1_base_addr : uphy0_base_addr;
 				hcd->uphy_disconnect_level[pdev->id - 1] = readl(reg_addr + DISC_LEVEL_OFFSET);
@@ -177,6 +182,7 @@ NEXT_LOOP:
 				/*tell ohci reset controllor */
 				sp_ehci->flag = RESET_SENDER;
 			}
+#endif
 
 			msleep(100);
 

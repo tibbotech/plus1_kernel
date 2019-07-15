@@ -189,6 +189,7 @@ static struct usb_hub *hdev_to_hub(struct usb_device *hdev)
 }
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
+extern struct sp_otg *sp_otg_host;
 extern void detech_start(void);
 static int hnp_polling_watchdog(void *arg)
 {
@@ -207,7 +208,6 @@ static int hnp_polling_watchdog(void *arg)
 		} else {
 			host_req_flag = otg_status & 0x1;
 			if(host_req_flag) {
-#ifdef CONFIG_USB_SUNPLUS_OTG
 				otg_phy = usb_get_transceiver_sp(udev->bus->busnum-1);
 				if(!otg_phy){
 					printk("Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
@@ -229,8 +229,7 @@ static int hnp_polling_watchdog(void *arg)
 				otg_start_hnp(otg_phy->otg);
 				msleep(1);
 				detech_start();
-				break;
-#endif
+				return 0;
 			} else {
 			  msleep(1000);
 			}
@@ -2679,9 +2678,7 @@ void usb_disconnect(struct usb_device **pdev)
 		reset_usb_wake_up(udev);
 	}
 	#else
-		#if 0
 	reset_usb_wake_up(udev);
-		#endif
 	#endif
 #endif
 
@@ -2751,7 +2748,7 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 		unsigned			port1 = udev->portnum;
 
 		/* descriptor may appear anywhere in config */
-	#if CONFIG_USB_SUNPLUS_OTG
+	#ifdef CONFIG_USB_SUNPLUS_OTG
 		udev->device_support_hnp_flag = true;
 	#endif
 
@@ -5853,7 +5850,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 #endif
 		if (!hub->hdev->parent) {
 #ifdef CONFIG_USB_SUNPLUS_OTG
-			if(udev->device_support_hnp_flag){
+			if((udev->device_support_hnp_flag) && (sp_otg_host->fsm.id == 0)){
 				udev->hnp_polling_timer = kthread_create(hnp_polling_watchdog,udev,"hnp_polling");
 				wake_up_process(udev->hnp_polling_timer);
 			}

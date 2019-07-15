@@ -87,7 +87,6 @@ static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 {
 	s32 ret;
 	u32 port_id = 0;
-	struct device *dev = &pdev->dev;
 
 	usb_vbus_gpio[port_id] = of_get_named_gpio(pdev->dev.of_node, "vbus-gpio", 0);
 	if ( !gpio_is_valid( usb_vbus_gpio[port_id]))

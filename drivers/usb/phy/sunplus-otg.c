@@ -12,18 +12,15 @@
 
 #define DRIVER_NAME		"sp-otg"
 
-static struct usb_phy *phy;
 struct sp_otg *sp_otg_host = NULL;
+EXPORT_SYMBOL(sp_otg_host);
 static struct usb_phy *phy_sp[2] = {NULL, NULL};
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num)
 {
-	printk("%s.%d,,%d,%x\n",__FUNCTION__,__LINE__,bus_num,phy_sp[bus_num]);
 	if (phy_sp[bus_num]){
-		printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 		return phy_sp[bus_num];
 	} else {
-		printk("%s.%d,,%d,%x\n",__FUNCTION__,__LINE__,bus_num,phy_sp[bus_num]);
 		return NULL;
 	}
 }
@@ -33,11 +30,9 @@ int usb_set_transceiver_sp(struct usb_phy *x, int bus_num)
 {
 	//dump_stack();
 	if (phy_sp[bus_num] && x){
-		printk("%s.%d,,%d,%x,%x\n",__FUNCTION__,__LINE__,bus_num,phy_sp[bus_num],x);
 		return -EBUSY;
 	}
 	phy_sp[bus_num]= x;
-	printk("%s.%d,,%d,%x,%x\n",__FUNCTION__,__LINE__,bus_num,phy_sp[bus_num],x);
 	return 0;
 }
 EXPORT_SYMBOL(usb_set_transceiver_sp);
@@ -86,7 +81,7 @@ void dump_debug_register(struct usb_otg *otg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->phy, struct sp_otg, otg);
 
-	printk("%s.%d,otg_debug:%x,%x\n",__FUNCTION__,__LINE__,
+	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 }
 EXPORT_SYMBOL(dump_debug_register);
@@ -97,19 +92,16 @@ void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 
 	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->phy, struct sp_otg, otg);
 
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 	val = readl(&otg_host->regs_otg->otg_device_ctrl);
 	val |= B_HNP_EN_BIT;
 	val |= B_VBUS_REQ;
 	writel(val, &otg_host->regs_otg->otg_device_ctrl);
-#if 1	//shih test
+	
         val = 0xC0000000;
 	writel(val, &otg_host->regs_udsdi->udccs);
 	
 	val = 0x01000100;
 	writel(val, &otg_host->regs_moon4->mo4_uphy0_ctl_0);
-#endif
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 }
 
 static int sp_start_hnp(struct usb_otg *otg)
@@ -119,12 +111,12 @@ static int sp_start_hnp(struct usb_otg *otg)
 	u32 ret;
 
 	ret = readl(&otg_host->regs_otg->otg_device_ctrl);
-	printk("%s.%d,otg_debug:%x,%x\n",__FUNCTION__,__LINE__,
+	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 	ret |= A_SET_B_HNP_EN_BIT;
 	ret &= ~A_BUS_REQ_BIT;
 	writel(ret, &otg_host->regs_otg->otg_device_ctrl);
-	printk("%s.%d,otg_debug:%x,%x\n",__FUNCTION__,__LINE__,
+	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 	otg_host->otg.state = OTG_STATE_A_PERIPHERAL;
 
@@ -197,7 +189,6 @@ static void sp_otg_work(struct work_struct *work)
 	struct sp_otg *otg_host;
 	u32 val;
 
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 	otg_host = (struct sp_otg *)container_of(work, struct sp_otg,
 						work);
 	
@@ -253,8 +244,6 @@ static void sp_otg_work(struct work_struct *work)
 	default:
 		break;
 	}
-
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 }
 
 /* host/client notify transceiver when event affects HNP state */
@@ -379,7 +368,6 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 	u32 int_status;
 	u32 val;
 
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 //	struct timespec	t0;
 //	getnstimeofday(&t0);
 
@@ -419,13 +407,8 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 	if (int_status & B_AIDL_BDIS_IF) {
 		otg_debug("B_AIDL_BDIS_IF\n");
-		#if 1		//shih test
-		printk("usbc ctl value = 0x%08X\n", otg_host->regs_moon4->mo4_usbc_ctl);
 		val = 0x00100000;
 		writel(val, &otg_host->regs_moon4->mo4_usbc_ctl);
-		printk("usbc ctl addr = 0x%08X\n", &otg_host->regs_moon4->mo4_usbc_ctl);
-		printk("usbc ctl value = 0x%08X\n", otg_host->regs_moon4->mo4_usbc_ctl);
-		#endif
 	}
 
 	if (int_status & A_AIDS_BDIS_TOUT_IF) {
@@ -495,7 +478,6 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 	otg_debug(" otg irq out\n");
 
 	sp_otg_update_transceiver(otg_host);
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 
 	return IRQ_HANDLED;
 }
@@ -554,7 +536,6 @@ static int __devinit sp_otg0_probe(struct platform_device *dev)
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
 
-#if 1	//shih test
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
 	if (!res_mem) {
 		pr_err("otg no memory recourse provieded\n");
@@ -584,7 +565,6 @@ static int __devinit sp_otg0_probe(struct platform_device *dev)
 		ret = -EBUSY;
 		goto err_release_region;
 	}
-#endif
 
 	otg_host->qwork = create_singlethread_workqueue(DRIVER_NAME);
 	if (!otg_host->qwork) {
@@ -614,7 +594,7 @@ static int __devinit sp_otg0_probe(struct platform_device *dev)
 	otg_host->adp_timer.function = adp_watchdog;
 	otg_host->adp_timer.data = (unsigned long)otg_host;
 #endif
-	printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
+
 	usb_set_transceiver_sp(&otg_host->otg, dev->id - 1);
 
 	otg_hw_init(otg_host);

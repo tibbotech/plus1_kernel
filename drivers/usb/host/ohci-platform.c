@@ -217,7 +217,9 @@ static int ohci_reset_thread(void *arg)
 	u32 flag;
 	int i;
 	int irq_num = 0;
+#ifndef CONFIG_USB_SUNPLUS_OTG
 	void __iomem *reg_addr;
+#endif
 
 	do {
 

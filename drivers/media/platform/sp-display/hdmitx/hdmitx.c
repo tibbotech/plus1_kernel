@@ -178,7 +178,9 @@ static struct hdmitx_config g_cur_hdmi_cfg;
 static struct hdmitx_config g_new_hdmi_cfg;
 static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
+#ifdef CONFIG_EDID_READ
 static unsigned char edid_read_timeout = FALSE;
+#endif
 
 typedef struct {
 	void __iomem *moon4base;

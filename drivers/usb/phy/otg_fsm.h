@@ -22,13 +22,13 @@
 #define DBG(fmt, args...) printk(KERN_DEBUG "[%s]  " fmt , \
 				 __func__, ## args)
 #else
-#define DBG(fmt, args...)	do {} while (0)
+//#define DBG(fmt, args...)	do {} while (0)
 #endif
 
 #ifdef VERBOSE
 #define VDBG		DBG
 #else
-#define VDBG(stuff...)	do {} while (0)
+//#define VDBG(stuff...)	do {} while (0)
 #endif
 
 #ifdef VERBOSE
