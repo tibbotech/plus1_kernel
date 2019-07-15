@@ -45,6 +45,11 @@
  pinctrl-0 = <&hdmi_A_tx1>;
 };
 
+&uart4 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&pins_btuart>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -101,6 +106,12 @@
     sppctl,pins = <
       SP7021_IOPAD(4,SP7021_PCTL_G_GPIO,0,0)
       SP7021_IOPAD(5,SP7021_PCTL_G_GPIO,0,0)
+    >;
+ };
+ pins_btuart: pins_btuart {
+    sppctl,pins = <
+      SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_UA4_RX,0)
+      SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
     >;
  };
  buzzer0_pins: user_buzzer0_pins {
