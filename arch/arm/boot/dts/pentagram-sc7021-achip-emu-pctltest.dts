@@ -89,6 +89,18 @@
  status = "disabled";
 };
 
+&sp_uphy0 {
+  pinctrl-names = "default";
+  pinctrl-0 = <&usb0_vbus_pins>;
+  vbus-gpio = <&pctl 90 GPIO_ACTIVE_HIGH>;
+};
+
+&sp_uphy1 {
+  pinctrl-names = "default";
+  pinctrl-0 = <&usb1_vbus_pins>;
+  vbus-gpio = <&pctl 91 GPIO_ACTIVE_HIGH>;
+};
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
@@ -154,6 +166,17 @@
        SP7021_IOPAD(34,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
        SP7021_IOPAD(31,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
   >;
+ };
+
+ usb0_vbus_pins: usb0_vbus_pins {
+	sppctl,pins = <
+	  SP7021_IOPAD(90,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
+	>;
+ };
+ usb1_vbus_pins: usb1_vbus_pins {
+    sppctl,pins = <
+	  SP7021_IOPAD(91,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
+	>;
  };
 
  leds_s0_def: user_leds_s0_def {
