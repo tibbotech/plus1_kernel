@@ -4,17 +4,6 @@
 
 menu "Misc devices"
 
-config SP_IPC
-	tristate "Sunplus Mailbox (IPC) driver"
-	depends on ARCH_PENTAGRAM
-	default n
-
-config SP_IPC_TEST
-	bool "Sunplus Mailbox (IPC) test"
-	depends on SP_IPC
-	help
-	  echo 0 > /sys/module/sp_ipc/parameters/test
-
 config SP_ICM
 	tristate "Sunplus Input Capture (ICM) driver"
 	depends on ARCH_PENTAGRAM

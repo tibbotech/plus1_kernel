@@ -58,7 +58,7 @@ obj-$(CONFIG_PCI_ENDPOINT_TEST)	+= pci_endpoint_test.o
 # obj-y				+= sp_cbdma_test.o
 # obj-y				+= sp_rtc_isr_test.o
 obj-y				+= iop/
-obj-$(CONFIG_SP_IPC) += sp_ipc.o
+
 obj-$(CONFIG_SP_ICM) += sp_icm.o
 obj-$(CONFIG_SP_DMA0) += sp_dma0.o
 
