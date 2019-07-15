@@ -17,6 +17,8 @@
 	};
 };
 
+&sp_spinor0 {  status = "disabled";  };
+
 &hdmitx {
  pinctrl-names = "default";
  pinctrl-0 = <&hdmi_A_tx3>;

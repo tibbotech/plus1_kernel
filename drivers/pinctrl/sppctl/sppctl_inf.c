@@ -57,7 +57,7 @@ const size_t sp7021pins_allSZ = ARRAY_SIZE( sp7021pins_all);
 
 // pmux groups: some pins are muxable. group = pin
 const char * const sp7021pmux_list_s[] = {
- //D_PIS(0,0), D_PIS(0,1), D_PIS(0,2), D_PIS(0,3), D_PIS(0,4), D_PIS(0,5), D_PIS(0,6), D_PIS(0,7),
+ D_PIS( 0,0), //D_PIS( 0,1), D_PIS( 0,2), D_PIS( 0,3), D_PIS( 0,4), D_PIS( 0,5), D_PIS( 0,6), D_PIS( 0,7),
  D_PIS( 1,0), D_PIS( 1,1), D_PIS( 1,2), D_PIS( 1,3), D_PIS( 1,4), D_PIS( 1,5), D_PIS( 1,6), D_PIS( 1,7),
  D_PIS( 2,0), D_PIS( 2,1), D_PIS( 2,2), D_PIS( 2,3), D_PIS( 2,4), D_PIS( 2,5), D_PIS( 2,6), D_PIS( 2,7),
  D_PIS( 3,0), D_PIS( 3,1), D_PIS( 3,2), D_PIS( 3,3), D_PIS( 3,4), D_PIS( 3,5), D_PIS( 3,6), D_PIS( 3,7),

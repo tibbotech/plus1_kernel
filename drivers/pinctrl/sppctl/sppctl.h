@@ -61,7 +61,7 @@
 #define KERR(pd,fmt,args...) { \
     if ( (pd) != NULL) {  dev_info((pd),""fmt,##args);  \
     } else {  printk( KERN_ERR      MNAME": "fmt,##args);  }  }
-#ifdef CONFIG_DEBUG_PINCTRL
+#ifdef CONFIG_PINCTRL_SPPCTL_DEBUG
 #define KDBG(pd,fmt,args...) { \
     if ( (pd) != NULL) {  dev_info((pd),""fmt,##args);  \
     } else {  printk( KERN_DEBUG    MNAME": "fmt,##args);  }  }

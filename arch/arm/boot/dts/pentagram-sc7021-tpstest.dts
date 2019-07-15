@@ -17,6 +17,8 @@
 	};
 };
 
+&sp_spinor0 {  status = "disabled";  };
+
 &l2sw {
  pinctrl-names = "default";
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
@@ -44,7 +46,7 @@
      MUXF_L2SW_LED_FLASH1
      MUXF_L2SW_LED_ON1
    >;
- }
+ };
  
  pins_iopp_nobinded: pins_iopp_nobinded {
     sppctl,pins = <
@@ -103,6 +105,10 @@
  };
  eth0_pins: pinmux_eth0_pins {
   sppctl,pins = <
+/*
+        SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+        SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+*/
        SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
        SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
        SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
@@ -114,6 +120,10 @@
  };
  eth1_pins: pinmux_eth1_pins {
   sppctl,pins = <
+/*
+       SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
+       SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
+*/
        SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
        SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
        SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
@@ -149,51 +159,51 @@
 		    pinctrl-1 = <&leds_s0_slp>;
 		    compatible = "gpio-leds";
 		    led@1 {
-                label = "SR";
-                gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "heartbeat";
-                default-state = "off";
+			label = "SR";
+			gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
 		    };
 		    led@2 {
-                label = "SG";
-                gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "mmc0";
-                default-state = "off";
+			label = "SG";
+			gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
 		    };
 		};
-        tpsleds: tpsleds {
-            compatible = "tpsleds";
-            pinctrl-names = "default";
-            pinctrl-0 = <&tpsleds_pins>;
-            status = "okay";
-            init-val = <0x0>;
-            gpios = <&pctl 5 GPIO_ACTIVE_HIGH
-                     &pctl 4 GPIO_ACTIVE_HIGH
-            >;
-        };
-	    buzzer0 {
-        	compatible = "pwm-beeper";
-        	pinctrl-names = "default";
-        	pinctrl-0 = <&buzzer0_pins>;
-        	pwms = <&pwm 0 1000000 0>;
-	    };
-	    i2c_tps: i2c-tps { /* eeprom */
-            compatible = "i2c-gpio";
-            /*i2c-gpio,scl-open-drain;*/
-            /*i2c-gpio,sda-open-drain;*/
-            i2c-gpio,delay-us = <3>;/* ~100 kHz */
-            #address-cells = <1>;
-            #size-cells = <0>;
-            pinctrl-names = "default";
-            pinctrl-0 = <&pins_i2ctps>;
-            gpios = <&pctl 2 GPIO_ACTIVE_HIGH     /* SDA */
-                     &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
+		tpsleds: tpsleds {
+		    compatible = "tpsleds";
+		    pinctrl-names = "default";
+		    pinctrl-0 = <&tpsleds_pins>;
+		    status = "okay";
+		    init-val = <0x0>;
+		    gpios = <&pctl 5 GPIO_ACTIVE_HIGH
+			     &pctl 4 GPIO_ACTIVE_HIGH
+		    >;
+		};
+		buzzer0 {
+		    compatible = "pwm-beeper";
+		    pinctrl-names = "default";
+		    pinctrl-0 = <&buzzer0_pins>;
+		    pwms = <&pwm 0 1000000 0>;
+		};
+		i2c_tps: i2c-tps { /* eeprom */
+		    compatible = "i2c-gpio";
+		    /*i2c-gpio,scl-open-drain;*/
+		    /*i2c-gpio,sda-open-drain;*/
+		    i2c-gpio,delay-us = <3>;/* ~100 kHz */
+		    #address-cells = <1>;
+		    #size-cells = <0>;
+		    pinctrl-names = "default";
+		    pinctrl-0 = <&pins_i2ctps>;
+		    gpios = <&pctl 2 GPIO_ACTIVE_HIGH     /* SDA */
+			     &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
                     >;
-            eeprom: eeprom@50 {
-                compatible = "at,24c16";
-                reg = <0x50>;
-                pagesize = <16>;
-            };
-        };
+		    eeprom: eeprom@50 {
+			compatible = "at,24c16";
+			reg = <0x50>;
+			pagesize = <16>;
+        	    };
+		};
 	};
 };

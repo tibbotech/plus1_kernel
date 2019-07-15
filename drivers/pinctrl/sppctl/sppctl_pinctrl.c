@@ -148,8 +148,8 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
           sppctl_pin_set( pctrl, _gid, j);  }   // FIXME: what is it?!
         break;
    case fOFF_M:   // MUX : 
-        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid - 7, muxF_M, muxMKEEP);
-        sppctl_pin_set( pctrl, _gid - 7, _fid - 2);    // pin, fun FIXME
+        if ( _gid != 0) sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid - 7, muxF_M, muxMKEEP);
+        sppctl_pin_set( pctrl, ( _gid == 0 ? _gid : _gid - 7), _fid - 2);    // pin, fun FIXME
         break;
    case fOFF_G:   // GROUP
         for ( i = 0; i < f.grps[ g2fpm.g_idx].pnum; i++) {
@@ -311,6 +311,11 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
      ( *_nm)++;
    }
  }
+ // handle zero function
+// list = of_get_property( _dn, "sppctl,zero", &size);
+// *_nm = size/sizeof( *list);
+// for ( i = 0; i < ( *_nm); i++) {
+// }
  of_node_put( parent);
  KDBG( _pd->dev, "%d pins mapped\n", *_nm);
  return( 0);  }

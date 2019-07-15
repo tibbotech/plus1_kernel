@@ -14,3 +14,9 @@ config PINCTRL_SPPCTL
 	help
 	    Say Y here to support SunPlus SP7021 pinmux controller.
 	    GPIO is provided by the same driver.
+
+config PINCTRL_SPPCTL_DEBUG
+	bool "SunPlus SP7021 mux specific debug"
+	depends on ARCH_PENTAGRAM && DEBUG_PINCTRL
+	help
+	    Say Y if you need to debug SP7021 mux driver in-depth.

@@ -17,6 +17,8 @@
 	};
 };
 
+&sp_spinor0 {  status = "disabled";  };
+
 &sdio {
  pinctrl-names = "default";
  pinctrl-0 = <&pins_sdio>;
