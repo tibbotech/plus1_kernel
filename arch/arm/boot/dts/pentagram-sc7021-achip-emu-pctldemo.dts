@@ -23,9 +23,22 @@
  pinctrl-names = "default";
  pinctrl-0 = <&pins_sdio>;
 };
+
 &l2sw {
  pinctrl-names = "default";
- pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
+ pinctrl-0 = <&ethA_pins &eth0_pins>;
+};
+
+&sp_uphy0 {
+  pinctrl-names = "default";
+  pinctrl-0 = <&pins_vbus_usb0>;
+  vbus-gpio = <&pctl 90 GPIO_ACTIVE_HIGH>;
+};
+
+&sp_uphy1 {
+  pinctrl-names = "default";
+  pinctrl-0 = <&pins_vbus_usb1>;
+  vbus-gpio = <&pctl 91 GPIO_ACTIVE_HIGH>;
 };
 
 &pctl {
@@ -33,17 +46,6 @@
  /* pinctrl-names = "default"; */
  /* pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>; */
 
- /* for all eth */
- pins_sdio: pins_sdio {
-  sppctl,pins = <
-       SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
-       SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
-       SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
-       SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
-       SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
-       SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
-  >;
- };
  /* for all eth */
  ethA_pins: pinmux_ethA_pins {
   sppctl,pins = <
@@ -66,19 +68,27 @@
        SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
   >;
  };
- eth1_pins: pinmux_eth1_pins {
-  sppctl,pins = <
-       SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
-       SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
 
-       SP7021_IOPAD(63,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
-       SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
-       SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
-       SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_CRSDV,0)
-       SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
-       SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
-       SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
+ pins_sdio: pins_sdio {
+  sppctl,pins = <
+       SP7021_IOPAD(65,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+       SP7021_IOPAD(66,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+       SP7021_IOPAD(67,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+       SP7021_IOPAD(68,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+       SP7021_IOPAD(69,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+       SP7021_IOPAD(70,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
   >;
+ };
+
+ pins_vbus_usb0: pins_vbus_usb0 {
+	sppctl,pins = <
+	  SP7021_IOPAD(90,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
+	>;
+ };
+ pins_vbus_usb1: pins_vbus_usb1 {
+    sppctl,pins = <
+	  SP7021_IOPAD(91,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
+	>;
  };
 
  leds_s0_def: user_leds_s0_def {

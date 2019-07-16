@@ -91,13 +91,13 @@
 
 &sp_uphy0 {
   pinctrl-names = "default";
-  pinctrl-0 = <&usb0_vbus_pins>;
+  pinctrl-0 = <&pins_vbus_usb0>;
   vbus-gpio = <&pctl 90 GPIO_ACTIVE_HIGH>;
 };
 
 &sp_uphy1 {
   pinctrl-names = "default";
-  pinctrl-0 = <&usb1_vbus_pins>;
+  pinctrl-0 = <&pins_vbus_usb1>;
   vbus-gpio = <&pctl 91 GPIO_ACTIVE_HIGH>;
 };
 
@@ -120,7 +120,7 @@
     >;
  };
 
- /* for all eth */
+ /* for SDIO */
  pins_sdio: pins_sdio {
   sppctl,pins = <
        SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
@@ -168,12 +168,12 @@
   >;
  };
 
- usb0_vbus_pins: usb0_vbus_pins {
+ pins_vbus_usb0: pins_vbus_usb0 {
 	sppctl,pins = <
 	  SP7021_IOPAD(90,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
 	>;
  };
- usb1_vbus_pins: usb1_vbus_pins {
+ pins_vbus_usb1: pins_vbus_usb1 {
     sppctl,pins = <
 	  SP7021_IOPAD(91,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT)
 	>;
@@ -295,7 +295,6 @@
        SP7021_IOPAD(10,SP7021_PCTL_G_PMUX,MUXF_SPIM3_DI,0)
   >;
  };
-
 
 };
 
