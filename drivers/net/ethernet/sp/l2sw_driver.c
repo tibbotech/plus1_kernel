@@ -269,7 +269,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 		}
 
 		smac = mac;
-		if ((mac->next_netdev) && ((cmd & FORCE_DP_MASK) == FORCE_DP_P1)) {
+		if ((mac->next_netdev) && ((cmd & TO_VLAN_MASK) == TO_VLAN_GROUP1)) {
 			smac = netdev_priv(mac->next_netdev);
 		}
 

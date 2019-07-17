@@ -97,8 +97,8 @@
 #define LEN_MASK                        0x000007FF
 #define PKTSP_MASK                      0x00007000
 #define PKTSP_PORT1                     0x00001000
-#define FORCE_DP_MASK                   0x000C0000
-#define FORCE_DP_P1                     0x00080000
+#define TO_VLAN_MASK                    0x0003F000
+#define TO_VLAN_GROUP1                  0x00002000
 
 #define EOR_BIT                         (1<<31)
 
