@@ -90,7 +90,9 @@ extern int uphy0_irq_num;
 extern int uphy1_irq_num;
 extern void __iomem *uphy0_base_addr;
 extern void __iomem *uphy1_base_addr;
+#if 0
 extern u32 usb_vbus_gpio[USB_PORT_NUM];
+#endif
 
 extern u8 max_topo_level;
 extern bool tid_test_flag;
@@ -126,10 +128,15 @@ typedef enum {
 	eHW_GPIO_STS_NULL
 } eHW_IO_STS;
 
-
+#if 0
 #define	ENABLE_VBUS_POWER(port) gpio_set_value(usb_vbus_gpio[port], eHW_GPIO_STS_LOW)
 
 #define	DISABLE_VBUS_POWER(port) gpio_set_value(usb_vbus_gpio[port], eHW_GPIO_STS_HIGH)
+#else
+#define	ENABLE_VBUS_POWER(port)
+
+#define	DISABLE_VBUS_POWER(port)
+#endif
 
 
 static inline void uphy_force_disc(int en, int port)

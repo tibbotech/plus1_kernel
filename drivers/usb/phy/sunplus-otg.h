@@ -7,6 +7,8 @@
 #define otg_debug(fmt, args...)               printk("#@#OTG: "fmt, ##args)
 //#define otg_debug(fmt, args...)
 
+//#define OTG_TEST
+
 //#define       CONFIG_ADP_TIMER
 #define	ADP_TIMER_FREQ	(5*HZ)
 
@@ -54,7 +56,7 @@
 #define		ID_CHAGE_IF			(1 << 1)
 #define		OVERCURRENT_IF 		(1 << 0)
 
-#define 	ENABLE_OTG_INT(x)		iowrite32(0x3fff, x)
+#define 	ENABLE_OTG_INT(x)		iowrite32(0x3ff, x)
 
 struct sp_otg {
 	struct usb_phy otg;

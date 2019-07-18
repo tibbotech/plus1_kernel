@@ -55,6 +55,11 @@ char *g_hw;
 
 #define MANUAL_EP11
 #define  SW_IRQ
+
+#ifdef OTG_TEST
+extern struct sp_otg *sp_otg_host;
+#endif
+
 static u32 is_ncm = 0;
 #ifndef USBTEST_ZERO
 struct tasklet_struct *t_task;
@@ -121,7 +126,11 @@ struct sp_ep_iso ep_iso_5;
 struct sp_ep_iso ep_iso_12;
 char dma_flag = 0;
 char dma_flag_b = 0;
+#ifdef OTG_TEST
+static u32 dmsg = 0xFF;
+#else
 static u32 dmsg = 0x2;
+#endif
 u32 nth_len;
 u32 dma_len_ep1;
 u32 dma_len;
@@ -155,7 +164,11 @@ EXPORT_SYMBOL_GPL(is_vera);
 EXPORT_SYMBOL_GPL(is_ean);
 EXPORT_SYMBOL_GPL(dma_fail);
 #ifdef CONFIG_USB_SUNPLUS_OTG
+	#ifdef OTG_TEST
+static u32 dev_otg_status = 1;
+	#else
 static u32 dev_otg_status = 0;
+	#endif
 module_param(dev_otg_status, uint, 0644);
 #endif
 
@@ -933,7 +946,7 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 {
 	int len;
 	int ret;
-#ifdef CONFIG_USB_SUNPLUS_OTG	//shih test
+#ifdef CONFIG_USB_SUNPLUS_OTG
 	struct usb_phy *otg_phy;
 #endif
 
@@ -4564,6 +4577,10 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc_write(udc_read(UDNBIE) | EP9N_IF | EP9O_IF, UDNBIE);
 
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
+	
+#ifdef OTG_TEST
+	sp_otg_host->regs_otg->otg_init_en = 0x3FF;
+#endif
 
 	return 0;
 err_add_udc:

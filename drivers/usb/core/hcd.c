@@ -110,8 +110,10 @@ EXPORT_SYMBOL_GPL(uphy1_irq_num);
 EXPORT_SYMBOL_GPL(uphy0_base_addr);
 EXPORT_SYMBOL_GPL(uphy1_base_addr);
 
+#if 0
 u32 usb_vbus_gpio[USB_PORT_NUM];
 EXPORT_SYMBOL(usb_vbus_gpio);
+#endif
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
 struct timer_list hnp_polling_timer;
