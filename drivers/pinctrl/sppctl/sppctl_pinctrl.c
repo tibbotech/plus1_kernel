@@ -239,20 +239,6 @@ void stpctl_o_show( struct pinctrl_dev *_pd, struct seq_file *_s, unsigned _n) {
 #define stpctl_ops_show NULL
 #endif
 
-int reserve_map( struct device *_d, struct pinctrl_map **map,
-		       unsigned int *reserved_maps, unsigned int *num_maps,
-		       unsigned int reserve)  {
- unsigned int num_old = *num_maps, num_new = *num_maps + reserve;
- struct pinctrl_map *new_map;
- if ( num_old >= num_new) return 0;
- if ( !( new_map = krealloc( *map, sizeof( *new_map)*num_new, GFP_KERNEL))) {
-   dev_err( _d, "krealloc(map) failed\n");
-   return( -ENOMEM);  }
- memset( new_map + num_old, 0, ( num_new - num_old) * sizeof(*new_map));
- *map = new_map;
- *reserved_maps = num_new;
- return( 0);  }
-
 int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pinctrl_map **_map, unsigned *_nm) {
  struct device_node *parent;
  u32 dt_pin;
@@ -262,11 +248,13 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  const __be32 *list = of_get_property( _dn, "sppctl,pins", &size);
  struct property *prop;
  const char *s_f, *s_g;
+ int nmG = of_property_count_strings( _dn, "sppctl,groups");
 //print_device_tree_node( _dn, 0);
+ if ( nmG <= 0) nmG = 0;
  parent = of_get_parent( _dn);
  *_nm = size/sizeof( *list);
- *_map = devm_kcalloc( _pd->dev, *_nm, sizeof( **_map), GFP_KERNEL);
- configs = devm_kcalloc( _pd->dev, *_nm, sizeof( *configs), GFP_KERNEL);
+ *_map = kcalloc( *_nm + nmG, sizeof( **_map), GFP_KERNEL);
+ configs = kcalloc( *_nm + nmG, sizeof( *configs), GFP_KERNEL);
  for ( i = 0; i < ( *_nm); i++) {
     dt_pin = be32_to_cpu( list[ i]);
     p_p = SP7021_PCTLD_P(dt_pin);
@@ -298,10 +286,8 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
     }
  }
  // handle function and group (IOP)
- ret = of_property_count_strings( _dn, "sppctl,groups");
- if ( ret > 0 && of_property_read_string( _dn, "sppctl,function", &s_f) == 0) {
+ if ( nmG > 0 && of_property_read_string( _dn, "sppctl,function", &s_f) == 0) {
    KDBG( _pd->dev, "found func: %s\n", s_f);
-   reserve_map( _pd->dev, _map, &reserved_maps, _nm, ret);
    of_property_for_each_string( _dn, "sppctl,groups", prop, s_g) {
      KDBG( _pd->dev, " %s: %s\n", s_f, s_g);
      (* _map)[ *_nm].type = PIN_MAP_TYPE_MUX_GROUP;
