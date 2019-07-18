@@ -129,7 +129,7 @@ void vpost_dma(void)
 	wreg_b(199, 0, 0x1010);
 }
 
-int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422)
+int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 {
 //#include "vpp_pattern/vpp_test_512x300_420.h"
 //#include "vpp_pattern/vpp_test_512x300_422.h"
@@ -143,10 +143,12 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422)
 #ifdef TTL_MODE_SUPPORT
 	diag_printf("ddfch setting for LCD \n");
 	wreg_b(185, 0, 1);
-	if (is_yuv422)
-		wreg_b(185, 1, 0x400);	//source yuv422
-	else
-		wreg_b(185, 1, 0x0);	//source yuv420
+	if (yuv_fmt == 0)
+		wreg_b(185, 1, 0x0);	//source yuv420 NV12
+	else if(yuv_fmt == 1)
+		wreg_b(185, 1, 0x400);	//source yuv422 NV16
+	else if(yuv_fmt == 2)
+		wreg_b(185, 1, 0x800);	//source yuv422 YUY2
 	wreg_b(185, 2, 0xd0);
 	wreg_b(185, 6, luma_addr>>10);
 	wreg_b(185, 9, chroma_addr>>10);
@@ -159,10 +161,12 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422)
 #else
 	diag_printf("ddfch setting for HDMI \n");
 	wreg_b(185, 0, 1);
-	if (is_yuv422)
-		wreg_b(185, 1, 0x400);	//source yuv422
-	else
-		wreg_b(185, 1, 0x0);	//source yuv420
+	if (yuv_fmt == 0)
+		wreg_b(185, 1, 0x0);	//source yuv420 NV12
+	else if(yuv_fmt == 1)
+		wreg_b(185, 1, 0x400);	//source yuv422 NV16
+	else if(yuv_fmt == 2)
+		wreg_b(185, 1, 0x800);	//source yuv422 YUY2
 	wreg_b(185, 2, 0xd0);
 	wreg_b(185, 6, luma_addr>>10);
 	wreg_b(185, 9, chroma_addr>>10);

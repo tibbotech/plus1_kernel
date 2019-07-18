@@ -94,6 +94,9 @@
 	#define MON_CMD_LEN			(256)
 #endif
 
+#define VPP_FMT_HDMI 0 //0:YUV420_NV12 , 1:YUV422_NV16 , 2:YUV422_YUY2
+#define VPP_FMT_TTL 0 //0:YUV420_NV12 , 1:YUV422_NV16 , 2:YUV422_YUY2
+
 //#define TEST_DMA
 
 #ifdef TEST_DMA
@@ -638,6 +641,9 @@ static volatile UINT32 *G4;
 #endif
 #ifdef MODULE
 static UINT32 *yuv420;
+#else
+static UINT32 *vpp_yuv_ptr;
+int vpp_alloc_size;
 #endif
 static volatile UINT32 *aio;
 
@@ -1634,17 +1640,61 @@ char yuv422_array[768*480*2] __attribute__((aligned(1024))) = {
 };
 #endif
 #ifdef TTL_MODE_SUPPORT
-char yuv420_array[384*240*3/2] __attribute__((aligned(1024))) = {
-	#include "vpp_pattern/yuv420_NV12_320x240.h"
-//	#include "vpp_pattern/vpp_test_512x300_420.h"
-//	#include "vpp_pattern/vpp_test_1024x600_420.h"
-};
+	#if (VPP_FMT_TTL == 0) //YUV420_NV12
+	char vpp_yuv_array[384*240*3/2] __attribute__((aligned(1024))) = {
+		#include "vpp_pattern/yuv420_NV12_320x240.h"
+	};
+	#elif (VPP_FMT_TTL == 1) //YUV422_NV16
+	char vpp_yuv_array[384*240*2] __attribute__((aligned(1024))) = {
+		#include "vpp_pattern/yuv422_NV16_320x240.h"
+	};	
+	#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
+	char vpp_yuv_array[384*240*2] __attribute__((aligned(1024))) = {
+		#include "vpp_pattern/yuv422_YUY2_320x240.h"
+	};
+	#else //YUV420_NV12
+	char vpp_yuv_array[384*240*3/2] __attribute__((aligned(1024))) = {
+		#include "vpp_pattern/yuv420_NV12_320x240.h"
+	};
+	#endif
 #else
-char yuv420_array[768*480*3/2] __attribute__((aligned(1024))) = {
-	#include "vpp_pattern/yuv420_NV12_720x480.h"
-//	#include "vpp_pattern/vpp_test_512x300_420.h"
-//	#include "vpp_pattern/vpp_test_1024x600_420.h"
-};
+	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
+		#if (VPP_FMT_HDMI == 0) //YUV420_NV12
+		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_720x480.h"
+		};
+		#elif (VPP_FMT_HDMI == 1) //YUV422_NV16
+		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_NV16_720x480.h"
+		};
+		#elif (VPP_FMT_HDMI == 2) //YUV422_YUY2
+		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_YUY2_720x480.h"
+		};
+		#else
+		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_720x480.h"
+		};
+		#endif
+	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
+		#if (VPP_FMT_HDMI == 0) //YUV420_NV12
+		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_1280x720.h"
+		};
+		#elif (VPP_FMT_HDMI == 1) //YUV422_NV16
+		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_NV16_1280x720.h"
+		};
+		#elif (VPP_FMT_HDMI == 2) //YUV422_YUY2
+		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_YUY2_1280x720.h"
+		};
+		#else
+		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_1280x720.h"
+		};
+		#endif
+	#endif
 #endif
 
 static void _display_destory_clk(void)
@@ -2033,7 +2083,25 @@ static int _display_probe(struct platform_device *pdev)
 	memcpy(yuv420, yuv420_array, 768*480*3/2);
 	ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
 	#else
-	ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, 0);
+		#ifdef TTL_MODE_SUPPORT
+			#if ((VPP_FMT_TTL == 0)||(VPP_FMT_TTL == 1)||(VPP_FMT_TTL == 2))
+				vpp_alloc_size = (VPP_FMT_TTL)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
+				vpp_yuv_ptr = ioremap(0x00100000, vpp_alloc_size);
+				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
+				ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
+			#else
+				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
+			#endif
+		#else 
+			#if ((VPP_FMT_HDMI == 0)||(VPP_FMT_HDMI == 1)||(VPP_FMT_HDMI == 2))
+				vpp_alloc_size = (VPP_FMT_HDMI)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
+				vpp_yuv_ptr = ioremap(0x00100000, vpp_alloc_size);
+				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
+				ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
+			#else
+				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
+			#endif
+		#endif
 	#endif
 #endif
 	}
