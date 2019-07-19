@@ -896,6 +896,7 @@ static int sp_udc_readep0s_fifo_crq(struct usb_ctrlrequest *crq)
 
 	DEBUG_INFO("read ep0 fifi crq ,len= %d\n", udc_read(UDEP0DC));
 	memcpy((unsigned char *)outbuf, (char *)(UDEP0SDP + base_addr), 4);
+	mb();
 	memcpy((unsigned char *)(outbuf + 4), (char *)(UDEP0SDP + base_addr), 4);
 
 	return 8;

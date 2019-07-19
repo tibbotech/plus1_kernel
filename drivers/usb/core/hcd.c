@@ -2302,9 +2302,12 @@ EXPORT_SYMBOL_GPL(reset_usb_powerx);
 
 void Reset_Usb_PowerCtrl(int port, int on)
 {
-	if (port > USB_PORT1_ID)		/*0 or 1 */
+	if (port > USB_PORT1_ID) {		/*0 or 1 */
 		return;
-		printk(KERN_NOTICE "USB power %d %s\n", port, on ? "on" : "off");
+	}
+	
+	printk(KERN_NOTICE "USB power %d %s\n", port, on ? "on" : "off");
+	
 	if (!on) {
 		DISABLE_VBUS_POWER(port);
 		uphy_force_disc(1, port);
