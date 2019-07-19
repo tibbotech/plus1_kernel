@@ -25,7 +25,8 @@
 #include <mach/io_map.h>
 #include <linux/clk.h>
 #include <linux/reset.h> 
-#include <linux/thermal.h> 
+#include <linux/thermal.h>
+#include <linux/nvmem-consumer.h>
 
 /* ---------------------------------------------------------------------------------------------- */
 //#define THERMAL_FUNC_DEBUG
@@ -162,12 +163,33 @@ static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
 int otp_thermal_t0 = 0;
 int otp_thermal_t1 = 0;
 
-static void sp7021_get_otp_temp_coef( void) {
- char otp_temp[ 3];
+char *sp7021_otp_coef_read( struct device *_d, const char *_name, ssize_t *_l) {
+ char *ret = NULL;
+ struct nvmem_cell *c = nvmem_cell_get( _d, _name);
+ if ( IS_ERR( c)) {
+   dev_err( _d, "read OTP %s failure", _name);
+   return ERR_CAST( c);  }
+ ret = nvmem_cell_read( c, _l);
+ nvmem_cell_put( c);
+ dev_dbg( _d, "%d bytes read from OTP %s", _l, _name);
+ return( ret);  }
 
- read_otp_data( OTP_THERMAL_L,  &otp_temp[ 0]);
- read_otp_data( OTP_THERMAL_H,  &otp_temp[ 1]);
- read_otp_data( OTP_THERMAL_FT, &otp_temp[ 2]);
+static void sp7021_get_otp_temp_coef( struct device *_d) {
+ ssize_t otp_len;
+ struct device_node *np = _d->of_node;
+ char *otp_temp
+ const char *otp_name;
+
+ of_property_read_string( np, "fwname", &otp_name);
+ if ( !otp_name) {
+   dev_err( _d, "no OTP reg", _name);
+   return;  }
+ otp_temp = sp7021_otp_coef_read( _d, otp_name, otp_len);
+ if ( otp_len < 3) return;
+ 
+// read_otp_data( OTP_THERMAL_L,  &otp_temp[ 0]);
+// read_otp_data( OTP_THERMAL_H,  &otp_temp[ 1]);
+// read_otp_data( OTP_THERMAL_FT, &otp_temp[ 2]);
 
  otp_thermal_t0 = otp_temp[ 0] | (otp_temp[ 1] << 8);
  otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
@@ -274,7 +296,7 @@ static int sp7021_thermal_probe(struct platform_device *plat_dev)
 
 	platform_set_drvdata(plat_dev, sp_data);
 
- sp7021_get_otp_temp_coef();
+ sp7021_get_otp_temp_coef( &( plat_dev->dev));
 	ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
     if ( ret == 0) printk( KERN_INFO "SP7021 SoC thermal by SunPlus (C) 2019");
 	return ret;	
