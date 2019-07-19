@@ -25,8 +25,7 @@
 #include <mach/io_map.h>
 #include <linux/clk.h>
 #include <linux/reset.h> 
-
-#include "thermal_core.h"
+#include <linux/thermal.h> 
 
 /* ---------------------------------------------------------------------------------------------- */
 //#define THERMAL_FUNC_DEBUG
