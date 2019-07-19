@@ -269,6 +269,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to prepare clk: %d\n", ret);
 		return ret;
 	}
+	clk_enable(otp->clk);
 
 	data = match->data;
 
