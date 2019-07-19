@@ -159,7 +159,7 @@ struct sp_ctl_reg {
 
 static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
 
-int otp_thermal_t0 = 0
+int otp_thermal_t0 = 0;
 int otp_thermal_t1 = 0;
 
 static void sp7021_get_otp_temp_coef( void) {
