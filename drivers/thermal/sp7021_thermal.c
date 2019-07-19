@@ -77,7 +77,6 @@ struct sp_thermal_data {
 
 	long sensor_temp;
 	uint32_t id;
-	uint32_t thres_temp;
 	void __iomem *regs;
 };
 
@@ -230,15 +229,6 @@ static int sp_thermal_register_sensor(struct platform_device *pdev,
 			data->id, ret);
 		return ret;
 	}
-
-//	trip = of_thermal_get_trip_points(data->pcb_tz);
-//
-//	for (i = 0; i < of_thermal_get_ntrips(data->pcb_tz); i++) {
-//		if (trip[i].type == THERMAL_TRIP_PASSIVE) {
-//			data->thres_temp = trip[i].temperature;
-//			break;
-//		}
-//	}
 
 	return 0;
 }
