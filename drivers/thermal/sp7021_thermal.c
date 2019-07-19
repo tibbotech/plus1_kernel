@@ -1,6 +1,16 @@
 /*
- * SP7021 THERMAL function:
+ * SP7021 SoC thermal driver.
+ * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 #include <linux/cpufreq.h>
@@ -17,16 +27,6 @@
 #include <linux/reset.h> 
 
 #include "thermal_core.h"
-
-
-#if 0
-/* For code development on SP7021 */
-#define VA_B_REG		0xF8000000
-
-#define MOON5_ADDR		(VA_B_REG + (0x80 * 5))
-
-#endif
-
 
 /* ---------------------------------------------------------------------------------------------- */
 //#define THERMAL_FUNC_DEBUG
@@ -52,34 +52,26 @@
 #endif
 /* ---------------------------------------------------------------------------------------------- */
 
-
 #define DISABLE_THREMAL  (1<<31 | 1<<15)
 #define ENABLE_THREMAL  (1<<31)
 
 #define THERMAL_M_MODE_EN  (1<<30 | 1<<14)
 #define THERMAL_M_MODE_DISABLE (1<<30)
 
-
-
 #define TEMP_MASK  (0x7FF)
 #define OTP_THERMAL_L  20
 #define OTP_THERMAL_H  21
 #define OTP_THERMAL_FT  22
 
-
-
-
 #define TEMP_RATE  608
 
 extern int read_otp_data(int addr, char *value);
-
 
 /* common data structures */
 struct sp_thermal_data {
 
 	struct thermal_zone_device *pcb_tz;
 	enum thermal_device_mode mode;
-	struct work_struct thermal_wq;
 
 	struct mutex thermal_lock;    /* protects register data */
 	struct platform_device *pdev;
@@ -91,15 +83,9 @@ struct sp_thermal_data {
 };
 
 struct sp_thermal_data sp_thermal;
-//static struct sunplus_rtc *sp_rtc;
-
-//static struct clk *rtc_clk;
 
 #define MOO5_REG_NAME             "thermal_reg"
-
-
 #define MOO4_REG_NAME             "thermal_moon4"
-
 
 struct sp_thermal_reg {
 	volatile unsigned int mo5_thermal_ctl0;
@@ -137,7 +123,6 @@ struct sp_thermal_reg {
 };
 
 static volatile struct sp_thermal_reg *thermal_reg_ptr = NULL;
-
 
 struct sp_ctl_reg {
 	volatile unsigned int mo4_pllsp_ctl0;
@@ -177,116 +162,17 @@ struct sp_ctl_reg {
 
 static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
 
-
 int thermal_count = 0;
 
-
-
-
-int sp_thermal_get_temp(int *temp)
+static int sp_thermal_get_sensor_temp(void *_data, int *temp)
 {
-    int temp_code,temp100;
-	int otp_thermal_t0,otp_thermal_t1;
-    char otp_temp[3];
-
-    FUNC_DEBUG();
-
-
-	read_otp_data(OTP_THERMAL_L, &otp_temp[0]);
-	read_otp_data(OTP_THERMAL_H, &otp_temp[1]);
-    read_otp_data(OTP_THERMAL_FT, &otp_temp[2]);
-
-	otp_thermal_t0 = otp_temp[0] | (otp_temp[1] << 8);
-	otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
-	DBG_INFO("otp_thermal_t0 %x  ",otp_thermal_t0 );
-
-	otp_thermal_t1 = (otp_temp[1] >> 3) | (otp_temp[2] << 5);
-	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
-
-	//DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal_t1 %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal_t1);
-
-    if(otp_thermal_t0 == 0)
-		otp_thermal_t0 = 1488;
-	//otp_thermal = 1550;
-
-
-	temp_code = TEMP_MASK & readl(&thermal_reg_ptr->mo5_thermal_sts0);
-    temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
-    //temp100 = ((temp_code*10000)/608)+2500;
-
-    //temp100 = 25000-temp100;
-
-	*temp =  temp100;
-
-#if(0)  
-
-
-    if((temp100 >= 4500) & (thermal_count < 5)){
-		
-	//writel(0x78F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	writel(0x00F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	thermal_count++ ;
-    	}
-	else{
-	//writel(0x78F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	writel(0x00F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-		thermal_count++ ;
-	if(thermal_count >= 10)
-		thermal_count = 0;
-		}
-
-#endif
-
-
-
-	DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
-
-	
-	return 0;
-}
-EXPORT_SYMBOL(sp_thermal_get_temp);
-
-
-
-static int sp_thermal_get_senser_temp(void *_data, int *temp)
-{
-
-#if(0)
-	struct sp_thermal_data *data = _data;
-
-
-    int temp_code,temp100;
-
-    FUNC_DEBUG();
-
-	mutex_lock(&data->thermal_lock);
-
-	temp_code = TEMP_MASK & readl(&thermal_reg_ptr->mo5_thermal_sts0);
-    temp100 = (1760 - temp_code)*10000/740;
-    //temp100 = 25000-temp100;
-
-	*temp =  temp100;
-
-	mutex_unlock(&data->thermal_lock);
-
-
-	DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
-
-
-	
-	return 0;
-
-#endif
 
 	struct sp_thermal_data *data = _data;
 	struct sp_thermal_reg *thermal_reg = data->regs;
 
-
     int temp_code,temp100;
 	int otp_thermal_t0,otp_thermal_t1;
     char otp_temp[3];
-
-   // FUNC_DEBUG();
 
 	mutex_lock(&data->thermal_lock);
 
@@ -301,12 +187,10 @@ static int sp_thermal_get_senser_temp(void *_data, int *temp)
 	otp_thermal_t1 = (otp_temp[1] >> 3) | (otp_temp[2] << 5);
 	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
 
-
     //DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal	);
 
     if(otp_thermal_t0 == 0)
 		otp_thermal_t0 = 1488;
-
 
 	temp_code = TEMP_MASK & readl(&thermal_reg->mo5_thermal_sts0);
     temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
@@ -314,46 +198,20 @@ static int sp_thermal_get_senser_temp(void *_data, int *temp)
 
     //temp100 = 25000-temp100;
 
-	*temp =  temp100;
-
-#if(0)  
-
-    if((temp100 >= 4500) & (thermal_count < 5)){
-		
-	//writel(0x78F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	writel(0x00F00010 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	thermal_count++ ;
-    	}
-	else{
-	//writel(0x78F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-	writel(0x00F00000 , &sp_ctl_reg_ptr->mo_clk_sel0);	// enable thermal function
-		thermal_count++ ;
-	if(thermal_count >= 10)
-		thermal_count = 0;
-		}
-
-#endif
+	*temp =  temp100*10;   // milli means 10^-3!
 
 	mutex_unlock(&data->thermal_lock);
 
-
     DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
 
-
 return 0;
-
-
-	
 }
 
 
 
 static struct thermal_zone_of_device_ops sp_of_thermal_ops = {
-	.get_temp = sp_thermal_get_senser_temp,
+	.get_temp = sp_thermal_get_sensor_temp,
 };
-
-
-
 
 static int sp_thermal_register_sensor(struct platform_device *pdev,
 					struct sp_thermal_data *data,
@@ -387,15 +245,12 @@ static int sp_thermal_register_sensor(struct platform_device *pdev,
 }
 
 
-
-static int sp_thermal_probe(struct platform_device *plat_dev)
+static int sp7021_thermal_probe(struct platform_device *plat_dev)
 {
 
 	struct sp_thermal_data *sp_data;
 
 	int ret;
-	int temp;
-	//struct sp_thermal_reg *thermal;
 	struct resource *res;
 	void __iomem *reg_base;
 	void __iomem *ctl_base;
@@ -405,38 +260,32 @@ static int sp_thermal_probe(struct platform_device *plat_dev)
     FUNC_DEBUG();
 
 	sp_data = devm_kzalloc(&plat_dev->dev, sizeof(*sp_data), GFP_KERNEL);
-	if (!sp_data)
-		return -ENOMEM;
+	if (!sp_data) return( -ENOMEM);
 
-	mutex_init(&sp_data->thermal_lock);
-
-
-	//memset(sp_rtc, 0, sizeof(sp_rtc));
 	memset(&sp_thermal, 0, sizeof(sp_thermal));
 
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MOO5_REG_NAME);
-	if (res) {
-		reg_base = devm_ioremap(&plat_dev->dev, res->start, resource_size(res));
-		if (IS_ERR(reg_base)) {
-			dev_err(&plat_dev->dev,"%s devm_ioremap_resource fail\n",MOO5_REG_NAME);
-		}
-	}
-	dev_dbg(&plat_dev->dev,"reg_base 0x%x\n",(unsigned int)reg_base);
+    if ( IS_ERR( res)) {
+      dev_err( &plat_dev->dev,"get_resource(%s) fail\n",MOO5_REG_NAME);
+      return( PTR_ERR( res));  }
+	reg_base = devm_ioremap( &plat_dev->dev, res->start, resource_size(res));
+	if (IS_ERR(reg_base)) {
+      dev_err( &plat_dev->dev,"ioremap_resource(%s) fail\n",MOO5_REG_NAME);
+      return( PTR_ERR( res));  }
 	sp_data->regs = reg_base;
-
 
 	DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MOO4_REG_NAME);
-	if (res) {
-		ctl_base = devm_ioremap(&plat_dev->dev, res->start, resource_size(res));
-		if (IS_ERR(reg_base)) {
-			dev_err(&plat_dev->dev,"%s devm_ioremap_resource fail\n",MOO4_REG_NAME);
-		}
-	}
-	dev_dbg(&plat_dev->dev,"reg_base 0x%x\n",(unsigned int)ctl_base);
+    if ( IS_ERR( res)) {
+      dev_err( &plat_dev->dev,"get_resource(%s) fail\n",MOO4_REG_NAME);
+      return( PTR_ERR( res));  }
+	ctl_base = devm_ioremap( &plat_dev->dev, res->start, resource_size(res));
+	if (IS_ERR(reg_base)) {
+      dev_err( &plat_dev->dev,"ioremap_resource(%s) fail\n",MOO4_REG_NAME);
+      return( PTR_ERR( res));  }
 
-
+    DBG_INFO("reg:%p ctl:%p\n", reg_base, ctl_base);
 
 	thermal_reg_ptr = (volatile struct sp_thermal_reg *)(reg_base);
 	sp_ctl_reg_ptr = (volatile struct sp_ctl_reg *)(ctl_base);	
@@ -445,63 +294,41 @@ static int sp_thermal_probe(struct platform_device *plat_dev)
    // writel(THERMAL_M_MODE_EN , &thermal_reg_ptr->mo5_thermal_ctl0);  // enable thermal m mode
    // writel(0x00060002 , &thermal_reg_ptr->mo5_thermal_ctl0);  // enable thermal function
 
-
-   //ctl_code = 0xFFFF & readl(&sp_ctl_reg_ptr->mo_clk_sel0);
-
-  // writel(0x78F07810 , &sp_ctl_reg_ptr->mo_clk_sel0);  // enable thermal function
-
    ctl_code = 0xFFFF & readl(&sp_ctl_reg_ptr->mo_clk_sel0);
-
+  // writel(0x78F07810 , &sp_ctl_reg_ptr->mo_clk_sel0);  // enable thermal function
 
    DBG_INFO("ctl_code %x ",ctl_code );
 
-
 	platform_set_drvdata(plat_dev, sp_data);
 
-
 	ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
-
-	DBG_INFO(" ret %d",ret );
-
-    ret =  sp_thermal_get_temp(&temp);
-
-
-	DBG_INFO(" temp %d",temp );
-	
+    if ( ret == 0) printk( KERN_INFO "SP7021 SoC thermal by SunPlus (C) 2019");
+	mutex_init( &sp_data->thermal_lock);
 	return ret;	
-	
 }
 
-static int sp_thermal_remove(struct platform_device *plat_dev)
+static int sp7021_thermal_remove(struct platform_device *plat_dev)
 {
-	//struct sp_thermal_data *sp_data = platform_get_drvdata(plat_dev);
-
-	//reset_control_assert(sp_rtc.rstc);
-	
-	//rtc_device_unregister(rtc);
+    // nothing to do case devm_*
 	return 0;
 }
 
-static const struct of_device_id of_sp_thermal_match[] = {
+static const struct of_device_id of_sp7021_thermal_ids[] = {
 	{ .compatible = "sunplus,sp7021-thermal" },
 	{ /* sentinel */ }
 };
-MODULE_DEVICE_TABLE(of, sp_rtc_of_match);
+MODULE_DEVICE_TABLE(of, of_sp7021_thermal_ids);
 
-static struct platform_driver sp_thermal_driver = {
-	.probe		= sp_thermal_probe,
-	.remove 	= sp_thermal_remove,
+static struct platform_driver sp7021_thermal_driver = {
+	.probe		= sp7021_thermal_probe,
+	.remove 	= sp7021_thermal_remove,
 	.driver 	= {
 		.name = "sp7021-thermal",
-		.of_match_table = of_sp_thermal_match,
+		.of_match_table = of_match_ptr( of_sp7021_thermal_ids),
 	},
 };
-
-
-module_platform_driver(sp_thermal_driver);
-
-
+module_platform_driver(sp7021_thermal_driver);
 
 MODULE_AUTHOR("Sunplus");
-MODULE_DESCRIPTION("Sunplus RTC driver");
+MODULE_DESCRIPTION("Thermal driver for SP7021 SoC");
 MODULE_LICENSE("GPL");

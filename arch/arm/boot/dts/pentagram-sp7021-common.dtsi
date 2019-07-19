@@ -263,7 +263,7 @@
 
 			trips {
 				cpu-crit {
-					temperature	= <12500>;
+					temperature	= <125000>;
 					hysteresis	= <300>;
 					type		= "critical";
 				};
