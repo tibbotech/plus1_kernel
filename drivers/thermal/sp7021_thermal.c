@@ -72,7 +72,6 @@ struct sp_thermal_data {
 	struct thermal_zone_device *pcb_tz;
 	enum thermal_device_mode mode;
 
-	struct mutex thermal_lock;    /* protects register data */
 	struct platform_device *pdev;
 
 	long sensor_temp;
@@ -160,52 +159,37 @@ struct sp_ctl_reg {
 
 static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
 
-int thermal_count = 0;
+int otp_thermal_t0 = 0
+int otp_thermal_t1 = 0;
 
-static int sp_thermal_get_sensor_temp(void *_data, int *temp)
-{
+static void sp7021_get_otp_temp_coef( void) {
+ char otp_temp[ 3];
 
-	struct sp_thermal_data *data = _data;
-	struct sp_thermal_reg *thermal_reg = data->regs;
+ read_otp_data( OTP_THERMAL_L,  &otp_temp[ 0]);
+ read_otp_data( OTP_THERMAL_H,  &otp_temp[ 1]);
+ read_otp_data( OTP_THERMAL_FT, &otp_temp[ 2]);
 
-    int temp_code,temp100;
-	int otp_thermal_t0,otp_thermal_t1;
-    char otp_temp[3];
+ otp_thermal_t0 = otp_temp[ 0] | (otp_temp[ 1] << 8);
+ otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
+ //DBG_INFO("otp_thermal_t0 %x  ",otp_thermal_t0 );
+ otp_thermal_t1 = ( otp_temp[ 1] >> 3) | ( otp_temp[ 2] << 5);
+ otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
+ //DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal	);
+ if ( otp_thermal_t0 == 0) otp_thermal_t0 = 1488;
+ return;  }
 
-	mutex_lock(&data->thermal_lock);
+static int sp_thermal_get_sensor_temp(void *_data, int *temp) {
+ struct sp_thermal_data *data = _data;
+ struct sp_thermal_reg *thermal_reg = data->regs;
+ int temp_code,temp100;
 
-	read_otp_data(OTP_THERMAL_L, &otp_temp[0]);
-	read_otp_data(OTP_THERMAL_H, &otp_temp[1]);
-    read_otp_data(OTP_THERMAL_FT, &otp_temp[2]);
-
-	otp_thermal_t0 = otp_temp[0] | (otp_temp[1] << 8);
-	otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
-	//DBG_INFO("otp_thermal_t0 %x  ",otp_thermal_t0 );
-
-	otp_thermal_t1 = (otp_temp[1] >> 3) | (otp_temp[2] << 5);
-	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
-
-    //DBG_INFO("otp_temp_0 %x , otp_temp_1 %x , otp_temp_2 %x ,otp_thermal %x  ",otp_temp[0],otp_temp[1],otp_temp[2],otp_thermal	);
-
-    if(otp_thermal_t0 == 0)
-		otp_thermal_t0 = 1488;
-
-	temp_code = TEMP_MASK & readl(&thermal_reg->mo5_thermal_sts0);
-    temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
+ temp_code = TEMP_MASK & readl( &thermal_reg->mo5_thermal_sts0);
+ temp100 = ((otp_thermal_t0 - temp_code)*10000/TEMP_RATE)+4000;	
     //temp100 = ((temp_code*10000)/608)+2500;
-
     //temp100 = 25000-temp100;
-
-	*temp =  temp100*10;   // milli means 10^-3!
-
-	mutex_unlock(&data->thermal_lock);
-
-    DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
-
-return 0;
-}
-
-
+ *temp =  temp100*10;   // milli means 10^-3!
+ DBG_INFO("temp_code %d , temp100 %d",temp_code,temp100 );
+ return( 0);  }
 
 static struct thermal_zone_of_device_ops sp_of_thermal_ops = {
 	.get_temp = sp_thermal_get_sensor_temp,
@@ -290,9 +274,9 @@ static int sp7021_thermal_probe(struct platform_device *plat_dev)
 
 	platform_set_drvdata(plat_dev, sp_data);
 
+ sp7021_get_otp_temp_coef();
 	ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
     if ( ret == 0) printk( KERN_INFO "SP7021 SoC thermal by SunPlus (C) 2019");
-	mutex_init( &sp_data->thermal_lock);
 	return ret;	
 }
 
