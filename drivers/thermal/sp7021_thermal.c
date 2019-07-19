@@ -171,18 +171,18 @@ char *sp7021_otp_coef_read( struct device *_d, const char *_name, ssize_t *_l) {
    return ERR_CAST( c);  }
  ret = nvmem_cell_read( c, _l);
  nvmem_cell_put( c);
- dev_dbg( _d, "%d bytes read from OTP %s", _l, _name);
+ dev_dbg( _d, "%d bytes read from OTP %s", *_l, _name);
  return( ret);  }
 
 static void sp7021_get_otp_temp_coef( struct device *_d) {
  ssize_t otp_len;
  struct device_node *np = _d->of_node;
- char *otp_temp
+ char *otp_temp;
  const char *otp_name;
 
  of_property_read_string( np, "fwname", &otp_name);
  if ( !otp_name) {
-   dev_err( _d, "no OTP reg", _name);
+   dev_err( _d, "no OTP reg");
    return;  }
  otp_temp = sp7021_otp_coef_read( _d, otp_name, otp_len);
  if ( otp_len < 3) return;
