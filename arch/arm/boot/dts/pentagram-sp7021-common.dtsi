@@ -262,13 +262,19 @@
 			sustainable-power = <100000>;
 
 			trips {
+				cpu-hott {
+					temperature	= <85000>;
+					hysteresis	= <1000>;
+					type		= "hot";
+				};
 				cpu-crit {
-					temperature	= <125000>;
-					hysteresis	= <300>;
+					temperature	= <100000>;
+					hysteresis	= <0>;
 					type		= "critical";
 				};
 			};
 			cooling-maps {
+                /* insert there: slowdown CPU for cpu-hott */
 			};
 		};
 	};

@@ -231,14 +231,14 @@ static int sp_thermal_register_sensor(struct platform_device *pdev,
 		return ret;
 	}
 
-	trip = of_thermal_get_trip_points(data->pcb_tz);
-
-	for (i = 0; i < of_thermal_get_ntrips(data->pcb_tz); i++) {
-		if (trip[i].type == THERMAL_TRIP_PASSIVE) {
-			data->thres_temp = trip[i].temperature;
-			break;
-		}
-	}
+//	trip = of_thermal_get_trip_points(data->pcb_tz);
+//
+//	for (i = 0; i < of_thermal_get_ntrips(data->pcb_tz); i++) {
+//		if (trip[i].type == THERMAL_TRIP_PASSIVE) {
+//			data->thres_temp = trip[i].temperature;
+//			break;
+//		}
+//	}
 
 	return 0;
 }
