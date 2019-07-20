@@ -156,28 +156,23 @@ static volatile struct sp_ctl_reg *sp_ctl_reg_ptr = NULL;
 int otp_thermal_t0 = 0;
 int otp_thermal_t1 = 0;
 
-char *sp7021_otp_coef_read( struct device *_d, const char *_name, ssize_t *_l) {
+char *sp7021_otp_coef_read( struct device *_d, ssize_t *_l) {
  char *ret = NULL;
- struct nvmem_cell *c = nvmem_cell_get( _d, _name);
+ struct nvmem_cell *c = nvmem_cell_get( _d, "therm_calib");
  if ( IS_ERR( c)) {
-   dev_err( _d, "read OTP %s failure:%d", _name, ERR_CAST( c));
+   dev_err( _d, "read OTP failure:%d", ERR_CAST( c));
    return( ERR_CAST( c));  }
  ret = nvmem_cell_read( c, _l);
  nvmem_cell_put( c);
- dev_dbg( _d, "%d bytes read from OTP %s", *_l, _name);
+ dev_dbg( _d, "%d bytes read from OTP", *_l);
  return( ret);  }
 
 static void sp7021_get_otp_temp_coef( struct device *_d) {
  ssize_t otp_len;
  struct device_node *np = _d->of_node;
  char *otp_temp;
- const char *otp_name;
 
- of_property_read_string( np, "otp-cell-name", &otp_name);
- if ( !otp_name) {
-   dev_err( _d, "no OTP reg");
-   return;  }
- otp_temp = sp7021_otp_coef_read( _d, otp_name, otp_len);
+ otp_temp = sp7021_otp_coef_read( _d, otp_len);
  if ( otp_len < 3) return;
  
 // read_otp_data( OTP_THERMAL_L,  &otp_temp[ 0]);
