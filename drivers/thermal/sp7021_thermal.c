@@ -160,8 +160,8 @@ char *sp7021_otp_coef_read( struct device *_d, const char *_name, ssize_t *_l) {
  char *ret = NULL;
  struct nvmem_cell *c = nvmem_cell_get( _d, _name);
  if ( IS_ERR( c)) {
-   dev_err( _d, "read OTP %s failure", _name);
-   return ERR_CAST( c);  }
+   dev_err( _d, "read OTP %s failure:%d", _name, ERR_CAST( c));
+   return( ERR_CAST( c));  }
  ret = nvmem_cell_read( c, _l);
  nvmem_cell_put( c);
  dev_dbg( _d, "%d bytes read from OTP %s", *_l, _name);
@@ -259,8 +259,6 @@ static int sp7021_thermal_probe(struct platform_device *plat_dev)
       dev_err( &plat_dev->dev,"ioremap_resource(%s) fail\n",MOO5_REG_NAME);
       return( PTR_ERR( res));  }
 	sp_data->regs = reg_base;
-
-	DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MOO4_REG_NAME);
     if ( IS_ERR( res)) {

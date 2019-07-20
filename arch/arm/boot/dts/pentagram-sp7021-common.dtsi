@@ -250,7 +250,8 @@
 			reg = <0x9c000280 0x80>,<0x9c000200 0x80>;
 			reg-names = "thermal_reg", "thermal_moon4";
 			#thermal-sensor-cells = <0>;
-			otp-cell-name = "therm_calib";
+			nvmem-cell-names = "therm_calib";
+			nvmem-cells = <&therm_calib>;
 		};
 
 
