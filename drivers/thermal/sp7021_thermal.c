@@ -29,15 +29,8 @@
 #include <linux/nvmem-consumer.h>
 
 /* ---------------------------------------------------------------------------------------------- */
-//#define THERMAL_FUNC_DEBUG
 //#define THERMAL_DBG_INFO
 //#define THERMAL_DBG_ERR
-
-#ifdef THERMAL_FUNC_DEBUG
-	#define FUNC_DEBUG()    printk(KERN_INFO "[THERMAL] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
-#else
-	#define FUNC_DEBUG()
-#endif
 
 #ifdef THERMAL_DBG_INFO
 #define DBG_INFO(fmt, args ...)	printk(KERN_INFO "[THERMAL] Info: " fmt, ## args)
@@ -180,7 +173,7 @@ static void sp7021_get_otp_temp_coef( struct device *_d) {
  char *otp_temp;
  const char *otp_name;
 
- of_property_read_string( np, "fwname", &otp_name);
+ of_property_read_string( np, "otp-cell-name", &otp_name);
  if ( !otp_name) {
    dev_err( _d, "no OTP reg");
    return;  }
@@ -252,8 +245,6 @@ static int sp7021_thermal_probe(struct platform_device *plat_dev)
 
 	int ctl_code;
 
-    FUNC_DEBUG();
-
 	sp_data = devm_kzalloc(&plat_dev->dev, sizeof(*sp_data), GFP_KERNEL);
 	if (!sp_data) return( -ENOMEM);
 
@@ -294,33 +285,29 @@ static int sp7021_thermal_probe(struct platform_device *plat_dev)
 
    DBG_INFO("ctl_code %x ",ctl_code );
 
-	platform_set_drvdata(plat_dev, sp_data);
-
+ platform_set_drvdata( plat_dev, sp_data);
  sp7021_get_otp_temp_coef( &( plat_dev->dev));
-	ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
-    if ( ret == 0) printk( KERN_INFO "SP7021 SoC thermal by SunPlus (C) 2019");
-	return ret;	
-}
+ ret = sp_thermal_register_sensor(plat_dev, sp_data, 0);
+ if ( ret == 0) dev_info( &( plat_dev->dev), "by SunPlus (C) 2019");
+ return( ret);  }
 
-static int sp7021_thermal_remove(struct platform_device *plat_dev)
-{
-    // nothing to do case devm_*
-	return 0;
-}
+static int sp7021_thermal_remove( struct platform_device *_pd) {
+ // nothing to do case devm_*
+ return( 0);  }
 
 static const struct of_device_id of_sp7021_thermal_ids[] = {
-	{ .compatible = "sunplus,sp7021-thermal" },
-	{ /* sentinel */ }
+ { .compatible = "sunplus,sp7021-thermal" },
+ { /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, of_sp7021_thermal_ids);
 
 static struct platform_driver sp7021_thermal_driver = {
-	.probe		= sp7021_thermal_probe,
-	.remove 	= sp7021_thermal_remove,
-	.driver 	= {
-		.name = "sp7021-thermal",
-		.of_match_table = of_match_ptr( of_sp7021_thermal_ids),
-	},
+ .probe		= sp7021_thermal_probe,
+ .remove 	= sp7021_thermal_remove,
+ .driver 	= {
+ 	.name = "sp7021-thermal",
+ 	.of_match_table = of_match_ptr( of_sp7021_thermal_ids),
+ },
 };
 module_platform_driver(sp7021_thermal_driver);
 

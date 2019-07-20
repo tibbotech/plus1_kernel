@@ -250,6 +250,7 @@
 			reg = <0x9c000280 0x80>,<0x9c000200 0x80>;
 			reg-names = "thermal_reg", "thermal_moon4";
 			#thermal-sensor-cells = <0>;
+			otp-cell-name = "tcalib";
 		};
 
 
@@ -966,6 +967,9 @@
 			reg-names = "hb_gpio", "otprx";
 			clocks = <&clkc OTPRX>;
 			resets = <&rstc RST_OTPRX>;
+			therm_calib: therm_calib {
+                reg = <0x14 0x3>;
+			};
 		};
 	};
 };
