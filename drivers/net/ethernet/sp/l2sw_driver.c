@@ -690,7 +690,7 @@ char *sp7021_otp_read_mac( struct device *_d, ssize_t *_l, char *_name) {
  char *ret = NULL;
  struct nvmem_cell *c = nvmem_cell_get( _d, _name);
  if ( IS_ERR_OR_NULL( c)) {
-   dev_err( _d, "read OTP %s failure:%d", _name, PTR_ERR( c));
+   dev_err( _d, "OTP %s read failure:%ld", _name, PTR_ERR( c));
    return( NULL);  }
  ret = nvmem_cell_read( c, _l);
  nvmem_cell_put( c);

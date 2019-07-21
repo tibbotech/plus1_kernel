@@ -136,7 +136,7 @@ char *sp7021_otp_coef_read( struct device *_d, ssize_t *_l) {
  char *ret = NULL;
  struct nvmem_cell *c = nvmem_cell_get( _d, OTP_CALIB_REG);
  if ( IS_ERR_OR_NULL( c)) {
-   dev_err( _d, "read OTP failure:%d", PTR_ERR( c));
+   dev_err( _d, "OTP read failure:%ld", PTR_ERR( c));
    return( NULL);  }
  ret = nvmem_cell_read( c, _l);
  nvmem_cell_put( c);
@@ -167,7 +167,7 @@ static int sp_thermal_get_sensor_temp( void *_data, int *temp) {
  t_code = ( readl( &( thermal_reg->mo5_thermal_sts0)) & TEMP_MASK);
  *temp = ( ( otp_thermal_t0 - t_code)*10000/TEMP_RATE)+4000;
  *temp *= 10;   // milli means 10^-3!
- dev_dbg( &( data->pdev->dev), "tc:%d t:%d", t_code, temp);
+ dev_dbg( &( data->pdev->dev), "tc:%d t:%d", t_code, *temp);
  return( 0);  }
 
 static struct thermal_zone_of_device_ops sp_of_thermal_ops = {
