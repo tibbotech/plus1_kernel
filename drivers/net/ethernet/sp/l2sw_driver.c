@@ -1,6 +1,7 @@
 #include "l2sw_driver.h"
 #include <linux/clk.h>
 #include <linux/reset.h>
+#include <linux/nvmem-consumer.h>
 
 
 extern int read_otp_data(int addr, char *value);
@@ -685,6 +686,17 @@ static struct net_device_ops netdev_ops = {
 };
 
 
+char *sp7021_otp_read_mac( struct device *_d, ssize_t *_l, char *_name) {
+ char *ret = NULL;
+ struct nvmem_cell *c = nvmem_cell_get( _d, _name);
+ if ( IS_ERR_OR_NULL( c)) {
+   dev_err( _d, "read OTP %s failure:%d", _name, PTR_ERR( c));
+   return( NULL);  }
+ ret = nvmem_cell_read( c, _l);
+ nvmem_cell_put( c);
+ dev_dbg( _d, "%d bytes read from OTP %s", *_l, _name);
+ return( ret);  }
+
 /*********************************************************************
 *
 * platform_driver
@@ -695,9 +707,10 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	u32 ret = -ENODEV;
 	struct l2sw_mac *mac;
 	struct net_device *net_dev;
-	u32 rc;
 	int i;
-	char *m_addr_name = (eth_no == 0)? "mac-addr1": "mac-addr2";
+ char *m_addr_name = ( eth_no == 0) ? "mac_addr0": "mac_addr1";
+ ssize_t otp_l = 0;
+ char *otp_v;
 
 	//ETH_INFO("[%s] IN\n", __func__);
 
@@ -715,22 +728,17 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	mac->next_netdev = NULL;
 
 	// Get property 'mac-addr1' or 'mac-addr2' from dts.
-	if (of_property_read_u32(pdev->dev.of_node, m_addr_name, &rc) == 0) {
-		for (i = 0; i < 6; i++) {
-			if (read_otp_data(rc+i, &mac->mac_addr[i]) != 0) {
-				break;
-			}
-		}
-
-		// Check if mac-address is valid or not. If not, copy from default.
-		if ((i != 6) || !is_valid_ether_addr(mac->mac_addr)) {
-			ETH_INFO(" Invalid mac addr from OTP[%d:%d] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", rc, rc+5, mac->mac_addr[0],
-				mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
-			i = -1;
-		}
+        otp_v = sp7021_otp_read_mac( &( pdev->dev), &otp_l, m_addr_name);
+        if ( otp_l < 6 || IS_ERR_OR_NULL( otp_v)) {
+	  i = -1;
+	  ETH_INFO("OTP mac %s len:%d is invalid, using default!\n", m_addr_name, otp_l);
 	} else {
-		i = -1;
-		ETH_INFO(" Cannot get OTP address of %s, use default mac address!\n", m_addr_name);
+	  // Check if mac-address is valid or not. If not, copy from default.
+	  memcpy( mac->mac_addr, otp_v, 6);
+	  if ( !is_valid_ether_addr(mac->mac_addr)) {
+	    ETH_INFO(" Invalid mac in OTP[%s] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", m_addr_name,
+			mac->mac_addr[0], mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
+	    i = -1;  }
 	}
 	if (i != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
