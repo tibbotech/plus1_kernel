@@ -651,6 +651,8 @@
 			mac-addr2 = <58>;
 			phy-handle1 = <&eth_phy0>;
 			phy-handle2 = <&eth_phy1>;
+			nvmem-cell-names = "mac_addr0", "mac_addr1";
+			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
 		};
 
 		mdio {
@@ -968,9 +970,9 @@
 			reg-names = "hb_gpio", "otprx";
 			clocks = <&clkc OTPRX>;
 			resets = <&rstc RST_OTPRX>;
-			therm_calib: therm_calib {
-                reg = <0x14 0x3>;
-			};
+			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
+			mac_addr0: mac_addr0 {  reg = <0x34 0x6>;  };
+			mac_addr1: mac_addr1 {  reg = <0x3A 0x6>;  };
 		};
 	};
 };
