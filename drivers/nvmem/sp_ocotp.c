@@ -225,7 +225,6 @@ int read_otp_data(int addr, char *value)
 
 	return ret;
 }
-EXPORT_SYMBOL(read_otp_data);
 
 static int sp_ocotp_probe(struct platform_device *pdev)
 {
