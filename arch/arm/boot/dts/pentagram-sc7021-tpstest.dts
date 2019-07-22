@@ -188,7 +188,7 @@
 / {
 	soc@B {
 		tpsid {
-            compatible = "sunplus,tpsid";
+            compatible = "tpsid";
 			nvmem-cell-names = "mac_addr0";
 			nvmem-cells = <&mac_addr0>;
 		};
