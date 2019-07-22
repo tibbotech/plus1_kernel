@@ -330,7 +330,42 @@
 		resets = <&rstc RST_AXI_GLOBAL>;
 	    };
 	#endif
-	 
+
+#if 0
+		cbdma: cbdma@sp_cbdma {
+			compatible = "sunplus,sp7021-c-cbdma";
+			reg = <0x9c000d00 0x80>;
+			reg-names = "cb_dma";
+			interrupt-parent = <&intc>;
+			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			dma-channel-0 {
+				compatible = "xlnx,axi-cdma-channel";
+				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			};
+		}; 
+#else
+		cbdma: cbdma@sp_cbdma {
+			compatible = "sunplus,sp7021-cbdma";
+			reg = <0x9c000d00 0x80>;
+			reg-names = "cb_dma";
+			interrupt-parent = <&intc>;
+			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			dma-channel-0 {
+				compatible = "xlnx,axi-dma-mm2s-channel";
+				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			};
+			dma-channel-1 {
+				compatible = "xlnx,axi-dma-s2mm-channel";
+				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			};
+		}; 
+#endif
+		cbdma_proxy: cbdma_proxy@sp_cbdma_proxy {
+			compatible = "sunplus,sp7021-cbdma-proxy";
+			reg = <0x9c000d00 0x80>;
+			reg-names = "cb_dma_proxy";
+		}; 
+
 			icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;

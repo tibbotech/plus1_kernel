@@ -7,5 +7,6 @@ menu "Sunplus CBDMA"
 config SUNPLUS_CBDMA
 	tristate "CBDMA Driver support"
 	help
-		Enable to support Sunplus CBDMA drivers
+	  This is a option to to support Sunplus CBDMA device.
+
 endmenu
