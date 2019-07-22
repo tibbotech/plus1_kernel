@@ -187,22 +187,25 @@
 
 / {
 	soc@B {
+		tpsid {
+            compatible = "sunplus,tpsid";
+		};
 		leds {
 		    pinctrl-names = "default", "sleep";
 		    pinctrl-0 = <&leds_s0_def>;
 		    pinctrl-1 = <&leds_s0_slp>;
 		    compatible = "gpio-leds";
 		    led@1 {
-			label = "SR";
-			gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "heartbeat";
-			default-state = "off";
+                label = "SR";
+                gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+                linux,default-trigger = "heartbeat";
+                default-state = "off";
 		    };
 		    led@2 {
-			label = "SG";
-			gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
-			linux,default-trigger = "mmc0";
-			default-state = "off";
+                label = "SG";
+                gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+                linux,default-trigger = "mmc0";
+                default-state = "off";
 		    };
 		};
 		tpsleds: tpsleds {
@@ -234,10 +237,10 @@
 			     &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
                     >;
 		    eeprom: eeprom@50 {
-			compatible = "at,24c16";
-			reg = <0x50>;
-			pagesize = <16>;
-        	    };
+                compatible = "at,24c16";
+                reg = <0x50>;
+                pagesize = <16>;
+            };
 		};
 	};
 };
