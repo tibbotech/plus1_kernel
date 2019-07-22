@@ -1003,6 +1003,8 @@
 			reg-names = "hb_gpio", "otprx";
 			clocks = <&clkc OTPRX>;
 			resets = <&rstc RST_OTPRX>;
+			#address-cells = <1>;
+			#size-cells = <1>;
 			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
 			mac_addr0: mac_addr0 {  reg = <0x34 0x6>;  };
 			mac_addr1: mac_addr1 {  reg = <0x3A 0x6>;  };

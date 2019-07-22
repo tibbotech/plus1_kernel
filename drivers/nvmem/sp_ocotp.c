@@ -156,8 +156,8 @@ disable_clk:
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
-	.word_size = QAC628_OTP_WORD_SIZE,
-	.stride = QAC628_OTP_WORDS_PER_BANK,
+	.word_size = 1,
+	.stride = 1,
 	.owner = THIS_MODULE,
 	.reg_read = sp_ocotp_read,
 };
