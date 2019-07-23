@@ -119,10 +119,8 @@ static int sp_ocotp_read(void *context, unsigned int offset,
 	struct sp_ocotp *otp = context;
 	unsigned int addr;
 	char *buf = val;
-	char *value;
+	char value[ 4];
 	int ret;
-
-	value = kmalloc(1, GFP_KERNEL);
 
 	DBG("read %u bytes from byte %u\n", bytes, offset);
 
@@ -147,7 +145,6 @@ static int sp_ocotp_read(void *context, unsigned int offset,
 
 disable_clk:
 	clk_disable(otp->clk);
-	kfree(value);
 	DBG("OTP read complete\n");
 
 	return ret;
@@ -241,7 +238,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
-	otp = devm_kzalloc(&pdev->dev, sizeof(*otp), GFP_KERNEL);
+	otp = devm_kzalloc( dev, sizeof(*otp), GFP_KERNEL);
 	if (!otp) {
 		return -ENOMEM;
 	}
@@ -286,7 +283,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, otp->nvmem);
 
-	DBG("Enable OTP read\n");
+	dev_info( dev, "initialized clk:%d\n", clk_get_rate( otp->i2c_clk));
 
 	return 0;
 }
