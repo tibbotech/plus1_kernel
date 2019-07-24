@@ -122,7 +122,7 @@ static int sp_ocotp_read(void *context, unsigned int offset,
 	char value[ 4];
 	int ret;
 
-	DBG("read %u bytes from byte %u\n", bytes, offset);
+	DBG("OTP read %u bytes at %u\n", bytes, offset);
 
 	if ((offset >= QAC628_OTP_SIZE) || (bytes == 0) || ((offset + bytes) > 128)) {
 		return -EINVAL;
@@ -137,6 +137,7 @@ static int sp_ocotp_read(void *context, unsigned int offset,
 	for (addr = offset; addr < (offset + bytes); addr++) {
 		ret = read_otp_data(addr, value);
 		if (ret < 0) {
+			DBG("OTP read fail:%d at %d\n", ret, addr);
 			goto disable_clk;
 		}
 
