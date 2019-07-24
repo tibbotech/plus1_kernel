@@ -171,13 +171,6 @@ static const struct otp_data sp_data = {
 	.size = QAC628_OTP_SIZE,
 };
 
-static const struct of_device_id sp_ocotp_dt_ids[] = {
-	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_data },
-	{ }
-};
-
-MODULE_DEVICE_TABLE(of, sp_ocotp_dt_ids);
-
 static int sp_ocotp_wait(void)
 {
 	struct sp_ocotp *otp = sp_ocotp_nvmem_config.priv;
@@ -269,7 +262,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to prepare clk: %d\n", ret);
 		return ret;
 	}
-//	clk_enable(otp->clk);
+	clk_enable(otp->clk);
 
 	data = match->data;
 
@@ -303,26 +296,21 @@ static int sp_ocotp_remove(struct platform_device *pdev)
 	return nvmem_unregister(nvmem);
 }
 
+static const struct of_device_id sp_ocotp_dt_ids[] = {
+	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_data },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, sp_ocotp_dt_ids);
+
 static struct platform_driver sp_ocotp_driver = {
-	.probe = sp_ocotp_probe,
-	.remove = sp_ocotp_remove,
-	.driver = {
-		.name = "sunplus,sp7021-ocotp",
-		.of_match_table = sp_ocotp_dt_ids,
+	.probe     = sp_ocotp_probe,
+	.remove    = sp_ocotp_remove,
+	.driver    = {
+        .name           = "sunplus,sp7021-ocotp",
+        .of_match_table = sp_ocotp_dt_ids,
 	},
 };
-
-static int __init sp_ocotp_init(void)
-{
-	return platform_driver_register(&sp_ocotp_driver);
-}
-subsys_initcall(sp_ocotp_init);
-
-static void __exit sp_ocotp_exit(void)
-{
-	platform_driver_unregister(&sp_ocotp_driver);
-}
-module_exit(sp_ocotp_exit);
+module_platform_driver(sp_ocotp_driver);
 
 MODULE_DESCRIPTION("Sunplus OCOTP driver");
 MODULE_LICENSE("GPL v2");
