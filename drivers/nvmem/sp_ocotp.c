@@ -153,7 +153,9 @@ disable_clk:
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
+#if 0
 	.type	= NVMEM_TYPE_OTP,
+#endif
 	.word_size = 1,
 	.stride = 1,
 	.owner = THIS_MODULE,
@@ -284,7 +286,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, otp->nvmem);
 
-	dev_dbg( dev, "clk:%d banks:%d x wpb:%d x wsize:%d = %d",
+	dev_dbg( dev, "clk:%ld banks:%d x wpb:%d x wsize:%d = %d",
 		clk_get_rate( otp->clk),
 		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
 		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
