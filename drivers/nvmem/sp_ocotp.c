@@ -283,7 +283,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, otp->nvmem);
 
-	dev_info( dev, "initialized clk:%d\n", clk_get_rate( otp->i2c_clk));
+	dev_info( dev, "initialized clk:%d\n", clk_get_rate( otp->clk));
 
 	return 0;
 }
