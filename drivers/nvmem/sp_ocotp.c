@@ -292,7 +292,6 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 static int sp_ocotp_remove(struct platform_device *pdev)
 {
 	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
-
 	return nvmem_unregister(nvmem);
 }
 
@@ -307,10 +306,15 @@ static struct platform_driver sp_ocotp_driver = {
 	.remove    = sp_ocotp_remove,
 	.driver    = {
         .name           = "sunplus,sp7021-ocotp",
-        .of_match_table = sp_ocotp_dt_ids,
+        .of_match_table = of_match_ptr( sp_ocotp_dt_ids),
 	},
 };
-module_platform_driver(sp_ocotp_driver);
+static int __init sp_otp_drv_new( void) {
+ return platform_driver_register( &sp_otp_driver);  }
+postcore_initcall( sp_otp_drv_new);
+static void __exit sp_otp_drv_del( void) {
+ platform_driver_unregister( &sp_otp_driver);  }
+module_exit(sp_otp_drv_del);
 
 MODULE_DESCRIPTION("Sunplus OCOTP driver");
 MODULE_LICENSE("GPL v2");
