@@ -26,6 +26,7 @@
 #include <mach/io_map.h>
 #include <linux/clk.h>
 #include <linux/reset.h> 
+#include <linux/of.h>
 
 #if 0
 /* For code development on SPHE8388 */
