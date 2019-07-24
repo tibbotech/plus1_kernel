@@ -153,6 +153,7 @@ disable_clk:
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
+	.type	= NVMEM_TYPE_OTP,
 	.word_size = 1,
 	.stride = 1,
 	.owner = THIS_MODULE,
@@ -227,7 +228,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	const struct otp_data *data;
-	struct device *dev = &pdev->dev;
+	struct device *dev = &( pdev->dev);
 	struct sp_ocotp *otp;
 	struct resource *res;
 	int ret;
@@ -265,7 +266,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		dev_err(dev, "failed to prepare clk: %d\n", ret);
 		return ret;
 	}
-	clk_enable(otp->clk);
+//	clk_enable(otp->clk);
 
 	data = match->data;
 
@@ -283,7 +284,11 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, otp->nvmem);
 
-	dev_info( dev, "initialized clk:%d\n", clk_get_rate( otp->clk));
+	dev_dbg( dev, "clk:%d banks:%d x wpb:%d x wsize:%d = %d",
+		clk_get_rate( otp->clk),
+		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
+		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
+	dev_info( dev, "by SunPlus (C) 2019");
 
 	return 0;
 }
