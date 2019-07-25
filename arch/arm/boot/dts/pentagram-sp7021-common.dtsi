@@ -331,6 +331,18 @@
 	    };
 	#endif
 
+		otp: otp@0x9C00AF00 {
+			compatible = "sunplus,sp7021-ocotp";
+			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;
+			reg-names = "hb_gpio", "otprx";
+			clocks = <&clkc OTPRX>;
+			resets = <&rstc RST_OTPRX>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
+			mac_addr0: mac_addr0 {  reg = <0x34 0x6>;  };
+			mac_addr1: mac_addr1 {  reg = <0x3A 0x6>;  };
+		};
 #if 0
 		cbdma: cbdma@sp_cbdma {
 			compatible = "sunplus,sp7021-c-cbdma";
@@ -997,17 +1009,5 @@
  			};			
 		};
 
-		otp: otp@0x9C00AF00 {
-			compatible = "sunplus,sp7021-ocotp";
-			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;
-			reg-names = "hb_gpio", "otprx";
-			clocks = <&clkc OTPRX>;
-			resets = <&rstc RST_OTPRX>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
-			mac_addr0: mac_addr0 {  reg = <0x34 0x6>;  };
-			mac_addr1: mac_addr1 {  reg = <0x3A 0x6>;  };
-		};
 	};
 };
