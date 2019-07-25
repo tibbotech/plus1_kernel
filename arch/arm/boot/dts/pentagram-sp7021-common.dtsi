@@ -898,6 +898,10 @@
 			resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
 			i2c-id = <1>;
+/*
+  			pinctrl-names = "default";
+  			pinctrl-0 = <&mipicsi0_pins>;
+*/
 		};
 /*
 		mipicsi1: mipicsirx@0x9C005380 {
@@ -995,6 +999,14 @@
     				sppctl,groups = "SPI_FLASH_4BIT1";
     				sppctl,function = "SPI_FLASH_4BIT";
  			};			
+/*
+			mipicsi0_pins: pinmux_mipicsi0_pins {
+				sppctl,pins = <
+				  SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+				  SP7021_IOPAD(13,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+				>;
+			};			
+*/
 		};
 
 		otp: otp@0x9C00AF00 {
