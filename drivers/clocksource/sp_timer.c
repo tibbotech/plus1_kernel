@@ -574,4 +574,4 @@ static int __init sp_timer_init_of(struct device_node *np)
 	return 0;
 }
 
-CLOCKSOURCE_OF_DECLARE(sp_timer, "sunplus,sp-stc", sp_timer_init_of);
+TIMER_OF_DECLARE(sp_timer, "sunplus,sp-stc", sp_timer_init_of);
