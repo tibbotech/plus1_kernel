@@ -331,7 +331,7 @@
 	    };
 	#endif
 
-#if 0
+#if 1
 		cbdma: cbdma@sp_cbdma {
 			compatible = "sunplus,sp7021-c-cbdma";
 			reg = <0x9c000d00 0x80>;
@@ -360,26 +360,6 @@
 			};
 		}; 
 #endif
-		cbdma_proxy: cbdma_proxy@sp_cbdma_proxy {
-			compatible = "sunplus,sp7021-cbdma-proxy";
-			reg = <0x9c000d00 0x80>;
-			reg-names = "cb_dma_proxy";
-		}; 
-
-			icm: icm@G81 {
-			compatible = "sunplus,sp7021-icm";
-			clocks = <&clkc ICM>;
-			resets = <&rstc RST_ICM>;
-			/* clken format: (group << 16) | (index << 8) | shift */
-			clken = <0x00000a08>; /* 0.10.8 */
-			reg = <0x9c002880 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts =
-				<92 IRQ_TYPE_EDGE_RISING>, /* icm0 */
-				<93 IRQ_TYPE_EDGE_RISING>, /* icm1 */
-				<94 IRQ_TYPE_EDGE_RISING>, /* icm2 */
-				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
-		};
 
 		crypto: crypto@G84 {
 			compatible = "sunplus,sp7021-crypto";
