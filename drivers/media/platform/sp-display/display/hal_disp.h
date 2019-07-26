@@ -11,7 +11,7 @@
 #include "disp_osd.h"
 #include "disp_vpp.h"
 
-#define SP_DISP_V4L2_SUPPORT
+//#define SP_DISP_V4L2_SUPPORT
 
 #ifdef SP_DISP_V4L2_SUPPORT
 
