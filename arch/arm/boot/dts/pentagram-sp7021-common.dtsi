@@ -265,12 +265,12 @@
 
 			trips {
 				cpu-hott {
-					temperature	= <85000>;
+					temperature	= <80000>;
 					hysteresis	= <1000>;
 					type		= "hot";
 				};
 				cpu-crit {
-					temperature	= <100000>;
+					temperature	= <85000>;
 					hysteresis	= <0>;
 					type		= "critical";
 				};
