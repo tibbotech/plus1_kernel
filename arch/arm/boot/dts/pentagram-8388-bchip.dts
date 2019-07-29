@@ -101,7 +101,7 @@
 
 		pwm: pwm@0x9c007480 {
 			#pwm-cells = <2>;
-			compatible = "sunplus,sc7021-pwm";
+			compatible = "sunplus,sp7021-pwm";
 			reg = <0x9c007480 0x80>;
 			clocks = <&sysslow>;
 		};

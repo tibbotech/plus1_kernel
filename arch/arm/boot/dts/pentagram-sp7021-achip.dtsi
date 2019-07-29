@@ -7,8 +7,8 @@
 
 
 / {
-	model = "Sunplus SC7021 (CA7)";
-	compatible = "sunplus,sc7021-achip";
+	model = "Sunplus SP7021 (CA7)";
+	compatible = "sunplus,sp7021-achip";
 
 	interrupt-parent = <&gic>;
 

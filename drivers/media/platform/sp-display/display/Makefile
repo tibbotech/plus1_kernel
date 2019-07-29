@@ -25,7 +25,7 @@ endif
 ccflags-y += -Werror
 ccflags-y += -Wformat-security
 
-obj-$(CONFIG_VIDEO_SP_DISP) += display_sc7021b.o
-display_sc7021b-objs := display.o disp_dve.o disp_dmix.o disp_tgen.o disp_osd.o disp_vpp.o
-display_sc7021b-objs += vpp_pattern/libdisp_patgen.lib
+obj-$(CONFIG_VIDEO_SP_DISP) += display_sp7021b.o
+display_sp7021b-objs := display.o disp_dve.o disp_dmix.o disp_tgen.o disp_osd.o disp_vpp.o
+display_sp7021b-objs += vpp_pattern/libdisp_patgen.lib
 
