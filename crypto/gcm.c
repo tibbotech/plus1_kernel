@@ -68,7 +68,7 @@ struct crypto_gcm_req_priv_ctx {
 	u8 iv[16];
 	u8 auth_tag[16];
 	u8 iauth_tag[16];
-#ifdef CONFIG_MACH_PENTAGRAM_SC7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
 	/* avoid auth_tag & src @ same cacheline */
 	u8 dummy[L1_CACHE_BYTES - 48];
 #endif

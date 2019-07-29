@@ -8,8 +8,8 @@
 
 //#define ENABLE_QTEST_CBDMA
 / {
-	model = "Sunplus SC7021 (ARM926)";
-	compatible = "sunplus,sc7021-bchip";
+	model = "Sunplus SP7021 (ARM926)";
+	compatible = "sunplus,sp7021-bchip";
 
 	interrupt-parent = <&intc>;
 

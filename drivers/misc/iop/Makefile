@@ -9,7 +9,7 @@
 	obj-$(CONFIG_SUNPLUS_IOP) += iopnormal.o
 	obj-$(CONFIG_SUNPLUS_IOP) += iopstandby.o
 	#obj-y += sp_iop.o
-	#Please remember  ENABLE_QTEST_CBDMA in the file(linux\kernel\arch\arm\boot\dts\pentagram-sc7021-bchip.dtsi)when you enable qtest
+	#Please remember  ENABLE_QTEST_CBDMA in the file(linux\kernel\arch\arm\boot\dts\pentagram-sp7021-bchip.dtsi)when you enable qtest
 		#obj-y				+= qtest/
 
 clean:

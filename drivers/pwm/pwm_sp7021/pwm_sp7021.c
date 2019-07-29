@@ -39,7 +39,7 @@
 /**************************************************************************
  *                           C O N S T A N T S                            *
  **************************************************************************/
-#define SC7021_PWM_NUM		ePWM_MAX
+#define SP7021_PWM_NUM		ePWM_MAX
 
 /**************************************************************************
  *                              M A C R O S                               *
@@ -388,7 +388,7 @@ static int _sp7021_pwm_probe(struct platform_device *pdev)
 
 	pdata->chip.dev = &pdev->dev;
 	pdata->chip.ops = &_sp7021_pwm_ops;
-	pdata->chip.npwm = SC7021_PWM_NUM;
+	pdata->chip.npwm = SP7021_PWM_NUM;
 	/* pwm cell = 2 (of_pwm_simple_xlate) */
 	pdata->chip.of_xlate = NULL;
 
@@ -475,7 +475,7 @@ static int __maybe_unused _sp7021_pwm_runtime_resume(struct device *dev)
 }
 #endif
 
-MODULE_DESCRIPTION("SC7021 PWM Driver");
+MODULE_DESCRIPTION("SP7021 PWM Driver");
 MODULE_AUTHOR("PoChou Chen <pochou.chen@sunplus.com>");
 MODULE_LICENSE("GPL");
 

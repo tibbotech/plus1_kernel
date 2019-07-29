@@ -6,7 +6,7 @@
 #define CLK_B_PLLSYS            202500000       /* 202.5MHz */
 #endif
 
-#if defined(CONFIG_MACH_PENTAGRAM_SC7021_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_SC7021_BCHIP)
+#if defined(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_SP7021_BCHIP)
 #define CLK_B_PLLSYS            202500000       /* 202.5MHz */
 #endif
 

@@ -2,9 +2,9 @@
  * This code is for h/w test only, therefore there is no configuration for it.
  * Please use B-chip eMMC configuration with following changes:
  *
- *	arch/arm/boot/dts/pentagram-sc7021-bchip-emu.dts:
- *		-#include "pentagram-sc7021-bchip.dtsi"
- *		+#include "pentagram-sc7021-bchip-hwbuf-tst.dtsi"
+ *	arch/arm/boot/dts/pentagram-sp7021-bchip-emu.dts:
+ *		-#include "pentagram-sp7021-bchip.dtsi"
+ *		+#include "pentagram-sp7021-bchip-hwbuf-tst.dtsi"
  *
  *	drivers/tty/serial/Makefile:
  *		-obj-$(CONFIG_SERIAL_SP_UART)	+= sp_uart.o

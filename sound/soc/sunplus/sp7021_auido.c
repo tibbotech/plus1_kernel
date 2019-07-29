@@ -20,7 +20,7 @@
  *                                                                        *
  **************************************************************************/
 /**
- * @file sc7021-audio.c
+ * @file sp7021-audio.c
  */
 /**************************************************************************
  *                         H E A D E R   F I L E S
@@ -36,8 +36,8 @@
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
  **************************************************************************/
-static int _sc7021_audio_probe(struct platform_device *pdev);
-static int _sc7021_audio_remove(struct platform_device *pdev);
+static int _sp7021_audio_probe(struct platform_device *pdev);
+static int _sp7021_audio_remove(struct platform_device *pdev);
 
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
@@ -47,23 +47,23 @@ struct clk *peri0_clocken;
 struct clk *aud_clocken;
 struct clk *plla_clocken;
 
-static const struct of_device_id _sc7021_audio_dt_ids[] = {
+static const struct of_device_id _sp7021_audio_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-audio", },
 };
-MODULE_DEVICE_TABLE(of, _sc7021_audio_dt_ids);
+MODULE_DEVICE_TABLE(of, _sp7021_audio_dt_ids);
 
-static struct platform_driver _sc7021_audio_driver = {
-	.probe	= _sc7021_audio_probe,
-	.remove	= _sc7021_audio_remove,
+static struct platform_driver _sp7021_audio_driver = {
+	.probe	= _sp7021_audio_probe,
+	.remove	= _sp7021_audio_remove,
 	.driver	= {
-		.name		= "sc7021-audio",
+		.name		= "sp7021-audio",
 		.owner		= THIS_MODULE,
-		.of_match_table	= of_match_ptr(_sc7021_audio_dt_ids),
+		.of_match_table	= of_match_ptr(_sp7021_audio_dt_ids),
 	},
 };
-module_platform_driver(_sc7021_audio_driver);
+module_platform_driver(_sp7021_audio_driver);
 
-static int _sc7021_audio_probe(struct platform_device *pdev)
+static int _sp7021_audio_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct device_node *np = pdev->dev.of_node;   
@@ -133,7 +133,7 @@ static int _sc7021_audio_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int _sc7021_audio_remove(struct platform_device *pdev)
+static int _sp7021_audio_remove(struct platform_device *pdev)
 {
 	AUD_INFO("%s IN\n", __func__);
 	audio_base = NULL;
@@ -144,6 +144,6 @@ static int _sc7021_audio_remove(struct platform_device *pdev)
 }
 
 
-MODULE_DESCRIPTION("SC7021 audio Driver");
+MODULE_DESCRIPTION("sp7021 audio Driver");
 MODULE_DESCRIPTION("S+ SoC ALSA PCM module");
 MODULE_LICENSE("GPL");

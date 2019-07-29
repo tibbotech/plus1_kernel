@@ -5,8 +5,8 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
-	model = "SC7021 TPS test dts";
-	compatible = "sunplus,sc7021-achip";
+	model = "SP7021 TPS test dts";
+	compatible = "sunplus,sp7021-achip";
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";

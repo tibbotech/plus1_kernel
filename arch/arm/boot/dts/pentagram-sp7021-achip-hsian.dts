@@ -5,8 +5,8 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 / {
-	model = "Sunplus SC7021 EMU (CA7) PinCtrl test";
-	compatible = "sunplus,sc7021-achip";
+	model = "Sunplus SP7021 EMU (CA7) PinCtrl test";
+	compatible = "sunplus,sp7021-achip";
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
