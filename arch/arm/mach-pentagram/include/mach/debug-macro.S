@@ -1,8 +1,8 @@
 #include <mach/sp_uart.h>
 
 		.macro	addruart, rp, rv, tmp
-		ldr	\rp, =CONFIG_DEBUG_UART_PHYS @ physical
-		ldr	\rv, =CONFIG_DEBUG_UART_VIRT @ virtual
+		ldr	\rp, =LL_UART_PADDR @ physical
+		ldr	\rv, =LL_UART_VADDR @ virtual
 		.endm
 
 		.macro	senduart, rd, rx

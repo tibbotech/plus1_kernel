@@ -30,68 +30,10 @@
 #include "sp_cbdma_proxy.h"
 
 
-//#define SP_CBDMA_BASIC_TEST
-#if defined(SP_CBDMA_BASIC_TEST)
-
-//#include <linux/module.h>
-#include <linux/init.h>
-#include <linux/interrupt.h>
-#include <linux/platform_device.h>
-#include <linux/err.h>
-#include <linux/io.h>
-//#include <linux/module.h>
-#include <linux/of.h>
-#include <linux/irq.h>
-#include <linux/of_irq.h>
-#include <linux/kthread.h>
-#include <linux/delay.h>
-//#include <linux/dma-mapping.h>
-#include <linux/atomic.h>
-
-//#include <linux/fs.h>
-#include <linux/miscdevice.h>
-#include <linux/of_platform.h>
-#include <linux/firmware.h>
-
-
-#define DEVICE_NAME	"sunplus,sp7021-cbdma-proxy"
-
-#define CB_DMA_REG_NAME	"cb_dma_proxy"
-
-/* Unaligned test */
-#define UNALIGNED_DROP_S	0	/* 0, 1, 2, 3 */
-#define UNALIGNED_DROP_E	0	/* 0, 1, 2, 3 */
-#define UNALIGNED_ADDR_S(X)	(X + UNALIGNED_DROP_S)
-#define UNALIGNED_ADDR_E(X)	(X - UNALIGNED_DROP_E)
-
-#define BUF_SIZE_DRAM		(PAGE_SIZE * 2)
-
-#define PATTERN4TEST(X)		((((u32)(X)) << 24) | (((u32)(X)) << 16) | (((u32)(X)) << 8) | (((u32)(X)) << 0))
-
-
-
-#define MIN(X, Y)		((X) < (Y) ? (X): (Y))
-
-#define NUM_SG_IDX		32
-
-struct cbdma_proxy_info_s {
-	struct platform_device *pdev;
-	struct miscdevice dev;
-	struct mutex cbdma_lock;
-	void __iomem *cbdma_regs;
-	u32 sram_addr;
-	u32 sram_size;
-};
-static struct cbdma_proxy_info_s *cbdma_proxy_info;
-
-atomic_t isr_cnt = ATOMIC_INIT(0);
-
-#endif // Use sp cbdma device drivers
-
 /* Debug message definition */
 #define CBDMA_PROXY_FUNC_DEBUG
-//#define CBDMA_PROXY_KDBG_INFO
-//#define CBDMA_PROXY_KDBG_ERR
+#define CBDMA_PROXY_KDBG_INFO
+#define CBDMA_PROXY_KDBG_ERR
 
 #ifdef CBDMA_PROXY_FUNC_DEBUG
 #define FUNC_DEBUG()            printk(KERN_INFO "[CBDMA_PROXY] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -119,13 +61,13 @@ atomic_t isr_cnt = ATOMIC_INIT(0);
  * such that both can be illustrated.  Add cached_buffers=1 to the command line insert of the module
  * to cause the allocated memory to be cached.
  */
-static unsigned cached_buffers = 0;
+static unsigned cached_buffers = 1;
 module_param(cached_buffers, int, S_IRUGO);
 
 MODULE_LICENSE("GPL");
 
 #define DRIVER_NAME 		"dma_proxy"
-#define CHANNEL_COUNT 		2
+#define CHANNEL_COUNT 		1
 #define ERROR 			-1
 #define NOT_LAST_CHANNEL 	0
 #define LAST_CHANNEL 		1
@@ -154,7 +96,6 @@ struct dma_proxy_channel {
  */
 static struct dma_proxy_channel channels[CHANNEL_COUNT];
 
-#if defined(SP_CBDMA_BASIC_TEST)
 void dump_data(u8 *ptr, u32 size)
 {
 	u32 i, addr_begin;
@@ -177,7 +118,6 @@ void dump_data(u8 *ptr, u32 size)
 	}
 	printk(KERN_INFO "\n");
 }
-#endif
 
 /* Handle a callback and indicate the DMA transfer is complete to another
  * thread of control
@@ -236,10 +176,18 @@ static dma_cookie_t start_transfer(struct dma_proxy_channel *pchannel_p)
 	/* Create a buffer (channel)  descriptor for the buffer since only a
 	 * single buffer is being used for this transfer
 	 */
-	chan_desc = dmaengine_prep_slave_single(pchannel_p->channel_p, pchannel_p->dma_handle,
-											interface_p->length,
-											pchannel_p->direction,
-											flags);
+	if (pchannel_p->direction == DMA_MEMCPY) {
+		dma_addr_t src;
+		chan_desc = dmaengine_prep_dma_memcpy(pchannel_p->channel_p,  pchannel_p->dma_handle,
+												src, interface_p->length, flags);
+	}
+	else
+	{
+		chan_desc = dmaengine_prep_slave_single(pchannel_p->channel_p, pchannel_p->dma_handle,
+												interface_p->length,
+												pchannel_p->direction,
+												flags);
+	}
 
 	/* Make sure the operation was completed successfully
 	 */
@@ -300,8 +248,10 @@ static void wait_for_transfer(struct dma_proxy_channel *pchannel_p)
 		u32 map_direction;
 		if (pchannel_p->direction == DMA_MEM_TO_DEV)
 			map_direction = DMA_TO_DEVICE;
-		else
+		else if (pchannel_p->direction == DMA_DEV_TO_MEM)
 			map_direction = DMA_FROM_DEVICE;
+		else
+			map_direction = DMA_BIDIRECTIONAL;
 
 		dma_unmap_single(pchannel_p->dma_device_p, pchannel_p->dma_handle,
 						 pchannel_p->interface_p->length,
@@ -320,8 +270,10 @@ void print_channel(struct dma_proxy_channel *pchannel_p)
 	printk("length = %d ", interface_p->length);
 	if (pchannel_p->direction == DMA_MEM_TO_DEV)
 		printk("tx direction ");
-	else
+	else if (pchannel_p->direction == DMA_DEV_TO_MEM)
 		printk("rx direction ");
+	else
+		printk("bidirection ");
 }
 
 /* Setup the DMA transfer for the channel by taking care of any cache operations
@@ -336,6 +288,27 @@ static void transfer(struct dma_proxy_channel *pchannel_p)
 
 	print_channel(pchannel_p);
 
+#if 1 // CCHo added for debugging
+	if (pchannel_p->direction == DMA_MEM_TO_MEM) {
+		char __user *data;
+		struct vm_area_struct *vma;
+
+		DBG_INFO("%s, %d, &buffer=0x%x, interface_p->length:0x%x, interface_p=0x%x\n", __func__, __LINE__,
+			(u32)&interface_p->buffer, interface_p->length, (u32)interface_p);
+		DBG_INFO("%s, %d, &buffer=0x%x, interface_p->length:0x%x, interface_p->src=0x%x\n", __func__, __LINE__,
+			(u32)&interface_p->buffer, interface_p->length, (u32)interface_p->src);
+
+		data = (char __user *)interface_p->src;
+		vma = (struct vm_area_struct *)data;
+
+		DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
+				vma, vma->vm_start, vma->vm_end);
+		DBG_INFO("%s, %d, vma->vm_pgoff:0x%lx, vma->vm_pgoff<<PAGE_SHIFT:0x%lx, PAGE_SHIFT:%u\n", __func__, __LINE__,
+				vma->vm_pgoff, vma->vm_pgoff<<PAGE_SHIFT, PAGE_SHIFT);
+		return;
+	}
+#endif
+
 	if (cached_buffers) {
 
 		/* Cached buffers need to be handled before starting the transfer so that
@@ -343,22 +316,32 @@ static void transfer(struct dma_proxy_channel *pchannel_p)
 		 */
 		if (pchannel_p->direction == DMA_MEM_TO_DEV)
 			map_direction = DMA_TO_DEVICE;
-		else
+		else if (pchannel_p->direction == DMA_DEV_TO_MEM)
 			map_direction = DMA_FROM_DEVICE;
+		else
+			map_direction = DMA_BIDIRECTIONAL;
 		pchannel_p->dma_handle = dma_map_single(pchannel_p->dma_device_p,
 												interface_p->buffer,
 												interface_p->length,
 												map_direction);
+
+		DBG_INFO("%s, %d, &buffer=0x%x, interface_p->length:0x%x, interface_p=0x%x\n", __func__, __LINE__,
+			(u32)&interface_p->buffer, interface_p->length, (u32)interface_p);
+		DBG_INFO("%s, %d, dma_handle=0x%x, &interface_phys_addr=0x%x\n", __func__, __LINE__,
+			(u32)pchannel_p->dma_handle, (u32)pchannel_p->interface_phys_addr);
+
 	} else {
 
 		/* The physical address of the buffer in the interface is needed for the dma transfer
 		 * as the buffer may not be the first data in the interface
 		 */
 		u32 offset = (u32)&interface_p->buffer - (u32)interface_p;
+
 		DBG_INFO("%s, %d, offset=0x%x, &buffer=0x%x, interface_p=0x%x\n", __func__, __LINE__,
 			offset, (u32)&interface_p->buffer, (u32)interface_p);
 
 		pchannel_p->dma_handle = (dma_addr_t)(pchannel_p->interface_phys_addr + offset);
+
 		DBG_INFO("%s, %d, dma_handle=0x%x, &interface_phys_addr=0x%x, offset=0x%x\n", __func__, __LINE__,
 			(u32)pchannel_p->dma_handle, (u32)pchannel_p->interface_phys_addr, (u32)offset);
 	}
@@ -513,6 +496,15 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma)
 
 	FUNC_DEBUG();
 
+	DBG_INFO("%s, %d, pchannel_p:%p, pchannel_p->dma_device_p:%p\n", __func__, __LINE__,
+			pchannel_p, pchannel_p->dma_device_p);
+	DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+			pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
+	DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
+			vma, vma->vm_start, vma->vm_end);
+	DBG_INFO("%s, %d, vma->vm_pgoff:0x%lx, vma->vm_pgoff<<PAGE_SHIFT:0x%lx, PAGE_SHIFT:%u\n", __func__, __LINE__,
+			vma->vm_pgoff, vma->vm_pgoff<<PAGE_SHIFT, PAGE_SHIFT);
+
 	/* The virtual address to map into is good, but the page frame will not be good since
 	 * user space passes a physical address of 0, so get the physical address of the buffer
 	 * that was allocated and convert to a page frame number.
@@ -520,17 +512,34 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma)
 	if (cached_buffers) {
 		if (remap_pfn_range(vma, vma->vm_start,
 							virt_to_phys((void *)pchannel_p->interface_p)>>PAGE_SHIFT,
-							vma->vm_end - vma->vm_start, vma->vm_page_prot))
+							vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
 			return -EAGAIN;
+		}
+		else {
+			DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
+					vma, vma->vm_start, vma->vm_end);
+			DBG_INFO("%s, %d, vma->vm_pgoff:0x%lx, vma->vm_pgoff<<PAGE_SHIFT:0x%lx, PAGE_SHIFT:%u\n", __func__, __LINE__,
+					vma->vm_pgoff, vma->vm_pgoff<<PAGE_SHIFT, PAGE_SHIFT);
+		}
 		return 0;
-	} else
-
+	} else {
+		int addr;
 		/* Step 3, use the DMA utility to map the DMA memory into space so that the
 		 * user space application can use it
 		 */
-		return dma_common_mmap(pchannel_p->dma_device_p, vma,
+		DBG_INFO("%s, %d, pchannel_p->dma_device_p:%p, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+				pchannel_p->dma_device_p, pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
+		DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
+				vma, vma->vm_start, vma->vm_end);
+
+		addr = dma_common_mmap(pchannel_p->dma_device_p, vma,
 							   pchannel_p->interface_p, pchannel_p->interface_phys_addr,
 							   vma->vm_end - vma->vm_start);
+
+		DBG_INFO("%s, %d, addr:0x%x\n", __func__, __LINE__, addr);
+
+		return addr;
+	}
 }
 
 /* Open the device file and set up the data pointer to the proxy channel data for the
@@ -687,7 +696,13 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 	 * private.
 	 */
 	dma_cap_zero(mask);
-	dma_cap_set(DMA_SLAVE | DMA_PRIVATE, mask);
+	if (direction == DMA_MEM_TO_MEM)
+		dma_cap_set(DMA_MEMCPY, mask);
+	else
+		dma_cap_set(DMA_SLAVE | DMA_PRIVATE, mask);
+
+	DBG_INFO("%s, %d, direction:%u, name:%s\n", __func__, __LINE__,
+		direction, name);
 
 	/* Request the DMA channel from the DMA engine and then use the device from
 	 * the channel for the proxy channel also.
@@ -698,6 +713,10 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 		return ERROR;
 	}
 	pchannel_p->dma_device_p = &pchannel_p->channel_p->dev->device;
+
+
+	DBG_INFO("%s, %d, pchannel_p:%p, pchannel_p->dma_device_p:%p, name:%s\n", __func__, __LINE__,
+			pchannel_p, pchannel_p->dma_device_p, name);
 
 	/* Initialize the character device for the dma proxy channel
 	 */
@@ -715,10 +734,12 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 	 */
 	if (cached_buffers) {
 		pchannel_p->interface_p = (struct dma_proxy_channel_interface *)
-			kzalloc(sizeof(struct dma_proxy_channel_interface),
-					GFP_KERNEL);
+			kzalloc(sizeof(struct dma_proxy_channel_interface), GFP_KERNEL);
+
 		printk(KERN_INFO "Allocating cached memory at 0x%08X\n",
 			   (unsigned int)pchannel_p->interface_p);
+		DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+				pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
 	} else {
 
 		/* Step 1, set dma memory allocation for the channel so that all of memory
@@ -726,12 +747,16 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 		 * for the channel interface
 		 */
 		dma_set_coherent_mask(pchannel_p->proxy_device_p, 0xFFFFFFFF);
+
 		pchannel_p->interface_p = (struct dma_proxy_channel_interface *)
 			dmam_alloc_coherent(pchannel_p->proxy_device_p,
 								sizeof(struct dma_proxy_channel_interface),
 								&pchannel_p->interface_phys_addr, GFP_KERNEL);
+
 		printk(KERN_INFO "Allocating uncached memory at 0x%08X\n",
 			   (unsigned int)pchannel_p->interface_p);
+		DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+				pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
 	}
 	if (!pchannel_p->interface_p) {
 		dev_err(pchannel_p->dma_device_p, "DMA allocation error\n");
@@ -740,189 +765,25 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 	return 0;
 }
 
-
-#if defined(SP_CBDMA_BASIC_TEST)
-/* Initialize the dma proxy device driver module.
- */
-static int dma_proxy_init(void)
-{
-	int rc;
-
-	FUNC_DEBUG();
-
-	printk(KERN_INFO "dma_proxy module initialized\n");
-
-	/* Create 2 channels, the first is a transmit channel
-	 * the second is the receive channel.
-	 */
-	rc = create_channel(&channels[0], "_tx", DMA_MEM_TO_DEV);
-	DBG_INFO("%s, %d, rc=%d\n", __func__, __LINE__, rc);
-
-	if (rc) {
-		return rc;
-	}
-
-	rc = create_channel(&channels[1], "_rx", DMA_DEV_TO_MEM);
-	DBG_INFO("%s, %d, rc=%d\n", __func__, __LINE__, rc);
-
-	if (rc) {
-		return rc;
-	}
-
-#ifdef INTERNAL_TEST
-	test();
-#endif
-
-	return 0;
-}
-
-/* Exit the dma proxy device driver module.
- */
-static void dma_proxy_exit(void)
-{
-	int i;
-
-	FUNC_DEBUG();
-
-	printk(KERN_INFO "dma_proxy module exited\n");
-
-	/* Take care of the char device infrastructure for each
-	 * channel except for the last channel. Handle the last
-	 * channel seperately.
-	 */
-	for (i = 0; i < CHANNEL_COUNT - 1; i++) {
-		if (channels[i].proxy_device_p)
-			cdevice_exit(&channels[i], NOT_LAST_CHANNEL);
-	}
-	cdevice_exit(&channels[i], LAST_CHANNEL);
-
-	/* Take care of the DMA channels and the any buffers allocated
-	 * for the DMA transfers. The DMA buffers are using managed
-	 * memory such that it's automatically done.
-	 */
-	for (i = 0; i < CHANNEL_COUNT; i++) {
-		if (channels[i].channel_p)
-			dma_release_channel(channels[i].channel_p);
-
-		if (channels[i].interface_p && cached_buffers)
-			kfree((void *)channels[i].interface_p);
-	}
-}
-
-static int sp_cbdma_proxy_probe(struct platform_device *pdev)
-{
-	struct resource *res;
-	void __iomem *reg_base;
-	int ret = 0;
-
-	FUNC_DEBUG();
-
-	/* Get a memory to store infos */
-	cbdma_proxy_info = (struct cbdma_proxy_info_s *)devm_kzalloc(&pdev->dev, sizeof(struct cbdma_proxy_info_s), GFP_KERNEL);
-	DBG_INFO("cbdma_proxy_info:0x%lx\n", (unsigned long)cbdma_proxy_info);
-	if (cbdma_proxy_info == NULL)
-	{
-		printk("cbdma_proxy_info malloc fail\n");
-		ret = -ENOMEM;
-		goto fail_kmalloc;
-	}
-
-	/* Init */
-	mutex_init(&cbdma_proxy_info->cbdma_lock);
-
-	/* Register CBDMA device to kernel */
-	cbdma_proxy_info->dev.name = "sp_cbdma_proxy";
-	cbdma_proxy_info->dev.minor = MISC_DYNAMIC_MINOR;
-	ret = misc_register(&cbdma_proxy_info->dev);
-	DBG_INFO("ret:%u\n", ret);
-	if (ret != 0) {	
-		DBG_ERR("sp_cbdma_proxy device register fail\n");
-		goto fail_regdev;
-	}
-
-
-	/* Get CBDMA register source */
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, CB_DMA_REG_NAME);
-	DBG_INFO("res:0x%lx\n", (unsigned long)res);
-	if (res) {
-		reg_base = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-		if (IS_ERR(reg_base)) {
-			DBG_ERR("%s devm_ioremap_resource fail\n",CB_DMA_REG_NAME);
-		}
-	}
-	DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
-
-	if (((u32)(res->start)) == 0x9C000D00) {
-		/* CBDMA0 */
-		cbdma_proxy_info->sram_addr = 0x9E800000;
-		cbdma_proxy_info->sram_size = 40 << 10;
-
-	} else {
-		/* CBDMA1 */
-		cbdma_proxy_info->sram_addr = 0x9E820000;
-		cbdma_proxy_info->sram_size = 4 << 10;
-
-	}
-	DBG_INFO("%s, %d, SRAM: 0x%x bytes @ 0x%x\n", __func__, __LINE__, cbdma_proxy_info->sram_size, cbdma_proxy_info->sram_addr);
-
-	dma_proxy_init();
-
-fail_regdev:
-	mutex_destroy(&cbdma_proxy_info->cbdma_lock);
-fail_kmalloc:
-	return ret;
-}
-
-static int sp_cbdma_proxy_remove(struct platform_device *pdev)
-{
-	FUNC_DEBUG();
-
-	dma_proxy_exit();
-
-	return 0;
-}
-
-static const struct of_device_id sp_cbdma_proxy_of_match[] = {
-	{ .compatible = "sunplus,sp7021-cbdma-proxy" },
-	{ /* sentinel */ },
-};
-
-MODULE_DEVICE_TABLE(of, sp_cbdma_proxy_of_match);
-
-static struct platform_driver sp_cbdma_proxy_driver = {
-	.probe = sp_cbdma_proxy_probe,
-	.remove = sp_cbdma_proxy_remove,
-	.driver = {
-		.name	= DEVICE_NAME,
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(sp_cbdma_proxy_of_match),
-	}
-};
-
-module_platform_driver(sp_cbdma_proxy_driver);
-
-/**************************************************************************
- *                  M O D U L E    D E C L A R A T I O N                  *
- **************************************************************************/
-MODULE_AUTHOR("Sunplus Technology");
-MODULE_DESCRIPTION("Sunplus CBDMA Proxy Driver");
-MODULE_LICENSE("GPL");
-
-#else
-
 /* Initialize the dma proxy device driver module.
  */
 static int __init dma_proxy_init(void)
 {
 	int rc;
 
+	FUNC_DEBUG();
 	printk(KERN_INFO "dma_proxy module initialized\n");
 
+#if 1
+	rc = create_channel(&channels[0], "_cp", DMA_MEM_TO_MEM);
+	if (rc) {
+		return rc;
+	}
+#else
 	/* Create 2 channels, the first is a transmit channel
 	 * the second is the receive channel.
 	 */
 	rc = create_channel(&channels[0], "_tx", DMA_MEM_TO_DEV);
-
 	if (rc) {
 		return rc;
 	}
@@ -931,6 +792,7 @@ static int __init dma_proxy_init(void)
 	if (rc) {
 		return rc;
 	}
+#endif
 
 #ifdef INTERNAL_TEST
 	test();
@@ -945,6 +807,7 @@ static void __exit dma_proxy_exit(void)
 {
 	int i;
 
+	FUNC_DEBUG();
 	printk(KERN_INFO "dma_proxy module exited\n");
 
 	/* Take care of the char device infrastructure for each
@@ -973,4 +836,3 @@ static void __exit dma_proxy_exit(void)
 module_init(dma_proxy_init);
 module_exit(dma_proxy_exit);
 MODULE_LICENSE("GPL");
-#endif

@@ -472,6 +472,20 @@ struct xilinx_dma_chan {
 	u16 tdest;
 };
 
+/**
+ * enum xdma_ip_type - DMA IP type.
+ *
+ * @XDMA_TYPE_AXIDMA: Axi dma ip.
+ * @XDMA_TYPE_CDMA: Axi cdma ip.
+ * @XDMA_TYPE_VDMA: Axi vdma ip.
+ *
+ */
+enum xdma_ip_type {
+	XDMA_TYPE_AXIDMA = 0,
+	XDMA_TYPE_CDMA,
+	XDMA_TYPE_VDMA,
+};
+
 struct sp_cbdma_config {
 	enum xdma_ip_type dmatype;
 };
@@ -529,8 +543,8 @@ struct xilinx_dma_device {
 
 /* Debug message definition */
 #define CBDMA_FUNC_DEBUG
-//#define CBDMA_KDBG_INFO
-//#define CBDMA_KDBG_ERR
+#define CBDMA_KDBG_INFO
+#define CBDMA_KDBG_ERR
 
 #ifdef CBDMA_FUNC_DEBUG
 #define FUNC_DEBUG()    printk(KERN_INFO "[CBDMA] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -2645,12 +2659,14 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
 	    of_device_is_compatible(node, "xlnx,axi-dma-mm2s-channel") ||
 	    of_device_is_compatible(node, "xlnx,axi-cdma-channel")) {
 		DBG_INFO("%s, %d, mm2s-channel\n", __func__, __LINE__);
+
 		if (of_device_is_compatible(node, "xlnx,axi-cdma-channel"))
 			chan->direction = DMA_MEM_TO_MEM;
 		else
 			chan->direction = DMA_MEM_TO_DEV;
 		chan->id = chan_id;
 		chan->tdest = chan_id;
+
 		DBG_INFO("%s, %d, chan->id:%u chan->tdest:%u, xdev->nr_channels:%u, chan->direction:%u\n", __func__, __LINE__,
 			chan->id, chan->tdest, xdev->nr_channels, chan->direction);
 
@@ -2667,11 +2683,13 @@ static int xilinx_dma_chan_probe(struct xilinx_dma_device *xdev,
 		   of_device_is_compatible(node,
 					   "xlnx,axi-dma-s2mm-channel")) {
 		DBG_INFO("%s, %d, s2mm-channel\n", __func__, __LINE__);
+
 		chan->direction = DMA_DEV_TO_MEM;
 		chan->id = chan_id;
 		chan->tdest = chan_id - xdev->nr_channels;
-		DBG_INFO("%s, %d, chan->id:%u chan->tdest:%d, xdev->nr_channels:%d\n", __func__, __LINE__,
-			chan->id, chan->tdest, xdev->nr_channels);
+
+		DBG_INFO("%s, %d, chan->id:%u chan->tdest:%u, xdev->nr_channels:%u, chan->direction:%u\n", __func__, __LINE__,
+			chan->id, chan->tdest, xdev->nr_channels, chan->direction);
 
 		chan->ctrl_offset = SP_CBDMA_S2MM_CTRL_OFFSET;
 		if (xdev->dma_config->dmatype == XDMA_TYPE_VDMA) {
@@ -2842,27 +2860,27 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 
 	/* Request and map I/O memory */
 #if 1
-		io = platform_get_resource_byname(pdev, IORESOURCE_MEM, CB_DMA_REG_NAME);
-		DBG_INFO("%s, %d, io:%p\n", __func__, __LINE__, io);
-		xdev->regs = devm_ioremap_resource(&pdev->dev, io);
-		if (IS_ERR(xdev->regs)) {
-			DBG_ERR("%s devm_ioremap_resource fail\n",CB_DMA_REG_NAME);
-			return PTR_ERR(xdev->regs);
-		}
-		DBG_INFO("%s, %d, regs:%p\n", __func__, __LINE__, xdev->regs);
-	
-		if (((u32)(io->start)) == 0x9C000D00) {
-			/* CBDMA0 */
-			xdev->sram_addr = 0x9E800000;
-			xdev->sram_size = 40 << 10;
-		} else {
-			/* CBDMA1 */
-			xdev->sram_addr = 0x9E820000;
-			xdev->sram_size = 4 << 10;
-		}
-		DBG_INFO("%s, %d, SRAM:0x%x bytes @ 0x%x\n", __func__, __LINE__, xdev->sram_size, xdev->sram_addr);
-	
-		DBG_INFO("%s, %d, hw_ver:0x%x\n", __func__, __LINE__, readl(xdev->regs + SP_DMA_HW_VER));
+	io = platform_get_resource_byname(pdev, IORESOURCE_MEM, CB_DMA_REG_NAME);
+	DBG_INFO("%s, %d, io:%p\n", __func__, __LINE__, io);
+	xdev->regs = devm_ioremap_resource(&pdev->dev, io);
+	if (IS_ERR(xdev->regs)) {
+		DBG_ERR("%s devm_ioremap_resource fail\n",CB_DMA_REG_NAME);
+		return PTR_ERR(xdev->regs);
+	}
+	DBG_INFO("%s, %d, regs:%p\n", __func__, __LINE__, xdev->regs);
+
+	if (((u32)(io->start)) == 0x9C000D00) {
+		/* CBDMA0 */
+		xdev->sram_addr = 0x9E800000;
+		xdev->sram_size = 40 << 10;
+	} else {
+		/* CBDMA1 */
+		xdev->sram_addr = 0x9E820000;
+		xdev->sram_size = 4 << 10;
+	}
+	DBG_INFO("%s, %d, SRAM:0x%x bytes @ 0x%x\n", __func__, __LINE__, xdev->sram_size, xdev->sram_addr);
+
+	DBG_INFO("%s, %d, hw_ver:0x%x\n", __func__, __LINE__, readl(xdev->regs + SP_DMA_HW_VER));
 #else
 	io = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	xdev->regs = devm_ioremap_resource(&pdev->dev, io);
