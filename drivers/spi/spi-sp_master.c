@@ -1244,11 +1244,10 @@ static int pentagram_spi_master_setup(struct spi_device *spi)
 	return 0;
 
 #ifdef CONFIG_PM_RUNTIME_SPI
-  pm_out:
-	pm_runtime_mark_last_busy(&spi->dev);
-	pm_runtime_put_autosuspend(&spi->dev);
-				
-	DBG_INFO( "pm_out");
+pm_out:
+	pm_runtime_mark_last_busy(pspim->dev);
+	pm_runtime_put_autosuspend(pspim->dev);
+    DBG_INFO( "pm_out");
 	return 0;								  
 #endif
 
@@ -1328,6 +1327,9 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_mast
 	   }else{
 		  div = clk_rate / pspim->spi_max_frequency;
 	   }
+
+
+	   div = clk_rate / 5000000;  //5000000
 
 	   
 	   DBG_INFO( "clk_rate: %d	div %d \n",clk_rate,div);
@@ -1465,9 +1467,9 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 pm_out:
-	pm_runtime_mark_last_busy(&spi->dev);
-	pm_runtime_put_autosuspend(&spi->dev);
-        DBG_INFO( "pm_out");
+	pm_runtime_mark_last_busy(pspim->dev);
+	pm_runtime_put_autosuspend(pspim->dev);
+    DBG_INFO( "pm_out");
 	return 0;								  
 #endif
 
@@ -1517,13 +1519,12 @@ static int pentagram_spi_master_transfer_one_message(struct spi_master *master, 
 
 	start_xfer = false;
 
-#ifdef CONFIG_PM_RUNTIME_SPI
-	if(pm_runtime_enabled(pspim->dev)){
-	    ret = pm_runtime_get_sync(pspim->dev);
-	    if (ret < 0)
-	        goto pm_out;  
-	}
-#endif
+	pm_out:
+		pm_runtime_mark_last_busy(pspim->dev);
+		pm_runtime_put_autosuspend(pspim->dev);
+		DBG_INFO( "pm_out");
+		return 0;	
+
 
 
 	list_for_each_entry(xfer, &m->transfers, transfer_list) {
@@ -1613,7 +1614,7 @@ static int pentagram_spi_master_transfer_one_message(struct spi_master *master, 
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 	pm_runtime_put(pspim->dev);
-        DBG_INFO( "pm_put");								  
+    DBG_INFO( "pm_put");								  
 #endif
 
 
@@ -1622,9 +1623,9 @@ static int pentagram_spi_master_transfer_one_message(struct spi_master *master, 
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 pm_out:
-	pm_runtime_mark_last_busy(&spi->dev);
-	pm_runtime_put_autosuspend(&spi->dev);
-        DBG_INFO( "pm_out");
+	pm_runtime_mark_last_busy(pspim->dev);
+	pm_runtime_put_autosuspend(pspim->dev);
+    DBG_INFO( "pm_out");
 	return 0;								  
 #endif
 	
@@ -1664,7 +1665,7 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 
 
 	/* setup the master state. */
-	master->mode_bits = SPI_MODE_3 ;
+	master->mode_bits = SPI_MODE_1 ;
 	master->bus_num = pdev->id;
 	//master->setup = pentagram_spi_master_setup;
 	master->prepare_message = pentagram_spi_master_prepare_message;
