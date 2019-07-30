@@ -2,7 +2,7 @@ if ARCH_PENTAGRAM
 
 choice
 	prompt "Sunplus Pentagram SOC"
-	default MACH_PENTAGRAM_SC7021_ACHIP
+	default MACH_PENTAGRAM_SP7021_ACHIP
 
 config MACH_PENTAGRAM_8388_ACHIP
         bool "8388 A support"
@@ -43,23 +43,23 @@ config MACH_PENTAGRAM_3502_ACHIP
 	select HAVE_ARM_SCU
 	select ARM_GLOBAL_TIMER
 
-config MACH_PENTAGRAM_SC7021_ACHIP
-        bool "SC7021 A+B support"
+config MACH_PENTAGRAM_SP7021_ACHIP
+        bool "SP7021 A+B support"
         select CPU_V7
         select ARM_GIC
         select SP_INTC
 	select HAVE_SMP
-    select COMMON_CLK_SC7021
+    select COMMON_CLK_SP7021
 	select CLKSRC_SP_TIMER
 	select PINCTRL
 	select PINCTRL_SPPCTL
 	select OF_OVERLAY
 
-config MACH_PENTAGRAM_SC7021_BCHIP
-        bool "SC7021 B support"
+config MACH_PENTAGRAM_SP7021_BCHIP
+        bool "SP7021 B support"
         select CPU_ARM926T
         select SP_INTC
-    select COMMON_CLK_SC7021
+    select COMMON_CLK_SP7021
 	select CLKSRC_SP_TIMER
 	select PINCTRL
 	select PINCTRL_SPPCTL

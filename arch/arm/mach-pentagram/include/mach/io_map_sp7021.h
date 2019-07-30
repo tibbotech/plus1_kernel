@@ -1,5 +1,5 @@
-#ifndef __IO_MAP_SC7021_H__
-#define __IO_MAP_SC7021_H__
+#ifndef __IO_MAP_SP7021_H__
+#define __IO_MAP_SP7021_H__
 
 /*****************
  * PA (B)

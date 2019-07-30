@@ -59,10 +59,8 @@
 /* ---------------------------------------------------------------------------------------------- */
 
 struct sunplus_rtc {
-
 	struct clk *rtcclk;
-	struct reset_control *rstc;
-		
+	struct reset_control *rstc;		
 };
 
 struct sunplus_rtc sp_rtc;
@@ -128,10 +126,12 @@ static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	sp_get_seconds(&secs);
 	rtc_time_to_tm(secs, tm);
+	
 #if 0
 	printk("%s:  RTC date/time to %d-%d-%d, %02d:%02d:%02d.\r\n",
 	       __func__, tm->tm_mday, tm->tm_mon + 1, tm->tm_year, tm->tm_hour, tm->tm_min, tm->tm_sec);
 #endif
+
 	return rtc_valid_tm(tm);
 }
 
@@ -174,7 +174,6 @@ static int sp_rtc_set_mmss(struct device *dev, unsigned long secs)
 	return 0;
 }
 
-
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	unsigned long alarm_time;
@@ -202,7 +201,6 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	return 0;
 }
 
-
 static const struct rtc_class_ops sp_rtc_ops = {
 	.read_time = sp_rtc_read_time,
 	.set_mmss = sp_rtc_set_mmss,
@@ -210,14 +208,22 @@ static const struct rtc_class_ops sp_rtc_ops = {
 	.read_alarm = sp_rtc_read_alarm,
 };
 
+static irqreturn_t rtc_irq_handler(int irq, void *data)
+{
+	DBG_INFO("[RTC] alarm times up\n");
+	
+	return IRQ_HANDLED;
+}
+
 static int sp_rtc_probe(struct platform_device *plat_dev)
 {
 	int ret;
+	int err, irq;
 	struct rtc_device *rtc;
 	struct resource *res;
 	void __iomem *reg_base;
 
-      FUNC_DEBUG();
+	FUNC_DEBUG();
 
 	//memset(sp_rtc, 0, sizeof(sp_rtc));
 	memset(&sp_rtc, 0, sizeof(sp_rtc));
@@ -233,8 +239,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	}
         DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
-
-      /* clk*/
+	/* clk*/
 	DBG_INFO("Enable RTC clock\n");
 	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev,NULL);
 	DBG_INFO("sp_rtc->clk = %x\n",sp_rtc.rtcclk);
@@ -244,7 +249,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	ret = clk_prepare_enable(sp_rtc.rtcclk);
 
 
-	/* reset*/
+	// reset
 	DBG_INFO("Enable RTC reset function\n");	
 	sp_rtc.rstc = devm_reset_control_get(&plat_dev->dev, NULL);
 	DBG_INFO( "sp_rtc->rstc : 0x%x \n",sp_rtc.rstc);
@@ -260,6 +265,21 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	DBG_INFO("sp_rtc->rstc002\n");
 	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	
+	// request irq
+	irq = platform_get_irq(plat_dev, 0);
+	if (irq < 0) {
+		DBG_ERR("platform_get_irq failed\n");
+		goto free_reset_assert;
+	}
+	
+	err = devm_request_irq(&plat_dev->dev, irq, rtc_irq_handler, IRQF_TRIGGER_RISING, "rtc irq", plat_dev);
+	if (err) {
+		DBG_ERR("devm_request_irq failed: %d\n", err);
+		goto free_reset_assert;
+	}
+	
+	device_init_wakeup(&plat_dev->dev, 1);
 
 	rtc = rtc_device_register("sp7021-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
 	if (IS_ERR(rtc)) {
@@ -271,14 +291,12 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	return 0;
 
-
 free_reset_assert:
 	reset_control_assert(sp_rtc.rstc);
 free_clk:
 	clk_disable_unprepare(sp_rtc.rtcclk);
 
-		return ret;	
-	
+	return ret;
 }
 
 static int sp_rtc_remove(struct platform_device *plat_dev)
@@ -288,6 +306,7 @@ static int sp_rtc_remove(struct platform_device *plat_dev)
 	reset_control_assert(sp_rtc.rstc);
 	
 	rtc_device_unregister(rtc);
+
 	return 0;
 }
 
@@ -309,13 +328,11 @@ static struct platform_driver sp_rtc_driver = {
 	},
 };
 
-
-
 static int __init sp_rtc_init(void)
 {
 	int err;
 
-      FUNC_DEBUG();
+	FUNC_DEBUG();
 
 	if ((err = platform_driver_register(&sp_rtc_driver)))
 		return err;
