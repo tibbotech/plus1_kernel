@@ -64,6 +64,7 @@
 
 #define MAC_INT_RX                      (MAC_INT_RX_DONE_H | MAC_INT_RX_DONE_L | MAC_INT_RX_DES_ERR)
 #define MAC_INT_TX                      (MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC0_PAUSE_ON | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
+#define MAC_INT_MASK_DEF                0x80618200
 
 
 /*define port ability*/

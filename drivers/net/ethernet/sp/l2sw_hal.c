@@ -219,11 +219,16 @@ void mac_hw_init(struct l2sw_mac *mac)
 	wmb();
 
 	/* descriptor base address */
-	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma);
-	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
+	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma);
+	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
 	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
 	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
+
+	// Threshold values
+	HWREG_W(fl_cntl_th,     0x4a3a2d1d);    // Fc_rls_th=0x4a,  Fc_set_th=0x3a,  Drop_rls_th=0x2d, Drop_set_th=0x1d
+	HWREG_W(cpu_fl_cntl_th, 0x6a5a1212);    // Cpu_rls_th=0x6a, Cpu_set_th=0x5a, Cpu_th=0x12,      Port_th=0x12
+	HWREG_W(pri_fl_cntl,    0xf6680000);    // mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1
 
 	// High-active LED
 	reg = HWREG_R(led_port0);
@@ -251,7 +256,7 @@ void mac_hw_init(struct l2sw_mac *mac)
 	}
 
 	wmb();
-	HWREG_W(sw_int_mask_0, 0x00000000);
+	HWREG_W(sw_int_mask_0, MAC_INT_MASK_DEF);
 }
 
 void mac_switch_mode(struct l2sw_mac *mac)
@@ -399,15 +404,9 @@ u32 mdio_write(u32 phy_id, u32 regnum, u16 val)
 	return 0;
 }
 
-inline void rx_finished(u32 queue, u32 rx_count)
+inline void tx_trigger(void)
 {
-}
-
-inline void tx_trigger(u32 tx_pos)
-{
-	wmb();
-	HWREG_W(cpu_tx_trig, (0x1<<0));
-	wmb();
+	HWREG_W(cpu_tx_trig, (0x1<<1));
 }
 
 inline void write_sw_int_mask0(u32 value)

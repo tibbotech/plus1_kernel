@@ -51,9 +51,7 @@ u32 mdio_read(u32 phy_id, u16 regnum);
 
 u32 mdio_write(u32 phy_id, u32 regnum, u16 val);
 
-void rx_finished(u32 queue, u32 rx_count);
-
-void tx_trigger(u32 tx_pos);
+void tx_trigger(void);
 
 void write_sw_int_mask0(u32 value);
 
