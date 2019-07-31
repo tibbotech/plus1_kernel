@@ -1,8 +1,8 @@
 /*
- * Sunplus SPI controller driver (master mode only)
+ * Sunplus SPI controller driver 
  *
  * Author: Sunplus Technology Co., Ltd.
- *		   henry.liou@sunplus.com
+ *	
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
@@ -1138,18 +1138,14 @@ static int pentagram_spi_master_combine_write_read(struct spi_master *master,
 	    if (t->rx_buf){
 			//DBG_INFO("txrx1269: tx %p, rx %p, len %d\n", t->tx_buf, t->rx_buf, t->len);
 		    memcpy(t->rx_buf, &rx_data_buf[data_len], t->len);
-		    //memcpy(data_buf, &rx_data_buf[data_len], t->len);
 	    }
 
 
-		    ///DBG_INFO("RXcnt1268 data 0x%x data_len = %d  \n",rx_data_buf[0],data_len); 
+		    //DBG_INFO("RXcnt1268 data 0x%x data_len = %d  \n",rx_data_buf[0],data_len); 
 		    //DBG_INFO("RXcnt1268 data 0x%x data_len = %d	\n",rx_data_buf[1],data_len); 
-            //DBG_INFO("RXcnt1268 data 0x%x data_len = %d	\n",rx_data_buf[2],data_len); 
-		    //DBG_INFO("RXcnt1268 data 0x%x data_len = %d	\n",rx_data_buf[3],data_len); 
-            //DBG_INFO("RXcnt1268 data 0x%x data_len = %d	\n",rx_data_buf[4],data_len);
-
-			//DBG_INFO("RXcnt1268 data15 0x%x data_len = %d	\n",rx_data_buf[15],data_len); 
-            //DBG_INFO("RXcnt1268 data32 0x%x data_len = %d	\n",rx_data_buf[32],data_len); 
+                    //DBG_INFO("RXcnt1268 data 0x%x data_len = %d	\n",rx_data_buf[2],data_len); 
+                    //DBG_INFO("RXcnt1268 data15 0x%x data_len = %d	\n",rx_data_buf[15],data_len); 
+                    //DBG_INFO("RXcnt1268 data32 0x%x data_len = %d	\n",rx_data_buf[32],data_len); 
 
 		    //DBG_INFO("RXcnt1269 data 0x%x rx_cur_len = %d \n",rx_data_buf[data_len],rx_cur_len); 
 		    //DBG_INFO("RXcnt1269 data 0x%x t->len = %d \n",rx_data_buf[data_len+t->len],t->len); 
@@ -1259,14 +1255,14 @@ static int pentagram_spi_master_prepare_message(struct spi_master *master,
 				    struct spi_message *msg)
 {
 	struct device dev = master->dev;
-	dev_dbg(&dev,"%s\n",__FUNCTION__);
+	FUNC_DEBUG();
 	return 0;
 }
 static int pentagram_spi_master_unprepare_message(struct spi_master *master,
 				    struct spi_message *msg)
 {
 	struct device dev = master->dev;
-	dev_dbg(&dev,"%s\n",__FUNCTION__);
+	FUNC_DEBUG();
 	return 0;
 }
 
@@ -1327,10 +1323,6 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_mast
 	   }else{
 		  div = clk_rate / pspim->spi_max_frequency;
 	   }
-
-
-	   div = clk_rate / 5000000;  //5000000
-
 	   
 	   DBG_INFO( "clk_rate: %d	div %d \n",clk_rate,div);
 	
@@ -1402,7 +1394,6 @@ static int pentagram_spi_master_transfer_one(struct spi_master *master, struct s
 	}
 #endif
 
-	//dev_dbg(&dev,"%s\n",__FUNCTION__);	
 	pentagram_spi_setup_transfer(spi, master, xfer);
 
 
@@ -1519,12 +1510,13 @@ static int pentagram_spi_master_transfer_one_message(struct spi_master *master, 
 
 	start_xfer = false;
 
-	pm_out:
-		pm_runtime_mark_last_busy(pspim->dev);
-		pm_runtime_put_autosuspend(pspim->dev);
-		DBG_INFO( "pm_out");
-		return 0;	
-
+#ifdef CONFIG_PM_RUNTIME_SPI
+	if(pm_runtime_enabled(pspim->dev)){
+	    ret = pm_runtime_get_sync(pspim->dev);
+	    if (ret < 0)
+	        goto pm_out;  
+	}
+#endif
 
 
 	list_for_each_entry(xfer, &m->transfers, transfer_list) {
@@ -1649,7 +1641,7 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
     FUNC_DEBUG();
 
 
-	master = spi_alloc_master(&pdev->dev, sizeof(pspim));
+	master = spi_alloc_master(&pdev->dev, sizeof(*pspim));
 	if (!master) {
 		dev_err(&pdev->dev,"spi_alloc_master fail\n");
 		return -ENODEV;
@@ -1665,7 +1657,7 @@ static int pentagram_spi_master_probe(struct platform_device *pdev)
 
 
 	/* setup the master state. */
-	master->mode_bits = SPI_MODE_1 ;
+	master->mode_bits = SPI_MODE_3 ;
 	master->bus_num = pdev->id;
 	//master->setup = pentagram_spi_master_setup;
 	master->prepare_message = pentagram_spi_master_prepare_message;
@@ -1913,12 +1905,6 @@ static int pentagram_spi_master_resume(struct platform_device *pdev)
 	
 }
 
-static const struct of_device_id pentagram_spi_master_ids[] = {
-	{.compatible = "sunplus,sp7021-spi-master"},
-	{}
-};
-MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
-
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 static int sp_spi_runtime_suspend(struct device *dev)
@@ -1951,6 +1937,7 @@ static int sp_spi_runtime_resume(struct device *dev)
 	return 0;
 
 }
+
 static const struct dev_pm_ops sp7021_spi_pm_ops = {
 	.runtime_suspend = sp_spi_runtime_suspend,
 	.runtime_resume  = sp_spi_runtime_resume,
@@ -1958,6 +1945,14 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 
 #define sp_spi_pm_ops  (&sp7021_spi_pm_ops)
 #endif
+
+
+static const struct of_device_id pentagram_spi_master_ids[] = {
+	{.compatible = "sunplus,sp7021-spi-master"},
+	{}
+};
+MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
+
 
 
 static struct platform_driver pentagram_spi_master_driver = {
