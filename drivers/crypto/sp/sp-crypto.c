@@ -6,6 +6,8 @@
 #include <linux/module.h>
 #include <linux/types.h>
 #include <linux/crypto.h>
+#include <linux/clk.h>
+#include <linux/reset.h>
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
 #include <linux/io.h>
@@ -448,34 +450,38 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	trb_ring_t *ring;
 	u32 phy_addr;
 	struct sp_crypto_dev *dev = sp_dd_tb;//platform_get_drvdata(pdev);
+	struct resource *res_mem;
+	void __iomem *membase;
 	int ret = 0;
 
 	SP_CRYPTO_TRACE();
 
-#ifdef VA_B_REG
-	dev->reg = (void *)(VA_B_REG + 84 * 32 * 4);
-#else
-	{
-		struct resource *res_mem;
-		void __iomem *membase;
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (!res_mem)
+		return -ENODEV;
 
-		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res_mem)
-			return -ENODEV;
+	membase = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR(membase))
+		return PTR_ERR(membase);
 
-		membase = devm_ioremap_resource(&pdev->dev, res_mem);
-		if (IS_ERR(membase))
-			return PTR_ERR(membase);
-
-		dev->reg = membase;
-	}
-#endif
+	dev->reg = membase;
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res_irq)
 		return -ENODEV;
 
 	dev->irq = res_irq->start;
+
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	ERR_OUT(dev->clk, out0, "get clk");
+	ret = clk_prepare_enable(dev->clk);
+	ERR_OUT(ret, out0, "enable clk");
+
+	/* reset */
+	dev->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	ERR_OUT(dev->clk, out1, "get reset_control");
+	ret = reset_control_deassert(dev->rstc);
+	ERR_OUT(dev->clk, out1, "deassert reset_control");
 
 	platform_set_drvdata(pdev, dev);
 	reg = dev->reg;
@@ -495,7 +501,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	SP_CRYPTO_TRACE();
 	HASH_RING(dev) = ring = trb_ring_new(HASH_CMD_RING_SIZE);
-	ERR_OUT(ring, out0, "new hash_cmd_ring");
+	ERR_OUT(ring, out2, "new hash_cmd_ring");
 
 	phy_addr = ring->pa;
 	reg->HASHDMA_CRCR  = phy_addr | AUTODMA_CRCR_FLAGS;
@@ -516,7 +522,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	SP_CRYPTO_TRACE();
 	AES_RING(dev) = ring = trb_ring_new(AES_CMD_RING_SIZE);
-	ERR_OUT(ring, out1, "new hash_cmd_ring");
+	ERR_OUT(ring, out3, "new hash_cmd_ring");
 
 	phy_addr = ring->pa;
 	reg->AESDMA_CRCR  = phy_addr | AUTODMA_CRCR_FLAGS;
@@ -535,8 +541,8 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	SP_CRYPTO_INF("AES_CR   : %08x\n", reg->AES_CR);
 	SP_CRYPTO_INF("AES_ER   : %08x\n", reg->AES_ER);
 
-	ret = request_irq(dev->irq, sp_crypto_irq, IRQF_TRIGGER_HIGH, "sp_crypto", dev);
-	ERR_OUT(ret, out2, "request_irq(%d)", dev->irq);
+	ret = devm_request_irq(&pdev->dev, dev->irq, sp_crypto_irq, IRQF_TRIGGER_HIGH, "sp_crypto", dev);
+	ERR_OUT(ret, out4, "request_irq(%d)", dev->irq);
 
 	SP_CRYPTO_TRACE();
 #ifdef USE_ERF
@@ -549,10 +555,14 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	return 0;
 
-out2:
+out4:
 	trb_ring_free(AES_RING(dev));
-out1:
+out3:
 	trb_ring_free(HASH_RING(dev));
+out2:
+	reset_control_assert(dev->rstc);
+out1:
+	clk_disable_unprepare(dev->clk);
 out0:
 	return ret;
 }
@@ -573,12 +583,10 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	reg->AESDMA_RCSR  &= ~AUTODMA_RCSR_EN;
 
 	/*  free resource*/
-	free_irq(dev->irq, dev);
 	trb_ring_free(AES_RING(dev));
 	trb_ring_free(HASH_RING(dev));
-#ifndef VA_B_REG
-	devm_iounmap(&pdev->dev, (void *)dev->reg);
-#endif
+	reset_control_assert(dev->rstc);
+	clk_disable_unprepare(dev->clk);
 
 	return 0;
 }
