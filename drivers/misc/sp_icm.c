@@ -334,7 +334,10 @@ static int sp_icm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "not found clk source\n");
 		return PTR_ERR(dev->clk);
 	}
-	clk_prepare(dev->clk);
+	ret = clk_prepare_enable(dev->clk);
+	//ret = clk_prepare(dev->clk);
+	if(ret)
+		return ret;
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem)
