@@ -164,6 +164,8 @@ struct sp_crypto_dev {
 	u32 irq;
 	u32 version;
 	u32 devid;
+	struct clk *clk;
+	struct reset_control *rstc;
 	//struct device *device;
 #if 0
 	atomic_t rsa_ref_cnt;	/*reference count */

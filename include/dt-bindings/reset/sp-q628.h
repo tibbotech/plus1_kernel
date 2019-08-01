@@ -76,6 +76,7 @@
 #define RST_MAILBOX		0x86
 #define RST_SPIND		  0x8a
 #define RST_I2C2CBUS	0x8b
+#define RST_SEC			  0x8d
 #define RST_DVE			  0x8e
 #define RST_GPOST0		0x8f
 
