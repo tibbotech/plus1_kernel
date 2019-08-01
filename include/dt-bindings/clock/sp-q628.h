@@ -86,6 +86,7 @@
 #define MAILBOX		0x96
 #define SPIND		0x9a
 #define I2C2CBUS	0x9b
+#define SEC			0x9d
 #define DVE			0x9e
 #define GPOST0		0x9f
 
