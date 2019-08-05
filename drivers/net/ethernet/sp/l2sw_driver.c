@@ -88,6 +88,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 	s32 queue;
 	struct l2sw_common *comm = mac->comm;
 	int ndev2_pkt;
+	struct net_device_stats *dev_stats;
 
 	// Process high-priority queue and then low-priority queue.
 	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
@@ -101,61 +102,40 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 			cmd = desc->cmd1;
 			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
 
-			if ((comm->dual_nic) && ((cmd & PKTSP_MASK) == PKTSP_PORT1)) {
-				ndev2_pkt = 1;
-			} else {
-				ndev2_pkt = 0;
-			}
-
 			if (cmd & OWN_BIT) {
 				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %p", rx_pos, desc);
 				break;
 			}
 
-			if (unlikely(cmd & ERR_CODE)) {
-				if (ndev2_pkt) {
-					if (mac->next_netdev) {
-						struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
+			if ((comm->dual_nic) && ((cmd & PKTSP_MASK) == PKTSP_PORT1)) {
+				struct l2sw_mac *mac2;
 
-						mac2->dev_stats.rx_length_errors++;
-						mac2->dev_stats.rx_dropped++;
-					}
-				} else {
-					mac->dev_stats.rx_length_errors++;
-					mac->dev_stats.rx_dropped++;
-				}
+				ndev2_pkt = 1;
+				mac2 = (mac->next_netdev)? netdev_priv(mac->next_netdev): NULL;
+				dev_stats = (mac2)? &mac2->dev_stats: &mac->dev_stats;
+			} else {
+				ndev2_pkt = 0;
+				dev_stats = &mac->dev_stats;
+			}
+
+			pkg_len = cmd & LEN_MASK;
+			if (unlikely((cmd & ERR_CODE) || (pkg_len < 64))) {
+				dev_stats->rx_length_errors++;
+				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
 
 			if (unlikely(cmd & RX_IP_CHKSUM_BIT)) {
-				ETH_ERR(" RX IP Checksum error!\n");
-
-				if (ndev2_pkt) {
-					if (mac->next_netdev) {
-						struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
-
-						mac2->dev_stats.rx_crc_errors++;
-					}
-				} else {
-					mac->dev_stats.rx_crc_errors++;
-				}
-				goto NEXT;
-			}
-
-			if (unlikely(cmd & RX_TCP_UDP_CHKSUM_BIT)) {
-				goto NEXT;
-			}
-
-			pkg_len = cmd & LEN_MASK;
-
-			if (unlikely(pkg_len < 64)) {
+				//ETH_INFO(" RX IP Checksum error!\n");
+				dev_stats->rx_crc_errors++;
+				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
 
 			/* allocate an skbuff for receiving, and it's an inline function */
 			new_skb = __dev_alloc_skb(comm->rx_desc_buff_size + RX_OFFSET, GFP_ATOMIC | GFP_DMA);
 			if (unlikely(new_skb == NULL)) {
-				mac->dev_stats.rx_dropped++;
+				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
 			new_skb->dev = mac->net_dev;
