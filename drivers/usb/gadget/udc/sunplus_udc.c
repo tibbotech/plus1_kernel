@@ -910,7 +910,7 @@ static int sp_udc_read_ep0_fifo(struct sp_ep *ep,
 static int sp_udc_get_status(struct sp_udc *dev,
 				 struct usb_ctrlrequest *crq)
 {
-	u16 status = 0;
+	u32 status = 0;
 	u8 ep_num = crq->wIndex & 0x7F;
 	struct sp_ep *ep = &memory.ep[ep_num];
 
