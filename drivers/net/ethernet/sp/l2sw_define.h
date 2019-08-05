@@ -221,6 +221,9 @@ struct l2sw_common {
 struct l2sw_mac {
 	struct platform_device *pdev;
 	struct net_device *net_dev;
+	struct l2sw_common *comm;
+	struct net_device *next_netdev;
+
 	struct net_device_stats dev_stats;
 
 	u8 mac_addr[ETHERNET_MAC_ADDR_LEN];
@@ -229,10 +232,6 @@ struct l2sw_mac {
 	u8 to_vlan;
 	u8 cpu_port;
 	u8 vlan_id;
-
-	struct l2sw_common *comm;
-
-	struct net_device *next_netdev;
 };
 
 
