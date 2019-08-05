@@ -4,7 +4,6 @@
 #include <linux/nvmem-consumer.h>
 
 
-extern int read_otp_data(int addr, char *value);
 static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {0x88, 0x88, 0x88, 0x88, 0x88, 0x80};
 
 
@@ -36,45 +35,42 @@ static inline void rx_skb(struct l2sw_mac *mac, struct sk_buff *skb)
 	netif_rx(skb);
 }
 
-static inline void interrupt_finish(struct l2sw_mac *mac)
+static inline void port_status_change(struct l2sw_mac *mac)
 {
 	u32 reg;
 	struct net_device *net_dev = (struct net_device *)mac->net_dev;
-	u32 status = (u32)mac->comm->int_status;
 
-	if (status & MAC_INT_PORT_ST_CHG) { /* link status changed*/
-		reg = read_port_ability();
-		if (mac->comm->dual_nic) {
-			if (!netif_carrier_ok(net_dev) && (reg & PORT_ABILITY_LINK_ST_P0)) {
-				netif_carrier_on(net_dev);
-				netif_start_queue(net_dev);
-			}
-			else if (netif_carrier_ok(net_dev) && !(reg & PORT_ABILITY_LINK_ST_P0)) {
-				netif_carrier_off(net_dev);
-				netif_stop_queue(net_dev);
-			}
+	reg = read_port_ability();
+	if (mac->comm->dual_nic) {
+		if (!netif_carrier_ok(net_dev) && (reg & PORT_ABILITY_LINK_ST_P0)) {
+			netif_carrier_on(net_dev);
+			netif_start_queue(net_dev);
+		}
+		else if (netif_carrier_ok(net_dev) && !(reg & PORT_ABILITY_LINK_ST_P0)) {
+			netif_carrier_off(net_dev);
+			netif_stop_queue(net_dev);
+		}
 
-			if (mac->next_netdev) {
-				struct net_device *ndev2 = mac->next_netdev;
+		if (mac->next_netdev) {
+			struct net_device *ndev2 = mac->next_netdev;
 
-				if (!netif_carrier_ok(ndev2) && (reg & PORT_ABILITY_LINK_ST_P1)) {
-					netif_carrier_on(ndev2);
-					netif_start_queue(ndev2);
-				}
-				else if (netif_carrier_ok(ndev2) && !(reg & PORT_ABILITY_LINK_ST_P1)) {
-					netif_carrier_off(ndev2);
-					netif_stop_queue(ndev2);
-				}
+			if (!netif_carrier_ok(ndev2) && (reg & PORT_ABILITY_LINK_ST_P1)) {
+				netif_carrier_on(ndev2);
+				netif_start_queue(ndev2);
 			}
-		} else {
-			if (!netif_carrier_ok(net_dev) && (reg & (PORT_ABILITY_LINK_ST_P1|PORT_ABILITY_LINK_ST_P0))) {
-				netif_carrier_on(net_dev);
-				netif_start_queue(net_dev);
+			else if (netif_carrier_ok(ndev2) && !(reg & PORT_ABILITY_LINK_ST_P1)) {
+				netif_carrier_off(ndev2);
+				netif_stop_queue(ndev2);
 			}
-			else if (netif_carrier_ok(net_dev) && !(reg & (PORT_ABILITY_LINK_ST_P1|PORT_ABILITY_LINK_ST_P0))) {
-				netif_carrier_off(net_dev);
-				netif_stop_queue(net_dev);
-			}
+		}
+	} else {
+		if (!netif_carrier_ok(net_dev) && (reg & (PORT_ABILITY_LINK_ST_P1|PORT_ABILITY_LINK_ST_P0))) {
+			netif_carrier_on(net_dev);
+			netif_start_queue(net_dev);
+		}
+		else if (netif_carrier_ok(net_dev) && !(reg & (PORT_ABILITY_LINK_ST_P1|PORT_ABILITY_LINK_ST_P0))) {
+			netif_carrier_off(net_dev);
+			netif_stop_queue(net_dev);
 		}
 	}
 }
@@ -92,6 +88,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 	s32 queue;
 	struct l2sw_common *comm = mac->comm;
 	int ndev2_pkt;
+	struct net_device_stats *dev_stats;
 
 	// Process high-priority queue and then low-priority queue.
 	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
@@ -105,61 +102,40 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 			cmd = desc->cmd1;
 			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
 
-			if ((comm->dual_nic) && ((cmd & PKTSP_MASK) == PKTSP_PORT1)) {
-				ndev2_pkt = 1;
-			} else {
-				ndev2_pkt = 0;
-			}
-
 			if (cmd & OWN_BIT) {
 				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %p", rx_pos, desc);
 				break;
 			}
 
-			if (cmd & ERR_CODE) {
-				if (ndev2_pkt) {
-					if (mac->next_netdev) {
-						struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
+			if ((comm->dual_nic) && ((cmd & PKTSP_MASK) == PKTSP_PORT1)) {
+				struct l2sw_mac *mac2;
 
-						mac2->dev_stats.rx_length_errors++;
-						mac2->dev_stats.rx_dropped++;
-					}
-				} else {
-					mac->dev_stats.rx_length_errors++;
-					mac->dev_stats.rx_dropped++;
-				}
-				goto NEXT;
-			}
-
-			if (cmd & RX_IP_CHKSUM_BIT) {
-				ETH_ERR(" RX IP Checksum error!\n");
-
-				if (ndev2_pkt) {
-					if (mac->next_netdev) {
-						struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
-
-						mac2->dev_stats.rx_crc_errors++;
-					}
-				} else {
-					mac->dev_stats.rx_crc_errors++;
-				}
-				goto NEXT;
-			}
-
-			if (cmd & RX_TCP_UDP_CHKSUM_BIT) {
-				goto NEXT;
+				ndev2_pkt = 1;
+				mac2 = (mac->next_netdev)? netdev_priv(mac->next_netdev): NULL;
+				dev_stats = (mac2)? &mac2->dev_stats: &mac->dev_stats;
+			} else {
+				ndev2_pkt = 0;
+				dev_stats = &mac->dev_stats;
 			}
 
 			pkg_len = cmd & LEN_MASK;
+			if (unlikely((cmd & ERR_CODE) || (pkg_len < 64))) {
+				dev_stats->rx_length_errors++;
+				dev_stats->rx_dropped++;
+				goto NEXT;
+			}
 
-			if (pkg_len < 64) {
+			if (unlikely(cmd & RX_IP_CHKSUM_BIT)) {
+				//ETH_INFO(" RX IP Checksum error!\n");
+				dev_stats->rx_crc_errors++;
+				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
 
 			/* allocate an skbuff for receiving, and it's an inline function */
 			new_skb = __dev_alloc_skb(comm->rx_desc_buff_size + RX_OFFSET, GFP_ATOMIC | GFP_DMA);
-			if (new_skb == NULL) {
-				mac->dev_stats.rx_dropped++;
+			if (unlikely(new_skb == NULL)) {
+				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
 			new_skb->dev = mac->net_dev;
@@ -229,7 +205,6 @@ static void rx_do_tasklet(unsigned long data)
 
 	rx_interrupt(mac, mac->comm->int_status);
 	//write_sw_int_status0((MAC_INT_RX) & mac->comm->int_status);
-	interrupt_finish(mac);
 }
 #endif
 
@@ -240,7 +215,6 @@ static int rx_poll(struct napi_struct *napi, int budget)
 
 	rx_interrupt(mac, mac->comm->int_status);
 	napi_complete(napi);
-	interrupt_finish(mac);
 
 	return 0;
 }
@@ -265,7 +239,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 		//ETH_INFO(" TX2: cmd1 = %08x, cmd2 = %08x\n", cmd, comm->tx_desc[tx_done_pos].cmd2);
 
 		skbinfo = &comm->tx_temp_skb_info[tx_done_pos];
-		if (skbinfo->skb == NULL) {
+		if (unlikely(skbinfo->skb == NULL)) {
 			ETH_ERR(" skb is null!\n");
 		}
 
@@ -274,7 +248,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 			smac = netdev_priv(mac->next_netdev);
 		}
 
-		if (cmd & (ERR_CODE)) {
+		if (unlikely(cmd & (ERR_CODE))) {
 			//ETH_ERR(" TX Error = %x\n", cmd);
 
 			smac->dev_stats.tx_errors++;
@@ -319,7 +293,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 	}
 
 	comm->tx_done_pos = tx_done_pos;
-	if (TX_DESC_AVAIL(comm) > 0) {
+	if (!comm->tx_desc_full) {
 		if (netif_queue_stopped(mac->net_dev)) {
 			netif_wake_queue(mac->net_dev);
 		}
@@ -339,8 +313,6 @@ static void tx_do_tasklet(unsigned long data)
 
 	tx_interrupt(mac);
 	write_sw_int_status0(mac->comm->int_status & MAC_INT_TX);
-	wmb();
-	interrupt_finish(mac);
 }
 #endif
 
@@ -360,19 +332,17 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 
 	mac = netdev_priv(net_dev);
 	comm = mac->comm;
+
 	spin_lock(&comm->lock);
 
-	write_sw_int_mask0(0xffffffff); /* mask interrupt */
+	write_sw_int_mask0(0xffffffff); /* mask all interrupts */
 	status =  read_sw_int_status0();
 	//ETH_INFO(" Int Status = %08x\n", status);
-	rmb();
 	if (status == 0){
-		write_sw_int_mask0(0x00000000);
 		ETH_ERR(" Interrput status is null!\n");
-		return -1;
+		goto OUT;
 	}
 	write_sw_int_status0(status);
-	wmb();
 	comm->int_status = status;
 
 #ifdef RX_POLLING
@@ -381,7 +351,7 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	}
 #else /* RX_POLLING */
 	if (status & MAC_INT_RX) {
-		if (status & MAC_INT_RX_DES_ERR) {
+		if (unlikely(status & MAC_INT_RX_DES_ERR)) {
 			ETH_ERR(" Illegal RX Descriptor!\n");
 			mac->dev_stats.rx_fifo_errors++;
 		}
@@ -389,7 +359,6 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	#ifdef INTERRUPT_IMMEDIATELY
 		rx_interrupt(mac, status);
 		//write_sw_int_status0(comm->int_status & MAC_INT_RX);
-		interrupt_finish(mac);
 	#else
 		tasklet_schedule(&comm->rx_tasklet);
 	#endif
@@ -397,22 +366,24 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #endif /* RX_POLLING */
 
 	if (status & MAC_INT_TX) {
-		if (status & MAC_INT_TX_DES_ERR) {
+		if (unlikely(status & MAC_INT_TX_DES_ERR)) {
 			ETH_ERR(" Illegal TX Descriptor Error\n");
 			mac->dev_stats.tx_fifo_errors++;
 			mac_soft_reset(mac);
-			goto OUT;
-		}
-
+		} else {
 #ifdef INTERRUPT_IMMEDIATELY
-		tx_interrupt(mac);
-		write_sw_int_status0(comm->int_status & MAC_INT_TX);
-		wmb();
-		interrupt_finish(mac);
+			tx_interrupt(mac);
+			write_sw_int_status0(comm->int_status & MAC_INT_TX);
 #else
-		tasklet_schedule(&comm->tx_tasklet);
+			tasklet_schedule(&comm->tx_tasklet);
 #endif
+		}
 	}
+
+	if (status & MAC_INT_PORT_ST_CHG) { /* link status changed*/
+		port_status_change(mac);
+	}
+
 #if 0
 	if (status & MAC_INT_RX_H_DESCF) {
 		ETH_INFO(" RX High-priority Descriptor Full!\n");
@@ -438,7 +409,8 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 #endif
 
 OUT:
-	write_sw_int_mask0(0x00000000);
+	wmb();
+	write_sw_int_mask0(MAC_INT_MASK_DEF);
 	spin_unlock(&comm->lock);
 	return IRQ_HANDLED;
 }
@@ -497,20 +469,21 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	u32 cmd1;
 	u32 cmd2;
 	struct mac_desc *txdesc;
+	struct skb_info *skbinfo;
 	unsigned long flags;
 
 	//ETH_INFO("[%s] IN\n", __func__);
 	//print_packet(skb);
 
-	if (comm->tx_desc_full == 1) { /* no desc left, wait for tx interrupt*/
-		//ETH_INFO("[%s] TX Descriptor Queue Full!\n", __func__);
-		return -1;
+	if (unlikely(comm->tx_desc_full == 1)) { /* no desc left, wait for tx interrupt*/
+		ETH_ERR("[%s] TX descriptor queue full when awake!\n", __func__);
+		return NETDEV_TX_BUSY;
 	}
 
 	//ETH_INFO("[%s] skb->len = %d\n", __func__, skb->len);
 
 	/* if skb size shorter than 60, fill it with '\0' */
-	if (skb->len < ETH_ZLEN) {
+	if (unlikely(skb->len < ETH_ZLEN)) {
 		if (skb_tailroom(skb) >= (ETH_ZLEN - skb->len)) {
 			memset(__skb_put(skb, ETH_ZLEN - skb->len), '\0', ETH_ZLEN - skb->len);
 		} else {
@@ -530,35 +503,34 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	spin_lock_irqsave(&mac->comm->lock, flags);
 	tx_pos = comm->tx_pos;
 	txdesc = &comm->tx_desc[tx_pos];
-	comm->tx_temp_skb_info[tx_pos].len = skb->len;
-	comm->tx_temp_skb_info[tx_pos].skb = skb;
-	comm->tx_temp_skb_info[tx_pos].mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
+	skbinfo = &comm->tx_temp_skb_info[tx_pos];
+	skbinfo->len = skb->len;
+	skbinfo->skb = skb;
+	skbinfo->mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
-	cmd2 = (comm->tx_pos==(TX_DESC_NUM-1))? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
+	cmd2 = (tx_pos == (TX_DESC_NUM-1))? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
 	//ETH_INFO(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
 
-	txdesc->addr1 = comm->tx_temp_skb_info[tx_pos].mapping;
+	txdesc->addr1 = skbinfo->mapping;
 	txdesc->cmd2 = cmd2;
 	wmb();
 	txdesc->cmd1 = cmd1;
 
-	wmb();
 	NEXT_TX(tx_pos);
-	comm->tx_pos = tx_pos;
 
-	if (comm->tx_pos == comm->tx_done_pos) {
+	if (unlikely(tx_pos == comm->tx_done_pos)) {
 		netif_stop_queue(net_dev);
 		comm->tx_desc_full = 1;
 		//ETH_INFO("[%s] TX Descriptor Queue Full!\n", __func__);
 	}
+	comm->tx_pos = tx_pos;
 	wmb();
 
 	/* trigger gmac to transmit*/
-	tx_trigger(tx_pos);
-	wmb();
+	tx_trigger();
 
 	spin_unlock_irqrestore(&mac->comm->lock, flags);
-	return 0;
+	return NETDEV_TX_OK;
 }
 
 static void ethernet_set_rx_mode(struct net_device *net_dev)

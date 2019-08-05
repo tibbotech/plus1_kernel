@@ -43,11 +43,14 @@
 
 
 //define MAC interrupt status bit
+#define MAC_INT_DAISY_MODE_CHG          (1<<31)
+#define MAC_INT_IP_CHECKSUM_ERR         (1<<23)
+#define MAC_INT_WDOG_TIMER1_EXP         (1<<22)
+#define MAC_INT_WDOG_TIMER0_EXP         (1<<21)
+#define MAC_INT_ATRUDER_ALERT           (1<<20)
 #define MAC_INT_PORT_ST_CHG             (1<<19)
-#define MAC_INT_ETH0_LINK               (1<<24)
-#define MAC_INT_ETH1_LINK               (1<<25)
-#define MAC_INT_WDOG1_TMR_EXP           (1<<22)
-#define MAC_INT_WDOG0_TMR_EXP           (1<<21)
+#define MAC_INT_BC_STORM                (1<<18)
+#define MAC_INT_MUST_DROP_LAN           (1<<17)
 #define MAC_INT_GLOBAL_QUE_FULL         (1<<16)
 #define MAC_INT_TX_SOC0_PAUSE_ON        (1<<15)
 #define MAC_INT_RX_SOC0_QUE_FULL        (1<<14)
@@ -63,7 +66,12 @@
 #define MAC_INT_RX_DES_ERR              (1<<0)
 
 #define MAC_INT_RX                      (MAC_INT_RX_DONE_H | MAC_INT_RX_DONE_L | MAC_INT_RX_DES_ERR)
-#define MAC_INT_TX                      (MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC0_PAUSE_ON | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
+#define MAC_INT_TX                      (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
+#define MAC_INT_MASK_DEF                (MAC_INT_DAISY_MODE_CHG | MAC_INT_IP_CHECKSUM_ERR | MAC_INT_WDOG_TIMER1_EXP | \
+					MAC_INT_WDOG_TIMER0_EXP | MAC_INT_ATRUDER_ALERT | MAC_INT_BC_STORM | \
+					MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC0_PAUSE_ON | \
+					MAC_INT_RX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | \
+					MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
 
 
 /*define port ability*/
@@ -213,6 +221,9 @@ struct l2sw_common {
 struct l2sw_mac {
 	struct platform_device *pdev;
 	struct net_device *net_dev;
+	struct l2sw_common *comm;
+	struct net_device *next_netdev;
+
 	struct net_device_stats dev_stats;
 
 	u8 mac_addr[ETHERNET_MAC_ADDR_LEN];
@@ -221,10 +232,6 @@ struct l2sw_mac {
 	u8 to_vlan;
 	u8 cpu_port;
 	u8 vlan_id;
-
-	struct l2sw_common *comm;
-
-	struct net_device *next_netdev;
 };
 
 
