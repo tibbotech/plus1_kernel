@@ -56,7 +56,7 @@ char *g_hw;
 #define MANUAL_EP11
 #define  SW_IRQ
 
-#ifdef OTG_TEST
+#ifdef CONFIG_USB_SUNPLUS_OTG
 extern struct sp_otg *sp_otg_host;
 #endif
 
@@ -4578,8 +4578,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc_write(udc_read(UDNBIE) | EP9N_IF | EP9O_IF, UDNBIE);
 
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
-	
-#ifdef OTG_TEST
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
 	sp_otg_host->regs_otg->otg_init_en = 0x3FF;
 #endif
 
