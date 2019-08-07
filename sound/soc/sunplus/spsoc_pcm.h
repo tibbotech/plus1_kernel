@@ -19,6 +19,11 @@
 #define NUM_FIFO_RX		4 // A22~A25	
 #define NUM_FIFO		(NUM_FIFO_TX+NUM_FIFO_RX)	
 
+#define SP_I2S                  0
+#define SP_TDM                  1
+#define SP_PDM                  2
+#define SP_SPDIF                3
+#define SP_OTHER                4
 #define I2S_P_INC0		0x1f
 #define I2S_C_INC0    		((0x7<<16) | (0x1<<21))
 #define TDMPDM_C_INC0 		(0xf<<22)

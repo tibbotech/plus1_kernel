@@ -33,15 +33,15 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000)){
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
 			regs0->aud_ext_dac_xck_cfg = 0x6883; //PLLA. 
-			if ((pll_id == 0) || (pll_id == 4))						
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))						
 				regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6001; //128FS. 48kHz = 147MHz/3/4/2/(128)
 			else				
 				regs0->aud_iec1_bclk_cfg = 0x6001; //128FS				
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC883; 
-			if (pll_id == 0)				
+			if (pll_id == SP_I2S)				
 				regs0->aud_ext_adc_bck_cfg = 0x6003; //64FS
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6001; //64FS
@@ -49,15 +49,15 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	}else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000)){
 		regs0->aud_ext_dac_xck_cfg = 0x6881; //PLLA, 256FS
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
-			if ((pll_id == 0) || (pll_id == 4))						
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))						
 				regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6001; //128FS
 			else
 				regs0->aud_iec1_bclk_cfg = 0x6001; //128FS				
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC881;	//256FS
-			if (pll_id == 0)
+			if (pll_id == SP_I2S)
 				regs0->aud_ext_adc_bck_cfg = 0x6003;	//64FS
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6001;	//64FS
@@ -65,15 +65,15 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	}else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)){
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
 			regs0->aud_ext_dac_xck_cfg = 0x6880; //256FS
-			if ((pll_id == 0) || (pll_id == 4))						
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))						
 				regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6001; //128FS
 			else
 				regs0->aud_iec1_bclk_cfg = 0x6001; //128FS				
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC880;	//256FS
-			if (pll_id == 0)
+			if (pll_id == SP_I2S)
 				regs0->aud_ext_adc_bck_cfg = 0x6003;	//64FS
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6001;
@@ -81,15 +81,15 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	}else if(SAMPLE_RATE == 32000){
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
 			regs0->aud_ext_dac_xck_cfg = 0x6983; //128FS
-			if ((pll_id == 0) || (pll_id == 4))						
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))						
 				regs0->aud_ext_dac_bck_cfg = 0x6001; //64FS
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6000; //128FS
 			else
 				regs0->aud_iec1_bclk_cfg = 0x6000; //128FS				
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC983; //128FS
-			if (pll_id == 0)
+			if (pll_id == SP_I2S)
 				regs0->aud_ext_adc_bck_cfg = 0x6001;
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6000; //64FS
@@ -97,16 +97,16 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	}else if(SAMPLE_RATE == 64000){
 		regs0->aud_ext_dac_xck_cfg = 0x6981;
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
-			if ((pll_id == 0) || (pll_id == 4))		
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))		
 				regs0->aud_ext_dac_bck_cfg = 0x6001; //64FS
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6000; //128FS
 			else
 				regs0->aud_iec1_bclk_cfg = 0x6000; //128FS				
 			
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC981; //128FS
-			if (pll_id == 0)
+			if (pll_id == SP_I2S)
 				regs0->aud_ext_adc_bck_cfg = 0x6001; //64FS
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6000;
@@ -114,15 +114,15 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	}else if(SAMPLE_RATE == 128000){
 		regs0->aud_ext_dac_xck_cfg = 0x6980;
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
-			if ((pll_id == 0) || (pll_id == 4))
+			if ((pll_id == SP_I2S) || (pll_id == SP_OTHER))
 				regs0->aud_ext_dac_bck_cfg = 0x6001; //64FS
-			else if(pll_id == 3)
+			else if(pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg = 0x6000; //128FS
 			else
 				regs0->aud_iec1_bclk_cfg = 0x6000; //128FS				
 		}else{
 			regs0->aud_ext_adc_xck_cfg = 0xC980; //128FS
-			if (pll_id == 0)
+			if (pll_id == SP_I2S)
 				regs0->aud_ext_adc_bck_cfg = 0x6001; //64FS
 			else
 				regs0->aud_ext_adc_bck_cfg = 0x6000;
@@ -150,7 +150,7 @@ void sp_i2s_spdif_tx_dma_en(int	dev_no,	bool on)
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*)audio_base;
 	  
-	if ((dev_no == 0) || (dev_no == 4)){
+	if ((dev_no == SP_I2S) || (dev_no == SP_OTHER)){
 		if (on){
 			if ((regs0->aud_fifo_enable & I2S_P_INC0))
 				return;
@@ -162,8 +162,8 @@ void sp_i2s_spdif_tx_dma_en(int	dev_no,	bool on)
 		        regs0->aud_fifo_enable &= (~I2S_P_INC0);
 		        regs0->aud_enable      &= (~aud_enable_i2stdm_p);
 	        }
-	}else if(dev_no == 3){
-		if (on){
+	}else if(dev_no == SP_SPDIF){
+		if (on){		        
 		        if ((regs0->aud_fifo_enable & SPDIF_P_INC0))
 				return;
 		        regs0->aud_fifo_enable |= SPDIF_P_INC0;
@@ -198,7 +198,7 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*)audio_base;
 	  
-	if (dev_no == 0){
+	if (dev_no == SP_I2S){
 		if (on){
 		        if ((regs0->aud_fifo_enable & I2S_C_INC0))
 				return;
@@ -240,7 +240,7 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *)audio_base;
 	  
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-	      	if (substream->pcm->device == 0){
+	      	if (substream->pcm->device == SP_I2S){
 		  	regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 		  	regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable 
 	      	}	

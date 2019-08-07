@@ -187,20 +187,20 @@ static const struct soc_enum cpm0_5_out_enum = SOC_ENUM_DOUBLE(reg_aud_grm_gain_
 
 static const struct snd_kcontrol_new aud_snd_controls[] = {
 	/* master gains */
-	SOC_SINGLE_TLV("Master Playback Volume", reg_aud_grm_master_gain, 8, 2<<22, 0, volume_tlv),
+	SOC_SINGLE_TLV("Master Playback Volume",reg_aud_grm_master_gain, 	8, 	2<<22,	0, 	volume_tlv),
 	/* Playback gains */
-	SOC_DOUBLE_TLV("A0 Playback Volume", reg_aud_grm_gain_control_5,  0,  8, 0x80, 0, volume_tlv),
-	SOC_DOUBLE_TLV("A1 Playback Volume", reg_aud_grm_gain_control_5, 16, 24, 0x80, 0, volume_tlv),
+	SOC_DOUBLE_TLV("A0 Playback Volume",	reg_aud_grm_gain_control_5,  	0,  	8, 	0x80, 	0, 	volume_tlv),
+	SOC_DOUBLE_TLV("A1 Playback Volume", 	reg_aud_grm_gain_control_5, 	16, 	24, 	0x80, 	0, 	volume_tlv),
 
-	SOC_DOUBLE_TLV("A2 Playback Volume", reg_aud_grm_gain_control_6,  0,  8, 0x80, 0, volume_tlv),
-	SOC_DOUBLE_TLV("A3 Playback Volume", reg_aud_grm_gain_control_6, 16, 24, 0x80, 0, volume_tlv),
+	SOC_DOUBLE_TLV("A2 Playback Volume", 	reg_aud_grm_gain_control_6,  	0,  	8, 	0x80, 	0, 	volume_tlv),
+	SOC_DOUBLE_TLV("A3 Playback Volume", 	reg_aud_grm_gain_control_6, 	16, 	24, 	0x80, 	0, 	volume_tlv),
 	
-	SOC_SINGLE_TLV("A4 Playback Volume 1", reg_aud_grm_gain_control_7, 14, 2<<16, 0, volume_tlv),
-	SOC_SINGLE_TLV("A4 Playback Volume 2", reg_aud_grm_gain_control_8, 14, 2<<16, 0, volume_tlv),
-    	SOC_DOUBLE_TLV("A20 Playback Volume", reg_aud_grm_gain_control_10,  0, 8, 0x80, 0, volume_tlv),
+	SOC_SINGLE_TLV("A4 Playback Volume 1", 	reg_aud_grm_gain_control_7, 	14, 	2<<16, 	0, 	volume_tlv),
+	SOC_SINGLE_TLV("A4 Playback Volume 2", 	reg_aud_grm_gain_control_8, 	14, 	2<<16, 	0, 	volume_tlv),
+    	SOC_DOUBLE_TLV("A20 Playback Volume", 	reg_aud_grm_gain_control_10,  	0,	8, 	0x80, 	0, 	volume_tlv),
 
 	/* Mux */
-	SOC_ENUM("pcm0 pcm5 Output",cpm0_5_out_enum),
+	SOC_ENUM("pcm0 pcm5 Output", cpm0_5_out_enum),
 
 	/* Mix */
 	SOC_SINGLE("Mix0",reg_aud_grm_mix_control_0,0,1,0),
@@ -298,8 +298,8 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 	//SOC_SINGLE_TLV()
 };
 
-#if 0
-static unsigned int audreg_read(struct snd_soc_codec *codec, unsigned int reg)
+
+static unsigned int audreg_read(struct snd_soc_component *component, unsigned int reg)
 {
 	int val, addr_g, addr_i, addr;
 	  
@@ -315,7 +315,7 @@ static unsigned int audreg_read(struct snd_soc_codec *codec, unsigned int reg)
 	//return HWREG_R(reg);
 }
 
-static int audreg_write(struct snd_soc_codec *codec, unsigned int reg,unsigned int value)
+static int audreg_write(struct snd_soc_component *component, unsigned int reg,unsigned int value)
 {
 	int  addr_g, addr_i, addr;
 	  
@@ -331,7 +331,7 @@ static int audreg_write(struct snd_soc_codec *codec, unsigned int reg,unsigned i
 	return 0;
 }
 
-
+#if 0
 static struct snd_soc_codec_driver soc_codec_dev_aud = {
 	.probe		= aud_probe,
 	.remove		= aud_remove,
@@ -349,12 +349,16 @@ static struct snd_soc_codec_driver soc_codec_dev_aud = {
 };
 #endif
 static const struct snd_soc_component_driver soc_codec_dev_aud = {
-	.name = "aud-codec",
+	//.name = "aud-codec",
+	.read		= audreg_read,  //changed core func !
+	.write		= audreg_write,
+	.controls	= aud_snd_controls,
+	.num_controls	= ARRAY_SIZE(aud_snd_controls),
 };
 
 static int aud_codec_probe(struct platform_device *pdev)
 {
-	int ret=0;
+	int ret = 0;
 	AUD_INFO("%s IN\n", __func__);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud,

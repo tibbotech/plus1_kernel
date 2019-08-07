@@ -118,6 +118,7 @@ void AUDHW_pin_mx(void)
 	AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
 	AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
 
+	//regs1->G002_RESERVED[1]	= 0xffff0000; // Need to set when you want to use spdif
 	//for(i=0; i<64; i++)
 	//{
 	//	regs1->G002_RESERVED[i]	= 0xffff0000;
@@ -280,7 +281,7 @@ void AUDHW_SystemInit(void)
 
         AUDHW_Cfg_AdcIn();
 
-        regs0->iec_cfg 		= 0x4002;	//iec_cfg
+        regs0->iec_cfg 		= 0x4006;	//iec_cfg
 
         // config playback timer //
         regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
