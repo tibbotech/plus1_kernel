@@ -5965,8 +5965,13 @@ static int nand_dt_init(struct nand_chip *chip)
  * prevented dynamic allocations during this phase which was unconvenient and
  * as been banned for the benefit of the ->init_ecc()/cleanup_ecc() hooks.
  */
+#if 1 // kernel 4.12
+int nand_scan_ident(struct mtd_info *mtd, int maxchips,
+			   struct nand_flash_dev *table)
+#else
 static int nand_scan_ident(struct mtd_info *mtd, int maxchips,
 			   struct nand_flash_dev *table)
+#endif
 {
 	int i, nand_maf_id, nand_dev_id;
 	struct nand_chip *chip = mtd_to_nand(mtd);
@@ -6429,7 +6434,11 @@ static bool nand_ecc_strength_good(struct mtd_info *mtd)
  * all the uninitialized function pointers with the defaults and scans for a
  * bad block table if appropriate.
  */
+#if 1 // kernel 4.12
+int nand_scan_tail(struct mtd_info *mtd)
+#else
 static int nand_scan_tail(struct mtd_info *mtd)
+#endif
 {
 	struct nand_chip *chip = mtd_to_nand(mtd);
 	struct nand_ecc_ctrl *ecc = &chip->ecc;
