@@ -257,82 +257,98 @@
 		};
 
 
-	thermal-zones {
-		cpu_thermal: cpu_thermal {
-			polling-delay-passive = <1000>; /* milliseconds */
-			polling-delay = <1000>; /* milliseconds */
+		thermal-zones {
+			cpu_thermal: cpu_thermal {
+				polling-delay-passive = <1000>; /* milliseconds */
+				polling-delay = <1000>; /* milliseconds */
 
-			thermal-sensors = <&thermal 0>;
-			sustainable-power = <100000>;
+				thermal-sensors = <&thermal 0>;
+				sustainable-power = <100000>;
 
-			trips {
-				cpu-hott {
-					temperature	= <80000>;
-					hysteresis	= <1000>;
-					type		= "hot";
+				trips {
+					cpu-hott {
+						temperature	= <80000>;
+						hysteresis	= <1000>;
+						type		= "hot";
+					};
+					cpu-crit {
+						temperature	= <85000>;
+						hysteresis	= <0>;
+						type		= "critical";
+					};
 				};
-				cpu-crit {
-					temperature	= <85000>;
-					hysteresis	= <0>;
-					type		= "critical";
+				cooling-maps {
+					/* insert there: slowdown CPU for cpu-hott */
 				};
-			};
-			cooling-maps {
-                /* insert there: slowdown CPU for cpu-hott */
 			};
 		};
-	};
 
 		iop: iop@sp_iop {
-		compatible = "sunplus,sp7021-iop";
-		reg = <0x9c000400 0x80>, <0x9c000000 0x80>, <0x9c000F00 0x80>, <0x9c003100 0x80>, <0x9c012B80 0x80>;
-		reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "axi_mon";
-		interrupt-parent = <&intc>;
-		interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
-	    };
-	
-	 #if 1
-	    axi: axi@sp_axi {
-		compatible = "sunplus,sp7021-axi";
-		reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>, 
-		      <0x9c013200 0x80>, <0x9c013680 0x80>, <0x9c013700 0x80>,
-			  <0x9c013980 0x80>, <0x9c013A00 0x80>, <0x9c013B80 0x80>, 		
-			  <0x9c013C00 0x80>, <0x9c013C80 0x80>, <0x9c013D00 0x80>, 	
-		      <0x9c014080 0x80>, <0x9c014100 0x80>, <0x9c014180 0x80>, 	
-              <0x9c014280 0x80>, <0x9c014300 0x80>, <0x9c014380 0x80>, 				  
-			  <0x9c014480 0x80>, <0x9c000D00 0x80>;
-		reg-names = "axi_mon", "axi_4", "axi_5", 
-		            "axi_12", "axi_21", "axi_22", 
-					"axi_27", "axi_28", "axi_31", 
-					"axi_32", "axi_33", "axi_34", 
-					"axi_41", "axi_42", "axi_43", 
-					"axi_45", "axi_46", "axi_47", 
-					"axi_49", "axi_cbdma";
-		interrupt-parent = <&intc>;
-		interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc AXI_GLOBAL>;
-		resets = <&rstc RST_AXI_GLOBAL>;
-	    };
-	 #else
+			compatible = "sunplus,sp7021-iop";
+			reg = <0x9c000400 0x80>, <0x9c000000 0x80>, <0x9c000F00 0x80>, <0x9c003100 0x80>, <0x9c012B80 0x80>;
+			reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "axi_mon";
+			interrupt-parent = <&intc>;
+			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+	#if 1
 		axi: axi@sp_axi {
-		compatible = "sunplus,sp7021-axi";
-		reg = <0x9ec12B80 0x80>, <0x9ec12C00 0x80>, <0x9ec12C80 0x80>, 
-		      <0x9ec12D00 0x80>, <0x9ec12D80 0x80>, <0x9ec12E00 0x80>,
-			  <0x9ec12E80 0x80>, <0x9ec12F00 0x80>, <0x9ec12F80 0x80>, 		
-			  <0x9ec13000 0x80>, <0x9ec13080 0x80>, <0x9ec13100 0x80>, 
-			  <0x9c000D00 0x80>;
-		reg-names = "axi_mon", "axi_0", "axi_1", 
-		            "axi_2", "axi_3", "axi_4", 
-					"axi_5", "axi_6", "axi_7", 
-					"axi_8", "axi_9", "axi_10",
-					"axi_cbdma";
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc AXI_GLOBAL>;
-		resets = <&rstc RST_AXI_GLOBAL>;
-	    };
+			compatible = "sunplus,sp7021-axi";
+			reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>,
+			      <0x9c013200 0x80>, <0x9c013680 0x80>, <0x9c013700 0x80>,
+			      <0x9c013980 0x80>, <0x9c013A00 0x80>, <0x9c013B80 0x80>,
+			      <0x9c013C00 0x80>, <0x9c013C80 0x80>, <0x9c013D00 0x80>,
+			      <0x9c014080 0x80>, <0x9c014100 0x80>, <0x9c014180 0x80>,
+			      <0x9c014280 0x80>, <0x9c014300 0x80>, <0x9c014380 0x80>,
+			      <0x9c014480 0x80>, <0x9c000D00 0x80>;
+			reg-names = "axi_mon", "axi_4", "axi_5",
+				    "axi_12", "axi_21", "axi_22",
+				    "axi_27", "axi_28", "axi_31",
+				    "axi_32", "axi_33", "axi_34",
+				    "axi_41", "axi_42", "axi_43",
+				    "axi_45", "axi_46", "axi_47",
+				    "axi_49", "axi_cbdma";
+			interrupt-parent = <&intc>;
+			interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc AXI_GLOBAL>;
+			resets = <&rstc RST_AXI_GLOBAL>;
+		};
+	#else
+		axi: axi@sp_axi {
+			compatible = "sunplus,sp7021-axi";
+			reg = <0x9ec12B80 0x80>, <0x9ec12C00 0x80>, <0x9ec12C80 0x80>,
+			      <0x9ec12D00 0x80>, <0x9ec12D80 0x80>, <0x9ec12E00 0x80>,
+			      <0x9ec12E80 0x80>, <0x9ec12F00 0x80>, <0x9ec12F80 0x80>,
+			      <0x9ec13000 0x80>, <0x9ec13080 0x80>, <0x9ec13100 0x80>,
+			      <0x9c000D00 0x80>;
+			reg-names = "axi_mon", "axi_0", "axi_1",
+				    "axi_2", "axi_3", "axi_4",
+				    "axi_5", "axi_6", "axi_7",
+				    "axi_8", "axi_9", "axi_10",
+				    "axi_cbdma";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&clkc AXI_GLOBAL>;
+			resets = <&rstc RST_AXI_GLOBAL>;
+		};
 	#endif
 
+		otp: otp@0x9C00AF00 {
+			compatible = "sunplus,sp7021-ocotp";
+			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;
+			reg-names = "hb_gpio", "otprx";
+			clocks = <&clkc OTPRX>;
+			resets = <&rstc RST_OTPRX>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
+			mac_addr0: mac_addr0 {
+				reg = <0x34 0x6>;
+			};
+			mac_addr1: mac_addr1 {
+				reg = <0x3A 0x6>;
+			};
+		};
 #if 1
 		cbdma: cbdma@sp_cbdma {
 			compatible = "sunplus,sp7021-c-cbdma";
@@ -344,7 +360,7 @@
 				compatible = "xlnx,axi-cdma-channel";
 				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
 			};
-		}; 
+		};
 #else
 		cbdma: cbdma@sp_cbdma {
 			compatible = "sunplus,sp7021-cbdma";
@@ -360,7 +376,7 @@
 				compatible = "xlnx,axi-dma-s2mm-channel";
 				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
 			};
-		}; 
+		};
 #endif
 
 		icm: icm@G81 {
@@ -375,12 +391,12 @@
 				<94 IRQ_TYPE_EDGE_RISING>, /* icm2 */
 				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
 		};
-		
+
 		crypto: crypto@G84 {
 			compatible = "sunplus,sp7021-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
-            clocks = <&clkc SEC>;
-            resets = <&rstc RST_SEC>;
+			clocks = <&clkc SEC>;
+			resets = <&rstc RST_SEC>;
 			interrupt-parent = <&intc>;
 			interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -530,7 +546,7 @@
 			clock-names = "aud","peri0","pll_a";
 			resets = <&rstc RST_AUD>;
 			pinctrl-names = "default";
-  			pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
+			pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
 		 };
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -620,7 +636,7 @@
 			interrupt-parent = <&intc>;
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
 		};
-		
+
 		fb_device {
 			compatible = "sunplus,sp7021-fb";
 		};
@@ -628,7 +644,7 @@
 		sp_display: display@0x9c005c80 {
 			compatible = "sunplus,sp7021-display";
 			reg = <0x9c005c80 0x1980>,
-				<0x9c105000 0x80>;
+			      <0x9c105000 0x80>;
 			ui_width = <720>;
 			ui_height = <480>;
 			ui_format = <0xe>;
@@ -683,6 +699,10 @@
 			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
+/*
+			pinctrl-names = "default";
+			pinctrl-0 = <&l2sw_two_phy_pins>;
+*/
 		};
 
 		mdio {
@@ -865,7 +885,7 @@
 			clocks = <&clkc SPIFL>;
 			resets = <&rstc RST_SPIFL>;
 			pinctrl-names = "default";
-  			pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+			pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
 			partitions {
@@ -896,8 +916,8 @@
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
 			i2c-id = <1>;
 /*
-  			pinctrl-names = "default";
-  			pinctrl-0 = <&mipicsi0_pins>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&mipicsi0_pins>;
 */
 		};
 /*
@@ -913,6 +933,8 @@
 			resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
 			i2c-id = <2>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&mipicsi1_pins>;
 		};
 */
 		pctl: pctl@0x9C000100 {
@@ -948,13 +970,14 @@
 					SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
 					SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
 					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
-					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0) >;
+					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+				>;
 			};
-			
+
 			aud_i2s_in: aud_i2s_in {
 				sppctl,groups = "AUD_EXT_ADC_IFX0";
 				sppctl,function = "AUD_EXT_ADC_IFX0";
-			};			
+			};
 			aud_i2s_out: aud_i2s_out {
 				sppctl,groups = "AUD_EXT_DAC_IFX0";
 				sppctl,function = "AUD_EXT_DAC_IFX0";
@@ -979,44 +1002,86 @@
 				sppctl,groups = "PDMRX_IFX0";
 				sppctl,function = "PDMRX_IFX0";
 			};
-			
+
 			spi_flash1_mux: spi_flash1_mux {
-    				sppctl,groups = "SPI_FLASH1";
-    				sppctl,function = "SPI_FLASH";
- 			};
- 			spi_flash2_mux: spi_flash2_mux {
-    				sppctl,groups = "SPI_FLASH2";
-    				sppctl,function = "SPI_FLASH";
- 			};
- 			spi_fla4b2_mux: spi_fla4b2_mux {
-    				sppctl,groups = "SPI_FLASH_4BIT2";
-    				sppctl,function = "SPI_FLASH_4BIT";
- 			};
- 			spi_fla4b1_mux: spi_fla4b1_mux {
-    				sppctl,groups = "SPI_FLASH_4BIT1";
-    				sppctl,function = "SPI_FLASH_4BIT";
- 			};			
-/*
+				sppctl,groups = "SPI_FLASH1";
+				sppctl,function = "SPI_FLASH";
+			};
+			spi_flash2_mux: spi_flash2_mux {
+				sppctl,groups = "SPI_FLASH2";
+				sppctl,function = "SPI_FLASH";
+			};
+			spi_fla4b2_mux: spi_fla4b2_mux {
+				sppctl,groups = "SPI_FLASH_4BIT2";
+				sppctl,function = "SPI_FLASH_4BIT";
+			};
+			spi_fla4b1_mux: spi_fla4b1_mux {
+				sppctl,groups = "SPI_FLASH_4BIT1";
+				sppctl,function = "SPI_FLASH_4BIT";
+			};
 			mipicsi0_pins: pinmux_mipicsi0_pins {
 				sppctl,pins = <
-				  SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
-				  SP7021_IOPAD(13,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+					SP7021_IOPAD(13,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 				>;
-			};			
-*/
-		};
-
-		otp: otp@0x9C00AF00 {
-			compatible = "sunplus,sp7021-ocotp";
-			reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;
-			reg-names = "hb_gpio", "otprx";
-			clocks = <&clkc OTPRX>;
-			resets = <&rstc RST_OTPRX>;
-			#address-cells = <1>;
-			#size-cells = <1>;
-			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
-			mac_addr0: mac_addr0 {  reg = <0x34 0x6>;  };
-			mac_addr1: mac_addr1 {  reg = <0x3A 0x6>;  };
+			};
+			l2sw_two_phy_pins: pinmux_l2sw_two_phy_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+					SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+					SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
+					SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+					SP7021_IOPAD(38,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(36,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(37,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(32,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(33,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(34,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(31,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
+				>;
+			};
+			l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+					SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+				>;
+			};
+			l2sw_demo_board_pins: pinmux_l2sw_demo_board_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(52,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+				>;
+			};
 		};
 	};
 };
