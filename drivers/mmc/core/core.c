@@ -641,7 +641,7 @@ static enum mmc_blk_status mmc_finalize_areq(struct mmc_host *host)
 				break; /* return status */
 			} else {
 				mmc_retune_recheck(host);
-				pr_info("%s: req failed (CMD%u): %d, retrying...\n",
+				pr_info("%s: req retune (CMD%u): %d, tuning...\n",
 					mmc_hostname(host),
 					cmd->opcode, cmd->error);
 				cmd->retries--;
