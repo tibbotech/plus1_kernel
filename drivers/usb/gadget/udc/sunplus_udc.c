@@ -910,8 +910,7 @@ static int sp_udc_read_ep0_fifo(struct sp_ep *ep,
 static int sp_udc_get_status(struct sp_udc *dev,
 				 struct usb_ctrlrequest *crq)
 {
-	//u16 status = 0;
-	u32 status = 0;		//shih test
+	u32 status = 0;
 	u8 ep_num = crq->wIndex & 0x7F;
 	struct sp_ep *ep = &memory.ep[ep_num];
 
@@ -920,15 +919,13 @@ static int sp_udc_get_status(struct sp_udc *dev,
 		break;
 
 	case USB_RECIP_DEVICE:
-		//status = dev->devstatus;
-		status = (u32)dev->devstatus;		//shih test
+		status = dev->devstatus;
 		break;
 
 	case USB_RECIP_ENDPOINT:
 		if (ep_num > 14 || crq->wLength > 2)
 			return 1;
-		//status = ep->halted;
-		status = (u32)ep->halted;		//shih test
+		status = ep->halted;
 		break;
 
 	default:
@@ -4667,7 +4664,8 @@ static int udc_init_c(void)
 	return 0;
 }
 #endif
-void sp_udc_state_polling(unsigned long data)
+
+void sp_udc_state_polling(struct timer_list *t)
 {
 	if (!platform_device_handle_flag
 		|| !bus_reset_finish_flag){
@@ -4692,7 +4690,7 @@ void sp_udc_state_polling(unsigned long data)
 	}
 }
 
-void sp_sof_state_polling(unsigned long data)
+void sp_sof_state_polling(struct timer_list *t)
 {
 	if (!platform_device_handle_flag
 		|| bus_reset_finish_flag){
@@ -4845,13 +4843,11 @@ static int __init udc_init(void)
 	if (retval)
 		goto err;
 
-	init_timer(&vbus_polling_timer);
-	vbus_polling_timer.function = sp_udc_state_polling;
+	timer_setup(&vbus_polling_timer, sp_udc_state_polling, 0);
 	vbus_polling_timer.expires = jiffies - HZ;
 	/*add_timer(&vbus_polling_timer); */
 
-	init_timer(&sof_polling_timer);
-	sof_polling_timer.function = sp_sof_state_polling;
+	timer_setup(&sof_polling_timer, sp_sof_state_polling, 0);
 	sof_polling_timer.expires = jiffies + 3 * HZ / 2;
 
 	/*switch usbX phy to host for CarPlay ,move to ehci/ohci reset thread*/

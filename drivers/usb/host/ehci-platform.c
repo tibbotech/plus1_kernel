@@ -552,7 +552,7 @@ int ehci_platform_probe(struct platform_device *dev)
 #ifdef CONFIG_USB_HOST_RESET_SP
 	ehci_sp->flag = 0;
 
-	printk("flag ***%p %p %d %d %p\n", hcd, hcd->hcd_priv,
+	printk("flag ***%px %px %d %d %px\n", hcd, hcd->hcd_priv,
 	       sizeof(struct ehci_hcd_sp), hcd->driver->hcd_priv_size,
 	       &ehci_sp->flag);
 

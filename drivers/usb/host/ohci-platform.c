@@ -523,7 +523,7 @@ int ohci_platform_probe(struct platform_device *dev)
 	usb_register_notify(&ohci_sp->ohci_notifier);
 
 	ohci_sp->flag = 0;
-	printk(KERN_DEBUG "flag *** %d %d %p\n", sizeof(struct ohci_hcd_sp),
+	printk(KERN_DEBUG "flag *** %d %d %px\n", sizeof(struct ohci_hcd_sp),
 	       hcd->driver->hcd_priv_size, &ohci_sp->flag);
 
 #ifdef 	CONFIG_USB_HOST_RESET

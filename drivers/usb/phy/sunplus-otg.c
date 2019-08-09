@@ -482,7 +482,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 	return IRQ_HANDLED;
 }
 
-static int __devinit sp_otg0_probe(struct platform_device *dev)
+static int sp_otg0_probe(struct platform_device *dev)
 {
 	struct sp_otg *otg_host;
 	struct resource *res_mem;
@@ -626,7 +626,7 @@ release_mem:
 	return ret;
 }
 
-static int __devexit sp_otg0_remove(struct platform_device *dev)
+static int sp_otg0_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
