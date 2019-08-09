@@ -905,6 +905,8 @@ static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
 	dma_addr_t oob_pa = info->buff.phys + mtd->writesize;
 	int ret;
 
+	info->row = page;
+	info->buff.idx = 0;
 	if (info->trs_mode == SPINAND_TRS_DMA_AUTOBCH) {
 		ret = spi_nand_pageread_autobch(info,
 			info->read_bitmode, page, (u8*)data_pa);
@@ -934,6 +936,8 @@ static int sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
 	dma_addr_t oob_pa = info->buff.phys + mtd->writesize;
 	int ret;
 
+	info->row = page;
+	info->buff.idx = 0;
 	memcpy(data_va, buf, mtd->writesize);
 	memcpy(oob_va, chip->oob_poi, mtd->oobsize);
 	if (info->trs_mode == SPINAND_TRS_DMA_AUTOBCH) {
