@@ -715,13 +715,13 @@ struct usb_device {
 	u16 hub_delay;
 #if 1	/* sunplus USB driver */
 	#ifdef	CONFIG_RETRY_TIMES
-		int reset_count;
-		struct timespec t_prev;
+	int reset_count;
+	struct timespec t_prev;
 	#endif
-		struct urb* current_urb;
+	struct urb* current_urb;
 	#ifdef CONFIG_USB_SUNPLUS_OTG
-		bool device_support_hnp_flag;
-		struct task_struct		*hnp_polling_timer;
+	bool device_support_hnp_flag;
+	struct task_struct		*hnp_polling_timer;
 	#endif
 #endif
 };

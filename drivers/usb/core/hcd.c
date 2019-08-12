@@ -1622,9 +1622,11 @@ int usb_hcd_map_urb_for_dma(struct usb_hcd *hcd, struct urb *urb,
 			} else if (is_vmalloc_addr(urb->transfer_buffer)) {
 				WARN_ONCE(1, "transfer buffer not dma capable\n");
 				ret = -EAGAIN;
+#if 0	/* sunplus USB driver */
 			} else if (object_is_on_stack(urb->transfer_buffer)) {
 				WARN_ONCE(1, "transfer buffer is on stack\n");
 				ret = -EAGAIN;
+#endif
 			} else {
 				urb->transfer_dma = dma_map_single(
 						hcd->self.sysdev,
