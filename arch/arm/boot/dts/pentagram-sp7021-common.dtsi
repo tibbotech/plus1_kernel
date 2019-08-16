@@ -347,7 +347,7 @@
 				reg = <0x3A 0x6>;
 			};
 		};
-#if 0
+#if 1
 		cbdma: cbdma@sp_cbdma {
 			compatible = "sunplus,sp7021-c-cbdma";
 			reg = <0x9c000d00 0x80>;
@@ -376,12 +376,6 @@
 			};
 		};
 #endif
-		cbdma_proxy: cbdma_proxy@sp_cbdma_proxy {
-			compatible = "sunplus,sp7021-cbdma-proxy";
-			reg = <0x9c000d00 0x80>;
-			reg-names = "cb_dma_proxy";
-		};
-
 		icm: icm@G81 {
 			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;
