@@ -12,8 +12,8 @@
 
 #define DRIVER_NAME		"sp-otg"
 
-struct sp_otg *sp_otg_host = NULL;
-EXPORT_SYMBOL(sp_otg_host);
+extern struct sp_otg *sp_otg0_host;
+extern struct sp_otg *sp_otg1_host;
 static struct usb_phy *phy_sp[2] = {NULL, NULL};
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num)
@@ -101,7 +101,10 @@ void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 	writel(val, &otg_host->regs_udsdi->udccs);
 	
 	val = 0x01000100;
-	writel(val, &otg_host->regs_moon4->mo4_uphy0_ctl_0);
+	if (otg_host->id == 1)
+		writel(val, &otg_host->regs_moon4->mo4_uphy0_ctl_0);
+	else if (otg_host->id == 2)
+		writel(val, &otg_host->regs_moon4->mo4_uphy1_ctl_0);
 }
 
 static int sp_start_hnp(struct usb_otg *otg)
@@ -371,8 +374,11 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 //	struct timespec	t0;
 //	getnstimeofday(&t0);
 
-	otg_debug(" otg irq in \n");
-
+	if (otg_host->id == 1)
+		otg_debug("otg0 irq in\n");
+	else if (otg_host->id == 2)
+		otg_debug("otg1 irq in\n");
+	
 	/* clear interrupt status */
 	int_status = readl(&otg_host->regs_otg->otg_int_st);
 	writel((int_status & INT_MASK), &otg_host->regs_otg->otg_int_st);
@@ -407,8 +413,13 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 	if (int_status & B_AIDL_BDIS_IF) {
 		otg_debug("B_AIDL_BDIS_IF\n");
-		val = 0x00100000;
-		writel(val, &otg_host->regs_moon4->mo4_usbc_ctl);
+		if (otg_host->id == 1) {
+			val = 0x00100000;
+			writel(val, &otg_host->regs_moon4->mo4_usbc_ctl);
+		} else if (otg_host->id == 2) {
+			val = 0x10000000;
+			writel(val, &otg_host->regs_moon4->mo4_usbc_ctl);
+		}
 	}
 
 	if (int_status & A_AIDS_BDIS_TOUT_IF) {
@@ -475,28 +486,42 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 		//otg_host->otg.state = OTG_STATE_A_VBUS_ERR;
 	}
 
-	otg_debug(" otg irq out\n");
+	if (otg_host->id == 1)
+		otg_debug("otg0 irq out\n");
+	else if (otg_host->id == 2)
+		otg_debug("otg1 irq out\n");
 
 	sp_otg_update_transceiver(otg_host);
 
 	return IRQ_HANDLED;
 }
 
-static int __devinit sp_otg0_probe(struct platform_device *dev)
+int __devinit sp_otg_probe(struct platform_device *dev)
 {
 	struct sp_otg *otg_host;
 	struct resource *res_mem;
 	int ret;
 
-	dev->id = 1;
+	if ((sp_port_enabled & PORT0_ENABLED) && (sp_otg0_host == NULL))
+		dev->id = 1;
+	else if ((sp_port_enabled & PORT1_ENABLED) && (sp_otg1_host == NULL))
+		dev->id = 2;
+
 	otg_host = kzalloc(sizeof(struct sp_otg), GFP_KERNEL);
 	if (!otg_host) {
 		printk("Alloc mem for otg host fail\n");
 		return -ENOMEM;
 	}
 
-	sp_otg_host = otg_host;
-
+	if (dev->id == 1) {
+		sp_otg0_host = otg_host;
+		otg_host->id = 1;
+	}
+	else if (dev->id == 2) {
+		sp_otg1_host = otg_host;
+		otg_host->id = 2;
+	}
+	
 	otg_host->otg.otg = kzalloc(sizeof(struct usb_otg), GFP_KERNEL);
 	if (!otg_host->otg.otg) {
 		kfree(otg_host);
@@ -625,8 +650,9 @@ release_mem:
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(sp_otg_probe);
 
-static int __devexit sp_otg0_remove(struct platform_device *dev)
+int __devexit sp_otg_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
@@ -656,62 +682,16 @@ free_mem:
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(sp_otg_remove);
 
-static int sp_otg0_suspend(struct platform_device *dev, pm_message_t state)
+int sp_otg_suspend(struct platform_device *dev, pm_message_t state)
 {
 	return 0;
 }
+EXPORT_SYMBOL_GPL(sp_otg_suspend);
 
-static int sp_otg0_resume(struct platform_device *dev)
+int sp_otg_resume(struct platform_device *dev)
 {
 	return 0;
 }
-
-
-static const struct of_device_id otg0_sunplus_dt_ids[] = {
-	{ .compatible = "sunplus,sunplus-q628-usb-otg0" },
-	{ }
-};
-
-MODULE_DEVICE_TABLE(of, otg0_sunplus_dt_ids);
-
-static struct platform_driver sunplus_usb_otg0_driver = {
-	.probe		= sp_otg0_probe,
-	.remove		= sp_otg0_remove,
-	.suspend	= sp_otg0_suspend,
-	.resume		= sp_otg0_resume,
-	.driver		= {
-		.name	= "sunplus-usb-otg0",
-		.of_match_table = otg0_sunplus_dt_ids,
-	},
-};
-
-
-static int __init usb_otg0_sunplus_init(void)
-{
-	if (sp_port_enabled & PORT0_ENABLED) {
-		printk(KERN_NOTICE "register sunplus_usb_otg0_driver\n");
-		return platform_driver_register(&sunplus_usb_otg0_driver);	
-	} else {
-		printk(KERN_NOTICE "otg0 not enabled\n");
-		return 0;
-	}
-}
-subsys_initcall(usb_otg0_sunplus_init);
-
-static void __exit usb_otg0_sunplus_exit(void)
-{
-	if (sp_port_enabled & PORT0_ENABLED) {
-		printk(KERN_NOTICE "unregister sunplus_usb_otg0_driver\n");
-		platform_driver_unregister(&sunplus_usb_otg0_driver);
-	} else {
-		printk(KERN_NOTICE "otg0 not enabled\n");
-		return;
-	}
-}
-module_exit(usb_otg0_sunplus_exit);
-
-
-MODULE_ALIAS("sunplus_usb_otg0");
-MODULE_AUTHOR("qiang.deng");
-MODULE_LICENSE("GPL");
+EXPORT_SYMBOL_GPL(sp_otg_resume);

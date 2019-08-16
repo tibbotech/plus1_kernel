@@ -39,6 +39,7 @@
 #define	UPHY_DISC_0							(1 << 2)
 
 #define USB_RESET_OFFSET					0x5C
+#define PIN_MUX_CTRL						0x8C
 #define USBC_CTL_OFFSET						0x244
 
 #define UPHY0_CTL0_OFFSET					0x248

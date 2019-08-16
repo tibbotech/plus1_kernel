@@ -58,6 +58,11 @@
 
 #define 	ENABLE_OTG_INT(x)		iowrite32(0x3ff, x)
 
+extern int __devexit sp_otg_remove(struct platform_device *);
+extern int __devinit sp_otg_probe(struct platform_device *);
+extern int sp_otg_suspend(struct platform_device *, pm_message_t);
+extern int sp_otg_resume(struct platform_device *);
+
 struct sp_otg {
 	struct usb_phy otg;
 
@@ -66,6 +71,7 @@ struct sp_otg {
 	struct sp_regs_moon4 __iomem *regs_moon4;
 
 	int irq;
+	int id;
 
 	struct work_struct work;
 	struct workqueue_struct *qwork;

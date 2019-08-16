@@ -634,6 +634,13 @@
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		sp_otg1: usb@0x9c103400 {
+			compatible = "sunplus,sunplus-q628-usb-otg1";
+			reg = <0x9c103400 0x70>, <0x9c103880 0x80>, <0x9c000200 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		fb_device {
 			compatible = "sunplus,sp7021-fb";
 		};
