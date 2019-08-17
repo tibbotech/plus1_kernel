@@ -573,6 +573,7 @@ out:
 	//return -ENOMEM;
 #endif
 }
+EXPORT_SYMBOL(DRV_OSD_WaitVSync);
 
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 {
@@ -586,4 +587,5 @@ u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 
 	return 0;
 }
+EXPORT_SYMBOL(DRV_OSD_SetVisibleBuffer);
 
