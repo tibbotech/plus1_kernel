@@ -206,7 +206,12 @@ static struct usb_hub *hdev_to_hub(struct usb_device *hdev)
 }
 
 	#ifdef CONFIG_USB_SUNPLUS_OTG
-extern struct sp_otg *sp_otg_host;
+		#ifdef CONFIG_GADGET_USB0
+extern struct sp_otg *sp_otg0_host;
+		#else
+extern struct sp_otg *sp_otg1_host;
+		#endif
+
 extern void detech_start(void);
 static int hnp_polling_watchdog(void *arg)
 {
@@ -6124,7 +6129,13 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 #endif
 		if (!hub->hdev->parent) {
 #ifdef CONFIG_USB_SUNPLUS_OTG
-			if((udev->device_support_hnp_flag) && (sp_otg_host->fsm.id == 0)){
+	#ifdef CONFIG_GADGET_USB0
+			if((udev->device_support_hnp_flag) && (sp_otg0_host->fsm.id == 0) &&
+			   (port_num == 0)){
+	#else
+			if((udev->device_support_hnp_flag) && (sp_otg1_host->fsm.id == 0) &&
+			   (port_num == 1)){
+	#endif
 				udev->hnp_polling_timer = kthread_create(hnp_polling_watchdog,udev,"hnp_polling");
 				wake_up_process(udev->hnp_polling_timer);
 			}

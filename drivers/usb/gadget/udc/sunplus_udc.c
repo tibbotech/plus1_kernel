@@ -56,10 +56,6 @@ char *g_hw;
 #define MANUAL_EP11
 #define  SW_IRQ
 
-#ifdef CONFIG_USB_SUNPLUS_OTG
-extern struct sp_otg *sp_otg_host;
-#endif
-
 static u32 is_ncm = 0;
 #ifndef USBTEST_ZERO
 struct tasklet_struct *t_task;
@@ -1047,7 +1043,13 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 #ifdef CONFIG_USB_SUNPLUS_OTG
 		if((0 == crq->bRequestType) && (3 == crq->wValue) && (0 == crq->wIndex) && (0 == crq->wLength)){
 			printk("set hnp featrue\n");
+
+	#ifdef CONFIG_GADGET_USB0
 			otg_phy = usb_get_transceiver_sp(0);
+	#else
+			otg_phy = usb_get_transceiver_sp(1);
+	#endif
+
 			if (!otg_phy) {
 				printk("Get otg control fail\n");
 			} else {
@@ -4494,7 +4496,11 @@ static int sp_udc_probe(struct platform_device *pdev)
 	clk_prepare(udc->clk);
 	clk_enable(udc->clk);
 
+#ifdef CONFIG_GADGET_USB0
 	pdev->id = 1;
+#else
+	pdev->id = 2;
+#endif
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	irq_num = platform_get_irq(pdev, 0);
@@ -4539,8 +4545,10 @@ static int sp_udc_probe(struct platform_device *pdev)
 	ret = fiq_glue_register_handler(&udc->handler);
 	if (ret != 0)
 		printk("udc fiq fail\n");
-	ret = request_threaded_irq(irq_num, 0,
-							udcThreadHandler, IRQF_DISABLED , gadget_name, udc);/*udcThreadHandler*/
+
+	ret = request_threaded_irq(irq_num, 0, udcThreadHandler,
+	                           IRQF_DISABLED , gadget_name, udc);/*udcThreadHandler*/
+
 #else
 	ret = request_irq(irq_num, sp_udc_irq, IRQF_DISABLED, gadget_name, udc);
 #endif
@@ -4578,10 +4586,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc_write(udc_read(UDNBIE) | EP9N_IF | EP9O_IF, UDNBIE);
 
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
-
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	sp_otg_host->regs_otg->otg_init_en = 0x3FF;
-#endif
 
 	return 0;
 err_add_udc:
@@ -4725,11 +4729,11 @@ void usb_switch(int device)
 	if (device) {
 #if 1
 		if (accessory_port_id == 0) {
-				writel(RF_MASK_V_SET(1 << 4), regs + 0x244);
-				writel(RF_MASK_V_CLR(1 << 5), regs + 0x244);
+				writel(RF_MASK_V_SET(1 << 4), regs + USBC_CTL_OFFSET);
+				writel(RF_MASK_V_CLR(1 << 5), regs + USBC_CTL_OFFSET);
 		} else {
-				writel(RF_MASK_V_SET(1 << 12), regs + 0x244);
-				writel(RF_MASK_V_CLR(1 << 13), regs + 0x244);
+				writel(RF_MASK_V_SET(1 << 12), regs + USBC_CTL_OFFSET);
+				writel(RF_MASK_V_CLR(1 << 13), regs + USBC_CTL_OFFSET);
 		}
 #else
 		value = readl(USBC_CTL);
@@ -4754,9 +4758,9 @@ void usb_switch(int device)
 						struct sp_request, queue), -ESHUTDOWN);*/
 		}
 		if (accessory_port_id == 0) {
-			writel(RF_MASK_V_SET(1 << 5), regs + 0x244);
+			writel(RF_MASK_V_SET(1 << 5), regs + USBC_CTL_OFFSET);
 		} else {
-			writel(RF_MASK_V_SET(1 << 13), regs + 0x244);
+			writel(RF_MASK_V_SET(1 << 13), regs + USBC_CTL_OFFSET);
 		}
 		bus_reset_finish_flag = false;
 		platform_device_handle_flag = false;
@@ -4832,7 +4836,7 @@ static int __init udc_init(void)
 #endif
 	DEBUG_NOTICE("udc_init\n");
 
-	if (accessory_port_id == 0) {
+	if (accessory_port_id == USB_PORT0_ID) {
 		printk(KERN_NOTICE "register sunplus_udc0_driver\n");
 		retval = platform_driver_register(&sunplus_udc0_driver);
 	} else {
@@ -4868,7 +4872,7 @@ err:
 
 static void __exit udc_exit(void)
 {
-	if (accessory_port_id == 0) {
+	if (accessory_port_id == USB_PORT0_ID) {
 		platform_driver_unregister(&sunplus_udc0_driver);
 	} else {
 		platform_driver_unregister(&sunplus_udc1_driver);
