@@ -16,6 +16,9 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
+
+#define SPSDC_WIDTH_SWITCH
+
 #define SPSDC_MIN_CLK	400000
 #define SPSDC_MAX_CLK	52000000
 #define SPSDC_MAX_BLK_COUNT 65536
@@ -184,6 +187,11 @@ struct spsdc_host {
 	int irq;
 	int use_int; /* should raise irq when done */
 	int power_state; /* current power state: off/up/on */
+
+
+#ifdef SPSDC_WIDTH_SWITCH
+        int restore_4bit_sdio_bus;
+#endif
 
 #define SPSDC_DMA_MODE 0
 #define SPSDC_PIO_MODE 1
