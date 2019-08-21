@@ -183,6 +183,9 @@ static int _dma_probe(struct platform_device *pdev);
 extern int hdmitx_enable_display(int);
 extern void hdmitx_set_timming(enum hdmitx_timing timing);
 #endif
+
+int g_disp_state = 1;
+EXPORT_SYMBOL(g_disp_state);
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
@@ -1052,7 +1055,8 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 
 static irqreturn_t _display_irq_field_end(int irq, void *param)
 {
-	DRV_OSD_IRQ();
+	if (g_disp_state == 0)
+		DRV_OSD_IRQ();
 
 	if (mac_test == 2)
 		DERROR("%s:%d mac test line:%d %d\n", __FUNCTION__, __LINE__, DRV_TGEN_GetLineCntNow(), getstc());

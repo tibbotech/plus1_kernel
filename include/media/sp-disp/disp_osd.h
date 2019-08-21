@@ -86,6 +86,9 @@ int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo);
 void DRV_OSD_Set_UI_UnInit(void);
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo);
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId);
+void DRV_IRQ_DISABLE(void);
+void DRV_IRQ_ENABLE(void);
 
+extern int g_disp_state;
 #endif	//__DISP_OSD_H__
 

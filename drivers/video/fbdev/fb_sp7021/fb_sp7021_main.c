@@ -381,6 +381,8 @@ static int _sp7021_fb_remove(struct platform_device *pdev)
 		gFB_INFO = NULL;
 	}
 
+	DRV_IRQ_DISABLE();
+	
 	DRV_OSD_Set_UI_UnInit();
 
 	return 0;
@@ -422,6 +424,8 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 		goto ERROR_HANDLE_FB_INIT;
 
 	DRV_OSD_Set_UI_Init(&Info);
+	
+	DRV_IRQ_ENABLE();
 
 	fb_par = (struct framebuffer_t *)gFB_INFO->par;
 	fb_par->OsdHandle = Info.UI_handle;
