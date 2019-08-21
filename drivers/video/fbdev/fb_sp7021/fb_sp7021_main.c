@@ -36,7 +36,7 @@
 #include <linux/of_address.h>
 #include <linux/dma-mapping.h>
 
-#include "mach/display/disp_osd.h"
+#include <media/sp-disp/disp_osd.h>
 #include "fb_sp7021_main.h"
 
 /**************************************************************************

@@ -1,7 +1,7 @@
 #ifndef __DISP_DMIX_H__
 #define __DISP_DMIX_H__
 
-#include "mach/display/display.h"
+#include <media/sp-disp/display.h>
 
 #define DMIX_LUMA_OFFSET_MIN	(-50)
 #define DMIX_LUMA_OFFSET_MAX	(50)

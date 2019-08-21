@@ -8,8 +8,8 @@
 #include "disp_dmix.h"
 #include "disp_tgen.h"
 #include "disp_dve.h"
-#include "disp_osd.h"
-#include "disp_vpp.h"
+#include <media/sp-disp/disp_osd.h>
+#include <media/sp-disp/disp_vpp.h>
 
 #define SP_DISP_V4L2_SUPPORT
 

@@ -23,7 +23,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#include "mach/display/display.h" //#ifdef TIMING_SYNC_720P60
+#include <media/sp-disp/display.h> //#ifdef TIMING_SYNC_720P60
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/

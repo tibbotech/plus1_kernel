@@ -51,7 +51,7 @@
 
 #include "reg_disp.h"
 #include "hal_disp.h"
-#include "mach/display/display.h"
+#include <media/sp-disp/display.h>
 
 #ifdef TIMING_SYNC_720P60
 #include <mach/hdmitx.h>

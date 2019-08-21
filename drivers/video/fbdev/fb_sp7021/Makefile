@@ -1,7 +1,7 @@
 #
 # Makefile for the SP7021 framebuffer driver
 #
-SUPPORT_CHECK_CODING_STYLE=1
+SUPPORT_CHECK_CODING_STYLE=0
 
 #check linux kernel coding style start
 ifeq ($(SUPPORT_CHECK_CODING_STYLE), 1)
