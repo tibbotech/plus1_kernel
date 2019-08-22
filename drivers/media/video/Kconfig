@@ -23,6 +23,11 @@ config OV5647_640x480
 	---help---
 	  In this mode, OV5647 output image size 640x480.
 
+config OV5647_1280x720
+	bool "1280x720"
+	---help---
+	  In this mode, OV5647 output image size 1280x720.
+
 config OV5647_1280x960
 	bool "1280x960"
 	---help---
