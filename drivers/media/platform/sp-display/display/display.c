@@ -77,7 +77,7 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
-#define DISP_LOG_DEBUG		KERN_INFO //KERN_DEBUG
+#define DISP_LOG_DEBUG		KERN_DEBUG
 #define DISP_LOG_ERR		KERN_ERR
 
 #define DISP_DEBUG
@@ -2376,7 +2376,11 @@ static int _display_probe(struct platform_device *pdev)
 #ifdef TTL_MODE_SUPPORT
 	vpost_setting((320-VPP_WIDTH)>>1, (240-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 320, 240);
 #else
-	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
+	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
+		vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
+	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
+		vpost_setting((1280-VPP_WIDTH)>>1, (720-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1280, 720);
+	#endif
 #endif
 
 #ifdef TEST_DMA
