@@ -433,11 +433,8 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 		srcdst = bitfield_replace(srcdst, 4, 7, 0x21);
 		writel(srcdst, &host->base->card_mediatype_srcdst);
 	}
-	if ((MMC_READ_MULTIPLE_BLOCK == cmd->opcode) || (MMC_WRITE_MULTIPLE_BLOCK == cmd->opcode))
-		value = bitfield_replace(value, 2, 1, 0); /* sd_len_mode */
-	else
-		value = bitfield_replace(value, 2, 1, 1);
-	if (likely(SPMMC_DMA_MODE == host->dmapio_mode)) {
+	value = bitfield_replace(value, 2, 1, 1);
+    if (likely(SPMMC_DMA_MODE == host->dmapio_mode)) {
 		struct scatterlist *sg;
 		dma_addr_t dma_addr;
 		unsigned int dma_size;
@@ -571,17 +568,18 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 			writel(timing_cfg0, &host->base->sd_timing_config0);
 		}
 
-		/* controller will not send cmd 12 automatically if error occured */
-		if (MMC_READ_MULTIPLE_BLOCK == cmd->opcode ||
-		    MMC_WRITE_MULTIPLE_BLOCK == cmd->opcode) {
-			__send_stop_cmd(host);
-			spmmc_sw_reset(host);
-		}
+
 	} else if (data) {
 		data->error = 0;
 		data->bytes_xfered = data->blocks * data->blksz;
 	}
 	host->tuning_info.need_tuning = ret;
+    /* controller will not send cmd 12 automatically if error occured */
+	if (MMC_READ_MULTIPLE_BLOCK == cmd->opcode ||
+	    MMC_WRITE_MULTIPLE_BLOCK == cmd->opcode) {
+		__send_stop_cmd(host);
+		spmmc_sw_reset(host);
+	}
 	return ret;
 }
 
