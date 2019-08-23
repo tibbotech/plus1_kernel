@@ -16,7 +16,7 @@
 /**************************************************************************
  *                             M A C R O S                                *
  **************************************************************************/
-
+#define NAND_DEVICE_NAME  "sp_spinand"
 /**************************************************************************
  *                 E X T E R N A L   R E F E R E N C E S                  *
  **************************************************************************/
@@ -1079,7 +1079,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	info->dev = dev;
 	info->mtd = &info->nand.mtd;
 	info->mtd->priv = info;
-	info->mtd->name = dev_name(dev);
+	info->mtd->name = NAND_DEVICE_NAME;//dev_name(dev);
 	info->mtd->owner = THIS_MODULE;
 	info->nand.options = NAND_NO_SUBPAGE_WRITE;
 	info->nand.select_chip = sp_spinand_select_chip;

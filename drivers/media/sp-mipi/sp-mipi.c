@@ -55,6 +55,20 @@ MODULE_PARM_DESC(video_nr, " videoX start number, -1 is autodetect");
 /* ------------------------------------------------------------------
 	Constants
    ------------------------------------------------------------------*/
+static const struct sp_fmt ov5647_formats[] = {
+	{
+		.name     = "BAYER, RAW8",
+		.fourcc   = V4L2_PIX_FMT_SRGGB8,
+		.width    = 2592,
+		.height   = 1944,
+		.depth    = 8,
+		.walign   = 2,
+		.halign   = 2,
+		.mipi_lane = 2,
+		.sol_sync = SYNC_RAW8,
+	},
+};
+
 static const struct sp_fmt ov9281_formats[] = {
 	{
 		.name     = "GREY, RAW10",
@@ -109,6 +123,15 @@ static const struct sp_fmt ov9281_isp_formats[] = {
 };
 
 static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
+	{
+		.name = "ov5647",
+		.grp_id = 0,
+		.board_info = {
+			I2C_BOARD_INFO("ov5647", 0x36),
+		},
+		.formats = ov5647_formats,
+		.formats_size = ARRAY_SIZE(ov5647_formats),
+	},
 	{
 		.name = "ov9281",
 		.grp_id = 0,

@@ -51,7 +51,7 @@
 
 #include "reg_disp.h"
 #include "hal_disp.h"
-#include "mach/display/display.h"
+#include <media/sp-disp/display.h>
 
 #ifdef TIMING_SYNC_720P60
 #include <mach/hdmitx.h>
@@ -71,6 +71,8 @@
 #include <media/videobuf-core.h>
 #include <media/v4l2-common.h>
 #include <media/videobuf2-v4l2.h>
+#include <media/videobuf2-dma-contig.h>
+#include <media/videobuf2-vmalloc.h>
 #endif
 /**************************************************************************
  *                              M A C R O S                               *
@@ -133,7 +135,31 @@ static int DMA_times = 0;
 static volatile int DMA_safe_line[2];// = {38 + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1), 38 + DMA_LINES + DMA_LINES + DMA_LINES + ((480-VPP_HEIGHT)>>1)};
 
 #ifdef SP_DISP_V4L2_SUPPORT
+static unsigned int allocator = 0;
+module_param(allocator, uint, 0444);
+MODULE_PARM_DESC(allocator, " memory allocator selection, default is 0.\n"
+			     "\t    0 == dma-contig\n"
+			     "\t    1 == vmalloc");
 #define DISP_NAME		        "sp_disp"
+
+#if 0
+#define print_List()
+#else
+static void print_List(struct list_head *head){
+	struct list_head *listptr;
+	struct videobuf_buffer *entry;
+
+	DEBUG("********************************************************\n");
+	DEBUG("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
+	list_for_each(listptr, head) {
+		entry = list_entry(listptr, struct videobuf_buffer, stream);
+		DEBUG("list addr = %p | next = %p | prev = %p\n", &entry->stream, entry->stream.next,
+			 entry->stream.prev);
+	}
+	DEBUG("********************************************************\n");
+}
+#endif
+
 #endif
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
@@ -157,6 +183,9 @@ static int _dma_probe(struct platform_device *pdev);
 extern int hdmitx_enable_display(int);
 extern void hdmitx_set_timming(enum hdmitx_timing timing);
 #endif
+
+int g_disp_state = 1;
+EXPORT_SYMBOL(g_disp_state);
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
@@ -177,8 +206,6 @@ static int sp_disp_runtime_suspend(struct device *dev)
 	
 #if 1
 	// Disable 'dispplay' and 'hdmitx' clock.
-	//clk_disable(&pDispWorkMem->mipicsi_clk);
-	//clk_disable(&pDispWorkMem->csiiw_clk);
 
 	clk_disable(pDispWorkMem->tgen_clk);
 	clk_disable(pDispWorkMem->dmix_clk);
@@ -351,7 +378,28 @@ out:
 static int sp_disp_release(struct file *file)
 {
 	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	int ret;
+	
+	DEBUG("%s:%d sp_disp_release \n", __FUNCTION__, __LINE__);
+	
+	//disp_dev = video_drvdata(file);
+	
+	mutex_lock(&disp_dev->lock);
+	
+	ret = _vb2_fop_release(file,NULL);
+	
+	mutex_unlock(&disp_dev->lock);
+
+#ifdef CONFIG_PM_RUNTIME_DISP
+	pm_runtime_put(disp_dev->pdev);		// Starting count timeout.
+#endif
+
+	return ret;
+
+#if 0
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
 	struct sp_disp_fh *fh = file->private_data;
+	int ret;
 
 	DEBUG("%s:%d sp_disp_release \n", __FUNCTION__, __LINE__);
 
@@ -371,6 +419,7 @@ static int sp_disp_release(struct file *file)
 	/* Decrement device usrs counter */
 	v4l2_fh_del(&fh->fh);
 	v4l2_fh_exit(&fh->fh);
+	
 	mutex_unlock(&disp_dev->lock);
 
 	file->private_data = NULL;
@@ -383,6 +432,7 @@ static int sp_disp_release(struct file *file)
 	kfree(fh);
 
 	return 0;
+#endif
 }
 
 static const struct v4l2_file_operations sp_disp_fops = {
@@ -393,6 +443,204 @@ static const struct v4l2_file_operations sp_disp_fops = {
 	.mmap 				= vb2_fop_mmap,
 	.poll 				= vb2_fop_poll,
 };
+
+static const struct vb2_mem_ops *const sp_mem_ops[2] = {
+	&vb2_dma_contig_memops,
+	&vb2_vmalloc_memops,
+};
+
+static int sp_queue_setup(struct vb2_queue *vq, unsigned *nbuffers, unsigned *nplanes,
+		       unsigned sizes[], struct device *alloc_devs[])
+{
+	//struct sp_disp_device *disp_dev = vb2_get_drv_priv(vq);
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	unsigned size = disp_dev->fmt.fmt.pix.sizeimage;
+	
+	DEBUG("%s:%d sp_queue_setup size %d \n", __FUNCTION__, __LINE__,size);
+
+	if (*nplanes) {
+		DEBUG("%s:%d set multi planes \n", __FUNCTION__, __LINE__);
+		if (sizes[0] < size) {
+			return -EINVAL;
+		}
+		size = sizes[0];
+	}	
+	
+	*nplanes = 1;
+	sizes[0] = size;
+
+	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS) {
+		*nbuffers = MIN_BUFFERS - vq->num_buffers;
+	}
+		
+	DEBUG("%s:%d count = %u, size = %u \n", __FUNCTION__, __LINE__, *nbuffers, sizes[0]);
+	
+	return 0;
+}
+
+static int sp_buf_prepare(struct vb2_buffer *vb)
+{
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+	//struct sp_disp_device *disp_dev = vb2_get_drv_priv(vb->vb2_queue);
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	unsigned long size = disp_dev->fmt.fmt.pix.sizeimage;
+	
+	DEBUG("%s:%d sp_buf_prepare \n", __FUNCTION__, __LINE__);
+	
+	vb2_set_plane_payload(vb, 0, disp_dev->fmt.fmt.pix.sizeimage);
+
+	if (vb2_get_plane_payload(vb, 0) > vb2_plane_size(vb, 0)) {
+		DERROR("Buffer is too small (%lu < %lu)!\n", vb2_plane_size(vb, 0), size);
+		return -EINVAL;
+	}
+
+	vbuf->field = disp_dev->fmt.fmt.pix.field;
+	
+	return 0;
+}
+
+static void sp_buf_queue(struct vb2_buffer *vb)
+{
+	struct vb2_v4l2_buffer *vbuf = to_vb2_v4l2_buffer(vb);
+	//struct sp_disp_device *disp_dev = vb2_get_drv_priv(vb->vb2_queue);
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct sp_disp_buffer *buf = container_of(vbuf, struct sp_disp_buffer, vb);
+	unsigned long flags = 0;
+	
+	DEBUG("%s:%d sp_buf_queue \n", __FUNCTION__, __LINE__);
+	
+	// Add the buffer to the DMA queue.
+	spin_lock_irqsave(&disp_dev->dma_queue_lock, flags);
+	list_add_tail(&buf->list, &disp_dev->dma_queue);
+	DEBUG("%s:%d list_add \n", __FUNCTION__, __LINE__);
+	print_List(&disp_dev->dma_queue);
+	spin_unlock_irqrestore(&disp_dev->dma_queue_lock, flags);
+	
+}
+
+static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
+{
+	//struct sp_disp_device *disp_dev = vb2_get_drv_priv(vq);
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct UI_FB_Info_t Info;
+	unsigned long flags;
+	unsigned long addr;
+	//int ret;
+
+	DEBUG("%s:%d sp_start_streaming count = %d \n", __FUNCTION__, __LINE__,count);
+
+	spin_lock_irqsave(&disp_dev->dma_queue_lock, flags);
+
+	/* Get the next frame from the buffer queue */
+	disp_dev->next_frm = disp_dev->cur_frm = list_entry(disp_dev->dma_queue.next,
+				struct sp_disp_buffer, list);
+
+	// Remove buffer from the dma queue.
+	list_del_init(&disp_dev->cur_frm->list);
+
+	addr = vb2_dma_contig_plane_dma_addr(&disp_dev->cur_frm->vb.vb2_buf, 0);
+
+	spin_unlock_irqrestore(&disp_dev->dma_queue_lock, flags);
+
+	Info.UI_width = disp_dev->fmt.fmt.pix.width;
+	Info.UI_height = disp_dev->fmt.fmt.pix.height;
+	
+	DEBUG("%s:%d UI_width = %d , UI_height = %d \n", __FUNCTION__, __LINE__,Info.UI_width,Info.UI_height);
+	
+	if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
+		Info.UI_ColorFmt = 0xe;
+		DEBUG("%s:%d V4L2_PIX_FMT_ARGB32 \n", __FUNCTION__, __LINE__);
+	}
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
+		Info.UI_ColorFmt = 0xd;
+		DEBUG("%s:%d V4L2_PIX_FMT_ABGR32 \n", __FUNCTION__, __LINE__);
+	}
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
+		Info.UI_ColorFmt = 0xb;
+		DEBUG("%s:%d V4L2_PIX_FMT_ARGB444 \n", __FUNCTION__, __LINE__);
+	}	
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
+		Info.UI_ColorFmt = 0xa;
+		DEBUG("%s:%d V4L2_PIX_FMT_RGB444 \n", __FUNCTION__, __LINE__);
+	}
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
+		Info.UI_ColorFmt = 0x9;
+		DEBUG("%s:%d V4L2_PIX_FMT_ARGB555 \n", __FUNCTION__, __LINE__);
+	}
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+		Info.UI_ColorFmt = 0x8;
+		DEBUG("%s:%d V4L2_PIX_FMT_RGB565 \n", __FUNCTION__, __LINE__);
+	}
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+		Info.UI_ColorFmt = 0x4;
+		DEBUG("%s:%d V4L2_PIX_FMT_YUYV \n", __FUNCTION__, __LINE__);
+	}	
+	else if(disp_dev->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB332) {
+		Info.UI_ColorFmt = 0x2;
+		DEBUG("%s:%d V4L2_PIX_FMT_RGB332 \n", __FUNCTION__, __LINE__);
+	}	
+
+	Info.UI_bufNum = 2;
+	Info.UI_bufAddr = addr;
+	
+	DRV_OSD_Set_UI_Init(&Info);
+
+	disp_dev->skip_first_int = true;
+	
+	
+	return 0;
+}
+
+static void sp_stop_streaming(struct vb2_queue *vq)
+{
+	//struct sp_disp_device *disp_dev = vb2_get_drv_priv(vq);
+	struct sp_disp_device *disp_dev = &gDispWorkMem;
+	struct sp_disp_buffer *buf;
+	unsigned long flags;
+	//int ret;
+
+	DEBUG("%s:%d sp_stop_streaming \n", __FUNCTION__, __LINE__);
+
+	if (!vb2_is_streaming(vq))
+		return;
+
+	// Release all active buffers.
+	spin_lock_irqsave(&disp_dev->dma_queue_lock, flags);
+	
+	if (disp_dev->cur_frm == disp_dev->next_frm) {
+			vb2_buffer_done(&disp_dev->cur_frm->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+	}
+	else {
+		if (disp_dev->cur_frm != NULL) {
+			vb2_buffer_done(&disp_dev->cur_frm->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+		}
+		if (disp_dev->next_frm != NULL) {
+			vb2_buffer_done(&disp_dev->next_frm->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+		}
+	}
+
+	while (!list_empty(&disp_dev->dma_queue)) {
+		buf = list_entry(disp_dev->dma_queue.next, struct sp_disp_buffer, list);
+		list_del(&buf->list);
+		vb2_buffer_done(&buf->vb.vb2_buf, VB2_BUF_STATE_ERROR);
+	}
+
+	spin_unlock_irqrestore(&disp_dev->dma_queue_lock, flags);
+	
+	//DRV_OSD_Set_UI_UnInit();
+
+}
+
+static const struct vb2_ops sp_video_qops = {
+	.queue_setup            = sp_queue_setup,
+	.buf_prepare            = sp_buf_prepare,
+	.buf_queue              = sp_buf_queue,
+	.start_streaming        = sp_start_streaming,
+	.stop_streaming         = sp_stop_streaming,
+	.wait_prepare           = vb2_ops_wait_prepare,
+	.wait_finish            = vb2_ops_wait_finish
+};
+
 
 static int sp_vidioc_querycap(struct file *file, void *priv, struct v4l2_capability *vcap)
 {
@@ -444,7 +692,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_RGB332,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 8,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -453,7 +701,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_YUYV,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 16,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -462,7 +710,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_RGB565,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 16,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -471,7 +719,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_ARGB555,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 16,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -480,7 +728,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_RGB444,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 16,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -489,7 +737,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_ARGB444,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 16,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -498,7 +746,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_ABGR32,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 32,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -507,7 +755,7 @@ static struct sp_fmt osd_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_ARGB32,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 1,
+		.depth    = 32,
 		.walign   = 1,
 		.halign   = 1,
 	},	
@@ -614,9 +862,10 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 	disp_dev->fmt.fmt.pix.height       = pixfmt->height;
 	disp_dev->fmt.fmt.pix.pixelformat  = pixfmt->pixelformat; // from sp_try_format
 	disp_dev->fmt.fmt.pix.field        = pixfmt->field;
-	//disp_dev->fmt.fmt.pix.bytesperline = pixfmt->bytesperline;
-	disp_dev->fmt.fmt.pix.bytesperline = (pixfmt->width)*2;
+	disp_dev->fmt.fmt.pix.bytesperline = pixfmt->bytesperline;
+	//disp_dev->fmt.fmt.pix.bytesperline = (pixfmt->width)*4;
 	disp_dev->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
+	//disp_dev->fmt.fmt.pix.sizeimage    = (pixfmt->width)*(pixfmt->height)*4;
 	disp_dev->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
 
 	return 0;
@@ -624,10 +873,19 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 
 static const struct v4l2_ioctl_ops sp_disp_ioctl_ops = {
 	.vidioc_querycap                = sp_vidioc_querycap,
-	.vidioc_g_fmt_vid_out    		= sp_display_g_fmt,
-	.vidioc_enum_fmt_vid_out 		= sp_display_enum_fmt,
-	.vidioc_s_fmt_vid_out    		= sp_display_s_fmt,
-	.vidioc_try_fmt_vid_out  		= sp_display_try_fmt,
+	.vidioc_g_fmt_vid_out    				= sp_display_g_fmt,
+	.vidioc_enum_fmt_vid_out 				= sp_display_enum_fmt,
+	.vidioc_s_fmt_vid_out    				= sp_display_s_fmt,
+	.vidioc_try_fmt_vid_out  				= sp_display_try_fmt,
+	.vidioc_reqbufs                 = vb2_ioctl_reqbufs,
+	.vidioc_querybuf                = vb2_ioctl_querybuf,
+	.vidioc_create_bufs             = vb2_ioctl_create_bufs,
+	.vidioc_prepare_buf             = vb2_ioctl_prepare_buf,
+	.vidioc_qbuf                    = vb2_ioctl_qbuf,
+	.vidioc_dqbuf                   = vb2_ioctl_dqbuf,
+	.vidioc_expbuf                  = vb2_ioctl_expbuf,
+	.vidioc_streamon                = vb2_ioctl_streamon,
+	.vidioc_streamoff               = vb2_ioctl_streamoff,
 };
 #endif
 /**************************************************************************
@@ -797,7 +1055,8 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 
 static irqreturn_t _display_irq_field_end(int irq, void *param)
 {
-	DRV_OSD_IRQ();
+	if (g_disp_state == 0)
+		DRV_OSD_IRQ();
 
 	if (mac_test == 2)
 		DERROR("%s:%d mac test line:%d %d\n", __FUNCTION__, __LINE__, DRV_TGEN_GetLineCntNow(), getstc());
@@ -1783,8 +2042,9 @@ static int _display_probe(struct platform_device *pdev)
 	int ret;
 #ifdef SP_DISP_V4L2_SUPPORT
 	struct video_device *vfd;
+	struct vb2_queue *q;
 #endif
-	DEBUG("[%s:%d] in 2\n", __FUNCTION__, __LINE__);
+	DEBUG("[%s:%d] in 2 test \n", __FUNCTION__, __LINE__);
 
 	if (_display_init_irq(pdev)) {
 		DERROR("Error: %s, %d\n", __func__, __LINE__);
@@ -1833,23 +2093,67 @@ static int _display_probe(struct platform_device *pdev)
 	pDispWorkMem->pHWRegBase = pTmpRegBase;
 
 #ifdef SP_DISP_V4L2_SUPPORT
-	/* Initialize field of video device */
-	pDispWorkMem->pdev = &pdev->dev;
-	vfd = &pDispWorkMem->video_dev;
-	vfd->release    = video_device_release_empty;
-	vfd->fops       = &sp_disp_fops;
-	vfd->ioctl_ops  = &sp_disp_ioctl_ops;
-	vfd->tvnorms  = 0;
-	vfd->v4l2_dev   = &pDispWorkMem->v4l2_dev;
-	strlcpy(vfd->name, DISP_NAME, sizeof(vfd->name));
-	vfd->vfl_dir	= VFL_DIR_TX;
-	
 	// Register V4L2 device.
 	ret = v4l2_device_register(&pdev->dev, &pDispWorkMem->v4l2_dev);
 	if (ret) {
 		DERROR("Unable to register v4l2 device!\n");
 		goto err_v4l2_register;
 	}
+	else {
+		DEBUG("[%s:%d] v4l2_device_register ok \n", __FUNCTION__, __LINE__);
+	}
+	
+	// Initialize locks.
+	spin_lock_init(&pDispWorkMem->irqlock);
+	spin_lock_init(&pDispWorkMem->dma_queue_lock);
+	mutex_init(&pDispWorkMem->lock);
+	
+	if (allocator >= ARRAY_SIZE(sp_mem_ops)) {
+		allocator = 0;
+	}
+	if (allocator == 0) {
+		dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
+	}
+	
+	// Start creating the vb2 queues.
+	q = &pDispWorkMem->buffer_queue;
+	memset(q, 0, sizeof(*q));
+	//q->type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+	q->type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+	q->io_modes = VB2_MMAP | VB2_USERPTR | VB2_DMABUF;
+	q->drv_priv = pDispWorkMem;
+	q->buf_struct_size = sizeof(struct sp_disp_buffer);
+	q->ops = &sp_video_qops;
+	q->mem_ops = sp_mem_ops[allocator];
+	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
+	q->min_buffers_needed = MIN_BUFFERS;
+	q->lock = &pDispWorkMem->lock;
+	q->dev = pDispWorkMem->v4l2_dev.dev;
+
+	DEBUG("[%s:%d] q %p , size %d \n", __FUNCTION__, __LINE__,q,sizeof(*q));
+	DEBUG("[%s:%d] q->buf_struct_size %d \n", __FUNCTION__, __LINE__,q->buf_struct_size);
+
+	ret = vb2_queue_init(q);
+	if (ret) {
+		DERROR("Failed to initialize vb2 queue!\n");
+		goto err_vb2_queue_init;
+	}
+
+	// Initialize dma queues.
+	INIT_LIST_HEAD(&pDispWorkMem->dma_queue);
+	
+	/* Initialize field of video device */
+	pDispWorkMem->pdev = &pdev->dev;
+	vfd = &pDispWorkMem->video_dev;
+	vfd->release    = video_device_release_empty;
+	vfd->fops       = &sp_disp_fops;
+	vfd->ioctl_ops  = &sp_disp_ioctl_ops;
+	//vfd->tvnorms  = 0;
+	vfd->v4l2_dev   = &pDispWorkMem->v4l2_dev;
+	vfd->queue   = &pDispWorkMem->buffer_queue;
+	strlcpy(vfd->name, DISP_NAME, sizeof(vfd->name));
+	vfd->vfl_dir	= VFL_DIR_TX;
+	
 #endif
 #ifdef SP_DISP_V4L2_SUPPORT
 	if (of_property_read_u32(pdev->dev.of_node, "ui_width", &pDispWorkMem->UIRes.width))
@@ -1901,9 +2205,9 @@ static int _display_probe(struct platform_device *pdev)
 	pDispWorkMem->fmt.fmt.pix.colorspace = V4L2_COLORSPACE_JPEG;
 	pDispWorkMem->fmt.fmt.pix.priv = 0;
 
-	spin_lock_init(&pDispWorkMem->irqlock);
-	spin_lock_init(&pDispWorkMem->dma_queue_lock);
-	mutex_init(&pDispWorkMem->lock);
+	//spin_lock_init(&pDispWorkMem->irqlock);
+	//spin_lock_init(&pDispWorkMem->dma_queue_lock);
+	//mutex_init(&pDispWorkMem->lock);
 	vfd->minor = -1;
 
 	// Register video device.
@@ -2072,7 +2376,11 @@ static int _display_probe(struct platform_device *pdev)
 #ifdef TTL_MODE_SUPPORT
 	vpost_setting((320-VPP_WIDTH)>>1, (240-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 320, 240);
 #else
-	vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
+	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
+		vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
+	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
+		vpost_setting((1280-VPP_WIDTH)>>1, (720-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1280, 720);
+	#endif
 #endif
 
 #ifdef TEST_DMA
@@ -2122,6 +2430,7 @@ static int _display_probe(struct platform_device *pdev)
 
 #ifdef SP_DISP_V4L2_SUPPORT
 err_video_register:
+err_vb2_queue_init:
 	video_unregister_device(&pDispWorkMem->video_dev);
 err_v4l2_register:
 	v4l2_device_unregister(&pDispWorkMem->v4l2_dev);

@@ -573,6 +573,7 @@ out:
 	//return -ENOMEM;
 #endif
 }
+EXPORT_SYMBOL(DRV_OSD_WaitVSync);
 
 u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 {
@@ -586,4 +587,20 @@ u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 
 	return 0;
 }
+EXPORT_SYMBOL(DRV_OSD_SetVisibleBuffer);
 
+void DRV_IRQ_DISABLE(void)
+{
+	g_disp_state = 1;
+	//printk(KERN_INFO "FB_IRQ_DISABLE \n");
+	//printk(KERN_INFO "g_disp_state = %d \n", g_disp_state);
+}
+EXPORT_SYMBOL(DRV_IRQ_DISABLE);
+
+void DRV_IRQ_ENABLE(void)
+{
+	g_disp_state = 0;
+	//printk(KERN_INFO "FB_IRQ_ENABLE \n");
+	//printk(KERN_INFO "g_disp_state = %d \n", g_disp_state);
+}
+EXPORT_SYMBOL(DRV_IRQ_ENABLE);
