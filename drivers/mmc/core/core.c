@@ -53,6 +53,8 @@
 /* If the device is not responding */
 #define MMC_CORE_TIMEOUT_MS	(10 * 60 * 1000) /* 10 minute timeout */
 
+
+
 /*
  * Background operations can take a long time, depending on the housekeeping
  * operations the card has to perform.
@@ -641,7 +643,7 @@ static enum mmc_blk_status mmc_finalize_areq(struct mmc_host *host)
 				break; /* return status */
 			} else {
 				mmc_retune_recheck(host);
-				pr_info("%s: req retune (CMD%u): %d, tuning...\n",
+				pr_debug("%s: pr_info req retune (CMD%u): %d, tuning...\n",
 					mmc_hostname(host),
 					cmd->opcode, cmd->error);
 				cmd->retries--;
