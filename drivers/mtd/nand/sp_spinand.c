@@ -995,12 +995,12 @@ static int sunplus_parse_cfg_partitions(struct mtd_info *master,
 	sunplus_parts[0].name = "Linux";
 	sunplus_parts[0].offset = 0;
 	sunplus_parts[0].size = master->size>>1;
-	sunplus_parts[0].mask_flags = MTD_NO_ERASE;
+	sunplus_parts[0].mask_flags = MTD_WRITEABLE;
 
 	sunplus_parts[1].name = "User";
 	sunplus_parts[1].offset = sunplus_parts[0].offset+sunplus_parts[0].size;
 	sunplus_parts[1].size = master->size>>1;
-	sunplus_parts[1].mask_flags = MTD_WRITEABLE;
+	sunplus_parts[1].mask_flags = MTD_NO_ERASE;
 
 	*pparts = sunplus_parts;
 	ret = 2;
