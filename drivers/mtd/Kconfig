@@ -10,6 +10,13 @@ menuconfig MTD
 	  them. It will also allow you to select individual drivers for
 	  particular hardware and users of MTD devices. If unsure, say N.
 
+config MTDDEVICES_DEBUG
+        bool "Memory Technology Device (MTD) debugging"
+        depends on MTD != n
+        help
+          This is an option for use by developers; most people should
+          say N here.  This enables MTD subsystem core and driver debugging.
+
 if MTD
 
 config MTD_TESTS

@@ -2,6 +2,9 @@
 # Makefile for the memory technology device drivers.
 #
 
+#mtd subsystem debug flags
+subdir-ccflags-$(CONFIG_MTDDEVICES_DEBUG)  := -DDEBUG
+
 # Core functionality.
 obj-$(CONFIG_MTD)		+= mtd.o
 mtd-y				:= mtdcore.o mtdsuper.o mtdconcat.o mtdpart.o mtdchar.o
