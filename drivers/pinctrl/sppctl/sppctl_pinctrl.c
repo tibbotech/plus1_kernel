@@ -241,7 +241,8 @@ void stpctl_o_show( struct pinctrl_dev *_pd, struct seq_file *_s, unsigned _n) {
 
 int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pinctrl_map **_map, unsigned *_nm) {
  struct device_node *parent;
- u32 dt_pin;
+ sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata( _pd);
+ u32 dt_pin, dt_fun;
  u8 p_p, p_g, p_f, p_l;
  unsigned long *configs;
  int i, size = 0;
@@ -298,10 +299,12 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
    }
  }
  // handle zero function
-// list = of_get_property( _dn, "sppctl,zero", &size);
-// *_nm = size/sizeof( *list);
-// for ( i = 0; i < ( *_nm); i++) {
-// }
+ list = of_get_property( _dn, "sppctl,zero_func", &size);
+ for ( i = 0; i < size/sizeof( *list); i++) {
+   dt_fun = be32_to_cpu( list[ i]);
+   KDBG( _pd->dev, "zero func: %d\n", dt_fun);
+   sppctl_pin_set( pctrl, 0, dt_fun);
+ }
  of_node_put( parent);
  KDBG( _pd->dev, "%d pins mapped\n", *_nm);
  return( 0);  }
