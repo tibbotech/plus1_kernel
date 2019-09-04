@@ -300,7 +300,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  }
  // handle zero function
  list = of_get_property( _dn, "sppctl,zero_func", &size);
- for ( i = 0; i < size/sizeof( *list); i++) {
+ if ( list) for ( i = 0; i < size/sizeof( *list); i++) {
    dt_fun = be32_to_cpu( list[ i]);
    KDBG( _pd->dev, "zero func: %d\n", dt_fun);
    sppctl_pin_set( pctrl, 0, dt_fun);
