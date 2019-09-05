@@ -303,7 +303,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  if ( list) for ( i = 0; i < size/sizeof( *list); i++) {
    dt_fun = be32_to_cpu( list[ i]);
    KDBG( _pd->dev, "zero func: %d\n", dt_fun);
-   sppctl_pin_set( pctrl, 0, dt_fun);
+   sppctl_pin_set( pctrl, 0, dt_fun - 2);
  }
  of_node_put( parent);
  KDBG( _pd->dev, "%d pins mapped\n", *_nm);
