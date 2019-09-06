@@ -156,7 +156,7 @@ static void sp7021_get_otp_temp_coef( struct device *_d) {
 	otp_thermal_t0 = otp_thermal_t0 & TEMP_MASK ;
  otp_thermal_t1 = ( otp_v[ 1] >> 3) | ( otp_v[ 2] << 5);
 	otp_thermal_t1 = otp_thermal_t1 & TEMP_MASK ;
- if ( otp_thermal_t0 == 0) otp_thermal_t0 = 1488;
+ if ( otp_thermal_t0 == 0) otp_thermal_t0 = 1518;
  return;  }
 
 static int sp_thermal_get_sensor_temp( void *_data, int *temp) {
@@ -165,7 +165,7 @@ static int sp_thermal_get_sensor_temp( void *_data, int *temp) {
  int t_code;
 
  t_code = ( readl( &( thermal_reg->mo5_thermal_sts0)) & TEMP_MASK);
- *temp = ( ( otp_thermal_t0 - t_code)*10000/TEMP_RATE)+4000;
+ *temp = ( ( otp_thermal_t0 - t_code)*10000/TEMP_RATE)+3500;
  *temp *= 10;   // milli means 10^-3!
  dev_dbg( &( data->pdev->dev), "tc:%d t:%d", t_code, *temp);
  return( 0);  }
