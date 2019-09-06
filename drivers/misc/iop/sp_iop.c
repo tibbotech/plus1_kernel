@@ -693,10 +693,8 @@ fail_kmalloc:
 
 static int sp_iop_platform_driver_remove(struct platform_device *pdev)
 {
-
 	FUNC_DEBUG();
 	gpio_free(IOP_GPIO);
-
 	return 0;
 }
 
@@ -745,8 +743,6 @@ static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 	//early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
 
 	FUNC_DEBUG();
-	ret = _sp_iop_get_resources(pdev, iop);
-
 	ret = sp_iop_shutdown(iop);
 	if (ret != 0) {
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
@@ -756,14 +752,9 @@ static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 
 static int sp_iop_platform_driver_resume(struct platform_device *pdev)
 {
-
 	FUNC_DEBUG();
-
 	return 0;
 }
-
-
-
 
 static const struct of_device_id sp_iop_of_match[] = {
 	{ .compatible = "sunplus,sp7021-iop" },
