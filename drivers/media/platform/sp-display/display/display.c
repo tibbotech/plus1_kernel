@@ -2081,23 +2081,23 @@ static int _display_probe(struct platform_device *pdev)
 	#ifdef MODULE
 	yuv420 = ioremap(0x00100000, 768*480*3/2);
 	memcpy(yuv420, yuv420_array, 768*480*3/2);
-	ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
+	ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
 	#else
 		#ifdef TTL_MODE_SUPPORT
 			#if ((VPP_FMT_TTL == 0)||(VPP_FMT_TTL == 1)||(VPP_FMT_TTL == 2))
 				vpp_alloc_size = (VPP_FMT_TTL)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
-				vpp_yuv_ptr = ioremap(0x00100000, vpp_alloc_size);
+				vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
 				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
-				ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
+				ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
 			#else
 				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
 			#endif
 		#else 
 			#if ((VPP_FMT_HDMI == 0)||(VPP_FMT_HDMI == 1)||(VPP_FMT_HDMI == 2))
 				vpp_alloc_size = (VPP_FMT_HDMI)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
-				vpp_yuv_ptr = ioremap(0x00100000, vpp_alloc_size);
+				vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
 				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
-				ddfch_setting(0x00100000, 0x00100000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
+				ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 			#else
 				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 			#endif
