@@ -730,6 +730,7 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 
 static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 {
+	#if 0
 	int ret;
 	unsigned int*   IOP_base;	
 	unsigned int checksum=0;	
@@ -748,6 +749,10 @@ static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
 		//return ret;
 	}
+	#else
+	hal_iop_standbymode(iop->iop_regs);	
+	FUNC_DEBUG();
+	#endif		
 }
 
 static int sp_iop_platform_driver_resume(struct platform_device *pdev)
