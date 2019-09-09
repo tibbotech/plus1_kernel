@@ -9,6 +9,9 @@
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
+/* hdmitx mode change by a module parameter */
+// #define MODE_CHANGE
+
 /* DDC parameters */
 #define DDC_FIFO_CAPACITY		 16
 #define EDID_CAPACITY			 256
