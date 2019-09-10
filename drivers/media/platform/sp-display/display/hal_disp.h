@@ -8,8 +8,8 @@
 #include "disp_dmix.h"
 #include "disp_tgen.h"
 #include "disp_dve.h"
-#include "disp_osd.h"
-#include "disp_vpp.h"
+#include <media/sp-disp/disp_osd.h>
+#include <media/sp-disp/disp_vpp.h>
 
 #define SP_DISP_V4L2_SUPPORT
 
@@ -26,6 +26,8 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/videobuf-core.h>
+#include <media/videobuf2-core.h>
+#include <media/videobuf2-v4l2.h>
 #include <media/v4l2-common.h>
 
 #endif
@@ -56,6 +58,9 @@ extern int printk(const char *fmt, ...);
 
 #define SUPPORT_DEBUG_MON
 
+#ifdef SP_DISP_V4L2_SUPPORT
+#define MIN_BUFFERS                     2
+#endif
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
  **************************************************************************/
@@ -93,6 +98,13 @@ struct sp_disp_fh {
 	struct sp_disp_device *disp_dev;	
 	u8 io_allowed;							/* Indicates whether this file handle is doing IO */
 };
+
+/* buffer for one video frame */
+struct sp_disp_buffer {
+	/* common v4l buffer stuff -- must be first */
+	struct vb2_v4l2_buffer          vb;
+	struct list_head                list;
+};
 #endif
 
 struct sp_disp_device {
@@ -129,9 +141,12 @@ struct sp_disp_device {
 #ifdef SP_DISP_V4L2_SUPPORT
 	struct device 			*pdev;			/* parent device */
 	struct video_device 	video_dev;
-	struct videobuf_buffer  *cur_frm;		/* Pointer pointing to current v4l2_buffer */
-	struct videobuf_buffer  *next_frm;		/* Pointer pointing to next v4l2_buffer */
-	struct videobuf_queue   buffer_queue;	/* Buffer queue used in video-buf */
+	//struct videobuf_buffer  *cur_frm;		/* Pointer pointing to current v4l2_buffer */
+	//struct videobuf_buffer  *next_frm;		/* Pointer pointing to next v4l2_buffer */
+	struct sp_disp_buffer        *cur_frm;     /* Pointer pointing to current v4l2_buffer */
+	struct sp_disp_buffer        *next_frm;     /* Pointer pointing to current v4l2_buffer */
+	//struct videobuf_queue   buffer_queue;	/* Buffer queue used in video-buf */
+	struct vb2_queue   buffer_queue;	/* Buffer queue used in video-buf2 */
 	struct list_head	    dma_queue;		/* Queue of filled frames */
 
 	struct v4l2_device 		v4l2_dev;   
@@ -157,6 +172,9 @@ struct sp_disp_device {
 	u8 						capture_status;
 //	u32 usrs;								/* number of open instances of the channel */	
 //	u8 initialized;							/* flag to indicate whether decoder is initialized */
+	unsigned                        sequence;
+	bool                            streaming;              /* Indicates whether streaming started */
+	bool                            skip_first_int;	
 #endif
 };
 
