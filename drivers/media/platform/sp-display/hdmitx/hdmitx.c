@@ -23,7 +23,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#include "mach/display/display.h" //#ifdef TIMING_SYNC_720P60
+#include <media/sp-disp/display.h> //#ifdef TIMING_SYNC_720P60
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
@@ -181,10 +181,6 @@ static unsigned int edid_data_ofs;
 #ifdef CONFIG_EDID_READ
 static unsigned char edid_read_timeout = FALSE;
 #endif
-#ifdef MODE_CHANGE
-static unsigned char g_hdmitx_mode = 0;	/* 0 : DVI mode, 1 : HDMI mode */
-module_param(g_hdmitx_mode, byte, 0644);
-#endif
 
 typedef struct {
 	void __iomem *moon4base;
@@ -219,13 +215,6 @@ static unsigned char get_rx_ready(void)
 {
 	return g_rx_ready;
 }
-
-#ifdef MODE_CHANGE
-static unsigned char get_hdmitx_mode(void)
-{
-	return g_hdmitx_mode;
-}
-#endif
 
 static void set_hdmi_mode(enum hdmitx_mode mode)
 {
@@ -446,9 +435,6 @@ static void read_edid(void)
 		if (timeout-- == 0) {
 			edid_read_timeout = TRUE;
 			g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
-	#ifdef MODE_CHANGE
-			g_hdmitx_mode = 1;
-	#endif
 			HDMITX_WARNING("EDID read timeout\n");
 			break;
 		}
@@ -725,11 +711,7 @@ static void process_hdcp_state(void)
 {
 	HDMITX_DBG("HDCP State\n");
 
-#ifdef MODE_CHANGE
-	if (get_hpd_in() && get_rx_ready() && (get_hdmitx_mode() == g_cur_hdmi_cfg.mode)) {
-#else
 	if (get_hpd_in() && get_rx_ready()) {
-#endif
 #ifdef HDCP_AUTH
 		// auth.
 		// clear AV mute
@@ -739,22 +721,12 @@ static void process_hdcp_state(void)
 	} else {
 		mutex_lock(&g_hdmitx_mutex);
 		if (!get_hpd_in()) {
+
 			HDMITX_DBG("hpd out\n");
 			g_hdmitx_state = FSM_HPD;
 		} else {
-#ifdef MODE_CHANGE
-			if (g_cur_hdmi_cfg.mode != get_hdmitx_mode()) {
-				g_cur_hdmi_cfg.mode = get_hdmitx_mode();
 
-				if (get_hdmitx_mode() == HDMITX_MODE_DVI)
-					HDMITX_INFO("change to DVI mode\n");
-				else if (get_hdmitx_mode() == HDMITX_MODE_HDMI)
-					HDMITX_INFO("change to HDMI mode\n");
-			}
-			else
-#endif
-				HDMITX_DBG("rsen out\n");
-
+			HDMITX_DBG("rsen out\n");
 			g_hdmitx_state = FSM_RSEN;
 		}
 		mutex_unlock(&g_hdmitx_mutex);
@@ -1066,16 +1038,10 @@ static int hdmitx_probe(struct platform_device *pdev)
 	// reset hdmi config
 #ifdef CONFIG_HDMI_MODE
 	g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
-	#ifdef MODE_CHANGE
-	g_hdmitx_mode = 1;
-	#endif
 #endif
 
 #ifdef CONFIG_DVI_MODE
 	g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
-	#ifdef MODE_CHANGE
-	g_hdmitx_mode = 0;
-	#endif
 #endif
 
 	g_cur_hdmi_cfg.video.timing      = HDMITX_TIMING_480P;

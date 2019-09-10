@@ -1,7 +1,7 @@
 #ifndef __DISP_TGEN_H__
 #define __DISP_TGEN_H__
 
-#include "mach/display/display.h"
+#include <media/sp-disp/display.h>
 
 typedef enum {
 	DRV_TGEN_VPP0 = 0,

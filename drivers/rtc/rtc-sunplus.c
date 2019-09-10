@@ -33,7 +33,6 @@
 #define VA_B_REG		0xF8000000
 #endif
 
-
 /* ---------------------------------------------------------------------------------------------- */
 #define RTC_FUNC_DEBUG
 //#define RTC_DBG_INFO
@@ -59,8 +58,10 @@
 /* ---------------------------------------------------------------------------------------------- */
 
 struct sunplus_rtc {
+
 	struct clk *rtcclk;
-	struct reset_control *rstc;		
+	struct reset_control *rstc;
+		
 };
 
 struct sunplus_rtc sp_rtc;
@@ -126,12 +127,10 @@ static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	sp_get_seconds(&secs);
 	rtc_time_to_tm(secs, tm);
-	
 #if 0
 	printk("%s:  RTC date/time to %d-%d-%d, %02d:%02d:%02d.\r\n",
 	       __func__, tm->tm_mday, tm->tm_mon + 1, tm->tm_year, tm->tm_hour, tm->tm_min, tm->tm_sec);
 #endif
-
 	return rtc_valid_tm(tm);
 }
 
@@ -228,7 +227,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	//memset(sp_rtc, 0, sizeof(sp_rtc));
 	memset(&sp_rtc, 0, sizeof(sp_rtc));
 
-	/* find and map our resources */
+	// find and map our resources
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);
 	DBG_INFO("res 0x%x\n",res->start);
 	if (res) {
@@ -239,7 +238,8 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	}
         DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
-	/* clk*/
+
+	// clk
 	DBG_INFO("Enable RTC clock\n");
 	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev,NULL);
 	DBG_INFO("sp_rtc->clk = %x\n",sp_rtc.rtcclk);
@@ -265,7 +265,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	DBG_INFO("sp_rtc->rstc002\n");
 	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
 	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
-	
+
 	// request irq
 	irq = platform_get_irq(plat_dev, 0);
 	if (irq < 0) {
@@ -278,7 +278,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		DBG_ERR("devm_request_irq failed: %d\n", err);
 		goto free_reset_assert;
 	}
-	
+		
 	device_init_wakeup(&plat_dev->dev, 1);
 
 	rtc = rtc_device_register("sp7021-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
@@ -287,26 +287,27 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		goto free_reset_assert;
 	}
 
+	rtc->uie_unsupported = 1;
+
 	platform_set_drvdata(plat_dev, rtc);
 
 	return 0;
+
 
 free_reset_assert:
 	reset_control_assert(sp_rtc.rstc);
 free_clk:
 	clk_disable_unprepare(sp_rtc.rtcclk);
-
-	return ret;
+	return ret;	
+	
 }
 
 static int sp_rtc_remove(struct platform_device *plat_dev)
 {
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
-	reset_control_assert(sp_rtc.rstc);
-	
+	reset_control_assert(sp_rtc.rstc);	
 	rtc_device_unregister(rtc);
-
 	return 0;
 }
 
