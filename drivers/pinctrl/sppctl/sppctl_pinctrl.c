@@ -244,7 +244,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  u32 dt_pin;
  u8 p_p, p_g, p_f, p_l;
  unsigned long *configs;
- int i, size = 0, ret, reserved_maps;
+ int i, size = 0;
  const __be32 *list = of_get_property( _dn, "sppctl,pins", &size);
  struct property *prop;
  const char *s_f, *s_g;
