@@ -248,6 +248,12 @@
 			resets = <&rstc RST_RTC>;
 			interrupt-parent = <&intc>;
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
+			charging-mode = <0>;
+			/* 	0 : Disable
+			 *	1 : 2K Ohm
+			 *	2 : 250 Ohm
+			 *	3 : 50 Ohm
+			 *	4 : 0 Ohm	*/
 		};
 
 

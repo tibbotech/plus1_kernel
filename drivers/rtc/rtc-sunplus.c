@@ -61,6 +61,7 @@ struct sunplus_rtc {
 
 	struct clk *rtcclk;
 	struct reset_control *rstc;
+	u32 charging_mode;
 		
 };
 
@@ -149,7 +150,7 @@ static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
 	
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 
 	return 0;
 }
@@ -162,7 +163,7 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	 */
 	FUNC_DEBUG();
 	
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 	return 0;
 }
 
@@ -212,6 +213,28 @@ static irqreturn_t rtc_irq_handler(int irq, void *data)
 	DBG_INFO("[RTC] alarm times up\n");
 	
 	return IRQ_HANDLED;
+}
+
+/*	mode	bat_charge_en	bat_charge_rsel		
+	0	0		0			Disable
+	1	1		0			2K Ohm
+	2	1		1			250 Ohm
+	3	1		2			50 Ohm
+	4	1		3			0 Ohm
+*/
+static void sp_rtc_set_batt_charge_ctrl(u32 mode)
+{
+	int bat_charge_en, bat_charge_rsel;
+
+	if (mode) {
+		bat_charge_en = 1;
+		bat_charge_rsel = mode-1;
+	}		
+	else {
+		bat_charge_en = 0;
+		bat_charge_rsel = 0;
+	}
+	rtc_reg_ptr->rtc_battery_ctrl |= (0x000D << 16) | (bat_charge_rsel << 2) | bat_charge_en;
 }
 
 static int sp_rtc_probe(struct platform_device *plat_dev)
@@ -264,7 +287,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	DBG_INFO("sp_rtc->rstc002\n");
 	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 
 	// request irq
 	irq = platform_get_irq(plat_dev, 0);
@@ -278,7 +301,15 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		DBG_ERR("devm_request_irq failed: %d\n", err);
 		goto free_reset_assert;
 	}
-		
+
+	// Get charging-mode.
+	ret = of_property_read_u32(plat_dev->dev.of_node, "charging-mode", &sp_rtc.charging_mode);
+	if (ret) {
+		PTR_ERR("Failed to retrieve \'charging-mode\'!\n");
+		goto free_reset_assert;
+	}
+	sp_rtc_set_batt_charge_ctrl(sp_rtc.charging_mode);
+
 	device_init_wakeup(&plat_dev->dev, 1);
 
 	rtc = rtc_device_register("sp7021-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
