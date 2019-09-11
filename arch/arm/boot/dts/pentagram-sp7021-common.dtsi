@@ -167,24 +167,24 @@
 		/* DMA Tx for UARTx */
 		uartdmatx0: serial@sp_uartdmatx0 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008a00 0x40>;
+			reg = <0x9c008a00 0x40>, <0x9c008880 0x80>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI0>;
 			clock-names = "HWUA",
 				      "PERI0";
-			resets = <&rstc RST_UADMA>;
+			resets = <&rstc RST_HWUA>;
 			which-uart = <1>;
 		};
 #endif
 #ifdef ENABLE_DMATX1
 		uartdmatx1: serial@sp_uartdmatx1 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008a40 0x40>;
+			reg = <0x9c008a40 0x40>, <0x9c008900 0x80>;
 			clocks = <&clkc HWUA>,
 				 <&clkc PERI1>;
 			clock-names = "HWUA",
 				      "PERI1";
-			resets = <&rstc RST_UADMA>;
+			resets = <&rstc RST_HWUA>;
 			which-uart = <2>;
 		};
 #endif
@@ -205,6 +205,10 @@
 			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA1>;
 			resets = <&rstc RST_UA1>;
+#if 0
+			pinctrl-names = "default";
+			pinctrl-0 = <&pins_uart1>;
+#endif
 		};
 
 		uart2: serial@sp_uart2 {
@@ -970,6 +974,14 @@
 				sppctl,function = "SD_CARD";
 				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
 			};
+#if 0
+			pins_uart1: pins_uart1 {
+				sppctl,pins = <
+					SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_UA1_TX,0)
+					SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_UA1_RX,0)
+				>;
+			};
+#endif
 			pins_sdio: pins_sdio {
 				sppctl,pins = <
 					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)

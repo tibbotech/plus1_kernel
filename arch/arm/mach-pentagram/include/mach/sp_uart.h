@@ -121,6 +121,18 @@ struct regs_uatxdma {
 	volatile u32 txdma_rst_done;
 };
 
+struct regs_uatxgdma {
+	volatile u32 gdma_hw_ver;
+	volatile u32 gdma_config;
+	volatile u32 gdma_length;
+	volatile u32 gdma_addr;
+	volatile u32 gdma_port_mux;
+	volatile u32 gdma_int_flag;
+	volatile u32 gdma_int_en;
+	volatile u32 gdma_software_reset_status;
+	volatile u32 txdma_tmr_cnt;
+};
+
 #endif /* __ASSEMBLY__ */
 
 #endif /* __SP_UART_H__ */
