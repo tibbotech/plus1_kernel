@@ -558,7 +558,7 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 		if (!host->tuning_info.need_tuning && host->tuning_info.enable_tuning)
 			cmd->retries = SPMMC_MAX_RETRIES; /* retry it */
 		spmmc_sw_reset(host);
-		mdelay(100);
+		mdelay(5);
 		
 		if (host->tuning_info.enable_tuning) {
 			timing_cfg0 = bitfield_replace(timing_cfg0, 20, 3, host->tuning_info.rd_crc_dly);
