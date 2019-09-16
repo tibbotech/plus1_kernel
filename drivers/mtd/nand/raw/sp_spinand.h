@@ -48,15 +48,15 @@
 /*
  *  spi nand vendor ids
  */
-#define VID_GD      0xC8
-#define VID_WINBOND 0xEF
-#define VID_TOSHIBA 0x98
-#define VID_PHISON  0x6B
-#define VID_ETRON   0xD5
-#define VID_MXIC    0xC2
-#define VID_ESMT    0xC8
-#define VID_ISSI    0xC8
-#define VID_MICRON  0x2C
+#define VID_GD          0xC8
+#define VID_WINBOND     0xEF
+#define VID_TOSHIBA     0x98
+#define VID_PHISON      0x6B
+#define VID_ETRON       0xD5
+#define VID_MXIC        0xC2
+#define VID_ESMT        0xC8
+#define VID_ISSI        0xC8
+#define VID_MICRON      0x2C
 #define VID_XTX         0x0B
 #define VID_FORESEE     0xCD
 
@@ -115,6 +115,14 @@
 #define SPINAND_OPT_HAS_FD0_VALUE       0x00000100
 
 /*
+ * some devices have multiple dies,
+ * use the following macros to set/get die number.
+ */
+#define SPINAND_OPT_SET_DIENUM(n)       (((n-1)&0x0f)<<9)
+#define SPINAND_OPT_GET_DIENUM(x)       ((((x)>>9)&0x0f)+1)
+
+
+/*
  *  SPINAND_CMD_*  are spi nand cmds.
  */
 #define SPINAND_CMD_RESET            (0xff)
@@ -133,6 +141,7 @@
 #define SPINAND_CMD_PROGLOAD         (0x02)
 #define SPINAND_CMD_PROGLOAD_X4      (0x32)
 #define SPINAND_CMD_PROGEXEC         (0x10)
+#define SPINAND_CMD_DIE_SELECT       (0xc2)
 
 /*
  *  macros for spi_ctrl register
@@ -317,7 +326,6 @@ struct sp_spinand_info {
 	void __iomem *regs;
 	wait_queue_head_t wq;
 	int irq;
-	int cs;
 	u32 busy;
 	struct {
 		uint32_t idx;
@@ -325,6 +333,9 @@ struct sp_spinand_info {
 		void *virt;
 		dma_addr_t phys;
 	} buff;
+
+	u32 chip_num;
+	u32 cur_chip;
 
 	u32 parity_sector_size;
 	u32 plane_sel_mode;
