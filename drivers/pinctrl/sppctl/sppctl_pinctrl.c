@@ -41,7 +41,7 @@ int stpctl_c_p_get( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_cfg)
         arg = sp7021gpio_f_get( &( pctrl->gpiod->chip), _pin);
         break;
    default:
-       //KINF( _pd->dev, "%s(%d) skipping:%X\n", __FUNCTION__, _pin, param);
+       //KINF( _pd->dev, "%s(%d) skipping:x%X\n", __FUNCTION__, _pin, param);
        return( -ENOTSUPP);  break;
  }
  *_cfg = pinconf_to_config_packed( param, arg);
@@ -145,7 +145,7 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
           if ( list_funcs[ i].freg != fOFF_M) continue;
           j++;
           if ( sppctl_fun_get( pctrl, j) != _gid) continue;
-          sppctl_pin_set( pctrl, _gid, j);  }   // FIXME: what is it?!
+          sppctl_pin_set( pctrl, 0, j);  }
         break;
    case fOFF_M:   // MUX : 
         if ( _gid != 0) sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid - 7, muxF_M, muxMKEEP);
@@ -271,14 +271,14 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
       configs[ i] = p_l;
       (* _map)[ i].data.configs.configs = &( configs[ i]);
-      KDBG( _pd->dev, "%s(%d) = %X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
+      KDBG( _pd->dev, "%s(%d) = x%X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else if ( p_g == SP7021_PCTL_G_IOPP) {
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
       configs[ i] = 0xFF;
       (* _map)[ i].data.configs.configs = &( configs[ i]);
-      KDBG( _pd->dev, "%s(%d) = %X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
+      KDBG( _pd->dev, "%s(%d) = x%X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else {
       (* _map)[ i].type = PIN_MAP_TYPE_MUX_GROUP;
       (* _map)[ i].data.mux.function = list_funcs[ p_f].name;

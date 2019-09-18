@@ -79,7 +79,8 @@ static ssize_t sppctl_sop_txt_map_R(
    if ( f->freg == fOFF_0) continue;
    if ( f->freg == fOFF_I) continue;
    memset( tmps, 0, SPPCTL_MAX_NAM + 3);
-   if ( f->freg == fOFF_M) pin = sppctl_fun_get( _p, j++);   // FIXME: change index
+   // muxable pins are P1_xx, stored -7, absolute idx = +7
+   if ( f->freg == fOFF_M && ( pin = sppctl_fun_get( _p, j++)) > 0) pin += 7;
    if ( f->freg == fOFF_G) pin = sppctl_gmx_get( _p, f->roff, f->boff, f->blen);
    sprintf( tmps, "%03d %s", pin, f->name);
    if ( pos > 0) {  pos -= ( strlen( tmps) + 1);  continue;  }

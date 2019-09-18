@@ -50,7 +50,7 @@ void print_device_tree_node( struct device_node *node, int depth) {
 void sppctl_gmx_set( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval) {
  uint32_t *r;
  sppctl_reg_t x = {  .m = ( ~(~0 << _bsiz)) << _boff, .v = ( ( uint16_t)_rval) << _boff  };
- if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X,%X) m:%X v:%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X,x%X,x%X,x%X) m:x%X v:x%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
  r = ( uint32_t *)&x;
  writel( *r, _p->baseI + ( _roff << 2));
  return;  }
@@ -61,7 +61,7 @@ uint8_t sppctl_gmx_get( sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_
  uint32_t r = readl( _p->baseI + ( _roff << 2));
  x = ( sppctl_reg_t *)&r;
  rval = ( x->v >> _boff) & ( ~( ~0 << _bsiz));
- if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X,%X) v:%X rval:%X\n", __FUNCTION__, _roff, _boff, _bsiz, x->v, rval);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X,x%X,x%X) v:x%X rval:x%X\n", __FUNCTION__, _roff, _boff, _bsiz, x->v, rval);
  return( rval);  }
 
 void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun) {
@@ -70,7 +70,7 @@ void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun) {
  uint8_t func = ( _fun >> 1) << 2;
  if ( _fun % 2 == 0) ;
  else {  x.v <<= 8;  x.m <<= 8;  }
- if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X,%X) off:%X m:%X v:%X\n", __FUNCTION__, func, _pin, _fun, x.m, x.v);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X,x%X) off:x%X m:x%X v:x%X\n", __FUNCTION__, func, _pin, _fun, x.m, x.v);
  r = ( uint32_t *)&x;
  writel( *r, _p->baseF + func);
  return;  }
@@ -83,7 +83,7 @@ uint8_t sppctl_fun_get( sppctl_pdata_t *_p,  uint8_t _fun) {
  x = ( sppctl_reg_t *)&r;
  if ( _fun % 2 == 0) pin = x->v & 0x00FF;
  else pin = x->v >> 8;
- if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(%X) off:%X m:%X v:%X pin:%X\n", __FUNCTION__, _fun, func, x->m, x->v, pin);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X) off:x%X m:x%X v:x%X pin:x%X\n", __FUNCTION__, _fun, func, x->m, x->v, pin);
  return( pin);  }
 
 static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
