@@ -69,21 +69,21 @@
  status = "disabled";
 };
 
-&spi_master0 {
+&spi_controller0 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim0_pins>;
 };
-&spi_master1 {
+&spi_controller1 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim1_pins>;
  status = "disabled";
 };
-&spi_master2 {
+&spi_controller2 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim2_pins>;
  status = "disabled";
 };
-&spi_master3 {
+&spi_controller3 {
  pinctrl-names = "default";
  pinctrl-0 = <&spim3_pins>;
  status = "disabled";
