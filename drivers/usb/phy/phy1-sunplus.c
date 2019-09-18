@@ -65,6 +65,8 @@ static void uphy1_init(void)
 	val &= ~(POWER_SAVING_SET);
 	writel(val, uphy1_base_addr + POWER_SAVING_OFFSET);
 
+	writel(0x08, uphy1_base_addr + 0x5c);
+
 	/* 5. USBC 1 reset */
 	writel(RF_MASK_V_SET(1 << 11), regs + USB_RESET_OFFSET);
 	writel(RF_MASK_V_CLR(1 << 11), regs + USB_RESET_OFFSET);
@@ -80,6 +82,10 @@ static void uphy1_init(void)
 	writel(RF_MASK_V_CLR(1 << 12), regs + USBC_CTL_OFFSET);
 	mdelay(1);
 #endif
+
+	/* 7. AC & ACB */
+	writel(RF_MASK_V_SET(1 << 11), regs + UPHY0_CTL3_OFFSET);
+	writel(RF_MASK_V_SET(1 << 14), regs + UPHY0_CTL3_OFFSET);
 
 	iounmap(usb_otp_reg);
 }
