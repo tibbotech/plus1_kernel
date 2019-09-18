@@ -2092,30 +2092,30 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 #endif
 
 
-static const struct of_device_id pentagram_spi_master_ids[] = {
-	{.compatible = "sunplus,sp7021-spi-master"},
+static const struct of_device_id pentagram_spi_controller_ids[] = {
+	{.compatible = "sunplus,sp7021-spi-controller"},
 	{}
 };
-MODULE_DEVICE_TABLE(of, pentagram_spi_master_ids);
+MODULE_DEVICE_TABLE(of, pentagram_spi_controller_ids);
 
 
 
-static struct platform_driver pentagram_spi_master_driver = {
+static struct platform_driver pentagram_spi_controller_driver = {
 	.probe = pentagram_spi_controller_probe,
 	.remove = pentagram_spi_controller_remove,
 	.suspend	= pentagram_spi_controller_suspend,
 	.resume		= pentagram_spi_controller_resume,	
 	.driver = {
-		.name = "sunplus,sp7021-spi-master",
-		.of_match_table = pentagram_spi_master_ids,
+		.name = "sunplus,sp7021-spi-controller",
+		.of_match_table = pentagram_spi_controller_ids,
 	#ifdef CONFIG_PM_RUNTIME_SPI
 		.pm     = sp_spi_pm_ops,
     #endif		
 	},
 };
-module_platform_driver(pentagram_spi_master_driver);
+module_platform_driver(pentagram_spi_controller_driver);
 
 MODULE_AUTHOR("Sunplus");
-MODULE_DESCRIPTION("Sunplus SPI master driver");
+MODULE_DESCRIPTION("Sunplus SPI controller driver");
 MODULE_LICENSE("GPL");
 

@@ -53,10 +53,10 @@
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
 
-		spi0 = &spi_master0;
-		spi1 = &spi_master1;
-		spi2 = &spi_master2;
-		spi3 = &spi_master3;
+		spi0 = &spi_controller0;
+		spi1 = &spi_controller1;
+		spi2 = &spi_controller2;
+		spi3 = &spi_controller3;
 
 	};
 
@@ -786,8 +786,8 @@
 			no-mmc;
 		};
 
-		spi_master0: spi@sp_spi_master0 {
-			compatible = "sunplus,sp7021-spi-master";
+		spi_controller0: spi@sp_spi_controller0 {
+			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
 			reg-names = "spi_master", "spi_slave" ;
 			interrupt-parent = <&intc>;
@@ -810,8 +810,8 @@
 			};
 		};
 
-		spi_master1: spi@sp_spi_master1 {
-			compatible = "sunplus,sp7021-spi-master";
+		spi_controller1: spi@sp_spi_controller1 {
+			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C00F480 0x80>,<0x9C00F500 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
@@ -834,8 +834,8 @@
 			};
 		};
 
-		spi_master2: spi@sp_spi_master2 {
-			compatible = "sunplus,sp7021-spi-master";
+		spi_controller2: spi@sp_spi_controller2 {
+			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C00F600 0x80>,<0x9C00F680 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
@@ -858,8 +858,8 @@
 			};
 		};
 
-		spi_master3: spi@sp_spi_master3 {
-			compatible = "sunplus,sp7021-spi-master";
+		spi_controller3: spi@sp_spi_controller3 {
+			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C00F780 0x80>,<0x9C00F800 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
