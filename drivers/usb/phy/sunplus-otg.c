@@ -275,6 +275,9 @@ static void otg_hw_init(struct sp_otg *otg_host)
 	/* Set wait power rise timer */
 	writel(0x1ffff, &otg_host->regs_otg->a_wait_vrise_tmr);
 
+	/* Set session end timer */
+	writel(0x26040, &otg_host->regs_otg->a_wait_vfall_tmr);
+
 	/* Set wait b-connect time  */
 	writel(0x1fffff, &otg_host->regs_otg->a_wait_bcon_tmr);
 

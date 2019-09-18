@@ -2,22 +2,12 @@
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include "ehci-platform.h"
-#include "../phy/sunplus-otg.h"
-
-#ifdef CONFIG_USB_SUNPLUS_OTG
-extern struct sp_otg *sp_otg0_host;
-#endif
 
 extern void usb_hcd_platform_shutdown(struct platform_device *dev);
 
 static int ehci0_sunplus_platform_probe(struct platform_device *dev){
 
 	dev->id = 1;
-
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	if (sp_port_enabled & PORT0_ENABLED)
-		sp_otg0_host->regs_otg->otg_init_en = 0x3FF;
-#endif
 
 	return ehci_platform_probe(dev);
 }
