@@ -2211,7 +2211,8 @@ static int _display_probe(struct platform_device *pdev)
 	vfd->minor = -1;
 
 	// Register video device.
-	ret = video_register_device(&pDispWorkMem->video_dev, VFL_TYPE_GRABBER, -1);
+	//ret = video_register_device(&pDispWorkMem->video_dev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(&pDispWorkMem->video_dev, VFL_TYPE_GRABBER, 10);
 	if (ret) {
 		DERROR("Unable to register video device!\n");
 		vfd->minor = -1;

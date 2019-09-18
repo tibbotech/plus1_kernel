@@ -8,6 +8,7 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/of_irq.h>
+#include <linux/of_gpio.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/errno.h>
@@ -835,6 +836,25 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		MIP_ERR("Failed to retrieve reset controller 'rstc_csiiw\'!\n");
 		goto err_get_csiiw_rstc;
 	}
+
+	// Get GPIO0/1. 
+	mipi->gpio0 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio0", 0);
+	if ( !gpio_is_valid(mipi->gpio0)) {
+		MIP_ERR("Wrong pin %d configured for gpio0\n", mipi->gpio0);
+	}
+	else {
+		MIP_INFO("GPIO0 pin number %d\n", mipi->gpio0);
+		gpio_set_value(mipi->gpio0,1);
+	}
+
+	mipi->gpio1 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio1", 0);
+	if ( !gpio_is_valid(mipi->gpio1)) {
+		MIP_ERR("Wrong pin %d configured for gpio1\n", mipi->gpio1);
+	}
+	else {
+		MIP_INFO("GPIO1 pin number %d\n", mipi->gpio1);
+		gpio_set_value(mipi->gpio1,1);
+	}	
 
 	// Get i2c id.
 	ret = of_property_read_u32(pdev->dev.of_node, "i2c-id", &mipi->i2c_id);
