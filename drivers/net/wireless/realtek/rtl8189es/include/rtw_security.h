@@ -477,7 +477,11 @@ int tdls_verify_mic(u8 *kck, u8 trans_seq,
 						u8 *lnkid, u8 *rsnie, u8 *timeoutie, u8 *ftie);
 #endif //CONFIG_TDLS
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 void rtw_use_tkipkey_handler(RTW_TIMER_HDL_ARGS);
+#else
+void rtw_use_tkipkey_handler(struct timer_list *t);
+#endif
 
 void rtw_sec_restore_wep_key(_adapter *adapter);
 u8 rtw_handle_tkip_countermeasure(_adapter* adapter, const char *caller);

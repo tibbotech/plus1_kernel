@@ -602,7 +602,6 @@ struct mlme_ext_priv
 	_timer		survey_timer;
 	_timer		link_timer;
 
-	//_timer		ADDBA_timer;
 	u32 last_scan_time;
 	u8	scan_abort;
 	u8	tx_rate; // TXRATE when USERATE is set.

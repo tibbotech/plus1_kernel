@@ -3320,9 +3320,17 @@ exit:
 	return res;
 }
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 void rtw_dfs_master_timer_hdl(RTW_TIMER_HDL_ARGS)
+#else
+void rtw_dfs_master_timer_hdl(struct timer_list *t)
+#endif
 {
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	_adapter *adapter = (_adapter *)FunctionContext;
+#else
+	_adapter *adapter = from_timer(adapter, t, mlmepriv.dfs_master_timer);
+#endif
 
 	rtw_dfs_master_cmd(adapter, _TRUE);
 }

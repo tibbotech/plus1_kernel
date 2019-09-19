@@ -39,7 +39,11 @@ static u8 SNAP_ETH_TYPE_IPX[2] = {0x81, 0x37};
 static u8 SNAP_ETH_TYPE_APPLETALK_AARP[2] = {0x80, 0xf3};
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 void rtw_signal_stat_timer_hdl(RTW_TIMER_HDL_ARGS);
+#else
+void rtw_signal_stat_timer_hdl(struct timer_list *t);
+#endif
 
 enum {
 	SIGNAL_STAT_CALC_PROFILE_0 = 0,
@@ -4600,8 +4604,17 @@ _func_exit_;
 }
 
 #ifdef CONFIG_NEW_SIGNAL_STAT_PROCESS
-void rtw_signal_stat_timer_hdl(RTW_TIMER_HDL_ARGS){
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+void rtw_signal_stat_timer_hdl(RTW_TIMER_HDL_ARGS)
+#else
+void rtw_signal_stat_timer_hdl(struct timer_list *t)
+#endif
+{
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	_adapter *adapter = (_adapter *)FunctionContext;
+#else
+	_adapter *adapter = from_timer(adapter, t, recvpriv.signal_stat_timer);
+#endif
 	struct recv_priv *recvpriv = &adapter->recvpriv;
 	
 	u32 tmp_s, tmp_q;

@@ -952,7 +952,6 @@ void free_mlme_ext_priv (struct mlme_ext_priv *pmlmeext)
 	if (rtw_is_drv_stopped(padapter)) {
 		_cancel_timer_ex(&pmlmeext->survey_timer);
 		_cancel_timer_ex(&pmlmeext->link_timer);
-		//_cancel_timer_ex(&pmlmeext->ADDBA_timer);
 	}
 }
 
@@ -14318,7 +14317,6 @@ u8 add_ba_hdl(_adapter *padapter, unsigned char *pbuf)
 		//pmlmeinfo->candidate_tid_bitmap |= (0x1 << pparm->tid);		
 		//psta->htpriv.candidate_tid_bitmap |= BIT(pparm->tid);
 		issue_addba_req(padapter, pparm->addr, (u8)pparm->tid);
-		//_set_timer(&pmlmeext->ADDBA_timer, ADDBA_TO);
 		_set_timer(&psta->addba_retry_timer, ADDBA_TO);
 	}
 #ifdef CONFIG_TDLS

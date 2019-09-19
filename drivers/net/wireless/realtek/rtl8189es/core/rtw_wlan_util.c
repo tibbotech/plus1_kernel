@@ -3972,6 +3972,26 @@ _adapter *dvobj_get_port0_adapter(struct dvobj_priv *dvobj)
 	return port0_iface;
 }
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+_adapter *dvobj_get_adapter(struct dvobj_priv *dvobj)
+{
+	_adapter *adapter = NULL;
+	int i;
+
+	for (i=0; i < dvobj->iface_nums; i++) {
+		if (dvobj->padapters[i]->dvobj == dvobj)
+			break;
+	}
+
+	if ((i < 0) || (i >= dvobj->iface_nums))
+		rtw_warn_on(1);
+	else
+		adapter = dvobj->padapters[i];
+
+	return adapter;
+}
+#endif
+
 #if defined(CONFIG_WOWLAN) || defined(CONFIG_AP_WOWLAN)
 void rtw_get_current_ip_address(PADAPTER padapter, u8 *pcurrentip)
 {

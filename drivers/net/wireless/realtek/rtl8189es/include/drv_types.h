@@ -849,6 +849,9 @@ inline static struct device *dvobj_to_dev(struct dvobj_priv *dvobj)
 #endif
 
 _adapter *dvobj_get_port0_adapter(struct dvobj_priv *dvobj);
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)
+_adapter *dvobj_get_adapter(struct dvobj_priv *dvobj);
+#endif
 
 enum _IFACE_TYPE {
 	IFACE_PORT0, //mapping to port0 for C/D series chips

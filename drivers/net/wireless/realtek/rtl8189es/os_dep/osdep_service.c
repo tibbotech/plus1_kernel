@@ -981,7 +981,11 @@ void rtw_init_timer(_timer *ptimer, void *padapter, void *pfunc)
 	_adapter *adapter = (_adapter *)padapter;	
 
 #ifdef PLATFORM_LINUX
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	_init_timer(ptimer, adapter->pnetdev, pfunc, adapter);
+#else
+	timer_setup(ptimer, pfunc, 0);
+#endif
 #endif
 #ifdef PLATFORM_FREEBSD
 	_init_timer(ptimer, adapter->pifp, pfunc, adapter->mlmepriv.nic_hdl);
