@@ -70,7 +70,7 @@ void sppctl_pin_set( sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun) {
  uint8_t func = ( _fun >> 1) << 2;
  if ( _fun % 2 == 0) ;
  else {  x.v <<= 8;  x.m <<= 8;  }
- if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X,x%X) off:x%X m:x%X v:x%X\n", __FUNCTION__, func, _pin, _fun, x.m, x.v);
+ if ( _p->debug > 1) KDBG( _p->pcdp->dev, "%s(x%X,x%X) off:x%X m:x%X v:x%X\n", __FUNCTION__, _pin, _fun, func, x.m, x.v);
  r = ( uint32_t *)&x;
  writel( *r, _p->baseF + func);
  return;  }
