@@ -552,6 +552,29 @@ static int ov5647_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 	ret = ov5647_write_array(ov5647->client, ov5647->cur_mode->reg_list);
 	
+#ifdef CONFIG_FB_SP7021_DEBUG
+	// Module test : Camera will output color bar pattern (720x480) 
+	ret = ov5647_write_reg(ov5647->client,
+				OV5647_REG_ISP_CTRL3D,
+				ov5647_REG_VALUE_08BIT,
+				0x80);
+	if (ret < 0)
+	{
+		DBG_ERR("MT-Color bar output error\n");
+		return ret;
+	}
+
+	ret = ov5647_write_reg(ov5647->client,
+				OV5647_REG_TIMING_X_OUTPUT_SIZE,
+				ov5647_REG_VALUE_16BIT,
+				0x02D0);
+	if (ret < 0)
+	{
+		DBG_ERR("MT-Set resolution error\n");
+		return ret;
+	}		
+#endif	
+
 	if (ret < 0) {
 		DBG_ERR("Write sensor default regs error\n");
 		return ret;

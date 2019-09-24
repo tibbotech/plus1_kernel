@@ -17,6 +17,10 @@
 #define ov5647_REG_CHIP_ID                      0x300A
 #define CHIP_ID                                 0x5647
 
+#define OV5647_REG_TIMING_X_OUTPUT_SIZE		0x3808
+#define OV5647_REG_TIMING_Y_OUTPUT_SIZE		0x380A
+#define OV5647_REG_ISP_CTRL3D			0x503D
+
 #define OV5647_SW_STANDBY			0x0100
 #define ov5647_MODE_SW_STANDBY                  0x0
 #define ov5647_MODE_STREAMING                   BIT(0)
