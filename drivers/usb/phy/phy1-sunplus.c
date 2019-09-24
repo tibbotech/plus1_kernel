@@ -9,6 +9,7 @@
 #include <linux/platform_device.h>
 #include <linux/usb/phy.h>
 #include <linux/usb/sp_usb.h>
+#include <linux/nvmem-consumer.h>
 
 
 static struct clk *uphy1_clk;
@@ -19,11 +20,31 @@ extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
 #endif
 
-static void uphy1_init(void)
+char *otp_read_disc1(struct device *_d, ssize_t *_l, char *_name)
+{
+	char *ret = NULL;
+	struct nvmem_cell *c = nvmem_cell_get(_d, _name);
+
+	if (IS_ERR_OR_NULL(c)) {
+		dev_err(_d, "OTP %s read failure: %ld", _name, PTR_ERR(c));
+		return (NULL);
+	}
+
+	ret = nvmem_cell_read(c, _l);
+	nvmem_cell_put(c);
+	dev_dbg(_d, "%d bytes read from OTP %s", *_l, _name);
+
+	return (ret);
+}
+
+static void uphy1_init(struct platform_device *pdev)
 {
 	u32 val, set;
 	void __iomem *usb_otp_reg;
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+	char *disc_name = "disc_vol1";
+	ssize_t otp_l = 0;
+	char *otp_v;
 
 	usb_otp_reg = ioremap_nocache(USB_OTP_REG, 1);
 
@@ -48,16 +69,15 @@ static void uphy1_init(void)
 	mdelay(1);
 
 	/* 4.b board uphy 1 internal register modification for tid certification */
-	val = readl(usb_otp_reg);
-	set = (val >> UPHY1_OTP_DISC_LEVEL_OFFSET) & OTP_DISC_LEVEL_BIT;
-	if (!set || set >= OTP_DISC_LEVEL_BIT) {
-		set = DISC_LEVEL_DEFAULT;
-	}
+	otp_v = otp_read_disc1(&pdev->dev, &otp_l, disc_name);
+	set = ((*otp_v >> 5) | (*(otp_v + 1) << 3)) & OTP_DISC_LEVEL_BIT;
+	if (set == 0)
+		set = 0xD;
 
 	val = readl(uphy1_base_addr + DISC_LEVEL_OFFSET);
-	val = (val & ~OTP_DISC_LEVEL_BIT) | (OTP_DISC_LEVEL_TEMP - set);
+	val = (val & ~OTP_DISC_LEVEL_BIT) | set;
 	writel(val, uphy1_base_addr + DISC_LEVEL_OFFSET);
-	
+
 	val = readl(uphy1_base_addr + ECO_PATH_OFFSET);
 	val &= ~(ECO_PATH_SET);
 	writel(val, uphy1_base_addr + ECO_PATH_OFFSET);
@@ -137,8 +157,8 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
 		release_mem_region(uphy1_res_mem->start, resource_size(uphy1_res_mem));
 		 return -EFAULT;
 	}
-	
-	uphy1_init();
+
+	uphy1_init(pdev);
 
 	writel(0x19, uphy1_base_addr + CDP_REG_OFFSET);
 	writel(0x92, uphy1_base_addr + DCP_REG_OFFSET);
