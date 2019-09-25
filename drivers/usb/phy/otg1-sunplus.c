@@ -41,7 +41,7 @@ static int __init usb_otg1_sunplus_init(void)
 		return 0;
 	}
 }
-subsys_initcall(usb_otg1_sunplus_init);
+fs_initcall(usb_otg1_sunplus_init);
 
 static void __exit usb_otg1_sunplus_exit(void)
 {
