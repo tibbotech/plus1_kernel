@@ -139,7 +139,7 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
 		printk(KERN_NOTICE "no irq provieded,ret:%d\n",uphy1_irq_num);
 		return uphy1_irq_num;
 	}
-	printk(KERN_NOTICE "uphy0_irq:%d\n",uphy1_irq_num);
+	printk(KERN_NOTICE "uphy1_irq:%d\n",uphy1_irq_num);
 
 	uphy1_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!uphy1_res_mem) {
@@ -220,7 +220,7 @@ static int __init usb_phy1_sunplus_init(void)
 		return 0;
 	}
 }
-module_init(usb_phy1_sunplus_init);
+fs_initcall(usb_phy1_sunplus_init);
 
 static void __exit usb_phy1_sunplus_exit(void)
 {
