@@ -226,7 +226,7 @@ static void sp_rtc_set_batt_charge_ctrl( u32 _mode)
 {
 	u8 m = _mode & 0x000F;
 	DBG_INFO("batt charge:0x%X\n", m);
-	rtc_reg_ptr->rtc_battery_ctrl |= (0x000D << 16) | m;
+	rtc_reg_ptr->rtc_battery_ctrl |= (0x000F << 16) | m;
 }
 
 static int sp_rtc_probe(struct platform_device *plat_dev)
