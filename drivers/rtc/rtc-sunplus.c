@@ -222,19 +222,10 @@ static irqreturn_t rtc_irq_handler(int irq, void *data)
 	3	1		2			50 Ohm
 	4	1		3			0 Ohm
 */
-static void sp_rtc_set_batt_charge_ctrl(u32 mode)
+static void sp_rtc_set_batt_charge_ctrl( u32 _mode)
 {
-	int bat_charge_en, bat_charge_rsel;
-
-	if (mode) {
-		bat_charge_en = 1;
-		bat_charge_rsel = mode-1;
-	}		
-	else {
-		bat_charge_en = 0;
-		bat_charge_rsel = 0;
-	}
-	rtc_reg_ptr->rtc_battery_ctrl |= (0x000D << 16) | (bat_charge_rsel << 2) | bat_charge_en;
+	u8 m = _mode & 0x000F;
+	rtc_reg_ptr->rtc_battery_ctrl |= (0x000D << 16) | m;
 }
 
 static int sp_rtc_probe(struct platform_device *plat_dev)

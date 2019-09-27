@@ -17,6 +17,8 @@
 	};
 };
 
+&rtc {  charging-mode = <0x0E>;  };
+
 &sp_spinor0 {  status = "disabled";  };
 
 &sdio {
