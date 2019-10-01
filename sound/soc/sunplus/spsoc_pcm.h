@@ -23,7 +23,9 @@
 #define SP_TDM                  1
 #define SP_PDM                  2
 #define SP_SPDIF                3
-#define SP_OTHER                4
+#define SP_I2SHDMI              4
+#define SP_SPDIFHDMI            5
+#define SP_OTHER                5
 #define I2S_P_INC0		0x1f
 #define I2S_C_INC0    		((0x7<<16) | (0x1<<21))
 #define TDMPDM_C_INC0 		(0xf<<22)
@@ -34,12 +36,13 @@
 
 #define aud_enable_i2stdm_p	(0x01 | (0x5f<<16))
 #define aud_enable_i2s_c    	(0x1<<11)
-#define aud_enable_spdif_p  	(0x1<<1)
+#define aud_enable_spdiftx0_p  	(0x1<<1)
 #define aud_enable_spdif_c  	(0x1<<6)
 //#define aud_enable_tdm_p    	(0x01 | (0x5f<<16))
 #define aud_enable_tdmpdm_c 	(0x01<<12)
+#define aud_enable_spdiftx1_p  	(0x1<<8)
 
-#define aud_test_mode		0
+#define aud_test_mode		(0)
 
 #define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)
 #define MIC_Delay_Byte		(DRAM_PCM_BUF_LENGTH*0.75)
