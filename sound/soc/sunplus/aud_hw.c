@@ -278,10 +278,13 @@ void AUDHW_SystemInit(void)
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
         regs0->iec0_par1_out 	= 0x00000000;	//pcm_iec_par1_out
+        
+        regs0->iec1_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
+        regs0->iec1_par1_out 	= 0x00000000;	//pcm_iec_par1_out
 
         AUDHW_Cfg_AdcIn();
 
-        regs0->iec_cfg 		= 0x4006;	//iec_cfg
+        regs0->iec_cfg 		= 0x4066;	//iec_cfg
 
         // config playback timer //
         regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
