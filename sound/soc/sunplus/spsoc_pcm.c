@@ -88,7 +88,7 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 	if (atomic_read(&iprtd->running)) {
 		if(iprtd->usemmap_flag == 1) {
 			if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-				if(substream->pcm->device == SP_I2S)
+				if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI))
 					audcntreg = regs0->aud_a0_cnt;
 
 				if((iprtd->size-audcntreg) >= iprtd->period) {
@@ -99,7 +99,7 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 							break;
 					};
 					regs0->aud_delta_0 = iprtd->period;
-					if(substream->pcm->device == SP_I2S)
+					if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI))
 						regs0->aud_inc_0 = I2S_P_INC0;
 				}else{
 					AUD_DEBUG("write fail aud_delta_0\n");
@@ -113,7 +113,9 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 			if (substream->pcm->device == SP_SPDIF)
 				iprtd->offset = regs0->aud_a5_ptr&0xfffffc;			
-			else 
+			else if (substream->pcm->device == SP_SPDIFHDMI)
+				iprtd->offset = regs0->aud_a6_ptr&0xfffffc;
+			else
                 		iprtd->offset = regs0->aud_a0_ptr&0xfffffc;		        
             		AUD_DEBUG("P:?_ptr=0x%x\n",iprtd->offset);
             
@@ -122,7 +124,7 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
             	  		if ((iprtd->offset%iprtd->period) == 0){
             	  	  	#if 0
             	  	  		regs0->aud_delta_0 = iprtd->period;
-            	  	  		if(substream->pcm->device == SP_I2S){
+            	  	  		if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)){
             	  	  	  		while((regs0->aud_inc_0 & I2S_P_INC0) != 0);
             	  	  	  		regs0->aud_inc_0 = I2S_P_INC0;
             	  	  		}else if(substream->pcm->device == SP_TDM){
@@ -240,7 +242,12 @@ static int spsoc_pcm_open(struct snd_pcm_substream *substream)
 	int ret = 0;
 
 	AUD_INFO("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
-
+        
+        if (substream->pcm->device > SP_OTHER){
+        	AUD_INFO("wrong device num: %d\n", substream->pcm->device);
+        	goto out;
+        }
+        
 	snd_soc_set_runtime_hwparams(substream, &spsoc_pcm_hardware);
 
 	/* Ensure that buffer size is a multiple of period size */
@@ -327,7 +334,7 @@ static int spsoc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_p
 		            	regs0->aud_a20_length = prtd->fifosize_from_user;
 		            	AUD_INFO("TDM P\n");		            			          
 			case SP_I2S:
-			case SP_OTHER:
+			case SP_I2SHDMI:
 			     	regs0->aud_a0_base = 0;							
                 		regs0->aud_a1_base = regs0->aud_a0_base + DRAM_PCM_BUF_LENGTH;
                 		regs0->aud_a2_base = regs0->aud_a1_base + DRAM_PCM_BUF_LENGTH;
@@ -348,11 +355,11 @@ static int spsoc_pcm_hw_params(struct snd_pcm_substream *substream, struct snd_p
             	  		regs0->aud_a5_length = prtd->fifosize_from_user;
             	  		AUD_INFO("SPDIF P aud_base 0x%x\n", regs0->aud_a5_base);
             	  		break;
-            	  	//case SP_OTHER:
-            	  	//	regs0->aud_a6_base = 0;
-            	  	//	regs0->aud_a6_length = prtd->fifosize_from_user;
-            	  	//	AUD_INFO("SPDIF HDMI P aud_base 0x%x\n", regs0->aud_a6_base);	
-            	  	//	break;
+            	  	case SP_SPDIFHDMI:
+            	  		regs0->aud_a6_base = 0;
+            	  		regs0->aud_a6_length = prtd->fifosize_from_user;
+            	  		AUD_INFO("SPDIF HDMI P aud_base 0x%x\n", regs0->aud_a6_base);	
+            	  		break;
             		default:
 			      	AUD_INFO("###Wrong device no.\n");
 			      	break;		    
@@ -414,7 +421,7 @@ static int spsoc_pcm_hw_free(struct snd_pcm_substream *substream)
 		        case SP_TDM:	// tdm	        	  		        	              
 		            	regs0->aud_a20_length 	= 0;		            	            			          
 			case SP_I2S: // i2s
-			case SP_OTHER:
+			case SP_I2SHDMI:
 			     	regs0->aud_a0_base	= dma_initial;							
                 		regs0->aud_a1_base 	= dma_initial;
                 		regs0->aud_a2_base 	= dma_initial;
@@ -433,11 +440,10 @@ static int spsoc_pcm_hw_free(struct snd_pcm_substream *substream)
             	  		regs0->aud_a5_base 	= dma_initial;
             	  		regs0->aud_a5_length 	= 0;            	  			
             	  		break;
-            	  	
-            	  	//case SP_OTHER: // spdif1
-            	  	//	regs0->aud_a6_base 	= dma_initial;
-            	  	//	regs0->aud_a6_length 	= 0;            	  			
-            	  	//	break;
+            	  	case SP_SPDIFHDMI:
+            	  		regs0->aud_a6_base 	= dma_initial;
+            	  		regs0->aud_a6_length 	= 0;            	  			
+            	  		break;
             		default:
 			      	AUD_INFO("###Wrong device no.\n");
 			      	break;		    
@@ -498,7 +504,7 @@ static int spsoc_pcm_prepare(struct snd_pcm_substream *substream)
 		switch (substream->pcm->device)
 	  	{
 	  		case SP_I2S:
-	  		case SP_OTHER:			      
+	  		case SP_I2SHDMI:			      
 			   	regs0->aud_fifo_reset = I2S_P_INC0;
 			     	while ((regs0->aud_fifo_reset&I2S_P_INC0) != 0){};
 				break;
@@ -506,10 +512,10 @@ static int spsoc_pcm_prepare(struct snd_pcm_substream *substream)
 	  	  	 	regs0->aud_fifo_reset = SPDIF_P_INC0;
 			      	while ((regs0->aud_fifo_reset&SPDIF_P_INC0) != 0){};
 			       	break;
-			//case SP_OTHER:
-	  	  	// 	regs0->aud_fifo_reset = SPDIF_HDMI_P_INC0;
-			//      	while ((regs0->aud_fifo_reset&SPDIF_HDMI_P_INC0)!=0){};
-			//       	break;
+			case SP_SPDIFHDMI:
+	  	  	 	regs0->aud_fifo_reset = SPDIF_HDMI_P_INC0;
+			      	while ((regs0->aud_fifo_reset&SPDIF_HDMI_P_INC0)!=0){};
+			       	break;
 	  	 	case SP_TDM:
 	  	  	 	break;
 	  	  	default:
@@ -570,7 +576,7 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				      	if( prtd->trigger_flag == 0)
 				       	{       	
 					      	regs0->aud_delta_0 = startthreshold;
-					       	if((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_OTHER)){
+					       	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)){
 					       		AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
 					        	while((regs0->aud_inc_0 & I2S_P_INC0) != 0){};
 					            	regs0->aud_inc_0 = I2S_P_INC0;
@@ -583,9 +589,11 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 					              	while((regs0->aud_inc_0 & SPDIF_P_INC0) != 0){};
 					              	regs0->aud_inc_0 = SPDIF_P_INC0;
 					        }else{
-					        	AUD_INFO("***a6_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
-					              	while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
-					              	regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
+					        	if (substream->pcm->device == SP_SPDIFHDMI){
+					        		AUD_INFO("***a6_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
+					              		while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
+					              		regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
+					        	}
 					        }
 				         }
 			        }else if(prtd->usemmap_flag == 1){
@@ -606,12 +614,17 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				AUD_INFO("C:prtd->start_threshold=0x%x, startthreshold=0x%x",prtd->start_threshold, startthreshold);
                 		regs0->aud_delta_0 = startthreshold;
 			      	prtd->start_threshold = 0;
-			      	#if (aud_test_mode) //for test			        
-			        regs0->aud_embedded_input_ctrl = aud_test_mode;			       	
-			        AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
-			      	#endif
+			      	//#if (aud_test_mode) //for test			        
+			        //regs0->aud_embedded_input_ctrl = aud_test_mode;			       	
+			        //AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
+			      	//#endif
 		        }
 		        
+		#if (aud_test_mode) //for test			        
+			regs0->aud_embedded_input_ctrl = aud_test_mode;			       	
+			AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
+		#endif
+			
 		        if (atomic_read(&prtd->running) == 2){
 		        	hrtimer_start(&prtd->hrt, ns_to_ktime(prtd->poll_time_ns),HRTIMER_MODE_REL);
 		        	AUD_INFO("!!!hrtimer non stop!!!\n");
@@ -630,7 +643,7 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 		        if( substream->stream == SNDRV_PCM_STREAM_PLAYBACK )
 		        {
 		        	prtd->trigger_flag = 0;
-			       	if((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_OTHER)){
+			       	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)){
 				       	while ((regs0->aud_inc_0 & I2S_P_INC0) != 0){};
 			 	      	//regs0->aud_inc_0 = regs0->aud_inc_0&(~I2S_P_INC0);
 			       	}else if(substream->pcm->device == SP_TDM){
@@ -639,7 +652,8 @@ static int spsoc_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 				       	while ((regs0->aud_inc_0 & SPDIF_P_INC0) != 0){};
 			 	       	//regs0->aud_inc_0 = regs0->aud_inc_0&(~SPDIF_P_INC0);
 			      	}else{
-			      		while ((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
+			      		if (substream->pcm->device == SP_SPDIFHDMI)
+			      			while ((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
 			      	}			      	
 		        }else{ //if( substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		       		if(substream->pcm->device == SP_I2S){
@@ -719,7 +733,7 @@ static int spsoc_pcm_copy(struct snd_pcm_substream *substream, int channel,
 	  	//AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);  	  		    		    		    
 		if(prtd->trigger_flag) {
 		    	regs0->aud_delta_0 = prtd->period;
-		    	if((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_OTHER)){
+		    	if((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)){
 		    		AUD_DEBUG("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC0) != 0){};
 		    	  	while(regs0->aud_a0_cnt != 0){};
@@ -735,10 +749,12 @@ static int spsoc_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			        while(regs0->aud_a5_cnt != 0){};
 			        regs0->aud_inc_0 = SPDIF_P_INC0;
 			}else{
-				AUD_DEBUG("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);		    	  	  		    	  
-			        while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
-			        while(regs0->aud_a6_cnt != 0){};
-			        regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
+				if(substream->pcm->device == SP_SPDIFHDMI){
+					AUD_DEBUG("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);		    	  	  		    	  
+			        	while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
+			        	while(regs0->aud_a6_cnt != 0){};
+			        	regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
+				}
 			}
 			      
 			//hrtimer_forward_now(&prtd->hrt, ns_to_ktime(prtd->poll_time_ns));
@@ -748,7 +764,7 @@ static int spsoc_pcm_copy(struct snd_pcm_substream *substream, int channel,
 			prtd->last_remainder = (count_bytes+prtd->last_remainder)%4;
 			//copy_from_user(hwbuf, buf, count_bytes); 
 		}else{
-		    	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_OTHER)){
+		    	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)){
 		    		AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	      	while((regs0->aud_inc_0 & I2S_P_INC0) != 0){};
 		    	}else if (substream->pcm->device == SP_SPDIF){
@@ -758,8 +774,10 @@ static int spsoc_pcm_copy(struct snd_pcm_substream *substream, int channel,
 		    		AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	      	while((regs0->aud_inc_0 & TDM_P_INC0) != 0){};
 		    	}else{
-		    		AUD_INFO("###%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
-		    	  	while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
+		    		if (substream->pcm->device == SP_SPDIFHDMI){
+		    			AUD_INFO("###%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
+		    	  		while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0){};
+		    		}
 		    	}
 		    	      	    	      
 			prtd->start_threshold += frames_to_bytes(runtime, count);
