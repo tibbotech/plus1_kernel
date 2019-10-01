@@ -8,7 +8,6 @@
 #include "types.h"
 
 extern void __iomem *audio_base;
-extern void __iomem *audio_plla_base;
 
 /**********************************************************
  * 			BASE
@@ -161,6 +160,10 @@ typedef struct
     	UINT32  rf_pad_ctl31                          ; // 31  (ADDR : 0x9C00_027C)
 } RegisterFile_G4;
 
+typedef struct
+{
+    	UINT32  G382_RESERVED[32]                     ; //     (ADDR : 0x9C00_BF00) ~ (ADDR : 0x9C00_BF80)
+} RegisterFile_G382;
 
 typedef struct
 {

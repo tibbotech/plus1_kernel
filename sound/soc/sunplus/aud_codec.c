@@ -140,6 +140,17 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		},		
 		.ops = &aud_dai_ops,
 	},
+	{
+		.name = "aud-spdif-hdmi-dai",
+		.playback = {
+			.stream_name 	= "spdif hdmi Playback",
+			.channels_min 	= 1,
+			.channels_max 	= 2,
+			.rates 		= AUD_RATES,
+			.formats 	= AUD_FORMATS,
+		},		
+		.ops = &aud_dai_ops,
+	},
 };
 #if 0
 static int aud_probe(struct snd_soc_codec *codec)
