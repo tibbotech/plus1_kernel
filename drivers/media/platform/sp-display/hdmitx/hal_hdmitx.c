@@ -553,7 +553,7 @@ static void apply_audio(void __iomem *hdmitxbase)
 	pHdmitxReg->hdmi_audio_ctrl2      = 0x01b5;
 	pHdmitxReg->hdmi_audio_chnl_sts2  = chl_sts;
 	pHdmitxReg->hdmi_audio_spdif_ctrl = ((0x3f << 1) | is_spdif) ;
-	pHdmitxReg->hdmi_arc_config1      = 0x1;
+	pHdmitxReg->hdmi_arc_config1      = 0x5;
 	pHdmitxReg->hdmi_arc_n_value1     = cts_n;
 }
 
