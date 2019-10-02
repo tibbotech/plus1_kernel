@@ -215,12 +215,16 @@ static irqreturn_t rtc_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-/*	mode	bat_charge_en	bat_charge_rsel		
-	0	0		0			Disable
-	1	1		0			2K Ohm
-	2	1		1			250 Ohm
-	3	1		2			50 Ohm
-	4	1		3			0 Ohm
+/*	mode	bat_charge_rsel		bat_charge_dsel		bat_charge_en				
+	0xE	x			x			0			Disable
+	0x1	0			0			1			0.86mA (2K Ohm with diode)
+	0x5	1			0			1			1.81mA (250 Ohm with diode)
+	0x9	2			0			1			2.07mA (50 Ohm with diode)
+	0xD	3			0			1			16.0mA (0 Ohm with diode)
+	0x3	0			1			1			1.36mA (2K Ohm without diode)
+	0x7	1			1			1			3.99mA (250 Ohm without diode)
+	0xB	2			1			1			4.41mA (50 Ohm without diode)
+	0xF	3			1			1			16.0mA (0 Ohm without diode)
 */
 static void sp_rtc_set_batt_charge_ctrl( u32 _mode)
 {

@@ -248,12 +248,17 @@
 			resets = <&rstc RST_RTC>;
 			interrupt-parent = <&intc>;
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
-			charging-mode = <0>;
-			/* 	0 : Disable
-			 *	1 : 2K Ohm
-			 *	2 : 250 Ohm
-			 *	3 : 50 Ohm
-			 *	4 : 0 Ohm	*/
+			charging-mode = <0xE>;
+			/*
+			 *	0xE	Disable
+			 *	0x1	0.86mA (2K Ohm with diode)
+	 		*	0x5	1.81mA (250 Ohm with diode)
+	 		*	0x9	2.07mA (50 Ohm with diode)
+	 		*	0xD	16.0mA (0 Ohm with diode)
+	 		*	0x3	1.36mA (2K Ohm without diode)
+	 		*	0x7	3.99mA (250 Ohm without diode)
+	 		*	0xB	4.41mA (50 Ohm without diode)
+	 		*	0xF	16.0mA (0 Ohm without diode)	*/
 		};
 
 
@@ -594,6 +599,10 @@
 			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>, <0x9C000080 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
+/*
+			pinctrl-names = "default";
+			pinctrl-0 = <&hdmi_A_tx3>;
+*/
 		};
 
 		sp_ehci0: usb@9C102100 {
@@ -1056,6 +1065,18 @@
 			spi_fla4b1_mux: spi_fla4b1_mux {
 				sppctl,groups = "SPI_FLASH_4BIT1";
 				sppctl,function = "SPI_FLASH_4BIT";
+			};
+			hdmi_A_tx1: hdmi_A_tx1_pins {
+				sppctl,groups = "HDMI_TX1";
+				sppctl,function = "HDMI_TX";					
+			};
+			hdmi_A_tx2: hdmi_A_tx2_pins {
+				sppctl,groups = "HDMI_TX2";
+				sppctl,function = "HDMI_TX";					
+			};
+			hdmi_A_tx3: hdmi_A_tx3_pins {
+				sppctl,groups = "HDMI_TX3";
+				sppctl,function = "HDMI_TX";					
 			};
 			mipicsi0_pins: pinmux_mipicsi0_pins {
 				sppctl,pins = <
