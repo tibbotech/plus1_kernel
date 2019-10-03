@@ -431,7 +431,7 @@ static void read_edid(void)
 			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);			
 		}
 		
-		udelay(10);
+		mdelay(10);
 		if (timeout-- == 0) {
 			edid_read_timeout = TRUE;
 			g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;

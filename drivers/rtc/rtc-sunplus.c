@@ -26,12 +26,12 @@
 #include <mach/io_map.h>
 #include <linux/clk.h>
 #include <linux/reset.h> 
+#include <linux/of.h>
 
 #if 0
 /* For code development on SPHE8388 */
 #define VA_B_REG		0xF8000000
 #endif
-
 
 /* ---------------------------------------------------------------------------------------------- */
 #define RTC_FUNC_DEBUG
@@ -61,6 +61,7 @@ struct sunplus_rtc {
 
 	struct clk *rtcclk;
 	struct reset_control *rstc;
+	u32 charging_mode;
 		
 };
 
@@ -149,7 +150,7 @@ static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
 	
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 
 	return 0;
 }
@@ -162,7 +163,7 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	 */
 	FUNC_DEBUG();
 	
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 	return 0;
 }
 
@@ -172,7 +173,6 @@ static int sp_rtc_set_mmss(struct device *dev, unsigned long secs)
 	sp_set_seconds(secs);
 	return 0;
 }
-
 
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
@@ -201,7 +201,6 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	return 0;
 }
 
-
 static const struct rtc_class_ops sp_rtc_ops = {
 	.read_time = sp_rtc_read_time,
 	.set_mmss = sp_rtc_set_mmss,
@@ -214,6 +213,24 @@ static irqreturn_t rtc_irq_handler(int irq, void *data)
 	DBG_INFO("[RTC] alarm times up\n");
 	
 	return IRQ_HANDLED;
+}
+
+/*	mode	bat_charge_rsel		bat_charge_dsel		bat_charge_en				
+	0xE	x			x			0			Disable
+	0x1	0			0			1			0.86mA (2K Ohm with diode)
+	0x5	1			0			1			1.81mA (250 Ohm with diode)
+	0x9	2			0			1			2.07mA (50 Ohm with diode)
+	0xD	3			0			1			16.0mA (0 Ohm with diode)
+	0x3	0			1			1			1.36mA (2K Ohm without diode)
+	0x7	1			1			1			3.99mA (250 Ohm without diode)
+	0xB	2			1			1			4.41mA (50 Ohm without diode)
+	0xF	3			1			1			16.0mA (0 Ohm without diode)
+*/
+static void sp_rtc_set_batt_charge_ctrl( u32 _mode)
+{
+	u8 m = _mode & 0x000F;
+	DBG_INFO("batt charge:0x%X\n", m);
+	rtc_reg_ptr->rtc_battery_ctrl |= (0x000F << 16) | m;
 }
 
 static int sp_rtc_probe(struct platform_device *plat_dev)
@@ -229,7 +246,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	//memset(sp_rtc, 0, sizeof(sp_rtc));
 	memset(&sp_rtc, 0, sizeof(sp_rtc));
 
-	/* find and map our resources */
+	// find and map our resources
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);
 	DBG_INFO("res 0x%x\n",res->start);
 	if (res) {
@@ -241,7 +258,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
         DBG_INFO("reg_base 0x%x\n",(unsigned int)reg_base);
 
 
-      	/* clk*/
+	// clk
 	DBG_INFO("Enable RTC clock\n");
 	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev,NULL);
 	DBG_INFO("sp_rtc->clk = %x\n",sp_rtc.rtcclk);
@@ -251,7 +268,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	ret = clk_prepare_enable(sp_rtc.rtcclk);
 
 
-	/* reset*/
+	// reset
 	DBG_INFO("Enable RTC reset function\n");	
 	sp_rtc.rstc = devm_reset_control_get(&plat_dev->dev, NULL);
 	DBG_INFO( "sp_rtc->rstc : 0x%x \n",sp_rtc.rstc);
@@ -266,7 +283,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	DBG_INFO("sp_rtc->rstc002\n");
 	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
-	rtc_reg_ptr->rtc_ctrl |= 1 << 4;	/* Keep RTC from system reset */
+	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
 
 	// request irq
 	irq = platform_get_irq(plat_dev, 0);
@@ -280,7 +297,15 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		DBG_ERR("devm_request_irq failed: %d\n", err);
 		goto free_reset_assert;
 	}
-		
+
+	// Get charging-mode.
+	ret = of_property_read_u32(plat_dev->dev.of_node, "charging-mode", &sp_rtc.charging_mode);
+	if (ret) {
+		PTR_ERR("Failed to retrieve \'charging-mode\'!\n");
+		goto free_reset_assert;
+	}
+	sp_rtc_set_batt_charge_ctrl(sp_rtc.charging_mode);
+
 	device_init_wakeup(&plat_dev->dev, 1);
 
 	rtc = rtc_device_register("sp7021-rtc", &plat_dev->dev, &sp_rtc_ops, THIS_MODULE);
@@ -300,8 +325,7 @@ free_reset_assert:
 	reset_control_assert(sp_rtc.rstc);
 free_clk:
 	clk_disable_unprepare(sp_rtc.rtcclk);
-
-		return ret;	
+	return ret;	
 	
 }
 
@@ -309,8 +333,7 @@ static int sp_rtc_remove(struct platform_device *plat_dev)
 {
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
-	reset_control_assert(sp_rtc.rstc);
-	
+	reset_control_assert(sp_rtc.rstc);	
 	rtc_device_unregister(rtc);
 	return 0;
 }
@@ -332,8 +355,6 @@ static struct platform_driver sp_rtc_driver = {
 		.of_match_table = sp_rtc_of_match,
 	},
 };
-
-
 
 static int __init sp_rtc_init(void)
 {
