@@ -148,7 +148,7 @@ int stpctl_m_mux( struct pinctrl_dev *_pd, unsigned _fid, unsigned _gid) {
           sppctl_pin_set( pctrl, 0, j);  }
         break;
    case fOFF_M:   // MUX : 
-        if ( _gid != 0) sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid - 7, muxF_M, muxMKEEP);
+        sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _gid, muxF_M, muxMKEEP);
         sppctl_pin_set( pctrl, ( _gid == 0 ? _gid : _gid - 7), _fid - 2);    // pin, fun FIXME
         break;
    case fOFF_G:   // GROUP
