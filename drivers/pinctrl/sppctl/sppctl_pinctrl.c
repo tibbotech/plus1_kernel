@@ -54,7 +54,6 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
  if ( _ca[ i] == 0xFF) {
    sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
    return( 0);  }
- sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  for ( i = 0; i < _clen; i++) {
    if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
    if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
@@ -174,7 +173,7 @@ int stpctl_m_gpio_req( struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range
  g_m = sp7021gpio_u_magpi( &( pctrl->gpiod->chip), _pin);
  if (  g_f == muxF_G &&  g_m == muxM_G) return( 0);
  pdesc = pin_desc_get( _pd, _pin);
- // is in MUX state, but not claimed by any function
+ // in non-gpio state: is it claimed already?
  if ( pdesc->mux_owner) return( -EACCES);
  sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_G);
  return( 0);  }
