@@ -786,7 +786,7 @@
 			no-sdio;
 			no-mmc;
 		};
-
+/*
 		sdio: sdio@sdcard {
 			compatible = "sunplus,sp7021-sdio";
 			reg = <0x9c008400 0x280>;
@@ -804,7 +804,7 @@
 			no-sd;
 			no-mmc;
 		};
-
+*/
 		spi_controller0: spi@sp_spi_controller0 {
 			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
@@ -1012,12 +1012,21 @@
 #endif
 			pins_sdio: pins_sdio {
 				sppctl,pins = <
+#if 1 // Ev board - SDIO Wifi
 					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
 					SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
 					SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
 					SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
 					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
 					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+#else // Demo board V2 - SDIO Wifi
+					SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+					SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+					SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+					SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+					SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+#endif
 				>;
 			};
 
