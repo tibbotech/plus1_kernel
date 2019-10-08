@@ -772,7 +772,7 @@ ignore_char:
 	} while (lsr & SP_UART_LSR_RX);
 
 	spin_unlock(&port->lock);
-	tty_flip_buffer_push(tty->port);
+	if (tty) tty_flip_buffer_push(tty->port);
 	spin_lock(&port->lock);
 }
 
