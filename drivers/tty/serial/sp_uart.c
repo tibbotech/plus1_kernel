@@ -771,9 +771,11 @@ ignore_char:
 		lsr = sp_uart_get_line_status(port->membase);
 	} while (lsr & SP_UART_LSR_RX);
 
-	spin_unlock(&port->lock);
-	if (tty) tty_flip_buffer_push(tty->port);
-	spin_lock(&port->lock);
+	if (tty) {
+		spin_unlock(&port->lock);
+		tty_flip_buffer_push(tty->port);
+		spin_lock(&port->lock);
+	}
 }
 
 static irqreturn_t sunplus_uart_irq(int irq, void *args)
