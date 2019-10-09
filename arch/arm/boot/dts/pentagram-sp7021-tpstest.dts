@@ -254,16 +254,16 @@
 		    pinctrl-1 = <&leds_s0_slp>;
 		    compatible = "gpio-leds";
 		    led@1 {
-                label = "SR";
-                gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "heartbeat";
-                default-state = "off";
+			label = "SR";
+			gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
 		    };
 		    led@2 {
-                label = "SG";
-                gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "mmc0";
-                default-state = "off";
+			label = "SG";
+			gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
 		    };
 		};
 		tpsleds: tpsleds {
