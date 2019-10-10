@@ -122,7 +122,8 @@ static ssize_t sppctl_sop_func_W(
  sdp = ( sppctl_sdata_t *)_a->private;
  if ( !( sdp = ( sppctl_sdata_t *)_a->private)) return( -ENXIO);
  f = &( list_funcs[ sdp->i]);
- if ( f->freg == fOFF_M) sppctl_pin_set( _p, _b[ 0], sdp->ridx);
+ // for mux it should be PIN-7, case muxable pins start from 8'th
+ if ( f->freg == fOFF_M) sppctl_pin_set( _p, ( _b[ 0] < 8 ? 0 : _b[ 0] - 7), sdp->ridx);
  if ( f->freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ 0]);
  if ( _p->debug) KDBG( _pdev, "%s(%s,i:%d) _b:%d\n", __FUNCTION__, _a->attr.name, sdp->ridx, _b[ 0]);
  return( _count);  }
