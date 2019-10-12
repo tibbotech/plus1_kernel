@@ -343,7 +343,6 @@ static void spsdc_prepare_cmd(struct spsdc_host *host, struct mmc_command *cmd)
 static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 {
 	u32 value;
-	struct mmc_command *cmd = data->mrq->cmd;
 
 	writel(data->blocks - 1, &host->base->sd_page_num);
 	writel(data->blksz - 1, &host->base->sd_blocksize);
@@ -357,10 +356,16 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 		value = bitfield_replace(value, 4, 2, 1);
 		writel(0x21, &host->base->dma_srcdst);
 	}
+	/* to prevent of the responses of CMD18/25 being overrided by CMD12's,
+	 * send CMD12 by ourself instead of by controller automatically */
+	#if 0
 	if ((MMC_READ_MULTIPLE_BLOCK == cmd->opcode) || (MMC_WRITE_MULTIPLE_BLOCK == cmd->opcode))
 		value = bitfield_replace(value, 2, 1, 0); /* sd_len_mode */
 	else
 		value = bitfield_replace(value, 2, 1, 1);
+	#endif
+	value = bitfield_replace(value, 2, 1, 1);
+
 	if (likely(SPSDC_DMA_MODE == host->dmapio_mode)) {
 		struct scatterlist *sg;
 		dma_addr_t dma_addr;
@@ -409,19 +414,26 @@ static inline void spsdc_trigger_transaction(struct spsdc_host *host)
 	writel(value, &host->base->sd_ctrl);
 }
 
-static void __send_stop_cmd(struct spsdc_host *host)
+static int __send_stop_cmd(struct spsdc_host *host, struct mmc_command *stop)
 {
 	u32 value;
-	struct mmc_command stop = {};
-	stop.opcode = MMC_STOP_TRANSMISSION;
-	stop.arg = 0;
-	stop.flags = MMC_RSP_R1B;
-	spsdc_prepare_cmd(host, &stop);
+
+	spsdc_prepare_cmd(host, stop);
 	value = readl(&host->base->sd_int);
 	value = bitfield_replace(value, 0, 1, 0); /* sdcmpen */
 	writel(value, &host->base->sd_int);
 	spsdc_trigger_transaction(host);
-	spsdc_wait_finish(host);
+	if (spsdc_wait_finish(host)) {
+		value = readl(&host->base->sd_status);
+		if (value & SPSDC_SDSTATUS_RSP_CRC7_ERROR)
+			stop->error = -EILSEQ;
+		else
+			stop->error = -ETIMEDOUT;
+		return -1;
+	} else {
+		spsdc_get_rsp(host, stop);
+	}
+	return 0;
 }
 
 /**
@@ -477,10 +489,6 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		timing_cfg1 = bitfield_replace(timing_cfg0, 13, 3, host->tuning_info.rd_dly);
 		writel(timing_cfg1, &host->base->sd_timing_config1);
 
-		/* controller will not send cmd 12 automatically if error occured */
-		if (MMC_READ_MULTIPLE_BLOCK == cmd->opcode ||
-			MMC_WRITE_MULTIPLE_BLOCK == cmd->opcode)
-			__send_stop_cmd(host);
 	} else if (data) {
 		data->bytes_xfered = data->blocks * data->blksz;
 	}
@@ -597,6 +605,10 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 	}
 	spsdc_get_rsp(host, cmd);
 	spsdc_check_error(host, mrq);
+	if (mrq->stop) {
+		if (__send_stop_cmd(host, mrq->stop))
+			spsdc_sw_reset(host);
+	}
 	host->mrq = NULL;
 	mutex_unlock(&host->mrq_lock);
 	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
@@ -616,9 +628,9 @@ irqreturn_t spsdc_irq(int irq, void *dev_id)
 		value = bitfield_replace(value, 0, 1, 0); /* disable sdcmp */
 		value = bitfield_replace(value, 2, 1, 1); /* sd_cmp_clr */
 		writel(value, &host->base->sd_int);
-		/* if error occured, we my need send cmd 12 to stop data transaction,
+		/* we may need send stop command to stop data transaction,
 		 * which is time consuming, so make use of tasklet to handle this. */
-		if (unlikely(readl(&host->base->sd_state) & SPSDC_SDSTATE_ERROR))
+		if (host->mrq && host->mrq->stop)
 			tasklet_schedule(&host->tsklet_finish_req);
 		else
 			spsdc_finish_request(host, host->mrq);
