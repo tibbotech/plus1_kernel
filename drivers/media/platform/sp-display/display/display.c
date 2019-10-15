@@ -900,7 +900,7 @@ static volatile UINT32 *G4;
 #ifdef MODULE
 static UINT32 *yuv420;
 #else
-static UINT32 *vpp_yuv_ptr;
+//static UINT32 *vpp_yuv_ptr;
 int vpp_alloc_size;
 #endif
 static volatile UINT32 *aio;
@@ -2393,22 +2393,22 @@ static int _display_probe(struct platform_device *pdev)
 	ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
 	#else
 		#ifdef TTL_MODE_SUPPORT
-			#if ((VPP_FMT_TTL == 0)||(VPP_FMT_TTL == 1)||(VPP_FMT_TTL == 2))
+			#if 0 //((VPP_FMT_TTL == 0)||(VPP_FMT_TTL == 1)||(VPP_FMT_TTL == 2))
 				vpp_alloc_size = (VPP_FMT_TTL)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
 				vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
 				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
 				ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
 			#else
-				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
+				ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_TTL);
 			#endif
 		#else 
-			#if ((VPP_FMT_HDMI == 0)||(VPP_FMT_HDMI == 1)||(VPP_FMT_HDMI == 2))
+			#if 0 //((VPP_FMT_HDMI == 0)||(VPP_FMT_HDMI == 1)||(VPP_FMT_HDMI == 2))
 				vpp_alloc_size = (VPP_FMT_HDMI)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
 				vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
 				memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
 				ddfch_setting(0x00120000, 0x00120000 + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 			#else
-				ddfch_setting(virt_to_phys(yuv420_array), virt_to_phys((yuv420_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
+				ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 			#endif
 		#endif
 	#endif

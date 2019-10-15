@@ -185,12 +185,8 @@ int sp7021gpio_f_sou( struct gpio_chip *_c, unsigned int _n, int _v) {
 int sp7021gpio_f_get( struct gpio_chip *_c, unsigned int _n) {
  u32 r;
  sp7021gpio_chip_t *pc = ( sp7021gpio_chip_t *)gpiochip_get_data( _c);
- if ( sp7021gpio_f_gdi( _c, _n) == 1) {
-   r = readl( pc->base0 + SP7021_GPIO_OFF_IN + R32_ROF(_n));
-   return( R32_VAL(r,R32_BOF(_n)));  }
- // OUT
- r = readl( pc->base0 + SP7021_GPIO_OFF_OUT + R16_ROF(_n));
- return( R32_VAL(r,R16_BOF(_n)));  }
+ r = readl( pc->base0 + SP7021_GPIO_OFF_IN + R32_ROF(_n));
+ return( R32_VAL(r,R32_BOF(_n)));  }
 
 // OUT only: can't call set on IN pin: protected by gpio_chip layer
 void sp7021gpio_f_set( struct gpio_chip *_c, unsigned int _n, int _v) {

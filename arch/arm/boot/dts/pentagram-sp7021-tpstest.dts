@@ -79,7 +79,7 @@
 
  /* detouch any preset pins from this functions */
  func_zero: func_zero {
-   sppctl,zero = <
+   sppctl,zero_func = <
      MUXF_L2SW_LED_FLASH0
      MUXF_L2SW_LED_ON0
      MUXF_L2SW_LED_FLASH1
@@ -177,8 +177,8 @@
  };
  pins_i2ctps: pins_i2ctps {
     sppctl,pins = <
-      SP7021_IOPAD(1,SP7021_PCTL_G_GPIO,0,0)
-      SP7021_IOPAD(2,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(1,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT|SP7021_PCTL_L_ONV|SP7021_PCTL_L_ODR)
+      SP7021_IOPAD(2,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT|SP7021_PCTL_L_ONV|SP7021_PCTL_L_ODR)
     >;
  };
  hdmi_A_tx1: hdmi_A_tx1_pins {
@@ -254,16 +254,16 @@
 		    pinctrl-1 = <&leds_s0_slp>;
 		    compatible = "gpio-leds";
 		    led@1 {
-                label = "SR";
-                gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "heartbeat";
-                default-state = "off";
+			label = "SR";
+			gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "heartbeat";
+			default-state = "off";
 		    };
 		    led@2 {
-                label = "SG";
-                gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
-                linux,default-trigger = "mmc0";
-                default-state = "off";
+			label = "SG";
+			gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
 		    };
 		};
 		tpsleds: tpsleds {
@@ -284,9 +284,9 @@
 		};
 		i2c_tps: i2c-tps { /* eeprom */
 		    compatible = "i2c-gpio";
-		    /*i2c-gpio,scl-open-drain;*/
-		    /*i2c-gpio,sda-open-drain;*/
-		    i2c-gpio,delay-us = <3>;/* ~100 kHz */
+		    i2c-gpio,scl-open-drain;
+		    i2c-gpio,sda-open-drain;
+		    i2c-gpio,delay-us = <1>;/* ~100 kHz */
 		    #address-cells = <1>;
 		    #size-cells = <0>;
 		    pinctrl-names = "default";
@@ -295,10 +295,10 @@
 			     &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
                     >;
 		    eeprom: eeprom@50 {
-                compatible = "at,24c16";
-                reg = <0x50>;
-                pagesize = <16>;
-            };
+			compatible = "at,24c16";
+			reg = <0x50>;
+			pagesize = <16>;
+		    };
 		};
 	};
 };

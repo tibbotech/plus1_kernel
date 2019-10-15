@@ -177,7 +177,17 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		.formats = ov9281_formats,
 		.formats_size = ARRAY_SIZE(ov9281_formats),
 	},
-
+/*
+	{
+		.name = "ov9281",
+		.grp_id = 0,
+		.board_info = {
+			I2C_BOARD_INFO("ov9281", 0x10),
+		},
+		.formats = ov9281_formats,
+		.formats_size = ARRAY_SIZE(ov9281_formats),
+	},
+*/
 	{
 		.name = "ov9281_isp",
 		.grp_id = 0,
@@ -837,9 +847,9 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_get_csiiw_rstc;
 	}
 
-	// Get GPIO0/1. 
+	// Get GPIO0/1.
 	mipi->gpio0 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio0", 0);
-	if ( !gpio_is_valid(mipi->gpio0)) {
+	if (!gpio_is_valid(mipi->gpio0)) {
 		MIP_ERR("Wrong pin %d configured for gpio0\n", mipi->gpio0);
 	}
 	else {
@@ -848,13 +858,13 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	}
 
 	mipi->gpio1 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio1", 0);
-	if ( !gpio_is_valid(mipi->gpio1)) {
+	if (!gpio_is_valid(mipi->gpio1)) {
 		MIP_ERR("Wrong pin %d configured for gpio1\n", mipi->gpio1);
 	}
 	else {
 		MIP_INFO("GPIO1 pin number %d\n", mipi->gpio1);
 		gpio_set_value(mipi->gpio1,1);
-	}	
+	}
 
 	// Get i2c id.
 	ret = of_property_read_u32(pdev->dev.of_node, "i2c-id", &mipi->i2c_id);
