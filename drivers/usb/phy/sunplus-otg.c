@@ -270,13 +270,13 @@ static void otg_hw_init(struct sp_otg *otg_host)
 	writel(0x3f, &otg_host->regs_otg->adp_chng_precision);
 
 	/* Set adp dis-charge time */
-	//writel(0x898, &otg_host->regs->adp_chrg_time);
+	writel(0xfff, &otg_host->regs_otg->adp_chrg_time);
 
 	/* Set wait power rise timer */
 	writel(0x1ffff, &otg_host->regs_otg->a_wait_vrise_tmr);
 
 	/* Set session end timer */
-	writel(0x26040, &otg_host->regs_otg->a_wait_vfall_tmr);
+	writel(0x20040, &otg_host->regs_otg->a_wait_vfall_tmr);
 
 	/* Set wait b-connect time  */
 	writel(0x1fffff, &otg_host->regs_otg->a_wait_bcon_tmr);
