@@ -69,7 +69,7 @@
 };
 &uart4 {
  pinctrl-names = "default";
- pinctrl-0 = </*&pins_uart4*/&pins_btuart>;
+ pinctrl-0 = </*&pins_uart4*/&pins_btuart &pins_bt_reset>;
 };
 
 &pctl {
@@ -168,6 +168,11 @@
       SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
       SP7021_IOPAD(37,SP7021_PCTL_G_PMUX,MUXF_UA4_RTS,0)
       SP7021_IOPAD(36,SP7021_PCTL_G_PMUX,MUXF_UA4_CTS,0)
+    >;
+ };
+ pins_bt_reset: pins_bt_reset {
+    sppctl,pins = <
+      SP7021_IOPAD(82,SP7021_PCTL_G_GPIO,0,0)
     >;
  };
  buzzer0_pins: user_buzzer0_pins {
