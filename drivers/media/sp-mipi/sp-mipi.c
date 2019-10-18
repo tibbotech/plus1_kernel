@@ -850,7 +850,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	// Get GPIO0/1.
 	mipi->gpio0 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio0", 0);
 	if (!gpio_is_valid(mipi->gpio0)) {
-		MIP_ERR("Wrong pin %d configured for gpio0\n", mipi->gpio0);
+		//MIP_ERR("Wrong pin %d configured for gpio0\n", mipi->gpio0);
 	}
 	else {
 		MIP_INFO("GPIO0 pin number %d\n", mipi->gpio0);
@@ -859,7 +859,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 	mipi->gpio1 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio1", 0);
 	if (!gpio_is_valid(mipi->gpio1)) {
-		MIP_ERR("Wrong pin %d configured for gpio1\n", mipi->gpio1);
+		//MIP_ERR("Wrong pin %d configured for gpio1\n", mipi->gpio1);
 	}
 	else {
 		MIP_INFO("GPIO1 pin number %d\n", mipi->gpio1);
