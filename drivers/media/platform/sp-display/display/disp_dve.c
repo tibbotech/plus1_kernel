@@ -38,16 +38,6 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
-#ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#else
-	#define DEBUG(fmt, arg...)
-	#define MSG(fmt, arg...)
-#endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
@@ -57,8 +47,6 @@
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 static DISP_DVE_REG_t *pDVEReg;
-extern struct sp_disp_device gDispWorkMem;
-
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
@@ -73,12 +61,21 @@ void DRV_DVE_Init(void *pInHWReg)
 	pDVEReg = (DISP_DVE_REG_t *)pInHWReg;
 
 #ifdef TTL_MODE_SUPPORT
+	#ifdef TTL_MODE_BIT_SWAP
+	dve_bist_mode =  (DVE_TTL_BIT_SW_ON) \
+									|(DVE_TTL_MODE) \
+									|(DVE_COLOR_SPACE_BT601) \
+									|(DVE_TTL_CLK_POL_INV) \
+									|(DVE_COLOR_BAR_USER_MODE_SEL) \
+									|(DVE_NORMAL_MODE);
+	#else
 	dve_bist_mode =  (DVE_TTL_BIT_SW_OFF) \
 									|(DVE_TTL_MODE) \
 									|(DVE_COLOR_SPACE_BT601) \
 									|(DVE_TTL_CLK_POL_INV) \
 									|(DVE_COLOR_BAR_USER_MODE_SEL) \
 									|(DVE_NORMAL_MODE);
+	#endif
 	dve_hdmi_mode_0 = (DVE_LATCH_DIS) | (DVE_444_MODE);
 	dve_hdmi_mode_1 = (DVE_HDMI_ENA) | (DVE_HD_MODE);
 	
@@ -122,7 +119,7 @@ void DRV_DVE_SetMode(int mode)
 	int colorbarmode = pDVEReg->color_bar_mode & ~0xfe;
 	int hdmi_mode = pDVEReg->dve_hdmi_mode_0 & ~0x1f80;
 
-	INFO("dve mode: %d\n", mode);
+	sp_disp_dbg("dve mode: %d\n", mode);
 
 	switch (mode)
 	{

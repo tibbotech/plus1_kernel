@@ -74,14 +74,17 @@ struct UI_FB_Info_t {
 	unsigned int UI_handle;
 };
 
-void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2);
-void DRV_OSD_Info(void);
-void DRV_OSD_IRQ(void);
 
+void DRV_OSD_IRQ(void);
+void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2);
+void DRV_OSD_WaitVSync(void);
+
+//#ifdef SUPPORT_DEBUG_MON
+void DRV_OSD_Info(void);
 void DRV_OSD_HDR_Show(void);
 void DRV_OSD_HDR_Write(int offset, int value);
+//#endif
 
-void DRV_OSD_WaitVSync(void);
 int DRV_OSD_Get_UI_Res(struct UI_FB_Info_t *pinfo);
 void DRV_OSD_Set_UI_UnInit(void);
 void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo);
@@ -90,5 +93,12 @@ void DRV_IRQ_DISABLE(void);
 void DRV_IRQ_ENABLE(void);
 
 extern int g_disp_state;
+
+//#ifdef	SP_DISP_OSD_PARM
+void DRV_OSD_INIT_OSD_Header(void);
+void DRV_OSD_Clear_OSD_Header(int osd_layer);
+void DRV_OSD_SET_OSD_Header(struct UI_FB_Info_t *pinfo, int osd_layer);
+//#endif
+
 #endif	//__DISP_OSD_H__
 

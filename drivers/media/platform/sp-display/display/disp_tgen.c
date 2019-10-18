@@ -38,16 +38,6 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
-#ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#else
-	#define DEBUG(fmt, arg...)
-	#define MSG(fmt, arg...)
-#endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
@@ -58,7 +48,7 @@
  **************************************************************************/
 static DISP_TGEN_REG_t *pTGENReg;
 
-#ifdef DEBUG_MSG
+#ifdef SP_DISP_DEBUG
 	static const char * const StrFmt[] = {"480P", "576P", "720P", "1080P", "User Mode"};
 	static const char * const StrFps[] = {"60Hz", "50Hz", "24Hz"};
 #endif
@@ -119,14 +109,12 @@ void DRV_TGEN_SetUserInt2(UINT32 count)
 
 int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 {
-//	struct sp_disp_device *pDispWorkMem = &gDispWorkMem;
-
 	if (SetTGEN->fmt >= DRV_FMT_MAX) {
-		ERRDISP("Timing format:%d error\n", SetTGEN->fmt);
+		sp_disp_err("Timing format:%d error\n", SetTGEN->fmt);
 		return DRV_ERR_INVALID_PARAM;
 	}
 
-	MSG("%s, %s\n", StrFmt[SetTGEN->fmt], StrFps[SetTGEN->fps]);
+	sp_disp_dbg("%s, %s\n", StrFmt[SetTGEN->fmt], StrFps[SetTGEN->fps]);
 
 	if (SetTGEN->fmt == DRV_FMT_USER_MODE) {
 		pTGENReg->tgen_dtg_config = 0x0001;
@@ -136,7 +124,7 @@ int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 		pTGENReg->tgen_dtg_start_line = SetTGEN->v_bp;
 		pTGENReg->tgen_dtg_ds_line_start_cd_point = SetTGEN->hactive;
 		pTGENReg->tgen_dtg_field_end_line = SetTGEN->vactive + SetTGEN->v_bp + 1;
-		ERRDISP("htt:%d, vtt:%d, h:%d, v:%d, bp:%d\n", SetTGEN->htt, SetTGEN->vtt, SetTGEN->hactive, SetTGEN->vactive, SetTGEN->v_bp);
+		sp_disp_err("htt:%d, vtt:%d, h:%d, v:%d, bp:%d\n", SetTGEN->htt, SetTGEN->vtt, SetTGEN->hactive, SetTGEN->vactive, SetTGEN->v_bp);
 	} else {
 		// [Todo] Moon register setting for pll
 		pTGENReg->tgen_dtg_config = ((SetTGEN->fmt & 0x7) << 8) | ((SetTGEN->fps & 0x3) << 4);
@@ -154,7 +142,7 @@ void DRV_TGEN_Get(DRV_SetTGEN_t *GetTGEN)
 	GetTGEN->fps = (tmp >> 4) & 0x3;
 	GetTGEN->fmt = (tmp & 0x1) ? DRV_FMT_USER_MODE:(tmp >> 8) & 0x7;
 
-	DEBUG("%s %s\n", StrFmt[GetTGEN->fmt], StrFps[GetTGEN->fps]);
+	sp_disp_dbg("%s %s\n", StrFmt[GetTGEN->fmt], StrFps[GetTGEN->fps]);
 }
 
 void DRV_TGEN_Reset(void)
@@ -175,7 +163,7 @@ int DRV_TGEN_Adjust(DRV_TGEN_Input_e Input, UINT32 Adjust)
 		pTGENReg->tgen_dtg_adjust4 = (pTGENReg->tgen_dtg_adjust4 & ~(0x3F<<8)) | ((Adjust & 0x3F) << 8);
 		break;
 	default:
-		ERRDISP("Invalidate Input %d\n", Input);
+		sp_disp_err("Invalidate Input %d\n", Input);
 		return DRV_ERR_INVALID_PARAM;
 	}
 

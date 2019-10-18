@@ -39,16 +39,6 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
-#ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#else
-	#define DEBUG(fmt, arg...)
-	#define MSG(fmt, arg...)
-#endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __FUNCTION__, __LINE__, ##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
@@ -108,18 +98,13 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 }
 EXPORT_SYMBOL(vpost_setting);
 
-void vpost_dma(void)
-{
-	pVPOSTReg->vpost_config1 = 0x1010;
-
-}
-
 int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 {
-	diag_printf("ddfch luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
+	sp_disp_dbg("ddfch luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
 
 #ifdef TTL_MODE_SUPPORT
-	diag_printf("ddfch setting for LCD \n");
+	sp_disp_dbg("ddfch setting for LCD \n");
+
 	pDDFCHReg->ddfch_latch_en = 1;
 	if (yuv_fmt == 0)
 		pDDFCHReg->ddfch_mode_option = 0; //source yuv420 NV12
@@ -138,7 +123,8 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 	pDDFCHReg->ddfch_bist = 0x80801002;
 	pDDFCHReg->ddfch_vdo_crop_size = 0x00f00140; //y size & x size
 #else
-	diag_printf("ddfch setting for HDMI \n");
+	sp_disp_dbg("ddfch setting for HDMI \n");
+
 	pDDFCHReg->ddfch_latch_en = 1;
 	if (yuv_fmt == 0)
 		pDDFCHReg->ddfch_mode_option = 0; //source yuv420 NV12
@@ -151,10 +137,11 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 	pDDFCHReg->ddfch_luma_base_addr_0 = luma_addr>>10;
 	pDDFCHReg->ddfch_crma_base_addr_0 = chroma_addr>>10;
 	pDDFCHReg->ddfch_vdo_frame_size = EXTENDED_ALIGNED(w, 128); //video line pitch
-	pDDFCHReg->ddfch_vdo_crop_size = ((h<<16) | w); //y size & x size
+	//pDDFCHReg->ddfch_vdo_crop_size = ((h<<16) | w); //y size & x size
 	pDDFCHReg->ddfch_vdo_crop_offset = ((0 << 16) | 0);
 	pDDFCHReg->ddfch_config_0 = 0x10000;
 	pDDFCHReg->ddfch_bist = 0x80801002;
+	pDDFCHReg->ddfch_vdo_crop_size = ((h<<16) | w); //y size & x size
 #endif
 
 	return 0;

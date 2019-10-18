@@ -37,16 +37,6 @@
 /**************************************************************************
  *                              M A C R O S                               *
  **************************************************************************/
-#ifdef DEBUG_MSG
-	#define DEBUG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-	#define MSG(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#else
-	#define DEBUG(fmt, arg...)
-	#define MSG(fmt, arg...)
-#endif
-#define ERRDISP(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define WARNING(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
-#define INFO(fmt, arg...) diag_printf("[Disp][%s:%d] "fmt, __func__, __LINE__, ##arg)
 
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
@@ -57,7 +47,7 @@
  **************************************************************************/
 static DISP_DMIX_REG_t *pDMIXReg;
 
-#ifdef DEBUG_MSG
+#ifdef SP_DISP_DEBUG
 	static const char * const LayerNameStr[] = {"BG", "L1", "L2", "L3", "L4", "L5", "L6"};
 	static const char * const LayerModeStr[] = {"AlphaBlend", "Transparent", "Opacity"};
 	static const char * const SelStr[] = {"VPP0", "VPP1", "VPP2", "OSD0", "OSD1", "OSD2", "OSD3", "PTG"};
@@ -162,11 +152,11 @@ DRV_Status_e DRV_DMIX_Layer_Init(DRV_DMIX_LayerId_e Layer, DRV_DMIX_LayerMode_e 
 	if ((((int)Layer >= DRV_DMIX_L2) && ((int)Layer <= DRV_DMIX_L5)) ||
 			((int)LayerMode < DRV_DMIX_AlphaBlend) || ((int)LayerMode > DRV_DMIX_Opacity) ||
 			(((int)FG_Sel != DRV_DMIX_VPP0) && ((int)FG_Sel != DRV_DMIX_OSD0) && ((int)FG_Sel != DRV_DMIX_PTG))) {
-		ERRDISP("Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
+		sp_disp_err("Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
 		return DRV_ERR_INVALID_PARAM;
 	}
 
-	MSG("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[Layer], LayerModeStr[LayerMode], SelStr[FG_Sel]);
+	sp_disp_dbg("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[Layer], LayerModeStr[LayerMode], SelStr[FG_Sel]);
 
 	tmp  = pDMIXReg->dmix_config0;
 	tmp1 = pDMIXReg->dmix_config1;
@@ -225,7 +215,7 @@ DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode, DRV_DMIX_InputSe
 
 	if (((int)LayerMode < DRV_DMIX_AlphaBlend) || ((int)LayerMode > DRV_DMIX_Opacity) ||
 			(((int)FG_Sel != DRV_DMIX_VPP0) && ((int)FG_Sel != DRV_DMIX_OSD0) && ((int)FG_Sel != DRV_DMIX_PTG))) {
-		ERRDISP("Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
+		sp_disp_err("Layer %d, LayerMode %d, InSel %d\n", Layer, LayerMode, FG_Sel);
 		return DRV_ERR_INVALID_PARAM;
 	}
 
@@ -242,7 +232,7 @@ DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode, DRV_DMIX_InputSe
 	default:
 		goto ERROR;
 	}
-	MSG("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[Layer], LayerModeStr[LayerMode], SelStr[FG_Sel]);
+	sp_disp_dbg("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[Layer], LayerModeStr[LayerMode], SelStr[FG_Sel]);
 
 	tmp = pDMIXReg->dmix_config1;
 
@@ -276,7 +266,7 @@ void DRV_DMIX_Layer_Get(DRV_DMIX_Layer_Set_t *pLayerInfo)
 
 	pLayerInfo->FG_Sel = test;
 
-	MSG("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[pLayerInfo->Layer], LayerModeStr[pLayerInfo->LayerMode], SelStr[pLayerInfo->FG_Sel]);
+	sp_disp_dbg("Layer %s, LayerMode %s, InSel %s\n", LayerNameStr[pLayerInfo->Layer], LayerModeStr[pLayerInfo->LayerMode], SelStr[pLayerInfo->FG_Sel]);
 }
 
 DRV_Status_e DRV_DMIX_Plane_Alpha_Set(DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo)
@@ -285,7 +275,7 @@ DRV_Status_e DRV_DMIX_Plane_Alpha_Set(DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo)
 	UINT32 tmp3;
 	int ret = DRV_SUCCESS;
 
-	INFO("Layer%d: En%d, Fix%d, 0x%x\n", PlaneAlphaInfo->Layer, PlaneAlphaInfo->EnPlaneAlpha, PlaneAlphaInfo->EnFixAlpha, PlaneAlphaInfo->AlphaValue);
+	sp_disp_info("Layer%d: En%d, Fix%d, 0x%x\n", PlaneAlphaInfo->Layer, PlaneAlphaInfo->EnPlaneAlpha, PlaneAlphaInfo->EnFixAlpha, PlaneAlphaInfo->AlphaValue);
 
 	tmp1 = pDMIXReg->dmix_plane_alpha;
 	tmp3 = pDMIXReg->dmix_plane_alpha3;
@@ -304,7 +294,7 @@ DRV_Status_e DRV_DMIX_Plane_Alpha_Set(DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo)
 				(PlaneAlphaInfo->AlphaValue & 0x3F);
 		break;
 	default:
-		ERRDISP("Invalid Layer %d\n", PlaneAlphaInfo->Layer);
+		sp_disp_err("Invalid Layer %d\n", PlaneAlphaInfo->Layer);
 		ret = DRV_ERR_INVALID_PARAM;
 		break;
 	}

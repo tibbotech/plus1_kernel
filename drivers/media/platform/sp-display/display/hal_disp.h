@@ -12,6 +12,9 @@
 #include <media/sp-disp/disp_vpp.h>
 
 #define SP_DISP_V4L2_SUPPORT
+//#define SP_DISP_VPP_FIXED_ADDR
+#define	SP_DISP_OSD_PARM
+#define V4L2_TEST_DQBUF
 
 #ifdef SP_DISP_V4L2_SUPPORT
 
@@ -34,7 +37,25 @@
 /**************************************************************************
  *                           C O N S T A N T S                            *
  **************************************************************************/
-#define REG_START_Q628_B			(0x9c000000)
+//#define SP_DISP_DEBUG
+
+#if 0
+#define sp_disp_err(fmt, args...)		printk(KERN_ERR "[DISP][Err][%s:%d]"fmt, __func__, __LINE__, ##args)
+#define sp_disp_info(fmt, args...)		printk(KERN_INFO "[DISP][%s:%d]"fmt, __func__, __LINE__, ##args)
+#ifdef SP_DISP_DEBUG
+#define sp_disp_dbg(fmt, args...)		printk(KERN_INFO "[DISP][%s:%d]"fmt, __func__, __LINE__, ##args)
+#else
+#define sp_disp_dbg(fmt, args...)
+#endif
+#else
+#define sp_disp_err(fmt, args...)		printk(KERN_ERR "[DISP][Err]"fmt, ##args)
+#define sp_disp_info(fmt, args...)		printk(KERN_INFO "[DISP]"fmt, ##args)
+#ifdef SP_DISP_DEBUG
+#define sp_disp_dbg(fmt, args...)		printk(KERN_INFO "[DISP]"fmt, ##args)
+#else
+#define sp_disp_dbg(fmt, args...)
+#endif
+#endif
 
 #define ALIGNED(x, n)				((x) & (~(n - 1)))
 #define EXTENDED_ALIGNED(x, n)		(((x) + ((n) - 1)) & (~(n - 1)))
@@ -53,13 +74,9 @@
 	#define DISABLE			0
 #endif
 
-#define diag_printf printk
-extern int printk(const char *fmt, ...);
-
-#define SUPPORT_DEBUG_MON
-
 #ifdef SP_DISP_V4L2_SUPPORT
-#define MIN_BUFFERS                     2
+#define MIN_BUFFERS				2
+#define	SP_DISP_MAX_DEVICES			3
 #endif
 /**************************************************************************
  *                          D A T A    T Y P E S                          *
@@ -70,6 +87,30 @@ typedef struct _display_size_t {
 } display_size_t;
 
 #ifdef SP_DISP_V4L2_SUPPORT
+enum sp_disp_device_id {
+	SP_DISP_DEVICE_0,
+	SP_DISP_DEVICE_1,
+	SP_DISP_DEVICE_2
+};
+struct sp_disp_layer {
+	/*for layer specific parameters */
+	struct sp_disp_device	*disp_dev;		/* Pointer to the sp_disp_device */
+	struct sp_disp_buffer   *cur_frm;		/* Pointer pointing to current v4l2_buffer */
+	struct sp_disp_buffer   *next_frm;		/* Pointer pointing to next v4l2_buffer */
+	struct vb2_queue   		buffer_queue;	/* Buffer queue used in video-buf2 */
+	struct list_head	    dma_queue;		/* Queue of filled frames */
+	spinlock_t				irqlock;		/* Used in video-buf */	
+	struct video_device 	video_dev;
+
+	struct v4l2_format 		fmt;            /* Used to store pixel format */
+	unsigned int 			usrs;			/* number of open instances of the layer */
+	struct mutex			opslock;		/* facilitation of ioctl ops lock by v4l2*/
+	enum sp_disp_device_id	device_id;		/* Identifies device object */
+	bool					skip_first_int; /* skip first int */
+	bool					streaming; 		/* layer start_streaming */
+	unsigned                sequence;
+
+};
 struct sp_fmt {
 	char    *name;
 	u32     fourcc;                                         /* v4l2 format id */
@@ -109,6 +150,7 @@ struct sp_disp_buffer {
 
 struct sp_disp_device {
 	void *pHWRegBase;
+	void *bio;
 
 	display_size_t		UIRes;
 	UINT32				UIFmt;
@@ -117,9 +159,6 @@ struct sp_disp_device {
 	spinlock_t osd_lock;
 	wait_queue_head_t osd_wait;
 	UINT32 osd_field_end_protect;
-
-	//void *aio;
-	void *bio;
 
 	//clk
 	struct clk *tgen_clk;
@@ -134,51 +173,27 @@ struct sp_disp_device {
 	struct reset_control *rstc;
 	
 	display_size_t		panelRes;
-#if 0
-	DRV_Sys_OutMode_Info_t DispOutMode;
-#endif
 
 #ifdef SP_DISP_V4L2_SUPPORT
+
+	#ifdef	SP_DISP_OSD_PARM
+	u8					*Osd0Header;
+	u8					*Osd1Header;
+	u32 				Osd0Header_phy;
+	u32 				Osd1Header_phy;
+	#endif
+
+	/* for device */
+	struct v4l2_device 		v4l2_dev;		/* V4l2 device */
 	struct device 			*pdev;			/* parent device */
-	struct video_device 	video_dev;
-	//struct videobuf_buffer  *cur_frm;		/* Pointer pointing to current v4l2_buffer */
-	//struct videobuf_buffer  *next_frm;		/* Pointer pointing to next v4l2_buffer */
-	struct sp_disp_buffer        *cur_frm;     /* Pointer pointing to current v4l2_buffer */
-	struct sp_disp_buffer        *next_frm;     /* Pointer pointing to current v4l2_buffer */
-	//struct videobuf_queue   buffer_queue;	/* Buffer queue used in video-buf */
-	struct vb2_queue   buffer_queue;	/* Buffer queue used in video-buf2 */
-	struct list_head	    dma_queue;		/* Queue of filled frames */
+	struct mutex			lock;			/* lock used to access this structure */
+	spinlock_t				dma_queue_lock;	/* IRQ lock for DMA queue */
 
-	struct v4l2_device 		v4l2_dev;   
-	struct v4l2_format 		fmt;            /* Used to store pixel format */		
-	struct v4l2_rect 		crop;
-	struct v4l2_rect 		win;
-	struct v4l2_control 	ctrl;
-	enum v4l2_buf_type 		type;
-	enum v4l2_memory 		memory;
-	struct sp_vout_layer_info *current_layer;	/* ptr to currently selected sub device */
-	struct sp_disp_config   *cfg;
-	//const struct sp_fmt     *cur_format;
-
-	spinlock_t irqlock;						/* Used in video-buf */	
-	spinlock_t dma_queue_lock;				/* IRQ lock for DMA queue */	
-	struct mutex lock;						/* lock used to access this structure */	
-
-	int 					baddr;
-	int 					fs_irq;
-	int 					fe_irq;
-	u32                     io_usrs;		/* number of users performing IO */
-	u8 						started;		/* Indicates whether streaming started */
-	u8 						capture_status;
-//	u32 usrs;								/* number of open instances of the channel */	
-//	u8 initialized;							/* flag to indicate whether decoder is initialized */
-	unsigned                        sequence;
-	bool                            streaming;              /* Indicates whether streaming started */
-	bool                            skip_first_int;	
+	struct sp_disp_layer	*dev[SP_DISP_MAX_DEVICES];
 #endif
 };
 
-extern struct sp_disp_device gDispWorkMem;
+extern struct sp_disp_device *gDispWorkMem;
 
 #endif	//__HAL_DISP_H__
 
