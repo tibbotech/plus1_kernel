@@ -69,7 +69,8 @@
 };
 &uart4 {
  pinctrl-names = "default";
- pinctrl-0 = </*&pins_uart4*/&pins_btuart &pins_bt_reset>;
+ /* pinctrl-0 = <&pins_uart4>; */
+ pinctrl-0 = <&pins_btuart &pins_bt_reset>;
 };
 
 &pctl {
@@ -200,10 +201,6 @@
  };
  eth0_pins: pinmux_eth0_pins {
   sppctl,pins = <
-/*
-        SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
-        SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
-*/
        SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
        SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
        SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
@@ -215,10 +212,6 @@
  };
  eth1_pins: pinmux_eth1_pins {
   sppctl,pins = <
-/*
-       SP7021_IOPAD(30,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH1,0)
-       SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON1,0)
-*/
        SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
        SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
        SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
@@ -249,9 +242,9 @@
 / {
 	soc@B {
 		tpsid {
-            compatible = "tpsid";
-			nvmem-cell-names = "mac_addr0";
-			nvmem-cells = <&mac_addr0>;
+        	    compatible = "tpsid";
+		    nvmem-cell-names = "mac_addr0";
+		    nvmem-cells = <&mac_addr0>;
 		};
 		leds {
 		    pinctrl-names = "default", "sleep";
