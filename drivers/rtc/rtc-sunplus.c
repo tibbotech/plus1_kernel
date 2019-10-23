@@ -301,7 +301,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	// Get charging-mode.
 	ret = of_property_read_u32(plat_dev->dev.of_node, "charging-mode", &sp_rtc.charging_mode);
 	if (ret) {
-		PTR_ERR("Failed to retrieve \'charging-mode\'!\n");
+		DBG_ERR("Failed to retrieve \'charging-mode\'!\n");
 		goto free_reset_assert;
 	}
 	sp_rtc_set_batt_charge_ctrl(sp_rtc.charging_mode);
