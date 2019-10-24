@@ -408,7 +408,7 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 	ret = DRV_OSD_Get_UI_Res(&Info);
 
 	if (ret) {
-		mod_err(pdev, "Get UI resolution fails");
+		mod_dbg(pdev, "Get UI resolution fails");
 		return -EPROBE_DEFER;
 	}
 
