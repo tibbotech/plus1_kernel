@@ -75,7 +75,7 @@ static ssize_t sppctl_sop_txt_map_R(
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
  for ( i = 0; i < list_funcsSZ; i++) {
-   f = &( list_funcs[ i]);
+   f = &( list_funcs[ i]);  pin = 0;
    if ( f->freg == fOFF_0) continue;
    if ( f->freg == fOFF_I) continue;
    memset( tmps, 0, SPPCTL_MAX_NAM + 3);
