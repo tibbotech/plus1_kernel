@@ -600,17 +600,13 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 }
 
 static int sp_iop_reserve_base(sp_iop_t *iopbase)
-{
-	DBG_ERR("sp_iop_reserve_base\n");
-	
+{	
 	FUNC_DEBUG();
 	hal_iop_set_reserve_base(iopbase->iop_regs);	
 	return IOP_SUCCESS;
 }
 static int sp_iop_reserve_size(sp_iop_t *iopbase)
-{
-	DBG_ERR("sp_iop_reserve_size\n");
-	
+{	
 	FUNC_DEBUG();		
 	hal_iop_set_reserve_size(iopbase->iop_regs);		
 	return IOP_SUCCESS;
@@ -621,11 +617,7 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	int ret = -ENXIO;	
 	int rc;
 
-	DBG_ERR("sp_iop_platform_driver_probe\n");
 	FUNC_DEBUG();
-
-
-
 	iop = (sp_iop_t *)devm_kzalloc(&pdev->dev, sizeof(sp_iop_t), GFP_KERNEL);
 	if (iop == NULL) {
 		printk("sp_iop_t malloc fail\n");
