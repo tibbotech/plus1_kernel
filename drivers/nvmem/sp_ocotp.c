@@ -31,6 +31,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
+#include <linux/version.h>
 
 /*
  * QAC628 OTP memory contains 8 banks with 4 32-bit words. Bank 0 starts
@@ -164,7 +165,6 @@ static int sp_ocotp_read( void *_c, unsigned int _off, void *_v, size_t _l)
 	int ret;
 
 	dev_dbg( otp->dev, "OTP read %u bytes at %u", _l, _off);
-	dev_err( otp->dev, "OTP read %u bytes at %u", _l, _off);
 
 	if (( _off >= QAC628_OTP_SIZE) || ( _l == 0) || (( _off + _l) > 128)) {
 		return -EINVAL;
@@ -189,18 +189,17 @@ static int sp_ocotp_read( void *_c, unsigned int _off, void *_v, size_t _l)
 disable_clk:
 	clk_disable( otp->clk);
 	dev_dbg( otp->dev, "OTP read complete");
-	dev_err( otp->dev, "OTP read complete");
 	return ret;
 }
 
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
-#if 0 // for >= 4.15
-	.type	= NVMEM_TYPE_OTP,
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+	.type = NVMEM_TYPE_OTP,
 #endif
 	.word_size = 1,
-    .size   = QAC628_OTP_SIZE,
+	.size = QAC628_OTP_SIZE,
 	.stride = 1,
 	.reg_read = sp_ocotp_read,
 	.owner = THIS_MODULE,
@@ -208,7 +207,7 @@ static struct nvmem_config sp_ocotp_nvmem_config = {
 
 typedef struct {
 	int size;
-} sp_otp_vX_t ;
+} sp_otp_vX_t;
 
 static const sp_otp_vX_t  sp_otp_v0 = {
 	.size = QAC628_OTP_SIZE,
@@ -219,18 +218,17 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 	const sp_otp_vX_t *sp_otp_vX = NULL;
 	struct device *dev = &( pdev->dev);
-//    struct device_node *dn = dev->of_node;
-    struct nvmem_device *nvmem;
+	struct nvmem_device *nvmem;
 	sp_otp_data_t *otp;
 	struct resource *res;
 	int ret;
 
 	match = of_match_device( dev->driver->of_match_table, dev);
 	if ( match && match->data) {
-      sp_otp_vX = match->data;
-      // may be used to choose the parameters
-    } else {
-        dev_err( dev, "OTP vX does not match");
+		sp_otp_vX = match->data;
+		// may be used to choose the parameters
+	} else {
+		dev_err( dev, "OTP vX does not match");
 	}
 
 	otp = devm_kzalloc( dev, sizeof( *otp), GFP_KERNEL);
@@ -267,8 +265,8 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 	sp_ocotp_nvmem_config.priv = otp;
 	sp_ocotp_nvmem_config.dev = dev;
 
-    // devm_* >= 4.15 kernel
-//	nvmem = devm_nvmem_register( dev, &sp_ocotp_nvmem_config);
+	// devm_* >= 4.15 kernel
+	// nvmem = devm_nvmem_register( dev, &sp_ocotp_nvmem_config);
 	nvmem = nvmem_register( &sp_ocotp_nvmem_config);
 	if ( IS_ERR( nvmem)) {
 		dev_err( dev, "error registering nvmem config\n");
@@ -288,9 +286,9 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 
 static int sp_ocotp_remove(struct platform_device *pdev)
 {
- // disbale for devm_*
- struct nvmem_device *nvmem = platform_get_drvdata( pdev);
- return nvmem_unregister( nvmem);
+	// disbale for devm_*
+	struct nvmem_device *nvmem = platform_get_drvdata( pdev);
+	return nvmem_unregister( nvmem);
 }
 
 static const struct of_device_id sp_ocotp_dt_ids[] = {
@@ -303,15 +301,18 @@ static struct platform_driver sp_otp_driver = {
 	.probe     = sp_ocotp_probe,
 	.remove    = sp_ocotp_remove,
 	.driver    = {
-        .name           = "sunplus,sp7021-ocotp",
-        .of_match_table = sp_ocotp_dt_ids,
+		.name           = "sunplus,sp7021-ocotp",
+		.of_match_table = sp_ocotp_dt_ids,
 	},
 };
 static int __init sp_otp_drv_new( void) {
- return platform_driver_register( &sp_otp_driver);  }
+	return platform_driver_register( &sp_otp_driver);
+}
 subsys_initcall( sp_otp_drv_new);
+
 static void __exit sp_otp_drv_del( void) {
- platform_driver_unregister( &sp_otp_driver);  }
+	platform_driver_unregister( &sp_otp_driver);
+}
 module_exit(sp_otp_drv_del);
 
 MODULE_DESCRIPTION("Sunplus OCOTP driver");
