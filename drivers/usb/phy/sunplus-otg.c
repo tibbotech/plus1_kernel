@@ -83,7 +83,7 @@ void dump_debug_register(struct usb_otg *otg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->phy, struct sp_otg, otg);
 
-	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
+	printk(KERN_DEBUG "%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 }
 EXPORT_SYMBOL(dump_debug_register);
@@ -116,12 +116,12 @@ static int sp_start_hnp(struct usb_otg *otg)
 	u32 ret;
 
 	ret = readl(&otg_host->regs_otg->otg_device_ctrl);
-	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
+	printk(KERN_DEBUG "%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 	ret |= A_SET_B_HNP_EN_BIT;
 	ret &= ~A_BUS_REQ_BIT;
 	writel(ret, &otg_host->regs_otg->otg_device_ctrl);
-	printk("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
+	printk(KERN_DEBUG "%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 	otg_host->otg.state = OTG_STATE_A_PERIPHERAL;
 
@@ -514,7 +514,7 @@ int __devinit sp_otg_probe(struct platform_device *dev)
 
 	otg_host = kzalloc(sizeof(struct sp_otg), GFP_KERNEL);
 	if (!otg_host) {
-		printk("Alloc mem for otg host fail\n");
+		printk(KERN_NOTICE "Alloc mem for otg host fail\n");
 		return -ENOMEM;
 	}
 
@@ -530,7 +530,7 @@ int __devinit sp_otg_probe(struct platform_device *dev)
 	otg_host->otg.otg = kzalloc(sizeof(struct usb_otg), GFP_KERNEL);
 	if (!otg_host->otg.otg) {
 		kfree(otg_host);
-		printk("Alloc mem for otg fail\n");
+		printk(KERN_NOTICE "Alloc mem for otg fail\n");
 		return -ENOMEM;
 	}
 
@@ -598,7 +598,6 @@ int __devinit sp_otg_probe(struct platform_device *dev)
 
 	otg_host->qwork = create_singlethread_workqueue(DRIVER_NAME);
 	if (!otg_host->qwork) {
-		printk("%s.%d,[q.d]\n",__FUNCTION__,__LINE__);
 		dev_dbg(&dev->dev, "cannot create workqueue %s\n", DRIVER_NAME);
 		ret = -ENOMEM;
 		goto err_ioumap;
@@ -632,7 +631,7 @@ int __devinit sp_otg_probe(struct platform_device *dev)
 
 	if (request_irq
 	    (otg_host->irq, otg_irq, IRQF_SHARED, DRIVER_NAME, otg_host) != 0) {
-		printk("OTG: Request irq fail\n");
+		printk(KERN_NOTICE "OTG: Request irq fail\n");
 		goto err_ioumap;
 	}
 

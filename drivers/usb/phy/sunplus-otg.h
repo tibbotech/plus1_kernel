@@ -4,7 +4,7 @@
 #include <linux/usb/phy.h>
 #include "otg_fsm.h"
 
-#define otg_debug(fmt, args...)               printk("#@#OTG: "fmt, ##args)
+#define otg_debug(fmt, args...)               printk(KERN_DEBUG "#@#OTG: "fmt, ##args)
 //#define otg_debug(fmt, args...)
 
 //#define OTG_TEST

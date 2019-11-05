@@ -225,14 +225,14 @@ static int hnp_polling_watchdog(void *arg)
 		ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
 							  0, 0x80, 0, 0xf000, &otg_status, 4, 5000);
 		if(ret < 0) {
-			printk("polling otg status fail,ret:%d\n",ret);
+			printk(KERN_NOTICE "polling otg status fail,ret:%d\n",ret);
 			return -1;
 		} else {
 			host_req_flag = otg_status & 0x1;
 			if(host_req_flag) {
 				otg_phy = usb_get_transceiver_sp(udev->bus->busnum-1);
 				if(!otg_phy){
-					printk("Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
+					printk(KERN_NOTICE "Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
 					return 1;
 				}
 				ret = usb_control_msg(udev,
@@ -246,7 +246,7 @@ static int hnp_polling_watchdog(void *arg)
 					 * OTG MESSAGE: report errors here,
 					 * customize to match your product.
 					 */
-					printk("can't set HNP mode: %d\n",ret);
+					printk(KERN_NOTICE "can't set HNP mode: %d\n",ret);
 				}
 				otg_start_hnp(otg_phy->otg);
 				msleep(1);
@@ -2923,7 +2923,7 @@ int usb_mirrorlink_configuration(struct usb_device *dev, int configuration)
 	for (i = 0; i < dev->descriptor.bNumConfigurations; i++) {
 		cp = &dev->config[i];
 		if (!cp) {
-			printk("%s %d\n", __FUNCTION__, __LINE__);
+			printk(KERN_DEBUG "%s %d\n", __FUNCTION__, __LINE__);
 			return -EINVAL;
 		}
 		nintf = cp->desc.bNumInterfaces;
@@ -2954,9 +2954,9 @@ int usb_mirrorlink_configuration(struct usb_device *dev, int configuration)
 	ret = usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 			      0xF0, 0x40, cpu_to_be16(MIRROR_LINK_VER),
 			      cpu_to_be16(HOST_ID), NULL, 0, 1000);
-	printk("\tmirror_link cmd] ret =%d (0x%x)\n", ret, ret);
+	printk(KERN_DEBUG "\tmirror_link cmd] ret =%d (0x%x)\n", ret, ret);
 	if ((!ncm_found) || (ret == -EPIPE)) {
-		printk("Try change to NCM mode ... reset port =%d\n",
+		printk(KERN_DEBUG "Try change to NCM mode ... reset port =%d\n",
 		       dev->portnum);
 		mirror_link_cmd_state = MIRRORLINK_CMD_WAIT;
 		return -1;
@@ -2975,11 +2975,11 @@ static void wait_connect_change(struct usb_device *dev)
 	if (mirror_link_cmd_state != MIRRORLINK_CMD_WAIT)
 		return;
 
-	printk("\twait +++++++++++\n");
+	printk(KERN_DEBUG "\twait +++++++++++\n");
 	msleep(MIRROR_LINK_DELAY_TIME_MS);
-	printk("\twait -----------\n");
+	printk(KERN_DEBUG "\twait -----------\n");
 	hub_port_status(hub, dev->portnum, &portstatus, &portchange);
-	printk("\t%s portstatus=%x portchange=%x\n",
+	printk(KERN_DEBUG "\t%s portstatus=%x portchange=%x\n",
 	       __FUNCTION__, portstatus, portchange);
 	mirror_link_cmd_state = MIRRORLINK_CMD_END;
 }
@@ -5215,12 +5215,12 @@ static int usb_logo_thread(void *arg)
 
 	if (udev->speed != USB_SPEED_HIGH) {
 		retval = -1;
-		printk("usb test mode,not high speed device\n");
+		printk(KERN_DEBUG "usb test mode,not high speed device\n");
 		goto fail;
 	}
 	switch (idProduct) {
 	case 0x0107:
-		printk("Test_DESC_EHCI\n");
+		printk(KERN_DEBUG "Test_DESC_EHCI\n");
 
 		buf = kmalloc(64, GFP_KERNEL);
 		if (!buf) {
@@ -5844,7 +5844,7 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		usb_disconnect(&port_dev->child);
 #ifdef CONFIG_RETRY_TIMES	/* sunplus USB driver */
 		if (count == 0) {
-			printk("%s %d %d\n", __func__, __LINE__, count);
+			printk(KERN_DEBUG "%s %d %d\n", __func__, __LINE__, count);
 			clear_bit(port1, hub->change_bits);
 			goto done;
 		}

@@ -1169,7 +1169,7 @@ int usb_stor_Bulk_transport(struct scsi_cmnd *srb, struct us_data *us)
 		//printk("CMD=0x%x result=%d \n",srb->cmnd[0],result);
 		if ( (result == USB_STOR_XFER_STALLED)/*||(result == USB_STOR_XFER_ERROR)*/){
 			if ((srb->cmnd[0] == READ_10)||(srb->cmnd[0] == WRITE_10)){
-				printk("\n\n SCSI:%x stall \n",srb->cmnd[0] );
+				printk(KERN_NOTICE "\n\n SCSI:%x stall \n",srb->cmnd[0]);
 				Usb_dev_power_reset(us->pusb_dev,2000);
 			}
 		}

@@ -1021,7 +1021,7 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 			status = dev_otg_status;
 			udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
 			udc_write(((1 << 2) - 1), UDEP0VB);
-			printk("get otg status,%d,%d\n",dev_otg_status,status);
+			DEBUG_DBG("get otg status,%d,%d\n",dev_otg_status,status);
 			memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
 			udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
 			udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
@@ -1042,7 +1042,7 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 	case USB_REQ_SET_FEATURE:
 #ifdef CONFIG_USB_SUNPLUS_OTG
 		if((0 == crq->bRequestType) && (3 == crq->wValue) && (0 == crq->wIndex) && (0 == crq->wLength)){
-			printk("set hnp featrue\n");
+			DEBUG_DBG("set hnp featrue\n");
 
 	#ifdef CONFIG_GADGET_USB0
 			otg_phy = usb_get_transceiver_sp(0);
@@ -1051,7 +1051,7 @@ static void sp_udc_handle_ep0s_idle(struct sp_udc *dev,
 	#endif
 
 			if (!otg_phy) {
-				printk("Get otg control fail\n");
+				DEBUG_NOTICE("Get otg control fail\n");
 			} else {
 				sp_accept_b_hnp_en_feature(otg_phy->otg);
 			}
@@ -4468,7 +4468,7 @@ static void fiq_handler(struct fiq_glue_handler *h, void *regs, void *svc_sp)
 }
 static irqreturn_t udcThreadHandler(int irq, void *dev_id)
 {
-	printk("<DSR>\n");
+	DEBUG_DBG("<DSR>\n");
 	return IRQ_HANDLED;
 }
 #endif
@@ -4511,7 +4511,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	}
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	printk("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq_num);
+	DEBUG_DBG("udc-line:%d,%lld,%lld,irq:%d\n", __LINE__, rsrc_start, rsrc_len, irq_num);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		ret = -ENOMEM;
@@ -4544,7 +4544,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->handler.isr = fiq_isr;
 	ret = fiq_glue_register_handler(&udc->handler);
 	if (ret != 0)
-		printk("udc fiq fail\n");
+		DEBUG_NOTICE("udc fiq fail\n");
 
 	ret = request_threaded_irq(irq_num, 0, udcThreadHandler,
 	                           IRQF_DISABLED , gadget_name, udc);/*udcThreadHandler*/

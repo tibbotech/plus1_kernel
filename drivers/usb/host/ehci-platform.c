@@ -142,7 +142,7 @@ NEXT_LOOP:
 					 || kthread_should_stop());
 
 		if (kthread_should_stop()) {
-			printk("%s is stoped!\n", __func__);
+			printk(KERN_DEBUG "%s is stoped!\n", __func__);
 			break;
 		}
 #ifdef CONFIG_USB_LOGO_TEST
@@ -423,17 +423,17 @@ static ssize_t store_usb_ctrl_reset(struct device *dev,
 	}
 
 	if (NULL == hcd) {
-		printk("store_usb_ctrl_reset: usb controller invalid\n");
+		printk(KERN_NOTICE "store_usb_ctrl_reset: usb controller invalid\n");
 		return count;
 	}
-	printk("Will reset usb controller val=%d\n", val);
+	printk(KERN_DEBUG "Will reset usb controller val=%d\n", val);
 #ifdef CONFIG_USB_HOST_RESET_SP
 	if (val == 1) {
-		printk("%s wake usb ctrl\n", __FUNCTION__);
+		printk(KERN_DEBUG "%s wake usb ctrl\n", __FUNCTION__);
 		*(hcd->ptr_flag) |= (RESET_HC_DEAD | RESET_UPHY_SIGN);
 		wake_up_interruptible(&hcd->reset_queue);
 	} else if (val > 500) {
-		printk("power reset %d ms \n", val);
+		printk(KERN_DEBUG "power reset %d ms \n", val);
 		reset_usb_powerx(hcd, val);
 	}
 #endif
@@ -482,7 +482,7 @@ int ehci_platform_probe(struct platform_device *dev)
 		pr_err("no irq provieded,ret:%d\n",irq);
 		return irq;
 	}
-	printk("ehci_id:%d,irq:%d\n",dev->id,irq);
+	printk(KERN_DEBUG "ehci_id:%d,irq:%d\n",dev->id,irq);
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
@@ -513,7 +513,7 @@ int ehci_platform_probe(struct platform_device *dev)
 #endif
 	tasklet_init(&hcd->host_irq_tasklet, ehci_irq_tasklet, (unsigned long)hcd);
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
-	printk("hcd_irq:%d,%d\n",hcd->irq,irq);
+	printk(KERN_DEBUG "hcd_irq:%d,%d\n",hcd->irq,irq);
 	if (err)
 		goto err_iounmap;
 
@@ -552,7 +552,7 @@ int ehci_platform_probe(struct platform_device *dev)
 #ifdef CONFIG_USB_HOST_RESET_SP
 	ehci_sp->flag = 0;
 
-	printk("flag ***%px %px %d %d %px\n", hcd, hcd->hcd_priv,
+	printk(KERN_DEBUG "flag ***%px %px %d %d %px\n", hcd, hcd->hcd_priv,
 	       sizeof(struct ehci_hcd_sp), hcd->driver->hcd_priv_size,
 	       &ehci_sp->flag);
 
@@ -639,7 +639,7 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
-	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	printk(KERN_DEBUG "%s.%d\n",__FUNCTION__, __LINE__);
 	rc = ehci_suspend(hcd, do_wakeup);
 	if (rc)
 		return rc;
@@ -654,7 +654,7 @@ static int ehci_sunplus_drv_resume(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 
-	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	printk(KERN_DEBUG "%s.%d\n",__FUNCTION__, __LINE__);
 	/*enable usb controller clock*/
 	clk_prepare(ehci_clk[dev->id - 1]);
 	clk_enable(ehci_clk[dev->id - 1]);
