@@ -14,6 +14,7 @@
 #include <linux/of_device.h>
 #include <linux/reset.h>
 #include <linux/mmc/mmc.h>
+#include <linux/mmc/sdio.h>
 #include <linux/mmc/slot-gpio.h>
 #include <linux/clk.h>     
 #include <asm/bitops.h>
@@ -436,6 +437,54 @@ static int __send_stop_cmd(struct spsdc_host *host, struct mmc_command *stop)
 	return 0;
 }
 
+#ifdef SPSDC_WIDTH_SWITCH
+
+static int __switch_sdio_bus_width(struct spsdc_host *host, int width)
+{
+	struct mmc_command cmd = {0};
+	u8 ctrl;
+	u32 value;
+	int ret = 0;
+
+	cmd.opcode = SD_IO_RW_DIRECT;
+	cmd.arg |= SDIO_CCCR_IF << 9;
+	cmd.flags = MMC_RSP_R5;
+	spsdc_prepare_cmd(host, &cmd);
+	value = readl(&host->base->sd_int);
+	value = bitfield_replace(value, 0, 1, 0); /* sdcmpen */
+	writel(value, &host->base->sd_int);
+	spsdc_trigger_transaction(host);
+	ret = spsdc_wait_finish(host);
+	if (ret) {
+		spsdc_sw_reset(host);
+		return ret;
+	}
+	spsdc_get_rsp(host, &cmd);
+	ctrl = cmd.resp[0] & 0xff;
+
+	ctrl &= ~SDIO_BUS_WIDTH_MASK;
+	if (MMC_BUS_WIDTH_4 == width) {
+		/* set to 4-bit bus width */
+		ctrl |= SDIO_BUS_WIDTH_4BIT;
+	}
+
+	cmd.arg |= 0x80000000;
+	cmd.arg |= ctrl;
+	spsdc_prepare_cmd(host, &cmd);
+	spsdc_trigger_transaction(host);
+	ret = spsdc_wait_finish(host);
+	if (ret) {
+		spsdc_sw_reset(host);
+		return ret;
+	}
+	spsdc_get_rsp(host, &cmd);
+	spsdc_set_bus_width(host, width);
+
+	return ret;
+}
+
+#endif
+
 /**
  * check if error occured during transaction.
  * @host -  host
@@ -610,6 +659,14 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 			spsdc_sw_reset(host);
 	}
 	host->mrq = NULL;
+
+#ifdef SPSDC_WIDTH_SWITCH
+	if (host->restore_4bit_sdio_bus){
+	    __switch_sdio_bus_width(host, MMC_BUS_WIDTH_4);
+	    host->restore_4bit_sdio_bus = 0;
+	}
+#endif
+
 	mutex_unlock(&host->mrq_lock);
 	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
 	mmc_request_done(host->mmc, mrq);
@@ -650,12 +707,30 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct mmc_data *data;
 	struct mmc_command *cmd;
 
+#ifdef SPSDC_WIDTH_SWITCH
+	int bus_width = mmc->ios.bus_width;
+#endif
+
 	mutex_lock_interruptible(&host->mrq_lock);
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
 	spsdc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
+
+#ifdef SPSDC_WIDTH_SWITCH
+	if (SD_IO_RW_EXTENDED == cmd->opcode && MMC_BUS_WIDTH_4 == bus_width && data->blocks*data->blksz <= 4) {
+	    if (__switch_sdio_bus_width(host, MMC_BUS_WIDTH_1)) {
+	        cmd->error = -1;
+		host->mrq = NULL;
+		mutex_unlock(&host->mrq_lock);
+		mmc_request_done(host->mmc, mrq);
+		return;
+	    }
+	    host->restore_4bit_sdio_bus = 1;
+	}
+#endif
+
 	spsdc_prepare_cmd(host, cmd);
 	/* we need manually read response R2. */
 	if (unlikely(cmd->flags & MMC_RSP_136)) {

@@ -28,6 +28,11 @@
  pinctrl-0 = <&spim0_pins>;
 };
 
+&uart4{
+ pinctrl-names = "default";
+ pinctrl-0 = <&uart4_pins>;
+};
+
 
 &pctl {
 
@@ -49,6 +54,16 @@
   >;                                                        
  }; 
                                                                                                                
+  /*** non-device binded ***/
+			uart4_pins: uart4_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(16,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
+					SP7021_IOPAD(18,SP7021_PCTL_G_PMUX,MUXF_UA4_RX,0)
+					SP7021_IOPAD(20,SP7021_PCTL_G_PMUX,MUXF_UA4_RTS,0)
+					SP7021_IOPAD(22,SP7021_PCTL_G_PMUX,MUXF_UA4_CTS,0)
+				>;
+			};
+ 
  }; 
 
 

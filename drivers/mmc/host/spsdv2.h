@@ -16,6 +16,9 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
+
+//#define SPSDC_WIDTH_SWITCH
+
 #define SPSDC_MIN_CLK	400000
 #define SPSDC_MAX_CLK	52000000
 #define SPSDC_MAX_BLK_COUNT 65536
