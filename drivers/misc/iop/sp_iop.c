@@ -25,8 +25,8 @@
 #include <linux/of_irq.h>
 #include <linux/kthread.h>
 /* ---------------------------------------------------------------------------------------------- */
-#define IOP_FUNC_DEBUG
-#define IOP_KDBG_INFO
+//#define IOP_KDBG_INFO
+//#define IOP_FUNC_DEBUG
 #define IOP_KDBG_ERR
 //#define IOP_GET_GPIO
 //#define IOP_UPDATE_FW
@@ -37,13 +37,13 @@ extern void gpio_free(unsigned gpio);
 int IOP_GPIO;
 
 
-#ifdef IOP_FUNC_DEBUG
-	#define FUNC_DEBUG()    printk(KERN_INFO "[IOP] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+#ifdef IOP_KDBG_INFO
+	#define FUNC_DEBUG()    printk(KERN_INFO "K_IOP: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
 	#define FUNC_DEBUG()
 #endif
 
-#ifdef IOP_KDBG_INFO
+#ifdef IOP_FUNC_DEBUG
 #define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_IOP: " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
@@ -486,21 +486,21 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int 
 	void __iomem *p;
 
 	FUNC_DEBUG();
-	DBG_INFO("[IOP] register name  : %s!!\n", res_name);
+	DBG_INFO("register name  : %s!!\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if(r == NULL) {
-		DBG_INFO("[IOP] platform_get_resource_byname fail\n");
+		DBG_INFO("platform_get_resource_byname fail\n");
 		return -ENODEV;
 	}
 
 	p = devm_ioremap_resource(&pdev->dev, r);
 	if (IS_ERR(p)) {
-		DBG_ERR("[IOP] ioremap fail\n");
+		DBG_ERR("ioremap fail\n");
 		return PTR_ERR(p);
 	}
 
-	DBG_INFO("[IOP ioremap addr : 0x%x!!\n", (unsigned int)p);
+	DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
 	*membase = (unsigned int)p;
 
 	return IOP_SUCCESS;
@@ -517,7 +517,7 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 
 	ret = _sp_iop_get_register_base(pdev, &membase, IOP_REG_NAME);
 	if (ret) {
-		DBG_ERR("[IOP] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+		DBG_ERR("%s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	}
 	else {
@@ -535,7 +535,7 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 	
 	ret = _sp_iop_get_register_base(pdev, &membase, IOP_QCTL_REG_NAME);
 	if (ret) {
-		DBG_ERR("[IOP] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+		DBG_ERR("%s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	} else {
 		pstSpIOPInfo->qctl_regs = (void __iomem *)membase;
@@ -543,7 +543,7 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 
 	ret = _sp_iop_get_register_base(pdev, &membase, IOP_PMC_REG_NAME);
 	if (ret) {
-		DBG_ERR("[IOP] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
+		DBG_ERR("%s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
 		return ret;
 	} else {
 		pstSpIOPInfo->pmc_regs = (void __iomem *)membase;
@@ -639,7 +639,7 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	ret = _sp_iop_get_resources(pdev, iop);	
 	ret = sp_iop_start(iop);
 	if (ret != 0) {
-		DBG_ERR("[IOP] sp iop init err=%d\n", ret);
+		DBG_ERR("sp iop init err=%d\n", ret);
 		return ret;
 	}
 
@@ -652,21 +652,21 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	#ifdef IOP_GET_GPIO /*Get GPIO number form DTS*/
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio0", 0);
 	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
-	DBG_ERR("[IOP] GPIO0 pin number %d\n",IOP_GPIO);
+	DBG_ERR("GPIO0 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
-		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
 
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio1", 0);
 	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
-	DBG_ERR("[IOP] GPIO1 pin number %d\n",IOP_GPIO);
+	DBG_ERR("GPIO1 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
-		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
 
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio2", 0);
 	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
-	DBG_ERR("[IOP] GPIO2 pin number %d\n",IOP_GPIO);
+	DBG_ERR("GPIO2 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
-		DBG_ERR("[IOP] Wrong pin %d configured for gpio\n",IOP_GPIO);
+		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
     #endif 
 	
 	sp_iop_reserve_base(iop);
