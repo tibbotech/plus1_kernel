@@ -137,9 +137,14 @@ static const sp7021grp_t sp7021grps_fpga[] = {
  EGRP( "FPGA_IFX", 1, pins_fpga),
 };
 
+/* CEC pin is not used. Release it for others.
 static const unsigned pins_hdmi1[] = {  D(10,6), D(10,7), D(12,2), D(12,1),  };
 static const unsigned pins_hdmi2[] = {  D( 8,3), D( 8,4), D( 8,5), D( 8,6),  };
 static const unsigned pins_hdmi3[] = {  D( 7,4), D( 7,5), D( 7,6), D( 7,7),  };
+*/
+static const unsigned pins_hdmi1[] = {  D(10,6), D(12,2), D(12,1),  };
+static const unsigned pins_hdmi2[] = {  D( 8,3), D( 8,5), D( 8,6),  };
+static const unsigned pins_hdmi3[] = {  D( 7,4), D( 7,6), D( 7,7),  };
 static const sp7021grp_t sp7021grps_hdmi[] = {
  EGRP( "HDMI_TX1", 1, pins_hdmi1),
  EGRP( "HDMI_TX2", 2, pins_hdmi2),
