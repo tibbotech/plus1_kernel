@@ -529,6 +529,17 @@
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM1>;
 			resets = <&rstc RST_I2CM1>;
+#if 0 // Demo board V3
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2cm1_tpm_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			st33htpi: st33htpi@0{
+				compatible = "st,st33htpm-i2c";
+				reg = <0x2e>;
+				status="okay";
+			};
+#endif
 		};
 
 		i2cm2: i2c@sp_i2cm2 {
@@ -1087,6 +1098,13 @@
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
 				sppctl,function = "HDMI_TX";					
+			};
+
+			i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+					SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+				>;
 			};
 
 			mipicsi0_pins: pinmux_mipicsi0_pins {
