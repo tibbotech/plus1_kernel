@@ -1019,6 +1019,11 @@ config SERIAL_OMAP_CONSOLE
 	  your boot loader about how to pass options to the kernel at
 	  boot time.)
 
+config SERIAL_SP_UART
+	bool "Sunplus UART support"
+	depends on OF
+	select SERIAL_CORE
+
 config SERIAL_SIFIVE
 	tristate "SiFive UART support"
 	depends on OF

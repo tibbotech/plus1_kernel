@@ -13,6 +13,8 @@
 #include <asm/csr.h>
 #include <asm/image.h>
 
+//#define PRINT_CORE_ID
+
 __INIT
 ENTRY(_start)
 	/*
@@ -89,6 +91,12 @@ clear_bss_done:
 	mv s1, a1
 	la a2, boot_cpu_hartid
 	REG_S a0, (a2)
+
+#ifdef PRINT_CORE_ID
+	add a0, a0, 'A'
+	li  a7, 1 //SBI_CONSOLE_PUTCHAR
+	ecall
+#endif
 
 	/* Initialize page tables and relocate to virtual addresses */
 	la sp, init_thread_union + THREAD_SIZE
@@ -168,6 +176,12 @@ relocate:
 	la a2, __cpu_up_task_pointer
 	add a1, a3, a1
 	add a2, a3, a2
+
+#ifdef PRINT_CORE_ID
+	add a0, a0, 'a'
+	li  a7, 1 //SBI_CONSOLE_PUTCHAR
+	ecall
+#endif
 
 	/*
 	 * This hart didn't win the lottery, so we wait for the winning hart to
