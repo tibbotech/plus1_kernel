@@ -1,21 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0
 #
 # USB device configuration
 #
-
-config GEMINI_USB
-	bool "Support Gemini USB"
-	select SCSI
-	select USB
-	select USB_SUPPORT
-	select USB_ARCH_HAS_EHCI
-	select USB_ARCH_HAS_OHCI
-#	select USB_EHCI_HCD_PLATFORM
-#	select USB_OHCI_HCD_PLATFORM
-#	select USB_EHCI_HCD
-#	select USB_OHCI_HCD
-	select USB_STORAGE
-	help
-	  Sunplus Gemini platform USB support
 
 config USB_OHCI_BIG_ENDIAN_DESC
 	bool
@@ -49,25 +35,8 @@ menuconfig USB_SUPPORT
 	  You will also need drivers from the following menu to make use of it.
 
 if USB_SUPPORT
-# usb ports freely determine enable/disable
-config USB_PORT0
-	bool "Sunplus Gemini USB PORT 0"
-	default y
 
-config USB_PORT1
-	bool "Sunplus Gemini USB PORT 1"
-	default y
-
-config USB_GADGET_ENABLED
-	bool
-	default y if (USB_PORT0 || USB_PORT1)
-
-config USB_GADGET_PORT0_ENABLED
-	bool "Sunplus Gemini USB gadget port 0"
-	default n
-
-config USB_COMMON
-	tristate
+source "drivers/usb/common/Kconfig"
 
 config USB_ARCH_HAS_HCD
 	def_bool y
@@ -75,6 +44,7 @@ config USB_ARCH_HAS_HCD
 config USB
 	tristate "Support for Host-side USB"
 	depends on USB_ARCH_HAS_HCD
+	select GENERIC_ALLOCATOR
 	select USB_COMMON
 	select NLS  # for UTF-8 strings
 	---help---
@@ -104,7 +74,7 @@ config USB
 	  After choosing your HCD, then select drivers for the USB peripherals
 	  you'll be using.  You may want to check out the information provided
 	  in <file:Documentation/usb/> and especially the links given in
-	  <file:Documentation/usb/usb-help.txt>.
+	  <file:Documentation/usb/usb-help.rst>.
 
 	  To compile this driver as a module, choose M here: the
 	  module will be called usbcore.
@@ -123,23 +93,9 @@ config USB_PCI
 
 if USB
 
-config USB_HOST_ENUM_RETRY
-	bool "Enable USB Host Enum Retry"
-	depends on USB
-
-config USB_MULTIPLE_RESET_PROBLEM_WORKAROUND
-	bool "Enable USB Multiple Reset Problem Workaround"
-	depends on USB
-
-config USB_HOST_NOT_FINISH_QTD_WHEN_DISC_WORKAROUND
-	bool "Enable Workaround USB Host Not Finish QTD When Disconnect"
-	depends on USB
-
 source "drivers/usb/core/Kconfig"
 
 source "drivers/usb/mon/Kconfig"
-
-source "drivers/usb/wusbcore/Kconfig"
 
 source "drivers/usb/host/Kconfig"
 
@@ -154,6 +110,8 @@ source "drivers/usb/image/Kconfig"
 source "drivers/usb/usbip/Kconfig"
 
 endif
+
+source "drivers/usb/cdns3/Kconfig"
 
 source "drivers/usb/mtu3/Kconfig"
 
@@ -215,37 +173,5 @@ source "drivers/usb/gadget/Kconfig"
 source "drivers/usb/typec/Kconfig"
 
 source "drivers/usb/roles/Kconfig"
-
-config USB_LED_TRIG
-	bool "USB LED Triggers"
-	depends on LEDS_CLASS && LEDS_TRIGGERS
-	select USB_COMMON
-	help
-	  This option adds LED triggers for USB host and/or gadget activity.
-
-	  Say Y here if you are working on a system with led-class supported
-	  LEDs and you want to use them as activity indicators for USB host or
-	  gadget.
-
-config USB_ULPI_BUS
-	tristate "USB ULPI PHY interface support"
-	select USB_COMMON
-	help
-	  UTMI+ Low Pin Interface (ULPI) is specification for a commonly used
-	  USB 2.0 PHY interface. The ULPI specification defines a standard set
-	  of registers that can be used to detect the vendor and product which
-	  allows ULPI to be handled as a bus. This module is the driver for that
-	  bus.
-
-	  The ULPI interfaces (the buses) are registered by the drivers for USB
-	  controllers which support ULPI register access and have ULPI PHY
-	  attached to them. The ULPI PHY drivers themselves are normal PHY
-	  drivers.
-
-	  ULPI PHYs provide often functions such as ADP sensing/probing (OTG
-	  protocol) and USB charger detection.
-
-	  To compile this driver as a module, choose M here: the module will
-	  be called ulpi.
 
 endif # USB_SUPPORT
