@@ -183,7 +183,7 @@ static struct device_attribute sppctl_sysfs_attrsD[] = {
 static struct bin_attribute sppctl_sysfs_attrsB[] = {
  __BIN_ATTR( list_muxes,0444,sppctl_sop_list_muxes_R, NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( txt_map   ,0444,sppctl_sop_txt_map_R,    NULL, SPPCTL_MAX_BUF),
- __BIN_ATTR( fw        ,0444,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
+ __BIN_ATTR( fw        ,0664,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
 };
 
 struct bin_attribute *sppctl_sysfs_Fap;
