@@ -176,14 +176,14 @@ static ssize_t sppctl_sop_fw_W(
 
 static struct device_attribute sppctl_sysfs_attrsD[] = {
  __ATTR(     name,0444,sppctl_sop_name_R,       NULL),
- __ATTR(     dbgi,0664,sppctl_sop_dbgi_R,       sppctl_sop_dbgi_W),
- __ATTR(   fwname,0664,sppctl_sop_fwname_R,     sppctl_sop_fwname_W),
+ __ATTR(     dbgi,0644,sppctl_sop_dbgi_R,       sppctl_sop_dbgi_W),
+ __ATTR(   fwname,0644,sppctl_sop_fwname_R,     sppctl_sop_fwname_W),
 };
 
 static struct bin_attribute sppctl_sysfs_attrsB[] = {
  __BIN_ATTR( list_muxes,0444,sppctl_sop_list_muxes_R, NULL, SPPCTL_MAX_BUF),
  __BIN_ATTR( txt_map   ,0444,sppctl_sop_txt_map_R,    NULL, SPPCTL_MAX_BUF),
- __BIN_ATTR( fw        ,0664,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
+ __BIN_ATTR( fw        ,0644,sppctl_sop_fw_R,         sppctl_sop_fw_W, SPPCTL_MAX_BUF),
 };
 
 struct bin_attribute *sppctl_sysfs_Fap;
@@ -214,7 +214,7 @@ void sppctl_sysfs_init( struct platform_device *_pd) {
    sdp[ i].pdata = _p;
    sysfs_bin_attr_init( sppctl_sysfs_Fap[ i]);
    sppctl_sysfs_Fap[ i].attr.name = tmpp;
-   sppctl_sysfs_Fap[ i].attr.mode = 0664;
+   sppctl_sysfs_Fap[ i].attr.mode = 0644;
    sppctl_sysfs_Fap[ i].read  = sppctl_sop_func_R;
    sppctl_sysfs_Fap[ i].write = sppctl_sop_func_W;
    sppctl_sysfs_Fap[ i].size = SPPCTL_MAX_BUF;
