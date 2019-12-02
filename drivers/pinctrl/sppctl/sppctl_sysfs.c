@@ -159,9 +159,9 @@ static ssize_t sppctl_sop_fw_W(
  sppctl_pdata_t *_p = NULL;
  func_t *f;
  struct device *_pdev = container_of( _k, struct device, kobj);
- if ( _off + _count < list_funcsSZ) {
-   KERR( _pdev, "%s() fw size %lld < %d\n", __FUNCTION__, _off + _count, list_funcsSZ);
-   return( -ENXIO);  }
+ if ( _off + _count < ( list_funcsSZ - 2)) {
+   KINF( _pdev, "%s() fw size %lld < %d\n", __FUNCTION__, _off + _count, list_funcsSZ);
+ }
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
  sdp = ( sppctl_sdata_t *)_a->private;
