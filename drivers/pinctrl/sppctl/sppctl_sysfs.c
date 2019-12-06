@@ -163,7 +163,6 @@ static ssize_t sppctl_sop_fw_W(
  }
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- sdp = ( sppctl_sdata_t *)_a->private;
  for ( ; i < list_funcsSZ && j < _count; i++) {
    f = &( list_funcs[ i]);
    if ( f->freg == fOFF_0) continue;
