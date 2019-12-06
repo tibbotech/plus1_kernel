@@ -140,8 +140,8 @@ static ssize_t sppctl_sop_fw_R(
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
  for ( i = 0; i < list_funcsSZ; i++) {
    f = &( list_funcs[ i]);
-   if ( list_funcs[ i].freg == fOFF_0) continue;
-   if ( list_funcs[ i].freg == fOFF_I) continue;
+   if ( f->freg == fOFF_0) continue;
+   if ( f->freg == fOFF_I) continue;
    if ( f->freg == fOFF_M) pin = sppctl_fun_get( _p, j++);
    if ( f->freg == fOFF_G) pin = sppctl_gmx_get( _p, f->roff, f->boff, f->blen);
    if ( pos > 0) {  pos -= sizeof( pin);  continue;  }
@@ -154,8 +154,7 @@ static ssize_t sppctl_sop_fw_R(
 static ssize_t sppctl_sop_fw_W(
  struct file *filp, struct kobject *_k, struct bin_attribute *_a,
  char *_b, loff_t _off, size_t _count) {
- int i = _off - 1, j = _off - 1;
- sppctl_sdata_t *sdp = NULL;
+ int i = _off, j = _off;
  sppctl_pdata_t *_p = NULL;
  func_t *f;
  struct device *_pdev = container_of( _k, struct device, kobj);
@@ -167,10 +166,10 @@ static ssize_t sppctl_sop_fw_W(
  sdp = ( sppctl_sdata_t *)_a->private;
  for ( ; i < list_funcsSZ && j < _count; i++) {
    f = &( list_funcs[ i]);
-   if ( list_funcs[ i].freg == fOFF_0) continue;
-   if ( list_funcs[ i].freg == fOFF_I) continue;
-   if ( list_funcs[ i].freg == fOFF_M) sppctl_pin_set( _p, _b[ j++], sdp->ridx);
-   if ( list_funcs[ i].freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ j++]);
+   if ( f->freg == fOFF_0) continue;
+   if ( f->freg == fOFF_I) continue;
+   if ( f->freg == fOFF_M) {  sppctl_pin_set( _p, _b[ j], j);  j++;  }
+   if ( f->freg == fOFF_G) sppctl_gmx_set( _p, f->roff, f->boff, f->blen, _b[ j++]);
   }
  return( i);  }
 
