@@ -236,6 +236,9 @@
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA4>;
 			resets = <&rstc RST_UA4>;
+#if 0 // Demo board V3
+			status = "disabled";
+#endif
 		};
 
 
@@ -520,6 +523,9 @@
 			clock-frequency = <100000>;
 			clocks = <&clkc I2CM0>;
 			resets = <&rstc RST_I2CM0>;
+#if 0 // Demo board V3
+			status = "disabled";
+#endif
 		};
 
 		i2cm1: i2c@sp_i2cm1 {
@@ -794,8 +800,12 @@
 			pinctrl-0 = <&mmc1_mux>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
+#if 0 // Demo board V3
+			cd-gpios = <&pctl 91 GPIO_ACTIVE_LOW>;
+#else
 			cd-gpios = <&pctl 71 GPIO_ACTIVE_LOW>;
 			broken-cd;
+#endif
 			disable-wp;
 			cap-sd-highspeed;
 			no-sdio;
@@ -841,6 +851,9 @@
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <25000000>;
+#if 0 // Demo board V3
+				status = "disabled";
+#endif
 			};
 		};
 
@@ -1015,7 +1028,11 @@
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
+#if 0 // Demo board V3
+				sppctl,pins = < SP7021_IOPAD(91,SP7021_PCTL_G_GPIO,0,0) >;
+#else
 				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
+#endif
 			};
 #if 0
 			pins_uart1: pins_uart1 {
@@ -1117,8 +1134,8 @@
 					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
 #if 0
 					SP7021_IOPAD(14,SP7021_PCTL_G_GPIO,0,1)
-					SP7021_IOPAD(15,SP7021_PCTL_G_GPIO,0,1)	
-#endif		
+					SP7021_IOPAD(15,SP7021_PCTL_G_GPIO,0,1)
+#endif
 				>;
 			};
 
