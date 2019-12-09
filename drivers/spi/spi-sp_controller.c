@@ -571,12 +571,12 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 	    }
 
 		if(pspim->tx_cur_len < tx_lenght){
- 		    for(i=0;i<(tx_lenght-pspim->tx_cur_len);i++){
+ 		    while(tx_lenght-pspim->tx_cur_len){
 		    	DBG_INFO("tx_data_buf554 0x%x  ,tx_cur_len %d \n",pspim->tx_data_buf[pspim->tx_cur_len],pspim->tx_cur_len);
 				if((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
 			    	break;
 		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &spim_reg->FIFO_DATA);
-		        pspim->tx_cur_len++;
+				pspim->tx_cur_len++
 		    }  
 		}
 
