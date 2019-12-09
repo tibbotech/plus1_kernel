@@ -576,7 +576,7 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 				if((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
 			    	break;
 		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &spim_reg->FIFO_DATA);
-				pspim->tx_cur_len++
+				pspim->tx_cur_len++;
 		    }  
 		}
 
