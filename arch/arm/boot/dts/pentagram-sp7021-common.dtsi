@@ -983,8 +983,8 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&mipicsi0_pins>;
 #if 0 // Demo board V3
-			mipicsi-gpio0 = <&pctl 92 GPIO_ACTIVE_HIGH>;
-			mipicsi-gpio1 = <&pctl 93 GPIO_ACTIVE_HIGH>;
+			cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
+			cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
 #endif
 		};
 #if 0
@@ -1110,15 +1110,15 @@
 
 			hdmi_A_tx1: hdmi_A_tx1_pins {
 				sppctl,groups = "HDMI_TX1";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx2: hdmi_A_tx2_pins {
 				sppctl,groups = "HDMI_TX2";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 
 			i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {

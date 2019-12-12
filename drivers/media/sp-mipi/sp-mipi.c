@@ -847,23 +847,18 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_get_csiiw_rstc;
 	}
 
-	// Get GPIO0/1.
-	mipi->gpio0 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio0", 0);
-	if (!gpio_is_valid(mipi->gpio0)) {
-		//MIP_ERR("Wrong pin %d configured for gpio0\n", mipi->gpio0);
-	}
-	else {
-		MIP_INFO("GPIO0 pin number %d\n", mipi->gpio0);
-		gpio_set_value(mipi->gpio0,1);
+	// Get cam_gpio0.
+	mipi->cam_gpio0 = devm_gpiod_get(&pdev->dev, "cam_gpio0", GPIOD_OUT_HIGH);
+	if (!IS_ERR(mipi->cam_gpio0)) {
+		MIP_INFO("cam_gpio0 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio0));
+		gpiod_set_value(mipi->cam_gpio0,1);
 	}
 
-	mipi->gpio1 = of_get_named_gpio(pdev->dev.of_node, "mipicsi-gpio1", 0);
-	if (!gpio_is_valid(mipi->gpio1)) {
-		//MIP_ERR("Wrong pin %d configured for gpio1\n", mipi->gpio1);
-	}
-	else {
-		MIP_INFO("GPIO1 pin number %d\n", mipi->gpio1);
-		gpio_set_value(mipi->gpio1,1);
+	// Get cam_gpio1.
+	mipi->cam_gpio1 = devm_gpiod_get(&pdev->dev, "cam_gpio1", GPIOD_OUT_HIGH);
+	if (!IS_ERR(mipi->cam_gpio1)) {
+		MIP_INFO("cam_gpio1 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio1));
+		gpiod_set_value(mipi->cam_gpio1,1);
 	}
 
 	// Get i2c id.
