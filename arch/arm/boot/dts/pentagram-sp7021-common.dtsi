@@ -620,10 +620,10 @@
 			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>, <0x9C000080 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
-/*
+#if 0 // Demo board V3
 			pinctrl-names = "default";
 			pinctrl-0 = <&hdmi_A_tx3>;
-*/
+#endif
 		};
 
 		sp_ehci0: usb@9C102100 {
@@ -982,9 +982,9 @@
 			i2c-id = <1>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&mipicsi0_pins>;
-#if 0
-			mipicsi-gpio0 = <&pctl 14 GPIO_ACTIVE_HIGH>;
-			mipicsi-gpio1 = <&pctl 15 GPIO_ACTIVE_HIGH>;
+#if 0 // Demo board V3
+			cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
+			cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
 #endif
 		};
 #if 0
@@ -1110,15 +1110,15 @@
 
 			hdmi_A_tx1: hdmi_A_tx1_pins {
 				sppctl,groups = "HDMI_TX1";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx2: hdmi_A_tx2_pins {
 				sppctl,groups = "HDMI_TX2";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 
 			i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
@@ -1130,11 +1130,14 @@
 
 			mipicsi0_pins: pinmux_mipicsi0_pins {
 				sppctl,pins = <
+#if 0 // Demo board V3
+					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+					SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+					SP7021_IOPAD(92,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
+					SP7021_IOPAD(93,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
+#else
 					SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
-#if 0
-					SP7021_IOPAD(14,SP7021_PCTL_G_GPIO,0,1)
-					SP7021_IOPAD(15,SP7021_PCTL_G_GPIO,0,1)
 #endif
 				>;
 			};

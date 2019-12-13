@@ -253,7 +253,6 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  parent = of_get_parent( _dn);
  *_nm = size/sizeof( *list);
  *_map = kcalloc( *_nm + nmG, sizeof( **_map), GFP_KERNEL);
- configs = kcalloc( *_nm + nmG, sizeof( *configs), GFP_KERNEL);
  for ( i = 0; i < ( *_nm); i++) {
     dt_pin = be32_to_cpu( list[ i]);
     p_p = SP7021_PCTLD_P(dt_pin);
@@ -267,15 +266,17 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
-      configs[ i] = p_l;
-      (* _map)[ i].data.configs.configs = &( configs[ i]);
+      configs = kcalloc( 1, sizeof( *configs), GFP_KERNEL);
+      *configs = p_l;
+      (* _map)[ i].data.configs.configs = configs;
       KDBG( _pd->dev, "%s(%d) = x%X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else if ( p_g == SP7021_PCTL_G_IOPP) {
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
-      configs[ i] = 0xFF;
-      (* _map)[ i].data.configs.configs = &( configs[ i]);
+      configs = kcalloc( 1, sizeof( *configs), GFP_KERNEL);
+      *configs = 0xFF;
+      (* _map)[ i].data.configs.configs = configs;
       KDBG( _pd->dev, "%s(%d) = x%X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
     } else {
       (* _map)[ i].type = PIN_MAP_TYPE_MUX_GROUP;
