@@ -133,7 +133,7 @@ typedef struct {
  const uint8_t blen;         // number of bits
  const sp7021grp_t *grps;    // list of groups
  const unsigned gnum;        // number of groups
- const char *grps_sa[100];   // array of pointers to func's grps names
+ const char *grps_sa[5];     // array of pointers to func's grps names
 } func_t;
 
 #define FNCE(n,r,o,bo,bl,g) { \
