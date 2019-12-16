@@ -89,7 +89,7 @@ uint8_t sppctl_fun_get( sppctl_pdata_t *_p,  uint8_t _fun) {
 static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
  int i = -1, j = 0;
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_ctx;
- if ( !_fw) {  KERR( p->pcdp->dev, "Firmare not found\n");  return;  }
+ if ( !_fw) {  KERR( p->pcdp->dev, "Firmware not found\n");  return;  }
  if ( _fw->size < list_funcsSZ) {
    KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);  return;
    goto out;  }
