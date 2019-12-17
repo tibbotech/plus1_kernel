@@ -138,7 +138,7 @@ static ssize_t sppctl_sop_fw_R(
  struct device *_pdev = container_of( _k, struct device, kobj);
  if ( !_pdev) return( -ENXIO);
  if ( !( _p = ( sppctl_pdata_t *)_pdev->platform_data)) return( -ENXIO);
- for ( i = 0; i < list_funcsSZ; i++) {
+ for ( i = 0; i < list_funcsSZ && ret < _count; i++) {
    f = &( list_funcs[ i]);
    if ( f->freg == fOFF_0) continue;
    if ( f->freg == fOFF_I) continue;
