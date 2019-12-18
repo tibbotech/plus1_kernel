@@ -91,13 +91,13 @@ static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_ctx;
  if ( !_fw) {  KERR( p->pcdp->dev, "Firmware not found\n");  return;  }
  if ( _fw->size < list_funcsSZ) {
-   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);  return;
+   KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);
    goto out;  }
  for ( i = 0; i < list_funcsSZ && i < _fw->size; i++) {
    if ( list_funcs[ i].freg != fOFF_M) continue;
    sppctl_pin_set( p, _fw->data[ i], i);
    j++;
-}
+ }
  out:
  release_firmware( _fw);
  return;  }
@@ -213,25 +213,23 @@ static const struct of_device_id sppctl_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, sppctl_dt_ids);
 MODULE_ALIAS("platform:" MNAME);
 static struct platform_driver sppctl_driver = {
- .driver		= {
-    .name		= MNAME,
-	.owner	    = THIS_MODULE,
-    .of_match_table	= of_match_ptr( sppctl_dt_ids),
+ .driver = {
+    .name           = MNAME,
+    .owner          = THIS_MODULE,
+    .of_match_table = of_match_ptr( sppctl_dt_ids),
  },
- .probe		= sppctl_dnew,
- .remove	= sppctl_ddel,
+ .probe  = sppctl_dnew,
+ .remove = sppctl_ddel,
 };
 
 //module_platform_driver(sppctl_driver);
 
-#if 1
 static int __init sppctl_drv_reg( void) {
  return platform_driver_register( &sppctl_driver);  }
 postcore_initcall( sppctl_drv_reg);
 static void __exit sppctl_drv_exit( void) {
  platform_driver_unregister( &sppctl_driver);  }
 module_exit(sppctl_drv_exit);
-#endif
 
 MODULE_AUTHOR(M_AUT);
 MODULE_DESCRIPTION(M_NAM);
