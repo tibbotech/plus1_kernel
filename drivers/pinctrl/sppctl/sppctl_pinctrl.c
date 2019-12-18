@@ -358,7 +358,7 @@ void group_groups( struct platform_device *_pd) {
  return;  }
 
 // ---------- main (exported) functions
-void sppctl_pinctrl_init( struct platform_device *_pd) {
+int sppctl_pinctrl_init( struct platform_device *_pd) {
  int err;
  struct device *dev = &_pd->dev;
  struct device_node *np = of_node_get( dev->of_node);
@@ -376,9 +376,10 @@ void sppctl_pinctrl_init( struct platform_device *_pd) {
 
  if ( ( err = devm_pinctrl_register_and_init( &( _pd->dev), &( _p->pdesc), _p, &( _p->pcdp)))) {
    KERR( &( _pd->dev), "Failed to register\n");
-   of_node_put( np);  }
+   of_node_put( np);
+   return( err);  }
  pinctrl_enable( _p->pcdp);
- return;  }
+ return( 0);  }
 
 void sppctl_pinctrl_clea( struct platform_device *_pd) {
  sppctl_pdata_t *_p = ( sppctl_pdata_t *)_pd->dev.platform_data;

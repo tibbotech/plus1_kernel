@@ -24,7 +24,6 @@
 #define M_ORG "SunPlus/Tibbo Tech."
 #define M_CPR "(C) 2019-2019"
 
-//#define FW_DEFNAME "sppctl.bin"
 #define FW_DEFNAME NULL
 
 #include <linux/kernel.h>
