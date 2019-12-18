@@ -23,11 +23,9 @@
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/version.h>
-
 #include <linux/errno.h>
 #include <linux/types.h>
 #include <linux/slab.h>
-
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
 #include <linux/of.h>
@@ -35,35 +33,10 @@
 #include <linux/of_irq.h>
 #include <linux/gpio/driver.h>
 #include <linux/stringify.h>
-
 #include <mach/io_map.h>
 
 #include "sppctl.h"
 
-#ifndef SPPCTL_H
-
-#define MNAME "sp7021_gpio"
-#define M_LIC "GPL v2"
-#define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
-#define M_NAM "SP7021 GPIO"
-#define M_ORG "SunPlus/Tibbo Tech."
-#define M_CPR "(C) 2019-2019"
-
-#define KINF(pd,fmt,args...) { \
-    if ( (pd) != NULL) {  dev_info((pd),""fmt,##args);  \
-    } else {  printk( KERN_INFO     MNAME": "fmt,##args);  }  }
-#define KERR(pd,fmt,args...) { \
-    if ( (pd) != NULL) {  dev_info((pd),""fmt,##args);  \
-    } else {  printk( KERN_ERR      MNAME": "fmt,##args);  }  }
-#ifdef CONFIG_DEBUG_GPIO
-#define KDBG(pd,fmt,args...) { \
-    if ( (pd) != NULL) {  dev_info((pd),""fmt,##args);  \
-    } else {  printk( KERN_DEBUG    MNAME": "fmt,##args);  }  }
-#else
-#define KDBG(pd,fmt,args...) 
-#endif
-
-#endif // SPPCTL_H
 
 typedef struct sp7021gpio_chip_T {
  spinlock_t lock;
