@@ -184,7 +184,6 @@ static int sppctl_dnew( struct platform_device *_pd) {
  else strcpy( p->name, MNAME);
  dev_set_name( &( _pd->dev), "%s", p->name);
  if ( ( ret = sp7021_pctl_resmap( _pd, p)) != 0) {
-   devm_kfree( &( _pd->dev), p);
    return( ret);  }
  // set gpio_chip
  _pd->dev.platform_data = p;
@@ -203,7 +202,6 @@ static int sppctl_ddel( struct platform_device *_pd) {
  sp7021_gpio_del( _pd, p);
  sppctl_sysfs_clean( _pd);
  sppctl_pinctrl_clea( _pd);
- devm_kfree( &( _pd->dev), p);
  return( 0);  }
 
 static const struct of_device_id sppctl_dt_ids[] = {
