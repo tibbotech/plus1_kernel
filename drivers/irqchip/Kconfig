@@ -496,3 +496,6 @@ config SIFIVE_PLIC
 	   interrupt sources are subordinate to the PLIC.
 
 	   If you don't know what to do here, say Y.
+
+config SP_INTC
+    bool "Sunplus interrupt controller"

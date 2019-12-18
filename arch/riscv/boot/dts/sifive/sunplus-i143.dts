@@ -3,6 +3,9 @@
 
 /dts-v1/;
 
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
+
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
 #define RTCCLK_FREQ		1000000
 
@@ -178,5 +181,44 @@
 			reg = <0x0 0x9c000900 0x0 0x80>;
 		};
 
+		intc: interrupt-controller@9c003500 {
+			compatible = "sunplus,sp-intc";
+			interrupt-controller;
+			reg = <0x0 0x9c003500 0x0 0x80>, // G106
+				  <0x0 0x9c003580 0x0 0x80>; // G107
+			#interrupt-cells = <2>;
+			interrupt-parent = <&plic0>;
+			interrupts = <2 7>; // 2,7 for core0
+			ext0-mask = <0xf>; /* core0-3 */
+			ext1-mask = <0xe>; /* core1-3 */
+		};
+
+#if 0 // for sp-intc & sp-ipc test
+		ipc_test: ipc_test@G258 {
+			compatible = "sunplus,sp-ipc-test";
+			reg = <0x0 0x9c008100 0x0 0x100>; /* G258 ~ G259 */
+			interrupt-parent = <&intc>;
+			interrupts =
+				<2 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT0 */
+				<3 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT1 */
+				<4 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT2 */
+				<5 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT3 */
+				<6 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT4 */
+				<7 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT5 */
+				<8 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT6 */
+				<9 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT7 */
+				<10 IRQ_TYPE_EDGE_RISING>, /* U54_INT */
+				<84 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT0 */
+				<85 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT1 */
+				<86 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT2 */
+				<87 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT3 */
+				<88 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT4 */
+				<89 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT5 */
+				<90 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT6 */
+				<91 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>, /* ACHIPCPU0_DIRECT_INT7 */
+				<92 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>; /* ACHIPCPU0_INT */
+		};
 	};
+#endif
+
 };
