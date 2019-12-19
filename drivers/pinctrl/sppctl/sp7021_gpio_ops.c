@@ -117,6 +117,39 @@ void sp7021gpio_u_seodr( struct gpio_chip *_c, unsigned int _n, unsigned _v) {
  writel( r, pc->base1 + SP7021_GPIO_OFF_OD + R16_ROF(_n));
  return;  }
 
+#ifndef SPPCTL_H
+// take pin (export/open for ex.): set GPIO_FIRST=1,GPIO_MASTER=1
+// FIX: how to prevent gpio to take over the mux if mux is the default?
+// FIX: idea: save state of MASTER/FIRST and return back after _fre?
+int sp7021gpio_f_req( struct gpio_chip *_c, unsigned _n) {
+ u32 r;
+ sp7021gpio_chip_t *pc = ( sp7021gpio_chip_t *)gpiochip_get_data( _c);
+ //KINF( _c->parent, "f_req(%03d)\n", _n);
+ // get GPIO_FIRST:32
+ r = readl( pc->base2 + SP7021_GPIO_OFF_GFR + R32_ROF(_n));
+ // set GPIO_FIRST(1):32
+ r |= BIT(R32_BOF(_n));
+ writel( r, pc->base2 + SP7021_GPIO_OFF_GFR + R32_ROF(_n));
+ // set GPIO_MASTER(1):m16,v:16
+ r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
+ writel( r, pc->base0 + SP7021_GPIO_OFF_CTL + R16_ROF(_n));
+ return( 0);  }
+
+// gave pin back: set GPIO_MASTER=0,GPIO_FIRST=0
+void sp7021gpio_f_fre( struct gpio_chip *_c, unsigned _n) {
+ u32 r;
+ sp7021gpio_chip_t *pc = ( sp7021gpio_chip_t *)gpiochip_get_data( _c);
+ // set GPIO_MASTER(1):m16,v:16 - doesn't matter now: gpio mode is default
+ //r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n);
+ //writel( r, pc->base0 + SP7021_GPIO_OFF_CTL + R16_ROF(_n));
+ // get GPIO_FIRST:32
+ r = readl( pc->base2 + SP7021_GPIO_OFF_GFR + R32_ROF(_n));
+ // set GPIO_FIRST(0):32
+ r &= ~BIT(R32_BOF(_n));
+ writel( r, pc->base2 + SP7021_GPIO_OFF_GFR + R32_ROF(_n));
+ return;  }
+#endif // SPPCTL_H
+
 // get dir: 0=out, 1=in, -E =err (-EINVAL for ex): OE inverted on ret
 int sp7021gpio_f_gdi( struct gpio_chip *_c, unsigned _n) {
  u32 r;
