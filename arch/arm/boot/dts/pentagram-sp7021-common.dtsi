@@ -1004,6 +1004,19 @@
 			pinctrl-0 = <&mipicsi1_pins>;
 		};
 #endif
+
+		led {
+			compatible = "gpio-leds";
+			pinctrl-names = "default";
+			pinctrl-0 = <&gpio_leds_pins>;
+			system-led {
+				label = "system-led";
+				gpios = <&pctl 0 GPIO_ACTIVE_HIGH>;
+				default-state = "off";
+				linux,default-trigger = "heartbeat";
+			};
+		};
+
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sp7021-pctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
@@ -1150,6 +1163,10 @@
 				>;
 			};
 #endif
+
+			gpio_leds_pins: pinmux_gpio_leds_pins {
+				sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT) >;
+			};
 
 			l2sw_two_phy_pins: pinmux_l2sw_two_phy_pins {
 				sppctl,pins = <
