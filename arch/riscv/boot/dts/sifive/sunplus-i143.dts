@@ -5,9 +5,11 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/sp_i143.h>
 
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
-#define RTCCLK_FREQ		1000000
+#define RTCCLK_FREQ             1000000
 
 / {
 	#address-cells = <2>;
@@ -219,6 +221,110 @@
 				<92 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>; /* ACHIPCPU0_INT */
 		};
 #endif
+		mmc0: mmc@emmc {
+			compatible = "sunplus,sp7021-emmc";
+			reg = <0x0 0x9c003b00 0x0 0x180>;
+			interrupt-parent = <&intc>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			//clocks = <&clkc CARD_CTL0>;
+			//resets = <&rstc RST_CARD_CTL0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&emmc_mux>;
+			bus-width = <8>;
+			max-frequency = <52000000>;
+			non-removable;
+			disable-wp;
+			cap-mmc-highspeed;
+			mmc-ddr-3_3v;
+			no-sdio;
+			no-sd;
+		};
+
+		mmc1: mmc@sdcard {
+			compatible = "sunplus,sp7021-card1";
+			reg = <0x0 0x9c003e80 0x0 0x280>;
+			interrupt-parent = <&intc>;
+			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			//clocks = <&clkc CARD_CTL1>;
+			//resets = <&rstc RST_CARD_CTL1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&mmc1_mux>;
+			bus-width = <4>;
+			max-frequency = <52000000>;
+			cd-gpios = <&pctl 63 GPIO_ACTIVE_LOW>;
+			broken-cd;
+			disable-wp;
+			cap-sd-highspeed;
+			no-sdio;
+			no-mmc;
+		};
+
+		gl2sw: gl2sw@0x9c108000 {
+			compatible = "sunplus,i143-gl2sw";
+			reg = <0x0 0x9c108000 0x0 0x400>, <0x0 0x9c000280 0x0 0x80>;
+			reg-names = "l2sw", "moon5";
+			interrupt-parent = <&intc>;
+			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
+			//clocks = <&clkc L2SW>;
+			//resets = <&rstc RST_L2SW>;
+			phy-handle1 = <&eth_phy0>;
+			phy-handle2 = <&eth_phy1>;
+			//nvmem-cell-names = "mac_addr0", "mac_addr1";
+			//nvmem-cells = <&mac_addr0>, <&mac_addr1>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&gl2sw_pins>;
+		};
+
+		mdio {
+			compatible = "sunplus,i143-mdio";
+			#address-cells = <1>;
+			#size-cells = <0>;
+			eth_phy0: ethernet-phy@0 {
+				reg = <0>;
+			};
+			eth_phy1: ethernet-phy@1 {
+				reg = <1>;
+			};
+		};
+
+		pctl: pctl@0x9C000100 {
+			compatible = "sunplus,i143-pctl";
+			reg = <0x0 0x9C000100 0x0 0x100>,
+			      <0x0 0x9C000300 0x0 0x80>,
+			      <0x0 0x9C000380 0x0 0x80>,
+			      <0x0 0x9C0032e4 0x0 0x1C>,
+			      <0x0 0x9C000080 0x0 0x20>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<120 IRQ_TYPE_LEVEL_HIGH>,
+				<121 IRQ_TYPE_LEVEL_HIGH>,
+				<122 IRQ_TYPE_LEVEL_HIGH>,
+				<123 IRQ_TYPE_LEVEL_HIGH>,
+				<124 IRQ_TYPE_LEVEL_HIGH>,
+				<125 IRQ_TYPE_LEVEL_HIGH>,
+				<126 IRQ_TYPE_LEVEL_HIGH>,
+				<127 IRQ_TYPE_LEVEL_HIGH>;
+			//clocks = <&clkc GPIO>;
+			//resets = <&rstc RST_GPIO>;
+
+			emmc_mux: emmc_mux {
+				sppctl,groups = "CARD0_EMMC";
+				sppctl,function = "CARD0_EMMC";
+			};
+
+			mmc1_mux: mmc1_mux {
+				sppctl,groups = "SD_CARD";
+				sppctl,function = "SD_CARD";
+				sppctl,pins = < I143_IOPAD(63,I143_PCTL_G_GPIO,0,0) >;
+			};
+
+			gl2sw_pins: gl2sw_pins {
+				sppctl,groups = "GL2SW";
+				sppctl,function = "GL2SW";
+			};
+		};
 	};
 
 };
