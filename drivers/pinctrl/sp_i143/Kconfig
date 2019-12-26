@@ -1,5 +1,6 @@
 config PINCTRL_SP_I143
 	bool "Sunplus i143 pinmux and gpio driver"
+	depends on SOC_I143
 	select PINMUX
 	select GENERIC_PINCTRL_GROUPS
 	select CONFIG_GENERIC_PINMUX_FUNCTIONS
@@ -16,6 +17,6 @@ config PINCTRL_SP_I143
 
 config PINCTRL_SP_I143_DEBUG
 	bool "Sunplus i143 mux specific debug"
-	depends on ARCH_PENTAGRAM && DEBUG_PINCTRL
+	depends on SOC_I143 && DEBUG_PINCTRL
 	help
 	    Say Y if you need to debug i143 mux driver in-depth.
