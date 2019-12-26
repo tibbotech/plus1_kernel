@@ -19,7 +19,7 @@
 
 	chosen {
 		linux,initrd-start = <0x00000000 0xa2000000>;
-		linux,initrd-end = <0x00000000 0xa245b7d0>;
+		linux,initrd-end = <0x00000000 0xa2AC1A40>;
 		//bootargs = "earlycon=sbi keep_bootcon loglevel=8";
 		bootargs = "earlycon loglevel=8";
 		stdout-path = "/soc/serial@sp_uart0";
