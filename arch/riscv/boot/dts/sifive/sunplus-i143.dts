@@ -48,17 +48,11 @@
 			clock-output-names = "extclk";
 		};
 
-		pllsys: clk@extclk {
-			#clock-cells = <0>;
-			compatible = "fixed-clock";
-			clock-frequency = <202000000>;
-			clock-output-names = "pllsys";
-		};
-
 		clkc: clkc@9c000054 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
-			reg = <0x0 0x9c000000 0x0 0x2c>; // G0.0 ~ G0.10
+			reg = <0x0 0x9c000000 0x0 0x2c>, // G0.0 ~ G0.10
+				  <0x0 0x9c000200 0x0 0x80>; // G4
 		};
 	};
 
