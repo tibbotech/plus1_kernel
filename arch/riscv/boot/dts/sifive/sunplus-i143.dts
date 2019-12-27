@@ -3,6 +3,8 @@
 
 /dts-v1/;
 
+#define CONFIG_SOC_I143
+
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
 #include <dt-bindings/clock/sp-clkc.h>
