@@ -1,0 +1,22 @@
+config PINCTRL_SP_I143
+	bool "Sunplus i143 pinmux and gpio driver"
+	depends on SOC_I143
+	select PINMUX
+	select GENERIC_PINCTRL_GROUPS
+	select CONFIG_GENERIC_PINMUX_FUNCTIONS
+	select PINCONF
+	select GENERIC_PINCONF
+	select OF_GPIO
+	select GPIOLIB
+	select GPIO_SYSFS
+	select GENERIC_IRQ_CHIP
+	select GPIOLIB_IRQCHIP
+	help
+	    Say Y here to support Sunplus i143 pinmux controller.
+	    GPIO is provided by the same driver.
+
+config PINCTRL_SP_I143_DEBUG
+	bool "Sunplus i143 mux specific debug"
+	depends on SOC_I143 && DEBUG_PINCTRL
+	help
+	    Say Y if you need to debug i143 mux driver in-depth.
