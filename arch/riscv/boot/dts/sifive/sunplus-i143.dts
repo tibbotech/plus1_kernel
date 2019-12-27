@@ -5,6 +5,8 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
+#include <dt-bindings/clock/sp-clkc.h>
+#include <dt-bindings/reset/sp-resets.h>
 
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
 #define RTCCLK_FREQ		1000000
@@ -28,6 +30,32 @@
 		//reg = <0x0 0xa0000000 0x0 0x20000000>; /* 512 MB */
 		//reg = <0x0 0xa0000000 0x0 0x08000000>; /* 128 MB */
 		reg = <0x0 0xa0000000 0x0 0x04000000>; /* 64 MB */
+	};
+
+	clocks {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		extclk: clk@osc0 {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <27000000>;
+			clock-output-names = "extclk";
+		};
+
+		pllsys: clk@extclk {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <202000000>;
+			clock-output-names = "pllsys";
+		};
+
+		clkc: clkc@9c000054 {
+			#clock-cells = <1>;
+			compatible = "sunplus,sp-clkc";
+			reg = <0x0 0x9c000000 0x0 0x2c>; // G0.0 ~ G0.10
+		};
 	};
 
 	cpus {
@@ -191,6 +219,13 @@
 			interrupts = <2 7>; // 2,7 for core0
 			ext0-mask = <0xf>; /* core0-3 */
 			ext1-mask = <0xe>; /* core1-3 */
+		};
+
+		rstc: reset@9c000054 {
+			compatible = "sunplus,sp-reset";
+			#reset-cells = <1>;
+			reg = <0x0 0x9c000054 0x0 0x28>; // G0.21 ~ G0.30
+			reg-names = "reset";
 		};
 
 #if 0 // for sp-intc & sp-ipc test

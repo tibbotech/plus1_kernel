@@ -292,6 +292,11 @@ config COMMON_CLK_STM32H7
 	help
 	  Support for stm32h7 SoC family clocks
 
+config COMMON_CLK_SUNPLUS
+	def_bool COMMON_CLK && OF && SOC_I143
+	help
+	  Support for Sunplus SoC family clocks
+
 config COMMON_CLK_BD718XX
 	tristate "Clock driver for ROHM BD718x7 PMIC"
 	depends on MFD_ROHM_BD718XX || MFD_ROHM_BD70528
