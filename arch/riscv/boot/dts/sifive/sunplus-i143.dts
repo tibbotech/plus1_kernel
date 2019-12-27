@@ -256,9 +256,9 @@
 			compatible = "sunplus,sp7021-emmc";
 			reg = <0x0 0x9c003b00 0x0 0x180>;
 			interrupt-parent = <&intc>;
-			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
-			//clocks = <&clkc CARD_CTL0>;
-			//resets = <&rstc RST_CARD_CTL0>;
+			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc CARD_CTL0>;
+			resets = <&rstc RST_CARD_CTL0>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&emmc_mux>;
 			bus-width = <8>;
@@ -275,9 +275,9 @@
 			compatible = "sunplus,sp7021-card1";
 			reg = <0x0 0x9c003e80 0x0 0x280>;
 			interrupt-parent = <&intc>;
-			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-			//clocks = <&clkc CARD_CTL1>;
-			//resets = <&rstc RST_CARD_CTL1>;
+			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc CARD_CTL1>;
+			resets = <&rstc RST_CARD_CTL1>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&mmc1_mux>;
 			bus-width = <4>;
@@ -295,9 +295,13 @@
 			reg = <0x0 0x9c108000 0x0 0x400>, <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "l2sw", "moon5";
 			interrupt-parent = <&intc>;
-			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
-			//clocks = <&clkc L2SW>;
-			//resets = <&rstc RST_L2SW>;
+			interrupts =
+				<38 IRQ_TYPE_LEVEL_HIGH>,
+				<39 IRQ_TYPE_LEVEL_HIGH>,
+				<40 IRQ_TYPE_LEVEL_HIGH>,
+				<41 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc GL2SW>;
+			resets = <&rstc RST_GL2SW>;
 			phy-handle1 = <&eth_phy0>;
 			phy-handle2 = <&eth_phy1>;
 			//nvmem-cell-names = "mac_addr0", "mac_addr1";
@@ -327,16 +331,16 @@
 			      <0x0 0x9C000080 0x0 0x20>;
 			gpio-controller;
 			#gpio-cells = <2>;
-			interrupt-parent = <&intc>;
-			interrupts =
-				<120 IRQ_TYPE_LEVEL_HIGH>,
-				<121 IRQ_TYPE_LEVEL_HIGH>,
-				<122 IRQ_TYPE_LEVEL_HIGH>,
-				<123 IRQ_TYPE_LEVEL_HIGH>,
-				<124 IRQ_TYPE_LEVEL_HIGH>,
-				<125 IRQ_TYPE_LEVEL_HIGH>,
-				<126 IRQ_TYPE_LEVEL_HIGH>,
-				<127 IRQ_TYPE_LEVEL_HIGH>;
+			//interrupt-parent = <&intc>;
+			//interrupts =
+			//	<120 IRQ_TYPE_LEVEL_HIGH>,
+			//	<121 IRQ_TYPE_LEVEL_HIGH>,
+			//	<122 IRQ_TYPE_LEVEL_HIGH>,
+			//	<123 IRQ_TYPE_LEVEL_HIGH>,
+			//	<124 IRQ_TYPE_LEVEL_HIGH>,
+			//	<125 IRQ_TYPE_LEVEL_HIGH>,
+			//	<126 IRQ_TYPE_LEVEL_HIGH>,
+			//	<127 IRQ_TYPE_LEVEL_HIGH>;
 			//clocks = <&clkc GPIO>;
 			//resets = <&rstc RST_GPIO>;
 
