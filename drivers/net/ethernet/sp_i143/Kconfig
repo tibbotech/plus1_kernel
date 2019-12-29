@@ -6,6 +6,13 @@
 config NET_VENDOR_SUNPLUS_GL2SW
 	tristate "Sunplus Giga Ethernet devices"
 	depends on ETHERNET
+	select PHYLIB
+	select PINCTRL
+	select PINCTRL_SP_I143
+	select RESET_CONTROLLER
+	select RESET_SUNPLUS
+	select NVMEM
+	select NVMEM_SUNPLUS_I143_OCOTP
 	---help---
 	  If you have a network (Ethernet) device belonging to this class, say Y.
 
@@ -31,34 +38,16 @@ choice
 
 config AN_NIC_WITH_DAISY_CHAIN
 	bool "An NIC with Daisy-chain Mode"
-	select PHYLIB
-	select PINCTRL
-	select PINCTRL_SP_I143
-	select RESET_CONTROLLER
-	select RESET_SUNPLUS
-	select NVMEM_SUNPLUS_OCOTP
 	---help---
 	  This mode supports an NIC with daisy-chain support on the other port.
 
 config DUAL_NIC
 	bool "Dual NIC Mode"
-	select PHYLIB
-	select PINCTRL
-	select PINCTRL_SP_I143
-	select RESET_CONTROLLER
-	select RESET_SUNPLUS
-	select NVMEM_SUNPLUS_OCOTP
 	---help---
 	  This mode supports dual NIC.
 
 config AN_NIC_WITH_DAISY_CHAIN2
 	bool "An NIC with Daisy-chain Mode 2"
-	select PHYLIB
-	select PINCTRL
-	select PINCTRL_SP_I143
-	select RESET_CONTROLLER
-	select RESET_SUNPLUS
-	select NVMEM_SUNPLUS_OCOTP
 	---help---
 	  This mode supports an NIC with daisy-chain support on the other port.
 	  SA learning function is turned off in this mode.
