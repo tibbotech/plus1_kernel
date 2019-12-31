@@ -252,6 +252,30 @@
 				<92 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>; /* ACHIPCPU0_INT */
 		};
 #endif
+
+		otp: otp@0x9C00AF00 {
+			compatible = "sunplus,i143-ocotp";
+			reg = <0x0 0x9C00AF00 0x0 0x34>, <0x0 0x9C00AF80 0x0 0x58>;
+			reg-names = "hb_gpio", "otprx";
+			clocks = <&clkc OTPRX>;
+			resets = <&rstc RST_OTPRX>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			//therm_calib: therm_calib {  reg = <0x14 0x3>;  };
+			mac_addr0: mac_addr0 {
+				reg = <0x34 0x6>;
+			};
+			mac_addr1: mac_addr1 {
+				reg = <0x3A 0x6>;
+			};
+			//disc_vol0: disc_vol0 {
+			//      reg = <0x18 0x2>;
+			//};
+			//disc_vol1: disc_vol1 {
+			//      reg = <0x18 0x2>;
+			//};
+		};
+
 		mmc0: mmc@emmc {
 			compatible = "sunplus,sp7021-emmc";
 			reg = <0x0 0x9c003b00 0x0 0x180>;
