@@ -230,4 +230,21 @@ config NVMEM_ZYNQMP
 
 	  If sure, say yes. If unsure, say no.
 
+config NVMEM_SUNPLUS_OCOTP
+	tristate "Sunplus SoC OTP support"
+	depends on ARCH_PENTAGRAM || COMPILE_TEST
+	depends on HAS_IOMEM
+	help
+	  This is a driver for the On-chip OTP controller (OCOTP) available on
+	  SP7021 A+B SoCs, providing access to 1024 bits of one-time programmable
+	  eFuses.
+
+config NVMEM_SUNPLUS_I143_OCOTP
+	tristate "Sunplus SoC I143 OTP support"
+	depends on SOC_I143
+	help
+	  This is a driver for the On-chip OTP controller (OCOTP) available on
+	  Sunplus SoC I143, providing access to 1024 bits of one-time programmable
+	  eFuses.
+
 endif
