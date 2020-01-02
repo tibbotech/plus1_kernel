@@ -24,7 +24,7 @@
 #include <linux/rtc.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/reset.h> 
+#include <linux/reset.h>
 #include <linux/of.h>
 #include <linux/version.h>
 
@@ -36,14 +36,13 @@
 
 /* ---------------------------------------------------------------------------------------------- */
 struct sunplus_rtc {
-	struct platform_device *dev;
 	void __iomem *reg_base;
 	struct clk *clkc;
 	struct reset_control *rstc;
 	u32 charging_mode;
 };
 
-struct sp_rtc_reg {
+struct sunplus_rtc_reg {
 	volatile u32 rsv00;
 	volatile u32 rsv01;
 	volatile u32 rsv02;
@@ -77,27 +76,30 @@ struct sp_rtc_reg {
 	volatile u32 rsv30;
 	volatile u32 rsv31;
 };
-static volatile struct sp_rtc_reg *rtc_reg_ptr = NULL;
 
 
 static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
+	struct sunplus_rtc *sp_rtc = dev_get_drvdata(dev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
 	unsigned long secs;
 
 	RTC_DBG("RTC date/time to %d-%d-%d, %02d:%02d:%02d\n",
 		tm->tm_mday, tm->tm_mon+1, tm->tm_year+1900, tm->tm_hour, tm->tm_min, tm->tm_sec);
 
 	secs = rtc_tm_to_time64(tm);
-	rtc_reg_ptr->rtc_timer_set = (u32)(secs);
+	sp_rtc_reg->rtc_timer_set = (u32)(secs);
 
 	return 0;
 }
 
 static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 {
+	struct sunplus_rtc *sp_rtc = dev_get_drvdata(dev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
 	unsigned long secs;
 
-	secs = (unsigned long)(rtc_reg_ptr->rtc_timer_out);
+	secs = (unsigned long)(sp_rtc_reg->rtc_timer_out);
 	rtc_time_to_tm(secs, tm);
 
 	RTC_DBG("RTC date/time to %d-%d-%d, %02d:%02d:%02d\n",
@@ -106,66 +108,58 @@ static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	return rtc_valid_tm(tm);
 }
 
-
+#if 0
 int sp_rtc_get_time(struct rtc_time *tm)
 {
 	unsigned long secs;
 
-	secs = (unsigned long)(rtc_reg_ptr->rtc_timer_out);
+	secs = (unsigned long)(sp_rtc_reg->rtc_timer_out);
 	rtc_time_to_tm(secs, tm);
 
 	return 0;
 }
 EXPORT_SYMBOL(sp_rtc_get_time);
-
-static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
-{
-	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
-
-	return 0;
-}
-
-static int sp_rtc_resume(struct platform_device *pdev)
-{
-	/*
-	 * Because RTC is still powered during suspend,
-	 * there is nothing to do here.
-	 */
-	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
-	return 0;
-}
+#endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 2, 0)
 static int sp_rtc_set_mmss(struct device *dev, unsigned long secs)
 {
-	RTC_DBG("%s, secs = %lu\n", __func__, secs);
-	rtc_reg_ptr->rtc_timer_set = (u32)(secs);
+	struct sunplus_rtc *sp_rtc = dev_get_drvdata(dev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
+
+	RTC_DBG("secs = %lu\n", secs);
+	sp_rtc_reg->rtc_timer_set = (u32)(secs);
 	return 0;
 }
 #endif
 
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
+	struct sunplus_rtc *sp_rtc = dev_get_drvdata(dev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
 	unsigned long alarm_time;
 
 	alarm_time = rtc_tm_to_time64(&alrm->time);
-	RTC_DBG("%s, alarm_time: %u\n", __func__, (u32)alarm_time);
+	RTC_DBG("alarm_time: %u\n", (u32)alarm_time);
 
 	if (alarm_time > 0xFFFFFFFF)
 		return -EINVAL;
 
-	rtc_reg_ptr->rtc_alarm_set = (u32)alarm_time;
-	rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+	sp_rtc_reg->rtc_alarm_set = (u32)alarm_time;
+	wmb();
+	sp_rtc_reg->rtc_ctrl = (0x003F << 16) | 0x0017;
 
 	return 0;
 }
 
 static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
+	struct sunplus_rtc *sp_rtc = dev_get_drvdata(dev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
 	u32 alarm_time;
 
-	alarm_time = rtc_reg_ptr->rtc_alarm_set;
-	RTC_DBG("%s, alarm_time: %u\n", __func__, alarm_time);
+	alarm_time = sp_rtc_reg->rtc_alarm_set;
+	RTC_DBG("alarm_time: %u\n", alarm_time);
 	rtc_time64_to_tm((unsigned long)alarm_time, &alrm->time);
 
 	return 0;
@@ -188,50 +182,47 @@ static irqreturn_t rtc_irq_handler(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-/*	mode	bat_charge_rsel		bat_charge_dsel		bat_charge_en				
-	0xE	x			x			0			Disable
-	0x1	0			0			1			0.86mA (2K Ohm with diode)
-	0x5	1			0			1			1.81mA (250 Ohm with diode)
-	0x9	2			0			1			2.07mA (50 Ohm with diode)
-	0xD	3			0			1			16.0mA (0 Ohm with diode)
-	0x3	0			1			1			1.36mA (2K Ohm without diode)
-	0x7	1			1			1			3.99mA (250 Ohm without diode)
-	0xB	2			1			1			4.41mA (50 Ohm without diode)
-	0xF	3			1			1			16.0mA (0 Ohm without diode)
+/*      mode    bat_charge_rsel         bat_charge_dsel         bat_charge_en
+	0xE     x                       x                       0                       Disable
+	0x1     0                       0                       1                       0.86mA (2K Ohm with diode)
+	0x5     1                       0                       1                       1.81mA (250 Ohm with diode)
+	0x9     2                       0                       1                       2.07mA (50 Ohm with diode)
+	0xD     3                       0                       1                       16.0mA (0 Ohm with diode)
+	0x3     0                       1                       1                       1.36mA (2K Ohm without diode)
+	0x7     1                       1                       1                       3.99mA (250 Ohm without diode)
+	0xB     2                       1                       1                       4.41mA (50 Ohm without diode)
+	0xF     3                       1                       1                       16.0mA (0 Ohm without diode)
 */
-static void sp_rtc_set_batt_charge_ctrl(u32 _mode)
-{
-	u8 m = _mode & 0x000F;
-
-	RTC_DBG("Battery charging mode: 0x%X\n", m);
-	rtc_reg_ptr->rtc_battery_ctrl |= (0x000F << 16) | m;
-}
-
 static int sp_rtc_probe(struct platform_device *plat_dev)
 {
 	int ret;
 	int err, irq;
-	struct rtc_device *rtc;
 	struct resource *res;
 	struct sunplus_rtc *sp_rtc;
+	struct sunplus_rtc_reg *sp_rtc_reg;
+	struct rtc_device *rtc;
 
 	sp_rtc = devm_kzalloc(&plat_dev->dev, sizeof(*sp_rtc), GFP_KERNEL);
-	sp_rtc->dev = plat_dev;
+	if (sp_rtc == NULL) {
+		dev_err(&plat_dev->dev,"Failed to allocate memory!\n");
+		return -ENOMEM;
+	}
+	platform_set_drvdata(plat_dev, sp_rtc);
 
 	// find and map our resources
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, "rtc_reg");
-	RTC_INFO("res = %llx\n",(u64)res->start);
+	RTC_DBG("res = %llx\n",(u64)res->start);
 	if (res) {
 		sp_rtc->reg_base = devm_ioremap_resource(&plat_dev->dev, res);
 		if (IS_ERR(sp_rtc->reg_base)) {
 			dev_err(&plat_dev->dev,"devm_ioremap_resource failed!\n");
 		}
 	}
-        RTC_INFO("reg_base = %px\n", sp_rtc->reg_base);
+	RTC_INFO("reg_base = %px\n", sp_rtc->reg_base);
 
 	// clk
 	sp_rtc->clkc = devm_clk_get(&plat_dev->dev,NULL);
-	RTC_INFO("sp_rtc->clkc = %px\n",sp_rtc->clkc);
+	RTC_DBG("sp_rtc->clkc = %px\n",sp_rtc->clkc);
 	if(IS_ERR(sp_rtc->clkc)) {
 		dev_err(&plat_dev->dev, "devm_clk_get failed!\n");
 	}
@@ -239,7 +230,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	// reset
 	sp_rtc->rstc = devm_reset_control_get(&plat_dev->dev, NULL);
-	RTC_INFO( "sp_rtc->rstc = %px \n",sp_rtc->rstc);
+	RTC_DBG( "sp_rtc->rstc = %px \n",sp_rtc->rstc);
 	if (IS_ERR(sp_rtc->rstc)) {
 		ret = PTR_ERR(sp_rtc->rstc);
 		dev_err(&plat_dev->dev, "RTC failed to retrieve reset controller: %d\n", ret);
@@ -250,8 +241,8 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		goto free_clk;
 	}
 
-	rtc_reg_ptr = (volatile struct sp_rtc_reg *)sp_rtc->reg_base;
-	rtc_reg_ptr->rtc_ctrl |= (0x0010 << 16) | (1 << 4);	/* Keep RTC from system reset */
+	sp_rtc_reg = (struct sunplus_rtc_reg*)sp_rtc->reg_base;
+	sp_rtc_reg->rtc_ctrl = (1 << (16+4)) | (1 << 4);        /* Keep RTC from system reset */
 
 	// request irq
 	irq = platform_get_irq(plat_dev, 0);
@@ -259,7 +250,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		RTC_ERR("platform_get_irq failed!\n");
 		goto free_reset_assert;
 	}
-	
+
 	err = devm_request_irq(&plat_dev->dev, irq, rtc_irq_handler, IRQF_TRIGGER_RISING, "rtc_irq", plat_dev);
 	if (err) {
 		RTC_ERR("devm_request_irq failed: %d\n", err);
@@ -272,7 +263,9 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		RTC_ERR("Failed to retrieve 'charging-mode'!\n");
 		goto free_reset_assert;
 	}
-	sp_rtc_set_batt_charge_ctrl(sp_rtc->charging_mode);
+
+	RTC_DBG("Battery charging mode: 0x%X\n", sp_rtc->charging_mode);
+	sp_rtc_reg->rtc_battery_ctrl = (0x000F << 16) | (sp_rtc->charging_mode & 0x0F);
 
 	device_init_wakeup(&plat_dev->dev, 1);
 
@@ -281,11 +274,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		ret = PTR_ERR(rtc);
 		goto free_reset_assert;
 	}
-
 	rtc->uie_unsupported = 1;
-
-	platform_set_drvdata(plat_dev, sp_rtc);
-
 	return 0;
 
 
@@ -294,14 +283,36 @@ free_reset_assert:
 
 free_clk:
 	clk_disable_unprepare(sp_rtc->clkc);
-	return ret;	
+	return ret;
 }
 
 static int sp_rtc_remove(struct platform_device *plat_dev)
 {
 	struct sunplus_rtc *sp_rtc = platform_get_drvdata(plat_dev);
 
-	reset_control_assert(sp_rtc->rstc);	
+	reset_control_assert(sp_rtc->rstc);
+	return 0;
+}
+
+static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
+{
+	struct sunplus_rtc *sp_rtc = platform_get_drvdata(pdev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
+
+	sp_rtc_reg->rtc_ctrl = (1 << (16+4)) | (1 << 4);        /* Keep RTC from system reset */
+	return 0;
+}
+
+static int sp_rtc_resume(struct platform_device *pdev)
+{
+	struct sunplus_rtc *sp_rtc = platform_get_drvdata(pdev);
+	struct sunplus_rtc_reg *sp_rtc_reg = sp_rtc->reg_base;
+
+	/*
+	 * Because RTC is still powered during suspend,
+	 * there is nothing to do here.
+	 */
+	sp_rtc_reg->rtc_ctrl = (1 << (16+4)) | (1 << 4);        /* Keep RTC from system reset */
 	return 0;
 }
 
