@@ -446,7 +446,14 @@
 				<198 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_INT */
 				<199 IRQ_TYPE_EDGE_RISING>; /* A926_INT */
 		};
-
+#if 1
+		watchdog: watchdog@G12 {
+			compatible = "sunplus,sp7021-wdt";
+			reg = <0x9c000600 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <150 IRQ_TYPE_LEVEL_HIGH>;
+		};
+#endif
 /* Timer tests: */
 /* 1. Enable device tree for timers. */
 /* 2. Enable sp_timer_test in drivers/misc/Makefile */
