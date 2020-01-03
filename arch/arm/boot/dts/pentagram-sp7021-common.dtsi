@@ -236,6 +236,9 @@
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA4>;
 			resets = <&rstc RST_UA4>;
+ #if 0 // Demo board V3 for AP6256 BT must enable
+			status = "disabled";
+#endif
 		};
 
 
@@ -527,6 +530,9 @@
 			clock-frequency = <100000>;
 			clocks = <&clkc I2CM0>;
 			resets = <&rstc RST_I2CM0>;
+#if 0 // Demo board V3
+			status = "disabled";
+#endif
 		};
 
 		i2cm1: i2c@sp_i2cm1 {
@@ -621,10 +627,10 @@
 			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>, <0x9C000080 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
-/*
+#if 0 // Demo board V3
 			pinctrl-names = "default";
 			pinctrl-0 = <&hdmi_A_tx3>;
-*/
+#endif
 		};
 
 		sp_ehci0: usb@9C102100 {
@@ -757,10 +763,10 @@
 			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
-/*
+#if 0 // Demo board V3
 			pinctrl-names = "default";
-			pinctrl-0 = <&l2sw_two_phy_pins>;
-*/
+			pinctrl-0 = <&l2sw_demo_board_v3_pins>;
+#endif
 		};
 
 		mdio {
@@ -801,8 +807,12 @@
 			pinctrl-0 = <&mmc1_mux>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
+#if 0 // Demo board V3
+			cd-gpios = <&pctl 91 GPIO_ACTIVE_LOW>;
+#else
 			cd-gpios = <&pctl 71 GPIO_ACTIVE_LOW>;
 			broken-cd;
+#endif
 			disable-wp;
 			cap-sd-highspeed;
 			no-sdio;
@@ -848,6 +858,9 @@
 				compatible = "rohm,dh2228fv";
 				reg = <0x0>;
 				spi-max-frequency = <25000000>;
+#if 0 // Demo board V3
+				status = "disabled";
+#endif
 			};
 		};
 
@@ -976,9 +989,9 @@
 			i2c-id = <1>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&mipicsi0_pins>;
-#if 0
-			mipicsi-gpio0 = <&pctl 14 GPIO_ACTIVE_HIGH>;
-			mipicsi-gpio1 = <&pctl 15 GPIO_ACTIVE_HIGH>;
+#if 0 // Demo board V3
+			cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
+			cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
 #endif
 		};
 #if 0
@@ -998,6 +1011,19 @@
 			pinctrl-0 = <&mipicsi1_pins>;
 		};
 #endif
+
+		led {
+			compatible = "gpio-leds";
+			pinctrl-names = "default";
+			pinctrl-0 = <&gpio_leds_pins>;
+			system-led {
+				label = "system-led";
+				gpios = <&pctl 0 GPIO_ACTIVE_HIGH>;
+				default-state = "off";
+				linux,default-trigger = "heartbeat";
+			};
+		};
+
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sp7021-pctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
@@ -1022,7 +1048,11 @@
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
+#if 0 // Demo board V3
+				sppctl,pins = < SP7021_IOPAD(91,SP7021_PCTL_G_GPIO,0,0) >;
+#else
 				sppctl,pins = < SP7021_IOPAD(71,SP7021_PCTL_G_GPIO,0,0) >;
+#endif
 			};
 #if 0
 			pins_uart1: pins_uart1 {
@@ -1034,20 +1064,26 @@
 #endif
 			pins_sdio: pins_sdio {
 				sppctl,pins = <
-#if 1 // Ev board - SDIO Wifi
+#if 0 // Demo board V3
+				//	SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+				//	SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+				//	SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+				//	SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+				//	SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+				//	SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+					SP7021_IOPAD(18,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+					SP7021_IOPAD(16,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+					SP7021_IOPAD(14,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+					SP7021_IOPAD(15,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
+					SP7021_IOPAD(13,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+#else // Ev board
 					SP7021_IOPAD(17,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
 					SP7021_IOPAD(19,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
 					SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
 					SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
 					SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
-					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
-#else // Demo board V2 - SDIO Wifi
-					SP7021_IOPAD(60,SP7021_PCTL_G_PMUX,MUXF_SDIO_D1,0)
-					SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_SDIO_D0,0)
-					SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
-					SP7021_IOPAD(62,SP7021_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
-					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_SDIO_D3,0)
-					SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+					SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SDIO_D2,0)				
 #endif
 				>;
 			};
@@ -1100,15 +1136,15 @@
 
 			hdmi_A_tx1: hdmi_A_tx1_pins {
 				sppctl,groups = "HDMI_TX1";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx2: hdmi_A_tx2_pins {
 				sppctl,groups = "HDMI_TX2";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
-				sppctl,function = "HDMI_TX";					
+				sppctl,function = "HDMI_TX";
 			};
 
 			i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
@@ -1120,12 +1156,15 @@
 
 			mipicsi0_pins: pinmux_mipicsi0_pins {
 				sppctl,pins = <
+#if 0 // Demo board V3
+					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+					SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+					SP7021_IOPAD(92,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
+					SP7021_IOPAD(93,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
+#else
 					SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
-#if 0
-					SP7021_IOPAD(14,SP7021_PCTL_G_GPIO,0,1)
-					SP7021_IOPAD(15,SP7021_PCTL_G_GPIO,0,1)	
-#endif		
+#endif
 				>;
 			};
 
@@ -1137,6 +1176,10 @@
 				>;
 			};
 #endif
+
+			gpio_leds_pins: pinmux_gpio_leds_pins {
+				sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT) >;
+			};
 
 			l2sw_two_phy_pins: pinmux_l2sw_two_phy_pins {
 				sppctl,pins = <
@@ -1161,6 +1204,27 @@
 					SP7021_IOPAD(33,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
 					SP7021_IOPAD(34,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(31,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
+				>;
+			};
+			l2sw_demo_board_v3_pins: l2sw_demo_board_v3_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(52,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+					SP7021_IOPAD(59,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(57,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(58,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
 				>;
 			};
 			l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
