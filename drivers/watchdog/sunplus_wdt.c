@@ -41,12 +41,6 @@
 #define WDT_MAX_TIMEOUT		10
 #define WDT_MIN_TIMEOUT		1
 
-#define MISC_MASK(n)		    n << 16
-#define MISC_STC_WDT			1 << 4
-#define MISC_RBUS_WDT			1 << 1
-#define MISC_WDT_EN 			(MISC_STC_WDT|MISC_RBUS_WDT)
-#define WDT_RESET				((MISC_WDT_EN)|MISC_MASK(MISC_WDT_EN))
-
 #define DRV_NAME		"sunplus-wdt"
 #define DRV_VERSION		"1.0"
 
@@ -56,19 +50,8 @@ static unsigned int timeout;
 struct sunplus_wdt_dev {
 	struct watchdog_device wdt_dev;
 	void __iomem *wdt_base;
-	spinlock_t		lock;
-	int irq;
 };
-/*
-static int sunplus_wdt_clrirq(struct watchdog_device *wdt_dev)
-{
-	struct sunplus_wdt_dev *sunplus_wdt = watchdog_get_drvdata(wdt_dev);
-	void __iomem *wdt_base = sunplus_wdt->wdt_base;
 
-	writel(WDT_CLRIRQ, wdt_base + WDT_CTRL);
-	return 0;
-}
-*/
 static int sunplus_wdt_restart(struct watchdog_device *wdt_dev,
 			     unsigned long action, void *data)
 {
@@ -87,9 +70,8 @@ static int sunplus_wdt_ping(struct watchdog_device *wdt_dev)
 {
 	struct sunplus_wdt_dev *sunplus_wdt = watchdog_get_drvdata(wdt_dev);
 	void __iomem *wdt_base = sunplus_wdt->wdt_base;
-	writel(WDT_CLRIRQ, wdt_base + WDT_CTRL);
 	writel(WDT_CONMAX, wdt_base + WDT_CTRL);
-	return 0; 
+	return 0;
 }
 
 static int sunplus_wdt_set_timeout(struct watchdog_device *wdt_dev,
@@ -108,31 +90,19 @@ static int sunplus_wdt_stop(struct watchdog_device *wdt_dev)
 	writel(WDT_STOP, wdt_base + WDT_CTRL);
 	return 0;
 }
-/*
-static irqreturn_t sunplus_wdt_isr(int irq, void *wdog_arg)
-{
-	struct sunplus_wdt_dev *sunplus_wdt = platform_get_drvdata(wdog_arg);
-	void __iomem *misc_ctl = ioremap(0x9c000274,4); 
-
-	sunplus_wdt_stop(&sunplus_wdt->wdt_dev);
-	sunplus_wdt_clrirq(&sunplus_wdt->wdt_dev);
-	writel(0x00120012, misc_ctl); 
-	return IRQ_HANDLED;
-}
-*/
 
 static int sunplus_wdt_start(struct watchdog_device *wdt_dev)
 {
 	struct sunplus_wdt_dev *sunplus_wdt = watchdog_get_drvdata(wdt_dev);
     void __iomem *wdt_base;
 	int ret;
-	
+
 	wdt_base = sunplus_wdt->wdt_base;
 
 	ret = sunplus_wdt_set_timeout(wdt_dev, wdt_dev->timeout);
 	if (ret < 0)
 		return ret;
-	
+
 	sunplus_wdt_ping(wdt_dev);
 	writel(WDT_RESUME, wdt_base + WDT_CTRL);
 	return 0;
@@ -163,15 +133,14 @@ static int sunplus_wdt_probe(struct platform_device *pdev)
 	sunplus_wdt = devm_kzalloc(&pdev->dev, sizeof(*sunplus_wdt), GFP_KERNEL);
 	if (!sunplus_wdt)
 		return -EINVAL;
-	
+
 	platform_set_drvdata(pdev, sunplus_wdt);
 
 	wdt_res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	//sunplus_wdt->wdt_base = devm_ioremap_resource(&pdev->dev, wdt_res);
-	sunplus_wdt->wdt_base = devm_ioremap(&pdev->dev, wdt_res->start, resource_size(wdt_res));
+	sunplus_wdt->wdt_base = devm_ioremap_resource(&pdev->dev, wdt_res);
 	if (IS_ERR(sunplus_wdt->wdt_base))
 		return PTR_ERR(sunplus_wdt->wdt_base);
-	
+
 	sunplus_wdt->wdt_dev.info = &sunplus_wdt_info;
 	sunplus_wdt->wdt_dev.ops = &sunplus_wdt_ops;
 	sunplus_wdt->wdt_dev.timeout = WDT_MAX_TIMEOUT;
@@ -184,20 +153,7 @@ static int sunplus_wdt_probe(struct platform_device *pdev)
 	watchdog_set_restart_priority(&sunplus_wdt->wdt_dev, 128);
 
 	watchdog_set_drvdata(&sunplus_wdt->wdt_dev, sunplus_wdt);
-	/*
-	sunplus_wdt->irq = platform_get_irq(pdev, 0);
-	if (sunplus_wdt->irq < 0) {
-		dev_err(&pdev->dev, "failed to get IRQ resource\n");
-		return sunplus_wdt->irq;
-	}
 	
-	err = devm_request_irq(&pdev->dev, sunplus_wdt->irq, sunplus_wdt_isr,
-					  0, dev_name(&pdev->dev), pdev);
-	if (err) {
-		dev_err(&pdev->dev, "failed to register irq\n");
-		return err;
-	}
-	*/
 	sunplus_wdt_stop(&sunplus_wdt->wdt_dev);
 	err = watchdog_register_device(&sunplus_wdt->wdt_dev);
 	if (unlikely(err))
