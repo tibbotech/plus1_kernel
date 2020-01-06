@@ -116,7 +116,7 @@ static void sppctl_fwload_cb(const struct firmware *_fw, void *_ctx)
 		KERR(p->pcdp->dev, "Firmware not found\n");
 		return;
 	}
-	if (_fw->size < list_funcsSZ) {
+	if (_fw->size < list_funcsSZ-2) {
 		KERR(p->pcdp->dev, " fw size %ld < %ld\n", _fw->size, list_funcsSZ);
 		goto out;
 	}

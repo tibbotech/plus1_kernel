@@ -52,6 +52,9 @@ static ssize_t sppctl_sop_fwname_W(struct device *_d, struct device_attribute *_
 {
 	sppctl_pdata_t *_p = (sppctl_pdata_t *)_d->platform_data;
 	strcpy(_p->fwname, _b);
+	if (_p->fwname[strlen(_p->fwname)-1] == 0x0A) {
+		_p->fwname[strlen(_p->fwname)-1] = 0;
+	}
 	sppctl_loadfw(_d, _p->fwname);
 	return (_c);
 }
