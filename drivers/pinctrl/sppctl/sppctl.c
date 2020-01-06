@@ -90,7 +90,7 @@ static void sppctl_fwload_cb( const struct firmware *_fw, void *_ctx) {
  int i = -1, j = 0;
  sppctl_pdata_t *p = ( sppctl_pdata_t *)_ctx;
  if ( !_fw) {  KERR( p->pcdp->dev, "Firmware not found\n");  return;  }
- if ( _fw->size < list_funcsSZ) {
+ if ( _fw->size < list_funcsSZ-2) {
    KERR( p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);
    goto out;  }
  for ( i = 0; i < list_funcsSZ && i < _fw->size; i++) {
