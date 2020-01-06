@@ -1,16 +1,16 @@
 #include "gl2sw_hal.h"
 
 
-static struct l2sw_reg* ls2w_reg_base = NULL;
+static struct l2sw_reg* l2sw_reg_base = NULL;
 static struct moon5_reg* moon5_reg_base = NULL;
 
 
 int l2sw_reg_base_set(void __iomem *baseaddr)
 {
-	ls2w_reg_base = (struct l2sw_reg*)baseaddr;
-	ETH_INFO("[%s] ls2w_reg_base = %pK\n", __func__, ls2w_reg_base);
+	l2sw_reg_base = (struct l2sw_reg*)baseaddr;
+	ETH_INFO("[%s] l2sw_reg_base = %px\n", __func__, l2sw_reg_base);
 
-	if (ls2w_reg_base == NULL){
+	if (l2sw_reg_base == NULL){
 		return -1;
 	}
 	else{
@@ -21,7 +21,7 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 int moon5_reg_base_set(void __iomem *baseaddr)
 {
 	moon5_reg_base = (struct moon5_reg*)baseaddr;
-	ETH_INFO("[%s] moon5_reg_base = %pK\n", __func__, moon5_reg_base);
+	ETH_INFO("[%s] moon5_reg_base = %px\n", __func__, moon5_reg_base);
 
 	if (moon5_reg_base == NULL){
 		return -1;

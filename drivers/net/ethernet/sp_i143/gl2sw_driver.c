@@ -17,13 +17,8 @@ static void print_packet(struct sk_buff *skb)
 {
 	u8 *p = skb->data;
 
-	printk("MAC: DA=%02x:%02x:%02x:%02x:%02x:%02x, "
-		    "SA=%02x:%02x:%02x:%02x:%02x:%02x, "
-		    "Len/Type=%04x, len=%d\n",
-		(u32)p[0], (u32)p[1], (u32)p[2], (u32)p[3], (u32)p[4], (u32)p[5],
-		(u32)p[6], (u32)p[7], (u32)p[8], (u32)p[9], (u32)p[10], (u32)p[11],
-		(u32)((((u32)p[12])<<8)+p[13]),
-		(int)skb->len);
+	printk("MAC: DA=%pM, SA=%pM, Len/Type=%04x, len=%d\n",
+		&p[0], &p[6], (u32)((((u32)p[12])<<8)+p[13]), (int)skb->len);
 }
 #endif
 
@@ -102,7 +97,7 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
 
 			if (cmd & OWN_BIT) {
-				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %p", rx_pos, desc);
+				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %px", rx_pos, desc);
 				break;
 			}
 
@@ -599,8 +594,7 @@ static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
 	memcpy(net_dev->dev_addr, hwaddr->sa_data, net_dev->addr_len);
 
 	/* Delete the old Ethernet MAC address */
-	ETH_DEBUG(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
-		mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
+	ETH_DEBUG(" HW Addr = %pM\n", mac->mac_addr);
 	if (is_valid_ether_addr(mac->mac_addr)) {
 		mac_hw_addr_del(mac);
 	}
@@ -743,14 +737,13 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	// Get property 'mac-addr0' or 'mac-addr1' from dts.
 	otp_v = sp7021_otp_read_mac(&pdev->dev, &otp_l, m_addr_name);
 	if ((otp_l < 6) || IS_ERR_OR_NULL(otp_v)) {
-		ETH_INFO("OTP mac %s (len = %ld) is invalid, using default!\n", m_addr_name, otp_l);
+		ETH_INFO(" OTP mac %s (len = %zd) is invalid, using default!\n", m_addr_name, otp_l);
 		otp_l = 0;
 	} else {
 		// Check if mac-address is valid or not. If not, copy from default.
 		memcpy(mac->mac_addr, otp_v, 6);
 		if (!is_valid_ether_addr(mac->mac_addr)) {
-			ETH_INFO(" Invalid mac in OTP[%s] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", m_addr_name,
-				mac->mac_addr[0], mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
+			ETH_INFO(" Invalid mac in OTP[%s] = %pM, use default!\n", m_addr_name, mac->mac_addr);
 			otp_l = 0;
 		}
 	}
@@ -759,8 +752,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		mac->mac_addr[5] += eth_no;
 	}
 
-	ETH_INFO(" HW Addr = %02x:%02x:%02x:%02x:%02x:%02x\n", mac->mac_addr[0], mac->mac_addr[1],
-		mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
+	ETH_INFO(" HW Addr = %pM\n", mac->mac_addr);
 
 	memcpy(net_dev->dev_addr, mac->mac_addr, ETHERNET_MAC_ADDR_LEN);
 
@@ -963,7 +955,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Failed to allocate memory!\n");
 		return -ENOMEM;
 	}
-	ETH_DEBUG("[%s] comm = %pK\n", __func__, comm);
+	ETH_DEBUG("[%s] comm = %px\n", __func__, comm);
 	memset(comm, '\0', sizeof(struct l2sw_common));
 	comm->pdev = pdev;
 #ifdef CONFIG_DUAL_NIC
@@ -1061,7 +1053,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac = netdev_priv(net_dev);
 	mac->comm = comm;
 	comm->net_dev = net_dev;
-	ETH_INFO("[%s] net_dev = %pK, mac = %pK, comm = %pK\n", __func__, net_dev, mac, mac->comm);
+	ETH_INFO("[%s] net_dev = %px, mac = %px, comm = %px\n", __func__, net_dev, mac, mac->comm);
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
@@ -1182,7 +1174,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		net_dev2->irq = comm->irq[0];
 		mac2 = netdev_priv(net_dev2);
 		mac2->comm = comm;
-		ETH_INFO("[%s] net_dev = %pK, mac = %pK, comm = %pK\n", __func__, net_dev2, mac2, mac2->comm);
+		ETH_INFO("[%s] net_dev = %px, mac = %px, comm = %px\n", __func__, net_dev2, mac2, mac2->comm);
 
 		mac_switch_mode(mac);
 		rx_mode_set(net_dev2);

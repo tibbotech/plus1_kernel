@@ -315,7 +315,7 @@
 		gl2sw: gl2sw@0x9c108000 {
 			compatible = "sunplus,i143-gl2sw";
 			reg = <0x0 0x9c108000 0x0 0x400>, <0x0 0x9c000280 0x0 0x80>;
-			reg-names = "l2sw", "moon5";
+			reg-names = "gl2sw", "moon5";
 			interrupt-parent = <&intc>;
 			interrupts =
 				<38 IRQ_TYPE_LEVEL_HIGH>,
@@ -326,8 +326,8 @@
 			resets = <&rstc RST_GL2SW>;
 			phy-handle1 = <&eth_phy0>;
 			phy-handle2 = <&eth_phy1>;
-			//nvmem-cell-names = "mac_addr0", "mac_addr1";
-			//nvmem-cells = <&mac_addr0>, <&mac_addr1>;
+			nvmem-cell-names = "mac_addr0", "mac_addr1";
+			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&gl2sw_pins>;
 		};

@@ -6,8 +6,8 @@
 #include "gl2sw_desc.h"
 
 
-#define HWREG_W(M, N)           (ls2w_reg_base->M = N)
-#define HWREG_R(M)              (ls2w_reg_base->M)
+#define HWREG_W(M, N)           (l2sw_reg_base->M = N)
+#define HWREG_R(M)              (l2sw_reg_base->M)
 #define MOON5REG_W(M, N)        (moon5_reg_base->M = N)
 #define MOON5REG_R(M)           (moon5_reg_base->M)
 
