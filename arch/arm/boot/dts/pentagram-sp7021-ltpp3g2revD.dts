@@ -24,7 +24,7 @@
 &sdio {
  pinctrl-0 = <&pins_sdio &pins_sdio_reset>;
  bus-width = <4>;
- /* max-frequency = <52000000>; */
+ max-frequency = <40000000>; /* up to 52 */
  brcmf1: bcrmf@1 {
    reg = <1>;
    compatible = "android,bcmdhd_wlan";
@@ -172,13 +172,13 @@
     sppctl,pins = <
       SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_UA4_RX,0)
       SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
-      SP7021_IOPAD(82,SP7021_PCTL_G_PMUX,MUXF_UA4_RTS,SP7021_PCTL_L_ONV)
-      SP7021_IOPAD(83,SP7021_PCTL_G_PMUX,MUXF_UA4_CTS,0)
+      SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_UA4_RTS,SP7021_PCTL_L_ONV)
+      SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_UA4_CTS,0)
     >;
  };
  pins_bt_reset: pins_bt_reset {
     sppctl,pins = <
-      SP7021_IOPAD(36,SP7021_PCTL_G_GPIO,0,0)
+      SP7021_IOPAD(82,SP7021_PCTL_G_GPIO,0,0)
     >;
  };
  buzzer0_pins: user_buzzer0_pins {
