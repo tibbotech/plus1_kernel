@@ -30,7 +30,7 @@ enum loglevel {
 	SPSDC_LOG_VERBOSE,
 	SPSDC_LOG_MAX
 };
-static int loglevel = SPSDC_LOG_VERBOSE;
+static int loglevel = SPSDC_LOG_WARNING;
 
 /**
  * we do not need `SPSDC_LOG_' prefix here, when specify @level.
@@ -188,8 +188,8 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		spsdc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
 	}
-	//value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, clkdiv);
-		value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, 2);
+	value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, clkdiv);
+	//value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, 2);
 	writel(value, &host->base->sd_config0);
 
 	/* In order to reduce the frequency of context switch,
@@ -717,9 +717,6 @@ irqreturn_t spsdc_irq(int irq, void *dev_id)
 	struct spsdc_host *host = dev_id;
 	u32 value = readl(&host->base->sd_int);
 
-
-//printk(KERN_INFO "spsdc_irq_dma\n");
-
 	spin_lock(&host->lock);
 	if ((value & SPSDC_SDINT_SDCMP) &&
 		(value & SPSDC_SDINT_SDCMPEN)) {
@@ -773,46 +770,22 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		if (data)
 			spsdc_prepare_data(host, data);
 			
-	//	if (data)
-	//printk(KERN_INFO "spsdc_prepare_data ok\n");	
-
 		if (unlikely(SPSDC_PIO_MODE == host->dmapio_mode && data)) {
 			u32 value;
 			/* pio data transfer do not use interrupt */
-
-	//printk(KERN_INFO "spsdc_pio 01\n");	
-			
 			value = readl(&host->base->sd_int);
 			value = bitfield_replace(value, SPSDC_sdcmpen_w01, 1, 0); /* sdcmpen */
 			writel(value, &host->base->sd_int);
-
-//	printk(KERN_INFO "spsdc_trigger_transaction\n");				
-			
 			spsdc_trigger_transaction(host);
-			
-	//printk(KERN_INFO "spsdc_xfer_data_pio\n");						
-			
 			spsdc_xfer_data_pio(host, data);
-			
-//	printk(KERN_INFO "spsdc_wait_finish\n");					
-			
 			spsdc_wait_finish(host);
 			spsdc_finish_request(host, mrq);
 		} else {
-//	printk(KERN_INFO "host->use_int %d host->dma_use_int %d \n",host->use_int , host->dma_use_int);
 			if (!(host->use_int || host->dma_use_int)) {
-				
-	printk(KERN_INFO "spsdc_trigger_transaction_nondma\n");		
-				
 				spsdc_trigger_transaction(host);
-				
-	printk(KERN_INFO "spsdc_wait_finish\n");						
-				
 				spsdc_wait_finish(host);
 				spsdc_finish_request(host, mrq);
 			} else {
-
-	//printk(KERN_INFO "spsdc_trigger_transaction_dma\n");
 				spsdc_trigger_transaction(host);
 			}
 		}
@@ -1243,9 +1216,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-
- spsdc_pr(DEBUG, "spsdc_drv_probe\n");
-
 	host = mmc_priv(mmc);
 	host->mmc = mmc;
 	host->power_state = MMC_POWER_OFF;
@@ -1294,13 +1264,11 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 	if (devm_request_irq(&pdev->dev, host->irq, spsdc_irq, IRQF_SHARED, dev_name(&pdev->dev), host)) {
-		spsdc_pr(DEBUG, "Failed to request sd card interrupt.\n");
+		spsdc_pr(ERROR, "Failed to request sd card interrupt.\n");
 		ret = -ENOENT;
 		goto probe_free_host;
 	}
-	spsdc_pr(DEBUG, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
-
-printk(KERN_INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
+	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
 
 
 	ret = mmc_of_parse(mmc);
@@ -1342,17 +1310,12 @@ printk(KERN_INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, hos
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
-   spsdc_pr(DEBUG, " spsdc_drv_probe ok\n");
-
 	return 0;
 
 probe_clk_unprepare:
 	spsdc_pr(ERROR, "unable to enable controller clock\n");
 	clk_unprepare(host->clk);
 probe_free_host:
-
-    spsdc_pr(DEBUG, "probe_free_host\n");	
-	
 	spsdc_device_remove_sysfs(pdev);
 	if (mmc)
 		mmc_free_host(mmc);
