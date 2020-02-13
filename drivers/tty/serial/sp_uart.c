@@ -12,13 +12,11 @@
 #include <linux/sysrq.h>
 #endif
 #include <linux/serial_core.h>
-#include "sp_uart.h"
-#if 0 //////////
 #include <linux/clk.h>
 #include <linux/reset.h> 
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-#include <mach/sp_uart.h>
+#include <soc/sunplus/sp_uart.h>
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
@@ -58,7 +56,14 @@
 #define MAX_SZ_RXDMA_ISR		(1 << 9)
 #define UATXDMA_BUF_SZ			PAGE_SIZE
 /* ---------------------------------------------------------------------------------------------- */
+/* Refer zebu: testbench/uart.cc */
+#ifdef CONFIG_SOC_I143
+#define CLK_HIGH_UART			27000000
+#define UART_RATIO				29
+#else
 #define CLK_HIGH_UART			202500000
+#define UART_RATIO				232
+#endif
 /* ---------------------------------------------------------------------------------------------- */
 #if defined(CONFIG_SP_MON)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
@@ -773,9 +778,11 @@ ignore_char:
 		lsr = sp_uart_get_line_status(port->membase);
 	} while (lsr & SP_UART_LSR_RX);
 
-	spin_unlock(&port->lock);
-	tty_flip_buffer_push(tty->port);
-	spin_lock(&port->lock);
+	if (tty) {
+		spin_unlock(&port->lock);
+		tty_flip_buffer_push(tty->port);
+		spin_lock(&port->lock);
+	}
 }
 
 static irqreturn_t sunplus_uart_irq(int irq, void *args)
@@ -844,7 +851,7 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	 */
 	icount_rx = 0;
 	while (rx_size > icount_rx) {
-		if (!(((u32)(sw_ptr)) & (32 - 1))	/* 32-byte aligned */
+		if (!(((unsigned long)(sw_ptr)) & (32 - 1))	/* 32-byte aligned */
 		    && ((rx_size - icount_rx) >= 32)) {
 			/*
 			 * Copy 32 bytes data from non cache area to cache area.
@@ -1178,39 +1185,28 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	u32 clk, ext, div, div_l, div_h, baud;
 	u32 lcr;
 	unsigned long flags;
-	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
-#if 0	/* For Zebu only, disable this in real chip */
+	/*
+	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
+	 * For real chip, the baudrate is 115200.
+	 * */
 	if (baud == 921600) {
-		/*
-		 * Refer to Zebu's testbench/uart.cc
-		 * UART_RATIO should be 220 (CLK_HIGH_UART / 921600)
-		 * If change it to correct value, IBOOT must be changed.
-		 * (Clock should be switched to CLK_HIGH_UART)
-		 * For real chip, the baudrate is 115200.
-		 * */
-		baud = CLK_HIGH_UART / 232;
-	}
-#endif
-
-
-	clk = port->uartclk;
-	if ((baud > 115200) || (sp_port->uartdma_rx)) {
-		while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
-			/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
-		}
-
-		clk = CLK_HIGH_UART;
 		/* Don't change port->uartclk to CLK_HIGH_UART, keep the value of lower clk src */
-		/* Switch clock source */
-		sp_uart_set_clk_src(port->membase, 0);
+		clk = CLK_HIGH_UART;
+		baud = clk / UART_RATIO;
 	} else {
-		sp_uart_set_clk_src(port->membase, ~0);
+		clk = port->uartclk;
 	}
 
 	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
+	while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
+		/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
+	}
+	/* Switch clock source: 0 for sysclk, 1 for 27M */
+	sp_uart_set_clk_src(port->membase, clk == 27000000);
+
 	clk += baud >> 1;
 	div = clk / baud;
 	ext = div & 0x0F;
@@ -1681,7 +1677,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			if (IS_ERR(sunplus_uartdma[idx].gdma_membase)) {
 				return PTR_ERR(sunplus_uartdma[idx].gdma_membase);
 			}
-			DBG_INFO("gdma_phy: 0x%x gdma_membase: 0x%p\n", res_mem->start, sunplus_uartdma[idx].gdma_membase);
+			DBG_INFO("gdma_phy: 0x%p gdma_membase: 0x%p\n", (void *)res_mem->start, sunplus_uartdma[idx].gdma_membase);
 		}
 
 		if (of_property_read_u32(pdev->dev.of_node, "which-uart", &idx_which_uart) != 0) {
@@ -1860,7 +1856,7 @@ static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
 
 
 static const struct of_device_id sp_uart_of_match[] = {
-	{ .compatible = "sunplus,_sp7021-uart" },
+	{ .compatible = "sunplus,sp7021-uart" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_uart_of_match);
@@ -1939,29 +1935,9 @@ static int __init sunplus_uart_init(void)
 __initcall(sunplus_uart_init);
 
 module_param(uart0_as_console, uint, S_IRUGO);
-#endif //////////////////////////
 
-#if 0
-static const struct of_device_id sp_uart_of_match[] = {
-	{ .compatible = "ns16550a" },
-	{ /* sentinel */ }
-};
-MODULE_DEVICE_TABLE(of, sp_uart_of_match);
-
-static struct platform_driver sunplus_uart_platform_driver = {
-	.driver = {
-		.name	= "sp_uart",
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(sp_uart_of_match),
-	}
-};
-module_platform_driver(sunplus_uart_platform_driver);
-#endif
-
-#include <asm/sbi.h>
 static void sunplus_uart_putc(struct uart_port *port, int c)
 {
-#if 1
 	unsigned int status;
 
 	for (;;) {
@@ -1971,9 +1947,6 @@ static void sunplus_uart_putc(struct uart_port *port, int c)
 		cpu_relax();
 	}
 	writel(c, port->membase + SP_UART_DATA);
-#else
-	sbi_console_putchar(c);
-#endif
 }
 
 static void sunplus_uart_early_write(struct console *con,
