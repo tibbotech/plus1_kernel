@@ -21,10 +21,14 @@
 	model = "Sunplus I143";
 	compatible = "sunplus,sp-i143";
 
+	aliases {
+		serial0 = &uart0;
+	};
+
 	chosen {
 		//bootargs = "earlycon=sbi keep_bootcon loglevel=8";
-		bootargs = "earlycon loglevel=8";
-		stdout-path = "/soc/serial@sp_uart0";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		stdout-path = "serial0";
 	};
 
 	memory@a0000000 {
@@ -200,11 +204,6 @@
 			reg-names = "control";
 		};
 
-		uart0: serial@sp_uart0 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000900 0x0 0x80>;
-		};
-
 		intc: interrupt-controller@9c003500 {
 			compatible = "sunplus,sp-intc";
 			interrupt-controller;
@@ -215,6 +214,15 @@
 			interrupts = <2 7>; // 2,7 for core0
 			ext0-mask = <0xf>; /* core0-3 */
 			ext1-mask = <0xe>; /* core1-3 */
+		};
+
+		uart0: serial@sp_uart0 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c000900 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA0>;
+			resets = <&rstc RST_UA0>;
 		};
 
 		rstc: reset@9c000054 {
