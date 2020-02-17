@@ -334,6 +334,7 @@
 			resets = <&rstc RST_GL2SW>;
 			phy-handle1 = <&eth_phy0>;
 			phy-handle2 = <&eth_phy1>;
+			mac-addr1 = <52>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
 			pinctrl-names = "default";
@@ -352,6 +353,16 @@
 			};
 		};
 
+
+		sp_usb0: usb@9C102100 {
+			compatible = "sunplus,sunplus-i143-usb-ehci0";
+			reg = <0x0 0x9C102100 0x0 0x68>;
+		};
+
+		sp_usb1: usb@9C103100 {
+			compatible = "sunplus,sunplus-i143-usb-ehci1";
+			reg = <0x0 0x9C103100 0x0 0x68>;
+		};
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,
@@ -389,6 +400,7 @@
 				sppctl,groups = "GL2SW";
 				sppctl,function = "GL2SW";
 			};
+
 		};
 	};
 
