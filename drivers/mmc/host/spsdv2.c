@@ -587,7 +587,7 @@ static inline __maybe_unused void spsdc_txdummy(struct spsdc_host *host, int cou
 
 static void spsdc_xfer_data_pio(struct spsdc_host *host, struct mmc_data *data)
 {
-	u16 *buf; /* tx/rx 2 bytes one time in pio mode */
+	u32 *buf; /* tx/rx 4 bytes one time in pio mode */
 	int data_left = data->blocks * data->blksz;
 	int consumed, remain ;
 	struct sg_mapping_iter *sg_miter = &host->sg_miter;

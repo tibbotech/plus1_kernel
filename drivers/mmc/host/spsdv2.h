@@ -42,8 +42,8 @@ struct spsdc_regs {
 #define SPSDC_dmadst_w03              8
 #define SPSDC_dmasrc_w03              4
 #define SPSDC_MediaType_w03           0
-#define SPSDC_DMA_READ                ((0x01<<SPSDC_dmadst_w03) | (0x02<<SPSDC_dmasrc_w03))
-#define SPSDC_DMA_WRITE               ((0x02<<SPSDC_dmadst_w03) | (0x01<<SPSDC_dmasrc_w03))		
+#define SPSDC_DMA_READ                0x12
+#define SPSDC_DMA_WRITE               0x21		
 	u32 card_mediatype_srcdst;
 	
 	
