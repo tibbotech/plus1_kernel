@@ -121,7 +121,7 @@
 #define MUXF_SPI3S_EN 83
 #define MUXF_SPI3S_DO 84
 #define MUXF_SPI3S_DI 85
-#define MUXF_I2CM0_CK 86
+#define MUXF_I2CM0_CLK 86
 #define MUXF_I2CM0_DAT 87
 #define MUXF_I2CM1_CLK 88
 #define MUXF_I2CM1_DAT 89
