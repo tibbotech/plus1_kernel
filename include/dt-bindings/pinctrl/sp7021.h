@@ -123,12 +123,12 @@
 #define MUXF_SPI3S_DI 85
 #define MUXF_I2CM0_CK 86
 #define MUXF_I2CM0_DAT 87
-#define MUXF_I2CM1_CK 88
+#define MUXF_I2CM1_CLK 88
 #define MUXF_I2CM1_DAT 89
-#define MUXF_I2CM2_CK 90
-#define MUXF_I2CM2_D 91
-#define MUXF_I2CM3_CK 92
-#define MUXF_I2CM3_D 93
+#define MUXF_I2CM2_CLK 90
+#define MUXF_I2CM2_DAT 91
+#define MUXF_I2CM3_CLK 92
+#define MUXF_I2CM3_DAT 93
 #define MUXF_UA1_TX 94
 #define MUXF_UA1_RX 95
 #define MUXF_UA1_CTS 96
