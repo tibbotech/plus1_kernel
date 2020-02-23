@@ -1114,7 +1114,7 @@
 			i2cm1_pins: pinmux_i2cm1_pins {
 				sppctl,pins = <
 					SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
-					SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+					SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 				>;
 			};
 
@@ -1129,7 +1129,7 @@
 			mipicsi1_pins: pinmux_mipicsi1_pins {
 				sppctl,pins = <
 					SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
-					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CK,0)
+					SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 				>;
 			};
 #endif
