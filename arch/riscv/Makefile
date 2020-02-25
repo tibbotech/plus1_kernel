@@ -75,7 +75,12 @@ KBUILD_IMAGE	:= $(boot)/Image.gz
 
 head-y := arch/riscv/kernel/head.o
 
+machine-$(CONFIG_SOC_I143)	+= pentagram
+
+machdirs := $(patsubst %,arch/riscv/mach-%/,$(machine-y))
+
 core-y += arch/riscv/
+core-y += $(machdirs)
 
 libs-y += arch/riscv/lib/
 

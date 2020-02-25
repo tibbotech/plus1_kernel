@@ -1023,6 +1023,8 @@ config SERIAL_SP_UART
 	bool "Sunplus UART support"
 	depends on OF
 	select SERIAL_CORE
+	select SERIAL_CORE_CONSOLE
+	select SERIAL_EARLYCON
 
 config SERIAL_SIFIVE
 	tristate "SiFive UART support"

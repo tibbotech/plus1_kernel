@@ -21,10 +21,14 @@
 	model = "Sunplus I143";
 	compatible = "sunplus,sp-i143";
 
+	aliases {
+		serial0 = &uart0;
+	};
+
 	chosen {
 		//bootargs = "earlycon=sbi keep_bootcon loglevel=8";
-		bootargs = "earlycon loglevel=8";
-		stdout-path = "/soc/serial@sp_uart0";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		stdout-path = "serial0";
 	};
 
 	memory@a0000000 {
@@ -200,11 +204,6 @@
 			reg-names = "control";
 		};
 
-		uart0: serial@sp_uart0 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000900 0x0 0x80>;
-		};
-
 		intc: interrupt-controller@9c003500 {
 			compatible = "sunplus,sp-intc";
 			interrupt-controller;
@@ -215,6 +214,15 @@
 			interrupts = <2 7>; // 2,7 for core0
 			ext0-mask = <0xf>; /* core0-3 */
 			ext1-mask = <0xe>; /* core1-3 */
+		};
+
+		uart0: serial@sp_uart0 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c000900 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA0>;
+			resets = <&rstc RST_UA0>;
 		};
 
 		rstc: reset@9c000054 {
@@ -295,7 +303,7 @@
 
 		mmc1: mmc@sdcard {
 			compatible = "sunplus,sp7021-card1";
-			reg = <0x0 0x9c003e80 0x0 0x280>;
+			reg = <0x0 0x9c003e80 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
@@ -311,6 +319,32 @@
 			no-sdio;
 			no-mmc;
 		};
+		#if 0
+		ipc: ipc@G258 {
+			compatible = "sunplus,sp7021-ipc";
+			reg = <0x0 0x9c008100 0x0 0x100>; /* G258 ~ G259 */
+			interrupt-parent = <&intc>;
+			interrupts =
+				<2 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT0 */
+				<3 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT1 */
+				<4 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT2 */
+				<5 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT3 */
+				<6 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT4 */
+				<7 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT5 */
+				<8 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT6 */
+				<9 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT7 */
+				<10 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_INT */
+				<84 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT0 */
+				<85 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT1 */
+				<86 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT2 */
+				<87 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT3 */
+				<88 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT4 */
+				<89 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT5 */
+				<90 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT6 */
+				<91 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA7 CPU0_DIRECT_INT7 */
+				<92 IRQ_TYPE_EDGE_RISING>; /* MAILBOX_to_CA7 CPU0_INT */
+		};	
+		#endif 
 
 		gl2sw: gl2sw@0x9c108000 {
 			compatible = "sunplus,i143-gl2sw";
@@ -326,6 +360,7 @@
 			resets = <&rstc RST_GL2SW>;
 			phy-handle1 = <&eth_phy0>;
 			phy-handle2 = <&eth_phy1>;
+			mac-addr1 = <52>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
 			pinctrl-names = "default";
@@ -344,6 +379,16 @@
 			};
 		};
 
+
+		sp_usb0: usb@9C102100 {
+			compatible = "sunplus,sunplus-i143-usb-ehci0";
+			reg = <0x0 0x9C102100 0x0 0x68>;
+		};
+
+		sp_usb1: usb@9C103100 {
+			compatible = "sunplus,sunplus-i143-usb-ehci1";
+			reg = <0x0 0x9C103100 0x0 0x68>;
+		};
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,
@@ -381,6 +426,7 @@
 				sppctl,groups = "GL2SW";
 				sppctl,function = "GL2SW";
 			};
+
 		};
 	};
 
