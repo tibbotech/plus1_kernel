@@ -24,7 +24,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 		return -ENOMEM;
 	}
 
-	mii_bus->name = "sp7021_mii_bus";
+	mii_bus->name = "i143_mii_bus";
 	mii_bus->parent = &pdev->dev;
 	mii_bus->priv = mac;
 	mii_bus->read = mii_read;
@@ -62,6 +62,7 @@ int mac_phy_probe(struct net_device *netdev)
 {
 	struct l2sw_mac *mac = netdev_priv(netdev);
 	struct phy_device *phydev;
+	int i;
 
 	phydev = of_phy_connect(mac->net_dev, mac->comm->phy1_node, mii_linkchange,
 				0, PHY_INTERFACE_MODE_RGMII_ID);
@@ -77,9 +78,13 @@ int mac_phy_probe(struct net_device *netdev)
 
 #ifdef PHY_RUN_STATEMACHINE
 	//phydev->supported &= (PHY_GBIT_FEATURES | SUPPORTED_Pause |
-	//		      SUPPORTED_Asym_Pause);
-
+	//                    SUPPORTED_Asym_Pause);
+	linkmode_clear_bit(ETHTOOL_LINK_MODE_Pause_BIT, phydev->supported);
+	linkmode_clear_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, phydev->supported);
 	//phydev->advertising = phydev->supported;
+	for (i = 0; i < sizeof(phydev->supported)/sizeof(long); i++) {
+		phydev->advertising[i] = phydev->supported[i];
+	}
 	phydev->irq = PHY_IGNORE_INTERRUPT;
 	mac->comm->phy_dev = phydev;
 #endif

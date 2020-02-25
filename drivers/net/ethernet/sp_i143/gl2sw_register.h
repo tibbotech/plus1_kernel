@@ -1,14 +1,14 @@
-#ifndef __L2SW_REGISTER_H__
-#define __L2SW_REGISTER_H__
+#ifndef __GL2SW_REGISTER_H__
+#define __GL2SW_REGISTER_H__
 
 #include "gl2sw_define.h"
 
 
 //=================================================================================================
 /*
- * TYPE: RegisterFile_L2SW
+ * TYPE: RegisterFile_GL2SW
  */
-struct l2sw_reg {
+struct gl2sw_reg {
 	u32 sw_int_status;
 	u32 sw_int_mask;
 	u32 fl_cntl_th;
@@ -63,7 +63,7 @@ struct l2sw_reg {
 	u32 pause_uc_sa_sw_15_0;
 	u32 pause_uc_sa_sw_47_16;
 	u32 reserved3[2];
-	u32 mac_force_model;
+	u32 mac_force_mode1;
 	u32 p0_softpad_config;
 	u32 p1_softpad_config;
 	u32 reserved4[70];

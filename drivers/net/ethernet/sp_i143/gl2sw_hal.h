@@ -1,13 +1,13 @@
-#ifndef __L2SW_HAL_H__
-#define __L2SW_HAL_H__
+#ifndef __GL2SW_HAL_H__
+#define __GL2SW_HAL_H__
 
 #include "gl2sw_register.h"
 #include "gl2sw_define.h"
 #include "gl2sw_desc.h"
 
 
-#define HWREG_W(M, N)           (l2sw_reg_base->M = N)
-#define HWREG_R(M)              (l2sw_reg_base->M)
+#define HWREG_W(M, N)           (gl2sw_reg_base->M = N)
+#define HWREG_R(M)              (gl2sw_reg_base->M)
 #define MOON5REG_W(M, N)        (moon5_reg_base->M = N)
 #define MOON5REG_R(M)           (moon5_reg_base->M)
 
@@ -15,7 +15,7 @@
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
 
 
-int l2sw_reg_base_set(void __iomem *baseaddr);
+int gl2sw_reg_base_set(void __iomem *baseaddr);
 
 int moon5_reg_base_set(void __iomem *baseaddr);
 
@@ -50,6 +50,8 @@ u32 mdio_write(u32 phy_id, u32 regnum, u16 val);
 void tx_trigger(void);
 
 void write_sw_int_mask(u32 value);
+
+u32 read_sw_int_mask(void);
 
 void write_sw_int_status(u32 value);
 

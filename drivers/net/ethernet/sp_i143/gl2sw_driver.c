@@ -197,8 +197,8 @@ static void rx_do_tasklet(unsigned long data)
 {
 	struct l2sw_mac *mac = (struct l2sw_mac *) data;
 
-	rx_interrupt(mac, mac->comm->int_status);
-	//write_sw_int_status((MAC_INT_RX) & mac->comm->int_status);
+	rx_interrupt(mac, mac->comm->rx_int_status);
+	//write_sw_int_status(mac->comm->rx_int_status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H));
 }
 #endif
 
@@ -207,7 +207,7 @@ static int rx_poll(struct napi_struct *napi, int budget)
 {
 	struct l2sw_mac *mac = container_of(napi, struct l2sw_mac, napi);
 
-	rx_interrupt(mac, mac->comm->int_status);
+	rx_interrupt(mac, mac->comm->rx_int_status);
 	napi_complete(napi);
 
 	return 0;
@@ -306,7 +306,7 @@ static void tx_do_tasklet(unsigned long data)
 	struct l2sw_mac *mac = (struct l2sw_mac *) data;
 
 	tx_interrupt(mac);
-	write_sw_int_status(mac->comm->int_status & MAC_INT_TX);
+	//write_sw_int_status(mac->comm->tx_int_status & (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H));
 }
 #endif
 
@@ -315,71 +315,83 @@ static irqreturn_t ethernet_tx_interrupt(int irq, void *dev_id)
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
 	struct l2sw_common *comm;
-	u32 status;
+	u32 status, mask;
 
-	//ETH_INFO("[%s] IN\n", __func__);
-	net_dev = (struct net_device*)dev_id;
-	if (unlikely(net_dev == NULL)) {
-		ETH_ERR(" net_dev is null!\n");
-		return -1;
-	}
-
-	mac = netdev_priv(net_dev);
-	comm = mac->comm;
-
-	spin_lock(&comm->lock);
-
-	write_sw_int_mask(0xffffffff); /* mask all interrupts */
-	status =  read_sw_int_status();
+	status =  read_sw_int_status() & MAC_INT_TX;
 	//ETH_INFO(" Int Status = %08x\n", status);
-	if (status == 0){
-		ETH_ERR(" Interrput status is null!\n");
-		goto OUT;
-	}
-	write_sw_int_status(status);
-	comm->int_status = status;
 
-	if (status & MAC_INT_TX) {
+	if (status) {
+		mask = read_sw_int_mask();
+		write_sw_int_mask(mask | MAC_INT_TX);   /* mask all tx interrupts */
+		write_sw_int_status(status);
+
+		//ETH_INFO("[%s] IN\n", __func__);
+		net_dev = (struct net_device*)dev_id;
+		if (unlikely(net_dev == NULL)) {
+			ETH_ERR(" net_dev is null!\n");
+			return -1;
+		}
+
+		mac = netdev_priv(net_dev);
+		comm = mac->comm;
+
+		spin_lock(&comm->lock);
+
+		if (status & (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H)) {
+#ifdef INTERRUPT_IMMEDIATELY
+			tx_interrupt(mac);
+			//write_sw_int_status(status | (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H));
+#else
+			comm->tx_int_status = status;
+			tasklet_schedule(&comm->tx_tasklet);
+#endif
+		}
+
 		if (unlikely(status & MAC_INT_TX_DES_ERR)) {
 			ETH_ERR(" Illegal TX Descriptor Error\n");
 			mac->dev_stats.tx_fifo_errors++;
 			mac_soft_reset(mac);
-		} else {
-#ifdef INTERRUPT_IMMEDIATELY
-			tx_interrupt(mac);
-			write_sw_int_status(comm->int_status & MAC_INT_TX);
-#else
-			tasklet_schedule(&comm->tx_tasklet);
-#endif
 		}
-	}
 
-	if (status & MAC_INT_PORT_ST_CHG) { /* link status changed*/
-		port_status_change(mac);
-	}
+		if (unlikely(status & MAC_INT_RX_DES_ERR)) {
+			ETH_ERR(" Illegal RX Descriptor!\n");
+			mac->dev_stats.rx_fifo_errors++;
+		}
+
+		if (status & MAC_INT_PORT_ST_CHG) { /* link status changed*/
+			port_status_change(mac);
+		}
+
+		if (unlikely(status & MAC_INT_MEM_TEST_DONE)) {
+			ETH_ERR(" Memory Test Done!\n");
+		}
+
+		spin_unlock(&comm->lock);
 
 #if 0
-	if (status & MAC_INT_TX_LAN0_QUE_FULL) {
-		ETH_INFO(" Lan Port 0 Queue Full!\n");
-	}
-	if (status & MAC_INT_TX_LAN1_QUE_FULL) {
-		ETH_INFO(" Lan Port 1 Queue Full!\n");
-	}
-	if (status & MAC_INT_RX_SOC0_QUE_FULL) {
-		ETH_INFO(" CPU Port 0 RX Queue Full!\n");
-	}
-	if (status & MAC_INT_TX_SOC0_PAUSE_ON) {
-		ETH_INFO(" CPU Port 0 TX Pause On!\n");
-	}
-	if (status & MAC_INT_GLOBAL_QUE_FULL) {
-		ETH_INFO(" Global Queue Full!\n");
-	}
+		if (status & MAC_INT_TX_LAN0_QUE_FULL) {
+			ETH_INFO(" Lan Port 0 Queue Full!\n");
+		}
+		if (status & MAC_INT_TX_LAN1_QUE_FULL) {
+			ETH_INFO(" Lan Port 1 Queue Full!\n");
+		}
+		if (status & MAC_INT_RX_SOC0_QUE_FULL) {
+			ETH_INFO(" CPU Port 0 RX Queue Full!\n");
+		}
+		if (status & MAC_INT_TX_SOC0_PAUSE_ON) {
+			ETH_INFO(" CPU Port 0 TX Pause On!\n");
+		}
+		if (status & MAC_INT_GLOBAL_QUE_FULL) {
+			ETH_INFO(" Global Queue Full!\n");
+		}
 #endif
 
-OUT:
-	wmb();
-	write_sw_int_mask(MAC_INT_MASK_DEF);
-	spin_unlock(&comm->lock);
+		wmb();
+		write_sw_int_mask(mask & ~MAC_INT_TX);
+	} else {
+		ETH_ERR(" Interrput status is null!\n");
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -388,63 +400,62 @@ static irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 	struct net_device *net_dev;
 	struct l2sw_mac *mac;
 	struct l2sw_common *comm;
-	u32 status;
+	u32 status, mask;
 
-	//ETH_INFO("[%s] IN\n", __func__);
-	net_dev = (struct net_device*)dev_id;
-	if (unlikely(net_dev == NULL)) {
-		ETH_ERR(" net_dev is null!\n");
-		return -1;
-	}
-
-	mac = netdev_priv(net_dev);
-	comm = mac->comm;
-
-	spin_lock(&comm->lock);
-
-	write_sw_int_mask(0xffffffff); /* mask all interrupts */
-	status =  read_sw_int_status();
+	status =  read_sw_int_status() & MAC_INT_RX;
 	//ETH_INFO(" Int Status = %08x\n", status);
-	if (status == 0){
-		ETH_ERR(" Interrput status is null!\n");
-		goto OUT;
-	}
-	write_sw_int_status(status);
-	comm->int_status = status;
 
-#ifdef RX_POLLING
-	if (napi_schedule_prep(&comm->napi)) {
-		__napi_schedule(&comm->napi);
-	}
-#else /* RX_POLLING */
-	if (status & MAC_INT_RX) {
-		if (unlikely(status & MAC_INT_RX_DES_ERR)) {
-			ETH_ERR(" Illegal RX Descriptor!\n");
-			mac->dev_stats.rx_fifo_errors++;
+	if (status) {
+		mask = read_sw_int_mask();
+		write_sw_int_mask(mask | MAC_INT_RX);   /* mask all rx interrupts */
+		write_sw_int_status(status);
+
+		//ETH_INFO("[%s] IN\n", __func__);
+		net_dev = (struct net_device*)dev_id;
+		if (unlikely(net_dev == NULL)) {
+			ETH_ERR(" net_dev is null!\n");
+			return -1;
 		}
 
+		mac = netdev_priv(net_dev);
+		comm = mac->comm;
+
+		spin_lock(&comm->lock);
+
+#ifdef RX_POLLING
+		comm->rx_int_status = status;
+		if (napi_schedule_prep(&comm->napi)) {
+			__napi_schedule(&comm->napi);
+		}
+#else /* RX_POLLING */
+		if (status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)) {
 	#ifdef INTERRUPT_IMMEDIATELY
-		rx_interrupt(mac, status);
-		//write_sw_int_status(comm->int_status & MAC_INT_RX);
+			rx_interrupt(mac, status);
+			//write_sw_int_status(status | (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H));
 	#else
-		tasklet_schedule(&comm->rx_tasklet);
+			comm->rx_int_status = status;
+			tasklet_schedule(&comm->rx_tasklet);
 	#endif
-	}
+		}
 #endif /* RX_POLLING */
 
+		spin_unlock(&comm->lock);
+
 #if 0
-	if (status & MAC_INT_RX_H_DESCF) {
-		ETH_INFO(" RX High-priority Descriptor Full!\n");
-	}
-	if (status & MAC_INT_RX_L_DESCF) {
-		ETH_INFO(" RX Low-priority Descriptor Full!\n");
-	}
+		if (status & MAC_INT_RX_H_DESCF) {
+			ETH_INFO(" RX High-priority Descriptor Full!\n");
+		}
+		if (status & MAC_INT_RX_L_DESCF) {
+			ETH_INFO(" RX Low-priority Descriptor Full!\n");
+		}
 #endif
 
-OUT:
-	wmb();
-	write_sw_int_mask(MAC_INT_MASK_DEF);
-	spin_unlock(&comm->lock);
+		wmb();
+		write_sw_int_mask(mask & ~MAC_INT_RX);
+	} else {
+		ETH_ERR(" Interrput status is null!\n");
+	}
+
 	return IRQ_HANDLED;
 }
 
@@ -694,13 +705,13 @@ char *sp7021_otp_read_mac(struct device *_d, ssize_t *_l, char *_name) {
 	struct nvmem_cell *c = nvmem_cell_get(_d, _name);
 
 	if (IS_ERR_OR_NULL(c)) {
-		dev_err(_d, "OTP %s read failure: %ld", _name, PTR_ERR(c));
+		ETH_ERR(" OTP %s read failure: %ld", _name, PTR_ERR(c));
 		return (NULL);
 	}
 
 	ret = nvmem_cell_read(c, _l);
 	nvmem_cell_put(c);
-	dev_dbg(_d, "%d bytes read from OTP %s", (int)*_l, _name);
+	ETH_DEBUG(" %d bytes read from OTP %s", (int)*_l, _name);
 
 	return (ret);
  }
@@ -976,8 +987,8 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Get memory resoruce 0 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
-		ETH_DEBUG(" r_mem->start = 0x%08llx\n", r_mem->start);
-		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+		ETH_DEBUG(" r_mem->start = 0x%08llx\n", (long long)r_mem->start);
+		if (gl2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ETH_ERR("[%s] ioremap failed!\n", __func__);
 			ret = -ENOMEM;
 			goto out_free_comm;
@@ -990,7 +1001,7 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Get memory resoruce 1 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
-		ETH_DEBUG(" r_mem->start = 0x%08llx\n", r_mem->start);
+		ETH_DEBUG(" r_mem->start = 0x%08llx\n", (long long)r_mem->start);
 		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ETH_ERR("[%s] ioremap failed!\n", __func__);
 			ret = -ENOMEM;
@@ -1002,13 +1013,25 @@ static int l2sw_probe(struct platform_device *pdev)
 		goto out_free_comm;
 	}
 
+#ifdef ZEBU_XTOR
+{
+	volatile u32 *moon4_reg_base = devm_ioremap(&pdev->dev, 0x9c000200, 0x80);
+	if (moon4_reg_base == NULL){
+		ETH_ERR("[%s] ioremap failed (moon4)!\n", __func__);
+		ret = -ENOMEM;
+		goto out_free_comm;
+	}
+	moon4_reg_base[14] = (1 << (16+7)) | (1 << 7);  // Force lower speed for XTOR.
+}
+#endif
+
 	for (i = 0; i < 4; i++) {
 		// Get irq #i resource from dts.
 		if ((ret = platform_get_irq(pdev, i)) > 0) {
 			ETH_DEBUG(" IRQ #%d = %d\n", i, ret);
 			comm->irq[i] = ret;
 		} else {
-			ETH_ERR("[%s] No IRQ #%d resource found!\n", __func__, i);
+			ETH_ERR(" No IRQ #%d resource found!\n", i);
 			ret = -ENXIO;
 			goto out_free_comm;
 		}
@@ -1075,6 +1098,7 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	l2sw_enable_port(mac);
 
+#ifndef ZEBU_XTOR
 	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
 		if (ret) {
@@ -1092,6 +1116,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 	phy_cfg();
+#endif
 
 #ifdef RX_POLLING
 	netif_napi_add(net_dev, &comm->napi, rx_poll, RX_NAPI_WEIGHT);
@@ -1100,7 +1125,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Register irq #0 to system.
 	rc = devm_request_irq(&pdev->dev, comm->irq[0], ethernet_tx_interrupt, 0, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d for \"%s\" (rc = %d)!\n", __func__,
+		ETH_ERR(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",
 			comm->irq[0], net_dev->name, rc);
 		ret = -ENODEV;
 		goto out_freemdio;
@@ -1109,7 +1134,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Register irq #1 to system.
 	rc = devm_request_irq(&pdev->dev, comm->irq[1], ethernet_rx_interrupt, 0, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d for \"%s\" (rc = %d)!\n", __func__,
+		ETH_ERR(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",
 			comm->irq[1], net_dev->name, rc);
 		ret = -ENODEV;
 		goto out_freemdio;
@@ -1118,7 +1143,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Register irq #2 to system.
 	rc = devm_request_irq(&pdev->dev, comm->irq[2], ethernet_tx_interrupt, 0, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d for \"%s\" (rc = %d)!\n", __func__,
+		ETH_ERR(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",
 			comm->irq[2], net_dev->name, rc);
 		ret = -ENODEV;
 		goto out_freemdio;
@@ -1127,14 +1152,15 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Register irq #3 to system.
 	rc = devm_request_irq(&pdev->dev, comm->irq[3], ethernet_rx_interrupt, 0, net_dev->name, net_dev);
 	if (rc != 0) {
-		ETH_ERR("[%s] Failed to request irq #%d for \"%s\" (rc = %d)!\n", __func__,
+		ETH_ERR(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",
 			comm->irq[3], net_dev->name, rc);
 		ret = -ENODEV;
 		goto out_freemdio;
 	}
 
 #ifndef INTERRUPT_IMMEDIATELY
-	comm->int_status = 0;
+	comm->tx_int_status = 0;
+	comm->rx_int_status = 0;
 	tasklet_init(&comm->rx_tasklet, rx_do_tasklet, (unsigned long)mac);
 	//tasklet_disable(&comm->rx_tasklet);
 	tasklet_init(&comm->tx_tasklet, tx_do_tasklet, (unsigned long)mac);
@@ -1190,7 +1216,9 @@ out_freemdio:
 		mdio_remove(net_dev);
 	}
 
+#ifndef ZEBU_XTOR
 out_unregister_dev:
+#endif
 	unregister_netdev(net_dev);
 
 out_free_comm:

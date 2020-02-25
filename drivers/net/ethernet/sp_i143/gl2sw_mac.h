@@ -1,5 +1,5 @@
-#ifndef __L2SW_MAC_H__
-#define __L2SW_MAC_H__
+#ifndef __GL2SW_MAC_H__
+#define __GL2SW_MAC_H__
 
 #include "gl2sw_define.h"
 #include "gl2sw_hal.h"

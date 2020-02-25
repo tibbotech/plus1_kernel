@@ -1,5 +1,5 @@
-#ifndef __L2SW_DRIVER_H__
-#define __L2SW_DRIVER_H__
+#ifndef __GL2SW_DRIVER_H__
+#define __GL2SW_DRIVER_H__
 
 #include "gl2sw_register.h"
 #include "gl2sw_define.h"

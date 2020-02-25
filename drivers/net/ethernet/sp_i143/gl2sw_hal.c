@@ -1,16 +1,16 @@
 #include "gl2sw_hal.h"
 
 
-static struct l2sw_reg* l2sw_reg_base = NULL;
+static struct gl2sw_reg* gl2sw_reg_base = NULL;
 static struct moon5_reg* moon5_reg_base = NULL;
 
 
-int l2sw_reg_base_set(void __iomem *baseaddr)
+int gl2sw_reg_base_set(void __iomem *baseaddr)
 {
-	l2sw_reg_base = (struct l2sw_reg*)baseaddr;
-	ETH_INFO("[%s] l2sw_reg_base = %px\n", __func__, l2sw_reg_base);
+	gl2sw_reg_base = (struct gl2sw_reg*)baseaddr;
+	ETH_INFO(" gl2sw_reg_base = %px\n", gl2sw_reg_base);
 
-	if (l2sw_reg_base == NULL){
+	if (gl2sw_reg_base == NULL){
 		return -1;
 	}
 	else{
@@ -21,7 +21,7 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 int moon5_reg_base_set(void __iomem *baseaddr)
 {
 	moon5_reg_base = (struct moon5_reg*)baseaddr;
-	ETH_INFO("[%s] moon5_reg_base = %px\n", __func__, moon5_reg_base);
+	ETH_INFO(" moon5_reg_base = %px\n", moon5_reg_base);
 
 	if (moon5_reg_base == NULL){
 		return -1;
@@ -47,8 +47,11 @@ void mac_hw_stop(struct l2sw_mac *mac)
 	if (comm->dual_nic) {
 		disable = ((~comm->enable)&0x3) << 24;
 		reg = HWREG_R(port_cntl0);
+#ifndef ZEBU_XTOR
+// Never disable lan port in force link-up mode.
 		HWREG_W(port_cntl0, disable | reg);     // Disable lan 0 and lan 1.
 		wmb();
+#endif
 	}
 }
 
@@ -236,9 +239,27 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	/* phy address */
 	reg = HWREG_R(mac_force_mode0);
-	HWREG_W(mac_force_mode0, (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0));
+	reg = (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0);
+	reg = (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5);
+	HWREG_W(mac_force_mode0, reg);
+
+#ifdef ZEBU_XTOR
+	// enable lan 0 & lan 1 before force link-up
+	reg = HWREG_R(port_cntl0);
+	HWREG_W(port_cntl0, reg & (~(3<<24)));
+	wmb();
+
 	reg = HWREG_R(mac_force_mode0);
-	HWREG_W(mac_force_mode0, (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5));
+	reg |= MAC_FORCE_MODE0;
+	HWREG_W(mac_force_mode0, reg);
+	reg = HWREG_R(mac_force_mode1);
+	reg |= MAC_FORCE_MODE1;
+	HWREG_W(mac_force_mode1, reg);
+
+	// Invert RX clock and no delay
+	HWREG_W(p0_softpad_config, 0x00000020);
+	HWREG_W(p1_softpad_config, 0x00000020);
+#endif
 
 	//disable cpu port0 aging (12)
 	//disable cpu port0 learning (14)
@@ -414,6 +435,11 @@ inline void write_sw_int_mask(u32 value)
 	HWREG_W(sw_int_mask, value);
 }
 
+inline u32 read_sw_int_mask(void)
+{
+	return HWREG_R(sw_int_mask);
+}
+
 inline void write_sw_int_status(u32 value)
 {
 	HWREG_W(sw_int_status, value);
@@ -433,23 +459,17 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 {
 	u32 reg;
 
-	//set clock
-	reg = MOON5REG_R(mo4_l2sw_clksw_ctl);
-	MOON5REG_W(mo4_l2sw_clksw_ctl, reg | (0xf<<16) | 0xf);
-
 	//phy address
 	reg = HWREG_R(mac_force_mode0);
-	HWREG_W(mac_force_mode0, (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0));
-	reg = HWREG_R(mac_force_mode0);
-	HWREG_W(mac_force_mode0, (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5));
+	reg = (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0);
+	reg = (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5);
+	HWREG_W(mac_force_mode0, reg);
 	wmb();
 }
 
 int phy_cfg()
 {
-	// Bug workaround:
-	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
-	// to the bit to decide to enable or disable flow-control.
+	// Enable flow control of phy.
 	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
 	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
 
@@ -457,7 +477,7 @@ int phy_cfg()
 }
 
 
-#if 1
+#if 0
 void regs_print()
 {
 	ETH_INFO(" sw_int_status       = %08x\n", HWREG_R(sw_int_status));
@@ -512,7 +532,7 @@ void regs_print()
 	ETH_INFO(" sw_global_signal    = %08x\n", HWREG_R(sw_global_signal));
 	ETH_INFO(" pause_uc_sa_sw_15_0 = %08x\n", HWREG_R(pause_uc_sa_sw_15_0));
 	ETH_INFO(" pause_uc_sa_sw_47_16= %08x\n", HWREG_R(pause_uc_sa_sw_47_16));
-	ETH_INFO(" mac_force_model     = %08x\n", HWREG_R(mac_force_model));
+	ETH_INFO(" mac_force_mode1     = %08x\n", HWREG_R(mac_force_mode1));
 	ETH_INFO(" p0_softpad_config   = %08x\n", HWREG_R(p0_softpad_config));
 	ETH_INFO(" p1_softpad_config   = %08x\n", HWREG_R(p1_softpad_config));
 	ETH_INFO(" cpu_tx_trig         = %08x\n", HWREG_R(cpu_tx_trig));

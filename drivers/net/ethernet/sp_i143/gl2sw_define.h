@@ -1,5 +1,5 @@
-#ifndef __L2SW_DEFINE_H__
-#define __L2SW_DEFINE_H__
+#ifndef __GL2SW_DEFINE_H__
+#define __GL2SW_DEFINE_H__
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -31,20 +31,36 @@
 #define INTERRUPT_IMMEDIATELY
 //#define RX_POLLING
 
+#define ZEBU_XTOR
+
+#ifdef ZEBU_XTOR
+// mac_force_mode0[11:10]: force_gmii_en[1:0]   = 0x3 (enable force function)
+// mac_force_mode0[17:16]: force_gmii_spd0[1:0] = 0x3 (1G)
+// mac_force_mode0[19:18]: force_gmii_spd1[1:0] = 0x3 (1G)
+// mac_force_mode0[27:26]: force_gmii_dpx[1:0]  = 0x3 (no force duplex)
+#define MAC_FORCE_MODE0 0x0c0f0c00
+// mac_force_mode1[17:16]: force_gmii_xfc0[1:0] = 0x3 (full duplex and tx flow control)
+// mac_force_mode1[19:18]: force_gmii_xfc1[1:0] = 0x3 (full duplex and tx flow control)
+// mac_force_mode1[27:26]: force_gmii_link[1:0] = 0x3 (link up)
+#define MAC_FORCE_MODE1 0x0c0f0000
+#endif
+
 
 /**********************************************************
  * Debug Macros
  **********************************************************/
-#define ETH_ERR(fmt, arg...)            printk(KERN_ERR     "[L2SW]" fmt, ##arg)
-#define ETH_WARNING(fmt, arg...)        printk(KERN_WARNING "[L2SW]" fmt, ##arg)
-#define ETH_NOTICE(fmt, arg...)         printk(KERN_NOTICE  "[L2SW]" fmt, ##arg)
-#define ETH_INFO(fmt, arg...)           printk(KERN_INFO    "[L2SW]" fmt, ##arg)
-#define ETH_DEBUG(fmt, arg...)          pr_debug("[L2SW]" fmt, ##arg)
+#define ETH_ERR(fmt, arg...)            printk(KERN_ERR     "[GL2SW]" fmt, ##arg)
+#define ETH_WARNING(fmt, arg...)        printk(KERN_WARNING "[GL2SW]" fmt, ##arg)
+#define ETH_NOTICE(fmt, arg...)         printk(KERN_NOTICE  "[GL2SW]" fmt, ##arg)
+#define ETH_INFO(fmt, arg...)           printk(KERN_INFO    "[GL2SW]" fmt, ##arg)
+#define ETH_DEBUG(fmt, arg...)          pr_debug("[GL2SW]" fmt, ##arg)
 
 
 //define MAC interrupt status bit
 #define MAC_INT_DAISY_MODE_CHG          (1<<31)
-#define MAC_INT_IP_CHECKSUM_ERR         (1<<23)
+#define MAC_INT_MEM_TEST_DONE           (1<<29)
+#define MAC_INT_TCPUDP_CHKSUM_ERR       (1<<24)
+#define MAC_INT_IP_CHKSUM_ERR           (1<<23)
 #define MAC_INT_WDOG_TIMER1_EXP         (1<<22)
 #define MAC_INT_WDOG_TIMER0_EXP         (1<<21)
 #define MAC_INT_ATRUDER_ALERT           (1<<20)
@@ -65,14 +81,16 @@
 #define MAC_INT_TX_DES_ERR              (1<<1)
 #define MAC_INT_RX_DES_ERR              (1<<0)
 
-#define MAC_INT_RX                      (MAC_INT_RX_DONE_H | MAC_INT_RX_DONE_L | MAC_INT_RX_DES_ERR)
-#define MAC_INT_TX                      (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
-#define MAC_INT_MASK_DEF                (MAC_INT_DAISY_MODE_CHG | MAC_INT_IP_CHECKSUM_ERR | MAC_INT_WDOG_TIMER1_EXP | \
-					MAC_INT_WDOG_TIMER0_EXP | MAC_INT_ATRUDER_ALERT | MAC_INT_BC_STORM | \
-					MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC0_PAUSE_ON | \
-					MAC_INT_RX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | \
-					MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
-
+#define MAC_INT_RX                      (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)
+#define MAC_INT_RX_MASK_DEF             (MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
+#define MAC_INT_TX                      (MAC_INT_PORT_ST_CHG | MAC_INT_MEM_TEST_DONE | MAC_INT_TX_DONE_L | \
+					MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR | MAC_INT_RX_DES_ERR)
+#define MAC_INT_TX_MASK_DEF             (MAC_INT_DAISY_MODE_CHG | MAC_INT_TCPUDP_CHKSUM_ERR | MAC_INT_IP_CHKSUM_ERR | \
+					MAC_INT_WDOG_TIMER1_EXP | MAC_INT_WDOG_TIMER0_EXP | MAC_INT_ATRUDER_ALERT | \
+					MAC_INT_BC_STORM | MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | \
+					MAC_INT_TX_SOC0_PAUSE_ON | MAC_INT_RX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | \
+					MAC_INT_TX_LAN0_QUE_FULL)
+#define MAC_INT_MASK_DEF                (MAC_INT_RX_MASK_DEF | MAC_INT_TX_MASK_DEF)
 
 /*define port ability*/
 #define PORT_ABILITY_LINK_ST_P1         (1<<28)
@@ -204,7 +222,8 @@ struct l2sw_common {
 	spinlock_t lock;
 	spinlock_t ioctl_lock;
 	struct mutex store_mode;
-	volatile u32 int_status;
+	volatile u32 tx_int_status;
+	volatile u32 rx_int_status;
 
 #ifdef RX_POLLING
 	struct napi_struct napi;
@@ -234,4 +253,6 @@ struct l2sw_mac {
 	u8 vlan_id;
 };
 
+
 #endif
+
