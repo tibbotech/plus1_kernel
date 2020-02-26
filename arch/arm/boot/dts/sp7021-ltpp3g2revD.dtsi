@@ -86,6 +86,11 @@
  // this: enable (bt) | enable (uart4), pins_uart4
 };
 
+&i2cm0 {  status = "disabled";  };
+&i2cm1 {  status = "disabled";  };
+&i2cm2 {  status = "disabled";  };
+&i2cm3 {  status = "disabled";  };
+
 &pctl {
  /*** all non-device binded that you want to set mode ***/
  pinctrl-names = "default";
