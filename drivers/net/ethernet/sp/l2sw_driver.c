@@ -819,7 +819,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				unregister_netdev(net_dev2);
 				free_netdev(net_dev2);
 				mac->next_netdev = NULL;
-				ETH_INFO("[%s] Unregistered and freed net device \"%s\"!\n", __func__, net_dev2->name);
+				ETH_INFO("[%s] Unregistered and freed net device \"eth1\"!\n", __func__);
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
