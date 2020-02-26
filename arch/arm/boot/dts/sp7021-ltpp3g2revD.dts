@@ -13,7 +13,7 @@
 	model = "SP7021 LTPP3G2 Rev. D";
 };
 
-&sdio {  status = "enabled";  };
+&sdio {  status = "okay";  };
 
 &uart1 {  status = "okay";  };
 &uart2 {  status = "okay";  };
