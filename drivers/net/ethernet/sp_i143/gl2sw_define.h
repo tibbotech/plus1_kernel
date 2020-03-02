@@ -125,22 +125,22 @@
 #define PKTSP_PORT1                     0x00001000
 #define TO_VLAN_MASK                    0x0003F000
 #define TO_VLAN_GROUP1                  0x00002000
-
+#if 0
+#define OWC_BIT                         (1<<30)
+#define BUR_BIT                         (1<<29)
+#define LNKF_BIT                        (1<<28)
+#define TWDE_BIT                        (1<<27)
+#define CC_MASK                         (0xf<<16)
+#endif
 #define EOR_BIT                         (1<<31)
+#define IP_CHKSUM_APPEND                (1<<30)
+#define TCP_UDP_CHKSUM_APPEND           (1<<29)
 
 
 /*define rx descriptor bit*/
 #define ERR_CODE                        (0xf<<26)
-#define RX_TCP_UDP_CHKSUM_BIT           (1<<23)
-#define RX_IP_CHKSUM_BIT                (1<<18)
-
-#define OWC_BIT                         (1<<31)
-#define TXOK_BIT                        (1<<26)
-#define LNKF_BIT                        (1<<25)
-#define BUR_BIT                         (1<<22)
-#define TWDE_BIT                        (1<<20)
-#define CC_MASK                         0x000f0000
-#define TBE_MASK                        0x00070000
+#define RX_TCP_UDP_CHKSUM_FAIL          (1<<23)
+#define RX_IP_CHKSUM_FAIL               (1<<18)
 
 // Address table search
 #define MAC_ADDR_LOOKUP_IDLE            (1<<2)

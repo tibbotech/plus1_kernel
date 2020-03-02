@@ -119,8 +119,8 @@ static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
 				goto NEXT;
 			}
 
-			if (unlikely(cmd & RX_IP_CHKSUM_BIT)) {
-				//ETH_INFO(" RX IP Checksum error!\n");
+			if (unlikely(cmd & (RX_TCP_UDP_CHKSUM_FAIL|RX_IP_CHKSUM_FAIL))) {
+				//ETH_INFO(" RX IP or TCP/UDP Checksum error!\n");
 				dev_stats->rx_crc_errors++;
 				dev_stats->rx_dropped++;
 				goto NEXT;
@@ -247,7 +247,7 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 
 			smac->dev_stats.tx_errors++;
 #if 0
-			if (status & OWC_BIT) {
+			if (cmd & OWC_BIT) {
 				smac->dev_stats.tx_window_errors++;
 			}
 
@@ -261,9 +261,6 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 			}
 			if (cmd & TWDE_BIT){
 				ETH_ERR(" TX watchdog timer expired!\n");
-			}
-			if (cmd & TBE_MASK){
-				ETH_ERR(" TX descriptor bit error!\n");
 			}
 #endif
 		}
@@ -552,7 +549,10 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	skbinfo->skb = skb;
 	skbinfo->mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
-	cmd2 = (tx_pos == (TX_DESC_NUM-1))? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
+	cmd2 = IP_CHKSUM_APPEND | TCP_UDP_CHKSUM_APPEND | (skb->len&LEN_MASK);
+	if (tx_pos == (TX_DESC_NUM-1)) {
+		cmd2 |= EOR_BIT;
+	}
 	//ETH_INFO(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
 
 	txdesc->addr1 = skbinfo->mapping;
@@ -860,7 +860,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				unregister_netdev(net_dev2);
 				free_netdev(net_dev2);
 				mac->next_netdev = NULL;
-				ETH_INFO("[%s] Unregistered and freed net device \"%s\"!\n", __func__, net_dev2->name);
+				ETH_INFO("[%s] Unregistered and freed net device \"eth1\"!\n", __func__);
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
