@@ -20,6 +20,12 @@
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
+#ifdef CONFIG_SERIAL_SP_UART_RS485
+#include <linux/gpio.h>
+#include <linux/of.h>
+#include <linux/of_gpio.h>
+#include <dt-bindings/pinctrl/sp7021.h>
+#endif 
 
 #define NUM_UART	6	/* serial0,  ... */
 #define NUM_UARTDMARX	2	/* serial10, ... */
@@ -1602,6 +1608,9 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int idx_offset, idx;
 	int idx_which_uart;
 	char peri_name[16];
+#ifdef CONFIG_SERIAL_SP_UART_RS485
+	int DE_RE;
+#endif 
 
   //    DBG_INFO("sunplus_uart_platform_driver_probe_of");
 	if (pdev->dev.of_node) {
@@ -1725,6 +1734,15 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (irq < 0)
 		return -ENODEV;
 
+
+#ifdef CONFIG_SERIAL_SP_UART_RS485
+	DE_RE = of_get_named_gpio(pdev->dev.of_node, "uart1-gpio0", 0);
+	DBG_INFO("DE_RE pin number %d\n", DE_RE);
+    if(!gpio_is_valid(DE_RE))
+		DBG_INFO("[UART] Wrong pin %d configured for gpio\n", DE_RE);
+    gpio_set_value(0,1);
+#endif 
+	
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(clk)) {

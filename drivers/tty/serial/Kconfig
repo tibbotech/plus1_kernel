@@ -1531,6 +1531,9 @@ config SERIAL_OWL_CONSOLE
 config SERIAL_SP_UART
 	bool "Sunplus UART serial port support"
 
+config SERIAL_SP_UART_RS485
+	bool "Support SP UART RS485"
+		
 endmenu
 
 config SERIAL_MCTRL_GPIO

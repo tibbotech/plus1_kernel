@@ -207,6 +207,7 @@
 #if 0
 			pinctrl-names = "default";
 			pinctrl-0 = <&pins_uart1>;
+			uart1-gpio0 = <&pctl 0 GPIO_ACTIVE_HIGH>;
 #endif
 		};
 
@@ -1052,6 +1053,7 @@
 				sppctl,pins = <
 					SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_UA1_TX,0)
 					SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_UA1_RX,0)
+					SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,1)
 				>;
 			};
 #endif
