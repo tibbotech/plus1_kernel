@@ -567,9 +567,23 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000>;
+			clock-frequency = <400000>;
 			clocks = <&clkc I2CM3>;
 			resets = <&rstc RST_I2CM3>;
+			status = "okay";
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2cm3_pins>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			ft5x06:ft5x06@38 {
+				compatible = "sunplus,sp-ft5x06";
+				reg = <0x38>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_ft5x06>;
+				interrupt-parent = <&intc>;
+				interrupts = <120 IRQ_TYPE_EDGE_FALLING>;
+				reset-gpios = <&pctl 8 GPIO_ACTIVE_HIGH>;
+			};
 		};
 
 		pwm: pwm@0x9c007a00 {
@@ -1070,7 +1084,7 @@
 			#gpio-cells = <2>;
 			interrupt-parent = <&intc>;
 			interrupts =
-				<120 IRQ_TYPE_LEVEL_HIGH>,
+				<120 IRQ_TYPE_EDGE_FALLING>,
 				<121 IRQ_TYPE_LEVEL_HIGH>,
 				<122 IRQ_TYPE_LEVEL_HIGH>,
 				<123 IRQ_TYPE_LEVEL_HIGH>,
@@ -1084,6 +1098,20 @@
 				sppctl,groups = "CARD0_EMMC";
 				sppctl,function = "CARD0_EMMC";
 			};
+			
+			pinctrl_ft5x06: pinctrl_ft5x06 {
+				sppctl,pins = 
+				<SP7021_IOPAD(8,SP7021_PCTL_G_GPIO,0,0)>,
+				<SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_GPIO_INT0,0)>;
+			};
+
+			 i2cm3_pins: i2cm3_pins {                                   
+			 	sppctl,pins = <
+					SP7021_IOPAD(10,SP7021_PCTL_G_PMUX,MUXF_I2CM3_CLK,0)
+					SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_I2CM3_DAT,0)
+				>;
+			};
+			
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
