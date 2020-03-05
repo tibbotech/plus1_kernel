@@ -46,6 +46,7 @@ struct sp_ft5x06_data {
 #define TOUCH_EVENT_RESERVED			0x03
 
 
+
 static int sp_ft5x06_ts_readwrite(struct i2c_client *client,
 				   u16 wr_len, u8 *wr_buf,
 				   u16 rd_len, u8 *rd_buf)
@@ -108,7 +109,7 @@ static int sp_ft5x06_read_reg(struct i2c_client *client,u8 addr, u8 *pdata,int l
 static int sp_ft5x06_i2c_test(struct i2c_client *client)
 {
 	char rdbuf[2];
-	int ret=0,reg;
+	int ret=0;
 
 	ret = sp_ft5x06_read_reg(client,SP_TS_REG_VERSION_GET,rdbuf,2);
 	if(ret){
@@ -149,7 +150,7 @@ static irqreturn_t sp_ft5x06_isr(int irq, void *dev_id)
 		x = (((buf[0]&0x0f) << 8) | buf[1]) & 0x0fff;
 		y = (((buf[2]&0x0f) << 8) | buf[3]) & 0x0fff;
 		id = (buf[2] >> 4) & 0x0f;
-		down = type != TOUCH_EVENT_UP;
+		down = (type != TOUCH_EVENT_UP);
 
 		input_mt_slot(tsdata->input_dev, id);
 		input_mt_report_slot_state(tsdata->input_dev, MT_TOOL_FINGER, down);
@@ -157,8 +158,7 @@ static irqreturn_t sp_ft5x06_isr(int irq, void *dev_id)
 			continue;
 		touchscreen_report_pos(tsdata->input_dev, &tsdata->prop, x, y,true);
 	}
-
-	input_mt_report_pointer_emulation(tsdata->input_dev, true);
+	input_mt_sync_frame(tsdata->input_dev);
 	input_sync(tsdata->input_dev);
 	enable_irq(tsdata->client->irq);
 out:
@@ -180,7 +180,7 @@ static int sp_ft5x06_config_init(struct i2c_client *client)
 		goto  _ERROR;
 	}
 	
-	ret = sp_ft5x06_write_reg(client,SP_TS_REG_VALID_THRESHOLD_SET,71); 
+	ret = sp_ft5x06_write_reg(client,SP_TS_REG_VALID_THRESHOLD_SET,70); 
 	if(ret){
 		reg = SP_TS_REG_VALID_THRESHOLD_SET;
 		goto  _ERROR;
@@ -211,8 +211,8 @@ static int sp_ft5x06_input_config(struct sp_ft5x06_data *tsdata)
 	int error=0;
 
 	
-	tsdata->screen_max_x = TS_MAX_HEIGHT;
-	tsdata->screen_max_y = TS_MAX_WIDTH;
+	tsdata->screen_max_x = TS_MAX_WIDTH;
+	tsdata->screen_max_y = TS_MAX_HEIGHT;
 	tsdata->max_support_points = TS_TOUCH_POINT_MAX;
 	input = devm_input_allocate_device(dev);
 	if (!input) {
@@ -224,24 +224,12 @@ static int sp_ft5x06_input_config(struct sp_ft5x06_data *tsdata)
 	input->id.bustype = BUS_I2C;
 	input->dev.parent = &tsdata->client->dev;
 
-	set_bit(EV_SYN, input->evbit);
-    set_bit(EV_ABS, input->evbit);
-    //Multi Touch
-    set_bit(ABS_MT_TRACKING_ID, input->absbit);
-    set_bit(ABS_MT_TOUCH_MAJOR, input->absbit);
-    set_bit(ABS_MT_WIDTH_MAJOR, input->absbit);
-    set_bit(ABS_MT_POSITION_X , input->absbit);
-    set_bit(ABS_MT_POSITION_Y , input->absbit);
-	
-	//input_mt_init_slots(input_dev, max_points, 0);
+	input_set_capability(input, EV_ABS, ABS_MT_POSITION_X);
+	input_set_capability(input, EV_ABS, ABS_MT_POSITION_Y);
+	input_set_abs_params(input, ABS_MT_WIDTH_MAJOR, 0, 255, 0, 0);
+	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255, 0, 0);
 
-	input_set_abs_params(input, ABS_MT_WIDTH_MAJOR, 0, 200, 0, 0);
-	input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 200, 0, 0);
 	input_set_abs_params(input, ABS_MT_TRACKING_ID, 0, TS_TOUCH_POINT_MAX, 0, 0);
-	
-	input_set_abs_params(input, ABS_MT_POSITION_X, 0, tsdata->screen_max_x, 0, 0);
-	input_set_abs_params(input,  ABS_MT_POSITION_Y, 0, tsdata->screen_max_y, 0, 0); 
-
 	touchscreen_parse_properties(input, true, &tsdata->prop);
 
 	error = input_mt_init_slots(input, tsdata->max_support_points,
@@ -373,4 +361,5 @@ static struct i2c_driver spft5x06_i2c_driver = {
 module_i2c_driver(spft5x06_i2c_driver);
 MODULE_DESCRIPTION("SP FT5x06 I2C Touchscreen Driver");
 MODULE_LICENSE("GPL");
+
 

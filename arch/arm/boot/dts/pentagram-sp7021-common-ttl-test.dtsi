@@ -583,6 +583,9 @@
 				interrupt-parent = <&intc>;
 				interrupts = <120 IRQ_TYPE_EDGE_FALLING>;
 				reset-gpios = <&pctl 8 GPIO_ACTIVE_HIGH>;
+				touchscreen-size-x = <800>;
+				touchscreen-size-y = <480>;
+				touchscreen-swapped-x-y;
 			};
 		};
 
