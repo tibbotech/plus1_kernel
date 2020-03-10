@@ -379,16 +379,42 @@
 			};
 		};
 
-
-		sp_usb0: usb@9C102100 {
+		sp_ehci0: usb@9C102100 {
 			compatible = "sunplus,sunplus-i143-usb-ehci0";
+			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
 			reg = <0x0 0x9C102100 0x0 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_usb1: usb@9C103100 {
+		sp_ehci1: usb@9C103100 {
 			compatible = "sunplus,sunplus-i143-usb-ehci1";
+			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
 			reg = <0x0 0x9C103100 0x0 0x68>;
+			interrupt-parent = <&intc>;
+			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
 		};
+
+		sp_ohci0: usb@0x9C102080 {
+			compatible = "sunplus,sunplus-i143-usb-ohci0";
+			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
+			reg = <0x0 0x9C102080 0x0 0x68>, <0x0 0x9C000000 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_ohci1: usb@0x9C103080 {
+			compatible = "sunplus,sunplus-i143-usb-ohci1";
+			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
+			reg = <0x0 0x9C103080 0x0 0x68>, <0x0 0x9C000000 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,

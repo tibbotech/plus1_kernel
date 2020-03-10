@@ -88,3 +88,9 @@ obj-$(CONFIG_USB_HCD_BCMA)	+= bcma-hcd.o
 obj-$(CONFIG_USB_HCD_SSB)	+= ssb-hcd.o
 obj-$(CONFIG_USB_FOTG210_HCD)	+= fotg210-hcd.o
 obj-$(CONFIG_USB_MAX3421_HCD)	+= max3421-hcd.o
+
+obj-y += ehci-hcd.o
+obj-$(CONFIG_USB_EHCI_HCD)	+= ehci0-sunplus.o ehci1-sunplus.o
+
+obj-y += ohci-hcd.o
+obj-$(CONFIG_USB_OHCI_HCD)	+= ohci0-sunplus.o ohci1-sunplus.o
