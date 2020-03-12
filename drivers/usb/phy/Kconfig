@@ -4,6 +4,9 @@
 #
 menu "USB Physical Layer drivers"
 
+config SUNPLUS_USB_PHY
+	tristate "Sunplus USB PHY"
+
 config USB_PHY
 	select EXTCON
 	def_bool n

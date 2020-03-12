@@ -50,8 +50,7 @@ static int __init ohci1_sunplus_init(void)
 		return -1;
 	}
 #else
-	//printk(KERN_NOTICE "register ohci1_hcd_sunplus_driver\n");
-	//return platform_driver_register(&ohci1_hcd_sunplus_driver);
+	return -1;
 #endif
 }
 module_init(ohci1_sunplus_init);

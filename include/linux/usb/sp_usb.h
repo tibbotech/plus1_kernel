@@ -64,6 +64,9 @@
 #define	DCP_REG_OFFSET						0x44
 #define	UPHY_INTR_OFFSET					0x4c
 #define APHY_PROBE_OFFSET					0x5c
+#define SQ_CT_CTRL_OFFSET					0x64
+#define CTRL_OFFSET						0xf0
+#define PLL_PWR_CTRL_OFFSET					0xf8
 #define CDP_OFFSET						0
 
 #define	UPHY_DEBUG_SIGNAL_REG_OFFSET				0x30
