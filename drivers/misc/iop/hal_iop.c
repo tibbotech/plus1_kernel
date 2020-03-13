@@ -448,8 +448,10 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 		pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
     #endif 
 	
-	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY);
-		pIopReg->iop_data2|=RISC_READY;
+	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY)
+	{
+	}
+	pIopReg->iop_data2|=RISC_READY;
 		
 	#if 0
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
@@ -584,8 +586,10 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 		pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
     #endif 
 	
-	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY);
-		pIopReg->iop_data2|=RISC_READY;
+	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY)
+	{
+	}
+	pIopReg->iop_data2|=RISC_READY;
 		
 	#if 0
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 

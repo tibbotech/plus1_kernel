@@ -588,7 +588,6 @@ static int sp_iop_suspend(sp_iop_t *iopbase)
 	hal_iop_suspend(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
 }
-#endif 
 static int sp_iop_shutdown(sp_iop_t *iopbase)
 {
 	DBG_ERR("sp_iop_shutdown\n");
@@ -598,6 +597,7 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 	hal_iop_shutdown(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
 }
+#endif 
 
 static int sp_iop_reserve_base(sp_iop_t *iopbase)
 {	
