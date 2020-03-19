@@ -433,6 +433,20 @@
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		sp_otg0: usb@0x9c102400 {
+			compatible = "sunplus,i143-usb-otg0";
+			reg = <0x9c102400 0x70>, <0x9c102880 0x80>, <0x9c000200 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_otg1: usb@0x9c103400 {
+			compatible = "sunplus,i143-usb-otg1";
+			reg = <0x9c103400 0x70>, <0x9c103880 0x80>, <0x9c000200 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,

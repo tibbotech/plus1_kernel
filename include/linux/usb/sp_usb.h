@@ -102,7 +102,8 @@ extern u32 usb_vbus_gpio[USB_PORT_NUM];
 
 extern u8 max_topo_level;
 extern bool tid_test_flag;
-extern u8 sp_port_enabled;
+extern u8 sp_port0_enabled;
+extern u8 sp_port1_enabled;
 extern uint accessory_port_id;
 extern bool enum_rx_active_flag[USB_PORT_NUM];
 extern struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];

@@ -309,9 +309,6 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	struct resource *res_mem;
 	int irq;
 	int err = -ENOMEM;
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	struct usb_phy *otg_phy;
-#endif
 
 	//BUG_ON(!dev->dev.platform_data);
 
@@ -372,21 +369,6 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, hcd);
 
 /****************************************************/
-
-#ifdef CONFIG_USB_SUNPLUS_OTG
-	if (dev->id < 3) {
-		otg_phy = usb_get_transceiver_sp(dev->id - 1);
-		if(otg_phy){
-			err = otg_set_host(otg_phy->otg, &hcd->self);
-			if (err < 0) {
-				dev_err(&dev->dev,
-					"unable to register with transceiver\n");
-				goto err_iounmap;
-			}
-		}
-		hcd->self.otg_port = 1;
-	}
-#endif
 
 #ifdef CONFIG_SWITCH_USB_ROLE
 	if (dev->id < 3) {
