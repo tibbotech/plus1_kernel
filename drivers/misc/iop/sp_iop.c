@@ -123,6 +123,8 @@ static sp_iop_t *iop;
 unsigned char SourceCode[CODE_SIZE];
 bool iop_code_mode;//0:normal code, 1:standby code
 
+bool iop_wake_in;//0:wake_in disable , 1:wake_in enable 
+
 
 static ssize_t iop_show_normalcode(struct device *dev, struct device_attribute *attr, char *buf)
 {   
@@ -271,9 +273,56 @@ static ssize_t iop_store_mode(struct device *dev, struct device_attribute *attr,
 	}
 	else
 	{
+	    DBG_INFO("echo 0 or 1 mode\n");
+ 	    DBG_INFO("0:normal mode\n");
 	    DBG_INFO("cat 0 or 1 mode\n");
 		DBG_INFO("0:normal mode\n");
 		DBG_INFO("1:standby mode\n");
+	}
+	return ret;
+}
+
+static ssize_t iop_show_wakein(struct device *dev, struct device_attribute *attr, char *buf)
+{   
+	ssize_t len = 0;	
+	
+	if(iop_wake_in == 0)
+	{
+		DBG_INFO("WAKE_IN is disabled\n");
+	}
+	else if(iop_wake_in == 1)
+	{
+		DBG_INFO("WAKE_IN is enabled\n");
+	}
+	return len;
+}
+
+static ssize_t iop_store_wakein(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned char ret = count;
+	unsigned int reg;
+
+	if(buf[0] == '0')
+	{
+		DBG_INFO("Disable WAKE_IN\n");	
+		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+		reg = 0x08000000;
+		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+		iop_wake_in = 0;
+	}
+	else if(buf[0] == '1')
+	{
+		DBG_INFO( "Enable WAKE_IN\n");
+		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+		reg|=0x08000800;
+		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+		iop_wake_in = 1;
+	}
+	else
+	{
+	    DBG_INFO("echo 0 or 1 mode\n");
+		DBG_INFO("0:Disable WAKE_IN\n");
+		DBG_INFO("1:Enable WAKE_IN\n");
 	}
 	return ret;
 }
@@ -351,6 +400,7 @@ static DEVICE_ATTR(normalmode, S_IWUSR|S_IRUGO, iop_show_normalmode, iop_store_n
 static DEVICE_ATTR(standbymode, S_IWUSR|S_IRUGO, iop_show_standbymode, iop_store_standbymode);
 #endif 
 static DEVICE_ATTR(mode, S_IWUSR|S_IRUGO, iop_show_mode, iop_store_mode);
+static DEVICE_ATTR(wakein, S_IWUSR|S_IRUGO, iop_show_wakein, iop_store_wakein);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
 static DEVICE_ATTR(setgpio, S_IWUSR|S_IRUGO, iop_show_setgpio, iop_store_setgpio);
@@ -361,6 +411,7 @@ static struct attribute *iop_sysfs_entries[] = {
 	//&dev_attr_normalmode.attr,
 	//&dev_attr_standbymode.attr,
 	&dev_attr_mode.attr,
+	&dev_attr_wakein.attr,
 	&dev_attr_getdata.attr,
 	&dev_attr_setdata.attr,
 	&dev_attr_setgpio.attr,
@@ -532,7 +583,7 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int 
 	void __iomem *p;
 
 	FUNC_DEBUG();
-	DBG_INFO("register name  : %s!!\n", res_name);
+	//DBG_INFO("register name  : %s!!\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if(r == NULL) {
@@ -546,7 +597,7 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int 
 		return PTR_ERR(p);
 	}
 
-	DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
+	//DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
 	*membase = (unsigned int)p;
 
 	return IOP_SUCCESS;
