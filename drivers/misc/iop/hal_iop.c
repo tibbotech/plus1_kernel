@@ -1,6 +1,5 @@
 #include <linux/delay.h>
 #include <linux/io.h>
-#include <dt-bindings/memory/sp-q628-mem.h> 
 #include "hal_iop.h"
 //#include <mach/io_map.h> 
 #define IOP_CODE_SIZE	4096
@@ -9,6 +8,9 @@ extern const unsigned char IopNormalCode[];
 extern const unsigned char IopStandbyCode[];
 extern unsigned char SourceCode[IOP_CODE_SIZE];
 extern bool iop_code_mode;
+extern unsigned int SP_IOP_RESERVE_BASE;
+extern unsigned int SP_IOP_RESERVE_SIZE;
+
 
 void hal_iop_init(void __iomem *iopbase)
 {
@@ -567,8 +569,7 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
 	
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	early_printk("hal_iop_shutdown\n");
-	
+	early_printk("%s(%d)\n", __FUNCTION__, __LINE__);	
 	pIopReg->iop_control&=~(0x8000);	
 	pIopReg->iop_control|=0x1;
 	
@@ -624,19 +625,14 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	
 	//*iop_control &=~(0x01);
 	pIopReg->iop_control&=~(0x01);
-    #if 0
-	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
-		pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2,pIopReg->iop_data3,pIopReg->iop_data4,pIopReg->iop_data5);
-	
-	early_printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __FUNCTION__, __LINE__, 
-		pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
-    #endif 
-	
+
+	early_printk("%s(%d) IOP_READY=%x \n", __FUNCTION__, __LINE__, pIopReg->iop_data2);	
 	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY)
 	{
 	}
-	pIopReg->iop_data2|=RISC_READY;
-		
+	pIopReg->iop_data2 = RISC_READY;
+	early_printk("%s(%d) RISC_READY=%x \n", __FUNCTION__, __LINE__, pIopReg->iop_data2);		
+
 	#if 0
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
 		pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2,pIopReg->iop_data3,pIopReg->iop_data4,pIopReg->iop_data5);

@@ -11,6 +11,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+#include <linux/of_address.h>
 #include "hal_iop.h"
 #include "sp_iop.h"
 #include "iop_ioctl.h"
@@ -35,7 +36,8 @@
 extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
 int IOP_GPIO;
-
+unsigned int SP_IOP_RESERVE_BASE;
+unsigned int SP_IOP_RESERVE_SIZE;
 
 #ifdef IOP_KDBG_INFO
 	#define FUNC_DEBUG()    printk(KERN_INFO "K_IOP: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -284,16 +286,12 @@ static ssize_t iop_store_mode(struct device *dev, struct device_attribute *attr,
 
 static ssize_t iop_show_wakein(struct device *dev, struct device_attribute *attr, char *buf)
 {   
-	ssize_t len = 0;	
-	
-	if(iop_wake_in == 0)
-	{
-		DBG_INFO("WAKE_IN is disabled\n");
-	}
-	else if(iop_wake_in == 1)
-	{
+	ssize_t len = 0;		
+    if(iop_wake_in == 1)
 		DBG_INFO("WAKE_IN is enabled\n");
-	}
+    else
+		DBG_INFO("WAKE_IN is disabled\n");
+		
 	return len;
 }
 
@@ -305,7 +303,8 @@ static ssize_t iop_store_wakein(struct device *dev, struct device_attribute *att
 	if(buf[0] == '0')
 	{
 		DBG_INFO("Disable WAKE_IN\n");	
-		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+		//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
+    	reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
 		reg = 0x08000000;
 		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
 		iop_wake_in = 0;
@@ -686,6 +685,7 @@ static int sp_iop_suspend(sp_iop_t *iopbase)
 	return IOP_SUCCESS;
 }
 
+#endif 
 
 static int sp_iop_shutdown(sp_iop_t *iopbase)
 {
@@ -696,7 +696,7 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 	hal_iop_shutdown(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
 }
-#endif 
+
 
 static int sp_iop_reserve_base(sp_iop_t *iopbase)
 {	
@@ -715,6 +715,8 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 {
 	int ret = -ENXIO;	
 	int rc;
+	struct device_node *memnp;
+	struct resource mem_res;
 
 	FUNC_DEBUG();
 	iop = (sp_iop_t *)devm_kzalloc(&pdev->dev, sizeof(sp_iop_t), GFP_KERNEL);
@@ -736,6 +738,29 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	}
 
 	ret = _sp_iop_get_resources(pdev, iop);	
+
+	//Get reserve address
+	memnp = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (!memnp)
+	{
+		DBG_ERR("no memory-region node\n");
+		return -EINVAL;
+	}
+
+	rc = of_address_to_resource(memnp, 0, &mem_res);
+	of_node_put(memnp);
+	if(rc)
+	{
+		 DBG_ERR("failed to translate memory-region to a resource\n");
+		 return -EINVAL;
+	}
+
+	SP_IOP_RESERVE_BASE = mem_res.start;
+	SP_IOP_RESERVE_SIZE = resource_size(&mem_res);
+	//DBG_INFO("mem_res.start=%x \n",SP_IOP_RESERVE_BASE);	
+	//DBG_INFO("mem_res.size=%x \n",SP_IOP_RESERVE_SIZE); 
+	
+	
 	ret = sp_iop_start(iop);
 	if (ret != 0) {
 		DBG_ERR("sp iop init err=%d\n", ret);
@@ -821,17 +846,17 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 
 static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 {
-	#if 0
+	#if 1
 	int ret;
-	unsigned int*   IOP_base;	
-	unsigned int checksum=0;	
-	int i;	
+	//unsigned int*   IOP_base;	
+	//unsigned int checksum=0;	
+	//int i;	
 	
-	IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
-	for(i=0;i<0x400;i++)
-	{	
-		checksum+=*(IOP_base+i);			
-	}
+	//IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
+	//for(i=0;i<0x400;i++)
+	//{	
+	//	checksum+=*(IOP_base+i);			
+	//}
 	//early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
 
 	FUNC_DEBUG();

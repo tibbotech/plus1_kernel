@@ -66,13 +66,8 @@
 
 		iop_reserve: iop_device {
 			no-map;
-			reg = <SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE>;
+			reg = <0x00100000 0x00100000>;//SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
 		};
-	};
-
-	iop_device {
-		compatible = "sunplus,iop_device";
-		memory-region = <&iop_reserve>;
 	};
 
 	clocks {
@@ -303,6 +298,7 @@
 			reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "axi_mon";
 			interrupt-parent = <&intc>;
 			interrupts = <41 IRQ_TYPE_LEVEL_HIGH>, <42 IRQ_TYPE_LEVEL_HIGH>;
+			memory-region = <&iop_reserve>;
 		};
 
 #if 1
