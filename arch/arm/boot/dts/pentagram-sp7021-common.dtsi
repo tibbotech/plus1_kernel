@@ -808,7 +808,7 @@
 			no-sdio;
 			no-mmc;
 		};
-/*
+#if 0 // AP6256 module enable/disable
 		sdio: sdio@sdcard {
 			compatible = "sunplus,sp7021-sdio";
 			reg = <0x9c008400 0x280>;
@@ -826,7 +826,7 @@
 			no-sd;
 			no-mmc;
 		};
-*/
+#endif
 		spi_controller0: spi@sp_spi_controller0 {
 			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
