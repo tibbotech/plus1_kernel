@@ -846,29 +846,19 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 
 static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 {
-	#if 1
-	int ret;
-	//unsigned int*   IOP_base;	
-	//unsigned int checksum=0;	
-	//int i;	
-	
-	//IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
-	//for(i=0;i<0x400;i++)
-	//{	
-	//	checksum+=*(IOP_base+i);			
-	//}
-	//early_printk("\n IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
+	FUNC_DEBUG();	
+}
 
+void sp_iop_platform_driver_poweroff(void)
+{
+	int ret = 0;
 	FUNC_DEBUG();
+	hal_iop_standbymode(iop->iop_regs);	
 	ret = sp_iop_shutdown(iop);
 	if (ret != 0) {
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
 		//return ret;
-	}
-	#else
-	hal_iop_standbymode(iop->iop_regs);	
-	FUNC_DEBUG();
-	#endif		
+	}			
 }
 
 static int sp_iop_platform_driver_resume(struct platform_device *pdev)
