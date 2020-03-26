@@ -24,7 +24,8 @@ static void sp_power_off(void)
 	//void __iomem *regs_B = (void __iomem *)B_SYSTEM_BASE;
 //	int i;
 	early_printk("%s\n", __func__);
-    //for iop standby code
+    //for iop power off
+	sp_iop_platform_driver_poweroff();
 	//writel(0x0000, regs_B + 0x434); /* iop_data5=0x0000 */
 	//writel(0x0060, regs_B + 0x438); /* iop_data6=0x0060 */
 	//writel(0x00dd, regs_B + 0x424); /* iop_data1=0x00dd */
