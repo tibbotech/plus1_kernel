@@ -841,6 +841,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_0>;
 			spi-max-frequency = <50000000>;
+			spi-cpha;
+			spi-cpol;			
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi0: spi@ {
@@ -868,6 +870,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_1>;
 			spi-max-frequency = <50000000>;
+			spi-cpha;
+			spi-cpol;				
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi1: spi@ {
@@ -892,6 +896,8 @@
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_2>;
 			spi-max-frequency = <50000000>;
+			spi-cpha;
+			spi-cpol;				
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi2: spi@ {

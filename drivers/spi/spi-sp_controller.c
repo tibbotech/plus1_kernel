@@ -1755,6 +1755,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 	int mode;	
+	int spi_work_mode;		
 	unsigned int max_freq;
 	//struct spi_master *master;
 	struct spi_controller *ctlr;
@@ -1763,9 +1764,22 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 
     FUNC_DEBUG();
 
+	spi_work_mode = 0;
+
+
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "spi");
 		mode = of_property_read_bool(pdev->dev.of_node, "spi-slave") ? SPI_SLAVE : SPI_MASTER;
+
+	        spi_work_mode |= of_property_read_bool(pdev->dev.of_node, "spi-cpol") ? SPI_CPOL : 0; 
+	        spi_work_mode |= of_property_read_bool(pdev->dev.of_node, "spi-cpha") ? SPI_CPHA : 0; 	
+	}
+	else{
+		pdev->id = 0;
+                mode = SPI_MASTER;		
+                spi_work_mode |= SPI_CPOL; 
+	        spi_work_mode |= SPI_CPHA; 	
+	
 	}
 
     DBG_INFO(" pdev->id  = %d\n",pdev->id);
@@ -1791,7 +1805,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 
 	//ctlr->auto_runtime_pm = true;
 	/* setup the master state. */
-	ctlr->mode_bits = SPI_MODE_1 ;
+	ctlr->mode_bits = spi_work_mode ;
 	ctlr->bus_num = pdev->id;
 	//master->setup = pentagram_spi_controller_setup;
 	ctlr->prepare_message = pentagram_spi_controller_prepare_message;
