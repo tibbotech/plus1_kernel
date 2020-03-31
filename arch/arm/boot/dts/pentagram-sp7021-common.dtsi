@@ -246,15 +246,15 @@
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
 			charging-mode = <0xE>;
 			/*
-			 *	0xE	Disable
-			 *	0x1	0.86mA (2K Ohm with diode)
-	 		*	0x5	1.81mA (250 Ohm with diode)
-	 		*	0x9	2.07mA (50 Ohm with diode)
-	 		*	0xD	16.0mA (0 Ohm with diode)
-	 		*	0x3	1.36mA (2K Ohm without diode)
-	 		*	0x7	3.99mA (250 Ohm without diode)
-	 		*	0xB	4.41mA (50 Ohm without diode)
-	 		*	0xF	16.0mA (0 Ohm without diode)	*/
+			 *      0xE     Disable
+			 *      0x1     0.86mA (2K Ohm with diode)
+			 *      0x5     1.81mA (250 Ohm with diode)
+			 *      0x9     2.07mA (50 Ohm with diode)
+			 *      0xD     16.0mA (0 Ohm with diode)
+			 *      0x3     1.36mA (2K Ohm without diode)
+			 *      0x7     3.99mA (250 Ohm without diode)
+			 *      0xB     4.41mA (50 Ohm without diode)
+			 *      0xF     16.0mA (0 Ohm without diode)    */
 		};
 
 		thermal: serial@sp_thermal {
@@ -276,14 +276,14 @@
 
 				trips {
 					cpu-hott {
-						temperature	= <80000>;
-						hysteresis	= <1000>;
-						type		= "hot";
+						temperature = <80000>;
+						hysteresis  = <1000>;
+						type        = "hot";
 					};
 					cpu-crit {
-						temperature	= <85000>;
-						hysteresis	= <0>;
-						type		= "critical";
+						temperature = <85000>;
+						hysteresis  = <0>;
+						type        = "critical";
 					};
 				};
 				cooling-maps {
@@ -753,7 +753,13 @@
 			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
-#if 0 // Demo board V3
+#if 1 // Ev board
+			pinctrl-names = "default";
+			pinctrl-0 = <&l2sw_two_phy_pins>;
+#elif 0 // Demo board V1/V2
+			pinctrl-names = "default";
+			pinctrl-0 = <&l2sw_demo_board_v2_pins>;
+#else // Demo board V3
 			pinctrl-names = "default";
 			pinctrl-0 = <&l2sw_demo_board_v3_pins>;
 #endif
@@ -842,7 +848,7 @@
 			resets = <&rstc RST_SPI_COMBO_0>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;			
+			spi-cpol;                       
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi0: spi@ {
@@ -871,7 +877,7 @@
 			resets = <&rstc RST_SPI_COMBO_1>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;				
+			spi-cpol;                               
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi1: spi@ {
@@ -897,7 +903,7 @@
 			resets = <&rstc RST_SPI_COMBO_2>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;				
+			spi-cpol;                               
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi2: spi@ {
@@ -1209,6 +1215,38 @@
 					SP7021_IOPAD(31,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
 				>;
 			};
+			l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+					SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+				>;
+			};
+			l2sw_demo_board_v2_pins: pinmux_l2sw_demo_board_v2_pins {
+				sppctl,pins = <
+					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
+					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
+					SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
+					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
+					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
+					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
+					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
+					SP7021_IOPAD(52,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
+					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
+					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
+					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
+					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+				>;
+			};
 			l2sw_demo_board_v3_pins: l2sw_demo_board_v3_pins {
 				sppctl,pins = <
 					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
@@ -1228,38 +1266,6 @@
 					SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
 					SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
-				>;
-			};
-			l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
-				sppctl,pins = <
-					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
-					SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
-					SP7021_IOPAD(42,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
-					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
-					SP7021_IOPAD(40,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
-					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
-					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
-					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
-					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
-					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
-					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
-					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
-				>;
-			};
-			l2sw_demo_board_pins: pinmux_l2sw_demo_board_pins {
-				sppctl,pins = <
-					SP7021_IOPAD(50,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
-					SP7021_IOPAD(44,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
-					SP7021_IOPAD(54,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_FLASH0,0)
-					SP7021_IOPAD(45,SP7021_PCTL_G_PMUX,MUXF_L2SW_LED_ON0,0)
-					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDIO,0)
-					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXEN,0)
-					SP7021_IOPAD(51,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD0,0)
-					SP7021_IOPAD(52,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_TXD1,0)
-					SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_CRSDV,0)
-					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
-					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
-					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
 				>;
 			};
 		};
