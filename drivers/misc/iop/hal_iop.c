@@ -1,15 +1,17 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include "hal_iop.h"
-//#include <mach/io_map.h> 
-#define IOP_CODE_SIZE	4096
 
 extern const unsigned char IopNormalCode[];
 extern const unsigned char IopStandbyCode[];
-extern unsigned char SourceCode[IOP_CODE_SIZE];
 extern bool iop_code_mode;
 extern unsigned int SP_IOP_RESERVE_BASE;
 extern unsigned int SP_IOP_RESERVE_SIZE;
+
+extern unsigned int RECEIVE_CODE_SIZE;
+extern unsigned char NormalCode[];
+extern unsigned char StandbyCode[];
+
 
 
 void hal_iop_init(void __iomem *iopbase)
@@ -24,9 +26,9 @@ void hal_iop_init(void __iomem *iopbase)
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
 	/*load normal code*/
-	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, IOP_CODE_SIZE);
-	memset((unsigned char *)IOP_kernel_base,0, IOP_CODE_SIZE);
-	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, IOP_CODE_SIZE);
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
+	memset((unsigned char *)IOP_kernel_base,0, NORMAL_CODE_MAX_SIZE);
+	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	
 	pIopReg->iop_control|=0x01;
@@ -76,9 +78,9 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
-	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, IOP_CODE_SIZE);
-	memset((unsigned char *)IOP_kernel_base,0, IOP_CODE_SIZE);
-	memcpy((unsigned char *)IOP_kernel_base, SourceCode, IOP_CODE_SIZE);
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, RECEIVE_CODE_SIZE);
+	memset((unsigned char *)IOP_kernel_base,0, RECEIVE_CODE_SIZE);
+	memcpy((unsigned char *)IOP_kernel_base, NormalCode, RECEIVE_CODE_SIZE);
 
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	
@@ -99,12 +101,13 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_normal) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_normal) >> 16);
 	pIopReg->iop_control &=~(0x01);
-	
+	#if 0
 	printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
 			pIopReg->iop_data0,pIopReg->iop_data1,pIopReg->iop_data2,pIopReg->iop_data3,pIopReg->iop_data4,pIopReg->iop_data5);
 		
 	printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __FUNCTION__, __LINE__, 
 			pIopReg->iop_data6,pIopReg->iop_data7,pIopReg->iop_data8,pIopReg->iop_data9,pIopReg->iop_data10,pIopReg->iop_data11);
+	#endif 
 	iop_code_mode = 0;
 }
 EXPORT_SYMBOL(hal_iop_load_normal_code);
@@ -123,9 +126,9 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
-	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, IOP_CODE_SIZE);
-	memset((unsigned char *)IOP_kernel_base,0, IOP_CODE_SIZE);
-	memcpy((unsigned char *)IOP_kernel_base, SourceCode, IOP_CODE_SIZE);
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, RECEIVE_CODE_SIZE);
+	memset((unsigned char *)IOP_kernel_base,0, RECEIVE_CODE_SIZE);
+	memcpy((unsigned char *)IOP_kernel_base, StandbyCode, RECEIVE_CODE_SIZE);
 
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	
@@ -169,9 +172,9 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
-	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, IOP_CODE_SIZE);
-	memset((unsigned char *)IOP_kernel_base,0, IOP_CODE_SIZE);
-	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, IOP_CODE_SIZE);
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
+	memset((unsigned char *)IOP_kernel_base,0, NORMAL_CODE_MAX_SIZE);
+	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	pIopReg->iop_control|=0x01;
 
@@ -216,9 +219,9 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	//reg|=0x00100010;
-	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, IOP_CODE_SIZE);
-	memset((unsigned char *)IOP_kernel_base,0, IOP_CODE_SIZE);
-	memcpy((unsigned char *)IOP_kernel_base, IopStandbyCode, IOP_CODE_SIZE);
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, STANDBY_CODE_MAX_SIZE);
+	memset((unsigned char *)IOP_kernel_base,0, STANDBY_CODE_MAX_SIZE);
+	memcpy((unsigned char *)IOP_kernel_base, IopStandbyCode, STANDBY_CODE_MAX_SIZE);
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	
 	pIopReg->iop_control|=0x01;

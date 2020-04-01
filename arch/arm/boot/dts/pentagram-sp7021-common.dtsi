@@ -3,7 +3,6 @@
 #include "pentagram-sp7021-storage.dtsi"
 
 #include <dt-bindings/clock/sp-q628.h>
-#include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
 #include <dt-bindings/reset/sp-q628.h>

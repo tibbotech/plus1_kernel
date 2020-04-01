@@ -14,7 +14,6 @@
 #include "sp_axi.h"
 #include "axi_ioctl.h"
 
-#include <dt-bindings/memory/sp-q628-mem.h> 
 #include <linux/delay.h>
 #include <linux/of_irq.h>
 #include <linux/kthread.h>

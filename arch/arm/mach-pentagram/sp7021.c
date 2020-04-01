@@ -14,7 +14,6 @@
 #include <mach/io_map.h>
 #include <mach/clk.h>
 #include <mach/misc.h>
-#include <dt-bindings/memory/sp-q628-mem.h> 
 #include <../drivers/misc/iop/sp_iop.h>
 #include "common.h"
 

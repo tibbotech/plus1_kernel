@@ -22,4 +22,8 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase);
 void hal_iop_set_reserve_base(void __iomem *iopbase);
 void hal_iop_set_reserve_size(void __iomem *iopbase);
 
+#define NORMAL_CODE_MAX_SIZE 0X10000
+#define STANDBY_CODE_MAX_SIZE 0x4000
+
+
 #endif /* __IOP_HAL_H__ */

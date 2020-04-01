@@ -15,16 +15,15 @@
 #include "hal_iop.h"
 #include "sp_iop.h"
 #include "iop_ioctl.h"
-
-#include <dt-bindings/memory/sp-q628-mem.h> 
 #include <linux/delay.h>
-
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
 
 #include <linux/of_irq.h>
 #include <linux/kthread.h>
+#include <linux/fs.h>
+
 /* ---------------------------------------------------------------------------------------------- */
 //#define IOP_KDBG_INFO
 #define IOP_FUNC_DEBUG
@@ -32,12 +31,13 @@
 //#define IOP_GET_GPIO
 //#define IOP_UPDATE_FW
 
-
 extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
 int IOP_GPIO;
 unsigned int SP_IOP_RESERVE_BASE;
 unsigned int SP_IOP_RESERVE_SIZE;
+
+
 
 #ifdef IOP_KDBG_INFO
 	#define FUNC_DEBUG()    printk(KERN_INFO "K_IOP: %s(%d)\n", __FUNCTION__, __LINE__)
@@ -120,129 +120,110 @@ struct iop_cbdma_reg {
 **************************************************************************/
 
 static sp_iop_t *iop;
-
-#define CODE_SIZE	4096
-unsigned char SourceCode[CODE_SIZE];
 bool iop_code_mode;//0:normal code, 1:standby code
-
 bool iop_wake_in;//0:wake_in disable , 1:wake_in enable 
+unsigned int RECEIVE_CODE_SIZE;
+unsigned char NormalCode[NORMAL_CODE_MAX_SIZE];
+unsigned char StandbyCode[STANDBY_CODE_MAX_SIZE];
+unsigned char GetCodeFromDram[STANDBY_CODE_MAX_SIZE];
 
+static ssize_t iop_read_normalcode(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t offset, size_t count)
+{	
+	volatile unsigned int*	 IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	unsigned char * IOP_kernel_base;
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
+	memcpy(buf,(unsigned char *)IOP_kernel_base+offset, count);
+	//printk("offset=%llx \n",offset);
+	//DBG_INFO("filp->f_pos=%llx \n",filp->f_pos);
 
-static ssize_t iop_show_normalcode(struct device *dev, struct device_attribute *attr, char *buf)
-{   
-	ssize_t len = 0;
-    DBG_INFO("iop_show_normalcode\n");
-	return len;
+	if(offset == (NORMAL_CODE_MAX_SIZE - count))
+    	DBG_INFO("get_standbycode\n");
+	return count;
 }
 
-static ssize_t iop_store_normalcode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+
+static ssize_t iop_write_normalcode(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t offset, size_t count)
 {
-	int length = 0x10;
-	//printk("count=%x \n",count);		    
-	if(count>=length)
+	int i=0;
+
+	if(offset != RECEIVE_CODE_SIZE)
 	{
-	    int i,index;
-	    index = CODE_SIZE-count;
-		for(i=0;i<length;i++)
-		{
-			char temp;
-			
-			temp = buf[i];
-			SourceCode[index] = temp;
-			index += 1;
-			//printk("index=%x\n",index);
-		}		
-
-		if(CODE_SIZE == index)
-		{		    
-			DBG_INFO("source code size=%x \n",index);	
-			hal_iop_load_normal_code(iop->iop_regs);			
-			hal_iop_get_iop_data(iop->iop_regs);
-			DBG_INFO("normal code success\n");
-		}
+		DBG_INFO("Code size is incorrect\n");	
+		RECEIVE_CODE_SIZE = 0;
+		return -EINVAL;
 	}
-	else
-	{		
-		DBG_INFO("normal code incorrect\n");
-	}
-	//DBG_INFO("iop_store_normalcode\n");
-	return length;
-}
 
-static ssize_t iop_show_standbycode(struct device *dev, struct device_attribute *attr, char *buf)
-{   
-	ssize_t len = 0;
-    DBG_INFO("iop_show_standbycode\n");
-	return len;
-}
-
-static ssize_t iop_store_standbycode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	int length = 0x10;
-	//DBG_INFO("count=%x \n",count);		    
-	if(count>=length)
+	for(i=0;i<count;i++)
 	{
-	    int i,index;
-	    index = CODE_SIZE-count;
-		for(i=0;i<length;i++)
-		{
-			char temp;
-			
-			temp = buf[i];
-			SourceCode[index] = temp;
-			index += 1;
-			//DBG_INFO("index=%x\n",index);
-		}		
-
-		if(CODE_SIZE == index)
-		{		    
-			DBG_INFO("source code size=%x \n",index);	
-			hal_iop_load_standby_code(iop->iop_regs);			
-			hal_iop_get_iop_data(iop->iop_regs);
-			DBG_INFO("standby code success\n");
-		}
+		char temp;
+		temp = buf[i];
+		NormalCode[RECEIVE_CODE_SIZE] = temp;
+		RECEIVE_CODE_SIZE += 1;
 	}
-	else
-	{		
-		DBG_INFO("standby code incorrect\n");
+
+	if(RECEIVE_CODE_SIZE == NORMAL_CODE_MAX_SIZE)
+	{			
+		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);	
+		hal_iop_load_normal_code(iop->iop_regs);			
+		//hal_iop_get_iop_data(iop->iop_regs);
+		DBG_INFO("Update normal code 64K\n");
+		RECEIVE_CODE_SIZE = 0;
 	}
-	//DBG_INFO("iop_store_updatecode\n");
-	return length;
+	return count;
 }
 
-#if 0
-static ssize_t iop_show_normalmode(struct device *dev, struct device_attribute *attr, char *buf)
+
+
+static ssize_t iop_read_standbycode(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t offset, size_t count)
 {   
-	ssize_t len = 0;
-	hal_iop_normalmode(iop->iop_regs);	
-    DBG_INFO("Switch to normal mode\n");
-	return len;
+	volatile unsigned int*	 IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	unsigned char * IOP_kernel_base;
+	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, STANDBY_CODE_MAX_SIZE);
+	memcpy(buf,(unsigned char *)IOP_kernel_base+offset, count);
+	//printk("offset=%llx \n",offset);
+	//DBG_INFO("filp->f_pos=%llx \n",filp->f_pos);
+	if(offset == (STANDBY_CODE_MAX_SIZE - count))
+    	DBG_INFO("get_standbycode\n");
+	return count;
 }
 
-static ssize_t iop_store_normalmode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t iop_write_standbycode(struct file *filp, struct kobject *kobj,
+				struct bin_attribute *attr,
+				char *buf, loff_t offset, size_t count)
 {
-	int length = 0x10;
-	//printk("count=%x \n",count);		    	
-	DBG_INFO("iop_store_normalmode\n");
-	return length;
-}
+	int i=0;
 
-static ssize_t iop_show_standbymode(struct device *dev, struct device_attribute *attr, char *buf)
-{   
-	ssize_t len = 0;	
-	hal_iop_standbymode(iop->iop_regs);	
-    DBG_INFO("Switch to standby mode\n");
-	return len;
-}
+	if(offset != RECEIVE_CODE_SIZE)
+	{
+		DBG_INFO("Code size is incorrect\n");	
+		RECEIVE_CODE_SIZE = 0;
+		return -EINVAL;
+	}
 
-static ssize_t iop_store_standbymode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{
-	int length = 0x10;
-	//DBG_INFO("count=%x \n",count);				
-	DBG_INFO("iop_store_standbymode\n");
-	return length;
+	for(i=0;i<count;i++)
+	{
+		char temp;
+		temp = buf[i];
+		StandbyCode[RECEIVE_CODE_SIZE] = temp;
+		RECEIVE_CODE_SIZE += 1;
+	}
+
+	if(RECEIVE_CODE_SIZE == STANDBY_CODE_MAX_SIZE)
+	{		    
+		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);	
+		hal_iop_load_standby_code(iop->iop_regs);			
+		//hal_iop_get_iop_data(iop->iop_regs);
+		DBG_INFO("Update standby code 16K\n");
+		RECEIVE_CODE_SIZE = 0;
+	}
+	return count;
 }
-#endif 
 
 static ssize_t iop_show_mode(struct device *dev, struct device_attribute *attr, char *buf)
 {   
@@ -390,25 +371,15 @@ static ssize_t iop_store_setgpio(struct device *dev, struct device_attribute *at
  	return ret;
 }
 
-
- 
-static DEVICE_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_show_normalcode, iop_store_normalcode);
-static DEVICE_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_show_standbycode, iop_store_standbycode);
-#if 0
-static DEVICE_ATTR(normalmode, S_IWUSR|S_IRUGO, iop_show_normalmode, iop_store_normalmode);
-static DEVICE_ATTR(standbymode, S_IWUSR|S_IRUGO, iop_show_standbymode, iop_store_standbymode);
-#endif 
 static DEVICE_ATTR(mode, S_IWUSR|S_IRUGO, iop_show_mode, iop_store_mode);
 static DEVICE_ATTR(wakein, S_IWUSR|S_IRUGO, iop_show_wakein, iop_store_wakein);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
 static DEVICE_ATTR(setgpio, S_IWUSR|S_IRUGO, iop_show_setgpio, iop_store_setgpio);
+static BIN_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_read_normalcode, iop_write_normalcode, 0x10000);
+static BIN_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_read_standbycode, iop_write_standbycode, 0x4000);
 
 static struct attribute *iop_sysfs_entries[] = {
-	&dev_attr_normalcode.attr,
-	&dev_attr_standbycode.attr,
-	//&dev_attr_normalmode.attr,
-	//&dev_attr_standbymode.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_wakein.attr,
 	&dev_attr_getdata.attr,
@@ -417,8 +388,15 @@ static struct attribute *iop_sysfs_entries[] = {
 	NULL,
 };
 
+static struct bin_attribute *iop_bin_attrs[] = {
+	&bin_attr_standbycode,
+	&bin_attr_normalcode,
+	NULL,
+};
+
 static struct attribute_group iop_attribute_group = {
 	.attrs = iop_sysfs_entries,
+	.bin_attrs = iop_bin_attrs,
 };
 
 static int sp_iop_open(struct inode *inode, struct file *pfile)
@@ -553,8 +531,6 @@ static const struct file_operations sp_iop_fops = {
 	.write          = sp_iop_write,
     .release        = sp_iop_release,
 	.unlocked_ioctl = sp_iop_ioctl,
-
-
 };
 
 

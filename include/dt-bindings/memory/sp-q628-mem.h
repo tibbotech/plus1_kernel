@@ -1,6 +1,0 @@
-#ifndef _DT_BINDINGS_CLOCK_SP_Q628_MEM_H
-#define _DT_BINDINGS_CLOCK_SP_Q628_MEM_H
-
-
-
-#endif

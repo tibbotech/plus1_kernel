@@ -2,7 +2,6 @@
 
 #include "pentagram-sp7021-common.dtsi"
 
-#include <dt-bindings/memory/sp-q628-mem.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
 
