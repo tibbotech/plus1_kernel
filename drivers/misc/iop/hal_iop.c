@@ -696,3 +696,31 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 }
 EXPORT_SYMBOL(hal_iop_shutdown);
 
+void hal_iop_S1mode(void __iomem *iopbase)
+{
+	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
+	
+	early_printk("%s(%d) IOP_READY=%x \n", __FUNCTION__, __LINE__, pIopReg->iop_data2);	
+	while((pIopReg->iop_data2&IOP_READY)!=IOP_READY)
+	{
+	}
+	pIopReg->iop_data2 = RISC_READY;
+	early_printk("%s(%d) RISC_READY=%x \n", __FUNCTION__, __LINE__, pIopReg->iop_data2);		
+
+	pIopReg->iop_data5=0x00;
+	pIopReg->iop_data6=0x60;
+	while(1)
+	{
+		if(pIopReg->iop_data7==0xaaaa)
+		{   
+			break;
+		}
+	}	
+	
+	pIopReg->iop_data1=0xee; //8051 bin file call S1_mode function.	
+	printk("hal_iop_shutdown end\n");
+	
+}
+EXPORT_SYMBOL(hal_iop_S1mode);
+
+

@@ -371,11 +371,28 @@ static ssize_t iop_store_setgpio(struct device *dev, struct device_attribute *at
  	return ret;
 }
 
+static ssize_t iop_show_S1mode(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	ssize_t len = 0;
+	hal_iop_standbymode(iop->iop_regs); 
+	FUNC_DEBUG();	
+	hal_iop_S1mode(iop->iop_regs);
+	return len;
+}
+
+static ssize_t iop_store_S1mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{	
+	ssize_t len = 0;	
+	return len;
+}
+
+
 static DEVICE_ATTR(mode, S_IWUSR|S_IRUGO, iop_show_mode, iop_store_mode);
 static DEVICE_ATTR(wakein, S_IWUSR|S_IRUGO, iop_show_wakein, iop_store_wakein);
 static DEVICE_ATTR(getdata, S_IWUSR|S_IRUGO, iop_show_getdata, iop_store_getdata);
 static DEVICE_ATTR(setdata, S_IWUSR|S_IRUGO, iop_show_setdata, iop_store_setdata);
 static DEVICE_ATTR(setgpio, S_IWUSR|S_IRUGO, iop_show_setgpio, iop_store_setgpio);
+static DEVICE_ATTR(S1mode, S_IWUSR|S_IRUGO, iop_show_S1mode, iop_store_S1mode);
 static BIN_ATTR(normalcode, S_IWUSR|S_IRUGO, iop_read_normalcode, iop_write_normalcode, 0x10000);
 static BIN_ATTR(standbycode, S_IWUSR|S_IRUGO, iop_read_standbycode, iop_write_standbycode, 0x4000);
 
@@ -385,6 +402,7 @@ static struct attribute *iop_sysfs_entries[] = {
 	&dev_attr_getdata.attr,
 	&dev_attr_setdata.attr,
 	&dev_attr_setgpio.attr,
+	&dev_attr_S1mode.attr,
 	NULL,
 };
 
@@ -633,20 +651,10 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 	return IOP_SUCCESS;
 }
 
-
-
-
-
-
-
 static int sp_iop_start(sp_iop_t *iopbase)
 {
-
 	FUNC_DEBUG();
-
 	hal_iop_init(iopbase->iop_regs);
-
-
 	return IOP_SUCCESS;
 }
 
@@ -828,8 +836,8 @@ static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 void sp_iop_platform_driver_poweroff(void)
 {
 	int ret = 0;
-	FUNC_DEBUG();
 	hal_iop_standbymode(iop->iop_regs);	
+	FUNC_DEBUG();
 	ret = sp_iop_shutdown(iop);
 	if (ret != 0) {
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
