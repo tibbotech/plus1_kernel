@@ -169,7 +169,7 @@ static int sp_rtc_resume(struct platform_device *pdev)
 
 static int sp_rtc_set_mmss(struct device *dev, unsigned long secs)
 {
-	dev_info(dev, "%s, secs = %lu\n", __func__, secs);
+	dev_dbg(dev, "%s, secs = %lu\n", __func__, secs);
 	sp_set_seconds(secs);
 	return 0;
 }
@@ -242,7 +242,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	struct resource *res;
 	void __iomem *reg_base;
 
-	FUNC_DEBUG();
+//	FUNC_DEBUG();
 
 	//memset(sp_rtc, 0, sizeof(sp_rtc));
 	memset(&sp_rtc, 0, sizeof(sp_rtc));
@@ -318,6 +318,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	rtc->uie_unsupported = 1;
 
 	platform_set_drvdata(plat_dev, rtc);
+	printk( KERN_INFO "sp7021-rtc loaded\n")
 
 	return 0;
 
@@ -361,7 +362,7 @@ static int __init sp_rtc_init(void)
 {
 	int err;
 
-	FUNC_DEBUG();
+//	FUNC_DEBUG();
 
 	if ((err = platform_driver_register(&sp_rtc_driver)))
 		return err;
