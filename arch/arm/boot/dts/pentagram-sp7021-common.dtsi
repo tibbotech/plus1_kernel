@@ -189,6 +189,8 @@
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA0>;
 			resets = <&rstc RST_UA0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pins_uart0>;
 		};
 
 		uart1: serial@sp_uart1 {
@@ -790,6 +792,8 @@
 			mmc-ddr-3_3v;
 			no-sdio;
 			no-sd;
+			pinctrl-names = "default";
+			pinctrl-0 = <&emmc_mux>;
 		};
 
 		mmc1: mmc@sdcard {
@@ -847,7 +851,7 @@
 			resets = <&rstc RST_SPI_COMBO_0>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;                       
+			spi-cpol;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi0: spi@ {
@@ -876,7 +880,7 @@
 			resets = <&rstc RST_SPI_COMBO_1>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;                               
+			spi-cpol;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi1: spi@ {
@@ -902,7 +906,7 @@
 			resets = <&rstc RST_SPI_COMBO_2>;
 			spi-max-frequency = <50000000>;
 			spi-cpha;
-			spi-cpol;                               
+			spi-cpol;
 			#address-cells = <1>;
 			#size-cells = <0>;
 			spi2: spi@ {
@@ -1041,10 +1045,17 @@
 				<127 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc GPIO>;
 			resets = <&rstc RST_GPIO>;
+
+			pins_uart0: pins_uart0 {
+				sppctl,groups = "UA0";
+				sppctl,function = "UA0";
+			};
+
 			emmc_mux: emmc_mux {
 				sppctl,groups = "CARD0_EMMC";
 				sppctl,function = "CARD0_EMMC";
 			};
+
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
@@ -1213,6 +1224,9 @@
 					SP7021_IOPAD(34,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(31,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
 				>;
+				sppctl,zero_func = <
+					MUXF_DAISY_MODE
+				>;
 			};
 			l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
 				sppctl,pins = <
@@ -1229,6 +1243,18 @@
 					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(43,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
 				>;
+				sppctl,zero_func = <
+					MUXF_L2SW_LED_FLASH1
+					MUXF_L2SW_LED_ON1
+					MUXF_L2SW_P1_MAC_RMII_TXEN
+					MUXF_L2SW_P1_MAC_RMII_TXD0
+					MUXF_L2SW_P1_MAC_RMII_TXD1
+					MUXF_L2SW_P1_MAC_RMII_CRSDV
+					MUXF_L2SW_P1_MAC_RMII_RXD0
+					MUXF_L2SW_P1_MAC_RMII_RXD1
+					MUXF_L2SW_P1_MAC_RMII_RXER
+					MUXF_DAISY_MODE
+				>;
 			};
 			l2sw_demo_board_v2_pins: pinmux_l2sw_demo_board_v2_pins {
 				sppctl,pins = <
@@ -1244,6 +1270,18 @@
 					SP7021_IOPAD(48,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD0,0)
 					SP7021_IOPAD(49,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(46,SP7021_PCTL_G_PMUX,MUXF_L2SW_P0_MAC_RMII_RXER,0)
+				>;
+				sppctl,zero_func = <
+					MUXF_L2SW_LED_FLASH1
+					MUXF_L2SW_LED_ON1
+					MUXF_L2SW_P1_MAC_RMII_TXEN
+					MUXF_L2SW_P1_MAC_RMII_TXD0
+					MUXF_L2SW_P1_MAC_RMII_TXD1
+					MUXF_L2SW_P1_MAC_RMII_CRSDV
+					MUXF_L2SW_P1_MAC_RMII_RXD0
+					MUXF_L2SW_P1_MAC_RMII_RXD1
+					MUXF_L2SW_P1_MAC_RMII_RXER
+					MUXF_DAISY_MODE
 				>;
 			};
 			l2sw_demo_board_v3_pins: l2sw_demo_board_v3_pins {
@@ -1265,6 +1303,13 @@
 					SP7021_IOPAD(55,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD0,0)
 					SP7021_IOPAD(56,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXD1,0)
 					SP7021_IOPAD(53,SP7021_PCTL_G_PMUX,MUXF_L2SW_P1_MAC_RMII_RXER,0)
+				>;
+				sppctl,zero_func = <
+					MUXF_L2SW_LED_FLASH0
+					MUXF_L2SW_LED_FLASH1
+					MUXF_L2SW_LED_ON0
+					MUXF_L2SW_LED_ON1
+					MUXF_DAISY_MODE
 				>;
 			};
 		};
