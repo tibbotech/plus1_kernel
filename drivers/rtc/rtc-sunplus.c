@@ -318,7 +318,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	rtc->uie_unsupported = 1;
 
 	platform_set_drvdata(plat_dev, rtc);
-	printk( KERN_INFO "sp7021-rtc loaded\n")
+	printk( KERN_INFO "sp7021-rtc loaded\n");
 
 	return 0;
 
