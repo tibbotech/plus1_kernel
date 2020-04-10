@@ -476,7 +476,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	//print_packet(skb);
 
 	if (unlikely(comm->tx_desc_full == 1)) { /* no desc left, wait for tx interrupt*/
-		ETH_ERR("[%s] TX descriptor queue full when awake!\n", __func__);
+		ETH_ERR("[%s] TX descriptor queue full when xmit!\n", __func__);
 		return NETDEV_TX_BUSY;
 	}
 
@@ -554,7 +554,7 @@ static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
 	//ETH_INFO("[%s] IN\n", __func__);
 
 	if (netif_running(net_dev)) {
-		ETH_ERR("[%s] Ebusy\n", __func__);
+		ETH_ERR("[%s] Device busy!\n", __func__);
 		return -EBUSY;
 	}
 
@@ -732,7 +732,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		*r_ndev = NULL;
 		return ret;
 	}
-	ETH_INFO("[%s] Registered net device \"%s\" successfully.\n", __func__, net_dev->name);
+	ETH_INFO(" Registered net device \"%s\" successfully.\n", net_dev->name);
 
 	*r_ndev = net_dev;
 	return 0;
@@ -819,7 +819,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				unregister_netdev(net_dev2);
 				free_netdev(net_dev2);
 				mac->next_netdev = NULL;
-				ETH_INFO("[%s] Unregistered and freed net device \"eth1\"!\n", __func__);
+				ETH_INFO(" Unregistered and freed net device \"eth1\"!\n");
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
@@ -1023,7 +1023,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac = netdev_priv(net_dev);
 	mac->comm = comm;
 	comm->net_dev = net_dev;
-	ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
+	ETH_DEBUG("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev, (int)mac, (int)mac->comm);
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
@@ -1117,7 +1117,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		net_dev2->irq = comm->irq;
 		mac2 = netdev_priv(net_dev2);
 		mac2->comm = comm;
-		ETH_INFO("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev2, (int)mac2, (int)mac2->comm);
+		ETH_DEBUG("[%s] net_dev = 0x%08x, mac = 0x%08x, comm = 0x%08x\n", __func__, (int)net_dev2, (int)mac2, (int)mac2->comm);
 
 		mac_switch_mode(mac);
 		rx_mode_set(net_dev2);
