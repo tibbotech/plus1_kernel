@@ -3,64 +3,84 @@
 
 #include <linux/usb/phy.h>
 
-#define otg_debug(fmt, args...)               printk(KERN_DEBUG "#@#OTG: "fmt, ##args)
+#define otg_debug(fmt, args...)		printk(KERN_DEBUG "#@#OTG: "fmt, ##args)
 //#define otg_debug(fmt, args...)
 
 //#define OTG_TEST
+#define CONFIG_ADP_TIMER
 
-#define       CONFIG_ADP_TIMER
-#define	ADP_TIMER_FREQ	(5*HZ)
+#define	ADP_TIMER_FREQ			(5*HZ)
 
-#define		WORD_MODE_MASK	(0x03)
-#define		OTG_20			(0x0)
-#define		OTG_12			(0x01)
-#define		OTG_HOST		(0x02)
-#define		OTG_DEVICE		(0x03)
+#define	WORD_MODE_MASK			(0x03)
+#define	OTG_20				(0x0)
+#define	OTG_12				(0x01)
+#define	OTG_HOST			(0x02)
+#define	OTG_DEVICE			(0x03)
 
-#define		OTG_SRP		(1 << 2)
-#define		OTG_ADP		(1 << 3)
-#define		OTG_SIM     (1 << 4)
+#define	OTG_SRP				(1 << 2)
+#define	OTG_ADP				(1 << 3)
+#define	OTG_SIM     			(1 << 4)
 
-#define		ENA_SRP(reg)		((reg) |=  OTG_SRP)
-#define		DIS_SRP(reg)		((reg) &= ~OTG_SRP)
-#define		ENA_ADP(reg)		((reg) |=  OTG_ADP)
-#define		DIS_ADP(reg)		((reg) &= ~OTG_ADP)
-#define		ENA_SIM(reg)		((reg) |=  OTG_SIM)
-#define		DIS_SIM(reg)		((reg) &= ~OTG_SIM)
+#define	ENA_SRP(reg)			((reg) |=  OTG_SRP)
+#define	DIS_SRP(reg)			((reg) &= ~OTG_SRP)
+#define	ENA_ADP(reg)			((reg) |=  OTG_ADP)
+#define	DIS_ADP(reg)			((reg) &= ~OTG_ADP)
+#define	ENA_SIM(reg)			((reg) |=  OTG_SIM)
+#define	DIS_SIM(reg)			((reg) &= ~OTG_SIM)
 
-#define		B_HNP_EN_BIT			(1 << 5)
-#define		B_VBUS_REQ			(1 << 4)
-#define		A_CLE_ERR_BIT			(1 << 3)
-#define		A_SET_B_HNP_EN_BIT	(1 << 2)
-#define		A_BUS_REQ_BIT			(1 << 1)
-#define		A_BUS_DROP_BIT		(1 << 0)
+#define	B_HNP_EN_BIT			(1 << 5)
+#define	B_VBUS_REQ			(1 << 4)
+#define	A_CLE_ERR_BIT			(1 << 3)
+#define	A_SET_B_HNP_EN_BIT		(1 << 2)
+#define	A_BUS_REQ_BIT			(1 << 1)
+#define	A_BUS_DROP_BIT			(1 << 0)
 
-#define		B_HNP_EN(reg)			((reg)|= (1 << 5))
-#define		B_BUS_REQ(reg)			((reg)|= (1 << 4))
-#define		A_CLE_ERR(reg)			((reg)|= (1 << 3))
-#define		A_SET_B_HNP_EN(reg)		((reg)|= (1 << 2))
-#define		A_BUS_REQ(reg)			((reg)|= (1 << 1))
-#define		A_BUS_DROP(reg)			((reg)|= (1 << 0))
+#define	B_HNP_EN(reg)			((reg)|= (1 << 5))
+#define	B_BUS_REQ(reg)			((reg)|= (1 << 4))
+#define	A_CLE_ERR(reg)			((reg)|= (1 << 3))
+#define	A_SET_B_HNP_EN(reg)		((reg)|= (1 << 2))
+#define	A_BUS_REQ(reg)			((reg)|= (1 << 1))
+#define	A_BUS_DROP(reg)			((reg)|= (1 << 0))
 
-#define		ID_PIN					(1 << 16)
-#define		INT_MASK				(0x3ff)
-#define		ADP_CHANGE_IF			(1 << 9)
-#define		A_SRP_DET_IF			(1 << 8)
-#define		B_AIDL_BDIS_IF			(1 << 7)
-#define		A_BIDL_ADIS_IF			(1 << 6)
-#define		A_AIDS_BDIS_TOUT_IF 	(1 << 5)
-#define		B_SRP_FAIL_IF			(1 << 4)
-#define		BDEV_CONNT_TOUT_IF 	(1 << 3)
-#define		VBUS_RISE_TOUT_IF		(1 << 2)
-#define		ID_CHAGE_IF			(1 << 1)
-#define		OVERCURRENT_IF 		(1 << 0)
+#define	ID_PIN				(1 << 16)
+#define	INT_MASK			(0x3ff)
+#define	ADP_CHANGE_IF			(1 << 9)
+#define	A_SRP_DET_IF			(1 << 8)
+#define	B_AIDL_BDIS_IF			(1 << 7)
+#define	A_BIDL_ADIS_IF			(1 << 6)
+#define	A_AIDS_BDIS_TOUT_IF		(1 << 5)
+#define	B_SRP_FAIL_IF			(1 << 4)
+#define	BDEV_CONNT_TOUT_IF 		(1 << 3)
+#define	VBUS_RISE_TOUT_IF		(1 << 2)
+#define	ID_CHAGE_IF			(1 << 1)
+#define	OVERCURRENT_IF 			(1 << 0)
 
-#define 	ENABLE_OTG_INT(x)		iowrite32(0x3ff, x)
+#define ENABLE_OTG_INT(x)		iowrite32(0x3ff, x)
+
 
 extern int sp_otg_probe(struct platform_device *);
 extern int sp_otg_remove(struct platform_device *);
 extern int sp_otg_suspend(struct platform_device *, pm_message_t);
 extern int sp_otg_resume(struct platform_device *);
+
+
+/* Q628 fsm state */
+enum sp_otg_state {
+	SP_OTG_STATE_A_IDLE = 0,
+	SP_OTG_STATE_A_WAIT_VRISE,
+	SP_OTG_STATE_A_WAIT_BCON,
+	SP_OTG_STATE_A_HOST,
+	SP_OTG_STATE_A_SUSPEND,
+	SP_OTG_STATE_A_PERIPHERAL,
+	SP_OTG_STATE_A_VBUS_ERR,
+	SP_OTG_STATE_A_WAIT_VFALL,
+
+	SP_OTG_STATE_B_IDLE,
+	SP_OTG_STATE_B_SRP_INIT,
+	SP_OTG_STATE_B_PERIPHERAL,
+	SP_OTG_STATE_B_WAIT_ACON,
+	SP_OTG_STATE_B_HOST,
+};
 
 /* OTG state machine according to the OTG spec */
 struct otg_fsm {
@@ -126,7 +146,7 @@ struct sp_otg {
 
 	struct notifier_block notifier;
 	struct otg_fsm fsm;
-
+	struct task_struct *hnp_polling_timer;
 #ifdef	CONFIG_ADP_TIMER
 	struct timer_list adp_timer;
 #endif
@@ -204,6 +224,7 @@ struct sp_regs_moon4 {
 	u32 otp_sp;
 };
 
+
 /**
  * usb_get_dr_mode - Get dual role mode for given device
  * @dev: Pointer to the given device
@@ -216,6 +237,4 @@ extern enum usb_dr_mode usb_get_dr_mode(struct device *dev);
 void sp_otg_update_transceiver(struct sp_otg *);
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num);
-
-
 #endif

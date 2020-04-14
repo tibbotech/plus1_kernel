@@ -40,6 +40,8 @@
 #include <linux/kthread.h>
 #include <linux/usb/sp_usb.h>
 
+#include "../phy/otg-sunplus.h"
+
 struct clk *ehci_clk[USB_PORT_NUM];
 
 static int ehci_platform_reset(struct usb_hcd *hcd)
@@ -309,6 +311,9 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	struct resource *res_mem;
 	int irq;
 	int err = -ENOMEM;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	struct usb_phy *otg_phy;
+#endif
 
 	//BUG_ON(!dev->dev.platform_data);
 
@@ -347,6 +352,8 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 
+	hcd->tpl_support = of_usb_host_tpl_support(dev->dev.of_node);
+
 #ifdef CONFIG_USB_USE_PLATFORM_RESOURCE
 	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
 		pr_err("controller already in use");
@@ -369,6 +376,22 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, hcd);
 
 /****************************************************/
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	if (dev->id < 3) {
+		otg_phy = usb_get_transceiver_sp(dev->id - 1);
+		if(otg_phy){
+			err = otg_set_host(otg_phy->otg, &hcd->self);
+			if (err < 0) {
+				dev_err(&dev->dev,
+					"unable to register with transceiver\n");
+				goto err_iounmap;
+			}
+		}
+
+		hcd->self.otg_port = 1;
+		hcd->usb_phy = otg_phy;
+	}
+#endif
 
 #ifdef CONFIG_SWITCH_USB_ROLE
 	if (dev->id < 3) {

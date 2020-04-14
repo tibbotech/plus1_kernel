@@ -406,6 +406,7 @@
 			reg = <0x0 0x9C102100 0x0 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
+			tpl-support;
 		};
 
 		sp_ehci1: usb@9C103100 {
@@ -415,6 +416,7 @@
 			reg = <0x0 0x9C103100 0x0 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+			tpl-support;
 		};
 
 		sp_ohci0: usb@0x9C102080 {

@@ -4,16 +4,22 @@
 #include <linux/slab.h>
 #include <linux/interrupt.h>
 #include <linux/usb.h>
+#include <linux/kthread.h>
+#include <linux/usb/hcd.h>
 
 #include <linux/platform_device.h>
 #include <linux/usb/sp_usb.h>
 #include <linux/usb/otg.h>
+
 #include "otg-sunplus.h"
+#include "../core/otg_whitelist.h"
 
 
 #define DRIVER_NAME		"sp-otg"
 
-
+#if 0		// it should be implemented in UDC driver
+extern void detech_start(void);
+#endif
 extern struct sp_otg *sp_otg0_host;
 extern struct sp_otg *sp_otg1_host;
 extern u8 otg0_vbus_off;
@@ -119,16 +125,19 @@ static int sp_start_hnp(struct usb_otg *otg)
 	u32 ret;
 
 	ret = readl(&otg_host->regs_otg->otg_device_ctrl);
-	printk(KERN_DEBUG "%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
+	otg_debug("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 	ret |= A_SET_B_HNP_EN_BIT;
 	ret &= ~A_BUS_REQ_BIT;
 	writel(ret, &otg_host->regs_otg->otg_device_ctrl);
-	printk(KERN_DEBUG "%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
+	otg_debug("%s.%d,otg_debug:%x,%p\n",__FUNCTION__,__LINE__,
 				readl(&otg_host->regs_otg->otg_debug_reg),&(otg_host->regs_otg->otg_debug_reg));
 
 	otg_host->otg.otg->state = OTG_STATE_A_PERIPHERAL;
-
+	mdelay(100);
+	#if 0		// it should be implemented in UDC driver
+	detech_start();
+	#endif
 	otg_debug("start hnp\n");
 
 	return 0;
@@ -166,7 +175,15 @@ static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 
 int sp_set_host(struct usb_otg *otg, struct usb_bus *host)
 {
+	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->usb_phy, struct sp_otg, otg);
+
+	otg_host->otg.otg->host = host;
 	otg->host = host;
+
+	if (host) {
+		otg->host->otg_port = otg_host->id;
+		otg->host->is_b_host = otg_host->fsm.id;
+	}
 
 	return 0;
 }
@@ -180,11 +197,13 @@ int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
-	return readl((u32 *) reg);
+	return readl((u32 *)(long long)reg);
 }
+
 int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 {
-	writel(val, (u32 *) reg);
+	writel(val, (u32 *)(long long)reg);
+
 	return 0;
 }
 
@@ -192,6 +211,99 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.read = sp_phy_read,
 	.write = sp_phy_write,
 };
+
+static int hnp_polling_watchdog(void *arg)
+{
+	struct sp_otg *otg_host = (struct sp_otg *)arg;
+	struct usb_device *udev = NULL;
+	struct usb_hcd *hcd;
+	struct usb_phy *otg_phy;
+	static bool find_child = false;
+	static int targeted;
+	u32 val;
+	bool host_req_flag = false;
+	u32 *otg_status;
+	int ret;
+
+ 	otg_status = kmalloc(4, GFP_KERNEL);
+	if (!otg_status)
+		return -ENOMEM;
+
+	while(!kthread_should_stop()) {
+		val = readl(&otg_host->regs_otg->otg_debug_reg);
+		val &= 0x0f;
+
+		if (val == SP_OTG_STATE_A_HOST) {
+ 			if (find_child == false) {
+				msleep(2000);
+
+				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
+				if (!udev) {
+					otg_debug("can't start HNP polling\n");
+					continue;
+				}
+
+				targeted = is_targeted(udev);
+				hcd  = bus_to_hcd(udev->bus);
+				find_child = true;
+
+				if ((IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted) ||
+			    	    (!IS_ENABLED(CONFIG_USB_OTG_WHITELIST) || !hcd->tpl_support)) {
+			    	    	if (IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted)
+						otg_debug("TPL is supported\n");
+					else
+						otg_debug("TPL is not supported\n");
+
+			    		otg_debug("start HNP polling\n");
+				}
+			}
+
+			if ((IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted) ||
+			    (!IS_ENABLED(CONFIG_USB_OTG_WHITELIST) || !hcd->tpl_support)) {
+				ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
+									  0, 0x80, 0, 0xf000, otg_status, 4, 5000);
+				if(ret < 0) {
+					otg_debug("polling otg status fail,ret:%d\n", ret);
+					return -1;
+				} else {
+					host_req_flag = *otg_status & 0x1;
+					if(host_req_flag) {
+						otg_phy = usb_get_transceiver_sp(udev->bus->busnum-1);
+						if(!otg_phy){
+							otg_debug("Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
+							return 1;
+						}
+						ret = usb_control_msg(udev,
+						usb_sndctrlpipe(udev, 0),
+						USB_REQ_SET_FEATURE, 0,
+						USB_DEVICE_B_HNP_ENABLE,
+						0, NULL, 0,
+						USB_CTRL_SET_TIMEOUT);
+						if (ret < 0) {
+							/*
+							 * OTG MESSAGE: report errors here,
+							 * customize to match your product.
+							 */
+							otg_debug("can't set HNP mode: %d\n",ret);
+						}
+						otg_start_hnp(otg_phy->otg);
+						msleep(1);
+						#if 0		// it should be implemented in UDC driver
+						detech_start();
+						#endif
+						return 0;
+					} else {
+					  	msleep(1000);
+					}
+				}
+			}
+		}
+		else
+			find_child = false;
+	}
+
+	return 0;
+}
 
 static void sp_otg_work(struct work_struct *work)
 {
@@ -261,7 +373,6 @@ void sp_otg_update_transceiver(struct sp_otg *otg_host)
 
 	queue_work(otg_host->qwork, &otg_host->work);
 }
-
 EXPORT_SYMBOL(sp_otg_update_transceiver);
 
 static void otg_hw_init(struct sp_otg *otg_host)
@@ -323,7 +434,6 @@ static void otg_hsm_init(struct sp_otg *otg_host)
 	otg_host->fsm.b_bus_req = 0;
 	/* no system error */
 	otg_host->fsm.a_clr_err = 0;
-
 }
 
 int sp_notifier_call(struct notifier_block *self, unsigned long action,
@@ -393,7 +503,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)dev_priv;
 	u32 int_status;
-	u32 val;
+	u32 val = 0;
 
 //	struct timespec	t0;
 //	getnstimeofday(&t0);
@@ -588,7 +698,7 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_release_region;
 	}
 
-	otg_debug("@@@ otg reg %x %d irq %d %x\n", res_mem->start,
+	otg_debug("@@@ otg reg %lld %lld irq %d %x\n", res_mem->start,
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
 
@@ -662,6 +772,18 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_ioumap;
 	}
 
+#ifdef CONFIG_GADGET_USB0
+ 	if (otg_host->id == 1) {
+		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg0_host, "hnp_polling");
+		wake_up_process(sp_otg0_host->hnp_polling_timer);
+ 	}
+#else
+ 	if (otg_host->id == 2) {
+		sp_otg1_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg1_host, "hnp_polling");
+		wake_up_process(sp_otg1_host->hnp_polling_timer);
+ 	}
+#endif
+
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
 
 	platform_set_drvdata(dev, otg_host);
@@ -687,6 +809,7 @@ int sp_otg_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
+	int err = 0;
 
 	if (otg_host->qwork) {
 		flush_workqueue(otg_host->qwork);
@@ -694,6 +817,26 @@ int sp_otg_remove(struct platform_device *dev)
 	}
 #ifdef	CONFIG_ADP_TIMER
 	del_timer_sync(&otg_host->adp_timer);
+#endif
+
+#ifdef CONFIG_GADGET_USB0
+	if (sp_otg0_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
+		if (err) {
+			otg_debug("kthread_stop failed: %d\n", err);
+		} else {
+			sp_otg0_host->hnp_polling_timer = NULL;
+		}
+	}
+#else
+	if (sp_otg1_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
+		if (err) {
+			otg_debug("kthread_stop failed: %d\n", err);
+		} else {
+			sp_otg1_host->hnp_polling_timer = NULL;
+		}
+	}
 #endif
 
 	free_irq(otg_host->irq, otg_host);
