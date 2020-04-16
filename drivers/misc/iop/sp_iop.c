@@ -375,7 +375,7 @@ static ssize_t iop_show_S1mode(struct device *dev, struct device_attribute *attr
 {
 	ssize_t len = 0;
 	hal_iop_standbymode(iop->iop_regs); 
-	FUNC_DEBUG();	
+	mdelay(10);//Need time to update iop_data
 	hal_iop_S1mode(iop->iop_regs);
 	return len;
 }
@@ -681,7 +681,7 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 	return IOP_SUCCESS;
 }
 
-
+#if 0
 static int sp_iop_reserve_base(sp_iop_t *iopbase)
 {	
 	FUNC_DEBUG();
@@ -694,6 +694,7 @@ static int sp_iop_reserve_size(sp_iop_t *iopbase)
 	hal_iop_set_reserve_size(iopbase->iop_regs);		
 	return IOP_SUCCESS;
 }
+#endif
 
 static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 {
@@ -776,10 +777,11 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	if ( !gpio_is_valid(IOP_GPIO))
 		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
     #endif 
-	
+
+	#if 0
 	sp_iop_reserve_base(iop);
 	sp_iop_reserve_size(iop);
-
+	#endif 
 	return 0;
 
 

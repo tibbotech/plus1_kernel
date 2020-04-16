@@ -116,7 +116,6 @@ EXPORT_SYMBOL(hal_iop_load_normal_code);
 void hal_iop_load_standby_code(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	//volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE+StandbyCodeStartAddr);
 	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
 	
 	unsigned char * IOP_kernel_base;
@@ -209,7 +208,6 @@ EXPORT_SYMBOL(hal_iop_normalmode);
 void hal_iop_standbymode(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	//volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE+StandbyCodeStartAddr);
 	volatile unsigned int*	 IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
 	
 	unsigned char * IOP_kernel_base;
@@ -353,7 +351,6 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	regs_iop_pmc_t *pIopPmcReg = (regs_iop_pmc_t *)ioppmcbase;
 	//regs_iop_rtc_t *pIopRtcReg = (regs_iop_rtc_t *)ioprtcbase;
 	unsigned int reg;
-	//volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE+StandbyCodeStartAddr);
 	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
 	
 
@@ -568,7 +565,6 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
 	regs_iop_pmc_t *pIopPmcReg = (regs_iop_pmc_t *)ioppmcbase;
 	unsigned int reg;
-	//volatvolatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE+StandbyCodeStartAddr);
 	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
 	
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
