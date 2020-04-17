@@ -5,9 +5,7 @@
 / {
 	model = "Sunplus SP7021 (CA7)";
 	compatible = "sunplus,sp7021-achip";
-
 	interrupt-parent = <&gic>;
-
 
 	cpus {
 		#address-cells = <1>;
@@ -53,7 +51,7 @@
 		idle-states {
 			CLUSTER_SLEEP_BIG: cluster-sleep-big {
 				compatible = "sp7021,idle-state";
-/*				local-timer-stop;*/
+/*                              local-timer-stop;*/
 				entry-latency-us = <8000>;
 				exit-latency-us = <700>;
 				min-residency-us = <9000>;
@@ -79,7 +77,6 @@
 			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-
 	soc@A {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -90,8 +87,7 @@
 			compatible = "arm,cortex-a7-gic";
 			interrupt-controller;
 			#interrupt-cells = <3>;
-			reg = <0x9f101000 0x1000>,
-			      <0x9f102000 0x2000>;
+			reg = <0x9f101000 0x1000>, <0x9f102000 0x2000>;
 		};
 
 		timer: timer@CPU {
@@ -105,7 +101,7 @@
 		};
 
 #if 0
-        /* Each Cortex A-7 has its own system timer, it's not required if armv7-timer is enabled. */
+	/* Each Cortex A-7 has its own system timer, it's not required if armv7-timer is enabled. */
 		/* This timer will be used in sp_timer_test.c */
 		timer@A_G19 {
 			compatible = "sunplus,sp-stc";
@@ -134,14 +130,14 @@
 			reg = <0x9ec00580 0x180>; /* G11 ~ G13 */
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 8  IRQ_TYPE_EDGE_RISING>, /* ch0_job_done */
-                                     <GIC_SPI 9  IRQ_TYPE_EDGE_RISING>, /* ch1_job_done */
-                                     <GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* ch2_job_done */
-                                     <GIC_SPI 11 IRQ_TYPE_EDGE_RISING>, /* ch3_job_done */
-                                     <GIC_SPI 12 IRQ_TYPE_EDGE_RISING>, /* ch4_job_done */
-                                     <GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* ch5_job_done */
-                                     <GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* ch6_job_done */
-                                     <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
-                                     <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
+				     <GIC_SPI 9  IRQ_TYPE_EDGE_RISING>, /* ch1_job_done */
+				     <GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* ch2_job_done */
+				     <GIC_SPI 11 IRQ_TYPE_EDGE_RISING>, /* ch3_job_done */
+				     <GIC_SPI 12 IRQ_TYPE_EDGE_RISING>, /* ch4_job_done */
+				     <GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* ch5_job_done */
+				     <GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* ch6_job_done */
+				     <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
+				     <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
 		};
 	};
 
@@ -150,7 +146,6 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
-
 		interrupt-parent = <&intc>;
 
 		/* B modules */
@@ -167,5 +162,4 @@
 			ext1-mask = <0xe>; /* core1-3 */
 		};
 	};
-
 };

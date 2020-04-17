@@ -6,9 +6,7 @@
 / {
 	model = "Sunplus SP7021 (ARM926)";
 	compatible = "sunplus,sp7021-bchip";
-
 	interrupt-parent = <&intc>;
-
 
 #ifdef ENABLE_QTEST_CBDMA
 	sp_qtest_cbdma_tst0: sp_qtest_cbdma_tst@9c000d00 {
@@ -88,7 +86,7 @@
 				<162 IRQ_TYPE_EDGE_RISING>; /* timer3 */
 		};
 
-#if 0	/* this timer is used as system tick in B-Chip's kernel */
+#if 0   /* this timer is used as system tick in B-Chip's kernel */
 		sp_tmr_tst3: sp_tmr_tst@9c003180 {
 			compatible = "sunplus,sp-tmr-tst";
 			reg = <0x9c003180 0x80>;
@@ -146,7 +144,5 @@
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
 		};
 #endif
-
-
 	};
 };
