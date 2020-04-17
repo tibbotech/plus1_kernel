@@ -676,17 +676,6 @@
 			compatible = "sunplus,sp7021-display";
 			reg = <0x9c005c80 0x1980>,
 			      <0x9c105000 0x80>;
-			ui_width = <720>;
-			ui_height = <480>;
-			ui_format = <0xe>;
-				/* 0x2 = 8bpp (ARGB)
-				 * 0x4 = YUY2
-				 * 0x8 = RGB565
-				 * 0x9 = ARGB1555
-				 * 0xa = RGBA4444
-				 * 0xb = ARGB4444
-				 * 0xd = RGBA8888
-				 * 0xe = ARGB8888 */
 			interrupt-parent = <&intc>;
 			interrupts = <0 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
 				     <1 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
@@ -798,7 +787,7 @@
 		spi_controller0: spi@sp_spi_controller0 {
 			compatible = "sunplus,sp7021-spi-controller";
 			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
-			reg-names = "spi_master", "spi_slave" ;
+			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
 					  "mas_risc_intr",
@@ -942,9 +931,8 @@
 			clock-names = "clk_mipicsi", "clk_csiiw";
 			resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
-			i2c-id = <1>;
 		};
-#if 0
+
 		mipicsi1: mipicsirx@0x9C005380 {
 			compatible = "sunplus,sp7021-mipicsi-rx";
 			reg = <0x9C005380 0x80>, <0x9C005400 0x80>;
@@ -956,9 +944,7 @@
 			clock-names = "clk_mipicsi", "clk_csiiw";
 			resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
-			i2c-id = <2>;
 		};
-#endif
 
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sp7021-pctl";

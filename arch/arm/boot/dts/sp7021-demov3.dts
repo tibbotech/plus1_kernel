@@ -15,10 +15,6 @@
 	};
 
 	soc@B {
-		sp_display: display@0x9c005c80 {
-			ui_width = <1280>;
-			ui_height = <720>;
-		};
 		led {
 			compatible = "gpio-leds";
 			pinctrl-names = "default";
@@ -31,6 +27,20 @@
 			};
 		};
 	};
+};
+
+&sp_display {
+	ui_width = <1280>;
+	ui_height = <720>;
+	ui_format = <0x8>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
 };
 
 &sdio {
@@ -72,10 +82,14 @@
 };
 
 &mipicsi0 {
+	i2c-id = <1>;
 	cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
 	cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&mipicsi0_pins>;
+};
+
+&mipicsi1 {
 	status = "disabled";
 };
 
