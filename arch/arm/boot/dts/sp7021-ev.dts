@@ -62,6 +62,18 @@
 	broken-cd;
 };
 
+&spinand0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spinand0>;
+};
+
+&sp_spinor0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+	spi-max-frequency = <50000000>;
+	spi-chip-selection = <0>;
+};
+
 &mipicsi0 {
 	i2c-id = <1>;
 	pinctrl-names = "default";
@@ -70,6 +82,25 @@
 
 &mipicsi1 {
 	status = "disabled";
+};
+
+&rtc {
+	charging-mode = <0xE>;
+	/*
+	 *      0xE     Disable
+	 *      0x1     0.86mA (2K Ohm with diode)
+	 *      0x5     1.81mA (250 Ohm with diode)
+	 *      0x9     2.07mA (50 Ohm with diode)
+	 *      0xD     16.0mA (0 Ohm with diode)
+	 *      0x3     1.36mA (2K Ohm without diode)
+	 *      0x7     3.99mA (250 Ohm without diode)
+	 *      0xB     4.41mA (50 Ohm without diode)
+	 *      0xF     16.0mA (0 Ohm without diode)    */
+};
+
+&audio {
+	pinctrl-names = "default";
+	pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
 };
 
 &pctl {
@@ -179,9 +210,5 @@
 			SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 			SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 		>;
-	};
-
-	gpio_leds_pins: pinmux_gpio_leds_pins {
-		sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT) >;
 	};
 };

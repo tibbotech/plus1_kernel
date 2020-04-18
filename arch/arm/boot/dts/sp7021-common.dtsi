@@ -40,12 +40,10 @@
 /* 1. Enable device tree for timers. */
 /* 2. Enable sp_timer_test in drivers/misc/Makefile */
 #if 0
-
 		stc0 = &sp_tmr_tst0;
 		stc1 = &sp_tmr_tst1;
 		stc2 = &sp_tmr_tst2;
 		stc3 = &sp_tmr_tst3;
-
 #endif
 
 		i2c0 = &i2cm0;
@@ -135,10 +133,8 @@
 			reg = <0x9c008980 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA>,
-				 <&clkc PERI0>;
-			clock-names = "UADMA",
-				      "PERI0";
+			clocks = <&clkc UADMA>, <&clkc PERI0>;
+			clock-names = "UADMA", "PERI0";
 			resets = <&rstc RST_UADMA>;
 			which-uart = <1>;
 		};
@@ -149,10 +145,8 @@
 			reg = <0x9c0089c0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA>,
-				 <&clkc PERI1>;
-			clock-names = "UADMA",
-				      "PERI1";
+			clocks = <&clkc UADMA>,	<&clkc PERI1>;
+			clock-names = "UADMA", "PERI1";
 			resets = <&rstc RST_UADMA>;
 			which-uart = <2>;
 		};
@@ -162,10 +156,8 @@
 		uartdmatx0: serial@sp_uartdmatx0 {
 			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008a00 0x40>, <0x9c008880 0x80>;
-			clocks = <&clkc HWUA>,
-				 <&clkc PERI0>;
-			clock-names = "HWUA",
-				      "PERI0";
+			clocks = <&clkc HWUA>, <&clkc PERI0>;
+			clock-names = "HWUA", "PERI0";
 			resets = <&rstc RST_HWUA>;
 			which-uart = <1>;
 		};
@@ -174,10 +166,8 @@
 		uartdmatx1: serial@sp_uartdmatx1 {
 			compatible = "sunplus,sp7021-uart";
 			reg = <0x9c008a40 0x40>, <0x9c008900 0x80>;
-			clocks = <&clkc HWUA>,
-				 <&clkc PERI1>;
-			clock-names = "HWUA",
-				      "PERI1";
+			clocks = <&clkc HWUA>, <&clkc PERI1>;
+			clock-names = "HWUA", "PERI1";
 			resets = <&rstc RST_HWUA>;
 			which-uart = <2>;
 		};
@@ -239,17 +229,6 @@
 			resets = <&rstc RST_RTC>;
 			interrupt-parent = <&intc>;
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
-			charging-mode = <0xE>;
-			/*
-			 *      0xE     Disable
-			 *      0x1     0.86mA (2K Ohm with diode)
-			 *      0x5     1.81mA (250 Ohm with diode)
-			 *      0x9     2.07mA (50 Ohm with diode)
-			 *      0xD     16.0mA (0 Ohm with diode)
-			 *      0x3     1.36mA (2K Ohm without diode)
-			 *      0x7     3.99mA (250 Ohm without diode)
-			 *      0xB     4.41mA (50 Ohm without diode)
-			 *      0xF     16.0mA (0 Ohm without diode)    */
 		};
 
 		thermal: serial@sp_thermal {
@@ -346,7 +325,9 @@
 			resets = <&rstc RST_OTPRX>;
 			#address-cells = <1>;
 			#size-cells = <1>;
-			therm_calib: therm_calib {  reg = <0x14 0x3>;  };
+			therm_calib: therm_calib {
+				reg = <0x14 0x3>;
+			};
 			mac_addr0: mac_addr0 {
 				reg = <0x34 0x6>;
 			};
@@ -562,11 +543,9 @@
 			compatible = "sunplus,sp7021-audio";
 			reg = <0x9c001e00 0x680>;
 			reg-names = "audio";
-			clocks = <&clkc AUD>,<&clkc PERI0>,<&clkc PLL_A>;
+			clocks = <&clkc AUD>, <&clkc PERI0>, <&clkc PLL_A>;
 			clock-names = "aud","peri0","pll_a";
 			resets = <&rstc RST_AUD>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
 		};
 
 		sp_uphy0: uphy@0x9C004A80 {
@@ -755,8 +734,6 @@
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
 			resets = <&rstc RST_CARD_CTL1>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&mmc1_mux>;
 			bus-width = <4>;
 			max-frequency = <52000000>;
 			disable-wp;
@@ -901,10 +878,6 @@
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;
 			resets = <&rstc RST_SPIFL>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
-			spi-max-frequency = <50000000>;
-			spi-chip-selection = <0>;
 			partitions {
 				compatible = "fixed-partitions";
 				#address-cells = <1>;
@@ -977,6 +950,11 @@
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
+			};
+
+			pins_spinand0: pins_spinand0 {
+				sppctl,groups = "SPI_NAND";
+				sppctl,function = "SPI_NAND";
 			};
 
 			aud_i2s_in: aud_i2s_in {
