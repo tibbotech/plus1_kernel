@@ -29,20 +29,91 @@
 		 * 0xe = ARGB8888 */
 };
 
+&spi_controller0 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+};
+
+&spi_controller1 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi1: spi@ {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <25000000>;
+		reg = <0x0>;
+	};
+};
+
+&spi_controller2 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi2: spi@ {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <25000000>;
+		reg = <0x0>;
+	};
+};
+
+&spi_controller3 {
+	spi-max-frequency = <50000000>;
+	spi-slave;
+	status = "disabled";
+};
+
 &i2cm0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2cm0_pins>;
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm1 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm2 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm3 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&uart1 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&uart3 {
+	status = "disabled";
 };
 
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart4>;
-	status = "okay";
+	status = "disabled";
 };
 
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
+	status = "disabled";
 };
 
 &l2sw {
@@ -74,6 +145,11 @@
 	spi-chip-selection = <0>;
 };
 
+&hdmitx {
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_A_tx1>;
+};
+
 &mipicsi0 {
 	i2c-id = <1>;
 	pinctrl-names = "default";
@@ -101,6 +177,7 @@
 &audio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
+	status = "disabled";
 };
 
 &pctl {

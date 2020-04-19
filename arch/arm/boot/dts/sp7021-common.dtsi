@@ -493,7 +493,6 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000>;
 			clocks = <&clkc I2CM0>;
 			resets = <&rstc RST_I2CM0>;
 		};
@@ -504,7 +503,6 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000>;
 			clocks = <&clkc I2CM1>;
 			resets = <&rstc RST_I2CM1>;
 		};
@@ -515,7 +513,6 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000>;
 			clocks = <&clkc I2CM2>;
 			resets = <&rstc RST_I2CM2>;
 		};
@@ -526,7 +523,6 @@
 			reg-names = "i2cm", "i2cmdma";
 			interrupt-parent = <&intc>;
 			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
-			clock-frequency = <100000>;
 			clocks = <&clkc I2CM3>;
 			resets = <&rstc RST_I2CM3>;
 		};
@@ -775,11 +771,6 @@
 			clocks = <&clkc SPI_COMBO_0>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_0>;
-			spi-max-frequency = <50000000>;
-			spi-cpha;
-			spi-cpol;
-			#address-cells = <1>;
-			#size-cells = <0>;
 		};
 
 		spi_controller1: spi@sp_spi_controller1 {
@@ -796,16 +787,6 @@
 			clocks = <&clkc SPI_COMBO_1>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_1>;
-			spi-max-frequency = <50000000>;
-			spi-cpha;
-			spi-cpol;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			spi1: spi@ {
-				compatible = "rohm,dh2228fv";
-				reg = <0x0>;
-				spi-max-frequency = <25000000>;
-			};
 		};
 
 		spi_controller2: spi@sp_spi_controller2 {
@@ -822,16 +803,6 @@
 			clocks = <&clkc SPI_COMBO_2>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_2>;
-			spi-max-frequency = <50000000>;
-			spi-cpha;
-			spi-cpol;
-			#address-cells = <1>;
-			#size-cells = <0>;
-			spi2: spi@ {
-				compatible = "rohm,dh2228fv";
-				reg = <0x0>;
-				spi-max-frequency = <25000000>;
-			};
 		};
 
 		spi_controller3: spi@sp_spi_controller3 {
@@ -848,8 +819,6 @@
 			clocks = <&clkc SPI_COMBO_3>;
 			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_3>;
-			spi-max-frequency = <50000000>;
-			spi-slave;
 		};
 
 		spinand0: spinand@sp_spinand {

@@ -29,9 +29,66 @@
 		 * 0xe = ARGB8888 */
 };
 
+&spi_controller0 {
+	spi-max-frequency = <50000000>;
+	status = "disabled";
+};
+
+&spi_controller1 {
+	spi-max-frequency = <50000000>;
+	status = "disabled";
+};
+
+&spi_controller2 {
+	spi-max-frequency = <50000000>;
+	status = "disabled";
+};
+
+&spi_controller3 {
+	spi-max-frequency = <50000000>;
+	status = "disabled";
+};
+
+&i2cm0 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm1 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm2 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm3 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&uart1 {
+	status = "disabled";
+};
+
+&uart2 {
+	status = "disabled";
+};
+
+&uart3 {
+	status = "disabled";
+};
+
+&uart4 {
+	status = "disabled";
+};
+
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
+	status = "disabled";
 };
 
 &l2sw {
@@ -49,6 +106,25 @@
 	pinctrl-0 = <&mmc1_mux &mmc1_mux_cd>;
 	cd-gpios = <&pctl 71 GPIO_ACTIVE_LOW>;
 	broken-cd;
+};
+
+&spinand0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spinand0>;
+	status = "disabled";
+};
+
+&sp_spinor0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+	spi-max-frequency = <50000000>;
+	spi-chip-selection = <0>;
+	status = "disabled";
+};
+
+&hdmitx {
+	pinctrl-names = "default";
+	pinctrl-0 = <&hdmi_A_tx1>;
 };
 
 &mipicsi0 {
@@ -71,6 +147,10 @@
 	 *      0x7     3.99mA (250 Ohm without diode)
 	 *      0xB     4.41mA (50 Ohm without diode)
 	 *      0xF     16.0mA (0 Ohm without diode)    */
+};
+
+&audio {
+	status = "disabled";
 };
 
 &pctl {

@@ -43,6 +43,85 @@
 		 * 0xe = ARGB8888 */
 };
 
+&spi_controller0 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+};
+
+&spi_controller1 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+};
+
+&spi_controller2 {
+	spi-max-frequency = <50000000>;
+	spi-cpha;
+	spi-cpol;
+	status = "disabled";
+};
+
+&spi_controller3 {
+	spi-max-frequency = <50000000>;
+	spi-slave;
+	status = "disabled";
+};
+
+&i2cm0 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm1 {
+	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2cm1_tpm_pins>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	st33htpi: st33htpi@0{
+		compatible = "st,st33htpm-i2c";
+		reg = <0x2e>;
+		status = "disabled";
+	};
+};
+
+&i2cm2 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&i2cm3 {
+	clock-frequency = <100000>;
+	status = "disabled";
+};
+
+&uart1 {
+	status = "disabled";
+};
+
+&uart2 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart2>;
+	status = "disabled";
+};
+
+&uart3 {
+	status = "disabled";
+};
+
+&uart4 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart4>;
+#if 0 // AP6256 Bluetooth
+	status = "okay";
+#else
+	status = "disabled";
+#endif
+};
+
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
@@ -69,16 +148,16 @@
 	cd-gpios = <&pctl 91 GPIO_ACTIVE_LOW>;
 };
 
-&i2cm1 {
+&spinand0 {
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2cm1_tpm_pins>;
-	#address-cells = <1>;
-	#size-cells = <0>;
-	st33htpi: st33htpi@0{
-		compatible = "st,st33htpm-i2c";
-		reg = <0x2e>;
-		status = "disabled";
-	};
+	pinctrl-0 = <&pins_spinand0>;
+	status = "disabled";
+};
+
+&sp_spinor0 {
+	spi-max-frequency = <50000000>;
+	spi-chip-selection = <0>;
+	status = "disabled";
 };
 
 &hdmitx {
@@ -112,20 +191,8 @@
 	 *      0xF     16.0mA (0 Ohm without diode)    */
 };
 
-&uart2 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pins_uart2>;
+&audio {
 	status = "disabled";
-};
-
-&uart4 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pins_uart4>;
-#if 0 // AP6256 Bluetooth
-	status = "okay";
-#else
-	status = "disabled";
-#endif
 };
 
 &pctl {
