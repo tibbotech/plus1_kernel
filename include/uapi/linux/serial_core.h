@@ -293,4 +293,7 @@
 /* Freescale Linflex UART */
 #define PORT_LINFLEXUART	122
 
+/* Sunplus */
+#define PORT_SP         199
+
 #endif /* _UAPILINUX_SERIAL_CORE_H */
