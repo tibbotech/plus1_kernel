@@ -671,7 +671,20 @@ char *sp7021_otp_read_mac(struct device *_d, ssize_t *_l, char *_name) {
 	dev_dbg(_d, "%d bytes read from OTP %s", *_l, _name);
 
 	return (ret);
- }
+}
+
+static void check_mac_vendor_id_and_convert(char *mac_addr)
+{
+	// Byte order of MAC address of some samples are reversed.
+	// Check vendor id and convert byte order if it is wrong.
+	if ((mac_addr[5] == 0xFC) && (mac_addr[4] == 0x4B) && (mac_addr[3] == 0xBC) &&
+		((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
+		char tmp;
+		tmp = mac_addr[0]; mac_addr[0] = mac_addr[5]; mac_addr[5] = tmp;
+		tmp = mac_addr[1]; mac_addr[1] = mac_addr[4]; mac_addr[4] = tmp;
+		tmp = mac_addr[2]; mac_addr[2] = mac_addr[3]; mac_addr[3] = tmp;
+	}
+}
 
 /*********************************************************************
 *
@@ -710,6 +723,10 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	} else {
 		// Check if mac-address is valid or not. If not, copy from default.
 		memcpy(mac->mac_addr, otp_v, 6);
+
+		// Byte order of Some samples are reversed. Convert byte order here.
+		check_mac_vendor_id_and_convert(mac->mac_addr);
+
 		if (!is_valid_ether_addr(mac->mac_addr)) {
 			ETH_INFO(" Invalid mac in OTP[%s] = %02x:%02x:%02x:%02x:%02x:%02x, use default!\n", m_addr_name,
 				mac->mac_addr[0], mac->mac_addr[1], mac->mac_addr[2], mac->mac_addr[3], mac->mac_addr[4], mac->mac_addr[5]);
