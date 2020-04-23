@@ -228,10 +228,10 @@ static int rtw_suspend(struct usb_interface *pusb_intf, pm_message_t message)
 	    check_fwstate(pmlmepriv, _FW_LINKED)) {
 		pr_debug("%s:%d %s(%pM), length:%d assoc_ssid.length:%d\n",
 			__func__, __LINE__,
-			pmlmepriv->cur_network.network.Ssid.Ssid,
+			pmlmepriv->cur_network.network.ssid.ssid,
 			pmlmepriv->cur_network.network.MacAddress,
-			pmlmepriv->cur_network.network.Ssid.SsidLength,
-			pmlmepriv->assoc_ssid.SsidLength);
+			pmlmepriv->cur_network.network.ssid.ssid_length,
+			pmlmepriv->assoc_ssid.ssid_length);
 
 		pmlmepriv->to_roaming = 1;
 	}
@@ -348,8 +348,10 @@ static struct adapter *rtw_usb_if1_init(struct dvobj_priv *dvobj,
 	}
 
 	padapter->HalData = kzalloc(sizeof(struct hal_data_8188e), GFP_KERNEL);
-	if (!padapter->HalData)
-		DBG_88E("cant not alloc memory for HAL DATA\n");
+	if (!padapter->HalData) {
+		DBG_88E("Failed to allocate memory for HAL data\n");
+		goto free_adapter;
+	}
 
 	/* step read_chip_version */
 	rtw_hal_read_chip_version(padapter);
