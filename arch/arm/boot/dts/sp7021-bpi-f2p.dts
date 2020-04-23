@@ -3,7 +3,7 @@
 #include "sp7021-ChipC.dtsi"
 
 / {
-	model = "sp7021/CA7/Demo v3";
+	model = "SP7021/CA7/BPI-F2P";
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
