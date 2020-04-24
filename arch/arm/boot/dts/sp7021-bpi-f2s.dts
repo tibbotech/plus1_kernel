@@ -115,21 +115,13 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart4>;
-#if 0 // AP6256 Bluetooth
-	status = "okay";
-#else
 	status = "disabled";
-#endif
 };
 
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
-#if 0 // AP6256 WiFi
-	status = "okay";
-#else
 	status = "disabled";
-#endif
 };
 
 &l2sw {

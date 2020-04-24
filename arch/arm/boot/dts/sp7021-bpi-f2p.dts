@@ -84,7 +84,7 @@
 	st33htpi: st33htpi@0{
 		compatible = "st,st33htpm-i2c";
 		reg = <0x2e>;
-		status = "disabled";
+		status = "okay";
 	};
 };
 
@@ -115,21 +115,13 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart4>;
-#if 0 // AP6256 Bluetooth
-	status = "okay";
-#else
 	status = "disabled";
-#endif
 };
 
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
-#if 0 // AP6256 WiFi
-	status = "okay";
-#else
 	status = "disabled";
-#endif
 };
 
 &l2sw {
@@ -157,7 +149,17 @@
 &sp_spinor0 {
 	spi-max-frequency = <50000000>;
 	spi-chip-selection = <0>;
-	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash1_mux &spi_fla4b1_mux>;
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@0 {
+			label = "data";
+			reg = <0 0x1000000>;
+		};
+	};
 };
 
 &hdmitx {
@@ -252,8 +254,8 @@
 
 	mipicsi0_pins: pinmux_mipicsi0_pins {
 		sppctl,pins = <
-			SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
-			SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
+			SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
+			SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 			SP7021_IOPAD(92,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 			SP7021_IOPAD(93,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 		>;

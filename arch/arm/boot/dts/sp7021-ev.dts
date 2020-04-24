@@ -139,10 +139,23 @@
 };
 
 &sp_spinor0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 	spi-max-frequency = <50000000>;
 	spi-chip-selection = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		partition@0 {
+			label = "data";
+			reg = <0 0x200000>;
+		};
+		partition@200000 {
+			label = "data1";
+			reg = <0x200000 0xdff000>;
+		};
+	};
 };
 
 &hdmitx {
