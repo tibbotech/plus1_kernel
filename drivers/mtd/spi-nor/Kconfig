@@ -107,4 +107,10 @@ config SPI_INTEL_SPI_PLATFORM
 	  To compile this driver as a module, choose M here: the module
 	  will be called intel-spi-platform.
 
+config SPI_SUNPLUS_SPI
+	tristate "Sunplus SPI nor controller"
+	depends on ARCH_PENTAGRAM
+	help
+	  Enable the Sunplus spi nor controller driver. This driver
+	  can be used to access the SPI NOR flash on platforms.
 endif # MTD_SPI_NOR

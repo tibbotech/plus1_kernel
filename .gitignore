@@ -14,6 +14,7 @@
 *.asn1.[ch]
 *.bin
 *.bz2
+*.bak
 *.c.[012]*.*
 *.dt.yaml
 *.dtb
