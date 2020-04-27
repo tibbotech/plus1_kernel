@@ -38,6 +38,18 @@ if USB_SUPPORT
 
 source "drivers/usb/common/Kconfig"
 
+# usb ports freely determine enable/disable
+config USB_PORT0
+	bool "Sunplus Gemini USB PORT 0"
+	default y
+
+config USB_PORT1
+	bool "Sunplus Gemini USB PORT 1"
+	default y
+
+config USB_COMMON
+	tristate
+
 config USB_ARCH_HAS_HCD
 	def_bool y
 

@@ -550,7 +550,7 @@
 			compatible = "sunplus,sp7021-usb-phy0";
 			clocks = <&clkc UPHY0>;
 			resets = <&rstc RST_UPHY0>;
-			reg = <0x9C004A80 0x80>;
+			reg = <0x9C004A80 0x80>, <0x9C000000 0x80>, <0x9C000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 			nvmem-cell-names = "disc_vol0";
@@ -561,7 +561,7 @@
 			compatible = "sunplus,sp7021-usb-phy1";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_UPHY1>;
-			reg = <0x9C004B00 0x80>;
+			reg = <0x9C004B00 0x80>, <0x9C000000 0x80>, <0x9C000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 			nvmem-cell-names = "disc_vol1";
