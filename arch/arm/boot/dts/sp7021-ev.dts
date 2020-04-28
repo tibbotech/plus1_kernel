@@ -93,6 +93,9 @@
 };
 
 &uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart1>;
+	uart1-gpio0 = <&pctl 0 GPIO_ACTIVE_HIGH>;
 	status = "disabled";
 };
 

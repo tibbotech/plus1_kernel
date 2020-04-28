@@ -913,6 +913,14 @@
 				sppctl,function = "UA0";
 			};
 
+			pins_uart1: pins_uart1 {
+				sppctl,pins = <
+					SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_UA1_TX,0)
+					SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_UA1_RX,0)
+					SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,1)
+				>;
+			};
+
 			emmc_mux: emmc_mux {
 				sppctl,groups = "CARD0_EMMC";
 				sppctl,function = "CARD0_EMMC";
