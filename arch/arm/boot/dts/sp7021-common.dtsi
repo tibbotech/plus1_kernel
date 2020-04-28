@@ -847,19 +847,6 @@
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;
 			resets = <&rstc RST_SPIFL>;
-			partitions {
-				compatible = "fixed-partitions";
-				#address-cells = <1>;
-				#size-cells = <1>;
-				partition@0 {
-					label = "data";
-					reg = <0 0x200000>;
-				};
-				partition@200000 {
-					label = "data1";
-					reg = <0x200000 0xdff000>;
-				};
-			};
 		};
 
 		mipicsi0: mipicsirx@0x9C005280 {
@@ -909,7 +896,7 @@
 			pins_uart0: pins_uart0 {
 				sppctl,groups = "UA0";
 				sppctl,function = "UA0";
-			};			
+			};
 
 			emmc_mux: emmc_mux {
 				sppctl,groups = "CARD0_EMMC";
