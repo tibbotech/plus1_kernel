@@ -202,7 +202,15 @@
 			SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
 		>;
 	};
-
+	
+	pins_uart1: pins_uart1 {
+				sppctl,pins = <
+					SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_UA1_TX,0)
+					SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_UA1_RX,0)
+					SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,1)
+				>;
+	};
+			
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SP7021_IOPAD(16,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
