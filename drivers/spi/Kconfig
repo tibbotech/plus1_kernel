@@ -876,6 +876,12 @@ config SPI_ZYNQMP_GQSPI
 	help
 	  Enables Xilinx GQSPI controller driver for Zynq UltraScale+ MPSoC.
 
+config SPI_SUNPLUS_SP7021
+	tristate "Sunplus SP7021 SPI controller"
+	depends on ARCH_PENTAGRAM
+	help
+	  Enable the Sunplus spi controller driver.
+
 #
 # Add new SPI master controllers in alphabetical order above this line
 #
@@ -924,6 +930,7 @@ endif # SPI_MASTER
 
 config SPI_SLAVE
 	bool "SPI slave protocol handlers"
+	default SPI	
 	help
 	  If your system has a slave-capable SPI controller, you can enable
 	  slave protocol handlers.
