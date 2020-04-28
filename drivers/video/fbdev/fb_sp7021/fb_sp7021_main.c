@@ -375,8 +375,9 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 static int _sp7021_fb_remove(struct platform_device *pdev)
 {
 	if (gFB_INFO) {
-		if (unregister_framebuffer(gFB_INFO))
-			mod_err(pdev, "unregister framebuffer error\n");
+		//if (unregister_framebuffer(gFB_INFO))
+		//	mod_err(pdev, "unregister framebuffer error\n");
+		unregister_framebuffer(gFB_INFO);
 		framebuffer_release(gFB_INFO);
 		gFB_INFO = NULL;
 	}
