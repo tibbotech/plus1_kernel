@@ -118,7 +118,7 @@
 
 &l2sw {
 	pinctrl-names = "default";
-	pinctrl-0 = <&l2sw_two_phy_pins>;
+	pinctrl-0 = <&l2sw_ev_two_phy_pins>;
 };
 
 &mmc0 {
@@ -209,7 +209,7 @@
 		>;
 	};
 
-	l2sw_two_phy_pins: pinmux_l2sw_two_phy_pins {
+	l2sw_ev_two_phy_pins: pinmux_l2sw_ev_two_phy_pins {
 		sppctl,pins = <
 			SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
 			SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)
@@ -238,7 +238,7 @@
 		>;
 	};
 
-	l2sw_one_phy_pins: pinmux_l2sw_one_phy_pins {
+	l2sw_ev_one_phy_pins: pinmux_l2sw_ev_one_phy_pins {
 		sppctl,pins = <
 			SP7021_IOPAD(47,SP7021_PCTL_G_PMUX,MUXF_L2SW_CLK_OUT,0)
 			SP7021_IOPAD(41,SP7021_PCTL_G_PMUX,MUXF_L2SW_MAC_SMI_MDC,0)

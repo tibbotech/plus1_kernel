@@ -180,10 +180,8 @@
 			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA0>;
 			resets = <&rstc RST_UA0>;
-#if 0
 			pinctrl-names = "default";
 			pinctrl-0 = <&pins_uart0>;
-#endif
 		};
 
 		uart1: serial@sp_uart1 {
