@@ -47,6 +47,8 @@
 	spi-max-frequency = <50000000>;
 	spi-cpha;
 	spi-cpol;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spi0>;
 	status = "disabled";
 };
 
@@ -72,19 +74,21 @@
 
 &i2cm0 {
 	clock-frequency = <100000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2cm0_pins>;
 	status = "disabled";
 };
 
 &i2cm1 {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2cm1_tpm_pins>;
+	pinctrl-0 = <&i2cm1_mipicsi_tpm_pins>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	st33htpi: st33htpi@0{
 		compatible = "st,st33htpm-i2c";
 		reg = <0x2e>;
-		status = "disabled";
+		status = "okay";
 	};
 };
 
@@ -99,6 +103,8 @@
 };
 
 &uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart1>;
 	status = "disabled";
 };
 
@@ -190,7 +196,14 @@
 &pctl {
 	pinctrl-names = "default";
 
-	i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
+	i2cm0_pins: pinmux_i2cm0_pins {
+		sppctl,pins = <
+			SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_I2CM0_DAT,0)
+			SP7021_IOPAD(13,SP7021_PCTL_G_PMUX,MUXF_I2CM0_CLK,0)
+		>;
+	};
+
+	i2cm1_mipicsi_tpm_pins: pinmux_i2cm1_mipicsi_tpm_pins {
 		sppctl,pins = <
 			SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 			SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
@@ -244,8 +257,6 @@
 
 	mipicsi0_pins: pinmux_mipicsi0_pins {
 		sppctl,pins = <
-			SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
-			SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 			SP7021_IOPAD(92,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 			SP7021_IOPAD(93,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 		>;
@@ -253,6 +264,13 @@
 
 	gpio_leds_pins: pinmux_gpio_leds_pins {
 		sppctl,pins = < SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OUT) >;
+	};
+
+	pins_uart1: pins_uart1 {
+		sppctl,pins = <
+			SP7021_IOPAD(14,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
+			SP7021_IOPAD(16,SP7021_PCTL_G_PMUX,MUXF_UA4_RX,0)
+		>;
 	};
 
 	pins_uart2: pins_uart2 {
@@ -264,13 +282,21 @@
 		>;
 	};
 
-	// AP6256 Bluetooth
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SP7021_IOPAD(22,SP7021_PCTL_G_PMUX,MUXF_UA4_TX,0)
 			SP7021_IOPAD(20,SP7021_PCTL_G_PMUX,MUXF_UA4_RX,0)
 			SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_UA4_RTS,0)
 			SP7021_IOPAD(21,SP7021_PCTL_G_PMUX,MUXF_UA4_CTS,0)
+		>;
+	};
+
+	pins_spi0: pinmux_pins_spi0 {
+		sppctl,pins = <
+			SP7021_IOPAD(26,SP7021_PCTL_G_PMUX,MUXF_SPI0S_EN,0)
+			SP7021_IOPAD(23,SP7021_PCTL_G_PMUX,MUXF_SPI0S_DO,0)
+			SP7021_IOPAD(25,SP7021_PCTL_G_PMUX,MUXF_SPI0S_DI,0)
+			SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SPI0S_CLK,0)
 		>;
 	};
 };

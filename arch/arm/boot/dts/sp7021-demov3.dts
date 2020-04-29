@@ -78,7 +78,7 @@
 &i2cm1 {
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&i2cm1_tpm_pins>;
+	pinctrl-0 = <&i2cm1_mipicsi_tpm_pins>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	st33htpi: st33htpi@0{
@@ -198,7 +198,7 @@
 &pctl {
 	pinctrl-names = "default";
 
-	i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
+	i2cm1_mipicsi_tpm_pins: pinmux_i2cm1_mipicsi_tpm_pins {
 		sppctl,pins = <
 			SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
 			SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
@@ -252,8 +252,6 @@
 
 	mipicsi0_pins: pinmux_mipicsi0_pins {
 		sppctl,pins = <
-			SP7021_IOPAD(64,SP7021_PCTL_G_PMUX,MUXF_I2CM1_DAT,0)
-			SP7021_IOPAD(61,SP7021_PCTL_G_PMUX,MUXF_I2CM1_CLK,0)
 			SP7021_IOPAD(92,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 			SP7021_IOPAD(93,SP7021_PCTL_G_GPIO,0,SP7021_PCTL_L_OU1)
 		>;
