@@ -102,4 +102,6 @@ obj-y					+= cros-ec-cec/
 
 obj-y					+= sunxi/
 
+obj-$(CONFIG_VIDEO_SP_DISP) += sp-display/display/
+
 obj-$(CONFIG_VIDEO_SP_HDMITX) += sp-display/hdmitx/
