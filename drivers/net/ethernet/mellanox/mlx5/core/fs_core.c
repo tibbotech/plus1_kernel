@@ -579,7 +579,7 @@ static void del_sw_flow_group(struct fs_node *node)
 
 	rhashtable_destroy(&fg->ftes_hash);
 	ida_destroy(&fg->fte_allocator);
-	if (ft->autogroup.active)
+	if (ft->autogroup.active && fg->max_ftes == ft->autogroup.group_size)
 		ft->autogroup.num_groups--;
 	err = rhltable_remove(&ft->fgs_hash,
 			      &fg->hash,
@@ -1126,6 +1126,8 @@ mlx5_create_auto_grouped_flow_table(struct mlx5_flow_namespace *ns,
 
 	ft->autogroup.active = true;
 	ft->autogroup.required_groups = max_num_groups;
+	/* We save place for flow groups in addition to max types */
+	ft->autogroup.group_size = ft->max_fte / (max_num_groups + 1);
 
 	return ft;
 }
@@ -1328,8 +1330,7 @@ static struct mlx5_flow_group *alloc_auto_flow_group(struct mlx5_flow_table  *ft
 		return ERR_PTR(-ENOENT);
 
 	if (ft->autogroup.num_groups < ft->autogroup.required_groups)
-		/* We save place for flow groups in addition to max types */
-		group_size = ft->max_fte / (ft->autogroup.required_groups + 1);
+		group_size = ft->autogroup.group_size;
 
 	/*  ft->max_fte == ft->autogroup.max_types */
 	if (group_size == 0)
@@ -1356,7 +1357,8 @@ static struct mlx5_flow_group *alloc_auto_flow_group(struct mlx5_flow_table  *ft
 	if (IS_ERR(fg))
 		goto out;
 
-	ft->autogroup.num_groups++;
+	if (group_size == ft->autogroup.group_size)
+		ft->autogroup.num_groups++;
 
 out:
 	return fg;
@@ -1553,16 +1555,16 @@ struct match_list_head {
 	struct match_list first;
 };
 
-static void free_match_list(struct match_list_head *head)
+static void free_match_list(struct match_list_head *head, bool ft_locked)
 {
 	if (!list_empty(&head->list)) {
 		struct match_list *iter, *match_tmp;
 
 		list_del(&head->first.list);
-		tree_put_node(&head->first.g->node, false);
+		tree_put_node(&head->first.g->node, ft_locked);
 		list_for_each_entry_safe(iter, match_tmp, &head->list,
 					 list) {
-			tree_put_node(&iter->g->node, false);
+			tree_put_node(&iter->g->node, ft_locked);
 			list_del(&iter->list);
 			kfree(iter);
 		}
@@ -1571,7 +1573,8 @@ static void free_match_list(struct match_list_head *head)
 
 static int build_match_list(struct match_list_head *match_head,
 			    struct mlx5_flow_table *ft,
-			    const struct mlx5_flow_spec *spec)
+			    const struct mlx5_flow_spec *spec,
+			    bool ft_locked)
 {
 	struct rhlist_head *tmp, *list;
 	struct mlx5_flow_group *g;
@@ -1596,7 +1599,7 @@ static int build_match_list(struct match_list_head *match_head,
 
 		curr_match = kmalloc(sizeof(*curr_match), GFP_ATOMIC);
 		if (!curr_match) {
-			free_match_list(match_head);
+			free_match_list(match_head, ft_locked);
 			err = -ENOMEM;
 			goto out;
 		}
@@ -1776,7 +1779,7 @@ search_again_locked:
 	version = atomic_read(&ft->node.version);
 
 	/* Collect all fgs which has a matching match_criteria */
-	err = build_match_list(&match_head, ft, spec);
+	err = build_match_list(&match_head, ft, spec, take_write);
 	if (err) {
 		if (take_write)
 			up_write_ref_node(&ft->node, false);
@@ -1790,7 +1793,7 @@ search_again_locked:
 
 	rule = try_add_to_existing_fg(ft, &match_head.list, spec, flow_act, dest,
 				      dest_num, version);
-	free_match_list(&match_head);
+	free_match_list(&match_head, take_write);
 	if (!IS_ERR(rule) ||
 	    (PTR_ERR(rule) != -ENOENT && PTR_ERR(rule) != -EAGAIN)) {
 		if (take_write)
