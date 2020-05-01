@@ -597,7 +597,7 @@
 			compatible = "sunplus,sp7021-usb-ohci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x9C102080 0x68>;
+			reg = <0x9C102080 0x68>, <0x9C000000 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -606,7 +606,7 @@
 			compatible = "sunplus,sp7021-usb-ohci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
-			reg = <0x9C103080 0x68>;
+			reg = <0x9C103080 0x68>, <0x9C000000 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 		};
