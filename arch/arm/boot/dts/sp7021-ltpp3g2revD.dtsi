@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "pentagram-sp7021-achip.dtsi"
+#include "sp7021-ChipC.dtsi"
 
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 
@@ -10,6 +10,7 @@
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory {
@@ -116,7 +117,7 @@
  pins_gpio_nobinded: pins_gpio_nobinded {
     sppctl,pins = <
       SP7021_IOPAD(42,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH0 */
-      SP7021_IOPAD(51,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_ON0 */
+      /*SP7021_IOPAD(51,SP7021_PCTL_G_GPIO,0,0)*/   /* was L2SW_LED_ON0 */
       SP7021_IOPAD(30,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH1 */
       SP7021_IOPAD(39,SP7021_PCTL_G_GPIO,0,0)   /* was L2SW_LED_ON1  */
     >;
