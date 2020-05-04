@@ -1575,11 +1575,7 @@ config SERIAL_MILBEAUT_USIO_CONSOLE
 config SERIAL_SP_UART
 	depends on ARCH_PENTAGRAM
 	bool "Sunplus UART serial port support"
-
-config SERIAL_SP_UART_RS485
-	depends on ARCH_PENTAGRAM
-	bool "Support SP UART RS485"
-
+		
 endmenu
 
 config SERIAL_MCTRL_GPIO
