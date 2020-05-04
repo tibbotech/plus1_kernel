@@ -1531,10 +1531,6 @@ config SERIAL_OWL_CONSOLE
 config SERIAL_SP_UART
 	depends on ARCH_PENTAGRAM
 	bool "Sunplus UART serial port support"
-
-config SERIAL_SP_UART_RS485
-	depends on ARCH_PENTAGRAM
-	bool "Support SP UART RS485"
 		
 endmenu
 
