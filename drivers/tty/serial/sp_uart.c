@@ -20,12 +20,10 @@
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
-#ifdef CONFIG_SERIAL_SP_UART_RS485
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <dt-bindings/pinctrl/sp7021.h>
-#endif 
 
 #define NUM_UART	6	/* serial0,  ... */
 #define NUM_UARTDMARX	2	/* serial10, ... */
@@ -67,6 +65,10 @@
 #if defined(CONFIG_SP_MON)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
 #endif
+
+struct gpio_desc *DE_RE_dir;
+bool DE_RE_Select = 0;
+
 
 struct sunplus_uart_port {
 	char name[16];	/* Sunplus_UARTx */
@@ -650,15 +652,22 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	u8 *byte_ptr;
 	struct circ_buf *xmit = &port->state->xmit;
 
+	if(DE_RE_Select == 1)
+		gpiod_set_value(DE_RE_dir,1);
+		
 	if (port->x_char) {
 		sp_uart_put_char(port, port->x_char);
 		port->icount.tx++;
 		port->x_char = 0;
+		if(DE_RE_Select == 1)
+			gpiod_set_value(DE_RE_dir,0);
 		return;
 	}
 
 	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
 		sunplus_uart_ops_stop_tx(port);
+		if(DE_RE_Select == 1)
+			gpiod_set_value(DE_RE_dir,0);
 		return;
 	}
 
@@ -707,6 +716,9 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	if (uart_circ_empty(xmit)) {
 		sunplus_uart_ops_stop_tx(port);
 	}
+
+	if(DE_RE_Select == 1)
+		gpiod_set_value(DE_RE_dir,0);
 }
 
 static void receive_chars(struct uart_port *port)	/* called by ISR */
@@ -1608,9 +1620,6 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int idx_offset, idx;
 	int idx_which_uart;
 	char peri_name[16];
-#ifdef CONFIG_SERIAL_SP_UART_RS485
-	int DE_RE;
-#endif 
 
   //    DBG_INFO("sunplus_uart_platform_driver_probe_of");
 	if (pdev->dev.of_node) {
@@ -1735,13 +1744,12 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		return -ENODEV;
 
 
-#ifdef CONFIG_SERIAL_SP_UART_RS485
-	DE_RE = of_get_named_gpio(pdev->dev.of_node, "uart1-gpio0", 0);
-	DBG_INFO("DE_RE pin number %d\n", DE_RE);
-    if(!gpio_is_valid(DE_RE))
-		DBG_INFO("[UART] Wrong pin %d configured for gpio\n", DE_RE);
-    gpio_set_value(0,1);
-#endif 
+	
+	DE_RE_dir = devm_gpiod_get(&pdev->dev, "dir", GPIOD_OUT_LOW);
+	if (!IS_ERR(DE_RE_dir)) {
+		DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(DE_RE_dir));
+		DE_RE_Select = 1;
+	}
 	
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
