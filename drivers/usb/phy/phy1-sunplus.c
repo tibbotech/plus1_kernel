@@ -229,6 +229,12 @@ static const struct of_device_id phy1_sunplus_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, phy1_sunplus_dt_ids);
 
+void phy1_otg_ctrl(void)
+{
+	writel(RF_MASK_V_SET(1 << 8), uphy1_res_moon4 + UPHY1_CTL0_OFFSET);
+}
+EXPORT_SYMBOL(phy1_otg_ctrl);
+
 static struct platform_driver sunplus_usb_phy1_driver = {
 	.probe		= sunplus_usb_phy1_probe,
 	.remove		= sunplus_usb_phy1_remove,

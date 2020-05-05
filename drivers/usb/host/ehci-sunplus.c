@@ -40,19 +40,18 @@
 #include <linux/kthread.h>
 #include <linux/usb/sp_usb.h>
 
+#include "../phy/otg-sunplus.h"
+
 struct clk *ehci_clk[USB_PORT_NUM];
-#if 0
-void __iomem *ehci_res_moon0;
-#endif
 
 static int ehci_platform_reset(struct usb_hcd *hcd)
 {
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
 	struct usb_ehci_pdata *pdata = pdev->dev.platform_data;
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-	#if 0
+#if 0
 	int port_num = pdev->id - 1;
-	#endif
+#endif
 	int retval;
 
 	hcd->has_tt = pdata->has_tt;
@@ -65,13 +64,13 @@ static int ehci_platform_reset(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
-	#if 0
+#if 0
 	if (pdata->port_power_on)
 		ehci_port_power(ehci, port_num, 1);
 	if (pdata->port_power_off)
 		ehci_port_power(ehci, port_num, 0);
-	#endif
-	
+#endif
+
 	return 0;
 }
 
@@ -312,11 +311,10 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	struct resource *res_mem;
 	int irq;
 	int err = -ENOMEM;
-#if 0
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	struct usb_phy *otg_phy;
 #endif
-#endif
+
 	//BUG_ON(!dev->dev.platform_data);
 
 	if (usb_disabled())
@@ -354,6 +352,8 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 
+	hcd->tpl_support = of_usb_host_tpl_support(dev->dev.of_node);
+
 #ifdef CONFIG_USB_USE_PLATFORM_RESOURCE
 	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
 		pr_err("controller already in use");
@@ -368,14 +368,6 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	hcd->regs = (void *)res_mem->start;
 #endif
 
-#if 0
-	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
-	ehci_res_moon0 = devm_ioremap(&dev->dev, res_mem->start, resource_size(res_mem));
-	if (IS_ERR(ehci_res_moon0)) {
-		return PTR_ERR(ehci_res_moon0);
-	}
-#endif
-
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	printk(KERN_DEBUG "hcd_irq:%d,%d\n",hcd->irq,irq);
 	if (err)
@@ -384,8 +376,6 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, hcd);
 
 /****************************************************/
-
-#if 0
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	if (dev->id < 3) {
 		otg_phy = usb_get_transceiver_sp(dev->id - 1);
@@ -397,9 +387,10 @@ int ehci_sunplus_probe(struct platform_device *dev)
 				goto err_iounmap;
 			}
 		}
+
 		hcd->self.otg_port = 1;
+		hcd->usb_phy = otg_phy;
 	}
-#endif
 #endif
 
 #ifdef CONFIG_SWITCH_USB_ROLE
@@ -473,7 +464,7 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 
 	/*disable usb controller clock*/
 	clk_disable(ehci_clk[dev->id - 1]);
-	
+
 	return 0;
 }
 
