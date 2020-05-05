@@ -122,6 +122,7 @@
 &l2sw {
 	pinctrl-names = "default";
 	pinctrl-0 = <&l2sw_ev_two_phy_pins>;
+	//status = "disabled";
 };
 
 &mmc0 {
@@ -193,7 +194,7 @@
 &audio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
-	status = "disabled";
+	status = "disabled"; //Need to disable &l2sw if enable it.
 };
 
 &pctl {

@@ -25,6 +25,19 @@
 
 struct nand_chip;
 
+#if 1 // kernel 4.12
+struct nand_flash_dev;
+
+/*
+ * Separate phases of nand_scan(), allowing board driver to intervene
+ * and override command or ECC setup according to flash type.
+ */
+int nand_scan_ident(struct nand_chip *chip, unsigned int maxchips,
+			   struct nand_flash_dev *table);
+
+int nand_scan_tail(struct nand_chip *chip);
+#endif
+
 /* The maximum number of NAND chips in an array */
 #define NAND_MAX_CHIPS		8
 
@@ -1136,6 +1149,8 @@ struct nand_chip {
 		const struct nand_manufacturer *desc;
 		void *priv;
 	} manufacturer;
+
+	unsigned int drv_options; // SP additional variable
 };
 
 extern const struct mtd_ooblayout_ops nand_ooblayout_sp_ops;
@@ -1260,6 +1275,7 @@ struct nand_flash_dev {
 		uint16_t step_ds;
 	} ecc;
 	int onfi_timing_mode_default;
+	unsigned int drv_options; // SP additional variable
 };
 
 int nand_create_bbt(struct nand_chip *chip);
