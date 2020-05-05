@@ -4572,6 +4572,7 @@ static bool find_full_id_nand(struct nand_chip *chip,
 		chip->base.eccreq.step_size = NAND_ECC_STEP(type);
 		chip->onfi_timing_mode_default =
 					type->onfi_timing_mode_default;
+		chip->drv_options = type->drv_options; // SP additional variable
 
 		chip->parameters.model = kstrdup(type->name, GFP_KERNEL);
 		if (!chip->parameters.model)

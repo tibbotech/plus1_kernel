@@ -1183,18 +1183,12 @@ static int sp_spinand_probe(struct platform_device *pdev)
 
 	info->chip_num = SPINAND_OPT_GET_DIENUM(info->nand.drv_options);
 	info->cur_chip = -1;
-#if 1 // Kernel 5.4
-	// info->nand.numchips.ntargets and info->mtd->size are set in nand_scan_ident()
-	SPINAND_LOGI("info->nand.numchips = %d\n", nanddev_ntargets(&info->nand.base));
-	SPINAND_LOGI("info->nand.chipsize = %lld\n", nanddev_target_size(&info->nand.base));
-	SPINAND_LOGI("info->mtd->size = %lld\n", info->mtd->size);
-#else
 	if (info->chip_num > 1) {
-		info->nand.numchips = info->chip_num;
-		info->mtd->size = info->chip_num * info->nand.chipsize;
-	}
-#endif
-	for (i=0; i<nanddev_ntargets(&info->nand.base); i++) {
+		info->nand.base.memorg.ntargets = info->chip_num;
+		info->mtd->size = info->chip_num * nanddev_target_size(&info->nand.base);
+	}	
+
+	for (i = 0; i < nanddev_ntargets(&info->nand.base); i++) {
 		sp_spinand_select_chip(&info->nand, i);
 		if (info->nand.drv_options & SPINAND_OPT_ECCEN_IN_F90_4) {
 			value = spi_nand_getfeatures(info, 0x90);
@@ -1203,13 +1197,13 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		}
 
 		value = spi_nand_getfeatures(info, DEVICE_FEATURE_ADDR);
-		value &= ~0x10;          /* disable internal ECC */
+		value &= ~0x10;     /* disable internal ECC */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_BUF_BIT)
-			value |= 0x08;   /* use buffer read mode */
+			value |= 0x08;  /* use buffer read mode */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_CONTI_RD)
-			value &= ~0x01;  /* disable continuous read mode */
+			value &= ~0x01; /* disable continuous read mode */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_QE_BIT)
-			value |= 0x01;   /* enable quad io */
+			value |= 0x01;  /* enable quad io */
 		spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, value);
 
 		/* close write protection */
