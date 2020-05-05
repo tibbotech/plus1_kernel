@@ -20,7 +20,7 @@ static const struct of_device_id ehci0_sunplus_dt_ids[] = {
 MODULE_DEVICE_TABLE(of, ehci0_sunplus_dt_ids);
 
 
-struct platform_driver ehci0_hcd_sunplus_driver = {
+static struct platform_driver ehci0_hcd_sunplus_driver = {
 	.probe			= ehci0_sunplus_platform_probe,
 	.remove			= ehci_sunplus_remove,
 	.shutdown		= usb_hcd_platform_shutdown,
