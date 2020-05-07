@@ -80,7 +80,7 @@
 };
 
 &i2cm1 {
-	clock-frequency = <100000>;
+	clock-frequency = <400000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2cm1_tpm_pins>;
 	#address-cells = <1>;
