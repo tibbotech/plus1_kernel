@@ -148,7 +148,7 @@ static const struct hc_driver ohci_platform_hc_driver = {
 #endif
 
 	.irq = ohci_irq,
-	.flags = HCD_MEMORY | HCD_USB11,
+	.flags = HCD_MEMORY | HCD_DMA | HCD_USB11,
 
 	.reset = ohci_platform_reset,
 	.start = ohci_platform_start,

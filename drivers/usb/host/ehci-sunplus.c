@@ -79,7 +79,7 @@ static const struct hc_driver ehci_platform_hc_driver = {
 	.product_desc = "Generic Platform EHCI Controller",
 	.hcd_priv_size = sizeof(struct ehci_hcd),
 	.irq = ehci_irq,
-	.flags = HCD_MEMORY | HCD_USB2 | HCD_BH,
+	.flags = HCD_MEMORY | HCD_DMA | HCD_USB2 | HCD_BH,
 
 	.reset = ehci_platform_reset,
 	.start = ehci_run,
