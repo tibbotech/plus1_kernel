@@ -24,7 +24,7 @@
 #define SYNC_RAW10                      0x2B
 #define SYNC_YUY2                       0x1E
 
-#if 1
+#if 0
 #define DBG_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
