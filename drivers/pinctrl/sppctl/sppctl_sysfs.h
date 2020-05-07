@@ -19,13 +19,14 @@
 
 #include "sppctl.h"
 
+
 typedef struct sppctl_sdata_T {
- uint8_t i;
- uint8_t ridx;
- sppctl_pdata_t *pdata;
+	uint8_t i;
+	uint8_t ridx;
+	sppctl_pdata_t *pdata;
 } sppctl_sdata_t;
 
-void sppctl_sysfs_init(  struct platform_device *_pdev);
-void sppctl_sysfs_clean( struct platform_device *_pdev);
+void sppctl_sysfs_init(struct platform_device *_pdev);
+void sppctl_sysfs_clean(struct platform_device *_pdev);
 
 #endif // SPPCTL_SYSFS_H
