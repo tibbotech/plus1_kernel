@@ -454,6 +454,38 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&otg1_pins>;
 		};
+#if 0 // Temporary description for MIPI I2C node
+		i2cm0: i2c@sp_i2cm0 {
+			compatible = "sunplus,sp7021-mipi-i2c";
+			reg = <0x0 0x9C153600 0x0 0x100>, <0x0 0x9c000280 0x0 0x80>;
+			reg-names = "mipi_i2c", "moon5";
+			i2c-clock = <3>;
+			clocks = <&clkc ISP0>, <&clkc ISPAPB0>;
+			clock-names = "clkc_isp", "clkc_ispapb";
+			resets = <&rstc RST_ISP0>, <&rstc RST_ISPAPB0>;
+			reset-names = "rstc_isp", "rstc_ispapb";
+		};
+#endif
+		mipiisp0: mipiisp@0x9C153000 {
+			compatible = "sunplus,sp7021-mipicsi-rx";
+			reg = <0x0 0x9c153000 0x0 0x1300>,
+			      <0x0 0x9c005300 0x0 0x80>,
+			      <0x0 0x9c000280 0x0 0x80>;
+			reg-names = "mipi_isp", "csi_iw", "moon5";
+			interrupt-parent = <&intc>;
+			interrupts = <78 IRQ_TYPE_EDGE_RISING>, <79 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&clkc CSIIW0>;
+			clock-names = "clkc_csiiw";
+			resets = <&rstc RST_CSIIW0>;
+			reset-names = "rstc_csiiw";
+			i2c-id = <0>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&mipicsi0_pins>;
+#if 0 // Demo board V3
+			cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
+			cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
+#endif
+		};
 
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";

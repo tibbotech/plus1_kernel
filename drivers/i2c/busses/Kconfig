@@ -1393,6 +1393,12 @@ config SP_I2C
 	help
 	  This driver supports the I2C device on the Sunplus processor chip.
 
+config SP_MIPI_I2C
+	tristate "SP MIPI I2C support"
+	help
+	  This driver supports the MIPI I2C device on the Sunplus processor
+	  chip.
+
 config I2C_OPAL
 	tristate "IBM OPAL I2C driver"
 	depends on PPC_POWERNV
