@@ -21,6 +21,8 @@
 #include <linux/pm_runtime.h>
 #endif
 
+#define I2C_DMA_WORKROUND
+
 //#define I2C_FUNC_DEBUG
 //#define I2C_DBG_INFO
 //#define I2C_DBG_ERR
@@ -87,6 +89,21 @@ typedef struct SpI2C_If_t_ {
 	unsigned int i2c_clk_freq;
 	int irq;
 } SpI2C_If_t;
+
+
+#ifdef I2C_DMA_WORKROUND
+
+#define MOON0_BASE           0xF8000000
+
+typedef struct Moon_RegBase_t_ {
+	void __iomem *moon0_regs;
+} Moon_RegBase_t;
+
+static Moon_RegBase_t stMoonRegBase;
+
+#endif
+
+
 
 static SpI2C_If_t stSpI2CInfo[I2C_MASTER_NUM];
 static I2C_Irq_Event_t stIrqEvent[I2C_MASTER_NUM];
@@ -763,6 +780,9 @@ int sp_i2cm_write(I2C_Cmd_t *pstCmdInfo)
 int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 {
 	I2C_Irq_Event_t *pstIrqEvent = NULL;
+    #ifdef I2C_DMA_WORKROUND
+	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
+    #endif	
 	unsigned char w_data[32] = {0};
 	unsigned int write_cnt = 0;
 	unsigned int burst_cnt = 0;
@@ -776,6 +796,12 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 
 	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
 		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+
+    #ifdef I2C_DMA_WORKROUND	
+		pstMoonRegBase->moon0_regs = (void __iomem *)MOON0_BASE;
+        hal_i2cm_enable(0, pstMoonRegBase->moon0_regs);
+    #endif
+		
 	} else {
 		return I2C_ERR_INVALID_DEVID;
 	}
@@ -871,7 +897,7 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 //  }
 	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
 	if (ret == 0) {
-		DBG_ERR("I2C write timeout !!\n");
+		DBG_ERR("I2C dma write timeout !!\n");
 		ret = I2C_ERR_TIMEOUT_OUT;
 	} else {
 		ret = pstIrqEvent->bRet;
@@ -891,6 +917,9 @@ int sp_i2cm_dma_write(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 {
 	I2C_Irq_Event_t *pstIrqEvent = NULL;
+    #ifdef I2C_DMA_WORKROUND
+	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
+    #endif	
 	unsigned char w_data[32] = {0};
 	unsigned int read_cnt = 0;
 	unsigned int write_cnt = 0;
@@ -905,6 +934,12 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 
 	if (pstCmdInfo->dDevId < I2C_MASTER_NUM) {
 		pstIrqEvent = &stIrqEvent[pstCmdInfo->dDevId];
+
+    #ifdef I2C_DMA_WORKROUND	
+		pstMoonRegBase->moon0_regs = (void __iomem *)MOON0_BASE;
+        hal_i2cm_enable(0, pstMoonRegBase->moon0_regs);
+    #endif
+		
 	} else {
 		return I2C_ERR_INVALID_DEVID;
 	}
@@ -1011,7 +1046,7 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 //  hal_i2cm_status_clear(pstCmdInfo->dDevId, 0xFFFFFFFF);
 	ret = wait_event_timeout(i2cm_event_wait[pstCmdInfo->dDevId], pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 20);
 	if (ret == 0) {
-		DBG_ERR("I2C read timeout !!\n");
+		DBG_ERR("I2C dma read timeout !!\n");
 		ret = I2C_ERR_TIMEOUT_OUT;
 	} else {
 		ret = pstIrqEvent->bRet;
