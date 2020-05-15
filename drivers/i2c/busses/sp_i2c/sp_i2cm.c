@@ -23,8 +23,8 @@
 
 #define I2C_DMA_WORKROUND
 
-#define I2C_FUNC_DEBUG
-#define I2C_DBG_INFO
+//#define I2C_FUNC_DEBUG
+//#define I2C_DBG_INFO
 //#define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
