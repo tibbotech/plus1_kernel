@@ -186,7 +186,10 @@ static void __init sp_fixup(void)
 void sp_restart(enum reboot_mode mode, const char *cmd)
 {
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
-
+	#ifdef CONFIG_SUNPLUS_IOP
+	unsigned int reg_value;
+	#endif 
+	early_printk("%s\n", __func__);
 	/* MOON : enable watchdog reset */
 	writel(0x00120012, regs + 0x0274); /* G4.29 misc_ctl */
 
@@ -195,6 +198,11 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 	writel(0xAB00, regs + 0x0630); /* unlock */
 	writel(0x0001, regs + 0x0634); /* counter */
 	writel(0x4A4B, regs + 0x0630); /* resume */
+
+	#ifdef CONFIG_SUNPLUS_IOP
+	reg_value = readl(regs + 0x400);
+	writel((reg_value|0x0001), regs + 0x400); 
+	#endif 
 }
 
 #ifdef CONFIG_MACH_PENTAGRAM_SP7021_BCHIP
