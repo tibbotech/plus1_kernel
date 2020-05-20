@@ -119,6 +119,10 @@
 &l2sw {
 	pinctrl-names = "default";
 	pinctrl-0 = <&l2sw_ev_two_phy_pins>;
+	mode = < 0 >;
+		/* 0 = daisy-chain mode
+		 * 1 = dual NIC mode
+		 * 2 = daisy-chain mode (disable SA learning */
 };
 
 &mmc0 {
