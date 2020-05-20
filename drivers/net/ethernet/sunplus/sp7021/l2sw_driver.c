@@ -1261,27 +1261,7 @@ static struct platform_driver l2sw_driver = {
 	},
 };
 
-
-
-static int __init l2sw_init(void)
-{
-	u32 status;
-
-	//ETH_INFO("[%s] IN\n", __func__);
-
-	status = platform_driver_register(&l2sw_driver);
-
-	return status;
-}
-
-static void __exit l2sw_exit(void)
-{
-	platform_driver_unregister(&l2sw_driver);
-}
-
-
-module_init(l2sw_init);
-module_exit(l2sw_exit);
+module_platform_driver(l2sw_driver);
 
 MODULE_LICENSE("GPL v2");
 
