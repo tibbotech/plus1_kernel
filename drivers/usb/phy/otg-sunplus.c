@@ -242,10 +242,9 @@ static int hnp_polling_watchdog(void *arg)
 				msleep(2000);
 
 				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
-				if (!udev) {
-					otg_debug("can't start HNP polling\n");
+				if ((!udev) ||
+				    (udev->config->interface[0]->altsetting->desc.bInterfaceClass == USB_CLASS_MASS_STORAGE))
 					continue;
-				}
 
 				targeted = is_targeted(udev);
 				hcd  = bus_to_hcd(udev->bus);
