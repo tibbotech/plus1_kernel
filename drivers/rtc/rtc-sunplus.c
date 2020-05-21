@@ -156,8 +156,10 @@ static int sp_rtc_resume(struct platform_device *pdev)
 
 static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
-	RTC_DEBUG("%s, secs = %u\n", __func__, tm->tm_sec);
-	sp_set_seconds(tm->tm_sec);
+    unsigned long secs;
+	//RTC_DEBUG("%s, secs = %u\n", __func__, tm->tm_sec);
+	rtc_tm_to_time(tm, &secs);
+	sp_set_seconds(secs);
 	return 0;
 }
 
