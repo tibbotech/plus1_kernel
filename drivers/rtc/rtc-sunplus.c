@@ -156,8 +156,9 @@ static int sp_rtc_resume(struct platform_device *pdev)
 
 static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
-    unsigned long secs;
-	//RTC_DEBUG("%s, secs = %u\n", __func__, tm->tm_sec);
+	unsigned long secs;
+
+	RTC_DEBUG("%s, secs = %u\n", __func__, tm->tm_sec);
 	rtc_tm_to_time(tm, &secs);
 	sp_set_seconds(secs);
 	return 0;
@@ -335,47 +336,9 @@ static struct platform_driver sp_rtc_driver = {
 	},
 };
 
-static int __init sp_rtc_init(void)
-{
-	int err;
-
-//	FUNC_DEBUG();
-
-	if ((err = platform_driver_register(&sp_rtc_driver)))
-		return err;
-
-//	if ((sp_rtc_device0 = platform_device_alloc("sp7021-rtc", 0)) == NULL) {
-//		err = -ENOMEM;
-//		goto exit_driver_unregister;
-//	}
-
-//	if ((err = platform_device_add(sp_rtc_device0)))
-//		goto exit_free_sp_rtc_device0;
-
-//	if (device_init_wakeup(&(sp_rtc_device0->dev), true)) {
-//		RTC_WARN("dev_init_wakeup() fails.\n");
-//	}
-
-	return 0;
-
-//exit_free_sp_rtc_device0:
-//	platform_device_put(sp_rtc_device0);
-
-//exit_driver_unregister:
-//	platform_driver_unregister(&sp_rtc_driver);
-//	return err;
-}
-
-static void __exit sp_rtc_exit(void)
-{
-	//platform_device_unregister(sp_rtc_device0);
-	platform_driver_unregister(&sp_rtc_driver);
-}
+module_platform_driver(sp_rtc_driver);
 
 MODULE_AUTHOR("Sunplus");
 MODULE_DESCRIPTION("Sunplus RTC driver");
 MODULE_LICENSE("GPL");
-
-module_init(sp_rtc_init);
-module_exit(sp_rtc_exit);
 
