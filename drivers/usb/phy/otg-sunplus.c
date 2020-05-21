@@ -304,8 +304,10 @@ static int hnp_polling_watchdog(void *arg)
 				}
 			}
 		}
-		else
+		else {
 			find_child = false;
+			msleep(1);
+		}
 	}
 
 	return 0;
