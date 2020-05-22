@@ -97,7 +97,7 @@
 	mode = < 0 >;
 		/* 0 = daisy-chain mode
 		 * 1 = dual NIC mode
-		 * 2 = daisy-chain mode (disable SA learning */
+		 * 2 = daisy-chain mode (disable SA learning) */
 };
 
 &mmc0 {
