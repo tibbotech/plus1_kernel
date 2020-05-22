@@ -47,6 +47,8 @@
 #define I2C_SLEEP_TIMEOUT    200
 #define I2C_SCL_DELAY        1  //SCl dalay xT
 
+#define MOON0_BASE           0x9C000000
+
 #define I2CM_REG_NAME        "i2cm"
 
 #define DEVICE_NAME          "sp7021-i2cm"
@@ -88,6 +90,11 @@ typedef struct SpI2C_If_t_ {
 	int irq;
 } SpI2C_If_t;
 
+typedef struct Moon_RegBase_t_ {
+	void __iomem *moon0_regs;
+} Moon_RegBase_t;
+
+static Moon_RegBase_t stMoonRegBase;
 static SpI2C_If_t stSpI2CInfo[I2C_MASTER_NUM];
 static I2C_Irq_Event_t stIrqEvent[I2C_MASTER_NUM];
 wait_queue_head_t i2cm_event_wait[I2C_MASTER_NUM];
@@ -1497,6 +1504,7 @@ static struct i2c_algorithm sp_algorithm = {
 
 static int sp_i2c_probe(struct platform_device *pdev)
 {
+	Moon_RegBase_t *pstMoonRegBase = &stMoonRegBase;
 	SpI2C_If_t *pstSpI2CInfo = NULL;
 	I2C_Irq_Event_t *pstIrqEvent = NULL;
 	struct i2c_adapter *p_adap;
@@ -1512,6 +1520,10 @@ static int sp_i2c_probe(struct platform_device *pdev)
 		DBG_INFO("[I2C adapter] pdev->id=%d\n", pdev->id);
 		device_id = pdev->id;
 	}
+
+        pstMoonRegBase->moon0_regs = (void __iomem *)MOON0_BASE;
+
+        hal_i2cm_enable(0, pstMoonRegBase->moon0_regs);
 
 	pstSpI2CInfo = &stSpI2CInfo[device_id];
 	memset(pstSpI2CInfo, 0, sizeof(SpI2C_If_t));
