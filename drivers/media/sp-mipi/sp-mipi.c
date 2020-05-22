@@ -692,12 +692,47 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 	return 0;
 }
 
+static int vidioc_enum_input(struct file *file, void *priv,
+							struct v4l2_input *inp)
+{
+	if (inp->index > 0)
+		return -EINVAL;
+
+	DBG_INFO("%s\n", __FUNCTION__);
+
+	inp->type = V4L2_INPUT_TYPE_CAMERA;
+	strlcpy(inp->name, "Camera", sizeof(inp->name));
+
+	return 0;
+}
+
+static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
+{
+	DBG_INFO("%s\n", __FUNCTION__);
+
+	*i = 0;
+	return 0;
+}
+
+static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
+{
+	DBG_INFO("%s\n", __FUNCTION__);
+
+	if (i > 0)
+		return -EINVAL;
+
+	return 0;
+}
+
 static const struct v4l2_ioctl_ops sp_mipi_ioctl_ops = {
 	.vidioc_querycap                = vidioc_querycap,
 	.vidioc_enum_fmt_vid_cap        = vidioc_enum_fmt_vid_cap,
 	.vidioc_try_fmt_vid_cap         = vidioc_try_fmt_vid_cap,
 	.vidioc_s_fmt_vid_cap           = vidioc_s_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap           = vidioc_g_fmt_vid_cap,
+	.vidioc_enum_input              = vidioc_enum_input,
+	.vidioc_g_input 				= vidioc_g_input,
+	.vidioc_s_input                 = vidioc_s_input,
 	.vidioc_reqbufs                 = vb2_ioctl_reqbufs,
 	.vidioc_querybuf                = vb2_ioctl_querybuf,
 	.vidioc_create_bufs             = vb2_ioctl_create_bufs,
