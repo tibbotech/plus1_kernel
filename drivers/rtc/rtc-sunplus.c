@@ -30,6 +30,7 @@
 
 
 /* ---------------------------------------------------------------------------------------------- */
+//#define DEBUG           // Unmark to enable dynamic debug
 #if 0
 #define FUNC_DEBUG() printk(KERN_DEBUG "[RTC] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
@@ -158,8 +159,8 @@ static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 {
 	unsigned long secs;
 
-	RTC_DEBUG("%s, secs = %u\n", __func__, tm->tm_sec);
 	rtc_tm_to_time(tm, &secs);
+	RTC_DEBUG("%s, secs = %lu\n", __func__, secs);
 	sp_set_seconds(secs);
 	return 0;
 }
