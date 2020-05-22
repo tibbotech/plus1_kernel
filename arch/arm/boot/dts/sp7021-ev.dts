@@ -93,9 +93,6 @@
 };
 
 &uart1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pins_uart1>;
-	uart1-gpio0 = <&pctl 0 GPIO_ACTIVE_HIGH>;
 	status = "disabled";
 };
 
@@ -122,7 +119,10 @@
 &l2sw {
 	pinctrl-names = "default";
 	pinctrl-0 = <&l2sw_ev_two_phy_pins>;
-	//status = "disabled";
+	mode = < 0 >;
+		/* 0 = daisy-chain mode
+		 * 1 = dual NIC mode
+		 * 2 = daisy-chain mode (disable SA learning) */
 };
 
 &mmc0 {
@@ -143,10 +143,10 @@
 };
 
 &sp_spinor0 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 	spi-max-frequency = <50000000>;
 	spi-chip-selection = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -194,7 +194,7 @@
 &audio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&aud_i2s_in &aud_i2s_out &aud_spdi &aud_spdo &aud_pdmr>;
-	status = "disabled"; //Need to disable &l2sw if enable it.
+	status = "disabled";
 };
 
 &pctl {
@@ -214,14 +214,6 @@
 			SP7021_IOPAD(10,SP7021_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
 			SP7021_IOPAD(11,SP7021_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
 			SP7021_IOPAD(12,SP7021_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
-		>;
-	};
-
-	pins_uart1: pins_uart1 {
-		sppctl,pins = <
-			SP7021_IOPAD(8,SP7021_PCTL_G_PMUX,MUXF_UA1_TX,0)
-			SP7021_IOPAD(9,SP7021_PCTL_G_PMUX,MUXF_UA1_RX,0)
-			SP7021_IOPAD(0,SP7021_PCTL_G_GPIO,0,1)
 		>;
 	};
 

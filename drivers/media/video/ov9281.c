@@ -343,19 +343,7 @@ static struct i2c_driver ov9281_i2c_driver = {
 	},
 };
 
-
-static int __init sensor_mod_init(void)
-{
-	return i2c_add_driver(&ov9281_i2c_driver);
-}
-
-static void __exit sensor_mod_exit(void)
-{
-	i2c_del_driver(&ov9281_i2c_driver);
-}
-
-module_init(sensor_mod_init);
-module_exit(sensor_mod_exit);
+module_i2c_driver(ov9281_i2c_driver);
 
 MODULE_DESCRIPTION("Sunplus ov9281 sensor driver");
 MODULE_LICENSE("GPL v2");

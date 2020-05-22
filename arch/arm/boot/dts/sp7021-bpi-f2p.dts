@@ -139,6 +139,10 @@
 &l2sw {
 	pinctrl-names = "default";
 	pinctrl-0 = <&l2sw_f2p_pins>;
+	mode = < 1 >;
+		/* 0 = daisy-chain mode
+		 * 1 = dual NIC mode
+		 * 2 = daisy-chain mode (disable SA learning) */
 };
 
 &mmc0 {

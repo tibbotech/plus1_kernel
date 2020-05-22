@@ -17,7 +17,7 @@
 
 #define DRIVER_NAME		"sp-otg"
 
-#if 0		// it should be implemented in UDC driver
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 extern void detech_start(void);
 extern void udc_otg_ctrl(void);
 #endif
@@ -112,7 +112,7 @@ void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 	val |= B_VBUS_REQ;
 	writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#if 0		// it should be implemented in UDC driver
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 	udc_otg_ctrl();
 #endif
 
@@ -139,9 +139,9 @@ static int sp_start_hnp(struct usb_otg *otg)
 
 	otg_host->otg.otg->state = OTG_STATE_A_PERIPHERAL;
 	mdelay(100);
-	#if 0		// it should be implemented in UDC driver
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 	detech_start();
-	#endif
+#endif
 	otg_debug("start hnp\n");
 
 	return 0;
@@ -242,10 +242,9 @@ static int hnp_polling_watchdog(void *arg)
 				msleep(2000);
 
 				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
-				if (!udev) {
-					otg_debug("can't start HNP polling\n");
+				if ((!udev) ||
+				    (udev->config->interface[0]->altsetting->desc.bInterfaceClass == USB_CLASS_MASS_STORAGE))
 					continue;
-				}
 
 				targeted = is_targeted(udev);
 				hcd  = bus_to_hcd(udev->bus);
@@ -265,7 +264,7 @@ static int hnp_polling_watchdog(void *arg)
 			if ((IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted) ||
 			    (!IS_ENABLED(CONFIG_USB_OTG_WHITELIST) || !hcd->tpl_support)) {
 				ret = usb_control_msg(udev, usb_rcvctrlpipe(udev, 0),
-									  0, 0x80, 0, 0xf000, otg_status, 4, 5000);
+									  0, 0x80, 0, 0xf000, otg_status, 4, 8000);
 				if(ret < 0) {
 					otg_debug("polling otg status fail,ret:%d\n", ret);
 					return -1;
@@ -277,12 +276,14 @@ static int hnp_polling_watchdog(void *arg)
 							otg_debug("Get otg control fail(busnum:%d)!\n", udev->bus->busnum);
 							return 1;
 						}
+
 						ret = usb_control_msg(udev,
 						usb_sndctrlpipe(udev, 0),
 						USB_REQ_SET_FEATURE, 0,
 						USB_DEVICE_B_HNP_ENABLE,
 						0, NULL, 0,
 						USB_CTRL_SET_TIMEOUT);
+
 						if (ret < 0) {
 							/*
 							 * OTG MESSAGE: report errors here,
@@ -290,11 +291,12 @@ static int hnp_polling_watchdog(void *arg)
 							 */
 							otg_debug("can't set HNP mode: %d\n",ret);
 						}
+
 						otg_start_hnp(otg_phy->otg);
 						msleep(1);
-						#if 0		// it should be implemented in UDC driver
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 						detech_start();
-						#endif
+#endif
 						return 0;
 					} else {
 					  	msleep(1000);
@@ -302,8 +304,10 @@ static int hnp_polling_watchdog(void *arg)
 				}
 			}
 		}
-		else
+		else {
 			find_child = false;
+			msleep(1);
+		}
 	}
 
 	return 0;
