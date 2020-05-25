@@ -12,5 +12,3 @@
 / {
 	model = "SP7021 LTPP3G2 Rev. D (empty sockets)";
 };
-
-&sdio {  status = "okay";  };
