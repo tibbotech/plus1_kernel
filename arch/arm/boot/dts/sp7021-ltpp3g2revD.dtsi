@@ -2,11 +2,8 @@
 
 #include "sp7021-ChipC.dtsi"
 
-#include <dt-bindings/interrupt-controller/arm-gic.h>
-
 / {
 	model = "SP7021 LTPP3G2 Rev. D";
-	compatible = "sunplus,sp7021-achip";
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
