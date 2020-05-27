@@ -35,8 +35,8 @@
 #define IS_UARTDMARX_ID(X)		(((X) >= (ID_BASE_DMARX)) && ((X) < (ID_BASE_DMARX + NUM_UARTDMARX)))
 #define IS_UARTDMATX_ID(X)		(((X) >= (ID_BASE_DMATX)) && ((X) < (ID_BASE_DMATX + NUM_UARTDMATX)))
 /* ---------------------------------------------------------------------------------------------- */
-#define TTYS_KDBG_INFO
-#define TTYS_KDBG_ERR
+//#define TTYS_KDBG_INFO
+//#define TTYS_KDBG_ERR
 
 #ifdef TTYS_KDBG_INFO
 #define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_TTYS: " fmt, ## args)
