@@ -107,14 +107,14 @@
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart1>;
-	dir-gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+	dir-gpios = <&pctl 7 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart2>;
-	dir-gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+	dir-gpios = <&pctl 6 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
