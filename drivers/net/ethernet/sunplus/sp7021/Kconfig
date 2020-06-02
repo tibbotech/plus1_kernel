@@ -7,8 +7,6 @@ config NET_VENDOR_SUNPLUS
 	tristate "Sunplus Ethernet devices"
 	depends on ETHERNET
 	select PHYLIB
-	select PINCTRL_SPPCTL
-	select SUNPLUS_SP7021_RESET
 	select NVMEM_SUNPLUS_OCOTP
 	---help---
 	  If you have a Sunplus network (Ethernet) device belonging to this class,

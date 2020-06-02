@@ -7,8 +7,8 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
-#include <dt-bindings/clock/sp-clkc.h>
-#include <dt-bindings/reset/sp-resets.h>
+#include <dt-bindings/clock/sp-i143.h>
+#include <dt-bindings/reset/sp-i143.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sp_i143.h>
 

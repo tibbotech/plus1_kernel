@@ -17,7 +17,9 @@
 #ifndef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 //#include <dt-bindings/memory/sp-q628-mem.h>
 #endif
+#ifdef CONFIG_SUNPLUS_IOP
 #include <../drivers/misc/iop/sp_iop.h>
+#endif
 #include "common.h"
 
 static void sp_power_off(void)
@@ -89,7 +91,7 @@ static struct platform_device sp7021_cpuidle = {
 static void __init sp_init(void)
 {
 	unsigned int b_sysclk, io_ctrl;
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_ACHIP
 	unsigned int a_pllclk, coreclk, ioclk, sysclk, clk_cfg, a_pllioclk;
 #endif
 
@@ -112,7 +114,7 @@ static void __init sp_init(void)
 	early_printk("B: b_sysclk=%uM abio_ctrl=(%ubit, %s)\n", b_sysclk / 1000000,
 		(io_ctrl & 2) ? 16 : 8, (io_ctrl & 1) ? "DDR" : "SDR");
 
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_ACHIP
 	clk_cfg = readl((void __iomem *)A_SYSTEM_BASE + 0xc);
 	a_pllclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x2c) >> 16) + 1) & 0xff) * (27 * 1000 * 1000);
 	coreclk = a_pllclk / (1 + ((clk_cfg >> 10) & 1));
@@ -146,7 +148,7 @@ static struct map_desc sp_io_desc[] __initdata = {
 		.length  = SIZE_B_SRAM0,
 		.type    = MT_DEVICE
 	},
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_ACHIP
 	{	/* A RGST Bus */
 		.virtual = VA_A_REG,
 		.pfn     = __phys_to_pfn(PA_A_REG),
@@ -163,14 +165,14 @@ static void __init sp_map_io(void)
 	iotable_init(sp_io_desc, ARRAY_SIZE( sp_io_desc));
 
 	printk("B_REG %08x -> [%08x-%08x]\n", PA_B_REG, VA_B_REG, VA_B_REG + SIZE_B_REG);
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_ACHIP
         printk("A_REG %08x -> [%08x-%08x]\n", PA_A_REG, VA_A_REG, VA_A_REG + SIZE_A_REG);
 #endif
 }
 
 static void __init sp_init_early(void)
 {
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#ifdef CONFIG_MACH_PENTAGRAM_ACHIP
 	/* enable counter before timer_init */
 	writel(3, (void __iomem *)A_SYS_COUNTER_BASE); /* CNTCR: EN=1 HDBG=1 */
 	mb();

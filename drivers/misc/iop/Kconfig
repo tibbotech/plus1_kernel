@@ -6,7 +6,7 @@ menu "IOP support"
 
 config SUNPLUS_IOP
 	tristate "Sunplus IOP support"
-	default y
+	default ARCH_PENTAGRAM
 	help
 	Sunplus I/O processor (8051) driver which supports Q channel detection
 source "drivers/misc/iop/qtest/Kconfig"

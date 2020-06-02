@@ -481,7 +481,7 @@
 #endif
 
 		rstc: reset@0x9c000054 {
-			compatible = "sunplus,sp7021-reset";
+			compatible = "sunplus,sp-reset";
 			#reset-cells = <1>;
 			reg = <0x9c000054 0x28>;
 			reg-names = "reset";

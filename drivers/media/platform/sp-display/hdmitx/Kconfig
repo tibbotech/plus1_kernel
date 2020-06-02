@@ -1,7 +1,5 @@
 config VIDEO_SP_HDMITX
 	tristate "Sunplus HDMITX Driver"
-	select PINCTRL
-	select PINCTRL_SPPCTL
 	default y
 	---help---
 	  Support for the SUNPLUS SP7021 display.

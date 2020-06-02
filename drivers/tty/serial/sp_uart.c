@@ -16,14 +16,16 @@
 #include <linux/reset.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-#include <mach/sp_uart.h>
+#include <soc/sunplus/sp_uart.h>
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
+#ifdef CONFIG_SOC_SP7021
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <dt-bindings/pinctrl/sp7021.h>
+#endif
 
 #define NUM_UART	6	/* serial0,  ... */
 #define NUM_UARTDMARX	2	/* serial10, ... */
@@ -60,7 +62,14 @@
 #define MAX_SZ_RXDMA_ISR		(1 << 9)
 #define UATXDMA_BUF_SZ			PAGE_SIZE
 /* ---------------------------------------------------------------------------------------------- */
+/* Refer zebu: testbench/uart.cc */
+#ifdef CONFIG_SOC_I143
+#define CLK_HIGH_UART			27000000
+#define UART_RATIO				29
+#else
 #define CLK_HIGH_UART			202500000
+#define UART_RATIO				232
+#endif
 /* ---------------------------------------------------------------------------------------------- */
 #if defined(CONFIG_SP_MON)
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
@@ -74,8 +83,10 @@ struct sunplus_uart_port {
 	struct sunplus_uartdma_info *uartdma_tx;
 	struct clk *clk;
 	struct reset_control *rstc;
+#ifdef CONFIG_SOC_SP7021
 	struct gpio_desc *DE_RE_dir;
 	bool DE_RE_Select;
+#endif
 };
 struct sunplus_uart_port sunplus_uart_ports[NUM_UART];
 
@@ -647,22 +658,28 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	u8 *byte_ptr;
 	struct circ_buf *xmit = &port->state->xmit;
 
+#ifdef CONFIG_SOC_SP7021
 	if (sp_port->DE_RE_Select == 1)
 		gpiod_set_value(sp_port->DE_RE_dir,1);
+#endif
 
 	if (port->x_char) {
 		sp_uart_put_char(port, port->x_char);
 		port->icount.tx++;
 		port->x_char = 0;
+#ifdef CONFIG_SOC_SP7021
 		if (sp_port->DE_RE_Select == 1)
 			gpiod_set_value(sp_port->DE_RE_dir,0);
+#endif
 		return;
 	}
 
 	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
 		sunplus_uart_ops_stop_tx(port);
+#ifdef CONFIG_SOC_SP7021
 		if (sp_port->DE_RE_Select == 1)
 			gpiod_set_value(sp_port->DE_RE_dir,0);
+#endif
 		return;
 	}
 
@@ -712,8 +729,10 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 		sunplus_uart_ops_stop_tx(port);
 	}
 
+#ifdef CONFIG_SOC_SP7021
 	if (sp_port->DE_RE_Select == 1)
 		gpiod_set_value(sp_port->DE_RE_dir,0);
+#endif
 }
 
 static void receive_chars(struct uart_port *port)	/* called by ISR */
@@ -857,7 +876,7 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	 */
 	icount_rx = 0;
 	while (rx_size > icount_rx) {
-		if (!(((u32)(sw_ptr)) & (32 - 1))	/* 32-byte aligned */
+		if (!(((unsigned long)(sw_ptr)) & (32 - 1))	/* 32-byte aligned */
 		    && ((rx_size - icount_rx) >= 32)) {
 			/*
 			 * Copy 32 bytes data from non cache area to cache area.
@@ -1190,36 +1209,28 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	u32 clk, ext, div, div_l, div_h, baud;
 	u32 lcr;
 	unsigned long flags;
-	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
+	//struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
-#if 0	/* For Zebu only, disable this in real chip */
+	/*
+	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
+	 * For real chip, the baudrate is 115200.
+	 * */
 	if (baud == 921600) {
-		/*
-		 * Refer to Zebu's testbench/uart.cc
-		 * UART_RATIO should be 220 (CLK_HIGH_UART / 921600)
-		 * If change it to correct value, IBOOT must be changed.
-		 * (Clock should be switched to CLK_HIGH_UART)
-		 * For real chip, the baudrate is 115200.
-		 * */
-		baud = CLK_HIGH_UART / 232;
-	}
-#endif
-
-	clk = port->uartclk;
-	if ((baud > 115200) || (sp_port->uartdma_rx)) {
-		while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
-			/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
-		}
-
-		clk = CLK_HIGH_UART;
 		/* Don't change port->uartclk to CLK_HIGH_UART, keep the value of lower clk src */
-		/* Switch clock source */
-		sp_uart_set_clk_src(port->membase, 0);
+		clk = CLK_HIGH_UART;
+		baud = clk / UART_RATIO;
 	} else {
-		sp_uart_set_clk_src(port->membase, ~0);
+		clk = port->uartclk;
 	}
+
+	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
+	while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
+		/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
+	}
+	/* Switch clock source: 0 for sysclk, 1 for 27M */
+	sp_uart_set_clk_src(port->membase, clk == 27000000);
 
 	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
 	clk += baud >> 1;
@@ -1736,12 +1747,14 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (irq < 0)
 		return -ENODEV;
 
+#ifdef CONFIG_SOC_SP7021
 	sunplus_uart_ports[pdev->id].DE_RE_Select = 0;
 	sunplus_uart_ports[pdev->id].DE_RE_dir = devm_gpiod_get(&pdev->dev, "dir", GPIOD_OUT_LOW);
 	if (!IS_ERR(sunplus_uart_ports[pdev->id].DE_RE_dir)) {
 		DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].DE_RE_dir));
 		sunplus_uart_ports[pdev->id].DE_RE_Select = 1;
 	}
+#endif
 
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
@@ -1954,6 +1967,37 @@ static int __init sunplus_uart_init(void)
 __initcall(sunplus_uart_init);
 
 module_param(uart0_as_console, uint, S_IRUGO);
+
+static void sunplus_uart_putc(struct uart_port *port, int c)
+{
+	unsigned int status;
+
+	for (;;) {
+		status = readl(port->membase + SP_UART_LSR);
+		if ((status & SP_UART_LSR_TXE) == SP_UART_LSR_TXE)
+			break;
+		cpu_relax();
+	}
+	writel(c, port->membase + SP_UART_DATA);
+}
+
+static void sunplus_uart_early_write(struct console *con,
+			      const char *s, unsigned n)
+{
+	struct earlycon_device *dev = con->data;
+	uart_console_write(&dev->port, s, n, sunplus_uart_putc);
+}
+
+int __init sunplus_uart_early_setup(struct earlycon_device *device,
+					 const char *opt)
+{
+	if (!(device->port.membase || device->port.iobase))
+		return -ENODEV;
+
+	device->con->write = sunplus_uart_early_write;
+	return 0;
+}
+OF_EARLYCON_DECLARE(sp_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");

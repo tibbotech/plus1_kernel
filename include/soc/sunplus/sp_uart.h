@@ -1,11 +1,13 @@
 #ifndef __SP_UART_H__
 #define __SP_UART_H__
 
+#ifdef CONFIG_DEBUG_SP_UART
 #include <mach/io_map.h>
 
 #define LL_UART_PADDR		PA_IOB_ADDR(18 * 32 * 4)
 #define LL_UART_VADDR		VA_IOB_ADDR(18 * 32 * 4)
 #define LOGI_ADDR_UART0_REG	VA_IOB_ADDR(18 * 32 * 4)
+#endif
 
 /* uart register map */
 #define SP_UART_DATA		0x00
