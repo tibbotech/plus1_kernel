@@ -878,9 +878,16 @@ config SPI_ZYNQMP_GQSPI
 
 config SPI_SUNPLUS_SP7021
 	tristate "Sunplus SP7021 SPI controller"
-	depends on ARCH_PENTAGRAM
+	depends on SOC_SP7021
 	help
 	  Enable the Sunplus spi controller driver.
+	  
+config SPI_SUNPLUS_I143
+	tristate "Sunplus I143 SPI controller"
+	depends on SOC_I143
+	help
+	  Enable the Sunplus spi controller driver.	  
+	  
 
 #
 # Add new SPI master controllers in alphabetical order above this line
