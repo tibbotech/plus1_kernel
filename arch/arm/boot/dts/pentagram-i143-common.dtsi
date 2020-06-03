@@ -191,5 +191,12 @@
 			};
 		};
 
+		gpu: gpu@0x9C110000 {
+			compatible = "sunplus,galcore";
+			reg = <0x9C110000 0x40000>;
+			interrupt-parent = <&intc>;
+			interrupts =
+				<71 IRQ_TYPE_LEVEL_HIGH>; /* GC520_INT */
+		};
 	};
 };
