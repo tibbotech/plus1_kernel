@@ -499,7 +499,7 @@ static int ov5647_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 	ov5647->client = client;
 
-	ov5647->sensor_data.fourcc = V4L2_PIX_FMT_SRGGB8;
+	ov5647->sensor_data.fourcc = V4L2_PIX_FMT_SBGGR8;
 	ov5647->cur_mode = &supported_modes[mode];
 	DBG_INFO("Sensor mode: %d\n", mode);
 
