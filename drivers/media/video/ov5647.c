@@ -509,7 +509,7 @@ static int ov5647_probe(struct i2c_client *client, const struct i2c_device_id *i
 	#endif
 #endif
 
-	ov5647->sensor_data.fourcc = V4L2_PIX_FMT_SBGGR8,
+	ov5647->sensor_data.fourcc = V4L2_PIX_FMT_SBGGR8;
 	ov5647->cur_mode = &supported_modes[ov5647->sensor_data.mode];
 
 	mutex_init(&ov5647->mutex);
