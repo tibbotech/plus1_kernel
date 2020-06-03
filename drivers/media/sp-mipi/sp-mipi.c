@@ -84,7 +84,7 @@ static const struct sp_fmt gc0310_formats[] = {
 static const struct sp_fmt imx219_formats[] = {
 	{
 		.name     = "BAYER, RAW10",
-		.fourcc   = V4L2_PIX_FMT_SRGGB8,
+		.fourcc   = V4L2_PIX_FMT_SBGGR8,
 		.width    = 3280,
 		.height   = 2464,
 		.depth    = 8,
@@ -98,7 +98,7 @@ static const struct sp_fmt imx219_formats[] = {
 static const struct sp_fmt ov5647_formats[] = {
 	{
 		.name     = "BAYER, RAW8",
-		.fourcc   = V4L2_PIX_FMT_SRGGB8,
+		.fourcc   = V4L2_PIX_FMT_SBGGR8,
 		.width    = 2592,
 		.height   = 1944,
 		.depth    = 8,
@@ -695,10 +695,10 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv, struct v4l2_forma
 static int vidioc_enum_input(struct file *file, void *priv,
 							struct v4l2_input *inp)
 {
+	DBG_INFO("%s\n", __FUNCTION__);
+
 	if (inp->index > 0)
 		return -EINVAL;
-
-	DBG_INFO("%s\n", __FUNCTION__);
 
 	inp->type = V4L2_INPUT_TYPE_CAMERA;
 	strlcpy(inp->name, "Camera", sizeof(inp->name));
