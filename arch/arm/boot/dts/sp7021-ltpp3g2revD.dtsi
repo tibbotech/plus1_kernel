@@ -20,6 +20,7 @@
 &sp_spinor0 {  status = "disabled";  };
 
 &sdio {
+ pinctrl-names = "default";
  pinctrl-0 = <&pins_sdio &pins_sdio_reset>;
  bus-width = <4>;
  max-frequency = <40000000>; /* up to 52 */
@@ -33,9 +34,9 @@
 };
 
 &sp_uphy0 {
-  pinctrl-names = "default";
-  pinctrl-0 = <&pins_vbus_usb0>;
-  vbus-gpio = <&pctl 90 GPIO_ACTIVE_HIGH>;
+ pinctrl-names = "default";
+ pinctrl-0 = <&pins_vbus_usb0>;
+ vbus-gpio = <&pctl 90 GPIO_ACTIVE_HIGH>;
 };
 
 &sp_uphy1 {
