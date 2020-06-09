@@ -1,5 +1,5 @@
 /*
- * Sunplus I143 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -20,9 +20,13 @@
 #define MNAME "sppctl"
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
-#define M_NAM "Sunplus I143 PinCtl"
-#define M_ORG "Sunplus Technology"
-#define M_CPR "(C) 2019-2020"
+#ifdef CONFIG_SOC_SP7021
+#define M_NAM "SP7021 PinCtl"
+#else
+#define M_NAM "I143 PinCtl"
+#endif
+#define M_ORG "SunPlus/Tibbo Tech."
+#define M_CPR "(C) 2019"
 
 #define FW_DEFNAME NULL
 
@@ -45,11 +49,14 @@
 #include <linux/pinctrl/pinconf.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/pinctrl/pinconf-generic.h>
+#ifdef CONFIG_SOC_SP7021
+#include <dt-bindings/pinctrl/sp7021.h>
+#else
 #include <dt-bindings/pinctrl/sp_i143.h>
+#endif
 
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
-//#define SUPPORT_FULLY_PINMUX
 
 #define KINF(pd,fmt,args...) { \
 	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
@@ -57,7 +64,7 @@
 #define KERR(pd,fmt,args...) { \
 	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
 	} else { printk(KERN_ERR      MNAME": "fmt,##args); } }
-#ifdef CONFIG_PINCTRL_SP_I143_DEBUG
+#ifdef CONFIG_PINCTRL_SPPCTL_DEBUG
 #define KDBG(pd,fmt,args...) { \
 	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
 	} else { printk(KERN_DEBUG    MNAME": "fmt,##args); } }
@@ -92,7 +99,11 @@ typedef struct sppctl_reg_T {
 } sppctl_reg_t;
 
 #include "sppctl_sysfs.h"
+#ifdef CONFIG_SOC_SP7021
 #include "sppctl_pinctrl.h"
+#else
+#include "sppctl_pinctrl_i143.h"
+#endif
 
 void sppctl_gmx_set(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
 uint8_t sppctl_gmx_get(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);

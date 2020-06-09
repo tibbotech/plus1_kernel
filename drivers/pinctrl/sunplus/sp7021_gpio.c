@@ -147,7 +147,9 @@ int sp7021_gpio_new(struct platform_device *_pd, void *_datap)
 	gchip->can_sleep =         0;
 #if defined(CONFIG_OF_GPIO)
 	gchip->of_node =           np;
+#ifdef CONFIG_SOC_SP7021
 	gchip->of_gpio_n_cells =   2;
+#endif
 #endif
 	gchip->to_irq =            sp7021gpio_i_map;
 
@@ -166,11 +168,11 @@ int sp7021_gpio_new(struct platform_device *_pd, void *_datap)
 
 	npins = platform_irq_count(_pd);
 	for (i = 0; i < npins && i < SP7021_GPIO_IRQS; i++) {
-		pc->irq[ i] = irq_of_parse_and_map(np, i);
-		KDBG(&(_pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[ i]);
+		pc->irq[i] = irq_of_parse_and_map(np, i);
+		KDBG(&(_pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[i]);
 	}
 #if 0 //Test code for GPIO_INT0
-	err = devm_request_irq(&(_pd->dev), pc->irq[ 0], gpio_int_0, IRQF_TRIGGER_RISING, "sppctl_gpio_int0", _pd);
+	err = devm_request_irq(&(_pd->dev), pc->irq[0], gpio_int_0, IRQF_TRIGGER_RISING, "sppctl_gpio_int0", _pd);
 	KDBG(&(_pd->dev), "register gpio int0 irq \n");
 	if (err) {
 		KDBG(&(_pd->dev), "register gpio int0 irq err \n");
@@ -199,7 +201,11 @@ int sp7021_gpio_del(struct platform_device *_pd, void *_datap)
 
 #ifndef SPPCTL_H
 static const struct of_device_id sp7021_gpio_of_match[] = {
-	{ .compatible = "sunplus,sp7021-gpio", },
+#ifdef CONFIG_SOC_SP7021
+	{ .compatible = "sunplus,sp7021-gpio" },
+#else
+	{ .compatible = "sunplus,i143-gpio" },
+#endif
 	{ /* null */ }
 };
 

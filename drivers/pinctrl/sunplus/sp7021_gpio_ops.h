@@ -20,7 +20,6 @@
 
 #include "sp7021_gpio.h"
 
-
 int sp7021gpio_f_gdi(struct gpio_chip *_c, unsigned _n);
 
 // who is first: GPIO(1) | MUX(0)
@@ -77,8 +76,7 @@ void sp7021gpio_f_dsh(struct seq_file *_s, struct gpio_chip *_c);
 #endif
 
 #ifdef CONFIG_OF_GPIO
-int sp7021gpio_xlate(struct gpio_chip *_c,
-	const struct of_phandle_args *_a, u32 *_flags);
+int sp7021gpio_xlate(struct gpio_chip *_c, const struct of_phandle_args *_a, u32 *_flags);
 #endif
 
 int sp7021gpio_i_map(struct gpio_chip *_c, unsigned _off);

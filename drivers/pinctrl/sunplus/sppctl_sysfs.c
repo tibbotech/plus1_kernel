@@ -1,5 +1,5 @@
 /*
- * Sunplus I143 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -52,9 +52,7 @@ static ssize_t sppctl_sop_fwname_W(struct device *_d, struct device_attribute *_
 {
 	sppctl_pdata_t *_p = (sppctl_pdata_t *)_d->platform_data;
 	strcpy(_p->fwname, _b);
-	if (_p->fwname[strlen(_p->fwname)-1] == 0x0A) {
-		_p->fwname[strlen(_p->fwname)-1] = 0;
-	}
+	if (_p->fwname[strlen(_p->fwname)-1] == 0x0A) _p->fwname[strlen(_p->fwname)-1] = 0;
 	sppctl_loadfw(_d, _p->fwname);
 	return (_c);
 }
@@ -185,10 +183,8 @@ static ssize_t sppctl_sop_fw_R(struct file *filp, struct kobject *_k,
 		f = &(list_funcs[i]);
 		if (f->freg == fOFF_0) continue;
 		if (f->freg == fOFF_I) continue;
-		if (f->freg == fOFF_M)
-			pin = sppctl_fun_get(_p, j++);
-		if (f->freg == fOFF_G)
-			pin = sppctl_gmx_get(_p, f->roff, f->boff, f->blen);
+		if (f->freg == fOFF_M) pin = sppctl_fun_get(_p, j++);
+		if (f->freg == fOFF_G) pin = sppctl_gmx_get(_p, f->roff, f->boff, f->blen);
 		if (pos > 0) {
 			pos -= sizeof(pin);
 			continue;
@@ -209,7 +205,11 @@ static ssize_t sppctl_sop_fw_W(struct file *filp, struct kobject *_k,
 	struct device *_pdev = container_of(_k, struct device, kobj);
 
 	if (_off + _count < (list_funcsSZ - 2)) {
+#ifdef CONFIG_64BIT
 		KINF(_pdev, "%s() fw size %lu < %lu\n", __FUNCTION__, _count, list_funcsSZ);
+#else
+		KINF(_pdev, "%s() fw size %d < %d\n", __FUNCTION__, _count, list_funcsSZ);
+#endif
 	}
 
 	if (!_pdev) return (-ENXIO);
@@ -281,8 +281,8 @@ void sppctl_sysfs_init(struct platform_device *_pd)
 		sppctl_sysfs_Fap[i].size = SPPCTL_MAX_BUF;
 		sppctl_sysfs_Fap[i].private = &(sdp[i]);
 		ret = device_create_bin_file(&(_pd->dev), &(sppctl_sysfs_Fap[i]));
-		if (ret)
-			KERR(&(_pd->dev), "createF[%d,%s] error\n", i, tmpp);
+
+		if (ret) KERR(&(_pd->dev), "createF[%d,%s] error\n", i, tmpp);
 	}
 	_p->sysfs_sdp = sdp;
 }

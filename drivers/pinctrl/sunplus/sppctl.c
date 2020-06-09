@@ -1,5 +1,5 @@
 /*
- * Sunplus I143 pinmux controller driver.
+ * SP7021 pinmux controller driver.
  * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -55,7 +55,7 @@ void print_device_tree_node(struct device_node *node, int depth)
 void sppctl_gmx_set(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval)
 {
 	uint32_t *r;
-	sppctl_reg_t x = {  .m = (~(~0 << _bsiz)) << _boff, .v = ((uint16_t)_rval) << _boff  };
+	sppctl_reg_t x = { .m = (~(~0 << _bsiz)) << _boff, .v = ((uint16_t)_rval) << _boff };
 
 	if (_p->debug > 1) KDBG(_p->pcdp->dev, "%s(x%X,x%X,x%X,x%X) m:x%X v:x%X\n", __FUNCTION__, _roff, _boff, _bsiz, _rval, x.m, x.v);
 	r = (uint32_t *)&x;
@@ -77,7 +77,7 @@ uint8_t sppctl_gmx_get(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t
 void sppctl_pin_set(sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun)
 {
 	uint32_t *r;
-	sppctl_reg_t x = {  .m = 0x007F, .v = (uint16_t)_pin  };
+	sppctl_reg_t x = { .m = 0x007F, .v = (uint16_t)_pin };
 	uint8_t func = (_fun >> 1) << 2;
 
 	if (_fun % 2 == 0)
@@ -99,10 +99,8 @@ uint8_t sppctl_fun_get(sppctl_pdata_t *_p,  uint8_t _fun)
 	uint32_t r = readl(_p->baseF + func);
 
 	x = (sppctl_reg_t *)&r;
-	if (_fun % 2 == 0)
-		pin = x->v & 0x00FF;
-	else
-		pin = x->v >> 8;
+	if (_fun % 2 == 0) pin = x->v & 0x00FF;
+	else pin = x->v >> 8;
 	if (_p->debug > 1) KDBG(_p->pcdp->dev, "%s(x%X) off:x%X m:x%X v:x%X pin:x%X\n", __FUNCTION__, _fun, func, x->m, x->v, pin);
 	return (pin);
 }
@@ -117,7 +115,11 @@ static void sppctl_fwload_cb(const struct firmware *_fw, void *_ctx)
 		return;
 	}
 	if (_fw->size < list_funcsSZ-2) {
+#ifdef CONFIG_64BIT
 		KERR(p->pcdp->dev, " fw size %ld < %ld\n", _fw->size, list_funcsSZ);
+#else
+		KERR(p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);
+#endif
 		goto out;
 	}
 
@@ -155,7 +157,11 @@ int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 	}
 	KDBG(&(_pd->dev), "mres #F:%p\n", rp);
 	if (!rp) return (-EFAULT);
+#ifdef CONFIG_64BIT
 	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
+#else
+	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+#endif
 	if (IS_ERR(_pc->baseF = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#F ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->baseF));
@@ -168,7 +174,11 @@ int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 	}
 	KDBG(&(_pd->dev), "mres #0:%p\n", rp);
 	if (!rp) return (-EFAULT);
+#ifdef CONFIG_64BIT
 	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
+#else
+	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+#endif
 	if (IS_ERR(_pc->base0 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base0));
@@ -181,7 +191,11 @@ int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 	}
 	KDBG(&(_pd->dev), "mres #1:%p\n", rp);
 	if (!rp) return (-EFAULT);
+#ifdef CONFIG_64BIT
 	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
+#else
+	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+#endif
 	if (IS_ERR(_pc->base1 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#1 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base1));
@@ -194,7 +208,11 @@ int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 	}
 	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
 	if (!rp) return (-EFAULT);
+#ifdef CONFIG_64BIT
 	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
+#else
+	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+#endif
 	if (IS_ERR(_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base2));
@@ -207,7 +225,11 @@ int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 	}
 	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
 	if (!rp) return (-EFAULT);
+#ifdef CONFIG_64BIT
 	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
+#else
+	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+#endif
 	if (IS_ERR(_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#I ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->baseI));
@@ -235,10 +257,8 @@ static int sppctl_dnew(struct platform_device *_pd)
 
 	if (!(p = devm_kzalloc(&(_pd->dev), sizeof(*p), GFP_KERNEL))) return (-ENOMEM);
 	memset(p->name, 0, SPPCTL_MAX_NAM);
-	if (np)
-		strcpy(p->name, np->name);
-	else
-		strcpy(p->name, MNAME);
+	if (np) strcpy(p->name, np->name);
+	else strcpy(p->name, MNAME);
 	dev_set_name(&(_pd->dev), "%s", p->name);
 
 	if ((ret = sp7021_pctl_resmap(_pd, p)) != 0) return (ret);
@@ -269,7 +289,11 @@ static int sppctl_ddel(struct platform_device *_pd)
 }
 
 static const struct of_device_id sppctl_dt_ids[] = {
+#ifdef CONFIG_SOC_SP7021
+	{ .compatible = "sunplus,sp7021-pctl" },
+#else
 	{ .compatible = "sunplus,i143-pctl" },
+#endif
 	{ /* zero */ }
 };
 

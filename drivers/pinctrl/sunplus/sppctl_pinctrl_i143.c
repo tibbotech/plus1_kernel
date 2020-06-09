@@ -17,7 +17,7 @@
 #include "../core.h"
 #include "../pinctrl-utils.h"
 #include "../devicetree.h"
-#include "sppctl_pinctrl.h"
+#include "sppctl_pinctrl_i143.h"
 #include "sp7021_gpio_ops.h"
 
 

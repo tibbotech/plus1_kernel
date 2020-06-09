@@ -1,5 +1,5 @@
 /*
- * GPIO Driver for Sunplus I143 controller
+ * GPIO Driver for SunPlus/Tibbo SP7021 controller
  * Copyright (C) 2019 SunPlus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
@@ -18,6 +18,8 @@
 #ifndef SP7021_GPIO_H
 #define SP7021_GPIO_H
 
+#define SP7021_GPIO_IRQS 8
+
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/version.h>
@@ -34,17 +36,20 @@
 
 #include "sppctl.h"
 
-
-#define I143_GPIO_IRQS 8
-
 #ifndef SPPCTL_H
 
+#ifdef CONFIG_SOC_SP7021
+#define MNAME "sp7021_gpio"
+#define M_NAM "SP7021 GPIO"
+#else
 #define MNAME "i143_gpio"
+#define M_NAM "I143 GPIO"
+#endif
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
-#define M_NAM "Sunplus I143 GPIO"
-#define M_ORG "Sunplus Technology"
-#define M_CPR "(C) 2019-2020"
+
+#define M_ORG "SunPlus/Tibbo Tech."
+#define M_CPR "(C) 2019"
 
 #define KINF(pd,fmt,args...) { \
 	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
@@ -68,7 +73,7 @@ typedef struct sp7021gpio_chip_T {
 	void __iomem *base0;   // MASTER , OE , OUT , IN
 	void __iomem *base1;   // I_INV , O_INV , OD
 	void __iomem *base2;   // GPIO_FIRST
-	int irq[I143_GPIO_IRQS];
+	int irq[SP7021_GPIO_IRQS];
 } sp7021gpio_chip_t;
 
 extern const char * const sp7021gpio_list_s[];
@@ -77,7 +82,11 @@ extern const size_t GPIS_listSZ;
 int sp7021_gpio_new(struct platform_device *_pd, void *_datap);
 int sp7021_gpio_del(struct platform_device *_pd, void *_datap);
 
+#ifdef CONFIG_SOC_SP7021
+#define D_PIS(x,y) "P" __stringify(x) "_0" __stringify(y)
+#else
 #define D_PIS(x) "GPIO" __stringify(x)
+#endif
 
 // FIRST: MUX=0, GPIO=1
 enum muxF_MG {
