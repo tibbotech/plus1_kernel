@@ -57,6 +57,7 @@ MODULE_PARM_DESC(video_nr, " videoX start number, -1 is autodetect");
 	Constants
    ------------------------------------------------------------------*/
 static const struct sp_fmt gc0310_formats[] = {
+#ifdef CONFIG_GC0310_RAW8
 	{
 		.name     = "BAYER, RAW8",
 		.fourcc   = V4L2_PIX_FMT_SRGGB8,
@@ -68,6 +69,7 @@ static const struct sp_fmt gc0310_formats[] = {
 		.mipi_lane = 1,
 		.sol_sync = SYNC_RAW8,
 	},
+#else
 	{
 		.name     = "YUYV/YUY2, YUV422",
 		.fourcc   = V4L2_PIX_FMT_YUYV,
@@ -79,6 +81,7 @@ static const struct sp_fmt gc0310_formats[] = {
 		.mipi_lane = 1,
 		.sol_sync = SYNC_YUY2,
 	},
+#endif
 };
 
 static const struct sp_fmt imx219_formats[] = {
