@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "pentagram-i143-common.dtsi"
+#include "i143-common.dtsi"
 
 / {
 	model = "Sunplus I143 (CA7)";

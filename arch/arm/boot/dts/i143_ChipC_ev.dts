@@ -2,7 +2,7 @@
 
 #define CONFIG_SOC_I143
 
-#include "pentagram-i143-achip.dtsi"
+#include "i143_ChipC.dtsi"
 
 / {
 	#address-cells = <1>;

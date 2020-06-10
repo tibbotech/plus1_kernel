@@ -30,6 +30,6 @@
 			resets = <&rstc RST_SPIND>;
 		};		
 #endif
-		
+	
 	};
 };
