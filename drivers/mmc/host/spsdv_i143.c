@@ -1414,11 +1414,11 @@ static struct dev_pm_ops spsdc_pm_ops = {
 
 static const struct of_device_id spsdc_of_table[] = {
 	{
-		.compatible = "sunplus,sp7021-card1",
+		.compatible = "sunplus,i143-card1",
 		.data = (void *)SPSDC_MODE_SD,
 	},
 	{
-		.compatible = "sunplus,sp7021-sdio",
+		.compatible = "sunplus,i143-sdio",
 		.data = (void *)SPSDC_MODE_SDIO,
 	},
 	{/* sentinel */}

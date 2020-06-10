@@ -304,7 +304,7 @@
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,sp7021-card1";
+			compatible = "sunplus,i143-card1";
 			reg = <0x0 0x9c003e80 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
