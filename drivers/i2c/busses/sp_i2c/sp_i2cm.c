@@ -32,19 +32,19 @@
 #define I2C_DBG_ERR
 
 #ifdef I2C_FUNC_DEBUG
-	#define FUNC_DEBUG()    printk(KERN_INFO "[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
+	#define FUNC_DEBUG()    printk("[I2C] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
 	#define FUNC_DEBUG()
 #endif
 
 #ifdef I2C_DBG_INFO
-	#define DBG_INFO(fmt, args ...)    printk(KERN_INFO "[I2C] Info: " fmt, ## args)
+	#define DBG_INFO(fmt, args ...)    printk("[I2C] Info: " fmt, ## args)
 #else
 	#define DBG_INFO(fmt, args ...)
 #endif
 
 #ifdef I2C_DBG_ERR
-	#define DBG_ERR(fmt, args ...)    printk(KERN_ERR "[I2C] Error: " fmt, ## args)
+	#define DBG_ERR(fmt, args ...)    printk("[I2C] Error: " fmt, ## args)
 #else
 	#define DBG_ERR(fmt, args ...)
 #endif
@@ -519,57 +519,40 @@ static int _sp_i2cm_get_irq(struct platform_device *pdev, SpI2C_If_t *pstSpI2CIn
 	return I2C_SUCCESS;
 }
 
-static int _sp_i2cm_get_register_base(struct platform_device *pdev, unsigned int *membase, const char *res_name)
-{
-	struct resource *r;
-	void __iomem *p;
-
-	FUNC_DEBUG();
-	DBG_INFO("[I2C adapter] register name  : %s!!\n", res_name);
-
-	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
-	if(r == NULL) {
-		DBG_INFO("[I2C adapter] platform_get_resource_byname fail\n");
-		return -ENODEV;
-	}
-
-	p = devm_ioremap_resource(&pdev->dev, r);
-	if (IS_ERR(p)) {
-		DBG_ERR("[I2C adapter] ioremap fail\n");
-		return PTR_ERR(p);
-	}
-
-	DBG_INFO("[I2C adapter] ioremap addr : 0x%x!!\n", (unsigned int)p);
-	*membase = (unsigned int)p;
-
-	return I2C_SUCCESS;
-}
-
 static int _sp_i2cm_get_resources(struct platform_device *pdev, SpI2C_If_t *pstSpI2CInfo)
 {
 	int ret;
-	unsigned int membase = 0;
+	struct resource *res;
 
 	FUNC_DEBUG();
 
-	ret = _sp_i2cm_get_register_base(pdev, &membase, I2CM_REG_NAME);
-	if (ret) {
-		DBG_ERR("[I2C adapter] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
+	/* find and map our resources */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, I2CM_REG_NAME);
+	if (res) {
+		pstSpI2CInfo->i2c_regs = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(pstSpI2CInfo->i2c_regs)) {
+		DBG_INFO("[I2C adapter] platform_get_resource_byname fail\n");
+		}
+	}else{
+	    DBG_ERR("[I2C adapter] %s (%d)\n", __FUNCTION__, __LINE__);
+		return -ENODEV;
 	}
-	else {
-		pstSpI2CInfo->i2c_regs = (void __iomem *)membase;
+
+
+#ifdef SUPPORT_I2C_GDMA
+
+	/* find DMA and map our resources */
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, I2CM_DMA_REG_NAME);
+	if (res) {
+		pstSpI2CInfo->i2c_dma_regs = devm_ioremap_resource(&pdev->dev, res);
+		if (IS_ERR(pstSpI2CInfo->i2c_dma_regs)) {
+			DBG_INFO("[I2C adapter] platform_get_resource_byname fail\n");
+}
+	}else{
+	    DBG_ERR("[I2C adapter] %s (%d) \n", __FUNCTION__, __LINE__);
+	    return -ENODEV;
 	}
 	
-#ifdef SUPPORT_I2C_GDMA
-	ret = _sp_i2cm_get_register_base(pdev, &membase, I2CM_DMA_REG_NAME);
-	if (ret) {
-		DBG_ERR("[I2C adapter] %s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
-		return ret;
-	}
-	else {
-		pstSpI2CInfo->i2c_dma_regs = (void __iomem *)membase;
-	}
 #endif
 
 	ret = _sp_i2cm_get_irq(pdev, pstSpI2CInfo);
@@ -991,7 +974,7 @@ int sp_i2cm_dma_read(I2C_Cmd_t *pstCmdInfo, SpI2C_If_t *pstSpI2CInfo)
 
 
 	if (dma_mapping_error(pstSpI2CInfo->dev, dma_r_addr)) {
-	    DBG_ERR("I2C dma_r_addr fail\n", dma_r_addr);
+	    DBG_ERR("I2C dma_r_addr fail\n");
 		dma_r_addr = pstSpI2CInfo->dma_phy_base;
     }
 
@@ -1483,8 +1466,6 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		}
 
 		if ( msgs[i].flags & I2C_M_RD) {
-			pstCmdInfo->dRdDataCnt = msgs[i].len;
-			pstCmdInfo->pRdData = msgs[i].buf;
 			if(restart_en == 1){
 		    	pstCmdInfo->dWrDataCnt = restart_write_cnt;
 		    	pstCmdInfo->pWrData = restart_w_data;				
@@ -1494,29 +1475,40 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		    	restart_en = 0;			
 			    pstCmdInfo->dRestartEn = 1;
 	    	}
+			pstCmdInfo->dRdDataCnt = msgs[i].len;
+
 #ifdef SUPPORT_I2C_GDMA
-      if (pstCmdInfo->dRdDataCnt < 4)
+			pstCmdInfo->pRdData = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+            if ((pstCmdInfo->dRdDataCnt < 4) || (!pstCmdInfo->pRdData)){
+			    pstCmdInfo->pRdData = msgs[i].buf;
 			   ret = sp_i2cm_read(pstCmdInfo);
-			else   
+		    }else{ 
 			   ret = sp_i2cm_dma_read(pstCmdInfo,pstSpI2CInfo);
+			   i2c_put_dma_safe_msg_buf(pstCmdInfo->pRdData, &msgs[i], true);
 			//   ret = sp_i2cm_dma_read(pstCmdInfo);
 			//ret = sp_i2cm_sg_dma_read(pstCmdInfo,2);  //test code for sg dma and 2dma case
 			//msgs[i].buf = pstCmdInfo->pRdData;
+		    }
 #else	
+			pstCmdInfo->pRdData = msgs[i].buf;
 			ret = sp_i2cm_read(pstCmdInfo);
 #endif	
 		} else {
 			pstCmdInfo->dWrDataCnt = msgs[i].len;
+			 
+         #ifdef SUPPORT_I2C_GDMA
+			pstCmdInfo->pWrData = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+            if ((pstCmdInfo->dWrDataCnt < 4) || (!pstCmdInfo->pWrData)){
 			pstCmdInfo->pWrData = msgs[i].buf;
-#ifdef SUPPORT_I2C_GDMA
-      if (pstCmdInfo->dWrDataCnt < 4){
 			   ret = sp_i2cm_write(pstCmdInfo);
 			}else{   
 			 //ret = sp_i2cm_dma_write(pstCmdInfo,pstSpI2CInfo);
 			   ret = sp_i2cm_dma_write(pstCmdInfo,pstSpI2CInfo);
+				i2c_put_dma_safe_msg_buf(pstCmdInfo->pWrData, &msgs[i], true);
 			//ret = sp_i2cm_sg_dma_write(pstCmdInfo,pstSpI2CInfo,2);  //test code for sg dma and 2dma case
 			}
 #else	
+			pstCmdInfo->pWrData = msgs[i].buf;
 			ret = sp_i2cm_write(pstCmdInfo);
 #endif	
 		}
