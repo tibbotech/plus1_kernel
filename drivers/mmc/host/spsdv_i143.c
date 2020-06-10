@@ -178,11 +178,11 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
-	spsdc_pr(INFO, "set bus clock to %d\n", clk);
-	printk(KERN_INFO "clock to %d\n", clk);
+	//spsdc_pr(INFO, "set bus clock to %d\n", clk);
+	//printk(KERN_INFO "clock to %d\n", clk);
 	clkdiv = (clk_get_rate(host->clk)+clk-1)/clk-1;
-	printk(KERN_INFO "rate %d\n", clk_get_rate(host->clk));
-    printk(KERN_INFO "clkdiv %d\n", clkdiv);
+	//printk(KERN_INFO "rate %d\n", clk_get_rate(host->clk));
+        //printk(KERN_INFO "clkdiv %d\n", clkdiv);
 	  	
 	if (clkdiv > 0xfff) {
 		spsdc_pr(WARNING, "clock %d is too low to be set!\n", clk);
@@ -845,7 +845,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
 
-		printk(KERN_INFO,  "spmmc_start_signal_voltage_switch\n");
+		//printk(KERN_INFO,  "spmmc_start_signal_voltage_switch\n");
 
 	if (host->signal_voltage == ios->signal_voltage)
 		return 0;
@@ -855,7 +855,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 		return -EIO;
 
 	if (MMC_SIGNAL_VOLTAGE_180 != ios->signal_voltage) {
-		printk(KERN_INFO,  "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
+		//printk(KERN_INFO,  "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		spsdc_pr(WARNING, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
