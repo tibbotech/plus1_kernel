@@ -3,5 +3,6 @@
 # Makefile for the Sunplus MIPI/CSI-RX drivers.
 #
 
-obj-$(CONFIG_VIDEO_SP_MIPICSI_RX) += sp-mipi.o
+obj-$(CONFIG_MIPICSI_RX_SUNPLUS_SP7021) += sp-mipi.o
+obj-$(CONFIG_MIPICSI_RX_SUNPLUS_I143)   += sp-mipi-i143.o isp_api.o
 
