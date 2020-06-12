@@ -953,7 +953,12 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	volatile struct regs_uatxdma *txdma_reg;
 	volatile struct regs_uatxgdma *gdma_reg;
 	unsigned int ch;
-	
+
+	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
+	{
+		hrtimer_cancel(&sp_port->RtsDelay);	
+		//DBG_INFO("hrtimer_cancel\n");
+	}
 #ifdef CONFIG_PM_RUNTIME_UART
   	if (port->line > 0){
     		ret = pm_runtime_get_sync(port->dev);
