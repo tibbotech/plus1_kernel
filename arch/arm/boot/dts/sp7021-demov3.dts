@@ -85,7 +85,7 @@
 	pinctrl-0 = <&i2cm1_mipicsi_tpm_pins>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	st33htpi: st33htpi@0{
+	st33htpi: st33htpi@2e {
 		compatible = "st,st33htpm-i2c";
 		reg = <0x2e>;
 		status = "okay";
@@ -205,6 +205,12 @@
 	status = "disabled";
 };
 
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_pwm>;
+	status = "disabled";
+};
+
 &pctl {
 	pinctrl-names = "default";
 
@@ -312,5 +318,13 @@
 			SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SPI0S_CLK,0)
 		>;
 	};
-};
 
+	pins_pwm: pinmux_pins_pwm {
+		sppctl,pins = <
+			SP7021_IOPAD(36,SP7021_PCTL_G_PMUX,MUXF_PWM0,0)
+			SP7021_IOPAD(37,SP7021_PCTL_G_PMUX,MUXF_PWM1,0)
+			SP7021_IOPAD(38,SP7021_PCTL_G_PMUX,MUXF_PWM2,0)
+			SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_PWM3,0)
+		>;
+	};
+};
