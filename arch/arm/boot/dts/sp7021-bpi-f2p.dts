@@ -85,7 +85,7 @@
 	pinctrl-0 = <&i2cm1_tpm_pins>;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	st33htpi: st33htpi@0{
+	st33htpi: st33htpi@2e {
 		compatible = "st,st33htpm-i2c";
 		reg = <0x2e>;
 		status = "okay";
@@ -107,6 +107,8 @@
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart1>;
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-delay = <0 0>;
 	dir-gpios = <&pctl 7 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
@@ -114,6 +116,8 @@
 &uart2 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart2>;
+	linux,rs485-enabled-at-boot-time;
+	rs485-rts-delay = <0 0>;
 	dir-gpios = <&pctl 6 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
@@ -210,6 +214,12 @@
 };
 
 &audio {
+	status = "disabled";
+};
+
+&pwm {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_pwm>;
 	status = "disabled";
 };
 
@@ -334,5 +344,13 @@
 			SP7021_IOPAD(27,SP7021_PCTL_G_PMUX,MUXF_SPI0S_CLK,0)
 		>;
 	};
-};
 
+	pins_pwm: pinmux_pins_pwm {
+		sppctl,pins = <
+			SP7021_IOPAD(36,SP7021_PCTL_G_PMUX,MUXF_PWM0,0)
+			SP7021_IOPAD(37,SP7021_PCTL_G_PMUX,MUXF_PWM1,0)
+			SP7021_IOPAD(38,SP7021_PCTL_G_PMUX,MUXF_PWM2,0)
+			SP7021_IOPAD(39,SP7021_PCTL_G_PMUX,MUXF_PWM3,0)
+		>;
+	};
+};
