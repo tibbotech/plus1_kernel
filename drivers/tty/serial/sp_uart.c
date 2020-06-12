@@ -484,7 +484,10 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 	    if((mctrl&TIOCM_RTS)&&(mcr&SP_UART_MCR_RTS))//data transfer start, RTS high to low
 		{
 			{		
+				
+				#ifdef CONFIG_SOC_SP7021   
 				gpiod_set_value(sp_port->DE_RE_dir,1);
+				#endif 
 				ktime = ktime_set(0,500000);//500us
 				hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);		
 			}
@@ -1581,7 +1584,9 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 		{
 			mcr &= ~SP_UART_MCR_RTS;  
 			sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
+			#ifdef CONFIG_SOC_SP7021
 			gpiod_set_value(rs485->DE_RE_dir,0);
+			#endif 
 		}
 		else
 		{
@@ -1600,7 +1605,9 @@ static enum hrtimer_restart Rts_Delay(struct hrtimer *t)
 	unsigned char mcr;
 	
 	rs485 = container_of(t, struct sunplus_uart_port, RtsDelay);
+	#ifdef CONFIG_SOC_SP7021
 	gpiod_set_value(rs485->DE_RE_dir,0);
+	#endif 
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	mcr &= ~SP_UART_MCR_RTS;  
 	sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
@@ -1807,7 +1814,9 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	{
 		//DBG_INFO("delay_rts_before_send = %d \n",sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_before_send);
 		//DBG_INFO("delay_rts_after_send = %d \n",sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_after_send);
+		#ifdef CONFIG_SOC_SP7021
 		sunplus_uart_ports[pdev->id].DE_RE_dir = devm_gpiod_get(&pdev->dev, "dir", GPIOD_OUT_LOW);
+		#endif 
 		if (!IS_ERR(sunplus_uart_ports[pdev->id].DE_RE_dir)) {
 			DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].DE_RE_dir));
 			hrtimer_init(&sunplus_uart_ports[pdev->id].CheckTXE, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
