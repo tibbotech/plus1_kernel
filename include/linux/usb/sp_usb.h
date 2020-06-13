@@ -39,7 +39,11 @@
 #define APHY_PROBE_CTRL_MASK			0x38
 
 #define USB_RESET_OFFSET			0x5C
+#ifdef CONFIG_SOC_SP7021
 #define PIN_MUX_CTRL				0x8C
+#elif defined(CONDIF_SOC_I143)
+#define PIN_MUX_CTRL				0x88
+#endif
 
 #define USBC_CTL_OFFSET				0x44
 
@@ -64,6 +68,11 @@
 #define	DCP_REG_OFFSET				0x44
 #define	UPHY_INTR_OFFSET			0x4c
 #define APHY_PROBE_OFFSET			0x5c
+#ifdef CONFIG_SOC_I143
+#define SQ_CT_CTRL_OFFSET			0x64
+#define CTRL_OFFSET				0xf0
+#define PLL_PWR_CTRL_OFFSET			0xf8
+#endif
 #define CDP_OFFSET				0
 
 #define	UPHY_DEBUG_SIGNAL_REG_OFFSET		0x30

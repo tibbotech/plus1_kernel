@@ -14,7 +14,11 @@ static int ohci0_sunplus_platform_probe(struct platform_device *dev){
 
 
 static const struct of_device_id ohci0_sunplus_dt_ids[] = {
+#ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-ohci0" },
+#elif defined(CONDIF_SOC_I143)
+	{ .compatible = "sunplus,sunplus-i143-usb-ohci0" },
+#endif
 	{ }
 };
 

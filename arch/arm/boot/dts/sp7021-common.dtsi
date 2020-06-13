@@ -575,7 +575,7 @@
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_ehci0: usb@9C102100 {
+		sp_ehci0: usb@0x9C102100 {
 			compatible = "sunplus,sp7021-usb-ehci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
@@ -584,7 +584,7 @@
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_ehci1: usb@9C103100 {
+		sp_ehci1: usb@0x9C103100 {
 			compatible = "sunplus,sp7021-usb-ehci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;

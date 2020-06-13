@@ -8,10 +8,13 @@ struct sp_otg *sp_otg0_host = NULL;
 EXPORT_SYMBOL(sp_otg0_host);
 
 static const struct of_device_id otg0_sunplus_dt_ids[] = {
+#ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-otg0" },
+#elif defined(CONDIF_SOC_I143)
+	{ .compatible = "sunplus,sunplus-i143-usb-otg0" },
+#endif
 	{ }
 };
-
 MODULE_DEVICE_TABLE(of, otg0_sunplus_dt_ids);
 
 static struct platform_driver sunplus_usb_otg0_driver = {

@@ -8,7 +8,11 @@ struct sp_otg *sp_otg1_host = NULL;
 EXPORT_SYMBOL(sp_otg1_host);
 
 static const struct of_device_id otg1_sunplus_dt_ids[] = {
+#ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-otg1" },
+#elif defined(CONDIF_SOC_I143)
+	{ .compatible = "sunplus,sunplus-i143-usb-otg1" },
+#endif
 	{ }
 };
 MODULE_DEVICE_TABLE(of, otg1_sunplus_dt_ids);

@@ -12,8 +12,9 @@
 #include <linux/usb/otg.h>
 
 #include "otg-sunplus.h"
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 #include "../core/otg_whitelist.h"
-
+#endif
 
 #define DRIVER_NAME		"sp-otg"
 
@@ -101,6 +102,7 @@ void dump_debug_register(struct usb_otg *otg)
 }
 EXPORT_SYMBOL(dump_debug_register);
 
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 {
 	u32 val;
@@ -112,9 +114,7 @@ void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 	val |= B_VBUS_REQ;
 	writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#ifdef CONFIG_USB_GADGET_SUNPLUS
 	udc_otg_ctrl();
-#endif
 
 	if (otg_host->id == 1)
 		phy0_otg_ctrl();
@@ -139,13 +139,13 @@ static int sp_start_hnp(struct usb_otg *otg)
 
 	otg_host->otg.otg->state = OTG_STATE_A_PERIPHERAL;
 	mdelay(100);
-#ifdef CONFIG_USB_GADGET_SUNPLUS
 	detech_start();
-#endif
+
 	otg_debug("start hnp\n");
 
 	return 0;
 }
+#endif
 
 static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 {
@@ -192,12 +192,14 @@ int sp_set_host(struct usb_otg *otg, struct usb_bus *host)
 	return 0;
 }
 
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
 	otg->gadget = gadget;
 
 	return 0;
 }
+#endif
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
@@ -216,6 +218,7 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.write = sp_phy_write,
 };
 
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 static int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
@@ -312,6 +315,7 @@ static int hnp_polling_watchdog(void *arg)
 
 	return 0;
 }
+#endif
 
 static void sp_otg_work(struct work_struct *work)
 {
@@ -737,11 +741,12 @@ int sp_otg_probe(struct platform_device *dev)
 	//usb_register_notify(&otg_host->notifier);
 
 	otg_host->otg.otg->set_host = sp_set_host;
-	otg_host->otg.otg->set_peripheral = sp_set_peripheral;
 	otg_host->otg.otg->set_vbus = sp_set_vbus;
+#ifdef CONFIG_USB_GADGET_SUNPLUS
+	otg_host->otg.otg->set_peripheral = sp_set_peripheral;
 	otg_host->otg.otg->start_hnp = sp_start_hnp;
+#endif
 	otg_host->otg.otg->start_srp = sp_start_srp;
-
 	otg_host->otg.otg->usb_phy = &otg_host->otg;
 
 	otg_host->otg.io_priv = otg_host->regs_otg;
@@ -765,16 +770,18 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_ioumap;
 	}
 
-#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_USB_GADGET_SUNPLUS
+	#ifdef CONFIG_GADGET_USB0
  	if (otg_host->id == 1) {
 		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg0_host, "hnp_polling");
 		wake_up_process(sp_otg0_host->hnp_polling_timer);
  	}
-#else
+	#else
  	if (otg_host->id == 2) {
 		sp_otg1_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg1_host, "hnp_polling");
 		wake_up_process(sp_otg1_host->hnp_polling_timer);
  	}
+	#endif
 #endif
 
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
@@ -802,7 +809,9 @@ int sp_otg_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
+#ifdef CONFIG_USB_GADGET_SUNPLUS
 	int err = 0;
+#endif
 
 	if (otg_host->qwork) {
 		flush_workqueue(otg_host->qwork);
@@ -812,7 +821,8 @@ int sp_otg_remove(struct platform_device *dev)
 	del_timer_sync(&otg_host->adp_timer);
 #endif
 
-#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_USB_GADGET_SUNPLUS
+	#ifdef CONFIG_GADGET_USB0
 	if (sp_otg0_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
 		if (err) {
@@ -821,7 +831,7 @@ int sp_otg_remove(struct platform_device *dev)
 			sp_otg0_host->hnp_polling_timer = NULL;
 		}
 	}
-#else
+	#else
 	if (sp_otg1_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
 		if (err) {
@@ -830,6 +840,7 @@ int sp_otg_remove(struct platform_device *dev)
 			sp_otg1_host->hnp_polling_timer = NULL;
 		}
 	}
+	#endif
 #endif
 
 	free_irq(otg_host->irq, otg_host);

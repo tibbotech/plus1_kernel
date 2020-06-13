@@ -17,6 +17,9 @@ static struct resource *uphy1_res_mem;
 void __iomem *uphy1_base_addr = NULL;
 void __iomem *uphy1_res_moon0 = NULL;
 void __iomem *uphy1_res_moon4 = NULL;
+#ifdef CONDIF_SOC_I143
+void __iomem *uphy1_res_moon5 = NULL;
+#endif
 int uphy1_irq_num = -1;
 u8 sp_port1_enabled = 0;
 EXPORT_SYMBOL_GPL(sp_port1_enabled);
@@ -33,6 +36,7 @@ static void sp_get_port1_state(void)
 #endif
 }
 
+#ifdef CONFIG_SOC_SP7021
 char *otp_read_disc1(struct device *_d, ssize_t *_l, char *_name)
 {
 	char *ret = NULL;
@@ -49,9 +53,11 @@ char *otp_read_disc1(struct device *_d, ssize_t *_l, char *_name)
 
 	return (ret);
 }
+#endif
 
 static void uphy1_init(struct platform_device *pdev)
 {
+#ifdef CONFIG_SOC_SP7021
 	u32 val, set;
 	void __iomem *usb_otp_reg;
 	char *disc_name = "disc_vol1";
@@ -123,6 +129,73 @@ static void uphy1_init(struct platform_device *pdev)
 	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
 
 	iounmap(usb_otp_reg);
+#elif defined(CONDIF_SOC_I143)
+	/* 1. enable UPHY 0 & USBC 0 HW CLOCK */
+	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon0 + CLK_REG_OFFSET);
+	writel(RF_MASK_V_SET(1 << 11), uphy1_res_moon0 + CLK_REG_OFFSET);
+
+	/* 2. reset UPHY0 */
+	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
+	mdelay(1);
+
+	/* 3. Default value modification */
+	writel(0x18888002, uphy1_base_addr + CTRL_OFFSET);
+
+	/* 4. PLL power off/on twice */
+	writel(0x88, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+	mdelay(1);
+	writel(0x80, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+	mdelay(1);
+	writel(0x88, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+	mdelay(1);
+	writel(0x80, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+	mdelay(1);
+	writel(0x00, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+
+	/* 5. USBC 0 reset */
+	writel(RF_MASK_V_SET(1 << 11), uphy1_res_moon0 + USB_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 11), uphy1_res_moon0 + USB_RESET_OFFSET);
+	mdelay(1);
+
+	/* 6. HW workaround */
+	val = readl(uphy1_base_addr + UPHY_INTR_OFFSET);
+	val |= 0x0f;
+	writel(val, uphy1_base_addr + UPHY_INTR_OFFSET);
+
+	/* 7. USB DISC (disconnect voltage) */
+	#if 0
+	otp_v = otp_read_disc0(&pdev->dev, &otp_l, disc_name);
+	set = *otp_v & OTP_DISC_LEVEL_BIT;
+	if (set == 0)
+		set = 0xD;
+	#else
+	writel(0x8b, uphy1_base_addr + DISC_LEVEL_OFFSET);
+	#endif
+
+	val = readl(uphy1_base_addr + ECO_PATH_OFFSET);
+	val &= ~(ECO_PATH_SET);
+	writel(val, uphy1_base_addr + ECO_PATH_OFFSET);
+
+	val = readl(uphy1_base_addr + POWER_SAVING_OFFSET);
+	val &= ~(POWER_SAVING_SET);
+	writel(val, uphy1_base_addr + POWER_SAVING_OFFSET);
+
+	val = readl(uphy1_base_addr + APHY_PROBE_OFFSET);
+	val = (val & ~APHY_PROBE_CTRL_MASK) | APHY_PROBE_CTRL;
+	writel(val, uphy1_base_addr + APHY_PROBE_OFFSET);
+
+	/* 8. RX SQUELCH LEVEL */
+	writel(0x04, uphy1_base_addr + SQ_CT_CTRL_OFFSET);
+
+	/* 9. switch to host */
+	writel(RF_MASK_V_SET(3 << 12), uphy1_res_moon5 + USBC_CTL_OFFSET);
+
+	#ifdef CONFIG_USB_SUNPLUS_OTG
+	writel(RF_MASK_V_SET(1 << 13), uphy1_res_moon0 + PIN_MUX_CTRL);
+	mdelay(1);
+	#endif
+#endif
 }
 
 static int sunplus_usb_phy1_probe(struct platform_device *pdev)
@@ -172,20 +245,28 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
 	uphy1_base_addr = ioremap_nocache(uphy1_res_mem->start, resource_size(uphy1_res_mem));
 	if (!uphy1_base_addr){
 		release_mem_region(uphy1_res_mem->start, resource_size(uphy1_res_mem));
-		 return -EFAULT;
+		return -EFAULT;
 	}
 
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);	
-	uphy1_res_moon0 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));	
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	uphy1_res_moon0 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 	if (IS_ERR(uphy1_res_moon0)) {
 		return PTR_ERR(uphy1_res_moon0);
 	}
 
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);	
-	uphy1_res_moon4 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));	
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	uphy1_res_moon4 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 	if (IS_ERR(uphy1_res_moon4)) {
 		return PTR_ERR(uphy1_res_moon4);
 	}
+
+#ifdef CONDIF_SOC_I143
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	uphy1_res_moon5 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
+	if (IS_ERR(uphy1_res_moon5)) {
+		return PTR_ERR(uphy1_res_moon5);
+	}
+#endif
 
 	uphy1_init(pdev);
 
@@ -211,7 +292,11 @@ static int sunplus_usb_phy1_remove(struct platform_device *pdev)
 	release_mem_region(uphy1_res_mem->start, resource_size(uphy1_res_mem));
 
 	/* pll power off*/
+#ifdef CONFIG_SOC_SP7021
 	writel(RF_MASK_V(0xffff, 0x88), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
+#elif defined(CONDIF_SOC_I143)
+	writel(0x88, uphy1_base_addr + PLL_PWR_CTRL_OFFSET);
+#endif
 
 	/*disable uphy1 system clock*/
 	clk_disable(uphy1_clk);
@@ -223,7 +308,11 @@ static int sunplus_usb_phy1_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id phy1_sunplus_dt_ids[] = {
+#ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-phy1" },
+#elif defined(CONDIF_SOC_I143)
+	{ .compatible = "sunplus,i143-usb-phy1" },
+#endif
 	{ }
 };
 
@@ -231,7 +320,11 @@ MODULE_DEVICE_TABLE(of, phy1_sunplus_dt_ids);
 
 void phy1_otg_ctrl(void)
 {
+#ifdef CONFIG_SOC_SP7021
 	writel(RF_MASK_V_SET(1 << 8), uphy1_res_moon4 + UPHY1_CTL0_OFFSET);
+#elif defined(CONDIF_SOC_I143)
+	/* TBD */
+#endif
 }
 EXPORT_SYMBOL(phy1_otg_ctrl);
 
@@ -276,4 +369,3 @@ module_exit(usb_phy1_sunplus_exit);
 
 MODULE_ALIAS("sunplus_usb_phy1");
 MODULE_LICENSE("GPL");
-
