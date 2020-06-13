@@ -17,6 +17,8 @@ source "drivers/media/rc/Kconfig"
 menuconfig MEDIA_SUPPORT
 	tristate "Multimedia support"
 	depends on HAS_IOMEM
+	select MEDIA_CAMERA_SUPPORT if SOC_SP7021 || SOC_I143
+	default y
 	help
 	  If you want to use Webcams, Video grabber devices and/or TV devices
 	  enable this option and other options below.
