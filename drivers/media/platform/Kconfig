@@ -161,8 +161,8 @@ config VIDEO_TI_CAL
 	  In TI Technical Reference Manual this module is referred as
 	  Camera Interface Subsystem (CAMSS).
 
-source "drivers/media/platform/sp-display/display/Kconfig"
-source "drivers/media/platform/sp-display/hdmitx/Kconfig"
+source "drivers/media/platform/sunplus/display/Kconfig"
+source "drivers/media/platform/sunplus/hdmitx/Kconfig"
 
 endif # V4L_PLATFORM_DRIVERS
 
