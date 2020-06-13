@@ -1390,9 +1390,15 @@ config SCx200_ACB
 
 config I2C_SUNPLUS
 	tristate "Sunplus I2C driver"
-  depends on SOC_SP7021 || SOC_I143
+	depends on SOC_SP7021 || SOC_I143
 	help
 	  This driver supports the I2C device on the Sunplus processor chip.
+
+config I2C_MIPI_SUNPLUS
+	tristate "Sunplus I143 MIPI I2C driver"
+	depends on SOC_I143
+	help
+	  This driver supports the MIPI I2C device on the Sunplus I143 SoC.
 
 config I2C_OPAL
 	tristate "IBM OPAL I2C driver"

@@ -102,6 +102,10 @@ config VIDEO_SENSOR_OV9281_ISP
 	  It will be loaded in unconditionally when it is enabled.
 	  Please disable other video sensor drivers.
 
-
+config VIDEO_MIPI_ISP_TEST
+	tristate "Video MIPI ISP Test Driver"
+	default n
+	---help---
+	  Supports SunplusIT MIPI ISP test driver.
 
 endif
