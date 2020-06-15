@@ -1,7 +1,3 @@
-/dts-v1/;
-
-#include "sp7021-common.dtsi"
-
 / {
 	model = "Sunplus SP7021 (CA7)";
 	compatible = "sunplus,sp7021-achip";

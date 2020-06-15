@@ -15,7 +15,7 @@ static int ehci1_sunplus_platform_probe(struct platform_device *dev){
 static const struct of_device_id ehci1_sunplus_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-ehci1" },
-#elif defined(CONDIF_SOC_I143)
+#elif defined(CONFIG_SOC_I143)
 	{ .compatible = "sunplus,sunplus-i143-usb-ehci1" },
 #endif
 	{ }
