@@ -57,8 +57,9 @@ char *otp_read_disc0(struct device *_d, ssize_t *_l, char *_name)
 
 static void uphy0_init(struct platform_device *pdev)
 {
+	u32 val;
 #ifdef CONFIG_SOC_SP7021
-	u32 val, set;
+	u32 set;
 	void __iomem *usb_otp_reg;
 	char *disc_name = "disc_vol0";
 	ssize_t otp_l = 0;
