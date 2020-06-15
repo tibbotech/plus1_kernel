@@ -489,7 +489,9 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 			if(((mcr&SP_UART_MCR_RTS)&&(sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
 			{
+				#ifdef CONFIG_SOC_SP7021
 				gpiod_set_value(sp_port->DE_RE_dir,1);
+				#endif 
 				ktime = ktime_set(0,500000);//500us
 				hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);		
 			}
