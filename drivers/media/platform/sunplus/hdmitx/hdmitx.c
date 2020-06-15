@@ -104,6 +104,7 @@ static int sp_hdmitx_runtime_resume(struct device *dev);
 // device id
 static struct of_device_id g_hdmitx_ids[] = {
 	{.compatible = "sunplus,sp7021-hdmitx"},
+	{.compatible = "sunplus,i143-hdmitx"},
 };
 
 // device driver operation functions
