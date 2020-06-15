@@ -975,3 +975,10 @@
 		};
 	};
 };
+
+#include <dt-bindings/../generated/autoconf.h>
+#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
+#include "sp7021-ChipC.dtsi"
+#else
+#include "sp7021-ChipP.dtsi"
+#endif
