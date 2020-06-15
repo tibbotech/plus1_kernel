@@ -24,7 +24,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 		return -ENOMEM;
 	}
 
-	mii_bus->name = "sp7021_mii_bus";
+	mii_bus->name = "sunplus_mii_bus";
 	mii_bus->parent = &pdev->dev;
 	mii_bus->priv = mac;
 	mii_bus->read = mii_read;

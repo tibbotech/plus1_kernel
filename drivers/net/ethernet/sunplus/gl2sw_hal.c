@@ -1,16 +1,16 @@
-#include "l2sw_hal.h"
+#include "gl2sw_hal.h"
 
 
-static struct l2sw_reg* ls2w_reg_base = NULL;
+static struct l2sw_reg* l2sw_reg_base = NULL;
 static struct moon5_reg* moon5_reg_base = NULL;
 
 
 int l2sw_reg_base_set(void __iomem *baseaddr)
 {
-	ls2w_reg_base = (struct l2sw_reg*)baseaddr;
-	ETH_DEBUG("[%s] ls2w_reg_base = 0x%08x\n", __func__, (int)ls2w_reg_base);
+	l2sw_reg_base = (struct l2sw_reg*)baseaddr;
+	ETH_INFO(" l2sw_reg_base = %px\n", l2sw_reg_base);
 
-	if (ls2w_reg_base == NULL){
+	if (l2sw_reg_base == NULL){
 		return -1;
 	}
 	else{
@@ -21,7 +21,7 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 int moon5_reg_base_set(void __iomem *baseaddr)
 {
 	moon5_reg_base = (struct moon5_reg*)baseaddr;
-	ETH_DEBUG("[%s] moon5_reg_base = 0x%08x\n", __func__, (int)moon5_reg_base);
+	ETH_INFO(" moon5_reg_base = %px\n", moon5_reg_base);
 
 	if (moon5_reg_base == NULL){
 		return -1;
@@ -37,8 +37,8 @@ void mac_hw_stop(struct l2sw_mac *mac)
 	u32 reg, disable;
 
 	if (comm->enable == 0) {
-		HWREG_W(sw_int_mask_0, 0xffffffff);
-		HWREG_W(sw_int_status_0, 0xffffffff & (~MAC_INT_PORT_ST_CHG));
+		HWREG_W(sw_int_mask, 0xffffffff);
+		HWREG_W(sw_int_status, 0xffffffff & (~MAC_INT_PORT_ST_CHG));
 
 		reg = HWREG_R(cpu_cntl);
 		HWREG_W(cpu_cntl, (0x3<<6) | reg);      // Disable cpu 0 and cpu 1.
@@ -47,8 +47,11 @@ void mac_hw_stop(struct l2sw_mac *mac)
 	if (comm->dual_nic) {
 		disable = ((~comm->enable)&0x3) << 24;
 		reg = HWREG_R(port_cntl0);
+#ifndef ZEBU_XTOR
+// Never disable lan port in force link-up mode.
 		HWREG_W(port_cntl0, disable | reg);     // Disable lan 0 and lan 1.
 		wmb();
+#endif
 	}
 }
 
@@ -219,10 +222,10 @@ void mac_hw_init(struct l2sw_mac *mac)
 	wmb();
 
 	/* descriptor base address */
-	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma);
-	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
-	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
-	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
+	HWREG_W(tx_lbase_addr, mac->comm->desc_dma);
+	HWREG_W(tx_hbase_addr, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
+	HWREG_W(rx_hbase_addr, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
+	HWREG_W(rx_lbase_addr, mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
 	wmb();
 
 	// Threshold values
@@ -235,10 +238,28 @@ void mac_hw_init(struct l2sw_mac *mac)
 	HWREG_W(led_port0, reg | (1<<28));
 
 	/* phy address */
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
+	reg = HWREG_R(mac_force_mode0);
+	reg = (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0);
+	reg = (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5);
+	HWREG_W(mac_force_mode0, reg);
+
+#ifdef ZEBU_XTOR
+	// enable lan 0 & lan 1 before force link-up
+	reg = HWREG_R(port_cntl0);
+	HWREG_W(port_cntl0, reg & (~(3<<24)));
+	wmb();
+
+	reg = HWREG_R(mac_force_mode0);
+	reg |= MAC_FORCE_MODE0;
+	HWREG_W(mac_force_mode0, reg);
+	reg = HWREG_R(mac_force_mode1);
+	reg |= MAC_FORCE_MODE1;
+	HWREG_W(mac_force_mode1, reg);
+
+	// Invert RX clock and no delay
+	HWREG_W(p0_softpad_config, 0x00000020);
+	HWREG_W(p1_softpad_config, 0x00000020);
+#endif
 
 	//disable cpu port0 aging (12)
 	//disable cpu port0 learning (14)
@@ -256,7 +277,7 @@ void mac_hw_init(struct l2sw_mac *mac)
 	}
 
 	wmb();
-	HWREG_W(sw_int_mask_0, MAC_INT_MASK_DEF);
+	HWREG_W(sw_int_mask, MAC_INT_MASK_DEF);
 }
 
 void mac_switch_mode(struct l2sw_mac *mac)
@@ -409,19 +430,24 @@ inline void tx_trigger(void)
 	HWREG_W(cpu_tx_trig, (0x1<<1));
 }
 
-inline void write_sw_int_mask0(u32 value)
+inline void write_sw_int_mask(u32 value)
 {
-	HWREG_W(sw_int_mask_0, value);
+	HWREG_W(sw_int_mask, value);
 }
 
-inline void write_sw_int_status0(u32 value)
+inline u32 read_sw_int_mask(void)
 {
-	HWREG_W(sw_int_status_0, value);
+	return HWREG_R(sw_int_mask);
 }
 
-inline u32 read_sw_int_status0(void)
+inline void write_sw_int_status(u32 value)
 {
-	return HWREG_R(sw_int_status_0);
+	HWREG_W(sw_int_status, value);
+}
+
+inline u32 read_sw_int_status(void)
+{
+	return HWREG_R(sw_int_status);
 }
 
 inline u32 read_port_ability(void)
@@ -433,23 +459,17 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 {
 	u32 reg;
 
-	//set clock
-	reg = MOON5REG_R(mo4_l2sw_clksw_ctl);
-	MOON5REG_W(mo4_l2sw_clksw_ctl, reg | (0xf<<16) | 0xf);
-
 	//phy address
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
+	reg = HWREG_R(mac_force_mode0);
+	reg = (reg & (~(0x1f<<0))) | ((mac->comm->phy1_addr&0x1f)<<0);
+	reg = (reg & (~(0x1f<<5))) | ((mac->comm->phy2_addr&0x1f)<<5);
+	HWREG_W(mac_force_mode0, reg);
 	wmb();
 }
 
 int phy_cfg()
 {
-	// Bug workaround:
-	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
-	// to the bit to decide to enable or disable flow-control.
+	// Enable flow control of phy.
 	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
 	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
 
@@ -460,8 +480,8 @@ int phy_cfg()
 #if 0
 void regs_print()
 {
-	ETH_INFO(" sw_int_status_0     = %08x\n", HWREG_R(sw_int_status_0));
-	ETH_INFO(" sw_int_mask_0       = %08x\n", HWREG_R(sw_int_mask_0));
+	ETH_INFO(" sw_int_status       = %08x\n", HWREG_R(sw_int_status));
+	ETH_INFO(" sw_int_mask         = %08x\n", HWREG_R(sw_int_mask));
 	ETH_INFO(" fl_cntl_th          = %08x\n", HWREG_R(fl_cntl_th));
 	ETH_INFO(" cpu_fl_cntl_th      = %08x\n", HWREG_R(cpu_fl_cntl_th));
 	ETH_INFO(" pri_fl_cntl         = %08x\n", HWREG_R(pri_fl_cntl));
@@ -484,7 +504,6 @@ void regs_print()
 	ETH_INFO(" w_mac_15_0          = %08x\n", HWREG_R(w_mac_15_0));
 	ETH_INFO(" w_mac_47_16         = %08x\n", HWREG_R(w_mac_47_16));
 	ETH_INFO(" PVID_config0        = %08x\n", HWREG_R(PVID_config0));
-	ETH_INFO(" PVID_config1        = %08x\n", HWREG_R(PVID_config1));
 	ETH_INFO(" VLAN_memset_config0 = %08x\n", HWREG_R(VLAN_memset_config0));
 	ETH_INFO(" VLAN_memset_config1 = %08x\n", HWREG_R(VLAN_memset_config1));
 	ETH_INFO(" port_ability        = %08x\n", HWREG_R(port_ability));
@@ -494,37 +513,38 @@ void regs_print()
 	ETH_INFO(" port_cntl1          = %08x\n", HWREG_R(port_cntl1));
 	ETH_INFO(" port_cntl2          = %08x\n", HWREG_R(port_cntl2));
 	ETH_INFO(" sw_glb_cntl         = %08x\n", HWREG_R(sw_glb_cntl));
-	ETH_INFO(" l2sw_rsv1           = %08x\n", HWREG_R(l2sw_rsv1));
+	ETH_INFO(" sw_reset            = %08x\n", HWREG_R(sw_reset));
 	ETH_INFO(" led_port0           = %08x\n", HWREG_R(led_port0));
 	ETH_INFO(" led_port1           = %08x\n", HWREG_R(led_port1));
-	ETH_INFO(" led_port2           = %08x\n", HWREG_R(led_port2));
-	ETH_INFO(" led_port3           = %08x\n", HWREG_R(led_port3));
-	ETH_INFO(" led_port4           = %08x\n", HWREG_R(led_port4));
 	ETH_INFO(" watch_dog_trig_rst  = %08x\n", HWREG_R(watch_dog_trig_rst));
 	ETH_INFO(" watch_dog_stop_cpu  = %08x\n", HWREG_R(watch_dog_stop_cpu));
 	ETH_INFO(" phy_cntl_reg0       = %08x\n", HWREG_R(phy_cntl_reg0));
 	ETH_INFO(" phy_cntl_reg1       = %08x\n", HWREG_R(phy_cntl_reg1));
-	ETH_INFO(" mac_force_mode      = %08x\n", HWREG_R(mac_force_mode));
+	ETH_INFO(" mac_force_mode0     = %08x\n", HWREG_R(mac_force_mode0));
 	ETH_INFO(" VLAN_group_config0  = %08x\n", HWREG_R(VLAN_group_config0));
-	ETH_INFO(" VLAN_group_config1  = %08x\n", HWREG_R(VLAN_group_config1));
 	ETH_INFO(" flow_ctrl_th3       = %08x\n", HWREG_R(flow_ctrl_th3));
 	ETH_INFO(" queue_status_0      = %08x\n", HWREG_R(queue_status_0));
 	ETH_INFO(" debug_cntl          = %08x\n", HWREG_R(debug_cntl));
 	ETH_INFO(" queue_status_0      = %08x\n", HWREG_R(queue_status_0));
 	ETH_INFO(" debug_cntl          = %08x\n", HWREG_R(debug_cntl));
-	ETH_INFO(" l2sw_rsv2           = %08x\n", HWREG_R(l2sw_rsv2));
+	ETH_INFO(" debug_info          = %08x\n", HWREG_R(debug_info));
 	ETH_INFO(" mem_test_info       = %08x\n", HWREG_R(mem_test_info));
-	ETH_INFO(" sw_int_status_1     = %08x\n", HWREG_R(sw_int_status_1));
-	ETH_INFO(" sw_int_mask_1       = %08x\n", HWREG_R(sw_int_mask_1));
+	ETH_INFO(" sw_global_signal    = %08x\n", HWREG_R(sw_global_signal));
+	ETH_INFO(" pause_uc_sa_sw_15_0 = %08x\n", HWREG_R(pause_uc_sa_sw_15_0));
+	ETH_INFO(" pause_uc_sa_sw_47_16= %08x\n", HWREG_R(pause_uc_sa_sw_47_16));
+	ETH_INFO(" mac_force_mode1     = %08x\n", HWREG_R(mac_force_mode1));
+	ETH_INFO(" p0_softpad_config   = %08x\n", HWREG_R(p0_softpad_config));
+	ETH_INFO(" p1_softpad_config   = %08x\n", HWREG_R(p1_softpad_config));
 	ETH_INFO(" cpu_tx_trig         = %08x\n", HWREG_R(cpu_tx_trig));
-	ETH_INFO(" tx_hbase_addr_0     = %08x\n", HWREG_R(tx_hbase_addr_0));
-	ETH_INFO(" tx_lbase_addr_0     = %08x\n", HWREG_R(tx_lbase_addr_0));
-	ETH_INFO(" rx_hbase_addr_0     = %08x\n", HWREG_R(rx_hbase_addr_0));
-	ETH_INFO(" rx_lbase_addr_0     = %08x\n", HWREG_R(rx_lbase_addr_0));
-	ETH_INFO(" tx_hw_addr_0        = %08x\n", HWREG_R(tx_hw_addr_0));
-	ETH_INFO(" tx_lw_addr_0        = %08x\n", HWREG_R(tx_lw_addr_0));
-	ETH_INFO(" rx_hw_addr_0        = %08x\n", HWREG_R(rx_hw_addr_0));
-	ETH_INFO(" rx_lw_addr_0        = %08x\n", HWREG_R(rx_lw_addr_0));
-	ETH_INFO(" cpu_port_cntl_reg_0 = %08x\n", HWREG_R(cpu_port_cntl_reg_0));
+	ETH_INFO(" tx_hbase_addr       = %08x\n", HWREG_R(tx_hbase_addr));
+	ETH_INFO(" tx_lbase_addr       = %08x\n", HWREG_R(tx_lbase_addr));
+	ETH_INFO(" rx_hbase_addr       = %08x\n", HWREG_R(rx_hbase_addr));
+	ETH_INFO(" rx_lbase_addr       = %08x\n", HWREG_R(rx_lbase_addr));
+	ETH_INFO(" tx_hw_addr          = %08x\n", HWREG_R(tx_hw_addr));
+	ETH_INFO(" tx_lw_addr          = %08x\n", HWREG_R(tx_lw_addr));
+	ETH_INFO(" rx_hw_addr          = %08x\n", HWREG_R(rx_hw_addr));
+	ETH_INFO(" rx_lw_addr          = %08x\n", HWREG_R(rx_lw_addr));
+	ETH_INFO(" cpu_port_cntl_reg   = %08x\n", HWREG_R(cpu_port_cntl_reg));
+	ETH_INFO(" desc_addr_cntl      = %08x\n", HWREG_R(desc_addr_cntl));
 }
 #endif
