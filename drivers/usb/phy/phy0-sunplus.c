@@ -17,7 +17,7 @@ static struct resource *uphy0_res_mem;
 void __iomem *uphy0_base_addr = NULL;
 void __iomem *uphy0_res_moon0 = NULL;
 void __iomem *uphy0_res_moon4 = NULL;
-#ifdef CONDIF_SOC_I143
+#ifdef CONFIG_SOC_I143
 void __iomem *uphy0_res_moon5 = NULL;
 #endif
 int uphy0_irq_num = -1;
@@ -129,7 +129,7 @@ static void uphy0_init(struct platform_device *pdev)
 	writel(RF_MASK_V_SET(1 << 14), uphy0_res_moon4 + UPHY0_CTL3_OFFSET);
 
 	iounmap(usb_otp_reg);
-#elif defined(CONDIF_SOC_I143)
+#elif defined(CONFIG_SOC_I143)
 	/* 1. enable UPHY 0 & USBC 0 HW CLOCK */
 	writel(RF_MASK_V_SET(1 << 13), uphy0_res_moon0 + CLK_REG_OFFSET);
 	writel(RF_MASK_V_SET(1 << 10), uphy0_res_moon0 + CLK_REG_OFFSET);
@@ -264,7 +264,7 @@ static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 		return PTR_ERR(uphy0_res_moon4);
 	}
 
-#ifdef CONDIF_SOC_I143
+#ifdef CONFIG_SOC_I143
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
 	uphy0_res_moon5 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 	if (IS_ERR(uphy0_res_moon5)) {
@@ -298,7 +298,7 @@ static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 	/* pll power off */
 #ifdef CONFIG_SOC_SP7021
 	writel(RF_MASK_V(0xffff, 0x88), uphy0_res_moon4 + UPHY0_CTL3_OFFSET);
-#elif defined(CONDIF_SOC_I143)
+#elif defined(CONFIG_SOC_I143)
 	writel(0x88, uphy0_base_addr + PLL_PWR_CTRL_OFFSET);
 #endif
 
@@ -314,7 +314,7 @@ static int sunplus_usb_phy0_remove(struct platform_device *pdev)
 static const struct of_device_id phy0_sunplus_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-phy0" },
-#elif defined(CONDIF_SOC_I143)
+#elif defined(CONFIG_SOC_I143)
 	{ .compatible = "sunplus,i143-usb-phy0" },
 #endif
 	{ }
@@ -325,7 +325,7 @@ void phy0_otg_ctrl(void)
 {
 #ifdef CONFIG_SOC_SP7021
 	writel(RF_MASK_V_SET(1 << 8), uphy0_res_moon4 + UPHY0_CTL0_OFFSET);
-#elif defined(CONDIF_SOC_I143)
+#elif defined(CONFIG_SOC_I143)
 	/* TBD */
 #endif
 }
