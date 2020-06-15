@@ -444,12 +444,15 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 	}
 
 	if (mctrl & TIOCM_RTS) {
-		mcr |= SP_UART_MCR_RTS;
+		if ((sp_port->uport.rs485.flags & SER_RS485_ENABLED)
+			&&(sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
+			mcr &= ~SP_UART_MCR_RTS;  //RTS invert.
+		else
+			mcr |= SP_UART_MCR_RTS;
 	} else {
 		if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
 		{
-			//data transfer ended, RTS low to high
-			//output high
+			//data transfer ended
 			return;
 		}
 		else
@@ -481,13 +484,12 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
 	{	    	    
 		mcr = sp_uart_get_modem_ctrl(port->membase);
-	    if((mctrl&TIOCM_RTS)&&(mcr&SP_UART_MCR_RTS))//data transfer start, RTS high to low
-		{
-			{		
-				
-				#ifdef CONFIG_SOC_SP7021   
+	    if(mctrl&TIOCM_RTS)
+		{	
+			if(((mcr&SP_UART_MCR_RTS)&&(sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
+				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
+			{
 				gpiod_set_value(sp_port->DE_RE_dir,1);
-				#endif 
 				ktime = ktime_set(0,500000);//500us
 				hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);		
 			}
@@ -1587,7 +1589,10 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 		unsigned long nsec = rs485->uport.rs485.delay_rts_after_send * 1000000;
 		if(nsec == 0)
 		{
-			mcr &= ~SP_UART_MCR_RTS;  
+			if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
+				mcr |= SP_UART_MCR_RTS;  
+			else
+				mcr &= ~SP_UART_MCR_RTS;  
 			sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
 			#ifdef CONFIG_SOC_SP7021
 			gpiod_set_value(rs485->DE_RE_dir,0);
@@ -1614,7 +1619,11 @@ static enum hrtimer_restart Rts_Delay(struct hrtimer *t)
 	gpiod_set_value(rs485->DE_RE_dir,0);
 	#endif 
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
-	mcr &= ~SP_UART_MCR_RTS;  
+	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
+		mcr |= SP_UART_MCR_RTS;  
+	else
+		mcr &= ~SP_UART_MCR_RTS;  
+	
 	sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
 	//DBG_INFO("Delay_end\n");		
 	return HRTIMER_NORESTART;
