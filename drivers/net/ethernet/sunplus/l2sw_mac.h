@@ -2,7 +2,11 @@
 #define __L2SW_MAC_H__
 
 #include "l2sw_define.h"
+#ifdef CONFIG_SOC_SP7021
 #include "l2sw_hal.h"
+#else
+#include "gl2sw_hal.h"
+#endif
 
 
 bool mac_init(struct l2sw_mac *mac);

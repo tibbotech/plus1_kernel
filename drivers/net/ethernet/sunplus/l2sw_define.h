@@ -31,7 +31,21 @@
 #define INTERRUPT_IMMEDIATELY
 //#define RX_POLLING
 
+#ifdef CONFIG_SOC_I143
+#define ZEBU_XTOR
 
+#ifdef ZEBU_XTOR
+// mac_force_mode0[11:10]: force_gmii_en[1:0]   = 0x3 (enable force function)
+// mac_force_mode0[17:16]: force_gmii_spd0[1:0] = 0x3 (1G)
+// mac_force_mode0[19:18]: force_gmii_spd1[1:0] = 0x3 (1G)
+// mac_force_mode0[27:26]: force_gmii_dpx[1:0]  = 0x3 (no force duplex)
+#define MAC_FORCE_MODE0 0x0c0f0c00
+// mac_force_mode1[17:16]: force_gmii_xfc0[1:0] = 0x3 (full duplex and tx flow control)
+// mac_force_mode1[19:18]: force_gmii_xfc1[1:0] = 0x3 (full duplex and tx flow control)
+// mac_force_mode1[27:26]: force_gmii_link[1:0] = 0x3 (link up)
+#define MAC_FORCE_MODE1 0x0c0f0000
+#endif
+#endif
 /**********************************************************
  * Debug Macros
  **********************************************************/
@@ -44,7 +58,11 @@
 
 //define MAC interrupt status bit
 #define MAC_INT_DAISY_MODE_CHG          (1<<31)
-#define MAC_INT_IP_CHECKSUM_ERR         (1<<23)
+#ifdef CONFIG_SOC_I143
+#define MAC_INT_MEM_TEST_DONE           (1<<29)
+#define MAC_INT_TCPUDP_CHKSUM_ERR       (1<<24)
+#endif
+#define MAC_INT_IP_CHKSUM_ERR           (1<<23)
 #define MAC_INT_WDOG_TIMER1_EXP         (1<<22)
 #define MAC_INT_WDOG_TIMER0_EXP         (1<<21)
 #define MAC_INT_ATRUDER_ALERT           (1<<20)
@@ -65,18 +83,35 @@
 #define MAC_INT_TX_DES_ERR              (1<<1)
 #define MAC_INT_RX_DES_ERR              (1<<0)
 
+#ifdef CONFIG_SOC_SP7021
 #define MAC_INT_RX                      (MAC_INT_RX_DONE_H | MAC_INT_RX_DONE_L | MAC_INT_RX_DES_ERR)
 #define MAC_INT_TX                      (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
-#define MAC_INT_MASK_DEF                (MAC_INT_DAISY_MODE_CHG | MAC_INT_IP_CHECKSUM_ERR | MAC_INT_WDOG_TIMER1_EXP | \
+#define MAC_INT_MASK_DEF                (MAC_INT_DAISY_MODE_CHG | MAC_INT_IP_CHKSUM_ERR | MAC_INT_WDOG_TIMER1_EXP | \
 					MAC_INT_WDOG_TIMER0_EXP | MAC_INT_ATRUDER_ALERT | MAC_INT_BC_STORM | \
 					MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC0_PAUSE_ON | \
 					MAC_INT_RX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | \
 					MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
-
+#else
+#define MAC_INT_RX                      (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)
+#define MAC_INT_RX_MASK_DEF             (MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
+#define MAC_INT_TX                      (MAC_INT_PORT_ST_CHG | MAC_INT_MEM_TEST_DONE | MAC_INT_TX_DONE_L | \
+					MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR | MAC_INT_RX_DES_ERR)
+#define MAC_INT_TX_MASK_DEF             (MAC_INT_DAISY_MODE_CHG | MAC_INT_TCPUDP_CHKSUM_ERR | MAC_INT_IP_CHKSUM_ERR | \
+					MAC_INT_WDOG_TIMER1_EXP | MAC_INT_WDOG_TIMER0_EXP | MAC_INT_ATRUDER_ALERT | \
+					MAC_INT_BC_STORM | MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | \
+					MAC_INT_TX_SOC0_PAUSE_ON | MAC_INT_RX_SOC0_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | \
+					MAC_INT_TX_LAN0_QUE_FULL)
+#define MAC_INT_MASK_DEF                (MAC_INT_RX_MASK_DEF | MAC_INT_TX_MASK_DEF)
+#endif
 
 /*define port ability*/
+#ifdef CONFIG_SOC_SP7021
 #define PORT_ABILITY_LINK_ST_P1         (1<<25)
 #define PORT_ABILITY_LINK_ST_P0         (1<<24)
+#else
+#define PORT_ABILITY_LINK_ST_P1         (1<<28)
+#define PORT_ABILITY_LINK_ST_P0         (1<<27)
+#endif
 
 
 /*define PHY command bit*/
@@ -109,10 +144,15 @@
 #define TO_VLAN_GROUP1                  0x00002000
 
 #define EOR_BIT                         (1<<31)
+#ifdef CONFIG_SOC_I143
+#define IP_CHKSUM_APPEND                (1<<30)
+#define TCP_UDP_CHKSUM_APPEND           (1<<29)
+#endif
 
 
 /*define rx descriptor bit*/
 #define ERR_CODE                        (0xf<<26)
+#ifdef CONFIG_SOC_SP7021
 #define RX_TCP_UDP_CHKSUM_BIT           (1<<23)
 #define RX_IP_CHKSUM_BIT                (1<<18)
 
@@ -123,6 +163,17 @@
 #define TWDE_BIT                        (1<<20)
 #define CC_MASK                         0x000f0000
 #define TBE_MASK                        0x00070000
+#else
+#define RX_TCP_UDP_CHKSUM_FAIL          (1<<23)
+#define RX_IP_CHKSUM_FAIL               (1<<18)
+#if 0
+#define OWC_BIT                         (1<<30)
+#define BUR_BIT                         (1<<29)
+#define LNKF_BIT                        (1<<28)
+#define TWDE_BIT                        (1<<27)
+#define CC_MASK                         (0xf<<16)
+#endif
+#endif
 
 // Address table search
 #define MAC_ADDR_LOOKUP_IDLE            (1<<2)
@@ -179,7 +230,11 @@ struct l2sw_common {
 	s32 desc_size;
 	struct clk *clk;
 	struct reset_control *rstc;
+#ifdef CONFIG_SOC_SP7021
 	int irq;
+#else
+	int irq[4];
+#endif
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
 	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];
@@ -204,7 +259,12 @@ struct l2sw_common {
 	spinlock_t lock;
 	spinlock_t ioctl_lock;
 	struct mutex store_mode;
+#ifdef CONFIG_SOC_SP7021
 	volatile u32 int_status;
+#else
+	volatile u32 tx_int_status;
+	volatile u32 rx_int_status;
+#endif
 
 #ifdef RX_POLLING
 	struct napi_struct napi;
