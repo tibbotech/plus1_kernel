@@ -9,13 +9,12 @@
 #include <linux/miscdevice.h>
 #include <linux/fs.h>
 #include <linux/interrupt.h>
-#include <mach/irqs.h>
 #include <linux/of_irq.h>
 #include <linux/kthread.h>
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
-#include <mach/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 #include <linux/of_device.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
@@ -23,7 +22,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#include <media/sp-disp/display.h> //#ifdef TIMING_SYNC_720P60
+#include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
@@ -105,6 +104,7 @@ static int sp_hdmitx_runtime_resume(struct device *dev);
 // device id
 static struct of_device_id g_hdmitx_ids[] = {
 	{.compatible = "sunplus,sp7021-hdmitx"},
+	{.compatible = "sunplus,i143-hdmitx"},
 };
 
 // device driver operation functions

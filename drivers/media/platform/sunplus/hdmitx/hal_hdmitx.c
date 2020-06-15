@@ -2,7 +2,7 @@
  *					INCLUDE DECLARATIONS
  *---------------------------------------------------------------------------*/
 #include <linux/string.h>
-#include <mach/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 #include "include/hal_hdmitx.h"
 #include "include/hal_hdmitx_reg.h"
 #include "include/param_cfg.inc"

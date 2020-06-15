@@ -1,8 +1,7 @@
 #ifndef __REG_HDMITX_H__
 #define __REG_HDMITX_H__
 
-#include <mach/io_map.h>
-#include <mach/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 
 typedef volatile struct reg_hdmitx_s
 {
