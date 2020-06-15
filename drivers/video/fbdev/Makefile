@@ -120,7 +120,8 @@ obj-$(CONFIG_FB_PUV3_UNIGFX)      += fb-puv3.o
 obj-$(CONFIG_FB_HYPERV)		  += hyperv_fb.o
 obj-$(CONFIG_FB_OPENCORES)	  += ocfb.o
 obj-$(CONFIG_FB_SM712)		  += sm712fb.o
-obj-$(CONFIG_FB_SP7021)		  += fb_sp7021/
+obj-$(CONFIG_FB_SP7021)		  += sunplus/fb_sp7021/
+obj-$(CONFIG_FB_I143)		  += sunplus/fb_i143/
 
 # Platform or fallback drivers go here
 obj-$(CONFIG_FB_UVESA)            += uvesafb.o
