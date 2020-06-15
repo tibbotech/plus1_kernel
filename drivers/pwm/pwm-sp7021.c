@@ -34,7 +34,7 @@
 #include <linux/pwm.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
-#include "pwm_sp7021.h"
+#include "pwm-sp7021.h"
 
 /**************************************************************************
  *                           C O N S T A N T S                            *
