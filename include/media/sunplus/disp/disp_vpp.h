@@ -1,7 +1,7 @@
 #ifndef __DISP_VPP_H__
 #define __DISP_VPP_H__
 
-#include <media/sp-disp/display.h>
+#include <media/sunplus/disp/sp7021/display.h>
 
 void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2);
 int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h);

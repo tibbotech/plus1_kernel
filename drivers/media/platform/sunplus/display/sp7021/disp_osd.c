@@ -32,7 +32,7 @@
 #include "reg_disp.h"
 #include "hal_disp.h"
 #include "disp_palette.h"
-#include <media/sp-disp/disp_osd.h>
+#include <media/sunplus/disp/sp7021/disp_osd.h>
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 #include <linux/clk.h>

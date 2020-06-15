@@ -34,7 +34,7 @@
 #include <linux/uaccess.h>
 #include <asm/cacheflush.h>
 
-#include <media/sp-disp/disp_osd.h>
+#include <media/sunplus/disp/sp7021/disp_osd.h>
 #include "fb_sp7021_main.h"
 #include "FontAPI.h"
 

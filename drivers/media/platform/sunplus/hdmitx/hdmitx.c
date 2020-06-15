@@ -14,7 +14,7 @@
 #include <linux/err.h>
 #include <linux/uaccess.h>
 #include <linux/mutex.h>
-#include <media/sp-disp/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 #include <linux/of_device.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
@@ -22,7 +22,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#include <media/sp-disp/display.h> //#ifdef TIMING_SYNC_720P60
+#include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/

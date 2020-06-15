@@ -5,7 +5,7 @@
  *					INCLUDE DECLARATIONS
  *---------------------------------------------------------------------------*/
 #include <linux/kernel.h>
-#include <media/sp-disp/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS

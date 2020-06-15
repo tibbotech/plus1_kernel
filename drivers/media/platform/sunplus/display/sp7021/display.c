@@ -50,10 +50,10 @@
 
 #include "reg_disp.h"
 #include "hal_disp.h"
-#include <media/sp-disp/display.h>
+#include <media/sunplus/disp/sp7021/display.h>
 
 #ifdef TIMING_SYNC_720P60
-#include <media/sp-disp/hdmitx.h>
+#include <media/sunplus/hdmi/hdmitx.h>
 #endif
 
 #ifdef SP_DISP_V4L2_SUPPORT

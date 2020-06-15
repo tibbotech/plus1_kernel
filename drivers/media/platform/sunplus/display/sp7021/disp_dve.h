@@ -1,7 +1,7 @@
 #ifndef __DISP_DVE_H__
 #define __DISP_DVE_H__
 
-#include <media/sp-disp/display.h>
+#include <media/sunplus/disp/sp7021/display.h>
 
 void DRV_DVE_Init(void *pInHWReg);
 #ifdef TTL_MODE_SUPPORT
