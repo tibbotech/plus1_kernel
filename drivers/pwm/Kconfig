@@ -436,7 +436,7 @@ config PWM_SPRD
 
 config PWM_SP7021
 	tristate "Sunplus SP7021 PWM support"
-	depends on SOC_SP7021 || SOC_I143
+	depends on SOC_SP7021
 	help
 	  Generic PWM driver for Sunplus SP7021 and I143 SoC.
 
