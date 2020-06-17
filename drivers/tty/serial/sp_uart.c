@@ -79,7 +79,8 @@ struct sunplus_uart_port {
 	struct reset_control *rstc;
 	struct gpio_desc *DE_RE_dir;
 	struct hrtimer CheckTXE;
-	struct hrtimer RtsDelay;
+	struct hrtimer DelayRtsBeforeSend;
+	struct hrtimer DelayRtsAfterSend;
 };
 struct sunplus_uart_port sunplus_uart_ports[NUM_UART];
 
@@ -484,8 +485,11 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
 			{
 				gpiod_set_value(sp_port->DE_RE_dir,1);
-				ktime = ktime_set(0,500000);//500us
-				hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);		
+				if(sp_port->uport.rs485.delay_rts_before_send == 0)
+				{
+					ktime = ktime_set(0,500000);//500us
+					hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);
+				}
 			}
 		}
 	}
@@ -576,13 +580,30 @@ static void sunplus_uart_ops_stop_tx(struct uart_port *port)
  * Interrupts: locally disabled.
  * This call must not sleep
  */
-static void sunplus_uart_ops_start_tx(struct uart_port *port)
+static inline void __start_tx(struct uart_port *port)
 {
 	unsigned int isc;
-
-	/* Even if (uartdma_tx != NULL), "BUF_NOT_FULL" interrupt is used for getting into ISR */
+	
 	isc = sp_uart_get_int_en(port->membase) | SP_UART_ISC_TXM;
 	sp_uart_set_int_en(port->membase, isc);
+}
+
+static void sunplus_uart_ops_start_tx(struct uart_port *port)
+{
+	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
+	ktime_t ktime;
+
+	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
+	{	
+		if(sp_port->uport.rs485.delay_rts_before_send > 0)
+		{
+			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
+			ktime = ktime_set(0,nsec);
+			hrtimer_start(&sp_port->DelayRtsBeforeSend,ktime,HRTIMER_MODE_REL);	
+			return;
+		}
+	}
+    __start_tx(port);	
 }
 
 /*
@@ -962,7 +983,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
 	{
-		hrtimer_cancel(&sp_port->RtsDelay);	
+		hrtimer_cancel(&sp_port->DelayRtsAfterSend);	
 		//DBG_INFO("hrtimer_cancel\n");
 	}
 #ifdef CONFIG_PM_RUNTIME_UART
@@ -1581,14 +1602,15 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
     unsigned char lsr;
 	struct sunplus_uart_port *rs485;
 	unsigned char mcr;
-	ktime_t ktime;
+	ktime_t ktime;	
+	unsigned long nsec;
 
 	rs485 = container_of(t, struct sunplus_uart_port, CheckTXE);
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	lsr = sp_uart_get_line_status(rs485->uport.membase);
 	if(lsr & SP_UART_LSR_TXE)
 	{			
-		unsigned long nsec = rs485->uport.rs485.delay_rts_after_send * 1000000;
+		nsec = rs485->uport.rs485.delay_rts_after_send*1000000;
 		if(nsec == 0)
 		{
 			if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
@@ -1600,8 +1622,8 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 		}
 		else
 		{
-			ktime = ktime_set(0,nsec);
-			hrtimer_start(&rs485->RtsDelay,ktime,HRTIMER_MODE_REL);		
+ 		    ktime = ktime_set(0,nsec);
+			hrtimer_start(&rs485->DelayRtsAfterSend,ktime,HRTIMER_MODE_REL);		
 		}
 		//DBG_INFO("TXE\n");	
 		return HRTIMER_NORESTART;
@@ -1609,12 +1631,24 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 	return HRTIMER_RESTART;
 }
 
-static enum hrtimer_restart Rts_Delay(struct hrtimer *t)
+static enum hrtimer_restart Delay_Rts_Before_Send(struct hrtimer *t)
+{
+	struct sunplus_uart_port *rs485;
+	ktime_t ktime;	
+	
+	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsBeforeSend);
+	ktime = ktime_set(0,500000);//500us
+	hrtimer_start(&rs485->CheckTXE,ktime,HRTIMER_MODE_REL);
+	__start_tx(&rs485->uport);	
+	return HRTIMER_NORESTART;
+}
+
+static enum hrtimer_restart Delay_Rts_After_Send(struct hrtimer *t)
 {
 	struct sunplus_uart_port *rs485;
 	unsigned char mcr;
 	
-	rs485 = container_of(t, struct sunplus_uart_port, RtsDelay);
+	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsAfterSend);
 	gpiod_set_value(rs485->DE_RE_dir,0);
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
@@ -1623,7 +1657,6 @@ static enum hrtimer_restart Rts_Delay(struct hrtimer *t)
 		mcr &= ~SP_UART_MCR_RTS;  
 	
 	sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
-	//DBG_INFO("Delay_end\n");		
 	return HRTIMER_NORESTART;
 }
 
@@ -1831,8 +1864,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].DE_RE_dir));
 			hrtimer_init(&sunplus_uart_ports[pdev->id].CheckTXE, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 			sunplus_uart_ports[pdev->id].CheckTXE.function = Check_TXE;
-			hrtimer_init(&sunplus_uart_ports[pdev->id].RtsDelay, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-			sunplus_uart_ports[pdev->id].RtsDelay.function = Rts_Delay;
+			hrtimer_init(&sunplus_uart_ports[pdev->id].DelayRtsBeforeSend, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+			sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = Delay_Rts_Before_Send;			
+			hrtimer_init(&sunplus_uart_ports[pdev->id].DelayRtsAfterSend, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+			sunplus_uart_ports[pdev->id].DelayRtsAfterSend.function = Delay_Rts_After_Send;
 		}
 	}	
 
