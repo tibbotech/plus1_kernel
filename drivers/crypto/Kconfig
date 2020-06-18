@@ -12,7 +12,7 @@ menuconfig CRYPTO_HW
 if CRYPTO_HW
 config CRYPTO_DEV_SP
 	tristate "Support for Sunplus Crypto Engine"
-	depends on ARCH_PENTAGRAM
+	depends on SOC_SP7021
 	select CRYPTO_BLKCIPHER
 	select MPILIB
 	help
