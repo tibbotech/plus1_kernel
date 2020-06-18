@@ -506,6 +506,14 @@
 			pinctrl-0 = <&hdmi_A_tx1>;
 		};
 
+		pwm: pwm@0x9c007a00 {
+			#pwm-cells = <2>;
+			compatible = "sunplus,i143-pwm";
+			reg = <0x0 0x9c007a00 0x0 0x100>;
+			clocks = <&clkc DISP_PWM>;
+			resets = <&rstc RST_DISP_PWM>;
+		};
+
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,
