@@ -499,7 +499,7 @@
 			compatible = "sunplus,i143-hdmitx";
 			clocks = <&clkc HDMI_TX>;
 			resets = <&rstc RST_HDMI_TX>;
-			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>, <0x9C000080 0x80>;
+			reg = <0x0 0x9C00BE00 0x0 0x3FC>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>, <0x0 0x9C000080 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
@@ -565,10 +565,6 @@
 			};
 			hdmi_A_tx2: hdmi_A_tx2_pins {
 				sppctl,groups = "HDMI_TX2";
-				sppctl,function = "HDMI_TX";
-			};
-			hdmi_A_tx3: hdmi_A_tx3_pins {
-				sppctl,groups = "HDMI_TX3";
 				sppctl,function = "HDMI_TX";
 			};
 		};
