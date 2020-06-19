@@ -22,7 +22,7 @@
 #include <asm/cacheflush.h>
 #include "../../../../arch/arm/mm/dma.h"
 #ifdef CONFIG_USB_SUNPLUS_OTG
-#include "../../phy/otg-sunplus.h"
+#include "../../../../phy/otg-sunplus.h"
 #endif
 
 #ifdef CONFIG_FIQ_GLUE
@@ -1151,8 +1151,12 @@ static void sp_udc_handle_ep0s(struct sp_udc *dev)
 	case EP0_IN_DATA_PHASE:
 		DEBUG_DBG("EP0_IN_DATA_PHASE ... what now?\n");
 		if (req->req.length != req->req.actual) {
+			#if 0
 			if (sp_udc_write_ep0_fifo(ep, req) && udc_read(EP0_IVLD)) {
 				udc_write(udc_read(UDEP0CS) | SET_EP0_IN_VLD, UDEP0CS);
+			#else		//shih test
+			if (sp_udc_write_ep0_fifo(ep, req)) {
+			#endif
 				udc_write(udc_read(UDLIE) & (~EP0I_IF), UDLIE);
 				udc_write(udc_read(UDEP0CS) & (~EP_DIR), UDEP0CS);
 				ep->dev->ep0state = EP0_IDLE;
@@ -1244,7 +1248,11 @@ static inline int sp_udc_write_packet(int fifo, struct sp_request *req,
 
 	if (m > 0) {
 		udc_write(((1 << m) - 1), offset);
+		#if 0
 		memcpy((char *)(base_addr + fifo), (char *)(buf + n * 4), 4);
+		#else	//shih test
+		memcpy((char *)(base_addr + fifo), (char *)(buf + n * 4), m);
+		#endif
 	}
 
 	return len;
@@ -1289,7 +1297,9 @@ static int sp_udc_write_ep0_fifo(struct sp_ep *ep,
 		return -1;
 	}
 
+	#if 0	//shih test mark
 	udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
+	#endif
 	count = sp_udc_write_packet(UDEP0DP, req, ep->ep.maxpacket, UDEP0VB);
 	udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
 	udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
@@ -1319,6 +1329,7 @@ static int sp_udc_read_ep0_fifo(struct sp_ep *ep,
 
 	if (!req->req.length)
 		return 1;
+
 	idx = ep->bEndpointAddress & 0x7F;
 	buf = req->req.buf + req->req.actual;
 	bufferspace = req->req.length - req->req.actual;
@@ -3976,8 +3987,12 @@ iap_addr:
 			//	  udc_read(UDEP0CS));
 			switch (dev->ep0state) {
 			case EP0_IN_DATA_PHASE:
+				#if 0
 				if (sp_udc_write_ep0_fifo(ep, req) && udc_read(EP0_IVLD)) {
 					udc_write(udc_read(UDEP0CS) | SET_EP0_IN_VLD, UDEP0CS);
+				#else		//shih test
+				if (sp_udc_write_ep0_fifo(ep, req)) {
+				#endif
 					ret = 0;
 				}
 				break;
