@@ -24,7 +24,6 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
-#include <dt-bindings/pinctrl/sp7021.h>
 #endif
 #include <linux/delay.h>
 #include <linux/hrtimer.h>

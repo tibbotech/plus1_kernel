@@ -1,6 +1,6 @@
 /*
  * GPIO Driver for Sunplus I143 controller
- * Copyright (C) 2019 SunPlus Tech./Tibbo Tech.
+ * Copyright (C) 2020 SunPlus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -14,10 +14,10 @@
  * GNU General Public License for more details.
  */
 
-#include "sp7021_gpio.h"
+#include "sppctl_gpio.h"
 
 
-const char * const sp7021gpio_list_s[] = {
+const char * const sppctlgpio_list_s[] = {
 	D_PIS(  0), D_PIS(  1), D_PIS(  2), D_PIS(  3), D_PIS(  4), D_PIS(  5), D_PIS(  6), D_PIS(  7),
 	D_PIS(  8), D_PIS(  9), D_PIS( 10), D_PIS( 11), D_PIS( 12), D_PIS( 13), D_PIS( 14), D_PIS( 15),
 	D_PIS( 16), D_PIS( 17), D_PIS( 18), D_PIS( 19), D_PIS( 20), D_PIS( 21), D_PIS( 22), D_PIS( 23),
@@ -34,4 +34,4 @@ const char * const sp7021gpio_list_s[] = {
 	D_PIS(104), D_PIS(105), D_PIS(106), D_PIS(107)
 };
 
-const size_t GPIS_listSZ = sizeof(sp7021gpio_list_s)/sizeof(*(sp7021gpio_list_s));
+const size_t GPIS_listSZ = sizeof(sppctlgpio_list_s)/sizeof(*(sppctlgpio_list_s));

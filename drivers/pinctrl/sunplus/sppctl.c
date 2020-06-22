@@ -1,6 +1,6 @@
 /*
  * SP7021 pinmux controller driver.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
+ * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -146,7 +146,7 @@ void sppctl_loadfw(struct device *_dev, const char *_fwname)
 	if (ret) KERR(_dev, "Can't load '%s'\n", _fwname);
 }
 
-int sp7021_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
+int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 {
 	struct resource *rp;
 
@@ -261,7 +261,7 @@ static int sppctl_dnew(struct platform_device *_pd)
 	else strcpy(p->name, MNAME);
 	dev_set_name(&(_pd->dev), "%s", p->name);
 
-	if ((ret = sp7021_pctl_resmap(_pd, p)) != 0) return (ret);
+	if ((ret = sppctl_pctl_resmap(_pd, p)) != 0) return (ret);
 
 	// set gpio_chip
 	_pd->dev.platform_data = p;
@@ -270,7 +270,7 @@ static int sppctl_dnew(struct platform_device *_pd)
 	if (fwfname) strcpy(p->fwname, fwfname);
 	sppctl_loadfw(&(_pd->dev), p->fwname);
 
-	if ((ret = sp7021_gpio_new(_pd, p)) != 0) return (ret);
+	if ((ret = sppctl_gpio_new(_pd, p)) != 0) return (ret);
 	if ((ret = sppctl_pinctrl_init(_pd)) != 0) return (ret);
 
 	pinctrl_add_gpio_range(p->pcdp, &(p->gpio_range));
@@ -282,7 +282,7 @@ static int sppctl_ddel(struct platform_device *_pd)
 {
 	sppctl_pdata_t *p = (sppctl_pdata_t *)_pd->dev.platform_data;
 
-	sp7021_gpio_del(_pd, p);
+	sppctl_gpio_del(_pd, p);
 	sppctl_sysfs_clean(_pd);
 	sppctl_pinctrl_clea(_pd);
 	return (0);

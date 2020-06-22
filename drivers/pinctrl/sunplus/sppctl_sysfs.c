@@ -1,6 +1,6 @@
 /*
  * SP7021 pinmux controller driver.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
+ * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,7 @@
  */
 
 #include "sppctl_sysfs.h"
-#include "sp7021_gpio_ops.h"
+#include "sppctl_gpio_ops.h"
 #include "sppctl_pinctrl.h"
 
 
