@@ -405,6 +405,8 @@ int pentagram_spi_slave_dma_rw(struct spi_controller *ctlr, struct spi_transfer 
 	}
 
 
+
+
 	ret = 0;
 
 
@@ -1418,28 +1420,53 @@ if (spi_controller_is_slave(ctlr)){
 		void *nonconst_tx = (void *)xfer->tx_buf;
 
 		xfer->tx_dma = dma_map_single(dev, nonconst_tx,
-					      xfer->len, DMA_TO_DEVICE);			  
+					      xfer->len, DMA_TO_DEVICE);
+
 		if (dma_mapping_error(dev, xfer->tx_dma)) {
-			xfer->tx_dma = pspim->tx_dma_phy_base;
-			memcpy(pspim->tx_dma_vir_base, xfer->tx_buf, xfer->len);  
+			if(xfer->len <= bufsiz){
+			    xfer->tx_dma = pspim->tx_dma_phy_base;
+			    //memcpy(pspim->tx_dma_vir_base, xfer->tx_buf, xfer->len);
+			    mode = SPI_SLAVE_RW;
+			}else{
+			    mode = SPI_IDLE;
+			}
+		}else{
+			mode = SPI_SLAVE_RW;
 		}
-		mode = SPI_SLAVE_RW;
 	}
 
 	if (xfer->rx_buf) {
+		
 		xfer->rx_dma = dma_map_single(dev, xfer->rx_buf,
 					      xfer->len, DMA_FROM_DEVICE);
-		if ((dma_mapping_error(dev, xfer->rx_dma)) && (mode == SPI_SLAVE_RW)) {
-			xfer->rx_dma = pspim->rx_dma_phy_base;			
-
+		
+		if (dma_mapping_error(dev, xfer->rx_dma)) {
+			if(xfer->len <= bufsiz){
+			    xfer->rx_dma = pspim->rx_dma_phy_base;
+			    mode = SPI_SLAVE_RW;				
+			}else{
+				if(mode == SPI_SLAVE_RW){
+			        dma_unmap_single(dev, xfer->tx_dma,
+					         xfer->len, DMA_TO_DEVICE);
+				}
+			    mode = SPI_IDLE;
+			}
+		}else{
+			mode = SPI_SLAVE_RW;
 		}
-		mode = SPI_SLAVE_RW;
+
+
 	}
 
 
     if(mode == SPI_SLAVE_RW){
 		ret = pentagram_spi_slave_dma_rw(ctlr, xfer);
     }
+
+
+    //if((xfer->rx_buf) && (xfer->rx_dma == pspim->rx_dma_phy_base)){
+	//    memcpy(xfer->rx_buf, pspim->rx_dma_vir_base, xfer->len);  
+    //}
 
 
     if((xfer->tx_buf) && (xfer->tx_dma != pspim->tx_dma_phy_base)){
@@ -1465,21 +1492,35 @@ if((xfer->len) > FIFO__SIZE){
 		xfer->tx_dma = dma_map_single(dev, nonconst_tx,
 					      xfer->len, DMA_TO_DEVICE);
 		if (dma_mapping_error(dev, xfer->tx_dma)) {
-			mode = SPI_IDLE;
+			if(xfer->len <= bufsiz){
+			    xfer->tx_dma = pspim->tx_dma_phy_base;
+			    //memcpy(pspim->tx_dma_vir_base, xfer->tx_buf, xfer->len);
+			    mode = SPI_MASTER_DMA_RW;
+			}else{
+			    mode = SPI_IDLE;
+			}
+		}else{
+			mode = SPI_MASTER_DMA_RW;
 		}
-		mode = SPI_MASTER_DMA_RW;
 	}
 
 	if (xfer->rx_buf) {
 		xfer->rx_dma = dma_map_single(dev, xfer->rx_buf,
 					      xfer->len, DMA_FROM_DEVICE);
-		if ((dma_mapping_error(dev, xfer->rx_dma)) && (mode == SPI_MASTER_DMA_RW)) {
-
-			dma_unmap_single(dev, xfer->tx_dma,
-					 xfer->len, DMA_TO_DEVICE);
-
+		if (dma_mapping_error(dev, xfer->rx_dma)) {
+			if(xfer->len <= bufsiz){
+			    xfer->rx_dma = pspim->rx_dma_phy_base;
+			    mode = SPI_MASTER_DMA_RW;
+			}else{
+				if(mode == SPI_SLAVE_RW){
+			        dma_unmap_single(dev, xfer->tx_dma,
+					         xfer->len, DMA_TO_DEVICE);
+				}
+			    mode = SPI_IDLE;
+			}
+		}else{
+		    mode = SPI_MASTER_DMA_RW;
 		}
-		mode = SPI_MASTER_DMA_RW;
 	}
 
 }
