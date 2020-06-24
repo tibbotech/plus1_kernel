@@ -182,7 +182,7 @@
 			mmc1_mux: mmc1_mux {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
-				sppctl,pins = < I143_IOPAD(63,I143_PCTL_G_GPIO,0,0) >;
+				sppctl,pins = < SPPCTL_IOPAD(63,SPPCTL_PCTL_G_GPIO,0,0) >;
 			};
 
 			gl2sw_pins: gl2sw_pins {
