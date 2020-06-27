@@ -1,6 +1,6 @@
 /*
  * Sunplus I143 pinmux controller driver.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2019
+ * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -23,8 +23,8 @@
 int sppctl_pinctrl_init(struct platform_device *_pdev);
 void sppctl_pinctrl_clea(struct platform_device *_pdev);
 
-extern const struct pinctrl_pin_desc sp7021pins_all[];
-extern const size_t sp7021pins_allSZ;
-extern const unsigned sp7021pins_G[];
+extern const struct pinctrl_pin_desc sppctlpins_all[];
+extern const size_t sppctlpins_allSZ;
+extern const unsigned sppctlpins_G[];
 
 #endif // SPPCTL_PINCTRL_H
