@@ -474,7 +474,11 @@ void group_groups(struct platform_device *_pd)
 			j++;
 		}
 	}
+#ifdef CONFIG_64BIT
 	KINF(&(_pd->dev), "funcs: %ld unq_grps: %ld\n", list_funcsSZ, unq_grpsSZ);
+#else
+	KINF(&(_pd->dev), "funcs: %d unq_grps: %d\n", list_funcsSZ, unq_grpsSZ);
+#endif
 }
 
 // ---------- main (exported) functions
