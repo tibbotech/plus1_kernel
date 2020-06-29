@@ -1,13 +1,9 @@
 /dts-v1/;
 
-#include "sp7021-common.dtsi"
+#include "sp7021-ChipC.dtsi"
 
 / {
-#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
 	model = "SP7021/CA7/Demo V1,V2";
-#else
-	model = "SP7021/ARM926/Demo V1,V2";
-#endif
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
