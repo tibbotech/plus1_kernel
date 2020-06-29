@@ -99,11 +99,7 @@ typedef struct sppctl_reg_T {
 } sppctl_reg_t;
 
 #include "sppctl_sysfs.h"
-#ifdef CONFIG_SOC_SP7021
 #include "sppctl_pinctrl.h"
-#else
-#include "sppctl_pinctrl_i143.h"
-#endif
 
 void sppctl_gmx_set(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
 uint8_t sppctl_gmx_get(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);

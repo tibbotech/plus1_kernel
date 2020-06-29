@@ -169,11 +169,11 @@ int stpctl_m_f_grp(struct pinctrl_dev *_pd, unsigned _fid, const char * const **
 		*_gnum = GPIS_listSZ;
 		*grps = sppctlgpio_list_s;
 		break;
-	case fOFF_M:   // MUX :
+	case fOFF_M:   // pin-mux
 		*_gnum = PMUX_listSZ;
 		*grps = sppctlpmux_list_s;
 		break;
-	case fOFF_G:   // some IOP func
+	case fOFF_G:   // pin-group
 		if (!f->grps) break;
 		*_gnum = f->gnum;
 		*grps = (const char * const *)f->grps_sa;
@@ -338,6 +338,22 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 
 	parent = of_get_parent(_dn);
 	*_nm = size/sizeof(*list);
+
+	// Check if out of range or invalid?
+	for (i = 0; i < (*_nm); i++) {
+		dt_pin = be32_to_cpu(list[i]);
+		p_p = SPPCTL_PCTLD_P(dt_pin);
+		p_g = SPPCTL_PCTLD_G(dt_pin);
+		if ((p_p >= sppctlpins_allSZ)
+#ifdef CONFIG_SOC_I143
+			|| (p_g == SPPCTL_PCTL_G_PMUX)
+#endif
+		) {
+			KDBG(_pd->dev, "Invalid pin property at index %d (0x%08x)\n", i, dt_pin);
+			return -EINVAL;
+		}
+	}
+
 	*_map = kcalloc(*_nm + nmG, sizeof(**_map), GFP_KERNEL);
 	for (i = 0; i < (*_nm); i++) {
 		dt_pin = be32_to_cpu(list[i]);
@@ -346,7 +362,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 		p_f = SPPCTL_PCTLD_F(dt_pin);
 		p_l = SPPCTL_PCTLD_L(dt_pin);
 		(* _map)[i].name = parent->name;
-		KDBG(_pd->dev, "map [%d]=%d p=%d g=%d f=%d l=%d\n", i, dt_pin, p_p, p_g, p_f, p_l);
+		KDBG(_pd->dev, "map [%d]=%08x p=%d g=%d f=%d l=%d\n", i, dt_pin, p_p, p_g, p_f, p_l);
 		if (p_g == SPPCTL_PCTL_G_GPIO) {
 			// look into parse_dt_cfg(),
 			(* _map)[i].type = PIN_MAP_TYPE_CONFIGS_PIN;
@@ -372,7 +388,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 		}
 	}
 
-	// handle function and group (IOP)
+	// handle pin-group function
 	if (nmG > 0 && of_property_read_string(_dn, "sppctl,function", &s_f) == 0) {
 		KDBG(_pd->dev, "found func: %s\n", s_f);
 		of_property_for_each_string(_dn, "sppctl,groups", prop, s_g) {
@@ -411,7 +427,9 @@ static struct pinctrl_ops sppctl_pctl_ops = {
 	.get_groups_count = stpctl_o_g_cnt,
 	.get_group_name   = stpctl_o_g_nam,
 	.get_group_pins   = stpctl_o_g_pins,
+#ifdef CONFIG_DEBUG_FS
 	.pin_dbg_show     = stpctl_o_show,
+#endif
 	.dt_node_to_map   = stpctl_o_n2map,
 	.dt_free_map      = stpctl_o_mfre,
 };
@@ -457,7 +475,11 @@ void group_groups(struct platform_device *_pd)
 			j++;
 		}
 	}
-	KINF(&(_pd->dev), "funcs:%d unq_grps:%d\n", list_funcsSZ, unq_grpsSZ);
+#ifdef CONFIG_64BIT
+	KINF(&(_pd->dev), "funcs: %ld unq_grps: %ld\n", list_funcsSZ, unq_grpsSZ);
+#else
+	KINF(&(_pd->dev), "funcs: %d unq_grps: %d\n", list_funcsSZ, unq_grpsSZ);
+#endif
 }
 
 // ---------- main (exported) functions
