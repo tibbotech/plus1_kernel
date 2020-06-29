@@ -43,7 +43,7 @@
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	spi1: spi@ {
+	spi1: spi@0 {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <25000000>;
 		reg = <0x0>;
@@ -57,7 +57,7 @@
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	spi2: spi@ {
+	spi2: spi@0 {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <25000000>;
 		reg = <0x0>;
