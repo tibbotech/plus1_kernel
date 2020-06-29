@@ -147,7 +147,7 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	gchip->can_sleep =         0;
 #if defined(CONFIG_OF_GPIO)
 	gchip->of_node =           np;
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 	gchip->of_gpio_n_cells =   2;
 #endif
 #endif
@@ -201,7 +201,7 @@ int sppctl_gpio_del(struct platform_device *_pd, void *_datap)
 
 #ifndef SPPCTL_H
 static const struct of_device_id sppctl_gpio_of_match[] = {
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 	{ .compatible = "sunplus,sp7021-gpio" },
 #else
 	{ .compatible = "sunplus,i143-gpio" },

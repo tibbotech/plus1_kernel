@@ -38,7 +38,7 @@
 
 #ifndef SPPCTL_H
 
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 #define MNAME "sp7021_gpio"
 #define M_NAM "SP7021 GPIO"
 #else
@@ -82,7 +82,7 @@ extern const size_t GPIS_listSZ;
 int sppctl_gpio_new(struct platform_device *_pd, void *_datap);
 int sppctl_gpio_del(struct platform_device *_pd, void *_datap);
 
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 #define D_PIS(x,y) "P" __stringify(x) "_0" __stringify(y)
 #else
 #define D_PIS(x) "GPIO" __stringify(x)

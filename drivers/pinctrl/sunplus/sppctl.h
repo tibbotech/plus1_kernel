@@ -20,7 +20,7 @@
 #define MNAME "sppctl"
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 #define M_NAM "SP7021 PinCtl"
 #else
 #define M_NAM "I143 PinCtl"
@@ -49,7 +49,7 @@
 #include <linux/pinctrl/pinconf.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/pinctrl/pinconf-generic.h>
-#ifdef CONFIG_SOC_SP7021
+#ifdef CONFIG_PINCTRL_SPPCTL
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #else
 #include <dt-bindings/pinctrl/sppctl-i143.h>

@@ -20,6 +20,9 @@
 #include "sppctl_pinctrl.h"
 #include "sppctl_gpio_ops.h"
 
+#ifdef CONFIG_PINCTRL_SPPCTL
+#define SUPPORT_PINMUX
+#endif
 
 char const ** unq_grps = NULL;
 size_t unq_grpsSZ = 0;
@@ -345,7 +348,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 		p_p = SPPCTL_PCTLD_P(dt_pin);
 		p_g = SPPCTL_PCTLD_G(dt_pin);
 		if ((p_p >= sppctlpins_allSZ)
-#ifdef CONFIG_SOC_I143
+#ifndef SUPPORT_PINMUX
 			|| (p_g == SPPCTL_PCTL_G_PMUX)
 #endif
 		) {
