@@ -1,6 +1,6 @@
 /*
  * GPIO Driver for SunPlus/Tibbo SP7021 controller
- * Copyright (C) 2019 SunPlus Tech./Tibbo Tech.
+ * Copyright (C) 2020 SunPlus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -14,9 +14,9 @@
  * GNU General Public License for more details.
  */
 
-#include "sp7021_gpio.h"
+#include "sppctl_gpio.h"
 
-const char * const sp7021gpio_list_s[] = {
+const char * const sppctlgpio_list_s[] = {
 	D_PIS( 0,0), D_PIS( 0,1), D_PIS( 0,2), D_PIS( 0,3), D_PIS( 0,4), D_PIS( 0,5), D_PIS( 0,6), D_PIS( 0,7),
 	D_PIS( 1,0), D_PIS( 1,1), D_PIS( 1,2), D_PIS( 1,3), D_PIS( 1,4), D_PIS( 1,5), D_PIS( 1,6), D_PIS( 1,7),
 	D_PIS( 2,0), D_PIS( 2,1), D_PIS( 2,2), D_PIS( 2,3), D_PIS( 2,4), D_PIS( 2,5), D_PIS( 2,6), D_PIS( 2,7),
@@ -32,4 +32,4 @@ const char * const sp7021gpio_list_s[] = {
 	D_PIS(12,0), D_PIS(12,1), D_PIS(12,2),
 };
 
-const size_t GPIS_listSZ = sizeof(sp7021gpio_list_s)/sizeof(*(sp7021gpio_list_s));
+const size_t GPIS_listSZ = sizeof(sppctlgpio_list_s)/sizeof(*(sppctlgpio_list_s));
