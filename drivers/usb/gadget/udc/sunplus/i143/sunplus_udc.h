@@ -72,7 +72,7 @@ static const char ep0name[] = "ep0";
 static const char *const ep_name[31] = {
 	ep0name,			/* everyone has ep0 */
 	/* SPNEW four bidirectional bulk endpoints */
-	"ep1-bulk", "ep2-bulk", "ep3-bulk", "ep4-bulk",
+	"ep1-bulk", "ep2-bulk", "ep3-bulk",
 };
 
 #define SPNEW_ENDPOINTS		ARRAY_SIZE(ep_name)
@@ -131,7 +131,9 @@ struct trb {
 	u32 entry3;
 };
 
-/* endpoint n (n != 0) descriptor */	//shih test
+/* frame number */
+#define GET_FRNUM(x)		(x >> 3)
+/* endpoint n (n != 0) descriptor */
 #define DESC_TRDP(x)		((x) & 0xFFFFFFF0)
 /* transfer ring normal TRB */
 #define TRB_PTR(x)		(x)			/* entry0 */
@@ -189,7 +191,7 @@ struct ers_table {
 #define UDC_SUSPEND		193
 #define UDC_RESUME		194
 
-	#if 1	//regs, shih test
+/**/
 #define DEVC_VER		0x00
 #define DEVC_MMR		0x04
 #define DEVC_PARAM		0x10
@@ -230,7 +232,6 @@ struct ers_table {
 #define USBD_DEBUG_PP		0x284
 
 #define EP_CS(idx)		(EP1_CS + (idx - 1) * 4)
-	#endif
 
 static u32 event_ccs = 1;
 static struct spnew_udc *gSpnew_udc = NULL;

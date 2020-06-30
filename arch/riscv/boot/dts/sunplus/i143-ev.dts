@@ -445,6 +445,24 @@
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
+		sp_udc0: usb@0x9c101800 {
+			compatible = "sunplus,i143-usb-udc0";
+			clocks = <&clkc USBC0>;
+			resets = <&rstc RST_USBC0>;
+			reg = <0x0 0x9c101800 0x0 0x400>;
+			interrupt-parent = <&intc>;
+			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+		sp_udc1: usb@0x9c102800 {
+			compatible = "sunplus,i143-usb-udc1";
+			clocks = <&clkc USBC1>;
+			resets = <&rstc RST_USBC1>;
+			reg = <0x0 0x9c102800 0x0 0x400>;
+			interrupt-parent = <&intc>;
+			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
 		sp_otg0: usb@0x9c102400 {
 			compatible = "sunplus,i143-usb-otg0";
 			reg = <0x0 0x9c102400 0x0 0x70>, <0x0 0x9c102880 0x0 0x80>, <0x0 0x9c000200 0x0 0x80>;

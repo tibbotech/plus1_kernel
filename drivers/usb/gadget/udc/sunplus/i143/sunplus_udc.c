@@ -33,22 +33,16 @@
 
 #include <linux/usb.h>
 #include <linux/usb/gadget.h>
+#include <linux/usb/gadget_chips.h>
 #include <linux/usb/composite.h>
+#include <linux/usb/sp_usb.h>
 
 #include <asm/byteorder.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/unaligned.h>
-#include <mach/irqs.h>
 
-#include <mach/hardware.h>
-
-//#include <plat/regs-udc.h>
-//#include <plat/udc.h>
-
-#include "spnew_udc.h"
-#include "spnew_udc_regs.h"
-
+#include "sunplus_udc.h"
 
 
 #define DRIVER_DESC "Sunplus new USB Device Controller Gadget"
@@ -58,13 +52,27 @@
 static const char gadget_name[] = "spnew_udc";
 static const char driver_desc[] = DRIVER_DESC;
 
+#ifdef CONFIG_GADGET_USB0
+uint accessory_port_id = USB_PORT0_ID;
+#else
+uint accessory_port_id = USB_PORT1_ID;
+#endif
+module_param(accessory_port_id, uint, 0644);
+EXPORT_SYMBOL_GPL(accessory_port_id);
+
 static struct spnew_udc	*the_controller;
 static struct clk	*udc_clock;
-static struct clk	*usb_bus_clock;
+static int irq_num = 0;
 static void __iomem	*base_addr;
-static u64		rscr_start;
-static u64		rscr_len;
+static u64		rsrc_start;
+static u64		rsrc_len;
 static struct spnew_udc memory;
+
+static u32 dmsg = 0x2;
+#define DEBUG_DBG(fmt, arg...)		do { if (dmsg&(1<<0)) printk(KERN_DEBUG fmt,##arg); } while (0)
+#define DEBUG_NOTICE(fmt, arg...)	do { if (dmsg&(1<<1)) printk(KERN_NOTICE fmt,##arg); } while (0)
+#define DEBUG_INFO(fmt, arg...)		do { if (dmsg&(1<<2)) printk(KERN_INFO fmt,##arg); } while (0)
+#define DEBUG_ERR(fmt, arg...)		do { printk(KERN_ERR fmt,##arg); } while (0)
 
 static inline u32 udc_read(u32 reg)
 {
@@ -80,8 +88,6 @@ static inline void udc_writeb(void __iomem *base, u32 value, u32 reg)
 {
 	writeb(value, base + reg);
 }
-
-//static struct s3c2410_udc_mach_info *udc_info;
 
 /*************************** DEBUG FUNCTION ***************************/
 #define DEBUG_NORMAL	1
@@ -182,13 +188,22 @@ static void spnew_udc_nuke(struct spnew_udc *udc,
 	while (!list_empty(&ep->queue)) {
 		struct spnew_request *req;
 		req = list_entry(ep->queue.next, struct spnew_request,
-#if 1	//shih test
 		    		 queue);
-#else
-		    		 ep->queue);
-#endif
 		spnew_udc_done(ep, req, status);
 	}
+}
+
+static struct usb_ep *
+find_ep (struct usb_gadget *gadget, const char *name)
+{
+	struct usb_ep *_ep = &memory.ep[1].ep;
+
+	list_for_each_entry (_ep, &gadget->ep_list, ep_list) {
+		if (strcmp (_ep->name, name) == 0)
+			return _ep;
+	}
+
+	return NULL;
 }
 
 /*------------------------------------- usb state machine
@@ -196,6 +211,7 @@ static void spnew_udc_nuke(struct spnew_udc *udc,
 static int spnew_event_ring_init(void);
 static int spnew_udc_set_halt(struct usb_ep *_ep, int value);
 
+#if 0
 static int spnew_udc_get_status(struct spnew_udc *dev,
 			struct usb_ctrlrequest *crq)
 {
@@ -210,7 +226,7 @@ static int spnew_udc_get_status(struct spnew_udc *dev,
 			status = dev->devstatus;
 			break;
 		case USB_RECIP_ENDPOINT:
-#if 1		//shih test
+#if 1
 			if (ep_num >= SPNEW_ENDPOINTS || crq->wLength > 2)
 #else
 			if (ep_num > 30 || crq->wLength >2)
@@ -223,12 +239,13 @@ static int spnew_udc_get_status(struct spnew_udc *dev,
 			return 1;
 	}
 
-#if 1		//shih test
+#if 1
 	return status;
 #else
 	return 0;
 #endif
 }
+#endif
 
 static int check_trb_status(struct trb *t_trb)
 {
@@ -294,24 +311,18 @@ static void process_trans_event(struct trb *t_trb)
 	struct spnew_request *req;
 	u32 ep_num = 0;
 	u32 er_trans_len = 0;
-#if 1	//shih test
 	u32 tr_trans_len = 0;
-#endif
 	u8 *data_buf;	// u8 ??
 
-	trans_trb = (struct trb *) t_trb->entry0;
+	trans_trb = (struct trb *)(u64)t_trb->entry0;
 	ep_num = ETRB_EID(t_trb->entry3);
 	er_trans_len = ETRB_LEN(t_trb->entry2);	// residual number of bytes not transferred
-#if 1	//shih test
 	tr_trans_len = TRB_TLEN(trans_trb->entry2);
-#endif
 
 	ep = &memory.ep[ep_num];
-	data_buf = (u8 *)trans_trb->entry0;
+	data_buf = (u8 *)(u64)trans_trb->entry0;
 
-#if 1	//shih test
 	if (spnew_udc_list_empty(&ep->queue, &ep->lock)) {
-		req = NULL;	//shih test, is it necessary ??
 		printk(KERN_ERR "\tep%d req is NULL\t!\n", ep_num);
 
 		return;
@@ -328,34 +339,10 @@ static void process_trans_event(struct trb *t_trb)
 				spnew_udc_done(ep, req, 0);
 			else
 				printk(KERN_ERR "it's not corresponding req\n");
-			//printk(KERN_ERR "no data, transfer_len:%d\n", er_trans_len);
+
+			printk(KERN_ERR "no data, transfer_len:%d\n", er_trans_len);
 		}
 	}
-#else
-	if (trans_trb->entry3 & TRB_IDT) { /*find req done*/
-		if (spnew_udc_list_empty(&ep->queue, &ep->lock)) {
-			req = NULL;	//shih test, is it necessary ??
-			printk(KERN_ERR "\tep%d req is NULL\t!\n", ep_num);
-
-			return;
-		} else {
-			req = list_entry(ep->queue.next, struct spnew_request, ep->queue);
-			if (req->req.buf == data_buf)
-				spnew_udc_done(ep, req, 0);
-			else
-				printk(KERN_ERR "it's not corresponding req\n");
-		}
-	} else {
-		printk(KERN_ERR "no data, transfer_len:%d\n", er_trans_len);
-	}
-#endif
-
-#if 0		//shih test, why toggle ?? it should not be necessary
-	if (trans_trb->entry3 & TRB_C)
-		trans_trb->entry3 &= ~TRB_C;
-	else
-		trans_trb->entry3 |= TRB_C;
-#endif
 
 	return;
 }
@@ -411,10 +398,10 @@ static void process_setup(struct spnew_udc *dev, struct trb *setup_trb)
 				if (DescType == 0x01) {
 					if (((ep_entry0 >> 16) & UDC_FULL_SPEED) == UDC_FULL_SPEED) {  // UDC_FULL_SPEED, USB_FULL_SPEED ??
 						printk("DESCRIPTOR Speed = USB_FULL_SPEED\n");
-						dev->gadget.speed = USB_FULL_SPEED;
+						dev->gadget.speed = USB_SPEED_FULL;
 					} else if (((ep_entry0 >> 16) & UDC_HIGH_SPEED) == UDC_HIGH_SPEED) {
 						printk("DESCRIPTOR Speed = USB_HIGH_SPEED\n");
-						dev->gadget.speed = USB_HIGH_SPEED;
+						dev->gadget.speed = USB_SPEED_HIGH;
 					}
 				}
 			}
@@ -490,7 +477,7 @@ static void handle_event(struct work_struct *work)
 
 	do {
 		ret = handle_event_ring(gSpnew_udc);
-	}while (ret != EINVAL)		//shih test, return -EINAVL; ??
+	} while (ret != -EINVAL);
 
 	printk("work_event ok\n");
 	return;
@@ -504,7 +491,8 @@ static int handle_event_ring(struct spnew_udc *dev)
 	u32 erdp_reg = 0;
 	int ret;
 
-	pevent = (struct trb*)(udc_read(DEVC_ERDP) & ERDP_MASK);
+	//pevent = (struct trb *)(udc_read(DEVC_ERDP) & ERDP_MASK);
+	pevent = (struct trb *)(u64)(udc_read(DEVC_ERDP) & ERDP_MASK);
 	trb_cc = pevent->entry3 & ETRB_C;
 	if (trb_cc != event_ccs) {	/*invalid event trb*/
 		printk(KERN_ERR "invalid event trb\n");
@@ -515,7 +503,8 @@ static int handle_event_ring(struct spnew_udc *dev)
 	if (ret < 0) {
 		pevent++;
 		erdp_reg = udc_read(DEVC_ERDP) & 0xF;
-		udc_write((u32)pevent | erdp_reg, DEVC_ERDP);
+		pevent = (struct trb *)((u64)pevent | (u64)erdp_reg);
+		udc_write((u32)((u64)pevent), DEVC_ERDP);
 
 		return -1;
 	}
@@ -524,11 +513,9 @@ static int handle_event_ring(struct spnew_udc *dev)
 	switch (trb_type) {
 		case SETUP_TRB:
 			process_setup(dev, pevent);
-			break
-#if 1		// it is used for the Transfer Ring??	//shih test
+			break;
 		case LINK_TRB:
-			//pevent->entry3 |= LTRB_TC;
-			pevent = (struct trb*)pevent->entry0;
+			pevent = (struct trb*)(u64)pevent->entry0;
 
 			if (pevent->entry3 & LTRB_C)
 				pevent->entry3  &= ~LTRB_C;
@@ -536,14 +523,14 @@ static int handle_event_ring(struct spnew_udc *dev)
 				pevent->entry3 |= LTRB_C;
 
 			erdp_reg = udc_read(DEVC_ERDP) & 0xF;
-			udc_write((u32)pevent | erdp_reg, DEVC_ERDP);
+			pevent = (struct trb*)((u64)pevent | (u64)erdp_reg);
+			udc_write((u32)((u64)pevent), DEVC_ERDP);
 			event_ccs = (event_ccs == 1) ? 0 : 1;	/*Toggle CCS*/
 			break;
-#endif
 		case TRANS_EVENT_TRB:
-			process_trans_event(dev, pevent);
+			process_trans_event(pevent);
 			break;
-		case DEV_EVENT_TRB:	//shih test, when does it create this ??
+		case DEV_EVENT_TRB:
 			if (ret == UDC_RESET) {
 				if (dev->driver && dev->driver->disconnect)
 					dev->driver->disconnect(&dev->gadget);	/*jump to android_disconnect*/
@@ -553,22 +540,16 @@ static int handle_event_ring(struct spnew_udc *dev)
 				printk("\tNOT support\n");
 			}
 			break;
-		case SOF_EVENT_TRB;
+		case SOF_EVENT_TRB:
 			break;
 	}
 
-#if 0	// it is used for the Transfer Ring?? it should be modified depending on the Event Ring registers	//shih test
-	udc_write(EVENT_SEGMENT_COUNT, DEVC_ERSTSZ);	// the numbet of the Event Ring Segments
-	udc_write((u32)event_ring_start, DEVC_ERDP);	// the address of the Event Ring Dequeue Pointer
-	udc_write((u32)er_seg, DEVC_ERSTBA);		// the address of the Event Ring Segment Table
-	// the number of TRBs in an Event Ring Segment is stored in the Event Ring Segment Table
-#else
 	if (trb_type != LINK_TRB) {
 		pevent++;
 		erdp_reg = udc_read(DEVC_ERDP) & 0xF;
-		udc_write((u32)pevent | erdp_reg, DEVC_ERDP);
+		pevent = (struct trb *)((u64)pevent | (u64) erdp_reg);
+		udc_write((u32)((u64)pevent), DEVC_ERDP);
 	}
-#endif
 
 	return 0;
 }
@@ -595,11 +576,7 @@ static irqreturn_t spnew_udc_irq(int dummy, void * _dev)
 			//udc_write(udc_read(DEVC_CS) | UDC_RUN, DEVC_CS); /*enable udc controller*/
 		} else {
 			printk(KERN_NOTICE "detach device\n");
-#if 1	//shih test
 			udc_write(udc_read(DEVC_CS) & ~UDC_RUN, DEVC_CS); /*disable udc controller*/
-#else
-			udc_write(udc_read(DEVC_IMAN) & ~UDC_RUN, DEVC_CS); /*disable udc controller*/
-#endif
 		}
 	}
 
@@ -616,7 +593,7 @@ static irqreturn_t spnew_udc_irq(int dummy, void * _dev)
 /*--------------------------------- spnew_ep_ops ---------------------------------*/
 static void fill_trans_trb(struct trb *t_trb, struct usb_request *req, u8 is_in)
 {
-	t_trb->entry0 = (u32)req->buf;
+	t_trb->entry0 = (u32)((u64)req->buf);
 	t_trb->entry2 = req->length;
 
 	if (t_trb->entry3 & TRB_C)
@@ -634,7 +611,7 @@ static void fill_trans_trb(struct trb *t_trb, struct usb_request *req, u8 is_in)
 
 static void fill_link_trb(struct trb *t_trb, struct trb *ring)
 {
-	t_trb->entry0 = (u32)ring;
+	t_trb->entry0 = (u32)((u64)ring);
 	t_trb->entry3 |= (LTRB_TC | LTRB_C | LTRB_IOC | (LINK_TRB << 10));
 }
 
@@ -643,13 +620,10 @@ static int skip_link_trb(struct trb *t_trb, struct udc_endpoint_desc *desc)
 	int ret = 0;
 
 	t_trb->entry3 |= LTRB_TC;
-	t_trb = (struct trb *)t_trb->entry0;
+	t_trb = (struct trb *)((u64)t_trb->entry0);
 
-#if 1	//shih test, t_trb < 0x80000000 ??
-	if (((u32)t_trb == DESC_TRDP(desc->ep_entry3)) || ((u32)t_trb < 0x80000000)) {
-#else
-	if (((u32)t_trb == desc->ep_entry3) || ((u32)t_trb < 0x80000000)) {
-#endif
+	//t_trb < 0x80000000 ??
+	if (((u64)t_trb == (u64)DESC_TRDP(desc->ep_entry3)) || ((u64)t_trb < 0x80000000)) {
 		printk(KERN_ERR "trans ring is full\n");
 		ret = -1;
 	}
@@ -667,7 +641,7 @@ static int check_trb_type(struct trb *t_trb)
 	u32 idx;
 	int trb_type = -1;
 
-	idx = LTRB_TYPE((u32)t_trb);
+	idx = (u32)(LTRB_TYPE((u64)t_trb));
 	switch(idx) {
 		case 1:
 			trb_type = NORMAL_TRB;
@@ -711,11 +685,7 @@ static int fill_trans_ring(struct spnew_ep *ep, struct spnew_request *req, u8 is
 		/*check dequeue pointer position*/
 		ret = skip_link_trb(pep_enqueue[ep->num], desc);
 		if (ret < 0) {
-#if 1	//shih test
 			printk(KERN_ERR "ep%d transfer ring is wrong\n", ep->num);
-#else
-			printk(KERN_ERR "ep0 transfer ring is wrong\n");
-#endif
 			ret = -EINVAL;
 		} else {
 			fill_trans_trb(pep_enqueue[ep->num], &req->req, is_in);
@@ -760,54 +730,31 @@ static int spnew_udc_ep_enable(struct usb_ep *_ep,
 	idx = ep->bEndpointAddress & 0x7F;
 
 	/* malloc transfer ring */
-#if 1	//shih test
 	ep_transfer_ring[idx] = (struct trb *)kmalloc(TRANSFER_RING_SIZE + 15,
 	                                              GFP_KERNEL);
-#else
-	ep_transfer_ring[idx] = (struct trb *)kmalloc(TRANSFER_RING_SIZE + 7,
-	                                              GFP_KERNEL);
-#endif
+
 	if (!ep_transfer_ring[idx]) {
 		printk(KERN_NOTICE "malloc ep0 transfer ring fail\n");
 		return -1;
 	}
 
-#if 1	//shih test
-	if (ep_transfer_ring[idx] != ep_transfer_ring[idx] & ~0xF)
-		ep_transfer_ring[idx] = (ep_transfer_ring[idx] & ~0xF) + 1;
-#endif
+	if (((u64)ep_transfer_ring[idx] & ~0xF) != 0)
+		ep_transfer_ring[idx] = (struct trb *)(((u64)ep_transfer_ring[idx] & ~0xF) + 0x10);
 
 	end_trb = ep_transfer_ring[idx];
 	end_trb += (TRANSFER_RING_SIZE / ENTRY_SIZE - 1);
-#if 1	//shih test
+
 	fill_link_trb(end_trb, ep_transfer_ring[idx]);
-#else
-	fill_link_trb(end_trb, ep_transfer_ring[0]);
-#endif
 	pep_desc = spnew_device_desc;
 	pep_desc += idx;
 
-#if 0
-	pep_desc->ep_entry0 = (idx | (ep->bmAttributes << 4));
-#else	//shih test ??
 	pep_desc->ep_entry1 = (idx | (ep->bmAttributes << 4));
-#endif
 	pep_desc->ep_entry2 = (_ep->maxpacket | (1 << 30));
-	pep_desc->ep_entry3 = (u32)ep_transfer_ring[idx];
+	pep_desc->ep_entry3 = (u32)((u64)ep_transfer_ring[idx]);
 
 	/* enable irqs */
 	udc_write(udc_read(DEVC_CS) | (1 << idx), DEVC_CS);  /* reload ep desc */
-
-#if 0
-	if (ep->bEndpointAddress & USB_DIR_IN) {
-		udc_write((RDP_EN | EP_IN | EP_EN | (idx << 4)), EP_CS(idx));
-	}
-	else {
-		udc_write(RDP_EN | EP_EN | (idx << 4), EP_CS(idx));
-	}
-#else	//shih test, EP_IN ??
 	udc_write(RDP_EN | EP_EN, EP_CS(idx));
-#endif
 
 	/* print some debug message */
 	tmp = desc->bEndpointAddress;
@@ -838,12 +785,7 @@ static int spnew_udc_ep_disable(struct usb_ep *_ep)
 	}
 
 	local_irq_save(flags);
-
-#if 1	//shih test
 	dprintk(DEBUG_NORMAL, "ep disabled: %s\n", ep->ep.name);
-#else
-	dprintk(DEBUG_NORMAL, "ep disabled: %s\n", _ep->ep.name);
-#endif
 
 	ep->desc = NULL;
 	ep->ep.desc = NULL;
@@ -855,7 +797,7 @@ static int spnew_udc_ep_disable(struct usb_ep *_ep)
 	/* disable irqs */
 	pep_desc = spnew_device_desc;
 	pep_desc += idx;
-	memset(pep_desc, 0 ENTRY_SIZE);
+	memset(pep_desc, 0, ENTRY_SIZE);
 
 	int_en_reg = udc_read(EP_CS(idx));
 	int_en_reg &= ~EP_EN;
@@ -863,14 +805,9 @@ static int spnew_udc_ep_disable(struct usb_ep *_ep)
 
 	if (ep_transfer_ring[idx])
 		kfree(ep_transfer_ring[idx]);
-	
-	local_irq_restore(flags);
 
-#if 1	//shih test
+	local_irq_restore(flags);
 	dprintk(DEBUG_NORMAL, "ep disabled: %s\n", ep->ep.name);
-#else
-	dprintk(DEBUG_NORMAL, "ep disabled: %s\n", _ep->ep.name);
-#endif
 
 	return 0;
 }
@@ -881,9 +818,7 @@ static int spnew_udc_ep_disable(struct usb_ep *_ep)
 static struct usb_request *
 spnew_udc_alloc_request(struct usb_ep *_ep, gfp_t mem_flags)
 {
-#if 1	//shih test
 	struct spnew_ep *ep = to_spnew_ep(_ep);
-#endif
 	struct spnew_request *req;
 
 	dprintk(DEBUG_VERBOSE, "%s(%p, %d)\n", __func__, _ep, mem_flags);
@@ -891,12 +826,10 @@ spnew_udc_alloc_request(struct usb_ep *_ep, gfp_t mem_flags)
 	if (!_ep)
 		return NULL;
 
-#if 1	//shih test
 	if (_ep->name == ep0name) {
 		ep->bEndpointAddress = 0;
 		ep->halted = 0;
 	}
-#endif
 
 	req = kzalloc(sizeof(struct spnew_request), mem_flags);
 	if (!req)
@@ -949,11 +882,7 @@ static int spnew_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 
 	local_irq_save(flags);
 
-#if 1	//shih test
 	if (unlikely(!_req || !_req->complete ||
-#else
-	if (unlikely(!_req || !req->complete ||
-#endif
 	    !_req->buf || !list_empty(&req->queue))) {
 		if (!_req)
 			dprintk(DEBUG_NORMAL, "%s: 1 X X X\n", __func__);
@@ -974,11 +903,7 @@ static int spnew_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	   __func__, ep->bEndpointAddress, _req->length);
 
 	/* kickstart this i/o queue? */
-#if 1	//shih test
 	if (/*list_empty(&ep->queue) &&*/!ep->halted) {
-#else
-	if (/*list_empty(&ep->queue) &&*/!=ep->halted) {
-#endif
 		if (ep->bEndpointAddress == 0 /*ep0*/) {
 			switch (dev->ep0state) {
 				case EP0_IN_DATA_PHASE:
@@ -1001,7 +926,7 @@ static int spnew_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 			pep_enqueue[0]->entry3 |= TRB_IOC;    /* trigger interrupt */
 			dev->ep0state = EP0_IDLE;
 			req = NULL;
-		} else if ((ep->EndpointAddress & USB_DIR_IN) != 0) {
+		} else if ((ep->bEndpointAddress & USB_DIR_IN) != 0) {
 			is_in = 1;
 			ret = fill_trans_ring(ep, req, is_in);
 			if (ret < 0) {
@@ -1021,16 +946,12 @@ static int spnew_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	}
 
 	/* pio or dma irq handler advances the queue */
-#if 1	//shih test
 	if (likely(ret != 0))
-#else
-	if (likely(req != 0))
-#endif
 		list_add_tail(&req->queue, &ep->queue);
 
 	local_irq_restore(flags);
-
 	dprintk(DEBUG_VERBOSE, "%s: ok\n", __func__);
+
 	return 0;
 }
 
@@ -1040,9 +961,6 @@ static int spnew_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 static int spnew_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 {
 	struct spnew_ep *ep = to_spnew_ep(_ep);
-#if 0	//shih test mark
-	struct spnew_udc *udc;
-#endif
 	int retval = -EINVAL;
 	unsigned long flags;
 	struct spnew_request *req = NULL;
@@ -1055,13 +973,9 @@ static int spnew_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	if (!_ep || !_req)
 		return retval;
 
-#if 0	//shih test mark
-	udc = to_spnew_udc(ep->gadget);
-#endif
-
 	local_irq_save(flags);
 
-	list_for_each_entry(req, &ep->queue, ep->queue) {
+	list_for_each_entry(req, &ep->queue, queue) {
 		if (&req->req == _req) {
 			list_del_init(&req->queue);
 			_req->status = -ECONNRESET;
@@ -1079,6 +993,7 @@ static int spnew_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 	}
 
 	local_irq_restore(flags);
+
 	return retval;
 }
 
@@ -1152,10 +1067,8 @@ static int spnew_udc_wakeup(struct usb_gadget *_gadget)
 /*
  *  spnew_udc_set_selfpowered
  */
-static int spnew_udc_set_selfpowered(struct usb_gadget *gadget int value)
+static int spnew_udc_set_selfpowered(struct usb_gadget *gadget, int value)
 {
-	//struct spnew_udc *udc = to_spnew_udc(gadget);
-
 	dprintk(DEBUG_NORMAL, "%s:()\n", __func__);
 	return 0;
 }
@@ -1210,20 +1123,41 @@ static int spnew_vbus_draw(struct usb_gadget *gadget, unsigned ma)
 	return -ENOTSUPP;
 }
 
+static struct usb_ep *spnew_match_ep(struct usb_gadget *gadget,
+		struct usb_endpoint_descriptor *desc,
+		struct usb_ss_ep_comp_descriptor *ep_comp)
+{
+	struct usb_ep *ep = NULL;
+	u8 type;
 
-static int spnew_udc_start(struct usb_gadget_driver *driver,
-			int (*bind)(struct usb_gadget *));
-static int spnew_udc_stop(struct usb_gadget_driver *driver);
+	type = desc->bmAttributes & USB_ENDPOINT_XFERTYPE_MASK;
+
+	if (gadget_is_i143(gadget)) {
+		DEBUG_NOTICE("wei ep config\n");
+
+		if (type == USB_ENDPOINT_XFER_BULK) {
+			ep = find_ep(gadget,
+				(USB_DIR_IN & desc->bEndpointAddress) ? "ep1-bulk" : "ep3-bulk");
+		}
+	}
+
+	return ep;
+}
+
+static int spnew_udc_start(struct usb_gadget *gadget,
+			struct usb_gadget_driver *driver);
+static int spnew_udc_stop(struct usb_gadget *gadget);
 
 static const struct usb_gadget_ops spnew_ops = {
-	.get_frame       = spnew_udc_get_frame,
-	.wakeup          = spnew_udc_wakeup,
-	.set_selfpowered = spnew_udc_set_selfpowered,
-	.pullup          = spnew_udc_pullup,
-	.vbus_session    = spnew_udc_vbus_session,
-	.vbus_draw       = spnew_vbus_draw,
-	.start           = spnew_udc_start,
-	.stop            = spnew_udc_stop,
+	.get_frame       	= spnew_udc_get_frame,
+	.wakeup          	= spnew_udc_wakeup,
+	.set_selfpowered 	= spnew_udc_set_selfpowered,
+	.pullup          	= spnew_udc_pullup,
+	.vbus_session    	= spnew_udc_vbus_session,
+	.vbus_draw       	= spnew_vbus_draw,
+	.udc_start       	= spnew_udc_start,
+	.udc_stop       	= spnew_udc_stop,
+	.match_ep	 	= spnew_match_ep,
 };
 
 /*------------------------------------- gadget driver
@@ -1291,11 +1225,11 @@ static void spnew_udc_enable(struct spnew_udc *dev)
 	udc_write(udc_read(DEVC_CS) | UDC_RUN, DEVC_CS);
 }
 
-static int spnew_udc_start(struct usb_gadget_driver *driver,
-			int (*bind)(struct usb_gadget *))
+static int spnew_udc_start(struct usb_gadget *gadget,
+			struct usb_gadget_driver *driver)
 {
 	struct spnew_udc *udc = the_controller;
-	int retval;
+	//int retval;
 
 	dprintk(DEBUG_NORMAL, "%s:() '%s'\n", __func__, driver->driver.name);
 
@@ -1306,13 +1240,13 @@ static int spnew_udc_start(struct usb_gadget_driver *driver,
 	if (udc->driver)
 		return -EBUSY;
 
-	if (!bind || !driver->setup || driver->max_speed < USB_SPEED_FULL) {
-		printk(KERN_ERR "Invalid driver: bind %p setup %p speed %d\n",
-		  bind, driver->setup, driver->max_speed);
+	if (!driver->setup || driver->max_speed < USB_SPEED_FULL) {
+		printk(KERN_ERR "Invalid driver: setup %p speed %d\n",
+		  			driver->setup, driver->max_speed);
 		return -EINVAL;
 	}
 
-#if define(MODULE)
+#if defined(MODULE)
 	if (!driver->unbind) {
 		printk(KERN_ERR "Invalid driver: no unbind method\n");
 		return -EINVAL;;
@@ -1323,6 +1257,7 @@ static int spnew_udc_start(struct usb_gadget_driver *driver,
 	udc->driver = driver;
 	udc->gadget.dev.driver = &driver->driver;
 
+#if 0
 	/* Bind the driver */
 	if ((retval = device_add(&udc->gadget.dev)) != 0) {
 		printk(KERN_ERR "Error in device_add() : %d\n", retval);
@@ -1335,37 +1270,40 @@ static int spnew_udc_start(struct usb_gadget_driver *driver,
 		device_del(&udc->gadget.dev);
 		goto register_error;
 	}
+#endif
 
 	/*Enable udc */
 	spnew_udc_enable(udc);
 
 	return 0;
 
+#if 0
 register_error:
 	udc->driver = NULL;
 	udc->gadget.dev.driver = NULL;
 	return retval;
+#endif
 }
 
-static int spnew_udc_stop(struct usb_gadget_driver *driver)
+static int spnew_udc_stop(struct usb_gadget *gadget)
 {
 	struct spnew_udc *udc = the_controller;
 
 	if (!udc)
 		return -ENODEV;
 
-	if (!driver || driver != udc->driver || !driver->unbind)
+	if (!udc->driver || !udc->driver->unbind)
 		return -EINVAL;
 
-	dprintk(DEBUG_NORMAL, "usb_gadget_unregister_driver() '%s'\n", driver->driver.name);
+	dprintk(DEBUG_NORMAL, "usb_gadget_unregister_driver() '%s'\n", udc->driver->driver.name);
 
 	/* report disconnect */
-	if (driver->disconnect)
-		driver->disconnect(&udc->gadget);
+	if (udc->driver->disconnect)
+		udc->driver->disconnect(gadget);
 
-	driver->unbind(&udc->gadget);
+	udc->driver->unbind(gadget);
 
-	device_del(&udc->gadget.dev);
+	device_del(&gadget->dev);
 	udc->driver = NULL;
 
 	/* Disable udc */
@@ -1436,19 +1374,6 @@ static struct spnew_udc memory = {
 		.bEndpointAddress	= 3,
 		.bmAttributes		= USB_ENDPOINT_XFER_BULK,
 	},
-
-	.ep[4] = {
-		.num			= 4,
-		.ep = {
-			.name		= "ep4-bulk",
-			.ops		= &spnew_ep_ops,
-			.maxpacket	= EP_FIFO_SIZE,
-		},
-		.dev			= &memory,
-		.fifo_size		= EP_FIFO_SIZE,
-		.bEndpointAddress	= 4,
-		.bmAttributes		= USB_ENDPOINT_XFER_BULK,
-	}
 };
 
 /*
@@ -1459,7 +1384,7 @@ static void fill_ep0_desc(struct udc_endpoint_desc *desc)
 	desc->ep_entry0 |= (UDC_HIGH_SPEED << 16);
 	desc->ep_entry1 = 0;
 	desc->ep_entry2 = EP_FIFO_SIZE | (1 << 30);
-	desc->ep_entry3 = ((u32)ep_transfer_ring[0] | (1 << 0));
+	desc->ep_entry3 = (u32)((u64)ep_transfer_ring[0] | (1 << 0));
 
 	return;
 }
@@ -1469,23 +1394,16 @@ static int spnew_ep_desc_init(void)
 	struct udc_endpoint_desc *ep0_desc;
 	struct trb *end_trb;
 
-#if 1	//shih test
 	ep_transfer_ring[0] = (struct trb *)
 		              kzalloc(TRANSFER_RING_SIZE + 15, GFP_KERNEL);
-#else
-	ep_transfer_ring[0] = (struct trb *)
-		              kzalloc(TRANSFER_RING_SIZE + 7, GFP_KERNEL);
-#endif
 
 	if (!ep_transfer_ring[0]) {
 		printk(KERN_NOTICE "malloc ep0 transfer ring fail\n");
 		return -1;
 	}
 
-#if 1	//shih test
-	if (ep_transfer_ring[0] != ep_transfer_ring[0] & ~0xF)
-		ep_transfer_ring[0] = (ep_transfer_ring[0] & ~0xF) + 1;
-#endif
+	if (((u64)ep_transfer_ring[0] & 0xF) != 0)
+		ep_transfer_ring[0] = (struct trb *)(((u64)ep_transfer_ring[0] & ~0xF) + 0x10);
 
 	end_trb = ep_transfer_ring[0];
 	end_trb += (TRANSFER_RING_SIZE / ENTRY_SIZE - 1);
@@ -1500,18 +1418,15 @@ static int spnew_ep_desc_init(void)
 
 	pep_enqueue[0] = ep_transfer_ring[0];
 
-#if 1	//shih test
-	if (spnew_device_desc != spnew_device_desc & ~0x1F)
-		spnew_device_desc = (spnew_device_desc & ~0x1F) + 2;
-#endif
+	if (((u64)spnew_device_desc & 0x1F) != 0)
+		spnew_device_desc = (struct udc_endpoint_desc *)
+					(((u64)spnew_device_desc & ~0x1F) + 0x20);
 
 	ep0_desc = spnew_device_desc;
 	fill_ep0_desc(ep0_desc);
-	udc_write((u32)spnew_device_desc, DEVD_ADDR);		/* SETUP DCBA */
-#if 1	//shih test
+	udc_write((u32)((u64)spnew_device_desc), DEVD_ADDR);	/* SETUP DCBA */
 	udc_write(udc_read(DEVC_CS) | (1 << 0), DEVC_CS);	/* reload ep0 desc */
 	udc_write(RDP_EN | EP_EN, EP0_CS);			/* enable ep0 */
-#endif
 
 	return 0;
 
@@ -1527,21 +1442,11 @@ static int spnew_event_ring_init(void)
 	struct trb *end_trb;
 	int ret;
 
-#if 1	//shih test, allocate one more TRB for link TRB and HW does not know it
 	event_ring_start = (struct trb *)kzalloc(EVENT_RING_SIZE + 16 + 63, GFP_KERNEL);
-#else
-	event_ring_start = (struct trb *)kzalloc(EVENT_RING_SIZE + 63, GFP_KERNEL);
-#endif
 	if (!event_ring_start) {
 		printk(KERN_NOTICE "malloc event ring fail\n");
 		return -1;
 	}
-
-#if 0	//link trb?? transfer ring?? maybe it is a solution to detect the last TRB
-	end_trb = event_ring_start;
-	end_trb += (EVENT_RING_SIZE / ENTRY_SIZE - 1);
-	fill_link_trb(end_trb, event_ring_start);
-#endif
 
 	event_ring_seg_table = (struct ers_table *)
 		               kzalloc((EVENT_SEGMENT_COUNT * ENTRY_SIZE) + 63, GFP_KERNEL);
@@ -1550,38 +1455,25 @@ static int spnew_event_ring_init(void)
 		goto malloc_fail1;
 	}
 
-#if 1	//shih test, maybe the ASIC has handled it and there is not need for it
-	if (event_ring_start == (event_ring_start & ~0x3f))
-		er_seg->rsba = (u32)event_ring_start;
-	else
-		er_seg->rsba = (u32)((event_ring_start & ~0x3f) + 4);
-
-	if (event_ring_seg_table == (event_ring_seg_table & ~0x3f))
+	if (((u64)event_ring_seg_table & ~0x3f) == 0)
 		er_seg = event_ring_seg_table;
 	else
-		er_seg = (event_ring_seg_table & ~0x3f) + 4;
+		er_seg = (struct ers_table *)(((u64)event_ring_seg_table & ~0x3f) + 0x40);
+
+	if (((u64)event_ring_start & ~0x3f) == 0)
+		er_seg->rsba = (u32)((u64)event_ring_start);
+	else
+		er_seg->rsba = (u32)(((u64)event_ring_start & ~0x3f) + 0x40);
 
 	er_seg->rssz = EVENT_RING_SIZE / ENTRY_SIZE;	/* the number of TRBs */
-#else
-	er_seg = event_ring_seg_table;
-	er_seg->rsba = (u32)event_ring_start;
-	er_seg->rssz = EVENT_RING_SIZE;
-#endif
 
-#if 1	// SW detects the last TRB, HW does not know this TRB
 	end_trb = (struct trb *)&er_seg->rsba;
 	end_trb += (EVENT_RING_SIZE / ENTRY_SIZE);
 	fill_link_trb(end_trb, (struct trb *)&er_seg->rsba);
-#endif
 
 	udc_write(EVENT_SEGMENT_COUNT, DEVC_ERSTSZ);
-#if 1	//shih test
-	udc_write(&er_seg->rsba, DEVC_ERDP);
-	udc_write((u32)er_seg, DEVC_ERSTBA); /* enable event ring */
-#else
-	udc_write((u32)event_ring_start, DEVC_ERDP);
-	udc_write((u32)event_ring_seg_table, DEVC_ERSTBA); /* enable event ring */
-#endif
+	udc_write(er_seg->rsba, DEVC_ERDP);
+	udc_write((u32)((u64)er_seg), DEVC_ERSTBA); /* enable event ring */
 	udc_write(4000, DEVC_IMOD); /* interrupt interval */
 	udc_write(DEVC_INTR_ENABLE, DEVC_IMAN); /* enable interrupt */
 
@@ -1608,26 +1500,20 @@ static int spnew_udc_probe(struct platform_device *pdev)
 {
 	struct spnew_udc *udc = &memory;
 	struct device *dev = &pdev->dev;
+	struct resource *res;
 	int retval;
 
 	dev_dbg(dev, "%s()\n", __func__);
 
-	usb_bus_clock = clk_get(NULL, "usb-bus-gadget");
-	if (IS_ERR(usb_bus_clock)) {
-		dev_err(dev, "failed to get usb bus clock source\n");
-		return PTR_ERR(usb_bus_clock);
-	}
-
-	clk_enable(usb_bus_clock);
-
-	udc_clock = clk_get(NULL, "usb-device");
+	/*enable usb controller clock*/
+	udc_clock = devm_clk_get(dev, NULL);
 	if (IS_ERR(udc_clock)) {
-		dev_err(dev, "failed to get udc clock source\n");
+		pr_err("not found clk source\n");
 		return PTR_ERR(udc_clock);
 	}
 
+	clk_prepare(udc_clock);
 	clk_enable(udc_clock);
-
 	mdelay(10);
 
 	dev_dbg(dev, "got and enabled clocks\n");
@@ -1642,12 +1528,9 @@ static int spnew_udc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&udc->lock);
 
-	rsrc_start = SPNEW_PA_USBDEV;
-	rsrc_len   = SPNEW_SZ_USBDEV;
-
-	if (!request_mem_region(rsrc_start, rsrc_len, gadget_name))
-		return -EBUSY;
-
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	rsrc_start = res->start;
+	rsrc_len   = resource_size(res);
 	base_addr = ioremap(rsrc_start, rsrc_len);
 	if (!base_addr) {
 		retval = -ENOMEM;
@@ -1663,21 +1546,28 @@ static int spnew_udc_probe(struct platform_device *pdev)
 
 	spnew_udc_disable(udc);
 	spnew_udc_reinit(udc);
-	spnew_event_ring_init();	//shih test??
+	spnew_event_ring_init();
 
 	/* irq setup after old hardware state is cleaned up */
-	retval = request_irq(IRQ_USBD, spnew_udc_irq, 0, gadget_name, udc);
-	if (retval != 0) {
-		dev_err(dev, "cannot get irq %i, err %d\n", IRQ_USBD, retval);
-		retval = -EBUSY;
+	irq_num = platform_get_irq(pdev, 0);
+	if (!irq_num) {
+		dev_err(dev, "Not enough platform resources.\n");
+		retval = -ENODEV;
 		goto err_map;
 	}
 
+	retval = request_irq(irq_num, spnew_udc_irq, IRQF_SHARED, gadget_name, udc);
+	if (retval != 0) {
+		dev_err(dev, "cannot get irq %d, err %d\n", irq_num, retval);
+		retval = -EBUSY;
+		goto err_int;
+	}
+
 	gSpnew_udc = udc;
-	dev_dbg(dev, "got irq %i\n", IRQ_USBD);
+	dev_dbg(dev, "got irq %d\n", irq_num);
 
 	/* event ring initialized */
-	retval = usb_add_gadget_udc(&pdev->dev, &udc->gadget);
+	retval = usb_add_gadget_udc(dev, &udc->gadget);
 	if (retval)
 		goto err_int;
 
@@ -1694,7 +1584,8 @@ static int spnew_udc_probe(struct platform_device *pdev)
 	return 0;
 
 err_int:
-	free_irq(IRQ_USBD, UDC);
+	if(irq_num)
+		free_irq(irq_num, udc);;
 err_map:
 	iounmap(base_addr);
 err_mem:
@@ -1729,12 +1620,6 @@ static int spnew_udc_remove(struct platform_device *pdev)
 		udc_clock = NULL;
 	}
 
-	if (!IS_ERR(usb_bus_clock) && usb_bus_clock != NULL) {
-		clk_disable(usb_bus_clock);
-		clk_put(usb_bus_clock);
-		usb_bus_clock = NULL;
-	}
-
 	dev_dbg(&pdev->dev, "%s: remove ok\n", __func__);
 	return 0;
 }
@@ -1742,45 +1627,66 @@ static int spnew_udc_remove(struct platform_device *pdev)
 #define spnew_udc_suspend NULL
 #define spnew_udc_resume  NULL
 
-static const struct platform_device_id spnew_udc_ids[] = {
-	{"spnew-usbgadget",},
-	{"spnew-usbgadget",},
-	{}
+static const struct of_device_id spnew_udc0_ids[] = {
+	{ .compatible = "sunplus,i143-usb-udc0" },
+	{ }
 };
+MODULE_DEVICE_TABLE(of, spnew_udc0_ids);
 
-MODULE_DEVICE_TABLE(platform, spnew_udc_ids);
+static const struct of_device_id spnew_udc1_ids[] = {
+	{ .compatible = "sunplus,i143-usb-udc1", },
+	{ }
+};
+MODULE_DEVICE_TABLE(of, spnew_udc1_ids);
 
-static struct platform_driver spnew_udc_driver = {
+static struct platform_driver spnew_udc0_driver = {
 	.driver	  = {
-		.name  = "spnew-usbgadget",
+		.name  = "spnew-usbgadget0",
 		.owner = THIS_MODULE,
+		.of_match_table = spnew_udc0_ids,
 	},
 	.probe 	  = spnew_udc_probe,
 	.remove   = spnew_udc_remove,
 	.suspend  = spnew_udc_suspend,
 	.resume   = spnew_udc_resume,
-	.id_table = spnew_udc_ids,
+};
+
+static struct platform_driver spnew_udc1_driver = {
+	.driver	  = {
+		.name  = "spnew-usbgadget1",
+		.owner = THIS_MODULE,
+		.of_match_table = spnew_udc1_ids,
+	},
+	.probe 	  = spnew_udc_probe,
+	.remove   = spnew_udc_remove,
+	.suspend  = spnew_udc_suspend,
+	.resume   = spnew_udc_resume,
 };
 
 static int __init udc_init(void)
 {
-	int retval;
+	int retval = 0;
 
 	dprintk(DEBUG_NORMAL, "%s: version %s\n", gadget_name, DRIVER_VERSION);
 
-	retval = platform_driver_register(&spnew_udc_driver);
-	if (retval)
-		goto err;
+	if (accessory_port_id == USB_PORT0_ID) {
+		printk(KERN_NOTICE "register sunplus_udc0_driver\n");
+		retval = platform_driver_register(&spnew_udc0_driver);
+	} else if (accessory_port_id == USB_PORT1_ID) {
+		printk(KERN_NOTICE "register sunplus_udc1_driver\n");
+		retval = platform_driver_register(&spnew_udc1_driver);
+	}
 
-	return 0;
-
-err:
 	return retval;
 }
 
 static void __exit udc_exit(void)
 {
-	platform_driver_unregister(&spnew_udc_driver);
+	if (accessory_port_id == USB_PORT0_ID) {
+		platform_driver_unregister(&spnew_udc0_driver);
+	} else if (accessory_port_id == USB_PORT1_ID) {
+		platform_driver_unregister(&spnew_udc1_driver);
+	}
 }
 
 module_init(udc_init);
