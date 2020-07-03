@@ -132,7 +132,7 @@ struct trb {
 };
 
 /* frame number */
-#define GET_FRNUM(x)		(x >> 3)
+#define GET_FRNUM(x)		((x & 0x3FFF) >> 3)
 /* endpoint n (n != 0) descriptor */
 #define DESC_TRDP(x)		((x) & 0xFFFFFFF0)
 /* transfer ring normal TRB */
