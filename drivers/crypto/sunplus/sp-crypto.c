@@ -302,7 +302,7 @@ inline void trb_ring_reset(trb_ring_t *ring)
 	ring->head = ring->tail = ring->trb;
 }
 
-static trb_ring_t *trb_ring_new(u32 size)
+static trb_ring_t *trb_ring_new(struct device *dev, u32 size)
 {
 	trb_ring_t *ring;
 
@@ -311,7 +311,7 @@ static trb_ring_t *trb_ring_new(u32 size)
 		return ring;
 	}
 
-	ring->trb = dma_alloc_coherent(NULL, PAGE_SIZE, &ring->pa, GFP_KERNEL);
+	ring->trb = dma_alloc_coherent(dev, PAGE_SIZE, &ring->pa, GFP_KERNEL);
 	if (unlikely(IS_ERR(ring->trb))) {
 		kfree(ring);
 		return ERR_CAST(ring->trb);
@@ -500,7 +500,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 #endif
 
 	SP_CRYPTO_TRACE();
-	HASH_RING(dev) = ring = trb_ring_new(HASH_CMD_RING_SIZE);
+	HASH_RING(dev) = ring = trb_ring_new(&pdev->dev, HASH_CMD_RING_SIZE);
 	ERR_OUT(ring, out2, "new hash_cmd_ring");
 
 	phy_addr = ring->pa;
@@ -521,7 +521,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	SP_CRYPTO_INF("HASH_ER  : %08x\n", reg->HASH_ER);
 
 	SP_CRYPTO_TRACE();
-	AES_RING(dev) = ring = trb_ring_new(AES_CMD_RING_SIZE);
+	AES_RING(dev) = ring = trb_ring_new(&pdev->dev, AES_CMD_RING_SIZE);
 	ERR_OUT(ring, out3, "new hash_cmd_ring");
 
 	phy_addr = ring->pa;
