@@ -448,7 +448,7 @@
 			compatible = "sunplus,i143-usb-udc0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x0 0x9c101800 0x0 0x400>;
+			reg = <0x0 0x9c101800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -457,7 +457,7 @@
 			compatible = "sunplus,i143-usb-udc1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
-			reg = <0x0 0x9c102800 0x0 0x400>;
+			reg = <0x0 0x9c102800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};

@@ -60,19 +60,40 @@ uint accessory_port_id = USB_PORT1_ID;
 module_param(accessory_port_id, uint, 0644);
 EXPORT_SYMBOL_GPL(accessory_port_id);
 
+void usb_switch(int device);
+
+#define VUBUS_CD_POLL	(HZ / 4)
+struct timer_list vbus_polling_timer;
+struct timer_list sof_polling_timer;
+char is_config = 0;
+static u32 sof_value = 0x1000;
+static u32 temp_sof_value;
+static u8 bus_reset_finish_flag = false;
+static u8 platform_device_handle_flag = false;
+static u8 first_enter_polling_timer_flag = false;
+
+static u32 d_time0 = VUBUS_CD_POLL * 2;
+module_param(d_time0, uint, 0644);
+static u32 d_time1 = 10;
+module_param(d_time1, uint, 0644);
+
 static struct spnew_udc	*the_controller;
 static struct clk	*udc_clock;
 static int irq_num = 0;
 static void __iomem	*base_addr;
-static u64		rsrc_start;
-static u64		rsrc_len;
+static void __iomem	*moon5_base_addr;
 static struct spnew_udc memory;
+
+#define TO_HOST 	0
+#define TO_DEVICE	1
 
 static u32 dmsg = 0x2;
 #define DEBUG_DBG(fmt, arg...)		do { if (dmsg&(1<<0)) printk(KERN_DEBUG fmt,##arg); } while (0)
 #define DEBUG_NOTICE(fmt, arg...)	do { if (dmsg&(1<<1)) printk(KERN_NOTICE fmt,##arg); } while (0)
 #define DEBUG_INFO(fmt, arg...)		do { if (dmsg&(1<<2)) printk(KERN_INFO fmt,##arg); } while (0)
 #define DEBUG_ERR(fmt, arg...)		do { printk(KERN_ERR fmt,##arg); } while (0)
+
+void detech_start(void);
 
 static inline u32 udc_read(u32 reg)
 {
@@ -88,6 +109,51 @@ static inline void udc_writeb(void __iomem *base, u32 value, u32 reg)
 {
 	writeb(value, base + reg);
 }
+
+static ssize_t show_udc_ctrl(struct device *dev,
+			      struct device_attribute *attr, char *buffer)
+{
+	u32 result = 0;
+	struct spnew_ep *ep = &memory.ep[1];
+
+	spin_lock(&ep->lock);
+	result = list_empty(&ep->queue);
+	spin_unlock(&ep->lock);
+
+	DEBUG_NOTICE("ep1 is empty:%d req\n", result);
+	return snprintf(buffer, 3, "%d\n", result);
+}
+
+static ssize_t store_udc_ctrl(struct device *dev,
+			       struct device_attribute *attr,
+			       const char *buffer, size_t count)
+{
+	static char irq_i = 0;
+
+	if (*buffer == 'd') {		/* d:switch uphy to device */
+		DEBUG_NOTICE("user switch \n");
+		usb_switch(TO_DEVICE);
+		msleep(1);
+		detech_start();
+		return count;
+	} else if (*buffer == 'h') {	/* h:switch uphy to host */
+		DEBUG_NOTICE("user switch \n");
+		usb_switch(TO_HOST);
+		return count;
+	} else if (*buffer == 'i') {	/* interrupt disable or enable */
+		if (!irq_i) {
+			disable_irq(irq_num);
+			irq_i = 1;
+		} else {
+			enable_irq(irq_num);
+			irq_i = 0;
+		}
+	}
+
+	return count;
+}
+
+static DEVICE_ATTR(udc_ctrl, S_IWUSR | S_IRUSR, show_udc_ctrl, store_udc_ctrl);
 
 /*************************** DEBUG FUNCTION ***************************/
 #define DEBUG_NORMAL	1
@@ -391,6 +457,7 @@ static void process_setup(struct spnew_udc *dev, struct trb *setup_trb)
 	switch (crq.bRequest) {
 		case USB_REQ_GET_DESCRIPTOR:
 			printk("start get descriptor after bus reset\n");
+			bus_reset_finish_flag = true;
 
 			{
 				u32 DescType = ((crq.wValue) >> 8);
@@ -409,6 +476,7 @@ static void process_setup(struct spnew_udc *dev, struct trb *setup_trb)
 		case USB_REQ_SET_CONFIGURATION:
 			printk(" ******* USB_REQ_SET_CONFIGURATION ******* \n");
 			dev->req_config = 1; /* fill ep desc CFGS */
+			is_config = 1;
 			break;
 		case USB_REQ_SET_INTERFACE:
 			printk(" ******* USB_REQ_SET_INTERFACE ******* \n");
@@ -491,7 +559,6 @@ static int handle_event_ring(struct spnew_udc *dev)
 	u32 erdp_reg = 0;
 	int ret;
 
-	//pevent = (struct trb *)(udc_read(DEVC_ERDP) & ERDP_MASK);
 	pevent = (struct trb *)(u64)(udc_read(DEVC_ERDP) & ERDP_MASK);
 	trb_cc = pevent->entry3 & ETRB_C;
 	if (trb_cc != event_ccs) {	/*invalid event trb*/
@@ -518,7 +585,7 @@ static int handle_event_ring(struct spnew_udc *dev)
 			pevent = (struct trb*)(u64)pevent->entry0;
 
 			if (pevent->entry3 & LTRB_C)
-				pevent->entry3  &= ~LTRB_C;
+				pevent->entry3  &= (~LTRB_C);
 			else
 				pevent->entry3 |= LTRB_C;
 
@@ -532,6 +599,8 @@ static int handle_event_ring(struct spnew_udc *dev)
 			break;
 		case DEV_EVENT_TRB:
 			if (ret == UDC_RESET) {
+				is_config = 0;
+
 				if (dev->driver && dev->driver->disconnect)
 					dev->driver->disconnect(&dev->gadget);	/*jump to android_disconnect*/
 			} else if (ret == UDC_SUSPEND) {
@@ -570,13 +639,13 @@ static irqreturn_t spnew_udc_irq(int dummy, void * _dev)
 	int_reg = udc_read(DEVC_STS);
 
 	if (int_reg & VBUS_CI) {
-		udc_write(udc_read(DEVC_STS) & ~VBUS_CI, DEVC_STS);
+		udc_write(udc_read(DEVC_STS) & (~VBUS_CI), DEVC_STS);
 		if (udc_read(DEVC_STS) & VBUS) {
 			printk(KERN_NOTICE "attach device\n");
 			//udc_write(udc_read(DEVC_CS) | UDC_RUN, DEVC_CS); /*enable udc controller*/
 		} else {
 			printk(KERN_NOTICE "detach device\n");
-			udc_write(udc_read(DEVC_CS) & ~UDC_RUN, DEVC_CS); /*disable udc controller*/
+			udc_write(udc_read(DEVC_CS) & (~UDC_RUN), DEVC_CS); /*disable udc controller*/
 		}
 	}
 
@@ -597,7 +666,7 @@ static void fill_trans_trb(struct trb *t_trb, struct usb_request *req, u8 is_in)
 	t_trb->entry2 = req->length;
 
 	if (t_trb->entry3 & TRB_C)
-		t_trb->entry3 &= ~TRB_C;
+		t_trb->entry3 &= (~TRB_C);
 	else
 		t_trb->entry3 |= TRB_C;    /*toggle cycle bit*/
 
@@ -605,7 +674,7 @@ static void fill_trans_trb(struct trb *t_trb, struct usb_request *req, u8 is_in)
 		t_trb->entry3 |= (TRB_ISP | TRB_IOC | TRB_DIR | (NORMAL_TRB << 10));
 	} else {
 		t_trb->entry3 |= (TRB_ISP | TRB_IOC | (NORMAL_TRB << 10));
-		t_trb->entry3 &= ~(TRB_DIR);
+		t_trb->entry3 &= (~TRB_DIR);
 	}
 }
 
@@ -629,7 +698,7 @@ static int skip_link_trb(struct trb *t_trb, struct udc_endpoint_desc *desc)
 	}
 
 	if (t_trb->entry3 & LTRB_C)
-		t_trb->entry3 &= ~LTRB_C;
+		t_trb->entry3 &= (~LTRB_C);
 	else
 		t_trb->entry3 |= LTRB_C;
 
@@ -800,7 +869,7 @@ static int spnew_udc_ep_disable(struct usb_ep *_ep)
 	memset(pep_desc, 0, ENTRY_SIZE);
 
 	int_en_reg = udc_read(EP_CS(idx));
-	int_en_reg &= ~EP_EN;
+	int_en_reg &= (~EP_EN);
 	udc_write(RDP_EN | int_en_reg, EP_CS(idx));
 
 	if (ep_transfer_ring[idx])
@@ -1229,7 +1298,9 @@ static int spnew_udc_start(struct usb_gadget *gadget,
 			struct usb_gadget_driver *driver)
 {
 	struct spnew_udc *udc = the_controller;
-	//int retval;
+#if 0
+	int retval;
+#endif
 
 	dprintk(DEBUG_NORMAL, "%s:() '%s'\n", __func__, driver->driver.name);
 
@@ -1324,7 +1395,7 @@ static struct spnew_udc memory = {
 		},
 	},
 
-	/* control ehdpoint */
+	/* control endpoint */
 	.ep[0] = {
 		.num			= 0,
 		.ep = {
@@ -1500,7 +1571,7 @@ static int spnew_udc_probe(struct platform_device *pdev)
 {
 	struct spnew_udc *udc = &memory;
 	struct device *dev = &pdev->dev;
-	struct resource *res;
+	struct resource *res0, *res1;
 	int retval;
 
 	dev_dbg(dev, "%s()\n", __func__);
@@ -1528,13 +1599,18 @@ static int spnew_udc_probe(struct platform_device *pdev)
 
 	spin_lock_init(&udc->lock);
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	rsrc_start = res->start;
-	rsrc_len   = resource_size(res);
-	base_addr = ioremap(rsrc_start, rsrc_len);
+	res0 = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	base_addr = ioremap(res0->start, resource_size(res0));
 	if (!base_addr) {
 		retval = -ENOMEM;
-		goto err_mem;
+		goto err_mem0;
+	}
+
+	res1 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	moon5_base_addr = ioremap(res1->start, resource_size(res1));
+	if (!moon5_base_addr) {
+		retval = -ENOMEM;
+		goto err_mem1;
 	}
 
 	device_initialize(&udc->gadget.dev);
@@ -1579,17 +1655,22 @@ static int spnew_udc_probe(struct platform_device *pdev)
 	}
 	INIT_WORK(&udc->event_work, handle_event);
 
+	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
+
 	dev_dbg(dev, "probe ok\n");
 
 	return 0;
 
 err_int:
 	if(irq_num)
-		free_irq(irq_num, udc);;
+		free_irq(irq_num, udc);
 err_map:
+	iounmap(moon5_base_addr);
 	iounmap(base_addr);
-err_mem:
-	release_mem_region(rsrc_start, rsrc_len);
+err_mem1:
+	release_mem_region(res1->start, resource_size(res1));
+err_mem0:
+	release_mem_region(res0->start, resource_size(res0));
 
 	return retval;
 }
@@ -1600,6 +1681,7 @@ err_mem:
 static int spnew_udc_remove(struct platform_device *pdev)
 {
 	struct spnew_udc *udc = platform_get_drvdata(pdev);
+	struct resource *res;
 
 	dev_dbg(&pdev->dev, "%s()\n", __func__);
 
@@ -1610,7 +1692,16 @@ static int spnew_udc_remove(struct platform_device *pdev)
 	free_irq(IRQ_USBD, udc);
 
 	iounmap(base_addr);
-	release_mem_region(rsrc_start, rsrc_len);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if(res) {
+		release_mem_region(res->start, resource_size(res));
+	}
+
+	iounmap(moon5_base_addr);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if(res) {
+		release_mem_region(res->start, resource_size(res));
+	}
 
 	platform_set_drvdata(pdev, NULL);
 
@@ -1626,6 +1717,110 @@ static int spnew_udc_remove(struct platform_device *pdev)
 
 #define spnew_udc_suspend NULL
 #define spnew_udc_resume  NULL
+
+static int udc_init_c(void)
+{
+	spnew_udc_enable(NULL);
+	udc_write(udc_read(DEVC_IMAN) & (~DEVC_INTR_ENABLE), DEVC_IMAN);
+
+	return 0;
+}
+
+void spnew_udc_state_polling(struct timer_list *t)
+{
+	if (!platform_device_handle_flag
+		|| !bus_reset_finish_flag){
+		DEBUG_DBG("finish_flag: %d,handle_flag: %d\n",
+			bus_reset_finish_flag, platform_device_handle_flag);
+		return ;
+	}
+	if (sof_value == GET_FRNUM(udc_read(USBD_FRNUM_ADDR)) /*&& sof_value */ ) {
+		DEBUG_NOTICE("SOF %x\n", GET_FRNUM(udc_read(USBD_FRNUM_ADDR)));
+		sof_value = 0x1000;
+		/* discnnect */
+		usb_switch(TO_HOST);
+	} else {
+		sof_value = GET_FRNUM(udc_read(USBD_FRNUM_ADDR));
+		if (is_config) {
+			mod_timer(&vbus_polling_timer,
+				  jiffies + d_time1);
+		} else {
+			mod_timer(&vbus_polling_timer,
+				  jiffies + d_time0);
+		}
+	}
+}
+
+void sp_sof_state_polling(struct timer_list *t)
+{
+	if (!platform_device_handle_flag
+		|| bus_reset_finish_flag){
+		DEBUG_DBG("finish: %d,handle: %d\n",
+			bus_reset_finish_flag,platform_device_handle_flag);
+		return ;
+	}
+
+	if (first_enter_polling_timer_flag) {
+		temp_sof_value = GET_FRNUM(udc_read(USBD_FRNUM_ADDR));
+		first_enter_polling_timer_flag = false;
+		mod_timer(&sof_polling_timer,
+			  jiffies + 3 * HZ / 2);
+	} else {
+		if (temp_sof_value == GET_FRNUM(udc_read(USBD_FRNUM_ADDR))) {
+			DEBUG_NOTICE("SOFX %x\n",
+				     GET_FRNUM(udc_read(USBD_FRNUM_ADDR)));
+			/* discnnect */
+			usb_switch(TO_HOST);
+		} else {
+			temp_sof_value = GET_FRNUM(udc_read(USBD_FRNUM_ADDR));
+			mod_timer(&sof_polling_timer,
+				  jiffies + 3 * HZ / 2);
+		}
+	}
+}
+
+void usb_switch(int device)
+{
+	if (device) {
+		if (accessory_port_id == 0) {
+			udc_writeb(moon5_base_addr, RF_MASK_V_SET(1 << 4), USBC_CTL_OFFSET);
+			udc_writeb(moon5_base_addr, RF_MASK_V_CLR(1 << 5), USBC_CTL_OFFSET);
+		} else if (accessory_port_id == 1){
+			udc_writeb(moon5_base_addr, RF_MASK_V_SET(1 << 12), USBC_CTL_OFFSET);
+			udc_writeb(moon5_base_addr, RF_MASK_V_CLR(1 << 13), USBC_CTL_OFFSET);
+		}
+
+		DEBUG_ERR("host to device\n");
+	} else {
+		udc_write(udc_read(DEVC_CS) & (~UDC_RUN), DEVC_CS);
+
+		if (is_config == 1)
+			is_config = 0;
+
+		if (accessory_port_id == 0) {
+			udc_writeb(moon5_base_addr, RF_MASK_V_SET(1 << 5), USBC_CTL_OFFSET);
+		} else if (accessory_port_id == 1){
+			udc_writeb(moon5_base_addr, RF_MASK_V_SET(1 << 13), USBC_CTL_OFFSET);
+		}
+
+		bus_reset_finish_flag = false;
+		platform_device_handle_flag = false;
+
+		DEBUG_ERR("device to host!\n");
+	}
+}
+EXPORT_SYMBOL(usb_switch);
+
+void detech_start(void)
+{
+	udc_init_c();
+
+	platform_device_handle_flag = true;
+	first_enter_polling_timer_flag = true;
+
+	DEBUG_ERR("detech_start......\n");
+}
+EXPORT_SYMBOL(detech_start);
 
 static const struct of_device_id spnew_udc0_ids[] = {
 	{ .compatible = "sunplus,i143-usb-udc0" },
@@ -1676,6 +1871,12 @@ static int __init udc_init(void)
 		printk(KERN_NOTICE "register sunplus_udc1_driver\n");
 		retval = platform_driver_register(&spnew_udc1_driver);
 	}
+
+	timer_setup(&vbus_polling_timer, spnew_udc_state_polling, 0);
+	vbus_polling_timer.expires = jiffies - HZ;
+
+	timer_setup(&sof_polling_timer, sp_sof_state_polling, 0);
+	sof_polling_timer.expires = jiffies + 3 * HZ / 2;
 
 	return retval;
 }
