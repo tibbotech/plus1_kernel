@@ -38,13 +38,13 @@
 #endif
 
 #ifdef I2C_DBG_INFO
-	#define DBG_INFO(fmt, args ...)    printk("[I2C] Info: " fmt, ## args)
+	#define DBG_INFO(fmt, args ...)    printk("[I2C] Info (%d):  "  fmt, __LINE__ , ## args)
 #else
 	#define DBG_INFO(fmt, args ...)
 #endif
 
 #ifdef I2C_DBG_ERR
-	#define DBG_ERR(fmt, args ...)    printk("[I2C] Error: " fmt, ## args)
+	#define DBG_ERR(fmt, args ...)    printk("[I2C] Error (%d):  "  fmt, __LINE__ , ## args)
 #else
 	#define DBG_ERR(fmt, args ...)
 #endif
@@ -489,8 +489,8 @@ static int _sp_i2cm_init(unsigned int device_id, SpI2C_If_t *pstSpI2CInfo)
 #ifdef SUPPORT_I2C_GDMA
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
 	hal_i2cm_dma_base_set(device_id, pstSpI2CInfo->i2c_dma_regs);
-	DBG_INFO("[I2C adapter] i2c_regs= 0x%x\n", pstSpI2CInfo->i2c_regs);
-	DBG_INFO("[I2C adapter] i2c_dma_regs= 0x%x\n", pstSpI2CInfo->i2c_dma_regs);
+	DBG_INFO("[I2C adapter] i2c_regs= 0x%x\n", (unsigned int)pstSpI2CInfo->i2c_regs);
+	DBG_INFO("[I2C adapter] i2c_dma_regs= 0x%x\n", (unsigned int)pstSpI2CInfo->i2c_dma_regs);
 #else
 	hal_i2cm_base_set(device_id, pstSpI2CInfo->i2c_regs);
 	DBG_INFO("[I2C adapter] i2c_regs= 0x%x\n", pstSpI2CInfo->i2c_regs);
@@ -1579,7 +1579,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 
 		pstSpI2CInfo->dev = &pdev->dev;
 
-		DBG_INFO("I2C probe pstSpI2CInfo->dev %x",pstSpI2CInfo->dev);
+		//DBG_INFO("I2C probe pstSpI2CInfo->dev %x",(unsigned int)pstSpI2CInfo->dev);
 
 	ret = _sp_i2cm_get_resources(pdev, pstSpI2CInfo);
 	if (ret != I2C_SUCCESS) {
