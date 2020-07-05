@@ -218,7 +218,6 @@
 			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA4>;
 			resets = <&rstc RST_UA4>;
-			status = "disabled";
 		};
 
 		rtc: serial@sp_rtc {
@@ -752,7 +751,6 @@
 			cap-sdio-irq;
 			no-sd;
 			no-mmc;
-			status = "disabled";
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
