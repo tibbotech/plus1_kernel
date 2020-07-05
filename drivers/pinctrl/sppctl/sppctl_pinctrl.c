@@ -55,11 +55,11 @@ int stpctl_c_p_set( struct pinctrl_dev *_pd, unsigned _pin, unsigned long *_ca, 
    sp7021gpio_u_magpi_set( &( pctrl->gpiod->chip), _pin, muxF_G, muxM_I);
    return( 0);  }
  for ( i = 0; i < _clen; i++) {
-   if ( _ca[ i] & SP7021_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
-   if ( _ca[ i] & SP7021_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
-   if ( _ca[ i] & SP7021_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SP7021_PCTL_L_ONV) {  KDBG( _pd->dev, "%d:ONV\n", i);  sp7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
-   if ( _ca[ i] & SP7021_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:ODR\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SPPCTL_PCTL_L_OUT) {  KDBG( _pd->dev, "%d:OUT\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 0);  }
+   if ( _ca[ i] & SPPCTL_PCTL_L_OU1) {  KDBG( _pd->dev, "%d:OU1\n", i);  sp7021gpio_f_sou( &( pctrl->gpiod->chip), _pin, 1);  }
+   if ( _ca[ i] & SPPCTL_PCTL_L_INV) {  KDBG( _pd->dev, "%d:INV\n", i);  sp7021gpio_u_siinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SPPCTL_PCTL_L_ONV) {  KDBG( _pd->dev, "%d:ONV\n", i);  sp7021gpio_u_soinv( &( pctrl->gpiod->chip), _pin);  }
+   if ( _ca[ i] & SPPCTL_PCTL_L_ODR) {  KDBG( _pd->dev, "%d:ODR\n", i);  sp7021gpio_u_seodr( &( pctrl->gpiod->chip), _pin, 1);  }
    // FIXME: add pullup/pulldown, irq enable/disable
  }
  return( 0);  }
@@ -255,13 +255,13 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
  *_map = kcalloc( *_nm + nmG, sizeof( **_map), GFP_KERNEL);
  for ( i = 0; i < ( *_nm); i++) {
     dt_pin = be32_to_cpu( list[ i]);
-    p_p = SP7021_PCTLD_P(dt_pin);
-    p_g = SP7021_PCTLD_G(dt_pin);
-    p_f = SP7021_PCTLD_F(dt_pin);
-    p_l = SP7021_PCTLD_L(dt_pin);
+    p_p = SPPCTL_PCTLD_P(dt_pin);
+    p_g = SPPCTL_PCTLD_G(dt_pin);
+    p_f = SPPCTL_PCTLD_F(dt_pin);
+    p_l = SPPCTL_PCTLD_L(dt_pin);
     (* _map)[ i].name = parent->name;
     KDBG( _pd->dev, "map [%d]=%d p=%d g=%d f=%d l=%d\n", i, dt_pin, p_p, p_g, p_f, p_l);
-    if ( p_g == SP7021_PCTL_G_GPIO) {
+    if ( p_g == SPPCTL_PCTL_G_GPIO) {
       // look into parse_dt_cfg(),
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
@@ -270,7 +270,7 @@ int stpctl_o_n2map( struct pinctrl_dev *_pd, struct device_node *_dn, struct pin
       *configs = p_l;
       (* _map)[ i].data.configs.configs = configs;
       KDBG( _pd->dev, "%s(%d) = x%X\n", (* _map)[ i].data.configs.group_or_pin, p_p, p_l);
-    } else if ( p_g == SP7021_PCTL_G_IOPP) {
+    } else if ( p_g == SPPCTL_PCTL_G_IOPP) {
       (* _map)[ i].type = PIN_MAP_TYPE_CONFIGS_PIN;
       (* _map)[ i].data.configs.num_configs = 1;
       (* _map)[ i].data.configs.group_or_pin = pin_get_name( _pd, p_p);
