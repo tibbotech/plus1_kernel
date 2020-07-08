@@ -18,4 +18,6 @@ extern void *__cpu_up_task_pointer[];
 
 void __init parse_dtb(void);
 
+#define TRACE pr_info(">>> %s:%d\n", __FUNCTION__, __LINE__)
+
 #endif /* __ASM_HEAD_H */
