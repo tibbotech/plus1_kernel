@@ -279,7 +279,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		clk_get_rate( otp->clk),
 		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
 		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
-	dev_info( dev, "by SunPlus (C) 2019");
+	dev_info( dev, "by Sunplus (C) 2020");
 
 	return 0;
 }
