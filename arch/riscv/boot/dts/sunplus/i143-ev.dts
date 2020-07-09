@@ -27,7 +27,7 @@
 
 	chosen {
 		//bootargs = "earlycon=sbi keep_bootcon loglevel=8";
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		bootargs = "console=ttyS0,115200 earlycon loglevel=8";
 		stdout-path = "serial0";
 	};
 

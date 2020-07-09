@@ -65,7 +65,7 @@
 /* ---------------------------------------------------------------------------------------------- */
 /* Refer zebu: testbench/uart.cc */
 #ifdef CONFIG_SOC_I143
-#define CLK_HIGH_UART			27000000
+#define CLK_HIGH_UART			202500000
 #define UART_RATIO				29
 #else
 #define CLK_HIGH_UART			202500000
