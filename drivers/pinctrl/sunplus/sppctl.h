@@ -1,6 +1,6 @@
 /*
  * SP7021 pinmux controller driver.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
+ * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -25,7 +25,7 @@
 #else
 #define M_NAM "I143 PinCtl"
 #endif
-#define M_ORG "SunPlus/Tibbo Tech."
+#define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
 
 #define FW_DEFNAME NULL

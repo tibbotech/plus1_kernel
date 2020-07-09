@@ -1,6 +1,6 @@
 /*
- * GPIO Driver for SunPlus/Tibbo SP7021 controller
- * Copyright (C) 2020 SunPlus Tech./Tibbo Tech.
+ * GPIO Driver for Sunplus/Tibbo SP7021 controller
+ * Copyright (C) 2020 Sunplus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
@@ -48,7 +48,7 @@
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
 
-#define M_ORG "SunPlus/Tibbo Tech."
+#define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
 
 #define KINF(pd,fmt,args...) { \

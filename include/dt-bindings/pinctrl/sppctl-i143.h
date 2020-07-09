@@ -1,6 +1,6 @@
 /*
  * Sunplus I143 pinmux pinctrl bindings.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
+ * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  */
 

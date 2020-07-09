@@ -1,6 +1,6 @@
 /*
  * Sunplus I143 pinmux controller driver.
- * Copyright (C) SunPlus Tech/Tibbo Tech. 2020
+ * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify

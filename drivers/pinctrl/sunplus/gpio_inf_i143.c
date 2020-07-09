@@ -1,6 +1,6 @@
 /*
  * GPIO Driver for Sunplus I143 controller
- * Copyright (C) 2020 SunPlus Tech./Tibbo Tech.
+ * Copyright (C) 2020 Sunplus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *
  * This program is free software; you can redistribute it and/or modify
