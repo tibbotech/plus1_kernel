@@ -64,22 +64,15 @@ void __init setup_arch(char **cmdline_p)
 
 	parse_early_param();
 
-TRACE;
 	setup_bootmem();
-TRACE;
 	paging_init();
-TRACE;
 	unflatten_device_tree();
 
-TRACE;
 #ifdef CONFIG_SWIOTLB
-TRACE;
 	swiotlb_init(1);
 #endif
 
-TRACE;
 #ifdef CONFIG_SMP
-TRACE;
 	setup_smp();
 #endif
 

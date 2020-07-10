@@ -122,31 +122,24 @@ void __init setup_bootmem(void)
 	setup_initrd();
 #endif /* CONFIG_BLK_DEV_INITRD */
 
-TRACE;
 	/*
 	 * Avoid using early_init_fdt_reserve_self() since __pa() does
 	 * not work for DTB pointers that are fixmap addresses
 	 */
 	memblock_reserve(dtb_early_pa, fdt_totalsize(dtb_early_va));
 
-TRACE;
 	early_init_fdt_scan_reserved_mem();
-TRACE;
 	memblock_allow_resize();
-TRACE;
 	memblock_dump_all();
 
-TRACE;
 	for_each_memblock(memory, reg) {
 		unsigned long start_pfn = memblock_region_memory_base_pfn(reg);
 		unsigned long end_pfn = memblock_region_memory_end_pfn(reg);
 
-TRACE;
 		memblock_set_node(PFN_PHYS(start_pfn),
 				  PFN_PHYS(end_pfn - start_pfn),
 				  &memblock.memory, 0);
 	}
-TRACE;
 }
 
 unsigned long va_pa_offset;
@@ -459,17 +452,11 @@ static void __init setup_vm_final(void)
 
 void __init paging_init(void)
 {
-TRACE;
 	setup_vm_final();
-TRACE;
 	memblocks_present();
-TRACE;
 	sparse_init();
-TRACE;
 	setup_zero_page();
-TRACE;
 	zone_sizes_init();
-TRACE;
 }
 
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
