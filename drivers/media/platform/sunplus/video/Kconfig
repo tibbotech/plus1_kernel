@@ -53,6 +53,12 @@ config IMX219_1920x1080
 	  In this mode, IMX219 output image size 1920x1080.
 endchoice
 
+config VIDEO_SENSOR_VEYE290
+	tristate "Video Sensor (VEYE290) Driver"
+	default n
+	---help---
+	  Supports video sensor VEYE290.
+
 config VIDEO_SENSOR_OV5647
 	tristate "Video Sensor (OV5647) Driver"
 	default n
