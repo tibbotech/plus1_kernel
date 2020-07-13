@@ -655,8 +655,12 @@ static int sp_tdm_probe(struct platform_device *pdev)
     	struct device *dev = &pdev->dev;
     	struct sp_tdm_info *sp_tdm;
     	int ret;
-
-    	AUD_INFO("%s IN\n", __func__);
+	
+	AUD_INFO("%s IN\n", __func__);
+        if (!of_device_is_available(audionp)) {
+		dev_err(&pdev->dev, "devicetree status is not available\n");
+		return -ENODEV;
+	}
 
     	sp_tdm = devm_kzalloc(&pdev->dev, sizeof(*sp_tdm), GFP_KERNEL);
     	if (!sp_tdm)

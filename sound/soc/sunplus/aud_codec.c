@@ -20,6 +20,7 @@
 
 #define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
 
+struct device_node *audionp;
 #if 0
 /*================================================================
  *						codec driver
@@ -371,6 +372,11 @@ static int aud_codec_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	AUD_INFO("%s IN\n", __func__);
+        audionp = of_find_node_by_name(NULL, "audio");
+        if (!of_device_is_available(audionp)) {
+		dev_err(&pdev->dev, "devicetree status is not available\n");
+		return -ENODEV;
+	}
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud,
 				  	      audcodec_dai, ARRAY_SIZE(audcodec_dai));
