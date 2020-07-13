@@ -982,7 +982,7 @@ config PM8916_WATCHDOG
 
 config SUNPLUS_WATCHDOG
         tristate "Sunplus watchdog support"
-        depends on ARCH_PENTAGRAM || COMPILE_TEST
+        depends on SOC_SP7021
         select WATCHDOG_CORE
         help
           Say Y here to include support for the watchdog timer
