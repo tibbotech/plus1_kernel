@@ -50,6 +50,11 @@
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
 };
 
+&mmc0 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&emmc_mux>;
+};
+
 &mmc1 {
  cd-gpios = <&pctl 0 GPIO_ACTIVE_LOW>;
 };
