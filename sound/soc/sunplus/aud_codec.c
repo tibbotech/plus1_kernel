@@ -318,7 +318,7 @@ static unsigned int audreg_read(struct snd_soc_component *component, unsigned in
 	//AUD_INFO("r*audio_base=%08x\n", audio_base);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i)/100 - 60;
-	addr = audio_base + addr_g*32*4 + addr_i*4;
+	addr = (int)(audio_base + addr_g*32*4 + addr_i*4);
 	val = (*(volatile unsigned int *)(addr));
 	//SYNCHRONIZE_IO;
     
@@ -334,7 +334,7 @@ static int audreg_write(struct snd_soc_component *component, unsigned int reg,un
 	//AUD_INFO("w*audio_base=%08x, val = 0x%x\n", audio_base, value);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i)/100 - 60;
-	addr = audio_base + addr_g*32*4 + addr_i*4;
+	addr = (int)(audio_base + addr_g*32*4 + addr_i*4);
 	(*(volatile unsigned int *)(addr)) = value;
 	//SYNCHRONIZE_IO;
 	  
