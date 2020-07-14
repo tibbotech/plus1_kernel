@@ -394,7 +394,7 @@
 			resets = <&rstc RST_UPHY0>;
 			reg = <0x0 0x9C004A80 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <29 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_uphy1: uphy@0x9C004B00 {
@@ -403,7 +403,7 @@
 			resets = <&rstc RST_UPHY1>;
 			reg = <0x0 0x9C004B00 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <30 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_ehci0: usb@0x9C102100 {
@@ -412,7 +412,7 @@
 			resets = <&rstc RST_USBC0>;
 			reg = <0x0 0x9C102100 0x0 0x68>;
 			interrupt-parent = <&intc>;
-			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <27 IRQ_TYPE_LEVEL_HIGH>;
 			tpl-support;
 		};
 
@@ -422,7 +422,7 @@
 			resets = <&rstc RST_USBC1>;
 			reg = <0x0 0x9C103100 0x0 0x68>;
 			interrupt-parent = <&intc>;
-			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <33 IRQ_TYPE_LEVEL_HIGH>;
 			tpl-support;
 		};
 
@@ -432,7 +432,7 @@
 			resets = <&rstc RST_USBC0>;
 			reg = <0x0 0x9C102080 0x0 0x68>, <0x0 0x9C000000 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_ohci1: usb@0x9C103080 {
@@ -441,32 +441,32 @@
 			resets = <&rstc RST_USBC1>;
 			reg = <0x0 0x9C103080 0x0 0x68>, <0x0 0x9C000000 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <34 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_udc0: usb@0x9c101800 {
+		sp_udc0: usb@0x9c102800 {
 			compatible = "sunplus,i143-usb-udc0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x0 0x9c101800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
+			reg = <0x0 0x9c102800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <26 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_udc1: usb@0x9c102800 {
+		sp_udc1: usb@0x9c103800 {
 			compatible = "sunplus,i143-usb-udc1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
-			reg = <0x0 0x9c102800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
+			reg = <0x0 0x9c103800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <32 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_otg0: usb@0x9c102400 {
 			compatible = "sunplus,i143-usb-otg0";
 			reg = <0x0 0x9c102400 0x0 0x70>, <0x0 0x9c102880 0x0 0x80>, <0x0 0x9c000200 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <35 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&otg0_pins>;
 		};
@@ -475,10 +475,11 @@
 			compatible = "sunplus,i143-usb-otg1";
 			reg = <0x0 0x9c103400 0x0 0x70>, <0x0 0x9c103880 0x0 0x80>, <0x0 0x9c000200 0x0 0x80>;
 			interrupt-parent = <&intc>;
-			interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&otg1_pins>;
 		};
+
 #if 0 // Temporary description for MIPI I2C node
 		i2cm0: i2c@sp_i2cm0 {
 			compatible = "sunplus,sp7021-mipi-i2c";
