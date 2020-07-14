@@ -32,7 +32,7 @@ static void sp_power_off(void)
 	//writel(0x0060, regs_B + 0x438); /* iop_data6=0x0060 */
 	//writel(0x00dd, regs_B + 0x424); /* iop_data1=0x00dd */
  		
-	printk("PD RG_PLL_PDN and RG_PLLIO_PDN to save power\n");
+	//printk("PD RG_PLL_PDN and RG_PLLIO_PDN to save power\n");
 	writel(0, regs + 0x54); /* bit0 RG_PLLIO_PDN */
 	writel(0, regs + 0x2C); /* bit0 RG_PLL_PDN */
 
