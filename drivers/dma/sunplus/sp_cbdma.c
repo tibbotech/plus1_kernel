@@ -542,7 +542,7 @@ struct xilinx_dma_device {
 			   cond, delay_us, timeout_us)
 
 /* Debug message definition */
-//#define CBDMA_FUNC_DEBUG
+#define CBDMA_FUNC_DEBUG
 //#define CBDMA_KDBG_INFO
 //#define CBDMA_KDBG_ERR
 
