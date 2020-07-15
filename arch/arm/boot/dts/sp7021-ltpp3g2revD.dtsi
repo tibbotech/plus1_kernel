@@ -56,6 +56,8 @@
 };
 
 &mmc1 {
+ pinctrl-names = "default";
+ pinctrl-0 = <&mmc1_mux>;
  cd-gpios = <&pctl 0 GPIO_ACTIVE_LOW>;
 };
 
