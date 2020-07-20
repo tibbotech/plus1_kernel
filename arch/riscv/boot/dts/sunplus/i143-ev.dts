@@ -531,7 +531,20 @@
 			clocks = <&clkc DISP_PWM>;
 			resets = <&rstc RST_DISP_PWM>;
 		};
-
+                
+                sp_spinor0: spinor@9C000B00 {
+			compatible = "sunplus,sp-spi-nor";
+			reg = <0x0 0x9C000B00 0x0 0x80>,<0x0 0x9c000080 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <48 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc SPIFL>;
+			resets = <&rstc RST_SPIFL>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi_nor_pins>;
+			spi-max-frequency = <50000000>;
+			spi-chip-selection = <0>;
+		};
+		
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,i143-pctl";
 			reg = <0x0 0x9C000100 0x0 0x100>,
@@ -592,6 +605,11 @@
 			hdmi_A_tx2: hdmi_A_tx2_pins {
 				sppctl,groups = "HDMI_TX2";
 				sppctl,function = "HDMI_TX";
+			};
+			
+			spi_nor_pins: spi_nor_pins_pins {
+				sppctl,groups = "SPI_FLASH1";
+				sppctl,function = "SPI_FLASH";
 			};
 		};
 	};
