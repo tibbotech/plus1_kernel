@@ -12,8 +12,13 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sppctl-i143.h>
 
+#define ENABLE_DMARX0
+#define ENABLE_DMARX1
+#define ENABLE_DMATX0
+#define ENABLE_DMATX1
+
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
-#define RTCCLK_FREQ             1000000
+#define RTCCLK_FREQ             27000000
 
 / {
 	#address-cells = <2>;
@@ -22,7 +27,23 @@
 	compatible = "sunplus,sp-i143";
 
 	aliases {
+#ifdef ENABLE_DMARX0
+		serial10 = &uartdmarx0;
+#endif
+#ifdef ENABLE_DMARX1
+		serial11 = &uartdmarx1;
+#endif
+#ifdef ENABLE_DMATX0
+		serial20 = &uartdmatx0;
+#endif
+#ifdef ENABLE_DMATX1
+		serial21 = &uartdmatx1;
+#endif
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		serial4 = &uart4;
 	};
 
 	chosen {
@@ -216,6 +237,52 @@
 			ext1-mask = <0xe>; /* core1-3 */
 		};
 
+#ifdef ENABLE_DMARX0
+		/* DMA Rx for UARTx */
+		uartdmarx0: serial@sp_uartdmarx0 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c008980 0x0 0x40>;
+			interrupt-parent = <&intc>;
+			interrupts = <93 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA>, <&clkc PERI0>;
+			clock-names = "UADMA", "PERI0";
+			resets = <&rstc RST_UADMA>;
+			which-uart = <1>;
+		};
+#endif
+#ifdef ENABLE_DMARX1
+		uartdmarx1: serial@sp_uartdmarx1 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c0089c0 0x0 0x40>;
+			interrupt-parent = <&intc>;
+			interrupts = <94 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA>,	<&clkc PERI1>;
+			clock-names = "UADMA", "PERI1";
+			resets = <&rstc RST_UADMA>;
+			which-uart = <2>;
+		};
+#endif
+#ifdef ENABLE_DMATX0
+		/* DMA Tx for UARTx */
+		uartdmatx0: serial@sp_uartdmatx0 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c008a00 0x0 0x40>, <0x0 0x9c008880 0x0 0x80>;
+			clocks = <&clkc HWUA>, <&clkc PERI0>;
+			clock-names = "HWUA", "PERI0";
+			resets = <&rstc RST_HWUA>;
+			which-uart = <1>;
+		};
+#endif
+#ifdef ENABLE_DMATX1
+		uartdmatx1: serial@sp_uartdmatx1 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c008a40 0x0 0x40>, <0x0 0x9c008900 0x0 0x80>;
+			clocks = <&clkc HWUA>, <&clkc PERI1>;
+			clock-names = "HWUA", "PERI1";
+			resets = <&rstc RST_HWUA>;
+			which-uart = <2>;
+		};
+#endif
 		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp7021-uart";
 			reg = <0x0 0x9c000900 0x0 0x80>;
@@ -226,7 +293,47 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart0_pins>;
 		};
+		
+		uart1: serial@sp_uart1 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c000980 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <19 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA1>;
+			resets = <&rstc RST_UA1>;
+			status = "disabled";
+		};
 
+		uart2: serial@sp_uart2 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c000800 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA2>;
+			resets = <&rstc RST_UA2>;
+			status = "disabled";
+		};
+
+		uart3: serial@sp_uart3 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c000880 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA3>;
+			resets = <&rstc RST_UA3>;
+			status = "disabled";
+		};
+
+		uart4: serial@sp_uart4 {
+			compatible = "sunplus,sp7021-uart";
+			reg = <0x0 0x9c008780 0x0 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UA4>;
+			resets = <&rstc RST_UA4>;
+			status = "disabled";
+		};
+		
 		rstc: reset@9c000054 {
 			compatible = "sunplus,sp-reset";
 			#reset-cells = <1>;

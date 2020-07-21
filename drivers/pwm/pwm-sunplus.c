@@ -263,8 +263,14 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 		return -EINVAL;
 
 #if defined(CONFIG_SOC_SP7021)
+	if (dd_freq >= 0xffff)
+		dd_freq = 0xffff;
+
 	pwm_dd_en = pPWMReg->grp244_1 & (0xff >> (8 - ePWM_DD_MAX));
 #elif defined(CONFIG_SOC_I143)
+	if (dd_freq >= 0x3ffff)
+		dd_freq = 0x3ffff;
+
 	for (i = 0; i < ePWM_DD_MAX; ++i) {
 		if (pPWMReg->pwm_dd[i].dd)
 			pwm_dd_en |= (1 << i);
