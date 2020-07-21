@@ -293,7 +293,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&uart0_pins>;
 		};
-		
+
 		uart1: serial@sp_uart1 {
 			compatible = "sunplus,sp7021-uart";
 			reg = <0x0 0x9c000980 0x0 0x80>;
@@ -333,7 +333,7 @@
 			resets = <&rstc RST_UA4>;
 			status = "disabled";
 		};
-		
+
 		rstc: reset@9c000054 {
 			compatible = "sunplus,sp-reset";
 			#reset-cells = <1>;
@@ -481,6 +481,7 @@
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&gl2sw_pins>;
+			status = "disabled";
 		};
 
 		mdio {

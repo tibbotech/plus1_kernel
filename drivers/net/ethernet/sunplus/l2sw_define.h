@@ -32,7 +32,7 @@
 //#define RX_POLLING
 
 #ifdef CONFIG_SOC_I143
-#define ZEBU_XTOR
+//#define ZEBU_XTOR
 
 #ifdef ZEBU_XTOR
 // mac_force_mode0[11:10]: force_gmii_en[1:0]   = 0x3 (enable force function)
