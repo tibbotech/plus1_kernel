@@ -203,12 +203,20 @@ int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
+#ifdef CONFIG_SOC_SP7021
 	return readl((u32 *)reg);
+#elif defined(CONFIG_SOC_I143)
+	return readl((u32 *)(u64)reg);
+#endif
 }
 
 int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 {
+#ifdef CONFIG_SOC_SP7021
 	writel(val, (u32 *)reg);
+#elif defined(CONFIG_SOC_I143)
+	writel(val, (u32 *)(u64)reg);
+#endif
 
 	return 0;
 }
@@ -686,6 +694,7 @@ int sp_otg_probe(struct platform_device *dev)
 		ret = otg_host->irq;
 		goto release_mem;
 	}
+
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
 		pr_err("otg no memory recourse provieded\n");
@@ -708,9 +717,15 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_release_region;
 	}
 
+#ifdef CONFIG_SOC_SP7021
 	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
+#elif defined(CONFIG_SOC_I143)		//shih test
+	otg_debug("@@@ otg reg %lld %lld irq %d %x\n", res_mem->start,
+			  resource_size(res_mem), otg_host->irq,
+			  readl(&otg_host->regs_otg->otg_int_st));
+#endif
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
 	if (!res_mem) {
