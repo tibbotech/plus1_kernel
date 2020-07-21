@@ -31,7 +31,7 @@
 
 
 /* Debug message definition */
-//#define CBDMA_PROXY_FUNC_DEBUG
+#define CBDMA_PROXY_FUNC_DEBUG
 //#define CBDMA_PROXY_KDBG_INFO
 //#define CBDMA_PROXY_KDBG_ERR
 
@@ -67,7 +67,7 @@ module_param(cached_buffers, int, S_IRUGO);
 MODULE_LICENSE("GPL");
 
 #define DRIVER_NAME 		"dma_proxy"
-#define CHANNEL_COUNT 		1
+#define CHANNEL_COUNT 		2
 #define ERROR 			-1
 #define NOT_LAST_CHANNEL 	0
 #define LAST_CHANNEL 		1
@@ -177,7 +177,8 @@ static dma_cookie_t start_transfer(struct dma_proxy_channel *pchannel_p)
 	 * single buffer is being used for this transfer
 	 */
 	if (pchannel_p->direction == DMA_MEMCPY) {
-		dma_addr_t src;
+		dma_addr_t src = (dma_addr_t)interface_p->src;
+
 		chan_desc = dmaengine_prep_dma_memcpy(pchannel_p->channel_p,  pchannel_p->dma_handle,
 												src, interface_p->length, flags);
 	}
@@ -288,24 +289,28 @@ static void transfer(struct dma_proxy_channel *pchannel_p)
 
 	print_channel(pchannel_p);
 
-#if 1 // CCHo added for debugging
+#if 0 // This hard code is for mipicsi app
 	if (pchannel_p->direction == DMA_MEM_TO_MEM) {
-		char __user *data;
-		struct vm_area_struct *vma;
+		unsigned long src_addr = 0;
 
 		DBG_INFO("%s, %d, &buffer=0x%x, interface_p->length:0x%x, interface_p=0x%x\n", __func__, __LINE__,
 			(u32)&interface_p->buffer, interface_p->length, (u32)interface_p);
 		DBG_INFO("%s, %d, &buffer=0x%x, interface_p->length:0x%x, interface_p->src=0x%x\n", __func__, __LINE__,
 			(u32)&interface_p->buffer, interface_p->length, (u32)interface_p->src);
 
-		data = (char __user *)interface_p->src;
-		vma = (struct vm_area_struct *)data;
+		if (((u32)interface_p->src & 0x0000000F) == 0)
+			src_addr = 0x1e700000;
+		else if (((u32)interface_p->src & 0x0000000F) == 1)
+			src_addr = 0x1d000000;
+		else {
+			DBG_ERR("%s, %d, interface_p->src=0x%x, src_addr=0x%lx\n", __func__, __LINE__,
+			(u32)interface_p->src, src_addr);
+			return;
+		}
+		interface_p->src = (void *)src_addr;
 
-		DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
-				vma, vma->vm_start, vma->vm_end);
-		DBG_INFO("%s, %d, vma->vm_pgoff:0x%lx, vma->vm_pgoff<<PAGE_SHIFT:0x%lx, PAGE_SHIFT:%u\n", __func__, __LINE__,
-				vma->vm_pgoff, vma->vm_pgoff<<PAGE_SHIFT, PAGE_SHIFT);
-		return;
+		DBG_INFO("%s, %d, interface_p->src=0x%x, src_addr=0x%lx\n", __func__, __LINE__,
+			(u32)interface_p->src, src_addr);
 	}
 #endif
 
@@ -496,6 +501,10 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma)
 
 	FUNC_DEBUG();
 
+	DBG_INFO("%s, %d, file_p:%p, file_p->private_date:%p\n", __func__, __LINE__,
+			file_p, file_p->private_data);
+	DBG_INFO("%s, %d, file_p->f_mapping:%p, file_p->f_mapping->nrpages:0x%lx\n", __func__, __LINE__,
+			file_p->f_mapping, file_p->f_mapping->nrpages);
 	DBG_INFO("%s, %d, pchannel_p:%p, pchannel_p->dma_device_p:%p\n", __func__, __LINE__,
 			pchannel_p, pchannel_p->dma_device_p);
 	DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
@@ -516,10 +525,18 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma)
 			return -EAGAIN;
 		}
 		else {
+			DBG_INFO("%s, %d, file_p:%p, file_p->private_date:%p\n", __func__, __LINE__,
+					file_p, file_p->private_data);
+			DBG_INFO("%s, %d, file_p->f_mapping:%p, file_p->f_mapping->nrpages:0x%lx\n", __func__, __LINE__,
+					file_p->f_mapping, file_p->f_mapping->nrpages);
+			DBG_INFO("%s, %d, pchannel_p->interface_p:%p, phys addr:0x%x\n", __func__, __LINE__,
+					pchannel_p->interface_p, virt_to_phys((void *)pchannel_p->interface_p));
 			DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
 					vma, vma->vm_start, vma->vm_end);
 			DBG_INFO("%s, %d, vma->vm_pgoff:0x%lx, vma->vm_pgoff<<PAGE_SHIFT:0x%lx, PAGE_SHIFT:%u\n", __func__, __LINE__,
 					vma->vm_pgoff, vma->vm_pgoff<<PAGE_SHIFT, PAGE_SHIFT);
+			DBG_INFO("%s, %d, vma->vm_file:%p, vma->vm_private_date:%p\n", __func__, __LINE__,
+					vma->vm_file, vma->vm_private_data);
 		}
 		return 0;
 	} else {
@@ -532,9 +549,9 @@ static int mmap(struct file *file_p, struct vm_area_struct *vma)
 		DBG_INFO("%s, %d, vma:%p, vma->vm_start:0x%lx, vma->vm_end:0x%lx\n", __func__, __LINE__,
 				vma, vma->vm_start, vma->vm_end);
 
-		addr = dma_common_mmap(pchannel_p->dma_device_p, vma,
-							   pchannel_p->interface_p, pchannel_p->interface_phys_addr,
-							   vma->vm_end - vma->vm_start, 0);
+		addr = dma_mmap_coherent(pchannel_p->dma_device_p, vma,
+						   pchannel_p->interface_p, pchannel_p->interface_phys_addr,
+						   vma->vm_end - vma->vm_start);
 
 		DBG_INFO("%s, %d, addr:0x%x\n", __func__, __LINE__, addr);
 
@@ -738,7 +755,7 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 
 		printk(KERN_INFO "Allocating cached memory at 0x%08X\n",
 			   (unsigned int)pchannel_p->interface_p);
-		DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+		DBG_INFO("%s, %d, pchannel_p->interface_p:%px, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
 				pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
 	} else {
 
@@ -755,7 +772,7 @@ static int create_channel(struct dma_proxy_channel *pchannel_p, char *name, u32 
 
 		printk(KERN_INFO "Allocating uncached memory at 0x%08X\n",
 			   (unsigned int)pchannel_p->interface_p);
-		DBG_INFO("%s, %d, pchannel_p->interface_p:%p, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
+		DBG_INFO("%s, %d, pchannel_p->interface_p:%px, pchannel_p->interface_phys_addr:0x%x\n", __func__, __LINE__,
 				pchannel_p->interface_p, (u32)pchannel_p->interface_phys_addr);
 	}
 	if (!pchannel_p->interface_p) {
@@ -774,7 +791,7 @@ static int __init dma_proxy_init(void)
 	FUNC_DEBUG();
 	printk(KERN_INFO "dma_proxy module initialized\n");
 
-#if 1
+#if 0 // Copy mode for mipicsi app
 	rc = create_channel(&channels[0], "_cp", DMA_MEM_TO_MEM);
 	if (rc) {
 		return rc;
