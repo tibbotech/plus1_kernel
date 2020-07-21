@@ -203,6 +203,9 @@ static int _sp7021_setpwm(struct pwm_chip *chip,
 	if (dd_freq == 0)
 		return -EINVAL;
 
+	if (dd_freq >= 0xffff)
+		dd_freq = 0xffff;
+
 	if (pPWMReg->grp244_1 & (1 << pwm->hwpwm))
 		dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
 	else
