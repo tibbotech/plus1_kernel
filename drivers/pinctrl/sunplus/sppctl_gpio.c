@@ -43,9 +43,9 @@ int sppctl_gpio_resmap(struct platform_device *_pd, sppctlgpio_chip_t *_pc)
 		KERR(&(_pd->dev), "%s get res#0 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #0:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #0:%px\n", rp);
 	if (!rp) return (-EFAULT);
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base0 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base0));
@@ -56,9 +56,9 @@ int sppctl_gpio_resmap(struct platform_device *_pd, sppctlgpio_chip_t *_pc)
 		KERR(&(_pd->dev), "%s get res#1 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #1:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #1:%px\n", rp);
 	if (!rp) return (-EFAULT);
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base1 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#1 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base1));
@@ -69,9 +69,9 @@ int sppctl_gpio_resmap(struct platform_device *_pd, sppctlgpio_chip_t *_pc)
 		KERR(&(_pd->dev), "%s get res#2 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #2:%px\n", rp);
 	if (!rp) return (-EFAULT);
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base2));
