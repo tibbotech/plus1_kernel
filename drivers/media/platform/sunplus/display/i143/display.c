@@ -1014,15 +1014,15 @@ static void _debug_cmd(char *tmpbuf)
 				DRV_VPP_SetColorbar(DRV_FROM_DDFCH, 1);
 			}
 			else if (bist_mode == 2) {
-				sp_disp_info("disp ddfch bist en(bor) \n");
+				sp_disp_info("disp ddfch bist en(half1) \n");
 				DRV_VPP_SetColorbar(DRV_FROM_DDFCH, 2);
 			}
 			else if (bist_mode == 3) {
-				sp_disp_info("disp ddfch bist en(half1) \n");
+				sp_disp_info("disp ddfch bist en(half2) \n");
 				DRV_VPP_SetColorbar(DRV_FROM_DDFCH, 3);
 			}
 			else {
-				sp_disp_info("disp ddfch bist en(half2) \n");
+				sp_disp_info("disp ddfch bist dis \n");
 				DRV_VPP_SetColorbar(DRV_FROM_DDFCH, 0);
 			}
 		}
@@ -1557,10 +1557,12 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	sp_disp_info("virt_to_phys(vppdma_data_array) %ld \n",virt_to_phys(vppdma_data_array));
 	#endif
 	#if (DDFCH_FETCH_EN == 1)
-	vpp_yuv_ptr = ioremap(0x23000000, sizeof(vpp_yuv_array));
-	memcpy(vpp_yuv_ptr, vpp_yuv_array, sizeof(vpp_yuv_array));
-	ddfch_setting(0x23000000, 0x23000000 + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
-	//ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys(vpp_yuv_array) + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+	pa = __pa(vpp_yuv_ptr);
+	pa &= ~0x80000000;
+	//vpp_yuv_ptr = ioremap(0x23000000, sizeof(vpp_yuv_array));
+	//memcpy(vpp_yuv_ptr, vpp_yuv_array, sizeof(vpp_yuv_array));
+	//ddfch_setting(0x23000000, 0x23000000 + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+	ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys(vpp_yuv_array) + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
 	#endif
 
 	return 0;

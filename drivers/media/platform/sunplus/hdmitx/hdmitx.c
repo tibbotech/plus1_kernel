@@ -22,7 +22,11 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
+#ifdef CONFIG_SOC_SP7021
 #include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
+#elif defined(CONFIG_SOC_I143)
+#include <media/sunplus/disp/i143/display.h> //#ifdef TIMING_SYNC_720P60
+#endif
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
  *---------------------------------------------------------------------------*/
