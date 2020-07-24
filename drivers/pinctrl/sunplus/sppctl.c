@@ -115,11 +115,7 @@ static void sppctl_fwload_cb(const struct firmware *_fw, void *_ctx)
 		return;
 	}
 	if (_fw->size < list_funcsSZ-2) {
-#ifdef CONFIG_64BIT
-		KERR(p->pcdp->dev, " fw size %ld < %ld\n", _fw->size, list_funcsSZ);
-#else
-		KERR(p->pcdp->dev, " fw size %d < %d\n", _fw->size, list_funcsSZ);
-#endif
+		KERR(p->pcdp->dev, " fw size %zd < %zd\n", _fw->size, list_funcsSZ);
 		goto out;
 	}
 
@@ -155,13 +151,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s get res#F ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #F:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #F:%px\n", rp);
 	if (!rp) return (-EFAULT);
-#ifdef CONFIG_64BIT
-	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
-#else
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
-#endif
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->baseF = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#F ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->baseF));
@@ -172,13 +164,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s get res#0 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #0:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #0:%px\n", rp);
 	if (!rp) return (-EFAULT);
-#ifdef CONFIG_64BIT
-	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
-#else
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
-#endif
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base0 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base0));
@@ -189,13 +177,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s get res#1 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #1:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #1:%px\n", rp);
 	if (!rp) return (-EFAULT);
-#ifdef CONFIG_64BIT
-	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
-#else
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
-#endif
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base1 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#1 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base1));
@@ -206,13 +190,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s get res#2 ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #2:%px\n", rp);
 	if (!rp) return (-EFAULT);
-#ifdef CONFIG_64BIT
-	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
-#else
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
-#endif
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->base2));
@@ -223,13 +203,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s get res#I ERR\n", __FUNCTION__);
 		return (PTR_ERR(rp));
 	}
-	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
+	KDBG(&(_pd->dev), "mres #I:%px\n", rp);
 	if (!rp) return (-EFAULT);
-#ifdef CONFIG_64BIT
-	KDBG(&(_pd->dev), "mapping [%llX-%llX]\n", rp->start, rp->end);
-#else
-	KDBG(&(_pd->dev), "mapping [%X-%X]\n", rp->start, rp->end);
-#endif
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
 	if (IS_ERR(_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp))) {
 		KERR(&(_pd->dev), "%s map res#I ERR\n", __FUNCTION__);
 		return (PTR_ERR(_pc->baseI));

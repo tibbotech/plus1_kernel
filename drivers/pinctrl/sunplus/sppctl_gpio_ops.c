@@ -47,7 +47,7 @@ int sppctlgpio_u_gfrst(struct gpio_chip *_c, unsigned int _n)
 	sppctlgpio_chip_t *pc = (sppctlgpio_chip_t *)gpiochip_get_data(_c);
 
 	r = readl(pc->base2 + SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
-	//KINF(_c->parent, "u F r:%X = %d %p off:%d\n", r, R32_VAL(r,R32_BOF(_n)), pc->base2, SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
+	//KINF(_c->parent, "u F r:%X = %d %px off:%d\n", r, R32_VAL(r,R32_BOF(_n)), pc->base2, SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
 	return (R32_VAL(r,R32_BOF(_n)));
 }
 
@@ -58,7 +58,7 @@ int sppctlgpio_u_magpi(struct gpio_chip *_c, unsigned int _n)
 	sppctlgpio_chip_t *pc = (sppctlgpio_chip_t *)gpiochip_get_data(_c);
 
 	r = readl(pc->base0 + SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
-	//KINF(_c->parent, "u M r:%X = %d %p off:%d\n", r, R32_VAL(r,R16_BOF(_n)), pc->base0, SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
+	//KINF(_c->parent, "u M r:%X = %d %px off:%d\n", r, R32_VAL(r,R16_BOF(_n)), pc->base0, SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
 	return (R32_VAL(r,R16_BOF(_n)));
 }
 
@@ -71,7 +71,7 @@ void sppctlgpio_u_magpi_set(struct gpio_chip *_c, unsigned int _n, muxF_MG_t _f,
 	// FIRST
 	if (_f != muxFKEEP) {
 		r = readl(pc->base2 + SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
-		//KINF(_c->parent, "F r:%X %p off:%d\n", r, pc->base2, SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
+		//KINF(_c->parent, "F r:%X %px off:%d\n", r, pc->base2, SPPCTL_GPIO_OFF_GFR + R32_ROF(_n));
 		if (_f != R32_VAL(r,R32_BOF(_n))) {
 			if (_f == muxF_G) r |= BIT(R32_BOF(_n));
 			else r &= ~BIT(R32_BOF(_n));
@@ -84,7 +84,7 @@ void sppctlgpio_u_magpi_set(struct gpio_chip *_c, unsigned int _n, muxF_MG_t _f,
 	if (_m != muxMKEEP) {
 		r = (BIT(R16_BOF(_n))<<16);
 		if (_m == muxM_G) r |= BIT(R16_BOF(_n));
-		//KINF(_c->parent, "M w:%X %p off:%d\n", r, pc->base0, SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
+		//KINF(_c->parent, "M w:%X %px off:%d\n", r, pc->base0, SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
 		writel(r, pc->base0 + SPPCTL_GPIO_OFF_CTL + R16_ROF(_n));
 	}
 }

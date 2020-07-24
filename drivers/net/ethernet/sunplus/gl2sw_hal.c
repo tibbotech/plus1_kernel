@@ -2,13 +2,13 @@
 
 
 static struct l2sw_reg* l2sw_reg_base = NULL;
-static struct moon5_reg* moon5_reg_base = NULL;
+static struct moon4_reg* moon4_reg_base = NULL;
 
 
 int l2sw_reg_base_set(void __iomem *baseaddr)
 {
 	l2sw_reg_base = (struct l2sw_reg*)baseaddr;
-	ETH_INFO(" l2sw_reg_base = %px\n", l2sw_reg_base);
+	ETH_DEBUG(" l2sw_reg_base = %px\n", l2sw_reg_base);
 
 	if (l2sw_reg_base == NULL){
 		return -1;
@@ -18,12 +18,12 @@ int l2sw_reg_base_set(void __iomem *baseaddr)
 	}
 }
 
-int moon5_reg_base_set(void __iomem *baseaddr)
+int moon4_reg_base_set(void __iomem *baseaddr)
 {
-	moon5_reg_base = (struct moon5_reg*)baseaddr;
-	ETH_INFO(" moon5_reg_base = %px\n", moon5_reg_base);
+	moon4_reg_base = (struct moon4_reg*)baseaddr;
+	ETH_DEBUG(" moon4_reg_base = %px\n", moon4_reg_base);
 
-	if (moon5_reg_base == NULL){
+	if (moon4_reg_base == NULL){
 		return -1;
 	}
 	else{
@@ -395,6 +395,7 @@ static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata)
 		}
 
 		value = HWREG_R(phy_cntl_reg1);
+		ndelay(100);
 	} while ((value & 0x3) == 0);
 
 	if (time == 0)
@@ -458,6 +459,13 @@ inline u32 read_port_ability(void)
 void l2sw_enable_port(struct l2sw_mac *mac)
 {
 	u32 reg;
+
+#ifdef ZEBU_XTOR
+	MOON4REG_W(plleth_cfg, (1 << (16+7)) | (1 << 7));   // 250 MHz for Zebu server.
+#else
+	MOON4REG_W(plleth_cfg, (1 << (16+7)) | (0 << 7));   // 150 MHz for real chip.
+#endif
+	//ETH_DEBUG(" plleth_cfg = %08x\n", MOON4REG_R(plleth_cfg));
 
 	//phy address
 	reg = HWREG_R(mac_force_mode0);

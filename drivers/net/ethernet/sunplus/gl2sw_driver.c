@@ -1002,7 +1002,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Get memory resoruce 1 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
 		ETH_DEBUG(" r_mem->start = 0x%08llx\n", (long long)r_mem->start);
-		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+		if (moon4_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
 			ETH_ERR("[%s] ioremap failed!\n", __func__);
 			ret = -ENOMEM;
 			goto out_free_comm;
@@ -1012,18 +1012,6 @@ static int l2sw_probe(struct platform_device *pdev)
 		ret = -ENXIO;
 		goto out_free_comm;
 	}
-
-#ifdef ZEBU_XTOR
-{
-	volatile u32 *moon4_reg_base = devm_ioremap(&pdev->dev, 0x9c000200, 0x80);
-	if (moon4_reg_base == NULL){
-		ETH_ERR("[%s] ioremap failed (moon4)!\n", __func__);
-		ret = -ENOMEM;
-		goto out_free_comm;
-	}
-	moon4_reg_base[14] = (1 << (16+7)) | (1 << 7);  // Force lower speed for XTOR.
-}
-#endif
 
 	for (i = 0; i < 4; i++) {
 		// Get irq #i resource from dts.
@@ -1076,7 +1064,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	mac = netdev_priv(net_dev);
 	mac->comm = comm;
 	comm->net_dev = net_dev;
-	ETH_INFO("[%s] net_dev = %px, mac = %px, comm = %px\n", __func__, net_dev, mac, mac->comm);
+	ETH_DEBUG("[%s] net_dev = %px, mac = %px, comm = %px\n", __func__, net_dev, mac, mac->comm);
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);

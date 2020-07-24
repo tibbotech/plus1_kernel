@@ -8,8 +8,8 @@
 
 #define HWREG_W(M, N)           (l2sw_reg_base->M = N)
 #define HWREG_R(M)              (l2sw_reg_base->M)
-#define MOON5REG_W(M, N)        (moon5_reg_base->M = N)
-#define MOON5REG_R(M)           (moon5_reg_base->M)
+#define MOON4REG_W(M, N)        (moon4_reg_base->M = N)
+#define MOON4REG_R(M)           (moon4_reg_base->M)
 
 
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
@@ -17,7 +17,7 @@
 
 int l2sw_reg_base_set(void __iomem *baseaddr);
 
-int moon5_reg_base_set(void __iomem *baseaddr);
+int moon4_reg_base_set(void __iomem *baseaddr);
 
 void mac_hw_stop(struct l2sw_mac *mac);
 
