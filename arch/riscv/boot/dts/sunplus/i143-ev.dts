@@ -479,6 +479,10 @@
 			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
+			mode = <1>;
+			/* 0 = daisy-chain mode
+			 * 1 = dual NIC mode
+			 * 2 = daisy-chain mode (disable SA learning) */
 			pinctrl-names = "default";
 			pinctrl-0 = <&gl2sw_pins>;
 			status = "disabled";

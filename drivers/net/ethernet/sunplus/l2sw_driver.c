@@ -391,11 +391,11 @@ static irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	if (status & MAC_INT_TX_LAN1_QUE_FULL) {
 		ETH_INFO(" Lan Port 1 Queue Full!\n");
 	}
-	if (status & MAC_INT_RX_SOC0_QUE_FULL) {
-		ETH_INFO(" CPU Port 0 RX Queue Full!\n");
+	if (status & MAC_INT_RX_SOC_QUE_FULL) {
+		ETH_INFO(" CPU Port RX Queue Full!\n");
 	}
-	if (status & MAC_INT_TX_SOC0_PAUSE_ON) {
-		ETH_INFO(" CPU Port 0 TX Pause On!\n");
+	if (status & MAC_INT_TX_SOC_PAUSE_ON) {
+		ETH_INFO(" CPU Port TX Pause On!\n");
 	}
 	if (status & MAC_INT_GLOBAL_QUE_FULL) {
 		ETH_INFO(" Global Queue Full!\n");

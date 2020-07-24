@@ -90,7 +90,7 @@ void mac_hw_addr_set(struct l2sw_mac *mac)
 	do {
 		reg = HWREG_R(wt_mac_ad0);
 		ndelay(10);
-		ETH_DEBUG(" wt_mac_ad0 = 0x%08x\n", reg);
+		ETH_DEBUG(" wt_mac_ad0 = %08x\n", reg);
 	} while ((reg&(0x1<<1)) == 0x0);
 	ETH_DEBUG(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
 
@@ -110,7 +110,7 @@ void mac_hw_addr_del(struct l2sw_mac *mac)
 	do {
 		reg = HWREG_R(wt_mac_ad0);
 		ndelay(10);
-		ETH_DEBUG(" wt_mac_ad0 = 0x%08x\n", reg);
+		ETH_DEBUG(" wt_mac_ad0 = %08x\n", reg);
 	} while ((reg&(0x1<<1)) == 0x0);
 	ETH_DEBUG(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
 
@@ -142,7 +142,7 @@ void mac_addr_table_del_all(void)
 		}
 
 		ETH_DEBUG(" addr_tbl_st = %08x\n", reg);
-		ETH_DEBUG(" @AT #%u: port=0x%01x, cpu=0x%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u\n",
+		ETH_DEBUG(" @AT #%u: port=%01x, cpu=%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u\n",
 			(reg>>22)&0x3ff, (reg>>12)&0x3, (reg>>10)&0x3, (reg>>7)&0x7,
 			(reg>>4)&0x7, (reg>>3)&0x1, (reg>>2)&0x1);
 
@@ -158,7 +158,7 @@ void mac_addr_table_del_all(void)
 			do {
 				reg = HWREG_R(wt_mac_ad0);
 				ndelay(10);
-				ETH_DEBUG(" wt_mac_ad0 = 0x%08x\n", reg);
+				ETH_DEBUG(" wt_mac_ad0 = %08x\n", reg);
 			} while ((reg&(0x1<<1)) == 0x0);
 			ETH_DEBUG(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0)&0xffff);
 		}
@@ -199,7 +199,7 @@ void mac_hw_addr_print(void)
 		regh = HWREG_R(MAC_ad_ser1);
 
 		//ETH_INFO(" addr_tbl_st = %08x\n", reg);
-		ETH_INFO(" AT #%u: port=0x%01x, cpu=0x%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u,"
+		ETH_INFO(" AT #%u: port=%01x, cpu=%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u,"
 			" HWaddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
 			(reg>>22)&0x3ff, (reg>>12)&0x3, (reg>>10)&0x3, (reg>>7)&0x7,
 			(reg>>4)&0x7, (reg>>3)&0x1, (reg>>2)&0x1,
