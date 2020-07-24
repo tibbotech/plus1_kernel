@@ -189,7 +189,6 @@ module_param(g_hdmitx_mode, byte, 0644);
 typedef struct {
 	void __iomem *moon4base;
 	void __iomem *moon5base;
-	void __iomem *moon1base;
 	void __iomem *hdmitxbase;
 	struct miscdevice *hdmitx_misc;
 	struct device *dev;
@@ -1021,12 +1020,6 @@ static int hdmitx_probe(struct platform_device *pdev)
 		return PTR_ERR(sp_hdmitx->moon5base);
 	}
 
-//	res = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-//	sp_hdmitx->moon1base = devm_ioremap_resource(dev, res);
-//	if (IS_ERR(sp_hdmitx->moon1base)) {
-//		return PTR_ERR(sp_hdmitx->moon1base);
-//	}
-
 	sp_hdmitx->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(sp_hdmitx->clk)) {
 		return PTR_ERR(sp_hdmitx->clk);
@@ -1054,7 +1047,7 @@ static int hdmitx_probe(struct platform_device *pdev)
 	HDMITX_INFO("HDMITX installed\n");
 
 	/*initialize hardware settings*/
-	hal_hdmitx_init(sp_hdmitx->moon1base, sp_hdmitx->hdmitxbase);
+	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
 
 	/*initialize software settings*/
 	// reset hdmi config

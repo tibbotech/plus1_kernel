@@ -721,7 +721,7 @@ int sp_otg_probe(struct platform_device *dev)
 	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
-#elif defined(CONFIG_SOC_I143)		//shih test
+#elif defined(CONFIG_SOC_I143)
 	otg_debug("@@@ otg reg %lld %lld irq %d %x\n", res_mem->start,
 			  resource_size(res_mem), otg_host->irq,
 			  readl(&otg_host->regs_otg->otg_int_st));
