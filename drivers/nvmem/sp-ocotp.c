@@ -286,7 +286,7 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
 #elif defined(CONFIG_SOC_I143)
 	dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
-		clk_get_rate(otp->clk), \
+		clk_get_rate(otp->clk),
 		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
 		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
 #endif
