@@ -144,7 +144,7 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	pVSCLReg->vscl0_vint_initf_low		=	0x00000000;	//G188.03
 	pVSCLReg->vscl0_vint_initf_high		=	0x00000000;	//G188.04
 	
-	#if 1
+	#if VPPDMA_GRP_EN
 	pVPPDMAReg->vdma_gc 							= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
 	//pVPPDMAReg->vdma_gc 							= 0x00000028; //G186.01 , vppdma off , urgent th = 0x28
 	
@@ -190,7 +190,8 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	//pVPOSTReg->vpost_opif_mskright		= 0x00000040; //G199.16
 	
 	#endif
-	#if 1
+
+	#if DDFCH_GRP_EN
 	//pDDFCHReg->ddfch_latch_en 				= 1; //G185.00 //latch en
 	//pDDFCHReg->ddfch_mode_option			= 0x00000000; //G185.01 //YUV422
 	//pDDFCHReg->ddfch_enable 					= 0xd0; //G185.02 //fetch en
@@ -236,6 +237,7 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	pVSCLReg->vscl0_vint_initf_low		=	0x00000000;	//G188.03
 	pVSCLReg->vscl0_vint_initf_high		=	0x00000000;	//G188.04
 	
+	#if VPPDMA_GRP_EN
 	pVPPDMAReg->vdma_gc 							= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
 	#if (VPPDMA_FMT_HDMI == 0) //RGB888
 	pVPPDMAReg->vdma_cfg 							= 0x00000000; //G186.02 , no swap , bist off , fmt = RGB888 (test2 - ok)
@@ -267,8 +269,9 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	//pVPOSTReg->vpost_opif_mskbot			= 0x00000040; //G199.14
 	//pVPOSTReg->vpost_opif_mskleft			= 0x00000040; //G199.15
 	//pVPOSTReg->vpost_opif_mskright		= 0x00000040; //G199.16
-	
-	#if 0
+	#endif
+
+	#if DDFCH_GRP_EN
 	//pDDFCHReg->ddfch_latch_en 				= 1; //G185.00 //latch en
 	//pDDFCHReg->ddfch_mode_option			= 0x00000000; //G185.01 //YUV422
 	//pDDFCHReg->ddfch_enable 					= 0xd0; //G185.02 //fetch en
@@ -313,6 +316,7 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	pVSCLReg->vscl0_vint_initf_low		=	0x00000000;	//G188.03
 	pVSCLReg->vscl0_vint_initf_high		=	0x00000000;	//G188.04
 	
+	#if VPPDMA_GRP_EN
 	pVPPDMAReg->vdma_gc 							= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
 	#if (VPPDMA_FMT_HDMI == 0) //RGB888
 	pVPPDMAReg->vdma_cfg 							= 0x00000000; //G186.02 , no swap , bist off , fmt = RGB888 (test2 - ok)
@@ -344,7 +348,9 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	//pVPOSTReg->vpost_opif_mskbot			= 0x00000040; //G199.14
 	//pVPOSTReg->vpost_opif_mskleft			= 0x00000040; //G199.15
 	//pVPOSTReg->vpost_opif_mskright		= 0x00000040; //G199.16
-	#if 0
+	#endif
+
+	#if DDFCH_GRP_EN
 	//pDDFCHReg->ddfch_latch_en 				= 1; //G185.00 //latch en
 	//pDDFCHReg->ddfch_mode_option			= 0x00000000; //G185.01 //YUV422
 	//pDDFCHReg->ddfch_enable 					= 0xd0; //G185.02 //fetch en
@@ -389,6 +395,7 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	pVSCLReg->vscl0_vint_initf_low		=	0x00000000;	//G188.03
 	pVSCLReg->vscl0_vint_initf_high		=	0x00000000;	//G188.04
 	
+	#if VPPDMA_GRP_EN
 	pVPPDMAReg->vdma_gc 							= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
 	#if (VPPDMA_FMT_HDMI == 0) //RGB888
 	pVPPDMAReg->vdma_cfg 							= 0x00000000; //G186.02 , no swap , bist off , fmt = RGB888 (test2 - ok)
@@ -420,7 +427,9 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 	//pVPOSTReg->vpost_opif_mskbot			= 0x00000040; //G199.14
 	//pVPOSTReg->vpost_opif_mskleft			= 0x00000040; //G199.15
 	//pVPOSTReg->vpost_opif_mskright		= 0x00000040; //G199.16
-	#if 0
+	#endif
+
+	#if DDFCH_GRP_EN
 	//pDDFCHReg->ddfch_latch_en 				= 1; //G185.00 //latch en
 	//pDDFCHReg->ddfch_mode_option			= 0x00000000; //G185.01 //YUV422
 	//pDDFCHReg->ddfch_enable 					= 0xd0; //G185.02 //fetch en
@@ -820,34 +829,34 @@ void DRV_VPP_SetColorbar(DRV_VppWindow_e vpp_path_sel, int enable)
 		break;
 		case DRV_FROM_OSD0:
 				sp_disp_info("DRV_VPP_SetColorbar from osd0 %d \n", enable);
-				//TBD
+				//inplement in disp_osd.c
 		break;	
 		case DRV_FROM_DDFCH:
 				sp_disp_info("DRV_VPP_SetColorbar from ddfch %d \n", enable);
-				pVSCLReg->vscl0_config2 			= 0x0000221f; //G187.01 , switch to ddfch
-				pVPPDMAReg->vdma_gc 					= 0x00000028; //G186.01 , vppdma dis
+				//pVSCLReg->vscl0_config2 			= 0x0000221f; //G187.01 , switch to ddfch
+				//pVPPDMAReg->vdma_gc 					= 0x00000028; //G186.01 , vppdma dis
 				
 				if (enable) {
-					pDDFCHReg->ddfch_latch_en 			= 0x00000001; //G185.00 , fetch en
-					pDDFCHReg->ddfch_mode_option 		= 0x00000000; //G185.01 , source yuv420 NV12
-					pDDFCHReg->ddfch_enable 				= 0x000000d0; //G185.02 , data fetch en
-					pDDFCHReg->ddfch_luma_base_addr_0 = 0x00000B6E; //G185.06 , luma addr
-					pDDFCHReg->ddfch_crma_base_addr_0 = 0x00000CD6;	//G185.06 , crma addr
+					//pDDFCHReg->ddfch_latch_en 			= 0x00000001; //G185.00 , fetch en
+					//pDDFCHReg->ddfch_mode_option 		= 0x00000000; //G185.01 , source yuv420 NV12
+					//pDDFCHReg->ddfch_enable 				= 0x000000d0; //G185.02 , data fetch en
+					//pDDFCHReg->ddfch_luma_base_addr_0 = 0x00000B6E; //G185.06 , luma addr
+					//pDDFCHReg->ddfch_crma_base_addr_0 = 0x00000CD6;	//G185.09 , crma addr
 					//pDDFCHReg->ddfch_vdo_frame_size = 0x00000300; //G185.21 , video line pitch
 					//pDDFCHReg->ddfch_vdo_crop_size 	= 0x01E002D0; //G185.20 , y size & x size
 					if(enable == 1) {
-						pDDFCHReg->ddfch_bist 				= 0x80801013; //G185.28 , color bar en
+						pDDFCHReg->ddfch_bist 				= 0x80801013; //G185.28 , color bar en (color bar)
 					}
 					else if(enable == 2) {
-						pDDFCHReg->ddfch_bist 				= 0x80801011; //G185.28 , color bar en
+						pDDFCHReg->ddfch_bist 				= 0x80801011; //G185.28 , color bar en (half color bar)
 					}
 					else if(enable == 3) {
-						pDDFCHReg->ddfch_bist 				= 0x80801001; //G185.28 , color bar en
+						pDDFCHReg->ddfch_bist 				= 0x80801001; //G185.28 , color bar en (half border)
 					}
 				}
 				else {
 					pDDFCHReg->ddfch_bist 				= 0x80801002; //G185.28 , color bar dis
-					pDDFCHReg->ddfch_enable 			= 0x000000c0; //G185.02 , data fetch dis
+					//pDDFCHReg->ddfch_enable 			= 0x000000c0; //G185.02 , data fetch dis
 				}
 				
 		break;	
