@@ -17,8 +17,10 @@
 #include <linux/mmc/host.h>
 
 #define SPSDC_MIN_CLK	400000
-#define SPSDC_MAX_CLK	200000000
+#define SPSDC_MAX_CLK	135000000
 #define SPSDC_MAX_BLK_COUNT 65535
+#define SPSDC_SYS_CLK	270000000
+
 
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
