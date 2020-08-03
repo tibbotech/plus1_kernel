@@ -428,7 +428,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&sdcard_pins>;
 			bus-width = <4>;
-			max-frequency = <52000000>;
+			max-frequency = <135000000>;
 			cd-gpios = <&pctl 54 GPIO_ACTIVE_LOW>;
 			disable-wp;
 			cap-sd-highspeed;
