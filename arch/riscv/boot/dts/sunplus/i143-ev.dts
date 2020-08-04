@@ -428,9 +428,8 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&sdcard_pins>;
 			bus-width = <4>;
-			max-frequency = <52000000>;
-			cd-gpios = <&pctl 63 GPIO_ACTIVE_LOW>;
-			broken-cd;
+			max-frequency = <135000000>;
+			cd-gpios = <&pctl 54 GPIO_ACTIVE_LOW>;
 			disable-wp;
 			cap-sd-highspeed;
 			no-sdio;
@@ -738,7 +737,7 @@
 			sdcard_pins: pinmux_sdcard_pins {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
-				sppctl,pins = <SPPCTL_IOPAD(63,SPPCTL_PCTL_G_GPIO,0,0) >;
+				sppctl,pins = <SPPCTL_IOPAD(54,SPPCTL_PCTL_G_GPIO,0,0) >;
 			};
 
 			gl2sw_pins: pinmux_gl2sw_pins {
