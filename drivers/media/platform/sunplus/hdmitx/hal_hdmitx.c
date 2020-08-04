@@ -129,7 +129,11 @@ static void apply_pixel_clock(void __iomem *moon4base)
 	}
 #elif defined(CONFIG_SOC_I143)
 	pMoon4Reg->plltv_cfg[2] = 0x81000100;
+	#ifdef CLKREF_XTAL
 	pMoon4Reg->plltv_cfg[3] = 0x80070004;
+	#else
+	pMoon4Reg->plltv_cfg[3] = 0x80078004;
+	#endif
 
 	if (g_pll_tv_cfg[clk_mode].bypass == ENABLE) {
 		pMoon4Reg->plltv_cfg[2] = 0x20700000 | (0x1 << 13) | (0x1 << 6);

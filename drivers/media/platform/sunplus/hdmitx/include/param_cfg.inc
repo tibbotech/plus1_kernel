@@ -4,6 +4,7 @@
 /*----------------------------------------------------------------------------*
  *					INCLUDE DECLARATIONS
  *---------------------------------------------------------------------------*/
+#define CLKREF_27M
 
 /*----------------------------------------------------------------------------*
  *					MACRO DECLARATIONS
@@ -141,6 +142,7 @@ static struct pll_tv_param g_pll_tv_cfg[PIXEL_CLK_MODE_MAX] = {
 };
 	#elif defined(CONFIG_SOC_I143)
 static struct pll_tv_param g_pll_tv_cfg[PIXEL_CLK_MODE_MAX] = {
+		#ifdef CLKREF_27M
 	// PIXEL_CLK_MODE_27_MHZ
 	{
 		.bypass		= ENABLE,
@@ -308,6 +310,175 @@ static struct pll_tv_param g_pll_tv_cfg[PIXEL_CLK_MODE_MAX] = {
 		.ph_sel 	= 0x5,
 		.k_sdm 		= 0x471,
 	},
+		#else
+	// PIXEL_CLK_MODE_27_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x2,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x1,
+		.divn 		= 0x2,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x1,
+		.k_sdm 		= 0x4cc,
+	},
+
+	// PIXEL_CLK_MODE_74P25_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x1,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x6,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0xf,
+		.k_sdm 		= 0x332,
+	},
+
+	// PIXEL_CLK_MODE_148P5_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x0,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x6,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0xf,
+		.k_sdm 		= 0x332,
+	},
+
+	// PIXEL_CLK_MODE_297_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x0,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0xb,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x8,
+		.k_sdm 		= 0x665,
+	},
+
+	// PIXEL_CLK_MODE_23P75_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x3,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x1,
+		.divn 		= 0x3,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x8,
+		.k_sdm 		= 0x0,
+	},
+
+	// PIXEL_CLK_MODE_38P25_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x2,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x6,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x1,
+		.k_sdm 		= 0x199,
+	},
+
+	// PIXEL_CLK_MODE_63P5_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x1,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x5,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x5,
+		.k_sdm 		= 0x0665,
+	},
+
+	// PIXEL_CLK_MODE_109_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x0,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x1,
+		.divn 		= 0x2,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x1,
+		.k_sdm 		= 0x665,
+	},
+
+	// PIXEL_CLK_MODE_19P75_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x3,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x1,
+		.divn 		= 0x3,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x1,
+		.k_sdm 		= 0x4cc,
+	},
+
+	// PIXEL_CLK_MODE_30P75_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x2,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x5,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0xf,
+		.k_sdm 		= 0x199,
+	},
+
+	// PIXEL_CLK_MODE_52_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x1,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x4,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x1,
+		.k_sdm 		= 0x4cc,
+	},
+
+	// PIXEL_CLK_MODE_88P5_MHZ
+	{
+		.bypass		= DISABLE,
+		.pstdiv 	= 0x1,
+		.m_sdm 		= 0x7ff,
+		.ph_step_sel 	= 0x1,
+		.divr 		= 0x0,
+		.divn 		= 0x7,
+		.icp 		= 0x0,
+		.divm 		= 0x0,
+		.ph_sel 	= 0x0,
+		.k_sdm 		= 0x665,
+	},
+		#endif
 };
 	#endif
 static struct csc_param g_csc_cfg[COLOR_SPACE_MAX][COLOR_SPACE_MAX] = {
