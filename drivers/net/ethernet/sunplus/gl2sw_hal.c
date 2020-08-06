@@ -74,6 +74,8 @@ void mac_hw_start(struct l2sw_mac *mac)
 	HWREG_W(port_cntl0, reg & (~(comm->enable<<24)));
 	wmb();
 
+	HWREG_W(sw_int_mask, MAC_INT_MASK_DEF);
+
 	//regs_print();
 }
 
@@ -229,13 +231,13 @@ void mac_hw_init(struct l2sw_mac *mac)
 	wmb();
 
 	// Threshold values
-	HWREG_W(fl_cntl_th,     0x4a3a2d1d);    // Fc_rls_th=0x4a,  Fc_set_th=0x3a,  Drop_rls_th=0x2d, Drop_set_th=0x1d
-	HWREG_W(cpu_fl_cntl_th, 0x6a5a1212);    // Cpu_rls_th=0x6a, Cpu_set_th=0x5a, Cpu_th=0x12,      Port_th=0x12
-	HWREG_W(pri_fl_cntl,    0xf6680000);    // mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1
+	//HWREG_W(fl_cntl_th,     0x4a3a2d1d);    // Fc_rls_th=0x4a,  Fc_set_th=0x3a,  Drop_rls_th=0x2d, Drop_set_th=0x1d
+	//HWREG_W(cpu_fl_cntl_th, 0x6a5a1212);    // Cpu_rls_th=0x6a, Cpu_set_th=0x5a, Cpu_th=0x12,      Port_th=0x12
+	//HWREG_W(pri_fl_cntl,    0xf6680000);    // mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1
 
-	// High-active LED
-	reg = HWREG_R(led_port0);
-	HWREG_W(led_port0, reg | (1<<28));
+	// Softpad config
+	HWREG_W(p0_softpad_config, 0x2001);
+	HWREG_W(p1_softpad_config, 0x2001);
 
 	/* phy address */
 	reg = HWREG_R(mac_force_mode0);
@@ -478,8 +480,8 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 int phy_cfg()
 {
 	// Enable flow control of phy.
-	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
-	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
+	mdio_write(0, 4, mdio_read(0, 4) | (3<<10));
+	mdio_write(1, 4, mdio_read(1, 4) | (3<<10));
 
 	return 0;
 }
