@@ -7,6 +7,7 @@
 #include "l2sw_mdio.h"
 #include "l2sw_mac.h"
 #include "l2sw_desc.h"
+#include "gl2sw_int.h"
 
 
 #define NEXT_TX(N)              ((N) = (((N)+1) == TX_DESC_NUM)? 0: (N)+1)
