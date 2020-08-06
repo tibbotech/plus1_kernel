@@ -16,9 +16,44 @@ static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {0x88, 0x88, 0x88, 0x88,
 static void print_packet(struct sk_buff *skb)
 {
 	u8 *p = skb->data;
+	int len = skb->len;
+	char buf[120], *packet_t;
+	u32 LenType;
+	int i;
 
-	printk("MAC: DA=%pM, SA=%pM, Len/Type=%04x, len=%d\n",
-		&p[0], &p[6], (u32)((((u32)p[12])<<8)+p[13]), (int)skb->len);
+	i = snprintf(buf, sizeof(buf), "MAC: DA=%pM, SA=%pM, ", &p[0], &p[6]);
+	p += 12;        // point to LenType
+
+	LenType = (((u32)p[0])<<8) + p[1];
+	if (LenType == 0x8100) {
+		u32 tag = (((u32)p[2])<<8)+p[3];
+		u32 type = (((u32)p[4])<<8) + p[5];
+
+		snprintf(buf+i, sizeof(buf)-i, "TPID=%04x, Tag=%04x, LenType=%04x, len=%d (VLAN tagged packet)",
+			LenType, tag, type, len);
+		LenType = type;
+		p += 4; // point to LenType
+	} else if (LenType > 1500) {
+		switch (LenType) {
+		case 0x0800:
+			packet_t = "IPv4"; break;
+		case 0x0806:
+			packet_t = "ARP"; break;
+		case 0x8035:
+			packet_t = "RARP"; break;
+		case 0x86DD:
+			packet_t = "IPv6"; break;
+		default:
+			packet_t = "unknown";
+		}
+
+		snprintf(buf+i, sizeof(buf)-i, "Type=%04x, len=%d (%s packet)",
+			LenType, (int)len, packet_t);
+	} else {
+		snprintf(buf+i, sizeof(buf)-i, "Len=%04x, len=%d (802.3 packet)",
+			LenType, (int)len);
+	}
+	ETH_INFO("%s\n", buf);
 }
 #endif
 
@@ -115,7 +150,21 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	skbinfo->skb = skb;
 	skbinfo->mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
-	cmd2 = (tx_pos == (TX_DESC_NUM-1))? EOR_BIT|(skb->len&LEN_MASK): (skb->len&LEN_MASK);
+	cmd2 = skb->len & LEN_MASK;
+#ifdef CONFIG_SOC_I143
+	/*
+	if ((*(u16*)(skb->data+12) == 0x0008) && ((*(skb->data+14) & 0xf0) == 0x40)) {
+		// An IPv4 packet.
+		cmd2 |= IP_CHKSUM_APPEND;
+		if ((*(skb->data+23) == 0x06) || (*(skb->data+23) == 0x11)) {
+			// A TCP/UDP packet.
+			cmd2 |= TCP_UDP_CHKSUM_APPEND;
+		}
+	}*/
+#endif
+	if (tx_pos == (TX_DESC_NUM-1)) {
+		cmd2 |= EOR_BIT;
+	}
 	//ETH_INFO(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
 
 	txdesc->addr1 = skbinfo->mapping;
@@ -396,7 +445,11 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				mac->next_netdev = net_dev2;    // Pointed by previous net device.
 				mac2 = netdev_priv(net_dev2);
 				mac2->comm = comm;
+#ifdef CONFIG_SOC_SP7021
 				net_dev2->irq = comm->irq;
+#else
+				net_dev2->irq = comm->irq[0];
+#endif
 
 				mac_switch_mode(mac);
 				rx_mode_set(net_dev2);
@@ -577,7 +630,11 @@ static int l2sw_probe(struct platform_device *pdev)
 	// Get memory resoruce 1 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
 		ETH_DEBUG(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
+#ifdef CONFIG_SOC_SP7021
 		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+#else
+		if (moon4_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
+#endif
 			ETH_ERR(" ioremap failed!\n");
 			ret = -ENOMEM;
 			goto out_free_comm;
@@ -646,7 +703,11 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 	platform_set_drvdata(pdev, net_dev);    // Pointed by drvdata net device.
 
+#ifdef CONFIG_SOC_SP7021
 	net_dev->irq = comm->irq;
+#else
+	net_dev->irq = comm->irq[0];
+#endif
 	mac = netdev_priv(net_dev);
 	mac->comm = comm;
 	comm->net_dev = net_dev;
@@ -672,6 +733,7 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	l2sw_enable_port(mac);
 
+#ifndef ZEBU_XTOR
 	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
 		if (ret) {
@@ -689,6 +751,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 	phy_cfg();
+#endif
 
 #ifdef RX_POLLING
 	netif_napi_add(net_dev, &comm->napi, rx_poll, RX_NAPI_WEIGHT);
@@ -701,7 +764,12 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 #ifndef INTERRUPT_IMMEDIATELY
+#ifdef CONFIG_SOC_SP7021
 	comm->int_status = 0;
+#else
+	comm->tx_int_status = 0;
+	comm->rx_int_status = 0;
+#endif
 	tasklet_init(&comm->rx_tasklet, rx_do_tasklet, (unsigned long)mac);
 	//tasklet_disable(&comm->rx_tasklet);
 	tasklet_init(&comm->tx_tasklet, tx_do_tasklet, (unsigned long)mac);
@@ -738,7 +806,11 @@ static int l2sw_probe(struct platform_device *pdev)
 		}
 		mac->next_netdev = net_dev2;    // Pointed by previous net device.
 
+#ifdef CONFIG_SOC_SP7021
 		net_dev2->irq = comm->irq;
+#else
+		net_dev2->irq = comm->irq[0];
+#endif
 		mac2 = netdev_priv(net_dev2);
 		mac2->comm = comm;
 		ETH_DEBUG(" net_dev = %px, mac = %px, comm = %px\n", net_dev2, mac2, mac2->comm);
@@ -757,7 +829,9 @@ out_freemdio:
 		mdio_remove(net_dev);
 	}
 
+#ifndef ZEBU_XTOR
 out_unregister_dev:
+#endif
 	unregister_netdev(net_dev);
 
 out_free_comm:
@@ -837,7 +911,11 @@ static const struct dev_pm_ops l2sw_pm_ops = {
 #endif
 
 static const struct of_device_id sp_l2sw_of_match[] = {
+#ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-l2sw" },
+#else
+	{ .compatible = "sunplus,i143-gl2sw" },
+#endif
 	{ /* sentinel */ }
 };
 
@@ -847,7 +925,11 @@ static struct platform_driver l2sw_driver = {
 	.probe   = l2sw_probe,
 	.remove  = l2sw_remove,
 	.driver  = {
+#ifdef CONFIG_SOC_SP7021
 		.name  = "sp_l2sw",
+#else
+		.name  = "sp_gl2sw",
+#endif
 		.owner = THIS_MODULE,
 		.of_match_table = sp_l2sw_of_match,
 #ifdef CONFIG_PM
