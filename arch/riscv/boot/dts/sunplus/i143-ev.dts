@@ -642,8 +642,6 @@
 		sp_display: display@0x9c005c80 {
 			compatible = "sunplus,i143-display";
 			reg = <0x0 0x9c005c80 0x0 0x1980>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&test_pins>;
 			ui_width = <720>;
 			ui_height = <480>;
 			ui_format = <0xe>;
