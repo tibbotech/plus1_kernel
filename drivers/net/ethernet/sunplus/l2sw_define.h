@@ -261,12 +261,6 @@ struct l2sw_common {
 	spinlock_t lock;
 	spinlock_t ioctl_lock;
 	struct mutex store_mode;
-#ifdef CONFIG_SOC_SP7021
-	volatile u32 int_status;
-#else
-	volatile u32 tx_int_status;
-	volatile u32 rx_int_status;
-#endif
 
 #ifdef RX_POLLING
 	struct napi_struct napi;
