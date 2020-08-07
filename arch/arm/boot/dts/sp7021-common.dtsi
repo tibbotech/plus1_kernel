@@ -51,10 +51,10 @@
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
 
-		spi0 = &spi_controller0;
-		spi1 = &spi_controller1;
-		spi2 = &spi_controller2;
-		spi3 = &spi_controller3;
+		sp_spi0 = &spi_controller0;
+		sp_spi1 = &spi_controller1;
+		sp_spi2 = &spi_controller2;
+		sp_spi3 = &spi_controller3;
 	};
 
 	reserved-memory {
