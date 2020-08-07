@@ -764,12 +764,6 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 #ifndef INTERRUPT_IMMEDIATELY
-#ifdef CONFIG_SOC_SP7021
-	comm->int_status = 0;
-#else
-	comm->tx_int_status = 0;
-	comm->rx_int_status = 0;
-#endif
 	tasklet_init(&comm->rx_tasklet, rx_do_tasklet, (unsigned long)mac);
 	//tasklet_disable(&comm->rx_tasklet);
 	tasklet_init(&comm->tx_tasklet, tx_do_tasklet, (unsigned long)mac);

@@ -52,7 +52,7 @@ static inline void rx_skb(struct l2sw_mac *mac, struct sk_buff *skb)
 	netif_rx(skb);
 }
 
-static inline void  rx_interrupt(struct l2sw_mac *mac, u32 irq_status)
+static inline void  rx_interrupt(struct l2sw_mac *mac)
 {
 	struct sk_buff *skb, *new_skb;
 	struct skb_info *sinfo;
@@ -179,8 +179,7 @@ void rx_do_tasklet(unsigned long data)
 {
 	struct l2sw_mac *mac = (struct l2sw_mac *) data;
 
-	rx_interrupt(mac, mac->comm->rx_int_status);
-	//write_sw_int_status(mac->comm->rx_int_status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H));
+	rx_interrupt(mac);
 }
 #endif
 
@@ -189,7 +188,7 @@ int rx_poll(struct napi_struct *napi, int budget)
 {
 	struct l2sw_mac *mac = container_of(napi, struct l2sw_mac, napi);
 
-	rx_interrupt(mac, mac->comm->rx_int_status);
+	rx_interrupt(mac);
 	napi_complete(napi);
 
 	return 0;
@@ -285,7 +284,6 @@ void tx_do_tasklet(unsigned long data)
 	struct l2sw_mac *mac = (struct l2sw_mac *) data;
 
 	tx_interrupt(mac);
-	//write_sw_int_status(mac->comm->tx_int_status & (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H));
 }
 #endif
 
@@ -320,7 +318,6 @@ irqreturn_t ethernet_tx_interrupt(int irq, void *dev_id)
 			tx_interrupt(mac);
 			//write_sw_int_status(status | (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H));
 #else
-			comm->tx_int_status = status;
 			tasklet_schedule(&comm->tx_tasklet);
 #endif
 		}
@@ -421,17 +418,15 @@ irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 		spin_lock(&comm->lock);
 
 #ifdef RX_POLLING
-		comm->rx_int_status = status;
 		if (napi_schedule_prep(&comm->napi)) {
 			__napi_schedule(&comm->napi);
 		}
 #else /* RX_POLLING */
 		if (status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)) {
 	#ifdef INTERRUPT_IMMEDIATELY
-			rx_interrupt(mac, status);
+			rx_interrupt(mac);
 			//write_sw_int_status(status | (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H));
 	#else
-			comm->rx_int_status = status;
 			tasklet_schedule(&comm->rx_tasklet);
 	#endif
 		}
