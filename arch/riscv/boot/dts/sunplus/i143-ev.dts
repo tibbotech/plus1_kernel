@@ -464,8 +464,8 @@
 
 		gl2sw: gl2sw@0x9c108000 {
 			compatible = "sunplus,i143-gl2sw";
-			reg = <0x0 0x9c108000 0x0 0x280>, <0x0 0x9c000200 0x0 0x80>;
-			reg-names = "gl2sw", "moon4";
+			reg = <0x0 0x9c108000 0x0 0x280>;
+			reg-names = "gl2sw";
 			interrupt-parent = <&intc>;
 			interrupts =
 				<38 IRQ_TYPE_LEVEL_HIGH>,

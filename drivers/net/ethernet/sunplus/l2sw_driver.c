@@ -627,14 +627,11 @@ static int l2sw_probe(struct platform_device *pdev)
 		goto out_free_comm;
 	}
 
+#ifdef CONFIG_SOC_SP7021
 	// Get memory resoruce 1 from dts.
 	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
 		ETH_DEBUG(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-#ifdef CONFIG_SOC_SP7021
 		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
-#else
-		if (moon4_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
-#endif
 			ETH_ERR(" ioremap failed!\n");
 			ret = -ENOMEM;
 			goto out_free_comm;
@@ -644,6 +641,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		ret = -ENXIO;
 		goto out_free_comm;
 	}
+#endif
 
 	// Get irq resource from dts.
 	if (l2sw_get_irq(pdev, comm) != 0) {
