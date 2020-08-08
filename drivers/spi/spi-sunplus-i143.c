@@ -1785,7 +1785,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 
 
 	if (pdev->dev.of_node) {
-		pdev->id = of_alias_get_id(pdev->dev.of_node, "spi");
+		pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
 		mode = of_property_read_bool(pdev->dev.of_node, "spi-slave") ? SPI_SLAVE : SPI_MASTER;
 
 	        spi_work_mode |= of_property_read_bool(pdev->dev.of_node, "spi-cpol") ? SPI_CPOL : 0; 

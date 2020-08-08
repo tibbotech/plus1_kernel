@@ -54,9 +54,9 @@
 
 	memory@a0000000 {
 		device_type = "memory";
-		//reg = <0x0 0xa0000000 0x0 0x20000000>; /* 512 MB */
+		reg = <0x0 0xa0000000 0x0 0x20000000>; /* 512 MB */
 		//reg = <0x0 0xa0000000 0x0 0x08000000>; /* 128 MB */
-		reg = <0x0 0xa0000000 0x0 0x04000000>; /* 64 MB */
+		//reg = <0x0 0xa0000000 0x0 0x04000000>; /* 64 MB */
 	};
 
 	clocks {
@@ -464,8 +464,8 @@
 
 		gl2sw: gl2sw@0x9c108000 {
 			compatible = "sunplus,i143-gl2sw";
-			reg = <0x0 0x9c108000 0x0 0x280>, <0x0 0x9c000200 0x0 0x80>;
-			reg-names = "gl2sw", "moon4";
+			reg = <0x0 0x9c108000 0x0 0x280>;
+			reg-names = "gl2sw";
 			interrupt-parent = <&intc>;
 			interrupts =
 				<38 IRQ_TYPE_LEVEL_HIGH>,
@@ -635,9 +635,24 @@
 			pinctrl-0 = <&hdmi_A_tx1>;
 		};
 
+		fb_device {
+			compatible = "sunplus,i143-fb";
+		};
+
 		sp_display: display@0x9c005c80 {
 			compatible = "sunplus,i143-display";
 			reg = <0x0 0x9c005c80 0x0 0x1980>;
+			ui_width = <720>;
+			ui_height = <480>;
+			ui_format = <0xe>;
+				/* 0x2 = 8bpp (ARGB)
+				* 0x4 = YUY2
+				* 0x8 = RGB565
+				* 0x9 = ARGB1555
+				* 0xa = RGBA4444
+				* 0xb = ARGB4444
+				* 0xd = RGBA8888
+				* 0xe = ARGB8888 */
 			interrupt-parent = <&intc>;
 			interrupts = <72 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
 				     <73 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,

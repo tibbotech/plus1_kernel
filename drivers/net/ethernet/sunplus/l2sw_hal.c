@@ -227,7 +227,7 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	// Threshold values
 	HWREG_W(fl_cntl_th,     0x4a3a2d1d);    // Fc_rls_th=0x4a,  Fc_set_th=0x3a,  Drop_rls_th=0x2d, Drop_set_th=0x1d
-	HWREG_W(cpu_fl_cntl_th, 0x6a5a1212);    // Cpu_rls_th=0x6a, Cpu_set_th=0x5a, Cpu_th=0x12,      Port_th=0x12
+	HWREG_W(cpu_fl_cntl_th, 0x4a3a1212);    // Cpu_rls_th=0x4a, Cpu_set_th=0x3a, Cpu_th=0x12,      Port_th=0x12
 	HWREG_W(pri_fl_cntl,    0xf6680000);    // mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1
 
 	// High-active LED
@@ -236,9 +236,9 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	/* phy address */
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
+	reg = (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16);
+	reg = (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24);
+	HWREG_W(mac_force_mode, reg);
 
 	//disable cpu port0 aging (12)
 	//disable cpu port0 learning (14)
@@ -439,9 +439,9 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 
 	//phy address
 	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16));
-	reg = HWREG_R(mac_force_mode);
-	HWREG_W(mac_force_mode, (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24));
+	reg = (reg & (~(0x1f<<16))) | ((mac->comm->phy1_addr&0x1f)<<16);
+	reg = (reg & (~(0x1f<<24))) | ((mac->comm->phy2_addr&0x1f)<<24);
+	HWREG_W(mac_force_mode, reg);
 	wmb();
 }
 

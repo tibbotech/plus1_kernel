@@ -36,7 +36,7 @@
 #include <linux/of_address.h>
 #include <linux/dma-mapping.h>
 
-#include <media/sunplus/disp/sp7021/disp_osd.h>
+#include <media/sunplus/disp/i143/disp_osd.h>
 #include "fb_i143_main.h"
 
 /**************************************************************************
@@ -270,14 +270,14 @@ static int _i143_fb_create_device(struct platform_device *pdev,
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
-	Info->UI_bufAddr = (u32)fbinfo->fix.smem_start;
+	Info->UI_bufAddr = (u64)fbinfo->fix.smem_start;
 	if (fbinfo->pseudo_palette)
-		Info->UI_bufAddr_pal = (u32)((u64)fbinfo->pseudo_palette);
+		Info->UI_bufAddr_pal = (u64)fbinfo->pseudo_palette;
 	else
 		Info->UI_bufAddr_pal = 0;
 	Info->UI_bufsize = fbWorkMem->fbsize;
 
-	mod_info(pdev, "mem VA 0x%x(PA 0x%x), Palette VA 0x%x(PA 0x%lx), UI Res %dx%d, size %d + %d\n",
+	mod_info(pdev, "mem VA 0x%x(PA 0x%llx), Palette VA 0x%x(PA 0x%lx), UI Res %dx%d, size %d + %d\n",
 			(u32)((u64)fbWorkMem->fbmem),
 			Info->UI_bufAddr,
 			(u32)((u64)fbWorkMem->fbmem_palette),
@@ -330,7 +330,7 @@ static int _i143_fb_ioctl(struct fb_info *fbinfo,
 {
 	switch (cmd) {
 	case FBIO_WAITFORVSYNC:
-		//DRV_OSD_WaitVSync(); TBD
+		DRV_OSD_WaitVSync();
 		break;
 	}
 
@@ -375,16 +375,14 @@ static int _i143_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 static int _i143_fb_remove(struct platform_device *pdev)
 {
 	if (gFB_INFO) {
-		//if (unregister_framebuffer(gFB_INFO))
-		//	mod_err(pdev, "unregister framebuffer error\n");
 		unregister_framebuffer(gFB_INFO);
 		framebuffer_release(gFB_INFO);
 		gFB_INFO = NULL;
 	}
 
-	//DRV_IRQ_DISABLE(); TBD
+	DRV_IRQ_DISABLE();
 	
-	//DRV_OSD_Set_UI_UnInit(); TBD
+	DRV_OSD_Set_UI_UnInit();
 
 	return 0;
 }
@@ -407,7 +405,6 @@ static int _i143_fb_probe(struct platform_device *pdev)
 
 	memset(&Info, 0, sizeof(struct UI_FB_Info_t));
 
-	#if 0 //TBD
 	ret = DRV_OSD_Get_UI_Res(&Info);
 
 	if (ret) {
@@ -426,14 +423,12 @@ static int _i143_fb_probe(struct platform_device *pdev)
 	if (_i143_fb_create_device(pdev, &Info))
 		goto ERROR_HANDLE_FB_INIT;
 
-	//DRV_OSD_Set_UI_Init(&Info); TBD
+	DRV_OSD_Set_UI_Init(&Info);
 	
-	//DRV_IRQ_ENABLE(); TBD
+	DRV_IRQ_ENABLE();
 
 	fb_par = (struct framebuffer_t *)gFB_INFO->par;
 	fb_par->OsdHandle = Info.UI_handle;
-
-	#endif
 	
 	return 0;
 
@@ -458,15 +453,14 @@ unsigned int i143_fb_chan_by_field(unsigned char chan,
 
 int i143_fb_swapbuf(u32 buf_id, int buf_max)
 {
-	//int ret = 0; TBD
+	int ret = 0;
 
 	if (buf_id >= buf_max)
 		return -1;
 
-	//ret = DRV_OSD_SetVisibleBuffer(buf_id); TBD
+	ret = DRV_OSD_SetVisibleBuffer(buf_id);
 
-	//return ret; TBD
-	return 0;
+	return ret;
 }
 
 MODULE_DESCRIPTION("I143 Framebuffer Driver");
