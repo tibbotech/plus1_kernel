@@ -88,11 +88,17 @@ struct phy_param {
 	unsigned char is_from_odd; // G387.26[1]
 	unsigned char is_clk_inv; // G387.26[0]
 	unsigned char icp_mod_mode; // G387.27[15:12]
+	#ifdef CONFIG_SOC_I143
+	unsigned char pd_emp_mode; // G387.27[11]
+	#endif
 	unsigned char pd_d_mode; // G387.27[10:8]
 	unsigned char cpst_mode; // G387.27[7:4]
 	unsigned char icp_mode; // G387.27[1]
 	unsigned char bgr_mode; // G387.28[15:13]
 	unsigned char sw_ctrl; // G387.28[11:8]
+	#ifdef CONFIG_SOC_I143
+	unsigned char kv_sel; // G387.28[7:6]
+	#endif
 	unsigned char dsel_mode; // G387.28[5:0]
 	unsigned char irt_mode; // G387.29[15:10]
 	unsigned char dcnst_mode; // G387.29[9:0]
@@ -560,12 +566,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -587,12 +603,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -614,12 +640,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -641,12 +677,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
+			.kv_sel		 = 0,
 			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -671,15 +717,28 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
+	#ifdef CONFIG_SOC_SP7021
 			.rv_model        = 0,
+	#elif defined(CONFIG_SOC_I143)
+			.rv_model        = 1,
+	#endif
 		},
 
 		// COLOR_DEPTH_30BITS
@@ -698,15 +757,29 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
+	#ifdef CONFIG_SOC_SP7021
 			.rv_model        = 0,
+	#elif defined(CONFIG_SOC_I143)
+			.rv_model        = 1,
+	#endif
 		},
 
 		// COLOR_DEPTH_36BITS
@@ -725,15 +798,29 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
+	#ifdef CONFIG_SOC_SP7021
 			.rv_model        = 0,
+	#elif defined(CONFIG_SOC_I143)
+			.rv_model        = 1,
+	#endif
 		},
 
 		// COLOR_DEPTH_48BITS
@@ -752,15 +839,29 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 0,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
+	#ifdef CONFIG_SOC_SP7021
 			.rv_model        = 0,
+	#elif defined(CONFIG_SOC_I143)
+			.rv_model        = 1,
+	#endif
 		},
 	},
 
@@ -782,12 +883,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 5,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 1,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -809,12 +920,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 5,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 5,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 1,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -836,12 +957,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 5,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 6,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 1,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -863,12 +994,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 5,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 6,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 3,
+			.sw_ctrl         = 0xa,
+			.kv_sel		 = 1,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -893,16 +1034,25 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0xf,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 6,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 7,
+			.sw_ctrl         = 0,
+			.kv_sel		 = 1,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
-
 		},
 
 		// COLOR_DEPTH_30BITS
@@ -921,12 +1071,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0xf,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 1,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 6,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 7,
+			.sw_ctrl         = 0,
+			.kv_sel		 = 3,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -939,21 +1099,37 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_data_double  = 0,
 	#endif
 			.kv_mode         = 3,
+	#ifdef CONFIG_SOC_SP7021
 			.term_mode       = 2,
 			.ectr_mode       = 7,
 			.is_emp          = 0,
+	#elif defined(CONFIG_SOC_I143)
+			.term_mode       = 1,
+			.ectr_mode       = 5,
+			.is_emp          = 1,
+	#endif
 			.is_clk_detector = 1,
 			.fckdv_mode      = 1,
 			.ckinv_mode      = 0,
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0xf,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 0,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 7,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 7,
+			.sw_ctrl         = 0,
+			.kv_sel		 = 3,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,
@@ -975,12 +1151,22 @@ static struct phy_param g_phy_cfg[TIMING_MAX][COLOR_DEPTH_MAX] = {
 			.is_from_odd     = 0,
 			.is_clk_inv      = 0,
 			.icp_mod_mode    = 0xf,
+	#ifdef CONFIG_SOC_I143
+			.pd_emp_mode	 = 0,
+	#endif
 			.pd_d_mode       = 0,
 			.cpst_mode       = 7,
 			.icp_mode        = 1,
+	#ifdef CONFIG_SOC_SP7021
 			.bgr_mode        = 3,
 			.sw_ctrl         = 7,
 			.dsel_mode       = 0x15,
+	#elif defined(CONFIG_SOC_I143)
+			.bgr_mode        = 7,
+			.sw_ctrl         = 0,
+			.kv_sel		 = 3,
+			.dsel_mode       = 0x15,
+	#endif
 			.irt_mode        = 0,
 			.dcnst_mode      = 0x1f,
 			.rv_model        = 1,

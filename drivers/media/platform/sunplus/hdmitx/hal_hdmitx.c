@@ -201,17 +201,35 @@ void apply_phy(void __iomem *moon5base, void __iomem *hdmitxbase)
 										| ((phy_cfg->is_clk_inv & 0x1) << 0);
 
 	value = pHdmitxReg->hdmi_tmdstx_ctrl2;
+#ifdef CONFIG_SOC_SP7021
 	mask  = 0xf7f2;
 	pHdmitxReg->hdmi_tmdstx_ctrl2 = (value & (~mask)) | ((phy_cfg->icp_mod_mode & 0xf) << 12) \
 										| ((phy_cfg->pd_d_mode & 0x7) << 8) \
 										| ((phy_cfg->cpst_mode & 0xf) << 4) \
 										| ((phy_cfg->icp_mode & 0x1) << 1);
+#elif defined(CONFIG_SOC_I143)
+	mask  = 0xfff2;
+	pHdmitxReg->hdmi_tmdstx_ctrl2 = (value & (~mask)) | ((phy_cfg->icp_mod_mode & 0xf) << 12) \
+										| ((phy_cfg->pd_emp_mode & 0x1) << 11) \
+										| ((phy_cfg->pd_d_mode & 0x7) << 8) \
+										| ((phy_cfg->cpst_mode & 0xf) << 4) \
+										| ((phy_cfg->icp_mode & 0x1) << 1);
+#endif
+
 
 	value = pHdmitxReg->hdmi_tmdstx_ctrl3;
+#ifdef CONFIG_SOC_SP7021
 	mask  = 0xef3f;
 	pHdmitxReg->hdmi_tmdstx_ctrl3 = (value & (~mask)) | ((phy_cfg->bgr_mode & 0x7) << 13) \
 										| ((phy_cfg->sw_ctrl & 0xf) << 8) \
 										| ((phy_cfg->dsel_mode & 0x3f) << 0);
+#elif defined(CONFIG_SOC_I143)
+	mask  = 0xefff;
+	pHdmitxReg->hdmi_tmdstx_ctrl3 = (value & (~mask)) | ((phy_cfg->bgr_mode & 0x7) << 13) \
+										| ((phy_cfg->sw_ctrl & 0xf) << 8) \
+										| ((phy_cfg->kv_sel & 0x3) << 6) \
+										| ((phy_cfg->dsel_mode & 0x3f) << 0);
+#endif
 
 	value = pHdmitxReg->hdmi_tmdstx_ctrl4;
 	mask  = 0xfc3f;
