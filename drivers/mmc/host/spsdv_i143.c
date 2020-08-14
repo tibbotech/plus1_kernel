@@ -180,7 +180,12 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clk = f_max;
 
 	clkdiv = ((SPSDC_SYS_CLK)/clk)-1;
-	spsdc_pr(INFO, "clk to %d,SPSDC_SYS_CLK %d,clkdiv %d\n",clk , SPSDC_SYS_CLK,clkdiv);
+	if( (SPSDC_SYS_CLK % clk) > (clk/10) ){
+	   clkdiv++;
+	   spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk , SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
+	}else{
+	   spsdc_pr(INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk , SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));		
+	}
 
 
 #if(0)
@@ -885,7 +890,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
 
-	spsdc_pr(VERBOSE, "signal_voltage_switch!\n");
+	spsdc_pr(VERBOSE, "signal_voltage_switch 1V8!\n");
 
 	if (host->signal_voltage == ios->signal_voltage)
 		return 0;
