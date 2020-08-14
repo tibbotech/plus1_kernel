@@ -40,6 +40,8 @@ static void sp_power_off(void)
 	//printk("PD RG_PLL_PDN and RG_PLLIO_PDN to save power\n");
 	writel(0, regs + 0x54); /* bit0 RG_PLLIO_PDN */
 	writel(0, regs + 0x2C); /* bit0 RG_PLL_PDN */
+	while (1)
+		;
 
 //	printk("PD Achip mo_gclk_en0/mo_clk_en0 to save power \n");
 //	writel(0, regs + 0x28); 
