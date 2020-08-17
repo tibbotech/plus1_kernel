@@ -61,7 +61,9 @@ _NeedAddDevice(
     IN gckPLATFORM Platform
     )
 {
+#ifndef USE_DEVICE_TREE
     return gcvTRUE;
+#endif
 }
 
 gcmkPLATFROM_Name
