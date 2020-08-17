@@ -173,7 +173,7 @@ module_param(gpuProfiler, int, 0644);
 static int signal = 48;
 module_param(signal, int, 0644);
 
-#if 1
+#ifdef CONFIG_RISCV
 static ulong baseAddress = 0xA0000000;
 #else
 static ulong baseAddress = 0x20000000;
