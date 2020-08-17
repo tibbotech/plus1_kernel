@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+config GPU_2D
+	tristate "support gpu_2d driver"
+        bool "Support gpu_2d(GC520) driver"
+        default y
+        help
+          Say yes if kernel should use gpu_2d.
+
+          If unsure, choose Y.

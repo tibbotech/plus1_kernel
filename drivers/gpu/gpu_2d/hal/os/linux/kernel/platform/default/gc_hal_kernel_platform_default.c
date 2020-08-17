@@ -61,16 +61,16 @@ _NeedAddDevice(
     IN gckPLATFORM Platform
     )
 {
-#ifndef USE_DEVICE_TREE
     return gcvTRUE;
-#endif
 }
 
 gcmkPLATFROM_Name
 
 gcsPLATFORM_OPERATIONS platformOperations =
 {
+#ifndef USE_DEVICE_TREE
     .needAddDevice = _NeedAddDevice,
+#endif
     .name          = _Name,
 };
 
