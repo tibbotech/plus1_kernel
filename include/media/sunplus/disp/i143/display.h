@@ -11,6 +11,8 @@
 #ifndef __DISPLAY_H__
 #define __DISPLAY_H__
 
+//Choose SYS_PORT(fast) or MEM_PORT(slow)
+#define I143_SYS_PORT
 //HDMI Setting
 #define TIMING_SYNC_720P60
 
@@ -32,14 +34,14 @@
 	//Display VIDEO OUT Resolution
 	#define DISP_480P			//DISP_480P , DISP_576P , DISP_720P , DISP_1080P
 	//Display Path En/dis
-	#define DDFCH_GRP_EN	1 	//0:DDFCH dis ; 1:DDFCH en
-	#define VPPDMA_GRP_EN	0 	//0:VPPDMA dis ; 1:VPPDMA en
-	#define OSD0_GRP_EN		1 	//0:OSD0 dis ; 1:OSD0 en
+	#define DDFCH_GRP_EN	0 	//0:DDFCH dis ; 1:DDFCH en
+	#define VPPDMA_GRP_EN	1 	//0:VPPDMA dis ; 1:VPPDMA en
+	#define OSD0_GRP_EN		0 	//0:OSD0 dis ; 1:OSD0 en
 	#define OSD1_GRP_EN		0	//0:OSD1 dis ; 1:OSD1 en
 	//Display Data fetch En/dis
-	#define DDFCH_FETCH_EN	1	//0:DDFCH fetch dis ; 1:DDFCH fetch en
-	#define VPPDMA_FETCH_EN	0	//0:VPPDMA fetch dis ; 1:VPPDMA en
-	#define OSD0_FETCH_EN	1	//0:OSD0 fetch dis ; 1:OSD0 fetch en
+	#define DDFCH_FETCH_EN	0	//0:DDFCH fetch dis ; 1:DDFCH fetch en
+	#define VPPDMA_FETCH_EN	1	//0:VPPDMA fetch dis ; 1:VPPDMA en
+	#define OSD0_FETCH_EN	0	//0:OSD0 fetch dis ; 1:OSD0 fetch en
 	#define OSD1_FETCH_EN	0	//0:OSD1 fetch dis ; 1:OSD1 fetch en
 	//Display Path Data Format
 	#define DDFCH_FMT_HDMI	2	//0:YUV420_NV12 , 1:YUV422_NV16 , 2:YUV422_YUY2
@@ -49,7 +51,7 @@
 	#define OSD1_FMT_HDMI	0xe	//0x2:8bpp     , 0x4:YUY2     , 0x8:RGB565   , 0x9:ARGB1555
 								//0xa:RGBA4444 , 0xb:ARGB4444 , 0xd:RGBA8888 , 0xe:ARGB8888
 
-	#define VPP_PATH_SEL	2 	//0:From VPPDMA , 1:From OSD0 , 2:From DDFCH
+	#define VPP_PATH_SEL	0 	//0:From VPPDMA , 1:From OSD0 , 2:From DDFCH
 #elif defined (USE_TWO_PATH)
 	//Display VIDEO OUT Resolution
 	#define DISP_480P			//DISP_64X64 , DISP_480P , DISP_576P , DISP_720P , DISP_1080P

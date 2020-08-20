@@ -31,8 +31,10 @@ void DRV_VPPDMA_on(void);
 
 int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int ddfch_fmt);
 int vscl_setting(int x, int y, int input_w, int input_h, int output_w, int output_h);
+void vppdma_flip_setting(int flip_v, int flip_h);
 int vppdma_setting(int luma_addr, int chroma_addr, int w, int h, int vppdma_fmt);
 
+void vpp_path_cur_setting_read(void);
 //int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h);
 //int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt);
 

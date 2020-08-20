@@ -60,30 +60,37 @@ void DRV_DVE_SetMode(int mode)
 		default:
 		case 0:	//480P
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (0 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x3;
 			pDVEReg->color_bar_mode = colorbarmode | (0 << 3);
 			break;
 		case 1:	//576P
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (1 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x3;
 			pDVEReg->color_bar_mode = colorbarmode | (1 << 3);
 			break;
 		case 2:	//720P60
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (6 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x3;
 			pDVEReg->color_bar_mode = colorbarmode | (2 << 3);
 			break;
 		case 3:	//720P50
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (7 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x3;
 			pDVEReg->color_bar_mode = colorbarmode | (3 << 3);
 			break;
 		case 4:	//1080P60
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (2 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x2;
 			pDVEReg->color_bar_mode = colorbarmode | (4 << 3);
 			break;
 		case 5:	//1080P50
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (0 << 12) | (0 << 7) | (1 << 8) | (3 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x2;
 			pDVEReg->color_bar_mode = colorbarmode | (5 << 3);
 			break;
 		case 6:	//1080P24
 			pDVEReg->dve_hdmi_mode_0 = hdmi_mode | (1 << 12) | (0 << 7) | (1 << 8) | (2 << 9);
+			pDVEReg->dve_hdmi_mode_1 = 0x2;
 			pDVEReg->color_bar_mode = colorbarmode | (6 << 3);
 			break;
 		case 7:	//user mode , not support

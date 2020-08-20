@@ -41,15 +41,34 @@ static volatile DISP_VPPDMA_REG_t *pVPPDMAReg;
 
 static const char * const DdfchFmt[] = {"NV12", "NV16", "YUY2"};
 static const char * const VppdmaFmt[] = {"RGB888", "RGB565", "UYVY", "NV16", "YUY2"};
+static const char * const path_sel[] = {"VPPDMA", "OSD0", "DDFCH", "DDFCH"};
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
 void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHWReg4)
 {
+	int width, height;
 	pVPOSTReg = (DISP_VPOST_REG_t *)pInHWReg1;
 	pVSCLReg = (DISP_VSCL_REG_t *)pInHWReg2;
 	pDDFCHReg = (DISP_DDFCH_REG_t *)pInHWReg3;
 	pVPPDMAReg = (DISP_VPPDMA_REG_t *)pInHWReg4;
+
+#ifdef DISP_480P
+	width = 720;
+	height = 480;
+#endif
+#ifdef DISP_576P
+	width = 720;
+	height = 576;
+#endif
+#ifdef DISP_720P
+	width = 1280;
+	height = 720;
+#endif
+#ifdef DISP_1080P
+	width = 1920;
+	height = 1080;
+#endif
 
 #if (VPP_PATH_SEL == 0)
 	pVSCLReg->vscl0_config2 			= 0x0000021F;	//G187.01
@@ -58,18 +77,18 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 #elif (VPP_PATH_SEL == 2)
 	pVSCLReg->vscl0_config2 			= 0x0000221F;	//G187.01
 #endif
-	pVSCLReg->vscl0_actrl_i_xlen 		= 0x000002D0;	//G187.03
-	pVSCLReg->vscl0_actrl_i_ylen 		= 0x000001E0;	//G187.04
+	pVSCLReg->vscl0_actrl_i_xlen 		= width;//0x000002D0;	//G187.03
+	pVSCLReg->vscl0_actrl_i_ylen 		= height;	//G187.04
 	pVSCLReg->vscl0_actrl_s_xstart		= 0x00000000;	//G187.05
 	pVSCLReg->vscl0_actrl_s_ystart		= 0x00000000;	//G187.06
-	pVSCLReg->vscl0_actrl_s_xlen		= 0x000002D0;	//G187.07
-	pVSCLReg->vscl0_actrl_s_ylen		= 0x000001E0;	//G187.08
-	pVSCLReg->vscl0_dctrl_o_xlen		= 0x000002D0;	//G187.09
-	pVSCLReg->vscl0_dctrl_o_ylen		= 0x000001E0;	//G187.10	
+	pVSCLReg->vscl0_actrl_s_xlen		= width;//0x000002D0;	//G187.07
+	pVSCLReg->vscl0_actrl_s_ylen		= height;	//G187.08
+	pVSCLReg->vscl0_dctrl_o_xlen		= width;//0x000002D0;	//G187.09
+	pVSCLReg->vscl0_dctrl_o_ylen		= height;	//G187.10	
 	pVSCLReg->vscl0_dctrl_d_xstart		= 0x00000000;	//G187.11
 	pVSCLReg->vscl0_dctrl_d_ystart		= 0x00000000;	//G187.12
-	pVSCLReg->vscl0_dctrl_d_xlen		= 0x000002D0;	//G187.13
-	pVSCLReg->vscl0_dctrl_d_ylen		= 0x000001E0;	//G187.14
+	pVSCLReg->vscl0_dctrl_d_xlen		= width;//0x000002D0;	//G187.13
+	pVSCLReg->vscl0_dctrl_d_ylen		= height;	//G187.14
 	pVSCLReg->vscl0_hint_ctrl			= 0x00000002;	//G187.18
 	pVSCLReg->vscl0_hint_hfactor_low	= 0x00000000;	//G187.19
 	pVSCLReg->vscl0_hint_hfactor_high	= 0x00000040;	//G187.20
@@ -85,24 +104,24 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 		pVPPDMAReg->vdma_gc 				= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
 		#if (VPPDMA_FMT_HDMI == 0) //RGB888
 			pVPPDMAReg->vdma_cfg 				= 0x00000000; //G186.02 , no swap , bist off , fmt = RGB888
-			pVPPDMAReg->vdma_lstd_size 			= 0x000002D0*3; //G186.05 , stride size RGB888
+			pVPPDMAReg->vdma_lstd_size 			= width*3; //G186.05 , stride size RGB888
 		#elif (VPPDMA_FMT_HDMI == 1) //RGB565
 			pVPPDMAReg->vdma_cfg 				= 0x00000001; //G186.02 , no swap , bist off , fmt = RGB565
-			pVPPDMAReg->vdma_lstd_size 			= (0x000002D0<<1); //G186.05 , stride size RGB565
+			pVPPDMAReg->vdma_lstd_size 			= (width<<1); //G186.05 , stride size RGB565
 		#elif (VPPDMA_FMT_HDMI == 2) //YUV422_UYVY
 			pVPPDMAReg->vdma_cfg 				= 0x00000002; //G186.02 , no swap , bist off , fmt = UYVY
-			pVPPDMAReg->vdma_lstd_size 			= (0x000002D0<<1); //G186.05 , stride size YUY2
+			pVPPDMAReg->vdma_lstd_size 			= (width<<1); //G186.05 , stride size YUY2
 		#elif (VPPDMA_FMT_HDMI == 3) //YUV422_NV16
 			pVPPDMAReg->vdma_cfg 				= 0x00000003; //G186.02 , no swap , bist off , fmt = YUV422_NV16
-			pVPPDMAReg->vdma_lstd_size 			= (0x000002D0); //G186.05 , stride size YUV422_NV16
+			pVPPDMAReg->vdma_lstd_size 			= (width); //G186.05 , stride size YUV422_NV16
 		#elif (VPPDMA_FMT_HDMI == 4) //YUV422_YUY2
 			pVPPDMAReg->vdma_cfg 				= 0x00000802; //G186.02 , with swap , bist off , fmt = YUY2
-			pVPPDMAReg->vdma_lstd_size 			= (0x000002D0<<1); //G186.05 , stride size YUY2
+			pVPPDMAReg->vdma_lstd_size 			= (width<<1); //G186.05 , stride size YUY2
 		#else //RGB888
 			pVPPDMAReg->vdma_cfg 				= 0x00000000; //G186.02 , no swap , bist off , fmt = RGB888 (test2 - ok)
-			pVPPDMAReg->vdma_lstd_size 			= 0x000002D0*3; //G186.05 , stride size RGB888	
+			pVPPDMAReg->vdma_lstd_size 			= width*3; //G186.05 , stride size RGB888	
 		#endif
-		pVPPDMAReg->vdma_frame_size 		= 0x01E002D0; //G186.03 , frame_h , frame_w
+		pVPPDMAReg->vdma_frame_size 		= ((height << 16) | width);//0x01E002D0; //G186.03 , frame_h , frame_w
 		pVPPDMAReg->vdma_crop_st 			= 0x00000000; //G186.04 , start_h , Start_w
 	#endif
 
@@ -113,11 +132,11 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2, void *pInHWReg3, void *pInHW
 
 	//pDDFCHReg->ddfch_luma_base_addr_0 = (0x120000)>>10;
 	//pDDFCHReg->ddfch_crma_base_addr_0 = (0x120000 + 768*480)>>10;
-	pDDFCHReg->ddfch_vdo_frame_size = EXTENDED_ALIGNED(0x02D0, 128); //video line pitch
+	pDDFCHReg->ddfch_vdo_frame_size = EXTENDED_ALIGNED(width, 128); //video line pitch
 	//pDDFCHReg->ddfch_vdo_crop_offset = ((0 << 16) | 0);
 	//pDDFCHReg->ddfch_config_0 = 0x10000;
 	pDDFCHReg->ddfch_bist = 0x80801002;
-	pDDFCHReg->ddfch_vdo_crop_size = ((0x1E0<<16) | 0x2D0); //y size & x size
+	pDDFCHReg->ddfch_vdo_crop_size = ((height << 16) | width); //y size & x size
 	#endif
 }
 
@@ -206,7 +225,7 @@ void vpp_path_select_flag(DRV_VppWindow_e vpp_path_sel)
 int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int ddfch_fmt)
 {
 	sp_disp_dbg("ddfch luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
-	sp_disp_info("ddfch w=%d, h=%d, fmt= %s\n", w, h, DdfchFmt[ddfch_fmt]);
+	sp_disp_dbg("ddfch w=%d, h=%d, fmt= %s\n", w, h, DdfchFmt[ddfch_fmt]);
 
 	#if (DDFCH_GRP_EN == 1)
 	pDDFCHReg->ddfch_latch_en = 1;
@@ -252,13 +271,13 @@ int vscl_setting(int x, int y, int input_w, int input_h, int output_w, int outpu
 {
 	//sp_disp_info("vscl setting for HDMI \n");
 
-	sp_disp_info("vscl position (x, y) =(%d, %d)\n", x, y);
-	sp_disp_info("IN (%d, %d), OUT (%d, %d)\n", input_w, input_h, output_w, output_h);
+	sp_disp_dbg("vscl position (x, y) =(%d, %d)\n", x, y);
+	sp_disp_dbg("IN (%d, %d), OUT (%d, %d)\n", input_w, input_h, output_w, output_h);
 
 	if ((input_w == output_w) && (input_h == output_h))
-		sp_disp_info("scaling ratio (x, y) = (1000,1000) \n");
+		sp_disp_dbg("scaling ratio (x, y) = (1000,1000) \n");
 	else {
-		sp_disp_info("scaling ratio (x, y) = (%04d,%04d) \n", output_w * 1000 / input_w, output_h * 1000 / input_h);
+		sp_disp_dbg("scaling ratio (x, y) = (%04d,%04d) \n", output_w * 1000 / input_w, output_h * 1000 / input_h);
 	}
 
 	pVSCLReg->vscl0_actrl_i_xlen 	= input_w;	//G187.03
@@ -294,12 +313,34 @@ int vscl_setting(int x, int y, int input_w, int input_h, int output_w, int outpu
 }
 EXPORT_SYMBOL(vscl_setting);
 
+void vppdma_flip_setting(int flip_v, int flip_h)
+{
+	int vdma_cfg_tmp;
+
+	vdma_cfg_tmp = pVPPDMAReg->vdma_cfg;
+
+	vdma_cfg_tmp &= ~((1 << 7) | (1 << 6));
+
+	if ( (flip_v == 0) && (flip_h == 0) )
+		vdma_cfg_tmp 	= (0 << 7) | (0 << 6); //flip_v normal, flip_h normal
+	else if ( (flip_v == 1) && (flip_h == 0) )
+		vdma_cfg_tmp 	= (1 << 7) | (0 << 6); //flip_v swap, flip_h normal
+	else if ( (flip_v == 0) && (flip_h == 1) )
+		vdma_cfg_tmp 	= (0 << 7) | (1 << 6); //flip_v normal, flip_h swap
+	else if ( (flip_v == 1) && (flip_h == 1) )
+		vdma_cfg_tmp 	= (1 << 7) | (1 << 6); //flip_v swap, flip_h normal
+
+	pVPPDMAReg->vdma_cfg = vdma_cfg_tmp;
+
+}
+EXPORT_SYMBOL(vppdma_flip_setting);
+
 int vppdma_setting(int luma_addr, int chroma_addr, int w, int h, int vppdma_fmt)
 {
 	int vdma_cfg_tmp, vdma_frame_size_tmp;
 
-	sp_disp_info("vppdma luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
-	sp_disp_info("vppdma w=%d, h=%d, fmt= %s\n", w, h, VppdmaFmt[vppdma_fmt]);
+	sp_disp_dbg("vppdma luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
+	sp_disp_dbg("vppdma w=%d, h=%d, fmt= %s\n", w, h, VppdmaFmt[vppdma_fmt]);
 
 	#if (VPPDMA_GRP_EN == 1)
 	pVPPDMAReg->vdma_gc 							= 0x80000028; //G186.01 , vppdma en , urgent th = 0x28
@@ -309,18 +350,18 @@ int vppdma_setting(int luma_addr, int chroma_addr, int w, int h, int vppdma_fmt)
 
 	vdma_cfg_tmp = pVPPDMAReg->vdma_cfg;
 
-	vdma_cfg_tmp &= ~((1 << 12) | (1 << 11) | (7 << 8) | (3 << 0));
+	vdma_cfg_tmp &= ~((1 << 12) | (1 << 11) | (7 << 8) | (1 << 7) | (1 << 6) | (3 << 0));
 
 	if (vppdma_fmt == 0)
-		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (0 << 0); //source RGB888 (default)
+		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (0 << 7) | (0 << 6) | (0 << 0); //source RGB888 (default)
 	else if(vppdma_fmt == 1)
-		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (1 << 0); //source RGB565
+		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (0 << 7) | (0 << 6) | (1 << 0); //source RGB565
 	else if(vppdma_fmt == 2)
-		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (2 << 0); //source YUV422 UYVY
+		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (0 << 7) | (0 << 6) | (2 << 0); //source YUV422 UYVY
 	else if(vppdma_fmt == 3)
-		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (3 << 0); //source YUV422 NV16
+		vdma_cfg_tmp 			= (0 << 12) | (0 << 11) | (0 << 8) | (0 << 7) | (0 << 6) | (3 << 0); //source YUV422 NV16
 	else if(vppdma_fmt == 4)
-		vdma_cfg_tmp 			= (0 << 12) | (1 << 11) | (0 << 8) | (2 << 0); //source YUV422 YUY2		
+		vdma_cfg_tmp 			= (1 << 12) | (0 << 11) | (0 << 8) | (0 << 7) | (0 << 6) | (2 << 0); //source YUV422 YUY2		
 
 	pVPPDMAReg->vdma_cfg = vdma_cfg_tmp;
 
@@ -343,12 +384,36 @@ int vppdma_setting(int luma_addr, int chroma_addr, int w, int h, int vppdma_fmt)
 	else if (vppdma_fmt == 4)
 		pVPPDMAReg->vdma_lstd_size 				= w*2; //G186.05 , stride size , source YUV422 YUY2
 
-	pVPPDMAReg->vdma_data_addr1 			= luma_addr; //G186.06 , 1st planner addr (luma)
-	pVPPDMAReg->vdma_data_addr2 			= chroma_addr; //G186.07 , 2nd planner addr (crma)
+	if (luma_addr != 0)
+		pVPPDMAReg->vdma_data_addr1 			= luma_addr; //G186.06 , 1st planner addr (luma)
+	if (chroma_addr != 0)
+		pVPPDMAReg->vdma_data_addr2 			= chroma_addr; //G186.07 , 2nd planner addr (crma)
 
 	return 0;
 }
 EXPORT_SYMBOL(vppdma_setting);
+
+void vpp_path_cur_setting_read(void)
+{
+	int tmp;
+
+	sp_disp_dbg("vpp_path_cur_setting_read \n");
+	tmp = pVPPDMAReg->vdma_frame_size;
+	//temp_w = ((tmp >> 0) & 0x1fff);
+	//temp_h = ((tmp >> 16) & 0xfff);
+	sp_disp_dbg("vppdma w %d , h %d \n", (tmp & 0x1fff), ((tmp >> 16)&0xfff));
+	//sp_disp_info("vppdma w %d , h %d \n", temp_w, temp_h);
+
+	tmp = pVSCLReg->vscl0_config2;
+	tmp = (tmp & 0x3000) >> 12;
+	sp_disp_dbg("vscl path sel = %s \n", path_sel[tmp]);
+
+	sp_disp_dbg("vscl i_xlen %d , o_xlen %d \n", pVSCLReg->vscl0_actrl_i_xlen, pVSCLReg->vscl0_dctrl_o_xlen);
+	sp_disp_dbg("vscl i_ylen %d , y_xlen %d \n", pVSCLReg->vscl0_actrl_i_ylen, pVSCLReg->vscl0_dctrl_o_ylen);
+
+
+}
+EXPORT_SYMBOL(vpp_path_cur_setting_read);
 
 void DRV_VSCL_SetColorbar(DRV_VppWindow_e vpp_path_sel, int enable)
 {

@@ -110,6 +110,8 @@ void DRV_IRQ_ENABLE(void);
 
 extern int g_disp_state;
 
+void osd_path_cur_setting_read(void);
+
 void DRV_OSD_SetColorbar(DRV_OsdWindow_e osd_layer, int enable);
 int osd0_setting(int base_addr, int w, int h, int osd0_fmt);
 int osd1_setting(int base_addr, int w, int h, int osd1_fmt);

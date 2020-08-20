@@ -137,6 +137,7 @@ static u64 gpWinRegion_phy;
 static u8 *gpOsdHeader;
 static u64 gpOsdHeader_phy;
 
+static const char * const osd_status[] = {"dis", "en", "unknown"};
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
@@ -148,12 +149,14 @@ void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 	pGPOSTReg = (DISP_GPOST_REG_t *)pInHWReg2;
 
 	pOSDReg->osd_ctrl 				= 0x00b7;	//G196.00
+#if (OSD0_GRP_EN == 1)
 	pOSDReg->osd_en 				= 0x0001;	//G196.01
-	pOSDReg->osd_base_addr			= 0x20200000;	//G196.02
+#endif
+	//pOSDReg->osd_base_addr			= 0x20200000;	//G196.02
 	
-	pOSDReg->osd_hvld_width 		= 720;		//G196.17
+	pOSDReg->osd_hvld_width 		= OSD0_WIDTH;		//G196.17
 	pOSDReg->osd_vvld_offset 		= 0;		//G196.18
-	pOSDReg->osd_vvld_height		= 480;		//G196.19
+	pOSDReg->osd_vvld_height		= OSD0_HEIGHT;		//G196.19
 	pOSDReg->osd_data_fetch_ctrl	= 0x0af8;	//G196.20
 	pOSDReg->osd_bist_ctrl			= 0x00;		//G196.21
 
@@ -620,12 +623,14 @@ void DRV_OSD1_Init(void *pInHWReg1, void *pInHWReg2)
 
 	//480P 720x480 setting
 	pOSD1Reg->osd_ctrl 			= 0x00b7;	//G197.00
+#if (OSD1_GRP_EN == 1)
 	pOSD1Reg->osd_en 				= 0x0001;	//G197.01
-	pOSD1Reg->osd_base_addr 	= 0x20300000;	//G197.02
+#endif
+	//pOSD1Reg->osd_base_addr 	= 0x20300000;	//G197.02
 	
-	pOSD1Reg->osd_hvld_width 	= 720;	//G197.17
+	pOSD1Reg->osd_hvld_width 	= OSD1_WIDTH;	//G197.17
 	pOSD1Reg->osd_vvld_offset 	= 0;	//G197.18
-	pOSD1Reg->osd_vvld_height 	= 480;	//G197.19
+	pOSD1Reg->osd_vvld_height 	= OSD1_HEIGHT;	//G197.19
 	pOSD1Reg->osd_data_fetch_ctrl 	= 0x0af8;	//G197.20
 	pOSD1Reg->osd_bist_ctrl 	= 0x00;	//G197.21
 	//pOSD1Reg->osd_bist_ctrl 	= 0x80;	//G197.21 , color bar en , color bar
@@ -635,6 +640,17 @@ void DRV_OSD1_Init(void *pInHWReg1, void *pInHWReg2)
 	//spin_lock_init(&pDispWorkMem->osd_lock);
 
 }
+
+void osd_path_cur_setting_read(void)
+{
+
+	sp_disp_info("osd_path_cur_setting_read \n");
+
+	sp_disp_info("osd0(%s) w %d , h %d \n",osd_status[pOSDReg->osd_en] , pOSDReg->osd_hvld_width, pOSDReg->osd_vvld_height);
+	sp_disp_info("osd1(%s) w %d , h %d \n",osd_status[pOSD1Reg->osd_en] , pOSD1Reg->osd_hvld_width, pOSD1Reg->osd_vvld_height);
+
+}
+EXPORT_SYMBOL(osd_path_cur_setting_read);
 
 void DRV_OSD0_off(void)
 {

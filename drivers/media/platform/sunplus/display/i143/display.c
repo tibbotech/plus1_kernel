@@ -74,6 +74,33 @@
 #endif
 
 #if (VPPDMA_FETCH_EN == 1) //VPPDMA fetch data
+	#if ((VPPDMA_VPP_WIDTH == 640) && (VPPDMA_VPP_HEIGHT == 480))
+		#if (VPPDMA_FMT_HDMI == 0) //RGB888
+		unsigned char vppdma_data_array[640*480*3] __attribute__((aligned(1024))) = {
+			0x00
+		};
+		#elif (VPPDMA_FMT_HDMI == 1) //RGB565
+		unsigned char vppdma_data_array[640*480*2] __attribute__((aligned(1024))) = {
+			0x00
+		};
+		#elif (VPPDMA_FMT_HDMI == 2) //YUV422_YUY2 (default fmt UYVY)
+		unsigned char vppdma_data_array[640*480*2] __attribute__((aligned(1024))) = {
+			0x00
+		};
+		#elif (VPPDMA_FMT_HDMI == 3) //YUV422_NV16
+		unsigned char vppdma_data_array[640*480*2] __attribute__((aligned(1024))) = {
+			0x00
+		};
+		#elif (VPPDMA_FMT_HDMI == 4) //YUV422_YUY2
+		unsigned char vppdma_data_array[640*480*2] __attribute__((aligned(1024))) = {
+			0x00
+		};		
+		#else //RGB888
+		unsigned char vppdma_data_array[640*480*3] __attribute__((aligned(1024))) = {
+			0x00
+		};
+		#endif
+	#endif
 	#if ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 480))
 		#if (VPPDMA_FMT_HDMI == 0) //RGB888
 		unsigned char vppdma_data_array[720*480*3] __attribute__((aligned(1024))) = {
@@ -91,6 +118,10 @@
 		unsigned char vppdma_data_array[720*480*2] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/vppdma/yuv422_NV16_720x480.h"
 		};
+		#elif (VPPDMA_FMT_HDMI == 4) //YUV422_YUY2
+		unsigned char vppdma_data_array[720*480*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/vppdma/yuv422_UYVY_720x480.h"
+		};	
 		#else //RGB888
 		unsigned char vppdma_data_array[720*480*3] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/vppdma/RGB888_720x480.h"
@@ -116,6 +147,10 @@
 		unsigned char vppdma_data_array[1280*720*2] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/vppdma/yuv422_NV16_1280x720.h"
 		};
+		#elif (VPPDMA_FMT_HDMI == 4) //YUV422_YUY2
+		unsigned char vppdma_data_array[1280*720*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/vppdma/yuv422_YUY2_1280x720.h"
+		};
 		#else //RGB888
 		unsigned char vppdma_data_array[1280*720*3] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/vppdma/RGB888_1280x720.h"
@@ -140,6 +175,10 @@
 		#elif (VPPDMA_FMT_HDMI == 3) //YUV422_NV16
 		unsigned char vppdma_data_array[1920*1080*2] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/vppdma/yuv422_NV16_1920x1080.h"
+		};
+		#elif (VPPDMA_FMT_HDMI == 4) //YUV422_YUY2
+		unsigned char vppdma_data_array[1920*1080*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/vppdma/yuv422_YUY2_1920x1080.h"
 		};
 		#else //RGB888
 		unsigned char vppdma_data_array[1920*1080*3] __attribute__((aligned(1024))) = {
@@ -418,6 +457,9 @@ static ssize_t _write_flush_proc(struct file *filp, const char __user *buffer, s
 #ifdef TIMING_SYNC_720P60
 extern int hdmitx_enable_display(int);
 extern void hdmitx_set_timming(enum hdmitx_timing timing);
+extern void hdmitx_get_timming(enum hdmitx_timing *timing);
+enum hdmitx_timing hdmitx_cur_timing;
+static const char * const hdmitx_res[] = {"480P60Hz", "576P50Hz", "720P60Hz", "1080P60Hz", "USER"};
 #endif
 
 extern void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdmi);
@@ -820,6 +862,10 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 
 	addr = vb2_dma_contig_plane_dma_addr(&layer->cur_frm->vb.vb2_buf, 0);
 
+	#ifdef I143_SYS_PORT
+	addr &= ~0x80000000;
+	#endif
+
 	spin_unlock_irqrestore(&disp->dma_queue_lock, flags);
 
 	if(dev_id == SP_DISP_DEVICE_0) {
@@ -927,36 +973,37 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 #if DDFCH_FETCH_EN
 		if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV12 \n");
-			ddfch_setting(addr, addr + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 0);	
+			ddfch_setting(addr, addr + ALIGN(layer->fmt.fmt.pix.width, 128)*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 0);	
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV16 \n");
-			ddfch_setting(addr, addr + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 1);
+			ddfch_setting(addr, addr + ALIGN(layer->fmt.fmt.pix.width, 128)*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 1);
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV \n");
-			ddfch_setting(addr, addr + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 2);
+			ddfch_setting(addr, addr + ALIGN(layer->fmt.fmt.pix.width, 128)*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 2);
 		}
-#else
+#endif
+#if VPPDMA_FETCH_EN
 		if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB24 \n");
-			vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 0);
+			vppdma_setting(addr, addr + layer->fmt.fmt.pix.width*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 0);
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB565 \n");
-			vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1);
+			vppdma_setting(addr, addr + layer->fmt.fmt.pix.width*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 1);
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_UYVY \n");
-			vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 2);
+			vppdma_setting(addr, addr + layer->fmt.fmt.pix.width*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 2);
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV16 \n");
-			vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 3);
+			vppdma_setting(addr, addr + layer->fmt.fmt.pix.width*layer->fmt.fmt.pix.height, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height, 3);
 		}
 		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
 			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV \n");
-			vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 4);
+			vppdma_setting(addr, addr + layer->fmt.fmt.pix.width*VPPDMA_VPP_HEIGHT, layer->fmt.fmt.pix.width, VPPDMA_VPP_HEIGHT, 4);
 		}
 #endif
 	}
@@ -983,6 +1030,10 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	struct sp_disp_buffer *buf;
 	unsigned long flags;
 	int is_hdmi = 1;
+	#ifdef TIMING_SYNC_720P60
+	DRV_SetTGEN_t SetTGEN;
+	int mode = 0;
+	#endif
 
 	sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, layer->video_dev.name);
 
@@ -1008,6 +1059,72 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	else if(!(strcmp(DISP_VPP0_NAME, layer->video_dev.name))) {
 		dev_id = SP_DISP_DEVICE_2;
 		sp_disp_set_vpp_resolution_v4l2(disp, is_hdmi);
+
+#ifdef TIMING_SYNC_720P60
+			sp_disp_dbg("[%s:%d] get hdmitx resolution!!(S) \n", __FUNCTION__, __LINE__);
+			sp_disp_dbg("[%s:%d] default hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
+
+			hdmitx_set_timming(hdmitx_cur_timing);
+			hdmitx_enable_display(1);
+
+			if (hdmitx_cur_timing == 0) { //hdmitx 480P60Hz
+				mode = 0;
+			}
+			else if (hdmitx_cur_timing == 1) { //hdmitx 576P50Hz
+				mode = 1;
+			}
+			else if (hdmitx_cur_timing == 2) { //hdmitx 720P60Hz
+				mode = 2;
+			}
+			else if (hdmitx_cur_timing == 3) { //hdmitx 1080P60Hz
+				mode = 4;
+			}
+			else { //unknown setting
+				;//TBD
+			}
+
+			DRV_DVE_SetMode(mode);
+
+			switch (mode)
+			{
+				default:
+				case 0:
+					SetTGEN.fmt = DRV_FMT_480P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 1:
+					SetTGEN.fmt = DRV_FMT_576P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 2:
+					SetTGEN.fmt = DRV_FMT_720P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 3:
+					SetTGEN.fmt = DRV_FMT_720P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 4:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 5:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 6:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_24Hz;
+					break;
+				case 7:
+					sp_disp_dbg("user mode unsupport\n");
+					break;
+			}
+			DRV_TGEN_Set(&SetTGEN);
+			
+			sp_disp_dbg("[%s:%d] get hdmitx resolution!!(E) \n", __FUNCTION__, __LINE__);
+#endif
+
 	}
 
 	layer->streaming = 0;
@@ -1352,7 +1469,8 @@ static struct sp_fmt vpp0_formats[] = {
 		.halign   = 1,
 	},
 };
-#else //vppdma
+#endif
+#if VPPDMA_FETCH_EN //vppdma
 static struct sp_fmt vpp0_formats[] = {
 	{
 		.name     = "RGB888", /* vpp0_format = RGB888 */
@@ -1566,6 +1684,10 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
 	int ret;
 	char fmtstr[8];
+	#ifdef TIMING_SYNC_720P60
+	DRV_SetTGEN_t SetTGEN;
+	int mode;
+	#endif
 
 	sp_disp_dbg("[%s:%d] sp_display_s_fmt \n", __FUNCTION__, __LINE__);
 
@@ -1629,6 +1751,86 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
 			//disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = (pixfmt->width)*(pixfmt->height)*4;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
+
+#ifdef TIMING_SYNC_720P60
+			vpp_path_cur_setting_read();
+			osd_path_cur_setting_read();
+			sp_disp_info("[%s:%d] get hdmitx resolution!!(S) \n", __FUNCTION__, __LINE__);
+			hdmitx_get_timming(&hdmitx_cur_timing);
+			//sp_disp_info("[%s:%d] get hdmitx timing %d \n", __FUNCTION__, __LINE__, hdmitx_cur_timing);
+			
+			sp_disp_info("[%s:%d] get hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
+
+			if((pixfmt->width <= 720)&&(pixfmt->height <= 480)) {
+				vscl_setting(0, 0, pixfmt->width, pixfmt->height, pixfmt->width, 480);
+				mode = 0;
+				hdmitx_set_timming(HDMITX_TIMING_480P);
+			}
+			else if((pixfmt->width <= 720)&&(pixfmt->height <= 576)) {
+				vscl_setting(0, 0, pixfmt->width, pixfmt->height, pixfmt->width, 576);
+				mode = 1;
+				hdmitx_set_timming(HDMITX_TIMING_576P);
+			}
+			else if((pixfmt->width <= 1280)&&(pixfmt->height <= 720)) {
+				vscl_setting(0, 0, pixfmt->width, pixfmt->height, pixfmt->width, 720);
+				mode = 2;
+				hdmitx_set_timming(HDMITX_TIMING_720P60);
+			}
+			else { //if((pixfmt->width <= 1920)&&(pixfmt->height <= 1080))
+				vscl_setting(0, 0, pixfmt->width, pixfmt->height, pixfmt->width, 1080);
+				mode = 4;
+				hdmitx_set_timming(HDMITX_TIMING_1080P60);
+			}
+			hdmitx_enable_display(1);
+
+			DRV_DVE_SetMode(mode);
+
+			switch (mode)
+			{
+				default:
+				case 0:
+					SetTGEN.fmt = DRV_FMT_480P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 1:
+					SetTGEN.fmt = DRV_FMT_576P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 2:
+					SetTGEN.fmt = DRV_FMT_720P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 3:
+					SetTGEN.fmt = DRV_FMT_720P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 4:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_5994Hz;
+					break;
+				case 5:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_50Hz;
+					break;
+				case 6:
+					SetTGEN.fmt = DRV_FMT_1080P;
+					SetTGEN.fps = DRV_FrameRate_24Hz;
+					break;
+				case 7:
+					sp_disp_dbg("user mode unsupport\n");
+					break;
+			}
+
+			ret = DRV_TGEN_Set(&SetTGEN);
+			if (ret != DRV_SUCCESS) {
+				sp_disp_err("TGEN Set failed, ret = %d\n", ret);
+				return ret;
+			}			
+
+			sp_disp_info("[%s:%d] get hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
+			
+			sp_disp_info("[%s:%d] get hdmitx resolution!!(E) \n", __FUNCTION__, __LINE__);
+#endif
 		}
 		else
 			sp_disp_dbg("[%s:%d] unknown layer !! \n", __FUNCTION__, __LINE__);
@@ -1738,6 +1940,9 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 				next_frm->vb.vb2_buf.state = VB2_BUF_STATE_ACTIVE;
 
 				addr = vb2_dma_contig_plane_dma_addr(&next_frm->vb.vb2_buf, 0);
+				#ifdef I143_SYS_PORT
+				addr &= ~0x80000000;
+				#endif
 
 				#if 1
 				if(i == 0) {
@@ -1827,21 +2032,33 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 					else if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
 						ddfch_setting(addr, addr + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 2);
 					}
-					#else
+					#endif
+					#if VPPDMA_FETCH_EN
 					if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB24) {
-						vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 0);
+						//vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 0);
+						vppdma_setting(addr, addr + (layer->fmt.fmt.pix.width)*(layer->fmt.fmt.pix.height), (layer->fmt.fmt.pix.width), (layer->fmt.fmt.pix.height), 0);
 					}
 					if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
-						vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1);
+						//vppdma_setting(addr, addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1);
+						vppdma_setting(addr, addr + (layer->fmt.fmt.pix.width)*(layer->fmt.fmt.pix.height), (layer->fmt.fmt.pix.width), (layer->fmt.fmt.pix.height), 1);
 					}
 					if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY) {
-						vppdma_setting(addr, (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 2);
+						//vppdma_setting(addr, (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 2);
+						vppdma_setting(addr, addr + (layer->fmt.fmt.pix.width)*(layer->fmt.fmt.pix.height), (layer->fmt.fmt.pix.width), (layer->fmt.fmt.pix.height), 2);
 					}
 					else if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
-						vppdma_setting((addr), (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 3);
+						//vppdma_setting((addr), (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 3);
+						vppdma_setting(addr, addr + (layer->fmt.fmt.pix.width)*(layer->fmt.fmt.pix.height), (layer->fmt.fmt.pix.width), (layer->fmt.fmt.pix.height), 3);
 					}
 					else if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
-						vppdma_setting((addr), (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 4);
+						//vppdma_setting((addr), (addr + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 4);
+						//sp_disp_info("addr bytes = %ld \n", sizeof(addr));
+						//sp_disp_info("addr4  = %ld \n", addr);
+						//addr = __pa(addr);
+						//sp_disp_info("addr5  = %ld \n", addr);
+						//addr &= ~0x80000000;
+						//sp_disp_info("addr6  = %ld \n", addr);						
+						vppdma_setting(addr, addr + (layer->fmt.fmt.pix.width)*(layer->fmt.fmt.pix.height), (layer->fmt.fmt.pix.width), (layer->fmt.fmt.pix.height), 4);
 					}
 					#endif
 				}
@@ -2989,31 +3206,71 @@ static int sp_disp_set_output_resolution(struct sp_disp_device *disp_dev, int is
 	sp_disp_dbg("set output resolution \n");
 
 	if(is_hdmi) { //hdmitx output
-		if((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 480)) {
-			mode = 0;
+		if( ((disp_dev->UIRes.width == 1920)&&(disp_dev->UIRes.height == 1080)) ||
+		#if (OSD1_GRP_EN == 1)
+				((OSD1_WIDTH == 1920)&&(OSD1_HEIGHT == 1080)) ||
+		#endif
+		#if (DDFCH_GRP_EN == 1)
+				((DDFCH_VPP_WIDTH == 1920)&&(DDFCH_VPP_HEIGHT == 1080)) 
+		#endif
+		#if (VPPDMA_GRP_EN == 1)
+				((VPPDMA_VPP_WIDTH == 1920)&&(VPPDMA_VPP_HEIGHT == 1080))
+		#endif
+				) {
+			mode = 4;
 			#ifdef TIMING_SYNC_720P60
-			hdmitx_set_timming(HDMITX_TIMING_480P);
+			hdmitx_set_timming(HDMITX_TIMING_1080P60);
 			hdmitx_enable_display(1);
 			#endif
 		}
-		else if((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 576)) {
-			mode = 1;
-			#ifdef TIMING_SYNC_720P60
-			hdmitx_set_timming(HDMITX_TIMING_576P);
-			hdmitx_enable_display(1);
-			#endif
-		}
-		else if((disp_dev->UIRes.width == 1280)&&(disp_dev->UIRes.height == 720)) {
+		else if( ((disp_dev->UIRes.width == 1280)&&(disp_dev->UIRes.height == 720)) ||
+		#if (OSD1_GRP_EN == 1)
+				((OSD1_WIDTH == 1280)&&(OSD1_HEIGHT == 720)) ||
+		#endif
+		#if (DDFCH_GRP_EN == 1)
+				((DDFCH_VPP_WIDTH == 1280)&&(DDFCH_VPP_HEIGHT == 720)) 
+		#endif
+		#if (VPPDMA_GRP_EN == 1)
+				((VPPDMA_VPP_WIDTH == 1280)&&(VPPDMA_VPP_HEIGHT == 720))
+		#endif
+				) {
 			mode = 2;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_720P60);
 			hdmitx_enable_display(1);
 			#endif
 		}
-		else if((disp_dev->UIRes.width == 1920)&&(disp_dev->UIRes.height == 1080)) {
-			mode = 4;
+		else if( ((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 576)) ||
+		#if (OSD1_GRP_EN == 1)
+				((OSD1_WIDTH == 720)&&(OSD1_HEIGHT == 576)) ||
+		#endif
+		#if (DDFCH_GRP_EN == 1)
+				((DDFCH_VPP_WIDTH == 720)&&(DDFCH_VPP_HEIGHT == 576)) 
+		#endif
+		#if (VPPDMA_GRP_EN == 1)
+				((VPPDMA_VPP_WIDTH == 720)&&(VPPDMA_VPP_HEIGHT == 576))
+		#endif
+				) {
+			mode = 1;
 			#ifdef TIMING_SYNC_720P60
-			hdmitx_set_timming(HDMITX_TIMING_1080P60);
+			hdmitx_set_timming(HDMITX_TIMING_576P);
+			hdmitx_enable_display(1);
+			#endif
+		}
+		else if( ((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 480)) ||
+		#if (OSD1_GRP_EN == 1)
+				((OSD1_WIDTH == 720)&&(OSD1_HEIGHT == 480)) ||
+		#endif
+		#if (DDFCH_GRP_EN == 1)
+				((DDFCH_VPP_WIDTH == 720)&&(DDFCH_VPP_HEIGHT == 480)) 
+		#endif
+		#if (VPPDMA_GRP_EN == 1)
+				((VPPDMA_VPP_WIDTH == 720)&&(VPPDMA_VPP_HEIGHT == 480))
+		#endif
+				) {
+			mode = 0;
+			#ifdef TIMING_SYNC_720P60
+			hdmitx_set_timming(HDMITX_TIMING_480P);
 			hdmitx_enable_display(1);
 			#endif
 		}
@@ -3026,10 +3283,7 @@ static int sp_disp_set_output_resolution(struct sp_disp_device *disp_dev, int is
 		}
 		sp_disp_dbg("hdmitx output , mode = %d \n", mode);
 	}
-	else { //TTL output
-		mode = 7;
-		sp_disp_dbg("TTL output , mode = %d \n", mode);
-	}
+
 	DRV_DVE_SetMode(mode);
 	//DRV_DVE_SetColorbar(ENABLE);
 
@@ -3222,6 +3476,8 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	#if (DDFCH_FETCH_EN == 1) // DDFCH fetch data
 	#if ((DDFCH_VPP_WIDTH == 720) && (DDFCH_VPP_HEIGHT == 480))
 	vscl_setting((720-DDFCH_VPP_WIDTH)>>1, (480-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 720, 480);
+	#elif ((DDFCH_VPP_WIDTH == 720) && (DDFCH_VPP_HEIGHT == 576))
+	vscl_setting((720-DDFCH_VPP_WIDTH)>>1, (576-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 720, 576);	
 	#elif ((DDFCH_VPP_WIDTH == 1280) && (DDFCH_VPP_HEIGHT == 720))
 	vscl_setting((1280-DDFCH_VPP_WIDTH)>>1, (720-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 1280, 720);
 	#elif ((DDFCH_VPP_WIDTH == 1920) && (DDFCH_VPP_HEIGHT == 1080))
@@ -3233,7 +3489,10 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
 	ddfch_setting(0x00120000, 0x00120000 + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
 	#else
-	ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT)), DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+	pa = __pa(vpp_yuv_array);
+	pa &= ~0x80000000;
+	ddfch_setting(pa, pa + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+	//ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT)), DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
 	#endif
 
 	#ifdef SP_DISP_V4L2_SUPPORT
@@ -3263,8 +3522,12 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	#endif
 
 	#if (VPPDMA_FETCH_EN == 1) //VPPDMA fetch data
-	#if ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 480))
+	#if ((VPPDMA_VPP_WIDTH == 640) && (VPPDMA_VPP_HEIGHT == 480))
+	vscl_setting((640-VPPDMA_VPP_WIDTH)>>1, (480-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 640, 480);
+	#elif ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 480))
 	vscl_setting((720-VPPDMA_VPP_WIDTH)>>1, (480-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 720, 480);
+	#elif ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 576))
+	vscl_setting((720-VPPDMA_VPP_WIDTH)>>1, (576-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 720, 576);
 	#elif ((VPPDMA_VPP_WIDTH == 1280) && (VPPDMA_VPP_HEIGHT == 720))
 	vscl_setting((1280-VPPDMA_VPP_WIDTH)>>1, (720-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1280, 720);
 	#elif ((VPPDMA_VPP_WIDTH == 1920) && (VPPDMA_VPP_HEIGHT == 1080))
@@ -3276,7 +3539,17 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	memcpy(vppdma_data_ptr, vppdma_data_array, vpp_alloc_size);
 	vppdma_setting(0x00120000, 0x00120000 + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
 	#else
-	vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
+	pa = __pa(vppdma_data_array);
+	pa &= ~0x80000000;
+	vppdma_setting(pa, pa + (VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);	
+	
+	//vppdma_data_ptr = ioremap(0x24000000, sizeof(vppdma_data_array));
+	//memcpy(vppdma_data_ptr, vppdma_data_array, sizeof(vppdma_data_array));
+	//vppdma_setting(0x24000000, 0x24000000 + (VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);	
+	//vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
+	//sp_disp_info("virt_to_phys(vppdma_data_array) %ld \n",virt_to_phys(vppdma_data_array));
+
+	//vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
 	#endif
 
 	#ifdef SP_DISP_V4L2_SUPPORT
@@ -3319,24 +3592,58 @@ void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdm
 	sp_disp_dbg("set vpp resolution \n");
 
 	#if (DDFCH_FETCH_EN == 1) // DDFCH fetch data
+	#if ((DDFCH_VPP_WIDTH == 720) && (DDFCH_VPP_HEIGHT == 480))
+	vscl_setting((720-DDFCH_VPP_WIDTH)>>1, (480-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 720, 480);
+	#elif ((DDFCH_VPP_WIDTH == 720) && (DDFCH_VPP_HEIGHT == 576))
+	vscl_setting((720-DDFCH_VPP_WIDTH)>>1, (576-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 720, 576);	
+	#elif ((DDFCH_VPP_WIDTH == 1280) && (DDFCH_VPP_HEIGHT == 720))
+	vscl_setting((1280-DDFCH_VPP_WIDTH)>>1, (720-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 1280, 720);
+	#elif ((DDFCH_VPP_WIDTH == 1920) && (DDFCH_VPP_HEIGHT == 1080))
+	vscl_setting((1920-DDFCH_VPP_WIDTH)>>1, (1080-DDFCH_VPP_HEIGHT)>>1, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, 1920, 1080);
+	#endif
 	#ifdef SP_DISP_VPP_FIXED_ADDR
 	vpp_alloc_size = (DDFCH_FMT_HDMI)?(ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT*2):(ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT*3/2);
 	vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
 	memcpy(vpp_yuv_ptr, vpp_yuv_array, vpp_alloc_size);
 	ddfch_setting(0x00120000, 0x00120000 + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
 	#else
-	ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT)), DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+
+	pa = __pa(vpp_yuv_array);
+	pa &= ~0x80000000;	
+	ddfch_setting(pa, pa + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT, DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
+	//ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(DDFCH_VPP_WIDTH, 128)*DDFCH_VPP_HEIGHT)), DDFCH_VPP_WIDTH, DDFCH_VPP_HEIGHT, DDFCH_FMT_HDMI);
 	#endif
 	#endif
 
 	#if (VPPDMA_FETCH_EN == 1) //VPPDMA fetch data
+	#if ((VPPDMA_VPP_WIDTH == 640) && (VPPDMA_VPP_HEIGHT == 480))
+	vscl_setting((640-VPPDMA_VPP_WIDTH)>>1, (480-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 640, 480);
+	#elif ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 480))
+	vscl_setting((720-VPPDMA_VPP_WIDTH)>>1, (480-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 720, 480);
+	#elif ((VPPDMA_VPP_WIDTH == 720) && (VPPDMA_VPP_HEIGHT == 576))
+	vscl_setting((720-VPPDMA_VPP_WIDTH)>>1, (576-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 720, 576);
+	#elif ((VPPDMA_VPP_WIDTH == 1280) && (VPPDMA_VPP_HEIGHT == 720))
+	vscl_setting((1280-VPPDMA_VPP_WIDTH)>>1, (720-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1280, 720);
+	#elif ((VPPDMA_VPP_WIDTH == 1920) && (VPPDMA_VPP_HEIGHT == 1080))
+	vscl_setting((1920-VPPDMA_VPP_WIDTH)>>1, (1080-VPPDMA_VPP_HEIGHT)>>1, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, 1920, 1080);
+	#endif
 	#ifdef SP_DISP_VPP_FIXED_ADDR
 	vpp_alloc_size = (VPPDMA_FMT_HDMI)?(VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT*2):(VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT*3);
-	vppdma_data_ptr = ioremap(0x00120000, vpp_alloc_size);
+	vppdma_data_ptr = ioremap(0x20300000, vpp_alloc_size);
 	memcpy(vppdma_data_ptr, vppdma_data_array, vpp_alloc_size);
-	vppdma_setting(0x00120000, 0x00120000 + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
+	vppdma_setting(0x20300000, 0x20300000 + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT, VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
 	#else
-	vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
+	pa = __pa(vppdma_data_array);
+	pa &= ~0x80000000;
+	vppdma_setting(pa, pa + (VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);	
+	
+	//vppdma_data_ptr = ioremap(0x24000000, sizeof(vppdma_data_array));
+	//memcpy(vppdma_data_ptr, vppdma_data_array, sizeof(vppdma_data_array));
+	//vppdma_setting(0x24000000, 0x24000000 + (VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);	
+	//vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH * VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
+	sp_disp_dbg("virt_to_phys(vppdma_data_array) %ld \n",virt_to_phys(vppdma_data_array));
+
+	//vppdma_setting(virt_to_phys(vppdma_data_array), virt_to_phys((vppdma_data_array + VPPDMA_VPP_WIDTH*VPPDMA_VPP_HEIGHT)), VPPDMA_VPP_WIDTH, VPPDMA_VPP_HEIGHT, VPPDMA_FMT_HDMI);
 	#endif
 	#endif
 
