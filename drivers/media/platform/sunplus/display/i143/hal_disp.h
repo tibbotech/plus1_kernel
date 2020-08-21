@@ -158,7 +158,10 @@ struct sp_disp_device {
 
 	display_size_t		UIRes;
 	UINT32				UIFmt;
-
+#ifdef UI_FORCE_ALPHA	
+	UINT32				UIForceAlpha;
+	UINT32				UISetAlpha;
+#endif
 	//OSD
 	spinlock_t osd_lock;
 	wait_queue_head_t osd_wait;

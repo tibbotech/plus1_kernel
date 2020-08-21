@@ -11,6 +11,7 @@
 #ifndef __DISPLAY_H__
 #define __DISPLAY_H__
 
+#define UI_FORCE_ALPHA
 //Choose SYS_PORT(fast) or MEM_PORT(slow)
 #define I143_SYS_PORT
 //HDMI Setting

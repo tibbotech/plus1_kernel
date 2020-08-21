@@ -1753,13 +1753,12 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			disp_dev->dev[dev_id]->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
 
 #ifdef TIMING_SYNC_720P60
-			vpp_path_cur_setting_read();
-			osd_path_cur_setting_read();
-			sp_disp_info("[%s:%d] get hdmitx resolution!!(S) \n", __FUNCTION__, __LINE__);
+			//vpp_path_cur_setting_read();
+			//osd_path_cur_setting_read();
 			hdmitx_get_timming(&hdmitx_cur_timing);
-			//sp_disp_info("[%s:%d] get hdmitx timing %d \n", __FUNCTION__, __LINE__, hdmitx_cur_timing);
+			//sp_disp_dbg("[%s:%d] get hdmitx timing %d \n", __FUNCTION__, __LINE__, hdmitx_cur_timing);
 			
-			sp_disp_info("[%s:%d] get hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
+			sp_disp_dbg("[%s:%d] get hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
 
 			if((pixfmt->width <= 720)&&(pixfmt->height <= 480)) {
 				vscl_setting(0, 0, pixfmt->width, pixfmt->height, pixfmt->width, 480);
@@ -1825,11 +1824,7 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			if (ret != DRV_SUCCESS) {
 				sp_disp_err("TGEN Set failed, ret = %d\n", ret);
 				return ret;
-			}			
-
-			sp_disp_info("[%s:%d] get hdmitx timing %s \n", __FUNCTION__, __LINE__, hdmitx_res[hdmitx_cur_timing]);
-			
-			sp_disp_info("[%s:%d] get hdmitx resolution!!(E) \n", __FUNCTION__, __LINE__);
+			}
 #endif
 		}
 		else
@@ -3024,72 +3019,6 @@ err_v4l2_register:
 static int sp_disp_set_osd_resolution(struct device *dev, struct sp_disp_device *disp_dev)
 {
 
-#if 0
-	sp_disp_info("set osd resolution \n");
-
-#if (OSD0_FETCH_EN == 1) //OSD0 setting
-	sp_disp_info("osd0_data_array %px \n",osd0_data_array);
-	#if (OSD0_FMT_HDMI == 0x2) //0x2:8bpp
-	sp_disp_info("disp_osd0_8bpp_pal_grey %px \n",disp_osd0_8bpp_pal_grey);
-	//sp_disp_info("disp_osd0_8bpp_pal_color %px \n",disp_osd0_8bpp_pal_color);
-	#else
-	sp_disp_info("osd0_header_array %px \n",osd0_header_array);
-	#endif
-	sp_disp_info("virt_to_phys(osd0_data_array) %ld \n",virt_to_phys(osd0_data_array));
-	#if (OSD0_FMT_HDMI == 0x2) //0x2:8bpp
-	sp_disp_info("virt_to_phys(disp_osd0_8bpp_pal_grey) %ld \n",virt_to_phys(disp_osd0_8bpp_pal_grey));
-	//sp_disp_info("virt_to_phys(disp_osd0_8bpp_pal_color) %ld \n",virt_to_phys(disp_osd0_8bpp_pal_color));
-	#else
-	sp_disp_info("virt_to_phys(osd0_header_array) %ld \n",virt_to_phys(osd0_header_array));
-	#endif
-
-	// copy osd fetch data to 0x21000000
-	osd0_data_ptr = ioremap(0x21000000, sizeof(osd0_data_array));
-	memcpy(osd0_data_ptr, osd0_data_array, sizeof(osd0_data_array));
-	sp_disp_info("osd0_data_array size %ld \n", sizeof(osd0_data_array));
-
-	#if (OSD0_FMT_HDMI == 0x2) //0x2:8bpp
-	osd0_setting(virt_to_phys(disp_osd0_8bpp_pal_grey), OSD0_WIDTH, OSD0_HEIGHT, OSD0_FMT_HDMI);
-	//osd0_setting(virt_to_phys(disp_osd0_8bpp_pal_color), OSD0_WIDTH, OSD0_HEIGHT, OSD0_FMT_HDMI);
-	#else
-	//the rest setting
-	osd0_setting(virt_to_phys(osd0_header_array), OSD0_WIDTH, OSD0_HEIGHT, OSD0_FMT_HDMI);
-	#endif
-#endif
-
-#if (OSD1_FETCH_EN == 1) //OSD1 setting
-	sp_disp_info("osd1_data_array %px \n",osd1_data_array);
-	#if (OSD1_FMT_HDMI == 0x2) //0x2:8bpp
-	sp_disp_info("disp_osd1_8bpp_pal_grey %px \n",disp_osd1_8bpp_pal_grey);
-	//sp_disp_info("disp_osd1_8bpp_pal_color %px \n",disp_osd1_8bpp_pal_color);
-	#else
-	sp_disp_info("osd1_header_array %px \n",osd1_header_array);
-	#endif
-	sp_disp_info("virt_to_phys(osd1_data_array) %ld \n",virt_to_phys(osd1_data_array));
-	#if (OSD1_FMT_HDMI == 0x2) //0x2:8bpp
-	sp_disp_info("virt_to_phys(disp_osd1_8bpp_pal_grey) %ld \n",virt_to_phys(disp_osd1_8bpp_pal_grey));
-	//sp_disp_info("virt_to_phys(disp_osd1_8bpp_pal_color) %ld \n",virt_to_phys(disp_osd1_8bpp_pal_color));
-	#else
-	sp_disp_info("virt_to_phys(osd1_header_array) %ld \n",virt_to_phys(osd1_header_array));
-	#endif
-
-	// copy osd fetch data to 0x22000000
-	osd1_data_ptr = ioremap(0x22000000, sizeof(osd1_data_array));
-	memcpy(osd1_data_ptr, osd1_data_array, sizeof(osd1_data_array));
-	sp_disp_info("osd1_data_array size %ld \n", sizeof(osd1_data_array));
-
-	#if (OSD1_FMT_HDMI == 0x2) //0x2:8bpp
-	osd1_setting(virt_to_phys(disp_osd1_8bpp_pal_grey), OSD1_WIDTH, OSD1_HEIGHT, OSD1_FMT_HDMI);
-	//osd1_setting(virt_to_phys(disp_osd1_8bpp_pal_color), OSD1_WIDTH, OSD1_HEIGHT, OSD1_FMT_HDMI);
-	#else
-	//the rest setting
-	osd1_setting(virt_to_phys(osd1_header_array), OSD1_WIDTH, OSD1_HEIGHT, OSD1_FMT_HDMI);
-	#endif
-#endif
-
-	return 0;
-#endif
-
 	#ifdef SP_DISP_V4L2_SUPPORT
 	char fmtstr[8];
 	sp_disp_dbg("set osd resolution \n");
@@ -3150,11 +3079,32 @@ static int sp_disp_set_osd_resolution(struct device *dev, struct sp_disp_device 
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
 	}
 
+#ifdef UI_FORCE_ALPHA
+	if (of_property_read_u32(dev->of_node, "ui_force_alpha", &disp_dev->UIForceAlpha)) {
+		disp_dev->UIForceAlpha = 0;
+		disp_dev->UISetAlpha = 0;
+	}
+	else {
+		if (disp_dev->UIForceAlpha >= 1) { /* enable force set alpha value */
+			if (of_property_read_u32(dev->of_node, "ui_set_alpha", &disp_dev->UISetAlpha)) {
+				disp_dev->UISetAlpha = 0;
+			}
+			else {
+				if (disp_dev->UISetAlpha >= 255)
+					disp_dev->UISetAlpha = 255;
+				if (disp_dev->UISetAlpha <= 0)
+					disp_dev->UISetAlpha = 0;
+				sp_disp_dbg("ui_force_alpha = %d , ui_set_alpha = %d \n", disp_dev->UIForceAlpha, disp_dev->UISetAlpha);
+			}
+		}
+	}
+#endif
+
 	#ifdef	SP_DISP_OSD_PARM
 	DRV_OSD_INIT_OSD_Header();
 	#endif
 
-	sp_disp_dbg("ui_width = %d , ui_height = %d \n", disp_dev->UIRes.width,disp_dev->UIRes.height);
+	sp_disp_dbg("ui_width = %d , ui_height = %d \n", disp_dev->UIRes.width, disp_dev->UIRes.height);
 
     memset(fmtstr, 0, 8);
     memcpy(fmtstr, &disp_dev->dev[0]->fmt.fmt.pix.pixelformat, 4);

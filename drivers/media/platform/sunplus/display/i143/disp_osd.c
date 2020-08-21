@@ -482,13 +482,18 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	gpWinRegion->PaletteAddr = (u8 *)pinfo->UI_bufAddr_pal;
 	gpWinRegion->pHWRegionHdr = (struct HW_OSD_Header_s *)gpOsdHeader;
 
-	sp_disp_info("osd_header=0x%x 0x%llx addr=0x%llx\n",
+	sp_disp_dbg("osd_header=0x%x 0x%llx addr=0x%llx\n",
 			(u32)((u64)gpOsdHeader),
 			gpOsdHeader_phy,
 			pinfo->UI_bufAddr);
 
 	osd_header = (u32 *)gpOsdHeader;
 
+#ifdef UI_FORCE_ALPHA
+	if ( (pinfo->UI_ColorFmt >= DRV_OSD_REGION_FORMAT_ARGB_1555) && (pDispWorkMem->UIForceAlpha >=1) )
+		osd_header[0] = SWAP32(0x00001100 | (pinfo->UI_ColorFmt << 24) | pDispWorkMem->UISetAlpha);
+	else 
+#endif
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
 		osd_header[0] = SWAP32(0x82001000);
 	else
@@ -644,10 +649,10 @@ void DRV_OSD1_Init(void *pInHWReg1, void *pInHWReg2)
 void osd_path_cur_setting_read(void)
 {
 
-	sp_disp_info("osd_path_cur_setting_read \n");
+	sp_disp_dbg("osd_path_cur_setting_read \n");
 
-	sp_disp_info("osd0(%s) w %d , h %d \n",osd_status[pOSDReg->osd_en] , pOSDReg->osd_hvld_width, pOSDReg->osd_vvld_height);
-	sp_disp_info("osd1(%s) w %d , h %d \n",osd_status[pOSD1Reg->osd_en] , pOSD1Reg->osd_hvld_width, pOSD1Reg->osd_vvld_height);
+	sp_disp_dbg("osd0(%s) w %d , h %d \n",osd_status[pOSDReg->osd_en] , pOSDReg->osd_hvld_width, pOSDReg->osd_vvld_height);
+	sp_disp_dbg("osd1(%s) w %d , h %d \n",osd_status[pOSD1Reg->osd_en] , pOSD1Reg->osd_hvld_width, pOSD1Reg->osd_vvld_height);
 
 }
 EXPORT_SYMBOL(osd_path_cur_setting_read);
@@ -773,7 +778,7 @@ void DRV_OSD_Clear_OSD_Header(int osd_layer)
 	u32 *osd_header = NULL;
 	int i;
 	
-	sp_disp_info("DRV_OSD_Clear_OSD_Header for osd%d \n",osd_layer);
+	sp_disp_dbg("DRV_OSD_Clear_OSD_Header for osd%d \n",osd_layer);
 
 	if ((!disp_dev->Osd0Header) || (!disp_dev->Osd1Header))
 		return;

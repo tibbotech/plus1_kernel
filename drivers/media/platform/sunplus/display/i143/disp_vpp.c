@@ -307,7 +307,7 @@ int vscl_setting(int x, int y, int input_w, int input_h, int output_w, int outpu
 	pVSCLReg->vscl0_vint_initf_low		= 0x00000000;	//G188.03
 	pVSCLReg->vscl0_vint_initf_high		= 0x00000000;	//G188.04
 
-	sp_disp_info("scaling reg (x, y) = (0x%08x,0x%08x) \n", pVSCLReg->vscl0_hint_hfactor_high, pVSCLReg->vscl0_vint_vfactor_high);
+	sp_disp_dbg("scaling reg (x, y) = (0x%08x,0x%08x) \n", pVSCLReg->vscl0_hint_hfactor_high, pVSCLReg->vscl0_vint_vfactor_high);
 
 	return 0;
 }

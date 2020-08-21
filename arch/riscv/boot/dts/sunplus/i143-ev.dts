@@ -653,6 +653,8 @@
 				* 0xb = ARGB4444
 				* 0xd = RGBA8888
 				* 0xe = ARGB8888 */
+			ui_force_alpha = <0>; /* 0 : dis , 1 : enable */
+			ui_set_alpha = <255>; /* alpha value 0 - 255 */
 			interrupt-parent = <&intc>;
 			interrupts = <72 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
 				     <73 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,

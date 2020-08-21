@@ -53,7 +53,7 @@ void DRV_DVE_SetMode(int mode)
 	int colorbarmode = pDVEReg->color_bar_mode & ~0xfe;
 	int hdmi_mode = pDVEReg->dve_hdmi_mode_0 & ~0x1f80;
 
-	sp_disp_info("DVE Mode Set: %s\n", dve_mode[mode]);
+	sp_disp_dbg("DVE Mode Set: %s\n", dve_mode[mode]);
 
 	switch (mode)
 	{

@@ -90,7 +90,7 @@ int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 		return DRV_ERR_INVALID_PARAM;
 	}
 
-	sp_disp_info("TGEN Timing %s, %s\n", StrFmt[SetTGEN->fmt], StrFps[SetTGEN->fps]);
+	sp_disp_dbg("TGEN Timing %s, %s\n", StrFmt[SetTGEN->fmt], StrFps[SetTGEN->fps]);
 
 	if (SetTGEN->fmt == DRV_FMT_USER_MODE) {
 		sp_disp_info("not support user mode!\n");
