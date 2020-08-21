@@ -22,6 +22,7 @@
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/reset-controller.h>
+#include <linux/reboot.h>
 
 #if defined(CONFIG_SOC_SP7021)
 #include <dt-bindings/reset/sp-q628.h>
@@ -35,7 +36,7 @@
 struct sp_reset_data {
 	struct reset_controller_dev	rcdev;
 	void __iomem			*membase;
-};
+} sp_reset;
 
 
 static inline struct sp_reset_data *
@@ -93,6 +94,19 @@ static int sp_reset_status(struct reset_controller_dev *rcdev,
 	return !!(reg & BIT(offset));
 }
 
+static int sp_restart(struct notifier_block *this, unsigned long mode,
+				void *cmd)
+{
+	sp_reset_assert(&sp_reset.rcdev, RST_SYSTEM);
+	sp_reset_deassert(&sp_reset.rcdev, RST_SYSTEM);
+
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block sp_restart_nb = {
+	.notifier_call = sp_restart,
+	.priority = 192,
+};
 
 static const struct reset_control_ops sp_reset_ops = {
 	.assert		= sp_reset_assert,
@@ -110,13 +124,9 @@ static const struct of_device_id sp_reset_dt_ids[] = {
 static int sp_reset_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
-	struct sp_reset_data *data;
+	struct sp_reset_data *data = &sp_reset;
 	void __iomem *membase;
 	struct resource *res;
-
-	data = devm_kzalloc(dev, sizeof(*data), GFP_KERNEL);
-	if (!data)
-		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	//printk(KERN_INFO "res->start : 0x%x \n", res->start);
@@ -134,6 +144,7 @@ static int sp_reset_probe(struct platform_device *pdev)
  	data->rcdev.nr_resets = RST_MAX;
  	data->rcdev.ops = &sp_reset_ops;
  	data->rcdev.of_node = dev->of_node;
+	register_restart_handler(&sp_restart_nb);
 
  	return devm_reset_controller_register(dev, &data->rcdev);
 }
