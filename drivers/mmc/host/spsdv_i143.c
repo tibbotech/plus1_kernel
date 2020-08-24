@@ -133,6 +133,18 @@ static inline int spsdc_wait_sdstatus(struct spsdc_host *host, unsigned int stat
 #define spsdc_wait_rxbuf_full(host) spsdc_wait_sdstatus(host, SPSDC_SDSTATUS_RX_DATA_BUF_FULL)
 #define spsdc_wait_txbuf_empty(host) spsdc_wait_sdstatus(host, SPSDC_SDSTATUS_TX_DATA_BUF_EMPTY)
 
+static inline __maybe_unused void spsdc_txdummy(struct spsdc_host *host, int count)
+{
+	u32 value;
+	count &= 0x1ff;
+	value = readl(&host->base->sd_config1);
+	value = bitfield_replace(value, SPSDC_TX_DUMMY_NUM_w09, 9, count);
+	writel(value, &host->base->sd_config1);
+	value = readl(&host->base->sd_ctrl);
+	value = bitfield_replace(value, SPSDC_sdctrl1_w01, 1, 1); /* trigger tx dummy */
+	writel(value, &host->base->sd_ctrl);
+}
+
 static void spsdc_get_rsp(struct spsdc_host *host, struct mmc_command *cmd)
 {
 	u32 value0_3, value4_5;
@@ -247,7 +259,8 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 {
 	u32 value = readl(&host->base->sd_config1);
 	int clkdiv = readl(&host->base->sd_config0) >> SPSDC_sdfqsel_w12;
-	int delay = clkdiv/2 < 7 ? clkdiv/2 : 7;
+	int wr_delay = 1;
+	int rd_delay = clkdiv < 7 ? clkdiv+1 : 7;
 	int hs_en = 1;
 	char *timing_name;
 	host->ddr_enabled = 0;
@@ -261,16 +274,24 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		timing_name = "mmc high-speed";
 		break;
 	case MMC_TIMING_SD_HS:
+		wr_delay = 1;
+		rd_delay = 4;
 		timing_name = "sd high-speed";
 		break;
 	case MMC_TIMING_UHS_SDR50:
+		wr_delay = 1;
+		rd_delay = 3;
 		timing_name = "sd uhs SDR50";
 		break;
 	case MMC_TIMING_UHS_SDR104:
+		wr_delay = 1;
+		rd_delay = 2;		
 		timing_name = "sd uhs SDR104";
 		break;
 	case MMC_TIMING_UHS_DDR50:
 		host->ddr_enabled = 1;
+		wr_delay = 1;
+		rd_delay = 3;
 		timing_name = "sd uhs DDR50";
 		break;
 	case MMC_TIMING_MMC_DDR52:
@@ -290,11 +311,13 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		value = bitfield_replace(value, SPSDC_sdhigh_speed_en_w01, 1, 1); /* sd_high_speed_en */
 		writel(value, &host->base->sd_config1);
 		value = readl(&host->base->sd_timing_config0);
-		value = bitfield_replace(value, SPSDC_sd_wr_dat_dly_sel_w03, 3, 1); /* sd_wr_dat_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_wr_cmd_dly_sel_w03, 3, 1); /* sd_wr_cmd_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_dat_dly_sel_w03, 3, 2); /* sd_wr_dat_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_rsp_dly_sel_w03, 3, 2); /* sd_wr_cmd_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_crc_dly_sel_w03, 3, 2); /* sd_wr_cmd_dly_sel */
+		value = bitfield_replace(value, SPSDC_sd_wr_dat_dly_sel_w03, 3, wr_delay); /* sd_wr_dat_dly_sel */   // test
+		value = bitfield_replace(value, SPSDC_sd_wr_cmd_dly_sel_w03, 3, wr_delay); /* sd_wr_cmd_dly_sel */
+		value = bitfield_replace(value, SPSDC_sd_rd_dat_dly_sel_w03, 3, rd_delay); /* sd_wr_dat_dly_sel */
+		value = bitfield_replace(value, SPSDC_sd_rd_rsp_dly_sel_w03, 3, rd_delay); /* sd_wr_cmd_dly_sel */
+		value = bitfield_replace(value, SPSDC_sd_rd_crc_dly_sel_w03, 3, rd_delay); /* sd_wr_cmd_dly_sel */	
+
+		spsdc_pr(VERBOSE, "sd_timing_config0: 0x%08x\n", value);
 		writel(value, &host->base->sd_timing_config0);
 	} else {
 		value = bitfield_replace(value, SPSDC_sdhigh_speed_en_w01, 1, 0);
@@ -554,7 +577,7 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	u32 crc_token = bitfield_extract(value, SPSDC_sdcrdcrc_w03, 3);
 	if (unlikely(value & SPSDC_SDSTATE_ERROR)) {
 		u32 timing_cfg0;
-		spsdc_pr(DEBUG, "%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
+		spsdc_pr(DEBUG, "%s cmd %d with data %x error!\n", __func__, cmd->opcode, data);
 		spsdc_pr(VERBOSE, "%s sd_state: 0x%08x\n", __func__, value);
 		value = readl(&host->base->sd_status);
 		spsdc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
@@ -601,11 +624,20 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		spsdc_sw_reset(host);
 		mdelay(100);
 
-		timing_cfg0 = host->tuning_info.rd_crc_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3);
-		timing_cfg0 = host->tuning_info.rd_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3);
-		timing_cfg0 = host->tuning_info.rd_rsp_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3);
-		timing_cfg0 = host->tuning_info.wr_cmd_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3);
-		timing_cfg0 = host->tuning_info.wr_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3);						
+
+		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3, host->tuning_info.rd_crc_dly); /* sd_wr_dat_dly_sel */     
+		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3, host->tuning_info.rd_dat_dly); /* sd_wr_cmd_dly_sel */
+		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3, host->tuning_info.rd_rsp_dly); /* sd_wr_dat_dly_sel */
+		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3, host->tuning_info.wr_cmd_dly); /* sd_wr_cmd_dly_sel */
+		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3, host->tuning_info.wr_dat_dly); /* sd_wr_cmd_dly_sel */
+
+
+
+	//	timing_cfg0 = host->tuning_info.rd_crc_dly;
+	//	timing_cfg0 = host->tuning_info.rd_dat_dly;
+	//	timing_cfg0 = host->tuning_info.rd_rsp_dly;
+	//	timing_cfg0 = host->tuning_info.wr_cmd_dly;
+	//	timing_cfg0 = host->tuning_info.wr_dat_dly;						
 
 		writel(timing_cfg0, &host->base->sd_timing_config0);
 	} else if (data) {
@@ -617,17 +649,7 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 }
 
 
-static inline __maybe_unused void spsdc_txdummy(struct spsdc_host *host, int count)
-{
-	u32 value;
-	count &= 0x1ff;
-	value = readl(&host->base->sd_config1);
-	value = bitfield_replace(value, SPSDC_TX_DUMMY_NUM_w09, 9, count);
-	writel(value, &host->base->sd_config1);
-	value = readl(&host->base->sd_ctrl);
-	value = bitfield_replace(value, SPSDC_sdctrl1_w01, 1, 1); /* trigger tx dummy */
-	writel(value, &host->base->sd_ctrl);
-}
+
 
 static void spsdc_xfer_data_pio(struct spsdc_host *host, struct mmc_data *data)
 {
@@ -750,7 +772,9 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 	}
 	host->mrq = NULL;
 	mutex_unlock(&host->mrq_lock);
+		//if((cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
 	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
+		//	}
 	mmc_request_done(host->mmc, mrq);
 }
 
@@ -793,8 +817,11 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
+
+//	if((cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
 	spsdc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0); 
+// 	}
 		 	
 		 	
 	spsdc_prepare_cmd(host, cmd);
@@ -1325,7 +1352,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		ret = -ENOENT;
 		goto probe_free_host;
 	}
-	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
+	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%x, irq:%d\n", host->base, host->irq);
 
 
 	ret = mmc_of_parse(mmc);
@@ -1350,15 +1377,18 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		spsdc_pr(DEBUG, "max-frequency is too high, set it to %d\n", SPSDC_MAX_CLK);
 		mmc->f_max = SPSDC_MAX_CLK;
 	}
-	//mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
+	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
+	//mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 
-	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 
+	mode = (int)of_device_get_match_data(&pdev->dev);
+	spsdc_select_mode(host, mode);
 
+    if(mode == SPSDC_MODE_SD){
 	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED
-		| MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 | MMC_CAP_UHS_SDR50
-		| MMC_CAP_UHS_SDR104;
-
+		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
+		    | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
+    }
 	
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
 	/* Host controller supports up to "SPSDC_MAX_DMA_MEMORY_SECTORS",
@@ -1370,8 +1400,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, host);
 	spsdc_controller_init(host);
-	mode = (int)of_device_get_match_data(&pdev->dev);
-	spsdc_select_mode(host, mode);
 	mmc_add_host(mmc);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
