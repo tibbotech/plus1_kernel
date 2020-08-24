@@ -97,6 +97,8 @@
 };
 
 &uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart1>;
 	status = "disabled";
 };
 
@@ -221,6 +223,13 @@
 		>;
 	};
 
+        pins_uart1: pins_uart1 {
+		sppctl,pins = <
+			SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_UA1_TX,0)
+			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_UA1_RX,0)
+		>;
+	};
+	
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)
