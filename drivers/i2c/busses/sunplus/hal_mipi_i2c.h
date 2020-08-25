@@ -19,6 +19,13 @@ typedef enum mipi_i2c_start_mode_e {
 	I2C_RESTART,
 } mipi_i2c_start_mode;
 
+void hal_mipi_i2c_isp_reset(unsigned int device_id);
+void hal_mipi_i2c_init(unsigned int device_id);
+void hal_mipi_i2c_power_on(unsigned int device_id);
+void hal_mipi_i2c_power_down(unsigned int device_id);
+void setSensor16_i2c(unsigned int device_id, u16 addr16, u16 value16, u8 data_count);
+void getSensor16_i2c(unsigned int device_id, u16 addr16, u16 *value16, u8 data_count);
+
 void hal_mipi_i2c_status_get(unsigned int device_id, unsigned char *status);
 void hal_mipi_i2c_data_get(unsigned int device_id, unsigned char *rdata, unsigned int read_cnt);
 void hal_mipi_i2c_data_set(unsigned int device_id, unsigned char *wdata, unsigned int write_cnt);

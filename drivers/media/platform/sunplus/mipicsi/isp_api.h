@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include "reg_mipi.h"
 
 #define ISPAPB_DEBUG_ON
 #ifdef ISPAPB_DEBUG_ON
@@ -90,16 +91,16 @@ enum ISP_SCALE_SIZE {
 struct mipi_isp_info {
 	struct mipi_isp_reg *mipi_isp_regs;
 
-	u8                  isp_channel;
-	u8                  isp_mode;
-	u8                  test_pattern;
-	u8                  probe;
+	u8  isp_channel;
+	u8  isp_mode;
+	u8  test_pattern;
+	u8  probe;
 
-	u16                 width;
-	u16                 height;
-	u8                  input_fmt;
-	u8                  output_fmt;
-	u8                  scale;
+	u16 width;
+	u16 height;
+	u8  input_fmt;
+	u8  output_fmt;
+	u8  scale;
 };
 
 

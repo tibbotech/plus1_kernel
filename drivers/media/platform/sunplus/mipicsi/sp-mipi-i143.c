@@ -136,10 +136,24 @@ static const struct sp_fmt ov9281_isp_formats[] = {
 	},
 };
 
+static const struct sp_fmt sc2310_formats[] = {
+	{
+		.name     = "UYVY/YUY2, YUV422",
+		.fourcc   = V4L2_PIX_FMT_UYVY,
+		.width    = 1920,
+		.height   = 1080,
+		.depth    = 16,
+		.walign   = 2,
+		.halign   = 1,
+		.mipi_lane = 4,
+		.sol_sync = SYNC_YUY2,
+	},
+};
+
 static const struct sp_fmt isp_test_formats[] = {
 	{
-		.name     = "YUYV/YUY2, YUV422",        // for SunplusIT ov9281_isp
-		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.name     = "UYVY/YUY2, YUV422",
+		.fourcc   = V4L2_PIX_FMT_UYVY,
 		.width    = 1920,
 		.height   = 1080,
 		.depth    = 16,
@@ -152,73 +166,23 @@ static const struct sp_fmt isp_test_formats[] = {
 
 static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 	{
+		.name = "sc2310",
+		.grp_id = 0,
+		.board_info = {
+			I2C_BOARD_INFO("sc2310", 0x30),
+		},
+		.formats = sc2310_formats,
+		.formats_size = ARRAY_SIZE(sc2310_formats),
+	},
+
+	{
 		.name = "mipi_isp_test",
 		.grp_id = 0,
 		.board_info = {
-			I2C_BOARD_INFO("mipi_isp_test", 0x01),
+			I2C_BOARD_INFO("mipi_isp_test", 0x7f),
 		},
 		.formats = isp_test_formats,
 		.formats_size = ARRAY_SIZE(isp_test_formats),
-	},
-
-	{
-		.name = "gc0310",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("gc0310", 0x21),
-		},
-		.formats = gc0310_formats,
-		.formats_size = ARRAY_SIZE(gc0310_formats),
-	},
-
-	{
-		.name = "imx219",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("imx219", 0x10),
-		},
-		.formats = imx219_formats,
-		.formats_size = ARRAY_SIZE(imx219_formats),
-	},
-
-	{
-		.name = "ov5647",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("ov5647", 0x36),
-		},
-		.formats = ov5647_formats,
-		.formats_size = ARRAY_SIZE(ov5647_formats),
-	},
-
-	{
-		.name = "ov9281",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("ov9281", 0x60),
-		},
-		.formats = ov9281_formats,
-		.formats_size = ARRAY_SIZE(ov9281_formats),
-	},
-/*
-	{
-		.name = "ov9281",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("ov9281", 0x10),
-		},
-		.formats = ov9281_formats,
-		.formats_size = ARRAY_SIZE(ov9281_formats),
-	},
-*/
-	{
-		.name = "ov9281_isp",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("ov9281_isp", 0x60),
-		},
-		.formats = ov9281_isp_formats,
-		.formats_size = ARRAY_SIZE(ov9281_isp_formats),
 	}
 };
 
@@ -238,7 +202,11 @@ static const struct sp_fmt *get_format(const struct sp_mipi_subdev_info *sdinfo,
 	int size = sdinfo->formats_size;
 	unsigned int k;
 
+	MIPI_DBG("%s, %d\n", __FUNCTION__, __LINE__);
+
 	for (k = 0; k < size; k++) {
+		MIPI_INFO("fourcc: 0x%04x, pixel_fmt: 0x%04x\n", formats[k].fourcc, pixel_fmt); // CCHo added for debugging
+
 		if (formats[k].fourcc == pixel_fmt) {
 			break;
 		}
@@ -325,14 +293,14 @@ static void mipi_isp_init(struct sp_mipi_device *mipi)
 	MIPI_INFO("ISP input format: %d\n", input_format);
 
 #if 0
-	MIPI_INFO("MIPI ISP Test Info:\n",;
+	MIPI_INFO("MIPI ISP Test Info:\n");
 	isp_mode = ISP_TEST_MODE;
-	test_pattern = STILL_VERTICAL_COLOR_BAR;
+	test_pattern = MOVING_HORIZONTAL_COLOR_BAR;
 	probe = 0;
 	width = 1920;
 	height = 1080;
 	input_format = RAW10_FORMAT;
-	output_format = RAW10_FORMAT;
+	output_format = YUV422_FORMAT_UYVY_ORDER;
 	scale = SCALE_DOWN_OFF;
 	MIPI_INFO("test_pattern: %d, probe: %d\n", test_pattern, probe);
 	MIPI_INFO("Image size: %dx%d\n", width, height);
@@ -352,7 +320,10 @@ static void mipi_isp_init(struct sp_mipi_device *mipi)
 	isp_info->output_fmt = output_format;
 	isp_info->scale = scale;
 
-	isp_setting(isp_info);
+	if (isp_mode == ISP_TEST_MODE)
+		isp_setting(isp_info);
+	else
+		isp_setting_s(isp_info);
 }
 
 static void csiiw_init(struct sp_mipi_device *mipi)
@@ -606,6 +577,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vq);
 	struct sp_mipi_subdev_info *sdinfo;
 	struct sp_buffer *buf, *tmp;
+	struct mipi_isp_reg *regs;
 	unsigned long flags;
 	unsigned long addr;
 	int ret;
@@ -633,6 +605,23 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 
 		return ret;
 	}
+
+	regs = (struct mipi_isp_reg *)((u64)mipi->mipi_isp_regs - ISP_BASE_ADDRESS);
+
+	/* use pixel clock, master clock and mipi decoder clock as they are  */
+	writeb(0x07, &(regs->reg[0x2008]));
+
+	/* set and clear of front sensor interface */
+	writeb(0x01, &(regs->reg[0x276C]));
+	writeb(0x00, &(regs->reg[0x276C]));
+
+	/* set and clear of front i2c interface */
+	writeb(0x01, &(regs->reg[0x2660]));
+	writeb(0x00, &(regs->reg[0x2660]));
+
+	/* set and clear of cdsp */
+	writeb(0x01, &(regs->reg[0x21D0]));
+	writeb(0x00, &(regs->reg[0x21D0]));
 
 	spin_lock_irqsave(&mipi->dma_queue_lock, flags);
 
@@ -1363,6 +1352,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 	cur_fmt = get_format(mipi->current_subdev, sensor_data->fourcc);
 	if (cur_fmt == NULL) {
+		MIPI_ERR("Failed to check sensor format!\n");
 		goto err_get_format;
 	}
 	mipi->cur_format = cur_fmt;

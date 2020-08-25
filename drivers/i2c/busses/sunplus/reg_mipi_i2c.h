@@ -47,10 +47,41 @@
 #define MO_ISPABP0_MODE_8T              (0<<MO5_CFG0_ISPABP0_MODE_SEL_BIT)
 
 
+/****************************************
+* MIPI ISP Register Definition
+****************************************/
+#define ISP_BASE_ADDRESS 0x2000
+
+// 0x276A
+#define ISP_2601_TRANS_MODE        (1<<0)
+
+
+/* mipi-ispapb registers */
+typedef struct mipi_isp_reg {
+	volatile unsigned char reg[0x1300];         /* 0x2000 ~ 0x32FF */
+} mipi_isp_reg_t;
+
+#if 0 // Original ISP register structure
+struct mipi_isp_reg {
+	volatile unsigned char global[0x100];               /* 0x2000 ~ 0x20FF Global Registers                       */
+	volatile unsigned char cdsp[0x100];                 /* 0x2100 ~ 0x21FF CDSP Registers                         */
+	volatile unsigned char cdsp_win[0x100];             /* 0x2200 ~ 0x22FF CDSP Window Register                   */
+	volatile unsigned char reserved1[0x300];            /* 0x2300 ~ 0x25FF Reserved 1                             */
+	volatile unsigned char ssi[0x100];                  /* 0x2600 ~ 0x26FF Synchronous Serial Interface Registers */
+	volatile unsigned char sensor_if[0x100];            /* 0x2700 ~ 0x27FF CMOS Sensor Interface Registers        */
+	volatile unsigned char reserved2[0x900];            /* 0x2800 ~ 0x30FF Reserved 2                             */
+	volatile unsigned char new_cdsp[0x100];             /* 0x3100 ~ 0x31FF New CDSP Registers                     */
+	volatile unsigned char new_cdsp_win[0x100];         /* 0x3200 ~ 0x32FF New CDSP Window Registers              */
+};
+#endif
+
+
 /* mipi i2c registers */
+#if 0
 typedef struct regs_mipi_i2c_ {
 	volatile unsigned char mipi_i2c[0x100];     /* 0x2600 ~ 0x26FF Synchronous Serial Interface Registers */
 } regs_mipi_i2c_t;
+#endif
 
 /* moon5 registers*/
 struct moon5_reg {
