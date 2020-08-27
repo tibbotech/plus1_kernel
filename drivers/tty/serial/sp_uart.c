@@ -741,7 +741,7 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 				break;
 			}
 		}
-		writel_relaxed(addr_sw, &(txdma_reg->txdma_wr_adr));
+		writel(addr_sw, &(txdma_reg->txdma_wr_adr));
 	} else {
 		do {
 			sp_uart_put_char(port, xmit->buf[xmit->tail]);
