@@ -144,9 +144,9 @@ static inline void sp_uart_put_char(struct uart_port *port, unsigned ch)
 		byte_ptr = (u8 *)(uartdma_tx->buf_va + offset_sw);
 		*byte_ptr = (u8)(ch);
 		if (offset_sw == (UATXDMA_BUF_SZ - 1)) {
-			writel_relaxed((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
+			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
 		}  else {
-			writel_relaxed((addr_sw + 1), &(txdma_reg->txdma_wr_adr));
+			writel((addr_sw + 1), &(txdma_reg->txdma_wr_adr));
 		}
 	}
 }
