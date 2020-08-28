@@ -206,9 +206,13 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	if (clk > f_max)
 		clk = f_max;
 	spmmc_pr(INFO, "set bus clock to %d\n", clk);	
+	#ifdef CONFIG_SOC_SP7021
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
-	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);	
-		
+	#endif 
+	#ifdef CONFIG_SOC_I143
+	clkdiv = (SPMMC_SYS_CLK/clk)-1;
+	#endif 
+	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
