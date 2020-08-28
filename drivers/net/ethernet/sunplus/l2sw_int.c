@@ -70,13 +70,13 @@ static inline void  rx_interrupt(struct l2sw_mac *mac)
 	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
 		rx_pos = comm->rx_pos[queue];
 		rx_count = comm->rx_desc_num[queue];
-		//ETH_INFO(" rx_pos = %d, rx_count = %d\n", rx_pos, rx_count);
+		//ETH_INFO(" queue = %d, rx_pos = %d, rx_count = %d\n", queue, rx_pos, rx_count);
 
 		for (num = 0; num < rx_count; num++) {
 			sinfo = comm->rx_skb_info[queue] + rx_pos;
 			desc = comm->rx_desc[queue] + rx_pos;
 			cmd = desc->cmd1;
-			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
+			//ETH_INFO(" rx_pos = %d, RX: cmd1 = %08x, cmd2 = %08x\n", rx_pos, cmd, desc->cmd2);
 
 			if (cmd & OWN_BIT) {
 				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %px", rx_pos, desc);
@@ -312,7 +312,7 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	write_sw_int_mask0(0xffffffff); /* mask all interrupts */
 	status =  read_sw_int_status0();
 	//ETH_INFO(" Int Status = %08x\n", status);
-	if (status == 0){
+	if (unlikely(status == 0)){
 		ETH_ERR(" Interrput status is null!\n");
 		goto OUT;
 	}

@@ -13,7 +13,7 @@ static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {0x88, 0x88, 0x88, 0x88,
 *
 **********************************************************************/
 #if 0
-static void print_packet(struct sk_buff *skb)
+void print_packet(struct sk_buff *skb)
 {
 	u8 *p = skb->data;
 	int len = skb->len;
@@ -21,7 +21,7 @@ static void print_packet(struct sk_buff *skb)
 	u32 LenType;
 	int i;
 
-	i = snprintf(buf, sizeof(buf), "MAC: DA=%pM, SA=%pM, ", &p[0], &p[6]);
+	i = snprintf(buf, sizeof(buf), " MAC: DA=%pM, SA=%pM, ", &p[0], &p[6]);
 	p += 12;        // point to LenType
 
 	LenType = (((u32)p[0])<<8) + p[1];
@@ -152,15 +152,11 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
 	cmd2 = skb->len & LEN_MASK;
 #ifdef CONFIG_SOC_I143
-	/*
-	if ((*(u16*)(skb->data+12) == 0x0008) && ((*(skb->data+14) & 0xf0) == 0x40)) {
-		// An IPv4 packet.
-		cmd2 |= IP_CHKSUM_APPEND;
-		if ((*(skb->data+23) == 0x06) || (*(skb->data+23) == 0x11)) {
-			// A TCP/UDP packet.
-			cmd2 |= TCP_UDP_CHKSUM_APPEND;
-		}
-	}*/
+	if ((eth_hdr(skb)->h_proto == htons(ETH_P_IP)) && (ip_hdr(skb)->version == IPVERSION) &&
+	    ((ip_hdr(skb)->protocol == IPPROTO_TCP) || (ip_hdr(skb)->protocol == IPPROTO_UDP))) {
+		// An IPv4 TCP/UDP packet.
+		cmd2 |= IP_CHKSUM_APPEND | TCP_UDP_CHKSUM_APPEND;
+	}
 #endif
 	if (tx_pos == (TX_DESC_NUM-1)) {
 		cmd2 |= EOR_BIT;
@@ -241,11 +237,6 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 
 	// Check parameters' range.
 	if ((cmd == SIOCGMIIREG) || (cmd == SIOCSMIIREG)) {
-		if (data->phy_id > 1) {
-			ETH_ERR(" phy_id (= %d) excesses range!\n", (int)data->phy_id);
-			return -EINVAL;
-		}
-
 		if (data->reg_num > 31) {
 			ETH_ERR(" reg_num (= %d) excesses range!\n", (int)data->reg_num);
 			return -EINVAL;
@@ -254,7 +245,7 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 
 	switch (cmd) {
 	case SIOCGMIIPHY:
-		if ((comm->dual_nic) && (mac->lan_port == 1)) {
+		if ((comm->dual_nic) && (strcmp(ifr->ifr_ifrn.ifrn_name, "eth1") == 0)) {
 			return comm->phy2_addr;
 		} else {
 			return comm->phy1_addr;
@@ -364,6 +355,10 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	}
 	SET_NETDEV_DEV(net_dev, &pdev->dev);
 	net_dev->netdev_ops = &netdev_ops;
+#ifdef CONFIG_SOC_I143
+	net_dev->features |= NETIF_F_IP_CSUM;
+	net_dev->hw_features |= NETIF_F_IP_CSUM;
+#endif
 
 	mac = netdev_priv(net_dev);
 	mac->net_dev = net_dev;

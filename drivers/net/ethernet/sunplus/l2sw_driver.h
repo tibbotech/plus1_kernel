@@ -21,5 +21,7 @@
 
 #define RX_NAPI_WEIGHT          64
 
+void print_packet(struct sk_buff *skb);
+
 #endif
 

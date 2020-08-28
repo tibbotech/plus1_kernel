@@ -70,13 +70,13 @@ static inline void  rx_interrupt(struct l2sw_mac *mac)
 	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
 		rx_pos = comm->rx_pos[queue];
 		rx_count = comm->rx_desc_num[queue];
-		//ETH_INFO(" rx_pos = %d, rx_count = %d\n", rx_pos, rx_count);
+		//ETH_INFO(" queue = %d, rx_pos = %d, rx_count = %d\n", queue, rx_pos, rx_count);
 
 		for (num = 0; num < rx_count; num++) {
 			sinfo = comm->rx_skb_info[queue] + rx_pos;
 			desc = comm->rx_desc[queue] + rx_pos;
 			cmd = desc->cmd1;
-			//ETH_INFO(" RX: cmd1 = %08x, cmd2 = %08x\n", cmd, desc->cmd2);
+			//ETH_INFO(" rx_pos = %d, RX: cmd1 = %08x, cmd2 = %08x\n", rx_pos, cmd, desc->cmd2);
 
 			if (cmd & OWN_BIT) {
 				//ETH_INFO(" RX: is owned by NIC, rx_pos = %d, desc = %px", rx_pos, desc);
@@ -119,7 +119,16 @@ static inline void  rx_interrupt(struct l2sw_mac *mac)
 			dma_unmap_single(&mac->pdev->dev, sinfo->mapping, comm->rx_desc_buff_size, DMA_FROM_DEVICE);
 
 			skb = sinfo->skb;
-			skb->ip_summed = CHECKSUM_NONE;
+			skb_set_mac_header(skb, 0);
+			skb_set_network_header(skb, ETH_HLEN);
+
+			if ((eth_hdr(skb)->h_proto == htons(ETH_P_IP)) && (ip_hdr(skb)->version == IPVERSION) &&
+			    ((ip_hdr(skb)->protocol == IPPROTO_TCP) || (ip_hdr(skb)->protocol == IPPROTO_UDP))) {
+				// An IPv4 TCP/UDP packet.
+				skb->ip_summed = CHECKSUM_UNNECESSARY;
+			} else {
+				skb_checksum_none_assert(skb);
+			}
 
 			/*skb_put will judge if tail exceeds end, but __skb_put won't*/
 			__skb_put(skb, (pkg_len - 4 > comm->rx_desc_buff_size)? comm->rx_desc_buff_size: pkg_len - 4);
@@ -295,13 +304,12 @@ irqreturn_t ethernet_tx_interrupt(int irq, void *dev_id)
 	u32 status;
 
 	status =  read_sw_int_status() & MAC_INT_TX;
-	//ETH_INFO(" Int Status = %08x\n", status);
+	//ETH_INFO(" TX Int Status = %08x\n", status);
 
-	if (status) {
+	if (likely(status)) {
 		write_sw_int_mask(read_sw_int_mask() | MAC_INT_TX);     /* mask all tx interrupts */
 		write_sw_int_status(status);
 
-		//ETH_INFO("[%s] IN\n", __func__);
 		net_dev = (struct net_device*)dev_id;
 		if (unlikely(net_dev == NULL)) {
 			ETH_ERR(" net_dev is null!\n");
@@ -316,7 +324,6 @@ irqreturn_t ethernet_tx_interrupt(int irq, void *dev_id)
 		if (status & (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H)) {
 #ifdef INTERRUPT_IMMEDIATELY
 			tx_interrupt(mac);
-			//write_sw_int_status(status | (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H));
 #else
 			tasklet_schedule(&comm->tx_tasklet);
 #endif
@@ -385,7 +392,7 @@ irqreturn_t ethernet_tx_interrupt(int irq, void *dev_id)
 		wmb();
 		write_sw_int_mask(read_sw_int_mask() & ~MAC_INT_TX);
 	} else {
-		ETH_ERR(" Interrput status is null!\n");
+		ETH_ERR(" TX Int Status is null (%08x)!\n", read_sw_int_status());
 	}
 
 	return IRQ_HANDLED;
@@ -399,13 +406,12 @@ irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 	u32 status;
 
 	status =  read_sw_int_status() & MAC_INT_RX;
-	//ETH_INFO(" Int Status = %08x\n", status);
+	//ETH_INFO(" RX Int Status = %08x\n", status);
 
-	if (status) {
+	if (likely(status)) {
 		write_sw_int_mask(read_sw_int_mask() | MAC_INT_RX);     /* mask all rx interrupts */
 		write_sw_int_status(status);
 
-		//ETH_INFO("[%s] IN\n", __func__);
 		net_dev = (struct net_device*)dev_id;
 		if (unlikely(net_dev == NULL)) {
 			ETH_ERR(" net_dev is null!\n");
@@ -425,7 +431,6 @@ irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 		if (status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)) {
 	#ifdef INTERRUPT_IMMEDIATELY
 			rx_interrupt(mac);
-			//write_sw_int_status(status | (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H));
 	#else
 			tasklet_schedule(&comm->rx_tasklet);
 	#endif
@@ -446,7 +451,7 @@ irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 		wmb();
 		write_sw_int_mask(read_sw_int_mask() & ~MAC_INT_RX);
 	} else {
-		ETH_ERR(" Interrput status is null!\n");
+		ETH_ERR(" RX Int Status is null (%08x)!\n", read_sw_int_status());
 	}
 
 	return IRQ_HANDLED;
