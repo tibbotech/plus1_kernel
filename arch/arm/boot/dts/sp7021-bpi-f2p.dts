@@ -131,13 +131,20 @@
 &uart4 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart4>;
-	status = "disabled";
+	status = "okay";
 };
 
 &sdio {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_sdio>;
-	status = "disabled";
+		bus-width = <4>;
+		max-frequency = <25000000>;
+		non-removable;
+		disable-wp;
+		cap-sd-highspeed;
+		cap-sdio-irq;
+		no-sd;
+		no-mmc;
 };
 
 &l2sw {
@@ -278,12 +285,12 @@
 
 	pins_sdio: pins_sdio {
 		sppctl,pins = <
-			SPPCTL_IOPAD(17,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D1,0)
-			SPPCTL_IOPAD(18,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D0,0)
-			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
-			SPPCTL_IOPAD(14,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
-			SPPCTL_IOPAD(15,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D3,0)
-			SPPCTL_IOPAD(13,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+			SPPCTL_IOPAD(30,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_CLK,0)
+			SPPCTL_IOPAD(31,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_CMD,0)
+			SPPCTL_IOPAD(33,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D0,0)
+			SPPCTL_IOPAD(34,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D1,0)
+			SPPCTL_IOPAD(36,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D2,0)
+			SPPCTL_IOPAD(38,SPPCTL_PCTL_G_PMUX,MUXF_SDIO_D3,0)
 		>;
 	};
 
@@ -331,8 +338,8 @@
 		sppctl,pins = <
 			SPPCTL_IOPAD(14,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)
 			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_RX,0)
-			SPPCTL_IOPAD(20,SPPCTL_PCTL_G_PMUX,MUXF_UA3_RTS,0)
-			SPPCTL_IOPAD(22,SPPCTL_PCTL_G_PMUX,MUXF_UA3_CTS,0)
+			SPPCTL_IOPAD(20,SPPCTL_PCTL_G_PMUX,MUXF_UA4_RTS,0)
+			SPPCTL_IOPAD(22,SPPCTL_PCTL_G_PMUX,MUXF_UA4_CTS,0)
 		>;
 	};
 

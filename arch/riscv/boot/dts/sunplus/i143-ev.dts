@@ -400,7 +400,7 @@
 		};
 
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp7021-emmc";
+			compatible = "sunplus,i143-emmc";
 			reg = <0x0 0x9c003b00 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
@@ -409,7 +409,7 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&emmc_pins>;
 			bus-width = <8>;
-			max-frequency = <52000000>;
+			max-frequency = <45000000>;
 			non-removable;
 			disable-wp;
 			cap-mmc-highspeed;
