@@ -29,7 +29,7 @@ enum loglevel {
 	SPMMC_LOG_VERBOSE,
 	SPMMC_LOG_MAX
 };
-static int loglevel = SPMMC_LOG_WARNING;
+static int loglevel = SPSDC_LOG_WARNING;
 
 /**
  * we do not need `SPMMC_LOG_' prefix here, when specify @level.
@@ -205,8 +205,10 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
-	spmmc_pr(INFO, "set bus clock to %d\n", clk);
+	spmmc_pr(INFO, "set bus clock to %d\n", clk);	
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
+	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);	
+		
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
@@ -1500,6 +1502,10 @@ static struct dev_pm_ops spmmc_pm_ops = {
 static const struct of_device_id spmmc_of_table[] = {
 	{
 		.compatible = "sunplus,sp7021-emmc",
+		.data = (void *)SPMMC_MODE_EMMC,
+	},
+	{
+		.compatible = "sunplus,i143-emmc",
 		.data = (void *)SPMMC_MODE_EMMC,
 	},
 	{/* sentinel */}

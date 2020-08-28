@@ -400,7 +400,7 @@
 		};
 
 		mmc0: mmc@emmc {
-			compatible = "sunplus,sp7021-emmc";
+			compatible = "sunplus,i143-emmc";
 			reg = <0x0 0x9c003b00 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
