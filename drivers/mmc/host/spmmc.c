@@ -29,7 +29,7 @@ enum loglevel {
 	SPMMC_LOG_VERBOSE,
 	SPMMC_LOG_MAX
 };
-static int loglevel = SPSDC_LOG_WARNING;
+static int loglevel = SPMMC_LOG_WARNING;
 
 /**
  * we do not need `SPMMC_LOG_' prefix here, when specify @level.
