@@ -428,13 +428,33 @@
 			pinctrl-names = "default";
 			pinctrl-0 = <&sdcard_pins>;
 			bus-width = <4>;
-			max-frequency = <135000000>;
+			max-frequency = <111375000>;
 			cd-gpios = <&pctl 54 GPIO_ACTIVE_LOW>;
 			disable-wp;
 			cap-sd-highspeed;
 			no-sdio;
 			no-mmc;
 		};
+		
+		sdio: sdio@sdcard {
+			compatible = "sunplus,i143-sdio";
+			reg = <0x0 0x9c008400 0x0 0x180>;
+			interrupt-parent = <&intc>;
+			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc CARD_CTL4>;
+			resets = <&rstc RST_CARD_CTL4>;
+			pinctrl-names = "default";
+			bus-width = <4>;
+			max-frequency = <111375000>;
+			non-removable;
+			disable-wp;
+			cap-sd-highspeed;
+			cap-sdio-irq;
+			no-sd;
+			no-mmc;
+			status = "disabled";			
+		};		
+		
 		#if 0
 		ipc: ipc@G258 {
 			compatible = "sunplus,sp7021-ipc";

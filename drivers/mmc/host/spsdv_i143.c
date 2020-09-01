@@ -259,7 +259,7 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 {
 	u32 value = readl(&host->base->sd_config1);
 	int clkdiv = readl(&host->base->sd_config0) >> SPSDC_sdfqsel_w12;
-	int wr_delay = 1;
+	int wr_delay = clkdiv < 7 ? 1 : 7;
 	int rd_delay = clkdiv < 7 ? clkdiv+1 : 7;
 	int hs_en = 1;
 	char *timing_name;
@@ -285,13 +285,13 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		break;
 	case MMC_TIMING_UHS_SDR104:
 		wr_delay = 1;
-		rd_delay = 2;		
+		rd_delay = 3;	
 		timing_name = "sd uhs SDR104";
 		break;
 	case MMC_TIMING_UHS_DDR50:
 		host->ddr_enabled = 1;
-		wr_delay = 1;
-		rd_delay = 3;
+		wr_delay = 2;
+		rd_delay = 4;
 		timing_name = "sd uhs DDR50";
 		break;
 	case MMC_TIMING_MMC_DDR52:
@@ -582,30 +582,40 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		value = readl(&host->base->sd_status);
 		spsdc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
 		
+
+		if (host->tuning_info.enable_tuning) {
 		timing_cfg0 = readl(&host->base->sd_timing_config0);
 		host->tuning_info.rd_crc_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3);
 		host->tuning_info.rd_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3);
 		host->tuning_info.rd_rsp_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3);
 		host->tuning_info.wr_cmd_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3);
 		host->tuning_info.wr_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3);		
+		}
+
 
 		if (value & SPSDC_SDSTATUS_RSP_TIMEOUT) {
+			spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RSP_TIMEOUT\n");
 			ret = -ETIMEDOUT;
 			host->tuning_info.wr_cmd_dly++;
 		} else if (value & SPSDC_SDSTATUS_RSP_CRC7_ERROR) {
+			spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RSP_CRC7_ERROR\n");
 			ret = -EILSEQ;
 			host->tuning_info.rd_rsp_dly++;
 		} else if (data) {
 			if ((value & SPSDC_SDSTATUS_STB_TIMEOUT)) {
+				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_STB_TIMEOUT\n");
 				ret = -ETIMEDOUT;
 				host->tuning_info.rd_dat_dly++;
 			} else if (value & SPSDC_SDSTATUS_RDATA_CRC16_ERROR) {
+				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RDATA_CRC16_ERROR\n");
 				ret = -EILSEQ;
 				host->tuning_info.rd_dat_dly++;
 			} else if (value & SPSDC_SDSTATUS_CARD_CRC_CHECK_TIMEOUT) {
+				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_CARD_CRC_CHECK_TIMEOUT\n");
 				ret = -ETIMEDOUT;
 				host->tuning_info.rd_crc_dly++;
 			} else if (value & SPSDC_SDSTATUS_CRC_TOKEN_CHECK_ERROR) {
+				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_CRC_TOKEN_CHECK_ERROR\n");
 				ret = -EILSEQ;
 				if (crc_token == 0x5)
 					host->tuning_info.wr_dat_dly++;
@@ -625,21 +635,17 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		mdelay(100);
 
 
-		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3, host->tuning_info.rd_crc_dly); /* sd_wr_dat_dly_sel */     
-		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3, host->tuning_info.rd_dat_dly); /* sd_wr_cmd_dly_sel */
-		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3, host->tuning_info.rd_rsp_dly); /* sd_wr_dat_dly_sel */
-		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3, host->tuning_info.wr_cmd_dly); /* sd_wr_cmd_dly_sel */
-		timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3, host->tuning_info.wr_dat_dly); /* sd_wr_cmd_dly_sel */
+		if (host->tuning_info.enable_tuning) {
+		    timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3, host->tuning_info.rd_crc_dly); /* sd_wr_dat_dly_sel */     
+		    timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3, host->tuning_info.rd_dat_dly); /* sd_wr_cmd_dly_sel */
+		    timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3, host->tuning_info.rd_rsp_dly); /* sd_wr_dat_dly_sel */
+		    timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3, host->tuning_info.wr_cmd_dly); /* sd_wr_cmd_dly_sel */
+		    timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3, host->tuning_info.wr_dat_dly); /* sd_wr_cmd_dly_sel */
+		    writel(timing_cfg0, &host->base->sd_timing_config0);
+		}
 
 
 
-	//	timing_cfg0 = host->tuning_info.rd_crc_dly;
-	//	timing_cfg0 = host->tuning_info.rd_dat_dly;
-	//	timing_cfg0 = host->tuning_info.rd_rsp_dly;
-	//	timing_cfg0 = host->tuning_info.wr_cmd_dly;
-	//	timing_cfg0 = host->tuning_info.wr_dat_dly;						
-
-		writel(timing_cfg0, &host->base->sd_timing_config0);
 	} else if (data) {
 		data->error = 0;
 		data->bytes_xfered = data->blocks * data->blksz;
@@ -917,8 +923,6 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
 
-	spsdc_pr(VERBOSE, "signal_voltage_switch 1V8!\n");
-
 	if (host->signal_voltage == ios->signal_voltage)
 		return 0;
 
@@ -931,6 +935,9 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 		spsdc_pr(WARNING, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
+
+	spsdc_pr(WARNING, "signal_voltage_switch 1V8!\n");
+
 
 	value = readl(&host->base->sd_vol_ctrl);
 	//value = bitfield_replace(value, SPSDC_vol_tmr_w02, 2, 3); /* 1ms timeout for 400K */
@@ -1300,6 +1307,10 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
+
+	spsdc_pr(INFO, "spsdc_drv_probe\n");
+
+
 	host = mmc_priv(mmc);
 	host->mmc = mmc;
 	host->power_state = MMC_POWER_OFF;
@@ -1388,6 +1399,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED
 		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
 		    | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
+                    //| MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 ; 
     }
 	
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
@@ -1401,6 +1413,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	dev_set_drvdata(&pdev->dev, host);
 	spsdc_controller_init(host);
 	mmc_add_host(mmc);
+	host->tuning_info.enable_tuning = 1;
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
