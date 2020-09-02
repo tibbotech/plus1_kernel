@@ -44,6 +44,8 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
+
+		i2c4 = &i2cm4;
 	};
 
 	chosen {
@@ -611,8 +613,7 @@
 			pinctrl-0 = <&otg1_pins>;
 		};
 
-#if 0 // Temporary description for MIPI I2C node
-		i2cm0: i2c@sp_i2cm0 {
+		i2cm4: i2c@sp_i2cm4 {
 			compatible = "sunplus,sp7021-mipi-i2c";
 			reg = <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
@@ -623,8 +624,8 @@
 			resets = <&rstc RST_ISP0>, <&rstc RST_ISPAPB0>;
 			reset-names = "rstc_isp", "rstc_ispapb";
 		};
-#endif
-		mipiisp0: mipiisp@0x9c005300 {
+
+		mipiisp0: mipicsi@0x9c005300 {
 			compatible = "sunplus,sp7021-mipicsi-rx";
 			reg = <0x0 0x9c005300 0x0 0x80>,
 			      <0x0 0x9c153000 0x0 0x1300>,
@@ -636,7 +637,7 @@
 			clock-names = "clkc_csiiw";
 			resets = <&rstc RST_CSIIW0>;
 			reset-names = "rstc_csiiw";
-			i2c-id = <0>;
+			i2c-id = <4>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&mipicsi0_pins>;
 #if 0 // Demo board V3

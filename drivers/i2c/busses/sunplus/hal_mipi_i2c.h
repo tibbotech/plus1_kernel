@@ -6,6 +6,8 @@
 #include "reg_mipi_i2c.h"
 
 #define MIPI_I2C_NUM    (2)
+#define MIPI_I2C_1ST_CH (4)
+#define MIPI_I2C_MAX_TH (MIPI_I2C_1ST_CH + MIPI_I2C_NUM)
 
 typedef enum mipi_i2c_action_e {
 	I2C_NOR_NEW_READ,

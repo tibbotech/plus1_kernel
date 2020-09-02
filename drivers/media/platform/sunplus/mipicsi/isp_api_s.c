@@ -404,10 +404,12 @@ void sensorInit_s(struct mipi_isp_info *isp_info)
 void CdspInit_s(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
-
 	CDSP_INIT_FILE_T read_file;
 	int i, total;
 	u8 data[4];
+	u8 reg_21b0 = 0x00, reg_21b1 = 0x00, reg_21b2 = 0x00, reg_21b3 = 0x00;
+	u8 reg_21b4 = 0x00, reg_21b5 = 0x00, reg_21b6 = 0x00, reg_21b7 = 0x00;
+	u8 reg_21b8 = 0x00;
 
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
@@ -450,6 +452,104 @@ void CdspInit_s(struct mipi_isp_info *isp_info)
 	//
 	writeb(0x33, &(regs->reg[0x220C])); //SF_CDSP_INIT_SM
 	writeb(0x23, &(regs->reg[0x21c0])); /* enable bight, contrast hue and saturation cropping mode */
+
+	// scaler
+	switch (isp_info->scale)
+	{
+		case SCALE_DOWN_OFF:
+			ISPAPB_LOGI("Scaler is off\n");
+			reg_21b0 = 0x00; // factor for Hsize
+			reg_21b1 = 0x00; //
+			reg_21b2 = 0x00; // factor for Vsize
+			reg_21b3 = 0x00; //
+			//
+			reg_21b4 = 0x00; // factor for Hsize
+			reg_21b5 = 0x00; //
+			reg_21b6 = 0x00; // factor for Vsize
+			reg_21b7 = 0x00; //
+			//
+			reg_21b8 = 0x00; // disable H/V scale down
+			break;
+
+		case SCALE_DOWN_FHD_HD:
+			ISPAPB_LOGI("Scale down from FHD to HD size\n");
+			// H = 1280 * 65536 / 1920 = 0xAAAB
+			// V =	720 * 65536 / 1080 = 0xAAAB
+			reg_21b0 = 0xAB; // factor for Hsize
+			reg_21b1 = 0xAA; //
+			reg_21b2 = 0xAB; // factor for Vsize
+			reg_21b3 = 0xAA; //
+			//
+			reg_21b4 = 0xAB; // factor for Hsize
+			reg_21b5 = 0xAA; //
+			reg_21b6 = 0xAB; // factor for Vsize
+			reg_21b7 = 0xAA; //
+			//
+			reg_21b8 = 0x2F; // enable H/V scale down
+			break;
+
+		case SCALE_DOWN_FHD_WVGA:
+			ISPAPB_LOGI("Scale down from FHD to WVGA size\n");
+			// H = 720 * 65536 / 1920 = 0x6000
+			// V = 480 * 65536 / 1080 = 0x71C8
+			reg_21b0 = 0x00; // factor for Hsize
+			reg_21b1 = 0x60; //
+			reg_21b2 = 0xC8; // factor for Vsize
+			reg_21b3 = 0x71; //
+			//
+			reg_21b4 = 0x00; // factor for Hsize
+			reg_21b5 = 0x60; //
+			reg_21b6 = 0xC8; // factor for Vsize
+			reg_21b7 = 0x71; //
+			//
+			reg_21b8 = 0x2F; // enable H/V scale down
+			break;
+
+		case SCALE_DOWN_FHD_VGA:
+			ISPAPB_LOGI("Scale down from FHD to VGA size\n");
+			// H = 640 * 65536 / 1920 = 0x5556
+			// V = 480 * 65536 / 1080 = 0x71C8
+			reg_21b0 = 0x56; // factor for Hsize
+			reg_21b1 = 0x55; //
+			reg_21b2 = 0xC8; // factor for Vsize
+			reg_21b3 = 0x71; //
+			//
+			reg_21b4 = 0x56; // factor for Hsize
+			reg_21b5 = 0x55; //
+			reg_21b6 = 0xC8; // factor for Vsize
+			reg_21b7 = 0x71; //
+			//
+			reg_21b8 = 0x2F; // enable H/V scale down
+			break;
+
+		case SCALE_DOWN_FHD_QQVGA:
+			ISPAPB_LOGI("Scale down from FHD to QQVGA size\n");
+			// H = 160 * 65536 / 1920 = 0x1556
+			// V = 120 * 65536 / 1080 = 0x1C72
+			reg_21b0 = 0x56; // factor for Hsize
+			reg_21b1 = 0x15; //
+			reg_21b2 = 0x72; // factor for Vsize
+			reg_21b3 = 0x1C; //
+			//
+			reg_21b4 = 0x56; // factor for Hsize
+			reg_21b5 = 0x15; //
+			reg_21b6 = 0x72; // factor for Vsize
+			reg_21b7 = 0x1C; //
+			//
+			reg_21b8 = 0x2F; // enable H/V scale down
+			break;
+	}
+
+	writeb(reg_21b0, &(regs->reg[0x21b0])); 	// factor for Hsize
+	writeb(reg_21b1, &(regs->reg[0x21b1])); 	//
+	writeb(reg_21b2, &(regs->reg[0x21b2])); 	// factor for Vsize
+	writeb(reg_21b3, &(regs->reg[0x21b3])); 	//
+	writeb(reg_21b4, &(regs->reg[0x21b4])); 	// factor for Hsize
+	writeb(reg_21b5, &(regs->reg[0x21b5])); 	//
+	writeb(reg_21b6, &(regs->reg[0x21b6])); 	// factor for Vsize
+	writeb(reg_21b7, &(regs->reg[0x21b7])); 	//
+	writeb(reg_21b8, &(regs->reg[0x21b8])); 	// disable H/V scale down
+
 /*	                             
 	#if (CDSP_SCALER_HD)//scale down from FHD  to HD size
 		//H=1280*65536/(1920) = 0xAAAB

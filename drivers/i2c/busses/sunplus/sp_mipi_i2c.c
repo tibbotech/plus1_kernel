@@ -21,13 +21,13 @@
 
 /* Message Definition */
 //#define MIPI_I2C_FUNC_DEBUG
-//#define MIPI_I2C_FUNC_INFO
-//#define MIPI_I2C_FUNC_ERR
+#define MIPI_I2C_FUNC_INFO
+#define MIPI_I2C_FUNC_ERR
 
 #ifdef MIPI_I2C_FUNC_DEBUG
-	#define MIPI_I2C_DEBUG()    printk(KERN_INFO "[MIPI I2C] DBG: %s(%d)\n", __FUNCTION__, __LINE__)
+	#define MIPI_I2C_DBG(fmt, args ...)     printk(KERN_INFO "[MIPI I2C] DBG: ", fmt, ## args)
 #else
-	#define MIPI_I2C_DEBUG()
+	#define MIPI_I2C_DBG(fmt, args ...)
 #endif
 #ifdef MIPI_I2C_FUNC_INFO
 	#define MIPI_I2C_INFO(fmt, args ...)    printk(KERN_INFO "[MIPI I2C] INFO: " fmt, ## args)
@@ -35,7 +35,7 @@
 	#define MIPI_I2C_INFO(fmt, args ...)
 #endif
 #ifdef MIPI_I2C_FUNC_ERR
-	#define MIPI_I2C_ERR(fmt, args ...)    printk(KERN_ERR "[MIPI I2C] ERR: " fmt, ## args)
+	#define MIPI_I2C_ERR(fmt, args ...)     printk(KERN_ERR "[MIPI I2C] ERR: " fmt, ## args)
 #else
 	#define MIPI_I2C_ERR(fmt, args ...)
 #endif
@@ -70,17 +70,18 @@ unsigned int  restart_en = 0;
 
 static int sp_mipi_i2c_init(unsigned int device_id, sp_mipi_i2c_info_t *sp_mipi_i2c_info)
 {
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if (device_id >= MIPI_I2C_NUM)
+	if ((device_id < MIPI_I2C_1ST_CH) || (device_id > MIPI_I2C_MAX_TH))
 	{
 		MIPI_I2C_ERR("I2C device id is not correct !! device_id=%d\n", device_id);
 		return MIPI_I2C_ERR_INVALID_DEVID;
 	}
 
+	MIPI_I2C_INFO("device_id=%d, mipi_isp_regs=0x%px\n", device_id, sp_mipi_i2c_info->mipi_i2c_regs);
+
 	// Set MIPI I2C base address into HAL before call HAL function
 	hal_mipi_i2c_base_set(device_id, sp_mipi_i2c_info->mipi_i2c_regs);
-	MIPI_I2C_INFO("mipi_isp_regs = 0x%px\n", sp_mipi_i2c_info->mipi_i2c_regs);
 
 	// Reset MIPI ISP hardware
 	hal_mipi_i2c_isp_reset(device_id);
@@ -98,7 +99,7 @@ static int sp_mipi_i2c_get_register_base(struct platform_device *pdev, void **me
 	struct resource *r;
 	void __iomem *p;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 	MIPI_I2C_INFO("Resource name: %s\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
@@ -113,7 +114,7 @@ static int sp_mipi_i2c_get_register_base(struct platform_device *pdev, void **me
 		return PTR_ERR(p);
 	}
 
-	MIPI_I2C_INFO("devm_ioremap addr : 0x%px!!\n", p);
+	MIPI_I2C_INFO("devm_ioremap addr: 0x%px!!\n", p);
 	*membase = p;
 	return MIPI_I2C_SUCCESS;
 }
@@ -131,9 +132,10 @@ int sp_mipi_i2c_read(mipi_i2c_cmd_t *mipi_i2c_cmd)
 	int ret = MIPI_I2C_SUCCESS;
 	int i = 0;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if (mipi_i2c_cmd->dDevId > MIPI_I2C_NUM) {
+	if ((mipi_i2c_cmd->dDevId < MIPI_I2C_1ST_CH) || (mipi_i2c_cmd->dDevId > MIPI_I2C_MAX_TH)) {
+		MIPI_I2C_ERR("I2C device id is not correct !! device_id=%d\n", mipi_i2c_cmd->dDevId);
 		return MIPI_I2C_ERR_INVALID_DEVID;
 	}
 
@@ -159,13 +161,13 @@ int sp_mipi_i2c_read(mipi_i2c_cmd_t *mipi_i2c_cmd)
 		return MIPI_I2C_ERR_INVALID_CNT;
 	}
 
-	MIPI_I2C_INFO("write_cnt = %d, read_cnt = %d\n", write_cnt, read_cnt);
+	MIPI_I2C_DBG("write_cnt=%d, read_cnt=%d\n", write_cnt, read_cnt);
 	while (current_cnt < read_cnt)
 	{
 		remainder_cnt = read_cnt - current_cnt;
 		receive_cnt = (remainder_cnt > 32)? 32 : remainder_cnt;
 		//current_cnt += receive_cnt;
-		MIPI_I2C_INFO("current_cnt = %d, receive_cnt = %d\n", current_cnt, receive_cnt);
+		MIPI_I2C_DBG("current_cnt=%d, receive_cnt=%d\n", current_cnt, receive_cnt);
 
 		hal_mipi_i2c_clock_freq_set(mipi_i2c_cmd->dDevId, mipi_i2c_cmd->dFreq);
 		hal_mipi_i2c_slave_addr_set(mipi_i2c_cmd->dDevId, mipi_i2c_cmd->dSlaveAddr);
@@ -174,14 +176,14 @@ int sp_mipi_i2c_read(mipi_i2c_cmd_t *mipi_i2c_cmd)
 		hal_mipi_i2c_trans_cnt_set(mipi_i2c_cmd->dDevId, write_cnt, receive_cnt);
 
 		if (mipi_i2c_cmd->dRestartEn) {
-			MIPI_I2C_INFO("I2C_RESTART_MODE\n");
+			MIPI_I2C_DBG("I2C_RESTART_MODE\n");
 			for (i = 0; i < write_cnt; i++) {
 				w_data[i] = mipi_i2c_cmd->pWrData[i];
 			}
 			hal_mipi_i2c_data_set(mipi_i2c_cmd->dDevId, w_data, write_cnt);
 			hal_mipi_i2c_read_trigger(mipi_i2c_cmd->dDevId, I2C_RESTART);
 		} else {
-			MIPI_I2C_INFO("I2C_READ_MODE\n");
+			MIPI_I2C_DBG("I2C_READ_MODE\n");
 			hal_mipi_i2c_read_trigger(mipi_i2c_cmd->dDevId, I2C_START);
 		}		
 
@@ -197,7 +199,7 @@ int sp_mipi_i2c_read(mipi_i2c_cmd_t *mipi_i2c_cmd)
 			hal_mipi_i2c_reset(mipi_i2c_cmd->dDevId);
 			return ret = MIPI_I2C_ERR_TIMEOUT_OUT;
 		} else {
-			MIPI_I2C_INFO("I2C write done.\n");
+			MIPI_I2C_DBG("I2C write done.\n");
 		}
 
 		// Read data
@@ -216,7 +218,7 @@ int sp_mipi_i2c_read(mipi_i2c_cmd_t *mipi_i2c_cmd)
 			hal_mipi_i2c_reset(mipi_i2c_cmd->dDevId);
 			return ret = MIPI_I2C_ERR_TIMEOUT_OUT;
 		} else {
-			MIPI_I2C_INFO("I2C read done.\n");
+			MIPI_I2C_DBG("I2C read done.\n");
 		}
 	}
 
@@ -235,10 +237,10 @@ int sp_mipi_i2c_write(mipi_i2c_cmd_t *mipi_i2c_cmd)
 	int ret = MIPI_I2C_SUCCESS;
 	int i = 0;
 
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	MIPI_I2C_DEBUG();
-
-	if (mipi_i2c_cmd->dDevId > MIPI_I2C_NUM) {
+	if ((mipi_i2c_cmd->dDevId < MIPI_I2C_1ST_CH) || (mipi_i2c_cmd->dDevId > MIPI_I2C_MAX_TH)) {
+		MIPI_I2C_ERR("I2C device id is not correct !! device_id=%d\n", mipi_i2c_cmd->dDevId);
 		return MIPI_I2C_ERR_INVALID_DEVID;
 	}
 
@@ -263,7 +265,7 @@ int sp_mipi_i2c_write(mipi_i2c_cmd_t *mipi_i2c_cmd)
 			w_data[i] = mipi_i2c_cmd->pWrData[i];
 		}
 		current_cnt += send_cnt;
-		MIPI_I2C_INFO("current_cnt = %d, send_cnt = %d\n", current_cnt, send_cnt);
+		MIPI_I2C_DBG("current_cnt=%d, send_cnt=%d\n", current_cnt, send_cnt);
 
 		hal_mipi_i2c_clock_freq_set(mipi_i2c_cmd->dDevId, mipi_i2c_cmd->dFreq);
 		hal_mipi_i2c_slave_addr_set(mipi_i2c_cmd->dDevId, mipi_i2c_cmd->dSlaveAddr);
@@ -284,7 +286,7 @@ int sp_mipi_i2c_write(mipi_i2c_cmd_t *mipi_i2c_cmd)
 			ret = MIPI_I2C_ERR_TIMEOUT_OUT;
 			break;
 		} else {
-			MIPI_I2C_INFO("I2C write done.\n");
+			MIPI_I2C_DBG("I2C write done.\n");
 		}
 	}
 	return ret;
@@ -297,7 +299,7 @@ static int sp_mipi_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 	int ret = MIPI_I2C_SUCCESS;
 	int i = 0, j = 0;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 #ifdef CONFIG_PM_RUNTIME_MIPI_I2C
 	ret = pm_runtime_get_sync(&adap->dev);
@@ -305,6 +307,7 @@ static int sp_mipi_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 		goto out;  
 #endif
 	if (num == 0) {
+		MIPI_I2C_ERR("The message number is 0!\n");
 		return -EINVAL;
 	}
 
@@ -315,21 +318,23 @@ static int sp_mipi_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 		mipi_i2c_cmd->dFreq = 7;
 	else
 		mipi_i2c_cmd->dFreq = sp_mipi_i2c_info->mipi_i2c_freq;
-	MIPI_I2C_INFO("I2C freq : %d\n", mipi_i2c_cmd->dFreq);
+	MIPI_I2C_DBG("I2C freq=%d\n", mipi_i2c_cmd->dFreq);
 
 	for (i = 0; i < num; i++) {
-		MIPI_I2C_INFO("i=%d, num=%d\n", i, num); //CCHo added for debugging
+		MIPI_I2C_DBG("i=%d, num=%d\n", i, num);
 
-		if (msgs[i].flags & I2C_M_TEN)
+		if (msgs[i].flags & I2C_M_TEN) {
+			MIPI_I2C_ERR("The I2C_M_TEN flag is enabled!\n");
 			return -EINVAL;
+		}
 
-		MIPI_I2C_INFO("msgs[i].addr=0x%04x, msgs[i].flags=0x%04x, msgs[i].len=%d\n",
-			msgs[i].addr, msgs[i].flags, msgs[i].len); //CCHo added for debugging
+		MIPI_I2C_DBG("msgs[i].addr=0x%04x, msgs[i].flags=0x%04x, msgs[i].len=%d\n",
+			msgs[i].addr, msgs[i].flags, msgs[i].len);
 
 		mipi_i2c_cmd->dSlaveAddr = msgs[i].addr;
 
 		if (msgs[i].flags & I2C_M_NOSTART){
-			MIPI_I2C_DEBUG();
+			MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 			//mipi_i2c_cmd->dWrDataCnt = msgs[i].len;
 			//mipi_i2c_cmd->pWrData = msgs[i].buf;
@@ -341,36 +346,31 @@ static int sp_mipi_i2c_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msg
 			continue;
 		}
 
-		MIPI_I2C_DEBUG();
-
 		if (msgs[i].flags & I2C_M_RD) {
-			MIPI_I2C_DEBUG();
+			MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 			mipi_i2c_cmd->dRdDataCnt = msgs[i].len;
 			mipi_i2c_cmd->pRdData = msgs[i].buf;
 			if (restart_en == 1) {
 		    	mipi_i2c_cmd->dWrDataCnt = restart_write_cnt;
 		    	mipi_i2c_cmd->pWrData = restart_w_data;				
-		    	MIPI_I2C_INFO("I2C_M_RD dWrDataCnt =%d\n", mipi_i2c_cmd->dWrDataCnt);
-		    	MIPI_I2C_INFO("I2C_M_RD mipi_i2c_cmd->pWrData[0] =%x\n", mipi_i2c_cmd->pWrData[0]);
-			    MIPI_I2C_INFO("I2C_M_RD mipi_i2c_cmd->pWrData[1] =%x\n", mipi_i2c_cmd->pWrData[1]);	
+		    	MIPI_I2C_DBG("I2C_M_RD dWrDataCnt=%d\n", mipi_i2c_cmd->dWrDataCnt);
+		    	MIPI_I2C_DBG("I2C_M_RD mipi_i2c_cmd->pWrData[0]=%x\n", mipi_i2c_cmd->pWrData[0]);
+			    MIPI_I2C_DBG("I2C_M_RD mipi_i2c_cmd->pWrData[1]=%x\n", mipi_i2c_cmd->pWrData[1]);	
 		    	restart_en = 0;			
 			    mipi_i2c_cmd->dRestartEn = 1;
 	    	}
 			ret = sp_mipi_i2c_read(mipi_i2c_cmd);
 		} else {
-			MIPI_I2C_DEBUG();
+			MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 			mipi_i2c_cmd->dWrDataCnt = msgs[i].len;
 			mipi_i2c_cmd->pWrData = msgs[i].buf;
 			ret = sp_mipi_i2c_write(mipi_i2c_cmd);
 		}
 
-		MIPI_I2C_DEBUG();
-
 		if (ret != MIPI_I2C_SUCCESS) {
-			MIPI_I2C_DEBUG();
-
+			MIPI_I2C_ERR("MIPI I2C xfer failed!\n");
 			return -EIO;
 		}
 	}
@@ -408,17 +408,19 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	unsigned int temp_value;
 	int device_id = 0;
+	int i2c_ch = 0;
 	int ret = MIPI_I2C_SUCCESS;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_INFO("%s, %d\n", __FUNCTION__, __LINE__);
 
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "i2c");
-		MIPI_I2C_INFO("pdev->id=%d\n", pdev->id);
 		device_id = pdev->id;
+		i2c_ch = device_id - MIPI_I2C_1ST_CH;
+		MIPI_I2C_INFO("pdev->id=%d, MIPI I2C channel=%d\n", pdev->id, i2c_ch);
 	}
 
-	sp_mipi_i2c_info = &stSpMipiI2cInfo[device_id];
+	sp_mipi_i2c_info = &stSpMipiI2cInfo[i2c_ch];
 	memset(sp_mipi_i2c_info, 0, sizeof(sp_mipi_i2c_info_t));
 
 	// Get 'i2c-freq' property.
@@ -482,7 +484,7 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 		goto err_get_rstc_isp;
 	}
 	ret = reset_control_deassert(sp_mipi_i2c_info->rstc_isp);
-	MIPI_I2C_INFO("reset ret : 0x%x \n",ret);
+	MIPI_I2C_INFO("rstc_isp ret : 0x%x \n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to deassert 'rstc_isp' reset controller: %d\n", ret);
 		goto err_deassert_rstc_isp;
@@ -497,7 +499,7 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 		goto err_get_rstc_ispapb;
 	}
 	ret = reset_control_deassert(sp_mipi_i2c_info->rstc_ispapb);
-	MIPI_I2C_INFO("reset ret : 0x%x\n",ret);
+	MIPI_I2C_INFO("rstc_ispapb ret : 0x%x\n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to deassert 'rstc_ispapb' reset controller: %d\n", ret);
 		goto err_deassert_rstc_ispapb;
@@ -576,7 +578,7 @@ static int sp_mipi_i2c_remove(struct platform_device *pdev)
 	sp_mipi_i2c_info_t *sp_mipi_i2c_info = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &sp_mipi_i2c_info->adap;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 	
 #ifdef CONFIG_PM_RUNTIME_MIPI_I2C
 	pm_runtime_disable(&pdev->dev);
@@ -587,7 +589,7 @@ static int sp_mipi_i2c_remove(struct platform_device *pdev)
 	i2c_del_adapter(p_adap);
 
 	// Disable MIPI ISP clock and enable MIPI ISP reset controller
-	if (p_adap->nr < MIPI_I2C_NUM) {
+	if ((p_adap->nr >= MIPI_I2C_1ST_CH) && (p_adap->nr < MIPI_I2C_MAX_TH)) {
 		hal_mipi_i2c_power_down(pdev->id);
 		clk_disable_unprepare(sp_mipi_i2c_info->clkc_isp);
 		clk_disable_unprepare(sp_mipi_i2c_info->clkc_ispapb);
@@ -603,10 +605,10 @@ static int sp_mipi_i2c_suspend(struct platform_device *pdev, pm_message_t state)
 	sp_mipi_i2c_info_t *sp_mipi_i2c_info = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &sp_mipi_i2c_info->adap;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 	// Enable MIPI ISP reset controller
-	if (p_adap->nr < MIPI_I2C_NUM) {
+	if ((p_adap->nr >= MIPI_I2C_1ST_CH) && (p_adap->nr < MIPI_I2C_MAX_TH)) {
 		hal_mipi_i2c_power_down(pdev->id);
 		reset_control_assert(sp_mipi_i2c_info->rstc_isp);
 		reset_control_assert(sp_mipi_i2c_info->rstc_ispapb);
@@ -620,10 +622,10 @@ static int sp_mipi_i2c_resume(struct platform_device *pdev)
 	sp_mipi_i2c_info_t *sp_mipi_i2c_info = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &sp_mipi_i2c_info->adap;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 	// Enable MIPI ISP clock and disable MIPI ISP reset controller
-	if (p_adap->nr < MIPI_I2C_NUM) {
+	if ((p_adap->nr >= MIPI_I2C_1ST_CH) && (p_adap->nr < MIPI_I2C_MAX_TH)) {
 		reset_control_deassert(sp_mipi_i2c_info->rstc_isp);     // release reset
 		reset_control_deassert(sp_mipi_i2c_info->rstc_ispapb);  // release reset
 		clk_prepare_enable(sp_mipi_i2c_info->clkc_isp);         // enable clken and disable gclken
@@ -646,9 +648,9 @@ static int sp_mipi_i2c_runtime_suspend(struct device *dev)
 	sp_mipi_i2c_info_t *pstSpI2CInfo = dev_get_drvdata(dev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if (p_adap->nr < I2C_MASTER_NUM) {
+	if ((p_adap->nr >= MIPI_I2C_1ST_CH) && (p_adap->nr < MIPI_I2C_MAX_TH)) {
 	  reset_control_assert(pstSpI2CInfo->rstc_isp);
 	  reset_control_assert(pstSpI2CInfo->rstc_ispapb);
 	}
@@ -661,9 +663,9 @@ static int sp_mipi_i2c_runtime_resume(struct device *dev)
 	sp_mipi_i2c_info_t *pstSpI2CInfo = dev_get_drvdata(dev);
 	struct i2c_adapter *p_adap = &pstSpI2CInfo->adap;
 
-	MIPI_I2C_DEBUG();
+	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if (p_adap->nr < I2C_MASTER_NUM) {
+	if ((p_adap->nr >= MIPI_I2C_1ST_CH) && (p_adap->nr < MIPI_I2C_MAX_TH)) {
 	  reset_control_deassert(pstSpI2CInfo->rstc_isp);       // release reset
 	  reset_control_deassert(pstSpI2CInfo->rstc_ispapb);    // release reset
 	  clk_prepare_enable(pstSpI2CInfo->clkc_isp);           // enable clken and disable gclken

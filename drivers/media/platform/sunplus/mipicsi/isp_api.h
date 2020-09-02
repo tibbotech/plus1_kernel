@@ -5,7 +5,7 @@
 #include <linux/kernel.h>
 #include "reg_mipi.h"
 
-#define ISPAPB_DEBUG_ON
+//#define ISPAPB_DEBUG_ON
 #ifdef ISPAPB_DEBUG_ON
 #define ISPAPB_TAG "[ISP-APB] "
 #define ISPAPB_LOGE(fmt, ...) printk(KERN_ERR ISPAPB_TAG fmt,##__VA_ARGS__)
@@ -73,9 +73,7 @@ enum ISP_FORMAT {
 	YUV422_FORMAT,              // 0x00
 	YUV422_FORMAT_UYVY_ORDER,   // 0x01
 	YUV422_FORMAT_YUYV_ORDER,   // 0x02
-
 	RAW8_FORMAT = 0x10,         // 0x10
-
 	RAW10_FORMAT = 0x20,        // 0x20
 	RAW10_FORMAT_PACK_MODE,     // 0x21
 };
@@ -83,8 +81,9 @@ enum ISP_FORMAT {
 enum ISP_SCALE_SIZE {
 	SCALE_DOWN_OFF,
 	SCALE_DOWN_FHD_HD,
+	SCALE_DOWN_FHD_WVGA,
 	SCALE_DOWN_FHD_VGA,
-	SCALE_DOWN_FHD_QVGA,
+	SCALE_DOWN_FHD_QQVGA,
 };
 
 /* Image information definition */

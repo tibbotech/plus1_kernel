@@ -398,6 +398,23 @@ void CdspInit_raw10(struct mipi_isp_info *isp_info)
 			reg_21b8 = 0x2F;                    // enable H/V scale down
 			break;
 
+		case SCALE_DOWN_FHD_WVGA:
+			ISPAPB_LOGI("Scale down from FHD to WVGA size\n");
+			// H = 720 * 65536 / 1920 = 0x6000
+			// V = 480 * 65536 / 1080 = 0x71C8
+			reg_21b0 = 0x00; // factor for Hsize
+			reg_21b1 = 0x60; //
+			reg_21b2 = 0xC8; // factor for Vsize
+			reg_21b3 = 0x71; //
+			//
+			reg_21b4 = 0x00; // factor for Hsize
+			reg_21b5 = 0x60; //
+			reg_21b6 = 0xC8; // factor for Vsize
+			reg_21b7 = 0x71; //
+			//
+			reg_21b8 = 0x2F; // enable H/V scale down
+			break;
+
 		case SCALE_DOWN_FHD_VGA:
 			ISPAPB_LOGI("Scale down from FHD to VGA size\n");
 			// H = 640 * 65536 / 1920 = 0x5556
@@ -415,7 +432,7 @@ void CdspInit_raw10(struct mipi_isp_info *isp_info)
 			reg_21b8 = 0x2F;                    // enable H/V scale down
 			break;
 			
-		case SCALE_DOWN_FHD_QVGA:
+		case SCALE_DOWN_FHD_QQVGA:
 			ISPAPB_LOGI("Scale down from FHD to QVGA size\n");
 			// H = 160 * 65536 / 1920 = 0x1556
 			// V = 120 * 65536 / 1080 = 0x1C72

@@ -205,8 +205,6 @@ static const struct sp_fmt *get_format(const struct sp_mipi_subdev_info *sdinfo,
 	MIPI_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
 	for (k = 0; k < size; k++) {
-		MIPI_INFO("fourcc: 0x%04x, pixel_fmt: 0x%04x\n", formats[k].fourcc, pixel_fmt); // CCHo added for debugging
-
 		if (formats[k].fourcc == pixel_fmt) {
 			break;
 		}
@@ -255,8 +253,9 @@ static void mipi_isp_init(struct sp_mipi_device *mipi)
 	u16 width = mipi->cur_format->width;
 	u16 height = mipi->cur_format->height;
 	u8 input_format = YUV422_FORMAT;
-	u8 output_format = YUV422_FORMAT;
+	u8 output_format = YUV422_FORMAT_YUYV_ORDER;
 	u8 scale = SCALE_DOWN_OFF;
+	//u8 scale = SCALE_DOWN_FHD_HD;
 
 	MIPI_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
@@ -350,6 +349,12 @@ static void csiiw_init(struct sp_mipi_device *mipi)
 			height = 720;
 			MIPI_INFO("Scale down FHD to HD (%ux%u)\n", width, height);
 			break;
+
+		case SCALE_DOWN_FHD_WVGA:
+			width = 720;
+			height = 480;
+			MIPI_INFO("Scale down FHD to WVGA (%ux%u)\n", width, height);
+			break;
 	
 		case SCALE_DOWN_FHD_VGA:
 			width = 640;
@@ -357,10 +362,10 @@ static void csiiw_init(struct sp_mipi_device *mipi)
 			MIPI_INFO("Scale down FHD to VGA (%ux%u)\n", width, height);
 			break;
 	
-		case SCALE_DOWN_FHD_QVGA:
+		case SCALE_DOWN_FHD_QQVGA:
 			width = 160;
 			height = 120;
-			MIPI_INFO("Scale down FHD to QVGA (%ux%u)\n", width, height);
+			MIPI_INFO("Scale down FHD to QQVGA (%ux%u)\n", width, height);
 			break;
 
 		default:
@@ -378,7 +383,8 @@ static void csiiw_init(struct sp_mipi_device *mipi)
 			// 2 pixels, 4 bytes, 32 bits
 			line_stride = LINE_STRIDE((width/2)*4);
 
-			if (mipi->isp_info.output_fmt == YUV422_FORMAT_YUYV_ORDER) {
+			if (((mipi->isp_info.input_fmt == YUV422_FORMAT_UYVY_ORDER) && (mipi->isp_info.output_fmt == YUV422_FORMAT_YUYV_ORDER)) ||
+				((mipi->isp_info.input_fmt == YUV422_FORMAT_YUYV_ORDER) && (mipi->isp_info.output_fmt == YUV422_FORMAT_UYVY_ORDER))) {
 				config2 |= YCSWAP_EN_ENA;       // YCSWAP_EN = 1 (bit 1)
 			}
 			break;
@@ -1331,7 +1337,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 						    i2c_adap,
 						    &sdinfo->board_info,
 						    NULL);
-		MIPI_DBG("i:%d, subdev:0x%px\n", i, subdev); // CCHo added for debugging
+
 		if (subdev) {
 			subdev->grp_id = sdinfo->grp_id;
 			MIPI_INFO("Registered V4L2 subdevice \'%s\'.\n", sdinfo->name);

@@ -35,7 +35,7 @@
 
 
 /* Message Definition */
-#define MIPI_FUNC_DEBUG
+//#define MIPI_FUNC_DEBUG
 #define MIPI_FUNC_INFO
 #define MIPI_FUNC_ERR
 
