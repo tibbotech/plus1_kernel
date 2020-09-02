@@ -873,7 +873,7 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	struct sunplus_uartdma_info *uartdma_rx;
 	volatile struct regs_uarxdma *rxdma_reg;
 	struct tty_struct *tty = port->state->port.tty;
-	u32 offset_sw, offset_hw, rx_size;
+	u32 offset_sw, offset_hw, rx_size, dma_start;
 	u8 *sw_ptr, *buf_end_ptr, *u8_ptr;
 	u32 icount_rx;
 	u32 tmp_u32;
@@ -883,8 +883,9 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	uartdma_rx = sp_port->uartdma_rx;
 	rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
 
-	offset_sw = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
-	offset_hw = readl_relaxed(&(rxdma_reg->rxdma_wr_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
+        dma_start = readl_relaxed(&(rxdma_reg->rxdma_start_addr));
+	offset_sw = readl(&(rxdma_reg->rxdma_rd_adr)) - dma_start;
+	offset_hw = readl(&(rxdma_reg->rxdma_wr_adr)) - dma_start;
 
 	if (offset_hw >= offset_sw) {
 		rx_size = offset_hw - offset_sw;
@@ -931,19 +932,19 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 			sw_ptr = (u8 *)(uartdma_rx->buf_va);
 		}
 	}
-	tmp_u32 = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
+	tmp_u32 = readl(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
 	if (tmp_u32 <= readl_relaxed(&(rxdma_reg->rxdma_end_addr))) {
-		writel_relaxed(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
+		writel(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
 	} else {
-		writel_relaxed((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
+		writel((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
 	}
 
 	spin_unlock(&port->lock);
 	tty_flip_buffer_push(tty->port);
 	spin_lock(&port->lock);
 
-	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
-	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
 }
 
 static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
