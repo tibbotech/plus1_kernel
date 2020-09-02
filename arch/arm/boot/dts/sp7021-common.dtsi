@@ -186,10 +186,7 @@
 			clocks = <&clkc UA0>;
 			resets = <&rstc RST_UA0>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&pins_uart0>;
-		#if 0 //TTYS_GPIO in sp_uart.c
-			uart-gpio = <&pctl 0 GPIO_ACTIVE_HIGH>;
-		#endif
+			pinctrl-0 = <&pins_uart0>;		
 		};
 
 		uart1: serial@sp_uart1 {
@@ -901,10 +898,7 @@
 
 			pins_uart0: pins_uart0 {
 				sppctl,groups = "UA0";
-				sppctl,function = "UA0";
-			#if 0 //TTYS_GPIO in sp_uart.c
-				sppctl,pins = < SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, 1) >;
-			#endif
+				sppctl,function = "UA0";			
 			};
 
 			emmc_mux: emmc_mux {

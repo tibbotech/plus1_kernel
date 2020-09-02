@@ -1939,17 +1939,18 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->fifosize = 16;
 	port->line = pdev->id;
 
-	if (pdev->id == 0){
+	if (pdev->id == 0)
 		port->cons = &sunplus_console;
 #ifdef TTYS_GPIO
+	if (pdev->id == 1){
+
 		uart_gpio = of_get_named_gpio(pdev->dev.of_node, "uart-gpio", 0);		
 		if (!gpio_is_valid(uart_gpio))
 			printk("gpio get error\n");
 		else
 			printk("gpio no. %d\n", uart_gpio);
-#endif
 	}
-
+#endif
 	port->private_data = container_of(&sunplus_uart_ports[pdev->id].uport, struct sunplus_uart_port, uport);
 	sprintf(sunplus_uart_ports[pdev->id].name, "sp_uart%d", pdev->id);
 

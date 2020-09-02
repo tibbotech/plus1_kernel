@@ -99,6 +99,9 @@
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart1>;
+#if 0 //TTYS_GPIO in sp_uart.c
+	uart-gpio = <&pctl 0 GPIO_ACTIVE_HIGH>;
+#endif
 	status = "disabled";
 };
 
@@ -227,6 +230,9 @@
 		sppctl,pins = <
 			SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_UA1_TX,0)
 			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_UA1_RX,0)
+	#if 0 //TTYS_GPIO in sp_uart.c
+			SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, 1)
+	#endif
 		>;
 	};
 	
