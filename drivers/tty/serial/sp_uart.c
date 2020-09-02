@@ -24,6 +24,7 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #endif
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
@@ -40,7 +41,7 @@
 /* ---------------------------------------------------------------------------------------------- */
 //#define TTYS_KDBG_INFO
 //#define TTYS_KDBG_ERR
-
+//#define TTYS_GPIO
 #ifdef TTYS_KDBG_INFO
 #define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_TTYS: " fmt, ## args)
 #else
@@ -859,8 +860,8 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 		sp_uart_set_modem_ctrl(port->membase, (sp_uart_get_modem_ctrl(port->membase)) | (1 << 4));
 	}
 #endif
-
-	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {
+        
+	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {		
 		receive_chars(port);
 	}
 
@@ -880,7 +881,7 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 	struct sunplus_uartdma_info *uartdma_rx;
 	volatile struct regs_uarxdma *rxdma_reg;
 	struct tty_struct *tty = port->state->port.tty;
-	u32 offset_sw, offset_hw, rx_size;
+	u32 offset_sw, offset_hw, rx_size, dma_start;
 	u8 *sw_ptr, *buf_end_ptr, *u8_ptr;
 	u32 icount_rx;
 	u32 tmp_u32;
@@ -889,9 +890,10 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 
 	uartdma_rx = sp_port->uartdma_rx;
 	rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
-
-	offset_sw = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
-	offset_hw = readl_relaxed(&(rxdma_reg->rxdma_wr_adr)) - readl_relaxed(&(rxdma_reg->rxdma_start_addr));
+        
+        dma_start = readl_relaxed(&(rxdma_reg->rxdma_start_addr));
+	offset_sw = readl(&(rxdma_reg->rxdma_rd_adr)) - dma_start;
+	offset_hw = readl(&(rxdma_reg->rxdma_wr_adr)) - dma_start;
 
 	if (offset_hw >= offset_sw) {
 		rx_size = offset_hw - offset_sw;
@@ -938,19 +940,19 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 			sw_ptr = (u8 *)(uartdma_rx->buf_va);
 		}
 	}
-	tmp_u32 = readl_relaxed(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
+	tmp_u32 = readl(&(rxdma_reg->rxdma_rd_adr)) + rx_size;
 	if (tmp_u32 <= readl_relaxed(&(rxdma_reg->rxdma_end_addr))) {
-		writel_relaxed(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
+		writel(tmp_u32, &(rxdma_reg->rxdma_rd_adr));
 	} else {
-		writel_relaxed((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
+		writel((tmp_u32 - UARXDMA_BUF_SZ), &(rxdma_reg->rxdma_rd_adr));
 	}
 
 	spin_unlock(&port->lock);
 	tty_flip_buffer_push(tty->port);
 	spin_lock(&port->lock);
 
-	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
-	writel_relaxed(readl_relaxed(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_INT, &(rxdma_reg->rxdma_enable_sel));
+	writel_relaxed(readl(&(rxdma_reg->rxdma_enable_sel)) | DMA_GO, &(rxdma_reg->rxdma_enable_sel));
 }
 
 static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
@@ -959,7 +961,11 @@ static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 	unsigned long flags;
 
 	spin_lock_irqsave(&port->lock, flags);
+#ifdef TTYS_GPIO
+	gpio_set_value(0, 1);
+#endif
 	receive_chars_rxdma(port);
+	//gpio_set_value(0, 0);
 	spin_unlock_irqrestore(&port->lock, flags);
 
 	return IRQ_HANDLED;
@@ -1734,7 +1740,9 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int idx_offset, idx;
 	int idx_which_uart;
 	char peri_name[16];
-
+#ifdef TTYS_GPIO
+	int uart_gpio;
+#endif
   //    DBG_INFO("sunplus_uart_platform_driver_probe_of");
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "serial");
@@ -1931,8 +1939,16 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->fifosize = 16;
 	port->line = pdev->id;
 
-	if (pdev->id == 0)
+	if (pdev->id == 0){
 		port->cons = &sunplus_console;
+#ifdef TTYS_GPIO
+		uart_gpio = of_get_named_gpio(pdev->dev.of_node, "uart-gpio", 0);		
+		if (!gpio_is_valid(uart_gpio))
+			printk("gpio get error\n");
+		else
+			printk("gpio no. %d\n", uart_gpio);
+#endif
+	}
 
 	port->private_data = container_of(&sunplus_uart_ports[pdev->id].uport, struct sunplus_uart_port, uport);
 	sprintf(sunplus_uart_ports[pdev->id].name, "sp_uart%d", pdev->id);
