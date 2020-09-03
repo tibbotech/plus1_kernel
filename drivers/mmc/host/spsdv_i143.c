@@ -53,7 +53,9 @@ static inline u32 bitfield_extract(u32 reg_val, u32 shift, u32 width)
 /* Replace the value of a bitfield found within a given register value */
 static inline u32 bitfield_replace(u32 reg_val, u32 shift, u32 width, u32 val)
 {
-	u32 mask = bitfield_mask(shift, width);
+	u32 mask = 0;
+
+	mask = bitfield_mask(shift, width);
 
 	return (reg_val & ~mask) | (val << shift);
 }
@@ -575,9 +577,10 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	struct mmc_data *data = mrq->data;
 	u32 value = readl(&host->base->sd_state);
 	u32 crc_token = bitfield_extract(value, SPSDC_sdcrdcrc_w03, 3);
+	u32 timing_cfg0 = readl(&host->base->sd_timing_config0);
+	
 	if (unlikely(value & SPSDC_SDSTATE_ERROR)) {
-		u32 timing_cfg0;
-		spsdc_pr(DEBUG, "%s cmd %d with data %x error!\n", __func__, cmd->opcode, data);
+		spsdc_pr(DEBUG, "%s cmd %d with data %08x error!\n", __func__, cmd->opcode, (unsigned int)(long)data);
 		spsdc_pr(VERBOSE, "%s sd_state: 0x%08x\n", __func__, value);
 		value = readl(&host->base->sd_status);
 		spsdc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
@@ -818,8 +821,9 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct spsdc_host *host = mmc_priv(mmc);
 	struct mmc_data *data;
 	struct mmc_command *cmd;
+	int ret = 0;
 
-	mutex_lock_interruptible(&host->mrq_lock);
+	ret = mutex_lock_interruptible(&host->mrq_lock);
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
@@ -987,6 +991,33 @@ static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	writel(value, &host->base->sd_int);
 }
 
+
+static const struct spsdc_compatible sp_sdcard_compat = {
+	.mode = SPSDC_MODE_SD,
+};
+
+static const struct spsdc_compatible sp_sdio_compat = {
+	.mode = SPSDC_MODE_SDIO,
+};
+
+
+
+static const struct of_device_id spsdc_of_table[] = {
+	{
+		.compatible = "sunplus,i143-card1",
+		.data = &sp_sdcard_compat,
+	},
+	{
+		.compatible = "sunplus,i143-sdio",
+		.data = &sp_sdio_compat,
+	},
+	{/* sentinel */}
+
+};
+MODULE_DEVICE_TABLE(of, spsdc_of_table);
+
+
+
 static const struct mmc_host_ops spsdc_ops = {
 	.request = spsdc_request,
 	.set_ios = spsdc_set_ios,
@@ -1071,19 +1102,19 @@ static int config_bus_width_store(struct spsdc_host *host, const char *arg)
 
 static int config_mode_show(struct spsdc_host *host, char *buf)
 {
-	char *mode;
+	int ret = 0;
 	switch (host->mode) {
 	case SPSDC_MODE_SD:
-		mode = "SD";
+		ret = sprintf(buf, "*mode: SD\n");
 		break;
 	case SPSDC_MODE_SDIO:
-		mode = "SDIO";
+		ret = sprintf(buf, "*mode: SDIO\n");
 		break;
 	case SPSDC_MODE_EMMC:
-		mode = "eMMC";
+		ret = sprintf(buf, "*mode: eMMC\n");
 		break;
 	}
-	return sprintf(buf, "*mode: %s\n", mode);
+	return ret;
 }
 
 static int config_mode_store(struct spsdc_host *host, const char *arg)
@@ -1105,16 +1136,16 @@ static int config_mode_store(struct spsdc_host *host, const char *arg)
 
 static int config_dmapio_mode_show(struct spsdc_host *host, char *buf)
 {
-	char *dmapio_mode;
+	int ret = 0;
 	switch (host->dmapio_mode) {
 	case SPSDC_DMA_MODE:
-		dmapio_mode = "DMA";
+		ret = sprintf(buf, "*dmapio_mode: DMA\n"); 
 		break;
 	case SPSDC_PIO_MODE:
-		dmapio_mode = "PIO";
+		ret = sprintf(buf, "*dmapio_mode: PIO\n"); 
 		break;
 	}
-	return sprintf(buf, "*dmapio_mode: %s\n", dmapio_mode);
+	return ret;
 }
 
 static int config_dmapio_mode_store(struct spsdc_host *host, const char *arg)
@@ -1296,7 +1327,8 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	struct mmc_host *mmc;
 	struct resource *resource;
 	struct spsdc_host *host;
-	unsigned int mode;
+	const struct spsdc_compatible *dev_mode;
+
 
 	if ((ret = spsdc_device_create_sysfs(pdev))) {
 		return ret;
@@ -1363,7 +1395,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		ret = -ENOENT;
 		goto probe_free_host;
 	}
-	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%x, irq:%d\n", host->base, host->irq);
+	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%08x, irq:%d\n", (unsigned int)(long)host->base, host->irq);
 
 
 	ret = mmc_of_parse(mmc);
@@ -1392,10 +1424,10 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	//mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 
 
-	mode = (int)of_device_get_match_data(&pdev->dev);
-	spsdc_select_mode(host, mode);
+	dev_mode = of_device_get_match_data(&pdev->dev);
+	spsdc_select_mode(host, dev_mode->mode);
 
-    if(mode == SPSDC_MODE_SD){
+    if(dev_mode->mode == SPSDC_MODE_SD){
 	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED
 		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
 		    | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
@@ -1519,19 +1551,6 @@ static struct dev_pm_ops spsdc_pm_ops = {
 };
 #endif /* ifdef CONFIG_PM */
 
-static const struct of_device_id spsdc_of_table[] = {
-	{
-		.compatible = "sunplus,i143-card1",
-		.data = (void *)SPSDC_MODE_SD,
-	},
-	{
-		.compatible = "sunplus,i143-sdio",
-		.data = (void *)SPSDC_MODE_SDIO,
-	},
-	{/* sentinel */}
-
-};
-MODULE_DEVICE_TABLE(of, spsdc_of_table);
 
 static struct platform_driver spsdc_driver = {
 	.probe = spsdc_drv_probe,

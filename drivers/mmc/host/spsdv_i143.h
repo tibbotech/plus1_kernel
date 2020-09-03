@@ -266,6 +266,11 @@ struct spsdc_tuning_info {
 		
 };
 
+struct spsdc_compatible {
+	int mode; /* SD/SDIO/eMMC */
+};
+
+
 struct spsdc_host {
 	struct spsdc_regs *base;
 	struct clk *clk;
