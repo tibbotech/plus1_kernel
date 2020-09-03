@@ -1,7 +1,7 @@
 config FB_I143
 	tristate "I143 Graphics Backend framebuffer support"
 	depends on FB && SOC_I143 && VIDEO_I143_DISP
-	default n
+	default y
 	help
 	  This is the frame buffer device driver for the I143 Graphics
 	  hardware.
