@@ -534,7 +534,7 @@
 			compatible = "sunplus,i143-usb-phy1";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_UPHY1>;
-			reg = <0x0 0x9C004B00 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>;
+			reg = <0x0 0x9C004B00 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>, <0x0 0x9c109000 0x0 0x280>;
 			interrupt-parent = <&intc>;
 			interrupts = <30 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -613,6 +613,28 @@
 			pinctrl-0 = <&otg1_pins>;
 		};
 
+                usb_dwc3 {
+			compatible = "sunplus,i143-dwusb3";		
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			usbdrd_dwc3: dwc3@9c040000 {
+				compatible = "synopsys,dwc3";
+				reg = <0x0 0x9c040000 0x0 0xe000>;
+				clocks = <&clkc USB30C>, <&clkc USB30C>, <&clkc USB30C>;
+			        clock-names = "ref","bus_early","suspend";
+				resets = <&rstc RST_USB30C>;
+				interrupt-parent = <&intc>;
+			        interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
+				//phys = <&usbdrd_phy 0>, <&usbdrd_phy 1>;
+				//phy-names = "usb2-phy", "usb3-phy";
+				maximum-speed = "super-speed";
+				dr_mode = "host";
+				//status = "disabled";
+			};
+		};
+		
 		i2cm4: i2c@sp_i2cm4 {
 			compatible = "sunplus,sp7021-mipi-i2c";
 			reg = <0x0 0x9c153000 0x0 0x1300>,
