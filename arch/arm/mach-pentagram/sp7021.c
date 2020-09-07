@@ -32,11 +32,11 @@ static void sp_power_off(void)
 	#ifdef CONFIG_SUNPLUS_IOP
     //for iop power off
 	sp_iop_platform_driver_poweroff();
-	#endif 
+	#endif
 	//writel(0x0000, regs_B + 0x434); /* iop_data5=0x0000 */
 	//writel(0x0060, regs_B + 0x438); /* iop_data6=0x0060 */
 	//writel(0x00dd, regs_B + 0x424); /* iop_data1=0x00dd */
- 		
+
 	//printk("PD RG_PLL_PDN and RG_PLLIO_PDN to save power\n");
 	writel(0, regs + 0x54); /* bit0 RG_PLLIO_PDN */
 	writel(0, regs + 0x2C); /* bit0 RG_PLL_PDN */
@@ -44,9 +44,9 @@ static void sp_power_off(void)
 		;
 
 //	printk("PD Achip mo_gclk_en0/mo_clk_en0 to save power \n");
-//	writel(0, regs + 0x28); 
-//	writel(0, regs + 0x24); 
-//	
+//	writel(0, regs + 0x28);
+//	writel(0, regs + 0x24);
+//
 //	printk("disable Q628 clk and enable reset to save power\n");
 //	for (i = 0; i < 20; i++) {
 //		writel(0xffff0000 , (void __iomem *)(B_SYSTEM_BASE + 4 * (1 + i)));
@@ -129,11 +129,11 @@ static void __init sp_init(void)
 #endif
 
 #ifdef CONFIG_SP_PARTIAL_CLKEN
-	//apply_partial_clken();
+	apply_partial_clken();
 #endif
 
-		sp7021_cpuidle.dev.platform_data = &cpuidle_coupled_sp7021_data;
-		platform_device_register(&sp7021_cpuidle);
+	sp7021_cpuidle.dev.platform_data = &cpuidle_coupled_sp7021_data;
+	platform_device_register(&sp7021_cpuidle);
 }
 
 static struct map_desc sp_io_desc[] __initdata = {
@@ -195,7 +195,7 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 	#ifdef CONFIG_SUNPLUS_IOP
 	unsigned int reg_value;
-	#endif 
+	#endif
 	early_printk("%s\n", __func__);
 	/* MOON : enable watchdog reset */
 	writel(0x00120012, regs + 0x0274); /* G4.29 misc_ctl */
@@ -208,8 +208,8 @@ void sp_restart(enum reboot_mode mode, const char *cmd)
 
 	#ifdef CONFIG_SUNPLUS_IOP
 	reg_value = readl(regs + 0x400);
-	writel((reg_value|0x0001), regs + 0x400); 
-	#endif 
+	writel((reg_value|0x0001), regs + 0x400);
+	#endif
 }
 
 #ifdef CONFIG_MACH_PENTAGRAM_SP7021_BCHIP
