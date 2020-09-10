@@ -428,7 +428,8 @@ irqreturn_t ethernet_rx_interrupt(int irq, void *dev_id)
 			__napi_schedule(&comm->napi);
 		}
 #else /* RX_POLLING */
-		if (status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)) {
+		if (status & (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H |
+			MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)) {
 	#ifdef INTERRUPT_IMMEDIATELY
 			rx_interrupt(mac);
 	#else

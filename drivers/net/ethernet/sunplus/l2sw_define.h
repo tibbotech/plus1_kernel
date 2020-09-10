@@ -93,8 +93,8 @@
 					MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
 #else
 // Note that due to a hardware bug, TCPUDP_APPEND_ERROR cannot be masked. Must handle it.
-#define MAC_INT_RX                      (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H)
-#define MAC_INT_RX_MASK_DEF             (MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
+#define MAC_INT_RX                      (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H | MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
+#define MAC_INT_RX_MASK_DEF             (0)
 #define MAC_INT_TX                      (MAC_INT_TCPUDP_CHKSUM_ERR | MAC_INT_PORT_ST_CHG | MAC_INT_TX_DONE_L | \
 					MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR | MAC_INT_RX_DES_ERR)
 #define MAC_INT_TX_MASK_DEF             (MAC_INT_DAISY_MODE_CHG | MAC_INT_MEM_TEST_DONE | \
@@ -193,8 +193,13 @@
 /*config descriptor*/
 #define TX_DESC_NUM                     16
 #define MAC_GUARD_DESC_NUM              2
+#ifdef CONFIG_SOC_SP7021
 #define RX_QUEUE0_DESC_NUM              16
 #define RX_QUEUE1_DESC_NUM              16
+#else
+#define RX_QUEUE0_DESC_NUM              64
+#define RX_QUEUE1_DESC_NUM              64
+#endif
 #define TX_DESC_QUEUE_NUM               1
 #define RX_DESC_QUEUE_NUM               2
 
