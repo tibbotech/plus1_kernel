@@ -743,7 +743,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		ETH_ERR(" Failed to get phy-handle!\n");
 	}
 
-	phy_cfg();
+	phy_cfg(mac);
 #endif
 
 #ifdef RX_POLLING

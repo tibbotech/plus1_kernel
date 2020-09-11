@@ -456,11 +456,11 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 	wmb();
 }
 
-int phy_cfg()
+int phy_cfg(struct l2sw_mac *mac)
 {
 	// Enable flow control of phy.
-	mdio_write(0, 4, mdio_read(0, 4) | (3<<10));
-	mdio_write(1, 4, mdio_read(1, 4) | (3<<10));
+	mdio_write(mac->comm->phy1_addr, 4, mdio_read(mac->comm->phy1_addr, 4) | (3<<10));
+	mdio_write(mac->comm->phy2_addr, 4, mdio_read(mac->comm->phy2_addr, 4) | (3<<10));
 
 	return 0;
 }

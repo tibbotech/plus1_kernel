@@ -55,7 +55,7 @@ u32 read_sw_int_status(void);
 
 u32 read_port_ability(void);
 
-int phy_cfg(void);
+int phy_cfg(struct l2sw_mac *mac);
 
 void l2sw_enable_port(struct l2sw_mac *mac);
 

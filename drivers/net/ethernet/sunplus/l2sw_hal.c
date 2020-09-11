@@ -445,13 +445,13 @@ void l2sw_enable_port(struct l2sw_mac *mac)
 	wmb();
 }
 
-int phy_cfg()
+int phy_cfg(struct l2sw_mac *mac)
 {
 	// Bug workaround:
 	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
 	// to the bit to decide to enable or disable flow-control.
-	mdio_write(0, 4, mdio_read(0, 4) | (1<<10));
-	mdio_write(1, 4, mdio_read(1, 4) | (1<<10));
+	mdio_write(mac->comm->phy1_addr, 4, mdio_read(mac->comm->phy1_addr, 4) | (1<<10));
+	mdio_write(mac->comm->phy2_addr, 4, mdio_read(mac->comm->phy2_addr, 4) | (1<<10));
 
 	return 0;
 }
