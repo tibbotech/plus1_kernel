@@ -8,7 +8,16 @@
 // video test itme
 // 0 - always input video from camera
 // 1 - check the ability of start/stop video
-#define VIDEO_TEST (0)
+// 2 - check AE and AWB functions
+#define VIDEO_TEST (2)
+
+#if (VIDEO_TEST == 2)
+#define ENABLE_3A
+#endif
+#ifdef ENABLE_3A
+#include "3a.h"
+#endif
+int VideoStart = 0;
 
 #define BYPASSCDSP_NEW_RAW10	(0)
 #define BYPASSCDSP_RAW8			(0)
@@ -61,6 +70,27 @@ typedef struct
 } CDSP_INIT_FILE_T;
 
 //sensor struct
+#ifdef ENABLE_3A
+char AAA_INIT_FILE[] = {
+	#include "AaaInit.txt"
+};
+
+char AE_TABLE[] = {
+	#include "aeexp60.txt"
+};
+
+char GAIN_TABLE[] = {
+	#include "aegain60.txt"
+};
+
+//#define AE_TABLE				"aeexp60.txt"	//aeexp60.txt, aeexp50.txt
+//#define GAIN_TABLE				"aegain60.txt" 	//aegain60.txt, aegain50.txt
+#define SC2310_GAIN_ADDR		(0x3E08)
+#define SC2310_FRAME_LEN_ADDR	(0x320E)
+#define SC2310_LINE_TOTAL_ADDR	(0x320C)
+#define SC2310_EXP_LINE_ADDR	(0x3E01)
+#define SC2310_PCLK				(0x046CF710)
+#endif
 #define SC2310_DEVICE_ADDR		(0x60)
 //#define MAX_SENSOR_REG_LEN		(400) // This causes a warning. warning: the frame size of 2416 bytes is larger than 2048 bytes.
 #define MAX_SENSOR_REG_LEN		(200)
@@ -98,6 +128,46 @@ typedef struct
 	//SENSOR_DATA_T SENSOR_DATA[(u16)(ARRAY_SIZE(SENSOR_INIT_FILE)/sizeof(SENSOR_DATA_T))];
 } SENSOR_INIT_FILE_T;
 
+/* sensor frame rate initialization */
+/* sensor 0 */
+#define SENSOR_FRAME_RATE   0
+
+unsigned char SF_SENSOR_FRAME_RATE[8][2][4] = {
+	{        /*  op    a[0]  a[1]  d         30fps*/
+		{        0x00, 0x32, 0x0C, 0x04,        },
+		{        0x00, 0x32, 0x0d, 0x4C,        },
+	},
+	{        /*  op    a[0]  a[1]  d         25fps*/
+		{        0x00, 0x32, 0x0C, 0x05,        },
+		{        0x00, 0x32, 0x0d, 0x28,        },
+	},
+	{        /*  op    a[0]  a[1]  d         20fps*/
+		{        0x00, 0x32, 0x0C, 0x06,        },
+		{        0x00, 0x32, 0x0d, 0x72,        },
+	},
+	{        /*  op    a[0]  a[1]  d         15fps*/
+		{        0x00, 0x32, 0x0C, 0x08,        },
+		{        0x00, 0x32, 0x0d, 0x98,        },
+	},
+	{        /*  op    a[0]  a[1]  d         10fps*/
+		{        0x00, 0x32, 0x0C, 0x0C,        },
+		{        0x00, 0x32, 0x0d, 0xE4,        },
+	},
+	{        /*  op    a[0]  a[1]  d         5fps*/
+		{        0x00, 0x32, 0x0C, 0x19,        },
+		{        0x00, 0x32, 0x0d, 0xC8,        },
+	},
+	{        /*  op    a[0]  a[1]  d         3fps*/
+		{        0x00, 0x32, 0x0C, 0x2A,        },
+		{        0x00, 0x32, 0x0d, 0xF8,        },
+	},
+	{        /*  op    a[0]  a[1]  d         1fps*/
+		{        0x00, 0x32, 0x0C, 0x80,        },
+		{        0x00, 0x32, 0x0d, 0xE8,        },
+	}
+};
+
+// Load settings table
 unsigned char SF_FIXED_PATTERN_NOISE_S[]={
 	#include "FixedPatternNoise_s.txt"
 };
@@ -145,6 +215,38 @@ void ispSleep_s(int delay)
 	time = delay * ISP_DELAY_TIMEBASE;
 	ISPAPB_LOGI("%s, delay %lld ns\n", __FUNCTION__, time);
 	ndelay(time);
+}
+
+void ispVsyncIntCtrl(struct mipi_isp_info *isp_info, u8 on)
+{
+	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+
+	if (on) {
+		/* clear vd falling edge interrupt AAF061 W1C*/
+		writeb(2, &(regs->reg[0x27B0]));
+		/* enable vd falling edge interrupt */
+		writeb(readb(&(regs->reg[0x27C0]))|0x02, &(regs->reg[0x27C0]));
+	}
+	else {
+		/* disable vd falling edge interrupt */
+		writeb(readb(&(regs->reg[0x27C0]))&0xFD, &(regs->reg[0x27C0]));
+		/* clear vd falling edge interrupt AAF061 W1C*/
+		writeb(2, &(regs->reg[0x27B0]));
+	}
+}
+
+void ispVsyncInt(struct mipi_isp_info *isp_info)
+{
+	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+
+	if (((readb(&(regs->reg[0x27C0])) & 0x02) == 0x02) &&	/* sensor vd falling interrupt enable */
+		((readb(&(regs->reg[0x27B0])) & 0x02) == 0x02)) {	/* sensor vd falling interrupt event */
+		intrIntr0SensorVsync(isp_info);
+		aaaAeAwbAf(isp_info);
+
+		/* clear vd falling edge interrupt AAF061 W1C*/
+		writeb(0x02, &(regs->reg[0x27B0]));
+	}
 }
 
 /*
@@ -380,6 +482,40 @@ void sensorInit_s(struct mipi_isp_info *isp_info)
 		}
 	}
 
+	/* set seneor frame rate */
+	/* In SensorInit.txt, the default is 30fps. So skip setting frame rate if  SENSOR_FRAME_RATE = 0*/
+	if (SENSOR_FRAME_RATE) {
+		read_file.count = 2;
+		for (i = 0; i < read_file.count; i++)
+		{
+			data[0] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][0];
+			data[1] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][1];
+			data[2] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][2];
+			data[3] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][3];
+			read_file.SENSOR_DATA[i].type = data[0];
+			read_file.SENSOR_DATA[i].adr	= (data[1]<<8)|data[2];
+			read_file.SENSOR_DATA[i].dat	= data[3];
+			ISPAPB_LOGI("%s, i=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n",
+				__FUNCTION__, i, data[0], data[1], data[2], data[3]);
+		}
+
+		ISPAPB_LOGI("%s, count=%d\n", __FUNCTION__, read_file.count);
+		for (i = 0; i < read_file.count; i++)
+		{
+			ISPAPB_LOGI("%s, type=0x%02x, adr=0x%04x, dat=0x%04x\n",
+				__FUNCTION__, read_file.SENSOR_DATA[i].type, read_file.SENSOR_DATA[i].adr, read_file.SENSOR_DATA[i].dat);
+
+			if (read_file.SENSOR_DATA[i].type == 0xFE)
+			{
+				udelay(read_file.SENSOR_DATA[i].adr*1000);
+			}
+			else if (read_file.SENSOR_DATA[i].type == 0x00)
+			{
+				setSensor16_I2C0((unsigned long)read_file.SENSOR_DATA[i].adr, read_file.SENSOR_DATA[i].dat, 1, isp_info);
+			}
+		}
+	}
+
 	/* use pixel clock, master clock and mipi decoder clock as they are  */
 	writeb(0x07, &(regs->reg[0x2008]));
 
@@ -604,23 +740,50 @@ void CdspInit_s(struct mipi_isp_info *isp_info)
 /*
 	@ispAaaInit_s
 */
-void ispAaaInit_s(void)
+void ispAaaInit_s(struct mipi_isp_info *isp_info)
 {
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
-	//not ready
+#ifdef ENABLE_3A
+	aaaLoadInit(AAA_INIT_FILE);
+	aeLoadAETbl(AE_TABLE); 
+	aeLoadGainTbl(GAIN_TABLE); 
+	aeInitExt(isp_info);
+	awbInit(isp_info);
+#endif
 
 	ISPAPB_LOGI("%s end\n", __FUNCTION__);
 }
 
+int isVideoStart(void)
+{
+	return VideoStart;
+}
+
 void videoStartMode(struct mipi_isp_info *isp_info)
 {
+	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
 	FrontInit_s(isp_info);
 	CdspInit_s(isp_info);
-	ispAaaInit_s();
-	//sensorInit_s(isp_info);
+	ispAaaInit_s(isp_info);
+	sensorInit_s(isp_info);
+
+	/* set and clear reset of buffer cdsp interface */
+	writeb(readb(&(regs->reg[0x2300]))|0x08, &(regs->reg[0x2300]));
+	writeb(readb(&(regs->reg[0x2300]))&0xF7, &(regs->reg[0x2300]));
+
+#ifdef ENABLE_3A	
+	vidctrlInit(isp_info, SC2310_GAIN_ADDR, SC2310_FRAME_LEN_ADDR, SC2310_LINE_TOTAL_ADDR,
+				SC2310_EXP_LINE_ADDR, SC2310_PCLK);
+	VideoStart = 1;
+	//InstallVSinterrupt();
+	//writeb(2, &(regs->reg[0x27B0]));    /* clear vd falling edge interrupt AAF061 W1C*/
+	//writeb(readb(&(regs->reg[0x27C0]))|0x02, &(regs->reg[0x27C0]));     /* enable vd falling edge interrupt */
+	//writeb(, &(regs->reg[0x2B00) = 0x01;   /* enable TNR */
+#endif
 
 	ISPAPB_LOGI("%s end\n", __FUNCTION__);
 }
@@ -630,6 +793,12 @@ void videoStopMode(struct mipi_isp_info *isp_info)
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
 
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
+
+#ifdef ENABLE_3A	
+	VideoStart = 0;
+	//writeb(readb(&(regs->reg[0x27C0]))&0xFD, &(regs->reg[0x27C0]));     /* disable vd falling edge interrupt */
+	//writeb(2, &(regs->reg[0x27B0]));    /* clear vd falling edge interrupt AAF061 W1C*/
+#endif
 
 	/* set reset of buffer jpeg, cdsp and usb interface */
 	writeb(0x1C, &(regs->reg[0x2300]));
@@ -656,7 +825,6 @@ void isp_setting_s(struct mipi_isp_info *isp_info)
 #if (VIDEO_TEST == 1)
 	int i;
 #endif
-	u16 data; // Add for test
 
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
@@ -669,12 +837,6 @@ void isp_setting_s(struct mipi_isp_info *isp_info)
 	/* check video stream from camera */
 	//powerSensorOn_RAM(isp_info);
 	videoStartMode(isp_info);
-
-	// Add for test
-	Reset_I2C0(isp_info);
-	Init_I2C0(SC2310_DEVICE_ADDR, 0, isp_info);
-	getSensor16_I2C0(0x3107, &data, 1, isp_info);
-	ISPAPB_LOGI("%s, data=0x%04x\n", __FUNCTION__, data);
 
 #elif (VIDEO_TEST == 1)
 	ISPAPB_LOGI("%s, check the stability of start/stop video\n", __FUNCTION__);
@@ -692,6 +854,14 @@ void isp_setting_s(struct mipi_isp_info *isp_info)
 		powerSensorDown_RAM(isp_info);
 		sleep(5);       // sec unit
 	}
+
+#elif (VIDEO_TEST == 2)
+	ISPAPB_LOGI("%s, check AE and AWB functions\n", __FUNCTION__);
+
+	/* check AE and AWB functions */
+	//powerSensorOn_RAM(isp_info);
+	videoStartMode(isp_info);
+
 #endif
 
 	ISPAPB_LOGI("%s end\n", __FUNCTION__);

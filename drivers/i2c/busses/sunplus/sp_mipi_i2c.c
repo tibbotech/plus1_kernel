@@ -509,7 +509,11 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 	temp_value = readl(&(sp_mipi_i2c_info->moon5_regs->mo5_cfg_0));
 	MIPI_I2C_INFO("mo5_cfg_0: 0x%08x\n",temp_value);
 
-	temp_value = temp_value | ((MO_ISPABP0_MODE_MASK<<16) | MO_ISPABP0_MODE_4T);
+	if (device_id == 4) {
+		temp_value = (MO_ISPABP0_MODE_MASK<<16)|MO_ISPABP0_MODE_4T;
+	} else {
+		temp_value = (MO_ISPABP1_MODE_MASK<<16)|MO_ISPABP1_MODE_4T;
+	}
 	MIPI_I2C_INFO("mo5_cfg_0 new setting: 0x%08x\n",temp_value);
 	writel(temp_value, &(sp_mipi_i2c_info->moon5_regs->mo5_cfg_0));
 

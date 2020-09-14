@@ -46,6 +46,7 @@
 		serial4 = &uart4;
 
 		i2c4 = &i2cm4;
+		i2c5 = &i2cm5;
 	};
 
 	chosen {
@@ -647,19 +648,54 @@
 			reset-names = "rstc_isp", "rstc_ispapb";
 		};
 
-		mipiisp0: mipicsi@0x9c005300 {
+		i2cm5: i2c@sp_i2cm5 {
+			compatible = "sunplus,sp7021-mipi-i2c";
+			reg = <0x0 0x9c155000 0x0 0x1300>,
+			      <0x0 0x9c000280 0x0 0x80>;
+			reg-names = "mipi_isp", "moon5";
+			i2c-freq = <0>;
+			clocks = <&clkc ISP1>, <&clkc ISPAPB1>;
+			clock-names = "clkc_isp", "clkc_ispapb";
+			resets = <&rstc RST_ISP1>, <&rstc RST_ISPAPB1>;
+			reset-names = "rstc_isp", "rstc_ispapb";
+		};
+
+		mipicsi0: mipicsi@0x9c005300 {
 			compatible = "sunplus,sp7021-mipicsi-rx";
 			reg = <0x0 0x9c005300 0x0 0x80>,
 			      <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "csi_iw", "mipi_isp", "moon5";
 			interrupt-parent = <&intc>;
-			interrupts = <78 IRQ_TYPE_EDGE_RISING>, <79 IRQ_TYPE_EDGE_RISING>;
+			interrupts = <78 IRQ_TYPE_EDGE_RISING>, <79 IRQ_TYPE_EDGE_RISING>,
+			             <76 IRQ_TYPE_EDGE_RISING>;
 			clocks = <&clkc CSIIW0>;
 			clock-names = "clkc_csiiw";
 			resets = <&rstc RST_CSIIW0>;
 			reset-names = "rstc_csiiw";
 			i2c-id = <4>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&mipicsi0_pins>;
+#if 0 // Demo board V3
+			cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;
+			cam_gpio1-gpios = <&pctl 93 GPIO_ACTIVE_HIGH>;
+#endif
+		};
+
+		mipicsi1: mipicsi@0x9c005400 {
+			compatible = "sunplus,sp7021-mipicsi-rx";
+			reg = <0x0 0x9c005400 0x0 0x80>,
+			      <0x0 0x9c155000 0x0 0x1300>,
+			      <0x0 0x9c000280 0x0 0x80>;
+			reg-names = "csi_iw", "mipi_isp", "moon5";
+			interrupt-parent = <&intc>;
+			interrupts = <80 IRQ_TYPE_EDGE_RISING>, <81 IRQ_TYPE_EDGE_RISING>,
+			             <77 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&clkc CSIIW1>;
+			clock-names = "clkc_csiiw";
+			resets = <&rstc RST_CSIIW1>;
+			reset-names = "rstc_csiiw";
+			i2c-id = <5>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&mipicsi0_pins>;
 #if 0 // Demo board V3

@@ -440,6 +440,36 @@ static void csiiw_init(struct sp_mipi_device *mipi)
 	MIPI_DBG("config2: 0x%08X(0x%08X)\n", readl(&mipi->csiiw_regs->csiiw_config2), config2);
 }
 
+irqreturn_t isp_vsync_isr(int irq, void *dev_instance)
+{
+	struct sp_mipi_device *mipi = dev_instance;
+
+	MIPI_DBG("%s, %d\n", __FUNCTION__, __LINE__); // CCHo added for debugging
+	ispVsyncInt(&mipi->isp_info);
+	return IRQ_HANDLED;
+}
+
+static int isp_irq_init(struct sp_mipi_device *mipi)
+{
+	int ret;
+
+	// Disable ISP Vsync interrupt
+	ispVsyncIntCtrl(&mipi->isp_info, 0);
+
+	mipi->vsync_irq = irq_of_parse_and_map(mipi->pdev->of_node, 2);
+	ret = devm_request_irq(mipi->pdev, mipi->vsync_irq, isp_vsync_isr, 0, "isp_vsync", mipi);
+	if (ret) {
+		goto err_isp_vsync_irq;
+	}
+
+	MIPI_INFO("Installed isp interrupt (vsync_irq=%d).\n", mipi->vsync_irq);
+	return 0;
+
+err_isp_vsync_irq:
+	MIPI_ERR("request_irq failed (%d)!\n", ret);
+	return ret;
+}
+
 irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 {
 	struct sp_mipi_device *mipi = dev_instance;
@@ -659,6 +689,9 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	mipi->streaming = true;
 	mipi->skip_first_int = true;
 
+	// Enable ISP Vsync interrupt
+	ispVsyncIntCtrl(&mipi->isp_info, 1);
+
 	MIPI_DBG("%s: cur_frm = %p, addr = %08lx\n", __FUNCTION__, mipi->cur_frm, addr);
 
 	return 0;
@@ -687,6 +720,9 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 		MIPI_ERR("streamon failed in subdevice!\n");
 		return;
 	}
+
+	// Disable ISP Vsync interrupt
+	ispVsyncIntCtrl(&mipi->isp_info, 0);
 
 	// FW must mask irq to avoid unmap issue (for test code)
 	//writel(0x32700, &mipi->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
@@ -1377,6 +1413,11 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_csiiw_irq_init;
 	}
 
+	ret = isp_irq_init(mipi);
+	if (ret) {
+		goto err_isp_irq_init;
+	}
+
 #if (SYSFS_MIPI_CSIIW_ATTRIBUTE == 1) || (SYSFS_MIPI_ISP_ATTRIBUTE == 1)
 	/* Add the device attribute group into sysfs */
 	ret = sysfs_create_group(&pdev->dev.kobj, &mipi_attribute_group);
@@ -1406,6 +1447,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	return 0;
 
 err_sysfs_create_group:
+err_isp_irq_init:
 err_csiiw_irq_init:
 err_get_format:
 err_subdev_register:

@@ -260,6 +260,15 @@ void getSensor16_I2C0(u16 addr16, u16 *value16, u8 data_count, struct mipi_isp_i
 			return;
 		}
   	}
+
+	// Transfer data from big endian to little endian
+	for (i = 0; i < (data_count/2); i++)
+	{
+		addr_count = regData[(data_count-1)];
+		regData[(data_count-1)-i] = regData[i];
+		regData[i] = addr_count;
+	}
+
 	if (data_count == 1)
 		*value16 = *((u8 *)regData);
 	else if (data_count == 2)
@@ -347,6 +356,15 @@ void getSensor8_I2C0(u8 addr8, u16 *value16, struct mipi_isp_info *isp_info)
 			return;
 		}
   	}
+
+	// Transfer data from big endian to little endian
+	for (i = 0; i < (data_count/2); i++)
+	{
+		addr_count = regData[(data_count-1)];
+		regData[(data_count-1)-i] = regData[i];
+		regData[i] = addr_count;
+	}
+
   	*value16 = *((u16 *)regData);
 
 	ISPI2C_LOGD("%s, I2C time: %d\n", __FUNCTION__, I2C_TIMEOUT_TH-SensorI2cTimeOut);

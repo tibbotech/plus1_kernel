@@ -133,6 +133,7 @@ struct sp_mipi_device {
 
 	int                             fs_irq;
 	int                             fe_irq;
+	int                             vsync_irq;
 	bool                            streaming;              /* Indicates whether streaming started */
 	bool                            skip_first_int;
 	struct gpio_desc                *cam_gpio0;
