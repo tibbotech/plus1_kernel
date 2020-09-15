@@ -18,6 +18,10 @@
 &rtc {  charging-mode = <0x0E>;  };
 
 &sp_spinor0 {  status = "disabled";  };
+&spi_controller0 {  status = "disabled";  };
+&spi_controller1 {  status = "disabled";  };
+&spi_controller2 {  status = "disabled";  };
+&spi_controller3 {  status = "disabled";  };
 
 &sdio {
  pinctrl-names = "default";
