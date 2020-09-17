@@ -274,9 +274,9 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
     	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 4);
 	uphy3_base_addr = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 	if (IS_ERR(uphy3_base_addr)) {
-		return PTR_ERR(uphy1_res_moon5);
+		return PTR_ERR(uphy3_base_addr);
 	}
-	printk("phy3 base 0x%x, remap 0x%x\n", res_mem->start, uphy3_base_addr);
+	//printk("phy3 base 0x%x, remap 0x%x\n", res_mem->start, uphy3_base_addr);
 #endif 
 	uphy1_init(pdev);
 
