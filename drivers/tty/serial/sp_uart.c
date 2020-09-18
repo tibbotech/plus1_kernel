@@ -40,14 +40,14 @@
 #define IS_UARTDMATX_ID(X)		(((X) >= (ID_BASE_DMATX)) && ((X) < (ID_BASE_DMATX + NUM_UARTDMATX)))
 /* ---------------------------------------------------------------------------------------------- */
 //#define TTYS_KDBG_INFO
-//#define TTYS_KDBG_ERR
+#define TTYS_KDBG_ERR
 //#define TTYS_GPIO
+
 #ifdef TTYS_KDBG_INFO
 #define DBG_INFO(fmt, args ...)	printk(KERN_INFO "K_TTYS: " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
 #endif
-
 #ifdef TTYS_KDBG_ERR
 #define DBG_ERR(fmt, args ...)	printk(KERN_ERR "K_TTYS: " fmt, ## args)
 #else
@@ -67,10 +67,10 @@
 /* Refer zebu: testbench/uart.cc */
 #ifdef CONFIG_SOC_I143
 #define CLK_HIGH_UART			202500000
-#define UART_RATIO				29
+#define UART_RATIO			29
 #else
 #define CLK_HIGH_UART			202500000
-#define UART_RATIO				232
+#define UART_RATIO			232
 #endif
 /* ---------------------------------------------------------------------------------------------- */
 #if defined(CONFIG_SP_MON)
@@ -136,7 +136,7 @@ static inline void sp_uart_put_char(struct uart_port *port, unsigned ch)
 #endif
 
 	if (!uartdma_tx) {
-		writel(ch,  &((struct regs_uart *)base)->uart_data);
+		writel(ch, &((struct regs_uart *)base)->uart_data);
 	} else {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
 		addr_sw = readl(&(txdma_reg->txdma_wr_adr));
@@ -446,19 +446,16 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 
 	if (mctrl & TIOCM_RTS) {
 		if ((sp_port->uport.rs485.flags & SER_RS485_ENABLED)
-			&&(sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
+			&& (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
 			mcr &= ~SP_UART_MCR_RTS;  //RTS invert.
 		else
 			mcr |= SP_UART_MCR_RTS;
 	} else {
-		if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
-		{
+		if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 			//data transfer ended
 			return;
-		}
-		else
-		{
-			mcr &= ~SP_UART_MCR_RTS;  
+		} else {
+			mcr &= ~SP_UART_MCR_RTS;
 		}
 	}
 
@@ -480,23 +477,19 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 		mcr &= ~SP_UART_MCR_LB;
 	}
 
-	sp_uart_set_modem_ctrl(port->membase, mcr);	
-	
-	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
-	{	    	    
+	sp_uart_set_modem_ctrl(port->membase, mcr);
+
+	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 		mcr = sp_uart_get_modem_ctrl(port->membase);
-	    if(mctrl&TIOCM_RTS)
-		{	
-			if(((mcr&SP_UART_MCR_RTS)&&(sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
-				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND))
-			{
+		if (mctrl & TIOCM_RTS) {
+			if (((mcr & SP_UART_MCR_RTS) && (sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
+				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
 				#ifdef CONFIG_SOC_SP7021
-				gpiod_set_value(sp_port->DE_RE_dir,1);
-				#endif 
-				if(sp_port->uport.rs485.delay_rts_before_send == 0)
-				{
-					ktime = ktime_set(0,500000);//500us
-					hrtimer_start(&sp_port->CheckTXE,ktime,HRTIMER_MODE_REL);
+				gpiod_set_value(sp_port->DE_RE_dir, 1);
+				#endif
+				if (sp_port->uport.rs485.delay_rts_before_send == 0) {
+					ktime = ktime_set(0, 500000); //500us
+					hrtimer_start(&sp_port->CheckTXE, ktime, HRTIMER_MODE_REL);
 				}
 			}
 		}
@@ -591,7 +584,7 @@ static void sunplus_uart_ops_stop_tx(struct uart_port *port)
 static inline void __start_tx(struct uart_port *port)
 {
 	unsigned int isc;
-	
+
 	isc = sp_uart_get_int_en(port->membase) | SP_UART_ISC_TXM;
 	sp_uart_set_int_en(port->membase, isc);
 }
@@ -601,17 +594,15 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 	struct sunplus_uart_port *sp_port = (struct sunplus_uart_port *)(port->private_data);
 	ktime_t ktime;
 
-	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
-	{	
-		if(sp_port->uport.rs485.delay_rts_before_send > 0)
-		{
+	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
+		if (sp_port->uport.rs485.delay_rts_before_send > 0) {
 			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
-			ktime = ktime_set(0,nsec);
-			hrtimer_start(&sp_port->DelayRtsBeforeSend,ktime,HRTIMER_MODE_REL);	
+			ktime = ktime_set(0, nsec);
+			hrtimer_start(&sp_port->DelayRtsBeforeSend, ktime, HRTIMER_MODE_REL);
 			return;
 		}
 	}
-    __start_tx(port);	
+	__start_tx(port);
 }
 
 /*
@@ -710,16 +701,16 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	u32 offset_sw;
 	u8 *byte_ptr;
 	struct circ_buf *xmit = &port->state->xmit;
-		
+
 	if (port->x_char) {
 		sp_uart_put_char(port, port->x_char);
 		port->icount.tx++;
-		port->x_char = 0;	
-		return;					
+		port->x_char = 0;
+		return;
 	}
 
 	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
-		sunplus_uart_ops_stop_tx(port);	
+		sunplus_uart_ops_stop_tx(port);
 		return;
 	}
 
@@ -768,10 +759,7 @@ static void transmit_chars(struct uart_port *port)	/* called by ISR */
 	if (uart_circ_empty(xmit)) {
 		sunplus_uart_ops_stop_tx(port);
 	}
-
-}  
-
-
+}
 
 static void receive_chars(struct uart_port *port)	/* called by ISR */
 {
@@ -860,8 +848,8 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 		sp_uart_set_modem_ctrl(port->membase, (sp_uart_get_modem_ctrl(port->membase)) | (1 << 4));
 	}
 #endif
-        
-	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {		
+
+	if (sp_uart_get_int_en(port->membase) & SP_UART_ISC_RX) {
 		receive_chars(port);
 	}
 
@@ -890,8 +878,8 @@ static void receive_chars_rxdma(struct uart_port *port)	/* called by ISR */
 
 	uartdma_rx = sp_port->uartdma_rx;
 	rxdma_reg = (volatile struct regs_uarxdma *)(uartdma_rx->membase);
-        
-        dma_start = readl(&(rxdma_reg->rxdma_start_addr));
+
+	dma_start = readl(&(rxdma_reg->rxdma_start_addr));
 	offset_sw = readl(&(rxdma_reg->rxdma_rd_adr)) - dma_start;
 	offset_hw = readl(&(rxdma_reg->rxdma_wr_adr)) - dma_start;
 
@@ -994,18 +982,17 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	volatile struct regs_uatxgdma *gdma_reg;
 	unsigned int ch;
 
-	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED)
-	{
-		hrtimer_cancel(&sp_port->DelayRtsAfterSend);	
+	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
+		hrtimer_cancel(&sp_port->DelayRtsAfterSend);
 		//DBG_INFO("hrtimer_cancel\n");
 	}
 #ifdef CONFIG_PM_RUNTIME_UART
-  	if (port->line > 0){
-    		ret = pm_runtime_get_sync(port->dev);
-    		if (ret < 0)
+	if (port->line > 0) {
+		ret = pm_runtime_get_sync(port->dev);
+		if (ret < 0)
 			goto out;
-  	}
-#endif	
+	}
+#endif
 
 	ret = request_irq(port->irq, sunplus_uart_irq, 0, sp_port->name, port);
 	if (ret) {
@@ -1084,8 +1071,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));	/* must be set before txdma_start_addr */
 			writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
 			writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
-                        writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
-                        writel(0x41, &(gdma_reg->gdma_int_en));
+			writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
+			writel(0x41, &(gdma_reg->gdma_int_en));
 			writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
 		}
 	}
@@ -1102,17 +1089,17 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	spin_unlock_irq(&port->lock);
 
 #ifdef CONFIG_PM_RUNTIME_UART
-  	if (port->line > 0){
-    		pm_runtime_put(port->dev);
-  	}
+	if (port->line > 0) {
+		pm_runtime_put(port->dev);
+	}
 	return 0;
 
 out :
-  	if (port->line > 0){
-  		printk("pm_out \n");
-	  	pm_runtime_mark_last_busy(port->dev);
-    		pm_runtime_put_autosuspend(port->dev);
-  	}
+	if (port->line > 0) {
+		printk("pm_out \n");
+		pm_runtime_mark_last_busy(port->dev);
+		pm_runtime_put_autosuspend(port->dev);
+	}
 #endif
 	return 0;
 
@@ -1278,6 +1265,7 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
 		/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
 	}
+
 	/* Switch clock source: 0 for sysclk, 1 for 27M */
 	sp_uart_set_clk_src(port->membase, clk == 27000000);
 
@@ -1604,35 +1592,31 @@ static int sunplus_uart_ops_poll_get_char(struct uart_port *port)
 
 static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 {
-    unsigned char lsr;
+	unsigned char lsr;
 	struct sunplus_uart_port *rs485;
 	unsigned char mcr;
-	ktime_t ktime;	
+	ktime_t ktime;
 	unsigned long nsec;
 
 	rs485 = container_of(t, struct sunplus_uart_port, CheckTXE);
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	lsr = sp_uart_get_line_status(rs485->uport.membase);
-	if(lsr & SP_UART_LSR_TXE)
-	{			
-		nsec = rs485->uport.rs485.delay_rts_after_send*1000000;
-		if(nsec == 0)
-		{
+	if (lsr & SP_UART_LSR_TXE) {
+		nsec = rs485->uport.rs485.delay_rts_after_send * 1000000;
+		if (nsec == 0) {
 			if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
-				mcr |= SP_UART_MCR_RTS;  
+				mcr |= SP_UART_MCR_RTS;
 			else
-				mcr &= ~SP_UART_MCR_RTS;  
-			sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
+				mcr &= ~SP_UART_MCR_RTS;
+			sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
 			#ifdef CONFIG_SOC_SP7021
-			gpiod_set_value(rs485->DE_RE_dir,0);
-			#endif 
+			gpiod_set_value(rs485->DE_RE_dir, 0);
+			#endif
+		} else {
+			ktime = ktime_set(0, nsec);
+			hrtimer_start(&rs485->DelayRtsAfterSend, ktime, HRTIMER_MODE_REL);
 		}
-		else
-		{
- 		    ktime = ktime_set(0,nsec);
-			hrtimer_start(&rs485->DelayRtsAfterSend,ktime,HRTIMER_MODE_REL);		
-		}
-		//DBG_INFO("TXE\n");	
+		//DBG_INFO("TXE\n");
 		return HRTIMER_NORESTART;
 	}
 	return HRTIMER_RESTART;
@@ -1641,12 +1625,12 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 static enum hrtimer_restart Delay_Rts_Before_Send(struct hrtimer *t)
 {
 	struct sunplus_uart_port *rs485;
-	ktime_t ktime;	
-	
+	ktime_t ktime;
+
 	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsBeforeSend);
-	ktime = ktime_set(0,500000);//500us
-	hrtimer_start(&rs485->CheckTXE,ktime,HRTIMER_MODE_REL);
-	__start_tx(&rs485->uport);	
+	ktime = ktime_set(0, 500000); //500us
+	hrtimer_start(&rs485->CheckTXE, ktime, HRTIMER_MODE_REL);
+	__start_tx(&rs485->uport);
 	return HRTIMER_NORESTART;
 }
 
@@ -1654,18 +1638,18 @@ static enum hrtimer_restart Delay_Rts_After_Send(struct hrtimer *t)
 {
 	struct sunplus_uart_port *rs485;
 	unsigned char mcr;
-	
+
 	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsAfterSend);
 	#ifdef CONFIG_SOC_SP7021
-	gpiod_set_value(rs485->DE_RE_dir,0);
-	#endif 
+	gpiod_set_value(rs485->DE_RE_dir, 0);
+	#endif
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
-		mcr |= SP_UART_MCR_RTS;  
+		mcr |= SP_UART_MCR_RTS;
 	else
-		mcr &= ~SP_UART_MCR_RTS;  
-	
-	sp_uart_set_modem_ctrl(rs485->uport.membase, mcr); 
+		mcr &= ~SP_UART_MCR_RTS;
+
+	sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
 	return HRTIMER_NORESTART;
 }
 
@@ -1743,7 +1727,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 #ifdef TTYS_GPIO
 	int uart_gpio;
 #endif
-  //    DBG_INFO("sunplus_uart_platform_driver_probe_of");
+	//DBG_INFO("sunplus_uart_platform_driver_probe_of");
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "serial");
 		if (pdev->id < 0) {
@@ -1812,7 +1796,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 				return -ENODEV;
 			}
 			sunplus_uartdma[idx].irq = irq;
-		}else{
+		} else {
 			res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 			if (!res_mem) {
 				return -ENODEV;
@@ -1865,24 +1849,23 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (irq < 0)
 		return -ENODEV;
 
-	uart_get_rs485_mode(&pdev->dev, &port->rs485);		
-	if (port->rs485.flags & SER_RS485_ENABLED)
-	{
-		//DBG_INFO("delay_rts_before_send = %d \n",sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_before_send);
-		//DBG_INFO("delay_rts_after_send = %d \n",sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_after_send);
+	uart_get_rs485_mode(&pdev->dev, &port->rs485);
+	if (port->rs485.flags & SER_RS485_ENABLED) {
+		//DBG_INFO("delay_rts_before_send = %d \n", sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_before_send);
+		//DBG_INFO("delay_rts_after_send = %d \n", sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_after_send);
 		#ifdef CONFIG_SOC_SP7021
 		sunplus_uart_ports[pdev->id].DE_RE_dir = devm_gpiod_get(&pdev->dev, "dir", GPIOD_OUT_LOW);
-		#endif 
+		#endif
 		if (!IS_ERR(sunplus_uart_ports[pdev->id].DE_RE_dir)) {
 			DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].DE_RE_dir));
 			hrtimer_init(&sunplus_uart_ports[pdev->id].CheckTXE, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 			sunplus_uart_ports[pdev->id].CheckTXE.function = Check_TXE;
 			hrtimer_init(&sunplus_uart_ports[pdev->id].DelayRtsBeforeSend, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-			sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = Delay_Rts_Before_Send;			
+			sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = Delay_Rts_Before_Send;
 			hrtimer_init(&sunplus_uart_ports[pdev->id].DelayRtsAfterSend, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 			sunplus_uart_ports[pdev->id].DelayRtsAfterSend.function = Delay_Rts_After_Send;
 		}
-	}	
+	}
 
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
@@ -1891,7 +1874,6 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	} else {
 		port->uartclk = clk_get_rate(clk);
 	}
-
 #endif
 
 	DBG_INFO("Enable UART clock(s)\n");
@@ -1904,24 +1886,24 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		if (ret) {
 			DBG_ERR("Clock can't be enabled correctly\n");
 			return ret;
-      		}
-   	}
+		}
+	}
 
 	DBG_INFO("Enable Rstc(s)\n");
-	//DBG_INFO("Enable Rstc-ID = %d\n",pdev->id);
+	//DBG_INFO("Enable Rstc-ID = %d\n", pdev->id);
 	sunplus_uart_ports[pdev->id].rstc = devm_reset_control_get(&pdev->dev, NULL);
-	//printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n",pstSpI2CInfo->rstc);
+	//printk(KERN_INFO "pstSpI2CInfo->rstc : 0x%x \n", pstSpI2CInfo->rstc);
 	if (IS_ERR(sunplus_uart_ports[pdev->id].rstc)) {
 		DBG_ERR("failed to retrieve reset controller: %d\n", ret);
 		return PTR_ERR(sunplus_uart_ports[pdev->id].rstc);
 	} else {
 		ret = reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
-		//printk(KERN_INFO "reset ret : 0x%x \n",ret);
+		//printk(KERN_INFO "reset ret : 0x%x \n", ret);
 		if (ret) {
 			DBG_ERR("failed to deassert reset line: %d\n", ret);
-            		return ret;
+			return ret;
 		}
-    	}
+	}
 
 	clk = sunplus_uart_ports[pdev->id].clk;
 
@@ -1942,9 +1924,9 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (pdev->id == 0)
 		port->cons = &sunplus_console;
 #ifdef TTYS_GPIO
-	if (pdev->id == 1){
+	if (pdev->id == 1) {
 
-		uart_gpio = of_get_named_gpio(pdev->dev.of_node, "uart-gpio", 0);		
+		uart_gpio = of_get_named_gpio(pdev->dev.of_node, "uart-gpio", 0);
 		if (!gpio_is_valid(uart_gpio))
 			printk("gpio get error\n");
 		else
@@ -1956,16 +1938,16 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 
 	sunplus_uart_ports[pdev->id].uartdma_rx = sunplus_uartdma_rx_binding(pdev->id);
 	if (sunplus_uart_ports[pdev->id].uartdma_rx) {
-		DBG_INFO("%s's Rx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
+		DBG_ERR("%s's Rx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
 	} else {
-		DBG_INFO("%s's Rx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
+		DBG_ERR("%s's Rx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
 	}
 
 	sunplus_uart_ports[pdev->id].uartdma_tx = sunplus_uartdma_tx_binding(pdev->id);
 	if (sunplus_uart_ports[pdev->id].uartdma_tx) {
-		DBG_INFO("%s's Tx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
+		DBG_ERR("%s's Tx is in DMA mode.\n", sunplus_uart_ports[pdev->id].name);
 	} else {
-		DBG_INFO("%s's Tx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
+		DBG_ERR("%s's Tx is in PIO mode.\n", sunplus_uart_ports[pdev->id].name);
 	}
 
 	ret = uart_add_one_port(&sunplus_uart_driver, port);
@@ -1976,30 +1958,29 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	platform_set_drvdata(pdev, port);
 
 #ifdef CONFIG_PM_RUNTIME_UART
-  	if (pdev->id != 0){
-    		pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
-    		pm_runtime_use_autosuspend(&pdev->dev);
-    		pm_runtime_set_active(&pdev->dev);
-    		pm_runtime_enable(&pdev->dev);
-  	}
+	if (pdev->id != 0) {
+		pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
+		pm_runtime_use_autosuspend(&pdev->dev);
+		pm_runtime_set_active(&pdev->dev);
+		pm_runtime_enable(&pdev->dev);
+	}
 #endif
 	return 0;
 }
 
 static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
 {
-
 #ifdef CONFIG_PM_RUNTIME_UART
-  	if (pdev->id != 0){
-    		pm_runtime_disable(&pdev->dev);
-    		pm_runtime_set_suspended(&pdev->dev);
-  	}
+	if (pdev->id != 0) {
+		pm_runtime_disable(&pdev->dev);
+		pm_runtime_set_suspended(&pdev->dev);
+	}
 #endif
-  	uart_remove_one_port(&sunplus_uart_driver, &sunplus_uart_ports[pdev->id].uport);
+	uart_remove_one_port(&sunplus_uart_driver, &sunplus_uart_ports[pdev->id].uport);
 
 	if (pdev->id < NUM_UART) {
 		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
-        	reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+		reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
 	}
 
 	return 0;
@@ -2008,7 +1989,7 @@ static int sunplus_uart_platform_driver_remove(struct platform_device *pdev)
 static int sunplus_uart_platform_driver_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	if ((pdev->id < NUM_UART)&&(pdev->id > 0)) {  //Don't suspend uart0 for cmd line usage
-        	reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+		reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
 	}
 
 	return 0;
@@ -2018,7 +1999,7 @@ static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
 {
 	if (pdev->id < NUM_UART) {
 		clk_prepare_enable(sunplus_uart_ports[pdev->id].clk);
-        	reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
+		reset_control_deassert(sunplus_uart_ports[pdev->id].rstc);
 	}
 	return 0;
 }
@@ -2033,11 +2014,11 @@ MODULE_DEVICE_TABLE(of, sp_uart_of_match);
 #ifdef CONFIG_PM_RUNTIME_UART
 static int sunplus_uart_runtime_suspend(struct device *dev)
 {
-  	struct platform_device *uartpdev = to_platform_device(dev);
+	struct platform_device *uartpdev = to_platform_device(dev);
 
 	printk("sunplus_uart_runtime_suspend \n");
 	if ((uartpdev->id < NUM_UART)&&(uartpdev->id > 0)) {  //Don't suspend uart0 for cmd line usage
-        	reset_control_assert(sunplus_uart_ports[uartpdev->id].rstc);
+		reset_control_assert(sunplus_uart_ports[uartpdev->id].rstc);
 	}
 
 	return 0;
@@ -2045,12 +2026,12 @@ static int sunplus_uart_runtime_suspend(struct device *dev)
 
 static int sunplus_uart_runtime_resume(struct device *dev)
 {
-  	struct platform_device *uartpdev = to_platform_device(dev);
+	struct platform_device *uartpdev = to_platform_device(dev);
 
 	printk("sunplus_uart_runtime_resume \n");
 	if (uartpdev->id < NUM_UART) {
 		clk_prepare_enable(sunplus_uart_ports[uartpdev->id].clk);
-    		reset_control_deassert(sunplus_uart_ports[uartpdev->id].rstc);
+		reset_control_deassert(sunplus_uart_ports[uartpdev->id].rstc);
 	}
 
 	return 0;
