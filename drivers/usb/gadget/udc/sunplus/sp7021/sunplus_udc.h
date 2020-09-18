@@ -5,9 +5,9 @@
 
 #define SP_MAXENDPOINTS      13
 #define EP0_FIFO_SIZE		 64	/*control Endpoint */
-#define EP12_FIFO_SIZE64	 64	/*full speed */
+#define FIFO_SIZE64	 		 64	/*full speed */
 #define EP_FIFO_SIZE		 64
-#define CONFIG_USB_SUNPLUS_EP11
+//#define CONFIG_USB_SUNPLUS_EP11
 //#define CONFIG_USB_SUNPLUS_EP1
 #define CONFIG_USB_SUNPLUS_EP2
 #undef CONFIG_FIQ_GLUE
@@ -46,13 +46,25 @@ struct sp_ep {
 	unsigned halted:1;
 	unsigned already_seen:1;
 	unsigned setup_stage:1;
+	unsigned long flags;
 	spinlock_t lock;
+	struct semaphore wsem;
 };
 
 struct sp_request {
 	struct list_head queue;	/* ep's requests */
 	struct usb_request req;
 	u8 *cmd_trb;
+};
+
+struct sp_work {
+	struct work_struct work;
+	u8 ep_num;
+};
+
+struct sp_workqueue {
+	struct sp_work sw;
+	struct workqueue_struct *queue;	
 };
 
 struct sp_udc {
@@ -62,12 +74,8 @@ struct sp_udc {
 	int address;
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
-	struct sp_request fifo_req;
 
-	u8 fifo_buf[EP_FIFO_SIZE];
 	u16 devstatus;
-
-	u32 port_status;
 	int ep0state;
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
@@ -78,47 +86,17 @@ struct sp_udc {
 	int bus_num;
 	int suspend_sta;
 
-	struct work_struct work_otg;
-	struct workqueue_struct *qwork_otg;
 #endif
-#ifdef CONFIG_USB_SUNPLUS_EP1
-	struct work_struct work_ep1;
-	struct workqueue_struct *qwork_ep1;
-#endif
-#ifdef CONFIG_USB_SUNPLUS_EP2
-	struct work_struct work_ep2;
-	struct workqueue_struct *qwork_ep2;
-#endif
-#ifdef CONFIG_USB_SUNPLUS_EP11
-	struct work_struct work_ep11;
-	struct workqueue_struct *qwork_ep11;
-	struct work_struct work_ep11_dma;
-	struct workqueue_struct *qwork_ep11_dma;
-#endif
-
-	unsigned got_irq:1;
+	struct sp_workqueue wq[SP_MAXENDPOINTS];
 
 	unsigned req_std:1;
 	unsigned req_config:1;
 	unsigned req_pending:1;
 	u8 vbus;
-	struct dentry *regs_info;
-	struct tasklet_struct ep1bulkin_task;
-	struct tasklet_struct ep2bulkout_task;
-	struct tasklet_struct epabulkin_task;
-	struct tasklet_struct epabulkin_dma_task;
-	struct tasklet_struct ep8bulkin_task;
-	struct tasklet_struct ep9bulkout_task;
-	struct wake_lock wake_lock;
 #ifdef CONFIG_FIQ_GLUE
 	struct fiq_glue_handler handler;
 #endif
 
-	struct work_struct work_ep3;
-	struct workqueue_struct *qwork_ep3;
-	struct work_struct work_ep9;
-	struct workqueue_struct *qwork_ep9;
-	struct work_struct work_configure;
 	struct clk *clk;
 };
 
@@ -145,6 +123,7 @@ struct iso_trb {
 	u32 size_cc;
 	u32 cmd;
 };
+
 /* udc endpoint*/
 #define EP0			0
 #define EP1			1
