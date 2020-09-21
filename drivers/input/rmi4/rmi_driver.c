@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2011-2016 Synaptics Incorporated
  * Copyright (c) 2011 Unixphere
@@ -9,6 +8,10 @@
  *
  * http://www.synaptics.com/sites/default/files/
  *      511-000136-01-Rev-E-RMI4-Interfacing-Guide.pdf
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 as published by
+ * the Free Software Foundation.
  */
 
 #include <linux/bitmap.h>
@@ -146,7 +149,7 @@ static int rmi_process_interrupt_requests(struct rmi_device *rmi_dev)
 	}
 
 	mutex_lock(&data->irq_mutex);
-	bitmap_and(data->irq_status, data->irq_status, data->fn_irq_bits,
+	bitmap_and(data->irq_status, data->irq_status, data->current_irq_mask,
 	       data->irq_count);
 	/*
 	 * At this point, irq_status has all bits that are set in the
@@ -385,8 +388,6 @@ static int rmi_driver_set_irq_bits(struct rmi_device *rmi_dev,
 	bitmap_copy(data->current_irq_mask, data->new_irq_mask,
 		    data->num_of_irq_regs);
 
-	bitmap_or(data->fn_irq_bits, data->fn_irq_bits, mask, data->irq_count);
-
 error_unlock:
 	mutex_unlock(&data->irq_mutex);
 	return error;
@@ -400,8 +401,6 @@ static int rmi_driver_clear_irq_bits(struct rmi_device *rmi_dev,
 	struct device *dev = &rmi_dev->dev;
 
 	mutex_lock(&data->irq_mutex);
-	bitmap_andnot(data->fn_irq_bits,
-		      data->fn_irq_bits, mask, data->irq_count);
 	bitmap_andnot(data->new_irq_mask,
 		  data->current_irq_mask, mask, data->irq_count);
 
@@ -861,7 +860,7 @@ static int rmi_create_function(struct rmi_device *rmi_dev,
 
 	error = rmi_register_function(fn);
 	if (error)
-		return error;
+		goto err_put_fn;
 
 	if (pdt->function_number == 0x01)
 		data->f01_container = fn;
@@ -871,6 +870,10 @@ static int rmi_create_function(struct rmi_device *rmi_dev,
 	list_add_tail(&fn->node, &data->function_list);
 
 	return RMI_SCAN_CONTINUE;
+
+err_put_fn:
+	put_device(&fn->dev);
+	return error;
 }
 
 void rmi_enable_irq(struct rmi_device *rmi_dev, bool clear_wake)

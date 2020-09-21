@@ -1,8 +1,22 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /******************************************************************************
 
   Copyright(c) 2003 - 2006 Intel Corporation. All rights reserved.
 
+  This program is free software; you can redistribute it and/or modify it
+  under the terms of version 2 of the GNU General Public License as
+  published by the Free Software Foundation.
+
+  This program is distributed in the hope that it will be useful, but WITHOUT
+  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+  more details.
+
+  You should have received a copy of the GNU General Public License along with
+  this program; if not, write to the Free Software Foundation, Inc., 59
+  Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+
+  The full GNU General Public License is included in this distribution in the
+  file called LICENSE.
 
   Contact Information:
   Intel Linux Wireless <ilw@linux.intel.com>
@@ -3206,9 +3220,8 @@ static void ipw2100_tx_send_data(struct ipw2100_priv *priv)
 	}
 }
 
-static void ipw2100_irq_tasklet(unsigned long data)
+static void ipw2100_irq_tasklet(struct ipw2100_priv *priv)
 {
-	struct ipw2100_priv *priv = (struct ipw2100_priv *)data;
 	struct net_device *dev = priv->net_dev;
 	unsigned long flags;
 	u32 inta, tmp;
@@ -4414,7 +4427,7 @@ static void ipw2100_kill_works(struct ipw2100_priv *priv)
 
 static int ipw2100_tx_allocate(struct ipw2100_priv *priv)
 {
-	int i, j, err;
+	int i, j, err = -EINVAL;
 	void *v;
 	dma_addr_t p;
 
@@ -5590,8 +5603,12 @@ static void shim__set_security(struct net_device *dev,
 
 	if ((sec->flags & SEC_ACTIVE_KEY) &&
 	    priv->ieee->sec.active_key != sec->active_key) {
-		priv->ieee->sec.active_key = sec->active_key;
-		priv->ieee->sec.flags |= SEC_ACTIVE_KEY;
+		if (sec->active_key <= 3) {
+			priv->ieee->sec.active_key = sec->active_key;
+			priv->ieee->sec.flags |= SEC_ACTIVE_KEY;
+		} else
+			priv->ieee->sec.flags &= ~SEC_ACTIVE_KEY;
+
 		priv->status |= STATUS_SECURITY_UPDATED;
 	}
 
@@ -6008,7 +6025,7 @@ static void ipw2100_rf_kill(struct work_struct *work)
 	spin_unlock_irqrestore(&priv->low_lock, flags);
 }
 
-static void ipw2100_irq_tasklet(unsigned long data);
+static void ipw2100_irq_tasklet(struct ipw2100_priv *priv);
 
 static const struct net_device_ops ipw2100_netdev_ops = {
 	.ndo_open		= ipw2100_open,
@@ -6138,7 +6155,7 @@ static struct net_device *ipw2100_alloc_device(struct pci_dev *pci_dev,
 	INIT_DELAYED_WORK(&priv->rf_kill, ipw2100_rf_kill);
 	INIT_DELAYED_WORK(&priv->scan_event, ipw2100_scan_event);
 
-	tasklet_init(&priv->irq_tasklet,
+	tasklet_init(&priv->irq_tasklet, (void (*)(unsigned long))
 		     ipw2100_irq_tasklet, (unsigned long)priv);
 
 	/* NOTE:  We do not start the deferred work for status checks yet */
@@ -8353,7 +8370,7 @@ static int ipw2100_mod_firmware_load(struct ipw2100_fw *fw)
 	if (IPW2100_FW_MAJOR(h->version) != IPW2100_FW_MAJOR_VERSION) {
 		printk(KERN_WARNING DRV_NAME ": Firmware image not compatible "
 		       "(detected version id of %u). "
-		       "See Documentation/networking/device_drivers/intel/ipw2100.txt\n",
+		       "See Documentation/networking/README.ipw2100\n",
 		       h->version);
 		return 1;
 	}

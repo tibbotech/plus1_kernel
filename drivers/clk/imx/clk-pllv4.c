@@ -1,15 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * Copyright (C) 2016 Freescale Semiconductor, Inc.
- * Copyright 2017~2018 NXP
+ * Copyright 2017-2018 NXP.
  *
- * Author: Dong Aisheng <aisheng.dong@nxp.com>
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
  *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
+#include <linux/clk.h>
 #include <linux/clk-provider.h>
 #include <linux/err.h>
-#include <linux/io.h>
 #include <linux/iopoll.h>
 #include <linux/slab.h>
 
@@ -19,20 +22,11 @@
 #define PLL_CSR_OFFSET		0x0
 #define PLL_VLD			BIT(24)
 #define PLL_EN			BIT(0)
-
-/* PLL Configuration Register (xPLLCFG) */
-#define PLL_CFG_OFFSET		0x08
 #define BP_PLL_MULT		16
 #define BM_PLL_MULT		(0x7f << 16)
-
-/* PLL Numerator Register (xPLLNUM) */
+#define PLL_CFG_OFFSET		0x08
 #define PLL_NUM_OFFSET		0x10
-
-/* PLL Denominator Register (xPLLDENOM) */
 #define PLL_DENOM_OFFSET	0x14
-
-#define MAX_MFD			0x3fffffff
-#define DEFAULT_MFD		1000000
 
 struct clk_pllv4 {
 	struct clk_hw	hw;
@@ -54,30 +48,17 @@ static inline int clk_pllv4_wait_lock(struct clk_pllv4 *pll)
 				  csr, csr & PLL_VLD, 0, LOCK_TIMEOUT_US);
 }
 
-static int clk_pllv4_is_enabled(struct clk_hw *hw)
-{
-	struct clk_pllv4 *pll = to_clk_pllv4(hw);
-
-	if (readl_relaxed(pll->base) & PLL_EN)
-		return 1;
-
-	return 0;
-}
 
 static unsigned long clk_pllv4_recalc_rate(struct clk_hw *hw,
-					   unsigned long parent_rate)
+					      unsigned long parent_rate)
 {
 	struct clk_pllv4 *pll = to_clk_pllv4(hw);
-	u32 mult, mfn, mfd;
-	u64 temp64;
+	u32 mfn = readl_relaxed(pll->base + PLL_NUM_OFFSET);
+	u32 mfd = readl_relaxed(pll->base + PLL_DENOM_OFFSET);
+	u32 mult = (readl_relaxed(pll->base + PLL_CFG_OFFSET)
+		& BM_PLL_MULT) >> BP_PLL_MULT;
+	u64 temp64 = (u64)parent_rate;
 
-	mult = readl_relaxed(pll->base + PLL_CFG_OFFSET);
-	mult &= BM_PLL_MULT;
-	mult >>= BP_PLL_MULT;
-
-	mfn = readl_relaxed(pll->base + PLL_NUM_OFFSET);
-	mfd = readl_relaxed(pll->base + PLL_DENOM_OFFSET);
-	temp64 = parent_rate;
 	temp64 *= mfn;
 	do_div(temp64, mfd);
 
@@ -85,13 +66,13 @@ static unsigned long clk_pllv4_recalc_rate(struct clk_hw *hw,
 }
 
 static long clk_pllv4_round_rate(struct clk_hw *hw, unsigned long rate,
-				 unsigned long *prate)
+				    unsigned long *prate)
 {
 	unsigned long parent_rate = *prate;
-	unsigned long round_rate, i;
-	u32 mfn, mfd = DEFAULT_MFD;
+	unsigned long round_rate;
+	u32 mfn, mfd = 1000000;
 	bool found = false;
-	u64 temp64;
+	u64 temp64, i;
 
 	for (i = 0; i < ARRAY_SIZE(pllv4_mult_table); i++) {
 		round_rate = parent_rate * pllv4_mult_table[i];
@@ -102,15 +83,12 @@ static long clk_pllv4_round_rate(struct clk_hw *hw, unsigned long rate,
 	}
 
 	if (!found) {
-		pr_warn("%s: unable to round rate %lu, parent rate %lu\n",
+		pr_warn("%s: unable to round rate %lu prate %lu\n",
 			clk_hw_get_name(hw), rate, parent_rate);
 		return 0;
 	}
 
-	if (parent_rate <= MAX_MFD)
-		mfd = parent_rate;
-
-	temp64 = (u64)(rate - round_rate);
+	temp64 = (u64) (rate - round_rate);
 	temp64 *= mfd;
 	do_div(temp64, parent_rate);
 	mfn = temp64;
@@ -124,11 +102,7 @@ static long clk_pllv4_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (mfn >= mfd)
 		return round_rate;
 
-	temp64 = (u64)parent_rate;
-	temp64 *= mfn;
-	do_div(temp64, mfd);
-
-	return round_rate + (u32)temp64;
+	return round_rate + parent_rate / mfd * mfn;
 }
 
 static bool clk_pllv4_is_valid_mult(unsigned int mult)
@@ -145,10 +119,11 @@ static bool clk_pllv4_is_valid_mult(unsigned int mult)
 }
 
 static int clk_pllv4_set_rate(struct clk_hw *hw, unsigned long rate,
-			      unsigned long parent_rate)
+		unsigned long parent_rate)
 {
 	struct clk_pllv4 *pll = to_clk_pllv4(hw);
-	u32 val, mult, mfn, mfd = DEFAULT_MFD;
+	u32 val, mult;
+	u32 mfn, mfd = 1000000;
 	u64 temp64;
 
 	mult = rate / parent_rate;
@@ -156,10 +131,7 @@ static int clk_pllv4_set_rate(struct clk_hw *hw, unsigned long rate,
 	if (!clk_pllv4_is_valid_mult(mult))
 		return -EINVAL;
 
-	if (parent_rate <= MAX_MFD)
-		mfd = parent_rate;
-
-	temp64 = (u64)(rate - mult * parent_rate);
+	temp64 = (u64) (rate - mult * parent_rate);
 	temp64 *= mfd;
 	do_div(temp64, parent_rate);
 	mfn = temp64;
@@ -168,7 +140,6 @@ static int clk_pllv4_set_rate(struct clk_hw *hw, unsigned long rate,
 	val &= ~BM_PLL_MULT;
 	val |= mult << BP_PLL_MULT;
 	writel_relaxed(val, pll->base + PLL_CFG_OFFSET);
-
 	writel_relaxed(mfn, pll->base + PLL_NUM_OFFSET);
 	writel_relaxed(mfd, pll->base + PLL_DENOM_OFFSET);
 
@@ -197,6 +168,16 @@ static void clk_pllv4_disable(struct clk_hw *hw)
 	writel_relaxed(val, pll->base);
 }
 
+static int clk_pllv4_is_enabled(struct clk_hw *hw)
+{
+	struct clk_pllv4 *pll = to_clk_pllv4(hw);
+
+	if (readl_relaxed(pll->base) & PLL_EN)
+		return 1;
+
+	return 0;
+}
+
 static const struct clk_ops clk_pllv4_ops = {
 	.recalc_rate	= clk_pllv4_recalc_rate,
 	.round_rate	= clk_pllv4_round_rate,
@@ -206,20 +187,18 @@ static const struct clk_ops clk_pllv4_ops = {
 	.is_enabled	= clk_pllv4_is_enabled,
 };
 
-struct clk_hw *imx_clk_pllv4(const char *name, const char *parent_name,
+struct clk *imx_clk_pllv4(const char *name, const char *parent_name,
 			  void __iomem *base)
 {
 	struct clk_pllv4 *pll;
-	struct clk_hw *hw;
+	struct clk *clk;
 	struct clk_init_data init;
-	int ret;
 
 	pll = kzalloc(sizeof(*pll), GFP_KERNEL);
 	if (!pll)
 		return ERR_PTR(-ENOMEM);
 
 	pll->base = base;
-
 	init.name = name;
 	init.ops = &clk_pllv4_ops;
 	init.parent_names = &parent_name;
@@ -228,12 +207,9 @@ struct clk_hw *imx_clk_pllv4(const char *name, const char *parent_name,
 
 	pll->hw.init = &init;
 
-	hw = &pll->hw;
-	ret = clk_hw_register(NULL, hw);
-	if (ret) {
+	clk = clk_register(NULL, &pll->hw);
+	if (IS_ERR(clk))
 		kfree(pll);
-		hw = ERR_PTR(ret);
-	}
 
-	return hw;
+	return clk;
 }

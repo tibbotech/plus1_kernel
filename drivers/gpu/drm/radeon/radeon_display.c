@@ -23,27 +23,21 @@
  * Authors: Dave Airlie
  *          Alex Deucher
  */
-
-#include <linux/pm_runtime.h>
-#include <linux/gcd.h>
-
-#include <asm/div64.h>
-
-#include <drm/drm_crtc_helper.h>
-#include <drm/drm_device.h>
-#include <drm/drm_drv.h>
-#include <drm/drm_edid.h>
-#include <drm/drm_fb_helper.h>
-#include <drm/drm_fourcc.h>
-#include <drm/drm_gem_framebuffer_helper.h>
-#include <drm/drm_pci.h>
-#include <drm/drm_plane_helper.h>
-#include <drm/drm_probe_helper.h>
-#include <drm/drm_vblank.h>
+#include <drm/drmP.h>
 #include <drm/radeon_drm.h>
+#include "radeon.h"
 
 #include "atom.h"
-#include "radeon.h"
+#include <asm/div64.h>
+
+#include <linux/pm_runtime.h>
+#include <drm/drm_crtc_helper.h>
+#include <drm/drm_gem_framebuffer_helper.h>
+#include <drm/drm_fb_helper.h>
+#include <drm/drm_plane_helper.h>
+#include <drm/drm_edid.h>
+
+#include <linux/gcd.h>
 
 static void avivo_crtc_load_lut(struct drm_crtc *crtc)
 {
@@ -126,8 +120,6 @@ static void dce5_crtc_load_lut(struct drm_crtc *crtc)
 	int i;
 
 	DRM_DEBUG_KMS("%d\n", radeon_crtc->crtc_id);
-
-	msleep(10);
 
 	WREG32(NI_INPUT_CSC_CONTROL + radeon_crtc->crtc_offset,
 	       (NI_INPUT_CSC_GRPH_MODE(NI_INPUT_CSC_BYPASS) |
@@ -277,7 +269,7 @@ static void radeon_unpin_work_func(struct work_struct *__work)
 	} else
 		DRM_ERROR("failed to reserve buffer after flip\n");
 
-	drm_gem_object_put_unlocked(&work->old_rbo->tbo.base);
+	drm_gem_object_put_unlocked(&work->old_rbo->gem_base);
 	kfree(work);
 }
 
@@ -535,7 +527,7 @@ static int radeon_crtc_page_flip_target(struct drm_crtc *crtc,
 		DRM_ERROR("failed to pin new rbo buffer before flip\n");
 		goto cleanup;
 	}
-	work->fence = dma_fence_get(dma_resv_get_excl(new_rbo->tbo.base.resv));
+	work->fence = dma_fence_get(reservation_object_get_excl(new_rbo->tbo.resv));
 	radeon_bo_get_tiling_flags(new_rbo, &tiling_flags, NULL);
 	radeon_bo_unreserve(new_rbo);
 
@@ -609,7 +601,7 @@ pflip_cleanup:
 	radeon_bo_unreserve(new_rbo);
 
 cleanup:
-	drm_gem_object_put_unlocked(&work->old_rbo->tbo.base);
+	drm_gem_object_put_unlocked(&work->old_rbo->gem_base);
 	dma_fence_put(work->fence);
 	kfree(work);
 	return r;
@@ -929,12 +921,12 @@ static void avivo_get_fb_ref_div(unsigned nom, unsigned den, unsigned post_div,
 	ref_div_max = max(min(100 / post_div, ref_div_max), 1u);
 
 	/* get matching reference and feedback divider */
-	*ref_div = min(max(den/post_div, 1u), ref_div_max);
+	*ref_div = min(max(DIV_ROUND_CLOSEST(den, post_div), 1u), ref_div_max);
 	*fb_div = DIV_ROUND_CLOSEST(nom * *ref_div * post_div, den);
 
 	/* limit fb divider to its maximum */
 	if (*fb_div > fb_div_max) {
-		*ref_div = (*ref_div * fb_div_max)/(*fb_div);
+		*ref_div = DIV_ROUND_CLOSEST(*ref_div * fb_div_max, *fb_div);
 		*fb_div = fb_div_max;
 	}
 }
@@ -1654,7 +1646,7 @@ void radeon_modeset_fini(struct radeon_device *rdev)
 	if (rdev->mode_info.mode_config_initialized) {
 		drm_kms_helper_poll_fini(rdev->ddev);
 		radeon_hpd_fini(rdev);
-		drm_helper_force_disable_all(rdev->ddev);
+		drm_crtc_force_disable_all(rdev->ddev);
 		radeon_fbdev_fini(rdev);
 		radeon_afmt_fini(rdev);
 		drm_mode_config_cleanup(rdev->ddev);

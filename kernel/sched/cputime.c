@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Simple CPU accounting cgroup controller
  */
@@ -526,7 +525,7 @@ void account_idle_ticks(unsigned long ticks)
 
 /*
  * Perform (stime * rtime) / total, but avoid multiplication overflow by
- * losing precision when the numbers are big.
+ * loosing precision when the numbers are big.
  */
 static u64 scale_stime(u64 stime, u64 rtime, u64 total)
 {
@@ -740,7 +739,7 @@ void vtime_account_system(struct task_struct *tsk)
 
 	write_seqcount_begin(&vtime->seqcount);
 	/* We might have scheduled out from guest path */
-	if (tsk->flags & PF_VCPU)
+	if (current->flags & PF_VCPU)
 		vtime_account_guest(tsk, vtime);
 	else
 		__vtime_account_system(tsk, vtime);
@@ -783,7 +782,7 @@ void vtime_guest_enter(struct task_struct *tsk)
 	 */
 	write_seqcount_begin(&vtime->seqcount);
 	__vtime_account_system(tsk, vtime);
-	tsk->flags |= PF_VCPU;
+	current->flags |= PF_VCPU;
 	write_seqcount_end(&vtime->seqcount);
 }
 EXPORT_SYMBOL_GPL(vtime_guest_enter);
@@ -794,7 +793,7 @@ void vtime_guest_exit(struct task_struct *tsk)
 
 	write_seqcount_begin(&vtime->seqcount);
 	vtime_account_guest(tsk, vtime);
-	tsk->flags &= ~PF_VCPU;
+	current->flags &= ~PF_VCPU;
 	write_seqcount_end(&vtime->seqcount);
 }
 EXPORT_SYMBOL_GPL(vtime_guest_exit);

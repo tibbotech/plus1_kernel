@@ -1,9 +1,12 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *  linux/arch/arm/vfp/vfphw.S
  *
  *  Copyright (C) 2004 ARM Limited.
  *  Written by Deep Blue Solutions Limited.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  * This code is called from the kernel's undefined instruction trap.
  * r9 holds the return address for successful handling.
@@ -174,6 +177,7 @@ vfp_hw_state_valid:
 					@ out before setting an FPEXC that
 					@ stops us reading stuff
 	VFPFMXR	FPEXC, r1		@ Restore FPEXC last
+	enable_irq_cond
 	sub	r2, r2, #4		@ Retry current instruction - if Thumb
 	str	r2, [sp, #S_PC]		@ mode it's two 16-bit instructions,
 					@ else it's one 32-bit instruction, so
@@ -203,6 +207,7 @@ skip:
 	@ Fall into hand on to next handler - appropriate coproc instr
 	@ not recognised by VFP
 
+	enable_irq_cond
 	DBGSTR	"not VFP"
 	dec_preempt_count_ti r10, r4
 	ret	lr

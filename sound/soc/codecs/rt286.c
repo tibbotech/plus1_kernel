@@ -1,9 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * rt286.c  --  RT286 ALSA SoC audio codec driver
  *
  * Copyright 2013 Realtek Semiconductor Corp.
  * Author: Bard Liao <bardliao@realtek.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/module.h>
@@ -293,10 +296,10 @@ static void rt286_jack_detect_work(struct work_struct *work)
 
 	rt286_jack_detect(rt286, &hp, &mic);
 
-	if (hp)
+	if (hp == true)
 		status |= SND_JACK_HEADPHONE;
 
-	if (mic)
+	if (mic == true)
 		status |= SND_JACK_MICROPHONE;
 
 	snd_soc_jack_report(rt286->jack, status,
@@ -921,10 +924,10 @@ static irqreturn_t rt286_irq(int irq, void *data)
 	/* Clear IRQ */
 	regmap_update_bits(rt286->regmap, RT286_IRQ_CTRL, 0x1, 0x1);
 
-	if (hp)
+	if (hp == true)
 		status |= SND_JACK_HEADPHONE;
 
-	if (mic)
+	if (mic == true)
 		status |= SND_JACK_MICROPHONE;
 
 	snd_soc_jack_report(rt286->jack, status,

@@ -9,7 +9,6 @@
 #include <linux/uidgid.h>
 #include <net/inet_frag.h>
 #include <linux/rcupdate.h>
-#include <linux/siphash.h>
 
 struct tcpm_hash_bucket;
 struct ctl_table_header;
@@ -72,7 +71,7 @@ struct netns_ipv4 {
 
 	struct inet_peer_base	*peers;
 	struct sock  * __percpu	*tcp_sk;
-	struct fqdir		*fqdir;
+	struct netns_frags	frags;
 #ifdef CONFIG_NETFILTER
 	struct xt_table		*iptable_filter;
 	struct xt_table		*iptable_mangle;
@@ -104,9 +103,6 @@ struct netns_ipv4 {
 	/* Shall we try to damage output packets if routing dev changes? */
 	int sysctl_ip_dynaddr;
 	int sysctl_ip_early_demux;
-#ifdef CONFIG_NET_L3_MASTER_DEV
-	int sysctl_raw_l3mdev_accept;
-#endif
 	int sysctl_tcp_early_demux;
 	int sysctl_udp_early_demux;
 
@@ -116,7 +112,6 @@ struct netns_ipv4 {
 	int sysctl_tcp_l3mdev_accept;
 #endif
 	int sysctl_tcp_mtu_probing;
-	int sysctl_tcp_mtu_probe_floor;
 	int sysctl_tcp_base_mss;
 	int sysctl_tcp_min_snd_mss;
 	int sysctl_tcp_probe_threshold;
@@ -220,6 +215,5 @@ struct netns_ipv4 {
 	unsigned int	ipmr_seq;	/* protected by rtnl_mutex */
 
 	atomic_t	rt_genid;
-	siphash_key_t	ip_id_key;
 };
 #endif

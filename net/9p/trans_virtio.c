@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * The Virtio 9p transport driver
  *
@@ -9,6 +8,22 @@
  *
  *  Based on virtio console driver
  *  Copyright (C) 2006, 2007 Rusty Russell, IBM Corporation
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2
+ *  as published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to:
+ *  Free Software Foundation
+ *  51 Franklin Street, Fifth Floor
+ *  Boston, MA  02111-1301  USA
+ *
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -140,7 +155,7 @@ static void req_done(struct virtqueue *vq)
 		}
 
 		if (len) {
-			req->rc.size = len;
+			req->rc->size = len;
 			p9_client_cb(chan->client, req, REQ_STATUS_RCVD);
 		}
 	}
@@ -190,13 +205,6 @@ static int pack_sg_list(struct scatterlist *sg, int start,
 static int p9_virtio_cancel(struct p9_client *client, struct p9_req_t *req)
 {
 	return 1;
-}
-
-/* Reply won't come, so drop req ref */
-static int p9_virtio_cancelled(struct p9_client *client, struct p9_req_t *req)
-{
-	p9_req_put(req);
-	return 0;
 }
 
 /**
@@ -265,12 +273,12 @@ req_retry:
 	out_sgs = in_sgs = 0;
 	/* Handle out VirtIO ring buffers */
 	out = pack_sg_list(chan->sg, 0,
-			   VIRTQUEUE_NUM, req->tc.sdata, req->tc.size);
+			   VIRTQUEUE_NUM, req->tc->sdata, req->tc->size);
 	if (out)
 		sgs[out_sgs++] = chan->sg;
 
 	in = pack_sg_list(chan->sg, out,
-			  VIRTQUEUE_NUM, req->rc.sdata, req->rc.capacity);
+			  VIRTQUEUE_NUM, req->rc->sdata, req->rc->capacity);
 	if (in)
 		sgs[out_sgs + in_sgs++] = chan->sg + out;
 
@@ -314,7 +322,7 @@ static int p9_get_mapped_pages(struct virtio_chan *chan,
 	if (!iov_iter_count(data))
 		return 0;
 
-	if (!iov_iter_is_kvec(data)) {
+	if (!(data->type & ITER_KVEC)) {
 		int n;
 		/*
 		 * We allow only p9_max_pages pinned. We wait for the
@@ -396,7 +404,6 @@ p9_virtio_zc_request(struct p9_client *client, struct p9_req_t *req,
 	struct scatterlist *sgs[4];
 	size_t offs;
 	int need_drop = 0;
-	int kicked = 0;
 
 	p9_debug(P9_DEBUG_TRANS, "virtio request\n");
 
@@ -404,33 +411,29 @@ p9_virtio_zc_request(struct p9_client *client, struct p9_req_t *req,
 		__le32 sz;
 		int n = p9_get_mapped_pages(chan, &out_pages, uodata,
 					    outlen, &offs, &need_drop);
-		if (n < 0) {
-			err = n;
-			goto err_out;
-		}
+		if (n < 0)
+			return n;
 		out_nr_pages = DIV_ROUND_UP(n + offs, PAGE_SIZE);
 		if (n != outlen) {
 			__le32 v = cpu_to_le32(n);
-			memcpy(&req->tc.sdata[req->tc.size - 4], &v, 4);
+			memcpy(&req->tc->sdata[req->tc->size - 4], &v, 4);
 			outlen = n;
 		}
 		/* The size field of the message must include the length of the
 		 * header and the length of the data.  We didn't actually know
 		 * the length of the data until this point so add it in now.
 		 */
-		sz = cpu_to_le32(req->tc.size + outlen);
-		memcpy(&req->tc.sdata[0], &sz, sizeof(sz));
+		sz = cpu_to_le32(req->tc->size + outlen);
+		memcpy(&req->tc->sdata[0], &sz, sizeof(sz));
 	} else if (uidata) {
 		int n = p9_get_mapped_pages(chan, &in_pages, uidata,
 					    inlen, &offs, &need_drop);
-		if (n < 0) {
-			err = n;
-			goto err_out;
-		}
+		if (n < 0)
+			return n;
 		in_nr_pages = DIV_ROUND_UP(n + offs, PAGE_SIZE);
 		if (n != inlen) {
 			__le32 v = cpu_to_le32(n);
-			memcpy(&req->tc.sdata[req->tc.size - 4], &v, 4);
+			memcpy(&req->tc->sdata[req->tc->size - 4], &v, 4);
 			inlen = n;
 		}
 	}
@@ -442,7 +445,7 @@ req_retry_pinned:
 
 	/* out data */
 	out = pack_sg_list(chan->sg, 0,
-			   VIRTQUEUE_NUM, req->tc.sdata, req->tc.size);
+			   VIRTQUEUE_NUM, req->tc->sdata, req->tc->size);
 
 	if (out)
 		sgs[out_sgs++] = chan->sg;
@@ -461,7 +464,7 @@ req_retry_pinned:
 	 * alloced memory and payload onto the user buffer.
 	 */
 	in = pack_sg_list(chan->sg, out,
-			  VIRTQUEUE_NUM, req->rc.sdata, in_hdr_len);
+			  VIRTQUEUE_NUM, req->rc->sdata, in_hdr_len);
 	if (in)
 		sgs[out_sgs + in_sgs++] = chan->sg + out;
 
@@ -495,7 +498,6 @@ req_retry_pinned:
 	}
 	virtqueue_kick(chan->vq);
 	spin_unlock_irqrestore(&chan->lock, flags);
-	kicked = 1;
 	p9_debug(P9_DEBUG_TRANS, "virtio request kicked\n");
 	err = wait_event_killable(req->wq, req->status >= REQ_STATUS_RCVD);
 	/*
@@ -516,10 +518,6 @@ err_out:
 	}
 	kvfree(in_pages);
 	kvfree(out_pages);
-	if (!kicked) {
-		/* reply won't come */
-		p9_req_put(req);
-	}
 	return err;
 }
 
@@ -752,7 +750,6 @@ static struct p9_trans_module p9_virtio_trans = {
 	.request = p9_virtio_request,
 	.zc_request = p9_virtio_zc_request,
 	.cancel = p9_virtio_cancel,
-	.cancelled = p9_virtio_cancelled,
 	/*
 	 * We leave one entry for input and one entry for response
 	 * headers. We also skip one more entry to accomodate, address
@@ -767,16 +764,10 @@ static struct p9_trans_module p9_virtio_trans = {
 /* The standard init function */
 static int __init p9_virtio_init(void)
 {
-	int rc;
-
 	INIT_LIST_HEAD(&virtio_chan_list);
 
 	v9fs_register_trans(&p9_virtio_trans);
-	rc = register_virtio_driver(&p9_virtio_drv);
-	if (rc)
-		v9fs_unregister_trans(&p9_virtio_trans);
-
-	return rc;
+	return register_virtio_driver(&p9_virtio_drv);
 }
 
 static void __exit p9_virtio_cleanup(void)

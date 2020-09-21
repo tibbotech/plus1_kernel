@@ -16,6 +16,7 @@
 #include <linux/err.h>
 #include <linux/list.h>
 #include <linux/interrupt.h>
+#include <linux/ipipe.h>
 
 #include <linux/irqchip/chained_irq.h>
 
@@ -185,7 +186,11 @@ struct pcs_device {
 #define PCS_FEAT_PINCONF	(1 << 0)
 	struct property *missing_nr_pinctrl_cells;
 	struct pcs_soc_data socdata;
+#ifdef CONFIG_IPIPE
+	ipipe_spinlock_t lock;
+#else /* !IPIPE */
 	raw_spinlock_t lock;
+#endif /* !IPIPE */
 	struct mutex mutex;
 	unsigned width;
 	unsigned fmask;
@@ -1022,14 +1027,14 @@ static int pcs_parse_one_pinctrl_entry(struct pcs_device *pcs,
 		vals[found].reg = pcs->base + offset;
 		vals[found].val = pinctrl_spec.args[1];
 
-		dev_dbg(pcs->dev, "%pOFn index: 0x%x value: 0x%x\n",
-			pinctrl_spec.np, offset, pinctrl_spec.args[1]);
+		dev_dbg(pcs->dev, "%s index: 0x%x value: 0x%x\n",
+			pinctrl_spec.np->name, offset, pinctrl_spec.args[1]);
 
 		pin = pcs_get_pin_by_offset(pcs, offset);
 		if (pin < 0) {
 			dev_err(pcs->dev,
-				"could not add functions for %pOFn %ux\n",
-				np, offset);
+				"could not add functions for %s %ux\n",
+				np->name, offset);
 			break;
 		}
 		pins[found++] = pin;
@@ -1135,8 +1140,8 @@ static int pcs_parse_bits_in_pinctrl_entry(struct pcs_device *pcs,
 		val = pinctrl_spec.args[1];
 		mask = pinctrl_spec.args[2];
 
-		dev_dbg(pcs->dev, "%pOFn index: 0x%x value: 0x%x mask: 0x%x\n",
-			pinctrl_spec.np, offset, val, mask);
+		dev_dbg(pcs->dev, "%s index: 0x%x value: 0x%x mask: 0x%x\n",
+			pinctrl_spec.np->name, offset, val, mask);
 
 		/* Parse pins in each row from LSB */
 		while (mask) {
@@ -1148,8 +1153,8 @@ static int pcs_parse_bits_in_pinctrl_entry(struct pcs_device *pcs,
 
 			if ((mask & mask_pos) == 0) {
 				dev_err(pcs->dev,
-					"Invalid mask for %pOFn at 0x%x\n",
-					np, offset);
+					"Invalid mask for %s at 0x%x\n",
+					np->name, offset);
 				break;
 			}
 
@@ -1157,8 +1162,8 @@ static int pcs_parse_bits_in_pinctrl_entry(struct pcs_device *pcs,
 
 			if (submask != mask_pos) {
 				dev_warn(pcs->dev,
-						"Invalid submask 0x%x for %pOFn at 0x%x\n",
-						submask, np, offset);
+						"Invalid submask 0x%x for %s at 0x%x\n",
+						submask, np->name, offset);
 				continue;
 			}
 
@@ -1169,8 +1174,8 @@ static int pcs_parse_bits_in_pinctrl_entry(struct pcs_device *pcs,
 			pin = pcs_get_pin_by_offset(pcs, offset);
 			if (pin < 0) {
 				dev_err(pcs->dev,
-					"could not add functions for %pOFn %ux\n",
-					np, offset);
+					"could not add functions for %s %ux\n",
+					np->name, offset);
 				break;
 			}
 			pins[found++] = pin + pin_num_from_lsb;
@@ -1254,16 +1259,16 @@ static int pcs_dt_node_to_map(struct pinctrl_dev *pctldev,
 		ret = pcs_parse_bits_in_pinctrl_entry(pcs, np_config, map,
 				num_maps, pgnames);
 		if (ret < 0) {
-			dev_err(pcs->dev, "no pins entries for %pOFn\n",
-				np_config);
+			dev_err(pcs->dev, "no pins entries for %s\n",
+				np_config->name);
 			goto free_pgnames;
 		}
 	} else {
 		ret = pcs_parse_one_pinctrl_entry(pcs, np_config, map,
 				num_maps, pgnames);
 		if (ret < 0) {
-			dev_err(pcs->dev, "no pins entries for %pOFn\n",
-				np_config);
+			dev_err(pcs->dev, "no pins entries for %s\n",
+				np_config->name);
 			goto free_pgnames;
 		}
 	}
@@ -1460,7 +1465,7 @@ static int pcs_irq_handle(struct pcs_soc_data *pcs_soc)
 		mask = pcs->read(pcswi->reg);
 		raw_spin_unlock(&pcs->lock);
 		if (mask & pcs_soc->irq_status_mask) {
-			generic_handle_irq(irq_find_mapping(pcs->domain,
+			ipipe_handle_demuxed_irq(irq_find_mapping(pcs->domain,
 							    pcswi->hwirq));
 			count++;
 		}
@@ -1480,8 +1485,14 @@ static int pcs_irq_handle(struct pcs_soc_data *pcs_soc)
 static irqreturn_t pcs_irq_handler(int irq, void *d)
 {
 	struct pcs_soc_data *pcs_soc = d;
+	unsigned long flags;
+	irqreturn_t ret;
 
-	return pcs_irq_handle(pcs_soc) ? IRQ_HANDLED : IRQ_NONE;
+	flags = hard_cond_local_irq_save();
+	ret = pcs_irq_handle(pcs_soc) ? IRQ_HANDLED : IRQ_NONE;
+	hard_cond_local_irq_restore(flags);
+
+	return ret;
 }
 
 /**

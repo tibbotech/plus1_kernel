@@ -160,6 +160,7 @@ enum {
 	FTRACE_OPS_FL_PID			= 1 << 13,
 	FTRACE_OPS_FL_RCU			= 1 << 14,
 	FTRACE_OPS_FL_TRACE_ARRAY		= 1 << 15,
+	FTRACE_OPS_FL_IPIPE_EXCLUSIVE		= 1 << 17,
 };
 
 #ifdef CONFIG_DYNAMIC_FTRACE
@@ -241,11 +242,21 @@ static inline void ftrace_free_mem(struct module *mod, void *start, void *end) {
 
 #ifdef CONFIG_STACK_TRACER
 
-extern int stack_tracer_enabled;
+#define STACK_TRACE_ENTRIES 500
 
-int stack_trace_sysctl(struct ctl_table *table, int write,
-		       void __user *buffer, size_t *lenp,
-		       loff_t *ppos);
+struct stack_trace;
+
+extern unsigned stack_trace_index[];
+extern struct stack_trace stack_trace_max;
+extern unsigned long stack_trace_max_size;
+extern arch_spinlock_t stack_trace_max_lock;
+
+extern int stack_tracer_enabled;
+void stack_trace_print(void);
+int
+stack_trace_sysctl(struct ctl_table *table, int write,
+		   void __user *buffer, size_t *lenp,
+		   loff_t *ppos);
 
 /* DO NOT MODIFY THIS VARIABLE DIRECTLY! */
 DECLARE_PER_CPU(int, disable_stack_tracer);
@@ -379,7 +390,6 @@ enum {
 	FTRACE_UPDATE_TRACE_FUNC	= (1 << 2),
 	FTRACE_START_FUNC_RET		= (1 << 3),
 	FTRACE_STOP_FUNC_RET		= (1 << 4),
-	FTRACE_MAY_SLEEP		= (1 << 5),
 };
 
 /*
@@ -411,9 +421,6 @@ enum {
 };
 
 void arch_ftrace_update_code(int command);
-void arch_ftrace_update_trampoline(struct ftrace_ops *ops);
-void *arch_ftrace_trampoline_func(struct ftrace_ops *ops, struct dyn_ftrace *rec);
-void arch_ftrace_trampoline_free(struct ftrace_ops *ops);
 
 struct ftrace_rec_iter;
 
@@ -427,8 +434,8 @@ struct dyn_ftrace *ftrace_rec_iter_record(struct ftrace_rec_iter *iter);
 	     iter = ftrace_rec_iter_next(iter))
 
 
-int ftrace_update_record(struct dyn_ftrace *rec, bool enable);
-int ftrace_test_record(struct dyn_ftrace *rec, bool enable);
+int ftrace_update_record(struct dyn_ftrace *rec, int enable);
+int ftrace_test_record(struct dyn_ftrace *rec, int enable);
 void ftrace_run_stop_machine(int command);
 unsigned long ftrace_location(unsigned long ip);
 unsigned long ftrace_location_range(unsigned long start, unsigned long end);
@@ -741,14 +748,7 @@ struct ftrace_graph_ret {
 typedef void (*trace_func_graph_ret_t)(struct ftrace_graph_ret *); /* return */
 typedef int (*trace_func_graph_ent_t)(struct ftrace_graph_ent *); /* entry */
 
-extern int ftrace_graph_entry_stub(struct ftrace_graph_ent *trace);
-
 #ifdef CONFIG_FUNCTION_GRAPH_TRACER
-
-struct fgraph_ops {
-	trace_func_graph_ent_t		entryfunc;
-	trace_func_graph_ret_t		retfunc;
-};
 
 /*
  * Stack of return addresses for functions
@@ -781,9 +781,6 @@ extern int
 function_graph_enter(unsigned long ret, unsigned long func,
 		     unsigned long frame_pointer, unsigned long *retp);
 
-struct ftrace_ret_stack *
-ftrace_graph_get_ret_stack(struct task_struct *task, int idx);
-
 unsigned long ftrace_graph_ret_addr(struct task_struct *task, int *idx,
 				    unsigned long ret, unsigned long *retp);
 
@@ -794,11 +791,11 @@ unsigned long ftrace_graph_ret_addr(struct task_struct *task, int *idx,
  */
 #define __notrace_funcgraph		notrace
 
+#define FTRACE_NOTRACE_DEPTH 65536
 #define FTRACE_RETFUNC_DEPTH 50
 #define FTRACE_RETSTACK_ALLOC_SIZE 32
-
-extern int register_ftrace_graph(struct fgraph_ops *ops);
-extern void unregister_ftrace_graph(struct fgraph_ops *ops);
+extern int register_ftrace_graph(trace_func_graph_ret_t retfunc,
+				trace_func_graph_ent_t entryfunc);
 
 extern bool ftrace_graph_is_dead(void);
 extern void ftrace_graph_stop(void);
@@ -807,9 +804,16 @@ extern void ftrace_graph_stop(void);
 extern trace_func_graph_ret_t ftrace_graph_return;
 extern trace_func_graph_ent_t ftrace_graph_entry;
 
+extern void unregister_ftrace_graph(void);
+
 extern void ftrace_graph_init_task(struct task_struct *t);
 extern void ftrace_graph_exit_task(struct task_struct *t);
 extern void ftrace_graph_init_idle_task(struct task_struct *t, int cpu);
+
+static inline int task_curr_ret_stack(struct task_struct *t)
+{
+	return t->curr_ret_stack;
+}
 
 static inline void pause_graph_tracing(void)
 {
@@ -828,9 +832,17 @@ static inline void ftrace_graph_init_task(struct task_struct *t) { }
 static inline void ftrace_graph_exit_task(struct task_struct *t) { }
 static inline void ftrace_graph_init_idle_task(struct task_struct *t, int cpu) { }
 
-/* Define as macros as fgraph_ops may not be defined */
-#define register_ftrace_graph(ops) ({ -1; })
-#define unregister_ftrace_graph(ops) do { } while (0)
+static inline int register_ftrace_graph(trace_func_graph_ret_t retfunc,
+			  trace_func_graph_ent_t entryfunc)
+{
+	return -1;
+}
+static inline void unregister_ftrace_graph(void) { }
+
+static inline int task_curr_ret_stack(struct task_struct *tsk)
+{
+	return -1;
+}
 
 static inline unsigned long
 ftrace_graph_ret_addr(struct task_struct *task, int *idx, unsigned long ret,

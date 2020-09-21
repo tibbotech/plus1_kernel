@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * drivers/cpufreq/cpufreq_governor.h
  *
@@ -9,6 +8,10 @@
  *		(C) 2003 Jun Nakajima <jun.nakajima@intel.com>
  *		(C) 2009 Alexander Clouter <alex@digriz.org.uk>
  *		(c) 2012 Viresh Kumar <viresh.kumar@linaro.org>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #ifndef _CPUFREQ_GOVERNOR_H
@@ -66,14 +69,6 @@ static ssize_t show_##file_name						\
 	struct dbs_data *dbs_data = to_dbs_data(attr_set);		\
 	return sprintf(buf, "%u\n", dbs_data->file_name);		\
 }
-
-#define gov_attr_ro(_name)						\
-static struct governor_attr _name =					\
-__ATTR(_name, 0444, show_##_name, NULL)
-
-#define gov_attr_rw(_name)						\
-static struct governor_attr _name =					\
-__ATTR(_name, 0644, show_##_name, store_##_name)
 
 /* Common to all CPUs of a policy */
 struct policy_dbs_info {

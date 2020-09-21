@@ -135,8 +135,8 @@
 };
 
 &sdio {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pins_sdio>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_sdio>;
 		bus-width = <4>;
 		max-frequency = <25000000>;
 		non-removable;

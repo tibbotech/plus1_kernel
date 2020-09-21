@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * include/media/si476x-core.h -- Common definitions for si476x core
  * device
@@ -7,6 +6,16 @@
  * Copyright (C) 2013 Andrey Smirnov
  *
  * Author: Andrey Smirnov <andrew.smirnov@gmail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
  */
 
 #ifndef SI476X_CORE_H
@@ -483,6 +492,8 @@ enum si476x_common_receiver_properties {
 	SI476X_PROP_DIGITAL_IO_INPUT_FORMAT		= 0x0201,
 	SI476X_PROP_DIGITAL_IO_OUTPUT_SAMPLE_RATE	= 0x0202,
 	SI476X_PROP_DIGITAL_IO_OUTPUT_FORMAT		= 0x0203,
+
+	SI476X_PROP_AUDIO_MUTE				= 0x0301,
 
 	SI476X_PROP_SEEK_BAND_BOTTOM			= 0x1100,
 	SI476X_PROP_SEEK_BAND_TOP			= 0x1101,

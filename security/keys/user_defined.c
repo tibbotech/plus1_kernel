@@ -1,11 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /* user_defined.c: user defined key type
  *
  * Copyright (C) 2004 Red Hat, Inc. All Rights Reserved.
  * Written by David Howells (dhowells@redhat.com)
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version
+ * 2 of the License, or (at your option) any later version.
  */
 
-#include <linux/export.h>
+#include <linux/module.h>
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/seq_file.h>
@@ -168,7 +172,7 @@ EXPORT_SYMBOL_GPL(user_describe);
  * read the key data
  * - the key's semaphore is read-locked
  */
-long user_read(const struct key *key, char *buffer, size_t buflen)
+long user_read(const struct key *key, char __user *buffer, size_t buflen)
 {
 	const struct user_key_payload *upayload;
 	long ret;
@@ -181,7 +185,8 @@ long user_read(const struct key *key, char *buffer, size_t buflen)
 		if (buflen > upayload->datalen)
 			buflen = upayload->datalen;
 
-		memcpy(buffer, upayload->data, buflen);
+		if (copy_to_user(buffer, upayload->data, buflen) != 0)
+			ret = -EFAULT;
 	}
 
 	return ret;

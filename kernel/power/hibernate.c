@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * kernel/power/hibernate.c - Hibernation (a.k.a suspend-to-disk) support.
  *
@@ -7,12 +6,15 @@
  * Copyright (c) 2004 Pavel Machek <pavel@ucw.cz>
  * Copyright (c) 2009 Rafael J. Wysocki, Novell Inc.
  * Copyright (C) 2012 Bojan Smojver <bojan@rexursive.com>
+ *
+ * This file is released under the GPLv2.
  */
 
 #define pr_fmt(fmt) "PM: " fmt
 
 #include <linux/export.h>
 #include <linux/suspend.h>
+#include <linux/syscalls.h>
 #include <linux/reboot.h>
 #include <linux/string.h>
 #include <linux/device.h>
@@ -30,7 +32,6 @@
 #include <linux/ctype.h>
 #include <linux/genhd.h>
 #include <linux/ktime.h>
-#include <linux/security.h>
 #include <trace/events/power.h>
 
 #include "power.h"
@@ -69,7 +70,7 @@ static const struct platform_hibernation_ops *hibernation_ops;
 
 bool hibernation_available(void)
 {
-	return nohibernate == 0 && !security_locked_down(LOCKDOWN_HIBERNATION);
+	return (nohibernate == 0);
 }
 
 /**
@@ -129,7 +130,7 @@ static int hibernation_test(int level) { return 0; }
 static int platform_begin(int platform_mode)
 {
 	return (platform_mode && hibernation_ops) ?
-		hibernation_ops->begin(PMSG_FREEZE) : 0;
+		hibernation_ops->begin() : 0;
 }
 
 /**
@@ -257,11 +258,6 @@ void swsusp_show_speed(ktime_t start, ktime_t stop,
 		(kps % 1000) / 10);
 }
 
-__weak int arch_resume_nosmt(void)
-{
-	return 0;
-}
-
 /**
  * create_image - Create a hibernation image.
  * @platform_mode: Whether or not to use the platform driver.
@@ -285,11 +281,12 @@ static int create_image(int platform_mode)
 	if (error || hibernation_test(TEST_PLATFORM))
 		goto Platform_finish;
 
-	error = suspend_disable_secondary_cpus();
+	error = disable_nonboot_cpus();
 	if (error || hibernation_test(TEST_CPUS))
 		goto Enable_cpus;
 
 	local_irq_disable();
+	hard_cond_local_irq_disable();
 
 	system_state = SYSTEM_SUSPEND;
 
@@ -327,11 +324,7 @@ static int create_image(int platform_mode)
 	local_irq_enable();
 
  Enable_cpus:
-	suspend_enable_secondary_cpus();
-
-	/* Allow architectures to do nosmt-specific post-resume dances */
-	if (!in_suspend)
-		error = arch_resume_nosmt();
+	enable_nonboot_cpus();
 
  Platform_finish:
 	platform_finish(platform_mode);
@@ -425,7 +418,7 @@ int hibernation_snapshot(int platform_mode)
 
 int __weak hibernate_resume_nonboot_cpu_disable(void)
 {
-	return suspend_disable_secondary_cpus();
+	return disable_nonboot_cpus();
 }
 
 /**
@@ -457,6 +450,7 @@ static int resume_target_kernel(bool platform_mode)
 
 	local_irq_disable();
 	system_state = SYSTEM_SUSPEND;
+	hard_cond_local_irq_disable();
 
 	error = syscore_suspend();
 	if (error)
@@ -494,7 +488,7 @@ static int resume_target_kernel(bool platform_mode)
 	local_irq_enable();
 
  Enable_cpus:
-	suspend_enable_secondary_cpus();
+	enable_nonboot_cpus();
 
  Cleanup:
 	platform_restore_cleanup(platform_mode);
@@ -551,7 +545,7 @@ int hibernation_platform_enter(void)
 	 * hibernation_ops->finish() before saving the image, so we should let
 	 * the firmware know that we're going to enter the sleep state after all
 	 */
-	error = hibernation_ops->begin(PMSG_HIBERNATE);
+	error = hibernation_ops->begin();
 	if (error)
 		goto Close;
 
@@ -572,12 +566,13 @@ int hibernation_platform_enter(void)
 	if (error)
 		goto Platform_finish;
 
-	error = suspend_disable_secondary_cpus();
+	error = disable_nonboot_cpus();
 	if (error)
 		goto Enable_cpus;
 
 	local_irq_disable();
 	system_state = SYSTEM_SUSPEND;
+	hard_cond_local_irq_disable();
 	syscore_suspend();
 	if (pm_wakeup_pending()) {
 		error = -EAGAIN;
@@ -594,7 +589,7 @@ int hibernation_platform_enter(void)
 	local_irq_enable();
 
  Enable_cpus:
-	suspend_enable_secondary_cpus();
+	enable_nonboot_cpus();
 
  Platform_finish:
 	hibernation_ops->finish();
@@ -717,7 +712,9 @@ int hibernate(void)
 		goto Exit;
 	}
 
-	ksys_sync_helper();
+	pr_info("Syncing filesystems ... \n");
+	ksys_sync();
+	pr_info("done.\n");
 
 	error = freeze_processes();
 	if (error)

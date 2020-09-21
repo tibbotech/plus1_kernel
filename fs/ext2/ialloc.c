@@ -172,7 +172,9 @@ static void ext2_preread_inode(struct inode *inode)
 	struct backing_dev_info *bdi;
 
 	bdi = inode_to_bdi(inode);
-	if (bdi_rw_congested(bdi))
+	if (bdi_read_congested(bdi))
+		return;
+	if (bdi_write_congested(bdi))
 		return;
 
 	block_group = (inode->i_ino - 1) / EXT2_INODES_PER_GROUP(inode->i_sb);
@@ -220,6 +222,8 @@ static int find_group_dir(struct super_block *sb, struct inode *parent)
 			best_desc = desc;
 		}
 	}
+	if (!best_desc)
+		return -1;
 
 	return best_group;
 }
@@ -509,7 +513,6 @@ repeat_in_this_group:
 	/*
 	 * Scanned all blockgroups.
 	 */
-	brelse(bitmap_bh);
 	err = -ENOSPC;
 	goto fail;
 got:

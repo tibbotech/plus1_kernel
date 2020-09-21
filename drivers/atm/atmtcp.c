@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /* drivers/atm/atmtcp.c - ATM over TCP "device" driver */
 
 /* Written 1997-2000 by Werner Almesberger, EPFL LRC/ICA */

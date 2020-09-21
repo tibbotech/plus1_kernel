@@ -24,7 +24,7 @@
 #include <linux/kthread.h>
 #include <linux/wait.h>
 #include <linux/sched.h>
-
+#include <drm/drmP.h>
 #include "amdgpu.h"
 #include "amdgpu_trace.h"
 
@@ -32,27 +32,12 @@ static void amdgpu_job_timedout(struct drm_sched_job *s_job)
 {
 	struct amdgpu_ring *ring = to_amdgpu_ring(s_job->sched);
 	struct amdgpu_job *job = to_amdgpu_job(s_job);
-	struct amdgpu_task_info ti;
 
-	memset(&ti, 0, sizeof(struct amdgpu_task_info));
-
-	if (amdgpu_ring_soft_recovery(ring, job->vmid, s_job->s_fence->parent)) {
-		DRM_ERROR("ring %s timeout, but soft recovered\n",
-			  s_job->sched->name);
-		return;
-	}
-
-	amdgpu_vm_get_task_info(ring->adev, job->pasid, &ti);
 	DRM_ERROR("ring %s timeout, signaled seq=%u, emitted seq=%u\n",
 		  job->base.sched->name, atomic_read(&ring->fence_drv.last_seq),
 		  ring->fence_drv.sync_seq);
-	DRM_ERROR("Process information: process %s pid %d thread %s pid %d\n",
-		  ti.process_name, ti.tgid, ti.task_name, ti.pid);
 
-	if (amdgpu_device_should_recover_gpu(ring->adev))
-		amdgpu_device_gpu_recover(ring->adev, job);
-	else
-		drm_sched_suspend_timeout(&ring->sched);
+	amdgpu_device_gpu_recover(ring->adev, job, false);
 }
 
 int amdgpu_job_alloc(struct amdgpu_device *adev, unsigned num_ibs,
@@ -98,6 +83,8 @@ int amdgpu_job_alloc_with_ib(struct amdgpu_device *adev, unsigned size,
 	r = amdgpu_ib_get(adev, NULL, size, &(*job)->ibs[0]);
 	if (r)
 		kfree(*job);
+	else
+		(*job)->vm_pd_addr = adev->gart.table_addr;
 
 	return r;
 }
@@ -119,8 +106,6 @@ static void amdgpu_job_free_cb(struct drm_sched_job *s_job)
 {
 	struct amdgpu_ring *ring = to_amdgpu_ring(s_job->sched);
 	struct amdgpu_job *job = to_amdgpu_job(s_job);
-
-	drm_sched_job_cleanup(s_job);
 
 	amdgpu_ring_priority_put(ring, s_job->s_priority);
 	dma_fence_put(job->fence);
@@ -218,7 +203,7 @@ static struct dma_fence *amdgpu_job_run(struct drm_sched_job *sched_job)
 	struct amdgpu_ring *ring = to_amdgpu_ring(sched_job->sched);
 	struct dma_fence *fence = NULL, *finished;
 	struct amdgpu_job *job;
-	int r = 0;
+	int r;
 
 	job = to_amdgpu_job(sched_job);
 	finished = &job->base.s_fence->finished;
@@ -243,8 +228,6 @@ static struct dma_fence *amdgpu_job_run(struct drm_sched_job *sched_job)
 	job->fence = dma_fence_get(fence);
 
 	amdgpu_job_free_resources(job);
-
-	fence = r ? ERR_PTR(r) : fence;
 	return fence;
 }
 

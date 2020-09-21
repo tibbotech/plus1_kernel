@@ -37,14 +37,12 @@ static inline int fill_gva_list(u64 gva_list[], int offset,
 		 * Lower 12 bits encode the number of additional
 		 * pages to flush (in addition to the 'cur' page).
 		 */
-		if (diff >= HV_TLB_FLUSH_UNIT) {
+		if (diff >= HV_TLB_FLUSH_UNIT)
 			gva_list[gva_n] |= ~PAGE_MASK;
-			cur += HV_TLB_FLUSH_UNIT;
-		}  else if (diff) {
+		else if (diff)
 			gva_list[gva_n] |= (diff - 1) >> PAGE_SHIFT;
-			cur = end;
-		}
 
+		cur += HV_TLB_FLUSH_UNIT;
 		gva_n++;
 
 	} while (cur < end);
@@ -233,6 +231,6 @@ void hyperv_setup_mmu_ops(void)
 		return;
 
 	pr_info("Using hypercall for remote TLB flush\n");
-	pv_ops.mmu.flush_tlb_others = hyperv_flush_tlb_others;
-	pv_ops.mmu.tlb_remove_table = tlb_remove_table;
+	pv_mmu_ops.flush_tlb_others = hyperv_flush_tlb_others;
+	pv_mmu_ops.tlb_remove_table = tlb_remove_table;
 }

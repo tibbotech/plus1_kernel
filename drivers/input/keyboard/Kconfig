@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 #
 # Input core configuration
 #
@@ -71,24 +70,6 @@ config KEYBOARD_AMIGA
 config ATARI_KBD_CORE
 	bool
 
-config KEYBOARD_APPLESPI
-	tristate "Apple SPI keyboard and trackpad"
-	depends on ACPI && EFI
-	depends on SPI
-	depends on X86 || COMPILE_TEST
-	depends on LEDS_CLASS
-	select CRC16
-	help
-	  Say Y here if you are running Linux on any Apple MacBook8,1 or later,
-	  or any MacBookPro13,* or MacBookPro14,*.
-
-	  You will also need to enable appropriate SPI master controllers:
-	  spi_pxa2xx_platform and spi_pxa2xx_pci for MacBook8,1, and
-	  spi_pxa2xx_platform and intel_lpss_pci for the rest.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called applespi.
-
 config KEYBOARD_ATARI
 	tristate "Atari keyboard"
 	depends on ATARI
@@ -156,17 +137,6 @@ config KEYBOARD_ATKBD_RDI_KEYCODES
 	  right-hand column will be interpreted as the key shown in the
 	  left-hand column.
 
-config KEYBOARD_QT1050
-	tristate "Microchip AT42QT1050 Touch Sensor Chip"
-	depends on I2C
-	select REGMAP_I2C
-	help
-	  Say Y here if you want to use Microchip AT42QT1050 QTouch
-	  Sensor chip as input device.
-
-	  To compile this driver as a module, choose M here:
-	  the module will be called qt1050
-
 config KEYBOARD_QT1070
        tristate "Atmel AT42QT1070 Touch Sensor Chip"
        depends on I2C
@@ -224,7 +194,7 @@ config KEYBOARD_LKKBD
 
 config KEYBOARD_EP93XX
 	tristate "EP93xx Matrix Keypad support"
-	depends on ARCH_EP93XX || COMPILE_TEST
+	depends on ARCH_EP93XX
 	select INPUT_MATRIXKMAP
 	help
 	  Say Y here to enable the matrix keypad on the Cirrus EP93XX.
@@ -448,9 +418,18 @@ config KEYBOARD_MPR121
 	  To compile this driver as a module, choose M here: the
 	  module will be called mpr121_touchkey.
 
+config KEYBOARD_RPMSG
+	tristate "i.MX Rpmsg Keys Driver"
+	depends on (SOC_IMX7ULP)
+	depends on RPMSG
+	depends on OF
+	help
+	  This is rpmsg keys driver on i.mx7ulp, because some keys located
+	  in M4 side.
+
 config KEYBOARD_SNVS_PWRKEY
 	tristate "IMX SNVS Power Key Driver"
-	depends on ARCH_MXC || COMPILE_TEST
+	depends on (SOC_IMX6SX || SOC_IMX6UL || SOC_IMX7 || ARCH_FSL_IMX8MQ)
 	depends on OF
 	help
 	  This is the snvs powerkey driver for the Freescale i.MX application
@@ -458,6 +437,21 @@ config KEYBOARD_SNVS_PWRKEY
 
 	  To compile this driver as a module, choose M here; the
 	  module will be called snvs_pwrkey.
+
+config KEYBOARD_IMX_SC_PWRKEY
+	tristate "IMX SC Power Key Driver"
+	depends on (ARCH_FSL_IMX8QM || ARCH_FSL_IMX8QXP)
+	help
+	  This is the virtual snvs powerkey driver for NXP i.mx8Q/QXP family
+	  whose SCU hold snvs inside.
+
+config KEYBOARD_PF1550_ONKEY
+	tristate "PF1550 OnKey Driver"
+	depends on MFD_PF1550
+	depends on OF
+	help
+	  This is onkey driver for PF1550 pmic, onkey can trigger release
+	  and 1s(push hold), 2s, 3s, 4s, 8s interrupt for long press detect
 
 config KEYBOARD_IMX
 	tristate "IMX keypad support"
@@ -733,10 +727,21 @@ config KEYBOARD_XTKBD
 	  To compile this driver as a module, choose M here: the
 	  module will be called xtkbd.
 
+config KEYBOARD_W90P910
+	tristate "W90P910 Matrix Keypad support"
+	depends on ARCH_W90X900
+	select INPUT_MATRIXKMAP
+	help
+	  Say Y here to enable the matrix keypad on evaluation board
+	  based on W90P910.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called w90p910_keypad.
+
 config KEYBOARD_CROS_EC
 	tristate "ChromeOS EC keyboard"
 	select INPUT_MATRIXKMAP
-	depends on CROS_EC
+	depends on MFD_CROS_EC
 	help
 	  Say Y here to enable the matrix keyboard used by ChromeOS devices
 	  and implemented on the ChromeOS EC. You must enable one bus option

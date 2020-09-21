@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Context tracking: Probe on high level context boundaries such as kernel
  * and userspace. This includes syscalls and exceptions entry/exit.
@@ -114,7 +113,7 @@ void context_tracking_enter(enum ctx_state state)
 	 * helpers are enough to protect RCU uses inside the exception. So
 	 * just return immediately if we detect we are in an IRQ.
 	 */
-	if (in_interrupt())
+	if (!ipipe_root_p || in_interrupt())
 		return;
 
 	local_irq_save(flags);
@@ -170,7 +169,7 @@ void context_tracking_exit(enum ctx_state state)
 {
 	unsigned long flags;
 
-	if (in_interrupt())
+	if (!ipipe_root_p || in_interrupt())
 		return;
 
 	local_irq_save(flags);

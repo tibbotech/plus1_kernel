@@ -1,14 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 menu "Device Drivers"
 
-# Keep I/O buses first
-
 source "drivers/amba/Kconfig"
-source "drivers/eisa/Kconfig"
-source "drivers/pci/Kconfig"
-source "drivers/pcmcia/Kconfig"
-source "drivers/rapidio/Kconfig"
-
 
 source "drivers/base/Kconfig"
 
@@ -29,6 +22,8 @@ source "drivers/pnp/Kconfig"
 source "drivers/block/Kconfig"
 
 source "drivers/nvme/Kconfig"
+
+# misc before ide - BLK_DEV_SGIIOC4 depends on SGI_IOC4
 
 source "drivers/misc/Kconfig"
 
@@ -61,8 +56,6 @@ source "drivers/input/Kconfig"
 source "drivers/char/Kconfig"
 
 source "drivers/i2c/Kconfig"
-
-source "drivers/i3c/Kconfig"
 
 source "drivers/spi/Kconfig"
 
@@ -106,9 +99,13 @@ source "drivers/hid/Kconfig"
 
 source "drivers/usb/Kconfig"
 
+source "drivers/uwb/Kconfig"
+
 source "drivers/mmc/Kconfig"
 
 source "drivers/memstick/Kconfig"
+
+source "drivers/mxc/Kconfig"
 
 source "drivers/leds/Kconfig"
 
@@ -141,8 +138,6 @@ source "drivers/virtio/Kconfig"
 source "drivers/hv/Kconfig"
 
 source "drivers/xen/Kconfig"
-
-source "drivers/greybus/Kconfig"
 
 source "drivers/staging/Kconfig"
 
@@ -186,6 +181,8 @@ source "drivers/ipack/Kconfig"
 
 source "drivers/reset/Kconfig"
 
+source "drivers/fmc/Kconfig"
+
 source "drivers/phy/Kconfig"
 
 source "drivers/powercap/Kconfig"
@@ -223,9 +220,5 @@ source "drivers/visorbus/Kconfig"
 source "drivers/siox/Kconfig"
 
 source "drivers/slimbus/Kconfig"
-
-source "drivers/interconnect/Kconfig"
-
-source "drivers/counter/Kconfig"
 
 endmenu

@@ -16,15 +16,6 @@ static int usb_port_block_power_off;
 
 static const struct attribute_group *port_dev_group[];
 
-static ssize_t location_show(struct device *dev,
-			     struct device_attribute *attr, char *buf)
-{
-	struct usb_port *port_dev = to_usb_port(dev);
-
-	return sprintf(buf, "0x%08x\n", port_dev->location);
-}
-static DEVICE_ATTR_RO(location);
-
 static ssize_t connect_type_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
@@ -149,7 +140,6 @@ static DEVICE_ATTR_RW(usb3_lpm_permit);
 
 static struct attribute *port_dev_attrs[] = {
 	&dev_attr_connect_type.attr,
-	&dev_attr_location.attr,
 	&dev_attr_quirks.attr,
 	&dev_attr_over_current_count.attr,
 	NULL,
@@ -213,10 +203,7 @@ static int usb_port_runtime_resume(struct device *dev)
 	if (!port_dev->is_superspeed && peer)
 		pm_runtime_get_sync(&peer->dev);
 
-	retval = usb_autopm_get_interface(intf);
-	if (retval < 0)
-		return retval;
-
+	usb_autopm_get_interface(intf);
 	retval = usb_hub_set_port_power(hdev, hub, port1, true);
 	msleep(hub_power_on_good_delay(hub));
 	if (udev && !retval) {
@@ -269,10 +256,7 @@ static int usb_port_runtime_suspend(struct device *dev)
 	if (usb_port_block_power_off)
 		return -EBUSY;
 
-	retval = usb_autopm_get_interface(intf);
-	if (retval < 0)
-		return retval;
-
+	usb_autopm_get_interface(intf);
 	retval = usb_hub_set_port_power(hdev, hub, port1, false);
 	usb_clear_port_feature(hdev, port1, USB_PORT_FEAT_C_CONNECTION);
 	if (!port_dev->is_superspeed)
@@ -291,14 +275,6 @@ static int usb_port_runtime_suspend(struct device *dev)
 }
 #endif
 
-static void usb_port_shutdown(struct device *dev)
-{
-	struct usb_port *port_dev = to_usb_port(dev);
-
-	if (port_dev->child)
-		usb_disable_usb2_hardware_lpm(port_dev->child);
-}
-
 static const struct dev_pm_ops usb_port_pm_ops = {
 #ifdef CONFIG_PM
 	.runtime_suspend =	usb_port_runtime_suspend,
@@ -315,7 +291,6 @@ struct device_type usb_port_device_type = {
 static struct device_driver usb_port_driver = {
 	.name = "usb",
 	.owner = THIS_MODULE,
-	.shutdown = usb_port_shutdown,
 };
 
 static int link_peers(struct usb_port *left, struct usb_port *right)

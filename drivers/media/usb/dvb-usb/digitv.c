@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /* DVB USB compliant linux driver for Nebula Electronics uDigiTV DVB-T USB2.0
  * receiver
  *
  * Copyright (C) 2005 Patrick Boettcher (patrick.boettcher@posteo.de)
  *
  * partly based on the SDK published by Nebula Electronics
+ *
+ *	This program is free software; you can redistribute it and/or modify it
+ *	under the terms of the GNU General Public License as published by the Free
+ *	Software Foundation, version 2.
  *
  * see Documentation/media/dvb-drivers/dvb-usb.rst for more information
  */
@@ -230,22 +233,18 @@ static struct rc_map_table rc_map_digitv_table[] = {
 
 static int digitv_rc_query(struct dvb_usb_device *d, u32 *event, int *state)
 {
-	int ret, i;
+	int i;
 	u8 key[5];
 	u8 b[4] = { 0 };
 
 	*event = 0;
 	*state = REMOTE_NO_KEY_PRESSED;
 
-	ret = digitv_ctrl_msg(d, USB_READ_REMOTE, 0, NULL, 0, &key[1], 4);
-	if (ret)
-		return ret;
+	digitv_ctrl_msg(d,USB_READ_REMOTE,0,NULL,0,&key[1],4);
 
 	/* Tell the device we've read the remote. Not sure how necessary
 	   this is, but the Nebula SDK does it. */
-	ret = digitv_ctrl_msg(d, USB_WRITE_REMOTE, 0, b, 4, NULL, 0);
-	if (ret)
-		return ret;
+	digitv_ctrl_msg(d,USB_WRITE_REMOTE,0,b,4,NULL,0);
 
 	/* if something is inside the buffer, simulate key press */
 	if (key[1] != 0)

@@ -1,29 +1,34 @@
-// SPDX-License-Identifier: GPL-2.0+
 /*
  * i.MX IPUv3 Graphics driver
  *
  * Copyright (C) 2011 Sascha Hauer, Pengutronix
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
-
-#include <linux/clk.h>
 #include <linux/component.h>
-#include <linux/device.h>
-#include <linux/dma-mapping.h>
-#include <linux/errno.h>
-#include <linux/export.h>
 #include <linux/module.h>
+#include <linux/export.h>
+#include <linux/device.h>
 #include <linux/platform_device.h>
-
-#include <video/imx-ipu-v3.h>
-
+#include <drm/drmP.h>
 #include <drm/drm_atomic.h>
 #include <drm/drm_atomic_helper.h>
-#include <drm/drm_fb_cma_helper.h>
+#include <drm/drm_crtc_helper.h>
+#include <linux/clk.h>
+#include <linux/errno.h>
 #include <drm/drm_gem_cma_helper.h>
-#include <drm/drm_probe_helper.h>
-#include <drm/drm_vblank.h>
+#include <drm/drm_fb_cma_helper.h>
 
+#include <video/imx-ipu-v3.h>
 #include "imx-drm.h"
+#include "ipuv3-kms.h"
 #include "ipuv3-plane.h"
 
 #define DRIVER_DESC		"i.MX IPUv3 Graphics"
@@ -38,7 +43,6 @@ struct ipu_crtc {
 	struct ipu_dc		*dc;
 	struct ipu_di		*di;
 	int			irq;
-	struct drm_pending_vblank_event *event;
 };
 
 static inline struct ipu_crtc *to_ipu_crtc(struct drm_crtc *crtc)
@@ -75,7 +79,7 @@ static void ipu_crtc_disable_planes(struct ipu_crtc *ipu_crtc,
 	if (disable_partial)
 		ipu_plane_disable(ipu_crtc->plane[1], true);
 	if (disable_full)
-		ipu_plane_disable(ipu_crtc->plane[0], true);
+		ipu_plane_disable(ipu_crtc->plane[0], false);
 }
 
 static void ipu_crtc_atomic_disable(struct drm_crtc *crtc,
@@ -95,14 +99,14 @@ static void ipu_crtc_atomic_disable(struct drm_crtc *crtc,
 	ipu_dc_disable(ipu);
 	ipu_prg_disable(ipu);
 
-	drm_crtc_vblank_off(crtc);
-
 	spin_lock_irq(&crtc->dev->event_lock);
-	if (crtc->state->event && !crtc->state->active) {
+	if (crtc->state->event) {
 		drm_crtc_send_vblank_event(crtc, crtc->state->event);
 		crtc->state->event = NULL;
 	}
 	spin_unlock_irq(&crtc->dev->event_lock);
+
+	drm_crtc_vblank_off(crtc);
 }
 
 static void imx_drm_crtc_reset(struct drm_crtc *crtc)
@@ -178,31 +182,8 @@ static const struct drm_crtc_funcs ipu_crtc_funcs = {
 static irqreturn_t ipu_irq_handler(int irq, void *dev_id)
 {
 	struct ipu_crtc *ipu_crtc = dev_id;
-	struct drm_crtc *crtc = &ipu_crtc->base;
-	unsigned long flags;
-	int i;
 
-	drm_crtc_handle_vblank(crtc);
-
-	if (ipu_crtc->event) {
-		for (i = 0; i < ARRAY_SIZE(ipu_crtc->plane); i++) {
-			struct ipu_plane *plane = ipu_crtc->plane[i];
-
-			if (!plane)
-				continue;
-
-			if (ipu_plane_atomic_update_pending(&plane->base))
-				break;
-		}
-
-		if (i == ARRAY_SIZE(ipu_crtc->plane)) {
-			spin_lock_irqsave(&crtc->dev->event_lock, flags);
-			drm_crtc_send_vblank_event(crtc, ipu_crtc->event);
-			ipu_crtc->event = NULL;
-			drm_crtc_vblank_put(crtc);
-			spin_unlock_irqrestore(&crtc->dev->event_lock, flags);
-		}
-	}
+	drm_crtc_handle_vblank(&ipu_crtc->base);
 
 	return IRQ_HANDLED;
 }
@@ -251,10 +232,8 @@ static void ipu_crtc_atomic_flush(struct drm_crtc *crtc,
 {
 	spin_lock_irq(&crtc->dev->event_lock);
 	if (crtc->state->event) {
-		struct ipu_crtc *ipu_crtc = to_ipu_crtc(crtc);
-
 		WARN_ON(drm_crtc_vblank_get(crtc));
-		ipu_crtc->event = crtc->state->event;
+		drm_crtc_arm_vblank_event(crtc, crtc->state->event);
 		crtc->state->event = NULL;
 	}
 	spin_unlock_irq(&crtc->dev->event_lock);
@@ -299,7 +278,7 @@ static void ipu_crtc_mode_set_nofb(struct drm_crtc *crtc)
 	sig_cfg.enable_pol = !(imx_crtc_state->bus_flags & DRM_BUS_FLAG_DE_LOW);
 	/* Default to driving pixel data on negative clock edges */
 	sig_cfg.clk_pol = !!(imx_crtc_state->bus_flags &
-			     DRM_BUS_FLAG_PIXDATA_DRIVE_POSEDGE);
+			     DRM_BUS_FLAG_PIXDATA_POSEDGE);
 	sig_cfg.bus_format = imx_crtc_state->bus_format;
 	sig_cfg.v_to_h_sync = 0;
 	sig_cfg.hsync_pin = imx_crtc_state->di_hsync_pin;
@@ -450,6 +429,12 @@ static int ipu_drm_bind(struct device *dev, struct device *master, void *data)
 	if (ret)
 		return ret;
 
+	if (!drm->mode_config.funcs)
+		drm->mode_config.funcs = &ipuv3_drm_mode_config_funcs;
+	if (!drm->mode_config.helper_private)
+		drm->mode_config.helper_private =
+					&ipuv3_drm_mode_config_helpers;
+
 	dev_set_drvdata(dev, ipu_crtc);
 
 	return 0;
@@ -492,10 +477,16 @@ static int ipu_drm_remove(struct platform_device *pdev)
 	return 0;
 }
 
-struct platform_driver ipu_drm_driver = {
+static struct platform_driver ipu_drm_driver = {
 	.driver = {
 		.name = "imx-ipuv3-crtc",
 	},
 	.probe = ipu_drm_probe,
 	.remove = ipu_drm_remove,
 };
+module_platform_driver(ipu_drm_driver);
+
+MODULE_AUTHOR("Sascha Hauer <s.hauer@pengutronix.de>");
+MODULE_DESCRIPTION(DRIVER_DESC);
+MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:imx-ipuv3-crtc");

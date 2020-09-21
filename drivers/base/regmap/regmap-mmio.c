@@ -1,8 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0
-//
-// Register map access API - MMIO support
-//
-// Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+/*
+ * Register map access API - MMIO support
+ *
+ * Copyright (c) 2012, NVIDIA CORPORATION.  All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include <linux/clk.h>
 #include <linux/err.h>
@@ -296,19 +308,15 @@ static struct regmap_mmio_context *regmap_mmio_gen_context(struct device *dev,
 		goto err_free;
 	}
 
-	if (clk_id == NULL)
-		return ctx;
-
 	ctx->clk = clk_get(dev, clk_id);
-	if (IS_ERR(ctx->clk)) {
-		ret = PTR_ERR(ctx->clk);
-		goto err_free;
-	}
-
-	ret = clk_prepare(ctx->clk);
-	if (ret < 0) {
-		clk_put(ctx->clk);
-		goto err_free;
+	if (!IS_ERR(ctx->clk)) {
+		ret = clk_prepare(ctx->clk);
+		if (ret < 0) {
+			clk_put(ctx->clk);
+			goto err_free;
+		}
+	} else {
+		ctx->clk = NULL;
 	}
 
 	return ctx;

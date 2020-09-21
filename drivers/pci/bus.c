@@ -23,7 +23,7 @@ void pci_add_resource_offset(struct list_head *resources, struct resource *res,
 
 	entry = resource_list_create_entry(res, 0);
 	if (!entry) {
-		pr_err("PCI: can't add host bridge window %pR\n", res);
+		printk(KERN_ERR "PCI: can't add host bridge window %pR\n", res);
 		return;
 	}
 
@@ -288,7 +288,8 @@ bool pci_bus_clip_resource(struct pci_dev *dev, int idx)
 		res->end = end;
 		res->flags &= ~IORESOURCE_UNSET;
 		orig_res.flags &= ~IORESOURCE_UNSET;
-		pci_info(dev, "%pR clipped to %pR\n", &orig_res, res);
+		pci_printk(KERN_DEBUG, dev, "%pR clipped to %pR\n",
+				 &orig_res, res);
 
 		return true;
 	}
@@ -417,9 +418,11 @@ struct pci_bus *pci_bus_get(struct pci_bus *bus)
 		get_device(&bus->dev);
 	return bus;
 }
+EXPORT_SYMBOL(pci_bus_get);
 
 void pci_bus_put(struct pci_bus *bus)
 {
 	if (bus)
 		put_device(&bus->dev);
 }
+EXPORT_SYMBOL(pci_bus_put);

@@ -10,7 +10,7 @@ Required properties:
 	"fsl,imx6sx-usb"
 	"fsl,imx6ul-usb"
 	"fsl,imx7d-usb"
-	"fsl,imx7ulp-usb"
+	"fsl,imx8mm-usb"
 	"lsi,zevio-usb"
 	"qcom,ci-hdrc"
 	"chipidea,usb2"
@@ -81,23 +81,38 @@ Optional properties:
   controller. It's expected that a mux state of 0 indicates device mode and a
   mux state of 1 indicates host mode.
 - mux-control-names: Shall be "usb_switch" if mux-controls is specified.
-- pinctrl-names: Names for optional pin modes in "default", "host", "device".
-  In case of HSIC-mode, "idle" and "active" pin modes are mandatory. In this
-  case, the "idle" state needs to pull down the data and strobe pin
-  and the "active" state needs to pull up the strobe pin.
-- pinctrl-n: alternate pin modes
+- ci-disable-lpm: Some chipidea hardware need to disable low power mode
+- phy-charger-detection: enable USB PHY charger detection function
 
 i.mx specific properties
 - fsl,usbmisc: phandler of non-core register device, with one
   argument that indicate usb controller index
 - disable-over-current: disable over current detect
-- over-current-active-low: over current signal polarity is active low.
-- over-current-active-high: over current signal polarity is active high.
-  It's recommended to specify the over current polarity.
-- power-active-high: power signal polarity is active high
+- over-current-active-high: over current signal polarity is high active,
+  typically over current signal polarity is low active.
 - external-vbus-divider: enables off-chip resistor divider for Vbus
+- imx6-usb-charger-detection: enable imx6 usb charger detect function,
+  only set it when the user wants SoC usb charger detection capabilities.
+  If the user wants to use charger IC's usb charger detection capabilities,
+  please do not set it.
+- fsl,anatop: phandle for anatop module, anatop module is only existed
+  at imx6 SoC series.
+- pinctrl-names: for names of hsic pin group
+- pinctrl-0: hsic "idle" pin group
+- pinctrl-1: hsic "active" pin group
+- osc-clkgate-delay: the delay between powering up the xtal 24MHz clock
+  and release the clock to the digital logic inside the analog block,
+  0 <= osc-clkgate-delay <= 7.
+- power-polarity-active-high: add this property if port power function of ehci
+  is used to enable vbus, and the vbus power supply chip enable signal is high
+  active.
+- picophy,pre-emp-curr-control: picophy is used for imx7d and imx845.
+  HS Treansmitter Pre-Emphasis Current Control may need to tune for USB signal
+  See USBNC_n_PHY_CFG1 for detail.
+- picophy,dc-vol-level-adjust: HS DC Voltage Level Adjustment may need to
+  turn for USB signal, see USBNC_n_PHY_CFG1 for detail.
 
-Example:
+Examples:
 
 	usb@f7ed0000 {
 		compatible = "chipidea,usb2";
@@ -118,28 +133,20 @@ Example:
 		mux-control-names = "usb_switch";
 	};
 
-Example for HSIC:
-
-	usb@2184400 {
+	usb@02184000 { /* USB OTG */
 		compatible = "fsl,imx6q-usb", "fsl,imx27-usb";
-		reg = <0x02184400 0x200>;
-		interrupts = <0 41 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clks IMX6QDL_CLK_USBOH3>;
-		fsl,usbphy = <&usbphynop1>;
-		fsl,usbmisc = <&usbmisc 2>;
-		phy_type = "hsic";
-		dr_mode = "host";
-		ahb-burst-config = <0x0>;
-		tx-burst-size-dword = <0x10>;
-		rx-burst-size-dword = <0x10>;
+		reg = <0x02184000 0x200>;
+		interrupts = <0 43 0x04>;
+		fsl,usbphy = <&usbphy1>;
+		fsl,usbmisc = <&usbmisc 0>;
+		disable-over-current;
+		external-vbus-divider;
+		imx6-usb-charger-detection;
+		fsl,anatop = <&anatop>;
 		pinctrl-names = "idle", "active";
-		pinctrl-0 = <&pinctrl_usbh2_idle>;
-		pinctrl-1 = <&pinctrl_usbh2_active>;
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		usbnet: smsc@1 {
-			compatible = "usb424,9730";
-			reg = <1>;
-		};
+		pinctrl-0 = <&pinctrl_usbh2_1>;
+		pinctrl-1 = <&pinctrl_usbh2_2>;
+		osc-clkgate-delay = <0x3>;
+		maximum-speed = "full-speed";
+		tpl-support;
 	};

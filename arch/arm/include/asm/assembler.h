@@ -1,8 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *  arch/arm/include/asm/assembler.h
  *
  *  Copyright (C) 1996-2000 Russell King
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  *  This file contains arm architecture specific defines
  *  for the different processors.
@@ -97,6 +100,18 @@
 	.macro	enable_irq_notrace
 	cpsie	i
 	.endm
+
+	.macro  disable_irq_cond
+#ifdef CONFIG_IPIPE
+	cpsid	i
+#endif /* CONFIG_IPIPE */
+	.endm
+
+	.macro  enable_irq_cond
+#ifdef CONFIG_IPIPE
+	cpsie	i
+#endif /* CONFIG_IPIPE */
+	.endm
 #else
 	.macro	disable_irq_notrace
 	msr	cpsr_c, #PSR_I_BIT | SVC_MODE
@@ -104,6 +119,18 @@
 
 	.macro	enable_irq_notrace
 	msr	cpsr_c, #SVC_MODE
+	.endm
+
+	.macro	disable_irq_cond
+#ifdef CONFIG_IPIPE
+	msr	cpsr_c, #PSR_I_BIT | SVC_MODE
+#endif /* CONFIG_IPIPE */
+	.endm
+
+	.macro	enable_irq_cond
+#ifdef CONFIG_IPIPE
+	msr	cpsr_c, #SVC_MODE
+#endif /* CONFIG_IPIPE */
 	.endm
 #endif
 
@@ -240,14 +267,12 @@
 	.endm
 #endif
 
-#define USERL(l, x...)				\
+#define USER(x...)				\
 9999:	x;					\
 	.pushsection __ex_table,"a";		\
 	.align	3;				\
-	.long	9999b,l;			\
+	.long	9999b,9001f;			\
 	.popsection
-
-#define USER(x...)	USERL(9001f, x)
 
 #ifdef CONFIG_SMP
 #define ALT_SMP(instr...)					\
@@ -373,9 +398,9 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 	.macro	usraccoff, instr, reg, ptr, inc, off, cond, abort, t=TUSER()
 9999:
 	.if	\inc == 1
-	\instr\()b\t\cond\().w \reg, [\ptr, #\off]
+	\instr\cond\()b\()\t\().w \reg, [\ptr, #\off]
 	.elseif	\inc == 4
-	\instr\t\cond\().w \reg, [\ptr, #\off]
+	\instr\cond\()\t\().w \reg, [\ptr, #\off]
 	.else
 	.error	"Unsupported inc macro argument"
 	.endif
@@ -414,9 +439,9 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 	.rept	\rept
 9999:
 	.if	\inc == 1
-	\instr\()b\t\cond \reg, [\ptr], #\inc
+	\instr\cond\()b\()\t \reg, [\ptr], #\inc
 	.elseif	\inc == 4
-	\instr\t\cond \reg, [\ptr], #\inc
+	\instr\cond\()\t \reg, [\ptr], #\inc
 	.else
 	.error	"Unsupported inc macro argument"
 	.endif
@@ -457,7 +482,7 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 	.macro check_uaccess, addr:req, size:req, limit:req, tmp:req, bad:req
 #ifndef CONFIG_CPU_USE_DOMAINS
 	adds	\tmp, \addr, #\size - 1
-	sbcscc	\tmp, \tmp, \limit
+	sbcccs	\tmp, \tmp, \limit
 	bcs	\bad
 #ifdef CONFIG_CPU_SPECTRE
 	movcs	\addr, #0
@@ -471,7 +496,7 @@ THUMB(	orr	\reg , \reg , #PSR_T_BIT	)
 	sub	\tmp, \limit, #1
 	subs	\tmp, \tmp, \addr	@ tmp = limit - 1 - addr
 	addhs	\tmp, \tmp, #1		@ if (tmp >= 0) {
-	subshs	\tmp, \tmp, \size	@ tmp = limit - (addr + size) }
+	subhss	\tmp, \tmp, \size	@ tmp = limit - (addr + size) }
 	movlo	\addr, #0		@ if (tmp < 0) addr = NULL
 	csdb
 #endif

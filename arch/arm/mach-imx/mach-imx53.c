@@ -1,7 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright 2011 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2011 Linaro Ltd.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
 #include <linux/clk.h>
@@ -31,6 +37,11 @@ static void __init imx53_dt_init(void)
 
 static void __init imx53_init_late(void)
 {
+#ifdef CONFIG_IPIPE
+	/* Allow user-space access to emulated tsc */
+	imx_set_aips(IMX_IO_ADDRESS(0x53f00000));
+	imx_set_aips(IMX_IO_ADDRESS(0x63f00000));
+#endif
 	imx53_pm_init();
 }
 

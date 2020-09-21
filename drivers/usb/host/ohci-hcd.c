@@ -40,7 +40,6 @@
 #include <linux/dmapool.h>
 #include <linux/workqueue.h>
 #include <linux/debugfs.h>
-#include <linux/genalloc.h>
 
 #include <asm/io.h>
 #include <asm/irq.h>
@@ -419,7 +418,8 @@ static void ohci_usb_reset (struct ohci_hcd *ohci)
  * other cases where the next software may expect clean state from the
  * "firmware".  this is bus-neutral, unlike shutdown() methods.
  */
-static void _ohci_shutdown(struct usb_hcd *hcd)
+static void
+ohci_shutdown (struct usb_hcd *hcd)
 {
 	struct ohci_hcd *ohci;
 
@@ -435,16 +435,6 @@ static void _ohci_shutdown(struct usb_hcd *hcd)
 	ohci->rh_state = OHCI_RH_HALTED;
 }
 
-static void ohci_shutdown(struct usb_hcd *hcd)
-{
-	struct ohci_hcd	*ohci = hcd_to_ohci(hcd);
-	unsigned long flags;
-
-	spin_lock_irqsave(&ohci->lock, flags);
-	_ohci_shutdown(hcd);
-	spin_unlock_irqrestore(&ohci->lock, flags);
-}
-
 /*-------------------------------------------------------------------------*
  * HC functions
  *-------------------------------------------------------------------------*/
@@ -457,7 +447,7 @@ static int ohci_init (struct ohci_hcd *ohci)
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 
 	/* Accept arbitrarily long scatter-gather lists */
-	if (!hcd->localmem_pool)
+	if (!(hcd->driver->flags & HCD_LOCAL_MEM))
 		hcd->self.sg_tablesize = ~0;
 
 	if (distrust_firmware)
@@ -515,15 +505,8 @@ static int ohci_init (struct ohci_hcd *ohci)
 	timer_setup(&ohci->io_watchdog, io_watchdog_func, 0);
 	ohci->prev_frame_no = IO_WATCHDOG_OFF;
 
-	if (hcd->localmem_pool)
-		ohci->hcca = gen_pool_dma_alloc_align(hcd->localmem_pool,
-						sizeof(*ohci->hcca),
-						&ohci->hcca_dma, 256);
-	else
-		ohci->hcca = dma_alloc_coherent(hcd->self.controller,
-						sizeof(*ohci->hcca),
-						&ohci->hcca_dma,
-						GFP_KERNEL);
+	ohci->hcca = dma_alloc_coherent (hcd->self.controller,
+			sizeof(*ohci->hcca), &ohci->hcca_dma, GFP_KERNEL);
 	if (!ohci->hcca)
 		return -ENOMEM;
 
@@ -769,7 +752,7 @@ static void io_watchdog_func(struct timer_list *t)
  died:
 			usb_hc_died(ohci_to_hcd(ohci));
 			ohci_dump(ohci);
-			_ohci_shutdown(ohci_to_hcd(ohci));
+			ohci_shutdown(ohci_to_hcd(ohci));
 			goto done;
 		} else {
 			/* No write back because the done queue was empty */
@@ -1007,14 +990,9 @@ static void ohci_stop (struct usb_hcd *hcd)
 	remove_debug_files (ohci);
 	ohci_mem_cleanup (ohci);
 	if (ohci->hcca) {
-		if (hcd->localmem_pool)
-			gen_pool_free(hcd->localmem_pool,
-				      (unsigned long)ohci->hcca,
-				      sizeof(*ohci->hcca));
-		else
-			dma_free_coherent(hcd->self.controller,
-					  sizeof(*ohci->hcca),
-					  ohci->hcca, ohci->hcca_dma);
+		dma_free_coherent (hcd->self.controller,
+				sizeof *ohci->hcca,
+				ohci->hcca, ohci->hcca_dma);
 		ohci->hcca = NULL;
 		ohci->hcca_dma = 0;
 	}
@@ -1187,7 +1165,7 @@ static const struct hc_driver ohci_hc_driver = {
 	 * generic hardware linkage
 	*/
 	.irq =                  ohci_irq,
-	.flags =                HCD_MEMORY | HCD_DMA | HCD_USB11,
+	.flags =                HCD_MEMORY | HCD_USB11,
 
 	/*
 	* basic lifecycle operations
@@ -1265,10 +1243,6 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_MFD_TC6393XB
 #include "ohci-tmio.c"
 #define TMIO_OHCI_DRIVER	ohci_hcd_tmio_driver
-#endif
-
-#ifdef CONFIG_USB_OHCI_HCD_PLATFORM
-#include "ohci-sunplus.c"
 #endif
 
 static int __init ohci_hcd_mod_init(void)

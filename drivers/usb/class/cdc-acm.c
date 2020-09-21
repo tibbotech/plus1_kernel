@@ -468,12 +468,13 @@ static void acm_read_bulk_callback(struct urb *urb)
 {
 	struct acm_rb *rb = urb->context;
 	struct acm *acm = rb->instance;
+	unsigned long flags;
 	int status = urb->status;
-	bool stopped = false;
-	bool stalled = false;
 
 	dev_vdbg(&acm->data->dev, "got urb %d, len %d, status %d\n",
 		rb->index, urb->actual_length, status);
+
+	set_bit(rb->index, &acm->read_urbs_free);
 
 	if (!acm->dev) {
 		dev_dbg(&acm->data->dev, "%s - disconnected\n", __func__);
@@ -487,16 +488,15 @@ static void acm_read_bulk_callback(struct urb *urb)
 		break;
 	case -EPIPE:
 		set_bit(EVENT_RX_STALL, &acm->flags);
-		stalled = true;
-		break;
+		schedule_work(&acm->work);
+		return;
 	case -ENOENT:
 	case -ECONNRESET:
 	case -ESHUTDOWN:
 		dev_dbg(&acm->data->dev,
 			"%s - urb shutting down with status: %d\n",
 			__func__, status);
-		stopped = true;
-		break;
+		return;
 	default:
 		dev_dbg(&acm->data->dev,
 			"%s - nonzero urb status received: %d\n",
@@ -505,29 +505,20 @@ static void acm_read_bulk_callback(struct urb *urb)
 	}
 
 	/*
-	 * Make sure URB processing is done before marking as free to avoid
-	 * racing with unthrottle() on another CPU. Matches the barriers
-	 * implied by the test_and_clear_bit() in acm_submit_read_urb().
+	 * Unthrottle may run on another CPU which needs to see events
+	 * in the same order. Submission has an implict barrier
 	 */
 	smp_mb__before_atomic();
-	set_bit(rb->index, &acm->read_urbs_free);
-	/*
-	 * Make sure URB is marked as free before checking the throttled flag
-	 * to avoid racing with unthrottle() on another CPU. Matches the
-	 * smp_mb() in unthrottle().
-	 */
-	smp_mb__after_atomic();
 
-	if (stopped || stalled) {
-		if (stalled)
-			schedule_work(&acm->work);
-		return;
+	/* throttle device if requested by tty */
+	spin_lock_irqsave(&acm->read_lock, flags);
+	acm->throttled = acm->throttle_req;
+	if (!acm->throttled) {
+		spin_unlock_irqrestore(&acm->read_lock, flags);
+		acm_submit_read_urb(acm, rb->index, GFP_ATOMIC);
+	} else {
+		spin_unlock_irqrestore(&acm->read_lock, flags);
 	}
-
-	if (test_bit(ACM_THROTTLED, &acm->flags))
-		return;
-
-	acm_submit_read_urb(acm, rb->index, GFP_ATOMIC);
 }
 
 /* data interface wrote those outgoing bytes */
@@ -664,7 +655,10 @@ static int acm_port_activate(struct tty_port *port, struct tty_struct *tty)
 	/*
 	 * Unthrottle device in case the TTY was closed while throttled.
 	 */
-	clear_bit(ACM_THROTTLED, &acm->flags);
+	spin_lock_irq(&acm->read_lock);
+	acm->throttled = 0;
+	acm->throttle_req = 0;
+	spin_unlock_irq(&acm->read_lock);
 
 	retval = acm_submit_read_urbs(acm, GFP_KERNEL);
 	if (retval)
@@ -832,19 +826,24 @@ static void acm_tty_throttle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
 
-	set_bit(ACM_THROTTLED, &acm->flags);
+	spin_lock_irq(&acm->read_lock);
+	acm->throttle_req = 1;
+	spin_unlock_irq(&acm->read_lock);
 }
 
 static void acm_tty_unthrottle(struct tty_struct *tty)
 {
 	struct acm *acm = tty->driver_data;
+	unsigned int was_throttled;
 
-	clear_bit(ACM_THROTTLED, &acm->flags);
+	spin_lock_irq(&acm->read_lock);
+	was_throttled = acm->throttled;
+	acm->throttled = 0;
+	acm->throttle_req = 0;
+	spin_unlock_irq(&acm->read_lock);
 
-	/* Matches the smp_mb__after_atomic() in acm_read_bulk_callback(). */
-	smp_mb();
-
-	acm_submit_read_urbs(acm, GFP_KERNEL);
+	if (was_throttled)
+		acm_submit_read_urbs(acm, GFP_KERNEL);
 }
 
 static int acm_tty_break_ctl(struct tty_struct *tty, int state)
@@ -890,42 +889,43 @@ static int acm_tty_tiocmset(struct tty_struct *tty,
 	return acm_set_control(acm, acm->ctrlout = newctrl);
 }
 
-static int get_serial_info(struct tty_struct *tty, struct serial_struct *ss)
+static int get_serial_info(struct acm *acm, struct serial_struct __user *info)
 {
-	struct acm *acm = tty->driver_data;
+	struct serial_struct tmp;
 
-	ss->xmit_fifo_size = acm->writesize;
-	ss->baud_base = le32_to_cpu(acm->line.dwDTERate);
-	ss->close_delay	= jiffies_to_msecs(acm->port.close_delay) / 10;
-	ss->closing_wait = acm->port.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
+	memset(&tmp, 0, sizeof(tmp));
+	tmp.xmit_fifo_size = acm->writesize;
+	tmp.baud_base = le32_to_cpu(acm->line.dwDTERate);
+	tmp.close_delay	= acm->port.close_delay / 10;
+	tmp.closing_wait = acm->port.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
 				ASYNC_CLOSING_WAIT_NONE :
-				jiffies_to_msecs(acm->port.closing_wait) / 10;
-	return 0;
+				acm->port.closing_wait / 10;
+
+	if (copy_to_user(info, &tmp, sizeof(tmp)))
+		return -EFAULT;
+	else
+		return 0;
 }
 
-static int set_serial_info(struct tty_struct *tty, struct serial_struct *ss)
+static int set_serial_info(struct acm *acm,
+				struct serial_struct __user *newinfo)
 {
-	struct acm *acm = tty->driver_data;
+	struct serial_struct new_serial;
 	unsigned int closing_wait, close_delay;
-	unsigned int old_closing_wait, old_close_delay;
 	int retval = 0;
 
-	close_delay = msecs_to_jiffies(ss->close_delay * 10);
-	closing_wait = ss->closing_wait == ASYNC_CLOSING_WAIT_NONE ?
-			ASYNC_CLOSING_WAIT_NONE :
-			msecs_to_jiffies(ss->closing_wait * 10);
+	if (copy_from_user(&new_serial, newinfo, sizeof(new_serial)))
+		return -EFAULT;
 
-	/* we must redo the rounding here, so that the values match */
-	old_close_delay	= jiffies_to_msecs(acm->port.close_delay) / 10;
-	old_closing_wait = acm->port.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
-				ASYNC_CLOSING_WAIT_NONE :
-				jiffies_to_msecs(acm->port.closing_wait) / 10;
+	close_delay = new_serial.close_delay * 10;
+	closing_wait = new_serial.closing_wait == ASYNC_CLOSING_WAIT_NONE ?
+			ASYNC_CLOSING_WAIT_NONE : new_serial.closing_wait * 10;
 
 	mutex_lock(&acm->port.mutex);
 
 	if (!capable(CAP_SYS_ADMIN)) {
-		if ((ss->close_delay != old_close_delay) ||
-		    (ss->closing_wait != old_closing_wait))
+		if ((close_delay != acm->port.close_delay) ||
+		    (closing_wait != acm->port.closing_wait))
 			retval = -EPERM;
 		else
 			retval = -EOPNOTSUPP;
@@ -1004,6 +1004,12 @@ static int acm_tty_ioctl(struct tty_struct *tty,
 	int rv = -ENOIOCTLCMD;
 
 	switch (cmd) {
+	case TIOCGSERIAL: /* gets serial port data */
+		rv = get_serial_info(acm, (struct serial_struct __user *) arg);
+		break;
+	case TIOCSSERIAL:
+		rv = set_serial_info(acm, (struct serial_struct __user *) arg);
+		break;
 	case TIOCMIWAIT:
 		rv = usb_autopm_get_interface(acm->control);
 		if (rv < 0) {
@@ -1309,6 +1315,10 @@ made_compressed_probe:
 	tty_port_init(&acm->port);
 	acm->port.ops = &acm_port_ops;
 
+	minor = acm_alloc_minor(acm);
+	if (minor < 0)
+		goto alloc_fail1;
+
 	ctrlsize = usb_endpoint_maxp(epctrl);
 	readsize = usb_endpoint_maxp(epread) *
 				(quirks == SINGLE_RX_URB ? 1 : 2);
@@ -1316,13 +1326,6 @@ made_compressed_probe:
 	acm->writesize = usb_endpoint_maxp(epwrite) * 20;
 	acm->control = control_interface;
 	acm->data = data_interface;
-
-	usb_get_intf(acm->control); /* undone in destruct() */
-
-	minor = acm_alloc_minor(acm);
-	if (minor < 0)
-		goto alloc_fail1;
-
 	acm->minor = minor;
 	acm->dev = usb_dev;
 	if (h.usb_cdc_acm_descriptor)
@@ -1469,6 +1472,7 @@ skip_countries:
 	usb_driver_claim_interface(&acm_driver, data_interface, acm);
 	usb_set_intfdata(data_interface, acm);
 
+	usb_get_intf(control_interface);
 	tty_dev = tty_port_register_device(&acm->port, acm_tty_driver, minor,
 			&control_interface->dev);
 	if (IS_ERR(tty_dev)) {
@@ -1945,8 +1949,6 @@ static const struct tty_operations acm_ops = {
 	.set_termios =		acm_tty_set_termios,
 	.tiocmget =		acm_tty_tiocmget,
 	.tiocmset =		acm_tty_tiocmset,
-	.get_serial =		get_serial_info,
-	.set_serial =		set_serial_info,
 	.get_icount =		acm_tty_get_icount,
 };
 

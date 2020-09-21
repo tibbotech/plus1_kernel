@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Architecture specific (i386/x86_64) functions for kexec based crash dumps.
  *
@@ -38,7 +37,6 @@
 #include <asm/reboot.h>
 #include <asm/virtext.h>
 #include <asm/intel_pt.h>
-#include <asm/crash.h>
 
 /* Used while preparing memory map entries for second kernel */
 struct crash_memmap_data {
@@ -56,6 +54,7 @@ struct crash_memmap_data {
  */
 crash_vmclear_fn __rcu *crash_vmclear_loaded_vmcss = NULL;
 EXPORT_SYMBOL_GPL(crash_vmclear_loaded_vmcss);
+unsigned long crash_zero_bytes;
 
 static inline void cpu_crash_vmclear_loaded_vmcss(void)
 {
@@ -72,6 +71,14 @@ static inline void cpu_crash_vmclear_loaded_vmcss(void)
 
 static void kdump_nmi_callback(int cpu, struct pt_regs *regs)
 {
+#ifdef CONFIG_X86_32
+	struct pt_regs fixed_regs;
+
+	if (!user_mode(regs)) {
+		crash_fixup_ss_esp(&fixed_regs, regs);
+		regs = &fixed_regs;
+	}
+#endif
 	crash_save_cpu(regs, cpu);
 
 	/*
@@ -172,9 +179,6 @@ void native_machine_crash_shutdown(struct pt_regs *regs)
 }
 
 #ifdef CONFIG_KEXEC_FILE
-
-static unsigned long crash_zero_bytes;
-
 static int get_nr_ram_ranges_callback(struct resource *res, void *arg)
 {
 	unsigned int *nr_ranges = arg;
@@ -199,7 +203,8 @@ static struct crash_mem *fill_up_crash_elf_data(void)
 	 * another range split. So add extra two slots here.
 	 */
 	nr_ranges += 2;
-	cmem = vzalloc(struct_size(cmem, ranges, nr_ranges));
+	cmem = vzalloc(sizeof(struct crash_mem) +
+			sizeof(struct crash_mem_range) * nr_ranges);
 	if (!cmem)
 		return NULL;
 
@@ -225,6 +230,8 @@ static int elf_header_exclude_ranges(struct crash_mem *cmem)
 	if (crashk_low_res.end) {
 		ret = crash_exclude_mem_range(cmem, crashk_low_res.start,
 							crashk_low_res.end);
+		if (ret)
+			return ret;
 	}
 
 	return ret;
@@ -373,12 +380,6 @@ int crash_setup_memmap_entries(struct kimage *image, struct boot_params *params)
 	walk_iomem_res_desc(IORES_DESC_ACPI_NV_STORAGE, flags, 0, -1, &cmd,
 			memmap_entry_callback);
 
-	/* Add e820 reserved ranges */
-	cmd.type = E820_TYPE_RESERVED;
-	flags = IORESOURCE_MEM;
-	walk_iomem_res_desc(IORES_DESC_RESERVED, flags, 0, -1, &cmd,
-			   memmap_entry_callback);
-
 	/* Add crashk_low_res region */
 	if (crashk_low_res.end) {
 		ei.addr = crashk_low_res.start;
@@ -468,7 +469,6 @@ int crash_load_segments(struct kimage *image)
 
 	kbuf.memsz = kbuf.bufsz;
 	kbuf.buf_align = ELF_CORE_HEADER_ALIGN;
-	kbuf.mem = KEXEC_BUF_MEM_UNKNOWN;
 	ret = kexec_add_buffer(&kbuf);
 	if (ret) {
 		vfree((void *)image->arch.elf_headers);

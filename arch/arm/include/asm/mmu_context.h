@@ -1,8 +1,11 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  *  arch/arm/include/asm/mmu_context.h
  *
  *  Copyright (C) 1996 Russell King.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  *
  *  Changelog:
  *   27-06-1996	RMK	Created
@@ -13,6 +16,7 @@
 #include <linux/compiler.h>
 #include <linux/sched.h>
 #include <linux/mm_types.h>
+#include <linux/ipipe.h>
 #include <linux/preempt.h>
 
 #include <asm/cacheflush.h>
@@ -25,7 +29,8 @@ void __check_vmalloc_seq(struct mm_struct *mm);
 
 #ifdef CONFIG_CPU_HAS_ASID
 
-void check_and_switch_context(struct mm_struct *mm, struct task_struct *tsk);
+int check_and_switch_context(struct mm_struct *mm,
+			     struct task_struct *tsk, bool may_defer);
 static inline int
 init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 {
@@ -47,13 +52,14 @@ static inline void a15_erratum_get_cpumask(int this_cpu, struct mm_struct *mm,
 
 #ifdef CONFIG_MMU
 
-static inline void check_and_switch_context(struct mm_struct *mm,
-					    struct task_struct *tsk)
+static inline int
+check_and_switch_context(struct mm_struct *mm,
+			 struct task_struct *tsk, bool may_defer)
 {
 	if (unlikely(mm->context.vmalloc_seq != init_mm.context.vmalloc_seq))
 		__check_vmalloc_seq(mm);
 
-	if (irqs_disabled())
+	if (may_defer && irqs_disabled()) {
 		/*
 		 * cpu_switch_mm() needs to flush the VIVT caches. To avoid
 		 * high interrupt latencies, defer the call and continue
@@ -62,9 +68,22 @@ static inline void check_and_switch_context(struct mm_struct *mm,
 		 * finish_arch_post_lock_switch() call.
 		 */
 		mm->context.switch_pending = 1;
-	else
+		return -EAGAIN;
+	} else {
 		cpu_switch_mm(mm->pgd, mm);
+	}
+
+	return 0;
 }
+
+#ifdef CONFIG_IPIPE
+extern void deferred_switch_mm(struct mm_struct *mm);
+#else /* !I-pipe */
+static inline void deferred_switch_mm(struct mm_struct *next)
+{
+	cpu_switch_mm(next->pgd, next);
+}
+#endif /* !I-pipe */
 
 #ifndef MODULE
 #define finish_arch_post_lock_switch \
@@ -82,8 +101,11 @@ static inline void finish_arch_post_lock_switch(void)
 		 */
 		preempt_disable();
 		if (mm->context.switch_pending) {
+			unsigned long flags;
 			mm->context.switch_pending = 0;
-			cpu_switch_mm(mm->pgd, mm);
+			ipipe_mm_switch_protect(flags);
+			deferred_switch_mm(mm);
+			ipipe_mm_switch_unprotect(flags);
 		}
 		preempt_enable_no_resched();
 	}
@@ -100,9 +122,6 @@ init_new_context(struct task_struct *tsk, struct mm_struct *mm)
 
 
 #endif	/* CONFIG_CPU_HAS_ASID */
-
-#define destroy_context(mm)		do { } while(0)
-#define activate_mm(prev,next)		switch_mm(prev, next, NULL)
 
 /*
  * This is called when "tsk" is about to enter lazy TLB mode.
@@ -124,12 +143,12 @@ enter_lazy_tlb(struct mm_struct *mm, struct task_struct *tsk)
  * calling the CPU specific function when the mm hasn't
  * actually changed.
  */
-static inline void
-switch_mm(struct mm_struct *prev, struct mm_struct *next,
-	  struct task_struct *tsk)
+static inline int
+__do_switch_mm(struct mm_struct *prev, struct mm_struct *next,
+	       struct task_struct *tsk, bool may_defer)
 {
 #ifdef CONFIG_MMU
-	unsigned int cpu = smp_processor_id();
+	const unsigned int cpu = ipipe_processor_id();
 
 	/*
 	 * __sync_icache_dcache doesn't broadcast the I-cache invalidation,
@@ -142,13 +161,60 @@ switch_mm(struct mm_struct *prev, struct mm_struct *next,
 		__flush_icache_all();
 
 	if (!cpumask_test_and_set_cpu(cpu, mm_cpumask(next)) || prev != next) {
-		check_and_switch_context(next, tsk);
-		if (cache_is_vivt())
+		int rc = check_and_switch_context(next, tsk, may_defer);
+		if (rc < 0) {
+#ifdef CONFIG_IPIPE
+			cpumask_clear_cpu(cpu, mm_cpumask(next));
+			return rc;
+#endif /* CONFIG_IPIPE */
+		}
+		if (cache_is_vivt() && prev)
 			cpumask_clear_cpu(cpu, mm_cpumask(prev));
 	}
-#endif
+#endif /* CONFIG_MMU */
+	return 0;
+}
+
+#if defined(CONFIG_IPIPE) && defined(CONFIG_MMU)
+extern void __switch_mm_inner(struct mm_struct *prev, struct mm_struct *next,
+			      struct task_struct *tsk);
+#else /* !I-pipe || !MMU */
+#define __switch_mm_inner(prev, next, tsk) \
+	__do_switch_mm(prev, next, tsk, true)
+#endif /* !I-pipe  || !MMU */
+
+static inline void
+ipipe_switch_mm_head(struct mm_struct *prev, struct mm_struct *next,
+			   struct task_struct *tsk)
+{
+	__do_switch_mm(prev, next, tsk, false);
+}
+
+static inline void
+__switch_mm(struct mm_struct *prev, struct mm_struct *next,
+	    struct task_struct *tsk)
+{
+	__switch_mm_inner(prev, next, tsk);
+}
+
+static inline void
+switch_mm(struct mm_struct *prev, struct mm_struct *next,
+	  struct task_struct *tsk)
+{
+#ifdef CONFIG_MMU
+	unsigned long flags;
+	ipipe_mm_switch_protect(flags);
+	__switch_mm(prev, next, tsk);
+	ipipe_mm_switch_unprotect(flags);
+#endif /* CONFIG_MMU */
 }
 
 #define deactivate_mm(tsk,mm)	do { } while (0)
+
+#define activate_mm(prev,next) __switch_mm(prev, next, NULL)
+
+static inline void destroy_context(struct mm_struct *mm)
+{
+}
 
 #endif

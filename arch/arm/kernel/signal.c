@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/arch/arm/kernel/signal.c
  *
  *  Copyright (C) 1995-2009 Russell King
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 #include <linux/errno.h>
 #include <linux/random.h>
@@ -238,7 +241,7 @@ asmlinkage int sys_sigreturn(struct pt_regs *regs)
 
 	frame = (struct sigframe __user *)regs->ARM_sp;
 
-	if (!access_ok(frame, sizeof (*frame)))
+	if (!access_ok(VERIFY_READ, frame, sizeof (*frame)))
 		goto badframe;
 
 	if (restore_sigframe(regs, frame))
@@ -247,7 +250,7 @@ asmlinkage int sys_sigreturn(struct pt_regs *regs)
 	return regs->ARM_r0;
 
 badframe:
-	force_sig(SIGSEGV);
+	force_sig(SIGSEGV, current);
 	return 0;
 }
 
@@ -268,7 +271,7 @@ asmlinkage int sys_rt_sigreturn(struct pt_regs *regs)
 
 	frame = (struct rt_sigframe __user *)regs->ARM_sp;
 
-	if (!access_ok(frame, sizeof (*frame)))
+	if (!access_ok(VERIFY_READ, frame, sizeof (*frame)))
 		goto badframe;
 
 	if (restore_sigframe(regs, &frame->sig))
@@ -280,7 +283,7 @@ asmlinkage int sys_rt_sigreturn(struct pt_regs *regs)
 	return regs->ARM_r0;
 
 badframe:
-	force_sig(SIGSEGV);
+	force_sig(SIGSEGV, current);
 	return 0;
 }
 
@@ -352,7 +355,7 @@ get_sigframe(struct ksignal *ksig, struct pt_regs *regs, int framesize)
 	/*
 	 * Check that we can actually write to the signal frame.
 	 */
-	if (!access_ok(frame, framesize))
+	if (!access_ok(VERIFY_WRITE, frame, framesize))
 		frame = NULL;
 
 	return frame;
@@ -546,7 +549,8 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 	int ret;
 
 	/*
-	 * Perform fixup for the pre-signal frame.
+	 * Increment event counter and perform fixup for the pre-signal
+	 * frame.
 	 */
 	rseq_signal_deliver(ksig, regs);
 
@@ -596,7 +600,6 @@ static int do_signal(struct pt_regs *regs, int syscall)
 		switch (retval) {
 		case -ERESTART_RESTARTBLOCK:
 			restart -= 2;
-			/* Fall through */
 		case -ERESTARTNOHAND:
 		case -ERESTARTSYS:
 		case -ERESTARTNOINTR:
@@ -642,13 +645,21 @@ static int do_signal(struct pt_regs *regs, int syscall)
 asmlinkage int
 do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
 {
+	WARN_ON_ONCE(IS_ENABLED(CONFIG_IPIPE_DEBUG_INTERNAL) &&
+		(!__ipipe_root_p || irqs_disabled()));
 	/*
 	 * The assembly code enters us with IRQs off, but it hasn't
 	 * informed the tracing code of that for efficiency reasons.
 	 * Update the trace code with the current status.
 	 */
-	trace_hardirqs_off();
+	if (!IS_ENABLED(CONFIG_IPIPE))
+		trace_hardirqs_off();
 	do {
+		if (IS_ENABLED(CONFIG_IPIPE)) {
+			local_irq_disable();
+			hard_cond_local_irq_enable();
+		}
+
 		if (likely(thread_flags & _TIF_NEED_RESCHED)) {
 			schedule();
 		} else {
@@ -674,7 +685,7 @@ do_work_pending(struct pt_regs *regs, unsigned int thread_flags, int syscall)
 				rseq_handle_notify_resume(NULL, regs);
 			}
 		}
-		local_irq_disable();
+		hard_local_irq_disable();
 		thread_flags = current_thread_info()->flags;
 	} while (thread_flags & _TIF_WORK_MASK);
 	return 0;

@@ -4,7 +4,6 @@
  */
 #include <linux/slab.h>
 #include <linux/clk-provider.h>
-#include <linux/io.h>
 
 #include "stratix10-clk.h"
 #include "clk.h"
@@ -38,7 +37,7 @@ static unsigned long clk_peri_cnt_clk_recalc_rate(struct clk_hw *hwclk,
 	if (socfpgaclk->fixed_div) {
 		div = socfpgaclk->fixed_div;
 	} else {
-		if (socfpgaclk->hw.reg)
+		if (!socfpgaclk->bypass_reg)
 			div = ((readl(socfpgaclk->hw.reg) & 0x7ff) + 1);
 	}
 

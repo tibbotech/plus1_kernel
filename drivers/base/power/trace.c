@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * drivers/base/power/trace.c
  *
@@ -7,7 +6,6 @@
  * Trace facility for suspend/resume problems, when none of the
  * devices may be working.
  */
-#define pr_fmt(fmt) "PM: " fmt
 
 #include <linux/pm-trace.h>
 #include <linux/export.h>
@@ -120,7 +118,9 @@ static unsigned int read_magic_time(void)
 	unsigned int val;
 
 	mc146818_get_time(&time);
-	pr_info("RTC time: %ptRt, date: %ptRd\n", &time, &time);
+	pr_info("RTC time: %2d:%02d:%02d, date: %02d/%02d/%02d\n",
+		time.tm_hour, time.tm_min, time.tm_sec,
+		time.tm_mon + 1, time.tm_mday, time.tm_year % 100);
 	val = time.tm_year;				/* 100 years */
 	if (val > 100)
 		val -= 100;

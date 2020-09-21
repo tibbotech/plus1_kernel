@@ -1,9 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * arch/arm/include/asm/outercache.h
  *
  * Copyright (C) 2010 ARM Ltd.
  * Written by Catalin Marinas <catalin.marinas@arm.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 
 #ifndef __ASM_OUTERCACHE_H
@@ -27,6 +39,11 @@ struct outer_cache_fns {
 	/* This is an ARM L2C thing */
 	void (*write_sec)(unsigned long, unsigned);
 	void (*configure)(const struct l2x0_regs *);
+
+#ifdef CONFIG_OPTEE
+	/* Set a mutex with OPTEE for maintenance */
+	int (*set_mutex)(void *mutex);
+#endif
 };
 
 extern struct outer_cache_fns outer_cache;
@@ -102,6 +119,24 @@ static inline void outer_resume(void)
 	if (outer_cache.resume)
 		outer_cache.resume();
 }
+
+#ifdef CONFIG_OPTEE
+/**
+ * @brief  Setup the Cache Mutex
+ *
+ * @param[in] Reference to the Mutex object
+ *
+ * @retval  0       Success
+ * @retval -EINVAL  Invalid value
+ */
+static inline int outer_mutex(void *mutex)
+{
+	if (outer_cache.set_mutex)
+		return outer_cache.set_mutex(mutex);
+
+	return -EINVAL;
+}
+#endif
 
 #else
 

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * AppArmor security module
  *
@@ -6,6 +5,11 @@
  *
  * Copyright (C) 2002-2008 Novell/SUSE
  * Copyright 2009-2010 Canonical Ltd.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, version 2 of the
+ * License.
  */
 
 #include <linux/errno.h>
@@ -317,7 +321,6 @@ static int aa_xattrs_match(const struct linux_binprm *bprm,
 
 	if (!bprm || !profile->xattr_count)
 		return 0;
-	might_sleep();
 
 	/* transition from exec match to xattr set */
 	state = aa_dfa_null_transition(profile->xmatch, state);
@@ -362,11 +365,10 @@ out:
 }
 
 /**
- * find_attach - do attachment search for unconfined processes
+ * __attach_match_ - find an attachment match
  * @bprm - binprm structure of transitioning task
- * @ns: the current namespace  (NOT NULL)
- * @head - profile list to walk  (NOT NULL)
  * @name - to match against  (NOT NULL)
+ * @head - profile list to walk  (NOT NULL)
  * @info - info message if there was an error (NOT NULL)
  *
  * Do a linear search on the profiles in the list.  There is a matching
@@ -376,11 +378,12 @@ out:
  *
  * Requires: @head not be shared or have appropriate locks held
  *
- * Returns: label or NULL if no match found
+ * Returns: profile or NULL if no match found
  */
-static struct aa_label *find_attach(const struct linux_binprm *bprm,
-				    struct aa_ns *ns, struct list_head *head,
-				    const char *name, const char **info)
+static struct aa_profile *__attach_match(const struct linux_binprm *bprm,
+					 const char *name,
+					 struct list_head *head,
+					 const char **info)
 {
 	int candidate_len = 0, candidate_xattrs = 0;
 	bool conflict = false;
@@ -389,8 +392,6 @@ static struct aa_label *find_attach(const struct linux_binprm *bprm,
 	AA_BUG(!name);
 	AA_BUG(!head);
 
-	rcu_read_lock();
-restart:
 	list_for_each_entry_rcu(profile, head, base.list) {
 		if (profile->label.flags & FLAG_NULL &&
 		    &profile->label == ns_unconfined(profile->ns))
@@ -416,32 +417,16 @@ restart:
 			perm = dfa_user_allow(profile->xmatch, state);
 			/* any accepting state means a valid match. */
 			if (perm & MAY_EXEC) {
-				int ret = 0;
+				int ret;
 
 				if (count < candidate_len)
 					continue;
 
-				if (bprm && profile->xattr_count) {
-					long rev = READ_ONCE(ns->revision);
+				ret = aa_xattrs_match(bprm, profile, state);
+				/* Fail matching if the xattrs don't match */
+				if (ret < 0)
+					continue;
 
-					if (!aa_get_profile_not0(profile))
-						goto restart;
-					rcu_read_unlock();
-					ret = aa_xattrs_match(bprm, profile,
-							      state);
-					rcu_read_lock();
-					aa_put_profile(profile);
-					if (rev !=
-					    READ_ONCE(ns->revision))
-						/* policy changed */
-						goto restart;
-					/*
-					 * Fail matching if the xattrs don't
-					 * match
-					 */
-					if (ret < 0)
-						continue;
-				}
 				/*
 				 * TODO: allow for more flexible best match
 				 *
@@ -464,28 +449,43 @@ restart:
 				candidate_xattrs = ret;
 				conflict = false;
 			}
-		} else if (!strcmp(profile->base.name, name)) {
+		} else if (!strcmp(profile->base.name, name))
 			/*
 			 * old exact non-re match, without conditionals such
 			 * as xattrs. no more searching required
 			 */
-			candidate = profile;
-			goto out;
-		}
+			return profile;
 	}
 
-	if (!candidate || conflict) {
-		if (conflict)
-			*info = "conflicting profile attachments";
-		rcu_read_unlock();
+	if (conflict) {
+		*info = "conflicting profile attachments";
 		return NULL;
 	}
 
-out:
-	candidate = aa_get_newest_profile(candidate);
+	return candidate;
+}
+
+/**
+ * find_attach - do attachment search for unconfined processes
+ * @bprm - binprm structure of transitioning task
+ * @ns: the current namespace  (NOT NULL)
+ * @list: list to search  (NOT NULL)
+ * @name: the executable name to match against  (NOT NULL)
+ * @info: info message if there was an error
+ *
+ * Returns: label or NULL if no match found
+ */
+static struct aa_label *find_attach(const struct linux_binprm *bprm,
+				    struct aa_ns *ns, struct list_head *list,
+				    const char *name, const char **info)
+{
+	struct aa_profile *profile;
+
+	rcu_read_lock();
+	profile = aa_get_profile(__attach_match(bprm, name, list, info));
 	rcu_read_unlock();
 
-	return &candidate->label;
+	return profile ? &profile->label : NULL;
 }
 
 static const char *next_name(int xtype, const char *name)
@@ -572,7 +572,7 @@ static struct aa_label *x_to_label(struct aa_profile *profile,
 			stack = NULL;
 			break;
 		}
-		/* fall through - to X_NAME */
+		/* fall through to X_NAME */
 	case AA_X_NAME:
 		if (xindex & AA_X_CHILD)
 			/* released by caller */
@@ -975,7 +975,7 @@ int apparmor_bprm_set_creds(struct linux_binprm *bprm)
 	}
 	aa_put_label(cred_label(bprm->cred));
 	/* transfer reference, released when cred is freed */
-	set_cred_label(bprm->cred, new);
+	cred_label(bprm->cred) = new;
 
 done:
 	aa_put_label(label);

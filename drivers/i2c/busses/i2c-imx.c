@@ -20,7 +20,6 @@
  *
  */
 
-#include <linux/acpi.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/delay.h>
@@ -51,6 +50,7 @@
 
 /* Default value */
 #define IMX_I2C_BIT_RATE	100000	/* 100kHz */
+#define IMX_I2C_MAX_E_BIT_RATE	384000	/* 384kHz from e7805 errata*/
 
 /*
  * Enable DMA if transfer byte size is bigger than this threshold.
@@ -161,6 +161,7 @@ enum imx_i2c_type {
 	IMX1_I2C,
 	IMX21_I2C,
 	VF610_I2C,
+	IMX7D_I2C,
 };
 
 struct imx_i2c_hwdata {
@@ -235,6 +236,16 @@ static struct imx_i2c_hwdata vf610_i2c_hwdata = {
 
 };
 
+static const struct imx_i2c_hwdata imx7d_i2c_hwdata = {
+	.devtype		= IMX7D_I2C,
+	.regshift		= IMX_I2C_REGSHIFT,
+	.clk_div		= imx_i2c_clk_div,
+	.ndivs			= ARRAY_SIZE(imx_i2c_clk_div),
+	.i2sr_clr_opcode	= I2SR_CLR_OPCODE_W0C,
+	.i2cr_ien_opcode	= I2CR_IEN_OPCODE_1,
+
+};
+
 static const struct platform_device_id imx_i2c_devtype[] = {
 	{
 		.name = "imx1-i2c",
@@ -252,19 +263,19 @@ static const struct of_device_id i2c_imx_dt_ids[] = {
 	{ .compatible = "fsl,imx1-i2c", .data = &imx1_i2c_hwdata, },
 	{ .compatible = "fsl,imx21-i2c", .data = &imx21_i2c_hwdata, },
 	{ .compatible = "fsl,vf610-i2c", .data = &vf610_i2c_hwdata, },
+	{ .compatible = "fsl,imx7d-i2c", .data = &imx7d_i2c_hwdata, },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, i2c_imx_dt_ids);
 
-static const struct acpi_device_id i2c_imx_acpi_ids[] = {
-	{"NXP0001", .driver_data = (kernel_ulong_t)&vf610_i2c_hwdata},
-	{ }
-};
-MODULE_DEVICE_TABLE(acpi, i2c_imx_acpi_ids);
-
 static inline int is_imx1_i2c(struct imx_i2c_struct *i2c_imx)
 {
 	return i2c_imx->hwdata->devtype == IMX1_I2C;
+}
+
+static inline int is_imx7d_i2c(struct imx_i2c_struct *i2c_imx)
+{
+	return i2c_imx->hwdata->devtype == IMX7D_I2C;
 }
 
 static inline void imx_i2c_write_reg(unsigned int val,
@@ -292,11 +303,9 @@ static void i2c_imx_dma_request(struct imx_i2c_struct *i2c_imx,
 	if (!dma)
 		return;
 
-	dma->chan_tx = dma_request_chan(dev, "tx");
-	if (IS_ERR(dma->chan_tx)) {
-		ret = PTR_ERR(dma->chan_tx);
-		if (ret != -ENODEV && ret != -EPROBE_DEFER)
-			dev_err(dev, "can't request DMA tx channel (%d)\n", ret);
+	dma->chan_tx = dma_request_slave_channel(dev, "tx");
+	if (!dma->chan_tx) {
+		dev_dbg(dev, "can't request DMA tx channel\n");
 		goto fail_al;
 	}
 
@@ -307,15 +316,13 @@ static void i2c_imx_dma_request(struct imx_i2c_struct *i2c_imx,
 	dma_sconfig.direction = DMA_MEM_TO_DEV;
 	ret = dmaengine_slave_config(dma->chan_tx, &dma_sconfig);
 	if (ret < 0) {
-		dev_err(dev, "can't configure tx channel (%d)\n", ret);
+		dev_dbg(dev, "can't configure tx channel\n");
 		goto fail_tx;
 	}
 
-	dma->chan_rx = dma_request_chan(dev, "rx");
-	if (IS_ERR(dma->chan_rx)) {
-		ret = PTR_ERR(dma->chan_rx);
-		if (ret != -ENODEV && ret != -EPROBE_DEFER)
-			dev_err(dev, "can't request DMA rx channel (%d)\n", ret);
+	dma->chan_rx = dma_request_slave_channel(dev, "rx");
+	if (!dma->chan_rx) {
+		dev_dbg(dev, "can't request DMA rx channel\n");
 		goto fail_tx;
 	}
 
@@ -326,7 +333,7 @@ static void i2c_imx_dma_request(struct imx_i2c_struct *i2c_imx,
 	dma_sconfig.direction = DMA_DEV_TO_MEM;
 	ret = dmaengine_slave_config(dma->chan_rx, &dma_sconfig);
 	if (ret < 0) {
-		dev_err(dev, "can't configure rx channel (%d)\n", ret);
+		dev_dbg(dev, "can't configure rx channel\n");
 		goto fail_rx;
 	}
 
@@ -343,6 +350,7 @@ fail_tx:
 	dma_release_channel(dma->chan_tx);
 fail_al:
 	devm_kfree(dev, dma);
+	dev_info(dev, "can't use DMA, using PIO instead.\n");
 }
 
 static void i2c_imx_dma_callback(void *arg)
@@ -474,16 +482,24 @@ static int i2c_imx_acked(struct imx_i2c_struct *i2c_imx)
 	return 0;
 }
 
-static void i2c_imx_set_clk(struct imx_i2c_struct *i2c_imx,
+static int i2c_imx_set_clk(struct imx_i2c_struct *i2c_imx,
 			    unsigned int i2c_clk_rate)
 {
 	struct imx_i2c_clk_pair *i2c_clk_div = i2c_imx->hwdata->clk_div;
 	unsigned int div;
 	int i;
 
-	/* Divider value calculation */
 	if (i2c_imx->cur_clk == i2c_clk_rate)
-		return;
+		return 0;
+
+	/*
+	 * Keep the denominator of the following program
+	 * always NOT equal to 0.
+	 */
+
+	/* Divider value calculation */
+	if (!(i2c_clk_rate / 2))
+		return -EINVAL;
 
 	i2c_imx->cur_clk = i2c_clk_rate;
 
@@ -514,20 +530,23 @@ static void i2c_imx_set_clk(struct imx_i2c_struct *i2c_imx,
 	dev_dbg(&i2c_imx->adapter.dev, "IFDR[IC]=0x%x, REAL DIV=%d\n",
 		i2c_clk_div[i].val, i2c_clk_div[i].div);
 #endif
+
+	return 0;
 }
 
 static int i2c_imx_clk_notifier_call(struct notifier_block *nb,
 				     unsigned long action, void *data)
 {
+	int ret = 0;
 	struct clk_notifier_data *ndata = data;
 	struct imx_i2c_struct *i2c_imx = container_of(nb,
 						      struct imx_i2c_struct,
 						      clk_change_nb);
 
 	if (action & POST_RATE_CHANGE)
-		i2c_imx_set_clk(i2c_imx, ndata->new_rate);
+		ret = i2c_imx_set_clk(i2c_imx, ndata->new_rate);
 
-	return NOTIFY_OK;
+	return notifier_from_errno(ret);
 }
 
 static int i2c_imx_start(struct imx_i2c_struct *i2c_imx)
@@ -536,6 +555,10 @@ static int i2c_imx_start(struct imx_i2c_struct *i2c_imx)
 	int result;
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
+
+	result = i2c_imx_set_clk(i2c_imx, clk_get_rate(i2c_imx->clk));
+	if (result)
+		return result;
 
 	imx_i2c_write_reg(i2c_imx->ifdr, i2c_imx, IMX_I2C_IFDR);
 	/* Enable I2C controller */
@@ -896,9 +919,16 @@ static int i2c_imx_xfer(struct i2c_adapter *adapter,
 	unsigned int i, temp;
 	int result;
 	bool is_lastmsg = false;
+	bool enable_runtime_pm = false;
 	struct imx_i2c_struct *i2c_imx = i2c_get_adapdata(adapter);
 
 	dev_dbg(&i2c_imx->adapter.dev, "<%s>\n", __func__);
+
+
+	if (!pm_runtime_enabled(i2c_imx->adapter.dev.parent)) {
+		pm_runtime_enable(i2c_imx->adapter.dev.parent);
+		enable_runtime_pm = true;
+	}
 
 	result = pm_runtime_get_sync(i2c_imx->adapter.dev.parent);
 	if (result < 0)
@@ -971,6 +1001,9 @@ fail0:
 	pm_runtime_put_autosuspend(i2c_imx->adapter.dev.parent);
 
 out:
+	if (enable_runtime_pm)
+		pm_runtime_disable(i2c_imx->adapter.dev.parent);
+
 	dev_dbg(&i2c_imx->adapter.dev, "<%s> exit with: %s: %d\n", __func__,
 		(result < 0) ? "error" : "success msg",
 			(result < 0) ? result : num);
@@ -1055,13 +1088,14 @@ static const struct i2c_algorithm i2c_imx_algo = {
 
 static int i2c_imx_probe(struct platform_device *pdev)
 {
+	const struct of_device_id *of_id = of_match_device(i2c_imx_dt_ids,
+							   &pdev->dev);
 	struct imx_i2c_struct *i2c_imx;
 	struct resource *res;
 	struct imxi2c_platform_data *pdata = dev_get_platdata(&pdev->dev);
 	void __iomem *base;
 	int irq, ret;
 	dma_addr_t phy_addr;
-	const struct imx_i2c_hwdata *match;
 
 	dev_dbg(&pdev->dev, "<%s>\n", __func__);
 
@@ -1081,9 +1115,8 @@ static int i2c_imx_probe(struct platform_device *pdev)
 	if (!i2c_imx)
 		return -ENOMEM;
 
-	match = device_get_match_data(&pdev->dev);
-	if (match)
-		i2c_imx->hwdata = match;
+	if (of_id)
+		i2c_imx->hwdata = of_id->data;
 	else
 		i2c_imx->hwdata = (struct imx_i2c_hwdata *)
 				platform_get_device_id(pdev)->driver_data;
@@ -1096,13 +1129,11 @@ static int i2c_imx_probe(struct platform_device *pdev)
 	i2c_imx->adapter.nr		= pdev->id;
 	i2c_imx->adapter.dev.of_node	= pdev->dev.of_node;
 	i2c_imx->base			= base;
-	ACPI_COMPANION_SET(&i2c_imx->adapter.dev, ACPI_COMPANION(&pdev->dev));
 
 	/* Get I2C clock */
 	i2c_imx->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(i2c_imx->clk)) {
-		if (PTR_ERR(i2c_imx->clk) != -EPROBE_DEFER)
-			dev_err(&pdev->dev, "can't get I2C clock\n");
+		dev_err(&pdev->dev, "can't get I2C clock\n");
 		return PTR_ERR(i2c_imx->clk);
 	}
 
@@ -1113,7 +1144,8 @@ static int i2c_imx_probe(struct platform_device *pdev)
 	}
 
 	/* Request IRQ */
-	ret = devm_request_irq(&pdev->dev, irq, i2c_imx_isr, IRQF_SHARED,
+	ret = devm_request_irq(&pdev->dev, irq, i2c_imx_isr,
+				IRQF_SHARED | IRQF_NO_SUSPEND,
 				pdev->name, i2c_imx);
 	if (ret) {
 		dev_err(&pdev->dev, "can't claim irq %d\n", irq);
@@ -1146,7 +1178,19 @@ static int i2c_imx_probe(struct platform_device *pdev)
 		i2c_imx->bitrate = pdata->bitrate;
 	i2c_imx->clk_change_nb.notifier_call = i2c_imx_clk_notifier_call;
 	clk_notifier_register(i2c_imx->clk, &i2c_imx->clk_change_nb);
-	i2c_imx_set_clk(i2c_imx, clk_get_rate(i2c_imx->clk));
+	ret = i2c_imx_set_clk(i2c_imx, clk_get_rate(i2c_imx->clk));
+	if (ret < 0) {
+		dev_err(&pdev->dev, "can't get I2C clock\n");
+		goto clk_notifier_unregister;
+	}
+
+	/*
+	 * This limit caused by an i.MX7D hardware issue(e7805 in Errata).
+	 * If there is no limit, when the bitrate set up to 400KHz, it will
+	 * cause the SCK low level period less than 1.3us.
+	 */
+	if (is_imx7d_i2c(i2c_imx) && i2c_imx->bitrate > IMX_I2C_MAX_E_BIT_RATE)
+		i2c_imx->bitrate = IMX_I2C_MAX_E_BIT_RATE;
 
 	/* Set up chip registers to defaults */
 	imx_i2c_write_reg(i2c_imx->hwdata->i2cr_ien_opcode ^ I2CR_IEN,
@@ -1222,40 +1266,61 @@ static int i2c_imx_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int __maybe_unused i2c_imx_runtime_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int i2c_imx_runtime_suspend(struct device *dev)
 {
 	struct imx_i2c_struct *i2c_imx = dev_get_drvdata(dev);
 
-	clk_disable(i2c_imx->clk);
+	clk_disable_unprepare(i2c_imx->clk);
+	pinctrl_pm_select_sleep_state(dev);
 
 	return 0;
 }
 
-static int __maybe_unused i2c_imx_runtime_resume(struct device *dev)
+static int i2c_imx_runtime_resume(struct device *dev)
 {
 	struct imx_i2c_struct *i2c_imx = dev_get_drvdata(dev);
 	int ret;
 
-	ret = clk_enable(i2c_imx->clk);
+	pinctrl_pm_select_default_state(dev);
+	ret = clk_prepare_enable(i2c_imx->clk);
 	if (ret)
 		dev_err(dev, "can't enable I2C clock, ret=%d\n", ret);
 
 	return ret;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static int i2c_imx_suspend(struct device *dev)
+{
+	pinctrl_pm_select_sleep_state(dev);
+	return 0;
+}
+
+static int i2c_imx_resume(struct device *dev)
+{
+	pinctrl_pm_select_default_state(dev);
+	return 0;
+}
+#endif
+
 static const struct dev_pm_ops i2c_imx_pm_ops = {
+	SET_NOIRQ_SYSTEM_SLEEP_PM_OPS(i2c_imx_suspend, i2c_imx_resume)
 	SET_RUNTIME_PM_OPS(i2c_imx_runtime_suspend,
 			   i2c_imx_runtime_resume, NULL)
 };
+#define I2C_IMX_PM_OPS (&i2c_imx_pm_ops)
+#else
+#define I2C_IMX_PM_OPS NULL
+#endif /* CONFIG_PM */
 
 static struct platform_driver i2c_imx_driver = {
 	.probe = i2c_imx_probe,
 	.remove = i2c_imx_remove,
 	.driver = {
 		.name = DRIVER_NAME,
-		.pm = &i2c_imx_pm_ops,
+		.pm = I2C_IMX_PM_OPS,
 		.of_match_table = i2c_imx_dt_ids,
-		.acpi_match_table = i2c_imx_acpi_ids,
 	},
 	.id_table = imx_i2c_devtype,
 };

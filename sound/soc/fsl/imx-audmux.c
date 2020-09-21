@@ -1,11 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0+
-//
-// Copyright 2012 Freescale Semiconductor, Inc.
-// Copyright 2012 Linaro Ltd.
-// Copyright 2009 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
-//
-// Initial development of this code was funded by
-// Phytec Messtechnik GmbH, http://www.phytec.de
+/*
+ * Copyright 2012-2015 Freescale Semiconductor, Inc.
+ * Copyright 2012 Linaro Ltd.
+ * Copyright 2009 Pengutronix, Sascha Hauer <s.hauer@pengutronix.de>
+ *
+ * Initial development of this code was funded by
+ * Phytec Messtechnik GmbH, http://www.phytec.de
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
 
 #include <linux/clk.h>
 #include <linux/debugfs.h>
@@ -143,11 +153,17 @@ static void audmux_debugfs_init(void)
 	char buf[20];
 
 	audmux_debugfs_root = debugfs_create_dir("audmux", NULL);
+	if (!audmux_debugfs_root) {
+		pr_warning("Failed to create AUDMUX debugfs root\n");
+		return;
+	}
 
 	for (i = 0; i < MX31_AUDMUX_PORT7_SSI_PINS_7 + 1; i++) {
 		snprintf(buf, sizeof(buf), "ssi%lu", i);
-		debugfs_create_file(buf, 0444, audmux_debugfs_root,
-				    (void *)i, &audmux_debugfs_fops);
+		if (!debugfs_create_file(buf, 0444, audmux_debugfs_root,
+					 (void *)i, &audmux_debugfs_fops))
+			pr_warning("Failed to create AUDMUX port %lu debugfs file\n",
+				   i);
 	}
 }
 
@@ -300,10 +316,12 @@ static int imx_audmux_parse_dt_defaults(struct platform_device *pdev,
 
 static int imx_audmux_probe(struct platform_device *pdev)
 {
+	struct resource *res;
 	const struct of_device_id *of_id =
 			of_match_device(imx_audmux_dt_ids, &pdev->dev);
 
-	audmux_base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	audmux_base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(audmux_base))
 		return PTR_ERR(audmux_base);
 

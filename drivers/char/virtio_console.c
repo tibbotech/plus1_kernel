@@ -1,8 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (C) 2006, 2007, 2009 Rusty Russell, IBM Corporation
  * Copyright (C) 2009, 2010, 2011 Red Hat, Inc.
  * Copyright (C) 2009, 2010, 2011 Amit Shah <amit.shah@redhat.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 #include <linux/cdev.h>
 #include <linux/debugfs.h>
@@ -62,7 +75,7 @@ struct ports_driver_data {
 	/* All the console devices handled by this driver */
 	struct list_head consoles;
 };
-static struct ports_driver_data pdrvdata = { .next_vtermno = 1};
+static struct ports_driver_data pdrvdata;
 
 static DEFINE_SPINLOCK(pdrvdata_lock);
 static DECLARE_COMPLETION(early_console_added);
@@ -1296,7 +1309,7 @@ static const struct attribute_group port_attribute_group = {
 	.attrs = port_sysfs_entries,
 };
 
-static int port_debugfs_show(struct seq_file *s, void *data)
+static int debugfs_show(struct seq_file *s, void *data)
 {
 	struct port *port = s->private;
 
@@ -1314,7 +1327,18 @@ static int port_debugfs_show(struct seq_file *s, void *data)
 	return 0;
 }
 
-DEFINE_SHOW_ATTRIBUTE(port_debugfs);
+static int debugfs_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, debugfs_show, inode->i_private);
+}
+
+static const struct file_operations port_debugfs_ops = {
+	.owner = THIS_MODULE,
+	.open = debugfs_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release,
+};
 
 static void set_console_size(struct port *port, u16 rows, u16 cols)
 {
@@ -1325,24 +1349,24 @@ static void set_console_size(struct port *port, u16 rows, u16 cols)
 	port->cons.ws.ws_col = cols;
 }
 
-static int fill_queue(struct virtqueue *vq, spinlock_t *lock)
+static unsigned int fill_queue(struct virtqueue *vq, spinlock_t *lock)
 {
 	struct port_buffer *buf;
-	int nr_added_bufs;
+	unsigned int nr_added_bufs;
 	int ret;
 
 	nr_added_bufs = 0;
 	do {
 		buf = alloc_buf(vq->vdev, PAGE_SIZE, 0);
 		if (!buf)
-			return -ENOMEM;
+			break;
 
 		spin_lock_irq(lock);
 		ret = add_inbuf(vq, buf);
 		if (ret < 0) {
 			spin_unlock_irq(lock);
 			free_buf(buf, true);
-			return ret;
+			break;
 		}
 		nr_added_bufs++;
 		spin_unlock_irq(lock);
@@ -1362,6 +1386,7 @@ static int add_port(struct ports_device *portdev, u32 id)
 	char debugfs_name[16];
 	struct port *port;
 	dev_t devt;
+	unsigned int nr_added_bufs;
 	int err;
 
 	port = kmalloc(sizeof(*port), GFP_KERNEL);
@@ -1380,7 +1405,6 @@ static int add_port(struct ports_device *portdev, u32 id)
 	port->async_queue = NULL;
 
 	port->cons.ws.ws_row = port->cons.ws.ws_col = 0;
-	port->cons.vtermno = 0;
 
 	port->host_connected = port->guest_connected = false;
 	port->stats = (struct port_stats) { 0 };
@@ -1420,13 +1444,11 @@ static int add_port(struct ports_device *portdev, u32 id)
 	spin_lock_init(&port->outvq_lock);
 	init_waitqueue_head(&port->waitqueue);
 
-	/* We can safely ignore ENOSPC because it means
-	 * the queue already has buffers. Buffers are removed
-	 * only by virtcons_remove(), not by unplug_port()
-	 */
-	err = fill_queue(port->in_vq, &port->inbuf_lock);
-	if (err < 0 && err != -ENOSPC) {
+	/* Fill the in_vq with buffers so the host can send us data. */
+	nr_added_bufs = fill_queue(port->in_vq, &port->inbuf_lock);
+	if (!nr_added_bufs) {
 		dev_err(port->dev, "Error allocating inbufs\n");
+		err = -ENOMEM;
 		goto free_device;
 	}
 
@@ -1468,7 +1490,7 @@ static int add_port(struct ports_device *portdev, u32 id)
 		port->debugfs_file = debugfs_create_file(debugfs_name, 0444,
 							 pdrvdata.debugfs_dir,
 							 port,
-							 &port_debugfs_fops);
+							 &port_debugfs_ops);
 	}
 	return 0;
 
@@ -2060,11 +2082,14 @@ static int virtcons_probe(struct virtio_device *vdev)
 	INIT_WORK(&portdev->control_work, &control_work_handler);
 
 	if (multiport) {
+		unsigned int nr_added_bufs;
+
 		spin_lock_init(&portdev->c_ivq_lock);
 		spin_lock_init(&portdev->c_ovq_lock);
 
-		err = fill_queue(portdev->c_ivq, &portdev->c_ivq_lock);
-		if (err < 0) {
+		nr_added_bufs = fill_queue(portdev->c_ivq,
+					   &portdev->c_ivq_lock);
+		if (!nr_added_bufs) {
 			dev_err(&vdev->dev,
 				"Error allocating buffers for control queue\n");
 			/*
@@ -2075,7 +2100,7 @@ static int virtcons_probe(struct virtio_device *vdev)
 					   VIRTIO_CONSOLE_DEVICE_READY, 0);
 			/* Device was functional: we need full cleanup. */
 			virtcons_remove(vdev);
-			return err;
+			return -ENOMEM;
 		}
 	} else {
 		/*

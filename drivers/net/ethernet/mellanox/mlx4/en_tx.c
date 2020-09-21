@@ -57,8 +57,11 @@ int mlx4_en_create_tx_ring(struct mlx4_en_priv *priv,
 
 	ring = kzalloc_node(sizeof(*ring), GFP_KERNEL, node);
 	if (!ring) {
-		en_err(priv, "Failed allocating TX ring\n");
-		return -ENOMEM;
+		ring = kzalloc(sizeof(*ring), GFP_KERNEL);
+		if (!ring) {
+			en_err(priv, "Failed allocating TX ring\n");
+			return -ENOMEM;
+		}
 	}
 
 	ring->size = size;
@@ -685,15 +688,16 @@ static void build_inline_wqe(struct mlx4_en_tx_desc *tx_desc,
 }
 
 u16 mlx4_en_select_queue(struct net_device *dev, struct sk_buff *skb,
-			 struct net_device *sb_dev)
+			 struct net_device *sb_dev,
+			 select_queue_fallback_t fallback)
 {
 	struct mlx4_en_priv *priv = netdev_priv(dev);
 	u16 rings_p_up = priv->num_tx_rings_p_up;
 
 	if (netdev_get_num_tc(dev))
-		return netdev_pick_tx(dev, skb, NULL);
+		return fallback(dev, skb, NULL);
 
-	return netdev_pick_tx(dev, skb, NULL) % rings_p_up;
+	return fallback(dev, skb, NULL) % rings_p_up;
 }
 
 static void mlx4_bf_copy(void __iomem *dst, const void *src,
@@ -772,7 +776,9 @@ static bool mlx4_en_build_dma_wqe(struct mlx4_en_priv *priv,
 
 	/* Map fragments if any */
 	for (i_frag = shinfo->nr_frags - 1; i_frag >= 0; i_frag--) {
-		const skb_frag_t *frag = &shinfo->frags[i_frag];
+		const struct skb_frag_struct *frag;
+
+		frag = &shinfo->frags[i_frag];
 		byte_count = skb_frag_size(frag);
 		dma = skb_frag_dma_map(ddev, frag,
 				       0, byte_count,
@@ -1000,6 +1006,7 @@ netdev_tx_t mlx4_en_xmit(struct sk_buff *skb, struct net_device *dev)
 		ring->packets++;
 	}
 	ring->bytes += tx_info->nr_bytes;
+	netdev_tx_sent_queue(ring->tx_queue, tx_info->nr_bytes);
 	AVG_PERF_COUNTER(priv->pstats.tx_pktsz_avg, skb->len);
 
 	if (tx_info->inl)
@@ -1037,10 +1044,7 @@ netdev_tx_t mlx4_en_xmit(struct sk_buff *skb, struct net_device *dev)
 		netif_tx_stop_queue(ring->tx_queue);
 		ring->queue_stopped++;
 	}
-
-	send_doorbell = __netdev_tx_sent_queue(ring->tx_queue,
-					       tx_info->nr_bytes,
-					       netdev_xmit_more());
+	send_doorbell = !skb->xmit_more || netif_xmit_stopped(ring->tx_queue);
 
 	real_size = (real_size / 16) & 0x3f;
 

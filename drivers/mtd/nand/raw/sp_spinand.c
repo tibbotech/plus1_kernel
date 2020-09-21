@@ -774,25 +774,22 @@ static int sp_spinand_write_raw(struct sp_spinand_info *info,
  * @mtd:    MTD device structure
  * @chipnr: chipnumber to select, -1 for deselect
  */
-static void sp_spinand_select_chip(struct nand_chip *chip, int chipnr)
+static void sp_spinand_select_chip(struct mtd_info *mtd, int chipnr)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
-
 	if (info->chip_num > 1 && info->cur_chip != chipnr && chipnr >= 0) {
 		info->cur_chip = chipnr;
 		spi_nand_select_die(info, chipnr);
 	}
 }
 
-static void sp_spinand_cmd_ctrl(struct nand_chip *chip, int cmd, u32 ctrl)
+static void sp_spinand_cmd_ctrl(struct mtd_info *mtd, int cmd, u32 ctrl)
 {
 	return;
 }
 
-static void sp_spinand_cmdfunc(struct nand_chip *chip, u32 cmd, int col, int row)
+static void sp_spinand_cmdfunc(struct mtd_info *mtd, u32 cmd, int col, int row)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 
 	info->cmd = cmd;
@@ -846,16 +843,15 @@ static void sp_spinand_cmdfunc(struct nand_chip *chip, u32 cmd, int col, int row
 	}
 }
 
-static int sp_spinand_dev_ready(struct nand_chip *chip)
+static int sp_spinand_dev_ready(struct mtd_info *mtd)
 {
 	//struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 	//return ((spi_nand_getfeatures(info, DEVICE_STATUS_ADDR) & 0x01) == 0);
 	return 1;
 }
 
-static int sp_spinand_waitfunc(struct nand_chip *chip)
+static int sp_spinand_waitfunc(struct mtd_info *mtd, struct nand_chip *chip)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 	unsigned long timeout = jiffies + msecs_to_jiffies(10);
 	int status;
@@ -885,9 +881,8 @@ static int sp_spinand_waitfunc(struct nand_chip *chip)
 	return ret;
 }
 
-static void sp_spinand_read_buf(struct nand_chip *chip, u8 *buf, int len)
+static void sp_spinand_read_buf(struct mtd_info *mtd, u8 *buf, int len)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 	u32 value;
 	u32 size;
@@ -920,26 +915,24 @@ static void sp_spinand_read_buf(struct nand_chip *chip, u8 *buf, int len)
 	info->buff.idx += len;
 }
 
-static u8 sp_spinand_read_byte(struct nand_chip *chip)
+static u8 sp_spinand_read_byte(struct mtd_info *mtd)
 {
 	u8 ret = 0;
-	sp_spinand_read_buf(chip, &ret, 1);
+	sp_spinand_read_buf(mtd, &ret, 1);
 	return ret;
 }
 
-static void sp_spinand_write_buf(struct nand_chip *chip, const u8 *buf, int len)
+static void sp_spinand_write_buf(struct mtd_info *mtd, const u8 *buf, int len)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 
 	memcpy(info->buff.virt + info->buff.idx, buf, len);
 	info->buff.idx += len;
 }
 
-static int sp_spinand_read_page(struct nand_chip *chip, u8 *buf,
-				int oob_required, int page)
+static int sp_spinand_read_page(struct mtd_info *mtd, struct nand_chip *chip,
+				u8 *buf, int oob_required, int page)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 	void *data_va = info->buff.virt;
 	void *oob_va = info->buff.virt + mtd->writesize;
@@ -968,10 +961,9 @@ static int sp_spinand_read_page(struct nand_chip *chip, u8 *buf,
 	return 0;
 }
 
-static int sp_spinand_write_page(struct nand_chip *chip, const u8 *buf,
-				int oob_required, int page)
+static int sp_spinand_write_page(struct mtd_info *mtd, struct nand_chip *chip,
+				 const u8 *buf, int oob_required, int page)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_spinand_info *info = (struct sp_spinand_info *)mtd->priv;
 	u8 *data_va = info->buff.virt;
 	u8 *oob_va = info->buff.virt + mtd->writesize;
@@ -1044,7 +1036,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		NULL,
 	};
 
-	SPINAND_LOGI("%s in\n", __FUNCTION__);
+	//SPINAND_LOGI("%s in\n", __FUNCTION__);
 
 	info = devm_kzalloc(dev, sizeof(*info), GFP_KERNEL);
 	if (!info) {
@@ -1125,20 +1117,20 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	}
 
 	info->dev = dev;
-	info->mtd = &info->nand.base.mtd;
+	info->mtd = &info->nand.mtd;
 	info->mtd->priv = info;
 	info->mtd->name = NAND_DEVICE_NAME;//dev_name(dev);
 	info->mtd->owner = THIS_MODULE;
 	info->nand.options = NAND_NO_SUBPAGE_WRITE;
-	info->nand.legacy.select_chip = sp_spinand_select_chip;
-	info->nand.legacy.cmd_ctrl = sp_spinand_cmd_ctrl;
-	info->nand.legacy.cmdfunc = sp_spinand_cmdfunc;
-	info->nand.legacy.dev_ready = sp_spinand_dev_ready;
-	info->nand.legacy.waitfunc = sp_spinand_waitfunc;
-	info->nand.legacy.chip_delay = 0;
-	info->nand.legacy.read_byte = sp_spinand_read_byte;
-	info->nand.legacy.read_buf = sp_spinand_read_buf;
-	info->nand.legacy.write_buf = sp_spinand_write_buf;
+	info->nand.select_chip = sp_spinand_select_chip;
+	info->nand.cmd_ctrl = sp_spinand_cmd_ctrl;
+	info->nand.cmdfunc = sp_spinand_cmdfunc;
+	info->nand.dev_ready = sp_spinand_dev_ready;
+	info->nand.waitfunc = sp_spinand_waitfunc;
+	info->nand.chip_delay = 0;
+	info->nand.read_byte = sp_spinand_read_byte;
+	info->nand.read_buf = sp_spinand_read_buf;
+	info->nand.write_buf = sp_spinand_write_buf;
 	info->nand.ecc.read_page = sp_spinand_read_page;
 	info->nand.ecc.write_page = sp_spinand_write_page;
 	info->nand.ecc.mode = NAND_ECC_HW;
@@ -1146,8 +1138,12 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	nand_set_flash_node(&info->nand, dev->of_node);
 
 	spi_nand_readid(info, 0, (u8*)&id);
-
-	if (nand_scan_ident(&info->nand, 1, sp_spinand_ids)) {
+	if ( id == 0) {
+		SPINAND_LOGE("not found\n");
+		ret = -ENXIO;
+		goto err1;
+	}
+	if (nand_scan_ident(info->mtd, 1, sp_spinand_ids)) {
 		SPINAND_LOGE("unsupport spinand,(device id:0x%08x)\n", id);
 		ret = -ENXIO;
 		goto err1;
@@ -1184,12 +1180,11 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	info->chip_num = SPINAND_OPT_GET_DIENUM(info->nand.drv_options);
 	info->cur_chip = -1;
 	if (info->chip_num > 1) {
-		info->nand.base.memorg.ntargets = info->chip_num;
-		info->mtd->size = info->chip_num * nanddev_target_size(&info->nand.base);
-	}	
-
-	for (i = 0; i < nanddev_ntargets(&info->nand.base); i++) {
-		sp_spinand_select_chip(&info->nand, i);
+		info->nand.numchips = info->chip_num;
+		info->mtd->size = info->chip_num * info->nand.chipsize;
+	}
+	for (i=0; i<info->chip_num; i++) {
+		sp_spinand_select_chip(info->mtd, i);
 		if (info->nand.drv_options & SPINAND_OPT_ECCEN_IN_F90_4) {
 			value = spi_nand_getfeatures(info, 0x90);
 			value &= ~0x01;
@@ -1197,13 +1192,13 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		}
 
 		value = spi_nand_getfeatures(info, DEVICE_FEATURE_ADDR);
-		value &= ~0x10;     /* disable internal ECC */
+		value &= ~0x10;          /* disable internal ECC */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_BUF_BIT)
-			value |= 0x08;  /* use buffer read mode */
+			value |= 0x08;   /* use buffer read mode */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_CONTI_RD)
-			value &= ~0x01; /* disable continuous read mode */
+			value &= ~0x01;  /* disable continuous read mode */
 		if (info->nand.drv_options & SPINAND_OPT_HAS_QE_BIT)
-			value |= 0x01;  /* enable quad io */
+			value |= 0x01;   /* enable quad io */
 		spi_nand_setfeatures(info, DEVICE_FEATURE_ADDR, value);
 
 		/* close write protection */
@@ -1217,7 +1212,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	if (nand_scan_tail(&info->nand)) {
+	if (nand_scan_tail(info->mtd)) {
 		SPINAND_LOGW("nand_scan_tail fail\n");
 	}
 
@@ -1229,7 +1224,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-	SPINAND_LOGI("====Sunplus SPI-NAND Driver====\n");
+	SPINAND_LOGI("====Sunplus SPI-NAND Driver====\n\n");
 	SPINAND_LOGI("==spi nand driver info==\n");
 	SPINAND_LOGI("regs = 0x%p@0x%08x, size = %d\n",
 		info->regs, res_mem->start, res_mem->end-res_mem->start);
@@ -1249,7 +1244,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	SPINAND_LOGI("ecc size    : %d\n", info->nand.ecc.size);
 	SPINAND_LOGI("ecc strength: %d\n", info->nand.ecc.strength);
 	SPINAND_LOGI("ecc steps   : %d\n", info->nand.ecc.steps);
-	SPINAND_LOGI("ecc options : 0x%08x\n", info->nand.ecc.options);
+	SPINAND_LOGI("ecc options : 0x%08x\n\n", info->nand.ecc.options);
 
 	return ret;
 

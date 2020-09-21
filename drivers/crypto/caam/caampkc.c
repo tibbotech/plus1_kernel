@@ -1,9 +1,8 @@
-// SPDX-License-Identifier: (GPL-2.0+ OR BSD-3-Clause)
 /*
  * caam - Freescale FSL CAAM support for Public Key Cryptography
  *
  * Copyright 2016 Freescale Semiconductor, Inc.
- * Copyright 2018-2019 NXP
+ * Copyright 2017-2018 NXP
  *
  * There is no Shared Descriptor for PKC so that the Job Descriptor must carry
  * all the desired key parameters, input and output pointers.
@@ -17,28 +16,17 @@
 #include "sg_sw_sec4.h"
 #include "caampkc.h"
 
-#define DESC_RSA_PUB_LEN	(2 * CAAM_CMD_SZ + SIZEOF_RSA_PUB_PDB)
+#define DESC_RSA_PUB_LEN	(2 * CAAM_CMD_SZ + sizeof(struct rsa_pub_pdb))
 #define DESC_RSA_PRIV_F1_LEN	(2 * CAAM_CMD_SZ + \
-				 SIZEOF_RSA_PRIV_F1_PDB)
+				 sizeof(struct rsa_priv_f1_pdb))
 #define DESC_RSA_PRIV_F2_LEN	(2 * CAAM_CMD_SZ + \
-				 SIZEOF_RSA_PRIV_F2_PDB)
+				 sizeof(struct rsa_priv_f2_pdb))
 #define DESC_RSA_PRIV_F3_LEN	(2 * CAAM_CMD_SZ + \
-				 SIZEOF_RSA_PRIV_F3_PDB)
+				 sizeof(struct rsa_priv_f3_pdb))
 #define CAAM_RSA_MAX_INPUT_SIZE	512 /* for a 4096-bit modulus */
 
 /* buffer filled with zeros, used for padding */
 static u8 *zero_buffer;
-
-/*
- * variable used to avoid double free of resources in case
- * algorithm registration was unsuccessful
- */
-static bool init_done;
-
-struct caam_akcipher_alg {
-	struct akcipher_alg akcipher;
-	bool registered;
-};
 
 static void rsa_io_unmap(struct device *dev, struct rsa_edesc *edesc,
 			 struct akcipher_request *req)
@@ -118,10 +106,9 @@ static void rsa_pub_done(struct device *dev, u32 *desc, u32 err, void *context)
 {
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
-	int ecode = 0;
 
 	if (err)
-		ecode = caam_jr_strstatus(dev, err);
+		caam_jr_strstatus(dev, err);
 
 	edesc = container_of(desc, struct rsa_edesc, hw_desc[0]);
 
@@ -129,7 +116,7 @@ static void rsa_pub_done(struct device *dev, u32 *desc, u32 err, void *context)
 	rsa_io_unmap(dev, edesc, req);
 	kfree(edesc);
 
-	akcipher_request_complete(req, ecode);
+	akcipher_request_complete(req, err);
 }
 
 static void rsa_priv_f1_done(struct device *dev, u32 *desc, u32 err,
@@ -137,10 +124,9 @@ static void rsa_priv_f1_done(struct device *dev, u32 *desc, u32 err,
 {
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
-	int ecode = 0;
 
 	if (err)
-		ecode = caam_jr_strstatus(dev, err);
+		caam_jr_strstatus(dev, err);
 
 	edesc = container_of(desc, struct rsa_edesc, hw_desc[0]);
 
@@ -148,7 +134,7 @@ static void rsa_priv_f1_done(struct device *dev, u32 *desc, u32 err,
 	rsa_io_unmap(dev, edesc, req);
 	kfree(edesc);
 
-	akcipher_request_complete(req, ecode);
+	akcipher_request_complete(req, err);
 }
 
 static void rsa_priv_f2_done(struct device *dev, u32 *desc, u32 err,
@@ -156,10 +142,9 @@ static void rsa_priv_f2_done(struct device *dev, u32 *desc, u32 err,
 {
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
-	int ecode = 0;
 
 	if (err)
-		ecode = caam_jr_strstatus(dev, err);
+		caam_jr_strstatus(dev, err);
 
 	edesc = container_of(desc, struct rsa_edesc, hw_desc[0]);
 
@@ -167,7 +152,7 @@ static void rsa_priv_f2_done(struct device *dev, u32 *desc, u32 err,
 	rsa_io_unmap(dev, edesc, req);
 	kfree(edesc);
 
-	akcipher_request_complete(req, ecode);
+	akcipher_request_complete(req, err);
 }
 
 static void rsa_priv_f3_done(struct device *dev, u32 *desc, u32 err,
@@ -175,10 +160,9 @@ static void rsa_priv_f3_done(struct device *dev, u32 *desc, u32 err,
 {
 	struct akcipher_request *req = context;
 	struct rsa_edesc *edesc;
-	int ecode = 0;
 
 	if (err)
-		ecode = caam_jr_strstatus(dev, err);
+		caam_jr_strstatus(dev, err);
 
 	edesc = container_of(desc, struct rsa_edesc, hw_desc[0]);
 
@@ -186,7 +170,7 @@ static void rsa_priv_f3_done(struct device *dev, u32 *desc, u32 err,
 	rsa_io_unmap(dev, edesc, req);
 	kfree(edesc);
 
-	akcipher_request_complete(req, ecode);
+	akcipher_request_complete(req, err);
 }
 
 /**
@@ -253,7 +237,7 @@ static struct rsa_edesc *rsa_edesc_alloc(struct akcipher_request *req,
 		       GFP_KERNEL : GFP_ATOMIC;
 	int sg_flags = (flags == GFP_ATOMIC) ? SG_MITER_ATOMIC : 0;
 	int sgc;
-	int sec4_sg_index, sec4_sg_len = 0, sec4_sg_bytes;
+	int sec4_sg_index = 0, sec4_sg_len = 0, sec4_sg_bytes;
 	int src_nents, dst_nents;
 	unsigned int diff_size = 0;
 	int lzeros;
@@ -291,9 +275,7 @@ static struct rsa_edesc *rsa_edesc_alloc(struct akcipher_request *req,
 		sec4_sg_len = src_nents + !!diff_size;
 	sec4_sg_index = sec4_sg_len;
 	if (dst_nents > 1)
-		sec4_sg_len += pad_sg_nents(dst_nents);
-	else
-		sec4_sg_len = pad_sg_nents(sec4_sg_len);
+		sec4_sg_len += dst_nents;
 
 	sec4_sg_bytes = sec4_sg_len * sizeof(struct sec4_sg_entry);
 
@@ -882,7 +864,7 @@ static int caam_rsa_set_pub_key(struct crypto_akcipher *tfm, const void *key,
 		return ret;
 
 	/* Copy key in DMA zone */
-	rsa_key->e = kmemdup(raw_key.e, raw_key.e_sz, GFP_DMA | GFP_KERNEL);
+	rsa_key->e = kzalloc(raw_key.e_sz, GFP_DMA | GFP_KERNEL);
 	if (!rsa_key->e)
 		goto err;
 
@@ -903,6 +885,8 @@ static int caam_rsa_set_pub_key(struct crypto_akcipher *tfm, const void *key,
 
 	rsa_key->e_sz = raw_key.e_sz;
 	rsa_key->n_sz = raw_key.n_sz;
+
+	memcpy(rsa_key->e, raw_key.e, raw_key.e_sz);
 
 	return 0;
 err:
@@ -984,11 +968,11 @@ static int caam_rsa_set_priv_key(struct crypto_akcipher *tfm, const void *key,
 		return ret;
 
 	/* Copy key in DMA zone */
-	rsa_key->d = kmemdup(raw_key.d, raw_key.d_sz, GFP_DMA | GFP_KERNEL);
+	rsa_key->d = kzalloc(raw_key.d_sz, GFP_DMA | GFP_KERNEL);
 	if (!rsa_key->d)
 		goto err;
 
-	rsa_key->e = kmemdup(raw_key.e, raw_key.e_sz, GFP_DMA | GFP_KERNEL);
+	rsa_key->e = kzalloc(raw_key.e_sz, GFP_DMA | GFP_KERNEL);
 	if (!rsa_key->e)
 		goto err;
 
@@ -1010,6 +994,9 @@ static int caam_rsa_set_priv_key(struct crypto_akcipher *tfm, const void *key,
 	rsa_key->d_sz = raw_key.d_sz;
 	rsa_key->e_sz = raw_key.e_sz;
 	rsa_key->n_sz = raw_key.n_sz;
+
+	memcpy(rsa_key->d, raw_key.d, raw_key.d_sz);
+	memcpy(rsa_key->e, raw_key.e, raw_key.e_sz);
 
 	caam_rsa_set_priv_key_form(ctx, &raw_key);
 
@@ -1063,44 +1050,71 @@ static void caam_rsa_exit_tfm(struct crypto_akcipher *tfm)
 	caam_jr_free(ctx->dev);
 }
 
-static struct caam_akcipher_alg caam_rsa = {
-	.akcipher = {
-		.encrypt = caam_rsa_enc,
-		.decrypt = caam_rsa_dec,
-		.set_pub_key = caam_rsa_set_pub_key,
-		.set_priv_key = caam_rsa_set_priv_key,
-		.max_size = caam_rsa_max_size,
-		.init = caam_rsa_init_tfm,
-		.exit = caam_rsa_exit_tfm,
-		.reqsize = sizeof(struct caam_rsa_req_ctx),
-		.base = {
-			.cra_name = "rsa",
-			.cra_driver_name = "rsa-caam",
-			.cra_priority = 3000,
-			.cra_module = THIS_MODULE,
-			.cra_ctxsize = sizeof(struct caam_rsa_ctx),
-		},
-	}
+static struct akcipher_alg caam_rsa = {
+	.encrypt = caam_rsa_enc,
+	.decrypt = caam_rsa_dec,
+	.sign = caam_rsa_dec,
+	.verify = caam_rsa_enc,
+	.set_pub_key = caam_rsa_set_pub_key,
+	.set_priv_key = caam_rsa_set_priv_key,
+	.max_size = caam_rsa_max_size,
+	.init = caam_rsa_init_tfm,
+	.exit = caam_rsa_exit_tfm,
+	.reqsize = sizeof(struct caam_rsa_req_ctx),
+	.base = {
+		.cra_name = "rsa",
+		.cra_driver_name = "rsa-caam",
+		.cra_priority = 3000,
+		.cra_module = THIS_MODULE,
+		.cra_ctxsize = sizeof(struct caam_rsa_ctx),
+	},
 };
 
 /* Public Key Cryptography module initialization handler */
-int caam_pkc_init(struct device *ctrldev)
+static int __init caam_pkc_init(void)
 {
-	struct caam_drv_private *priv = dev_get_drvdata(ctrldev);
-	u32 pk_inst;
+	struct device_node *dev_node;
+	struct platform_device *pdev;
+	struct device *ctrldev;
+	struct caam_drv_private *priv;
+	u32 cha_inst, pk_inst;
 	int err;
-	init_done = false;
+
+	dev_node = of_find_compatible_node(NULL, NULL, "fsl,sec-v4.0");
+	if (!dev_node) {
+		dev_node = of_find_compatible_node(NULL, NULL, "fsl,sec4.0");
+		if (!dev_node)
+			return -ENODEV;
+	}
+
+	pdev = of_find_device_by_node(dev_node);
+	if (!pdev) {
+		of_node_put(dev_node);
+		return -ENODEV;
+	}
+
+	ctrldev = &pdev->dev;
+	priv = dev_get_drvdata(ctrldev);
+	of_node_put(dev_node);
+
+	/*
+	 * If priv is NULL, it's probably because the caam driver wasn't
+	 * properly initialized (e.g. RNG4 init failed). Thus, bail out here.
+	 */
+	if (!priv)
+		return -ENODEV;
 
 	/* Determine public key hardware accelerator presence. */
-	if (priv->era < 10)
-		pk_inst = (rd_reg32(&priv->ctrl->perfmon.cha_num_ls) &
-			   CHA_ID_LS_PK_MASK) >> CHA_ID_LS_PK_SHIFT;
+	if (priv->has_seco)
+		cha_inst = rd_reg32(&priv->jr[0]->perfmon.cha_num_ls);
 	else
-		pk_inst = rd_reg32(&priv->ctrl->vreg.pkha) & CHA_VER_NUM_MASK;
+		cha_inst = rd_reg32(&priv->ctrl->perfmon.cha_num_ls);
+
+	pk_inst = (cha_inst & CHA_ID_LS_PK_MASK) >> CHA_ID_LS_PK_SHIFT;
 
 	/* Do not register algorithms if PKHA is not present. */
 	if (!pk_inst)
-		return 0;
+		return -ENODEV;
 
 	/* allocate zero buffer, used for padding input */
 	zero_buffer = kzalloc(CAAM_RSA_MAX_INPUT_SIZE - 1, GFP_DMA |
@@ -1108,28 +1122,25 @@ int caam_pkc_init(struct device *ctrldev)
 	if (!zero_buffer)
 		return -ENOMEM;
 
-	err = crypto_register_akcipher(&caam_rsa.akcipher);
-
-	if (err) {
-		kfree(zero_buffer);
+	err = crypto_register_akcipher(&caam_rsa);
+	if (err)
 		dev_warn(ctrldev, "%s alg registration failed\n",
-			 caam_rsa.akcipher.base.cra_driver_name);
-	} else {
-		init_done = true;
-		caam_rsa.registered = true;
+			 caam_rsa.base.cra_driver_name);
+	else
 		dev_info(ctrldev, "caam pkc algorithms registered in /proc/crypto\n");
-	}
 
 	return err;
 }
 
-void caam_pkc_exit(void)
+static void __exit caam_pkc_exit(void)
 {
-	if (!init_done)
-		return;
-
-	if (caam_rsa.registered)
-		crypto_unregister_akcipher(&caam_rsa.akcipher);
-
 	kfree(zero_buffer);
+	crypto_unregister_akcipher(&caam_rsa);
 }
+
+module_init(caam_pkc_init);
+module_exit(caam_pkc_exit);
+
+MODULE_LICENSE("Dual BSD/GPL");
+MODULE_DESCRIPTION("FSL CAAM support for PKC functions of crypto API");
+MODULE_AUTHOR("Freescale Semiconductor");

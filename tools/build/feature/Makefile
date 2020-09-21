@@ -5,10 +5,8 @@ FILES=                                          \
          test-bionic.bin                        \
          test-dwarf.bin                         \
          test-dwarf_getlocations.bin            \
-         test-eventfd.bin                       \
          test-fortify-source.bin                \
          test-sync-compare-and-swap.bin         \
-         test-get_current_dir_name.bin          \
          test-glibc.bin                         \
          test-gtk2.bin                          \
          test-gtk2-infobar.bin                  \
@@ -20,7 +18,6 @@ FILES=                                          \
          test-libbfd-liberty.bin                \
          test-libbfd-liberty-z.bin              \
          test-cplus-demangle.bin                \
-         test-libcap.bin			\
          test-libelf.bin                        \
          test-libelf-getphdrnum.bin             \
          test-libelf-gelf_getnote.bin           \
@@ -32,7 +29,6 @@ FILES=                                          \
          test-libpython.bin                     \
          test-libpython-version.bin             \
          test-libslang.bin                      \
-         test-libslang-include-subdir.bin       \
          test-libcrypto.bin                     \
          test-libunwind.bin                     \
          test-libunwind-debug-frame.bin         \
@@ -56,17 +52,13 @@ FILES=                                          \
          test-get_cpuid.bin                     \
          test-sdt.bin                           \
          test-cxx.bin                           \
-         test-gettid.bin			\
          test-jvmti.bin				\
-         test-jvmti-cmlr.bin			\
          test-sched_getcpu.bin			\
          test-setns.bin				\
          test-libopencsd.bin			\
          test-clang.bin				\
          test-llvm.bin				\
-         test-llvm-version.bin			\
-         test-libaio.bin			\
-         test-libzstd.bin
+         test-llvm-version.bin
 
 FILES := $(addprefix $(OUTPUT),$(FILES))
 
@@ -106,17 +98,8 @@ $(OUTPUT)test-fortify-source.bin:
 $(OUTPUT)test-bionic.bin:
 	$(BUILD)
 
-$(OUTPUT)test-libcap.bin:
-	$(BUILD) -lcap
-
 $(OUTPUT)test-libelf.bin:
 	$(BUILD) -lelf
-
-$(OUTPUT)test-eventfd.bin:
-	$(BUILD)
-
-$(OUTPUT)test-get_current_dir_name.bin:
-	$(BUILD)
 
 $(OUTPUT)test-glibc.bin:
 	$(BUILD)
@@ -187,10 +170,7 @@ $(OUTPUT)test-libaudit.bin:
 	$(BUILD) -laudit
 
 $(OUTPUT)test-libslang.bin:
-	$(BUILD) -lslang
-
-$(OUTPUT)test-libslang-include-subdir.bin:
-	$(BUILD) -lslang
+	$(BUILD) -I/usr/include/slang -lslang
 
 $(OUTPUT)test-libcrypto.bin:
 	$(BUILD) -lcrypto
@@ -276,13 +256,7 @@ $(OUTPUT)test-sdt.bin:
 $(OUTPUT)test-cxx.bin:
 	$(BUILDXX) -std=gnu++11
 
-$(OUTPUT)test-gettid.bin:
-	$(BUILD)
-
 $(OUTPUT)test-jvmti.bin:
-	$(BUILD)
-
-$(OUTPUT)test-jvmti-cmlr.bin:
 	$(BUILD)
 
 $(OUTPUT)test-llvm.bin:
@@ -310,12 +284,6 @@ $(OUTPUT)test-clang.bin:
 		> $(@:.bin=.make.output) 2>&1
 
 -include $(OUTPUT)*.d
-
-$(OUTPUT)test-libaio.bin:
-	$(BUILD) -lrt
-
-$(OUTPUT)test-libzstd.bin:
-	$(BUILD) -lzstd
 
 ###############################
 

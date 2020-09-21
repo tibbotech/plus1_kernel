@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 menuconfig POWER_SUPPLY
 	bool "Power supply class support"
 	help
@@ -14,20 +13,6 @@ config POWER_SUPPLY_DEBUG
 	help
 	  Say Y here to enable debugging messages for power supply class
 	  and drivers.
-
-config POWER_SUPPLY_HWMON
-	bool
-	prompt "Expose power supply sensors as hwmon device"
-	depends on HWMON=y || HWMON=POWER_SUPPLY
-	default y
-	help
-	  This options enables API that allows sensors found on a
-	  power supply device (current, voltage, temperature) to be
-	  exposed as a hwmon device.
-
-	  Say 'Y' here if you want power supplies to
-	  have hwmon sysfs interface too.
-
 
 config PDA_POWER
 	tristate "Generic PDA/phone power driver"
@@ -166,7 +151,7 @@ config BATTERY_PMU
 
 config BATTERY_OLPC
 	tristate "One Laptop Per Child battery"
-	depends on OLPC_EC
+	depends on X86_32 && OLPC
 	help
 	  Say Y to enable support for the battery on the OLPC laptop.
 
@@ -183,17 +168,6 @@ config BATTERY_COLLIE
 	help
 	  Say Y to enable support for the battery on the Sharp Zaurus
 	  SL-5500 (collie) models.
-
-config BATTERY_INGENIC
-	tristate "Ingenic JZ47xx SoCs battery driver"
-	depends on MIPS || COMPILE_TEST
-	depends on INGENIC_ADC
-	help
-	  Choose this option if you want to monitor battery status on
-	  Ingenic JZ47xx SoC based devices.
-
-	  This driver can also be built as a module. If so, the module will be
-	  called ingenic-battery.
 
 config BATTERY_IPAQ_MICRO
 	tristate "iPAQ Atmel Micro ASIC battery driver"
@@ -417,6 +391,23 @@ config CHARGER_PCF50633
 	help
 	 Say Y to include support for NXP PCF50633 Main Battery Charger.
 
+config CHARGER_PF1550
+	tristate "Freescale PF1550 battery charger driver"
+	depends on MFD_PF1550
+	help
+	 Say Y to enable support for the Freescale PF1550 battery charger.
+
+config BATTERY_JZ4740
+	tristate "Ingenic JZ4740 battery"
+	depends on MACH_JZ4740
+	depends on MFD_JZ4740_ADC
+	help
+	  Say Y to enable support for the battery on Ingenic JZ4740 based
+	  boards.
+
+	  This driver can be build as a module. If so, the module will be
+	  called jz4740-battery.
+
 config BATTERY_RX51
 	tristate "Nokia RX-51 (N900) battery driver"
 	depends on TWL4030_MADC
@@ -440,6 +431,14 @@ config CHARGER_ISP1704
 	help
 	  Say Y to enable support for USB Charger Detection with
 	  ISP1707/ISP1704 USB transceivers.
+
+config SABRESD_MAX8903
+       tristate "Sabresd Board Battery DC-DC Charger for USB and Adapter Power"
+       depends on TOUCHSCREEN_MAX11801
+       help
+         Say Y to enable support for the MAX8903 DC-DC charger and sysfs on
+         sabresd board.The driver supports controlling charger and battery
+         based on the status of charger connections with interrupt handlers.
 
 config CHARGER_MAX8903
 	tristate "MAX8903 Battery DC-DC Charger for USB and Adapter Power"
@@ -490,12 +489,12 @@ config CHARGER_MANAGER
           runtime and in suspend-to-RAM by waking up the system periodically
           with help of suspend_again support.
 
-config CHARGER_LT3651
-	tristate "Analog Devices LT3651 charger"
+config CHARGER_LTC3651
+	tristate "LTC3651 charger"
 	depends on GPIOLIB
 	help
-	  Say Y to include support for the Analog Devices (Linear Technology)
-	  LT3651 battery charger which reports its status via GPIO lines.
+	  Say Y to include support for the LTC3651 battery charger which reports
+	  its status via GPIO lines.
 
 config CHARGER_MAX14577
 	tristate "Maxim MAX14577/77836 battery charger driver"
@@ -513,13 +512,6 @@ config CHARGER_DETECTOR_MAX14656
 	  The device is compliant with the USB Battery Charging Specification
 	  Revision 1.2 and can be found e.g. in Kindle 4/5th generation
 	  readers and certain LG devices.
-
-config CHARGER_MAX77650
-	tristate "Maxim MAX77650 battery charger driver"
-	depends on MFD_MAX77650
-	help
-	  Say Y to enable support for the battery charger control of MAX77650
-	  PMICs.
 
 config CHARGER_MAX77693
 	tristate "Maxim MAX77693 battery charger driver"
@@ -659,55 +651,12 @@ config CHARGER_RT9455
 
 config CHARGER_CROS_USBPD
 	tristate "ChromeOS EC based USBPD charger"
-	depends on CROS_EC
+	depends on MFD_CROS_EC
 	default n
 	help
 	  Say Y here to enable ChromeOS EC based USBPD charger
 	  driver. This driver gets various bits of information about
 	  what is connected to USB PD ports from the EC and converts
 	  that into power_supply properties.
-
-config CHARGER_SC2731
-	tristate "Spreadtrum SC2731 charger driver"
-	depends on MFD_SC27XX_PMIC || COMPILE_TEST
-	help
-	 Say Y here to enable support for battery charging with SC2731
-	 PMIC chips.
-
-config FUEL_GAUGE_SC27XX
-	tristate "Spreadtrum SC27XX fuel gauge driver"
-	depends on MFD_SC27XX_PMIC || COMPILE_TEST
-	depends on IIO
-	help
-	 Say Y here to enable support for fuel gauge with SC27XX
-	 PMIC chips.
-
-config CHARGER_UCS1002
-	tristate "Microchip UCS1002 USB Port Power Controller"
-	depends on I2C
-	depends on OF
-	depends on REGULATOR
-	select REGMAP_I2C
-	help
-	  Say Y to enable support for Microchip UCS1002 Programmable
-	  USB Port Power Controller with Charger Emulation.
-
-config CHARGER_BD70528
-	tristate "ROHM bd70528 charger driver"
-	depends on MFD_ROHM_BD70528
-	default n
-	help
-	 Say Y here to enable support for getting battery status
-	 information and altering charger configurations from charger
-	 block of the ROHM BD70528 Power Management IC.
-
-config CHARGER_WILCO
-	tristate "Wilco EC based charger for ChromeOS"
-	depends on WILCO_EC
-	help
-	  Say Y here to enable control of the charging routines performed
-	  by the Embedded Controller on the Chromebook named Wilco. Further
-	  information can be found in
-	  Documentation/ABI/testing/sysfs-class-power-wilco
 
 endif # POWER_SUPPLY

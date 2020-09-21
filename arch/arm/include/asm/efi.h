@@ -1,6 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (C) 2015 Linaro Ltd <ard.biesheuvel@linaro.org>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #ifndef __ASM_ARM_EFI_H
@@ -38,7 +41,7 @@ int efi_set_mapping_permissions(struct mm_struct *mm, efi_memory_desc_t *md);
 
 static inline void efi_set_pgd(struct mm_struct *mm)
 {
-	check_and_switch_context(mm, NULL);
+	check_and_switch_context(mm, NULL, true);
 }
 
 void efi_virtmap_load(void);

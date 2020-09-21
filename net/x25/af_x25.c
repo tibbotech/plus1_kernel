@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *	X.25 Packet Layer release 002
  *
@@ -7,6 +6,12 @@
  *	screw up. It might even work.
  *
  *	This code REQUIRES 2.1.15 or higher
+ *
+ *	This module:
+ *		This module is free software; you can redistribute it and/or
+ *		modify it under the terms of the GNU General Public License
+ *		as published by the Free Software Foundation; either version
+ *		2 of the License, or (at your option) any later version.
  *
  *	History
  *	X.25 001	Jonathan Naylor	Started coding.
@@ -95,7 +100,7 @@ int x25_parse_address_block(struct sk_buff *skb,
 	}
 
 	len = *skb->data;
-	needed = 1 + ((len >> 4) + (len & 0x0f) + 1) / 2;
+	needed = 1 + (len >> 4) + (len & 0x0f);
 
 	if (!pskb_may_pull(skb, needed)) {
 		/* packet is too short to hold the addresses it claims
@@ -283,7 +288,7 @@ static struct sock *x25_find_listener(struct x25_address *addr,
 	sk_for_each(s, &x25_list)
 		if ((!strcmp(addr->x25_addr,
 			x25_sk(s)->source_addr.x25_addr) ||
-				!strcmp(x25_sk(s)->source_addr.x25_addr,
+				!strcmp(addr->x25_addr,
 					null_x25_address.x25_addr)) &&
 					s->sk_state == TCP_LISTEN) {
 			/*
@@ -680,15 +685,11 @@ static int x25_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		goto out;
 	}
 
-	/* check for the null_x25_address */
-	if (strcmp(addr->sx25_addr.x25_addr, null_x25_address.x25_addr)) {
-
-		len = strlen(addr->sx25_addr.x25_addr);
-		for (i = 0; i < len; i++) {
-			if (!isdigit(addr->sx25_addr.x25_addr[i])) {
-				rc = -EINVAL;
-				goto out;
-			}
+	len = strlen(addr->sx25_addr.x25_addr);
+	for (i = 0; i < len; i++) {
+		if (!isdigit(addr->sx25_addr.x25_addr[i])) {
+			rc = -EINVAL;
+			goto out;
 		}
 	}
 
@@ -760,10 +761,6 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
 	if (sk->sk_state == TCP_ESTABLISHED)
 		goto out;
 
-	rc = -EALREADY;	/* Do nothing if call is already in progress */
-	if (sk->sk_state == TCP_SYN_SENT)
-		goto out;
-
 	sk->sk_state   = TCP_CLOSE;
 	sock->state = SS_UNCONNECTED;
 
@@ -810,7 +807,7 @@ static int x25_connect(struct socket *sock, struct sockaddr *uaddr,
 	/* Now the loop */
 	rc = -EINPROGRESS;
 	if (sk->sk_state != TCP_ESTABLISHED && (flags & O_NONBLOCK))
-		goto out;
+		goto out_put_neigh;
 
 	rc = x25_wait_for_connection_establishment(sk);
 	if (rc)
@@ -1397,6 +1394,18 @@ static int x25_ioctl(struct socket *sock, unsigned int cmd, unsigned long arg)
 		break;
 	}
 
+	case SIOCGSTAMP:
+		rc = -EINVAL;
+		if (sk)
+			rc = sock_get_timestamp(sk,
+						(struct timeval __user *)argp);
+		break;
+	case SIOCGSTAMPNS:
+		rc = -EINVAL;
+		if (sk)
+			rc = sock_get_timestampns(sk,
+					(struct timespec __user *)argp);
+		break;
 	case SIOCGIFADDR:
 	case SIOCSIFADDR:
 	case SIOCGIFDSTADDR:
@@ -1668,12 +1677,26 @@ static int compat_x25_ioctl(struct socket *sock, unsigned int cmd,
 				unsigned long arg)
 {
 	void __user *argp = compat_ptr(arg);
+	struct sock *sk = sock->sk;
+
 	int rc = -ENOIOCTLCMD;
 
 	switch(cmd) {
 	case TIOCOUTQ:
 	case TIOCINQ:
 		rc = x25_ioctl(sock, cmd, (unsigned long)argp);
+		break;
+	case SIOCGSTAMP:
+		rc = -EINVAL;
+		if (sk)
+			rc = compat_sock_get_timestamp(sk,
+					(struct timeval __user*)argp);
+		break;
+	case SIOCGSTAMPNS:
+		rc = -EINVAL;
+		if (sk)
+			rc = compat_sock_get_timestampns(sk,
+					(struct timespec __user*)argp);
 		break;
 	case SIOCGIFADDR:
 	case SIOCSIFADDR:
@@ -1738,7 +1761,6 @@ static const struct proto_ops x25_proto_ops = {
 #ifdef CONFIG_COMPAT
 	.compat_ioctl = compat_x25_ioctl,
 #endif
-	.gettstamp =	sock_gettstamp,
 	.listen =	x25_listen,
 	.shutdown =	sock_no_shutdown,
 	.setsockopt =	x25_setsockopt,

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * AppArmor security module
  *
@@ -6,6 +5,11 @@
  *
  * Copyright (C) 1998-2008 Novell/SUSE
  * Copyright 2009-2017 Canonical Ltd.
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, version 2 of the
+ * License.
  */
 
 #include <linux/gfp.h>
@@ -103,8 +107,7 @@ static int profile_tracer_perm(struct aa_profile *tracer,
 	aad(sa)->label = &tracer->label;
 	aad(sa)->peer = tracee;
 	aad(sa)->request = 0;
-	aad(sa)->error = aa_capable(&tracer->label, CAP_SYS_PTRACE,
-				    CAP_OPT_NONE);
+	aad(sa)->error = aa_capable(&tracer->label, CAP_SYS_PTRACE, 1);
 
 	return aa_audit(AUDIT_APPARMOR_AUTO, tracer, sa, audit_ptrace_cb);
 }

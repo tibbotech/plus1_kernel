@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * This file contains functions used in USB interface module.
  */
@@ -50,8 +49,7 @@ static const struct lbs_fw_table fw_table[] = {
 	{ MODEL_8388, "libertas/usb8388_v5.bin", NULL },
 	{ MODEL_8388, "libertas/usb8388.bin", NULL },
 	{ MODEL_8388, "usb8388.bin", NULL },
-	{ MODEL_8682, "libertas/usb8682.bin", NULL },
-	{ 0, NULL, NULL }
+	{ MODEL_8682, "libertas/usb8682.bin", NULL }
 };
 
 static const struct usb_device_id if_usb_table[] = {
@@ -256,11 +254,8 @@ static int if_usb_probe(struct usb_interface *intf,
 		goto dealloc;
 	}
 
-	priv = lbs_add_card(cardp, &intf->dev);
-	if (IS_ERR(priv)) {
-		r = PTR_ERR(priv);
+	if (!(priv = lbs_add_card(cardp, &intf->dev)))
 		goto err_add_card;
-	}
 
 	cardp->priv = priv;
 
@@ -369,7 +364,7 @@ static int if_usb_send_fw_pkt(struct if_usb_card *cardp)
 			     cardp->fwseqnum, cardp->totalbytes);
 	} else if (fwdata->hdr.dnldcmd == cpu_to_le32(FW_HAS_LAST_BLOCK)) {
 		lbs_deb_usb2(&cardp->udev->dev, "Host has finished FW downloading\n");
-		lbs_deb_usb2(&cardp->udev->dev, "Downloading FW JUMP BLOCK\n");
+		lbs_deb_usb2(&cardp->udev->dev, "Donwloading FW JUMP BLOCK\n");
 
 		cardp->fwfinalblk = 1;
 	}

@@ -73,21 +73,22 @@ int sun3x_hwclk(int set, struct rtc_time *t)
 
 	return 0;
 }
+/* Not much we can do here */
+u32 sun3x_gettimeoffset(void)
+{
+    return 0L;
+}
 
 #if 0
-static irqreturn_t sun3x_timer_tick(int irq, void *dev_id)
+static void sun3x_timer_tick(int irq, void *dev_id, struct pt_regs *regs)
 {
-	irq_handler_t timer_routine = dev_id;
-	unsigned long flags;
+    void (*vector)(int, void *, struct pt_regs *) = dev_id;
 
-	local_irq_save(flags);
-	/* Clear the pending interrupt - pulse the enable line low */
-	disable_irq(5);
-	enable_irq(5);
-	timer_routine(0, NULL);
-	local_irq_restore(flags);
+    /* Clear the pending interrupt - pulse the enable line low */
+    disable_irq(5);
+    enable_irq(5);
 
-	return IRQ_HANDLED;
+    vector(irq, NULL, regs);
 }
 #endif
 

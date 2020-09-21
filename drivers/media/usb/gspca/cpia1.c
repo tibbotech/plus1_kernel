@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * cpia CPiA (1) gspca driver
  *
@@ -10,6 +9,17 @@
  * (C) Copyright 1999-2000 Scott J. Bertin
  * (C) Copyright 1999-2000 Johannes Erdfelt <johannes@erdfelt.com>
  * (C) Copyright 2000 STMicroelectronics
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -537,14 +547,10 @@ static int do_command(struct gspca_dev *gspca_dev, u16 command,
 		}
 		if (sd->params.qx3.button) {
 			/* button pressed - unlock the latch */
-			ret = do_command(gspca_dev, CPIA_COMMAND_WriteMCPort,
+			do_command(gspca_dev, CPIA_COMMAND_WriteMCPort,
 				   3, 0xdf, 0xdf, 0);
-			if (ret)
-				return ret;
-			ret = do_command(gspca_dev, CPIA_COMMAND_WriteMCPort,
+			do_command(gspca_dev, CPIA_COMMAND_WriteMCPort,
 				   3, 0xff, 0xff, 0);
-			if (ret)
-				return ret;
 		}
 
 		/* test whether microscope is cradled */
@@ -1424,7 +1430,6 @@ static int sd_config(struct gspca_dev *gspca_dev,
 {
 	struct sd *sd = (struct sd *) gspca_dev;
 	struct cam *cam;
-	int ret;
 
 	sd->mainsFreq = FREQ_DEF == V4L2_CID_POWER_LINE_FREQUENCY_60HZ;
 	reset_camera_params(gspca_dev);
@@ -1436,10 +1441,7 @@ static int sd_config(struct gspca_dev *gspca_dev,
 	cam->cam_mode = mode;
 	cam->nmodes = ARRAY_SIZE(mode);
 
-	ret = goto_low_power(gspca_dev);
-	if (ret)
-		gspca_err(gspca_dev, "Cannot go to low power mode: %d\n",
-			  ret);
+	goto_low_power(gspca_dev);
 	/* Check the firmware version. */
 	sd->params.version.firmwareVersion = 0;
 	get_version_information(gspca_dev);

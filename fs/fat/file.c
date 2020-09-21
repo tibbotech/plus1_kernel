@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/fs/fat/file.c
  *
@@ -194,17 +193,12 @@ static int fat_file_release(struct inode *inode, struct file *filp)
 int fat_file_fsync(struct file *filp, loff_t start, loff_t end, int datasync)
 {
 	struct inode *inode = filp->f_mapping->host;
-	int err;
+	int res, err;
 
-	err = __generic_file_fsync(filp, start, end, datasync);
-	if (err)
-		return err;
-
+	res = generic_file_fsync(filp, start, end, datasync);
 	err = sync_mapping_buffers(MSDOS_SB(inode->i_sb)->fat_inode->i_mapping);
-	if (err)
-		return err;
 
-	return blkdev_issue_flush(inode->i_sb->s_bdev, GFP_KERNEL, NULL);
+	return res ? res : err;
 }
 
 
@@ -220,7 +214,6 @@ const struct file_operations fat_file_operations = {
 #endif
 	.fsync		= fat_file_fsync,
 	.splice_read	= generic_file_splice_read,
-	.splice_write	= iter_file_splice_write,
 	.fallocate	= fat_fallocate,
 };
 
@@ -234,7 +227,7 @@ static int fat_cont_expand(struct inode *inode, loff_t size)
 	if (err)
 		goto out;
 
-	fat_truncate_time(inode, NULL, S_CTIME|S_MTIME);
+	inode->i_ctime = inode->i_mtime = current_time(inode);
 	mark_inode_dirty(inode);
 	if (IS_SYNC(inode)) {
 		int err2;
@@ -337,7 +330,7 @@ static int fat_free(struct inode *inode, int skip)
 		MSDOS_I(inode)->i_logstart = 0;
 	}
 	MSDOS_I(inode)->i_attrs |= ATTR_ARCH;
-	fat_truncate_time(inode, NULL, S_CTIME|S_MTIME);
+	inode->i_ctime = inode->i_mtime = current_time(inode);
 	if (wait) {
 		err = fat_sync_inode(inode);
 		if (err) {
@@ -549,18 +542,6 @@ int fat_setattr(struct dentry *dentry, struct iattr *attr)
 		up_write(&MSDOS_I(inode)->truncate_lock);
 	}
 
-	/*
-	 * setattr_copy can't truncate these appropriately, so we'll
-	 * copy them ourselves
-	 */
-	if (attr->ia_valid & ATTR_ATIME)
-		fat_truncate_time(inode, &attr->ia_atime, S_ATIME);
-	if (attr->ia_valid & ATTR_CTIME)
-		fat_truncate_time(inode, &attr->ia_ctime, S_CTIME);
-	if (attr->ia_valid & ATTR_MTIME)
-		fat_truncate_time(inode, &attr->ia_mtime, S_MTIME);
-	attr->ia_valid &= ~(ATTR_ATIME|ATTR_CTIME|ATTR_MTIME);
-
 	setattr_copy(inode, attr);
 	mark_inode_dirty(inode);
 out:
@@ -571,5 +552,4 @@ EXPORT_SYMBOL_GPL(fat_setattr);
 const struct inode_operations fat_file_inode_operations = {
 	.setattr	= fat_setattr,
 	.getattr	= fat_getattr,
-	.update_time	= fat_update_time,
 };

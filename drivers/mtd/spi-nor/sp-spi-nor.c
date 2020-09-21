@@ -276,11 +276,11 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 	SPI_NOR_REG *spi_reg;
 	u32 value = 0;
 	
-	dev_dbg(pspi->dev, "chip 0x%x freq %d", pspi->chipsel, pspi->clk_rate);
+	dev_dbg(pspi->dev,"chip 0x%x freq %d", pspi->chipsel, pspi->clk_rate);
 	if (pspi->chipsel == 0)
-		value = A_CHIP;
+	    value = A_CHIP;
 	else
-	    	value = B_CHIP;
+		  value = B_CHIP;
   
   	switch (pspi->clk_rate)
   	{  
@@ -308,13 +308,13 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
   	  		break;
   	}
 	spi_reg = (SPI_NOR_REG *)pspi->io_base;
-	writel(value, &spi_reg->spi_ctrl);
+	writel(value,&spi_reg->spi_ctrl);
 
 	writel(SPI_CMD_OEN_1b | SPI_ADDR_OEN_1b | SPI_DATA_OEN_1b | SPI_CMD_1b | SPI_ADDR_1b
 		| SPI_DATA_1b | SPI_ENHANCE_NO | SPI_DUMMY_CYC(0) | SPI_DATA_IEN_DQ1,&spi_reg->spi_cfg1);
 	reg_temp = readl(&spi_reg->spi_auto_cfg);
 	reg_temp &= ~(AUTO_RDSR_EN);
-	writel(reg_temp, &spi_reg->spi_auto_cfg);
+	writel(reg_temp,&spi_reg->spi_auto_cfg);
 	return 0;
 }
 #if (SP_SPINOR_DMA)
@@ -415,25 +415,25 @@ static void sp_spi_cfg12_set(SPI_NOR_REG *reg_base, u8 cmd)
     	switch (cmd)
     	{
         	case 0x0B:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_1, enhance,DUMMY_CYCLE(8));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_1,enhance,DUMMY_CYCLE(8));
             		break;
         	case 0x3B:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_2, enhance,DUMMY_CYCLE(8));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_2,enhance,DUMMY_CYCLE(8));
             		break;
         	case 0x6B:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_4, enhance,DUMMY_CYCLE(8));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_4,enhance,DUMMY_CYCLE(8));
             		break;
         	case 0xBB:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_2,DATA_2, enhance,DUMMY_CYCLE(4));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_2,DATA_2,enhance,DUMMY_CYCLE(4));
             		break;
         	case 0xEB:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_4,DATA_4, enhance,DUMMY_CYCLE(6));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_4,DATA_4,enhance,DUMMY_CYCLE(6));
             		break;
         	case 0x32:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_4, enhance,DUMMY_CYCLE(0));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_4,enhance,DUMMY_CYCLE(0));
             		break;
         	default:
-            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_1, enhance,DUMMY_CYCLE(0));
+            		spi_nor_io_CUST_config(reg_base, CMD_1,ADDR_1,DATA_1,enhance,DUMMY_CYCLE(0));
             		break;
     	}	
 	return;
@@ -453,11 +453,11 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
     	unsigned int temp_len = len;
     	int value = 0;
     
-    	dev_dbg(pspi->dev, "%s\n", __FUNCTION__);    
+    	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);    
     	while ((readl(&spi_reg->spi_auto_cfg) & DMA_TRIGGER) ||  (readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)){
         	time++;
         	if (time > 0x30000){
-             		dev_dbg(pspi->dev, "##w init time out\n");
+             		dev_dbg(pspi->dev,"##w init time out\n");
              		break;
         	}     
     	}
@@ -477,7 +477,7 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
     	}
     	writel(ctrl, &spi_reg->spi_ctrl);
     	value = readl(&spi_reg->spi_ctrl);
-    	dev_dbg(pspi->dev, "w data ctrl 0x%x\n", value);
+    	dev_dbg(pspi->dev,"w data ctrl 0x%x\n",value);
     	writel((0x100<<4), &spi_reg->spi_page_size);
     
     	do
@@ -490,7 +490,7 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
             		temp_len = len;
             		len = 0;
         	}
-        	dev_dbg(pspi->dev, "w remain len  0x%x\n", len);
+        	dev_dbg(pspi->dev,"w remain len  0x%x\n", len);
         	if (temp_len > 0) {
             		memcpy(pspi->buff.virt, data_in, temp_len); // copy data to dma
         	}        
@@ -500,10 +500,10 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
 
         	writel(pspi->buff.phys, &spi_reg->spi_mem_data_addr);
         	value = readl(&spi_reg->spi_mem_data_addr);
-        	dev_dbg(pspi->dev, "w spi_mem_data_addr 0x%x\n", value);
+        	dev_dbg(pspi->dev,"w spi_mem_data_addr 0x%x\n", value);
 
         	autocfg = DMA_TRIGGER|(cmd<<8)|(1); 
-        	value = (readl(&spi_reg->spi_auto_cfg) & (~(0xff<<8))) | autocfg;
+        	value = (readl(&spi_reg->spi_auto_cfg)&(~(0xff<<8))) | autocfg;
         
         	writel(0x5, &spi_reg->spi_intr_msk);
         	writel(0x07, &spi_reg->spi_intr_sts);
@@ -511,15 +511,15 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
         	writel(value, &spi_reg->spi_auto_cfg);
 #if 0
         	value = readl(&spi_reg->spi_auto_cfg);
-        	dev_dbg(pspi->dev, "r spi_auto_cfg 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_auto_cfg 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg0);
-        	dev_dbg(pspi->dev, "w spi_cfg0 0x%x\n", value);
+        	dev_dbg(pspi->dev,"w spi_cfg0 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg1);
-        	dev_dbg(pspi->dev, "w spi_cfg1 0x%x\n", value);
+        	dev_dbg(pspi->dev,"w spi_cfg1 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg2);
-        	dev_dbg(pspi->dev, "w spi_cfg2 0x%x\n", value);
+        	dev_dbg(pspi->dev,"w spi_cfg2 0x%x\n", value);
 #endif
-        	dev_dbg(pspi->dev, "wait intr, busy 0x%x\n", pspi->busy);
+        	dev_dbg(pspi->dev,"wait intr, busy 0x%x\n", pspi->busy);
         	wait_event(pspi->wq, !pspi->busy); 
         
         	writel(0, &spi_reg->spi_intr_msk);
@@ -528,7 +528,7 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
         	{
             		time++;
             		if (time > 0x20000){
-                		dev_dbg(pspi->dev, "##w busy check time out\n");
+                		dev_dbg(pspi->dev,"##w busy check time out\n");
                 		len = 0;
                 		break;
             		}
@@ -557,11 +557,11 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
     	unsigned int temp_len = 0;
     	int value = 0;
     
-    	dev_dbg(pspi->dev, "%s\n", __FUNCTION__);
+    	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
     	while ((readl(&spi_reg->spi_auto_cfg) & DMA_TRIGGER) || (readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)){
         	time++;
         	if (time > 0x30000){
-            		dev_dbg(pspi->dev, "##r init time out\n"); 
+            		dev_dbg(pspi->dev,"##r init time out\n"); 
             		break; 
         	}     
     	}
@@ -574,13 +574,13 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
     	writel(0, &spi_reg->spi_data);
     	if (addr_len > 0)
     	{
-        	addr_temp = addr;
+        	addr_temp =addr;
         	ctrl |= ADDR_3B;
     	}
         
     	writel(ctrl, &spi_reg->spi_ctrl);
     	value = readl(&spi_reg->spi_ctrl);
-    	dev_dbg(pspi->dev, "r data ctrl 0x%x\n", value);
+    	dev_dbg(pspi->dev,"r data ctrl 0x%x\n",value);
     	writel((0x100<<4), &spi_reg->spi_page_size);
     
     	do
@@ -593,7 +593,7 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
             		temp_len = len;
             		len = 0;
         	}
-        	dev_dbg(pspi->dev, "r remain len  0x%x\n", len);
+        	dev_dbg(pspi->dev,"r remain len  0x%x\n", len);
         	value =  (readl(&spi_reg->spi_cfg0) & CLEAR_DATA64_LEN) |  temp_len | DATA64_EN;
         	if (opcode == 5)//need to check
             		value |= SPI_TRS_MODE;
@@ -601,10 +601,10 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
     
         	writel( pspi->buff.phys, &spi_reg->spi_mem_data_addr);
         	value = readl(&spi_reg->spi_mem_data_addr);
-        	dev_dbg(pspi->dev, "r spi_mem_data_addr 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_mem_data_addr 0x%x\n", value);
         
         	autocfg =  (opcode<<24) | (1<<20) | DMA_TRIGGER ;   
-        	value = (readl(&spi_reg->spi_auto_cfg) & (~(0xff<<24))) | autocfg ; 
+        	value = (readl(&spi_reg->spi_auto_cfg)&(~(0xff<<24))) | autocfg ; 
     
         	writel(0x5, &spi_reg->spi_intr_msk) ;
         	writel(0x07, &spi_reg->spi_intr_sts);
@@ -612,15 +612,15 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
         	writel(value, &spi_reg->spi_auto_cfg);
 #if 0  
         	value = readl(&spi_reg->spi_auto_cfg);
-        	dev_dbg(pspi->dev, "r spi_auto_cfg 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_auto_cfg 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg0);
-        	dev_dbg(pspi->dev, "r spi_cfg0 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_cfg0 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg1);
-        	dev_dbg(pspi->dev, "r spi_cfg1 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_cfg1 0x%x\n", value);
         	value = readl(&spi_reg->spi_cfg2);
-        	dev_dbg(pspi->dev, "r spi_cfg2 0x%x\n", value);
+        	dev_dbg(pspi->dev,"r spi_cfg2 0x%x\n", value);
 #endif
-        	dev_dbg(pspi->dev, "wait intr, busy 0x%x\n", pspi->busy);   
+        	dev_dbg(pspi->dev,"wait intr, busy 0x%x\n", pspi->busy);   
         	wait_event(pspi->wq, !pspi->busy); 
              
         	writel(0, &spi_reg->spi_intr_msk);
@@ -629,7 +629,7 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
         	{
             		time++;
             		if (time > 0x10000){
-                		dev_dbg(pspi->dev, "##r busy check time out\n");
+                		dev_dbg(pspi->dev,"##r busy check time out\n");
                 		len = 0; 
                 		break; 
             		}
@@ -658,11 +658,11 @@ static unsigned char sp_spi_nor_rdsr(SPI_NOR_REG *reg_base)
 	reg_temp = reg_temp | READ_CMD | BYTE_0 | ADDR_0B | CUST_CMD(0x05);
 	while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0);
 
-	writel(0, &spi_reg->spi_data);
-	writel(reg_temp, &spi_reg->spi_ctrl);
+	writel(0,&spi_reg->spi_data);
+	writel(reg_temp,&spi_reg->spi_ctrl);
 	reg_temp = readl(&spi_reg->spi_auto_cfg);
 	reg_temp |= PIO_TRIGGER;
-	writel(reg_temp, &spi_reg->spi_auto_cfg);
+	writel(reg_temp,&spi_reg->spi_auto_cfg);
 	while((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER)!=0);
 	data = readl(&spi_reg->spi_status) & 0xff;
 	return data;
@@ -687,31 +687,31 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 	struct timeval time;
 	struct timeval time_out;
 	
-  	dev_dbg(pspi->dev, "%s\n", __FUNCTION__);
+  	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
 	mutex_lock(&pspi->lock);
 	if (total_count == 0) 
 	{
 		while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
 		{
-			dev_dbg(pspi->dev, "wait ctrl busy\n");
+			dev_dbg(pspi->dev,"wait ctrl busy\n");
 		};
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp = reg_temp | WRITE_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
 		cfg0 = (cfg0 & CLEAR_DATA64_LEN) | data_count | DATA64_EN;
-		writel(cfg0, &spi_reg->spi_cfg0);
+		writel(cfg0,&spi_reg->spi_cfg0);
 		writel(DATA64_READ_ADDR(0) | DATA64_WRITE_ADDR(0),&spi_reg->spi_buf_addr);
 		if (addr_len > 0)
 		{
 			writel(addr,&spi_reg->spi_page_addr);
 			reg_temp = reg_temp | ADDR_3B ;
-			dev_dbg(pspi->dev, "addr 0x%x\n", spi_reg->spi_page_addr);
+			dev_dbg(pspi->dev,"addr 0x%x\n", spi_reg->spi_page_addr);
 		}
-		writel(0, &spi_reg->spi_data);
-		writel(reg_temp, &spi_reg->spi_ctrl);
+		writel(0,&spi_reg->spi_data);
+		writel(reg_temp,&spi_reg->spi_ctrl);
 		reg_temp = readl(&spi_reg->spi_auto_cfg);
 		reg_temp |= PIO_TRIGGER;
-		writel(reg_temp, &spi_reg->spi_auto_cfg);
+		writel(reg_temp,&spi_reg->spi_auto_cfg);
 	}
 	while (total_count > 0) 
 	{
@@ -724,28 +724,28 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		}
 		while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
 		{
-			dev_dbg(pspi->dev, "wait ctrl busy\n");
+			dev_dbg(pspi->dev,"wait ctrl busy\n");
 		};
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp = reg_temp | WRITE_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
 		cfg0 = (cfg0 & CLEAR_DATA64_LEN) | data_count | DATA64_EN;
-		writel(cfg0, &spi_reg->spi_cfg0);
+		writel(cfg0,&spi_reg->spi_cfg0);
 		writel(DATA64_READ_ADDR(0) | DATA64_WRITE_ADDR(0),&spi_reg->spi_buf_addr);
 		if (addr_len > 0) 
 		{
 			addr_temp = offset +  addr_offset* SPI_DATA64_MAX_LEN;
-			dev_dbg(pspi->dev, "addr_offset 0x%x\n", addr_offset);
-			dev_dbg(pspi->dev, "offset 0x%x\n", offset);
-			dev_dbg(pspi->dev, "addr 0x%x\n", addr_temp);
-			writel(addr_temp, &spi_reg->spi_page_addr);
+			dev_dbg(pspi->dev,"addr_offset 0x%x\n",addr_offset);
+			dev_dbg(pspi->dev,"offset 0x%x\n",offset);
+			dev_dbg(pspi->dev,"addr 0x%x\n",addr_temp);
+			writel(addr_temp,&spi_reg->spi_page_addr);
 			reg_temp = reg_temp | ADDR_3B ;
 		}
-		writel(0, &spi_reg->spi_data);
-		writel(reg_temp, &spi_reg->spi_ctrl);
+		writel(0,&spi_reg->spi_data);
+		writel(reg_temp,&spi_reg->spi_ctrl);
 		reg_temp = readl(&spi_reg->spi_auto_cfg);
 		reg_temp |= PIO_TRIGGER;
-		writel(reg_temp, &spi_reg->spi_auto_cfg);
+		writel(reg_temp,&spi_reg->spi_auto_cfg);
 
 		while (data_count > 0) 
 		{
@@ -763,7 +763,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 					};
 				}
 				data_temp = (data_in[3] << 24) | (data_in[2] << 16) | (data_in[1] << 8) | data_in[0];
-				writel(data_temp, &spi_reg->spi_data64);
+				writel(data_temp,&spi_reg->spi_data64);
 				data_in = data_in + 4;
 				data_count = data_count - 4;
 			} else {
@@ -774,7 +774,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 						do_gettimeofday(&time_out);
 						if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
 						{
-							dev_dbg(pspi->dev, "timeout \n");
+							dev_dbg(pspi->dev,"timeout \n");
 							break;
 						}
 					};
@@ -782,15 +782,15 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 				if(data_count%4 == 3)
 				{
 					data_temp = (data_in[2] << 16) | (data_in[1] << 8) | data_in[0];
-					data_count = data_count - 3; 
+					data_count = data_count-3; 
 				}else if(data_count%4 == 2)
 				{
 					data_temp =  (data_in[1] << 8) | data_in[0];
-					data_count = data_count - 2; 
+					data_count = data_count-2; 
 				}else if (data_count%4 == 1)
 				{
 					data_temp = data_in[0];
-					data_count = data_count - 1; 
+					data_count = data_count-1; 
 				}
 				writel(data_temp,&spi_reg->spi_data64);
 			}
@@ -798,16 +798,16 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		addr_offset = addr_offset + 1;
 		while ((sp_spi_nor_rdsr(spi_reg) & 0x01) != 0)
 		{
-			dev_dbg(pspi->dev, "wait DEVICE busy \n");
+			dev_dbg(pspi->dev,"wait DEVICE busy \n");
 		};
 	}
-	while((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER) != 0)
+	while((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER)!=0)
 	{
-		dev_dbg(pspi->dev, "wait PIO_TRIGGER\n");
+		dev_dbg(pspi->dev,"wait PIO_TRIGGER\n");
 	};
-	while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
+	while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
 	{
-		dev_dbg(pspi->dev, "wait ctrl busy\n");
+		dev_dbg(pspi->dev,"wait ctrl busy\n");
 	};
 	cfg0 = readl(&spi_reg->spi_cfg0);
 	cfg0 &= DATA64_DIS;
@@ -835,7 +835,7 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 	struct timeval time;
 	struct timeval time_out;
 
-  	dev_dbg(pspi->dev,"%s\n", __FUNCTION__);
+  	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
 	mutex_lock(&pspi->lock);
 
 	while (total_count > 0)
@@ -851,37 +851,37 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 		}
 		while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
 		{
-			dev_dbg(pspi->dev, "wait ctrl busy\n");
+			dev_dbg(pspi->dev,"wait ctrl busy\n");
 		};
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp = reg_temp | READ_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
 		cfg0 = (cfg0 & CLEAR_DATA64_LEN) | data_count | DATA64_EN;
-		dev_dbg(pspi->dev, "spi_cfg0 0x%x\n", cfg0);
-		writel(cfg0, &spi_reg->spi_cfg0);
-		writel(0, &spi_reg->spi_page_addr);
-		writel(DATA64_READ_ADDR(0) | DATA64_WRITE_ADDR(0), &spi_reg->spi_buf_addr);
+		dev_dbg(pspi->dev,"spi_cfg0 0x%x\n",cfg0);
+		writel(cfg0,&spi_reg->spi_cfg0);
+		writel(0,&spi_reg->spi_page_addr);
+		writel(DATA64_READ_ADDR(0) | DATA64_WRITE_ADDR(0),&spi_reg->spi_buf_addr);
 		if(addr_len > 0)
 		{
-			addr_temp = offset +  addr_offset * SPI_DATA64_MAX_LEN;
-			dev_dbg(pspi->dev, "addr_offset 0x%x\n", addr_offset);
-			dev_dbg(pspi->dev, "offset 0x%x\n", offset);
-			dev_dbg(pspi->dev, "addr 0x%x\n", addr_temp);
-			writel(addr_temp, &spi_reg->spi_page_addr);
+			addr_temp = offset +  addr_offset* SPI_DATA64_MAX_LEN;
+			dev_dbg(pspi->dev,"addr_offset 0x%x\n",addr_offset);
+			dev_dbg(pspi->dev,"offset 0x%x\n",offset);
+			dev_dbg(pspi->dev,"addr 0x%x\n",addr_temp);
+			writel(addr_temp,&spi_reg->spi_page_addr);
 			reg_temp = reg_temp | ADDR_3B ;
 		}
 		writel(0,&spi_reg->spi_data);
-		dev_dbg(pspi->dev, "spi_ctrl 0x%x\n", reg_temp);
+		dev_dbg(pspi->dev,"spi_ctrl 0x%x\n",reg_temp);
 		writel(reg_temp,&spi_reg->spi_ctrl);
 		reg_temp = readl(&spi_reg->spi_auto_cfg);
 		reg_temp |= PIO_TRIGGER;
 		writel(reg_temp,&spi_reg->spi_auto_cfg);
 		if (opcode == SPINOR_OP_RDSR)
 		{
-			data_in[0] = readl(&spi_reg->spi_status) & 0xff;
+			data_in[0] = readl(&spi_reg->spi_status)&0xff;
 			data_count = 0;
 		}
-		dev_dbg(pspi->dev, "cfg1 0x%x, len 0x%x\n", readl(&spi_reg->spi_cfg1));
+		dev_dbg(pspi->dev,"cfg1 0x%x, len 0x%x\n",readl(&spi_reg->spi_cfg1));
 		while (data_count > 0)
 		{
 			if ((data_count / 4) > 0)
@@ -892,12 +892,12 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 					do_gettimeofday(&time_out);
 					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
 					{
-						dev_dbg(pspi->dev, "timeout \n");
+						dev_dbg(pspi->dev,"timeout \n");
 						break;
 					}
 				};
 				data_temp = readl(&spi_reg->spi_data64);
-				dev_dbg(pspi->dev,"data_temp 0x%x\n", data_temp);
+				dev_dbg(pspi->dev,"data_temp 0x%x\n",data_temp);
 				data_in[0] = data_temp & 0xff;
 				data_in[1] = ((data_temp & 0xff00) >> 8);
 				data_in[2] = ((data_temp & 0xff0000) >> 16);
@@ -911,12 +911,12 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 					do_gettimeofday(&time_out);
 					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
 					{
-						dev_dbg(pspi->dev, "timeout \n");
+						dev_dbg(pspi->dev,"timeout \n");
 						break;
 					}
 				};
 				data_temp = readl(&spi_reg->spi_data64);
-				dev_dbg(pspi->dev, "data_temp 0x%x\n", data_temp);
+				dev_dbg(pspi->dev,"data_temp 0x%x\n",data_temp);
 				if(data_count%4 == 3)
 				{
 					data_in[0] = data_temp & 0xff;
@@ -941,13 +941,13 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 			dev_dbg(pspi->dev,"wait DEVICE busy \n");
 		};
 	}
-	while((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER) != 0)
+	while((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER)!=0)
 	{
-		dev_dbg(pspi->dev, "wait PIO_TRIGGER\n");
+		dev_dbg(pspi->dev,"wait PIO_TRIGGER\n");
 	};
-	while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
+	while((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY)!=0)
 	{
-		dev_dbg(pspi->dev, "wait ctrl busy\n");
+		dev_dbg(pspi->dev,"wait ctrl busy\n");
 	};
 	cfg0 = readl(&spi_reg->spi_cfg0);
 	cfg0 &= DATA64_DIS;
@@ -963,7 +963,7 @@ static ssize_t sp_spi_nor_read(struct spi_nor *nor, loff_t from, size_t len, u_c
     	u8 opcode = nor->read_opcode;
     	unsigned int offset = (unsigned int)from;
     
-    	dev_dbg(pspi->dev,"%s\n", __FUNCTION__);
+    	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
     	dev_dbg(pspi->dev,"read cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
 #if (SP_SPINOR_DMA)
     	sp_spi_nor_xfer_dmaread(nor, opcode, offset, 0x3, buf, len);
@@ -979,7 +979,7 @@ static ssize_t sp_spi_nor_write(struct spi_nor *nor, loff_t to,
     	u8 opcode = nor->program_opcode;
     	unsigned int offset = (unsigned int)to;
     
-    	dev_dbg(pspi->dev,"%s\n", __FUNCTION__);
+    	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
 
     	dev_dbg(pspi->dev,"write cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
 #if (SP_SPINOR_DMA)
@@ -993,7 +993,7 @@ static int sp_spi_nor_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 {
     	struct sp_spi_nor *pspi = nor->priv;
     
-    	dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n", __FUNCTION__, opcode, len);   
+    	dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__, opcode, len);   
 #if (SP_SPINOR_DMA)
     	sp_spi_nor_xfer_dmaread(nor, opcode, 0, 0, buf, len);
 #else
@@ -1010,7 +1010,7 @@ static int sp_spi_nor_write_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len
     	int addr_len = 0;
     	int data_len = 0;
 
-    	dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n", __FUNCTION__, opcode, len);
+    	dev_dbg(pspi->dev,"%s cmd 0x%x len 0x%x\n",__FUNCTION__, opcode, len);
     	switch(opcode)
     	{
         	case SPINOR_OP_BE_4K:
@@ -1035,26 +1035,26 @@ static int sp_spi_nor_prep(struct spi_nor *nor, enum spi_nor_ops ops)
 {
     	struct sp_spi_nor *pspi = nor->priv;
     
-	dev_dbg(pspi->dev,"%s ops 0x%x\n", __FUNCTION__, ops);
+	dev_dbg(pspi->dev,"%s ops 0x%x\n",__FUNCTION__, ops);
 	switch(ops)
 	{
 		case 0:
-			dev_dbg(pspi->dev, "SPI_NOR_OPS_READ \n");
+			dev_dbg(pspi->dev,"SPI_NOR_OPS_READ \n");
 			break;
 		case 1:
-			dev_dbg(pspi->dev, "SPI_NOR_OPS_WRITE \n");
+			dev_dbg(pspi->dev,"SPI_NOR_OPS_WRITE \n");
 			break;
 		case 2:
-			dev_dbg(pspi->dev, "SPI_NOR_OPS_ERASE \n");
+			dev_dbg(pspi->dev,"SPI_NOR_OPS_ERASE \n");
 			break;
 		case 3:
-			dev_dbg(pspi->dev, "SPI_NOR_OPS_LOCK \n");
+			dev_dbg(pspi->dev,"SPI_NOR_OPS_LOCK \n");
 			break;
 		case 4:
-			dev_dbg(pspi->dev, "SPI_NOR_OPS_UNLOCK \n");
+			dev_dbg(pspi->dev,"SPI_NOR_OPS_UNLOCK \n");
 			break;
 		default:
-			dev_dbg(pspi->dev, "Unknow ops \n");
+			dev_dbg(pspi->dev,"Unknow ops \n");
 			break;
 	};
 	return 0;
@@ -1064,7 +1064,7 @@ static void sp_spi_nor_unprep(struct spi_nor *nor, enum spi_nor_ops ops)
 {
 	struct sp_spi_nor *pspi = nor->priv;
 	  
-	dev_dbg(pspi->dev,"%s\n", __FUNCTION__);
+	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
 	return ;
 }
 
@@ -1116,7 +1116,7 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 				SNOR_HWCAPS_PP,
 			};
 
-    	dev_dbg(dev,"%s\n", __FUNCTION__);
+    	dev_dbg(pspi->dev,"%s\n",__FUNCTION__);
     	pspi = devm_kzalloc(dev, sizeof(*pspi), GFP_KERNEL);
     	if (!pspi)
         	return -ENOMEM;
@@ -1133,32 +1133,32 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 	init_waitqueue_head(&pspi->wq);
 	if (pspi->irq <= 0) {
 		devm_kfree(dev, (void *)pspi);
-		dev_dbg(pspi->dev, "get spi nor irq resource fail\n");
+		dev_dbg(pspi->dev,"get spi nor irq resource fail\n");
 		return -EINVAL;
 	}else {
 		ret = request_irq(pspi->irq, sp_nor_int, IRQF_SHARED, "sp_nor", pspi);
 		if (ret) {
-			dev_dbg(pspi->dev, "sp_spinor: unable to register IRQ(%d) \n", pspi->irq);
+			dev_dbg(pspi->dev,"sp_spinor: unable to register IRQ(%d) \n", pspi->irq);
 		}
 	}
 #if (SP_SPINOR_DMA)
     	pspi->buff.size =CFG_BUFF_MAX;
-    	pspi->buff.virt = (void *)dma_alloc_coherent(dev, PAGE_ALIGN(pspi->buff.size), \
+    	pspi->buff.virt = (void *)dma_alloc_coherent(NULL, PAGE_ALIGN(pspi->buff.size), \
 						     &pspi->buff.phys , GFP_DMA | GFP_KERNEL);
-    	dev_dbg(pspi->dev, "phy 0x%x virt 0x%x size 0x%x\n", pspi->buff.phys, (int)pspi->buff.virt,pspi->buff.size);
+    	dev_dbg(pspi->dev,"phy 0x%x virt 0x%x size 0x%x\n",pspi->buff.phys, (int)pspi->buff.virt,pspi->buff.size);
     	if (!pspi->buff.virt) {
 		ret = -ENOMEM;
-		dev_err(&pdev->dev, "spi nor:Failed to allocate dma\n");
+		dev_err(&pdev->dev,"spi nor:Failed to allocate dma\n");
 		return (ret);
 	}	
 #endif
+   
     	/* clk*/
 	pspi->ctrl_clk = devm_clk_get(&pdev->dev,NULL);
 	if(IS_ERR(pspi->ctrl_clk)) {
 		dev_err(&pdev->dev, "devm_clk_get fail\n");
 		return PTR_ERR(pspi->ctrl_clk);
 	}
-
 	ret = clk_prepare_enable(pspi->ctrl_clk);
 	if (ret)
 		dev_err(&pdev->dev, "devm_clk_enable fail\n");
@@ -1170,7 +1170,6 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "SPI failed to retrieve reset controller: %d\n", ret);
 		return PTR_ERR(pspi->clk_rst);
 	}
-
 	ret = reset_control_deassert(pspi->clk_rst);
 	if (ret)
 		dev_err(&pdev->dev, "reset deassert fail\n");
@@ -1197,26 +1196,18 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     	nor->prepare = sp_spi_nor_prep;
     	nor->unprepare = sp_spi_nor_unprep;
 
-    	ret = of_property_read_u32(np, "spi-max-frequency", &pspi->clk_rate);
-    	if (ret < 0){
-    		pspi->clk_rate = 50000000;
-    		dev_dbg(pspi->dev, "clock rate default\n");
-        	//goto mutex_failed;
-        }
-
-    	ret = of_property_read_u32(np, "spi-chip-selection", &pspi->chipsel);
-    	if (ret < 0){
-    		pspi->chipsel = 0;
-    		dev_dbg(pspi->dev, "chipsel default\n");
-        	//goto mutex_failed;
-        }
+    	ret = of_property_read_u32(np, "spi-max-frequency",&pspi->clk_rate);
+    	if (ret < 0)
+        	goto mutex_failed;
+    	ret = of_property_read_u32(np, "spi-chip-selection",&pspi->chipsel);
+    	if (ret < 0)
+        	goto mutex_failed;
 		    
     	sp_spi_nor_init(pspi);
-    	
-    	ret = spi_nor_scan(nor, NULL, &hwcaps);
-    	if (ret)   		 
-        	goto mutex_failed;
 
+    	ret = spi_nor_scan(nor, NULL, &hwcaps);
+    	if (ret)
+        	goto mutex_failed;
 
     	ret = mtd_device_register(mtd, NULL, 0);
     	if (ret)
@@ -1229,7 +1220,6 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 	goto exit;
 mutex_failed:
 	mutex_destroy(&pspi->lock);
-	dev_err(&pdev->dev, "mutex failed\n");
   	goto exit;
 exit:
 	return 0;

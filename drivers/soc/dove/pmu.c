@@ -16,6 +16,7 @@
 #include <linux/slab.h>
 #include <linux/soc/dove/pmu.h>
 #include <linux/spinlock.h>
+#include <linux/ipipe.h>
 
 #define NR_PMU_IRQS		7
 
@@ -231,6 +232,7 @@ static void pmu_irq_handler(struct irq_desc *desc)
 	void __iomem *base = gc->reg_base;
 	u32 stat = readl_relaxed(base + PMC_IRQ_CAUSE) & gc->mask_cache;
 	u32 done = ~0;
+	unsigned long flags;
 
 	if (stat == 0) {
 		handle_bad_irq(desc);
@@ -243,7 +245,7 @@ static void pmu_irq_handler(struct irq_desc *desc)
 		stat &= ~(1 << hwirq);
 		done &= ~(1 << hwirq);
 
-		generic_handle_irq(irq_find_mapping(domain, hwirq));
+		ipipe_handle_demuxed_irq(irq_find_mapping(domain, hwirq));
 	}
 
 	/*
@@ -257,10 +259,10 @@ static void pmu_irq_handler(struct irq_desc *desc)
 	 * So, let's structure the code so that the window is as small as
 	 * possible.
 	 */
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	done &= readl_relaxed(base + PMC_IRQ_CAUSE);
 	writel_relaxed(done, base + PMC_IRQ_CAUSE);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static int __init dove_init_pmu_irq(struct pmu_data *pmu, int irq)
@@ -296,6 +298,7 @@ static int __init dove_init_pmu_irq(struct pmu_data *pmu, int irq)
 	gc->chip_types[0].regs.mask = PMC_IRQ_MASK;
 	gc->chip_types[0].chip.irq_mask = irq_gc_mask_clr_bit;
 	gc->chip_types[0].chip.irq_unmask = irq_gc_mask_set_bit;
+	gc->chip_types[0].chip.flags |= IRQCHIP_PIPELINE_SAFE;
 
 	pmu->irq_domain = domain;
 	pmu->irq_gc = gc;
@@ -383,7 +386,7 @@ int __init dove_init_pmu(void)
 
 	domains_node = of_get_child_by_name(np_pmu, "domains");
 	if (!domains_node) {
-		pr_err("%pOFn: failed to find domains sub-node\n", np_pmu);
+		pr_err("%s: failed to find domains sub-node\n", np_pmu->name);
 		return 0;
 	}
 
@@ -396,7 +399,7 @@ int __init dove_init_pmu(void)
 	pmu->pmc_base = of_iomap(pmu->of_node, 0);
 	pmu->pmu_base = of_iomap(pmu->of_node, 1);
 	if (!pmu->pmc_base || !pmu->pmu_base) {
-		pr_err("%pOFn: failed to map PMU\n", np_pmu);
+		pr_err("%s: failed to map PMU\n", np_pmu->name);
 		iounmap(pmu->pmu_base);
 		iounmap(pmu->pmc_base);
 		kfree(pmu);
@@ -414,7 +417,7 @@ int __init dove_init_pmu(void)
 			break;
 
 		domain->pmu = pmu;
-		domain->base.name = kasprintf(GFP_KERNEL, "%pOFn", np);
+		domain->base.name = kstrdup(np->name, GFP_KERNEL);
 		if (!domain->base.name) {
 			kfree(domain);
 			break;
@@ -444,7 +447,7 @@ int __init dove_init_pmu(void)
 	/* Loss of the interrupt controller is not a fatal error. */
 	parent_irq = irq_of_parse_and_map(pmu->of_node, 0);
 	if (!parent_irq) {
-		pr_err("%pOFn: no interrupt specified\n", np_pmu);
+		pr_err("%s: no interrupt specified\n", np_pmu->name);
 	} else {
 		ret = dove_init_pmu_irq(pmu, parent_irq);
 		if (ret)

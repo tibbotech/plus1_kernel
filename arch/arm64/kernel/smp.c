@@ -1,9 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * SMP initialisation and IPI support
  * Based on arch/arm/kernel/smp.c
  *
  * Copyright (C) 2012 ARM Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/acpi.h>
@@ -24,7 +35,6 @@
 #include <linux/smp.h>
 #include <linux/seq_file.h>
 #include <linux/irq.h>
-#include <linux/irqchip/arm-gic-v3.h>
 #include <linux/percpu.h>
 #include <linux/clockchips.h>
 #include <linux/completion.h>
@@ -123,7 +133,7 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 		 * time out.
 		 */
 		wait_for_completion_timeout(&cpu_running,
-					    msecs_to_jiffies(5000));
+					    msecs_to_jiffies(1000));
 
 		if (!cpu_online(cpu)) {
 			pr_crit("CPU%u: failed to come online\n", cpu);
@@ -131,37 +141,30 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 		}
 	} else {
 		pr_err("CPU%u: failed to boot: %d\n", cpu, ret);
-		return ret;
 	}
 
 	secondary_data.task = NULL;
 	secondary_data.stack = NULL;
-	__flush_dcache_area(&secondary_data, sizeof(secondary_data));
 	status = READ_ONCE(secondary_data.status);
 	if (ret && status) {
 
 		if (status == CPU_MMU_OFF)
 			status = READ_ONCE(__early_cpu_boot_status);
 
-		switch (status & CPU_BOOT_STATUS_MASK) {
+		switch (status) {
 		default:
 			pr_err("CPU%u: failed in unknown state : 0x%lx\n",
 					cpu, status);
-			cpus_stuck_in_kernel++;
 			break;
 		case CPU_KILL_ME:
 			if (!op_cpu_kill(cpu)) {
 				pr_crit("CPU%u: died during early boot\n", cpu);
 				break;
 			}
-			pr_crit("CPU%u: may not have shut down cleanly\n", cpu);
 			/* Fall through */
+			pr_crit("CPU%u: may not have shut down cleanly\n", cpu);
 		case CPU_STUCK_IN_KERNEL:
 			pr_crit("CPU%u: is stuck in kernel\n", cpu);
-			if (status & CPU_STUCK_REASON_52_BIT_VA)
-				pr_crit("CPU%u: does not support 52-bit VAs\n", cpu);
-			if (status & CPU_STUCK_REASON_NO_GRAN)
-				pr_crit("CPU%u: does not support %luK granule \n", cpu, PAGE_SIZE / SZ_1K);
 			cpus_stuck_in_kernel++;
 			break;
 		case CPU_PANIC_KERNEL:
@@ -170,20 +173,6 @@ int __cpu_up(unsigned int cpu, struct task_struct *idle)
 	}
 
 	return ret;
-}
-
-static void init_gic_priority_masking(void)
-{
-	u32 cpuflags;
-
-	if (WARN_ON(!gic_enable_sre()))
-		return;
-
-	cpuflags = read_sysreg(daif);
-
-	WARN_ON(!(cpuflags & PSR_I_BIT));
-
-	gic_write_pmr(GIC_PRIO_IRQON | GIC_PRIO_PSR_I_SET);
 }
 
 /*
@@ -211,9 +200,6 @@ asmlinkage notrace void secondary_start_kernel(void)
 	 * point to zero page to avoid speculatively fetching new entries.
 	 */
 	cpu_uninstall_idmap();
-
-	if (system_uses_irq_prio_masking())
-		init_gic_priority_masking();
 
 	preempt_disable();
 	trace_hardirqs_off();
@@ -422,18 +408,12 @@ void __init smp_cpus_done(unsigned int max_cpus)
 void __init smp_prepare_boot_cpu(void)
 {
 	set_my_cpu_offset(per_cpu_offset(smp_processor_id()));
-	cpuinfo_store_boot_cpu();
-
 	/*
-	 * We now know enough about the boot CPU to apply the
-	 * alternatives that cannot wait until interrupt handling
-	 * and/or scheduling is enabled.
+	 * Initialise the static keys early as they may be enabled by the
+	 * cpufeature code.
 	 */
-	apply_boot_alternatives();
-
-	/* Conditionally switch to GIC PMR for interrupt masking */
-	if (system_uses_irq_prio_masking())
-		init_gic_priority_masking();
+	jump_label_init();
+	cpuinfo_store_boot_cpu();
 }
 
 static u64 __init of_get_cpu_mpidr(struct device_node *dn)
@@ -568,7 +548,7 @@ acpi_map_gic_cpu_interface(struct acpi_madt_generic_interrupt *processor)
 }
 
 static int __init
-acpi_parse_gic_cpu_interface(union acpi_subtable_headers *header,
+acpi_parse_gic_cpu_interface(struct acpi_subtable_header *header,
 			     const unsigned long end)
 {
 	struct acpi_madt_generic_interrupt *processor;
@@ -577,7 +557,7 @@ acpi_parse_gic_cpu_interface(union acpi_subtable_headers *header,
 	if (BAD_MADT_GICC_ENTRY(processor, end))
 		return -EINVAL;
 
-	acpi_table_print_madt_entry(&header->common);
+	acpi_table_print_madt_entry(header);
 
 	acpi_map_gic_cpu_interface(processor);
 
@@ -622,7 +602,7 @@ static void __init of_parse_and_init_cpus(void)
 {
 	struct device_node *dn;
 
-	for_each_of_cpu_node(dn) {
+	for_each_node_by_type(dn, "cpu") {
 		u64 hwid = of_get_cpu_mpidr(dn);
 
 		if (hwid == INVALID_HWID)
@@ -827,23 +807,18 @@ void arch_irq_work_raise(void)
 }
 #endif
 
-static void local_cpu_stop(void)
+/*
+ * ipi_cpu_stop - handle IPI from smp_send_stop()
+ */
+static void ipi_cpu_stop(unsigned int cpu)
 {
-	set_cpu_online(smp_processor_id(), false);
+	set_cpu_online(cpu, false);
 
 	local_daif_mask();
 	sdei_mask_local_cpu();
-	cpu_park_loop();
-}
 
-/*
- * We need to implement panic_smp_self_stop() for parallel panic() calls, so
- * that cpu_online_mask gets correctly updated and smp_send_stop() can skip
- * CPUs that have already stopped themselves.
- */
-void panic_smp_self_stop(void)
-{
-	local_cpu_stop();
+	while (1)
+		cpu_relax();
 }
 
 #ifdef CONFIG_KEXEC_CORE
@@ -896,7 +871,7 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 	case IPI_CPU_STOP:
 		irq_enter();
-		local_cpu_stop();
+		ipi_cpu_stop(cpu);
 		irq_exit();
 		break;
 
@@ -955,22 +930,11 @@ void tick_broadcast(const struct cpumask *mask)
 }
 #endif
 
-/*
- * The number of CPUs online, not counting this CPU (which may not be
- * fully online and so not counted in num_online_cpus()).
- */
-static inline unsigned int num_other_online_cpus(void)
-{
-	unsigned int this_cpu_online = cpu_online(smp_processor_id());
-
-	return num_online_cpus() - this_cpu_online;
-}
-
 void smp_send_stop(void)
 {
 	unsigned long timeout;
 
-	if (num_other_online_cpus()) {
+	if (num_online_cpus() > 1) {
 		cpumask_t mask;
 
 		cpumask_copy(&mask, cpu_online_mask);
@@ -983,10 +947,10 @@ void smp_send_stop(void)
 
 	/* Wait up to one second for other CPUs to stop */
 	timeout = USEC_PER_SEC;
-	while (num_other_online_cpus() && timeout--)
+	while (num_online_cpus() > 1 && timeout--)
 		udelay(1);
 
-	if (num_other_online_cpus())
+	if (num_online_cpus() > 1)
 		pr_warning("SMP: failed to stop secondary CPUs %*pbl\n",
 			   cpumask_pr_args(cpu_online_mask));
 
@@ -1009,11 +973,7 @@ void crash_smp_send_stop(void)
 
 	cpus_stopped = 1;
 
-	/*
-	 * If this cpu is the only one alive at this point in time, online or
-	 * not, there are no stop messages to be sent around, so just back out.
-	 */
-	if (num_other_online_cpus() == 0) {
+	if (num_online_cpus() == 1) {
 		sdei_mask_local_cpu();
 		return;
 	}
@@ -1021,7 +981,7 @@ void crash_smp_send_stop(void)
 	cpumask_copy(&mask, cpu_online_mask);
 	cpumask_clear_cpu(smp_processor_id(), &mask);
 
-	atomic_set(&waiting_for_crash_ipi, num_other_online_cpus());
+	atomic_set(&waiting_for_crash_ipi, num_online_cpus() - 1);
 
 	pr_crit("SMP: stopping secondary CPUs\n");
 	smp_cross_call(&mask, IPI_CPU_CRASH_STOP);

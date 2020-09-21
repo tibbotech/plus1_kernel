@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *	vfsv0 quota IO operations on file
  */
@@ -79,7 +78,7 @@ static int v2_check_quota_file(struct super_block *sb, int type)
 	struct v2_disk_dqheader dqhead;
 	static const uint quota_magics[] = V2_INITQMAGICS;
 	static const uint quota_versions[] = V2_INITQVERSIONS;
-
+ 
 	if (v2_read_header(sb, type, &dqhead))
 		return 0;
 	if (le32_to_cpu(dqhead.dqh_magic) != quota_magics[type] ||

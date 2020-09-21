@@ -1,7 +1,7 @@
 #ifndef __UNCOMPRESS_H_
 #define __UNCOMPRESS_H_
 
-#include <soc/sunplus/sp_uart.h>
+#include <mach/sp_uart.h>
 
 static regs_uart_t *uart_base = ((regs_uart_t *)(LL_UART_PADDR));
 

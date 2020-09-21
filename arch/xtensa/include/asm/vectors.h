@@ -18,7 +18,7 @@
 #ifndef _XTENSA_VECTORS_H
 #define _XTENSA_VECTORS_H
 
-#include <asm/core.h>
+#include <variant/core.h>
 #include <asm/kmem_layout.h>
 
 #if XCHAL_HAVE_PTP_MMU

@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * PPP async serial channel driver for Linux.
  *
  * Copyright 1999 Paul Mackerras.
+ *
+ *  This program is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU General Public License
+ *  as published by the Free Software Foundation; either version
+ *  2 of the License, or (at your option) any later version.
  *
  * This driver provides the encapsulation and framing for sending
  * and receiving PPP frames over async serial lines.  It relies on
@@ -66,7 +70,7 @@ struct asyncppp {
 	struct tasklet_struct tsk;
 
 	refcount_t	refcnt;
-	struct completion dead;
+	struct semaphore dead_sem;
 	struct ppp_channel chan;	/* interface to generic ppp layer */
 	unsigned char	obuf[OBUFSIZE];
 };
@@ -144,7 +148,7 @@ static struct asyncppp *ap_get(struct tty_struct *tty)
 static void ap_put(struct asyncppp *ap)
 {
 	if (refcount_dec_and_test(&ap->refcnt))
-		complete(&ap->dead);
+		up(&ap->dead_sem);
 }
 
 /*
@@ -182,7 +186,7 @@ ppp_asynctty_open(struct tty_struct *tty)
 	tasklet_init(&ap->tsk, ppp_async_process, (unsigned long) ap);
 
 	refcount_set(&ap->refcnt, 1);
-	init_completion(&ap->dead);
+	sema_init(&ap->dead_sem, 0);
 
 	ap->chan.private = ap;
 	ap->chan.ops = &async_ops;
@@ -231,7 +235,7 @@ ppp_asynctty_close(struct tty_struct *tty)
 	 * by the time it returns.
 	 */
 	if (!refcount_dec_and_test(&ap->refcnt))
-		wait_for_completion(&ap->dead);
+		down(&ap->dead_sem);
 	tasklet_kill(&ap->tsk);
 
 	ppp_unregister_channel(&ap->chan);
@@ -766,7 +770,7 @@ process_input_packet(struct asyncppp *ap)
 {
 	struct sk_buff *skb;
 	unsigned char *p;
-	unsigned int len, fcs;
+	unsigned int len, fcs, proto;
 
 	skb = ap->rpkt;
 	if (ap->state & (SC_TOSS | SC_ESCAPE))
@@ -795,14 +799,14 @@ process_input_packet(struct asyncppp *ap)
 			goto err;
 		p = skb_pull(skb, 2);
 	}
-
-	/* If protocol field is not compressed, it can be LCP packet */
-	if (!(p[0] & 0x01)) {
-		unsigned int proto;
-
+	proto = p[0];
+	if (proto & 1) {
+		/* protocol is compressed */
+		*(u8 *)skb_push(skb, 1) = 0;
+	} else {
 		if (skb->len < 2)
 			goto err;
-		proto = (p[0] << 8) + p[1];
+		proto = (proto << 8) + p[1];
 		if (proto == PPP_LCP)
 			async_lcp_peek(ap, p, skb->len, 1);
 	}
@@ -874,15 +878,15 @@ ppp_async_input(struct asyncppp *ap, const unsigned char *buf,
 				skb = dev_alloc_skb(ap->mru + PPP_HDRLEN + 2);
 				if (!skb)
 					goto nomem;
-				ap->rpkt = skb;
-			}
-			if (skb->len == 0) {
-				/* Try to get the payload 4-byte aligned.
-				 * This should match the
-				 * PPP_ALLSTATIONS/PPP_UI/compressed tests in
-				 * process_input_packet, but we do not have
-				 * enough chars here to test buf[1] and buf[2].
-				 */
+ 				ap->rpkt = skb;
+ 			}
+ 			if (skb->len == 0) {
+ 				/* Try to get the payload 4-byte aligned.
+ 				 * This should match the
+ 				 * PPP_ALLSTATIONS/PPP_UI/compressed tests in
+ 				 * process_input_packet, but we do not have
+ 				 * enough chars here to test buf[1] and buf[2].
+ 				 */
 				if (buf[0] != PPP_ALLSTATIONS)
 					skb_reserve(skb, 2 + (buf[0] & 1));
 			}

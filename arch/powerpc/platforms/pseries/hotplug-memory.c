@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * pseries Memory Hotplug infrastructure.
  *
  * Copyright (C) 2008 Badari Pulavarty, IBM Corporation
+ *
+ *      This program is free software; you can redistribute it and/or
+ *      modify it under the terms of the GNU General Public License
+ *      as published by the Free Software Foundation; either version
+ *      2 of the License, or (at your option) any later version.
  */
 
 #define pr_fmt(fmt)	"pseries-hotplug-mem: " fmt
@@ -97,12 +101,11 @@ static struct property *dlpar_clone_property(struct property *prop,
 	return new_prop;
 }
 
-static bool find_aa_index(struct device_node *dr_node,
-			 struct property *ala_prop,
-			 const u32 *lmb_assoc, u32 *aa_index)
+static u32 find_aa_index(struct device_node *dr_node,
+			 struct property *ala_prop, const u32 *lmb_assoc)
 {
-	u32 *assoc_arrays, new_prop_size;
-	struct property *new_prop;
+	u32 *assoc_arrays;
+	u32 aa_index;
 	int aa_arrays, aa_array_entries, aa_array_sz;
 	int i, index;
 
@@ -118,48 +121,54 @@ static bool find_aa_index(struct device_node *dr_node,
 	aa_array_entries = be32_to_cpu(assoc_arrays[1]);
 	aa_array_sz = aa_array_entries * sizeof(u32);
 
+	aa_index = -1;
 	for (i = 0; i < aa_arrays; i++) {
 		index = (i * aa_array_entries) + 2;
 
 		if (memcmp(&assoc_arrays[index], &lmb_assoc[1], aa_array_sz))
 			continue;
 
-		*aa_index = i;
-		return true;
+		aa_index = i;
+		break;
 	}
 
-	new_prop_size = ala_prop->length + aa_array_sz;
-	new_prop = dlpar_clone_property(ala_prop, new_prop_size);
-	if (!new_prop)
-		return false;
+	if (aa_index == -1) {
+		struct property *new_prop;
+		u32 new_prop_size;
 
-	assoc_arrays = new_prop->value;
+		new_prop_size = ala_prop->length + aa_array_sz;
+		new_prop = dlpar_clone_property(ala_prop, new_prop_size);
+		if (!new_prop)
+			return -1;
 
-	/* increment the number of entries in the lookup array */
-	assoc_arrays[0] = cpu_to_be32(aa_arrays + 1);
+		assoc_arrays = new_prop->value;
 
-	/* copy the new associativity into the lookup array */
-	index = aa_arrays * aa_array_entries + 2;
-	memcpy(&assoc_arrays[index], &lmb_assoc[1], aa_array_sz);
+		/* increment the number of entries in the lookup array */
+		assoc_arrays[0] = cpu_to_be32(aa_arrays + 1);
 
-	of_update_property(dr_node, new_prop);
+		/* copy the new associativity into the lookup array */
+		index = aa_arrays * aa_array_entries + 2;
+		memcpy(&assoc_arrays[index], &lmb_assoc[1], aa_array_sz);
 
-	/*
-	 * The associativity lookup array index for this lmb is
-	 * number of entries - 1 since we added its associativity
-	 * to the end of the lookup array.
-	 */
-	*aa_index = be32_to_cpu(assoc_arrays[0]) - 1;
-	return true;
+		of_update_property(dr_node, new_prop);
+
+		/*
+		 * The associativity lookup array index for this lmb is
+		 * number of entries - 1 since we added its associativity
+		 * to the end of the lookup array.
+		 */
+		aa_index = be32_to_cpu(assoc_arrays[0]) - 1;
+	}
+
+	return aa_index;
 }
 
-static int update_lmb_associativity_index(struct drmem_lmb *lmb)
+static u32 lookup_lmb_associativity_index(struct drmem_lmb *lmb)
 {
 	struct device_node *parent, *lmb_node, *dr_node;
 	struct property *ala_prop;
 	const u32 *lmb_assoc;
 	u32 aa_index;
-	bool found;
 
 	parent = of_find_node_by_path("/");
 	if (!parent)
@@ -191,18 +200,46 @@ static int update_lmb_associativity_index(struct drmem_lmb *lmb)
 		return -ENODEV;
 	}
 
-	found = find_aa_index(dr_node, ala_prop, lmb_assoc, &aa_index);
+	aa_index = find_aa_index(dr_node, ala_prop, lmb_assoc);
 
-	of_node_put(dr_node);
 	dlpar_free_cc_nodes(lmb_node);
+	return aa_index;
+}
 
-	if (!found) {
-		pr_err("Could not find LMB associativity\n");
-		return -1;
+static int dlpar_add_device_tree_lmb(struct drmem_lmb *lmb)
+{
+	int rc, aa_index;
+
+	lmb->flags |= DRCONF_MEM_ASSIGNED;
+
+	aa_index = lookup_lmb_associativity_index(lmb);
+	if (aa_index < 0) {
+		pr_err("Couldn't find associativity index for drc index %x\n",
+		       lmb->drc_index);
+		return aa_index;
 	}
 
 	lmb->aa_index = aa_index;
-	return 0;
+
+	rtas_hp_event = true;
+	rc = drmem_update_dt();
+	rtas_hp_event = false;
+
+	return rc;
+}
+
+static int dlpar_remove_device_tree_lmb(struct drmem_lmb *lmb)
+{
+	int rc;
+
+	lmb->flags &= ~DRCONF_MEM_ASSIGNED;
+	lmb->aa_index = 0xffffffff;
+
+	rtas_hp_event = true;
+	rc = drmem_update_dt();
+	rtas_hp_event = false;
+
+	return rc;
 }
 
 static struct memory_block *lmb_to_memblock(struct drmem_lmb *lmb)
@@ -223,7 +260,7 @@ static int get_lmb_range(u32 drc_index, int n_lmbs,
 			 struct drmem_lmb **end_lmb)
 {
 	struct drmem_lmb *lmb, *start, *end;
-	struct drmem_lmb *limit;
+	struct drmem_lmb *last_lmb;
 
 	start = NULL;
 	for_each_drmem_lmb(lmb) {
@@ -236,10 +273,10 @@ static int get_lmb_range(u32 drc_index, int n_lmbs,
 	if (!start)
 		return -EINVAL;
 
-	end = &start[n_lmbs];
+	end = &start[n_lmbs - 1];
 
-	limit = &drmem_info->lmbs[drmem_info->n_lmbs];
-	if (end > limit)
+	last_lmb = &drmem_info->lmbs[drmem_info->n_lmbs - 1];
+	if (end > last_lmb)
 		return -EINVAL;
 
 	*start_lmb = start;
@@ -297,7 +334,7 @@ static int pseries_remove_memblock(unsigned long base, unsigned int memblock_siz
 	nid = memory_add_physaddr_to_nid(base);
 
 	for (i = 0; i < sections_per_block; i++) {
-		__remove_memory(nid, base, MIN_MEMORY_BLOCK_SIZE);
+		remove_memory(nid, base, MIN_MEMORY_BLOCK_SIZE);
 		base += MIN_MEMORY_BLOCK_SIZE;
 	}
 
@@ -310,6 +347,7 @@ out:
 
 static int pseries_remove_mem_node(struct device_node *np)
 {
+	const char *type;
 	const __be32 *regs;
 	unsigned long base;
 	unsigned int lmb_size;
@@ -318,7 +356,8 @@ static int pseries_remove_mem_node(struct device_node *np)
 	/*
 	 * Check to see if we are actually removing memory
 	 */
-	if (!of_node_is_type(np, "memory"))
+	type = of_get_property(np, "device_type", NULL);
+	if (type == NULL || strcmp(type, "memory") != 0)
 		return 0;
 
 	/*
@@ -360,10 +399,8 @@ static bool lmb_is_removable(struct drmem_lmb *lmb)
 
 	for (i = 0; i < scns_per_block; i++) {
 		pfn = PFN_DOWN(phys_addr);
-		if (!pfn_present(pfn)) {
-			phys_addr += MIN_MEMORY_BLOCK_SIZE;
+		if (!pfn_present(pfn))
 			continue;
-		}
 
 		rc &= is_mem_section_removable(pfn, PAGES_PER_SECTION);
 		phys_addr += MIN_MEMORY_BLOCK_SIZE;
@@ -377,7 +414,7 @@ static int dlpar_add_lmb(struct drmem_lmb *);
 static int dlpar_remove_lmb(struct drmem_lmb *lmb)
 {
 	unsigned long block_sz;
-	int rc;
+	int nid, rc;
 
 	if (!lmb_is_removable(lmb))
 		return -EINVAL;
@@ -387,16 +424,14 @@ static int dlpar_remove_lmb(struct drmem_lmb *lmb)
 		return rc;
 
 	block_sz = pseries_memory_block_size();
+	nid = memory_add_physaddr_to_nid(lmb->base_addr);
 
-	__remove_memory(lmb->nid, lmb->base_addr, block_sz);
+	remove_memory(nid, lmb->base_addr, block_sz);
 
 	/* Update memory regions for memory remove */
 	memblock_remove(lmb->base_addr, block_sz);
 
-	invalidate_lmb_associativity_index(lmb);
-	lmb_clear_nid(lmb);
-	lmb->flags &= ~DRCONF_MEM_ASSIGNED;
-
+	dlpar_remove_device_tree_lmb(lmb);
 	return 0;
 }
 
@@ -651,32 +686,35 @@ static int dlpar_memory_remove_by_ic(u32 lmbs_to_remove, u32 drc_index)
 static int dlpar_add_lmb(struct drmem_lmb *lmb)
 {
 	unsigned long block_sz;
-	int rc;
+	int nid, rc;
 
 	if (lmb->flags & DRCONF_MEM_ASSIGNED)
 		return -EINVAL;
 
-	rc = update_lmb_associativity_index(lmb);
+	rc = dlpar_add_device_tree_lmb(lmb);
 	if (rc) {
+		pr_err("Couldn't update device tree for drc index %x\n",
+		       lmb->drc_index);
 		dlpar_release_drc(lmb->drc_index);
 		return rc;
 	}
 
-	lmb_set_nid(lmb);
 	block_sz = memory_block_size_bytes();
 
+	/* Find the node id for this address */
+	nid = memory_add_physaddr_to_nid(lmb->base_addr);
+
 	/* Add the memory */
-	rc = __add_memory(lmb->nid, lmb->base_addr, block_sz);
+	rc = add_memory(nid, lmb->base_addr, block_sz);
 	if (rc) {
-		invalidate_lmb_associativity_index(lmb);
+		dlpar_remove_device_tree_lmb(lmb);
 		return rc;
 	}
 
 	rc = dlpar_online_lmb(lmb);
 	if (rc) {
-		__remove_memory(lmb->nid, lmb->base_addr, block_sz);
-		invalidate_lmb_associativity_index(lmb);
-		lmb_clear_nid(lmb);
+		remove_memory(nid, lmb->base_addr, block_sz);
+		dlpar_remove_device_tree_lmb(lmb);
 	} else {
 		lmb->flags |= DRCONF_MEM_ASSIGNED;
 	}
@@ -882,44 +920,34 @@ int dlpar_memory(struct pseries_hp_errorlog *hp_elog)
 
 	switch (hp_elog->action) {
 	case PSERIES_HP_ELOG_ACTION_ADD:
-		switch (hp_elog->id_type) {
-		case PSERIES_HP_ELOG_ID_DRC_COUNT:
+		if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_COUNT) {
 			count = hp_elog->_drc_u.drc_count;
 			rc = dlpar_memory_add_by_count(count);
-			break;
-		case PSERIES_HP_ELOG_ID_DRC_INDEX:
+		} else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_INDEX) {
 			drc_index = hp_elog->_drc_u.drc_index;
 			rc = dlpar_memory_add_by_index(drc_index);
-			break;
-		case PSERIES_HP_ELOG_ID_DRC_IC:
+		} else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_IC) {
 			count = hp_elog->_drc_u.ic.count;
 			drc_index = hp_elog->_drc_u.ic.index;
 			rc = dlpar_memory_add_by_ic(count, drc_index);
-			break;
-		default:
+		} else {
 			rc = -EINVAL;
-			break;
 		}
 
 		break;
 	case PSERIES_HP_ELOG_ACTION_REMOVE:
-		switch (hp_elog->id_type) {
-		case PSERIES_HP_ELOG_ID_DRC_COUNT:
+		if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_COUNT) {
 			count = hp_elog->_drc_u.drc_count;
 			rc = dlpar_memory_remove_by_count(count);
-			break;
-		case PSERIES_HP_ELOG_ID_DRC_INDEX:
+		} else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_INDEX) {
 			drc_index = hp_elog->_drc_u.drc_index;
 			rc = dlpar_memory_remove_by_index(drc_index);
-			break;
-		case PSERIES_HP_ELOG_ID_DRC_IC:
+		} else if (hp_elog->id_type == PSERIES_HP_ELOG_ID_DRC_IC) {
 			count = hp_elog->_drc_u.ic.count;
 			drc_index = hp_elog->_drc_u.ic.index;
 			rc = dlpar_memory_remove_by_ic(count, drc_index);
-			break;
-		default:
+		} else {
 			rc = -EINVAL;
-			break;
 		}
 
 		break;
@@ -933,18 +961,13 @@ int dlpar_memory(struct pseries_hp_errorlog *hp_elog)
 		break;
 	}
 
-	if (!rc) {
-		rtas_hp_event = true;
-		rc = drmem_update_dt();
-		rtas_hp_event = false;
-	}
-
 	unlock_device_hotplug();
 	return rc;
 }
 
 static int pseries_add_mem_node(struct device_node *np)
 {
+	const char *type;
 	const __be32 *regs;
 	unsigned long base;
 	unsigned int lmb_size;
@@ -953,7 +976,8 @@ static int pseries_add_mem_node(struct device_node *np)
 	/*
 	 * Check to see if we are actually adding memory
 	 */
-	if (!of_node_is_type(np, "memory"))
+	type = of_get_property(np, "device_type", NULL);
+	if (type == NULL || strcmp(type, "memory") != 0)
 		return 0;
 
 	/*
@@ -987,9 +1011,6 @@ static int pseries_update_drconf_memory(struct of_reconfig_data *pr)
 	memblock_size = pseries_memory_block_size();
 	if (!memblock_size)
 		return -EINVAL;
-
-	if (!pr->old_prop)
-		return 0;
 
 	p = (__be32 *) pr->old_prop->value;
 	if (!p)

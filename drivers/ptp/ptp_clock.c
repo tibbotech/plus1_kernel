@@ -1,8 +1,21 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * PTP 1588 clock support
  *
  * Copyright (C) 2010 OMICRON electronics GmbH
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 #include <linux/idr.h>
 #include <linux/device.h>
@@ -63,7 +76,7 @@ static void enqueue_external_timestamp(struct timestamp_event_queue *queue,
 	spin_unlock_irqrestore(&queue->lock, flags);
 }
 
-s32 scaled_ppm_to_ppb(long ppm)
+static s32 scaled_ppm_to_ppb(long ppm)
 {
 	/*
 	 * The 'freq' field in the 'struct timex' is in parts per
@@ -82,7 +95,6 @@ s32 scaled_ppm_to_ppb(long ppm)
 	ppb >>= 13;
 	return (s32) ppb;
 }
-EXPORT_SYMBOL(scaled_ppm_to_ppb);
 
 /* posix clock implementation */
 
@@ -105,14 +117,11 @@ static int ptp_clock_gettime(struct posix_clock *pc, struct timespec64 *tp)
 	struct ptp_clock *ptp = container_of(pc, struct ptp_clock, clock);
 	int err;
 
-	if (ptp->info->gettimex64)
-		err = ptp->info->gettimex64(ptp->info, tp, NULL);
-	else
-		err = ptp->info->gettime64(ptp->info, tp);
+	err = ptp->info->gettime64(ptp->info, tp);
 	return err;
 }
 
-static int ptp_clock_adjtime(struct posix_clock *pc, struct __kernel_timex *tx)
+static int ptp_clock_adjtime(struct posix_clock *pc, struct timex *tx)
 {
 	struct ptp_clock *ptp = container_of(pc, struct ptp_clock, clock);
 	struct ptp_clock_info *ops;
@@ -166,11 +175,10 @@ static struct posix_clock_operations ptp_clock_ops = {
 	.read		= ptp_read,
 };
 
-static void ptp_clock_release(struct device *dev)
+static void delete_ptp_clock(struct posix_clock *pc)
 {
-	struct ptp_clock *ptp = container_of(dev, struct ptp_clock, dev);
+	struct ptp_clock *ptp = container_of(pc, struct ptp_clock, clock);
 
-	ptp_cleanup_pin_groups(ptp);
 	mutex_destroy(&ptp->tsevq_mux);
 	mutex_destroy(&ptp->pincfg_mux);
 	ida_simple_remove(&ptp_clocks_map, ptp->index);
@@ -214,6 +222,7 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	}
 
 	ptp->clock.ops = ptp_clock_ops;
+	ptp->clock.release = delete_ptp_clock;
 	ptp->info = info;
 	ptp->devid = MKDEV(major, index);
 	ptp->index = index;
@@ -223,8 +232,12 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	init_waitqueue_head(&ptp->tsev_wq);
 
 	if (ptp->info->do_aux_work) {
+		char *worker_name = kasprintf(GFP_KERNEL, "ptp%d", ptp->index);
+
 		kthread_init_delayed_work(&ptp->aux_work, ptp_aux_kworker);
-		ptp->kworker = kthread_create_worker(0, "ptp%d", ptp->index);
+		ptp->kworker = kthread_create_worker(0, worker_name ?
+						     worker_name : info->name);
+		kfree(worker_name);
 		if (IS_ERR(ptp->kworker)) {
 			err = PTR_ERR(ptp->kworker);
 			pr_err("failed to create ptp aux_worker %d\n", err);
@@ -236,6 +249,15 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 	if (err)
 		goto no_pin_groups;
 
+	/* Create a new device in our class. */
+	ptp->dev = device_create_with_groups(ptp_class, parent, ptp->devid,
+					     ptp, ptp->pin_attr_groups,
+					     "ptp%d", ptp->index);
+	if (IS_ERR(ptp->dev)) {
+		err = PTR_ERR(ptp->dev);
+		goto no_device;
+	}
+
 	/* Register a new PPS source. */
 	if (info->pps) {
 		struct pps_source_info pps;
@@ -244,25 +266,15 @@ struct ptp_clock *ptp_clock_register(struct ptp_clock_info *info,
 		pps.mode = PTP_PPS_MODE;
 		pps.owner = info->owner;
 		ptp->pps_source = pps_register_source(&pps, PTP_PPS_DEFAULTS);
-		if (IS_ERR(ptp->pps_source)) {
-			err = PTR_ERR(ptp->pps_source);
+		if (!ptp->pps_source) {
+			err = -EINVAL;
 			pr_err("failed to register pps source\n");
 			goto no_pps;
 		}
 	}
 
-	/* Initialize a new device of our class in our clock structure. */
-	device_initialize(&ptp->dev);
-	ptp->dev.devt = ptp->devid;
-	ptp->dev.class = ptp_class;
-	ptp->dev.parent = parent;
-	ptp->dev.groups = ptp->pin_attr_groups;
-	ptp->dev.release = ptp_clock_release;
-	dev_set_drvdata(&ptp->dev, ptp);
-	dev_set_name(&ptp->dev, "ptp%d", ptp->index);
-
-	/* Create a posix clock and link it to the device. */
-	err = posix_clock_register(&ptp->clock, &ptp->dev);
+	/* Create a posix clock. */
+	err = posix_clock_register(&ptp->clock, ptp->devid);
 	if (err) {
 		pr_err("failed to create posix clock\n");
 		goto no_clock;
@@ -274,6 +286,8 @@ no_clock:
 	if (ptp->pps_source)
 		pps_unregister_source(ptp->pps_source);
 no_pps:
+	device_destroy(ptp_class, ptp->devid);
+no_device:
 	ptp_cleanup_pin_groups(ptp);
 no_pin_groups:
 	if (ptp->kworker)
@@ -303,8 +317,10 @@ int ptp_clock_unregister(struct ptp_clock *ptp)
 	if (ptp->pps_source)
 		pps_unregister_source(ptp->pps_source);
 
-	posix_clock_unregister(&ptp->clock);
+	device_destroy(ptp_class, ptp->devid);
+	ptp_cleanup_pin_groups(ptp);
 
+	posix_clock_unregister(&ptp->clock);
 	return 0;
 }
 EXPORT_SYMBOL(ptp_clock_unregister);

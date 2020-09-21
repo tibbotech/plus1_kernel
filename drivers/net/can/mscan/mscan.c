@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * CAN bus driver for the alone generic (as possible as) MSCAN controller.
  *
@@ -6,6 +5,18 @@
  *                         Varma Electronics Oy
  * Copyright (C) 2008-2009 Wolfgang Grandegger <wg@grandegger.com>
  * Copyright (C) 2008-2009 Pengutronix <kernel@pengutronix.de>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the version 2 of the GNU General Public License
+ * as published by the Free Software Foundation
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/kernel.h>
@@ -381,12 +392,13 @@ static int mscan_rx_poll(struct napi_struct *napi, int quota)
 	struct net_device *dev = napi->dev;
 	struct mscan_regs __iomem *regs = priv->reg_base;
 	struct net_device_stats *stats = &dev->stats;
-	int work_done = 0;
+	int npackets = 0;
+	int ret = 1;
 	struct sk_buff *skb;
 	struct can_frame *frame;
 	u8 canrflg;
 
-	while (work_done < quota) {
+	while (npackets < quota) {
 		canrflg = in_8(&regs->canrflg);
 		if (!(canrflg & (MSCAN_RXF | MSCAN_ERR_IF)))
 			break;
@@ -407,18 +419,18 @@ static int mscan_rx_poll(struct napi_struct *napi, int quota)
 
 		stats->rx_packets++;
 		stats->rx_bytes += frame->can_dlc;
-		work_done++;
+		npackets++;
 		netif_receive_skb(skb);
 	}
 
-	if (work_done < quota) {
-		if (likely(napi_complete_done(&priv->napi, work_done))) {
-			clear_bit(F_RX_PROGRESS, &priv->flags);
-			if (priv->can.state < CAN_STATE_BUS_OFF)
-				out_8(&regs->canrier, priv->shadow_canrier);
-		}
+	if (!(in_8(&regs->canrflg) & (MSCAN_RXF | MSCAN_ERR_IF))) {
+		napi_complete(&priv->napi);
+		clear_bit(F_RX_PROGRESS, &priv->flags);
+		if (priv->can.state < CAN_STATE_BUS_OFF)
+			out_8(&regs->canrier, priv->shadow_canrier);
+		ret = 0;
 	}
-	return work_done;
+	return ret;
 }
 
 static irqreturn_t mscan_isr(int irq, void *dev_id)

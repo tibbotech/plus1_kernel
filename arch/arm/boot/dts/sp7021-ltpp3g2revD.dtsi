@@ -2,8 +2,11 @@
 
 #include "sp7021-ChipC.dtsi"
 
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+
 / {
 	model = "SP7021 LTPP3G2 Rev. D";
+	compatible = "sunplus,sp7021-achip";
 
 	chosen {
 		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 earlyprintk";
@@ -18,10 +21,6 @@
 &rtc {  charging-mode = <0x0E>;  };
 
 &sp_spinor0 {  status = "disabled";  };
-&spi_controller0 {  status = "disabled";  };
-&spi_controller1 {  status = "disabled";  };
-&spi_controller2 {  status = "disabled";  };
-&spi_controller3 {  status = "disabled";  };
 
 &sdio {
  pinctrl-names = "default";
@@ -44,9 +43,9 @@
 };
 
 &sp_uphy1 {
-  pinctrl-names = "default";
-  pinctrl-0 = <&pins_vbus_usb1>;
-  vbus-gpio = <&pctl 91 GPIO_ACTIVE_HIGH>;
+ pinctrl-names = "default";
+ pinctrl-0 = <&pins_vbus_usb1>;
+ vbus-gpio = <&pctl 91 GPIO_ACTIVE_HIGH>;
 };
 
 &l2sw {
@@ -54,14 +53,7 @@
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
 };
 
-&mmc0 {
- pinctrl-names = "default";
- pinctrl-0 = <&emmc_mux>;
-};
-
 &mmc1 {
- pinctrl-names = "default";
- pinctrl-0 = <&mmc1_mux>;
  cd-gpios = <&pctl 0 GPIO_ACTIVE_LOW>;
 };
 

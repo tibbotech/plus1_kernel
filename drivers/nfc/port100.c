@@ -1,9 +1,18 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Sony NFC Port-100 Series driver
  * Copyright (c) 2013, Intel Corporation.
  *
  * Partly based/Inspired by Stephen Tiedemann's nfcpy
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms and conditions of the GNU General Public License,
+ * version 2, as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ * more details.
+ *
  */
 
 #include <linux/module.h>
@@ -565,7 +574,7 @@ static void port100_tx_update_payload_len(void *_frame, int len)
 {
 	struct port100_frame *frame = _frame;
 
-	le16_add_cpu(&frame->datalen, len);
+	frame->datalen = cpu_to_le16(le16_to_cpu(frame->datalen) + len);
 }
 
 static bool port100_rx_frame_is_valid(void *_frame)
@@ -783,7 +792,7 @@ static int port100_send_frame_async(struct port100 *dev, struct sk_buff *out,
 
 	rc = port100_submit_urb_for_ack(dev, GFP_KERNEL);
 	if (rc)
-		usb_kill_urb(dev->out_urb);
+		usb_unlink_urb(dev->out_urb);
 
 exit:
 	mutex_unlock(&dev->out_urb_lock);

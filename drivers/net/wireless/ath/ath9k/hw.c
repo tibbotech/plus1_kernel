@@ -252,9 +252,8 @@ void ath9k_hw_get_channel_centers(struct ath_hw *ah,
 /* Chip Revisions */
 /******************/
 
-static bool ath9k_hw_read_revisions(struct ath_hw *ah)
+static void ath9k_hw_read_revisions(struct ath_hw *ah)
 {
-	u32 srev;
 	u32 val;
 
 	if (ah->get_mac_revision)
@@ -270,33 +269,25 @@ static bool ath9k_hw_read_revisions(struct ath_hw *ah)
 			val = REG_READ(ah, AR_SREV);
 			ah->hw_version.macRev = MS(val, AR_SREV_REVISION2);
 		}
-		return true;
+		return;
 	case AR9300_DEVID_AR9340:
 		ah->hw_version.macVersion = AR_SREV_VERSION_9340;
-		return true;
+		return;
 	case AR9300_DEVID_QCA955X:
 		ah->hw_version.macVersion = AR_SREV_VERSION_9550;
-		return true;
+		return;
 	case AR9300_DEVID_AR953X:
 		ah->hw_version.macVersion = AR_SREV_VERSION_9531;
-		return true;
+		return;
 	case AR9300_DEVID_QCA956X:
 		ah->hw_version.macVersion = AR_SREV_VERSION_9561;
-		return true;
+		return;
 	}
 
-	srev = REG_READ(ah, AR_SREV);
-
-	if (srev == -EIO) {
-		ath_err(ath9k_hw_common(ah),
-			"Failed to read SREV register");
-		return false;
-	}
-
-	val = srev & AR_SREV_ID;
+	val = REG_READ(ah, AR_SREV) & AR_SREV_ID;
 
 	if (val == 0xFF) {
-		val = srev;
+		val = REG_READ(ah, AR_SREV);
 		ah->hw_version.macVersion =
 			(val & AR_SREV_VERSION2) >> AR_SREV_TYPE2_S;
 		ah->hw_version.macRev = MS(val, AR_SREV_REVISION2);
@@ -315,8 +306,6 @@ static bool ath9k_hw_read_revisions(struct ath_hw *ah)
 		if (ah->hw_version.macVersion == AR_SREV_VERSION_5416_PCIE)
 			ah->is_pciexpress = true;
 	}
-
-	return true;
 }
 
 /************************************/
@@ -457,7 +446,7 @@ static void ath9k_hw_init_defaults(struct ath_hw *ah)
 	struct ath_regulatory *regulatory = ath9k_hw_regulatory(ah);
 
 	regulatory->country_code = CTRY_DEFAULT;
-	regulatory->power_limit = MAX_COMBINED_POWER;
+	regulatory->power_limit = MAX_RATE_POWER;
 
 	ah->hw_version.magic = AR5416_MAGIC;
 	ah->hw_version.subvendorid = 0;
@@ -570,10 +559,7 @@ static int __ath9k_hw_init(struct ath_hw *ah)
 	struct ath_common *common = ath9k_hw_common(ah);
 	int r = 0;
 
-	if (!ath9k_hw_read_revisions(ah)) {
-		ath_err(common, "Could not read hardware revisions");
-		return -EOPNOTSUPP;
-	}
+	ath9k_hw_read_revisions(ah);
 
 	switch (ah->hw_version.macVersion) {
 	case AR_SREV_VERSION_5416_PCI:
@@ -2293,7 +2279,6 @@ void ath9k_hw_beaconinit(struct ath_hw *ah, u32 next_beacon, u32 beacon_period)
 	case NL80211_IFTYPE_ADHOC:
 		REG_SET_BIT(ah, AR_TXCFG,
 			    AR_TXCFG_ADHOC_BEACON_ATIM_TX_POLICY);
-		/* fall through */
 	case NL80211_IFTYPE_MESH_POINT:
 	case NL80211_IFTYPE_AP:
 		REG_WRITE(ah, AR_NEXT_TBTT_TIMER, next_beacon);
@@ -2966,7 +2951,7 @@ void ath9k_hw_apply_txpower(struct ath_hw *ah, struct ath9k_channel *chan,
 		ctl = ath9k_regd_get_ctl(reg, chan);
 
 	channel = chan->chan;
-	chan_pwr = min_t(int, channel->max_power * 2, MAX_COMBINED_POWER);
+	chan_pwr = min_t(int, channel->max_power * 2, MAX_RATE_POWER);
 	new_pwr = min_t(int, chan_pwr, reg->power_limit);
 
 	ah->eep_ops->set_txpower(ah, chan, ctl,
@@ -2979,9 +2964,9 @@ void ath9k_hw_set_txpowerlimit(struct ath_hw *ah, u32 limit, bool test)
 	struct ath9k_channel *chan = ah->curchan;
 	struct ieee80211_channel *channel = chan->chan;
 
-	reg->power_limit = min_t(u32, limit, MAX_COMBINED_POWER);
+	reg->power_limit = min_t(u32, limit, MAX_RATE_POWER);
 	if (test)
-		channel->max_power = MAX_COMBINED_POWER / 2;
+		channel->max_power = MAX_RATE_POWER / 2;
 
 	ath9k_hw_apply_txpower(ah, chan, test);
 

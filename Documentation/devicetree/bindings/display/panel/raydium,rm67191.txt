@@ -12,14 +12,19 @@ Required properties:
 			driver
 
 Optional properties:
-- reset-gpios:		a GPIO spec for the RST_B GPIO pin
-- v3p3-supply:		phandle to 3.3V regulator that powers the VDD_3V3 pin
-- v1p8-supply:		phandle to 1.8V regulator that powers the VDD_1V8 pin
-- width-mm:		see panel-common.txt
-- height-mm:		see panel-common.txt
-- video-mode:		0 - burst-mode
-			1 - non-burst with sync event
-			2 - non-burst with sync pulse
+- reset-gpio:		a GPIO spec for the RST_B GPIO pin
+- display-timings:	timings for the connected panel according to [1]
+- pinctrl-0		phandle to the pin settings for the reset pin
+- panel-width-mm:	physical panel width [mm]
+- panel-height-mm:	physical panel height [mm]
+- video-mode:		Video data transfer mode
+			must be <0>, <1> or <2> as
+			follows:
+			    <0>: Burst mode
+			    <1>: Non-burst mode with sync event
+			    <2>: Non-burst mode with sync pulse
+
+[1]: Documentation/devicetree/bindings/display/display-timing.txt
 
 Example:
 
@@ -27,15 +32,30 @@ Example:
 		compatible = "raydium,rm67191";
 		reg = <0>;
 		pinctrl-0 = <&pinctrl_mipi_dsi_0_1_en>;
-		pinctrl-names = "default";
-		reset-gpios = <&gpio1 7 GPIO_ACTIVE_LOW>;
+		reset-gpio = <&gpio1 7 GPIO_ACTIVE_HIGH>;
 		dsi-lanes = <4>;
-		width-mm = <68>;
-		height-mm = <121>;
-
+		panel-width-mm = <68>;
+		panel-height-mm = <121>;
+		display-timings {
+			timing {
+				clock-frequency = <132000000>;
+				hactive = <1080>;
+				vactive = <1920>;
+				hback-porch = <11>;
+				hfront-porch = <4>;
+				vback-porch = <48>;
+				vfront-porch = <20>;
+				hsync-len = <5>;
+				vsync-len = <12>;
+				hsync-active = <0>;
+				vsync-active = <0>;
+				de-active = <0>;
+				pixelclk-active = <0>;
+			};
+		};
 		port {
-			panel_in: endpoint {
-				remote-endpoint = <&mipi_out>;
+			panel1_in: endpoint {
+				remote-endpoint = <&mipi1_out>;
 			};
 		};
 	};

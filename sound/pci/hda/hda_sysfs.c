@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * sysfs interface for HD-audio codec
  *
@@ -15,7 +14,7 @@
 #include <linux/string.h>
 #include <linux/export.h>
 #include <sound/core.h>
-#include <sound/hda_codec.h>
+#include "hda_codec.h"
 #include "hda_local.h"
 #include <sound/hda_hwdep.h>
 #include <sound/minors.h>
@@ -222,7 +221,7 @@ static ssize_t init_verbs_show(struct device *dev,
 	int i, len = 0;
 	mutex_lock(&codec->user_mutex);
 	snd_array_for_each(&codec->init_verbs, i, v) {
-		len += scnprintf(buf + len, PAGE_SIZE - len,
+		len += snprintf(buf + len, PAGE_SIZE - len,
 				"0x%02x 0x%03x 0x%04x\n",
 				v->nid, v->verb, v->param);
 	}
@@ -272,7 +271,7 @@ static ssize_t hints_show(struct device *dev,
 	int i, len = 0;
 	mutex_lock(&codec->user_mutex);
 	snd_array_for_each(&codec->hints, i, hint) {
-		len += scnprintf(buf + len, PAGE_SIZE - len,
+		len += snprintf(buf + len, PAGE_SIZE - len,
 				"%s = %s\n", hint->key, hint->val);
 	}
 	mutex_unlock(&codec->user_mutex);

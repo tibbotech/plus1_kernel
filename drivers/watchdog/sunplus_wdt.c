@@ -208,6 +208,6 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started "
 		"(default=" __MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sunplus Technology");
+MODULE_AUTHOR("Xiantao Hu <wjxianjian@126.com>");
 MODULE_DESCRIPTION("Sunplus WatchDog Timer Driver");
 MODULE_VERSION(DRV_VERSION);

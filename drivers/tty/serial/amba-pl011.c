@@ -813,8 +813,10 @@ __acquires(&uap->port.lock)
 	if (!uap->using_tx_dma)
 		return;
 
-	dmaengine_terminate_async(uap->dmatx.chan);
-
+	/* Avoid deadlock with the DMA engine callback */
+	spin_unlock(&uap->port.lock);
+	dmaengine_terminate_all(uap->dmatx.chan);
+	spin_lock(&uap->port.lock);
 	if (uap->dmatx.queued) {
 		dma_unmap_sg(uap->dmatx.chan->device->dev, &uap->dmatx.sg, 1,
 			     DMA_TO_DEVICE);
@@ -1715,7 +1717,7 @@ static int pl011_allocate_irq(struct uart_amba_port *uap)
 {
 	pl011_write(uap->im, uap, REG_IMSC);
 
-	return request_irq(uap->port.irq, pl011_int, IRQF_SHARED, "uart-pl011", uap);
+	return request_irq(uap->port.irq, pl011_int, 0, "uart-pl011", uap);
 }
 
 /*
@@ -2204,6 +2206,42 @@ static void pl011_console_putchar(struct uart_port *port, int ch)
 	pl011_write(ch, uap, REG_DR);
 }
 
+#ifdef CONFIG_RAW_PRINTK
+
+#define pl011_clk_setup(clk)	clk_prepare_enable(clk)
+#define pl011_clk_enable(clk)	do { } while (0)
+#define pl011_clk_disable(clk)	do { } while (0)
+
+static void
+pl011_console_write_raw(struct console *co, const char *s, unsigned int count)
+{
+	struct uart_amba_port *uap = amba_ports[co->index];
+	unsigned int old_cr, new_cr, status;
+
+	old_cr = readw(uap->port.membase + UART011_CR);
+	new_cr = old_cr & ~UART011_CR_CTSEN;
+	new_cr |= UART01x_CR_UARTEN | UART011_CR_TXE;
+	writew(new_cr, uap->port.membase + UART011_CR);
+
+	while (count-- > 0) {
+		if (*s == '\n')
+			pl011_console_putchar(&uap->port, '\r');
+		pl011_console_putchar(&uap->port, *s++);
+	}
+	do
+		status = readw(uap->port.membase + UART01x_FR);
+	while (status & UART01x_FR_BUSY);
+	writew(old_cr, uap->port.membase + UART011_CR);
+}
+
+#else  /* !CONFIG_RAW_PRINTK */
+
+#define pl011_clk_setup(clk)	clk_prepare(clk)
+#define pl011_clk_enable(clk)	clk_enable(clk)
+#define pl011_clk_disable(clk)	clk_disable(clk)
+
+#endif  /* !CONFIG_RAW_PRINTK */
+
 static void
 pl011_console_write(struct console *co, const char *s, unsigned int count)
 {
@@ -2212,7 +2250,7 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 	unsigned long flags;
 	int locked = 1;
 
-	clk_enable(uap->clk);
+	pl011_clk_enable(uap->clk);
 
 	local_irq_save(flags);
 	if (uap->port.sysrq)
@@ -2249,7 +2287,7 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 		spin_unlock(&uap->port.lock);
 	local_irq_restore(flags);
 
-	clk_disable(uap->clk);
+	pl011_clk_disable(uap->clk);
 }
 
 static void __init
@@ -2310,7 +2348,7 @@ static int __init pl011_console_setup(struct console *co, char *options)
 	/* Allow pins to be muxed in and configured */
 	pinctrl_pm_select_default_state(uap->port.dev);
 
-	ret = clk_prepare(uap->clk);
+	ret = pl011_clk_setup(uap->clk);
 	if (ret)
 		return ret;
 
@@ -2404,7 +2442,12 @@ static struct console amba_console = {
 	.device		= uart_console_device,
 	.setup		= pl011_console_setup,
 	.match		= pl011_console_match,
+#ifdef CONFIG_RAW_PRINTK
+	.write_raw	= pl011_console_write_raw,
+	.flags		= CON_PRINTBUFFER | CON_RAW | CON_ANYTIME,
+#else
 	.flags		= CON_PRINTBUFFER | CON_ANYTIME,
+#endif
 	.index		= -1,
 	.data		= &amba_reg,
 };
@@ -2716,8 +2759,11 @@ static int sbsa_uart_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	ret = platform_get_irq(pdev, 0);
-	if (ret < 0)
+	if (ret < 0) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(&pdev->dev, "cannot obtain irq\n");
 		return ret;
+	}
 	uap->port.irq	= ret;
 
 #ifdef CONFIG_ACPI_SPCR_TABLE

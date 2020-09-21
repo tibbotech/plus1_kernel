@@ -441,9 +441,6 @@ static const struct ieee80211_rate mwl8k_rates_50[] = {
 #define MWL8K_CMD_UPDATE_STADB		0x1123
 #define MWL8K_CMD_BASTREAM		0x1125
 
-#define MWL8K_LEGACY_5G_RATE_OFFSET \
-	(ARRAY_SIZE(mwl8k_rates_24) - ARRAY_SIZE(mwl8k_rates_50))
-
 static const char *mwl8k_cmd_name(__le16 cmd, char *buf, int bufsize)
 {
 	u16 command = le16_to_cpu(cmd);
@@ -1019,9 +1016,8 @@ mwl8k_rxd_ap_process(void *_rxd, struct ieee80211_rx_status *status,
 
 	if (rxd->channel > 14) {
 		status->band = NL80211_BAND_5GHZ;
-		if (!(status->encoding == RX_ENC_HT) &&
-		    status->rate_idx >= MWL8K_LEGACY_5G_RATE_OFFSET)
-			status->rate_idx -= MWL8K_LEGACY_5G_RATE_OFFSET;
+		if (!(status->encoding == RX_ENC_HT))
+			status->rate_idx -= 5;
 	} else {
 		status->band = NL80211_BAND_2GHZ;
 	}
@@ -1128,9 +1124,8 @@ mwl8k_rxd_sta_process(void *_rxd, struct ieee80211_rx_status *status,
 
 	if (rxd->channel > 14) {
 		status->band = NL80211_BAND_5GHZ;
-		if (!(status->encoding == RX_ENC_HT) &&
-		    status->rate_idx >= MWL8K_LEGACY_5G_RATE_OFFSET)
-			status->rate_idx -= MWL8K_LEGACY_5G_RATE_OFFSET;
+		if (!(status->encoding == RX_ENC_HT))
+			status->rate_idx -= 5;
 	} else {
 		status->band = NL80211_BAND_2GHZ;
 	}
@@ -2239,10 +2234,8 @@ static int mwl8k_post_cmd(struct ieee80211_hw *hw, struct mwl8k_cmd_pkt *cmd)
 	dma_size = le16_to_cpu(cmd->length);
 	dma_addr = pci_map_single(priv->pdev, cmd, dma_size,
 				  PCI_DMA_BIDIRECTIONAL);
-	if (pci_dma_mapping_error(priv->pdev, dma_addr)) {
-		rc = -ENOMEM;
-		goto exit;
-	}
+	if (pci_dma_mapping_error(priv->pdev, dma_addr))
+		return -ENOMEM;
 
 	priv->hostcmd_wait = &cmd_wait;
 	iowrite32(dma_addr, regs + MWL8K_HIU_GEN_PTR);
@@ -2282,7 +2275,6 @@ static int mwl8k_post_cmd(struct ieee80211_hw *hw, struct mwl8k_cmd_pkt *cmd)
 				     ms);
 	}
 
-exit:
 	if (bitmap)
 		mwl8k_enable_bsses(hw, true, bitmap);
 
@@ -4639,7 +4631,7 @@ static void mwl8k_tx_poll(unsigned long data)
 
 	limit = 32;
 
-	spin_lock(&priv->tx_lock);
+	spin_lock_bh(&priv->tx_lock);
 
 	for (i = 0; i < mwl8k_tx_queues(priv); i++)
 		limit -= mwl8k_txq_reclaim(hw, i, limit, 0);
@@ -4649,7 +4641,7 @@ static void mwl8k_tx_poll(unsigned long data)
 		priv->tx_wait = NULL;
 	}
 
-	spin_unlock(&priv->tx_lock);
+	spin_unlock_bh(&priv->tx_lock);
 
 	if (limit) {
 		writel(~MWL8K_A2H_INT_TX_DONE,

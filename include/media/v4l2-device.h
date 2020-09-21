@@ -1,9 +1,21 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
     V4L2 device support header.
 
     Copyright (C) 2008  Hans Verkuil <hverkuil@xs4all.nl>
 
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #ifndef _V4L2_DEVICE_H
@@ -54,6 +66,8 @@ struct v4l2_device {
 			unsigned int notification, void *arg);
 	struct v4l2_ctrl_handler *ctrl_handler;
 	struct v4l2_prio_state prio;
+	/* BKL replacement mutex. Temporary solution only. */
+	struct mutex ioctl_lock;
 	struct kref ref;
 	void (*release)(struct v4l2_device *v4l2_dev);
 };
@@ -197,17 +211,6 @@ static inline void v4l2_subdev_notify(struct v4l2_subdev *sd,
 {
 	if (sd && sd->v4l2_dev && sd->v4l2_dev->notify)
 		sd->v4l2_dev->notify(sd, notification, arg);
-}
-
-/**
- * v4l2_device_supports_requests - Test if requests are supported.
- *
- * @v4l2_dev: pointer to struct v4l2_device
- */
-static inline bool v4l2_device_supports_requests(struct v4l2_device *v4l2_dev)
-{
-	return v4l2_dev->mdev && v4l2_dev->mdev->ops &&
-	       v4l2_dev->mdev->ops->req_queue;
 }
 
 /* Helper macros to iterate over all subdevs. */
@@ -371,7 +374,7 @@ static inline bool v4l2_device_supports_requests(struct v4l2_device *v4l2_dev)
 		struct v4l2_subdev *__sd;				\
 									\
 		__v4l2_device_call_subdevs_p(v4l2_dev, __sd,		\
-			(grpid) == 0 || __sd->grp_id == (grpid), o, f ,	\
+			!(grpid) || __sd->grp_id == (grpid), o, f ,	\
 			##args);					\
 	} while (0)
 
@@ -403,7 +406,7 @@ static inline bool v4l2_device_supports_requests(struct v4l2_device *v4l2_dev)
 ({									\
 	struct v4l2_subdev *__sd;					\
 	__v4l2_device_call_subdevs_until_err_p(v4l2_dev, __sd,		\
-			(grpid) == 0 || __sd->grp_id == (grpid), o, f ,	\
+			!(grpid) || __sd->grp_id == (grpid), o, f ,	\
 			##args);					\
 })
 
@@ -431,8 +434,8 @@ static inline bool v4l2_device_supports_requests(struct v4l2_device *v4l2_dev)
 		struct v4l2_subdev *__sd;				\
 									\
 		__v4l2_device_call_subdevs_p(v4l2_dev, __sd,		\
-			(grpmsk) == 0 || (__sd->grp_id & (grpmsk)), o,	\
-			f , ##args);					\
+			!(grpmsk) || (__sd->grp_id & (grpmsk)), o, f ,	\
+			##args);					\
 	} while (0)
 
 /**
@@ -462,8 +465,8 @@ static inline bool v4l2_device_supports_requests(struct v4l2_device *v4l2_dev)
 ({									\
 	struct v4l2_subdev *__sd;					\
 	__v4l2_device_call_subdevs_until_err_p(v4l2_dev, __sd,		\
-			(grpmsk) == 0 || (__sd->grp_id & (grpmsk)), o,	\
-			f , ##args);					\
+			!(grpmsk) || (__sd->grp_id & (grpmsk)), o, f ,	\
+			##args);					\
 })
 
 

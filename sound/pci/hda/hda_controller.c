@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *
  *  Implementation of primary alsa driver code base for Intel HD Audio.
@@ -7,6 +6,18 @@
  *
  *  Copyright (c) 2004 Takashi Iwai <tiwai@suse.de>
  *                     PeiSen Hou <pshou@realtek.com.tw>
+ *
+ *  This program is free software; you can redistribute it and/or modify it
+ *  under the terms of the GNU General Public License as published by the Free
+ *  Software Foundation; either version 2 of the License, or (at your option)
+ *  any later version.
+ *
+ *  This program is distributed in the hope that it will be useful, but WITHOUT
+ *  ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ *  FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
+ *  more details.
+ *
+ *
  */
 
 #include <linux/clocksource.h>
@@ -119,9 +130,8 @@ static int azx_pcm_hw_params(struct snd_pcm_substream *substream,
 	azx_dev->core.bufsize = 0;
 	azx_dev->core.period_bytes = 0;
 	azx_dev->core.format_val = 0;
-	ret = snd_pcm_lib_malloc_pages(substream,
-				       params_buffer_bytes(hw_params));
-
+	ret = chip->ops->substream_alloc_pages(chip, substream,
+					  params_buffer_bytes(hw_params));
 unlock:
 	dsp_unlock(azx_dev);
 	return ret;
@@ -131,6 +141,7 @@ static int azx_pcm_hw_free(struct snd_pcm_substream *substream)
 {
 	struct azx_pcm *apcm = snd_pcm_substream_chip(substream);
 	struct azx_dev *azx_dev = get_azx_dev(substream);
+	struct azx *chip = apcm->chip;
 	struct hda_pcm_stream *hinfo = to_hda_pcm_stream(substream);
 	int err;
 
@@ -141,7 +152,7 @@ static int azx_pcm_hw_free(struct snd_pcm_substream *substream)
 
 	snd_hda_codec_cleanup(apcm->codec, hinfo, substream);
 
-	err = snd_pcm_lib_free_pages(substream);
+	err = chip->ops->substream_free_pages(chip, substream);
 	azx_stream(azx_dev)->prepared = 0;
 	dsp_unlock(azx_dev);
 	return err;
@@ -598,9 +609,11 @@ static int azx_pcm_open(struct snd_pcm_substream *substream)
 	}
 	runtime->private_data = azx_dev;
 
-	runtime->hw = azx_pcm_hw;
 	if (chip->gts_present)
-		runtime->hw.info |= SNDRV_PCM_INFO_HAS_LINK_SYNCHRONIZED_ATIME;
+		azx_pcm_hw.info = azx_pcm_hw.info |
+			SNDRV_PCM_INFO_HAS_LINK_SYNCHRONIZED_ATIME;
+
+	runtime->hw = azx_pcm_hw;
 	runtime->hw.channels_min = hinfo->channels_min;
 	runtime->hw.channels_max = hinfo->channels_max;
 	runtime->hw.formats = hinfo->formats;
@@ -612,13 +625,6 @@ static int azx_pcm_open(struct snd_pcm_substream *substream)
 	snd_pcm_hw_constraint_minmax(runtime, SNDRV_PCM_HW_PARAM_BUFFER_TIME,
 				     20,
 				     178000000);
-
-	/* by some reason, the playback stream stalls on PulseAudio with
-	 * tsched=1 when a capture stream triggers.  Until we figure out the
-	 * real cause, disable tsched mode by telling the PCM info flag.
-	 */
-	if (chip->driver_caps & AZX_DCAPS_AMD_WORKAROUND)
-		runtime->hw.info |= SNDRV_PCM_INFO_BATCH;
 
 	if (chip->align_buffer_size)
 		/* constrain buffer sizes to be multiple of 128
@@ -726,7 +732,6 @@ int snd_hda_attach_pcm_stream(struct hda_bus *_bus, struct hda_codec *codec,
 	int pcm_dev = cpcm->device;
 	unsigned int size;
 	int s, err;
-	int type = SNDRV_DMA_TYPE_DEV_SG;
 
 	list_for_each_entry(apcm, &chip->pcm_list, list) {
 		if (apcm->pcm->device == pcm_dev) {
@@ -765,9 +770,7 @@ int snd_hda_attach_pcm_stream(struct hda_bus *_bus, struct hda_codec *codec,
 	size = CONFIG_SND_HDA_PREALLOC_SIZE * 1024;
 	if (size > MAX_PREALLOC_SIZE)
 		size = MAX_PREALLOC_SIZE;
-	if (chip->uc_buffer)
-		type = SNDRV_DMA_TYPE_DEV_UC_SG;
-	snd_pcm_lib_preallocate_pages_for_all(pcm, type,
+	snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV_SG,
 					      chip->card->dev,
 					      size, MAX_PREALLOC_SIZE);
 	return 0;
@@ -794,18 +797,17 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 	unsigned long timeout;
 	unsigned long loopcounter;
 	int do_poll = 0;
-	bool warned = false;
 
  again:
 	timeout = jiffies + msecs_to_jiffies(1000);
 
 	for (loopcounter = 0;; loopcounter++) {
 		spin_lock_irq(&bus->reg_lock);
-		if (bus->polling_mode || do_poll)
+		if (chip->polling_mode || do_poll)
 			snd_hdac_bus_update_rirb(bus);
 		if (!bus->rirb.cmds[addr]) {
 			if (!do_poll)
-				bus->poll_count = 0;
+				chip->poll_count = 0;
 			if (res)
 				*res = bus->rirb.res[addr]; /* the last value */
 			spin_unlock_irq(&bus->reg_lock);
@@ -814,17 +816,9 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 		spin_unlock_irq(&bus->reg_lock);
 		if (time_after(jiffies, timeout))
 			break;
-#define LOOP_COUNT_MAX	3000
-		if (hbus->needs_damn_long_delay ||
-		    loopcounter > LOOP_COUNT_MAX) {
-			if (loopcounter > LOOP_COUNT_MAX && !warned) {
-				dev_dbg_ratelimited(chip->card->dev,
-						    "too slow response, last cmd=%#08x\n",
-						    bus->last_cmd[addr]);
-				warned = true;
-			}
+		if (hbus->needs_damn_long_delay || loopcounter > 3000)
 			msleep(2); /* temporary workaround */
-		} else {
+		else {
 			udelay(10);
 			cond_resched();
 		}
@@ -833,21 +827,21 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 	if (hbus->no_response_fallback)
 		return -EIO;
 
-	if (!bus->polling_mode && bus->poll_count < 2) {
+	if (!chip->polling_mode && chip->poll_count < 2) {
 		dev_dbg(chip->card->dev,
 			"azx_get_response timeout, polling the codec once: last cmd=0x%08x\n",
 			bus->last_cmd[addr]);
 		do_poll = 1;
-		bus->poll_count++;
+		chip->poll_count++;
 		goto again;
 	}
 
 
-	if (!bus->polling_mode) {
+	if (!chip->polling_mode) {
 		dev_warn(chip->card->dev,
 			 "azx_get_response timeout, switching to polling mode: last cmd=0x%08x\n",
 			 bus->last_cmd[addr]);
-		bus->polling_mode = 1;
+		chip->polling_mode = 1;
 		goto again;
 	}
 
@@ -878,9 +872,6 @@ static int azx_rirb_get_response(struct hdac_bus *bus, unsigned int addr,
 	 */
 	if (hbus->allow_bus_reset && !hbus->response_reset && !hbus->in_reset) {
 		hbus->response_reset = 1;
-		dev_err(chip->card->dev,
-			"No response from codec, resetting bus: last cmd=0x%08x\n",
-			bus->last_cmd[addr]);
 		return -EAGAIN; /* give a chance to retry */
 	}
 
@@ -995,9 +986,20 @@ static int azx_get_response(struct hdac_bus *bus, unsigned int addr,
 		return azx_rirb_get_response(bus, addr, res);
 }
 
+static int azx_link_power(struct hdac_bus *bus, bool enable)
+{
+	struct azx *chip = bus_to_azx(bus);
+
+	if (chip->ops->link_power)
+		return chip->ops->link_power(chip, enable);
+	else
+		return -EINVAL;
+}
+
 static const struct hdac_bus_ops bus_core_ops = {
 	.command = azx_send_cmd,
 	.get_response = azx_get_response,
+	.link_power = azx_link_power,
 };
 
 #ifdef CONFIG_SND_HDA_DSP_LOADER
@@ -1218,13 +1220,36 @@ void snd_hda_bus_reset(struct hda_bus *bus)
 	bus->in_reset = 0;
 }
 
+static int get_jackpoll_interval(struct azx *chip)
+{
+	int i;
+	unsigned int j;
+
+	if (!chip->jackpoll_ms)
+		return 0;
+
+	i = chip->jackpoll_ms[chip->dev_index];
+	if (i == 0)
+		return 0;
+	if (i < 50 || i > 60000)
+		j = 0;
+	else
+		j = msecs_to_jiffies(i);
+	if (j == 0)
+		dev_warn(chip->card->dev,
+			 "jackpoll_ms value out of range: %d\n", i);
+	return j;
+}
+
 /* HD-audio bus initialization */
-int azx_bus_init(struct azx *chip, const char *model)
+int azx_bus_init(struct azx *chip, const char *model,
+		 const struct hdac_io_ops *io_ops)
 {
 	struct hda_bus *bus = &chip->bus;
 	int err;
 
-	err = snd_hdac_bus_init(&bus->core, chip->card->dev, &bus_core_ops);
+	err = snd_hdac_bus_init(&bus->core, chip->card->dev, &bus_core_ops,
+				io_ops);
 	if (err < 0)
 		return err;
 
@@ -1298,7 +1323,7 @@ int azx_probe_codecs(struct azx *chip, unsigned int max_slots)
 			err = snd_hda_codec_new(&chip->bus, chip->card, c, &codec);
 			if (err < 0)
 				continue;
-			codec->jackpoll_interval = chip->jackpoll_interval;
+			codec->jackpoll_interval = get_jackpoll_interval(chip);
 			codec->beep_mode = chip->beep_mode;
 			codecs++;
 		}

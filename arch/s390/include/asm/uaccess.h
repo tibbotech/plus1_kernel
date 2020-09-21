@@ -31,6 +31,7 @@
 #define USER_DS		(2)
 #define USER_DS_SACF	(3)
 
+#define get_ds()        (KERNEL_DS)
 #define get_fs()        (current->thread.mm_segment)
 #define segment_eq(a,b) (((a) & 2) == ((b) & 2))
 
@@ -47,7 +48,7 @@ static inline int __range_ok(unsigned long addr, unsigned long size)
 	__range_ok((unsigned long)(addr), (size));	\
 })
 
-#define access_ok(addr, size) __access_ok(addr, size)
+#define access_ok(type, addr, size) __access_ok(addr, size)
 
 unsigned long __must_check
 raw_copy_from_user(void *to, const void __user *from, unsigned long n);
@@ -55,10 +56,8 @@ raw_copy_from_user(void *to, const void __user *from, unsigned long n);
 unsigned long __must_check
 raw_copy_to_user(void __user *to, const void *from, unsigned long n);
 
-#ifndef CONFIG_KASAN
 #define INLINE_COPY_FROM_USER
 #define INLINE_COPY_TO_USER
-#endif
 
 #ifdef CONFIG_HAVE_MARCH_Z10_FEATURES
 
@@ -83,7 +82,7 @@ raw_copy_to_user(void __user *to, const void *from, unsigned long n);
 	__rc;							\
 })
 
-static __always_inline int __put_user_fn(void *x, void __user *ptr, unsigned long size)
+static inline int __put_user_fn(void *x, void __user *ptr, unsigned long size)
 {
 	unsigned long spec = 0x010000UL;
 	int rc;
@@ -113,7 +112,7 @@ static __always_inline int __put_user_fn(void *x, void __user *ptr, unsigned lon
 	return rc;
 }
 
-static __always_inline int __get_user_fn(void *x, const void __user *ptr, unsigned long size)
+static inline int __get_user_fn(void *x, const void __user *ptr, unsigned long size)
 {
 	unsigned long spec = 0x01UL;
 	int rc;

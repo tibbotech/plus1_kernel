@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * AMD Cryptographic Coprocessor (CCP) driver
  *
@@ -6,17 +5,21 @@
  *
  * Author: Tom Lendacky <thomas.lendacky@amd.com>
  * Author: Gary R Hook <gary.hook@amd.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #ifndef __CCP_DEV_H__
 #define __CCP_DEV_H__
 
 #include <linux/device.h>
+#include <linux/pci.h>
 #include <linux/spinlock.h>
 #include <linux/mutex.h>
 #include <linux/list.h>
 #include <linux/wait.h>
-#include <linux/dma-direction.h>
 #include <linux/dmapool.h>
 #include <linux/hw_random.h>
 #include <linux/bitops.h>
@@ -379,7 +382,6 @@ struct ccp_device {
 	 */
 	struct ccp_cmd_queue cmd_q[MAX_HW_QUEUES];
 	unsigned int cmd_q_count;
-	unsigned int max_q_count;
 
 	/* Support for the CCP True RNG
 	 */
@@ -630,7 +632,7 @@ struct ccp5_desc {
 void ccp_add_device(struct ccp_device *ccp);
 void ccp_del_device(struct ccp_device *ccp);
 
-extern void ccp_log_error(struct ccp_device *, unsigned int);
+extern void ccp_log_error(struct ccp_device *, int);
 
 struct ccp_device *ccp_alloc_struct(struct sp_device *sp);
 bool ccp_queues_suspended(struct ccp_device *ccp);

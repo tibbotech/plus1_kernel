@@ -25,7 +25,6 @@
 #ifndef __I915_SELFTESTS_RANDOM_H__
 #define __I915_SELFTESTS_RANDOM_H__
 
-#include <linux/math64.h>
 #include <linux/random.h>
 
 #include "../i915_selftest.h"
@@ -54,8 +53,5 @@ unsigned int *i915_random_order(unsigned int count,
 void i915_random_reorder(unsigned int *order,
 			 unsigned int count,
 			 struct rnd_state *state);
-
-void i915_prandom_shuffle(void *arr, size_t elsz, size_t count,
-			  struct rnd_state *state);
 
 #endif /* !__I915_SELFTESTS_RANDOM_H__ */

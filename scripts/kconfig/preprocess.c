@@ -2,7 +2,6 @@
 //
 // Copyright (C) 2018 Masahiro Yamada <yamada.masahiro@socionext.com>
 
-#include <ctype.h>
 #include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -10,12 +9,10 @@
 #include <string.h>
 
 #include "list.h"
-#include "lkc.h"
 
 #define ARRAY_SIZE(arr)		(sizeof(arr) / sizeof((arr)[0]))
 
 static char *expand_string_with_args(const char *in, int argc, char *argv[]);
-static char *expand_string(const char *in);
 
 static void __attribute__((noreturn)) pperror(const char *format, ...)
 {
@@ -551,14 +548,15 @@ static char *expand_string_with_args(const char *in, int argc, char *argv[])
 	return __expand_string(&in, is_end_of_str, argc, argv);
 }
 
-static char *expand_string(const char *in)
+char *expand_string(const char *in)
 {
 	return expand_string_with_args(in, 0, NULL);
 }
 
 static bool is_end_of_token(char c)
 {
-	return !(isalnum(c) || c == '_' || c == '-');
+	/* Why are '.' and '/' valid characters for symbols? */
+	return !(isalnum(c) || c == '_' || c == '-' || c == '.' || c == '/');
 }
 
 /*

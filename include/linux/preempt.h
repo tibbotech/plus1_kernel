@@ -53,6 +53,9 @@
 
 #define SOFTIRQ_DISABLE_OFFSET	(2 * SOFTIRQ_OFFSET)
 
+/* We use the MSB mostly because its available */
+#define PREEMPT_NEED_RESCHED	0x80000000
+
 #define PREEMPT_DISABLED	(PREEMPT_DISABLE_OFFSET + PREEMPT_ENABLED)
 
 /*
@@ -182,7 +185,7 @@ do { \
 
 #define preemptible()	(preempt_count() == 0 && !irqs_disabled())
 
-#ifdef CONFIG_PREEMPTION
+#ifdef CONFIG_PREEMPT
 #define preempt_enable() \
 do { \
 	barrier(); \
@@ -203,7 +206,7 @@ do { \
 		__preempt_schedule(); \
 } while (0)
 
-#else /* !CONFIG_PREEMPTION */
+#else /* !CONFIG_PREEMPT */
 #define preempt_enable() \
 do { \
 	barrier(); \
@@ -217,7 +220,7 @@ do { \
 } while (0)
 
 #define preempt_check_resched() do { } while (0)
-#endif /* CONFIG_PREEMPTION */
+#endif /* CONFIG_PREEMPT */
 
 #define preempt_disable_notrace() \
 do { \
@@ -252,7 +255,28 @@ do { \
 
 #endif /* CONFIG_PREEMPT_COUNT */
 
-#ifdef MODULE
+#ifdef CONFIG_IPIPE
+#define hard_preempt_disable()				\
+	({						\
+		unsigned long __flags__;		\
+		__flags__ = hard_local_irq_save();	\
+		if (__ipipe_root_p)			\
+			preempt_disable();		\
+		__flags__;				\
+	})
+
+#define hard_preempt_enable(__flags__)					\
+	do {								\
+		if (__ipipe_root_p) {					\
+			preempt_enable_no_resched();			\
+			hard_local_irq_restore(__flags__);		\
+			if (!hard_irqs_disabled_flags(__flags__))	\
+				preempt_check_resched();		\
+		} else							\
+			hard_local_irq_restore(__flags__);		\
+	} while (0)
+
+#elif defined(MODULE)
 /*
  * Modules have no business playing preemption tricks.
  */
@@ -260,7 +284,7 @@ do { \
 #undef preempt_enable_no_resched
 #undef preempt_enable_no_resched_notrace
 #undef preempt_check_resched
-#endif
+#endif	/* !IPIPE && MODULE */
 
 #define preempt_set_need_resched() \
 do { \

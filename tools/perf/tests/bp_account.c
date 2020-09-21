@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Powerpc needs __SANE_USERSPACE_TYPES__ before <linux/types.h> to select
  * 'int-ll64.h' and avoid compile warnings when printing __u64 with %llu.
@@ -16,11 +15,11 @@
 #include <sys/mman.h>
 #include <linux/compiler.h>
 #include <linux/hw_breakpoint.h>
+#include <sys/ioctl.h>
 
 #include "tests.h"
 #include "debug.h"
-#include "event.h"
-#include "../perf-sys.h"
+#include "perf.h"
 #include "cloexec.h"
 
 volatile long the_var;

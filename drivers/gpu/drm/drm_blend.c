@@ -23,15 +23,12 @@
  * TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE
  * OF THIS SOFTWARE.
  */
-
+#include <drm/drmP.h>
+#include <drm/drm_atomic.h>
+#include <drm/drm_blend.h>
 #include <linux/export.h>
 #include <linux/slab.h>
 #include <linux/sort.h>
-
-#include <drm/drm_atomic.h>
-#include <drm/drm_blend.h>
-#include <drm/drm_device.h>
-#include <drm/drm_print.h>
 
 #include "drm_crtc_internal.h"
 
@@ -103,28 +100,6 @@
  *	rotation and reflection step between the source and destination rectangles.
  *	Without this property the rectangle is only scaled, but not rotated or
  *	reflected.
- *
- *	Possbile values:
- *
- *	"rotate-<degrees>":
- *		Signals that a drm plane is rotated <degrees> degrees in counter
- *		clockwise direction.
- *
- *	"reflect-<axis>":
- *		Signals that the contents of a drm plane is reflected along the
- *		<axis> axis, in the same way as mirroring.
- *
- *	reflect-x::
- *
- *			|o |    | o|
- *			|  | -> |  |
- *			| v|    |v |
- *
- *	reflect-y::
- *
- *			|o |    | ^|
- *			|  | -> |  |
- *			| v|    |o |
  *
  * zpos:
  *	Z position is set up with drm_plane_create_zpos_immutable_property() and

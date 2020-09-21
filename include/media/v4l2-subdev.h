@@ -1,8 +1,17 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  *  V4L2 sub-device support header.
  *
  *  Copyright (C) 2008  Hans Verkuil <hverkuil@xs4all.nl>
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; either version 2 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  */
 
 #ifndef _V4L2_SUBDEV_H
@@ -61,7 +70,7 @@ struct v4l2_decode_vbi_line {
  * device. These devices are usually audio/video muxers/encoders/decoders or
  * sensors and webcam controllers.
  *
- * Usually these devices are controlled through an i2c bus, but other buses
+ * Usually these devices are controlled through an i2c bus, but other busses
  * may also be used.
  *
  * The v4l2_subdev struct provides a way of accessing these devices in a
@@ -88,6 +97,7 @@ struct v4l2_decode_vbi_line {
 /*
  * Core ops: it is highly recommended to implement at least these ops:
  *
+ * g_chip_ident
  * log_status
  * g_register
  * s_register
@@ -186,6 +196,7 @@ struct v4l2_subdev_io_pin_config {
  * @unsubscribe_event: remove event subscription from the control framework.
  */
 struct v4l2_subdev_core_ops {
+	int (*g_chip_ident)(struct v4l2_subdev *sd, struct v4l2_dbg_chip_ident *chip);
 	int (*log_status)(struct v4l2_subdev *sd);
 	int (*s_io_pin_config)(struct v4l2_subdev *sd, size_t n,
 				      struct v4l2_subdev_io_pin_config *pincfg);
@@ -388,6 +399,10 @@ struct v4l2_mbus_frame_desc {
  *
  * @g_pixelaspect: callback to return the pixelaspect ratio.
  *
+ * @g_parm: callback for VIDIOC_G_PARM() ioctl handler code.
+ *
+ * @s_parm: callback for VIDIOC_S_PARM() ioctl handler code.
+ *
  * @g_frame_interval: callback for VIDIOC_SUBDEV_G_FRAME_INTERVAL()
  *		      ioctl handler code.
  *
@@ -425,6 +440,8 @@ struct v4l2_subdev_video_ops {
 	int (*g_input_status)(struct v4l2_subdev *sd, u32 *status);
 	int (*s_stream)(struct v4l2_subdev *sd, int enable);
 	int (*g_pixelaspect)(struct v4l2_subdev *sd, struct v4l2_fract *aspect);
+	int (*g_parm)(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
+	int (*s_parm)(struct v4l2_subdev *sd, struct v4l2_streamparm *param);
 	int (*g_frame_interval)(struct v4l2_subdev *sd,
 				struct v4l2_subdev_frame_interval *interval);
 	int (*s_frame_interval)(struct v4l2_subdev *sd,
@@ -746,17 +763,7 @@ struct v4l2_subdev_ops {
  *
  * @open: called when the subdev device node is opened by an application.
  *
- * @close: called when the subdev device node is closed. Please note that
- *	it is possible for @close to be called after @unregistered!
- *
- * @release: called when the last user of the subdev device is gone. This
- *	happens after the @unregistered callback and when the last open
- *	filehandle to the v4l-subdevX device node was closed. If no device
- *	node was created for this sub-device, then the @release callback
- *	is called right after the @unregistered callback.
- *	The @release callback is typically used to free the memory containing
- *	the v4l2_subdev structure. It is almost certainly required for any
- *	sub-device that sets the V4L2_SUBDEV_FL_HAS_DEVNODE flag.
+ * @close: called when the subdev device node is closed.
  *
  * .. note::
  *	Never call this from drivers, only the v4l2 framework can call
@@ -767,7 +774,6 @@ struct v4l2_subdev_internal_ops {
 	void (*unregistered)(struct v4l2_subdev *sd);
 	int (*open)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
 	int (*close)(struct v4l2_subdev *sd, struct v4l2_subdev_fh *fh);
-	void (*release)(struct v4l2_subdev *sd);
 };
 
 #define V4L2_SUBDEV_NAME_SIZE 32
@@ -778,11 +784,7 @@ struct v4l2_subdev_internal_ops {
 #define V4L2_SUBDEV_FL_IS_SPI			(1U << 1)
 /* Set this flag if this subdev needs a device node. */
 #define V4L2_SUBDEV_FL_HAS_DEVNODE		(1U << 2)
-/*
- * Set this flag if this subdev generates events.
- * Note controls can send events, thus drivers exposing controls
- * should set this flag.
- */
+/* Set this flag if this subdev generates events. */
 #define V4L2_SUBDEV_FL_HAS_EVENTS		(1U << 3)
 
 struct regulator_bulk_data;
@@ -901,11 +903,9 @@ struct v4l2_subdev {
  *
  * @vfh: pointer to &struct v4l2_fh
  * @pad: pointer to &struct v4l2_subdev_pad_config
- * @owner: module pointer to the owner of this file handle
  */
 struct v4l2_subdev_fh {
 	struct v4l2_fh vfh;
-	struct module *owner;
 #if defined(CONFIG_VIDEO_V4L2_SUBDEV_API)
 	struct v4l2_subdev_pad_config *pad;
 #endif
@@ -1082,8 +1082,6 @@ void v4l2_subdev_free_pad_config(struct v4l2_subdev_pad_config *cfg);
 void v4l2_subdev_init(struct v4l2_subdev *sd,
 		      const struct v4l2_subdev_ops *ops);
 
-extern const struct v4l2_subdev_ops v4l2_subdev_call_wrappers;
-
 /**
  * v4l2_subdev_call - call an operation of a v4l2_subdev.
  *
@@ -1099,18 +1097,13 @@ extern const struct v4l2_subdev_ops v4l2_subdev_call_wrappers;
  */
 #define v4l2_subdev_call(sd, o, f, args...)				\
 	({								\
-		struct v4l2_subdev *__sd = (sd);			\
 		int __result;						\
-		if (!__sd)						\
+		if (!(sd))						\
 			__result = -ENODEV;				\
-		else if (!(__sd->ops->o && __sd->ops->o->f))		\
+		else if (!((sd)->ops->o && (sd)->ops->o->f))		\
 			__result = -ENOIOCTLCMD;			\
-		else if (v4l2_subdev_call_wrappers.o &&			\
-			 v4l2_subdev_call_wrappers.o->f)		\
-			__result = v4l2_subdev_call_wrappers.o->f(	\
-							__sd, ##args);	\
 		else							\
-			__result = __sd->ops->o->f(__sd, ##args);	\
+			__result = (sd)->ops->o->f((sd), ##args);	\
 		__result;						\
 	})
 

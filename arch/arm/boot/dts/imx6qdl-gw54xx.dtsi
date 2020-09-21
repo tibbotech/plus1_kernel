@@ -1,10 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright 2013 Gateworks Corporation
+ *
+ * Copyright 2015 Freescale Semiconductor, Inc. All Rights Reserved.
+ *
+ * The code contained herein is licensed under the GNU General Public
+ * License. You may obtain a copy of the GNU General Public License
+ * Version 2 or later at the following locations:
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/sound/fsl-imx-audmux.h>
 
 / {
 	/* these are used by bootloader for disabling nodes */
@@ -16,6 +23,7 @@
 		ssi0 = &ssi1;
 		usb0 = &usbh1;
 		usb1 = &usbotg;
+		mxcfb0 = &mxcfb1;
 	};
 
 	chosen {
@@ -55,7 +63,6 @@
 	};
 
 	memory@10000000 {
-		device_type = "memory";
 		reg = <0x10000000 0x40000000>;
 	};
 
@@ -110,12 +117,12 @@
 		};
 	};
 
-	sound-analog {
+	sound {
 		compatible = "fsl,imx6q-ventana-sgtl5000",
 			     "fsl,imx-audio-sgtl5000";
 		model = "sgtl5000-audio";
 		ssi-controller = <&ssi1>;
-		audio-codec = <&sgtl5000>;
+		audio-codec = <&codec>;
 		audio-routing =
 			"MIC_IN", "Mic Jack",
 			"Mic Jack", "Mic Bias",
@@ -123,31 +130,23 @@
 		mux-int-port = <1>;
 		mux-ext-port = <4>;
 	};
+
+	mxcfb1: fb@0 {
+		compatible = "fsl,mxc_sdc_fb";
+		disp_dev = "hdmi";
+		interface_pix_fmt = "RGB24";
+		mode_str ="1920x1080M@60";
+		default_bpp = <24>;
+		int_clk = <0>;
+		late_init = <0>;
+		status = "okay";
+	};
 };
 
 &audmux {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_audmux>; /* AUD4<->sgtl5000 */
 	status = "okay";
-
-	ssi2 {
-		fsl,audmux-port = <1>;
-		fsl,port-config = <
-			(IMX_AUDMUX_V2_PTCR_TFSDIR |
-			IMX_AUDMUX_V2_PTCR_TFSEL(4+8) | /* RXFS */
-			IMX_AUDMUX_V2_PTCR_TCLKDIR |
-			IMX_AUDMUX_V2_PTCR_TCSEL(4+8) | /* RXC */
-			IMX_AUDMUX_V2_PTCR_SYN)
-			IMX_AUDMUX_V2_PDCR_RXDSEL(4)
-		>;
-	};
-
-	aud5 {
-		fsl,audmux-port = <4>;
-		fsl,port-config = <
-			IMX_AUDMUX_V2_PTCR_SYN
-			IMX_AUDMUX_V2_PDCR_RXDSEL(1)>;
-	};
 };
 
 &can1 {
@@ -184,8 +183,15 @@
 	status = "okay";
 };
 
-&hdmi {
-	ddc-i2c-bus = <&i2c3>;
+&hdmi_core {
+	ipu_id = <0>;
+	disp_id = <0>;
+	status = "okay";
+};
+
+&hdmi_video {
+	fsl,phy_reg_vlev = <0x0294>;
+	fsl,phy_reg_cksymtx = <0x800d>;
 	status = "okay";
 };
 
@@ -346,12 +352,17 @@
 	pinctrl-0 = <&pinctrl_i2c3>;
 	status = "okay";
 
-	sgtl5000: audio-codec@a {
+	codec: sgtl5000@a {
 		compatible = "fsl,sgtl5000";
 		reg = <0x0a>;
 		clocks = <&clks IMX6QDL_CLK_CKO>;
 		VDDA-supply = <&sw4_reg>;
 		VDDIO-supply = <&reg_3p3v>;
+	};
+
+	hdmi_edid: edid@50 {
+		compatible = "fsl,imx6-hdmi-i2c";
+		reg = <0x50>;
 	};
 
 	touchscreen: egalax_ts@4 {
@@ -490,9 +501,6 @@
 			MX6QDL_PAD_SD2_DAT2__AUD4_TXD		0x110b0
 			MX6QDL_PAD_SD2_DAT1__AUD4_TXFS		0x130b0
 			MX6QDL_PAD_GPIO_0__CCM_CLKO1		0x130b0 /* AUD4_MCK */
-			MX6QDL_PAD_EIM_D25__AUD5_RXC            0x130b0
-			MX6QDL_PAD_DISP0_DAT19__AUD5_RXD        0x130b0
-			MX6QDL_PAD_EIM_D24__AUD5_RXFS           0x130b0
 		>;
 	};
 

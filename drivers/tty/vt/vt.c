@@ -890,9 +890,8 @@ static void hide_softcursor(struct vc_data *vc)
 
 static void hide_cursor(struct vc_data *vc)
 {
-	if (vc_is_sel(vc))
+	if (vc == sel_cons)
 		clear_selection();
-
 	vc->vc_sw->con_cursor(vc, CM_ERASE);
 	hide_softcursor(vc);
 }
@@ -902,7 +901,7 @@ static void set_cursor(struct vc_data *vc)
 	if (!con_is_fg(vc) || console_blanked || vc->vc_mode == KD_GRAPHICS)
 		return;
 	if (vc->vc_deccm) {
-		if (vc_is_sel(vc))
+		if (vc == sel_cons)
 			clear_selection();
 		add_softcursor(vc);
 		if ((vc->vc_cursor_type & 0x0f) != 1)
@@ -937,21 +936,10 @@ static void flush_scrollback(struct vc_data *vc)
 	WARN_CONSOLE_UNLOCKED();
 
 	set_origin(vc);
-	if (vc->vc_sw->con_flush_scrollback) {
+	if (vc->vc_sw->con_flush_scrollback)
 		vc->vc_sw->con_flush_scrollback(vc);
-	} else if (con_is_visible(vc)) {
-		/*
-		 * When no con_flush_scrollback method is provided then the
-		 * legacy way for flushing the scrollback buffer is to use
-		 * a side effect of the con_switch method. We do it only on
-		 * the foreground console as background consoles have no
-		 * scrollback buffers in that case and we obviously don't
-		 * want to switch to them.
-		 */
-		hide_cursor(vc);
+	else
 		vc->vc_sw->con_switch(vc);
-		set_cursor(vc);
-	}
 }
 
 /*
@@ -1019,7 +1007,9 @@ void redraw_screen(struct vc_data *vc, int is_switch)
 			clear_buffer_attributes(vc);
 		}
 
-		if (update && vc->vc_mode != KD_GRAPHICS)
+		/* Forcibly update if we're panicing */
+		if ((update && vc->vc_mode != KD_GRAPHICS) ||
+		    vt_force_oops_output(vc))
 			do_update_region(vc, vc->vc_origin, vc->vc_screenbuf_size / 2);
 	}
 	set_cursor(vc);
@@ -1059,6 +1049,7 @@ static void visual_init(struct vc_data *vc, int num, int init)
 	vc->vc_hi_font_mask = 0;
 	vc->vc_complement_mask = 0;
 	vc->vc_can_do_color = 0;
+	vc->vc_panic_force_write = false;
 	vc->vc_cur_blink_ms = DEFAULT_CURSOR_BLINK_MS;
 	vc->vc_sw->con_init(vc, init);
 	if (!vc->vc_complement_mask)
@@ -1067,24 +1058,6 @@ static void visual_init(struct vc_data *vc, int num, int init)
 	vc->vc_size_row = vc->vc_cols << 1;
 	vc->vc_screenbuf_size = vc->vc_rows * vc->vc_size_row;
 }
-
-
-static void visual_deinit(struct vc_data *vc)
-{
-	vc->vc_sw->con_deinit(vc);
-	module_put(vc->vc_sw->owner);
-}
-
-static void vc_port_destruct(struct tty_port *port)
-{
-	struct vc_data *vc = container_of(port, struct vc_data, port);
-
-	kfree(vc);
-}
-
-static const struct tty_port_operations vc_port_ops = {
-	.destruct = vc_port_destruct,
-};
 
 int vc_allocate(unsigned int currcons)	/* return 0 on success */
 {
@@ -1111,7 +1084,6 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
 
 	vc_cons[currcons].d = vc;
 	tty_port_init(&vc->port);
-	vc->port.ops = &vc_port_ops;
 	INIT_WORK(&vc_cons[currcons].SAK_work, vc_SAK);
 
 	visual_init(vc, currcons, 1);
@@ -1134,7 +1106,6 @@ int vc_allocate(unsigned int currcons)	/* return 0 on success */
 
 	return 0;
 err_free:
-	visual_deinit(vc);
 	kfree(vc);
 	vc_cons[currcons].d = NULL;
 	return -ENOMEM;
@@ -1220,7 +1191,7 @@ static int vc_do_resize(struct tty_struct *tty, struct vc_data *vc,
 		}
 	}
 
-	if (vc_is_sel(vc))
+	if (vc == sel_cons)
 		clear_selection();
 
 	old_rows = vc->vc_rows;
@@ -1363,8 +1334,9 @@ struct vc_data *vc_deallocate(unsigned int currcons)
 		param.vc = vc = vc_cons[currcons].d;
 		atomic_notifier_call_chain(&vt_notifier_list, VT_DEALLOCATE, &param);
 		vcs_remove_sysfs(currcons);
-		visual_deinit(vc);
+		vc->vc_sw->con_deinit(vc);
 		put_pid(vc->vt_pid);
+		module_put(vc->vc_sw->owner);
 		vc_uniscr_set(vc, NULL);
 		kfree(vc->vc_screenbuf);
 		vc_cons[currcons].d = NULL;
@@ -1375,8 +1347,6 @@ struct vc_data *vc_deallocate(unsigned int currcons)
 /*
  *	VT102 emulator
  */
-
-enum { EPecma = 0, EPdec, EPeq, EPgt, EPlt};
 
 #define set_kbd(vc, x)	vt_set_kbd_mode_bit((vc)->vc_num, (x))
 #define clr_kbd(vc, x)	vt_clr_kbd_mode_bit((vc)->vc_num, (x))
@@ -1551,8 +1521,7 @@ static void csi_J(struct vc_data *vc, int vpar)
 			return;
 	}
 	scr_memsetw(start, vc->vc_video_erase_char, 2 * count);
-	if (con_should_update(vc))
-		do_update_region(vc, (unsigned long) start, count);
+	update_region(vc, (unsigned long) start, count);
 	vc->vc_need_wrap = 0;
 }
 
@@ -1661,9 +1630,9 @@ static void rgb_background(struct vc_data *vc, const struct rgb *c)
 
 /*
  * ITU T.416 Higher colour modes. They break the usual properties of SGR codes
- * and thus need to be detected and ignored by hand. That standard also
- * wants : rather than ; as separators but sequences containing : are currently
- * completely ignored by the parser.
+ * and thus need to be detected and ignored by hand. Strictly speaking, that
+ * standard also wants : rather than ; as separators, contrary to ECMA-48, but
+ * no one produces such codes and almost no one accepts them.
  *
  * Subcommands 3 (CMY) and 4 (CMYK) are so insane there's no point in
  * supporting them.
@@ -1836,7 +1805,7 @@ void mouse_report(struct tty_struct *tty, int butt, int mrx, int mry)
 	respond_string(buf, tty->port);
 }
 
-/* invoked via ioctl(TIOCLINUX) and through set_selection_user */
+/* invoked via ioctl(TIOCLINUX) and through set_selection */
 int mouse_reporting(void)
 {
 	return vc_cons[fg_console].d->vc_report_mouse;
@@ -1848,7 +1817,7 @@ static void set_mode(struct vc_data *vc, int on_off)
 	int i;
 
 	for (i = 0; i <= vc->vc_npar; i++)
-		if (vc->vc_priv == EPdec) {
+		if (vc->vc_ques) {
 			switch(vc->vc_par[i]) {	/* DEC private modes set/reset */
 			case 1:			/* Cursor keys send ^[Ox/^[[x */
 				if (on_off)
@@ -2055,7 +2024,7 @@ static void restore_cur(struct vc_data *vc)
 }
 
 enum { ESnormal, ESesc, ESsquare, ESgetpars, ESfunckey,
-	EShash, ESsetG0, ESsetG1, ESpercent, EScsiignore, ESnonstd,
+	EShash, ESsetG0, ESsetG1, ESpercent, ESignore, ESnonstd,
 	ESpalette, ESosc };
 
 /* console_lock is held (except via vc_init()) */
@@ -2064,7 +2033,7 @@ static void reset_terminal(struct vc_data *vc, int do_clear)
 	vc->vc_top		= 0;
 	vc->vc_bottom		= vc->vc_rows;
 	vc->vc_state		= ESnormal;
-	vc->vc_priv		= EPecma;
+	vc->vc_ques		= 0;
 	vc->vc_translate	= set_translate(LAT1_MAP, vc);
 	vc->vc_G0_charset	= LAT1_MAP;
 	vc->vc_G1_charset	= GRAF_MAP;
@@ -2145,7 +2114,6 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 		lf(vc);
 		if (!is_kbd(vc, lnm))
 			return;
-		/* fall through */
 	case 13:
 		cr(vc);
 		return;
@@ -2268,22 +2236,9 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			vc->vc_state=ESfunckey;
 			return;
 		}
-		switch (c) {
-		case '?':
-			vc->vc_priv = EPdec;
+		vc->vc_ques = (c == '?');
+		if (vc->vc_ques)
 			return;
-		case '>':
-			vc->vc_priv = EPgt;
-			return;
-		case '=':
-			vc->vc_priv = EPeq;
-			return;
-		case '<':
-			vc->vc_priv = EPlt;
-			return;
-		}
-		vc->vc_priv = EPecma;
-		/* fall through */
 	case ESgetpars:
 		if (c == ';' && vc->vc_npar < NPAR - 1) {
 			vc->vc_npar++;
@@ -2293,22 +2248,16 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			vc->vc_par[vc->vc_npar] += c - '0';
 			return;
 		}
-		if (c >= 0x20 && c <= 0x3f) { /* 0x2x, 0x3a and 0x3c - 0x3f */
-			vc->vc_state = EScsiignore;
-			return;
-		}
 		vc->vc_state = ESnormal;
 		switch(c) {
 		case 'h':
-			if (vc->vc_priv <= EPdec)
-				set_mode(vc, 1);
+			set_mode(vc, 1);
 			return;
 		case 'l':
-			if (vc->vc_priv <= EPdec)
-				set_mode(vc, 0);
+			set_mode(vc, 0);
 			return;
 		case 'c':
-			if (vc->vc_priv == EPdec) {
+			if (vc->vc_ques) {
 				if (vc->vc_par[0])
 					vc->vc_cursor_type = vc->vc_par[0] | (vc->vc_par[1] << 8) | (vc->vc_par[2] << 16);
 				else
@@ -2317,7 +2266,7 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			}
 			break;
 		case 'm':
-			if (vc->vc_priv == EPdec) {
+			if (vc->vc_ques) {
 				clear_selection();
 				if (vc->vc_par[0])
 					vc->vc_complement_mask = vc->vc_par[0] << 8 | vc->vc_par[1];
@@ -2327,7 +2276,7 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			}
 			break;
 		case 'n':
-			if (vc->vc_priv == EPecma) {
+			if (!vc->vc_ques) {
 				if (vc->vc_par[0] == 5)
 					status_report(tty);
 				else if (vc->vc_par[0] == 6)
@@ -2335,8 +2284,8 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			}
 			return;
 		}
-		if (vc->vc_priv != EPecma) {
-			vc->vc_priv = EPecma;
+		if (vc->vc_ques) {
+			vc->vc_ques = 0;
 			return;
 		}
 		switch(c) {
@@ -2458,11 +2407,6 @@ static void do_con_trol(struct tty_struct *tty, struct vc_data *vc, int c)
 			setterm_command(vc);
 			return;
 		}
-		return;
-	case EScsiignore:
-		if (c >= 20 && c <= 0x3f)
-			return;
-		vc->vc_state = ESnormal;
 		return;
 	case ESpercent:
 		vc->vc_state = ESnormal;
@@ -2962,7 +2906,7 @@ static void vt_console_print(struct console *co, const char *b, unsigned count)
 		goto quit;
 	}
 
-	if (vc->vc_mode != KD_TEXT)
+	if (vc->vc_mode != KD_TEXT && !vt_force_oops_output(vc))
 		goto quit;
 
 	/* undraw cursor first */
@@ -3040,7 +2984,7 @@ static struct console vt_console_driver = {
  * There are some functions which can sleep for arbitrary periods
  * (paste_selection) but we don't need the lock there anyway.
  *
- * set_selection_user has locking, and definitely needs it
+ * set_selection has locking, and definitely needs it
  */
 
 int tioclinux(struct tty_struct *tty, unsigned long arg)
@@ -3059,8 +3003,9 @@ int tioclinux(struct tty_struct *tty, unsigned long arg)
 	switch (type)
 	{
 		case TIOCL_SETSEL:
-			ret = set_selection_user((struct tiocl_selection
-						 __user *)(p+1), tty);
+			console_lock();
+			ret = set_selection((struct tiocl_selection __user *)(p+1), tty);
+			console_unlock();
 			break;
 		case TIOCL_PASTESEL:
 			ret = paste_selection(tty);
@@ -3266,7 +3211,6 @@ static int con_install(struct tty_driver *driver, struct tty_struct *tty)
 
 	tty->driver_data = vc;
 	vc->port.tty = tty;
-	tty_port_get(&vc->port);
 
 	if (!tty->winsize.ws_row && !tty->winsize.ws_col) {
 		tty->winsize.ws_row = vc_cons[currcons].d->vc_rows;
@@ -3300,13 +3244,6 @@ static void con_shutdown(struct tty_struct *tty)
 	console_lock();
 	vc->port.tty = NULL;
 	console_unlock();
-}
-
-static void con_cleanup(struct tty_struct *tty)
-{
-	struct vc_data *vc = tty->driver_data;
-
-	tty_port_put(&vc->port);
 }
 
 static int default_color           = 7; /* white */
@@ -3433,8 +3370,7 @@ static const struct tty_operations con_ops = {
 	.throttle = con_throttle,
 	.unthrottle = con_unthrottle,
 	.resize = vt_resize,
-	.shutdown = con_shutdown,
-	.cleanup = con_cleanup,
+	.shutdown = con_shutdown
 };
 
 static struct cdev vc0_cdev;
@@ -3802,11 +3738,7 @@ static ssize_t show_bind(struct device *dev, struct device_attribute *attr,
 			 char *buf)
 {
 	struct con_driver *con = dev_get_drvdata(dev);
-	int bind;
-
-	console_lock();
-	bind = con_is_bound(con->con);
-	console_unlock();
+	int bind = con_is_bound(con->con);
 
 	return snprintf(buf, PAGE_SIZE, "%i\n", bind);
 }
@@ -3857,8 +3789,6 @@ int con_is_bound(const struct consw *csw)
 {
 	int i, bound = 0;
 
-	WARN_CONSOLE_UNLOCKED();
-
 	for (i = 0; i < MAX_NR_CONSOLES; i++) {
 		if (con_driver_map[i] == csw) {
 			bound = 1;
@@ -3869,20 +3799,6 @@ int con_is_bound(const struct consw *csw)
 	return bound;
 }
 EXPORT_SYMBOL(con_is_bound);
-
-/**
- * con_is_visible - checks whether the current console is visible
- * @vc: virtual console
- *
- * RETURNS: zero if not visible, nonzero if visible
- */
-bool con_is_visible(const struct vc_data *vc)
-{
-	WARN_CONSOLE_UNLOCKED();
-
-	return *vc->vc_display_fg == vc;
-}
-EXPORT_SYMBOL(con_is_visible);
 
 /**
  * con_debug_enter - prepare the console for the kernel debugger
@@ -4217,8 +4133,6 @@ void do_blank_screen(int entering_gfx)
 	struct vc_data *vc = vc_cons[fg_console].d;
 	int i;
 
-	might_sleep();
-
 	WARN_CONSOLE_UNLOCKED();
 
 	if (console_blanked) {
@@ -4240,6 +4154,8 @@ void do_blank_screen(int entering_gfx)
 		return;
 	}
 
+	if (blank_state != blank_normal_wait)
+		return;
 	blank_state = blank_off;
 
 	/* don't blank graphics */
@@ -4296,7 +4212,8 @@ void do_unblank_screen(int leaving_gfx)
 		return;
 	}
 	vc = vc_cons[fg_console].d;
-	if (vc->vc_mode != KD_TEXT)
+	/* Try to unblank in oops case too */
+	if (vc->vc_mode != KD_TEXT && !vt_force_oops_output(vc))
 		return; /* but leave console_blanked != 0 */
 
 	if (blankinterval) {
@@ -4305,7 +4222,7 @@ void do_unblank_screen(int leaving_gfx)
 	}
 
 	console_blanked = 0;
-	if (vc->vc_sw->con_blank(vc, 0, leaving_gfx))
+	if (vc->vc_sw->con_blank(vc, 0, leaving_gfx) || vt_force_oops_output(vc))
 		/* Low-level driver cannot restore -> do it ourselves */
 		update_screen(vc);
 	if (console_blank_hook)
@@ -4677,9 +4594,8 @@ EXPORT_SYMBOL_GPL(screen_pos);
 
 void getconsxy(struct vc_data *vc, unsigned char *p)
 {
-	/* clamp values if they don't fit */
-	p[0] = min(vc->vc_x, 0xFFu);
-	p[1] = min(vc->vc_y, 0xFFu);
+	p[0] = vc->vc_x;
+	p[1] = vc->vc_y;
 }
 
 void putconsxy(struct vc_data *vc, unsigned char *p)

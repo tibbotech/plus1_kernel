@@ -1,11 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0+ OR MIT
-
-ifneq ($(shell $(CC) --version 2>&1 | head -n 1 | grep clang),)
-CLANG_FLAGS += -no-integrated-as
-endif
-
-CFLAGS += -O2 -Wall -g -I./ -I../../../../usr/include/ -L$(OUTPUT) -Wl,-rpath=./ \
-	  $(CLANG_FLAGS)
+CFLAGS += -O2 -Wall -g -I./ -I../../../../usr/include/ -L./ -Wl,-rpath=./
 LDLIBS += -lpthread
 
 # Own dependencies because we only want to build against 1st prerequisite, but
@@ -18,8 +12,6 @@ TEST_GEN_PROGS = basic_test basic_percpu_ops_test param_test \
 TEST_GEN_PROGS_EXTENDED = librseq.so
 
 TEST_PROGS = run_param_test.sh
-
-TEST_FILES := settings
 
 include ../lib.mk
 

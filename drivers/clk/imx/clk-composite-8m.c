@@ -3,10 +3,12 @@
  * Copyright 2018 NXP
  */
 
-#include <linux/clk-provider.h>
 #include <linux/errno.h>
-#include <linux/io.h>
 #include <linux/slab.h>
+#include <linux/clk-provider.h>
+#include <linux/clk.h>
+
+#define clk_div_mask(width) ((1 << (width)) - 1)
 
 #include "clk.h"
 
@@ -31,14 +33,14 @@ static unsigned long imx8m_clk_composite_divider_recalc_rate(struct clk_hw *hw,
 	unsigned int prediv_value;
 	unsigned int div_value;
 
-	prediv_value = readl(divider->reg) >> divider->shift;
+	prediv_value = clk_readl(divider->reg) >> divider->shift;
 	prediv_value &= clk_div_mask(divider->width);
 
 	prediv_rate = divider_recalc_rate(hw, parent_rate, prediv_value,
 						NULL, divider->flags,
 						divider->width);
 
-	div_value = readl(divider->reg) >> PCG_DIV_SHIFT;
+	div_value = clk_readl(divider->reg) >> PCG_DIV_SHIFT;
 	div_value &= clk_div_mask(PCG_DIV_WIDTH);
 
 	return divider_recalc_rate(hw, prediv_rate, div_value, NULL,
@@ -53,6 +55,7 @@ static int imx8m_clk_composite_compute_dividers(unsigned long rate,
 	int error = INT_MAX;
 	int ret = -EINVAL;
 
+	/* default values */
 	*prediv = 1;
 	*postdiv = 1;
 
@@ -80,10 +83,11 @@ static long imx8m_clk_composite_divider_round_rate(struct clk_hw *hw,
 
 	imx8m_clk_composite_compute_dividers(rate, *prate,
 						&prediv_value, &div_value);
+
 	rate = DIV_ROUND_UP(*prate, prediv_value);
+	rate = DIV_ROUND_UP(rate, div_value);
 
-	return DIV_ROUND_UP(rate, div_value);
-
+	return rate;
 }
 
 static int imx8m_clk_composite_divider_set_rate(struct clk_hw *hw,
@@ -94,7 +98,7 @@ static int imx8m_clk_composite_divider_set_rate(struct clk_hw *hw,
 	unsigned long flags = 0;
 	int prediv_value;
 	int div_value;
-	int ret;
+	int ret = 0;
 	u32 val;
 
 	ret = imx8m_clk_composite_compute_dividers(rate, parent_rate,
@@ -104,13 +108,13 @@ static int imx8m_clk_composite_divider_set_rate(struct clk_hw *hw,
 
 	spin_lock_irqsave(divider->lock, flags);
 
-	val = readl(divider->reg);
+	val = clk_readl(divider->reg);
 	val &= ~((clk_div_mask(divider->width) << divider->shift) |
 			(clk_div_mask(PCG_DIV_WIDTH) << PCG_DIV_SHIFT));
 
 	val |= (u32)(prediv_value  - 1) << divider->shift;
 	val |= (u32)(div_value - 1) << PCG_DIV_SHIFT;
-	writel(val, divider->reg);
+	clk_writel(val, divider->reg);
 
 	spin_unlock_irqrestore(divider->lock, flags);
 
@@ -124,15 +128,15 @@ static const struct clk_ops imx8m_clk_composite_divider_ops = {
 };
 
 struct clk *imx8m_clk_composite_flags(const char *name,
-					const char * const *parent_names,
+					const char **parent_names,
 					int num_parents, void __iomem *reg,
 					unsigned long flags)
 {
-	struct clk_hw *hw = ERR_PTR(-ENOMEM), *mux_hw;
-	struct clk_hw *div_hw, *gate_hw;
+	struct clk_hw *mux_hw = NULL, *div_hw = NULL, *gate_hw = NULL;
 	struct clk_divider *div = NULL;
 	struct clk_gate *gate = NULL;
 	struct clk_mux *mux = NULL;
+	struct clk *clk = ERR_PTR(-ENOMEM);
 
 	mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 	if (!mux)
@@ -142,7 +146,6 @@ struct clk *imx8m_clk_composite_flags(const char *name,
 	mux->reg = reg;
 	mux->shift = PCG_PCS_SHIFT;
 	mux->mask = PCG_PCS_MASK;
-	mux->lock = &imx_ccm_lock;
 
 	div = kzalloc(sizeof(*div), GFP_KERNEL);
 	if (!div)
@@ -155,27 +158,32 @@ struct clk *imx8m_clk_composite_flags(const char *name,
 	div->lock = &imx_ccm_lock;
 	div->flags = CLK_DIVIDER_ROUND_CLOSEST;
 
-	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
-	if (!gate)
+
+	/* skip registering the gate ops if M4 is enabled */
+	if (imx_src_is_m4_enabled()) {
+		gate_hw = NULL;
+	} else {
+		gate = kzalloc(sizeof(*gate), GFP_KERNEL);
+		if (!gate)
+			goto fail;
+
+		gate_hw = &gate->hw;
+		gate->reg = reg;
+		gate->bit_idx = PCG_CGC_SHIFT;
+	}
+
+	clk = clk_register_composite(NULL, name, parent_names, num_parents,
+					mux_hw, &clk_mux_ops, div_hw,
+					&imx8m_clk_composite_divider_ops,
+					gate_hw, &clk_gate_ops, flags);
+	if (IS_ERR(clk))
 		goto fail;
 
-	gate_hw = &gate->hw;
-	gate->reg = reg;
-	gate->bit_idx = PCG_CGC_SHIFT;
-	gate->lock = &imx_ccm_lock;
-
-	hw = clk_hw_register_composite(NULL, name, parent_names, num_parents,
-			mux_hw, &clk_mux_ops, div_hw,
-			&imx8m_clk_composite_divider_ops,
-			gate_hw, &clk_gate_ops, flags);
-	if (IS_ERR(hw))
-		goto fail;
-
-	return hw->clk;
+	return clk;
 
 fail:
 	kfree(gate);
 	kfree(div);
 	kfree(mux);
-	return ERR_CAST(hw);
+	return clk;
 }

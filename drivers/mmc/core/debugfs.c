@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Debugfs support for hosts and cards
  *
  * Copyright (C) 2008 Atmel Corporation
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 #include <linux/moduleparam.h>
 #include <linux/export.h>
@@ -54,6 +57,9 @@ static int mmc_ios_show(struct seq_file *s, void *data)
 	struct mmc_host	*host = s->private;
 	struct mmc_ios	*ios = &host->ios;
 	const char *str;
+
+	if (host->card)
+		mmc_get_card(host->card, NULL);
 
 	seq_printf(s, "clock:\t\t%u Hz\n", ios->clock);
 	if (host->actual_clock)
@@ -191,6 +197,9 @@ static int mmc_ios_show(struct seq_file *s, void *data)
 	}
 	seq_printf(s, "driver type:\t%u (%s)\n", ios->drv_type, str);
 
+	if (host->card)
+		mmc_put_card(host->card, NULL);
+
 	return 0;
 }
 DEFINE_SHOW_ATTRIBUTE(mmc_ios);
@@ -199,7 +208,11 @@ static int mmc_clock_opt_get(void *data, u64 *val)
 {
 	struct mmc_host *host = data;
 
+	if (host->card)
+		mmc_get_card(host->card, NULL);
 	*val = host->ios.clock;
+	if (host->card)
+		mmc_put_card(host->card, NULL);
 
 	return 0;
 }
@@ -227,21 +240,45 @@ void mmc_add_host_debugfs(struct mmc_host *host)
 	struct dentry *root;
 
 	root = debugfs_create_dir(mmc_hostname(host), NULL);
+	if (IS_ERR(root))
+		/* Don't complain -- debugfs just isn't enabled */
+		return;
+	if (!root)
+		/* Complain -- debugfs is enabled, but it failed to
+		 * create the directory. */
+		goto err_root;
+
 	host->debugfs_root = root;
 
-	debugfs_create_file("ios", S_IRUSR, root, host, &mmc_ios_fops);
-	debugfs_create_x32("caps", S_IRUSR, root, &host->caps);
-	debugfs_create_x32("caps2", S_IRUSR, root, &host->caps2);
-	debugfs_create_file("clock", S_IRUSR | S_IWUSR, root, host,
-			    &mmc_clock_fops);
+	if (!debugfs_create_file("ios", S_IRUSR, root, host, &mmc_ios_fops))
+		goto err_node;
+
+	if (!debugfs_create_x32("caps", S_IRUSR, root, &host->caps))
+		goto err_node;
+
+	if (!debugfs_create_x32("caps2", S_IRUSR, root, &host->caps2))
+		goto err_node;
+
+	if (!debugfs_create_file("clock", S_IRUSR | S_IWUSR, root, host,
+			&mmc_clock_fops))
+		goto err_node;
 
 #ifdef CONFIG_FAIL_MMC_REQUEST
 	if (fail_request)
 		setup_fault_attr(&fail_default_attr, fail_request);
 	host->fail_mmc_request = fail_default_attr;
-	fault_create_debugfs_attr("fail_mmc_request", root,
-				  &host->fail_mmc_request);
+	if (IS_ERR(fault_create_debugfs_attr("fail_mmc_request",
+					     root,
+					     &host->fail_mmc_request)))
+		goto err_node;
 #endif
+	return;
+
+err_node:
+	debugfs_remove_recursive(root);
+	host->debugfs_root = NULL;
+err_root:
+	dev_err(&host->class_dev, "failed to initialize debugfs\n");
 }
 
 void mmc_remove_host_debugfs(struct mmc_host *host)
@@ -258,9 +295,25 @@ void mmc_add_card_debugfs(struct mmc_card *card)
 		return;
 
 	root = debugfs_create_dir(mmc_card_id(card), host->debugfs_root);
+	if (IS_ERR(root))
+		/* Don't complain -- debugfs just isn't enabled */
+		return;
+	if (!root)
+		/* Complain -- debugfs is enabled, but it failed to
+		 * create the directory. */
+		goto err;
+
 	card->debugfs_root = root;
 
-	debugfs_create_x32("state", S_IRUSR, root, &card->state);
+	if (!debugfs_create_x32("state", S_IRUSR, root, &card->state))
+		goto err;
+
+	return;
+
+err:
+	debugfs_remove_recursive(root);
+	card->debugfs_root = NULL;
+	dev_err(&card->dev, "failed to initialize debugfs\n");
 }
 
 void mmc_remove_card_debugfs(struct mmc_card *card)

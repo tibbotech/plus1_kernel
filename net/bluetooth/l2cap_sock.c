@@ -791,7 +791,7 @@ static int l2cap_sock_setsockopt(struct socket *sock, int level, int optname,
 
 		conn = chan->conn;
 
-		/* change security for LE channels */
+		/*change security for LE channels */
 		if (chan->scid == L2CAP_CID_ATT) {
 			if (smp_conn_security(conn->hcon, sec.level)) {
 				err = -EINVAL;
@@ -1658,7 +1658,6 @@ static const struct proto_ops l2cap_sock_ops = {
 	.recvmsg	= l2cap_sock_recvmsg,
 	.poll		= bt_sock_poll,
 	.ioctl		= bt_sock_ioctl,
-	.gettstamp	= sock_gettstamp,
 	.mmap		= sock_no_mmap,
 	.socketpair	= sock_no_socketpair,
 	.shutdown	= l2cap_sock_shutdown,

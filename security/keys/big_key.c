@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /* Large capacity key type
  *
  * Copyright (C) 2017 Jason A. Donenfeld <Jason@zx2c4.com>. All Rights Reserved.
  * Copyright (C) 2013 Red Hat, Inc. All Rights Reserved.
  * Written by David Howells (dhowells@redhat.com)
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public Licence
+ * as published by the Free Software Foundation; either version
+ * 2 of the Licence, or (at your option) any later version.
  */
 
 #define pr_fmt(fmt) "big_key: "fmt
@@ -352,7 +356,7 @@ void big_key_describe(const struct key *key, struct seq_file *m)
  * read the key data
  * - the key's semaphore is read-locked
  */
-long big_key_read(const struct key *key, char *buffer, size_t buflen)
+long big_key_read(const struct key *key, char __user *buffer, size_t buflen)
 {
 	size_t datalen = (size_t)key->payload.data[big_key_len];
 	long ret;
@@ -391,8 +395,9 @@ long big_key_read(const struct key *key, char *buffer, size_t buflen)
 
 		ret = datalen;
 
-		/* copy out decrypted data */
-		memcpy(buffer, buf->virt, datalen);
+		/* copy decrypted data to user */
+		if (copy_to_user(buffer, buf->virt, datalen) != 0)
+			ret = -EFAULT;
 
 err_fput:
 		fput(file);
@@ -400,7 +405,9 @@ error:
 		big_key_free_buffer(buf);
 	} else {
 		ret = datalen;
-		memcpy(buffer, key->payload.data[big_key_data], datalen);
+		if (copy_to_user(buffer, key->payload.data[big_key_data],
+				 datalen) != 0)
+			ret = -EFAULT;
 	}
 
 	return ret;

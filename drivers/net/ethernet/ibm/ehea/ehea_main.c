@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  linux/drivers/net/ethernet/ibm/ehea/ehea_main.c
  *
@@ -10,6 +9,21 @@
  *	 Christoph Raisch <raisch@de.ibm.com>
  *	 Jan-Bernd Themann <themann@de.ibm.com>
  *	 Thomas Klein <tklein@de.ibm.com>
+ *
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -764,11 +778,12 @@ static void check_sqs(struct ehea_port *port)
 {
 	struct ehea_swqe *swqe;
 	int swqe_index;
-	int i;
+	int i, k;
 
 	for (i = 0; i < port->num_def_qps; i++) {
 		struct ehea_port_res *pr = &port->port_res[i];
 		int ret;
+		k = 0;
 		swqe = ehea_get_swqe(pr->qp, &swqe_index);
 		memset(swqe, 0, SWQE_HEADER_SIZE);
 		atomic_dec(&pr->swqe_avail);
@@ -1449,7 +1464,7 @@ static int ehea_init_port_res(struct ehea_port *port, struct ehea_port_res *pr,
 
 	memset(pr, 0, sizeof(struct ehea_port_res));
 
-	pr->tx_bytes = tx_bytes;
+	pr->tx_bytes = rx_bytes;
 	pr->tx_packets = tx_packets;
 	pr->rx_bytes = rx_bytes;
 	pr->rx_packets = rx_packets;
@@ -1577,16 +1592,20 @@ static int ehea_clean_portres(struct ehea_port *port, struct ehea_port_res *pr)
 		ehea_destroy_eq(pr->eq);
 
 		for (i = 0; i < pr->rq1_skba.len; i++)
-			dev_kfree_skb(pr->rq1_skba.arr[i]);
+			if (pr->rq1_skba.arr[i])
+				dev_kfree_skb(pr->rq1_skba.arr[i]);
 
 		for (i = 0; i < pr->rq2_skba.len; i++)
-			dev_kfree_skb(pr->rq2_skba.arr[i]);
+			if (pr->rq2_skba.arr[i])
+				dev_kfree_skb(pr->rq2_skba.arr[i]);
 
 		for (i = 0; i < pr->rq3_skba.len; i++)
-			dev_kfree_skb(pr->rq3_skba.arr[i]);
+			if (pr->rq3_skba.arr[i])
+				dev_kfree_skb(pr->rq3_skba.arr[i]);
 
 		for (i = 0; i < pr->sq_skba.len; i++)
-			dev_kfree_skb(pr->sq_skba.arr[i]);
+			if (pr->sq_skba.arr[i])
+				dev_kfree_skb(pr->sq_skba.arr[i]);
 
 		vfree(pr->rq1_skba.arr);
 		vfree(pr->rq2_skba.arr);
@@ -2008,7 +2027,7 @@ static void ehea_xmit3(struct sk_buff *skb, struct net_device *dev,
 	dev_consume_skb_any(skb);
 }
 
-static netdev_tx_t ehea_start_xmit(struct sk_buff *skb, struct net_device *dev)
+static int ehea_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct ehea_port *port = netdev_priv(dev);
 	struct ehea_swqe *swqe;
@@ -3142,7 +3161,6 @@ static ssize_t ehea_probe_port(struct device *dev,
 
 	if (ehea_add_adapter_mr(adapter)) {
 		pr_err("creating MR failed\n");
-		of_node_put(eth_dn);
 		return -EIO;
 	}
 
@@ -3247,7 +3265,7 @@ static int ehea_mem_notifier(struct notifier_block *nb,
 	switch (action) {
 	case MEM_CANCEL_OFFLINE:
 		pr_info("memory offlining canceled");
-		/* Fall through - re-add canceled memory block */
+		/* Fall through: re-add canceled memory block */
 
 	case MEM_ONLINE:
 		pr_info("memory is going online");

@@ -145,7 +145,6 @@ int rds_send_xmit(struct rds_conn_path *cp)
 	LIST_HEAD(to_be_dropped);
 	int batch_count;
 	unsigned long send_gen = 0;
-	int same_rm = 0;
 
 restart:
 	batch_count = 0;
@@ -200,17 +199,6 @@ restart:
 	while (1) {
 
 		rm = cp->cp_xmit_rm;
-
-		if (!rm) {
-			same_rm = 0;
-		} else {
-			same_rm++;
-			if (same_rm >= 4096) {
-				rds_stats_inc(s_send_stuck_rm);
-				ret = -EAGAIN;
-				break;
-			}
-		}
 
 		/*
 		 * If between sending messages, we can send a pending congestion
@@ -503,12 +491,14 @@ void rds_rdma_send_complete(struct rds_message *rm, int status)
 	struct rm_rdma_op *ro;
 	struct rds_notifier *notifier;
 	unsigned long flags;
+	unsigned int notify = 0;
 
 	spin_lock_irqsave(&rm->m_rs_lock, flags);
 
+	notify =  rm->rdma.op_notify | rm->data.op_notify;
 	ro = &rm->rdma;
 	if (test_bit(RDS_MSG_ON_SOCK, &rm->m_flags) &&
-	    ro->op_active && ro->op_notify && ro->op_notifier) {
+	    ro->op_active && notify && ro->op_notifier) {
 		notifier = ro->op_notifier;
 		rs = rm->m_rs;
 		sock_hold(rds_rs_to_sk(rs));
@@ -886,18 +876,13 @@ out:
  * rds_message is getting to be quite complicated, and we'd like to allocate
  * it all in one go. This figures out how big it needs to be up front.
  */
-static int rds_rm_size(struct msghdr *msg, int num_sgs,
-		       struct rds_iov_vector_arr *vct)
+static int rds_rm_size(struct msghdr *msg, int num_sgs)
 {
 	struct cmsghdr *cmsg;
 	int size = 0;
 	int cmsg_groups = 0;
 	int retval;
 	bool zcopy_cookie = false;
-	struct rds_iov_vector *iov, *tmp_iov;
-
-	if (num_sgs < 0)
-		return -EINVAL;
 
 	for_each_cmsghdr(cmsg, msg) {
 		if (!CMSG_OK(msg, cmsg))
@@ -908,24 +893,8 @@ static int rds_rm_size(struct msghdr *msg, int num_sgs,
 
 		switch (cmsg->cmsg_type) {
 		case RDS_CMSG_RDMA_ARGS:
-			if (vct->indx >= vct->len) {
-				vct->len += vct->incr;
-				tmp_iov =
-					krealloc(vct->vec,
-						 vct->len *
-						 sizeof(struct rds_iov_vector),
-						 GFP_KERNEL);
-				if (!tmp_iov) {
-					vct->len -= vct->incr;
-					return -ENOMEM;
-				}
-				vct->vec = tmp_iov;
-			}
-			iov = &vct->vec[vct->indx];
-			memset(iov, 0, sizeof(struct rds_iov_vector));
-			vct->indx++;
 			cmsg_groups |= 1;
-			retval = rds_rdma_extra_size(CMSG_DATA(cmsg), iov);
+			retval = rds_rdma_extra_size(CMSG_DATA(cmsg));
 			if (retval < 0)
 				return retval;
 			size += retval;
@@ -982,11 +951,10 @@ static int rds_cmsg_zcopy(struct rds_sock *rs, struct rds_message *rm,
 }
 
 static int rds_cmsg_send(struct rds_sock *rs, struct rds_message *rm,
-			 struct msghdr *msg, int *allocated_mr,
-			 struct rds_iov_vector_arr *vct)
+			 struct msghdr *msg, int *allocated_mr)
 {
 	struct cmsghdr *cmsg;
-	int ret = 0, ind = 0;
+	int ret = 0;
 
 	for_each_cmsghdr(cmsg, msg) {
 		if (!CMSG_OK(msg, cmsg))
@@ -1000,10 +968,7 @@ static int rds_cmsg_send(struct rds_sock *rs, struct rds_message *rm,
 		 */
 		switch (cmsg->cmsg_type) {
 		case RDS_CMSG_RDMA_ARGS:
-			if (ind >= vct->indx)
-				return -ENOMEM;
-			ret = rds_cmsg_rdma_args(rs, rm, cmsg, &vct->vec[ind]);
-			ind++;
+			ret = rds_cmsg_rdma_args(rs, rm, cmsg);
 			break;
 
 		case RDS_CMSG_RDMA_DEST:
@@ -1117,15 +1082,8 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	size_t total_payload_len = payload_len, rdma_payload_len = 0;
 	bool zcopy = ((msg->msg_flags & MSG_ZEROCOPY) &&
 		      sock_flag(rds_rs_to_sk(rs), SOCK_ZEROCOPY));
-	int num_sgs = DIV_ROUND_UP(payload_len, PAGE_SIZE);
+	int num_sgs = ceil(payload_len, PAGE_SIZE);
 	int namelen;
-	struct rds_iov_vector_arr vct;
-	int ind;
-
-	memset(&vct, 0, sizeof(vct));
-
-	/* expect 1 RDMA CMSG per rds_sendmsg. can still grow if more needed. */
-	vct.incr = 1;
 
 	/* Mirror Linux UDP mirror of BSD error message compatibility */
 	/* XXX: Perhaps MSG_MORE someday */
@@ -1144,7 +1102,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 		case AF_INET:
 			if (usin->sin_addr.s_addr == htonl(INADDR_ANY) ||
 			    usin->sin_addr.s_addr == htonl(INADDR_BROADCAST) ||
-			    ipv4_is_multicast(usin->sin_addr.s_addr)) {
+			    IN_MULTICAST(ntohl(usin->sin_addr.s_addr))) {
 				ret = -EINVAL;
 				goto out;
 			}
@@ -1175,7 +1133,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 				addr4 = sin6->sin6_addr.s6_addr32[3];
 				if (addr4 == htonl(INADDR_ANY) ||
 				    addr4 == htonl(INADDR_BROADCAST) ||
-				    ipv4_is_multicast(addr4)) {
+				    IN_MULTICAST(ntohl(addr4))) {
 					ret = -EINVAL;
 					goto out;
 				}
@@ -1262,7 +1220,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 		num_sgs = iov_iter_npages(&msg->msg_iter, INT_MAX);
 	}
 	/* size of rm including all sgs */
-	ret = rds_rm_size(msg, num_sgs, &vct);
+	ret = rds_rm_size(msg, num_sgs);
 	if (ret < 0)
 		goto out;
 
@@ -1274,9 +1232,11 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 
 	/* Attach data to the rm */
 	if (payload_len) {
-		rm->data.op_sg = rds_message_alloc_sgs(rm, num_sgs, &ret);
-		if (!rm->data.op_sg)
+		rm->data.op_sg = rds_message_alloc_sgs(rm, num_sgs);
+		if (!rm->data.op_sg) {
+			ret = -ENOMEM;
 			goto out;
+		}
 		ret = rds_message_copy_from_user(rm, &msg->msg_iter, zcopy);
 		if (ret)
 			goto out;
@@ -1287,13 +1247,12 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 
 	/* rds_conn_create has a spinlock that runs with IRQ off.
 	 * Caching the conn in the socket helps a lot. */
-	if (rs->rs_conn && ipv6_addr_equal(&rs->rs_conn->c_faddr, &daddr) &&
-	    rs->rs_tos == rs->rs_conn->c_tos) {
+	if (rs->rs_conn && ipv6_addr_equal(&rs->rs_conn->c_faddr, &daddr))
 		conn = rs->rs_conn;
-	} else {
+	else {
 		conn = rds_conn_create_outgoing(sock_net(sock->sk),
 						&rs->rs_bound_addr, &daddr,
-						rs->rs_transport, rs->rs_tos,
+						rs->rs_transport,
 						sock->sk->sk_allocation,
 						scope_id);
 		if (IS_ERR(conn)) {
@@ -1311,7 +1270,7 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	rm->m_conn_path = cpath;
 
 	/* Parse any control messages the user may have included. */
-	ret = rds_cmsg_send(rs, rm, msg, &allocated_mr, &vct);
+	ret = rds_cmsg_send(rs, rm, msg, &allocated_mr);
 	if (ret) {
 		/* Trigger connection so that its ready for the next retry */
 		if (ret ==  -EAGAIN)
@@ -1389,18 +1348,9 @@ int rds_sendmsg(struct socket *sock, struct msghdr *msg, size_t payload_len)
 	if (ret)
 		goto out;
 	rds_message_put(rm);
-
-	for (ind = 0; ind < vct.indx; ind++)
-		kfree(vct.vec[ind].iov);
-	kfree(vct.vec);
-
 	return payload_len;
 
 out:
-	for (ind = 0; ind < vct.indx; ind++)
-		kfree(vct.vec[ind].iov);
-	kfree(vct.vec);
-
 	/* If the user included a RDMA_MAP cmsg, we allocated a MR on the fly.
 	 * If the sendmsg goes through, we keep the MR. If it fails with EAGAIN
 	 * or in any other way, we need to destroy the MR again */

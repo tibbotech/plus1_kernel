@@ -481,8 +481,7 @@ static struct sk_buff *tx_skb_align_workaround(struct net_device *dev,
 }
 #endif
 
-static netdev_tx_t
-fs_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
+static int fs_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct fs_enet_private *fep = netdev_priv(dev);
 	cbd_t __iomem *bdp;
@@ -501,7 +500,7 @@ fs_enet_start_xmit(struct sk_buff *skb, struct net_device *dev)
 		nr_frags = skb_shinfo(skb)->nr_frags;
 		frag = skb_shinfo(skb)->frags;
 		for (i = 0; i < nr_frags; i++, frag++) {
-			if (!IS_ALIGNED(skb_frag_off(frag), 4)) {
+			if (!IS_ALIGNED(frag->page_offset, 4)) {
 				is_aligned = 0;
 				break;
 			}
@@ -1014,8 +1013,8 @@ static int fs_enet_probe(struct platform_device *ofdev)
 	spin_lock_init(&fep->tx_lock);
 
 	mac_addr = of_get_mac_address(ofdev->dev.of_node);
-	if (!IS_ERR(mac_addr))
-		ether_addr_copy(ndev->dev_addr, mac_addr);
+	if (mac_addr)
+		memcpy(ndev->dev_addr, mac_addr, ETH_ALEN);
 
 	ret = fep->ops->allocate_bd(ndev);
 	if (ret)

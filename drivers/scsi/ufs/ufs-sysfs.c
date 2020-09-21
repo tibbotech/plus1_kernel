@@ -122,20 +122,17 @@ static void ufshcd_auto_hibern8_update(struct ufs_hba *hba, u32 ahit)
 {
 	unsigned long flags;
 
-	if (!ufshcd_is_auto_hibern8_supported(hba))
+	if (!(hba->capabilities & MASK_AUTO_HIBERN8_SUPPORT))
 		return;
 
 	spin_lock_irqsave(hba->host->host_lock, flags);
-	if (hba->ahit != ahit)
-		hba->ahit = ahit;
+	if (hba->ahit == ahit)
+		goto out_unlock;
+	hba->ahit = ahit;
+	if (!pm_runtime_suspended(hba->dev))
+		ufshcd_writel(hba, hba->ahit, REG_AUTO_HIBERNATE_IDLE_TIMER);
+out_unlock:
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
-	if (!pm_runtime_suspended(hba->dev)) {
-		pm_runtime_get_sync(hba->dev);
-		ufshcd_hold(hba, false);
-		ufshcd_auto_hibern8_enable(hba);
-		ufshcd_release(hba);
-		pm_runtime_put(hba->dev);
-	}
 }
 
 /* Convert Auto-Hibernate Idle Timer register value to microseconds */
@@ -167,7 +164,7 @@ static ssize_t auto_hibern8_show(struct device *dev,
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 
-	if (!ufshcd_is_auto_hibern8_supported(hba))
+	if (!(hba->capabilities & MASK_AUTO_HIBERN8_SUPPORT))
 		return -EOPNOTSUPP;
 
 	return snprintf(buf, PAGE_SIZE, "%d\n", ufshcd_ahit_to_us(hba->ahit));
@@ -180,7 +177,7 @@ static ssize_t auto_hibern8_store(struct device *dev,
 	struct ufs_hba *hba = dev_get_drvdata(dev);
 	unsigned int timer;
 
-	if (!ufshcd_is_auto_hibern8_supported(hba))
+	if (!(hba->capabilities & MASK_AUTO_HIBERN8_SUPPORT))
 		return -EOPNOTSUPP;
 
 	if (kstrtouint(buf, 0, &timer))
@@ -574,10 +571,9 @@ static ssize_t _name##_show(struct device *dev,				\
 	int ret;							\
 	int desc_len = QUERY_DESC_MAX_SIZE;				\
 	u8 *desc_buf;							\
-									\
 	desc_buf = kzalloc(QUERY_DESC_MAX_SIZE, GFP_ATOMIC);		\
-	if (!desc_buf)                                                  \
-		return -ENOMEM;                                         \
+	if (!desc_buf)							\
+		return -ENOMEM;						\
 	ret = ufshcd_query_descriptor_retry(hba,			\
 		UPIU_QUERY_OPCODE_READ_DESC, QUERY_DESC_IDN_DEVICE,	\
 		0, 0, desc_buf, &desc_len);				\
@@ -586,13 +582,14 @@ static ssize_t _name##_show(struct device *dev,				\
 		goto out;						\
 	}								\
 	index = desc_buf[DEVICE_DESC_PARAM##_pname];			\
-	kfree(desc_buf);						\
-	desc_buf = NULL;						\
-	ret = ufshcd_read_string_desc(hba, index, &desc_buf,		\
-				      SD_ASCII_STD);			\
-	if (ret < 0)							\
+	memset(desc_buf, 0, QUERY_DESC_MAX_SIZE);			\
+	if (ufshcd_read_string_desc(hba, index, desc_buf,		\
+		QUERY_DESC_MAX_SIZE, true)) {				\
+		ret = -EINVAL;						\
 		goto out;						\
-	ret = snprintf(buf, PAGE_SIZE, "%s\n", desc_buf);		\
+	}								\
+	ret = snprintf(buf, PAGE_SIZE, "%s\n",				\
+		desc_buf + QUERY_DESC_HDR_SIZE);			\
 out:									\
 	kfree(desc_buf);						\
 	return ret;							\

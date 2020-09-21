@@ -1,24 +1,25 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (c) 2017, Fuzhou Rockchip Electronics Co., Ltd
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
 
 #include <linux/backlight.h>
-#include <linux/delay.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/regulator/consumer.h>
 
-#include <video/mipi_display.h>
-
+#include <drm/drmP.h>
 #include <drm/drm_crtc.h>
-#include <drm/drm_device.h>
 #include <drm/drm_mipi_dsi.h>
-#include <drm/drm_modes.h>
 #include <drm/drm_panel.h>
-#include <drm/drm_print.h>
+
+#include <video/mipi_display.h>
 
 struct panel_init_cmd {
 	size_t len;
@@ -54,6 +55,7 @@ struct innolux_panel {
 
 	struct backlight_device *backlight;
 	struct regulator_bulk_data *supplies;
+	unsigned int num_supplies;
 	struct gpio_desc *enable_gpio;
 
 	bool prepared;
@@ -68,11 +70,17 @@ static inline struct innolux_panel *to_innolux_panel(struct drm_panel *panel)
 static int innolux_panel_disable(struct drm_panel *panel)
 {
 	struct innolux_panel *innolux = to_innolux_panel(panel);
+	int err;
 
 	if (!innolux->enabled)
 		return 0;
 
 	backlight_disable(innolux->backlight);
+
+	err = mipi_dsi_dcs_set_display_off(innolux->link);
+	if (err < 0)
+		DRM_DEV_ERROR(panel->dev, "failed to set display off: %d\n",
+			      err);
 
 	innolux->enabled = false;
 
@@ -86,11 +94,6 @@ static int innolux_panel_unprepare(struct drm_panel *panel)
 
 	if (!innolux->prepared)
 		return 0;
-
-	err = mipi_dsi_dcs_set_display_off(innolux->link);
-	if (err < 0)
-		DRM_DEV_ERROR(panel->dev, "failed to set display off: %d\n",
-			      err);
 
 	err = mipi_dsi_dcs_enter_sleep_mode(innolux->link);
 	if (err < 0) {
@@ -503,7 +506,8 @@ static int innolux_panel_add(struct mipi_dsi_device *dsi,
 
 static void innolux_panel_del(struct innolux_panel *innolux)
 {
-	drm_panel_remove(&innolux->base);
+	if (innolux->base.dev)
+		drm_panel_remove(&innolux->base);
 }
 
 static int innolux_panel_probe(struct mipi_dsi_device *dsi)

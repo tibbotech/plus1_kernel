@@ -568,6 +568,10 @@ static int ov2680_power_on(struct ov2680_dev *sensor)
 	if (ret < 0)
 		return ret;
 
+	ret = ov2680_mode_restore(sensor);
+	if (ret < 0)
+		goto disable;
+
 	sensor->is_enabled = true;
 
 	/* Set clock lane into LP-11 state */
@@ -576,6 +580,12 @@ static int ov2680_power_on(struct ov2680_dev *sensor)
 	ov2680_stream_disable(sensor);
 
 	return 0;
+
+disable:
+	dev_err(dev, "failed to enable sensor: %d\n", ret);
+	ov2680_power_off(sensor);
+
+	return ret;
 }
 
 static int ov2680_s_power(struct v4l2_subdev *sd, int on)
@@ -596,8 +606,6 @@ static int ov2680_s_power(struct v4l2_subdev *sd, int on)
 		ret = v4l2_ctrl_handler_setup(&sensor->ctrls.handler);
 		if (ret < 0)
 			return ret;
-
-		ret = ov2680_mode_restore(sensor);
 	}
 
 	return ret;
@@ -675,7 +683,7 @@ static int ov2680_get_fmt(struct v4l2_subdev *sd,
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 		fmt = v4l2_subdev_get_try_format(&sensor->sd, cfg, format->pad);
 #else
-		ret = -EINVAL;
+		ret = -ENOTTY;
 #endif
 	} else {
 		fmt = &sensor->fmt;
@@ -723,7 +731,10 @@ static int ov2680_set_fmt(struct v4l2_subdev *sd,
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 		try_fmt = v4l2_subdev_get_try_format(sd, cfg, 0);
 		format->format = *try_fmt;
+#else
+		ret = -ENOTTY;
 #endif
+
 		goto unlock;
 	}
 
@@ -915,7 +926,7 @@ static int ov2680_mode_init(struct ov2680_dev *sensor)
 	return 0;
 }
 
-static int ov2680_v4l2_register(struct ov2680_dev *sensor)
+static int ov2680_v4l2_init(struct ov2680_dev *sensor)
 {
 	const struct v4l2_ctrl_ops *ops = &ov2680_ctrl_ops;
 	struct ov2680_ctrls *ctrls = &sensor->ctrls;
@@ -1020,7 +1031,7 @@ static int ov2680_check_id(struct ov2680_dev *sensor)
 	return 0;
 }
 
-static int ov2680_parse_dt(struct ov2680_dev *sensor)
+static int ov2860_parse_dt(struct ov2680_dev *sensor)
 {
 	struct device *dev = ov2680_to_dev(sensor);
 	int ret;
@@ -1061,7 +1072,7 @@ static int ov2680_probe(struct i2c_client *client)
 
 	sensor->i2c_client = client;
 
-	ret = ov2680_parse_dt(sensor);
+	ret = ov2860_parse_dt(sensor);
 	if (ret < 0)
 		return -EINVAL;
 
@@ -1077,20 +1088,26 @@ static int ov2680_probe(struct i2c_client *client)
 
 	mutex_init(&sensor->lock);
 
-	ret = ov2680_check_id(sensor);
+	ret = ov2680_v4l2_init(sensor);
 	if (ret < 0)
 		goto lock_destroy;
 
-	ret = ov2680_v4l2_register(sensor);
+	ret = ov2680_check_id(sensor);
 	if (ret < 0)
-		goto lock_destroy;
+		goto error_cleanup;
 
 	dev_info(dev, "ov2680 init correctly\n");
 
 	return 0;
 
-lock_destroy:
+error_cleanup:
 	dev_err(dev, "ov2680 init fail: %d\n", ret);
+
+	media_entity_cleanup(&sensor->sd.entity);
+	v4l2_async_unregister_subdev(&sensor->sd);
+	v4l2_ctrl_handler_free(&sensor->ctrls.handler);
+
+lock_destroy:
 	mutex_destroy(&sensor->lock);
 
 	return ret;

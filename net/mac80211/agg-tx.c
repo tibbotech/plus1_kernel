@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * HT handling
  *
@@ -10,6 +9,10 @@
  * Copyright 2007-2010, Intel Corporation
  * Copyright(c) 2015-2017 Intel Deutschland GmbH
  * Copyright (C) 2018 - 2019 Intel Corporation
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/ieee80211.h>
@@ -226,7 +229,7 @@ ieee80211_agg_start_txq(struct sta_info *sta, int tid, bool enable)
 	clear_bit(IEEE80211_TXQ_STOP, &txqi->flags);
 	local_bh_disable();
 	rcu_read_lock();
-	schedule_and_wake_txq(sta->sdata->local, txqi);
+	drv_wake_tx_queue(sta->sdata->local, txqi);
 	rcu_read_unlock();
 	local_bh_enable();
 }

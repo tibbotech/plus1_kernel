@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 #
 # TPM device configuration
 #
@@ -6,7 +5,7 @@
 menuconfig TCG_TPM
 	tristate "TPM Hardware Support"
 	depends on HAS_IOMEM
-	imply SECURITYFS
+	select SECURITYFS
 	select CRYPTO
 	select CRYPTO_HASH_INFO
 	---help---
@@ -66,19 +65,6 @@ config TCG_TIS_SPI
 	  specification (TPM2.0) say Yes and it will be accessible from
 	  within Linux. To compile this driver as a module, choose  M here;
 	  the module will be called tpm_tis_spi.
-
-config TCG_TIS_I2C
-	tristate "TPM Interface Specification 1.3 Interface / TPM 2.0 FIFO Interface - (I2C)"
-	depends on I2C
-	depends on CRC_CCITT
-	select TCG_TIS_CORE
-	---help---
-	  If you have a TPM security chip which is connected to a regular,
-	  non-tcg I2C master (i.e. most embedded platforms) that is compliant with the
-	  TCG TIS 1.3 TPM specification (TPM1.2) or the TCG PTP FIFO
-	  specification (TPM2.0) say Yes and it will be accessible from
-	  within Linux. To compile this driver as a module, choose  M here;
-	  the module will be called tpm_tis_i2c.
 
 config TCG_TIS_I2C_ATMEL
 	tristate "TPM Interface Specification 1.2 Interface (I2C - Atmel)"
@@ -171,17 +157,13 @@ config TCG_CRB
 config TCG_VTPM_PROXY
 	tristate "VTPM Proxy Interface"
 	depends on TCG_TPM
+	select ANON_INODES
 	---help---
 	  This driver proxies for an emulated TPM (vTPM) running in userspace.
 	  A device /dev/vtpmx is provided that creates a device pair
 	  /dev/vtpmX and a server-side file descriptor on which the vTPM
 	  can receive commands.
 
-config TCG_FTPM_TEE
-	tristate "TEE based fTPM Interface"
-	depends on TEE && OPTEE
-	help
-	  This driver proxies for firmware TPM running in TEE.
 
 source "drivers/char/tpm/st33zp24/Kconfig"
 endif # TCG_TPM

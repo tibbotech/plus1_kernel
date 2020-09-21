@@ -1,12 +1,18 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  *  include/linux/mmc/sdio.h
  *
  *  Copyright 2006-2007 Pierre Ossman
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or (at
+ * your option) any later version.
  */
 
 #ifndef LINUX_MMC_SDIO_H
 #define LINUX_MMC_SDIO_H
+
+#include <linux/mmc/host.h>
 
 /* SDIO commands                         type  argument     response */
 #define SD_IO_SEND_OP_COND          5 /* bcr  [23:0] OCR         R4  */
@@ -185,5 +191,7 @@
 #define SDIO_FBR_CSA_DATA	0x0F
 
 #define SDIO_FBR_BLKSIZE	0x10	/* block size (2 bytes) */
+
+void mmc_sdio_force_remove(struct mmc_host *host);
 
 #endif /* LINUX_MMC_SDIO_H */

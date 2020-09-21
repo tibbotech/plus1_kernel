@@ -1,19 +1,16 @@
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
 #include <asm/io.h>
-#ifdef CONFIG_ARM
 #include <asm/exception.h>
 #include <asm/mach/irq.h>
-#else
-#define __exception_irq_entry
-#endif
+#include <linux/ipipe.h>
 #include <linux/irqchip.h>
 #include <linux/irqchip/chained_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h>
 
-#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
+#if defined(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) || defined(CONFIG_MACH_PENTAGRAM_SP7021_BCHIP)
 #define SUPPORT_IRQ_GRP_REG
 #endif
 
@@ -52,7 +49,11 @@ static struct sp_intctl {
 	int hwirq_end;   /* exclude */
 	struct irq_domain *domain;
 	struct device_node *node;
+#ifdef CONFIG_IPIPE
+	ipipe_spinlock_t	lock;
+#else	
 	spinlock_t lock;
+#endif
 	int virq[2];
 } sp_intc;
 
@@ -68,11 +69,18 @@ static struct irq_chip sp_intc_chip = {
 	.irq_mask = sp_intc_mask_irq,
 	.irq_unmask = sp_intc_unmask_irq,
 	.irq_set_type = sp_intc_set_type,
+#ifdef CONFIG_IPIPE
+	.irq_mask_ack	= sp_intc_mask_irq,
+	.irq_hold		= sp_intc_mask_irq,
+	.irq_release	= sp_intc_unmask_irq,
+	.flags			= IRQCHIP_PIPELINE_SAFE,
+#endif	
 };
 
 static void sp_intc_ack_irq(struct irq_data *data)
 {
 	u32 idx, mask;
+	unsigned long flags;
 
 	dprn("%s: hwirq=%lu\n", __func__, data->hwirq);
 
@@ -82,14 +90,15 @@ static void sp_intc_ack_irq(struct irq_data *data)
 	idx = data->hwirq / 32;
 	mask = (1 << (data->hwirq % 32));
 
-	spin_lock(&sp_intc.lock);
+	raw_spin_lock_irqsave(&sp_intc.lock, flags);
 	writel_relaxed(mask, &sp_intc.g1->intr_clr[idx]);
-	spin_unlock(&sp_intc.lock);
+	raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 }
 
 static void sp_intc_mask_irq(struct irq_data *data)
 {
 	u32 idx, mask;
+	unsigned long flags;
 
 	dprn("%s: hwirq=%lu\n", __func__, data->hwirq);
 
@@ -98,16 +107,17 @@ static void sp_intc_mask_irq(struct irq_data *data)
 
 	idx = data->hwirq / 32;
 
-	spin_lock(&sp_intc.lock);
+	raw_spin_lock_irqsave(&sp_intc.lock, flags);
 	mask = readl_relaxed(&sp_intc.g0->intr_mask[idx]);
 	mask &= ~(1 << (data->hwirq % 32));
 	writel_relaxed(mask, &sp_intc.g0->intr_mask[idx]);
-	spin_unlock(&sp_intc.lock);
+	raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 }
 
 static void sp_intc_unmask_irq(struct irq_data *data)
 {
 	u32 idx, mask;
+	unsigned long flags;
 
 	dprn("%s: hwirq=%lu\n", __func__, data->hwirq);
 
@@ -115,11 +125,11 @@ static void sp_intc_unmask_irq(struct irq_data *data)
 		return;
 
 	idx = data->hwirq / 32;
-	spin_lock(&sp_intc.lock);
+	raw_spin_lock_irqsave(&sp_intc.lock, flags);
 	mask = readl_relaxed(&sp_intc.g0->intr_mask[idx]);
 	mask |= (1 << (data->hwirq % 32));
 	writel_relaxed(mask, &sp_intc.g0->intr_mask[idx]);
-	spin_unlock(&sp_intc.lock);
+	raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 }
 
 static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
@@ -144,7 +154,7 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 
 	idx = data->hwirq / 32;
 
-	spin_lock_irqsave(&sp_intc.lock, flags);
+	raw_spin_lock_irqsave(&sp_intc.lock, flags);
 
 	edge_type = readl_relaxed(&sp_intc.g0->intr_type[idx]);
 	trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
@@ -168,12 +178,12 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	default:
-		spin_unlock_irqrestore(&sp_intc.lock, flags);
+		raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 		pr_err("%s: type=%d\n", __func__, flow_type);
 		return -EBADR;
 	}
 
-	spin_unlock_irqrestore(&sp_intc.lock, flags);
+	raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 
 	return IRQ_SET_MASK_OK;
 }
@@ -182,6 +192,7 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 static void sp_intc_set_prio(u32 hwirq, u32 prio)
 {
 	u32 idx, mask;
+	unsigned long flags;
 
 	pr_info("set hwirq=%u prio=%u\n", hwirq, prio);
 
@@ -190,14 +201,14 @@ static void sp_intc_set_prio(u32 hwirq, u32 prio)
 
 	idx = hwirq / 32;
 
-	spin_lock(&sp_intc.lock);
+	raw_spin_lock_irqsave(&sp_intc.lock, flags);
 	mask = readl_relaxed(&sp_intc.g0->priority[idx]);
 	if (prio)
 		mask |= (1 << (hwirq % 32));
 	else
 		mask &= ~(1 << (hwirq % 32));
 	writel_relaxed(mask, &sp_intc.g0->priority[idx]);
-	spin_unlock(&sp_intc.lock);
+	raw_spin_unlock_irqrestore(&sp_intc.lock, flags);
 }
 
 /* return -1 if no interrupt # */
@@ -253,7 +264,7 @@ static void sp_intc_handle_ext0_cascaded(struct irq_desc *desc)
         chained_irq_enter(host_chip, desc);
 
 	while ((hwirq = sp_intc_get_ext0_irq()) >= 0) {
-                generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+                ipipe_handle_demuxed_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
         }
 
         chained_irq_exit(host_chip, desc);
@@ -267,7 +278,7 @@ static void sp_intc_handle_ext1_cascaded(struct irq_desc *desc)
         chained_irq_enter(host_chip, desc);
 
 	while ((hwirq = sp_intc_get_ext1_irq()) >= 0) {
-                generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+                ipipe_handle_demuxed_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
         }
 
         chained_irq_exit(host_chip, desc);
@@ -391,7 +402,7 @@ int __init sp_intc_init(int hwirq_start, int irqs, void __iomem *base0, void __i
 	return 0;
 }
 
-#if defined(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) || defined(CONFIG_SOC_I143)
+#ifdef CONFIG_MACH_PENTAGRAM_SP7021_ACHIP
 static cpumask_t *u2cpumask(u32 mask, cpumask_t *cpumask)
 {
 	unsigned int i;
@@ -465,7 +476,7 @@ int __init sp_intc_init_dt(struct device_node *node, struct device_node *parent)
 
 	spin_lock_init(&sp_intc.lock);
 
-	if (parent) {
+        if (parent) {
 		sp_intc.virq[0] = irq_of_parse_and_map(node, 0);
 		if (sp_intc.virq[0]) {
 			irq_set_chained_handler_and_data(sp_intc.virq[0],
@@ -485,7 +496,7 @@ int __init sp_intc_init_dt(struct device_node *node, struct device_node *parent)
 		set_handle_irq(sp_intc_handle_irq);
 	}
 
-	return 0;
+        return 0;
 }
 IRQCHIP_DECLARE(sp_intc, "sunplus,sp-intc", sp_intc_init_dt);
 #endif

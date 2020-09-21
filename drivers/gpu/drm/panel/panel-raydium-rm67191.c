@@ -1,30 +1,30 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Raydium RM67191 MIPI-DSI panel driver
+ * i.MX drm driver - Raydium MIPI-DSI panel driver
  *
- * Copyright 2019 NXP
+ * Copyright (C) 2017 NXP
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
-#include <linux/backlight.h>
-#include <linux/delay.h>
+#include <drm/drmP.h>
+#include <drm/drm_crtc.h>
+#include <drm/drm_mipi_dsi.h>
+#include <drm/drm_panel.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/regulator/consumer.h>
-
 #include <video/mipi_display.h>
 #include <video/of_videomode.h>
 #include <video/videomode.h>
-
-#include <drm/drm_crtc.h>
-#include <drm/drm_mipi_dsi.h>
-#include <drm/drm_panel.h>
-#include <drm/drm_print.h>
-
-/* Panel specific color-format bits */
-#define COL_FMT_16BPP 0x55
-#define COL_FMT_18BPP 0x66
-#define COL_FMT_24BPP 0x77
 
 /* Write Manufacture Command Set Control */
 #define WRMAUCCTR 0xFE
@@ -191,43 +191,24 @@ static const u32 rad_bus_formats[] = {
 	MEDIA_BUS_FMT_RGB565_1X16,
 };
 
-static const u32 rad_bus_flags = DRM_BUS_FLAG_DE_LOW |
-				 DRM_BUS_FLAG_PIXDATA_NEGEDGE;
-
 struct rad_panel {
-	struct drm_panel panel;
+	struct drm_panel base;
 	struct mipi_dsi_device *dsi;
 
 	struct gpio_desc *reset;
 	struct backlight_device *backlight;
 
-	struct regulator_bulk_data *supplies;
-	unsigned int num_supplies;
-
 	bool prepared;
 	bool enabled;
-};
 
-static const struct drm_display_mode default_mode = {
-	.clock = 132000,
-	.hdisplay = 1080,
-	.hsync_start = 1080 + 20,
-	.hsync_end = 1080 + 20 + 2,
-	.htotal = 1080 + 20 + 2 + 34,
-	.vdisplay = 1920,
-	.vsync_start = 1920 + 10,
-	.vsync_end = 1920 + 10 + 2,
-	.vtotal = 1920 + 10 + 2 + 4,
-	.vrefresh = 60,
-	.width_mm = 68,
-	.height_mm = 121,
-	.flags = DRM_MODE_FLAG_NHSYNC |
-		 DRM_MODE_FLAG_NVSYNC,
+	struct videomode vm;
+	u32 width_mm;
+	u32 height_mm;
 };
 
 static inline struct rad_panel *to_rad_panel(struct drm_panel *panel)
 {
-	return container_of(panel, struct rad_panel, panel);
+	return container_of(panel, struct rad_panel, base);
 }
 
 static int rad_panel_push_cmd_list(struct mipi_dsi_device *dsi)
@@ -252,34 +233,29 @@ static int color_format_from_dsi_format(enum mipi_dsi_pixel_format format)
 {
 	switch (format) {
 	case MIPI_DSI_FMT_RGB565:
-		return COL_FMT_16BPP;
+		return 0x55;
 	case MIPI_DSI_FMT_RGB666:
 	case MIPI_DSI_FMT_RGB666_PACKED:
-		return COL_FMT_18BPP;
+		return 0x66;
 	case MIPI_DSI_FMT_RGB888:
-		return COL_FMT_24BPP;
+		return 0x77;
 	default:
-		return COL_FMT_24BPP; /* for backward compatibility */
+		return 0x77; /* for backward compatibility */
 	}
 };
 
 static int rad_panel_prepare(struct drm_panel *panel)
 {
 	struct rad_panel *rad = to_rad_panel(panel);
-	int ret;
 
 	if (rad->prepared)
 		return 0;
 
-	ret = regulator_bulk_enable(rad->num_supplies, rad->supplies);
-	if (ret)
-		return ret;
-
-	if (rad->reset) {
-		gpiod_set_value_cansleep(rad->reset, 1);
-		usleep_range(3000, 5000);
-		gpiod_set_value_cansleep(rad->reset, 0);
-		usleep_range(18000, 20000);
+	if (rad->reset != NULL) {
+		gpiod_set_value(rad->reset, 0);
+		usleep_range(5000, 10000);
+		gpiod_set_value(rad->reset, 1);
+		usleep_range(20000, 25000);
 	}
 
 	rad->prepared = true;
@@ -290,25 +266,21 @@ static int rad_panel_prepare(struct drm_panel *panel)
 static int rad_panel_unprepare(struct drm_panel *panel)
 {
 	struct rad_panel *rad = to_rad_panel(panel);
-	int ret;
+	struct device *dev = &rad->dsi->dev;
 
 	if (!rad->prepared)
 		return 0;
 
-	/*
-	 * Right after asserting the reset, we need to release it, so that the
-	 * touch driver can have an active connection with the touch controller
-	 * even after the display is turned off.
-	 */
-	if (rad->reset) {
-		gpiod_set_value_cansleep(rad->reset, 1);
-		usleep_range(15000, 17000);
-		gpiod_set_value_cansleep(rad->reset, 0);
+	if (rad->enabled) {
+		DRM_DEV_ERROR(dev, "Panel still enabled!\n");
+		return -EPERM;
 	}
 
-	ret = regulator_bulk_disable(rad->num_supplies, rad->supplies);
-	if (ret)
-		return ret;
+	if (rad->reset != NULL) {
+		gpiod_set_value(rad->reset, 0);
+		usleep_range(15000, 17000);
+		gpiod_set_value(rad->reset, 1);
+	}
 
 	rad->prepared = false;
 
@@ -321,10 +293,16 @@ static int rad_panel_enable(struct drm_panel *panel)
 	struct mipi_dsi_device *dsi = rad->dsi;
 	struct device *dev = &dsi->dev;
 	int color_format = color_format_from_dsi_format(dsi->format);
+	u16 brightness;
 	int ret;
 
 	if (rad->enabled)
 		return 0;
+
+	if (!rad->prepared) {
+		DRM_DEV_ERROR(dev, "Panel not prepared!\n");
+		return -EPERM;
+	}
 
 	dsi->mode_flags |= MIPI_DSI_MODE_LPM;
 
@@ -369,9 +347,17 @@ static int rad_panel_enable(struct drm_panel *panel)
 	/* Set pixel format */
 	ret = mipi_dsi_dcs_set_pixel_format(dsi, color_format);
 	DRM_DEV_DEBUG_DRIVER(dev, "Interface color format set to 0x%x\n",
-			     color_format);
+				color_format);
 	if (ret < 0) {
 		DRM_DEV_ERROR(dev, "Failed to set pixel format (%d)\n", ret);
+		goto fail;
+	}
+	/* Set display brightness */
+	brightness = rad->backlight->props.brightness;
+	ret = mipi_dsi_dcs_set_display_brightness(dsi, brightness);
+	if (ret < 0) {
+		DRM_DEV_ERROR(dev, "Failed to set display brightness (%d)\n",
+			      ret);
 		goto fail;
 	}
 	/* Exit sleep mode */
@@ -381,7 +367,7 @@ static int rad_panel_enable(struct drm_panel *panel)
 		goto fail;
 	}
 
-	usleep_range(5000, 7000);
+	usleep_range(5000, 10000);
 
 	ret = mipi_dsi_dcs_set_display_on(dsi);
 	if (ret < 0) {
@@ -396,7 +382,8 @@ static int rad_panel_enable(struct drm_panel *panel)
 	return 0;
 
 fail:
-	gpiod_set_value_cansleep(rad->reset, 1);
+	if (rad->reset != NULL)
+		gpiod_set_value(rad->reset, 0);
 
 	return ret;
 }
@@ -415,7 +402,7 @@ static int rad_panel_disable(struct drm_panel *panel)
 
 	backlight_disable(rad->backlight);
 
-	usleep_range(10000, 12000);
+	usleep_range(10000, 15000);
 
 	ret = mipi_dsi_dcs_set_display_off(dsi);
 	if (ret < 0) {
@@ -438,28 +425,42 @@ static int rad_panel_disable(struct drm_panel *panel)
 
 static int rad_panel_get_modes(struct drm_panel *panel)
 {
+	struct rad_panel *rad = to_rad_panel(panel);
+	struct device *dev = &rad->dsi->dev;
 	struct drm_connector *connector = panel->connector;
 	struct drm_display_mode *mode;
+	u32 *bus_flags = &connector->display_info.bus_flags;
+	int ret;
 
-	mode = drm_mode_duplicate(panel->drm, &default_mode);
+	mode = drm_mode_create(connector->dev);
 	if (!mode) {
-		DRM_DEV_ERROR(panel->dev, "failed to add mode %ux%ux@%u\n",
-			      default_mode.hdisplay, default_mode.vdisplay,
-			      default_mode.vrefresh);
-		return -ENOMEM;
+		DRM_DEV_ERROR(dev, "Failed to create display mode!\n");
+		return 0;
 	}
 
-	drm_mode_set_name(mode);
+	drm_display_mode_from_videomode(&rad->vm, mode);
+	mode->width_mm = rad->width_mm;
+	mode->height_mm = rad->height_mm;
+	connector->display_info.width_mm = rad->width_mm;
+	connector->display_info.height_mm = rad->height_mm;
 	mode->type = DRM_MODE_TYPE_DRIVER | DRM_MODE_TYPE_PREFERRED;
+
+	if (rad->vm.flags & DISPLAY_FLAGS_DE_HIGH)
+		*bus_flags |= DRM_BUS_FLAG_DE_HIGH;
+	if (rad->vm.flags & DISPLAY_FLAGS_DE_LOW)
+		*bus_flags |= DRM_BUS_FLAG_DE_LOW;
+	if (rad->vm.flags & DISPLAY_FLAGS_PIXDATA_NEGEDGE)
+		*bus_flags |= DRM_BUS_FLAG_PIXDATA_NEGEDGE;
+	if (rad->vm.flags & DISPLAY_FLAGS_PIXDATA_POSEDGE)
+		*bus_flags |= DRM_BUS_FLAG_PIXDATA_POSEDGE;
+
+	ret = drm_display_info_set_bus_formats(&connector->display_info,
+			rad_bus_formats, ARRAY_SIZE(rad_bus_formats));
+	if (ret)
+		return ret;
+
 	drm_mode_probed_add(panel->connector, mode);
 
-	connector->display_info.width_mm = mode->width_mm;
-	connector->display_info.height_mm = mode->height_mm;
-	connector->display_info.bus_flags = rad_bus_flags;
-
-	drm_display_info_set_bus_formats(&connector->display_info,
-					 rad_bus_formats,
-					 ARRAY_SIZE(rad_bus_formats));
 	return 1;
 }
 
@@ -467,11 +468,14 @@ static int rad_bl_get_brightness(struct backlight_device *bl)
 {
 	struct mipi_dsi_device *dsi = bl_get_data(bl);
 	struct rad_panel *rad = mipi_dsi_get_drvdata(dsi);
+	struct device *dev = &dsi->dev;
 	u16 brightness;
 	int ret;
 
 	if (!rad->prepared)
 		return 0;
+
+	DRM_DEV_DEBUG_DRIVER(dev, "\n");
 
 	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
 
@@ -488,10 +492,13 @@ static int rad_bl_update_status(struct backlight_device *bl)
 {
 	struct mipi_dsi_device *dsi = bl_get_data(bl);
 	struct rad_panel *rad = mipi_dsi_get_drvdata(dsi);
+	struct device *dev = &dsi->dev;
 	int ret = 0;
 
 	if (!rad->prepared)
 		return 0;
+
+	DRM_DEV_DEBUG_DRIVER(dev, "New brightness: %d\n", bl->props.brightness);
 
 	dsi->mode_flags &= ~MIPI_DSI_MODE_LPM;
 
@@ -515,32 +522,31 @@ static const struct drm_panel_funcs rad_panel_funcs = {
 	.get_modes = rad_panel_get_modes,
 };
 
-static const char * const rad_supply_names[] = {
-	"v3p3",
-	"v1p8",
-};
-
-static int rad_init_regulators(struct rad_panel *rad)
-{
-	struct device *dev = &rad->dsi->dev;
-	int i;
-
-	rad->num_supplies = ARRAY_SIZE(rad_supply_names);
-	rad->supplies = devm_kcalloc(dev, rad->num_supplies,
-				     sizeof(*rad->supplies), GFP_KERNEL);
-	if (!rad->supplies)
-		return -ENOMEM;
-
-	for (i = 0; i < rad->num_supplies; i++)
-		rad->supplies[i].supply = rad_supply_names[i];
-
-	return devm_regulator_bulk_get(dev, rad->num_supplies, rad->supplies);
+/*
+ * The clock might range from 66MHz (30Hz refresh rate)
+ * to 132MHz (60Hz refresh rate)
+ */
+static const struct display_timing rad_default_timing = {
+	.pixelclock = { 66000000, 132000000, 132000000 },
+	.hactive = { 1080, 1080, 1080 },
+	.hfront_porch = { 20, 20, 20 },
+	.hsync_len = { 2, 2, 2 },
+	.hback_porch = { 34, 34, 34 },
+	.vactive = { 1920, 1920, 1920 },
+	.vfront_porch = { 10, 10, 10 },
+	.vsync_len = { 2, 2, 2 },
+	.vback_porch = { 4, 4, 4 },
+	.flags = DISPLAY_FLAGS_HSYNC_LOW |
+		 DISPLAY_FLAGS_VSYNC_LOW |
+		 DISPLAY_FLAGS_DE_LOW |
+		 DISPLAY_FLAGS_PIXDATA_NEGEDGE,
 };
 
 static int rad_panel_probe(struct mipi_dsi_device *dsi)
 {
 	struct device *dev = &dsi->dev;
 	struct device_node *np = dev->of_node;
+	struct device_node *timings;
 	struct rad_panel *panel;
 	struct backlight_properties bl_props;
 	int ret;
@@ -575,49 +581,70 @@ static int rad_panel_probe(struct mipi_dsi_device *dsi)
 		default:
 			dev_warn(dev, "invalid video mode %d\n", video_mode);
 			break;
+
 		}
 	}
 
 	ret = of_property_read_u32(np, "dsi-lanes", &dsi->lanes);
-	if (ret) {
+	if (ret < 0) {
 		dev_err(dev, "Failed to get dsi-lanes property (%d)\n", ret);
 		return ret;
 	}
 
-	panel->reset = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
+	/*
+	 * 'display-timings' is optional, so verify if the node is present
+	 * before calling of_get_videomode so we won't get console error
+	 * messages
+	 */
+	timings = of_get_child_by_name(np, "display-timings");
+	if (timings) {
+		of_node_put(timings);
+		ret = of_get_videomode(np, &panel->vm, 0);
+	} else {
+		videomode_from_timing(&rad_default_timing, &panel->vm);
+	}
+	if (ret < 0)
+		return ret;
+
+	of_property_read_u32(np, "panel-width-mm", &panel->width_mm);
+	of_property_read_u32(np, "panel-height-mm", &panel->height_mm);
+
+	panel->reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
+
 	if (IS_ERR(panel->reset))
-		return PTR_ERR(panel->reset);
+		panel->reset = NULL;
+	else
+		gpiod_set_value(panel->reset, 0);
+
 
 	memset(&bl_props, 0, sizeof(bl_props));
 	bl_props.type = BACKLIGHT_RAW;
 	bl_props.brightness = 255;
 	bl_props.max_brightness = 255;
 
-	panel->backlight = devm_backlight_device_register(dev, dev_name(dev),
-							  dev, dsi, &rad_bl_ops,
-							  &bl_props);
+	panel->backlight = devm_backlight_device_register(
+				dev, dev_name(dev),
+				dev, dsi,
+				&rad_bl_ops, &bl_props);
 	if (IS_ERR(panel->backlight)) {
 		ret = PTR_ERR(panel->backlight);
 		dev_err(dev, "Failed to register backlight (%d)\n", ret);
 		return ret;
 	}
 
-	ret = rad_init_regulators(panel);
-	if (ret)
-		return ret;
-
-	drm_panel_init(&panel->panel);
-	panel->panel.funcs = &rad_panel_funcs;
-	panel->panel.dev = dev;
+	drm_panel_init(&panel->base);
+	panel->base.funcs = &rad_panel_funcs;
+	panel->base.dev = dev;
 	dev_set_drvdata(dev, panel);
 
-	ret = drm_panel_add(&panel->panel);
-	if (ret)
+	ret = drm_panel_add(&panel->base);
+
+	if (ret < 0)
 		return ret;
 
 	ret = mipi_dsi_attach(dsi);
-	if (ret)
-		drm_panel_remove(&panel->panel);
+	if (ret < 0)
+		drm_panel_remove(&panel->base);
 
 	return ret;
 }
@@ -629,11 +656,11 @@ static int rad_panel_remove(struct mipi_dsi_device *dsi)
 	int ret;
 
 	ret = mipi_dsi_detach(dsi);
-	if (ret)
+	if (ret < 0)
 		DRM_DEV_ERROR(dev, "Failed to detach from host (%d)\n",
-			      ret);
+			ret);
 
-	drm_panel_remove(&rad->panel);
+	drm_panel_remove(&rad->base);
 
 	return 0;
 }
@@ -642,13 +669,48 @@ static void rad_panel_shutdown(struct mipi_dsi_device *dsi)
 {
 	struct rad_panel *rad = mipi_dsi_get_drvdata(dsi);
 
-	rad_panel_disable(&rad->panel);
-	rad_panel_unprepare(&rad->panel);
+	rad_panel_disable(&rad->base);
+	rad_panel_unprepare(&rad->base);
 }
+
+#ifdef CONFIG_PM
+static int rad_panel_suspend(struct device *dev)
+{
+	struct rad_panel *rad = dev_get_drvdata(dev);
+
+	if (!rad->reset)
+		return 0;
+
+	devm_gpiod_put(dev, rad->reset);
+	rad->reset = NULL;
+
+	return 0;
+}
+
+static int rad_panel_resume(struct device *dev)
+{
+	struct rad_panel *rad = dev_get_drvdata(dev);
+
+	if (rad->reset)
+		return 0;
+
+	rad->reset = devm_gpiod_get(dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(rad->reset))
+		rad->reset = NULL;
+
+	return PTR_ERR_OR_ZERO(rad->reset);
+}
+
+#endif
+
+static const struct dev_pm_ops rad_pm_ops = {
+	SET_RUNTIME_PM_OPS(rad_panel_suspend, rad_panel_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(rad_panel_suspend, rad_panel_resume)
+};
 
 static const struct of_device_id rad_of_match[] = {
 	{ .compatible = "raydium,rm67191", },
-	{ /* sentinel */ }
+	{ }
 };
 MODULE_DEVICE_TABLE(of, rad_of_match);
 
@@ -656,6 +718,7 @@ static struct mipi_dsi_driver rad_panel_driver = {
 	.driver = {
 		.name = "panel-raydium-rm67191",
 		.of_match_table = rad_of_match,
+		.pm	= &rad_pm_ops,
 	},
 	.probe = rad_panel_probe,
 	.remove = rad_panel_remove,

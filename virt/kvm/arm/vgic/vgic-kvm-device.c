@@ -1,9 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * VGIC: KVM DEVICE API
  *
  * Copyright (C) 2015 ARM Ltd.
  * Author: Marc Zyngier <marc.zyngier@arm.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 #include <linux/kvm_host.h>
 #include <kvm/arm_vgic.h>
@@ -17,7 +25,7 @@
 int vgic_check_ioaddr(struct kvm *kvm, phys_addr_t *ioaddr,
 		      phys_addr_t addr, phys_addr_t alignment)
 {
-	if (addr & ~kvm_phys_mask(kvm))
+	if (addr & ~KVM_PHYS_MASK)
 		return -E2BIG;
 
 	if (!IS_ALIGNED(addr, alignment))

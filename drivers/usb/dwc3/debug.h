@@ -117,35 +117,6 @@ dwc3_gadget_link_string(enum dwc3_link_state link_state)
 }
 
 /**
- * dwc3_gadget_hs_link_string - returns highspeed and below link name
- * @link_state: link state code
- */
-static inline const char *
-dwc3_gadget_hs_link_string(enum dwc3_link_state link_state)
-{
-	switch (link_state) {
-	case DWC3_LINK_STATE_U0:
-		return "On";
-	case DWC3_LINK_STATE_U2:
-		return "Sleep";
-	case DWC3_LINK_STATE_U3:
-		return "Suspend";
-	case DWC3_LINK_STATE_SS_DIS:
-		return "Disconnected";
-	case DWC3_LINK_STATE_RX_DET:
-		return "Early Suspend";
-	case DWC3_LINK_STATE_RECOV:
-		return "Recovery";
-	case DWC3_LINK_STATE_RESET:
-		return "Reset";
-	case DWC3_LINK_STATE_RESUME:
-		return "Resume";
-	default:
-		return "UNKNOWN link state\n";
-	}
-}
-
-/**
  * dwc3_trb_type_string - returns TRB type as a string
  * @type: the type of the TRB
  */
@@ -193,54 +164,51 @@ static inline const char *dwc3_ep0_state_string(enum dwc3_ep0_state state)
  * dwc3_gadget_event_string - returns event name
  * @event: the event code
  */
-static inline const char *dwc3_gadget_event_string(char *str, size_t size,
-		const struct dwc3_event_devt *event)
+static inline const char *
+dwc3_gadget_event_string(char *str, const struct dwc3_event_devt *event)
 {
 	enum dwc3_link_state state = event->event_info & DWC3_LINK_STATE_MASK;
 
 	switch (event->type) {
 	case DWC3_DEVICE_EVENT_DISCONNECT:
-		snprintf(str, size, "Disconnect: [%s]",
+		sprintf(str, "Disconnect: [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_RESET:
-		snprintf(str, size, "Reset [%s]",
-				dwc3_gadget_link_string(state));
+		sprintf(str, "Reset [%s]", dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_CONNECT_DONE:
-		snprintf(str, size, "Connection Done [%s]",
+		sprintf(str, "Connection Done [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_LINK_STATUS_CHANGE:
-		snprintf(str, size, "Link Change [%s]",
+		sprintf(str, "Link Change [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_WAKEUP:
-		snprintf(str, size, "WakeUp [%s]",
-				dwc3_gadget_link_string(state));
+		sprintf(str, "WakeUp [%s]", dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_EOPF:
-		snprintf(str, size, "End-Of-Frame [%s]",
+		sprintf(str, "End-Of-Frame [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_SOF:
-		snprintf(str, size, "Start-Of-Frame [%s]",
+		sprintf(str, "Start-Of-Frame [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_ERRATIC_ERROR:
-		snprintf(str, size, "Erratic Error [%s]",
+		sprintf(str, "Erratic Error [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_CMD_CMPL:
-		snprintf(str, size, "Command Complete [%s]",
+		sprintf(str, "Command Complete [%s]",
 				dwc3_gadget_link_string(state));
 		break;
 	case DWC3_DEVICE_EVENT_OVERFLOW:
-		snprintf(str, size, "Overflow [%s]",
-				dwc3_gadget_link_string(state));
+		sprintf(str, "Overflow [%s]", dwc3_gadget_link_string(state));
 		break;
 	default:
-		snprintf(str, size, "UNKNOWN");
+		sprintf(str, "UNKNOWN");
 	}
 
 	return str;
@@ -250,41 +218,48 @@ static inline const char *dwc3_gadget_event_string(char *str, size_t size,
  * dwc3_ep_event_string - returns event name
  * @event: then event code
  */
-static inline const char *dwc3_ep_event_string(char *str, size_t size,
-		const struct dwc3_event_depevt *event, u32 ep0state)
+static inline const char *
+dwc3_ep_event_string(char *str, const struct dwc3_event_depevt *event,
+		     u32 ep0state)
 {
 	u8 epnum = event->endpoint_number;
 	size_t len;
 	int status;
+	int ret;
 
-	len = scnprintf(str, size, "ep%d%s: ", epnum >> 1,
+	ret = sprintf(str, "ep%d%s: ", epnum >> 1,
 			(epnum & 1) ? "in" : "out");
+	if (ret < 0)
+		return "UNKNOWN";
 
 	status = event->status;
 
 	switch (event->endpoint_event) {
 	case DWC3_DEPEVT_XFERCOMPLETE:
-		len += scnprintf(str + len, size - len,
-				"Transfer Complete (%c%c%c)",
+		len = strlen(str);
+		sprintf(str + len, "Transfer Complete (%c%c%c)",
 				status & DEPEVT_STATUS_SHORT ? 'S' : 's',
 				status & DEPEVT_STATUS_IOC ? 'I' : 'i',
 				status & DEPEVT_STATUS_LST ? 'L' : 'l');
 
+		len = strlen(str);
+
 		if (epnum <= 1)
-			scnprintf(str + len, size - len, " [%s]",
-					dwc3_ep0_state_string(ep0state));
+			sprintf(str + len, " [%s]", dwc3_ep0_state_string(ep0state));
 		break;
 	case DWC3_DEPEVT_XFERINPROGRESS:
-		scnprintf(str + len, size - len,
-				"Transfer In Progress [%d] (%c%c%c)",
+		len = strlen(str);
+
+		sprintf(str + len, "Transfer In Progress [%d] (%c%c%c)",
 				event->parameters,
 				status & DEPEVT_STATUS_SHORT ? 'S' : 's',
 				status & DEPEVT_STATUS_IOC ? 'I' : 'i',
 				status & DEPEVT_STATUS_LST ? 'M' : 'm');
 		break;
 	case DWC3_DEPEVT_XFERNOTREADY:
-		len += scnprintf(str + len, size - len,
-				"Transfer Not Ready [%d]%s",
+		len = strlen(str);
+
+		sprintf(str + len, "Transfer Not Ready [%d]%s",
 				event->parameters,
 				status & DEPEVT_STATUS_TRANSFER_ACTIVE ?
 				" (Active)" : " (Not Active)");
@@ -295,38 +270,36 @@ static inline const char *dwc3_ep_event_string(char *str, size_t size,
 
 			switch (phase) {
 			case DEPEVT_STATUS_CONTROL_DATA:
-				scnprintf(str + len, size - len,
-						" [Data Phase]");
+				strcat(str, " [Data Phase]");
 				break;
 			case DEPEVT_STATUS_CONTROL_STATUS:
-				scnprintf(str + len, size - len,
-						" [Status Phase]");
+				strcat(str, " [Status Phase]");
 			}
 		}
 		break;
 	case DWC3_DEPEVT_RXTXFIFOEVT:
-		scnprintf(str + len, size - len, "FIFO");
+		strcat(str, "FIFO");
 		break;
 	case DWC3_DEPEVT_STREAMEVT:
 		status = event->status;
 
 		switch (status) {
 		case DEPEVT_STREAMEVT_FOUND:
-			scnprintf(str + len, size - len, " Stream %d Found",
+			sprintf(str + ret, " Stream %d Found",
 					event->parameters);
 			break;
 		case DEPEVT_STREAMEVT_NOTFOUND:
 		default:
-			scnprintf(str + len, size - len, " Stream Not Found");
+			strcat(str, " Stream Not Found");
 			break;
 		}
 
 		break;
 	case DWC3_DEPEVT_EPCMDCMPLT:
-		scnprintf(str + len, size - len, "Endpoint Command Complete");
+		strcat(str, "Endpoint Command Complete");
 		break;
 	default:
-		scnprintf(str + len, size - len, "UNKNOWN");
+		sprintf(str, "UNKNOWN");
 	}
 
 	return str;
@@ -366,15 +339,14 @@ static inline const char *dwc3_gadget_event_type_string(u8 event)
 	}
 }
 
-static inline const char *dwc3_decode_event(char *str, size_t size, u32 event,
-		u32 ep0state)
+static inline const char *dwc3_decode_event(char *str, u32 event, u32 ep0state)
 {
 	const union dwc3_event evt = (union dwc3_event) event;
 
 	if (evt.type.is_devspec)
-		return dwc3_gadget_event_string(str, size, &evt.devt);
+		return dwc3_gadget_event_string(str, &evt.devt);
 	else
-		return dwc3_ep_event_string(str, size, &evt.depevt, ep0state);
+		return dwc3_ep_event_string(str, &evt.depevt, ep0state);
 }
 
 static inline const char *dwc3_ep_cmd_status_string(int status)

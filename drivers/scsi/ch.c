@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * SCSI Media Changer device driver for Linux 2.6
  *
@@ -579,6 +578,7 @@ ch_release(struct inode *inode, struct file *file)
 	scsi_changer *ch = file->private_data;
 
 	scsi_device_put(ch->device);
+	ch->device = NULL;
 	file->private_data = NULL;
 	kref_put(&ch->ref, ch_destroy);
 	return 0;

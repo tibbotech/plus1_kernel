@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0-only
 
 menuconfig MACINTOSH_DRIVERS
 	bool "Macintosh device drivers"

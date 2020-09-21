@@ -6,8 +6,6 @@
 #ifdef __KERNEL__
 
 #include <asm/nops.h>
-#include <asm/processor-flags.h>
-#include <linux/jump_label.h>
 
 /*
  * Volatile isn't enough to prevent the compiler from reordering the
@@ -18,13 +16,16 @@
  */
 extern unsigned long __force_order;
 
-void native_write_cr0(unsigned long val);
-
 static inline unsigned long native_read_cr0(void)
 {
 	unsigned long val;
 	asm volatile("mov %%cr0,%0\n\t" : "=r" (val), "=m" (__force_order));
 	return val;
+}
+
+static inline void native_write_cr0(unsigned long val)
+{
+	asm volatile("mov %0,%%cr0": : "r" (val), "m" (__force_order));
 }
 
 static inline unsigned long native_read_cr2(void)
@@ -71,10 +72,27 @@ static inline unsigned long native_read_cr4(void)
 	return val;
 }
 
-void native_write_cr4(unsigned long val);
+static inline void native_write_cr4(unsigned long val)
+{
+	asm volatile("mov %0,%%cr4": : "r" (val), "m" (__force_order));
+}
+
+#ifdef CONFIG_X86_64
+static inline unsigned long native_read_cr8(void)
+{
+	unsigned long cr8;
+	asm volatile("movq %%cr8,%0" : "=r" (cr8));
+	return cr8;
+}
+
+static inline void native_write_cr8(unsigned long val)
+{
+	asm volatile("movq %0,%%cr8" :: "r" (val) : "memory");
+}
+#endif
 
 #ifdef CONFIG_X86_INTEL_MEMORY_PROTECTION_KEYS
-static inline u32 rdpkru(void)
+static inline u32 __read_pkru(void)
 {
 	u32 ecx = 0;
 	u32 edx, pkru;
@@ -89,7 +107,7 @@ static inline u32 rdpkru(void)
 	return pkru;
 }
 
-static inline void wrpkru(u32 pkru)
+static inline void __write_pkru(u32 pkru)
 {
 	u32 ecx = 0, edx = 0;
 
@@ -100,21 +118,8 @@ static inline void wrpkru(u32 pkru)
 	asm volatile(".byte 0x0f,0x01,0xef\n\t"
 		     : : "a" (pkru), "c"(ecx), "d"(edx));
 }
-
-static inline void __write_pkru(u32 pkru)
-{
-	/*
-	 * WRPKRU is relatively expensive compared to RDPKRU.
-	 * Avoid WRPKRU when it would not change the value.
-	 */
-	if (pkru == rdpkru())
-		return;
-
-	wrpkru(pkru);
-}
-
 #else
-static inline u32 rdpkru(void)
+static inline u32 __read_pkru(void)
 {
 	return 0;
 }
@@ -136,7 +141,7 @@ static inline unsigned long __read_cr4(void)
 	return native_read_cr4();
 }
 
-#ifdef CONFIG_PARAVIRT_XXL
+#ifdef CONFIG_PARAVIRT
 #include <asm/paravirt.h>
 #else
 
@@ -186,6 +191,16 @@ static inline void wbinvd(void)
 
 #ifdef CONFIG_X86_64
 
+static inline unsigned long read_cr8(void)
+{
+	return native_read_cr8();
+}
+
+static inline void write_cr8(unsigned long x)
+{
+	native_write_cr8(x);
+}
+
 static inline void load_gs_index(unsigned selector)
 {
 	native_load_gs_index(selector);
@@ -193,7 +208,7 @@ static inline void load_gs_index(unsigned selector)
 
 #endif
 
-#endif /* CONFIG_PARAVIRT_XXL */
+#endif/* CONFIG_PARAVIRT */
 
 static inline void clflush(volatile void *__p)
 {

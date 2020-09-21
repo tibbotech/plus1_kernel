@@ -3,7 +3,6 @@
 // Freescale i.MX7ULP LPSPI driver
 //
 // Copyright 2016 Freescale Semiconductor, Inc.
-// Copyright 2018 NXP Semiconductors
 
 #include <linux/clk.h>
 #include <linux/completion.h>
@@ -24,11 +23,11 @@
 #include <linux/platform_device.h>
 #include <linux/platform_data/dma-imx.h>
 #include <linux/platform_data/spi-imx.h>
-#include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/spi/spi.h>
 #include <linux/spi/spi_bitbang.h>
 #include <linux/types.h>
+#include <linux/pm_runtime.h>
 
 #define DRIVER_NAME "fsl_lpspi"
 
@@ -77,6 +76,7 @@
 #define CFGR1_PCSPOL	BIT(8)
 #define CFGR1_NOSTALL	BIT(3)
 #define CFGR1_MASTER	BIT(0)
+#define FSR_RXCOUNT	(0xFF << 16)
 #define FSR_TXCOUNT	(0xFF)
 #define RSR_RXEMPTY	BIT(1)
 #define TCR_CPOL	BIT(31)
@@ -124,8 +124,6 @@ struct fsl_lpspi_data {
 	bool usedma;
 	struct completion dma_rx_completion;
 	struct completion dma_tx_completion;
-
-	int chipselect[0];
 };
 
 static const struct of_device_id fsl_lpspi_dt_ids[] = {
@@ -187,16 +185,8 @@ static bool fsl_lpspi_can_dma(struct spi_controller *controller,
 		return false;
 
 	bytes_per_word = fsl_lpspi_bytes_per_word(transfer->bits_per_word);
-
-	switch (bytes_per_word)
-	{
-		case 1:
-		case 2:
-		case 4:
-			break;
-		default:
-			return false;
-	}
+	if (bytes_per_word != 1 && bytes_per_word != 2 && bytes_per_word != 4)
+		return false;
 
 	return true;
 }
@@ -230,10 +220,8 @@ static int lpspi_unprepare_xfer_hardware(struct spi_controller *controller)
 static int fsl_lpspi_prepare_message(struct spi_controller *controller,
 				     struct spi_message *msg)
 {
-	struct fsl_lpspi_data *fsl_lpspi =
-					spi_controller_get_devdata(controller);
 	struct spi_device *spi = msg->spi;
-	int gpio = fsl_lpspi->chipselect[spi->chip_select];
+	int gpio = controller->cs_gpios[spi->chip_select];
 
 	if (gpio_is_valid(gpio))
 		gpio_direction_output(gpio, spi->mode & SPI_CS_HIGH ? 0 : 1);
@@ -277,10 +265,10 @@ static void fsl_lpspi_set_cmd(struct fsl_lpspi_data *fsl_lpspi)
 {
 	u32 temp = 0;
 
-	temp |= fsl_lpspi->config.bpw - 1;
-	temp |= (fsl_lpspi->config.mode & 0x3) << 30;
 	if (!fsl_lpspi->is_slave) {
+		temp |= fsl_lpspi->config.bpw - 1;
 		temp |= fsl_lpspi->config.prescale << 27;
+		temp |= (fsl_lpspi->config.mode & 0x3) << 30;
 		temp |= (fsl_lpspi->config.chip_select & 0x3) << 24;
 
 		/*
@@ -295,6 +283,9 @@ static void fsl_lpspi_set_cmd(struct fsl_lpspi_data *fsl_lpspi)
 			else
 				temp |= TCR_CONTC;
 		}
+	} else {
+		temp |= fsl_lpspi->config.bpw - 1;
+		temp |= (fsl_lpspi->config.mode & 0x3) << 30;
 	}
 	writel(temp, fsl_lpspi->base + IMX7ULP_TCR);
 
@@ -488,7 +479,6 @@ static int fsl_lpspi_slave_abort(struct spi_controller *controller)
 		complete(&fsl_lpspi->dma_tx_completion);
 		complete(&fsl_lpspi->dma_rx_completion);
 	}
-
 	return 0;
 }
 
@@ -733,7 +723,7 @@ static int fsl_lpspi_transfer_one(struct spi_controller *controller,
 				  struct spi_transfer *t)
 {
 	struct fsl_lpspi_data *fsl_lpspi =
-					spi_controller_get_devdata(controller);
+				spi_controller_get_devdata(controller);
 	int ret;
 
 	fsl_lpspi->is_first_byte = true;
@@ -779,21 +769,17 @@ static irqreturn_t fsl_lpspi_isr(int irq, void *dev_id)
 
 	if (temp_SR & SR_FCF && (temp_IER & IER_FCIE)) {
 		writel(SR_FCF, fsl_lpspi->base + IMX7ULP_SR);
-			complete(&fsl_lpspi->xfer_done);
+		complete(&fsl_lpspi->xfer_done);
 		return IRQ_HANDLED;
 	}
 
 	return IRQ_NONE;
 }
 
-#ifdef CONFIG_PM
 static int fsl_lpspi_runtime_resume(struct device *dev)
 {
-	struct spi_controller *controller = dev_get_drvdata(dev);
-	struct fsl_lpspi_data *fsl_lpspi;
+	struct fsl_lpspi_data *fsl_lpspi = dev_get_drvdata(dev);
 	int ret;
-
-	fsl_lpspi = spi_controller_get_devdata(controller);
 
 	ret = clk_prepare_enable(fsl_lpspi->clk_per);
 	if (ret)
@@ -810,17 +796,13 @@ static int fsl_lpspi_runtime_resume(struct device *dev)
 
 static int fsl_lpspi_runtime_suspend(struct device *dev)
 {
-	struct spi_controller *controller = dev_get_drvdata(dev);
-	struct fsl_lpspi_data *fsl_lpspi;
-
-	fsl_lpspi = spi_controller_get_devdata(controller);
+	struct fsl_lpspi_data *fsl_lpspi = dev_get_drvdata(dev);
 
 	clk_disable_unprepare(fsl_lpspi->clk_per);
 	clk_disable_unprepare(fsl_lpspi->clk_ipg);
 
 	return 0;
 }
-#endif
 
 static int fsl_lpspi_init_rpm(struct fsl_lpspi_data *fsl_lpspi)
 {
@@ -841,12 +823,15 @@ static int fsl_lpspi_probe(struct platform_device *pdev)
 	struct spi_imx_master *lpspi_platform_info =
 		dev_get_platdata(&pdev->dev);
 	struct resource *res;
-	int i, ret, irq;
+	int i, ret, irq, num_cs;
 	u32 temp;
-	bool is_slave;
 
-	is_slave = of_property_read_bool((&pdev->dev)->of_node, "spi-slave");
-	if (is_slave)
+	if (!np && !lpspi_platform_info) {
+		dev_err(&pdev->dev, "can't get the platform data\n");
+		return -EINVAL;
+	}
+
+	if (of_property_read_bool((&pdev->dev)->of_node, "spi-slave"))
 		controller = spi_alloc_slave(&pdev->dev,
 					sizeof(struct fsl_lpspi_data));
 	else
@@ -858,11 +843,50 @@ static int fsl_lpspi_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, controller);
 
+	controller->bits_per_word_mask = SPI_BPW_RANGE_MASK(8, 32);
+	controller->bus_num = pdev->id;
+
+	ret = of_property_read_u32(np, "fsl,spi-num-chipselects", &num_cs);
+	if (ret < 0) {
+		if (lpspi_platform_info) {
+			num_cs = lpspi_platform_info->num_chipselect;
+			controller->num_chipselect = num_cs;
+		}
+	} else {
+		controller->num_chipselect = num_cs;
+	}
+
 	fsl_lpspi = spi_controller_get_devdata(controller);
 	fsl_lpspi->dev = &pdev->dev;
-	fsl_lpspi->is_slave = is_slave;
+	dev_set_drvdata(&pdev->dev, fsl_lpspi);
+	fsl_lpspi->is_slave = of_property_read_bool((&pdev->dev)->of_node,
+						    "spi-slave");
 
-	controller->bits_per_word_mask = SPI_BPW_RANGE_MASK(8, 32);
+	if (!fsl_lpspi->is_slave) {
+		controller->cs_gpios = devm_kzalloc(&controller->dev,
+			sizeof(int) * controller->num_chipselect, GFP_KERNEL);
+
+		for (i = 0; i < controller->num_chipselect; i++) {
+			int cs_gpio = of_get_named_gpio(np, "cs-gpios", i);
+
+			if (!gpio_is_valid(cs_gpio) && lpspi_platform_info)
+				cs_gpio = lpspi_platform_info->chipselect[i];
+
+			controller->cs_gpios[i] = cs_gpio;
+			if (!gpio_is_valid(cs_gpio))
+				continue;
+
+			ret = devm_gpio_request(&pdev->dev,
+						controller->cs_gpios[i],
+						DRIVER_NAME);
+			if (ret) {
+				dev_err(&pdev->dev, "can't get cs gpios\n");
+				goto out_controller_put;
+			}
+		}
+		controller->prepare_message = fsl_lpspi_prepare_message;
+	}
+
 	controller->transfer_one = fsl_lpspi_transfer_one;
 	controller->prepare_transfer_hardware = lpspi_prepare_xfer_hardware;
 	controller->unprepare_transfer_hardware = lpspi_unprepare_xfer_hardware;
@@ -871,35 +895,6 @@ static int fsl_lpspi_probe(struct platform_device *pdev)
 	controller->dev.of_node = pdev->dev.of_node;
 	controller->bus_num = pdev->id;
 	controller->slave_abort = fsl_lpspi_slave_abort;
-
-	ret = devm_spi_register_controller(&pdev->dev, controller);
-	if (ret < 0) {
-		dev_err(&pdev->dev, "spi_register_controller error.\n");
-		goto out_controller_put;
-	}
-
-	if (!fsl_lpspi->is_slave) {
-		for (i = 0; i < controller->num_chipselect; i++) {
-			int cs_gpio = of_get_named_gpio(np, "cs-gpios", i);
-
-			if (!gpio_is_valid(cs_gpio) && lpspi_platform_info)
-				cs_gpio = lpspi_platform_info->chipselect[i];
-
-			fsl_lpspi->chipselect[i] = cs_gpio;
-			if (!gpio_is_valid(cs_gpio))
-				continue;
-
-			ret = devm_gpio_request(&pdev->dev,
-						fsl_lpspi->chipselect[i],
-						DRIVER_NAME);
-			if (ret) {
-				dev_err(&pdev->dev, "can't get cs gpios\n");
-				goto out_controller_put;
-			}
-		}
-		controller->cs_gpios = fsl_lpspi->chipselect;
-		controller->prepare_message = fsl_lpspi_prepare_message;
-	}
 
 	init_completion(&fsl_lpspi->xfer_done);
 
@@ -944,7 +939,7 @@ static int fsl_lpspi_probe(struct platform_device *pdev)
 	ret = pm_runtime_get_sync(fsl_lpspi->dev);
 	if (ret < 0) {
 		dev_err(fsl_lpspi->dev, "failed to enable clock\n");
-		goto out_controller_put;
+		return ret;
 	}
 
 	temp = readl(fsl_lpspi->base + IMX7ULP_PARAM);
@@ -957,6 +952,12 @@ static int fsl_lpspi_probe(struct platform_device *pdev)
 
 	if (ret < 0)
 		dev_err(&pdev->dev, "dma setup error %d, use pio\n", ret);
+
+	ret = devm_spi_register_controller(&pdev->dev, controller);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "spi_register_controller error.\n");
+		goto out_controller_put;
+	}
 
 	return 0;
 

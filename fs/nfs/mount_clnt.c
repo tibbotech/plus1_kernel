@@ -163,7 +163,6 @@ int nfs_mount(struct nfs_mount_request *info)
 		.program	= &mnt_program,
 		.version	= info->version,
 		.authflavor	= RPC_AUTH_UNIX,
-		.cred		= current_cred(),
 	};
 	struct rpc_clnt		*mnt_clnt;
 	int			status;
@@ -250,7 +249,6 @@ void nfs_umount(const struct nfs_mount_request *info)
 		.version	= info->version,
 		.authflavor	= RPC_AUTH_UNIX,
 		.flags		= RPC_CLNT_CREATE_NOPING,
-		.cred		= current_cred(),
 	};
 	struct rpc_message msg	= {
 		.rpc_argp	= info->dirpath,

@@ -16,6 +16,8 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/ipipe.h>
+#include <linux/ipipe_tickdev.h>
 #include <soc/imx/timer.h>
 
 /*
@@ -61,6 +63,9 @@
 
 struct imx_timer {
 	enum imx_gpt_type type;
+#ifdef CONFIG_IPIPE
+	unsigned long pbase;
+#endif
 	void __iomem *base;
 	int irq;
 	struct clk *clk_per;
@@ -141,7 +146,7 @@ static u64 notrace mxc_read_sched_clock(void)
 	return sched_clock_reg ? readl_relaxed(sched_clock_reg) : 0;
 }
 
-#if defined(CONFIG_ARM)
+#ifndef CONFIG_ARM64
 static struct delay_timer imx_delay_timer;
 
 static unsigned long imx_read_current_timer(void)
@@ -155,7 +160,7 @@ static int __init mxc_clocksource_init(struct imx_timer *imxtm)
 	unsigned int c = clk_get_rate(imxtm->clk_per);
 	void __iomem *reg = imxtm->base + imxtm->gpt->reg_tcn;
 
-#if defined(CONFIG_ARM)
+#ifndef CONFIG_ARM64
 	imx_delay_timer.read_current_timer = &imx_read_current_timer;
 	imx_delay_timer.freq = c;
 	register_current_timer_delay(&imx_delay_timer);
@@ -202,7 +207,14 @@ static int v2_set_next_event(unsigned long evt,
 static int mxc_shutdown(struct clock_event_device *ced)
 {
 	struct imx_timer *imxtm = to_imx_timer(ced);
+	unsigned long flags;
 	u32 tcn;
+
+	/*
+	 * The timer interrupt generation is disabled at least
+	 * for enough time to call mxc_set_next_event()
+	 */
+	local_irq_save(flags);
 
 	/* Disable interrupt in GPT module */
 	imxtm->gpt->gpt_irq_disable(imxtm);
@@ -218,12 +230,21 @@ static int mxc_shutdown(struct clock_event_device *ced)
 	printk(KERN_INFO "%s: changing mode\n", __func__);
 #endif /* DEBUG */
 
+	local_irq_restore(flags);
+
 	return 0;
 }
 
 static int mxc_set_oneshot(struct clock_event_device *ced)
 {
 	struct imx_timer *imxtm = to_imx_timer(ced);
+	unsigned long flags;
+
+	/*
+	 * The timer interrupt generation is disabled at least
+	 * for enough time to call mxc_set_next_event()
+	 */
+	local_irq_save(flags);
 
 	/* Disable interrupt in GPT module */
 	imxtm->gpt->gpt_irq_disable(imxtm);
@@ -248,9 +269,34 @@ static int mxc_set_oneshot(struct clock_event_device *ced)
 	 * mode switching
 	 */
 	imxtm->gpt->gpt_irq_enable(imxtm);
+	local_irq_restore(flags);
 
 	return 0;
 }
+
+#ifdef CONFIG_IPIPE
+
+static struct imx_timer *global_imx_timer;
+
+static void mxc_timer_ack(void)
+{
+	global_imx_timer->gpt->gpt_irq_acknowledge(global_imx_timer);
+}
+
+static struct __ipipe_tscinfo tsc_info = {
+       .type = IPIPE_TSC_TYPE_FREERUNNING,
+       .u = {
+	       {
+		       .mask = 0xffffffff,
+	       },
+       },
+};
+
+static struct ipipe_timer mxc_itimer = {
+	.ack = mxc_timer_ack,
+};
+
+#endif
 
 /*
  * IRQ handler for the timer
@@ -263,7 +309,8 @@ static irqreturn_t mxc_timer_interrupt(int irq, void *dev_id)
 
 	tstat = readl_relaxed(imxtm->base + imxtm->gpt->reg_tstat);
 
-	imxtm->gpt->gpt_irq_acknowledge(imxtm);
+	if (!clockevent_ipipe_stolen(ced))
+		imxtm->gpt->gpt_irq_acknowledge(imxtm);
 
 	ced->event_handler(ced);
 
@@ -284,6 +331,9 @@ static int __init mxc_clockevent_init(struct imx_timer *imxtm)
 	ced->rating = 200;
 	ced->cpumask = cpumask_of(0);
 	ced->irq = imxtm->irq;
+#ifdef CONFIG_IPIPE
+	ced->ipipe_timer = &mxc_itimer;
+#endif
 	clockevents_config_and_register(ced, clk_get_rate(imxtm->clk_per),
 					0xff, 0xfffffffe);
 
@@ -423,6 +473,17 @@ static int __init _mxc_timer_init(struct imx_timer *imxtm)
 	if (ret)
 		return ret;
 
+#ifdef CONFIG_IPIPE
+	tsc_info.u.counter_paddr = imxtm->pbase + imxtm->gpt->reg_tcn;
+	tsc_info.counter_vaddr = (unsigned long)imxtm->base + imxtm->gpt->reg_tcn;
+	tsc_info.freq = clk_get_rate(imxtm->clk_per);
+	__ipipe_tsc_register(&tsc_info);
+	mxc_itimer.irq = imxtm->irq;
+	mxc_itimer.freq = clk_get_rate(imxtm->clk_per);
+	mxc_itimer.min_delay_ticks = ipipe_timer_ns2ticks(&mxc_itimer, 2000);
+	global_imx_timer = imxtm;
+#endif /* CONFIG_IPIPE */
+
 	return mxc_clockevent_init(imxtm);
 }
 
@@ -438,6 +499,9 @@ void __init mxc_timer_init(unsigned long pbase, int irq, enum imx_gpt_type type)
 
 	imxtm->base = ioremap(pbase, SZ_4K);
 	BUG_ON(!imxtm->base);
+#ifdef CONFIG_IPIPE
+	imxtm->pbase = pbase;
+#endif
 
 	imxtm->type = type;
 	imxtm->irq = irq;
@@ -449,6 +513,7 @@ static int __init mxc_timer_init_dt(struct device_node *np,  enum imx_gpt_type t
 {
 	struct imx_timer *imxtm;
 	static int initialized;
+	struct resource res;
 	int ret;
 
 	/* Support one instance only */
@@ -466,6 +531,13 @@ static int __init mxc_timer_init_dt(struct device_node *np,  enum imx_gpt_type t
 	imxtm->irq = irq_of_parse_and_map(np, 0);
 	if (imxtm->irq <= 0)
 		return -EINVAL;
+
+	if (of_address_to_resource(np, 0, &res))
+	    res.start = 0;
+
+#ifdef CONFIG_IPIPE
+	imxtm->pbase = res.start;
+#endif
 
 	imxtm->clk_ipg = of_clk_get_by_name(np, "ipg");
 
@@ -516,6 +588,19 @@ static int __init imx6dl_timer_init_dt(struct device_node *np)
 	return mxc_timer_init_dt(np, GPT_TYPE_IMX6DL);
 }
 
+#ifdef CONFIG_ARM64
+static int __init imx8qxp_timer_init(void)
+{
+	struct device_node *np;
+
+	np = of_find_compatible_node(NULL, NULL, "fsl,imx8qxp-gpt");
+	if (!np)
+		return -ENOENT;
+
+	return mxc_timer_init_dt(np, GPT_TYPE_IMX6DL);
+}
+#endif
+
 TIMER_OF_DECLARE(imx1_timer, "fsl,imx1-gpt", imx1_timer_init_dt);
 TIMER_OF_DECLARE(imx21_timer, "fsl,imx21-gpt", imx21_timer_init_dt);
 TIMER_OF_DECLARE(imx27_timer, "fsl,imx27-gpt", imx21_timer_init_dt);
@@ -527,4 +612,10 @@ TIMER_OF_DECLARE(imx53_timer, "fsl,imx53-gpt", imx31_timer_init_dt);
 TIMER_OF_DECLARE(imx6q_timer, "fsl,imx6q-gpt", imx31_timer_init_dt);
 TIMER_OF_DECLARE(imx6dl_timer, "fsl,imx6dl-gpt", imx6dl_timer_init_dt);
 TIMER_OF_DECLARE(imx6sl_timer, "fsl,imx6sl-gpt", imx6dl_timer_init_dt);
+TIMER_OF_DECLARE(imx6sll_timer, "fsl,imx6sll-gpt", imx6dl_timer_init_dt);
 TIMER_OF_DECLARE(imx6sx_timer, "fsl,imx6sx-gpt", imx6dl_timer_init_dt);
+TIMER_OF_DECLARE(imx6ul_timer, "fsl,imx6ul-gpt", imx6dl_timer_init_dt);
+TIMER_OF_DECLARE(mx7d_timer, "fsl,imx7d-gpt", imx6dl_timer_init_dt);
+#ifdef CONFIG_ARM64
+subsys_initcall(imx8qxp_timer_init);
+#endif

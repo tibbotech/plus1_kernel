@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * L2TP core.
  *
@@ -13,6 +12,10 @@
  *		Michal Ostrowski <mostrows@speakeasy.net>
  *		Arnaldo Carvalho de Melo <acme@xconectiva.com.br>
  *		David S. Miller (davem@redhat.com)
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -166,8 +169,8 @@ struct l2tp_tunnel *l2tp_tunnel_get(const struct net *net, u32 tunnel_id)
 
 	rcu_read_lock_bh();
 	list_for_each_entry_rcu(tunnel, &pn->l2tp_tunnel_list, list) {
-		if (tunnel->tunnel_id == tunnel_id &&
-		    refcount_inc_not_zero(&tunnel->ref_count)) {
+		if (tunnel->tunnel_id == tunnel_id) {
+			l2tp_tunnel_inc_refcount(tunnel);
 			rcu_read_unlock_bh();
 
 			return tunnel;
@@ -187,8 +190,8 @@ struct l2tp_tunnel *l2tp_tunnel_get_nth(const struct net *net, int nth)
 
 	rcu_read_lock_bh();
 	list_for_each_entry_rcu(tunnel, &pn->l2tp_tunnel_list, list) {
-		if (++count > nth &&
-		    refcount_inc_not_zero(&tunnel->ref_count)) {
+		if (++count > nth) {
+			l2tp_tunnel_inc_refcount(tunnel);
 			rcu_read_unlock_bh();
 			return tunnel;
 		}
@@ -322,13 +325,8 @@ int l2tp_session_register(struct l2tp_session *session,
 
 		spin_lock_bh(&pn->l2tp_session_hlist_lock);
 
-		/* IP encap expects session IDs to be globally unique, while
-		 * UDP encap doesn't.
-		 */
 		hlist_for_each_entry(session_walk, g_head, global_hlist)
-			if (session_walk->session_id == session->session_id &&
-			    (session_walk->tunnel->encap == L2TP_ENCAPTYPE_IP ||
-			     tunnel->encap == L2TP_ENCAPTYPE_IP)) {
+			if (session_walk->session_id == session->session_id) {
 				err = -EEXIST;
 				goto err_tlock_pnlock;
 			}
@@ -911,7 +909,7 @@ int l2tp_udp_encap_recv(struct sock *sk, struct sk_buff *skb)
 {
 	struct l2tp_tunnel *tunnel;
 
-	tunnel = rcu_dereference_sk_user_data(sk);
+	tunnel = l2tp_tunnel(sk);
 	if (tunnel == NULL)
 		goto pass_up;
 
@@ -1083,7 +1081,7 @@ int l2tp_xmit_skb(struct l2tp_session *session, struct sk_buff *skb, int hdr_len
 	memset(&(IPCB(skb)->opt), 0, sizeof(IPCB(skb)->opt));
 	IPCB(skb)->flags &= ~(IPSKB_XFRM_TUNNEL_SIZE | IPSKB_XFRM_TRANSFORMED |
 			      IPSKB_REROUTED);
-	nf_reset_ct(skb);
+	nf_reset(skb);
 
 	bh_lock_sock(sk);
 	if (sock_owned_by_user(sk)) {
@@ -1737,8 +1735,7 @@ static __net_exit void l2tp_exit_net(struct net *net)
 	}
 	rcu_read_unlock_bh();
 
-	if (l2tp_wq)
-		flush_workqueue(l2tp_wq);
+	flush_workqueue(l2tp_wq);
 	rcu_barrier();
 
 	for (hash = 0; hash < L2TP_HASH_SIZE_2; hash++)

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Generic entry points for the idle threads and
  * implementation of the idle task scheduling class.
@@ -77,22 +76,29 @@ void __weak arch_cpu_idle_dead(void) { }
 void __weak arch_cpu_idle(void)
 {
 	cpu_idle_force_poll = 1;
-	local_irq_enable();
+	local_irq_enable_full();
 }
 
 /**
  * default_idle_call - Default CPU idle routine.
  *
  * To use when the cpuidle framework cannot be used.
+ *
+ * When interrupts are pipelined, this call is entered with hard irqs
+ * on and the root stage stalled, returns with hard irqs on, and the
+ * root stage unstalled.
  */
 void __cpuidle default_idle_call(void)
 {
 	if (current_clr_polling_and_test()) {
-		local_irq_enable();
+		local_irq_enable_full();
 	} else {
-		stop_critical_timings();
-		arch_cpu_idle();
-		start_critical_timings();
+		if (ipipe_enter_cpuidle(NULL, NULL)) {
+			stop_critical_timings();
+			arch_cpu_idle();
+			start_critical_timings();
+		} else
+			local_irq_enable_full();
 	}
 }
 
@@ -208,6 +214,15 @@ static void cpuidle_idle_call(void)
 exit_idle:
 	__current_set_polling();
 
+#ifdef CONFIG_IPIPE
+	/*
+	 *  Catch mishandling of the CPU's interrupt disable flag when
+	 *  pipelining IRQs.
+	 */
+	if (WARN_ON_ONCE(hard_irqs_disabled()))
+		hard_local_irq_enable();
+#endif
+
 	/*
 	 * It is up to the idle functions to reenable local interrupts
 	 */
@@ -238,16 +253,16 @@ static void do_idle(void)
 	tick_nohz_idle_enter();
 
 	while (!need_resched()) {
+		check_pgt_cache();
 		rmb();
 
-		local_irq_disable();
-
 		if (cpu_is_offline(cpu)) {
-			tick_nohz_idle_stop_tick();
+			tick_nohz_idle_stop_tick_protected();
 			cpuhp_report_idle_dead();
 			arch_cpu_idle_dead();
 		}
 
+		local_irq_disable();
 		arch_cpu_idle_enter();
 
 		/*
@@ -261,6 +276,9 @@ static void do_idle(void)
 			cpu_idle_poll();
 		} else {
 			cpuidle_idle_call();
+#ifdef CONFIG_IPIPE
+			WARN_ON_ONCE(hard_irqs_disabled());
+#endif
 		}
 		arch_cpu_idle_exit();
 	}
@@ -311,7 +329,7 @@ static enum hrtimer_restart idle_inject_timer_fn(struct hrtimer *timer)
 	return HRTIMER_NORESTART;
 }
 
-void play_idle(unsigned long duration_us)
+void play_idle(unsigned long duration_ms)
 {
 	struct idle_timer it;
 
@@ -323,7 +341,7 @@ void play_idle(unsigned long duration_us)
 	WARN_ON_ONCE(current->nr_cpus_allowed != 1);
 	WARN_ON_ONCE(!(current->flags & PF_KTHREAD));
 	WARN_ON_ONCE(!(current->flags & PF_NO_SETAFFINITY));
-	WARN_ON_ONCE(!duration_us);
+	WARN_ON_ONCE(!duration_ms);
 
 	rcu_sleep_check();
 	preempt_disable();
@@ -333,8 +351,7 @@ void play_idle(unsigned long duration_us)
 	it.done = 0;
 	hrtimer_init_on_stack(&it.timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	it.timer.function = idle_inject_timer_fn;
-	hrtimer_start(&it.timer, ns_to_ktime(duration_us * NSEC_PER_USEC),
-		      HRTIMER_MODE_REL_PINNED);
+	hrtimer_start(&it.timer, ms_to_ktime(duration_ms), HRTIMER_MODE_REL_PINNED);
 
 	while (!READ_ONCE(it.done))
 		do_idle();
@@ -349,6 +366,21 @@ EXPORT_SYMBOL_GPL(play_idle);
 
 void cpu_startup_entry(enum cpuhp_state state)
 {
+	/*
+	 * This #ifdef needs to die, but it's too late in the cycle to
+	 * make this generic (ARM and SH have never invoked the canary
+	 * init for the non boot CPUs!). Will be fixed in 3.11
+	 */
+#ifdef CONFIG_X86
+	/*
+	 * If we're the non-boot CPU, nothing set the stack canary up
+	 * for us. The boot CPU already has it initialized but no harm
+	 * in doing it again. This is a good place for updating it, as
+	 * we wont ever return from this function (so the invalid
+	 * canaries already on the stack wont ever trigger).
+	 */
+	boot_init_stack_canary();
+#endif
 	arch_cpu_idle_prepare();
 	cpuhp_online_idle(state);
 	while (1)
@@ -365,12 +397,6 @@ select_task_rq_idle(struct task_struct *p, int cpu, int sd_flag, int flags)
 {
 	return task_cpu(p); /* IDLE tasks as never migrated */
 }
-
-static int
-balance_idle(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
-{
-	return WARN_ON_ONCE(1);
-}
 #endif
 
 /*
@@ -381,27 +407,14 @@ static void check_preempt_curr_idle(struct rq *rq, struct task_struct *p, int fl
 	resched_curr(rq);
 }
 
-static void put_prev_task_idle(struct rq *rq, struct task_struct *prev)
-{
-}
-
-static void set_next_task_idle(struct rq *rq, struct task_struct *next, bool first)
-{
-	update_idle_core(rq);
-	schedstat_inc(rq->sched_goidle);
-}
-
 static struct task_struct *
 pick_next_task_idle(struct rq *rq, struct task_struct *prev, struct rq_flags *rf)
 {
-	struct task_struct *next = rq->idle;
+	put_prev_task(rq, prev);
+	update_idle_core(rq);
+	schedstat_inc(rq->sched_goidle);
 
-	if (prev)
-		put_prev_task(rq, prev);
-
-	set_next_task_idle(rq, next, true);
-
-	return next;
+	return rq->idle;
 }
 
 /*
@@ -417,6 +430,10 @@ dequeue_task_idle(struct rq *rq, struct task_struct *p, int flags)
 	raw_spin_lock_irq(&rq->lock);
 }
 
+static void put_prev_task_idle(struct rq *rq, struct task_struct *prev)
+{
+}
+
 /*
  * scheduler tick hitting a task of our scheduling class.
  *
@@ -426,6 +443,10 @@ dequeue_task_idle(struct rq *rq, struct task_struct *p, int flags)
  * parameters.
  */
 static void task_tick_idle(struct rq *rq, struct task_struct *curr, int queued)
+{
+}
+
+static void set_curr_task_idle(struct rq *rq)
 {
 }
 
@@ -463,14 +484,13 @@ const struct sched_class idle_sched_class = {
 
 	.pick_next_task		= pick_next_task_idle,
 	.put_prev_task		= put_prev_task_idle,
-	.set_next_task          = set_next_task_idle,
 
 #ifdef CONFIG_SMP
-	.balance		= balance_idle,
 	.select_task_rq		= select_task_rq_idle,
 	.set_cpus_allowed	= set_cpus_allowed_common,
 #endif
 
+	.set_curr_task          = set_curr_task_idle,
 	.task_tick		= task_tick_idle,
 
 	.get_rr_interval	= get_rr_interval_idle,

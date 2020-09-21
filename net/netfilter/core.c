@@ -23,7 +23,6 @@
 #include <linux/mm.h>
 #include <linux/rcupdate.h>
 #include <net/net_namespace.h>
-#include <net/netfilter/nf_queue.h>
 #include <net/sock.h>
 
 #include "nf_internals.h"
@@ -34,7 +33,7 @@ EXPORT_SYMBOL_GPL(nf_ipv6_ops);
 DEFINE_PER_CPU(bool, nf_skb_duplicated);
 EXPORT_SYMBOL_GPL(nf_skb_duplicated);
 
-#ifdef CONFIG_JUMP_LABEL
+#ifdef HAVE_JUMP_LABEL
 struct static_key nf_hooks_needed[NFPROTO_NUMPROTO][NF_MAX_HOOKS];
 EXPORT_SYMBOL(nf_hooks_needed);
 #endif
@@ -163,7 +162,7 @@ nf_hook_entries_grow(const struct nf_hook_entries *old,
 
 static void hooks_validate(const struct nf_hook_entries *hooks)
 {
-#ifdef CONFIG_DEBUG_MISC
+#ifdef CONFIG_DEBUG_KERNEL
 	struct nf_hook_ops **orig_ops;
 	int prio = INT_MIN;
 	size_t i = 0;
@@ -348,7 +347,7 @@ static int __nf_register_net_hook(struct net *net, int pf,
 	if (pf == NFPROTO_NETDEV && reg->hooknum == NF_NETDEV_INGRESS)
 		net_inc_ingress_queue();
 #endif
-#ifdef CONFIG_JUMP_LABEL
+#ifdef HAVE_JUMP_LABEL
 	static_key_slow_inc(&nf_hooks_needed[pf][reg->hooknum]);
 #endif
 	BUG_ON(p == new_hooks);
@@ -406,7 +405,7 @@ static void __nf_unregister_net_hook(struct net *net, int pf,
 		if (pf == NFPROTO_NETDEV && reg->hooknum == NF_NETDEV_INGRESS)
 			net_dec_ingress_queue();
 #endif
-#ifdef CONFIG_JUMP_LABEL
+#ifdef HAVE_JUMP_LABEL
 		static_key_slow_dec(&nf_hooks_needed[pf][reg->hooknum]);
 #endif
 	} else {
@@ -520,7 +519,7 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state,
 				ret = -EPERM;
 			return ret;
 		case NF_QUEUE:
-			ret = nf_queue(skb, state, s, verdict);
+			ret = nf_queue(skb, state, e, s, verdict);
 			if (ret == 1)
 				continue;
 			return ret;
@@ -535,6 +534,28 @@ int nf_hook_slow(struct sk_buff *skb, struct nf_hook_state *state,
 	return 1;
 }
 EXPORT_SYMBOL(nf_hook_slow);
+
+
+int skb_make_writable(struct sk_buff *skb, unsigned int writable_len)
+{
+	if (writable_len > skb->len)
+		return 0;
+
+	/* Not exclusive use of packet?  Must copy. */
+	if (!skb_cloned(skb)) {
+		if (writable_len <= skb_headlen(skb))
+			return 1;
+	} else if (skb_clone_writable(skb, writable_len))
+		return 1;
+
+	if (writable_len <= skb_headlen(skb))
+		writable_len = 0;
+	else
+		writable_len -= skb_headlen(skb);
+
+	return !!__pskb_pull_tail(skb, writable_len);
+}
+EXPORT_SYMBOL(skb_make_writable);
 
 /* This needs to be compiled in any case to avoid dependencies between the
  * nfnetlink_queue code and nf_conntrack.

@@ -27,7 +27,6 @@
 struct seq_file;
 struct module;
 struct msi_msg;
-struct irq_affinity_desc;
 enum irqchip_irq_state;
 
 /*
@@ -195,7 +194,7 @@ struct irq_data {
  * IRQD_LEVEL			- Interrupt is level triggered
  * IRQD_WAKEUP_STATE		- Interrupt is configured for wakeup
  *				  from suspend
- * IRQD_MOVE_PCNTXT		- Interrupt can be moved in process
+ * IRDQ_MOVE_PCNTXT		- Interrupt can be moved in process
  *				  context
  * IRQD_IRQ_DISABLED		- Disabled state of the interrupt
  * IRQD_IRQ_MASKED		- Masked state of the interrupt
@@ -209,8 +208,6 @@ struct irq_data {
  * IRQD_SINGLE_TARGET		- IRQ allows only a single affinity target
  * IRQD_DEFAULT_TRIGGER_SET	- Expected trigger already been set
  * IRQD_CAN_RESERVE		- Can use reservation mode
- * IRQD_MSI_NOMASK_QUIRK	- Non-maskable MSI quirk for affinity change
- *				  required
  */
 enum {
 	IRQD_TRIGGER_MASK		= 0xf,
@@ -233,7 +230,6 @@ enum {
 	IRQD_SINGLE_TARGET		= (1 << 24),
 	IRQD_DEFAULT_TRIGGER_SET	= (1 << 25),
 	IRQD_CAN_RESERVE		= (1 << 26),
-	IRQD_MSI_NOMASK_QUIRK		= (1 << 27),
 };
 
 #define __irqd_to_state(d) ACCESS_PRIVATE((d)->common, state_use_accessors)
@@ -393,21 +389,6 @@ static inline bool irqd_can_reserve(struct irq_data *d)
 	return __irqd_to_state(d) & IRQD_CAN_RESERVE;
 }
 
-static inline void irqd_set_msi_nomask_quirk(struct irq_data *d)
-{
-	__irqd_to_state(d) |= IRQD_MSI_NOMASK_QUIRK;
-}
-
-static inline void irqd_clr_msi_nomask_quirk(struct irq_data *d)
-{
-	__irqd_to_state(d) &= ~IRQD_MSI_NOMASK_QUIRK;
-}
-
-static inline bool irqd_msi_nomask_quirk(struct irq_data *d)
-{
-	return __irqd_to_state(d) & IRQD_MSI_NOMASK_QUIRK;
-}
-
 #undef __irqd_to_state
 
 static inline irq_hw_number_t irqd_to_hwirq(struct irq_data *d)
@@ -460,8 +441,6 @@ static inline irq_hw_number_t irqd_to_hwirq(struct irq_data *d)
  * @irq_set_vcpu_affinity:	optional to target a vCPU in a virtual machine
  * @ipi_send_single:	send a single IPI to destination cpus
  * @ipi_send_mask:	send an IPI to destination cpus in cpumask
- * @irq_nmi_setup:	function called from core code before enabling an NMI
- * @irq_nmi_teardown:	function called from core code after disabling an NMI
  * @flags:		chip specific flags
  */
 struct irq_chip {
@@ -485,6 +464,11 @@ struct irq_chip {
 
 	void		(*irq_bus_lock)(struct irq_data *data);
 	void		(*irq_bus_sync_unlock)(struct irq_data *data);
+#ifdef CONFIG_IPIPE
+	void		(*irq_move)(struct irq_data *data);
+	void		(*irq_hold)(struct irq_data *data);
+	void		(*irq_release)(struct irq_data *data);
+#endif /* CONFIG_IPIPE */
 
 	void		(*irq_cpu_online)(struct irq_data *data);
 	void		(*irq_cpu_offline)(struct irq_data *data);
@@ -510,9 +494,6 @@ struct irq_chip {
 	void		(*ipi_send_single)(struct irq_data *data, unsigned int cpu);
 	void		(*ipi_send_mask)(struct irq_data *data, const struct cpumask *dest);
 
-	int		(*irq_nmi_setup)(struct irq_data *data);
-	void		(*irq_nmi_teardown)(struct irq_data *data);
-
 	unsigned long	flags;
 };
 
@@ -528,7 +509,7 @@ struct irq_chip {
  * IRQCHIP_ONESHOT_SAFE:	One shot does not require mask/unmask
  * IRQCHIP_EOI_THREADED:	Chip requires eoi() on unmask in threaded mode
  * IRQCHIP_SUPPORTS_LEVEL_MSI	Chip can provide two doorbells for Level MSIs
- * IRQCHIP_SUPPORTS_NMI:	Chip can deliver NMIs, only for root irqchips
+ * IRQCHIP_PIPELINE_SAFE:	Chip can work in pipelined mode
  */
 enum {
 	IRQCHIP_SET_TYPE_MASKED		= (1 <<  0),
@@ -539,7 +520,7 @@ enum {
 	IRQCHIP_ONESHOT_SAFE		= (1 <<  5),
 	IRQCHIP_EOI_THREADED		= (1 <<  6),
 	IRQCHIP_SUPPORTS_LEVEL_MSI	= (1 <<  7),
-	IRQCHIP_SUPPORTS_NMI		= (1 <<  8),
+	IRQCHIP_PIPELINE_SAFE		= (1 <<  7),
 };
 
 #include <linux/irqdesc.h>
@@ -619,9 +600,6 @@ extern void handle_percpu_devid_irq(struct irq_desc *desc);
 extern void handle_bad_irq(struct irq_desc *desc);
 extern void handle_nested_irq(unsigned int irq);
 
-extern void handle_fasteoi_nmi(struct irq_desc *desc);
-extern void handle_percpu_devid_fasteoi_nmi(struct irq_desc *desc);
-
 extern int irq_chip_compose_msi_msg(struct irq_data *data, struct msi_msg *msg);
 extern int irq_chip_pm_get(struct irq_data *data);
 extern int irq_chip_pm_put(struct irq_data *data);
@@ -633,9 +611,13 @@ extern void irq_chip_disable_parent(struct irq_data *data);
 extern void irq_chip_ack_parent(struct irq_data *data);
 extern int irq_chip_retrigger_hierarchy(struct irq_data *data);
 extern void irq_chip_mask_parent(struct irq_data *data);
-extern void irq_chip_mask_ack_parent(struct irq_data *data);
 extern void irq_chip_unmask_parent(struct irq_data *data);
 extern void irq_chip_eoi_parent(struct irq_data *data);
+#ifdef CONFIG_IPIPE
+extern void irq_chip_hold_parent(struct irq_data *data);
+extern void irq_chip_release_parent(struct irq_data *data);
+#endif
+
 extern int irq_chip_set_affinity_parent(struct irq_data *data,
 					const struct cpumask *dest,
 					bool force);
@@ -643,8 +625,6 @@ extern int irq_chip_set_wake_parent(struct irq_data *data, unsigned int on);
 extern int irq_chip_set_vcpu_affinity_parent(struct irq_data *data,
 					     void *vcpu_info);
 extern int irq_chip_set_type_parent(struct irq_data *data, unsigned int type);
-extern int irq_chip_request_resources_parent(struct irq_data *data);
-extern void irq_chip_release_resources_parent(struct irq_data *data);
 #endif
 
 /* Handling of unhandled and spurious interrupts: */
@@ -762,7 +742,14 @@ extern int irq_set_irq_type(unsigned int irq, unsigned int type);
 extern int irq_set_msi_desc(unsigned int irq, struct msi_desc *entry);
 extern int irq_set_msi_desc_off(unsigned int irq_base, unsigned int irq_offset,
 				struct msi_desc *entry);
-extern struct irq_data *irq_get_irq_data(unsigned int irq);
+
+static inline __attribute__((const)) struct irq_data *
+irq_get_irq_data(unsigned int irq)
+{
+	struct irq_desc *desc = irq_to_desc(irq);
+
+	return desc ? &desc->irq_data : NULL;
+}
 
 static inline struct irq_chip *irq_get_chip(unsigned int irq)
 {
@@ -866,12 +853,11 @@ struct cpumask *irq_data_get_effective_affinity_mask(struct irq_data *d)
 unsigned int arch_dynirq_lower_bound(unsigned int from);
 
 int __irq_alloc_descs(int irq, unsigned int from, unsigned int cnt, int node,
-		      struct module *owner,
-		      const struct irq_affinity_desc *affinity);
+		      struct module *owner, const struct cpumask *affinity);
 
 int __devm_irq_alloc_descs(struct device *dev, int irq, unsigned int from,
 			   unsigned int cnt, int node, struct module *owner,
-			   const struct irq_affinity_desc *affinity);
+			   const struct cpumask *affinity);
 
 /* use macros to avoid needing export.h for THIS_MODULE */
 #define irq_alloc_descs(irq, from, cnt, node)	\
@@ -1005,7 +991,11 @@ struct irq_chip_type {
  * different flow mechanisms (level/edge) for it.
  */
 struct irq_chip_generic {
+#ifdef CONFIG_IPIPE
+	ipipe_spinlock_t	lock;
+#else
 	raw_spinlock_t		lock;
+#endif
 	void __iomem		*reg_base;
 	u32			(*reg_readl)(void __iomem *addr);
 	void			(*reg_writel)(u32 val, void __iomem *addr);
@@ -1133,18 +1123,28 @@ static inline struct irq_chip_type *irq_data_get_chip_type(struct irq_data *d)
 #define IRQ_MSK(n) (u32)((n) < 32 ? ((1 << (n)) - 1) : UINT_MAX)
 
 #ifdef CONFIG_SMP
-static inline void irq_gc_lock(struct irq_chip_generic *gc)
+static inline unsigned long irq_gc_lock(struct irq_chip_generic *gc)
 {
-	raw_spin_lock(&gc->lock);
+	unsigned long flags = 0;
+	raw_spin_lock_irqsave_cond(&gc->lock, flags);
+	return flags;
 }
 
-static inline void irq_gc_unlock(struct irq_chip_generic *gc)
+static inline void
+irq_gc_unlock(struct irq_chip_generic *gc, unsigned long flags)
 {
-	raw_spin_unlock(&gc->lock);
+	raw_spin_unlock_irqrestore_cond(&gc->lock, flags);
 }
 #else
-static inline void irq_gc_lock(struct irq_chip_generic *gc) { }
-static inline void irq_gc_unlock(struct irq_chip_generic *gc) { }
+static inline unsigned long irq_gc_lock(struct irq_chip_generic *gc)
+{
+	return hard_cond_local_irq_save();
+}
+static inline void
+irq_gc_unlock(struct irq_chip_generic *gc, unsigned long flags)
+{
+	hard_cond_local_irq_restore(flags);
+}
 #endif
 
 /*

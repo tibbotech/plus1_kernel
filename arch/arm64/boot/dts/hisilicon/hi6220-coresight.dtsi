@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * dtsi file for Hisilicon Hi6220 coresight
  *
@@ -6,28 +5,37 @@
  *
  * Author: Pengcheng Li <lipengcheng8@huawei.com>
  *         Leo Yan <leo.yan@linaro.org>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * publishhed by the Free Software Foundation.
+ *
  */
 
 / {
 	soc {
 		funnel@f6401000 {
-			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			compatible = "arm,coresight-funnel", "arm,primecell";
 			reg = <0 0xf6401000 0 0x1000>;
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			out-ports {
-				port {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
 					soc_funnel_out: endpoint {
 						remote-endpoint =
 							<&etf_in>;
 					};
 				};
-			};
 
-			in-ports {
-				port {
+				port@1 {
+					reg = <0>;
 					soc_funnel_in: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&acpu_funnel_out>;
 					};
@@ -41,17 +49,21 @@
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			in-ports {
-				port {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
 					etf_in: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&soc_funnel_out>;
 					};
 				};
-			};
 
-			out-ports {
-				port {
+				port@1 {
+					reg = <0>;
 					etf_out: endpoint {
 						remote-endpoint =
 							<&replicator_in>;
@@ -61,24 +73,24 @@
 		};
 
 		replicator {
-			compatible = "arm,coresight-static-replicator";
+			compatible = "arm,coresight-replicator";
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			in-ports {
-				port {
-					replicator_in: endpoint {
-						remote-endpoint =
-							<&etf_out>;
-					};
-				};
-			};
-
-			out-ports {
+			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
 
 				port@0 {
+					reg = <0>;
+					replicator_in: endpoint {
+						slave-mode;
+						remote-endpoint =
+							<&etf_out>;
+					};
+				};
+
+				port@1 {
 					reg = <0>;
 					replicator_out0: endpoint {
 						remote-endpoint =
@@ -86,7 +98,7 @@
 					};
 				};
 
-				port@1 {
+				port@2 {
 					reg = <1>;
 					replicator_out1: endpoint {
 						remote-endpoint =
@@ -102,9 +114,14 @@
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			in-ports {
-				port {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
 					etr_in: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&replicator_out0>;
 					};
@@ -118,9 +135,14 @@
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			in-ports {
-				port {
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				port@0 {
+					reg = <0>;
 					tpiu_in: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&replicator_out1>;
 					};
@@ -129,83 +151,90 @@
 		};
 
 		funnel@f6501000 {
-			compatible = "arm,coresight-dynamic-funnel", "arm,primecell";
+			compatible = "arm,coresight-funnel", "arm,primecell";
 			reg = <0 0xf6501000 0 0x1000>;
 			clocks = <&acpu_sctrl HI6220_ACPU_SFT_AT_S>;
 			clock-names = "apb_pclk";
 
-			out-ports {
-				port {
-					acpu_funnel_out: endpoint {
-						remote-endpoint =
-							<&soc_funnel_in>;
-					};
-				};
-			};
-
-			in-ports {
+			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
 
 				port@0 {
 					reg = <0>;
+					acpu_funnel_out: endpoint {
+						remote-endpoint =
+							<&soc_funnel_in>;
+					};
+				};
+
+				port@1 {
+					reg = <0>;
 					acpu_funnel_in0: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm0_out>;
 					};
 				};
 
-				port@1 {
+				port@2 {
 					reg = <1>;
 					acpu_funnel_in1: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm1_out>;
 					};
 				};
 
-				port@2 {
+				port@3 {
 					reg = <2>;
 					acpu_funnel_in2: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm2_out>;
 					};
 				};
 
-				port@3 {
+				port@4 {
 					reg = <3>;
 					acpu_funnel_in3: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm3_out>;
 					};
 				};
 
-				port@4 {
+				port@5 {
 					reg = <4>;
 					acpu_funnel_in4: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm4_out>;
 					};
 				};
 
-				port@5 {
+				port@6 {
 					reg = <5>;
 					acpu_funnel_in5: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm5_out>;
 					};
 				};
 
-				port@6 {
+				port@7 {
 					reg = <6>;
 					acpu_funnel_in6: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm6_out>;
 					};
 				};
 
-				port@7 {
+				port@8 {
 					reg = <7>;
 					acpu_funnel_in7: endpoint {
+						slave-mode;
 						remote-endpoint =
 							<&etm7_out>;
 					};
@@ -222,12 +251,10 @@
 
 			cpu = <&cpu0>;
 
-			out-ports {
-				port {
-					etm0_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in0>;
-					};
+			port {
+				etm0_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in0>;
 				};
 			};
 		};
@@ -241,12 +268,10 @@
 
 			cpu = <&cpu1>;
 
-			out-ports {
-				port {
-					etm1_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in1>;
-					};
+			port {
+				etm1_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in1>;
 				};
 			};
 		};
@@ -260,12 +285,10 @@
 
 			cpu = <&cpu2>;
 
-			out-ports {
-				port {
-					etm2_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in2>;
-					};
+			port {
+				etm2_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in2>;
 				};
 			};
 		};
@@ -279,12 +302,10 @@
 
 			cpu = <&cpu3>;
 
-			out-ports {
-				port {
-					etm3_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in3>;
-					};
+			port {
+				etm3_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in3>;
 				};
 			};
 		};
@@ -298,12 +319,10 @@
 
 			cpu = <&cpu4>;
 
-			out-ports {
-				port {
-					etm4_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in4>;
-					};
+			port {
+				etm4_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in4>;
 				};
 			};
 		};
@@ -317,12 +336,10 @@
 
 			cpu = <&cpu5>;
 
-			out-ports {
-				port {
-					etm5_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in5>;
-					};
+			port {
+				etm5_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in5>;
 				};
 			};
 		};
@@ -336,12 +353,10 @@
 
 			cpu = <&cpu6>;
 
-			out-ports {
-				port {
-					etm6_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in6>;
-					};
+			port {
+				etm6_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in6>;
 				};
 			};
 		};
@@ -355,12 +370,10 @@
 
 			cpu = <&cpu7>;
 
-			out-ports {
-				port {
-					etm7_out: endpoint {
-						remote-endpoint =
-							<&acpu_funnel_in7>;
-					};
+			port {
+				etm7_out: endpoint {
+					remote-endpoint =
+						<&acpu_funnel_in7>;
 				};
 			};
 		};

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /* Kernel cryptographic api.
  * cast6.c - Cast6 cipher algorithm [rfc2612].
  *
@@ -7,6 +6,14 @@
  * algorithm.
  *
  * Copyright (C) 2003 Kartikey Mahendra Bhatt <kartik_me@hotmail.com>.
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 
@@ -278,7 +285,7 @@ static void __exit cast6_mod_fini(void)
 	crypto_unregister_alg(&alg);
 }
 
-subsys_initcall(cast6_mod_init);
+module_init(cast6_mod_init);
 module_exit(cast6_mod_fini);
 
 MODULE_LICENSE("GPL");

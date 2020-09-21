@@ -44,7 +44,6 @@ struct worker {
 	unsigned long		last_active;	/* L: last active timestamp */
 	unsigned int		flags;		/* X: flags */
 	int			id;		/* I: worker id */
-	int			sleeping;	/* None */
 
 	/*
 	 * Opaque string set with work_set_desc().  Printed out with task
@@ -54,9 +53,6 @@ struct worker {
 
 	/* used only by rescuers to point to the target workqueue */
 	struct workqueue_struct	*rescue_wq;	/* I: the workqueue to rescue */
-
-	/* used by the scheduler to determine a worker's last known identity */
-	work_func_t		last_func;
 };
 
 /**
@@ -71,10 +67,9 @@ static inline struct worker *current_wq_worker(void)
 
 /*
  * Scheduler hooks for concurrency managed workqueue.  Only to be used from
- * sched/ and workqueue.c.
+ * sched/core.c and workqueue.c.
  */
-void wq_worker_running(struct task_struct *task);
-void wq_worker_sleeping(struct task_struct *task);
-work_func_t wq_worker_last_func(struct task_struct *task);
+void wq_worker_waking_up(struct task_struct *task, int cpu);
+struct task_struct *wq_worker_sleeping(struct task_struct *task);
 
 #endif /* _KERNEL_WORKQUEUE_INTERNAL_H */

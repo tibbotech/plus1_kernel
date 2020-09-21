@@ -3,7 +3,6 @@
 # Makefile for the video capture/playback device drivers.
 #
 
-obj-$(CONFIG_VIDEO_ASPEED)		+= aspeed-video.o
 obj-$(CONFIG_VIDEO_CADENCE)		+= cadence/
 obj-$(CONFIG_VIDEO_VIA_CAMERA) += via-camera.o
 obj-$(CONFIG_VIDEO_CAFE_CCIC) += marvell-ccic/
@@ -25,8 +24,6 @@ obj-$(CONFIG_VIDEO_TI_CAL)		+= ti-vpe/
 
 obj-$(CONFIG_VIDEO_MX2_EMMAPRP)		+= mx2_emmaprp.o
 obj-$(CONFIG_VIDEO_CODA)		+= coda/
-
-obj-$(CONFIG_VIDEO_IMX_PXP)		+= imx-pxp.o
 
 obj-$(CONFIG_VIDEO_SH_VEU)		+= sh_veu.o
 
@@ -56,11 +53,11 @@ obj-$(CONFIG_VIDEO_TEGRA_HDMI_CEC)	+= tegra-cec/
 
 obj-y					+= stm32/
 
-obj-$(CONFIG_VIDEO_SECO_CEC)		+= seco-cec/
-
 obj-y					+= davinci/
 
 obj-$(CONFIG_VIDEO_SH_VOU)		+= sh_vou.o
+
+obj-$(CONFIG_SOC_CAMERA)		+= soc_camera/
 
 obj-$(CONFIG_VIDEO_RCAR_DRIF)		+= rcar_drif.o
 obj-$(CONFIG_VIDEO_RENESAS_CEU)		+= renesas-ceu.o
@@ -84,6 +81,14 @@ obj-$(CONFIG_VIDEO_ATMEL_ISI)		+= atmel/
 
 obj-$(CONFIG_VIDEO_STM32_DCMI)		+= stm32/
 
+obj-$(CONFIG_VIDEO_MXC_OUTPUT)		+= mxc/output/
+
+obj-$(CONFIG_VIDEO_MXC_CAPTURE)	+= mxc/capture/
+obj-$(CONFIG_VIDEO_MXC_OUTPUT)  += mxc/output/
+obj-$(CONFIG_VIDEO_MX8_CAPTURE)	+= imx8/
+
+ccflags-y += -I$(srctree)/drivers/media/i2c
+
 obj-$(CONFIG_VIDEO_MEDIATEK_VPU)	+= mtk-vpu/
 
 obj-$(CONFIG_VIDEO_MEDIATEK_VCODEC)	+= mtk-vcodec/
@@ -100,10 +105,6 @@ obj-y					+= meson/
 
 obj-y					+= cros-ec-cec/
 
-obj-y					+= sunxi/
+obj-$(CONFIG_VIDEO_SP_DISP) += sp-display/display/
 
-obj-$(CONFIG_VIDEO_SP7021_DISP)		+= sunplus/display/sp7021/
-obj-$(CONFIG_VIDEO_I143_DISP)		+= sunplus/display/i143/
-obj-$(CONFIG_VIDEO_SP_HDMITX)		+= sunplus/hdmitx/
-obj-y					+= sunplus/video/
-obj-y					+= sunplus/mipicsi/
+obj-$(CONFIG_VIDEO_SP_HDMITX) += sp-display/hdmitx/

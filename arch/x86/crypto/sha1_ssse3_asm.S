@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * This is a SIMD SHA-1 implementation. It requires the Intel(R) Supplemental
  * SSE3 instruction set extensions introduced in Intel Core Microarchitecture
@@ -22,6 +21,11 @@
  *
  * Converted to AT&T syntax and adapted for inclusion in the Linux kernel:
  *   Author: Mathias Krause <minipli@googlemail.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
 
 #include <linux/linkage.h>

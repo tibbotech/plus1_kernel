@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Driver for the Asahi Kasei EMD Corporation AK8974
  * and Aichi Steel AMI305 magnetometer chips.
@@ -564,7 +563,7 @@ static int ak8974_read_raw(struct iio_dev *indio_dev,
 		 * We read all axes and discard all but one, for optimized
 		 * reading, use the triggered buffer.
 		 */
-		*val = (s16)le16_to_cpu(hw_values[chan->address]);
+		*val = le16_to_cpu(hw_values[chan->address]);
 
 		ret = IIO_VAL_INT;
 	}
@@ -734,8 +733,9 @@ static int ak8974_probe(struct i2c_client *i2c,
 	ak8974->i2c = i2c;
 	mutex_init(&ak8974->lock);
 
-	ret = iio_read_mount_matrix(&i2c->dev, "mount-matrix",
-				    &ak8974->orientation);
+	ret = of_iio_read_mount_matrix(&i2c->dev,
+				       "mount-matrix",
+				       &ak8974->orientation);
 	if (ret)
 		return ret;
 

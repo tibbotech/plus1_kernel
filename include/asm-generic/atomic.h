@@ -1,10 +1,14 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * Generic C implementation of atomic counter operations. Usable on
  * UP systems only. Do not include in machine independent code.
  *
  * Copyright (C) 2007 Red Hat, Inc. All Rights Reserved.
  * Written by David Howells (dhowells@redhat.com)
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public Licence
+ * as published by the Free Software Foundation; either version
+ * 2 of the Licence, or (at your option) any later version.
  */
 #ifndef __ASM_GENERIC_ATOMIC_H
 #define __ASM_GENERIC_ATOMIC_H
@@ -76,9 +80,9 @@ static inline void atomic_##op(int i, atomic_t *v)			\
 {									\
 	unsigned long flags;						\
 									\
-	raw_local_irq_save(flags);					\
+	flags = hard_local_irq_save();					\
 	v->counter = v->counter c_op i;					\
-	raw_local_irq_restore(flags);					\
+	hard_local_irq_restore(flags);					\
 }
 
 #define ATOMIC_OP_RETURN(op, c_op)					\
@@ -87,9 +91,9 @@ static inline int atomic_##op##_return(int i, atomic_t *v)		\
 	unsigned long flags;						\
 	int ret;							\
 									\
-	raw_local_irq_save(flags);					\
+	flags = hard_local_irq_save();					\
 	ret = (v->counter = v->counter c_op i);				\
-	raw_local_irq_restore(flags);					\
+	hard_local_irq_restore(flags);					\
 									\
 	return ret;							\
 }
@@ -100,10 +104,10 @@ static inline int atomic_fetch_##op(int i, atomic_t *v)			\
 	unsigned long flags;						\
 	int ret;							\
 									\
-	raw_local_irq_save(flags);					\
+	flags = hard_local_irq_save(flags);				\
 	ret = v->counter;						\
 	v->counter = v->counter c_op i;					\
-	raw_local_irq_restore(flags);					\
+	hard_local_irq_restore(flags);					\
 									\
 	return ret;							\
 }

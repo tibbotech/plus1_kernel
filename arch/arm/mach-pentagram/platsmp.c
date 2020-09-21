@@ -26,9 +26,6 @@ extern void sc_smp_cpu_die(unsigned int cpu);
 
 static DEFINE_SPINLOCK(boot_lock);
 
-/* XXX pentagram_pen_release is cargo culted code - DO NOT COPY XXX */
-volatile int pentagram_pen_release = -1;
-
 
 #ifdef CONFIG_HOTPLUG_CPU
 
@@ -39,9 +36,9 @@ volatile int pentagram_pen_release = -1;
  */
 static void write_pen_release(int val)
 {
-	pentagram_pen_release = val;
+	pen_release = val;
 	smp_wmb();
-	sync_cache_w(&pentagram_pen_release);
+	sync_cache_w(&pen_release);
 }
 
 
@@ -124,14 +121,14 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 		spin_lock(&boot_lock);
 
-	//	pr_info("pentagram_pen_release%d ,cpu_id %d\n",pentagram_pen_release,core_id);
+	//	pr_info("pen_release%d ,cpu_id %d\n",pen_release,core_id);
 
 		/*
 		 * The secondary processor is waiting to be released from
 		 * the holding pen - release it, then wait for it to flag
-		 * that it has been released by resetting pentagram_pen_release.
+		 * that it has been released by resetting pen_release.
 		 *
-		 * Note that "pentagram_pen_release" is the hardware CPU core ID, whereas
+		 * Note that "pen_release" is the hardware CPU core ID, whereas
 		 * "cpu" is Linux's internal ID.
 		 */
 		 write_pen_release(core_id);
@@ -139,7 +136,7 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 	//pr_info("sc_smp_boot_secondary\n");
 	//pr_info("cpu%d ,cpu_id %d\n",cpu,core_id);
-	//pr_info("pentagram_pen_release%d ,cpu_id %d\n",pentagram_pen_release,core_id);
+	//pr_info("pen_release%d ,cpu_id %d\n",pen_release,core_id);
 
 
         if (!wait_addr)
@@ -169,18 +166,18 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	   
 		 arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 	   
-		 if (pentagram_pen_release == -1)
+		 if (pen_release == -1)
 			   break;
 	   
 		 udelay(10);
 	 }
 
 
-	ret = pentagram_pen_release != -1 ? -ETIMEDOUT : 0; 
+	ret = pen_release != -1 ? -ETIMEDOUT : 0; 
 
-	//pr_info("pentagram_pen_release end %d ,cpu_id %d\n",pentagram_pen_release,core_id);
+	//pr_info("pen_release end %d ,cpu_id %d\n",pen_release,core_id);
 
-    //pr_info("pentagram_pen_release end ret %d \n",ret);
+    //pr_info("pen_release end ret %d \n",ret);
 
 	spin_unlock(&boot_lock);
 

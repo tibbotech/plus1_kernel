@@ -200,7 +200,7 @@ int kobject_synth_uevent(struct kobject *kobj, const char *buf, size_t count)
 
 	r = kobject_action_type(buf, count, &action, &action_args);
 	if (r) {
-		msg = "unknown uevent action string";
+		msg = "unknown uevent action string\n";
 		goto out;
 	}
 
@@ -212,7 +212,7 @@ int kobject_synth_uevent(struct kobject *kobj, const char *buf, size_t count)
 	r = kobject_action_args(action_args,
 				count - (action_args - buf), &env);
 	if (r == -EINVAL) {
-		msg = "incorrect uevent action arguments";
+		msg = "incorrect uevent action arguments\n";
 		goto out;
 	}
 
@@ -224,7 +224,7 @@ int kobject_synth_uevent(struct kobject *kobj, const char *buf, size_t count)
 out:
 	if (r) {
 		devpath = kobject_get_path(kobj, GFP_KERNEL);
-		pr_warn("synth uevent: %s: %s\n",
+		printk(KERN_WARNING "synth uevent: %s: %s",
 		       devpath ?: "unknown device",
 		       msg ?: "failed to send uevent");
 		kfree(devpath);
@@ -240,7 +240,6 @@ static int kobj_usermode_filter(struct kobject *kobj)
 	ops = kobj_ns_ops(kobj);
 	if (ops) {
 		const void *init_ns, *ns;
-
 		ns = kobj->ktype->namespace(kobj);
 		init_ns = ops->initial_ns();
 		return ns != init_ns;
@@ -391,7 +390,6 @@ static int kobject_uevent_net_broadcast(struct kobject *kobj,
 	ops = kobj_ns_ops(kobj);
 	if (!ops && kobj->kset) {
 		struct kobject *ksobj = &kobj->kset->kobj;
-
 		if (ksobj->parent != NULL)
 			ops = kobj_ns_ops(ksobj->parent);
 	}
@@ -465,13 +463,6 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 	const struct kset_uevent_ops *uevent_ops;
 	int i = 0;
 	int retval = 0;
-
-	/*
-	 * Mark "remove" event done regardless of result, for some subsystems
-	 * do not want to re-trigger "remove" event via automatic cleanup.
-	 */
-	if (action == KOBJ_REMOVE)
-		kobj->state_remove_uevent_sent = 1;
 
 	pr_debug("kobject: '%s' (%p): %s\n",
 		 kobject_name(kobj), kobj, __func__);
@@ -574,6 +565,10 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 		kobj->state_add_uevent_sent = 1;
 		break;
 
+	case KOBJ_REMOVE:
+		kobj->state_remove_uevent_sent = 1;
+		break;
+
 	case KOBJ_UNBIND:
 		zap_modalias_env(env);
 		break;
@@ -584,7 +579,7 @@ int kobject_uevent_env(struct kobject *kobj, enum kobject_action action,
 
 	mutex_lock(&uevent_sock_mutex);
 	/* we will send an event, so request a new sequence number */
-	retval = add_uevent_var(env, "SEQNUM=%llu", ++uevent_seqnum);
+	retval = add_uevent_var(env, "SEQNUM=%llu", (unsigned long long)++uevent_seqnum);
 	if (retval) {
 		mutex_unlock(&uevent_sock_mutex);
 		goto exit;
@@ -768,7 +763,8 @@ static int uevent_net_init(struct net *net)
 
 	ue_sk->sk = netlink_kernel_create(net, NETLINK_KOBJECT_UEVENT, &cfg);
 	if (!ue_sk->sk) {
-		pr_err("kobject_uevent: unable to create netlink socket!\n");
+		printk(KERN_ERR
+		       "kobject_uevent: unable to create netlink socket!\n");
 		kfree(ue_sk);
 		return -ENODEV;
 	}

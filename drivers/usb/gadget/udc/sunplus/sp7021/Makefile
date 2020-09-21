@@ -1,1 +1,0 @@
-obj-$(CONFIG_SOC_SP7021)	+= sunplus_udc.o

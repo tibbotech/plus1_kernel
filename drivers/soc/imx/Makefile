@@ -1,5 +1,9 @@
-# SPDX-License-Identifier: GPL-2.0-only
 obj-$(CONFIG_HAVE_IMX_GPC) += gpc.o
-obj-$(CONFIG_IMX_GPCV2_PM_DOMAINS) += gpcv2.o
-obj-$(CONFIG_ARCH_MXC) += soc-imx8.o
-obj-$(CONFIG_IMX_SCU_SOC) += soc-imx-scu.o
+obj-$(CONFIG_IMX7_PM_DOMAINS) += gpcv2.o
+obj-$(CONFIG_HAVE_IMX_MU) += mu/
+obj-$(CONFIG_HAVE_IMX_SC) += sc/
+obj-$(CONFIG_HAVE_IMX_SC_PD) += pm-domains.o
+obj-$(CONFIG_HAVE_IMX_BUSFREQ) += busfreq-imx8mq.o 
+obj-$(CONFIG_HAVE_IMX8_SOC) += soc-imx8.o
+obj-$(CONFIG_HAVE_IMX_GPC_PSCI) += gpc-psci.o
+obj-$(CONFIG_HAVE_IMX8_SECO) += seco_mu/

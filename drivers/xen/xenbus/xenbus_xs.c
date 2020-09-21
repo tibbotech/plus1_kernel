@@ -105,7 +105,6 @@ static void xs_suspend_enter(void)
 
 static void xs_suspend_exit(void)
 {
-	xb_dev_generation_id++;
 	spin_lock(&xs_state_lock);
 	xs_suspend_active--;
 	spin_unlock(&xs_state_lock);
@@ -126,7 +125,7 @@ static uint32_t xs_request_enter(struct xb_req_data *req)
 		spin_lock(&xs_state_lock);
 	}
 
-	if (req->type == XS_TRANSACTION_START && !req->user_req)
+	if (req->type == XS_TRANSACTION_START)
 		xs_state_users++;
 	xs_state_users++;
 	rq_id = xs_request_id++;
@@ -141,7 +140,7 @@ void xs_request_exit(struct xb_req_data *req)
 	spin_lock(&xs_state_lock);
 	xs_state_users--;
 	if ((req->type == XS_TRANSACTION_START && req->msg.type == XS_ERROR) ||
-	    (req->type == XS_TRANSACTION_END && !req->user_req &&
+	    (req->type == XS_TRANSACTION_END &&
 	     !WARN_ON_ONCE(req->msg.type == XS_ERROR &&
 			   !strcmp(req->body, "ENOENT"))))
 		xs_state_users--;
@@ -191,11 +190,8 @@ static bool xenbus_ok(void)
 
 static bool test_reply(struct xb_req_data *req)
 {
-	if (req->state == xb_req_state_got_reply || !xenbus_ok()) {
-		/* read req->state before all other fields */
-		virt_rmb();
+	if (req->state == xb_req_state_got_reply || !xenbus_ok())
 		return true;
-	}
 
 	/* Make sure to reread req->state each time. */
 	barrier();
@@ -205,7 +201,7 @@ static bool test_reply(struct xb_req_data *req)
 
 static void *read_reply(struct xb_req_data *req)
 {
-	do {
+	while (req->state != xb_req_state_got_reply) {
 		wait_event(req->wq, test_reply(req));
 
 		if (!xenbus_ok())
@@ -219,7 +215,7 @@ static void *read_reply(struct xb_req_data *req)
 		if (req->err)
 			return ERR_PTR(req->err);
 
-	} while (req->state != xb_req_state_got_reply);
+	}
 
 	return req->body;
 }
@@ -290,7 +286,6 @@ int xenbus_dev_request_and_reply(struct xsd_sockmsg *msg, void *par)
 	req->num_vecs = 1;
 	req->cb = xenbus_dev_queue_reply;
 	req->par = par;
-	req->user_req = true;
 
 	xs_send(req, msg);
 
@@ -318,7 +313,6 @@ static void *xs_talkv(struct xenbus_transaction t,
 	req->vec = iovec;
 	req->num_vecs = num_vecs;
 	req->cb = xs_wake_up;
-	req->user_req = false;
 
 	msg.req_id = 0;
 	msg.tx_id = t.id;

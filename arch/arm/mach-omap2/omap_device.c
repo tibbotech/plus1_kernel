@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * omap_device implementation
  *
@@ -10,6 +9,10 @@
  * Pandita, Sakari Poussa, Anand Sawant, Santosh Shilimkar, Richard
  * Woodruff
  *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
  * This code provides a consistent interface for OMAP device drivers
  * to control power management and interconnect properties of their
  * devices.
@@ -17,6 +20,8 @@
  * In the medium- to long-term, this code should be implemented as a
  * proper omap_bus/omap_device in Linux, no more platform_data func
  * pointers
+ *
+ *
  */
 #undef DEBUG
 

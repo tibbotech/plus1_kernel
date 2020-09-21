@@ -351,15 +351,13 @@ int i2400m_barker_db_init(const char *_options)
 			}
 			result = i2400m_barker_db_add(barker);
 			if (result < 0)
-				goto error_parse_add;
+				goto error_add;
 		}
 		kfree(options_orig);
 	}
 	return 0;
 
-error_parse_add:
 error_parse:
-	kfree(options_orig);
 error_add:
 	kfree(i2400m_barker_db);
 	return result;
@@ -397,9 +395,14 @@ int i2400m_is_boot_barker(struct i2400m *i2400m,
 
 	/* Short circuit if we have already discovered the barker
 	 * associated with the device. */
-	if (i2400m->barker &&
-	    !memcmp(buf, i2400m->barker, sizeof(i2400m->barker->data)))
+	if (i2400m->barker
+	    && !memcmp(buf, i2400m->barker, sizeof(i2400m->barker->data))) {
+		unsigned index = (i2400m->barker - i2400m_barker_db)
+			/ sizeof(*i2400m->barker);
+		d_printf(2, dev, "boot barker cache-confirmed #%u/%08x\n",
+			 index, le32_to_cpu(i2400m->barker->data[0]));
 		return 0;
+	}
 
 	for (i = 0; i < i2400m_barker_db_used; i++) {
 		barker = &i2400m_barker_db[i];

@@ -192,8 +192,10 @@ static void nci_uart_tty_close(struct tty_struct *tty)
 	if (!nu)
 		return;
 
-	kfree_skb(nu->tx_skb);
-	kfree_skb(nu->rx_skb);
+	if (nu->tx_skb)
+		kfree_skb(nu->tx_skb);
+	if (nu->rx_skb)
+		kfree_skb(nu->rx_skb);
 
 	skb_queue_purge(&nu->tx_q);
 
@@ -346,7 +348,7 @@ static int nci_uart_default_recv_buf(struct nci_uart *nu, const u8 *data,
 			nu->rx_packet_len = -1;
 			nu->rx_skb = nci_skb_alloc(nu->ndev,
 						   NCI_MAX_PACKET_SIZE,
-						   GFP_ATOMIC);
+						   GFP_KERNEL);
 			if (!nu->rx_skb)
 				return -ENOMEM;
 		}
@@ -463,7 +465,6 @@ static struct tty_ldisc_ops nci_uart_ldisc = {
 	.receive_buf	= nci_uart_tty_receive,
 	.write_wakeup	= nci_uart_tty_wakeup,
 	.ioctl		= nci_uart_tty_ioctl,
-	.compat_ioctl	= nci_uart_tty_ioctl,
 };
 
 static int __init nci_uart_init(void)

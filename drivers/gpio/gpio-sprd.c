@@ -219,6 +219,7 @@ static int sprd_gpio_probe(struct platform_device *pdev)
 {
 	struct gpio_irq_chip *irq;
 	struct sprd_gpio *sprd_gpio;
+	struct resource *res;
 	int ret;
 
 	sprd_gpio = devm_kzalloc(&pdev->dev, sizeof(*sprd_gpio), GFP_KERNEL);
@@ -226,10 +227,13 @@ static int sprd_gpio_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	sprd_gpio->irq = platform_get_irq(pdev, 0);
-	if (sprd_gpio->irq < 0)
+	if (sprd_gpio->irq < 0) {
+		dev_err(&pdev->dev, "Failed to get GPIO interrupt.\n");
 		return sprd_gpio->irq;
+	}
 
-	sprd_gpio->base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	sprd_gpio->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(sprd_gpio->base))
 		return PTR_ERR(sprd_gpio->base);
 

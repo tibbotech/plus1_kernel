@@ -1,6 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2016 Chelsio Communications, Inc.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include "cxgbit.h"
@@ -260,7 +263,7 @@ out:
 	r2t->targ_xfer_tag = ttinfo->tag;
 }
 
-void cxgbit_unmap_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd)
+void cxgbit_release_cmd(struct iscsi_conn *conn, struct iscsi_cmd *cmd)
 {
 	struct cxgbit_cmd *ccmd = iscsit_priv_cmd(cmd);
 
@@ -315,10 +318,8 @@ int cxgbit_ddp_init(struct cxgbit_device *cdev)
 
 	ret = cxgbi_ppm_init(lldi->iscsi_ppm, cdev->lldi.ports[0],
 			     cdev->lldi.pdev, &cdev->lldi, &tformat,
-			     lldi->vr->iscsi.size, lldi->iscsi_llimit,
-			     lldi->vr->iscsi.start, 2,
-			     lldi->vr->ppod_edram.start,
-			     lldi->vr->ppod_edram.size);
+			     ppmax, lldi->iscsi_llimit,
+			     lldi->vr->iscsi.start, 2);
 	if (ret >= 0) {
 		struct cxgbi_ppm *ppm = (struct cxgbi_ppm *)(*lldi->iscsi_ppm);
 

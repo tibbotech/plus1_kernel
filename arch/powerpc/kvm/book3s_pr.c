@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2009. SUSE Linux Products GmbH. All rights reserved.
  *
@@ -14,6 +13,10 @@
  *
  * This file is derived from arch/powerpc/kvm/44x.c,
  * by Hollis Blanchard <hollisb@us.ibm.com>.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License, version 2, as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/kvm_host.h>
@@ -164,7 +167,7 @@ void kvmppc_copy_to_svcpu(struct kvm_vcpu *vcpu)
 	svcpu->gpr[11] = vcpu->arch.regs.gpr[11];
 	svcpu->gpr[12] = vcpu->arch.regs.gpr[12];
 	svcpu->gpr[13] = vcpu->arch.regs.gpr[13];
-	svcpu->cr  = vcpu->arch.regs.ccr;
+	svcpu->cr  = vcpu->arch.cr;
 	svcpu->xer = vcpu->arch.regs.xer;
 	svcpu->ctr = vcpu->arch.regs.ctr;
 	svcpu->lr  = vcpu->arch.regs.link;
@@ -246,7 +249,7 @@ void kvmppc_copy_from_svcpu(struct kvm_vcpu *vcpu)
 	vcpu->arch.regs.gpr[11] = svcpu->gpr[11];
 	vcpu->arch.regs.gpr[12] = svcpu->gpr[12];
 	vcpu->arch.regs.gpr[13] = svcpu->gpr[13];
-	vcpu->arch.regs.ccr  = svcpu->cr;
+	vcpu->arch.cr  = svcpu->cr;
 	vcpu->arch.regs.xer = svcpu->xer;
 	vcpu->arch.regs.ctr = svcpu->ctr;
 	vcpu->arch.regs.link  = svcpu->lr;
@@ -584,7 +587,6 @@ void kvmppc_set_pvr_pr(struct kvm_vcpu *vcpu, u32 pvr)
 	case PVR_POWER8:
 	case PVR_POWER8E:
 	case PVR_POWER8NVL:
-	case PVR_POWER9:
 		vcpu->arch.hflags |= BOOK3S_HFLAG_MULTI_PGSIZE |
 			BOOK3S_HFLAG_NEW_TLBIE;
 		break;
@@ -1244,6 +1246,7 @@ int kvmppc_handle_exit_pr(struct kvm_run *run, struct kvm_vcpu *vcpu,
 		r = RESUME_GUEST;
 		break;
 	case BOOK3S_INTERRUPT_EXTERNAL:
+	case BOOK3S_INTERRUPT_EXTERNAL_LEVEL:
 	case BOOK3S_INTERRUPT_EXTERNAL_HV:
 	case BOOK3S_INTERRUPT_H_VIRT:
 		vcpu->stat.ext_intr_exits++;
@@ -1769,12 +1772,10 @@ static struct kvm_vcpu *kvmppc_core_vcpu_create_pr(struct kvm *kvm,
 
 	err = kvmppc_mmu_init(vcpu);
 	if (err < 0)
-		goto free_shared_page;
+		goto uninit_vcpu;
 
 	return vcpu;
 
-free_shared_page:
-	free_page((unsigned long)vcpu->arch.shared);
 uninit_vcpu:
 	kvm_vcpu_uninit(vcpu);
 free_shadow_vcpu:
@@ -1913,8 +1914,7 @@ static int kvmppc_core_prepare_memory_region_pr(struct kvm *kvm,
 static void kvmppc_core_commit_memory_region_pr(struct kvm *kvm,
 				const struct kvm_userspace_memory_region *mem,
 				const struct kvm_memory_slot *old,
-				const struct kvm_memory_slot *new,
-				enum kvm_mr_change change)
+				const struct kvm_memory_slot *new)
 {
 	return;
 }

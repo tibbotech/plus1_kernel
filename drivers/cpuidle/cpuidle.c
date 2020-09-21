@@ -17,6 +17,7 @@
 #include <linux/pm_qos.h>
 #include <linux/cpu.h>
 #include <linux/cpuidle.h>
+#include <linux/ipipe.h>
 #include <linux/ktime.h>
 #include <linux/hrtimer.h>
 #include <linux/module.h>
@@ -202,6 +203,20 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	struct cpuidle_state *target_state = &drv->states[index];
 	bool broadcast = !!(target_state->flags & CPUIDLE_FLAG_TIMER_STOP);
 	ktime_t time_start, time_end;
+	s64 diff;
+
+	/*
+	 * A co-kernel running on the head stage of the IRQ pipeline
+	 * may deny switching to a deeper C-state. If so, call the
+	 * default idle routine instead. If the co-kernel cannot bear
+	 * with the latency induced by the default idling operation,
+	 * then CPUIDLE is not usable and should be disabled at build
+	 * time.
+	 */
+	if (!ipipe_enter_cpuidle(dev, target_state)) {
+		default_idle_call();
+		return -EBUSY;
+	}
 
 	/*
 	 * Tell the time framework to switch to a broadcast timer because our
@@ -227,6 +242,7 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 
 	stop_critical_timings();
 	entered_state = target_state->enter(dev, drv, index);
+	hard_cond_local_irq_enable();
 	start_critical_timings();
 
 	sched_clock_idle_wakeup_event();
@@ -246,49 +262,19 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	if (!cpuidle_state_is_coupled(drv, index))
 		local_irq_enable();
 
-	if (entered_state >= 0) {
-		s64 diff, delay = drv->states[entered_state].exit_latency;
-		int i;
+	diff = ktime_us_delta(time_end, time_start);
+	if (diff > INT_MAX)
+		diff = INT_MAX;
 
-		/*
-		 * Update cpuidle counters
-		 * This can be moved to within driver enter routine,
+	dev->last_residency = (int) diff;
+
+	if (entered_state >= 0) {
+		/* Update cpuidle counters */
+		/* This can be moved to within driver enter routine
 		 * but that results in multiple copies of same code.
 		 */
-		diff = ktime_us_delta(time_end, time_start);
-		if (diff > INT_MAX)
-			diff = INT_MAX;
-
-		dev->last_residency = (int)diff;
 		dev->states_usage[entered_state].time += dev->last_residency;
 		dev->states_usage[entered_state].usage++;
-
-		if (diff < drv->states[entered_state].target_residency) {
-			for (i = entered_state - 1; i >= 0; i--) {
-				if (drv->states[i].disabled ||
-				    dev->states_usage[i].disable)
-					continue;
-
-				/* Shallower states are enabled, so update. */
-				dev->states_usage[entered_state].above++;
-				break;
-			}
-		} else if (diff > delay) {
-			for (i = entered_state + 1; i < drv->state_count; i++) {
-				if (drv->states[i].disabled ||
-				    dev->states_usage[i].disable)
-					continue;
-
-				/*
-				 * Update if a deeper state would have been a
-				 * better match for the observed idle duration.
-				 */
-				if (diff - delay >= drv->states[i].target_residency)
-					dev->states_usage[entered_state].below++;
-
-				break;
-			}
-		}
 	} else {
 		dev->last_residency = 0;
 	}
@@ -328,23 +314,9 @@ int cpuidle_select(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 int cpuidle_enter(struct cpuidle_driver *drv, struct cpuidle_device *dev,
 		  int index)
 {
-	int ret = 0;
-
-	/*
-	 * Store the next hrtimer, which becomes either next tick or the next
-	 * timer event, whatever expires first. Additionally, to make this data
-	 * useful for consumers outside cpuidle, we rely on that the governor's
-	 * ->select() callback have decided, whether to stop the tick or not.
-	 */
-	WRITE_ONCE(dev->next_hrtimer, tick_nohz_get_next_hrtimer());
-
 	if (cpuidle_state_is_coupled(drv, index))
-		ret = cpuidle_enter_state_coupled(dev, drv, index);
-	else
-		ret = cpuidle_enter_state(dev, drv, index);
-
-	WRITE_ONCE(dev->next_hrtimer, 0);
-	return ret;
+		return cpuidle_enter_state_coupled(dev, drv, index);
+	return cpuidle_enter_state(dev, drv, index);
 }
 
 /**
@@ -359,37 +331,6 @@ void cpuidle_reflect(struct cpuidle_device *dev, int index)
 {
 	if (cpuidle_curr_governor->reflect && index >= 0)
 		cpuidle_curr_governor->reflect(dev, index);
-}
-
-/**
- * cpuidle_poll_time - return amount of time to poll for,
- * governors can override dev->poll_limit_ns if necessary
- *
- * @drv:   the cpuidle driver tied with the cpu
- * @dev:   the cpuidle device
- *
- */
-u64 cpuidle_poll_time(struct cpuidle_driver *drv,
-		      struct cpuidle_device *dev)
-{
-	int i;
-	u64 limit_ns;
-
-	if (dev->poll_limit_ns)
-		return dev->poll_limit_ns;
-
-	limit_ns = TICK_NSEC;
-	for (i = 1; i < drv->state_count; i++) {
-		if (drv->states[i].disabled || dev->states_usage[i].disable)
-			continue;
-
-		limit_ns = (u64)drv->states[i].target_residency * NSEC_PER_USEC;
-		break;
-	}
-
-	dev->poll_limit_ns = limit_ns;
-
-	return dev->poll_limit_ns;
 }
 
 /**
@@ -556,7 +497,6 @@ static void __cpuidle_device_init(struct cpuidle_device *dev)
 {
 	memset(dev->states_usage, 0, sizeof(dev->states_usage));
 	dev->last_residency = 0;
-	dev->next_hrtimer = 0;
 }
 
 /**
@@ -777,5 +717,4 @@ static int __init cpuidle_init(void)
 }
 
 module_param(off, int, 0444);
-module_param_string(governor, param_governor, CPUIDLE_NAME_LEN, 0444);
 core_initcall(cpuidle_init);

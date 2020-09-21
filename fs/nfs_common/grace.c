@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Common code for control of lockd and nfsv4 grace periods.
  *

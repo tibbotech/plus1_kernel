@@ -55,7 +55,7 @@
 
 #define IMX2_WDT_WMCR		0x08		/* Misc Register */
 
-#define IMX2_WDT_MAX_TIME	128U
+#define IMX2_WDT_MAX_TIME	128
 #define IMX2_WDT_DEFAULT_TIME	60		/* in seconds */
 
 #define WDOG_SEC_TO_COUNT(s)	((s * 2 - 1) << 8)
@@ -89,6 +89,9 @@ static const struct watchdog_info imx2_wdt_pretimeout_info = {
 		   WDIOF_PRETIMEOUT,
 };
 
+static int imx2_wdt_ping(struct watchdog_device *wdog);
+static inline bool imx2_wdt_is_running(struct imx2_wdt_device *wdev);
+
 static int imx2_wdt_restart(struct watchdog_device *wdog, unsigned long action,
 			    void *data)
 {
@@ -103,6 +106,10 @@ static int imx2_wdt_restart(struct watchdog_device *wdog, unsigned long action,
 
 	/* Assert SRS signal */
 	regmap_write(wdev->regmap, IMX2_WDT_WCR, wcr_enable);
+
+	if (imx2_wdt_is_running(wdev))
+		imx2_wdt_ping(wdog);
+
 	/*
 	 * Due to imx6q errata ERR004346 (WDOG: WDOG SRS bit requires to be
 	 * written twice), we add another two writes to ensure there must be at
@@ -114,7 +121,9 @@ static int imx2_wdt_restart(struct watchdog_device *wdog, unsigned long action,
 	regmap_write(wdev->regmap, IMX2_WDT_WCR, wcr_enable);
 
 	/* wait for reset to assert... */
-	mdelay(500);
+	mdelay(100);
+	dev_err(wdog->parent, "failed to assert %s reset, trying with timeout\n",
+		wdev->ext_reset ? "external" : "internal");
 
 	return 0;
 }
@@ -178,10 +187,8 @@ static void __imx2_wdt_set_timeout(struct watchdog_device *wdog,
 static int imx2_wdt_set_timeout(struct watchdog_device *wdog,
 				unsigned int new_timeout)
 {
-	unsigned int actual;
+	__imx2_wdt_set_timeout(wdog, new_timeout);
 
-	actual = min(new_timeout, IMX2_WDT_MAX_TIME);
-	__imx2_wdt_set_timeout(wdog, actual);
 	wdog->timeout = new_timeout;
 	return 0;
 }
@@ -249,6 +256,7 @@ static int __init imx2_wdt_probe(struct platform_device *pdev)
 {
 	struct imx2_wdt_device *wdev;
 	struct watchdog_device *wdog;
+	struct resource *res;
 	void __iomem *base;
 	int ret;
 	u32 val;
@@ -257,7 +265,8 @@ static int __init imx2_wdt_probe(struct platform_device *pdev)
 	if (!wdev)
 		return -ENOMEM;
 
-	base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
@@ -316,8 +325,10 @@ static int __init imx2_wdt_probe(struct platform_device *pdev)
 	regmap_write(wdev->regmap, IMX2_WDT_WMCR, 0);
 
 	ret = watchdog_register_device(wdog);
-	if (ret)
+	if (ret) {
+		dev_err(&pdev->dev, "cannot register watchdog device\n");
 		goto disable_clk;
+	}
 
 	dev_info(&pdev->dev, "timeout %d sec (nowayout=%d)\n",
 		 wdog->timeout, nowayout);

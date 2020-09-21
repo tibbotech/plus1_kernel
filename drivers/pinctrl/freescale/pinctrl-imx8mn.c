@@ -1,13 +1,23 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright 2018-2019 NXP
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 #include <linux/err.h>
 #include <linux/init.h>
+#include <linux/io.h>
 #include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/pinctrl/pinctrl.h>
-#include <linux/platform_device.h>
 
 #include "pinctrl-imx.h"
 
@@ -322,21 +332,45 @@ static struct imx_pinctrl_soc_info imx8mn_pinctrl_info = {
 	.gpr_compatible = "fsl,imx8mn-iomuxc-gpr",
 };
 
-static const struct of_device_id imx8mn_pinctrl_of_match[] = {
+static struct of_device_id imx8mn_pinctrl_of_match[] = {
 	{ .compatible = "fsl,imx8mn-iomuxc", .data = &imx8mn_pinctrl_info, },
 	{ /* sentinel */ }
 };
 
 static int imx8mn_pinctrl_probe(struct platform_device *pdev)
 {
-	return imx_pinctrl_probe(pdev, &imx8mn_pinctrl_info);
+	const struct of_device_id *match;
+	struct imx_pinctrl_soc_info *pinctrl_info;
+
+	match = of_match_device(imx8mn_pinctrl_of_match, &pdev->dev);
+
+	if (!match)
+		return -ENODEV;
+
+	pinctrl_info = (struct imx_pinctrl_soc_info *) match->data;
+
+	return imx_pinctrl_probe(pdev, pinctrl_info);
 }
+
+static int __maybe_unused imx8mn_pinctrl_suspend(struct device *dev)
+{
+	return imx_pinctrl_suspend(dev);
+}
+
+static int __maybe_unused imx8mn_pinctrl_resume(struct device *dev)
+{
+	return imx_pinctrl_resume(dev);
+}
+
+static const struct dev_pm_ops imx8mn_pinctrl_pm_ops = {
+	SET_LATE_SYSTEM_SLEEP_PM_OPS(imx8mn_pinctrl_suspend, imx8mn_pinctrl_resume)
+};
 
 static struct platform_driver imx8mn_pinctrl_driver = {
 	.driver = {
 		.name = "imx8mn-pinctrl",
 		.of_match_table = of_match_ptr(imx8mn_pinctrl_of_match),
-		.suppress_bind_attrs = true,
+		.pm = &imx8mn_pinctrl_pm_ops,
 	},
 	.probe = imx8mn_pinctrl_probe,
 };

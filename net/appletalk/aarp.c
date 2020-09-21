@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *	AARP:		An implementation of the AppleTalk AARP protocol for
  *			Ethernet 'ELAP'.
@@ -14,6 +13,12 @@
  *		Use neighbour discovery code.
  *		Token Ring Support.
  *
+ *		This program is free software; you can redistribute it and/or
+ *		modify it under the terms of the GNU General Public License
+ *		as published by the Free Software Foundation; either version
+ *		2 of the License, or (at your option) any later version.
+ *
+ *
  *	References:
  *		Inside AppleTalk (2nd Ed).
  *	Fixes:
@@ -21,6 +26,7 @@
  *		Rob Newberry	-	Added proxy AARP and AARP proc fs,
  *					moved probing from DDP module.
  *		Arnaldo C. Melo -	don't mangle rx packets
+ *
  */
 
 #include <linux/if_arp.h>
@@ -873,24 +879,15 @@ static struct notifier_block aarp_notifier = {
 
 static unsigned char aarp_snap_id[] = { 0x00, 0x00, 0x00, 0x80, 0xF3 };
 
-int __init aarp_proto_init(void)
+void __init aarp_proto_init(void)
 {
-	int rc;
-
 	aarp_dl = register_snap_client(aarp_snap_id, aarp_rcv);
-	if (!aarp_dl) {
+	if (!aarp_dl)
 		printk(KERN_CRIT "Unable to register AARP with SNAP.\n");
-		return -ENOMEM;
-	}
 	timer_setup(&aarp_timer, aarp_expire_timeout, 0);
 	aarp_timer.expires  = jiffies + sysctl_aarp_expiry_time;
 	add_timer(&aarp_timer);
-	rc = register_netdevice_notifier(&aarp_notifier);
-	if (rc) {
-		del_timer_sync(&aarp_timer);
-		unregister_snap_client(aarp_dl);
-	}
-	return rc;
+	register_netdevice_notifier(&aarp_notifier);
 }
 
 /* Remove the AARP entries associated with a device. */

@@ -1,4 +1,3 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * linux/percpu-defs.h - basic definitions for percpu areas
  *
@@ -92,7 +91,8 @@
 	extern __PCPU_DUMMY_ATTRS char __pcpu_unique_##name;		\
 	__PCPU_DUMMY_ATTRS char __pcpu_unique_##name;			\
 	extern __PCPU_ATTRS(sec) __typeof__(type) name;			\
-	__PCPU_ATTRS(sec) __weak __typeof__(type) name
+	__PCPU_ATTRS(sec) PER_CPU_DEF_ATTRIBUTES __weak			\
+	__typeof__(type) name
 #else
 /*
  * Normal declaration and definition macros.
@@ -101,7 +101,8 @@
 	extern __PCPU_ATTRS(sec) __typeof__(type) name
 
 #define DEFINE_PER_CPU_SECTION(type, name, sec)				\
-	__PCPU_ATTRS(sec) __typeof__(type) name
+	__PCPU_ATTRS(sec) PER_CPU_DEF_ATTRIBUTES			\
+	__typeof__(type) name
 #endif
 
 /*
@@ -175,7 +176,8 @@
  * Declaration/definition used for per-CPU variables that should be accessed
  * as decrypted when memory encryption is enabled in the guest.
  */
-#ifdef CONFIG_AMD_MEM_ENCRYPT
+#if defined(CONFIG_VIRTUALIZATION) && defined(CONFIG_AMD_MEM_ENCRYPT)
+
 #define DECLARE_PER_CPU_DECRYPTED(type, name)				\
 	DECLARE_PER_CPU_SECTION(type, name, "..decrypted")
 

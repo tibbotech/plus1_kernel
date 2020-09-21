@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * HiSilicon SoC L3C uncore Hardware event counters support
  *
@@ -7,6 +6,10 @@
  *         Shaokun Zhang <zhangshaokun@hisilicon.com>
  *
  * This code is based on the uncore PMUs like arm-cci and arm-ccn.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 #include <linux/acpi.h>
 #include <linux/bug.h>
@@ -206,8 +209,10 @@ static int hisi_l3c_pmu_init_irq(struct hisi_pmu *l3c_pmu,
 
 	/* Read and init IRQ */
 	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
+	if (irq < 0) {
+		dev_err(&pdev->dev, "L3C PMU get irq fail; irq:%d\n", irq);
 		return irq;
+	}
 
 	ret = devm_request_irq(&pdev->dev, irq, hisi_l3c_pmu_isr,
 			       IRQF_NOBALANCING | IRQF_NO_THREAD,
@@ -392,7 +397,6 @@ static int hisi_l3c_pmu_probe(struct platform_device *pdev)
 		.stop		= hisi_uncore_pmu_stop,
 		.read		= hisi_uncore_pmu_read,
 		.attr_groups	= hisi_l3c_pmu_attr_groups,
-		.capabilities	= PERF_PMU_CAP_NO_EXCLUDE,
 	};
 
 	ret = perf_pmu_register(&l3c_pmu->pmu, name, -1);

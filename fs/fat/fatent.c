@@ -1,6 +1,6 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (C) 2004, OGAWA Hirofumi
+ * Released under GPL v2.
  */
 
 #include <linux/blkdev.h>
@@ -290,17 +290,19 @@ void fat_ent_access_init(struct super_block *sb)
 
 	mutex_init(&sbi->fat_lock);
 
-	if (is_fat32(sbi)) {
+	switch (sbi->fat_bits) {
+	case 32:
 		sbi->fatent_shift = 2;
 		sbi->fatent_ops = &fat32_ops;
-	} else if (is_fat16(sbi)) {
+		break;
+	case 16:
 		sbi->fatent_shift = 1;
 		sbi->fatent_ops = &fat16_ops;
-	} else if (is_fat12(sbi)) {
+		break;
+	case 12:
 		sbi->fatent_shift = -1;
 		sbi->fatent_ops = &fat12_ops;
-	} else {
-		fat_fs_error(sb, "invalid FAT variant, %u bits", sbi->fat_bits);
+		break;
 	}
 }
 
@@ -308,7 +310,7 @@ static void mark_fsinfo_dirty(struct super_block *sb)
 {
 	struct msdos_sb_info *sbi = MSDOS_SB(sb);
 
-	if (sb_rdonly(sb) || !is_fat32(sbi))
+	if (sb_rdonly(sb) || sbi->fat_bits != 32)
 		return;
 
 	__mark_inode_dirty(sbi->fsinfo_inode, I_DIRTY_SYNC);
@@ -325,7 +327,7 @@ static inline int fat_ent_update_ptr(struct super_block *sb,
 	/* Is this fatent's blocks including this entry? */
 	if (!fatent->nr_bhs || bhs[0]->b_blocknr != blocknr)
 		return 0;
-	if (is_fat12(sbi)) {
+	if (sbi->fat_bits == 12) {
 		if ((offset + 1) < sb->s_blocksize) {
 			/* This entry is on bhs[0]. */
 			if (fatent->nr_bhs == 2) {
@@ -388,11 +390,8 @@ static int fat_mirror_bhs(struct super_block *sb, struct buffer_head **bhs,
 				err = -ENOMEM;
 				goto error;
 			}
-			/* Avoid race with userspace read via bdev */
-			lock_buffer(c_bh);
 			memcpy(c_bh->b_data, bhs[n]->b_data, sb->s_blocksize);
 			set_buffer_uptodate(c_bh);
-			unlock_buffer(c_bh);
 			mark_buffer_dirty_inode(c_bh, sbi->fat_inode);
 			if (sb->s_flags & SB_SYNCHRONOUS)
 				err = sync_dirty_buffer(c_bh);

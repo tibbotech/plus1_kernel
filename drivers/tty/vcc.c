@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /* vcc.c: sun4v virtual channel concentrator
  *
  * Copyright (C) 2017 Oracle. All rights reserved.

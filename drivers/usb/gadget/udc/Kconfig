@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0
 #
 # USB Gadget support on a system involves
 #    (a) a peripheral controller, and
@@ -45,8 +44,7 @@ config USB_AT91
 
 config USB_LPC32XX
 	tristate "LPC32XX USB Peripheral Controller"
-	depends on ARCH_LPC32XX || COMPILE_TEST
-	depends on I2C
+	depends on ARCH_LPC32XX && I2C
 	select USB_ISP1301
 	help
 	   This option selects the USB device controller in the LPC32xx SoC.
@@ -442,8 +440,6 @@ config USB_GADGET_XILINX
 	  gadget drivers to also be dynamically linked.
 
 source "drivers/usb/gadget/udc/aspeed-vhub/Kconfig"
-source "drivers/usb/gadget/udc/sunplus/i143/Kconfig"
-source "drivers/usb/gadget/udc/sunplus/sp7021/Kconfig"
 
 #
 # LAST -- dummy/emulated controller

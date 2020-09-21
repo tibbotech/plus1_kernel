@@ -1,8 +1,9 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * i.MX6 OCOTP fusebox driver
  *
  * Copyright (c) 2015 Pengutronix, Philipp Zabel <p.zabel@pengutronix.de>
+ *
+ * Copyright 2017 NXP
  *
  * Based on the barebox ocotp driver,
  * Copyright (c) 2010 Baruch Siach <baruch@tkos.co.il>,
@@ -10,6 +11,13 @@
  *
  * Write support based on the fsl_otp driver,
  * Copyright (C) 2010-2013 Freescale Semiconductor, Inc
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2
+ * as published by the Free Software Foundation.
+ *
+ * http://www.opensource.org/licenses/gpl-license.html
+ * http://www.gnu.org/copyleft/gpl.html
  */
 
 #include <linux/clk.h>
@@ -39,14 +47,12 @@
 #define IMX_OCOTP_ADDR_DATA2		0x0040
 #define IMX_OCOTP_ADDR_DATA3		0x0050
 
-#define IMX_OCOTP_BM_CTRL_ADDR		0x000000FF
+#define IMX_OCOTP_BM_CTRL_ADDR		0x0000007F
 #define IMX_OCOTP_BM_CTRL_BUSY		0x00000100
 #define IMX_OCOTP_BM_CTRL_ERROR		0x00000200
 #define IMX_OCOTP_BM_CTRL_REL_SHADOWS	0x00000400
 
-#define TIMING_STROBE_PROG_US		10	/* Min time to blow a fuse */
-#define TIMING_STROBE_READ_NS		37	/* Min time before read */
-#define TIMING_RELAX_NS			17
+#define DEF_RELAX			20	/* > 16.5ns */
 #define DEF_FSOURCE			1001	/* > 1000 ns */
 #define DEF_STROBE_PROG			10000	/* IPG clocks */
 #define IMX_OCOTP_WR_UNLOCK		0x3E770000
@@ -121,22 +127,29 @@ static int imx_ocotp_read(void *context, unsigned int offset,
 {
 	struct ocotp_priv *priv = context;
 	unsigned int count;
-	u32 *buf = val;
+	u8 *buf, *p;
 	int i, ret;
-	u32 index;
+	u32 index, num_bytes;
 
 	index = offset >> 2;
-	count = bytes >> 2;
+	num_bytes = round_up((offset % 4) + bytes, 4);
+	count = num_bytes >> 2;
 
 	if (count > (priv->params->nregs - index))
 		count = priv->params->nregs - index;
 
 	mutex_lock(&ocotp_mutex);
 
+	p = kzalloc(num_bytes, GFP_KERNEL);
+	if (!p)
+		return -ENOMEM;
+	buf = p;
+
 	ret = clk_prepare_enable(priv->clk);
 	if (ret < 0) {
 		mutex_unlock(&ocotp_mutex);
 		dev_err(priv->dev, "failed to prepare/enable ocotp clk\n");
+		kfree(p);
 		return ret;
 	}
 
@@ -147,7 +160,7 @@ static int imx_ocotp_read(void *context, unsigned int offset,
 	}
 
 	for (i = index; i < (index + count); i++) {
-		*buf++ = readl(priv->base + IMX_OCOTP_OFFSET_B0W0 +
+		*(u32 *)buf = readl(priv->base + IMX_OCOTP_OFFSET_B0W0 +
 			       i * IMX_OCOTP_OFFSET_PER_WORD);
 
 		/* 47.3.1.2
@@ -156,14 +169,22 @@ static int imx_ocotp_read(void *context, unsigned int offset,
 		 * software before any new write, read or reload access can be
 		 * issued
 		 */
-		if (*(buf - 1) == IMX_OCOTP_READ_LOCKED_VAL)
+		if (*((u32*)buf) == IMX_OCOTP_READ_LOCKED_VAL)
 			imx_ocotp_clr_err_if_set(priv->base);
+
+		buf += 4;
 	}
 	ret = 0;
+
+	index = offset % 4;
+	memcpy(val, &p[index], bytes);
 
 read_end:
 	clk_disable_unprepare(priv->clk);
 	mutex_unlock(&ocotp_mutex);
+
+	kfree(p);
+
 	return ret;
 }
 
@@ -178,41 +199,14 @@ static void imx_ocotp_set_imx6_timing(struct ocotp_priv *priv)
 	 * fields with timing values to match the current frequency of the
 	 * ipg_clk. OTP writes will work at maximum bus frequencies as long
 	 * as the HW_OCOTP_TIMING parameters are set correctly.
-	 *
-	 * Note: there are minimum timings required to ensure an OTP fuse burns
-	 * correctly that are independent of the ipg_clk. Those values are not
-	 * formally documented anywhere however, working from the minimum
-	 * timings given in u-boot we can say:
-	 *
-	 * - Minimum STROBE_PROG time is 10 microseconds. Intuitively 10
-	 *   microseconds feels about right as representative of a minimum time
-	 *   to physically burn out a fuse.
-	 *
-	 * - Minimum STROBE_READ i.e. the time to wait post OTP fuse burn before
-	 *   performing another read is 37 nanoseconds
-	 *
-	 * - Minimum RELAX timing is 17 nanoseconds. This final RELAX minimum
-	 *   timing is not entirely clear the documentation says "This
-	 *   count value specifies the time to add to all default timing
-	 *   parameters other than the Tpgm and Trd. It is given in number
-	 *   of ipg_clk periods." where Tpgm and Trd refer to STROBE_PROG
-	 *   and STROBE_READ respectively. What the other timing parameters
-	 *   are though, is not specified. Experience shows a zero RELAX
-	 *   value will mess up a re-load of the shadow registers post OTP
-	 *   burn.
 	 */
 	clk_rate = clk_get_rate(priv->clk);
 
-	relax = DIV_ROUND_UP(clk_rate * TIMING_RELAX_NS, 1000000000) - 1;
-	strobe_read = DIV_ROUND_UP(clk_rate * TIMING_STROBE_READ_NS,
-				   1000000000);
-	strobe_read += 2 * (relax + 1) - 1;
-	strobe_prog = DIV_ROUND_CLOSEST(clk_rate * TIMING_STROBE_PROG_US,
-					1000000);
-	strobe_prog += 2 * (relax + 1) - 1;
+	relax = clk_rate / (1000000000 / DEF_RELAX) - 1;
+	strobe_prog = clk_rate / (1000000000 / 10000) + 2 * (DEF_RELAX + 1) - 1;
+	strobe_read = clk_rate / (1000000000 / 40) + 2 * (DEF_RELAX + 1) - 1;
 
-	timing = readl(priv->base + IMX_OCOTP_ADDR_TIMING) & 0x0FC00000;
-	timing |= strobe_prog & 0x00000FFF;
+	timing = strobe_prog & 0x00000FFF;
 	timing |= (relax       << 12) & 0x0000F000;
 	timing |= (strobe_read << 16) & 0x003F0000;
 
@@ -415,7 +409,7 @@ static struct nvmem_config imx_ocotp_nvmem_config = {
 	.name = "imx-ocotp",
 	.read_only = false,
 	.word_size = 4,
-	.stride = 4,
+	.stride = 1,
 	.reg_read = imx_ocotp_read,
 	.reg_write = imx_ocotp_write,
 };
@@ -450,12 +444,6 @@ static const struct ocotp_params imx6ul_params = {
 	.set_timing = imx_ocotp_set_imx6_timing,
 };
 
-static const struct ocotp_params imx6ull_params = {
-	.nregs = 64,
-	.bank_address_words = 0,
-	.set_timing = imx_ocotp_set_imx6_timing,
-};
-
 static const struct ocotp_params imx7d_params = {
 	.nregs = 64,
 	.bank_address_words = 4,
@@ -470,19 +458,7 @@ static const struct ocotp_params imx7ulp_params = {
 static const struct ocotp_params imx8mq_params = {
 	.nregs = 256,
 	.bank_address_words = 0,
-	.set_timing = imx_ocotp_set_imx6_timing,
-};
-
-static const struct ocotp_params imx8mm_params = {
-	.nregs = 256,
-	.bank_address_words = 0,
-	.set_timing = imx_ocotp_set_imx6_timing,
-};
-
-static const struct ocotp_params imx8mn_params = {
-	.nregs = 256,
-	.bank_address_words = 0,
-	.set_timing = imx_ocotp_set_imx6_timing,
+	.set_timing = imx_ocotp_set_imx7_timing,
 };
 
 static const struct of_device_id imx_ocotp_dt_ids[] = {
@@ -490,13 +466,11 @@ static const struct of_device_id imx_ocotp_dt_ids[] = {
 	{ .compatible = "fsl,imx6sl-ocotp", .data = &imx6sl_params },
 	{ .compatible = "fsl,imx6sx-ocotp", .data = &imx6sx_params },
 	{ .compatible = "fsl,imx6ul-ocotp", .data = &imx6ul_params },
-	{ .compatible = "fsl,imx6ull-ocotp", .data = &imx6ull_params },
+	{ .compatible = "fsl,imx6ull-ocotp", .data = &imx6ul_params },
 	{ .compatible = "fsl,imx7d-ocotp",  .data = &imx7d_params },
 	{ .compatible = "fsl,imx6sll-ocotp", .data = &imx6sll_params },
 	{ .compatible = "fsl,imx7ulp-ocotp", .data = &imx7ulp_params },
 	{ .compatible = "fsl,imx8mq-ocotp", .data = &imx8mq_params },
-	{ .compatible = "fsl,imx8mm-ocotp", .data = &imx8mm_params },
-	{ .compatible = "fsl,imx8mn-ocotp", .data = &imx8mn_params },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, imx_ocotp_dt_ids);
@@ -504,6 +478,7 @@ MODULE_DEVICE_TABLE(of, imx_ocotp_dt_ids);
 static int imx_ocotp_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct resource *res;
 	struct ocotp_priv *priv;
 	struct nvmem_device *nvmem;
 
@@ -513,7 +488,8 @@ static int imx_ocotp_probe(struct platform_device *pdev)
 
 	priv->dev = dev;
 
-	priv->base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	priv->base = devm_ioremap_resource(dev, res);
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
@@ -521,10 +497,7 @@ static int imx_ocotp_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->clk))
 		return PTR_ERR(priv->clk);
 
-	clk_prepare_enable(priv->clk);
-	imx_ocotp_clr_err_if_set(priv->base);
-	clk_disable_unprepare(priv->clk);
-
+	priv->dev = dev;
 	priv->params = of_device_get_match_data(&pdev->dev);
 	imx_ocotp_nvmem_config.size = 4 * priv->params->nregs;
 	imx_ocotp_nvmem_config.dev = dev;

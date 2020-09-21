@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
  *  MQ Deadline i/o scheduler - adaptation of the legacy deadline scheduler,
  *  for the blk-mq scheduling framework
@@ -25,7 +24,7 @@
 #include "blk-mq-sched.h"
 
 /*
- * See Documentation/block/deadline-iosched.rst
+ * See Documentation/block/deadline-iosched.txt
  */
 static const int read_expire = HZ / 2;  /* max time before a read is submitted. */
 static const int write_expire = 5 * HZ; /* ditto for writes, these limits are SOFT! */
@@ -377,6 +376,13 @@ done:
  * hardware queue, but we may return a request that is for a
  * different hardware queue. This is because mq-deadline has shared
  * state for all hardware queues, in terms of sorting, FIFOs, etc.
+ *
+ * For a zoned block device, __dd_dispatch_request() may return NULL
+ * if all the queued write requests are directed at zones that are already
+ * locked due to on-going write requests. In this case, make sure to mark
+ * the queue as needing a restart to ensure that the queue is run again
+ * and the pending writes dispatched once the target zones for the ongoing
+ * write requests are unlocked in dd_finish_request().
  */
 static struct request *dd_dispatch_request(struct blk_mq_hw_ctx *hctx)
 {
@@ -385,6 +391,9 @@ static struct request *dd_dispatch_request(struct blk_mq_hw_ctx *hctx)
 
 	spin_lock(&dd->lock);
 	rq = __dd_dispatch_request(dd);
+	if (!rq && blk_queue_is_zoned(hctx->queue) &&
+	    !list_empty(&dd->fifo_list[WRITE]))
+		blk_mq_sched_mark_restart_hctx(hctx);
 	spin_unlock(&dd->lock);
 
 	return rq;
@@ -459,8 +468,7 @@ static int dd_request_merge(struct request_queue *q, struct request **rq,
 	return ELEVATOR_NO_MERGE;
 }
 
-static bool dd_bio_merge(struct blk_mq_hw_ctx *hctx, struct bio *bio,
-		unsigned int nr_segs)
+static bool dd_bio_merge(struct blk_mq_hw_ctx *hctx, struct bio *bio)
 {
 	struct request_queue *q = hctx->queue;
 	struct deadline_data *dd = q->elevator->elevator_data;
@@ -468,7 +476,7 @@ static bool dd_bio_merge(struct blk_mq_hw_ctx *hctx, struct bio *bio,
 	bool ret;
 
 	spin_lock(&dd->lock);
-	ret = blk_mq_sched_try_merge(q, bio, nr_segs, &free);
+	ret = blk_mq_sched_try_merge(q, bio, &free);
 	spin_unlock(&dd->lock);
 
 	if (free)
@@ -551,13 +559,6 @@ static void dd_prepare_request(struct request *rq, struct bio *bio)
  * spinlock so that the zone is never unlocked while deadline_fifo_request()
  * or deadline_next_request() are executing. This function is called for
  * all requests, whether or not these requests complete successfully.
- *
- * For a zoned block device, __dd_dispatch_request() may have stopped
- * dispatching requests if all the queued requests are write requests directed
- * at zones that are already locked due to on-going write requests. To ensure
- * write request dispatch progress in this case, mark the queue as needing a
- * restart to ensure that the queue is run again after completion of the
- * request and zones being unlocked.
  */
 static void dd_finish_request(struct request *rq)
 {
@@ -569,8 +570,6 @@ static void dd_finish_request(struct request *rq)
 
 		spin_lock_irqsave(&dd->zone_lock, flags);
 		blk_req_zone_write_unlock(rq);
-		if (!list_empty(&dd->fifo_list[WRITE]))
-			blk_mq_sched_mark_restart_hctx(rq->mq_hctx);
 		spin_unlock_irqrestore(&dd->zone_lock, flags);
 	}
 }
@@ -772,7 +771,7 @@ static const struct blk_mq_debugfs_attr deadline_queue_debugfs_attrs[] = {
 #endif
 
 static struct elevator_type mq_deadline = {
-	.ops = {
+	.ops.mq = {
 		.insert_requests	= dd_insert_requests,
 		.dispatch_request	= dd_dispatch_request,
 		.prepare_request	= dd_prepare_request,
@@ -788,13 +787,13 @@ static struct elevator_type mq_deadline = {
 		.exit_sched		= dd_exit_queue,
 	},
 
+	.uses_mq	= true,
 #ifdef CONFIG_BLK_DEBUG_FS
 	.queue_debugfs_attrs = deadline_queue_debugfs_attrs,
 #endif
 	.elevator_attrs = deadline_attrs,
 	.elevator_name = "mq-deadline",
 	.elevator_alias = "deadline",
-	.elevator_features = ELEVATOR_F_ZBD_SEQ_WRITE,
 	.elevator_owner = THIS_MODULE,
 };
 MODULE_ALIAS("mq-deadline-iosched");

@@ -10,7 +10,6 @@
  * Most of code borrowed from the Linux-3.7 EHCI driver
  */
 #include <linux/module.h>
-#include <linux/of.h>
 #include <linux/device.h>
 #include <linux/dmapool.h>
 #include <linux/kernel.h>
@@ -32,7 +31,6 @@
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
 #include <linux/io.h>
-#include <linux/clk.h>
 
 #include <asm/byteorder.h>
 #include <asm/irq.h>
@@ -1287,7 +1285,7 @@ static void fotg210_iaa_watchdog(struct fotg210_hcd *fotg210)
 		 */
 		status = fotg210_readl(fotg210, &fotg210->regs->status);
 		if ((status & STS_IAA) || !(cmd & CMD_IAAD)) {
-			INCR(fotg210->stats.lost_iaa);
+			COUNT(fotg210->stats.lost_iaa);
 			fotg210_writel(fotg210, STS_IAA,
 					&fotg210->regs->status);
 		}
@@ -1629,10 +1627,6 @@ static int fotg210_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			/* see what we found out */
 			temp = check_reset_complete(fotg210, wIndex, status_reg,
 					fotg210_readl(fotg210, status_reg));
-
-			/* restart schedule */
-			fotg210->command |= CMD_RUN;
-			fotg210_writel(fotg210, fotg210->command, &fotg210->regs->command);
 		}
 
 		if (!(temp & (PORT_RESUME|PORT_RESET))) {
@@ -2210,12 +2204,12 @@ __acquires(fotg210->lock)
 	}
 
 	if (unlikely(urb->unlinked)) {
-		INCR(fotg210->stats.unlink);
+		COUNT(fotg210->stats.unlink);
 	} else {
 		/* report non-error and short read status as zero */
 		if (status == -EINPROGRESS || status == -EREMOTEIO)
 			status = 0;
-		INCR(fotg210->stats.complete);
+		COUNT(fotg210->stats.complete);
 	}
 
 #ifdef FOTG210_URB_TRACE
@@ -5000,7 +4994,7 @@ static int hcd_fotg210_init(struct usb_hcd *hcd)
 	fotg210->command = temp;
 
 	/* Accept arbitrarily long scatter-gather lists */
-	if (!hcd->localmem_pool)
+	if (!(hcd->driver->flags & HCD_LOCAL_MEM))
 		hcd->self.sg_tablesize = ~0;
 	return 0;
 }
@@ -5159,9 +5153,9 @@ static irqreturn_t fotg210_irq(struct usb_hcd *hcd)
 	/* normal [4.15.1.2] or error [4.15.1.1] completion */
 	if (likely((status & (STS_INT|STS_ERR)) != 0)) {
 		if (likely((status & STS_ERR) == 0))
-			INCR(fotg210->stats.normal);
+			COUNT(fotg210->stats.normal);
 		else
-			INCR(fotg210->stats.error);
+			COUNT(fotg210->stats.error);
 		bh = 1;
 	}
 
@@ -5186,7 +5180,7 @@ static irqreturn_t fotg210_irq(struct usb_hcd *hcd)
 		if (cmd & CMD_IAAD)
 			fotg210_dbg(fotg210, "IAA with IAAD still set?\n");
 		if (fotg210->async_iaa) {
-			INCR(fotg210->stats.iaa);
+			COUNT(fotg210->stats.iaa);
 			end_unlink_async(fotg210);
 		} else
 			fotg210_dbg(fotg210, "IAA with nothing unlinked?\n");
@@ -5508,7 +5502,7 @@ static const struct hc_driver fotg210_fotg210_hc_driver = {
 	 * generic hardware linkage
 	 */
 	.irq			= fotg210_irq,
-	.flags			= HCD_MEMORY | HCD_DMA | HCD_USB2,
+	.flags			= HCD_MEMORY | HCD_USB2,
 
 	/*
 	 * basic lifecycle operations
@@ -5602,7 +5596,7 @@ static int fotg210_hcd_probe(struct platform_device *pdev)
 	hcd->regs = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(hcd->regs)) {
 		retval = PTR_ERR(hcd->regs);
-		goto failed_put_hcd;
+		goto failed;
 	}
 
 	hcd->rsrc_start = res->start;
@@ -5612,43 +5606,22 @@ static int fotg210_hcd_probe(struct platform_device *pdev)
 
 	fotg210->caps = hcd->regs;
 
-	/* It's OK not to supply this clock */
-	fotg210->pclk = clk_get(dev, "PCLK");
-	if (!IS_ERR(fotg210->pclk)) {
-		retval = clk_prepare_enable(fotg210->pclk);
-		if (retval) {
-			dev_err(dev, "failed to enable PCLK\n");
-			goto failed_put_hcd;
-		}
-	} else if (PTR_ERR(fotg210->pclk) == -EPROBE_DEFER) {
-		/*
-		 * Percolate deferrals, for anything else,
-		 * just live without the clocking.
-		 */
-		retval = PTR_ERR(fotg210->pclk);
-		goto failed_dis_clk;
-	}
-
 	retval = fotg210_setup(hcd);
 	if (retval)
-		goto failed_dis_clk;
+		goto failed;
 
 	fotg210_init(fotg210);
 
 	retval = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (retval) {
 		dev_err(dev, "failed to add hcd with err %d\n", retval);
-		goto failed_dis_clk;
+		goto failed;
 	}
 	device_wakeup_enable(hcd->self.controller);
-	platform_set_drvdata(pdev, hcd);
 
 	return retval;
 
-failed_dis_clk:
-	if (!IS_ERR(fotg210->pclk))
-		clk_disable_unprepare(fotg210->pclk);
-failed_put_hcd:
+failed:
 	usb_put_hcd(hcd);
 fail_create_hcd:
 	dev_err(dev, "init %s fail, %d\n", dev_name(dev), retval);
@@ -5662,11 +5635,11 @@ fail_create_hcd:
  */
 static int fotg210_hcd_remove(struct platform_device *pdev)
 {
-	struct usb_hcd *hcd = platform_get_drvdata(pdev);
-	struct fotg210_hcd *fotg210 = hcd_to_fotg210(hcd);
+	struct device *dev = &pdev->dev;
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
 
-	if (!IS_ERR(fotg210->pclk))
-		clk_disable_unprepare(fotg210->pclk);
+	if (!hcd)
+		return 0;
 
 	usb_remove_hcd(hcd);
 	usb_put_hcd(hcd);
@@ -5674,18 +5647,9 @@ static int fotg210_hcd_remove(struct platform_device *pdev)
 	return 0;
 }
 
-#ifdef CONFIG_OF
-static const struct of_device_id fotg210_of_match[] = {
-	{ .compatible = "faraday,fotg210" },
-	{},
-};
-MODULE_DEVICE_TABLE(of, fotg210_of_match);
-#endif
-
 static struct platform_driver fotg210_hcd_driver = {
 	.driver = {
 		.name   = "fotg210-hcd",
-		.of_match_table = of_match_ptr(fotg210_of_match),
 	},
 	.probe  = fotg210_hcd_probe,
 	.remove = fotg210_hcd_remove,

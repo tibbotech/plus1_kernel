@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -6,14 +5,14 @@
 #include <linux/netfilter.h>
 #include <linux/workqueue.h>
 #include <linux/spinlock.h>
-#include <linux/netfilter/nf_conntrack_common.h>
 #include <linux/netfilter/nf_tables.h>
 #include <net/ip.h> /* for ipv4 options. */
 #include <net/netfilter/nf_tables.h>
 #include <net/netfilter/nf_tables_core.h>
 #include <net/netfilter/nf_conntrack_core.h>
-#include <net/netfilter/nf_conntrack_extend.h>
+#include <linux/netfilter/nf_conntrack_common.h>
 #include <net/netfilter/nf_flow_table.h>
+#include <net/netfilter/nf_conntrack_helper.h>
 
 struct nft_flow_offload {
 	struct nft_flowtable	*flowtable;
@@ -50,19 +49,14 @@ static int nft_flow_route(const struct nft_pktinfo *pkt,
 	return 0;
 }
 
-static bool nft_flow_offload_skip(struct sk_buff *skb, int family)
+static bool nft_flow_offload_skip(struct sk_buff *skb)
 {
+	struct ip_options *opt  = &(IPCB(skb)->opt);
+
+	if (unlikely(opt->optlen))
+		return true;
 	if (skb_sec_path(skb))
 		return true;
-
-	if (family == NFPROTO_IPV4) {
-		const struct ip_options *opt;
-
-		opt = &(IPCB(skb)->opt);
-
-		if (unlikely(opt->optlen))
-			return true;
-	}
 
 	return false;
 }
@@ -73,7 +67,7 @@ static void nft_flow_offload_eval(const struct nft_expr *expr,
 {
 	struct nft_flow_offload *priv = nft_expr_priv(expr);
 	struct nf_flowtable *flowtable = &priv->flowtable->data;
-	struct tcphdr _tcph, *tcph = NULL;
+	const struct nf_conn_help *help;
 	enum ip_conntrack_info ctinfo;
 	struct nf_flow_route route;
 	struct flow_offload *flow;
@@ -81,7 +75,7 @@ static void nft_flow_offload_eval(const struct nft_expr *expr,
 	struct nf_conn *ct;
 	int ret;
 
-	if (nft_flow_offload_skip(pkt->skb, nft_pf(pkt)))
+	if (nft_flow_offload_skip(pkt->skb))
 		goto out;
 
 	ct = nf_ct_get(pkt->skb, &ctinfo);
@@ -90,22 +84,18 @@ static void nft_flow_offload_eval(const struct nft_expr *expr,
 
 	switch (ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.protonum) {
 	case IPPROTO_TCP:
-		tcph = skb_header_pointer(pkt->skb, pkt->xt.thoff,
-					  sizeof(_tcph), &_tcph);
-		if (unlikely(!tcph || tcph->fin || tcph->rst))
-			goto out;
-		break;
 	case IPPROTO_UDP:
 		break;
 	default:
 		goto out;
 	}
 
-	if (nf_ct_ext_exist(ct, NF_CT_EXT_HELPER) ||
-	    ct->status & IPS_SEQ_ADJUST)
+	help = nfct_help(ct);
+	if (help)
 		goto out;
 
-	if (!nf_ct_is_confirmed(ct))
+	if (ctinfo == IP_CT_NEW ||
+	    ctinfo == IP_CT_RELATED)
 		goto out;
 
 	if (test_and_set_bit(IPS_OFFLOAD_BIT, &ct->status))
@@ -119,16 +109,10 @@ static void nft_flow_offload_eval(const struct nft_expr *expr,
 	if (!flow)
 		goto err_flow_alloc;
 
-	if (tcph) {
-		ct->proto.tcp.seen[0].flags |= IP_CT_TCP_FLAG_BE_LIBERAL;
-		ct->proto.tcp.seen[1].flags |= IP_CT_TCP_FLAG_BE_LIBERAL;
-	}
-
 	ret = flow_offload_add(flowtable, flow);
 	if (ret < 0)
 		goto err_flow_add;
 
-	dst_release(route.tuple[!dir].dst);
 	return;
 
 err_flow_add:
@@ -149,11 +133,6 @@ static int nft_flow_offload_validate(const struct nft_ctx *ctx,
 
 	return nft_chain_validate_hooks(ctx->chain, hook_mask);
 }
-
-static const struct nla_policy nft_flow_offload_policy[NFTA_FLOW_MAX + 1] = {
-	[NFTA_FLOW_TABLE_NAME]	= { .type = NLA_STRING,
-				    .len = NFT_NAME_MAXLEN - 1 },
-};
 
 static int nft_flow_offload_init(const struct nft_ctx *ctx,
 				 const struct nft_expr *expr,
@@ -177,26 +156,12 @@ static int nft_flow_offload_init(const struct nft_ctx *ctx,
 	return nf_ct_netns_get(ctx->net, ctx->family);
 }
 
-static void nft_flow_offload_deactivate(const struct nft_ctx *ctx,
-					const struct nft_expr *expr,
-					enum nft_trans_phase phase)
-{
-	struct nft_flow_offload *priv = nft_expr_priv(expr);
-
-	nf_tables_deactivate_flowtable(ctx, priv->flowtable, phase);
-}
-
-static void nft_flow_offload_activate(const struct nft_ctx *ctx,
-				      const struct nft_expr *expr)
-{
-	struct nft_flow_offload *priv = nft_expr_priv(expr);
-
-	priv->flowtable->use++;
-}
-
 static void nft_flow_offload_destroy(const struct nft_ctx *ctx,
 				     const struct nft_expr *expr)
 {
+	struct nft_flow_offload *priv = nft_expr_priv(expr);
+
+	priv->flowtable->use--;
 	nf_ct_netns_put(ctx->net, ctx->family);
 }
 
@@ -219,8 +184,6 @@ static const struct nft_expr_ops nft_flow_offload_ops = {
 	.size		= NFT_EXPR_SIZE(sizeof(struct nft_flow_offload)),
 	.eval		= nft_flow_offload_eval,
 	.init		= nft_flow_offload_init,
-	.activate	= nft_flow_offload_activate,
-	.deactivate	= nft_flow_offload_deactivate,
 	.destroy	= nft_flow_offload_destroy,
 	.validate	= nft_flow_offload_validate,
 	.dump		= nft_flow_offload_dump,
@@ -229,7 +192,6 @@ static const struct nft_expr_ops nft_flow_offload_ops = {
 static struct nft_expr_type nft_flow_offload_type __read_mostly = {
 	.name		= "flow_offload",
 	.ops		= &nft_flow_offload_ops,
-	.policy		= nft_flow_offload_policy,
 	.maxattr	= NFTA_FLOW_MAX,
 	.owner		= THIS_MODULE,
 };
@@ -242,7 +204,7 @@ static int flow_offload_netdev_event(struct notifier_block *this,
 	if (event != NETDEV_DOWN)
 		return NOTIFY_DONE;
 
-	nf_flow_table_cleanup(dev);
+	nf_flow_table_cleanup(dev_net(dev), dev);
 
 	return NOTIFY_DONE;
 }

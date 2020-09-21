@@ -1,6 +1,8 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  (C) 2010,2011       Thomas Renninger <trenn@suse.de>, Novell Inc
+ *
+ *  Licensed under the terms of the GNU GPL License version 2.
+ *
  */
 
 #include <stdio.h>
@@ -19,7 +21,7 @@ struct cpuidle_monitor cpuidle_sysfs_monitor;
 
 static unsigned long long **previous_count;
 static unsigned long long **current_count;
-static struct timespec start_time;
+struct timespec start_time;
 static unsigned long long timediff;
 
 static int cpuidle_get_count_percent(unsigned int id, double *percent,

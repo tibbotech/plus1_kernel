@@ -45,7 +45,6 @@ void usb_init_urb(struct urb *urb)
 	if (urb) {
 		memset(urb, 0, sizeof(*urb));
 		kref_init(&urb->kref);
-		INIT_LIST_HEAD(&urb->urb_list);
 		INIT_LIST_HEAD(&urb->anchor_list);
 	}
 }
@@ -71,8 +70,9 @@ struct urb *usb_alloc_urb(int iso_packets, gfp_t mem_flags)
 {
 	struct urb *urb;
 
-	urb = kmalloc(struct_size(urb, iso_frame_desc, iso_packets),
-		      mem_flags);
+	urb = kmalloc(sizeof(struct urb) +
+		iso_packets * sizeof(struct usb_iso_packet_descriptor),
+		mem_flags);
 	if (!urb)
 		return NULL;
 	usb_init_urb(urb);

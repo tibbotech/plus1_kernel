@@ -19,6 +19,21 @@
 #include <linux/spi/spi.h>
 #include <linux/spi/spi-mem.h>
 
+static void spinand_cache_op_adjust_colum(struct spinand_device *spinand,
+					  const struct nand_page_io_req *req,
+					  u16 *column)
+{
+	struct nand_device *nand = spinand_to_nand(spinand);
+	unsigned int shift;
+
+	if (nand->memorg.planes_per_lun < 2)
+		return;
+
+	/* The plane number is passed in MSB just above the column address */
+	shift = fls(nand->memorg.pagesize);
+	*column |= req->pos.plane << shift;
+}
+
 static int spinand_read_reg_op(struct spinand_device *spinand, u8 reg, u8 *val)
 {
 	struct spi_mem_op op = SPINAND_GET_FEATURE_OP(reg,
@@ -212,21 +227,27 @@ static int spinand_load_page_op(struct spinand_device *spinand,
 static int spinand_read_from_cache_op(struct spinand_device *spinand,
 				      const struct nand_page_io_req *req)
 {
+	struct spi_mem_op op = *spinand->op_templates.read_cache;
 	struct nand_device *nand = spinand_to_nand(spinand);
 	struct mtd_info *mtd = nanddev_to_mtd(nand);
-	struct spi_mem_dirmap_desc *rdesc;
+	struct nand_page_io_req adjreq = *req;
 	unsigned int nbytes = 0;
 	void *buf = NULL;
 	u16 column = 0;
-	ssize_t ret;
+	int ret;
 
 	if (req->datalen) {
+		adjreq.datalen = nanddev_page_size(nand);
+		adjreq.dataoffs = 0;
+		adjreq.databuf.in = spinand->databuf;
 		buf = spinand->databuf;
-		nbytes = nanddev_page_size(nand);
-		column = 0;
+		nbytes = adjreq.datalen;
 	}
 
 	if (req->ooblen) {
+		adjreq.ooblen = nanddev_per_page_oobsize(nand);
+		adjreq.ooboffs = 0;
+		adjreq.oobbuf.in = spinand->oobbuf;
 		nbytes += nanddev_per_page_oobsize(nand);
 		if (!buf) {
 			buf = spinand->oobbuf;
@@ -234,19 +255,28 @@ static int spinand_read_from_cache_op(struct spinand_device *spinand,
 		}
 	}
 
-	rdesc = spinand->dirmaps[req->pos.plane].rdesc;
+	spinand_cache_op_adjust_colum(spinand, &adjreq, &column);
+	op.addr.val = column;
 
+	/*
+	 * Some controllers are limited in term of max RX data size. In this
+	 * case, just repeat the READ_CACHE operation after updating the
+	 * column.
+	 */
 	while (nbytes) {
-		ret = spi_mem_dirmap_read(rdesc, column, nbytes, buf);
-		if (ret < 0)
+		op.data.buf.in = buf;
+		op.data.nbytes = nbytes;
+		ret = spi_mem_adjust_op_size(spinand->spimem, &op);
+		if (ret)
 			return ret;
 
-		if (!ret || ret > nbytes)
-			return -EIO;
+		ret = spi_mem_exec_op(spinand->spimem, &op);
+		if (ret)
+			return ret;
 
-		nbytes -= ret;
-		column += ret;
-		buf += ret;
+		buf += op.data.nbytes;
+		nbytes -= op.data.nbytes;
+		op.addr.val += op.data.nbytes;
 	}
 
 	if (req->datalen)
@@ -270,12 +300,14 @@ static int spinand_read_from_cache_op(struct spinand_device *spinand,
 static int spinand_write_to_cache_op(struct spinand_device *spinand,
 				     const struct nand_page_io_req *req)
 {
+	struct spi_mem_op op = *spinand->op_templates.write_cache;
 	struct nand_device *nand = spinand_to_nand(spinand);
 	struct mtd_info *mtd = nanddev_to_mtd(nand);
-	struct spi_mem_dirmap_desc *wdesc;
-	unsigned int nbytes, column = 0;
+	struct nand_page_io_req adjreq = *req;
 	void *buf = spinand->databuf;
-	ssize_t ret;
+	unsigned int nbytes;
+	u16 column = 0;
+	int ret;
 
 	/*
 	 * Looks like PROGRAM LOAD (AKA write cache) does not necessarily reset
@@ -286,6 +318,12 @@ static int spinand_write_to_cache_op(struct spinand_device *spinand,
 	 */
 	nbytes = nanddev_page_size(nand) + nanddev_per_page_oobsize(nand);
 	memset(spinand->databuf, 0xff, nbytes);
+	adjreq.dataoffs = 0;
+	adjreq.datalen = nanddev_page_size(nand);
+	adjreq.databuf.out = spinand->databuf;
+	adjreq.ooblen = nanddev_per_page_oobsize(nand);
+	adjreq.ooboffs = 0;
+	adjreq.oobbuf.out = spinand->oobbuf;
 
 	if (req->datalen)
 		memcpy(spinand->databuf + req->dataoffs, req->databuf.out,
@@ -302,19 +340,42 @@ static int spinand_write_to_cache_op(struct spinand_device *spinand,
 			       req->ooblen);
 	}
 
-	wdesc = spinand->dirmaps[req->pos.plane].wdesc;
+	spinand_cache_op_adjust_colum(spinand, &adjreq, &column);
 
+	op = *spinand->op_templates.write_cache;
+	op.addr.val = column;
+
+	/*
+	 * Some controllers are limited in term of max TX data size. In this
+	 * case, split the operation into one LOAD CACHE and one or more
+	 * LOAD RANDOM CACHE.
+	 */
 	while (nbytes) {
-		ret = spi_mem_dirmap_write(wdesc, column, nbytes, buf);
-		if (ret < 0)
+		op.data.buf.out = buf;
+		op.data.nbytes = nbytes;
+
+		ret = spi_mem_adjust_op_size(spinand->spimem, &op);
+		if (ret)
 			return ret;
 
-		if (!ret || ret > nbytes)
-			return -EIO;
+		ret = spi_mem_exec_op(spinand->spimem, &op);
+		if (ret)
+			return ret;
 
-		nbytes -= ret;
-		column += ret;
-		buf += ret;
+		buf += op.data.nbytes;
+		nbytes -= op.data.nbytes;
+		op.addr.val += op.data.nbytes;
+
+		/*
+		 * We need to use the RANDOM LOAD CACHE operation if there's
+		 * more than one iteration, because the LOAD operation might
+		 * reset the cache to 0xff.
+		 */
+		if (nbytes) {
+			column = op.addr.val;
+			op = *spinand->op_templates.update_cache;
+			op.addr.val = column;
+		}
 	}
 
 	return 0;
@@ -511,12 +572,12 @@ static int spinand_mtd_read(struct mtd_info *mtd, loff_t from,
 		if (ret == -EBADMSG) {
 			ecc_failed = true;
 			mtd->ecc_stats.failed++;
+			ret = 0;
 		} else {
 			mtd->ecc_stats.corrected += ret;
 			max_bitflips = max_t(unsigned int, max_bitflips, ret);
 		}
 
-		ret = 0;
 		ops->retlen += iter.req.datalen;
 		ops->oobretlen += iter.req.ooblen;
 	}
@@ -568,18 +629,18 @@ static int spinand_mtd_write(struct mtd_info *mtd, loff_t to,
 static bool spinand_isbad(struct nand_device *nand, const struct nand_pos *pos)
 {
 	struct spinand_device *spinand = nand_to_spinand(nand);
-	u8 marker[2] = { };
 	struct nand_page_io_req req = {
 		.pos = *pos,
-		.ooblen = sizeof(marker),
+		.ooblen = 2,
 		.ooboffs = 0,
-		.oobbuf.in = marker,
+		.oobbuf.in = spinand->oobbuf,
 		.mode = MTD_OPS_RAW,
 	};
 
+	memset(spinand->oobbuf, 0, 2);
 	spinand_select_target(spinand, pos->target);
 	spinand_read_page(spinand, &req, false);
-	if (marker[0] != 0xff || marker[1] != 0xff)
+	if (spinand->oobbuf[0] != 0xff || spinand->oobbuf[1] != 0xff)
 		return true;
 
 	return false;
@@ -603,16 +664,15 @@ static int spinand_mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
 static int spinand_markbad(struct nand_device *nand, const struct nand_pos *pos)
 {
 	struct spinand_device *spinand = nand_to_spinand(nand);
-	u8 marker[2] = { };
 	struct nand_page_io_req req = {
 		.pos = *pos,
 		.ooboffs = 0,
-		.ooblen = sizeof(marker),
-		.oobbuf.out = marker,
-		.mode = MTD_OPS_RAW,
+		.ooblen = 2,
+		.oobbuf.out = spinand->oobbuf,
 	};
 	int ret;
 
+	/* Erase block before marking it bad. */
 	ret = spinand_select_target(spinand, pos->target);
 	if (ret)
 		return ret;
@@ -621,6 +681,9 @@ static int spinand_markbad(struct nand_device *nand, const struct nand_pos *pos)
 	if (ret)
 		return ret;
 
+	spinand_erase_op(spinand, pos);
+
+	memset(spinand->oobbuf, 0, 2);
 	return spinand_write_page(spinand, &req);
 }
 
@@ -692,59 +755,6 @@ static int spinand_mtd_block_isreserved(struct mtd_info *mtd, loff_t offs)
 	return ret;
 }
 
-static int spinand_create_dirmap(struct spinand_device *spinand,
-				 unsigned int plane)
-{
-	struct nand_device *nand = spinand_to_nand(spinand);
-	struct spi_mem_dirmap_info info = {
-		.length = nanddev_page_size(nand) +
-			  nanddev_per_page_oobsize(nand),
-	};
-	struct spi_mem_dirmap_desc *desc;
-
-	/* The plane number is passed in MSB just above the column address */
-	info.offset = plane << fls(nand->memorg.pagesize);
-
-	info.op_tmpl = *spinand->op_templates.update_cache;
-	desc = devm_spi_mem_dirmap_create(&spinand->spimem->spi->dev,
-					  spinand->spimem, &info);
-	if (IS_ERR(desc))
-		return PTR_ERR(desc);
-
-	spinand->dirmaps[plane].wdesc = desc;
-
-	info.op_tmpl = *spinand->op_templates.read_cache;
-	desc = devm_spi_mem_dirmap_create(&spinand->spimem->spi->dev,
-					  spinand->spimem, &info);
-	if (IS_ERR(desc))
-		return PTR_ERR(desc);
-
-	spinand->dirmaps[plane].rdesc = desc;
-
-	return 0;
-}
-
-static int spinand_create_dirmaps(struct spinand_device *spinand)
-{
-	struct nand_device *nand = spinand_to_nand(spinand);
-	int i, ret;
-
-	spinand->dirmaps = devm_kzalloc(&spinand->spimem->spi->dev,
-					sizeof(*spinand->dirmaps) *
-					nand->memorg.planes_per_lun,
-					GFP_KERNEL);
-	if (!spinand->dirmaps)
-		return -ENOMEM;
-
-	for (i = 0; i < nand->memorg.planes_per_lun; i++) {
-		ret = spinand_create_dirmap(spinand, i);
-		if (ret)
-			return ret;
-	}
-
-	return 0;
-}
-
 static const struct nand_ops spinand_ops = {
 	.erase = spinand_erase,
 	.markbad = spinand_markbad,
@@ -752,11 +762,8 @@ static const struct nand_ops spinand_ops = {
 };
 
 static const struct spinand_manufacturer *spinand_manufacturers[] = {
-	&gigadevice_spinand_manufacturer,
 	&macronix_spinand_manufacturer,
 	&micron_spinand_manufacturer,
-	&paragon_spinand_manufacturer,
-	&toshiba_spinand_manufacturer,
 	&winbond_spinand_manufacturer,
 };
 
@@ -844,7 +851,7 @@ spinand_select_op_variant(struct spinand_device *spinand,
  */
 int spinand_match_and_init(struct spinand_device *spinand,
 			   const struct spinand_info *table,
-			   unsigned int table_size, u16 devid)
+			   unsigned int table_size, u8 devid)
 {
 	struct nand_device *nand = spinand_to_nand(spinand);
 	unsigned int i;
@@ -1003,14 +1010,6 @@ static int spinand_init(struct spinand_device *spinand)
 		goto err_free_bufs;
 	}
 
-	ret = spinand_create_dirmaps(spinand);
-	if (ret) {
-		dev_err(dev,
-			"Failed to create direct mappings for read/write operations (err = %d)\n",
-			ret);
-		goto err_manuf_cleanup;
-	}
-
 	/* After power up, all blocks are locked, so unlock them here. */
 	for (i = 0; i < nand->memorg.ntargets; i++) {
 		ret = spinand_select_target(spinand, i);
@@ -1036,7 +1035,6 @@ static int spinand_init(struct spinand_device *spinand)
 	mtd->_block_markbad = spinand_mtd_block_markbad;
 	mtd->_block_isreserved = spinand_mtd_block_isreserved;
 	mtd->_erase = spinand_mtd_erase;
-	mtd->_max_bad_blocks = nanddev_mtd_max_bad_blocks;
 
 	if (spinand->eccinfo.ooblayout)
 		mtd_set_ooblayout(mtd, spinand->eccinfo.ooblayout);

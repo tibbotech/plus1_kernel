@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * CAN driver for PEAK System PCAN-USB adapter
  * Derived from the PCAN project file driver/src/pcan_usb.c
@@ -7,6 +6,15 @@
  * Copyright (C) 2011-2012 Stephane Grosjean <s.grosjean@peak-system.com>
  *
  * Many thanks to Klaus Hitschler <klaus.hitschler@gmx.de>
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published
+ * by the Free Software Foundation; version 2 of the License.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
  */
 #include <linux/netdevice.h>
 #include <linux/usb.h>
@@ -100,7 +108,7 @@ struct pcan_usb_msg_context {
 	u8 *end;
 	u8 rec_cnt;
 	u8 rec_idx;
-	u8 rec_ts_idx;
+	u8 rec_data_idx;
 	struct net_device *netdev;
 	struct pcan_usb *pdev;
 };
@@ -415,7 +423,7 @@ static int pcan_usb_decode_error(struct pcan_usb_msg_context *mc, u8 n,
 			new_state = CAN_STATE_ERROR_WARNING;
 			break;
 		}
-		/* fall through */
+		/* else: fall through */
 
 	case CAN_STATE_ERROR_WARNING:
 		if (n & PCAN_USB_ERROR_BUS_HEAVY) {
@@ -436,8 +444,8 @@ static int pcan_usb_decode_error(struct pcan_usb_msg_context *mc, u8 n,
 		}
 		if ((n & PCAN_USB_ERROR_BUS_LIGHT) == 0) {
 			/* no error (back to active state) */
-			new_state = CAN_STATE_ERROR_ACTIVE;
-			break;
+			mc->pdev->dev.can.state = CAN_STATE_ERROR_ACTIVE;
+			return 0;
 		}
 		break;
 
@@ -460,9 +468,9 @@ static int pcan_usb_decode_error(struct pcan_usb_msg_context *mc, u8 n,
 		}
 
 		if ((n & PCAN_USB_ERROR_BUS_HEAVY) == 0) {
-			/* no error (back to warning state) */
-			new_state = CAN_STATE_ERROR_WARNING;
-			break;
+			/* no error (back to active state) */
+			mc->pdev->dev.can.state = CAN_STATE_ERROR_ACTIVE;
+			return 0;
 		}
 		break;
 
@@ -499,11 +507,6 @@ static int pcan_usb_decode_error(struct pcan_usb_msg_context *mc, u8 n,
 		cf->data[1] |= CAN_ERR_CRTL_TX_WARNING |
 			       CAN_ERR_CRTL_RX_WARNING;
 		mc->pdev->dev.can.can_stats.error_warning++;
-		break;
-
-	case CAN_STATE_ERROR_ACTIVE:
-		cf->can_id |= CAN_ERR_CRTL;
-		cf->data[1] = CAN_ERR_CRTL_ACTIVE;
 		break;
 
 	default:
@@ -552,15 +555,10 @@ static int pcan_usb_decode_status(struct pcan_usb_msg_context *mc,
 	mc->ptr += PCAN_USB_CMD_ARGS;
 
 	if (status_len & PCAN_USB_STATUSLEN_TIMESTAMP) {
-		int err = pcan_usb_decode_ts(mc, !mc->rec_ts_idx);
+		int err = pcan_usb_decode_ts(mc, !mc->rec_idx);
 
 		if (err)
 			return err;
-
-		/* Next packet in the buffer will have a timestamp on a single
-		 * byte
-		 */
-		mc->rec_ts_idx++;
 	}
 
 	switch (f) {
@@ -642,12 +640,9 @@ static int pcan_usb_decode_data(struct pcan_usb_msg_context *mc, u8 status_len)
 
 	cf->can_dlc = get_can_dlc(rec_len);
 
-	/* Only first packet timestamp is a word */
-	if (pcan_usb_decode_ts(mc, !mc->rec_ts_idx))
+	/* first data packet timestamp is a word */
+	if (pcan_usb_decode_ts(mc, !mc->rec_data_idx))
 		goto decode_failed;
-
-	/* Next packet in the buffer will have a timestamp on a single byte */
-	mc->rec_ts_idx++;
 
 	/* read data */
 	memset(cf->data, 0x0, sizeof(cf->data));
@@ -701,6 +696,7 @@ static int pcan_usb_decode_msg(struct peak_usb_device *dev, u8 *ibuf, u32 lbuf)
 		/* handle normal can frames here */
 		} else {
 			err = pcan_usb_decode_data(&mc, sl);
+			mc.rec_data_idx++;
 		}
 	}
 

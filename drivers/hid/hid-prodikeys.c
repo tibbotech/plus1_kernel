@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  HID driver for the Prodikeys PC-MIDI Keyboard
  *  providing midi & extra multimedia keys functionality
@@ -7,9 +6,14 @@
  *
  *  Controls for Octave Shift Up/Down, Channel, and
  *  Sustain Duration available via sysfs.
+ *
  */
 
 /*
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by the Free
+ * Software Foundation; either version 2 of the License, or (at your option)
+ * any later version.
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -516,7 +520,7 @@ static void pcmidi_setup_extra_keys(
 		MY PICTURES =>	KEY_WORDPROCESSOR
 		MY MUSIC=>	KEY_SPREADSHEET
 	*/
-	static const unsigned int keys[] = {
+	unsigned int keys[] = {
 		KEY_FN,
 		KEY_MESSENGER, KEY_CALENDAR,
 		KEY_ADDRESSBOOK, KEY_DOCUMENTS,
@@ -532,7 +536,7 @@ static void pcmidi_setup_extra_keys(
 		0
 	};
 
-	const unsigned int *pkeys = &keys[0];
+	unsigned int *pkeys = &keys[0];
 	unsigned short i;
 
 	if (pm->ifnum != 1)  /* only set up ONCE for interace 1 */
@@ -551,14 +555,10 @@ static void pcmidi_setup_extra_keys(
 
 static int pcmidi_set_operational(struct pcmidi_snd *pm)
 {
-	int rc;
-
 	if (pm->ifnum != 1)
 		return 0; /* only set up ONCE for interace 1 */
 
-	rc = pcmidi_get_output_report(pm);
-	if (rc < 0)
-		return rc;
+	pcmidi_get_output_report(pm);
 	pcmidi_submit_output_report(pm, 0xc1);
 	return 0;
 }
@@ -687,11 +687,7 @@ static int pcmidi_snd_initialise(struct pcmidi_snd *pm)
 	spin_lock_init(&pm->rawmidi_in_lock);
 
 	init_sustain_timers(pm);
-	err = pcmidi_set_operational(pm);
-	if (err < 0) {
-		pk_error("failed to find output report\n");
-		goto fail_register;
-	}
+	pcmidi_set_operational(pm);
 
 	/* register it */
 	err = snd_card_register(card);

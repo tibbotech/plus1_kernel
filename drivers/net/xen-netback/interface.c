@@ -148,7 +148,8 @@ void xenvif_wake_queue(struct xenvif_queue *queue)
 }
 
 static u16 xenvif_select_queue(struct net_device *dev, struct sk_buff *skb,
-			       struct net_device *sb_dev)
+			       struct net_device *sb_dev,
+			       select_queue_fallback_t fallback)
 {
 	struct xenvif *vif = netdev_priv(dev);
 	unsigned int size = vif->hash.size;
@@ -161,8 +162,7 @@ static u16 xenvif_select_queue(struct net_device *dev, struct sk_buff *skb,
 		return 0;
 
 	if (vif->hash.alg == XEN_NETIF_CTRL_HASH_ALGORITHM_NONE)
-		return netdev_pick_tx(dev, skb, NULL) %
-		       dev->real_num_tx_queues;
+		return fallback(dev, skb, NULL) % dev->real_num_tx_queues;
 
 	xenvif_set_skb_hash(vif, skb);
 
@@ -173,8 +173,7 @@ static u16 xenvif_select_queue(struct net_device *dev, struct sk_buff *skb,
 				[skb_get_hash_raw(skb) % size];
 }
 
-static netdev_tx_t
-xenvif_start_xmit(struct sk_buff *skb, struct net_device *dev)
+static int xenvif_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	struct xenvif *vif = netdev_priv(dev);
 	struct xenvif_queue *queue = NULL;
@@ -633,7 +632,7 @@ int xenvif_connect_data(struct xenvif_queue *queue,
 			unsigned int rx_evtchn)
 {
 	struct task_struct *task;
-	int err;
+	int err = -ENOMEM;
 
 	BUG_ON(queue->tx_irq);
 	BUG_ON(queue->task);
@@ -719,6 +718,7 @@ err_unmap:
 	xenvif_unmap_frontend_data_rings(queue);
 	netif_napi_del(&queue->napi);
 err:
+	module_put(THIS_MODULE);
 	return err;
 }
 

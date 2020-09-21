@@ -1,6 +1,17 @@
-// SPDX-License-Identifier: ISC
 /*
  * Copyright (c) 2010 Broadcom Corporation
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 #include <linux/types.h>
 #include <linux/module.h>
@@ -404,7 +415,7 @@ struct brcmf_fws_mac_descriptor {
 	u8 traffic_lastreported_bmp;
 };
 
-#define BRCMF_FWS_HANGER_MAXITEMS	1024
+#define BRCMF_FWS_HANGER_MAXITEMS	3072
 
 /**
  * enum brcmf_fws_hanger_item_state - state of hanger item.
@@ -569,6 +580,24 @@ static bool brcmf_fws_ifidx_match(struct sk_buff *skb, void *arg)
 	return ifidx == *(int *)arg;
 }
 
+static void brcmf_fws_psq_flush(struct brcmf_fws_info *fws, struct pktq *q,
+				int ifidx)
+{
+	bool (*matchfn)(struct sk_buff *, void *) = NULL;
+	struct sk_buff *skb;
+	int prec;
+
+	if (ifidx != -1)
+		matchfn = brcmf_fws_ifidx_match;
+	for (prec = 0; prec < q->num_prec; prec++) {
+		skb = brcmu_pktq_pdeq_match(q, prec, matchfn, &ifidx);
+		while (skb) {
+			brcmu_pkt_buf_free_skb(skb);
+			skb = brcmu_pktq_pdeq_match(q, prec, matchfn, &ifidx);
+		}
+	}
+}
+
 static void brcmf_fws_hanger_init(struct brcmf_fws_hanger *hanger)
 {
 	int i;
@@ -638,28 +667,6 @@ static inline int brcmf_fws_hanger_poppkt(struct brcmf_fws_hanger *h,
 		h->popped++;
 	}
 	return 0;
-}
-
-static void brcmf_fws_psq_flush(struct brcmf_fws_info *fws, struct pktq *q,
-				int ifidx)
-{
-	bool (*matchfn)(struct sk_buff *, void *) = NULL;
-	struct sk_buff *skb;
-	int prec;
-	u32 hslot;
-
-	if (ifidx != -1)
-		matchfn = brcmf_fws_ifidx_match;
-	for (prec = 0; prec < q->num_prec; prec++) {
-		skb = brcmu_pktq_pdeq_match(q, prec, matchfn, &ifidx);
-		while (skb) {
-			hslot = brcmf_skb_htod_tag_get_field(skb, HSLOT);
-			brcmf_fws_hanger_poppkt(&fws->hanger, hslot, &skb,
-						true);
-			brcmu_pkt_buf_free_skb(skb);
-			skb = brcmu_pktq_pdeq_match(q, prec, matchfn, &ifidx);
-		}
-	}
 }
 
 static int brcmf_fws_hanger_mark_suppressed(struct brcmf_fws_hanger *h,
@@ -1248,7 +1255,6 @@ static int brcmf_fws_enq(struct brcmf_fws_info *fws,
 			 enum brcmf_fws_skb_state state, int fifo,
 			 struct sk_buff *p)
 {
-	struct brcmf_pub *drvr = fws->drvr;
 	int prec = 2 * fifo;
 	u32 *qfull_stat = &fws->stats.delayq_full_error;
 	struct brcmf_fws_mac_descriptor *entry;
@@ -1261,7 +1267,7 @@ static int brcmf_fws_enq(struct brcmf_fws_info *fws,
 
 	entry = brcmf_skbcb(p)->mac;
 	if (entry == NULL) {
-		bphy_err(drvr, "no mac descriptor found for skb %p\n", p);
+		brcmf_err("no mac descriptor found for skb %p\n", p);
 		return -ENOENT;
 	}
 
@@ -1451,7 +1457,6 @@ static int
 brcmf_fws_txs_process(struct brcmf_fws_info *fws, u8 flags, u32 hslot,
 		      u32 genbit, u16 seq, u8 compcnt)
 {
-	struct brcmf_pub *drvr = fws->drvr;
 	u32 fifo;
 	u8 cnt = 0;
 	int ret;
@@ -1476,14 +1481,14 @@ brcmf_fws_txs_process(struct brcmf_fws_info *fws, u8 flags, u32 hslot,
 	else if (flags == BRCMF_FWS_TXSTATUS_HOST_TOSSED)
 		fws->stats.txs_host_tossed += compcnt;
 	else
-		bphy_err(drvr, "unexpected txstatus\n");
+		brcmf_err("unexpected txstatus\n");
 
 	while (cnt < compcnt) {
 		ret = brcmf_fws_hanger_poppkt(&fws->hanger, hslot, &skb,
 					      remove_from_hanger);
 		if (ret != 0) {
-			bphy_err(drvr, "no packet in hanger slot: hslot=%d\n",
-				 hslot);
+			brcmf_err("no packet in hanger slot: hslot=%d\n",
+				  hslot);
 			goto cont;
 		}
 
@@ -1502,9 +1507,9 @@ brcmf_fws_txs_process(struct brcmf_fws_info *fws, u8 flags, u32 hslot,
 
 		/* pick up the implicit credit from this packet */
 		fifo = brcmf_skb_htod_tag_get_field(skb, FIFO);
-		if (fws->fcmode == BRCMF_FWS_FCMODE_IMPLIED_CREDIT ||
+		if ((fws->fcmode == BRCMF_FWS_FCMODE_IMPLIED_CREDIT) ||
 		    (brcmf_skb_if_flags_get_field(skb, REQ_CREDIT)) ||
-		    flags == BRCMF_FWS_TXSTATUS_HOST_TOSSED) {
+		    (flags == BRCMF_FWS_TXSTATUS_HOST_TOSSED)) {
 			brcmf_fws_return_credits(fws, fifo, 1);
 			brcmf_fws_schedule_deq(fws);
 		}
@@ -1607,13 +1612,12 @@ static int brcmf_fws_notify_credit_map(struct brcmf_if *ifp,
 				       const struct brcmf_event_msg *e,
 				       void *data)
 {
-	struct brcmf_pub *drvr = ifp->drvr;
-	struct brcmf_fws_info *fws = drvr_to_fws(drvr);
+	struct brcmf_fws_info *fws = drvr_to_fws(ifp->drvr);
 	int i;
 	u8 *credits = data;
 
 	if (e->datalen < BRCMF_FWS_FIFO_COUNT) {
-		bphy_err(drvr, "event payload too small (%d)\n", e->datalen);
+		brcmf_err("event payload too small (%d)\n", e->datalen);
 		return -EINVAL;
 	}
 
@@ -1628,9 +1632,9 @@ static int brcmf_fws_notify_credit_map(struct brcmf_if *ifp,
 			fws->fifo_credit_map |= 1 << i;
 		else
 			fws->fifo_credit_map &= ~(1 << i);
-		WARN_ONCE(fws->fifo_credit[i] < 0,
-			  "fifo_credit[%d] is negative(%d)\n", i,
-			  fws->fifo_credit[i]);
+		if (fws->fifo_credit[i] < 0)
+			brcmf_err("fifo_credit[%d] value is negative(%d)\n",
+				  i, fws->fifo_credit[i]);
 	}
 	brcmf_fws_schedule_deq(fws);
 	brcmf_fws_unlock(fws);
@@ -1677,7 +1681,6 @@ static void brcmf_rxreorder_get_skb_list(struct brcmf_ampdu_rx_reorder *rfi,
 
 void brcmf_fws_rxreorder(struct brcmf_if *ifp, struct sk_buff *pkt)
 {
-	struct brcmf_pub *drvr = ifp->drvr;
 	u8 *reorder_data;
 	u8 flow_id, max_idx, cur_idx, exp_idx, end_idx;
 	struct brcmf_ampdu_rx_reorder *rfi;
@@ -1692,7 +1695,7 @@ void brcmf_fws_rxreorder(struct brcmf_if *ifp, struct sk_buff *pkt)
 
 	/* validate flags and flow id */
 	if (flags == 0xFF) {
-		bphy_err(drvr, "invalid flags...so ignore this packet\n");
+		brcmf_err("invalid flags...so ignore this packet\n");
 		brcmf_netif_rx(ifp, pkt);
 		return;
 	}
@@ -1729,7 +1732,7 @@ void brcmf_fws_rxreorder(struct brcmf_if *ifp, struct sk_buff *pkt)
 			  flow_id, max_idx);
 		rfi = kzalloc(buf_size, GFP_ATOMIC);
 		if (rfi == NULL) {
-			bphy_err(drvr, "failed to alloc buffer\n");
+			brcmf_err("failed to alloc buffer\n");
 			brcmf_netif_rx(ifp, pkt);
 			return;
 		}
@@ -1865,6 +1868,9 @@ void brcmf_fws_hdrpull(struct brcmf_if *ifp, s16 siglen, struct sk_buff *skb)
 
 	WARN_ON(siglen > skb->len);
 
+	if (siglen > skb->len)
+		siglen = skb->len;
+
 	if (!siglen)
 		return;
 	/* if flow control disabled, skip to packet data and leave */
@@ -1993,7 +1999,6 @@ static u8 brcmf_fws_precommit_skb(struct brcmf_fws_info *fws, int fifo,
 static void brcmf_fws_rollback_toq(struct brcmf_fws_info *fws,
 				   struct sk_buff *skb, int fifo)
 {
-	struct brcmf_pub *drvr = fws->drvr;
 	struct brcmf_fws_mac_descriptor *entry;
 	struct sk_buff *pktout;
 	int qidx, hslot;
@@ -2007,11 +2012,11 @@ static void brcmf_fws_rollback_toq(struct brcmf_fws_info *fws,
 
 		pktout = brcmu_pktq_penq_head(&entry->psq, qidx, skb);
 		if (pktout == NULL) {
-			bphy_err(drvr, "%s queue %d full\n", entry->name, qidx);
+			brcmf_err("%s queue %d full\n", entry->name, qidx);
 			rc = -ENOSPC;
 		}
 	} else {
-		bphy_err(drvr, "%s entry removed\n", entry->name);
+		brcmf_err("%s entry removed\n", entry->name);
 		rc = -ENOENT;
 	}
 
@@ -2117,7 +2122,7 @@ static int brcmf_fws_assign_htod(struct brcmf_fws_info *fws, struct sk_buff *p,
 int brcmf_fws_process_skb(struct brcmf_if *ifp, struct sk_buff *skb)
 {
 	struct brcmf_pub *drvr = ifp->drvr;
-	struct brcmf_fws_info *fws = drvr_to_fws(drvr);
+	struct brcmf_fws_info *fws = drvr_to_fws(ifp->drvr);
 	struct brcmf_skbuff_cb *skcb = brcmf_skbcb(skb);
 	struct ethhdr *eh = (struct ethhdr *)(skb->data);
 	int fifo = BRCMF_FWS_FIFO_BCMC;
@@ -2130,8 +2135,10 @@ int brcmf_fws_process_skb(struct brcmf_if *ifp, struct sk_buff *skb)
 	skcb->if_flags = 0;
 	skcb->state = BRCMF_FWS_SKBSTATE_NEW;
 	brcmf_skb_if_flags_set_field(skb, INDEX, ifp->ifidx);
+
+	/* mapping from 802.1d priority to firmware fifo index */
 	if (!multicast)
-		fifo = brcmf_fws_prio2fifo[skb->priority];
+		fifo = brcmf_map_prio_to_aci(drvr->config, skb->priority);
 
 	brcmf_fws_lock(fws);
 	if (fifo != BRCMF_FWS_FIFO_AC_BE && fifo < BRCMF_FWS_FIFO_BCMC)
@@ -2145,7 +2152,7 @@ int brcmf_fws_process_skb(struct brcmf_if *ifp, struct sk_buff *skb)
 		brcmf_fws_enq(fws, BRCMF_FWS_SKBSTATE_DELAYED, fifo, skb);
 		brcmf_fws_schedule_deq(fws);
 	} else {
-		bphy_err(drvr, "drop skb: no hanger slot\n");
+		brcmf_err("drop skb: no hanger slot\n");
 		brcmf_txfinalize(ifp, skb, false);
 		rc = -ENOMEM;
 	}
@@ -2193,8 +2200,6 @@ void brcmf_fws_del_interface(struct brcmf_if *ifp)
 	brcmf_fws_lock(fws);
 	ifp->fws_desc = NULL;
 	brcmf_dbg(TRACE, "deleting %s\n", entry->name);
-	brcmf_fws_macdesc_cleanup(fws, &fws->desc.iface[ifp->ifidx],
-				  ifp->ifidx);
 	brcmf_fws_macdesc_deinit(entry);
 	brcmf_fws_cleanup(fws, ifp->ifidx);
 	brcmf_fws_unlock(fws);
@@ -2343,7 +2348,7 @@ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr)
 	struct brcmf_if *ifp;
 	u32 tlv = BRCMF_FWS_FLAGS_RSSI_SIGNALS;
 	int rc;
-	u32 mode;
+	u32 mode = 0;
 
 	fws = kzalloc(sizeof(*fws), GFP_KERNEL);
 	if (!fws) {
@@ -2366,7 +2371,7 @@ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr)
 
 	fws->fws_wq = create_singlethread_workqueue("brcmf_fws_wq");
 	if (fws->fws_wq == NULL) {
-		bphy_err(drvr, "workqueue creation failed\n");
+		brcmf_err("workqueue creation failed\n");
 		rc = -EBADF;
 		goto fail;
 	}
@@ -2382,13 +2387,13 @@ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr)
 	rc = brcmf_fweh_register(drvr, BRCMF_E_FIFO_CREDIT_MAP,
 				 brcmf_fws_notify_credit_map);
 	if (rc < 0) {
-		bphy_err(drvr, "register credit map handler failed\n");
+		brcmf_err("register credit map handler failed\n");
 		goto fail;
 	}
 	rc = brcmf_fweh_register(drvr, BRCMF_E_BCMC_CREDIT_SUPPORT,
 				 brcmf_fws_notify_bcmc_credit_support);
 	if (rc < 0) {
-		bphy_err(drvr, "register bcmc credit handler failed\n");
+		brcmf_err("register bcmc credit handler failed\n");
 		brcmf_fweh_unregister(drvr, BRCMF_E_FIFO_CREDIT_MAP);
 		goto fail;
 	}
@@ -2400,7 +2405,7 @@ struct brcmf_fws_info *brcmf_fws_attach(struct brcmf_pub *drvr)
 	fws->fw_signals = true;
 	ifp = brcmf_get_ifp(drvr, 0);
 	if (brcmf_fil_iovar_int_set(ifp, "tlv", tlv)) {
-		bphy_err(drvr, "failed to set bdcv2 tlv signaling\n");
+		brcmf_err("failed to set bdcv2 tlv signaling\n");
 		fws->fcmode = BRCMF_FWS_FCMODE_NONE;
 		fws->fw_signals = false;
 	}

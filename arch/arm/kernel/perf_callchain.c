@@ -37,7 +37,7 @@ user_backtrace(struct frame_tail __user *tail,
 	struct frame_tail buftail;
 	unsigned long err;
 
-	if (!access_ok(tail, sizeof(buftail)))
+	if (!access_ok(VERIFY_READ, tail, sizeof(buftail)))
 		return NULL;
 
 	pagefault_disable();
@@ -104,6 +104,9 @@ perf_callchain_kernel(struct perf_callchain_entry_ctx *entry, struct pt_regs *re
 		/* We don't support guest os callchain now */
 		return;
 	}
+
+	if (IS_ENABLED(CONFIG_IPIPE))
+		return;
 
 	arm_get_current_stackframe(regs, &fr);
 	walk_stackframe(&fr, callchain_trace, entry);

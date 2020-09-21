@@ -1,8 +1,12 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * at25.c -- support most SPI EEPROMs, such as Atmel AT25 models
  *
  * Copyright (C) 2006 David Brownell
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  */
 
 #include <linux/kernel.h>
@@ -249,7 +253,7 @@ static int at25_fw_to_chip(struct device *dev, struct spi_eeprom *chip)
 	u32 val;
 
 	memset(chip, 0, sizeof(*chip));
-	strncpy(chip->name, "at25", sizeof(chip->name));
+	strlcpy(chip->name, "at25", sizeof(chip->name));
 
 	if (device_property_read_u32(dev, "size", &val) == 0 ||
 	    device_property_read_u32(dev, "at25,byte-len", &val) == 0) {
@@ -362,7 +366,7 @@ static int at25_probe(struct spi_device *spi)
 	at25->nvmem_config.word_size = 1;
 	at25->nvmem_config.size = chip.byte_len;
 
-	at25->nvmem = devm_nvmem_register(&spi->dev, &at25->nvmem_config);
+	at25->nvmem = nvmem_register(&at25->nvmem_config);
 	if (IS_ERR(at25->nvmem))
 		return PTR_ERR(at25->nvmem);
 
@@ -372,6 +376,16 @@ static int at25_probe(struct spi_device *spi)
 		at25->chip.name,
 		(chip.flags & EE_READONLY) ? " (readonly)" : "",
 		at25->chip.page_size);
+	return 0;
+}
+
+static int at25_remove(struct spi_device *spi)
+{
+	struct at25_data	*at25;
+
+	at25 = spi_get_drvdata(spi);
+	nvmem_unregister(at25->nvmem);
+
 	return 0;
 }
 
@@ -389,6 +403,7 @@ static struct spi_driver at25_driver = {
 		.of_match_table = at25_of_match,
 	},
 	.probe		= at25_probe,
+	.remove		= at25_remove,
 };
 
 module_spi_driver(at25_driver);

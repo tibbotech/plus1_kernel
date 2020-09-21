@@ -17,7 +17,6 @@
 #include <linux/percpu-refcount.h>
 #include <linux/uuid.h>
 #include <linux/blk_types.h>
-#include <asm/local.h>
 
 #ifdef CONFIG_BLOCK
 
@@ -90,7 +89,6 @@ struct disk_stats {
 	unsigned long merges[NR_STAT_GROUPS];
 	unsigned long io_ticks;
 	unsigned long time_in_queue;
-	local_t in_flight[2];
 };
 
 #define PARTITION_META_INFO_VOLNAMELTH	64
@@ -124,6 +122,7 @@ struct hd_struct {
 	int make_it_fail;
 #endif
 	unsigned long stamp;
+	atomic_t in_flight[2];
 #ifdef	CONFIG_SMP
 	struct disk_stats __percpu *dkstats;
 #else
@@ -148,13 +147,6 @@ struct hd_struct {
 enum {
 	DISK_EVENT_MEDIA_CHANGE			= 1 << 0, /* media changed */
 	DISK_EVENT_EJECT_REQUEST		= 1 << 1, /* eject requested */
-};
-
-enum {
-	/* Poll even if events_poll_msecs is unset */
-	DISK_EVENT_FLAG_POLL			= 1 << 0,
-	/* Forward events to udev */
-	DISK_EVENT_FLAG_UEVENT			= 1 << 1,
 };
 
 struct disk_part_tbl {
@@ -191,8 +183,8 @@ struct gendisk {
 	char disk_name[DISK_NAME_LEN];	/* name of major driver */
 	char *(*devnode)(struct gendisk *gd, umode_t *mode);
 
-	unsigned short events;		/* supported events */
-	unsigned short event_flags;	/* flags related to event processing */
+	unsigned int events;		/* supported events */
+	unsigned int async_events;	/* async events, subset of all */
 
 	/* Array of pointers to partitions indexed by partno.
 	 * Protected with matching bdev lock but stat and other
@@ -303,11 +295,8 @@ extern struct hd_struct *disk_map_sector_rcu(struct gendisk *disk,
 #define part_stat_lock()	({ rcu_read_lock(); get_cpu(); })
 #define part_stat_unlock()	do { put_cpu(); rcu_read_unlock(); } while (0)
 
-#define part_stat_get_cpu(part, field, cpu)					\
-	(per_cpu_ptr((part)->dkstats, (cpu))->field)
-
-#define part_stat_get(part, field)					\
-	part_stat_get_cpu(part, field, smp_processor_id())
+#define __part_stat_add(cpu, part, field, addnd)			\
+	(per_cpu_ptr((part)->dkstats, (cpu))->field += (addnd))
 
 #define part_stat_read(part, field)					\
 ({									\
@@ -344,9 +333,10 @@ static inline void free_part_stats(struct hd_struct *part)
 #define part_stat_lock()	({ rcu_read_lock(); 0; })
 #define part_stat_unlock()	rcu_read_unlock()
 
-#define part_stat_get(part, field)		((part)->dkstats.field)
-#define part_stat_get_cpu(part, field, cpu)	part_stat_get(part, field)
-#define part_stat_read(part, field)		part_stat_get(part, field)
+#define __part_stat_add(cpu, part, field, addnd)				\
+	((part)->dkstats.field += addnd)
+
+#define part_stat_read(part, field)	((part)->dkstats.field)
 
 static inline void part_stat_set_all(struct hd_struct *part, int value)
 {
@@ -372,33 +362,22 @@ static inline void free_part_stats(struct hd_struct *part)
 	 part_stat_read(part, field[STAT_WRITE]) +			\
 	 part_stat_read(part, field[STAT_DISCARD]))
 
-#define __part_stat_add(part, field, addnd)				\
-	(part_stat_get(part, field) += (addnd))
-
-#define part_stat_add(part, field, addnd)	do {			\
-	__part_stat_add((part), field, addnd);				\
+#define part_stat_add(cpu, part, field, addnd)	do {			\
+	__part_stat_add((cpu), (part), field, addnd);			\
 	if ((part)->partno)						\
-		__part_stat_add(&part_to_disk((part))->part0,		\
+		__part_stat_add((cpu), &part_to_disk((part))->part0,	\
 				field, addnd);				\
 } while (0)
 
-#define part_stat_dec(gendiskp, field)					\
-	part_stat_add(gendiskp, field, -1)
-#define part_stat_inc(gendiskp, field)					\
-	part_stat_add(gendiskp, field, 1)
-#define part_stat_sub(gendiskp, field, subnd)				\
-	part_stat_add(gendiskp, field, -subnd)
+#define part_stat_dec(cpu, gendiskp, field)				\
+	part_stat_add(cpu, gendiskp, field, -1)
+#define part_stat_inc(cpu, gendiskp, field)				\
+	part_stat_add(cpu, gendiskp, field, 1)
+#define part_stat_sub(cpu, gendiskp, field, subnd)			\
+	part_stat_add(cpu, gendiskp, field, -subnd)
 
-#define part_stat_local_dec(gendiskp, field)				\
-	local_dec(&(part_stat_get(gendiskp, field)))
-#define part_stat_local_inc(gendiskp, field)				\
-	local_inc(&(part_stat_get(gendiskp, field)))
-#define part_stat_local_read(gendiskp, field)				\
-	local_read(&(part_stat_get(gendiskp, field)))
-#define part_stat_local_read_cpu(gendiskp, field, cpu)			\
-	local_read(&(part_stat_get_cpu(gendiskp, field, cpu)))
-
-unsigned int part_in_flight(struct request_queue *q, struct hd_struct *part);
+void part_in_flight(struct request_queue *q, struct hd_struct *part,
+		    unsigned int inflight[2]);
 void part_in_flight_rw(struct request_queue *q, struct hd_struct *part,
 		       unsigned int inflight[2]);
 void part_dec_in_flight(struct request_queue *q, struct hd_struct *part,
@@ -419,14 +398,14 @@ static inline void free_part_info(struct hd_struct *part)
 	kfree(part->info);
 }
 
-void update_io_ticks(struct hd_struct *part, unsigned long now);
+/* block/blk-core.c */
+extern void part_round_stats(struct request_queue *q, int cpu, struct hd_struct *part);
 
 /* block/genhd.c */
-extern void device_add_disk(struct device *parent, struct gendisk *disk,
-			    const struct attribute_group **groups);
+extern void device_add_disk(struct device *parent, struct gendisk *disk);
 static inline void add_disk(struct gendisk *disk)
 {
-	device_add_disk(NULL, disk, NULL);
+	device_add_disk(NULL, disk);
 }
 extern void device_add_disk_no_queue_reg(struct device *parent, struct gendisk *disk);
 static inline void add_disk_no_queue_reg(struct gendisk *disk)
@@ -617,7 +596,6 @@ struct unixware_disklabel {
 
 extern int blk_alloc_devt(struct hd_struct *part, dev_t *devt);
 extern void blk_free_devt(dev_t devt);
-extern void blk_invalidate_devt(dev_t devt);
 extern dev_t blk_lookup_devt(const char *name, int partno);
 extern char *disk_name (struct gendisk *hd, int partno, char *buf);
 
@@ -722,7 +700,7 @@ static inline void hd_free_part(struct hd_struct *part)
  */
 static inline sector_t part_nr_sects_read(struct hd_struct *part)
 {
-#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
+#if BITS_PER_LONG==32 && defined(CONFIG_LBDAF) && defined(CONFIG_SMP)
 	sector_t nr_sects;
 	unsigned seq;
 	do {
@@ -730,7 +708,7 @@ static inline sector_t part_nr_sects_read(struct hd_struct *part)
 		nr_sects = part->nr_sects;
 	} while (read_seqcount_retry(&part->nr_sects_seq, seq));
 	return nr_sects;
-#elif BITS_PER_LONG==32 && defined(CONFIG_PREEMPT)
+#elif BITS_PER_LONG==32 && defined(CONFIG_LBDAF) && defined(CONFIG_PREEMPT)
 	sector_t nr_sects;
 
 	preempt_disable();
@@ -749,11 +727,11 @@ static inline sector_t part_nr_sects_read(struct hd_struct *part)
  */
 static inline void part_nr_sects_write(struct hd_struct *part, sector_t size)
 {
-#if BITS_PER_LONG==32 && defined(CONFIG_SMP)
+#if BITS_PER_LONG==32 && defined(CONFIG_LBDAF) && defined(CONFIG_SMP)
 	write_seqcount_begin(&part->nr_sects_seq);
 	part->nr_sects = size;
 	write_seqcount_end(&part->nr_sects_seq);
-#elif BITS_PER_LONG==32 && defined(CONFIG_PREEMPT)
+#elif BITS_PER_LONG==32 && defined(CONFIG_LBDAF) && defined(CONFIG_PREEMPT)
 	preempt_disable();
 	part->nr_sects = size;
 	preempt_enable();

@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * xfrm_device.c - IPsec device offloading code.
  *
@@ -6,6 +5,11 @@
  *
  * Author:
  * Steffen Klassert <steffen.klassert@secunet.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version
+ * 2 of the License, or (at your option) any later version.
  */
 
 #include <linux/errno.h>
@@ -19,60 +23,6 @@
 #include <linux/notifier.h>
 
 #ifdef CONFIG_XFRM_OFFLOAD
-static void __xfrm_transport_prep(struct xfrm_state *x, struct sk_buff *skb,
-				  unsigned int hsize)
-{
-	struct xfrm_offload *xo = xfrm_offload(skb);
-
-	skb_reset_mac_len(skb);
-	pskb_pull(skb, skb->mac_len + hsize + x->props.header_len);
-
-	if (xo->flags & XFRM_GSO_SEGMENT) {
-		skb_reset_transport_header(skb);
-		skb->transport_header -= x->props.header_len;
-	}
-}
-
-static void __xfrm_mode_tunnel_prep(struct xfrm_state *x, struct sk_buff *skb,
-				    unsigned int hsize)
-
-{
-	struct xfrm_offload *xo = xfrm_offload(skb);
-
-	if (xo->flags & XFRM_GSO_SEGMENT)
-		skb->transport_header = skb->network_header + hsize;
-
-	skb_reset_mac_len(skb);
-	pskb_pull(skb, skb->mac_len + x->props.header_len);
-}
-
-/* Adjust pointers into the packet when IPsec is done at layer2 */
-static void xfrm_outer_mode_prep(struct xfrm_state *x, struct sk_buff *skb)
-{
-	switch (x->outer_mode.encap) {
-	case XFRM_MODE_TUNNEL:
-		if (x->outer_mode.family == AF_INET)
-			return __xfrm_mode_tunnel_prep(x, skb,
-						       sizeof(struct iphdr));
-		if (x->outer_mode.family == AF_INET6)
-			return __xfrm_mode_tunnel_prep(x, skb,
-						       sizeof(struct ipv6hdr));
-		break;
-	case XFRM_MODE_TRANSPORT:
-		if (x->outer_mode.family == AF_INET)
-			return __xfrm_transport_prep(x, skb,
-						     sizeof(struct iphdr));
-		if (x->outer_mode.family == AF_INET6)
-			return __xfrm_transport_prep(x, skb,
-						     sizeof(struct ipv6hdr));
-		break;
-	case XFRM_MODE_ROUTEOPTIMIZATION:
-	case XFRM_MODE_IN_TRIGGER:
-	case XFRM_MODE_BEET:
-		break;
-	}
-}
-
 struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t features, bool *again)
 {
 	int err;
@@ -82,7 +32,6 @@ struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t featur
 	struct softnet_data *sd;
 	netdev_features_t esp_features = features;
 	struct xfrm_offload *xo = xfrm_offload(skb);
-	struct sec_path *sp;
 
 	if (!xo)
 		return skb;
@@ -90,8 +39,7 @@ struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t featur
 	if (!(features & NETIF_F_HW_ESP))
 		esp_features = features & ~(NETIF_F_SG | NETIF_F_CSUM_MASK);
 
-	sp = skb_sec_path(skb);
-	x = sp->xvec[sp->len - 1];
+	x = skb->sp->xvec[skb->sp->len - 1];
 	if (xo->flags & XFRM_GRO || x->xso.flags & XFRM_OFFLOAD_INBOUND)
 		return skb;
 
@@ -128,8 +76,7 @@ struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t featur
 	}
 
 	if (!skb->next) {
-		esp_features |= skb->dev->gso_partial_features;
-		xfrm_outer_mode_prep(x, skb);
+		x->outer_mode->xmit(x, skb);
 
 		xo->flags |= XFRM_DEV_RESUME;
 
@@ -152,14 +99,12 @@ struct sk_buff *validate_xmit_xfrm(struct sk_buff *skb, netdev_features_t featur
 
 	do {
 		struct sk_buff *nskb = skb2->next;
-
-		esp_features |= skb->dev->gso_partial_features;
-		skb_mark_not_on_list(skb2);
+		skb2->next = NULL;
 
 		xo = xfrm_offload(skb2);
 		xo->flags |= XFRM_DEV_RESUME;
 
-		xfrm_outer_mode_prep(x, skb2);
+		x->outer_mode->xmit(x, skb2);
 
 		err = x->type_offload->xmit(x, skb2, esp_features);
 		if (!err) {
@@ -247,13 +192,9 @@ int xfrm_dev_state_add(struct net *net, struct xfrm_state *x,
 
 	err = dev->xfrmdev_ops->xdo_dev_state_add(x);
 	if (err) {
-		xso->num_exthdrs = 0;
-		xso->flags = 0;
 		xso->dev = NULL;
 		dev_put(dev);
-
-		if (err != -EOPNOTSUPP)
-			return err;
+		return err;
 	}
 
 	return 0;
@@ -271,8 +212,9 @@ bool xfrm_dev_offload_ok(struct sk_buff *skb, struct xfrm_state *x)
 		return false;
 
 	if ((!dev || (dev == xfrm_dst_path(dst)->dev)) &&
-	    (!xdst->child->xfrm)) {
-		mtu = xfrm_state_mtu(x, xdst->child_mtu_cached);
+	    (!xdst->child->xfrm && x->type->get_mtu)) {
+		mtu = x->type->get_mtu(x, xdst->child_mtu_cached);
+
 		if (skb->len <= mtu)
 			goto ok;
 
@@ -299,7 +241,7 @@ void xfrm_dev_resume(struct sk_buff *skb)
 	unsigned long flags;
 
 	rcu_read_lock();
-	txq = netdev_core_pick_tx(dev, skb, NULL);
+	txq = netdev_pick_tx(dev, skb, NULL);
 
 	HARD_TX_LOCK(dev, txq, smp_processor_id());
 	if (!netif_xmit_frozen_or_stopped(txq))
@@ -390,7 +332,6 @@ static int xfrm_dev_event(struct notifier_block *this, unsigned long event, void
 		return xfrm_dev_feat_change(dev);
 
 	case NETDEV_DOWN:
-	case NETDEV_UNREGISTER:
 		return xfrm_dev_down(dev);
 	}
 	return NOTIFY_DONE;

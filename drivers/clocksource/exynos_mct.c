@@ -1,18 +1,23 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /* linux/arch/arm/mach-exynos4/mct.c
  *
  * Copyright (c) 2011 Samsung Electronics Co., Ltd.
  *		http://www.samsung.com
  *
  * EXYNOS4 MCT(Multi-Core Timer) support
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
 */
 
+#include <linux/sched.h>
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 #include <linux/err.h>
 #include <linux/clk.h>
 #include <linux/clockchips.h>
 #include <linux/cpu.h>
+#include <linux/platform_device.h>
 #include <linux/delay.h>
 #include <linux/percpu.h>
 #include <linux/of.h>
@@ -206,7 +211,7 @@ static void exynos4_frc_resume(struct clocksource *cs)
 
 static struct clocksource mct_frc = {
 	.name		= "mct-frc",
-	.rating		= 450,	/* use value higher than ARM arch timer */
+	.rating		= 400,
 	.read		= exynos4_frc_read,
 	.mask		= CLOCKSOURCE_MASK(32),
 	.flags		= CLOCK_SOURCE_IS_CONTINUOUS,
@@ -461,7 +466,7 @@ static int exynos4_mct_starting_cpu(unsigned int cpu)
 	evt->set_state_oneshot_stopped = set_state_shutdown;
 	evt->tick_resume = set_state_shutdown;
 	evt->features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT;
-	evt->rating = 500;	/* use value higher than ARM arch timer */
+	evt->rating = 450;
 
 	exynos4_mct_write(TICK_BASE_CNT, mevt->base + MCT_L_TCNTB_OFFSET);
 
@@ -503,12 +508,13 @@ static int __init exynos4_timer_resources(struct device_node *np, void __iomem *
 	int err, cpu;
 	struct clk *mct_clk, *tick_clk;
 
-	tick_clk = of_clk_get_by_name(np, "fin_pll");
+	tick_clk = np ? of_clk_get_by_name(np, "fin_pll") :
+				clk_get(NULL, "fin_pll");
 	if (IS_ERR(tick_clk))
 		panic("%s: unable to determine tick clock rate\n", __func__);
 	clk_rate = clk_get_rate(tick_clk);
 
-	mct_clk = of_clk_get_by_name(np, "mct");
+	mct_clk = np ? of_clk_get_by_name(np, "mct") : clk_get(NULL, "mct");
 	if (IS_ERR(mct_clk))
 		panic("%s: unable to retrieve mct clock instance\n", __func__);
 	clk_prepare_enable(mct_clk);
@@ -557,19 +563,7 @@ static int __init exynos4_timer_resources(struct device_node *np, void __iomem *
 	return 0;
 
 out_irq:
-	if (mct_int_type == MCT_INT_PPI) {
-		free_percpu_irq(mct_irqs[MCT_L0_IRQ], &percpu_mct_tick);
-	} else {
-		for_each_possible_cpu(cpu) {
-			struct mct_clock_event_device *pcpu_mevt =
-				per_cpu_ptr(&percpu_mct_tick, cpu);
-
-			if (pcpu_mevt->evt.irq != -1) {
-				free_irq(pcpu_mevt->evt.irq, pcpu_mevt);
-				pcpu_mevt->evt.irq = -1;
-			}
-		}
-	}
+	free_percpu_irq(mct_irqs[MCT_L0_IRQ], &percpu_mct_tick);
 	return err;
 }
 
@@ -588,7 +582,11 @@ static int __init mct_init_dt(struct device_node *np, unsigned int int_type)
 	 * timer irqs are specified after the four global timer
 	 * irqs are specified.
 	 */
+#ifdef CONFIG_OF
 	nr_irqs = of_irq_count(np);
+#else
+	nr_irqs = 0;
+#endif
 	for (i = MCT_L0_IRQ; i < nr_irqs; i++)
 		mct_irqs[i] = irq_of_parse_and_map(np, i);
 

@@ -1,11 +1,4 @@
-.. Permission is granted to copy, distribute and/or modify this
-.. document under the terms of the GNU Free Documentation License,
-.. Version 1.1 or any later version published by the Free Software
-.. Foundation, with no Invariant Sections, no Front-Cover Texts
-.. and no Back-Cover Texts. A copy of the license is included at
-.. Documentation/media/uapi/fdl-appendix.rst.
-..
-.. TODO: replace it to GFDL-1.1-or-later WITH no-invariant-sections
+.. -*- coding: utf-8; mode: rst -*-
 
 ****************************
 Defining Colorspaces in V4L2
@@ -39,7 +32,7 @@ whole range, 0-255, dividing the angular value by 1.41. The enum
    colorspaces except for BT.2020 which uses limited range R'G'B'
    quantization.
 
-.. tabularcolumns:: |p{6.7cm}|p{10.8cm}|
+.. tabularcolumns:: |p{6.0cm}|p{11.5cm}|
 
 .. c:type:: v4l2_colorspace
 
@@ -112,7 +105,7 @@ whole range, 0-255, dividing the angular value by 1.41. The enum
 
 .. c:type:: v4l2_ycbcr_encoding
 
-.. tabularcolumns:: |p{7.2cm}|p{10.3cm}|
+.. tabularcolumns:: |p{6.5cm}|p{11.0cm}|
 
 .. flat-table:: V4L2 Y'CbCr Encodings
     :header-rows:  1

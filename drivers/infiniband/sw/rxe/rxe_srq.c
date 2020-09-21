@@ -31,7 +31,6 @@
  * SOFTWARE.
  */
 
-#include <linux/vmalloc.h>
 #include "rxe.h"
 #include "rxe_loc.h"
 #include "rxe_queue.h"
@@ -99,7 +98,8 @@ err1:
 }
 
 int rxe_srq_from_init(struct rxe_dev *rxe, struct rxe_srq *srq,
-		      struct ib_srq_init_attr *init, struct ib_udata *udata,
+		      struct ib_srq_init_attr *init,
+		      struct ib_ucontext *context,
 		      struct rxe_create_srq_resp __user *uresp)
 {
 	int err;
@@ -127,20 +127,15 @@ int rxe_srq_from_init(struct rxe_dev *rxe, struct rxe_srq *srq,
 
 	srq->rq.queue = q;
 
-	err = do_mmap_info(rxe, uresp ? &uresp->mi : NULL, udata, q->buf,
+	err = do_mmap_info(rxe, uresp ? &uresp->mi : NULL, context, q->buf,
 			   q->buf_size, &q->ip);
-	if (err) {
-		vfree(q->buf);
-		kfree(q);
+	if (err)
 		return err;
-	}
 
 	if (uresp) {
 		if (copy_to_user(&uresp->srq_num, &srq->srq_num,
-				 sizeof(uresp->srq_num))) {
-			rxe_queue_cleanup(q);
+				 sizeof(uresp->srq_num)))
 			return -EFAULT;
-		}
 	}
 
 	return 0;
@@ -148,7 +143,7 @@ int rxe_srq_from_init(struct rxe_dev *rxe, struct rxe_srq *srq,
 
 int rxe_srq_from_attr(struct rxe_dev *rxe, struct rxe_srq *srq,
 		      struct ib_srq_attr *attr, enum ib_srq_attr_mask mask,
-		      struct rxe_modify_srq_cmd *ucmd, struct ib_udata *udata)
+		      struct rxe_modify_srq_cmd *ucmd)
 {
 	int err;
 	struct rxe_queue *q = srq->rq.queue;
@@ -162,8 +157,11 @@ int rxe_srq_from_attr(struct rxe_dev *rxe, struct rxe_srq *srq,
 		mi = u64_to_user_ptr(ucmd->mmap_info_addr);
 
 		err = rxe_queue_resize(q, &attr->max_wr,
-				       rcv_wqe_size(srq->rq.max_sge), udata, mi,
-				       &srq->rq.producer_lock,
+				       rcv_wqe_size(srq->rq.max_sge),
+				       srq->rq.queue->ip ?
+						srq->rq.queue->ip->context :
+						NULL,
+				       mi, &srq->rq.producer_lock,
 				       &srq->rq.consumer_lock);
 		if (err)
 			goto err2;

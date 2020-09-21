@@ -1,7 +1,7 @@
 /*
 	Hardware Random Number Generator
 
-	Please read Documentation/admin-guide/hw_random.rst for details on use.
+	Please read Documentation/hw_random.txt for details on use.
 
 	----------------------------------------------------------
 	This software may be used and distributed according to the terms
@@ -33,8 +33,7 @@
  *			and max is a multiple of 4 and >= 32 bytes.
  * @priv:		Private data, for use by the RNG driver.
  * @quality:		Estimation of true entropy in RNG's bitstream
- *			(in bits of entropy per 1024 bits of input;
- *			valid values: 1 to 1024, or 0 for unknown).
+ *			(per mill).
  */
 struct hwrng {
 	const char *name;

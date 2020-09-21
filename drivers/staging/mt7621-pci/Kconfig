@@ -1,4 +1,3 @@
-# SPDX-License-Identifier: GPL-2.0
 config PCI_MT7621
 	tristate "MediaTek MT7621 PCI Controller"
 	depends on RALINK

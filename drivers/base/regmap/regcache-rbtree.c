@@ -1,10 +1,14 @@
-// SPDX-License-Identifier: GPL-2.0
-//
-// Register cache access API - rbtree caching support
-//
-// Copyright 2011 Wolfson Microelectronics plc
-//
-// Author: Dimitris Papastamos <dp@opensource.wolfsonmicro.com>
+/*
+ * Register cache access API - rbtree caching support
+ *
+ * Copyright 2011 Wolfson Microelectronics plc
+ *
+ * Author: Dimitris Papastamos <dp@opensource.wolfsonmicro.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ */
 
 #include <linux/debugfs.h>
 #include <linux/device.h>
@@ -29,7 +33,7 @@ struct regcache_rbtree_node {
 	unsigned int blklen;
 	/* the actual rbtree node holding this block */
 	struct rb_node node;
-};
+} __attribute__ ((packed));
 
 struct regcache_rbtree_ctx {
 	struct rb_root root;
@@ -173,7 +177,17 @@ static int rbtree_show(struct seq_file *s, void *ignored)
 	return 0;
 }
 
-DEFINE_SHOW_ATTRIBUTE(rbtree);
+static int rbtree_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, rbtree_show, inode->i_private);
+}
+
+static const struct file_operations rbtree_fops = {
+	.open		= rbtree_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
 
 static void rbtree_debugfs_init(struct regmap *map)
 {

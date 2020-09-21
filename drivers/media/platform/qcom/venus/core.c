@@ -1,7 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
  * Copyright (C) 2017 Linaro Ltd.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
  */
 #include <linux/clk.h>
 #include <linux/init.h>
@@ -67,7 +76,7 @@ static void venus_sys_error_handler(struct work_struct *work)
 	hfi_core_deinit(core, true);
 	hfi_destroy(core);
 	mutex_lock(&core->lock);
-	venus_shutdown(core);
+	venus_shutdown(core->dev);
 
 	pm_runtime_put_sync(core->dev);
 
@@ -75,7 +84,7 @@ static void venus_sys_error_handler(struct work_struct *work)
 
 	pm_runtime_get_sync(core->dev);
 
-	ret |= venus_boot(core);
+	ret |= venus_boot(core->dev, core->res->fwname);
 
 	ret |= hfi_core_resume(core, true);
 
@@ -198,7 +207,7 @@ static int venus_enumerate_codecs(struct venus_core *core, u32 type)
 		goto err;
 
 	for (i = 0; i < MAX_CODEC_NUM; i++) {
-		codec = (1UL << i) & codecs;
+		codec = (1 << i) & codecs;
 		if (!codec)
 			continue;
 
@@ -283,15 +292,7 @@ static int venus_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_runtime_disable;
 
-	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
-	if (ret)
-		goto err_runtime_disable;
-
-	ret = venus_firmware_init(core);
-	if (ret)
-		goto err_runtime_disable;
-
-	ret = venus_boot(core);
+	ret = venus_boot(dev, core->res->fwname);
 	if (ret)
 		goto err_runtime_disable;
 
@@ -315,6 +316,10 @@ static int venus_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_core_deinit;
 
+	ret = of_platform_populate(dev->of_node, NULL, NULL, dev);
+	if (ret)
+		goto err_dev_unregister;
+
 	ret = pm_runtime_put_sync(dev);
 	if (ret)
 		goto err_dev_unregister;
@@ -326,7 +331,7 @@ err_dev_unregister:
 err_core_deinit:
 	hfi_core_deinit(core, false);
 err_venus_shutdown:
-	venus_shutdown(core);
+	venus_shutdown(dev);
 err_runtime_disable:
 	pm_runtime_set_suspended(dev);
 	pm_runtime_disable(dev);
@@ -347,10 +352,8 @@ static int venus_remove(struct platform_device *pdev)
 	WARN_ON(ret);
 
 	hfi_destroy(core);
-	venus_shutdown(core);
+	venus_shutdown(dev);
 	of_platform_depopulate(dev);
-
-	venus_firmware_deinit(core);
 
 	pm_runtime_put_sync(dev);
 	pm_runtime_disable(dev);
@@ -427,11 +430,10 @@ static const struct venus_resources msm8916_res = {
 };
 
 static const struct freq_tbl msm8996_freq_table[] = {
-	{ 1944000, 520000000 },	/* 4k UHD @ 60 (decode only) */
-	{  972000, 520000000 },	/* 4k UHD @ 30 */
-	{  489600, 346666667 },	/* 1080p @ 60 */
-	{  244800, 150000000 },	/* 1080p @ 30 */
-	{  108000,  75000000 },	/* 720p @ 30 */
+	{ 1944000, 490000000 },	/* 4k UHD @ 60 */
+	{  972000, 320000000 },	/* 4k UHD @ 30 */
+	{  489600, 150000000 },	/* 1080p @ 60 */
+	{  244800,  75000000 },	/* 1080p @ 30 */
 };
 
 static const struct reg_val msm8996_reg_preset[] = {
@@ -457,12 +459,10 @@ static const struct venus_resources msm8996_res = {
 };
 
 static const struct freq_tbl sdm845_freq_table[] = {
-	{ 3110400, 533000000 },	/* 4096x2160@90 */
-	{ 2073600, 444000000 },	/* 4096x2160@60 */
-	{ 1944000, 404000000 },	/* 3840x2160@60 */
-	{  972000, 330000000 },	/* 3840x2160@30 */
-	{  489600, 200000000 },	/* 1920x1080@60 */
-	{  244800, 100000000 },	/* 1920x1080@30 */
+	{ 1944000, 380000000 },	/* 4k UHD @ 60 */
+	{  972000, 320000000 },	/* 4k UHD @ 30 */
+	{  489600, 200000000 },	/* 1080p @ 60 */
+	{  244800, 100000000 },	/* 1080p @ 30 */
 };
 
 static const struct venus_resources sdm845_res = {
@@ -470,7 +470,7 @@ static const struct venus_resources sdm845_res = {
 	.freq_tbl_size = ARRAY_SIZE(sdm845_freq_table),
 	.clks = {"core", "iface", "bus" },
 	.clks_num = 3,
-	.max_load = 3110400,	/* 4096x2160@90 */
+	.max_load = 2563200,
 	.hfi_version = HFI_VERSION_4XX,
 	.vmem_id = VIDC_RESOURCE_NONE,
 	.vmem_size = 0,

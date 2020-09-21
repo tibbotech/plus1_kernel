@@ -1,8 +1,17 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * drivers/dma-buf/sync_file.c
  *
  * Copyright (C) 2012 Google, Inc.
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
  */
 
 #include <linux/export.h>
@@ -135,7 +144,7 @@ char *sync_file_get_name(struct sync_file *sync_file, char *buf, int len)
 	} else {
 		struct dma_fence *fence = sync_file->fence;
 
-		snprintf(buf, len, "%s-%s%llu-%lld",
+		snprintf(buf, len, "%s-%s%llu-%d",
 			 fence->ops->get_driver_name(fence),
 			 fence->ops->get_timeline_name(fence),
 			 fence->context,
@@ -221,7 +230,7 @@ static struct sync_file *sync_file_merge(const char *name, struct sync_file *a,
 	a_fences = get_fences(a, &a_num_fences);
 	b_fences = get_fences(b, &b_num_fences);
 	if (a_num_fences > INT_MAX - b_num_fences)
-		goto err;
+		return NULL;
 
 	num_fences = a_num_fences + b_num_fences;
 
@@ -249,8 +258,7 @@ static struct sync_file *sync_file_merge(const char *name, struct sync_file *a,
 
 			i_b++;
 		} else {
-			if (__dma_fence_is_later(pt_a->seqno, pt_b->seqno,
-						 pt_a->ops))
+			if (pt_a->seqno - pt_b->seqno <= INT_MAX)
 				add_fence(fences, &i, pt_a);
 			else
 				add_fence(fences, &i, pt_b);
@@ -419,7 +427,7 @@ static long sync_file_ioctl_fence_info(struct sync_file *sync_file,
 	 * info->num_fences.
 	 */
 	if (!info.num_fences) {
-		info.status = dma_fence_get_status(sync_file->fence);
+		info.status = dma_fence_is_signaled(sync_file->fence);
 		goto no_fences;
 	} else {
 		info.status = 1;

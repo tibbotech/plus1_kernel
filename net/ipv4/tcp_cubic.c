@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * TCP CUBIC: Binary Increase Congestion control for TCP v2.3
  * Home page:

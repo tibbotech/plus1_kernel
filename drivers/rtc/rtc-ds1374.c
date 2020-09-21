@@ -14,7 +14,7 @@
  */
 /*
  * It would be more efficient to use i2c msgs/i2c_transfer directly but, as
- * recommended in .../Documentation/i2c/writing-clients.rst section
+ * recommened in .../Documentation/i2c/writing-clients section
  * "Sending and receiving", using SMBus level communication is preferred.
  */
 
@@ -467,7 +467,7 @@ static int ds1374_wdt_open(struct inode *inode, struct file *file)
 		 */
 		wdt_is_open = 1;
 		mutex_unlock(&ds1374->mutex);
-		return stream_open(inode, file);
+		return nonseekable_open(inode, file);
 	}
 	return -ENODEV;
 }

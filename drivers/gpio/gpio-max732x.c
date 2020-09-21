@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  MAX732x I2C Port Expander with 8/16 I/O
  *
@@ -8,6 +7,10 @@
  *  Copyright (C) 2015 Linus Walleij <linus.walleij@linaro.org>
  *
  *  Derived from drivers/gpio/pca953x.c
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation; version 2 of the License.
  */
 
 #include <linux/module.h>
@@ -19,6 +22,7 @@
 #include <linux/i2c.h>
 #include <linux/platform_data/max732x.h>
 #include <linux/of.h>
+#include <linux/reset.h>
 
 
 /*
@@ -75,6 +79,12 @@
 #define INT_MERGED_MASK 0x3	/* Has interrupts, merged mask */
 
 #define INT_CAPS(x)	(((uint64_t)(x)) << 32)
+
+enum {
+	OUTPUT_MASK,
+	OUTPUT_VAL,
+	OUTPUT_NUM,
+};
 
 enum {
 	MAX7319,
@@ -622,6 +632,8 @@ static int max732x_probe(struct i2c_client *client,
 	struct i2c_client *c;
 	uint16_t addr_a, addr_b;
 	int ret, nr_port;
+	u16 out_set[OUTPUT_NUM];
+	unsigned long mask, val;
 
 	pdata = dev_get_platdata(&client->dev);
 	node = client->dev.of_node;
@@ -639,6 +651,10 @@ static int max732x_probe(struct i2c_client *client,
 		return -ENOMEM;
 	chip->client = client;
 
+	ret = device_reset(&client->dev);
+	if (ret == -EPROBE_DEFER)
+		return ret;
+
 	nr_port = max732x_setup_gpio(chip, id, pdata->gpio_base);
 	chip->gpio_chip.parent = &client->dev;
 
@@ -649,12 +665,12 @@ static int max732x_probe(struct i2c_client *client,
 	case 0x60:
 		chip->client_group_a = client;
 		if (nr_port > 8) {
-			c = devm_i2c_new_dummy_device(&client->dev,
-						      client->adapter, addr_b);
-			if (IS_ERR(c)) {
+			c = i2c_new_dummy(client->adapter, addr_b);
+			if (!c) {
 				dev_err(&client->dev,
 					"Failed to allocate I2C device\n");
-				return PTR_ERR(c);
+				ret = -ENODEV;
+				goto out_failed;
 			}
 			chip->client_group_b = chip->client_dummy = c;
 		}
@@ -662,12 +678,12 @@ static int max732x_probe(struct i2c_client *client,
 	case 0x50:
 		chip->client_group_b = client;
 		if (nr_port > 8) {
-			c = devm_i2c_new_dummy_device(&client->dev,
-						      client->adapter, addr_a);
-			if (IS_ERR(c)) {
+			c = i2c_new_dummy(client->adapter, addr_a);
+			if (!c) {
 				dev_err(&client->dev,
 					"Failed to allocate I2C device\n");
-				return PTR_ERR(c);
+				ret = -ENODEV;
+				goto out_failed;
 			}
 			chip->client_group_a = chip->client_dummy = c;
 		}
@@ -675,33 +691,37 @@ static int max732x_probe(struct i2c_client *client,
 	default:
 		dev_err(&client->dev, "invalid I2C address specified %02x\n",
 				client->addr);
-		return -EINVAL;
+		ret = -EINVAL;
+		goto out_failed;
 	}
 
 	if (nr_port > 8 && !chip->client_dummy) {
 		dev_err(&client->dev,
 			"Failed to allocate second group I2C device\n");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out_failed;
 	}
 
 	mutex_init(&chip->lock);
 
 	ret = max732x_readb(chip, is_group_a(chip, 0), &chip->reg_out[0]);
 	if (ret)
-		return ret;
+		goto out_failed;
 	if (nr_port > 8) {
 		ret = max732x_readb(chip, is_group_a(chip, 8), &chip->reg_out[1]);
 		if (ret)
-			return ret;
+			goto out_failed;
 	}
 
-	ret = devm_gpiochip_add_data(&client->dev, &chip->gpio_chip, chip);
+	ret = gpiochip_add_data(&chip->gpio_chip, chip);
 	if (ret)
-		return ret;
+		goto out_failed;
 
 	ret = max732x_irq_setup(chip, id);
-	if (ret)
-		return ret;
+	if (ret) {
+		gpiochip_remove(&chip->gpio_chip);
+		goto out_failed;
+	}
 
 	if (pdata && pdata->setup) {
 		ret = pdata->setup(client, chip->gpio_chip.base,
@@ -711,7 +731,20 @@ static int max732x_probe(struct i2c_client *client,
 	}
 
 	i2c_set_clientdata(client, chip);
+
+	/* set the output IO default voltage */
+	if (!of_property_read_u16_array(node, "out-default", out_set,
+					ARRAY_SIZE(out_set))) {
+		mask = out_set[OUTPUT_MASK] & chip->dir_output;
+		val = out_set[OUTPUT_VAL];
+		max732x_gpio_set_multiple(&chip->gpio_chip, &mask, &val);
+	}
+
 	return 0;
+
+out_failed:
+	i2c_unregister_device(chip->client_dummy);
+	return ret;
 }
 
 static int max732x_remove(struct i2c_client *client)
@@ -730,6 +763,11 @@ static int max732x_remove(struct i2c_client *client)
 			return ret;
 		}
 	}
+
+	gpiochip_remove(&chip->gpio_chip);
+
+	/* unregister any dummy i2c_client */
+	i2c_unregister_device(chip->client_dummy);
 
 	return 0;
 }

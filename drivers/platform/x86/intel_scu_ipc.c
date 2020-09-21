@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0
 /*
- * Driver for the Intel SCU IPC mechanism
+ * intel_scu_ipc.c: Driver for the Intel SCU IPC mechanism
  *
  * (C) Copyright 2008-2010,2015 Intel Corporation
  * Author: Sreedhara DS (sreedhara.ds@intel.com)
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; version 2
+ * of the License.
  *
  * SCU running in ARC processor communicates with other entity running in IA
  * core through IPC mechanism which in turn messaging between IA core ad SCU.
@@ -12,16 +16,14 @@
  * IPC-1 Driver provides an API for power control unit registers (e.g. MSIC)
  * along with other APIs.
  */
-
 #include <linux/delay.h>
-#include <linux/device.h>
 #include <linux/errno.h>
 #include <linux/init.h>
-#include <linux/interrupt.h>
-#include <linux/pci.h>
+#include <linux/device.h>
 #include <linux/pm.h>
+#include <linux/pci.h>
+#include <linux/interrupt.h>
 #include <linux/sfi.h>
-
 #include <asm/intel-mid.h>
 #include <asm/intel_scu_ipc.h>
 
@@ -67,22 +69,26 @@
 struct intel_scu_ipc_pdata_t {
 	u32 i2c_base;
 	u32 i2c_len;
+	u8 irq_mode;
 };
 
 static const struct intel_scu_ipc_pdata_t intel_scu_ipc_lincroft_pdata = {
 	.i2c_base = 0xff12b000,
 	.i2c_len = 0x10,
+	.irq_mode = 0,
 };
 
 /* Penwell and Cloverview */
 static const struct intel_scu_ipc_pdata_t intel_scu_ipc_penwell_pdata = {
 	.i2c_base = 0xff12b000,
 	.i2c_len = 0x10,
+	.irq_mode = 1,
 };
 
 static const struct intel_scu_ipc_pdata_t intel_scu_ipc_tangier_pdata = {
 	.i2c_base  = 0xff00d000,
 	.i2c_len = 0x10,
+	.irq_mode = 0,
 };
 
 struct intel_scu_ipc_dev {
@@ -94,9 +100,6 @@ struct intel_scu_ipc_dev {
 };
 
 static struct intel_scu_ipc_dev  ipcdev; /* Only one for now */
-
-#define IPC_STATUS		0x04
-#define IPC_STATUS_IRQ		BIT(2)
 
 /*
  * IPC Read Buffer (Read Only):
@@ -119,8 +122,11 @@ static DEFINE_MUTEX(ipclock); /* lock used to prevent multiple call to SCU */
  */
 static inline void ipc_command(struct intel_scu_ipc_dev *scu, u32 cmd)
 {
-	reinit_completion(&scu->cmd_complete);
-	writel(cmd | IPC_IOC, scu->ipc_base);
+	if (scu->irq_mode) {
+		reinit_completion(&scu->cmd_complete);
+		writel(cmd | IPC_IOC, scu->ipc_base);
+	}
+	writel(cmd, scu->ipc_base);
 }
 
 /*
@@ -606,10 +612,9 @@ EXPORT_SYMBOL(intel_scu_ipc_i2c_cntrl);
 static irqreturn_t ioc(int irq, void *dev_id)
 {
 	struct intel_scu_ipc_dev *scu = dev_id;
-	int status = ipc_read_status(scu);
 
-	writel(status | IPC_STATUS_IRQ, scu->ipc_base + IPC_STATUS);
-	complete(&scu->cmd_complete);
+	if (scu->irq_mode)
+		complete(&scu->cmd_complete);
 
 	return IRQ_HANDLED;
 }
@@ -634,6 +639,8 @@ static int ipc_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pdata = (struct intel_scu_ipc_pdata_t *)id->driver_data;
 	if (!pdata)
 		return -ENODEV;
+
+	scu->irq_mode = pdata->irq_mode;
 
 	err = pcim_enable_device(pdev);
 	if (err)

@@ -6,7 +6,7 @@
 	model = "SP7021/CA7/Ev";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
+		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk isolcpus=0,1,2,3 xenomai.supported_cpus=0xF";
 		stdout-path = "serial0:115200n8";
 	};
 
@@ -33,13 +33,6 @@
 	spi-max-frequency = <50000000>;
 	spi-cpha;
 	spi-cpol;
-	#address-cells = <1>;
-	#size-cells = <0>;
-	spi@0 {
-		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <25000000>;
-		reg = <0x0>;
-	};
 };
 
 &spi_controller1 {
@@ -48,7 +41,7 @@
 	spi-cpol;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	spi@0 {
+	spi1: spi@ {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <25000000>;
 		reg = <0x0>;
@@ -61,7 +54,7 @@
 	spi-cpol;
 	#address-cells = <1>;
 	#size-cells = <0>;
-	spi@0 {
+	spi2: spi@ {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <25000000>;
 		reg = <0x0>;
@@ -71,7 +64,6 @@
 &spi_controller3 {
 	spi-max-frequency = <50000000>;
 	spi-slave;
-	status = "disabled";
 };
 
 &i2cm0 {
@@ -97,11 +89,6 @@
 };
 
 &uart1 {
-	pinctrl-names = "default";
-	pinctrl-0 = <&pins_uart1>;
-#if 0 //TTYS_GPIO in sp_uart.c
-	uart-gpio = <&pctl 0 GPIO_ACTIVE_HIGH>;
-#endif
 	status = "disabled";
 };
 
@@ -226,16 +213,6 @@
 		>;
 	};
 
-        pins_uart1: pins_uart1 {
-		sppctl,pins = <
-			SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_UA1_TX,0)
-			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_UA1_RX,0)
-	#if 0 //TTYS_GPIO in sp_uart.c
-			SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, 1)
-	#endif
-		>;
-	};
-	
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)

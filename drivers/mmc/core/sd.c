@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/drivers/mmc/core/sd.c
  *
  *  Copyright (C) 2003-2004 Russell King, All Rights Reserved.
  *  SD support Copyright (C) 2004 Ian Molton, All Rights Reserved.
  *  Copyright (C) 2005-2007 Pierre Ossman, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 
 #include <linux/err.h>
@@ -206,11 +209,6 @@ static int mmc_decode_scr(struct mmc_card *card)
 		/* Check if Physical Layer Spec v3.0 is supported */
 		scr->sda_spec3 = UNSTUFF_BITS(resp, 47, 1);
 
-	if (scr->sda_spec3) {
-		scr->sda_spec4 = UNSTUFF_BITS(resp, 42, 1);
-		scr->sda_specx = UNSTUFF_BITS(resp, 38, 4);
-	}
-
 	if (UNSTUFF_BITS(resp, 55, 1))
 		card->erased_byte = 0xFF;
 	else
@@ -218,14 +216,6 @@ static int mmc_decode_scr(struct mmc_card *card)
 
 	if (scr->sda_spec3)
 		scr->cmds = UNSTUFF_BITS(resp, 32, 2);
-
-	/* SD Spec says: any SD Card shall set at least bits 0 and 2 */
-	if (!(scr->bus_widths & SD_SCR_BUS_WIDTH_1) ||
-	    !(scr->bus_widths & SD_SCR_BUS_WIDTH_4)) {
-		pr_err("%s: invalid bus width\n", mmc_hostname(card->host));
-		return -EINVAL;
-	}
-
 	return 0;
 }
 
@@ -236,8 +226,6 @@ static int mmc_read_ssr(struct mmc_card *card)
 {
 	unsigned int au, es, et, eo;
 	__be32 *raw_ssr;
-	u32 resp[4] = {};
-	u8 discard_support;
 	int i;
 
 	if (!(card->csd.cmdclass & CCC_APP_SPEC)) {
@@ -282,14 +270,6 @@ static int mmc_read_ssr(struct mmc_card *card)
 				mmc_hostname(card->host));
 		}
 	}
-
-	/*
-	 * starting SD5.1 discard is supported if DISCARD_SUPPORT (b313) is set
-	 */
-	resp[3] = card->raw_ssr[6];
-	discard_support = UNSTUFF_BITS(resp, 313 - 288, 1);
-	card->erase_arg = (card->scr.sda_specx && discard_support) ?
-			    SD_DISCARD_ARG : SD_ERASE_ARG;
 
 	return 0;
 }
@@ -498,6 +478,13 @@ static int sd_set_bus_speed_mode(struct mmc_card *card, u8 *status)
 	else {
 		mmc_set_timing(card->host, timing);
 		mmc_set_clock(card->host, card->sw_caps.uhs_max_dtr);
+
+		/*
+		 * FIXME: Sandisk SD3.0 cards DDR50 mode requires such
+		 * delay to get stable, without this delay we may encounter
+		 * CRC errors after switch to DDR50 mode
+		 */
+		mmc_delay(100);
 	}
 
 	return 0;
@@ -956,11 +943,8 @@ retry:
 		return err;
 
 	if (oldcard) {
-		if (memcmp(cid, oldcard->raw_cid, sizeof(cid)) != 0) {
-			pr_debug("%s: Perhaps the card was replaced\n",
-				mmc_hostname(host));
+		if (memcmp(cid, oldcard->raw_cid, sizeof(cid)) != 0)
 			return -ENOENT;
-		}
 
 		card = oldcard;
 	} else {
@@ -1291,12 +1275,6 @@ int mmc_attach_sd(struct mmc_host *host)
 		if (err)
 			goto err;
 	}
-
-	/*
-	 * Some SD cards claims an out of spec VDD voltage range. Let's treat
-	 * these bits as being in-valid and especially also bit7.
-	 */
-	ocr &= ~0x7FFF;
 
 	rocr = mmc_select_voltage(host, ocr);
 

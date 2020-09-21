@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Device driver for the SYMBIOS/LSILOGIC 53C8XX and 53C1010 family 
  * of PCI-SCSI IO processors.
@@ -23,6 +22,20 @@
  * Copyright (C) 1997 Richard Waltham <dormouse@farsrobt.demon.co.uk>
  *
  *-----------------------------------------------------------------------------
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 #include <linux/slab.h>
@@ -3059,7 +3072,6 @@ static void sym_sir_bad_scsi_status(struct sym_hcb *np, int num, struct sym_ccb 
 			sym_print_addr(cp->cmd, "%s\n",
 			        s_status == S_BUSY ? "BUSY" : "QUEUE FULL\n");
 		}
-		/* fall through */
 	default:	/* S_INT, S_INT_COND_MET, S_CONFLICT */
 		sym_complete_error (np, cp);
 		break;
@@ -4358,13 +4370,6 @@ static void sym_nego_rejected(struct sym_hcb *np, struct sym_tcb *tp, struct sym
 	OUTB(np, HS_PRT, HS_BUSY);
 }
 
-#define sym_printk(lvl, tp, cp, fmt, v...) do { \
-	if (cp)							\
-		scmd_printk(lvl, cp->cmd, fmt, ##v);		\
-	else							\
-		starget_printk(lvl, tp->starget, fmt, ##v);	\
-} while (0)
-
 /*
  *  chip exception handler for programmed interrupts.
  */
@@ -4410,7 +4415,7 @@ static void sym_int_sir(struct sym_hcb *np)
 	 *  been selected with ATN.  We do not want to handle that.
 	 */
 	case SIR_SEL_ATN_NO_MSG_OUT:
-		sym_printk(KERN_WARNING, tp, cp,
+		scmd_printk(KERN_WARNING, cp->cmd,
 				"No MSG OUT phase after selection with ATN\n");
 		goto out_stuck;
 	/*
@@ -4418,7 +4423,7 @@ static void sym_int_sir(struct sym_hcb *np)
 	 *  having reselected the initiator.
 	 */
 	case SIR_RESEL_NO_MSG_IN:
-		sym_printk(KERN_WARNING, tp, cp,
+		scmd_printk(KERN_WARNING, cp->cmd,
 				"No MSG IN phase after reselection\n");
 		goto out_stuck;
 	/*
@@ -4426,7 +4431,7 @@ static void sym_int_sir(struct sym_hcb *np)
 	 *  an IDENTIFY.
 	 */
 	case SIR_RESEL_NO_IDENTIFY:
-		sym_printk(KERN_WARNING, tp, cp,
+		scmd_printk(KERN_WARNING, cp->cmd,
 				"No IDENTIFY after reselection\n");
 		goto out_stuck;
 	/*
@@ -4455,7 +4460,7 @@ static void sym_int_sir(struct sym_hcb *np)
 	case SIR_RESEL_ABORTED:
 		np->lastmsg = np->msgout[0];
 		np->msgout[0] = M_NOOP;
-		sym_printk(KERN_WARNING, tp, cp,
+		scmd_printk(KERN_WARNING, cp->cmd,
 			"message %x sent on bad reselection\n", np->lastmsg);
 		goto out;
 	/*
@@ -4620,7 +4625,6 @@ static void sym_int_sir(struct sym_hcb *np)
 	 *  Negotiation failed.
 	 *  Target does not want answer message.
 	 */
-	/* fall through */
 	case SIR_NEGO_PROTO:
 		sym_nego_default(np, tp, cp);
 		goto out;

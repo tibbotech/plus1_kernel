@@ -23,7 +23,6 @@
 MODULE_DESCRIPTION("Driver for Rio Karma");
 MODULE_AUTHOR("Bob Copeland <me@bobcopeland.com>, Keith Bennett <keith@mcs.st-and.ac.uk>");
 MODULE_LICENSE("GPL");
-MODULE_IMPORT_NS(USB_STORAGE);
 
 #define RIO_PREFIX "RIOP\x00"
 #define RIO_PREFIX_LEN 5
@@ -168,7 +167,6 @@ static int rio_karma_transport(struct scsi_cmnd *srb, struct us_data *us)
 static void rio_karma_destructor(void *extra)
 {
 	struct karma_data *data = (struct karma_data *) extra;
-
 	kfree(data->recv);
 }
 
@@ -176,7 +174,6 @@ static int rio_karma_init(struct us_data *us)
 {
 	int ret = 0;
 	struct karma_data *data = kzalloc(sizeof(struct karma_data), GFP_NOIO);
-
 	if (!data)
 		goto out;
 

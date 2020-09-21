@@ -1,8 +1,16 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Generic Broadcom Set Top Box Level 2 Interrupt controller driver
  *
  * Copyright (C) 2014-2017 Broadcom
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
  */
 
 #define pr_fmt(fmt)	KBUILD_MODNAME	": " fmt
@@ -79,13 +87,14 @@ static void brcmstb_l2_mask_and_ack(struct irq_data *d)
 {
 	struct irq_chip_generic *gc = irq_data_get_irq_chip_data(d);
 	struct irq_chip_type *ct = irq_data_get_chip_type(d);
+	unsigned long flags;
 	u32 mask = d->mask;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	irq_reg_writel(gc, mask, ct->regs.disable);
 	*ct->mask_cache &= ~mask;
 	irq_reg_writel(gc, mask, ct->regs.ack);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static void brcmstb_l2_intc_irq_handle(struct irq_desc *desc)
@@ -123,7 +132,7 @@ static void brcmstb_l2_intc_suspend(struct irq_data *d)
 	struct brcmstb_l2_intc_data *b = gc->private;
 	unsigned long flags;
 
-	irq_gc_lock_irqsave(gc, flags);
+	flags = irq_gc_lock(gc);
 	/* Save the current mask */
 	b->saved_mask = irq_reg_readl(gc, ct->regs.mask);
 
@@ -132,7 +141,7 @@ static void brcmstb_l2_intc_suspend(struct irq_data *d)
 		irq_reg_writel(gc, ~gc->wake_active, ct->regs.disable);
 		irq_reg_writel(gc, gc->wake_active, ct->regs.enable);
 	}
-	irq_gc_unlock_irqrestore(gc, flags);
+	irq_gc_unlock(gc, flags);
 }
 
 static void brcmstb_l2_intc_resume(struct irq_data *d)
@@ -142,7 +151,7 @@ static void brcmstb_l2_intc_resume(struct irq_data *d)
 	struct brcmstb_l2_intc_data *b = gc->private;
 	unsigned long flags;
 
-	irq_gc_lock_irqsave(gc, flags);
+	flags = irq_gc_lock(gc);
 	if (ct->chip.irq_ack) {
 		/* Clear unmasked non-wakeup interrupts */
 		irq_reg_writel(gc, ~b->saved_mask & ~gc->wake_active,
@@ -152,7 +161,7 @@ static void brcmstb_l2_intc_resume(struct irq_data *d)
 	/* Restore the saved mask */
 	irq_reg_writel(gc, b->saved_mask, ct->regs.disable);
 	irq_reg_writel(gc, ~b->saved_mask, ct->regs.enable);
-	irq_gc_unlock_irqrestore(gc, flags);
+	irq_gc_unlock(gc, flags);
 }
 
 static int __init brcmstb_l2_intc_of_init(struct device_node *np,
@@ -256,8 +265,6 @@ static int __init brcmstb_l2_intc_of_init(struct device_node *np,
 		ct->chip.irq_set_wake = irq_gc_set_wake;
 	}
 
-	pr_info("registered L2 intc (%pOF, parent irq: %d)\n", np, parent_irq);
-
 	return 0;
 
 out_free_domain:
@@ -269,14 +276,14 @@ out_free:
 	return ret;
 }
 
-static int __init brcmstb_l2_edge_intc_of_init(struct device_node *np,
+int __init brcmstb_l2_edge_intc_of_init(struct device_node *np,
 	struct device_node *parent)
 {
 	return brcmstb_l2_intc_of_init(np, parent, &l2_edge_intc_init);
 }
 IRQCHIP_DECLARE(brcmstb_l2_intc, "brcm,l2-intc", brcmstb_l2_edge_intc_of_init);
 
-static int __init brcmstb_l2_lvl_intc_of_init(struct device_node *np,
+int __init brcmstb_l2_lvl_intc_of_init(struct device_node *np,
 	struct device_node *parent)
 {
 	return brcmstb_l2_intc_of_init(np, parent, &l2_lvl_intc_init);

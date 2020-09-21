@@ -1,4 +1,3 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  FM Driver for Connectivity chip of Texas Instruments.
  *
@@ -17,6 +16,16 @@
  *  Copyright (C) 2011 Texas Instruments
  *  Author: Raja Mani <raja_mani@ti.com>
  *  Author: Manjunatha Halli <manjunatha_halli@ti.com>
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
  */
 
 #include <linux/module.h>
@@ -480,8 +489,7 @@ int fmc_send_cmd(struct fmdev *fmdev, u8 fm_op, u16 type, void *payload,
 		return -EIO;
 	}
 	/* Send response data to caller */
-	if (response != NULL && response_len != NULL && evt_hdr->dlen &&
-	    evt_hdr->dlen <= payload_len) {
+	if (response != NULL && response_len != NULL && evt_hdr->dlen) {
 		/* Skip header info and copy only response data */
 		skb_pull(skb, sizeof(struct fm_event_msg_hdr));
 		memcpy(response, skb->data, evt_hdr->dlen);
@@ -575,8 +583,6 @@ static void fm_irq_handle_flag_getcmd_resp(struct fmdev *fmdev)
 		return;
 
 	fm_evt_hdr = (void *)skb->data;
-	if (fm_evt_hdr->dlen > sizeof(fmdev->irq_info.flag))
-		return;
 
 	/* Skip header info and copy only response data */
 	skb_pull(skb, sizeof(struct fm_event_msg_hdr));
@@ -902,7 +908,7 @@ static void fm_irq_afjump_setfreq(struct fmdev *fmdev)
 	u16 frq_index;
 	u16 payload;
 
-	fmdbg("Switch to %d KHz\n", fmdev->rx.stat_info.af_cache[fmdev->rx.afjump_idx]);
+	fmdbg("Swtich to %d KHz\n", fmdev->rx.stat_info.af_cache[fmdev->rx.afjump_idx]);
 	frq_index = (fmdev->rx.stat_info.af_cache[fmdev->rx.afjump_idx] -
 	     fmdev->rx.region.bot_freq) / FM_FREQ_MUL;
 
@@ -1041,7 +1047,7 @@ static void fm_irq_handle_intmsk_cmd_resp(struct fmdev *fmdev)
 		clear_bit(FM_INTTASK_RUNNING, &fmdev->flag);
 }
 
-/* Returns availability of RDS data in internal buffer */
+/* Returns availability of RDS data in internel buffer */
 int fmc_is_rds_data_available(struct fmdev *fmdev, struct file *file,
 				struct poll_table_struct *pts)
 {
@@ -1262,9 +1268,8 @@ static int fm_download_firmware(struct fmdev *fmdev, const u8 *fw_name)
 
 		switch (action->type) {
 		case ACTION_SEND_COMMAND:	/* Send */
-			ret = fmc_send_cmd(fmdev, 0, 0, action->data,
-					   action->size, NULL, NULL);
-			if (ret)
+			if (fmc_send_cmd(fmdev, 0, 0, action->data,
+						action->size, NULL, NULL))
 				goto rel_fw;
 
 			cmd_cnt++;
@@ -1303,7 +1308,7 @@ static int load_default_rx_configuration(struct fmdev *fmdev)
 static int fm_power_up(struct fmdev *fmdev, u8 mode)
 {
 	u16 payload;
-	__be16 asic_id = 0, asic_ver = 0;
+	__be16 asic_id, asic_ver;
 	int resp_len, ret;
 	u8 fw_name[50];
 
@@ -1515,7 +1520,7 @@ int fmc_prepare(struct fmdev *fmdev)
 		}
 
 		ret = 0;
-	} else if (ret < 0) {
+	} else if (ret == -1) {
 		fmerr("st_register failed %d\n", ret);
 		return -EAGAIN;
 	}

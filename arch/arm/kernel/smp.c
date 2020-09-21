@@ -1,8 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  *  linux/arch/arm/kernel/smp.c
  *
  *  Copyright (C) 2002 ARM Limited, All Rights Reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
  */
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -59,6 +62,12 @@
  */
 struct secondary_data secondary_data;
 
+/*
+ * control for which core is the next to come out of the secondary
+ * boot "holding pen"
+ */
+volatile int pen_release = -1;
+
 enum ipi_msg_type {
 	IPI_WAKEUP,
 	IPI_TIMER,
@@ -67,17 +76,28 @@ enum ipi_msg_type {
 	IPI_CPU_STOP,
 	IPI_IRQ_WORK,
 	IPI_COMPLETION,
-	/*
-	 * CPU_BACKTRACE is special and not included in NR_IPI
-	 * or tracable with trace_ipi_*
-	 */
 	IPI_CPU_BACKTRACE,
 	/*
 	 * SGI8-15 can be reserved by secure firmware, and thus may
 	 * not be usable by the kernel. Please keep the above limited
 	 * to at most 8 entries.
 	 */
+#ifdef CONFIG_IPIPE
+	IPI_IPIPE_FIRST,
+#endif
 };
+
+#ifdef CONFIG_IPIPE
+#define noipipe_irq_enter()			\
+	do {					\
+	} while(0)
+#define noipipe_irq_exit()			\
+	do {					\
+	} while(0)
+#else /* !CONFIG_IPIPE */
+#define noipipe_irq_enter() irq_enter()
+#define noipipe_irq_exit() irq_exit()
+#endif /* !CONFIG_IPIPE */
 
 static DECLARE_COMPLETION(cpu_running);
 
@@ -240,10 +260,6 @@ int __cpu_disable(void)
 	if (ret)
 		return ret;
 
-#ifdef CONFIG_GENERIC_ARCH_TOPOLOGY
-	remove_cpu_topology(cpu);
-#endif
-
 	/*
 	 * Take this CPU offline.  Once we clear this, we can't return,
 	 * and we must not schedule until we're ready to give up the cpu.
@@ -268,13 +284,15 @@ int __cpu_disable(void)
 	return 0;
 }
 
+static DECLARE_COMPLETION(cpu_died);
+
 /*
  * called on the thread which is asking for a CPU to be shutdown -
  * waits until shutdown has completed, or it is timed out.
  */
 void __cpu_die(unsigned int cpu)
 {
-	if (!cpu_wait_death(cpu, 5)) {
+	if (!wait_for_completion_timeout(&cpu_died, msecs_to_jiffies(5000))) {
 		pr_err("CPU%u: cpu didn't die\n", cpu);
 		return;
 	}
@@ -321,7 +339,7 @@ void arch_cpu_idle_dead(void)
 	 * this returns, power and/or clocks can be removed at any point
 	 * from this CPU and its cache by platform_cpu_kill().
 	 */
-	(void)cpu_report_death();
+	complete(&cpu_died);
 
 	/*
 	 * Ensure that the cache lines associated with that completion are
@@ -374,7 +392,6 @@ static void smp_store_cpu_info(unsigned int cpuid)
 	cpu_info->cpuid = read_cpuid_id();
 
 	store_cpu_topology(cpuid);
-	check_cpu_icache_size(cpuid);
 }
 
 /*
@@ -396,6 +413,13 @@ asmlinkage void secondary_start_kernel(void)
 	local_flush_bp_all();
 	enter_lazy_tlb(mm, current);
 	local_flush_tlb_all();
+#ifdef CONFIG_IPIPE
+	/*
+	 * With CONFIG_IPIPE debug_smp_processor_id requires access
+	 * to percpu data.
+	 */
+	set_my_cpu_offset(per_cpu_offset(ipipe_processor_id()));
+#endif
 
 	/*
 	 * All kernel threads share the same mm context; grab a
@@ -577,6 +601,81 @@ void arch_irq_work_raise(void)
 #endif
 
 #ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
+
+static inline void ipi_timer(void)
+{
+	tick_receive_broadcast();
+}
+
+#endif
+
+#ifdef CONFIG_IPIPE
+#define IPIPE_IPI_BASE	IPIPE_VIRQ_BASE
+
+unsigned __ipipe_first_ipi;
+EXPORT_SYMBOL_GPL(__ipipe_first_ipi);
+
+static void  __ipipe_do_IPI(unsigned virq, void *cookie)
+{
+	enum ipi_msg_type msg = virq - IPIPE_IPI_BASE;
+	handle_IPI(msg, raw_cpu_ptr(&ipipe_percpu.tick_regs));
+}
+
+void __ipipe_ipis_alloc(void)
+{
+	unsigned int virq, ipi, last_ipi;
+
+	/* May be called multiple times via init_stage() */
+	if (__ipipe_first_ipi)
+		return;
+
+	last_ipi = NR_IPI + IPIPE_LAST_IPI + 1; /* count CPU_BACKTRACE in */
+	for (ipi = 0; ipi <= last_ipi; ipi++) {
+		virq = ipipe_alloc_virq();
+		if (ipi == IPI_IPIPE_FIRST)
+			__ipipe_first_ipi = virq;
+	}
+}
+
+void __ipipe_ipis_request(void)
+{
+	unsigned virq;
+
+	for (virq = IPIPE_IPI_BASE; virq < __ipipe_first_ipi; virq++)
+		ipipe_request_irq(ipipe_root_domain,
+				  virq,
+				  (ipipe_irq_handler_t)__ipipe_do_IPI,
+				  NULL, NULL);
+}
+void ipipe_send_ipi(unsigned ipi, cpumask_t cpumask)
+{
+	enum ipi_msg_type msg = ipi - IPIPE_IPI_BASE;
+	smp_cross_call(&cpumask, msg);
+}
+EXPORT_SYMBOL_GPL(ipipe_send_ipi);
+
+ /* hw IRQs off */
+asmlinkage void __exception_irq_entry __ipipe_grab_ipi(unsigned svc, struct pt_regs *regs)
+{
+	int virq = IPIPE_IPI_BASE + svc;
+
+	/*
+	 * Virtual NMIs ignore the root domain's stall
+	 * bit. When caught over high priority
+	 * domains, virtual VMIs are pipelined the
+	 * usual way as normal interrupts.
+	 */
+	if (virq == IPIPE_SERVICE_VNMI && __ipipe_root_p)
+		__ipipe_do_vnmi(IPIPE_SERVICE_VNMI, NULL);
+	else
+		__ipipe_dispatch_irq(virq, IPIPE_IRQF_NOACK);
+
+	__ipipe_exit_irq(regs);
+}
+
+#endif /* CONFIG_IPIPE */
+
+#ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
 void tick_broadcast(const struct cpumask *mask)
 {
 	smp_cross_call(mask, IPI_TIMER);
@@ -645,9 +744,9 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 
 #ifdef CONFIG_GENERIC_CLOCKEVENTS_BROADCAST
 	case IPI_TIMER:
-		irq_enter();
-		tick_receive_broadcast();
-		irq_exit();
+		noipipe_irq_enter();
+		ipi_timer();
+		noipipe_irq_exit();
 		break;
 #endif
 
@@ -656,36 +755,36 @@ void handle_IPI(int ipinr, struct pt_regs *regs)
 		break;
 
 	case IPI_CALL_FUNC:
-		irq_enter();
+		noipipe_irq_enter();
 		generic_smp_call_function_interrupt();
-		irq_exit();
+		noipipe_irq_exit();
 		break;
 
 	case IPI_CPU_STOP:
-		irq_enter();
+		noipipe_irq_enter();
 		ipi_cpu_stop(cpu);
-		irq_exit();
+		noipipe_irq_exit();
 		break;
 
 #ifdef CONFIG_IRQ_WORK
 	case IPI_IRQ_WORK:
-		irq_enter();
+		noipipe_irq_enter();
 		irq_work_run();
-		irq_exit();
+		noipipe_irq_exit();
 		break;
 #endif
 
 	case IPI_COMPLETION:
-		irq_enter();
+		noipipe_irq_enter();
 		ipi_complete(cpu);
-		irq_exit();
+		noipipe_irq_exit();
 		break;
 
 	case IPI_CPU_BACKTRACE:
 		printk_nmi_enter();
-		irq_enter();
+		noipipe_irq_enter();
 		nmi_cpu_backtrace(regs);
-		irq_exit();
+		noipipe_irq_exit();
 		printk_nmi_exit();
 		break;
 
@@ -758,20 +857,15 @@ static int cpufreq_callback(struct notifier_block *nb,
 					unsigned long val, void *data)
 {
 	struct cpufreq_freqs *freq = data;
-	struct cpumask *cpus = freq->policy->cpus;
-	int cpu, first = cpumask_first(cpus);
-	unsigned int lpj;
+	int cpu = freq->cpu;
 
 	if (freq->flags & CPUFREQ_CONST_LOOPS)
 		return NOTIFY_OK;
 
-	if (!per_cpu(l_p_j_ref, first)) {
-		for_each_cpu(cpu, cpus) {
-			per_cpu(l_p_j_ref, cpu) =
-				per_cpu(cpu_data, cpu).loops_per_jiffy;
-			per_cpu(l_p_j_ref_freq, cpu) = freq->old;
-		}
-
+	if (!per_cpu(l_p_j_ref, cpu)) {
+		per_cpu(l_p_j_ref, cpu) =
+			per_cpu(cpu_data, cpu).loops_per_jiffy;
+		per_cpu(l_p_j_ref_freq, cpu) = freq->old;
 		if (!global_l_p_j_ref) {
 			global_l_p_j_ref = loops_per_jiffy;
 			global_l_p_j_ref_freq = freq->old;
@@ -783,11 +877,10 @@ static int cpufreq_callback(struct notifier_block *nb,
 		loops_per_jiffy = cpufreq_scale(global_l_p_j_ref,
 						global_l_p_j_ref_freq,
 						freq->new);
-
-		lpj = cpufreq_scale(per_cpu(l_p_j_ref, first),
-				    per_cpu(l_p_j_ref_freq, first), freq->new);
-		for_each_cpu(cpu, cpus)
-			per_cpu(cpu_data, cpu).loops_per_jiffy = lpj;
+		per_cpu(cpu_data, cpu).loops_per_jiffy =
+			cpufreq_scale(per_cpu(l_p_j_ref, cpu),
+					per_cpu(l_p_j_ref_freq, cpu),
+					freq->new);
 	}
 	return NOTIFY_OK;
 }
@@ -807,7 +900,7 @@ core_initcall(register_cpufreq_notifier);
 
 static void raise_nmi(cpumask_t *mask)
 {
-	__smp_cross_call(mask, IPI_CPU_BACKTRACE);
+	smp_cross_call(mask, IPI_CPU_BACKTRACE);
 }
 
 void arch_trigger_cpumask_backtrace(const cpumask_t *mask, bool exclude_self)

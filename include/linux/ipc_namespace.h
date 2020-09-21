@@ -19,7 +19,6 @@ struct ipc_ids {
 	struct rw_semaphore rwsem;
 	struct idr ipcs_idr;
 	int max_idx;
-	int last_idx;	/* For wrap around detection */
 #ifdef CONFIG_CHECKPOINT_RESTORE
 	int next_id;
 #endif

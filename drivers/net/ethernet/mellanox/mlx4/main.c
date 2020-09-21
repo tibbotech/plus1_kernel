@@ -63,7 +63,7 @@ struct workqueue_struct *mlx4_wq;
 
 #ifdef CONFIG_MLX4_DEBUG
 
-int mlx4_debug_level; /* 0 by default */
+int mlx4_debug_level = 0;
 module_param_named(debug_level, mlx4_debug_level, int, 0644);
 MODULE_PARM_DESC(debug_level, "Enable debug tracing if > 0");
 
@@ -83,7 +83,7 @@ MODULE_PARM_DESC(msi_x, "0 - don't use MSI-X, 1 - use MSI-X, >1 - limit number o
 
 static uint8_t num_vfs[3] = {0, 0, 0};
 static int num_vfs_argc;
-module_param_array(num_vfs, byte, &num_vfs_argc, 0444);
+module_param_array(num_vfs, byte , &num_vfs_argc, 0444);
 MODULE_PARM_DESC(num_vfs, "enable #num_vfs functions if num_vfs > 0\n"
 			  "num_vfs=port1,port2,port1+2");
 
@@ -313,7 +313,7 @@ int mlx4_check_port_params(struct mlx4_dev *dev,
 		for (i = 0; i < dev->caps.num_ports - 1; i++) {
 			if (port_type[i] != port_type[i + 1]) {
 				mlx4_err(dev, "Only same port types supported on this HCA, aborting\n");
-				return -EOPNOTSUPP;
+				return -EINVAL;
 			}
 		}
 	}
@@ -322,7 +322,7 @@ int mlx4_check_port_params(struct mlx4_dev *dev,
 		if (!(port_type[i] & dev->caps.supported_type[i+1])) {
 			mlx4_err(dev, "Requested port type for port %d is not supported on this HCA\n",
 				 i + 1);
-			return -EOPNOTSUPP;
+			return -EINVAL;
 		}
 	}
 	return 0;
@@ -514,7 +514,8 @@ static int mlx4_dev_cap(struct mlx4_dev *dev, struct mlx4_dev_cap *dev_cap)
 	dev->caps.max_rq_desc_sz     = dev_cap->max_rq_desc_sz;
 	/*
 	 * Subtract 1 from the limit because we need to allocate a
-	 * spare CQE to enable resizing the CQ.
+	 * spare CQE so the HCA HW can tell the difference between an
+	 * empty CQ and a full CQ.
 	 */
 	dev->caps.max_cqes	     = dev_cap->max_cq_sz - 1;
 	dev->caps.reserved_cqs	     = dev_cap->reserved_cqs;
@@ -1187,7 +1188,8 @@ static int __set_port_type(struct mlx4_port_info *info,
 		mlx4_err(mdev,
 			 "Requested port type for port %d is not supported on this HCA\n",
 			 info->port);
-		return -EOPNOTSUPP;
+		err = -EINVAL;
+		goto err_sup;
 	}
 
 	mlx4_stop_sense(mdev);
@@ -1209,7 +1211,7 @@ static int __set_port_type(struct mlx4_port_info *info,
 		for (i = 1; i <= mdev->caps.num_ports; i++) {
 			if (mdev->caps.possible_type[i] == MLX4_PORT_TYPE_AUTO) {
 				mdev->caps.possible_type[i] = mdev->caps.port_type[i];
-				err = -EOPNOTSUPP;
+				err = -EINVAL;
 			}
 		}
 	}
@@ -1235,7 +1237,7 @@ static int __set_port_type(struct mlx4_port_info *info,
 out:
 	mlx4_start_sense(mdev);
 	mutex_unlock(&priv->port_mutex);
-
+err_sup:
 	return err;
 }
 
@@ -2239,7 +2241,7 @@ static int mlx4_validate_optimized_steering(struct mlx4_dev *dev)
 	for (i = 1; i <= dev->caps.num_ports; i++) {
 		if (mlx4_dev_port(dev, i, &port_cap)) {
 			mlx4_err(dev,
-				 "QUERY_DEV_CAP command failed, can't verify DMFS high rate steering.\n");
+				 "QUERY_DEV_CAP command failed, can't veify DMFS high rate steering.\n");
 		} else if ((dev->caps.dmfs_high_steer_mode !=
 			    MLX4_STEERING_DMFS_A0_DEFAULT) &&
 			   (port_cap.dmfs_optimized_state ==
@@ -2291,31 +2293,23 @@ static int mlx4_init_fw(struct mlx4_dev *dev)
 static int mlx4_init_hca(struct mlx4_dev *dev)
 {
 	struct mlx4_priv	  *priv = mlx4_priv(dev);
-	struct mlx4_init_hca_param *init_hca = NULL;
-	struct mlx4_dev_cap	  *dev_cap = NULL;
 	struct mlx4_adapter	   adapter;
+	struct mlx4_dev_cap	   dev_cap;
 	struct mlx4_profile	   profile;
+	struct mlx4_init_hca_param init_hca;
 	u64 icm_size;
 	struct mlx4_config_dev_params params;
 	int err;
 
 	if (!mlx4_is_slave(dev)) {
-		dev_cap = kzalloc(sizeof(*dev_cap), GFP_KERNEL);
-		init_hca = kzalloc(sizeof(*init_hca), GFP_KERNEL);
-
-		if (!dev_cap || !init_hca) {
-			err = -ENOMEM;
-			goto out_free;
-		}
-
-		err = mlx4_dev_cap(dev, dev_cap);
+		err = mlx4_dev_cap(dev, &dev_cap);
 		if (err) {
 			mlx4_err(dev, "QUERY_DEV_CAP command failed, aborting\n");
-			goto out_free;
+			return err;
 		}
 
-		choose_steering_mode(dev, dev_cap);
-		choose_tunnel_offload_mode(dev, dev_cap);
+		choose_steering_mode(dev, &dev_cap);
+		choose_tunnel_offload_mode(dev, &dev_cap);
 
 		if (dev->caps.dmfs_high_steer_mode == MLX4_STEERING_DMFS_A0_STATIC &&
 		    mlx4_is_master(dev))
@@ -2338,48 +2332,48 @@ static int mlx4_init_hca(struct mlx4_dev *dev)
 		    MLX4_STEERING_MODE_DEVICE_MANAGED)
 			profile.num_mcg = MLX4_FS_NUM_MCG;
 
-		icm_size = mlx4_make_profile(dev, &profile, dev_cap,
-					     init_hca);
+		icm_size = mlx4_make_profile(dev, &profile, &dev_cap,
+					     &init_hca);
 		if ((long long) icm_size < 0) {
 			err = icm_size;
-			goto out_free;
+			return err;
 		}
 
 		dev->caps.max_fmr_maps = (1 << (32 - ilog2(dev->caps.num_mpts))) - 1;
 
 		if (enable_4k_uar || !dev->persist->num_vfs) {
-			init_hca->log_uar_sz = ilog2(dev->caps.num_uars) +
+			init_hca.log_uar_sz = ilog2(dev->caps.num_uars) +
 						    PAGE_SHIFT - DEFAULT_UAR_PAGE_SHIFT;
-			init_hca->uar_page_sz = DEFAULT_UAR_PAGE_SHIFT - 12;
+			init_hca.uar_page_sz = DEFAULT_UAR_PAGE_SHIFT - 12;
 		} else {
-			init_hca->log_uar_sz = ilog2(dev->caps.num_uars);
-			init_hca->uar_page_sz = PAGE_SHIFT - 12;
+			init_hca.log_uar_sz = ilog2(dev->caps.num_uars);
+			init_hca.uar_page_sz = PAGE_SHIFT - 12;
 		}
 
-		init_hca->mw_enabled = 0;
+		init_hca.mw_enabled = 0;
 		if (dev->caps.flags & MLX4_DEV_CAP_FLAG_MEM_WINDOW ||
 		    dev->caps.bmme_flags & MLX4_BMME_FLAG_TYPE_2_WIN)
-			init_hca->mw_enabled = INIT_HCA_TPT_MW_ENABLE;
+			init_hca.mw_enabled = INIT_HCA_TPT_MW_ENABLE;
 
-		err = mlx4_init_icm(dev, dev_cap, init_hca, icm_size);
+		err = mlx4_init_icm(dev, &dev_cap, &init_hca, icm_size);
 		if (err)
-			goto out_free;
+			return err;
 
-		err = mlx4_INIT_HCA(dev, init_hca);
+		err = mlx4_INIT_HCA(dev, &init_hca);
 		if (err) {
 			mlx4_err(dev, "INIT_HCA command failed, aborting\n");
 			goto err_free_icm;
 		}
 
-		if (dev_cap->flags2 & MLX4_DEV_CAP_FLAG2_SYS_EQS) {
-			err = mlx4_query_func(dev, dev_cap);
+		if (dev_cap.flags2 & MLX4_DEV_CAP_FLAG2_SYS_EQS) {
+			err = mlx4_query_func(dev, &dev_cap);
 			if (err < 0) {
 				mlx4_err(dev, "QUERY_FUNC command failed, aborting.\n");
 				goto err_close;
 			} else if (err & MLX4_QUERY_FUNC_NUM_SYS_EQS) {
-				dev->caps.num_eqs = dev_cap->max_eqs;
-				dev->caps.reserved_eqs = dev_cap->reserved_eqs;
-				dev->caps.reserved_uars = dev_cap->reserved_uars;
+				dev->caps.num_eqs = dev_cap.max_eqs;
+				dev->caps.reserved_eqs = dev_cap.reserved_eqs;
+				dev->caps.reserved_uars = dev_cap.reserved_uars;
 			}
 		}
 
@@ -2388,13 +2382,14 @@ static int mlx4_init_hca(struct mlx4_dev *dev)
 		 * read HCA frequency by QUERY_HCA command
 		 */
 		if (dev->caps.flags2 & MLX4_DEV_CAP_FLAG2_TS) {
-			err = mlx4_QUERY_HCA(dev, init_hca);
+			memset(&init_hca, 0, sizeof(init_hca));
+			err = mlx4_QUERY_HCA(dev, &init_hca);
 			if (err) {
 				mlx4_err(dev, "QUERY_HCA command failed, disable timestamp\n");
 				dev->caps.flags2 &= ~MLX4_DEV_CAP_FLAG2_TS;
 			} else {
 				dev->caps.hca_core_clock =
-					init_hca->hca_core_clock;
+					init_hca.hca_core_clock;
 			}
 
 			/* In case we got HCA frequency 0 - disable timestamping
@@ -2470,8 +2465,7 @@ static int mlx4_init_hca(struct mlx4_dev *dev)
 	priv->eq_table.inta_pin = adapter.inta_pin;
 	memcpy(dev->board_id, adapter.board_id, sizeof(dev->board_id));
 
-	err = 0;
-	goto out_free;
+	return 0;
 
 unmap_bf:
 	unmap_internal_clock(dev);
@@ -2489,10 +2483,6 @@ err_close:
 err_free_icm:
 	if (!mlx4_is_slave(dev))
 		mlx4_free_icms(dev);
-
-out_free:
-	kfree(dev_cap);
-	kfree(init_hca);
 
 	return err;
 }
@@ -3262,7 +3252,7 @@ disable_sriov:
 free_mem:
 	dev->persist->num_vfs = 0;
 	kfree(dev->dev_vfs);
-	dev->dev_vfs = NULL;
+        dev->dev_vfs = NULL;
 	return dev_flags & ~MLX4_FLAG_MASTER;
 }
 
@@ -3930,43 +3920,26 @@ static void mlx4_devlink_param_load_driverinit_values(struct devlink *devlink)
 	}
 }
 
-static void mlx4_restart_one_down(struct pci_dev *pdev);
-static int mlx4_restart_one_up(struct pci_dev *pdev, bool reload,
-			       struct devlink *devlink);
-
-static int mlx4_devlink_reload_down(struct devlink *devlink,
-				    struct netlink_ext_ack *extack)
-{
-	struct mlx4_priv *priv = devlink_priv(devlink);
-	struct mlx4_dev *dev = &priv->dev;
-	struct mlx4_dev_persistent *persist = dev->persist;
-
-	if (persist->num_vfs)
-		mlx4_warn(persist->dev, "Reload performed on PF, will cause reset on operating Virtual Functions\n");
-	mlx4_restart_one_down(persist->pdev);
-	return 0;
-}
-
-static int mlx4_devlink_reload_up(struct devlink *devlink,
-				  struct netlink_ext_ack *extack)
+static int mlx4_devlink_reload(struct devlink *devlink,
+			       struct netlink_ext_ack *extack)
 {
 	struct mlx4_priv *priv = devlink_priv(devlink);
 	struct mlx4_dev *dev = &priv->dev;
 	struct mlx4_dev_persistent *persist = dev->persist;
 	int err;
 
-	err = mlx4_restart_one_up(persist->pdev, true, devlink);
+	if (persist->num_vfs)
+		mlx4_warn(persist->dev, "Reload performed on PF, will cause reset on operating Virtual Functions\n");
+	err = mlx4_restart_one(persist->pdev, true, devlink);
 	if (err)
-		mlx4_err(persist->dev, "mlx4_restart_one_up failed, ret=%d\n",
-			 err);
+		mlx4_err(persist->dev, "mlx4_restart_one failed, ret=%d\n", err);
 
 	return err;
 }
 
 static const struct devlink_ops mlx4_devlink_ops = {
 	.port_type_set	= mlx4_devlink_port_type_set,
-	.reload_down	= mlx4_devlink_reload_down,
-	.reload_up	= mlx4_devlink_reload_up,
+	.reload		= mlx4_devlink_reload,
 };
 
 static int mlx4_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
@@ -4009,8 +3982,6 @@ static int mlx4_init_one(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (ret)
 		goto err_params_unregister;
 
-	devlink_params_publish(devlink);
-	devlink_reload_enable(devlink);
 	pci_save_state(pdev);
 	return 0;
 
@@ -4122,8 +4093,6 @@ static void mlx4_remove_one(struct pci_dev *pdev)
 	struct devlink *devlink = priv_to_devlink(priv);
 	int active_vfs = 0;
 
-	devlink_reload_disable(devlink);
-
 	if (mlx4_is_slave(dev))
 		persist->interface_state |= MLX4_INTERFACE_STATE_NOWAIT;
 
@@ -4182,13 +4151,7 @@ static int restore_current_port_types(struct mlx4_dev *dev,
 	return err;
 }
 
-static void mlx4_restart_one_down(struct pci_dev *pdev)
-{
-	mlx4_unload_one(pdev);
-}
-
-static int mlx4_restart_one_up(struct pci_dev *pdev, bool reload,
-			       struct devlink *devlink)
+int mlx4_restart_one(struct pci_dev *pdev, bool reload, struct devlink *devlink)
 {
 	struct mlx4_dev_persistent *persist = pci_get_drvdata(pdev);
 	struct mlx4_dev	 *dev  = persist->dev;
@@ -4200,6 +4163,7 @@ static int mlx4_restart_one_up(struct pci_dev *pdev, bool reload,
 	total_vfs = dev->persist->num_vfs;
 	memcpy(nvfs, dev->persist->nvfs, sizeof(dev->persist->nvfs));
 
+	mlx4_unload_one(pdev);
 	if (reload)
 		mlx4_devlink_param_load_driverinit_values(devlink);
 	err = mlx4_load_one(pdev, pci_dev_data, total_vfs, nvfs, priv, 1);
@@ -4216,12 +4180,6 @@ static int mlx4_restart_one_up(struct pci_dev *pdev, bool reload,
 			 err);
 
 	return err;
-}
-
-int mlx4_restart_one(struct pci_dev *pdev)
-{
-	mlx4_restart_one_down(pdev);
-	return mlx4_restart_one_up(pdev, false, NULL);
 }
 
 #define MLX_SP(id) { PCI_VDEVICE(MELLANOX, id), MLX4_PCI_DEV_FORCE_SENSE_PORT }

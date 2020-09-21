@@ -178,7 +178,7 @@ struct vsp1_dl_cmd_pool {
  * @post_cmd: post command to be issued through extended dl header
  * @has_chain: if true, indicates that there's a partition chain
  * @chain: entry in the display list partition chain
- * @flags: display list flags, a combination of VSP1_DL_FRAME_END_*
+ * @internal: whether the display list is used for internal purpose
  */
 struct vsp1_dl_list {
 	struct list_head list;
@@ -197,7 +197,7 @@ struct vsp1_dl_list {
 	bool has_chain;
 	struct list_head chain;
 
-	unsigned int flags;
+	bool internal;
 };
 
 /**
@@ -557,10 +557,8 @@ static struct vsp1_dl_list *vsp1_dl_list_alloc(struct vsp1_dl_manager *dlm)
 
 	/* Get a default body for our list. */
 	dl->body0 = vsp1_dl_body_get(dlm->pool);
-	if (!dl->body0) {
-		kfree(dl);
+	if (!dl->body0)
 		return NULL;
-	}
 
 	header_offset = dl->body0->max_entries * sizeof(*dl->body0->entries);
 
@@ -701,8 +699,8 @@ struct vsp1_dl_body *vsp1_dl_list_get_body0(struct vsp1_dl_list *dl)
  * which bodies are added.
  *
  * Adding a body to a display list passes ownership of the body to the list. The
- * caller retains its reference to the body when adding it to the display list,
- * but is not allowed to add new entries to the body.
+ * caller retains its reference to the fragment when adding it to the display
+ * list, but is not allowed to add new entries to the body.
  *
  * The reference must be explicitly released by a call to vsp1_dl_body_put()
  * when the body isn't needed anymore.
@@ -772,35 +770,17 @@ static void vsp1_dl_list_fill_header(struct vsp1_dl_list *dl, bool is_last)
 	}
 
 	dl->header->num_lists = num_lists;
-	dl->header->flags = 0;
 
-	/*
-	 * Enable the interrupt for the end of each frame. In continuous mode
-	 * chained lists are used with one list per frame, so enable the
-	 * interrupt for each list. In singleshot mode chained lists are used
-	 * to partition a single frame, so enable the interrupt for the last
-	 * list only.
-	 */
-	if (!dlm->singleshot || is_last)
-		dl->header->flags |= VSP1_DLH_INT_ENABLE;
-
-	/*
-	 * In continuous mode enable auto-start for all lists, as the VSP must
-	 * loop on the same list until a new one is queued. In singleshot mode
-	 * enable auto-start for all lists but the last to chain processing of
-	 * partitions without software intervention.
-	 */
-	if (!dlm->singleshot || !is_last)
-		dl->header->flags |= VSP1_DLH_AUTO_START;
-
-	if (!is_last) {
+	if (!list_empty(&dl->chain) && !is_last) {
 		/*
-		 * If this is not the last display list in the chain, queue the
-		 * next item for automatic processing by the hardware.
+		 * If this display list's chain is not empty, we are on a list,
+		 * and the next item is the display list that we must queue for
+		 * automatic processing by the hardware.
 		 */
 		struct vsp1_dl_list *next = list_next_entry(dl, chain);
 
 		dl->header->next_header = next->dma;
+		dl->header->flags = VSP1_DLH_AUTO_START;
 	} else if (!dlm->singleshot) {
 		/*
 		 * if the display list manager works in continuous mode, the VSP
@@ -808,6 +788,13 @@ static void vsp1_dl_list_fill_header(struct vsp1_dl_list *dl, bool is_last)
 		 * instructed to do otherwise.
 		 */
 		dl->header->next_header = dl->dma;
+		dl->header->flags = VSP1_DLH_INT_ENABLE | VSP1_DLH_AUTO_START;
+	} else {
+		/*
+		 * Otherwise, in mem-to-mem mode, we work in single-shot mode
+		 * and the next display list must not be started automatically.
+		 */
+		dl->header->flags = VSP1_DLH_INT_ENABLE;
 	}
 
 	if (!dl->extension)
@@ -874,15 +861,13 @@ static void vsp1_dl_list_commit_continuous(struct vsp1_dl_list *dl)
 	 *
 	 * If a display list is already pending we simply drop it as the new
 	 * display list is assumed to contain a more recent configuration. It is
-	 * an error if the already pending list has the
-	 * VSP1_DL_FRAME_END_INTERNAL flag set, as there is then a process
-	 * waiting for that list to complete. This shouldn't happen as the
-	 * waiting process should perform proper locking, but warn just in
-	 * case.
+	 * an error if the already pending list has the internal flag set, as
+	 * there is then a process waiting for that list to complete. This
+	 * shouldn't happen as the waiting process should perform proper
+	 * locking, but warn just in case.
 	 */
 	if (vsp1_dl_list_hw_update_pending(dlm)) {
-		WARN_ON(dlm->pending &&
-			(dlm->pending->flags & VSP1_DL_FRAME_END_INTERNAL));
+		WARN_ON(dlm->pending && dlm->pending->internal);
 		__vsp1_dl_list_put(dlm->pending);
 		dlm->pending = dl;
 		return;
@@ -912,7 +897,7 @@ static void vsp1_dl_list_commit_singleshot(struct vsp1_dl_list *dl)
 	dlm->active = dl;
 }
 
-void vsp1_dl_list_commit(struct vsp1_dl_list *dl, unsigned int dl_flags)
+void vsp1_dl_list_commit(struct vsp1_dl_list *dl, bool internal)
 {
 	struct vsp1_dl_manager *dlm = dl->dlm;
 	struct vsp1_dl_list *dl_next;
@@ -927,7 +912,7 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl, unsigned int dl_flags)
 		vsp1_dl_list_fill_header(dl_next, last);
 	}
 
-	dl->flags = dl_flags & ~VSP1_DL_FRAME_END_COMPLETED;
+	dl->internal = internal;
 
 	spin_lock_irqsave(&dlm->lock, flags);
 
@@ -956,13 +941,9 @@ void vsp1_dl_list_commit(struct vsp1_dl_list *dl, unsigned int dl_flags)
  * set in single-shot mode as display list processing is then not continuous and
  * races never occur.
  *
- * The following flags are only supported for continuous mode.
- *
- * The VSP1_DL_FRAME_END_INTERNAL flag indicates that the display list that just
- * became active had been queued with the internal notification flag.
- *
- * The VSP1_DL_FRAME_END_WRITEBACK flag indicates that the previously active
- * display list had been queued with the writeback flag.
+ * The VSP1_DL_FRAME_END_INTERNAL flag indicates that the previous display list
+ * has completed and had been queued with the internal notification flag.
+ * Internal notification is only supported for continuous mode.
  */
 unsigned int vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 {
@@ -1001,24 +982,13 @@ unsigned int vsp1_dlm_irq_frame_end(struct vsp1_dl_manager *dlm)
 		goto done;
 
 	/*
-	 * If the active display list has the writeback flag set, the frame
-	 * completion marks the end of the writeback capture. Return the
-	 * VSP1_DL_FRAME_END_WRITEBACK flag and reset the display list's
-	 * writeback flag.
-	 */
-	if (dlm->active && (dlm->active->flags & VSP1_DL_FRAME_END_WRITEBACK)) {
-		flags |= VSP1_DL_FRAME_END_WRITEBACK;
-		dlm->active->flags &= ~VSP1_DL_FRAME_END_WRITEBACK;
-	}
-
-	/*
 	 * The device starts processing the queued display list right after the
 	 * frame end interrupt. The display list thus becomes active.
 	 */
 	if (dlm->queued) {
-		if (dlm->queued->flags & VSP1_DL_FRAME_END_INTERNAL)
+		if (dlm->queued->internal)
 			flags |= VSP1_DL_FRAME_END_INTERNAL;
-		dlm->queued->flags &= ~VSP1_DL_FRAME_END_INTERNAL;
+		dlm->queued->internal = false;
 
 		__vsp1_dl_list_put(dlm->active);
 		dlm->active = dlm->queued;

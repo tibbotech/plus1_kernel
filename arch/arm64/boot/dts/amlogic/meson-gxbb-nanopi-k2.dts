@@ -10,7 +10,6 @@
 
 / {
 	compatible = "friendlyarm,nanopi-k2", "amlogic,meson-gxbb";
-	model = "FriendlyARM NanoPi K2";
 
 	aliases {
 		serial0 = &uart_AO;
@@ -155,6 +154,10 @@
 
 	amlogic,tx-delay-ns = <2>;
 
+	snps,reset-gpio = <&gpio GPIOZ_14 0>;
+	snps,reset-delays-us = <0 10000 1000000>;
+	snps,reset-active-low;
+
 	mdio {
 		compatible = "snps,dwmac-mdio";
 		#address-cells = <1>;
@@ -163,11 +166,6 @@
 		eth_phy0: ethernet-phy@0 {
 			/* Realtek RTL8211F (0x001cc916) */
 			reg = <0>;
-
-			reset-assert-us = <10000>;
-			reset-deassert-us = <30000>;
-			reset-gpios = <&gpio GPIOZ_14 GPIO_ACTIVE_LOW>;
-
 			interrupt-parent = <&gpio_intc>;
 			/* MAC_INTR on GPIOZ_15 */
 			interrupts = <29 IRQ_TYPE_LEVEL_LOW>;
@@ -193,7 +191,7 @@
 	pinctrl-names = "default";
 };
 
-&gpio_ao {
+&pinctrl_aobus {
 	gpio-line-names = "UART TX", "UART RX", "Power Control", "Power Key In",
 			  "VCCK En", "CON1 Header Pin31",
 			  "I2S Header Pin6", "IR In", "I2S Header Pin7",
@@ -203,7 +201,7 @@
 			  "";
 };
 
-&gpio {
+&pinctrl_periphs {
 	gpio-line-names = /* Bank GPIOZ */
 			  "Eth MDIO", "Eth MDC", "Eth RGMII RX Clk",
 			  "Eth RX DV", "Eth RX D0", "Eth RX D1", "Eth RX D2",
@@ -275,7 +273,7 @@
 
 	bus-width = <4>;
 	cap-sd-highspeed;
-	max-frequency = <50000000>;
+	max-frequency = <200000000>;
 
 	non-removable;
 	disable-wp;
@@ -303,11 +301,12 @@
 	sd-uhs-sdr12;
 	sd-uhs-sdr25;
 	sd-uhs-sdr50;
-	sd-uhs-ddr50;
-	max-frequency = <100000000>;
+	sd-uhs-sdr104;
+	max-frequency = <200000000>;
 	disable-wp;
 
-	cd-gpios = <&gpio CARD_6 GPIO_ACTIVE_LOW>;
+	cd-gpios = <&gpio CARD_6 GPIO_ACTIVE_HIGH>;
+	cd-inverted;
 
 	vmmc-supply = <&vddio_ao3v3>;
 	vqmmc-supply = <&vddio_tf>;

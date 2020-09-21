@@ -1,6 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Copyright (C) 2001 Anton Blanchard <anton@au.ibm.com>, IBM
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version
+ * 2 of the License, or (at your option) any later version.
  *
  * Communication to userspace based on kernel/printk.c
  */
@@ -87,8 +91,6 @@ static char *rtas_event_type(int type)
 			return "Dump Notification Event";
 		case RTAS_TYPE_PRRN:
 			return "Platform Resource Reassignment Event";
-		case RTAS_TYPE_HOTPLUG:
-			return "Hotplug Event";
 	}
 
 	return rtas_type[0];
@@ -148,10 +150,8 @@ static void printk_log_rtas(char *buf, int len)
 	} else {
 		struct rtas_error_log *errlog = (struct rtas_error_log *)buf;
 
-		printk(RTAS_DEBUG "event: %d, Type: %s (%d), Severity: %d\n",
-		       error_log_cnt,
-		       rtas_event_type(rtas_error_type(errlog)),
-		       rtas_error_type(errlog),
+		printk(RTAS_DEBUG "event: %d, Type: %s, Severity: %d\n",
+		       error_log_cnt, rtas_event_type(rtas_error_type(errlog)),
 		       rtas_error_severity(errlog));
 	}
 }
@@ -274,14 +274,25 @@ void pSeries_log_error(char *buf, unsigned int err_type, int fatal)
 }
 
 #ifdef CONFIG_PPC_PSERIES
-static void handle_prrn_event(s32 scope)
+static s32 prrn_update_scope;
+
+static void prrn_work_fn(struct work_struct *work)
 {
 	/*
 	 * For PRRN, we must pass the negative of the scope value in
 	 * the RTAS event.
 	 */
-	pseries_devicetree_update(-scope);
+	pseries_devicetree_update(-prrn_update_scope);
 	numa_update_cpu_topology(false);
+}
+
+static DECLARE_WORK(prrn_work, prrn_work_fn);
+
+static void prrn_schedule_update(u32 scope)
+{
+	flush_work(&prrn_work);
+	prrn_update_scope = scope;
+	schedule_work(&prrn_work);
 }
 
 static void handle_rtas_event(const struct rtas_error_log *log)
@@ -292,7 +303,7 @@ static void handle_rtas_event(const struct rtas_error_log *log)
 	/* For PRRN Events the extended log length is used to denote
 	 * the scope for calling rtas update-nodes.
 	 */
-	handle_prrn_event(rtas_error_extended_log_length(log));
+	prrn_schedule_update(rtas_error_extended_log_length(log));
 }
 
 #else
@@ -331,7 +342,7 @@ static ssize_t rtas_log_read(struct file * file, char __user * buf,
 
 	count = rtas_error_log_buffer_max;
 
-	if (!access_ok(buf, count))
+	if (!access_ok(VERIFY_WRITE, buf, count))
 		return -EFAULT;
 
 	tmp = kmalloc(count, GFP_KERNEL);

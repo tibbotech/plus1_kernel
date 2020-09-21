@@ -1,5 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 /* Qualcomm Technologies, Inc. EMAC Gigabit Ethernet Driver */
@@ -544,6 +552,7 @@ static int emac_probe_resources(struct platform_device *pdev,
 				struct emac_adapter *adpt)
 {
 	struct net_device *netdev = adpt->netdev;
+	struct resource *res;
 	char maddr[ETH_ALEN];
 	int ret = 0;
 
@@ -555,17 +564,22 @@ static int emac_probe_resources(struct platform_device *pdev,
 
 	/* Core 0 interrupt */
 	ret = platform_get_irq(pdev, 0);
-	if (ret < 0)
+	if (ret < 0) {
+		dev_err(&pdev->dev,
+			"error: missing core0 irq resource (error=%i)\n", ret);
 		return ret;
+	}
 	adpt->irq.irq = ret;
 
 	/* base register address */
-	adpt->base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	adpt->base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(adpt->base))
 		return PTR_ERR(adpt->base);
 
 	/* CSR register address */
-	adpt->csr = devm_platform_ioremap_resource(pdev, 1);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	adpt->csr = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(adpt->csr))
 		return PTR_ERR(adpt->csr);
 

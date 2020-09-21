@@ -1,6 +1,17 @@
-// SPDX-License-Identifier: ISC
 /*
  * Copyright (c) 2010 Broadcom Corporation
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION
+ * OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
+ * CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
 /****************
@@ -12,6 +23,7 @@
 
 #include <net/cfg80211.h>
 #include "fweh.h"
+#include "fwil_types.h"
 
 #define TOE_TX_CSUM_OL		0x00000001
 #define TOE_RX_CSUM_OL		0x00000002
@@ -97,7 +109,6 @@ struct brcmf_pub {
 	struct brcmf_bus *bus_if;
 	struct brcmf_proto *proto;
 	struct wiphy *wiphy;
-	struct cfg80211_ops *ops;
 	struct brcmf_cfg80211_info *config;
 
 	/* Internal brcmf items */
@@ -133,9 +144,9 @@ struct brcmf_pub {
 	struct notifier_block inet6addr_notifier;
 	struct brcmf_mp_device *settings;
 
-	struct work_struct bus_reset;
-
 	u8 clmver[BRCMF_DCMD_SMLEN];
+	struct brcmf_pkt_filter_enable_le pkt_filter[MAX_PKT_FILTER_COUNT];
+
 };
 
 /* forward declarations */
@@ -213,5 +224,7 @@ void brcmf_netif_mon_rx(struct brcmf_if *ifp, struct sk_buff *skb);
 void brcmf_net_setcarrier(struct brcmf_if *ifp, bool on);
 int __init brcmf_core_init(void);
 void __exit brcmf_core_exit(void);
-
+int brcmf_pktfilter_add_remove(struct net_device *ndev, int filter_num,
+			       bool add);
+int brcmf_pktfilter_enable(struct net_device *ndev, bool enable);
 #endif /* BRCMFMAC_CORE_H */

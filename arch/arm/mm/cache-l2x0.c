@@ -1,8 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * arch/arm/mm/cache-l2x0.c - L210/L220/L310 cache controller support
  *
  * Copyright (C) 2007 ARM Limited
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  */
 #include <linux/cpu.h>
 #include <linux/err.h>
@@ -11,6 +23,7 @@
 #include <linux/spinlock.h>
 #include <linux/log2.h>
 #include <linux/io.h>
+#include <linux/kconfig.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
 
@@ -18,8 +31,8 @@
 #include <asm/cp15.h>
 #include <asm/cputype.h>
 #include <asm/hardware/cache-l2x0.h>
-#include <asm/hardware/cache-aurora-l2.h>
 #include "cache-tauros3.h"
+#include "cache-aurora-l2.h"
 
 struct l2c_init_data {
 	const char *type;
@@ -36,9 +49,22 @@ struct l2c_init_data {
 
 #define CACHE_LINE_SIZE		32
 
+#ifdef CONFIG_IPIPE
+#define CACHE_RANGE_ATOMIC_MAX	512UL
+static int l2x0_wa = -1;
+static int __init l2x0_setup_wa(char *str)
+{
+	l2x0_wa = !!simple_strtol(str, NULL, 0);
+	return 0;
+}
+early_param("l2x0_write_allocate", l2x0_setup_wa);
+#else
+#define CACHE_RANGE_ATOMIC_MAX	4096UL
+static int l2x0_wa = 1;
+#endif
+
 static void __iomem *l2x0_base;
 static const struct l2c_init_data *l2x0_data;
-static DEFINE_RAW_SPINLOCK(l2x0_lock);
 static u32 l2x0_way_mask;	/* Bitmask of active ways */
 static u32 l2x0_size;
 static unsigned long sync_reg_offset = L2X0_CACHE_SYNC;
@@ -47,6 +73,102 @@ struct l2x0_regs l2x0_saved_regs;
 
 static bool l2x0_bresp_disable;
 static bool l2x0_flz_disable;
+
+#ifdef CONFIG_OPTEE
+
+#ifndef CONFIG_SMP
+/*
+ * Redefine the arch_writelock/unlock functions not present
+ * in NO SMP mode
+ */
+#define arch_write_lock(lock)	raw_spin_lock(lock)
+#define arch_write_unlock(lock)	raw_spin_unlock(lock)
+#endif
+
+struct l2x0_mutex {
+	arch_rwlock_t *mutex;
+	arch_rwlock_t nomutex;
+};
+
+static struct l2x0_mutex l2x0_lock;
+
+
+#define l2x0_spin_lock(lock, flags) \
+	do { \
+		flags = local_lock(lock); \
+	} while (0)
+
+#define l2x0_spin_unlock(lock, flags) local_unlock(lock, flags)
+
+#define l2x0_spin_lock_init(lock) spinlock_init(lock)
+
+
+static void spinlock_init(struct l2x0_mutex *spinlock)
+{
+	spinlock->mutex        = NULL;
+#ifdef CONFIG_SMP
+	spinlock->nomutex.lock = 0;
+#endif
+}
+
+static unsigned long local_lock(struct l2x0_mutex *spinlock)
+{
+	unsigned long flags;
+	arch_rwlock_t *lock = spinlock->mutex;
+
+	if (!lock)
+		lock = &spinlock->nomutex;
+
+	local_irq_save(flags);
+	preempt_disable();
+	arch_write_lock(lock);
+
+	return flags;
+}
+
+static void local_unlock(struct l2x0_mutex *spinlock, unsigned long flags)
+{
+	arch_rwlock_t *lock = spinlock->mutex;
+
+	if (!lock)
+		lock = &spinlock->nomutex;
+
+	arch_write_unlock(lock);
+	local_irq_restore(flags);
+	preempt_enable();
+}
+
+static int l2c_set_mutex(void *mutex)
+{
+	unsigned long flags;
+
+	if (l2x0_lock.mutex != NULL)
+		return -EINVAL;
+
+	/* Ensure the no mutex is released */
+	l2x0_spin_lock(&l2x0_lock, flags);
+	l2x0_lock.mutex = mutex;
+
+	arch_write_unlock(&l2x0_lock.nomutex);
+	local_irq_restore(flags);
+	preempt_enable();
+
+	return 0;
+}
+
+#else
+static DEFINE_RAW_SPINLOCK(l2x0_lock);
+
+#define l2x0_spin_lock(lock, flags) raw_spin_lock_irqsave(lock, flags)
+#define l2x0_spin_unlock(lock, flags) raw_spin_unlock_irqrestore(lock, flags)
+
+#define l2x0_spin_lock_init(lock)
+static int l2c_set_mutex(void *mutex)
+{
+	return -EINVAL;
+}
+
+#endif
 
 /*
  * Common code for all cache controllers.
@@ -275,19 +397,17 @@ static void l2c220_op_way(void __iomem *base, unsigned reg)
 {
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	__l2c_op_way(base + reg);
 	__l2c220_cache_sync(base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static unsigned long l2c220_op_pa_range(void __iomem *reg, unsigned long start,
 	unsigned long end, unsigned long flags)
 {
-	raw_spinlock_t *lock = &l2x0_lock;
-
 	while (start < end) {
-		unsigned long blk_end = start + min(end - start, 4096UL);
+		unsigned long blk_end = start + min(end - start, CACHE_RANGE_ATOMIC_MAX);
 
 		while (start < blk_end) {
 			l2c_wait_mask(reg, 1);
@@ -296,8 +416,8 @@ static unsigned long l2c220_op_pa_range(void __iomem *reg, unsigned long start,
 		}
 
 		if (blk_end < end) {
-			raw_spin_unlock_irqrestore(lock, flags);
-			raw_spin_lock_irqsave(lock, flags);
+			l2x0_spin_unlock(&l2x0_lock, flags);
+			l2x0_spin_lock(&l2x0_lock, flags);
 		}
 	}
 
@@ -309,7 +429,7 @@ static void l2c220_inv_range(unsigned long start, unsigned long end)
 	void __iomem *base = l2x0_base;
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	if ((start | end) & (CACHE_LINE_SIZE - 1)) {
 		if (start & (CACHE_LINE_SIZE - 1)) {
 			start &= ~(CACHE_LINE_SIZE - 1);
@@ -328,7 +448,7 @@ static void l2c220_inv_range(unsigned long start, unsigned long end)
 				   start, end, flags);
 	l2c_wait_mask(base + L2X0_INV_LINE_PA, 1);
 	__l2c220_cache_sync(base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void l2c220_clean_range(unsigned long start, unsigned long end)
@@ -342,12 +462,12 @@ static void l2c220_clean_range(unsigned long start, unsigned long end)
 		return;
 	}
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	flags = l2c220_op_pa_range(base + L2X0_CLEAN_LINE_PA,
 				   start, end, flags);
 	l2c_wait_mask(base + L2X0_CLEAN_INV_LINE_PA, 1);
 	__l2c220_cache_sync(base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void l2c220_flush_range(unsigned long start, unsigned long end)
@@ -361,12 +481,12 @@ static void l2c220_flush_range(unsigned long start, unsigned long end)
 		return;
 	}
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	flags = l2c220_op_pa_range(base + L2X0_CLEAN_INV_LINE_PA,
 				   start, end, flags);
 	l2c_wait_mask(base + L2X0_CLEAN_INV_LINE_PA, 1);
 	__l2c220_cache_sync(base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void l2c220_flush_all(void)
@@ -378,9 +498,9 @@ static void l2c220_sync(void)
 {
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	__l2c220_cache_sync(l2x0_base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void l2c220_enable(void __iomem *base, unsigned num_lock)
@@ -472,7 +592,7 @@ static void l2c310_inv_range_erratum(unsigned long start, unsigned long end)
 		unsigned long flags;
 
 		/* Erratum 588369 for both clean+invalidate operations */
-		raw_spin_lock_irqsave(&l2x0_lock, flags);
+		l2x0_spin_lock(&l2x0_lock, flags);
 		l2c_set_debug(base, 0x03);
 
 		if (start & (CACHE_LINE_SIZE - 1)) {
@@ -489,7 +609,7 @@ static void l2c310_inv_range_erratum(unsigned long start, unsigned long end)
 		}
 
 		l2c_set_debug(base, 0x00);
-		raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+		l2x0_spin_unlock(&l2x0_lock, flags);
 	}
 
 	__l2c210_op_pa_range(base + L2X0_INV_LINE_PA, start, end);
@@ -498,13 +618,12 @@ static void l2c310_inv_range_erratum(unsigned long start, unsigned long end)
 
 static void l2c310_flush_range_erratum(unsigned long start, unsigned long end)
 {
-	raw_spinlock_t *lock = &l2x0_lock;
 	unsigned long flags;
 	void __iomem *base = l2x0_base;
 
-	raw_spin_lock_irqsave(lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	while (start < end) {
-		unsigned long blk_end = start + min(end - start, 4096UL);
+		unsigned long blk_end = start + min(end - start, CACHE_RANGE_ATOMIC_MAX);
 
 		l2c_set_debug(base, 0x03);
 		while (start < blk_end) {
@@ -515,11 +634,11 @@ static void l2c310_flush_range_erratum(unsigned long start, unsigned long end)
 		l2c_set_debug(base, 0x00);
 
 		if (blk_end < end) {
-			raw_spin_unlock_irqrestore(lock, flags);
-			raw_spin_lock_irqsave(lock, flags);
+			l2x0_spin_unlock(&l2x0_lock, flags);
+			l2x0_spin_lock(&l2x0_lock, flags);
 		}
 	}
-	raw_spin_unlock_irqrestore(lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 	__l2c210_cache_sync(base);
 }
 
@@ -528,12 +647,12 @@ static void l2c310_flush_all_erratum(void)
 	void __iomem *base = l2x0_base;
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	l2c_set_debug(base, 0x03);
 	__l2c_op_way(base + L2X0_CLEAN_INV_WAY);
 	l2c_set_debug(base, 0x00);
 	__l2c210_cache_sync(base);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void __init l2c310_save(void __iomem *base)
@@ -800,6 +919,28 @@ static int __init __l2c_init(const struct l2c_init_data *data,
 	if (aux_val & aux_mask)
 		pr_alert("L2C: platform provided aux values permit register corruption.\n");
 
+	if (IS_ENABLED(CONFIG_IPIPE)) {
+		switch (cache_id & L2X0_CACHE_ID_PART_MASK) {
+		case L2X0_CACHE_ID_PART_L310:
+			if ((cache_id & L2X0_CACHE_ID_RTL_MASK)
+			    >= L310_CACHE_ID_RTL_R3P2) {
+				l2x0_wa = 1;
+				pr_alert("L2C: I-pipe: revision >= L310-r3p2 detected, forcing WA.\n");
+			}
+		case L2X0_CACHE_ID_PART_L220:
+			if (l2x0_wa < 0) {
+				l2x0_wa = 0;
+				pr_alert("L2C: I-pipe: l2x0_write_allocate= not specified, defaults to 0 (disabled).\n");
+			}
+			if (!l2x0_wa) {
+				aux_mask &= ~L220_AUX_CTRL_FWA_MASK;
+				aux_val &= ~L220_AUX_CTRL_FWA_MASK;
+				aux_val |= 1 << L220_AUX_CTRL_FWA_SHIFT;
+			} else
+				pr_alert("L2C: I-pipe: write-allocate enabled, induces high latencies.\n");
+		}
+	}
+
 	old_aux = aux = readl_relaxed(l2x0_base + L2X0_AUX_CTRL);
 	aux &= aux_mask;
 	aux |= aux_val;
@@ -859,6 +1000,10 @@ static int __init __l2c_init(const struct l2c_init_data *data,
 		fns.sync = NULL;
 	}
 
+#ifdef CONFIG_OPTEE
+	fns.set_mutex = l2c_set_mutex;
+#endif
+
 	/*
 	 * Check if l2x0 controller is already enabled.  If we are booting
 	 * in non-secure mode accessing the below registers will fault.
@@ -867,6 +1012,11 @@ static int __init __l2c_init(const struct l2c_init_data *data,
 		l2x0_saved_regs.aux_ctrl = aux;
 
 		data->enable(l2x0_base, data->num_lock);
+	} else {
+		pr_info("%s cache controller enabled try to unlock\n",
+			data->type);
+
+		data->unlock(l2x0_base, data->num_lock);
 	}
 
 	outer_cache = fns;
@@ -1352,8 +1502,8 @@ static unsigned long aurora_range_end(unsigned long start, unsigned long end)
 	 * since cache range operations stall the CPU pipeline
 	 * until completion.
 	 */
-	if (end > start + AURORA_MAX_RANGE_SIZE)
-		end = start + AURORA_MAX_RANGE_SIZE;
+	if (end > start + MAX_RANGE_SIZE)
+		end = start + MAX_RANGE_SIZE;
 
 	/*
 	 * Cache range operations can't straddle a page boundary.
@@ -1383,10 +1533,10 @@ static void aurora_pa_range(unsigned long start, unsigned long end,
 	while (start < end) {
 		range_end = aurora_range_end(start, end);
 
-		raw_spin_lock_irqsave(&l2x0_lock, flags);
+		l2x0_spin_lock(&l2x0_lock, flags);
 		writel_relaxed(start, base + AURORA_RANGE_BASE_ADDR_REG);
 		writel_relaxed(range_end - CACHE_LINE_SIZE, base + offset);
-		raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+		l2x0_spin_unlock(&l2x0_lock, flags);
 
 		writel_relaxed(0, base + AURORA_SYNC_REG);
 		start = range_end;
@@ -1421,9 +1571,9 @@ static void aurora_flush_all(void)
 	unsigned long flags;
 
 	/* clean all ways */
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	__l2c_op_way(base + L2X0_CLEAN_INV_WAY);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 
 	writel_relaxed(0, base + AURORA_SYNC_REG);
 }
@@ -1438,12 +1588,12 @@ static void aurora_disable(void)
 	void __iomem *base = l2x0_base;
 	unsigned long flags;
 
-	raw_spin_lock_irqsave(&l2x0_lock, flags);
+	l2x0_spin_lock(&l2x0_lock, flags);
 	__l2c_op_way(base + L2X0_CLEAN_INV_WAY);
 	writel_relaxed(0, base + AURORA_SYNC_REG);
 	l2c_write_sec(0, base, L2X0_CTRL);
 	dsb(st);
-	raw_spin_unlock_irqrestore(&l2x0_lock, flags);
+	l2x0_spin_unlock(&l2x0_lock, flags);
 }
 
 static void aurora_save(void __iomem *base)
@@ -1491,18 +1641,6 @@ static void __init aurora_of_parse(const struct device_node *np,
 	if (l2_wt_override) {
 		val |= AURORA_ACR_FORCE_WRITE_THRO_POLICY;
 		mask |= AURORA_ACR_FORCE_WRITE_POLICY_MASK;
-	}
-
-	if (of_property_read_bool(np, "marvell,ecc-enable")) {
-		mask |= AURORA_ACR_ECC_EN;
-		val |= AURORA_ACR_ECC_EN;
-	}
-
-	if (of_property_read_bool(np, "arm,parity-enable")) {
-		mask |= AURORA_ACR_PARITY_EN;
-		val |= AURORA_ACR_PARITY_EN;
-	} else if (of_property_read_bool(np, "arm,parity-disable")) {
-		mask |= AURORA_ACR_PARITY_EN;
 	}
 
 	*aux_val &= ~mask;
@@ -1811,6 +1949,8 @@ int __init l2x0_of_init(u32 aux_val, u32 aux_mask)
 		cache_id = cache_id_part_number_from_dt;
 	else
 		cache_id = readl_relaxed(l2x0_base + L2X0_CACHE_ID);
+
+	l2x0_spin_lock_init(&l2x0_lock);
 
 	return __l2c_init(data, aux_val, aux_mask, cache_id, nosync);
 }

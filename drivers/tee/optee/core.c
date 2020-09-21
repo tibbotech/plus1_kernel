@@ -1,6 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0-only
 /*
  * Copyright (c) 2015, Linaro Limited
+ *
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
  */
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
@@ -20,6 +29,10 @@
 #include "optee_private.h"
 #include "optee_smc.h"
 #include "shm_pool.h"
+
+#ifdef CONFIG_OUTER_CACHE
+#include <asm/outercache.h>
+#endif
 
 #define DRIVER_NAME "optee"
 
@@ -410,35 +423,9 @@ static bool optee_msg_exchange_capabilities(optee_invoke_fn *invoke_fn,
 	return true;
 }
 
-static struct tee_shm_pool *optee_config_dyn_shm(void)
-{
-	struct tee_shm_pool_mgr *priv_mgr;
-	struct tee_shm_pool_mgr *dmabuf_mgr;
-	void *rc;
-
-	rc = optee_shm_pool_alloc_pages();
-	if (IS_ERR(rc))
-		return rc;
-	priv_mgr = rc;
-
-	rc = optee_shm_pool_alloc_pages();
-	if (IS_ERR(rc)) {
-		tee_shm_pool_mgr_destroy(priv_mgr);
-		return rc;
-	}
-	dmabuf_mgr = rc;
-
-	rc = tee_shm_pool_alloc(priv_mgr, dmabuf_mgr);
-	if (IS_ERR(rc)) {
-		tee_shm_pool_mgr_destroy(priv_mgr);
-		tee_shm_pool_mgr_destroy(dmabuf_mgr);
-	}
-
-	return rc;
-}
-
 static struct tee_shm_pool *
-optee_config_shm_memremap(optee_invoke_fn *invoke_fn, void **memremaped_shm)
+optee_config_shm_memremap(optee_invoke_fn *invoke_fn, void **memremaped_shm,
+			  u32 sec_caps)
 {
 	union {
 		struct arm_smccc_res smccc;
@@ -453,11 +440,10 @@ optee_config_shm_memremap(optee_invoke_fn *invoke_fn, void **memremaped_shm)
 	struct tee_shm_pool_mgr *priv_mgr;
 	struct tee_shm_pool_mgr *dmabuf_mgr;
 	void *rc;
-	const int sz = OPTEE_SHM_NUM_PRIV_PAGES * PAGE_SIZE;
 
 	invoke_fn(OPTEE_SMC_GET_SHM_CONFIG, 0, 0, 0, 0, 0, 0, 0, &res.smccc);
 	if (res.result.status != OPTEE_SMC_RETURN_OK) {
-		pr_err("static shm service not available\n");
+		pr_info("shm service not available\n");
 		return ERR_PTR(-ENOENT);
 	}
 
@@ -483,15 +469,28 @@ optee_config_shm_memremap(optee_invoke_fn *invoke_fn, void **memremaped_shm)
 	}
 	vaddr = (unsigned long)va;
 
-	rc = tee_shm_pool_mgr_alloc_res_mem(vaddr, paddr, sz,
-					    3 /* 8 bytes aligned */);
-	if (IS_ERR(rc))
-		goto err_memunmap;
-	priv_mgr = rc;
+	/*
+	 * If OP-TEE can work with unregistered SHM, we will use own pool
+	 * for private shm
+	 */
+	if (sec_caps & OPTEE_SMC_SEC_CAP_DYNAMIC_SHM) {
+		rc = optee_shm_pool_alloc_pages();
+		if (IS_ERR(rc))
+			goto err_memunmap;
+		priv_mgr = rc;
+	} else {
+		const size_t sz = OPTEE_SHM_NUM_PRIV_PAGES * PAGE_SIZE;
 
-	vaddr += sz;
-	paddr += sz;
-	size -= sz;
+		rc = tee_shm_pool_mgr_alloc_res_mem(vaddr, paddr, sz,
+						    3 /* 8 bytes aligned */);
+		if (IS_ERR(rc))
+			goto err_memunmap;
+		priv_mgr = rc;
+
+		vaddr += sz;
+		paddr += sz;
+		size -= sz;
+	}
 
 	rc = tee_shm_pool_mgr_alloc_res_mem(vaddr, paddr, size, PAGE_SHIFT);
 	if (IS_ERR(rc))
@@ -514,6 +513,70 @@ err_memunmap:
 	memunmap(va);
 	return rc;
 }
+
+#ifdef CONFIG_OUTER_CACHE
+/**
+ * @brief   Call the TEE to get a shared mutex between TEE and Linux to
+ *          do Outer Cache maintenance
+ *
+ * @param[in] invoke_fn  Reference to the SMC call function
+ *
+ * @retval 0         Success
+ * @retval -EINVAL   Invalid value
+ * @retval -ENOMEM   Not enought memory
+ */
+static int optee_outercache_mutex(optee_invoke_fn *invoke_fn)
+{
+	struct arm_smccc_res res;
+
+	int         ret    = -EINVAL;
+	void        *vaddr = NULL;
+	phys_addr_t paddr  = 0;
+
+	/* Get the Physical Address of the mutex allocated in the SHM */
+	invoke_fn(OPTEE_SMC_L2CC_MUTEX,
+			OPTEE_SMC_L2CC_MUTEX_GET_ADDR, 0, 0, 0, 0, 0, 0, &res);
+
+	if (res.a0 != OPTEE_SMC_RETURN_OK) {
+		pr_warn("no TZ l2cc mutex service supported\n");
+		goto out;
+	}
+
+	paddr = (unsigned long)reg_pair_to_ptr(res.a2, res.a3);
+	pr_debug("outer cache shared mutex paddr 0x%lx\n", (unsigned long)paddr);
+
+	/* Remap the Mutex into a cacheable area */
+	vaddr = memremap(paddr, sizeof(u32), MEMREMAP_WB);
+	if (vaddr == NULL) {
+		pr_warn("TZ l2cc mutex: ioremap failed\n");
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	pr_debug("outer cache shared mutex vaddr %p\n", vaddr);
+
+	if (outer_mutex(vaddr)) {
+		pr_warn("TZ l2cc mutex: outer cache refused\n");
+		goto out;
+	}
+
+	invoke_fn(OPTEE_SMC_L2CC_MUTEX,
+			OPTEE_SMC_L2CC_MUTEX_ENABLE, 0, 0, 0, 0, 0, 0, &res);
+
+	if (res.a0 != OPTEE_SMC_RETURN_OK) {
+		pr_warn("TZ l2cc mutex disabled: TZ enable failed\n");
+		goto out;
+	}
+
+	ret = 0;
+
+out:
+	pr_info("teetz outer mutex: ret=%d pa=0x%lx va=0x%p\n",
+		ret, (unsigned long)paddr, vaddr);
+
+	return ret;
+}
+#endif
 
 /* Simple wrapper functions to be able to use a function pointer */
 static void optee_smccc_smc(unsigned long a0, unsigned long a1,
@@ -557,7 +620,7 @@ static optee_invoke_fn *get_invoke_func(struct device_node *np)
 static struct optee *optee_probe(struct device_node *np)
 {
 	optee_invoke_fn *invoke_fn;
-	struct tee_shm_pool *pool = ERR_PTR(-EINVAL);
+	struct tee_shm_pool *pool;
 	struct optee *optee = NULL;
 	void *memremaped_shm = NULL;
 	struct tee_device *teedev;
@@ -586,19 +649,26 @@ static struct optee *optee_probe(struct device_node *np)
 	}
 
 	/*
-	 * Try to use dynamic shared memory if possible
+	 * We have no other option for shared memory, if secure world
+	 * doesn't have any reserved memory we can use we can't continue.
 	 */
-	if (sec_caps & OPTEE_SMC_SEC_CAP_DYNAMIC_SHM)
-		pool = optee_config_dyn_shm();
+	if (!(sec_caps & OPTEE_SMC_SEC_CAP_HAVE_RESERVED_SHM))
+		return ERR_PTR(-EINVAL);
 
-	/*
-	 * If dynamic shared memory is not available or failed - try static one
-	 */
-	if (IS_ERR(pool) && (sec_caps & OPTEE_SMC_SEC_CAP_HAVE_RESERVED_SHM))
-		pool = optee_config_shm_memremap(invoke_fn, &memremaped_shm);
-
+	pool = optee_config_shm_memremap(invoke_fn, &memremaped_shm, sec_caps);
 	if (IS_ERR(pool))
 		return (void *)pool;
+
+#ifdef CONFIG_OUTER_CACHE
+
+	/* Try to get a Share Mutex to do L2 Cache maintenance */
+	if (of_find_compatible_node(NULL, NULL, "arm,pl310-cache")) {
+		rc = optee_outercache_mutex(invoke_fn);
+		if (rc)
+			goto err;
+	}
+
+#endif
 
 	optee = kzalloc(sizeof(*optee), GFP_KERNEL);
 	if (!optee) {
@@ -640,9 +710,7 @@ static struct optee *optee_probe(struct device_node *np)
 
 	optee_enable_shm_cache(optee);
 
-	if (optee->sec_caps & OPTEE_SMC_SEC_CAP_DYNAMIC_SHM)
-		pr_info("dynamic shared memory is enabled\n");
-
+	pr_info("initialized driver\n");
 	return optee;
 err:
 	if (optee) {
@@ -697,10 +765,9 @@ static struct optee *optee_svc;
 
 static int __init optee_driver_init(void)
 {
-	struct device_node *fw_np = NULL;
-	struct device_node *np = NULL;
-	struct optee *optee = NULL;
-	int rc = 0;
+	struct device_node *fw_np;
+	struct device_node *np;
+	struct optee *optee;
 
 	/* Node is supposed to be below /firmware */
 	fw_np = of_find_node_by_name(NULL, "firmware");
@@ -708,24 +775,14 @@ static int __init optee_driver_init(void)
 		return -ENODEV;
 
 	np = of_find_matching_node(fw_np, optee_match);
-	if (!np || !of_device_is_available(np)) {
-		of_node_put(np);
+	if (!np)
 		return -ENODEV;
-	}
 
 	optee = optee_probe(np);
 	of_node_put(np);
 
 	if (IS_ERR(optee))
 		return PTR_ERR(optee);
-
-	rc = optee_enumerate_devices();
-	if (rc) {
-		optee_remove(optee);
-		return rc;
-	}
-
-	pr_info("initialized driver\n");
 
 	optee_svc = optee;
 

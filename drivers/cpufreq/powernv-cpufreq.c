@@ -1,10 +1,20 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * POWERNV cpufreq driver for the IBM POWER processors
  *
  * (C) Copyright IBM 2014
  *
  * Author: Vaidyanathan Srinivasan <svaidy at linux.vnet.ibm.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2, or (at your option)
+ * any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
  */
 
 #define pr_fmt(fmt)	"powernv-cpufreq: " fmt
@@ -234,7 +244,6 @@ static int init_powernv_pstates(void)
 	u32 len_ids, len_freqs;
 	u32 pstate_min, pstate_max, pstate_nominal;
 	u32 pstate_turbo, pstate_ultra_turbo;
-	int rc = -ENODEV;
 
 	power_mgt = of_find_node_by_path("/ibm,opal/power-mgt");
 	if (!power_mgt) {
@@ -244,18 +253,18 @@ static int init_powernv_pstates(void)
 
 	if (of_property_read_u32(power_mgt, "ibm,pstate-min", &pstate_min)) {
 		pr_warn("ibm,pstate-min node not found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	if (of_property_read_u32(power_mgt, "ibm,pstate-max", &pstate_max)) {
 		pr_warn("ibm,pstate-max node not found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	if (of_property_read_u32(power_mgt, "ibm,pstate-nominal",
 				 &pstate_nominal)) {
 		pr_warn("ibm,pstate-nominal not found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	if (of_property_read_u32(power_mgt, "ibm,pstate-ultra-turbo",
@@ -284,14 +293,14 @@ next:
 	pstate_ids = of_get_property(power_mgt, "ibm,pstate-ids", &len_ids);
 	if (!pstate_ids) {
 		pr_warn("ibm,pstate-ids not found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	pstate_freqs = of_get_property(power_mgt, "ibm,pstate-frequencies-mhz",
 				      &len_freqs);
 	if (!pstate_freqs) {
 		pr_warn("ibm,pstate-frequencies-mhz not found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	if (len_ids != len_freqs) {
@@ -302,7 +311,7 @@ next:
 	nr_pstates = min(len_ids, len_freqs) / sizeof(u32);
 	if (!nr_pstates) {
 		pr_warn("No PStates found\n");
-		goto out;
+		return -ENODEV;
 	}
 
 	powernv_pstate_info.nr_pstates = nr_pstates;
@@ -318,11 +327,8 @@ next:
 		powernv_freqs[i].frequency = freq * 1000; /* kHz */
 		powernv_freqs[i].driver_data = id & 0xFF;
 
-		revmap_data = kmalloc(sizeof(*revmap_data), GFP_KERNEL);
-		if (!revmap_data) {
-			rc = -ENOMEM;
-			goto out;
-		}
+		revmap_data = (struct pstate_idx_revmap_data *)
+			      kmalloc(sizeof(*revmap_data), GFP_KERNEL);
 
 		revmap_data->pstate_id = id & 0xFF;
 		revmap_data->cpufreq_table_idx = i;
@@ -346,12 +352,7 @@ next:
 
 	/* End of list marker entry */
 	powernv_freqs[i].frequency = CPUFREQ_TABLE_END;
-
-	of_node_put(power_mgt);
 	return 0;
-out:
-	of_node_put(power_mgt);
-	return rc;
 }
 
 /* Returns the CPU frequency corresponding to the pstate_id. */
@@ -1041,14 +1042,9 @@ static struct cpufreq_driver powernv_cpufreq_driver = {
 
 static int init_chip_info(void)
 {
-	unsigned int *chip;
+	unsigned int chip[256];
 	unsigned int cpu, i;
 	unsigned int prev_chip_id = UINT_MAX;
-	int ret = 0;
-
-	chip = kcalloc(num_possible_cpus(), sizeof(*chip), GFP_KERNEL);
-	if (!chip)
-		return -ENOMEM;
 
 	for_each_possible_cpu(cpu) {
 		unsigned int id = cpu_to_chip_id(cpu);
@@ -1060,10 +1056,8 @@ static int init_chip_info(void)
 	}
 
 	chips = kcalloc(nr_chips, sizeof(struct chip), GFP_KERNEL);
-	if (!chips) {
-		ret = -ENOMEM;
-		goto free_and_return;
-	}
+	if (!chips)
+		return -ENOMEM;
 
 	for (i = 0; i < nr_chips; i++) {
 		chips[i].id = chip[i];
@@ -1073,19 +1067,11 @@ static int init_chip_info(void)
 			per_cpu(chip_info, cpu) =  &chips[i];
 	}
 
-free_and_return:
-	kfree(chip);
-	return ret;
+	return 0;
 }
 
 static inline void clean_chip_info(void)
 {
-	int i;
-
-	/* flush any pending work items */
-	if (chips)
-		for (i = 0; i < nr_chips; i++)
-			cancel_work_sync(&chips[i].throttle);
 	kfree(chips);
 }
 

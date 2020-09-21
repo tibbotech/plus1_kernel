@@ -38,7 +38,6 @@
 #include <linux/err.h>
 #include <linux/gpio/driver.h>
 #include <linux/gpio/consumer.h>
-#include <linux/gpio/machine.h>
 #include <linux/init.h>
 #include <linux/io.h>
 #include <linux/irq.h>
@@ -52,6 +51,7 @@
 #include <linux/pwm.h>
 #include <linux/regmap.h>
 #include <linux/slab.h>
+#include <linux/ipipe.h>
 
 /*
  * GPIO unit register offsets.
@@ -377,16 +377,6 @@ static int mvebu_gpio_direction_output(struct gpio_chip *chip, unsigned int pin,
 	return 0;
 }
 
-static int mvebu_gpio_get_direction(struct gpio_chip *chip, unsigned int pin)
-{
-	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
-	u32 u;
-
-	regmap_read(mvchip->regs, GPIO_IO_CONF_OFF + mvchip->offset, &u);
-
-	return !!(u & BIT(pin));
-}
-
 static int mvebu_gpio_to_irq(struct gpio_chip *chip, unsigned int pin)
 {
 	struct mvebu_gpio_chip *mvchip = gpiochip_get_data(chip);
@@ -402,10 +392,11 @@ static void mvebu_gpio_irq_ack(struct irq_data *d)
 	struct irq_chip_generic *gc = irq_data_get_irq_chip_data(d);
 	struct mvebu_gpio_chip *mvchip = gc->private;
 	u32 mask = d->mask;
+	unsigned long flags;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	mvebu_gpio_write_edge_cause(mvchip, ~mask);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static void mvebu_gpio_edge_irq_mask(struct irq_data *d)
@@ -414,11 +405,12 @@ static void mvebu_gpio_edge_irq_mask(struct irq_data *d)
 	struct mvebu_gpio_chip *mvchip = gc->private;
 	struct irq_chip_type *ct = irq_data_get_chip_type(d);
 	u32 mask = d->mask;
+	unsigned long flags;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	ct->mask_cache_priv &= ~mask;
 	mvebu_gpio_write_edge_mask(mvchip, ct->mask_cache_priv);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static void mvebu_gpio_edge_irq_unmask(struct irq_data *d)
@@ -427,11 +419,12 @@ static void mvebu_gpio_edge_irq_unmask(struct irq_data *d)
 	struct mvebu_gpio_chip *mvchip = gc->private;
 	struct irq_chip_type *ct = irq_data_get_chip_type(d);
 	u32 mask = d->mask;
+	unsigned long flags;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	ct->mask_cache_priv |= mask;
 	mvebu_gpio_write_edge_mask(mvchip, ct->mask_cache_priv);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static void mvebu_gpio_level_irq_mask(struct irq_data *d)
@@ -440,11 +433,12 @@ static void mvebu_gpio_level_irq_mask(struct irq_data *d)
 	struct mvebu_gpio_chip *mvchip = gc->private;
 	struct irq_chip_type *ct = irq_data_get_chip_type(d);
 	u32 mask = d->mask;
+	unsigned long flags;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	ct->mask_cache_priv &= ~mask;
 	mvebu_gpio_write_level_mask(mvchip, ct->mask_cache_priv);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 static void mvebu_gpio_level_irq_unmask(struct irq_data *d)
@@ -453,11 +447,12 @@ static void mvebu_gpio_level_irq_unmask(struct irq_data *d)
 	struct mvebu_gpio_chip *mvchip = gc->private;
 	struct irq_chip_type *ct = irq_data_get_chip_type(d);
 	u32 mask = d->mask;
+	unsigned long flags;
 
-	irq_gc_lock(gc);
+	flags = irq_gc_lock(gc);
 	ct->mask_cache_priv |= mask;
 	mvebu_gpio_write_level_mask(mvchip, ct->mask_cache_priv);
-	irq_gc_unlock(gc);
+	irq_gc_unlock(gc, flags);
 }
 
 /*****************************************************************************
@@ -591,7 +586,7 @@ static void mvebu_gpio_irq_handler(struct irq_desc *desc)
 				     polarity);
 		}
 
-		generic_handle_irq(irq);
+		ipipe_handle_demuxed_irq(irq);
 	}
 
 	chained_irq_exit(chip, desc);
@@ -619,11 +614,15 @@ static int mvebu_pwm_request(struct pwm_chip *chip, struct pwm_device *pwm)
 		ret = -EBUSY;
 	} else {
 		desc = gpiochip_request_own_desc(&mvchip->chip,
-						 pwm->hwpwm, "mvebu-pwm",
-						 GPIO_ACTIVE_HIGH,
-						 GPIOD_OUT_LOW);
+						 pwm->hwpwm, "mvebu-pwm");
 		if (IS_ERR(desc)) {
 			ret = PTR_ERR(desc);
+			goto out;
+		}
+
+		ret = gpiod_direction_output(desc, 0);
+		if (ret) {
+			gpiochip_free_own_desc(desc);
 			goto out;
 		}
 
@@ -694,7 +693,7 @@ static void mvebu_pwm_get_state(struct pwm_chip *chip,
 }
 
 static int mvebu_pwm_apply(struct pwm_chip *chip, struct pwm_device *pwm,
-			   const struct pwm_state *state)
+			   struct pwm_state *state)
 {
 	struct mvebu_pwm *mvpwm = to_mvebu_pwm(chip);
 	struct mvebu_gpio_chip *mvchip = mvpwm->mvchip;
@@ -1035,9 +1034,11 @@ static const struct regmap_config mvebu_gpio_regmap_config = {
 static int mvebu_gpio_probe_raw(struct platform_device *pdev,
 				struct mvebu_gpio_chip *mvchip)
 {
+	struct resource *res;
 	void __iomem *base;
 
-	base = devm_platform_ioremap_resource(pdev, 0);
+	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	base = devm_ioremap_resource(&pdev->dev, res);
 	if (IS_ERR(base))
 		return PTR_ERR(base);
 
@@ -1057,7 +1058,8 @@ static int mvebu_gpio_probe_raw(struct platform_device *pdev,
 	 * per-CPU registers
 	 */
 	if (mvchip->soc_variant == MVEBU_GPIO_SOC_VARIANT_ARMADAXP) {
-		base = devm_platform_ioremap_resource(pdev, 1);
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		base = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR(base))
 			return PTR_ERR(base);
 
@@ -1134,7 +1136,6 @@ static int mvebu_gpio_probe(struct platform_device *pdev)
 	mvchip->chip.parent = &pdev->dev;
 	mvchip->chip.request = gpiochip_generic_request;
 	mvchip->chip.free = gpiochip_generic_free;
-	mvchip->chip.get_direction = mvebu_gpio_get_direction;
 	mvchip->chip.direction_input = mvebu_gpio_direction_input;
 	mvchip->chip.get = mvebu_gpio_get;
 	mvchip->chip.direction_output = mvebu_gpio_direction_output;
@@ -1229,6 +1230,7 @@ static int mvebu_gpio_probe(struct platform_device *pdev)
 	ct->chip.irq_unmask = mvebu_gpio_level_irq_unmask;
 	ct->chip.irq_set_type = mvebu_gpio_irq_set_type;
 	ct->chip.name = mvchip->chip.label;
+	ct->chip.flags = IRQCHIP_PIPELINE_SAFE;
 
 	ct = &gc->chip_types[1];
 	ct->type = IRQ_TYPE_EDGE_RISING | IRQ_TYPE_EDGE_FALLING;
@@ -1238,6 +1240,7 @@ static int mvebu_gpio_probe(struct platform_device *pdev)
 	ct->chip.irq_set_type = mvebu_gpio_irq_set_type;
 	ct->handler = handle_edge_irq;
 	ct->chip.name = mvchip->chip.label;
+	ct->chip.flags = IRQCHIP_PIPELINE_SAFE;
 
 	/*
 	 * Setup the interrupt handlers. Each chip can have up to 4

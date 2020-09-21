@@ -1,9 +1,13 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Generic implementation of 64-bit atomics using spinlocks,
  * useful on processors that don't have 64-bit atomic instructions.
  *
  * Copyright © 2009 Paul Mackerras, IBM Corp. <paulus@au1.ibm.com>
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version
+ * 2 of the License, or (at your option) any later version.
  */
 #include <linux/types.h>
 #include <linux/cache.h>
@@ -25,15 +29,15 @@
  * Ensure each lock is in a separate cacheline.
  */
 static union {
-	raw_spinlock_t lock;
+	ipipe_spinlock_t lock;
 	char pad[L1_CACHE_BYTES];
 } atomic64_lock[NR_LOCKS] __cacheline_aligned_in_smp = {
 	[0 ... (NR_LOCKS - 1)] = {
-		.lock =  __RAW_SPIN_LOCK_UNLOCKED(atomic64_lock.lock),
+		.lock =  IPIPE_SPIN_LOCK_UNLOCKED,
 	},
 };
 
-static inline raw_spinlock_t *lock_addr(const atomic64_t *v)
+static inline ipipe_spinlock_t *lock_addr(const atomic64_t *v)
 {
 	unsigned long addr = (unsigned long) v;
 
@@ -42,11 +46,11 @@ static inline raw_spinlock_t *lock_addr(const atomic64_t *v)
 	return &atomic64_lock[addr & (NR_LOCKS - 1)].lock;
 }
 
-s64 atomic64_read(const atomic64_t *v)
+long long atomic64_read(const atomic64_t *v)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
-	s64 val;
+	ipipe_spinlock_t *lock = lock_addr(v);
+	long long val;
 
 	raw_spin_lock_irqsave(lock, flags);
 	val = v->counter;
@@ -55,10 +59,10 @@ s64 atomic64_read(const atomic64_t *v)
 }
 EXPORT_SYMBOL(atomic64_read);
 
-void atomic64_set(atomic64_t *v, s64 i)
+void atomic64_set(atomic64_t *v, long long i)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
+	ipipe_spinlock_t *lock = lock_addr(v);
 
 	raw_spin_lock_irqsave(lock, flags);
 	v->counter = i;
@@ -67,10 +71,10 @@ void atomic64_set(atomic64_t *v, s64 i)
 EXPORT_SYMBOL(atomic64_set);
 
 #define ATOMIC64_OP(op, c_op)						\
-void atomic64_##op(s64 a, atomic64_t *v)				\
+void atomic64_##op(long long a, atomic64_t *v)				\
 {									\
 	unsigned long flags;						\
-	raw_spinlock_t *lock = lock_addr(v);				\
+	ipipe_spinlock_t *lock = lock_addr(v);				\
 									\
 	raw_spin_lock_irqsave(lock, flags);				\
 	v->counter c_op a;						\
@@ -79,11 +83,11 @@ void atomic64_##op(s64 a, atomic64_t *v)				\
 EXPORT_SYMBOL(atomic64_##op);
 
 #define ATOMIC64_OP_RETURN(op, c_op)					\
-s64 atomic64_##op##_return(s64 a, atomic64_t *v)			\
+long long atomic64_##op##_return(long long a, atomic64_t *v)		\
 {									\
 	unsigned long flags;						\
-	raw_spinlock_t *lock = lock_addr(v);				\
-	s64 val;							\
+	ipipe_spinlock_t *lock = lock_addr(v);				\
+	long long val;							\
 									\
 	raw_spin_lock_irqsave(lock, flags);				\
 	val = (v->counter c_op a);					\
@@ -93,11 +97,11 @@ s64 atomic64_##op##_return(s64 a, atomic64_t *v)			\
 EXPORT_SYMBOL(atomic64_##op##_return);
 
 #define ATOMIC64_FETCH_OP(op, c_op)					\
-s64 atomic64_fetch_##op(s64 a, atomic64_t *v)				\
+long long atomic64_fetch_##op(long long a, atomic64_t *v)		\
 {									\
 	unsigned long flags;						\
-	raw_spinlock_t *lock = lock_addr(v);				\
-	s64 val;							\
+	ipipe_spinlock_t *lock = lock_addr(v);				\
+	long long val;							\
 									\
 	raw_spin_lock_irqsave(lock, flags);				\
 	val = v->counter;						\
@@ -130,11 +134,11 @@ ATOMIC64_OPS(xor, ^=)
 #undef ATOMIC64_OP_RETURN
 #undef ATOMIC64_OP
 
-s64 atomic64_dec_if_positive(atomic64_t *v)
+long long atomic64_dec_if_positive(atomic64_t *v)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
-	s64 val;
+	ipipe_spinlock_t *lock = lock_addr(v);
+	long long val;
 
 	raw_spin_lock_irqsave(lock, flags);
 	val = v->counter - 1;
@@ -145,11 +149,11 @@ s64 atomic64_dec_if_positive(atomic64_t *v)
 }
 EXPORT_SYMBOL(atomic64_dec_if_positive);
 
-s64 atomic64_cmpxchg(atomic64_t *v, s64 o, s64 n)
+long long atomic64_cmpxchg(atomic64_t *v, long long o, long long n)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
-	s64 val;
+	ipipe_spinlock_t *lock = lock_addr(v);
+	long long val;
 
 	raw_spin_lock_irqsave(lock, flags);
 	val = v->counter;
@@ -160,11 +164,11 @@ s64 atomic64_cmpxchg(atomic64_t *v, s64 o, s64 n)
 }
 EXPORT_SYMBOL(atomic64_cmpxchg);
 
-s64 atomic64_xchg(atomic64_t *v, s64 new)
+long long atomic64_xchg(atomic64_t *v, long long new)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
-	s64 val;
+	ipipe_spinlock_t *lock = lock_addr(v);
+	long long val;
 
 	raw_spin_lock_irqsave(lock, flags);
 	val = v->counter;
@@ -174,11 +178,11 @@ s64 atomic64_xchg(atomic64_t *v, s64 new)
 }
 EXPORT_SYMBOL(atomic64_xchg);
 
-s64 atomic64_fetch_add_unless(atomic64_t *v, s64 a, s64 u)
+long long atomic64_fetch_add_unless(atomic64_t *v, long long a, long long u)
 {
 	unsigned long flags;
-	raw_spinlock_t *lock = lock_addr(v);
-	s64 val;
+	ipipe_spinlock_t *lock = lock_addr(v);
+	long long val;
 
 	raw_spin_lock_irqsave(lock, flags);
 	val = v->counter;

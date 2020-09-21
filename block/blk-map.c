@@ -18,19 +18,13 @@
 int blk_rq_append_bio(struct request *rq, struct bio **bio)
 {
 	struct bio *orig_bio = *bio;
-	struct bvec_iter iter;
-	struct bio_vec bv;
-	unsigned int nr_segs = 0;
 
 	blk_queue_bounce(rq->q, bio);
 
-	bio_for_each_bvec(bv, *bio, iter)
-		nr_segs++;
-
 	if (!rq->bio) {
-		blk_rq_bio_prep(rq, *bio, nr_segs);
+		blk_rq_bio_prep(rq->q, rq, *bio);
 	} else {
-		if (!ll_back_merge_fn(rq, *bio, nr_segs)) {
+		if (!ll_back_merge_fn(rq->q, rq, *bio)) {
 			if (orig_bio != *bio) {
 				bio_put(*bio);
 				*bio = orig_bio;
@@ -151,7 +145,7 @@ int blk_rq_map_user_iov(struct request_queue *q, struct request *rq,
 	return 0;
 
 unmap_rq:
-	blk_rq_unmap_user(bio);
+	__blk_rq_unmap_user(bio);
 fail:
 	rq->bio = NULL;
 	return ret;
@@ -205,6 +199,12 @@ int blk_rq_unmap_user(struct bio *bio)
 }
 EXPORT_SYMBOL(blk_rq_unmap_user);
 
+#ifdef CONFIG_AHCI_IMX
+extern void *sg_io_buffer_hack;
+#else
+#define sg_io_buffer_hack NULL
+#endif
+
 /**
  * blk_rq_map_kern - map kernel data to a request, for passthrough requests
  * @q:		request queue where request should be inserted
@@ -232,7 +232,14 @@ int blk_rq_map_kern(struct request_queue *q, struct request *rq, void *kbuf,
 	if (!len || !kbuf)
 		return -EINVAL;
 
-	do_copy = !blk_rq_aligned(q, addr, len) || object_is_on_stack(kbuf);
+#ifdef CONFIG_AHCI_IMX
+	if (kbuf == sg_io_buffer_hack)
+		do_copy = 0;
+	else
+#endif
+		do_copy = !blk_rq_aligned(q, addr, len)
+			|| object_is_on_stack(kbuf);
+
 	if (do_copy)
 		bio = bio_copy_kern(q, kbuf, len, gfp_mask, reading);
 	else

@@ -1,10 +1,15 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
 /*
  *  SR-IPv6 implementation
  *
  *  Authors:
  *  David Lebrun <david.lebrun@uclouvain.be>
  *  eBPF support: Mathieu Xhonneux <m.xhonneux@gmail.com>
+ *
+ *
+ *  This program is free software; you can redistribute it and/or
+ *        modify it under the terms of the GNU General Public License
+ *        as published by the Free Software Foundation; either version
+ *        2 of the License, or (at your option) any later version.
  */
 
 #include <linux/types.h>
@@ -23,7 +28,6 @@
 #include <net/addrconf.h>
 #include <net/ip6_route.h>
 #include <net/dst_cache.h>
-#include <net/ip_tunnels.h>
 #ifdef CONFIG_IPV6_SEG6_HMAC
 #include <net/seg6_hmac.h>
 #endif
@@ -82,11 +86,6 @@ static struct ipv6_sr_hdr *get_srh(struct sk_buff *skb)
 	if (!pskb_may_pull(skb, srhoff + len))
 		return NULL;
 
-	/* note that pskb_may_pull may change pointers in header;
-	 * for this reason it is necessary to reload them when needed.
-	 */
-	srh = (struct ipv6_sr_hdr *)(skb->data + srhoff);
-
 	if (!seg6_validate_srh(srh, len))
 		return NULL;
 
@@ -136,8 +135,7 @@ static bool decap_and_validate(struct sk_buff *skb, int proto)
 
 	skb_reset_network_header(skb);
 	skb_reset_transport_header(skb);
-	if (iptunnel_pull_offloads(skb))
-		return false;
+	skb->encapsulation = 0;
 
 	return true;
 }
@@ -343,8 +341,6 @@ static int input_action_end_dx6(struct sk_buff *skb,
 	if (!ipv6_addr_any(&slwt->nh6))
 		nhaddr = &slwt->nh6;
 
-	skb_set_transport_header(skb, sizeof(struct ipv6hdr));
-
 	seg6_lookup_nexthop(skb, nhaddr, 0);
 
 	return dst_input(skb);
@@ -374,8 +370,6 @@ static int input_action_end_dx4(struct sk_buff *skb,
 
 	skb_dst_drop(skb);
 
-	skb_set_transport_header(skb, sizeof(struct iphdr));
-
 	err = ip_route_input(skb, nhaddr, iph->saddr, 0, skb->dev);
 	if (err)
 		goto drop;
@@ -395,8 +389,6 @@ static int input_action_end_dt6(struct sk_buff *skb,
 
 	if (!pskb_may_pull(skb, sizeof(struct ipv6hdr)))
 		goto drop;
-
-	skb_set_transport_header(skb, sizeof(struct ipv6hdr));
 
 	seg6_lookup_nexthop(skb, NULL, slwt->table);
 
@@ -831,9 +823,8 @@ static int parse_nla_bpf(struct nlattr **attrs, struct seg6_local_lwt *slwt)
 	int ret;
 	u32 fd;
 
-	ret = nla_parse_nested_deprecated(tb, SEG6_LOCAL_BPF_PROG_MAX,
-					  attrs[SEG6_LOCAL_BPF],
-					  bpf_prog_policy, NULL);
+	ret = nla_parse_nested(tb, SEG6_LOCAL_BPF_PROG_MAX,
+			       attrs[SEG6_LOCAL_BPF], bpf_prog_policy, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -862,7 +853,7 @@ static int put_nla_bpf(struct sk_buff *skb, struct seg6_local_lwt *slwt)
 	if (!slwt->bpf.prog)
 		return 0;
 
-	nest = nla_nest_start_noflag(skb, SEG6_LOCAL_BPF);
+	nest = nla_nest_start(skb, SEG6_LOCAL_BPF);
 	if (!nest)
 		return -EMSGSIZE;
 
@@ -968,8 +959,8 @@ static int seg6_local_build_state(struct nlattr *nla, unsigned int family,
 	if (family != AF_INET6)
 		return -EINVAL;
 
-	err = nla_parse_nested_deprecated(tb, SEG6_LOCAL_MAX, nla,
-					  seg6_local_policy, extack);
+	err = nla_parse_nested(tb, SEG6_LOCAL_MAX, nla, seg6_local_policy,
+			       extack);
 
 	if (err < 0)
 		return err;

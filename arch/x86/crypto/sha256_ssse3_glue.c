@@ -30,7 +30,6 @@
 #define pr_fmt(fmt)	KBUILD_MODNAME ": " fmt
 
 #include <crypto/internal/hash.h>
-#include <crypto/internal/simd.h>
 #include <linux/init.h>
 #include <linux/module.h>
 #include <linux/mm.h>
@@ -38,19 +37,19 @@
 #include <linux/types.h>
 #include <crypto/sha.h>
 #include <crypto/sha256_base.h>
+#include <asm/fpu/api.h>
 #include <linux/string.h>
-#include <asm/simd.h>
 
 asmlinkage void sha256_transform_ssse3(u32 *digest, const char *data,
 				       u64 rounds);
 typedef void (sha256_transform_fn)(u32 *digest, const char *data, u64 rounds);
 
-static int _sha256_update(struct shash_desc *desc, const u8 *data,
-			  unsigned int len, sha256_transform_fn *sha256_xform)
+static int sha256_update(struct shash_desc *desc, const u8 *data,
+			 unsigned int len, sha256_transform_fn *sha256_xform)
 {
 	struct sha256_state *sctx = shash_desc_ctx(desc);
 
-	if (!crypto_simd_usable() ||
+	if (!irq_fpu_usable() ||
 	    (sctx->count % SHA256_BLOCK_SIZE) + len < SHA256_BLOCK_SIZE)
 		return crypto_sha256_update(desc, data, len);
 
@@ -68,7 +67,7 @@ static int _sha256_update(struct shash_desc *desc, const u8 *data,
 static int sha256_finup(struct shash_desc *desc, const u8 *data,
 	      unsigned int len, u8 *out, sha256_transform_fn *sha256_xform)
 {
-	if (!crypto_simd_usable())
+	if (!irq_fpu_usable())
 		return crypto_sha256_finup(desc, data, len, out);
 
 	kernel_fpu_begin();
@@ -84,7 +83,7 @@ static int sha256_finup(struct shash_desc *desc, const u8 *data,
 static int sha256_ssse3_update(struct shash_desc *desc, const u8 *data,
 			 unsigned int len)
 {
-	return _sha256_update(desc, data, len, sha256_transform_ssse3);
+	return sha256_update(desc, data, len, sha256_transform_ssse3);
 }
 
 static int sha256_ssse3_finup(struct shash_desc *desc, const u8 *data,
@@ -151,7 +150,7 @@ asmlinkage void sha256_transform_avx(u32 *digest, const char *data,
 static int sha256_avx_update(struct shash_desc *desc, const u8 *data,
 			 unsigned int len)
 {
-	return _sha256_update(desc, data, len, sha256_transform_avx);
+	return sha256_update(desc, data, len, sha256_transform_avx);
 }
 
 static int sha256_avx_finup(struct shash_desc *desc, const u8 *data,
@@ -233,7 +232,7 @@ asmlinkage void sha256_transform_rorx(u32 *digest, const char *data,
 static int sha256_avx2_update(struct shash_desc *desc, const u8 *data,
 			 unsigned int len)
 {
-	return _sha256_update(desc, data, len, sha256_transform_rorx);
+	return sha256_update(desc, data, len, sha256_transform_rorx);
 }
 
 static int sha256_avx2_finup(struct shash_desc *desc, const u8 *data,
@@ -313,7 +312,7 @@ asmlinkage void sha256_ni_transform(u32 *digest, const char *data,
 static int sha256_ni_update(struct shash_desc *desc, const u8 *data,
 			 unsigned int len)
 {
-	return _sha256_update(desc, data, len, sha256_ni_transform);
+	return sha256_update(desc, data, len, sha256_ni_transform);
 }
 
 static int sha256_ni_finup(struct shash_desc *desc, const u8 *data,

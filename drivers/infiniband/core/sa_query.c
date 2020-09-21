@@ -40,7 +40,7 @@
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/kref.h>
-#include <linux/xarray.h>
+#include <linux/idr.h>
 #include <linux/workqueue.h>
 #include <uapi/linux/if_ether.h>
 #include <rdma/ib_pack.h>
@@ -183,7 +183,8 @@ static struct ib_client sa_client = {
 	.remove = ib_sa_remove_one
 };
 
-static DEFINE_XARRAY_FLAGS(queries, XA_FLAGS_ALLOC | XA_FLAGS_LOCK_IRQ);
+static DEFINE_SPINLOCK(idr_lock);
+static DEFINE_IDR(query_idr);
 
 static DEFINE_SPINLOCK(tid_lock);
 static u32 tid;
@@ -760,7 +761,7 @@ static void ib_nl_set_path_rec_attrs(struct sk_buff *skb,
 
 	/* Construct the family header first */
 	header = skb_put(skb, NLMSG_ALIGN(sizeof(*header)));
-	memcpy(header->device_name, dev_name(&query->port->agent->device->dev),
+	memcpy(header->device_name, query->port->agent->device->name,
 	       LS_DEVICE_NAME_MAX);
 	header->port_num = query->port->port_num;
 
@@ -834,6 +835,7 @@ static int ib_nl_send_msg(struct ib_sa_query *query, gfp_t gfp_mask)
 	struct sk_buff *skb = NULL;
 	struct nlmsghdr *nlh;
 	void *data;
+	int ret = 0;
 	struct ib_sa_mad *mad;
 	int len;
 
@@ -860,7 +862,13 @@ static int ib_nl_send_msg(struct ib_sa_query *query, gfp_t gfp_mask)
 	/* Repair the nlmsg header length */
 	nlmsg_end(skb, nlh);
 
-	return rdma_nl_multicast(&init_net, skb, RDMA_NL_GROUP_LS, gfp_mask);
+	ret = rdma_nl_multicast(skb, RDMA_NL_GROUP_LS, gfp_mask);
+	if (!ret)
+		ret = len;
+	else
+		ret = 0;
+
+	return ret;
 }
 
 static int ib_nl_make_request(struct ib_sa_query *query, gfp_t gfp_mask)
@@ -883,12 +891,14 @@ static int ib_nl_make_request(struct ib_sa_query *query, gfp_t gfp_mask)
 	spin_unlock_irqrestore(&ib_nl_request_lock, flags);
 
 	ret = ib_nl_send_msg(query, gfp_mask);
-	if (ret) {
+	if (ret <= 0) {
 		ret = -EIO;
 		/* Remove the request */
 		spin_lock_irqsave(&ib_nl_request_lock, flags);
 		list_del(&query->list);
 		spin_unlock_irqrestore(&ib_nl_request_lock, flags);
+	} else {
+		ret = 0;
 	}
 
 	return ret;
@@ -1027,8 +1037,8 @@ int ib_nl_handle_set_timeout(struct sk_buff *skb,
 	    !(NETLINK_CB(skb).sk))
 		return -EPERM;
 
-	ret = nla_parse_deprecated(tb, LS_NLA_TYPE_MAX - 1, nlmsg_data(nlh),
-				   nlmsg_len(nlh), ib_nl_policy, NULL);
+	ret = nla_parse(tb, LS_NLA_TYPE_MAX - 1, nlmsg_data(nlh),
+			nlmsg_len(nlh), ib_nl_policy, NULL);
 	attr = (const struct nlattr *)tb[LS_NLA_TYPE_TIMEOUT];
 	if (ret || !attr)
 		goto settimeout_out;
@@ -1068,7 +1078,7 @@ int ib_nl_handle_set_timeout(struct sk_buff *skb,
 	}
 
 settimeout_out:
-	return 0;
+	return skb->len;
 }
 
 static inline int ib_nl_is_good_resolve_resp(const struct nlmsghdr *nlh)
@@ -1079,8 +1089,8 @@ static inline int ib_nl_is_good_resolve_resp(const struct nlmsghdr *nlh)
 	if (nlh->nlmsg_flags & RDMA_NL_LS_F_ERR)
 		return 0;
 
-	ret = nla_parse_deprecated(tb, LS_NLA_TYPE_MAX - 1, nlmsg_data(nlh),
-				   nlmsg_len(nlh), ib_nl_policy, NULL);
+	ret = nla_parse(tb, LS_NLA_TYPE_MAX - 1, nlmsg_data(nlh),
+			nlmsg_len(nlh), ib_nl_policy, NULL);
 	if (ret)
 		return 0;
 
@@ -1139,14 +1149,14 @@ int ib_nl_handle_resolve_resp(struct sk_buff *skb,
 	}
 
 resp_out:
-	return 0;
+	return skb->len;
 }
 
 static void free_sm_ah(struct kref *kref)
 {
 	struct ib_sa_sm_ah *sm_ah = container_of(kref, struct ib_sa_sm_ah, ref);
 
-	rdma_destroy_ah(sm_ah->ah, 0);
+	rdma_destroy_ah(sm_ah->ah);
 	kfree(sm_ah);
 }
 
@@ -1179,14 +1189,14 @@ void ib_sa_cancel_query(int id, struct ib_sa_query *query)
 	struct ib_mad_agent *agent;
 	struct ib_mad_send_buf *mad_buf;
 
-	xa_lock_irqsave(&queries, flags);
-	if (xa_load(&queries, id) != query) {
-		xa_unlock_irqrestore(&queries, flags);
+	spin_lock_irqsave(&idr_lock, flags);
+	if (idr_find(&query_idr, id) != query) {
+		spin_unlock_irqrestore(&idr_lock, flags);
 		return;
 	}
 	agent = query->port->agent;
 	mad_buf = query->mad_buf;
-	xa_unlock_irqrestore(&queries, flags);
+	spin_unlock_irqrestore(&idr_lock, flags);
 
 	/*
 	 * If the query is still on the netlink request list, schedule
@@ -1215,6 +1225,46 @@ static u8 get_src_path_mask(struct ib_device *device, u8 port_num)
 	spin_unlock_irqrestore(&port->ah_lock, flags);
 
 	return src_path_mask;
+}
+
+static int roce_resolve_route_from_path(struct sa_path_rec *rec,
+					const struct ib_gid_attr *attr)
+{
+	struct rdma_dev_addr dev_addr = {};
+	union {
+		struct sockaddr     _sockaddr;
+		struct sockaddr_in  _sockaddr_in;
+		struct sockaddr_in6 _sockaddr_in6;
+	} sgid_addr, dgid_addr;
+	int ret;
+
+	if (rec->roce.route_resolved)
+		return 0;
+	if (!attr || !attr->ndev)
+		return -EINVAL;
+
+	dev_addr.bound_dev_if = attr->ndev->ifindex;
+	/* TODO: Use net from the ib_gid_attr once it is added to it,
+	 * until than, limit itself to init_net.
+	 */
+	dev_addr.net = &init_net;
+
+	rdma_gid2ip(&sgid_addr._sockaddr, &rec->sgid);
+	rdma_gid2ip(&dgid_addr._sockaddr, &rec->dgid);
+
+	/* validate the route */
+	ret = rdma_resolve_ip_route(&sgid_addr._sockaddr,
+				    &dgid_addr._sockaddr, &dev_addr);
+	if (ret)
+		return ret;
+
+	if ((dev_addr.network == RDMA_NETWORK_IPV4 ||
+	     dev_addr.network == RDMA_NETWORK_IPV6) &&
+	    rec->rec_type != SA_PATH_REC_TYPE_ROCE_V2)
+		return -EINVAL;
+
+	rec->roce.route_resolved = true;
+	return 0;
 }
 
 static int init_ah_attr_grh_fields(struct ib_device *device, u8 port_num,
@@ -1359,17 +1409,23 @@ static void init_mad(struct ib_sa_query *query, struct ib_mad_agent *agent)
 	spin_unlock_irqrestore(&tid_lock, flags);
 }
 
-static int send_mad(struct ib_sa_query *query, unsigned long timeout_ms,
-		    gfp_t gfp_mask)
+static int send_mad(struct ib_sa_query *query, int timeout_ms, gfp_t gfp_mask)
 {
+	bool preload = gfpflags_allow_blocking(gfp_mask);
 	unsigned long flags;
 	int ret, id;
 
-	xa_lock_irqsave(&queries, flags);
-	ret = __xa_alloc(&queries, &id, query, xa_limit_32b, gfp_mask);
-	xa_unlock_irqrestore(&queries, flags);
-	if (ret < 0)
-		return ret;
+	if (preload)
+		idr_preload(gfp_mask);
+	spin_lock_irqsave(&idr_lock, flags);
+
+	id = idr_alloc(&query_idr, query, 0, 0, GFP_NOWAIT);
+
+	spin_unlock_irqrestore(&idr_lock, flags);
+	if (preload)
+		idr_preload_end();
+	if (id < 0)
+		return id;
 
 	query->mad_buf->timeout_ms  = timeout_ms;
 	query->mad_buf->context[0] = query;
@@ -1377,7 +1433,7 @@ static int send_mad(struct ib_sa_query *query, unsigned long timeout_ms,
 
 	if ((query->flags & IB_SA_ENABLE_LOCAL_SERVICE) &&
 	    (!(query->flags & IB_SA_QUERY_OPA))) {
-		if (rdma_nl_chk_listeners(RDMA_NL_GROUP_LS)) {
+		if (!rdma_nl_chk_listeners(RDMA_NL_GROUP_LS)) {
 			if (!ib_nl_make_request(query, gfp_mask))
 				return id;
 		}
@@ -1386,9 +1442,9 @@ static int send_mad(struct ib_sa_query *query, unsigned long timeout_ms,
 
 	ret = ib_post_send_mad(query->mad_buf, NULL);
 	if (ret) {
-		xa_lock_irqsave(&queries, flags);
-		__xa_erase(&queries, id);
-		xa_unlock_irqrestore(&queries, flags);
+		spin_lock_irqsave(&idr_lock, flags);
+		idr_remove(&query_idr, id);
+		spin_unlock_irqrestore(&idr_lock, flags);
 	}
 
 	/*
@@ -1543,7 +1599,7 @@ int ib_sa_path_rec_get(struct ib_sa_client *client,
 		       struct ib_device *device, u8 port_num,
 		       struct sa_path_rec *rec,
 		       ib_sa_comp_mask comp_mask,
-		       unsigned long timeout_ms, gfp_t gfp_mask,
+		       int timeout_ms, gfp_t gfp_mask,
 		       void (*callback)(int status,
 					struct sa_path_rec *resp,
 					void *context),
@@ -1697,7 +1753,7 @@ int ib_sa_service_rec_query(struct ib_sa_client *client,
 			    struct ib_device *device, u8 port_num, u8 method,
 			    struct ib_sa_service_rec *rec,
 			    ib_sa_comp_mask comp_mask,
-			    unsigned long timeout_ms, gfp_t gfp_mask,
+			    int timeout_ms, gfp_t gfp_mask,
 			    void (*callback)(int status,
 					     struct ib_sa_service_rec *resp,
 					     void *context),
@@ -1794,7 +1850,7 @@ int ib_sa_mcmember_rec_query(struct ib_sa_client *client,
 			     u8 method,
 			     struct ib_sa_mcmember_rec *rec,
 			     ib_sa_comp_mask comp_mask,
-			     unsigned long timeout_ms, gfp_t gfp_mask,
+			     int timeout_ms, gfp_t gfp_mask,
 			     void (*callback)(int status,
 					      struct ib_sa_mcmember_rec *resp,
 					      void *context),
@@ -1885,7 +1941,7 @@ int ib_sa_guid_info_rec_query(struct ib_sa_client *client,
 			      struct ib_device *device, u8 port_num,
 			      struct ib_sa_guidinfo_rec *rec,
 			      ib_sa_comp_mask comp_mask, u8 method,
-			      unsigned long timeout_ms, gfp_t gfp_mask,
+			      int timeout_ms, gfp_t gfp_mask,
 			      void (*callback)(int status,
 					       struct ib_sa_guidinfo_rec *resp,
 					       void *context),
@@ -2052,7 +2108,7 @@ static void ib_sa_classport_info_rec_release(struct ib_sa_query *sa_query)
 }
 
 static int ib_sa_classport_info_rec_query(struct ib_sa_port *port,
-					  unsigned long timeout_ms,
+					  int timeout_ms,
 					  void (*callback)(void *context),
 					  void *context,
 					  struct ib_sa_query **sa_query)
@@ -2180,9 +2236,9 @@ static void send_handler(struct ib_mad_agent *agent,
 			break;
 		}
 
-	xa_lock_irqsave(&queries, flags);
-	__xa_erase(&queries, query->id);
-	xa_unlock_irqrestore(&queries, flags);
+	spin_lock_irqsave(&idr_lock, flags);
+	idr_remove(&query_idr, query->id);
+	spin_unlock_irqrestore(&idr_lock, flags);
 
 	free_mad(query);
 	if (query->client)
@@ -2268,8 +2324,7 @@ static void update_sm_ah(struct work_struct *work)
 					 cpu_to_be64(IB_SA_WELL_KNOWN_GUID));
 	}
 
-	new_ah->ah = rdma_create_ah(port->agent->qp->pd, &ah_attr,
-				    RDMA_CREATE_AH_SLEEPABLE);
+	new_ah->ah = rdma_create_ah(port->agent->qp->pd, &ah_attr);
 	if (IS_ERR(new_ah->ah)) {
 		pr_warn("Couldn't create new SM AH\n");
 		kfree(new_ah);
@@ -2334,7 +2389,9 @@ static void ib_sa_add_one(struct ib_device *device)
 	s = rdma_start_port(device);
 	e = rdma_end_port(device);
 
-	sa_dev = kzalloc(struct_size(sa_dev, port, e - s + 1), GFP_KERNEL);
+	sa_dev = kzalloc(sizeof *sa_dev +
+			 (e - s + 1) * sizeof (struct ib_sa_port),
+			 GFP_KERNEL);
 	if (!sa_dev)
 		return;
 
@@ -2467,5 +2524,5 @@ void ib_sa_cleanup(void)
 	destroy_workqueue(ib_nl_wq);
 	mcast_cleanup();
 	ib_unregister_client(&sa_client);
-	WARN_ON(!xa_empty(&queries));
+	idr_destroy(&query_idr);
 }

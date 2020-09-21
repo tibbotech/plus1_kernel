@@ -1,7 +1,20 @@
-/* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * Copyright 2004-2007, 2014 Freescale Semiconductor, Inc. All Rights Reserved.
  * Copyright 2008 Juergen Beisert, kernel@pengutronix.de
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+ * MA  02110-1301, USA.
  */
 
 #ifndef __ASM_ARCH_MXC_HARDWARE_H__
@@ -11,7 +24,7 @@
 #include <asm/io.h>
 #include <soc/imx/revision.h>
 #endif
-#include <linux/sizes.h>
+#include <asm/sizes.h>
 
 #define addr_in_module(addr, mod) \
 	((unsigned long)(addr) - mod ## _BASE_ADDR < mod ## _SIZE)
@@ -81,13 +94,16 @@
  *	CCM	0x020c4000+0x004000	->	0xf42c4000+0x004000
  *	ANATOP	0x020c8000+0x004000	->	0xf42c8000+0x004000
  *	UART4	0x021f0000+0x004000	->	0xf42f0000+0x004000
+ * mx7d:
+ *     CCM     0x30380000+0x010000     ->      0xf5380000+0x010000
+ *     ANATOP  0x30360000+0x010000     ->      0xf5360000+0x010000
+ *     UART1   0x30860000+0x010000     ->      0xf5860000+0x010000
  */
 #define IMX_IO_P2V(x)	(						\
-			(((x) & 0x80000000) >> 7) |			\
 			(0xf4000000 +					\
-			(((x) & 0x50000000) >> 6) +			\
-			(((x) & 0x0b000000) >> 4) +			\
-			(((x) & 0x000fffff))))
+			(((x) & 0x50000000) >> 4) +			\
+			(((x) & 0x0a000000) >> 4) +			\
+			(((x) & 0x00ffffff))))
 
 #define IMX_IO_ADDRESS(x)	IOMEM(IMX_IO_P2V(x))
 
@@ -99,6 +115,9 @@
 #include "mx2x.h"
 #include "mx21.h"
 #include "mx27.h"
+#include "mx6.h"
+#include "mx7.h"
+#include "mx7ulp.h"
 
 #define imx_map_entry(soc, name, _type)	{				\
 	.virtual = soc ## _IO_P2V(soc ## _ ## name ## _BASE_ADDR),	\
