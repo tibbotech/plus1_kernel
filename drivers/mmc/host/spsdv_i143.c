@@ -196,9 +196,11 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	clkdiv = ((SPSDC_SYS_CLK)/clk)-1;
 	if( (SPSDC_SYS_CLK % clk) > (clk/10) ){
 	   clkdiv++;
-	   spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk , SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
+	   spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk, 
+	    SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
 	}else{
-	   spsdc_pr(INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk , SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));		
+	   spsdc_pr(INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk, 
+	   	 SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
 	}
 
 
@@ -578,6 +580,7 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	u32 value = readl(&host->base->sd_state);
 	u32 crc_token = bitfield_extract(value, SPSDC_sdcrdcrc_w03, 3);
 	u32 timing_cfg0 = readl(&host->base->sd_timing_config0);
+	int clkdiv = readl(&host->base->sd_config0) >> SPSDC_sdfqsel_w12;
 	
 	if (unlikely(value & SPSDC_SDSTATE_ERROR)) {
 		spsdc_pr(DEBUG, "%s cmd %d with data %08x error!\n", __func__, cmd->opcode, (unsigned int)(long)data);
@@ -632,8 +635,13 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 			data->bytes_xfered = 0;
 		}
 		
-		if (!host->tuning_info.need_tuning)
+		if (!host->tuning_info.need_tuning){
+                    if(clkdiv >= 500)
+		       cmd->retries = 1; /* retry it */		   	
+		   else
 			cmd->retries = SPSDC_MAX_RETRIES; /* retry it */
+		}
+		
 		spsdc_sw_reset(host);
 		mdelay(100);
 
@@ -713,18 +721,23 @@ static void spsdc_controller_init(struct spsdc_host *host)
 	value = bitfield_replace(value, SPSDC_MediaType_w03, 3, SPSDC_MEDIA_SD);
 	writel(value, &host->base->card_mediatype_srcdst);
 	host->signal_voltage = MMC_SIGNAL_VOLTAGE_330;
-#ifdef SPMMC_EMMC_VCCQ_1V8
+
+
+#ifdef SPMMC_SDIO_1V8
 	/* Because we do not have a regulator to change the voltage at
 	 * runtime, we can only rely on hardware circuit to ensure that
-	 * the eMMC's Vccq is 1.8V and use the macro `SPMMC_EMMC_VCCQ_1V8'
-	 * to indicate that. Set signal voltage to 1.8V here.
+	 * the device pull up voltage is 1.8V(ex: wifi module AP6256) and 
+	 * use the macro `SPMMC_SDIO_1V8'to indicate that. Set signal 
+	 * voltage to 1.8V here.
 	 */
-	if (SPSDC_MODE_EMMC == host->mode) {
+	if(host->mode == SPSDC_MODE_SDIO){
 		value = readl(&host->base->sd_vol_ctrl);
 		value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
+		mdelay(20);
+		spsdc_txdummy(host, 32); 
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
-		spsdc_pr(INFO, "use signal voltage 1.8V for eMMC\n");
+		spsdc_pr(INFO, "use signal voltage 1.8V for SDIO\n");
 	}
 #endif	
 }
@@ -918,7 +931,7 @@ int spsdc_get_cd(struct mmc_host *mmc)
 static int spmmc_card_busy(struct mmc_host *mmc)
 {
 	struct spsdc_host *host = mmc_priv(mmc);
-	spsdc_pr(VERBOSE, "spmmc_card_busy!\n");
+	spsdc_pr(VERBOSE, "spmmc_card_busy! %d\n" ,!(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS));
 	return !(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS);
 }
 
@@ -927,8 +940,20 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
 
-	if (host->signal_voltage == ios->signal_voltage)
+	spsdc_pr(WARNING, "host->signal_voltage %d ios->signal_voltage %d!\n",host->signal_voltage ,ios->signal_voltage);
+
+	if (host->signal_voltage == ios->signal_voltage){
+		
+		if(host->mode == SPSDC_MODE_SDIO){
+	/* we do not support switch signal voltage for eMMC at runtime at present */	
+			spsdc_txdummy(host, 120); 
+	
+		}else{
+			spsdc_txdummy(host, 32); 
+		}
+
 		return 0;
+	}
 
 	/* we do not support switch signal voltage for eMMC at runtime at present */
 	if (SPSDC_MODE_EMMC == host->mode)
@@ -949,10 +974,17 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 	writel(value, &host->base->sd_vol_ctrl);
 
+	spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
+
 	mdelay(20);
-	spsdc_txdummy(host, 32); 
 	
-	//mdelay(1);
+	if(host->mode == SPSDC_MODE_SDIO){
+        spsdc_txdummy(host, 120); 
+	}else{
+	spsdc_txdummy(host, 32); 
+	}
+	
+	mdelay(1);
 	
 	/* mmc layer has guaranteed that CMD11 had issued to SD card at
 	 * this time, so we can just continue to check the status. */
@@ -974,7 +1006,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	#endif
 	//value = bitfield_replace(value, SPSDC_hw_set_vol_w01, 1, 0);
 	//writel(value, &host->base->sd_vol_ctrl);
-	//host->signal_voltage = ios->signal_voltage;
+	host->signal_voltage = ios->signal_voltage;
 	return 0;
 }
 #endif /* ifdef SPMMC_SUPPORT_VOLTAGE_1V8 */
@@ -1420,19 +1452,18 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		spsdc_pr(DEBUG, "max-frequency is too high, set it to %d\n", SPSDC_MAX_CLK);
 		mmc->f_max = SPSDC_MAX_CLK;
 	}
-	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
-	//mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
+	//mmc->ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34;
+	mmc->ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 
 
 	dev_mode = of_device_get_match_data(&pdev->dev);
 	spsdc_select_mode(host, dev_mode->mode);
 
-    if(dev_mode->mode == SPSDC_MODE_SD){
-	mmc->caps = MMC_CAP_4_BIT_DATA | MMC_CAP_SD_HIGHSPEED
+	mmc->caps |= MMC_CAP_4_BIT_DATA  | MMC_CAP_SD_HIGHSPEED
 		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
 		    | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
                     //| MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 ; 
-    }
+
 	
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
 	/* Host controller supports up to "SPSDC_MAX_DMA_MEMORY_SECTORS",
