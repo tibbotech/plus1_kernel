@@ -261,8 +261,6 @@ struct pentagram_spi_master {
 	void __iomem *mas_base;
 
 	void __iomem *sla_base;	
-	void __iomem *sft_base;
-	void __iomem *sft3_base;
 	
 	int dma_irq;
 	int mas_irq;
@@ -390,20 +388,15 @@ exit_spi_slave_rw:
 }
 EXPORT_SYMBOL_GPL(pentagram_spi_slave_dma_rw);
 
-
-
-
-static int pentagram_spi_abort(struct spi_controller *ctlr)
+static int pentagram_spi_slave_abort(struct spi_controller *ctlr)
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
-
 
 	complete(&pspim->sla_isr);
 	complete(&pspim->isr_done);
 
 	return 0;
 }
-
 
 int pentagram_spi_slave_rw(struct spi_device *spi, const u8  *buf, u8  *data_buf, unsigned int len, int RW_phase)
 {
@@ -1782,12 +1775,11 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 
 	if (mode == SPI_SLAVE){
 		ctlr->transfer_one = pentagram_spi_controller_transfer_one;
-   	    ctlr->slave_abort = pentagram_spi_abort;
+		ctlr->slave_abort = pentagram_spi_slave_abort;
 	}
 	else{
 		ctlr->transfer_one_message = pentagram_spi_controller_transfer_one_message;
 	}
-
 
 	platform_set_drvdata(pdev, ctlr);
 	pspim = spi_controller_get_devdata(ctlr);
@@ -1804,8 +1796,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	mutex_init(&pspim->buf_lock);
 	init_completion(&pspim->isr_done);
 	init_completion(&pspim->sla_isr);
-
-
 
 	/* find and map our resources */
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, MAS_REG_NAME);
@@ -1828,30 +1818,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	}
 	dev_dbg(&pdev->dev,"sla_base 0x%x\n",(unsigned int)pspim->sla_base);
 
-
-#if(0)
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, PIN_MUX_MAS_REG_NAME);
-	if (res) {
-		pspim->sft_base = devm_ioremap(&pdev->dev, res->start, resource_size(res) );
-		if (IS_ERR(pspim->sft_base)) {
-			dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",PIN_MUX_MAS_REG_NAME);
-			goto free_alloc;
-		}
-	}
-	dev_dbg(&pdev->dev,"sft_base 0x%x\n",(unsigned int)pspim->sft_base);
-
-
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, PIN_MUX_SLA_REG_NAME);
-	if (res) {
-		pspim->sft3_base = devm_ioremap(&pdev->dev, res->start, resource_size(res) );
-		if (IS_ERR(pspim->sft_base)) {
-			dev_err(&pdev->dev,"%s devm_ioremap_resource fail\n",PIN_MUX_SLA_REG_NAME);
-			goto free_alloc;
-		}
-	}
-	dev_dbg(&pdev->dev,"sft3_base 0x%x\n",(unsigned int)pspim->sft3_base);
-
-#endif
 	/* irq*/
 	pspim->dma_irq = platform_get_irq_byname(pdev, DMA_IRQ_NAME);
 	if (pspim->dma_irq < 0) {
@@ -1950,8 +1916,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	DBG_INFO(" CONFIG_PM_RUNTIME_SPI init \n");
 #endif
-
-	
 	return 0;
 
 free_rx_dma:
@@ -2067,26 +2031,23 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 #define sp_spi_pm_ops  (&sp7021_spi_pm_ops)
 #endif
 
-
 static const struct of_device_id pentagram_spi_controller_ids[] = {
 	{.compatible = "sunplus,sp7021-spi-controller"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, pentagram_spi_controller_ids);
 
-
-
 static struct platform_driver pentagram_spi_controller_driver = {
 	.probe = pentagram_spi_controller_probe,
 	.remove = pentagram_spi_controller_remove,
 	.suspend	= pentagram_spi_controller_suspend,
-	.resume		= pentagram_spi_controller_resume,	
+	.resume		= pentagram_spi_controller_resume,
 	.driver = {
 		.name = "sunplus,sp7021-spi-controller",
 		.of_match_table = pentagram_spi_controller_ids,
-	#ifdef CONFIG_PM_RUNTIME_SPI
+#ifdef CONFIG_PM_RUNTIME_SPI
 		.pm     = sp_spi_pm_ops,
-    #endif		
+#endif		
 	},
 };
 module_platform_driver(pentagram_spi_controller_driver);
@@ -2094,4 +2055,3 @@ module_platform_driver(pentagram_spi_controller_driver);
 MODULE_AUTHOR("Sunplus");
 MODULE_DESCRIPTION("Sunplus SPI controller driver");
 MODULE_LICENSE("GPL");
-
