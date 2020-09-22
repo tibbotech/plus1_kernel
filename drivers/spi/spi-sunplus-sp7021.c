@@ -22,7 +22,6 @@
 
 #define SLAVE_INT_IN
 
-
 //#define PM_RUNTIME_SPI
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -50,11 +49,7 @@
 #endif
 /* ---------------------------------------------------------------------------------------------- */
 
-
-
-
 #define SPI_FULL_DUPLEX
-
 
 #define MAS_REG_NAME "spi_master"
 #define SLA_REG_NAME "spi_slave"
@@ -1283,13 +1278,7 @@ static int pentagram_spi_controller_setup(struct spi_device *spi)
 	unsigned int reg_temp;
 	unsigned long flags;
 	
-	dev_dbg(&dev,"%s\n",__FUNCTION__);
-
-
-       spi_id = pspim->ctlr->bus_num;
-
-
-        FUNC_DEBUG();
+	FUNC_DEBUG();
 
 #ifdef CONFIG_PM_RUNTIME_SPI
         if(pm_runtime_enabled(pspim->dev)){
@@ -1299,8 +1288,7 @@ static int pentagram_spi_controller_setup(struct spi_device *spi)
     	}
 #endif
 
-     DBG_INFO(" spi_id  = %d\n",spi_id);
-
+     DBG_INFO(" spi_id  = %d\n", pspim->ctlr->bus_num);
 
 	//set clock
 	clk_rate = clk_get_rate(pspim->spi_clk);
@@ -1359,16 +1347,13 @@ static int pentagram_spi_controller_unprepare_message(struct spi_master *master,
 
 static size_t pentagram_spi_max_length(struct spi_device *spi)
 {
-
     return SPI_MSG_DATA_SIZE;
-
 }
 
 
 static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_controller *ctlr, struct spi_transfer *t)
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
-	//struct device dev = master->dev;
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 
 	unsigned int reg_temp = 0;
@@ -1434,15 +1419,15 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 		  reg_temp = reg_temp | CPHA_W | CPHA_R;  
 	   }
 
-	  
-	   if(spi->mode & SPI_CS_HIGH){
-		  reg_temp = reg_temp | CS_POR;  
-	   }
+	   // it should be low_active (==0) by default
+	   reg_temp &= ~CS_POR;
+	   if ( spi->mode & SPI_CS_HIGH) reg_temp |= CS_POR;
+
 	   if(spi->mode & SPI_LSB_FIRST){
-		  reg_temp = reg_temp | LSB_SEL;  
+		  reg_temp = reg_temp | LSB_SEL;
 	   }
 
-	   writel(reg_temp, &spim_reg->SPI_FD_CONFIG);	
+	   writel(reg_temp, &spim_reg->SPI_FD_CONFIG);
 	
 	   //pspim->data_unit = FIFO_DATA_BITS / t->bits_per_word;
 	   pspim->data_unit = FIFO_DATA_BITS / 8;   // only 8bits_per_word now
@@ -1752,60 +1737,46 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	int ret;
-	int mode;	
-	int spi_work_mode;		
+	int mode;
+	int spi_work_mode;
 	unsigned int max_freq;
-	//struct spi_master *master;
 	struct spi_controller *ctlr;
-	struct pentagram_spi_master *pspim;	
+	struct pentagram_spi_master *pspim;
 
-
-    FUNC_DEBUG();
+	FUNC_DEBUG();
 
 	spi_work_mode = 0;
 
-
-	if (pdev->dev.of_node) {
-		pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
-		mode = of_property_read_bool(pdev->dev.of_node, "spi-slave") ? SPI_SLAVE : SPI_MASTER;
-
-	        spi_work_mode |= of_property_read_bool(pdev->dev.of_node, "spi-cpol") ? SPI_CPOL : 0; 
-	        spi_work_mode |= of_property_read_bool(pdev->dev.of_node, "spi-cpha") ? SPI_CPHA : 0; 	
+	pdev->id = 0;
+	mode = SPI_MASTER;
+	if ( pdev->dev.of_node) {
+		pdev->id = of_alias_get_id( pdev->dev.of_node, "sp_spi");
+		mode = of_property_read_bool( pdev->dev.of_node, "spi-slave") ? SPI_SLAVE : SPI_MASTER;
+	        spi_work_mode |= of_property_read_bool( pdev->dev.of_node, "spi-cpol") ? SPI_CPOL : 0;
+	        spi_work_mode |= of_property_read_bool( pdev->dev.of_node, "spi-cpha") ? SPI_CPHA : 0;
+	} else {
+                spi_work_mode = SPI_CPOL | SPI_CPHA;
 	}
-	else{
-		pdev->id = 0;
-                mode = SPI_MASTER;		
-                spi_work_mode |= SPI_CPOL; 
-	        spi_work_mode |= SPI_CPHA; 	
-	
-	}
+	DBG_INFO( "pdev->id  = %d\n", pdev->id);
 
-    DBG_INFO(" pdev->id  = %d\n",pdev->id);
-    ///DBG_INFO(" pdev->dev.of_node  = %d\n",pdev->dev.of_node);
+	if (mode == SPI_SLAVE) {
+		ctlr = spi_alloc_slave( &pdev->dev, sizeof(*pspim));
+	else
+		ctlr = spi_alloc_master( &pdev->dev, sizeof(*pspim));
+	if (!ctlr)
+		return -ENOMEM;
 
-
-
-	if (mode == SPI_SLAVE){
-		ctlr = spi_alloc_slave(&pdev->dev, sizeof(*pspim));
-		//DBG_INFO("spi_alloc_slave of_node  = %d\n",pdev->dev.of_node);
-	}
-	else{
-		ctlr = spi_alloc_master(&pdev->dev, sizeof(*pspim));
-    	//master = spi_alloc_master(&pdev->dev, sizeof(*pspim));
-    	//DBG_INFO("spi_alloc_master of_node  = %d\n",pdev->dev.of_node);
-	}
-
-	if (!ctlr) {
-		dev_err(&pdev->dev,"spi_alloc fail\n");
-		return -ENODEV;
-	}
-
-
-	//ctlr->auto_runtime_pm = true;
-	/* setup the master state. */
-	ctlr->mode_bits = spi_work_mode ;
+	ctlr->dev.of_node = pdev->dev.of_node;
 	ctlr->bus_num = pdev->id;
-	//master->setup = pentagram_spi_controller_setup;
+	ctlr->mode_bits = spi_work_mode;
+	ctrl->bits_per_word_mask = SPI_BPW_MASK(8);
+	// FIXME: ctlr->min_speed_hz = ..
+	ctlr->max_speed_hz = 50000000;
+	// ctlr->flags = 0
+	ctlr->max_transfer_size = pentagram_spi_max_length;
+	ctlr->max_message_size = pentagram_spi_max_length;
+	// FIXME: ctlr->setup = ...
+	// FIXME: ctlr->auto_runtime_pm = true;
 	ctlr->prepare_message = pentagram_spi_controller_prepare_message;
 	ctlr->unprepare_message = pentagram_spi_controller_unprepare_message;
 
@@ -1817,11 +1788,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 		ctlr->transfer_one_message = pentagram_spi_controller_transfer_one_message;
 	}
 
-	ctlr->max_transfer_size = pentagram_spi_max_length;
-	ctlr->max_message_size = pentagram_spi_max_length;
-	ctlr->num_chipselect = 1;
-	ctlr->dev.of_node = pdev->dev.of_node;
-	ctlr->max_speed_hz = 50000000;
 
 	platform_set_drvdata(pdev, ctlr);
 	pspim = spi_controller_get_devdata(ctlr);
@@ -1971,7 +1937,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	dev_dbg(&pdev->dev, "rx_dma phy 0x%x\n",(unsigned int)pspim->rx_dma_phy_base);
 
 	
-	//ret = spi_register_master(master);
 	ret = devm_spi_register_controller(&pdev->dev, ctlr);
 	if (ret != 0) {
 		dev_err(&pdev->dev, "spi_register_master fail\n");
@@ -1998,7 +1963,6 @@ free_reset_assert:
 free_clk:
 	clk_disable_unprepare(pspim->spi_clk);
 free_alloc:
-	//spi_master_put(master);
 	spi_controller_put(ctlr);
 
 	dev_dbg(&pdev->dev, "spi_master_probe done\n");
