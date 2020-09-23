@@ -1921,7 +1921,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->ops = &sunplus_uart_ops;
 	port->flags = UPF_BOOT_AUTOCONF;
 	port->dev = &pdev->dev;
-	port->fifosize = 16;
+	port->fifosize = 128;
 	port->line = pdev->id;
 
 	if (pdev->id == 0)
