@@ -1264,7 +1264,6 @@ static int pentagram_spi_controller_setup(struct spi_device *spi)
 	struct pentagram_spi_master *pspim = spi_controller_get_devdata(spi->controller);
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 
-	unsigned int spi_id;
 	unsigned int clk_rate;
 	unsigned int div;
 	unsigned int clk_sel;
@@ -1752,7 +1751,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	}
 	DBG_INFO( "pdev->id  = %d\n", pdev->id);
 
-	if (mode == SPI_SLAVE) {
+	if (mode == SPI_SLAVE)
 		ctlr = spi_alloc_slave( &pdev->dev, sizeof(*pspim));
 	else
 		ctlr = spi_alloc_master( &pdev->dev, sizeof(*pspim));
