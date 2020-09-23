@@ -931,7 +931,7 @@ int spsdc_get_cd(struct mmc_host *mmc)
 static int spmmc_card_busy(struct mmc_host *mmc)
 {
 	struct spsdc_host *host = mmc_priv(mmc);
-	spsdc_pr(VERBOSE, "spmmc_card_busy! %d\n" ,!(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS));
+	spsdc_pr(INFO, "spmmc_card_busy! %d\n" ,!(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS));
 	return !(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS);
 }
 
@@ -940,7 +940,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
 
-	spsdc_pr(WARNING, "host->signal_voltage %d ios->signal_voltage %d!\n",host->signal_voltage ,ios->signal_voltage);
+	spsdc_pr(INFO, "start_signal_voltage_switch: host->voltage %d ios->voltage %d!\n",host->signal_voltage ,ios->signal_voltage);
 
 	if (host->signal_voltage == ios->signal_voltage){
 		
@@ -961,11 +961,9 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 
 	if (MMC_SIGNAL_VOLTAGE_180 != ios->signal_voltage) {
 		//printk(KERN_INFO,  "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
-		spsdc_pr(WARNING, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
+		spsdc_pr(INFO, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
-
-	spsdc_pr(WARNING, "signal_voltage_switch 1V8!\n");
 
 
 	value = readl(&host->base->sd_vol_ctrl);
@@ -974,7 +972,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 	writel(value, &host->base->sd_vol_ctrl);
 
-	spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
+	spsdc_pr(VERBOSE, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
 
 	mdelay(20);
 	
