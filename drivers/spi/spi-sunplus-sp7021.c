@@ -1316,7 +1316,7 @@ pm_out:
 	pm_runtime_mark_last_busy(pspim->dev);
 	pm_runtime_put_autosuspend(pspim->dev);
     DBG_INFO( "pm_out");
-	return 0;								  
+	return 0;
 #endif
 
 }
@@ -1762,7 +1762,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	ctlr->dev.of_node = pdev->dev.of_node;
 	ctlr->bus_num = pdev->id;
 	ctlr->mode_bits = spi_work_mode;
-	ctrl->bits_per_word_mask = SPI_BPW_MASK(8);
+	ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 	// FIXME: ctlr->min_speed_hz = ..
 	ctlr->max_speed_hz = 50000000;
 	// ctlr->flags = 0
