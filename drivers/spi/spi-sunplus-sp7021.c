@@ -26,8 +26,8 @@
 
 /* ---------------------------------------------------------------------------------------------- */
 
-#define SPI_FUNC_DEBUG
-#define SPI_DBG_INFO
+//#define SPI_FUNC_DEBUG
+//#define SPI_DBG_INFO
 #define SPI_DBG_ERR
 
 #ifdef SPI_FUNC_DEBUG
@@ -1266,7 +1266,7 @@ static int pentagram_spi_D_setup(struct spi_device *spi)
 	unsigned int reg_temp;
 	unsigned long flags;
 	
-	FUNC_DBG();
+	FUNC_DBG( "mode:%X controller_state:%X", spi->mode, spi_get_ctldata( spi));
 
 #ifdef CONFIG_PM_RUNTIME_SPI
         if(pm_runtime_enabled(pspim->dev)){
