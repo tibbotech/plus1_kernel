@@ -1276,6 +1276,7 @@ static int pentagram_spi_D_setup(struct spi_device *spi)
 #endif
 
      DBG_INF(" spi_id = %d", pspim->ctlr->bus_num);
+     // FIXME: create the controller_state struct if needed
 /*
 	//set clock
 	clk_rate = clk_get_rate(pspim->spi_clk);
@@ -1548,9 +1549,7 @@ else{
         DBG_INF( "pm_put");
 #endif
 
-
 	return ret;
-
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 pm_out:
@@ -1559,22 +1558,6 @@ pm_out:
     DBG_INF( "pm_out");
 	return 0;
 #endif
-
-
-
-
-
-	//if(mode == SPI_MASTER_WRITE)
-	//{
-	//	ret = pentagram_spi_master_dma_write(master, data_buf, len);
-	//}else if(mode == SPI_MASTER_READ)
-	//{
-	//	ret = pentagram_spi_master_dma_read(master, cmd_buf, len);
-	//	if(ret == 0)
-	//		memcpy(data_buf, pspim->rx_dma_vir_base, len);
-	//}
-
-	//return ret;
 }
 
 
@@ -1588,13 +1571,9 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 	unsigned int xfer_cnt = 0, total_len = 0;
 	bool start_xfer;
 	struct spi_transfer *xfer,*first_xfer = NULL;
-	int ret;
-
-	//struct spi_transfer *next_xfer,
+	int ret, i = 0;
 
 	FUNC_DBG();
-
-	//dev_dbg(&master->dev,"%s\n",__FUNCTION__);	
 
 	start_xfer = false;
 
@@ -1606,37 +1585,28 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 	}
 #endif
 
-
 	list_for_each_entry(xfer, &m->transfers, transfer_list) {
-	
-		if(!first_xfer)
-		first_xfer = xfer;
+		if ( !first_xfer) first_xfer = xfer;
+		total_len +=  xfer->len; 
 
-        total_len +=  xfer->len; 
-
-		DBG_INF("first_xfer: tx %p, rx %p, len %d", first_xfer->tx_buf, first_xfer->rx_buf, first_xfer->len);
-		DBG_INF("xfer: tx %p, rx %p, len %d", xfer->tx_buf, xfer->rx_buf, xfer->len);
-
+		DBG_INF("xfer #%d: tx %p, rx %p, len %d", i++, xfer->tx_buf, xfer->rx_buf, xfer->len);
 		/* all combined transfers have to have the same speed */
 		if (first_xfer->speed_hz != xfer->speed_hz) {
 			DBG_ERR( "unable to change speed between transfers\n");
 			ret = -EINVAL;
 			goto exit;
 		}
-
 		/* CS will be deasserted directly after transfer */
 		if (xfer->delay_usecs) {
 			DBG_ERR( "can't keep CS asserted after transfer");
 			ret = -EINVAL;
 			goto exit;
 		}
-
 		if (xfer->len > SPI_MSG_DATA_SIZE) {
 			DBG_ERR( "over total transfer length");
 			ret = -EINVAL;
 			goto exit;
-	}
-
+		}
 
 		if (list_is_last(&xfer->transfer_list, &m->transfers))
 			DBG_INF("xfer = transfer_list" );
@@ -1647,47 +1617,28 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 		if (xfer->cs_change)
 			DBG_INF("xfer->cs_change");
 
-
-
-        if (list_is_last(&xfer->transfer_list, &m->transfers) || (total_len > SPI_MSG_DATA_SIZE) 
+		if (list_is_last(&xfer->transfer_list, &m->transfers) || (total_len > SPI_MSG_DATA_SIZE) 
 			|| xfer->cs_change){
 			start_xfer = true;
 			if (total_len < SPI_MSG_DATA_SIZE)
 			xfer_cnt++;
-#if(0)	// for test		
-		//}else if((xfer_cnt > 0) && (xfer->rx_buf)){
-		//    next_xfer = list_entry(xfer->transfer_list.next, struct spi_transfer,
-		// 	       transfer_list);
-		//	if(next_xfer->tx_buf){
-		//	  start_xfer = true;
-		//	  xfer_cnt++;			  
-		//	}
-#endif
 		}
+
+		if ( start_xfer != true) {  xfer_cnt++;  continue;  }
 		
+		pentagram_spi_setup_transfer(spi, ctlr, first_xfer);
+		DBG_INF("start_xfer  xfer->len : %d   xfer_cnt : %d",xfer->len,xfer_cnt);
 
-		if(start_xfer == true){
+		ret = pentagram_spi_master_combine_write_read(ctlr,first_xfer,xfer_cnt);
 
-	        pentagram_spi_setup_transfer(spi, ctlr, first_xfer);
-
-		    DBG_INF("start_xfer  xfer->len : %d   xfer_cnt : %d",xfer->len,xfer_cnt);
-
-            ret = pentagram_spi_master_combine_write_read(ctlr,first_xfer,xfer_cnt);
-
-			if (total_len > SPI_MSG_DATA_SIZE)
+		if (total_len > SPI_MSG_DATA_SIZE)
 			ret = pentagram_spi_master_combine_write_read(ctlr,xfer,1);
+		m->actual_length += total_len;
 
-			m->actual_length += total_len;
-
-			first_xfer = NULL;
-			xfer_cnt = 0;
-			total_len = 0;
-			start_xfer = false;
-	
-		}else{
-			xfer_cnt++;
-		}
-
+		first_xfer = NULL;
+		xfer_cnt = 0;
+		total_len = 0;
+		start_xfer = false;
 	}
 
 	exit:
