@@ -856,6 +856,12 @@
 				sppctl,pins = <SPPCTL_IOPAD(54,SPPCTL_PCTL_G_GPIO,0,0) >;
 			};
 
+			sdio_pins: pinmux_sdio_pins {
+				sppctl,groups = "SDIO";
+				sppctl,function = "SDIO";
+				sppctl,pins = <SPPCTL_IOPAD(56,SPPCTL_PCTL_G_GPIO,0,1) >;
+			};
+
 			gl2sw_pins: pinmux_gl2sw_pins {
 				sppctl,groups = "GL2SW";
 				sppctl,function = "GL2SW";
