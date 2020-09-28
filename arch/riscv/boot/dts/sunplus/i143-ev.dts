@@ -447,6 +447,8 @@
 			clocks = <&clkc CARD_CTL4>;
 			resets = <&rstc RST_CARD_CTL4>;
 			pinctrl-names = "default";
+			pinctrl-0 = <&sdio_pins>;		
+			sdio-gpios = <&pctl 56 GPIO_ACTIVE_HIGH>;	
 			bus-width = <4>;
 			max-frequency = <111375000>;
 			non-removable;
@@ -455,7 +457,7 @@
 			cap-sdio-irq;
 			no-sd;
 			no-mmc;
-			status = "disabled";			
+			//status = "disabled";			
 		};		
 		
 		#if 0

@@ -167,11 +167,12 @@ static inline u32 sp_uart_line_status_tx_buf_not_full(struct uart_port *port)
 
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
+		if (readl(&(txdma_reg->txdma_status)) & 0x01) {
+			return 0;
+		}
 		addr_sw = readl(&(txdma_reg->txdma_wr_adr));
 		addr_hw = readl(&(txdma_reg->txdma_rd_adr));
-		if (addr_sw == addr_hw) {
-			return UATXDMA_BUF_SZ;
-		} else if (addr_sw >= addr_hw) {
+		if (addr_sw >= addr_hw) {
 			return (UATXDMA_BUF_SZ - (addr_sw - addr_hw));
 		} else {
 			return (addr_hw - addr_sw);
@@ -403,7 +404,7 @@ static unsigned int sunplus_uart_ops_tx_empty(struct uart_port *port)
 
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
-		if (readl(&(txdma_reg->txdma_wr_adr)) == readl(&(txdma_reg->txdma_rd_adr))) {
+		if (readl(&(txdma_reg->txdma_status)) & 0x02) {
 			return TIOCSER_TEMT;
 		} else {
 			return 0;
