@@ -552,7 +552,7 @@
 			compatible = "sunplus,sp7021-usb-phy0";
 			clocks = <&clkc UPHY0>;
 			resets = <&rstc RST_UPHY0>;
-			reg = <0x9C004A80 0x80>;
+			reg = <0x9C004A80 0x80>, <0x9C000000 0x80>, <0x9C000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 			nvmem-cell-names = "disc_vol0";
@@ -563,7 +563,7 @@
 			compatible = "sunplus,sp7021-usb-phy1";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_UPHY1>;
-			reg = <0x9C004B00 0x80>;
+			reg = <0x9C004B00 0x80>, <0x9C000000 0x80>, <0x9C000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
 			nvmem-cell-names = "disc_vol1";
@@ -579,7 +579,7 @@
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_ehci0: usb@9C102100 {
+		sp_ehci0: usb@0x9C102100 {
 			compatible = "sunplus,sp7021-usb-ehci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
@@ -588,7 +588,7 @@
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
-		sp_ehci1: usb@9C103100 {
+		sp_ehci1: usb@0x9C103100 {
 			compatible = "sunplus,sp7021-usb-ehci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
@@ -601,7 +601,7 @@
 			compatible = "sunplus,sp7021-usb-ohci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x9C102080 0x68>;
+			reg = <0x9C102080 0x68>, <0x9C000000 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -610,7 +610,7 @@
 			compatible = "sunplus,sp7021-usb-ohci1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
-			reg = <0x9C103080 0x68>;
+			reg = <0x9C103080 0x68>, <0x9C000000 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -634,15 +634,15 @@
 		};
 
 		sp_otg0: usb@0x9c102400 {
-			compatible = "sunplus,sunplus-q628-usb-otg0";
-			reg = <0x9c102400 0x70>, <0x9c102880 0x80>, <0x9c000200 0x80>;
+			compatible = "sunplus,sp7021-usb-otg0";
+			reg = <0x9c102400 0x70>, <0x9c000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_otg1: usb@0x9c103400 {
-			compatible = "sunplus,sunplus-q628-usb-otg1";
-			reg = <0x9c103400 0x70>, <0x9c103880 0x80>, <0x9c000200 0x80>;
+			compatible = "sunplus,sp7021-usb-otg1";
+			reg = <0x9c103400 0x70>, <0x9c000200 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
 		};

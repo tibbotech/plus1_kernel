@@ -2,6 +2,21 @@
 # USB device configuration
 #
 
+config GEMINI_USB
+	bool "Support Gemini USB"
+	select SCSI
+	select USB
+	select USB_SUPPORT
+	select USB_ARCH_HAS_EHCI
+	select USB_ARCH_HAS_OHCI
+#	select USB_EHCI_HCD_PLATFORM
+#	select USB_OHCI_HCD_PLATFORM
+#	select USB_EHCI_HCD
+#	select USB_OHCI_HCD
+	select USB_STORAGE
+	help
+	  Sunplus Gemini platform USB support
+
 config USB_OHCI_BIG_ENDIAN_DESC
 	bool
 
@@ -37,6 +52,14 @@ if USB_SUPPORT
 
 config USB_COMMON
 	tristate
+
+config USB_PORT0
+	bool "Sunplus Gemini USB PORT 0"
+	default y
+
+config USB_PORT1
+	bool "Sunplus Gemini USB PORT 1"
+	default y
 
 config USB_ARCH_HAS_HCD
 	def_bool y
