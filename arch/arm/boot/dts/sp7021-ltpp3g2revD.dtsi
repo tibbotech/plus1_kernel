@@ -125,7 +125,7 @@
  };
  pins_gpio_nobinded: pins_gpio_nobinded {
     sppctl,pins = <
-      SPPCTL_IOPAD(42,SPPCTL_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH0 */
+      /*SPPCTL_IOPAD(42,SPPCTL_PCTL_G_GPIO,0,0)*/   /* was L2SW_LED_FLASH0 */
       /*SPPCTL_IOPAD(51,SPPCTL_PCTL_G_GPIO,0,0)*/   /* was L2SW_LED_ON0 */
       SPPCTL_IOPAD(30,SPPCTL_PCTL_G_GPIO,0,0)   /* was L2SW_LED_FLASH1 */
       SPPCTL_IOPAD(39,SPPCTL_PCTL_G_GPIO,0,0)   /* was L2SW_LED_ON1  */
