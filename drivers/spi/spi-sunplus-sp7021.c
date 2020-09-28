@@ -809,16 +809,11 @@ static int pentagram_spi_master_fullduplex_write_read(struct spi_controller *ctl
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
-	//struct device dev = master->dev;
-	//unsigned int addr;
-	//unsigned int valid = 0;
 	unsigned int data_len = len;
 	unsigned int reg_temp = 0;
 	unsigned long timeout = msecs_to_jiffies(200);
-	//unsigned long flags;
-	//int buf_offset = 0;	
 	unsigned int i;
-	int ret;	
+	int ret;
 
 	FUNC_DBG();
 
@@ -1252,10 +1247,10 @@ free_master_combite_rw:
 }
 
 
-
+// called when child device is registering on the bus
 static int pentagram_spi_D_setup(struct spi_device *spi)
 {
-	struct pentagram_spi_master *pspim = spi_controller_get_devdata(spi->controller);
+	//struct pentagram_spi_master *pspim = spi_controller_get_devdata(spi->controller);
 	FUNC_DBG( "spi_id:%d mode:%X controller_state:%p", pspim->ctlr->bus_num, spi->mode, spi_get_ctldata( spi));
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if ( pm_runtime_enabled( pspim->dev)) {
@@ -1277,7 +1272,7 @@ pm_out:
 }
 
 // preliminary set CS, CPOL, CPHA and LSB
-// called for both - master and slave. See drivers/spi/spi.c 
+// called for both - master and slave. See drivers/spi/spi.c
 static int pentagram_spi_controller_prepare_message(struct spi_controller *_c,
 				    struct spi_message *_m)
 {
@@ -1316,6 +1311,15 @@ static size_t pentagram_spi_max_length(struct spi_device *spi)
     return SPI_MSG_DATA_SIZE;
 }
 
+static void spspi_prep_transfer( struct spi_controller *_c, struct spi_device *_s) {
+	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
+	pspim->tx_cur_len = 0;
+	pspim->rx_cur_len = 0;
+	pspim->data_unit = FIFO_DATA_BITS / _s->bits_per_word;
+	pspim->isr_flag = SPI_IDLE;
+	DBG_INF( "pspim->data_unit %d unit", pspim->data_unit);
+}
+
 // called from *transfer* functions, set clock there
 static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_controller *ctlr, struct spi_transfer *t)
 {
@@ -1329,8 +1333,6 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 
 	FUNC_DBG();
 
-	pspim->tx_cur_len = 0;
-	pspim->rx_cur_len = 0;
 	DBG_INF( "setup %dHz", spi->max_speed_hz);
 	DBG_INF( "tx %p, rx %p, len %d",t->tx_buf, t->rx_buf, t->len);
 	DBG_INF( "cs_chang: %d speed_hz %dHz %d bpw", t->cs_change, t->speed_hz, t->bits_per_word);
@@ -1352,15 +1354,8 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 	rc = FD_SEL | ( 0xffff << 16);
 	rs = FD_SEL | ( ( clk_sel & 0xffff) << 16);
 	writel( ( readl( &( spim_reg->SPI_FD_CONFIG)) & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
-	
-	pspim->data_unit = FIFO_DATA_BITS / spi->bits_per_word;
-	pspim->isr_flag = SPI_IDLE;
-
-	DBG_INF( "pspim->data_unit %d unit", pspim->data_unit);
 }
 
-
-					
 static int pentagram_spi_controller_transfer_one(struct spi_controller *ctlr, struct spi_device *spi,
 					struct spi_transfer *xfer)
 { 
@@ -1424,8 +1419,8 @@ if (spi_controller_is_slave(ctlr)){
 }
 else{
 
+	spspi_prep_transfer( ctlr, spi);
 	pentagram_spi_setup_transfer(spi, ctlr, xfer);
-
 
 	if((xfer->tx_buf)&&(xfer->rx_buf)){
 		dev_dbg(&ctlr->dev,"rx\n");
@@ -1557,6 +1552,7 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 		if ( start_xfer != true) {  xfer_cnt++;  continue;  }
 		if ( total_len < SPI_MSG_DATA_SIZE) xfer_cnt++;
 		
+		spspi_prep_transfer( ctlr, spi);
 		pentagram_spi_setup_transfer( spi, ctlr, first_xfer);
 		DBG_INF( "start_xfer  xfer->len : %d   xfer_cnt : %d", xfer->len, xfer_cnt);
 		ret = pentagram_spi_master_combine_write_read( ctlr, first_xfer, xfer_cnt);
