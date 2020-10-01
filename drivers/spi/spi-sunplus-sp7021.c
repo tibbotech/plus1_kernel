@@ -1248,10 +1248,10 @@ free_master_combite_rw:
 
 
 // called when child device is registering on the bus
-static int pentagram_spi_D_setup(struct spi_device *spi)
+static int pentagram_spi_D_setup( struct spi_device *_s)
 {
-	//struct pentagram_spi_master *pspim = spi_controller_get_devdata(spi->controller);
-	FUNC_DBG( "spi_id:%d mode:%X controller_state:%p", pspim->ctlr->bus_num, spi->mode, spi_get_ctldata( spi));
+	struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
+	FUNC_DBG( "spi_id:%d mode:%X controller_state:%p", pspim->ctlr->bus_num, _s->mode, spi_get_ctldata( _s));
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if ( pm_runtime_enabled( pspim->dev)) {
 	  if ( ( ret = pm_runtime_get_sync( pspim->dev)) < 0) goto pm_out;
@@ -1273,28 +1273,28 @@ pm_out:
 
 // preliminary set CS, CPOL, CPHA and LSB
 // called for both - master and slave. See drivers/spi/spi.c
-static int pentagram_spi_controller_prepare_message(struct spi_controller *_c,
+static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 				    struct spi_message *_m)
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
 	SPI_MAS *spim_reg = ( SPI_MAS *)pspim->mas_base;
-	struct spi_device *spi = _m->spi;
+	struct spi_device *s = _m->spi;
 	// reg clear bits and set bits
 	u32 rc = 0, rs = 0;
 	FUNC_DBG();
 	DBG_INF( "setup %d bpw, %scpol, %scpha, %scs-high, %slsb-first",
-		spi->bits_per_word,
-		spi->mode & SPI_CPOL ? "" : "~",
-		spi->mode & SPI_CPHA ? "" : "~",
-		spi->mode & SPI_CS_HIGH ? "" : "~",
-		spi->mode & SPI_LSB_FIRST ? "" : "~");
-	if ( spi->mode & SPI_CPOL) rs |= CPOL_FD;
+		s->bits_per_word,
+		s->mode & SPI_CPOL ? "" : "~",
+		s->mode & SPI_CPHA ? "" : "~",
+		s->mode & SPI_CS_HIGH ? "" : "~",
+		s->mode & SPI_LSB_FIRST ? "" : "~");
+	if ( s->mode & SPI_CPOL) rs |= CPOL_FD;
 	else rc |= CPOL_FD;
-	if ( spi->mode & SPI_CPHA) rs |= ( CPHA_W | CPHA_R);
+	if ( s->mode & SPI_CPHA) rs |= ( CPHA_W | CPHA_R);
 	else rc |= ( CPHA_W | CPHA_R);
-	if ( spi->mode & SPI_LSB_FIRST) rs |= LSB_SEL;
+	if ( s->mode & SPI_LSB_FIRST) rs |= LSB_SEL;
 	else rc |= LSB_SEL;
-	if ( spi->mode & SPI_CS_HIGH) rs |= CS_POR;
+	if ( s->mode & SPI_CS_HIGH) rs |= CS_POR;
 	else rc |= CS_POR;
 	writel( ( readl( &( spim_reg->SPI_FD_CONFIG)) & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
 	return 0;
@@ -1311,6 +1311,7 @@ static size_t pentagram_spi_max_length(struct spi_device *spi)
     return SPI_MSG_DATA_SIZE;
 }
 
+// called in *controller_transfer_one*
 static void spspi_prep_transfer( struct spi_controller *_c, struct spi_device *_s) {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
 	pspim->tx_cur_len = 0;
@@ -1321,9 +1322,9 @@ static void spspi_prep_transfer( struct spi_controller *_c, struct spi_device *_
 }
 
 // called from *transfer* functions, set clock there
-static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_controller *ctlr, struct spi_transfer *t)
+static void pentagram_spi_setup_transfer( struct spi_device *_s, struct spi_controller *_c, struct spi_transfer *_t)
 {
-	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
+	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 
 	u32 rc = 0, rs = 0;
@@ -1333,21 +1334,21 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 
 	FUNC_DBG();
 
-	DBG_INF( "setup %dHz", spi->max_speed_hz);
-	DBG_INF( "tx %p, rx %p, len %d",t->tx_buf, t->rx_buf, t->len);
-	DBG_INF( "cs_chang: %d speed_hz %dHz %d bpw", t->cs_change, t->speed_hz, t->bits_per_word);
+	DBG_INF( "setup %dHz", _s->max_speed_hz);
+	DBG_INF( "tx %p, rx %p, len %d", _t->tx_buf, _t->rx_buf, _t->len);
+	DBG_INF( "cs_chang: %d speed_hz %dHz %d bpw", _t->cs_change, _t->speed_hz, _t->bits_per_word);
 	// set clock
 	clk_rate = clk_get_rate( pspim->spi_clk);
-	if ( t->speed_hz <= spi->max_speed_hz) {
-		div = clk_rate / t->speed_hz;
-	} else if ( spi->max_speed_hz <= ctlr->max_speed_hz) {
-		div = clk_rate / spi->max_speed_hz;
-	} else if ( ctlr->max_speed_hz < pspim->spi_max_frequency) {
-		div = clk_rate / ctlr->max_speed_hz;
+	if ( _t->speed_hz <= _s->max_speed_hz) {
+		div = clk_rate / _t->speed_hz;
+	} else if ( _s->max_speed_hz <= _c->max_speed_hz) {
+		div = clk_rate / _s->max_speed_hz;
+	} else if ( _c->max_speed_hz < pspim->spi_max_frequency) {
+		div = clk_rate / _c->max_speed_hz;
 	} else {
 		div = clk_rate / pspim->spi_max_frequency;
 	}
-	DBG_INF( "clk_rate: %d div %d",clk_rate,div);
+	DBG_INF( "clk_rate: %d div %d", clk_rate, div);
 	
 	clk_sel = (div / 2) - 1;
 	// set full duplex (bit 6) and fd freq (bits 31:16)
@@ -1356,155 +1357,77 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 	writel( ( readl( &( spim_reg->SPI_FD_CONFIG)) & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
 }
 
-static int pentagram_spi_controller_transfer_one(struct spi_controller *ctlr, struct spi_device *spi,
-					struct spi_transfer *xfer)
+// SPI-slave R/W
+static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_device *_s,
+					struct spi_transfer *_t)
 { 
+	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
 
-	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
-
-	//unsigned char *data_buf;
-	//unsigned char *cmd_buf;
 	const u8 *cmd_buf;
 	u8 *data_buf;
-	unsigned int len,tx_len;
-	//unsigned int temp_reg;
-	int mode = SPI_IDLE; 
-	int ret;
-	//unsigned char *temp;
-
+	unsigned int len;
+	int mode = SPI_IDLE, ret = 0;
 
 	FUNC_DBG();
-
-	//tx_cur_len = 0;
-	//rx_cur_len = 0;
-	//memset(tx_data_buf,0,255);
-	//memset(rx_data_buf,0,255);
-
 #ifdef CONFIG_PM_RUNTIME_SPI
-	if(pm_runtime_enabled(pspim->dev)){
-	    ret = pm_runtime_get_sync(pspim->dev);
-	    if (ret < 0)
-	        goto pm_out;  
+	if ( pm_runtime_enabled( pspim->dev)){
+	    ret = pm_runtime_get_sync( pspim->dev);
+	    if ( ret < 0) goto pm_out;
 	}
 #endif
-
-
-if (spi_controller_is_slave(ctlr)){
 
 	pspim->isr_flag = SPI_IDLE;
 
-	if((xfer->tx_buf)&&(xfer->rx_buf)){
-		dev_dbg(&ctlr->dev,"wrong command\n");
-	}else if(xfer->tx_buf){
-		dev_dbg(&ctlr->dev,"tx\n");
-		cmd_buf = xfer->tx_buf;
-		len = xfer->len;
-		dev_dbg(&ctlr->dev,"len %d\n",len);
+	if ( ( _t->tx_buf) && ( _t->rx_buf)) {
+		dev_dbg( &_c->dev, "%s() wrong command\n", __FUNCTION__);
+	} else if ( _t->tx_buf) {
+		cmd_buf = _t->tx_buf;
+		len = _t->len;
 		mode = SPI_SLAVE_WRITE;
-	}else if(xfer->rx_buf){
-		dev_dbg(&ctlr->dev,"rx\n");
-		data_buf = xfer->rx_buf;
-		len = xfer->len;
-		dev_dbg(&ctlr->dev,"len %d\n",len);
+		DBG_INF( "tx l: %d", len);
+	} else if ( _t->rx_buf) {
+		data_buf = _t->rx_buf;
+		len = _t->len;
 		mode = SPI_SLAVE_READ;
+		DBG_INF( "rx l: %d", len);
 	}
-
-    if(mode == SPI_SLAVE_WRITE){
-	    pentagram_spi_slave_rw(spi,cmd_buf,data_buf, len, mode);
-    }
-	else if(mode == SPI_SLAVE_READ){
-        pentagram_spi_slave_rw(spi,cmd_buf,data_buf, len, mode);
+	switch ( mode) {
+	  case SPI_SLAVE_WRITE:
+	  case SPI_SLAVE_READ:
+		pentagram_spi_slave_rw( _s, cmd_buf, data_buf, len, mode);
+		break;
+	  default:
+		DBG_INF( "idle?");
+		break;
 	}
-
-}
-else{
-
-	spspi_prep_transfer( ctlr, spi);
-	pentagram_spi_setup_transfer(spi, ctlr, xfer);
-
-	if((xfer->tx_buf)&&(xfer->rx_buf)){
-		dev_dbg(&ctlr->dev,"rx\n");
-		data_buf = xfer->rx_buf;
-		cmd_buf = xfer->tx_buf;
-		//temp = xfer->rx_buf;
-		//dev_dbg(&master->dev,"rx %x %x\n",*temp,*(temp+1));
-		//temp = xfer->tx_buf;
-		//dev_dbg(&master->dev,"tx %x %x\n",*temp,*(temp+1));
-		len = xfer->len;
-		tx_len = 0;
-		dev_dbg(&ctlr->dev,"len %d\n",len);
-		mode = SPI_MASTER_RW;
-	}else if(xfer->tx_buf){
-		dev_dbg(&ctlr->dev,"tx\n");
-		cmd_buf = xfer->tx_buf;
-		//temp = xfer->tx_buf;
-		//dev_dbg(&master->dev,"tx %x %x\n",*temp,*(temp+1));
-		len = xfer->len;
-		dev_dbg(&ctlr->dev,"len %d\n",len);
-		mode = SPI_MASTER_WRITE;
-	}else if(xfer->rx_buf){
-		dev_dbg(&ctlr->dev,"rx\n");
-		data_buf = xfer->rx_buf;
-		//temp = xfer->rx_buf;
-		//dev_dbg(&master->dev,"rx %x %x\n",*temp,*(temp+1));
-		len = xfer->len;
-		dev_dbg(&ctlr->dev,"len %d\n",len);
-		mode = SPI_MASTER_READ;
-	}
-
-//	DBG_INF("sp_spi_combo_master_slave_dma_WR");
-
-//	sp_spi_combo_master_slave_dma_WR(master, cmd_buf, len);
-
-//	return 0;
-
-
-	if(mode == SPI_MASTER_RW){
-		ret = pentagram_spi_master_fullduplex_write_read(ctlr, cmd_buf , data_buf , len , tx_len);
-	}else if(mode == SPI_MASTER_WRITE){
-		ret = pentagram_spi_master_write(ctlr, cmd_buf , data_buf , len);
-	}else if(mode == SPI_MASTER_READ){
-		ret = pentagram_spi_master_read(ctlr, cmd_buf , data_buf , len);
-	}
-
-}
-
-
-   spi_finalize_current_transfer(ctlr);
-
+	spi_finalize_current_transfer( _c);
 
 #ifdef CONFIG_PM_RUNTIME_SPI
-	pm_runtime_put(pspim->dev);
-        DBG_INF( "pm_put");
+	pm_runtime_put( pspim->dev);
+	DBG_INF( "pm_put");
 #endif
-
-	return ret;
-
+	return( ret);
 #ifdef CONFIG_PM_RUNTIME_SPI
 pm_out:
-	pm_runtime_mark_last_busy(pspim->dev);
-	pm_runtime_put_autosuspend(pspim->dev);
-    DBG_INF( "pm_out");
-	return 0;
+	pm_runtime_mark_last_busy( pspim->dev);
+	pm_runtime_put_autosuspend( pspim->dev);
+	DBG_INF( "pm_out");
+	return( ret);
 #endif
 }
-
 
 
 static int pentagram_spi_controller_transfer_one_message(struct spi_controller *ctlr, struct spi_message *m)
 { 
-
 	//struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
 	struct spi_device *spi = m->spi;
 
 	unsigned int xfer_cnt = 0, total_len = 0;
-	bool start_xfer;
+	bool start_xfer = false;
 	struct spi_transfer *xfer,*first_xfer = NULL;
 	int ret, i = 0;
 
 	FUNC_DBG();
-
-	start_xfer = false;
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if(pm_runtime_enabled(pspim->dev)){
@@ -1516,7 +1439,7 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 
 	list_for_each_entry(xfer, &m->transfers, transfer_list) {
 		if ( !first_xfer) first_xfer = xfer;
-		total_len +=  xfer->len; 
+		total_len +=  xfer->len;
 
 		DBG_INF("xfer #%d: tx %p, rx %p, len %d", i++, xfer->tx_buf, xfer->rx_buf, xfer->len);
 		/* all combined transfers have to have the same speed */
@@ -1575,12 +1498,11 @@ static int pentagram_spi_controller_transfer_one_message(struct spi_controller *
 	DBG_INF( "pm_put");
 #endif
 	return ret;
-
 #ifdef CONFIG_PM_RUNTIME_SPI
 pm_out:
 	pm_runtime_mark_last_busy(pspim->dev);
 	pm_runtime_put_autosuspend(pspim->dev);
-    DBG_INF( "pm_out");
+	DBG_INF( "pm_out");
 	return 0;
 #endif
 }
@@ -1627,7 +1549,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	ctlr->unprepare_message = pentagram_spi_controller_unprepare_message;
 
 	if ( mode == SPI_SLAVE) {
-		ctlr->transfer_one = pentagram_spi_controller_transfer_one;
+		ctlr->transfer_one = pentagram_spi_S_transfer_one;
 		ctlr->slave_abort = pentagram_spi_slave_abort;
 	}
 	else{
