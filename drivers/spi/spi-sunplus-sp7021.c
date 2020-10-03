@@ -644,7 +644,7 @@ free_master_combite_rw:
 // called when child device is registering on the bus
 static int pentagram_spi_D_setup( struct spi_device *_s)
 {
-	//struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
+	struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
 	FUNC_DBG( "spi_id:%d mode:%X controller_state:%p", pspim->ctlr->bus_num, _s->mode, spi_get_ctldata( _s));
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if ( pm_runtime_enabled( pspim->dev)) {
