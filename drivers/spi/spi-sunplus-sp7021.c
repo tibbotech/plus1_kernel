@@ -37,13 +37,13 @@
 #endif
 
 #ifdef SPI_DBG_INFO
-#define DBG_INF(fmt, args ...) printk(KERN_INFO "[SPI] inf (%d):  "  fmt "\n", __LINE__ , ## args)
+#define DBG_INF(fmt, args ...) printk(KERN_INFO "[SPI] inf (%d): "  fmt "\n", __LINE__ , ## args)
 #else
 #define DBG_INF(fmt, args ...)
 #endif
 
 #ifdef SPI_DBG_ERR
-#define DBG_ERR(fmt, args ...) printk(KERN_ERR "[SPI] err (%d):  "  fmt "\n", __LINE__ , ## args)
+#define DBG_ERR(fmt, args ...) printk(KERN_ERR "[SPI] err (%d): "  fmt "\n", __LINE__ , ## args)
 #else
 #define DBG_ERR(fmt, args ...)
 #endif
@@ -277,45 +277,34 @@ struct pentagram_spi_master {
 	void * tx_dma_vir_base;
 	void * rx_dma_vir_base;
 	struct completion isr_done;	// complete() at *master_(dma|mas)_irq()
-	
-	struct completion sla_isr;
+	struct completion sla_isr;	// completion() at spi_S_irq() - slave irq jandler
 	unsigned int bufsiz;	
 	
     unsigned int  rx_cur_len;
     unsigned int  tx_cur_len; 
 
     u8 tx_data_buf[SPI_MSG_DATA_SIZE];
-    u8 rx_data_buf[SPI_MSG_DATA_SIZE];	
-	
+    u8 rx_data_buf[SPI_MSG_DATA_SIZE];
+
 	int isr_flag;
 
-  unsigned int  data_unit;	
-	
+  unsigned int  data_unit;
 };
-
-
 
 
 static unsigned bufsiz = 4096;
 
-static irqreturn_t pentagram_spi_slave_sla_irq(int irq, void *dev)
+// spi slave irq handler
+static irqreturn_t pentagram_spi_S_irq( int _irq, void *_dev)
 {
 	unsigned long flags;
-	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)dev;
-	SPI_SLA* spis_reg = (SPI_SLA *)pspim->sla_base;
-	unsigned int reg_temp;
-
+	struct pentagram_spi_master *pspim = ( struct pentagram_spi_master *)_dev;
+	SPI_SLA* sr = ( SPI_SLA *)pspim->sla_base;
 	FUNC_DBG();
-
-	spin_lock_irqsave(&pspim->lock, flags);
-	reg_temp = readl(&spis_reg->RISC_INT_DATA_RDY);
-	reg_temp |= CLEAR_SLAVE_INT;
-	writel(reg_temp, &spis_reg->RISC_INT_DATA_RDY);
-	spin_unlock_irqrestore(&pspim->lock, flags);
-
-	complete(&pspim->sla_isr);
-
-	DBG_INF( "%s done", __FUNCTION__);
+	spin_lock_irqsave( &pspim->lock, flags);
+	writel( readl( &sr->RISC_INT_DATA_RDY) | CLEAR_SLAVE_INT, &sr->RISC_INT_DATA_RDY);
+	spin_unlock_irqrestore( &pspim->lock, flags);
+	complete( &pspim->sla_isr);
 	return IRQ_HANDLED;
 }
 
@@ -331,9 +320,7 @@ int pentagram_spi_slave_dma_rw(struct spi_device *spi,u8 *buf, unsigned int len,
 	unsigned long timeout = msecs_to_jiffies(2000);
 
 	FUNC_DBG();
-	
-    mutex_lock(&pspim->buf_lock);
-
+	mutex_lock(&pspim->buf_lock);
 
 	if(RW_phase == SPI_SLAVE_WRITE) { 
 		memcpy(pspim->tx_dma_vir_base, buf, len);
@@ -376,14 +363,10 @@ int pentagram_spi_slave_dma_rw(struct spi_device *spi,u8 *buf, unsigned int len,
 		//regs1->SLV_DMA_INI_ADDR = 0x400;
 	}
 
-
 exit_spi_slave_rw:
 	mutex_unlock(&pspim->buf_lock);
 	return 0;
-
-	
 }
-EXPORT_SYMBOL_GPL(pentagram_spi_slave_dma_rw);
 
 // slave only. usually called on driver remove
 static int pentagram_spi_S_abort( struct spi_controller *_c)
@@ -443,28 +426,24 @@ exit_spi_slave_rw:
 	return 0;
 }
 
-static irqreturn_t pentagram_spi_master_dma_irq(int irq, void *dev)
+// spi master irq handler
+static irqreturn_t pentagram_spi_M_irq_dma( int _irq, void *_dev)
 {
 	unsigned long flags;
-	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)dev;
-	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
-	unsigned int reg_temp;
-
+	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)_dev;
+	SPI_MAS* sr = ( SPI_MAS *)pspim->mas_base;
 	FUNC_DBG();
-
-	spin_lock_irqsave(&pspim->lock, flags);
-	reg_temp = readl(&spim_reg->DMA_CTRL);
-	reg_temp |= CLEAR_DMA_W_INT;
-	writel(reg_temp, &spim_reg->DMA_CTRL);
-	spin_unlock_irqrestore(&pspim->lock, flags);
-
-	complete(&pspim->isr_done);
+	spin_lock_irqsave( &pspim->lock, flags);
+	writel( readl( &sr->DMA_CTRL) | CLEAR_DMA_W_INT, &sr->DMA_CTRL);
+	spin_unlock_irqrestore( &pspim->lock, flags);
+	complete( &pspim->isr_done);
 	return IRQ_HANDLED;
 }
-static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
+
+static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 {
 	unsigned long flags;
-	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)dev;
+	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)_dev;
 	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
 	unsigned int reg_temp;
 	unsigned int i;
@@ -472,8 +451,7 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 
 	FUNC_DBG();
 
-
-	spin_lock_irqsave(&pspim->lock, flags);
+	spin_lock_irqsave( &pspim->lock, flags);
 
     tx_lenght = GET_TX_LENGTH(readl(&spim_reg->SPI_FD_STATUS));
 	DBG_INF("get tx_lenght = 0x%x",tx_lenght);
@@ -534,15 +512,12 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 				pspim->tx_cur_len++;
 		    }  
 		}
-
-
 	    spin_unlock_irqrestore(&pspim->lock, flags);
 	    return IRQ_HANDLED;
     }else if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG){
 
 	DBG_INF("RX_FULL_FLAG");
 
-	
            for(i=0;i<pspim->data_unit;i++){    // if READ_BYTE(0) i<data_unit  can set the condition at here
             //DBG_INF("rx_cur_len %d",pspim->rx_cur_len);
            //char_temp= (char)readl(&spim_reg->FIFO_DATA);
@@ -558,11 +533,8 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 			   DBG_INF("RX data 0x%x tx_cur_len = %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
 			   pspim->rx_cur_len++;		   
 		   }
-
-
 		   spin_unlock_irqrestore(&pspim->lock, flags);
 		   return IRQ_HANDLED;
-
 	}
 	
 
@@ -576,22 +548,20 @@ static irqreturn_t pentagram_spi_master_mas_irq(int irq, void *dev)
 		pspim->isr_flag = SPI_MASTER_READ;
 
 exit_irq:
-	reg_temp = readl(&spim_reg->SPI_INT_BUSY);
-	reg_temp |= CLEAR_MASTER_INT;
-	writel(reg_temp, &spim_reg->SPI_INT_BUSY);		
-	spin_unlock_irqrestore(&pspim->lock, flags);
-
-	complete(&pspim->isr_done);
+	writel( readl( &spim_reg->SPI_INT_BUSY) | CLEAR_MASTER_INT, &spim_reg->SPI_INT_BUSY);
+	spin_unlock_irqrestore( &pspim->lock, flags);
+	complete( &pspim->isr_done);
 	return IRQ_HANDLED;
 }
 
-static int pentagram_spi_master_combine_write_read(struct spi_controller *ctlr,
+// FIXME: data overflow is possible. What if _transfer > tx_data_buf ?
+static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
           struct spi_transfer *first, unsigned int transfers_cnt)
 {
-	struct pentagram_spi_master *pspim = spi_master_get_devdata(ctlr);
-	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
+	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
+	SPI_MAS *sr = ( SPI_MAS *)pspim->mas_base;
 	unsigned int data_len = 0 ;
-	unsigned int reg_temp = 0;
+	u32 reg_temp = 0;
 	unsigned long timeout = msecs_to_jiffies( 200);
 	unsigned int i;
 	int ret;
@@ -602,93 +572,61 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *ctlr,
 	FUNC_DBG();
 
 	memset( &pspim->tx_data_buf[0], 0, SPI_MSG_DATA_SIZE);
-	DBG_INF("tx_data_buf init 0x%x	,tx_cur_len %d ,transfers_cnt  %d",pspim->tx_data_buf[0],pspim->tx_cur_len,transfers_cnt);
-	DBG_INF("txrx: tx %p, rx %p, len %d", t->tx_buf, t->rx_buf, t->len);
+	DBG_INF( "tx _data_buf[0] 0x%x _cur_len %d transfers_cnt %d",pspim->tx_data_buf[0],pspim->tx_cur_len,transfers_cnt);
+	DBG_INF( "txrx: tx %p, rx %p, len %d", t->tx_buf, t->rx_buf, t->len);
 
-	mutex_lock(&pspim->buf_lock);
-	
+	mutex_lock( &pspim->buf_lock);
 	reinit_completion( &pspim->isr_done);
 
-	for (i = 0; i < transfers_cnt; i++) {
-
-		if (t->tx_buf) 
-			memcpy(&pspim->tx_data_buf[data_len], t->tx_buf, t->len);
-
-		if (t->rx_buf) 
-			xfer_rx = true;
-
+	for ( i = 0; i < transfers_cnt; i++) {
+		if ( t->tx_buf) memcpy( &pspim->tx_data_buf[ data_len], t->tx_buf, t->len);
+		if ( t->rx_buf) xfer_rx = true;
 		data_len += t->len;
-
-		t = list_entry(t->transfer_list.next, struct spi_transfer,
-			       transfer_list);
+		t = list_entry( t->transfer_list.next, struct spi_transfer, transfer_list);
 	}
 
-	DBG_INF("txrx: tx %p, rx %p, len %d", t->tx_buf, t->rx_buf, t->len);
+	DBG_INF( "tx_data_buf 0x%x tx_cur_len %d data_len %d", pspim->tx_data_buf[0], pspim->tx_cur_len, data_len);
+	DBG_INF( "xfer_rx %d",xfer_rx);
 
-	DBG_INF("tx_data_buf init 0x%x	,tx_cur_len %d ,data_len  %d",pspim->tx_data_buf[0],pspim->tx_cur_len,data_len);
-	DBG_INF("xfer_rx %d",xfer_rx);
-
-
-	
 	// set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
-    if(pspim->tx_cur_len < data_len){
-        if(data_len >= pspim->data_unit){
-		    for(i=0;i<pspim->data_unit;i++){
-		    DBG_INF("tx_data_buf 0x%x  ,tx_cur_len %d",pspim->tx_data_buf[i],pspim->tx_cur_len);
-		    writel(pspim->tx_data_buf[i], &spim_reg->FIFO_DATA);
-	    	   pspim->tx_cur_len++;
-	    	}
-        }else{
- 		    for(i=0;i<data_len;i++){
-		    DBG_INF("tx_data_buf 0x%x  ,cur_len %d",pspim->tx_data_buf[i],pspim->tx_cur_len);
-		    writel(pspim->tx_data_buf[i], &spim_reg->FIFO_DATA);
-		    pspim->tx_cur_len++;
-		    }   
-        }
-    }
-	
-    // initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
-	reg_temp = readl(&spim_reg->SPI_FD_CONFIG); 	
+	if ( pspim->tx_cur_len < data_len) {
+		data_len = min( pspim->data_unit, data_len);
+		for ( i = 0; i < data_len; i++) {
+			DBG_INF( "tx _data_buf 0x%x _cur_len %d", pspim->tx_data_buf[ i], pspim->tx_cur_len);
+			writel( pspim->tx_data_buf[ i], &sr->FIFO_DATA);
+			pspim->tx_cur_len++;
+		}
+	}
+	// initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
+	reg_temp = readl( &sr->SPI_FD_CONFIG);
 	reg_temp &= CLEAN_RW_BYTE;
-	reg_temp &= CLEAN_FLUG_MASK;	
+	reg_temp &= CLEAN_FLUG_MASK;
 	reg_temp |= FD_SEL;
-
-    // set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
+	// set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
 	reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;    //   | CPHA_R for sunplus slave | CPHA_W for BMP280
 	reg_temp |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
-	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);    
+	writel( reg_temp, &sr->SPI_FD_CONFIG);
+	DBG_INF( "SPI_FD_CONFIG =0x%x", readl( &sr->SPI_FD_CONFIG));
+	// set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
+	writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len), &sr->SPI_FD_STATUS);
+	DBG_INF( "set SPI_FD_STATUS =0x%x", readl( &sr->SPI_FD_STATUS));
+	writel( readl( &sr->SPI_FD_STATUS) | SPI_START_FD, &sr->SPI_FD_STATUS); 
 
-
-	DBG_INF("SPI_FD_CONFIG =0x%x",readl(&spim_reg->SPI_FD_CONFIG));
-
-    // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
-	writel(TOTAL_LENGTH(data_len) | TX_LENGTH(data_len),&spim_reg->SPI_FD_STATUS);
-
-	DBG_INF( "set SPI_FD_STATUS =0x%x",readl(&spim_reg->SPI_FD_STATUS));
-
-	
-        reg_temp = readl(&spim_reg->SPI_FD_STATUS);
-	reg_temp |= SPI_START_FD;
-	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
-
-	if(!wait_for_completion_timeout(&pspim->isr_done, timeout)){
-		DBG_INF("wait_for_completion_timeout");
+	if ( !wait_for_completion_timeout( &pspim->isr_done, timeout)){
+		DBG_INF( "wait_for_completion timeout");
 		ret = 1;
 		goto free_master_combite_rw;
 	}
-
-	if (xfer_rx == false){
+	if ( xfer_rx == false){
 		ret = 0;
 		goto free_master_combite_rw;
 	}
 
 	data_len = 0;
 	t = first;
-	
 	for ( i = 0; i < transfers_cnt; i++) {
 		if ( t->rx_buf) {
-			//DBG_INF("txrx1269: tx %p, rx %p, len %d\n", t->tx_buf, t->rx_buf, t->len);
-			memcpy( t->rx_buf, &pspim->rx_data_buf[data_len], t->len);
+			memcpy( t->rx_buf, &pspim->rx_data_buf[ data_len], t->len);
 		}
 		data_len += t->len;
 		t = list_entry(t->transfer_list.next, struct spi_transfer, transfer_list);
@@ -696,14 +634,8 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *ctlr,
 	ret = 0;
 free_master_combite_rw:
 	// reset SPI
-	reg_temp = readl(&spim_reg->SPI_FD_CONFIG);  
-	reg_temp &= CLEAN_FLUG_MASK;
-	writel(reg_temp, &spim_reg->SPI_FD_CONFIG);
-	
-	reg_temp = readl(&spim_reg->SPI_FD_STATUS);
-	reg_temp |= FD_SW_RST;
-	writel(reg_temp, &spim_reg->SPI_FD_STATUS); 
-
+	writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
+	writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
 	mutex_unlock(&pspim->buf_lock);
 	return ret;
 }
@@ -712,7 +644,7 @@ free_master_combite_rw:
 // called when child device is registering on the bus
 static int pentagram_spi_D_setup( struct spi_device *_s)
 {
-	struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
+	//struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
 	FUNC_DBG( "spi_id:%d mode:%X controller_state:%p", pspim->ctlr->bus_num, _s->mode, spi_get_ctldata( _s));
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if ( pm_runtime_enabled( pspim->dev)) {
@@ -887,7 +819,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 	unsigned int xfer_cnt = 0, total_len = 0;
 	bool start_xfer = false;
 	struct spi_transfer *xfer,*first_xfer = NULL;
-	int ret, i = 0;
+	int ret;
 
 	FUNC_DBG();
 
@@ -903,34 +835,35 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		if ( !first_xfer) first_xfer = xfer;
 		total_len +=  xfer->len;
 
-		DBG_INF("xfer #%d: tx %p, rx %p, len %d", i++, xfer->tx_buf, xfer->rx_buf, xfer->len);
+		DBG_INF("xfer tx %p, rx %p, len %d", xfer->tx_buf, xfer->rx_buf, xfer->len);
 		/* all combined transfers have to have the same speed */
-		if (first_xfer->speed_hz != xfer->speed_hz) {
+		if ( first_xfer->speed_hz != xfer->speed_hz) {
 			DBG_ERR( "unable to change speed between transfers\n");
 			ret = -EINVAL;
 			break;
 		}
 		/* CS will be deasserted directly after transfer */
-		if (xfer->delay_usecs) {
+		if ( xfer->delay_usecs) {
 			DBG_ERR( "can't keep CS asserted after transfer");
 			ret = -EINVAL;
 			break;
 		}
-		if (xfer->len > SPI_MSG_DATA_SIZE) {
+		if ( xfer->len > SPI_MSG_DATA_SIZE) {
 			DBG_ERR( "over total transfer length");
 			ret = -EINVAL;
 			break;
 		}
 
-		if ( list_is_last(&xfer->transfer_list, &m->transfers))
+		if ( list_is_last( &xfer->transfer_list, &m->transfers))
 			DBG_INF("xfer = transfer_list" );
-		if ((total_len > SPI_MSG_DATA_SIZE))
+		if ( ( total_len > SPI_MSG_DATA_SIZE))
 			DBG_INF("(total_len > SPI_MSG_DATA_SIZE)");
-		if (xfer->cs_change)
+		if ( xfer->cs_change)
 			DBG_INF("xfer->cs_change");
 
-		if (list_is_last(&xfer->transfer_list, &m->transfers) || (total_len > SPI_MSG_DATA_SIZE) 
-			|| xfer->cs_change){
+		if ( list_is_last( &xfer->transfer_list, &m->transfers)
+			|| (total_len > SPI_MSG_DATA_SIZE)
+			|| xfer->cs_change) {
 			start_xfer = true;
 		}
 
@@ -1076,14 +1009,14 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	}
 
 	/* requset irq*/
-	ret = devm_request_irq(&pdev->dev, pspim->dma_irq, pentagram_spi_master_dma_irq
+	ret = devm_request_irq(&pdev->dev, pspim->dma_irq, pentagram_spi_M_irq_dma
 						, IRQF_TRIGGER_RISING, pdev->name, pspim);
 	if (ret) {
 		dev_err(&pdev->dev, "%s devm_request_irq fail\n", DMA_IRQ_NAME);
 		goto free_alloc;
 	}
 
-	ret = devm_request_irq(&pdev->dev, pspim->mas_irq, pentagram_spi_master_mas_irq
+	ret = devm_request_irq(&pdev->dev, pspim->mas_irq, pentagram_spi_M_irq
 						, IRQF_TRIGGER_RISING, pdev->name, pspim);
 	if (ret) {
 		dev_err(&pdev->dev, "%s devm_request_irq fail\n", MAS_IRQ_NAME);
@@ -1091,7 +1024,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	}
 
 
-	ret = devm_request_irq(&pdev->dev, pspim->sla_irq, pentagram_spi_slave_sla_irq
+	ret = devm_request_irq(&pdev->dev, pspim->sla_irq, pentagram_spi_S_irq
 						, IRQF_TRIGGER_RISING, pdev->name, pspim);
 	if (ret) {
 		dev_err(&pdev->dev, "%s devm_request_irq fail\n", SLA_IRQ_NAME);
