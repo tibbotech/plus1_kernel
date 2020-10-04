@@ -416,7 +416,7 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 		{
 			dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
 		};
-		// FIXME: is "len" right there?
+		// FIXME: is "len" correct there?
 		memcpy( data_buf, pspim->rx_dma_vir_base, len);
 	}
 	writel( SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
@@ -444,8 +444,8 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 {
 	unsigned long flags;
 	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)_dev;
-	SPI_MAS* spim_reg = (SPI_MAS *)pspim->mas_base;
-	unsigned int reg_temp;
+	SPI_MAS* sr = ( SPI_MAS *)pspim->mas_base;
+	u32 fd_status = 0;
 	unsigned int i;
 	unsigned int tx_lenght;
 
@@ -453,102 +453,86 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 
 	spin_lock_irqsave( &pspim->lock, flags);
 
-    tx_lenght = GET_TX_LENGTH(readl(&spim_reg->SPI_FD_STATUS));
-	DBG_INF("get tx_lenght = 0x%x",tx_lenght);
+	tx_lenght = GET_TX_LENGTH( readl( &sr->SPI_FD_STATUS));
+	readl( &sr->SPI_FD_STATUS);
+	DBG_INF( "fd_status=0x%x tx_lenght = 0x%x", fd_status, tx_lenght);
+	DBG_INF( "rx_fifo_cnt:%d tx_fifo_cnt:%d", ( fd_status>>12) & 0x0F, ( fd_status>>16) & 0xFF);
 
-	if((readl(&spim_reg->SPI_FD_STATUS) & FINISH_FLAG) == FINISH_FLAG){
-	
-		DBG_INF("FINISH_FLAG");
-
-		    if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG){
-		        for(i=0;i<pspim->data_unit;i++){	 // if READ_BYTE(0) i<16  can set the condition at here
-		 	       pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
-		 	       DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
-		 	       pspim->rx_cur_len++;
-		 	    }
-		    }
-	
-			 while(readl(&spim_reg->SPI_FD_STATUS) & RX_CNT){	
-				 pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
-				 DBG_INF("RX data 0x%x ,tx_cur_len %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
-				 pspim->rx_cur_len++;
-			 }
-		
-			 DBG_INF("set SPI_FD_STATUS =0x%x",readl(&spim_reg->SPI_FD_STATUS));
-             goto exit_irq;
-	
-	}else if(((readl(&spim_reg->SPI_FD_STATUS) & TX_EMP_FLAG) == TX_EMP_FLAG) || (pspim->tx_cur_len < tx_lenght) ){
-
-	DBG_INF("TX_EMP_FLAG");
-
-	   if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG){
-			for(i=0;i<pspim->data_unit;i++){	 // if READ_BYTE(0) i<16  can set the condition at here
-			    pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
+	if ( ( fd_status & FINISH_FLAG) == FINISH_FLAG) {
+		DBG_INF( "FINISH_FLAG");
+		if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
+			// if READ_BYTE(0) i<16  can set the condition at here
+			for ( i = 0; i < pspim->data_unit; i++) {
+			    pspim->rx_data_buf[ pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
+			    DBG_INF( "RX 0x%x rx_cur_len = %d", pspim->rx_data_buf[ pspim->rx_cur_len], pspim->rx_cur_len);
+			    pspim->rx_cur_len++;
+			}
+		}
+		while ( readl( &sr->SPI_FD_STATUS) & RX_CNT) {
+			pspim->rx_data_buf[ pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
+			DBG_INF( "RX 0x%x rx_cur_len = %d", pspim->rx_data_buf[ pspim->rx_cur_len], pspim->rx_cur_len);
+			pspim->rx_cur_len++;
+		}
+		DBG_INF("set SPI_FD_STATUS =0x%x",readl( &sr->SPI_FD_STATUS));
+		goto exit_irq;
+	} else if ( ( ( fd_status & TX_EMP_FLAG) == TX_EMP_FLAG) || ( pspim->tx_cur_len < tx_lenght)) {
+		DBG_INF( "TX_EMP_FLAG");
+		if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
+			// if READ_BYTE(0) i<16  can set the condition at here
+			for(i=0;i<pspim->data_unit;i++) {
+			    pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
 			    DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
 			    pspim->rx_cur_len++;
 			    if(pspim->tx_cur_len < tx_lenght){
-		            writel(pspim->tx_data_buf[pspim->tx_cur_len], &spim_reg->FIFO_DATA);
-		            pspim->tx_cur_len++;				
+		            writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
+		            pspim->tx_cur_len++;
 				}
 			}
 		}
-	   
-	    while(readl(&spim_reg->SPI_FD_STATUS) & RX_CNT){   
-		    pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
-		    DBG_INF("RX data 0x%x tx_cur_len = %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
-		    pspim->rx_cur_len++;
-			if((pspim->tx_cur_len < tx_lenght) &&  ((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) != TX_FULL_FLAG)){
-		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &spim_reg->FIFO_DATA);
-		        pspim->tx_cur_len++;				
-			}			
-	    }
-
+		while ( readl( &sr->SPI_FD_STATUS) & RX_CNT) {
+			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
+			DBG_INF("RX data 0x%x ,tx_cur_len %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
+			pspim->rx_cur_len++;
+			if((pspim->tx_cur_len < tx_lenght) &&  ((readl( &sr->SPI_FD_STATUS) & TX_FULL_FLAG) != TX_FULL_FLAG)){
+		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
+		        pspim->tx_cur_len++;
+			}
+		}
 		if(pspim->tx_cur_len < tx_lenght){
  		    while(tx_lenght-pspim->tx_cur_len){
 		    	DBG_INF("tx_data_buf 0x%x  ,tx_cur_len %d",pspim->tx_data_buf[pspim->tx_cur_len],pspim->tx_cur_len);
-				if((readl(&spim_reg->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
+				if((readl( &sr->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
 			    	break;
-		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &spim_reg->FIFO_DATA);
+		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
 				pspim->tx_cur_len++;
-		    }  
+		    } 
 		}
-	    spin_unlock_irqrestore(&pspim->lock, flags);
-	    return IRQ_HANDLED;
-    }else if((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG){
-
-	DBG_INF("RX_FULL_FLAG");
-
-           for(i=0;i<pspim->data_unit;i++){    // if READ_BYTE(0) i<data_unit  can set the condition at here
-            //DBG_INF("rx_cur_len %d",pspim->rx_cur_len);
-           //char_temp= (char)readl(&spim_reg->FIFO_DATA);
-		   //DBG_INF("001 char_temp %d",char_temp);
-		    //pspim->rx_data_buf[pspim->rx_cur_len] = (char)readl(&spim_reg->FIFO_DATA);
-			   pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
-		       DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
-               pspim->rx_cur_len++;
-           }
-
-		   while((readl(&spim_reg->SPI_FD_STATUS) & RX_CNT) || ((readl(&spim_reg->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG)){   
-			   pspim->rx_data_buf[pspim->rx_cur_len] = readl(&spim_reg->FIFO_DATA);
-			   DBG_INF("RX data 0x%x tx_cur_len = %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
-			   pspim->rx_cur_len++;		   
-		   }
-		   spin_unlock_irqrestore(&pspim->lock, flags);
-		   return IRQ_HANDLED;
+		spin_unlock_irqrestore(&pspim->lock, flags);
+		return IRQ_HANDLED;
+	} else if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
+		DBG_INF("RX_FULL_FLAG");
+		for(i=0;i<pspim->data_unit;i++){    // if READ_BYTE(0) i<data_unit  can set the condition at here
+			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
+			DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
+			pspim->rx_cur_len++;
+		}
+		while((readl( &sr->SPI_FD_STATUS) & RX_CNT) || ((readl( &sr->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG)){   
+			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
+			DBG_INF("RX data 0x%x tx_cur_len = %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
+			pspim->rx_cur_len++;		   
+		}
+		spin_unlock_irqrestore(&pspim->lock, flags);
+		return IRQ_HANDLED;
 	}
-	
 
-
-	if(pspim->isr_flag == SPI_MASTER_WRITE)
-	{
-		reg_temp = readl(&spim_reg->SPI_CTRL_CLKSEL);
-		reg_temp |= SPI_START;
-		writel(reg_temp, &spim_reg->SPI_CTRL_CLKSEL);
-	}else
+	if ( pspim->isr_flag == SPI_MASTER_WRITE) {
+		writel( readl( &sr->SPI_CTRL_CLKSEL) | SPI_START, &sr->SPI_CTRL_CLKSEL);
+	} else {
 		pspim->isr_flag = SPI_MASTER_READ;
+	}
 
 exit_irq:
-	writel( readl( &spim_reg->SPI_INT_BUSY) | CLEAR_MASTER_INT, &spim_reg->SPI_INT_BUSY);
+	writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
 	spin_unlock_irqrestore( &pspim->lock, flags);
 	complete( &pspim->isr_done);
 	return IRQ_HANDLED;
@@ -636,7 +620,7 @@ free_master_combite_rw:
 	// reset SPI
 	writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
 	writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
-	mutex_unlock(&pspim->buf_lock);
+	mutex_unlock( &pspim->buf_lock);
 	return ret;
 }
 
