@@ -42,7 +42,7 @@
 #define AWB_MIN_GRAY_DET_CNT	0x3000 
 #define AWB_CHECK_BLK_CNT		13
 #define	AWB_CM_ADJ_CNT			3
-extern int isVideoStart(void); //in isp_api.c
+extern int isVideoStart(void);  // in isp_api.c
 
 u8 AwbRRef[AWB_CHECK_BLK_CNT] = {  62,  65, 68, 73, 78, 83, 88, 92, 96, 100, /*CW 10~12*/  86, 91, 95 };
 u8 AwbBRef[AWB_CHECK_BLK_CNT] = { 128, 120, 114, 108, 103, 97, 92, 86, 80, 75, /*CW 10~12*/ 103, 97, 92};
@@ -73,96 +73,104 @@ u8 Sin0_90[91] = {
 	0xf1, 0xf2, 0xf3, 0xf5, 0xf6, 0xf7, 0xf8, 0xf9, 0xfa, 0xfb,
 	0xfc, 0xfd, 0xfd, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff};
-u16 sensor_gain_addr = 0;
-u16 sensor_frame_len_addr = 0;
-u16 sensor_line_total_addr = 0;
-u16 sensor_exp_line_addr = 0;
-u32 sensor_pclk = 0;
-u32 ctExposureTimeAbsoluteCur = CTEXPOSURETIMEABSOLUTECUR;
-u8 AeTest = 0;
-u16 AeExp = 0;
-u16 AeExpGet = 0;
-u8 AeExpLineMode = 0;
-u8 AePreExpLineMode = 0;
-u16 AeLineModeExpLineCount = 0;
-u16 SensorLineCountOut = 0;
-u16 AeCurExpLine = 0;
-u16 SensorMinFrameLen = 0;
-u16 AeGain = 0;
-u16 AeGainGet = 0;
-u32 AeEvConst = 0;
-u32 AeCurEv = 0;
-u16 pAeGainTbl[256], pAeExpTbl[256];
-u8 AeTblCntVal = 0;
-u16* AeExpTableSfAddr = 0;
-u16* AeGainTableSfAddr = 0;
-u16 AeExpLineCount120 = 0;
-u16 SensorExpIn = 0;
-u16 AwbCurColTemp = 0;
-u16 AwbColTemp = 0;
-u16 AwbBGainReg = 0;
-u16 AwbRGainReg = 0;
-u16 AwbGGainReg = 0;
-u16 AwbRawRGain = 0;
-u16 AwbRawGGain = 0;
-u16 AwbRawBGain = 0;
-u16 AwbRGainTarget = 0;
-u16 AwbGGainTarget = 0;
-u16 AwbBGainTarget = 0;
-u16 AwbPreRTarget = 0;
-u16 AwbDeadZone = 0;
-u16 AwbPreBTarget = 0;
-u32 AwbSumCount = 0;
-u32 AwbSumR = 0;
-u32 AwbSumG = 0;
-u32 AwbSumB = 0;
-u32 AeImgSize = 0;
-u8 AeDarkMode = 0;
-u8 AeDeadZone = 0;
-u16 AeDeadLeafWinSize = 0;
-u8 AeDarkThresh0 = 0;
-short AeIndex = AEINDEX;
-short AeIndexPrev = AEINDEXPREV;
-short AeIndexGet = 0;
-u8 AeIndexMax = 0xdd;
-u8 AaaFreq = 0;
-u8 AeIndexMin = 0;
-u8 AeIndexMax60 = AEINDEXMAX60;
-u8 AeIndexMax50 = AEINDEXMAX50;
-u8 AeIndexMin60 = AEINDEXMIN60;
-u8 AeIndexMin50 = AEINDEXMIN50;
-u8 aaaFlag  =  0, aaaCount  =  0;
-u8 AwbMinGain = 0;
-u8 AwbFirstInit = 1;
-u8 AwbMode = 0;
 
-u8 AwbRWidth = 0;
-u8 AwbBWidth = 0;
-u32 AwbMinGrayDetCnt = 0;
-u16 AwbCheckBlkCnt = 0;
-u8* pAwbRRef = 0;
-u8* pAwbBRef = 0;
-u8 AwbCmAdjCnt = 0;
-u16* pAwbAdjCmColTemp = 0;
-short* pAwbAdjCmColMat = 0;
-u8 AwbLensAdjCnt = 0;
-short* pAwbAdjLensColTemp = 0;
-short* pAwbAdjLensRVal = 0;
-short* pAwbAdjLensBVal = 0;
-short AeAdjYTarget = 0;
-u16 AeYTarget = 0;
-u8 AwbBTargetMin = 0;
-u8 AwbBTargetMax = 0;
-u8 AwbRTargetMin = 0;
-u8 AwbRTargetMax = 0;
-u8 AwbGTargetMin = 0;
-u8 AwbGTargetMax = 0;
-short AeYLayer = 0;
-u16 puBacklightCompensationCur = PUBACKLIGHTCOMPENSATIONCUR;
-u16 puBacklightCompensationDef = PUBACKLIGHTCOMPENSATIONDEF;
-u8* pAeNormWeight = 0;
-u8 AeStable = 0;
-u8 AeStill = 0;
+struct aaa_var {
+	u16 sensor_gain_addr;
+	u16 sensor_frame_len_addr;
+	u16 sensor_line_total_addr;
+	u16 sensor_exp_line_addr;
+	u32 sensor_pclk;
+	u32 ctExposureTimeAbsoluteCur;
+	u8 AeTest;
+	u16 AeExp;
+	u16 AeExpGet;
+	u8 AeExpLineMode;
+	u8 AePreExpLineMode;
+	u16 AeLineModeExpLineCount;
+	u16 SensorLineCountOut;
+	u16 AeCurExpLine;
+	u16 SensorMinFrameLen;
+	u16 AeGain;
+	u16 AeGainGet;
+	u32 AeEvConst;
+	u32 AeCurEv;
+	u16 pAeGainTbl[256];
+	u16 pAeExpTbl[256];
+	u8 AeTblCntVal;
+	u16* AeExpTableSfAddr;
+	u16* AeGainTableSfAddr;
+	u16 AeExpLineCount120;
+	u16 SensorExpIn;
+	u16 AwbCurColTemp;
+	u16 AwbColTemp;
+	u16 AwbBGainReg;
+	u16 AwbRGainReg;
+	u16 AwbGGainReg;
+	u16 AwbRawRGain;
+	u16 AwbRawGGain;
+	u16 AwbRawBGain;
+	u16 AwbRGainTarget;
+	u16 AwbGGainTarget;
+	u16 AwbBGainTarget;
+	u16 AwbPreRTarget;
+	u16 AwbDeadZone;
+	u16 AwbPreBTarget;
+	u32 AwbSumCount;
+	u32 AwbSumR;
+	u32 AwbSumG;
+	u32 AwbSumB;
+	u32 AeImgSize;
+	u8 AeDarkMode;
+	u8 AeDeadZone;
+	u16 AeDeadLeafWinSize;
+	u8 AeDarkThresh0;
+	short AeIndex;
+	short AeIndexPrev;
+	short AeIndexGet;
+	u8 AeIndexMax;
+	u8 AaaFreq;
+	u8 AeIndexMin;
+	u8 AeIndexMax60;
+	u8 AeIndexMax50;
+	u8 AeIndexMin60;
+	u8 AeIndexMin50;
+	u8 aaaFlag;
+	u8 aaaCount;
+	u8 AwbMinGain;
+	u8 AwbFirstInit;
+	u8 AwbMode;
+	u8 AwbRWidth;
+	u8 AwbBWidth;
+	u32 AwbMinGrayDetCnt;
+	u16 AwbCheckBlkCnt;
+	u8* pAwbRRef;
+	u8* pAwbBRef;
+	u8 AwbCmAdjCnt;
+	u16* pAwbAdjCmColTemp;
+	short* pAwbAdjCmColMat;
+	u8 AwbLensAdjCnt;
+	short* pAwbAdjLensColTemp;
+	short* pAwbAdjLensRVal;
+	short* pAwbAdjLensBVal;
+	short AeAdjYTarget;
+	u16 AeYTarget;
+	u8 AwbBTargetMin;
+	u8 AwbBTargetMax;
+	u8 AwbRTargetMin;
+	u8 AwbRTargetMax;
+	u8 AwbGTargetMin;
+	u8 AwbGTargetMax;
+	short AeYLayer;
+	u16 puBacklightCompensationCur;
+	u16 puBacklightCompensationDef;
+	u8* pAeNormWeight;
+	u8 AeStable;
+	u8 AeStill;
+};
+
+typedef struct aaa_var aaa_var_t;
+static aaa_var_t stAaaVar[2];
+
 
 u32 sensorGainRegToVal(u16 gainRegVal)
 {
@@ -332,6 +340,7 @@ void vidctrlPuHue(struct mipi_isp_info *isp_info, short puHueCur)
 void vidctrlPuSaturation(struct mipi_isp_info *isp_info, short puSaturationCur)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 	short sat;
 	//char AdjByAe;
 	short DefVal;
@@ -343,23 +352,22 @@ void vidctrlPuSaturation(struct mipi_isp_info *isp_info, short puSaturationCur)
 	if(readb(&(regs->reg[0x21c0])) == 0x23) DefVal = 0x2a; //0x31;	//x28;//2c	//yuv	//jim:27
 	else DefVal = 0x30;
 
-	if(AeIndex >= 160)
+	if(stAaaVar[num].AeIndex >= 160)
 		DefVal = DefVal - 5;
-	else if(AeIndex >= 140)
-		DefVal = DefVal - 5*(AeIndex-140)/(160-140);
+	else if(stAaaVar[num].AeIndex >= 140)
+		DefVal = DefVal - 5*(stAaaVar[num].AeIndex-140)/(160-140);
 
-	
 #if 1
-	//80lux E27 Warm AwbCurColTemp = 164		aeindex = 185(0xb9)
-	//20lux 3000k    AwbCurColTemp = 135 		aeindex = 210(0xd0)
+	//80lux E27 Warm AwbCurColTemp = 164	aeindex = 185(0xb9)
+	//20lux 3000k    AwbCurColTemp = 135 	aeindex = 210(0xd0)
 	//80lux 3000k    AwbCurColTemp = 145    aeindex = 186(0xba)
 	
-	if(AwbCurColTemp < 100) 
+	if(stAaaVar[num].AwbCurColTemp < 100) 
 		DefVal = DefVal+0;
-	else if(AwbCurColTemp > 150) 
+	else if(stAaaVar[num].AwbCurColTemp > 150) 
 		DefVal = DefVal+16;
 	else 
-		DefVal =  DefVal+0+(16-0)*(AwbCurColTemp-100)/(150-100);
+		DefVal = DefVal+0+(16-0)*(stAaaVar[num].AwbCurColTemp-100)/(150-100);
 #endif	
 	
 	sat = (sat*DefVal)/64;
@@ -389,7 +397,7 @@ void vidctrlPuGamma(struct mipi_isp_info *isp_info, u16 puGammaCur)
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-//	if(AeDarkMode == 0)
+	//if(AeDarkMode == 0)
 	{
 		for (i = 0; i < 15; i++)
 		{
@@ -403,17 +411,18 @@ void vidctrlPuGamma(struct mipi_isp_info *isp_info, u16 puGammaCur)
 		}
 
 	}
-//	else
-//	{
-//		for(i=0; i<12; i++) XBYTE[0x2161+i] = 0;
-//		XBYTE[0x2161+12] = 50;
-//		XBYTE[0x2161+13] = 100;
-//		XBYTE[0x2161+14] = 200;
-//	}
+	//else
+	//{
+	//	for(i=0; i<12; i++) XBYTE[0x2161+i] = 0;
+	//	XBYTE[0x2161+12] = 50;
+	//	XBYTE[0x2161+13] = 100;
+	//	XBYTE[0x2161+14] = 200;
+	//}
 }
 
-void aeGetGainIsr(void)
+void aeGetGainIsr(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	//u16 sfAddr;
 	u16* sfAddr;
 
@@ -421,8 +430,8 @@ void aeGetGainIsr(void)
 
 	//sfAddr = AeGainTableSfAddr + (AeIndexGet << 1);
 	//AeGainGet=pAeGainTbl[sfAddr];
-	sfAddr = AeGainTableSfAddr + AeIndexGet;
-	AeGainGet=*sfAddr;
+	sfAddr = stAaaVar[num].AeGainTableSfAddr + stAaaVar[num].AeIndexGet;
+	stAaaVar[num].AeGainGet =* sfAddr;
 
 	//SfSpi.sfAddr = (u8 *)&sfAddr;
 	//SfSpi.sfData = (u8 *)&AeGainGet;
@@ -430,8 +439,9 @@ void aeGetGainIsr(void)
 	//sfReadBytesIsr_ROM();
 }
 
-void aeGetExposureIsr(void)
+void aeGetExposureIsr(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	//u16 sfAddr;
 	u16* sfAddr;
 
@@ -439,12 +449,12 @@ void aeGetExposureIsr(void)
 
 	//sfAddr = AeExpTableSfAddr + (AeIndexGet << 1);
 	//AeExpGet=pAeExpTbl[sfAddr];
-	sfAddr = AeExpTableSfAddr + AeIndexGet;
+	sfAddr = stAaaVar[num].AeExpTableSfAddr + stAaaVar[num].AeIndexGet;
 
 	ISP3A_LOGD("sfAddr=0x%p, AeExpTableSfAddr=0x%p, AeIndexGet=%d\n", 
-				sfAddr, AeExpTableSfAddr, AeIndexGet);
+				sfAddr, stAaaVar[num].AeExpTableSfAddr, stAaaVar[num].AeIndexGet);
 
-	AeExpGet=*sfAddr;
+	stAaaVar[num].AeExpGet=*sfAddr;
 
 	//SfSpi.sfAddr = (u8 *)&sfAddr;
 	//SfSpi.sfData = (u8 *)&AeExpGet;
@@ -454,80 +464,83 @@ void aeGetExposureIsr(void)
 	ISP3A_LOGD("%s end\n", __FUNCTION__);
 }
 
-u32 aeGetDeltaEv(u32 desireEv, short idx)
+u32 aeGetDeltaEv(struct mipi_isp_info *isp_info, u32 desireEv, short idx)
 {
+	u16 num = isp_info->video_device->num;
 	u32 deltaEv;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	//EA = 0;	/* disable all interrupts */
 
-	AeIndexGet = AeIndex = idx;
-	aeGetExposureIsr();
-	aeGetGainIsr();
+	stAaaVar[num].AeIndexGet = stAaaVar[num].AeIndex = idx;
+	aeGetExposureIsr(isp_info);
+	aeGetGainIsr(isp_info);
 
 	//EA = 1;	/* Enable all interrupts */
 
-	AeExp = AeExpGet;
-	AeGain = AeGainGet;
-	aeGetCurEv();
+	stAaaVar[num].AeExp = stAaaVar[num].AeExpGet;
+	stAaaVar[num].AeGain = stAaaVar[num].AeGainGet;
+	aeGetCurEv(isp_info);
 
-	if (desireEv > AeCurEv)
-		deltaEv = desireEv - AeCurEv;
+	if (desireEv > stAaaVar[num].AeCurEv)
+		deltaEv = desireEv - stAaaVar[num].AeCurEv;
 	else
-		deltaEv = AeCurEv - desireEv;
+		deltaEv = stAaaVar[num].AeCurEv - desireEv;
 
 	return(deltaEv);
 }
 
 void vidctrlPuBacklightCompensation(struct mipi_isp_info *isp_info, short puPowerLineFrequencyCur)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	if(isVideoStart()==1)
+	if (isVideoStart() == 1)
 	{
 		if ((puPowerLineFrequencyCur == 2))
 		{	
-			AeExpTableSfAddr = pAeExpTbl;//SF_AE_EXP_60;
-			AeGainTableSfAddr = pAeGainTbl;//SF_AE_GAIN_60;
-			AeIndexMax = 0xdd;//235-2;
+			stAaaVar[num].AeExpTableSfAddr = stAaaVar[num].pAeExpTbl;//SF_AE_EXP_60;
+			stAaaVar[num].AeGainTableSfAddr = stAaaVar[num].pAeGainTbl;//SF_AE_GAIN_60;
+			stAaaVar[num].AeIndexMax = 0xdd;//235-2;
 		}
 		else
-		{			
-			AeExpTableSfAddr = pAeExpTbl;//SF_AE_EXP_50;
-			AeGainTableSfAddr = pAeGainTbl;//SF_AE_GAIN_50;
-			AeIndexMax = 0xdd;//235-2;//0xe9
+		{
+			stAaaVar[num].AeExpTableSfAddr = stAaaVar[num].pAeExpTbl;//SF_AE_EXP_50;
+			stAaaVar[num].AeGainTableSfAddr = stAaaVar[num].pAeGainTbl;//SF_AE_GAIN_50;
+			stAaaVar[num].AeIndexMax = 0xdd;//235-2;//0xe9
 		}
 
-		if(AeIndex > AeIndexMax) AeIndex = AeIndexMax;
-		if(AeIndex < 0) AeIndex = 0;
-		AeIndexGet = AeIndex;
+		if(stAaaVar[num].AeIndex > stAaaVar[num].AeIndexMax) stAaaVar[num].AeIndex = stAaaVar[num].AeIndexMax;
+		if(stAaaVar[num].AeIndex < 0) stAaaVar[num].AeIndex = 0;
+		stAaaVar[num].AeIndexGet = stAaaVar[num].AeIndex;
 
 		if(1)//UvcVcCtrl.ctAutoExposureModeCur ==0x08)
 		{
-			if(AeExpLineMode == 0)
+			if(stAaaVar[num].AeExpLineMode == 0)
 			{
 				//EA = 0;	/* disable all interrupts */
-				aeGetExposureIsr();
-				AeExp = AeExpGet;
+				aeGetExposureIsr(isp_info);
+				stAaaVar[num].AeExp = stAaaVar[num].AeExpGet;
 			}
 			else
 			{
-				AeIndex = 0;
+				stAaaVar[num].AeIndex = 0;
 			}
 
 			//EA = 0;	/* disable all interrupts */
-			aeGetGainIsr();
-			AeGain = AeGainGet;			
+			aeGetGainIsr(isp_info);
+			stAaaVar[num].AeGain = stAaaVar[num].AeGainGet;
 			sensorSetExposureTimeIsr(isp_info);
 			sensorSetGainIsr(isp_info);
 			//EA = 1;	/* Enable all interrupts */
-			aaaFlag = 0;
-			aaaCount = 0;
-			aeGetCurEv();
+			stAaaVar[num].aaaFlag = 0;
+			stAaaVar[num].aaaCount = 0;
+			aeGetCurEv(isp_info);
 		}
 	}
-	AeIndexPrev = AeIndex;
+	stAaaVar[num].AeIndexPrev = stAaaVar[num].AeIndex;
 }
 
 void vidctrlPuPowerLineFrequency(void)
@@ -544,13 +557,16 @@ void vidctrlPuGain(void)
 
 void sensorSetGainIsr(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	setSensor16_I2C0(sensor_gain_addr, AeGain, 2, isp_info);
+	setSensor16_I2C0(stAaaVar[num].sensor_gain_addr, stAaaVar[num].AeGain, 2, isp_info);
 }
 
 void sensorExpToLineCountIsr(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	u16 lineTotal;
 	//u8 pllMul;
 	//u8 pllDiv, pllDiv2, pllDiv4;
@@ -562,12 +578,12 @@ void sensorExpToLineCountIsr(struct mipi_isp_info *isp_info)
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	/* get input */
-	exp = SensorExpIn;
+	exp = stAaaVar[num].SensorExpIn;
 
 	/* get pixel clock */
-	pixelClock = sensor_pclk;
+	pixelClock = stAaaVar[num].sensor_pclk;
 	//
-	getSensor16_I2C0(sensor_line_total_addr, &lineTotal, 2, isp_info);
+	getSensor16_I2C0(stAaaVar[num].sensor_line_total_addr, &lineTotal, 2, isp_info);
 	lineTotal *= 2;
 	//
 	/* calculate exposure line */
@@ -586,31 +602,32 @@ void sensorExpToLineCountIsr(struct mipi_isp_info *isp_info)
 		expLine = (u16)(((u32)pixelClock * 16) /((u32)lineTotal * exp));
 	
 	/* set output */
-	SensorLineCountOut = expLine;
+	stAaaVar[num].SensorLineCountOut = expLine;
 }
 	
 void sensorSetExposureTimeIsr(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	u16 expLine;
 	u16 frameLen;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	/* get exposure line */
-	if (AeExpLineMode == 1)
+	if (stAaaVar[num].AeExpLineMode == 1)
 	{
-		expLine = AeLineModeExpLineCount;
+		expLine = stAaaVar[num].AeLineModeExpLineCount;
 	}
 	else
 	{
-		SensorExpIn = AeExp;
+		stAaaVar[num].SensorExpIn = stAaaVar[num].AeExp;
 		sensorExpToLineCountIsr(isp_info);
-		expLine = SensorLineCountOut;
+		expLine = stAaaVar[num].SensorLineCountOut;
 	}
-	AeCurExpLine = expLine;
+	stAaaVar[num].AeCurExpLine = expLine;
 
 	/* set frame length */
-	frameLen = SensorMinFrameLen;
+	frameLen = stAaaVar[num].SensorMinFrameLen;
 	if ((expLine) > (frameLen-4))
 		frameLen = expLine + 4;
 
@@ -618,25 +635,26 @@ void sensorSetExposureTimeIsr(struct mipi_isp_info *isp_info)
 	expLine = 4;
 	expLine = expLine<<4;
 	//
-	setSensor16_I2C0(sensor_frame_len_addr, frameLen, 2, isp_info);
-	setSensor16_I2C0(sensor_exp_line_addr, expLine, 2, isp_info);
+	setSensor16_I2C0(stAaaVar[num].sensor_frame_len_addr, frameLen, 2, isp_info);
+	setSensor16_I2C0(stAaaVar[num].sensor_exp_line_addr, expLine, 2, isp_info);
 }
 
 void vidctrlCtExposureTimeAbsolute(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	if (ctExposureTimeAbsoluteCur!= 0)
+	if (stAaaVar[num].ctExposureTimeAbsoluteCur != 0)
 	{
-		AeExp = 160000 / (ctExposureTimeAbsoluteCur);
-		AeExpLineMode = 0;
-		AeGain = MANUALEXPGAIN;
+		stAaaVar[num].AeExp = 160000 / (stAaaVar[num].ctExposureTimeAbsoluteCur);
+		stAaaVar[num].AeExpLineMode = 0;
+		stAaaVar[num].AeGain = MANUALEXPGAIN;
 
 		//EA = 0;	/* disable all interrupts */
 		sensorSetExposureTimeIsr(isp_info);
 		sensorSetGainIsr(isp_info);
 		//EA = 1;	/* Enable all interrupts */
-
 	}
 }
 
@@ -656,27 +674,29 @@ void vidctrlInit(struct mipi_isp_info *isp_info,
 				u16 _sensor_exp_line_addr,
 				u32 _sensor_pclk)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	sensor_gain_addr=_sensor_gain_addr;
-	sensor_frame_len_addr=_sensor_frame_len_addr;
-	sensor_line_total_addr=_sensor_line_total_addr;
-	sensor_exp_line_addr=_sensor_exp_line_addr;
-	sensor_pclk=_sensor_pclk;
+	stAaaVar[num].sensor_gain_addr=_sensor_gain_addr;
+	stAaaVar[num].sensor_frame_len_addr=_sensor_frame_len_addr;
+	stAaaVar[num].sensor_line_total_addr=_sensor_line_total_addr;
+	stAaaVar[num].sensor_exp_line_addr=_sensor_exp_line_addr;
+	stAaaVar[num].sensor_pclk=_sensor_pclk;
 
 	// add table init for aeGetExposureIsr()
-	AeExpTableSfAddr = pAeExpTbl;//SF_AE_EXP_60;
-	AeGainTableSfAddr = pAeGainTbl;//SF_AE_GAIN_60;
-	AeIndexMax = 0xdd;//235-2;
-	getSensor16_I2C0(sensor_frame_len_addr, &SensorMinFrameLen, 2, isp_info);
+	stAaaVar[num].AeExpTableSfAddr = stAaaVar[num].pAeExpTbl;//SF_AE_EXP_60;
+	stAaaVar[num].AeGainTableSfAddr = stAaaVar[num].pAeGainTbl;//SF_AE_GAIN_60;
+	stAaaVar[num].AeIndexMax = 0xdd;//235-2;
+	getSensor16_I2C0(stAaaVar[num].sensor_frame_len_addr, &stAaaVar[num].SensorMinFrameLen, 2, isp_info);
 	//
 	//EA = 0; /* disable all interrupts */
-	AeIndexGet = AeIndex;
-	aeGetExposureIsr();
-	AeExp = AeExpGet;
-	aeGetGainIsr();
-	AeGain = AeGainGet;
-	AeStill = 0;
+	stAaaVar[num].AeIndexGet = stAaaVar[num].AeIndex;
+	aeGetExposureIsr(isp_info);
+	stAaaVar[num].AeExp = stAaaVar[num].AeExpGet;
+	aeGetGainIsr(isp_info);
+	stAaaVar[num].AeGain = stAaaVar[num].AeGainGet;
+	stAaaVar[num].AeStill = 0;
 	sensorSetExposureTimeIsr(isp_info);
 	sensorSetGainIsr(isp_info);
 	//EA = 1; /* enable all interrupts */
@@ -785,11 +805,12 @@ void aeSetWin_ROM(struct mipi_isp_info *isp_info, u16 hsize, u16 vsize, u16 hOff
 void aeFuncExt(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 	//u16 tmp;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	if(AeIndex > 130)
+	if(stAaaVar[num].AeIndex > 130)
 	{
 		 writeb(12, &(regs->reg[0x2175]));
 		 writeb(24, &(regs->reg[0x2176]));
@@ -800,7 +821,7 @@ void aeFuncExt(struct mipi_isp_info *isp_info)
 		 writeb(30, &(regs->reg[0x31FE]));
 		 writeb(60, &(regs->reg[0x31FF]));
 	}
-	else if(AeIndex < 100)
+	else if(stAaaVar[num].AeIndex < 100)
 	{
 		 writeb( 6, &(regs->reg[0x2175]));
 		 writeb(12, &(regs->reg[0x2176]));
@@ -813,30 +834,31 @@ void aeFuncExt(struct mipi_isp_info *isp_info)
 	}
 	else
 	{
-		 writeb( 6 + (12- 6)*(AeIndex-100)/(130-100), &(regs->reg[0x2175]));
-		 writeb(12 + (24-12)*(AeIndex-100)/(130-100), &(regs->reg[0x2176]));
-		 writeb(12 + (32-12)*(AeIndex-100)/(130-100), &(regs->reg[0x31D0]));
-		 writeb(12 + (32-12)*(AeIndex-100)/(130-100), &(regs->reg[0x31D1]));
-		 writeb(12 + (32-12)*(AeIndex-100)/(130-100), &(regs->reg[0x31D2]));
-		 writeb(12 + (32-12)*(AeIndex-100)/(130-100), &(regs->reg[0x31D3]));
-		 writeb(10 + (30-10)*(AeIndex-100)/(130-100), &(regs->reg[0x31FE]));
-		 writeb(20 + (60-20)*(AeIndex-100)/(130-100), &(regs->reg[0x31FF]));
+		 writeb( 6 + (12- 6)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x2175]));
+		 writeb(12 + (24-12)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x2176]));
+		 writeb(12 + (32-12)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31D0]));
+		 writeb(12 + (32-12)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31D1]));
+		 writeb(12 + (32-12)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31D2]));
+		 writeb(12 + (32-12)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31D3]));
+		 writeb(10 + (30-10)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31FE]));
+		 writeb(20 + (60-20)*(stAaaVar[num].AeIndex-100)/(130-100), &(regs->reg[0x31FF]));
 	}
 }
 
-void aeGetCurEv(void)
+void aeGetCurEv(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	u32 gainVal;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	if (AeExpLineMode == 0)
+	if (stAaaVar[num].AeExpLineMode == 0)
 	{
-		gainVal = sensorGainRegToVal(AeGain);
-		AeCurEv = AeEvConst * gainVal / (u32)AeExp;
+		gainVal = sensorGainRegToVal(stAaaVar[num].AeGain);
+		stAaaVar[num].AeCurEv = stAaaVar[num].AeEvConst * gainVal / (u32)stAaaVar[num].AeExp;
 	}
 	else
-		AeCurEv = pAeExpTbl[0];
+		stAaaVar[num].AeCurEv = stAaaVar[num].pAeExpTbl[0];
 	// else
 	// {
 	// 	gainVal = sensorGainRegToVal(AeGain);
@@ -874,13 +896,15 @@ void aeDeadLeafWinInit(struct mipi_isp_info *isp_info, u16 hsize, u16 vsize, u16
 	writeb(0x01, &(regs->reg[0x2299]));
 }
 
-void aeInitVar(void)//call only once in main when plug in
+void aeInitVar(struct mipi_isp_info *isp_info)  // call only once in main when plug in
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	AeEvConst = AE_EV_CONST;	
-	AeCurExpLine = 3;
-	AeExpLineMode = 0;
+	stAaaVar[num].AeEvConst = AE_EV_CONST;	
+	stAaaVar[num].AeCurExpLine = 3;
+	stAaaVar[num].AeExpLineMode = 0;
 }
 
 void InstallVSinterrupt(void)
@@ -894,6 +918,7 @@ void InstallVSinterrupt(void)
 void intrIntr0SensorVsync(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
@@ -903,18 +928,20 @@ void intrIntr0SensorVsync(struct mipi_isp_info *isp_info)
 
 		writeb(INTR_VD_EDGE, &(regs->reg[0x27B0]));	/* clear vd falling edge interrupt AAF061 W1C*/
 
-		aaaCount++;
-		if (aaaCount >= AaaFreq)
+		stAaaVar[num].aaaCount++;
+		if (stAaaVar[num].aaaCount >= stAaaVar[num].AaaFreq)
 		{
-			aaaFlag  = 1;	/* set 3a flag*/
-			aaaCount = 0;	/* clear count */
+			stAaaVar[num].aaaFlag  = 1;	/* set 3a flag*/
+			stAaaVar[num].aaaCount = 0;	/* clear count */
 		}
 	}
 }
 
 //initResetParam
-void aaaLoadInit(char *aaa_init_file)
+void aaaLoadInit(struct mipi_isp_info *isp_info, char *aaa_init_file)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	//please do fopen(aaa_init_file, "rt");
@@ -940,28 +967,29 @@ void aaaLoadInit(char *aaa_init_file)
 		AaaFreq;
 	*/
 
-	AeIndexMax60  = (u8)aaa_init_file[0];
-	AeIndexMax50  = (u8)aaa_init_file[1];
-	AeIndexMin60  = (u8)aaa_init_file[2];
-	AeIndexMin50  = (u8)aaa_init_file[3];
-	AeIndex       = (short)(aaa_init_file[4]<<8)|aaa_init_file[5];
-	AeIndexPrev   = (short)(aaa_init_file[6]<<8)|aaa_init_file[7];
-	AeDeadZone    = (u8)aaa_init_file[8]; 
-	AeYTarget     = (u16)(aaa_init_file[9]<<8)|aaa_init_file[10];
-	AwbBTargetMin = (u8)aaa_init_file[11];
-	AwbBTargetMax = (u8)aaa_init_file[12];
-	AwbRTargetMin = (u8)aaa_init_file[13];
-	AwbRTargetMax = (u8)aaa_init_file[14];
-	AwbGTargetMin = (u8)aaa_init_file[15];
-	AwbGTargetMax = (u8)aaa_init_file[16];
-	AwbRGainReg   = (u16)(aaa_init_file[17]<<8)|aaa_init_file[18];
-	AwbGGainReg   = (u16)(aaa_init_file[19]<<8)|aaa_init_file[20];
-	AwbBGainReg   = (u16)(aaa_init_file[21]<<8)|aaa_init_file[22];
-	AaaFreq       = (u8)aaa_init_file[23];
+	stAaaVar[num].AeIndexMax60  = (u8)aaa_init_file[0];
+	stAaaVar[num].AeIndexMax50  = (u8)aaa_init_file[1];
+	stAaaVar[num].AeIndexMin60  = (u8)aaa_init_file[2];
+	stAaaVar[num].AeIndexMin50  = (u8)aaa_init_file[3];
+	stAaaVar[num].AeIndex       = (short)(aaa_init_file[4]<<8)|aaa_init_file[5];
+	stAaaVar[num].AeIndexPrev   = (short)(aaa_init_file[6]<<8)|aaa_init_file[7];
+	stAaaVar[num].AeDeadZone    = (u8)aaa_init_file[8]; 
+	stAaaVar[num].AeYTarget     = (u16)(aaa_init_file[9]<<8)|aaa_init_file[10];
+	stAaaVar[num].AwbBTargetMin = (u8)aaa_init_file[11];
+	stAaaVar[num].AwbBTargetMax = (u8)aaa_init_file[12];
+	stAaaVar[num].AwbRTargetMin = (u8)aaa_init_file[13];
+	stAaaVar[num].AwbRTargetMax = (u8)aaa_init_file[14];
+	stAaaVar[num].AwbGTargetMin = (u8)aaa_init_file[15];
+	stAaaVar[num].AwbGTargetMax = (u8)aaa_init_file[16];
+	stAaaVar[num].AwbRGainReg   = (u16)(aaa_init_file[17]<<8)|aaa_init_file[18];
+	stAaaVar[num].AwbGGainReg   = (u16)(aaa_init_file[19]<<8)|aaa_init_file[20];
+	stAaaVar[num].AwbBGainReg   = (u16)(aaa_init_file[21]<<8)|aaa_init_file[22];
+	stAaaVar[num].AaaFreq       = (u8)aaa_init_file[23];
 }
 
-void aeLoadAETbl(char *ae_table_file)
+void aeLoadAETbl(struct mipi_isp_info *isp_info, char *ae_table_file)
 {
+	u16 num = isp_info->video_device->num;
 	u16 i;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
@@ -971,12 +999,13 @@ void aeLoadAETbl(char *ae_table_file)
 
 	for (i = 0; i < 256; i++)
 	{
-		pAeExpTbl[i] = (u16)(ae_table_file[i*2]<<8)|ae_table_file[(i*2)+1];
+		stAaaVar[num].pAeExpTbl[i] = (u16)(ae_table_file[i*2]<<8)|ae_table_file[(i*2)+1];
 	}
 }
  
-void aeLoadGainTbl(char *gain_table_file)
+void aeLoadGainTbl(struct mipi_isp_info *isp_info, char *gain_table_file)
 {
+	u16 num = isp_info->video_device->num;
 	u16 i;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
@@ -986,58 +1015,60 @@ void aeLoadGainTbl(char *gain_table_file)
 
 	for (i = 0; i < 256; i++)
 	{
-		pAeGainTbl[i] = (u16)(gain_table_file[i*2]<<8)|gain_table_file[(i*2)+1];
+		stAaaVar[num].pAeGainTbl[i] = (u16)(gain_table_file[i*2]<<8)|gain_table_file[(i*2)+1];
 	}
 }
 
 void aeInitExt(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 	u16 hsize, vsize;
 	u16 hOffset, vOffset;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	aeInitVar();
-	aaaFlag=0;
-	aaaCount=0;
-	hsize=(u16)(readb(&(regs->reg[0x2725]))<<8)|readb(&(regs->reg[0x2724]));
-	vsize=(u16)(readb(&(regs->reg[0x2727]))<<8)|readb(&(regs->reg[0x2726]));	
-	hsize-=4;
-	vsize-=4;
-	hOffset=0;
-	vOffset=0;
+	aeInitVar(isp_info);
+	stAaaVar[num].aaaFlag = 0;
+	stAaaVar[num].aaaCount = 0;
+	hsize = (u16)(readb(&(regs->reg[0x2725]))<<8)|readb(&(regs->reg[0x2724]));
+	vsize = (u16)(readb(&(regs->reg[0x2727]))<<8)|readb(&(regs->reg[0x2726]));	
+	hsize -= 4;
+	vsize -= 4;
+	hOffset = 0;
+	vOffset = 0;
 	//
-	AeImgSize=(u32)hsize*(u32)vsize;
+	stAaaVar[num].AeImgSize=(u32)hsize*(u32)vsize;
 	aeFuncExt(isp_info);
 	//	
-	AeExpLineCount120 = 0;
-	aeGetCurEv();
-	AeDeadZone = 2;
-	aeDeadLeafWinInit(isp_info, (hsize+4), (vsize+4), AeDeadLeafWinSize);
-	AeDarkMode = 0;
-	writeb(AeDarkThresh0, &(regs->reg[0x224C]));
-	AeIndexPrev = AeIndex-1;
+	stAaaVar[num].AeExpLineCount120 = 0;
+	aeGetCurEv(isp_info);
+	stAaaVar[num].AeDeadZone = 2;
+	aeDeadLeafWinInit(isp_info, (hsize+4), (vsize+4), stAaaVar[num].AeDeadLeafWinSize);
+	stAaaVar[num].AeDarkMode = 0;
+	writeb(stAaaVar[num].AeDarkThresh0, &(regs->reg[0x224C]));
+	stAaaVar[num].AeIndexPrev = stAaaVar[num].AeIndex-1;
 	
 	vidctrlPuSaturation(isp_info, PUSATURATIONCUR);
 	aeSetWin_ROM(isp_info, hsize, vsize, hOffset, vOffset);
-	AeDeadZone = 2;
+	stAaaVar[num].AeDeadZone = 2;
 }
 
 void awbSetGain(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	writeb(LO_BYTE_OF_WORD(AwbRGainReg), &(regs->reg[0x3104]));
-	writeb(HI_BYTE_OF_WORD(AwbRGainReg), &(regs->reg[0x3105]));
+	writeb(LO_BYTE_OF_WORD(stAaaVar[num].AwbRGainReg), &(regs->reg[0x3104]));
+	writeb(HI_BYTE_OF_WORD(stAaaVar[num].AwbRGainReg), &(regs->reg[0x3105]));
 
-	writeb(LO_BYTE_OF_WORD(AwbGGainReg), &(regs->reg[0x3106]));
-	writeb(HI_BYTE_OF_WORD(AwbGGainReg), &(regs->reg[0x3107]));
+	writeb(LO_BYTE_OF_WORD(stAaaVar[num].AwbGGainReg), &(regs->reg[0x3106]));
+	writeb(HI_BYTE_OF_WORD(stAaaVar[num].AwbGGainReg), &(regs->reg[0x3107]));
 
-	writeb(LO_BYTE_OF_WORD(AwbBGainReg), &(regs->reg[0x3108]));
-	writeb(HI_BYTE_OF_WORD(AwbBGainReg), &(regs->reg[0x3109]));
+	writeb(LO_BYTE_OF_WORD(stAaaVar[num].AwbBGainReg), &(regs->reg[0x3108]));
+	writeb(HI_BYTE_OF_WORD(stAaaVar[num].AwbBGainReg), &(regs->reg[0x3109]));
 }
 
 void awbSetIndivWin(struct mipi_isp_info *isp_info, u16 hSize, u16 vSize, u16 hOffset, u16 vOffset)
@@ -1086,29 +1117,31 @@ void awbSetIndivWin(struct mipi_isp_info *isp_info, u16 hSize, u16 vSize, u16 hO
 }
 
 
-void awbInitVar(void)
+void awbInitVar(struct mipi_isp_info *isp_info)
 { 
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	AwbRWidth = AWB_R_WIDTH;
-	AwbBWidth = AWB_B_WIDTH;
-	AwbMinGrayDetCnt = AWB_MIN_GRAY_DET_CNT;
+	stAaaVar[num].AwbRWidth = AWB_R_WIDTH;
+	stAaaVar[num].AwbBWidth = AWB_B_WIDTH;
+	stAaaVar[num].AwbMinGrayDetCnt = AWB_MIN_GRAY_DET_CNT;
 
-	AwbCheckBlkCnt = AWB_CHECK_BLK_CNT;
-	pAwbRRef = AwbRRef;
-	pAwbBRef = AwbBRef;
+	stAaaVar[num].AwbCheckBlkCnt = AWB_CHECK_BLK_CNT;
+	stAaaVar[num].pAwbRRef = AwbRRef;
+	stAaaVar[num].pAwbBRef = AwbBRef;
 
-	AwbCmAdjCnt = AWB_CM_ADJ_CNT;
-	pAwbAdjCmColTemp = AwbAdjCmColTemp; 
-	pAwbAdjCmColMat = (short *)AwbAdjCmColMat;
+	stAaaVar[num].AwbCmAdjCnt = AWB_CM_ADJ_CNT;
+	stAaaVar[num].pAwbAdjCmColTemp = AwbAdjCmColTemp; 
+	stAaaVar[num].pAwbAdjCmColMat = (short *)AwbAdjCmColMat;
 
-	AwbLensAdjCnt = AWB_LENS_ADJ_CNT;
-	pAwbAdjLensColTemp = AwbAdjLensColTemp;
-	pAwbAdjLensRVal = AwbAdjLensRVal;
-	pAwbAdjLensBVal = AwbAdjLensBVal;
+	stAaaVar[num].AwbLensAdjCnt = AWB_LENS_ADJ_CNT;
+	stAaaVar[num].pAwbAdjLensColTemp = AwbAdjLensColTemp;
+	stAaaVar[num].pAwbAdjLensRVal = AwbAdjLensRVal;
+	stAaaVar[num].pAwbAdjLensBVal = AwbAdjLensBVal;
 
-	AwbFirstInit = 1;
-	AwbMode = 0;
+	stAaaVar[num].AwbFirstInit = 1;
+	stAaaVar[num].AwbMode = 0;
 }
 
 void awbAdjLensComp(u8 init)
@@ -1119,6 +1152,7 @@ void awbAdjLensComp(u8 init)
 void awbAdjColMat(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 	short r1, r2, r3;
 	u8 i, j;
 	short cm[10];
@@ -1126,23 +1160,23 @@ void awbAdjColMat(struct mipi_isp_info *isp_info)
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	tmp = AwbCurColTemp;
+	tmp = stAaaVar[num].AwbCurColTemp;
 
-	if (tmp < pAwbAdjCmColTemp[0])					tmp = pAwbAdjCmColTemp[0];
-	if (tmp > pAwbAdjCmColTemp[AwbCmAdjCnt - 1])	tmp = pAwbAdjCmColTemp[AwbCmAdjCnt - 1];
+	if (tmp < stAaaVar[num].pAwbAdjCmColTemp[0])								tmp = stAaaVar[num].pAwbAdjCmColTemp[0];
+	if (tmp > stAaaVar[num].pAwbAdjCmColTemp[stAaaVar[num].AwbCmAdjCnt - 1])	tmp = stAaaVar[num].pAwbAdjCmColTemp[stAaaVar[num].AwbCmAdjCnt - 1];
 
-	for (j = 0; j <= AwbCmAdjCnt - 2; j++)
+	for (j = 0; j <= stAaaVar[num].AwbCmAdjCnt - 2; j++)
 	{
-	 	if ((tmp >= pAwbAdjCmColTemp[j]) && (tmp <= pAwbAdjCmColTemp[j+1]))
+	 	if ((tmp >= stAaaVar[num].pAwbAdjCmColTemp[j]) && (tmp <= stAaaVar[num].pAwbAdjCmColTemp[j+1]))
 			break;
 	}
 
-	r1 = pAwbAdjCmColTemp[j+1] - tmp;
-	r2 = tmp - pAwbAdjCmColTemp[j];
-	r3 = pAwbAdjCmColTemp[j+1] - pAwbAdjCmColTemp[j];
+	r1 = stAaaVar[num].pAwbAdjCmColTemp[j+1] - tmp;
+	r2 = tmp - stAaaVar[num].pAwbAdjCmColTemp[j];
+	r3 = stAaaVar[num].pAwbAdjCmColTemp[j+1] - stAaaVar[num].pAwbAdjCmColTemp[j];
 
 	for (i = 0; i < 9; i++)
-		cm[i] = (r1 * (short)pAwbAdjCmColMat[j * 9 + i] + r2 * (short)pAwbAdjCmColMat[(j+1) * 9 + i]) / r3;
+		cm[i] = (r1 * (short)stAaaVar[num].pAwbAdjCmColMat[j * 9 + i] + r2 * (short)stAaaVar[num].pAwbAdjCmColMat[(j+1) * 9 + i]) / r3;
 
 	cm[0] = 0x40 - (cm[1] + cm[2]);
 	cm[4] = 0x40 - (cm[3] + cm[5]);
@@ -1166,11 +1200,12 @@ void awbAdjColMat(struct mipi_isp_info *isp_info)
 void awbInit(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	awbInitVar();
-	AwbMinGain = 0x42;
+	awbInitVar(isp_info);
+	stAaaVar[num].AwbMinGain = 0x42;
 	writeb(0x31, &(regs->reg[0x2217]));   /* new awb */
 	writeb(0x71, &(regs->reg[0x3100]));   /* new awb gain */
 	writeb(0xf8, &(regs->reg[0x2218]));   /* hi threshold */
@@ -1204,41 +1239,43 @@ void awbInit(struct mipi_isp_info *isp_info)
 	awbSetIndivWin(isp_info, 80, 80, 80, 80);
 	awbSetGain(isp_info);
 
-	if (AwbFirstInit)
+	if (stAaaVar[num].AwbFirstInit)
 	{	
-		AwbColTemp = AwbCurColTemp = (u16)AwbBGainReg * 64 / AwbRGainReg;
-		AwbRGainTarget = AwbRawRGain = AwbRGainReg;
-		AwbBGainTarget = AwbRawBGain = AwbBGainReg;
-		AwbGGainTarget = 0x40;
+		stAaaVar[num].AwbColTemp = stAaaVar[num].AwbCurColTemp = (u16)stAaaVar[num].AwbBGainReg * 64 / stAaaVar[num].AwbRGainReg;
+		stAaaVar[num].AwbRGainTarget = stAaaVar[num].AwbRawRGain = stAaaVar[num].AwbRGainReg;
+		stAaaVar[num].AwbBGainTarget = stAaaVar[num].AwbRawBGain = stAaaVar[num].AwbBGainReg;
+		stAaaVar[num].AwbGGainTarget = 0x40;
 	}
 	else
 	{
-		AwbColTemp = AwbCurColTemp = (u16)AwbRawBGain * 64 / AwbRawRGain;
+		stAaaVar[num].AwbColTemp = stAaaVar[num].AwbCurColTemp = (u16)stAaaVar[num].AwbRawBGain * 64 / stAaaVar[num].AwbRawRGain;
 	}
 
 	awbAdjLensComp(1);
 	awbAdjColMat(isp_info);
 
-	AwbMode = 0;
-	AwbDeadZone = 4;
-	AwbFirstInit = 0;
+	stAaaVar[num].AwbMode = 0;
+	stAaaVar[num].AwbDeadZone = 4;
+	stAaaVar[num].AwbFirstInit = 0;
 }
 
-void aeAdjYTarget_RAM(void)
+void aeAdjYTarget_RAM(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	AeAdjYTarget = (short)AeYTarget + ((short)puBacklightCompensationCur - (short)puBacklightCompensationDef)*16;	
-	
-	if(AeIndex > 170) AeAdjYTarget -= 20;
-	else if(AeIndex > 130) AeAdjYTarget -= 20*(AeIndex - 130)/(170-130);	
-	if (AeAdjYTarget < 2)			AeAdjYTarget = 2; 
+	stAaaVar[num].AeAdjYTarget = (short)stAaaVar[num].AeYTarget + ((short)stAaaVar[num].puBacklightCompensationCur - (short)stAaaVar[num].puBacklightCompensationDef)*16;	
 
+	if(stAaaVar[num].AeIndex > 170)      stAaaVar[num].AeAdjYTarget -= 20;
+	else if(stAaaVar[num].AeIndex > 130) stAaaVar[num].AeAdjYTarget -= 20*(stAaaVar[num].AeIndex - 130)/(170-130);	
+	if (stAaaVar[num].AeAdjYTarget < 2)	stAaaVar[num].AeAdjYTarget = 2; 
 }
 
 short aeGetYLayer(struct mipi_isp_info *isp_info, u8 *pWeight)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
+	u16 num = isp_info->video_device->num;
 	u32 winSize;
 	u32 normWinSize;
 	u32 ySum;
@@ -1268,13 +1305,14 @@ short aeGetYLayer(struct mipi_isp_info *isp_info, u8 *pWeight)
 		ySum += (u16)tempY;
    }
 
-	AeYLayer  = (ySum / 81);
+	stAaaVar[num].AeYLayer  = (ySum / 81);
 	
-	return (AeYLayer);
+	return (stAaaVar[num].AeYLayer);
 }
 
-u16 aeAdjIndexRatio(u16 adjYTarget, short yLayer)
+u16 aeAdjIndexRatio(struct mipi_isp_info *isp_info, u16 adjYTarget, short yLayer)
 {
+	u16 num = isp_info->video_device->num;
 	u16 adjRatio;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
@@ -1288,160 +1326,163 @@ u16 aeAdjIndexRatio(u16 adjYTarget, short yLayer)
 		adjRatio = (u32)adjYTarget * 100 / yLayer;
 		if (adjRatio > 100)	adjRatio = 100 + (adjRatio - 100) * 4 / 10;
 		else				adjRatio = 100- (100 - adjRatio) * 4 / 10;
-		AeDeadZone = 4;	
+		stAaaVar[num].AeDeadZone = 4;	
 	}
 	
 	return(adjRatio);
 }
 
-void aeAdjIndex(void)
+void aeAdjIndex(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
 	u32 ratio;
 	u32 desireEv, deltaEv, minDEv,PreEV;
 	short i, desireAeIdx;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	ratio = aeAdjIndexRatio(AeAdjYTarget, AeYLayer);
-	AeTest = 0;
+	ratio = aeAdjIndexRatio(isp_info, stAaaVar[num].AeAdjYTarget, stAaaVar[num].AeYLayer);
+	stAaaVar[num].AeTest = 0;
 
-	if (AeExpLineMode == 1 || (AeIndex == 0 && AeYLayer > AeAdjYTarget))
+	if (stAaaVar[num].AeExpLineMode == 1 || (stAaaVar[num].AeIndex == 0 && stAaaVar[num].AeYLayer > stAaaVar[num].AeAdjYTarget))
 	{
-		AeTest = 1;
-		AeExpLineMode = 1;
+		stAaaVar[num].AeTest = 1;
+		stAaaVar[num].AeExpLineMode = 1;
 		
-		AeExp = (u16)(AeCurExpLine * ratio / 100);
+		stAaaVar[num].AeExp = (u16)(stAaaVar[num].AeCurExpLine * ratio / 100);
 			
-		//aePostAdjIndex_RAM(&AeExp);
+		//aePostAdjIndex_RAM(&stAaaVar[num].AeExp);
 		
-		if(AeExp < 4) AeExp = 4;
+		if(stAaaVar[num].AeExp < 4) stAaaVar[num].AeExp = 4;
 
-		if ((AeExpLineCount120 != 0) && (AeExp > AeExpLineCount120)) 
-			AeExpLineMode = 0;
+		if ((stAaaVar[num].AeExpLineCount120 != 0) && (stAaaVar[num].AeExp > stAaaVar[num].AeExpLineCount120)) 
+			stAaaVar[num].AeExpLineMode = 0;
 
-		AeIndexGet = AeIndex = 0;
+		stAaaVar[num].AeIndexGet = stAaaVar[num].AeIndex = 0;
 		//EA = 0;	/* disable all interrupts */
-		AeLineModeExpLineCount = AeExp;
-		aeGetGainIsr();
-		AeGain = AeGainGet;
+		stAaaVar[num].AeLineModeExpLineCount = stAaaVar[num].AeExp;
+		aeGetGainIsr(isp_info);
+		stAaaVar[num].AeGain = stAaaVar[num].AeGainGet;
 	}
 	else
 	{
 		//DELTA_EV d;
 		
-		AeExpLineMode = FALSE;
-		desireEv = AeCurEv * ratio / 100;
+		stAaaVar[num].AeExpLineMode = FALSE;
+		desireEv = stAaaVar[num].AeCurEv * ratio / 100;
 				
-		minDEv = aeGetDeltaEv(desireEv, AeIndex);	
+		minDEv = aeGetDeltaEv(isp_info, desireEv, stAaaVar[num].AeIndex);	
 		
-		PreEV = AeCurEv;
-		desireAeIdx = AeIndex;
+		PreEV = stAaaVar[num].AeCurEv;
+		desireAeIdx = stAaaVar[num].AeIndex;
 
-		if (AeAdjYTarget > AeYLayer)
+		if (stAaaVar[num].AeAdjYTarget > stAaaVar[num].AeYLayer)
 		{
-			AeTest = 2; 
-			for (i = AeIndex+1; i <= AeIndexMax; i++)
+			stAaaVar[num].AeTest = 2; 
+			for (i = stAaaVar[num].AeIndex+1; i <= stAaaVar[num].AeIndexMax; i++)
 			{				
-				deltaEv = aeGetDeltaEv(desireEv, i);
+				deltaEv = aeGetDeltaEv(isp_info, desireEv, i);
 				
 
-				if ((deltaEv > minDEv)&&(AeCurEv > PreEV))
+				if ((deltaEv > minDEv)&&(stAaaVar[num].AeCurEv > PreEV))
 					break;
 				else if (deltaEv <= minDEv)
 				{
 					minDEv = deltaEv;
 					desireAeIdx = i;
 				}
-				PreEV = AeCurEv;
+				PreEV = stAaaVar[num].AeCurEv;
 			}
 		}
 		else
 		{
-			AeTest = 3;
-			for (i = AeIndex-1; i >= 0; i--)
+			stAaaVar[num].AeTest = 3;
+			for (i = stAaaVar[num].AeIndex-1; i >= 0; i--)
 			{
-				deltaEv = aeGetDeltaEv(desireEv, i);
+				deltaEv = aeGetDeltaEv(isp_info, desireEv, i);
 
-				if ((deltaEv > minDEv)&&(AeCurEv < PreEV))
+				if ((deltaEv > minDEv)&&(stAaaVar[num].AeCurEv < PreEV))
 					break;
 				else if (deltaEv <= minDEv)
 				{
 					minDEv = deltaEv;
 					desireAeIdx = i;
 				}
-				PreEV = AeCurEv;
+				PreEV = stAaaVar[num].AeCurEv;
 			}
 		}
 
 		//aePostAdjIndex_RAM((u16 *)&desireAeIdx);
 
 		//EA = 0;	/* disable all interrupts */
-		AeIndex = AeIndexGet = desireAeIdx;
-		//uartPutString_ROM("AeIndex=");
-		//uartPutNumber_ROM(AeIndex);
+		stAaaVar[num].AeIndex = stAaaVar[num].AeIndexGet = desireAeIdx;
+		//uartPutString_ROM("stAaaVar[num].AeIndex=");
+		//uartPutNumber_ROM(stAaaVar[num].AeIndex);
 		
-		aeGetGainIsr();
-		AeGain = AeGainGet;
+		aeGetGainIsr(isp_info);
+		stAaaVar[num].AeGain = stAaaVar[num].AeGainGet;
 	}
 
-	if(AeExpLineMode == FALSE)
+	if(stAaaVar[num].AeExpLineMode == FALSE)
 	{
-		aeGetExposureIsr();
-		AeExp = AeExpGet;
+		aeGetExposureIsr(isp_info);
+		stAaaVar[num].AeExp = stAaaVar[num].AeExpGet;
 	}
 	//EA = 1;	/* Enable all interrupts */
 
-	aeGetCurEv();
+	aeGetCurEv(isp_info);
 }
 
 void aeFunc(struct mipi_isp_info *isp_info, u8 aeOn)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	if (aeOn)
 	{
 	
-		if (AeExpLineCount120 == 0)
+		if (stAaaVar[num].AeExpLineCount120 == 0)
 		{
 			//EA = 0;	/* disable all interrupts */
-			SensorExpIn = 0x780;
+			stAaaVar[num].SensorExpIn = 0x780;
 			sensorExpToLineCountIsr(isp_info);
-			AeExpLineCount120 = SensorLineCountOut;
+			stAaaVar[num].AeExpLineCount120 = stAaaVar[num].SensorLineCountOut;
 			//EA = 1;	/* Enable all interrupts */
 		}
-		aeAdjYTarget_RAM();
-		aeGetYLayer(isp_info, pAeNormWeight);
-		aaaFlag = 0;	//to avoid AE call continuoustly if no exposure/gain changed
+		aeAdjYTarget_RAM(isp_info);
+		aeGetYLayer(isp_info, stAaaVar[num].pAeNormWeight);
+		stAaaVar[num].aaaFlag = 0;	// to avoid AE call continuoustly if no exposure/gain changed
 	
-		if ((AeYLayer < (AeAdjYTarget - AeDeadZone)) || (AeYLayer > (AeAdjYTarget + AeDeadZone)))
+		if ((stAaaVar[num].AeYLayer < (stAaaVar[num].AeAdjYTarget - stAaaVar[num].AeDeadZone)) || (stAaaVar[num].AeYLayer > (stAaaVar[num].AeAdjYTarget + stAaaVar[num].AeDeadZone)))
 		{
-			AeDeadZone = 4;			
-			aeAdjIndex();
+			stAaaVar[num].AeDeadZone = 4;			
+			aeAdjIndex(isp_info);
 
 		}
 
 		/* Set exposure and gain by auto-exposure index */
-		if ((AeIndex != AeIndexPrev)  ||
-			((AeExpLineMode == 1) && (AeCurExpLine != AeLineModeExpLineCount)) ||
-			(AePreExpLineMode != AeExpLineMode))
+		if ((stAaaVar[num].AeIndex != stAaaVar[num].AeIndexPrev)  ||
+			((stAaaVar[num].AeExpLineMode == 1) && (stAaaVar[num].AeCurExpLine != stAaaVar[num].AeLineModeExpLineCount)) ||
+			(stAaaVar[num].AePreExpLineMode != stAaaVar[num].AeExpLineMode))
 		{			
-			aaaFlag = 0;
-			aaaCount = 0;
-			AePreExpLineMode = AeExpLineMode;
+			stAaaVar[num].aaaFlag = 0;
+			stAaaVar[num].aaaCount = 0;
+			stAaaVar[num].AePreExpLineMode = stAaaVar[num].AeExpLineMode;
 						
 			//EA = 0;	/* disable all interrupts */
-			AeStill = 0;
+			stAaaVar[num].AeStill = 0;
 
 			sensorSetExposureTimeIsr(isp_info);
 			sensorSetGainIsr(isp_info);
 			//EA = 1;	/* enable all interrupts */
 
-			AeIndexPrev = AeIndex;
-			AeStable = 0;
+			stAaaVar[num].AeIndexPrev = stAaaVar[num].AeIndex;
+			stAaaVar[num].AeStable = 0;
 		}
 		else
 		{
-			AeStable++;
+			stAaaVar[num].AeStable++;
 		}	
 		aeFuncExt(isp_info);	
 	}
@@ -1661,20 +1702,21 @@ void awbSetGain(void)
 */
 void awbFuncExt(struct mipi_isp_info *isp_info)
 {           
+	u16 num = isp_info->video_device->num;
 	//u8 i;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
-	AwbRGainReg = awbAdjGain(AwbRGainReg, AwbRGainTarget+2);
-	AwbGGainReg = awbAdjGain(AwbGGainReg, AwbGGainTarget);
-	AwbBGainReg = awbAdjGain(AwbBGainReg, AwbBGainTarget+2);
+	stAaaVar[num].AwbRGainReg = awbAdjGain(stAaaVar[num].AwbRGainReg, stAaaVar[num].AwbRGainTarget+2);
+	stAaaVar[num].AwbGGainReg = awbAdjGain(stAaaVar[num].AwbGGainReg, stAaaVar[num].AwbGGainTarget);
+	stAaaVar[num].AwbBGainReg = awbAdjGain(stAaaVar[num].AwbBGainReg, stAaaVar[num].AwbBGainTarget+2);
 
 	awbSetGain(isp_info);
 	
-	if (AwbColTemp > AwbCurColTemp + 10)		AwbCurColTemp = AwbCurColTemp + 5;
-	else if (AwbColTemp > AwbCurColTemp)		AwbCurColTemp++;
-	else if (AwbColTemp < AwbCurColTemp - 10)	AwbCurColTemp =  AwbCurColTemp - 5;
-	else if (AwbColTemp < AwbCurColTemp)		AwbCurColTemp--;
+	if (stAaaVar[num].AwbColTemp > stAaaVar[num].AwbCurColTemp + 10)		stAaaVar[num].AwbCurColTemp = stAaaVar[num].AwbCurColTemp + 5;
+	else if (stAaaVar[num].AwbColTemp > stAaaVar[num].AwbCurColTemp)		stAaaVar[num].AwbCurColTemp++;
+	else if (stAaaVar[num].AwbColTemp < stAaaVar[num].AwbCurColTemp - 10)	stAaaVar[num].AwbCurColTemp =  stAaaVar[num].AwbCurColTemp - 5;
+	else if (stAaaVar[num].AwbColTemp < stAaaVar[num].AwbCurColTemp)		stAaaVar[num].AwbCurColTemp--;
 
 	//awbAdjLensComp(0);
 	awbAdjColMat(isp_info);
@@ -1682,6 +1724,7 @@ void awbFuncExt(struct mipi_isp_info *isp_info)
 
 void awbFunc(struct mipi_isp_info *isp_info, u8 awbOn)
 {
+	u16 num = isp_info->video_device->num;
 	u16 i;
 	u16 sR,sG,sB;
 	u16 tmp;
@@ -1692,94 +1735,194 @@ void awbFunc(struct mipi_isp_info *isp_info, u8 awbOn)
 
 	if (awbOn)
 	{		
-		if(AwbMode == 3)
+		if(stAaaVar[num].AwbMode == 3)
 		{
-			for(i=10; i<AwbCheckBlkCnt; i++)
+			for(i=10; i<stAaaVar[num].AwbCheckBlkCnt; i++)
 			{
-					AwbSumCount = AwbSumCount + awbCount(isp_info, i-10);
-					AwbSumR = AwbSumR + awbColSum(isp_info, 0, i-10);
-					AwbSumG = AwbSumG + awbColSum(isp_info, 1, i-10);
-					AwbSumB = AwbSumB + awbColSum(isp_info, 2, i-10);
+					stAaaVar[num].AwbSumCount = stAaaVar[num].AwbSumCount + awbCount(isp_info, i-10);
+					stAaaVar[num].AwbSumR = stAaaVar[num].AwbSumR + awbColSum(isp_info, 0, i-10);
+					stAaaVar[num].AwbSumG = stAaaVar[num].AwbSumG + awbColSum(isp_info, 1, i-10);
+					stAaaVar[num].AwbSumB = stAaaVar[num].AwbSumB + awbColSum(isp_info, 2, i-10);
 			}
 
-			if (AwbSumCount > 0x80)
+			if (stAaaVar[num].AwbSumCount > 0x80)
 			{				
-				sR = (u16)(AwbSumR / AwbSumCount);
-				sG = (u16)(AwbSumG / AwbSumCount);
-				sB = (u16)(AwbSumB / AwbSumCount);
+				sR = (u16)(stAaaVar[num].AwbSumR / stAaaVar[num].AwbSumCount);
+				sG = (u16)(stAaaVar[num].AwbSumG / stAaaVar[num].AwbSumCount);
+				sB = (u16)(stAaaVar[num].AwbSumB / stAaaVar[num].AwbSumCount);
 
-				AwbRawRGain = (u16)((0x40 * sG + sR / 2) / sR);
-				AwbRawBGain = (u16)((0x40 * sG + sB / 2) / sB);		 
+				stAaaVar[num].AwbRawRGain = (u16)((0x40 * sG + sR / 2) / sR);
+				stAaaVar[num].AwbRawBGain = (u16)((0x40 * sG + sB / 2) / sB);		 
 
-				AwbRGainTarget = AwbRawRGain;
-				AwbBGainTarget = AwbRawBGain;			
+				stAaaVar[num].AwbRGainTarget = stAaaVar[num].AwbRawRGain;
+				stAaaVar[num].AwbBGainTarget = stAaaVar[num].AwbRawBGain;			
 
-				tmp = (u16)AwbBGainTarget * 64 / AwbRGainTarget;
+				tmp = (u16)stAaaVar[num].AwbBGainTarget * 64 / stAaaVar[num].AwbRGainTarget;
 
-				if ((tmp > AwbColTemp + 4) || (tmp < AwbColTemp - 4))
-					AwbColTemp = tmp;
+				if ((tmp > stAaaVar[num].AwbColTemp + 4) || (tmp < stAaaVar[num].AwbColTemp - 4))
+					stAaaVar[num].AwbColTemp = tmp;
 
-				if (AwbRGainTarget < AwbRTargetMin)	AwbRGainTarget = AwbRTargetMin;
-				if (AwbRGainTarget > AwbRTargetMax)	AwbRGainTarget = AwbRTargetMax;
-				if (AwbBGainTarget < AwbBTargetMin)	AwbBGainTarget = AwbBTargetMin;
-				if (AwbBGainTarget > AwbBTargetMax)	AwbBGainTarget = AwbBTargetMax;
+				if (stAaaVar[num].AwbRGainTarget < stAaaVar[num].AwbRTargetMin)	stAaaVar[num].AwbRGainTarget = stAaaVar[num].AwbRTargetMin;
+				if (stAaaVar[num].AwbRGainTarget > stAaaVar[num].AwbRTargetMax)	stAaaVar[num].AwbRGainTarget = stAaaVar[num].AwbRTargetMax;
+				if (stAaaVar[num].AwbBGainTarget < stAaaVar[num].AwbBTargetMin)	stAaaVar[num].AwbBGainTarget = stAaaVar[num].AwbBTargetMin;
+				if (stAaaVar[num].AwbBGainTarget > stAaaVar[num].AwbBTargetMax)	stAaaVar[num].AwbBGainTarget = stAaaVar[num].AwbBTargetMax;
 
 
-				if(AeIndex < AeIndexMax - 30) 
-					AwbDeadZone = 2;
+				if(stAaaVar[num].AeIndex < stAaaVar[num].AeIndexMax - 30) 
+					stAaaVar[num].AwbDeadZone = 2;
 				else
-					AwbDeadZone = 2+4*(AeIndex + 30 - AeIndexMax)/30;
+					stAaaVar[num].AwbDeadZone = 2+4*(stAaaVar[num].AeIndex + 30 - stAaaVar[num].AeIndexMax)/30;
 					
-				if ((AwbPreRTarget - AwbDeadZone <= AwbRGainTarget) && (AwbPreRTarget + AwbDeadZone >= AwbRGainTarget) &&
-					(AwbPreBTarget - AwbDeadZone <= AwbBGainTarget) && (AwbPreBTarget + AwbDeadZone >= AwbBGainTarget))
+				if ((stAaaVar[num].AwbPreRTarget - stAaaVar[num].AwbDeadZone <= stAaaVar[num].AwbRGainTarget) && (stAaaVar[num].AwbPreRTarget + stAaaVar[num].AwbDeadZone >= stAaaVar[num].AwbRGainTarget) &&
+					(stAaaVar[num].AwbPreBTarget - stAaaVar[num].AwbDeadZone <= stAaaVar[num].AwbBGainTarget) && (stAaaVar[num].AwbPreBTarget + stAaaVar[num].AwbDeadZone >= stAaaVar[num].AwbBGainTarget))
 				{
-					AwbRGainTarget = AwbPreRTarget;
-					AwbBGainTarget = AwbPreBTarget;
+					stAaaVar[num].AwbRGainTarget = stAaaVar[num].AwbPreRTarget;
+					stAaaVar[num].AwbBGainTarget = stAaaVar[num].AwbPreBTarget;
 				}	 
 				else
 				{
-					AwbPreRTarget = AwbRGainTarget;
-					AwbPreBTarget = AwbBGainTarget;
+					stAaaVar[num].AwbPreRTarget = stAaaVar[num].AwbRGainTarget;
+					stAaaVar[num].AwbPreBTarget = stAaaVar[num].AwbBGainTarget;
 				}
 				
-				AwbGGainTarget = minG =0x40;
-				if (AwbRGainTarget < minG)	minG = AwbRGainTarget;
-				if (AwbBGainTarget < minG)	minG = AwbBGainTarget;
+				stAaaVar[num].AwbGGainTarget = minG =0x40;
+				if (stAaaVar[num].AwbRGainTarget < minG)	minG = stAaaVar[num].AwbRGainTarget;
+				if (stAaaVar[num].AwbBGainTarget < minG)	minG = stAaaVar[num].AwbBGainTarget;
 				
-				AwbRGainTarget = ((u16)AwbRGainTarget * 0x40) / minG ;
-				AwbGGainTarget = ((u16)AwbGGainTarget * 0x40) / minG ;
-				AwbBGainTarget = ((u16)AwbBGainTarget * 0x40) / minG ;
+				stAaaVar[num].AwbRGainTarget = ((u16)stAaaVar[num].AwbRGainTarget * 0x40) / minG ;
+				stAaaVar[num].AwbGGainTarget = ((u16)stAaaVar[num].AwbGGainTarget * 0x40) / minG ;
+				stAaaVar[num].AwbBGainTarget = ((u16)stAaaVar[num].AwbBGainTarget * 0x40) / minG ;
 								
 			}
 
-			AwbMode = 0;
+			stAaaVar[num].AwbMode = 0;
 		}
 
-		if(AwbMode == 0)
+		if(stAaaVar[num].AwbMode == 0)
 		{
-			AwbSumCount = AwbSumR = AwbSumG = AwbSumB = 0;
+			stAaaVar[num].AwbSumCount = stAaaVar[num].AwbSumR = stAaaVar[num].AwbSumG = stAaaVar[num].AwbSumB = 0;
 		}
 		else
 		{
 			for(i=0; i<5; i++)
 			{
-				AwbSumCount = AwbSumCount + awbCount(isp_info, i);
-				AwbSumR = AwbSumR + awbColSum(isp_info, 0, i);
-				AwbSumG = AwbSumG + awbColSum(isp_info, 1, i);
-				AwbSumB = AwbSumB + awbColSum(isp_info, 2, i);
+				stAaaVar[num].AwbSumCount = stAaaVar[num].AwbSumCount + awbCount(isp_info, i);
+				stAaaVar[num].AwbSumR = stAaaVar[num].AwbSumR + awbColSum(isp_info, 0, i);
+				stAaaVar[num].AwbSumG = stAaaVar[num].AwbSumG + awbColSum(isp_info, 1, i);
+				stAaaVar[num].AwbSumB = stAaaVar[num].AwbSumB + awbColSum(isp_info, 2, i);
 			}
 		}
 
-		tmp = (AwbMode % 5) * 5;		
-		for (i = tmp; (i < (tmp + 5)) && (i < AwbCheckBlkCnt); i++)
+		tmp = (stAaaVar[num].AwbMode % 5) * 5;		
+		for (i = tmp; (i < (tmp + 5)) && (i < stAaaVar[num].AwbCheckBlkCnt); i++)
 		{
-				awbSetCenter(isp_info, i - tmp, pAwbRRef[i], pAwbBRef[i], AwbRWidth, AwbBWidth);
+				awbSetCenter(isp_info, i - tmp, stAaaVar[num].pAwbRRef[i], stAaaVar[num].pAwbBRef[i], stAaaVar[num].AwbRWidth, stAaaVar[num].AwbBWidth);
 		}
 
-		AwbMode++;	
+		stAaaVar[num].AwbMode++;	
 
 		awbFuncExt(isp_info);
 	}
+}
+
+void aaaInitVar(struct mipi_isp_info *isp_info)
+{
+	u16 num = isp_info->video_device->num;
+
+	ISP3A_LOGD("%s start\n", __FUNCTION__);
+
+	stAaaVar[num].sensor_gain_addr = 0;
+	stAaaVar[num].sensor_frame_len_addr = 0;
+	stAaaVar[num].sensor_line_total_addr = 0;
+	stAaaVar[num].sensor_exp_line_addr = 0;
+	stAaaVar[num].sensor_pclk = 0;
+	stAaaVar[num].ctExposureTimeAbsoluteCur = CTEXPOSURETIMEABSOLUTECUR;
+	stAaaVar[num].AeTest = 0;
+	stAaaVar[num].AeExp = 0;
+	stAaaVar[num].AeExpGet = 0;
+	stAaaVar[num].AeExpLineMode = 0;
+	stAaaVar[num].AePreExpLineMode = 0;
+	stAaaVar[num].AeLineModeExpLineCount = 0;
+	stAaaVar[num].SensorLineCountOut = 0;
+	stAaaVar[num].AeCurExpLine = 0;
+	stAaaVar[num].SensorMinFrameLen = 0;
+	stAaaVar[num].AeGain = 0;
+	stAaaVar[num].AeGainGet = 0;
+	stAaaVar[num].AeEvConst = 0;
+	stAaaVar[num].AeCurEv = 0;
+	//stAaaVar[num].pAeGainTbl[256] = 0;
+	//stAaaVar[num].pAeExpTbl[256] = 0;
+	stAaaVar[num].AeTblCntVal = 0;
+	stAaaVar[num].AeExpTableSfAddr = 0;
+	stAaaVar[num].AeGainTableSfAddr = 0;
+	stAaaVar[num].AeExpLineCount120 = 0;
+	stAaaVar[num].SensorExpIn = 0;
+	stAaaVar[num].AwbCurColTemp = 0;
+	stAaaVar[num].AwbColTemp = 0;
+	stAaaVar[num].AwbBGainReg = 0;
+	stAaaVar[num].AwbRGainReg = 0;
+	stAaaVar[num].AwbGGainReg = 0;
+	stAaaVar[num].AwbRawRGain = 0;
+	stAaaVar[num].AwbRawGGain = 0;
+	stAaaVar[num].AwbRawBGain = 0;
+	stAaaVar[num].AwbRGainTarget = 0;
+	stAaaVar[num].AwbGGainTarget = 0;
+	stAaaVar[num].AwbBGainTarget = 0;
+	stAaaVar[num].AwbPreRTarget = 0;
+	stAaaVar[num].AwbDeadZone = 0;
+	stAaaVar[num].AwbPreBTarget = 0;
+	stAaaVar[num].AwbSumCount = 0;
+	stAaaVar[num].AwbSumR = 0;
+	stAaaVar[num].AwbSumG = 0;
+	stAaaVar[num].AwbSumB = 0;
+	stAaaVar[num].AeImgSize = 0;
+	stAaaVar[num].AeDarkMode = 0;
+	stAaaVar[num].AeDeadZone = 0;
+	stAaaVar[num].AeDeadLeafWinSize = 0;
+	stAaaVar[num].AeDarkThresh0 = 0;
+	stAaaVar[num].AeIndex = AEINDEX;
+	stAaaVar[num].AeIndexPrev = AEINDEXPREV;
+	stAaaVar[num].AeIndexGet = 0;
+	stAaaVar[num].AeIndexMax = 0xdd;
+	stAaaVar[num].AaaFreq = 0;
+	stAaaVar[num].AeIndexMin = 0;
+	stAaaVar[num].AeIndexMax60 = AEINDEXMAX60;
+	stAaaVar[num].AeIndexMax50 = AEINDEXMAX50;
+	stAaaVar[num].AeIndexMin60 = AEINDEXMIN60;
+	stAaaVar[num].AeIndexMin50 = AEINDEXMIN50;
+	stAaaVar[num].aaaFlag = 0;
+	stAaaVar[num].aaaCount = 0;
+	stAaaVar[num].AwbMinGain = 0;
+	stAaaVar[num].AwbFirstInit = 1;
+	stAaaVar[num].AwbMode = 0;
+
+	stAaaVar[num].AwbRWidth = 0;
+	stAaaVar[num].AwbBWidth = 0;
+	stAaaVar[num].AwbMinGrayDetCnt = 0;
+	stAaaVar[num].AwbCheckBlkCnt = 0;
+	stAaaVar[num].pAwbRRef = 0;
+	stAaaVar[num].pAwbBRef = 0;
+	stAaaVar[num].AwbCmAdjCnt = 0;
+	stAaaVar[num].pAwbAdjCmColTemp = 0;
+	stAaaVar[num].pAwbAdjCmColMat = 0;
+	stAaaVar[num].AwbLensAdjCnt = 0;
+	stAaaVar[num].pAwbAdjLensColTemp = 0;
+	stAaaVar[num].pAwbAdjLensRVal = 0;
+	stAaaVar[num].pAwbAdjLensBVal = 0;
+	stAaaVar[num].AeAdjYTarget = 0;
+	stAaaVar[num].AeYTarget = 0;
+	stAaaVar[num].AwbBTargetMin = 0;
+	stAaaVar[num].AwbBTargetMax = 0;
+	stAaaVar[num].AwbRTargetMin = 0;
+	stAaaVar[num].AwbRTargetMax = 0;
+	stAaaVar[num].AwbGTargetMin = 0;
+	stAaaVar[num].AwbGTargetMax = 0;
+	stAaaVar[num].AeYLayer = 0;
+	stAaaVar[num].puBacklightCompensationCur = PUBACKLIGHTCOMPENSATIONCUR;
+	stAaaVar[num].puBacklightCompensationDef = PUBACKLIGHTCOMPENSATIONDEF;
+	stAaaVar[num].pAeNormWeight = 0;
+	stAaaVar[num].AeStable = 0;
+	stAaaVar[num].AeStill = 0;
 }
 
 /*
@@ -1787,13 +1930,15 @@ void awbFunc(struct mipi_isp_info *isp_info, u8 awbOn)
 */
 void aaaAeAwbAf(struct mipi_isp_info *isp_info)
 {
+	u16 num = isp_info->video_device->num;
+
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
 
 	if(isVideoStart()==1)
 	{
-		if (aaaFlag==1)  //will be enable at intrIntr0SensorVsync()
+		if (stAaaVar[num].aaaFlag == 1)  //will be enable at intrIntr0SensorVsync()
 		{
-			aaaFlag = 0;
+			stAaaVar[num].aaaFlag = 0;
 			aeFunc(isp_info, 1);
 			awbFunc(isp_info, 1);
 		}

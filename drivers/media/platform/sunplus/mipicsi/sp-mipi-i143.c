@@ -40,6 +40,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "sp-mipi-i143.h"
+#include "sensor_power.h"
 
 
 static unsigned int allocator = 0;
@@ -309,6 +310,7 @@ static void mipi_isp_init(struct sp_mipi_device *mipi)
 	// Prepare ISP information
 	isp_info = &mipi->isp_info;
 	isp_info->mipi_isp_regs = mipi->mipi_isp_regs;
+	isp_info->video_device = &mipi->video_dev;
 	isp_info->isp_channel = isp_channel;
 	isp_info->isp_mode = isp_mode;
 	isp_info->test_pattern = test_pattern;
@@ -319,10 +321,13 @@ static void mipi_isp_init(struct sp_mipi_device *mipi)
 	isp_info->output_fmt = output_format;
 	isp_info->scale = scale;
 
-	if (isp_mode == ISP_TEST_MODE)
+	if (isp_mode == ISP_TEST_MODE) {
 		isp_setting(isp_info);
-	else
+	}
+	else {
 		isp_setting_s(isp_info);
+		powerSensorDown_RAM(isp_info);
+	}
 }
 
 static void csiiw_init(struct sp_mipi_device *mipi)
@@ -444,7 +449,8 @@ irqreturn_t isp_vsync_isr(int irq, void *dev_instance)
 {
 	struct sp_mipi_device *mipi = dev_instance;
 
-	MIPI_DBG("%s, %d\n", __FUNCTION__, __LINE__); // CCHo added for debugging
+	MIPI_DBG("%s, %d, video%d, csiiw_config0 = 0x%08x\n", __FUNCTION__, __LINE__,
+		mipi->video_dev.num, readl(&mipi->csiiw_regs->csiiw_config0)); // CCHo added for debugging
 	ispVsyncInt(&mipi->isp_info);
 	return IRQ_HANDLED;
 }
@@ -474,6 +480,9 @@ irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 {
 	struct sp_mipi_device *mipi = dev_instance;
 
+	MIPI_DBG("%s, %d, video%d, skip:%d, stream:%d\n", __FUNCTION__, __LINE__,
+		mipi->video_dev.num, mipi->skip_first_int, mipi->streaming); // CCHo add for debugging
+
 	if (mipi->streaming) {
 	}
 
@@ -485,6 +494,9 @@ irqreturn_t csiiw_fe_isr(int irq, void *dev_instance)
 	struct sp_mipi_device *mipi = dev_instance;
 	struct sp_buffer *next_frm;
 	int addr;
+
+	MIPI_DBG("%s, %d, video%d, skip:%d, stream:%d\n", __FUNCTION__, __LINE__,
+		mipi->video_dev.num, mipi->skip_first_int, mipi->streaming); // CCHo add for debugging
 
 	if (mipi->skip_first_int) {
 		mipi->skip_first_int = false;
@@ -516,6 +528,9 @@ irqreturn_t csiiw_fe_isr(int irq, void *dev_instance)
 
 			// Finally, move on.
 			mipi->cur_frm = next_frm;
+
+			MIPI_DBG("%s: video%d, cur_frm = %px, addr = %08x\n", __FUNCTION__,
+				mipi->video_dev.num, mipi->cur_frm, addr); // CCHo add for debugging
 		}
 
 		spin_unlock(&mipi->dma_queue_lock);
@@ -555,6 +570,8 @@ static int sp_queue_setup(struct vb2_queue *vq, unsigned *nbuffers, unsigned *np
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vq);
 	unsigned size = mipi->fmt.fmt.pix.sizeimage;
 
+	MIPI_DBG("%s, %d, video%d\n", __FUNCTION__, __LINE__, mipi->video_dev.num); // CCHo add for debugging
+
 	if (*nplanes) {
 		if (sizes[0] < size) {
 			return -EINVAL;
@@ -581,6 +598,8 @@ static int sp_buf_prepare(struct vb2_buffer *vb)
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vb->vb2_queue);
 	unsigned long size = mipi->fmt.fmt.pix.sizeimage;
 
+	MIPI_DBG("%s, %d, video%d\n", __FUNCTION__, __LINE__, mipi->video_dev.num); // CCHo add for debugging
+
 	vb2_set_plane_payload(vb, 0, mipi->fmt.fmt.pix.sizeimage);
 
 	if (vb2_get_plane_payload(vb, 0) > vb2_plane_size(vb, 0)) {
@@ -599,6 +618,8 @@ static void sp_buf_queue(struct vb2_buffer *vb)
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vb->vb2_queue);
 	struct sp_buffer *buf = container_of(vbuf, struct sp_buffer, vb);
 	unsigned long flags = 0;
+
+	MIPI_DBG("%s, %d, video%d\n", __FUNCTION__, __LINE__, mipi->video_dev.num); // CCHo add for debugging
 
 	// Add the buffer to the DMA queue.
 	spin_lock_irqsave(&mipi->dma_queue_lock, flags);
@@ -620,14 +641,18 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	u32 reg_value = 0;
 
 	MIPI_DBG("%s\n", __FUNCTION__);
+	MIPI_DBG("%s, %d, video%d\n", __FUNCTION__, __LINE__, mipi->video_dev.num); // CCHo add for debugging
 
 	if (mipi->streaming) {
 		MIPI_ERR("Device has started streaming!\n");
 		return -EBUSY;
 	}
 
-	mipi->sequence = 0;
+	// Power senor on and start video output
+	powerSensorOn_RAM(&mipi->isp_info);
+	videoStartMode(&mipi->isp_info);
 
+	mipi->sequence = 0;
 	sdinfo = mipi->current_subdev;
 	ret = v4l2_device_call_until_err(&mipi->v4l2_dev, sdinfo->grp_id,
 					video, s_stream, 1);
@@ -682,9 +707,11 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	writel(reg_value, &mipi->csiiw_regs->csiiw_frame_size);
 
 	//writel(0x12701, &mipi->csiiw_regs->csiiw_config0);      // Enable csiiw and fe_irq
-	reg_value = readl(&mipi->csiiw_regs->csiiw_config0);
-	reg_value = (reg_value&(~(IRQ_MASK_FE_MASK|CSIIW_EN_MASK)))|(IRQ_MASK_FE_ENA|CSIIW_EN_ENA);
+	//reg_value = readl(&mipi->csiiw_regs->csiiw_config0);
+	reg_value = (IRQ_MASK_FE_ENA|IRQ_MASK_FS_ENA|CMD_URGENT_TH(2)|CMD_QUEUE(7)|CSIIW_EN_ENA);
 	writel(reg_value, &mipi->csiiw_regs->csiiw_config0);    // Enable csiiw and fe_irq
+	MIPI_DBG("%s: video%d, csiiw_config0 = 0x%08x\n", __FUNCTION__,
+		mipi->video_dev.num, readl(&mipi->csiiw_regs->csiiw_config0)); // CCHo added for debugging
 
 	mipi->streaming = true;
 	mipi->skip_first_int = true;
@@ -692,7 +719,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	// Enable ISP Vsync interrupt
 	ispVsyncIntCtrl(&mipi->isp_info, 1);
 
-	MIPI_DBG("%s: cur_frm = %p, addr = %08lx\n", __FUNCTION__, mipi->cur_frm, addr);
+	MIPI_DBG("%s: video%d, cur_frm = %px, addr = %08lx\n", __FUNCTION__, mipi->video_dev.num, mipi->cur_frm, addr);
 
 	return 0;
 }
@@ -722,12 +749,16 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	}
 
 	// Disable ISP Vsync interrupt
-	ispVsyncIntCtrl(&mipi->isp_info, 0);
+	//ispVsyncIntCtrl(&mipi->isp_info, 0);
+
+	// Power senor down and stop video output
+	powerSensorDown_RAM(&mipi->isp_info);
+	videoStopMode(&mipi->isp_info);
 
 	// FW must mask irq to avoid unmap issue (for test code)
 	//writel(0x32700, &mipi->csiiw_regs->csiiw_config0);      // Disable csiiw, fs_irq and fe_irq
-	reg_value = readl(&mipi->csiiw_regs->csiiw_config0);
-	reg_value = (reg_value&(~(IRQ_MASK_FE_MASK|CSIIW_EN_MASK)))|(IRQ_MASK_FE_DIS|CSIIW_EN_DIS);
+	//reg_value = readl(&mipi->csiiw_regs->csiiw_config0);
+	reg_value = (IRQ_MASK_FE_DIS|IRQ_MASK_FS_DIS|CMD_URGENT_TH(2)|CMD_QUEUE(7)|CSIIW_EN_DIS);
 	writel(reg_value, &mipi->csiiw_regs->csiiw_config0);    // Disable csiiw, fs_irq and fe_irq
 
 	mipi->streaming = false;
@@ -1322,13 +1353,13 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 	// Initialize field of video device.
 	vfd = &mipi->video_dev;
-	vfd->fops       = &sp_mipi_fops;
-	vfd->ioctl_ops  = &sp_mipi_ioctl_ops;
-	vfd->device_caps= mipi->caps;
-	vfd->release    = video_device_release_empty;
-	vfd->v4l2_dev   = &mipi->v4l2_dev;
-	vfd->queue      = &mipi->buffer_queue;
-	//vfd->tvnorms  = 0;
+	vfd->fops        = &sp_mipi_fops;
+	vfd->ioctl_ops   = &sp_mipi_ioctl_ops;
+	vfd->device_caps = mipi->caps;
+	vfd->release     = video_device_release_empty;
+	vfd->v4l2_dev    = &mipi->v4l2_dev;
+	vfd->queue       = &mipi->buffer_queue;
+	//vfd->tvnorms     = 0;
 	strlcpy(vfd->name, MIPI_CSI_RX_NAME, sizeof(vfd->name));
 	vfd->lock       = &mipi->lock;  // protect all fops and v4l2 ioctls.
 
@@ -1342,6 +1373,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_video_register;
 	}
 	MIPI_INFO("Registered video device \'/dev/video%d\'.\n", vfd->num);
+	MIPI_DBG("%s, %d, video_nr:%d", __FUNCTION__, __LINE__, video_nr); // CCHo added for debugging
 
 	// Get i2c_info for sub-device.
 	sp_mipi_cfg = kmalloc(sizeof(*sp_mipi_cfg), GFP_KERNEL);

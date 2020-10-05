@@ -5,15 +5,8 @@
 #include "i2c_api.h"
 #include "isp_api_s.h"
 
-// video test itme
-// 0 - always input video from camera
-// 1 - check the ability of start/stop video
-// 2 - check AE and AWB functions
-#define VIDEO_TEST (2)
-
-#if (VIDEO_TEST == 2)
+//#define SENSOR_INIT     // Initialize sensor in SC2310 sub-device driver
 #define ENABLE_3A
-#endif
 #ifdef ENABLE_3A
 #include "3a.h"
 #endif
@@ -27,7 +20,7 @@ int VideoStart = 0;
 #define COLOR_BAR_MOVING		(0)
 #define INTERRUPT_VS_FALLING	(0)
 
-//front table and struct
+// front table and struct
 #define MAX_FRONT_REG_LEN		(100)
 
 unsigned char FRONT_INIT_FILE[] = {
@@ -48,7 +41,7 @@ typedef struct
 	//FRONT_DATA_T FRONT_DATA[(u16)(ARRAY_SIZE(FRONT_INIT_FILE)/sizeof(FRONT_DATA_T))];
 } FRONT_INIT_FILE_T;
 
-//cdsp table and struct
+// cdsp table and struct
 #define MAX_CDSP_REG_LEN		(300)
 
 unsigned char CDSP_INIT_FILE[] = {
@@ -69,7 +62,7 @@ typedef struct
 	//CDSP_DATA_T CDSP_DATA[(u16)(ARRAY_SIZE(CDSP_INIT_FILE)/sizeof(CDSP_DATA_T))];
 } CDSP_INIT_FILE_T;
 
-//sensor struct
+// sensor struct
 #ifdef ENABLE_3A
 char AAA_INIT_FILE[] = {
 	#include "AaaInit.txt"
@@ -95,6 +88,7 @@ char GAIN_TABLE[] = {
 //#define MAX_SENSOR_REG_LEN		(400) // This causes a warning. warning: the frame size of 2416 bytes is larger than 2048 bytes.
 #define MAX_SENSOR_REG_LEN		(200)
 
+#ifdef SENSOR_INIT
 unsigned char SENSOR_INIT_FILE[] = {
 	#include "SensorInit_s.txt"
 };
@@ -127,6 +121,7 @@ typedef struct
 	SENSOR_DATA_T SENSOR_DATA[MAX_SENSOR_REG_LEN];
 	//SENSOR_DATA_T SENSOR_DATA[(u16)(ARRAY_SIZE(SENSOR_INIT_FILE)/sizeof(SENSOR_DATA_T))];
 } SENSOR_INIT_FILE_T;
+#endif
 
 /* sensor frame rate initialization */
 /* sensor 0 */
@@ -222,15 +217,15 @@ void ispVsyncIntCtrl(struct mipi_isp_info *isp_info, u8 on)
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
 
 	if (on) {
-		/* clear vd falling edge interrupt AAF061 W1C*/
+		// Clear vd falling edge interrupt AAF061 W1C
 		writeb(2, &(regs->reg[0x27B0]));
-		/* enable vd falling edge interrupt */
+		// Enable vd falling edge interrupt
 		writeb(readb(&(regs->reg[0x27C0]))|0x02, &(regs->reg[0x27C0]));
 	}
 	else {
-		/* disable vd falling edge interrupt */
+		// Disable vd falling edge interrupt
 		writeb(readb(&(regs->reg[0x27C0]))&0xFD, &(regs->reg[0x27C0]));
-		/* clear vd falling edge interrupt AAF061 W1C*/
+		// Clear vd falling edge interrupt AAF061 W1C
 		writeb(2, &(regs->reg[0x27B0]));
 	}
 }
@@ -241,10 +236,11 @@ void ispVsyncInt(struct mipi_isp_info *isp_info)
 
 	if (((readb(&(regs->reg[0x27C0])) & 0x02) == 0x02) &&	/* sensor vd falling interrupt enable */
 		((readb(&(regs->reg[0x27B0])) & 0x02) == 0x02)) {	/* sensor vd falling interrupt event */
+#ifdef ENABLE_3A
 		intrIntr0SensorVsync(isp_info);
 		aaaAeAwbAf(isp_info);
-
-		/* clear vd falling edge interrupt AAF061 W1C*/
+#endif
+		// clear vd falling edge interrupt AAF061 W1C
 		writeb(0x02, &(regs->reg[0x27B0]));
 	}
 }
@@ -258,22 +254,22 @@ void ispReset_s(struct mipi_isp_info *isp_info)
 
 	ISPAPB_LOGI("%s, %d\n", __FUNCTION__, __LINE__);
 
-	writeb(0x13, &(regs->reg[0x2000])); //reset all module include ispck
-	writeb(0x1c, &(regs->reg[0x2003])); //enable phase clocks
-	writeb(0x07, &(regs->reg[0x2005])); //enbale p1xck
-	writeb(0x05, &(regs->reg[0x2008])); //switch b1xck/bpclk_nx to normal clocks
-	writeb(0x03, &(regs->reg[0x2000])); //release ispck reset
+	writeb(0x13, &(regs->reg[0x2000])); // reset all module include ispck
+	writeb(0x1c, &(regs->reg[0x2003])); // enable phase clocks
+	writeb(0x07, &(regs->reg[0x2005])); // enbale p1xck
+	writeb(0x05, &(regs->reg[0x2008])); // switch b1xck/bpclk_nx to normal clocks
+	writeb(0x03, &(regs->reg[0x2000])); // release ispck reset
 	ispSleep_s(20);                     //#(`TIMEBASE*20;
 	//
-	writeb(0x00, &(regs->reg[0x2000])); //release all module reset
+	writeb(0x00, &(regs->reg[0x2000])); // release all module reset
 	//
-	writeb(0x01, &(regs->reg[0x276c])); //reset front
-	writeb(0x00, &(regs->reg[0x276c])); //
-	//	
+	writeb(0x01, &(regs->reg[0x276c])); // reset front
+	writeb(0x00, &(regs->reg[0x276c])); // 
+	//
 	writeb(0x03, &(regs->reg[0x2000]));
 	writeb(0x00, &(regs->reg[0x2000]));
 	//
-	writeb(0x00, &(regs->reg[0x2010])); //cclk: 48MHz
+	writeb(0x00, &(regs->reg[0x2010])); // cclk: 48MHz
 }
 
 /*
@@ -289,7 +285,7 @@ void FrontInit_s(struct mipi_isp_info *isp_info)
 
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
-	// conver table data to FRONT_INIT_FILE_T struct
+	// Conver table data to FRONT_INIT_FILE_T struct
 	total = ARRAY_SIZE(FRONT_INIT_FILE);
 	data[0] = FRONT_INIT_FILE[0];
 	data[1] = FRONT_INIT_FILE[1];
@@ -311,7 +307,7 @@ void FrontInit_s(struct mipi_isp_info *isp_info)
 		//ISPAPB_LOGI("%s, i=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, i, data[0], data[1], data[2], data[3]);
 	}
 
-	//clock setting
+	// Clock setting
 	writeb(0x07, &(regs->reg[0x2008]));
 
 	ISPAPB_LOGI("%s, count=%d\n", __FUNCTION__, read_file.count);
@@ -433,6 +429,7 @@ void cdspSetTable_s(struct mipi_isp_info *isp_info)
 /*
 	@sensorInit_s
 */
+#ifdef SENSOR_INIT
 void sensorInit_s(struct mipi_isp_info *isp_info)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
@@ -451,7 +448,8 @@ void sensorInit_s(struct mipi_isp_info *isp_info)
 	read_file.count = (data[0]<<8)|data[1];
 
 	ISPAPB_LOGI("%s, total=%d\n", __FUNCTION__, total);
-	ISPAPB_LOGI("%s, count=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, read_file.count, data[0], data[1], data[2], data[3]);
+	ISPAPB_LOGI("%s, count=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n",
+		__FUNCTION__, read_file.count, data[0], data[1], data[2], data[3]);
 	for (i = 2; i < total; i=i+4)
 	{
 		data[0] = SENSOR_INIT_FILE[i];
@@ -468,7 +466,6 @@ void sensorInit_s(struct mipi_isp_info *isp_info)
 	Init_I2C0(SC2310_DEVICE_ADDR, 0, isp_info);
 
 	ISPAPB_LOGI("%s, count=%d\n", __FUNCTION__, read_file.count);
-
 	for (i = 0; i < read_file.count; i++)
 	{
 		//ISPAPB_LOGI("%s, type=0x%02x, adr=0x%04x, dat=0x%04x\n", __FUNCTION__, read_file.SENSOR_DATA[i].type, read_file.SENSOR_DATA[i].adr, read_file.SENSOR_DATA[i].dat);
@@ -533,6 +530,7 @@ void sensorInit_s(struct mipi_isp_info *isp_info)
 
 	ISPAPB_LOGI("%s end\n", __FUNCTION__);
 }
+#endif
 
 /*
 	@CdspInit_s
@@ -745,9 +743,10 @@ void ispAaaInit_s(struct mipi_isp_info *isp_info)
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
 #ifdef ENABLE_3A
-	aaaLoadInit(AAA_INIT_FILE);
-	aeLoadAETbl(AE_TABLE); 
-	aeLoadGainTbl(GAIN_TABLE); 
+	aaaInitVar(isp_info);
+	aaaLoadInit(isp_info, AAA_INIT_FILE);
+	aeLoadAETbl(isp_info, AE_TABLE); 
+	aeLoadGainTbl(isp_info, GAIN_TABLE); 
 	aeInitExt(isp_info);
 	awbInit(isp_info);
 #endif
@@ -769,13 +768,15 @@ void videoStartMode(struct mipi_isp_info *isp_info)
 	FrontInit_s(isp_info);
 	CdspInit_s(isp_info);
 	ispAaaInit_s(isp_info);
+#ifdef SENSOR_INIT
 	sensorInit_s(isp_info);
+#endif
 
 	/* set and clear reset of buffer cdsp interface */
 	writeb(readb(&(regs->reg[0x2300]))|0x08, &(regs->reg[0x2300]));
 	writeb(readb(&(regs->reg[0x2300]))&0xF7, &(regs->reg[0x2300]));
 
-#ifdef ENABLE_3A	
+#ifdef ENABLE_3A
 	vidctrlInit(isp_info, SC2310_GAIN_ADDR, SC2310_FRAME_LEN_ADDR, SC2310_LINE_TOTAL_ADDR,
 				SC2310_EXP_LINE_ADDR, SC2310_PCLK);
 	VideoStart = 1;
@@ -822,47 +823,14 @@ void videoStopMode(struct mipi_isp_info *isp_info)
 
 void isp_setting_s(struct mipi_isp_info *isp_info)
 {
-#if (VIDEO_TEST == 1)
-	int i;
-#endif
-
 	ISPAPB_LOGI("%s start\n", __FUNCTION__);
 
 	//ispReset_s(isp_info);
 	cdspSetTable_s(isp_info);
 
-#if (VIDEO_TEST == 0)
-	ISPAPB_LOGI("%s, check video stream from camera\n", __FUNCTION__);
-
 	/* check video stream from camera */
 	//powerSensorOn_RAM(isp_info);
-	videoStartMode(isp_info);
-
-#elif (VIDEO_TEST == 1)
-	ISPAPB_LOGI("%s, check the stability of start/stop video\n", __FUNCTION__);
-
-	/* check the stability of start/stop video */
-	for (i = 0; i < 10; i++)
-	{
-		ISPAPB_LOGI("%s, for loop: %d\n", __FUNCTION__, i);
-
-		powerSensorOn_RAM(isp_info);
-		videoStartMode(isp_info);
-		sleep(10);      // sec unit
-		videoStopMode(isp_info);
-		sleep(5);       // sec unit
-		powerSensorDown_RAM(isp_info);
-		sleep(5);       // sec unit
-	}
-
-#elif (VIDEO_TEST == 2)
-	ISPAPB_LOGI("%s, check AE and AWB functions\n", __FUNCTION__);
-
-	/* check AE and AWB functions */
-	//powerSensorOn_RAM(isp_info);
-	videoStartMode(isp_info);
-
-#endif
+	//videoStartMode(isp_info);
 
 	ISPAPB_LOGI("%s end\n", __FUNCTION__);
 }
