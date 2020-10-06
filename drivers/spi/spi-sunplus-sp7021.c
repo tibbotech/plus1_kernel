@@ -278,13 +278,13 @@ struct pentagram_spi_master {
 	void * rx_dma_vir_base;
 	struct completion isr_done;	// complete() at *master_(dma|mas)_irq()
 	struct completion sla_isr;	// completion() at spi_S_irq() - slave irq jandler
-	unsigned int bufsiz;	
-	
-    unsigned int  rx_cur_len;
-    unsigned int  tx_cur_len; 
+	unsigned int bufsiz;
 
-    u8 tx_data_buf[SPI_MSG_DATA_SIZE];
-    u8 rx_data_buf[SPI_MSG_DATA_SIZE];
+	unsigned int  rx_cur_len;
+	unsigned int  tx_cur_len;
+
+	u8 tx_data_buf[SPI_MSG_DATA_SIZE];
+	u8 rx_data_buf[SPI_MSG_DATA_SIZE];
 
 	int isr_flag;
 
@@ -308,15 +308,16 @@ static irqreturn_t pentagram_spi_S_irq( int _irq, void *_dev)
 	return IRQ_HANDLED;
 }
 
-
-int pentagram_spi_slave_dma_rw(struct spi_device *spi,u8 *buf, unsigned int len, int RW_phase)
+// slave DMA rw (unused now)
+// FIXME: probably frop this?
+int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len, int RW_phase)
 {
 	struct pentagram_spi_master *pspim = spi_controller_get_devdata(spi->controller);
 
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device dev = spi->dev;
-	unsigned int reg_temp;
+	u32 reg_temp;
 	unsigned long timeout = msecs_to_jiffies(2000);
 
 	FUNC_DBG();
@@ -327,36 +328,27 @@ int pentagram_spi_slave_dma_rw(struct spi_device *spi,u8 *buf, unsigned int len,
 		writel_relaxed(DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
 		writel_relaxed(len, &spis_reg->SLV_DMA_LENGTH);
 		writel_relaxed(pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
-		reg_temp = readl(&spis_reg->RISC_INT_DATA_RDY);
-		reg_temp |= SLAVE_DATA_RDY;
-		writel(reg_temp, &spis_reg->RISC_INT_DATA_RDY);
+		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
 		//regs1->SLV_DMA_CTRL = 0x4d;
 		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
 		//regs1->SLV_DMA_INI_ADDR = 0x300;
 		//regs1->RISC_INT_DATA_RDY |= 0x1;
 	}else if (RW_phase == SPI_SLAVE_READ) {
-
-		//reinit_completion(&pspim->dma_isr);
 		reinit_completion(&pspim->isr_done);
 		writel(DMA_READ, &spis_reg->SLV_DMA_CTRL);
 		writel(len, &spis_reg->SLV_DMA_LENGTH);
 		writel(pspim->rx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
 
-			
-	      if(!wait_for_completion_timeout(&pspim->isr_done,timeout)){
+		if(!wait_for_completion_timeout(&pspim->isr_done,timeout)){
 			dev_err(&dev,"wait_for_completion_timeout\n");
 			goto exit_spi_slave_rw;
-
 		}
-
 		while((readl(&spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
 		{
 			dev_dbg(&dev,"spim_reg->DMA_CTRL 0x%x\n",readl(&spim_reg->DMA_CTRL));
 		};
-
 		memcpy(buf, pspim->rx_dma_vir_base, len);
-        writel(SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
-	
+		writel(SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
 		/* read*/
 		//regs1->SLV_DMA_CTRL = 0xd;
 		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
@@ -385,7 +377,7 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device *devp = &( _s->dev);
-	unsigned int reg_temp;
+	u32 reg_temp;
 
 	FUNC_DBG();
 	mutex_lock( &pspim->buf_lock);
@@ -395,9 +387,7 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 		writel_relaxed( DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
 		writel_relaxed( len, &spis_reg->SLV_DMA_LENGTH);
 		writel_relaxed( pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
-		reg_temp = readl( &spis_reg->RISC_INT_DATA_RDY);
-		reg_temp |= SLAVE_DATA_RDY;
-		writel( reg_temp, &spis_reg->RISC_INT_DATA_RDY);
+		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
 	}
 	if ( RW_phase == SPI_SLAVE_READ) {
 		reinit_completion( &pspim->isr_done);
@@ -440,6 +430,25 @@ static irqreturn_t pentagram_spi_M_irq_dma( int _irq, void *_dev)
 	return IRQ_HANDLED;
 }
 
+void sp7021spi_rb( struct pentagram_spi_master *_m, u8 _len) {
+	SPI_MAS* sr = ( SPI_MAS *)_m->mas_base;
+	int i;
+	for ( i = 0; i < _len; i++) {
+		_m->rx_data_buf[ _m->rx_cur_len] = readl( &sr->FIFO_DATA);
+		DBG_INF( "RX 0x%x _cur_len = %d", _m->rx_data_buf[ _m->rx_cur_len], _m->rx_cur_len);
+		_m->rx_cur_len++;
+	}
+}
+void sp7021spi_wb( struct pentagram_spi_master *_m, u8 _len) {
+	SPI_MAS* sr = ( SPI_MAS *)_m->mas_base;
+	int i;
+	for ( i = 0; i < _len; i++) {
+		DBG_INF( "TX 0x%02x _cur_len %d", _m->tx_data_buf[ i], _m->tx_cur_len);
+		writel( _m->tx_data_buf[ i], &sr->FIFO_DATA);
+		_m->tx_cur_len++;
+	}
+}
+
 static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 {
 	unsigned long flags;
@@ -454,77 +463,52 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	spin_lock_irqsave( &pspim->lock, flags);
 
 	tx_lenght = GET_TX_LENGTH( readl( &sr->SPI_FD_STATUS));
-	readl( &sr->SPI_FD_STATUS);
+	fd_status = readl( &sr->SPI_FD_STATUS);
 	DBG_INF( "fd_status=0x%x tx_lenght = 0x%x", fd_status, tx_lenght);
 	DBG_INF( "rx_fifo_cnt:%d tx_fifo_cnt:%d", ( fd_status>>12) & 0x0F, ( fd_status>>16) & 0xFF);
+	if ( fd_status & FINISH_FLAG) DBG_INF( "FINISH_FLAG");
+	if ( fd_status & RX_FULL_FLAG) DBG_INF( "RX_FULL_FLAG");
+	if ( fd_status & TX_EMP_FLAG) DBG_INF( "TX_EMP_FLAG");
 
-	if ( ( fd_status & FINISH_FLAG) == FINISH_FLAG) {
-		DBG_INF( "FINISH_FLAG");
-		if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
-			// if READ_BYTE(0) i<16  can set the condition at here
+	if ( ( fd_status & TX_EMP_FLAG) || ( pspim->tx_cur_len < tx_lenght)) {
+		// RX_FULL_FLAG means RX buffer is full (16 bytes)
+		if ( fd_status & RX_FULL_FLAG) {
 			for ( i = 0; i < pspim->data_unit; i++) {
-			    pspim->rx_data_buf[ pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			    DBG_INF( "RX 0x%x rx_cur_len = %d", pspim->rx_data_buf[ pspim->rx_cur_len], pspim->rx_cur_len);
-			    pspim->rx_cur_len++;
+				sp7021spi_rb( pspim, 1);
+				if ( pspim->tx_cur_len < tx_lenght) sp7021spi_wb( pspim, 1);
 			}
+			fd_status = readl( &sr->SPI_FD_STATUS);
 		}
-		while ( readl( &sr->SPI_FD_STATUS) & RX_CNT) {
-			pspim->rx_data_buf[ pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			DBG_INF( "RX 0x%x rx_cur_len = %d", pspim->rx_data_buf[ pspim->rx_cur_len], pspim->rx_cur_len);
-			pspim->rx_cur_len++;
+		while ( fd_status & RX_CNT) {
+			sp7021spi_rb( pspim, 1);
+			fd_status = readl( &sr->SPI_FD_STATUS);
+			if ( fd_status & TX_FULL_FLAG) continue;
+			if ( pspim->tx_cur_len >= tx_lenght) continue;
+			sp7021spi_wb( pspim, 1);
+			fd_status = readl( &sr->SPI_FD_STATUS);
 		}
-		DBG_INF("set SPI_FD_STATUS =0x%x",readl( &sr->SPI_FD_STATUS));
-		goto exit_irq;
-	} else if ( ( ( fd_status & TX_EMP_FLAG) == TX_EMP_FLAG) || ( pspim->tx_cur_len < tx_lenght)) {
-		DBG_INF( "TX_EMP_FLAG");
-		if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
-			// if READ_BYTE(0) i<16  can set the condition at here
-			for(i=0;i<pspim->data_unit;i++) {
-			    pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			    DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
-			    pspim->rx_cur_len++;
-			    if(pspim->tx_cur_len < tx_lenght){
-		            writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
-		            pspim->tx_cur_len++;
-				}
-			}
+		while ( tx_lenght > pspim->tx_cur_len) {
+			fd_status = readl( &sr->SPI_FD_STATUS);
+			if ( fd_status & TX_FULL_FLAG) break;
+			sp7021spi_wb( pspim, 1);
 		}
-		while ( readl( &sr->SPI_FD_STATUS) & RX_CNT) {
-			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			DBG_INF("RX data 0x%x ,tx_cur_len %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
-			pspim->rx_cur_len++;
-			if((pspim->tx_cur_len < tx_lenght) &&  ((readl( &sr->SPI_FD_STATUS) & TX_FULL_FLAG) != TX_FULL_FLAG)){
-		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
-		        pspim->tx_cur_len++;
-			}
-		}
-		if(pspim->tx_cur_len < tx_lenght){
- 		    while(tx_lenght-pspim->tx_cur_len){
-		    	DBG_INF("tx_data_buf 0x%x  ,tx_cur_len %d",pspim->tx_data_buf[pspim->tx_cur_len],pspim->tx_cur_len);
-				if((readl( &sr->SPI_FD_STATUS) & TX_FULL_FLAG) == TX_FULL_FLAG)
-			    	break;
-		        writel(pspim->tx_data_buf[pspim->tx_cur_len], &sr->FIFO_DATA);
-				pspim->tx_cur_len++;
-		    } 
-		}
-		spin_unlock_irqrestore(&pspim->lock, flags);
-		return IRQ_HANDLED;
-	} else if ( ( fd_status & RX_FULL_FLAG) == RX_FULL_FLAG) {
-		DBG_INF("RX_FULL_FLAG");
-		for(i=0;i<pspim->data_unit;i++){    // if READ_BYTE(0) i<data_unit  can set the condition at here
-			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			DBG_INF("RX data 0x%x  rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->rx_cur_len);
-			pspim->rx_cur_len++;
-		}
-		while((readl( &sr->SPI_FD_STATUS) & RX_CNT) || ((readl( &sr->SPI_FD_STATUS) & RX_FULL_FLAG) == RX_FULL_FLAG)){   
-			pspim->rx_data_buf[pspim->rx_cur_len] = readl( &sr->FIFO_DATA);
-			DBG_INF("RX data 0x%x tx_cur_len = %d rx_cur_len = %d",pspim->rx_data_buf[pspim->rx_cur_len],pspim->tx_cur_len,pspim->rx_cur_len);
-			pspim->rx_cur_len++;		   
-		}
-		spin_unlock_irqrestore(&pspim->lock, flags);
+		// FIXME: maybe goto exit_irq should be there?
+		spin_unlock_irqrestore( &pspim->lock, flags);
 		return IRQ_HANDLED;
 	}
-
+	if ( ( fd_status & FINISH_FLAG) || ( fd_status & RX_FULL_FLAG)) {
+		// RX_FULL_FLAG means RX buffer is full (16 bytes)
+		if ( fd_status & RX_FULL_FLAG) {
+			sp7021spi_rb( pspim, pspim->data_unit);
+			fd_status = readl( &sr->SPI_FD_STATUS);
+		}
+		// if RX_CNT != 0 there is something to read
+		while ( fd_status & RX_CNT) {
+			sp7021spi_rb( pspim, 1);
+			fd_status = readl( &sr->SPI_FD_STATUS);
+		}
+		goto exit_irq;
+	}
 	if ( pspim->isr_flag == SPI_MASTER_WRITE) {
 		writel( readl( &sr->SPI_CTRL_CLKSEL) | SPI_START, &sr->SPI_CTRL_CLKSEL);
 	} else {
@@ -556,7 +540,7 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	FUNC_DBG();
 
 	memset( &pspim->tx_data_buf[0], 0, SPI_MSG_DATA_SIZE);
-	DBG_INF( "tx _data_buf[0] 0x%x _cur_len %d transfers_cnt %d",pspim->tx_data_buf[0],pspim->tx_cur_len,transfers_cnt);
+	DBG_INF( "tx _data_buf[0] 0x%02x _cur_len %d transfers_cnt %d", pspim->tx_data_buf[0], pspim->tx_cur_len, transfers_cnt);
 	DBG_INF( "txrx: tx %p, rx %p, len %d", t->tx_buf, t->rx_buf, t->len);
 
 	mutex_lock( &pspim->buf_lock);
@@ -568,18 +552,12 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 		data_len += t->len;
 		t = list_entry( t->transfer_list.next, struct spi_transfer, transfer_list);
 	}
-
-	DBG_INF( "tx_data_buf 0x%x tx_cur_len %d data_len %d", pspim->tx_data_buf[0], pspim->tx_cur_len, data_len);
-	DBG_INF( "xfer_rx %d",xfer_rx);
+	DBG_INF( "data_len %d xfer_rx %d", data_len, xfer_rx);
 
 	// set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
 	if ( pspim->tx_cur_len < data_len) {
 		data_len = min( pspim->data_unit, data_len);
-		for ( i = 0; i < data_len; i++) {
-			DBG_INF( "tx _data_buf 0x%x _cur_len %d", pspim->tx_data_buf[ i], pspim->tx_cur_len);
-			writel( pspim->tx_data_buf[ i], &sr->FIFO_DATA);
-			pspim->tx_cur_len++;
-		}
+		sp7021spi_wb( pspim, data_len);
 	}
 	// initial SPI master config and change to Full-Duplex mode (SPI_FD_CONFIG)  91.15
 	reg_temp = readl( &sr->SPI_FD_CONFIG);
