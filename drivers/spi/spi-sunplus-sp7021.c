@@ -317,7 +317,6 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device dev = spi->dev;
-	u32 reg_temp;
 	unsigned long timeout = msecs_to_jiffies(2000);
 
 	FUNC_DBG();
@@ -377,7 +376,6 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device *devp = &( _s->dev);
-	u32 reg_temp;
 
 	FUNC_DBG();
 	mutex_lock( &pspim->buf_lock);
