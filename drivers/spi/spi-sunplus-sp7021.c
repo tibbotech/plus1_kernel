@@ -507,7 +507,8 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 			sp7021spi_rb( pspim, 1);
 			fd_status = readl( &sr->SPI_FD_STATUS);
 		}
-		goto exit_irq;
+		if ( fd_status & FINISH_FLAG) goto exit_irq;
+		return IRQ_HANDLED;
 	}
 	if ( pspim->isr_flag == SPI_MASTER_WRITE) {
 		writel( readl( &sr->SPI_CTRL_CLKSEL) | SPI_START, &sr->SPI_CTRL_CLKSEL);
