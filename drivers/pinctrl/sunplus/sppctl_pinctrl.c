@@ -414,12 +414,19 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 			  KERR( _pd->dev, "zero func %d out of range\n", dt_fun);
 			  continue;  }
 			f = &( list_funcs[ dt_fun]);
-			if ( f->gnum == 0) {
-			  KDBG( _pd->dev, "zero func: %d (%s)\n", dt_fun, f->name);
-			  sppctl_pin_set( pctrl, 0, dt_fun - 2);
-			  continue;  }
-			KDBG( _pd->dev, "zero group: %d (%s)\n", dt_fun, f->name);
-			sppctl_gmx_set( pctrl, f->roff, f->boff, f->blen, 0);
+			switch ( f->freg) {
+				case fOFF_M:
+					KDBG( _pd->dev, "zero func: %d (%s)\n", dt_fun, f->name);
+					sppctl_pin_set( pctrl, 0, dt_fun - 2);
+					break;
+				case fOFF_G:
+					KDBG( _pd->dev, "zero group: %d (%s)\n", dt_fun, f->name);
+					sppctl_gmx_set( pctrl, f->roff, f->boff, f->blen, 0);
+					break;
+				default:
+					KERR( _pd->dev, "wrong zero group: %d (%s)\n", dt_fun, f->name);
+					break;
+			}
 		}
 	}
 
