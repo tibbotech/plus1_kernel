@@ -1431,9 +1431,10 @@ static void pentagram_spi_setup_transfer(struct spi_device *spi, struct spi_cont
 		  reg_temp = reg_temp | CPOL_FD;  
 	   }
 	  if(ctlr->mode_bits & SPI_CPHA){
-		  reg_temp = reg_temp | CPHA_W | CPHA_R;  
-	   }
-
+		  reg_temp = reg_temp | CPHA_R;  
+	   }else{
+		  reg_temp = reg_temp | CPHA_W; 
+		 } 
 	  
 	   if(spi->mode & SPI_CS_HIGH){
 		  reg_temp = reg_temp | CS_POR;  
