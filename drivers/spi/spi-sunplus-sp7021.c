@@ -26,8 +26,8 @@
 
 /* ---------------------------------------------------------------------------------------------- */
 
-#define SPI_FUNC_DEBUG
-#define SPI_DBG_INFO
+//#define SPI_FUNC_DEBUG
+//#define SPI_DBG_INFO
 #define SPI_DBG_ERR
 
 #ifdef SPI_FUNC_DEBUG
