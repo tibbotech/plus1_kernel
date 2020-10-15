@@ -168,7 +168,7 @@ static int _i143_fb_create_device(struct platform_device *pdev,
 			fbWorkMem->fbsize, &fb_phymem, GFP_KERNEL | __GFP_ZERO);
 
 	/* I143_SYS_PORT */
-	fb_phymem &= ~0x80000000;
+	//fb_phymem &= ~0x80000000;
 
 	if (!fbWorkMem->fbmem) {
 		mod_err(pdev, "malloc failed, size %d(%dx%dx(%d/8)*%d)\n",
@@ -273,7 +273,7 @@ static int _i143_fb_create_device(struct platform_device *pdev,
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
-	Info->UI_bufAddr = (u64)fbinfo->fix.smem_start;
+	Info->UI_bufAddr = (u64)(fbinfo->fix.smem_start & ~0x80000000);
 	if (fbinfo->pseudo_palette)
 		Info->UI_bufAddr_pal = (u64)fbinfo->pseudo_palette;
 	else

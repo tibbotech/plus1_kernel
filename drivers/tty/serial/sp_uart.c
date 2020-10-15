@@ -300,6 +300,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 	struct sunplus_uart_port *sp_port;
 	struct sunplus_uartdma_info *uartdma_tx;
 	volatile struct regs_uatxdma *txdma_reg;
+	volatile struct regs_uatxgdma *gdma_reg;
 
 	local_irq_save(flags);
 
@@ -320,6 +321,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 	uartdma_tx = sp_port->uartdma_tx;
 	if (uartdma_tx) {
 		txdma_reg = (volatile struct regs_uatxdma *)(uartdma_tx->membase);
+		gdma_reg = (volatile struct regs_uatxgdma *)(uartdma_tx->gdma_membase);
 		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) { 		/* ring buffer for UART's Tx has been enabled */
 			uart_console_write(&sunplus_uart_ports[co->index].uport, s, count, sunplus_uart_console_putchar);
 		} else {
@@ -345,7 +347,7 @@ static void sunplus_console_write(struct console *co, const char *s, unsigned co
 				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));	/* txdma_reg->txdma_rd_adr is updated by h/w too */
 				writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1), &(txdma_reg->txdma_end_addr));
 				writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
-
+				writel(0x41, &(gdma_reg->gdma_int_en));
 				writel(0x00000005, &(txdma_reg->txdma_enable));		/* Use ring buffer for UART's Tx */
 			}
 #endif
@@ -1919,7 +1921,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->ops = &sunplus_uart_ops;
 	port->flags = UPF_BOOT_AUTOCONF;
 	port->dev = &pdev->dev;
-	port->fifosize = 16;
+	port->fifosize = 128;
 	port->line = pdev->id;
 
 	if (pdev->id == 0)

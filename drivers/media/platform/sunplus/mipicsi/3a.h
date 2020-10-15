@@ -25,16 +25,16 @@
 #endif
 
 // local function prototype
-void aeGetCurEv(void);
+void aeGetCurEv(struct mipi_isp_info *isp_info);
 void sensorSetExposureTimeIsr(struct mipi_isp_info *isp_info);
 void sensorSetGainIsr(struct mipi_isp_info *isp_info);
-void aeGetCurEv(void);
+void aeGetCurEv(struct mipi_isp_info *isp_info);
 
 void InstallVSinterrupt(void);
 void intrIntr0SensorVsync(struct mipi_isp_info *isp_info);
-void aaaLoadInit(char *aaa_init_file);
-void aeLoadAETbl(char *ae_table_file);
-void aeLoadGainTbl(char *gain_table_file);
+void aaaLoadInit(struct mipi_isp_info *isp_info, char *aaa_init_file);
+void aeLoadAETbl(struct mipi_isp_info *isp_info, char *ae_table_file);
+void aeLoadGainTbl(struct mipi_isp_info *isp_info, char *gain_table_file);
 
 void aeInitExt(struct mipi_isp_info *isp_info);
 void awbInit(struct mipi_isp_info *isp_info);
@@ -45,6 +45,7 @@ void vidctrlInit(struct mipi_isp_info *isp_info,
 				u16 _sc2310_line_total_addr, 
 				u16 _sc2310_exp_line_addr,
 				u32 _sensor_pclk);
+void aaaInitVar(struct mipi_isp_info *isp_info);
 void aaaAeAwbAf(struct mipi_isp_info *isp_info);
 
 #endif /* __3A_H */

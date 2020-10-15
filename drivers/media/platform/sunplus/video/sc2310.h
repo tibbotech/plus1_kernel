@@ -16,6 +16,7 @@
 /* SC2310 Registers */
 #define SC2310_REG_CHIP_ID_H                    0x3107
 #define SC2310_REG_CHIP_ID_L                    0x3108
+#define SC2310_REG_CHIP_ID                      SC2310_REG_CHIP_ID_H
 #define CHIP_ID                                 0x2311
 #define SC2310_REG_CTRL_MODE                    0x0100
 #define SC2310_MODE_SW_STANDBY                  0x0
