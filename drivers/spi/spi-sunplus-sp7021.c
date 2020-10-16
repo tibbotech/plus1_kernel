@@ -23,16 +23,14 @@
 #include <linux/of_gpio.h>
 //#include <dt-bindings/pinctrl/sp7021.h>
 
-
-
 #define SLAVE_INT_IN
 
 //#define PM_RUNTIME_SPI
 
 /* ---------------------------------------------------------------------------------------------- */
 
-#define SPI_FUNC_DEBUG
-#define SPI_DBG_INFO
+//#define SPI_FUNC_DEBUG
+//#define SPI_DBG_INFO
 #define SPI_DBG_ERR
 
 #ifdef SPI_FUNC_DEBUG
@@ -336,7 +334,7 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 		writel_relaxed(pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
 		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
 		//regs1->SLV_DMA_CTRL = 0x4d;
-		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_LENGTH = 0x50;
 		//regs1->SLV_DMA_INI_ADDR = 0x300;
 		//regs1->RISC_INT_DATA_RDY |= 0x1;
 	}else if (RW_phase == SPI_SLAVE_READ) {
@@ -357,7 +355,7 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 		writel(SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
 		/* read*/
 		//regs1->SLV_DMA_CTRL = 0xd;
-		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_LENGTH = 0x50;
 		//regs1->SLV_DMA_INI_ADDR = 0x400;
 	}
 
