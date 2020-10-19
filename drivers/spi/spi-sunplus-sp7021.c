@@ -19,6 +19,9 @@
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/pm_runtime.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+//#include <dt-bindings/pinctrl/sp7021.h>
 
 #define SLAVE_INT_IN
 
@@ -331,7 +334,7 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 		writel_relaxed(pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
 		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
 		//regs1->SLV_DMA_CTRL = 0x4d;
-		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_LENGTH = 0x50;
 		//regs1->SLV_DMA_INI_ADDR = 0x300;
 		//regs1->RISC_INT_DATA_RDY |= 0x1;
 	}else if (RW_phase == SPI_SLAVE_READ) {
@@ -352,7 +355,7 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 		writel(SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
 		/* read*/
 		//regs1->SLV_DMA_CTRL = 0xd;
-		//regs1->SLV_DMA_LENGTH = 0x50;//0x50
+		//regs1->SLV_DMA_LENGTH = 0x50;
 		//regs1->SLV_DMA_INI_ADDR = 0x400;
 	}
 
@@ -444,8 +447,8 @@ void sp7021spi_wb( struct pentagram_spi_master *_m, u8 _len) {
 	SPI_MAS* sr = ( SPI_MAS *)_m->mas_base;
 	int i;
 	for ( i = 0; i < _len; i++) {
-		DBG_INF( "TX 0x%02x _cur_len %d", _m->tx_data_buf[ i], _m->tx_cur_len);
-		writel( _m->tx_data_buf[ i], &sr->FIFO_DATA);
+		DBG_INF( "TX 0x%02x _cur_len %d", _m->tx_data_buf[_m->tx_cur_len], _m->tx_cur_len);
+		writel( _m->tx_data_buf[_m->tx_cur_len], &sr->FIFO_DATA);
 		_m->tx_cur_len++;
 	}
 }
@@ -622,12 +625,15 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 	// reg clear bits and set bits
 	u32 rs = 0;
 	FUNC_DBG();
-	DBG_INF( "setup %d bpw, %scpol, %scpha, %scs-high, %slsb-first",
+	DBG_INF( "setup %d bpw, %scpol, %scpha, %scs-high, %slsb-first %xcs_gpio",
 		s->bits_per_word,
 		s->mode & SPI_CPOL ? "" : "~",
 		s->mode & SPI_CPHA ? "" : "~",
 		s->mode & SPI_CS_HIGH ? "" : "~",
-		s->mode & SPI_LSB_FIRST ? "" : "~");
+		s->mode & SPI_LSB_FIRST ? "" : "~",
+		s->cs_gpio);
+
+	DBG_INF( "cs-gpio0 %d  cs-gpio1 %d cs-gpio2 %d",_c->cs_gpios[0],_c->cs_gpios[1]);	
 
 	rs = FD_SEL | ((0xffff) << 16); 		//set up full duplex frequency and enable  full duplex 
 		
@@ -639,6 +645,8 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 
 	if ( s->mode & SPI_CPHA)  rs |=  CPHA_R;
 	else rs |=  CPHA_W;
+
+        rs |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 
 	writel( rs, &( spim_reg->SPI_FD_CONFIG));
 	return 0;
