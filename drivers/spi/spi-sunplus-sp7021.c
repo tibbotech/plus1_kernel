@@ -633,9 +633,8 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 		s->mode & SPI_LSB_FIRST ? "" : "~",
 		s->cs_gpio);
 
-	DBG_INF( "cs-gpio0 %d  cs-gpio1 %d cs-gpio2 %d",_c->cs_gpios[0],_c->cs_gpios[1]);	
-
-	rs = FD_SEL | ((0xffff) << 16); 		//set up full duplex frequency and enable  full duplex 
+	//set up full duplex frequency and enable  full duplex
+	rs = FD_SEL | ((0xffff) << 16);
 		
 	if ( s->mode & SPI_CPOL) rs |= CPOL_FD;
 
