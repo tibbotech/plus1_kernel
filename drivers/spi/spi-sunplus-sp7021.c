@@ -63,7 +63,7 @@
 #define SLA_IRQ_NAME "slave_risc_intr"
 
 #define SPI_MASTER_NUM (4)
-#define SPI_MSG_DATA_SIZE (255)
+#define SPI_MSG_DATA_SIZE (255*4)
 
 
 
@@ -806,7 +806,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 			break;
 		}
 		if ( xfer->len > SPI_MSG_DATA_SIZE) {
-			DBG_ERR( "too big transfer (%d bytes), limit:", xfer->len, SPI_MSG_DATA_SIZE);
+			DBG_ERR( "too big transfer (%d bytes), limit:%d", xfer->len, SPI_MSG_DATA_SIZE);
 			ret = -EINVAL;
 			break;
 		}
