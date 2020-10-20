@@ -132,11 +132,17 @@ static DISP_GPOST_REG_t *pGPOSTReg;
 static DISP_OSD1_REG_t *pOSD1Reg;
 static DISP_GPOST1_REG_t *pGPOST1Reg;
 
+#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+static struct Region_Manager_s *gpWinRegion;
+static u32 gpWinRegion_phy;
+static u8 *gpOsdHeader;
+static u32 gpOsdHeader_phy;
+#else
 static struct Region_Manager_s *gpWinRegion;
 static u64 gpWinRegion_phy;
 static u8 *gpOsdHeader;
 static u64 gpOsdHeader_phy;
-
+#endif
 static const char * const osd_status[] = {"dis", "en", "unknown"};
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
@@ -165,10 +171,39 @@ void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 
 }
 
+#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, u32 *pClutDataPtr)
+{
+	struct Region_Manager_s *pRegionManager =
+		(struct Region_Manager_s *)region;
+
+	u32 copysize = 0;
+
+	if (pRegionManager && pClutDataPtr) {
+		switch (pRegionManager->Format) {
+		case DRV_OSD_REGION_FORMAT_8BPP:
+			copysize = 256 * 4;
+			break;
+		default:
+			goto Return;
+		}
+		memcpy(pRegionManager->Hdr_ClutAddr, pClutDataPtr, copysize);
+
+		return DRV_SUCCESS;
+	}
+
+Return:
+	sp_disp_err("Incorrect region handle, pClutDataPtr 0x%x\n",
+			(u32)pClutDataPtr);
+
+	return DRV_ERR_INVALID_HANDLE;
+}
+#else
 DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, u64 *pClutDataPtr)
 {
 	struct Region_Manager_s *pRegionManager =
 		(struct Region_Manager_s *)region;
+
 	u32 copysize = 0;
 
 	if (pRegionManager && pClutDataPtr) {
@@ -190,6 +225,7 @@ Return:
 
 	return DRV_ERR_INVALID_HANDLE;
 }
+#endif
 
 void DRV_OSD_IRQ(void)
 {
@@ -210,9 +246,16 @@ void DRV_OSD_IRQ(void)
 				(u32)((u32)pRegionManager->DataPhyAddr
 					+ (pRegionManager->BmpSize
 					* (pRegionManager->CurrBufID & 0xf))));
+
+		#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP			
+		if (pRegionManager->PaletteAddr)
+			DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager,
+					(u32 *)pRegionManager->PaletteAddr);
+		#else
 		if (pRegionManager->PaletteAddr)
 			DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager,
 					(u64 *)pRegionManager->PaletteAddr);
+		#endif
 	}
 
 	if (pDispWorkMem->osd_field_end_protect) {
@@ -818,13 +861,17 @@ void DRV_OSD_INIT_OSD_Header(void)
 	sp_disp_info("sizeof(struct HW_OSD_Header_s) = %ld \n", sizeof(struct HW_OSD_Header_s));
 #endif
 
-	#if 1
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	disp_dev->Osd0Header = dma_alloc_coherent(disp_dev->pdev,
 			sizeof(struct HW_OSD_Header_s) + 1024,
 			&disp_dev->Osd0Header_phy,
 			GFP_KERNEL);
-	
-
+	#else
+	disp_dev->Osd0Header = dma_alloc_coherent(disp_dev->pdev,
+			sizeof(struct HW_OSD_Header_s) + 1024,
+			&disp_dev->Osd0Header_phy,
+			GFP_KERNEL);
+	#endif
 
 	if (!disp_dev->Osd0Header) {
 		sp_disp_err("malloc osd0 header fail\n");
@@ -834,13 +881,19 @@ void DRV_OSD_INIT_OSD_Header(void)
 	//	sp_disp_info("disp_dev->Osd0Header = %px \n",disp_dev->Osd0Header);
 	//	sp_disp_info("disp_dev->Osd0Header_phy = %llx \n",disp_dev->Osd0Header_phy);
 	//}
-	#endif
+	//#endif
 
-	#if 1
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	disp_dev->Osd1Header = dma_alloc_coherent(disp_dev->pdev,
 			sizeof(struct HW_OSD_Header_s) + 1024,
 			&disp_dev->Osd1Header_phy,
 			GFP_KERNEL);
+	#else
+	disp_dev->Osd1Header = dma_alloc_coherent(disp_dev->pdev,
+			sizeof(struct HW_OSD_Header_s) + 1024,
+			&disp_dev->Osd1Header_phy,
+			GFP_KERNEL);
+	#endif
 	
 	if (!disp_dev->Osd1Header) {
 		sp_disp_err("malloc osd1 header fail\n");
@@ -850,7 +903,7 @@ void DRV_OSD_INIT_OSD_Header(void)
 	//	sp_disp_info("disp_dev->Osd1Header = %px \n",disp_dev->Osd1Header);
 	//	sp_disp_info("disp_dev->Osd1Header_phy = %llx \n",disp_dev->Osd1Header_phy);
 	//}
-	#endif
+	//#endif
 
 }
 EXPORT_SYMBOL(DRV_OSD_INIT_OSD_Header);

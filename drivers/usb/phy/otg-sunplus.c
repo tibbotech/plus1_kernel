@@ -206,7 +206,11 @@ int sp_phy_read(struct usb_phy *x, u32 reg)
 #ifdef CONFIG_SOC_SP7021
 	return readl((u32 *)reg);
 #elif defined(CONFIG_SOC_I143)
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	return readl((u32 *)reg);
+	#else
 	return readl((u32 *)(u64)reg);
+	#endif
 #endif
 }
 
@@ -215,7 +219,11 @@ int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 #ifdef CONFIG_SOC_SP7021
 	writel(val, (u32 *)reg);
 #elif defined(CONFIG_SOC_I143)
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	writel(val, (u32 *)reg);
+	#else
 	writel(val, (u32 *)(u64)reg);
+	#endif
 #endif
 
 	return 0;
@@ -722,9 +730,15 @@ int sp_otg_probe(struct platform_device *dev)
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
 #elif defined(CONFIG_SOC_I143)
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
+			  resource_size(res_mem), otg_host->irq,
+			  readl(&otg_host->regs_otg->otg_int_st));
+	#else
 	otg_debug("@@@ otg reg %lld %lld irq %d %x\n", res_mem->start,
 			  resource_size(res_mem), otg_host->irq,
 			  readl(&otg_host->regs_otg->otg_int_st));
+	#endif
 #endif
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
