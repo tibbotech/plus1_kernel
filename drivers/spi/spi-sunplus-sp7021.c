@@ -806,7 +806,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 			break;
 		}
 		if ( xfer->len > SPI_MSG_DATA_SIZE) {
-			DBG_ERR( "over total transfer length");
+			DBG_ERR( "too big transfer (%d bytes), limit:", xfer->len, SPI_MSG_DATA_SIZE);
 			ret = -EINVAL;
 			break;
 		}
