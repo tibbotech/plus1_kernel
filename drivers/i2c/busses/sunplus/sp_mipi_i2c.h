@@ -14,7 +14,7 @@ typedef enum mipi_i2c_state {
 } mipi_i2c_state_t;
 
 typedef struct mipi_i2c_cmd {
-	unsigned int dDevId;
+	hal_mipi_i2c_info_t dI2CInfo;
 	unsigned int dFreq;
 	unsigned int dSlaveAddr;
 	unsigned int dRestartEn;

@@ -21,23 +21,27 @@ typedef enum mipi_i2c_start_mode_e {
 	I2C_RESTART,
 } mipi_i2c_start_mode;
 
-void hal_mipi_i2c_isp_reset(unsigned int device_id);
-void hal_mipi_i2c_init(unsigned int device_id);
-void hal_mipi_i2c_power_on(unsigned int device_id);
-void hal_mipi_i2c_power_down(unsigned int device_id);
-void setSensor16_i2c(unsigned int device_id, u16 addr16, u16 value16, u8 data_count);
-void getSensor16_i2c(unsigned int device_id, u16 addr16, u16 *value16, u8 data_count);
+typedef struct hal_mipi_i2c_info {
+	// Register base address
+	mipi_isp_reg_t  *isp_regs;
 
-void hal_mipi_i2c_status_get(unsigned int device_id, unsigned char *status);
-void hal_mipi_i2c_data_get(unsigned int device_id, unsigned char *rdata, unsigned int read_cnt);
-void hal_mipi_i2c_data_set(unsigned int device_id, unsigned char *wdata, unsigned int write_cnt);
-void hal_mipi_i2c_read_trigger(unsigned int device_id, mipi_i2c_start_mode start_mode);
-void hal_mipi_i2c_rw_mode_set(unsigned int device_id, mipi_i2c_action rw_mode);
-void hal_mipi_i2c_active_mode_set(unsigned int device_id, unsigned char mode);
-void hal_mipi_i2c_trans_cnt_set(unsigned int device_id, unsigned int write_cnt, unsigned int read_cnt);
-void hal_mipi_i2c_slave_addr_set(unsigned int device_id, unsigned int addr);
-void hal_mipi_i2c_clock_freq_set(unsigned int device_id, unsigned int freq);
-void hal_mipi_i2c_reset(unsigned int device_id);
-void hal_mipi_i2c_base_set(unsigned int device_id, void __iomem *membase);
+	// I2C infomation
+	unsigned int    dev_id;
+} hal_mipi_i2c_info_t;
+
+void hal_mipi_i2c_isp_reset(hal_mipi_i2c_info_t *i2c_info);
+void hal_mipi_i2c_init(hal_mipi_i2c_info_t *i2c_info);
+void hal_mipi_i2c_power_on(hal_mipi_i2c_info_t *i2c_info);
+void hal_mipi_i2c_power_down(hal_mipi_i2c_info_t *i2c_info);
+void hal_mipi_i2c_status_get(hal_mipi_i2c_info_t *i2c_info, unsigned char *status);
+void hal_mipi_i2c_data_get(hal_mipi_i2c_info_t *i2c_info, unsigned char *rdata, unsigned int read_cnt);
+void hal_mipi_i2c_data_set(hal_mipi_i2c_info_t *i2c_info, unsigned char *wdata, unsigned int write_cnt);
+void hal_mipi_i2c_read_trigger(hal_mipi_i2c_info_t *i2c_info, mipi_i2c_start_mode start_mode);
+void hal_mipi_i2c_rw_mode_set(hal_mipi_i2c_info_t *i2c_info, mipi_i2c_action rw_mode);
+void hal_mipi_i2c_active_mode_set(hal_mipi_i2c_info_t *i2c_info, unsigned char mode);
+void hal_mipi_i2c_trans_cnt_set(hal_mipi_i2c_info_t *i2c_info, unsigned int write_cnt, unsigned int read_cnt);
+void hal_mipi_i2c_slave_addr_set(hal_mipi_i2c_info_t *i2c_info, unsigned int addr);
+void hal_mipi_i2c_clock_freq_set(hal_mipi_i2c_info_t *i2c_info, unsigned int freq);
+void hal_mipi_i2c_reset(hal_mipi_i2c_info_t *i2c_info);
 
 #endif /* __I2C_HAL_H__ */
