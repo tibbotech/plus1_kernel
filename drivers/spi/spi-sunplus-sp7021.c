@@ -298,6 +298,16 @@ struct pentagram_spi_master {
 
 static unsigned bufsiz = 4096;
 
+static void pentagram_set_cs( struct spi_device *_s, bool _on) {
+DBG_ERR( "%s(%d) %d", __FUNCTION__, _on, __LINE__);
+ if ( _s->mode & SPI_NO_CS) return;
+ if ( !( _s->cs_gpiod) && !gpio_is_valid( _s->cs_gpio)) return;
+DBG_ERR( "%s(%d) %d", __FUNCTION__, _on, __LINE__);
+ if ( _s->mode & SPI_CS_HIGH) _on = !_on;
+ if ( _s->cs_gpiod) gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
+ else gpio_set_value_cansleep( _s->cs_gpio, !_on);
+}
+
 // spi slave irq handler
 static irqreturn_t pentagram_spi_S_irq( int _irq, void *_dev)
 {
@@ -725,6 +735,7 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 	}
 #endif
 
+	pentagram_set_cs( spi, true);
 	pspim->isr_flag = SPI_IDLE;
 
 	if ( ( _t->tx_buf) && ( _t->rx_buf)) {
@@ -749,6 +760,7 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 		DBG_INF( "idle?");
 		break;
 	}
+	pentagram_set_cs( spi, false);
 	spi_finalize_current_transfer( _c);
 
 #ifdef CONFIG_PM_RUNTIME_SPI
@@ -765,14 +777,6 @@ pm_out:
 #endif
 }
 
-static void pentagram_set_cs( struct spi_device *_s, bool _on) {
-DBG_ERR( "%s(%d)", __FUNCTION__, _on);
- if ( _s->mode & SPI_NO_CS) return;
- if ( !( _s->cs_gpiod) && !gpio_is_valid( _s->cs_gpio)) return;
- if ( _s->mode & SPI_CS_HIGH) _on = !_on;
- if ( _s->cs_gpiod) gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
- else gpio_set_value_cansleep( _s->cs_gpio, !_on);
-}
 
 static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, struct spi_message *m)
 { 
