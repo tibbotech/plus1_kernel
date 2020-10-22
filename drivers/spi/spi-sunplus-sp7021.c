@@ -299,10 +299,9 @@ struct pentagram_spi_master {
 static unsigned bufsiz = 4096;
 
 static void pentagram_set_cs( struct spi_device *_s, bool _on) {
-DBG_ERR( "%s(%d) %d", __FUNCTION__, _on, __LINE__);
  if ( _s->mode & SPI_NO_CS) return;
  if ( !( _s->cs_gpiod) && !gpio_is_valid( _s->cs_gpio)) return;
-DBG_ERR( "%s(%d) %d", __FUNCTION__, _on, __LINE__);
+ FUNC_DBG( "%d gpiod:%s gpio:%d", _on, desc_to_gpio( _s->cs_gpiod), _s->cs_gpio);
  if ( _s->mode & SPI_CS_HIGH) _on = !_on;
  if ( _s->cs_gpiod) gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
  else gpio_set_value_cansleep( _s->cs_gpio, !_on);
