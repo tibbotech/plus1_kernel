@@ -735,7 +735,7 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 	}
 #endif
 
-	pentagram_set_cs( spi, true);
+	pentagram_set_cs( _s, true);
 	pspim->isr_flag = SPI_IDLE;
 
 	if ( ( _t->tx_buf) && ( _t->rx_buf)) {
@@ -760,7 +760,7 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 		DBG_INF( "idle?");
 		break;
 	}
-	pentagram_set_cs( spi, false);
+	pentagram_set_cs( _s, false);
 	spi_finalize_current_transfer( _c);
 
 #ifdef CONFIG_PM_RUNTIME_SPI
