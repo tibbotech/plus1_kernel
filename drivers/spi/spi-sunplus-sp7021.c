@@ -321,7 +321,6 @@ int pentagram_spi_slave_dma_rw( struct spi_device *spi,u8 *buf, unsigned int len
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device dev = spi->dev;
-	u32 reg_temp;
 	unsigned long timeout = msecs_to_jiffies(2000);
 
 	FUNC_DBG();
@@ -381,7 +380,6 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device *devp = &( _s->dev);
-	u32 reg_temp;
 
 	FUNC_DBG();
 	mutex_lock( &pspim->buf_lock);
@@ -767,6 +765,14 @@ pm_out:
 #endif
 }
 
+static void pentagram_set_cs( struct spi_device *_s, bool _on) {
+DBG_ERR( "%s(%d)", __FUNCTION__, _on);
+ if ( _s->mode & SPI_NO_CS) return;
+ if ( !( _s->cs_gpiod) && !gpio_is_valid( _s->cs_gpio)) return;
+ if ( _s->mode & SPI_CS_HIGH) _on = !_on;
+ if ( _s->cs_gpiod) gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
+ else gpio_set_value_cansleep( _s->cs_gpio, !_on);
+}
 
 static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, struct spi_message *m)
 { 
@@ -787,6 +793,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 	        goto pm_out;
 	}
 #endif
+	pentagram_set_cs( spi, true);
 
 	list_for_each_entry(xfer, &m->transfers, transfer_list) {
 		if ( !first_xfer) first_xfer = xfer;
@@ -842,6 +849,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		start_xfer = false;
 	}
 
+	pentagram_set_cs( spi, false);
 	m->status = ret;
 	spi_finalize_current_message(ctlr);
 
