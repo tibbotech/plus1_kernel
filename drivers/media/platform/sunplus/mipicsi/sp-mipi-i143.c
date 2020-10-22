@@ -518,6 +518,7 @@ irqreturn_t csiiw_fe_isr(int irq, void *dev_instance)
 
 			// Set active-buffer to 'next frame'.
 			addr = vb2_dma_contig_plane_dma_addr(&next_frm->vb.vb2_buf, 0);
+			addr = addr & 0x7fffffff;                                // Mark bit31 for direct access
 			writel(addr, &mipi->csiiw_regs->csiiw_base_addr);        // base address
 
 			// Then, release current frame.
@@ -693,6 +694,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	list_del_init(&mipi->cur_frm->list);
 
 	addr = vb2_dma_contig_plane_dma_addr(&mipi->cur_frm->vb.vb2_buf, 0);
+	addr = addr & 0x7fffffff;								 // Mark bit31 for direct access
 
 	spin_unlock_irqrestore(&mipi->dma_queue_lock, flags);
 

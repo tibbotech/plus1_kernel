@@ -273,6 +273,25 @@ static int _i143_fb_create_device(struct platform_device *pdev,
 		goto ERROR_HANDLE_FB_INIT;
 	}
 
+#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	Info->UI_bufAddr = (u32)fbinfo->fix.smem_start;
+	if (fbinfo->pseudo_palette)
+		Info->UI_bufAddr_pal = (u32)fbinfo->pseudo_palette;
+	else
+		Info->UI_bufAddr_pal = 0;
+	Info->UI_bufsize = fbWorkMem->fbsize;
+
+	mod_info(pdev, "mem VA 0x%x(PA 0x%x), Palette VA 0x%x(PA 0x%x), UI Res %dx%d, size %d + %d\n",
+			(u32)fbWorkMem->fbmem,
+			Info->UI_bufAddr,
+			(u32)fbWorkMem->fbmem_palette,
+			__pa(fbWorkMem->fbmem_palette),
+			fbWorkMem->fbwidth,
+			fbWorkMem->fbheight,
+			fbWorkMem->fbsize,
+			(fbWorkMem->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
+			? FB_PALETTE_LEN : 0);
+#else
 	Info->UI_bufAddr = (u64)(fbinfo->fix.smem_start & ~0x80000000);
 	if (fbinfo->pseudo_palette)
 		Info->UI_bufAddr_pal = (u64)fbinfo->pseudo_palette;
@@ -290,6 +309,7 @@ static int _i143_fb_create_device(struct platform_device *pdev,
 			fbWorkMem->fbsize,
 			(fbWorkMem->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
 			? FB_PALETTE_LEN : 0);
+#endif
 
 	gFB_INFO = fbinfo;
 
