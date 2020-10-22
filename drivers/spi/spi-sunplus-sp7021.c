@@ -300,7 +300,7 @@ static unsigned bufsiz = 4096;
 
 static void pentagram_set_cs( struct spi_device *_s, bool _on) {
  if ( _s->mode & SPI_NO_CS) return;
- if ( !gpio_is_valid( _s->cs_gpio)) return;
+ if ( !(  _s->cs_gpiod)) return;
  FUNC_DBG( "%d gpiod:%s", _on, desc_to_gpio( _s->cs_gpiod));
  if ( _s->mode & SPI_CS_HIGH) _on = !_on;
  gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
