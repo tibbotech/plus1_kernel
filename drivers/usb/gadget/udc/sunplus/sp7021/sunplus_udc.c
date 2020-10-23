@@ -86,7 +86,6 @@ module_param(dev_otg_status, uint, 0644);
 static const char gadget_name[] = "sp_udc";
 static void __iomem *base_addr;
 static struct sp_udc *the_controller;
-static int wait_ep0_setup_count = 0;
 
 static int dmesg_buf_size = 3000;
 module_param(dmesg_buf_size, uint, 0644);
@@ -580,9 +579,8 @@ static int vbusInt_handle(void)
 {
 	DEBUG_DBG(">>> vbusInt_handle... UDCCS=%xh, UDLCSET=%xh\n", udc_read(UDCCS), udc_read(UDLCSET));
 	/*host present */
-	if (udc_read(UDCCS) & VBUS) {		
+	if (udc_read(UDCCS) & VBUS) {
 		/*IF soft discconect ->force connect */
-		wait_ep0_setup_count = 0;
 		if (udc_read(UDLCSET) & SOFT_DISC)
 			udc_write(udc_read(UDLCSET) & 0xFE, UDLCSET);
 	} else {		/*host absent */
@@ -794,7 +792,6 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *dev,
 
 	/* deliver the request to the gadget driver */
 	ret = dev->driver->setup(&dev->gadget, crq);	/*android_setup composite_setup*/
-
 	DEBUG_DBG("dev->driver->setup = %x\n", ret);
 
 	if (ret < 0) {
@@ -1124,8 +1121,8 @@ static int sp_udc_bulkout(struct sp_ep *ep,
 	u32 avail;
 	int is_last ;
 	int is_pingbuf;
+	int pre_is_pingbuf;
 	int delay_count;
-	int use_dma;
 
 	DEBUG_DBG(">>> %s UDEPBFS = %xh\n", __FUNCTION__, udc_read(UDEPBFS));
 
@@ -1136,10 +1133,10 @@ static int sp_udc_bulkout(struct sp_ep *ep,
 
 	is_last = 0;
 	delay_count = 0;
-	use_dma = 1;
+	is_pingbuf = (udc_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
 
 	do {
-		is_pingbuf = (udc_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
+		pre_is_pingbuf = is_pingbuf;
 		count = sp_udc_get_ep_fifo_count(is_pingbuf, UDEPBPIC);
 		if (!count) {
 			// udelay(2);
@@ -1166,18 +1163,25 @@ static int sp_udc_bulkout(struct sp_ep *ep,
 			is_last = 1;
 		}
 
-		DEBUG_DBG("2.req.length=%d req.actual=%d UDEPBFS = %xh UDEPBPPC = %xh UDEPBPOC = %xh  UDEPBPIC = %xh avail=%d is_last=%d\n", req->req.length, req->req.actual, udc_read(UDEPBFS), udc_read(UDEPBPPC), udc_read(UDEPBPOC), udc_read(UDEPBPIC), avail, is_last);
+		DEBUG_DBG("2.req.length=%d req.actual=%d UDEPBFS = %xh UDEPBPPC = %xh UDEPBPOC = %xh  UDEPBPIC = %xh avail=%d is_last=%d\n",
+			  req->req.length, req->req.actual, udc_read(UDEPBFS), udc_read(UDEPBPPC), udc_read(UDEPBPOC), udc_read(UDEPBPIC), avail, is_last);
 
 		if (is_last) {
 			break;
 		}
 
-		out_fifo_retry:
+out_fifo_retry:
 		if ((udc_read(UDEPBFS)&0x22)==0) {
 			udelay(1);
 			if (delay_count++<20) goto out_fifo_retry;
 			delay_count = 0;
 		}
+
+out_fifo_retry1:
+		is_pingbuf = (udc_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
+
+		if (is_pingbuf == pre_is_pingbuf)
+			goto out_fifo_retry1;
 	} while(1);
 
 	DEBUG_DBG("3.req.length=%d req.actual=%d UDEPBFS = %xh count=%d is_last=%d\n", req->req.length, req->req.actual, udc_read(UDEPBFS), count, is_last);
@@ -1201,6 +1205,7 @@ static int sp_udc_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 	int is_pingbuf;
 	int is_last;
 	int delay_count;
+	int pre_is_pingbuf;
 
 	DEBUG_DBG(">>> %s\n", __FUNCTION__);
 
@@ -1209,10 +1214,12 @@ static int sp_udc_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 	}
 	is_last = 0;
 	delay_count = 0;
-	
+
 	DEBUG_DBG("1.req.actual = %d req.length=%d req->req.dma=%xh UDEP12FS = %xh\n", req->req.actual, req->req.length, req->req.dma, udc_read(UDEP12FS));
+	is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
+
 	while(1) {
-		is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
+		pre_is_pingbuf = is_pingbuf;
 		count = sp_udc_get_ep_fifo_count(is_pingbuf, UDEP12PIC);
 
 		w_count = sp_udc_write_packet(UDEP12FDP, req, ep->ep.maxpacket, UDEP12VB);
@@ -1230,14 +1237,13 @@ static int sp_udc_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 
 		if (is_last) break;
 
-		in_fifo_retry:
-		if ((udc_read(UDEP12FS)&0x10)==0) {
-			udelay(1);
-			if (delay_count++<20) goto in_fifo_retry;
-			delay_count = 0;
-		}
+in_fifo_retry:
+		is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
+
+		if (is_pingbuf == pre_is_pingbuf)
+			goto in_fifo_retry;
 	}
-	sp_udc_done(ep, req, 0);	
+	sp_udc_done(ep, req, 0);
 
 	up(&ep->wsem);
 
@@ -1750,7 +1756,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 		DEBUG_DBG("IRQ:ep1 in %xh\n", udc_read(UDCIE));
 		udc_write(EP1I_IF, UDLIF);
 		// udc_write(udc_read(UDLIE) & (~EP1I_IF), UDLIE);
-		// if ((udc_read(UDEP12FS) & 0x1)==0) 
+		// if ((udc_read(UDEP12FS) & 0x1)==0)
 		sp_sendto_workqueue(dev, 1);
 	}
 
@@ -1770,13 +1776,8 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 		udc_write(EP11O_IF, UDNBIF);
 		udc_write(udc_read(UDNBIE) & (~EP11O_IF), UDNBIE);
 		DEBUG_DBG("IRQ:ep11 out %xh %xh state=%d\n", udc_read(UDNBIE), udc_read(UDEPBFS), dev->gadget.state);
-		
-		// avoid mass storage will be reset when usb runing setup flow
-		if (wait_ep0_setup_count<900) {
-			udelay(1000);
-			wait_ep0_setup_count++;
-		}
-		// if (udc_read(UDEPBFS) & 0x22) 
+
+		// if (udc_read(UDEPBFS) & 0x22)
 		sp_sendto_workqueue(dev, 11);
 	}
 
