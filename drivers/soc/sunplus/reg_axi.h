@@ -63,6 +63,21 @@ typedef	struct regs_submonitor_t_{
 	volatile unsigned int reserved[25];                  /* 05~31 */
 }regs_submonitor_t;
 
+typedef	struct regs_dummymaster_t{
+	volatile unsigned int operation_mode;                /* 00 */
+	volatile unsigned int base_address;                /* 01 */
+	volatile unsigned int limited_address_accessed;                /* 02 */
+	volatile unsigned int control;   /* 03 */
+	volatile unsigned int urgent;     /* 04 */
+	volatile unsigned int request_period;     /* 05 */
+	volatile unsigned int non_surviced_request_count;     /* 06 */
+	volatile unsigned int error_flag_for_self;     /* 07 */
+	volatile unsigned int specify_golden_value_fo_write;     /* 08 */
+	volatile unsigned int calculate_the_num_of_complete_cmds;     /* 09 */
+	volatile unsigned int calculate_the_cycle_counts;     /* 10 */
+	volatile unsigned int reserved[21];                  /* 11~31 */
+}regs_dummymaster_t;
+
 typedef	struct regs_axi_cbdma_t_{
 	volatile unsigned int dma_hw_ver;
 	volatile unsigned int config;
