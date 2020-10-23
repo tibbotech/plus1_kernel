@@ -388,6 +388,18 @@
 				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
 		};
 
+		fbio_led: fbio_led@70000000 {
+			compatible = "sunplus,sp7021-fbio-led";
+			clocks = <&clkc FIO_CTL>, <&clkc FPGA>;
+			clock-names = "fio", "fpga";
+			resets = <&rstc RST_FPGA>;
+			reg =
+				<0x9c106000 0x80>, /* fbio_ctl regs */
+				<0x70000000 0x10>; /* fbio_led regs */
+			interrupt-parent = <&intc>;
+			interrupts = <29 IRQ_TYPE_EDGE_RISING>; /* fpga_ext0 */
+		};
+
 		crypto: crypto@G84 {
 			compatible = "sunplus,sp7021-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
@@ -974,6 +986,11 @@
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
 				sppctl,function = "HDMI_TX";
+			};
+
+			fbio_led_pins: fbio_led_pins {
+				sppctl,groups = "FPGA_IFX";
+				sppctl,function = "FPGA_IFX";
 			};
 		};
 	};
