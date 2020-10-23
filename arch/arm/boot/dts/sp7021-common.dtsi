@@ -978,7 +978,7 @@
 				sppctl,function = "HDMI_TX";
 			};
 
-			fbio_led_pins: fbio_led_pins {
+			fpga_mux: fpga_mux {
 				sppctl,groups = "FPGA_IFX";
 				sppctl,function = "FPGA_IFX";
 			};

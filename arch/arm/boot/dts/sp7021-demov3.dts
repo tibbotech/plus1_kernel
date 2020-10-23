@@ -177,7 +177,7 @@
 
 &fbio_led {
 	pinctrl-names = "default";
-	pinctrl-0 = <&fbio_led_pins>;
+	pinctrl-0 = <&fpga_mux>;
 };
 
 &mipicsi0 {
