@@ -3,6 +3,7 @@
 
 #include <linux/types.h>
 #include <linux/kernel.h>
+#include <media/v4l2-dev.h>
 #include "reg_mipi.h"
 
 //#define ISPAPB_DEBUG_ON
@@ -89,6 +90,7 @@ enum ISP_SCALE_SIZE {
 /* Image information definition */
 struct mipi_isp_info {
 	struct mipi_isp_reg *mipi_isp_regs;
+	struct video_device *video_device;
 
 	u8  isp_channel;
 	u8  isp_mode;

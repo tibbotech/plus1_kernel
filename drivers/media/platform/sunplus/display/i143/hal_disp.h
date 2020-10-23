@@ -186,10 +186,17 @@ struct sp_disp_device {
 	display_size_t		panelRes;
 	
 	//#ifdef SP_DISP_OSD_PARM
+	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	void *Osd0Header;
+	u32 Osd0Header_phy;
+	void *Osd1Header;
+	u32 Osd1Header_phy;
+	#else
 	void *Osd0Header;
 	u64 Osd0Header_phy;
 	void *Osd1Header;
 	u64 Osd1Header_phy;
+	#endif
 	//#endif
 
 	/* for device */

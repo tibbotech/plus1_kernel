@@ -103,7 +103,7 @@ static void __init sp_init(void)
 	writel(0x00120012, regs + 0x0274); /* G4.29 misc_ctl */
 #endif
 
-	early_printk("%s\n", __func__);
+	printk("%s\n", __func__);
 
 	sp_prn_uptime();
 
@@ -113,7 +113,7 @@ static void __init sp_init(void)
 
 	b_sysclk = b_pllsys_get_rate();
 
-	early_printk("P-chip: sys = %uMHz, cpio_ctrl = (%ubit, %s)\n", b_sysclk / 1000000,
+	printk("P-chip: sys = %uMHz, cpio_ctrl = (%ubit, %s)\n", b_sysclk / 1000000,
 		(io_ctrl & 2) ? 16 : 8, (io_ctrl & 1) ? "DDR" : "SDR");
 
 #ifdef CONFIG_MACH_PENTAGRAM_ACHIP
@@ -123,7 +123,7 @@ static void __init sp_init(void)
 	sysclk = coreclk / (1 + ((clk_cfg >> 3) & 1));
 	a_pllioclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x54) >> 16) & 0xff) + 1) * (27 * 1000 * 1000);
 	ioclk = a_pllioclk / (20 + 5 * ((clk_cfg >> 4) & 7)) / ((clk_cfg >> 16) & 0xff) * 10;
-	early_printk("C-chip: core = %uMHz, sys = %uMHz, pllio = %uMHz, cpio_bus = %uMHz\n",
+	printk("C-chip: core = %uMHz, sys = %uMHz, pllio = %uMHz, cpio_bus = %uMHz\n",
 		coreclk / 1000000, sysclk / 1000000, a_pllioclk / 1000000, ioclk / 1000000);
 
 #endif
@@ -162,7 +162,7 @@ static struct map_desc sp_io_desc[] __initdata = {
 
 static void __init sp_map_io(void)
 {
-	early_printk("%s\n", __func__);
+	printk("%s\n", __func__);
 
 	iotable_init(sp_io_desc, ARRAY_SIZE( sp_io_desc));
 

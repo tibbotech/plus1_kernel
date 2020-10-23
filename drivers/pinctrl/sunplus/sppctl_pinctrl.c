@@ -335,6 +335,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	struct property *prop;
 	const char *s_f, *s_g;
 	int nmG = of_property_count_strings(_dn, "sppctl,groups");
+	func_t *f = NULL;
 
 	//print_device_tree_node(_dn, 0);
 	if (nmG <= 0) nmG = 0;
@@ -409,8 +410,23 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	if (list) {
 		for (i = 0; i < size/sizeof(*list); i++) {
 			dt_fun = be32_to_cpu(list[i]);
-			KDBG(_pd->dev, "zero func: %d\n", dt_fun);
-			sppctl_pin_set(pctrl, 0, dt_fun - 2);
+			if ( dt_fun >= list_funcsSZ) {
+			  KERR( _pd->dev, "zero func %d out of range\n", dt_fun);
+			  continue;  }
+			f = &( list_funcs[ dt_fun]);
+			switch ( f->freg) {
+				case fOFF_M:
+					KDBG( _pd->dev, "zero func: %d (%s)\n", dt_fun, f->name);
+					sppctl_pin_set( pctrl, 0, dt_fun - 2);
+					break;
+				case fOFF_G:
+					KDBG( _pd->dev, "zero group: %d (%s)\n", dt_fun, f->name);
+					sppctl_gmx_set( pctrl, f->roff, f->boff, f->blen, 0);
+					break;
+				default:
+					KERR( _pd->dev, "wrong zero group: %d (%s)\n", dt_fun, f->name);
+					break;
+			}
 		}
 	}
 

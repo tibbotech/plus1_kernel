@@ -38,18 +38,17 @@ static const u8 SC2310_INIT_FILE[] = {
 	#include "sc2310_SensorInit.txt"
 };
 
+// struct sc2310_data
+// PS. By different sensor type, adr or dat could be one or two bytes.
+//
+// ex.
+// 0xFE, 0x00, 0xC8, 0x00, 0x00, //DELAY= 200ms
+// 0x00, 0x30, 0x1A, 0x10, 0xD8, //sensor addr=0x301a, sensor data=0x10d8
 typedef struct sc2310_data
 {
 	u8 type;    // 0xFE:do delay in ms , 0x00:sensor register 
 	u16 adr;
 	u8 dat;
-	
-	//PS. By different sensor type, adr or dat could be one or two bytes.
-	//ex.
-	/*
-	0xFE, 0x00, 0xC8, 0x00, 0x00, //DELAY= 200ms
-	0x00, 0x30, 0x1A, 0x10, 0xD8, //sensor addr=0x301a, sensor data=0x10d8
-	*/	
 } sc2310_data_t;
 
 typedef struct sc2310_init_file
@@ -57,6 +56,45 @@ typedef struct sc2310_init_file
 	u16 count;
 	sc2310_data_t data[MAX_SENSOR_REG_LEN];
 } sc2310_init_file_t;
+
+/* sensor frame rate initialization */
+/* sensor 0 */
+#define SENSOR_FRAME_RATE   0
+
+static unsigned char SF_SENSOR_FRAME_RATE[8][2][4] = {
+	{        /*  op    a[0]  a[1]  d         30fps*/
+		{        0x00, 0x32, 0x0C, 0x04,        },
+		{        0x00, 0x32, 0x0d, 0x4C,        },
+	},
+	{        /*  op    a[0]  a[1]  d         25fps*/
+		{        0x00, 0x32, 0x0C, 0x05,        },
+		{        0x00, 0x32, 0x0d, 0x28,        },
+	},
+	{        /*  op    a[0]  a[1]  d         20fps*/
+		{        0x00, 0x32, 0x0C, 0x06,        },
+		{        0x00, 0x32, 0x0d, 0x72,        },
+	},
+	{        /*  op    a[0]  a[1]  d         15fps*/
+		{        0x00, 0x32, 0x0C, 0x08,        },
+		{        0x00, 0x32, 0x0d, 0x98,        },
+	},
+	{        /*  op    a[0]  a[1]  d         10fps*/
+		{        0x00, 0x32, 0x0C, 0x0C,        },
+		{        0x00, 0x32, 0x0d, 0xE4,        },
+	},
+	{        /*  op    a[0]  a[1]  d         5fps*/
+		{        0x00, 0x32, 0x0C, 0x19,        },
+		{        0x00, 0x32, 0x0d, 0xC8,        },
+	},
+	{        /*  op    a[0]  a[1]  d         3fps*/
+		{        0x00, 0x32, 0x0C, 0x2A,        },
+		{        0x00, 0x32, 0x0d, 0xF8,        },
+	},
+	{        /*  op    a[0]  a[1]  d         1fps*/
+		{        0x00, 0x32, 0x0C, 0x80,        },
+		{        0x00, 0x32, 0x0d, 0xE8,        },
+	}
+};
 
 // 1280x800/ raw10/ 120fps/ 2 lane
 static const struct regval sc2310_1280x800_regs[] = {
@@ -134,11 +172,9 @@ static int sc2310_write_reg(struct i2c_client *client, u16 reg, u32 len, u32 val
 	return 0;
 }
 
-#if 0
 /*
 	@sc2310_init
 */
-//void sc2310_init(struct mipi_isp_info *isp_info)
 void sc2310_init(struct i2c_client *client)
 {
 	sc2310_init_file_t read_file;
@@ -156,7 +192,8 @@ void sc2310_init(struct i2c_client *client)
 	read_file.count = (data[0]<<8)|data[1];
 
 	DBG_INFO("%s, total=%d\n", __FUNCTION__, total);
-	DBG_INFO("%s, count=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, read_file.count, data[0], data[1], data[2], data[3]);
+	DBG_INFO("%s, count=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n",
+			__FUNCTION__, read_file.count, data[0], data[1], data[2], data[3]);
 	for (i = 2; i < total; i=i+4)
 	{
 		data[0] = SC2310_INIT_FILE[i];
@@ -166,17 +203,11 @@ void sc2310_init(struct i2c_client *client)
 		read_file.data[(i-2)/4].type = data[0];
 		read_file.data[(i-2)/4].adr  = (data[1]<<8)|data[2];
 		read_file.data[(i-2)/4].dat  = data[3];
-		//DBG_INFO("%s, i=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, i, data[0], data[1], data[2], data[3]);
 	}
 
-	//Reset_I2C0(isp_info);
-	//Init_I2C0(SC2310_DEVICE_ADDR, 0, isp_info);
-
-	DBG_INFO("%s, count=%d\n", __FUNCTION__, read_file.count);
-
+	DBG_INFO("%s, %d, count=%d\n", __FUNCTION__, __LINE__, read_file.count);
 	for (i = 0; i < read_file.count; i++)
 	{
-		//DBG_INFO("%s, type=0x%02x, adr=0x%04x, dat=0x%04x\n", __FUNCTION__, read_file.data[i].type, read_file.data[i].adr, read_file.data[i].dat);
 		if (read_file.data[i].type == 0xFE)
 		{
 			udelay(read_file.data[i].adr*1000);
@@ -188,99 +219,51 @@ void sc2310_init(struct i2c_client *client)
 		}
 	}
 
-#if 0
-	/* use pixel clock, master clock and mipi decoder clock as they are  */
-	writeb(0x07, &(regs->reg[0x2008]));
+	/* set seneor frame rate */
+	/* In SensorInit.txt, the default is 30fps. So skip setting frame rate if  SENSOR_FRAME_RATE = 0*/
+	if (SENSOR_FRAME_RATE) {
+		read_file.count = 2;
+		for (i = 0; i < read_file.count; i++)
+		{
+			data[0] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][0];
+			data[1] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][1];
+			data[2] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][2];
+			data[3] = SF_SENSOR_FRAME_RATE[SENSOR_FRAME_RATE][i][3];
+			read_file.data[i].type = data[0];
+			read_file.data[i].adr  = (data[1]<<8)|data[2];
+			read_file.data[i].dat  = data[3];
+			DBG_INFO("%s, i=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n",
+				__FUNCTION__, i, data[0], data[1], data[2], data[3]);
+		}
 
-	/* set and clear of front sensor interface */
-	writeb(0x01, &(regs->reg[0x276C]));
-	writeb(0x00, &(regs->reg[0x276C]));
+		DBG_INFO("%s, %d, count=%d\n", __FUNCTION__, __LINE__, read_file.count);
+		for (i = 0; i < read_file.count; i++)
+		{
+			DBG_INFO("%s, %d, type=0x%02x, adr=0x%04x, dat=0x%04x\n", __FUNCTION__, __LINE__,
+				read_file.data[i].type, read_file.data[i].adr, read_file.data[i].dat);
 
-	/* set and clear of front i2c interface */
-	writeb(0x01, &(regs->reg[0x2660]));
-	writeb(0x00, &(regs->reg[0x2660]));
+			if (read_file.data[i].type == 0xFE)
+			{
+				udelay(read_file.data[i].adr*1000);
+			}
+			else if (read_file.data[i].type == 0x00)
+			{
+				sc2310_write_reg(client, (unsigned long)read_file.data[i].adr,
+					SC2310_REG_VALUE_08BIT, read_file.data[i].dat);
+			}
+		}
+	}
 
-	/* set and clear of cdsp */
-	writeb(0x01, &(regs->reg[0x21D0]));
-	writeb(0x00, &(regs->reg[0x21D0]));
-#endif
 	DBG_INFO("%s end\n", __FUNCTION__);
 }
-#endif
 
 static int __sc2310_start_stream(struct sc2310 *sc2310)
 {
-	sc2310_init_file_t read_file;
-	int i, total;
-	u8 data[4];
-	int ret = 0;
-
-	FUNC_DEBUG();
-	//sc2310_init(sc2310->client);
-
-
 	FUNC_DEBUG();
 
-	// conver table data to sc2310_init_file_t struct
-	total = ARRAY_SIZE(SC2310_INIT_FILE);
-	data[0] = SC2310_INIT_FILE[0];
-	data[1] = SC2310_INIT_FILE[1];
-	data[2] = SC2310_INIT_FILE[2];
-	data[3] = SC2310_INIT_FILE[3];
-	read_file.count = (data[0]<<8)|data[1];
+	sc2310_init(sc2310->client);
 
-	DBG_INFO("%s, total=%d\n", __FUNCTION__, total);
-	DBG_INFO("%s, count=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, read_file.count, data[0], data[1], data[2], data[3]);
-	for (i = 2; i < total; i=i+4)
-	{
-		data[0] = SC2310_INIT_FILE[i];
-		data[1] = SC2310_INIT_FILE[i+1];
-		data[2] = SC2310_INIT_FILE[i+2];
-		data[3] = SC2310_INIT_FILE[i+3];
-		read_file.data[(i-2)/4].type = data[0];
-		read_file.data[(i-2)/4].adr	= (data[1]<<8)|data[2];
-		read_file.data[(i-2)/4].dat	= data[3];
-		//DBG_INFO("%s, i=%d, data[0]=0x%02x, data[1]=0x%02x, data[2]=0x%02x, data[3]=0x%02x\n", __FUNCTION__, i, data[0], data[1], data[2], data[3]);
-	}
-
-	//Reset_I2C0(isp_info);
-	//Init_I2C0(SC2310_DEVICE_ADDR, 0, isp_info);
-
-	DBG_INFO("%s, count=%d\n", __FUNCTION__, read_file.count);
-
-	for (i = 0; i < read_file.count; i++)
-	{
-		//DBG_INFO("%s, type=0x%02x, adr=0x%04x, dat=0x%04x\n", __FUNCTION__, read_file.data[i].type, read_file.data[i].adr, read_file.data[i].dat);
-		if (read_file.data[i].type == 0xFE)
-		{
-			udelay(read_file.data[i].adr*1000);
-		}
-		else if (read_file.data[i].type == 0x00)
-		{
-			sc2310_write_reg(sc2310->client, (unsigned long)read_file.data[i].adr,
-				SC2310_REG_VALUE_08BIT, read_file.data[i].dat);
-		}
-	}
-
-#if 0
-	/* use pixel clock, master clock and mipi decoder clock as they are  */
-	writeb(0x07, &(regs->reg[0x2008]));
-
-	/* set and clear of front sensor interface */
-	writeb(0x01, &(regs->reg[0x276C]));
-	writeb(0x00, &(regs->reg[0x276C]));
-
-	/* set and clear of front i2c interface */
-	writeb(0x01, &(regs->reg[0x2660]));
-	writeb(0x00, &(regs->reg[0x2660]));
-
-	/* set and clear of cdsp */
-	writeb(0x01, &(regs->reg[0x21D0]));
-	writeb(0x00, &(regs->reg[0x21D0]));
-#endif
-	DBG_INFO("%s end\n", __FUNCTION__);
-
-	return ret;
+	return 0;
 }
 
 static int __sc2310_stop_stream(struct sc2310 *sc2310)
@@ -333,25 +316,16 @@ static struct v4l2_subdev_ops sc2310_subdev_ops = {
 
 static int sc2310_check_sensor_id(struct sc2310 *sc2310, struct i2c_client *client)
 {
-	u32 val;
+	u32 val = 0;
 	int ret;
-	u16 id;
 
-	ret = sc2310_read_reg(client, SC2310_REG_CHIP_ID_H, SC2310_REG_VALUE_08BIT, &val);
-	DBG_INFO("val = 0x%08x\n", val);
+	ret = sc2310_read_reg(client, SC2310_REG_CHIP_ID, SC2310_REG_VALUE_16BIT, &val);
 
-	id = (u16)val << 8;
-
-	ret = sc2310_read_reg(client, SC2310_REG_CHIP_ID_L, SC2310_REG_VALUE_08BIT, &val);
-	DBG_INFO("val = 0x%08x\n", val);
-
-	id |= (u16)(val & 0x00ff);
-
-	if ((ret != 0) || (id != CHIP_ID)) {
-		DBG_ERR("Unexpected sensor (id = 0x%04x, ret = %d)!\n", id, ret);
+	if ((ret != 0) || (val != CHIP_ID)) {
+		DBG_ERR("Unexpected sensor (id = 0x%04x, ret = %d)!\n", val, ret);
 		return -1;
 	}
-	DBG_INFO("Check sensor id success (id = 0x%04x).\n", id);
+	DBG_INFO("Check sensor id success (id = 0x%04x).\n", val);
 
 	return 0;
 }

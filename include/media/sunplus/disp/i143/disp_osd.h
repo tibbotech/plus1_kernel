@@ -43,7 +43,11 @@ enum DRV_OsdTransparencyMode_e {
 	DRV_OSD_TRANSPARENCY_ALL			/*!< the whole region is transparent */
 };
 
+#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+typedef u32 DRV_OsdRegionHandle_t;
+#else
 typedef u64 DRV_OsdRegionHandle_t;
+#endif
 
 enum DRV_OsdBlendMethod_e {
 	DRV_OSD_BLEND_REPLACE,		/*!< OSD blend method is region alpha replace */
@@ -79,8 +83,13 @@ struct UI_FB_Info_t {
 	enum DRV_OsdRegionFormat_e UI_ColorFmt;
 	struct colormode_t UI_Colormode;
 
+#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
+	u32 UI_bufAddr;
+	u32 UI_bufAddr_pal;		/* palette */
+#else
 	u64 UI_bufAddr;
 	u64 UI_bufAddr_pal;		/* palette */
+#endif
 	unsigned int UI_bufsize;
 	unsigned int UI_handle;
 };

@@ -63,10 +63,10 @@ static void print_List(struct list_head *head){
 	struct videobuf_buffer *entry;
 
 	MIPI_DBG("*********************************************************************************\n");
-	MIPI_DBG("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
+	MIPI_DBG("(HEAD addr =  %px, next = %px, prev = %px)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);
-		MIPI_DBG("list addr = %p | next = %p | prev = %p\n", &entry->stream, entry->stream.next,
+		MIPI_DBG("list addr = %px | next = %px | prev = %px\n", &entry->stream, entry->stream.next,
 			 entry->stream.prev);
 	}
 	MIPI_DBG("*********************************************************************************\n");
