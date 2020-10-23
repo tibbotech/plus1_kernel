@@ -175,6 +175,11 @@
 	pinctrl-0 = <&hdmi_A_tx3>;
 };
 
+&fbio_led {
+	pinctrl-names = "default";
+	pinctrl-0 = <&fbio_led_pins>;
+};
+
 &mipicsi0 {
 	i2c-id = <1>;
 	cam_gpio0-gpios = <&pctl 92 GPIO_ACTIVE_HIGH>;

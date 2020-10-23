@@ -21,7 +21,9 @@
 #include <linux/pm_runtime.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
-//#include <dt-bindings/pinctrl/sp7021.h>
+#include <dt-bindings/pinctrl/sppctl-sp7021.h>
+
+
 
 #define SLAVE_INT_IN
 
@@ -382,38 +384,49 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 	SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device *devp = &( _s->dev);
 	u32 reg_temp;
+	unsigned long timeout = msecs_to_jiffies(2000);
 
 	FUNC_DBG();
 	mutex_lock( &pspim->buf_lock);
 
 	if ( RW_phase == SPI_SLAVE_WRITE) {
+		DBG_INF( "SPI_SLAVE_WRITE len %d", len);
+		reinit_completion( &pspim->sla_isr);
 		memcpy( pspim->tx_dma_vir_base, buf, len);
 		writel_relaxed( DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
 		writel_relaxed( len, &spis_reg->SLV_DMA_LENGTH);
 		writel_relaxed( pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
 		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
+		
+		//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
+		
+		if ( wait_for_completion_interruptible( &pspim->sla_isr)){
+			dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);	
 	}
-	if ( RW_phase == SPI_SLAVE_READ) {
+		
+	}else if ( RW_phase == SPI_SLAVE_READ) {
+		DBG_INF( "SPI_SLAVE_READ len %d", len);		
 		reinit_completion( &pspim->isr_done);
 		writel( DMA_READ, &spis_reg->SLV_DMA_CTRL);
 		writel( len, &spis_reg->SLV_DMA_LENGTH);
 		writel( pspim->rx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
-	}
+
 	// wait for DMA to complete
+	//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
 	if ( wait_for_completion_interruptible( &pspim->isr_done)) {
 		dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);
 		goto exit_spi_slave_rw;
 	}
 	// finilize read
-	if ( RW_phase == SPI_SLAVE_READ) {
-		while ( ( readl( &spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
-		{
-			dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
-		};
+		//while ( ( readl( &spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
+		//{
+		//	dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
+		//};
 		// FIXME: is "len" correct there?
 		memcpy( data_buf, pspim->rx_dma_vir_base, len);
+		writel( SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
 	}
-	writel( SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
+
 
 exit_spi_slave_rw:
 	mutex_unlock( &pspim->buf_lock);
@@ -499,8 +512,18 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 			sp7021spi_wb( pspim, 1);
 			fd_status = readl( &sr->SPI_FD_STATUS);
 		}
+
+		if(fd_status & FINISH_FLAG){
+		    if ( fd_status & RX_FULL_FLAG){
+		         rx_cnt = pspim->data_unit;
+		    }else{
+		        rx_cnt = GET_RX_CNT(readl( &sr->SPI_FD_STATUS));
+		    }
+		    sp7021spi_rb( pspim, rx_cnt);
+		}else{
 	    spin_unlock_irqrestore(&pspim->lock, flags);
 	    return IRQ_HANDLED;
+    }
     }
 	
 	writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);

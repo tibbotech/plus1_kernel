@@ -26,8 +26,6 @@
 
 #define I2C_TIMEOUT_TH  0x10000
 
-static mipi_isp_reg_t *pMipiIspReg[MIPI_I2C_NUM];
-
 
 /*
 	@ispSleep_i2c this function depends on O.S.
@@ -46,10 +44,9 @@ void ispSleep_i2c(int delay)
 /*
 	@hal_mipi_i2c_isp_reset
 */
-void hal_mipi_i2c_isp_reset(unsigned int device_id)
+void hal_mipi_i2c_isp_reset(hal_mipi_i2c_info_t *i2c_info)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
@@ -72,10 +69,9 @@ void hal_mipi_i2c_isp_reset(unsigned int device_id)
 }
 EXPORT_SYMBOL(hal_mipi_i2c_isp_reset);
 
-void hal_mipi_i2c_power_on(unsigned int device_id)
+void hal_mipi_i2c_power_on(hal_mipi_i2c_info_t *i2c_info)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
 	u8 data;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
@@ -103,10 +99,9 @@ void hal_mipi_i2c_power_on(unsigned int device_id)
 }
 EXPORT_SYMBOL(hal_mipi_i2c_power_on);
 
-void hal_mipi_i2c_power_down(unsigned int device_id)
+void hal_mipi_i2c_power_down(hal_mipi_i2c_info_t *i2c_info)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
 	u8 data;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
@@ -130,10 +125,9 @@ void hal_mipi_i2c_power_down(unsigned int device_id)
 }
 EXPORT_SYMBOL(hal_mipi_i2c_power_down);
 
-void hal_mipi_i2c_init(unsigned int device_id)
+void hal_mipi_i2c_init(hal_mipi_i2c_info_t *i2c_info)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
 	u8 data;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
@@ -156,219 +150,48 @@ void hal_mipi_i2c_init(unsigned int device_id)
 													*/
 }
 
-// Write data to 16-bit address sensor
-void setSensor16_i2c(unsigned int device_id, u16 addr16, u16 value16, u8 data_count)
+void hal_mipi_i2c_status_get(hal_mipi_i2c_info_t *i2c_info, unsigned char *status)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
-	u8 i;
-	//u8 addr_count = 0x02, data_count = 0x02;
-	u8 addr_count = 0x02;
-	u8 regData[2];
-	u32 SensorI2cTimeOut;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 
-	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-
-	if ((addr_count+data_count) > 32) return;
-	if (data_count == 1)
-	{
-		regData[0] = (u8)(value16 & 0xFF);
-	}
-	else if (data_count == 2)
-	{
-		regData[0] = (u8)(value16 >> 8);
-		regData[1] = (u8)(value16 & 0xFF);
-	}
-	else
-	{
-		//not support
-		HAL_I2C_ERR("%s, no support! (data_count=%d)\n", __FUNCTION__, data_count);
-		return;
-	}
-		
-	//writeb(SensorSlaveAddr, &(regs->reg[0x2600]));
-	//writeb(0x00, &(regs->reg[0x2604]));					/* speed selection */
-													/*
-														0: 48MHz div 2048
-														1: 48MHz div 1024
-														2: 48MHz div 512
-														3: 48MHz div 256
-														4: 48MHz div 128
-														5: 48MHz div 64
-														6: 48MHz div 32
-														7: 48MHz div 16
-													*/
-	writeb(0x04, &(regs->reg[0x2601]));						/* set new transaction write mode */
-	writeb(0x00, &(regs->reg[0x2603]));                  			/* set synchronization with vd */
-	if ((addr_count+data_count) == 32)
-		writeb(0x00, &(regs->reg[0x2608]));						/* total 32 bytes to write */
-	else
-		writeb((addr_count+data_count), &(regs->reg[0x2608])); /* total count bytes to write */
-   
-	/* data write */
-	writeb((u8)(addr16 >> 8), &(regs->reg[0x2610]));			/* set the high byte of subaddress */
-	writeb((u8)(addr16 & 0x00FF), &(regs->reg[0x2611]));		/* set the low byte of subaddress */
-	for (i = 0; i < data_count; i++) {
-		writeb(regData[i], &(regs->reg[0x2612+i]));	/* set data */
-	}
-		
-	//writeb(addr16_H, &(regs->reg[0x2610]));   				/* set subaddress */
-	//writeb(addr16_L, &(regs->reg[0x2611]));   				/* set subaddress */
-	//for (i = 0; i < data_count; i++)
-	//	writeb(regData[i], &(regs->reg[0x2612+i]));			/* set data */	
-
-	SensorI2cTimeOut = I2C_TIMEOUT_TH;					//ULONG SensorI2cTimeOut defined in ROM
-	while (readb(&(regs->reg[0x2650])) == 0x01)				/* busy waiting until serial interface not busy */  
-	{
-		SensorI2cTimeOut--;
-		if (SensorI2cTimeOut == 0)
-		{
-			HAL_I2C_ERR("%s, I2C Timeout!\n", __FUNCTION__);
-
-			/* reset front i2c interface */                            
-			writeb(0x01, &(regs->reg[0x2660]));
-			writeb(0x00, &(regs->reg[0x2660]));
-			return;
-		}
-  	}	
-	HAL_I2C_INFO("%s, I2C time: %d\n", __FUNCTION__, I2C_TIMEOUT_TH-SensorI2cTimeOut);
-	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-}
-EXPORT_SYMBOL(setSensor16_i2c);
-
-// Read data from 16-bit address sensor
-void getSensor16_i2c(unsigned int device_id, u16 addr16, u16 *value16, u8 data_count)
-{
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-	mipi_isp_reg_t *regs = pMipiIspReg[i2c_ch];
-	u8 i;
-	//u8 addr_count = 0x02, data_count = 0x02;
-	u8 addr_count = 0x02;
-	u8 regData[2];
-	u32 SensorI2cTimeOut;
-
-	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-	HAL_I2C_INFO("%s, addr=0x%04x, count=%d\n", __FUNCTION__, addr16, data_count);
-
-	if (addr_count>32 || data_count>32)return;
-	//writeb(, &(regs->reg[0x2600) = SensorSlaveAddr;
-	//writeb(, &(regs->reg[0x2604) = 0x00;			/* speed selection */
-											/*
-												0: 48MHz div 2048
-												1: 48MHz div 1024
-												2: 48MHz div 512
-												3: 48MHz div 256
-												4: 48MHz div 128
-												5: 48MHz div 64
-												6: 48MHz div 32
-												7: 48MHz div 16
-											*/
-	writeb(0x06, &(regs->reg[0x2601]));                	/* set new transaction READ mode */
-	writeb(0x00, &(regs->reg[0x2603]));               		/* set synchronization with vd */
-	//
-	if (addr_count == 32)
-		writeb(0x00, &(regs->reg[0x2608]));					/* total 32 bytes to write */
-	else
-		writeb(addr_count, &(regs->reg[0x2608])); 		/* total count bytes to write */
-	//
-	if (data_count == 32)
-		writeb(0x00, &(regs->reg[0x2609]));					/* total 32 bytes to write */
-	else
-		writeb(data_count, &(regs->reg[0x2609])); 		/* total count bytes to write */
-	//			
-	writeb((u8)(addr16 >> 8), &(regs->reg[0x2610]));		/* set the high byte of subaddress */
-	writeb((u8)(addr16 & 0x00FF), &(regs->reg[0x2611]));	/* set the low byte of subaddress */
-	//writeb(addr16_H, &(regs->reg[0x2610]));   			/* set subaddress */
-	//writeb(addr16_L, &(regs->reg[0x2611]));   			/* set subaddress */
-	writeb(0x13, &(regs->reg[0x2602]));           			/* set restart enable, subaddress enable , subaddress 16-bit mode and prefetech */ 
-
-	SensorI2cTimeOut = I2C_TIMEOUT_TH;				//ULONG SensorI2cTimeOut defined in ROM
-	while (readb(&(regs->reg[0x2650])) == 0x01)			/* busy waiting until serial interface not busy */  
-	{
-		SensorI2cTimeOut--;
-		if (SensorI2cTimeOut == 0)
-		{
-			HAL_I2C_ERR("%s, I2C Timeout!\n", __FUNCTION__);
-
-			/* reset front i2c interface */                            
-			writeb(0x01, &(regs->reg[0x2660]));
-			writeb(0x00, &(regs->reg[0x2660]));
-			return;
-		}
-  	}
-	HAL_I2C_INFO("%s, I2C time: %d\n", __FUNCTION__, I2C_TIMEOUT_TH-SensorI2cTimeOut);
-
-	/* data read */
-	for (i = 0; i < data_count; i++)
-	{   
-		regData[i] = readb(&(regs->reg[0x2610 + i]));	/* get data */
-
-		HAL_I2C_DBG("%s, i=%d, regData[i]=0x%02x\n", __FUNCTION__, i, regData[i]);
-	}
-
-	SensorI2cTimeOut = I2C_TIMEOUT_TH;
-	while (readb(&(regs->reg[0x2650])) == 0x01)				/* busy waiting until serial interface not busy */  
-	{
-		SensorI2cTimeOut--;
-		if (SensorI2cTimeOut == 0)
-		{
-			/* reset front i2c interface */                            
-			writeb(0x01, &(regs->reg[0x2660]));
-			writeb(0x00, &(regs->reg[0x2660]));
-			return;
-		}
-  	}
-	if (data_count == 1)
-		*value16 = *((u8 *)regData);
-	else if (data_count == 2)
-		*value16 = *((u16 *)regData);
-	else
-		*value16 = 0;
-
-	HAL_I2C_INFO("%s, I2C time: %d\n", __FUNCTION__, I2C_TIMEOUT_TH-SensorI2cTimeOut);
-	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-}
-EXPORT_SYMBOL(getSensor16_i2c);
-
-void hal_mipi_i2c_status_get(unsigned int device_id, unsigned char *status)
-{
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
-		*status = readb(&(pMipiIspReg[i2c_ch]->reg[0x2650]));
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
+		*status = readb(&(regs->reg[0x2650]));
 		HAL_I2C_DBG("%s, 2650=0x%02x\n", __FUNCTION__, *status);
 
 		//while (readb(&(regs->reg[0x2650])) == 0x01)			/* busy waiting until serial interface not busy */	
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_status_get);
 
-void hal_mipi_i2c_data_get(unsigned int device_id, unsigned char *rdata, unsigned int read_cnt)
+void hal_mipi_i2c_data_get(hal_mipi_i2c_info_t *i2c_info, unsigned char *rdata, unsigned int read_cnt)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned int i = 0;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		for (i = 0; i < read_cnt; i++) {
-			rdata[i] = readb(&(pMipiIspReg[i2c_ch]->reg[0x2610+i]));
+			rdata[i] = readb(&(regs->reg[0x2610+i]));
 			HAL_I2C_DBG("%s, i=%d, rdata[i]=0x%02x\n", __FUNCTION__, i, rdata[i]);
 		}
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_data_get);
 
-void hal_mipi_i2c_data_set(unsigned int device_id, unsigned char *wdata, unsigned int write_cnt)
+void hal_mipi_i2c_data_set(hal_mipi_i2c_info_t *i2c_info, unsigned char *wdata, unsigned int write_cnt)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned int i = 0;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		for (i = 0; i < write_cnt; i++) {
-			writeb(wdata[i], &(pMipiIspReg[i2c_ch]->reg[0x2610+i]));
+			writeb(wdata[i], &(regs->reg[0x2610+i]));
 		}
 
 		//writeb(addr16_H, &(regs->reg[0x2610]));					/* set subaddress */
@@ -376,17 +199,18 @@ void hal_mipi_i2c_data_set(unsigned int device_id, unsigned char *wdata, unsigne
 		//for (i = 0; i < data_count; i++)
 		//	writeb(regData[i], &(regs->reg[0x2612+i])); 		/* set data */	
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_data_set);
 
-void hal_mipi_i2c_read_trigger(unsigned int device_id, mipi_i2c_start_mode start_mode)
+void hal_mipi_i2c_read_trigger(hal_mipi_i2c_info_t *i2c_info, mipi_i2c_start_mode start_mode)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned char reg_2602 = 0;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		switch(start_mode) {
 			default:
 			case I2C_START:
@@ -398,22 +222,23 @@ void hal_mipi_i2c_read_trigger(unsigned int device_id, mipi_i2c_start_mode start
 				break;
 		}
 
-		writeb(reg_2602, &(pMipiIspReg[i2c_ch]->reg[0x2602]));
+		writeb(reg_2602, &(regs->reg[0x2602]));
 
 		//writeb(0x13, &(regs->reg[0x2602]));           			/* set restart enable, subaddress enable , subaddress 16-bit mode and prefetech */ 
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_read_trigger);
 
 
-void hal_mipi_i2c_rw_mode_set(unsigned int device_id, mipi_i2c_action rw_mode)
+void hal_mipi_i2c_rw_mode_set(hal_mipi_i2c_info_t *i2c_info, mipi_i2c_action rw_mode)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned char reg_2601 = 0;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		switch(rw_mode) {
 			default:
 			case I2C_NOR_NEW_WRITE:
@@ -424,86 +249,90 @@ void hal_mipi_i2c_rw_mode_set(unsigned int device_id, mipi_i2c_action rw_mode)
 				reg_2601 = MIPI_I2C_2601_NEW_TRANS_EN | MIPI_I2C_2601_NEW_TRANS_MODE;
 				break;
 		}
-		writeb(reg_2601, &(pMipiIspReg[i2c_ch]->reg[0x2601]));	
+		writeb(reg_2601, &(regs->reg[0x2601]));	
 
 		//writeb(0x04, &(regs->reg[0x2601])); 					/* set new transaction write mode */
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_rw_mode_set);
 
-void hal_mipi_i2c_active_mode_set(unsigned int device_id, unsigned char mode)
+void hal_mipi_i2c_active_mode_set(hal_mipi_i2c_info_t *i2c_info, unsigned char mode)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned char reg_2603 = mode;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
-		writeb(reg_2603, &(pMipiIspReg[i2c_ch]->reg[0x2603]));
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
+		writeb(reg_2603, &(regs->reg[0x2603]));
 
 		//writeb(0x00, &(regs->reg[0x2603])); 					/* set synchronization with vd */
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_active_mode_set);
 
-void hal_mipi_i2c_trans_cnt_set(unsigned int device_id, unsigned int write_cnt, unsigned int read_cnt)
+void hal_mipi_i2c_trans_cnt_set(hal_mipi_i2c_info_t *i2c_info, unsigned int write_cnt, unsigned int read_cnt)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned char reg_2608 = write_cnt;
 	unsigned char reg_2609 = read_cnt;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		if (reg_2608 > 31) reg_2608 = 0;    // 0 for 32 bytes to write
 		if (reg_2608 != 0xff) 
-			writeb(reg_2608, &(pMipiIspReg[i2c_ch]->reg[0x2608]));
+			writeb(reg_2608, &(regs->reg[0x2608]));
 
 		if (reg_2609 > 31) reg_2609 = 0;    // 0 for 32 bytes to read
 		if (reg_2609 != 0xff) 
-			writeb(reg_2609, &(pMipiIspReg[i2c_ch]->reg[0x2609]));
+			writeb(reg_2609, &(regs->reg[0x2609]));
 
 		//if ((addr_count+data_count) == 32)
 		//	writeb(0x00, &(regs->reg[0x2608])); 					/* total 32 bytes to write */
 		//else
 		//	writeb((addr_count+data_count), &(regs->reg[0x2608])); /* total count bytes to write */
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_trans_cnt_set);
 
-void hal_mipi_i2c_slave_addr_set(unsigned int device_id, unsigned int addr)
+void hal_mipi_i2c_slave_addr_set(hal_mipi_i2c_info_t *i2c_info, unsigned int addr)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 	unsigned int reg_2600 = 0;
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
 		if (addr > 0x7F) {
 			HAL_I2C_ERR("wrong slave address! addr:0x%04x", addr);
 			return;
 		}
 
 		reg_2600 = addr << 1;   // Need to shift slave address by software 
-		writeb((u8)reg_2600, &(pMipiIspReg[i2c_ch]->reg[0x2600]));
+		writeb((u8)reg_2600, &(regs->reg[0x2600]));
 
 		reg_2600 = 0;
-		reg_2600 = readb(&(pMipiIspReg[i2c_ch]->reg[0x2600]));
+		reg_2600 = readb(&(regs->reg[0x2600]));
 		HAL_I2C_DBG("%s, reg_2600=0x%02x\n", __FUNCTION__, reg_2600);
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_slave_addr_set);
 
-void hal_mipi_i2c_clock_freq_set(unsigned int device_id, unsigned int freq)
+void hal_mipi_i2c_clock_freq_set(hal_mipi_i2c_info_t *i2c_info, unsigned int freq)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
-		writeb((u8)freq, &(pMipiIspReg[i2c_ch]->reg[0x2604]));
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
+		writeb((u8)freq, &(regs->reg[0x2604]));
 
 		//writeb(0x00, &(regs->reg[0x2604]));			/* speed selection */
 														/*
@@ -517,40 +346,25 @@ void hal_mipi_i2c_clock_freq_set(unsigned int device_id, unsigned int freq)
 															7: 48MHz div 16
 														*/
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_clock_freq_set);
 
-void hal_mipi_i2c_reset(unsigned int device_id)
+void hal_mipi_i2c_reset(hal_mipi_i2c_info_t *i2c_info)
 {
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
+	mipi_isp_reg_t *regs = i2c_info->isp_regs;
+	unsigned int dev_id = i2c_info->dev_id;
 
 	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
 
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
-		HAL_I2C_INFO("%s, device_id:%01d, reg base:0x%px", __FUNCTION__, device_id, pMipiIspReg[i2c_ch]);
+	if ((dev_id >= MIPI_I2C_1ST_CH) && (dev_id < MIPI_I2C_MAX_TH)) {
+		HAL_I2C_INFO("%s, device_id:%01d, reg base:0x%px", __FUNCTION__, dev_id, i2c_info->isp_regs);
 
-		writeb(0x01, &(pMipiIspReg[i2c_ch]->reg[0x2660]));
-		writeb(0x00, &(pMipiIspReg[i2c_ch]->reg[0x2660]));
+		writeb(0x01, &(regs->reg[0x2660]));
+		writeb(0x00, &(regs->reg[0x2660]));
 	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
+		HAL_I2C_ERR("wrong device id! device_id:%01d", dev_id);
 	}
 }
 EXPORT_SYMBOL(hal_mipi_i2c_reset);
-
-void hal_mipi_i2c_base_set(unsigned int device_id, void __iomem *membase)
-{
-	unsigned int i2c_ch = device_id - MIPI_I2C_1ST_CH;
-
-	HAL_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-
-	if ((device_id >= MIPI_I2C_1ST_CH) && (device_id < MIPI_I2C_MAX_TH)) {
-		HAL_I2C_INFO("%s, device_id:%01d, reg base:0x%px", __FUNCTION__, device_id, membase);
-
-		pMipiIspReg[i2c_ch] = (mipi_isp_reg_t *)(membase - ISP_BASE_ADDRESS);
-	} else {
-		HAL_I2C_ERR("wrong device id! device_id:%01d", device_id);
-	}
-}
-EXPORT_SYMBOL(hal_mipi_i2c_base_set);
