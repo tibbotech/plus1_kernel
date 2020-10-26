@@ -548,7 +548,6 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 
 	// set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
 	if ( pspim->tx_cur_len < data_len) {
-		
 		len_temp = min( pspim->data_unit, data_len);
 		sp7021spi_wb( pspim, len_temp);
 	}
@@ -733,7 +732,6 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 	}
 #endif
 
-	pentagram_set_cs( _s, true);
 	pspim->isr_flag = SPI_IDLE;
 
 	if ( ( _t->tx_buf) && ( _t->rx_buf)) {
@@ -758,7 +756,6 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 		DBG_INF( "idle?");
 		break;
 	}
-	pentagram_set_cs( _s, false);
 	spi_finalize_current_transfer( _c);
 
 #ifdef CONFIG_PM_RUNTIME_SPI
