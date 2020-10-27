@@ -1,5 +1,5 @@
-#ifndef __ISP_API_S_H
-#define __ISP_API_S_H
+#ifndef __ISP_API_S_H__
+#define __ISP_API_S_H__
 
 #include "isp_api.h"
 #include "reg_mipi.h"
@@ -10,4 +10,4 @@ void videoStartMode(struct mipi_isp_info *isp_info);
 void videoStopMode(struct mipi_isp_info *isp_info);
 void isp_setting_s(struct mipi_isp_info *isp_info);
 
-#endif /* __ISP_API_S_H */
+#endif /* __ISP_API_S_H__ */

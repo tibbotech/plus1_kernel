@@ -1,5 +1,5 @@
-#ifndef __3A_H
-#define __3A_H
+#ifndef __3A_H__
+#define __3A_H__
 
 #include "isp_api.h"
 #include "reg_mipi.h"
@@ -48,4 +48,4 @@ void vidctrlInit(struct mipi_isp_info *isp_info,
 void aaaInitVar(struct mipi_isp_info *isp_info);
 void aaaAeAwbAf(struct mipi_isp_info *isp_info);
 
-#endif /* __3A_H */
+#endif /* __3A_H__ */

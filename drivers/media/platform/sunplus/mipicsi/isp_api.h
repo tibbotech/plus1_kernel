@@ -1,10 +1,11 @@
-#ifndef __SP_ISPAPB_H__
-#define __SP_ISPAPB_H__
+#ifndef __ISP_API_H__
+#define __ISP_API_H__
 
 #include <linux/types.h>
 #include <linux/kernel.h>
 #include <media/v4l2-dev.h>
 #include "reg_mipi.h"
+#include "3a_types.h"
 
 //#define ISPAPB_DEBUG_ON
 #ifdef ISPAPB_DEBUG_ON
@@ -102,10 +103,13 @@ struct mipi_isp_info {
 	u8  input_fmt;
 	u8  output_fmt;
 	u8  scale;
+
+	// 3A function
+	aaa_var_t aaa_var;
 };
 
 
 /* Function Prototype */
 void isp_setting(struct mipi_isp_info *isp_info);
 
-#endif /* __SP_ISPAPB_H */
+#endif /* __ISP_API_H__ */
