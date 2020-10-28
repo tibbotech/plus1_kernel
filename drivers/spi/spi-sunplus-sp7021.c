@@ -266,6 +266,8 @@ struct pentagram_spi_master {
 
 	void __iomem *sla_base;	
 	
+        u32 message_config;
+	
 	int dma_irq;
 	int mas_irq;
 	int sla_irq;
@@ -678,7 +680,8 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 
         rs |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 
-	writel( rs, &( spim_reg->SPI_FD_CONFIG));
+	pspim->message_config = rs;
+
 	return 0;
 }
 static int pentagram_spi_controller_unprepare_message(struct spi_controller *ctlr,
@@ -736,7 +739,7 @@ static void pentagram_spi_setup_transfer( struct spi_device *_s, struct spi_cont
 	// set full duplex (bit 6) and fd freq (bits 31:16)
 	rc = FD_SEL | ( 0xffff << 16);
 	rs = FD_SEL | ( ( clk_sel & 0xffff) << 16);
-	writel( ( readl( &( spim_reg->SPI_FD_CONFIG)) & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
+	writel( (pspim->message_config & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
 }
 
 
@@ -976,8 +979,10 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		DBG_INF( "start_xfer  xfer->len : %d   xfer_cnt : %d", xfer->len, xfer_cnt);
 		ret = pentagram_spi_master_combine_write_read( ctlr, first_xfer, xfer_cnt);
 
-		if (total_len > SPI_MSG_DATA_SIZE)
-			ret = pentagram_spi_master_combine_write_read( ctlr, xfer, 1);
+		if (total_len > SPI_MSG_DATA_SIZE){
+		    pentagram_spi_setup_transfer( spi, ctlr, xfer);
+		    ret = pentagram_spi_master_combine_write_read( ctlr, xfer, 1);
+		}
 		m->actual_length += total_len;
 
 		first_xfer = NULL;
