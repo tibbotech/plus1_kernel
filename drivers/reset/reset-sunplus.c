@@ -45,7 +45,6 @@ to_sp_reset_data(struct reset_controller_dev *rcdev)
 	return container_of(rcdev, struct sp_reset_data, rcdev);
 }
 
-
 static int sp_reset_update(struct reset_controller_dev *rcdev,
 			      unsigned long id, bool assert)
 {
@@ -58,13 +57,12 @@ static int sp_reset_update(struct reset_controller_dev *rcdev,
 	addr = data->membase + (bank * 4);
 
 	if (assert)
-	   writel(BITASSERT(offset,1), addr);
+		writel(BITASSERT(offset,1), addr);
 	else
-	   writel(BITASSERT(offset,0), addr);
+		writel(BITASSERT(offset,0), addr);
 
 	return 0;
 }
-
 
 static int sp_reset_assert(struct reset_controller_dev *rcdev,
 			      unsigned long id)
@@ -78,7 +76,6 @@ static int sp_reset_deassert(struct reset_controller_dev *rcdev,
 {
 	return sp_reset_update(rcdev, id, false);
 }
-
 
 static int sp_reset_status(struct reset_controller_dev *rcdev,
 			      unsigned long id)
@@ -114,12 +111,10 @@ static const struct reset_control_ops sp_reset_ops = {
 	.status		= sp_reset_status,
 };
 
-
 static const struct of_device_id sp_reset_dt_ids[] = {
 	{ .compatible = "sunplus,sp-reset", },
 	{ /* sentinel */ },
 };
-
 
 static int sp_reset_probe(struct platform_device *pdev)
 {
@@ -149,7 +144,6 @@ static int sp_reset_probe(struct platform_device *pdev)
  	return devm_reset_controller_register(dev, &data->rcdev);
 }
 
-
 static struct platform_driver sp_reset_driver = {
 	.probe	= sp_reset_probe,
 	.driver = {
@@ -158,8 +152,6 @@ static struct platform_driver sp_reset_driver = {
 	},
 };
 
-
-//builtin_platform_driver(stm32_reset_driver);
 static int __init sp_reset_init(void)
 {
 	return platform_driver_register(&sp_reset_driver);
@@ -168,6 +160,6 @@ arch_initcall(sp_reset_init);
 
 
 MODULE_AUTHOR("Edwin Chiu <edwin.chiu@sunplus.com>");
-MODULE_DESCRIPTION("SUNPLUS Reset Driver");
+MODULE_DESCRIPTION("Sunplus Reset Driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform:sp-reset");
+MODULE_ALIAS("platform: sp-reset");
