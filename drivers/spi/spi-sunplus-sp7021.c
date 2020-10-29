@@ -1042,6 +1042,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 	ctlr->min_speed_hz = 40000;
 	ctlr->max_speed_hz = 50000000;
+        ctlr->use_gpio_descriptors = true;
 	// ctlr->flags = 0
 	ctlr->max_transfer_size = pentagram_spi_max_length;
 	ctlr->max_message_size = pentagram_spi_max_length;
@@ -1055,7 +1056,6 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 		ctlr->slave_abort = pentagram_spi_S_abort;
 	}
 	else{
-                ctlr->use_gpio_descriptors = true;
 		ctlr->transfer_one_message = pentagram_spi_M_transfer_one_message;
 	}
 
