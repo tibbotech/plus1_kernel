@@ -43,7 +43,7 @@ void usb_switch(int device);
 #include "sunplus_udc.h"
 #include "sunplus_udc_regs.h"
 
-#define USE_DMA
+//#define USE_DMA
 
 static int irq_num = 0;
 //static u64 sunplus_udc_dma_mask = DMA_BIT_MASK(32);
@@ -1235,7 +1235,8 @@ static int sp_udc_ep1_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 	is_last = 0;
 	delay_count = 0;
 
-	DEBUG_DBG("1.req.actual = %d req.length=%d req->req.dma=%xh UDEP12FS = %xh\n", req->req.actual, req->req.length, req->req.dma, udc_read(UDEP12FS));
+	DEBUG_DBG("1.req.actual = %d req.length=%d req->req.dma=%xh UDEP12FS = %xh\n",
+		              req->req.actual, req->req.length, req->req.dma, udc_read(UDEP12FS));
 	is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
 
 	while(1) {
@@ -1253,7 +1254,8 @@ static int sp_udc_ep1_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 		else
 			is_last = 0;
 
-		DEBUG_DBG("2.req.length=%d req.actual=%d UDEP12FS = %xh UDEP12PPC = %xh UDEP12POC = %xh  UDEP12PIC = %xh count=%d  w_count = %d is_last=%d\n", req->req.length, req->req.actual, udc_read(UDEP12FS), udc_read(UDEP12PPC), udc_read(UDEP12POC), udc_read(UDEP12PIC), count, w_count, is_last);
+		DEBUG_DBG("2.req.length=%d req.actual=%d UDEP12FS = %xh UDEP12PPC = %xh UDEP12POC = %xh  UDEP12PIC = %xh count=%d  w_count = %d is_last=%d\n",
+			       req->req.length, req->req.actual, udc_read(UDEP12FS), udc_read(UDEP12PPC), udc_read(UDEP12POC), udc_read(UDEP12PIC), count, w_count, is_last);
 
 		if (is_last) break;
 
@@ -1416,9 +1418,10 @@ static int sp_udc_ep1_bulkin_dma(struct sp_ep *ep,
 
 	if ((req->req.actual) || (req->req.length==0))
 		goto _TX_BULK_IN_DATA;
-	
+
 	/* DMA Mode */
 	dma_len_ep1 = req->req.length - (req->req.length % bulkep_dma_block_size);
+
 	if (dma_len_ep1 == bulkep_dma_block_size) {
 		dma_len_ep1 = 0;
 		goto _TX_BULK_IN_DATA;
@@ -1426,6 +1429,8 @@ static int sp_udc_ep1_bulkin_dma(struct sp_ep *ep,
 
 	if (dma_len_ep1) {
 		DEBUG_DBG("ep1 bulk in dma mode,zero=%d\n", req->req.zero);
+
+		udc_write(udc_read(UDLIE) & (~EP1I_IF), UDLIE);
 
 		if (!sp_ep1_bulkin_dma(ep, req))
 			return 0;
@@ -1439,8 +1444,6 @@ static int sp_udc_ep1_bulkin_dma(struct sp_ep *ep,
 			DEBUG_DBG("ep1 dma->pio wait write!\n");
 			goto done_dma;
 		} else {
-			udc_write(udc_read(UDLIE) & (~EP1I_IF), UDLIE);
-
 			//udc_write(EP1N_IF, UDLIF);
 			count = sp_udc_write_packet(UDEP12FDP, req, ep->ep.maxpacket, UDEP12VB);
 			udc_write(udc_read(UDEP12C) | SET_EP_IVLD, UDEP12C);
