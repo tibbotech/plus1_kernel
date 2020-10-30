@@ -8,8 +8,9 @@ config SUNPLUS_USB_PHY
 	tristate "Sunplus USB PHY"
 
 config SUNPLUS_USB3_PHY
-	tristate "Sunplus USB3 PHY"
+	bool "Sunplus USB3 PHY"
 	depends on USB_DWC3
+	default y
 		
 config USB_PHY
 	select EXTCON
