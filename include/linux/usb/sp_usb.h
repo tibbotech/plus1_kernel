@@ -33,6 +33,7 @@
 
 #define PORT0_ENABLED				(1 << 0)
 #define PORT1_ENABLED				(1 << 1)
+#define PORT2_ENABLED				(1 << 3)
 #define POWER_SAVING_SET			(1 << 5)
 #define ECO_PATH_SET				(1 << 6)
 #define	UPHY_DISC_0				(1 << 2)
