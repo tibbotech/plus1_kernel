@@ -337,7 +337,7 @@ static int sc2310_probe(struct i2c_client *client, const struct i2c_device_id *i
 	struct v4l2_subdev *sd;
 	int ret;
 
-	FUNC_DEBUG();
+	DBG_INFO("SC2310 driver is probed\n");
 
 	sc2310 = devm_kzalloc(dev, sizeof(*sc2310), GFP_KERNEL);
 	if (!sc2310) {
@@ -375,6 +375,7 @@ static int sc2310_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 	v4l2_set_subdev_hostdata(sd, &sc2310->sensor_data);
 
+	DBG_INFO("SC2310 driver is installed!\n");
 	return 0;
 
 err_clean_entity:
@@ -390,7 +391,7 @@ static int sc2310_remove(struct i2c_client *client)
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct sc2310 *sc2310 = to_sc2310(sd);
 
-	FUNC_DEBUG();
+	DBG_INFO("SC2310 driver is removing\n");
 
 	v4l2_async_unregister_subdev(sd);
 #if defined(CONFIG_MEDIA_CONTROLLER)
@@ -399,12 +400,13 @@ static int sc2310_remove(struct i2c_client *client)
 	v4l2_ctrl_handler_free(&sc2310->ctrl_handler);
 	mutex_destroy(&sc2310->mutex);
 
+	DBG_INFO("SC2310 driver is removed\n");
 	return 0;
 }
 
 #if IS_ENABLED(CONFIG_OF)
 static const struct of_device_id sc2310_of_match[] = {
-	{ .compatible = "ovti,sc2310" },
+	{ .compatible = "SunplusIT,sc2310" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sc2310_of_match);

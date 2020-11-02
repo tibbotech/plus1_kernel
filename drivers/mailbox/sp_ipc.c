@@ -23,7 +23,7 @@
 
 //#define IPC_TIMEOUT_DEBUG
 //#define IPC_REG_OVERWRITE
-#define EXAMPLE_CODE_FOR_USER_GUIDE
+//#define EXAMPLE_CODE_FOR_USER_GUIDE //tonyh add for module test sp_ipc_test.c
 #ifdef CONFIG_ARCH_ZYNQ
 #define LOCAL_TEST
 #endif
@@ -85,7 +85,7 @@
 #endif
 #define IPC_SEQ_LEN         (4)
 /* IPC Interrupt Number */
-#if 0 //tonyh test
+#if 1 //tonyh test
 #ifdef CONFIG_ARCH_ZYNQ
 #define CA9_DIRECT_INT0		(60)
 #else
@@ -101,9 +101,8 @@
 #define CA9_DIRECT_INT5		(CA9_DIRECT_INT0 + 5)
 #define CA9_DIRECT_INT6		(CA9_DIRECT_INT0 + 6)
 #define CA9_DIRECT_INT7		(CA9_DIRECT_INT0 + 7)
-#define CA9_INT				(CA9_DIRECT_INT0 + 8)
 
-#define A926_DIRECT_INT0	(2)
+#define A926_DIRECT_INT0	(190)
 #define A926_DIRECT_INT1	(A926_DIRECT_INT0 + 1)
 #define A926_DIRECT_INT2	(A926_DIRECT_INT0 + 2)
 #define A926_DIRECT_INT3	(A926_DIRECT_INT0 + 3)
@@ -111,7 +110,9 @@
 #define A926_DIRECT_INT5	(A926_DIRECT_INT0 + 5)
 #define A926_DIRECT_INT6	(A926_DIRECT_INT0 + 6)
 #define A926_DIRECT_INT7	(A926_DIRECT_INT0 + 7)
-#define A926_INT			(A926_DIRECT_INT0 + 8)
+
+#define CA9_INT				(A926_DIRECT_INT0 + 8)
+#define A926_INT			(A926_DIRECT_INT0 + 9)
 
 #define IRQ_RPC				CA9_INT
 
@@ -1162,7 +1163,7 @@ static int sp_ipc_probe(struct platform_device *pdev)
 	if (!res_mem)
 		return -ENODEV;
 
-#if 1
+#if 0
 	
 	dev->reg = devm_ioremap_resource(&pdev->dev, res_mem);
 	if (IS_ERR((void *)dev->reg))

@@ -11,7 +11,6 @@
 #include <linux/usb/sp_usb.h>
 #include <linux/nvmem-consumer.h>
 
-
 static struct clk *uphy1_clk;
 static struct resource *uphy1_res_mem;
 void __iomem *uphy1_base_addr = NULL;
@@ -19,7 +18,6 @@ void __iomem *uphy1_res_moon0 = NULL;
 void __iomem *uphy1_res_moon4 = NULL;
 #ifdef CONFIG_SOC_I143
 void __iomem *uphy1_res_moon5 = NULL;
-void __iomem *uphy3_base_addr = NULL;//temporary phy3 settings
 #endif
 int uphy1_irq_num = -1;
 u8 sp_port1_enabled = 0;
@@ -269,31 +267,13 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
 	if (IS_ERR(uphy1_res_moon5)) {
 		return PTR_ERR(uphy1_res_moon5);
 	}
-
-    	//temporary phy3 settings
-    	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 4);
-	uphy3_base_addr = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
-	if (IS_ERR(uphy3_base_addr)) {
-		return PTR_ERR(uphy3_base_addr);
-	}
-	//printk("phy3 base 0x%x, remap 0x%x\n", res_mem->start, uphy3_base_addr);
 #endif 
 	uphy1_init(pdev);
 
 	writel(0x19, uphy1_base_addr + CDP_REG_OFFSET);
 	writel(0x92, uphy1_base_addr + DCP_REG_OFFSET);
 	writel(0x17, uphy1_base_addr + UPHY_INTER_SIGNAL_REG_OFFSET);
-#ifdef CONFIG_SOC_I143
-        //temporary phy3 settings
-        writel(0x43, uphy3_base_addr);
-        writel(0x1d, uphy3_base_addr + 0x44);
-        writel(0xff, uphy3_base_addr + 0x17c);
-        writel(0x10, uphy3_base_addr + 0x1c0);
-        writel(0x10, uphy3_base_addr + 0x1c4);
-        writel(0x11, uphy3_base_addr + 0x1c8);
-        writel(0x80, uphy3_base_addr + 0x1cc);
-        writel(0x09, uphy3_base_addr + 0x200);
-#endif
+
 	return 0;
 }
 

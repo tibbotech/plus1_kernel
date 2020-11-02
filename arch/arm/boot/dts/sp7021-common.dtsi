@@ -388,6 +388,18 @@
 				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
 		};
 
+		fbio_led: fbio_led@70000000 {
+			compatible = "sunplus,sp7021-fbio-led";
+			clocks = <&clkc FIO_CTL>, <&clkc FPGA>;
+			clock-names = "fio", "fpga";
+			resets = <&rstc RST_FPGA>;
+			reg =
+				<0x9c106000 0x80>, /* fbio_ctl regs */
+				<0x70000000 0x10>; /* fbio_led regs */
+			interrupt-parent = <&intc>;
+			interrupts = <29 IRQ_TYPE_EDGE_RISING>; /* fpga_ext0 */
+		};
+
 		crypto: crypto@G84 {
 			compatible = "sunplus,sp7021-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
@@ -883,16 +895,6 @@
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
 			gpio-controller;
 			#gpio-cells = <2>;
-			interrupt-parent = <&intc>;
-			interrupts =
-				<120 IRQ_TYPE_LEVEL_HIGH>,
-				<121 IRQ_TYPE_LEVEL_HIGH>,
-				<122 IRQ_TYPE_LEVEL_HIGH>,
-				<123 IRQ_TYPE_LEVEL_HIGH>,
-				<124 IRQ_TYPE_LEVEL_HIGH>,
-				<125 IRQ_TYPE_LEVEL_HIGH>,
-				<126 IRQ_TYPE_LEVEL_HIGH>,
-				<127 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc GPIO>;
 			resets = <&rstc RST_GPIO>;
 
@@ -974,6 +976,11 @@
 			hdmi_A_tx3: hdmi_A_tx3_pins {
 				sppctl,groups = "HDMI_TX3";
 				sppctl,function = "HDMI_TX";
+			};
+
+			fpga_mux: fpga_mux {
+				sppctl,groups = "FPGA_IFX";
+				sppctl,function = "FPGA_IFX";
 			};
 		};
 	};

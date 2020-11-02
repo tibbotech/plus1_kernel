@@ -266,6 +266,8 @@ struct pentagram_spi_master {
 
 	void __iomem *sla_base;	
 	
+        u32 message_config;
+	
 	int dma_irq;
 	int mas_irq;
 	int sla_irq;
@@ -381,7 +383,7 @@ static int pentagram_spi_S_abort( struct spi_controller *_c)
 }
 
 // slave R/W, called from S_transfer_one() only
-int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, unsigned int len, int RW_phase)
+int pentagram_spi_S_rw( struct spi_device *_s, struct spi_transfer *_t, int RW_phase)
 {
 	struct pentagram_spi_master *pspim = spi_controller_get_devdata( _s->controller);
 
@@ -393,33 +395,48 @@ int pentagram_spi_S_rw( struct spi_device *_s, const u8  *buf, u8  *data_buf, un
 	mutex_lock( &pspim->buf_lock);
 
 	if ( RW_phase == SPI_SLAVE_WRITE) {
-		memcpy( pspim->tx_dma_vir_base, buf, len);
+		DBG_INF( "S_WRITE len %d", _t->len);
+		reinit_completion( &pspim->sla_isr);
+	
+	        if(_t->tx_dma == pspim->tx_dma_phy_base)
+		    memcpy( pspim->tx_dma_vir_base, _t->tx_buf, _t->len);
+		
 		writel_relaxed( DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
-		writel_relaxed( len, &spis_reg->SLV_DMA_LENGTH);
-		writel_relaxed( pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
+		writel_relaxed( _t->len, &spis_reg->SLV_DMA_LENGTH);
+		writel_relaxed( _t->tx_dma, &spis_reg->SLV_DMA_INI_ADDR);
 		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
+		
+		//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
+		
+		if ( wait_for_completion_interruptible( &pspim->sla_isr)){
+			dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);	
 	}
-	if ( RW_phase == SPI_SLAVE_READ) {
+		
+	}else if ( RW_phase == SPI_SLAVE_READ) {
+		DBG_INF( "S_READ len %d", _t->len);		
 		reinit_completion( &pspim->isr_done);
 		writel( DMA_READ, &spis_reg->SLV_DMA_CTRL);
-		writel( len, &spis_reg->SLV_DMA_LENGTH);
-		writel( pspim->rx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
-	}
+		writel( _t->len, &spis_reg->SLV_DMA_LENGTH);
+		writel( _t->rx_dma, &spis_reg->SLV_DMA_INI_ADDR);
+
 	// wait for DMA to complete
+	//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
 	if ( wait_for_completion_interruptible( &pspim->isr_done)) {
 		dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);
 		goto exit_spi_slave_rw;
 	}
 	// finilize read
-	if ( RW_phase == SPI_SLAVE_READ) {
-		while ( ( readl( &spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
-		{
-			dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
-		};
+		//while ( ( readl( &spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
+		//{
+		//	dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
+		//};
 		// FIXME: is "len" correct there?
-		memcpy( data_buf, pspim->rx_dma_vir_base, len);
+		if(_t->tx_dma == pspim->tx_dma_phy_base)
+		    memcpy( _t->rx_buf, pspim->rx_dma_vir_base, _t->len);
+		
+		writel( SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
 	}
-	writel( SLA_SW_RST, &spis_reg->SLV_DMA_CTRL);
+
 
 exit_spi_slave_rw:
 	mutex_unlock( &pspim->buf_lock);
@@ -505,8 +522,18 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 			sp7021spi_wb( pspim, 1);
 			fd_status = readl( &sr->SPI_FD_STATUS);
 		}
+
+		if(fd_status & FINISH_FLAG){
+		    if ( fd_status & RX_FULL_FLAG){
+		         rx_cnt = pspim->data_unit;
+		    }else{
+		        rx_cnt = GET_RX_CNT(readl( &sr->SPI_FD_STATUS));
+		    }
+		    sp7021spi_rb( pspim, rx_cnt);
+		}else{
 	    spin_unlock_irqrestore(&pspim->lock, flags);
 	    return IRQ_HANDLED;
+    }
     }
 	
 	writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
@@ -652,7 +679,8 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 
         rs |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 
-	writel( rs, &( spim_reg->SPI_FD_CONFIG));
+	pspim->message_config = rs;
+
 	return 0;
 }
 static int pentagram_spi_controller_unprepare_message(struct spi_controller *ctlr,
@@ -710,8 +738,119 @@ static void pentagram_spi_setup_transfer( struct spi_device *_s, struct spi_cont
 	// set full duplex (bit 6) and fd freq (bits 31:16)
 	rc = FD_SEL | ( 0xffff << 16);
 	rs = FD_SEL | ( ( clk_sel & 0xffff) << 16);
-	writel( ( readl( &( spim_reg->SPI_FD_CONFIG)) & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
+	writel( (pspim->message_config & ~rc) | rs, &( spim_reg->SPI_FD_CONFIG));
 }
+
+
+// SPI-slave R/W
+static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_device *_s,
+					struct spi_transfer *_t)
+{ 
+	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
+	struct device *dev = pspim->dev;
+
+
+	const u8 *cmd_buf;
+	u8 *data_buf;
+	unsigned int len;
+	int mode = SPI_IDLE, ret = 0;
+
+	FUNC_DBG();
+#ifdef CONFIG_PM_RUNTIME_SPI
+	if ( pm_runtime_enabled( pspim->dev)){
+	    ret = pm_runtime_get_sync( pspim->dev);
+	    if ( ret < 0) goto pm_out;
+	}
+#endif
+
+	if (spi_controller_is_slave(_c)){
+	
+		pspim->isr_flag = SPI_IDLE;
+
+	if ( ( _t->tx_buf) && ( _t->rx_buf)) {
+		dev_dbg( &_c->dev, "%s() wrong command\n", __FUNCTION__);
+	}else if (_t->tx_buf) {
+			/* tx_buf is a const void* where we need a void * for
+			 * the dma mapping
+			 */
+			void *nonconst_tx = (void *)_t->tx_buf;
+	
+			_t->tx_dma = dma_map_single(dev, nonconst_tx,
+						      _t->len, DMA_TO_DEVICE);
+	
+			if (dma_mapping_error(dev, _t->tx_dma)) {
+				if(_t->len <= bufsiz){
+				    _t->tx_dma = pspim->tx_dma_phy_base;
+				    mode = SPI_SLAVE_WRITE;
+				}else{
+				    mode = SPI_IDLE;
+				}
+			}else{
+				mode = SPI_SLAVE_WRITE;
+			}
+	}else if (_t->rx_buf) {
+			
+			_t->rx_dma = dma_map_single(dev, _t->rx_buf,
+						      _t->len, DMA_FROM_DEVICE);
+			
+			if (dma_mapping_error(dev, _t->rx_dma)) {
+				if(_t->len <= bufsiz){
+				    _t->rx_dma = pspim->rx_dma_phy_base;
+				    mode = SPI_SLAVE_READ;				
+				}else{
+				    mode = SPI_IDLE;
+				}
+			}else{
+				mode = SPI_SLAVE_READ;
+			}
+	
+		}
+
+		
+		switch ( mode) {
+		  case SPI_SLAVE_WRITE:
+		  case SPI_SLAVE_READ:
+			pentagram_spi_S_rw( _s, _t, mode);
+			break;
+		  default:
+			DBG_INF( "idle?");
+			break;
+		}
+
+
+	    //if((xfer->rx_buf) && (xfer->rx_dma == pspim->rx_dma_phy_base)){
+		//    memcpy(xfer->rx_buf, pspim->rx_dma_vir_base, xfer->len);	
+	    //}
+	
+	    if((_t->tx_buf) && (_t->tx_dma != pspim->tx_dma_phy_base)){
+		dma_unmap_single(dev, _t->tx_dma,
+				 _t->len, DMA_TO_DEVICE);
+	    }
+	    if((_t->rx_buf) && (_t->rx_dma != pspim->rx_dma_phy_base)){
+		dma_unmap_single(dev, _t->rx_dma,
+				 _t->len, DMA_FROM_DEVICE);
+	    }
+	
+	}
+
+	spi_finalize_current_transfer( _c);
+
+#ifdef CONFIG_PM_RUNTIME_SPI
+	pm_runtime_put( pspim->dev);
+	DBG_INF( "pm_put");
+#endif
+	return( ret);
+#ifdef CONFIG_PM_RUNTIME_SPI
+pm_out:
+	pm_runtime_mark_last_busy( pspim->dev);
+	pm_runtime_put_autosuspend( pspim->dev);
+	DBG_INF( "pm_out");
+	return( ret);
+#endif
+}
+
+
+#if(0)
 
 // SPI-slave R/W
 static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_device *_s,
@@ -772,6 +911,7 @@ pm_out:
 #endif
 }
 
+#endif
 
 static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, struct spi_message *m)
 { 
@@ -838,8 +978,10 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		DBG_INF( "start_xfer  xfer->len : %d   xfer_cnt : %d", xfer->len, xfer_cnt);
 		ret = pentagram_spi_master_combine_write_read( ctlr, first_xfer, xfer_cnt);
 
-		if (total_len > SPI_MSG_DATA_SIZE)
-			ret = pentagram_spi_master_combine_write_read( ctlr, xfer, 1);
+		if (total_len > SPI_MSG_DATA_SIZE){
+		    pentagram_spi_setup_transfer( spi, ctlr, xfer);
+		    ret = pentagram_spi_master_combine_write_read( ctlr, xfer, 1);
+		}
 		m->actual_length += total_len;
 
 		first_xfer = NULL;
@@ -900,6 +1042,7 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	ctlr->bits_per_word_mask = SPI_BPW_MASK(8);
 	ctlr->min_speed_hz = 40000;
 	ctlr->max_speed_hz = 50000000;
+        ctlr->use_gpio_descriptors = true;
 	// ctlr->flags = 0
 	ctlr->max_transfer_size = pentagram_spi_max_length;
 	ctlr->max_message_size = pentagram_spi_max_length;

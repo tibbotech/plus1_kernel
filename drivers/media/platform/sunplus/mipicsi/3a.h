@@ -1,5 +1,5 @@
-#ifndef __3A_H
-#define __3A_H
+#ifndef __3A_H__
+#define __3A_H__
 
 #include "isp_api.h"
 #include "reg_mipi.h"
@@ -10,6 +10,7 @@
 #define LO_BYTE_OF_WORD(x) (u8)(x&0x00ff)
 #define HI_BYTE_OF_WORD(x) (u8)((x>>8)&0xff)
 
+// Log macro definition
 //#define ISP3A_DEBUG_ON
 #ifdef ISP3A_DEBUG_ON
 #define ISP3A_TAG "[ISP-3A] "
@@ -24,7 +25,7 @@
 #define ISP3A_LOGD(fmt, ...)  do{}while(0)
 #endif
 
-// local function prototype
+// Function prototype
 void aeGetCurEv(struct mipi_isp_info *isp_info);
 void sensorSetExposureTimeIsr(struct mipi_isp_info *isp_info);
 void sensorSetGainIsr(struct mipi_isp_info *isp_info);
@@ -32,9 +33,9 @@ void aeGetCurEv(struct mipi_isp_info *isp_info);
 
 void InstallVSinterrupt(void);
 void intrIntr0SensorVsync(struct mipi_isp_info *isp_info);
-void aaaLoadInit(struct mipi_isp_info *isp_info, char *aaa_init_file);
-void aeLoadAETbl(struct mipi_isp_info *isp_info, char *ae_table_file);
-void aeLoadGainTbl(struct mipi_isp_info *isp_info, char *gain_table_file);
+void aaaLoadInit(struct mipi_isp_info *isp_info, const char *aaa_init_file);
+void aeLoadAETbl(struct mipi_isp_info *isp_info, const char *ae_table_file);
+void aeLoadGainTbl(struct mipi_isp_info *isp_info, const char *gain_table_file);
 
 void aeInitExt(struct mipi_isp_info *isp_info);
 void awbInit(struct mipi_isp_info *isp_info);
@@ -48,4 +49,4 @@ void vidctrlInit(struct mipi_isp_info *isp_info,
 void aaaInitVar(struct mipi_isp_info *isp_info);
 void aaaAeAwbAf(struct mipi_isp_info *isp_info);
 
-#endif /* __3A_H */
+#endif /* __3A_H__ */

@@ -537,9 +537,20 @@
 			compatible = "sunplus,i143-usb-phy1";
 			clocks = <&clkc UPHY1>;
 			resets = <&rstc RST_UPHY1>;
-			reg = <0x0 0x9C004B00 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>, <0x0 0x9c109000 0x0 0x280>;
+			reg = <0x0 0x9C004B00 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <30 IRQ_TYPE_LEVEL_HIGH>;
+		};
+		
+		sp_uphy2: uphy@0x9C004B80 {
+			compatible = "sunplus,i143-usb-phy2";
+			clocks = <&clkc UPHY2>, <&clkc U3PHY>;
+			clock-names = "clkc_uphy2", "clkc_u3phy";
+			resets =  <&rstc RST_UPHY2>, <&rstc RST_U3PHY>;
+			reset-names = "rstc_uphy2", "rstc_u3phy";
+			reg = <0x0 0x9C004B80 0x0 0x80>, <0x0 0x9c109000 0x0 0x280>;
+			interrupt-parent = <&intc>;
+			interrupts = <31 IRQ_TYPE_LEVEL_HIGH>;
 		};
 
 		sp_ehci0: usb@0x9C102100 {
@@ -630,17 +641,16 @@
 				resets = <&rstc RST_USB30C>;
 				interrupt-parent = <&intc>;
 			        interrupts = <37 IRQ_TYPE_LEVEL_HIGH>;
-				//phys = <&usbdrd_phy 0>, <&usbdrd_phy 1>;
-				//phy-names = "usb2-phy", "usb3-phy";
 				maximum-speed = "super-speed";
 				dr_mode = "host";
 				snps,dis_u2_susphy_quirk;
+				phy_type = "utmi_wide";
 				//status = "disabled";
 			};
 		};
 		
 		i2cm4: i2c@sp_i2cm4 {
-			compatible = "sunplus,sp7021-mipi-i2c";
+			compatible = "sunplus,i143-mipi-i2c";
 			reg = <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "mipi_isp", "moon5";
@@ -652,7 +662,7 @@
 		};
 
 		i2cm5: i2c@sp_i2cm5 {
-			compatible = "sunplus,sp7021-mipi-i2c";
+			compatible = "sunplus,i143-mipi-i2c";
 			reg = <0x0 0x9c155000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "mipi_isp", "moon5";
@@ -664,7 +674,7 @@
 		};
 
 		mipicsi0: mipicsi@0x9c005300 {
-			compatible = "sunplus,sp7021-mipicsi-rx";
+			compatible = "sunplus,i143-mipicsi-rx";
 			reg = <0x0 0x9c005300 0x0 0x80>,
 			      <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
@@ -686,7 +696,7 @@
 		};
 
 		mipicsi1: mipicsi@0x9c005400 {
-			compatible = "sunplus,sp7021-mipicsi-rx";
+			compatible = "sunplus,i143-mipicsi-rx";
 			reg = <0x0 0x9c005400 0x0 0x80>,
 			      <0x0 0x9c155000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
@@ -807,11 +817,11 @@
 			reg = <0x0 0x9c012B80 0x0 0x80>, <0x0 0x9c012C00 0x0 0x80>, <0x0 0x9c012C80 0x0 0x80>,
 			      <0x0 0x9c012D00 0x0 0x80>, <0x0 0x9c012D80 0x0 0x80>, <0x0 0x9c012E00 0x0 0x80>,
 			      <0x0 0x9c012E80 0x0 0x80>, <0x0 0x9c012F00 0x0 0x80>, <0x0 0x9c012F80 0x0 0x80>,
-			      <0x0 0x9c013000 0x0 0x80>, <0x0 0x9c013080 0x0 0x80>;
+			      <0x0 0x9c013000 0x0 0x80>, <0x0 0x9c013080 0x0 0x80>, <0x0 0x9c000700 0x0 0x80>;
 			reg-names = "axi_mon", "axi_0", "axi_1",
 			            "axi_2", "axi_3", "axi_4",
 			            "axi_5", "axi_6", "axi_7",
-			            "axi_8", "axi_9";
+			            "axi_8", "axi_9", "dummy_master";
 			interrupt-parent = <&intc>;
 			interrupts = <83 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc AXI_GLOBAL>;
