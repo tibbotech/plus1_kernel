@@ -650,7 +650,7 @@
 		};
 		
 		i2cm4: i2c@sp_i2cm4 {
-			compatible = "sunplus,sp7021-mipi-i2c";
+			compatible = "sunplus,i143-mipi-i2c";
 			reg = <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "mipi_isp", "moon5";
@@ -662,7 +662,7 @@
 		};
 
 		i2cm5: i2c@sp_i2cm5 {
-			compatible = "sunplus,sp7021-mipi-i2c";
+			compatible = "sunplus,i143-mipi-i2c";
 			reg = <0x0 0x9c155000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
 			reg-names = "mipi_isp", "moon5";
@@ -674,7 +674,7 @@
 		};
 
 		mipicsi0: mipicsi@0x9c005300 {
-			compatible = "sunplus,sp7021-mipicsi-rx";
+			compatible = "sunplus,i143-mipicsi-rx";
 			reg = <0x0 0x9c005300 0x0 0x80>,
 			      <0x0 0x9c153000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;
@@ -696,7 +696,7 @@
 		};
 
 		mipicsi1: mipicsi@0x9c005400 {
-			compatible = "sunplus,sp7021-mipicsi-rx";
+			compatible = "sunplus,i143-mipicsi-rx";
 			reg = <0x0 0x9c005400 0x0 0x80>,
 			      <0x0 0x9c155000 0x0 0x1300>,
 			      <0x0 0x9c000280 0x0 0x80>;

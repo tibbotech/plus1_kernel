@@ -4,45 +4,45 @@
 #include "3a.h"
 #include "3a_types.h"
 
-#define INTR_VD_EDGE					(0x02)
-#define MANUALEXPGAIN					(0xa0)
-#define PUBRIGHTNESSCUR					(0x0080)
-#define PUCONTRASTCUR					(0x0020)
-#define PUGAINCUR						(0x0020)
-#define PUBACKLIGHTCOMPENSATIONCUR		(0x0001)
-#define PUBACKLIGHTCOMPENSATIONDEF		(0x0001)
-#define PUHUECUR						(0x0000)
-#define PUSATURATIONCUR					(0x0040)
-#define PUSHARPNESSCUR					(0x0002)
-#define PUGAMMACUR						(0x005a)
-#define PUWHITEBALANCETEMPERATURECUR	(0x0fa0)
-#define PUPOWERLINEFREQUENCYCUR			(0x0002) //1:50HZ, 2:60Hz
-#define AEINDEX							(0x0074)
-#define AEINDEXPREV						(0x0073)
-#define AEINDEXMAX60					(0x00a7)
-#define AEINDEXMAX50					(0x00a7)
-#define AEINDEXMIN60					(0x0000)
-#define AEINDEXMIN50					(0x0000)
-#define AEDEADZONE						(0x0004)
-#define AEYTARGET						(0x0030)
-#define AWBBTARGETMIN					(0x005c)
-#define AWBBTARGETMAX					(0x00ba)
-#define AWBRTARGETMIN					(0x0046)
-#define AWBRTARGETMAX					(0x0080)
-#define AWBGTARGETMIN					(0x0040)
-#define AWBGTARGETMAX					(0x0040)
-#define AWBRGAINREG						(0x0070)
-#define AWBGGAINREG						(0x0040)
-#define AWBBGAINREG						(0x006e)
-#define AAAFREQ							(0x0003)
-#define CTEXPOSURETIMEABSOLUTECUR		(0x0000009C)
-#define CTEXPOSURETIMEABSOLUTEMIN		(0x00000004)
-#define CTEXPOSURETIMEABSOLUTEMAX		(0x000004e2)
-#define AWB_R_WIDTH				 6
-#define AWB_B_WIDTH				 8
-#define AWB_MIN_GRAY_DET_CNT	0x3000 
-#define AWB_CHECK_BLK_CNT		13
-#define	AWB_CM_ADJ_CNT			3
+#define INTR_VD_EDGE                    (0x02)
+#define MANUALEXPGAIN                   (0xa0)
+#define PUBRIGHTNESSCUR                 (0x0080)
+#define PUCONTRASTCUR                   (0x0020)
+#define PUGAINCUR                       (0x0020)
+#define PUBACKLIGHTCOMPENSATIONCUR      (0x0001)
+#define PUBACKLIGHTCOMPENSATIONDEF      (0x0001)
+#define PUHUECUR                        (0x0000)
+#define PUSATURATIONCUR                 (0x0040)
+#define PUSHARPNESSCUR                  (0x0002)
+#define PUGAMMACUR                      (0x005a)
+#define PUWHITEBALANCETEMPERATURECUR    (0x0fa0)
+#define PUPOWERLINEFREQUENCYCUR         (0x0002) //1:50HZ, 2:60Hz
+#define AEINDEX                         (0x0074)
+#define AEINDEXPREV                     (0x0073)
+#define AEINDEXMAX60                    (0x00a7)
+#define AEINDEXMAX50                    (0x00a7)
+#define AEINDEXMIN60                    (0x0000)
+#define AEINDEXMIN50                    (0x0000)
+#define AEDEADZONE                      (0x0004)
+#define AEYTARGET                       (0x0030)
+#define AWBBTARGETMIN                   (0x005c)
+#define AWBBTARGETMAX                   (0x00ba)
+#define AWBRTARGETMIN                   (0x0046)
+#define AWBRTARGETMAX                   (0x0080)
+#define AWBGTARGETMIN                   (0x0040)
+#define AWBGTARGETMAX                   (0x0040)
+#define AWBRGAINREG                     (0x0070)
+#define AWBGGAINREG                     (0x0040)
+#define AWBBGAINREG                     (0x006e)
+#define AAAFREQ                         (0x0003)
+#define CTEXPOSURETIMEABSOLUTECUR       (0x0000009C)
+#define CTEXPOSURETIMEABSOLUTEMIN       (0x00000004)
+#define CTEXPOSURETIMEABSOLUTEMAX       (0x000004e2)
+#define AWB_R_WIDTH                     6
+#define AWB_B_WIDTH                     8
+#define AWB_MIN_GRAY_DET_CNT            0x3000 
+#define AWB_CHECK_BLK_CNT               13
+#define	AWB_CM_ADJ_CNT                  3
 
 const u8 AwbRRef[AWB_CHECK_BLK_CNT] = { 62,  65,  68,  73,  78, 83, 88, 92, 96, 100, /*CW 10~12*/  86, 91, 95};
 const u8 AwbBRef[AWB_CHECK_BLK_CNT] = {128, 120, 114, 108, 103, 97, 92, 86, 80,  75, /*CW 10~12*/ 103, 97, 92};
@@ -53,12 +53,12 @@ const short AwbAdjCmColMat[AWB_CM_ADJ_CNT][9] = {
 	{0x50, -(0x100-0xf8), -(0x100-0xf8), -(0x100-0xf4), 0x50, -(0x100-0xfc), -(0x100-0xf9), -(0x100-0xf8), 0x4f},  //86
 };
 
-#define	AWB_LENS_ADJ_CNT	3
+#define	AWB_LENS_ADJ_CNT    3
 const short AwbAdjLensColTemp[AWB_LENS_ADJ_CNT] = {122, 136, 180};
 const short AwbAdjLensRVal[AWB_LENS_ADJ_CNT]    = {100, 113, 138};
 const short AwbAdjLensBVal[AWB_LENS_ADJ_CNT]    = {100, 100, 100};
 
-#define	AE_EV_CONST					500
+#define	AE_EV_CONST         500
 
 const short Sign_CosSin[8] = {1, 1, -1, 1, -1, -1, 1, -1};
 const u8 Sin0_90[91] = {
@@ -261,7 +261,6 @@ void vidctrlPuSaturation(struct mipi_isp_info *isp_info, short puSaturationCur)
 	else if(AaaVar->AeIndex >= 140)
 		DefVal = DefVal - 5*(AaaVar->AeIndex-140)/(160-140);
 
-#if 1
 	//80lux E27 Warm AwbCurColTemp = 164	aeindex = 185(0xb9)
 	//20lux 3000k    AwbCurColTemp = 135 	aeindex = 210(0xd0)
 	//80lux 3000k    AwbCurColTemp = 145    aeindex = 186(0xba)
@@ -272,8 +271,7 @@ void vidctrlPuSaturation(struct mipi_isp_info *isp_info, short puSaturationCur)
 		DefVal = DefVal+16;
 	else 
 		DefVal = DefVal+0+(16-0)*(AaaVar->AwbCurColTemp-100)/(150-100);
-#endif	
-	
+
 	sat = (sat*DefVal)/64;
 
 	if(sat > 255)
@@ -295,7 +293,7 @@ void vidctrlPuGamma(struct mipi_isp_info *isp_info, u16 puGammaCur)
 {
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
 	u8 i;
-	u8 refGamma[15] = {  1,  4,  9, 16,  25,  36,  49,  64,  81,  98, 124, 146, 170, 196,  225 }; // Gamma 2 for wGamma = 150
+	u8 refGamma[15] = {  1,  4,  9, 16,  25,  36,  49,  64,  81,  98, 124, 146, 170, 196, 225 }; // Gamma 2 for wGamma = 150
 	u8 defGamma[15] = { 29, 51, 70, 89, 104, 120, 134, 147, 159, 174, 187, 200, 213, 226, 240 }; // Gamma 1 for wGamma = 120
 	short gamma;
 
@@ -828,7 +826,7 @@ void intrIntr0SensorVsync(struct mipi_isp_info *isp_info)
 
 	if (((readb(&(regs->reg[0x27C0])) & INTR_VD_EDGE) == INTR_VD_EDGE) &&	/* sensor vd falling interrupt enable */
 		((readb(&(regs->reg[0x27B0])) & INTR_VD_EDGE) == INTR_VD_EDGE)) {	/* sensor vd falling interrupt event */
-		ISPAPB_LOGI("%s, V-sync Interrupt occur!\n", __FUNCTION__);
+		ISPAPI_LOGI("%s, V-sync Interrupt occur!\n", __FUNCTION__);
 
 		writeb(INTR_VD_EDGE, &(regs->reg[0x27B0]));	/* clear vd falling edge interrupt AAF061 W1C*/
 
@@ -842,34 +840,11 @@ void intrIntr0SensorVsync(struct mipi_isp_info *isp_info)
 }
 
 //initResetParam
-void aaaLoadInit(struct mipi_isp_info *isp_info, char *aaa_init_file)
+void aaaLoadInit(struct mipi_isp_info *isp_info, const char *aaa_init_file)
 {
 	aaa_var_t *AaaVar = &isp_info->aaa_var;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
-
-	//please do fopen(aaa_init_file, "rt");
-	//fread data into below variable
-	/*
-		AeIndexMax60;   
-		AeIndexMax50;   
-		AeIndexMin60;   
-		AeIndexMin50;   
-		AeIndex;         
-		AeIndexPrev;      
-		AeDeadZone; 
-		AeYTarget;
-		AwbBTargetMin;   
-		AwbBTargetMax;   
-		AwbRTargetMin;   
-		AwbRTargetMax;   
-		AwbGTargetMin;   
-		AwbGTargetMax;   
-		AwbRGainReg;        
-		AwbGGainReg;        
-		AwbBGainReg;		
-		AaaFreq;
-	*/
 
 	AaaVar->AeIndexMax60  = (u8)aaa_init_file[0];
 	AaaVar->AeIndexMax50  = (u8)aaa_init_file[1];
@@ -891,15 +866,12 @@ void aaaLoadInit(struct mipi_isp_info *isp_info, char *aaa_init_file)
 	AaaVar->AaaFreq       = (u8)aaa_init_file[23];
 }
 
-void aeLoadAETbl(struct mipi_isp_info *isp_info, char *ae_table_file)
+void aeLoadAETbl(struct mipi_isp_info *isp_info, const char *ae_table_file)
 {
 	aaa_var_t *AaaVar = &isp_info->aaa_var;
 	u16 i;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
-
-	//please do fopen(ae_table_file, "rt");
-	//fread into pAeExpTbl[256]
 
 	for (i = 0; i < 256; i++)
 	{
@@ -907,15 +879,12 @@ void aeLoadAETbl(struct mipi_isp_info *isp_info, char *ae_table_file)
 	}
 }
  
-void aeLoadGainTbl(struct mipi_isp_info *isp_info, char *gain_table_file)
+void aeLoadGainTbl(struct mipi_isp_info *isp_info, const char *gain_table_file)
 {
 	aaa_var_t *AaaVar = &isp_info->aaa_var;
 	u16 i;
 
 	ISP3A_LOGD("%s start\n", __FUNCTION__);
-
-	//please do fopen(gain_table_file, "rt");
-	//fread into pAeGainTbl[256]
 
 	for (i = 0; i < 256; i++)
 	{

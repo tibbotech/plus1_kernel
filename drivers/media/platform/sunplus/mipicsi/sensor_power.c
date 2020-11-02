@@ -9,7 +9,7 @@ void powerSensorOn_RAM(struct mipi_isp_info *isp_info)
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
 	u8 data;
 
-	ISPAPB_LOGI("%s start\n", __FUNCTION__);
+	ISPAPI_LOGD("%s start\n", __FUNCTION__);
 
 	/* enable sensor mclk and i2c sck */
 	writeb(0x00, &(regs->reg[0x2781]));
@@ -32,7 +32,7 @@ void powerSensorOn_RAM(struct mipi_isp_info *isp_info)
 	data = readb(&(regs->reg[0x2044])) | 0x03;
 	writeb(data, &(regs->reg[0x2044]));     /* xgpio[8,9] output high - power up */
 
-	ISPAPB_LOGI("%s end\n", __FUNCTION__);
+	ISPAPI_LOGD("%s end\n", __FUNCTION__);
 }
 
 void powerSensorDown_RAM(struct mipi_isp_info *isp_info)
@@ -40,7 +40,7 @@ void powerSensorDown_RAM(struct mipi_isp_info *isp_info)
 	struct mipi_isp_reg *regs = (struct mipi_isp_reg *)((u64)isp_info->mipi_isp_regs - ISP_BASE_ADDRESS);
 	u8 data;
 
-	ISPAPB_LOGI("%s start\n", __FUNCTION__);
+	ISPAPI_LOGD("%s start\n", __FUNCTION__);
 
 	/* disable sensor mclk and i2c sck */
 	//writeb(0x48, &(regs->reg[0x2781]));
@@ -59,5 +59,5 @@ void powerSensorDown_RAM(struct mipi_isp_info *isp_info)
 	data = readb(&(regs->reg[0x2044])) & 0xFD;
 	writeb(data, &(regs->reg[0x2044]));     /* xgpio[9] output low - power down */
 
-	ISPAPB_LOGI("%s end\n", __FUNCTION__);
+	ISPAPI_LOGD("%s end\n", __FUNCTION__);
 }

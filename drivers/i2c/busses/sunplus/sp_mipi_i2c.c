@@ -101,7 +101,7 @@ static int sp_mipi_i2c_get_register_base(struct platform_device *pdev, void **me
 	void __iomem *p;
 
 	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
-	MIPI_I2C_INFO("Resource name: %s\n", res_name);
+	MIPI_I2C_DBG("Resource name: %s\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if (r == NULL) {
@@ -115,7 +115,7 @@ static int sp_mipi_i2c_get_register_base(struct platform_device *pdev, void **me
 		return PTR_ERR(p);
 	}
 
-	MIPI_I2C_INFO("devm_ioremap addr: 0x%px!!\n", p);
+	MIPI_I2C_DBG("devm_ioremap addr: 0x%px!!\n", p);
 	*membase = p;
 	return MIPI_I2C_SUCCESS;
 }
@@ -416,7 +416,7 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 	int i2c_ch = 0;
 	int ret = MIPI_I2C_SUCCESS;
 
-	MIPI_I2C_INFO("%s, %d\n", __FUNCTION__, __LINE__);
+	MIPI_I2C_INFO("SP MIPI I2C driver is probed\n");
 
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "i2c");
@@ -458,14 +458,14 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 
 	// Get ISP clock resource and enable it 
 	sp_mipi_i2c_info->clkc_isp = devm_clk_get(dev, "clkc_isp");
-	MIPI_I2C_INFO("sp_mipi_i2c_info->clkc_isp : 0x%px\n",sp_mipi_i2c_info->clkc_isp);
+	MIPI_I2C_DBG("sp_mipi_i2c_info->clkc_isp : 0x%px\n",sp_mipi_i2c_info->clkc_isp);
 	if (IS_ERR(sp_mipi_i2c_info->clkc_isp)) {
 		ret = PTR_ERR(sp_mipi_i2c_info->clkc_isp);
 		dev_err(dev, "Failed to retrieve clock resource \'clkc_isp\': %d\n", ret);
 		goto err_get_clkc_isp;
 	}
 	ret = clk_prepare_enable(sp_mipi_i2c_info->clkc_isp);
-	MIPI_I2C_INFO("clkc_isp ret : 0x%x \n",ret);
+	MIPI_I2C_DBG("clkc_isp ret : 0x%x \n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to enable \'clkc_isp\' clock: %d\n", ret);
 		goto err_en_clkc_isp;
@@ -473,14 +473,14 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 
 	// Get ISP APB clock resource and enable it 
 	sp_mipi_i2c_info->clkc_ispapb = devm_clk_get(dev, "clkc_ispapb");
-	MIPI_I2C_INFO("sp_mipi_i2c_info->clkc_ispapb : 0x%px\n",sp_mipi_i2c_info->clkc_ispapb);
+	MIPI_I2C_DBG("sp_mipi_i2c_info->clkc_ispapb : 0x%px\n",sp_mipi_i2c_info->clkc_ispapb);
 	if (IS_ERR(sp_mipi_i2c_info->clkc_ispapb)) {
 		ret = PTR_ERR(sp_mipi_i2c_info->clkc_ispapb);
 		dev_err(dev, "Failed to retrieve clock resource \'clkc_ispapb\': %d\n", ret);
 		goto err_get_clkc_ispapb;
 	}
 	ret = clk_prepare_enable(sp_mipi_i2c_info->clkc_ispapb);
-	MIPI_I2C_INFO("clkc_ispapb ret : 0x%x \n",ret);
+	MIPI_I2C_DBG("clkc_ispapb ret : 0x%x \n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to enable \'clkc_ispapb\' clock: %d\n", ret);
 		goto err_en_clkc_ispapb;
@@ -488,14 +488,14 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 
 	// Get ISP reset controller resource and disable it 
 	sp_mipi_i2c_info->rstc_isp = devm_reset_control_get(dev, "rstc_isp");
-	MIPI_I2C_INFO("sp_mipi_i2c_info->rstc_isp : 0x%px\n", sp_mipi_i2c_info->rstc_isp);
+	MIPI_I2C_DBG("sp_mipi_i2c_info->rstc_isp : 0x%px\n", sp_mipi_i2c_info->rstc_isp);
 	if (IS_ERR(sp_mipi_i2c_info->rstc_isp)) {
 		ret = PTR_ERR(sp_mipi_i2c_info->rstc_isp);
 		dev_err(dev, "Failed to retrieve reset controller 'rstc_isp\': %d\n", ret);
 		goto err_get_rstc_isp;
 	}
 	ret = reset_control_deassert(sp_mipi_i2c_info->rstc_isp);
-	MIPI_I2C_INFO("rstc_isp ret : 0x%x \n",ret);
+	MIPI_I2C_DBG("rstc_isp ret : 0x%x \n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to deassert 'rstc_isp' reset controller: %d\n", ret);
 		goto err_deassert_rstc_isp;
@@ -503,14 +503,14 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 
 	// Get ISP APB reset controller resource and disable it 
 	sp_mipi_i2c_info->rstc_ispapb = devm_reset_control_get(dev, "rstc_ispapb");
-	MIPI_I2C_INFO("sp_mipi_i2c_info->rstc_ispapb : 0x%px\n", sp_mipi_i2c_info->rstc_ispapb);
+	MIPI_I2C_DBG("sp_mipi_i2c_info->rstc_ispapb : 0x%px\n", sp_mipi_i2c_info->rstc_ispapb);
 	if (IS_ERR(sp_mipi_i2c_info->rstc_ispapb)) {
 		ret = PTR_ERR(sp_mipi_i2c_info->rstc_ispapb);
 		dev_err(dev, "Failed to retrieve reset controller 'rstc_ispapb\': %d\n", ret);
 		goto err_get_rstc_ispapb;
 	}
 	ret = reset_control_deassert(sp_mipi_i2c_info->rstc_ispapb);
-	MIPI_I2C_INFO("rstc_ispapb ret : 0x%x\n",ret);
+	MIPI_I2C_DBG("rstc_ispapb ret : 0x%x\n",ret);
 	if (ret) {
 		dev_err(dev, "Failed to deassert 'rstc_ispapb' reset controller: %d\n", ret);
 		goto err_deassert_rstc_ispapb;
@@ -525,7 +525,7 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
 	} else {
 		temp_value = (MO_ISPABP1_MODE_MASK<<16)|MO_ISPABP1_MODE_4T;
 	}
-	MIPI_I2C_INFO("mo5_cfg_0 new setting: 0x%08x\n",temp_value);
+	MIPI_I2C_DBG("mo5_cfg_0 new setting: 0x%08x\n",temp_value);
 	writel(temp_value, &(sp_mipi_i2c_info->moon5_regs->mo5_cfg_0));
 
 	temp_value = readl(&(sp_mipi_i2c_info->moon5_regs->mo5_cfg_0));
@@ -564,6 +564,7 @@ static int sp_mipi_i2c_probe(struct platform_device *pdev)
   pm_runtime_enable(&pdev->dev);
 #endif
 
+	MIPI_I2C_INFO("SP MIPI I2C driver is installed!\n");
 	return ret;
 
 err_add_adap:
@@ -595,7 +596,7 @@ static int sp_mipi_i2c_remove(struct platform_device *pdev)
 	sp_mipi_i2c_info_t *sp_mipi_i2c_info = platform_get_drvdata(pdev);
 	struct i2c_adapter *p_adap = &sp_mipi_i2c_info->adap;
 
-	MIPI_I2C_DBG("%s, %d\n", __FUNCTION__, __LINE__);
+	MIPI_I2C_INFO("SP MIPI I2C driver is removing\n");
 	
 #ifdef CONFIG_PM_RUNTIME_MIPI_I2C
 	pm_runtime_disable(&pdev->dev);
@@ -614,6 +615,7 @@ static int sp_mipi_i2c_remove(struct platform_device *pdev)
 		reset_control_assert(sp_mipi_i2c_info->rstc_ispapb);
 	}
 
+	MIPI_I2C_INFO("SP MIPI I2C driver is removed!\n");
 	return 0;
 }
 
@@ -654,7 +656,7 @@ static int sp_mipi_i2c_resume(struct platform_device *pdev)
 }
 
 static const struct of_device_id sp_mipi_i2c_of_match[] = {
-	{ .compatible = "sunplus,sp7021-mipi-i2c" },
+	{ .compatible = "sunplus,i143-mipi-i2c" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_mipi_i2c_of_match);

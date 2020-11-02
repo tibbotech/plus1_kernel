@@ -8,8 +8,8 @@
 #include <media/v4l2-fh.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-device.h>
+#include "isp_test_api.h"
 #include "isp_api.h"
-#include "isp_api_s.h"
 #include "reg_mipi.h"
 
 
