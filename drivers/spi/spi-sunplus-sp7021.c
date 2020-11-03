@@ -125,11 +125,6 @@
 
 #define FD_SW_RST (1<<1)
 
-#define RX_CNT (0xF<<12)
-#define RX_CNT_MASK(x) (x>>12)
-#define TX_CNT (0xF<<8)
-#define TX_CNT_MASK(x) (x>>8)
-
 #define DEG_CORE_SPI_LATCH0 (0xB<<8)
 #define DEG_CORE_SPI_LATCH1 (0xC<<8)
 
@@ -498,7 +493,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 			sp7021spi_wb( pspim, 1);
 		}
 		fd_status = readl( &sr->SPI_FD_STATUS);
-		while ( fd_status & RX_CNT) {
+		while ( GET_RX_CNT( fd_status) > 0) {
 			sp7021spi_rb( pspim, 1);
 			if ( ( fd_status = readl( &sr->SPI_FD_STATUS)) & TX_FULL_FLAG) continue;
 			if ( pspim->tx_cur_len >= tx_cnt) continue;
