@@ -62,10 +62,9 @@
 
 #define SLA_IRQ_NAME "slave_risc_intr"
 
-#define SPI_MASTER_NUM (4)
-#define SPI_MSG_DATA_SIZE (255)
-
-
+#define SPI_TRANS_DATA_CNT (4)
+#define SPI_TRANS_DATA_SIZE (255)
+#define SPI_MSG_DATA_SIZE (SPI_TRANS_DATA_SIZE * SPI_TRANS_DATA_CNT)
 
 #define CLEAR_MASTER_INT (1<<6)
 #define MASTER_INT (1<<7)
@@ -885,7 +884,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 	struct spi_transfer *xfer,*first_xfer = NULL;
 	int ret;
 
-	FUNC_DBG();
+	FUNC_DBG( "msg len:%d", m->actual_length);
 
 #ifdef CONFIG_PM_RUNTIME_SPI
 	if(pm_runtime_enabled(pspim->dev)){
