@@ -88,8 +88,9 @@
 
 #define TOTAL_LENGTH(x) (x<<24)
 #define TX_LENGTH(x) (x<<16)
-#define GET_TX_CNT(x)  ((x>>16)&0xFF)
-#define GET_RX_CNT(x)  ((x>>12)&0xF)
+#define GET_TX_LEN(x)  ((x>>16)&0xFF)
+#define GET_RX_CNT(x)  ((x>>12)&0x0F)
+#define GET_TX_CNT(x)  ((x>>8)&0x0F)
 
 
 #define FINISH_FLAG (1<<6)
@@ -447,7 +448,7 @@ void sp7021spi_rb( struct pentagram_spi_master *_m, u8 _len) {
 	int i;
 	for ( i = 0; i < _len; i++) {
 		_m->rx_data_buf[ _m->rx_cur_len] = readl( &sr->FIFO_DATA);
-		DBG_INF( "RX 0x%x _cur_len = %d", _m->rx_data_buf[ _m->rx_cur_len], _m->rx_cur_len);
+		DBG_INF( "RX 0x%02x _cur_len = %d", _m->rx_data_buf[ _m->rx_cur_len], _m->rx_cur_len);
 		_m->rx_cur_len++;
 	}
 }
@@ -467,8 +468,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)_dev;
 	SPI_MAS* sr = ( SPI_MAS *)pspim->mas_base;
 	u32 fd_status = 0;
-	unsigned int i;
-	unsigned int tx_cnt, rx_cnt;
+	unsigned int tx_len, tx_cnt, rx_cnt, wl = 0;
 
 	FUNC_DBG();
 
@@ -477,37 +477,24 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	fd_status = readl( &sr->SPI_FD_STATUS);
 	tx_cnt = GET_TX_CNT( fd_status);
 	rx_cnt = GET_RX_CNT( fd_status);
-	DBG_INF( "fd_status=0x%x rx_cnt:%d tx_cnt:%d", fd_status, rx_cnt, tx_cnt);
+	tx_len = GET_TX_LEN( fd_status);
+	DBG_INF( "fd_st=0x%x rx_c:%d tx_c:%d tx_l:%d", fd_status, rx_cnt, tx_cnt, tx_len);
 	if ( fd_status & FINISH_FLAG) DBG_INF( "FINISH_FLAG");
 	if ( fd_status & TX_EMP_FLAG) DBG_INF( "TX_EMP_FLAG");
 	if ( fd_status & RX_FULL_FLAG) DBG_INF( "RX_FULL_FLAG");
 	// RX_FULL_FLAG means RX buffer is full (16 bytes)
 	if ( fd_status & RX_FULL_FLAG) rx_cnt = pspim->data_unit;
 
-	if ( fd_status & FINISH_FLAG) {
-		sp7021spi_rb( pspim, rx_cnt);
-	} else if ( ( fd_status & TX_EMP_FLAG) || ( fd_status & RX_FULL_FLAG)) {
-		sp7021spi_rb( pspim, rx_cnt);
-		while ( tx_cnt > pspim->tx_cur_len) {
-			if ( readl( &sr->SPI_FD_STATUS) & TX_FULL_FLAG) break;
-			sp7021spi_wb( pspim, 1);
-		}
+	if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
+	while ( ( tx_len > pspim->tx_cur_len) && !( fd_status & TX_FULL_FLAG)) {
+		wl = min( tx_len - pspim->tx_cur_len, pspim->data_unit - tx_cnt);
+		if ( wl < 1) break;
+		sp7021spi_wb( pspim, wl);
 		fd_status = readl( &sr->SPI_FD_STATUS);
-		while ( GET_RX_CNT( fd_status) > 0) {
-			sp7021spi_rb( pspim, 1);
-			if ( ( fd_status = readl( &sr->SPI_FD_STATUS)) & TX_FULL_FLAG) continue;
-			if ( pspim->tx_cur_len >= tx_cnt) continue;
-			sp7021spi_wb( pspim, 1);
-			fd_status = readl( &sr->SPI_FD_STATUS);
-		}
-		if ( fd_status & FINISH_FLAG) {
-			rx_cnt = GET_RX_CNT( fd_status);
-			if ( fd_status & RX_FULL_FLAG) rx_cnt = pspim->data_unit;
-			sp7021spi_rb( pspim, rx_cnt);
-		} else {
-			spin_unlock_irqrestore(&pspim->lock, flags);
-			return IRQ_HANDLED;
-		}
+	}
+	if ( !( fd_status & FINISH_FLAG)) {
+		spin_unlock_irqrestore(&pspim->lock, flags);
+		return IRQ_HANDLED;
 	}
 	
 	writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
