@@ -92,7 +92,7 @@
 #define TX_LENGTH(x) (x<<16)
 #define GET_TX_LENGTH(x)  ((x>>16)&0xFF)
 #define GET_RX_CNT(x)  ((x>>12)&0xF)
-
+#define GET_TX_CNT(x)  ((x>>8)&0xF)
 
 #define FINISH_FLAG (1<<6)
 #define FINISH_FLAG_MASK (1<<15)
