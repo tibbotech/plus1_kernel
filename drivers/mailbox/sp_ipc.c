@@ -344,15 +344,13 @@ static int test_set(const char *val, const struct kernel_param *kp)
 		ret = IPC_FunctionCall_timeout(0, p, len, timeout);
 	}
 	
-	#if 0
-    while(!ret && (len--)){
+	while(!ret && (len--)){
 	    if(((u8 *)p)[len] != 0) {
 			printk("check error,  0x%0x, len:%0x\n", ((u8 *)p)[len], len);
 			ret = IPC_FAIL;
 			break;
 		}
 	}
-	#endif
 	printf("RET = %d\n", ret);
 
 #ifdef TEST_CHUNKMEM
