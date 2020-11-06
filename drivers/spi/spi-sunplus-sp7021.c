@@ -462,6 +462,7 @@ static irqreturn_t pentagram_spi_M_irq_dma( int _irq, void *_dev)
 void sp7021spi_rb( struct pentagram_spi_master *_m, u8 _len) {
 	SPI_MAS* sr = ( SPI_MAS *)_m->mas_base;
 	int i;
+	FUNC_DBG( "_len:%d", _len);
 	for ( i = 0; i < _len; i++) {
 		_m->rx_data_buf[ _m->rx_cur_len] = readl( &sr->FIFO_DATA);
 		DBG_INF( "RX 0x%x _cur_len = %d", _m->rx_data_buf[ _m->rx_cur_len], _m->rx_cur_len);
@@ -471,6 +472,7 @@ void sp7021spi_rb( struct pentagram_spi_master *_m, u8 _len) {
 void sp7021spi_wb( struct pentagram_spi_master *_m, u8 _len) {
 	SPI_MAS* sr = ( SPI_MAS *)_m->mas_base;
 	int i;
+	FUNC_DBG( "_len:%d", _len);
 	for ( i = 0; i < _len; i++) {
 		DBG_INF( "TX 0x%02x _cur_len %d", _m->tx_data_buf[_m->tx_cur_len], _m->tx_cur_len);
 		writel( _m->tx_data_buf[_m->tx_cur_len], &sr->FIFO_DATA);
