@@ -509,6 +509,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 		if ( wl < 1) break;
 		sp7021spi_wb( pspim, wl);
 		fd_status = readl( &sr->SPI_FD_STATUS);
+		break;
 	}
 	if ( !( fd_status & FINISH_FLAG)) {
 		spin_unlock_irqrestore(&pspim->lock, flags);
