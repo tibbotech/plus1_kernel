@@ -343,8 +343,9 @@ static int test_set(const char *val, const struct kernel_param *kp)
 	} else {
 		ret = IPC_FunctionCall_timeout(0, p, len, timeout);
 	}
+	
 	while(!ret && (len--)){
-		if(((u8 *)p)[len] != 0) {
+	    if(((u8 *)p)[len] != 0) {
 			printk("check error,  0x%0x, len:%0x\n", ((u8 *)p)[len], len);
 			ret = IPC_FAIL;
 			break;

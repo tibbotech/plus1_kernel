@@ -115,22 +115,6 @@
 
 		interrupt-parent = <&intc>;
 
-		/* B modules */
-#if 0
-		intc: interrupt-controller@G15 {
-			compatible = "sunplus,sp-intc";
-			interrupt-controller;
-			#interrupt-cells = <2>;
-			reg = <0x9c000780 0x80>, /* G15 */
-			      <0x9c000a80 0x80>; /* G21 */
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
-				     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
-			ext0-mask = <0xf>; /* core0-3 */
-			ext1-mask = <0xe>; /* core1-3 */
-		};
-#endif
-
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
@@ -186,7 +170,7 @@
 			clocks = <&clkc UA0>;
 			resets = <&rstc RST_UA0>;
 			pinctrl-names = "default";
-			pinctrl-0 = <&pins_uart0>;		
+			pinctrl-0 = <&pins_uart0>;
 		};
 
 		uart1: serial@sp_uart1 {
@@ -900,7 +884,7 @@
 
 			pins_uart0: pins_uart0 {
 				sppctl,groups = "UA0";
-				sppctl,function = "UA0";			
+				sppctl,function = "UA0";
 			};
 
 			emmc_mux: emmc_mux {
