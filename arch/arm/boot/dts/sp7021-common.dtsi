@@ -55,6 +55,8 @@
 		sp_spi1 = &spi_controller1;
 		sp_spi2 = &spi_controller2;
 		sp_spi3 = &spi_controller3;
+		
+		spi0 = &sp_spinor0;
 	};
 
 	reserved-memory {
