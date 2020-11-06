@@ -43,23 +43,24 @@ void usb_switch(int device);
 #include "sunplus_udc.h"
 #include "sunplus_udc_regs.h"
 
-//#define USE_DMA
+#define USE_DMA
 
 static int irq_num = 0;
 //static u64 sunplus_udc_dma_mask = DMA_BIT_MASK(32);
 
-#define IRQ_USB_DEV_PORT0				45
-#define IRQ_USB_DEV_PORT1				48
+#define IRQ_USB_DEV_PORT0			45
+#define IRQ_USB_DEV_PORT1			48
 
-#define TO_HOST 						0
-#define TO_DEVICE						1
+#define TO_HOST 				0
+#define TO_DEVICE				1
 #define BUS_RESET_FOR_CHIRP_DELAY		2000	/*ctrl rx singal keep the strongest time */
 #define DMA_FLUSH_TIMEOUT_DELAY			300000
 
-#define FULL_SPEED_DMA_SIZE				64
-#define HIGH_SPEED_DMA_SIZE				512
+#define FULL_SPEED_DMA_SIZE			64
+#define HIGH_SPEED_DMA_SIZE			512
 #define UDC_FLASH_BUFFER_SIZE 			(1024*64)
-#define	DMA_ADDR_INVALID				(~(dma_addr_t)0)
+#define	DMA_ADDR_INVALID			(~(dma_addr_t)0)
+
 static u32 bulkep_dma_block_size = 0;
 
 struct sp_ep_iso {
@@ -68,11 +69,10 @@ struct sp_ep_iso {
 };
 
 static u32 dmsg = 1;
-
 module_param(dmsg, uint, 0644);
 
-u32 nth_len;
 u32 dma_len_ep1;
+u32 dma_xferlen_ep11;
 spinlock_t plock, qlock;
 
 /*coverity[declared_but_not_referenced]*/
@@ -111,7 +111,7 @@ static void dprintf(const char *fmt, ...)
 
 	spin_lock(&plock);
 
-	if (sp_kbuf==0) {
+	if (sp_kbuf == 0) {
 		if((sp_kbuf = kzalloc(dmesg_buf_size, GFP_KERNEL)) == NULL)
 			printk(KERN_INFO "kmalloc fail\n");
 	}
@@ -119,6 +119,7 @@ static void dprintf(const char *fmt, ...)
     	va_start(args, fmt);
 	vsnprintf(buf, 200, fmt, args);
 	// printk(KERN_INFO "i = %d\n", i);
+
 	len = strlen(buf);
 	if (len)
 	if (i+len <= dmesg_buf_size) {
@@ -127,9 +128,9 @@ static void dprintf(const char *fmt, ...)
 	i += len;
 	va_end(args);
 
-	if (dqueue) 
+	if (dqueue)
 		printk(KERN_INFO "%s\n", buf);
-	else if (i>=dmesg_buf_size && bfirst==1) {
+	else if (i >= dmesg_buf_size && bfirst == 1) {
 		bfirst = 0;
 		i = 0;
 		dmsg = 32;
@@ -147,8 +148,10 @@ static void dprintf(const char *fmt, ...)
 			printk(KERN_INFO "%s", pBuf);
 			pBuf = pos+1;
 		}
+
 		printk(KERN_INFO ">>> end dump\n");
 	}
+
 	spin_unlock(&plock);
 }
 
@@ -178,7 +181,7 @@ static void udc_invalidate_dcache_range(unsigned int start,unsigned int start_pa
 #endif
 
 static ssize_t show_udc_ctrl(struct device *dev,
-			      struct device_attribute *attr, char *buffer)
+				struct device_attribute *attr, char *buffer)
 {
 	u32 result = 0;
 	struct sp_ep *ep = &memory.ep[1];
@@ -191,8 +194,8 @@ static ssize_t show_udc_ctrl(struct device *dev,
 }
 
 static ssize_t store_udc_ctrl(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buffer, size_t count)
+				struct device_attribute *attr,
+				const char *buffer, size_t count)
 {
 	u32 ret = 0;
 	static char irq_i = 0;
@@ -341,17 +344,20 @@ static int sp_udc_set_halt(struct usb_ep *_ep, int value)
 	DEBUG_DBG("udc set halt ep=%x val=%x \n", idx, value);
 
 	switch (idx) {
-	case EP1:
-		v = SETEP1STL;
-		break;
-	case EP3:
-		v = SETEP3STL;
-		break;
-	case EP11:
-		v = SETEPBSTL;
-		break;
-	default:
-		return -EINVAL;
+		case EP1:
+			v = SETEP1STL;
+			break;
+
+		case EP3:
+			v = SETEP3STL;
+			break;
+
+		case EP11:
+			v = SETEPBSTL;
+			break;
+
+		default:
+			return -EINVAL;
 	}
 
 	if ((!value) && v)
@@ -381,7 +387,7 @@ static int sp_udc_ep_enable(struct usb_ep *_ep,
 
 	ep = to_sp_ep(_ep);
 
-	if (!_ep || !desc || _ep->name == ep0name || desc->bDescriptorType != USB_DT_ENDPOINT){
+	if (!_ep || !desc || _ep->name == ep0name || desc->bDescriptorType != USB_DT_ENDPOINT) {
 		printk(KERN_ERR "%s.%d,,%p,%p,%p,%s,%d\n",__FUNCTION__,__LINE__,
 			_ep,desc,ep->desc,_ep->name,desc->bDescriptorType);
 
@@ -409,22 +415,26 @@ static int sp_udc_ep_enable(struct usb_ep *_ep,
 	DEBUG_INFO("ep->num = %d\n", ep->num);
 
 	switch (ep->num) {
-	case EP0:
-		linker_int_en |= EP0S_IF;
-		break;
-	case EP1:
-		linker_int_en    |= EP1I_IF;
-		udc_write(EP_DIR | EP_ENA | RESET_PIPO_FIFO, UDEP12C);
-		break;
-	case EP3:
-		linker_int_en 	 |= EP3I_IF;
-		break;
-	case EP11:
-		bulk_int_en 	 |= EP11O_IF;
-		udc_write(EP_ENA | RESET_PIPO_FIFO, UDEPABC);
-		break;
-	default:
-		return -EINVAL;
+		case EP0:
+			linker_int_en |= EP0S_IF;
+			break;
+
+		case EP1:
+			linker_int_en |= EP1I_IF;
+			udc_write(EP_DIR | EP_ENA | RESET_PIPO_FIFO, UDEP12C);
+			break;
+
+		case EP3:
+			linker_int_en |= EP3I_IF;
+			break;
+
+		case EP11:
+			bulk_int_en |= EP11O_IF;
+			udc_write(EP_ENA | RESET_PIPO_FIFO, UDEPABC);
+			break;
+
+		default:
+			return -EINVAL;
 	}
 
 	udc_write(linker_int_en, UDLIE);
@@ -469,38 +479,46 @@ static int sp_udc_ep_disable(struct usb_ep *_ep)
 	int_udll_ie = udc_read(UDLIE);
 	int_udn_ie = udc_read(UDNBIE);
 	switch (ep->num) {
-	case EP0:
-		int_udll_ie &= ~(EP0I_IF | EP0O_IF | EP0S_IF);
-		break;
-	case EP1:
-		int_udll_ie &= ~(EP1I_IF);
+		case EP0:
+			int_udll_ie &= ~(EP0I_IF | EP0O_IF | EP0S_IF);
+			break;
 
-		if (udc_read(UEP12DMACS) & DMA_EN) {
+		case EP1:
+			int_udll_ie &= ~(EP1I_IF);
+
+			if (udc_read(UEP12DMACS) & DMA_EN) {
+				dma_len_ep1 = 0;
+				udc_write(udc_read(UEP12DMACS) | DMA_FLUSH, UEP12DMACS);
+
+				while (!(udc_read(UEP12DMACS) & DMA_FLUSHEND)) {
+					DEBUG_DBG("wait dma 1 flush\n");
+				}
+			}
+
 			dma_len_ep1 = 0;
-			udc_write(udc_read(UEP12DMACS) | DMA_FLUSH, UEP12DMACS);
+			break;
 
-			while (!(udc_read(UEP12DMACS) & DMA_FLUSHEND)) {
-				DEBUG_DBG("wait dma 1 flush\n");
+		case EP3:
+			int_udll_ie &= ~(EP3I_IF);
+			break;
+
+		case EP11:
+			int_udn_ie &= ~(EP11O_IF);
+
+			if (udc_read(UDEPBDMACS) & DMA_EN) {
+				dma_xferlen_ep11 = 0;
+				udc_write(udc_read(UDEPBDMACS) | DMA_FLUSH, UDEPBDMACS);
+
+				while (!(udc_read(UDEPBDMACS) & DMA_FLUSHEND)) {
+					DEBUG_DBG("wait dma 11 flush\n");
+				}
 			}
-		}
 
-		dma_len_ep1 = 0;
-		break;
-	case EP3:
-		int_udll_ie &= ~(EP3I_IF);
-		break;
-	case EP11:
-		int_udn_ie &= ~(EP11O_IF);
+			dma_xferlen_ep11 = 0;
+			break;
 
-		if (udc_read(UDEPBDMACS) & DMA_EN) {
-			udc_write(udc_read(UDEPBDMACS) | DMA_FLUSH, UDEPBDMACS);
-			while (!(udc_read(UDEPBDMACS) & DMA_FLUSHEND)) {
-				DEBUG_DBG("wait dma 11 flush\n");
-			}
-		}
-		break;
-	default:
-		return -EINVAL;
+		default:
+			return -EINVAL;
 	}
 
 	udc_write(int_udll_ie, UDLIE);
@@ -535,7 +553,7 @@ static struct usb_request *sp_udc_alloc_request(struct usb_ep *_ep,
 }
 
 static void sp_udc_free_request(struct usb_ep *_ep,
-				    struct usb_request *_req)
+				struct usb_request *_req)
 {
 	struct sp_ep *ep = to_sp_ep(_ep);
 	struct sp_request *req = to_sp_req(_req);
@@ -624,19 +642,22 @@ static int sp_udc_get_status(struct sp_udc *dev,
 	struct sp_ep *ep = &memory.ep[ep_num];
 
 	switch (crq->bRequestType & USB_RECIP_MASK) {
-	case USB_RECIP_INTERFACE:
-		break;
-	case USB_RECIP_DEVICE:
-		status = dev->devstatus;
-		break;
-	case USB_RECIP_ENDPOINT:
-		if (ep_num > 14 || crq->wLength > 2)
-			return 1;
+		case USB_RECIP_INTERFACE:
+			break;
 
-		status = ep->halted;
-		break;
-	default:
-		return 1;
+		case USB_RECIP_DEVICE:
+			status = dev->devstatus;
+			break;
+
+		case USB_RECIP_ENDPOINT:
+			if (ep_num > 14 || crq->wLength > 2)
+				return 1;
+
+			status = ep->halted;
+			break;
+
+		default:
+			return 1;
 	}
 
 	udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
@@ -661,16 +682,18 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *dev,
 
 	len = sp_udc_readep0_fifo_crq(crq);
 	DEBUG_DBG("len  = %d\n", len);
+
 	if (len != sizeof(*crq)) {
 		printk(KERN_ERR "setup begin: fifo READ ERROR"
 			  " wanted %d bytes got %d. Stalling out...\n",
 			  sizeof(*crq), len);
+
 		udc_write((udc_read(UDLCSTL) | SETEP0STL), UDLCSTL);	/* error send stall;*/
 		return;
 	}
 
 	DEBUG_DBG("bRequestType = %02xh, bRequest = %02xh, wValue = %04xh, wIndex = %04xh, wLength = %04xh\n",
-		  crq->bRequestType, crq->bRequest, crq->wValue, crq->wIndex, crq->wLength);
+			crq->bRequestType, crq->bRequest, crq->wValue, crq->wIndex, crq->wLength);
 
 	/***********************************
 	* bRequestType
@@ -715,76 +738,75 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *dev,
 	state = dev->gadget.state;
 
 	switch (crq->bRequest) {
-	case USB_REQ_GET_DESCRIPTOR:
-		DEBUG_DBG(" ******* USB_REQ_GET_DESCRIPTOR ... \n");
-		DEBUG_DBG("start get descriptor after bus reset\n");
-		{
-			u32 DescType = ((crq->wValue) >> 8);
-			if (DescType == 0x1) {
-				if (udc_read(UDLCSET) & CURR_SPEED) {
-					DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_FULL\n");
-					dev->gadget.speed = USB_SPEED_FULL;
-					bulkep_dma_block_size = FULL_SPEED_DMA_SIZE;
-				} else {
-					DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_HIGH\n");
-					dev->gadget.speed = USB_SPEED_HIGH;
-					bulkep_dma_block_size = HIGH_SPEED_DMA_SIZE;
+		case USB_REQ_GET_DESCRIPTOR:
+			DEBUG_DBG(" ******* USB_REQ_GET_DESCRIPTOR ... \n");
+			DEBUG_DBG("start get descriptor after bus reset\n");
+			{
+				u32 DescType = ((crq->wValue) >> 8);
+				if (DescType == 0x1) {
+					if (udc_read(UDLCSET) & CURR_SPEED) {
+						DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_FULL\n");
+						dev->gadget.speed = USB_SPEED_FULL;
+						bulkep_dma_block_size = FULL_SPEED_DMA_SIZE;
+					} else {
+						DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_HIGH\n");
+						dev->gadget.speed = USB_SPEED_HIGH;
+						bulkep_dma_block_size = HIGH_SPEED_DMA_SIZE;
+					}
 				}
 			}
-		}
+			break;
 
-		break;
-	case USB_REQ_SET_CONFIGURATION:
-		DEBUG_DBG(" ******* USB_REQ_SET_CONFIGURATION ... \n");
-		DEBUG_DBG("dev->gadget.state = %d \n", dev->gadget.state);
-		dev->req_config = 1;
-		udc_write(udc_read(UDLCADDR) | (crq->wValue) << 16, UDLCADDR);
+		case USB_REQ_SET_CONFIGURATION:
+			DEBUG_DBG(" ******* USB_REQ_SET_CONFIGURATION ... \n");
+			DEBUG_DBG("dev->gadget.state = %d \n", dev->gadget.state);
+			dev->req_config = 1;
+			udc_write(udc_read(UDLCADDR) | (crq->wValue) << 16, UDLCADDR);
+			break;
 
-		break;
-	case USB_REQ_SET_INTERFACE:
-		DEBUG_DBG("***** USB_REQ_SET_INTERFACE **** \n");
-		dev->req_config = 1;
+		case USB_REQ_SET_INTERFACE:
+			DEBUG_DBG("***** USB_REQ_SET_INTERFACE **** \n");
+			dev->req_config = 1;
+			break;
 
-		break;
-	case USB_REQ_SET_ADDRESS:
-		DEBUG_DBG("USB_REQ_SET_ADDRESS ... \n");
+		case USB_REQ_SET_ADDRESS:
+			DEBUG_DBG("USB_REQ_SET_ADDRESS ... \n");
+			return;
 
-		return;
-	case USB_REQ_GET_STATUS:
-		DEBUG_DBG("USB_REQ_GET_STATUS ... \n");
+		case USB_REQ_GET_STATUS:
+			DEBUG_DBG("USB_REQ_GET_STATUS ... \n");
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
-		if((0x80 == crq->bRequestType) && (0 == crq->wValue) && (0xf000 == crq->wIndex) && (4 == crq->wLength)){
-			u32 status = 0;
-			status = dev_otg_status;
-			udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
-			udc_write(((1 << 2) - 1), UDEP0VB);
-			DEBUG_DBG("get otg status,%d,%d\n",dev_otg_status,status);
-			memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
-			udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
-			udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
-			return;
-		}
-#endif
-
-		if (dev->req_std) {
-			if (!sp_udc_get_status(dev, crq)) {
+			if((0x80 == crq->bRequestType) && (0 == crq->wValue) && (0xf000 == crq->wIndex) && (4 == crq->wLength)){
+				u32 status = 0;
+				status = dev_otg_status;
+				udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
+				udc_write(((1 << 2) - 1), UDEP0VB);
+				DEBUG_DBG("get otg status,%d,%d\n",dev_otg_status,status);
+				memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
+				udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
+				udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
 				return;
 			}
-		}
+#endif
 
-		break;
-	case USB_REQ_CLEAR_FEATURE:
-		DEBUG_DBG(">>> USB_REQ_CLEAR_FEATURE ... \n");
+			if (dev->req_std) {
+				if (!sp_udc_get_status(dev, crq)) {
+					return;
+				}
+			}
+			break;
 
-		break;
-	case USB_REQ_SET_FEATURE:
-		DEBUG_DBG("USB_REQ_SET_FEATURE ... \n");
+		case USB_REQ_CLEAR_FEATURE:
+			DEBUG_DBG(">>> USB_REQ_CLEAR_FEATURE ... \n");
+			break;
 
-		break;
+		case USB_REQ_SET_FEATURE:
+			DEBUG_DBG("USB_REQ_SET_FEATURE ... \n");
+			break;
 
-	default:
-		break;
+		default:
+			break;
 	}
 
 	if (crq->bRequestType & USB_DIR_IN) {
@@ -888,11 +910,13 @@ static int sp_udc_write_ep0_fifo(struct sp_ep *ep,
 	// DEBUG_INFO("write ep0: count=%d, actual=%d, length=%d, last=%d, zero=%d\n", count, req->req.actual, req->req.length, is_last, req->req.zero);
 
 	if (is_last) {
-		int cc=0;
+		int cc = 0;
+
 		while(udc_read(UDEP0CS)&EP0_IVLD) {
 			udelay(5);
 			if (cc++>1000) break;
 		}
+
 		sp_udc_done(ep, req, 0);
 		udc_write(udc_read(UDLIE) & (~EP0I_IF), UDLIE);
 		udc_write(udc_read(UDEP0CS) & (~EP0_DIR), UDEP0CS);
@@ -929,7 +953,7 @@ static inline int sp_udc_read_fifo_packet(int fifo, u8 * buf, int length,
 }
 
 static int sp_udc_read_ep0_fifo(struct sp_ep *ep,
-				    struct sp_request *req)
+				struct sp_request *req)
 {
 	u8 *buf;
 	unsigned count;
@@ -990,28 +1014,27 @@ static int sp_udc_handle_ep0_proc(struct sp_ep *ep, struct sp_request *req, int 
 	ep0csr = udc_read(UDEP0CS);
 
 	switch (dev->ep0state) {
-	case EP0_IDLE:
-		DEBUG_DBG("EP0_IDLE_PHASE ... what now?\n");
-		sp_udc_handle_ep0_idle(dev, ep, &crq, ep0csr, cf);
+		case EP0_IDLE:
+			DEBUG_DBG("EP0_IDLE_PHASE ... what now?\n");
+			sp_udc_handle_ep0_idle(dev, ep, &crq, ep0csr, cf);
+			break;
 
-		break;
-	case EP0_IN_DATA_PHASE:
-		DEBUG_DBG("EP0_IN_DATA_PHASE ... what now?\n");
-		if(sp_udc_write_ep0_fifo(ep, req)){
-			ep->dev->ep0state = EP0_IDLE;
-			DEBUG_DBG("ep0 in0 done\n");
-		} else bOk = 0;
+		case EP0_IN_DATA_PHASE:
+			DEBUG_DBG("EP0_IN_DATA_PHASE ... what now?\n");
+			if(sp_udc_write_ep0_fifo(ep, req)){
+				ep->dev->ep0state = EP0_IDLE;
+				DEBUG_DBG("ep0 in0 done\n");
+			} else bOk = 0;
+			break;
 
-		break;
-	case EP0_OUT_DATA_PHASE:
-		DEBUG_DBG("EP0_OUT_DATA_PHASE *** what now?\n");
-		if(sp_udc_read_ep0_fifo(ep, req)){
-			ep->dev->ep0state = EP0_IDLE;
-			DEBUG_DBG("ep0 out1 done\n");
-		}
-		else bOk = 0;
-
-		break;
+		case EP0_OUT_DATA_PHASE:
+			DEBUG_DBG("EP0_OUT_DATA_PHASE *** what now?\n");
+			if(sp_udc_read_ep0_fifo(ep, req)){
+				ep->dev->ep0state = EP0_IDLE;
+				DEBUG_DBG("ep0 out1 done\n");
+			}
+			else bOk = 0;
+			break;
 	}
 
 	return bOk;
@@ -1030,8 +1053,10 @@ static void sp_udc_handle_ep0(struct sp_udc *dev)
 		printk(KERN_ERR "cdev invalid\n");
 		return;
 	}
+
 	req_g = cdev->req;
 	req = to_sp_req(req_g);
+
 	if (!req) {
 		printk(KERN_ERR "req invalid\n");
 		return;
@@ -1044,85 +1069,107 @@ static void sp_udc_handle_ep0(struct sp_udc *dev)
 static void sp_print_hex_dump_bytes(const char *prefix_str, int prefix_type,
 			  const void *buf, size_t len)
 {
-	if (dmsg&(1<<3))
+	if (dmsg & (1 << 3))
 		print_hex_dump(KERN_NOTICE, prefix_str, prefix_type, 16, 1,
-		       buf, len, true);
+				buf, len, true);
 }
 
 #ifdef USE_DMA
-static int sp_udc_bulkout_dma(struct sp_ep *ep,
-				       struct sp_request *req)
+static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep,
+					struct sp_request *req);
+
+static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep,
+					struct sp_request *req)
 {
 	u8 *buf;
 	int actual_length = 0;
 	int cur_length = req->req.length;
 	int dma_xferlen;
 	unsigned long t;
+	int ret = 0;
 
 	DEBUG_INFO(">>> %s...\n", __FUNCTION__);
 
-	udc_write(udc_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
-	DEBUG_INFO("req.length=%d req.actual=%d, req->req.dma = %xh UDCIF = %xh\n", req->req.length, req->req.actual, req->req.dma, udc_read(UDCIF));
-
-	if (req->req.dma == DMA_ADDR_INVALID) {
-		req->req.dma = dma_map_single(ep->dev->gadget.dev.parent, (u8 *) req->req.buf, cur_length, DMA_FROM_DEVICE);
-		if (dma_mapping_error(ep->dev->gadget.dev.parent, req->req.dma)) {
-			DEBUG_INFO("dma_mapping_error");
-			return 1;
-		} 
-	}
-	
-	while (actual_length < cur_length) {
-		buf = (u8 *) (req->req.dma + actual_length);
-		dma_xferlen = min(cur_length - actual_length, (int)UDC_FLASH_BUFFER_SIZE);
-
-		udc_write((u32) buf, UDEPBDMADA);
-
-		udc_write((udc_read(UDEPBDMACS) & (~DMA_COUNT_MASK)) |
-			  DMA_COUNT_ALIGN | DMA_WRITE | dma_xferlen | DMA_EN,
-			  UDEPBDMACS);
-
-		/*verB DMA bug*/
-		if ((udc_read(UDEPBFS) & 0x22) == 0x20)
-			udc_write(udc_read(UDEPBPPC) | SWITCH_BUFF, UDEPBPPC);
-
-		DEBUG_INFO("cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDEPBFS = %xh UDCIF = %xh\n", cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDEPBFS), udc_read(UDCIF));
-
-		t = jiffies;
-		
-		// if (((udc_read(UDEPBDMACS) & DMA_EN)
-		// 	       || (!(udc_read(UDCIF) & EPB_DMA_IF))
-		// 	       || (udc_read(UDEPBDMACS) & 0x3fffff))) {
-		// 	udc_write(udc_read(UDCIE) | EPB_DMA_IF, UDCIE);
-		// 	return 0;
-		// }
-
-		while ((udc_read(UDEPBDMACS) & DMA_EN) != 0) {
-			udc_write(EPB_DMA_IF, UDCIF);
-			DEBUG_INFO(">>cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDCIE = %xh UDCIF = %xh\n", cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDCIE), udc_read(UDCIF));
-			if (time_after(jiffies, t + 10 * HZ)) {
-				DEBUG_INFO("dma error: UDEPBDMACS = %xh\n", udc_read(UDEPBDMACS));
-				break;
-			}
+	if (dma_xferlen_ep11 == 0) {
+		if (cur_length <= bulkep_dma_block_size) {
+			ret = sp_udc_ep11_bulkout_pio(ep, req);
+			return ret;
 		}
-		DEBUG_INFO("UDCIF = %xh\n", udc_read(UDCIF));
-		udc_write(EPB_DMA_IF, UDCIF);
-		actual_length += dma_xferlen;
+
+		udc_write(udc_read(UDNBIE) & (~EP11O_IF), UDNBIE);
+
+		DEBUG_INFO("req.length=%d req.actual=%d, req->req.dma = %xh UDCIF = %xh\n",
+				req->req.length, req->req.actual, req->req.dma, udc_read(UDCIF));
+
+		if (req->req.dma == DMA_ADDR_INVALID) {
+			req->req.dma = dma_map_single(ep->dev->gadget.dev.parent, (u8 *)req->req.buf, cur_length, DMA_FROM_DEVICE);
+			if (dma_mapping_error(ep->dev->gadget.dev.parent, req->req.dma)) {
+				DEBUG_INFO("dma_mapping_error");
+				return 1;
+			} 
+		}
+
+		while (actual_length < cur_length) {
+			buf = (u8 *) (req->req.dma + actual_length);
+			dma_xferlen = min(cur_length - actual_length, (int)UDC_FLASH_BUFFER_SIZE);
+			dma_xferlen_ep11 = dma_xferlen;
+
+			udc_write((u32) buf, UDEPBDMADA);
+			udc_write((udc_read(UDEPBDMACS) & (~DMA_COUNT_MASK)) |
+				  DMA_COUNT_ALIGN | DMA_WRITE | dma_xferlen | DMA_EN,
+				  UDEPBDMACS);
+
+			/*verB DMA bug*/
+			if ((udc_read(UDEPBFS) & 0x22) == 0x20)
+				udc_write(udc_read(UDEPBPPC) | SWITCH_BUFF, UDEPBPPC);
+
+			DEBUG_INFO("cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDEPBFS = %xh UDCIF = %xh\n", cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDEPBFS), udc_read(UDCIF));
+
+			t = jiffies;
+
+			// if (((udc_read(UDEPBDMACS) & DMA_EN)
+			// 	       || (!(udc_read(UDCIF) & EPB_DMA_IF))
+			// 	       || (udc_read(UDEPBDMACS) & 0x3fffff))) {
+			// 	udc_write(udc_read(UDCIE) | EPB_DMA_IF, UDCIE);
+			// 	return 0;
+			// }
+
+			while ((udc_read(UDEPBDMACS) & DMA_EN) != 0) {
+				udc_write(udc_read(UDCIE) | EPB_DMA_IF, UDCIE);
+				DEBUG_INFO(">>cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDCIE = %xh UDCIF = %xh\n",
+						cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDCIE), udc_read(UDCIF));
+
+				if (time_after(jiffies, t + 10 * HZ)) {
+					DEBUG_INFO("dma error: UDEPBDMACS = %xh\n", udc_read(UDEPBDMACS));
+					break;
+				}
+			}
+
+			DEBUG_INFO("UDCIF = %xh\n", udc_read(UDCIF));
+
+			actual_length += dma_xferlen;
+		}
+
+		cur_length -= actual_length;
+
+		if (req->req.dma != DMA_ADDR_INVALID) {
+			dma_unmap_single(ep->dev->gadget.dev.parent, req->req.dma,
+						req->req.length, DMA_FROM_DEVICE);
+
+			req->req.dma = DMA_ADDR_INVALID;
+		}
+
+		udc_write(udc_read(UDNBIE) | EP11O_IF, UDNBIE);
+
+		DEBUG_INFO("UDEPBDMACS = %x\n", udc_read(UDEPBDMACS));
+		DEBUG_INFO("<<< %s...\n", __FUNCTION__);
+
+		return 1;
+	} else {
+		DEBUG_INFO("<<< %s...\n", __FUNCTION__);
+
+		return ret;
 	}
-
-	req->req.actual += actual_length;
-	cur_length -= actual_length;
-
-	if (req->req.dma != DMA_ADDR_INVALID) {
-		dma_unmap_single(ep->dev->gadget.dev.parent, req->req.dma,
-				 cur_length, DMA_FROM_DEVICE);
-		req->req.dma = DMA_ADDR_INVALID;
-	}
-
-	DEBUG_INFO("UDEPBDMACS = %x\n", udc_read(UDEPBDMACS));
-	DEBUG_INFO("<<< %s...\n", __FUNCTION__);
-
-	return 1;
 }
 #endif
 
@@ -1132,7 +1179,7 @@ static void sp_udc_bulkout_pio(u8 *buf, u32 avail)
 	udc_write(udc_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
 }
 
-static int sp_udc_bulkout(struct sp_ep *ep,
+static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep,
 				       struct sp_request *req)
 {
 	u8 *buf;
@@ -1173,9 +1220,9 @@ static int sp_udc_bulkout(struct sp_ep *ep,
 			avail = count;
 		
 		sp_udc_bulkout_pio(buf, avail);
-		
+
 		// if (req->req.length/bulkep_dma_block_size)
-		// 	sp_udc_bulkout_dma(ep, req);
+		// 	sp_udc_ep11_bulkout_dma(ep, req);
 
 		req->req.actual += avail;
 
@@ -1184,7 +1231,7 @@ static int sp_udc_bulkout(struct sp_ep *ep,
 		}
 
 		DEBUG_DBG("2.req.length=%d req.actual=%d UDEPBFS = %xh UDEPBPPC = %xh UDEPBPOC = %xh  UDEPBPIC = %xh avail=%d is_last=%d\n",
-			  req->req.length, req->req.actual, udc_read(UDEPBFS), udc_read(UDEPBPPC), udc_read(UDEPBPOC), udc_read(UDEPBPIC), avail, is_last);
+				req->req.length, req->req.actual, udc_read(UDEPBFS), udc_read(UDEPBPPC), udc_read(UDEPBPOC), udc_read(UDEPBPIC), avail, is_last);
 
 		if (is_last) {
 			break;
@@ -1197,15 +1244,16 @@ out_fifo_retry:
 			delay_count = 0;
 		}
 
-out_fifo_retry1:
+out_fifo_controllable:
 		is_pingbuf = (udc_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
 
 		if (is_pingbuf == pre_is_pingbuf)
-			goto out_fifo_retry1;
+			goto out_fifo_controllable;
 	} while(1);
 
-	DEBUG_DBG("3.req.length=%d req.actual=%d UDEPBFS = %xh count=%d is_last=%d\n", req->req.length, req->req.actual, udc_read(UDEPBFS), count, is_last);
-	
+	DEBUG_DBG("3.req.length=%d req.actual=%d UDEPBFS = %xh count=%d is_last=%d\n",
+			req->req.length, req->req.actual, udc_read(UDEPBFS), count, is_last);
+
 	if (req->req.actual >= 320)
 		sp_print_hex_dump_bytes("30->20-", DUMP_PREFIX_OFFSET, req->req.buf, 320);
 	else
@@ -1237,6 +1285,7 @@ static int sp_udc_ep1_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 
 	DEBUG_DBG("1.req.actual = %d req.length=%d req->req.dma=%xh UDEP12FS = %xh\n",
 		              req->req.actual, req->req.length, req->req.dma, udc_read(UDEP12FS));
+
 	is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
 
 	while(1) {
@@ -1259,16 +1308,17 @@ static int sp_udc_ep1_bulkin_pio(struct sp_ep *ep, struct sp_request *req)
 
 		if (is_last) break;
 
-in_fifo_retry:
+in_fifo_controllable:
 		is_pingbuf = (udc_read(UDEP12PPC) & CURR_BUFF) ? 1 : 0;
 
 		if (is_pingbuf == pre_is_pingbuf)
-			goto in_fifo_retry;
+			goto in_fifo_controllable;
 	}
 	sp_udc_done(ep, req, 0);
 
 	up(&ep->wsem);
-	DEBUG_DBG("3.req.actual = %d, count = %d, req.length=%d, UDEP12FS = %xh, is_last = %d\n", req->req.actual, count, req->req.length, udc_read(UDEP12FS), is_last);
+	DEBUG_DBG("3.req.actual = %d, count = %d, req.length=%d, UDEP12FS = %xh, is_last = %d\n",
+			req->req.actual, count, req->req.length, udc_read(UDEP12FS), is_last);
 
 	if (req->req.actual >= 142)
 		sp_print_hex_dump_bytes("20->30-", DUMP_PREFIX_OFFSET, req->req.buf, 142);
@@ -1290,11 +1340,11 @@ static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 	DEBUG_DBG(">>> %s\n", __FUNCTION__);
 
 	if (req->req.dma == DMA_ADDR_INVALID) {
-		req->req.dma = dma_map_single(ep->dev->gadget.dev.parent, req->req.buf, dma_len_ep1, (ep->bEndpointAddress & USB_DIR_IN)
-				   ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+		req->req.dma = dma_map_single(ep->dev->gadget.dev.parent, req->req.buf, dma_len_ep1,
+			(ep->bEndpointAddress & USB_DIR_IN) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
 	}
-	buf = (u8 *) (req->req.dma + req->req.actual + actual_length);
 
+	buf = (u8 *) (req->req.dma + req->req.actual + actual_length);
 	dma_xferlen = min(dma_len_ep1 - req->req.actual - actual_length, (unsigned)UDC_FLASH_BUFFER_SIZE);
 	DEBUG_DBG("%p dma_xferlen = %d %d\n", buf, dma_xferlen, dma_len_ep1);
 	actual_length = dma_xferlen;
@@ -1332,82 +1382,6 @@ static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 	return 1;
 }
 
-static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep,
-				       struct sp_request *req);
-
-static int sp_udc_ep11_bulkout_pio_with_dma(struct sp_ep *ep,
-						struct sp_request *req,
-						int is_pingbuf)
-{
-	u8 *buf;
-	u32 count;
-	u32 avail;
-	int is_last = 0;
-
-	DEBUG_DBG(">>> %s\n", __FUNCTION__);
-	DEBUG_DBG("UDEPBFS=%xh buf=%xh length=%d actual=%d\n", udc_read(UDEPBFS), req->req.buf, req->req.length, req->req.actual);
-
-	buf = req->req.buf + req->req.actual;
-	{
-		count = sp_udc_get_ep_fifo_count((udc_read(UDEPBPPC) & CURR_BUFF), UDEPBPIC);
-		if (!count) {
-			if ((udc_read(UDEPBFS) & 0x6) == 0x6) {
-				udc_write(udc_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
-				DEBUG_DBG("clear ep11 0\n");
-			}
-			DEBUG_DBG("rx count == 0 is_last = %d\n", is_last);
-			if (req->req.actual) {
-				DEBUG_DBG("rx 0 len packet end req!\n");
-			}
-			return is_last;
-		}
-
-		if (count > ep->ep.maxpacket)
-			avail = ep->ep.maxpacket;
-		else
-			avail = count;
-
-		sp_udc_read_fifo_packet(UDEPBFDP, buf, avail, UDEPBVB);
-		udc_write(udc_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
-	}
-
-	req->req.actual += avail;
-
-	DEBUG_DBG("ep11 fifo UDEPBFS=%x", udc_read(UDEPBFS));
-	DEBUG_DBG("req.length=%d req.actual=%d count=%d is_last=%d\n",
-		  req->req.length, req->req.actual, count, is_last);
-
-	if (!sp_udc_ep11_bulkout_dma(ep, req))
-		return -1;
-
-	if (count < ep->ep.maxpacket) {
-		is_last = 1;
-		/* overflowed this request?  flush extra data */
-		if (count != avail) {
-			req->req.status = -EOVERFLOW;
-			avail -= count;
-			printk(KERN_ERR "[%s:%d], overflow [%d]\n", __FUNCTION__,
-				  __LINE__, avail);
-		}
-	} else if (req->req.length <= req->req.actual
-		   || avail < ep->ep.maxpacket)
-		is_last = 1;
-	else {
-		is_last = 0;
-
-		if (nth_len == req->req.actual) {
-			is_last = 1;
-		}
-	}
-
-	if (is_last) {
-		sp_udc_done(ep, req, 0);
-	}
-
-	DEBUG_DBG("<<< %s\n", __FUNCTION__);
-	return is_last;
-}
-
 static int sp_udc_ep1_bulkin_dma(struct sp_ep *ep,
 				 struct sp_request *req)
 {
@@ -1416,7 +1390,7 @@ static int sp_udc_ep1_bulkin_dma(struct sp_ep *ep,
 
 	DEBUG_DBG(">>> %s\n", __FUNCTION__);
 
-	if ((req->req.actual) || (req->req.length==0))
+	if ((req->req.actual) || (req->req.length == 0))
 		goto _TX_BULK_IN_DATA;
 
 	/* DMA Mode */
@@ -1496,43 +1470,6 @@ static int sp_udc_int_in(struct sp_ep *ep, struct sp_request *req)
 	return 1;
 }
 
-#ifdef USE_DMA
-static int sp_ep11_bulkout_dma(struct sp_ep *ep,
-				   struct sp_request *req)
-{
-	int is_pingbuf = 0;
-	int ret = 0;
-
-	DEBUG_DBG(">>> %s ...\n", __FUNCTION__);
-	DEBUG_DBG("req->req.actual = %xh\n", req->req.actual);
-
-	udc_write(udc_read(UDNBIE) & (~EP11O_IF), UDNBIE);
-
-_RX_BULKOUT_DATA_AGAIN:
-	is_pingbuf = (udc_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
-	if (req->req.actual == 0
-	    || ((nth_len - req->req.actual) < bulkep_dma_block_size)) {
-		ret = sp_udc_ep11_bulkout_pio_with_dma(ep, req, is_pingbuf);
-		if (ret == 0) {
-			if (udc_read(UDEPBFS) & 0x22)
-				goto _RX_BULKOUT_DATA_AGAIN;
-			udc_write(udc_read(UDNBIE) | EP11O_IF, UDNBIE);
-
-			DEBUG_DBG("<<< sp3502_ep11_bulkout @#$ ...\n");
-			return 0;
-		} else if (ret == -1) {
-			return 0;
-		}
-	} else {
-		DEBUG_DBG("why len=%d act=%d count=%d\n", nth_len, req->req.actual, sp_udc_get_ep_fifo_count(is_pingbuf, UDEPBPIC));
-		return 0;
-	}
-	udc_write(udc_read(UDNBIE) | EP11O_IF, UDNBIE);
-	DEBUG_DBG("<<< %s ...\n", __FUNCTION__);
-	return 1;
-}
-#endif
-
 static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 {
 	int ret;
@@ -1547,12 +1484,26 @@ static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 	return ret;
 }
 
+static int sp_udc_ep11_bulkout(struct sp_ep *ep, struct sp_request *req)
+{
+	int ret = 0;
+
+#ifdef USE_DMA
+	ret = sp_udc_ep11_bulkout_dma(ep, req);
+#else
+	ret = sp_udc_ep11_bulkout_pio(ep, req);
+#endif
+
+	return ret;
+}
+
 static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 {
 	int ret = 0;
 	int idx = ep->bEndpointAddress & 0x7F;
 
 	DEBUG_DBG(">>> %s\n", __FUNCTION__);
+
 	if (!req) {
 		int empty = list_empty(&ep->queue);
 		if (empty) {
@@ -1563,10 +1514,11 @@ static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 			req = list_entry(ep->queue.next, struct sp_request, queue);
 		}
 	}
-	if (req) {		
+
+	if (req) {	
 		switch (idx) {
 			case EP1:
-				if ((udc_read(UDEP12FS) & 0x1)==0)
+				if ((udc_read(UDEP12FS) & 0x1) == 0)
 					ret = sp_udc_ep1_bulkin(ep, req);
 
 				break;
@@ -1576,7 +1528,7 @@ static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 				break;
 			case EP11:
 				if (udc_read(UDEPBFS) & 0x22)
-					ret = sp_udc_bulkout(ep, req);
+					ret = sp_udc_ep11_bulkout(ep, req);
 
 				break;
 		}
@@ -1649,9 +1601,9 @@ static void ep11_dma_handle(struct sp_udc *dev)
 {
 	struct sp_ep *ep = &memory.ep[11];
 	struct sp_request *req;
-	int dma_len = 0;
 
 	DEBUG_DBG(">>> %s\n", __FUNCTION__);
+
 	if (list_empty(&ep->queue)) {
 		req = NULL;
 		DEBUG_DBG("ep11_dma req is NULL\t!\n");
@@ -1659,25 +1611,22 @@ static void ep11_dma_handle(struct sp_udc *dev)
 	} else
 		req = list_entry(ep->queue.next, struct sp_request, queue);
 
-	if (!req->req.actual)
-		printk(KERN_ERR "why act=0?\n");
+	//if (!req->req.actual)
+	//	printk(KERN_ERR "why act=0?\n");
 
-	req->req.actual += dma_len;
-	if (req->req.dma != DMA_ADDR_INVALID) {
-		dma_unmap_single(ep->dev->gadget.dev.parent, req->req.dma, (req->req.length - req->req.actual), (ep->bEndpointAddress & USB_DIR_IN)
-				 ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
-		req->req.dma = DMA_ADDR_INVALID;
-	}
+	req->req.actual += dma_xferlen_ep11;
 
-	udc_write(udc_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
-	if (req->req.length == req->req.actual || req->req.actual == nth_len) {
+	if (req->req.length == req->req.actual) {
+		dma_xferlen_ep11 = 0;
+
+		if (req->req.dma != DMA_ADDR_INVALID) {
+			dma_unmap_single(ep->dev->gadget.dev.parent, req->req.dma, req->req.length,
+						(ep->bEndpointAddress & USB_DIR_IN) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+			req->req.dma = DMA_ADDR_INVALID;
+		}
+
+		udc_write(udc_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
 		sp_udc_done(ep, req, 0);
-	}
-	dma_len = 0;
-	udc_write(udc_read(UDNBIE) | EP11O_IF, UDNBIE);
-
-	if (udc_read(UDEPBFS) & 0x22) {
-		sp_udc_handle_ep(ep, NULL);
 	}
 
 	DEBUG_DBG("<<< %s\n", __FUNCTION__);
@@ -1685,9 +1634,7 @@ static void ep11_dma_handle(struct sp_udc *dev)
 }
 #endif
 
-static void sp_sendto_workqueue(
-	struct sp_udc *dev, 
-	int n)
+static void sp_sendto_workqueue(struct sp_udc *dev, int n)
 {
 	spin_lock(&qlock);
 	dev->wq[n].sw.ep_num = n;
@@ -1815,8 +1762,10 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 #ifdef USE_DMA
 	if (irq_en1_flags & EPB_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep11 DMA\n");
+		mdelay(1);
 		udc_write(EPB_DMA_IF, UDCIF);
 		ep11_dma_handle(dev);
+		sp_sendto_workqueue(dev, 11);
 	}
 #endif
 
@@ -1844,7 +1793,6 @@ static int sp_udc_queue(struct usb_ep *_ep, struct usb_request *_req,
 	struct sp_udc *dev;
 	unsigned long flags;
 	int idx;
-
 	struct sp_request *req = to_sp_req(_req);
 	struct sp_ep *ep = to_sp_ep(_ep);
 
@@ -2033,6 +1981,7 @@ static int sp_udc_start(struct usb_gadget *gadget, struct usb_gadget_driver *dri
 	if (!driver->bind || !driver->setup || driver->max_speed < USB_SPEED_FULL) {
 		printk(KERN_ERR "Invalid driver: bind %p setup %p speed %d\n", driver->bind,
 			  driver->setup, driver->max_speed);
+
 		return -EINVAL;
 	}
 
@@ -2045,8 +1994,10 @@ static int sp_udc_start(struct usb_gadget *gadget, struct usb_gadget_driver *dri
 	return 0;
 }
 
-static int sp_udc_stop(struct usb_gadget *gadget){
+static int sp_udc_stop(struct usb_gadget *gadget)
+{
 	struct sp_udc *udc = the_controller;
+
 	if (!udc)
 		return -ENODEV;
 
@@ -2071,8 +2022,7 @@ static int sp_udc_stop(struct usb_gadget *gadget){
 	return 0;
 }
 
-static struct usb_ep *
-find_ep (struct usb_gadget *gadget, const char *name)
+static struct usb_ep *find_ep(struct usb_gadget *gadget, const char *name)
 {
 	struct usb_ep	*ep;
 
@@ -2111,28 +2061,28 @@ static struct usb_ep *sp_match_ep(struct usb_gadget *_gadget,
 }
 
 static const struct usb_gadget_ops sp_ops = {
-	.get_frame = sp_udc_get_frame,
-	.wakeup = sp_udc_wakeup,
-	.set_selfpowered = sp_udc_set_selfpowered,
-	.pullup = sp_udc_pullup,
-	.vbus_session = sp_udc_vbus_session,
-	.vbus_draw = sp_vbus_draw,
-	.udc_start = sp_udc_start,
-	.udc_stop = sp_udc_stop,
-	.match_ep = sp_match_ep,
+	.get_frame 		= sp_udc_get_frame,
+	.wakeup 		= sp_udc_wakeup,
+	.set_selfpowered 	= sp_udc_set_selfpowered,
+	.pullup 		= sp_udc_pullup,
+	.vbus_session 		= sp_udc_vbus_session,
+	.vbus_draw 		= sp_vbus_draw,
+	.udc_start 		= sp_udc_start,
+	.udc_stop 		= sp_udc_stop,
+	.match_ep 		= sp_match_ep,
 };
 
 static const struct usb_ep_ops sp_ep_ops = {
-	.enable = sp_udc_ep_enable,
-	.disable = sp_udc_ep_disable,
+	.enable 		= sp_udc_ep_enable,
+	.disable 		= sp_udc_ep_disable,
 
-	.alloc_request = sp_udc_alloc_request,
-	.free_request = sp_udc_free_request,
+	.alloc_request 		= sp_udc_alloc_request,
+	.free_request 		= sp_udc_free_request,
 
-	.queue = sp_udc_queue,
-	.dequeue = sp_udc_dequeue,
+	.queue 			= sp_udc_queue,
+	.dequeue 		= sp_udc_dequeue,
 
-	.set_halt = sp_udc_set_halt,
+	.set_halt 		= sp_udc_set_halt,
 };
 
 static struct sp_udc memory = {
