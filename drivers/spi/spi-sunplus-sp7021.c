@@ -90,7 +90,7 @@
 
 #define TOTAL_LENGTH(x) (x<<24)
 #define TX_LENGTH(x) (x<<16)
-#define GET_TX_LENGTH(x)  ((x>>16)&0xFF)
+#define GET_TX_LEN(x)  ((x>>16)&0xFF)
 #define GET_RX_CNT(x)  ((x>>12)&0xF)
 #define GET_TX_CNT(x)  ((x>>8)&0xF)
 
