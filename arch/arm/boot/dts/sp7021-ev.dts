@@ -161,6 +161,8 @@
 &sp_spinor0 {
 	spi-max-frequency = <50000000>;
 	spi-chip-selection = <0>;
+	read-timing-selection = <1>;
+	write-timing-selection = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 	partitions {
