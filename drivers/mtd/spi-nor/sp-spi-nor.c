@@ -236,7 +236,7 @@ struct sp_spi_nor
     	struct clk *nor_clk;
     	u32 clk_rate;
     	struct reset_control *clk_rst;
-    	u32 read_mode;
+    	u32 rw_timing_sel;
     	u32 nor_size;
     	u32 chipsel;
 #if (SP_SPINOR_DMA)
@@ -309,7 +309,11 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
   	}
 	spi_reg = (SPI_NOR_REG *)pspi->io_base;
 	writel(value,&spi_reg->spi_ctrl);
-
+#if (SP_SPINOR_DMA)        
+        value = (0x2 << 22) | (0x16 << 16) | pspi->rw_timing_sel;
+              //2 = 200(MHz) * 10 / 1000 (minium val = 3), 0x16 = 105 * 200(MHz) / 1000. detail in reg spec.  
+        writel(value, &spi_reg->spi_timing);
+#endif  
 	writel(SPI_CMD_OEN_1b | SPI_ADDR_OEN_1b | SPI_DATA_OEN_1b | SPI_CMD_1b | SPI_ADDR_1b
 		| SPI_DATA_1b | SPI_ENHANCE_NO | SPI_DUMMY_CYC(0) | SPI_DATA_IEN_DQ1,&spi_reg->spi_cfg1);
 	reg_temp = readl(&spi_reg->spi_auto_cfg);
@@ -1110,6 +1114,7 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     	struct spi_nor *nor;
     	struct mtd_info *mtd;
    	int ret;
+   	int tmpvalue;
     	const struct spi_nor_hwcaps hwcaps = {
 			.mask = SNOR_HWCAPS_READ |
 				SNOR_HWCAPS_READ_FAST |
@@ -1196,12 +1201,34 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
     	nor->prepare = sp_spi_nor_prep;
     	nor->unprepare = sp_spi_nor_unprep;
 
-    	ret = of_property_read_u32(np, "spi-max-frequency",&pspi->clk_rate);
-    	if (ret < 0)
-        	goto mutex_failed;
-    	ret = of_property_read_u32(np, "spi-chip-selection",&pspi->chipsel);
-    	if (ret < 0)
-        	goto mutex_failed;
+    	ret = of_property_read_u32(np, "spi-max-frequency", &pspi->clk_rate);
+    	if (ret < 0){
+    		pspi->clk_rate = 50000000;
+    		dev_dbg(pspi->dev, "clock rate default\n");
+        	//goto mutex_failed;
+        }
+
+    	ret = of_property_read_u32(np, "spi-chip-selection", &pspi->chipsel);
+    	if (ret < 0){
+    		pspi->chipsel = 0;
+    		dev_dbg(pspi->dev, "chipsel default\n");
+        	//goto mutex_failed;
+        }
+	
+	ret = of_property_read_u32(np, "read-timing-selection", &tmpvalue);
+	if (ret < 0){
+    		tmpvalue = 0;
+    		dev_dbg(pspi->dev, "r-_timing_sel default\n");
+        	//goto mutex_failed;
+        }
+        
+        ret = of_property_read_u32(np, "write-timing-selection", &pspi->rw_timing_sel);
+	if ((ret < 0) || (pspi->rw_timing_sel > 1)){
+    		pspi->rw_timing_sel = 0;
+    		dev_dbg(pspi->dev, "-w_timing_sel default\n");
+        	//goto mutex_failed;
+        }
+        pspi->rw_timing_sel |= (tmpvalue << 1);
 		    
     	sp_spi_nor_init(pspi);
 
