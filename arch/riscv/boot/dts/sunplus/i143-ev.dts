@@ -47,6 +47,8 @@
 
 		i2c4 = &i2cm4;
 		i2c5 = &i2cm5;
+		
+		spi0 = &sp_spinor0;
 	};
 
 	chosen {
@@ -810,6 +812,8 @@
 			pinctrl-0 = <&spi_nor_pins>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
+			read-timing-selection = <1>;
+			write-timing-selection = <0>;
 		};
 		
 		axi: axi@sp_axi {
