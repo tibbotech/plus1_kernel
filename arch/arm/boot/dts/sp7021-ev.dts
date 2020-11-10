@@ -33,13 +33,13 @@
 	spi-max-frequency = <50000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spim0>;
-	cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH> ,<&pctl 13 GPIO_ACTIVE_HIGH>;			
+	cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH> ,<&pctl 13 GPIO_ACTIVE_HIGH>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi@0 {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <5000000>;
-	  spi-cpha;
+		spi-cpha;
 		reg = <0x0>;
 	};
 };
@@ -68,17 +68,16 @@
 
 &spi_controller3 {
 	spi-max-frequency = <50000000>;
-	pinctrl-names = "default";	
-	pinctrl-0 = <&pins_spis3>;	
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spis3>;
 	spi-slave;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi3: slave@ {
-	    compatible = "rohm,dh2228fv";
-	    reg = <0x0>;
-	    spi-max-frequency = <5000000>;
-	};	
-	
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <5000000>;
+		reg = <0x0>;
+	};
 };
 
 &i2cm0 {
@@ -164,6 +163,8 @@
 	read-timing-selection = <1>;
 	write-timing-selection = <0>;
 	pinctrl-names = "default";
+	pinctrl-0 = <&spi_flash1_mux &spi_fla4b1_mux>;
+/*
 	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
 	partitions {
 		compatible = "fixed-partitions";
@@ -178,11 +179,12 @@
 			reg = <0x200000 0xdff000>;
 		};
 	};
+*/
 };
 
 &hdmitx {
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmi_A_tx1>;
+	pinctrl-0 = <&hdmi_A_tx2>;
 };
 
 &mipicsi0 {
@@ -241,7 +243,7 @@
 			SPPCTL_IOPAD(18,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_CLK,0)
 			SPPCTL_IOPAD(20,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_EN,0)
 			SPPCTL_IOPAD(22,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DO,0)
-			SPPCTL_IOPAD(24,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DI,0)			
+			SPPCTL_IOPAD(24,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DI,0)
 		>;
 	};
 
@@ -254,7 +256,7 @@
 	#endif
 		>;
 	};
-	
+
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)
