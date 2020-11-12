@@ -1499,6 +1499,11 @@ static int sp_mipi_remove(struct platform_device *pdev)
 
 	MIPI_INFO("SP MIPI driver is removing\n");
 
+#if (SYSFS_MIPI_CSIIW_ATTRIBUTE == 1) || (SYSFS_MIPI_ISP_ATTRIBUTE == 1)
+	/* Remove the device attribute group from sysfs */
+	sysfs_remove_group(&pdev->dev.kobj, &mipi_attribute_group);
+#endif
+
 	i2c_put_adapter(mipi->i2c_adap);
 	kfree(mipi->cfg);
 
