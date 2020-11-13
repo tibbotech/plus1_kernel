@@ -31,15 +31,22 @@
 
 &spi_controller0 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
 	status = "disabled";
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spim0>;
+	cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH> ,<&pctl 13 GPIO_ACTIVE_HIGH>;			
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi@0 {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <5000000>;
+		spi-cpha;
+		reg = <0x0>;
+	};
 };
 
 &spi_controller1 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -52,8 +59,6 @@
 
 &spi_controller2 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -66,8 +71,18 @@
 
 &spi_controller3 {
 	spi-max-frequency = <50000000>;
+	status = "disabled";	
+	pinctrl-names = "default";	
+	pinctrl-0 = <&pins_spis3>;	
 	spi-slave;
-	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	slave@ {
+		compatible = "rohm,dh2228fv";
+		reg = <0x0>;
+		spi-max-frequency = <5000000>;
+		};	
+	
 };
 
 &i2cm0 {
@@ -213,9 +228,19 @@
 		sppctl,pins = <
 			SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_INT,0)
 			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_CLK,0)
-			SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
+			//SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
 			SPPCTL_IOPAD(11,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
 			SPPCTL_IOPAD(12,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
+		>;
+	};
+
+	pins_spis3: pins_spis3 {
+		sppctl,pins = <
+			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_INT,0)
+			SPPCTL_IOPAD(18,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_CLK,0)
+			SPPCTL_IOPAD(20,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_EN,0)
+			SPPCTL_IOPAD(22,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DO,0)
+			SPPCTL_IOPAD(24,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DI,0)			
 		>;
 	};
 
