@@ -163,9 +163,8 @@
 	read-timing-selection = <1>;
 	write-timing-selection = <0>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&spi_flash1_mux &spi_fla4b1_mux>;
-/*
 	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+/*
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -184,7 +183,7 @@
 
 &hdmitx {
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmi_A_tx2>;
+	pinctrl-0 = <&hdmi_A_tx1>;
 };
 
 &mipicsi0 {
