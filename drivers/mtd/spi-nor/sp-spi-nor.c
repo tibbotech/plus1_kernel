@@ -787,14 +787,17 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 				if(data_count%4 == 3)
 				{
 					data_temp = (data_in[2] << 16) | (data_in[1] << 8) | data_in[0];
+					data_in = data_in + 3;
 					data_count = data_count - 3; 
 				}else if(data_count%4 == 2)
 				{
 					data_temp =  (data_in[1] << 8) | data_in[0];
+					data_in = data_in + 2;
 					data_count = data_count - 2; 
 				}else if (data_count%4 == 1)
 				{
 					data_temp = data_in[0];
+					data_in = data_in + 1;
 					data_count = data_count - 1; 
 				}
 				writel(data_temp,&spi_reg->spi_data64);
@@ -927,15 +930,18 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 					data_in[0] = data_temp & 0xff;
 					data_in[1] = ((data_temp & 0xff00) >> 8);
 					data_in[2] = ((data_temp & 0xff0000) >> 16);
-					data_count = data_count-3; 
+					data_in = data_in+3;
+					data_count = data_count-3;
 				}else if(data_count%4 == 2)
 				{
 					data_in[0] = data_temp & 0xff;
 					data_in[1] = ((data_temp & 0xff00) >> 8);
-					data_count = data_count-2; 
+					data_in = data_in+2;
+					data_count = data_count-2;
 				}else if (data_count%4 == 1)
 				{
 					data_in[0] = data_temp & 0xff;
+					data_in = data_in+1;
 					data_count = data_count-1; 
 				}
 			}
