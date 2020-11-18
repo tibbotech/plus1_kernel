@@ -8,7 +8,7 @@ if SUNPLUS_VIDEO_SENSOR_SUPPORT
 
 config VIDEO_SENSOR_GC0310
 	tristate "Video Sensor (GC0310) Driver"
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	default n
 	---help---
 	  Supports video sensor GC0310.
@@ -33,7 +33,7 @@ endchoice
 
 config VIDEO_SENSOR_IMX219
 	tristate "Video Sensor (IMX219) Driver"
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	default n
 	---help---
 	  Supports video sensor IMX219.
@@ -57,14 +57,14 @@ endchoice
 
 config VIDEO_SENSOR_VEYE290
 	tristate "Video Sensor (VEYE290) Driver"
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	default n
 	---help---
 	  Supports video sensor VEYE290.
 
 config VIDEO_SENSOR_OV5647
 	tristate "Video Sensor (OV5647) Driver"
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	default n
 	---help---
 	  Supports video sensor OV5647.
@@ -98,7 +98,7 @@ config OV5647_2592x1944
 endchoice
 
 config VIDEO_SENSOR_OV9281
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	tristate "Video Sensor (OV9281) Driver"
 	default n
 	---help---
@@ -106,7 +106,7 @@ config VIDEO_SENSOR_OV9281
 
 config VIDEO_SENSOR_OV9281_ISP
 	tristate "Video Sensor (OV9281_ISP) Driver"
-	depends on SOC_SC7021
+	depends on SOC_SP7021
 	default n
 	---help---
 	  Supports SunplusIT 3D Eye-tracker (video sensor OV9281 + ISP) board.
