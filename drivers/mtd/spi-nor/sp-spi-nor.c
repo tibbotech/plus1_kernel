@@ -158,9 +158,9 @@ enum SPI_DATA_IO_BIT
 #define SPI_SRAM_ST (0x7<<13)
 enum SPI_SRAM_STATUS
 {
-	  SRAM_CONFLICT = 0,
-	  SRAM_EMPTY = 1,
-	  SRAM_FULL = 2
+	  SRAM_CONFLICT = (1 << 13),
+	  SRAM_EMPTY    = (2 << 13),
+	  SRAM_FULL     = (4 << 13)
 };
 
 #define CMD_FAST_READ (0xb)
@@ -313,6 +313,9 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
         value = (0x2 << 22) | (0x16 << 16) | pspi->rw_timing_sel;
               //2 = 200(MHz) * 10 / 1000 (minium val = 3), 0x16 = 105 * 200(MHz) / 1000. detail in reg spec.  
         writel(value, &spi_reg->spi_timing);
+#else
+	value = (readl(&spi_reg->spi_timing) & (~0x3)) | pspi->rw_timing_sel;
+	writel(value, &spi_reg->spi_timing);
 #endif        
 	writel(SPI_CMD_OEN_1b | SPI_ADDR_OEN_1b | SPI_DATA_OEN_1b | SPI_CMD_1b | SPI_ADDR_1b
 		| SPI_DATA_1b | SPI_ENHANCE_NO | SPI_DUMMY_CYC(0) | SPI_DATA_IEN_DQ1, &spi_reg->spi_cfg1);
@@ -673,21 +676,19 @@ static unsigned char sp_spi_nor_rdsr(SPI_NOR_REG *reg_base)
 	return data;
 }
 static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 addr_len,
-				u8 *buf, size_t len)
+				const u8 *buf, size_t len)
 {
 	struct sp_spi_nor *pspi = nor->priv;
 	SPI_NOR_REG* spi_reg = (SPI_NOR_REG *)pspi->io_base;
-	int ret;
 	int total_count = len;
 	int data_count = 0;
-	unsigned int temp_reg = 0;
 	unsigned int offset = (unsigned int)addr;
 	unsigned int addr_offset = 0;
 	unsigned int addr_temp = 0;
 	unsigned int reg_temp = 0;
 	unsigned int cfg0 = 0;
 	unsigned int data_temp = 0;
-	unsigned char * data_in = buf;
+	const u_char * data_in = buf;
 	unsigned char cmd = opcode;
 	struct timeval time;
 	struct timeval time_out;
@@ -755,9 +756,9 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		while (data_count > 0) 
 		{
 			if ((data_count / 4) > 0) {
-				if ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) == SRAM_FULL) {
+				if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
 					do_gettimeofday(&time);
-					while ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) != SRAM_EMPTY)
+					while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0)
 					{
 						do_gettimeofday(&time_out);
 						if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
@@ -772,9 +773,9 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 				data_in = data_in + 4;
 				data_count = data_count - 4;
 			} else {
-				if ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) == SRAM_FULL) {
+				if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
 					do_gettimeofday(&time);
-					while ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) != SRAM_EMPTY)
+					while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0)
 					{
 						do_gettimeofday(&time_out);
 						if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
@@ -784,17 +785,17 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 						}
 					};
 				}
-				if(data_count%4 == 3)
+				if (data_count == 3)
 				{
 					data_temp = (data_in[2] << 16) | (data_in[1] << 8) | data_in[0];
 					data_in = data_in + 3;
 					data_count = data_count - 3; 
-				}else if(data_count%4 == 2)
+				}else if (data_count == 2)
 				{
 					data_temp =  (data_in[1] << 8) | data_in[0];
 					data_in = data_in + 2;
 					data_count = data_count - 2; 
-				}else if (data_count%4 == 1)
+				}else if (data_count == 1)
 				{
 					data_temp = data_in[0];
 					data_in = data_in + 1;
@@ -828,10 +829,8 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 {
 	struct sp_spi_nor *pspi = nor->priv;
 	SPI_NOR_REG* spi_reg = (SPI_NOR_REG *)pspi->io_base;
-	int ret;
 	int total_count = len;
 	int data_count = 0;
-	unsigned int temp_reg = 0;
 	unsigned int offset = (unsigned int)addr;
 	unsigned int addr_offset = 0;
 	unsigned int addr_temp = 0;
@@ -889,13 +888,13 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 			data_in[0] = readl(&spi_reg->spi_status) & 0xff;
 			data_count = 0;
 		}
-		dev_dbg(pspi->dev, "cfg1 0x%x, len 0x%x\n", readl(&spi_reg->spi_cfg1));
+		dev_dbg(pspi->dev, "cfg1 0x%x, len 0x%x\n", readl(&spi_reg->spi_cfg1), len);
 		while (data_count > 0)
 		{
 			if ((data_count / 4) > 0)
 			{
 				do_gettimeofday(&time);
-				while ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) == SRAM_EMPTY)
+				while (readl(&spi_reg->spi_status_2) & SRAM_EMPTY)
 				{
 					do_gettimeofday(&time_out);
 					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
@@ -914,7 +913,7 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 				data_count = data_count - 4;
 			} else {
 				do_gettimeofday(&time);
-				while ((readl(&spi_reg->spi_status_2) & SPI_SRAM_ST) == SRAM_EMPTY)
+				while (readl(&spi_reg->spi_status_2) & SRAM_EMPTY)
 				{
 					do_gettimeofday(&time_out);
 					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT)
@@ -925,20 +924,20 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 				};
 				data_temp = readl(&spi_reg->spi_data64);
 				dev_dbg(pspi->dev, "data_temp 0x%x\n", data_temp);
-				if(data_count%4 == 3)
+				if (data_count == 3)
 				{
 					data_in[0] = data_temp & 0xff;
 					data_in[1] = ((data_temp & 0xff00) >> 8);
 					data_in[2] = ((data_temp & 0xff0000) >> 16);
 					data_in = data_in+3;
 					data_count = data_count-3;
-				}else if(data_count%4 == 2)
+				}else if(data_count == 2)
 				{
 					data_in[0] = data_temp & 0xff;
 					data_in[1] = ((data_temp & 0xff00) >> 8);
 					data_in = data_in+2;
 					data_count = data_count-2;
-				}else if (data_count%4 == 1)
+				}else if (data_count == 1)
 				{
 					data_in[0] = data_temp & 0xff;
 					data_in = data_in+1;
@@ -1084,7 +1083,11 @@ static int sp_spi_nor_erase(struct spi_nor *nor, loff_t offs)
 	struct sp_spi_nor *pspi = nor->priv;
 	  
 	dev_dbg(pspi->dev,"%s 0x%x 0x%x\n",__FUNCTION__,nor->erase_opcode, (u32)offs);
+#if (SP_SPINOR_DMA)
 	sp_spi_nor_xfer_dmawrite(nor, nor->erase_opcode, offs, 3, 0, 0);
+#else
+	sp_spi_nor_xfer_write(nor, nor->erase_opcode, offs, 3, 0, 0);
+#endif
 	return 0;
 }
 #if 0
