@@ -153,7 +153,7 @@ enum SPI_SRAM_STATUS {
 
 #define CMD_FAST_READ           (0xb)
 #define CMD_READ_STATUS         (0x5)
-#define SPI_TIMEOUT             450
+#define SPI_TIMEOUT             450000  // nS
 
 typedef struct {
 	unsigned char enhance_en;
@@ -634,6 +634,7 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
 	sp_spi_cfg12_set(spi_reg, 0);
 	return 0;
 }
+
 #else
 static unsigned char sp_spi_nor_rdsr(SPI_NOR_REG *reg_base)
 {
@@ -655,6 +656,7 @@ static unsigned char sp_spi_nor_rdsr(SPI_NOR_REG *reg_base)
 	data = readl(&spi_reg->spi_status) & 0xff;
 	return data;
 }
+
 static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 addr_len,
 				const u8 *buf, size_t len)
 {
@@ -670,8 +672,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 	unsigned int data_temp = 0;
 	const u_char * data_in = buf;
 	unsigned char cmd = opcode;
-	struct timeval time;
-	struct timeval time_out;
+	struct timespec64 ts, ts_out;
 
 	dev_dbg(pspi->dev, "%s\n", __FUNCTION__);
 	mutex_lock(&pspi->lock);
@@ -738,10 +739,10 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		while (data_count > 0) {
 			if ((data_count / 4) > 0) {
 				if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
-					do_gettimeofday(&time);
+					ktime_get_real_ts64(&ts);
 					while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0) {
-						do_gettimeofday(&time_out);
-						if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT) {
+						ktime_get_real_ts64(&ts_out);
+						if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
 							dev_dbg(pspi->dev,"timeout \n");
 							break;
 						}
@@ -754,10 +755,10 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 				data_count = data_count - 4;
 			} else {
 				if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
-					do_gettimeofday(&time);
+					ktime_get_real_ts64(&ts);
 					while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0) {
-						do_gettimeofday(&time_out);
-						if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT) {
+						ktime_get_real_ts64(&ts_out);
+						if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
 							dev_dbg(pspi->dev, "timeout \n");
 							break;
 						}
@@ -801,6 +802,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 	mutex_unlock(&pspi->lock);
 	return 0;
 }
+
 static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 addr_len,
 				u8 *buf, size_t len)
 {
@@ -816,8 +818,7 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 	unsigned int data_temp = 0;
 	unsigned char * data_in = buf;
 	unsigned char cmd = opcode;
-	struct timeval time;
-	struct timeval time_out;
+	struct timespec64 ts, ts_out;
 
 	dev_dbg(pspi->dev,"%s\n", __FUNCTION__);
 	mutex_lock(&pspi->lock);
@@ -867,10 +868,10 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 
 		while (data_count > 0) {
 			if ((data_count / 4) > 0) {
-				do_gettimeofday(&time);
+				ktime_get_real_ts64(&ts);
 				while (readl(&spi_reg->spi_status_2) & SRAM_EMPTY) {
-					do_gettimeofday(&time_out);
-					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT) {
+					ktime_get_real_ts64(&ts_out);
+					if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
 						dev_dbg(pspi->dev, "timeout \n");
 						break;
 					}
@@ -886,10 +887,10 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 				data_in = data_in + 4;
 				data_count = data_count - 4;
 			} else {
-				do_gettimeofday(&time);
+				ktime_get_real_ts64(&ts);
 				while (readl(&spi_reg->spi_status_2) & SRAM_EMPTY) {
-					do_gettimeofday(&time_out);
-					if ((time_out.tv_usec - time.tv_usec) > SPI_TIMEOUT) {
+					ktime_get_real_ts64(&ts_out);
+					if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
 						dev_dbg(pspi->dev, "timeout \n");
 						break;
 					}
@@ -954,6 +955,7 @@ static ssize_t sp_spi_nor_read(struct spi_nor *nor, loff_t from, size_t len, u_c
 #endif
 	return len;
 }
+
 static ssize_t sp_spi_nor_write(struct spi_nor *nor, loff_t to,
 				size_t len, const u_char *buf)
 {
@@ -971,6 +973,7 @@ static ssize_t sp_spi_nor_write(struct spi_nor *nor, loff_t to,
 #endif
 	return len;
 }
+
 static int sp_spi_nor_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, int len)
 {
 	struct sp_spi_nor *pspi = nor->priv;
@@ -1062,6 +1065,7 @@ static int sp_spi_nor_erase(struct spi_nor *nor, loff_t offs)
 #endif
 	return 0;
 }
+
 #if 0
 static int sp_spi_nor_flashlock(struct spi_nor *nor, loff_t offs, uint64_t len)
 {
@@ -1087,6 +1091,7 @@ static int sp_spi_nor_flashlocked(struct spi_nor *nor, loff_t offs, uint64_t len
 	return;
 }
 #endif
+
 static int sp_spi_nor_probe(struct platform_device *pdev)
 {
 	struct device_node *np = pdev->dev.of_node;
