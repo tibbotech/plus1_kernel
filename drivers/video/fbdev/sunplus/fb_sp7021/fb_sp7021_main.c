@@ -95,6 +95,9 @@ static struct fb_ops framebuffer_ops = {
 	.fb_pan_display		= _sp7021_fb_pan_display,
 	.fb_setcmap			= _sp7021_fb_setcmap,
 	.fb_ioctl			= _sp7021_fb_ioctl,
+	.fb_fillrect    = cfb_fillrect,
+	.fb_copyarea    = cfb_copyarea,
+	.fb_imageblit   = cfb_imageblit,
 };
 
 static const struct of_device_id _sp7021_fb_dt_ids[] = {

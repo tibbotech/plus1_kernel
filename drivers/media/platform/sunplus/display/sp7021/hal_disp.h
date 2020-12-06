@@ -36,24 +36,14 @@
 /**************************************************************************
  *                           C O N S T A N T S                            *
  **************************************************************************/
-//#define SP_DISP_DEBUG
+#define SP_DISP_DEBUG
 
-#if 0
-#define sp_disp_err(fmt, args...)		printk(KERN_ERR "[DISP][Err][%s:%d]"fmt, __func__, __LINE__, ##args)
-#define sp_disp_info(fmt, args...)		printk(KERN_INFO "[DISP][%s:%d]"fmt, __func__, __LINE__, ##args)
-#ifdef SP_DISP_DEBUG
-#define sp_disp_dbg(fmt, args...)		printk(KERN_INFO "[DISP][%s:%d]"fmt, __func__, __LINE__, ##args)
-#else
-#define sp_disp_dbg(fmt, args...)
-#endif
-#else
 #define sp_disp_err(fmt, args...)		printk(KERN_ERR "[DISP][Err]"fmt, ##args)
 #define sp_disp_info(fmt, args...)		printk(KERN_INFO "[DISP]"fmt, ##args)
 #ifdef SP_DISP_DEBUG
 #define sp_disp_dbg(fmt, args...)		printk(KERN_INFO "[DISP]"fmt, ##args)
 #else
 #define sp_disp_dbg(fmt, args...)
-#endif
 #endif
 
 #define ALIGNED(x, n)				((x) & (~(n - 1)))
