@@ -568,7 +568,8 @@ u32 DRV_OSD_SetVisibleBuffer(u32 bBufferId)
 	struct Region_Manager_s *pRegionManager = gpWinRegion;
 
 	if (!pRegionManager)
-		return -1;
+		//return -1;
+		return 0;
 
 	pRegionManager->DirtyFlag |= REGION_ADDR_DIRTY;
 	pRegionManager->CurrBufID = bBufferId;
