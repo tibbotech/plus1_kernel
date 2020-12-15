@@ -14,7 +14,7 @@ CONFIG_IKCONFIG_PROC=y
 # CONFIG_RD_LZO is not set
 # CONFIG_RD_LZ4 is not set
 CONFIG_BLK_DEV_INITRD=y
-CONFIG_INITRAMFS_SOURCE="../rootfs/initramfs/disk/ ../rootfs/initramfs/disk/dev/initramfs.devnodes"
+CONFIG_INITRAMFS_SOURCE="../rootfs/initramfs/disk/ ../rootfs/initramfs/initramfs.devnodes"
 CONFIG_INITRAMFS_COMPRESSION=""
 CONFIG_EXPERT=y
 CONFIG_BPF_SYSCALL=y
