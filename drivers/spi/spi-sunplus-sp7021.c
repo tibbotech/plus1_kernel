@@ -506,37 +506,32 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 		rx_cnt = GET_RX_CNT(fd_status);
 	}
 
-	tx_cnt = min( tx_len - pspim->tx_cur_len,pspim->data_unit - tx_cnt);	
+	tx_cnt = min( tx_len - pspim->tx_cur_len,pspim->data_unit - tx_cnt);
 
 	DBG_INF( "fd_st=0x%x rx_c:%d tx_c:%d tx_l:%d", fd_status, rx_cnt, tx_cnt, tx_len);
 
 	if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
 	if ( tx_cnt > 0) sp7021spi_wb( pspim, tx_cnt);
 
-			fd_status = readl( &sr->SPI_FD_STATUS);
+	fd_status = readl( &sr->SPI_FD_STATUS);
 
 	if ( !(fd_status & FINISH_FLAG)) {
 		spin_unlock_irqrestore(&pspim->lock, flags);
 		DBG_INF( "return irq");
-		return IRQ_HANDLED;		
 	}else{
 
-		    if ( fd_status & RX_FULL_FLAG){
-		         rx_cnt = pspim->data_unit;
-		    }else{
+		if ( fd_status & RX_FULL_FLAG){
+			rx_cnt = pspim->data_unit;
+		}else{
 			rx_cnt = GET_RX_CNT(fd_status);
-    }
-	
+		}
 		if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
-	
-	writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
-	spin_unlock_irqrestore(&pspim->lock, flags);
-	complete(&pspim->isr_done);
-	    DBG_INF( "end irq");
+		writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
+		spin_unlock_irqrestore(&pspim->lock, flags);
+		complete(&pspim->isr_done);
+		DBG_INF( "end irq");
+	}
 	return IRQ_HANDLED;
-}
-
-
 }
 
 // called in *controller_transfer_one*
