@@ -62,8 +62,6 @@
 
 #define SLA_IRQ_NAME "slave_risc_intr"
 
-#define SPI_MASTER_NUM (4)
-
 #define SPI_TRANS_DATA_CNT (4)
 #define SPI_TRANS_DATA_SIZE (255)
 #define SPI_MSG_DATA_SIZE (SPI_TRANS_DATA_SIZE * SPI_TRANS_DATA_CNT)
@@ -91,8 +89,8 @@
 #define TOTAL_LENGTH(x) (x<<24)
 #define TX_LENGTH(x) (x<<16)
 #define GET_TX_LEN(x)  ((x>>16)&0xFF)
-#define GET_RX_CNT(x)  ((x>>12)&0xF)
-#define GET_TX_CNT(x)  ((x>>8)&0xF)
+#define GET_RX_CNT(x)  ((x>>12)&0x0F)
+#define GET_TX_CNT(x)  ((x>>8)&0x0F)
 
 
 
@@ -128,11 +126,6 @@
 #define SPI_FD_INTR (1<<7)
 
 #define FD_SW_RST (1<<1)
-
-#define RX_CNT (0xF<<12)
-#define RX_CNT_MASK(x) (x>>12)
-#define TX_CNT (0xF<<8)
-#define TX_CNT_MASK(x) (x>>8)
 
 #define DEG_CORE_SPI_LATCH0 (0xB<<8)
 #define DEG_CORE_SPI_LATCH1 (0xC<<8)
@@ -392,7 +385,6 @@ int pentagram_spi_S_rw( struct spi_device *_s, struct spi_transfer *_t, int RW_p
 	struct pentagram_spi_master *pspim = spi_controller_get_devdata( _s->controller);
 
 	SPI_SLA* spis_reg = (SPI_SLA *)(pspim->sla_base);
-	//SPI_MAS* spim_reg = (SPI_MAS *)(pspim->mas_base);
 	struct device *devp = &( _s->dev);
 
 	FUNC_DBG();
@@ -410,30 +402,21 @@ int pentagram_spi_S_rw( struct spi_device *_s, struct spi_transfer *_t, int RW_p
 		writel_relaxed( _t->tx_dma, &spis_reg->SLV_DMA_INI_ADDR);
 		writel( readl( &spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
 		
-		//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
-		
 		if ( wait_for_completion_interruptible( &pspim->sla_isr)){
-			dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);	
-	}
-		
+			dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);
+		}
 	}else if ( RW_phase == SPI_SLAVE_READ) {
-		DBG_INF( "S_READ len %d", _t->len);		
+		DBG_INF( "S_READ len %d", _t->len);
 		reinit_completion( &pspim->isr_done);
 		writel( DMA_READ, &spis_reg->SLV_DMA_CTRL);
 		writel( _t->len, &spis_reg->SLV_DMA_LENGTH);
 		writel( _t->rx_dma, &spis_reg->SLV_DMA_INI_ADDR);
 
-	// wait for DMA to complete
-	//if(!wait_for_completion_timeout(&pspim->isr_done,timeout)) {
-	if ( wait_for_completion_interruptible( &pspim->isr_done)) {
-		dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);
-		goto exit_spi_slave_rw;
-	}
-	// finilize read
-		//while ( ( readl( &spim_reg->DMA_CTRL) & DMA_W_INT) == DMA_W_INT)
-		//{
-		//	dev_dbg( devp, "%s() spim_reg->DMA_CTRL 0x%x\n", __FUNCTION__, readl( &spim_reg->DMA_CTRL));
-		//};
+		// wait for DMA to complete
+		if ( wait_for_completion_interruptible( &pspim->isr_done)) {
+			dev_err( devp, "%s() wait_for_completion timeout\n", __FUNCTION__);
+			goto exit_spi_slave_rw;
+		}
 		// FIXME: is "len" correct there?
 		if(_t->tx_dma == pspim->tx_dma_phy_base)
 		    memcpy( _t->rx_buf, pspim->rx_dma_vir_base, _t->len);
@@ -486,7 +469,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	struct pentagram_spi_master *pspim = (struct pentagram_spi_master *)_dev;
 	SPI_MAS* sr = ( SPI_MAS *)pspim->mas_base;
 	u32 fd_status = 0;
-	unsigned int tx_len,rx_cnt,tx_cnt;
+	unsigned int tx_len, rx_cnt, tx_cnt;
 
 	FUNC_DBG();
 
@@ -669,7 +652,7 @@ free_master_combite_rw:
         struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
         SPI_MAS *sr = ( SPI_MAS *)pspim->mas_base;
         u32 reg_temp = 0;
-        unsigned long timeout = msecs_to_jiffies(200);
+        unsigned long timeout = msecs_to_jiffies( 200);
         unsigned int i;
         int ret;
         unsigned int xfer_cnt,xfer_len,last_len;
@@ -741,7 +724,7 @@ free_master_combite_rw:
 
            reg_temp = readl( &sr->SPI_FD_STATUS);
            if(reg_temp & FINISH_FLAG){
-	       writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);	
+	       writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
            }
 	   
            if ( t->rx_buf)   memcpy( t->rx_buf+i*SPI_TRANS_DATA_SIZE, pspim->rx_data_buf, xfer_len);
@@ -753,7 +736,7 @@ free_master_combite_rw:
            // reset SPI
            writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
 
-	   mutex_unlock( &pspim->buf_lock);  
+	   mutex_unlock( &pspim->buf_lock);
 
         }
 
@@ -889,7 +872,7 @@ static int pentagram_spi_S_transfer_one( struct spi_controller *_c, struct spi_d
 			if (dma_mapping_error(dev, _t->rx_dma)) {
 				if(_t->len <= bufsiz){
 				    _t->rx_dma = pspim->rx_dma_phy_base;
-				    mode = SPI_SLAVE_READ;				
+				    mode = SPI_SLAVE_READ;
 				}else{
 				    mode = SPI_IDLE;
 				}
@@ -1067,7 +1050,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		if ( total_len < SPI_TRANS_DATA_SIZE) xfer_cnt++;
 		
 
-                if (xfer_cnt > 0){		
+                if (xfer_cnt > 0){
 		spspi_prep_transfer( ctlr, spi);
 		pentagram_spi_setup_transfer( spi, ctlr, first_xfer);
 		DBG_INF( "start_xfer  xfer->len : %d   xfer_cnt : %d", xfer->len, xfer_cnt);
