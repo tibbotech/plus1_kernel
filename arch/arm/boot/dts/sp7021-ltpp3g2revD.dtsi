@@ -20,6 +20,7 @@
 &sp_display {
     ui_width = <1280>;
     ui_height = <720>;
+    ui_format = <0x8>;
 };
 
 &sp_spinor0 {  status = "disabled";  };
