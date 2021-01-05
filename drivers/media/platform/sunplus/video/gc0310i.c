@@ -296,21 +296,6 @@ static const struct regval gc0310_stop_settings[] = {
 	//{0xfe, 0x03}, {0x10, 0x84}, {0xfe, 0x00},
 };
 
-static const struct gc0310_mode supported_modes[] = {
-	{
-		.width = 640,
-		.height = 480,
-		.reg_list = gc0310_raw8_640x480_regs,
-		.reg_num = ARRAY_SIZE(gc0310_raw8_640x480_regs),
-	},
-	{
-		.width = 640,
-		.height = 480,
-		.reg_list = gc0310_yuy2_640x480_regs,
-		.reg_num = ARRAY_SIZE(gc0310_yuy2_640x480_regs),
-	}
-};
-
 struct gc0310_pixfmt {
 	u32 code;
 	u32 colorspace;
@@ -604,11 +589,9 @@ static int gc0310_enum_frame_size(struct v4l2_subdev *sd,
 		return -EINVAL;
 
 	fse->min_width = gc0310_mode_data[fse->index].hact;
-	//fse->max_width = fse->min_width;
-	fse->max_width = gc0310_mode_data[fse->index].htot;
+	fse->max_width = fse->min_width;
 	fse->min_height = gc0310_mode_data[fse->index].vact;
-	//fse->max_height = fse->min_height;
-	fse->max_height = gc0310_mode_data[fse->index].vtot;
+	fse->max_height = fse->min_height;
 
 	DBG_INFO("%s, index: %d, min_w: %d, max_w: %d, min_h: %d, max_h: %d\n",
 		__FUNCTION__, fse->index,

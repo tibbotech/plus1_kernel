@@ -1,61 +1,65 @@
-#ifndef __GC0310_H__
-#define __GC0310_H__
+#ifndef __VEYE290_H__
+#define __VEYE290_H__
 
 #if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[GC0310] %s (L:%d)\n", __FUNCTION__, __LINE__)
+#define FUNC_DEBUG()                            printk(KERN_INFO "[VEYE290] %s (L:%d)\n", __FUNCTION__, __LINE__)
 #else
 #define FUNC_DEBUG()
 #endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[GC0310] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[GC0310] ERR: " fmt, ## args)
+#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[VEYE290] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[VEYE290] ERR: " fmt, ## args)
 
-/* GC0310 Registers */
-#define GC0310_REG_CHIP_ID                      0xF0
-#define CHIP_ID                                 0xa310
-#define GC0310_REG_CTRL_MODE                    0x00
+#define REG_NULL                                0xFFFF
 
-#define GC0310_REG_VALUE_08BIT                  1
-#define GC0310_REG_VALUE_16BIT                  2
-#define GC0310_REG_VALUE_24BIT                  3
+/* VEYE290 Registers */
+#define VEYE290_REG_CHIP_ID                     0x0001
+#define CHIP_ID                                 0x06
+#define VEYE290_REG_CTRL_MODE                   0x000B
+#define VEYE290_MODE_SW_STANDBY                 0x0
+#define VEYE290_MODE_STREAMING                  BIT(0)
 
-#define to_gc0310(sd)                           container_of(sd, struct gc0310, subdev)
+#define VEYE290_REG_VALUE_08BIT                 1
+#define VEYE290_REG_VALUE_16BIT                 2
+#define VEYE290_REG_VALUE_24BIT                 3
+
+#define to_veye290(sd)                          container_of(sd, struct veye290, subdev)
 
 
-enum gc0310_mode_id {
-	GC0310_MODE_VGA_640_480  = 0,
-	GC0310_NUM_MODES,
+enum veye290_mode_id {
+	VEYE290_MODE_1080P_1920_1080  = 0,
+	VEYE290_NUM_MODES,
 };
 
-enum gc0310_frame_rate {
-	GC0310_30_FPS = 0,
-	GC0310_NUM_FRAMERATES,
+enum veye290_frame_rate {
+	VEYE290_30_FPS = 0,
+	VEYE290_NUM_FRAMERATES,
 };
 
 /*
  * Image size under 1280 * 960 are SUBSAMPLING
  * Image size upper 1280 * 960 are SCALING
  */
-enum gc0310_downsize_mode {
+enum veye290_downsize_mode {
 	SUBSAMPLING,
 	SCALING,
 };
 
 
 struct regval {
-	u8      addr;
+	u16     addr;
 	u8      val;
 };
 
-struct gc0310_mode_info {
-	enum gc0310_mode_id             id;
-	enum gc0310_downsize_mode       dn_mode;
+struct veye290_mode_info {
+	enum veye290_mode_id            id;
+	enum veye290_downsize_mode      dn_mode;
 	u32                             hact;       // Active horizontal pixels
 	u32                             htot;       // Total horizontal pixels
 	u32                             vact;       // Active vertical pixels
 	u32                             vtot;       // Total vertical pixels
 };
 
-struct gc0310 {
+struct veye290 {
 	//struct i2c_client               *client;
 
 	//struct gpio_desc                *reset_gpio;
@@ -78,7 +82,7 @@ struct gc0310 {
 	//struct mutex                    mutex;
 	//bool                            streaming;
 
-	//const struct gc0310_mode        *cur_mode;
+	//const struct veye290_mode        *cur_mode;
 	//struct sp_subdev_sensor_data    sensor_data;
 
 
@@ -105,9 +109,9 @@ struct gc0310 {
 	struct v4l2_mbus_framefmt       fmt;
 	bool                            pending_fmt_change;
 
-	const struct gc0310_mode_info   *current_mode;
-	const struct gc0310_mode_info   *last_mode;
-	enum gc0310_frame_rate          current_fr;
+	const struct veye290_mode_info  *current_mode;
+	const struct veye290_mode_info  *last_mode;
+	enum veye290_frame_rate         current_fr;
 	struct v4l2_fract               frame_interval;
 
 	//struct ov5640_ctrls ctrls;
