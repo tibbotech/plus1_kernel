@@ -88,6 +88,7 @@
 
 #define TOTAL_LENGTH(x) (x<<24)
 #define TX_LENGTH(x) (x<<16)
+#define GET_LEN(x)     ((x>>24)&0xFF)
 #define GET_TX_LEN(x)  ((x>>16)&0xFF)
 #define GET_RX_CNT(x)  ((x>>12)&0x0F)
 #define GET_TX_CNT(x)  ((x>>8)&0x0F)
@@ -498,21 +499,25 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 
 	fd_status = readl( &sr->SPI_FD_STATUS);
 
-	if ( !(fd_status & FINISH_FLAG)) {
-		spin_unlock_irqrestore(&pspim->lock, flags);
-		DBG_INF( "return irq");
-	}else{
+	if (( fd_status & FINISH_FLAG) || (GET_TX_LEN(fd_status) == pspim->tx_cur_len)){
 
-		if ( fd_status & RX_FULL_FLAG){
+		while(GET_LEN(fd_status) != pspim->rx_cur_len){
+		    fd_status = readl( &sr->SPI_FD_STATUS);	
+		    if ( fd_status & RX_FULL_FLAG){
 			rx_cnt = pspim->data_unit;
-		}else{
+		    }else{
 			rx_cnt = GET_RX_CNT(fd_status);
+		    }	
+		    if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
 		}
-		if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
+	
 		writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
 		spin_unlock_irqrestore(&pspim->lock, flags);
 		complete(&pspim->isr_done);
 		DBG_INF( "end irq");
+	}else {
+		spin_unlock_irqrestore(&pspim->lock, flags);
+		DBG_INF( "return irq");		
 	}
 	return IRQ_HANDLED;
 }
@@ -616,6 +621,8 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len), &sr->SPI_FD_STATUS);
 	DBG_INF( "set SPI_FD_STATUS =0x%x", readl( &sr->SPI_FD_STATUS));
 	writel( readl( &sr->SPI_FD_STATUS) | SPI_START_FD, &sr->SPI_FD_STATUS); 
+	writel( readl( &sr->SPI_INT_BUSY) | INT_BYPASS, &sr->SPI_INT_BUSY); 
+	
 
 	if ( !wait_for_completion_timeout( &pspim->isr_done, timeout)){
 		DBG_INF( "wait_for_completion timeout");
