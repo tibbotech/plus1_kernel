@@ -140,6 +140,9 @@
 #define FIFO_DATA_BITS (16*8)    // 16 BYTES
 
 
+#define INT_BYPASS (1<<3)
+
+
 
 /* slave*/
 #define CLEAR_SLAVE_INT (1<<8)
