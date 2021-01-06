@@ -154,6 +154,18 @@ static struct mipi_fmt mipi_formats[] = {
 		.fourcc		= V4L2_PIX_FMT_SRGGB12,
 		.code		= MEDIA_BUS_FMT_SRGGB12_1X12,
 		.depth		= 16,
+	}, {
+		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.code		= MEDIA_BUS_FMT_Y8_1X8,
+		.depth		= 8,
+	}, {
+		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.code		= MEDIA_BUS_FMT_Y10_1X10,
+		.depth		= 8,
+	}, {
+		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.code		= MEDIA_BUS_FMT_Y12_1X12,
+		.depth		= 8,
 	},
 };
 

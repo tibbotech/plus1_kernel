@@ -500,7 +500,6 @@ static void csiiw_disable(struct sp_mipi_device *mipi)
 
 static void mipicsi_init(struct sp_mipi_device *mipi)
 {
-#if 1 // CCHo: Use default setting to init mipicsi
 	u32 val;
 
 	DBG_INFO("%s\n", __FUNCTION__);
@@ -526,49 +525,6 @@ static void mipicsi_init(struct sp_mipi_device *mipi)
 	udelay(1);
 	writel(0x1000, &mipi->mipicsi_regs->mipi_analog_cfg1);
 	writel(0x1, &mipi->mipicsi_regs->mipicsi_enable);				// Enable MIPICSI
-#else
-
-	u32 val, val2;
-
-	DBG_INFO("%s\n", __FUNCTION__);
-
-	val = 0x8104;   // Normal mode, MSB first, Auto
-
-	switch (mipi->cur_format->mipi_lane) {
-	default:
-	case 1: // 1 lane
-		val |= 0;
-		val2 = 0x11;
-		break;
-	case 2: // 2 lanes
-		val |= (1<<20);
-		val2 = 0x13;
-		break;
-	case 4: // 4 lanes
-		val |= (2<<20);
-		val2 = 0x1f;
-		break;
-	}
-
-	switch (mipi->cur_format->sol_sync) {
-	default:
-	case SYNC_RAW8:         // 8 bits
-	case SYNC_YUY2:
-		val |= (2<<16); break;
-	case SYNC_RAW10:        // 10 bits
-		val |= (1<<16); break;
-	}
-
-	writel(val, &mipi->mipicsi_regs->mipicsi_mix_cfg);
-	writel(mipi->cur_format->sol_sync, &mipi->mipicsi_regs->mipicsi_sof_sol_syncword);
-	writel(val2, &mipi->mipicsi_regs->mipi_analog_cfg2);
-	writel(0x110, &mipi->mipicsi_regs->mipicsi_ecc_cfg);
-	writel(0x1000, &mipi->mipicsi_regs->mipi_analog_cfg1);
-	writel(0x1001, &mipi->mipicsi_regs->mipi_analog_cfg1);
-	udelay(1);
-	writel(0x1000, &mipi->mipicsi_regs->mipi_analog_cfg1);
-	writel(0x1, &mipi->mipicsi_regs->mipicsi_enable);               // Enable MIPICSI
-#endif
 }
 
 static void csiiw_init(struct sp_mipi_device *mipi)

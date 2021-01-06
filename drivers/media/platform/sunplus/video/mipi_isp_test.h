@@ -2,7 +2,7 @@
 #define __MIPI_ISP_TEST_H__
 
 
-#if 1
+#if 0
 #define FUNC_DEBUG()                            printk(KERN_INFO "[ISP_TEST_ISP] %s (L:%d)\n", __FUNCTION__, __LINE__)
 #else
 #define FUNC_DEBUG()

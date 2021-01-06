@@ -2,7 +2,7 @@
 #define __SC2310_H__
 
 
-#if 1
+#if 0
 #define FUNC_DEBUG()                            printk(KERN_INFO "[SC2310] %s (L:%d)\n", __FUNCTION__, __LINE__)
 #else
 #define FUNC_DEBUG()
