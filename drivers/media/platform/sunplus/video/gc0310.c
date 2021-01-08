@@ -30,6 +30,16 @@
 #include <linux/pinctrl/consumer.h>
 #include "gc0310.h"
 
+
+struct gc0310_mode_info gc0310_mode_data[GC0310_NUM_MODES] = {
+	{GC0310_MODE_VGA_640_480, SUBSAMPLING,
+	 640, 640, 480, 480},
+};
+
+static const int gc0310_framerates[] = {
+	[GC0310_30_FPS] = 30,
+};
+
 // Bayer RAW8 (RGGB pattern)
 static const struct regval gc0310_raw8_640x480_regs[] = {
 	//system reg
@@ -286,20 +296,14 @@ static const struct regval gc0310_stop_settings[] = {
 	//{0xfe, 0x03}, {0x10, 0x84}, {0xfe, 0x00},
 };
 
+struct gc0310_pixfmt {
+	u32 code;
+	u32 colorspace;
+};
 
-static const struct gc0310_mode supported_modes[] = {
-	{
-		.width = 640,
-		.height = 480,
-		.reg_list = gc0310_raw8_640x480_regs,
-		.reg_num = ARRAY_SIZE(gc0310_raw8_640x480_regs),
-	},
-	{
-		.width = 640,
-		.height = 480,
-		.reg_list = gc0310_yuy2_640x480_regs,
-		.reg_num = ARRAY_SIZE(gc0310_yuy2_640x480_regs),
-	}
+static const struct gc0310_pixfmt gc0310_formats[] = {
+	{ MEDIA_BUS_FMT_SRGGB8_1X8, V4L2_COLORSPACE_SRGB, },
+	{ MEDIA_BUS_FMT_YUYV8_2X8, V4L2_COLORSPACE_SRGB, },
 };
 
 /* Read registers up to 4 at a time */
@@ -384,18 +388,98 @@ static int gc0310_write_array(struct i2c_client *client, const struct regval *re
 	return ret;
 }
 
-static int __gc0310_start_stream(struct gc0310 *gc0310)
+static int gc0310_set_mode(struct gc0310 *gc0310)
 {
-	int ret;
+	const struct gc0310_mode_info *mode = gc0310->current_mode;
+	const struct gc0310_mode_info *orig_mode = gc0310->last_mode;
+	enum gc0310_downsize_mode dn_mode, orig_dn_mode;
+	unsigned long rate;
+	int ret = 0;
 
 	FUNC_DEBUG();
 
-	ret = gc0310_write_array(gc0310->client, gc0310->cur_mode->reg_list, gc0310->cur_mode->reg_num);
-	if (ret) {
-		return ret;
+	dn_mode = mode->dn_mode;
+	orig_dn_mode = orig_mode->dn_mode;
+
+	/*
+	 * All the formats we support have 16 bits per pixel, seems to require
+	 * the same rate than YUV, so we can just use 16 bpp all the time.
+	 */
+	rate = mode->vtot * mode->htot * 16;
+	rate *= gc0310_framerates[gc0310->current_fr];
+
+
+	//if ((dn_mode == SUBSAMPLING && orig_dn_mode == SCALING) ||
+	//    (dn_mode == SCALING && orig_dn_mode == SUBSAMPLING)) {
+	//	/*
+	//	 * change between subsampling and scaling
+	//	 * go through exposure calculation
+	//	 */
+	//	ret = gc0310_set_mode_exposure_calc(gc0310, mode);
+	//} else {
+	//	/*
+	//	 * change inside subsampling or scaling
+	//	 * download firmware directly
+	//	 */
+	//	ret = gc0310_set_mode_direct(gc0310, mode);
+	//}
+
+	gc0310->pending_mode_change = false;
+	gc0310->last_mode = mode;
+
+	return ret;
+}
+
+static int gc0310_set_framefmt(struct gc0310 *gc0310,
+			       struct v4l2_mbus_framefmt *format)
+{
+	int ret = 0;
+	const struct regval *reg_list;
+	u32 reg_num;
+
+	FUNC_DEBUG();
+	DBG_INFO("%s, format->code: 0x%04x\n", __FUNCTION__, format->code);
+
+	switch (format->code) {
+		case MEDIA_BUS_FMT_YUYV8_2X8:
+			/* YUV422, YUYV */
+			reg_list = gc0310_yuy2_640x480_regs;
+			reg_num  = ARRAY_SIZE(gc0310_yuy2_640x480_regs);
+			break;
+
+		case MEDIA_BUS_FMT_SRGGB8_1X8:
+			/* Raw bayer, RGRG... / GBGB... */
+			reg_list = gc0310_raw8_640x480_regs;
+			reg_num  = ARRAY_SIZE(gc0310_yuy2_640x480_regs);
+			break;
+
+		default:
+			return -EINVAL;
 	}
 
-	ret = gc0310_write_array(gc0310->client, gc0310_start_settings, ARRAY_SIZE(gc0310_start_settings));
+	ret = gc0310_write_array(gc0310->i2c_client, reg_list, reg_num);
+
+	return ret;
+}
+
+static int gc0310_set_stream_mipi(struct gc0310 *gc0310, bool on)
+{
+	int ret;
+	const struct regval *reg_list;
+	u32 reg_num;
+
+	FUNC_DEBUG();
+	DBG_INFO("%s, on: %d\n", __FUNCTION__, on);
+
+	if (on){
+		reg_list = gc0310_start_settings;
+		reg_num  = ARRAY_SIZE(gc0310_start_settings);
+	} else {
+		reg_list = gc0310_stop_settings;
+		reg_num  = ARRAY_SIZE(gc0310_stop_settings);
+	}
+
+	ret = gc0310_write_array(gc0310->i2c_client, reg_list, reg_num);
 	if (ret) {
 		return ret;
 	}
@@ -403,55 +487,332 @@ static int __gc0310_start_stream(struct gc0310 *gc0310)
 	return 0;
 }
 
-static int __gc0310_stop_stream(struct gc0310 *gc0310)
-{
-	int ret;
-
-	FUNC_DEBUG();
-
-	ret = gc0310_write_array(gc0310->client, gc0310_stop_settings, ARRAY_SIZE(gc0310_stop_settings));
-	if (ret) {
-		return ret;
-	}
-
-	return 0;
-}
-
-static int gc0310_s_stream(struct v4l2_subdev *sd, int on)
+static int gc0310_s_stream(struct v4l2_subdev *sd, int enable)
 {
 	struct gc0310 *gc0310 = to_gc0310(sd);
 	int ret = 0;
 
 	FUNC_DEBUG();
+	DBG_INFO("%s, streaming: %d, pending_mode_change: %d, pending_fmt_change: %d\n",
+			__FUNCTION__, gc0310->streaming, gc0310->pending_mode_change,
+			gc0310->pending_fmt_change);
 
-	mutex_lock(&gc0310->mutex);
-	//on = !!on;
-	if (on == gc0310->streaming)
-		goto unlock_and_return;
+	mutex_lock(&gc0310->lock);
 
-	if (on) {
-		ret = __gc0310_start_stream(gc0310);
-		if (ret) {
-			DBG_ERR("Start streaming failed while write sensor registers!\n");
-			goto unlock_and_return;
+	if (gc0310->streaming == !enable) {
+		if (enable && gc0310->pending_mode_change) {
+			ret = gc0310_set_mode(gc0310);
+			if (ret)
+				goto out;
 		}
-	} else {
-		__gc0310_stop_stream(gc0310);
+
+		if (enable && gc0310->pending_fmt_change) {
+			ret = gc0310_set_framefmt(gc0310, &gc0310->fmt);
+			if (ret)
+				goto out;
+			gc0310->pending_fmt_change = false;
+		}
+
+		//if (gc0310->ep.bus_type == V4L2_MBUS_CSI2_DPHY)
+			ret = gc0310_set_stream_mipi(gc0310, enable);
+		//else
+		//	ret = gc0310_set_stream_dvp(gc0310, enable);
+
+		if (!ret)
+			gc0310->streaming = enable;
 	}
-
-	gc0310->streaming = on;
-
-unlock_and_return:
-	mutex_unlock(&gc0310->mutex);
-
+out:
+	if (ret) {
+		DBG_ERR("Start streaming failed while write sensor registers!\n");
+	}
+	mutex_unlock(&gc0310->lock);
 	return ret;
 }
 
 static struct v4l2_subdev_video_ops gc0310_subdev_video_ops = {
 	.s_stream       = gc0310_s_stream,
 };
+
+static const struct gc0310_mode_info *
+gc0310_find_mode(struct gc0310 *gc0310, enum gc0310_frame_rate fr,
+		 int width, int height, bool nearest)
+{
+	const struct gc0310_mode_info *mode;
+
+	mode = v4l2_find_nearest_size(gc0310_mode_data,
+				      ARRAY_SIZE(gc0310_mode_data),
+				      hact, vact,
+				      width, height);
+
+	DBG_INFO("%s, mode: %px, width: %d, height: %d, nearest: %d\n",
+		__FUNCTION__, mode, width, height, nearest);
+
+	if (!mode ||
+	    (!nearest && (mode->hact != width || mode->vact != height)))
+		return NULL;
+
+	/* Only 640x480 can operate at 30fps (for now) */
+	if (fr == GC0310_30_FPS &&
+	    !(mode->hact == 640 && mode->vact == 480))
+		return NULL;
+
+	return mode;
+}
+
+static int gc0310_enum_mbus_code(struct v4l2_subdev *sd,
+								struct v4l2_subdev_pad_config *cfg,
+								struct v4l2_subdev_mbus_code_enum *code)
+{
+	FUNC_DEBUG();
+
+	if (code->pad != 0)
+		return -EINVAL;
+	if (code->index >= ARRAY_SIZE(gc0310_formats))
+		return -EINVAL;
+
+	code->code = gc0310_formats[code->index].code;
+
+	DBG_INFO("%s, index: %d, code: 0x%04x\n",
+		__FUNCTION__, code->index, code->code);
+	return 0;
+}
+
+static int gc0310_enum_frame_size(struct v4l2_subdev *sd,
+								struct v4l2_subdev_pad_config *cfg,
+								struct v4l2_subdev_frame_size_enum *fse)
+{
+	FUNC_DEBUG();
+
+	if (fse->pad != 0)
+		return -EINVAL;
+	if (fse->index >= GC0310_NUM_MODES)
+		return -EINVAL;
+
+	fse->min_width = gc0310_mode_data[fse->index].hact;
+	fse->max_width = fse->min_width;
+	fse->min_height = gc0310_mode_data[fse->index].vact;
+	fse->max_height = fse->min_height;
+
+	DBG_INFO("%s, index: %d, min_w: %d, max_w: %d, min_h: %d, max_h: %d\n",
+		__FUNCTION__, fse->index,
+		fse->min_width, fse->max_width,
+		fse->min_height, fse->max_height);
+	return 0;
+}
+
+static int gc0310_try_frame_interval(struct gc0310 *gc0310,
+				     struct v4l2_fract *fi,
+				     u32 width, u32 height)
+{
+	const struct gc0310_mode_info *mode;
+	enum gc0310_frame_rate rate = GC0310_30_FPS;
+	int minfps, maxfps, best_fps, fps;
+	int i;
+
+	minfps = gc0310_framerates[GC0310_30_FPS];
+	maxfps = gc0310_framerates[GC0310_30_FPS];
+
+	if (fi->numerator == 0) {
+		fi->denominator = maxfps;
+		fi->numerator = 1;
+		rate = GC0310_30_FPS;
+		goto find_mode;
+	}
+
+	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
+			minfps, maxfps);
+
+	DBG_INFO("%s, fps: %d, numerator: %d, denominator = %d\n",
+		__FUNCTION__, fps, fi->numerator, fi->denominator);
+
+	best_fps = minfps;
+	for (i = 0; i < ARRAY_SIZE(gc0310_framerates); i++) {
+		int curr_fps = gc0310_framerates[i];
+
+		if (abs(curr_fps - fps) < abs(best_fps - fps)) {
+			best_fps = curr_fps;
+			rate = i;
+		}
+	}
+
+	fi->numerator = 1;
+	fi->denominator = best_fps;
+
+find_mode:
+	mode = gc0310_find_mode(gc0310, rate, width, height, false);
+	return mode ? rate : -EINVAL;
+}
+
+static int gc0310_enum_frame_interval(
+	struct v4l2_subdev *sd,
+	struct v4l2_subdev_pad_config *cfg,
+	struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct gc0310 *gc0310 = to_gc0310(sd);
+	struct v4l2_fract tpf;
+	int ret;
+
+	FUNC_DEBUG();
+
+	if (fie->pad != 0)
+		return -EINVAL;
+	if (fie->index >= GC0310_NUM_FRAMERATES)
+		return -EINVAL;
+
+	tpf.numerator = 1;
+	tpf.denominator = gc0310_framerates[fie->index];
+
+	ret = gc0310_try_frame_interval(gc0310, &tpf,
+					fie->width, fie->height);
+	if (ret < 0)
+		return -EINVAL;
+
+	DBG_INFO("%s, index: %d, numerator: %d, denominator = %d\n",
+		__FUNCTION__, fie->index, tpf.numerator, tpf.denominator);
+
+	fie->interval = tpf;
+	return 0;
+}
+
+static int gc0310_get_fmt(struct v4l2_subdev *sd,
+			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_format *format)
+{
+	struct gc0310 *gc0310 = to_gc0310(sd);
+	struct v4l2_mbus_framefmt *fmt;
+
+	if (format->pad != 0)
+		return -EINVAL;
+
+	mutex_lock(&gc0310->lock);
+
+#ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		fmt = v4l2_subdev_get_try_format(&gc0310->subdev, cfg,
+						 format->pad);
+	else
+		fmt = &gc0310->fmt;
+#else
+	fmt = &gc0310->fmt;
+#endif
+
+	format->format = *fmt;
+
+	mutex_unlock(&gc0310->lock);
+
+	return 0;
+}
+
+static int gc0310_try_fmt_internal(struct v4l2_subdev *sd,
+				   struct v4l2_mbus_framefmt *fmt,
+				   enum gc0310_frame_rate fr,
+				   const struct gc0310_mode_info **new_mode)
+{
+	struct gc0310 *gc0310 = to_gc0310(sd);
+	const struct gc0310_mode_info *mode;
+	int i;
+
+	FUNC_DEBUG();
+
+	mode = gc0310_find_mode(gc0310, fr, fmt->width, fmt->height, true);
+	if (!mode)
+		return -EINVAL;
+	fmt->width = mode->hact;
+	fmt->height = mode->vact;
+
+	if (new_mode)
+		*new_mode = mode;
+
+	for (i = 0; i < ARRAY_SIZE(gc0310_formats); i++)
+		if (gc0310_formats[i].code == fmt->code)
+			break;
+	if (i >= ARRAY_SIZE(gc0310_formats))
+		i = 0;
+
+	fmt->code = gc0310_formats[i].code;
+	fmt->colorspace = gc0310_formats[i].colorspace;
+	fmt->ycbcr_enc = V4L2_MAP_YCBCR_ENC_DEFAULT(fmt->colorspace);
+	fmt->quantization = V4L2_QUANTIZATION_FULL_RANGE;
+	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
+
+	DBG_INFO("%s, code: 0x%04x, width: %d, height: %d\n",
+		__FUNCTION__, fmt->code, fmt->width, fmt->height);
+
+	return 0;
+}
+
+static int gc0310_set_fmt(struct v4l2_subdev *sd,
+			  struct v4l2_subdev_pad_config *cfg,
+			  struct v4l2_subdev_format *format)
+{
+	struct gc0310 *gc0310 = to_gc0310(sd);
+	const struct gc0310_mode_info *new_mode;
+	struct v4l2_mbus_framefmt orig_fmt = gc0310->fmt;
+	struct v4l2_mbus_framefmt *mbus_fmt = &format->format;
+	struct v4l2_mbus_framefmt *fmt;
+	int ret;
+
+	FUNC_DEBUG();
+	DBG_INFO("%s, mbus_fmt code: 0x%04x, %dx%d\n",
+			__FUNCTION__, mbus_fmt->code, mbus_fmt->width, mbus_fmt->height);
+
+	if (format->pad != 0)
+		return -EINVAL;
+
+	mutex_lock(&gc0310->lock);
+
+	if (gc0310->streaming) {
+		ret = -EBUSY;
+		goto out;
+	}
+
+	ret = gc0310_try_fmt_internal(sd, mbus_fmt,
+				      gc0310->current_fr, &new_mode);
+	if (ret)
+		goto out;
+
+	DBG_INFO("%s, mbus_fmt->code: 0x%04x, gc0310->fmt.code: 0x%04x\n",
+			__FUNCTION__, mbus_fmt->code, gc0310->fmt.code);
+
+#ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
+	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
+		fmt = v4l2_subdev_get_try_format(sd, cfg, 0);
+	else
+		fmt = &gc0310->fmt;
+#else
+	fmt = &gc0310->fmt;
+#endif
+
+	*fmt = *mbus_fmt;
+
+	if (new_mode != gc0310->current_mode) {
+		gc0310->current_mode = new_mode;
+		gc0310->pending_mode_change = true;
+	}
+	if ((mbus_fmt->code != gc0310->fmt.code) ||
+		(orig_fmt.code != gc0310->fmt.code))
+		gc0310->pending_fmt_change = true;
+
+	DBG_INFO("%s, code: 0x%04x, pending_mode_change: %d, pending_fmt_change: %d\n",
+			__FUNCTION__, gc0310->fmt.code, gc0310->pending_mode_change,
+			gc0310->pending_fmt_change);
+
+out:
+	mutex_unlock(&gc0310->lock);
+	return ret;
+}
+
+static struct v4l2_subdev_pad_ops gc0310_subdev_pad_ops = {
+	.enum_mbus_code      = gc0310_enum_mbus_code,
+	.get_fmt             = gc0310_get_fmt,
+	.set_fmt             = gc0310_set_fmt,
+	.enum_frame_size     = gc0310_enum_frame_size,
+	.enum_frame_interval = gc0310_enum_frame_interval,
+};
+
 static struct v4l2_subdev_ops gc0310_subdev_ops = {
 	.video          = &gc0310_subdev_video_ops,
+	.pad            = &gc0310_subdev_pad_ops,
 };
 
 static int gc0310_check_sensor_id(struct gc0310 *gc0310, struct i2c_client *client)
@@ -485,17 +846,9 @@ static int gc0310_probe(struct i2c_client *client, const struct i2c_device_id *i
 		return -ENOMEM;
 	}
 
-#ifdef CONFIG_GC0310_YUY2
-	gc0310->sensor_data.mode = 1;
-	gc0310->sensor_data.fourcc = V4L2_PIX_FMT_YUYV;
-#else
-	gc0310->sensor_data.mode = 0;
-	gc0310->sensor_data.fourcc = V4L2_PIX_FMT_SRGGB8;
-#endif
-	gc0310->client = client;
-	gc0310->cur_mode = &supported_modes[gc0310->sensor_data.mode];
+	gc0310->i2c_client = client;
 
-	mutex_init(&gc0310->mutex);
+	mutex_init(&gc0310->lock);
 
 	sd = &gc0310->subdev;
 	v4l2_i2c_subdev_init(sd, client, &gc0310_subdev_ops);
@@ -517,8 +870,6 @@ static int gc0310_probe(struct i2c_client *client, const struct i2c_device_id *i
 		goto err_clean_entity;
 	}
 	DBG_INFO("Registered V4L2 sub-device successfully.\n");
-
-	v4l2_set_subdev_hostdata(sd, &gc0310->sensor_data);
 
 	return 0;
 
@@ -542,7 +893,7 @@ static int gc0310_remove(struct i2c_client *client)
 	media_entity_cleanup(&priv->subdev->entity);
 #endif
 	v4l2_ctrl_handler_free(&gc0310->ctrl_handler);
-	mutex_destroy(&gc0310->mutex);
+	mutex_destroy(&gc0310->lock);
 
 	return 0;
 }
