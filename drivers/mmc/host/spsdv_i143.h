@@ -32,6 +32,11 @@
 /* #define SPMMC_EMMC_VCCQ_1V8 */
 
 #define SPMMC_SUPPORT_VOLTAGE_1V8
+
+#ifdef SPMMC_SUPPORT_VOLTAGE_1V8
+#define HW_VOLTAGE_1V8
+#endif
+
 //#define SPMMC_SDIO_1V8
 
 struct spsdc_regs {

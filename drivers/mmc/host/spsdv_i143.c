@@ -735,7 +735,7 @@ static void spsdc_controller_init(struct spsdc_host *host)
 		value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
 		mdelay(20);
-		spsdc_txdummy(host, 32); 
+		spsdc_txdummy(host, 400); 
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
 		spsdc_pr(INFO, "use signal voltage 1.8V for SDIO\n");
 	}
@@ -835,17 +835,32 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct mmc_data *data;
 	struct mmc_command *cmd;
 	int ret = 0;
+	u32 value;
 
 	ret = mutex_lock_interruptible(&host->mrq_lock);
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
 
-//	if((cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
+//	if((host->mode == SPSDC_MODE_SD) && (cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
 	spsdc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0); 
 // 	}
 		 	
+#ifdef HW_VOLTAGE_1V8
+
+	value = readl(&host->base->sd_vol_ctrl);
+	value = bitfield_replace(value, SPSDC_vol_tmr_w02, 2, 3); /* 1ms timeout for 400K */
+
+    if(cmd->opcode == 11)
+		 value = bitfield_replace(value, SPSDC_hw_set_vol_w01, 1, 1);
+    else
+		 value = bitfield_replace(value, SPSDC_hw_set_vol_w01, 1, 0);    
+    
+	//spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));	
+	writel(value, &host->base->sd_vol_ctrl);
+	
+#endif		 	
 		 	
 	spsdc_prepare_cmd(host, cmd);
 	
@@ -939,20 +954,15 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 {
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
+	u32 i;
 
 	spsdc_pr(INFO, "start_signal_voltage_switch: host->voltage %d ios->voltage %d!\n",host->signal_voltage ,ios->signal_voltage);
 
 	if (host->signal_voltage == ios->signal_voltage){
 		
-		if(host->mode == SPSDC_MODE_SDIO){
-	/* we do not support switch signal voltage for eMMC at runtime at present */	
-			spsdc_txdummy(host, 120); 
-	
-		}else{
-			spsdc_txdummy(host, 32); 
-		}
-
+		spsdc_txdummy(host, 400); 
 		return 0;
+	
 	}
 
 	/* we do not support switch signal voltage for eMMC at runtime at present */
@@ -966,27 +976,17 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	}
 
 
-	value = readl(&host->base->sd_vol_ctrl);
-	//value = bitfield_replace(value, SPSDC_vol_tmr_w02, 2, 3); /* 1ms timeout for 400K */
-	//value = bitfield_replace(value, SPSDC_hw_set_vol_w01, 1, 1);
-	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
-	writel(value, &host->base->sd_vol_ctrl);
 
-	spsdc_pr(VERBOSE, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
-
-	mdelay(20);
+#ifdef HW_VOLTAGE_1V8
 	
-	if(host->mode == SPSDC_MODE_SDIO){
-        spsdc_txdummy(host, 120); 
-	}else{
-	spsdc_txdummy(host, 32); 
-	}
-	
+	mdelay(15);
+	value = readl(&host->base->sd_ctrl);
+	value = bitfield_replace(value, SPSDC_sdctrl1_w01, 1, 1); /* trigger tx dummy */
+	writel(value, &host->base->sd_ctrl);
 	mdelay(1);
 	
 	/* mmc layer has guaranteed that CMD11 had issued to SD card at
 	 * this time, so we can just continue to check the status. */
-	#if(0)
 	value = readl(&host->base->sd_vol_ctrl);
 	for(i=0 ; i<=10 ;) {
 		if (SPSDC_SWITCH_VOLTAGE_1V8_ERROR == value >> 4)
@@ -997,13 +997,29 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 			break;
 		if (value >> 4 == 0)
 			i++;
+	    //spsdc_pr(WARNING, "1V8 result %d\n",value >> 4);
 		spsdc_pr(INFO, "1V8 result %d\n",value >> 4);
 	}
 
 		spsdc_pr(INFO, "1V8 result out %d\n",value >> 4);
+	    //spsdc_pr(WARNING, "1V8 result out %d\n",value >> 4);
+
+#else
+
+
+	value = readl(&host->base->sd_vol_ctrl);
+	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
+	writel(value, &host->base->sd_vol_ctrl);
+	//spsdc_pr(VERBOSE, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
+	spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
+
+	mdelay(20);
+	spsdc_txdummy(host, 400); 
+	mdelay(1);
+
+
 	#endif
-	//value = bitfield_replace(value, SPSDC_hw_set_vol_w01, 1, 0);
-	//writel(value, &host->base->sd_vol_ctrl);
+
 	host->signal_voltage = ios->signal_voltage;
 	return 0;
 }
