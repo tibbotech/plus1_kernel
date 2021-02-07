@@ -24,6 +24,7 @@ subdir-y += renesas
 subdir-y += rockchip
 subdir-y += socionext
 subdir-y += sprd
+subdir-y += sunplus
 subdir-y += synaptics
 subdir-y += ti
 subdir-y += xilinx
