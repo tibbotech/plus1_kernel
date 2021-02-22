@@ -1360,7 +1360,7 @@ static struct resource sp_spinand_res[] = {
 };
 
 static struct platform_device sp_spinand_device = {
-	.name  = "sunplus,1645-spinand",
+	.name  = "sunplus,sunplus-q645-spinand",
 	.id    = 0,
 	.num_resources = ARRAY_SIZE(sp_spinand_res),
 	.resource  = sp_spinand_res,
@@ -1368,7 +1368,7 @@ static struct platform_device sp_spinand_device = {
 #endif
 
 static const struct of_device_id sunplus_nand_of_match[] = {
-	{ .compatible = "sunplus,q645-spinand" },
+	{ .compatible = "sunplus,sunplus-q645-spinand" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunplus_nand_of_match);

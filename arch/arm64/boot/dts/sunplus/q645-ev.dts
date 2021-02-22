@@ -570,7 +570,7 @@
 		};
 
 		spinand0: spinand@sp_spinand {
-			compatible = "sunplus,sp7021-spinand";
+			compatible = "sunplus,sunplus-q645-spinand";
 			reg = <0x0 0x9c002B80 0x0 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
@@ -583,7 +583,7 @@
 		};
 
 		bch0: bch@sp_bch {
-			compatible = "sunplus,sp7021-bch";
+			compatible = "sunplus,sunplus-q645-bch";
 			reg = <0x0 0x9c101000 0x0 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
