@@ -6,12 +6,13 @@
 //#define ENABLE_TTL_320X240
 //#define ENABLE_TTL_800X480
 //#define ENABLE_TTL_1024X600
+//#define ENABLE_TTL_1280X720
 
 / {
 	model = "SP7021/CA7/Ev";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
+		bootargs = "console=tty1 console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
 		stdout-path = "serial0:115200n8";
 	};
 
@@ -127,8 +128,41 @@
 	vfront-porch =<12>;
 	vsync-len = <3>;
 	ttl-rgb-swap = <0>;
-	ttl-clock-pol = <1>;
+	ttl-clock-pol = <0>;
 	ttl-vpp-adj = <26>;
+	ttl-osd-adj = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_lcdif>;
+	#endif
+
+	#ifdef ENABLE_TTL_1280X720
+	ui_width = <1280>;
+	ui_height = <720>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+
+	ttl-name = "HX8272-A-LT,3.97inchrgb,1280X720";
+	ttl-clock-freq = <59217600>;
+	ttl-clock-divm =<8>;
+	ttl-clock-divn =<39>;
+	hactive = <1280>;
+	hback-porch = <6>;
+	hfront-porch =<56>;
+	hsync-len = <12>;
+	vactive = <720>;
+	vback-porch = <4>;
+	vfront-porch =<6>;
+	vsync-len = <2>;
+	ttl-rgb-swap = <1>;
+	ttl-clock-pol = <0>;
+	ttl-vpp-adj = <0>;
 	ttl-osd-adj = <0>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_lcdif>;
@@ -138,50 +172,55 @@
 
 &spi_controller0 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spim0>;
+	cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi@0 {
 		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <5000000>;
 		reg = <0x0>;
 	};
-	status = "disabled";
 };
 
 &spi_controller1 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
+	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi@0 {
 		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <5000000>;
 		reg = <0x0>;
 	};
-	status = "disabled";
 };
 
 &spi_controller2 {
 	spi-max-frequency = <50000000>;
-	spi-cpha;
-	spi-cpol;
+	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi@0 {
 		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <25000000>;
+		spi-max-frequency = <5000000>;
 		reg = <0x0>;
 	};
-	status = "disabled";
 };
 
 &spi_controller3 {
 	spi-max-frequency = <50000000>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_spis3>;
 	spi-slave;
 	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi3: slave@ {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <5000000>;
+		reg = <0x0>;
+	};
 };
 
 &i2cm0 {
@@ -267,8 +306,11 @@
 &sp_spinor0 {
 	spi-max-frequency = <50000000>;
 	spi-chip-selection = <0>;
+	read-timing-selection = <1>;
+	write-timing-selection = <1>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&spi_flash2_mux &spi_fla4b2_mux>;
+/*
 	partitions {
 		compatible = "fixed-partitions";
 		#address-cells = <1>;
@@ -282,6 +324,7 @@
 			reg = <0x200000 0xdff000>;
 		};
 	};
+*/
 };
 
 &hdmitx {
@@ -337,11 +380,21 @@
 
 	pins_spim0: pins_spim0 {
 		sppctl,pins = <
-			SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_INT,0)
+			//SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_INT,0)
 			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_CLK,0)
-			SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
+			//SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
 			SPPCTL_IOPAD(11,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
-			SPPCTL_IOPAD(12,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
+			//SPPCTL_IOPAD(12,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
+		>;
+	};
+
+	pins_spis3: pins_spis3 {
+		sppctl,pins = <
+			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_INT,0)
+			SPPCTL_IOPAD(18,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_CLK,0)
+			SPPCTL_IOPAD(20,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_EN,0)
+			SPPCTL_IOPAD(22,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DO,0)
+			SPPCTL_IOPAD(24,SPPCTL_PCTL_G_PMUX,MUXF_SPI3S_DI,0)
 		>;
 	};
 
@@ -354,7 +407,7 @@
 	#endif
 		>;
 	};
-	
+
 	pins_uart4: pins_uart4 {
 		sppctl,pins = <
 			SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)

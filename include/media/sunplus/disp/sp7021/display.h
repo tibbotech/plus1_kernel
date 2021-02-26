@@ -8,6 +8,7 @@
 //#define TTL_MODE_SUPPORT
 //#define TTL_MODE_DTS
 //#define TTL_MODE_BIT_SWAP
+//#define TTL_MODE_1280_720
 //#define TTL_MODE_1024_600
 //#define TTL_MODE_800_480
 //#define TTL_MODE_320_240
