@@ -106,7 +106,7 @@ void DRV_DVE_Init(void *pInHWReg)
 	pDVEReg->g235_reserved[6] = 0x1062; //G235.12
 	pDVEReg->g235_reserved[7] = 0x1CC5; //G235.13
 	#else
-	//for TTL_MODE_320_240
+	//for TTL_MODE_320_240 or TTL_MODE_1280_720
 	dve_bist_mode =  (DVE_TTL_BIT_SW_OFF) \
 									|(DVE_TTL_MODE) \
 									|(DVE_COLOR_SPACE_BT601) \
@@ -161,7 +161,10 @@ void DRV_DVE_Init(void *pInHWReg)
 	pDVEReg->color_bar_h_total = USER_MODE_COLORBAR_HOR_TOTAL(htot-1);
 	pDVEReg->color_bar_h_active = USER_MODE_COLORBAR_HOR_ACTIVE(hac-1);	
 	#else
-	
+#ifdef TTL_MODE_1280_720
+	sp_disp_dbg("dve init 1280_720 \n");
+	//TBD
+#endif	
 #ifdef TTL_MODE_1024_600
 	sp_disp_dbg("dve init 1024_600 \n");
 	pDVEReg->dve_vsync_start_top = USER_MODE_VSYNC_TOP_START(0);

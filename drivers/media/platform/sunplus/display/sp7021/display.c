@@ -86,6 +86,10 @@
 #endif
 
 #ifdef TTL_MODE_SUPPORT
+	#ifdef TTL_MODE_1280_720
+		#define VPP_WIDTH	1280
+		#define VPP_HEIGHT	720
+	#endif
 	#ifdef TTL_MODE_1024_600
 		#define VPP_WIDTH	1024
 		#define VPP_HEIGHT	600
@@ -1657,6 +1661,13 @@ static void _debug_cmd(char *tmpbuf)
 				SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
 				SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
 	#else
+#ifdef TTL_MODE_1280_720
+				SetTGEN.htt = 1352;
+				SetTGEN.vtt = 730;
+				SetTGEN.v_bp = 24;//TBD
+				SetTGEN.hactive = 1280;
+				SetTGEN.vactive = 720;
+#endif
 #ifdef TTL_MODE_1024_600
 				SetTGEN.htt = 1344;
 				SetTGEN.vtt = 635;
@@ -1953,7 +1964,43 @@ ERROR:
 }
 
 #ifdef TTL_MODE_SUPPORT
-	#if ((VPP_WIDTH == 1024) && (VPP_HEIGHT == 600))
+	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
+		#if (VPP_FMT_TTL == 0) //YUV420_NV12
+		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_720x480.h"
+		};
+		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
+		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_NV16_720x480.h"
+		};
+		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
+		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_YUY2_720x480.h"
+		};
+		#else
+		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_720x480.h"
+		};
+		#endif
+	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
+		#if (VPP_FMT_TTL == 0) //YUV420_NV12
+		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_1280x720.h"
+		};
+		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
+		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_NV16_1280x720.h"
+		};	
+		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
+		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv422_YUY2_1280x720.h"
+		};
+		#else //YUV420_NV12
+		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+			#include "vpp_pattern/yuv420_NV12_1280x720.h"
+		};
+		#endif
+	#elif ((VPP_WIDTH == 1024) && (VPP_HEIGHT == 600))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
 		char vpp_yuv_array[1024*600*3/2] __attribute__((aligned(1024))) = {
 			#include "vpp_pattern/yuv420_NV12_1024x600.h"
@@ -2161,6 +2208,13 @@ static int _display_init_plltv(struct device *dev, struct sp_disp_device *disp_d
 	}
 	else {
 		sp_disp_info("ttl dts not exist!! \n");
+		#ifdef TTL_MODE_1280_720
+			//clk = 59.23M //(FVCO= (27/(M+1)) * (N+1) ) M=30,N=67
+			//clk = 59.19M //(FVCO= (27/(M+1)) * (N+1) ) M=25,N=56
+			//clk = 60.00M //(FVCO= (27/(M+1)) * (N+1) )/2 M=8,N=39
+			disp_dev->TTLPar.divm = 8;
+			disp_dev->TTLPar.divn = 39;
+		#endif		
 		#ifdef TTL_MODE_1024_600
 			//clk = 51M //(FVCO= (27/(M+1)) * (N+1) ) M=8,N=16
 			//clk = 51.55M //(FVCO= (27/(M+1)) * (N+1) ) M=10,N=20
@@ -2519,6 +2573,15 @@ static int sp_disp_set_output_resolution(struct sp_disp_device *disp_dev, int is
 					disp_dev->panelRes.width = (int)disp_dev->TTLPar.hactive;
 					disp_dev->panelRes.height = (int)disp_dev->TTLPar.vactive;
 			#else
+				#ifdef TTL_MODE_1280_720
+					SetTGEN.htt = 1352;
+					SetTGEN.vtt = 730;
+					SetTGEN.v_bp = 24;//TBD
+					SetTGEN.hactive = 1280;
+					SetTGEN.vactive = 720;
+					disp_dev->panelRes.width = 1280;
+					disp_dev->panelRes.height = 720;
+				#endif			
 				#ifdef TTL_MODE_1024_600
 					SetTGEN.htt = 1344;
 					SetTGEN.vtt = 635;
@@ -2715,6 +2778,9 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 		 				(int)(disp_dev->TTLPar.hactive), \
 		  				(int)(disp_dev->TTLPar.vactive));
 	#else
+	#ifdef TTL_MODE_1280_720
+		vpost_setting((1280-VPP_WIDTH)>>1, (720-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1280, 720);
+	#endif	
 	#ifdef TTL_MODE_1024_600
 		vpost_setting((1024-VPP_WIDTH)>>1, (600-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1024, 600);
 	#endif
@@ -2782,6 +2848,9 @@ void sp_disp_set_ttl_clk(void)
 		//with  formula ( FVCO = (27/(M+1)) * (N+1) )
 		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1);
 		G4[14] = 0x80020000; //don't bypass
+		#ifdef TTL_MODE_1280_720
+		G4[15] = 0x01800080; //FCKOUT=FVCO2
+		#endif
 		G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
 								((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 		G4[31] = 0x00300000; //clk no div
@@ -2885,6 +2954,9 @@ static int _display_probe(struct platform_device *pdev)
 		//with  formula ( FVCO = (27/(M+1)) * (N+1) )
 		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1);
 		G4[14] = 0x80020000; //don't bypass
+		#ifdef TTL_MODE_1280_720
+		G4[15] = 0x01800080; //FCKOUT=FVCO2
+		#endif
 		G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
 								((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 		G4[31] = 0x00300000; //clk no div
@@ -2900,6 +2972,14 @@ static int _display_probe(struct platform_device *pdev)
 	#else
 
 	//sp_disp_info(" use default ttl setting!! \n");
+	#ifdef TTL_MODE_1280_720
+		G4[14] = 0x80020000; //don't bypass
+		G4[15] = 0x01800080; //FCKOUT=FVCO2
+		//G4[16] = 0xFFFF1E43; //en pll , clk = 59.23M //(FVCO= (27/(M+1)) * (N+1) ) M=30,N=67
+		//G4[16] = 0xFFFF1938; //en pll , clk = 59.19M //(FVCO= (27/(M+1)) * (N+1) ) M=25,N=56
+		G4[16] = 0xFFFF0827; //en pll , clk = 59.19M //(FVCO= (13.5/(M+1)) * (N+1) ) M=8,N=39
+		G4[31] = 0x00300000; //clk no div
+	#endif
 	#ifdef TTL_MODE_1024_600
 		G4[14] = 0x80020000; //don't bypass
 		//G4[16] = 0xFFFF0810; //en pll , clk = 51M //(FVCO= (27/(M+1)) * (N+1) ) M=8,N=16
@@ -2964,8 +3044,10 @@ static int _display_probe(struct platform_device *pdev)
 	* L6: OSD0
 	*****************************************/
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
+	//DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Transparent, DRV_DMIX_VPP0);
 	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_AlphaBlend, DRV_DMIX_OSD0);
+	//DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_Transparent, DRV_DMIX_OSD0);
 
 #ifdef SP_DISP_V4L2_SUPPORT
 	ret = sp_disp_initialize(&pdev->dev, disp_dev);

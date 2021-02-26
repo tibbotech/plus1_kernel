@@ -72,6 +72,10 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 	pVPOSTReg->vpost_o_act_xstart = 0; //x active
 	pVPOSTReg->vpost_o_act_ystart = vpp_adj; //y active
 	#else
+#ifdef TTL_MODE_1280_720 //TBD
+	pVPOSTReg->vpost_o_act_xstart = 0; //x active
+	pVPOSTReg->vpost_o_act_ystart = 0; //y active
+#endif
 #ifdef TTL_MODE_1024_600
 	pVPOSTReg->vpost_o_act_xstart = 0; //x active
 	pVPOSTReg->vpost_o_act_ystart = 26; //y active
