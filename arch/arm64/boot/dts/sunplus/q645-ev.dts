@@ -10,7 +10,7 @@
 #include <dt-bindings/clock/sp-i143.h>
 #include <dt-bindings/reset/sp-i143.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/pinctrl/sppctl-i143.h>
+#include <dt-bindings/pinctrl/sppctl-q645.h>
 
 #define ENABLE_DMARX0
 #define ENABLE_DMARX1
@@ -23,8 +23,8 @@
 / {
 	#address-cells = <2>;
 	#size-cells = <2>;
-	model = "Sunplus I143";
-	compatible = "sunplus,sp-i143";
+	model = "Sunplus Q645";
+	compatible = "sunplus,sp-q645";
 
 	aliases {
 #ifdef ENABLE_DMARX0
@@ -43,7 +43,6 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
-		serial4 = &uart4;
 
 		sp_spi0 = &spi_controller0;
 
@@ -56,11 +55,11 @@
 		stdout-path = "serial0";
 	};
 
-	memory@a0000000 {
+	memory@00000000 {
 		device_type = "memory";
-		reg = <0x0 0xa0000000 0x0 0x20000000>; /* 512 MB */
-		//reg = <0x0 0xa0000000 0x0 0x08000000>; /* 128 MB */
-		//reg = <0x0 0xa0000000 0x0 0x04000000>; /* 64 MB */
+		reg = <0x0 0x00000000 0x0 0x20000000>; /* 512 MB */
+		//reg = <0x0 0x00000000 0x0 0x08000000>; /* 128 MB */
+		//reg = <0x0 0x00000000 0x0 0x04000000>; /* 64 MB */
 	};
 
 	clocks {
@@ -78,8 +77,8 @@
 		clkc: clkc@9c000054 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp-clkc";
-			reg = <0x0 0x9c000000 0x0 0x2c>, // G0.0 ~ G0.10
-				  <0x0 0x9c000200 0x0 0x80>; // G4
+			reg = <0x0 0xF8000000 0x0 0x2C>, // G0.0 ~ G0.10
+				  <0x0 0xF8000200 0x0 0x80>; // G4
 		};
 	};
 
@@ -216,7 +215,7 @@
 				&cpu2_intc 11 &cpu2_intc 9
 				&cpu3_intc 11 &cpu3_intc 9
 				&cpu4_intc 11 &cpu4_intc 9>;
-			reg = <0x0 0xc000000 0x0 0x4000000>;
+			reg = <0x0 0xC000000 0x0 0x4000000>;
 			reg-names = "control";
 			riscv,max-priority = <7>;
 			riscv,ndev = <226>;
@@ -232,8 +231,8 @@
 		intc: interrupt-controller@9c003500 {
 			compatible = "sunplus,sp-intc";
 			interrupt-controller;
-			reg = <0x0 0x9c003500 0x0 0x80>, // G106
-			      <0x0 0x9c003580 0x0 0x80>; // G107
+			reg = <0x0 0xF8003500 0x0 0x80>, // G106
+			      <0x0 0xF8003580 0x0 0x80>; // G107
 			#interrupt-cells = <2>;
 			interrupt-parent = <&plic0>;
 			interrupts = <2 7>; // 2,7 for core0
@@ -245,7 +244,7 @@
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c008980 0x0 0x40>;
+			reg = <0x0 0xF8008980 0x0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <93 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UADMA>, <&clkc PERI0>;
@@ -257,7 +256,7 @@
 #ifdef ENABLE_DMARX1
 		uartdmarx1: serial@sp_uartdmarx1 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c0089c0 0x0 0x40>;
+			reg = <0x0 0xF80089C0 0x0 0x40>;
 			interrupt-parent = <&intc>;
 			interrupts = <94 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UADMA>,	<&clkc PERI1>;
@@ -270,7 +269,7 @@
 		/* DMA Tx for UARTx */
 		uartdmatx0: serial@sp_uartdmatx0 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c008a00 0x0 0x40>, <0x0 0x9c008880 0x0 0x80>;
+			reg = <0x0 0xF8008A00 0x0 0x40>, <0x0 0xF8008880 0x0 0x80>;
 			clocks = <&clkc HWUA>, <&clkc PERI0>;
 			clock-names = "HWUA", "PERI0";
 			resets = <&rstc RST_HWUA>;
@@ -280,7 +279,7 @@
 #ifdef ENABLE_DMATX1
 		uartdmatx1: serial@sp_uartdmatx1 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c008a40 0x0 0x40>, <0x0 0x9c008900 0x0 0x80>;
+			reg = <0x0 0xF8008A40 0x0 0x40>, <0x0 0xF8008900 0x0 0x80>;
 			clocks = <&clkc HWUA>, <&clkc PERI1>;
 			clock-names = "HWUA", "PERI1";
 			resets = <&rstc RST_HWUA>;
@@ -289,7 +288,7 @@
 #endif
 		uart0: serial@sp_uart0 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000900 0x0 0x80>;
+			reg = <0x0 0xF8000900 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA0>;
@@ -300,7 +299,7 @@
 
 		uart1: serial@sp_uart1 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000980 0x0 0x80>;
+			reg = <0x0 0xF8000980 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <19 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA1>;
@@ -312,7 +311,7 @@
 
 		uart2: serial@sp_uart2 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000800 0x0 0x80>;
+			reg = <0x0 0xF8000800 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <20 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA2>;
@@ -324,7 +323,7 @@
 
 		uart3: serial@sp_uart3 {
 			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c000880 0x0 0x80>;
+			reg = <0x0 0xF8000880 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc UA3>;
@@ -334,19 +333,9 @@
 			status = "disabled";
 		};
 
-		uart4: serial@sp_uart4 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x0 0x9c008780 0x0 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA4>;
-			resets = <&rstc RST_UA4>;
-			status = "disabled";
-		};
-
 		spi_controller0: spi@sp_spi_controller0 {
 			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x0 0x9C002D80 0x0 0x80>, <0x0 0x9C002E00 0x0 0x80>;
+			reg = <0x0 0xF8002D80 0x0 0x80>, <0x0 0xF8002E00 0x0 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
@@ -363,17 +352,31 @@
 			status = "disabled";
 		};
 
+		i2cm0: i2c@sp_i2cm0 {
+			compatible = "sunplus,sp7021-i2cm";
+			reg = <0x0 0xF8004600 0x0 0x80>, <0x0 0xF8004680 0x0 0x80>;
+			reg-names = "i2cm", "i2cmdma";
+			interrupt-parent = <&intc>;
+			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc I2CM0>;
+			resets = <&rstc RST_I2CM0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2cm0_pins>;
+			clock-frequency = <100000>;
+			status = "disabled";
+		};
+
 		rstc: reset@9c000054 {
 			compatible = "sunplus,sp-reset";
 			#reset-cells = <1>;
-			reg = <0x0 0x9c000054 0x0 0x28>; // G0.21 ~ G0.30
+			reg = <0x0 0xF8000054 0x0 0x28>; // G0.21 ~ G0.30
 			reg-names = "reset";
 		};
 
 #if 0 // for sp-intc & sp-ipc test
 		ipc_test: ipc_test@G258 {
 			compatible = "sunplus,sp-ipc-test";
-			reg = <0x0 0x9c008100 0x0 0x100>; /* G258 ~ G259 */
+			reg = <0x0 0xF8008100 0x0 0x100>; /* G258 ~ G259 */
 			interrupt-parent = <&intc>;
 			interrupts =
 				<2 IRQ_TYPE_EDGE_RISING>, /* U54_DIRECT_INT0 */
@@ -397,9 +400,9 @@
 		};
 #endif
 
-		otp: otp@0x9C00AF00 {
+		otp: otp@0xF800AF00 {
 			compatible = "sunplus,sp7021-ocotp";
-			reg = <0x0 0x9C00AF00 0x0 0x34>, <0x0 0x9C00AF80 0x0 0x58>;
+			reg = <0x0 0xF800AF00 0x0 0x34>, <0x0 0xF800AF80 0x0 0x58>;
 			reg-names = "hb_gpio", "otprx";
 			clocks = <&clkc OTPRX>;
 			resets = <&rstc RST_OTPRX>;
@@ -410,8 +413,8 @@
 		};
 
 		mmc0: mmc@emmc {
-			compatible = "sunplus,i143-emmc";
-			reg = <0x0 0x9c003b00 0x0 0x180>;
+			compatible = "sunplus,q645-emmc";
+			reg = <0x0 0xF8003B00 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL0>;
@@ -430,8 +433,8 @@
 		};
 
 		mmc1: mmc@sdcard {
-			compatible = "sunplus,i143-card1";
-			reg = <0x0 0x9c003e80 0x0 0x180>;
+			compatible = "sunplus,q645-card1";
+			reg = <0x0 0xF8003E80 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <12 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
@@ -449,8 +452,8 @@
 		};
 
 		sdio: sdio@sdcard {
-			compatible = "sunplus,i143-sdio";
-			reg = <0x0 0x9c008400 0x0 0x180>;
+			compatible = "sunplus,q645-sdio";
+			reg = <0x0 0xF8008400 0x0 0x180>;
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
@@ -472,7 +475,7 @@
 		#if 0
 		ipc: ipc@G258 {
 			compatible = "sunplus,sp7021-ipc";
-			reg = <0x0 0x9c008100 0x0 0x100>; /* G258 ~ G259 */
+			reg = <0x0 0xF8008100 0x0 0x100>; /* G258 ~ G259 */
 			interrupt-parent = <&intc>;
 			interrupts =
 				<2 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_U54 CPU1_DIRECT_INT0 */
@@ -496,50 +499,50 @@
 		};
 		#endif
 
-		sp_uphy0: uphy@0x9C004A80 {
-			compatible = "sunplus,i143-usb-phy0";
+		sp_uphy0: uphy@0xF8004A80 {
+			compatible = "sunplus,q645-usb-phy0";
 			clocks = <&clkc UPHY0>;
 			resets = <&rstc RST_UPHY0>;
-			reg = <0x0 0x9C004A80 0x0 0x80>, <0x0 0x9C000000 0x0 0x80>, <0x0 0x9C000200 0x0 0x80>, <0x0 0x9C000280 0x0 0x80>;
+			reg = <0x0 0xF8004A80 0x0 0x80>, <0x0 0xF8000000 0x0 0x80>, <0x0 0xF8000200 0x0 0x80>, <0x0 0xF8000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <29 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
-		sp_ehci0: usb@0x9C102100 {
-			compatible = "sunplus,sunplus-i143-usb-ehci0";
+		sp_ehci0: usb@0xF8102100 {
+			compatible = "sunplus,sunplus-q645-usb-ehci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x0 0x9C102100 0x0 0x68>;
+			reg = <0x0 0xF8102100 0x0 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <27 IRQ_TYPE_LEVEL_HIGH>;
 			tpl-support;
 			status = "disabled";
 		};
 
-		sp_ohci0: usb@0x9C102080 {
-			compatible = "sunplus,sunplus-i143-usb-ohci0";
+		sp_ohci0: usb@0xF8102080 {
+			compatible = "sunplus,sunplus-q645-usb-ohci0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x0 0x9C102080 0x0 0x68>, <0x0 0x9C000000 0x0 0x80>;
+			reg = <0x0 0xF8102080 0x0 0x68>, <0x0 0xF8000000 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
-		sp_udc0: usb@0x9c102800 {
-			compatible = "sunplus,i143-usb-udc0";
+		sp_udc0: usb@0xF8102800 {
+			compatible = "sunplus,q645-usb-udc0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x0 0x9c102800 0x0 0x284>, <0x0 0x9c000280 0x0 0x80>;
+			reg = <0x0 0xF8102800 0x0 0x284>, <0x0 0xF8000280 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <26 IRQ_TYPE_LEVEL_HIGH>;
 			status = "disabled";
 		};
 
-		sp_otg0: usb@0x9c102400 {
-			compatible = "sunplus,i143-usb-otg0";
-			reg = <0x0 0x9c102400 0x0 0x70>, <0x0 0x9c102880 0x0 0x80>, <0x0 0x9c000200 0x0 0x80>;
+		sp_otg0: usb@0xF8102400 {
+			compatible = "sunplus,q645-usb-otg0";
+			reg = <0x0 0xF8102400 0x0 0x70>, <0x0 0xF8102880 0x0 0x80>, <0x0 0xF8000200 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <35 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
@@ -548,14 +551,14 @@
 		};
 
                 usb_dwc3 {
-			compatible = "sunplus,i143-dwusb3";
+			compatible = "sunplus,q645-dwusb3";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
 
 			usbdrd_dwc3: dwc3@9c040000 {
 				compatible = "synopsys,dwc3";
-				reg = <0x0 0x9c040000 0x0 0xe000>;
+				reg = <0x0 0xF8040000 0x0 0xE000>;
 				clocks = <&clkc USB30C>, <&clkc USB30C>, <&clkc USB30C>;
 			        clock-names = "ref","bus_early","suspend";
 				resets = <&rstc RST_USB30C>;
@@ -571,7 +574,7 @@
 
 		spinand0: spinand@sp_spinand {
 			compatible = "sunplus,sunplus-q645-spinand";
-			reg = <0x0 0x9c002B80 0x0 0x50>;
+			reg = <0x0 0xF8002B80 0x0 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			linux,part-probe = "ofpart", "sunplus_part";
@@ -584,7 +587,7 @@
 
 		bch0: bch@sp_bch {
 			compatible = "sunplus,sunplus-q645-bch";
-			reg = <0x0 0x9c101000 0x0 0x20>;
+			reg = <0x0 0xF8101000 0x0 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
 			//clocks = <&clkc BCH>;
@@ -594,7 +597,7 @@
 
                 sp_spinor0: spinor@9C000B00 {
 			compatible = "sunplus,sp-spi-nor";
-			reg = <0x0 0x9C000B00 0x0 0x80>,<0x0 0x9c000080 0x0 0x80>;
+			reg = <0x0 0xF8000B00 0x0 0x80>,<0x0 0xF8000080 0x0 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <48 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;
@@ -609,11 +612,11 @@
 		};
 
 		axi: axi@sp_axi {
-			compatible = "sunplus,i143-axi";
-			reg = <0x0 0x9c012B80 0x0 0x80>, <0x0 0x9c012C00 0x0 0x80>, <0x0 0x9c012C80 0x0 0x80>,
-			      <0x0 0x9c012D00 0x0 0x80>, <0x0 0x9c012D80 0x0 0x80>, <0x0 0x9c012E00 0x0 0x80>,
-			      <0x0 0x9c012E80 0x0 0x80>, <0x0 0x9c012F00 0x0 0x80>, <0x0 0x9c012F80 0x0 0x80>,
-			      <0x0 0x9c013000 0x0 0x80>, <0x0 0x9c013080 0x0 0x80>, <0x0 0x9c000700 0x0 0x80>;
+			compatible = "sunplus,q645-axi";
+			reg = <0x0 0xF8012B80 0x0 0x80>, <0x0 0xF8012C00 0x0 0x80>, <0x0 0xF8012C80 0x0 0x80>,
+			      <0x0 0xF8012D00 0x0 0x80>, <0x0 0xF8012D80 0x0 0x80>, <0x0 0xF8012E00 0x0 0x80>,
+			      <0x0 0xF8012E80 0x0 0x80>, <0x0 0xF8012F00 0x0 0x80>, <0x0 0xF8012F80 0x0 0x80>,
+			      <0x0 0xF8013000 0x0 0x80>, <0x0 0xF8013080 0x0 0x80>, <0x0 0xF8000700 0x0 0x80>;
 			reg-names = "axi_mon", "axi_0", "axi_1",
 			            "axi_2", "axi_3", "axi_4",
 			            "axi_5", "axi_6", "axi_7",
@@ -625,13 +628,13 @@
 			status = "disabled";
 		};
 
-		pctl: pctl@0x9C000100 {
-			compatible = "sunplus,i143-pctl";
-			reg = <0x0 0x9C000100 0x0 0x100>,
-			      <0x0 0x9C000300 0x0 0x80>,
-			      <0x0 0x9C000380 0x0 0x80>,
-			      <0x0 0x9C0032e4 0x0 0x1C>,
-			      <0x0 0x9C000080 0x0 0x20>;
+		pctl: pctl@0xF8000100 {
+			compatible = "sunplus,q645-pctl";
+			reg = <0x0 0xF8000100 0x0 0x100>,
+			      <0x0 0xF8000300 0x0 0x80>,
+			      <0x0 0xF8000380 0x0 0x80>,
+			      <0x0 0xF80032E4 0x0 0x1C>,
+			      <0x0 0xF8000080 0x0 0x20>;
 			gpio-controller;
 			#gpio-cells = <2>;
 
@@ -656,8 +659,8 @@
 			};
 
 			sp_spi0_pins: pinmux_sp_spi0_pins {
-				sppctl,groups = "SPI0";
-				sppctl,function = "SPI0";
+				sppctl,groups = "SPI_MASTER0";
+				sppctl,function = "SPI_MASTER0";
 			};
 
 			emmc_pins: pinmux_emmc_pins {
@@ -668,7 +671,7 @@
 			sdcard_pins: pinmux_sdcard_pins {
 				sppctl,groups = "SD_CARD";
 				sppctl,function = "SD_CARD";
-				sppctl,pins = <SPPCTL_IOPAD(54,SPPCTL_PCTL_G_GPIO,0,0) >;
+				sppctl,pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
 			};
 
 			sdio_pins: pinmux_sdio_pins {
@@ -687,8 +690,14 @@
 			};
 
 			spi_nor_pins: spi_nor_pins_pins {
-				sppctl,groups = "SPI_FLASH1";
+				sppctl,groups = "SPI_FLASH";
 				sppctl,function = "SPI_FLASH";
+			};
+
+			i2cm0_pins: i2cm0_pins {
+				sppctl,groups = "I2C_MASTER0";
+				sppctl,function = "I2C_MASTER0";
+
 			};
 		};
 	};
