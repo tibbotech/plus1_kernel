@@ -71,12 +71,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spis3>;
 	spi-slave;
-	#address-cells = <1>;
+	#address-cells = <0>;
 	#size-cells = <0>;
-	spi3: slave@ {
+	spi3: slave@0 {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <5000000>;
-		reg = <0x0>;
+		//reg = <0x0>;
+		status = "disabled";
 	};
 };
 

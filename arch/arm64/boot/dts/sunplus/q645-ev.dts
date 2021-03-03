@@ -46,6 +46,8 @@
 
 		sp_spi0 = &spi_controller0;
 
+		i2c0 = &i2cm0;
+
 		spi0 = &sp_spinor0;
 	};
 
