@@ -3044,10 +3044,12 @@ static int _display_probe(struct platform_device *pdev)
 	* L6: OSD0
 	*****************************************/
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
-	//DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
-	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Transparent, DRV_DMIX_VPP0);
+	#ifdef TTL_MODE_1280_720
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_AlphaBlend, DRV_DMIX_VPP0);
+	#else
+	DRV_DMIX_Layer_Init(DRV_DMIX_L1, DRV_DMIX_Opacity, DRV_DMIX_VPP0);
+	#endif
 	DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_AlphaBlend, DRV_DMIX_OSD0);
-	//DRV_DMIX_Layer_Init(DRV_DMIX_L6, DRV_DMIX_Transparent, DRV_DMIX_OSD0);
 
 #ifdef SP_DISP_V4L2_SUPPORT
 	ret = sp_disp_initialize(&pdev->dev, disp_dev);
