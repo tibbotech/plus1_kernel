@@ -22,6 +22,8 @@
 #define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
 #ifdef CONFIG_PINCTRL_SPPCTL
 #define M_NAM "SP7021 PinCtl"
+#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+#define M_NAM "Q645 PinCtl"
 #else
 #define M_NAM "I143 PinCtl"
 #endif
@@ -51,6 +53,8 @@
 #include <linux/pinctrl/pinconf-generic.h>
 #ifdef CONFIG_PINCTRL_SPPCTL
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
+#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+#include <dt-bindings/pinctrl/sppctl-q645.h>
 #else
 #include <dt-bindings/pinctrl/sppctl-i143.h>
 #endif

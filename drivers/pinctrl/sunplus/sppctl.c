@@ -267,6 +267,8 @@ static int sppctl_ddel(struct platform_device *_pd)
 static const struct of_device_id sppctl_dt_ids[] = {
 #ifdef CONFIG_PINCTRL_SPPCTL
 	{ .compatible = "sunplus,sp7021-pctl" },
+#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+	{ .compatible = "sunplus,q645-pctl" },
 #else
 	{ .compatible = "sunplus,i143-pctl" },
 #endif
