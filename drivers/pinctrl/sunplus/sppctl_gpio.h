@@ -41,6 +41,9 @@
 #ifdef CONFIG_PINCTRL_SPPCTL
 #define MNAME "sp7021_gpio"
 #define M_NAM "SP7021 GPIO"
+#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
+#define MNAME "q645_gpio"
+#define M_NAM "Q645 GPIO"
 #else
 #define MNAME "i143_gpio"
 #define M_NAM "I143 GPIO"

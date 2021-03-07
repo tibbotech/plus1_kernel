@@ -203,6 +203,8 @@ int sppctl_gpio_del(struct platform_device *_pd, void *_datap)
 static const struct of_device_id sppctl_gpio_of_match[] = {
 #ifdef CONFIG_PINCTRL_SPPCTL
 	{ .compatible = "sunplus,sp7021-gpio" },
+#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+	{ .compatible = "sunplus,q645-gpio" },
 #else
 	{ .compatible = "sunplus,i143-gpio" },
 #endif
