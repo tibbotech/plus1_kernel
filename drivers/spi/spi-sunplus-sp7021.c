@@ -21,6 +21,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/delay.h>
 //#include <dt-bindings/pinctrl/sp7021.h>
 
 #define SLAVE_INT_IN
@@ -535,6 +536,48 @@ static void spspi_prep_transfer( struct spi_controller *_c, struct spi_device *_
 	DBG_INF( "pspim->data_unit %d unit", pspim->data_unit);
 }
 
+static void spspi_delay_ns( u32 _ns) {
+	if ( !_ns) return;
+	if ( _ns <= 1000) ndelay( _ns);
+	else {
+		u32 us = DIV_ROUND_UP( _ns, 1000);
+		if ( us <= 10) udelay( us);
+		else usleep_range( us, us + DIV_ROUND_UP( us, 10));
+	}
+}
+
+static void spspi_cs_change_delay( struct spi_message *_m, struct spi_transfer *_x) {
+	u32 delay = _x->cs_change_delay;
+	u32 unit = _x->cs_change_delay_unit;
+	u32 hz;
+
+	/* return early on "fast" mode - for everything but USECS */
+	if ( !delay && unit != SPI_DELAY_UNIT_USECS) return;
+
+	switch ( unit) {
+	case SPI_DELAY_UNIT_USECS:
+		/* for compatibility use default of 10us */
+		if ( !delay) delay = 10000;
+		else delay *= 1000;
+		break;
+	case SPI_DELAY_UNIT_NSECS: /* nothing to do here */
+		break;
+	case SPI_DELAY_UNIT_SCK:
+		/* if there is no effective speed know, then approximate
+		 * by underestimating with half the requested hz
+		 */
+		hz = _x->effective_speed_hz ?: _x->speed_hz / 2;
+		delay *= DIV_ROUND_UP(1000000000, hz);
+		break;
+	default:
+		dev_err_once( &_m->spi->dev,
+			     "Use of unsupported delay unit %i, using default of 10us\n",
+			     _x->cs_change_delay_unit);
+		delay = 10000;
+	}
+	/* now sleep for the requested amount of time */
+	spspi_delay_ns( delay);
+}
 
 // called from *transfer* functions, set clock there
 static void pentagram_spi_setup_transfer( struct spi_device *_s, struct spi_controller *_c, struct spi_transfer *_t)
@@ -1008,6 +1051,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 	bool start_xfer = false;
 	struct spi_transfer *xfer,*first_xfer = NULL;
 	int ret;
+	bool keep_cs = false;
 
 	FUNC_DBG();
 
@@ -1032,11 +1076,11 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 			break;
 		}
 		/* CS will be deasserted directly after transfer */
-		if ( xfer->delay_usecs) {
-			DBG_ERR( "can't keep CS asserted after transfer");
-			ret = -EINVAL;
-			break;
-		}
+//		if ( xfer->delay_usecs) {
+//			DBG_ERR( "can't keep CS asserted after transfer");
+//			ret = -EINVAL;
+//			break;
+//		}
 		if ( xfer->len > SPI_MSG_DATA_SIZE) {
 			DBG_ERR( "over total transfer length xfer->len = %d",xfer->len);
 			ret = -EINVAL;
@@ -1068,6 +1112,16 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		}
 
 		if (total_len > SPI_TRANS_DATA_SIZE) ret = pentagram_spi_master_transfer(ctlr,spi, xfer);
+		
+		if ( xfer->delay_usecs) spspi_delay_ns( xfer->delay_usecs * 1000);
+		if ( xfer->cs_change) {
+			if ( list_is_last( &xfer->transfer_list, &m->transfers)) keep_cs = true;
+			else {
+				pentagram_set_cs( spi, false);
+				spspi_cs_change_delay( m, xfer);
+				pentagram_set_cs( spi, true);
+			}
+		}
 
 		m->actual_length += total_len;
 
@@ -1077,7 +1131,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		start_xfer = false;
 	}
 
-	pentagram_set_cs( spi, false);
+	if ( ret != 0 || !keep_cs) pentagram_set_cs( spi, false);
 	m->status = ret;
 	spi_finalize_current_message(ctlr);
 
