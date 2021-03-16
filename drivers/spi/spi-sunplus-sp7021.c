@@ -475,6 +475,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	SPI_MAS* sr = ( SPI_MAS *)pspim->mas_base;
 	u32 fd_status = 0;
 	unsigned int tx_len, rx_cnt, tx_cnt;
+	bool isrdone = false;
 
 	FUNC_DBG();
 
@@ -484,15 +485,14 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	tx_cnt = GET_TX_CNT( fd_status);
 	tx_len = GET_TX_LEN( fd_status);
 
+	if ( ( fd_status & TX_EMP_FLAG) && ( fd_status & RX_EMP_FLAG) || (tx_len == 0)) goto fin_irq;
+
 	if ( fd_status & FINISH_FLAG) DBG_INF( "FINISH_FLAG");
 	if ( fd_status & TX_EMP_FLAG) DBG_INF( "TX_EMP_FLAG");
-	if ( fd_status & RX_FULL_FLAG){
-		// RX_FULL_FLAG means RX buffer is full (16 bytes)
-		rx_cnt = pspim->data_unit;
-		DBG_INF( "RX_FULL_FLAG");
-	}else{
-		rx_cnt = GET_RX_CNT(fd_status);
-	}
+	if ( fd_status & RX_FULL_FLAG) DBG_INF( "RX_FULL_FLAG");
+	rx_cnt = GET_RX_CNT( fd_status);
+	// RX_FULL_FLAG means RX buffer is full (16 bytes)
+	if ( fd_status & RX_FULL_FLAG) rx_cnt = pspim->data_unit;
 
 	tx_cnt = min( tx_len - pspim->tx_cur_len,pspim->data_unit - tx_cnt);
 
@@ -514,15 +514,13 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 		    }	
 		    if ( rx_cnt > 0) sp7021spi_rb( pspim, rx_cnt);
 		}
-	
 		writel( readl( &sr->SPI_INT_BUSY) | CLEAR_MASTER_INT, &sr->SPI_INT_BUSY);
-		spin_unlock_irqrestore(&pspim->lock, flags);
-		complete(&pspim->isr_done);
-		DBG_INF( "end irq");
-	}else {
-		spin_unlock_irqrestore(&pspim->lock, flags);
-		DBG_INF( "return irq");		
+		isrdone = true;
 	}
+	fin_irq:
+	if ( isrdone) complete(&pspim->isr_done);
+	spin_unlock_irqrestore(&pspim->lock, flags);
+	DBG_INF( "handled irq %d", isrdone);
 	return IRQ_HANDLED;
 }
 
