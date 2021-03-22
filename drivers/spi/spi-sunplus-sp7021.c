@@ -485,7 +485,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	tx_cnt = GET_TX_CNT( fd_status);
 	tx_len = GET_TX_LEN( fd_status);
 
-	if ( ( fd_status & TX_EMP_FLAG) && ( fd_status & RX_EMP_FLAG) || (tx_len == 0)) goto fin_irq;
+	if ( ( fd_status & TX_EMP_FLAG) && ( fd_status & RX_EMP_FLAG) || (GET_LEN(fd_status) == 0)) goto fin_irq;
 
 	if ( fd_status & FINISH_FLAG) DBG_INF( "FINISH_FLAG");
 	if ( fd_status & TX_EMP_FLAG) DBG_INF( "TX_EMP_FLAG");
