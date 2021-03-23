@@ -174,7 +174,7 @@
 	spi-max-frequency = <50000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spim0>;
-	cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH>;
+	cs-gpios = <&pctl 40 GPIO_ACTIVE_HIGH>;
 	#address-cells = <1>;
 	#size-cells = <0>;
 	spi@0 {
@@ -381,9 +381,9 @@
 	pins_spim0: pins_spim0 {
 		sppctl,pins = <
 			//SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_INT,0)
-			SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_CLK,0)
+			SPPCTL_IOPAD(41,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_CLK,0)
 			//SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
-			SPPCTL_IOPAD(11,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
+			SPPCTL_IOPAD(42,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
 			//SPPCTL_IOPAD(12,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
 		>;
 	};
