@@ -28,6 +28,10 @@
 #include <dt-bindings/reset/sp-q628.h>
 #elif defined(CONFIG_SOC_I143)
 #include <dt-bindings/reset/sp-i143.h>
+#elif defined(CONFIG_SOC_Q645)
+#include <dt-bindings/clock/sp-q645.h>
+#define RST_SYSTEM	SYSTEM
+#define RST_MAX		CLK_MAX
 #endif
 
 #define BITASSERT(id, val)          ((1 << (16 + id)) | (val << id))
