@@ -57,6 +57,7 @@ obj-$(CONFIG_COMMON_CLK_SI544)		+= clk-si544.o
 obj-$(CONFIG_COMMON_CLK_SI570)		+= clk-si570.o
 obj-$(CONFIG_COMMON_CLK_SP7021)		+= clk-sp-q628.o
 obj-$(CONFIG_COMMON_CLK_SP_I143)	+= clk-sp-i143.o
+obj-$(CONFIG_COMMON_CLK_SP_Q645)	+= clk-sp-q645.o
 obj-$(CONFIG_COMMON_CLK_STM32F)		+= clk-stm32f4.o
 obj-$(CONFIG_COMMON_CLK_STM32H7)	+= clk-stm32h7.o
 obj-$(CONFIG_COMMON_CLK_STM32MP157)	+= clk-stm32mp1.o

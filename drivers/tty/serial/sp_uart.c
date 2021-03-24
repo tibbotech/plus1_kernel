@@ -68,6 +68,9 @@
 #ifdef CONFIG_SOC_I143
 #define CLK_HIGH_UART			202500000
 #define UART_RATIO			29
+#elif defined(CONFIG_SOC_Q645)
+#define CLK_HIGH_UART			32000000
+#define UART_RATIO			17
 #else
 #define CLK_HIGH_UART			202500000
 #define UART_RATIO			232
@@ -1256,13 +1259,13 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
 	 * For real chip, the baudrate is 115200.
 	 * */
-	//if (baud == 921600) {
+	if (baud == 921600) {
 		/* Don't change port->uartclk to CLK_HIGH_UART, keep the value of lower clk src */
-		//clk = CLK_HIGH_UART;
-		//baud = clk / UART_RATIO;
-	//} else {
+		clk = CLK_HIGH_UART;
+		baud = clk / UART_RATIO;
+	} else {
 		clk = port->uartclk;
-	//}
+	}
 
 	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
 	while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
