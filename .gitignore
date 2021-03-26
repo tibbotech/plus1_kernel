@@ -149,3 +149,6 @@ x509.genkey
 
 # Clang's compilation database file
 /compile_commands.json
+
+drivers/media/platform/sunplus/videocodec/*.c
+drivers/media/platform/sunplus/videocodec/*.h
