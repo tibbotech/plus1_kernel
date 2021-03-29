@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/sp-q645.h>
+#include <dt-bindings/pinctrl/sppctl-q645.h>
 
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
 #define RTCCLK_FREQ             27000000
@@ -21,6 +22,7 @@
 
 	aliases {
 		serial0 = &uart0;
+		spi0 = &sp_spinor0;
 	};
 
 	chosen {
@@ -171,20 +173,57 @@
 		clocks = <&extclk>;
 		resets = <&rstc UA0>;
 	};
-	
+
 	sp_spinor0: spinor@0xF8000B00 {
 			compatible = "sunplus,q645-spi-nor";
-			reg = <0x0 0xF8000B00 0x0 0x80>,<0x0 0xF8000080 0x0 0x80>;
+			reg = <0x0 0xF8000B00 0x0 0x80>, <0x0 0xF8000080 0x0 0x80>;
 			//interrupt-parent = <&intc>;
 			//interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
 			//clocks = <&clkc SPIFL>;
 			//resets = <&rstc RST_SPIFL>;
-			//pinctrl-names = "default";
-			//pinctrl-0 = <&spi_nor_pins>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi_nor_pins>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
 			read-timing-selection = <1>;
 			write-timing-selection = <0>;
 			status = "disabled";
+	};
+
+	pctl: pctl@0xF8000100 {
+		compatible = "sunplus,q645-pctl";
+		reg = <0x0 0xF8000100 0x0 0x100>,
+		      <0x0 0xF8000300 0x0 0x80>,
+		      <0x0 0xF8000380 0x0 0x80>,
+		      <0x0 0xF80032e4 0x0 0x1C>,
+		      <0x0 0xF8000080 0x0 0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		uart0_pins: pinmux_uart0_pins {
+			sppctl,groups = "UART0";
+			sppctl,function = "UART0";
+		};
+
+		emmc_pins: pinmux_emmc_pins {
+			sppctl,groups = "CARD0_EMMC";
+			sppctl,function = "CARD0_EMMC";
+		};
+
+		sdcard_pins: pinmux_sdcard_pins {
+			sppctl,groups = "SD_CARD";
+			sppctl,function = "SD_CARD";
+			sppctl,pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
+		};
+
+		sdio_pins: pinmux_sdio_pins {
+			sppctl,groups = "SDIO";
+			sppctl,function = "SDIO";
+		};
+
+		spi_nor_pins: pinmux_spi_nor_pins {
+			sppctl,groups = "SPI_FLASH";
+			sppctl,function = "SPI_FLASH";
+		};
 	};
 };

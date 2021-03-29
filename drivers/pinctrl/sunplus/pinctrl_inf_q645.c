@@ -219,8 +219,8 @@ func_t list_funcs[] = {
 	FNCE("SDIO",            fOFF_G, 1, 4, 1, q645grps_sdio30),
 	FNCE("UART0",           fOFF_G, 1, 5, 1, q645grps_uart0),
 	FNCE("UART1",           fOFF_G, 1, 6, 1, q645grps_uart1),
-	FNCE("UART2",           fOFF_G, 1, 9, 1, q645grps_uart2),  // TO BE CONFIRMED
-	FNCE("UART3",           fOFF_G, 1,10, 1, q645grps_uart3),  // TO BE CONFIRMED
+	FNCE("UART2",           fOFF_G, 1, 7, 1, q645grps_uart2),
+	FNCE("UART3",           fOFF_G, 1, 8, 1, q645grps_uart3),
 
 	FNCE("INT0",            fOFF_G, 2, 0, 3, q645grps_int0),
 	FNCE("INT1",            fOFF_G, 2, 3, 3, q645grps_int1),
