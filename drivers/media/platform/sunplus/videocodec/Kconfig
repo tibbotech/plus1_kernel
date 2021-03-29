@@ -1,0 +1,24 @@
+config VIDEO_HANTRO_DECODER
+	tristate "HANTRO VC8000D video decoder driver"
+	default n
+	---help---
+		Support for the hardware decoder driver.
+
+config VIDEO_HANTRO_ENCODER
+	tristate "HANTRO VC8000D video encoder driver"
+	default n
+	---help---
+		Support for the hardware encoder driver.
+
+config VIDEO_HANTRO_DECODER_MEM
+	tristate "HANTRO VC8000E video decoder memory driver"
+	default n
+	---help---
+		Support for the hardware decoder memory driver.
+
+config VIDEO_HANTRO_ENCODER_MEM
+	tristate "HANTRO VC8000E video encoder memory driver"
+	default n
+	---help---
+		Support for the hardware encoder memory driver.
+

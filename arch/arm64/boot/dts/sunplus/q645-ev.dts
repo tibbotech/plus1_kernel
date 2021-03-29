@@ -171,4 +171,20 @@
 		clocks = <&extclk>;
 		resets = <&rstc UA0>;
 	};
+	
+	sp_spinor0: spinor@0xF8000B00 {
+			compatible = "sunplus,q645-spi-nor";
+			reg = <0x0 0xF8000B00 0x0 0x80>,<0x0 0xF8000080 0x0 0x80>;
+			//interrupt-parent = <&intc>;
+			//interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+			//clocks = <&clkc SPIFL>;
+			//resets = <&rstc RST_SPIFL>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&spi_nor_pins>;
+			spi-max-frequency = <50000000>;
+			spi-chip-selection = <0>;
+			read-timing-selection = <1>;
+			write-timing-selection = <0>;
+			status = "disabled";
+	};
 };
