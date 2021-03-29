@@ -225,5 +225,10 @@
 			sppctl,groups = "SPI_FLASH";
 			sppctl,function = "SPI_FLASH";
 		};
+
+		spi_nand_pins: pinmux_spi_nand_pins {
+			sppctl,groups = "SPI_NAND";
+			sppctl,function = "SPI_NAND";
+		};
 	};
 };
