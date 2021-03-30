@@ -8,7 +8,6 @@
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/clock/sp-q645.h>
-#include <dt-bindings/reset/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 
 /* Clock frequency (in Hz) of the PCB crystal for rtcclk */
@@ -60,7 +59,7 @@
 
 		clkc: clkc@0xf8000200 {
 			#clock-cells = <1>;
-			compatible = "sunplus,sp-clkc";
+			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000000 0x00 0x2c>, // G0.0 ~ G0.10
 				  <0x00 0xf8000200 0x00 0x80>; // G4
 		};
@@ -158,14 +157,15 @@
 	};
 
 	rstc: reset@0xf8000050 {
-		compatible = "sunplus,sp-reset";
+		compatible = "sunplus,q645-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8000054 0x00 0x28>;
+		reg = <0x00 0xf8000050 0x00 0x2c>;
 		reg-names = "reset";
 	};
 
 	uart0: serial@0xf8000900 {
-		compatible = "sunplus,sp7021-uart\0sunplus,sp_uart";
+		compatible = "sunplus,q645-uart",
+					 "sunplus,sp7021-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
@@ -232,7 +232,7 @@
 			sppctl,function = "SPI_NAND";
 		};
 	};
-	
+
 	malig31: malig31@0xf8170000 {
 		compatible = "sunplus,q645-malig31";
 		reg = <0x00 0xf8170000 0x00 0x3fff>;
@@ -242,7 +242,7 @@
 		//interrupt-names = "JOB", "MMU", "GPU";
 		clocks = <&clkc GPU>;
 		clock-names = "clk_mali";
-		resets = <&rstc RST_GPU>;
+		resets = <&rstc GPU>;
 	};
-	
+
 };
