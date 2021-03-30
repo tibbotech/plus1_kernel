@@ -64,7 +64,7 @@ void DRV_TGEN_Init(void *pInHWReg)
 	pTGENReg->tgen_source_sel = 0x0;
 	pTGENReg->tgen_user_int2_config = 400;
 
-#if 0 //#ifdef TTL_MODE_SUPPORT
+#if 0//def TTL_USER_MODE_SUPPORT
 	pTGENReg->tgen_dtg_config = 1; //TGEN USER MODE
 	pTGENReg->tgen_dtg_total_pixel = 408; //Total pixel
 	pTGENReg->tgen_dtg_ds_line_start_cd_point = 320; //line start
@@ -133,8 +133,8 @@ int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 	return DRV_SUCCESS;
 }
 
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+    #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_tgen(DRV_SetTGEN_t *SetTGEN)
 {
 	if (SetTGEN->fmt == DRV_FMT_USER_MODE) {

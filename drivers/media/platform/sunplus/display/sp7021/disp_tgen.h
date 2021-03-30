@@ -42,8 +42,8 @@ extern unsigned int DRV_TGEN_GetLineCntNow(void);
 void DRV_TGEN_SetUserInt1(u32 count);
 void DRV_TGEN_SetUserInt2(u32 count);
 int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN);
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+    #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_tgen(DRV_SetTGEN_t *SetTGEN);
 #endif
 #endif
