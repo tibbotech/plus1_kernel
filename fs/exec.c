@@ -1657,6 +1657,9 @@ int search_binary_handler(struct linux_binprm *bprm)
 
 		bprm->recursion_depth++;
 		retval = fmt->load_binary(bprm);
+#ifdef CONFIG_SOC_Q645 // REMOVE ME: zebu debug
+		pr_info("!!! %pS %s ret %d\n", fmt->load_binary, bprm->filename, retval);
+#endif
 		bprm->recursion_depth--;
 
 		read_lock(&binfmt_lock);
