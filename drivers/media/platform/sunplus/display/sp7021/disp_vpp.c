@@ -60,15 +60,20 @@ void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2)
 
 int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h)
 {
-#ifdef TTL_MODE_SUPPORT
-	#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	struct sp_disp_device *disp_dev = gDispWorkMem;
-	int vpp_adj;
+	int vpp_adj, user_mode;
 	vpp_adj = (int)disp_dev->TTLPar.ttl_vpp_adj;
+	user_mode = (int)disp_dev->TTLPar.set_user_mode;
+	if(user_mode)
+		pVPOSTReg->vpost_mas_sla = 0x1; //en user mode
+
+	#else
+		pVPOSTReg->vpost_mas_sla = 0x1; //en user mode
 	#endif
-	pVPOSTReg->vpost_mas_sla = 0x1; //en user mode
 	
-	#ifdef TTL_MODE_DTS
+	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	pVPOSTReg->vpost_o_act_xstart = 0; //x active
 	pVPOSTReg->vpost_o_act_ystart = vpp_adj; //y active
 	#else
@@ -101,7 +106,7 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 		pVPOSTReg->vpost_i_xstart = 0;
 		pVPOSTReg->vpost_i_ystart = 0;
 	}
-#ifdef TTL_MODE_SUPPORT
+#if 0//def TTL_USER_MODE_SUPPORT
 	pVPOSTReg->vpost_i_xlen = input_w;
 	pVPOSTReg->vpost_i_ylen = input_h;
 	pVPOSTReg->vpost_o_xlen = output_w;
@@ -120,8 +125,8 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 }
 EXPORT_SYMBOL(vpost_setting);
 
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+    #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_vpp(void)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
@@ -138,13 +143,7 @@ EXPORT_SYMBOL(sp_disp_set_ttl_vpp);
 
 int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 {
-	sp_disp_dbg("ddfch luma=0x%x, chroma=0x%x\n", luma_addr, chroma_addr);
-
-#ifdef TTL_MODE_SUPPORT
-	sp_disp_dbg("ddfch setting for LCD \n");
-#else
-	sp_disp_dbg("ddfch setting for HDMI \n");
-#endif
+	sp_disp_dbg("ddfch luma=0x%x, chroma=0x%x (w %d,h %d)\n", luma_addr, chroma_addr, w, h);
 
 	pDDFCHReg->ddfch_latch_en = 1;
 	if (yuv_fmt == 0)

@@ -5,8 +5,8 @@
 
 void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2);
 int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h);
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+    #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_vpp(void);
 #endif
 #endif

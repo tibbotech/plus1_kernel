@@ -27,6 +27,10 @@
 		 * 0xb = ARGB4444
 		 * 0xd = RGBA8888
 		 * 0xe = ARGB8888 */
+	ttl-name = "general hdmi,720X480";
+	ttl-out-enable = <0>;
+	set-user-mode = <0>;
+	ttl-vpp-layer = <2>;
 };
 
 &spi_controller0 {
