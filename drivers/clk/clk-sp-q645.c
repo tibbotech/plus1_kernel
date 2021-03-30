@@ -789,4 +789,4 @@ static void __init sp_clkc_init(struct device_node *np)
 	pr_info("@@@ sp-clkc init done!\n");
 }
 
-CLK_OF_DECLARE(sp_clkc, "sunplus,sp-clkc", sp_clkc_init);
+CLK_OF_DECLARE(sp_clkc, "sunplus,q645-clkc", sp_clkc_init);
