@@ -117,6 +117,7 @@ static const struct reset_control_ops sp_reset_ops = {
 
 static const struct of_device_id sp_reset_dt_ids[] = {
 	{ .compatible = "sunplus,sp-reset", },
+	{ .compatible = "sunplus,q645-reset", },
 	{ /* sentinel */ },
 };
 
