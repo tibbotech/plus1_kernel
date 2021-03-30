@@ -87,6 +87,7 @@ void __register_binfmt(struct linux_binfmt * fmt, int insert)
 	insert ? list_add(&fmt->lh, &formats) :
 		 list_add_tail(&fmt->lh, &formats);
 	write_unlock(&binfmt_lock);
+	pr_info("[binfmt] %pS\n", fmt->load_binary);
 }
 
 EXPORT_SYMBOL(__register_binfmt);
@@ -1629,6 +1630,8 @@ out:
 }
 EXPORT_SYMBOL(remove_arg_zero);
 
+#define KK() //pr_info("%s:%d\n", __FUNCTION__, __LINE__)
+
 #define printable(c) (((c)=='\t') || ((c)=='\n') || (0x20<=(c) && (c)<=0x7e))
 /*
  * cycle the list of binary formats handler, until one recognizes the image
@@ -1651,39 +1654,49 @@ int search_binary_handler(struct linux_binprm *bprm)
  retry:
 	read_lock(&binfmt_lock);
 	list_for_each_entry(fmt, &formats, lh) {
+		KK();
+		//pr_info("[binfmt] %pS\n", fmt->load_binary);
 		if (!try_module_get(fmt->module))
 			continue;
 		read_unlock(&binfmt_lock);
 
+		KK();
 		bprm->recursion_depth++;
 		retval = fmt->load_binary(bprm);
+		pr_info("!!! %pS %s ret %d\n", fmt->load_binary, bprm->filename, retval);
 		bprm->recursion_depth--;
 
 		read_lock(&binfmt_lock);
 		put_binfmt(fmt);
 		if (retval < 0 && !bprm->mm) {
+		KK();
 			/* we got to flush_old_exec() and failed after it */
 			read_unlock(&binfmt_lock);
 			force_sigsegv(SIGSEGV);
 			return retval;
 		}
 		if (retval != -ENOEXEC || !bprm->file) {
+		KK();
 			read_unlock(&binfmt_lock);
 			return retval;
 		}
 	}
+		KK();
 	read_unlock(&binfmt_lock);
 
 	if (need_retry) {
+		KK();
 		if (printable(bprm->buf[0]) && printable(bprm->buf[1]) &&
 		    printable(bprm->buf[2]) && printable(bprm->buf[3]))
 			return retval;
 		if (request_module("binfmt-%04x", *(ushort *)(bprm->buf + 2)) < 0)
 			return retval;
+		KK();
 		need_retry = false;
 		goto retry;
 	}
 
+		KK();
 	return retval;
 }
 EXPORT_SYMBOL(search_binary_handler);

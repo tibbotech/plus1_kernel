@@ -57,7 +57,7 @@
 
 		clkc: clkc@0xf8000200 {
 			#clock-cells = <1>;
-			compatible = "sunplus,sp-clkc";
+			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000000 0x00 0x2c>, // G0.0 ~ G0.10
 				  <0x00 0xf8000200 0x00 0x80>; // G4
 		};
@@ -155,14 +155,15 @@
 	};
 
 	rstc: reset@0xf8000050 {
-		compatible = "sunplus,sp-reset";
+		compatible = "sunplus,q645-reset";
 		#reset-cells = <1>;
 		reg = <0x00 0xf8000050 0x00 0x2c>;
 		reg-names = "reset";
 	};
 
 	uart0: serial@0xf8000900 {
-		compatible = "sunplus,sp7021-uart\0sunplus,sp_uart";
+		compatible = "sunplus,q645-uart",
+					 "sunplus,sp7021-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,

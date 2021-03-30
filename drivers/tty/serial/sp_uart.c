@@ -2013,6 +2013,7 @@ static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
 
 static const struct of_device_id sp_uart_of_match[] = {
 	{ .compatible = "sunplus,sp7021-uart" },
+	{ .compatible = "sunplus,q645-uart" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_uart_of_match);
