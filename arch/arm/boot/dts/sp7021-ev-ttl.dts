@@ -3,6 +3,12 @@
 #include "sp7021-ChipC.dtsi"
 
 #define ENABLE_HDMITX
+#define ENABLE_HDMITX_720X480
+//#define ENABLE_HDMITX_720X576
+//#define ENABLE_HDMITX_1280X720
+//#define ENABLE_HDMITX_800X480
+//#define ENABLE_HDMITX_1024X600
+
 //#define ENABLE_TTL_320X240
 //#define ENABLE_TTL_800X480
 //#define ENABLE_TTL_1024X600
@@ -22,7 +28,7 @@
 };
 
 &sp_display {
-	#ifdef ENABLE_HDMITX
+	#ifdef ENABLE_HDMITX_720X480
 	ui_width = <720>;
 	ui_height = <480>;
 	ui_format = <0xe>;
@@ -34,6 +40,115 @@
 		 * 0xb = ARGB4444
 		 * 0xd = RGBA8888
 		 * 0xe = ARGB8888 */
+	ttl-name = "general hdmi,720X480";
+	ttl-out-enable = <0>;
+	set-user-mode = <0>;
+	ttl-vpp-layer = <2>;
+	#endif
+
+	#ifdef ENABLE_HDMITX_720X576
+	ui_width = <720>;
+	ui_height = <576>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+	ttl-name = "general hdmi,720X576";
+	ttl-out-enable = <0>;
+	set-user-mode = <0>;
+	ttl-vpp-layer = <2>;
+	#endif
+
+	#ifdef ENABLE_HDMITX_1280X720
+	ui_width = <1280>;
+	ui_height = <720>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+	ttl-name = "general hdmi,1280X720";
+	ttl-out-enable = <0>;
+	set-user-mode = <0>;
+	ttl-vpp-layer = <2>;
+	#endif
+
+	#ifdef ENABLE_HDMITX_800X480
+	ui_width = <800>;
+	ui_height = <480>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+	ttl-name = "adafruit,5inchrgb,800X480";
+	ttl-clock-freq = <33264000>;
+	ttl-clock-divm = <8>;
+	ttl-clock-divn = <21>;
+	ttl-clock-divr = <1>;
+	hactive = <800>;
+	hback-porch = <46>;
+	hfront-porch = <190>;
+	hsync-len = <20>;
+	vactive = <480>;
+	vback-porch = <23>;
+	vfront-porch = <19>;
+	vsync-len = <3>;
+	ttl-out-enable = <0>;
+	ttl-rgb-swap = <0>;
+	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <1>;
+	ttl-vpp-adj = <29>;
+	ttl-osd-adj = <0>;
+	#endif
+
+	#ifdef ENABLE_HDMITX_1024X600
+	ui_width = <1024>;
+	ui_height = <600>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+
+	ttl-name = "undefined,rgb,1024X600";
+	ttl-clock-freq = <51206400>;
+	ttl-clock-divm =<8>;
+	ttl-clock-divn =<33>;
+	ttl-clock-divr = <1>;
+	hactive = <1024>;
+	hback-porch = <140>;
+	hfront-porch =<160>;
+	hsync-len = <20>;
+	vactive = <600>;
+	vback-porch = <20>;
+	vfront-porch =<12>;
+	vsync-len = <3>;
+	ttl-out-enable = <0>;
+	ttl-rgb-swap = <1>;
+	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <1>;
+	ttl-vpp-adj = <26>;
+	ttl-osd-adj = <0>;
 	#endif
 
 	#ifdef ENABLE_TTL_320X240
@@ -53,6 +168,7 @@
 	ttl-clock-freq = <6413760>;
 	ttl-clock-divm = <20>;
 	ttl-clock-divn = <4>;
+	ttl-clock-divr = <0>;
 	hactive = <320>;
 	hback-porch = <38>;
 	hfront-porch = <20>;
@@ -61,8 +177,11 @@
 	vback-porch = <15>;
 	vfront-porch =<4>;
 	vsync-len = <3>;
+	ttl-out-enable = <1>;
 	ttl-rgb-swap = <0>;
 	ttl-clock-pol = <1>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <2>;
 	ttl-vpp-adj = <21>;
 	ttl-osd-adj = <0>;
 	pinctrl-names = "default";
@@ -86,6 +205,7 @@
 	ttl-clock-freq = <33264000>;
 	ttl-clock-divm = <31>;
 	ttl-clock-divn = <39>;
+	ttl-clock-divr = <0>;
 	hactive = <800>;
 	hback-porch = <46>;
 	hfront-porch = <190>;
@@ -94,8 +214,11 @@
 	vback-porch = <23>;
 	vfront-porch = <19>;
 	vsync-len = <3>;
+	ttl-out-enable = <1>;
 	ttl-rgb-swap = <1>;
 	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <2>;
 	ttl-vpp-adj = <29>;
 	ttl-osd-adj = <0>;
 	pinctrl-names = "default";
@@ -119,6 +242,7 @@
 	ttl-clock-freq = <51206400>;
 	ttl-clock-divm =<8>;
 	ttl-clock-divn =<16>;
+	ttl-clock-divr = <0>;
 	hactive = <1024>;
 	hback-porch = <140>;
 	hfront-porch =<160>;
@@ -127,8 +251,11 @@
 	vback-porch = <20>;
 	vfront-porch =<12>;
 	vsync-len = <3>;
+	ttl-out-enable = <1>;
 	ttl-rgb-swap = <1>;
 	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <2>;
 	ttl-vpp-adj = <26>;
 	ttl-osd-adj = <0>;
 	pinctrl-names = "default";
@@ -152,16 +279,20 @@
 	ttl-clock-freq = <59217600>;
 	ttl-clock-divm =<8>;
 	ttl-clock-divn =<39>;
+	ttl-clock-divr = <1>;
 	hactive = <1280>;
-	hback-porch = <4>;
+	hback-porch = <6>;
 	hfront-porch =<56>;
 	hsync-len = <12>;
 	vactive = <720>;
-	vback-porch = <6>;
-	vfront-porch =<6>;
-	vsync-len = <4>;
+	vback-porch = <10>;
+	vfront-porch =<10>;
+	vsync-len = <10>;
+	ttl-out-enable = <1>;
 	ttl-rgb-swap = <1>;
 	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <1>;
 	ttl-vpp-adj = <12>;
 	ttl-osd-adj = <0>;
 	pinctrl-names = "default";
@@ -171,7 +302,7 @@
 };
 
 &spi_controller0 {
-	spi-max-frequency = <50000000>;
+	spi-max-frequency = <1500000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spim0>;
 	cs-gpios = <&pctl 40 GPIO_ACTIVE_HIGH>;
@@ -179,7 +310,7 @@
 	#size-cells = <0>;
 	spi@0 {
 		compatible = "rohm,dh2228fv";
-		spi-max-frequency = <5000000>;
+		spi-max-frequency = <1500000>;
 		reg = <0x0>;
 	};
 };
@@ -213,13 +344,13 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spis3>;
 	spi-slave;
-	#address-cells = <0>;
+	status = "disabled";
+	#address-cells = <1>;
 	#size-cells = <0>;
-	spi3: slave@0 {
+	spi3: slave@ {
 		compatible = "rohm,dh2228fv";
 		spi-max-frequency = <5000000>;
-		//reg = <0x0>;
-		status = "disabled";
+		reg = <0x0>;
 	};
 };
 
@@ -329,7 +460,7 @@
 
 &hdmitx {
 	pinctrl-names = "default";
-	pinctrl-0 = <&hdmi_A_tx1>;
+	pinctrl-0 = <&hdmi_A_tx3>;
 	#ifndef ENABLE_HDMITX
 	status = "disabled";
 	#endif

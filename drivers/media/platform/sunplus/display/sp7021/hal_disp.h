@@ -78,7 +78,7 @@ typedef struct _display_size_t {
 typedef struct _ttl_spec_t {
 	UINT32 dts_exist;
 	UINT32 clk;
-	UINT32 divm,divn;
+	UINT32 divm,divn,divr;
 	UINT32 hfp;
 	UINT32 hsync;
 	UINT32 hbp;
@@ -87,8 +87,11 @@ typedef struct _ttl_spec_t {
 	UINT32 vsync;
 	UINT32 vbp;
 	UINT32 vactive;
+	UINT32 ttl_out_enable;
 	UINT32 ttl_rgb_swap;
 	UINT32 ttl_clock_pol;
+	UINT32 set_user_mode;
+	UINT32 ttl_vpp_layer;
 	UINT32 ttl_vpp_adj;
 	UINT32 ttl_osd_adj;
 	UINT32 ttl_parm_adj;

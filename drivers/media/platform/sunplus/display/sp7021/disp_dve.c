@@ -52,8 +52,8 @@ static DISP_DVE_REG_t *pDVEReg;
  **************************************************************************/
 void DRV_DVE_Init(void *pInHWReg)
 {
-#ifdef TTL_MODE_SUPPORT
-	#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 	int hfp,hp,hbp,hac,htot,vfp,vp,vbp,vac,vtot;
 	#endif
@@ -64,14 +64,18 @@ void DRV_DVE_Init(void *pInHWReg)
 
 	pDVEReg = (DISP_DVE_REG_t *)pInHWReg;
 
-#ifdef TTL_MODE_SUPPORT
-	#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+	#if defined(HDMI_USER_MODE_DTS) || defined(TTL_USER_MODE_DTS)
 	dve_bist_mode =  (DVE_TTL_BIT_SW_OFF) \
-									|(DVE_TTL_MODE) \
 									|(DVE_COLOR_SPACE_BT601) \
 									|(DVE_TTL_CLK_POL_NOR) \
-									|(DVE_COLOR_BAR_USER_MODE_SEL) \
 									|(DVE_NORMAL_MODE);
+	if(disp_dev->TTLPar.set_user_mode) {
+		dve_bist_mode |= (DVE_COLOR_BAR_USER_MODE_SEL);
+	}
+	if(disp_dev->TTLPar.ttl_out_enable) {
+		dve_bist_mode |= (DVE_TTL_MODE);
+	}					
 	if(disp_dev->TTLPar.ttl_rgb_swap) {
 		//sp_disp_dbg("dve init swap rgb %d \n",(int)disp_dev->TTLPar.ttl_rgb_swap);
 		dve_bist_mode |= (DVE_TTL_BIT_SW_ON);
@@ -122,7 +126,7 @@ void DRV_DVE_Init(void *pInHWReg)
 	pDVEReg->dve_hdmi_mode_1 = dve_hdmi_mode_1; // DVE_HDMI_ENA , DVE_SD_MODE
 	pDVEReg->dve_hdmi_mode_0 = dve_hdmi_mode_0;// DVE_LATCH_ENA , DVE_444_MODE
 
-	#ifdef TTL_MODE_DTS
+	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	//sp_disp_dbg("dve init from dts \n");
 	//sp_disp_dbg("dve init %d %d \n",(int)disp_dev->TTLPar.hactive,(int)disp_dev->TTLPar.vactive);
 	hfp = (int)(disp_dev->TTLPar.hfp);
@@ -253,8 +257,8 @@ void DRV_DVE_Init(void *pInHWReg)
 }
 EXPORT_SYMBOL(DRV_DVE_Init);
 
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_dve(void)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
@@ -367,7 +371,7 @@ void DRV_DVE_SetMode(int mode)
 
 void DRV_DVE_SetColorbar(int enable)
 {
-#ifdef TTL_MODE_SUPPORT
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 	int bist_mode;
 	bist_mode = pDVEReg->color_bar_mode & ~0x01;
 	

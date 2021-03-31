@@ -185,6 +185,10 @@ static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
 #ifdef CONFIG_EDID_READ
 static unsigned char edid_read_timeout = FALSE;
+unsigned int  edid_dvi_horizontal, edid_dvi_vertical, edid_skip_timing_update = 0;
+EXPORT_SYMBOL(edid_dvi_horizontal);
+EXPORT_SYMBOL(edid_dvi_vertical);
+EXPORT_SYMBOL(edid_skip_timing_update);
 #endif
 static unsigned char g_hdmitx_mode = 0;	/* 0 : DVI mode, 1 : HDMI mode */
 module_param(g_hdmitx_mode, byte, 0644);
@@ -487,6 +491,8 @@ static void parse_edid(void)
 	HDMITX_DBG("Checksum = 0x%04X\n", sum);
 
 	//monitor
+	for (i = 0; i < 13; i++)
+		name[i] = 0;
 	i = 72;
 	while (i < 126) {
 		if (edid[i+3] == 0xFC) {
@@ -494,7 +500,7 @@ static void parse_edid(void)
 				if (edid[i] != 0x0A) {
 					name[j] = edid[i];
 				} else {
-					name[j] = 0;;
+					name[j] = 0;
 				}
 			}
 
@@ -517,9 +523,24 @@ static void parse_edid(void)
 
 	if (g_cur_hdmi_cfg.mode == HDMITX_MODE_DVI) {
 		//timing
+		data = (edid[58] & 0xF0);
+		data = ((data << 4) | edid[56]);
+		HDMITX_INFO("DVI horizontal Max. Timing : %u\n", data);
+		edid_dvi_horizontal = data;
+
 		data = (edid[61] & 0xF0);
 		data = ((data << 4) | edid[59]);
-		HDMITX_INFO("DVI Max. Timing : %up\n", data);
+		HDMITX_INFO("DVI vertical Max. Timing : %u\n", data);
+		edid_dvi_vertical = data;
+
+		if ( ((edid_dvi_horizontal == 800) && (edid_dvi_vertical == 480)) ||
+			((edid_dvi_horizontal == 1024) && (edid_dvi_vertical == 600)) )
+		{
+			edid_skip_timing_update = 1;
+		}
+		else {
+			edid_skip_timing_update = 0;
+		}
 
 	#if 0
 		if (data <= 480) {
@@ -692,6 +713,10 @@ static void process_hpd_state(void)
 	}
 }
 
+#if 0//def CONFIG_EDID_READ
+extern void disp_set_plltv(void);
+#endif
+
 static void process_rsen_state(void)
 {
 	HDMITX_DBG("RSEN State\n");
@@ -704,6 +729,13 @@ static void process_rsen_state(void)
 		config_video(&g_cur_hdmi_cfg.video);
 		config_audio(&g_cur_hdmi_cfg.audio);
 		start();
+
+#if 0//def CONFIG_EDID_READ
+		if(edid_skip_timing_update) {
+			disp_set_plltv();//call display function
+			edid_skip_timing_update = 0;
+		}
+#endif
 		// update state
 		g_hdmitx_state = FSM_HDCP;
 	} else {
