@@ -4,15 +4,15 @@
 #include <media/sunplus/disp/sp7021/display.h>
 
 void DRV_DVE_Init(void *pInHWReg);
-#ifdef TTL_MODE_SUPPORT
-#ifdef TTL_MODE_DTS
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+    #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_dve(void);
 #endif
 #endif
 void DRV_DVE_SetMode(int mode);
 void DRV_DVE_SetColorbar(int enable);
 
-#ifdef TTL_MODE_SUPPORT
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 /* DVE G234 REG Define */
 //G234.00
 #define USER_MODE_VSYNC_TOP_START_MASK	(0x0FFF)
