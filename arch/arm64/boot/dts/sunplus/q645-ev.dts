@@ -187,7 +187,7 @@
 			pinctrl-0 = <&spi_nor_pins>;
 			spi-max-frequency = <50000000>;
 			spi-chip-selection = <0>;
-			read-timing-selection = <1>;
+			read-timing-selection = <0>;
 			write-timing-selection = <0>;
 			status = "disabled";
 	};
