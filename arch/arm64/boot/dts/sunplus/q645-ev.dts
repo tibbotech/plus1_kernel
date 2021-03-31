@@ -57,10 +57,10 @@
 			clock-output-names = "extclk";
 		};
 
-		clkc: clkc@0xf8000200 {
+		clkc: clkc@0xf8000004 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
-			reg = <0x00 0xf8000000 0x00 0x2c>, // G0.0 ~ G0.10
+			reg = <0x00 0xf8000004 0x00 0x28>, // G0.1 ~ G0.10
 				  <0x00 0xf8000200 0x00 0x80>; // G4
 		};
 	};
@@ -156,10 +156,10 @@
 					 <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
-	rstc: reset@0xf8000050 {
+	rstc: reset@0xf8000054 {
 		compatible = "sunplus,q645-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8000050 0x00 0x2c>;
+		reg = <0x00 0xf8000054 0x00 0x28>;
 		reg-names = "reset";
 	};
 
