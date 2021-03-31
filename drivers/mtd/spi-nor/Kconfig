@@ -109,7 +109,7 @@ config SPI_INTEL_SPI_PLATFORM
 
 config SPI_SUNPLUS_SPI
 	tristate "Sunplus SPI nor controller"
-	depends on SOC_SP7021 || SOC_I143
+	depends on SOC_SP7021 || SOC_I143 || SOC_Q645
 	help
 	  Enable the Sunplus spi nor controller driver. This driver
 	  can be used to access the SPI NOR flash on platforms.
