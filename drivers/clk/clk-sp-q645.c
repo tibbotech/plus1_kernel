@@ -153,7 +153,7 @@ static u32 gates[] = {
 	STC_AV2,
 	MAILBOX,
 };
-static struct clk *clks[CLK_MAX];
+static struct clk *clks[PLL_MAX + CLK_MAX];
 static struct clk_onecell_data clk_data;
 static void __iomem *clk_regs;
 static void __iomem *pll_regs;
@@ -776,10 +776,10 @@ static void __init sp_clkc_init(struct device_node *np)
 		char s[10];
 		j = gates[i] & 0xffff;
 		sprintf(s, "clken%02x", j);
-		clks[j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
+		clks[PLL_MAX + j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
 			clk_regs + (j >> 4 << 2), j & 0x0f,
 			CLK_GATE_HIWORD_MASK, NULL);
-		//printk("%02x %p %p.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);
+		//printk("%02x %p %p.%d\n", j, clks[PLL_MAX + j], REG(0, j >> 4), j & 0x0f);
 	}
 
 	clk_data.clks = clks;
