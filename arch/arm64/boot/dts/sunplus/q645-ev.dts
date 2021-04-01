@@ -62,7 +62,7 @@
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000004 0x00 0x28>, // G0.1 ~ G0.10
-				  <0x00 0xf8000200 0x00 0x80>; // G4
+			      <0x00 0xf8000200 0x00 0x80>; // G4
 		};
 	};
 
@@ -142,9 +142,9 @@
 		#interrupt-cells = <3>;
 		interrupt-controller;
 		reg = <0x00 0xfa001000 0x00 0x1000>,
-			  <0x00 0xfa002000 0x00 0x2000>,
-			  <0x00 0xfa004000 0x00 0x2000>,
-			  <0x00 0xfa006000 0x00 0x2000>;
+		      <0x00 0xfa002000 0x00 0x2000>,
+		      <0x00 0xfa004000 0x00 0x2000>,
+		      <0x00 0xfa006000 0x00 0x2000>;
 	};
 
 	timer {
@@ -152,9 +152,9 @@
 		interrupt-parent = <&gic>;
 		clock-frequency = <RTCCLK_FREQ>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
-					 <GIC_PPI 14 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
-					 <GIC_PPI 11 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
-					 <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
+			     <GIC_PPI 14 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
 	rstc: reset@0xf8000054 {
@@ -166,39 +166,55 @@
 
 	uart0: serial@0xf8000900 {
 		compatible = "sunplus,q645-uart",
-					 "sunplus,sp7021-uart";
+			     "sunplus,sp7021-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-					 <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-					 <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&extclk>;
 		resets = <&rstc UA0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart0_pins>;
 	};
 
-	sp_spinor0: spinor@0xF8000B00 {
-			compatible = "sunplus,q645-spi-nor";
-			reg = <0x0 0xF8000B00 0x0 0x80>, <0x0 0xF8000080 0x0 0x80>;
-			//interrupt-parent = <&intc>;
-			//interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
-			//clocks = <&clkc SPIFL>;
-			//resets = <&rstc RST_SPIFL>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&spi_nor_pins>;
-			spi-max-frequency = <50000000>;
-			spi-chip-selection = <0>;
-			read-timing-selection = <0>;
-			write-timing-selection = <0>;
-			status = "disabled";
+	sp_spinor0: spinor@0xf8000b00 {
+		compatible = "sunplus,q645-spi-nor";
+		reg = <0x0 0xf8000b00 0x0 0x80>, <0x0 0xf8000080 0x0 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPIFL>;
+		resets = <&rstc RST_SPIFL>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spi_nor_pins>;
+		spi-max-frequency = <50000000>;
+		spi-chip-selection = <0>;
+		read-timing-selection = <0>;
+		write-timing-selection = <0>;
+		status = "disabled";
 	};
 
-	pctl: pctl@0xF8000100 {
+	malig31: malig31@0xf8170000 {
+		compatible = "sunplus,q645-malig31";
+		reg = <0x00 0xf8170000 0x00 0x3fff>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "EVENT", "JOB", "MMU", "GPU";
+		clocks = <&clkc GPU>;
+		clock-names = "clk_mali";
+		resets = <&rstc RST_GPU>;
+	};
+
+	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
-		reg = <0x0 0xF8000100 0x0 0x100>,
-		      <0x0 0xF8000300 0x0 0x80>,
-		      <0x0 0xF8000380 0x0 0x80>,
-		      <0x0 0xF80032e4 0x0 0x1C>,
-		      <0x0 0xF8000080 0x0 0x20>;
+		reg = <0x0 0xf8000100 0x0 0x100>,
+		      <0x0 0xf8000300 0x0 0x80>,
+		      <0x0 0xf8000380 0x0 0x80>,
+		      <0x0 0xf80032e4 0x0 0x1c>,
+		      <0x0 0xf8000080 0x0 0x20>;
 		gpio-controller;
 		#gpio-cells = <2>;
 
@@ -233,19 +249,4 @@
 			sppctl,function = "SPI_NAND";
 		};
 	};
-
-	malig31: malig31@0xf8170000 {
-		compatible = "sunplus,q645-malig31";
-		reg = <0x00 0xf8170000 0x00 0x3fff>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>, 
-		             <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>, 
-		             <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>, 
-		             <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "EVENT", "JOB", "MMU", "GPU";
-		clocks = <&clkc GPU>;
-		clock-names = "clk_mali";
-		resets = <&rstc RST_GPU>;
-	};
-
 };
