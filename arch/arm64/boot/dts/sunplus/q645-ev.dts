@@ -207,12 +207,12 @@
 		clock-names = "clk_mali";
 		resets = <&rstc RST_GPU>;
 	};
-	
+
 	mmc0: mmc@0xf8003b00 {
 		compatible = "sunplus,q645-emmc";
 		reg = <0x0 0xf8003b00 0x0 0x180>;
 		interrupt-parent = <&gic>;
-		interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 11 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL0>;
 		resets = <&rstc RST_CARD_CTL0>;
 		pinctrl-names = "default";
