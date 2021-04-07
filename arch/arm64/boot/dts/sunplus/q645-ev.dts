@@ -173,7 +173,7 @@
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&extclk>;
-		resets = <&rstc UA0>;
+		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart0_pins>;
 	};
