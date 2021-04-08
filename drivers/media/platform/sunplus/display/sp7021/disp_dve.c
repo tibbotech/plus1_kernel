@@ -79,14 +79,26 @@ void DRV_DVE_Init(void *pInHWReg)
 	if(disp_dev->TTLPar.ttl_rgb_swap) {
 		//sp_disp_dbg("dve init swap rgb %d \n",(int)disp_dev->TTLPar.ttl_rgb_swap);
 		dve_bist_mode |= (DVE_TTL_BIT_SW_ON);
-		pDVEReg->g235_reserved[0] = 0x4A30; //G235.6
-		pDVEReg->g235_reserved[1] = 0x5693; //G235.7
-		pDVEReg->g235_reserved[2] = 0x22F6; //G235.8
-		pDVEReg->g235_reserved[3] = 0x2D49; //G235.9
-		pDVEReg->g235_reserved[4] = 0x39AC; //G235.10
-		pDVEReg->g235_reserved[5] = 0x040F; //G235.11
-		pDVEReg->g235_reserved[6] = 0x1062; //G235.12
-		pDVEReg->g235_reserved[7] = 0x1CC5; //G235.13
+		if (disp_dev->TTLPar.ttl_rgb_swap == 1) {
+			pDVEReg->g235_reserved[0] = 0x4A30; //G235.6
+			pDVEReg->g235_reserved[1] = 0x5693; //G235.7
+			pDVEReg->g235_reserved[2] = 0x22F6; //G235.8
+			pDVEReg->g235_reserved[3] = 0x2D49; //G235.9
+			pDVEReg->g235_reserved[4] = 0x39AC; //G235.10
+			pDVEReg->g235_reserved[5] = 0x040F; //G235.11
+			pDVEReg->g235_reserved[6] = 0x1062; //G235.12
+			pDVEReg->g235_reserved[7] = 0x1CC5; //G235.13
+		}
+		else { //for JEIDA mode , RGB data shift 2 bit
+			pDVEReg->g235_reserved[0] = 0x5272; //G235.6
+			pDVEReg->g235_reserved[1] = 0x5ED5; //G235.7
+			pDVEReg->g235_reserved[2] = 0x2A30; //G235.8
+			pDVEReg->g235_reserved[3] = 0x358B; //G235.9
+			pDVEReg->g235_reserved[4] = 0x21EE; //G235.10
+			pDVEReg->g235_reserved[5] = 0x0C49; //G235.11
+			pDVEReg->g235_reserved[6] = 0x18A4; //G235.12
+			pDVEReg->g235_reserved[7] = 0x0407; //G235.13
+		}
 	}
 	if(disp_dev->TTLPar.ttl_clock_pol) {
 		//sp_disp_dbg("dve init ttl clock inv %d \n",(int)disp_dev->TTLPar.ttl_clock_pol);

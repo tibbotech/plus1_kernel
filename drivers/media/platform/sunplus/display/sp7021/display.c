@@ -1636,7 +1636,7 @@ static void _debug_cmd(char *tmpbuf)
 	
 	vfp = (int)(disp_dev->TTLPar.vfp);
 	vp = (int)(disp_dev->TTLPar.vsync);
-	vbp = (int)(disp_dev->TTLPar.vfp);
+	vbp = (int)(disp_dev->TTLPar.vbp);
 	vac = (int)(disp_dev->TTLPar.vactive);
 	vtot = vfp + vp + vbp + vac;
 	#endif

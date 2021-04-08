@@ -166,8 +166,8 @@
 
 	ttl-name = "winstar,3.5inchrgb,320X240";
 	ttl-clock-freq = <6413760>;
-	ttl-clock-divm = <20>;
-	ttl-clock-divn = <4>;
+	ttl-clock-divm = <3>;
+	ttl-clock-divn = <0>;
 	ttl-clock-divr = <0>;
 	hactive = <320>;
 	hback-porch = <38>;
@@ -281,15 +281,15 @@
 	ttl-clock-divn =<39>;
 	ttl-clock-divr = <1>;
 	hactive = <1280>;
-	hback-porch = <6>;
+	hback-porch = <4>;
 	hfront-porch =<56>;
 	hsync-len = <12>;
 	vactive = <720>;
-	vback-porch = <10>;
-	vfront-porch =<10>;
-	vsync-len = <10>;
+	vback-porch = <2>;
+	vfront-porch =<6>;
+	vsync-len = <2>;
 	ttl-out-enable = <1>;
-	ttl-rgb-swap = <1>;
+	ttl-rgb-swap = <2>;
 	ttl-clock-pol = <0>;
 	set-user-mode = <1>;
 	ttl-vpp-layer = <1>;
