@@ -97,6 +97,7 @@ obj-$(CONFIG_MMC_SDHCI_MICROCHIP_PIC32)	+= sdhci-pic32.o
 obj-$(CONFIG_MMC_SDHCI_BRCMSTB)		+= sdhci-brcmstb.o
 obj-$(CONFIG_SP_EMMC)			+= spmmc.o
 obj-$(CONFIG_SP_SDV2)			+= spsdv2.o
+obj-$(CONFIG_SP_SDV)			+= spsdv.o
 obj-$(CONFIG_MMC_SUNPLUS_I143)		+= spsdv_i143.o
 obj-$(CONFIG_MMC_SDHCI_OMAP)		+= sdhci-omap.o
 obj-$(CONFIG_MMC_SDHCI_SPRD)		+= sdhci-sprd.o

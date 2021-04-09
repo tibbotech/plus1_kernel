@@ -22,6 +22,15 @@ config SP_SDV2
 	  If you say yes here, you will get support for the Secure Digital Host
 	  Interface on Sunplus SP7021 SoCs. This includes support for SD cards.
 	  If unsure, say N.	  
+
+config SP_SDV
+	tristate "Sunplus SD/SDIO Controller"
+	depends on ARCH_PENTAGRAM
+	default m
+	help
+	  If you say yes here, you will get support for the Secure Digital Host
+	  Interface on Sunplus SoCs. This includes support for SD cards.
+	  If unsure, say N.	  
 	  
 config MMC_SUNPLUS_I143
 	tristate "Sunplus I143 SD/SDIO Controller"
