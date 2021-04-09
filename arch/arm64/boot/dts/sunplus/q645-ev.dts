@@ -227,6 +227,38 @@
 		no-sd;
 	};
 
+	mmc1: mmc@0xf8003e80 {
+		compatible = "sunplus,q645-card1";
+		reg = <0xf8003e80 0x280>;
+		interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc CARD_CTL1>;
+		resets = <&rstc RST_CARD_CTL1>;
+		bus-width = <4>;
+		max-frequency = <52000000>;
+		disable-wp;
+		cap-sd-highspeed;
+		no-sdio;
+		no-mmc;
+	};
+
+	sdio: sdio@sdcard {
+		compatible = "sunplus,q645-sdio";
+		reg = <0xf8008400 0x280>;
+		interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+		//clocks = <&clkc CARD_CTL4>;
+		//resets = <&rstc RST_CARD_CTL4>;			
+		bus-width = <4>;
+		max-frequency = <52000000>;
+		non-removable;
+		disable-wp;
+		cap-sd-highspeed;
+		cap-sdio-irq;
+		no-sd;
+		no-mmc;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
 	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
