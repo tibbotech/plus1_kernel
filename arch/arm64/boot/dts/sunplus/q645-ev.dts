@@ -27,7 +27,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8 rootwait";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
 		stdout-path = "serial0:921600n8";
 	};
 
@@ -79,7 +79,7 @@
 			next-level-cache = <&L2_0>;
 		};
 
-#if 0
+#if 1
 		cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
