@@ -25,6 +25,9 @@
 #ifdef CONFIG_SOC_I143
 #define SPMMC_SYS_CLK	270000000
 #endif 
+#ifdef CONFIG_SOC_Q645
+#define SPMMC_SYS_CLK	270000000
+#endif 
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
 #define _append_suffix(l, s) reserved##s[l]
