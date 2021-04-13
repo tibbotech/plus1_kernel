@@ -212,6 +212,9 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif 
+	#ifdef CONFIG_SOC_Q645
+	clkdiv = (SPMMC_SYS_CLK/clk)-1;
+	#endif 
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
@@ -517,7 +520,7 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 	u32 value = readl(&host->base->sd_state);
 	u32 crc_token = bitfield_extract(value, 4, 3);
 	if (unlikely(value & SPMMC_SDSTATE_ERROR)) {
-		u32 timing_cfg0;
+		u32 timing_cfg0 = 0;
 		spmmc_pr(DEBUG, "%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
 		spmmc_pr(VERBOSE, "%s sd_state: 0x%08x\n", __func__, value);
 		value = readl(&host->base->sd_status);
@@ -1087,7 +1090,7 @@ static int config_bus_width_store(struct spmmc_host *host, const char *arg)
 
 static int config_mode_show(struct spmmc_host *host, char *buf)
 {
-	char *mode;
+	char *mode="";
 	switch (host->mode) {
 	case SPMMC_MODE_SD:
 		mode = "SD";
@@ -1121,7 +1124,7 @@ static int config_mode_store(struct spmmc_host *host, const char *arg)
 
 static int config_dmapio_mode_show(struct spmmc_host *host, char *buf)
 {
-	char *dmapio_mode;
+	char *dmapio_mode = "";
 	switch (host->dmapio_mode) {
 	case SPMMC_DMA_MODE:
 		dmapio_mode = "DMA";
@@ -1510,6 +1513,10 @@ static const struct of_device_id spmmc_of_table[] = {
 	},
 	{
 		.compatible = "sunplus,i143-emmc",
+		.data = (void *)SPMMC_MODE_EMMC,
+	},
+	{
+		.compatible = "sunplus,q645-emmc",
 		.data = (void *)SPMMC_MODE_EMMC,
 	},
 	{/* sentinel */}
