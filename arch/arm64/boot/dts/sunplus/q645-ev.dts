@@ -229,8 +229,8 @@
 
 	mmc1: mmc@0xf8003e80 {
 		compatible = "sunplus,q645-card";
-		reg = <0x0 0xf8003e80 0x0  0x280>;
-		interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x0 0xf8003e80 0x0 0x280>;
+		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL1>;
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
@@ -243,12 +243,12 @@
 		no-mmc;
 	};
 
-	sdio: sdio@sdcard {
+	sdio: sdio@0xf8008400 {
 		compatible = "sunplus,q645-sdio";
 		reg = < 0x0 0xf8008400 0x0 0x280>;
-		interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-		//clocks = <&clkc CARD_CTL4>;
-		//resets = <&rstc RST_CARD_CTL4>;
+		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc CARD_CTL2>;
+		resets = <&rstc RST_CARD_CTL2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;					
 		bus-width = <4>;
