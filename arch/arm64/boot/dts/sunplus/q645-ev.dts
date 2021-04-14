@@ -110,25 +110,25 @@
 		L2_0: l2-cache-0 {
 			compatible = "cache";
 			cache-level = <2>;
-			next-leevel-cache = <&L3>;
+			next-level-cache = <&L3>;
 		};
 
 		L2_1: l2-cache-1 {
 			compatible = "cache";
 			cache-level = <2>;
-			next-leevel-cache = <&L3>;
+			next-level-cache = <&L3>;
 		};
 
 		L2_2: l2-cache-2 {
 			compatible = "cache";
 			cache-level = <2>;
-			next-leevel-cache = <&L3>;
+			next-level-cache = <&L3>;
 		};
 
 		L2_3: l2-cache-3 {
 			compatible = "cache";
 			cache-level = <2>;
-			next-leevel-cache = <&L3>;
+			next-level-cache = <&L3>;
 		};
 
 		L3: l3-cache {
