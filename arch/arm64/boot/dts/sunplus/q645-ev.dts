@@ -194,6 +194,25 @@
 		status = "disabled";
 	};
 
+	spinand0: spinand@0xf8002b80 {
+		compatible = "sunplus,q645-spi-nand";
+		reg = <0x0 0xf8002b80 0x0 0x60>;
+		interrupt-parent = <&gic>;
+		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;
+		linux,part-probe = "ofpart", "sunplus_part";
+		clocks = <&clkc SPIND>;
+		resets = <&rstc RST_SPIND>;
+	};
+
+	bch0: bch@0xf8101000 {
+		compatible = "sunplus,q645-bch";
+		reg = <0x0 0xf8101000 0x0 0x30>;
+		interrupt-parent = <&gic>;
+		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc BCH>;
+		resets = <&rstc RST_BCH>;
+	};
+
 	malig31: malig31@0xf8170000 {
 		compatible = "sunplus,q645-malig31";
 		reg = <0x00 0xf8170000 0x00 0x3fff>;
