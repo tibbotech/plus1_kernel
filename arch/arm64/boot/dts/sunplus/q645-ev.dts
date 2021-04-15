@@ -285,7 +285,7 @@
 	};
 
 	usbdrd3_0: usb@F80A1000{
-		compatible = "sunplus,q645-usb3-0";		
+		compatible = "sunplus,q645-dwcusb3";		
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -308,7 +308,7 @@
 	};
 	
 	u3phy0: uphy@0xF80BD000 {
-		compatible = "sunplus,q645-usb3-phy0";
+		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>;
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_USB30C0>;
@@ -320,7 +320,7 @@
 	};
 		
 	usbdrd3_1: usb@F80AF000 {
-		compatible = "sunplus,q645-usb3-1";		
+		compatible = "sunplus,q645-dwcusb3";		
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -343,7 +343,7 @@
 	};
 	
 	u3phy1: uphy@0xF80BE000 {
-		compatible = "sunplus,q645-usb3-phy1";
+		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY1>;
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_U3PHY1>;
