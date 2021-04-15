@@ -79,7 +79,6 @@
 			next-level-cache = <&L2_0>;
 		};
 
-#if 1
 		cpu@1 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
@@ -106,7 +105,7 @@
 			cpu-release-addr = <0x00 0xfa23ffd8>;
 			next-level-cache = <&L2_3>;
 		};
-#endif
+
 		L2_0: l2-cache-0 {
 			compatible = "cache";
 			cache-level = <2>;
@@ -191,14 +190,13 @@
 		spi-chip-selection = <0>;
 		read-timing-selection = <0>;
 		write-timing-selection = <0>;
-		status = "disabled";
 	};
 
 	spinand0: spinand@0xf8002b80 {
 		compatible = "sunplus,q645-spi-nand";
 		reg = <0x0 0xf8002b80 0x0 0x60>;
 		interrupt-parent = <&gic>;
-		interrupts = <23 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
 		linux,part-probe = "ofpart", "sunplus_part";
 		clocks = <&clkc SPIND>;
 		resets = <&rstc RST_SPIND>;
@@ -208,7 +206,7 @@
 		compatible = "sunplus,q645-bch";
 		reg = <0x0 0xf8101000 0x0 0x30>;
 		interrupt-parent = <&gic>;
-		interrupts = <24 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc BCH>;
 		resets = <&rstc RST_BCH>;
 	};
@@ -254,7 +252,7 @@
 		clocks = <&clkc CARD_CTL1>;
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&sdcard_pins>;		
+		pinctrl-0 = <&sdcard_pins>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		disable-wp;
@@ -271,7 +269,7 @@
 		clocks = <&clkc CARD_CTL2>;
 		resets = <&rstc RST_CARD_CTL2>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&sdio_pins>;					
+		pinctrl-0 = <&sdio_pins>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		non-removable;
@@ -285,12 +283,12 @@
 	};
 
 	usbdrd3_0: usb@F80A1000{
-		compatible = "sunplus,q645-dwcusb3";		
+		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 		status = "disabled";
-		
+
 		usbdrd_dwc3_0: dwc3 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xF80A1000 0x0 0xE000>;
@@ -306,7 +304,7 @@
 			status = "disabled";
 		};
 	};
-	
+
 	u3phy0: uphy@0xF80BD000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>;
@@ -318,14 +316,14 @@
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
 	};
-		
+
 	usbdrd3_1: usb@F80AF000 {
-		compatible = "sunplus,q645-dwcusb3";		
+		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 		status = "disabled";
-		
+
 		usbdrd_dwc3_1: dwc3 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xF80AF000 0x0 0xE000>;
@@ -341,7 +339,7 @@
 			status = "disabled";
 		};
 	};
-	
+
 	u3phy1: uphy@0xF80BE000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY1>;
@@ -353,7 +351,7 @@
 		interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
 	};
-		
+
 	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
