@@ -1057,8 +1057,15 @@ static const struct of_device_id spsdc_of_table[] = {
 		.compatible = "sunplus,q645-sdio",
 		.data = &sp_sdio_compat,
 	},
+	{
+		.compatible = "sunplus,i143-card1",
+		.data = &sp_sdcard_compat,
+	},
+	{
+		.compatible = "sunplus,i143-sdio",
+		.data = &sp_sdio_compat,
+	},	
 	{/* sentinel */}
-
 };
 MODULE_DEVICE_TABLE(of, spsdc_of_table);
 
