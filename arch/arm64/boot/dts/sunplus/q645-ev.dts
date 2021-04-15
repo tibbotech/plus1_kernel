@@ -263,6 +263,76 @@
 		#size-cells = <0>;
 	};
 
+	usbdrd3_0: usb@F80A1000{
+		compatible = "sunplus,q645-usb3-0";		
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		status = "disabled";
+		
+		usbdrd_dwc3_0: dwc3 {
+			compatible = "synopsys,dwc3";
+			reg = <0x0 0xF80A1000 0x0 0xE000>;
+			clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
+			clock-names = "ref","bus_early","suspend";
+			resets = <&rstc RST_USB30C0>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
+			maximum-speed = "super-speed";
+			dr_mode = "host";
+			snps,dis_u2_susphy_quirk;
+			phy_type = "utmi_wide";
+			status = "disabled";
+		};
+	};
+	
+	u3phy0: uphy@0xF80BD000 {
+		compatible = "sunplus,q645-usb3-phy0";
+		clocks = <&clkc U3PHY0>;
+		clock-names = "clkc_u3phy";
+		resets = <&rstc RST_USB30C0>;
+		reset-names = "rstc_u3phy";
+		reg = <0x0 0xF80BD000 0x0 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+		
+	usbdrd3_1: usb@F80AF000 {
+		compatible = "sunplus,q645-usb3-1";		
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		status = "disabled";
+		
+		usbdrd_dwc3_1: dwc3 {
+			compatible = "synopsys,dwc3";
+			reg = <0x0 0xF80AF000 0x0 0xE000>;
+			clocks = <&clkc USB30C1>, <&clkc USB30C1>, <&clkc USB30C1>;
+			clock-names = "ref","bus_early","suspend";
+			resets = <&rstc RST_USB30C1>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
+			maximum-speed = "super-speed";
+			dr_mode = "host";
+			snps,dis_u2_susphy_quirk;
+			phy_type = "utmi_wide";
+			status = "disabled";
+		};
+	};
+	
+	u3phy1: uphy@0xF80BE000 {
+		compatible = "sunplus,q645-usb3-phy1";
+		clocks = <&clkc U3PHY1>;
+		clock-names = "clkc_u3phy";
+		resets = <&rstc RST_U3PHY1>;
+		reset-names = "rstc_u3phy";
+		reg = <0x0 0xF80BE000 0x0 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
+	};
+		
 	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
