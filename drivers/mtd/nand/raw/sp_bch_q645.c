@@ -710,7 +710,7 @@ static struct resource sp_bch_res[] = {
 };
 
 static struct platform_device sp_bch_device = {
-	.name  = "sunplus,sunplus-q645-bch",
+	.name  = "sunplus,q645-bch",
 	.id    = 0,
 	.num_resources = ARRAY_SIZE(sp_bch_res),
 	.resource  = sp_bch_res,
@@ -718,7 +718,7 @@ static struct platform_device sp_bch_device = {
 #endif
 
 static const struct of_device_id sp_bch_of_match[] = {
-	{ .compatible = "sunplus,sunplus-q645-bch" },
+	{ .compatible = "sunplus,q645-bch" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sp_bch_of_match);
