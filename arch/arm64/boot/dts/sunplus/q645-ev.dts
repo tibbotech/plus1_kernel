@@ -282,6 +282,24 @@
 		#size-cells = <0>;
 	};
 
+	ehci0: usb@0xF8102100 {
+		compatible = "sunplus,q645-usb-ehci0";
+		clocks = <&clkc USBC0>;
+		resets = <&rstc RST_USBC0>;
+		reg = <0x00 0xF8102100 0x00 0x68>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	ohci0: usb@0xF8102080 {
+		compatible = "sunplus,q645-usb-ohci0";
+		clocks = <&clkc USBC0>;
+		resets = <&rstc RST_USBC0>;
+		reg = <0x00 0xF8102080 0x00 0x68>, <0x00 0xF8000000 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	usbdrd3_0: usb@F80A1000{
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
