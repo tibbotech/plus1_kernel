@@ -17,12 +17,13 @@ static const struct of_device_id ehci0_sunplus_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-usb-ehci0" },
 #elif defined(CONFIG_SOC_I143)
 	{ .compatible = "sunplus,sunplus-i143-usb-ehci0" },
+#elif defined(CONFIG_SOC_Q645)
+	{ .compatible = "sunplus,q645-usb-ehci0" },
 #endif
+
 	{ }
 };
-
 MODULE_DEVICE_TABLE(of, ehci0_sunplus_dt_ids);
-
 
 static struct platform_driver ehci0_hcd_sunplus_driver = {
 	.probe			= ehci0_sunplus_platform_probe,
@@ -41,7 +42,7 @@ static struct platform_driver ehci0_hcd_sunplus_driver = {
 
 static int __init ehci0_sunplus_init(void)
 {
-	if (sp_port0_enabled & PORT0_ENABLED){
+	if (sp_port0_enabled & PORT0_ENABLED) {
 		printk(KERN_NOTICE "register ehci0_hcd_sunplus_driver\n");
 		return platform_driver_register(&ehci0_hcd_sunplus_driver);
 	} else {

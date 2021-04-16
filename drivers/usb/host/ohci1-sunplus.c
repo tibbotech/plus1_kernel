@@ -3,7 +3,6 @@
 #include <linux/platform_device.h>
 #include "ohci-sunplus.h"
 
-extern u8 sp_port1_enabled;
 extern void usb_hcd_platform_shutdown(struct platform_device *dev);
 
 static int ohci1_sunplus_platform_probe(struct platform_device *dev){
@@ -13,7 +12,6 @@ static int ohci1_sunplus_platform_probe(struct platform_device *dev){
 	return ohci_sunplus_probe(dev);
 }
 
-
 static const struct of_device_id ohci1_sunplus_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-ohci1" },
@@ -22,7 +20,6 @@ static const struct of_device_id ohci1_sunplus_dt_ids[] = {
 #endif
 	{ }
 };
-
 MODULE_DEVICE_TABLE(of, ohci1_sunplus_dt_ids);
 
 static struct platform_driver ohci1_hcd_sunplus_driver = {
@@ -42,13 +39,17 @@ static struct platform_driver ohci1_hcd_sunplus_driver = {
 
 static int __init ohci1_sunplus_init(void)
 {
-	if (sp_port1_enabled & PORT1_ENABLED){
+#ifdef CONFIG_SOC_Q645
+	return -1;
+#else
+	if (sp_port1_enabled & PORT1_ENABLED) {
 		printk(KERN_NOTICE "register ohci1_hcd_sunplus_driver\n");
 		return platform_driver_register(&ohci1_hcd_sunplus_driver);	
 	} else {
 		printk(KERN_NOTICE "warn,port1 not enable,not register ohci1 sunplus hcd driver\n");
 		return -1;
 	}
+#endif
 }
 module_init(ohci1_sunplus_init);
 
