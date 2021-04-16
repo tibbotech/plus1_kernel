@@ -26,7 +26,7 @@ config SP_SDV2
 config SP_SDV
 	tristate "Sunplus SD/SDIO Controller"
 	depends on ARCH_PENTAGRAM || SOC_I143 || SOC_Q645
-	default y
+	default m
 	help
 	  If you say yes here, you will get support for the Secure Digital Host
 	  Interface on Sunplus SoCs. This includes support for SD cards.
