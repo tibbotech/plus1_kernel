@@ -7,6 +7,7 @@
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/clock/sp-q645.h>
 #include <dt-bindings/reset/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
@@ -253,6 +254,7 @@
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
+		sdio-gpios = <&pctl 62 GPIO_ACTIVE_HIGH>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		disable-wp;
@@ -282,25 +284,25 @@
 		#size-cells = <0>;
 	};
 
-	ehci0: usb@0xF8102100 {
+	ehci0: usb@0xf8102100 {
 		compatible = "sunplus,q645-usb-ehci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
-		reg = <0x00 0xF8102100 0x00 0x68>;
+		reg = <0x00 0xf8102100 0x00 0x68>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	ohci0: usb@0xF8102080 {
+	ohci0: usb@0xf8102080 {
 		compatible = "sunplus,q645-usb-ohci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
-		reg = <0x00 0xF8102080 0x00 0x68>, <0x00 0xF8000000 0x00 0x80>;
+		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	usbdrd3_0: usb@F80A1000{
+	usbdrd3_0: usb@0xf80a1000{
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -309,7 +311,7 @@
 
 		usbdrd_dwc3_0: dwc3 {
 			compatible = "synopsys,dwc3";
-			reg = <0x0 0xF80A1000 0x0 0xE000>;
+			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
 			clock-names = "ref","bus_early","suspend";
 			resets = <&rstc RST_USB30C0>;
@@ -323,19 +325,19 @@
 		};
 	};
 
-	u3phy0: uphy@0xF80BD000 {
+	u3phy0: uphy@0xf80bd000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>;
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_USB30C0>;
 		reset-names = "rstc_u3phy";
-		reg = <0x0 0xF80BD000 0x0 0x80>;
+		reg = <0x0 0xf80bd000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
 	};
 
-	usbdrd3_1: usb@F80AF000 {
+	usbdrd3_1: usb@0xf80af000 {
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -344,7 +346,7 @@
 
 		usbdrd_dwc3_1: dwc3 {
 			compatible = "synopsys,dwc3";
-			reg = <0x0 0xF80AF000 0x0 0xE000>;
+			reg = <0x0 0xf80af000 0x0 0xe000>;
 			clocks = <&clkc USB30C1>, <&clkc USB30C1>, <&clkc USB30C1>;
 			clock-names = "ref","bus_early","suspend";
 			resets = <&rstc RST_USB30C1>;
@@ -358,13 +360,13 @@
 		};
 	};
 
-	u3phy1: uphy@0xF80BE000 {
+	u3phy1: uphy@0xf80be000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY1>;
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_U3PHY1>;
 		reset-names = "rstc_u3phy";
-		reg = <0x0 0xF80BE000 0x0 0x80>;
+		reg = <0x0 0xf80be000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
