@@ -201,6 +201,8 @@
 		linux,part-probe = "ofpart", "sunplus_part";
 		clocks = <&clkc SPIND>;
 		resets = <&rstc RST_SPIND>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spi_nand_pins>;
 	};
 
 	bch0: bch@0xf8101000 {
@@ -383,34 +385,34 @@
 		#gpio-cells = <2>;
 
 		uart0_pins: pinmux_uart0_pins {
-			sppctl,groups = "UART0";
 			sppctl,function = "UART0";
+			sppctl,groups = "UART0";
 		};
 
 		emmc_pins: pinmux_emmc_pins {
-			sppctl,groups = "CARD0_EMMC";
 			sppctl,function = "CARD0_EMMC";
+			sppctl,groups = "CARD0_EMMC";
 		};
 
 		sdcard_pins: pinmux_sdcard_pins {
-			sppctl,groups = "SD_CARD";
 			sppctl,function = "SD_CARD";
+			sppctl,groups = "SD_CARD";
 			sppctl,pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
 		};
 
 		sdio_pins: pinmux_sdio_pins {
-			sppctl,groups = "SDIO";
 			sppctl,function = "SDIO";
+			sppctl,groups = "SDIO";
 		};
 
 		spi_nor_pins: pinmux_spi_nor_pins {
-			sppctl,groups = "SPI_FLASH";
 			sppctl,function = "SPI_FLASH";
+			sppctl,groups = "SPI_FLASH1";
 		};
 
 		spi_nand_pins: pinmux_spi_nand_pins {
-			sppctl,groups = "SPI_NAND";
 			sppctl,function = "SPI_NAND";
+			sppctl,groups = "SPI_NAND1";
 		};
 	};
 };
