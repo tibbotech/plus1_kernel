@@ -2,8 +2,8 @@
 #define __SP_BCH_H
 #include <linux/clk.h>
 
-#define SP_BCH_REG           0x9c101000
-#define SP_BCH_IRQ           58
+#define SP_BCH_REG           0xF8101000
+#define SP_BCH_IRQ           24
 
 #define CONFIG_SPBCH_DEV_IN_DTS     /* open if the dev is describled in dts */
 

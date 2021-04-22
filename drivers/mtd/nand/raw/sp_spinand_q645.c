@@ -410,6 +410,19 @@ static int spi_nand_select_die(struct sp_spinand_info *info, u32 id)
 	return wait_spi_idle(info);
 }
 
+static int spi_nand_wait_dev_idle(struct sp_spinand_info *info)
+{
+	unsigned long timeout = jiffies + msecs_to_jiffies(CONFIG_SPINAND_TIMEOUT);
+	int status;
+	do {
+		status = spi_nand_getfeatures(info, DEVICE_STATUS_ADDR);
+		if ((status & DEVICE_STATUS_OIP_MSK) == 0)
+			break;
+		cond_resched();
+	} while (time_before(jiffies, timeout));
+	return status;
+}
+
 int spi_nand_blkerase(struct sp_spinand_info *info, u32 row)
 {
 	struct sp_spinand_regs *regs = info->regs;
@@ -496,7 +509,7 @@ int spi_nand_read_by_dma(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
 	writel(value, &regs->spi_page_size);
 
-	writel((u32)buf, &regs->mem_data_addr);
+	writel((u32)((u64)buf), &regs->mem_data_addr);
 
 	value = SPINAND_USR_READCACHE_CMD(cmd)
 		| SPINAND_USR_READCACHE_EN;
@@ -549,7 +562,7 @@ int spi_nand_write_by_dma(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
 	writel(value, &regs->spi_page_size);
 
-	writel((u32)buf, &regs->mem_data_addr);
+	writel((u32)((u64)buf), &regs->mem_data_addr);
 
 	value = SPINAND_USR_PRGMLOAD_CMD(cmd)
 		| SPINAND_USR_PRGMLOAD_EN
@@ -613,8 +626,8 @@ int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
 	writel(value, &regs->spi_page_size);
 
-	writel((u32)buf, &regs->mem_data_addr);
-	writel((u32)buf+info->page_size, &regs->mem_parity_addr);
+	writel((u32)((u64)buf), &regs->mem_data_addr);
+	writel((u32)((u64)buf+info->page_size), &regs->mem_parity_addr);
 
 	value = SPINAND_BCH_DECSRC(info->bch_dec_src)
 		| SPINAND_BCH_DATA_LEN(info->parity_sector_size)
@@ -691,8 +704,8 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_PAGE_SIZE((page_size >> 10) - 1);
 	writel(value, &regs->spi_page_size);
 
-	writel((u32)buf, &regs->mem_data_addr);
-	writel((u32)buf+info->page_size, &regs->mem_parity_addr);
+	writel((u32)((u64)buf), &regs->mem_data_addr);
+	writel((u32)((u64)buf+info->page_size), &regs->mem_parity_addr);
 
 	value = SPINAND_BCH_DECSRC(info->bch_dec_src)
 		| SPINAND_BCH_DATA_LEN(info->parity_sector_size)
@@ -1065,7 +1078,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 
 	info = devm_kzalloc(dev, sizeof(*info), GFP_KERNEL);
 	if (!info) {
-		SPINAND_LOGE("all memory(size=0x%x) fail", sizeof(*info));
+		SPINAND_LOGE("all memory(size=0x%lx) fail", sizeof(*info));
 		return -ENOMEM;
 	}
 
@@ -1128,7 +1141,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	ret = request_irq(res_irq->start, spi_nand_irq,
 			IRQF_SHARED, "sp_spinand", info);
 	if (ret) {
-		SPINAND_LOGE("request IRQ(%d) fail\n", res_irq->start);
+		SPINAND_LOGE("request IRQ(%lld) fail\n", res_irq->start);
 		goto err1;
 	}
 	info->irq = res_irq->start;
@@ -1249,9 +1262,9 @@ static int sp_spinand_probe(struct platform_device *pdev)
 
 	SPINAND_LOGI("====Sunplus SPI-NAND Driver====\n");
 	SPINAND_LOGI("==spi nand driver info==\n");
-	SPINAND_LOGI("regs = 0x%p@0x%08x, size = %d\n",
+	SPINAND_LOGI("regs = 0x%px@0x%08llx, size = %lld\n",
 		info->regs, res_mem->start, res_mem->end-res_mem->start);
-	SPINAND_LOGI("buffer = 0x%p@0x%08x, size = %d\n",
+	SPINAND_LOGI("buffer = 0x%px@0x%08llx, size = %d\n",
 		info->buff.virt, info->buff.phys, info->buff.size);
 	SPINAND_LOGI("irq = %d\n", info->irq);
 	SPINAND_LOGI("==spi nand device info==\n");

@@ -12,11 +12,11 @@
  */
 #define CONFIG_SPINAND_USE_SRAM
 #ifdef CONFIG_SPINAND_USE_SRAM
-#define CONFIG_SPINAND_SRAM_ADDR  (0x9e800000)
+#define CONFIG_SPINAND_SRAM_ADDR  (0xFA200000)
 #endif
-#define SPI_NAND_DIRECT_MAP       0x9dff0000
-#define SP_SPINAND_REG_BASE       0x9C002B80  //RF_GRP(87, 0)
-#define SP_SPINAND_IRQ            149
+#define SPI_NAND_DIRECT_MAP       0xF4000000
+#define SP_SPINAND_REG_BASE       0xF8002B80    // RF_GRP(87, 0)
+#define SP_SPINAND_IRQ            23
 #define CONFIG_SPINAND_DEV_IN_DTS
 
 /*
@@ -25,10 +25,17 @@
 #define CONFIG_SPINAND_CLK_DIV          1
 #define CONFIG_SPINAND_READ_BITMODE     SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_WRITE_BITMODE    SPINAND_4BIT_MODE
+#if 0 // For zebu_sim
+#define CONFIG_SPINAND_READ_TIMING_SEL  0
+#define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
+#define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA
+#define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
+#else
 #define CONFIG_SPINAND_READ_TIMING_SEL  2
 #define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
 #define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA_AUTOBCH
 #define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
+#endif
 #define CONFIG_SPINAND_BUF_SZ           (8 << 10)
 #define CONFIG_SPINAND_TIMEOUT          (100)  /* unit: ms */
 
@@ -277,26 +284,33 @@ enum SPINAND_BIT_MODE {
 };
 
 /* block erase status */
-#define ERASE_STATUS		  0x04
+#define ERASE_STATUS		            0x04
 
 /* page program status */
-#define PROGRAM_STATUS            0x08
+#define PROGRAM_STATUS                  0x08
 
 /* protect status */
-#define PROTECT_STATUS	          0x38
+#define PROTECT_STATUS                  0x38
+
+#define DEVICE_STATUS_PFAIL_MSK         (1<<3)
+#define DEVICE_STATUS_EFAIL_MSK         (1<<2)
+#define DEVICE_STATUS_WEL_MSK           (1<<1)
+#define DEVICE_STATUS_OIP_MSK           (1<<0)
+
+#define DEVICE_STATUS_WEL               (DEVICE_STATUS_WEL_MSK)
 
 /* data mode & ecc mode */
-#define DEVICE_PROTECTION_ADDR	  0xA0
-#define DEVICE_FEATURE_ADDR	  0xB0
-#define DEVICE_STATUS_ADDR	  0xC0
+#define DEVICE_PROTECTION_ADDR          0xA0
+#define DEVICE_FEATURE_ADDR             0xB0
+#define DEVICE_STATUS_ADDR              0xC0
 
 /* read map addr */
-#define SPI_NAND_READ_ADDR        0x94000000
-#define SPI_NAND_READ_MXIC_ADDR   0x94001000
+#define SPI_NAND_READ_ADDR              0x94000000
+#define SPI_NAND_READ_MXIC_ADDR         0x94001000
 
-#define SPI_NAND_READ_FAIL	0x1
-#define SPI_NAND_WRITE_FAIL	0x2
-#define SPI_NAND_ERASE_FAIL	0x4
+#define SPI_NAND_READ_FAIL              0x1
+#define SPI_NAND_WRITE_FAIL             0x2
+#define SPI_NAND_ERASE_FAIL             0x4
 
 /* spi nand registers */
 struct sp_spinand_regs {

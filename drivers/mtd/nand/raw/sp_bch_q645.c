@@ -401,8 +401,8 @@ int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc, int d
 	mutex_lock(&chip->lock);
 
 	writel(SRR_RESET, &regs->srr);
-	writel((uint32_t) buf, &regs->buf);
-	writel((uint32_t) ecc, &regs->ecc);
+	writel((uint32_t)((uint64_t)buf), &regs->buf);
+	writel((uint32_t)((uint64_t)ecc), &regs->ecc);
 	writel((IER_FAIL|IER_DONE), &regs->ier);
 
 	value = chip->cr0
@@ -476,7 +476,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (!buf)
 		return -ENOMEM;
 	/* make sure it's 32 bytes aligned */
-	req = (void *)(((unsigned)buf + 31) & 0xffffffe0);
+	req = (void *)(((unsigned long)buf + 31) & 0xffffffffffffffe0);
 
 	switch (cmd) {
 	case SP_BCH_IOC1K60ENC:
@@ -624,7 +624,7 @@ static int sp_bch_probe(struct platform_device *pdev)
 
 	ret = request_irq(res_irq->start,sp_bch_irq,IRQF_SHARED,"sp_bch",chip);
 	if (ret) {
-		printk(KERN_ERR"sp_bch: request IRQ(%d) fail\n",res_irq->start);
+		printk(KERN_ERR"sp_bch: request IRQ(%lld) fail\n",res_irq->start);
 		goto err;
 	}
 
