@@ -5204,6 +5204,8 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 	struct kbase_device *kbdev;
 	int err = 0;
 
+	printk("kbase_platform_device_probe \n");
+
 	mali_kbase_print_cs_experimental();
 
 	kbdev = kbase_device_alloc();
@@ -5433,6 +5435,7 @@ static const struct dev_pm_ops kbase_pm_ops = {
 #ifdef CONFIG_OF
 static const struct of_device_id kbase_dt_ids[] = {
 	{ .compatible = "arm,malit6xx" },
+	{ .compatible = "sunplus,q645-malig31" },
 	{ .compatible = "arm,mali-midgard" },
 	{ .compatible = "arm,mali-bifrost" },
 	{ /* sentinel */ }
@@ -5467,6 +5470,8 @@ static int __init kbase_driver_init(void)
 	if (ret)
 		return ret;
 
+	printk("kbase_driver_init \n");
+  
 	ret = platform_driver_register(&kbase_platform_driver);
 
 	if (ret)
