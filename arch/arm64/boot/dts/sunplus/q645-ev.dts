@@ -215,15 +215,13 @@
 	};
 
 	malig31: malig31@0xf8170000 {
-		compatible = "sunplus,q645-malig31";
-		reg = <0x00 0xf8170000 0x00 0x3fff>;
+		compatible = "arm,mali-midgard";
+		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
-//		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>,
 		interrupts = 
 			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
-//		interrupt-names = "EVENT", "JOB", "MMU", "GPU";
 		interrupt-names = "JOB", "MMU", "GPU";
 		clocks = <&clkc GPU>;
 		clock-names = "clk_mali";
