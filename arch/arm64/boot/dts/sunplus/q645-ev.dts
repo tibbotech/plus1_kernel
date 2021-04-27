@@ -215,7 +215,7 @@
 	};
 
 	malig31: malig31@0xf8170000 {
-		compatible = "arm,mali-midgard";
+//		compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
 		interrupts = 
