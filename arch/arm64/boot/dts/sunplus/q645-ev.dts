@@ -205,6 +205,47 @@
 		pinctrl-0 = <&spi_nand_pins>;
 	};
 
+	otp0: otp@0xF800AF00 {
+		compatible = "sunplus,q645-ocotp0";
+		reg = <0x00 0xF800AF00 0x00 0x34>, <0x00 0xF800AF80 0x00 0x58>;
+		reg-names = "hb_gpio", "otprx";
+		clocks = <&clkc OTPRX>;
+		resets = <&rstc RST_OTPRX>;
+		#address-cells = <1>;
+		#size-cells = <1>;
+		therm_calib: therm_calib {
+			reg = <0x14 0x3>;
+		};
+		mac_addr0: mac_addr0 {
+			reg = <0x34 0x6>;
+		};
+		mac_addr1: mac_addr1 {
+			reg = <0x3A 0x6>;
+		};
+		disc_vol0: disc_vol0 {
+			reg = <0x18 0x2>;
+		};
+		disc_vol1: disc_vol1 {
+			reg = <0x18 0x2>;
+		};
+	};
+
+	otp1: otp@0xF8018580 {
+		compatible = "sunplus,q645-ocotp1";
+		reg = <0x00 0xF8018580 0x00 0x34>, <0x00 0xF8018600 0x00 0x58>;
+		reg-names = "hb_gpio", "otprx";
+		clocks = <&clkc OTPRX>;
+		resets = <&rstc RST_OTPRX>;
+	};
+
+	otp2: otp@0xF8002780 {
+		compatible = "sunplus,q645-ocotp2";
+		reg = <0x00 0xF8002780 0x00 0x34>, <0x00 0xF8002800 0x00 0x58>;
+		reg-names = "hb_gpio", "otprx";
+		clocks = <&clkc OTPRX>;
+		resets = <&rstc RST_OTPRX>;
+	};
+
 	bch0: bch@0xf8101000 {
 		compatible = "sunplus,q645-bch";
 		reg = <0x0 0xf8101000 0x0 0x30>;
