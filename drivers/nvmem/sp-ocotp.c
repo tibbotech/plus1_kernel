@@ -1,5 +1,5 @@
 /*
- * The OCOTP driver for Sunplus QAC628
+ * The OCOTP driver for Sunplus
  *
  * Copyright (C) 2019 Sunplus Technology Inc., All rights reseerved.
  *
@@ -33,68 +33,8 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 
-/*
- * QAC628 OTP memory contains 8 banks with 4 32-bit words. Bank 0 starts
- * at offset 0 from the base.
- *
- */
-#define QAC628_OTP_NUM_BANKS            8
-#define QAC628_OTP_WORDS_PER_BANK       4
-#define QAC628_OTP_WORD_SIZE            sizeof(u32)
-#define QAC628_OTP_SIZE                 (QAC628_OTP_NUM_BANKS * \
-							QAC628_OTP_WORDS_PER_BANK * \
-							QAC628_OTP_WORD_SIZE)
-#define QAC628_OTP_BIT_ADDR_OF_BANK     (8 * QAC628_OTP_WORD_SIZE * \
-							QAC628_OTP_WORDS_PER_BANK)
+#include <linux/firmware/sp-ocotp.h>
 
-#define OTP_READ_TIMEOUT                20000
-
-/* HB_GPIO register map */
-#define ADDRESS_8_DATA                  0x20
-#define ADDRESS_9_DATA                  0x24
-#define ADDRESS_10_DATA                 0x28
-#define ADDRESS_11_DATA                 0x2C
-
-/* OTPRX register map */
-#define OTP_PROGRAM_CONTROL             0x0C
-#define PIO_MODE                        0x07
-
-#define OTP_PROGRAM_ADDRESS             0x10
-#define PROG_OTP_ADDR                   0x1FFF
-
-#define OTP_PROGRAM_PGENB               0x20
-#define PIO_PGENB                       0x01
-
-#define OTP_PROGRAM_ENABLE              0x24
-#define PIO_WR                          0x01
-
-#define OTP_PROGRAM_VDD2P5              0x28
-#define PROGRAM_OTP_DATA                0xFF00
-#define PROGRAM_OTP_DATA_SHIFT          8
-#define REG25_PD_MODE_SEL               0x10
-#define REG25_POWER_SOURCE_SEL          0x02
-#define OTP2REG_PD_N_P                  0x01
-
-#define OTP_PROGRAM_STATE               0x2C
-#define OTPRSV_CMD3                     0xE0
-#define OTPRSV_CMD3_SHIFT               5
-#define TSMC_OTP_STATE                  0x1F
-
-#define OTP_CONTROL                     0x44
-#define PROG_OTP_PERIOD                 0xFFE0
-#define PROG_OTP_PERIOD_SHIFT           5
-#define OTP_EN_R                        0x01
-
-#define OTP_CONTROL2                    0x48
-#define OTP_RD_PERIOD                   0xFF00
-#define OTP_RD_PERIOD_SHIFT             8
-#define OTP_READ                        0x04
-
-#define OTP_STATUS                      0x4C
-#define OTP_READ_DONE                   0x10
-
-#define OTP_READ_ADDRESS                0x50
-#define RD_OTP_ADDRESS                  0x1F
 
 enum base_type {
 	HB_GPIO,
@@ -107,6 +47,9 @@ typedef struct {
 	void __iomem *base[BASEMAX];
 	struct clk *clk;
 	struct nvmem_config *config;
+#ifdef CONFIG_SOC_Q645
+	int id;
+#endif
 } sp_otp_data_t;
 
 static int sp_otp_wait(void __iomem *_base)
@@ -132,14 +75,14 @@ int sp_otp_read_real(sp_otp_data_t *_otp, int addr, char *value)
 	unsigned int byte_shift;
 	int ret = 0;
 
-	addr_data = addr % (QAC628_OTP_WORD_SIZE * QAC628_OTP_WORDS_PER_BANK);
-	addr_data = addr_data / QAC628_OTP_WORD_SIZE;
+	addr_data = addr % (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
+	addr_data = addr_data / OTP_WORD_SIZE;
 
-	byte_shift = addr % (QAC628_OTP_WORD_SIZE * QAC628_OTP_WORDS_PER_BANK);
-	byte_shift = byte_shift % QAC628_OTP_WORD_SIZE;
+	byte_shift = addr % (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
+	byte_shift = byte_shift % OTP_WORD_SIZE;
 
-	addr = addr / (QAC628_OTP_WORD_SIZE * QAC628_OTP_WORDS_PER_BANK);
-	addr = addr * QAC628_OTP_BIT_ADDR_OF_BANK;
+	addr = addr / (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
+	addr = addr * OTP_BIT_ADDR_OF_BANK;
 
 	writel(0x0, _otp->base[OTPRX] + OTP_STATUS);
 	writel(addr, _otp->base[OTPRX] + OTP_READ_ADDRESS);
@@ -151,7 +94,7 @@ int sp_otp_read_real(sp_otp_data_t *_otp, int addr, char *value)
 	}
 
 	*value = (readl(_otp->base[HB_GPIO] + ADDRESS_8_DATA + addr_data *
-			QAC628_OTP_WORD_SIZE) >> (8 * byte_shift)) & 0xFF;
+			OTP_WORD_SIZE) >> (8 * byte_shift)) & 0xFF;
 
 	return ret;
 }
@@ -166,13 +109,33 @@ static int sp_ocotp_read(void *_c, unsigned int _off, void *_v, size_t _l)
 
 #ifdef CONFIG_SOC_SP7021
 	dev_dbg(otp->dev, "OTP read %u bytes at %u", _l, _off);
-#elif defined(CONFIG_SOC_I143)
-	dev_dbg(otp->dev, "OTP read %lu bytes at %u", _l, _off);
-#endif
 
-	if ((_off >= QAC628_OTP_SIZE) || (_l == 0) || ((_off + _l) > 128)) {
+	if ((_off >= QAC628_OTP_SIZE) || (_l == 0) || ((_off + _l) > QAC628_OTP_SIZE)) {
 		return -EINVAL;
 	}
+#elif defined(CONFIG_SOC_I143)
+	dev_dbg(otp->dev, "OTP read %lu bytes at %u", _l, _off);
+
+	if ((_off >= I143_OTP_SIZE) || (_l == 0) || ((_off + _l) > I143_OTP_SIZE)) {
+		return -EINVAL;
+	}
+#elif defined(CONFIG_SOC_Q645)
+	dev_dbg(otp->dev, "OTP read %lu bytes at %u", _l, _off);
+
+	if (otp->id == 0) {
+		if ((_off >= QAK645_EFUSE0_SIZE) || (_l == 0) || ((_off + _l) > QAK645_EFUSE0_SIZE)) {
+			return -EINVAL;
+		}
+	} else if (otp->id == 1) {
+		if ((_off >= QAK645_EFUSE1_SIZE) || (_l == 0) || ((_off + _l) > QAK645_EFUSE1_SIZE)) {
+			return -EINVAL;
+		}
+	} else if (otp->id == 2) {
+		if ((_off >= QAK645_EFUSE0_SIZE) || (_l == 0) || ((_off + _l) > QAK645_EFUSE2_SIZE)) {
+			return -EINVAL;
+		}
+	}
+#endif
 
 	ret = clk_enable(otp->clk);
 	if (ret) {
@@ -196,28 +159,67 @@ disable_clk:
 	return ret;
 }
 
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
 	.type = NVMEM_TYPE_OTP,
-#endif
+	#endif
 	.word_size = 1,
+	#if defined(CONFIG_SOC_SP7021)
 	.size = QAC628_OTP_SIZE,
+	#elif defined(CONFIG_SOC_I143)
+	.size = I143_OTP_SIZE,
+	#endif
 	.stride = 1,
 	.reg_read = sp_ocotp_read,
 	.owner = THIS_MODULE,
 };
+#elif defined(CONFIG_SOC_Q645)
+static struct nvmem_config sp_ocotp_nvmem_config[3] = {
+	{
+		.name = "sp-ocotp0",
+		.read_only = true,
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+		.type = NVMEM_TYPE_OTP,
+	#endif
+		.word_size = 1,
+		.size = QAK645_EFUSE0_SIZE,
+		.stride = 1,
+		.reg_read = sp_ocotp_read,
+		.owner = THIS_MODULE,
+	},
 
-typedef struct {
-	int size;
-} sp_otp_vX_t;
+	{
+		.name = "sp-ocotp1",
+		.read_only = true,
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+		.type = NVMEM_TYPE_OTP,
+	#endif
+		.word_size = 1,
+		.size = QAK645_EFUSE1_SIZE,
+		.stride = 1,
+		.reg_read = sp_ocotp_read,
+		.owner = THIS_MODULE,
+	},
 
-static const sp_otp_vX_t  sp_otp_v0 = {
-	.size = QAC628_OTP_SIZE,
+	{
+		.name = "sp-ocotp2",
+		.read_only = true,
+	#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0)
+		.type = NVMEM_TYPE_OTP,
+	#endif
+		.word_size = 1,
+		.size = QAK645_EFUSE2_SIZE,
+		.stride = 1,
+		.reg_read = sp_ocotp_read,
+		.owner = THIS_MODULE,
+	},
 };
+#endif
 
-static int sp_ocotp_probe(struct platform_device *pdev)
+int sp_ocotp_probe(struct platform_device *pdev)
 {
 	const struct of_device_id *match;
 	const sp_otp_vX_t *sp_otp_vX = NULL;
@@ -240,7 +242,12 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 	otp->dev = dev;
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
 	otp->config = &sp_ocotp_nvmem_config;
+#elif defined(CONFIG_SOC_Q645)
+	otp->id = pdev->id-1;
+	otp->config = &sp_ocotp_nvmem_config[otp->id];
+#endif
 
 	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "hb_gpio");
 	otp->base[HB_GPIO] = devm_ioremap_resource(dev, res);
@@ -266,12 +273,22 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 	}
 	clk_enable(otp->clk);
 
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
 	sp_ocotp_nvmem_config.priv = otp;
 	sp_ocotp_nvmem_config.dev = dev;
+#elif defined(CONFIG_SOC_Q645)
+	sp_ocotp_nvmem_config[otp->id].priv = otp;
+	sp_ocotp_nvmem_config[otp->id].dev = dev;
+#endif
 
 	// devm_* >= 4.15 kernel
 	// nvmem = devm_nvmem_register(dev, &sp_ocotp_nvmem_config);
+
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
 	nvmem = nvmem_register(&sp_ocotp_nvmem_config);
+#elif defined(CONFIG_SOC_Q645)
+	nvmem = nvmem_register(&sp_ocotp_nvmem_config[otp->id]);
+#endif
 	if (IS_ERR(nvmem)) {
 		dev_err(dev, "error registering nvmem config\n");
 		return PTR_ERR(nvmem);
@@ -282,20 +299,38 @@ static int sp_ocotp_probe(struct platform_device *pdev)
 #ifdef CONFIG_SOC_SP7021
 	dev_dbg(dev, "clk:%ld banks:%d x wpb:%d x wsize:%d = %d",
 		clk_get_rate(otp->clk),
-		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
-		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
+		QAC628_OTP_NUM_BANKS, OTP_WORDS_PER_BANK,
+		OTP_WORD_SIZE, QAC628_OTP_SIZE);
 #elif defined(CONFIG_SOC_I143)
 	dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
 		clk_get_rate(otp->clk),
-		QAC628_OTP_NUM_BANKS, QAC628_OTP_WORDS_PER_BANK,
-		QAC628_OTP_WORD_SIZE, QAC628_OTP_SIZE);
+		I143_OTP_NUM_BANKS, OTP_WORDS_PER_BANK,
+		OTP_WORD_SIZE, I143_OTP_SIZE);
+#elif defined(CONFIG_SOC_Q645)
+	if (otp->id == 0) {
+		dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
+			clk_get_rate(otp->clk),
+			QAK645_EFUSE0_NUM_BANKS, OTP_WORDS_PER_BANK,
+			OTP_WORD_SIZE, QAK645_EFUSE0_SIZE);
+	} else if (otp->id == 1) {
+		dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
+			clk_get_rate(otp->clk),
+			QAK645_EFUSE1_NUM_BANKS, OTP_WORDS_PER_BANK,
+			OTP_WORD_SIZE, QAK645_EFUSE1_SIZE);
+	} else if (otp->id == 2) {
+		dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
+			clk_get_rate(otp->clk),
+			QAK645_EFUSE2_NUM_BANKS, OTP_WORDS_PER_BANK,
+			OTP_WORD_SIZE, QAK645_EFUSE2_SIZE);
+	}
 #endif
 	dev_info(dev, "by Sunplus (C) 2020");
 
 	return 0;
 }
+EXPORT_SYMBOL_GPL(sp_ocotp_probe);
 
-static int sp_ocotp_remove(struct platform_device *pdev)
+int sp_ocotp_remove(struct platform_device *pdev)
 {
 	// disbale for devm_*
 	struct nvmem_device *nvmem = platform_get_drvdata(pdev);
@@ -303,32 +338,4 @@ static int sp_ocotp_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
-static const struct of_device_id sp_ocotp_dt_ids[] = {
-	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_otp_v0  },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, sp_ocotp_dt_ids);
-
-static struct platform_driver sp_otp_driver = {
-	.probe     = sp_ocotp_probe,
-	.remove    = sp_ocotp_remove,
-	.driver    = {
-		.name           = "sunplus,sp7021-ocotp",
-		.of_match_table = sp_ocotp_dt_ids,
-	},
-};
-
-static int __init sp_otp_drv_new(void) {
-	return platform_driver_register(&sp_otp_driver);
-}
-subsys_initcall(sp_otp_drv_new);
-
-static void __exit sp_otp_drv_del(void) {
-	platform_driver_unregister(&sp_otp_driver);
-}
-module_exit(sp_otp_drv_del);
-
-MODULE_DESCRIPTION("Sunplus OCOTP driver");
-MODULE_LICENSE("GPL v2");
-
+EXPORT_SYMBOL_GPL(sp_ocotp_remove);
