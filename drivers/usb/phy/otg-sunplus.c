@@ -798,7 +798,7 @@ int sp_otg_probe(struct platform_device *dev)
 	}
 
 #if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
-	#ifdef CONFIG_GADGET_USB0
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
  	if (otg_host->id == 1) {
 		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg0_host, "hnp_polling");
 		wake_up_process(sp_otg0_host->hnp_polling_timer);
@@ -849,7 +849,7 @@ int sp_otg_remove(struct platform_device *dev)
 #endif
 
 #if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
-	#ifdef CONFIG_GADGET_USB0
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
 	if (sp_otg0_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
 		if (err) {

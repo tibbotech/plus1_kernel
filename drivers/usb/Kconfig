@@ -60,6 +60,7 @@ config USB_PORT0
 
 config USB_PORT1
 	bool "Sunplus Gemini USB2.0 PORT 1"
+	depends on (SOC_SP7021 || SOC_I143)
 	default y
 
 config USB_PORT2

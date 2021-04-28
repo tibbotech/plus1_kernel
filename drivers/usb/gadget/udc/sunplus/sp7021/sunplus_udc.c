@@ -34,7 +34,7 @@
 #include <linux/vmalloc.h>
 
 #define ISO_DEBUG_INFO
-#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
 #define USB0
 #endif
 
