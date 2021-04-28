@@ -52,7 +52,7 @@
 static const char gadget_name[] = "spnew_udc";
 static const char driver_desc[] = DRIVER_DESC;
 
-#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
 uint accessory_port_id = USB_PORT0_ID;
 #else
 uint accessory_port_id = USB_PORT1_ID;
