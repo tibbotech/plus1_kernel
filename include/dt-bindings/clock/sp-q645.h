@@ -1,21 +1,16 @@
 #ifndef _DT_BINDINGS_CLOCK_SUNPLUS_Q645_H
 #define _DT_BINDINGS_CLOCK_SUNPLUS_Q645_H
 
-/* plls */
-#define PLL_A       0
-#define PLL_E       1
-#define PLL_E_2P5   2
-#define PLL_E_25    3
-#define PLL_E_112P5 4
-#define PLL_F       5
-#define PLL_TV      6
-#define PLL_TV_A    7
-#define PLL_SYS     8
-#define PLL_FLA     9
-#define PLL_GPU     10
-#define PLL_CPU     11
+#define XTAL		25000000
 
-#define PLL_MAX     16
+/* plls */
+#define PLL_HSM     0
+#define PLL_NPU     1
+#define PLL_SYS     2
+#define PLL_CPU     3
+#define PLL_DRAM    4
+
+#define PLL_MAX     5
 
 /* gates: mo_scfg_0 ~ mo_scfg_5 */
 #define SYSTEM      0x00
@@ -93,6 +88,6 @@
 #define STC_AV2     0x44
 #define MAILBOX     0x45
 
-#define CLK_MAX     0x50
+#define CLK_MAX     0x46
 
 #endif
