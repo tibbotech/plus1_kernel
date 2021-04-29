@@ -12,9 +12,6 @@
 #include <dt-bindings/reset/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 
-/* Clock frequency (in Hz) of the PCB crystal for rtcclk */
-#define RTCCLK_FREQ             27000000
-
 / {
 	model = "Sunplus Q645";
 	compatible = "sunplus,sp-q645";
@@ -55,7 +52,7 @@
 		extclk: clk@osc0 {
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
-			clock-frequency = <RTCCLK_FREQ>;
+			clock-frequency = <XTAL>;
 			clock-output-names = "extclk";
 		};
 
@@ -150,7 +147,7 @@
 	timer {
 		compatible = "arm,armv8-timer";
 		interrupt-parent = <&gic>;
-		clock-frequency = <RTCCLK_FREQ>;
+		clock-frequency = <XTAL>;
 		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 14 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
 			     <GIC_PPI 11 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>,
@@ -172,7 +169,7 @@
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&extclk>;
+		clocks = <&clkc UA0>;
 		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart0_pins>;
