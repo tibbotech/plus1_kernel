@@ -173,18 +173,34 @@ static struct sp_div divs[] = {
 
 static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 {
-	long ret = 0;
-	int i = (clk->reg == PLLHSM_CTL) ? (ARRAY_SIZE(divs) - 6) : 0;
+	long ret = 0, mr = 0;
+	int mi = 0, md = 0x7fffffff, d;
+	int i, j = (clk->reg == PLLHSM_CTL) ? (ARRAY_SIZE(divs) - 6) : 0;
 
-	for (; i <= ARRAY_SIZE(divs) - 1; i++) {
+	for (i = ARRAY_SIZE(divs) - 1; i >= j; i--) {
 		long br = clk->brate * 2 / divs[i].div2;
 		ret = DIV_ROUND_CLOSEST(rate, br);
-		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX)
-			break;
+		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
+			//pr_info(">>>%u>>> %ld * %ld = %ld - %lu\n", divs[i].div2, br, ret, br * ret, rate);
+			br *= ret;
+			if (br < rate)
+				d = rate - br;
+			else if (br > rate)
+				d = br - rate;
+			else { // br == rate
+				clk->idiv = i;
+				return ret;
+			}
+			if (d < md) {
+				md = d;
+				mi = i;
+				mr = ret;
+			}
+		}
 	}
-	clk->idiv = i;
 
-	return ret;
+	clk->idiv = mi;
+	return mr;
 }
 
 static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
@@ -215,7 +231,7 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 	bool bHSM = clk->reg == PLLHSM_CTL;
 
 	//TRACE;
-	//printk("%08x\n", reg);
+	//pr_info("%08x\n", reg);
 	if (bHSM ? (readl(clk->reg + 4) & BIT(8)) : (reg & BIT(BP)))
 		ret = prate; /* bypass */
 	else {
@@ -238,16 +254,17 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 	u32 reg;
 
 	//TRACE;
-	pr_info("set_rate: %lu -> %lu\n", prate, rate);
+	//pr_info("set_rate: %lu -> %lu\n", prate, rate);
 
 	spin_lock_irqsave(&clk->lock, flags);
 
-	reg = BIT(BP + 16); /* HIWORD_MASK */
+	reg = BIT(BP + 16); /* BP HIWORD_MASK */
 
 	if (rate == prate)
 		reg |= BIT(BP); /* bypass */
 	else {
 		u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
+		reg |= 0x3ffe0000; // BIT[13:1] HIWORD_MASK
 		reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[clk->idiv].bits;
 	}
 
@@ -330,6 +347,13 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 		pr_info("%-20s%lu\n", name, clk_get_rate(clk));
 		clk_register_clkdev(clk, NULL, name);
 	}
+
+#if 0 // test set
+	clk_set_rate(clk, clk_get_rate(clk) / 2);
+	pr_info("%-20s%lu\n", name, clk_get_rate(clk));
+	clk_set_rate(clk, clk_get_rate(clk) * 2);
+	pr_info("%-20s%lu\n\n", name, clk_get_rate(clk));
+#endif
 
 	return clk;
 }
