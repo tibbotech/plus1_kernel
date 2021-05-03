@@ -30,8 +30,14 @@
 #include <linux/hrtimer.h>
 
 #define NUM_UART	6	/* serial0,  ... */
+
+#if defined(CONFIG_SOC_Q645)
+#define NUM_UARTDMARX	4	/* serial10, ... */
+#define NUM_UARTDMATX	4	/* serial20, ... */
+#else
 #define NUM_UARTDMARX	2	/* serial10, ... */
 #define NUM_UARTDMATX	2	/* serial20, ... */
+#endif
 
 #define ID_BASE_DMARX	10
 #define ID_BASE_DMATX	20
@@ -1729,7 +1735,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	int ret, irq;
 	int idx_offset, idx;
 	int idx_which_uart;
+#if defined(CONFIG_SOC_Q645)
+#else
 	char peri_name[16];
+#endif
 #ifdef TTYS_GPIO
 	int uart_gpio;
 #endif
@@ -1776,6 +1785,8 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			return -ENODEV;
 		}
 
+		#if defined(CONFIG_SOC_Q645)
+		#else
 		sprintf(peri_name, "PERI%d", (idx & 0x01));
 		DBG_INFO("Enable clock %s\n", peri_name);
 		clk = devm_clk_get(&pdev->dev, peri_name);
@@ -1789,6 +1800,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 				return ret;
 			}
 		}
+		#endif
 
 		sunplus_uartdma[idx].addr_phy = (unsigned long)(res_mem->start);
 		sunplus_uartdma[idx].membase = devm_ioremap_resource(&pdev->dev, res_mem);

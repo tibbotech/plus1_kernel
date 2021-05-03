@@ -12,6 +12,16 @@
 #include <dt-bindings/reset/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 
+//#define ENABLE_DMARX0
+//#define ENABLE_DMARX1
+//#define ENABLE_DMARX2
+//#define ENABLE_DMARX3
+
+//#define ENABLE_DMATX0
+//#define ENABLE_DMATX1
+//#define ENABLE_DMATX2
+//#define ENABLE_DMATX3
+
 / {
 	model = "Sunplus Q645";
 	compatible = "sunplus,sp-q645";
@@ -20,7 +30,37 @@
 	#size-cells = <2>;
 
 	aliases {
+#ifdef ENABLE_DMARX0
+		serial10 = &uartdmarx0;
+#endif
+#ifdef ENABLE_DMARX1
+		serial11 = &uartdmarx1;
+#endif
+#ifdef ENABLE_DMARX2
+		serial12 = &uartdmarx2;
+#endif
+#ifdef ENABLE_DMARX3
+		serial13 = &uartdmarx3;
+#endif
+#ifdef ENABLE_DMATX0
+		serial20 = &uartdmatx0;
+#endif
+#ifdef ENABLE_DMATX1
+		serial21 = &uartdmatx1;
+#endif
+#ifdef ENABLE_DMATX2
+		serial22 = &uartdmatx2;
+#endif
+#ifdef ENABLE_DMATX3
+		serial23 = &uartdmatx3;
+#endif
 		serial0 = &uart0;
+		serial1 = &uart1;
+		serial2 = &uart2;
+		serial3 = &uart3;
+		serial4 = &uart4;
+		serial5 = &uadbg;
+
 		spi0 = &sp_spinor0;
 	};
 
@@ -161,6 +201,106 @@
 		reg-names = "reset";
 	};
 
+#ifdef ENABLE_DMARX0
+		/* DMA Rx for UARTx */
+		uartdmarx0: serial@sp_uartdmarx0 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008980 0x00 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA01>;
+			clock-names = "UADMA01";
+			resets = <&rstc RST_UADMA01>;
+			which-uart = <0>;
+		};
+#endif
+#ifdef ENABLE_DMARX1
+		uartdmarx1: serial@sp_uartdmarx1 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf80089c0 0x00 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA01>;
+			clock-names = "UADMA01";
+			resets = <&rstc RST_UADMA01>;
+			which-uart = <1>;
+		};
+#endif
+#ifdef ENABLE_DMARX2
+		uartdmarx2: serial@sp_uartdmarx2 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008700 0x00 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA23>;
+			clock-names = "UADMA23";
+			resets = <&rstc RST_UADMA23>;
+			which-uart = <2>;
+		};
+#endif
+#ifdef ENABLE_DMARX3
+		uartdmarx3: serial@sp_uartdmarx3 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008740 0x00 0x40>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc UADMA23>;
+			clock-names = "UADMA23";
+			resets = <&rstc RST_UADMA23>;
+			which-uart = <3>;
+		};
+#endif
+
+#ifdef ENABLE_DMATX0
+		/* DMA Tx for UARTx */
+		uartdmatx0: serial@sp_uartdmatx0 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
+			clocks = <&clkc GDMAUA>;
+			clock-names = "GDMAUA";
+			resets = <&rstc RST_GDMAUA>;
+			which-uart = <0>;
+		};
+#endif
+#ifdef ENABLE_DMATX1
+		uartdmatx1: serial@sp_uartdmatx1 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
+			clocks = <&clkc GDMAUA>;
+			clock-names = "GDMAUA";
+			resets = <&rstc RST_GDMAUA>;
+			which-uart = <1>;
+		};
+#endif
+#ifdef ENABLE_DMATX2
+		uartdmatx2: serial@sp_uartdmatx2 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
+			clocks = <&clkc GDMAUA>;
+			clock-names = "GDMAUA";
+			resets = <&rstc RST_GDMAUA>;
+			which-uart = <2>;
+		};
+#endif
+#ifdef ENABLE_DMATX3
+		uartdmatx3: serial@sp_uartdmatx3 {
+			compatible = "sunplus,q645-uart",
+					"sunplus,sp7021-uart";
+			reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
+			clocks = <&clkc GDMAUA>;
+			clock-names = "GDMAUA";
+			resets = <&rstc RST_GDMAUA>;
+			which-uart = <3>;
+		};
+#endif
+
 	uart0: serial@0xf8000900 {
 		compatible = "sunplus,q645-uart",
 			     "sunplus,sp7021-uart";
@@ -173,6 +313,77 @@
 		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart0_pins>;
+	};
+
+	uart1: serial@0xf8000980 {
+		compatible = "sunplus,q645-uart",
+			     "sunplus,sp7021-uart";
+		reg = <0x00 0xf8000980 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA1>;
+		resets = <&rstc RST_UA1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart1_pins>;
+		status = "disabled";
+	};
+
+	uart2: serial@0xf8000800 {
+		compatible = "sunplus,q645-uart",
+			     "sunplus,sp7021-uart";
+		reg = <0x00 0xf8000800 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA2>;
+		resets = <&rstc RST_UA2>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart2_pins>;
+		status = "disabled";
+	};
+
+	uart3: serial@0xf8004380 {
+		compatible = "sunplus,q645-uart",
+			     "sunplus,sp7021-uart";
+		reg = <0x00 0xf8004380 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA3>;
+		resets = <&rstc RST_UA3>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart3_pins>;
+		status = "disabled";
+	};
+
+	uart4: serial@0xf8000880 {
+		compatible = "sunplus,q645-uart",
+			     "sunplus,sp7021-uart";
+		reg = <0x00 0xf8000880 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA4>;
+		resets = <&rstc RST_UA4>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&uart4_pins>;
+		status = "disabled";
+	};
+
+	uadbg: serial@0xf800f900 {
+		compatible = "sunplus,q645-uart",
+			     "sunplus,sp7021-uart";
+		reg = <0x00 0xf800f900 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADBG>;
+		resets = <&rstc RST_UADBG>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&uadbg_pins>;
+		status = "disabled";
 	};
 
 	sp_spinor0: spinor@0xf8000b00 {
@@ -426,6 +637,33 @@
 			sppctl,function = "UART0";
 			sppctl,groups = "UART0";
 		};
+
+		uart1_pins: pinmux_uart1_pins {
+			sppctl,function = "UART1";
+			sppctl,groups = "UART1";
+		};
+
+		uart2_pins: pinmux_uart2_pins {
+			sppctl,function = "UART2";
+			sppctl,groups = "UART2";
+		};
+
+		uart3_pins: pinmux_uart3_pins {
+			sppctl,function = "UART3";
+			sppctl,groups = "UART3";
+		};
+
+		#if 0 //TBD
+		uart4_pins: pinmux_uart4_pins {
+			sppctl,function = "UART4";
+			sppctl,groups = "UART4";
+		};
+
+		uadbg_pins: pinmux_uadbg_pins {
+			sppctl,function = "UADBG";
+			sppctl,groups = "UADBG";
+		};
+		#endif
 
 		emmc_pins: pinmux_emmc_pins {
 			sppctl,function = "CARD0_EMMC";
