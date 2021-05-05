@@ -171,7 +171,9 @@ extern void sp_disp_set_ttl_vpp(void);
 extern void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdmi);
 
 int g_disp_state = 1;
+int g_disp_hdmi_skip_plltv = 0;
 EXPORT_SYMBOL(g_disp_state);
+EXPORT_SYMBOL(g_disp_hdmi_skip_plltv);
 
 #ifdef CONFIG_EDID_READ
 int g_disp_update_timing = 0;
@@ -2331,6 +2333,13 @@ static int _display_init_plltv(struct device *dev, struct sp_disp_device *disp_d
 
 	if (of_property_read_u32(dev->of_node, "ttl-parm-adj", &disp_dev->TTLPar.ttl_parm_adj)) {
 		disp_dev->TTLPar.ttl_parm_adj = 0;
+	}
+
+	if (of_property_read_u32(dev->of_node, "hdmi-skip-plltv", &disp_dev->TTLPar.hdmi_skip_plltv)) {
+		disp_dev->TTLPar.hdmi_skip_plltv = 0;
+	}
+	else {
+		g_disp_hdmi_skip_plltv = disp_dev->TTLPar.hdmi_skip_plltv;
 	}
 
 	//decide divm , divn and divr value for TTL/HDMI user mode clk setting

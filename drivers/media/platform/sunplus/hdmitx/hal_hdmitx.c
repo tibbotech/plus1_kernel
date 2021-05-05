@@ -99,7 +99,9 @@ static unsigned char hdmi_audio_infoframe[HDMI_INFOFRAME_SIZE(AUDIO)] = {HDMI_IN
 /*----------------------------------------------------------------------------*
  *					FUNCTION DECLARATIONS
  *---------------------------------------------------------------------------*/
-
+#ifdef CONFIG_SOC_SP7021
+extern int g_disp_hdmi_skip_plltv;
+#endif
 static void apply_pixel_clock(void __iomem *moon4base)
 {
 	reg_moon4_t *pMoon4Reg = (reg_moon4_t *)moon4base;
@@ -120,12 +122,16 @@ static void apply_pixel_clock(void __iomem *moon4base)
 	}
 
 #ifdef CONFIG_SOC_SP7021
-	if (g_pll_tv_cfg[clk_mode].bypass == ENABLE) {
-		pMoon4Reg->plltv_ctl[0] = 0x80000000 | (0x1 << 15);
+	if (g_disp_hdmi_skip_plltv) {
+		;//hdmi_skip_plltv
 	} else {
-		pMoon4Reg->plltv_ctl[0] = 0x80000000;
-		pMoon4Reg->plltv_ctl[1] = 0x01800000 | (g_pll_tv_cfg[clk_mode].r << 7);
-		pMoon4Reg->plltv_ctl[2] = 0x7fff0000 | (g_pll_tv_cfg[clk_mode].m << 8) | (g_pll_tv_cfg[clk_mode].n);
+		if (g_pll_tv_cfg[clk_mode].bypass == ENABLE) {
+			pMoon4Reg->plltv_ctl[0] = 0x80000000 | (0x1 << 15);
+		} else {
+			pMoon4Reg->plltv_ctl[0] = 0x80000000;
+			pMoon4Reg->plltv_ctl[1] = 0x01800000 | (g_pll_tv_cfg[clk_mode].r << 7);
+			pMoon4Reg->plltv_ctl[2] = 0x7fff0000 | (g_pll_tv_cfg[clk_mode].m << 8) | (g_pll_tv_cfg[clk_mode].n);
+		}
 	}
 #elif defined(CONFIG_SOC_I143)
 	pMoon4Reg->plltv_cfg[2] = 0x81000100;

@@ -94,10 +94,10 @@
 		 * 0xb = ARGB4444
 		 * 0xd = RGBA8888
 		 * 0xe = ARGB8888 */
-	ttl-name = "adafruit,5inchrgb,800X480";
+	ttl-name = "userdefine,hdmirgb,800X480";
 	ttl-clock-freq = <33264000>;
 	ttl-clock-divm = <8>;
-	ttl-clock-divn = <21>;
+	ttl-clock-divn = <23>;
 	ttl-clock-divr = <1>;
 	hactive = <800>;
 	hback-porch = <46>;
@@ -114,6 +114,7 @@
 	ttl-vpp-layer = <1>;
 	ttl-vpp-adj = <29>;
 	ttl-osd-adj = <0>;
+	hdmi-skip-plltv = <1>;
 	#endif
 
 	#ifdef ENABLE_HDMITX_1024X600
