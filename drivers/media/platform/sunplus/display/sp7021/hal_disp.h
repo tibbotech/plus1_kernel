@@ -95,6 +95,7 @@ typedef struct _ttl_spec_t {
 	UINT32 ttl_vpp_adj;
 	UINT32 ttl_osd_adj;
 	UINT32 ttl_parm_adj;
+	UINT32 hdmi_skip_plltv;
 } ttl_spec_t;
 
 #ifdef SP_DISP_V4L2_SUPPORT
