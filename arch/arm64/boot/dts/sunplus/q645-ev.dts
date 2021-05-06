@@ -505,7 +505,7 @@
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
-		cd-gpios = <&pctl 62 GPIO_ACTIVE_HIGH>;
+		cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		disable-wp;
@@ -533,6 +533,7 @@
 		no-mmc;
 		#address-cells = <1>;
 		#size-cells = <0>;
+		status = "disabled";
 	};
 
 	ehci0: usb@0xf8102100 {
