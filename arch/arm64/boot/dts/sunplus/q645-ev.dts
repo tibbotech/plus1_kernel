@@ -69,7 +69,7 @@
 		stdout-path = "serial0:921600n8";
 	};
 
-	memory@00000000 {
+	memory@0x0 {
 		device_type = "memory";
 		reg = <0x00 0x00 0x00 0x10000000>;
 	};
@@ -413,9 +413,9 @@
 		pinctrl-0 = <&spi_nand_pins>;
 	};
 
-	otp0: otp@0xF800AF00 {
+	otp0: otp@0xf800af00 {
 		compatible = "sunplus,q645-ocotp0";
-		reg = <0x00 0xF800AF00 0x00 0x34>, <0x00 0xF800AF80 0x00 0x58>;
+		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -438,17 +438,17 @@
 		};
 	};
 
-	otp1: otp@0xF8018580 {
+	otp1: otp@0xf8018580 {
 		compatible = "sunplus,q645-ocotp1";
-		reg = <0x00 0xF8018580 0x00 0x34>, <0x00 0xF8018600 0x00 0x58>;
+		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
 	};
 
-	otp2: otp@0xF8002780 {
+	otp2: otp@0xf8002780 {
 		compatible = "sunplus,q645-ocotp2";
-		reg = <0x00 0xF8002780 0x00 0x34>, <0x00 0xF8002800 0x00 0x58>;
+		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -467,7 +467,7 @@
 //		compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
-		interrupts = 
+		interrupts =
 			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
@@ -505,7 +505,7 @@
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
-		sdio-gpios = <&pctl 62 GPIO_ACTIVE_HIGH>;
+		cd-gpios = <&pctl 62 GPIO_ACTIVE_HIGH>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		disable-wp;
