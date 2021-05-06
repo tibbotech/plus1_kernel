@@ -113,7 +113,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fff0>;
+			cpu-release-addr = <0x00 0xfa23fbf0>;
 			next-level-cache = <&L2_0>;
 		};
 
@@ -122,7 +122,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23ffe8>;
+			cpu-release-addr = <0x00 0xfa23fbe8>;
 			next-level-cache = <&L2_1>;
 		};
 
@@ -131,7 +131,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23ffe0>;
+			cpu-release-addr = <0x00 0xfa23fbe0>;
 			next-level-cache = <&L2_2>;
 		};
 
@@ -140,7 +140,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23ffd8>;
+			cpu-release-addr = <0x00 0xfa23fbd8>;
 			next-level-cache = <&L2_3>;
 		};
 
