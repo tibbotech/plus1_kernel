@@ -5,8 +5,8 @@
 extern const unsigned char IopNormalCode[];
 extern const unsigned char IopStandbyCode[];
 extern bool iop_code_mode;
-extern unsigned int SP_IOP_RESERVE_BASE;
-extern unsigned int SP_IOP_RESERVE_SIZE;
+extern unsigned long SP_IOP_RESERVE_BASE;
+extern unsigned long SP_IOP_RESERVE_SIZE;
 
 extern unsigned int RECEIVE_CODE_SIZE;
 extern unsigned char NormalCode[];
@@ -17,7 +17,7 @@ extern unsigned char StandbyCode[];
 void hal_iop_init(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	volatile unsigned int*   IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	volatile unsigned long*   IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	unsigned char * IOP_kernel_base;
 	//unsigned int reg;
 	
@@ -29,8 +29,11 @@ void hal_iop_init(void __iomem *iopbase)
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
 	memset((unsigned char *)IOP_kernel_base,0, NORMAL_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));	
+#endif
 	pIopReg->iop_control|=0x01;
     #if 0
 	printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __FUNCTION__, __LINE__, 
@@ -42,8 +45,9 @@ void hal_iop_init(void __iomem *iopbase)
 	
 	pIopReg->iop_control&=~(0x8000);
 	//pIopReg->iop_control&=~(0x200);
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif 
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_normal) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_normal) >> 16);
 	pIopReg->iop_control &=~(0x01);	
@@ -69,7 +73,7 @@ EXPORT_SYMBOL(hal_gpio_init);
 void hal_iop_load_normal_code(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	volatile unsigned int*   IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	volatile unsigned long*   IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	
 	unsigned char * IOP_kernel_base;
 	//unsigned int reg;
@@ -82,8 +86,12 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	memset((unsigned char *)IOP_kernel_base,0, RECEIVE_CODE_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, NormalCode, RECEIVE_CODE_SIZE);
 
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));	
+#endif
+
 	pIopReg->iop_control|=0x01;
 
 	#if 0
@@ -96,8 +104,9 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	
 	pIopReg->iop_control&=~(0x8000);
 	//pIopReg->iop_control&=~(0x200);//watchdog can reset IOP
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif 
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_normal) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_normal) >> 16);
 	pIopReg->iop_control &=~(0x01);
@@ -116,7 +125,7 @@ EXPORT_SYMBOL(hal_iop_load_normal_code);
 void hal_iop_load_standby_code(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
+	volatile unsigned long*   IOP_base_for_standby =(volatile unsigned long*)(SP_IOP_RESERVE_BASE);
 	
 	unsigned char * IOP_kernel_base;
 	//unsigned int reg;
@@ -128,9 +137,13 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, RECEIVE_CODE_SIZE);
 	memset((unsigned char *)IOP_kernel_base,0, RECEIVE_CODE_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, StandbyCode, RECEIVE_CODE_SIZE);
-
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));	
+#endif
+
+
 	pIopReg->iop_control|=0x01;
 
     #if 0
@@ -143,8 +156,9 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 	
 	pIopReg->iop_control&=~(0x8000);
 	//pIopReg->iop_control&=~(0x200);//watchdog can reset IOP
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif 
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_standby) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_standby) >> 16);
 	pIopReg->iop_control &=~(0x01);
@@ -162,7 +176,7 @@ EXPORT_SYMBOL(hal_iop_load_standby_code);
 void hal_iop_normalmode(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	volatile unsigned int*   IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	volatile unsigned long*   IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	
 	unsigned char * IOP_kernel_base;
 	//unsigned int reg;
@@ -174,7 +188,12 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
 	memset((unsigned char *)IOP_kernel_base,0, NORMAL_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));	
+#endif
+
 	pIopReg->iop_control|=0x01;
 
 	#if 0
@@ -187,8 +206,9 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	
 	pIopReg->iop_control&=~(0x8000);
 	//pIopReg->iop_control&=~(0x200);
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif 
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_normal) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_normal) >> 16);
 	pIopReg->iop_control &=~(0x01);
@@ -208,7 +228,7 @@ EXPORT_SYMBOL(hal_iop_normalmode);
 void hal_iop_standbymode(void __iomem *iopbase)
 {
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
-	volatile unsigned int*	 IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
+	volatile unsigned long*	 IOP_base_for_standby =(volatile unsigned long*)(SP_IOP_RESERVE_BASE);
 	
 	unsigned char * IOP_kernel_base;
 	//unsigned int reg;
@@ -220,8 +240,12 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_standby, STANDBY_CODE_MAX_SIZE);
 	memset((unsigned char *)IOP_kernel_base,0, STANDBY_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopStandbyCode, STANDBY_CODE_MAX_SIZE);
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));	
+#endif
+
 	pIopReg->iop_control|=0x01;
 
 #if 0
@@ -234,8 +258,9 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	
 	pIopReg->iop_control&=~(0x8000);
 	//pIopReg->iop_control&=~(0x200);
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif 
 	pIopReg->iop_base_adr_l = (unsigned int) ((u32)(IOP_base_for_standby) & 0xFFFF);
 	pIopReg->iop_base_adr_h  =(unsigned int) ((u32)(IOP_base_for_standby) >> 16);
 	pIopReg->iop_control &=~(0x01);
@@ -351,7 +376,7 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	regs_iop_pmc_t *pIopPmcReg = (regs_iop_pmc_t *)ioppmcbase;
 	//regs_iop_rtc_t *pIopRtcReg = (regs_iop_rtc_t *)ioprtcbase;
 	unsigned int reg;
-	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
+	volatile unsigned long*   IOP_base_for_standby =(volatile unsigned long*)(SP_IOP_RESERVE_BASE);
 	
 
 	//clock enable
@@ -565,7 +590,7 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	regs_iop_t *pIopReg = (regs_iop_t *)iopbase;
 	regs_iop_pmc_t *pIopPmcReg = (regs_iop_pmc_t *)ioppmcbase;
 	unsigned int reg;
-	volatile unsigned int*   IOP_base_for_standby =(volatile unsigned int*)(SP_IOP_RESERVE_BASE);
+	volatile unsigned long*   IOP_base_for_standby =(volatile unsigned long*)(SP_IOP_RESERVE_BASE);
 	
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
 	early_printk("%s(%d)\n", __FUNCTION__, __LINE__);	

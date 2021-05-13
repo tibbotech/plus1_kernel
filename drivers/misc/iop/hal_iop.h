@@ -25,6 +25,9 @@ void hal_iop_set_reserve_size(void __iomem *iopbase);
 
 #define NORMAL_CODE_MAX_SIZE 0X10000
 #define STANDBY_CODE_MAX_SIZE 0x4000
+#ifdef CONFIG_SOC_Q645 
+extern unsigned long B_SYSTEM_BASE;
+#endif
 
 
 #endif /* __IOP_HAL_H__ */

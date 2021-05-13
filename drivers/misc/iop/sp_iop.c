@@ -34,11 +34,11 @@
 extern int gpio_request(unsigned gpio, const char *label);
 extern void gpio_free(unsigned gpio);
 int IOP_GPIO;
-unsigned int SP_IOP_RESERVE_BASE;
-unsigned int SP_IOP_RESERVE_SIZE;
-
-
-
+unsigned long SP_IOP_RESERVE_BASE;
+unsigned long SP_IOP_RESERVE_SIZE;
+#ifdef CONFIG_SOC_Q645
+unsigned long B_SYSTEM_BASE;
+#endif 
 #ifdef IOP_KDBG_INFO
 	#define FUNC_DEBUG()    printk(KERN_INFO "K_IOP: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
@@ -131,7 +131,7 @@ static ssize_t iop_read_normalcode(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t count)
 {	
-	volatile unsigned int*	 IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	volatile unsigned long*	 IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	unsigned char * IOP_kernel_base;
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
 	memcpy(buf,(unsigned char *)IOP_kernel_base+offset, count);
@@ -182,7 +182,7 @@ static ssize_t iop_read_standbycode(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t count)
 {   
-	volatile unsigned int*	 IOP_base_for_normal =(volatile unsigned int*)SP_IOP_RESERVE_BASE;
+	volatile unsigned long*	 IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	unsigned char * IOP_kernel_base;
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, STANDBY_CODE_MAX_SIZE);
 	memcpy(buf,(unsigned char *)IOP_kernel_base+offset, count);
@@ -570,7 +570,7 @@ static int _sp_iop_get_irq(struct platform_device *pdev, sp_iop_t *pstSpIOPInfo)
 }
 #endif 
 
-static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int *membase, const char *res_name)
+static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long *membase, const char *res_name)
 {
 	struct resource *r;
 	void __iomem *p;
@@ -591,7 +591,10 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int 
 	}
 
 	//DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
-	*membase = (unsigned int)p;
+	#ifdef CONFIG_SOC_Q645
+	B_SYSTEM_BASE = p;
+	#endif 
+	*membase = (unsigned long)p;
 
 	return IOP_SUCCESS;
 }
@@ -601,7 +604,7 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned int 
 static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIOPInfo)
 {
 	int ret;
-	unsigned int membase = 0;
+	unsigned long membase = 0;
 
 	FUNC_DEBUG();
 
@@ -742,8 +745,8 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 
 	SP_IOP_RESERVE_BASE = mem_res.start;
 	SP_IOP_RESERVE_SIZE = resource_size(&mem_res);
-	//DBG_INFO("mem_res.start=%x \n",SP_IOP_RESERVE_BASE);	
-	//DBG_INFO("mem_res.size=%x \n",SP_IOP_RESERVE_SIZE); 
+	//DBG_INFO("mem_res.start=%lx \n",SP_IOP_RESERVE_BASE);	
+	//DBG_INFO("mem_res.size=%lx \n",SP_IOP_RESERVE_SIZE); 
 	
 	
 	ret = sp_iop_start(iop);
@@ -855,6 +858,7 @@ static int sp_iop_platform_driver_resume(struct platform_device *pdev)
 
 static const struct of_device_id sp_iop_of_match[] = {
 	{ .compatible = "sunplus,sp7021-iop" },
+	{ .compatible = "sunplus,q645-iop" },
 	{ /* sentinel */ },
 };
 

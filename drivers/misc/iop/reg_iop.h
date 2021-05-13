@@ -1,7 +1,8 @@
 #ifndef __REG_IOP_H__
 #define __REG_IOP_H__
-
+#ifdef CONFIG_SOC_SP7021
 #include <mach/io_map.h>
+#endif 
 
 typedef struct regs_iop_moon0_t_ {
 	volatile unsigned int stamp;         /* 00 */
