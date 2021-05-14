@@ -38,7 +38,7 @@ unsigned long SP_IOP_RESERVE_BASE;
 unsigned long SP_IOP_RESERVE_SIZE;
 #ifdef CONFIG_SOC_Q645
 unsigned long B_SYSTEM_BASE;
-#endif 
+#endif
 #ifdef IOP_KDBG_INFO
 	#define FUNC_DEBUG()    printk(KERN_INFO "K_IOP: %s(%d)\n", __FUNCTION__, __LINE__)
 #else
@@ -82,7 +82,7 @@ typedef struct {
 //	void __iomem *qctl_regs;
 //	void __iomem *pmc_regs;
 //	void __iomem *rtc_regs;
-	
+
 //} IOP_SYS_RegBase_t;
 
 //static IOP_SYS_RegBase_t stIopSysRegBase;
@@ -121,7 +121,7 @@ struct iop_cbdma_reg {
 
 static sp_iop_t *iop;
 bool iop_code_mode;//0:normal code, 1:standby code
-bool iop_wake_in;//0:wake_in disable , 1:wake_in enable 
+bool iop_wake_in;//0:wake_in disable , 1:wake_in enable
 unsigned int RECEIVE_CODE_SIZE;
 unsigned char NormalCode[NORMAL_CODE_MAX_SIZE];
 unsigned char StandbyCode[STANDBY_CODE_MAX_SIZE];
@@ -130,7 +130,7 @@ unsigned char GetCodeFromDram[STANDBY_CODE_MAX_SIZE];
 static ssize_t iop_read_normalcode(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t count)
-{	
+{
 	volatile unsigned long*	 IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	unsigned char * IOP_kernel_base;
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
@@ -152,7 +152,7 @@ static ssize_t iop_write_normalcode(struct file *filp, struct kobject *kobj,
 
 	if(offset != RECEIVE_CODE_SIZE)
 	{
-		DBG_INFO("Code size is incorrect\n");	
+		DBG_INFO("Code size is incorrect\n");
 		RECEIVE_CODE_SIZE = 0;
 		return -EINVAL;
 	}
@@ -166,9 +166,9 @@ static ssize_t iop_write_normalcode(struct file *filp, struct kobject *kobj,
 	}
 
 	if(RECEIVE_CODE_SIZE == NORMAL_CODE_MAX_SIZE)
-	{			
-		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);	
-		hal_iop_load_normal_code(iop->iop_regs);			
+	{
+		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);
+		hal_iop_load_normal_code(iop->iop_regs);
 		//hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Update normal code 64K\n");
 		RECEIVE_CODE_SIZE = 0;
@@ -181,7 +181,7 @@ static ssize_t iop_write_normalcode(struct file *filp, struct kobject *kobj,
 static ssize_t iop_read_standbycode(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t count)
-{   
+{
 	volatile unsigned long*	 IOP_base_for_normal =(volatile unsigned long*)SP_IOP_RESERVE_BASE;
 	unsigned char * IOP_kernel_base;
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, STANDBY_CODE_MAX_SIZE);
@@ -201,7 +201,7 @@ static ssize_t iop_write_standbycode(struct file *filp, struct kobject *kobj,
 
 	if(offset != RECEIVE_CODE_SIZE)
 	{
-		DBG_INFO("Code size is incorrect\n");	
+		DBG_INFO("Code size is incorrect\n");
 		RECEIVE_CODE_SIZE = 0;
 		return -EINVAL;
 	}
@@ -215,9 +215,9 @@ static ssize_t iop_write_standbycode(struct file *filp, struct kobject *kobj,
 	}
 
 	if(RECEIVE_CODE_SIZE == STANDBY_CODE_MAX_SIZE)
-	{		    
-		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);	
-		hal_iop_load_standby_code(iop->iop_regs);			
+	{
+		DBG_INFO("source code size=%x \n",RECEIVE_CODE_SIZE);
+		hal_iop_load_standby_code(iop->iop_regs);
 		//hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Update standby code 16K\n");
 		RECEIVE_CODE_SIZE = 0;
@@ -226,9 +226,9 @@ static ssize_t iop_write_standbycode(struct file *filp, struct kobject *kobj,
 }
 
 static ssize_t iop_show_mode(struct device *dev, struct device_attribute *attr, char *buf)
-{   
-	ssize_t len = 0;	
-	
+{
+	ssize_t len = 0;
+
 	if(iop_code_mode == 0)
 	{
 		DBG_INFO("iop_normal_mode\n");
@@ -246,12 +246,12 @@ static ssize_t iop_store_mode(struct device *dev, struct device_attribute *attr,
 
 	if(buf[0] == '0')
 	{
-		hal_iop_normalmode(iop->iop_regs);			
-		DBG_INFO("Switch to normal mode.\n");		
+		hal_iop_normalmode(iop->iop_regs);
+		DBG_INFO("Switch to normal mode.\n");
 	}
 	else if(buf[0] == '1')
 	{
-		hal_iop_standbymode(iop->iop_regs);	
+		hal_iop_standbymode(iop->iop_regs);
 		DBG_INFO( "Switch to standby mode.\n");
 	}
 	else
@@ -266,13 +266,13 @@ static ssize_t iop_store_mode(struct device *dev, struct device_attribute *attr,
 }
 
 static ssize_t iop_show_wakein(struct device *dev, struct device_attribute *attr, char *buf)
-{   
-	ssize_t len = 0;		
+{
+	ssize_t len = 0;
     if(iop_wake_in == 1)
 		DBG_INFO("WAKE_IN is enabled\n");
     else
 		DBG_INFO("WAKE_IN is disabled\n");
-		
+
 	return len;
 }
 
@@ -283,7 +283,7 @@ static ssize_t iop_store_wakein(struct device *dev, struct device_attribute *att
 
 	if(buf[0] == '0')
 	{
-		DBG_INFO("Disable WAKE_IN\n");	
+		DBG_INFO("Disable WAKE_IN\n");
 		//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
     	reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1+ 4*2));
 		reg = 0x08000000;
@@ -310,7 +310,7 @@ static ssize_t iop_store_wakein(struct device *dev, struct device_attribute *att
 
 
 static ssize_t iop_show_getdata(struct device *dev, struct device_attribute *attr, char *buf)
-{   
+{
 	ssize_t len = 0;
     DBG_INFO("iop_show_getdata\n");
 	hal_iop_get_iop_data(iop->iop_regs);
@@ -320,12 +320,12 @@ static ssize_t iop_show_getdata(struct device *dev, struct device_attribute *att
 static ssize_t iop_store_getdata(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
 {
    	int ret = count;
-	DBG_INFO("iop_store_getdata\n");	
+	DBG_INFO("iop_store_getdata\n");
 	return ret;
 }
 
 static ssize_t iop_show_setdata(struct device *dev, struct device_attribute *attr, char *buf)
-{   
+{
 	ssize_t len = 0;
     DBG_INFO("iop_show_setdata\n");
 	return len;
@@ -335,24 +335,24 @@ static ssize_t iop_store_setdata(struct device *dev, struct device_attribute *at
 {
    	unsigned char num[1], value[4];
 	unsigned char ret = count;
-    unsigned int i, setnum, setvalue; 
+    unsigned int i, setnum, setvalue;
 
     num[0] = buf[0];
     for(i=0;i<4;i++)
     {
-		value[i] = buf[2+i]; 
+		value[i] = buf[2+i];
     }
 
 	setnum = (unsigned int)num[0];
 	setvalue = simple_strtol(value, NULL, 16);
-	DBG_INFO("setnum=%x \n",setnum); 	
-	DBG_INFO("setvalue=%x \n",setvalue); 
-	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
+	DBG_INFO("setnum=%x \n",setnum);
+	DBG_INFO("setvalue=%x \n",setvalue);
+	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);
 	return ret;
 }
 
 static ssize_t iop_show_setgpio(struct device *dev, struct device_attribute *attr, char *buf)
-{	
+{
 	ssize_t len = 0;
 	DBG_INFO("iop_store_setgpio\n");
 	return len;
@@ -362,27 +362,27 @@ static ssize_t iop_store_setgpio(struct device *dev, struct device_attribute *at
 {
    	int ret = count;
 	unsigned char num[1];
-	unsigned int setnum; 
+	unsigned int setnum;
 	DBG_INFO("iop_store_setgpio\n");
 	num[0] = buf[0];
 	setnum = simple_strtol(num, NULL, 16);
-	DBG_INFO("set gpio number = %x \n",IOP_GPIO);	
-	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	DBG_INFO("set gpio number = %x \n",IOP_GPIO);
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);
  	return ret;
 }
 
 static ssize_t iop_show_S1mode(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	ssize_t len = 0;
-	hal_iop_standbymode(iop->iop_regs); 
+	hal_iop_standbymode(iop->iop_regs);
 	mdelay(10);//Need time to update iop_data
 	hal_iop_S1mode(iop->iop_regs);
 	return len;
 }
 
 static ssize_t iop_store_S1mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
-{	
-	ssize_t len = 0;	
+{
+	ssize_t len = 0;
 	return len;
 }
 
@@ -435,18 +435,18 @@ static ssize_t sp_iop_write(struct file *pfile, const char __user *ubuf, size_t 
 
 	unsigned char num[3];
 	char *tmp;
-    unsigned int setnum, setvalue; 
+    unsigned int setnum, setvalue;
 	tmp = memdup_user(ubuf, length);
 	num[0] = tmp[0];
    	num[1] = tmp[1];
    	num[2] = tmp[2];
-	
+
 	setnum = (unsigned int)num[0];
 	setvalue = ((num[1]<<8)|num[2]);
-	DBG_INFO("setnum=%x \n",setnum); 	
-	DBG_INFO("setvalue=%x \n",setvalue); 
-	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
-	DBG_INFO("Sunplus IOP module write\n");	
+	DBG_INFO("setnum=%x \n",setnum);
+	DBG_INFO("setvalue=%x \n",setvalue);
+	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);
+	DBG_INFO("Sunplus IOP module write\n");
 	return 0;
 }
 
@@ -464,7 +464,7 @@ static long sp_iop_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg
 
 	switch (cmd)
 	{
-	    case IOCTL_VALGET:	
+	    case IOCTL_VALGET:
 			#ifdef IOP_UPDATE_FW
 			if(arg == 1)
 			{
@@ -473,66 +473,66 @@ static long sp_iop_ioctl(struct file *pfile, unsigned int cmd, unsigned long arg
 				const char fwname[] = "normal.bin";
 				unsigned int err,i;
 			    DBG_INFO("normal code\n");
-				err = request_firmware(&fw, fwname, &pdev->dev);				
+				err = request_firmware(&fw, fwname, &pdev->dev);
 			    DBG_INFO("5555\n");
 				if (err) {
 					DBG_INFO("get bin file\n");
 					return err;
-				}				
-				DBG_INFO("err=%x  \n",err);
-				DBG_INFO("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",  
-					fw->data[0],fw->data[1],fw->data[2],fw->data[3],fw->data[4]);
-					release_firmware(fw);	
-
-				for(i=0;i<CODE_SIZE;i++)	
-				{
-					char temp;		
-					temp = fw->data[i];		
-					SourceCode[i] = temp;		
 				}
-				hal_iop_load_normal_code(iop->iop_regs);				
+				DBG_INFO("err=%x  \n",err);
+				DBG_INFO("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",
+					fw->data[0],fw->data[1],fw->data[2],fw->data[3],fw->data[4]);
+					release_firmware(fw);
+
+				for(i=0;i<CODE_SIZE;i++)
+				{
+					char temp;
+					temp = fw->data[i];
+					SourceCode[i] = temp;
+				}
+				hal_iop_load_normal_code(iop->iop_regs);
             }
 			else if(arg == 2)
 			{
 				struct platform_device *pdev;
 				const struct firmware *fw;
 				const char fwname[] = "standby.bin";
-				unsigned int err,i;			
+				unsigned int err,i;
 
 				DBG_INFO("standby code\n");
-				err = request_firmware(&fw, fwname, &pdev->dev);				
+				err = request_firmware(&fw, fwname, &pdev->dev);
 			    DBG_INFO("3333\n");
 				if (err) {
 					printk("get bin file\n");
 					return err;
-				}				
+				}
 				DBG_INFO("err=%x  \n",err);
-				DBG_INFO("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",  
+				DBG_INFO("Code0=%x  Code1=%x Code2=%x Code3=%x Code4=%x \n",
 					fw->data[0],fw->data[1],fw->data[2],fw->data[3],fw->data[4]);
-					release_firmware(fw);	
+					release_firmware(fw);
 
-				for(i=0;i<CODE_SIZE;i++)	
+				for(i=0;i<CODE_SIZE;i++)
 				{
-					char temp;		
-					temp = fw->data[i];		
-					SourceCode[i] = temp;		
-				}								
+					char temp;
+					temp = fw->data[i];
+					SourceCode[i] = temp;
+				}
 				hal_iop_load_standby_code(iop->iop_regs);
-            }	
+            }
 			else
-			#endif 	
+			#endif
 			if(arg == 3)
 			{
 			    DBG_INFO("get iop data\n");
 				hal_iop_get_iop_data(iop->iop_regs);
-            }	
+            }
 			else if(arg == 4)
 			{
-			    DBG_INFO("set iop data1 = 0xaaaa\n");						
-				//hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);	
-			}		
+			    DBG_INFO("set iop data1 = 0xaaaa\n");
+				//hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);
+			}
 			break;
-			
+
 		default:
 			DBG_INFO("Unknow command\n");
 			break;
@@ -568,7 +568,7 @@ static int _sp_iop_get_irq(struct platform_device *pdev, sp_iop_t *pstSpIOPInfo)
 	pstSpIOPInfo->irq = irq;
 	return IOP_SUCCESS;
 }
-#endif 
+#endif
 
 static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long *membase, const char *res_name)
 {
@@ -593,7 +593,7 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long
 	//DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
 	#ifdef CONFIG_SOC_Q645
 	B_SYSTEM_BASE = p;
-	#endif 
+	#endif
 	*membase = (unsigned long)p;
 
 	return IOP_SUCCESS;
@@ -625,7 +625,7 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 	//} else {
 	//	pstSpIOPInfo->moon0_regs = (void __iomem *)membase;
 	//}
-	
+
 	ret = _sp_iop_get_register_base(pdev, &membase, IOP_QCTL_REG_NAME);
 	if (ret) {
 		DBG_ERR("%s (%d) ret = %d\n", __FUNCTION__, __LINE__, ret);
@@ -648,7 +648,7 @@ static int _sp_iop_get_resources(struct platform_device *pdev, sp_iop_t *pstSpIO
 	//	return ret;
 	//} else {
 	//	pstSpIOPInfo->rtc_regs = (void __iomem *)membase;
-	//}	
+	//}
 
 
 	return IOP_SUCCESS;
@@ -672,7 +672,7 @@ static int sp_iop_suspend(sp_iop_t *iopbase)
 	return IOP_SUCCESS;
 }
 
-#endif 
+#endif
 
 static int sp_iop_shutdown(sp_iop_t *iopbase)
 {
@@ -686,22 +686,22 @@ static int sp_iop_shutdown(sp_iop_t *iopbase)
 
 #if 0
 static int sp_iop_reserve_base(sp_iop_t *iopbase)
-{	
+{
 	FUNC_DEBUG();
-	hal_iop_set_reserve_base(iopbase->iop_regs);	
+	hal_iop_set_reserve_base(iopbase->iop_regs);
 	return IOP_SUCCESS;
 }
 static int sp_iop_reserve_size(sp_iop_t *iopbase)
-{	
-	FUNC_DEBUG();		
-	hal_iop_set_reserve_size(iopbase->iop_regs);		
+{
+	FUNC_DEBUG();
+	hal_iop_set_reserve_size(iopbase->iop_regs);
 	return IOP_SUCCESS;
 }
 #endif
 
 static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 {
-	int ret = -ENXIO;	
+	int ret = -ENXIO;
 	int rc;
 	struct device_node *memnp;
 	struct resource mem_res;
@@ -725,7 +725,7 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 		goto fail_regdev;
 	}
 
-	ret = _sp_iop_get_resources(pdev, iop);	
+	ret = _sp_iop_get_resources(pdev, iop);
 
 	//Get reserve address
 	memnp = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
@@ -745,10 +745,10 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 
 	SP_IOP_RESERVE_BASE = mem_res.start;
 	SP_IOP_RESERVE_SIZE = resource_size(&mem_res);
-	//DBG_INFO("mem_res.start=%lx \n",SP_IOP_RESERVE_BASE);	
-	//DBG_INFO("mem_res.size=%lx \n",SP_IOP_RESERVE_SIZE); 
-	
-	
+	//DBG_INFO("mem_res.start=%lx \n",SP_IOP_RESERVE_BASE);
+	//DBG_INFO("mem_res.size=%lx \n",SP_IOP_RESERVE_SIZE);
+
+
 	ret = sp_iop_start(iop);
 	if (ret != 0) {
 		DBG_ERR("sp iop init err=%d\n", ret);
@@ -763,28 +763,28 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 
 	#ifdef IOP_GET_GPIO /*Get GPIO number form DTS*/
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio0", 0);
-	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);
 	DBG_ERR("GPIO0 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
 		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
 
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio1", 0);
-	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);
 	DBG_ERR("GPIO1 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
 		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
 
 	IOP_GPIO = of_get_named_gpio(pdev->dev.of_node, "iop-gpio2", 0);
-	hal_gpio_init(iop->iop_regs,IOP_GPIO);	
+	hal_gpio_init(iop->iop_regs,IOP_GPIO);
 	DBG_ERR("GPIO2 pin number %d\n",IOP_GPIO);
 	if ( !gpio_is_valid(IOP_GPIO))
 		DBG_ERR("Wrong pin %d configured for gpio\n",IOP_GPIO);
-    #endif 
+    #endif
 
 	#if 0
 	sp_iop_reserve_base(iop);
 	sp_iop_reserve_size(iop);
-	#endif 
+	#endif
 	return 0;
 
 
@@ -807,16 +807,16 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 {
     #if 0
 	int ret;
-	unsigned int*   IOP_base;	
-	unsigned int checksum=0;	
-	int i;	
+	unsigned int*   IOP_base;
+	unsigned int checksum=0;
+	int i;
 
 	IOP_base=ioremap((unsigned long)SP_IOP_RESERVE_BASE, SP_IOP_RESERVE_SIZE);
 	for(i=0;i<0x400;i++)
-	{	
-		checksum+=*(IOP_base+i);			
+	{
+		checksum+=*(IOP_base+i);
 	}
-	early_printk("\n Leon IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);	
+	early_printk("\n Leon IOP standby checksum=%x IOP_base=%ls\n",checksum,IOP_base);
 
 	FUNC_DEBUG();
 	ret = _sp_iop_get_resources(pdev, iop);
@@ -830,24 +830,24 @@ static int sp_iop_platform_driver_suspend(struct platform_device *pdev, pm_messa
 	#else
 	FUNC_DEBUG();
 	return 0;
-	#endif 
+	#endif
 }
 
 static void sp_iop_platform_driver_shutdown(struct platform_device *pdev)
 {
-	FUNC_DEBUG();	
+	FUNC_DEBUG();
 }
 
 void sp_iop_platform_driver_poweroff(void)
 {
 	int ret = 0;
-	hal_iop_standbymode(iop->iop_regs);	
+	hal_iop_standbymode(iop->iop_regs);
 	FUNC_DEBUG();
 	ret = sp_iop_shutdown(iop);
 	if (ret != 0) {
 		DBG_ERR("[IOP] sp suspend init err=%d\n", ret);
 		//return ret;
-	}			
+	}
 }
 
 static int sp_iop_platform_driver_resume(struct platform_device *pdev)
@@ -869,7 +869,7 @@ static struct platform_driver sp_iop_platform_driver = {
 	.remove		= sp_iop_platform_driver_remove,
 	.suspend	= sp_iop_platform_driver_suspend,
 	.shutdown	= sp_iop_platform_driver_shutdown,
-	.resume		= sp_iop_platform_driver_resume,	
+	.resume		= sp_iop_platform_driver_resume,
 	.driver = {
 		.name	= DEVICE_NAME,
 		.owner	= THIS_MODULE,

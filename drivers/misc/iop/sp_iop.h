@@ -2,7 +2,7 @@
 #define __SP_IOP_H__
 #ifdef CONFIG_SOC_SP7021
 #include <mach/io_map.h>
-#endif 
+#endif
 #include "hal_iop.h"
 typedef enum IOP_Status_e_ {
 	IOP_SUCCESS,                /* successful */
