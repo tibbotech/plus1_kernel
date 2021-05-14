@@ -592,7 +592,7 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long
 
 	//DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
 	#ifdef CONFIG_SOC_Q645
-	B_SYSTEM_BASE = p;
+	B_SYSTEM_BASE = (unsigned long)p;
 	#endif
 	*membase = (unsigned long)p;
 
