@@ -591,7 +591,7 @@
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
-			phy_type = "utmi_wide";
+			//phy_type = "utmi_wide";
 			status = "disabled";
 		};
 	};
@@ -600,7 +600,7 @@
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>;
 		clock-names = "clkc_u3phy";
-		resets = <&rstc RST_USB30C0>;
+		resets = <&rstc RST_U3PHY0>;
 		reset-names = "rstc_u3phy";
 		reg = <0x0 0xf80bd000 0x0 0x80>;
 		interrupt-parent = <&gic>;
@@ -626,7 +626,7 @@
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
-			phy_type = "utmi_wide";
+			//phy_type = "utmi_wide";
 			status = "disabled";
 		};
 	};
