@@ -955,7 +955,7 @@ config RTC_DRV_CMOS
 
 config RTC_DRV_SUNPLUS
 	bool "Sunplus SP7021 RTC"
-	depends on SOC_SP7021
+	depends on SOC_SP7021 || SOC_Q645
 	default y
 	help
 	  Say 'yes' to support Sunplus real-time clock (RTC).
