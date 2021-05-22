@@ -2135,6 +2135,7 @@ int __init sunplus_uart_early_setup(struct earlycon_device *device,
 	return 0;
 }
 OF_EARLYCON_DECLARE(sp_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
+OF_EARLYCON_DECLARE(sp_uart, "sunplus,q645-uart", sunplus_uart_early_setup);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");
