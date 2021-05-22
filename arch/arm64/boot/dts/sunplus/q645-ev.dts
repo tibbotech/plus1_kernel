@@ -316,8 +316,7 @@
 #endif
 
 	uart0: serial@0xf8000900 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
@@ -330,8 +329,7 @@
 	};
 
 	uart1: serial@0xf8000980 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000980 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
@@ -345,8 +343,7 @@
 	};
 
 	uart2: serial@0xf8000800 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000800 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
@@ -360,8 +357,7 @@
 	};
 
 	uart3: serial@0xf8004380 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8004380 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
@@ -375,8 +371,7 @@
 	};
 
 	uart4: serial@0xf8000880 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000880 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
@@ -388,8 +383,7 @@
 	};
 
 	uadbg: serial@0xf800f900 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
