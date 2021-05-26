@@ -108,3 +108,4 @@ obj-$(CONFIG_VIDEO_SP_HDMITX)		+= sunplus/hdmitx/
 obj-y					+= sunplus/video/
 obj-y					+= sunplus/mipicsi/
 obj-$(CONFIG_VIDEO_HWCODEC_DRIVERS)	+= sunplus/videocodec/
+obj-$(CONFIG_ETHOS_N_NPU_DRIVERS)	+= sunplus/ethos-n78/
