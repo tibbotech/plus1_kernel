@@ -1041,7 +1041,9 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 {
 	struct ethosn_profiling_config config = {};
 	int ret;
-	//static volatile uint32_t *G0;//hugo debug dump waveform
+
+	//for waveform dump using
+	//static volatile uint32_t *G0;
 	//G0 = ioremap(0xF8000000, 32*4);
 
 	ret = ethosn_smc_version_check(core);
@@ -1052,21 +1054,18 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 	 * If the Arm Ethos-N NPU SiP service is available verify the NPU's
 	 * secure status.
 	 */
-	if (!ret && ethosn_smc_is_secure(core)) {
-	//if (ethosn_smc_is_secure(core) && !ret) {	
-	//if (ethosn_smc_is_secure(core)) {		
+	if (!ret && ethosn_smc_is_secure(core)) {	
 		dev_err(core->dev,
 			"NPU in secure mode, non-secure kernel not supported.\n");
 
 		return -EFAULT;
-		//printk("Bypass:smcv ret: %x\n",ret);//hugo debug
 	}
-	else{printk("smcv check pass ret: %x\n",ret);}
+	else{printk("smcv check pass, smc_sec: %x\n",ethosn_smc_is_secure(core));}
 
 #else
 	if (ret) {
 		dev_err(core->dev,
-			"Arm Ethos-N NPU SiP service required for secure kernel\n");//hugo debug
+			"Arm Ethos-N NPU SiP service required for secure kernel\n");
 
 		return -EFAULT;
 	}
@@ -1103,11 +1102,12 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 	core->profiling.firmware_buffer = NULL;
 	core->profiling.firmware_buffer_pending = NULL;
 
-    //G0[0] = 0xabcd1234;//hugo debug dump waveform
+    //G0[0] = 0xabcd1234;//dump waveform start
+    
 	ret = ethosn_device_init(core);
 	if (ret)
 	{
-		dev_info(core->dev, "destroy_allocator\n");//hugo debug
+		dev_info(core->dev, "destroy_allocator\n");
 		goto destroy_allocator;
 	}
     

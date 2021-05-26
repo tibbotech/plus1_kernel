@@ -43,8 +43,9 @@ int ethosn_smc_version_check(struct ethosn_core *core)
 	struct arm_smccc_res res = { 0 };
 
 	ETHOSN_SMC_CALL(ETHOSN_SMC_VERSION, &res);
-	printk("smcv_a0: %lx\n",res.a0);//hugo debug  ffffffffffffffff
-	printk("smcv_a1: %lx\n",res.a1);//                           0
+	printk("smcv_a0: %lx\n",res.a0);
+	printk("smcv_a1: %lx\n",res.a1);
+
 	//a0 is unsigned long, (res.a0 < 0) can't be true ???
 	if (res.a0 < 0) {
 		dev_warn(core->dev,
@@ -52,15 +53,13 @@ int ethosn_smc_version_check(struct ethosn_core *core)
 
 		return -EFAULT;
 	}
-//hugo debug MAJOR=0 MINOR=1
+
 	if (res.a0 != ETHOSN_SIP_MAJOR_VERSION ||
 	    res.a1 < ETHOSN_SIP_MINOR_VERSION) {
 		dev_warn(core->dev,
 			 "Incompatible Arm Ethos-N NPU SiP service version.");
 
 		return -EINVAL;
-		//printk("Bypass smcv check");
-		//return 0;//hugo debug bypass smc check
 	}
 
 	return 0;
@@ -79,7 +78,6 @@ int ethosn_smc_is_secure(struct ethosn_core *core)
 		return -EFAULT;	
 	}
 
-    printk("smcs_a0: %lx\n",res.a0);//hugo debug ffffffffffffffff
 	return res.a0;
 }
 

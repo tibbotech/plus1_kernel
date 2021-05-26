@@ -344,7 +344,7 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	int timeout;
 	int ret;
 
-	dev_info(core->dev, "Reset the ethosn\n"); //hugo debug
+	dev_info(core->dev, "Reset the ethosn\n");
 
 	/* Reset the Ethos-N core */
 	ret = ethosn_reset(core);
@@ -468,7 +468,7 @@ void ethosn_notify_firmware(struct ethosn_core *core)
 
 static int ethosn_hard_reset(struct ethosn_core *core)
 {
-#ifdef ETHOSN_NS//hugo debug
+#ifdef ETHOSN_NS
 	struct dl1_sysctlr0_r sysctlr0 = { .word = 0 };
 	unsigned int timeout;
 
@@ -511,38 +511,39 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 static int ethosn_soft_reset(struct ethosn_core *core)
 {
 #ifdef ETHOSN_NS
-	//#if 1
 	struct dl1_sysctlr0_r sysctlr0 = { .word = 0 };
 	unsigned int timeout;
+	
+	//uint32_t temp;
+	
+	//for waveform dump using
 	//static volatile uint32_t *G0;
-	uint32_t temp;
 	//G0 = ioremap(0xF8000000, 32*4);
 	//G0[0] = 0xabcd1234;
 
-    static volatile uint32_t *RESET_REG;//mon n78 reset
+    static volatile uint32_t *RESET_REG;//moon n78 reset
 	RESET_REG = ioremap(0xF800005C, 32*4);
 
-	temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-	printk("NPU DL1_NPU_ID: %x\n",temp);
+	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
+	//printk("NPU DL1_NPU_ID: %x\n",temp);
 
-	dev_info(core->dev, "Soft reset the hardware.\n"); //hugo debug
+	dev_info(core->dev, "Soft reset the hardware.\n");
 
 	/* Soft reset, block new AXI requests */
-	sysctlr0.bits.soft_rstreq = 3; //hugo debug why do hardreset and softreset
+	sysctlr0.bits.soft_rstreq = 3;
 
 	ethosn_write_top_reg(core, DL1_RP, DL1_SYSCTLR0, sysctlr0.word);
-    udelay(10);
+    udelay(10);//original 1us
 
-#if 1
+#if 1//reset workarround
     RESET_REG[0] =	(1|(1<<16));//mon n78 reset enable
 	udelay(10);
     RESET_REG[0] =	(0|(1<<16));//mon n78 reset disable
 	udelay(10);
 #endif
 
-	//printk("Soft reset, block new AXI requests.\n");
 	dev_info(core->dev,
-		 "Soft reset, block new AXI requests.\n"); //hugo debug
+		 "Soft reset, block new AXI requests.\n");
 
 	/* Wait for reset to complete */
 	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
@@ -554,7 +555,8 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 
 		udelay(ETHOSN_RESET_WAIT_US);
 	}
-	dev_info(core->dev, "Soft reset, Wait pass.\n"); //hugo debug
+		 
+	dev_info(core->dev, "Soft reset, Wait pass.\n");
 
 	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
 		dev_warn(core->dev,
@@ -583,7 +585,7 @@ int ethosn_reset(struct ethosn_core *core)
 {
 	int ret = -EINVAL;
 
-	ret = ethosn_soft_reset(core); //hugo debug
+	ret = ethosn_soft_reset(core);
 	if (ret)
 		ret = ethosn_hard_reset(core);
 
@@ -1109,12 +1111,15 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 	struct dl1_npu_id_r npu_id;
 	int i = big_fw->fw_cnt;
 	uint32_t arch;
-	//uint32_t temp;
+
+	//for waveform dump using
 	//static volatile uint32_t *G0;
 	//G0 = ioremap(0xF8000000, 32*4);
 	//G0[0] = 0xabcd1234;
 
-#if 0 //F004~F108//hugo debug
+//N78 reg debug checking
+#if 0 //F004~F108
+    //uint32_t temp;
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
 	printk("NPU DL1_NPU_ID: %x\n",temp);	
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_UNIT_COUNT);
@@ -1133,7 +1138,7 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 	printk("NPU DL1_ECOID: %x\n",temp);	
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_STREAMID_WIDTH);
 	printk("NPU DL1_STREAMID_WIDTH: %x\n",temp);	
-	temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//hang up
+	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//will hang up if don't switch to non-secure state
 	//printk("NPU DL1_REGISTERS_SIZE: %x\n",temp);
 #endif
 #if 0 //1000~101C //hang up
@@ -1178,7 +1183,6 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_IRQ_STATUS);
 	printk("NPU DL1_IRQ_STATUS: %x\n",temp);
 #endif
-
 #if 0 //0018~0020//hang up
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_SYSCTLR0);
 	printk("NPU DL1_SYSCTLR0: %x\n",temp);	
@@ -1189,8 +1193,8 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 #endif
 
 	npu_id.word = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-	printk("NPU ID: %x\n", npu_id.word); //hugo debug
-	//npu_id.bits.arch_rev = 0x04;//hugo debug
+	printk("NPU ID: %x\n", npu_id.word); 
+	
 	arch = npu_id.bits.arch_major << 24 | npu_id.bits.arch_minor << 16 |
 	       npu_id.bits.arch_rev;
 
@@ -1234,7 +1238,7 @@ static int firmware_load(struct ethosn_core *core, const char *firmware_name)
 
 	big_fw = (struct ethosn_big_fw *)fw->data;
 
-	/* Find a FW binary for this NPU */ //hugo debug
+	/* Find a FW binary for this NPU */
 	big_fw_desc = find_big_fw_desc(core, big_fw);
 	if (IS_ERR(big_fw_desc))
 		return -EINVAL;
@@ -1313,7 +1317,7 @@ static int firmware_init(struct ethosn_core *core)
 		if (!ret)
 			break;
 	}
-	//hugo debug
+
 	if (ret) {
 		dev_err(core->dev, "No firmware found.\n");
 
