@@ -102,6 +102,16 @@ static const sppctlgrp_t q645grps_uart3[] = {
 	EGRP("UART3", 1, pins_uart3)
 };
 
+static const unsigned pins_uart4[] = { 54, 55 };
+static const sppctlgrp_t q645grps_uart4[] = {
+	EGRP("UART4", 1, pins_uart4)
+};
+
+static const unsigned pins_uadbg[] = { 74, 73 };
+static const sppctlgrp_t q645grps_uadbg[] = {
+	EGRP("UADBG", 1, pins_uadbg)
+};
+
 static const unsigned pins_spicombo0[] = { 12, 13, 14, 15, 18, 19, 20, 21 };
 static const sppctlgrp_t q645grps_spicombo0[] = {
 	EGRP("SPI_COMBO0", 1, pins_spicombo0)
@@ -220,6 +230,8 @@ func_t list_funcs[] = {
 	FNCE("UART1",           fOFF_G, 1, 8, 1, q645grps_uart1),
 	FNCE("UART2",           fOFF_G, 1, 9, 1, q645grps_uart2),
 	FNCE("UART3",           fOFF_G, 1,10, 1, q645grps_uart3),
+	FNCE("UART4",           fOFF_G, 32*3+23, 14, 1, q645grps_uart4),
+	FNCE("UADBG",           fOFF_G, 1,11, 1, q645grps_uadbg),
 	FNCE("SPI_COMBO0",      fOFF_G, 1,12, 1, q645grps_spicombo0),
 	FNCE("I2C_MASTER0",     fOFF_G, 1,13, 1, q645grps_i2cm0),
 
