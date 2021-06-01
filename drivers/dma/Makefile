@@ -75,9 +75,9 @@ obj-$(CONFIG_UNIPHIER_MDMAC) += uniphier-mdmac.o
 obj-$(CONFIG_XGENE_DMA) += xgene-dma.o
 obj-$(CONFIG_ZX_DMA) += zx_dma.o
 obj-$(CONFIG_ST_FDMA) += st_fdma.o
-obj-$(CONFIG_SUNPLUS_CBDMA) += sunplus/
 
 obj-y += mediatek/
 obj-y += qcom/
+obj-y += sunplus/
 obj-y += ti/
 obj-y += xilinx/
