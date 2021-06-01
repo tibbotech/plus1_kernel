@@ -385,8 +385,8 @@
 		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA4>;
 		resets = <&rstc RST_UA4>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&uart4_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart4_pins>;
 		status = "disabled";
 	};
 
@@ -397,8 +397,8 @@
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADBG>;
 		resets = <&rstc RST_UADBG>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&uadbg_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uadbg_pins>;
 		status = "disabled";
 	};
 
@@ -729,7 +729,6 @@
 			sppctl,groups = "UART3";
 		};
 
-		#if 0 //TBD
 		uart4_pins: pinmux_uart4_pins {
 			sppctl,function = "UART4";
 			sppctl,groups = "UART4";
@@ -739,7 +738,6 @@
 			sppctl,function = "UADBG";
 			sppctl,groups = "UADBG";
 		};
-		#endif
 
 		emmc_pins: pinmux_emmc_pins {
 			sppctl,function = "CARD0_EMMC";
