@@ -71,7 +71,7 @@
 
 	memory@0x0 {
 		device_type = "memory";
-		reg = <0x00 0x00 0x00 0x10000000>;
+		reg = <0x00 0x00 0x00 0x40000000>;
 	};
 
 	reserved-memory {
@@ -96,6 +96,14 @@
 			no-map;
 			reg = <0x00 0x10000000 0x00 0x08000000>;
 		};
+		
+		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
+		ethosn_reserved: ethosn_reserved@20000000 {
+			compatible = "shared-dma-pool";
+			reg = <0 0x20000000 0 0x20000000>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1000 0x0>;
+			no-map;
+		};		
 	};
 
 	clocks {
@@ -316,8 +324,7 @@
 #endif
 
 	uart0: serial@0xf8000900 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
@@ -330,8 +337,7 @@
 	};
 
 	uart1: serial@0xf8000980 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000980 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
@@ -345,8 +351,7 @@
 	};
 
 	uart2: serial@0xf8000800 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000800 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
@@ -360,8 +365,7 @@
 	};
 
 	uart3: serial@0xf8004380 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8004380 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
@@ -375,28 +379,26 @@
 	};
 
 	uart4: serial@0xf8000880 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000880 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA4>;
 		resets = <&rstc RST_UA4>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&uart4_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart4_pins>;
 		status = "disabled";
 	};
 
 	uadbg: serial@0xf800f900 {
-		compatible = "sunplus,q645-uart",
-			     "sunplus,sp7021-uart";
+		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADBG>;
 		resets = <&rstc RST_UADBG>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&uadbg_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uadbg_pins>;
 		status = "disabled";
 	};
 
@@ -408,6 +410,18 @@
 		resets = <&rstc RST_RTC>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
+	};
+
+	cbdma: cbdma@sp_cbdma {
+		compatible = "sunplus,q645-c-cbdma";
+		reg = <0x0 0xf8000d00 0x0 0x80>;
+		reg-names = "cb_dma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+		dma-channel-0 {
+			compatible = "xlnx,axi-cdma-channel";
+			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
+		};
 	};
 
 	sp_spinor0: spinor@0xf8000b00 {
@@ -499,6 +513,33 @@
 		clocks = <&clkc GPU>;
 		clock-names = "clk_mali";
 		resets = <&rstc RST_GPU>;
+	};
+
+/* secure
+		interrupts = <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 173 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
+   non-secure
+		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
+*/
+	ethosn: ethosn@0xf8200000 {
+		compatible = "ethosn";
+		reg = <0x00 0xf8200000 0x00 0x100000>;
+		memory-region = <&ethosn_reserved>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 173 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "err", "job", "debug";		 
+		clocks = <&clkc N78>;
+		clock-names = "clk_n78";
+		resets = <&rstc RST_N78>;	
+		core0 {
+			compatible = "ethosn-core";
+			status = "okay";
+		};			
 	};
 
 	mmc0: mmc@0xf8003b00 {
@@ -688,7 +729,6 @@
 			sppctl,groups = "UART3";
 		};
 
-		#if 0 //TBD
 		uart4_pins: pinmux_uart4_pins {
 			sppctl,function = "UART4";
 			sppctl,groups = "UART4";
@@ -698,7 +738,6 @@
 			sppctl,function = "UADBG";
 			sppctl,groups = "UADBG";
 		};
-		#endif
 
 		emmc_pins: pinmux_emmc_pins {
 			sppctl,function = "CARD0_EMMC";

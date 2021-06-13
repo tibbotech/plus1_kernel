@@ -180,6 +180,17 @@ source "drivers/media/platform/sunplus/videocodec/Kconfig"
 
 endif # VIDEO_HWCODEC_DRIVERS
 
+menuconfig ETHOS_N_NPU_DRIVERS
+	tristate "ML Inference Processor ETHOS_N_NPU"
+	help
+	  Say Y here to enable hardware ml inference processor
+
+if ETHOS_N_NPU_DRIVERS
+
+source "drivers/media/platform/sunplus/ethos-n78/Kconfig"
+
+endif # ETHOS_N_NPU_DRIVERS
+
 menuconfig V4L_MEM2MEM_DRIVERS
 	bool "Memory-to-memory multimedia devices"
 	depends on VIDEO_V4L2
