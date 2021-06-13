@@ -1,6 +1,7 @@
 /*
  * How to test RTC:
  *
+ * 1. use kernel commands
  * hwclock - query and set the hardware clock (RTC)
  *
  * (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
@@ -13,10 +14,13 @@
  * hwclock -w # Set the Hardware Clock to the current System Time
  * (for i in `seq 10000`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
  *
- *
  * How to setup alarm (e.g., 10 sec later):
  *     echo 0 > /sys/class/rtc/rtc0/wakealarm && \
  *     nnn=`date '+%s'` && echo $nnn && nnn=`expr $nnn + 10` && echo $nnn > /sys/class/rtc/rtc0/wakealarm
+ *
+ *
+ * 2. use RTC Driver Test Program (\linux\application\module_test\rtc\rtc-test.c)
+ *
  */
 
 #include <linux/module.h>
@@ -26,6 +30,7 @@
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/of.h>
+#include <linux/ktime.h>
 
 /* ---------------------------------------------------------------------------------------------- */
 //#define DEBUG           // Unmark to enable dynamic debug
@@ -54,6 +59,7 @@
 struct sunplus_rtc {
 	struct clk *rtcclk;
 	struct reset_control *rstc;
+	unsigned long set_alarm_again;
 #ifdef CONFIG_SOC_SP7021
 	u32 charging_mode;
 #endif
@@ -216,6 +222,7 @@ static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 #ifdef CONFIG_SOC_SP7021
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
+	struct rtc_device *rtc = dev_get_drvdata(dev);
 	unsigned long alarm_time;
 
 	alarm_time = rtc_tm_to_time64(&alrm->time);
@@ -224,9 +231,21 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (alarm_time > 0xFFFFFFFF)
 		return -EINVAL;
 
+	if ((rtc->aie_timer.enabled) && (rtc->aie_timer.node.expires == ktime_set(alarm_time, 0))) {
+		if (rtc->uie_rtctimer.enabled)
+			sp_rtc.set_alarm_again = 1;
+	}
+
 	rtc_reg_ptr->rtc_alarm_set = (u32)(alarm_time);
-	wmb();
-	rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+
+	/* enable alarm here after enabling update irq */
+	if (rtc->uie_rtctimer.enabled) {
+		wmb();
+		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+	} else {
+		wmb();
+		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
+	}
 
 	return 0;
 }
@@ -240,9 +259,20 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
 	return 0;
 }
+
+static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
+{
+	if (enabled)
+		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+	else
+		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
+
+	return 0;
+}
 #elif defined(CONFIG_SOC_Q645)
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
+	struct rtc_device *rtc = dev_get_drvdata(dev);
 	unsigned long alarm_time;
 
 	alarm_time = rtc_tm_to_time64(&alrm->time);
@@ -251,9 +281,21 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (alarm_time > 0xFFFFFFFF)
 		return -EINVAL;
 
+	if ((rtc->aie_timer.enabled) && (rtc->aie_timer.node.expires == ktime_set(alarm_time, 0))) {
+		if (rtc->uie_rtctimer.enabled)
+			sp_rtc.set_alarm_again = 1;
+	}
+
 	rtc_reg_ptr->rtc_ontime_set = (u32)(alarm_time);
-	wmb();
-	rtc_reg_ptr->rtc_ctrl = 0x13;
+
+	/* enable alarm here after enabling update IRQ */
+	if (rtc->uie_rtctimer.enabled) {
+		wmb();
+		rtc_reg_ptr->rtc_ctrl = 0x13;
+	} else {
+		wmb();
+		rtc_reg_ptr->rtc_ctrl &= 0x1C;
+	}
 
 	return 0;
 }
@@ -267,13 +309,24 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
 	return 0;
 }
+
+static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
+{
+	if (enabled)
+		rtc_reg_ptr->rtc_ctrl = 0x13;
+	else
+		rtc_reg_ptr->rtc_ctrl &= 0x1C;
+
+	return 0;
+}
 #endif
 
 static const struct rtc_class_ops sp_rtc_ops = {
-	.read_time = sp_rtc_read_time,
-	.set_time = sp_rtc_set_time,
-	.set_alarm = sp_rtc_set_alarm,
-	.read_alarm = sp_rtc_read_alarm,
+	.read_time =		sp_rtc_read_time,
+	.set_time =		sp_rtc_set_time,
+	.set_alarm =		sp_rtc_set_alarm,
+	.read_alarm =		sp_rtc_read_alarm,
+	.alarm_irq_enable =	sp_rtc_alarm_irq_enable,
 };
 
 static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
@@ -281,8 +334,19 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 	struct platform_device *plat_dev = dev_id;
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
-	rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
-	RTC_DEBUG("[RTC] alarm times up\n");
+	if (rtc->uie_rtctimer.enabled) {
+		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_UF);
+		RTC_DEBUG("[RTC] update interrupt\n");
+
+		if (sp_rtc.set_alarm_again == 1) {
+			sp_rtc.set_alarm_again = 0;
+			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
+			RTC_DEBUG("[RTC] alarm interrupt\n");
+		}
+	} else {
+		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
+		RTC_DEBUG("[RTC] alarm interrupt\n");
+	}
 
 	return IRQ_HANDLED;
 }
@@ -393,8 +457,6 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 		ret = PTR_ERR(rtc);
 		goto free_reset_assert;
 	}
-
-	rtc->uie_unsupported = 1;
 
 	platform_set_drvdata(plat_dev, rtc);
 #ifdef CONFIG_SOC_SP7021
