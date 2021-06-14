@@ -242,7 +242,7 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (rtc->uie_rtctimer.enabled) {
 		wmb();
 		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
-	} else {
+	} else if (!rtc->aie_timer.enabled) {
 		wmb();
 		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
 	}
@@ -257,14 +257,17 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alarm_time = rtc_reg_ptr->rtc_alarm_set;
 	RTC_DEBUG("%s, alarm_time: %u\n", __func__, alarm_time);
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
+
 	return 0;
 }
 
 static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 {
+	struct rtc_device *rtc = dev_get_drvdata(dev);
+
 	if (enabled)
 		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
-	else
+	else if (!rtc->uie_rtctimer.enabled)
 		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
 
 	return 0;
@@ -292,7 +295,7 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (rtc->uie_rtctimer.enabled) {
 		wmb();
 		rtc_reg_ptr->rtc_ctrl = 0x13;
-	} else {
+	} else if (!rtc->aie_timer.enabled) {
 		wmb();
 		rtc_reg_ptr->rtc_ctrl &= 0x1C;
 	}
@@ -307,14 +310,17 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	alarm_time = rtc_reg_ptr->rtc_ontime_set;
 	RTC_DEBUG("%s, alarm_time: %u\n", __func__, alarm_time);
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
+
 	return 0;
 }
 
 static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 {
+	struct rtc_device *rtc = dev_get_drvdata(dev);
+
 	if (enabled)
 		rtc_reg_ptr->rtc_ctrl = 0x13;
-	else
+	else if (!rtc->uie_rtctimer.enabled)
 		rtc_reg_ptr->rtc_ctrl &= 0x1C;
 
 	return 0;
@@ -336,16 +342,16 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 
 	if (rtc->uie_rtctimer.enabled) {
 		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_UF);
-		RTC_DEBUG("[RTC] update interrupt\n");
+		RTC_DEBUG("[RTC] update irq\n");
 
 		if (sp_rtc.set_alarm_again == 1) {
 			sp_rtc.set_alarm_again = 0;
 			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
-			RTC_DEBUG("[RTC] alarm interrupt\n");
+			RTC_DEBUG("[RTC] alarm irq\n");
 		}
 	} else {
 		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
-		RTC_DEBUG("[RTC] alarm interrupt\n");
+		RTC_DEBUG("[RTC] alarm irq\n");
 	}
 
 	return IRQ_HANDLED;
@@ -459,6 +465,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	}
 
 	platform_set_drvdata(plat_dev, rtc);
+
 #ifdef CONFIG_SOC_SP7021
 	RTC_INFO("sp7021-rtc loaded\n");
 #elif defined (CONFIG_SOC_Q645)
@@ -471,6 +478,7 @@ free_reset_assert:
 	reset_control_assert(sp_rtc.rstc);
 free_clk:
 	clk_disable_unprepare(sp_rtc.rtcclk);
+
 	return ret;
 }
 
@@ -478,6 +486,7 @@ static int sp_rtc_remove(struct platform_device *plat_dev)
 {
 	//struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 	reset_control_assert(sp_rtc.rstc);
+
 	return 0;
 }
 
