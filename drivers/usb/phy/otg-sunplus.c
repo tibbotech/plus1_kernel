@@ -726,16 +726,16 @@ int sp_otg_probe(struct platform_device *dev)
 	}
 
 #ifdef CONFIG_SOC_SP7021
-	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
+	otg_debug("@@@ otg reg %x %d irq %d %x\n", res_mem->start,
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
 #elif defined(CONFIG_SOC_I143)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
-	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
+	otg_debug("@@@ otg reg %x %d irq %d %x\n", res_mem->start,
 			  resource_size(res_mem), otg_host->irq,
 			  readl(&otg_host->regs_otg->otg_int_st));
 	#else
-	otg_debug("@@@ otg reg %lld %lld irq %d %x\n", res_mem->start,
+	otg_debug("@@@ otg reg %x %lld irq %d %x\n", res_mem->start,
 			  resource_size(res_mem), otg_host->irq,
 			  readl(&otg_host->regs_otg->otg_int_st));
 	#endif
