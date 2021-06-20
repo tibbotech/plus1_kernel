@@ -94,7 +94,7 @@ struct sunplus_uart_port {
 	struct sunplus_uartdma_info *uartdma_tx;
 	struct clk *clk;
 	struct reset_control *rstc;
-	struct gpio_desc *DE_RE_dir;
+	struct gpio_desc *rts_gpio;
 	struct hrtimer CheckTXE;
 	struct hrtimer DelayRtsBeforeSend;
 	struct hrtimer DelayRtsAfterSend;
@@ -497,7 +497,8 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 			if (((mcr & SP_UART_MCR_RTS) && (sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
 				#ifdef CONFIG_SOC_SP7021
-				gpiod_set_value(sp_port->DE_RE_dir, 1);
+				gpiod_set_value(sp_port->rts_gpio, 1);
+DBG_ERR( "set rts_gpio=1 (%s)\n", __FUNCTION__);
 				#endif
 				if (sp_port->uport.rs485.delay_rts_before_send == 0) {
 					ktime = ktime_set(0, 500000); //500us
@@ -1514,6 +1515,42 @@ static void sunplus_uart_ops_config_port(struct uart_port *port, int type)
 	}
 }
 
+// rs485
+static int sunplus_uart_config_rs485(struct uart_port *port, struct serial_rs485 *rs485) {
+	struct sunplus_uart_port *up = (struct sunplus_uart_port *)port->private_data;
+
+	int val;
+
+#ifdef CONFIG_PM_RUNTIME_UART
+	pm_runtime_get_sync(up->dev);
+#endif
+	// temporary disable interrupts here?
+	rs485->delay_rts_before_send = min(rs485->delay_rts_before_send, 100U);
+	rs485->delay_rts_after_send  = min(rs485->delay_rts_after_send, 100U);
+	port->rs485 = *rs485;
+
+	// allow 485 to enable only if rts gpio pin is valid
+	if ( !IS_ERR(up->rts_gpio)) {
+DBG_ERR( "rts_gpio is valid (%s)\n", __FUNCTION__);
+		/* enable / disable rts */
+		val = (port->rs485.flags & SER_RS485_ENABLED) ?
+			SER_RS485_RTS_AFTER_SEND : SER_RS485_RTS_ON_SEND;
+		val = (port->rs485.flags & val) ? 1 : 0;
+		gpiod_set_value(up->rts_gpio, val);
+DBG_ERR( "set rts_gpio=%d (%s)\n", val, __FUNCTION__);
+	} else
+		port->rs485.flags &= ~SER_RS485_ENABLED;
+
+	// enable interrupts back there?
+
+#ifdef CONFIG_PM_RUNTIME_UART
+	pm_runtime_mark_last_busy(up->dev);
+	pm_runtime_put_autosuspend(up->dev);
+#endif
+	return 0;
+}
+
+
 /*
  * Documentation/serial/driver:
  * verify_port(port,serinfo)
@@ -1622,7 +1659,8 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 				mcr &= ~SP_UART_MCR_RTS;
 			sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
 			#ifdef CONFIG_SOC_SP7021
-			gpiod_set_value(rs485->DE_RE_dir, 0);
+			gpiod_set_value(rs485->rts_gpio, 0);
+DBG_ERR( "set rts_gpio=0 (%s)\n", __FUNCTION__);
 			#endif
 		} else {
 			ktime = ktime_set(0, nsec);
@@ -1653,7 +1691,8 @@ static enum hrtimer_restart Delay_Rts_After_Send(struct hrtimer *t)
 
 	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsAfterSend);
 	#ifdef CONFIG_SOC_SP7021
-	gpiod_set_value(rs485->DE_RE_dir, 0);
+	gpiod_set_value(rs485->rts_gpio, 0);
+DBG_ERR( "set rts_gpio=0 (%s)\n", __FUNCTION__);
 	#endif
 	mcr = sp_uart_get_modem_ctrl(rs485->uport.membase);
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND)
@@ -1868,14 +1907,15 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		return -ENODEV;
 
 	uart_get_rs485_mode(&pdev->dev, &port->rs485);
+	#ifdef CONFIG_SOC_SP7021
+	sunplus_uart_ports[pdev->id].rts_gpio = devm_gpiod_get(&pdev->dev, "rts", GPIOD_OUT_LOW);
+	#endif
+	port->rs485_config = sunplus_uart_config_rs485;
 	if (port->rs485.flags & SER_RS485_ENABLED) {
 		//DBG_INFO("delay_rts_before_send = %d \n", sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_before_send);
 		//DBG_INFO("delay_rts_after_send = %d \n", sunplus_uart_ports[pdev->id].uport.rs485.delay_rts_after_send);
-		#ifdef CONFIG_SOC_SP7021
-		sunplus_uart_ports[pdev->id].DE_RE_dir = devm_gpiod_get(&pdev->dev, "dir", GPIOD_OUT_LOW);
-		#endif
-		if (!IS_ERR(sunplus_uart_ports[pdev->id].DE_RE_dir)) {
-			DBG_INFO("DE_RE is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].DE_RE_dir));
+		if (!IS_ERR(sunplus_uart_ports[pdev->id].rts_gpio)) {
+			DBG_INFO("rts_gpio is at G_MX[%d].\n", desc_to_gpio(sunplus_uart_ports[pdev->id].rts_gpio));
 			hrtimer_init(&sunplus_uart_ports[pdev->id].CheckTXE, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 			sunplus_uart_ports[pdev->id].CheckTXE.function = Check_TXE;
 			hrtimer_init(&sunplus_uart_ports[pdev->id].DelayRtsBeforeSend, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
