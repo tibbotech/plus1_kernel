@@ -1680,20 +1680,25 @@ DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
 // dv 485: enable it
 static int sunplus_uart_rs485_onn( struct uart_port *_up, struct sunplus_uart_port *_sup) {
  // no enable/disable is possible if there no rts_gpio
+DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
  if ( IS_ERR( _sup->rts_gpio)) {
    DBG_ERR( "%s %s No valid rts_gpio, disabling 485\n", _up->name, __FUNCTION__);
    _up->rs485.flags &= ~SER_RS485_ENABLED;
    return( -EINVAL);  }
- DBG_INFO("%s %s rts_gpio is at G_MX[%d].\n", _up->name, __FUNCTION__, desc_to_gpio( _sup->rts_gpio));
+DBG_ERR("%s %s rts_gpio is at G_MX[%d].\n", _up->name, __FUNCTION__, desc_to_gpio( _sup->rts_gpio));
  if ( !_sup->CheckTXE.function) {
-   _sup->CheckTXE.function = Check_TXE;
-   hrtimer_init( &( _sup->CheckTXE), CLOCK_MONOTONIC, HRTIMER_MODE_REL);  }
+DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
+   hrtimer_init( &( _sup->CheckTXE), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+   _sup->CheckTXE.function = Check_TXE;  }
  if ( !_sup->DelayRtsBeforeSend.function) {
-   _sup->DelayRtsBeforeSend.function = Delay_Rts_Before_Send;
-   hrtimer_init( &( _sup->DelayRtsBeforeSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);  }
+DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
+   hrtimer_init( &( _sup->DelayRtsBeforeSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+   _sup->DelayRtsBeforeSend.function = Delay_Rts_Before_Send;  }
  if ( !_sup->DelayRtsAfterSend.function) {
-   _sup->DelayRtsAfterSend.function = Delay_Rts_After_Send;
-   hrtimer_init( &( _sup->DelayRtsAfterSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);  }
+DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
+   hrtimer_init( &( _sup->DelayRtsAfterSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+   _sup->DelayRtsAfterSend.function = Delay_Rts_After_Send;  }
+DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
  return( 0);  }
 
 // dv 485: disable it
