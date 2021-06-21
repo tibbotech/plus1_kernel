@@ -1958,6 +1958,9 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	sunplus_uart_ports[pdev->id].rts_gpio = devm_gpiod_get(&pdev->dev, "rts", GPIOD_OUT_LOW);
 	#endif
 	port->rs485_config = sunplus_uart_config_rs485;
+	sunplus_uart_ports[pdev->id].CheckTXE.function = NULL;
+	sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = NULL;
+	sunplus_uart_ports[pdev->id].DelayRtsAfterSend.function = NULL;
 	if ( port->rs485.flags & SER_RS485_ENABLED) sunplus_uart_rs485_onn( port, &( sunplus_uart_ports[ pdev->id]));
 
 #if 0
