@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2019 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2018-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -22,6 +22,7 @@
 
 #include "ethosn_network.h"
 
+#include "ethosn_backport.h"
 #include "ethosn_buffer.h"
 #include "ethosn_device.h"
 #include "ethosn_dma.h"
@@ -593,17 +594,20 @@ static int inference_release(struct inode *inode,
 			     struct file *filep)
 {
 	struct ethosn_inference *inference = filep->private_data;
-	struct ethosn_core *core = inference->core;
-	struct ethosn_device *ethosn = core->parent;
 
-	/* The inference queue belongs to the parent device and should
-	 * be protected by the parent's mutex.
+	/*
 	 * Note we don't use mutex_lock_interruptible here as we need to make
 	 * sure we release the network so we don't leak resources.
 	 * This would prevent the kernel module from being unloaded
 	 * when requested.
 	 */
 	if (inference->status == ETHOSN_INFERENCE_SCHEDULED) {
+		/*
+		 * Use the same mutex that is used for adding
+		 * inference to the list.
+		 */
+		struct ethosn_device *ethosn = inference->network->ethosn;
+
 		mutex_lock(
 			&ethosn->queue.inference_queue_mutex);
 		list_del(&inference->queue_node);
@@ -612,10 +616,11 @@ static int inference_release(struct inode *inode,
 	}
 
 	if (inference->status == ETHOSN_INFERENCE_RUNNING) {
+		struct ethosn_core *core = inference->core;
+
 		dev_warn(core->dev,
 			 "Reset Ethos-N due to error inference abort. handle=0x%pK\n",
 			 inference);
-
 		mutex_lock(&core->mutex);
 
 		(void)ethosn_reset_and_start_ethosn(core);
@@ -631,27 +636,28 @@ static int inference_release(struct inode *inode,
 		mutex_unlock(&core->mutex);
 	}
 
-	wake_up_poll(&inference->poll_wqh, POLLHUP);
+	wake_up_poll(&inference->poll_wqh, EPOLLHUP);
 
 	put_inference(inference);
 
 	return 0;
 }
 
-static unsigned int inference_poll(struct file *file,
-				   poll_table *wait)
+static __poll_t inference_poll(struct file *file,
+			       poll_table *wait)
 {
 	struct ethosn_inference *inference = file->private_data;
+	__poll_t ret = 0;
 
 	poll_wait(file, &inference->poll_wqh, wait);
 
 	if (inference->status < ETHOSN_INFERENCE_SCHEDULED)
-		return POLLERR;
+		ret = EPOLLERR;
 
-	if (inference->status > ETHOSN_INFERENCE_RUNNING)
-		return POLLIN;
+	else if (inference->status > ETHOSN_INFERENCE_RUNNING)
+		ret = EPOLLIN;
 
-	return 0;
+	return ret;
 }
 
 static ssize_t inference_read(struct file *file,
@@ -1086,12 +1092,17 @@ static void free_network(struct ethosn_network *network)
 				 ETHOSN_STREAM_COMMAND_STREAM);
 
 		/* Free allocated dma from core */
-		ethosn_dma_unmap_and_free(core->allocator,
-					  network->intermediate_data[i],
-					  ETHOSN_STREAM_DMA_INTERMEDIATE);
-		ethosn_dma_unmap_and_free(core->allocator,
-					  network->inference_data[i],
-					  ETHOSN_STREAM_COMMAND_STREAM);
+		if (network->intermediate_data)
+			ethosn_dma_unmap_and_free(
+				core->allocator,
+				network->intermediate_data[i],
+				ETHOSN_STREAM_DMA_INTERMEDIATE);
+
+		if (network->inference_data)
+			ethosn_dma_unmap_and_free(
+				core->allocator,
+				network->inference_data[i],
+				ETHOSN_STREAM_COMMAND_STREAM);
 	}
 
 	/* Free allocated dma from top level device */
@@ -1298,7 +1309,7 @@ void ethosn_network_poll(struct ethosn_core *core,
 				allocator,
 				inference->outputs[i]->dma_info);
 
-		wake_up_poll(&inference->poll_wqh, POLLIN);
+		wake_up_poll(&inference->poll_wqh, EPOLLIN);
 		put_inference(inference);
 
 		dev_dbg(core->dev,

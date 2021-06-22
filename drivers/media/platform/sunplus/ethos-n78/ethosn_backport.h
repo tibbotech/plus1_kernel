@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2020-2021 Arm Limited.
+ * (C) COPYRIGHT 2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -20,34 +20,21 @@
  *
  */
 
-/include/ "juno-r2-ethosn.dtsi"
-/include/ "juno-r2-smmu.dtsi"
+#ifndef _ETHOSN_BACKPORT_H_
+#define _ETHOSN_BACKPORT_H_
 
-/*
- * Note:- The smmu stream id defined in ethosn needs to be a unique value amongst
- * all the stream ids for the various devices attached to the same smmu.
- */
-&smmu_ethosn0 {
-	status = "okay";
-};
+#include <linux/eventpoll.h>
+#include <linux/version.h>
 
-&smmu_ethosn1 {
-	status = "okay";
-};
+#if !defined(EPOLLERR)
+#define EPOLLERR        POLLERR
+#define EPOLLIN         POLLIN
+#define EPOLLHUP        POLLHUP
+#define EPOLLRDNORM     POLLRDNORM
+#endif
 
-&ethosn {
-	reg = <0 0x6f300000 0 0x00100000>, <0 0x6d000000 0 0x00100000>;
-	status = "okay";
+#if (KERNEL_VERSION(4, 16, 0) > LINUX_VERSION_CODE)
+typedef unsigned __bitwise __poll_t;
+#endif
 
-	core0 {
-		compatible = "ethosn-core";
-		iommus = <&smmu_ethosn0 0>;
-		status = "okay";
-	};
-
-	core1 {
-		compatible = "ethosn-core";
-		iommus = <&smmu_ethosn1 0>;
-		status = "okay";
-	};
-};
+#endif /* _ETHOSN_BACKPORT_H_ */
