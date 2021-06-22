@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2020 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2020-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -26,7 +26,6 @@
 /*
  * Note:- The smmu stream id defined in ethosn needs to be a unique value amongst
  * all the stream ids for the various devices attached to the same smmu.
- * Please note that this has not been tested yet.
  */
 &smmu_ethosn0 {
 	status = "okay";
