@@ -614,7 +614,7 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 		#ifdef CONFIG_SOC_SP7021
 		gpiod_set_value( sp_port->rts_gpio, val);
 // dv: 485
-//DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, sp_port->uport.name, __FUNCTION__);
+DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, sp_port->uport.name, __FUNCTION__);
 		#endif
 		if (sp_port->uport.rs485.delay_rts_before_send > 0) {
 			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
@@ -1633,7 +1633,7 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 			#ifdef CONFIG_SOC_SP7021
 			gpiod_set_value(rs485->rts_gpio, 0);
 // dv: 485
-//DBG_ERR( "set rts_gpio=0 (%s,%s)\n", rs485->uport.name, __FUNCTION__);
+DBG_ERR( "set rts_gpio=0 (%s,%s)\n", rs485->uport.name, __FUNCTION__);
 			#endif
 		} else {
 			ktime = ktime_set(0, nsec);
