@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2018-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -697,9 +697,23 @@ static long ethosn_ioctl(struct file *const filep,
 {
 	struct ethosn_device *ethosn = filep->private_data;
 	void __user *const udata = (void __user *)arg;
-	int ret;
+	int ret = 0;
 
 	switch (cmd) {
+	case ETHOSN_IOCTL_GET_VERSION: {
+		struct ethosn_kernel_module_version act_version = {
+			.major = ETHOSN_KERNEL_MODULE_VERSION_MAJOR,
+			.minor = ETHOSN_KERNEL_MODULE_VERSION_MINOR,
+			.patch = ETHOSN_KERNEL_MODULE_VERSION_PATCH,
+		};
+
+		if (copy_to_user(udata, &act_version, sizeof(act_version))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		break;
+	}
 	case ETHOSN_IOCTL_CREATE_BUFFER: {
 		struct ethosn_buffer_req buf_req;
 
@@ -1040,34 +1054,37 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 			       bool force_firmware_level_interrupts)
 {
 	struct ethosn_profiling_config config = {};
-	int ret;
+	int ret = ethosn_smc_version_check(core);
 
-	//for waveform dump using
+    //for dump waveform using
 	//static volatile uint32_t *G0;
 	//G0 = ioremap(0xF8000000, 32*4);
 
-	ret = ethosn_smc_version_check(core);
-	printk("smcv_ret: %x\n",ret);
+	//printk("smcv_ret: %x\n",ret);
 #ifdef ETHOSN_NS
+	int secure;
 
 	/*
 	 * If the Arm Ethos-N NPU SiP service is available verify the NPU's
-	 * secure status.
+	 * secure status. If not, assume it's non-secure.
 	 */
-	if (!ret && ethosn_smc_is_secure(core)) {	
-		dev_err(core->dev,
-			"NPU in secure mode, non-secure kernel not supported.\n");
+	secure = !ret ? ethosn_smc_is_secure(core) : 0;
+	if (secure) {
+		if (secure == 1) {
+			dev_err(core->dev,
+				"NPU in secure mode, non-secure kernel not supported.\n");
+			secure = -EPERM;
+		}
 
-		return -EFAULT;
+		return secure;
 	}
-	else{printk("smcv check pass, smc_sec: %x\n",ethosn_smc_is_secure(core));}
 
 #else
 	if (ret) {
 		dev_err(core->dev,
-			"Arm Ethos-N NPU SiP service required for secure kernel\n");
+			"Arm Ethos-N NPU SiP service required for secure kernel.\n");
 
-		return -EFAULT;
+		return -EPERM;
 	}
 
 #endif
@@ -1379,7 +1396,7 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 	/* Currently we assume that the reserved memory is
 	 * common to all the NPUs
 	 */
-	if (!iommu_present(pdev->dev.bus)) {
+	if (!ethosn_smmu_available(&pdev->dev)) {
 		dev_dbg(&pdev->dev, "Init reserved mem\n");
 
 		ret = ethosn_init_reserved_mem(&pdev->dev);

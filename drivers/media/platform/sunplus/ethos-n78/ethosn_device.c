@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2018-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -35,23 +35,21 @@
 #include <linux/time.h>
 
 /* Number of bits the MCU Vector Table address is shifted. */
-#define SYSCTLR0_INITVTOR_SHIFT 7
+#define SYSCTLR0_INITVTOR_SHIFT         7
 
 /* Init vector table size */
-#define ETHOSN_VTABLE_SIZE 16
+#define ETHOSN_VTABLE_SIZE                 16
 
 /* Firmware code size */
-#define ETHOSN_CODE_SIZE 0x40000
+#define ETHOSN_CODE_SIZE                   0x40000
 
 /* Timeout in us when resetting the Ethos-N */
-#define ETHOSN_RESET_TIMEOUT_US (10 * 1000 * 1000)
-#define ETHOSN_RESET_WAIT_US 1
+#define ETHOSN_RESET_TIMEOUT_US         (10 * 1000 * 1000)
+#define ETHOSN_RESET_WAIT_US            1
 
 /* Regset32 entry */
-#define REGSET32(r)                                                            \
-	{                                                                      \
-		__stringify(r), TOP_REG(DL1_RP, DL1_##r) - TOP_REG(0, 0)       \
-	}
+#define REGSET32(r) { __stringify(r), \
+		      TOP_REG(DL1_RP, DL1_ ## r) - TOP_REG(0, 0) }
 
 static int severity = ETHOSN_LOG_INFO;
 module_param(severity, int, 0660);
@@ -72,7 +70,8 @@ module_param_named(clock_frequency, clock_frequency, int, 0440);
 static struct ethosn_core *ethosn_global_core_for_testing;
 
 static void __iomem *ethosn_top_reg_addr(void __iomem *const top_regs,
-					 const u32 page, const u32 offset)
+					 const u32 page,
+					 const u32 offset)
 {
 	return (u8 __iomem *)top_regs + (TOP_REG(page, offset) - TOP_REG(0, 0));
 }
@@ -104,6 +103,29 @@ resource_size_t to_ethosn_addr(const resource_size_t linux_addr,
 	return ethosn_addr;
 }
 
+bool ethosn_smmu_available(struct device *dev)
+{
+	int len;
+	bool has_smmu = false;
+	bool is_parent = of_get_available_child_count(dev->of_node) > 0;
+	struct device_node *node;
+
+	/* iommus property is only available in the children
+	 * nodes (i.e. ethosn-core)
+	 */
+	if (is_parent)
+		node = of_get_next_available_child(dev->of_node, NULL);
+	else
+		node = dev->of_node;
+
+	has_smmu = !IS_ERR_OR_NULL(of_find_property(node, "iommus", &len));
+
+	if (is_parent)
+		of_node_put(node);
+
+	return has_smmu;
+}
+
 /**
  * ethosn_mailbox_init() - Initialize the mailbox structure.
  * @core:	Pointer to Ethos-N core.
@@ -123,14 +145,14 @@ static int ethosn_mailbox_init(struct ethosn_core *core)
 	memset(response, 0, core->mailbox_response->size);
 
 	/* Setup queue sizes */
-	request->capacity =
-		core->mailbox_request->size - sizeof(struct ethosn_queue);
-	response->capacity =
-		core->mailbox_response->size - sizeof(struct ethosn_queue);
+	request->capacity = core->mailbox_request->size -
+			    sizeof(struct ethosn_queue);
+	response->capacity = core->mailbox_response->size -
+			     sizeof(struct ethosn_queue);
 
 	/* Set severity, and make sure it's in the range [PANIC, VERBOSE]. */
-	mailbox->severity =
-		max(min(severity, ETHOSN_LOG_VERBOSE), ETHOSN_LOG_PANIC);
+	mailbox->severity = max(min(severity,
+				    ETHOSN_LOG_VERBOSE), ETHOSN_LOG_PANIC);
 
 	/* Set Ethos-N addresses from mailbox to queues */
 	mailbox->request = to_ethosn_addr(core->mailbox_request->iova_addr,
@@ -144,8 +166,8 @@ static int ethosn_mailbox_init(struct ethosn_core *core)
 		return -EFAULT;
 
 	/* Store mailbox address in GP2 */
-	mailbox_addr =
-		to_ethosn_addr(core->mailbox->iova_addr, &core->work_data_map);
+	mailbox_addr = to_ethosn_addr(core->mailbox->iova_addr,
+				      &core->work_data_map);
 	if (IS_ERR_VALUE((unsigned long)mailbox_addr))
 		return -EFAULT;
 
@@ -171,38 +193,49 @@ static int mailbox_alloc(struct ethosn_core *core)
 	struct ethosn_dma_allocator *allocator = core->allocator;
 	int ret = -ENOMEM;
 
-	core->mailbox = ethosn_dma_alloc_and_map(
-		allocator, sizeof(struct ethosn_mailbox),
-		ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
-		ETHOSN_STREAM_WORKING_DATA, GFP_KERNEL);
+	core->mailbox =
+		ethosn_dma_alloc_and_map(
+			allocator,
+			sizeof(struct ethosn_mailbox),
+			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+			ETHOSN_STREAM_WORKING_DATA,
+			GFP_KERNEL);
 	if (IS_ERR_OR_NULL(core->mailbox)) {
-		dev_warn(core->dev, "Failed to allocate memory for mailbox");
+		dev_warn(core->dev,
+			 "Failed to allocate memory for mailbox");
 		goto err_exit;
 	}
 
-	core->mailbox_request = ethosn_dma_alloc_and_map(
-		allocator, sizeof(struct ethosn_queue) + core->queue_size,
-		ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
-		ETHOSN_STREAM_WORKING_DATA, GFP_KERNEL);
+	core->mailbox_request =
+		ethosn_dma_alloc_and_map(
+			allocator,
+			sizeof(struct ethosn_queue) +
+			core->queue_size,
+			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+			ETHOSN_STREAM_WORKING_DATA,
+			GFP_KERNEL);
 	if (IS_ERR_OR_NULL(core->mailbox_request)) {
 		dev_warn(core->dev,
 			 "Failed to allocate memory for mailbox request queue");
 		goto err_free_mailbox;
 	}
 
-	core->mailbox_response = ethosn_dma_alloc_and_map(
-		allocator, sizeof(struct ethosn_queue) + core->queue_size,
-		ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
-		ETHOSN_STREAM_WORKING_DATA, GFP_KERNEL);
+	core->mailbox_response =
+		ethosn_dma_alloc_and_map(allocator,
+					 sizeof(struct ethosn_queue) +
+					 core->queue_size,
+					 ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+					 ETHOSN_STREAM_WORKING_DATA,
+					 GFP_KERNEL);
 	if (IS_ERR_OR_NULL(core->mailbox_response)) {
-		dev_warn(
-			core->dev,
-			"Failed to allocate memory for mailbox response queue");
+		dev_warn(core->dev,
+			 "Failed to allocate memory for mailbox response queue");
 		goto err_free_mailbox_request;
 	}
 
 	core->mailbox_message =
-		devm_kzalloc(core->parent->dev, core->queue_size, GFP_KERNEL);
+		devm_kzalloc(core->parent->dev, core->queue_size,
+			     GFP_KERNEL);
 	if (!core->mailbox_message)
 		goto err_free_mailbox_response;
 
@@ -277,8 +310,10 @@ static int ethosn_streams_init(struct ethosn_core *core)
 	return 0;
 }
 
-void ethosn_write_top_reg(struct ethosn_core *core, const u32 page,
-			  const u32 offset, const u32 value)
+void ethosn_write_top_reg(struct ethosn_core *core,
+			  const u32 page,
+			  const u32 offset,
+			  const u32 value)
 {
 	iowrite32(value, ethosn_top_reg_addr(core->top_regs, page, offset));
 }
@@ -286,7 +321,8 @@ void ethosn_write_top_reg(struct ethosn_core *core, const u32 page,
 /* Exported for use by ethosn-tests module * */
 EXPORT_SYMBOL(ethosn_write_top_reg);
 
-u32 ethosn_read_top_reg(struct ethosn_core *core, const u32 page,
+u32 ethosn_read_top_reg(struct ethosn_core *core,
+			const u32 page,
 			const u32 offset)
 {
 	return ioread32(ethosn_top_reg_addr(core->top_regs, page, offset));
@@ -315,9 +351,8 @@ static int ethosn_boot_firmware(struct ethosn_core *core)
 	vtable[0] += core->firmware_stack->size;
 
 	/* Set vtable reset program counter */
-	vtable[1] =
-		to_ethosn_addr(core->firmware->iova_addr, &core->firmware_map) +
-		1;
+	vtable[1] = to_ethosn_addr(core->firmware->iova_addr,
+				   &core->firmware_map) + 1;
 	if (vtable[1] >= (uint32_t)-MAX_ERRNO)
 		return (int)vtable[1];
 
@@ -343,6 +378,7 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 {
 	int timeout;
 	int ret;
+	//uint32_t temp;
 
 	dev_info(core->dev, "Reset the ethosn\n");
 
@@ -355,7 +391,7 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	ethosn_set_power_ctrl(core, true);
 
 	/* Set MMU Stream id0 if iommu is present */
-	if (iommu_present(core->dev->bus)) {
+	if (ethosn_smmu_available(core->dev)) {
 		ret = ethosn_set_mmu_stream_id(core);
 		if (ret)
 			return ret;
@@ -423,6 +459,18 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	if (ret != 0)
 		return ret;
 
+    //for waveform dump using
+	//static volatile uint32_t *G0;
+	//G0 = ioremap(0xF8000000, 32*4);
+	//G0[0] = 0xabcd1234;
+
+#if 0 //F004~F108//hugo debug
+	temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
+	printk("NPU DL1_NPU_ID: %x\n",temp);	
+	temp = ethosn_read_top_reg(core, DL1_RP, GP_MAILBOX);
+	printk("GP_MAILBOX: %x\n",temp);		
+#endif
+
 	dev_info(core->dev, "Waiting for Ethos-N\n");
 
 	/* Wait for firmware to set GP2 to 0 which indicates that it has booted.
@@ -439,6 +487,7 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 				 core->ethosn_cs_stream_configured &&
 				 core->ethosn_mpu_enabled;
 
+        //printk("size: %lx, ready: %x\n",core->fw_and_hw_caps.size,mem_ready);
 		if (ethosn_read_top_reg(core, DL1_RP, GP_MAILBOX) == 0 &&
 		    core->fw_and_hw_caps.size > 0 && mem_ready)
 			break;
@@ -459,11 +508,14 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 
 void ethosn_notify_firmware(struct ethosn_core *core)
 {
-	struct dl1_setirq_int_r irq = { .bits = {
-						.event = 1,
-					} };
+	struct dl1_setirq_int_r irq = {
+		.bits          = {
+			.event = 1,
+		}
+	};
 
-	ethosn_write_top_reg(core, DL1_RP, DL1_SETIRQ_INT, irq.word);
+	ethosn_write_top_reg(core, DL1_RP, DL1_SETIRQ_INT,
+			     irq.word);
 }
 
 static int ethosn_hard_reset(struct ethosn_core *core)
@@ -481,7 +533,8 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 	/* Wait for hard reset to complete */
 	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
 	     timeout += ETHOSN_RESET_WAIT_US) {
-		sysctlr0.word = ethosn_read_top_reg(core, DL1_RP, DL1_SYSCTLR0);
+		sysctlr0.word =
+			ethosn_read_top_reg(core, DL1_RP, DL1_SYSCTLR0);
 
 		if (sysctlr0.bits.hard_rstreq == 0)
 			break;
@@ -511,19 +564,20 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 static int ethosn_soft_reset(struct ethosn_core *core)
 {
 #ifdef ETHOSN_NS
+
 	struct dl1_sysctlr0_r sysctlr0 = { .word = 0 };
 	unsigned int timeout;
 	
 	//uint32_t temp;
-	
 	//for waveform dump using
 	//static volatile uint32_t *G0;
 	//G0 = ioremap(0xF8000000, 32*4);
 	//G0[0] = 0xabcd1234;
 
+#if 1//reset workarround
     static volatile uint32_t *RESET_REG;//moon n78 reset
 	RESET_REG = ioremap(0xF800005C, 32*4);
-
+#endif
 	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
 	//printk("NPU DL1_NPU_ID: %x\n",temp);
 
@@ -548,7 +602,8 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	/* Wait for reset to complete */
 	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
 	     timeout += ETHOSN_RESET_WAIT_US) {
-		sysctlr0.word = ethosn_read_top_reg(core, DL1_RP, DL1_SYSCTLR0);
+		sysctlr0.word =
+			ethosn_read_top_reg(core, DL1_RP, DL1_SYSCTLR0);
 
 		if (sysctlr0.bits.soft_rstreq == 0)
 			break;
@@ -557,6 +612,8 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	}
 		 
 	dev_info(core->dev, "Soft reset, Wait pass.\n");
+	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//hang up
+	//printk("DL1_REGISTERS_SIZE: %x\n",temp);
 
 	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
 		dev_warn(core->dev,
@@ -567,7 +624,7 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	}
 
 #else
-
+    //uint32_t temp;
 	/*
 	 * Access to DL1 registers is blocked in secure mode so reset is done
 	 * with a SMC call. The call will block until the reset is done or
@@ -575,7 +632,17 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	 */
 	if (ethosn_smc_core_reset(core, 0))
 		return -ETIME;
-
+	#if 0
+	    //because smc reset do ethosn_delegate_to_ns(). read DL1 reg here for test
+		temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
+		printk("DL1_NPU_ID: %x\n",temp);		
+		temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);
+		printk("DL1_REGISTERS_SIZE: %x\n",temp);
+		temp = ethosn_read_top_reg(core, DL1_RP, DL1_GP2);
+		printk("DL1_GP2: %x\n",temp);		
+		temp = ethosn_read_top_reg(core, DL1_RP, DL1_STREAM0_NSAID);
+		printk("DL1_STREAM0_NSAID: %x\n",temp);	
+	#endif	
 #endif
 
 	return 0;
@@ -592,7 +659,8 @@ int ethosn_reset(struct ethosn_core *core)
 	return ret;
 }
 
-void ethosn_set_power_ctrl(struct ethosn_core *core, bool clk_on)
+void ethosn_set_power_ctrl(struct ethosn_core *core,
+			   bool clk_on)
 {
 	struct dl1_pwrctlr_r pwrctlr = { .word = 0 };
 
@@ -647,7 +715,8 @@ int ethosn_set_mmu_stream_id(struct ethosn_core *core)
  *
  * Return: Negative error code on error, zero otherwise
  */
-int ethosn_set_addr_ext(struct ethosn_core *core, unsigned int stream,
+int ethosn_set_addr_ext(struct ethosn_core *core,
+			unsigned int stream,
 			ethosn_address_t offset,
 			struct ethosn_addr_map *addr_map)
 {
@@ -675,7 +744,8 @@ int ethosn_set_addr_ext(struct ethosn_core *core, unsigned int stream,
 		     ARRAY_SIZE(stream_to_offset));
 
 	if (stream >= ARRAY_SIZE(stream_to_page)) {
-		dev_err(core->dev, "Illegal stream %u for address extension.\n",
+		dev_err(core->dev,
+			"Illegal stream %u for address extension.\n",
 			stream);
 
 		return -EFAULT;
@@ -683,7 +753,8 @@ int ethosn_set_addr_ext(struct ethosn_core *core, unsigned int stream,
 
 	ext.bits.addrextend = offset >> REGION_SHIFT;
 
-	ethosn_write_top_reg(core, DL1_RP, stream_to_page[stream], ext.word);
+	ethosn_write_top_reg(core, DL1_RP, stream_to_page[stream],
+			     ext.word);
 
 	if (addr_map) {
 		addr_map->region = stream_to_offset[stream];
@@ -693,11 +764,19 @@ int ethosn_set_addr_ext(struct ethosn_core *core, unsigned int stream,
 	return 0;
 }
 
-static int get_gp_offset(struct ethosn_core *core, unsigned int index)
+static int get_gp_offset(struct ethosn_core *core,
+			 unsigned int index)
 {
-	static const int index_to_offset[] = { DL1_GP0, DL1_GP1, DL1_GP2,
-					       DL1_GP3, DL1_GP4, DL1_GP5,
-					       DL1_GP6, DL1_GP7 };
+	static const int index_to_offset[] = {
+		DL1_GP0,
+		DL1_GP1,
+		DL1_GP2,
+		DL1_GP3,
+		DL1_GP4,
+		DL1_GP5,
+		DL1_GP6,
+		DL1_GP7
+	};
 
 	if (index >= ARRAY_SIZE(index_to_offset)) {
 		dev_err(core->dev,
@@ -720,8 +799,9 @@ void ethosn_dump_gps(struct ethosn_core *core)
 		if (offset < 0)
 			break;
 
-		dev_info(core->dev, "GP%u=0x%08x\n", i,
-			 ethosn_read_top_reg(core, DL1_RP, offset));
+		dev_info(core->dev,
+			 "GP%u=0x%08x\n",
+			 i, ethosn_read_top_reg(core, DL1_RP, offset));
 	}
 }
 
@@ -739,14 +819,16 @@ void ethosn_dump_gps(struct ethosn_core *core)
  * Return: Number of messages read on success, else error code.
  */
 int ethosn_read_message(struct ethosn_core *core,
-			struct ethosn_message_header *header, void *data,
+			struct ethosn_message_header *header,
+			void *data,
 			size_t length)
 {
 	struct ethosn_queue *queue = core->mailbox_response->cpu_addr;
 	bool ret;
 	uint32_t read_pending;
 
-	if (core->mailbox_response->size < (sizeof(*queue) + queue->capacity) ||
+	if (core->mailbox_response->size <
+	    (sizeof(*queue) + queue->capacity) ||
 	    !is_power_of_2(queue->capacity)) {
 		dev_err(core->dev,
 			"Illegal mailbox queue capacity. alloc_size=%zu, queue capacity=%u\n",
@@ -770,20 +852,21 @@ int ethosn_read_message(struct ethosn_core *core,
 	 * indicate it has finished writing the whole message.
 	 */
 	if ((ethosn_queue_get_size(queue) -
-	     sizeof(struct ethosn_message_header)) < header->length)
+	     sizeof(struct ethosn_message_header)) <
+	    header->length)
 		return 0;
 
 	queue->read = read_pending;
 
 	dev_dbg(core->dev,
 		"Received message. type=%u, length=%u, read=%u, write=%u.\n",
-		header->type, header->length, queue->read, queue->write);
+		header->type, header->length, queue->read,
+		queue->write);
 
 	if (length < header->length) {
-		dev_warn(
-			core->dev,
-			"Message too large to read. header.length=%u, length=%zu.\n",
-			header->length, length);
+		dev_warn(core->dev,
+			 "Message too large to read. header.length=%u, length=%zu.\n",
+			 header->length, length);
 
 		ethosn_queue_skip(queue, header->length);
 
@@ -820,16 +903,20 @@ int ethosn_read_message(struct ethosn_core *core,
  * Return: 0 on success, else error code.
  */
 int ethosn_write_message(struct ethosn_core *core,
-			 enum ethosn_message_type type, void *data,
+			 enum ethosn_message_type type,
+			 void *data,
 			 size_t length)
 {
 	struct ethosn_queue *queue = core->mailbox_request->cpu_addr;
-	struct ethosn_message_header header = { .type = type,
-						.length = length };
+	struct ethosn_message_header header = {
+		.type   = type,
+		.length = length
+	};
 	bool ret;
 	uint32_t write_pending;
 
-	if (core->mailbox_response->size < (sizeof(*queue) + queue->capacity) ||
+	if (core->mailbox_response->size <
+	    (sizeof(*queue) + queue->capacity) ||
 	    !is_power_of_2(queue->capacity)) {
 		dev_err(core->dev,
 			"Illegal mailbox queue capacity. alloc_size=%zu, queue capacity=%u\n",
@@ -846,9 +933,10 @@ int ethosn_write_message(struct ethosn_core *core,
 
 	write_pending = queue->write;
 
-	ret = ethosn_queue_write(queue, (uint8_t *)&header,
-				 sizeof(struct ethosn_message_header),
-				 &write_pending);
+	ret =
+		ethosn_queue_write(queue, (uint8_t *)&header,
+				   sizeof(struct ethosn_message_header),
+				   &write_pending);
 	if (!ret)
 		return ret;
 
@@ -894,10 +982,13 @@ int ethosn_send_fw_hw_capabilities_request(struct ethosn_core *core)
  * are in the process of updating that, it may not yet have been committed.
  * Instead we take the arguments explicitly.
  */
-static int ethosn_send_configure_profiling(
-	struct ethosn_core *core, bool enable, uint32_t num_hw_counters,
-	enum ethosn_profiling_hw_counter_types *hw_counters,
-	struct ethosn_dma_info *buffer)
+static int ethosn_send_configure_profiling(struct ethosn_core *core,
+					   bool enable,
+					   uint32_t num_hw_counters,
+					   enum
+					   ethosn_profiling_hw_counter_types *
+					   hw_counters,
+					   struct ethosn_dma_info *buffer)
 {
 	struct ethosn_firmware_profiling_configuration fw_new_config;
 	int i;
@@ -907,7 +998,8 @@ static int ethosn_send_configure_profiling(
 	if (!IS_ERR_OR_NULL(buffer)) {
 		fw_new_config.buffer_size = buffer->size;
 		fw_new_config.buffer_address =
-			to_ethosn_addr(buffer->iova_addr, &core->work_data_map);
+			to_ethosn_addr(buffer->iova_addr,
+				       &core->work_data_map);
 		if (IS_ERR_VALUE((unsigned long)fw_new_config.buffer_address)) {
 			dev_err(core->dev,
 				"Error converting firmware profiling buffer to_ethosn_addr.\n");
@@ -932,8 +1024,9 @@ static int ethosn_send_configure_profiling(
 				    &fw_new_config, sizeof(fw_new_config));
 }
 
-int ethosn_configure_firmware_profiling(
-	struct ethosn_core *core, struct ethosn_profiling_config *new_config)
+int ethosn_configure_firmware_profiling(struct ethosn_core *core,
+					struct ethosn_profiling_config *
+					new_config)
 {
 	int ret = -ENOMEM;
 
@@ -962,7 +1055,8 @@ int ethosn_configure_firmware_profiling(
 				core->allocator,
 				new_config->firmware_buffer_size,
 				ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
-				ETHOSN_STREAM_WORKING_DATA, GFP_KERNEL);
+				ETHOSN_STREAM_WORKING_DATA,
+				GFP_KERNEL);
 		if (IS_ERR(core->profiling.firmware_buffer_pending)) {
 			dev_err(core->dev,
 				"Error allocating firmware profiling buffer.\n");
@@ -971,8 +1065,9 @@ int ethosn_configure_firmware_profiling(
 		}
 
 		/* Initialize the firmware_write_index. */
-		buffer = (struct ethosn_profiling_buffer *)core->profiling
-				 .firmware_buffer_pending->cpu_addr;
+		buffer =
+			(struct ethosn_profiling_buffer *)
+			core->profiling.firmware_buffer_pending->cpu_addr;
 		buffer->firmware_write_index = 0;
 		ethosn_dma_sync_for_device(
 			core->allocator,
@@ -984,7 +1079,8 @@ int ethosn_configure_firmware_profiling(
 	core->profiling.is_waiting_for_firmware_ack = true;
 
 	ret = ethosn_send_configure_profiling(
-		core, new_config->enable_profiling, new_config->num_hw_counters,
+		core, new_config->enable_profiling,
+		new_config->num_hw_counters,
 		new_config->hw_counters,
 		core->profiling.firmware_buffer_pending);
 	if (ret != 0) {
@@ -996,9 +1092,10 @@ int ethosn_configure_firmware_profiling(
 	return 0;
 
 free_buf:
-	ethosn_dma_unmap_and_free(core->allocator,
-				  core->profiling.firmware_buffer_pending,
-				  ETHOSN_STREAM_WORKING_DATA);
+	ethosn_dma_unmap_and_free(
+		core->allocator,
+		core->profiling.firmware_buffer_pending,
+		ETHOSN_STREAM_WORKING_DATA);
 	core->profiling.firmware_buffer_pending = NULL;
 ret:
 
@@ -1049,7 +1146,8 @@ int ethosn_send_ping(struct ethosn_core *core)
 	return ethosn_write_message(core, ETHOSN_MESSAGE_PING, NULL, 0);
 }
 
-int ethosn_send_inference(struct ethosn_core *core, dma_addr_t buffer_array,
+int ethosn_send_inference(struct ethosn_core *core,
+			  dma_addr_t buffer_array,
 			  uint64_t user_arg)
 {
 	struct ethosn_message_inference_request request;
@@ -1062,7 +1160,8 @@ int ethosn_send_inference(struct ethosn_core *core, dma_addr_t buffer_array,
 		request.buffer_array, request.user_argument);
 
 	return ethosn_write_message(core, ETHOSN_MESSAGE_INFERENCE_REQUEST,
-				    &request, sizeof(request));
+				    &request,
+				    sizeof(request));
 }
 
 int ethosn_send_stream_request(struct ethosn_core *core,
@@ -1075,16 +1174,19 @@ int ethosn_send_stream_request(struct ethosn_core *core,
 	if (request.size == 0)
 		return -EFAULT;
 
-	dev_dbg(core->dev, "-> Stream=%u. size=0x%x", request.stream_id,
+	dev_dbg(core->dev,
+		"-> Stream=%u. size=0x%x", request.stream_id,
 		request.size);
 
 	return ethosn_write_message(core, ETHOSN_MESSAGE_STREAM_REQUEST,
-				    &request, sizeof(request));
+				    &request,
+				    sizeof(request));
 }
 
 int ethosn_send_mpu_enable_request(struct ethosn_core *core)
 {
-	dev_dbg(core->dev, "-> Mpu enable.");
+	dev_dbg(core->dev,
+		"-> Mpu enable.");
 
 	return ethosn_write_message(core, ETHOSN_MESSAGE_MPU_ENABLE_REQUEST,
 				    NULL, 0);
@@ -1096,6 +1198,9 @@ int ethosn_send_mpu_enable_request(struct ethosn_core *core)
 
 /* Big FW binary structure */
 struct ethosn_big_fw {
+	uint32_t fw_ver_major;
+	uint32_t fw_ver_minor;
+	uint32_t fw_ver_patch;
 	uint32_t fw_cnt;
 	struct ethosn_big_fw_desc {
 		uint32_t arch_min;
@@ -1111,6 +1216,7 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 	struct dl1_npu_id_r npu_id;
 	int i = big_fw->fw_cnt;
 	uint32_t arch;
+	//uint32_t temp;
 
 	//for waveform dump using
 	//static volatile uint32_t *G0;
@@ -1119,7 +1225,6 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 
 //N78 reg debug checking
 #if 0 //F004~F108
-    //uint32_t temp;
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
 	printk("NPU DL1_NPU_ID: %x\n",temp);	
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_UNIT_COUNT);
@@ -1138,7 +1243,7 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 	printk("NPU DL1_ECOID: %x\n",temp);	
 	temp = ethosn_read_top_reg(core, DL1_RP, DL1_STREAMID_WIDTH);
 	printk("NPU DL1_STREAMID_WIDTH: %x\n",temp);	
-	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//will hang up if don't switch to non-secure state
+	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//will hang up
 	//printk("NPU DL1_REGISTERS_SIZE: %x\n",temp);
 #endif
 #if 0 //1000~101C //hang up
@@ -1193,14 +1298,21 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 #endif
 
 	npu_id.word = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-	printk("NPU ID: %x\n", npu_id.word); 
-	
-	arch = npu_id.bits.arch_major << 24 | npu_id.bits.arch_minor << 16 |
+	arch = npu_id.bits.arch_major << 24 |
+	       npu_id.bits.arch_minor << 16 |
 	       npu_id.bits.arch_rev;
 
-	dev_dbg(core->dev, "NPU reported version %u.%u.%u. FWs in BIG FW: %u\n",
-		npu_id.bits.arch_major, npu_id.bits.arch_minor,
-		npu_id.bits.arch_rev, big_fw->fw_cnt);
+    //printk("NPU ID: %x\n", npu_id.word);
+
+	dev_dbg(core->dev,
+		"NPU reported version %u.%u.%u. FWs in BIG FW: %u. FW version in BIG FW: %u.%u.%u\n",
+		npu_id.bits.arch_major,
+		npu_id.bits.arch_minor,
+		npu_id.bits.arch_rev,
+		big_fw->fw_cnt,
+		big_fw->fw_ver_major,
+		big_fw->fw_ver_minor,
+		big_fw->fw_ver_patch);
 
 	while (i--) {
 		if (big_fw->desc[i].arch_min <= arch &&
@@ -1208,12 +1320,27 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 			return &big_fw->desc[i];
 
 		dev_dbg(core->dev, "Skip FW min=0x%08x, max=0x%08x\n",
-			big_fw->desc[i].arch_min, big_fw->desc[i].arch_max);
+			big_fw->desc[i].arch_min,
+			big_fw->desc[i].arch_max);
 	}
 
 	dev_dbg(core->dev, "Cannot find compatible FW in BIG FW.\n");
 
 	return ERR_PTR(-EINVAL);
+}
+
+static int verify_firmware(struct ethosn_core *core,
+			   struct ethosn_big_fw *big_fw)
+{
+	if (big_fw->fw_ver_major != ETHOSN_FIRMWARE_VERSION_MAJOR) {
+		dev_dbg(core->dev,
+			"Wrong firmware version. Version %u.x.x is required.\n",
+			ETHOSN_FIRMWARE_VERSION_MAJOR);
+
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 /**
@@ -1223,7 +1350,8 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
  *
  * Return: 0 on success, else error code.
  */
-static int firmware_load(struct ethosn_core *core, const char *firmware_name)
+static int firmware_load(struct ethosn_core *core,
+			 const char *firmware_name)
 {
 	const struct firmware *fw;
 	struct ethosn_big_fw *big_fw;
@@ -1243,10 +1371,17 @@ static int firmware_load(struct ethosn_core *core, const char *firmware_name)
 	if (IS_ERR(big_fw_desc))
 		return -EINVAL;
 
+	/* Check FW binary version compatibility */
+	ret = verify_firmware(core, big_fw);
+	if (ret)
+		return ret;
+
 	dev_dbg(core->dev,
 		"Found FW. arch_min=0x%08x, arch_max=0x%08x, offset=0x%08x, size=0x%08x",
-		big_fw_desc->arch_min, big_fw_desc->arch_max,
-		big_fw_desc->offset, big_fw_desc->size);
+		big_fw_desc->arch_min,
+		big_fw_desc->arch_max,
+		big_fw_desc->offset,
+		big_fw_desc->size);
 	/* Make sure code size is at least 256 KB */
 	size = max_t(size_t, ETHOSN_CODE_SIZE, big_fw_desc->size);
 
@@ -1278,7 +1413,8 @@ static int firmware_load(struct ethosn_core *core, const char *firmware_name)
 		ethosn_dma_alloc_and_map(core->allocator,
 					 ETHOSN_VTABLE_SIZE * sizeof(uint32_t),
 					 ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
-					 ETHOSN_STREAM_FIRMWARE, GFP_KERNEL);
+					 ETHOSN_STREAM_FIRMWARE,
+					 GFP_KERNEL);
 	if (IS_ERR(core->firmware_vtable))
 		goto free_stack;
 
@@ -1308,7 +1444,9 @@ release_fw:
  */
 static int firmware_init(struct ethosn_core *core)
 {
-	static const char *const firmware_names[] = { "ethosn.bin" };
+	static const char *const firmware_names[] = {
+		"ethosn.bin"
+	};
 	int i;
 	int ret;
 
@@ -1359,8 +1497,10 @@ static void ethosn_firmware_deinit(struct ethosn_core *core)
  *
  * Return: Number of bytes read, else error code.
  */
-static ssize_t mailbox_fops_read(struct file *file, char __user *buf_user,
-				 size_t count, loff_t *position)
+static ssize_t mailbox_fops_read(struct file *file,
+				 char __user *buf_user,
+				 size_t count,
+				 loff_t *position)
 {
 	struct ethosn_core *core = file->f_inode->i_private;
 	char buf[200];
@@ -1445,8 +1585,10 @@ static ssize_t mailbox_fops_read(struct file *file, char __user *buf_user,
  *
  * Return: Number of bytes read, else error code.
  */
-static ssize_t firmware_profiling_read(struct file *file, char __user *buf_user,
-				       size_t count, loff_t *position)
+static ssize_t firmware_profiling_read(struct file *file,
+				       char __user *buf_user,
+				       size_t count,
+				       loff_t *position)
 {
 	struct ethosn_core *core = file->f_inode->i_private;
 	ssize_t ret;
@@ -1472,16 +1614,18 @@ static ssize_t firmware_profiling_read(struct file *file, char __user *buf_user,
 	}
 
 	/* Calculate size etc. of the buffer. */
-	buffer = (struct ethosn_profiling_buffer *)
-			 core->profiling.firmware_buffer->cpu_addr;
+	buffer =
+		(struct ethosn_profiling_buffer *)
+		core->profiling.firmware_buffer->cpu_addr;
 
 	buffer_entries_offset =
 		offsetof(struct ethosn_profiling_buffer, entries);
-	buffer_entries_count = (core->profiling.config.firmware_buffer_size -
-				buffer_entries_offset) /
-			       sizeof(struct ethosn_profiling_entry);
-	buffer_entries_size_bytes =
-		buffer_entries_count * sizeof(struct ethosn_profiling_entry);
+	buffer_entries_count =
+		(core->profiling.config.firmware_buffer_size -
+		 buffer_entries_offset) /
+		sizeof(struct ethosn_profiling_entry);
+	buffer_entries_size_bytes = buffer_entries_count *
+				    sizeof(struct ethosn_profiling_entry);
 
 	/* Convert from file offset to position in the buffer.
 	 * This accounts for the fact that the buffer is circular so the file
@@ -1510,8 +1654,8 @@ static ssize_t firmware_profiling_read(struct file *file, char __user *buf_user,
 		 * all the way to the end.
 		 */
 		num_bytes_read = simple_read_from_buffer(
-			buf_user, count, &read_buffer_offset, buffer->entries,
-			buffer_entries_size_bytes);
+			buf_user, count, &read_buffer_offset,
+			buffer->entries, buffer_entries_size_bytes);
 
 		/* Then, if the user buffer has any space left, continue
 		 * reading data from the top of the buffer.
@@ -1575,10 +1719,12 @@ static void dfs_init(struct ethosn_core *core)
 		REGSET32(ECOID)
 	};
 	static const struct file_operations mailbox_fops = {
-		.owner = THIS_MODULE, .read = &mailbox_fops_read
+		.owner = THIS_MODULE,
+		.read  = &mailbox_fops_read
 	};
 	static const struct file_operations firmware_profiling_fops = {
-		.owner = THIS_MODULE, .read = &firmware_profiling_read
+		.owner = THIS_MODULE,
+		.read  = &firmware_profiling_read
 	};
 	char name[16];
 
@@ -1600,7 +1746,8 @@ static void dfs_init(struct ethosn_core *core)
 			    &mailbox_fops);
 
 	/* Expose the firmware's profiling stream to user-space as a file. */
-	debugfs_create_file("firmware_profiling", 0400, core->debug_dir, core,
+	debugfs_create_file("firmware_profiling", 0400, core->debug_dir,
+			    core,
 			    &firmware_profiling_fops);
 }
 
@@ -1683,9 +1830,10 @@ void ethosn_device_deinit(struct ethosn_core *core)
 	}
 
 	if (!IS_ERR_OR_NULL(core->profiling.firmware_buffer)) {
-		ethosn_dma_unmap_and_free(core->allocator,
-					  core->profiling.firmware_buffer,
-					  ETHOSN_STREAM_WORKING_DATA);
+		ethosn_dma_unmap_and_free(
+			core->allocator,
+			core->profiling.firmware_buffer,
+			ETHOSN_STREAM_WORKING_DATA);
 		core->profiling.firmware_buffer = NULL;
 	}
 
