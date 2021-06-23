@@ -529,9 +529,9 @@
 		reg = <0x00 0xf8200000 0x00 0x100000>;
 		memory-region = <&ethosn_reserved>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 173 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "err", "job", "debug";		 
 		clocks = <&clkc N78>;
 		clock-names = "clk_n78";
