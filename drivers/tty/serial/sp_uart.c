@@ -491,13 +491,14 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 
 	sp_uart_set_modem_ctrl(port->membase, mcr);
 
+// dv: should it be there?
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 		mcr = sp_uart_get_modem_ctrl(port->membase);
 		if (mctrl & TIOCM_RTS) {
 			if (((mcr & SP_UART_MCR_RTS) && (sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
 				#ifdef CONFIG_SOC_SP7021
-				gpiod_set_value(sp_port->rts_gpio, 1);
+				if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value(sp_port->rts_gpio, 1);
 // dv: 485
 DBG_ERR( "set rts_gpio=1 (%s,%s)\n", port->name, __FUNCTION__);
 				#endif
@@ -610,9 +611,9 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 	int val;
 
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
-		val = !( sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
+		val = ( sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND ? 1 : 0);
 		#ifdef CONFIG_SOC_SP7021
-		gpiod_set_value( sp_port->rts_gpio, val);
+		if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value( sp_port->rts_gpio, val);
 // dv: 485
 DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, sp_port->uport.name, __FUNCTION__);
 		#endif
@@ -1737,7 +1738,6 @@ static int sunplus_uart_config_rs485(struct uart_port *_up, struct serial_rs485 
  if ( _rs485->flags & SER_RS485_ENABLED) {
 DBG_ERR( "%s %s enabling rs485...\n", _up->name, __FUNCTION__);
    sunplus_uart_rs485_onn( _up, _sup);
-   // active-low: 1
    val = ( _rs485->flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
    gpiod_set_value( _sup->rts_gpio, val);
 DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, _up->name, __FUNCTION__);
