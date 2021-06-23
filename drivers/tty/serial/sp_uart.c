@@ -1737,6 +1737,8 @@ static int sunplus_uart_config_rs485(struct uart_port *_up, struct serial_rs485 
 
  if ( _rs485->flags & SER_RS485_ENABLED) {
 DBG_ERR( "%s %s enabling rs485...\n", _up->name, __FUNCTION__);
+DBG_ERR( "%s %s on_    send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_ON_SEND,    _rs485->delay_rts_before_send);
+DBG_ERR( "%s %s after_ send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_AFTER_SEND, _rs485->delay_rts_after_send);
    sunplus_uart_rs485_onn( _up, _sup);
    val = ( _rs485->flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
    gpiod_set_value( _sup->rts_gpio, val);
