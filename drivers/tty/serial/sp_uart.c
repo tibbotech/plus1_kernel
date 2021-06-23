@@ -499,8 +499,7 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
 				#ifdef CONFIG_SOC_SP7021
 				if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value(sp_port->rts_gpio, 1);
-// dv: 485
-DBG_ERR( "set rts_gpio=1 (%s,%s)\n", port->name, __FUNCTION__);
+				dev_dbg( port->dev, "set rts_gpio=1 (%s,%s)\n", port->name, __FUNCTION__);
 				#endif
 				if (sp_port->uport.rs485.delay_rts_before_send == 0) {
 					ktime = ktime_set(0, 500000); //500us
@@ -614,8 +613,8 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 		val = ( sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND ? 1 : 0);
 		#ifdef CONFIG_SOC_SP7021
 		if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value( sp_port->rts_gpio, val);
-// dv: 485
-DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, sp_port->uport.name, __FUNCTION__);
+		// set RTS line ?
+		dev_dbg( port->dev, "set rts_gpio=%d (%s,%s)\n", val, sp_port->uport.name, __FUNCTION__);
 		#endif
 		if (sp_port->uport.rs485.delay_rts_before_send > 0) {
 			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
@@ -1633,14 +1632,13 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 		hrtimer_start(&rs485->DelayRtsAfterSend, ktime, HRTIMER_MODE_REL);
 		return HRTIMER_NORESTART;
 	}
-// dv: 485
 	// immediately set RTS
 	val = ( rs485->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND) mcr |= SP_UART_MCR_RTS;
 	else mcr &= ~SP_UART_MCR_RTS;
-	if ( !IS_ERR( rs485->rts_gpio)) {
+	if ( rs485->uport.rs485.flags & SER_RS485_ENABLED && !IS_ERR( rs485->rts_gpio)) {
 		gpiod_set_value( rs485->rts_gpio, val);
-DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
+		dev_dbg( rs485->uport.dev, "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
 	} else {
 		sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
 	}
@@ -1666,13 +1664,12 @@ static enum hrtimer_restart Delay_Rts_After_Send(struct hrtimer *t)
 
 	rs485 = container_of(t, struct sunplus_uart_port, DelayRtsAfterSend);
 
-// dv: 485
 	val = ( rs485->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND) mcr |= SP_UART_MCR_RTS;
 	else mcr &= ~SP_UART_MCR_RTS;
-	if ( !IS_ERR( rs485->rts_gpio)) {
+	if ( rs485->uport.rs485.flags & SER_RS485_ENABLED && !IS_ERR( rs485->rts_gpio)) {
 		gpiod_set_value( rs485->rts_gpio, val);
-DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
+		dev_dbg( rs485->uport.dev, "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
 	} else {
 		sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
 	}
@@ -1682,25 +1679,20 @@ DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, rs485->uport.name, __FUNCTION__);
 // dv 485: enable it
 static int sunplus_uart_rs485_onn( struct uart_port *_up, struct sunplus_uart_port *_sup) {
  // no enable/disable is possible if there no rts_gpio
-DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
  if ( IS_ERR( _sup->rts_gpio)) {
    DBG_ERR( "%s %s No valid rts_gpio, disabling 485\n", _up->name, __FUNCTION__);
    _up->rs485.flags &= ~SER_RS485_ENABLED;
    return( -EINVAL);  }
-DBG_ERR("%s %s rts_gpio is at G_MX[%d].\n", _up->name, __FUNCTION__, desc_to_gpio( _sup->rts_gpio));
+ DBG_INFO( "%s %s rts_gpio is at G_MX[%d].\n", _up->name, __FUNCTION__, desc_to_gpio( _sup->rts_gpio));
  if ( !_sup->CheckTXE.function) {
-DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
    hrtimer_init( &( _sup->CheckTXE), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
    _sup->CheckTXE.function = Check_TXE;  }
  if ( !_sup->DelayRtsBeforeSend.function) {
-DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
    hrtimer_init( &( _sup->DelayRtsBeforeSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
    _sup->DelayRtsBeforeSend.function = Delay_Rts_Before_Send;  }
  if ( !_sup->DelayRtsAfterSend.function) {
-DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
    hrtimer_init( &( _sup->DelayRtsAfterSend), CLOCK_MONOTONIC, HRTIMER_MODE_REL);
    _sup->DelayRtsAfterSend.function = Delay_Rts_After_Send;  }
-DBG_INFO("%s %s line:%d\n", _up->name, __FUNCTION__, __LINE__);
  return( 0);  }
 
 // dv 485: disable it
@@ -1732,19 +1724,19 @@ static int sunplus_uart_config_rs485(struct uart_port *_up, struct serial_rs485 
  pm_runtime_get_sync( _sup->dev);
 #endif
  // temporary disable interrupts here?
- _rs485->delay_rts_before_send = min( _rs485->delay_rts_before_send, 100U);
- _rs485->delay_rts_after_send  = min( _rs485->delay_rts_after_send, 100U);
+ _rs485->delay_rts_before_send = min( _rs485->delay_rts_before_send, 10000U);
+ _rs485->delay_rts_after_send  = min( _rs485->delay_rts_after_send, 10000U);
 
  if ( _rs485->flags & SER_RS485_ENABLED) {
-DBG_ERR( "%s %s enabling rs485...\n", _up->name, __FUNCTION__);
-DBG_ERR( "%s %s on_    send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_ON_SEND,    _rs485->delay_rts_before_send);
-DBG_ERR( "%s %s after_ send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_AFTER_SEND, _rs485->delay_rts_after_send);
+   dev_dbg( _up->dev, "%s %s enabling rs485...\n", _up->name, __FUNCTION__);
+   dev_dbg( _up->dev, "%s %s on_    send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_ON_SEND,    _rs485->delay_rts_before_send);
+   dev_dbg( _up->dev, "%s %s after_ send:%d (delay:%d)\n", _up->name, __FUNCTION__, _rs485->flags & SER_RS485_RTS_AFTER_SEND, _rs485->delay_rts_after_send);
    sunplus_uart_rs485_onn( _up, _sup);
    val = ( _rs485->flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
    gpiod_set_value( _sup->rts_gpio, val);
-DBG_ERR( "set rts_gpio=%d (%s,%s)\n", val, _up->name, __FUNCTION__);
+   dev_dbg( _up->dev, "set rts_gpio=%d (%s,%s)\n", val, _up->name, __FUNCTION__);
  } else {
-DBG_ERR( "%s %s disabling rs485...\n", _up->name, __FUNCTION__);
+   dev_dbg( _up->dev, "%s %s disabling rs485...\n", _up->name, __FUNCTION__);
    sunplus_uart_rs485_off( _up, _sup);
  }
  _up->rs485 = *_rs485;
