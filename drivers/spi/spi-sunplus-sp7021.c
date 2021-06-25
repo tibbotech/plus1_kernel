@@ -305,7 +305,7 @@ static unsigned bufsiz = 4096;
 static void pentagram_set_cs( struct spi_device *_s, bool _on) {
  if ( _s->mode & SPI_NO_CS) return;
  if ( !(  _s->cs_gpiod)) return;
- dev_dbg( &( _s->dev), "%d gpiod:%s", _on, desc_to_gpio( _s->cs_gpiod));
+ dev_dbg( &( _s->dev), "%d gpiod:%d", _on, desc_to_gpio( _s->cs_gpiod));
  if ( _s->mode & SPI_CS_HIGH) _on = !_on;
  gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
 }
@@ -1062,7 +1062,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		dev_dbg( &( spi->dev), "xfer tx %p, rx %p, len %d\n", xfer->tx_buf, xfer->rx_buf, xfer->len);
 		/* all combined transfers have to have the same speed */
 		if ( first_xfer->speed_hz != xfer->speed_hz) {
-			dev_err( spi->dev, "unable to change speed between transfers\n");
+			dev_err( &( spi->dev), "unable to change speed between transfers\n");
 			ret = -EINVAL;
 			break;
 		}
@@ -1073,7 +1073,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 //			break;
 //		}
 		if ( xfer->len > SPI_MSG_DATA_SIZE) {
-			dev_err( spi->dev, "over total transfer length xfer->len = %d", xfer->len);
+			dev_err( &( spi->dev), "over total transfer length xfer->len = %d", xfer->len);
 			ret = -EINVAL;
 			break;
 		}
