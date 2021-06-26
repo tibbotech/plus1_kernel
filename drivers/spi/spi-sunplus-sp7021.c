@@ -1093,7 +1093,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 
 		dev_dbg( &( spi->dev), "start_xfer:%d total_len:%d\n", start_xfer, total_len);
 		if ( start_xfer != true) {  xfer_cnt++;  continue;  }
-		if ( total_len < SPI_TRANS_DATA_SIZE) xfer_cnt++;
+		if ( total_len <= SPI_TRANS_DATA_SIZE) xfer_cnt++;
 
                 if ( xfer_cnt > 0){
 			spspi_prep_transfer( ctlr, spi);
