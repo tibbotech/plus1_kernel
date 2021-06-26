@@ -738,7 +738,7 @@ free_master_combite_rw:
   
             if ( t->tx_buf) memcpy( pspim->tx_data_buf, t->tx_buf+i*SPI_TRANS_DATA_SIZE, xfer_len);
 
-            dev_dbg( &( _s->dev), "data_len %d loop_cnt %d\n", xfer_len, i);
+            dev_dbg( &( _s->dev), "data_len %d loop_cnt %d pspim->tx_cur_len:%d\n", xfer_len, i, pspim->tx_cur_len);
  
             // set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
             if ( pspim->tx_cur_len < xfer_len) {
@@ -1091,6 +1091,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 			start_xfer = true;
 		}
 
+		dev_dbg( &( spi->dev), "start_xfer:%d total_len:%d\n", start_xfer, total_len);
 		if ( start_xfer != true) {  xfer_cnt++;  continue;  }
 		if ( total_len < SPI_TRANS_DATA_SIZE) xfer_cnt++;
 
