@@ -706,6 +706,7 @@ free_master_combite_rw:
         unsigned long timeout = msecs_to_jiffies( 200);
         unsigned int i;
         int ret;
+        long cret;
         unsigned int xfer_cnt,xfer_len,last_len;
         struct spi_transfer *t = xfer;
  
@@ -755,16 +756,15 @@ free_master_combite_rw:
            reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;	  //   | CPHA_R for sunplus slave | CPHA_W for BMP280
            reg_temp |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
            writel( reg_temp, &sr->SPI_FD_CONFIG);
-           DBG_INF( "SPI_FD_CONFIG =0x%x", readl( &sr->SPI_FD_CONFIG));
+           dev_dbg( &( _s->dev), "SPI_FD_CONFIG =0x%x", readl( &sr->SPI_FD_CONFIG));
            // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
-           DBG_INF( "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ", TOTAL_LENGTH( xfer_len),TX_LENGTH( xfer_len),xfer_len);
-           writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len), &sr->SPI_FD_STATUS);
+           dev_dbg( &( _s->dev), "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ", TOTAL_LENGTH( xfer_len),TX_LENGTH( xfer_len),xfer_len);
+           writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len) | SPI_START_FD, &sr->SPI_FD_STATUS); 
            DBG_INF( "set SPI_FD_STATUS =0x%x", readl( &sr->SPI_FD_STATUS));
-           writel( readl( &sr->SPI_FD_STATUS) | SPI_START_FD, &sr->SPI_FD_STATUS); 
  
-           //if ( !wait_for_completion_timeout( &pspim->isr_done, timeout)){
-	   if ( wait_for_completion_interruptible( &pspim->isr_done)){
-	      DBG_INF( "wait_for_completion timeout");
+	   cret = wait_for_completion_interruptible_timeout( &pspim->isr_done, timeout);
+	   if ( cret <= 0){
+	      dev_dbg( &( _s->dev), "wait_for_completion cret=%d\n", cret);
 	      writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
 	      ret = 1;
 	      goto free_master_combite_rw;
