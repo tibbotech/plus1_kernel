@@ -485,7 +485,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	tx_cnt = GET_TX_CNT( fd_status);
 	tx_len = GET_TX_LEN( fd_status);
 
-	if ( ( fd_status & TX_EMP_FLAG) && ( fd_status & RX_EMP_FLAG) || (GET_LEN(fd_status) == 0)) goto fin_irq;
+	if ( ( fd_status & TX_EMP_FLAG) && ( fd_status & RX_EMP_FLAG) && (GET_LEN(fd_status) == 0)) goto fin_irq;
 
 	if ( fd_status & FINISH_FLAG) DBG_INF( "FINISH_FLAG");
 	if ( fd_status & TX_EMP_FLAG) DBG_INF( "TX_EMP_FLAG");
@@ -506,7 +506,7 @@ static irqreturn_t pentagram_spi_M_irq( int _irq, void *_dev)
 	if (( fd_status & FINISH_FLAG) || (GET_TX_LEN(fd_status) == pspim->tx_cur_len)){
 
 		while(GET_LEN(fd_status) != pspim->rx_cur_len){
-		    fd_status = readl( &sr->SPI_FD_STATUS);	
+		    fd_status = readl( &sr->SPI_FD_STATUS);
 		    if ( fd_status & RX_FULL_FLAG){
 			rx_cnt = pspim->data_unit;
 		    }else{
@@ -662,9 +662,7 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	writel( reg_temp, &sr->SPI_FD_CONFIG);
 	DBG_INF( "SPI_FD_CONFIG =0x%x", readl( &sr->SPI_FD_CONFIG));
 	// set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
-	writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len), &sr->SPI_FD_STATUS);
-	DBG_INF( "set SPI_FD_STATUS =0x%x", readl( &sr->SPI_FD_STATUS));
-	writel( readl( &sr->SPI_FD_STATUS) | SPI_START_FD, &sr->SPI_FD_STATUS); 
+        writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len) | SPI_START_FD, &sr->SPI_FD_STATUS);
 	writel( readl( &sr->SPI_INT_BUSY) | INT_BYPASS, &sr->SPI_INT_BUSY); 
 	
 
@@ -759,7 +757,7 @@ free_master_combite_rw:
            dev_dbg( &( _s->dev), "SPI_FD_CONFIG =0x%x", readl( &sr->SPI_FD_CONFIG));
            // set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
            dev_dbg( &( _s->dev), "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ", TOTAL_LENGTH( xfer_len),TX_LENGTH( xfer_len),xfer_len);
-           writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len) | SPI_START_FD, &sr->SPI_FD_STATUS); 
+           writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len) | SPI_START_FD, &sr->SPI_FD_STATUS);
            DBG_INF( "set SPI_FD_STATUS =0x%x", readl( &sr->SPI_FD_STATUS));
  
 	   cret = wait_for_completion_interruptible_timeout( &pspim->isr_done, timeout);
