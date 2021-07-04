@@ -762,7 +762,7 @@ free_master_combite_rw:
  
 	   cret = wait_for_completion_interruptible_timeout( &pspim->isr_done, timeout);
 	   if ( cret <= 0){
-	      dev_dbg( &( _s->dev), "wait_for_completion cret=%d\n", cret);
+	      dev_dbg( &( _s->dev), "wait_for_completion cret=%ld\n", cret);
 	      writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
 	      ret = 1;
 	      goto free_master_combite_rw;
