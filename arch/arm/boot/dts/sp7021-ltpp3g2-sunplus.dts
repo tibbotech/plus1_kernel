@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "sp7021-ChipC.dtsi"
+#include "sp7021-common.dtsi"
 
 / {
 	model = "SP7021LTPPG2 SUNPLUS";

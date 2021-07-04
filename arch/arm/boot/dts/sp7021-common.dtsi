@@ -4,7 +4,7 @@
 
 #include <dt-bindings/clock/sp-q628.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/interrupt-controller/sp-intc.h> /* SP_INTC_EXT_INT1 */
+#include <dt-bindings/interrupt-controller/sp-intc.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/reset/sp-q628.h>
 #include <dt-bindings/gpio/gpio.h>
@@ -24,6 +24,10 @@
 #endif
 
 / {
+	model = "Sunplus SP7021 (CA7)";
+	compatible = "sunplus,sp7021-achip";
+	interrupt-parent = <&gic>;
+
 	aliases {
 #ifdef ENABLE_DMARX0
 		serial10 = &uartdmarx0;
@@ -44,10 +48,10 @@
 		serial3 = &uart3;
 		serial4 = &uart4;
 
-/* Timer tests: */
-/* 1. Enable device tree for timers. */
-/* 2. Enable sp_timer_test in drivers/misc/Makefile */
 #if 0
+		/* Timer tests: */
+		/* 1. Enable device tree for timers. */
+		/* 2. Enable sp_timer_test in drivers/misc/Makefile */
 		stc0 = &sp_tmr_tst0;
 		stc1 = &sp_tmr_tst1;
 		stc2 = &sp_tmr_tst2;
@@ -74,7 +78,7 @@
 
 		iop_reserve: iop_device {
 			no-map;
-			reg = <0x00100000 0x00100000>;//SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
+			reg = <0x00100000 0x00100000>;  // SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
 		};
 
 		a926_reserve: a926_memory {
@@ -117,6 +121,157 @@
 		};
 	};
 
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu0: cpu@0 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <0>;
+			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
+		};
+		cpu@1 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <1>;
+			enable-method = "sunplus,sc-smp";
+			cpu-boot-reg = <0x9ea7fff0>;
+			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
+		};
+		cpu@2 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <2>;
+			enable-method = "sunplus,sc-smp";
+			cpu-boot-reg = <0x9ea7ffec>;
+			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
+		};
+		cpu@3 {
+			compatible = "arm,cortex-a7";
+			device_type = "cpu";
+			reg = <3>;
+			enable-method = "sunplus,sc-smp";
+			cpu-boot-reg = <0x9ea7ffe8>;
+			clock-frequency = <931000000>;
+			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
+		};
+
+		idle-states {
+			CLUSTER_SLEEP_BIG: cluster-sleep-big {
+				compatible = "sp7021,idle-state";
+				//local-timer-stop;
+				entry-latency-us = <8000>;
+				exit-latency-us = <700>;
+				min-residency-us = <9000>;
+			};
+#if 0
+			CLUSTER_SLEEP_LITTLE: cluster-sleep-little {
+				compatible = "sp7021,idle-state";
+				local-timer-stop;
+				entry-latency-us = <1000>;
+				exit-latency-us = <500>;
+				min-residency-us = <2500>;
+			};
+#endif
+		};
+	};
+
+	arm-pmu {
+		compatible = "arm,cortex-a7-pmu";
+		interrupts = <GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	/* A modules */
+	soc@A {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		gic: interrupt-controller@CPU {
+			compatible = "arm,cortex-a7-gic";
+			interrupt-controller;
+			#interrupt-cells = <3>;
+			reg = <0x9f101000 0x1000>, <0x9f102000 0x2000>, <0x9f104000 0x2000>, <0x9f106000 0x2000>;
+		};
+
+		timer: timer@CPU {
+			compatible = "arm,armv7-timer";
+			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+			clock-frequency = <27000000>;
+			arm,cpu-registers-not-fw-configured;
+		};
+
+		dma0@A_G11 {
+			compatible = "sunplus,sp-dma0";
+			reg = <0x9ec00580 0x180>; /* G11 ~ G13 */
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 8  IRQ_TYPE_EDGE_RISING>, /* ch0_job_done */
+				     <GIC_SPI 9  IRQ_TYPE_EDGE_RISING>, /* ch1_job_done */
+				     <GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* ch2_job_done */
+				     <GIC_SPI 11 IRQ_TYPE_EDGE_RISING>, /* ch3_job_done */
+				     <GIC_SPI 12 IRQ_TYPE_EDGE_RISING>, /* ch4_job_done */
+				     <GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* ch5_job_done */
+				     <GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* ch6_job_done */
+				     <GIC_SPI 15 IRQ_TYPE_EDGE_RISING>, /* ch7_job_done */
+				     <GIC_SPI 16 IRQ_TYPE_EDGE_RISING>; /* addr_exp_err */
+		};
+#if 0
+		/* Each Cortex A-7 has its own system timer, it's not required if armv7-timer is enabled. */
+		/* This timer will be used in sp_timer_test.c */
+		timer@A_G19 {
+			compatible = "sunplus,sp-stc";
+			reg = <0x9ec00980 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 1 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				     <GIC_SPI 2 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				     <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				     <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+#endif
+#if 0
+		sp_tmr_tst@9ec00980 {
+			compatible = "sunplus,sp-tmr-tst";
+			reg = <0x9ec00980 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 1 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+				     <GIC_SPI 2 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+				     <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+				     <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+		};
+#endif
+#if 0
+		axi: axi@sp_axi {
+			compatible = "sunplus,sp7021-axi";
+			reg = <0x9ec12B80 0x80>, <0x9ec12C00 0x80>, <0x9ec12C80 0x80>,
+			      <0x9ec12D00 0x80>, <0x9ec12D80 0x80>, <0x9ec12E00 0x80>,
+			      <0x9ec12E80 0x80>, <0x9ec12F00 0x80>, <0x9ec12F80 0x80>,
+			      <0x9ec13000 0x80>, <0x9ec13080 0x80>, <0x9ec13100 0x80>,
+			      <0x9c000D00 0x80>;
+			reg-names = "axi_mon", "axi_0", "axi_1",
+				    "axi_2", "axi_3", "axi_4",
+				    "axi_5", "axi_6", "axi_7",
+				    "axi_8", "axi_9", "axi_10",
+				    "axi_cbdma";
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
+			clocks = <&clkc AXI_GLOBAL>;
+			resets = <&rstc RST_AXI_GLOBAL>;
+		};
+#endif
+	};
+
+	/* B modules */
 	soc@B {
 		compatible = "simple-bus";
 		#address-cells = <1>;
@@ -124,6 +279,18 @@
 		ranges;
 
 		interrupt-parent = <&intc>;
+
+		intc: interrupt-controller@G15 {
+			compatible = "sunplus,sp-intc";
+			interrupt-controller;
+			#interrupt-cells = <2>;
+			reg = <0x9c000780 0x80>, <0x9c000a80 0x80>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
+				     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
+			ext0-mask = <0xf>; /* core0-3 */
+			ext1-mask = <0xe>; /* core1-3 */
+		};
 
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
@@ -231,7 +398,7 @@
 
 		thermal: serial@sp_thermal {
 			compatible = "sunplus,sp7021-thermal";
-			reg = <0x9c000280 0x80>,<0x9c000200 0x80>;
+			reg = <0x9c000280 0x80>, <0x9c000200 0x80>;
 			reg-names = "thermal_reg", "thermal_moon4";
 			#thermal-sensor-cells = <0>;
 			nvmem-cell-names = "therm_calib";
@@ -273,7 +440,6 @@
 			memory-region = <&iop_reserve>;
 		};
 
-#if 1
 		axi: axi@sp_axi {
 			compatible = "sunplus,sp7021-axi";
 			reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>,
@@ -295,25 +461,6 @@
 			clocks = <&clkc AXI_GLOBAL>;
 			resets = <&rstc RST_AXI_GLOBAL>;
 		};
-#else
-		axi: axi@sp_axi {
-			compatible = "sunplus,sp7021-axi";
-			reg = <0x9ec12B80 0x80>, <0x9ec12C00 0x80>, <0x9ec12C80 0x80>,
-			      <0x9ec12D00 0x80>, <0x9ec12D80 0x80>, <0x9ec12E00 0x80>,
-			      <0x9ec12E80 0x80>, <0x9ec12F00 0x80>, <0x9ec12F80 0x80>,
-			      <0x9ec13000 0x80>, <0x9ec13080 0x80>, <0x9ec13100 0x80>,
-			      <0x9c000D00 0x80>;
-			reg-names = "axi_mon", "axi_0", "axi_1",
-				    "axi_2", "axi_3", "axi_4",
-				    "axi_5", "axi_6", "axi_7",
-				    "axi_8", "axi_9", "axi_10",
-				    "axi_cbdma";
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 23 IRQ_TYPE_EDGE_RISING>;
-			clocks = <&clkc AXI_GLOBAL>;
-			resets = <&rstc RST_AXI_GLOBAL>;
-		};
-#endif
 
 		otp: otp@0x9C00AF00 {
 			compatible = "sunplus,sp7021-ocotp";
@@ -387,9 +534,7 @@
 			clocks = <&clkc FIO_CTL>, <&clkc FPGA>;
 			clock-names = "fio", "fpga";
 			resets = <&rstc RST_FPGA>;
-			reg =
-				<0x9c106000 0x80>, /* fbio_ctl regs */
-				<0x70000000 0x10>; /* fbio_led regs */
+			reg = <0x9c106000 0x80>, <0x70000000 0x10>;
 			interrupt-parent = <&intc>;
 			interrupts = <29 IRQ_TYPE_EDGE_RISING>; /* fpga_ext0 */
 		};
@@ -659,8 +804,7 @@
 
 		sp_display: display@0x9c005c80 {
 			compatible = "sunplus,sp7021-display";
-			reg = <0x9c005c80 0x1980>,
-			      <0x9c105000 0x80>;
+			reg = <0x9c005c80 0x1980>, <0x9c105000 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <0 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
 				     <1 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
@@ -768,7 +912,7 @@
 
 		spi_controller0: spi@sp_spi_controller0 {
 			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9C002D80 0x80>,<0x9C002E00 0x80>;
+			reg = <0x9C002D80 0x80>, <0x9C002E00 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
@@ -784,7 +928,7 @@
 
 		spi_controller1: spi@sp_spi_controller1 {
 			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9C00F480 0x80>,<0x9C00F500 0x80>;
+			reg = <0x9C00F480 0x80>, <0x9C00F500 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
@@ -800,7 +944,7 @@
 
 		spi_controller2: spi@sp_spi_controller2 {
 			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9C00F600 0x80>,<0x9C00F680 0x80>;
+			reg = <0x9C00F600 0x80>, <0x9C00F680 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
@@ -816,7 +960,7 @@
 
 		spi_controller3: spi@sp_spi_controller3 {
 			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9C00F780 0x80>,<0x9C00F800 0x80>;
+			reg = <0x9C00F780 0x80>, <0x9C00F800 0x80>;
 			reg-names = "spi_master", "spi_slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w_intr",
@@ -851,7 +995,7 @@
 
 		sp_spinor0: spinor@9C000B00 {
 			compatible = "sunplus,sp-spi-nor";
-			reg = <0x9C000B00 0x80>,<0x9c000080 0x80>;
+			reg = <0x9C000B00 0x80>, <0x9c000080 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <143 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIFL>;

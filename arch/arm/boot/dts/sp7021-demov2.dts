@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "sp7021-ChipC.dtsi"
+#include "sp7021-common.dtsi"
 
 / {
 	model = "SP7021/CA7/Demo V1,V2";
