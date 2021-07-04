@@ -1,6 +1,6 @@
 /dts-v1/;
 
-#include "sp7021-ChipC.dtsi"
+#include "sp7021-common.dtsi"
 
 #define ENABLE_HDMITX
 #define ENABLE_HDMITX_720X480
