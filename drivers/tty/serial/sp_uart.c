@@ -20,10 +20,11 @@
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
-#ifdef CONFIG_SOC_SP7021
+
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#ifdef CONFIG_SOC_SP7021
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #endif
 #include <linux/delay.h>
@@ -1637,9 +1638,7 @@ static enum hrtimer_restart Check_TXE(struct hrtimer *t)
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND) mcr |= SP_UART_MCR_RTS;
 	else mcr &= ~SP_UART_MCR_RTS;
 	if ( rs485->uport.rs485.flags & SER_RS485_ENABLED && !IS_ERR( rs485->rts_gpio)) {
-		#ifdef CONFIG_SOC_SP7021
 		gpiod_set_value( rs485->rts_gpio, val);
-		#endif
 		dev_dbg( rs485->uport.dev, "%s set rts_gpio=%d\n", rs485->uport.name, val);
 	} else {
 		sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
@@ -1671,9 +1670,7 @@ static enum hrtimer_restart Delay_Rts_After_Send(struct hrtimer *t)
 	if (rs485->uport.rs485.flags & SER_RS485_RTS_ON_SEND) mcr |= SP_UART_MCR_RTS;
 	else mcr &= ~SP_UART_MCR_RTS;
 	if ( rs485->uport.rs485.flags & SER_RS485_ENABLED && !IS_ERR( rs485->rts_gpio)) {
-		#ifdef CONFIG_SOC_SP7021
 		gpiod_set_value( rs485->rts_gpio, val);
-		#endif
 		dev_dbg( rs485->uport.dev, "%s set rts_gpio=%d\n", rs485->uport.name, val);
 	} else {
 		sp_uart_set_modem_ctrl(rs485->uport.membase, mcr);
