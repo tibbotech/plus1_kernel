@@ -87,7 +87,6 @@
 extern unsigned int uart0_mask_tx;	/* Used for masking uart0 tx output */
 #endif
 
-
 struct sunplus_uart_port {
 	char name[16];	/* Sunplus_UARTx */
 	struct uart_port uport;
@@ -498,10 +497,8 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 		if (mctrl & TIOCM_RTS) {
 			if (((mcr & SP_UART_MCR_RTS) && (sp_port->uport.rs485.flags & SER_RS485_RTS_AFTER_SEND))
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
-				#ifdef CONFIG_SOC_SP7021
 				if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value(sp_port->rts_gpio, 1);
 				dev_dbg( port->dev, "%s set rts_gpio=1\n", port->name);
-				#endif
 				if (sp_port->uport.rs485.delay_rts_before_send == 0) {
 					ktime = ktime_set(0, 500000); //500us
 					hrtimer_start(&sp_port->CheckTXE, ktime, HRTIMER_MODE_REL);
@@ -612,11 +609,9 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 		val = ( sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND ? 1 : 0);
-		#ifdef CONFIG_SOC_SP7021
 		if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value( sp_port->rts_gpio, val);
 		// set RTS line ?
 		dev_dbg( port->dev, "%s set rts_gpio=%d\n", sp_port->uport.name, val);
-		#endif
 		if (sp_port->uport.rs485.delay_rts_before_send > 0) {
 			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
 			ktime = ktime_set(0, nsec);
@@ -1735,9 +1730,7 @@ static int sunplus_uart_config_rs485(struct uart_port *_up, struct serial_rs485 
    dev_dbg( _up->dev, "%s after_ send:%d (delay:%d)\n", _up->name, _rs485->flags & SER_RS485_RTS_AFTER_SEND, _rs485->delay_rts_after_send);
    sunplus_uart_rs485_onn( _up, _sup);
    val = ( _rs485->flags & SER_RS485_RTS_AFTER_SEND ? 1 : 0);
-   #ifdef CONFIG_SOC_SP7021
    gpiod_set_value( _sup->rts_gpio, val);
-   #endif
    dev_dbg( _up->dev, "%s set rts_gpio=%d\n", _up->name, val);
  } else {
    dev_dbg( _up->dev, "%s disabling rs485...\n", _up->name);
@@ -1956,9 +1949,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		return -ENODEV;
 
 	uart_get_rs485_mode(&pdev->dev, &port->rs485);
-	#ifdef CONFIG_SOC_SP7021
 	sunplus_uart_ports[pdev->id].rts_gpio = devm_gpiod_get(&pdev->dev, "rts", GPIOD_OUT_LOW);
-	#endif
 	port->rs485_config = sunplus_uart_config_rs485;
 	sunplus_uart_ports[pdev->id].CheckTXE.function = NULL;
 	sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = NULL;
