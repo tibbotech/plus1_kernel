@@ -9,8 +9,9 @@
 #define PLL_SYS         2
 #define PLL_CPU         3
 #define PLL_DRAM        4
+#define PLL_GPU     	5
 
-#define PLL_MAX         5
+#define PLL_MAX         6
 
 /* gates: mo_scfg_0 ~ mo_scfg_5 */
 #define SYSTEM          0x00
