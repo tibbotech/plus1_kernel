@@ -176,6 +176,7 @@ static u32 gates[] = {
 static struct clk *clks[PLL_MAX + CLK_MAX];
 static struct clk_onecell_data clk_data;
 static void __iomem *clk_regs;
+static void __iomem *gpu_regs;
 static void __iomem *pll_regs;
 
 /************************************************* SP_PLL *************************************************/
@@ -425,7 +426,7 @@ static void __init sp_clkc_init(struct device_node *np)
 	clk_regs = of_iomap(np, 0);
 	gpu_regs = of_iomap(np, 1);
 	pll_regs = of_iomap(np, 2);
-	if (WARN_ON(!clk_regs || !gpu_reg || !pll_regs)) {
+	if (WARN_ON(!clk_regs || !gpu_regs || !pll_regs)) {
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}

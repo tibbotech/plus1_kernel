@@ -59,6 +59,7 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
+		serial5 = &uadbg;
 		serial6 = &uart6;
 		serial7 = &uart7;
 		serial8 = &uart8;
@@ -138,7 +139,7 @@
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000004 0x00 0x28>, // G0.1 ~ G0.10 CLKs
-				  <0x00 0xf8000108 0x00 0x04>, // G2.2 GPU
+			      <0x00 0xf8000108 0x00 0x04>, // G2.2 GPU
 			      <0x00 0xf8000200 0x00 0x80>; // G4 PLLs
 		};
 	};
@@ -396,6 +397,18 @@
 		resets = <&rstc RST_UA4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart4_pins>;
+		status = "disabled";
+	};
+
+	uadbg: serial@0xf800f900 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf800f900 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADBG>;
+		resets = <&rstc RST_UADBG>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uadbg_pins>;
 		status = "disabled";
 	};
 
@@ -1054,6 +1067,11 @@
 		uart4_pins: pinmux_uart4_pins {
 			sppctl,function = "UART4";
 			sppctl,groups = "UART4";
+		};
+
+		uadbg_pins: pinmux_uadbg_pins {
+			sppctl,function = "UADBG";
+			sppctl,groups = "UADBG";
 		};
 
 		uart6_pins: pinmux_uart6_pins {

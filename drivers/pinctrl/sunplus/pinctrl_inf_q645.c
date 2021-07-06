@@ -108,9 +108,14 @@ static const sppctlgrp_t q645grps_uart3[] = {
 	EGRP("UART3", 1, pins_uart3)
 };
 
-static const unsigned pins_uart4[] = { 46, 47 };
+static const unsigned pins_uart4[] = { 101, 102 };
 static const sppctlgrp_t q645grps_uart4[] = {
 	EGRP("UART4", 1, pins_uart4)
+};
+
+static const unsigned pins_uadbg[] = { 46, 47 };
+static const sppctlgrp_t q645grps_uadbg[] = {
+	EGRP("UADBG", 1, pins_uadbg)
 };
 
 static const unsigned pins_uart6[] = { 48, 49 };
@@ -378,7 +383,7 @@ func_t list_funcs[] = {
 	FNCE("UART1",           fOFF_G, 1, 9, 1, q645grps_uart1),
 	FNCE("UART2",           fOFF_G, 1,10, 1, q645grps_uart2),
 	FNCE("UART3",           fOFF_G, 1,11, 1, q645grps_uart3),
-	FNCE("UART4",           fOFF_G, 1,12, 1, q645grps_uart4),
+	FNCE("UADBG",           fOFF_G, 1,12, 1, q645grps_uadbg),
 	FNCE("UART6",           fOFF_G, 1,13, 1, q645grps_uart6),
 	FNCE("UART7",           fOFF_G, 1,14, 1, q645grps_uart7),
 	FNCE("UART8",           fOFF_G, 1,15, 1, q645grps_uart8),
@@ -425,6 +430,8 @@ func_t list_funcs[] = {
 	FNCE("INT6",            fOFF_G, 5,12, 3, q645grps_int6),
 
 	FNCE("INT7",            fOFF_G, 6, 0, 3, q645grps_int7),
+
+	FNCE("UART4",           fOFF_G, 32*3+23, 14, 1, q645grps_uart4)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
