@@ -59,7 +59,23 @@
 		serial2 = &uart2;
 		serial3 = &uart3;
 		serial4 = &uart4;
-		serial5 = &uadbg;
+		serial6 = &uart6;
+		serial7 = &uart7;
+		serial8 = &uart8;
+
+		i2c0 = &i2cm0;
+		i2c1 = &i2cm1;
+		i2c2 = &i2cm2;
+		i2c3 = &i2cm3;
+		i2c4 = &i2cm4;
+		i2c5 = &i2cm5;
+
+		sp_spi0 = &spi_controller0;
+		sp_spi1 = &spi_controller1;
+		sp_spi2 = &spi_controller2;
+		sp_spi3 = &spi_controller3;
+		sp_spi4 = &spi_controller4;
+		sp_spi5 = &spi_controller5;
 
 		spi0 = &sp_spinor0;
 	};
@@ -82,7 +98,7 @@
 		sec_region1 {
 			reg = <0x00 0x00 0x00 0x100000>;
 		};
-		
+
 		iop_reserve: iop_device {
 			no-map;
 			reg = <0x0 0x00100000 0x0 0x00100000>;//SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
@@ -96,14 +112,14 @@
 			no-map;
 			reg = <0x00 0x10000000 0x00 0x08000000>;
 		};
-		
+
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
 		ethosn_reserved: ethosn_reserved@20000000 {
 			compatible = "shared-dma-pool";
-			reg = <0 0x1F000000 0 0x20000000>;
+			reg = <0 0x1f000000 0 0x20000000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x1000 0x0>;
 			no-map;
-		};		
+		};
 	};
 
 	clocks {
@@ -226,8 +242,7 @@
 #ifdef ENABLE_DMARX0
 		/* DMA Rx for UARTx */
 		uartdmarx0: serial@sp_uartdmarx0 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008980 0x00 0x40>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
@@ -239,8 +254,7 @@
 #endif
 #ifdef ENABLE_DMARX1
 		uartdmarx1: serial@sp_uartdmarx1 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf80089c0 0x00 0x40>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
@@ -252,8 +266,7 @@
 #endif
 #ifdef ENABLE_DMARX2
 		uartdmarx2: serial@sp_uartdmarx2 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008700 0x00 0x40>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
@@ -265,8 +278,7 @@
 #endif
 #ifdef ENABLE_DMARX3
 		uartdmarx3: serial@sp_uartdmarx3 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008740 0x00 0x40>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
@@ -280,8 +292,7 @@
 #ifdef ENABLE_DMATX0
 		/* DMA Tx for UARTx */
 		uartdmatx0: serial@sp_uartdmatx0 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
 			clocks = <&clkc GDMAUA>;
 			clock-names = "GDMAUA";
@@ -291,8 +302,7 @@
 #endif
 #ifdef ENABLE_DMATX1
 		uartdmatx1: serial@sp_uartdmatx1 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
 			clocks = <&clkc GDMAUA>;
 			clock-names = "GDMAUA";
@@ -302,8 +312,7 @@
 #endif
 #ifdef ENABLE_DMATX2
 		uartdmatx2: serial@sp_uartdmatx2 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
 			clocks = <&clkc GDMAUA>;
 			clock-names = "GDMAUA";
@@ -313,8 +322,7 @@
 #endif
 #ifdef ENABLE_DMATX3
 		uartdmatx3: serial@sp_uartdmatx3 {
-			compatible = "sunplus,q645-uart",
-					"sunplus,sp7021-uart";
+			compatible = "sunplus,q645-uart";
 			reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
 			clocks = <&clkc GDMAUA>;
 			clock-names = "GDMAUA";
@@ -390,15 +398,243 @@
 		status = "disabled";
 	};
 
-	uadbg: serial@0xf800f900 {
+	uart6: serial@0xf8008280 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf800f900 0x00 0x80>;
+		reg = <0x00 0xf8008280 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UADBG>;
-		resets = <&rstc RST_UADBG>;
+		interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA6>;
+		resets = <&rstc RST_UA6>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&uadbg_pins>;
+		pinctrl-0 = <&uart6_pins>;
+		status = "disabled";
+	};
+
+	uart7: serial@0xf8008300 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008300 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA7>;
+		resets = <&rstc RST_UA7>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart7_pins>;
+		status = "disabled";
+	};
+
+	uart8: serial@0xf8008380 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008380 0x00 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA8>;
+		resets = <&rstc RST_UA8>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&uart7_pins>;
+		status = "disabled";
+	};
+
+	i2cm0: i2cm@0xf8004600 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf8004600 0x0 0x80>, <0x0 0xf8004680 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM0>;
+		resets = <&rstc RST_I2CM0>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm0_pins>;
+		status = "disabled";
+	};
+
+	i2cm1: i2cm@0xf8004700 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf8004700 0x0 0x80>, <0x0 0xf8004780 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM1>;
+		resets = <&rstc RST_I2CM1>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm1_pins>;
+		status = "disabled";
+	};
+
+	i2cm2: i2cm@0xf8004800 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf8004800 0x0 0x80>, <0x0 0xf8004880 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM2>;
+		resets = <&rstc RST_I2CM2>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm2_pins>;
+		status = "disabled";
+	};
+
+	i2cm3: i2cm@0xf8004900 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf8004900 0x0 0x80>, <0x0 0xf8004980 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM3>;
+		resets = <&rstc RST_I2CM3>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm3_pins>;
+		status = "disabled";
+	};
+
+	i2cm4: i2cm@0xf800fe00 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf800fe00 0x0 0x80>, <0x0 0xf800fe80 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM4>;
+		resets = <&rstc RST_I2CM4>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm4_pins>;
+		status = "disabled";
+	};
+
+	i2cm5: i2cm@0xf800ff00 {
+		compatible = "sunplus,q645-i2cm";
+		reg = <0x0 0xf800ff00 0x0 0x80>, <0x0 0xf800ff80 0x0 0x80>;
+		reg-names = "i2cm", "i2cmdma";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM5>;
+		resets = <&rstc RST_I2CM5>;
+		clock-frequency = <100000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm5_pins>;
+		status = "disabled";
+	};
+
+	spi_controller0: spi@0xf8002c80 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8002c80 0x0 0x80>, <0x0 0xf8002d00 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_0>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_0>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim0_pins>;
+		status = "disabled";
+	};
+
+	spi_controller1: spi@0xf8002d80 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8002d80 0x0 0x80>, <0x0 0xf8002e00 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_1>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_1>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim1_pins>;
+		status = "disabled";
+	};
+
+	spi_controller2: spi@0xf8002e80 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8002e80 0x0 0x80>, <0x0 0xf8002f00 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_2>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_2>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim2_pins>;
+		status = "disabled";
+	};
+
+	spi_controller3: spi@0xf8004000 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8004000 0x0 0x80>, <0x0 0xf8004080 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_3>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_3>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim3_pins>;
+		status = "disabled";
+	};
+
+	spi_controller4: spi@0xf8004100 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8004100 0x0 0x80>, <0x0 0xf8004180 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_4>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_4>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim4_pins>;
+		status = "disabled";
+	};
+
+	spi_controller5: spi@0xf8004200 {
+		compatible = "sunplus,q645-spi-controller";
+		reg = <0x0 0xf8004200 0x0 0x80>, <0x0 0xf8004280 0x0 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&gic>;
+		interrupt-names = "dma_w_intr",
+				  "mas_risc_intr",
+				  "slave_risc_intr";
+		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_5>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_5>;
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim5_pins>;
 		status = "disabled";
 	};
 
@@ -532,14 +768,14 @@
 		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "err", "job", "debug";		 
+		interrupt-names = "err", "job", "debug";
 		clocks = <&clkc N78>;
 		clock-names = "clk_n78";
-		resets = <&rstc RST_N78>;	
+		resets = <&rstc RST_N78>;
 		core0 {
 			compatible = "ethosn-core";
 			status = "okay";
-		};			
+		};
 	};
 
 	mmc0: mmc@0xf8003b00 {
@@ -699,6 +935,91 @@
 		status = "disabled";
 	};
 
+	mipicsi0: mipicsirx@0xf8005280 {
+		compatible = "sunplus,sp7021-mipicsi-rx";
+		reg = <0xf8005280 0x80>, <0xf8005300 0x80>;
+		reg-names = "mipicsi", "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
+		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
+		clock-names = "clk_mipicsi", "clk_csiiw";
+		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
+		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		i2c-id = <2>;
+		status = "disabled";
+	};
+
+	mipicsi1: mipicsirx@0xf8005380 {
+		compatible = "sunplus,sp7021-mipicsi-rx";
+		reg = <0xf8005380 0x80>, <0xf8005400 0x80>;
+		reg-names = "mipicsi", "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
+		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
+		clock-names = "clk_mipicsi", "clk_csiiw";
+		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
+		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		i2c-id = <3>;
+		status = "disabled";
+	};
+
+	mipicsi2: mipicsirx@0xf8005480 {
+		compatible = "sunplus,sp7021-mipicsi-rx";
+		reg = <0xf8005480 0x80>, <0xf8005500 0x80>;
+		reg-names = "mipicsi", "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
+		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
+		clock-names = "clk_mipicsi", "clk_csiiw";
+		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
+		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		i2c-id = <4>;
+		status = "disabled";
+	};
+
+	mipicsi3: mipicsirx@0xf8005580 {
+		compatible = "sunplus,sp7021-mipicsi-rx";
+		reg = <0xf8005580 0x80>, <0xf8005600 0x80>;
+		reg-names = "mipicsi", "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
+		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
+		clock-names = "clk_mipicsi", "clk_csiiw";
+		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;
+		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		i2c-id = <5>;
+		status = "disabled";
+	};
+
+	video_codec_dec: hantro_vc8000d@0xf8168000 {
+		compatible = "sunplus,q645-hantro-vc8000d";
+		reg = <0x00 0xf8168000 0x00 0xfff>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc VCD>;
+		clock-names = "clk_vc8000d";
+		resets = <&rstc RST_VCD>;
+	};
+
+	video_codec_enc: hantro_vc8000e@0xf80ff000 {
+		compatible = "sunplus,q645-hantro-vc8000e";
+		reg = <0x00 0xf80ff000 0x00 0xfff>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc VCE>;
+		clock-names = "clk_vc8000e";
+		resets = <&rstc RST_VCE>;
+	};
+
+	video_codec_emem {
+		compatible = "sunplus,q645-hantro-emem";
+		memory-region = <&video_codec_reserve>;
+	};
+
 	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
@@ -734,9 +1055,19 @@
 			sppctl,groups = "UART4";
 		};
 
-		uadbg_pins: pinmux_uadbg_pins {
-			sppctl,function = "UADBG";
-			sppctl,groups = "UADBG";
+		uart6_pins: pinmux_uart6_pins {
+			sppctl,function = "UART6";
+			sppctl,groups = "UART6";
+		};
+
+		uart7_pins: pinmux_uart7_pins {
+			sppctl,function = "UART7";
+			sppctl,groups = "UART7";
+		};
+
+		uart8_pins: pinmux_uart8_pins {
+			sppctl,function = "UART8";
+			sppctl,groups = "UART8";
 		};
 
 		emmc_pins: pinmux_emmc_pins {
@@ -757,36 +1088,173 @@
 
 		spi_nor_pins: pinmux_spi_nor_pins {
 			sppctl,function = "SPI_FLASH";
-			sppctl,groups = "SPI_FLASH1";
+			sppctl,groups = "SPI_FLASH";
 		};
 
 		spi_nand_pins: pinmux_spi_nand_pins {
 			sppctl,function = "SPI_NAND";
 			sppctl,groups = "SPI_NAND1";
 		};
-	};
-	video_codec_dec: hantro_vc8000d@0xf8168000 {
-		compatible = "sunplus,q645-hantro-vc8000d";
-		reg = <0x00 0xf8168000 0x00 0xfff>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc VCD>;
-		clock-names = "clk_vc8000d";
-		resets = <&rstc RST_VCD>;
-	};
 
-	video_codec_enc: hantro_vc8000e@0xf80ff000 {
-		compatible = "sunplus,q645-hantro-vc8000e";
-		reg = <0x00 0xf80ff000 0x00 0xfff>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc VCE>;
-		clock-names = "clk_vc8000e";
-		resets = <&rstc RST_VCE>;
-	};
+		spim0_pins: pinmux_spim0_pins {
+			sppctl,function = "SPI_MASTER0";
+			sppctl,groups = "SPI_MASTER0";
+		};
+		spis0_pins: pinmux_spis0_pins {
+			sppctl,function = "SPI_SLAVE0";
+			sppctl,groups = "SPI_SLAVE0";
+		};
+		spim1_pins: pinmux_spim1_pins {
+			sppctl,function = "SPI_MASTER1";
+			sppctl,groups = "SPI_MASTER1";
+		};
+		spis1_pins: pinmux_spis1_pins {
+			sppctl,function = "SPI_SLAVE1";
+			sppctl,groups = "SPI_SLAVE1";
+		};
+		spim2_pins: pinmux_spim2_pins {
+			sppctl,function = "SPI_MASTER2";
+			sppctl,groups = "SPI_MASTER2";
+		};
+		spis2_pins: pinmux_spis2_pins {
+			sppctl,function = "SPI_SLAVE2";
+			sppctl,groups = "SPI_SLAVE2";
+		};
+		spim3_pins: pinmux_spim3_pins {
+			sppctl,function = "SPI_MASTER3";
+			sppctl,groups = "SPI_MASTER3";
+		};
+		spis3_pins: pinmux_spis3_pins {
+			sppctl,function = "SPI_SLAVE3";
+			sppctl,groups = "SPI_SLAVE3";
+		};
+		spim4_pins: pinmux_spim4_pins {
+			sppctl,function = "SPI_MASTER4";
+			sppctl,groups = "SPI_MASTER4";
+		};
+		spis4_pins: pinmux_spis4_pins {
+			sppctl,function = "SPI_SLAVE4";
+			sppctl,groups = "SPI_SLAVE4";
+		};
+		spim5_pins: pinmux_spim5_pins {
+			sppctl,function = "SPI_MASTER5";
+			sppctl,groups = "SPI_MASTER5";
+		};
+		spis5_pins: pinmux_spis5_pins {
+			sppctl,function = "SPI_SLAVE5";
+			sppctl,groups = "SPI_SLAVE5";
+		};
 
-	video_codec_emem {
-		compatible = "sunplus,q645-hantro-emem";
-		memory-region = <&video_codec_reserve>;
+		i2cm0_pins: pinmux_i2cm0_pins {
+			sppctl,function = "I2C_MASTER0";
+			sppctl,groups = "I2C_MASTER0";
+		};
+		i2cm1_pins: pinmux_i2cm1_pins {
+			sppctl,function = "I2C_MASTER1";
+			sppctl,groups = "I2C_MASTER1";
+		};
+		i2cm2_pins: pinmux_i2cm2_pins {
+			sppctl,function = "I2C_MASTER2";
+			sppctl,groups = "I2C_MASTER2";
+		};
+		i2cm3_pins: pinmux_i2cm3_pins {
+			sppctl,function = "I2C_MASTER3";
+			sppctl,groups = "I2C_MASTER3";
+		};
+		i2cm4_pins: pinmux_i2cm4_pins {
+			sppctl,function = "I2C_MASTER4";
+			sppctl,groups = "I2C_MASTER4";
+		};
+		i2cm5_pins: pinmux_i2cm5_pins {
+			sppctl,function = "I2C_MASTER5";
+			sppctl,groups = "I2C_MASTER5";
+		};
+
+		pwm_pins: pinmux_pwm_pins {
+			sppctl,function = "PWM";
+			sppctl,groups = "PWM";
+		};
+
+		aud_dac_clk_pins: pinmux_aud_dac_clk_pins {
+			sppctl,function = "AUD_DAC_CLK";
+			sppctl,groups = "AUD_DAC_CLK";
+		};
+		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck_pins {
+			sppctl,function = "AUD_TDMTX_XCK";
+			sppctl,groups = "AUD_TDMTX_XCK";
+		};
+		aud_au2_data0_pins: pinmux_aud_au2_data0_pins {
+			sppctl,function = "AUD_AU2_DATA0";
+			sppctl,groups = "AUD_AU2_DATA0";
+		};
+		aud_au1_data0_pins: pinmux_aud_au1_data0_pins {
+			sppctl,function = "AUD_AU1_DATA0";
+			sppctl,groups = "AUD_AU1_DATA0";
+		};
+		aud_au2_ck_pins: pinmux_aud_au2_ck_pins {
+			sppctl,function = "AUD_AU2_CK";
+			sppctl,groups = "AUD_AU2_CK";
+		};
+		aud_au1_ck_pins: pinmux_aud_au1_ck_pins {
+			sppctl,function = "AUD_AU1_CK";
+			sppctl,groups = "AUD_AU1_CK";
+		};
+		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0_pins {
+			sppctl,function = "AUD_AU_ADC_DATA0";
+			sppctl,groups = "AUD_AU_ADC_DATA0";
+		};
+		aud_adc2_data0_pins: pinmux_aud_adc2_data0_pins {
+			sppctl,function = "AUD_ADC2_DATA0";
+			sppctl,groups = "AUD_ADC2_DATA0";
+		};
+		aud_adc1_data0_pins: pinmux_aud_adc1_data0_pins {
+			sppctl,function = "AUD_ADC1_DATA0";
+			sppctl,groups = "AUD_ADC1_DATA0";
+		};
+		aud_aud_tdm_pins: pinmux_aud_aud_tdm_pins {
+			sppctl,function = "AUD_AUD_TDM";
+			sppctl,groups = "AUD_AUD_TDM";
+		};
+		spdif_in_pins: pinmux_spdif_in_pins {
+			sppctl,function = "SPDIF_IN";
+			sppctl,groups = "SPDIF_IN_X1";
+		};
+		spdif_out_pins: pinmux_spdif_out_pins {
+			sppctl,function = "SPDIF_OUT";
+			sppctl,groups = "SPDIF_OUT_X1";
+		};
+
+		gpio_int0_pins: pinmux_gpio_int0_pins {
+			sppctl,function = "INT0";
+			sppctl,groups = "INT0_X1";
+		};
+		gpio_int1_pins: pinmux_gpio_int1_pins {
+			sppctl,function = "INT1";
+			sppctl,groups = "INT1_X1";
+		};
+		gpio_int2_pins: pinmux_gpio_int2_pins {
+			sppctl,function = "INT2";
+			sppctl,groups = "INT2_X1";
+		};
+		gpio_int3_pins: pinmux_gpio_int3_pins {
+			sppctl,function = "INT3";
+			sppctl,groups = "INT3_X1";
+		};
+		gpio_int4_pins: pinmux_gpio_int4_pins {
+			sppctl,function = "INT4";
+			sppctl,groups = "INT4_X1";
+		};
+		gpio_int5_pins: pinmux_gpio_int5_pins {
+			sppctl,function = "INT5";
+			sppctl,groups = "INT5_X1";
+		};
+		gpio_int6_pins: pinmux_gpio_int6_pins {
+			sppctl,function = "INT6";
+			sppctl,groups = "INT6_X1";
+		};
+		gpio_int7_pins: pinmux_gpio_int7_pins {
+			sppctl,function = "INT7";
+			sppctl,groups = "INT7_X1";
+		};
 	};
 };
