@@ -306,7 +306,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	if (IS_GPU()) {
 		reg = readl(clk->reg) & (~GPU_SEL);
-		reg |= (rate >= GPU_1080M);
+		reg |= ((rate >= GPU_1080M) << 4);
 	} else {
 		reg = BIT(BP + 16); /* BP HIWORD_MASK */
 
