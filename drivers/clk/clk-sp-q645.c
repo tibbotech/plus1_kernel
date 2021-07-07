@@ -332,7 +332,9 @@ static int sp_pll_enable(struct clk_hw *hw)
 	unsigned long flags;
 
 	TRACE;
-	if (!IS_GPU()) {
+	if (IS_GPU()) {
+		clk_prepare_enable(clks[PLL_MAX + GPU]);
+	} else {
 		spin_lock_irqsave(&clk->lock, flags);
 		writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg); /* power up */
 		spin_unlock_irqrestore(&clk->lock, flags);
@@ -347,7 +349,9 @@ static void sp_pll_disable(struct clk_hw *hw)
 	unsigned long flags;
 
 	TRACE;
-	if (!IS_GPU()) {
+	if (IS_GPU()) {
+		clk_disable_unprepare(clks[PLL_MAX + GPU]);
+	} else {
 		spin_lock_irqsave(&clk->lock, flags);
 		writel(BIT(PD_N + 16), clk->reg); /* power down */
 		spin_unlock_irqrestore(&clk->lock, flags);
@@ -357,7 +361,10 @@ static void sp_pll_disable(struct clk_hw *hw)
 static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
-	return IS_GPU() ? 1 : readl(clk->reg) & BIT(PD_N);
+	if (IS_GPU())
+		return __clk_is_enabled(clks[PLL_MAX + GPU]);
+	else
+		return readl(clk->reg) & BIT(PD_N);
 }
 
 static const struct clk_ops sp_pll_ops = {
