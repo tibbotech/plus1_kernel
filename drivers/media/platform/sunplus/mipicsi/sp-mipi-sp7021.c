@@ -340,7 +340,7 @@ static void mipicsi_lane_config(struct sp_mipi_device *mipi)
 	switch (mipi->cur_format->mipi_lane) {
 	default:
 	case 1: // 1 lane
-		set_field(&mix_cfg, 0x0, 0x3<<20);  // 0x0: 1 lane 
+		set_field(&mix_cfg, 0x0, 0x3<<20);  // 0x0: 1 lane
 		set_field(&ana_cfg2, 0x1, 0xf<<0);  // Enable data lane of LP mode circuit for data lane 0
 		break;
 
@@ -466,7 +466,7 @@ static void csiiw_enable(struct sp_mipi_device *mipi)
 
 	//writel(0x12701, &mipi->csiiw_regs->csiiw_config0);
 	set_field(&config0, 0x0, 0x1<<17);  // Disable frame end IRQ mask
-	set_field(&config0, 0x1, 0x1<<16);  // Enable frame start IRQ mask 
+	set_field(&config0, 0x1, 0x1<<16);  // Enable frame start IRQ mask
 	set_field(&config0, 0x2, 0xf<<12);  // Bus urgent command threshold
 	set_field(&config0, 0x7, 0x7<<8);   // Bus command queue for rate control
 	set_field(&config0, 0x1, 0x1<<0);   // Enable CSIIW function
@@ -488,7 +488,7 @@ static void csiiw_disable(struct sp_mipi_device *mipi)
 
 	//writel(0x12701, &mipi->csiiw_regs->csiiw_config0);
 	set_field(&config0, 0x1, 0x1<<17);  // Enable frame end IRQ mask
-	set_field(&config0, 0x1, 0x1<<16);  // Enable frame start IRQ mask 
+	set_field(&config0, 0x1, 0x1<<16);  // Enable frame start IRQ mask
 	//set_field(&config0, 0x2, 0xf<<12);  // Bus urgent command threshold
 	//set_field(&config0, 0x7, 0x7<<8);   // Bus command queue for rate control
 	set_field(&config0, 0x0, 0x1<<0);   // Disable CSIIW function
@@ -1189,8 +1189,13 @@ static const struct v4l2_file_operations sp_mipi_fops = {
 };
 
 //===================================================================================
+extern const struct vb2_mem_ops sp_vb2_dma_contig_memops;
 static const struct vb2_mem_ops *const sp_mem_ops[2] = {
+#ifdef CONFIG_MIPICSI_RX_SUNPLUS_SP7021
+	&sp_vb2_dma_contig_memops,
+#else
 	&vb2_dma_contig_memops,
+#endif
 	&vb2_vmalloc_memops,
 };
 
@@ -1449,7 +1454,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 		for(j = 0; j < ARRAY_SIZE(mipi_formats); j++) {
 			struct mipi_fmt *fmt;
-			
+
 			fmt = &mipi_formats[j];
 
 			if (mbus_code.code == fmt->code) {
