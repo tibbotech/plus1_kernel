@@ -105,6 +105,10 @@ struct sp_rtc_reg {
 	volatile unsigned int rsv31;
 };
 #elif defined(CONFIG_SOC_Q645)
+#define INT_STATUS_MASK		0x1
+#define INT_STATUS_UPDATE	0x0
+#define INT_STATUS_ALARM	0x1
+
 struct sp_rtc_reg {
 	volatile unsigned int rsv00;
 	volatile unsigned int rtc_ctrl;
@@ -112,12 +116,12 @@ struct sp_rtc_reg {
 	volatile unsigned int rtc_ontime_set;
 	volatile unsigned int rtc_clock_set;
 	volatile unsigned int rsv05;
-	volatile unsigned int rsv06;
-	volatile unsigned int rsv07;
+	volatile unsigned int rtc_periodic_set;
+	volatile unsigned int rtc_int_status;
 	volatile unsigned int rsv08;
 	volatile unsigned int rsv09;
-	volatile unsigned int rsv10;
-	volatile unsigned int rsv11;
+	volatile unsigned int sys_rtc_cnt_31_0;
+	volatile unsigned int sys_rtc_cnt_63_32;
 	volatile unsigned int rsv12;
 	volatile unsigned int rsv13;
 	volatile unsigned int rsv14;
@@ -176,6 +180,7 @@ static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 	RTC_DEBUG("%s:  RTC date/time to %d-%d-%d, %02d:%02d:%02d.\r\n",
 	       __func__, tm->tm_mday, tm->tm_mon + 1, tm->tm_year, tm->tm_hour, tm->tm_min, tm->tm_sec);
 #endif
+
 	return rtc_valid_tm(tm);
 }
 
@@ -237,13 +242,12 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	}
 
 	rtc_reg_ptr->rtc_alarm_set = (u32)(alarm_time);
+	wmb();
 
 	/* enable alarm here after enabling update irq */
 	if (rtc->uie_rtctimer.enabled) {
-		wmb();
 		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
 	} else if (!rtc->aie_timer.enabled) {
-		wmb();
 		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
 	}
 
@@ -290,13 +294,12 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	}
 
 	rtc_reg_ptr->rtc_ontime_set = (u32)(alarm_time);
+	wmb();
 
 	/* enable alarm here after enabling update IRQ */
 	if (rtc->uie_rtctimer.enabled) {
-		wmb();
 		rtc_reg_ptr->rtc_ctrl = 0x13;
 	} else if (!rtc->aie_timer.enabled) {
-		wmb();
 		rtc_reg_ptr->rtc_ctrl &= 0x1C;
 	}
 
@@ -340,19 +343,25 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 	struct platform_device *plat_dev = dev_id;
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
-	if (rtc->uie_rtctimer.enabled) {
-		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_UF);
-		RTC_DEBUG("[RTC] update irq\n");
+#ifdef CONFIG_SOC_Q645
+	if ((rtc_reg_ptr->rtc_int_status & INT_STATUS_MASK) == INT_STATUS_ALARM) {
+#endif
+		if (rtc->uie_rtctimer.enabled) {
+			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_UF);
+			RTC_DEBUG("[RTC] update irq\n");
 
-		if (sp_rtc.set_alarm_again == 1) {
-			sp_rtc.set_alarm_again = 0;
+			if (sp_rtc.set_alarm_again == 1) {
+				sp_rtc.set_alarm_again = 0;
+				rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
+				RTC_DEBUG("[RTC] alarm irq\n");
+			}
+		} else {
 			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
 			RTC_DEBUG("[RTC] alarm irq\n");
 		}
-	} else {
-		rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
-		RTC_DEBUG("[RTC] alarm irq\n");
+#ifdef CONFIG_SOC_Q645
 	}
+#endif
 
 	return IRQ_HANDLED;
 }
