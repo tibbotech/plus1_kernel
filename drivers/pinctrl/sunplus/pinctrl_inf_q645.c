@@ -373,7 +373,8 @@ func_t list_funcs[] = {
 	FNCN("GPIO",            fOFF_0, 0, 0, 0),
 	FNCN("IOP",             fOFF_0, 0, 0, 0),
 
-	FNCE("SPI_FLASH",       fOFF_G, 1, 0, 2, q645grps_spif),
+	FNCE("SPI_FLASH",       fOFF_G, 1, 0, 1, q645grps_spif),
+	FNCE("UART4",           fOFF_G, 1, 1, 1, q645grps_uart4),
 	FNCE("PWM",             fOFF_G, 1, 2, 1, q645grps_pwm),
 	FNCE("CARD0_EMMC",      fOFF_G, 1, 3, 1, q645grps_emmc),
 	FNCE("SPI_NAND",        fOFF_G, 1, 4, 2, q645grps_snand),
@@ -429,9 +430,7 @@ func_t list_funcs[] = {
 	FNCE("INT5",            fOFF_G, 5, 9, 3, q645grps_int5),
 	FNCE("INT6",            fOFF_G, 5,12, 3, q645grps_int6),
 
-	FNCE("INT7",            fOFF_G, 6, 0, 3, q645grps_int7),
-
-	FNCE("UART4",           fOFF_G, 32*3+23, 14, 1, q645grps_uart4)
+	FNCE("INT7",            fOFF_G, 6, 0, 3, q645grps_int7)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
