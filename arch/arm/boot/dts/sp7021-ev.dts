@@ -1,7 +1,6 @@
 /dts-v1/;
 
 #include "sp7021-common.dtsi"
-#include "openamp.dtsi"
 
 / {
 	model = "SP7021/CA7/Ev";
