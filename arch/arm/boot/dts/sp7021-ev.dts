@@ -6,7 +6,7 @@
 	model = "SP7021/CA7/Ev";
 
 	chosen {
-		bootargs = "console=tty1 console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
+		bootargs = "console=tty1 console=ttyPS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
 		stdout-path = "serial0:115200n8";
 	};
 
