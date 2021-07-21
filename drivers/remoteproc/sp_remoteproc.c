@@ -63,6 +63,8 @@ struct sp_rproc_pdata {
 	struct reset_control *rstc; // FIXME: not worked
 };
 
+static bool autoboot __read_mostly;
+
 /* Store rproc for IPI handler */
 static struct rproc *rproc;
 static struct work_struct workqueue;
@@ -314,6 +316,8 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		goto probe_failed;
 	}
 
+	rproc->auto_boot = autoboot;
+
 	ret = rproc_add(local->rproc);
 	if (ret) {
 		dev_err(&pdev->dev, "rproc registration failed: %d\n", ret);
@@ -357,6 +361,10 @@ static struct platform_driver sp_remoteproc_driver = {
 	},
 };
 module_platform_driver(sp_remoteproc_driver);
+
+module_param_named(autoboot, autoboot, bool, 0444);
+MODULE_PARM_DESC(autoboot,
+		 "enable | disable autoboot. (default: false)");
 
 MODULE_AUTHOR("qinjian@cqplus1.com");
 MODULE_LICENSE("GPL v2");
