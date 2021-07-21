@@ -61,7 +61,7 @@
 #define DBG_ERR(fmt, args ...)
 #endif
 /* ---------------------------------------------------------------------------------------------- */
-#define DEVICE_NAME			"ttyPS"
+#define DEVICE_NAME			"ttyS"
 #define SP_UART_MAJOR			TTY_MAJOR
 #define SP_UART_MINOR_START		64
 
