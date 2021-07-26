@@ -50,23 +50,12 @@
 #include <asm/efi.h>
 #include <asm/xen/hypervisor.h>
 #include <asm/mmu_context.h>
-#ifdef CONFIG_SUNPLUS_IOP
-#include <../drivers/misc/iop/sp_iop.h>
-#endif
+
 static int num_standard_resources;
 static struct resource *standard_resources;
 
 phys_addr_t __fdt_pointer __initdata;
 
-static void sp_power_off(void)
-{
-	early_printk("%s\n", __func__);
-	#ifdef CONFIG_SUNPLUS_IOP
-	//for iop power off
-	sp_iop_platform_driver_poweroff();
-	#endif
-	while (1);
-}
 
 /*
  * Standard memory resources
@@ -294,7 +283,7 @@ void __init setup_arch(char **cmdline_p)
 	init_mm.end_code   = (unsigned long) _etext;
 	init_mm.end_data   = (unsigned long) _edata;
 	init_mm.brk	   = (unsigned long) _end;
-    pm_power_off = sp_power_off;
+  
 	*cmdline_p = boot_command_line;
 
 	early_fixmap_init();
