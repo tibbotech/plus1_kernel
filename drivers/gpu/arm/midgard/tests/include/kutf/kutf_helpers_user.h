@@ -47,8 +47,8 @@
  * implementation mirrors that of similar functions for kutf-userside
  */
 
-#include <kutf/kutf_suite.h>
-#include <kutf/kutf_helpers.h>
+#include "kutf_suite.h"
+#include "kutf_helpers.h"
 
 
 #define KUTF_HELPER_MAX_VAL_NAME_LEN 255

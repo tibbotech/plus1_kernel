@@ -112,6 +112,7 @@ int kbase_pm_context_active_handle_suspend(struct kbase_device *kbdev,
 }
 
 KBASE_EXPORT_TEST_API(kbase_pm_context_active);
+EXPORT_SYMBOL(kbase_pm_context_active);
 
 void kbase_pm_context_idle(struct kbase_device *kbdev)
 {
@@ -145,6 +146,7 @@ void kbase_pm_context_idle(struct kbase_device *kbdev)
 }
 
 KBASE_EXPORT_TEST_API(kbase_pm_context_idle);
+EXPORT_SYMBOL(kbase_pm_context_idle);
 
 void kbase_pm_driver_suspend(struct kbase_device *kbdev)
 {

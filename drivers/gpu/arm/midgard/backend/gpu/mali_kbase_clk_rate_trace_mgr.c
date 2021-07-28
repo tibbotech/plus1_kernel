@@ -289,3 +289,4 @@ void kbase_clk_rate_trace_manager_notify_all(
 	}
 }
 KBASE_EXPORT_TEST_API(kbase_clk_rate_trace_manager_notify_all);
+EXPORT_SYMBOL(kbase_clk_rate_trace_manager_notify_all);

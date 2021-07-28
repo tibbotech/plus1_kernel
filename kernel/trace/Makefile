@@ -4,7 +4,8 @@
 
 ifdef CONFIG_FUNCTION_TRACER
 ORIG_CFLAGS := $(KBUILD_CFLAGS)
-KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+#KBUILD_CFLAGS = $(subst $(CC_FLAGS_FTRACE),,$(ORIG_CFLAGS))
+KBUILD_CFLAGS = $(subst -pg,,$(ORIG_CFLAGS))
 
 ifdef CONFIG_FTRACE_SELFTEST
 # selftest needs instrumentation

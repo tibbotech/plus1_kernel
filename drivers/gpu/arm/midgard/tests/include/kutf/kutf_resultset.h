@@ -98,7 +98,7 @@ enum kutf_result_status {
 
 #ifdef __KERNEL__
 
-#include <kutf/kutf_mem.h>
+#include "kutf_mem.h"
 #include <linux/wait.h>
 
 struct kutf_context;

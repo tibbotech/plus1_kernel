@@ -1958,6 +1958,7 @@ int kbase_pm_wait_for_desired_state(struct kbase_device *kbdev)
 	return err;
 }
 KBASE_EXPORT_TEST_API(kbase_pm_wait_for_desired_state);
+EXPORT_SYMBOL(kbase_pm_wait_for_desired_state);
 
 void kbase_pm_enable_interrupts(struct kbase_device *kbdev)
 {
@@ -2744,6 +2745,7 @@ void kbase_pm_request_gpu_cycle_counter(struct kbase_device *kbdev)
 }
 
 KBASE_EXPORT_TEST_API(kbase_pm_request_gpu_cycle_counter);
+EXPORT_SYMBOL(kbase_pm_request_gpu_cycle_counter);
 
 void kbase_pm_request_gpu_cycle_counter_l2_is_on(struct kbase_device *kbdev)
 {
@@ -2795,3 +2797,4 @@ void kbase_pm_release_gpu_cycle_counter(struct kbase_device *kbdev)
 }
 
 KBASE_EXPORT_TEST_API(kbase_pm_release_gpu_cycle_counter);
+EXPORT_SYMBOL(kbase_pm_release_gpu_cycle_counter);

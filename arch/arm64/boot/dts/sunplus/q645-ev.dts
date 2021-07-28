@@ -105,10 +105,17 @@
 			reg = <0x0 0x00100000 0x0 0x00100000>;//SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
 		};
 
-		sec_region2 {
-			reg = <0x00 0x200000 0x00 0x200000>;
+//		sec_region2 {
+//			reg = <0x00 0x200000 0x00 0x200000>;
+//		};
+		fb_reserve:fb {
+			no-map;
+			reg = <0x0 0x200000 0x0 0x00200000>;//size 16M 400000
 		};
-
+//		fb_reserve:fb {
+//			no-map;
+//			reg = <0x0 0x3c000000 0x0 0x01000000>;//size 16M 3c000000
+//		};
 		video_codec_reserve: vcodec {
 			no-map;
 			reg = <0x00 0x10000000 0x00 0x08000000>;
@@ -117,7 +124,7 @@
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
 		ethosn_reserved: ethosn_reserved@20000000 {
 			compatible = "shared-dma-pool";
-			reg = <0 0x1f000000 0 0x20000000>;
+			reg = <0 0x1f000000 0 0x10000000>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x1000 0x0>;
 			no-map;
 		};
@@ -750,9 +757,19 @@
 		clocks = <&clkc BCH>;
 		resets = <&rstc RST_BCH>;
 	};
-
+	
+	fb_device {
+		compatible = "simple-framebuffer";
+//		reg = <0x00 0xd0000000 0x00 0x00400000>;    /*4M*/
+		memory-region = <&fb_reserve>;
+		width = <320>;      /*1280*/
+		height = <240>;      /*768*/
+		stride = <(320*2)>; /*1280*2*/
+		format = "r5g6b5";
+	};
+	
 	malig31: malig31@0xf8170000 {
-//		compatible = "arm,mali-midgard";
+		compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
 		interrupts =
@@ -760,7 +777,7 @@
 			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "JOB", "MMU", "GPU";
-		clocks = <&clkc GPU>;
+		clocks = <&clkc PLL_GPU>;
 		clock-names = "clk_mali";
 		resets = <&rstc RST_GPU>;
 	};
