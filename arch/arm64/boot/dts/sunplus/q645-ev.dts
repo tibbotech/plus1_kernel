@@ -769,7 +769,7 @@
 	};
 	
 	malig31: malig31@0xf8170000 {
-		compatible = "arm,mali-midgard";
+		//compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
 		interrupts =
@@ -1050,6 +1050,12 @@
 		compatible = "sunplus,q645-hantro-emem";
 		memory-region = <&video_codec_reserve>;
 	};
+
+
+	poweroff {
+	   compatible = "sunplus,sp-poweroff";
+	};
+
 
 	pctl: pctl@0xf8000100 {
 		compatible = "sunplus,q645-pctl";
