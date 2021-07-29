@@ -381,8 +381,12 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 
 	//clock enable
 	//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
-	//reg|=0x00100010;
+	//reg|=0x00100010;	
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
+#endif
 
 	//early_printk("hal_iop_suspend\n");
 	//early_printk("[IOP iopbase: 0x%x  ioppmcbase: 0x%x   ioprtcbase: 0x%x!!\n", (unsigned int)(iopbase)
@@ -503,9 +507,9 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 
 	//regs0->iop_control&=~(0x0200);//disable watchdog event reset IOP
 	//*iop_control|=0x0200;//disable watchdog event reset IOP
-
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
-
+#endif
 	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
 	pIopReg->iop_base_adr_h=(unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
 
@@ -592,7 +596,14 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	unsigned int reg;
 	volatile unsigned long*   IOP_base_for_standby =(volatile unsigned long*)(SP_IOP_RESERVE_BASE);
 
+	printk("hal_iop_shutdown\n");
+
+#ifdef CONFIG_SOC_SP7021
 	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
+#elif defined (CONFIG_SOC_Q645)
+	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*1));
+#endif
+
 	early_printk("%s(%d)\n", __FUNCTION__, __LINE__);
 	pIopReg->iop_control&=~(0x8000);
 	pIopReg->iop_control|=0x1;
@@ -643,7 +654,9 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 
 	//regs0->iop_control&=~(0x0200);//disable watchdog event reset IOP
 	//*iop_control|=0x0200;//disable watchdog event reset IOP
+#ifdef CONFIG_SOC_SP7021
 	pIopReg->iop_control|=0x0200;//disable watchdog event reset IOP
+#endif
 	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
 	pIopReg->iop_base_adr_h=(unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
 

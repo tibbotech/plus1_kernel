@@ -14,11 +14,11 @@
 #endif
 
 static void sp_power_off(void)
-{	
+{
 	early_printk("%s\n", __func__);
-	#ifdef CONFIG_SUNPLUS_IOP	//for iop power off	
-	sp_iop_platform_driver_poweroff();	
-	#endif	
+	#ifdef CONFIG_SUNPLUS_IOP	//for iop power off
+	sp_iop_platform_driver_poweroff();
+	#endif
 	while (1);
 }
 
