@@ -308,14 +308,13 @@ static void sp_intc_handle_ext0_cascaded(struct irq_desc *desc)
 			u32 trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
 			u32 mask = 1 << (hwirq % 32);
 
+			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
 			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
 				trig_lvl &= ~mask;
 			} else {
 				trig_lvl |= mask;
 			}
 			writel_relaxed(trig_lvl, &sp_intc.g0->intr_polarity[idx]);
-
-			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
 		} else
 #endif
 		generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
@@ -338,14 +337,13 @@ static void sp_intc_handle_ext1_cascaded(struct irq_desc *desc)
 			u32 trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
 			u32 mask = 1 << (hwirq % 32);
 
+			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
 			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
 				trig_lvl &= ~mask;
 			} else {
 				trig_lvl |= mask;
 			}
 			writel_relaxed(trig_lvl, &sp_intc.g0->intr_polarity[idx]);
-
-			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
 		} else
 #endif
 		generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
