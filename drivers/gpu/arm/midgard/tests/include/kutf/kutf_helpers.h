@@ -50,7 +50,7 @@
  * user space to kernel.
  */
 
-#include <kutf/kutf_suite.h>
+#include "kutf_suite.h"
 
 /**
  * kutf_helper_pending_input() - Check any pending lines sent by user space

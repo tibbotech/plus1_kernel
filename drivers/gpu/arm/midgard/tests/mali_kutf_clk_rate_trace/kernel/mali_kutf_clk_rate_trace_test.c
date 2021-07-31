@@ -38,10 +38,10 @@
 #include "mali_kbase_pm_internal.h"
 #include "mali_kbase_clk_rate_trace_mgr.h"
 
-#include <kutf/kutf_suite.h>
-#include <kutf/kutf_utils.h>
-#include <kutf/kutf_helpers.h>
-#include <kutf/kutf_helpers_user.h>
+#include <include/kutf/kutf_suite.h>
+#include <include/kutf/kutf_utils.h>
+#include <include/kutf/kutf_helpers.h>
+#include <include/kutf/kutf_helpers_user.h>
 
 #include "../mali_kutf_clk_rate_trace_test.h"
 

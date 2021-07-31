@@ -196,6 +196,14 @@ config ST_REMOTEPROC
 	  processor framework.
 	  This can be either built-in or a loadable module.
 
+config SUNPLUS_REMOTEPROC
+	tristate "Sunplus remoteproc support"
+	depends on ARCH_PENTAGRAM
+	select RPMSG_VIRTIO
+	help
+	  Say y here to support ARM926 remote processors via the remote
+	  processor framework.
+
 config ST_SLIM_REMOTEPROC
 	tristate
 

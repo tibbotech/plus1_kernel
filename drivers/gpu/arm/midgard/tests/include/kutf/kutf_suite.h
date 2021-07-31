@@ -54,8 +54,8 @@
 #include <linux/workqueue.h>
 #include <linux/wait.h>
 
-#include <kutf/kutf_mem.h>
-#include <kutf/kutf_resultset.h>
+#include "kutf_mem.h"
+#include "kutf_resultset.h"
 
 /* Arbitrary maximum size to prevent user space allocating too much kernel
  * memory

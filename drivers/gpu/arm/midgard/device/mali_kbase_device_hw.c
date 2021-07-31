@@ -46,6 +46,7 @@ void kbase_reg_write(struct kbase_device *kbdev, u32 offset, u32 value)
 }
 
 KBASE_EXPORT_TEST_API(kbase_reg_write);
+EXPORT_SYMBOL(kbase_reg_write);
 
 u32 kbase_reg_read(struct kbase_device *kbdev, u32 offset)
 {
@@ -67,6 +68,7 @@ u32 kbase_reg_read(struct kbase_device *kbdev, u32 offset)
 }
 
 KBASE_EXPORT_TEST_API(kbase_reg_read);
+EXPORT_SYMBOL(kbase_reg_read);
 
 bool kbase_is_gpu_removed(struct kbase_device *kbdev)
 {

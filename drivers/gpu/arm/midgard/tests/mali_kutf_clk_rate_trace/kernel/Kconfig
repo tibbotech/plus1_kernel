@@ -19,7 +19,7 @@
 #
 #
 
-config CONFIG_MALI_CLK_RATE_TRACE_PORTAL
+config MALI_CLK_RATE_TRACE_PORTAL
  tristate "Mali GPU Clock Trace Test portal"
  depends on MALI_MIDGARD && MALI_DEBUG && MALI_KUTF
  default m

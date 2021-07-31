@@ -552,7 +552,7 @@ TRACE_EVENT(mali_jit_trim,
 	TP_printk("freed_pages=%zu", __entry->freed_pages)
 );
 
-#include "mali_kbase_debug_linux_ktrace.h"
+#include "debug/mali_kbase_debug_linux_ktrace.h"
 
 #endif /* _TRACE_MALI_H */
 

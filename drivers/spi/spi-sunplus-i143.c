@@ -83,16 +83,6 @@
 #define PENTAGRAM_SPI_SLAVE_SET (0x2c)
 
 
-
-#define TOTAL_LENGTH(x) (x<<24)
-#define TX_LENGTH(x) (x<<16)
-#define GET_LEN(x)     ((x>>24)&0xFF)
-#define GET_TX_LEN(x)  ((x>>16)&0xFF)
-#define GET_RX_CNT(x)  ((x>>12)&0x0F)
-#define GET_TX_CNT(x)  ((x>>8)&0x0F)
-
-
-
 #define FINISH_FLAG (1<<6)
 #define FINISH_FLAG_MASK (1<<15)
 #define RX_FULL_FLAG (1<<5)
@@ -204,8 +194,14 @@ typedef struct{
 
 
 /* SPI MST STATUS */
-#define TOTAL_LENGTH(x)        (x<<24)
-#define TX_LENGTH(x)           (x<<16)
+#define TOTAL_LENGTH(x) (x<<9)
+#define TX_LENGTH(x) (x<<1)
+#define GET_LEN(x)     ((x>>9)&0xFF)
+#define GET_TX_LEN(x)  ((x>>1)&0xFF)
+#define GET_RX_CNT(x)  ((x>>14)&0x0F)
+#define GET_TX_CNT(x)  ((x>>8)&0x0F)
+
+
 #define RX_CNT                 (0x0F<<12)
 #define TX_CNT                 (0x0F<<12)
 #define SPI_BUSY               (1<<7)
@@ -253,6 +249,7 @@ typedef struct{
 #define SLA_CPHA_R             (1<<6)
 #define SLA_CPHA_W             (1<<5)
 #define SLA_CPOL               (1<<4)
+#define SLA_CS_POL             (1<<4)
 #define SLA_MSB                (1<<2)
 #define SLA_RX_EN              (1<<1)
 #define SLA_TX_EN              (1<<0)
@@ -416,6 +413,12 @@ int pentagram_spi_slave_dma_rw(struct spi_controller *_c, struct spi_transfer *_
 		reg_temp |= (SLA_CPHA_R | SLA_CPHA_W);	
 	}	
 	
+	if((_c->mode_bits & SPI_CS_HIGH) == 0){
+		reg_temp |= SLA_CS_POL;	
+	}	
+
+
+        reg_temp |= SLA_MSB;	
 	reg_temp |= SLA_INT_MASK;                     //SLA enable INT_MASK first
 
 	writel(reg_temp, &spis_reg->SPI_SLV_CONFIG);
@@ -828,8 +831,8 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	writel( reg_temp, &sr->SPI_CONFIG);
 	DBG_INF( "SPI_CONFIG =0x%x", readl( &sr->SPI_CONFIG));
 	// set SPI STATUS and start SPI for full duplex (SPI_STATUS)  91.13
-	writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len), &sr->SPI_STATUS);
-	DBG_INF( "set SPI_STATUS =0x%x", readl( &sr->SPI_STATUS));
+	writel( TOTAL_LENGTH( data_len) | TX_LENGTH( data_len), &sr->SPI_CLK_INV;
+	DBG_INF( "set SPI_CLK_INV =0x%x", readl( &sr->SPI_CLK_INV));
 	writel( readl( &sr->SPI_STATUS) | SPI_START_FD, &sr->SPI_STATUS); 
 	//writel( readl( &sr->SPI_INT_BUSY) | INT_BYPASS, &sr->SPI_INT_BUSY); 
 
@@ -925,9 +928,9 @@ free_master_combite_rw:
            writel( reg_temp, &sr->SPI_CONFIG);
            DBG_INF( "SPI_CONFIG =0x%x", readl( &sr->SPI_CONFIG));
            // set SPI STATUS and start SPI for full duplex (SPI_STATUS)  91.13
-           DBG_INF( "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ", TOTAL_LENGTH( xfer_len),TX_LENGTH( xfer_len),xfer_len);
-           writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len), &sr->SPI_STATUS);
-           DBG_INF( "set SPI_STATUS =0x%x", readl( &sr->SPI_STATUS));
+           DBG_INF( "xfer_len =0x%x ", TOTAL_LENGTH( xfer_len),TX_LENGTH( xfer_len),xfer_len);
+		   writel( TOTAL_LENGTH( xfer_len) | TX_LENGTH( xfer_len), &sr->SPI_CLK_INV;
+		   DBG_INF( "set SPI_CLK_INV =0x%x", readl( &sr->SPI_CLK_INV));
            writel( readl( &sr->SPI_STATUS) | SPI_START_FD, &sr->SPI_STATUS); 
  
            //if ( !wait_for_completion_timeout( &pspim->isr_done, timeout)){
@@ -1075,7 +1078,7 @@ if (spi_controller_is_slave(_c)){
 				mode = SPI_SLAVE_RW;
 			}else{
 				mode = SPI_IDLE;
-				ret = -EINVAL;ã€€
+				ret = -EINVAL;?€
 			}
 		}else{
 			memset(pspim->tx_dma_vir_base, 0, _t->len);
@@ -1094,7 +1097,7 @@ if (spi_controller_is_slave(_c)){
 				mode = SPI_SLAVE_READ;
 			}else{
 				mode = SPI_IDLE;
-				ret = -EINVAL;ã€€
+				ret = -EINVAL;?€
 			}
 		}else{
 			_t->rx_dma = pspim->rx_dma_phy_base;
@@ -1183,7 +1186,7 @@ static int pentagram_spi_M_transfer_one(struct spi_controller *_c,
 			    mode = SPI_MASTER_DMA_RW;
 			}else{
 			    mode = SPI_IDLE;
-				ret = -EINVAL;ã€€
+				ret = -EINVAL;?€
 			}
 			DBG_INF( "tx dma_mapping_error\n");
 		}else{
@@ -1208,7 +1211,7 @@ static int pentagram_spi_M_transfer_one(struct spi_controller *_c,
 					         xfer->len, DMA_TO_DEVICE);
 				}
 			    mode = SPI_IDLE;
-				ret = -EINVAL;ã€€
+				ret = -EINVAL;?€
 			}
 			DBG_INF( "rx dma_mapping_error\n");
 		}else{

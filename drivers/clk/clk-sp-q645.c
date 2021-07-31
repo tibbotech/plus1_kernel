@@ -27,6 +27,11 @@
 #define PLLSYS_CTL	REG(7)
 #define PLLCPU_CTL	REG(10)
 #define PLLDRAM_CTL	REG(13)
+#define PLLGPU_CTL	gpu_regs
+#define IS_GPU()	(clk->reg == PLLGPU_CTL)
+#define GPU_SEL		(0x10)
+#define GPU_1000M	(1000000000UL)
+#define GPU_1080M	(1080000000UL)
 
 #define EXTCLK		"extclk"
 
@@ -65,7 +70,7 @@ static u32 gates[] = {
 	CA55CORE1,
 	CA55CORE2,
 	CA55CORE3,
-	CA55SCUL3,
+	CA55CUL3,
 	CA55,
 	IOP,
 	PBUS0,
@@ -95,13 +100,13 @@ static u32 gates[] = {
 	INTERRUPT,
 
 	N78,
-	NIC400,
+	SYSTOP,
 	OTPRX,
 	PMC,
-	RBUS_L00,
-	RBUS_L01,
-	RBUS_L02,
-	RBUS_L03,
+	RBUS_BLOCKA,
+	RBUS_BLOCKB,
+	RBUS_rsv1,
+	RBUS_rsv2,
 	RTC,
 	MIPZ,
 	SPIFL,
@@ -134,10 +139,44 @@ static u32 gates[] = {
 	STC_AV1,
 	STC_AV2,
 	MAILBOX,
+	PAI,
+	PAII,
+	DDRPHY,
+	DDRCTL,
+	I2CM0,
+	SPI_COMBO_0,
+	SPI_COMBO_1,
+	SPI_COMBO_2,
+	SPI_COMBO_3,
+	SPI_COMBO_4,
+
+	SPI_COMBO_5,
+	CSIIW0,
+	MIPICSI0,
+	CSIIW1,
+	MIPICSI1,
+	CSIIW2,
+	MIPICSI2,
+	CSIIW3,
+	MIPICSI3,
+	VCL,
+	DISP_PWM,
+	I2CM1,
+	I2CM2,
+	I2CM3,
+	I2CM4,
+	I2CM5,
+
+	UA6,
+	UA7,
+	UA8,
+	AUD,
+	VIDEO_CODEC
 };
 static struct clk *clks[PLL_MAX + CLK_MAX];
 static struct clk_onecell_data clk_data;
 static void __iomem *clk_regs;
+static void __iomem *gpu_regs;
 static void __iomem *pll_regs;
 
 /************************************************* SP_PLL *************************************************/
@@ -212,6 +251,10 @@ static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 	TRACE;
 	//pr_info("round_rate: %lu %lu\n", rate, *prate);
 
+	if (IS_GPU()) {
+		return (rate >= GPU_1080M) ? GPU_1080M : GPU_1000M;
+	}
+
 	if (rate == *prate)
 		ret = *prate; /* bypass */
 	else {
@@ -229,6 +272,10 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 	u32 reg = readl(clk->reg);
 	unsigned long ret;
 	bool bHSM = clk->reg == PLLHSM_CTL;
+
+	if (IS_GPU()) {
+		return (reg & GPU_SEL) ? GPU_1080M : GPU_1000M;
+	}
 
 	//TRACE;
 	//pr_info("%08x\n", reg);
@@ -258,16 +305,20 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 
 	spin_lock_irqsave(&clk->lock, flags);
 
-	reg = BIT(BP + 16); /* BP HIWORD_MASK */
+	if (IS_GPU()) {
+		reg = readl(clk->reg) & (~GPU_SEL);
+		reg |= ((rate >= GPU_1080M) << 4);
+	} else {
+		reg = BIT(BP + 16); /* BP HIWORD_MASK */
 
-	if (rate == prate)
-		reg |= BIT(BP); /* bypass */
-	else {
-		u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
-		reg |= 0x3ffe0000; // BIT[13:1] HIWORD_MASK
-		reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[clk->idiv].bits;
+		if (rate == prate)
+			reg |= BIT(BP); /* bypass */
+		else {
+			u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
+			reg |= 0x3ffe0000; // BIT[13:1] HIWORD_MASK
+			reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[clk->idiv].bits;
+		}
 	}
-
 	writel(reg, clk->reg);
 
 	spin_unlock_irqrestore(&clk->lock, flags);
@@ -281,9 +332,13 @@ static int sp_pll_enable(struct clk_hw *hw)
 	unsigned long flags;
 
 	TRACE;
-	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg); /* power up */
-	spin_unlock_irqrestore(&clk->lock, flags);
+	if (IS_GPU()) {
+		clk_prepare_enable(clks[PLL_MAX + GPU]);
+	} else {
+		spin_lock_irqsave(&clk->lock, flags);
+		writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg); /* power up */
+		spin_unlock_irqrestore(&clk->lock, flags);
+	}
 
 	return 0;
 }
@@ -294,15 +349,22 @@ static void sp_pll_disable(struct clk_hw *hw)
 	unsigned long flags;
 
 	TRACE;
-	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16), clk->reg); /* power down */
-	spin_unlock_irqrestore(&clk->lock, flags);
+	if (IS_GPU()) {
+		clk_disable_unprepare(clks[PLL_MAX + GPU]);
+	} else {
+		spin_lock_irqsave(&clk->lock, flags);
+		writel(BIT(PD_N + 16), clk->reg); /* power down */
+		spin_unlock_irqrestore(&clk->lock, flags);
+	}
 }
 
 static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
-	return readl(clk->reg) & BIT(PD_N);
+	if (IS_GPU())
+		return __clk_is_enabled(clks[PLL_MAX + GPU]);
+	else
+		return readl(clk->reg) & BIT(PD_N);
 }
 
 static const struct clk_ops sp_pll_ops = {
@@ -369,8 +431,9 @@ static void __init sp_clkc_init(struct device_node *np)
 	}
 
 	clk_regs = of_iomap(np, 0);
-	pll_regs = of_iomap(np, 1);
-	if (WARN_ON(!clk_regs || !pll_regs)) {
+	gpu_regs = of_iomap(np, 1);
+	pll_regs = of_iomap(np, 2);
+	if (WARN_ON(!clk_regs || !gpu_regs || !pll_regs)) {
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
@@ -381,6 +444,7 @@ static void __init sp_clkc_init(struct device_node *np)
 	clks[PLL_NPU] = clk_register_sp_pll("pllnpu", PLLNPU_CTL);
 	clks[PLL_HSM] = clk_register_sp_pll("pllhsm", PLLHSM_CTL);
 	clks[PLL_DRAM] = clk_register_sp_pll("plldram", PLLDRAM_CTL);
+	clks[PLL_GPU] = clk_register_sp_pll("pllgpu", PLLGPU_CTL);
 
 	/* gates */
 	for (i = 0; i < ARRAY_SIZE(gates); i++) {

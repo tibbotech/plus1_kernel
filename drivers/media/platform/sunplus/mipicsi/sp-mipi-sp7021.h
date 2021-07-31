@@ -32,8 +32,8 @@
 #define MIP_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
 #define MIP_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
 
-#if 0
-#define print_List()
+#if 1
+#define print_List(x)
 #else
 static void print_List(struct list_head *head){
 	struct list_head *listptr;

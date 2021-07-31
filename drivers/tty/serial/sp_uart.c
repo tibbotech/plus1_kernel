@@ -499,6 +499,7 @@ static void sunplus_uart_ops_set_mctrl(struct uart_port *port, unsigned int mctr
 				|| (sp_port->uport.rs485.flags & SER_RS485_RTS_ON_SEND)) {
 				if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value(sp_port->rts_gpio, 1);
 				dev_dbg( port->dev, "%s set rts_gpio=1\n", port->name);
+				dev_dbg( port->dev, "%s set rts_gpio=1\n", port->name);
 				if (sp_port->uport.rs485.delay_rts_before_send == 0) {
 					ktime = ktime_set(0, 500000); //500us
 					hrtimer_start(&sp_port->CheckTXE, ktime, HRTIMER_MODE_REL);
@@ -612,6 +613,8 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 		if ( !IS_ERR( sp_port->rts_gpio)) gpiod_set_value( sp_port->rts_gpio, val);
 		// set RTS line ?
 		dev_dbg( port->dev, "%s set rts_gpio=%d\n", sp_port->uport.name, val);
+		dev_dbg( port->dev, "%s set rts_gpio=%d\n", sp_port->uport.name, val);
+		#endif
 		if (sp_port->uport.rs485.delay_rts_before_send > 0) {
 			long nsec = sp_port->uport.rs485.delay_rts_before_send * 1000000;
 			ktime = ktime_set(0, nsec);
@@ -1744,6 +1747,8 @@ static int sunplus_uart_config_rs485(struct uart_port *_up, struct serial_rs485 
  pm_runtime_put_autosuspend( _sup->dev);
 #endif
  return( 0);  }
+
+
 
 
 static struct uart_ops sunplus_uart_ops = {

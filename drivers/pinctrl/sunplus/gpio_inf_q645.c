@@ -27,7 +27,11 @@ const char * const sppctlgpio_list_s[] = {
 	D_PIS( 48), D_PIS( 49), D_PIS( 50), D_PIS( 51), D_PIS( 52), D_PIS( 53), D_PIS( 54), D_PIS( 55),
 	D_PIS( 56), D_PIS( 57), D_PIS( 58), D_PIS( 59), D_PIS( 60), D_PIS( 61), D_PIS( 62), D_PIS( 63),
 	D_PIS( 64), D_PIS( 65), D_PIS( 66), D_PIS( 67), D_PIS( 68), D_PIS( 69), D_PIS( 70), D_PIS( 71),
-	D_PIS( 72), D_PIS( 73), D_PIS( 74), D_PIS( 75), D_PIS( 76), D_PIS( 77), D_PIS( 78), D_PIS( 79)
+	D_PIS( 72), D_PIS( 73), D_PIS( 74), D_PIS( 75), D_PIS( 76), D_PIS( 77), D_PIS( 78), D_PIS( 79),
+	D_PIS( 80), D_PIS( 81), D_PIS( 82), D_PIS( 83), D_PIS( 84), D_PIS( 85), D_PIS( 86), D_PIS( 87),
+	D_PIS( 88), D_PIS( 89), D_PIS( 90), D_PIS( 91), D_PIS( 92), D_PIS( 93), D_PIS( 94), D_PIS( 95),
+	D_PIS( 96), D_PIS( 97), D_PIS( 98), D_PIS( 99), D_PIS(100), D_PIS(101), D_PIS(102), D_PIS(103),
+	D_PIS(104), D_PIS(105), D_PIS(106), D_PIS(107)
 };
 
 const size_t GPIS_listSZ = sizeof(sppctlgpio_list_s)/sizeof(*(sppctlgpio_list_s));

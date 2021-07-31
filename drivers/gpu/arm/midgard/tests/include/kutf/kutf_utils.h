@@ -50,7 +50,7 @@
  * code modules.
  */
 
-#include <kutf/kutf_mem.h>
+#include "kutf_mem.h"
 
 /**
  * Maximum size of the message strings within kernel UTF, messages longer then

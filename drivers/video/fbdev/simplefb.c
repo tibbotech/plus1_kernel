@@ -24,6 +24,7 @@
 #include <linux/of_platform.h>
 #include <linux/parser.h>
 #include <linux/regulator/consumer.h>
+#include <linux/of_address.h>  
 
 static const struct fb_fix_screeninfo simplefb_fix = {
 	.id		= "simple",
@@ -405,7 +406,10 @@ static int simplefb_probe(struct platform_device *pdev)
 	struct simplefb_params params;
 	struct fb_info *info;
 	struct simplefb_par *par;
-	struct resource *mem;
+//	struct resource *mem;
+	int rc;
+	struct device_node *memnp;
+	struct resource mem;
 
 	if (fb_get_options("simplefb", NULL))
 		return -ENODEV;
@@ -419,10 +423,24 @@ static int simplefb_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!mem) {
-		dev_err(&pdev->dev, "No memory resource\n");
+//	mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+//	if (!mem) {
+//		dev_err(&pdev->dev, "No memory resource\n");
+//		return -EINVAL;
+//	}
+	//Get reserve address
+	memnp = of_parse_phandle(pdev->dev.of_node, "memory-region", 0);
+	if (!memnp)
+	{
+		dev_err(&pdev->dev, "no memory-region node \n");
 		return -EINVAL;
+	}
+	rc = of_address_to_resource(memnp, 0, &mem);
+	of_node_put(memnp);
+	if(rc)
+	{
+		 dev_err(&pdev->dev, "failed to translate memory-region to a resource \n");
+		 return -EINVAL;
 	}
 
 	info = framebuffer_alloc(sizeof(struct simplefb_par), &pdev->dev);
@@ -433,8 +451,10 @@ static int simplefb_probe(struct platform_device *pdev)
 	par = info->par;
 
 	info->fix = simplefb_fix;
-	info->fix.smem_start = mem->start;
-	info->fix.smem_len = resource_size(mem);
+//	info->fix.smem_start = mem->start;
+//	info->fix.smem_len = resource_size(mem);
+	info->fix.smem_start = mem.start;
+	info->fix.smem_len = resource_size(&mem);
 	info->fix.line_length = params.stride;
 
 	info->var = simplefb_var;
