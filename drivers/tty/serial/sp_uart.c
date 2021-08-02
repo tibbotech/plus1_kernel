@@ -16,7 +16,13 @@
 #include <linux/reset.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
+
+#if defined(CONFIG_SOC_Q645)
+#include <soc/sunplus/sp_uart_q645.h>
+#else
 #include <soc/sunplus/sp_uart.h>
+#endif
+
 #ifdef CONFIG_PM_RUNTIME_UART
 #include <linux/pm_runtime.h>
 #endif
@@ -24,13 +30,20 @@
 #include <linux/gpio.h>
 #include <linux/of.h>
 #include <linux/of_gpio.h>
+#ifdef CONFIG_SOC_Q645
+#include <dt-bindings/pinctrl/sppctl-q645.h>
+#endif
 #ifdef CONFIG_SOC_SP7021
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #endif
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 
+#if defined(CONFIG_SOC_Q645)
+#define NUM_UART	9	/* serial0,  ... */
+#else
 #define NUM_UART	6	/* serial0,  ... */
+#endif
 
 #if defined(CONFIG_SOC_Q645)
 #define NUM_UARTDMARX	4	/* serial10, ... */

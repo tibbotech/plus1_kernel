@@ -451,7 +451,7 @@
 		clocks = <&clkc UA8>;
 		resets = <&rstc RST_UA8>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&uart7_pins>;
+		pinctrl-0 = <&uart8_pins>;
 		status = "disabled";
 	};
 
