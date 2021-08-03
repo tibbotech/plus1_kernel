@@ -34,7 +34,7 @@
 #define SPMMC_SUPPORT_VOLTAGE_1V8
 
 #ifdef SPMMC_SUPPORT_VOLTAGE_1V8
-#define HW_VOLTAGE_1V8
+//#define HW_VOLTAGE_1V8
 #endif
 
 //#define SPMMC_SDIO_1V8
@@ -107,6 +107,7 @@ struct spsdc_regs {
 	u32 boot_ctrl;
 	
 	/* g1.1 sd_vol_ctrl*/		
+#define SPSDC_SWITCH_VOLTAGE_MASK (0x0030)	
 #define SPSDC_SWITCH_VOLTAGE_1V8_FINISH		1
 #define SPSDC_SWITCH_VOLTAGE_1V8_ERROR		2
 #define SPSDC_SWITCH_VOLTAGE_1V8_TIMEOUT	3

@@ -989,13 +989,13 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	 * this time, so we can just continue to check the status. */
 	value = readl(&host->base->sd_vol_ctrl);
 	for(i=0 ; i<=10 ;) {
-		if (SPSDC_SWITCH_VOLTAGE_1V8_ERROR == value >> 4)
+		if (SPSDC_SWITCH_VOLTAGE_1V8_ERROR == (value & SPSDC_SWITCH_VOLTAGE_MASK ) >> 4)
 			return -EIO;
-		if (SPSDC_SWITCH_VOLTAGE_1V8_TIMEOUT == value >> 4)
+		if (SPSDC_SWITCH_VOLTAGE_1V8_TIMEOUT == (value & SPSDC_SWITCH_VOLTAGE_MASK ) >> 4)
 			return -EIO;
-		if (SPSDC_SWITCH_VOLTAGE_1V8_FINISH == value >> 4)
+		if (SPSDC_SWITCH_VOLTAGE_1V8_FINISH == (value & SPSDC_SWITCH_VOLTAGE_MASK ) >> 4)
 			break;
-		if (value >> 4 == 0)
+		//if (value >> 4 == 0)
 			i++;
 	    //spsdc_pr(WARNING, "1V8 result %d\n",value >> 4);
 		spsdc_pr(INFO, "1V8 result %d\n",value >> 4);
