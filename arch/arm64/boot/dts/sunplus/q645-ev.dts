@@ -120,6 +120,11 @@
 			no-map;
 			reg = <0x00 0x10000000 0x00 0x08000000>;
 		};
+		m4_reserved: m4@1e000000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0x00 0x1e000000 0x00 0x1000000>;
+		};
 
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
 		ethosn_reserved: ethosn_reserved@20000000 {
