@@ -27,7 +27,6 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/smp.h>
 #include <linux/irqchip/arm-gic.h>
-#include <asm/outercache.h>
 #include <linux/slab.h>
 #include <linux/cpu.h>
 #include <linux/genalloc.h>
@@ -59,8 +58,11 @@ struct sp_rproc_pdata {
 	struct ipi_info ipis[MAX_NUM_VRINGS];
 	struct list_head fw_mems;
 	volatile u32 __iomem *mbox;
+#ifdef CONFIG_ARCH_PENTAGRAM
 	volatile u32 __iomem *boot;
-	struct reset_control *rstc; // FIXME: not worked
+#else
+	struct reset_control *rstc; // FIXME: RST_A926 not worked
+#endif
 };
 
 static bool autoboot __read_mostly;
@@ -108,15 +110,18 @@ static int sp_rproc_start(struct rproc *rproc)
 	struct device *dev = rproc->dev.parent;
 	struct sp_rproc_pdata *local = rproc->priv;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_err(dev, "%s\n", __func__);
 	INIT_WORK(&workqueue, handle_event);
 
 	/* Trigger pending kicks */
 	kick_pending_ipi(rproc);
 
-	//reset_control_deassert(local->rstc); // FIXME: not worked
+#ifdef CONFIG_ARCH_PENTAGRAM
 	// set remote start addr to boot register,
 	writel(rproc->bootaddr, local->boot);
+#else
+	reset_control_deassert(local->rstc);
+#endif
 
 	return 0;
 }
@@ -157,9 +162,12 @@ static int sp_rproc_stop(struct rproc *rproc)
 	struct device *dev = rproc->dev.parent;
 
 	dev_dbg(dev, "%s\n", __func__);
-	//reset_control_assert(local->rstc); // FIXME: not worked
+#ifdef CONFIG_ARCH_PENTAGRAM
 	// send remote reset signal
 	writel(0xDEADC0DE, local->mbox);
+#else
+	reset_control_assert(local->rstc);
+#endif
 
 	return 0;
 }
@@ -271,7 +279,7 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 	}
 
 	ret = devm_request_irq(&pdev->dev, ret, sp_remoteproc_interrupt,
-							IRQF_TRIGGER_RISING, dev_name(&pdev->dev), NULL);
+							IRQF_TRIGGER_NONE, dev_name(&pdev->dev), NULL);
 	if (ret) {
 		dev_err(&pdev->dev, "request rproc irq failed: %d\n", ret);
 		return ret;
@@ -295,13 +303,6 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		goto probe_failed;
 	}
 
-	local->rstc = devm_reset_control_get(&pdev->dev, NULL);
-	if (IS_ERR(local->rstc)) {
-		ret = PTR_ERR(local->rstc);
-		dev_err(&pdev->dev, "missing reset controller\n");
-		goto probe_failed;
-	}
-
 	local->mbox = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR((void *)local->mbox)) {
 		ret = PTR_ERR((void *)local->mbox);
@@ -309,12 +310,21 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		goto probe_failed;
 	}
 
+#ifdef CONFIG_ARCH_PENTAGRAM
 	local->boot = devm_platform_ioremap_resource(pdev, 1);
 	if (IS_ERR((void *)local->boot)) {
 		ret = PTR_ERR((void *)local->boot);
 		dev_err(&pdev->dev, "ioremap boot reg failed: %d\n", ret);
 		goto probe_failed;
 	}
+#else
+	local->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(local->rstc)) {
+		ret = PTR_ERR(local->rstc);
+		dev_err(&pdev->dev, "missing reset controller\n");
+		goto probe_failed;
+	}
+#endif
 
 	rproc->auto_boot = autoboot;
 
