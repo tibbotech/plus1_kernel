@@ -110,7 +110,7 @@ static int sp_rproc_start(struct rproc *rproc)
 	struct device *dev = rproc->dev.parent;
 	struct sp_rproc_pdata *local = rproc->priv;
 
-	dev_err(dev, "%s\n", __func__);
+	dev_dbg(dev, "%s\n", __func__);
 	INIT_WORK(&workqueue, handle_event);
 
 	/* Trigger pending kicks */
