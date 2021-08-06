@@ -25,11 +25,6 @@
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
 #include <linux/of_reserved_mem.h>
-#include <linux/smp.h>
-#include <linux/irqchip/arm-gic.h>
-#include <linux/slab.h>
-#include <linux/cpu.h>
-#include <linux/genalloc.h>
 #include <linux/reset.h>
 
 #include "remoteproc_internal.h"
