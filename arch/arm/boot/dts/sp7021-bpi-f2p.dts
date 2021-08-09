@@ -105,7 +105,7 @@
 	pinctrl-0 = <&pins_uart1>;
 	linux,rs485-enabled-at-boot-time;
 	rs485-rts-delay = <0 0>;
-	dir-gpios = <&pctl 7 GPIO_ACTIVE_LOW>;
+	rts-gpios = <&pctl 7 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 
@@ -114,7 +114,7 @@
 	pinctrl-0 = <&pins_uart2>;
 	linux,rs485-enabled-at-boot-time;
 	rs485-rts-delay = <0 0>;
-	dir-gpios = <&pctl 6 GPIO_ACTIVE_LOW>;
+	rts-gpios = <&pctl 6 GPIO_ACTIVE_LOW>;
 	status = "okay";
 };
 

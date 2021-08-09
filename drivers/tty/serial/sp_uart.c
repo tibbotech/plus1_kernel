@@ -1981,7 +1981,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	sunplus_uart_ports[pdev->id].CheckTXE.function = NULL;
 	sunplus_uart_ports[pdev->id].DelayRtsBeforeSend.function = NULL;
 	sunplus_uart_ports[pdev->id].DelayRtsAfterSend.function = NULL;
-	if (port->rs485.flags & SER_RS485_ENABLED) sunplus_uart_rs485_onn(port, &(sunplus_uart_ports[ pdev->id]));
+	if (port->rs485.flags & SER_RS485_ENABLED) sunplus_uart_rs485_onn(port, &(sunplus_uart_ports[pdev->id]));
 
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
