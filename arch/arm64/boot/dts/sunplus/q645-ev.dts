@@ -759,7 +759,7 @@
 		clocks = <&clkc BCH>;
 		resets = <&rstc RST_BCH>;
 	};
-	
+
 	fb_device {
 		compatible = "simple-framebuffer";
 //		reg = <0x00 0xd0000000 0x00 0x00400000>;    /*4M*/
@@ -769,7 +769,7 @@
 		stride = <(320*2)>; /*1280*2*/
 		format = "r5g6b5";
 	};
-	
+
 	malig31: malig31@0xf8170000 {
 		//compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
@@ -1055,8 +1055,35 @@
 
 
 	poweroff {
-	   compatible = "sunplus,sp-poweroff";
+		compatible = "sunplus,sp-poweroff";
 	};
+
+#if 0
+	ipc_test: ipc_test@0xf8007f80 {
+		compatible = "sunplus,q645-ipc-test";
+		reg = <0x0 0xf8007f80 0x0 0x100>; /* G255 ~ G256 */
+		interrupt-parent = <&gic>;
+		interrupts =
+			<GIC_SPI 9 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT0 */
+			<GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT1 */
+			<GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT2 */
+			<GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT3 */
+			<GIC_SPI 25 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT4 */
+			<GIC_SPI 26 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT5 */
+			<GIC_SPI 78 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT6 */
+			<GIC_SPI 79 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT7 */
+			<GIC_SPI 118 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT0 */
+			<GIC_SPI 119 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT1 */
+			<GIC_SPI 120 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT2 */
+			<GIC_SPI 121 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT3 */
+			<GIC_SPI 122 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT4 */
+			<GIC_SPI 123 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT5 */
+			<GIC_SPI 124 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT6 */
+			/*<GIC_SPI 125 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT7 */
+			<GIC_SPI 126 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_INT */
+			<GIC_SPI 127 IRQ_TYPE_EDGE_RISING>; /* MAILBOX_to_CM4 CPU1_INT */
+	};
+#endif
 
 
 	pctl: pctl@0xf8000100 {
