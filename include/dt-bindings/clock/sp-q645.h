@@ -4,12 +4,12 @@
 #define XTAL            25000000
 
 /* plls */
-#define PLL_HSM         0
-#define PLL_NPU         1
-#define PLL_SYS         2
-#define PLL_CPU         3
-#define PLL_DRAM        4
-#define PLL_GPU     	5
+#define PLL_HSM         (CLK_MAX + 0)
+#define PLL_NPU         (CLK_MAX + 1)
+#define PLL_SYS         (CLK_MAX + 2)
+#define PLL_CPU         (CLK_MAX + 3)
+#define PLL_DRAM        (CLK_MAX + 4)
+#define PLL_GPU     	(CLK_MAX + 5)
 
 #define PLL_MAX         6
 

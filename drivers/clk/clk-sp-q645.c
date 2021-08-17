@@ -333,7 +333,7 @@ static int sp_pll_enable(struct clk_hw *hw)
 
 	TRACE;
 	if (IS_GPU()) {
-		clk_prepare_enable(clks[PLL_MAX + GPU]);
+		clk_prepare_enable(clks[GPU]);
 	} else {
 		spin_lock_irqsave(&clk->lock, flags);
 		writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg); /* power up */
@@ -350,7 +350,7 @@ static void sp_pll_disable(struct clk_hw *hw)
 
 	TRACE;
 	if (IS_GPU()) {
-		clk_disable_unprepare(clks[PLL_MAX + GPU]);
+		clk_disable_unprepare(clks[GPU]);
 	} else {
 		spin_lock_irqsave(&clk->lock, flags);
 		writel(BIT(PD_N + 16), clk->reg); /* power down */
@@ -362,7 +362,7 @@ static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
 	if (IS_GPU())
-		return __clk_is_enabled(clks[PLL_MAX + GPU]);
+		return __clk_is_enabled(clks[GPU]);
 	else
 		return readl(clk->reg) & BIT(PD_N);
 }
@@ -451,10 +451,10 @@ static void __init sp_clkc_init(struct device_node *np)
 		char s[10];
 		j = gates[i] & 0xffff;
 		sprintf(s, "clken%02x", j);
-		clks[PLL_MAX + j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
+		clks[j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
 			clk_regs + (j >> 4 << 2), j & 0x0f,
 			CLK_GATE_HIWORD_MASK, NULL);
-		//printk("%02x %p %p.%d\n", j, clks[PLL_MAX + j], REG(0, j >> 4), j & 0x0f);
+		//printk("%02x %p %p.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);
 	}
 
 	clk_data.clks = clks;
