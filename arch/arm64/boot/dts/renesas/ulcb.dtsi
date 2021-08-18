@@ -23,6 +23,8 @@
 	aliases {
 		serial0 = &scif2;
 		ethernet0 = &avb;
+		mmc0 = &sdhi2;
+		mmc1 = &sdhi0;
 	};
 
 	chosen {
@@ -120,8 +122,7 @@
 
 		gpios = <&gpio5 1 GPIO_ACTIVE_HIGH>;
 		gpios-states = <1>;
-		states = <3300000 1
-			  1800000 0>;
+		states = <3300000 1>, <1800000 0>;
 	};
 
 	x12_clk: x12 {
@@ -470,6 +471,7 @@
 	mmc-hs200-1_8v;
 	mmc-hs400-1_8v;
 	non-removable;
+	full-pwr-cycle-in-suspend;
 	status = "okay";
 };
 

@@ -55,7 +55,7 @@ static void iss_print_status(struct iss_device *iss)
  * readback the same register, in this case the revision register.
  *
  * See this link for reference:
- *   http://www.mail-archive.com/linux-omap@vger.kernel.org/msg08149.html
+ *   https://www.mail-archive.com/linux-omap@vger.kernel.org/msg08149.html
  */
 static void omap4iss_flush(struct iss_device *iss)
 {
@@ -908,11 +908,7 @@ static int iss_map_mem_resource(struct platform_device *pdev,
 				struct iss_device *iss,
 				enum iss_mem_resources res)
 {
-	struct resource *mem;
-
-	mem = platform_get_resource(pdev, IORESOURCE_MEM, res);
-
-	iss->regs[res] = devm_ioremap_resource(iss->dev, mem);
+	iss->regs[res] = devm_platform_ioremap_resource(pdev, res);
 
 	return PTR_ERR_OR_ZERO(iss->regs[res]);
 }
@@ -1240,8 +1236,10 @@ static int iss_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto error;
 
-	if (!omap4iss_get(iss))
+	if (!omap4iss_get(iss)) {
+		ret = -EINVAL;
 		goto error;
+	}
 
 	ret = iss_reset(iss);
 	if (ret < 0)

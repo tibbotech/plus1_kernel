@@ -449,7 +449,7 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
 		else {
 			if (!mod_timer(&t->proto_unreach_timer,
 						jiffies + (HZ/20)))
-				sctp_association_hold(asoc);
+				sctp_transport_hold(t);
 		}
 	} else {
 		struct net *net = sock_net(sk);
@@ -458,7 +458,7 @@ void sctp_icmp_proto_unreachable(struct sock *sk,
 			 "encountered!\n", __func__);
 
 		if (del_timer(&t->proto_unreach_timer))
-			sctp_association_put(asoc);
+			sctp_transport_put(t);
 
 		sctp_do_sm(net, SCTP_EVENT_T_OTHER,
 			   SCTP_ST_OTHER(SCTP_EVENT_ICMP_PROTO_UNREACH),
@@ -548,6 +548,7 @@ out:
 
 /* Common cleanup code for icmp/icmpv6 error handler. */
 void sctp_err_finish(struct sock *sk, struct sctp_transport *t)
+	__releases(&((__sk)->sk_lock.slock))
 {
 	bh_unlock_sock(sk);
 	sctp_transport_put(t);
@@ -937,7 +938,7 @@ int sctp_hash_transport(struct sctp_transport *t)
 	if (t->asoc->temp)
 		return 0;
 
-	arg.net   = sock_net(t->asoc->base.sk);
+	arg.net   = t->asoc->base.net;
 	arg.paddr = &t->ipaddr;
 	arg.lport = htons(t->asoc->base.bind_addr.port);
 
@@ -1004,12 +1005,11 @@ struct sctp_transport *sctp_epaddr_lookup_transport(
 				const struct sctp_endpoint *ep,
 				const union sctp_addr *paddr)
 {
-	struct net *net = sock_net(ep->base.sk);
 	struct rhlist_head *tmp, *list;
 	struct sctp_transport *t;
 	struct sctp_hash_cmp_arg arg = {
 		.paddr = paddr,
-		.net   = net,
+		.net   = ep->base.net,
 		.lport = htons(ep->base.bind_addr.port),
 	};
 
@@ -1131,7 +1131,8 @@ static struct sctp_association *__sctp_rcv_init_lookup(struct net *net,
 		if (!af)
 			continue;
 
-		af->from_addr_param(paddr, params.addr, sh->source, 0);
+		if (!af->from_addr_param(paddr, params.addr, sh->source, 0))
+			continue;
 
 		asoc = __sctp_lookup_association(net, laddr, paddr, transportp);
 		if (asoc)
@@ -1174,7 +1175,8 @@ static struct sctp_association *__sctp_rcv_asconf_lookup(
 	if (unlikely(!af))
 		return NULL;
 
-	af->from_addr_param(&paddr, param, peer_port, 0);
+	if (!af->from_addr_param(&paddr, param, peer_port, 0))
+		return NULL;
 
 	return __sctp_lookup_association(net, laddr, &paddr, transportp);
 }
@@ -1245,7 +1247,7 @@ static struct sctp_association *__sctp_rcv_walk_lookup(struct net *net,
 
 		ch = (struct sctp_chunkhdr *)ch_end;
 		chunk_num++;
-	} while (ch_end < skb_tail_pointer(skb));
+	} while (ch_end + sizeof(*ch) < skb_tail_pointer(skb));
 
 	return asoc;
 }

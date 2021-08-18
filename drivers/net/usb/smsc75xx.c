@@ -757,13 +757,14 @@ static int smsc75xx_ioctl(struct net_device *netdev, struct ifreq *rq, int cmd)
 
 static void smsc75xx_init_mac_address(struct usbnet *dev)
 {
-	const u8 *mac_addr;
-
 	/* maybe the boot loader passed the MAC address in devicetree */
-	mac_addr = of_get_mac_address(dev->udev->dev.of_node);
-	if (!IS_ERR(mac_addr)) {
-		ether_addr_copy(dev->net->dev_addr, mac_addr);
-		return;
+	if (!eth_platform_get_mac_address(&dev->udev->dev,
+			dev->net->dev_addr)) {
+		if (is_valid_ether_addr(dev->net->dev_addr)) {
+			/* device tree values are valid so use them */
+			netif_dbg(dev, ifup, dev->net, "MAC address read from the device tree\n");
+			return;
+		}
 	}
 
 	/* try reading mac address from EEPROM */
@@ -1482,7 +1483,7 @@ static int smsc75xx_bind(struct usbnet *dev, struct usb_interface *intf)
 	ret = smsc75xx_wait_ready(dev, 0);
 	if (ret < 0) {
 		netdev_warn(dev->net, "device not ready in smsc75xx_bind\n");
-		return ret;
+		goto free_pdata;
 	}
 
 	smsc75xx_init_mac_address(dev);
@@ -1491,7 +1492,7 @@ static int smsc75xx_bind(struct usbnet *dev, struct usb_interface *intf)
 	ret = smsc75xx_reset(dev);
 	if (ret < 0) {
 		netdev_warn(dev->net, "smsc75xx_reset error %d\n", ret);
-		return ret;
+		goto cancel_work;
 	}
 
 	dev->net->netdev_ops = &smsc75xx_netdev_ops;
@@ -1501,6 +1502,13 @@ static int smsc75xx_bind(struct usbnet *dev, struct usb_interface *intf)
 	dev->hard_mtu = dev->net->mtu + dev->net->hard_header_len;
 	dev->net->max_mtu = MAX_SINGLE_PACKET_SIZE;
 	return 0;
+
+cancel_work:
+	cancel_work_sync(&pdata->set_multicast);
+free_pdata:
+	kfree(pdata);
+	dev->data[0] = 0;
+	return ret;
 }
 
 static void smsc75xx_unbind(struct usbnet *dev, struct usb_interface *intf)
@@ -1510,7 +1518,6 @@ static void smsc75xx_unbind(struct usbnet *dev, struct usb_interface *intf)
 		cancel_work_sync(&pdata->set_multicast);
 		netif_dbg(dev, ifdown, dev->net, "free pdata\n");
 		kfree(pdata);
-		pdata = NULL;
 		dev->data[0] = 0;
 	}
 }

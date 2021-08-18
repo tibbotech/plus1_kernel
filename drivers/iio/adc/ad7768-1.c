@@ -166,6 +166,10 @@ struct ad7768_state {
 	 * transfer buffers to live in their own cache lines.
 	 */
 	union {
+		struct {
+			__be32 chan;
+			s64 timestamp;
+		} scan;
 		__be32 d32;
 		u8 d8[2];
 	} data ____cacheline_aligned;
@@ -459,11 +463,11 @@ static irqreturn_t ad7768_trigger_handler(int irq, void *p)
 
 	mutex_lock(&st->lock);
 
-	ret = spi_read(st->spi, &st->data.d32, 3);
+	ret = spi_read(st->spi, &st->data.scan.chan, 3);
 	if (ret < 0)
 		goto err_unlock;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, &st->data.d32,
+	iio_push_to_buffers_with_timestamp(indio_dev, &st->data.scan,
 					   iio_get_time_ns(indio_dev));
 
 	iio_trigger_notify_done(indio_dev->trig);
@@ -490,7 +494,6 @@ static int ad7768_buffer_postenable(struct iio_dev *indio_dev)
 {
 	struct ad7768_state *st = iio_priv(indio_dev);
 
-	iio_triggered_buffer_postenable(indio_dev);
 	/*
 	 * Write a 1 to the LSB of the INTERFACE_FORMAT register to enter
 	 * continuous read mode. Subsequent data reads do not require an
@@ -502,17 +505,12 @@ static int ad7768_buffer_postenable(struct iio_dev *indio_dev)
 static int ad7768_buffer_predisable(struct iio_dev *indio_dev)
 {
 	struct ad7768_state *st = iio_priv(indio_dev);
-	int ret;
 
 	/*
 	 * To exit continuous read mode, perform a single read of the ADC_DATA
 	 * reg (0x2C), which allows further configuration of the device.
 	 */
-	ret = ad7768_spi_reg_read(st, AD7768_REG_ADC_DATA, 3);
-	if (ret < 0)
-		return ret;
-
-	return iio_triggered_buffer_predisable(indio_dev);
+	return ad7768_spi_reg_read(st, AD7768_REG_ADC_DATA, 3);
 }
 
 static const struct iio_buffer_setup_ops ad7768_buffer_ops = {
@@ -584,7 +582,6 @@ static int ad7768_probe(struct spi_device *spi)
 
 	indio_dev->channels = ad7768_channels;
 	indio_dev->num_channels = ARRAY_SIZE(ad7768_channels);
-	indio_dev->dev.parent = &spi->dev;
 	indio_dev->name = spi_get_device_id(spi)->name;
 	indio_dev->info = &ad7768_info;
 	indio_dev->modes = INDIO_DIRECT_MODE | INDIO_BUFFER_TRIGGERED;

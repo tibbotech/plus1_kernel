@@ -1333,7 +1333,7 @@ static struct pci_driver imsttfb_pci_driver = {
 	.remove =	imsttfb_remove,
 };
 
-static struct fb_ops imsttfb_ops = {
+static const struct fb_ops imsttfb_ops = {
 	.owner 		= THIS_MODULE,
 	.fb_check_var	= imsttfb_check_var,
 	.fb_set_par 	= imsttfb_set_par,
@@ -1512,11 +1512,6 @@ static int imsttfb_probe(struct pci_dev *pdev, const struct pci_device_id *ent)
 	info->fix.smem_start = addr;
 	info->screen_base = (__u8 *)ioremap(addr, par->ramdac == IBM ?
 					    0x400000 : 0x800000);
-	if (!info->screen_base) {
-		release_mem_region(addr, size);
-		framebuffer_release(info);
-		return -ENOMEM;
-	}
 	info->fix.mmio_start = addr + 0x800000;
 	par->dc_regs = ioremap(addr + 0x800000, 0x1000);
 	par->cmap_regs_phys = addr + 0x840000;

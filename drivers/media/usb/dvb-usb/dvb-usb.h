@@ -291,8 +291,10 @@ struct dvb_usb_device_properties {
 
 	int (*power_ctrl)       (struct dvb_usb_device *, int);
 	int (*read_mac_address) (struct dvb_usb_device *, u8 []);
-	int (*identify_state)   (struct usb_device *, struct dvb_usb_device_properties *,
-			struct dvb_usb_device_description **, int *);
+	int (*identify_state)(struct usb_device *udev,
+			      const struct dvb_usb_device_properties *props,
+			      const struct dvb_usb_device_description **desc,
+			      int *cold);
 
 	struct {
 		enum dvb_usb_mode mode;	/* Drivers shouldn't touch on it */
@@ -436,7 +438,7 @@ struct dvb_usb_adapter {
  */
 struct dvb_usb_device {
 	struct dvb_usb_device_properties props;
-	struct dvb_usb_device_description *desc;
+	const struct dvb_usb_device_description *desc;
 
 	struct usb_device *udev;
 
@@ -473,7 +475,7 @@ struct dvb_usb_device {
 };
 
 extern int dvb_usb_device_init(struct usb_interface *,
-			       struct dvb_usb_device_properties *,
+			       const struct dvb_usb_device_properties *,
 			       struct module *, struct dvb_usb_device **,
 			       short *adapter_nums);
 extern void dvb_usb_device_exit(struct usb_interface *);
@@ -485,7 +487,7 @@ extern int __must_check
 dvb_usb_generic_write(struct dvb_usb_device *, u8 *, u16);
 
 /* commonly used remote control parsing */
-extern int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *, u8[], u32 *, int *);
+extern int dvb_usb_nec_rc_key_to_event(struct dvb_usb_device *, u8[5], u32 *, int *);
 
 /* commonly used firmware download types and function */
 struct hexline {

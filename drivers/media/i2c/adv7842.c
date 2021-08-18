@@ -2547,7 +2547,7 @@ struct adv7842_cfg_read_infoframe {
 	u8 payload_addr;
 };
 
-static void log_infoframe(struct v4l2_subdev *sd, struct adv7842_cfg_read_infoframe *cri)
+static void log_infoframe(struct v4l2_subdev *sd, const struct adv7842_cfg_read_infoframe *cri)
 {
 	int i;
 	u8 buffer[32];
@@ -2585,7 +2585,7 @@ static void log_infoframe(struct v4l2_subdev *sd, struct adv7842_cfg_read_infofr
 static void adv7842_log_infoframes(struct v4l2_subdev *sd)
 {
 	int i;
-	struct adv7842_cfg_read_infoframe cri[] = {
+	static const struct adv7842_cfg_read_infoframe cri[] = {
 		{ "AVI", 0x01, 0xe0, 0x00 },
 		{ "Audio", 0x02, 0xe3, 0x1c },
 		{ "SDP", 0x04, 0xe6, 0x2a },
@@ -3586,7 +3586,7 @@ static int adv7842_remove(struct i2c_client *client)
 	struct adv7842_state *state = to_state(sd);
 
 	adv7842_irq_enable(sd, false);
-	cancel_delayed_work(&state->delayed_work_enable_hotplug);
+	cancel_delayed_work_sync(&state->delayed_work_enable_hotplug);
 	v4l2_device_unregister_subdev(sd);
 	media_entity_cleanup(&sd->entity);
 	adv7842_unregister_clients(sd);

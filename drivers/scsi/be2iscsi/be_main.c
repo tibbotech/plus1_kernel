@@ -416,7 +416,7 @@ static struct beiscsi_hba *beiscsi_hba_alloc(struct pci_dev *pcidev)
 			"beiscsi_hba_alloc - iscsi_host_alloc failed\n");
 		return NULL;
 	}
-	shost->max_id = BE2_MAX_SESSIONS;
+	shost->max_id = BE2_MAX_SESSIONS - 1;
 	shost->max_channel = 0;
 	shost->max_cmd_len = BEISCSI_MAX_CMD_LEN;
 	shost->max_lun = BEISCSI_NUM_MAX_LUN;
@@ -453,14 +453,14 @@ static int beiscsi_map_pci_bars(struct beiscsi_hba *phba,
 	u8 __iomem *addr;
 	int pcicfg_reg;
 
-	addr = ioremap_nocache(pci_resource_start(pcidev, 2),
+	addr = ioremap(pci_resource_start(pcidev, 2),
 			       pci_resource_len(pcidev, 2));
 	if (addr == NULL)
 		return -ENOMEM;
 	phba->ctrl.csr = addr;
 	phba->csr_va = addr;
 
-	addr = ioremap_nocache(pci_resource_start(pcidev, 4), 128 * 1024);
+	addr = ioremap(pci_resource_start(pcidev, 4), 128 * 1024);
 	if (addr == NULL)
 		goto pci_map_err;
 	phba->ctrl.db = addr;
@@ -471,7 +471,7 @@ static int beiscsi_map_pci_bars(struct beiscsi_hba *phba,
 	else
 		pcicfg_reg = 0;
 
-	addr = ioremap_nocache(pci_resource_start(pcidev, pcicfg_reg),
+	addr = ioremap(pci_resource_start(pcidev, pcicfg_reg),
 			       pci_resource_len(pcidev, pcicfg_reg));
 
 	if (addr == NULL)
@@ -977,7 +977,7 @@ beiscsi_get_wrb_handle(struct hwi_wrb_context *pwrb_context,
  * alloc_wrb_handle - To allocate a wrb handle
  * @phba: The hba pointer
  * @cid: The cid to use for allocation
- * @pwrb_context: ptr to ptr to wrb context
+ * @pcontext: ptr to ptr to wrb context
  *
  * This happens under session_lock until submission to chip
  */
@@ -1394,7 +1394,7 @@ static void hwi_complete_cmd(struct beiscsi_conn *beiscsi_conn,
 	spin_unlock_bh(&session->back_lock);
 }
 
-/**
+/*
  * ASYNC PDUs include
  * a. Unsolicited NOP-In (target initiated NOP-In)
  * b. ASYNC Messages
@@ -1532,7 +1532,7 @@ beiscsi_hdl_get_handle(struct beiscsi_conn *beiscsi_conn,
 		break;
 	case UNSOL_DATA_DIGEST_ERROR_NOTIFY:
 		error = 1;
-		/* fall through */
+		fallthrough;
 	case UNSOL_DATA_NOTIFY:
 		pasync_handle = pasync_ctx->async_entry[ci].data;
 		break;
@@ -5318,7 +5318,7 @@ static int beiscsi_enable_port(struct beiscsi_hba *phba)
 	/* Re-enable UER. If different TPE occurs then it is recoverable. */
 	beiscsi_set_uer_feature(phba);
 
-	phba->shost->max_id = phba->params.cxns_per_ctrl;
+	phba->shost->max_id = phba->params.cxns_per_ctrl - 1;
 	phba->shost->can_queue = phba->params.ios_per_ctrl;
 	ret = beiscsi_init_port(phba);
 	if (ret < 0) {
@@ -5745,6 +5745,7 @@ free_hba:
 	pci_disable_msix(phba->pcidev);
 	pci_dev_put(phba->pcidev);
 	iscsi_host_free(phba->shost);
+	pci_disable_pcie_error_reporting(pcidev);
 	pci_set_drvdata(pcidev, NULL);
 disable_pci:
 	pci_release_regions(pcidev);

@@ -87,6 +87,7 @@ struct hdac_device {
 
 	/* regmap */
 	struct regmap *regmap;
+	struct mutex regmap_lock;
 	struct snd_array vendor_verbs;
 	bool lazy_cache:1;	/* don't wake up for writes */
 	bool caps_overwriting:1; /* caps overwrite being in process */
@@ -206,8 +207,8 @@ static inline int snd_hdac_power_down_pm(struct hdac_device *codec) { return 0; 
 static inline int snd_hdac_keep_power_up(struct hdac_device *codec) { return 0; }
 static inline void snd_hdac_enter_pm(struct hdac_device *codec) {}
 static inline void snd_hdac_leave_pm(struct hdac_device *codec) {}
-static inline bool snd_hdac_is_in_pm(struct hdac_device *codec) { return 0; }
-static inline bool snd_hdac_is_power_on(struct hdac_device *codec) { return 1; }
+static inline bool snd_hdac_is_in_pm(struct hdac_device *codec) { return false; }
+static inline bool snd_hdac_is_power_on(struct hdac_device *codec) { return true; }
 #endif
 
 /*
@@ -318,6 +319,7 @@ struct hdac_bus {
 	struct hdac_rb corb;
 	struct hdac_rb rirb;
 	unsigned int last_cmd[HDA_MAX_CODECS];	/* last sent command */
+	wait_queue_head_t rirb_wq;
 
 	/* CORB/RIRB and position buffers */
 	struct snd_dma_buffer rb;
@@ -339,10 +341,14 @@ struct hdac_bus {
 	bool reverse_assign:1;		/* assign devices in reverse order */
 	bool corbrp_self_clear:1;	/* CORBRP clears itself after reset */
 	bool polling_mode:1;
+	bool needs_damn_long_delay:1;
 
 	int poll_count;
 
 	int bdl_pos_adj;		/* BDL position adjustment */
+
+	/* delay time in us for dma stop */
+	unsigned int dma_stop_delay;
 
 	/* locks */
 	spinlock_t reg_lock;
@@ -361,16 +367,16 @@ struct hdac_bus {
 	/* link management */
 	struct list_head hlink_list;
 	bool cmd_dma_state;
+
+	/* factor used to derive STRIPE control value */
+	unsigned int sdo_limit;
 };
 
 int snd_hdac_bus_init(struct hdac_bus *bus, struct device *dev,
 		      const struct hdac_bus_ops *ops);
 void snd_hdac_bus_exit(struct hdac_bus *bus);
-int snd_hdac_bus_exec_verb(struct hdac_bus *bus, unsigned int addr,
-			   unsigned int cmd, unsigned int *res);
 int snd_hdac_bus_exec_verb_unlocked(struct hdac_bus *bus, unsigned int addr,
 				    unsigned int cmd, unsigned int *res);
-void snd_hdac_bus_queue_event(struct hdac_bus *bus, u32 res, u32 res_ex);
 
 static inline void snd_hdac_codec_link_up(struct hdac_device *codec)
 {
@@ -510,6 +516,7 @@ struct hdac_stream {
 	struct snd_pcm_substream *substream;	/* assigned substream,
 						 * set in PCM open
 						 */
+	struct snd_compr_stream *cstream;
 	unsigned int format_val;	/* format value to be set in the
 					 * controller and the codec
 					 */
@@ -524,6 +531,7 @@ struct hdac_stream {
 	bool locked:1;
 	bool stripe:1;			/* apply stripe control */
 
+	u64 curr_pos;
 	/* timestamp */
 	unsigned long start_wallclk;	/* start + minimum wallclk */
 	unsigned long period_wallclk;	/* wallclk for period */

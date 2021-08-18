@@ -73,16 +73,13 @@ static void fimc_m2m_shutdown(struct fimc_ctx *ctx)
 static int start_streaming(struct vb2_queue *q, unsigned int count)
 {
 	struct fimc_ctx *ctx = q->drv_priv;
-	int ret;
 
-	ret = pm_runtime_get_sync(&ctx->fimc_dev->pdev->dev);
-	return ret > 0 ? 0 : ret;
+	return pm_runtime_resume_and_get(&ctx->fimc_dev->pdev->dev);
 }
 
 static void stop_streaming(struct vb2_queue *q)
 {
 	struct fimc_ctx *ctx = q->drv_priv;
-
 
 	fimc_m2m_shutdown(ctx);
 	fimc_m2m_job_finish(ctx, VB2_BUF_STATE_ERROR);
@@ -746,7 +743,7 @@ int fimc_register_m2m_device(struct fimc_dev *fimc,
 	if (ret)
 		goto err_me;
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, -1);
 	if (ret)
 		goto err_vd;
 

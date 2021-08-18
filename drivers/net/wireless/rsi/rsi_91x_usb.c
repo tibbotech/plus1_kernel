@@ -149,9 +149,17 @@ static int rsi_find_bulk_in_and_out_endpoints(struct usb_interface *interface,
 			break;
 	}
 
-	if (!(dev->bulkin_endpoint_addr[0]) &&
-	    dev->bulkout_endpoint_addr[0])
+	if (!(dev->bulkin_endpoint_addr[0] && dev->bulkout_endpoint_addr[0])) {
+		dev_err(&interface->dev, "missing wlan bulk endpoints\n");
 		return -EINVAL;
+	}
+
+	if (adapter->priv->coex_mode > 1) {
+		if (!dev->bulkin_endpoint_addr[1]) {
+			dev_err(&interface->dev, "missing bt bulk-in endpoint\n");
+			return -EINVAL;
+		}
+	}
 
 	return 0;
 }
@@ -733,24 +741,24 @@ static int rsi_reset_card(struct rsi_hw *adapter)
 		if (ret < 0)
 			goto fail;
 	} else {
-		if ((rsi_usb_master_reg_write(adapter,
-					      NWP_WWD_INTERRUPT_TIMER,
-					      NWP_WWD_INT_TIMER_CLKS,
-					      RSI_9116_REG_SIZE)) < 0) {
+		ret = rsi_usb_master_reg_write(adapter,
+					       NWP_WWD_INTERRUPT_TIMER,
+					       NWP_WWD_INT_TIMER_CLKS,
+					       RSI_9116_REG_SIZE);
+		if (ret < 0)
 			goto fail;
-		}
-		if ((rsi_usb_master_reg_write(adapter,
-					      NWP_WWD_SYSTEM_RESET_TIMER,
-					      NWP_WWD_SYS_RESET_TIMER_CLKS,
-					      RSI_9116_REG_SIZE)) < 0) {
+		ret = rsi_usb_master_reg_write(adapter,
+					       NWP_WWD_SYSTEM_RESET_TIMER,
+					       NWP_WWD_SYS_RESET_TIMER_CLKS,
+					       RSI_9116_REG_SIZE);
+		if (ret < 0)
 			goto fail;
-		}
-		if ((rsi_usb_master_reg_write(adapter,
-					      NWP_WWD_MODE_AND_RSTART,
-					      NWP_WWD_TIMER_DISABLE,
-					      RSI_9116_REG_SIZE)) < 0) {
+		ret = rsi_usb_master_reg_write(adapter,
+					       NWP_WWD_MODE_AND_RSTART,
+					       NWP_WWD_TIMER_DISABLE,
+					       RSI_9116_REG_SIZE);
+		if (ret < 0)
 			goto fail;
-		}
 	}
 
 	rsi_dbg(INFO_ZONE, "Reset card done\n");
@@ -797,10 +805,10 @@ static int rsi_probe(struct usb_interface *pfunction,
 
 	rsi_dbg(ERR_ZONE, "%s: Initialized os intf ops\n", __func__);
 
-	if (id && id->idProduct == RSI_USB_PID_9113) {
+	if (id->idProduct == RSI_USB_PID_9113) {
 		rsi_dbg(INIT_ZONE, "%s: 9113 module detected\n", __func__);
 		adapter->device_model = RSI_DEV_9113;
-	} else if (id && id->idProduct == RSI_USB_PID_9116) {
+	} else if (id->idProduct == RSI_USB_PID_9116) {
 		rsi_dbg(INIT_ZONE, "%s: 9116 module detected\n", __func__);
 		adapter->device_model = RSI_DEV_9116;
 	} else {

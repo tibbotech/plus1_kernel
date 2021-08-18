@@ -1350,8 +1350,8 @@ int netcp_txpipe_open(struct netcp_tx_pipe *tx_pipe)
 	tx_pipe->dma_queue = knav_queue_open(name, tx_pipe->dma_queue_id,
 					     KNAV_QUEUE_SHARED);
 	if (IS_ERR(tx_pipe->dma_queue)) {
-		dev_err(dev, "Could not open DMA queue for channel \"%s\": %d\n",
-			name, ret);
+		dev_err(dev, "Could not open DMA queue for channel \"%s\": %pe\n",
+			name, tx_pipe->dma_queue);
 		ret = PTR_ERR(tx_pipe->dma_queue);
 		goto err;
 	}
@@ -1811,7 +1811,7 @@ out:
 	return (ret == 0) ? 0 : err;
 }
 
-static void netcp_ndo_tx_timeout(struct net_device *ndev)
+static void netcp_ndo_tx_timeout(struct net_device *ndev, unsigned int txqueue)
 {
 	struct netcp_intf *netcp = netdev_priv(ndev);
 	unsigned int descs = knav_pool_count(netcp->tx_pool);
@@ -2019,7 +2019,7 @@ static int netcp_create_interface(struct netcp_device *netcp_device,
 			goto quit;
 		}
 
-		efuse = devm_ioremap_nocache(dev, res.start, size);
+		efuse = devm_ioremap(dev, res.start, size);
 		if (!efuse) {
 			dev_err(dev, "could not map resource\n");
 			devm_release_mem_region(dev, res.start, size);

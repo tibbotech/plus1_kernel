@@ -19,6 +19,7 @@
 #include <linux/string.h>
 
 #include <asm/cpufeature.h>
+#include <asm/mmu.h>
 #include <asm/ptrace.h>
 #include <asm/memory.h>
 #include <asm/extable.h>
@@ -49,7 +50,7 @@ static inline void set_fs(mm_segment_t fs)
 				CONFIG_ARM64_UAO));
 }
 
-#define segment_eq(a, b)	((a) == (b))
+#define uaccess_kernel()	(get_fs() == KERNEL_DS)
 
 /*
  * Test whether a block of memory is a valid user space address.
@@ -112,8 +113,8 @@ static inline void __uaccess_ttbr0_disable(void)
 	local_irq_save(flags);
 	ttbr = read_sysreg(ttbr1_el1);
 	ttbr &= ~TTBR_ASID_MASK;
-	/* reserved_ttbr0 placed before swapper_pg_dir */
-	write_sysreg(ttbr - RESERVED_TTBR0_SIZE, ttbr0_el1);
+	/* reserved_pg_dir placed before swapper_pg_dir */
+	write_sysreg(ttbr - PAGE_SIZE, ttbr0_el1);
 	isb();
 	/* Set reserved ASID */
 	write_sysreg(ttbr, ttbr1_el1);
@@ -304,7 +305,7 @@ do {									\
 		__p = uaccess_mask_ptr(__p);				\
 		__raw_get_user((x), __p, (err));			\
 	} else {							\
-		(x) = 0; (err) = -EFAULT;				\
+		(x) = (__force __typeof__(x))0; (err) = -EFAULT;	\
 	}								\
 } while (0)
 

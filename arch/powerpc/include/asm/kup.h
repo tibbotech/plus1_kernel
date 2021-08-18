@@ -5,8 +5,16 @@
 #define KUAP_READ	1
 #define KUAP_WRITE	2
 #define KUAP_READ_WRITE	(KUAP_READ | KUAP_WRITE)
+/*
+ * For prevent_user_access() only.
+ * Use the current saved situation instead of the to/from/size params.
+ * Used on book3s/32
+ */
+#define KUAP_CURRENT_READ	4
+#define KUAP_CURRENT_WRITE	8
+#define KUAP_CURRENT		(KUAP_CURRENT_READ | KUAP_CURRENT_WRITE)
 
-#ifdef CONFIG_PPC64
+#ifdef CONFIG_PPC_BOOK3S_64
 #include <asm/book3s/64/kup-radix.h>
 #endif
 #ifdef CONFIG_PPC_8xx
@@ -27,11 +35,14 @@
 .macro kuap_check	current, gpr
 .endm
 
+.macro kuap_check_amr	gpr1, gpr2
+.endm
+
 #endif
 
 #else /* !__ASSEMBLY__ */
 
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 
 void setup_kup(void);
 
@@ -45,15 +56,28 @@ static inline void setup_kuep(bool disabled) { }
 void setup_kuap(bool disabled);
 #else
 static inline void setup_kuap(bool disabled) { }
-static inline void allow_user_access(void __user *to, const void __user *from,
-				     unsigned long size, unsigned long dir) { }
-static inline void prevent_user_access(void __user *to, const void __user *from,
-				       unsigned long size, unsigned long dir) { }
+
 static inline bool
 bad_kuap_fault(struct pt_regs *regs, unsigned long address, bool is_write)
 {
 	return false;
 }
+
+static inline void kuap_check_amr(void) { }
+
+/*
+ * book3s/64/kup-radix.h defines these functions for the !KUAP case to flush
+ * the L1D cache after user accesses. Only include the empty stubs for other
+ * platforms.
+ */
+#ifndef CONFIG_PPC_BOOK3S_64
+static inline void allow_user_access(void __user *to, const void __user *from,
+				     unsigned long size, unsigned long dir) { }
+static inline void prevent_user_access(void __user *to, const void __user *from,
+				       unsigned long size, unsigned long dir) { }
+static inline unsigned long prevent_user_access_return(void) { return 0UL; }
+static inline void restore_user_access(unsigned long flags) { }
+#endif /* CONFIG_PPC_BOOK3S_64 */
 #endif /* CONFIG_PPC_KUAP */
 
 static inline void allow_read_from_user(const void __user *from, unsigned long size)
@@ -86,6 +110,21 @@ static inline void prevent_read_write_user(void __user *to, const void __user *f
 					   unsigned long size)
 {
 	prevent_user_access(to, from, size, KUAP_READ_WRITE);
+}
+
+static inline void prevent_current_access_user(void)
+{
+	prevent_user_access(NULL, NULL, ~0UL, KUAP_CURRENT);
+}
+
+static inline void prevent_current_read_from_user(void)
+{
+	prevent_user_access(NULL, NULL, ~0UL, KUAP_CURRENT_READ);
+}
+
+static inline void prevent_current_write_to_user(void)
+{
+	prevent_user_access(NULL, NULL, ~0UL, KUAP_CURRENT_WRITE);
 }
 
 #endif /* !__ASSEMBLY__ */

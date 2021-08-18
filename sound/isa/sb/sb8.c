@@ -96,10 +96,6 @@ static int snd_sb8_probe(struct device *pdev, unsigned int dev)
 
 	/* block the 0x388 port to avoid PnP conflicts */
 	acard->fm_res = request_region(0x388, 4, "SoundBlaster FM");
-	if (!acard->fm_res) {
-		err = -EBUSY;
-		goto _err;
-	}
 
 	if (port[dev] != SNDRV_AUTO_PORT) {
 		if ((err = snd_sbdsp_create(card, port[dev], irq[dev],
@@ -111,7 +107,7 @@ static int snd_sb8_probe(struct device *pdev, unsigned int dev)
 			goto _err;
 	} else {
 		/* auto-probe legacy ports */
-		static unsigned long possible_ports[] = {
+		static const unsigned long possible_ports[] = {
 			0x220, 0x240, 0x260,
 		};
 		int i;

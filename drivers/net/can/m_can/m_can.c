@@ -123,6 +123,7 @@ enum m_can_reg {
 #define CCCR_CME_CANFD_BRS	0x2
 #define CCCR_TXP		BIT(14)
 #define CCCR_TEST		BIT(7)
+#define CCCR_DAR		BIT(6)
 #define CCCR_MON		BIT(5)
 #define CCCR_CSR		BIT(4)
 #define CCCR_CSA		BIT(3)
@@ -379,10 +380,6 @@ void m_can_config_endisable(struct m_can_classdev *cdev, bool enable)
 		cccr &= ~CCCR_CSR;
 
 	if (enable) {
-		/* Clear the Clock stop request if it was set */
-		if (cccr & CCCR_CSR)
-			cccr &= ~CCCR_CSR;
-
 		/* enable m_can configuration */
 		m_can_write(cdev, M_CAN_CCCR, cccr | CCCR_INIT);
 		udelay(5);
@@ -505,9 +502,6 @@ static int m_can_do_rx_poll(struct net_device *dev, int quota)
 	}
 
 	while ((rxfs & RXFS_FFL_MASK) && (quota > 0)) {
-		if (rxfs & RXFS_RFL)
-			netdev_warn(dev, "Rx FIFO 0 Message Lost\n");
-
 		m_can_read_fifo(dev, rxfs);
 
 		quota--;
@@ -664,7 +658,7 @@ static int m_can_handle_state_change(struct net_device *dev,
 	unsigned int ecr;
 
 	switch (new_state) {
-	case CAN_STATE_ERROR_ACTIVE:
+	case CAN_STATE_ERROR_WARNING:
 		/* error warning state */
 		cdev->can.can_stats.error_warning++;
 		cdev->can.state = CAN_STATE_ERROR_WARNING;
@@ -693,7 +687,7 @@ static int m_can_handle_state_change(struct net_device *dev,
 	__m_can_get_berr_counter(dev, &bec);
 
 	switch (new_state) {
-	case CAN_STATE_ERROR_ACTIVE:
+	case CAN_STATE_ERROR_WARNING:
 		/* error warning state */
 		cf->can_id |= CAN_ERR_CRTL;
 		cf->data[1] = (bec.txerr > bec.rxerr) ?
@@ -777,6 +771,43 @@ static inline bool is_lec_err(u32 psr)
 	return psr && (psr != LEC_UNUSED);
 }
 
+static inline bool m_can_is_protocol_err(u32 irqstatus)
+{
+	return irqstatus & IR_ERR_LEC_31X;
+}
+
+static int m_can_handle_protocol_error(struct net_device *dev, u32 irqstatus)
+{
+	struct net_device_stats *stats = &dev->stats;
+	struct m_can_classdev *cdev = netdev_priv(dev);
+	struct can_frame *cf;
+	struct sk_buff *skb;
+
+	/* propagate the error condition to the CAN stack */
+	skb = alloc_can_err_skb(dev, &cf);
+
+	/* update tx error stats since there is protocol error */
+	stats->tx_errors++;
+
+	/* update arbitration lost status */
+	if (cdev->version >= 31 && (irqstatus & IR_PEA)) {
+		netdev_dbg(dev, "Protocol error in Arbitration fail\n");
+		cdev->can.can_stats.arbitration_lost++;
+		if (skb) {
+			cf->can_id |= CAN_ERR_LOSTARB;
+			cf->data[0] |= CAN_ERR_LOSTARB_UNSPEC;
+		}
+	}
+
+	if (unlikely(!skb)) {
+		netdev_dbg(dev, "allocation of skb failed\n");
+		return 0;
+	}
+	netif_receive_skb(skb);
+
+	return 1;
+}
+
 static int m_can_handle_bus_errors(struct net_device *dev, u32 irqstatus,
 				   u32 psr)
 {
@@ -790,6 +821,11 @@ static int m_can_handle_bus_errors(struct net_device *dev, u32 irqstatus,
 	if ((cdev->can.ctrlmode & CAN_CTRLMODE_BERR_REPORTING) &&
 	    is_lec_err(psr))
 		work_done += m_can_handle_lec_err(dev, psr & LEC_UNUSED);
+
+	/* handle protocol errors in arbitration phase */
+	if ((cdev->can.ctrlmode & CAN_CTRLMODE_BERR_REPORTING) &&
+	    m_can_is_protocol_err(irqstatus))
+		work_done += m_can_handle_protocol_error(dev, irqstatus);
 
 	/* other unproccessed error interrupts */
 	m_can_handle_other_err(dev, irqstatus);
@@ -846,7 +882,7 @@ static int m_can_rx_peripheral(struct net_device *dev)
 {
 	struct m_can_classdev *cdev = netdev_priv(dev);
 
-	m_can_rx_handler(dev, 1);
+	m_can_rx_handler(dev, M_CAN_NAPI_WEIGHT);
 
 	m_can_enable_all_interrupts(cdev);
 
@@ -913,6 +949,8 @@ static irqreturn_t m_can_isr(int irq, void *dev_id)
 	struct net_device_stats *stats = &dev->stats;
 	u32 ir;
 
+	if (pm_runtime_suspended(cdev->dev))
+		return IRQ_NONE;
 	ir = m_can_read(cdev, M_CAN_IR);
 	if (!ir)
 		return IRQ_NONE;
@@ -988,7 +1026,7 @@ static const struct can_bittiming_const m_can_bittiming_const_31X = {
 	.name = KBUILD_MODNAME,
 	.tseg1_min = 2,		/* Time segment 1 = prop_seg + phase_seg1 */
 	.tseg1_max = 256,
-	.tseg2_min = 1,		/* Time segment 2 = phase_seg2 */
+	.tseg2_min = 2,		/* Time segment 2 = phase_seg2 */
 	.tseg2_max = 128,
 	.sjw_max = 128,
 	.brp_min = 1,
@@ -1135,7 +1173,7 @@ static void m_can_chip_config(struct net_device *dev)
 	if (cdev->version == 30) {
 	/* Version 3.0.x */
 
-		cccr &= ~(CCCR_TEST | CCCR_MON |
+		cccr &= ~(CCCR_TEST | CCCR_MON | CCCR_DAR |
 			(CCCR_CMR_MASK << CCCR_CMR_SHIFT) |
 			(CCCR_CME_MASK << CCCR_CME_SHIFT));
 
@@ -1145,7 +1183,7 @@ static void m_can_chip_config(struct net_device *dev)
 	} else {
 	/* Version 3.1.x or 3.2.x */
 		cccr &= ~(CCCR_TEST | CCCR_MON | CCCR_BRSE | CCCR_FDOE |
-			  CCCR_NISO);
+			  CCCR_NISO | CCCR_DAR);
 
 		/* Only 3.2.x has NISO Bit implemented */
 		if (cdev->can.ctrlmode & CAN_CTRLMODE_FD_NON_ISO)
@@ -1164,6 +1202,10 @@ static void m_can_chip_config(struct net_device *dev)
 	/* Enable Monitoring (all versions) */
 	if (cdev->can.ctrlmode & CAN_CTRLMODE_LISTENONLY)
 		cccr |= CCCR_MON;
+
+	/* Disable Auto Retransmission (all versions) */
+	if (cdev->can.ctrlmode & CAN_CTRLMODE_ONE_SHOT)
+		cccr |= CCCR_DAR;
 
 	/* Write config */
 	m_can_write(cdev, M_CAN_CCCR, cccr);
@@ -1310,7 +1352,8 @@ static int m_can_dev_setup(struct m_can_classdev *m_can_dev)
 	m_can_dev->can.ctrlmode_supported = CAN_CTRLMODE_LOOPBACK |
 					CAN_CTRLMODE_LISTENONLY |
 					CAN_CTRLMODE_BERR_REPORTING |
-					CAN_CTRLMODE_FD;
+					CAN_CTRLMODE_FD |
+					CAN_CTRLMODE_ONE_SHOT;
 
 	/* Set properties depending on M_CAN version */
 	switch (m_can_dev->version) {
@@ -1335,6 +1378,8 @@ static int m_can_dev_setup(struct m_can_classdev *m_can_dev)
 						&m_can_data_bittiming_const_31X;
 		break;
 	case 32:
+	case 33:
+		/* Support both MCAN version v3.2.x and v3.3.0 */
 		m_can_dev->can.bittiming_const = m_can_dev->bit_timing ?
 			m_can_dev->bit_timing : &m_can_bittiming_const_31X;
 
@@ -1365,6 +1410,9 @@ static void m_can_stop(struct net_device *dev)
 
 	/* disable all interrupts */
 	m_can_disable_all_interrupts(cdev);
+
+	/* Set init mode to disengage from the network */
+	m_can_config_endisable(cdev, true);
 
 	/* set the state as STOPPED */
 	cdev->can.state = CAN_STATE_STOPPED;
@@ -1417,6 +1465,8 @@ static netdev_tx_t m_can_tx_handler(struct m_can_classdev *cdev)
 	u32 id, cccr, fdflags;
 	int i;
 	int putidx;
+
+	cdev->tx_skb = NULL;
 
 	/* Generate ID field for TX buffer Element */
 	/* Common to all supported M_CAN versions */
@@ -1534,7 +1584,6 @@ static void m_can_tx_work_queue(struct work_struct *ws)
 						tx_work);
 
 	m_can_tx_handler(cdev);
-	cdev->tx_skb = NULL;
 }
 
 static netdev_tx_t m_can_start_xmit(struct sk_buff *skb,
@@ -1600,7 +1649,7 @@ static int m_can_open(struct net_device *dev)
 		INIT_WORK(&cdev->tx_work, m_can_tx_work_queue);
 
 		err = request_threaded_irq(dev->irq, NULL, m_can_isr,
-					   IRQF_ONESHOT | IRQF_TRIGGER_FALLING,
+					   IRQF_ONESHOT,
 					   dev->name, dev);
 	} else {
 		err = request_irq(dev->irq, m_can_isr, IRQF_SHARED, dev->name,
@@ -1764,6 +1813,12 @@ out:
 }
 EXPORT_SYMBOL_GPL(m_can_class_allocate_dev);
 
+void m_can_class_free_dev(struct net_device *net)
+{
+	free_candev(net);
+}
+EXPORT_SYMBOL_GPL(m_can_class_free_dev);
+
 int m_can_class_register(struct m_can_classdev *m_can_dev)
 {
 	int ret;
@@ -1802,7 +1857,6 @@ pm_runtime_fail:
 	if (ret) {
 		if (m_can_dev->pm_clock_support)
 			pm_runtime_disable(m_can_dev->dev);
-		free_candev(m_can_dev->net);
 	}
 
 	return ret;
@@ -1858,10 +1912,6 @@ EXPORT_SYMBOL_GPL(m_can_class_resume);
 void m_can_class_unregister(struct m_can_classdev *m_can_dev)
 {
 	unregister_candev(m_can_dev->net);
-
-	m_can_clk_stop(m_can_dev);
-
-	free_candev(m_can_dev->net);
 }
 EXPORT_SYMBOL_GPL(m_can_class_unregister);
 

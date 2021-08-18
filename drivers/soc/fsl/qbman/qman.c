@@ -186,7 +186,7 @@ struct qm_eqcr_entry {
 	__be32 tag;
 	struct qm_fd fd;
 	u8 __reserved3[32];
-} __packed;
+} __packed __aligned(8);
 #define QM_EQCR_VERB_VBIT		0x80
 #define QM_EQCR_VERB_CMD_MASK		0x61	/* but only one value; */
 #define QM_EQCR_VERB_CMD_ENQUEUE	0x01
@@ -447,11 +447,6 @@ static inline int qm_eqcr_init(struct qm_portal *portal,
 	      ((pmode & 0x3) << 24); /* QCSP_CFG::EPM */
 	qm_out(portal, QM_REG_CFG, cfg);
 	return 0;
-}
-
-static inline unsigned int qm_eqcr_get_ci_stashing(struct qm_portal *portal)
-{
-	return (qm_in(portal, QM_REG_CFG) >> 28) & 0x7;
 }
 
 static inline void qm_eqcr_finish(struct qm_portal *portal)
@@ -1748,6 +1743,13 @@ struct qman_portal *qman_get_affine_portal(int cpu)
 	return affine_portals[cpu];
 }
 EXPORT_SYMBOL(qman_get_affine_portal);
+
+int qman_start_using_portal(struct qman_portal *p, struct device *dev)
+{
+	return (!device_link_add(dev, p->config->dev,
+				 DL_FLAG_AUTOREMOVE_CONSUMER)) ? -EINVAL : 0;
+}
+EXPORT_SYMBOL(qman_start_using_portal);
 
 int qman_p_poll_dqrr(struct qman_portal *p, unsigned int limit)
 {

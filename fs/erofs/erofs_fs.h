@@ -3,13 +3,15 @@
  * EROFS (Enhanced ROM File System) on-disk format definition
  *
  * Copyright (C) 2017-2018 HUAWEI, Inc.
- *             http://www.huawei.com/
+ *             https://www.huawei.com/
  * Created by Gao Xiang <gaoxiang25@huawei.com>
  */
 #ifndef __EROFS_FS_H
 #define __EROFS_FS_H
 
 #define EROFS_SUPER_OFFSET      1024
+
+#define EROFS_FEATURE_COMPAT_SB_CHKSUM          0x00000001
 
 /*
  * Any bits that aren't in EROFS_ALL_FEATURE_INCOMPAT should
@@ -37,7 +39,6 @@ struct erofs_super_block {
 	__u8 uuid[16];          /* 128-bit uuid for volume */
 	__u8 volume_name[16];   /* volume name */
 	__le32 feature_incompat;
-
 	__u8 reserved2[44];
 };
 
@@ -73,6 +74,9 @@ static inline bool erofs_inode_is_data_compressed(unsigned int datamode)
 
 #define EROFS_I_VERSION_BIT             0
 #define EROFS_I_DATALAYOUT_BIT          1
+
+#define EROFS_I_ALL	\
+	((1 << (EROFS_I_DATALAYOUT_BIT + EROFS_I_DATALAYOUT_BITS)) - 1)
 
 /* 32-byte reduced form of an ondisk inode */
 struct erofs_inode_compact {

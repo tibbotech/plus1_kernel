@@ -104,18 +104,7 @@ static const struct seq_operations show_diag_stat_sops = {
 	.show	= show_diag_stat,
 };
 
-static int show_diag_stat_open(struct inode *inode, struct file *file)
-{
-	return seq_open(file, &show_diag_stat_sops);
-}
-
-static const struct file_operations show_diag_stat_fops = {
-	.open		= show_diag_stat_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= seq_release,
-};
-
+DEFINE_SEQ_ATTRIBUTE(show_diag_stat);
 
 static int __init show_diag_stat_init(void)
 {
@@ -133,7 +122,7 @@ void diag_stat_inc(enum diag_stat_enum nr)
 }
 EXPORT_SYMBOL(diag_stat_inc);
 
-void diag_stat_inc_norecursion(enum diag_stat_enum nr)
+void notrace diag_stat_inc_norecursion(enum diag_stat_enum nr)
 {
 	this_cpu_inc(diag_stat.counter[nr]);
 	trace_s390_diagnose_norecursion(diag_map[nr].code);

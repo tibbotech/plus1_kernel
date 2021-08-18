@@ -58,9 +58,14 @@ static const struct fsl_ddr_devtype_data imx8m_devtype_data = {
 	.quirks = DDR_CAP_AXI_ID_FILTER,
 };
 
+static const struct fsl_ddr_devtype_data imx8mp_devtype_data = {
+	.quirks = DDR_CAP_AXI_ID_FILTER_ENHANCED,
+};
+
 static const struct of_device_id imx_ddr_pmu_dt_ids[] = {
 	{ .compatible = "fsl,imx8-ddr-pmu", .data = &imx8_devtype_data},
 	{ .compatible = "fsl,imx8m-ddr-pmu", .data = &imx8m_devtype_data},
+	{ .compatible = "fsl,imx8mp-ddr-pmu", .data = &imx8mp_devtype_data},
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, imx_ddr_pmu_dt_ids);
@@ -77,6 +82,61 @@ struct ddr_pmu {
 	const struct fsl_ddr_devtype_data *devtype_data;
 	int irq;
 	int id;
+};
+
+enum ddr_perf_filter_capabilities {
+	PERF_CAP_AXI_ID_FILTER = 0,
+	PERF_CAP_AXI_ID_FILTER_ENHANCED,
+	PERF_CAP_AXI_ID_FEAT_MAX,
+};
+
+static u32 ddr_perf_filter_cap_get(struct ddr_pmu *pmu, int cap)
+{
+	u32 quirks = pmu->devtype_data->quirks;
+
+	switch (cap) {
+	case PERF_CAP_AXI_ID_FILTER:
+		return !!(quirks & DDR_CAP_AXI_ID_FILTER);
+	case PERF_CAP_AXI_ID_FILTER_ENHANCED:
+		quirks &= DDR_CAP_AXI_ID_FILTER_ENHANCED;
+		return quirks == DDR_CAP_AXI_ID_FILTER_ENHANCED;
+	default:
+		WARN(1, "unknown filter cap %d\n", cap);
+	}
+
+	return 0;
+}
+
+static ssize_t ddr_perf_filter_cap_show(struct device *dev,
+					struct device_attribute *attr,
+					char *buf)
+{
+	struct ddr_pmu *pmu = dev_get_drvdata(dev);
+	struct dev_ext_attribute *ea =
+		container_of(attr, struct dev_ext_attribute, attr);
+	int cap = (long)ea->var;
+
+	return snprintf(buf, PAGE_SIZE, "%u\n",
+			ddr_perf_filter_cap_get(pmu, cap));
+}
+
+#define PERF_EXT_ATTR_ENTRY(_name, _func, _var)				\
+	(&((struct dev_ext_attribute) {					\
+		__ATTR(_name, 0444, _func, NULL), (void *)_var		\
+	}).attr.attr)
+
+#define PERF_FILTER_EXT_ATTR_ENTRY(_name, _var)				\
+	PERF_EXT_ATTR_ENTRY(_name, ddr_perf_filter_cap_show, _var)
+
+static struct attribute *ddr_perf_filter_cap_attr[] = {
+	PERF_FILTER_EXT_ATTR_ENTRY(filter, PERF_CAP_AXI_ID_FILTER),
+	PERF_FILTER_EXT_ATTR_ENTRY(enhanced_filter, PERF_CAP_AXI_ID_FILTER_ENHANCED),
+	NULL,
+};
+
+static struct attribute_group ddr_perf_filter_cap_attr_group = {
+	.name = "caps",
+	.attrs = ddr_perf_filter_cap_attr,
 };
 
 static ssize_t ddr_perf_cpumask_show(struct device *dev,
@@ -176,6 +236,7 @@ static const struct attribute_group *attr_groups[] = {
 	&ddr_perf_events_attr_group,
 	&ddr_perf_format_attr_group,
 	&ddr_perf_cpumask_attr_group,
+	&ddr_perf_filter_cap_attr_group,
 	NULL,
 };
 
@@ -451,6 +512,7 @@ static int ddr_perf_init(struct ddr_pmu *pmu, void __iomem *base,
 {
 	*pmu = (struct ddr_pmu) {
 		.pmu = (struct pmu) {
+			.module	      = THIS_MODULE,
 			.capabilities = PERF_PMU_CAP_NO_EXCLUDE,
 			.task_ctx_nr = perf_invalid_context,
 			.attr_groups = attr_groups,
@@ -561,8 +623,10 @@ static int ddr_perf_probe(struct platform_device *pdev)
 
 	name = devm_kasprintf(&pdev->dev, GFP_KERNEL, DDR_PERF_DEV_NAME "%d",
 			      num);
-	if (!name)
-		return -ENOMEM;
+	if (!name) {
+		ret = -ENOMEM;
+		goto cpuhp_state_err;
+	}
 
 	pmu->devtype_data = of_device_get_match_data(&pdev->dev);
 
@@ -645,6 +709,7 @@ static struct platform_driver imx_ddr_pmu_driver = {
 	.driver         = {
 		.name   = "imx-ddr-pmu",
 		.of_match_table = imx_ddr_pmu_dt_ids,
+		.suppress_bind_attrs = true,
 	},
 	.probe          = ddr_perf_probe,
 	.remove         = ddr_perf_remove,

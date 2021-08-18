@@ -232,7 +232,7 @@ static int graph_dai_link_of_dpcm(struct asoc_simple_priv *priv,
 	if (li->cpu) {
 		int is_single_links = 0;
 
-		/* BE is dummy */
+		/* Codec is dummy */
 		codecs->of_node		= NULL;
 		codecs->dai_name	= "snd-soc-dummy-dai";
 		codecs->name		= "snd-soc-dummy";
@@ -263,7 +263,7 @@ static int graph_dai_link_of_dpcm(struct asoc_simple_priv *priv,
 	} else {
 		struct snd_soc_codec_conf *cconf;
 
-		/* FE is dummy */
+		/* CPU is dummy */
 		cpus->of_node		= NULL;
 		cpus->dai_name		= "snd-soc-dummy-dai";
 		cpus->name		= "snd-soc-dummy";
@@ -317,8 +317,8 @@ static int graph_dai_link_of_dpcm(struct asoc_simple_priv *priv,
 	if (ret < 0)
 		goto out_put_node;
 
-	dai_link->dpcm_playback		= 1;
-	dai_link->dpcm_capture		= 1;
+	snd_soc_dai_link_set_capabilities(dai_link);
+
 	dai_link->ops			= &graph_ops;
 	dai_link->init			= asoc_simple_dai_init;
 
@@ -340,7 +340,7 @@ static int graph_dai_link_of(struct asoc_simple_priv *priv,
 	struct device_node *top = dev->of_node;
 	struct asoc_simple_dai *cpu_dai;
 	struct asoc_simple_dai *codec_dai;
-	int ret, single_cpu;
+	int ret, single_cpu = 0;
 
 	/* Do it only CPU turn */
 	if (!li->cpu)

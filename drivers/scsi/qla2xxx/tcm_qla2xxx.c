@@ -268,6 +268,29 @@ static void tcm_qla2xxx_complete_free(struct work_struct *work)
 	transport_generic_free_cmd(&cmd->se_cmd, 0);
 }
 
+static struct qla_tgt_cmd *tcm_qla2xxx_get_cmd(struct fc_port *sess)
+{
+	struct se_session *se_sess = sess->se_sess;
+	struct qla_tgt_cmd *cmd;
+	int tag, cpu;
+
+	tag = sbitmap_queue_get(&se_sess->sess_tag_pool, &cpu);
+	if (tag < 0)
+		return NULL;
+
+	cmd = &((struct qla_tgt_cmd *)se_sess->sess_cmd_map)[tag];
+	memset(cmd, 0, sizeof(struct qla_tgt_cmd));
+	cmd->se_cmd.map_tag = tag;
+	cmd->se_cmd.map_cpu = cpu;
+
+	return cmd;
+}
+
+static void tcm_qla2xxx_rel_cmd(struct qla_tgt_cmd *cmd)
+{
+	target_free_tag(cmd->sess->se_sess, &cmd->se_cmd);
+}
+
 /*
  * Called from qla_target_template->free_cmd(), and will call
  * tcm_qla2xxx_release_cmd via normal struct target_core_fabric_ops
@@ -623,7 +646,6 @@ static int tcm_qla2xxx_queue_data_in(struct se_cmd *se_cmd)
 {
 	struct qla_tgt_cmd *cmd = container_of(se_cmd,
 				struct qla_tgt_cmd, se_cmd);
-	struct scsi_qla_host *vha = cmd->vha;
 
 	if (cmd->aborted) {
 		/* Cmd can loop during Q-full.  tcm_qla2xxx_aborted_task
@@ -636,7 +658,6 @@ static int tcm_qla2xxx_queue_data_in(struct se_cmd *se_cmd)
 			cmd->se_cmd.transport_state,
 			cmd->se_cmd.t_state,
 			cmd->se_cmd.se_cmd_flags);
-		vha->hw->tgt.tgt_ops->free_cmd(cmd);
 		return 0;
 	}
 
@@ -664,7 +685,6 @@ static int tcm_qla2xxx_queue_status(struct se_cmd *se_cmd)
 {
 	struct qla_tgt_cmd *cmd = container_of(se_cmd,
 				struct qla_tgt_cmd, se_cmd);
-	struct scsi_qla_host *vha = cmd->vha;
 	int xmit_type = QLA_TGT_XMIT_STATUS;
 
 	if (cmd->aborted) {
@@ -678,7 +698,6 @@ static int tcm_qla2xxx_queue_status(struct se_cmd *se_cmd)
 		    cmd, kref_read(&cmd->se_cmd.cmd_kref),
 		    cmd->se_cmd.transport_state, cmd->se_cmd.t_state,
 		    cmd->se_cmd.se_cmd_flags);
-		vha->hw->tgt.tgt_ops->free_cmd(cmd);
 		return 0;
 	}
 	cmd->bufflen = se_cmd->data_length;
@@ -827,7 +846,7 @@ static ssize_t tcm_qla2xxx_tpg_attrib_##name##_show(			\
 	struct tcm_qla2xxx_tpg *tpg = container_of(se_tpg,		\
 			struct tcm_qla2xxx_tpg, se_tpg);		\
 									\
-	return sprintf(page, "%u\n", tpg->tpg_attrib.name);	\
+	return sprintf(page, "%d\n", tpg->tpg_attrib.name);	\
 }									\
 									\
 static ssize_t tcm_qla2xxx_tpg_attrib_##name##_store(			\
@@ -926,6 +945,7 @@ static ssize_t tcm_qla2xxx_tpg_enable_store(struct config_item *item,
 
 		atomic_set(&tpg->lport_tpg_enabled, 0);
 		qlt_stop_phase1(vha->vha_tgt.qla_tgt);
+		qlt_stop_phase2(vha->vha_tgt.qla_tgt);
 	}
 
 	return count;
@@ -1088,6 +1108,7 @@ static ssize_t tcm_qla2xxx_npiv_tpg_enable_store(struct config_item *item,
 
 		atomic_set(&tpg->lport_tpg_enabled, 0);
 		qlt_stop_phase1(vha->vha_tgt.qla_tgt);
+		qlt_stop_phase2(vha->vha_tgt.qla_tgt);
 	}
 
 	return count;
@@ -1549,6 +1570,8 @@ static struct qla_tgt_func_tmpl tcm_qla2xxx_template = {
 	.handle_cmd		= tcm_qla2xxx_handle_cmd,
 	.handle_data		= tcm_qla2xxx_handle_data,
 	.handle_tmr		= tcm_qla2xxx_handle_tmr,
+	.get_cmd		= tcm_qla2xxx_get_cmd,
+	.rel_cmd		= tcm_qla2xxx_rel_cmd,
 	.free_cmd		= tcm_qla2xxx_free_cmd,
 	.free_mcmd		= tcm_qla2xxx_free_mcmd,
 	.free_session		= tcm_qla2xxx_free_session,
@@ -1932,6 +1955,21 @@ static void tcm_qla2xxx_deregister_configfs(void)
 static int __init tcm_qla2xxx_init(void)
 {
 	int ret;
+
+	BUILD_BUG_ON(sizeof(struct abts_recv_from_24xx) != 64);
+	BUILD_BUG_ON(sizeof(struct abts_resp_from_24xx_fw) != 64);
+	BUILD_BUG_ON(sizeof(struct atio7_fcp_cmnd) != 32);
+	BUILD_BUG_ON(sizeof(struct atio_from_isp) != 64);
+	BUILD_BUG_ON(sizeof(struct ba_acc_le) != 12);
+	BUILD_BUG_ON(sizeof(struct ba_rjt_le) != 4);
+	BUILD_BUG_ON(sizeof(struct ctio7_from_24xx) != 64);
+	BUILD_BUG_ON(sizeof(struct ctio7_to_24xx) != 64);
+	BUILD_BUG_ON(sizeof(struct ctio_crc2_to_fw) != 64);
+	BUILD_BUG_ON(sizeof(struct ctio_crc_from_fw) != 64);
+	BUILD_BUG_ON(sizeof(struct ctio_to_2xxx) != 64);
+	BUILD_BUG_ON(sizeof(struct fcp_hdr) != 24);
+	BUILD_BUG_ON(sizeof(struct fcp_hdr_le) != 24);
+	BUILD_BUG_ON(sizeof(struct nack_to_isp) != 64);
 
 	ret = tcm_qla2xxx_register_configfs();
 	if (ret < 0)

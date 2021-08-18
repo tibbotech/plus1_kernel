@@ -9,16 +9,6 @@
 #include <asm/errno.h>
 #include <asm/sigp.h>
 
-#ifdef CC_USING_EXPOLINE
-	.pushsection .dma.text.__s390_indirect_jump_r14,"axG"
-__dma__s390_indirect_jump_r14:
-	larl	%r1,0f
-	ex	0,0(%r1)
-	j	.
-0:	br	%r14
-	.popsection
-#endif
-
 	.section .dma.text,"ax"
 /*
  * Simplified version of expoline thunk. The normal thunks can not be used here,
@@ -27,11 +17,10 @@ __dma__s390_indirect_jump_r14:
  * affects a few functions that are not performance-relevant.
  */
 	.macro BR_EX_DMA_r14
-#ifdef CC_USING_EXPOLINE
-	jg	__dma__s390_indirect_jump_r14
-#else
-	br	%r14
-#endif
+	larl	%r1,0f
+	ex	0,0(%r1)
+	j	.
+0:	br	%r14
 	.endm
 
 /*
@@ -95,23 +84,6 @@ ENTRY(_diag0c_dma)
 	sam64
 	BR_EX_DMA_r14
 ENDPROC(_diag0c_dma)
-
-/*
- * void _swsusp_reset_dma(void)
- */
-ENTRY(_swsusp_reset_dma)
-	larl	%r1,restart_entry
-	larl	%r2,.Lrestart_diag308_psw
-	og	%r1,0(%r2)
-	stg	%r1,0(%r0)
-	lghi	%r0,0
-	diag	%r0,%r0,0x308
-restart_entry:
-	lhi	%r1,1
-	sigp	%r1,%r0,SIGP_SET_ARCHITECTURE
-	sam64
-	BR_EX_DMA_r14
-ENDPROC(_swsusp_reset_dma)
 
 /*
  * void _diag308_reset_dma(void)

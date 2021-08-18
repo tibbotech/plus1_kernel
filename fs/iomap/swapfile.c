@@ -76,7 +76,8 @@ static int iomap_swapfile_add_extent(struct iomap_swapfile_info *isi)
  * distinction between written and unwritten extents.
  */
 static loff_t iomap_swapfile_activate_actor(struct inode *inode, loff_t pos,
-		loff_t count, void *data, struct iomap *iomap)
+		loff_t count, void *data, struct iomap *iomap,
+		struct iomap *srcmap)
 {
 	struct iomap_swapfile_info *isi = data;
 	int error;
@@ -167,6 +168,16 @@ int iomap_swapfile_activate(struct swap_info_struct *sis,
 		ret = iomap_swapfile_add_extent(&isi);
 		if (ret)
 			return ret;
+	}
+
+	/*
+	 * If this swapfile doesn't contain even a single page-aligned
+	 * contiguous range of blocks, reject this useless swapfile to
+	 * prevent confusion later on.
+	 */
+	if (isi.nr_pages == 0) {
+		pr_warn("swapon: Cannot find a single usable page in file.\n");
+		return -EINVAL;
 	}
 
 	*pagespan = 1 + isi.highest_ppage - isi.lowest_ppage;

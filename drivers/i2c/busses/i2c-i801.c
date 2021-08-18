@@ -54,6 +54,7 @@
  * Sunrise Point-H (PCH) 	0xa123  32	hard	yes	yes	yes
  * Sunrise Point-LP (PCH)	0x9d23	32	hard	yes	yes	yes
  * DNV (SOC)			0x19df	32	hard	yes	yes	yes
+ * Emmitsburg (PCH)		0x1bc9	32	hard	yes	yes	yes
  * Broxton (SOC)		0x5ad4	32	hard	yes	yes	yes
  * Lewisburg (PCH)		0xa1a3	32	hard	yes	yes	yes
  * Lewisburg Supersku (PCH)	0xa223	32	hard	yes	yes	yes
@@ -64,8 +65,13 @@
  * Cedar Fork (PCH)		0x18df	32	hard	yes	yes	yes
  * Ice Lake-LP (PCH)		0x34a3	32	hard	yes	yes	yes
  * Comet Lake (PCH)		0x02a3	32	hard	yes	yes	yes
+ * Comet Lake-H (PCH)		0x06a3	32	hard	yes	yes	yes
  * Elkhart Lake (PCH)		0x4b23	32	hard	yes	yes	yes
  * Tiger Lake-LP (PCH)		0xa0a3	32	hard	yes	yes	yes
+ * Tiger Lake-H (PCH)		0x43a3	32	hard	yes	yes	yes
+ * Jasper Lake (SOC)		0x4da3	32	hard	yes	yes	yes
+ * Comet Lake-V (PCH)		0xa3a3	32	hard	yes	yes	yes
+ * Alder Lake-S (PCH)		0x7aa3	32	hard	yes	yes	yes
  *
  * Features supported by this driver:
  * Software PEC				no
@@ -200,9 +206,11 @@
 
 /* Older devices have their ID defined in <linux/pci_ids.h> */
 #define PCI_DEVICE_ID_INTEL_COMETLAKE_SMBUS		0x02a3
+#define PCI_DEVICE_ID_INTEL_COMETLAKE_H_SMBUS		0x06a3
 #define PCI_DEVICE_ID_INTEL_BAYTRAIL_SMBUS		0x0f12
 #define PCI_DEVICE_ID_INTEL_CDF_SMBUS			0x18df
 #define PCI_DEVICE_ID_INTEL_DNV_SMBUS			0x19df
+#define PCI_DEVICE_ID_INTEL_EBG_SMBUS			0x1bc9
 #define PCI_DEVICE_ID_INTEL_COUGARPOINT_SMBUS		0x1c22
 #define PCI_DEVICE_ID_INTEL_PATSBURG_SMBUS		0x1d22
 /* Patsburg also has three 'Integrated Device Function' SMBus controllers */
@@ -217,8 +225,11 @@
 #define PCI_DEVICE_ID_INTEL_GEMINILAKE_SMBUS		0x31d4
 #define PCI_DEVICE_ID_INTEL_ICELAKE_LP_SMBUS		0x34a3
 #define PCI_DEVICE_ID_INTEL_5_3400_SERIES_SMBUS		0x3b30
+#define PCI_DEVICE_ID_INTEL_TIGERLAKE_H_SMBUS		0x43a3
 #define PCI_DEVICE_ID_INTEL_ELKHART_LAKE_SMBUS		0x4b23
+#define PCI_DEVICE_ID_INTEL_JASPER_LAKE_SMBUS		0x4da3
 #define PCI_DEVICE_ID_INTEL_BROXTON_SMBUS		0x5ad4
+#define PCI_DEVICE_ID_INTEL_ALDER_LAKE_S_SMBUS		0x7aa3
 #define PCI_DEVICE_ID_INTEL_LYNXPOINT_SMBUS		0x8c22
 #define PCI_DEVICE_ID_INTEL_WILDCATPOINT_SMBUS		0x8ca2
 #define PCI_DEVICE_ID_INTEL_WELLSBURG_SMBUS		0x8d22
@@ -235,6 +246,7 @@
 #define PCI_DEVICE_ID_INTEL_LEWISBURG_SSKU_SMBUS	0xa223
 #define PCI_DEVICE_ID_INTEL_KABYLAKE_PCH_H_SMBUS	0xa2a3
 #define PCI_DEVICE_ID_INTEL_CANNONLAKE_H_SMBUS		0xa323
+#define PCI_DEVICE_ID_INTEL_COMETLAKE_V_SMBUS		0xa3a3
 
 struct i801_mux_config {
 	char *gpio_chip;
@@ -379,11 +391,9 @@ static int i801_check_post(struct i801_priv *priv, int status)
 		dev_err(&priv->pci_dev->dev, "Transaction timeout\n");
 		/* try to stop the current command */
 		dev_dbg(&priv->pci_dev->dev, "Terminating the current operation\n");
-		outb_p(inb_p(SMBHSTCNT(priv)) | SMBHSTCNT_KILL,
-		       SMBHSTCNT(priv));
+		outb_p(SMBHSTCNT_KILL, SMBHSTCNT(priv));
 		usleep_range(1000, 2000);
-		outb_p(inb_p(SMBHSTCNT(priv)) & (~SMBHSTCNT_KILL),
-		       SMBHSTCNT(priv));
+		outb_p(0, SMBHSTCNT(priv));
 
 		/* Check if it worked */
 		status = inb_p(SMBHSTSTS(priv));
@@ -964,6 +974,9 @@ static s32 i801_access(struct i2c_adapter *adap, u16 addr,
 	}
 
 out:
+	/* Unlock the SMBus device for use by BIOS/ACPI */
+	outb_p(SMBHSTSTS_INUSE_STS, SMBHSTSTS(priv));
+
 	pm_runtime_mark_last_busy(&priv->pci_dev->dev);
 	pm_runtime_put_autosuspend(&priv->pci_dev->dev);
 	mutex_unlock(&priv->acpi_lock);
@@ -1056,6 +1069,7 @@ static const struct pci_device_id i801_ids[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_SUNRISEPOINT_LP_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_CDF_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_DNV_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_EBG_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_BROXTON_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_LEWISBURG_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_LEWISBURG_SSKU_SMBUS) },
@@ -1064,8 +1078,13 @@ static const struct pci_device_id i801_ids[] = {
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_CANNONLAKE_LP_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ICELAKE_LP_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_COMETLAKE_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_COMETLAKE_H_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_COMETLAKE_V_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ELKHART_LAKE_SMBUS) },
 	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_TIGERLAKE_LP_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_TIGERLAKE_H_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_JASPER_LAKE_SMBUS) },
+	{ PCI_DEVICE(PCI_VENDOR_ID_INTEL, PCI_DEVICE_ID_INTEL_ALDER_LAKE_S_SMBUS) },
 	{ 0, }
 };
 
@@ -1131,7 +1150,7 @@ static void dmi_check_onboard_device(u8 type, const char *name,
 		memset(&info, 0, sizeof(struct i2c_board_info));
 		info.addr = dmi_devices[i].i2c_addr;
 		strlcpy(info.type, dmi_devices[i].i2c_type, I2C_NAME_SIZE);
-		i2c_new_device(adap, &info);
+		i2c_new_client_device(adap, &info);
 		break;
 	}
 }
@@ -1259,6 +1278,7 @@ static const struct {
 	/*
 	 * Additional individual entries were added after verification.
 	 */
+	{ "Latitude 5480",      0x29 },
 	{ "Vostro V131",        0x1d },
 };
 
@@ -1285,7 +1305,7 @@ static void register_dell_lis3lv02d_i2c_device(struct i801_priv *priv)
 	memset(&info, 0, sizeof(struct i2c_board_info));
 	info.addr = dell_lis3lv02d_devices[i].i2c_addr;
 	strlcpy(info.type, "lis3lv02d", I2C_NAME_SIZE);
-	i2c_new_device(&priv->adapter, &info);
+	i2c_new_client_device(&priv->adapter, &info);
 }
 
 /* Register optional slaves */
@@ -1301,7 +1321,7 @@ static void i801_probe_optional_slaves(struct i801_priv *priv)
 		memset(&info, 0, sizeof(struct i2c_board_info));
 		info.addr = apanel_addr;
 		strlcpy(info.type, "fujitsu_apanel", I2C_NAME_SIZE);
-		i2c_new_device(&priv->adapter, &info);
+		i2c_new_client_device(&priv->adapter, &info);
 	}
 
 	if (dmi_name_in_vendors("FUJITSU"))
@@ -1309,6 +1329,12 @@ static void i801_probe_optional_slaves(struct i801_priv *priv)
 
 	if (is_dell_system_with_lis3lv02d())
 		register_dell_lis3lv02d_i2c_device(priv);
+
+	/* Instantiate SPD EEPROMs unless the SMBus is multiplexed */
+#if IS_ENABLED(CONFIG_I2C_MUX_GPIO)
+	if (!priv->mux_drvdata)
+#endif
+		i2c_register_spd(&priv->adapter);
 }
 #else
 static void __init input_apanel_init(void) {}
@@ -1424,15 +1450,15 @@ static int i801_add_mux(struct i801_priv *priv)
 
 	/* Register GPIO descriptor lookup table */
 	lookup = devm_kzalloc(dev,
-			      struct_size(lookup, table, mux_config->n_gpios),
+			      struct_size(lookup, table, mux_config->n_gpios + 1),
 			      GFP_KERNEL);
 	if (!lookup)
 		return -ENOMEM;
 	lookup->dev_id = "i2c-mux-gpio";
 	for (i = 0; i < mux_config->n_gpios; i++) {
-		lookup->table[i].chip_label = mux_config->gpio_chip;
-		lookup->table[i].chip_hwnum = mux_config->gpios[i];
-		lookup->table[i].con_id = "mux";
+		lookup->table[i] = (struct gpiod_lookup)
+			GPIO_LOOKUP(mux_config->gpio_chip,
+				    mux_config->gpios[i], "mux", 0);
 	}
 	gpiod_add_lookup_table(lookup);
 	priv->lookup = lookup;
@@ -1688,6 +1714,16 @@ static inline int i801_acpi_probe(struct i801_priv *priv) { return 0; }
 static inline void i801_acpi_remove(struct i801_priv *priv) { }
 #endif
 
+static unsigned char i801_setup_hstcfg(struct i801_priv *priv)
+{
+	unsigned char hstcfg = priv->original_hstcfg;
+
+	hstcfg &= ~SMBHSTCFG_I2C_EN;	/* SMBus timing */
+	hstcfg |= SMBHSTCFG_HST_EN;
+	pci_write_config_byte(priv->pci_dev, SMBHSTCFG, hstcfg);
+	return hstcfg;
+}
+
 static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	unsigned char temp;
@@ -1715,6 +1751,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	case PCI_DEVICE_ID_INTEL_LEWISBURG_SSKU_SMBUS:
 	case PCI_DEVICE_ID_INTEL_DNV_SMBUS:
 	case PCI_DEVICE_ID_INTEL_KABYLAKE_PCH_H_SMBUS:
+	case PCI_DEVICE_ID_INTEL_COMETLAKE_V_SMBUS:
 		priv->features |= FEATURE_BLOCK_PROC;
 		priv->features |= FEATURE_I2C_BLOCK_READ;
 		priv->features |= FEATURE_IRQ;
@@ -1729,8 +1766,13 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	case PCI_DEVICE_ID_INTEL_CDF_SMBUS:
 	case PCI_DEVICE_ID_INTEL_ICELAKE_LP_SMBUS:
 	case PCI_DEVICE_ID_INTEL_COMETLAKE_SMBUS:
+	case PCI_DEVICE_ID_INTEL_COMETLAKE_H_SMBUS:
 	case PCI_DEVICE_ID_INTEL_ELKHART_LAKE_SMBUS:
 	case PCI_DEVICE_ID_INTEL_TIGERLAKE_LP_SMBUS:
+	case PCI_DEVICE_ID_INTEL_TIGERLAKE_H_SMBUS:
+	case PCI_DEVICE_ID_INTEL_JASPER_LAKE_SMBUS:
+	case PCI_DEVICE_ID_INTEL_EBG_SMBUS:
+	case PCI_DEVICE_ID_INTEL_ALDER_LAKE_S_SMBUS:
 		priv->features |= FEATURE_BLOCK_PROC;
 		priv->features |= FEATURE_I2C_BLOCK_READ;
 		priv->features |= FEATURE_IRQ;
@@ -1747,19 +1789,19 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	case PCI_DEVICE_ID_INTEL_WELLSBURG_SMBUS_MS1:
 	case PCI_DEVICE_ID_INTEL_WELLSBURG_SMBUS_MS2:
 		priv->features |= FEATURE_IDF;
-		/* fall through */
+		fallthrough;
 	default:
 		priv->features |= FEATURE_BLOCK_PROC;
 		priv->features |= FEATURE_I2C_BLOCK_READ;
 		priv->features |= FEATURE_IRQ;
-		/* fall through */
+		fallthrough;
 	case PCI_DEVICE_ID_INTEL_82801DB_3:
 		priv->features |= FEATURE_SMBUS_PEC;
 		priv->features |= FEATURE_BLOCK_BUFFER;
-		/* fall through */
+		fallthrough;
 	case PCI_DEVICE_ID_INTEL_82801CA_3:
 		priv->features |= FEATURE_HOST_NOTIFY;
-		/* fall through */
+		fallthrough;
 	case PCI_DEVICE_ID_INTEL_82801BA_2:
 	case PCI_DEVICE_ID_INTEL_82801AB_3:
 	case PCI_DEVICE_ID_INTEL_82801AA_3:
@@ -1804,14 +1846,10 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		return err;
 	}
 
-	pci_read_config_byte(priv->pci_dev, SMBHSTCFG, &temp);
-	priv->original_hstcfg = temp;
-	temp &= ~SMBHSTCFG_I2C_EN;	/* SMBus timing */
-	if (!(temp & SMBHSTCFG_HST_EN)) {
+	pci_read_config_byte(priv->pci_dev, SMBHSTCFG, &priv->original_hstcfg);
+	temp = i801_setup_hstcfg(priv);
+	if (!(priv->original_hstcfg & SMBHSTCFG_HST_EN))
 		dev_info(&dev->dev, "Enabling SMBus device\n");
-		temp |= SMBHSTCFG_HST_EN;
-	}
-	pci_write_config_byte(priv->pci_dev, SMBHSTCFG, temp);
 
 	if (temp & SMBHSTCFG_SMB_SMI_EN) {
 		dev_dbg(&dev->dev, "SMBus using interrupt SMI#\n");
@@ -1885,6 +1923,7 @@ static int i801_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 	pci_set_drvdata(dev, priv);
 
+	dev_pm_set_driver_flags(&dev->dev, DPM_FLAG_NO_DIRECT_COMPLETE);
 	pm_runtime_set_autosuspend_delay(&dev->dev, 1000);
 	pm_runtime_use_autosuspend(&dev->dev);
 	pm_runtime_put_autosuspend(&dev->dev);
@@ -1926,10 +1965,9 @@ static void i801_shutdown(struct pci_dev *dev)
 #ifdef CONFIG_PM_SLEEP
 static int i801_suspend(struct device *dev)
 {
-	struct pci_dev *pci_dev = to_pci_dev(dev);
-	struct i801_priv *priv = pci_get_drvdata(pci_dev);
+	struct i801_priv *priv = dev_get_drvdata(dev);
 
-	pci_write_config_byte(pci_dev, SMBHSTCFG, priv->original_hstcfg);
+	pci_write_config_byte(priv->pci_dev, SMBHSTCFG, priv->original_hstcfg);
 	return 0;
 }
 
@@ -1937,6 +1975,7 @@ static int i801_resume(struct device *dev)
 {
 	struct i801_priv *priv = dev_get_drvdata(dev);
 
+	i801_setup_hstcfg(priv);
 	i801_enable_host_notify(&priv->adapter);
 
 	return 0;
@@ -1968,7 +2007,8 @@ static void __exit i2c_i801_exit(void)
 	pci_unregister_driver(&i801_driver);
 }
 
-MODULE_AUTHOR("Mark D. Studebaker <mdsxyz123@yahoo.com>, Jean Delvare <jdelvare@suse.de>");
+MODULE_AUTHOR("Mark D. Studebaker <mdsxyz123@yahoo.com>");
+MODULE_AUTHOR("Jean Delvare <jdelvare@suse.de>");
 MODULE_DESCRIPTION("I801 SMBus driver");
 MODULE_LICENSE("GPL");
 

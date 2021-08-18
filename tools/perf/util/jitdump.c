@@ -26,6 +26,7 @@
 #include "jit.h"
 #include "jitdump.h"
 #include "genelf.h"
+#include "thread.h"
 
 #include <linux/ctype.h>
 #include <linux/zalloc.h>
@@ -57,7 +58,7 @@ struct debug_line_info {
 	unsigned long vma;
 	unsigned int lineno;
 	/* The filename format is unspecified, absolute path, relative etc. */
-	char const filename[0];
+	char const filename[];
 };
 
 struct jit_tool {
@@ -368,17 +369,31 @@ jit_inject_event(struct jit_buf_desc *jd, union perf_event *event)
 
 static uint64_t convert_timestamp(struct jit_buf_desc *jd, uint64_t timestamp)
 {
-	struct perf_tsc_conversion tc;
+	struct perf_tsc_conversion tc = { .time_shift = 0, };
+	struct perf_record_time_conv *time_conv = &jd->session->time_conv;
 
 	if (!jd->use_arch_timestamp)
 		return timestamp;
 
-	tc.time_shift = jd->session->time_conv.time_shift;
-	tc.time_mult  = jd->session->time_conv.time_mult;
-	tc.time_zero  = jd->session->time_conv.time_zero;
+	tc.time_shift = time_conv->time_shift;
+	tc.time_mult  = time_conv->time_mult;
+	tc.time_zero  = time_conv->time_zero;
 
-	if (!tc.time_mult)
-		return 0;
+	/*
+	 * The event TIME_CONV was extended for the fields from "time_cycles"
+	 * when supported cap_user_time_short, for backward compatibility,
+	 * checks the event size and assigns these extended fields if these
+	 * fields are contained in the event.
+	 */
+	if (event_contains(*time_conv, time_cycles)) {
+		tc.time_cycles	       = time_conv->time_cycles;
+		tc.time_mask	       = time_conv->time_mask;
+		tc.cap_user_time_zero  = time_conv->cap_user_time_zero;
+		tc.cap_user_time_short = time_conv->cap_user_time_short;
+
+		if (!tc.cap_user_time_zero)
+			return 0;
+	}
 
 	return tsc_to_perf_time(timestamp, &tc);
 }
@@ -749,6 +764,28 @@ jit_detect(char *mmap_name, pid_t pid)
 	return 0;
 }
 
+static void jit_add_pid(struct machine *machine, pid_t pid)
+{
+	struct thread *thread = machine__findnew_thread(machine, pid, pid);
+
+	if (!thread) {
+		pr_err("%s: thread %d not found or created\n", __func__, pid);
+		return;
+	}
+
+	thread->priv = (void *)1;
+}
+
+static bool jit_has_pid(struct machine *machine, pid_t pid)
+{
+	struct thread *thread = machine__find_thread(machine, pid, pid);
+
+	if (!thread)
+		return 0;
+
+	return (bool)thread->priv;
+}
+
 int
 jit_process(struct perf_session *session,
 	    struct perf_data *output,
@@ -764,8 +801,13 @@ jit_process(struct perf_session *session,
 	/*
 	 * first, detect marker mmap (i.e., the jitdump mmap)
 	 */
-	if (jit_detect(filename, pid))
+	if (jit_detect(filename, pid)) {
+		// Strip //anon* mmaps if we processed a jitdump for this pid
+		if (jit_has_pid(machine, pid) && (strncmp(filename, "//anon", 6) == 0))
+			return 1;
+
 		return 0;
+	}
 
 	memset(&jd, 0, sizeof(jd));
 
@@ -784,6 +826,7 @@ jit_process(struct perf_session *session,
 
 	ret = jit_inject(&jd, filename);
 	if (!ret) {
+		jit_add_pid(machine, pid);
 		*nbytes = jd.bytes_written;
 		ret = 1;
 	}

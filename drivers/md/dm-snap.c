@@ -141,6 +141,11 @@ struct dm_snapshot {
 	 * for them to be committed.
 	 */
 	struct bio_list bios_queued_during_merge;
+
+	/*
+	 * Flush data after merge.
+	 */
+	struct bio flush_bio;
 };
 
 /*
@@ -849,7 +854,7 @@ static int dm_add_exception(void *context, chunk_t old, chunk_t new)
 static uint32_t __minimum_chunk_size(struct origin *o)
 {
 	struct dm_snapshot *snap;
-	unsigned chunk_size = 0;
+	unsigned chunk_size = rounddown_pow_of_two(UINT_MAX);
 
 	if (o)
 		list_for_each_entry(snap, &o->snapshots, list)
@@ -1061,7 +1066,7 @@ static void snapshot_merge_next_chunks(struct dm_snapshot *s)
 			DMERR("Read error in exception store: "
 			      "shutting down merge");
 			down_write(&s->lock);
-			s->merge_failed = 1;
+			s->merge_failed = true;
 			up_write(&s->lock);
 		}
 		goto shut;
@@ -1121,6 +1126,17 @@ shut:
 
 static void error_bios(struct bio *bio);
 
+static int flush_data(struct dm_snapshot *s)
+{
+	struct bio *flush_bio = &s->flush_bio;
+
+	bio_reset(flush_bio);
+	bio_set_dev(flush_bio, s->origin->bdev);
+	flush_bio->bi_opf = REQ_OP_WRITE | REQ_PREFLUSH;
+
+	return submit_bio_wait(flush_bio);
+}
+
 static void merge_callback(int read_err, unsigned long write_err, void *context)
 {
 	struct dm_snapshot *s = context;
@@ -1131,6 +1147,11 @@ static void merge_callback(int read_err, unsigned long write_err, void *context)
 			DMERR("Read error: shutting down merge.");
 		else
 			DMERR("Write error: shutting down merge.");
+		goto shut;
+	}
+
+	if (flush_data(s) < 0) {
+		DMERR("Flush after merge failed: shutting down merge");
 		goto shut;
 	}
 
@@ -1149,7 +1170,7 @@ static void merge_callback(int read_err, unsigned long write_err, void *context)
 
 shut:
 	down_write(&s->lock);
-	s->merge_failed = 1;
+	s->merge_failed = true;
 	b = __release_queued_bios_after_merge(s);
 	up_write(&s->lock);
 	error_bios(b);
@@ -1314,10 +1335,11 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	INIT_LIST_HEAD(&s->list);
 	spin_lock_init(&s->pe_lock);
 	s->state_bits = 0;
-	s->merge_failed = 0;
+	s->merge_failed = false;
 	s->first_merging_chunk = 0;
 	s->num_merging_chunks = 0;
 	bio_list_init(&s->bios_queued_during_merge);
+	bio_init(&s->flush_bio, NULL, 0);
 
 	/* Allocate hash table for COW data */
 	if (init_hash_tables(s)) {
@@ -1386,6 +1408,7 @@ static int snapshot_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 
 	if (!s->store->chunk_size) {
 		ti->error = "Chunk size not set";
+		r = -EINVAL;
 		goto bad_read_metadata;
 	}
 
@@ -1504,6 +1527,8 @@ static void snapshot_dtr(struct dm_target *ti)
 
 	dm_exception_store_destroy(s->store);
 
+	bio_uninit(&s->flush_bio);
+
 	dm_put_device(ti, s->cow);
 
 	dm_put_device(ti, s->origin);
@@ -1568,7 +1593,7 @@ static void flush_bios(struct bio *bio)
 	while (bio) {
 		n = bio->bi_next;
 		bio->bi_next = NULL;
-		generic_make_request(bio);
+		submit_bio_noacct(bio);
 		bio = n;
 	}
 }
@@ -1588,7 +1613,7 @@ static void retry_origin_bios(struct dm_snapshot *s, struct bio *bio)
 		bio->bi_next = NULL;
 		r = do_origin(s->origin, bio, false);
 		if (r == DM_MAPIO_REMAPPED)
-			generic_make_request(bio);
+			submit_bio_noacct(bio);
 		bio = n;
 	}
 }
@@ -1829,7 +1854,7 @@ static void start_full_bio(struct dm_snap_pending_exception *pe,
 	bio->bi_end_io = full_bio_end_io;
 	bio->bi_private = callback_data;
 
-	generic_make_request(bio);
+	submit_bio_noacct(bio);
 }
 
 static struct dm_snap_pending_exception *

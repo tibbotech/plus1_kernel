@@ -929,6 +929,7 @@ static const char *keys[KEY_MAX + 1] = {
 	[KEY_APPSELECT] = "AppSelect",
 	[KEY_SCREENSAVER] = "ScreenSaver",
 	[KEY_VOICECOMMAND] = "VoiceCommand",
+	[KEY_EMOJI_PICKER] = "EmojiPicker",
 	[KEY_BRIGHTNESS_MIN] = "BrightnessMin",
 	[KEY_BRIGHTNESS_MAX] = "BrightnessMax",
 	[KEY_BRIGHTNESS_AUTO] = "BrightnessAuto",
@@ -1101,11 +1102,6 @@ static ssize_t hid_debug_events_read(struct file *file, char __user *buffer,
 		set_current_state(TASK_INTERRUPTIBLE);
 
 		while (kfifo_is_empty(&list->hid_debug_fifo)) {
-			if (file->f_flags & O_NONBLOCK) {
-				ret = -EAGAIN;
-				break;
-			}
-
 			if (signal_pending(current)) {
 				ret = -ERESTARTSYS;
 				break;
@@ -1120,6 +1116,11 @@ static ssize_t hid_debug_events_read(struct file *file, char __user *buffer,
 				ret = -EIO;
 				set_current_state(TASK_RUNNING);
 				goto out;
+			}
+
+			if (file->f_flags & O_NONBLOCK) {
+				ret = -EAGAIN;
+				break;
 			}
 
 			/* allow O_NONBLOCK from other threads */

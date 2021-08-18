@@ -59,7 +59,7 @@
 
 		periph_cntl: syscon@10000008 {
 			compatible = "syscon";
-			reg = <0x10000000 0xc>;
+			reg = <0x10000008 0x4>;
 			native-endian;
 		};
 
@@ -106,6 +106,12 @@
 			clock-names = "refclk";
 
 			status = "disabled";
+		};
+
+		periph_pwr: power-controller@10001848 {
+			compatible = "brcm,bcm6362-power-controller";
+			reg = <0x10001848 0x4>;
+			#power-domain-cells = <1>;
 		};
 
 		leds0: led-controller@10001900 {

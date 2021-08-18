@@ -876,6 +876,9 @@ static int rfkill_resume(struct device *dev)
 
 	rfkill->suspended = false;
 
+	if (!rfkill->registered)
+		return 0;
+
 	if (!rfkill->persistent) {
 		cur = !!(rfkill->state & RFKILL_BLOCK_SW);
 		rfkill_set_block(rfkill, cur);
@@ -1314,7 +1317,7 @@ static const struct file_operations rfkill_fops = {
 	.release	= rfkill_fop_release,
 #ifdef CONFIG_RFKILL_INPUT
 	.unlocked_ioctl	= rfkill_fop_ioctl,
-	.compat_ioctl	= rfkill_fop_ioctl,
+	.compat_ioctl	= compat_ptr_ioctl,
 #endif
 	.llseek		= no_llseek,
 };

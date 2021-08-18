@@ -961,7 +961,7 @@ static int moxa_pci_probe(struct pci_dev *pdev,
 		goto err;
 	}
 
-	board->basemem = ioremap_nocache(pci_resource_start(pdev, 2), 0x4000);
+	board->basemem = ioremap(pci_resource_start(pdev, 2), 0x4000);
 	if (board->basemem == NULL) {
 		dev_err(&pdev->dev, "can't remap io space 2\n");
 		retval = -ENOMEM;
@@ -1071,7 +1071,7 @@ static int __init moxa_init(void)
 			brd->numPorts = type[i] == MOXA_BOARD_C218_ISA ? 8 :
 					numports[i];
 			brd->busType = MOXA_BUS_TYPE_ISA;
-			brd->basemem = ioremap_nocache(baseaddr[i], 0x4000);
+			brd->basemem = ioremap(baseaddr[i], 0x4000);
 			if (!brd->basemem) {
 				printk(KERN_ERR "MOXA: can't remap %lx\n",
 						baseaddr[i]);
@@ -2040,7 +2040,7 @@ static int moxa_get_serial_info(struct tty_struct *tty,
 	ss->line = info->port.tty->index,
 	ss->flags = info->port.flags,
 	ss->baud_base = 921600,
-	ss->close_delay = info->port.close_delay;
+	ss->close_delay = jiffies_to_msecs(info->port.close_delay) / 10;
 	mutex_unlock(&info->port.mutex);
 	return 0;
 }
@@ -2050,6 +2050,7 @@ static int moxa_set_serial_info(struct tty_struct *tty,
 		struct serial_struct *ss)
 {
 	struct moxa_port *info = tty->driver_data;
+	unsigned int close_delay;
 
 	if (tty->index == MAX_PORTS)
 		return -EINVAL;
@@ -2061,19 +2062,24 @@ static int moxa_set_serial_info(struct tty_struct *tty,
 			ss->baud_base != 921600)
 		return -EPERM;
 
+	close_delay = msecs_to_jiffies(ss->close_delay * 10);
+
 	mutex_lock(&info->port.mutex);
 	if (!capable(CAP_SYS_ADMIN)) {
-		if (((ss->flags & ~ASYNC_USR_MASK) !=
+		if (close_delay != info->port.close_delay ||
+		    ss->type != info->type ||
+		    ((ss->flags & ~ASYNC_USR_MASK) !=
 		     (info->port.flags & ~ASYNC_USR_MASK))) {
 			mutex_unlock(&info->port.mutex);
 			return -EPERM;
 		}
+	} else {
+		info->port.close_delay = close_delay;
+
+		MoxaSetFifo(info, ss->type == PORT_16550A);
+
+		info->type = ss->type;
 	}
-	info->port.close_delay = ss->close_delay * HZ / 100;
-
-	MoxaSetFifo(info, ss->type == PORT_16550A);
-
-	info->type = ss->type;
 	mutex_unlock(&info->port.mutex);
 	return 0;
 }

@@ -56,7 +56,11 @@ struct mxc4005_data {
 	struct mutex mutex;
 	struct regmap *regmap;
 	struct iio_trigger *dready_trig;
-	__be16 buffer[8];
+	/* Ensure timestamp is naturally aligned */
+	struct {
+		__be16 chans[3];
+		s64 timestamp __aligned(8);
+	} scan;
 	bool trigger_enabled;
 };
 
@@ -135,7 +139,7 @@ static int mxc4005_read_xyz(struct mxc4005_data *data)
 	int ret;
 
 	ret = regmap_bulk_read(data->regmap, MXC4005_REG_XOUT_UPPER,
-			       (u8 *) data->buffer, sizeof(data->buffer));
+			       data->scan.chans, sizeof(data->scan.chans));
 	if (ret < 0) {
 		dev_err(data->dev, "failed to read axes\n");
 		return ret;
@@ -150,7 +154,7 @@ static int mxc4005_read_axis(struct mxc4005_data *data,
 	__be16 reg;
 	int ret;
 
-	ret = regmap_bulk_read(data->regmap, addr, (u8 *) &reg, sizeof(reg));
+	ret = regmap_bulk_read(data->regmap, addr, &reg, sizeof(reg));
 	if (ret < 0) {
 		dev_err(data->dev, "failed to read reg %02x\n", addr);
 		return ret;
@@ -301,7 +305,7 @@ static irqreturn_t mxc4005_trigger_handler(int irq, void *private)
 	if (ret < 0)
 		goto err;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
+	iio_push_to_buffers_with_timestamp(indio_dev, &data->scan,
 					   pf->timestamp);
 
 err:
@@ -416,7 +420,6 @@ static int mxc4005_probe(struct i2c_client *client,
 
 	mutex_init(&data->mutex);
 
-	indio_dev->dev.parent = &client->dev;
 	indio_dev->channels = mxc4005_channels;
 	indio_dev->num_channels = ARRAY_SIZE(mxc4005_channels);
 	indio_dev->available_scan_masks = mxc4005_scan_masks;
@@ -474,12 +477,14 @@ static int mxc4005_probe(struct i2c_client *client,
 
 static const struct acpi_device_id mxc4005_acpi_match[] = {
 	{"MXC4005",	0},
+	{"MXC6655",	0},
 	{ },
 };
 MODULE_DEVICE_TABLE(acpi, mxc4005_acpi_match);
 
 static const struct i2c_device_id mxc4005_id[] = {
 	{"mxc4005",	0},
+	{"mxc6655",	0},
 	{ },
 };
 MODULE_DEVICE_TABLE(i2c, mxc4005_id);

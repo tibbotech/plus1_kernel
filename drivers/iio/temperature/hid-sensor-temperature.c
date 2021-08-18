@@ -7,8 +7,6 @@
 #include <linux/hid-sensor-hub.h>
 #include <linux/iio/buffer.h>
 #include <linux/iio/iio.h>
-#include <linux/iio/triggered_buffer.h>
-#include <linux/iio/trigger_consumer.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 
@@ -17,7 +15,10 @@
 struct temperature_state {
 	struct hid_sensor_common common_attributes;
 	struct hid_sensor_hub_attribute_info temperature_attr;
-	s32 temperature_data;
+	struct {
+		s32 temperature_data;
+		u64 timestamp __aligned(8);
+	} scan;
 	int scale_pre_decml;
 	int scale_post_decml;
 	int scale_precision;
@@ -34,7 +35,7 @@ static const struct iio_chan_spec temperature_channels[] = {
 			BIT(IIO_CHAN_INFO_SAMP_FREQ) |
 			BIT(IIO_CHAN_INFO_HYSTERESIS),
 	},
-	IIO_CHAN_SOFT_TIMESTAMP(3),
+	IIO_CHAN_SOFT_TIMESTAMP(1),
 };
 
 /* Adjust channel real bits based on report descriptor */
@@ -125,9 +126,8 @@ static int temperature_proc_event(struct hid_sensor_hub_device *hsdev,
 	struct temperature_state *temp_st = iio_priv(indio_dev);
 
 	if (atomic_read(&temp_st->common_attributes.data_ready))
-		iio_push_to_buffers_with_timestamp(indio_dev,
-				&temp_st->temperature_data,
-				iio_get_time_ns(indio_dev));
+		iio_push_to_buffers_with_timestamp(indio_dev, &temp_st->scan,
+						   iio_get_time_ns(indio_dev));
 
 	return 0;
 }
@@ -142,7 +142,7 @@ static int temperature_capture_sample(struct hid_sensor_hub_device *hsdev,
 
 	switch (usage_id) {
 	case HID_USAGE_SENSOR_DATA_ENVIRONMENTAL_TEMPERATURE:
-		temp_st->temperature_data = *(s32 *)raw_data;
+		temp_st->scan.temperature_data = *(s32 *)raw_data;
 		return 0;
 	default:
 		return -EINVAL;
@@ -225,17 +225,12 @@ static int hid_temperature_probe(struct platform_device *pdev)
 
 	indio_dev->channels = temp_chans;
 	indio_dev->num_channels = ARRAY_SIZE(temperature_channels);
-	indio_dev->dev.parent = &pdev->dev;
 	indio_dev->info = &temperature_info;
 	indio_dev->name = name;
 	indio_dev->modes = INDIO_DIRECT_MODE;
 
-	ret = devm_iio_triggered_buffer_setup(&pdev->dev, indio_dev,
-					&iio_pollfunc_store_time, NULL, NULL);
-	if (ret)
-		return ret;
-
 	atomic_set(&temp_st->common_attributes.data_ready, 0);
+
 	ret = hid_sensor_setup_trigger(indio_dev, name,
 				&temp_st->common_attributes);
 	if (ret)
@@ -258,7 +253,7 @@ static int hid_temperature_probe(struct platform_device *pdev)
 error_remove_callback:
 	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_TEMPERATURE);
 error_remove_trigger:
-	hid_sensor_remove_trigger(&temp_st->common_attributes);
+	hid_sensor_remove_trigger(indio_dev, &temp_st->common_attributes);
 	return ret;
 }
 
@@ -270,7 +265,7 @@ static int hid_temperature_remove(struct platform_device *pdev)
 	struct temperature_state *temp_st = iio_priv(indio_dev);
 
 	sensor_hub_remove_callback(hsdev, HID_USAGE_SENSOR_TEMPERATURE);
-	hid_sensor_remove_trigger(&temp_st->common_attributes);
+	hid_sensor_remove_trigger(indio_dev, &temp_st->common_attributes);
 
 	return 0;
 }

@@ -13,10 +13,9 @@
 #include <linux/kthread.h>
 #include <linux/dmi.h>
 #include <linux/nls.h>
-#include <linux/dma-mapping.h>
+#include <linux/dma-map-ops.h>
 #include <linux/platform_data/x86/apple.h>
-
-#include <asm/pgtable.h>
+#include <linux/pgtable.h>
 
 #include "internal.h"
 
@@ -483,10 +482,10 @@ static void acpi_device_del(struct acpi_device *device)
 	list_for_each_entry(acpi_device_bus_id, &acpi_bus_id_list, node)
 		if (!strcmp(acpi_device_bus_id->bus_id,
 			    acpi_device_hid(device))) {
-			if (acpi_device_bus_id->instance_no > 0)
-				acpi_device_bus_id->instance_no--;
-			else {
+			ida_simple_remove(&acpi_device_bus_id->instance_ida, device->pnp.instance_no);
+			if (ida_is_empty(&acpi_device_bus_id->instance_ida)) {
 				list_del(&acpi_device_bus_id->node);
+				kfree_const(acpi_device_bus_id->bus_id);
 				kfree(acpi_device_bus_id);
 			}
 			break;
@@ -586,6 +585,8 @@ static int acpi_get_device_data(acpi_handle handle, struct acpi_device **device,
 	if (!device)
 		return -EINVAL;
 
+	*device = NULL;
+
 	status = acpi_get_data_full(handle, acpi_scan_drop_device,
 				    (void **)device, callback);
 	if (ACPI_FAILURE(status) || !*device) {
@@ -621,12 +622,38 @@ void acpi_bus_put_acpi_device(struct acpi_device *adev)
 	put_device(&adev->dev);
 }
 
+static struct acpi_device_bus_id *acpi_device_bus_id_match(const char *dev_id)
+{
+	struct acpi_device_bus_id *acpi_device_bus_id;
+
+	/* Find suitable bus_id and instance number in acpi_bus_id_list. */
+	list_for_each_entry(acpi_device_bus_id, &acpi_bus_id_list, node) {
+		if (!strcmp(acpi_device_bus_id->bus_id, dev_id))
+			return acpi_device_bus_id;
+	}
+	return NULL;
+}
+
+static int acpi_device_set_name(struct acpi_device *device,
+				struct acpi_device_bus_id *acpi_device_bus_id)
+{
+	struct ida *instance_ida = &acpi_device_bus_id->instance_ida;
+	int result;
+
+	result = ida_simple_get(instance_ida, 0, ACPI_MAX_DEVICE_INSTANCES, GFP_KERNEL);
+	if (result < 0)
+		return result;
+
+	device->pnp.instance_no = result;
+	dev_set_name(&device->dev, "%s:%02x", acpi_device_bus_id->bus_id, result);
+	return 0;
+}
+
 int acpi_device_add(struct acpi_device *device,
 		    void (*release)(struct device *))
 {
+	struct acpi_device_bus_id *acpi_device_bus_id;
 	int result;
-	struct acpi_device_bus_id *acpi_device_bus_id, *new_bus_id;
-	int found = 0;
 
 	if (device->handle) {
 		acpi_status status;
@@ -652,34 +679,39 @@ int acpi_device_add(struct acpi_device *device,
 	INIT_LIST_HEAD(&device->del_list);
 	mutex_init(&device->physical_node_lock);
 
-	new_bus_id = kzalloc(sizeof(struct acpi_device_bus_id), GFP_KERNEL);
-	if (!new_bus_id) {
-		pr_err(PREFIX "Memory allocation error\n");
-		result = -ENOMEM;
-		goto err_detach;
-	}
-
 	mutex_lock(&acpi_device_lock);
-	/*
-	 * Find suitable bus_id and instance number in acpi_bus_id_list
-	 * If failed, create one and link it into acpi_bus_id_list
-	 */
-	list_for_each_entry(acpi_device_bus_id, &acpi_bus_id_list, node) {
-		if (!strcmp(acpi_device_bus_id->bus_id,
-			    acpi_device_hid(device))) {
-			acpi_device_bus_id->instance_no++;
-			found = 1;
-			kfree(new_bus_id);
-			break;
+
+	acpi_device_bus_id = acpi_device_bus_id_match(acpi_device_hid(device));
+	if (acpi_device_bus_id) {
+		result = acpi_device_set_name(device, acpi_device_bus_id);
+		if (result)
+			goto err_unlock;
+	} else {
+		acpi_device_bus_id = kzalloc(sizeof(*acpi_device_bus_id),
+					     GFP_KERNEL);
+		if (!acpi_device_bus_id) {
+			result = -ENOMEM;
+			goto err_unlock;
 		}
-	}
-	if (!found) {
-		acpi_device_bus_id = new_bus_id;
-		strcpy(acpi_device_bus_id->bus_id, acpi_device_hid(device));
-		acpi_device_bus_id->instance_no = 0;
+		acpi_device_bus_id->bus_id =
+			kstrdup_const(acpi_device_hid(device), GFP_KERNEL);
+		if (!acpi_device_bus_id->bus_id) {
+			kfree(acpi_device_bus_id);
+			result = -ENOMEM;
+			goto err_unlock;
+		}
+
+		ida_init(&acpi_device_bus_id->instance_ida);
+
+		result = acpi_device_set_name(device, acpi_device_bus_id);
+		if (result) {
+			kfree_const(acpi_device_bus_id->bus_id);
+			kfree(acpi_device_bus_id);
+			goto err_unlock;
+		}
+
 		list_add_tail(&acpi_device_bus_id->node, &acpi_bus_id_list);
 	}
-	dev_set_name(&device->dev, "%s:%02x", acpi_device_bus_id->bus_id, acpi_device_bus_id->instance_no);
 
 	if (device->parent)
 		list_add_tail(&device->node, &device->parent->children);
@@ -710,9 +742,10 @@ int acpi_device_add(struct acpi_device *device,
 	if (device->parent)
 		list_del(&device->node);
 	list_del(&device->wakeup_list);
+
+ err_unlock:
 	mutex_unlock(&acpi_device_lock);
 
- err_detach:
 	acpi_detach_data(device->handle, acpi_scan_drop_device);
 	return result;
 }
@@ -899,8 +932,7 @@ static void acpi_bus_get_wakeup_device_flags(struct acpi_device *device)
 	 */
 	err = acpi_device_sleep_wake(device, 0, 0, 0);
 	if (err)
-		ACPI_DEBUG_PRINT((ACPI_DB_INFO,
-				"error in _DSW or _PSW evaluation\n"));
+		pr_debug("error in _DSW or _PSW evaluation\n");
 }
 
 static void acpi_bus_init_power_state(struct acpi_device *device, int state)
@@ -919,12 +951,9 @@ static void acpi_bus_init_power_state(struct acpi_device *device, int state)
 
 		if (buffer.length && package
 		    && package->type == ACPI_TYPE_PACKAGE
-		    && package->package.count) {
-			int err = acpi_extract_power_resources(package, 0,
-							       &ps->resources);
-			if (!err)
-				device->power.flags.power_resources = 1;
-		}
+		    && package->package.count)
+			acpi_extract_power_resources(package, 0, &ps->resources);
+
 		ACPI_FREE(buffer.pointer);
 	}
 
@@ -971,13 +1000,26 @@ static void acpi_bus_get_power_flags(struct acpi_device *device)
 		acpi_bus_init_power_state(device, i);
 
 	INIT_LIST_HEAD(&device->power.states[ACPI_STATE_D3_COLD].resources);
-	if (!list_empty(&device->power.states[ACPI_STATE_D3_HOT].resources))
-		device->power.states[ACPI_STATE_D3_COLD].flags.valid = 1;
 
-	/* Set defaults for D0 and D3hot states (always valid) */
+	/* Set the defaults for D0 and D3hot (always supported). */
 	device->power.states[ACPI_STATE_D0].flags.valid = 1;
 	device->power.states[ACPI_STATE_D0].power = 100;
 	device->power.states[ACPI_STATE_D3_HOT].flags.valid = 1;
+
+	/*
+	 * Use power resources only if the D0 list of them is populated, because
+	 * some platforms may provide _PR3 only to indicate D3cold support and
+	 * in those cases the power resources list returned by it may be bogus.
+	 */
+	if (!list_empty(&device->power.states[ACPI_STATE_D0].resources)) {
+		device->power.flags.power_resources = 1;
+		/*
+		 * D3cold is supported if the D3hot list of power resources is
+		 * not empty.
+		 */
+		if (!list_empty(&device->power.states[ACPI_STATE_D3_HOT].resources))
+			device->power.states[ACPI_STATE_D3_COLD].flags.valid = 1;
+	}
 
 	if (acpi_bus_init_power(device))
 		device->flags.power_manageable = 0;
@@ -1445,11 +1487,13 @@ int acpi_dma_get_range(struct device *dev, u64 *dma_addr, u64 *offset,
 }
 
 /**
- * acpi_dma_configure - Set-up DMA configuration for the device.
+ * acpi_dma_configure_id - Set-up DMA configuration for the device.
  * @dev: The pointer to the device
  * @attr: device dma attributes
+ * @input_id: input device id const value pointer
  */
-int acpi_dma_configure(struct device *dev, enum dev_dma_attr attr)
+int acpi_dma_configure_id(struct device *dev, enum dev_dma_attr attr,
+			  const u32 *input_id)
 {
 	const struct iommu_ops *iommu;
 	u64 dma_addr = 0, size = 0;
@@ -1461,8 +1505,8 @@ int acpi_dma_configure(struct device *dev, enum dev_dma_attr attr)
 
 	iort_dma_setup(dev, &dma_addr, &size);
 
-	iommu = iort_iommu_configure(dev);
-	if (IS_ERR(iommu) && PTR_ERR(iommu) == -EPROBE_DEFER)
+	iommu = iort_iommu_configure_id(dev, input_id);
+	if (PTR_ERR(iommu) == -EPROBE_DEFER)
 		return -EPROBE_DEFER;
 
 	arch_setup_dma_ops(dev, dma_addr, size,
@@ -1470,7 +1514,7 @@ int acpi_dma_configure(struct device *dev, enum dev_dma_attr attr)
 
 	return 0;
 }
-EXPORT_SYMBOL_GPL(acpi_dma_configure);
+EXPORT_SYMBOL_GPL(acpi_dma_configure_id);
 
 static void acpi_init_coherency(struct acpi_device *adev)
 {
@@ -2157,10 +2201,13 @@ static void __init acpi_get_spcr_uart_addr(void)
 
 	status = acpi_get_table(ACPI_SIG_SPCR, 0,
 				(struct acpi_table_header **)&spcr_ptr);
-	if (ACPI_SUCCESS(status))
-		spcr_uart_addr = spcr_ptr->serial_port.address;
-	else
-		printk(KERN_WARNING PREFIX "STAO table present, but SPCR is missing\n");
+	if (ACPI_FAILURE(status)) {
+		pr_warn(PREFIX "STAO table present, but SPCR is missing\n");
+		return;
+	}
+
+	spcr_uart_addr = spcr_ptr->serial_port.address;
+	acpi_put_table((struct acpi_table_header *)spcr_ptr);
 }
 
 static bool acpi_scan_initialized;
@@ -2196,10 +2243,12 @@ int __init acpi_scan_init(void)
 				(struct acpi_table_header **)&stao_ptr);
 	if (ACPI_SUCCESS(status)) {
 		if (stao_ptr->header.length > sizeof(struct acpi_table_stao))
-			printk(KERN_INFO PREFIX "STAO Name List not yet supported.");
+			pr_info(PREFIX "STAO Name List not yet supported.\n");
 
 		if (stao_ptr->ignore_uart)
 			acpi_get_spcr_uart_addr();
+
+		acpi_put_table((struct acpi_table_header *)stao_ptr);
 	}
 
 	acpi_gpe_apply_masked_gpes();

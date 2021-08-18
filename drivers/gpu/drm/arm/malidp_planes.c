@@ -346,7 +346,7 @@ static bool malidp_check_pages_threshold(struct malidp_plane_state *ms,
 		if (cma_obj->sgt)
 			sgt = cma_obj->sgt;
 		else
-			sgt = obj->dev->driver->gem_prime_get_sg_table(obj);
+			sgt = obj->funcs->get_sg_table(obj);
 
 		if (!sgt)
 			return false;
@@ -512,7 +512,7 @@ static int malidp_de_plane_check(struct drm_plane *plane,
 	int i, ret;
 	unsigned int block_w, block_h;
 
-	if (!state->crtc || !state->fb)
+	if (!state->crtc || WARN_ON(!state->fb))
 		return 0;
 
 	fb = state->fb;
@@ -922,13 +922,18 @@ static const struct drm_plane_helper_funcs malidp_de_plane_helper_funcs = {
 	.atomic_disable = malidp_de_plane_disable,
 };
 
+static const uint64_t linear_only_modifiers[] = {
+	DRM_FORMAT_MOD_LINEAR,
+	DRM_FORMAT_MOD_INVALID
+};
+
 int malidp_de_planes_init(struct drm_device *drm)
 {
 	struct malidp_drm *malidp = drm->dev_private;
 	const struct malidp_hw_regmap *map = &malidp->dev->hw->map;
 	struct malidp_plane *plane = NULL;
 	enum drm_plane_type plane_type;
-	unsigned long crtcs = 1 << drm->mode_config.num_crtc;
+	unsigned long crtcs = BIT(drm->mode_config.num_crtc);
 	unsigned long flags = DRM_MODE_ROTATE_0 | DRM_MODE_ROTATE_90 | DRM_MODE_ROTATE_180 |
 			      DRM_MODE_ROTATE_270 | DRM_MODE_REFLECT_X | DRM_MODE_REFLECT_Y;
 	unsigned int blend_caps = BIT(DRM_MODE_BLEND_PIXEL_NONE) |
@@ -985,8 +990,8 @@ int malidp_de_planes_init(struct drm_device *drm)
 		 */
 		ret = drm_universal_plane_init(drm, &plane->base, crtcs,
 				&malidp_de_plane_funcs, formats, n,
-				(id == DE_SMART) ? NULL : modifiers, plane_type,
-				NULL);
+				(id == DE_SMART) ? linear_only_modifiers : modifiers,
+				plane_type, NULL);
 
 		if (ret < 0)
 			goto cleanup;

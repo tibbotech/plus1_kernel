@@ -22,6 +22,7 @@
 #include <linux/interrupt.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
+#include <linux/usb/otg.h>
 #include <linux/moduleparam.h>
 #include <linux/dma-mapping.h>
 #include <linux/debugfs.h>
@@ -573,6 +574,7 @@ static int ehci_run (struct usb_hcd *hcd)
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
 	u32			temp;
 	u32			hcc_params;
+	int			rc;
 
 	hcd->uses_new_polling = 1;
 
@@ -628,9 +630,20 @@ static int ehci_run (struct usb_hcd *hcd)
 	down_write(&ehci_cf_port_reset_rwsem);
 	ehci->rh_state = EHCI_RH_RUNNING;
 	ehci_writel(ehci, FLAG_CF, &ehci->regs->configured_flag);
+
+	/* Wait until HC become operational */
 	ehci_readl(ehci, &ehci->regs->command);	/* unblock posted writes */
 	msleep(5);
+	rc = ehci_handshake(ehci, &ehci->regs->status, STS_HALT, 0, 100 * 1000);
+
 	up_write(&ehci_cf_port_reset_rwsem);
+
+	if (rc) {
+		ehci_err(ehci, "USB %x.%x, controller refused to start: %d\n",
+			 ((ehci->sbrn & 0xf0)>>4), (ehci->sbrn & 0x0f), rc);
+		return rc;
+	}
+
 	ehci->last_periodic_enable = ktime_get_real();
 
 	temp = HC_VERSION(ehci, ehci_readl(ehci, &ehci->caps->hc_capbase));
@@ -690,7 +703,8 @@ EXPORT_SYMBOL_GPL(ehci_setup);
 static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 {
 	struct ehci_hcd		*ehci = hcd_to_ehci (hcd);
-	u32			status, masked_status, pcd_status = 0, cmd;
+	u32			status, current_status, masked_status, pcd_status = 0;
+	u32			cmd;
 	int			bh;
 	unsigned long		flags;
 
@@ -702,19 +716,22 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 	 */
 	spin_lock_irqsave(&ehci->lock, flags);
 
-	status = ehci_readl(ehci, &ehci->regs->status);
+	status = 0;
+	current_status = ehci_readl(ehci, &ehci->regs->status);
+restart:
 
 	/* e.g. cardbus physical eject */
-	if (status == ~(u32) 0) {
+	if (current_status == ~(u32) 0) {
 		ehci_dbg (ehci, "device removed\n");
 		goto dead;
 	}
+	status |= current_status;
 
 	/*
 	 * We don't use STS_FLR, but some controllers don't like it to
 	 * remain on, so mask it out along with the other status bits.
 	 */
-	masked_status = status & (INTR_MASK | STS_FLR);
+	masked_status = current_status & (INTR_MASK | STS_FLR);
 
 	/* Shared IRQ? */
 	if (!masked_status || unlikely(ehci->rh_state == EHCI_RH_HALTED)) {
@@ -724,6 +741,12 @@ static irqreturn_t ehci_irq (struct usb_hcd *hcd)
 
 	/* clear (just) interrupts */
 	ehci_writel(ehci, masked_status, &ehci->regs->status);
+
+	/* For edge interrupts, don't race with an interrupt bit being raised */
+	current_status = ehci_readl(ehci, &ehci->regs->status);
+	if (current_status & INTR_MASK)
+		goto restart;
+
 	cmd = ehci_readl(ehci, &ehci->regs->command);
 	bh = 0;
 
@@ -982,7 +1005,7 @@ rescan:
 			start_unlink_async(ehci, qh);
 		else
 			start_unlink_intr(ehci, qh);
-		/* FALL THROUGH */
+		fallthrough;
 	case QH_STATE_COMPLETING:	/* already in unlinking */
 	case QH_STATE_UNLINK:		/* wait for hw to finish? */
 	case QH_STATE_UNLINK_WAIT:
@@ -999,7 +1022,7 @@ idle_timeout:
 			qh_destroy(ehci, qh);
 			break;
 		}
-		/* fall through */
+		fallthrough;
 	default:
 		/* caller was supposed to have unlinked any requests;
 		 * that's not our job.  just leak this memory.
@@ -1284,10 +1307,6 @@ MODULE_LICENSE ("GPL");
 #ifdef CONFIG_SPARC_LEON
 #include "ehci-grlib.c"
 #define PLATFORM_DRIVER		ehci_grlib_driver
-#endif
-
-#ifdef CONFIG_USB_EHCI_HCD
-#include "ehci-sunplus.c"
 #endif
 
 static int __init ehci_hcd_init(void)

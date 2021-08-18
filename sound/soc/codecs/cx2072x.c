@@ -1507,7 +1507,7 @@ static int cx2072x_probe(struct snd_soc_component *codec)
 	regmap_multi_reg_write(cx2072x->regmap, cx2072x_reg_init,
 			       ARRAY_SIZE(cx2072x_reg_init));
 
-	/* configre PortC as input device */
+	/* configure PortC as input device */
 	regmap_update_bits(cx2072x->regmap, CX2072X_PORTC_PIN_CTRL,
 			   0x20, 0x20);
 
@@ -1579,7 +1579,7 @@ static struct snd_soc_dai_driver soc_codec_cx2072x_dai[] = {
 		.id	= CX2072X_DAI_DSP,
 		.probe = cx2072x_dsp_dai_probe,
 		.playback = {
-			.stream_name = "Playback",
+			.stream_name = "DSP Playback",
 			.channels_min = 2,
 			.channels_max = 2,
 			.rates = CX2072X_RATES_DSP,
@@ -1591,7 +1591,7 @@ static struct snd_soc_dai_driver soc_codec_cx2072x_dai[] = {
 		.name = "cx2072x-aec",
 		.id	= 3,
 		.capture = {
-			.stream_name = "Capture",
+			.stream_name = "AEC Capture",
 			.channels_min = 2,
 			.channels_max = 2,
 			.rates = CX2072X_RATES_DSP,

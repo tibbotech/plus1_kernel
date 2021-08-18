@@ -66,8 +66,9 @@ static const struct at91_soc __initconst socs[] = {
 	AT91_SOC(AT91SAM9XE128_CIDR_MATCH, 0, "at91sam9xe128", "at91sam9xe128"),
 	AT91_SOC(AT91SAM9XE256_CIDR_MATCH, 0, "at91sam9xe256", "at91sam9xe256"),
 	AT91_SOC(AT91SAM9XE512_CIDR_MATCH, 0, "at91sam9xe512", "at91sam9xe512"),
-	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_EXID_MATCH,
-		 "sam9x60", "sam9x60"),
+#endif
+#ifdef CONFIG_SOC_SAM9X60
+	AT91_SOC(SAM9X60_CIDR_MATCH, SAM9X60_EXID_MATCH, "sam9x60", "sam9x60"),
 #endif
 #ifdef CONFIG_SOC_SAMA5
 	AT91_SOC(SAMA5D2_CIDR_MATCH, SAMA5D21CU_EXID_MATCH,
@@ -264,8 +265,21 @@ struct soc_device * __init at91_soc_init(const struct at91_soc *socs)
 	return soc_dev;
 }
 
+static const struct of_device_id at91_soc_allowed_list[] __initconst = {
+	{ .compatible = "atmel,at91rm9200", },
+	{ .compatible = "atmel,at91sam9", },
+	{ .compatible = "atmel,sama5", },
+	{ .compatible = "atmel,samv7", },
+	{ }
+};
+
 static int __init atmel_soc_device_init(void)
 {
+	struct device_node *np = of_find_node_by_path("/");
+
+	if (!of_match_node(at91_soc_allowed_list, np))
+		return 0;
+
 	at91_soc_init(socs);
 
 	return 0;

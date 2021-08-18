@@ -521,7 +521,7 @@ static int xemaclite_set_mac_address(struct net_device *dev, void *address)
  *
  * This function is called when Tx time out occurs for Emaclite device.
  */
-static void xemaclite_tx_timeout(struct net_device *dev)
+static void xemaclite_tx_timeout(struct net_device *dev, unsigned int txqueue)
 {
 	struct net_local *lp = netdev_priv(dev);
 	unsigned long flags;
@@ -1191,9 +1191,8 @@ static int xemaclite_of_probe(struct platform_device *ofdev)
 	}
 
 	dev_info(dev,
-		 "Xilinx EmacLite at 0x%08X mapped to 0x%08X, irq=%d\n",
-		 (unsigned int __force)ndev->mem_start,
-		 (unsigned int __force)lp->base_addr, ndev->irq);
+		 "Xilinx EmacLite at 0x%08X mapped to 0x%p, irq=%d\n",
+		 (unsigned int __force)ndev->mem_start, lp->base_addr, ndev->irq);
 	return 0;
 
 error:

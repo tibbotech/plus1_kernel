@@ -302,7 +302,7 @@ static void ltq_hw_irq_handler(struct irq_desc *desc)
 	generic_handle_irq(irq_linear_revmap(ltq_domain, hwirq));
 
 	/* if this is a EBU irq, we need to ack it or get a deadlock */
-	if ((irq == LTQ_ICU_EBU_IRQ) && (module == 0) && LTQ_EBU_PCC_ISTAT)
+	if (irq == LTQ_ICU_EBU_IRQ && !module && LTQ_EBU_PCC_ISTAT != 0)
 		ltq_ebu_w32(ltq_ebu_r32(LTQ_EBU_PCC_ISTAT) | 0x10,
 			LTQ_EBU_PCC_ISTAT);
 }
@@ -349,7 +349,7 @@ int __init icu_of_init(struct device_node *node, struct device_node *parent)
 					res.name))
 			pr_err("Failed to request icu%i memory\n", vpe);
 
-		ltq_icu_membase[vpe] = ioremap_nocache(res.start,
+		ltq_icu_membase[vpe] = ioremap(res.start,
 					resource_size(&res));
 
 		if (!ltq_icu_membase[vpe])
@@ -402,7 +402,7 @@ int __init icu_of_init(struct device_node *node, struct device_node *parent)
 							res.name))
 			pr_err("Failed to request eiu memory");
 
-		ltq_eiu_membase = ioremap_nocache(res.start,
+		ltq_eiu_membase = ioremap(res.start,
 							resource_size(&res));
 		if (!ltq_eiu_membase)
 			panic("Failed to remap eiu memory");

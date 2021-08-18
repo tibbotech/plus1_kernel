@@ -10,6 +10,8 @@
 #include <linux/cred.h>
 #include <linux/refcount.h>
 #include <linux/posix-timers.h>
+#include <linux/mm_types.h>
+#include <asm/ptrace.h>
 
 /*
  * Types defining task->signal and task->sighand and APIs using them:
@@ -224,7 +226,15 @@ struct signal_struct {
 
 	struct mutex cred_guard_mutex;	/* guard against foreign influences on
 					 * credential calculations
-					 * (notably. ptrace) */
+					 * (notably. ptrace)
+					 * Deprecated do not use in new code.
+					 * Use exec_update_lock instead.
+					 */
+	struct rw_semaphore exec_update_lock;	/* Held while task_struct is
+						 * being updated during exec,
+						 * and may have inconsistent
+						 * permissions.
+						 */
 } __randomize_layout;
 
 /*
@@ -370,6 +380,20 @@ static inline int signal_pending_state(long state, struct task_struct *p)
 }
 
 /*
+ * This should only be used in fault handlers to decide whether we
+ * should stop the current fault routine to handle the signals
+ * instead, especially with the case where we've got interrupted with
+ * a VM_FAULT_RETRY.
+ */
+static inline bool fault_signal_pending(vm_fault_t fault_flags,
+					struct pt_regs *regs)
+{
+	return unlikely((fault_flags & VM_FAULT_RETRY) &&
+			(fatal_signal_pending(current) ||
+			 (user_mode(regs) && signal_pending(current))));
+}
+
+/*
  * Reevaluate whether the task has signals pending delivery.
  * Wake the task if so.
  * This is required every time the blocked sigset_t changes.
@@ -501,6 +525,17 @@ static inline int kill_cad_pid(int sig, int priv)
 #define SEND_SIG_NOINFO ((struct kernel_siginfo *) 0)
 #define SEND_SIG_PRIV	((struct kernel_siginfo *) 1)
 
+static inline int __on_sig_stack(unsigned long sp)
+{
+#ifdef CONFIG_STACK_GROWSUP
+	return sp >= current->sas_ss_sp &&
+		sp - current->sas_ss_sp < current->sas_ss_size;
+#else
+	return sp > current->sas_ss_sp &&
+		sp - current->sas_ss_sp <= current->sas_ss_size;
+#endif
+}
+
 /*
  * True if we are on the alternate signal stack.
  */
@@ -518,13 +553,7 @@ static inline int on_sig_stack(unsigned long sp)
 	if (current->sas_ss_flags & SS_AUTODISARM)
 		return 0;
 
-#ifdef CONFIG_STACK_GROWSUP
-	return sp >= current->sas_ss_sp &&
-		sp - current->sas_ss_sp < current->sas_ss_size;
-#else
-	return sp > current->sas_ss_sp &&
-		sp - current->sas_ss_sp <= current->sas_ss_size;
-#endif
+	return __on_sig_stack(sp);
 }
 
 static inline int sas_ss_flags(unsigned long sp)
@@ -631,17 +660,6 @@ static inline bool thread_group_leader(struct task_struct *p)
 	return p->exit_signal >= 0;
 }
 
-/* Do to the insanities of de_thread it is possible for a process
- * to have the pid of the thread group leader without actually being
- * the thread group leader.  For iteration through the pids in proc
- * all we care about is that we have a task with the appropriate
- * pid, we don't actually care if we have the right task.
- */
-static inline bool has_group_leader_pid(struct task_struct *p)
-{
-	return task_pid(p) == task_tgid(p);
-}
-
 static inline
 bool same_thread_group(struct task_struct *p1, struct task_struct *p2)
 {
@@ -661,6 +679,8 @@ static inline int thread_group_empty(struct task_struct *p)
 
 #define delay_group_leader(p) \
 		(thread_group_leader(p) && !thread_group_empty(p))
+
+extern bool thread_group_exited(struct pid *pid);
 
 extern struct sighand_struct *__lock_task_sighand(struct task_struct *task,
 							unsigned long *flags);

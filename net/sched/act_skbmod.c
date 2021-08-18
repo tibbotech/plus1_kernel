@@ -6,6 +6,7 @@
 */
 
 #include <linux/module.h>
+#include <linux/if_arp.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
 #include <linux/skbuff.h>
@@ -33,16 +34,19 @@ static int tcf_skbmod_act(struct sk_buff *skb, const struct tc_action *a,
 	tcf_lastuse_update(&d->tcf_tm);
 	bstats_cpu_update(this_cpu_ptr(d->common.cpu_bstats), skb);
 
+	action = READ_ONCE(d->tcf_action);
+	if (unlikely(action == TC_ACT_SHOT))
+		goto drop;
+
+	if (!skb->dev || skb->dev->type != ARPHRD_ETHER)
+		return action;
+
 	/* XXX: if you are going to edit more fields beyond ethernet header
 	 * (example when you add IP header replacement or vlan swap)
 	 * then MAX_EDIT_LEN needs to change appropriately
 	*/
 	err = skb_ensure_writable(skb, MAX_EDIT_LEN);
 	if (unlikely(err)) /* best policy is to drop on the floor */
-		goto drop;
-
-	action = READ_ONCE(d->tcf_action);
-	if (unlikely(action == TC_ACT_SHOT))
 		goto drop;
 
 	p = rcu_dereference_bh(d->skbmod_p);
@@ -79,7 +83,7 @@ static const struct nla_policy skbmod_policy[TCA_SKBMOD_MAX + 1] = {
 static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 			   struct nlattr *est, struct tc_action **a,
 			   int ovr, int bind, bool rtnl_held,
-			   struct tcf_proto *tp,
+			   struct tcf_proto *tp, u32 flags,
 			   struct netlink_ext_ack *extack)
 {
 	struct tc_action_net *tn = net_generic(net, skbmod_net_id);
@@ -143,7 +147,7 @@ static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 
 	if (!exists) {
 		ret = tcf_idr_create(tn, index, est, a,
-				     &act_skbmod_ops, bind, true);
+				     &act_skbmod_ops, bind, true, 0);
 		if (ret) {
 			tcf_idr_cleanup(tn, index);
 			return ret;
@@ -190,8 +194,6 @@ static int tcf_skbmod_init(struct net *net, struct nlattr *nla,
 	if (goto_ch)
 		tcf_chain_put_by_act(goto_ch);
 
-	if (ret == ACT_P_CREATED)
-		tcf_idr_insert(tn, *a);
 	return ret;
 put_chain:
 	if (goto_ch)

@@ -65,6 +65,17 @@ struct mutex {
 #endif
 };
 
+struct ww_class;
+struct ww_acquire_ctx;
+
+struct ww_mutex {
+	struct mutex base;
+	struct ww_acquire_ctx *ctx;
+#ifdef CONFIG_DEBUG_MUTEXES
+	struct ww_class *ww_class;
+#endif
+};
+
 /*
  * This is the control structure for tasks blocked on mutex,
  * which resides on the blocked task's kernel stack:
@@ -109,8 +120,11 @@ do {									\
 } while (0)
 
 #ifdef CONFIG_DEBUG_LOCK_ALLOC
-# define __DEP_MAP_MUTEX_INITIALIZER(lockname) \
-		, .dep_map = { .name = #lockname }
+# define __DEP_MAP_MUTEX_INITIALIZER(lockname)			\
+		, .dep_map = {					\
+			.name = #lockname,			\
+			.wait_type_inner = LD_WAIT_SLEEP,	\
+		}
 #else
 # define __DEP_MAP_MUTEX_INITIALIZER(lockname)
 #endif
@@ -171,7 +185,7 @@ extern void mutex_lock_io(struct mutex *lock);
 # define mutex_lock_interruptible_nested(lock, subclass) mutex_lock_interruptible(lock)
 # define mutex_lock_killable_nested(lock, subclass) mutex_lock_killable(lock)
 # define mutex_lock_nest_lock(lock, nest_lock) mutex_lock(lock)
-# define mutex_lock_io_nested(lock, subclass) mutex_lock(lock)
+# define mutex_lock_io_nested(lock, subclass) mutex_lock_io(lock)
 #endif
 
 /*

@@ -45,6 +45,9 @@ static const guid_t prp_guids[] = {
 	/* Thunderbolt GUID for WAKE_SUPPORTED: 6c501103-c189-4296-ba72-9bf5a26ebe5d */
 	GUID_INIT(0x6c501103, 0xc189, 0x4296,
 		  0xba, 0x72, 0x9b, 0xf5, 0xa2, 0x6e, 0xbe, 0x5d),
+	/* Storage device needs D3 GUID: 5025030f-842f-4ab4-a561-99a5189762d0 */
+	GUID_INIT(0x5025030f, 0x842f, 0x4ab4,
+		  0xa5, 0x61, 0x99, 0xa5, 0x18, 0x97, 0x62, 0xd0),
 };
 
 /* ACPI _DSD data subnodes GUID: dbb8e3e6-5886-4ba6-8795-1319f52a966b */
@@ -606,13 +609,7 @@ static struct fwnode_handle *
 acpi_fwnode_get_named_child_node(const struct fwnode_handle *fwnode,
 				 const char *childname)
 {
-	char name[ACPI_PATH_SEGMENT_LENGTH];
 	struct fwnode_handle *child;
-	struct acpi_buffer path;
-	acpi_status status;
-
-	path.length = sizeof(name);
-	path.pointer = name;
 
 	fwnode_for_each_child_node(fwnode, child) {
 		if (is_acpi_data_node(child)) {
@@ -621,12 +618,8 @@ acpi_fwnode_get_named_child_node(const struct fwnode_handle *fwnode,
 			continue;
 		}
 
-		status = acpi_get_name(ACPI_HANDLE_FWNODE(child),
-				       ACPI_SINGLE_NAME, &path);
-		if (ACPI_FAILURE(status))
-			break;
-
-		if (!strncmp(name, childname, ACPI_NAMESEG_SIZE))
+		if (!strncmp(acpi_device_bid(to_acpi_device_node(child)),
+			     childname, ACPI_NAMESEG_SIZE))
 			return child;
 	}
 
@@ -794,9 +787,6 @@ static int acpi_data_prop_read_single(const struct acpi_device_data *data,
 	const union acpi_object *obj;
 	int ret;
 
-	if (!val)
-		return -EINVAL;
-
 	if (proptype >= DEV_PROP_U8 && proptype <= DEV_PROP_U64) {
 		ret = acpi_data_get_property(data, propname, ACPI_TYPE_INTEGER, &obj);
 		if (ret)
@@ -806,28 +796,43 @@ static int acpi_data_prop_read_single(const struct acpi_device_data *data,
 		case DEV_PROP_U8:
 			if (obj->integer.value > U8_MAX)
 				return -EOVERFLOW;
-			*(u8 *)val = obj->integer.value;
+
+			if (val)
+				*(u8 *)val = obj->integer.value;
+
 			break;
 		case DEV_PROP_U16:
 			if (obj->integer.value > U16_MAX)
 				return -EOVERFLOW;
-			*(u16 *)val = obj->integer.value;
+
+			if (val)
+				*(u16 *)val = obj->integer.value;
+
 			break;
 		case DEV_PROP_U32:
 			if (obj->integer.value > U32_MAX)
 				return -EOVERFLOW;
-			*(u32 *)val = obj->integer.value;
+
+			if (val)
+				*(u32 *)val = obj->integer.value;
+
 			break;
 		default:
-			*(u64 *)val = obj->integer.value;
+			if (val)
+				*(u64 *)val = obj->integer.value;
+
 			break;
 		}
+
+		if (!val)
+			return 1;
 	} else if (proptype == DEV_PROP_STRING) {
 		ret = acpi_data_get_property(data, propname, ACPI_TYPE_STRING, &obj);
 		if (ret)
 			return ret;
 
-		*(char **)val = obj->string.pointer;
+		if (val)
+			*(char **)val = obj->string.pointer;
 
 		return 1;
 	} else {
@@ -841,7 +846,7 @@ int acpi_dev_prop_read_single(struct acpi_device *adev, const char *propname,
 {
 	int ret;
 
-	if (!adev)
+	if (!adev || !val)
 		return -EINVAL;
 
 	ret = acpi_data_prop_read_single(&adev->data, propname, proptype, val);
@@ -935,10 +940,20 @@ static int acpi_data_prop_read(const struct acpi_device_data *data,
 	const union acpi_object *items;
 	int ret;
 
-	if (val && nval == 1) {
+	if (nval == 1 || !val) {
 		ret = acpi_data_prop_read_single(data, propname, proptype, val);
-		if (ret >= 0)
+		/*
+		 * The overflow error means that the property is there and it is
+		 * single-value, but its type does not match, so return.
+		 */
+		if (ret >= 0 || ret == -EOVERFLOW)
 			return ret;
+
+		/*
+		 * Reading this property as a single-value one failed, but its
+		 * value may still be represented as one-element array, so
+		 * continue.
+		 */
 	}
 
 	ret = acpi_data_get_property_array(data, propname, ACPI_TYPE_ANY, &obj);
@@ -1317,6 +1332,52 @@ acpi_fwnode_get_reference_args(const struct fwnode_handle *fwnode,
 						  args_count, args);
 }
 
+static const char *acpi_fwnode_get_name(const struct fwnode_handle *fwnode)
+{
+	const struct acpi_device *adev;
+	struct fwnode_handle *parent;
+
+	/* Is this the root node? */
+	parent = fwnode_get_parent(fwnode);
+	if (!parent)
+		return "\\";
+
+	fwnode_handle_put(parent);
+
+	if (is_acpi_data_node(fwnode)) {
+		const struct acpi_data_node *dn = to_acpi_data_node(fwnode);
+
+		return dn->name;
+	}
+
+	adev = to_acpi_device_node(fwnode);
+	if (WARN_ON(!adev))
+		return NULL;
+
+	return acpi_device_bid(adev);
+}
+
+static const char *
+acpi_fwnode_get_name_prefix(const struct fwnode_handle *fwnode)
+{
+	struct fwnode_handle *parent;
+
+	/* Is this the root node? */
+	parent = fwnode_get_parent(fwnode);
+	if (!parent)
+		return "";
+
+	/* Is this 2nd node from the root? */
+	parent = fwnode_get_next_parent(parent);
+	if (!parent)
+		return "";
+
+	fwnode_handle_put(parent);
+
+	/* ACPI device or data node. */
+	return ".";
+}
+
 static struct fwnode_handle *
 acpi_fwnode_get_parent(struct fwnode_handle *fwnode)
 {
@@ -1357,6 +1418,8 @@ acpi_fwnode_device_get_match_data(const struct fwnode_handle *fwnode,
 		.get_parent = acpi_node_get_parent,			\
 		.get_next_child_node = acpi_get_next_subnode,		\
 		.get_named_child_node = acpi_fwnode_get_named_child_node, \
+		.get_name = acpi_fwnode_get_name,			\
+		.get_name_prefix = acpi_fwnode_get_name_prefix,		\
 		.get_reference_args = acpi_fwnode_get_reference_args,	\
 		.graph_get_next_endpoint =				\
 			acpi_graph_get_next_endpoint,			\

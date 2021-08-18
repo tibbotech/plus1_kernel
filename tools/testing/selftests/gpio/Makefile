@@ -1,32 +1,34 @@
 # SPDX-License-Identifier: GPL-2.0
 
-MOUNT_CFLAGS := $(shell pkg-config --cflags mount 2>/dev/null)
-MOUNT_LDLIBS := $(shell pkg-config --libs mount 2>/dev/null)
-ifeq ($(MOUNT_LDLIBS),)
-MOUNT_LDLIBS := -lmount -I/usr/include/libmount
+VAR_CFLAGS := $(shell pkg-config --cflags mount 2>/dev/null)
+VAR_LDLIBS := $(shell pkg-config --libs mount 2>/dev/null)
+ifeq ($(VAR_LDLIBS),)
+VAR_LDLIBS := -lmount -I/usr/include/libmount
 endif
 
-CFLAGS += -O2 -g -std=gnu99 -Wall -I../../../../usr/include/ $(MOUNT_CFLAGS)
-LDLIBS += $(MOUNT_LDLIBS)
+CFLAGS += -O2 -g -std=gnu99 -Wall -I../../../../usr/include/ $(VAR_CFLAGS)
+LDLIBS += $(VAR_LDLIBS)
 
 TEST_PROGS := gpio-mockup.sh
 TEST_FILES := gpio-mockup-sysfs.sh
-TEST_PROGS_EXTENDED := gpio-mockup-chardev
-
-GPIODIR := $(realpath ../../../gpio)
-GPIOOBJ := gpio-utils.o
-
-all: $(TEST_PROGS_EXTENDED)
-
-override define CLEAN
-	$(RM) $(TEST_PROGS_EXTENDED)
-	$(MAKE) -C $(GPIODIR) OUTPUT=$(GPIODIR)/ clean
-endef
+TEST_GEN_PROGS_EXTENDED := gpio-mockup-chardev
 
 KSFT_KHDR_INSTALL := 1
 include ../lib.mk
 
-$(TEST_PROGS_EXTENDED): $(GPIODIR)/$(GPIOOBJ)
+GPIODIR := $(realpath ../../../gpio)
+GPIOOUT := $(OUTPUT)/tools-gpio/
+GPIOOBJ := $(GPIOOUT)/gpio-utils.o
 
-$(GPIODIR)/$(GPIOOBJ):
-	$(MAKE) OUTPUT=$(GPIODIR)/ -C $(GPIODIR)
+override define CLEAN
+	$(RM) $(TEST_GEN_PROGS_EXTENDED)
+	$(RM) -rf $(GPIOOUT)
+endef
+
+$(TEST_GEN_PROGS_EXTENDED): $(GPIOOBJ)
+
+$(GPIOOUT):
+	mkdir -p $@
+
+$(GPIOOBJ): $(GPIOOUT)
+	$(MAKE) OUTPUT=$(GPIOOUT) -C $(GPIODIR)

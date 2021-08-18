@@ -27,6 +27,7 @@
 
 /* Fan Config register bits */
 #define MAX31790_FAN_CFG_RPM_MODE	0x80
+#define MAX31790_FAN_CFG_CTRL_MON	0x10
 #define MAX31790_FAN_CFG_TACH_INPUT_EN	0x08
 #define MAX31790_FAN_CFG_TACH_INPUT	0x01
 
@@ -104,7 +105,7 @@ static struct max31790_data *max31790_update_device(struct device *dev)
 				data->tach[NR_CHANNEL + i] = rv;
 			} else {
 				rv = i2c_smbus_read_word_swapped(client,
-						MAX31790_REG_PWMOUT(i));
+						MAX31790_REG_PWM_DUTY_CYCLE(i));
 				if (rv < 0)
 					goto abort;
 				data->pwm[i] = rv;
@@ -170,7 +171,7 @@ static int max31790_read_fan(struct device *dev, u32 attr, int channel,
 
 	switch (attr) {
 	case hwmon_fan_input:
-		sr = get_tach_period(data->fan_dynamics[channel]);
+		sr = get_tach_period(data->fan_dynamics[channel % NR_CHANNEL]);
 		rpm = RPM_FROM_REG(data->tach[channel], sr);
 		*val = rpm;
 		return 0;
@@ -271,12 +272,12 @@ static int max31790_read_pwm(struct device *dev, u32 attr, int channel,
 		*val = data->pwm[channel] >> 8;
 		return 0;
 	case hwmon_pwm_enable:
-		if (fan_config & MAX31790_FAN_CFG_RPM_MODE)
-			*val = 2;
-		else if (fan_config & MAX31790_FAN_CFG_TACH_INPUT_EN)
-			*val = 1;
-		else
+		if (fan_config & MAX31790_FAN_CFG_CTRL_MON)
 			*val = 0;
+		else if (fan_config & MAX31790_FAN_CFG_RPM_MODE)
+			*val = 2;
+		else
+			*val = 1;
 		return 0;
 	default:
 		return -EOPNOTSUPP;
@@ -299,31 +300,41 @@ static int max31790_write_pwm(struct device *dev, u32 attr, int channel,
 			err = -EINVAL;
 			break;
 		}
-		data->pwm[channel] = val << 8;
+		data->valid = false;
 		err = i2c_smbus_write_word_swapped(client,
 						   MAX31790_REG_PWMOUT(channel),
-						   data->pwm[channel]);
+						   val << 8);
 		break;
 	case hwmon_pwm_enable:
 		fan_config = data->fan_config[channel];
 		if (val == 0) {
-			fan_config &= ~(MAX31790_FAN_CFG_TACH_INPUT_EN |
-					MAX31790_FAN_CFG_RPM_MODE);
+			fan_config |= MAX31790_FAN_CFG_CTRL_MON;
+			/*
+			 * Disable RPM mode; otherwise disabling fan speed
+			 * monitoring is not possible.
+			 */
+			fan_config &= ~MAX31790_FAN_CFG_RPM_MODE;
 		} else if (val == 1) {
-			fan_config = (fan_config |
-				      MAX31790_FAN_CFG_TACH_INPUT_EN) &
-				     ~MAX31790_FAN_CFG_RPM_MODE;
+			fan_config &= ~(MAX31790_FAN_CFG_CTRL_MON | MAX31790_FAN_CFG_RPM_MODE);
 		} else if (val == 2) {
-			fan_config |= MAX31790_FAN_CFG_TACH_INPUT_EN |
-				      MAX31790_FAN_CFG_RPM_MODE;
+			fan_config &= ~MAX31790_FAN_CFG_CTRL_MON;
+			/*
+			 * The chip sets MAX31790_FAN_CFG_TACH_INPUT_EN on its
+			 * own if MAX31790_FAN_CFG_RPM_MODE is set.
+			 * Do it here as well to reflect the actual register
+			 * value in the cache.
+			 */
+			fan_config |= (MAX31790_FAN_CFG_RPM_MODE | MAX31790_FAN_CFG_TACH_INPUT_EN);
 		} else {
 			err = -EINVAL;
 			break;
 		}
-		data->fan_config[channel] = fan_config;
-		err = i2c_smbus_write_byte_data(client,
-					MAX31790_REG_FAN_CONFIG(channel),
-					fan_config);
+		if (fan_config != data->fan_config[channel]) {
+			err = i2c_smbus_write_byte_data(client, MAX31790_REG_FAN_CONFIG(channel),
+							fan_config);
+			if (!err)
+				data->fan_config[channel] = fan_config;
+		}
 		break;
 	default:
 		err = -EOPNOTSUPP;
@@ -448,8 +459,7 @@ static int max31790_init_client(struct i2c_client *client,
 	return 0;
 }
 
-static int max31790_probe(struct i2c_client *client,
-			  const struct i2c_device_id *id)
+static int max31790_probe(struct i2c_client *client)
 {
 	struct i2c_adapter *adapter = client->adapter;
 	struct device *dev = &client->dev;
@@ -491,7 +501,7 @@ MODULE_DEVICE_TABLE(i2c, max31790_id);
 
 static struct i2c_driver max31790_driver = {
 	.class		= I2C_CLASS_HWMON,
-	.probe		= max31790_probe,
+	.probe_new	= max31790_probe,
 	.driver = {
 		.name	= "max31790",
 	},

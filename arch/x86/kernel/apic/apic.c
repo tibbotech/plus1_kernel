@@ -40,13 +40,14 @@
 #include <asm/irq_remapping.h>
 #include <asm/perf_event.h>
 #include <asm/x86_init.h>
-#include <asm/pgalloc.h>
 #include <linux/atomic.h>
+#include <asm/barrier.h>
 #include <asm/mpspec.h>
 #include <asm/i8259.h>
 #include <asm/proto.h>
 #include <asm/traps.h>
 #include <asm/apic.h>
+#include <asm/acpi.h>
 #include <asm/io_apic.h>
 #include <asm/desc.h>
 #include <asm/hpet.h>
@@ -352,8 +353,6 @@ static void __setup_APIC_LVTT(unsigned int clocks, int oneshot, int irqen)
 		 * According to Intel, MFENCE can do the serialization here.
 		 */
 		asm volatile("mfence" : : : "memory");
-
-		printk_once(KERN_DEBUG "TSC deadline timer enabled\n");
 		return;
 	}
 
@@ -474,6 +473,9 @@ static int lapic_next_deadline(unsigned long delta,
 {
 	u64 tsc;
 
+	/* This MSR is special and need a special fence: */
+	weak_wrmsr_fence();
+
 	tsc = rdtsc();
 	wrmsrl(MSR_IA32_TSC_DEADLINE, tsc + (((u64) delta) * TSC_DIVISOR));
 	return 0;
@@ -546,97 +548,60 @@ static struct clock_event_device lapic_clockevent = {
 };
 static DEFINE_PER_CPU(struct clock_event_device, lapic_events);
 
-#define DEADLINE_MODEL_MATCH_FUNC(model, func)	\
-	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, (unsigned long)&func }
+static const struct x86_cpu_id deadline_match[] __initconst = {
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(HASWELL_X, X86_STEPPINGS(0x2, 0x2), 0x3a), /* EP */
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(HASWELL_X, X86_STEPPINGS(0x4, 0x4), 0x0f), /* EX */
 
-#define DEADLINE_MODEL_MATCH_REV(model, rev)	\
-	{ X86_VENDOR_INTEL, 6, model, X86_FEATURE_ANY, (unsigned long)rev }
+	X86_MATCH_INTEL_FAM6_MODEL( BROADWELL_X,	0x0b000020),
 
-static u32 hsx_deadline_rev(void)
-{
-	switch (boot_cpu_data.x86_stepping) {
-	case 0x02: return 0x3a; /* EP */
-	case 0x04: return 0x0f; /* EX */
-	}
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(BROADWELL_D, X86_STEPPINGS(0x2, 0x2), 0x00000011),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(BROADWELL_D, X86_STEPPINGS(0x3, 0x3), 0x0700000e),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(BROADWELL_D, X86_STEPPINGS(0x4, 0x4), 0x0f00000c),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(BROADWELL_D, X86_STEPPINGS(0x5, 0x5), 0x0e000003),
 
-	return ~0U;
-}
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(SKYLAKE_X, X86_STEPPINGS(0x3, 0x3), 0x01000136),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(SKYLAKE_X, X86_STEPPINGS(0x4, 0x4), 0x02000014),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(SKYLAKE_X, X86_STEPPINGS(0x5, 0xf), 0),
 
-static u32 bdx_deadline_rev(void)
-{
-	switch (boot_cpu_data.x86_stepping) {
-	case 0x02: return 0x00000011;
-	case 0x03: return 0x0700000e;
-	case 0x04: return 0x0f00000c;
-	case 0x05: return 0x0e000003;
-	}
+	X86_MATCH_INTEL_FAM6_MODEL( HASWELL,		0x22),
+	X86_MATCH_INTEL_FAM6_MODEL( HASWELL_L,		0x20),
+	X86_MATCH_INTEL_FAM6_MODEL( HASWELL_G,		0x17),
 
-	return ~0U;
-}
+	X86_MATCH_INTEL_FAM6_MODEL( BROADWELL,		0x25),
+	X86_MATCH_INTEL_FAM6_MODEL( BROADWELL_G,	0x17),
 
-static u32 skx_deadline_rev(void)
-{
-	switch (boot_cpu_data.x86_stepping) {
-	case 0x03: return 0x01000136;
-	case 0x04: return 0x02000014;
-	}
+	X86_MATCH_INTEL_FAM6_MODEL( SKYLAKE_L,		0xb2),
+	X86_MATCH_INTEL_FAM6_MODEL( SKYLAKE,		0xb2),
 
-	if (boot_cpu_data.x86_stepping > 4)
-		return 0;
-
-	return ~0U;
-}
-
-static const struct x86_cpu_id deadline_match[] = {
-	DEADLINE_MODEL_MATCH_FUNC( INTEL_FAM6_HASWELL_X,	hsx_deadline_rev),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_BROADWELL_X,	0x0b000020),
-	DEADLINE_MODEL_MATCH_FUNC( INTEL_FAM6_BROADWELL_D,	bdx_deadline_rev),
-	DEADLINE_MODEL_MATCH_FUNC( INTEL_FAM6_SKYLAKE_X,	skx_deadline_rev),
-
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_HASWELL,		0x22),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_HASWELL_L,	0x20),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_HASWELL_G,	0x17),
-
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_BROADWELL,	0x25),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_BROADWELL_G,	0x17),
-
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_SKYLAKE_L,	0xb2),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_SKYLAKE,		0xb2),
-
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_KABYLAKE_L,	0x52),
-	DEADLINE_MODEL_MATCH_REV ( INTEL_FAM6_KABYLAKE,		0x52),
+	X86_MATCH_INTEL_FAM6_MODEL( KABYLAKE_L,		0x52),
+	X86_MATCH_INTEL_FAM6_MODEL( KABYLAKE,		0x52),
 
 	{},
 };
 
-static void apic_check_deadline_errata(void)
+static __init bool apic_validate_deadline_timer(void)
 {
 	const struct x86_cpu_id *m;
 	u32 rev;
 
-	if (!boot_cpu_has(X86_FEATURE_TSC_DEADLINE_TIMER) ||
-	    boot_cpu_has(X86_FEATURE_HYPERVISOR))
-		return;
+	if (!boot_cpu_has(X86_FEATURE_TSC_DEADLINE_TIMER))
+		return false;
+	if (boot_cpu_has(X86_FEATURE_HYPERVISOR))
+		return true;
 
 	m = x86_match_cpu(deadline_match);
 	if (!m)
-		return;
+		return true;
 
-	/*
-	 * Function pointers will have the MSB set due to address layout,
-	 * immediate revisions will not.
-	 */
-	if ((long)m->driver_data < 0)
-		rev = ((u32 (*)(void))(m->driver_data))();
-	else
-		rev = (u32)m->driver_data;
+	rev = (u32)m->driver_data;
 
 	if (boot_cpu_data.microcode >= rev)
-		return;
+		return true;
 
 	setup_clear_cpu_cap(X86_FEATURE_TSC_DEADLINE_TIMER);
 	pr_err(FW_BUG "TSC_DEADLINE disabled due to Errata; "
 	       "please update microcode to version: 0x%x (or later)\n", rev);
+	return false;
 }
 
 /*
@@ -780,8 +745,8 @@ calibrate_by_pmtimer(long deltapm, long *delta, long *deltatsc)
 
 	res = (((u64)deltapm) *  mult) >> 22;
 	do_div(res, 1000000);
-	pr_warning("APIC calibration not consistent "
-		   "with PM-Timer: %ldms instead of 100ms\n",(long)res);
+	pr_warn("APIC calibration not consistent "
+		"with PM-Timer: %ldms instead of 100ms\n", (long)res);
 
 	/* Correct the lapic counter value */
 	res = (((u64)(*delta)) * pm_100ms);
@@ -986,7 +951,7 @@ static int __init calibrate_APIC_clock(void)
 	 */
 	if (lapic_timer_period < (1000000 / HZ)) {
 		local_irq_enable();
-		pr_warning("APIC frequency too slow, disabling apic timer\n");
+		pr_warn("APIC frequency too slow, disabling apic timer\n");
 		return -1;
 	}
 
@@ -1030,7 +995,7 @@ static int __init calibrate_APIC_clock(void)
 	local_irq_enable();
 
 	if (levt->features & CLOCK_EVT_FEAT_DUMMY) {
-		pr_warning("APIC timer disabled due to verification failure\n");
+		pr_warn("APIC timer disabled due to verification failure\n");
 		return -1;
 	}
 
@@ -1104,8 +1069,8 @@ static void local_apic_timer_interrupt(void)
 	 * spurious.
 	 */
 	if (!evt->event_handler) {
-		pr_warning("Spurious LAPIC timer interrupt on cpu %d\n",
-			   smp_processor_id());
+		pr_warn("Spurious LAPIC timer interrupt on cpu %d\n",
+			smp_processor_id());
 		/* Switch it off */
 		lapic_timer_shutdown(evt);
 		return;
@@ -1127,23 +1092,14 @@ static void local_apic_timer_interrupt(void)
  * [ if a single-CPU system runs an SMP kernel then we call the local
  *   interrupt as well. Thus we cannot inline the local irq ... ]
  */
-__visible void __irq_entry smp_apic_timer_interrupt(struct pt_regs *regs)
+DEFINE_IDTENTRY_SYSVEC(sysvec_apic_timer_interrupt)
 {
 	struct pt_regs *old_regs = set_irq_regs(regs);
 
-	/*
-	 * NOTE! We'd better ACK the irq immediately,
-	 * because timer handling can be slow.
-	 *
-	 * update_process_times() expects us to have done irq_enter().
-	 * Besides, if we don't timer interrupts ignore the global
-	 * interrupt lock, which is the WrongThing (tm) to do.
-	 */
-	entering_ack_irq();
+	ack_APIC_irq();
 	trace_local_timer_entry(LOCAL_TIMER_VECTOR);
 	local_apic_timer_interrupt();
 	trace_local_timer_exit(LOCAL_TIMER_VECTOR);
-	exiting_irq();
 
 	set_irq_regs(old_regs);
 }
@@ -1476,6 +1432,9 @@ void __init apic_intr_mode_init(void)
 		pr_info("APIC: Switch to symmetric I/O mode setup in no SMP routine\n");
 		break;
 	}
+
+	if (x86_platform.apic_post_init)
+		x86_platform.apic_post_init();
 
 	apic_bsp_setup(upmode);
 }
@@ -1824,11 +1783,11 @@ static int __init setup_nox2apic(char *str)
 		int apicid = native_apic_msr_read(APIC_ID);
 
 		if (apicid >= 255) {
-			pr_warning("Apicid: %08x, cannot enforce nox2apic\n",
-				   apicid);
+			pr_warn("Apicid: %08x, cannot enforce nox2apic\n",
+				apicid);
 			return 0;
 		}
-		pr_warning("x2apic already enabled.\n");
+		pr_warn("x2apic already enabled.\n");
 		__x2apic_disable();
 	}
 	setup_clear_cpu_cap(X86_FEATURE_X2APIC);
@@ -1886,20 +1845,22 @@ static __init void try_to_enable_x2apic(int remap_mode)
 		return;
 
 	if (remap_mode != IRQ_REMAP_X2APIC_MODE) {
-		/* IR is required if there is APIC ID > 255 even when running
-		 * under KVM
+		/*
+		 * Using X2APIC without IR is not architecturally supported
+		 * on bare metal but may be supported in guests.
 		 */
-		if (max_physical_apicid > 255 ||
-		    !x86_init.hyper.x2apic_available()) {
+		if (!x86_init.hyper.x2apic_available()) {
 			pr_info("x2apic: IRQ remapping doesn't support X2APIC mode\n");
 			x2apic_disable();
 			return;
 		}
 
 		/*
-		 * without IR all CPUs can be addressed by IOAPIC/MSI
-		 * only in physical mode
+		 * Without IR, all CPUs can be addressed by IOAPIC/MSI only
+		 * in physical mode, and CPUs with an APIC ID that cannnot
+		 * be addressed must not be brought online.
 		 */
+		x2apic_set_max_apicid(255);
 		x2apic_phys = 1;
 	}
 	x2apic_enable();
@@ -1996,7 +1957,7 @@ static int __init apic_verify(void)
 	 */
 	features = cpuid_edx(1);
 	if (!(features & (1 << X86_FEATURE_APIC))) {
-		pr_warning("Could not enable APIC!\n");
+		pr_warn("Could not enable APIC!\n");
 		return -1;
 	}
 	set_cpu_cap(&boot_cpu_data, X86_FEATURE_APIC);
@@ -2098,7 +2059,8 @@ void __init init_apic_mappings(void)
 {
 	unsigned int new_apicid;
 
-	apic_check_deadline_errata();
+	if (apic_validate_deadline_timer())
+		pr_info("TSC deadline timer available\n");
 
 	if (x2apic_mode) {
 		boot_cpu_physical_apicid = read_apic_id();
@@ -2158,15 +2120,21 @@ void __init register_lapic_address(unsigned long address)
  * Local APIC interrupts
  */
 
-/*
- * This interrupt should _never_ happen with our APIC/SMP architecture
+/**
+ * spurious_interrupt - Catch all for interrupts raised on unused vectors
+ * @regs:	Pointer to pt_regs on stack
+ * @vector:	The vector number
+ *
+ * This is invoked from ASM entry code to catch all interrupts which
+ * trigger on an entry which is routed to the common_spurious idtentry
+ * point.
+ *
+ * Also called from sysvec_spurious_apic_interrupt().
  */
-__visible void __irq_entry smp_spurious_interrupt(struct pt_regs *regs)
+DEFINE_IDTENTRY_IRQ(spurious_interrupt)
 {
-	u8 vector = ~regs->orig_ax;
 	u32 v;
 
-	entering_irq();
 	trace_spurious_apic_entry(vector);
 
 	inc_irq_stat(irq_spurious_count);
@@ -2196,13 +2164,17 @@ __visible void __irq_entry smp_spurious_interrupt(struct pt_regs *regs)
 	}
 out:
 	trace_spurious_apic_exit(vector);
-	exiting_irq();
+}
+
+DEFINE_IDTENTRY_SYSVEC(sysvec_spurious_apic_interrupt)
+{
+	__spurious_interrupt(regs, SPURIOUS_APIC_VECTOR);
 }
 
 /*
  * This interrupt should never happen with our APIC/SMP architecture
  */
-__visible void __irq_entry smp_error_interrupt(struct pt_regs *regs)
+DEFINE_IDTENTRY_SYSVEC(sysvec_error_interrupt)
 {
 	static const char * const error_interrupt_reason[] = {
 		"Send CS error",		/* APIC Error Bit 0 */
@@ -2216,7 +2188,6 @@ __visible void __irq_entry smp_error_interrupt(struct pt_regs *regs)
 	};
 	u32 v, i = 0;
 
-	entering_irq();
 	trace_error_apic_entry(ERROR_APIC_VECTOR);
 
 	/* First tickle the hardware, only then report what went on. -- REW */
@@ -2240,7 +2211,6 @@ __visible void __irq_entry smp_error_interrupt(struct pt_regs *regs)
 	apic_printk(APIC_DEBUG, KERN_CONT "\n");
 
 	trace_error_apic_exit(ERROR_APIC_VECTOR);
-	exiting_irq();
 }
 
 /**
@@ -2347,10 +2317,15 @@ static int cpuid_to_apicid[] = {
 	[0 ... NR_CPUS - 1] = -1,
 };
 
+bool arch_match_cpu_phys_id(int cpu, u64 phys_id)
+{
+	return phys_id == cpuid_to_apicid[cpu];
+}
+
 #ifdef CONFIG_SMP
 /**
  * apic_id_is_primary_thread - Check whether APIC ID belongs to a primary thread
- * @id:	APIC ID to check
+ * @apicid: APIC ID to check
  */
 bool apic_id_is_primary_thread(unsigned int apicid)
 {
@@ -2423,9 +2398,8 @@ int generic_processor_info(int apicid, int version)
 	    disabled_cpu_apicid == apicid) {
 		int thiscpu = num_processors + disabled_cpus;
 
-		pr_warning("APIC: Disabling requested cpu."
-			   " Processor %d/0x%x ignored.\n",
-			   thiscpu, apicid);
+		pr_warn("APIC: Disabling requested cpu."
+			" Processor %d/0x%x ignored.\n", thiscpu, apicid);
 
 		disabled_cpus++;
 		return -ENODEV;
@@ -2439,8 +2413,7 @@ int generic_processor_info(int apicid, int version)
 	    apicid != boot_cpu_physical_apicid) {
 		int thiscpu = max + disabled_cpus - 1;
 
-		pr_warning(
-			"APIC: NR_CPUS/possible_cpus limit of %i almost"
+		pr_warn("APIC: NR_CPUS/possible_cpus limit of %i almost"
 			" reached. Keeping one slot for boot cpu."
 			"  Processor %d/0x%x ignored.\n", max, thiscpu, apicid);
 
@@ -2451,9 +2424,8 @@ int generic_processor_info(int apicid, int version)
 	if (num_processors >= nr_cpu_ids) {
 		int thiscpu = max + disabled_cpus;
 
-		pr_warning("APIC: NR_CPUS/possible_cpus limit of %i "
-			   "reached. Processor %d/0x%x ignored.\n",
-			   max, thiscpu, apicid);
+		pr_warn("APIC: NR_CPUS/possible_cpus limit of %i reached. "
+			"Processor %d/0x%x ignored.\n", max, thiscpu, apicid);
 
 		disabled_cpus++;
 		return -EINVAL;
@@ -2483,13 +2455,13 @@ int generic_processor_info(int apicid, int version)
 	 * Validate version
 	 */
 	if (version == 0x0) {
-		pr_warning("BIOS bug: APIC version is 0 for CPU %d/0x%x, fixing up to 0x10\n",
-			   cpu, apicid);
+		pr_warn("BIOS bug: APIC version is 0 for CPU %d/0x%x, fixing up to 0x10\n",
+			cpu, apicid);
 		version = 0x10;
 	}
 
 	if (version != boot_cpu_apic_version) {
-		pr_warning("BIOS bug: APIC version mismatch, boot CPU: %x, CPU %d: version %x\n",
+		pr_warn("BIOS bug: APIC version mismatch, boot CPU: %x, CPU %d: version %x\n",
 			boot_cpu_apic_version, cpu, version);
 	}
 
@@ -2567,6 +2539,7 @@ static void __init apic_bsp_setup(bool upmode)
 	end_local_APIC_setup();
 	irq_remap_enable_fault_handling();
 	setup_IO_APIC();
+	lapic_update_legacy_vectors();
 }
 
 #ifdef CONFIG_UP_LATE_INIT
@@ -2642,6 +2615,13 @@ static int lapic_suspend(void)
 #endif
 
 	local_irq_save(flags);
+
+	/*
+	 * Mask IOAPIC before disabling the local APIC to prevent stale IRR
+	 * entries on some implementations.
+	 */
+	mask_ioapic_entries();
+
 	disable_local_APIC();
 
 	irq_remapping_disable();
@@ -2858,7 +2838,7 @@ static int __init apic_set_verbosity(char *arg)
 		apic_verbosity = APIC_VERBOSE;
 #ifdef CONFIG_X86_64
 	else {
-		pr_warning("APIC Verbosity level %s not recognised"
+		pr_warn("APIC Verbosity level %s not recognised"
 			" use apic=verbose or apic=debug\n", arg);
 		return -EINVAL;
 	}

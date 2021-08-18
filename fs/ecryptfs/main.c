@@ -7,7 +7,7 @@
  * Copyright (C) 2004-2007 International Business Machines Corp.
  *   Author(s): Michael A. Halcrow <mahalcro@us.ibm.com>
  *              Michael C. Thompson <mcthomps@us.ibm.com>
- *              Tyler Hicks <tyhicks@ou.edu>
+ *              Tyler Hicks <code@tyhicks.com>
  */
 
 #include <linux/dcache.h>
@@ -489,6 +489,12 @@ static struct dentry *ecryptfs_mount(struct file_system_type *fs_type, int flags
 	sbi = kmem_cache_zalloc(ecryptfs_sb_info_cache, GFP_KERNEL);
 	if (!sbi) {
 		rc = -ENOMEM;
+		goto out;
+	}
+
+	if (!dev_name) {
+		rc = -EINVAL;
+		err = "Device name cannot be null";
 		goto out;
 	}
 

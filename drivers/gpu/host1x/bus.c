@@ -120,7 +120,7 @@ static void host1x_subdev_register(struct host1x_device *device,
 	mutex_lock(&device->clients_lock);
 	list_move_tail(&client->list, &device->clients);
 	list_move_tail(&subdev->list, &device->active);
-	client->parent = &device->dev;
+	client->host = &device->dev;
 	subdev->client = client;
 	mutex_unlock(&device->clients_lock);
 	mutex_unlock(&device->subdevs_lock);
@@ -156,7 +156,7 @@ static void __host1x_subdev_unregister(struct host1x_device *device,
 	 */
 	mutex_lock(&device->clients_lock);
 	subdev->client = NULL;
-	client->parent = NULL;
+	client->host = NULL;
 	list_move_tail(&subdev->list, &device->subdevs);
 	/*
 	 * XXX: Perhaps don't do this here, but rather explicitly remove it
@@ -445,7 +445,7 @@ static int host1x_device_add(struct host1x *host1x,
 	of_dma_configure(&device->dev, host1x->dev->of_node, true);
 
 	device->dev.dma_parms = &device->dma_parms;
-	dma_set_max_seg_size(&device->dev, SZ_4M);
+	dma_set_max_seg_size(&device->dev, UINT_MAX);
 
 	err = host1x_device_parse_dt(device, driver);
 	if (err < 0) {
@@ -686,7 +686,16 @@ EXPORT_SYMBOL(host1x_driver_register_full);
  */
 void host1x_driver_unregister(struct host1x_driver *driver)
 {
+	struct host1x *host1x;
+
 	driver_unregister(&driver->driver);
+
+	mutex_lock(&devices_lock);
+
+	list_for_each_entry(host1x, &devices, list)
+		host1x_detach_driver(host1x, driver);
+
+	mutex_unlock(&devices_lock);
 
 	mutex_lock(&drivers_lock);
 	list_del_init(&driver->list);
@@ -695,8 +704,32 @@ void host1x_driver_unregister(struct host1x_driver *driver)
 EXPORT_SYMBOL(host1x_driver_unregister);
 
 /**
- * host1x_client_register() - register a host1x client
+ * __host1x_client_init() - initialize a host1x client
  * @client: host1x client
+ * @key: lock class key for the client-specific mutex
+ */
+void __host1x_client_init(struct host1x_client *client, struct lock_class_key *key)
+{
+	INIT_LIST_HEAD(&client->list);
+	__mutex_init(&client->lock, "host1x client lock", key);
+	client->usecount = 0;
+}
+EXPORT_SYMBOL(__host1x_client_init);
+
+/**
+ * host1x_client_exit() - uninitialize a host1x client
+ * @client: host1x client
+ */
+void host1x_client_exit(struct host1x_client *client)
+{
+	mutex_destroy(&client->lock);
+}
+EXPORT_SYMBOL(host1x_client_exit);
+
+/**
+ * __host1x_client_register() - register a host1x client
+ * @client: host1x client
+ * @key: lock class key for the client-specific mutex
  *
  * Registers a host1x client with each host1x controller instance. Note that
  * each client will only match their parent host1x controller and will only be
@@ -705,7 +738,7 @@ EXPORT_SYMBOL(host1x_driver_unregister);
  * device and call host1x_device_init(), which will in turn call each client's
  * &host1x_client_ops.init implementation.
  */
-int host1x_client_register(struct host1x_client *client)
+int __host1x_client_register(struct host1x_client *client)
 {
 	struct host1x *host1x;
 	int err;
@@ -728,7 +761,7 @@ int host1x_client_register(struct host1x_client *client)
 
 	return 0;
 }
-EXPORT_SYMBOL(host1x_client_register);
+EXPORT_SYMBOL(__host1x_client_register);
 
 /**
  * host1x_client_unregister() - unregister a host1x client
@@ -768,3 +801,74 @@ int host1x_client_unregister(struct host1x_client *client)
 	return 0;
 }
 EXPORT_SYMBOL(host1x_client_unregister);
+
+int host1x_client_suspend(struct host1x_client *client)
+{
+	int err = 0;
+
+	mutex_lock(&client->lock);
+
+	if (client->usecount == 1) {
+		if (client->ops && client->ops->suspend) {
+			err = client->ops->suspend(client);
+			if (err < 0)
+				goto unlock;
+		}
+	}
+
+	client->usecount--;
+	dev_dbg(client->dev, "use count: %u\n", client->usecount);
+
+	if (client->parent) {
+		err = host1x_client_suspend(client->parent);
+		if (err < 0)
+			goto resume;
+	}
+
+	goto unlock;
+
+resume:
+	if (client->usecount == 0)
+		if (client->ops && client->ops->resume)
+			client->ops->resume(client);
+
+	client->usecount++;
+unlock:
+	mutex_unlock(&client->lock);
+	return err;
+}
+EXPORT_SYMBOL(host1x_client_suspend);
+
+int host1x_client_resume(struct host1x_client *client)
+{
+	int err = 0;
+
+	mutex_lock(&client->lock);
+
+	if (client->parent) {
+		err = host1x_client_resume(client->parent);
+		if (err < 0)
+			goto unlock;
+	}
+
+	if (client->usecount == 0) {
+		if (client->ops && client->ops->resume) {
+			err = client->ops->resume(client);
+			if (err < 0)
+				goto suspend;
+		}
+	}
+
+	client->usecount++;
+	dev_dbg(client->dev, "use count: %u\n", client->usecount);
+
+	goto unlock;
+
+suspend:
+	if (client->parent)
+		host1x_client_suspend(client->parent);
+unlock:
+	mutex_unlock(&client->lock);
+	return err;
+}
+EXPORT_SYMBOL(host1x_client_resume);

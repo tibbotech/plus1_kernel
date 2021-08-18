@@ -393,9 +393,17 @@ static void nft_rhash_destroy(const struct nft_set *set)
 				    (void *)set);
 }
 
+/* Number of buckets is stored in u32, so cap our result to 1U<<31 */
+#define NFT_MAX_BUCKETS (1U << 31)
+
 static u32 nft_hash_buckets(u32 size)
 {
-	return roundup_pow_of_two(size * 4 / 3);
+	u64 val = div_u64((u64)size * 4, 3);
+
+	if (val >= NFT_MAX_BUCKETS)
+		return NFT_MAX_BUCKETS;
+
+	return roundup_pow_of_two(val);
 }
 
 static bool nft_rhash_estimate(const struct nft_set_desc *desc, u32 features,
@@ -645,7 +653,7 @@ static bool nft_hash_estimate(const struct nft_set_desc *desc, u32 features,
 }
 
 static bool nft_hash_fast_estimate(const struct nft_set_desc *desc, u32 features,
-			      struct nft_set_estimate *est)
+				   struct nft_set_estimate *est)
 {
 	if (!desc->size)
 		return false;
@@ -662,8 +670,7 @@ static bool nft_hash_fast_estimate(const struct nft_set_desc *desc, u32 features
 	return true;
 }
 
-struct nft_set_type nft_set_rhash_type __read_mostly = {
-	.owner		= THIS_MODULE,
+const struct nft_set_type nft_set_rhash_type = {
 	.features	= NFT_SET_MAP | NFT_SET_OBJECT |
 			  NFT_SET_TIMEOUT | NFT_SET_EVAL,
 	.ops		= {
@@ -686,8 +693,7 @@ struct nft_set_type nft_set_rhash_type __read_mostly = {
 	},
 };
 
-struct nft_set_type nft_set_hash_type __read_mostly = {
-	.owner		= THIS_MODULE,
+const struct nft_set_type nft_set_hash_type = {
 	.features	= NFT_SET_MAP | NFT_SET_OBJECT,
 	.ops		= {
 		.privsize       = nft_hash_privsize,
@@ -706,8 +712,7 @@ struct nft_set_type nft_set_hash_type __read_mostly = {
 	},
 };
 
-struct nft_set_type nft_set_hash_fast_type __read_mostly = {
-	.owner		= THIS_MODULE,
+const struct nft_set_type nft_set_hash_fast_type = {
 	.features	= NFT_SET_MAP | NFT_SET_OBJECT,
 	.ops		= {
 		.privsize       = nft_hash_privsize,

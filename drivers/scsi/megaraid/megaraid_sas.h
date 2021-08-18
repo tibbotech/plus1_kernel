@@ -21,8 +21,10 @@
 /*
  * MegaRAID SAS Driver meta data
  */
-#define MEGASAS_VERSION				"07.710.50.00-rc1"
-#define MEGASAS_RELDATE				"June 28, 2019"
+#define MEGASAS_VERSION				"07.714.04.00-rc1"
+#define MEGASAS_RELDATE				"Apr 14, 2020"
+
+#define MEGASAS_MSIX_NAME_LEN			32
 
 /*
  * Device IDs
@@ -509,7 +511,7 @@ union MR_PROGRESS {
  */
 struct MR_PD_PROGRESS {
 	struct {
-#ifndef MFI_BIG_ENDIAN
+#ifndef __BIG_ENDIAN_BITFIELD
 		u32     rbld:1;
 		u32     patrol:1;
 		u32     clear:1;
@@ -535,7 +537,7 @@ struct MR_PD_PROGRESS {
 	};
 
 	struct {
-#ifndef MFI_BIG_ENDIAN
+#ifndef __BIG_ENDIAN_BITFIELD
 		u32     rbld:1;
 		u32     patrol:1;
 		u32     clear:1;
@@ -2203,6 +2205,7 @@ struct megasas_aen_event {
 };
 
 struct megasas_irq_context {
+	char name[MEGASAS_MSIX_NAME_LEN];
 	struct megasas_instance *instance;
 	u32 MSIxIndex;
 	u32 os_irq;
@@ -2230,9 +2233,9 @@ enum MR_PD_TYPE {
 
 /* JBOD Queue depth definitions */
 #define MEGASAS_SATA_QD	32
-#define MEGASAS_SAS_QD	64
+#define MEGASAS_SAS_QD 256
 #define MEGASAS_DEFAULT_PD_QD	64
-#define MEGASAS_NVME_QD		32
+#define MEGASAS_NVME_QD        64
 
 #define MR_DEFAULT_NVME_PAGE_SIZE	4096
 #define MR_DEFAULT_NVME_PAGE_SHIFT	12
@@ -2255,6 +2258,15 @@ enum MR_PERF_MODE {
 		 (mode) == MR_IOPS_PERF_MODE ? "IOPS" : \
 		 (mode) == MR_LATENCY_PERF_MODE ? "Latency" : \
 		 "Unknown")
+
+enum MEGASAS_LD_TARGET_ID_STATUS {
+	LD_TARGET_ID_INITIAL,
+	LD_TARGET_ID_ACTIVE,
+	LD_TARGET_ID_DELETED,
+};
+
+#define MEGASAS_TARGET_ID(sdev)						\
+	(((sdev->channel % 2) * MEGASAS_MAX_DEV_PER_CHANNEL) + sdev->id)
 
 struct megasas_instance {
 
@@ -2320,6 +2332,9 @@ struct megasas_instance {
 	struct megasas_pd_list          pd_list[MEGASAS_MAX_PD];
 	struct megasas_pd_list          local_pd_list[MEGASAS_MAX_PD];
 	u8 ld_ids[MEGASAS_MAX_LD_IDS];
+	u8 ld_tgtid_status[MEGASAS_MAX_LD_IDS];
+	u8 ld_ids_prev[MEGASAS_MAX_LD_IDS];
+	u8 ld_ids_from_raidmap[MEGASAS_MAX_LD_IDS];
 	s8 init_id;
 
 	u16 max_num_sge;
@@ -2637,10 +2652,11 @@ enum MEGASAS_OCR_CAUSE {
 };
 
 enum DCMD_RETURN_STATUS {
-	DCMD_SUCCESS		= 0,
-	DCMD_TIMEOUT		= 1,
-	DCMD_FAILED		= 2,
-	DCMD_NOT_FIRED		= 3,
+	DCMD_SUCCESS    = 0x00,
+	DCMD_TIMEOUT    = 0x01,
+	DCMD_FAILED     = 0x02,
+	DCMD_BUSY       = 0x03,
+	DCMD_INIT       = 0xff,
 };
 
 u8
@@ -2705,4 +2721,24 @@ int megasas_adp_reset_wait_for_ready(struct megasas_instance *instance,
 				     int ocr_context);
 int megasas_irqpoll(struct irq_poll *irqpoll, int budget);
 void megasas_dump_fusion_io(struct scsi_cmnd *scmd);
+u32 megasas_readl(struct megasas_instance *instance,
+		  const volatile void __iomem *addr);
+struct megasas_cmd *megasas_get_cmd(struct megasas_instance *instance);
+void megasas_return_cmd(struct megasas_instance *instance,
+			struct megasas_cmd *cmd);
+int megasas_issue_polled(struct megasas_instance *instance,
+			 struct megasas_cmd *cmd);
+void megaraid_sas_kill_hba(struct megasas_instance *instance);
+void megasas_check_and_restore_queue_depth(struct megasas_instance *instance);
+void megasas_start_timer(struct megasas_instance *instance);
+int megasas_sriov_start_heartbeat(struct megasas_instance *instance,
+				  int initial);
+int megasas_alloc_cmds(struct megasas_instance *instance);
+void megasas_free_cmds(struct megasas_instance *instance);
+
+void megasas_init_debugfs(void);
+void megasas_exit_debugfs(void);
+void megasas_setup_debugfs(struct megasas_instance *instance);
+void megasas_destroy_debugfs(struct megasas_instance *instance);
+
 #endif				/*LSI_MEGARAID_SAS_H */

@@ -63,7 +63,7 @@ static void enqueue_external_timestamp(struct timestamp_event_queue *queue,
 	spin_unlock_irqrestore(&queue->lock, flags);
 }
 
-s32 scaled_ppm_to_ppb(long ppm)
+long scaled_ppm_to_ppb(long ppm)
 {
 	/*
 	 * The 'freq' field in the 'struct timex' is in parts per
@@ -80,7 +80,7 @@ s32 scaled_ppm_to_ppb(long ppm)
 	s64 ppb = 1 + ppm;
 	ppb *= 125;
 	ppb >>= 13;
-	return (s32) ppb;
+	return (long) ppb;
 }
 EXPORT_SYMBOL(scaled_ppm_to_ppb);
 
@@ -138,7 +138,7 @@ static int ptp_clock_adjtime(struct posix_clock *pc, struct __kernel_timex *tx)
 		delta = ktime_to_ns(kt);
 		err = ops->adjtime(ops, delta);
 	} else if (tx->modes & ADJ_FREQUENCY) {
-		s32 ppb = scaled_ppm_to_ppb(tx->freq);
+		long ppb = scaled_ppm_to_ppb(tx->freq);
 		if (ppb > ops->max_adj || ppb < -ops->max_adj)
 			return -ERANGE;
 		if (ops->adjfine)
@@ -146,6 +146,15 @@ static int ptp_clock_adjtime(struct posix_clock *pc, struct __kernel_timex *tx)
 		else
 			err = ops->adjfreq(ops, ppb);
 		ptp->dialed_frequency = tx->freq;
+	} else if (tx->modes & ADJ_OFFSET) {
+		if (ops->adjphase) {
+			s32 offset = tx->offset;
+
+			if (!(tx->modes & ADJ_NANO))
+				offset *= NSEC_PER_USEC;
+
+			err = ops->adjphase(ops, offset);
+		}
 	} else if (tx->modes == 0) {
 		tx->freq = ptp->dialed_frequency;
 		err = 0;
@@ -348,7 +357,6 @@ int ptp_find_pin(struct ptp_clock *ptp,
 	struct ptp_pin_desc *pin = NULL;
 	int i;
 
-	mutex_lock(&ptp->pincfg_mux);
 	for (i = 0; i < ptp->info->n_pins; i++) {
 		if (ptp->info->pin_config[i].func == func &&
 		    ptp->info->pin_config[i].chan == chan) {
@@ -356,17 +364,37 @@ int ptp_find_pin(struct ptp_clock *ptp,
 			break;
 		}
 	}
-	mutex_unlock(&ptp->pincfg_mux);
 
 	return pin ? i : -1;
 }
 EXPORT_SYMBOL(ptp_find_pin);
+
+int ptp_find_pin_unlocked(struct ptp_clock *ptp,
+			  enum ptp_pin_function func, unsigned int chan)
+{
+	int result;
+
+	mutex_lock(&ptp->pincfg_mux);
+
+	result = ptp_find_pin(ptp, func, chan);
+
+	mutex_unlock(&ptp->pincfg_mux);
+
+	return result;
+}
+EXPORT_SYMBOL(ptp_find_pin_unlocked);
 
 int ptp_schedule_worker(struct ptp_clock *ptp, unsigned long delay)
 {
 	return kthread_mod_delayed_work(ptp->kworker, &ptp->aux_work, delay);
 }
 EXPORT_SYMBOL(ptp_schedule_worker);
+
+void ptp_cancel_worker_sync(struct ptp_clock *ptp)
+{
+	kthread_cancel_delayed_work_sync(&ptp->aux_work);
+}
+EXPORT_SYMBOL(ptp_cancel_worker_sync);
 
 /* module operations */
 

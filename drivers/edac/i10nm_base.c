@@ -6,6 +6,7 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/io.h>
 #include <asm/cpu_device_id.h>
 #include <asm/intel-family.h>
 #include <asm/mce.h>
@@ -19,14 +20,16 @@
 #define i10nm_printk(level, fmt, arg...)	\
 	edac_printk(level, "i10nm", fmt, ##arg)
 
-#define I10NM_GET_SCK_BAR(d, reg)		\
+#define I10NM_GET_SCK_BAR(d, reg)	\
 	pci_read_config_dword((d)->uracu, 0xd0, &(reg))
 #define I10NM_GET_IMC_BAR(d, i, reg)	\
 	pci_read_config_dword((d)->uracu, 0xd8 + (i) * 4, &(reg))
 #define I10NM_GET_DIMMMTR(m, i, j)	\
-	(*(u32 *)((m)->mbase + 0x2080c + (i) * 0x4000 + (j) * 4))
+	readl((m)->mbase + 0x2080c + (i) * 0x4000 + (j) * 4)
 #define I10NM_GET_MCDDRTCFG(m, i, j)	\
-	(*(u32 *)((m)->mbase + 0x20970 + (i) * 0x4000 + (j) * 4))
+	readl((m)->mbase + 0x20970 + (i) * 0x4000 + (j) * 4)
+#define I10NM_GET_MCMTR(m, i)		\
+	readl((m)->mbase + 0x20ef8 + (i) * 0x4000)
 
 #define I10NM_GET_SCK_MMIO_BASE(reg)	(GET_BITFIELD(reg, 0, 28) << 23)
 #define I10NM_GET_IMC_MMIO_OFFSET(reg)	(GET_BITFIELD(reg, 0, 10) << 12)
@@ -122,11 +125,25 @@ static int i10nm_get_all_munits(void)
 	return 0;
 }
 
+static struct res_config i10nm_cfg0 = {
+	.type			= I10NM,
+	.decs_did		= 0x3452,
+	.busno_cfg_offset	= 0xcc,
+};
+
+static struct res_config i10nm_cfg1 = {
+	.type			= I10NM,
+	.decs_did		= 0x3452,
+	.busno_cfg_offset	= 0xd0,
+};
+
 static const struct x86_cpu_id i10nm_cpuids[] = {
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_ATOM_TREMONT_D, 0, 0 },
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_ICELAKE_X, 0, 0 },
-	{ X86_VENDOR_INTEL, 6, INTEL_FAM6_ICELAKE_D, 0, 0 },
-	{ }
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(ATOM_TREMONT_D,	X86_STEPPINGS(0x0, 0x3), &i10nm_cfg0),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(ATOM_TREMONT_D,	X86_STEPPINGS(0x4, 0xf), &i10nm_cfg1),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(ICELAKE_X,		X86_STEPPINGS(0x0, 0x3), &i10nm_cfg0),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(ICELAKE_X,		X86_STEPPINGS(0x4, 0xf), &i10nm_cfg1),
+	X86_MATCH_INTEL_FAM6_MODEL_STEPPINGS(ICELAKE_D,		X86_STEPPINGS(0x0, 0xf), &i10nm_cfg1),
+	{}
 };
 MODULE_DEVICE_TABLE(x86cpu, i10nm_cpuids);
 
@@ -134,7 +151,7 @@ static bool i10nm_check_ecc(struct skx_imc *imc, int chan)
 {
 	u32 mcmtr;
 
-	mcmtr = *(u32 *)(imc->mbase + 0x20ef8 + chan * 0x4000);
+	mcmtr = I10NM_GET_MCMTR(imc, chan);
 	edac_dbg(1, "ch%d mcmtr reg %x\n", chan, mcmtr);
 
 	return !!GET_BITFIELD(mcmtr, 2, 2);
@@ -154,15 +171,14 @@ static int i10nm_get_dimm_config(struct mem_ctl_info *mci)
 
 		ndimms = 0;
 		for (j = 0; j < I10NM_NUM_DIMMS; j++) {
-			dimm = EDAC_DIMM_PTR(mci->layers, mci->dimms,
-					     mci->n_layers, i, j, 0);
+			dimm = edac_get_dimm(mci, i, j, 0);
 			mtr = I10NM_GET_DIMMMTR(imc, i, j);
 			mcddrtcfg = I10NM_GET_MCDDRTCFG(imc, i, j);
 			edac_dbg(1, "dimmmtr 0x%x mcddrtcfg 0x%x (mc%d ch%d dimm%d)\n",
 				 mtr, mcddrtcfg, imc->mc, i, j);
 
 			if (IS_DIMM_PRESENT(mtr))
-				ndimms += skx_get_dimm_info(mtr, 0, dimm,
+				ndimms += skx_get_dimm_info(mtr, 0, 0, dimm,
 							    imc, i, j);
 			else if (IS_NVDIMM_PRESENT(mcddrtcfg, j))
 				ndimms += skx_get_nvdimm_info(dimm, imc, i, j,
@@ -235,6 +251,7 @@ static int __init i10nm_init(void)
 {
 	u8 mc = 0, src_id = 0, node_id = 0;
 	const struct x86_cpu_id *id;
+	struct res_config *cfg;
 	const char *owner;
 	struct skx_dev *d;
 	int rc, i, off[3] = {0xd0, 0xc8, 0xcc};
@@ -246,15 +263,20 @@ static int __init i10nm_init(void)
 	if (owner && strncmp(owner, EDAC_MOD_STR, sizeof(EDAC_MOD_STR)))
 		return -EBUSY;
 
+	if (cpu_feature_enabled(X86_FEATURE_HYPERVISOR))
+		return -ENODEV;
+
 	id = x86_match_cpu(i10nm_cpuids);
 	if (!id)
 		return -ENODEV;
+
+	cfg = (struct res_config *)id->driver_data;
 
 	rc = skx_get_hi_lo(0x09a2, off, &tolm, &tohm);
 	if (rc)
 		return rc;
 
-	rc = skx_get_all_bus_mappings(0x3452, 0xcc, I10NM, &i10nm_edac_list);
+	rc = skx_get_all_bus_mappings(cfg, &i10nm_edac_list);
 	if (rc < 0)
 		goto fail;
 	if (rc == 0) {

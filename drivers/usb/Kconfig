@@ -3,21 +3,6 @@
 # USB device configuration
 #
 
-config GEMINI_USB
-	bool "Support Gemini USB"
-	select SCSI
-	select USB
-	select USB_SUPPORT
-	select USB_ARCH_HAS_EHCI
-	select USB_ARCH_HAS_OHCI
-#	select USB_EHCI_HCD_PLATFORM
-#	select USB_OHCI_HCD_PLATFORM
-#	select USB_EHCI_HCD
-#	select USB_OHCI_HCD
-	select USB_STORAGE
-	help
-	  Sunplus Gemini platform USB support
-
 config USB_OHCI_BIG_ENDIAN_DESC
 	bool
 
@@ -45,35 +30,13 @@ menuconfig USB_SUPPORT
 	bool "USB support"
 	depends on HAS_IOMEM
 	default y
-	---help---
+	help
 	  This option adds core support for Universal Serial Bus (USB).
 	  You will also need drivers from the following menu to make use of it.
 
 if USB_SUPPORT
 
 source "drivers/usb/common/Kconfig"
-
-# usb ports freely determine enable/disable
-config USB_PORT0
-	bool "Sunplus Gemini USB2.0 PORT 0"
-	default y
-
-config USB_PORT1
-	bool "Sunplus Gemini USB2.0 PORT 1"
-	depends on (SOC_SP7021 || SOC_I143)
-	default y
-
-config USB_PORT2
-	bool "Sunplus Gemini USB PORT 2"
-	default y
-	
-config USB_GADGET_ENABLED
-	bool
-	default y if (USB_PORT0 || USB_PORT1)
-
-config USB_GADGET_PORT0_ENABLED
-	bool "Sunplus Gemini USB2.0 gadget port 0"
-	default y
 
 config USB_ARCH_HAS_HCD
 	def_bool y
@@ -84,7 +47,7 @@ config USB
 	select GENERIC_ALLOCATOR
 	select USB_COMMON
 	select NLS  # for UTF-8 strings
-	---help---
+	help
 	  Universal Serial Bus (USB) is a specification for a serial bus
 	  subsystem which offers higher speeds and more features than the
 	  traditional PC serial port.  The bus supplies power to peripherals
@@ -120,7 +83,7 @@ config USB_PCI
 	bool "PCI based USB host interface"
 	depends on PCI
 	default y
-	---help---
+	help
 	  Many embedded system SOCs (e.g. freescale T2080) have both
 	  PCI and USB modules with the USB module directly controlled by
 	  registers and having no relationship to the PCI module.
@@ -170,7 +133,7 @@ config USB_USS720
 	tristate "USS720 parport driver"
 	depends on PARPORT
 	select PARPORT_NOT_PC
-	---help---
+	help
 	  This driver is for USB parallel port adapters that use the Lucent
 	  Technologies USS-720 chip. These cables are plugged into your USB
 	  port and provide USB compatibility to peripherals designed with

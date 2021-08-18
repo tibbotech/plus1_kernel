@@ -1249,8 +1249,12 @@ out_disable_adv_intr:
 
 static void __alx_stop(struct alx_priv *alx)
 {
-	alx_halt(alx);
 	alx_free_irq(alx);
+
+	cancel_work_sync(&alx->link_check_wk);
+	cancel_work_sync(&alx->reset_wk);
+
+	alx_halt(alx);
 	alx_free_rings(alx);
 	alx_free_napis(alx);
 }
@@ -1416,10 +1420,7 @@ static int alx_tso(struct sk_buff *skb, struct alx_txd *first)
 							 0, IPPROTO_TCP, 0);
 		first->word1 |= 1 << TPD_IPV4_SHIFT;
 	} else if (skb_is_gso_v6(skb)) {
-		ipv6_hdr(skb)->payload_len = 0;
-		tcp_hdr(skb)->check = ~csum_ipv6_magic(&ipv6_hdr(skb)->saddr,
-						       &ipv6_hdr(skb)->daddr,
-						       0, IPPROTO_TCP, 0);
+		tcp_v6_gso_csum_prep(skb);
 		/* LSOv2: the first TPD only provides the packet length */
 		first->adrl.l.pkt_len = skb->len;
 		first->word1 |= 1 << TPD_LSO_V2_SHIFT;
@@ -1553,7 +1554,7 @@ static netdev_tx_t alx_start_xmit(struct sk_buff *skb,
 	return alx_start_xmit_ring(skb, alx_tx_queue_mapping(alx, skb));
 }
 
-static void alx_tx_timeout(struct net_device *dev)
+static void alx_tx_timeout(struct net_device *dev, unsigned int txqueue)
 {
 	struct alx_priv *alx = netdev_priv(dev);
 
@@ -1848,6 +1849,7 @@ out_free_netdev:
 	free_netdev(netdev);
 out_pci_release:
 	pci_release_mem_regions(pdev);
+	pci_disable_pcie_error_reporting(pdev);
 out_pci_disable:
 	pci_disable_device(pdev);
 	return err;
@@ -1857,9 +1859,6 @@ static void alx_remove(struct pci_dev *pdev)
 {
 	struct alx_priv *alx = pci_get_drvdata(pdev);
 	struct alx_hw *hw = &alx->hw;
-
-	cancel_work_sync(&alx->link_check_wk);
-	cancel_work_sync(&alx->reset_wk);
 
 	/* restore permanent mac address */
 	alx_set_macaddr(hw, hw->perm_addr);
@@ -1896,13 +1895,16 @@ static int alx_resume(struct device *dev)
 
 	if (!netif_running(alx->dev))
 		return 0;
-	netif_device_attach(alx->dev);
 
 	rtnl_lock();
 	err = __alx_open(alx, true);
 	rtnl_unlock();
+	if (err)
+		return err;
 
-	return err;
+	netif_device_attach(alx->dev);
+
+	return 0;
 }
 
 static SIMPLE_DEV_PM_OPS(alx_pm_ops, alx_suspend, alx_resume);

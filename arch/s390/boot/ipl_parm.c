@@ -2,47 +2,51 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/ctype.h>
+#include <linux/pgtable.h>
 #include <asm/ebcdic.h>
 #include <asm/sclp.h>
 #include <asm/sections.h>
 #include <asm/boot_data.h>
 #include <asm/facility.h>
-#include <asm/pgtable.h>
 #include <asm/uv.h>
 #include "boot.h"
 
 char __bootdata(early_command_line)[COMMAND_LINE_SIZE];
 struct ipl_parameter_block __bootdata_preserved(ipl_block);
 int __bootdata_preserved(ipl_block_valid);
+unsigned int __bootdata_preserved(zlib_dfltcc_support) = ZLIB_DFLTCC_FULL;
 
 unsigned long __bootdata(vmalloc_size) = VMALLOC_DEFAULT_SIZE;
 unsigned long __bootdata(memory_end);
 int __bootdata(memory_end_set);
 int __bootdata(noexec_disabled);
 
-int kaslr_enabled __section(.data);
+int kaslr_enabled;
 
 static inline int __diag308(unsigned long subcode, void *addr)
 {
 	register unsigned long _addr asm("0") = (unsigned long)addr;
 	register unsigned long _rc asm("1") = 0;
 	unsigned long reg1, reg2;
-	psw_t old = S390_lowcore.program_new_psw;
+	psw_t old;
 
 	asm volatile(
+		"	mvc	0(16,%[psw_old]),0(%[psw_pgm])\n"
 		"	epsw	%0,%1\n"
-		"	st	%0,%[psw_pgm]\n"
-		"	st	%1,%[psw_pgm]+4\n"
+		"	st	%0,0(%[psw_pgm])\n"
+		"	st	%1,4(%[psw_pgm])\n"
 		"	larl	%0,1f\n"
-		"	stg	%0,%[psw_pgm]+8\n"
+		"	stg	%0,8(%[psw_pgm])\n"
 		"	diag	%[addr],%[subcode],0x308\n"
-		"1:	nopr	%%r7\n"
+		"1:	mvc	0(16,%[psw_pgm]),0(%[psw_old])\n"
 		: "=&d" (reg1), "=&a" (reg2),
-		  [psw_pgm] "=Q" (S390_lowcore.program_new_psw),
+		  "+Q" (S390_lowcore.program_new_psw),
+		  "=Q" (old),
 		  [addr] "+d" (_addr), "+d" (_rc)
-		: [subcode] "d" (subcode)
+		: [subcode] "d" (subcode),
+		  [psw_old] "a" (&old),
+		  [psw_pgm] "a" (&S390_lowcore.program_new_psw)
 		: "cc", "memory");
-	S390_lowcore.program_new_psw = old;
 	return _rc;
 }
 
@@ -69,30 +73,44 @@ static size_t scpdata_length(const u8 *buf, size_t count)
 static size_t ipl_block_get_ascii_scpdata(char *dest, size_t size,
 					  const struct ipl_parameter_block *ipb)
 {
-	size_t count;
-	size_t i;
+	const __u8 *scp_data;
+	__u32 scp_data_len;
 	int has_lowercase;
+	size_t count = 0;
+	size_t i;
 
-	count = min(size - 1, scpdata_length(ipb->fcp.scp_data,
-					     ipb->fcp.scp_data_len));
+	switch (ipb->pb0_hdr.pbt) {
+	case IPL_PBT_FCP:
+		scp_data_len = ipb->fcp.scp_data_len;
+		scp_data = ipb->fcp.scp_data;
+		break;
+	case IPL_PBT_NVME:
+		scp_data_len = ipb->nvme.scp_data_len;
+		scp_data = ipb->nvme.scp_data;
+		break;
+	default:
+		goto out;
+	}
+
+	count = min(size - 1, scpdata_length(scp_data, scp_data_len));
 	if (!count)
 		goto out;
 
 	has_lowercase = 0;
 	for (i = 0; i < count; i++) {
-		if (!isascii(ipb->fcp.scp_data[i])) {
+		if (!isascii(scp_data[i])) {
 			count = 0;
 			goto out;
 		}
-		if (!has_lowercase && islower(ipb->fcp.scp_data[i]))
+		if (!has_lowercase && islower(scp_data[i]))
 			has_lowercase = 1;
 	}
 
 	if (has_lowercase)
-		memcpy(dest, ipb->fcp.scp_data, count);
+		memcpy(dest, scp_data, count);
 	else
 		for (i = 0; i < count; i++)
-			dest[i] = tolower(ipb->fcp.scp_data[i]);
+			dest[i] = tolower(scp_data[i]);
 out:
 	dest[count] = '\0';
 	return count;
@@ -114,6 +132,7 @@ static void append_ipl_block_parm(void)
 			parm, COMMAND_LINE_SIZE - len - 1, &ipl_block);
 		break;
 	case IPL_PBT_FCP:
+	case IPL_PBT_NVME:
 		rc = ipl_block_get_ascii_scpdata(
 			parm, COMMAND_LINE_SIZE - len - 1, &ipl_block);
 		break;
@@ -208,7 +227,7 @@ static void modify_fac_list(char *str)
 	check_cleared_facilities();
 }
 
-static char command_line_buf[COMMAND_LINE_SIZE] __section(.data);
+static char command_line_buf[COMMAND_LINE_SIZE];
 void parse_boot_command_line(void)
 {
 	char *param, *val;
@@ -229,6 +248,19 @@ void parse_boot_command_line(void)
 		if (!strcmp(param, "vmalloc") && val)
 			vmalloc_size = round_up(memparse(val, NULL), PAGE_SIZE);
 
+		if (!strcmp(param, "dfltcc") && val) {
+			if (!strcmp(val, "off"))
+				zlib_dfltcc_support = ZLIB_DFLTCC_DISABLED;
+			else if (!strcmp(val, "on"))
+				zlib_dfltcc_support = ZLIB_DFLTCC_FULL;
+			else if (!strcmp(val, "def_only"))
+				zlib_dfltcc_support = ZLIB_DFLTCC_DEFLATE_ONLY;
+			else if (!strcmp(val, "inf_only"))
+				zlib_dfltcc_support = ZLIB_DFLTCC_INFLATE_ONLY;
+			else if (!strcmp(val, "always"))
+				zlib_dfltcc_support = ZLIB_DFLTCC_FULL_DEBUG;
+		}
+
 		if (!strcmp(param, "noexec")) {
 			rc = kstrtobool(val, &enabled);
 			if (!rc && !enabled)
@@ -240,7 +272,26 @@ void parse_boot_command_line(void)
 
 		if (!strcmp(param, "nokaslr"))
 			kaslr_enabled = 0;
+
+#if IS_ENABLED(CONFIG_KVM)
+		if (!strcmp(param, "prot_virt")) {
+			rc = kstrtobool(val, &enabled);
+			if (!rc && enabled)
+				prot_virt_host = 1;
+		}
+#endif
 	}
+}
+
+static inline bool is_ipl_block_dump(void)
+{
+	if (ipl_block.pb0_hdr.pbt == IPL_PBT_FCP &&
+	    ipl_block.fcp.opt == IPL_PB0_FCP_OPT_DUMP)
+		return true;
+	if (ipl_block.pb0_hdr.pbt == IPL_PBT_NVME &&
+	    ipl_block.nvme.opt == IPL_PB0_NVME_OPT_DUMP)
+		return true;
+	return false;
 }
 
 void setup_memory_end(void)
@@ -248,9 +299,7 @@ void setup_memory_end(void)
 #ifdef CONFIG_CRASH_DUMP
 	if (OLDMEM_BASE) {
 		kaslr_enabled = 0;
-	} else if (ipl_block_valid &&
-		   ipl_block.pb0_hdr.pbt == IPL_PBT_FCP &&
-		   ipl_block.fcp.opt == IPL_PB0_FCP_OPT_DUMP) {
+	} else if (ipl_block_valid && is_ipl_block_dump()) {
 		kaslr_enabled = 0;
 		if (!sclp_early_get_hsa_size(&memory_end) && memory_end)
 			memory_end_set = 1;

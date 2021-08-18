@@ -7,7 +7,7 @@
 
 #include <linux/cpu.h>
 #include <asm/apic.h>
-#include <asm/pat.h>
+#include <asm/memtype.h>
 #include <asm/processor.h>
 
 #include "cpu.h"
@@ -25,10 +25,10 @@
 #define BITS_SHIFT_NEXT_LEVEL(eax)	((eax) & 0x1f)
 #define LEVEL_MAX_SIBLINGS(ebx)		((ebx) & 0xffff)
 
-#ifdef CONFIG_SMP
 unsigned int __max_die_per_package __read_mostly = 1;
 EXPORT_SYMBOL(__max_die_per_package);
 
+#ifdef CONFIG_SMP
 /*
  * Check if given CPUID extended toplogy "leaf" is implemented
  */

@@ -153,7 +153,7 @@ static void slc_bump(struct slcan *sl)
 	switch (*cmd) {
 	case 'r':
 		cf.can_id = CAN_RTR_FLAG;
-		/* fallthrough */
+		fallthrough;
 	case 't':
 		/* store dlc ASCII value and terminate SFF CAN ID string */
 		cf.can_dlc = sl->rbuff[SLC_CMD_LEN + SLC_SFF_ID_LEN];
@@ -163,7 +163,7 @@ static void slc_bump(struct slcan *sl)
 		break;
 	case 'R':
 		cf.can_id = CAN_RTR_FLAG;
-		/* fallthrough */
+		fallthrough;
 	case 'T':
 		cf.can_id |= CAN_EFF_FLAG;
 		/* store dlc ASCII value and terminate EFF CAN ID string */
@@ -346,11 +346,8 @@ static void slcan_write_wakeup(struct tty_struct *tty)
 
 	rcu_read_lock();
 	sl = rcu_dereference(tty->disc_data);
-	if (!sl)
-		goto out;
-
-	schedule_work(&sl->tx_work);
-out:
+	if (sl)
+		schedule_work(&sl->tx_work);
 	rcu_read_unlock();
 }
 
@@ -519,6 +516,7 @@ static struct slcan *slc_alloc(void)
 	int i;
 	char name[IFNAMSIZ];
 	struct net_device *dev = NULL;
+	struct can_ml_priv *can_ml;
 	struct slcan       *sl;
 	int size;
 
@@ -541,7 +539,8 @@ static struct slcan *slc_alloc(void)
 
 	dev->base_addr  = i;
 	sl = netdev_priv(dev);
-	dev->ml_priv = (void *)sl + ALIGN(sizeof(*sl), NETDEV_ALIGN);
+	can_ml = (void *)sl + ALIGN(sizeof(*sl), NETDEV_ALIGN);
+	can_set_ml_priv(dev, can_ml);
 
 	/* Initialize channel control data */
 	sl->magic = SLCAN_MAGIC;

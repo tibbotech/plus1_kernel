@@ -1968,7 +1968,7 @@ static void rtllib_parse_mife_generic(struct rtllib_device *ieee,
 	    info_element->data[2] == 0x96 &&
 	    info_element->data[3] == 0x01) {
 		if (info_element->len == 6) {
-			memcpy(network->CcxRmState, &info_element[4], 2);
+			memcpy(network->CcxRmState, &info_element->data[4], 2);
 			if (network->CcxRmState[0] != 0)
 				network->bCcxRmEnable = true;
 			else
@@ -2092,7 +2092,7 @@ int rtllib_parse_info_param(struct rtllib_device *ieee,
 						 MAX_RATES_LENGTH);
 			for (i = 0; i < network->rates_len; i++) {
 				network->rates[i] = info_element->data[i];
-				p += snprintf(p, sizeof(rates_str) -
+				p += scnprintf(p, sizeof(rates_str) -
 					      (p - rates_str), "%02X ",
 					      network->rates[i]);
 				if (rtllib_is_ofdm_rate
@@ -2120,7 +2120,7 @@ int rtllib_parse_info_param(struct rtllib_device *ieee,
 						    MAX_RATES_EX_LENGTH);
 			for (i = 0; i < network->rates_ex_len; i++) {
 				network->rates_ex[i] = info_element->data[i];
-				p += snprintf(p, sizeof(rates_str) -
+				p += scnprintf(p, sizeof(rates_str) -
 					      (p - rates_str), "%02X ",
 					      network->rates_ex[i]);
 				if (rtllib_is_ofdm_rate

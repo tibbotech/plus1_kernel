@@ -7,9 +7,22 @@
 
 #include <uapi/asm/page.h>
 
+#ifdef CONFIG_ARC_HAS_PAE40
+
+#define MAX_POSSIBLE_PHYSMEM_BITS	40
+#define PAGE_MASK_PHYS			(0xff00000000ull | PAGE_MASK)
+
+#else /* CONFIG_ARC_HAS_PAE40 */
+
+#define MAX_POSSIBLE_PHYSMEM_BITS	32
+#define PAGE_MASK_PHYS			PAGE_MASK
+
+#endif /* CONFIG_ARC_HAS_PAE40 */
+
 #ifndef __ASSEMBLY__
 
 #define clear_page(paddr)		memset((paddr), 0, PAGE_SIZE)
+#define copy_user_page(to, from, vaddr, pg)	copy_page(to, from)
 #define copy_page(to, from)		memcpy((to), (from), PAGE_SIZE)
 
 struct vm_area_struct;
@@ -102,7 +115,7 @@ typedef pte_t * pgtable_t;
 #define virt_addr_valid(kaddr)  pfn_valid(virt_to_pfn(kaddr))
 
 /* Default Permissions for stack/heaps pages (Non Executable) */
-#define VM_DATA_DEFAULT_FLAGS   (VM_READ | VM_WRITE | VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC)
+#define VM_DATA_DEFAULT_FLAGS	VM_DATA_FLAGS_NON_EXEC
 
 #define WANT_PAGE_VIRTUAL   1
 

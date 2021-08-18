@@ -301,7 +301,7 @@ struct ctrl_dl {
 	unsigned int DCD:1;
 	unsigned int RI:1;
 	unsigned int CTS:1;
-	unsigned int reserverd:4;
+	unsigned int reserved:4;
 	u8 port;
 } __attribute__ ((packed));
 
@@ -839,40 +839,39 @@ static char *interrupt2str(u16 interrupt)
 	static char buf[TMP_BUF_MAX];
 	char *p = buf;
 
-	interrupt & MDM_DL1 ? p += snprintf(p, TMP_BUF_MAX, "MDM_DL1 ") : NULL;
-	interrupt & MDM_DL2 ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"MDM_DL2 ") : NULL;
+	if (interrupt & MDM_DL1)
+		p += scnprintf(p, TMP_BUF_MAX, "MDM_DL1 ");
+	if (interrupt & MDM_DL2)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "MDM_DL2 ");
+	if (interrupt & MDM_UL1)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "MDM_UL1 ");
+	if (interrupt & MDM_UL2)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "MDM_UL2 ");
+	if (interrupt & DIAG_DL1)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "DIAG_DL1 ");
+	if (interrupt & DIAG_DL2)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "DIAG_DL2 ");
 
-	interrupt & MDM_UL1 ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"MDM_UL1 ") : NULL;
-	interrupt & MDM_UL2 ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"MDM_UL2 ") : NULL;
+	if (interrupt & DIAG_UL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "DIAG_UL ");
 
-	interrupt & DIAG_DL1 ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"DIAG_DL1 ") : NULL;
-	interrupt & DIAG_DL2 ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"DIAG_DL2 ") : NULL;
+	if (interrupt & APP1_DL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "APP1_DL ");
+	if (interrupt & APP2_DL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "APP2_DL ");
 
-	interrupt & DIAG_UL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"DIAG_UL ") : NULL;
+	if (interrupt & APP1_UL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "APP1_UL ");
+	if (interrupt & APP2_UL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "APP2_UL ");
 
-	interrupt & APP1_DL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"APP1_DL ") : NULL;
-	interrupt & APP2_DL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"APP2_DL ") : NULL;
+	if (interrupt & CTRL_DL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "CTRL_DL ");
+	if (interrupt & CTRL_UL)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "CTRL_UL ");
 
-	interrupt & APP1_UL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"APP1_UL ") : NULL;
-	interrupt & APP2_UL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"APP2_UL ") : NULL;
-
-	interrupt & CTRL_DL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"CTRL_DL ") : NULL;
-	interrupt & CTRL_UL ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"CTRL_UL ") : NULL;
-
-	interrupt & RESET ? p += snprintf(p, TMP_BUF_MAX - (p - buf),
-					"RESET ") : NULL;
+	if (interrupt & RESET)
+		p += scnprintf(p, TMP_BUF_MAX - (p - buf), "RESET ");
 
 	return buf;
 }
@@ -1395,7 +1394,7 @@ static int nozomi_card_init(struct pci_dev *pdev,
 			NOZOMI_NAME, dc);
 	if (unlikely(ret)) {
 		dev_err(&pdev->dev, "can't request irq %d\n", pdev->irq);
-		goto err_free_kfifo;
+		goto err_free_all_kfifo;
 	}
 
 	DBG1("base_addr: %p", dc->base_addr);
@@ -1433,12 +1432,15 @@ static int nozomi_card_init(struct pci_dev *pdev,
 	return 0;
 
 err_free_tty:
-	for (i = 0; i < MAX_PORT; ++i) {
+	for (i--; i >= 0; i--) {
 		tty_unregister_device(ntty_driver, dc->index_start + i);
 		tty_port_destroy(&dc->port[i].port);
 	}
+	free_irq(pdev->irq, dc);
+err_free_all_kfifo:
+	i = MAX_PORT;
 err_free_kfifo:
-	for (i = 0; i < MAX_PORT; i++)
+	for (i--; i >= PORT_MDM; i--)
 		kfifo_free(&dc->port[i].fifo_ul);
 err_free_sbuf:
 	kfree(dc->send_buf);

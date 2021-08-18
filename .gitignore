@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0-only
 #
 # NOTE! Don't add files that are generated in specific
 # subdirectories here. Add them in the ".gitignore" file
@@ -14,7 +15,6 @@
 *.asn1.[ch]
 *.bin
 *.bz2
-*.bak
 *.c.[012]*.*
 *.dt.yaml
 *.dtb
@@ -33,7 +33,6 @@
 *.lzo
 *.mod
 *.mod.c
-*.ns_deps
 *.o
 *.o.*
 *.patch
@@ -45,10 +44,10 @@
 *.tab.[ch]
 *.tar
 *.xz
+*.zst
 Module.symvers
 modules.builtin
 modules.order
-uImage
 
 #
 # Top-level generic files
@@ -56,14 +55,16 @@ uImage
 /tags
 /TAGS
 /linux
+/modules-only.symvers
 /vmlinux
 /vmlinux.32
+/vmlinux.symvers
 /vmlinux-gdb.py
 /vmlinuz
 /System.map
 /Module.markers
 /modules.builtin.modinfo
-/dtb
+/modules.nsdeps
 
 #
 # RPM spec file (make rpm-pkg)
@@ -102,7 +103,6 @@ uImage
 /include/generated/
 /include/ksym/
 /arch/*/include/generated/
-/kernel/config_data.h
 
 # stgit generated dirs
 patches-*
@@ -145,11 +145,14 @@ x509.genkey
 /allrandom.config
 /allyes.config
 
+# Kconfig savedefconfig output
+/defconfig
+
 # Kdevelop4
 *.kdev4
 
 # Clang's compilation database file
 /compile_commands.json
 
-drivers/media/platform/sunplus/videocodec/*.c
-drivers/media/platform/sunplus/videocodec/*.h
+# Documentation toolchain
+sphinx_*/

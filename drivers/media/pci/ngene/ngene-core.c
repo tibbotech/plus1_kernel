@@ -50,9 +50,9 @@ DVB_DEFINE_MOD_OPT_ADAPTER_NR(adapter_nr);
 /* nGene interrupt handler **************************************************/
 /****************************************************************************/
 
-static void event_tasklet(unsigned long data)
+static void event_tasklet(struct tasklet_struct *t)
 {
-	struct ngene *dev = (struct ngene *)data;
+	struct ngene *dev = from_tasklet(dev, t, event_tasklet);
 
 	while (dev->EventQueueReadIndex != dev->EventQueueWriteIndex) {
 		struct EVENT_BUFFER Event =
@@ -68,9 +68,9 @@ static void event_tasklet(unsigned long data)
 	}
 }
 
-static void demux_tasklet(unsigned long data)
+static void demux_tasklet(struct tasklet_struct *t)
 {
-	struct ngene_channel *chan = (struct ngene_channel *)data;
+	struct ngene_channel *chan = from_tasklet(chan, t, demux_tasklet);
 	struct device *pdev = &chan->dev->pci_dev->dev;
 	struct SBufferHeader *Cur = chan->nextBuffer;
 
@@ -385,7 +385,7 @@ static int ngene_command_config_free_buf(struct ngene *dev, u8 *config)
 
 	com.cmd.hdr.Opcode = CMD_CONFIGURE_FREE_BUFFER;
 	com.cmd.hdr.Length = 6;
-	memcpy(&com.cmd.ConfigureBuffers.config, config, 6);
+	memcpy(&com.cmd.ConfigureFreeBuffers.config, config, 6);
 	com.in_len = 6;
 	com.out_len = 0;
 
@@ -1181,7 +1181,7 @@ static void ngene_init(struct ngene *dev)
 	struct device *pdev = &dev->pci_dev->dev;
 	int i;
 
-	tasklet_init(&dev->event_tasklet, event_tasklet, (unsigned long)dev);
+	tasklet_setup(&dev->event_tasklet, event_tasklet);
 
 	memset_io(dev->iomem + 0xc000, 0x00, 0x220);
 	memset_io(dev->iomem + 0xc400, 0x00, 0x100);
@@ -1445,7 +1445,7 @@ static int init_channel(struct ngene_channel *chan)
 	struct ngene_info *ni = dev->card_info;
 	int io = ni->io_type[nr];
 
-	tasklet_init(&chan->demux_tasklet, demux_tasklet, (unsigned long)chan);
+	tasklet_setup(&chan->demux_tasklet, demux_tasklet);
 	chan->users = 0;
 	chan->type = io;
 	chan->mode = chan->type;	/* for now only one mode */

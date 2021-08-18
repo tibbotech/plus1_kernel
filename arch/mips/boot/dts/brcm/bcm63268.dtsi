@@ -59,7 +59,7 @@
 
 		periph_cntl: syscon@10000008 {
 			compatible = "syscon";
-			reg = <0x10000000 0xc>;
+			reg = <0x10000008 0x4>;
 			native-endian;
 		};
 
@@ -115,6 +115,12 @@
 			reg = <0x10001900 0x24>;
 
 			status = "disabled";
+		};
+
+		periph_pwr: power-controller@1000184c {
+			compatible = "brcm,bcm6328-power-controller";
+			reg = <0x1000184c 0x4>;
+			#power-domain-cells = <1>;
 		};
 
 		ehci: usb@10002500 {

@@ -104,11 +104,6 @@ static int pm2xxx_charger_current_map[] = {
 	3000,
 };
 
-static const struct i2c_device_id pm2xxx_ident[] = {
-	{ "pm2301", 0 },
-	{ }
-};
-
 static void set_lpn_pin(struct pm2xxx_charger *pm2)
 {
 	if (!pm2->ac.charger_connected && gpio_is_valid(pm2->lpn_pin)) {
@@ -396,7 +391,7 @@ static int pm2_int_reg3(void *pm2_data, int val)
 
 	if (val & (PM2XXX_INT4_ITCHARGINGON)) {
 		dev_dbg(pm2->dev ,
-			"chargind operation has started\n");
+			"charging operation has started\n");
 	}
 
 	if (val & (PM2XXX_INT4_ITVRESUME)) {
@@ -1095,7 +1090,7 @@ static int pm2xxx_wall_charger_probe(struct i2c_client *i2c_client,
 	ret = request_threaded_irq(gpio_to_irq(pm2->pdata->gpio_irq_number),
 				NULL,
 				pm2xxx_charger_irq[0].isr,
-				pm2->pdata->irq_type,
+				pm2->pdata->irq_type | IRQF_ONESHOT,
 				pm2xxx_charger_irq[0].name, pm2);
 
 	if (ret != 0) {

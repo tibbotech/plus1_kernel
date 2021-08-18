@@ -98,6 +98,14 @@ struct integrity_iint_cache *integrity_inode_get(struct inode *inode)
 	struct rb_node *node, *parent = NULL;
 	struct integrity_iint_cache *iint, *test_iint;
 
+	/*
+	 * The integrity's "iint_cache" is initialized at security_init(),
+	 * unless it is not included in the ordered list of LSMs enabled
+	 * on the boot command line.
+	 */
+	if (!iint_cache)
+		panic("%s: lsm=integrity required.\n", __func__);
+
 	iint = integrity_iint_find(inode);
 	if (iint)
 		return iint;
@@ -188,19 +196,7 @@ DEFINE_LSM(integrity) = {
 int integrity_kernel_read(struct file *file, loff_t offset,
 			  void *addr, unsigned long count)
 {
-	mm_segment_t old_fs;
-	char __user *buf = (char __user *)addr;
-	ssize_t ret;
-
-	if (!(file->f_mode & FMODE_READ))
-		return -EBADF;
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	ret = __vfs_read(file, buf, count, &offset);
-	set_fs(old_fs);
-
-	return ret;
+	return __kernel_read(file, addr, count, &offset);
 }
 
 /*

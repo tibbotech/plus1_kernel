@@ -137,19 +137,19 @@ struct mt6358_regulator_info {
 	.qi = BIT(15),							\
 }
 
-static const struct regulator_linear_range buck_volt_range1[] = {
+static const struct linear_range buck_volt_range1[] = {
 	REGULATOR_LINEAR_RANGE(500000, 0, 0x7f, 6250),
 };
 
-static const struct regulator_linear_range buck_volt_range2[] = {
+static const struct linear_range buck_volt_range2[] = {
 	REGULATOR_LINEAR_RANGE(500000, 0, 0x7f, 12500),
 };
 
-static const struct regulator_linear_range buck_volt_range3[] = {
+static const struct linear_range buck_volt_range3[] = {
 	REGULATOR_LINEAR_RANGE(500000, 0, 0x3f, 50000),
 };
 
-static const struct regulator_linear_range buck_volt_range4[] = {
+static const struct linear_range buck_volt_range4[] = {
 	REGULATOR_LINEAR_RANGE(1000000, 0, 0x7f, 12500),
 };
 
@@ -457,7 +457,7 @@ static struct mt6358_regulator_info mt6358_regulators[] = {
 	MT6358_REG_FIXED("ldo_vaud28", VAUD28,
 			 MT6358_LDO_VAUD28_CON0, 0, 2800000),
 	MT6358_LDO("ldo_vdram2", VDRAM2, vdram2_voltages, vdram2_idx,
-		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0x10, 0),
+		   MT6358_LDO_VDRAM2_CON0, 0, MT6358_LDO_VDRAM2_ELR0, 0xf, 0),
 	MT6358_LDO("ldo_vsim1", VSIM1, vsim_voltages, vsim_idx,
 		   MT6358_LDO_VSIM1_CON0, 0, MT6358_VSIM1_ANA_CON0, 0xf00, 8),
 	MT6358_LDO("ldo_vibr", VIBR, vibr_voltages, vibr_idx,

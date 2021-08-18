@@ -245,7 +245,7 @@ static const struct iio_enum hmc5843_meas_conf_enum = {
 };
 
 static const struct iio_chan_spec_ext_info hmc5843_ext_info[] = {
-	IIO_ENUM("meas_conf", true, &hmc5843_meas_conf_enum),
+	IIO_ENUM("meas_conf", IIO_SHARED_BY_TYPE, &hmc5843_meas_conf_enum),
 	IIO_ENUM_AVAILABLE("meas_conf", &hmc5843_meas_conf_enum),
 	IIO_MOUNT_MATRIX(IIO_SHARED_BY_DIR, hmc5843_get_mount_matrix),
 	{ }
@@ -259,7 +259,7 @@ static const struct iio_enum hmc5983_meas_conf_enum = {
 };
 
 static const struct iio_chan_spec_ext_info hmc5983_ext_info[] = {
-	IIO_ENUM("meas_conf", true, &hmc5983_meas_conf_enum),
+	IIO_ENUM("meas_conf", IIO_SHARED_BY_TYPE, &hmc5983_meas_conf_enum),
 	IIO_ENUM_AVAILABLE("meas_conf", &hmc5983_meas_conf_enum),
 	IIO_MOUNT_MATRIX(IIO_SHARED_BY_DIR, hmc5843_get_mount_matrix),
 	{ }
@@ -446,13 +446,13 @@ static irqreturn_t hmc5843_trigger_handler(int irq, void *p)
 	}
 
 	ret = regmap_bulk_read(data->regmap, HMC5843_DATA_OUT_MSB_REGS,
-			       data->buffer, 3 * sizeof(__be16));
+			       data->scan.chans, sizeof(data->scan.chans));
 
 	mutex_unlock(&data->lock);
 	if (ret < 0)
 		goto done;
 
-	iio_push_to_buffers_with_timestamp(indio_dev, data->buffer,
+	iio_push_to_buffers_with_timestamp(indio_dev, &data->scan,
 					   iio_get_time_ns(indio_dev));
 
 done:
@@ -642,7 +642,6 @@ int hmc5843_common_probe(struct device *dev, struct regmap *regmap,
 	if (ret)
 		return ret;
 
-	indio_dev->dev.parent = dev;
 	indio_dev->name = name;
 	indio_dev->info = &hmc5843_info;
 	indio_dev->modes = INDIO_DIRECT_MODE;

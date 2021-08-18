@@ -214,6 +214,11 @@ static struct uvc_format_desc uvc_fmts[] = {
 		.guid		= UVC_GUID_FORMAT_CNF4,
 		.fcc		= V4L2_PIX_FMT_CNF4,
 	},
+	{
+		.name		= "HEVC",
+		.guid		= UVC_GUID_FORMAT_HEVC,
+		.fcc		= V4L2_PIX_FMT_HEVC,
+	},
 };
 
 /* ------------------------------------------------------------------------
@@ -248,10 +253,10 @@ static struct uvc_format_desc *uvc_format_by_guid(const u8 guid[16])
 	return NULL;
 }
 
-static u32 uvc_colorspace(const u8 primaries)
+static enum v4l2_colorspace uvc_colorspace(const u8 primaries)
 {
-	static const u8 colorprimaries[] = {
-		0,
+	static const enum v4l2_colorspace colorprimaries[] = {
+		V4L2_COLORSPACE_DEFAULT,  /* Unspecified */
 		V4L2_COLORSPACE_SRGB,
 		V4L2_COLORSPACE_470_SYSTEM_M,
 		V4L2_COLORSPACE_470_SYSTEM_BG,
@@ -262,7 +267,61 @@ static u32 uvc_colorspace(const u8 primaries)
 	if (primaries < ARRAY_SIZE(colorprimaries))
 		return colorprimaries[primaries];
 
-	return 0;
+	return V4L2_COLORSPACE_DEFAULT;  /* Reserved */
+}
+
+static enum v4l2_xfer_func uvc_xfer_func(const u8 transfer_characteristics)
+{
+	/*
+	 * V4L2 does not currently have definitions for all possible values of
+	 * UVC transfer characteristics. If v4l2_xfer_func is extended with new
+	 * values, the mapping below should be updated.
+	 *
+	 * Substitutions are taken from the mapping given for
+	 * V4L2_XFER_FUNC_DEFAULT documented in videodev2.h.
+	 */
+	static const enum v4l2_xfer_func xfer_funcs[] = {
+		V4L2_XFER_FUNC_DEFAULT,    /* Unspecified */
+		V4L2_XFER_FUNC_709,
+		V4L2_XFER_FUNC_709,        /* Substitution for BT.470-2 M */
+		V4L2_XFER_FUNC_709,        /* Substitution for BT.470-2 B, G */
+		V4L2_XFER_FUNC_709,        /* Substitution for SMPTE 170M */
+		V4L2_XFER_FUNC_SMPTE240M,
+		V4L2_XFER_FUNC_NONE,
+		V4L2_XFER_FUNC_SRGB,
+	};
+
+	if (transfer_characteristics < ARRAY_SIZE(xfer_funcs))
+		return xfer_funcs[transfer_characteristics];
+
+	return V4L2_XFER_FUNC_DEFAULT;  /* Reserved */
+}
+
+static enum v4l2_ycbcr_encoding uvc_ycbcr_enc(const u8 matrix_coefficients)
+{
+	/*
+	 * V4L2 does not currently have definitions for all possible values of
+	 * UVC matrix coefficients. If v4l2_ycbcr_encoding is extended with new
+	 * values, the mapping below should be updated.
+	 *
+	 * Substitutions are taken from the mapping given for
+	 * V4L2_YCBCR_ENC_DEFAULT documented in videodev2.h.
+	 *
+	 * FCC is assumed to be close enough to 601.
+	 */
+	static const enum v4l2_ycbcr_encoding ycbcr_encs[] = {
+		V4L2_YCBCR_ENC_DEFAULT,  /* Unspecified */
+		V4L2_YCBCR_ENC_709,
+		V4L2_YCBCR_ENC_601,      /* Substitution for FCC */
+		V4L2_YCBCR_ENC_601,      /* Substitution for BT.470-2 B, G */
+		V4L2_YCBCR_ENC_601,
+		V4L2_YCBCR_ENC_SMPTE240M,
+	};
+
+	if (matrix_coefficients < ARRAY_SIZE(ycbcr_encs))
+		return ycbcr_encs[matrix_coefficients];
+
+	return V4L2_YCBCR_ENC_DEFAULT;  /* Reserved */
 }
 
 /* Simplify a fraction using a simple continued fraction decomposition. The
@@ -284,7 +343,7 @@ void uvc_simplify_fraction(u32 *numerator, u32 *denominator,
 		return;
 
 	/* Convert the fraction to a simple continued fraction. See
-	 * http://mathforum.org/dr.math/faq/faq.fractions.html
+	 * https://mathforum.org/dr.math/faq/faq.fractions.html
 	 * Stop if the current term is bigger than or equal to the given
 	 * threshold.
 	 */
@@ -704,6 +763,8 @@ static int uvc_parse_format(struct uvc_device *dev,
 		}
 
 		format->colorspace = uvc_colorspace(buffer[3]);
+		format->xfer_func = uvc_xfer_func(buffer[4]);
+		format->ycbcr_enc = uvc_ycbcr_enc(buffer[5]);
 
 		buflen -= buffer[0];
 		buffer += buffer[0];
@@ -967,7 +1028,10 @@ static struct uvc_entity *uvc_alloc_entity(u16 type, u8 id,
 	unsigned int i;
 
 	extra_size = roundup(extra_size, sizeof(*entity->pads));
-	num_inputs = (type & UVC_TERM_OUTPUT) ? num_pads : num_pads - 1;
+	if (num_pads)
+		num_inputs = type & UVC_TERM_OUTPUT ? num_pads : num_pads - 1;
+	else
+		num_inputs = 0;
 	size = sizeof(*entity) + extra_size + sizeof(*entity->pads) * num_pads
 	     + num_inputs;
 	entity = kzalloc(size, GFP_KERNEL);
@@ -983,7 +1047,7 @@ static struct uvc_entity *uvc_alloc_entity(u16 type, u8 id,
 
 	for (i = 0; i < num_inputs; ++i)
 		entity->pads[i].flags = MEDIA_PAD_FL_SINK;
-	if (!UVC_ENTITY_IS_OTERM(entity))
+	if (!UVC_ENTITY_IS_OTERM(entity) && num_pads)
 		entity->pads[num_pads-1].flags = MEDIA_PAD_FL_SOURCE;
 
 	entity->bNrInPins = num_inputs;
@@ -1524,6 +1588,31 @@ static int uvc_scan_chain_forward(struct uvc_video_chain *chain,
 				return -EINVAL;
 			}
 
+			/*
+			 * Some devices reference an output terminal as the
+			 * source of extension units. This is incorrect, as
+			 * output terminals only have an input pin, and thus
+			 * can't be connected to any entity in the forward
+			 * direction. The resulting topology would cause issues
+			 * when registering the media controller graph. To
+			 * avoid this problem, connect the extension unit to
+			 * the source of the output terminal instead.
+			 */
+			if (UVC_ENTITY_IS_OTERM(entity)) {
+				struct uvc_entity *source;
+
+				source = uvc_entity_by_id(chain->dev,
+							  entity->baSourceID[0]);
+				if (!source) {
+					uvc_trace(UVC_TRACE_DESCR,
+						"Can't connect extension unit %u in chain\n",
+						forward->id);
+					break;
+				}
+
+				forward->baSourceID[0] = source->id;
+			}
+
 			list_add_tail(&forward->chain, &chain->entities);
 			if (uvc_trace_param & UVC_TRACE_PROBE) {
 				if (!found)
@@ -1542,6 +1631,13 @@ static int uvc_scan_chain_forward(struct uvc_video_chain *chain,
 				uvc_trace(UVC_TRACE_DESCR, "Unsupported input "
 					"terminal %u.\n", forward->id);
 				return -EINVAL;
+			}
+
+			if (UVC_ENTITY_IS_OTERM(entity)) {
+				uvc_trace(UVC_TRACE_DESCR,
+					"Unsupported connection between output terminals %u and %u\n",
+					entity->id, forward->id);
+				break;
 			}
 
 			list_add_tail(&forward->chain, &chain->entities);
@@ -2014,7 +2110,7 @@ int uvc_register_video_device(struct uvc_device *dev,
 	 */
 	video_set_drvdata(vdev, stream);
 
-	ret = video_register_device(vdev, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vdev, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
 		uvc_printk(KERN_ERR, "Failed to register %s device (%d).\n",
 			   v4l2_type_names[type], ret);

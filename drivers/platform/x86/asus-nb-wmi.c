@@ -110,6 +110,10 @@ static struct quirk_entry quirk_asus_forceals = {
 	.wmi_force_als_set = true,
 };
 
+static struct quirk_entry quirk_asus_use_kbd_dock_devid = {
+	.use_kbd_dock_devid = true,
+};
+
 static int dmi_matched(const struct dmi_system_id *dmi)
 {
 	pr_info("Identified laptop model '%s'\n", dmi->ident);
@@ -411,6 +415,34 @@ static const struct dmi_system_id asus_quirks[] = {
 		},
 		.driver_data = &quirk_asus_forceals,
 	},
+	{
+		.callback = dmi_matched,
+		.ident = "Asus Transformer T100TA / T100HA / T100CHI",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+			/* Match *T100* */
+			DMI_MATCH(DMI_PRODUCT_NAME, "T100"),
+		},
+		.driver_data = &quirk_asus_use_kbd_dock_devid,
+	},
+	{
+		.callback = dmi_matched,
+		.ident = "Asus Transformer T101HA",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+			DMI_MATCH(DMI_PRODUCT_NAME, "T101HA"),
+		},
+		.driver_data = &quirk_asus_use_kbd_dock_devid,
+	},
+	{
+		.callback = dmi_matched,
+		.ident = "Asus Transformer T200TA",
+		.matches = {
+			DMI_MATCH(DMI_SYS_VENDOR, "ASUSTeK COMPUTER INC."),
+			DMI_MATCH(DMI_PRODUCT_NAME, "T200TA"),
+		},
+		.driver_data = &quirk_asus_use_kbd_dock_devid,
+	},
 	{},
 };
 
@@ -471,6 +503,8 @@ static const struct key_entry asus_nb_wmi_keymap[] = {
 	{ KE_KEY, 0x67, { KEY_SWITCHVIDEOMODE } }, /* SDSP LCD + CRT + TV */
 	{ KE_KEY, 0x6B, { KEY_TOUCHPAD_TOGGLE } },
 	{ KE_IGNORE, 0x6E, },  /* Low Battery notification */
+	{ KE_KEY, 0x71, { KEY_F13 } }, /* General-purpose button */
+	{ KE_IGNORE, 0x79, },  /* Charger type dectection notification */
 	{ KE_KEY, 0x7a, { KEY_ALS_TOGGLE } }, /* Ambient Light Sensor Toggle */
 	{ KE_KEY, 0x7c, { KEY_MICMUTE } },
 	{ KE_KEY, 0x7D, { KEY_BLUETOOTH } }, /* Bluetooth Enable */

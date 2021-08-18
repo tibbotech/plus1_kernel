@@ -2,12 +2,6 @@
 #
 # Makefile for physical layer USB drivers
 #
-
-obj-$(CONFIG_SUNPLUS_USB_PHY)			+= phy0-sunplus.o phy1-sunplus.o 
-obj-$(CONFIG_SUNPLUS_USB3_PHY)                  += phy2-sunplus.o
-obj-$(CONFIG_SUNPLUS_SYNOPSYS_USB3_PHY)         += synopsysu3phy-sunplus.o
-obj-$(CONFIG_USB_SUNPLUS_OTG)			+= otg-sunplus.o otg0-sunplus.o otg1-sunplus.o
-
 obj-$(CONFIG_USB_PHY)			+= phy.o
 obj-$(CONFIG_OF)			+= of.o
 
@@ -30,3 +24,4 @@ obj-$(CONFIG_USB_MXS_PHY)		+= phy-mxs-usb.o
 obj-$(CONFIG_USB_ULPI)			+= phy-ulpi.o
 obj-$(CONFIG_USB_ULPI_VIEWPORT)		+= phy-ulpi-viewport.o
 obj-$(CONFIG_KEYSTONE_USB_PHY)		+= phy-keystone.o
+obj-$(CONFIG_JZ4770_PHY)		+= phy-jz4770.o

@@ -25,6 +25,7 @@
 #include <media/v4l2-device.h>
 #include <media/v4l2-ioctl.h>
 #include <media/v4l2-mem2mem.h>
+#include <media/v4l2-rect.h>
 #include <media/videobuf2-v4l2.h>
 #include <media/videobuf2-dma-contig.h>
 #include <media/drv-intf/exynos-fimc.h>
@@ -468,9 +469,9 @@ static int fimc_lite_open(struct file *file)
 	}
 
 	set_bit(ST_FLITE_IN_USE, &fimc->state);
-	ret = pm_runtime_get_sync(&fimc->pdev->dev);
+	ret = pm_runtime_resume_and_get(&fimc->pdev->dev);
 	if (ret < 0)
-		goto unlock;
+		goto err_in_use;
 
 	ret = v4l2_fh_open(file);
 	if (ret < 0)
@@ -498,6 +499,7 @@ static int fimc_lite_open(struct file *file)
 	v4l2_fh_release(file);
 err_pm:
 	pm_runtime_put_sync(&fimc->pdev->dev);
+err_in_use:
 	clear_bit(ST_FLITE_IN_USE, &fimc->state);
 unlock:
 	mutex_unlock(&fimc->lock);
@@ -868,19 +870,6 @@ static int fimc_lite_reqbufs(struct file *file, void *priv,
 	return ret;
 }
 
-/* Return 1 if rectangle a is enclosed in rectangle b, or 0 otherwise. */
-static int enclosed_rectangle(struct v4l2_rect *a, struct v4l2_rect *b)
-{
-	if (a->left < b->left || a->top < b->top)
-		return 0;
-	if (a->left + a->width > b->left + b->width)
-		return 0;
-	if (a->top + a->height > b->top + b->height)
-		return 0;
-
-	return 1;
-}
-
 static int fimc_lite_g_selection(struct file *file, void *fh,
 				 struct v4l2_selection *sel)
 {
@@ -922,11 +911,11 @@ static int fimc_lite_s_selection(struct file *file, void *fh,
 	fimc_lite_try_compose(fimc, &rect);
 
 	if ((sel->flags & V4L2_SEL_FLAG_LE) &&
-	    !enclosed_rectangle(&rect, &sel->r))
+	    !v4l2_rect_enclosed(&rect, &sel->r))
 		return -ERANGE;
 
 	if ((sel->flags & V4L2_SEL_FLAG_GE) &&
-	    !enclosed_rectangle(&sel->r, &rect))
+	    !v4l2_rect_enclosed(&sel->r, &rect))
 		return -ERANGE;
 
 	sel->r = rect;
@@ -1297,7 +1286,7 @@ static int fimc_lite_subdev_registered(struct v4l2_subdev *sd)
 	video_set_drvdata(vfd, fimc);
 	fimc->ve.pipe = v4l2_get_subdev_hostdata(sd);
 
-	ret = video_register_device(vfd, VFL_TYPE_GRABBER, -1);
+	ret = video_register_device(vfd, VFL_TYPE_VIDEO, -1);
 	if (ret < 0) {
 		media_entity_cleanup(&vfd->entity);
 		fimc->ve.pipe = NULL;
@@ -1613,6 +1602,9 @@ static int fimc_lite_remove(struct platform_device *pdev)
 {
 	struct fimc_lite *fimc = platform_get_drvdata(pdev);
 	struct device *dev = &pdev->dev;
+
+	if (!pm_runtime_enabled(dev))
+		clk_disable_unprepare(fimc->clock);
 
 	pm_runtime_disable(dev);
 	pm_runtime_set_suspended(dev);
