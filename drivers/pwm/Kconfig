@@ -460,6 +460,16 @@ config PWM_SPRD
 	  To compile this driver as a module, choose M here: the module
 	  will be called pwm-sprd.
 
+config PWM_SUNPLUS
+	tristate "Sunplus PWM support"
+	depends on SOC_SP7021
+	default y if SOC_SP7021
+	help
+	  Generic PWM driver for Sunplus SP7021 SoC.
+
+	  To compile this driver as a module, choose M here: the module
+	  will be called pwm-sp7021.
+
 config PWM_STI
 	tristate "STiH4xx PWM support"
 	depends on ARCH_STI || COMPILE_TEST
