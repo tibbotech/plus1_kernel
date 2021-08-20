@@ -55,3 +55,5 @@ obj-$(CONFIG_NVMEM_ZYNQMP)	+= nvmem_zynqmp_nvmem.o
 nvmem_zynqmp_nvmem-y		:= zynqmp_nvmem.o
 obj-$(CONFIG_SPRD_EFUSE)	+= nvmem_sprd_efuse.o
 nvmem_sprd_efuse-y		:= sprd-efuse.o
+obj-$(CONFIG_NVMEM_SUNPLUS_OCOTP)	+= nvmem-sp-ocotp.o
+nvmem-sp-ocotp-y		:= sp-ocotp.o sp-ocotp0.o sp-ocotp1.o sp-ocotp2.o
