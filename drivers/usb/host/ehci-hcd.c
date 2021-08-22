@@ -1309,6 +1309,10 @@ MODULE_LICENSE ("GPL");
 #define PLATFORM_DRIVER		ehci_grlib_driver
 #endif
 
+#ifdef CONFIG_USB_EHCI_HCD
+#include "ehci-sunplus.c"
+#endif
+
 static int __init ehci_hcd_init(void)
 {
 	int retval = 0;
