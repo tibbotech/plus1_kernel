@@ -114,7 +114,7 @@ static int sp_rproc_start(struct rproc *rproc)
 	reset_control_assert(local->rstc);
 	reset_control_deassert(local->rstc);
 #ifdef CONFIG_ARCH_PENTAGRAM
-	writel(0xDEADC0DE, local->boot); // mark remoteproc trigger
+	writel(0xffffffff, local->boot); // CPU_WAIT_INIT_VAL
 	msleep(1000); // wait B_cpu_wait
 	// set remote start addr to boot register,
 	writel(rproc->bootaddr, local->boot);
