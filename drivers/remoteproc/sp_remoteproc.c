@@ -26,7 +26,6 @@
 #include <linux/of_irq.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/reset.h>
-#include <linux/delay.h>
 
 #include "remoteproc_internal.h"
 
@@ -56,8 +55,9 @@ struct sp_rproc_pdata {
 	volatile u32 __iomem *mbox;
 #ifdef CONFIG_ARCH_PENTAGRAM
 	volatile u32 __iomem *boot;
+#else
+	struct reset_control *rstc; // FIXME: RST_A926 not worked
 #endif
-	struct reset_control *rstc;
 };
 
 static bool autoboot __read_mostly;
@@ -111,13 +111,11 @@ static int sp_rproc_start(struct rproc *rproc)
 	/* Trigger pending kicks */
 	kick_pending_ipi(rproc);
 
-	reset_control_assert(local->rstc);
-	reset_control_deassert(local->rstc);
 #ifdef CONFIG_ARCH_PENTAGRAM
-	writel(0xffffffff, local->boot); // CPU_WAIT_INIT_VAL
-	msleep(1000); // wait B_cpu_wait
 	// set remote start addr to boot register,
 	writel(rproc->bootaddr, local->boot);
+#else
+	reset_control_deassert(local->rstc);
 #endif
 
 	return 0;
@@ -159,7 +157,12 @@ static int sp_rproc_stop(struct rproc *rproc)
 	struct device *dev = rproc->dev.parent;
 
 	dev_dbg(dev, "%s\n", __func__);
+#ifdef CONFIG_ARCH_PENTAGRAM
+	// send remote reset signal
+	writel(0xDEADC0DE, local->mbox);
+#else
 	reset_control_assert(local->rstc);
+#endif
 
 	return 0;
 }
@@ -309,13 +312,14 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "ioremap boot reg failed: %d\n", ret);
 		goto probe_failed;
 	}
-#endif
+#else
 	local->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(local->rstc)) {
 		ret = PTR_ERR(local->rstc);
 		dev_err(&pdev->dev, "missing reset controller\n");
 		goto probe_failed;
 	}
+#endif
 
 	rproc->auto_boot = autoboot;
 
