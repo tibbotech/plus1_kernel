@@ -5,6 +5,17 @@
 
 menu "Misc devices"
 
+config SP_ICM
+	tristate "Sunplus Input Capture (ICM) driver"
+	depends on SOC_SP7021
+	default n
+
+config SP_ICM_TEST
+	bool "Sunplus Input Capture (ICM) test"
+	depends on SP_ICM
+	help
+	  echo h > /sys/module/sp_icm/parameters/test
+
 config SENSORS_LIS3LV02D
 	tristate
 	depends on INPUT
