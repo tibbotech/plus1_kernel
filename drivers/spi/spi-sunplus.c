@@ -1639,7 +1639,7 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 #endif
 
 static const struct of_device_id pentagram_spi_controller_ids[] = {
-	{ .compatible = "sunplus,sp7021-spi-controller" },
+	{ .compatible = "sunplus,q645-spi" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, pentagram_spi_controller_ids);

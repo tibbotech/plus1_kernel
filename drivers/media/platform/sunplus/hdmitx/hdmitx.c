@@ -22,9 +22,9 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021) && defined(CONFIG_VIDEO_SP7021_DISP)
 #include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
-#elif defined(CONFIG_SOC_I143)
+#elif defined(CONFIG_SOC_I143) && defined(CONFIG_VIDEO_I143_DISP)
 #include <media/sunplus/disp/i143/display.h> //#ifdef TIMING_SYNC_720P60
 #endif
 
