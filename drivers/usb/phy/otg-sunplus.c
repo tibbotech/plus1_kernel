@@ -12,13 +12,13 @@
 #include <linux/usb/otg.h>
 
 #include "otg-sunplus.h"
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
-#include "../core/otg_whitelist.h"
+#ifdef CONFIG_USB_SP_UDC
+#include "../core/otg_productlist.h"
 #endif
 
-#define DRIVER_NAME		"sp-otg"
+#define DRIVER_NAME	"sp-otg"
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 extern void detech_start(void);
 extern void udc_otg_ctrl(void);
 #endif
@@ -102,7 +102,7 @@ void dump_debug_register(struct usb_otg *otg)
 }
 EXPORT_SYMBOL(dump_debug_register);
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 {
 	u32 val;
@@ -192,7 +192,7 @@ int sp_set_host(struct usb_otg *otg, struct usb_bus *host)
 	return 0;
 }
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
 	otg->gadget = gadget;
@@ -203,29 +203,12 @@ int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
-#ifdef CONFIG_SOC_SP7021
 	return readl((u32 *)reg);
-#elif defined(CONFIG_SOC_I143)
-	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
-	return readl((u32 *)reg);
-	#else
-	return readl((u32 *)(u64)reg);
-	#endif
-#endif
 }
 
 int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 {
-#ifdef CONFIG_SOC_SP7021
 	writel(val, (u32 *)reg);
-#elif defined(CONFIG_SOC_I143)
-	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
-	writel(val, (u32 *)reg);
-	#else
-	writel(val, (u32 *)(u64)reg);
-	#endif
-#endif
-
 	return 0;
 }
 
@@ -234,7 +217,7 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.write = sp_phy_write,
 };
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 static int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
@@ -725,21 +708,9 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_release_region;
 	}
 
-#ifdef CONFIG_SOC_SP7021
 	otg_debug("@@@ otg reg %x %d irq %d %x\n", res_mem->start,
 		  resource_size(res_mem), otg_host->irq,
 		  readl(&otg_host->regs_otg->otg_int_st));
-#elif defined(CONFIG_SOC_I143)
-	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
-	otg_debug("@@@ otg reg %x %d irq %d %x\n", res_mem->start,
-			  resource_size(res_mem), otg_host->irq,
-			  readl(&otg_host->regs_otg->otg_int_st));
-	#else
-	otg_debug("@@@ otg reg %x %lld irq %d %x\n", res_mem->start,
-			  resource_size(res_mem), otg_host->irq,
-			  readl(&otg_host->regs_otg->otg_int_st));
-	#endif
-#endif
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
 	if (!res_mem) {
@@ -769,7 +740,7 @@ int sp_otg_probe(struct platform_device *dev)
 
 	otg_host->otg.otg->set_host = sp_set_host;
 	otg_host->otg.otg->set_vbus = sp_set_vbus;
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 	otg_host->otg.otg->set_peripheral = sp_set_peripheral;
 	otg_host->otg.otg->start_hnp = sp_start_hnp;
 #endif
@@ -797,7 +768,7 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_ioumap;
 	}
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
  	if (otg_host->id == 1) {
 		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg0_host, "hnp_polling");
@@ -836,7 +807,7 @@ int sp_otg_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 	int err = 0;
 #endif
 
@@ -848,7 +819,7 @@ int sp_otg_remove(struct platform_device *dev)
 	del_timer_sync(&otg_host->adp_timer);
 #endif
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_SP_UDC
 	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
 	if (sp_otg0_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg0_host->hnp_polling_timer);

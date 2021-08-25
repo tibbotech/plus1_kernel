@@ -157,6 +157,14 @@ config USB_PXA25X
 	   dynamically linked module called "pxa25x_udc" and force all
 	   gadget drivers to also be dynamically linked.
 
+config USB_SP_UDC
+ 	tristate "Sunplus SP7021 Gemini USB Device Controller"
+ 	depends on SOC_SP7021
+ 	select USB_GADGET_DUALSPEED
+ 	default y
+ 	help
+	   This option selects the USB device controller for Sunplus SP7021.
+
 # if there's only one gadget driver, using only two bulk endpoints,
 # don't waste memory for the other endpoints
 config USB_PXA25X_SMALL
