@@ -656,7 +656,10 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 free_master_combite_rw:
 	// reset SPI
 	writel( readl( &sr->SPI_FD_CONFIG) & CLEAN_FLUG_MASK, &sr->SPI_FD_CONFIG);
-	writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
+	
+	if(pspim->message_config & CPOL_FD)
+	    writel( pspim->message_config , &sr->SPI_FD_CONFIG);
+
 	mutex_unlock( &pspim->buf_lock);
 	return ret;
 }
@@ -745,8 +748,10 @@ free_master_combite_rw:
            ret = 0;
 
            free_master_combite_rw:
-           // reset SPI
-           writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
+
+	   if(pspim->message_config & CPOL_FD)
+	       writel( pspim->message_config , &sr->SPI_FD_CONFIG);
+
 	   mutex_unlock( &pspim->buf_lock);
         }
 
@@ -787,6 +792,7 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 				    struct spi_message *_m)
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata( _c);
+	SPI_MAS *sr = ( SPI_MAS *)pspim->mas_base;
 	struct spi_device *s = _m->spi;
 	// reg clear bits and set bits
 	u32 rs = 0;
@@ -798,6 +804,8 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
 		s->mode & SPI_CS_HIGH ? "" : "~",
 		s->mode & SPI_LSB_FIRST ? "" : "~",
 		s->cs_gpio);
+
+	writel( readl( &sr->SPI_FD_STATUS) | FD_SW_RST, &sr->SPI_FD_STATUS);
 
 	//set up full duplex frequency and enable  full duplex
 	rs = FD_SEL | ((0xffff) << 16);
@@ -814,6 +822,9 @@ static int pentagram_spi_controller_prepare_message( struct spi_controller *_c,
         rs |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 
 	pspim->message_config = rs;
+
+	if(pspim->message_config & CPOL_FD)
+	    writel( pspim->message_config , &sr->SPI_FD_CONFIG);
 
 	return 0;
 }
