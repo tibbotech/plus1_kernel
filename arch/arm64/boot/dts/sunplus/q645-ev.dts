@@ -762,7 +762,6 @@
 
 	fb_device {
 		compatible = "simple-framebuffer";
-//		reg = <0x00 0xd0000000 0x00 0x00400000>;    /*4M*/
 		memory-region = <&fb_reserve>;
 		width = <320>;      /*1280*/
 		height = <240>;      /*768*/
