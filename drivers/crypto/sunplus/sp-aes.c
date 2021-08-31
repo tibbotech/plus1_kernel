@@ -423,7 +423,8 @@ struct skcipher_alg sp_aes_alg[] = {
 int sp_aes_finit(void)
 {
 	SP_CRYPTO_TRACE();
-	return crypto_register_skciphers(sp_aes_alg, ARRAY_SIZE(sp_aes_alg));
+	crypto_unregister_skciphers(sp_aes_alg, ARRAY_SIZE(sp_aes_alg));
+	return 0;
 }
 EXPORT_SYMBOL(sp_aes_finit);
 

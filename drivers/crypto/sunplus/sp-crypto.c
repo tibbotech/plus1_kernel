@@ -140,7 +140,7 @@ void dump_trb(trb_t *trb)
 }
 
 /* hwcfg: enable/disable aes/hash hw
-echo <aes:-1~2> [hash:-1~2] [print] > /sys/module/spcrypto/parameters/hwcfg
+echo <aes:-1~2> [hash:-1~2] [print] > /sys/module/sp_crypto/parameters/hwcfg
 -1: no change
  0: disable
  1: enable
