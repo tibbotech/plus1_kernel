@@ -38,10 +38,11 @@ static int sp_cra_aes_init(struct crypto_tfm *tfm, u32 mode)
 	ctx->base.mode = mode;
 	ctx->ivlen = AES_BLOCK_SIZE;
 
-	ctx->tmp = dma_alloc_coherent(NULL, WORKBUF_SIZE, &ctx->pa, GFP_KERNEL);
+	crypto_ctx_init(&ctx->base, SP_CRYPTO_AES);
+	ctx->tmp = dma_alloc_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, &ctx->pa, GFP_KERNEL);
 	ctx->iv = ctx->tmp + AES_BLOCK_SIZE;
 
-	return crypto_ctx_init(&ctx->base, SP_CRYPTO_AES);
+	return 0;
 }
 
 static int sp_cra_aes_ecb_init(struct crypto_tfm *tfm)
@@ -63,7 +64,7 @@ static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 {
 	struct sp_aes_ctx *ctx = crypto_tfm_ctx(tfm);
 
-	dma_free_coherent(NULL, WORKBUF_SIZE, ctx->tmp, ctx->pa);
+	dma_free_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, ctx->tmp, ctx->pa);
 	crypto_ctx_exit(crypto_tfm_ctx(tfm));
 }
 
@@ -197,23 +198,23 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 	dst_cnt = sg_nents(dst);
 
 	//dump_sglist(src, src_cnt);
-	if(unlikely(dma_map_sg(NULL, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
+	if(unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
 		SP_CRYPTO_ERR("sp aes map src sg  fail\n");
 		return -EINVAL;
 	}
 	dump_sglist(src, src_cnt);
 
 	//dump_sglist(dst, dst_cnt);
-	if(unlikely(dma_map_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
+	if(unlikely(dma_map_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
 		SP_CRYPTO_ERR("sp aes map dst sg  fail\n");
-		dma_unmap_sg(NULL, src,  src_cnt, DMA_TO_DEVICE);
+		dma_unmap_sg(SP_CRYPTO_DEV, src,  src_cnt, DMA_TO_DEVICE);
 		return -EINVAL;
 	}
 	dump_sglist(dst, dst_cnt);
 
 	if (mutex_lock_interruptible(&ring->lock)) {
-		dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
-		dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
+		dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE);
+		dma_unmap_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE);
 		return -EINTR;
 	}
 	//mutex_lock(&ring->lock);
@@ -325,8 +326,8 @@ static int sp_blk_aes_crypt(struct blkcipher_desc *desc,
 
 out:
 	mutex_unlock(&ring->lock);
-	dma_unmap_sg(NULL, src, src_cnt, DMA_TO_DEVICE);
- 	dma_unmap_sg(NULL, dst, dst_cnt, DMA_FROM_DEVICE);
+	dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE);
+	dma_unmap_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE);
 
 	if (tmp_phy) {
 		//dump_buf(ctx->tmp, AES_BLOCK_SIZE);

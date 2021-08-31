@@ -158,6 +158,8 @@ typedef struct trb_ring_s {
 #endif
 } trb_ring_t;
 
+#define SP_CRYPTO_DEV (ctx->base.dd->device)
+
 struct sp_crypto_dev {
 	trb_ring_t *rings[2]; // AES/HASH
 	volatile struct sp_crypto_reg *reg;
@@ -166,7 +168,7 @@ struct sp_crypto_dev {
 	u32 devid;
 	struct clk *clk;
 	struct reset_control *rstc;
-	//struct device *device;
+	struct device *device;
 #if 0
 	atomic_t rsa_ref_cnt;	/*reference count */
 	atomic_t aes_ref_cnt;
@@ -177,7 +179,6 @@ struct sp_crypto_dev {
 #define SEC_DEV_ACTIVE    	1
 #endif
 };
-
 
 typedef struct crypto_ctx_s {
 	struct sp_crypto_dev *dd;
@@ -387,7 +388,7 @@ struct sp_crypto_reg {
 	/* 0.25 AES DMA Ring Trig Register (AESDMA_RTR)
 	   Reserved    31:1    RO Reserved
 	   CRT         0       RW Command Ring Trig
-	   After SW write a ¡¯1¡¯ to this bit, HW will start transfer
+	   After SW write 1 to this bit, HW will start transfer
 	   TRBs until the ring is empty or stopped
 	 */
 	dev_reg AESDMA_RTR;
@@ -437,7 +438,7 @@ struct sp_crypto_reg {
 	/* 0.30 HASH DMA Ring Trig Register (HASHDMA_RTR)
 	   Reserved    31:1    RO Reserved
 	   CRT         0       RW Command Ring Trig
-	   After SW write a ¡¯1¡¯ to this bit, HW will start transfer
+	   After SW write 1 to this bit, HW will start transfer
 	   TRBs until the ring is empty or stopped
 	 */
 	dev_reg HASHDMA_RTR;
