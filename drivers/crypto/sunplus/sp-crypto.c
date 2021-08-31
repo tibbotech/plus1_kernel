@@ -465,6 +465,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 		return PTR_ERR(membase);
 
 	dev->reg = membase;
+	dev->device = &pdev->dev;
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
 	if (!res_irq)

@@ -85,7 +85,8 @@ static int sp_cra_init(struct crypto_tfm *tfm, u32 mode)
 
 	SP_CRYPTO_TRACE();
 
-	ctx->blocks = dma_alloc_coherent(NULL, WORKBUF_SIZE, &ctx->blocks_phy, GFP_KERNEL);
+	crypto_ctx_init(&ctx->base, SP_CRYPTO_HASH);
+	ctx->blocks = dma_alloc_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, &ctx->blocks_phy, GFP_KERNEL);
 	if (!ctx->blocks)
 		return -ENOMEM;
 
@@ -116,7 +117,7 @@ static int sp_cra_init(struct crypto_tfm *tfm, u32 mode)
 	ctx->key = ctx->blocks + len2;
 	ctx->key_phy = ctx->blocks_phy + len2;
 
-	return crypto_ctx_init(&ctx->base, SP_CRYPTO_HASH);
+	return 0;
 }
 
 static int sp_cra_md5_init(struct crypto_tfm *tfm)
@@ -154,7 +155,7 @@ static void sp_cra_exit(struct crypto_tfm *tfm)
 	struct sp_hash_ctx *ctx = crypto_tfm_ctx(tfm);
 
 	SP_CRYPTO_TRACE();
-	dma_free_coherent(NULL, WORKBUF_SIZE, ctx->blocks, ctx->blocks_phy);
+	dma_free_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, ctx->blocks, ctx->blocks_phy);
 	crypto_ctx_exit(&ctx->base);
 }
 
