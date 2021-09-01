@@ -174,6 +174,7 @@ int sp_powm(rsa_para *res, rsa_para *base,
 	int ret;
 	u32 rsa_bytes;
 	volatile struct sp_crypto_reg *reg = rsa_priv.dev->reg;
+	struct device *dev = rsa_priv.dev->device;
 	dma_addr_t a1, a2, a3, a4;
 
 	if (unlikely((base->crp_bytes & RSA_BYTES_MASK) ||
@@ -201,10 +202,10 @@ int sp_powm(rsa_para *res, rsa_para *base,
 		reg->RSAPAR0 = RSA_SET_PARA_D(rsa_bytes * BITS_PER_BYTE) | RSA_PARA_FETCH_P2;
 	}
 
-	reg->RSASPTR = a1 = dma_map_single(NULL, base->crp_p, base->crp_bytes, DMA_TO_DEVICE);
-	reg->RSAYPTR = a2 = dma_map_single(NULL, exp->crp_p, exp->crp_bytes, DMA_TO_DEVICE);
-	reg->RSANPTR = a3 = dma_map_single(NULL, mod->crp_p, mod->crp_bytes, DMA_TO_DEVICE);
-	reg->RSADPTR = a4 = dma_map_single(NULL, res->crp_p, res->crp_bytes, DMA_FROM_DEVICE);
+	reg->RSASPTR = a1 = dma_map_single(dev, base->crp_p, base->crp_bytes, DMA_TO_DEVICE);
+	reg->RSAYPTR = a2 = dma_map_single(dev, exp->crp_p, exp->crp_bytes, DMA_TO_DEVICE);
+	reg->RSANPTR = a3 = dma_map_single(dev, mod->crp_p, mod->crp_bytes, DMA_TO_DEVICE);
+	reg->RSADPTR = a4 = dma_map_single(dev, res->crp_p, res->crp_bytes, DMA_FROM_DEVICE);
 
     rsa_priv.wait_flag = SP_CRYPTO_FALSE;
 	smp_wmb();
@@ -232,10 +233,10 @@ int sp_powm(rsa_para *res, rsa_para *base,
 	else ret = 0;
 #endif
 
-	dma_unmap_single(NULL, a1, base->crp_bytes, DMA_TO_DEVICE);
-	dma_unmap_single(NULL, a2, exp->crp_bytes, DMA_TO_DEVICE);
-	dma_unmap_single(NULL, a3, mod->crp_bytes, DMA_TO_DEVICE);
-	dma_unmap_single(NULL, a4, res->crp_bytes, DMA_FROM_DEVICE);
+	dma_unmap_single(dev, a1, base->crp_bytes, DMA_TO_DEVICE);
+	dma_unmap_single(dev, a2, exp->crp_bytes, DMA_TO_DEVICE);
+	dma_unmap_single(dev, a3, mod->crp_bytes, DMA_TO_DEVICE);
+	dma_unmap_single(dev, a4, res->crp_bytes, DMA_FROM_DEVICE);
 
 	return ret;
 }
