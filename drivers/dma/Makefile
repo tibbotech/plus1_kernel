@@ -85,5 +85,6 @@ obj-$(CONFIG_FSL_DPAA2_QDMA) += fsl-dpaa2-qdma/
 
 obj-y += mediatek/
 obj-y += qcom/
+obj-y += sunplus/
 obj-y += ti/
 obj-y += xilinx/
