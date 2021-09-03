@@ -307,7 +307,7 @@ static void pentagram_set_cs( struct spi_device *_s, bool _on) {
  if ( !(  _s->cs_gpiod)) return;
  dev_dbg( &( _s->dev), "%d gpiod:%d", _on, desc_to_gpio( _s->cs_gpiod));
  if ( _s->mode & SPI_CS_HIGH) _on = !_on;
- gpiod_set_value_cansleep( _s->cs_gpiod, !_on);
+ gpiod_set_value_cansleep( _s->cs_gpiod, _on);
 }
 
 // spi slave irq handler
