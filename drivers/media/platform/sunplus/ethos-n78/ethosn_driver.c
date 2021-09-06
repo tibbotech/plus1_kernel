@@ -49,9 +49,16 @@
 #include <linux/uaccess.h>
 #include <linux/version.h>
 #include <linux/iommu.h>
+#include <linux/pm_runtime.h>
 
 #define ETHOSN_DRIVER_NAME    "ethosn"
-#define ETHOSN_DRIVER_VERSION "0.01"
+#define ETHOSN_STR(s) #s
+#define ETHOSN_DRIVER_VERSION_STR(major, minor, patch) \
+	ETHOSN_STR(major) "." ETHOSN_STR(minor) "." ETHOSN_STR(patch)
+#define ETHOSN_DRIVER_VERSION ETHOSN_DRIVER_VERSION_STR( \
+		ETHOSN_KERNEL_MODULE_VERSION_MAJOR,	 \
+		ETHOSN_KERNEL_MODULE_VERSION_MINOR,	 \
+		ETHOSN_KERNEL_MODULE_VERSION_PATCH)
 
 #define ETHOSN_MAX_DEVICES (1U << MINORBITS)
 
@@ -118,7 +125,7 @@ static void __iomem *ethosn_map_iomem(const struct ethosn_core *const core,
 	}
 
 	/* Map address space */
-	ptr = devm_ioremap_nocache(core->parent->dev, res->start, size);
+	ptr = devm_ioremap(core->parent->dev, res->start, size);
 	if (IS_ERR(ptr))
 		dev_err(core->dev,
 			"failed to map '%s': start=%llu size=%llu\n",
@@ -150,6 +157,46 @@ static char *rtrim(char *str,
 	end[1] = '\0';
 
 	return str;
+}
+
+/**
+ * reset_profiling_counters() - Resets all profiling counters
+ *
+ */
+static void reset_profiling_counters(struct ethosn_core *core)
+{
+	core->profiling.mailbox_messages_sent = 0;
+	core->profiling.mailbox_messages_received = 0;
+	core->profiling.rpm_suspend_count = 0;
+	core->profiling.rpm_resume_count = 0;
+	core->profiling.pm_suspend_count = 0;
+	core->profiling.pm_resume_count = 0;
+}
+
+static void update_busy_core(struct ethosn_core *core)
+{
+	struct ethosn_device *ethosn = core->parent;
+
+	uint32_t core_id = core->core_id;
+	uint32_t core_mask = (1 << core_id);
+
+	if ((ethosn->current_busy_cores & core_mask) == 0) {
+		dev_err(core->dev,
+			"Scheduler has scheduled an inference on the wrong core");
+		ethosn->status_mask |= (1 << WRONG_CORE_SCHEDULE);
+	} else {
+		ethosn->current_busy_cores &= ~(1 << core->core_id);
+	}
+
+	/* If after clearing our core id, the current_busy_cores
+	 * isn't zero, it means that another inference is executing
+	 * concurrently.
+	 */
+	if (ethosn->current_busy_cores != 0) {
+		dev_info(ethosn->dev, "Concurrent inferences detected");
+		ethosn->status_mask |=
+			(1 << CONCURRENT_INFERENCE_DETECTED);
+	}
 }
 
 static int handle_message(struct ethosn_core *core)
@@ -225,6 +272,7 @@ static int handle_message(struct ethosn_core *core)
 		status = rsp->status == ETHOSN_INFERENCE_STATUS_OK ?
 			 ETHOSN_INFERENCE_COMPLETED : ETHOSN_INFERENCE_ERROR;
 
+		update_busy_core(core);
 		ethosn_network_poll(core, inference, status);
 		break;
 	}
@@ -336,12 +384,6 @@ static void ethosn_irq_bottom(struct work_struct *work)
 	}
 
 end:
-
-	/* If no inference was scheduled on the core, set the status
-	 * as free.
-	 */
-	if (core->current_inference == NULL)
-		core->status = ETHOSN_CORE_FREE;
 
 	mutex_unlock(&core->mutex);
 }
@@ -553,7 +595,7 @@ static ssize_t dfc_features_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE,
 			 "dfc_mem_size_per_emc=%u\n"
 			 "bank_count=%u\n",
-			 dfc.bits.dfc_mem_size_per_emc,
+			 dfc.bits.dfc_mem_size_per_emc << 12,
 			 dfc.bits.bank_count);
 }
 
@@ -572,10 +614,10 @@ static ssize_t ple_features_show(struct device *dev,
 			 "ple_output_mem_size=%u\n"
 			 "ple_vrf_mem_size=%u\n"
 			 "ple_mem_size=%u\n",
-			 ple.bits.ple_input_mem_size,
-			 ple.bits.ple_output_mem_size,
-			 ple.bits.ple_vrf_mem_size,
-			 ple.bits.ple_mem_size);
+			 ple.bits.ple_input_mem_size << 8,
+			 ple.bits.ple_output_mem_size << 8,
+			 ple.bits.ple_vrf_mem_size << 4,
+			 ple.bits.ple_mem_size << 8);
 }
 
 static ssize_t ecoid_show(struct device *dev,
@@ -616,6 +658,50 @@ static ssize_t num_cores_show(struct device *dev,
 	return scnprintf(buf, PAGE_SIZE, "%d\n", ethosn->num_cores);
 }
 
+static ssize_t status_mask_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	struct ethosn_device *ethosn = dev_get_drvdata(dev);
+
+	return scnprintf(buf, PAGE_SIZE, "%#x\n",
+			 ethosn->status_mask);
+}
+
+static ssize_t variant_show(struct device *dev,
+			    struct device_attribute *attr,
+			    char *buf)
+{
+	struct ethosn_device *ethosn = dev_get_drvdata(dev);
+	struct ethosn_core *core = ethosn->core[0];
+
+	struct dl1_unit_count_r unit_count;
+	struct dl1_mce_features_r mce_features;
+	struct dl1_vector_engine_features_r ve_features;
+	struct dl1_dfc_features_r dfc_features;
+
+	uint32_t engines, igs, ogs, tops, ple_ratio, sram;
+
+	mce_features.word = ethosn_read_top_reg(core, DL1_RP, DL1_MCE_FEATURES);
+	unit_count.word = ethosn_read_top_reg(core, DL1_RP, DL1_UNIT_COUNT);
+	ve_features.word = ethosn_read_top_reg(core, DL1_RP,
+					       DL1_VECTOR_ENGINE_FEATURES);
+	dfc_features.word = ethosn_read_top_reg(core, DL1_RP, DL1_DFC_FEATURES);
+
+	engines = unit_count.bits.quad_count * unit_count.bits.engines_per_quad;
+	igs = engines * mce_features.bits.ifm_generated_per_engine;
+	ogs = engines * mce_features.bits.ofm_generated_per_engine;
+	/* Calculate TOPS, assuming the standard frequency of 1GHz. */
+	tops = (mce_features.bits.mce_num_macs * igs * ogs * 2) / 1024;
+	ple_ratio = ((ve_features.bits.ple_lanes + 1) * engines) / tops;
+	sram = (dfc_features.bits.dfc_mem_size_per_emc << 12) *
+	       unit_count.bits.dfc_emc_per_engine * engines;
+
+	return scnprintf(buf, PAGE_SIZE,
+			 "%uTOPS_%uPLE_RATIO_%uKB\n",
+			 tops, ple_ratio, sram / 1024);
+}
+
 static const DEVICE_ATTR_RO(architecture);
 static const DEVICE_ATTR_RO(product);
 static const DEVICE_ATTR_RO(version);
@@ -626,6 +712,8 @@ static const DEVICE_ATTR_RO(ple_features);
 static const DEVICE_ATTR_RO(ecoid);
 static const DEVICE_ATTR_WO(firmware_reset);
 static const DEVICE_ATTR_RO(num_cores);
+static const DEVICE_ATTR_RO(status_mask);
+static const DEVICE_ATTR_RO(variant);
 
 static const struct attribute *attrs[] = {
 	&dev_attr_architecture.attr,
@@ -638,6 +726,8 @@ static const struct attribute *attrs[] = {
 	&dev_attr_ecoid.attr,
 	&dev_attr_firmware_reset.attr,
 	&dev_attr_num_cores.attr,
+	&dev_attr_status_mask.attr,
+	&dev_attr_variant.attr,
 	NULL
 };
 
@@ -821,13 +911,15 @@ static long ethosn_ioctl(struct file *const filep,
 			break;
 		}
 
+		pm_runtime_get_sync(core->dev);
+
 		ret = mutex_lock_interruptible(&core->mutex);
 		if (ret)
-			break;
+			goto configure_profiling_put;
 
 		if (copy_from_user(&new_config, udata, sizeof(new_config))) {
 			ret = -EFAULT;
-			goto configure_profiling_end;
+			goto configure_profiling_mutex;
 		}
 
 		dev_dbg(core->dev,
@@ -840,18 +932,19 @@ static long ethosn_ioctl(struct file *const filep,
 		ret = ethosn_configure_firmware_profiling(core, &new_config);
 
 		if (ret != 0)
-			goto configure_profiling_end;
+			goto configure_profiling_mutex;
 
 		if (core->profiling.config.enable_profiling &&
-		    !new_config.enable_profiling) {
-			core->profiling.mailbox_messages_sent = 0;
-			core->profiling.mailbox_messages_received = 0;
-		}
+		    !new_config.enable_profiling)
+			reset_profiling_counters(core);
 
 		core->profiling.config = new_config;
 
-configure_profiling_end:
+configure_profiling_mutex:
 		mutex_unlock(&core->mutex);
+configure_profiling_put:
+		pm_runtime_mark_last_busy(core->dev);
+		pm_runtime_put(core->dev);
 
 		break;
 	}
@@ -883,6 +976,18 @@ configure_profiling_end:
 			break;
 		case ETHOSN_POLL_COUNTER_NAME_MAILBOX_MESSAGES_RECEIVED:
 			ret = core->profiling.mailbox_messages_received;
+			break;
+		case ETHOSN_POLL_COUNTER_NAME_RPM_SUSPEND:
+			ret = core->profiling.rpm_suspend_count;
+			break;
+		case ETHOSN_POLL_COUNTER_NAME_RPM_RESUME:
+			ret = core->profiling.rpm_resume_count;
+			break;
+		case ETHOSN_POLL_COUNTER_NAME_PM_SUSPEND:
+			ret = core->profiling.pm_suspend_count;
+			break;
+		case ETHOSN_POLL_COUNTER_NAME_PM_RESUME:
+			ret = core->profiling.pm_resume_count;
 			break;
 		default:
 			ret = -EINVAL;
@@ -917,17 +1022,19 @@ get_counter_value_end:
 		uint32_t num_pongs_before = core->num_pongs_received;
 		int timeout;
 
+		pm_runtime_get_sync(core->dev);
+
 		/* Send a ping */
 		ret = mutex_lock_interruptible(&core->mutex);
 		if (ret)
-			break;
+			goto ping_put;
 
 		ret = ethosn_send_ping(core);
 
 		mutex_unlock(&core->mutex);
 
 		if (ret != 0)
-			break;
+			goto ping_put;
 
 		/* Wait for a pong to come back, with a timeout. */
 		for (timeout = 0; timeout < ETHOSN_PING_TIMEOUT_US;
@@ -942,10 +1049,14 @@ get_counter_value_end:
 			dev_err(core->dev,
 				"Timeout while waiting for Ethos-N to pong\n");
 			ret = -ETIME;
-			break;
+			goto ping_put;
 		}
 
 		ret = 0;
+ping_put:
+		pm_runtime_mark_last_busy(core->dev);
+		pm_runtime_put(core->dev);
+
 		break;
 	}
 	default: {
@@ -1112,8 +1223,7 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 	/* Default to profiling disabled */
 	config.enable_profiling = false;
 	core->profiling.config = config;
-	core->profiling.mailbox_messages_sent = 0;
-	core->profiling.mailbox_messages_received = 0;
+	reset_profiling_counters(core);
 
 	core->profiling.is_waiting_for_firmware_ack = false;
 	core->profiling.firmware_buffer = NULL;
@@ -1133,7 +1243,10 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 	{
 		dev_info(core->dev, "device_deinit\n");
 		goto device_deinit;
-	}
+    }
+	
+	pm_runtime_mark_last_busy(core->dev);
+	pm_runtime_put_autosuspend(core->dev);
 
 	dev_info(core->dev, "Ethos-N is running\n");
 
@@ -1300,6 +1413,11 @@ static int ethosn_pdev_remove(struct platform_device *pdev)
 	while (i < ethosn->num_cores) {
 		struct ethosn_core *core = ethosn->core[i];
 
+		/* We need to disable the runtime pm and
+		 * hence wake up the core before tear down
+		 */
+		pm_runtime_disable(core->dev);
+
 		ethosn_device_deinit(core);
 		ethosn_dma_allocator_destroy(core->allocator);
 		i++;
@@ -1343,7 +1461,7 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 	/* We need to allocate the parent device (ie struct
 	 * ethosn_parent_device) only for the first time.
 	 */
-	dev_dbg(&pdev->dev, "Probing ethosn device with %d core\n",
+	dev_dbg(&pdev->dev, "Probing Ethos-N device with %d core\n",
 		num_of_npus);
 
 	ethosn = devm_kzalloc(&pdev->dev, sizeof(*ethosn),
@@ -1354,6 +1472,9 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 	ethosn_global_device_for_testing = ethosn;
 
 	ethosn->dev = &pdev->dev;
+
+	ethosn->current_busy_cores = 0;
+	ethosn->status_mask = 0;
 
 	/* Create a top level allocator for parent device
 	 */
@@ -1386,7 +1507,16 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 		goto err_free_core_list;
 	}
 
-	/*ethosn->num_cores = 1; */
+	/*
+	 * Child device probing errors are not propagated back to the populate
+	 * call so verify that the expected number of cores were setup
+	 */
+	if (ethosn->num_cores != num_of_npus) {
+		dev_err(&pdev->dev, "Failed to populate all child devices\n");
+
+		goto err_depopulate_device;
+	}
+
 	dev_dbg(&pdev->dev, "Populated %d children\n", ethosn->num_cores);
 
 	mutex_init(&ethosn->mutex);
@@ -1401,7 +1531,7 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 
 		ret = ethosn_init_reserved_mem(&pdev->dev);
 		if (ret)
-			goto err_free_core_list;
+			goto err_depopulate_device;
 	}
 
 	/* Enumerate irqs */
@@ -1413,7 +1543,7 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 
 	if (num_irqs < 0) {
 		ret = num_irqs;
-		goto err_free_core_list;
+		goto err_depopulate_device;
 	}
 
 	/* At this point, all child device have been populated.
@@ -1465,7 +1595,7 @@ struct ethosn_device *ethosn_get_global_device_for_testing(void)
 	return ethosn_global_device_for_testing;
 }
 
-/* Exported for use by ethosn-tests module */
+/* Exported for use by test module */
 EXPORT_SYMBOL(ethosn_get_global_device_for_testing);
 
 static const struct of_device_id ethosn_pdev_match[] = {

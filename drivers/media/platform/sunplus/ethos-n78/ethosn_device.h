@@ -51,6 +51,20 @@ struct ethosn_inference_queue {
 	struct list_head inference_queue;
 };
 
+/*
+ * This enum contains different error condition that can be reported
+ * by our driver.
+ *
+ * The decision of adding a new error into this list must be carefully
+ * considered as this way of reporting this kind of error pollutes the
+ * production code.
+ */
+enum ethosn_status_code {
+	WRONG_CORE_SCHEDULE,
+	CONCURRENT_INFERENCE_DETECTED,
+	INFERENCE_SCHEDULED_ON_BUSY_CORE
+};
+
 struct ethosn_device {
 	struct ethosn_core            **core;
 	struct device                 *dev;
@@ -59,13 +73,8 @@ struct ethosn_device {
 	int                           num_cores;
 	struct ethosn_inference_queue queue;
 	struct ethosn_dma_allocator   *allocator;
-};
-
-enum ethosn_core_status {
-	/* Set the core status as busy */
-	ETHOSN_CORE_BUSY = 0,
-	/* Set the core status as free */
-	ETHOSN_CORE_FREE = 1,
+	uint32_t                      current_busy_cores;
+	uint32_t                      status_mask;
 };
 
 struct ethosn_core {
@@ -120,10 +129,6 @@ struct ethosn_core {
 
 	struct ethosn_inference *current_inference;
 
-	/* Indicates if the core is busy or free.
-	 */
-	enum ethosn_core_status status;
-
 	/*
 	 * This tells us if the device initialization has been completed.
 	 * Set it to 1 before returning from ethon_device_init().
@@ -146,6 +151,10 @@ struct ethosn_core {
 		struct ethosn_profiling_config config;
 		uint32_t                       mailbox_messages_sent;
 		uint32_t                       mailbox_messages_received;
+		uint32_t                       rpm_suspend_count;
+		uint32_t                       rpm_resume_count;
+		uint32_t                       pm_suspend_count;
+		uint32_t                       pm_resume_count;
 
 		/* The buffer currently being written to by the firmware to
 		 * record profiling entries.
@@ -364,6 +373,14 @@ int ethosn_send_version_request(struct ethosn_core *core);
 int ethosn_send_fw_hw_capabilities_request(struct ethosn_core *core);
 
 /**
+ * ethosn_send_stash_request() - Send stash request if SMMU is available.
+ * @core: Pointer to Ethos-N core.
+ *
+ * Return: 0 on succss, else error code
+ */
+int ethosn_send_stash_request(struct ethosn_core *core);
+
+/**
  * ethosn_send_configure_profiling() - Send request to tell the firmware to
  *                                  enable/ disable profiling.
  * @core:	Pointer to Ethos-N core.
@@ -441,6 +458,12 @@ int ethosn_send_mpu_enable_request(struct ethosn_core *core);
  */
 bool ethosn_profiling_enabled(void);
 
+/* ethosn_stashing_enabled() - Get status of the stashing enabled switch.
+ *
+ * Return: 'true' if stashing is enabled, otherwise 'false'.
+ */
+bool ethosn_stashing_enabled(void);
+
 /* ethosn_mailbox_empty() - Check if the mailbox is empty.
  *
  * Return: 'true' if mailbox is empty, otherwise 'false'.
@@ -454,18 +477,16 @@ bool ethosn_mailbox_empty(struct ethosn_queue *queue);
 int ethosn_clock_frequency(void);
 
 /* ethosn_get_global_core_for_testing() - Exposes global access to the
- *                                       most-recently created Ethos-N core
- *                                       (in case of single core) or core0 (in
- *                                       case of multicore) for testing
- * purposes.
- *                                       See ethosn-tests module.
+ *                                        most-recently created Ethos-N core
+ *                                        (in case of single core) or core0 (in
+ *                                        case of multicore) for testing
+ *                                        purposes.
  */
 struct ethosn_core *ethosn_get_global_core_for_testing(void);
 
 /* ethosn_get_global_device_for_testing() - Exposes global access to the
- *                                       Ethos-N parent device for testing
- * purposes.
- *                                       See ethosn-tests module.
+ *                                          Ethos-N parent device for testing
+ *                                          purposes.
  */
 struct ethosn_device *ethosn_get_global_device_for_testing(void);
 

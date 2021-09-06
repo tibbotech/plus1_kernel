@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2020 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -20,24 +20,30 @@
  *
  */
 
+/include/ "juno-r2-ethosn.dtsi"
+/include/ "juno-r2-smmu.dtsi"
+
 /*
  * Note:- The smmu stream id defined in ethosn needs to be a unique value amongst
  * all the stream ids for the various devices attached to the same smmu.
  */
-/ {
-	smmu_ethosn0: iommu@6f400000 {
-		compatible = "arm,smmu-v3";
-		reg = <0 0x6f400000 0 0x80000>;
-		status = "disabled";
-		msi-parent = <&{/interrupt-controller@2c010000/v2m@0}>;
-		#iommu-cells = <0x1>;
+&smmu_ethosn0 {
+	status = "okay";
+};
+
+&ethosn0 {
+	reg = <0 0x6f300000 0 0x00100000>, <0 0x6d000000 0 0x00100000>;
+	status = "okay";
+
+	core0 {
+		compatible = "ethosn-core";
+		iommus = <&smmu_ethosn0 0>;
+		status = "okay";
 	};
 
-	smmu_ethosn1: iommu@6f480000 {
-		compatible = "arm,smmu-v3";
-		reg = <0 0x6f480000 0 0x80000>;
-		status = "disabled";
-		msi-parent = <&{/interrupt-controller@2c010000/v2m@0}>;
-		#iommu-cells = <0x1>;
+	core1 {
+		compatible = "ethosn-core";
+		iommus = <&smmu_ethosn0 1>;
+		status = "okay";
 	};
 };

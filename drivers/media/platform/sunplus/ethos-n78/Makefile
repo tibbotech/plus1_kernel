@@ -14,6 +14,7 @@
 #ccflags-y += -Wall -g -DDEBUG -DETHOSN_NS
 #ccflags-y += -Wall -g -Werror -DDEBUG -DETHOSN_NS
 ccflags-y += -Wall -g -Werror -DDEBUG
+#ccflags-y += -Wall -g -Werror -DDEBUG $(EXTRA_CCFLAGS)
 
 obj-$(CONFIG_ETHOS_N78_NPU) += ethosn.o
 obj-$(CONFIG_ETHOSN_TEST) += ../internal/kernel-module/tests/ethosn-tests.o
