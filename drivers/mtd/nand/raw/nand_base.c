@@ -4617,6 +4617,9 @@ static bool find_full_id_nand(struct nand_chip *chip,
 		requirements.strength = NAND_ECC_STRENGTH(type);
 		requirements.step_size = NAND_ECC_STEP(type);
 		nanddev_set_ecc_requirements(base, &requirements);
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+		chip->drv_options = type->drv_options; // Sunplus additional variable
+#endif
 
 		chip->parameters.model = kstrdup(type->name, GFP_KERNEL);
 		if (!chip->parameters.model)
@@ -5053,8 +5056,13 @@ static int rawnand_dt_init(struct nand_chip *chip)
  * prevented dynamic allocations during this phase which was unconvenient and
  * as been banned for the benefit of the ->init_ecc()/cleanup_ecc() hooks.
  */
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+int nand_scan_ident(struct nand_chip *chip, unsigned int maxchips,
+			   struct nand_flash_dev *table)
+#else
 static int nand_scan_ident(struct nand_chip *chip, unsigned int maxchips,
 			   struct nand_flash_dev *table)
+#endif
 {
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct nand_memory_organization *memorg;
@@ -5603,7 +5611,11 @@ static const struct nand_ops rawnand_ops = {
  * all the uninitialized function pointers with the defaults and scans for a
  * bad block table if appropriate.
  */
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+int nand_scan_tail(struct nand_chip *chip)
+#else
 static int nand_scan_tail(struct nand_chip *chip)
+#endif
 {
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct nand_ecc_ctrl *ecc = &chip->ecc;

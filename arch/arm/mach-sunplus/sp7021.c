@@ -84,6 +84,25 @@ static void apply_partial_clken(void)
 }
 #endif
 
+#ifdef CONFIG_SUNPLUS_WATCHDOG
+/*
+	1.We need to reset watchdog flag(clear watchdog interrupt) here
+	because watchdog timer driver does not have an interrupt handler,
+	and before enalbe RBUS timeout. Otherwise, the intr is always in
+	the triggered state.
+	2.enable RBUS watchdog timeout trigger.
+	provied by xt.hu
+*/
+static void watchdog_reset(void)
+{
+	unsigned int temp_val;
+	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+	writel(0x7482, regs + 0x0630); /* G12.12 clr wdt irq */
+	temp_val = readl(regs + 0x0274) | 0x00120012;
+	writel(temp_val, regs + 0x0274); /* G4.29 misc_ctl */
+}
+#endif
+
 static struct platform_device sp7021_cpuidle = {
 	.name              = "sp7021_cpuidle",
 	.dev.platform_data = sp7021_enter_aftr,
@@ -130,6 +149,10 @@ static void __init sp_init(void)
 
 #ifdef CONFIG_SP_PARTIAL_CLKEN
 	apply_partial_clken();
+#endif
+
+#ifdef CONFIG_SUNPLUS_WATCHDOG
+	watchdog_reset();
 #endif
 
 	sp7021_cpuidle.dev.platform_data = &cpuidle_coupled_sp7021_data;
