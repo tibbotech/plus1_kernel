@@ -3,17 +3,7 @@
 
 #define XTAL            25000000
 
-/* plls */
-#define PLL_HSM         (CLK_MAX + 0)
-#define PLL_NPU         (CLK_MAX + 1)
-#define PLL_SYS         (CLK_MAX + 2)
-#define PLL_CPU         (CLK_MAX + 3)
-#define PLL_DRAM        (CLK_MAX + 4)
-#define PLL_GPU     	(CLK_MAX + 5)
-
-#define PLL_MAX         6
-
-/* gates: mo_scfg_0 ~ mo_scfg_5 */
+/* clks: mo_scfg_0 ~ mo_scfg_5 */
 #define SYSTEM          0x00
 #define CA55CORE0       0x01
 #define CA55CORE1       0x02
@@ -123,5 +113,26 @@
 #define VIDEO_CODEC     0x64
 
 #define CLK_MAX         0x65
+
+/* additional clks: not listed @ above */
+#define AC(i)           (CLK_MAX + i)
+
+#define VCLCORE0        AC(0)
+#define VCLCORE1        AC(1)
+#define VCLCORE2        AC(2)
+
+#define AC_MAX         3
+
+/* plls */
+#define PLL(i)          (CLK_MAX + AC_MAX + i)
+
+#define PLLS            PLL(0)
+#define PLLC            PLL(1)
+#define PLLN            PLL(2)
+#define PLLH            PLL(3)
+#define PLLD            PLL(4)
+#define PLLA            PLL(5)
+
+#define PLL_MAX         6
 
 #endif

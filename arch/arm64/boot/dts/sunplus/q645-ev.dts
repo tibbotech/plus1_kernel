@@ -144,12 +144,25 @@
 			clock-output-names = "extclk";
 		};
 
+		rtcclk: rtcclk {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <32000>;
+			clock-output-names = "f_32k";
+		};
+
+		mipiclk: mipiclk {
+			#clock-cells = <0>;
+			compatible = "fixed-clock";
+			clock-frequency = <320000000>;
+			clock-output-names = "f_320m";
+		};
+
 		clkc: clkc@0xf8000004 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
-			reg = <0x00 0xf8000004 0x00 0x28>, // G0.1 ~ G0.10 CLKs
-			      <0x00 0xf8000108 0x00 0x04>, // G2.2 GPU
-			      <0x00 0xf8000200 0x00 0x80>; // G4 PLLs
+			reg = <0x00 0xf8000000 0x00 0x280>, // MOON G0 ~ G4
+			      <0x00 0xf8005280 0x00 0x400>; // MIPI G165 ~ G172
 		};
 	};
 
@@ -779,7 +792,7 @@
 			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "JOB", "MMU", "GPU";
-		clocks = <&clkc PLL_GPU>;
+		clocks = <&clkc GPU>;
 		clock-names = "clk_mali";
 		resets = <&rstc RST_GPU>;
 	};
