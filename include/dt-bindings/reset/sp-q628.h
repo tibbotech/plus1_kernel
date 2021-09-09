@@ -1,3 +1,7 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2021 Sunplus
+ */
 #ifndef _DT_BINDINGS_RST_SUNPLUS_Q628_H
 #define _DT_BINDINGS_RST_SUNPLUS_Q628_H
 
