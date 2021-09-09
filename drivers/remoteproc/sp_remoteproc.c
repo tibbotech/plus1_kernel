@@ -52,9 +52,9 @@ struct sp_rproc_pdata {
 	struct rproc *rproc;
 	struct ipi_info ipis[MAX_NUM_VRINGS];
 	struct list_head fw_mems;
-	volatile u32 __iomem *mbox;
+	u32 __iomem *mbox;
 #ifdef CONFIG_ARCH_PENTAGRAM
-	volatile u32 __iomem *boot;
+	u32 __iomem *boot;
 #else
 	struct reset_control *rstc; // FIXME: RST_A926 not worked
 #endif
@@ -196,9 +196,7 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 						   NULL, NULL,
 						   node->name);
 			if (!mem) {
-				dev_err(dev,
-					"unable to initialize memory-region %s \n",
-					node->name);
+				dev_err(dev, "unable to initialize memory-region %s\n", node->name);
 				return -ENOMEM;
 			}
 			rproc_add_carveout(rproc, mem);
@@ -214,9 +212,7 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 			if (!mem->va)
 				return -ENOMEM;
 			if (!mem) {
-				dev_err(dev,
-					"unable to initialize memory-region %s\n",
-					node->name);
+				dev_err(dev, "unable to initialize memory-region %s\n",	node->name);
 				return -ENOMEM;
 			}
 			rproc_add_carveout(rproc, mem);
@@ -226,9 +222,7 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 							rmem->base,
 							node->name);
 			if (!mem) {
-				dev_err(dev,
-					"unable to initialize memory-region %s \n",
-					node->name);
+				dev_err(dev, "unable to initialize memory-region %s\n", node->name);
 				return -ENOMEM;
 			}
 			mem->va = devm_ioremap_wc(dev, rmem->base, rmem->size);
