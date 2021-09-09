@@ -1,6 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2021 Sunplus
+ */
 #include <linux/irq.h>
 #include <linux/irqdomain.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #ifdef CONFIG_ARM
 #include <asm/exception.h>
 #include <asm/mach/irq.h>
@@ -25,23 +29,23 @@
 
 struct intG0Reg_st {
 	/* Interrupt G0 */
-	volatile unsigned int intr_type[7];
-	volatile unsigned int intr_polarity[7];
-	volatile unsigned int priority[7];
-	volatile unsigned int intr_mask[7];
-	volatile unsigned int g15_reserved_0[4];
+	u32 intr_type[7];
+	u32 intr_polarity[7];
+	u32 priority[7];
+	u32 intr_mask[7];
+	u32 g15_reserved_0[4];
 };
 
 struct intG1Reg_st {
 	/* Interrupt G1 */
-	volatile unsigned int intr_clr[7];
-	volatile unsigned int masked_fiqs[7];
-	volatile unsigned int masked_irqs[7];
-	volatile unsigned int g21_reserved_0[10];
+	u32 intr_clr[7];
+	u32 masked_fiqs[7];
+	u32 masked_irqs[7];
+	u32 g21_reserved_0[10];
 #ifdef SUPPORT_IRQ_GRP_REG
-	volatile unsigned int intr_group;
+	u32 intr_group;
 #else
-	volatile unsigned int rsvd_31;
+	u32 rsvd_31;
 #endif
 };
 
@@ -96,11 +100,12 @@ static void sp_intc_ack_irq(struct irq_data *data)
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
 	if (edge_trigger[data->hwirq] & (SP_IRQ_TYPE_EDGE_RISING|SP_IRQ_TYPE_EDGE_FALLING)) {
 		u32 trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
-		if (edge_trigger[data->hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+
+		if (edge_trigger[data->hwirq] == SP_IRQ_TYPE_EDGE_RISING)
 			trig_lvl |= mask;
-		} else {
+		else
 			trig_lvl &= ~mask;
-		}
+
 		writel_relaxed(trig_lvl, &sp_intc.g0->intr_polarity[idx]);
 		edge_trigger[data->hwirq] |= SP_IRQ_TYPE_EDGE_ACTIVE;
 	}
@@ -309,15 +314,17 @@ static void sp_intc_handle_ext0_cascaded(struct irq_desc *desc)
 			u32 mask = 1 << (hwirq % 32);
 
 			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
-			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING)
 				trig_lvl &= ~mask;
-			} else {
+			else
 				trig_lvl |= mask;
-			}
+
 			writel_relaxed(trig_lvl, &sp_intc.g0->intr_polarity[idx]);
 		} else
-#endif
+			generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+#else
 		generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+#endif
 	}
 
 	chained_irq_exit(host_chip, desc);
@@ -338,15 +345,17 @@ static void sp_intc_handle_ext1_cascaded(struct irq_desc *desc)
 			u32 mask = 1 << (hwirq % 32);
 
 			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
-			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING)
 				trig_lvl &= ~mask;
-			} else {
+			else
 				trig_lvl |= mask;
-			}
+
 			writel_relaxed(trig_lvl, &sp_intc.g0->intr_polarity[idx]);
 		} else
-#endif
+			generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+#else
 		generic_handle_irq(irq_find_mapping(sp_intc.domain, (unsigned int)hwirq));
+#endif
 	}
 
 	chained_irq_exit(host_chip, desc);
@@ -440,16 +449,16 @@ int sp_intc_xlate_of(struct irq_domain *d, struct device_node *node,
 	ext_num = (intspec[1] & SP_INTC_EXT_INT_MASK) >> SP_INTC_EXT_INT_SHFIT;
 
 	/* set ext_int1 to high priority */
-	if (ext_num != 1) {
+	if (ext_num != 1)
 		ext_num = 0;
-	}
-	if (ext_num) {
+
+	if (ext_num)
 		sp_intc_set_prio(*out_hwirq, 0); /* priority=0 */
-	}
+
 	return ret;
 }
 
-static struct irq_domain_ops sp_intc_dm_ops = {
+static const struct irq_domain_ops sp_intc_dm_ops = {
 	.xlate = sp_intc_xlate_of,
 	.map = sp_intc_irq_domain_map,
 };
@@ -474,6 +483,7 @@ int __init sp_intc_init(int hwirq_start, int irqs, void __iomem *base0, void __i
 static cpumask_t *u2cpumask(u32 mask, cpumask_t *cpumask)
 {
 	unsigned int i;
+
 	for (i = 0; i < 4; i++) {
 		if (mask & (1 << i))
 			cpumask_set_cpu(i, cpumask);
@@ -498,18 +508,16 @@ static int __init sp_intc_ext_adjust(void)
 
 	cpumask = CPU_MASK_NONE;
 	if (!of_property_read_u32(node, "ext0-mask", &mask)) {
-		printk("%d: ext0-mask=0x%x\n", sp_intc.virq[0], mask);
-		if (irq_set_affinity(sp_intc.virq[0], u2cpumask(mask, &cpumask))) {
+		pr_info("%d: ext0-mask=0x%x\n", sp_intc.virq[0], mask);
+		if (irq_set_affinity(sp_intc.virq[0], u2cpumask(mask, &cpumask)))
 			pr_err("failed to set ext0 cpumask=0x%x\n", mask);
-		}
 	}
 
 	cpumask = CPU_MASK_NONE;
 	if (!of_property_read_u32(node, "ext1-mask", &mask)) {
-		printk("%d: ext1-mask=0x%x\n", sp_intc.virq[1], mask);
-		if (irq_set_affinity(sp_intc.virq[1], u2cpumask(mask, &cpumask))) {
+		pr_info("%d: ext1-mask=0x%x\n", sp_intc.virq[1], mask);
+		if (irq_set_affinity(sp_intc.virq[1], u2cpumask(mask, &cpumask)))
 			pr_err("failed to set ext1 cpumask=0x%x\n", mask);
-		}
 	}
 
 	return 0;
