@@ -1,5 +1,9 @@
-#include "l2sw_mdio.h"
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 
+#include "l2sw_mdio.h"
 
 static int mii_read(struct mii_bus *bus, int phy_id, int regnum)
 {
@@ -20,7 +24,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 
 	mii_bus = mdiobus_alloc();
 	if (mii_bus == NULL) {
-		ETH_ERR("[%s] Failed to allocate mdio_bus memory!\n", __func__);
+		pr_err(" Failed to allocate mdio_bus memory!\n");
 		return -ENOMEM;
 	}
 
@@ -34,7 +38,7 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 	mdio_node = of_get_parent(mac->comm->phy1_node);
 	ret = of_mdiobus_register(mii_bus, mdio_node);
 	if (ret) {
-		ETH_ERR("[%s] Failed to register mii bus (ret = %d)!\n", __func__, ret);
+		pr_err(" Failed to register mii bus (ret = %d)!\n", ret);
 		mdiobus_free(mii_bus);
 		return ret;
 	}
@@ -67,13 +71,13 @@ int mac_phy_probe(struct net_device *netdev)
 	phydev = of_phy_connect(mac->net_dev, mac->comm->phy1_node, mii_linkchange,
 				0, PHY_INTERFACE_MODE_RGMII_ID);
 	if (!phydev) {
-		ETH_ERR(" \"%s\" has no phy found\n", netdev->name);
+		pr_err(" \"%s\" has no phy found\n", netdev->name);
 		return -1;
 	}
 
 	if (mac->comm->phy2_node) {
 		of_phy_connect(mac->net_dev, mac->comm->phy2_node, mii_linkchange,
-				0, PHY_INTERFACE_MODE_RGMII_ID);
+			       0, PHY_INTERFACE_MODE_RGMII_ID);
 	}
 
 #ifdef PHY_RUN_STATEMACHINE
@@ -82,9 +86,9 @@ int mac_phy_probe(struct net_device *netdev)
 	linkmode_clear_bit(ETHTOOL_LINK_MODE_Pause_BIT, phydev->supported);
 	linkmode_clear_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, phydev->supported);
 	//phydev->advertising = phydev->supported;
-	for (i = 0; i < sizeof(phydev->supported)/sizeof(long); i++) {
+	for (i = 0; i < sizeof(phydev->supported) / sizeof(long); i++)
 		phydev->advertising[i] = phydev->supported[i];
-	}
+
 	phydev->irq = PHY_IGNORE_INTERRUPT;
 	mac->comm->phy_dev = phydev;
 #endif
@@ -106,18 +110,17 @@ void mac_phy_start(struct net_device *netdev)
 	for (phyaddr = 0; phyaddr < PHY_MAX_ADDR; phyaddr++) {
 		if (mac->comm->mii_bus->mdio_map[phyaddr]) {
 			phydev = mac->comm->mii_bus->mdio_map[phyaddr];
-			break; /* break out with first one found */
+			break;	/* break out with first one found */
 		}
 	}
 
 	phydev = phy_attach(netdev, dev_name(&phydev->dev), 0, PHY_INTERFACE_MODE_GMII);
 	if (IS_ERR(phydev)) {
-		ETH_ERR("[%s] Failed to attach phy!\n", __func__);
+		pr_err(" Failed to attach phy!\n");
 		return;
 	}
 
-	phydev->supported &= (PHY_GBIT_FEATURES | SUPPORTED_Pause |
-			      SUPPORTED_Asym_Pause);
+	phydev->supported &= (PHY_GBIT_FEATURES | SUPPORTED_Pause | SUPPORTED_Asym_Pause);
 	phydev->advertising = phydev->supported;
 	phydev->irq = PHY_IGNORE_INTERRUPT;
 	mac->comm->phy_dev = phydev;
@@ -151,5 +154,3 @@ void mac_phy_remove(struct net_device *netdev)
 		mac->comm->phy_dev = NULL;
 	}
 }
-
-
