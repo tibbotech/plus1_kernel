@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2021 Sunplus
+ */
 //#define DEBUG
 #include <linux/module.h>
 #include <linux/clk.h>
@@ -71,131 +75,131 @@ static void __iomem *mipi_regs;
 
 #define MIPI_REGS(group, idx)	(((group - 165) * 32 + idx) * 4)
 
-typedef struct {
+struct sp_clk_s {
 	const char *name;
 	u32 id;		/* defined in sp-q645.h, also for gate (reg_idx<<4)|(shift) */
 	u32 mux;	/* mux reg_idx: MOON2.xx */
 	u32 shift;	/* mux shift */
 	u32 width;	/* mux width */
 	const char *parent_names[MAX_PARENTS];
-} sp_clk_t;
+};
 
-static const char *default_parents[] = { EXT_CLK };
+static const char * const default_parents[] = { EXT_CLK };
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
-static sp_clk_t sp_clks[] = {
-	_( SYSTEM,		0,	0,	2, {"f_600m", "f_750m", "f_500m"} ),
-	_( CA55CORE0,	0,	6,	1, {"PLLC", "SYSTEM"} ),
-	_( CA55CORE1,	0,	11,	1, {"PLLC", "SYSTEM"} ),
-	_( CA55CORE2,	1,	0,	1, {"PLLC", "SYSTEM"} ),
-	_( CA55CORE3,	1,	5,	1, {"PLLC", "SYSTEM"} ),
-	_( CA55CUL3,	1,	10,	1, {"f_1200m", "SYSTEM"} ),
-	_( CA55 ),
-	_( IOP ),
-	_( PBUS0 ),
-	_( PBUS1 ),
-	_( PBUS2 ),
-	_( PBUS3 ),
-	_( BR0 ),
-	_( CARD_CTL0,	3,	7,	1, {"f_360m", "f_800m"} ),
-	_( CARD_CTL1,	3,	8,	1, {"f_360m", "f_800m"} ),
-	_( CARD_CTL2,	3,	9,	1, {"f_360m", "f_800m"} ),
+static struct sp_clk_s sp_clks[] = {
+	_(SYSTEM,		0,	0,	2, {"f_600m", "f_750m", "f_500m"}),
+	_(CA55CORE0,	0,	6,	1, {"PLLC", "SYSTEM"}),
+	_(CA55CORE1,	0,	11,	1, {"PLLC", "SYSTEM"}),
+	_(CA55CORE2,	1,	0,	1, {"PLLC", "SYSTEM"}),
+	_(CA55CORE3,	1,	5,	1, {"PLLC", "SYSTEM"}),
+	_(CA55CUL3,		1,	10,	1, {"f_1200m", "SYSTEM"}),
+	_(CA55),
+	_(IOP),
+	_(PBUS0),
+	_(PBUS1),
+	_(PBUS2),
+	_(PBUS3),
+	_(BR0),
+	_(CARD_CTL0,	3,	7,	1, {"f_360m", "f_800m"}),
+	_(CARD_CTL1,	3,	8,	1, {"f_360m", "f_800m"}),
+	_(CARD_CTL2,	3,	9,	1, {"f_360m", "f_800m"}),
 
-	_( CBDMA0 ),
-	_( CPIOL ),
-	_( CPIOR ),
-	_( DDR_PHY0 ),
-	_( SDCTRL0 ),
-	_( DUMMY_MASTER0 ),
-	_( DUMMY_MASTER1 ),
-	_( DUMMY_MASTER2 ),
-	_( EVDN,		3,	4,	1, {"f_800m", "f_1000m"} ),
-	_( SDPROT0 ),
-	_( UMCTL2 ),
-	_( GPU,			2,	9,	3, {"f_800m", "f_1000m", "f_1080m", "f_400m"} ),
-	_( HSM,			2,	5,	1, {"f_500m", "SYSTEM"} ),
-	_( RBUS_TOP ),
-	_( SPACC ),
-	_( INTERRUPT ),
+	_(CBDMA0),
+	_(CPIOL),
+	_(CPIOR),
+	_(DDR_PHY0),
+	_(SDCTRL0),
+	_(DUMMY_MASTER0),
+	_(DUMMY_MASTER1),
+	_(DUMMY_MASTER2),
+	_(EVDN,			3,	4,	1, {"f_800m", "f_1000m"}),
+	_(SDPROT0),
+	_(UMCTL2),
+	_(GPU,			2,	9,	3, {"f_800m", "f_1000m", "f_1080m", "f_400m"}),
+	_(HSM,			2,	5,	1, {"f_500m", "SYSTEM"}),
+	_(RBUS_TOP),
+	_(SPACC),
+	_(INTERRUPT),
 
-	_( N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"} ), /* FIXME: HWLOCK_N78_CLK_SEL OTP0(41:40) */
-	_( SYSTOP ),
-	_( OTPRX ),
-	_( PMC ),
-	_( RBUS_BLOCKA ),
-	_( RBUS_BLOCKB ),
-	_( RBUS_rsv1 ),
-	_( RBUS_rsv2 ),
-	_( RTC,			0,	0,	0, {"f_32k"} ),
-	_( MIPZ ),
-	_( SPIFL,		3,	11,	1, {"f_360m", "f_216m"} ),
-	_( BCH ),
-	_( SPIND,		3,	10,	1, {"f_600m", "f_800m"} ),
-	_( UADMA01 ),
-	_( UADMA23 ),
-	_( UA0,			2,	13,	1, {EXT_CLK, "f_200m"} ),
+	_(N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}), /* FIXME: HWLOCK_N78_CLK_SEL OTP0(41:40) */
+	_(SYSTOP),
+	_(OTPRX),
+	_(PMC),
+	_(RBUS_BLOCKA),
+	_(RBUS_BLOCKB),
+	_(RBUS_rsv1),
+	_(RBUS_rsv2),
+	_(RTC,			0,	0,	0, {"f_32k"}),
+	_(MIPZ),
+	_(SPIFL,		3,	11,	1, {"f_360m", "f_216m"}),
+	_(BCH),
+	_(SPIND,		3,	10,	1, {"f_600m", "f_800m"}),
+	_(UADMA01),
+	_(UADMA23),
+	_(UA0,			2,	13,	1, {EXT_CLK, "f_200m"}),
 
-	_( UA1,			2,	14,	1, {EXT_CLK, "f_200m"} ),
-	_( UA2,			2,	15,	1, {EXT_CLK, "f_200m"} ),
-	_( UA3,			3,	0,	1, {EXT_CLK, "f_200m"} ),
-	_( UA4 ),
-	_( UA5 ),
-	_( UADBG,		3,	1,	1, {EXT_CLK, "f_200m"} ),
-	_( UART2AXI ),
-	_( GDMAUA ),
-	_( UPHY0 ),
-	_( USB30C0,		2,	2,	1, {"f_125m", "f_125m"} ), /* CLKPIPE0_SRC also 125m */
-	_( USB30C1,		2,	3,	1, {"f_125m", "f_125m"} ), /* CLKPIPE1_SRC also 125m */
-	_( U3PHY0,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK} ),
-	_( U3PHY1,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK} ),
-	_( USBC0 ),
-	_( VCD,			0,	0,	0, {"f_360m"} ),
-	_( VCE,			24,	9,	2, {"f_540m", "f_600m", "f_750m"} ),
+	_(UA1,			2,	14,	1, {EXT_CLK, "f_200m"}),
+	_(UA2,			2,	15,	1, {EXT_CLK, "f_200m"}),
+	_(UA3,			3,	0,	1, {EXT_CLK, "f_200m"}),
+	_(UA4),
+	_(UA5),
+	_(UADBG,		3,	1,	1, {EXT_CLK, "f_200m"}),
+	_(UART2AXI),
+	_(GDMAUA),
+	_(UPHY0),
+	_(USB30C0,		2,	2,	1, {"f_125m", "f_125m"}), /* CLKPIPE0_SRC also 125m */
+	_(USB30C1,		2,	3,	1, {"f_125m", "f_125m"}), /* CLKPIPE1_SRC also 125m */
+	_(U3PHY0,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
+	_(U3PHY1,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
+	_(USBC0),
+	_(VCD,			0,	0,	0, {"f_360m"}),
+	_(VCE,			24,	9,	2, {"f_540m", "f_600m", "f_750m"}),
 
-	_( CM4,			3,	5,	2, {"SYSTEM", "SYSTEM_D2", "SYSTEM_D4"} ), /* SYS_CLK, SYS_CLK/2, SYS_CLK/4 */
-	_( STC0 ),
-	_( STC_AV0 ),
-	_( STC_AV1 ),
-	_( STC_AV2 ),
-	_( MAILBOX ),
-	_( PAI ),
-	_( PAII ),
-	_( DDRPHY,		0,	0,	0, {"f_800m"} ),
-	_( DDRCTL ),
-	_( I2CM0 ),
-	_( SPI_COMBO_0 ),
-	_( SPI_COMBO_1 ),
-	_( SPI_COMBO_2 ),
-	_( SPI_COMBO_3 ),
-	_( SPI_COMBO_4 ),
+	_(CM4,			3,	5,	2, {"SYSTEM", "SYSTEM_D2", "SYSTEM_D4"}), /* SYS_CLK, SYS_CLK/2, SYS_CLK/4 */
+	_(STC0),
+	_(STC_AV0),
+	_(STC_AV1),
+	_(STC_AV2),
+	_(MAILBOX),
+	_(PAI),
+	_(PAII),
+	_(DDRPHY,		0,	0,	0, {"f_800m"}),
+	_(DDRCTL),
+	_(I2CM0),
+	_(SPI_COMBO_0),
+	_(SPI_COMBO_1),
+	_(SPI_COMBO_2),
+	_(SPI_COMBO_3),
+	_(SPI_COMBO_4),
 
-	_( SPI_COMBO_5 ),
-	_( CSIIW0,		MIPI_REGS(165,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( MIPICSI0,	MIPI_REGS(165,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( CSIIW1,		MIPI_REGS(167,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( MIPICSI1,	MIPI_REGS(167,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( CSIIW2,		MIPI_REGS(169,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( MIPICSI2,	MIPI_REGS(169,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( CSIIW3,		MIPI_REGS(171,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( MIPICSI3,	MIPI_REGS(171,22),	1,	1, {"f_320m", "f_300m"} ),
-	_( VCL ),
-	_( DISP_PWM,	0,	0,	0, {"f_200m"} ),
-	_( I2CM1 ),
-	_( I2CM2 ),
-	_( I2CM3 ),
-	_( I2CM4 ),
-	_( I2CM5 ),
+	_(SPI_COMBO_5),
+	_(CSIIW0,		MIPI_REGS(165, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(MIPICSI0,		MIPI_REGS(165, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(CSIIW1,		MIPI_REGS(167, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(MIPICSI1,		MIPI_REGS(167, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(CSIIW2,		MIPI_REGS(169, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(MIPICSI2,		MIPI_REGS(169, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(CSIIW3,		MIPI_REGS(171, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(MIPICSI3,		MIPI_REGS(171, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(VCL),
+	_(DISP_PWM,		0,	0,	0, {"f_200m"}),
+	_(I2CM1),
+	_(I2CM2),
+	_(I2CM3),
+	_(I2CM4),
+	_(I2CM5),
 
-	_( UA6 ),
-	_( UA7 ),
-	_( UA8 ),
-	_( AUD ),
-	_( VIDEO_CODEC ),
+	_(UA6),
+	_(UA7),
+	_(UA8),
+	_(AUD),
+	_(VIDEO_CODEC),
 
-	_( VCLCORE0,	25,	0,	4, {"f_500m", "f_600m", "f_400m", "f_300m", "f_200m"} ),
-	_( VCLCORE1,	25,	4,	3, {"f_400m", "f_500m", "f_300m", "f_200m"} ),
-	_( VCLCORE2,	25,	7,	3, {"f_300m", "f_400m", "f_100m", "f_200m"} ),
+	_(VCLCORE0,		25,	0,	4, {"f_500m", "f_600m", "f_400m", "f_300m", "f_200m"}),
+	_(VCLCORE1,		25,	4,	3, {"f_400m", "f_500m", "f_300m", "f_200m"}),
+	_(VCLCORE2,		25,	7,	3, {"f_300m", "f_400m", "f_100m", "f_200m"}),
 };
 
 /************************************************* PLL_A *************************************************/
@@ -289,6 +293,7 @@ static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 
 	for (i = ARRAY_SIZE(divs) - 1; i >= j; i--) {
 		long br = clk->brate * 2 / divs[i].div2;
+
 		ret = DIV_ROUND_CLOSEST(rate, br);
 		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
 			//pr_info(">>>%u>>> %ld * %ld = %ld - %lu\n", divs[i].div2, br, ret, br * ret, rate);
@@ -353,6 +358,7 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		u32 prediv = MASK_GET(PREDIV, 2, reg) + 1;
 		u32 prescl = MASK_GET(PRESCL, 1, reg) + 1;
 		u32 pstdiv = MASK_GET(PSTDIV, 2, reg) + 1;
+
 		ret = clk->brate / prediv * fbkdiv * prescl / (IS_PLLH() ? 1 : pstdiv);
 	}
 	//pr_info("recalc_rate: %lu -> %lu\n", prate, ret);
@@ -382,6 +388,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		PLLA_set_rate(clk);
 	else {
 		u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
+
 		if (bp > 16)
 			writel(reg, clk->reg + (bp / 16) * 4); // clear bp @ another reg
 		reg |= 0x3ffe0000; // BIT[13:1] HIWORD_MASK
@@ -421,6 +428,7 @@ static void sp_pll_disable(struct clk_hw *hw)
 static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
+
 	return readl(clk->reg) & BIT(PD_N);
 }
 
@@ -468,13 +476,6 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg, u32 bp)
 		clk_register_clkdev(clk, NULL, name);
 	}
 
-#if 0 // test set
-	clk_set_rate(clk, clk_get_rate(clk) / 2);
-	pr_info("%-20s%lu\n", name, clk_get_rate(clk));
-	clk_set_rate(clk, clk_get_rate(clk) * 2);
-	pr_info("%-20s%lu\n\n", name, clk_get_rate(clk));
-#endif
-
 	return clk;
 }
 
@@ -502,8 +503,7 @@ clk_register_sp_clk(const char *name, const char * const *parent_names,
 	pr_debug("%-14s: reg_gate = %llx (%s)", name, (u64)reg_gate, parent_names[0]);
 	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
 	if (!gate) {
-		if (mux)
-			kfree(mux);
+		kfree(mux);
 		return ERR_PTR(-ENOMEM);
 	}
 	gate->reg = reg_gate;
@@ -517,8 +517,7 @@ clk_register_sp_clk(const char *name, const char * const *parent_names,
 					&gate->hw, &clk_gate_ops,
 					CLK_IGNORE_UNUSED);
 	if (IS_ERR(clk)) {
-		if (mux)
-			kfree(mux);
+		kfree(mux);
 		kfree(gate);
 	}
 
@@ -580,7 +579,7 @@ static void __init sp_clkc_init(struct device_node *np)
 	pr_debug("sp-clkc: register sp_clks");
 	/* sp_clks */
 	for (i = 0; i < ARRAY_SIZE(sp_clks); i++) {
-		sp_clk_t *clk = &sp_clks[i];
+		struct sp_clk_s *clk = &sp_clks[i];
 
 		j = clk->id & 0xffff;
 		clks[j] = clk_register_sp_clk(clk->name,
@@ -598,7 +597,9 @@ static void __init sp_clkc_init(struct device_node *np)
 	pr_debug("===================================================");
 	for (i = 0; i < ARRAY_SIZE(clks); i++) {
 		struct clk *clk = clks[i];
-		if (clk) pr_debug("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
+
+		if (clk)
+			pr_debug("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
 	}
 	pr_info("sp-clkc init done!\n");
 }
