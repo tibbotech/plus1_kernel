@@ -1,18 +1,23 @@
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #include <linux/clk.h>
 #include <linux/reset.h>
 #include <linux/nvmem-consumer.h>
 #include "l2sw_driver.h"
 
-
-static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {0x88, 0x88, 0x88, 0x88, 0x88, 0x80};
-
+static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {
+	0x88, 0x88, 0x88, 0x88, 0x88, 0x80
+};
 
 /*********************************************************************
-*
-* net_device_ops
-*
-**********************************************************************/
-#if 0
+ *
+ * net_device_ops
+ *
+ **********************************************************************/
+__attribute__((unused))
 void print_packet(struct sk_buff *skb)
 {
 	u8 *p = skb->data;
@@ -22,46 +27,50 @@ void print_packet(struct sk_buff *skb)
 	int i;
 
 	i = snprintf(buf, sizeof(buf), " MAC: DA=%pM, SA=%pM, ", &p[0], &p[6]);
-	p += 12;        // point to LenType
+	p += 12;		// point to LenType
 
-	LenType = (((u32)p[0])<<8) + p[1];
+	LenType = (((u32) p[0]) << 8) + p[1];
 	if (LenType == 0x8100) {
-		u32 tag = (((u32)p[2])<<8)+p[3];
-		u32 type = (((u32)p[4])<<8) + p[5];
+		u32 tag = (((u32) p[2]) << 8) + p[3];
+		u32 type = (((u32) p[4]) << 8) + p[5];
 
-		snprintf(buf+i, sizeof(buf)-i, "TPID=%04x, Tag=%04x, LenType=%04x, len=%d (VLAN tagged packet)",
-			LenType, tag, type, len);
+		snprintf(buf + i, sizeof(buf) - i,
+			 "TPID=%04x, Tag=%04x, LenType=%04x, len=%d (VLAN tagged packet)",
+			 LenType, tag, type, len);
 		LenType = type;
-		p += 4; // point to LenType
+		p += 4;		// point to LenType
 	} else if (LenType > 1500) {
 		switch (LenType) {
 		case 0x0800:
-			packet_t = "IPv4"; break;
+			packet_t = "IPv4";
+			break;
 		case 0x0806:
-			packet_t = "ARP"; break;
+			packet_t = "ARP";
+			break;
 		case 0x8035:
-			packet_t = "RARP"; break;
+			packet_t = "RARP";
+			break;
 		case 0x86DD:
-			packet_t = "IPv6"; break;
+			packet_t = "IPv6";
+			break;
 		default:
 			packet_t = "unknown";
 		}
 
-		snprintf(buf+i, sizeof(buf)-i, "Type=%04x, len=%d (%s packet)",
-			LenType, (int)len, packet_t);
+		snprintf(buf + i, sizeof(buf) - i, "Type=%04x, len=%d (%s packet)",
+			 LenType, (int)len, packet_t);
 	} else {
-		snprintf(buf+i, sizeof(buf)-i, "Len=%04x, len=%d (802.3 packet)",
-			LenType, (int)len);
+		snprintf(buf + i, sizeof(buf) - i, "Len=%04x, len=%d (802.3 packet)",
+			 LenType, (int)len);
 	}
-	ETH_INFO("%s\n", buf);
+	pr_info("%s\n", buf);
 }
-#endif
 
 static int ethernet_open(struct net_device *net_dev)
 {
 	struct l2sw_mac *mac = netdev_priv(net_dev);
 
-	ETH_DEBUG(" Open port = %x\n", mac->lan_port);
+	pr_debug(" Open port = %x\n", mac->lan_port);
 
 	/* Start phy */
 	//netif_carrier_off(net_dev);
@@ -74,7 +83,7 @@ static int ethernet_open(struct net_device *net_dev)
 	netif_carrier_on(net_dev);
 
 	if (netif_carrier_ok(net_dev)) {
-		ETH_DEBUG(" Open netif_start_queue.\n");
+		pr_debug(" Open netif_start_queue.\n");
 		netif_start_queue(net_dev);
 	}
 
@@ -86,7 +95,7 @@ static int ethernet_stop(struct net_device *net_dev)
 	struct l2sw_mac *mac = netdev_priv(net_dev);
 	unsigned long flags;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
 	spin_lock_irqsave(&mac->comm->lock, flags);
 	netif_stop_queue(net_dev);
@@ -114,15 +123,14 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	struct skb_info *skbinfo;
 	unsigned long flags;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 	//print_packet(skb);
 
-	if (unlikely(comm->tx_desc_full == 1)) { /* no desc left, wait for tx interrupt*/
-		ETH_ERR(" TX descriptor queue full when xmit!\n");
+	if (unlikely(comm->tx_desc_full == 1)) {	/* no desc left, wait for tx interrupt */
+		pr_err(" TX descriptor queue full when xmit!\n");
 		return NETDEV_TX_BUSY;
 	}
-
-	//ETH_INFO(" skb->len = %d\n", skb->len);
+	//pr_info(" skb->len = %d\n", skb->len);
 
 	/* if skb size shorter than 60, fill it with '\0' */
 	if (unlikely(skb->len < ETH_ZLEN)) {
@@ -130,11 +138,12 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 			memset(__skb_put(skb, ETH_ZLEN - skb->len), '\0', ETH_ZLEN - skb->len);
 		} else {
 			struct sk_buff *old_skb = skb;
+
 			skb = dev_alloc_skb(ETH_ZLEN + TX_OFFSET);
 			if (skb) {
 				memset(skb->data + old_skb->len, '\0', ETH_ZLEN - old_skb->len);
 				memcpy(skb->data, old_skb->data, old_skb->len);
-				skb_put(skb, ETH_ZLEN); /* add data to an sk_buff */
+				skb_put(skb, ETH_ZLEN);	/* add data to an sk_buff */
 				dev_kfree_skb_irq(old_skb);
 			} else {
 				skb = old_skb;
@@ -149,23 +158,16 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	skbinfo->len = skb->len;
 	skbinfo->skb = skb;
 	skbinfo->mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
-	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan<<12)| (skb->len& LEN_MASK));
+	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan << 12) | (skb->len & LEN_MASK));
 	cmd2 = skb->len & LEN_MASK;
-#ifdef CONFIG_SOC_I143
-	if ((eth_hdr(skb)->h_proto == htons(ETH_P_IP)) && (ip_hdr(skb)->version == IPVERSION) &&
-	    ((ip_hdr(skb)->protocol == IPPROTO_TCP) || (ip_hdr(skb)->protocol == IPPROTO_UDP))) {
-		// An IPv4 TCP/UDP packet.
-		cmd2 |= IP_CHKSUM_APPEND | TCP_UDP_CHKSUM_APPEND;
-	}
-#endif
-	if (tx_pos == (TX_DESC_NUM-1)) {
+
+	if (tx_pos == (TX_DESC_NUM - 1))
 		cmd2 |= EOR_BIT;
-	}
-	//ETH_INFO(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
+	//pr_info(" TX1: cmd1 = %08x, cmd2 = %08x\n", cmd1, cmd2);
 
 	txdesc->addr1 = skbinfo->mapping;
 	txdesc->cmd2 = cmd2;
-	wmb();
+	wmb();			// Set OWN_BIT after other fields of descriptor are effective.
 	txdesc->cmd1 = cmd1;
 
 	NEXT_TX(tx_pos);
@@ -173,12 +175,12 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *net_dev)
 	if (unlikely(tx_pos == comm->tx_done_pos)) {
 		netif_stop_queue(net_dev);
 		comm->tx_desc_full = 1;
-		//ETH_INFO(" TX Descriptor Queue Full!\n");
+		//pr_info(" TX Descriptor Queue Full!\n");
 	}
 	comm->tx_pos = tx_pos;
-	wmb();
+	wmb();			// make sure settings are effective.
 
-	/* trigger gmac to transmit*/
+	/* trigger gmac to transmit */
 	tx_trigger();
 
 	spin_unlock_irqrestore(&mac->comm->lock, flags);
@@ -203,20 +205,19 @@ static int ethernet_set_mac_address(struct net_device *net_dev, void *addr)
 	struct sockaddr *hwaddr = (struct sockaddr *)addr;
 	struct l2sw_mac *mac = netdev_priv(net_dev);
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
 	if (netif_running(net_dev)) {
-		ETH_ERR(" Device %s is busy!\n", net_dev->name);
+		pr_err(" Device %s is busy!\n", net_dev->name);
 		return -EBUSY;
 	}
 
 	memcpy(net_dev->dev_addr, hwaddr->sa_data, net_dev->addr_len);
 
 	/* Delete the old Ethernet MAC address */
-	ETH_DEBUG(" HW Addr = %pM\n", mac->mac_addr);
-	if (is_valid_ether_addr(mac->mac_addr)) {
+	pr_debug(" HW Addr = %pM\n", mac->mac_addr);
+	if (is_valid_ether_addr(mac->mac_addr))
 		mac_hw_addr_del(mac);
-	}
 
 	/* Set the Ethernet MAC address */
 	memcpy(mac->mac_addr, hwaddr->sa_data, net_dev->addr_len);
@@ -232,30 +233,30 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 	struct mii_ioctl_data *data = if_mii(ifr);
 	unsigned long flags;
 
-	ETH_DEBUG(" if = %s, cmd = %04x\n", ifr->ifr_ifrn.ifrn_name, cmd);
-	ETH_DEBUG(" phy_id = %d, reg_num = %d, val_in = %04x\n", data->phy_id, data->reg_num, data->val_in);
+	pr_debug(" if = %s, cmd = %04x\n", ifr->ifr_ifrn.ifrn_name, cmd);
+	pr_debug(" phy_id = %d, reg_num = %d, val_in = %04x\n", data->phy_id,
+		 data->reg_num, data->val_in);
 
 	// Check parameters' range.
 	if ((cmd == SIOCGMIIREG) || (cmd == SIOCSMIIREG)) {
 		if (data->reg_num > 31) {
-			ETH_ERR(" reg_num (= %d) excesses range!\n", (int)data->reg_num);
+			pr_err(" reg_num (= %d) excesses range!\n", (int)data->reg_num);
 			return -EINVAL;
 		}
 	}
 
 	switch (cmd) {
 	case SIOCGMIIPHY:
-		if ((comm->dual_nic) && (strcmp(ifr->ifr_ifrn.ifrn_name, "eth1") == 0)) {
+		if ((comm->dual_nic) && (strcmp(ifr->ifr_ifrn.ifrn_name, "eth1") == 0))
 			return comm->phy2_addr;
-		} else {
+		else
 			return comm->phy1_addr;
-		}
 
 	case SIOCGMIIREG:
 		spin_lock_irqsave(&comm->ioctl_lock, flags);
-		data->val_out =  mdio_read(data->phy_id, data->reg_num);
+		data->val_out = mdio_read(data->phy_id, data->reg_num);
 		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
-		ETH_DEBUG(" val_out = %04x\n", data->val_out);
+		pr_debug(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
@@ -265,7 +266,7 @@ static int ethernet_do_ioctl(struct net_device *net_dev, struct ifreq *ifr, int 
 		break;
 
 	default:
-		ETH_ERR(" ioctl #%d has not implemented yet!\n", cmd);
+		pr_err(" ioctl #%d has not implemented yet!\n", cmd);
 		return -EOPNOTSUPP;
 	}
 	return 0;
@@ -292,39 +293,38 @@ static struct net_device_stats *ethernet_get_stats(struct net_device *net_dev)
 {
 	struct l2sw_mac *mac;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 	mac = netdev_priv(net_dev);
 	return &mac->dev_stats;
 }
 
-
-static struct net_device_ops netdev_ops = {
-	.ndo_open               = ethernet_open,
-	.ndo_stop               = ethernet_stop,
-	.ndo_start_xmit         = ethernet_start_xmit,
-	.ndo_set_rx_mode        = ethernet_set_rx_mode,
-	.ndo_set_mac_address    = ethernet_set_mac_address,
-	.ndo_do_ioctl           = ethernet_do_ioctl,
-	.ndo_change_mtu         = ethernet_change_mtu,
-	.ndo_tx_timeout         = ethernet_tx_timeout,
-	.ndo_get_stats          = ethernet_get_stats,
+static const struct net_device_ops netdev_ops = {
+	.ndo_open = ethernet_open,
+	.ndo_stop = ethernet_stop,
+	.ndo_start_xmit = ethernet_start_xmit,
+	.ndo_set_rx_mode = ethernet_set_rx_mode,
+	.ndo_set_mac_address = ethernet_set_mac_address,
+	.ndo_do_ioctl = ethernet_do_ioctl,
+	.ndo_change_mtu = ethernet_change_mtu,
+	.ndo_tx_timeout = ethernet_tx_timeout,
+	.ndo_get_stats = ethernet_get_stats,
 };
 
-
-char *sp7021_otp_read_mac(struct device *_d, ssize_t *_l, char *_name) {
+char *sp7021_otp_read_mac(struct device *_d, ssize_t *_l, char *_name)
+{
 	char *ret = NULL;
 	struct nvmem_cell *c = nvmem_cell_get(_d, _name);
 
 	if (IS_ERR_OR_NULL(c)) {
-		ETH_ERR(" OTP %s read failure: %ld", _name, PTR_ERR(c));
-		return (NULL);
+		pr_err(" OTP %s read failure: %ld", _name, PTR_ERR(c));
+		return NULL;
 	}
 
 	ret = nvmem_cell_read(c, _l);
 	nvmem_cell_put(c);
-	ETH_DEBUG(" %zd bytes are read from OTP %s.", *_l, _name);
+	pr_debug(" %zd bytes are read from OTP %s.", *_l, _name);
 
-	return (ret);
+	return ret;
 }
 
 static void check_mac_vendor_id_and_convert(char *mac_addr)
@@ -332,41 +332,50 @@ static void check_mac_vendor_id_and_convert(char *mac_addr)
 	// Byte order of MAC address of some samples are reversed.
 	// Check vendor id and convert byte order if it is wrong.
 	if ((mac_addr[5] == 0xFC) && (mac_addr[4] == 0x4B) && (mac_addr[3] == 0xBC) &&
-		((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
+	    ((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
 		char tmp;
-		tmp = mac_addr[0]; mac_addr[0] = mac_addr[5]; mac_addr[5] = tmp;
-		tmp = mac_addr[1]; mac_addr[1] = mac_addr[4]; mac_addr[4] = tmp;
-		tmp = mac_addr[2]; mac_addr[2] = mac_addr[3]; mac_addr[3] = tmp;
+
+		// Swap mac_addr[0] and mac_addr[5]
+		tmp = mac_addr[0];
+		mac_addr[0] = mac_addr[5];
+		mac_addr[5] = tmp;
+
+		// Swap mac_addr[1] and mac_addr[4]
+		tmp = mac_addr[1];
+		mac_addr[1] = mac_addr[4];
+		mac_addr[4] = tmp;
+
+		// Swap mac_addr[2] and mac_addr[3]
+		tmp = mac_addr[2];
+		mac_addr[2] = mac_addr[3];
+		mac_addr[3] = tmp;
 	}
 }
 
 /*********************************************************************
-*
-* platform_driver
-*
-**********************************************************************/
+ *
+ * platform_driver
+ *
+ **********************************************************************/
 static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_device **r_ndev)
 {
 	u32 ret = -ENODEV;
 	struct l2sw_mac *mac;
 	struct net_device *net_dev;
-	char *m_addr_name = (eth_no == 0)? "mac_addr0": "mac_addr1";
+	char *m_addr_name = (eth_no == 0) ? "mac_addr0" : "mac_addr1";
 	ssize_t otp_l = 0;
 	char *otp_v;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
 	/* allocate the devices, and also allocate l2sw_mac, we can get it by netdev_priv() */
-	if ((net_dev = alloc_etherdev(sizeof(struct l2sw_mac))) == NULL) {
+	net_dev = alloc_etherdev(sizeof(struct l2sw_mac));
+	if (net_dev == NULL) {
 		*r_ndev = NULL;
 		return -ENOMEM;
 	}
 	SET_NETDEV_DEV(net_dev, &pdev->dev);
 	net_dev->netdev_ops = &netdev_ops;
-#ifdef CONFIG_SOC_I143
-	net_dev->features |= NETIF_F_IP_CSUM;
-	net_dev->hw_features |= NETIF_F_IP_CSUM;
-#endif
 
 	mac = netdev_priv(net_dev);
 	mac->net_dev = net_dev;
@@ -376,7 +385,8 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	// Get property 'mac-addr0' or 'mac-addr1' from dts.
 	otp_v = sp7021_otp_read_mac(&pdev->dev, &otp_l, m_addr_name);
 	if ((otp_l < 6) || IS_ERR_OR_NULL(otp_v)) {
-		ETH_INFO(" OTP mac %s (len = %zd) is invalid, using default!\n", m_addr_name, otp_l);
+		pr_info(" OTP mac %s (len = %zd) is invalid, using default!\n",
+			m_addr_name, otp_l);
 		otp_l = 0;
 	} else {
 		// Check if mac-address is valid or not. If not, copy from default.
@@ -386,7 +396,8 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		check_mac_vendor_id_and_convert(mac->mac_addr);
 
 		if (!is_valid_ether_addr(mac->mac_addr)) {
-			ETH_INFO(" Invalid mac in OTP[%s] = %pM, use default!\n", m_addr_name, mac->mac_addr);
+			pr_info(" Invalid mac in OTP[%s] = %pM, use default!\n",
+				m_addr_name, mac->mac_addr);
 			otp_l = 0;
 		}
 	}
@@ -395,32 +406,34 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		mac->mac_addr[5] += eth_no;
 	}
 
-	ETH_INFO(" HW Addr = %pM\n", mac->mac_addr);
+	pr_info(" HW Addr = %pM\n", mac->mac_addr);
 
 	memcpy(net_dev->dev_addr, mac->mac_addr, ETHERNET_MAC_ADDR_LEN);
 
-	if ((ret = register_netdev(net_dev)) != 0) {
-		ETH_ERR(" Failed to register net device \"%s\" (ret = %d)!\n", net_dev->name, ret);
+	ret = register_netdev(net_dev);
+	if (ret != 0) {
+		pr_err(" Failed to register net device \"%s\" (ret = %d)!\n", net_dev->name, ret);
 		free_netdev(net_dev);
 		*r_ndev = NULL;
 		return ret;
 	}
-	ETH_INFO(" Registered net device \"%s\" successfully.\n", net_dev->name);
+	pr_info(" Registered net device \"%s\" successfully.\n", net_dev->name);
 
 	*r_ndev = net_dev;
 	return 0;
 }
 
 #ifdef CONFIG_DYNAMIC_MODE_SWITCHING_BY_SYSFS
-static ssize_t l2sw_show_mode(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct net_device *net_dev = dev_get_drvdata(dev);
 	struct l2sw_mac *mac = netdev_priv(net_dev);
 
-	return sprintf(buf, "%d\n", (mac->comm->dual_nic)? 1: (mac->comm->sa_learning)? 0: 2);
+	return sprintf(buf, "%d\n", (mac->comm->dual_nic) ? 1 : (mac->comm->sa_learning) ? 0 : 2);
 }
 
-static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
+			  const char *buf, size_t count)
 {
 	struct net_device *net_dev = dev_get_drvdata(dev);
 	struct l2sw_mac *mac = netdev_priv(net_dev);
@@ -443,16 +456,12 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 			rx_mode_set(net_dev);
 			//mac_hw_addr_print();
 
-			init_netdev(mac->pdev, 1, &net_dev2);   // Initialize the 2nd net device (eth1)
+			init_netdev(mac->pdev, 1, &net_dev2);	// Initialize the 2nd net device (eth1)
 			if (net_dev2) {
-				mac->next_netdev = net_dev2;    // Pointed by previous net device.
+				mac->next_netdev = net_dev2;	// Pointed by previous net device.
 				mac2 = netdev_priv(net_dev2);
 				mac2->comm = comm;
-#ifdef CONFIG_SOC_SP7021
 				net_dev2->irq = comm->irq;
-#else
-				net_dev2->irq = comm->irq[0];
-#endif
 
 				mac_switch_mode(mac);
 				rx_mode_set(net_dev2);
@@ -460,7 +469,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				//mac_hw_addr_print();
 			}
 
-			comm->enable &= 0x1;                    // Keep lan 0, but always turn off lan 1.
+			comm->enable &= 0x1;	// Keep lan 0, but always turn off lan 1.
 			mac_hw_start(mac);
 		}
 		mutex_unlock(&comm->store_mode);
@@ -496,7 +505,7 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				unregister_netdev(net_dev2);
 				free_netdev(net_dev2);
 				mac->next_netdev = NULL;
-				ETH_INFO(" Unregistered and freed net device \"eth1\"!\n");
+				pr_info(" Unregistered and freed net device \"eth1\"!\n");
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
@@ -505,27 +514,25 @@ static ssize_t l2sw_store_mode(struct device *dev, struct device_attribute *attr
 				//mac_hw_addr_print();
 
 				// If eth0 is up, turn on lan 0 and 1 when switching to daisy-chain mode.
-				if (comm->enable & 0x1) {
+				if (comm->enable & 0x1)
 					comm->enable = 0x3;
-				} else {
+				else
 					comm->enable = 0;
-				}
 
 				mac_hw_start(mac);
 			} else {
-				ETH_ERR(" Error: Net device \"%s\" is running!\n", net_dev2->name);
+				pr_err(" Error: Net device \"%s\" is running!\n", net_dev2->name);
 			}
 		}
 		mutex_unlock(&comm->store_mode);
 	} else {
-		ETH_ERR(" Error: Unknown mode \"%c\"!\n", buf[0]);
+		pr_err(" Error: Unknown mode \"%c\"!\n", buf[0]);
 	}
 
 	return count;
 }
 
-static DEVICE_ATTR(mode, S_IWUSR|S_IRUGO, l2sw_show_mode, l2sw_store_mode);
-
+static DEVICE_ATTR_RW(mode);
 static struct attribute *l2sw_sysfs_entries[] = {
 	&dev_attr_mode.attr,
 	NULL,
@@ -541,7 +548,7 @@ static int soc0_open(struct l2sw_mac *mac)
 	struct l2sw_common *comm = mac->comm;
 	u32 rc;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
 	mac_hw_stop(mac);
 
@@ -556,11 +563,11 @@ static int soc0_open(struct l2sw_mac *mac)
 
 	rc = descs_init(comm);
 	if (rc) {
-		ETH_ERR(" Fail to initialize mac descriptors!\n");
+		pr_err(" Fail to initialize mac descriptors!\n");
 		goto INIT_DESC_FAIL;
 	}
 
-	/*start hardware port, open interrupt, start system tx queue*/
+	/*start hardware port, open interrupt, start system tx queue */
 	mac_init(mac);
 	return 0;
 
@@ -591,19 +598,16 @@ static int l2sw_probe(struct platform_device *pdev)
 	int ret = 0;
 	int rc;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
-	if (platform_get_drvdata(pdev) != NULL) {
+	if (platform_get_drvdata(pdev) != NULL)
 		return -ENODEV;
-	}
 
 	// Allocate memory for l2sw 'common' area.
-	comm = (struct l2sw_common*)kmalloc(sizeof(struct l2sw_common), GFP_KERNEL);
-	if (comm == NULL) {
-		dev_err(&pdev->dev, "Failed to allocate memory!\n");
+	comm = kmalloc(sizeof(struct l2sw_common), GFP_KERNEL);
+	if (comm == NULL)
 		return -ENOMEM;
-	}
-	ETH_DEBUG(" comm = %px\n", comm);
+	pr_debug(" comm = %p\n", comm);
 	memset(comm, '\0', sizeof(struct l2sw_common));
 	comm->pdev = pdev;
 
@@ -617,34 +621,36 @@ static int l2sw_probe(struct platform_device *pdev)
 	mutex_init(&comm->store_mode);
 
 	// Get memory resoruce 0 from dts.
-	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0)) != NULL) {
-		ETH_DEBUG(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
-			ETH_ERR(" ioremap failed!\n");
+	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	if (r_mem != NULL) {
+		pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
+		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start,
+						   (r_mem->end - r_mem->start + 1))) != 0) {
+			pr_err(" ioremap failed!\n");
 			ret = -ENOMEM;
 			goto out_free_comm;
 		}
 	} else {
-		ETH_ERR(" No MEM resource 0 found!\n");
+		pr_err(" No MEM resource 0 found!\n");
 		ret = -ENXIO;
 		goto out_free_comm;
 	}
 
-#ifdef CONFIG_SOC_SP7021
 	// Get memory resoruce 1 from dts.
-	if ((r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1)) != NULL) {
-		ETH_DEBUG(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start, (r_mem->end - r_mem->start + 1))) != 0){
-			ETH_ERR(" ioremap failed!\n");
+	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (r_mem != NULL) {
+		pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
+		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start,
+						    (r_mem->end - r_mem->start + 1))) != 0) {
+			pr_err(" ioremap failed!\n");
 			ret = -ENOMEM;
 			goto out_free_comm;
 		}
 	} else {
-		ETH_ERR(" No MEM resource 1 found!\n");
+		pr_err(" No MEM resource 1 found!\n");
 		ret = -ENXIO;
 		goto out_free_comm;
 	}
-#endif
 
 	// Get irq resource from dts.
 	if (l2sw_get_irq(pdev, comm) != 0) {
@@ -654,18 +660,17 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Get L2-switch mode.
 	ret = of_property_read_u32(pdev->dev.of_node, "mode", &mode);
-	if (ret) {
+	if (ret)
 		mode = 0;
-	}
-	ETH_INFO(" L2 switch mode = %u\n", mode);
+	pr_info(" L2 switch mode = %u\n", mode);
 	if (mode == 2) {
-		comm->dual_nic = 0;     // daisy-chain mode 2
+		comm->dual_nic = 0;	// daisy-chain mode 2
 		comm->sa_learning = 0;
 	} else if (mode == 1) {
-		comm->dual_nic = 1;     // dual NIC mode
+		comm->dual_nic = 1;	// dual NIC mode
 		comm->sa_learning = 0;
 	} else {
-		comm->dual_nic = 0;     // daisy-chain mode
+		comm->dual_nic = 0;	// daisy-chain mode
 		comm->sa_learning = 1;
 	}
 
@@ -698,21 +703,18 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 	udelay(1);
 
-	ret = init_netdev(pdev, 0, &net_dev);   // Initialize the 1st net device (eth0)
-	if (net_dev == NULL) {
+	ret = init_netdev(pdev, 0, &net_dev);	// Initialize the 1st net device (eth0)
+	if (net_dev == NULL)
 		goto out_free_comm;
-	}
-	platform_set_drvdata(pdev, net_dev);    // Pointed by drvdata net device.
 
-#ifdef CONFIG_SOC_SP7021
+	platform_set_drvdata(pdev, net_dev);	// Pointed by drvdata net device.
+
 	net_dev->irq = comm->irq;
-#else
-	net_dev->irq = comm->irq[0];
-#endif
+
 	mac = netdev_priv(net_dev);
 	mac->comm = comm;
 	comm->net_dev = net_dev;
-	ETH_DEBUG(" net_dev = %px, mac = %px, comm = %px\n", net_dev, mac, mac->comm);
+	pr_debug(" net_dev = %p, mac = %p, comm = %p\n", net_dev, mac, mac->comm);
 
 	comm->phy1_node = of_parse_phandle(pdev->dev.of_node, "phy-handle1", 0);
 	comm->phy2_node = of_parse_phandle(pdev->dev.of_node, "phy-handle2", 0);
@@ -722,14 +724,14 @@ static int l2sw_probe(struct platform_device *pdev)
 		comm->phy1_addr = rc;
 	} else {
 		comm->phy1_addr = 0;
-		ETH_INFO(" Cannot get address of phy of ethernet 1! Set to 0 by default.\n");
+		pr_info(" Cannot get address of phy of ethernet 1! Set to 0 by default.\n");
 	}
 
 	if (of_property_read_u32(comm->phy2_node, "reg", &rc) == 0) {
 		comm->phy2_addr = rc;
 	} else {
 		comm->phy2_addr = 1;
-		ETH_INFO(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
+		pr_info(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
 	}
 
 	l2sw_enable_port(mac);
@@ -738,17 +740,17 @@ static int l2sw_probe(struct platform_device *pdev)
 	if (comm->phy1_node) {
 		ret = mdio_init(pdev, net_dev);
 		if (ret) {
-			ETH_ERR(" Failed to initialize mdio!\n");
+			pr_err(" Failed to initialize mdio!\n");
 			goto out_unregister_dev;
 		}
 
 		ret = mac_phy_probe(net_dev);
 		if (ret) {
-			ETH_ERR(" Failed to probe phy!\n");
+			pr_err(" Failed to probe phy!\n");
 			goto out_freemdio;
 		}
 	} else {
-		ETH_ERR(" Failed to get phy-handle!\n");
+		pr_err(" Failed to get phy-handle!\n");
 	}
 
 	phy_cfg(mac);
@@ -780,39 +782,32 @@ static int l2sw_probe(struct platform_device *pdev)
 #ifdef CONFIG_DYNAMIC_MODE_SWITCHING_BY_SYSFS
 	/* Add the device attributes */
 	rc = sysfs_create_group(&pdev->dev.kobj, &l2sw_attribute_group);
-	if (rc) {
+	if (rc)
 		dev_err(&pdev->dev, "Error creating sysfs files!\n");
-	}
 #endif
 
 	mac_addr_table_del_all();
-	if (comm->sa_learning) {
+	if (comm->sa_learning)
 		mac_enable_port_sa_learning();
-	} else {
+	else
 		mac_disable_port_sa_learning();
-	}
 	rx_mode_set(net_dev);
 	//mac_hw_addr_print();
 
 	if (comm->dual_nic) {
 		init_netdev(pdev, 1, &net_dev2);
-		if (net_dev2 == NULL) {
+		if (net_dev2 == NULL)
 			goto fail_to_init_2nd_port;
-		}
-		mac->next_netdev = net_dev2;    // Pointed by previous net device.
+		mac->next_netdev = net_dev2;	// Pointed by previous net device.
 
-#ifdef CONFIG_SOC_SP7021
 		net_dev2->irq = comm->irq;
-#else
-		net_dev2->irq = comm->irq[0];
-#endif
 		mac2 = netdev_priv(net_dev2);
 		mac2->comm = comm;
-		ETH_DEBUG(" net_dev = %px, mac = %px, comm = %px\n", net_dev2, mac2, mac2->comm);
+		pr_debug(" net_dev = %p, mac = %p, comm = %p\n", net_dev2, mac2, mac2->comm);
 
 		mac_switch_mode(mac);
 		rx_mode_set(net_dev2);
-		mac_hw_addr_set(mac2);          // Set MAC address for the second net device.
+		mac_hw_addr_set(mac2);	// Set MAC address for the second net device.
 		//mac_hw_addr_print();
 	}
 
@@ -820,9 +815,8 @@ fail_to_init_2nd_port:
 	return 0;
 
 out_freemdio:
-	if (comm->mii_bus) {
+	if (comm->mii_bus)
 		mdio_remove(net_dev);
-	}
 
 #ifndef ZEBU_XTOR
 out_unregister_dev:
@@ -840,11 +834,11 @@ static int l2sw_remove(struct platform_device *pdev)
 	struct net_device *net_dev2;
 	struct l2sw_mac *mac;
 
-	//ETH_INFO("[%s] IN\n", __func__);
+	//pr_info("[%s] IN\n", __func__);
 
-	if ((net_dev = platform_get_drvdata(pdev)) == NULL) {
+	net_dev = platform_get_drvdata(pdev);
+	if (net_dev == NULL)
 		return 0;
-	}
 	mac = netdev_priv(net_dev);
 
 	// Unregister and free 2nd net device.
@@ -901,39 +895,30 @@ static int l2sw_resume(struct device *dev)
 
 static const struct dev_pm_ops l2sw_pm_ops = {
 	.suspend = l2sw_suspend,
-	.resume  = l2sw_resume,
+	.resume = l2sw_resume,
 };
 #endif
 
 static const struct of_device_id sp_l2sw_of_match[] = {
-#ifdef CONFIG_SOC_SP7021
-	{ .compatible = "sunplus,sp7021-l2sw" },
-#else
-	{ .compatible = "sunplus,i143-gl2sw" },
-#endif
+	{.compatible = "sunplus,sp7021-l2sw"},
 	{ /* sentinel */ }
 };
 
 MODULE_DEVICE_TABLE(of, sp_l2sw_of_match);
 
 static struct platform_driver l2sw_driver = {
-	.probe   = l2sw_probe,
-	.remove  = l2sw_remove,
-	.driver  = {
-#ifdef CONFIG_SOC_SP7021
-		.name  = "sp_l2sw",
-#else
-		.name  = "sp_gl2sw",
-#endif
-		.owner = THIS_MODULE,
-		.of_match_table = sp_l2sw_of_match,
+	.probe = l2sw_probe,
+	.remove = l2sw_remove,
+	.driver = {
+		   .name = "sp_l2sw",
+		   .owner = THIS_MODULE,
+		   .of_match_table = sp_l2sw_of_match,
 #ifdef CONFIG_PM
-		.pm = &l2sw_pm_ops, // not sure
+		   .pm = &l2sw_pm_ops,	// not sure
 #endif
-	},
+		   },
 };
 
 module_platform_driver(l2sw_driver);
 
 MODULE_LICENSE("GPL v2");
-

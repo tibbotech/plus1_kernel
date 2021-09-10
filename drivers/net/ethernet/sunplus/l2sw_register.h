@@ -1,8 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __L2SW_REGISTER_H__
 #define __L2SW_REGISTER_H__
 
 #include "l2sw_define.h"
-
 
 //=================================================================================================
 /*
@@ -99,4 +103,3 @@ struct moon5_reg {
 };
 
 #endif
-

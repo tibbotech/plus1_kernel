@@ -1,12 +1,13 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __L2SW_MDIO_H__
 #define __L2SW_MDIO_H__
 
 #include "l2sw_define.h"
-#ifdef CONFIG_SOC_SP7021
 #include "l2sw_hal.h"
-#else
-#include "gl2sw_hal.h"
-#endif
 
 #define PHY_RUN_STATEMACHINE
 
@@ -23,4 +24,3 @@ void mac_phy_stop(struct net_device *netdev);
 void mac_phy_remove(struct net_device *netdev);
 
 #endif
-
