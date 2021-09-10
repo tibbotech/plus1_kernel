@@ -1,6 +1,8 @@
-/*----------------------------------------------------------------------------*
- *					INCLUDE DECLARATIONS
- *---------------------------------------------------------------------------*/
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+/* ---------------------------------------------------------------------------------------------- */
+/*					INCLUDE DECLARATIONS					  */
+/* ---------------------------------------------------------------------------------------------- */
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/semaphore.h>
@@ -24,41 +26,39 @@
 #include "include/hal_hdmitx.h"
 #if defined(CONFIG_SOC_SP7021) && defined(CONFIG_VIDEO_SP7021_DISP)
 #include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
-#elif defined(CONFIG_SOC_I143) && defined(CONFIG_VIDEO_I143_DISP)
-#include <media/sunplus/disp/i143/display.h> //#ifdef TIMING_SYNC_720P60
 #endif
 
-/*----------------------------------------------------------------------------*
- *					MACRO DECLARATIONS
- *---------------------------------------------------------------------------*/
-/*about print msg*/
+/* ---------------------------------------------------------------------------------------------- */
+/*					  MACRO DECLARATIONS					  */
+/* ---------------------------------------------------------------------------------------------- */
+/* about print msg */
 #ifdef _HDMITX_ERR_MSG_
-#define HDMITX_ERR(fmt, args...) printk(KERN_ERR fmt, ##args)
+#define HDMITX_ERR(fmt, args...) pr_err(fmt, ##args)
 #else
 #define HDMITX_ERR(fmt, args...)
 #endif
 
 #ifdef _HDMITX_WARNING_MSG_
-#define HDMITX_WARNING(fmt, args...) printk(KERN_WARNING fmt, ##args)
+#define HDMITX_WARNING(fmt, args...) pr_warn(fmt, ##args)
 #else
 #define HDMITX_WARNING(fmt, args...)
 #endif
 
 #ifdef _HDMITX_INFO_MSG_
-#define HDMITX_INFO(fmt, args...) printk(KERN_INFO fmt, ##args)
+#define HDMITX_INFO(fmt, args...) pr_info(fmt, ##args)
 #else
 #define HDMITX_INFO(fmt, args...)
 #endif
 
 #ifdef _HDMITX_DBG_MSG_
-#define HDMITX_DBG(fmt, args...) printk(KERN_DEBUG fmt, ##args)
+#define HDMITX_DBG(fmt, args...) pr_debug(fmt, ##args)
 #else
 #define HDMITX_DBG(fmt, args...)
 #endif
 
-/*----------------------------------------------------------------------------*
- *					DATA TYPES
- *---------------------------------------------------------------------------*/
+/* ---------------------------------------------------------------------------------------------- */
+/*					     DATA TYPES						  */
+/* ---------------------------------------------------------------------------------------------- */
 enum hdmitx_fsm {
 	FSM_INIT,
 	FSM_HPD,
@@ -86,9 +86,9 @@ struct hdmitx_config {
 	struct hdmitx_audio_attribute audio;
 };
 
-/*----------------------------------------------------------------------------*
- *					GLOBAL VARIABLES
- *---------------------------------------------------------------------------*/
+/* ---------------------------------------------------------------------------------------------- */
+/*					  GLOBAL VARIABLES					  */
+/* ---------------------------------------------------------------------------------------------- */
 // device driver functions
 static int hdmitx_fops_open(struct inode *inode, struct file *pfile);
 static int hdmitx_fops_release(struct inode *inode, struct file *pfile);
@@ -97,7 +97,7 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 // platform driver functions
 static int hdmitx_probe(struct platform_device *dev);
 static int hdmitx_remove(struct platform_device *dev);
-static int hdmitx_suspend(struct platform_device *dev,  pm_message_t state);
+static int hdmitx_suspend(struct platform_device *dev, pm_message_t state);
 static int hdmitx_resume(struct platform_device *dev);
 
 #ifdef CONFIG_PM_RUNTIME_HDMITX
@@ -107,10 +107,11 @@ static int sp_hdmitx_runtime_resume(struct device *dev);
 #endif
 
 // device id
-static struct of_device_id g_hdmitx_ids[] = {
-	{.compatible = "sunplus,sp7021-hdmitx"},
-	{.compatible = "sunplus,i143-hdmitx"},
+static const struct of_device_id g_hdmitx_ids[] = {
+	{.compatible = "sunplus,sp7021-hdmitx",},
+	{},
 };
+MODULE_DEVICE_TABLE(of, g_hdmitx_ids);
 
 // device driver operation functions
 static const struct file_operations g_hdmitx_fops = {
@@ -129,8 +130,8 @@ static struct miscdevice g_hdmitx_misc = {
 
 // platform device
 // static struct platform_device g_hdmitx_device = {
-// 	.name = "hdmitx",
-// 	.id   = -1,
+//	.name = "hdmitx",
+//	.id   = -1,
 // };
 
 #ifdef CONFIG_PM_RUNTIME_HDMITX
@@ -155,7 +156,7 @@ static struct platform_driver g_hdmitx_driver = {
 		.owner          = THIS_MODULE,
 #ifdef CONFIG_PM_RUNTIME_HDMITX
 		.pm		= sp_hdmitx_pm_ops,
-#endif	
+#endif
 	},
 };
 #ifdef TIMING_SYNC_720P60
@@ -185,15 +186,17 @@ static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
 #ifdef CONFIG_EDID_READ
 static unsigned char edid_read_timeout = FALSE;
-unsigned int  edid_dvi_horizontal, edid_dvi_vertical, edid_skip_timing_update = 0;
+unsigned int  edid_dvi_horizontal;
 EXPORT_SYMBOL(edid_dvi_horizontal);
+unsigned int  edid_dvi_vertical;
 EXPORT_SYMBOL(edid_dvi_vertical);
+unsigned int  edid_skip_timing_update;
 EXPORT_SYMBOL(edid_skip_timing_update);
 #endif
-static unsigned char g_hdmitx_mode = 0;	/* 0 : DVI mode, 1 : HDMI mode */
+static unsigned char g_hdmitx_mode;
 module_param(g_hdmitx_mode, byte, 0644);
 
-typedef struct {
+struct sp_hdmitx_t {
 	void __iomem *moon4base;
 	void __iomem *moon5base;
 	void __iomem *hdmitxbase;
@@ -201,17 +204,17 @@ typedef struct {
 	struct device *dev;
 	struct clk *clk;
 	struct reset_control *rstc;
-} sp_hdmitx_t;
+};
 
-static sp_hdmitx_t *sp_hdmitx;
+static struct sp_hdmitx_t *sp_hdmitx;
 
-/*----------------------------------------------------------------------------*
- *					EXTERNAL DECLARATIONS
- *---------------------------------------------------------------------------*/
+/* ---------------------------------------------------------------------------------------------- */
+/*					 EXTERNAL DECLARATIONS					  */
+/* ---------------------------------------------------------------------------------------------- */
 
-/*----------------------------------------------------------------------------*
- *					FUNCTION DECLARATIONS
- *---------------------------------------------------------------------------*/
+/* ---------------------------------------------------------------------------------------------- */
+/*					 FUNCTION DECLARATIONS					  */
+/* ---------------------------------------------------------------------------------------------- */
 static unsigned char get_hpd_in(void)
 {
 #ifdef CONFIG_HPD_DETECTION
@@ -244,9 +247,8 @@ static void config_video(struct hdmitx_video_attribute *video)
 {
 	struct hal_hdmitx_video_attribute attr;
 
-	if (!video) {
+	if (!video)
 		return;
-	}
 
 	hal_hdmitx_get_video(&attr);
 
@@ -254,151 +256,151 @@ static void config_video(struct hdmitx_video_attribute *video)
 	attr.color_depth = (enum hal_hdmitx_color_depth) video->color_depth;
 
 	switch (video->conversion) {
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_FULL_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_LIMITED_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_LIMITED_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_LIMITED_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV444;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_LIMITED_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_RGB:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_YUV444:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_YUV444;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_YUV422:
-			attr.input_range  = QUANTIZATION_RANGE_FULL;
-			attr.output_range = QUANTIZATION_RANGE_FULL;
-			attr.input_fmt    = PIXEL_FORMAT_YUV422;
-			attr.output_fmt   = PIXEL_FORMAT_YUV422;
-			break;
-		case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_RGB:
-		default:
-			attr.input_range  = QUANTIZATION_RANGE_LIMITED;
-			attr.output_range = QUANTIZATION_RANGE_LIMITED;
-			attr.input_fmt    = PIXEL_FORMAT_RGB;
-			attr.output_fmt   = PIXEL_FORMAT_RGB;
-			break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_FULL_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_YUV422_TO_LIMITED_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_LIMITED_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_LIMITED_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_RGB_TO_FULL_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_LIMITED_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV444_TO_FULL_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV444;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_LIMITED_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_RGB:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_YUV444:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_YUV444;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_FULL_YUV422_TO_FULL_YUV422:
+		attr.input_range  = QUANTIZATION_RANGE_FULL;
+		attr.output_range = QUANTIZATION_RANGE_FULL;
+		attr.input_fmt    = PIXEL_FORMAT_YUV422;
+		attr.output_fmt   = PIXEL_FORMAT_YUV422;
+		break;
+	case HDMITX_COLOR_SPACE_CONV_LIMITED_RGB_TO_LIMITED_RGB:
+	default:
+		attr.input_range  = QUANTIZATION_RANGE_LIMITED;
+		attr.output_range = QUANTIZATION_RANGE_LIMITED;
+		attr.input_fmt    = PIXEL_FORMAT_RGB;
+		attr.output_fmt   = PIXEL_FORMAT_RGB;
+		break;
 	}
 
 	hal_hdmitx_config_video(&attr);
@@ -408,9 +410,8 @@ static void config_audio(struct hdmitx_audio_attribute *audio)
 {
 	struct hal_hdmitx_audio_attribute attr;
 
-	if (!audio)	{
+	if (!audio)
 		return;
-	}
 
 	hal_hdmitx_get_audio(&attr);
 
@@ -442,9 +443,8 @@ static void read_edid(void)
 	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_CLEAR_FIFO, edid_data_ofs, sp_hdmitx->hdmitxbase);
 
 	do {
-		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase)) {
+		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase))
 			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
-		}
 
 		mdelay(10);
 		if (timeout-- == 0) {
@@ -455,39 +455,39 @@ static void read_edid(void)
 			HDMITX_WARNING("set to DVI mode\n");
 			break;
 		}
-	} while(edid_data_ofs != EDID_CAPACITY);
+	} while (edid_data_ofs != EDID_CAPACITY);
 }
 
 static void parse_edid(void)
 {
 	unsigned int i, j;
-	unsigned sum = 0;
+	unsigned int sum = 0;
 	unsigned int data, pre_data, d;
 	char name[13];
 	unsigned int audio = FALSE,  yuv444 = FALSE, yuv422 = FALSE;
 	unsigned int rgb_limit = FALSE, yuv_limit = FALSE;
 
+	HDMITX_DBG("=================== EDID START ===================\n");
 	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {
-		HDMITX_DBG("EDID[%03u] ~ EDID[%03u] : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
-			                          i, i + 7,
-			                         edid[i],  edid[i+1],  edid[i+2],  edid[i+3],
-			                       edid[i+4],  edid[i+5],  edid[i+6],  edid[i+7]);
+		HDMITX_DBG("%03u~%03u : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+						  i, i + 7,
+						 edid[i],  edid[i+1],  edid[i+2],  edid[i+3],
+					       edid[i+4],  edid[i+5],  edid[i+6],  edid[i+7]);
 
-		HDMITX_DBG("EDID[%03u] ~ EDID[%03u] : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
-			                          i + 8, i + DDC_FIFO_CAPACITY - 1,
-			                       edid[i+8],  edid[i+9], edid[i+10], edid[i+11],
-			                      edid[i+12], edid[i+13], edid[i+14], edid[i+15]);
+		HDMITX_DBG("%03u~%03u : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
+						  i + 8, i + DDC_FIFO_CAPACITY - 1,
+					       edid[i+8],  edid[i+9], edid[i+10], edid[i+11],
+					      edid[i+12], edid[i+13], edid[i+14], edid[i+15]);
 
-		for (j = i; j < (i + DDC_FIFO_CAPACITY); j++) {
+		for (j = i; j < (i + DDC_FIFO_CAPACITY); j++)
 			sum = sum + edid[j];
-		}
 
 		if (i == 112) {
-			if (edid[i + DDC_FIFO_CAPACITY - 2] == 0) {
+			if (edid[i + DDC_FIFO_CAPACITY - 2] == 0)
 				break;
-			}
 		}
 	}
+	HDMITX_DBG("==================== EDID END ====================\n");
 	HDMITX_DBG("Checksum = 0x%04X\n", sum);
 
 	//monitor
@@ -495,19 +495,17 @@ static void parse_edid(void)
 		name[i] = 0;
 	i = 72;
 	while (i < 126) {
-		if (edid[i+3] == 0xFC) {
+		if (edid[i+3] != 0xFC) {
+			i += 18;
+		} else {
 			for (i += 5, j = 0; j < 13; i++, j++) {
-				if (edid[i] != 0x0A) {
+				if (edid[i] != 0x0A)
 					name[j] = edid[i];
-				} else {
+				else
 					name[j] = 0;
-				}
 			}
 
 			break;
-		}
-		else {
-			i += 18;
 		}
 	}
 	HDMITX_INFO("Monitor %s", name);
@@ -533,85 +531,71 @@ static void parse_edid(void)
 		HDMITX_INFO("DVI vertical Max. Timing : %u\n", data);
 		edid_dvi_vertical = data;
 
-		if ( ((edid_dvi_horizontal == 800) && (edid_dvi_vertical == 480)) ||
-			((edid_dvi_horizontal == 1024) && (edid_dvi_vertical == 600)) )
-		{
+		if (((edid_dvi_horizontal == 800) && (edid_dvi_vertical == 480)) ||
+			((edid_dvi_horizontal == 1024) && (edid_dvi_vertical == 600)))
 			edid_skip_timing_update = 1;
-		}
-		else {
+		else
 			edid_skip_timing_update = 0;
-		}
 
-	#if 0
-		if (data <= 480) {
+	#ifdef TIMING_INIT_BY_EDID
+		if (data <= 480)
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
-		} else if (data <= 576) {
+		else if (data <= 576)
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
-		} else if (data <= 720) {
+		else if (data <= 720)
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
-		} else {
+		else
 			g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
-		}
 	#endif
 	} else if (g_cur_hdmi_cfg.mode == HDMITX_MODE_HDMI) {
 		d = edid[130];
 
-		if (edid[131] & 0x40) {
+		if (edid[131] & 0x40)
 			audio = TRUE;
-		}
 
-		if (edid[131] & 0x20) {
+		if (edid[131] & 0x20)
 			yuv444 = TRUE;
-		}
 
-		if (edid[131] & 0x10) {
+		if (edid[131] & 0x10)
 			yuv422 = TRUE;
-		}
 
 		i = 132;
 
 		//data blocks from byte 132 to byte (128+d-1)
-		if (d != 4) {
-			while (i < (128 + d - 1)) {
-				data = edid[i];
+		while ((d != 4) && (i < (128 + d - 1))) {
+			data = edid[i];
 
-				if (((data & 0xE0) >> 5) == EDID_USE_EXTENDED_TAG) {
-					i++;
+			if (((data & 0xE0) >> 5) == EDID_USE_EXTENDED_TAG) {
+				i++;
 
-					if (edid[i+1] == EDID_VIDEO_CAPABILITY_DATA_BLOCK) {
-						if (!(edid[i+4] & 0x80)) {
-							yuv_limit = TRUE;
-						}
-
-						if (!(edid[i+4] & 0x40)) {
-							rgb_limit = TRUE;
-						}
-					} else {
+				if (edid[i+1] == EDID_VIDEO_CAPABILITY_DATA_BLOCK) {
+					if (!(edid[i+4] & 0x80))
 						yuv_limit = TRUE;
+
+					if (!(edid[i+4] & 0x40))
 						rgb_limit = TRUE;
-					}
 				} else {
 					yuv_limit = TRUE;
 					rgb_limit = TRUE;
 				}
-
-				i = i + (data & 0x1F) + 1;
+			} else {
+				yuv_limit = TRUE;
+				rgb_limit = TRUE;
 			}
+
+			i = i + (data & 0x1F) + 1;
 		}
 
-	#if 0
+	#ifdef CONVERSION_INIT_BY_EDID
 		if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB) {
-			if (rgb_limit == TRUE) {
+			if (rgb_limit == TRUE)
 				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
-			}
 		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444) {
-			if (yuv444 == FALSE) {
+			if (yuv444 == FALSE)
 				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
-			}
 		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422) {
-			if (yuv422 == FALSE) {
+			if (yuv422 == FALSE)
 				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
-			}
 		}
 	#endif
 
@@ -624,25 +608,23 @@ static void parse_edid(void)
 				data = (edid[i+7] & 0xF0);
 				data = ((data << 4) | edid[i+5]);
 
-				if (data > pre_data) {
-					pre_data = data;	
-				}
+				if (data > pre_data)
+					pre_data = data;
 
 				i += 18;
 			}
 
 			HDMITX_INFO("HDMI Max. Timing : %up\n", pre_data);
 
-	#if 0
-			if (pre_data <= 480) {
+	#ifdef TIMING_INIT_BY_EDID
+			if (pre_data <= 480)
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_480P;
-			} else if (pre_data <= 576) {
+			else if (pre_data <= 576)
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_576P;
-			} else if (pre_data <= 720) {
+			else if (pre_data <= 720)
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_720P60;
-			} else {
+			else
 				g_cur_hdmi_cfg.video.timing = HDMITX_TIMING_1080P60;
-			}
 	#endif
 		} else
 			HDMITX_INFO("No detailed timing descriptors\n");
@@ -662,13 +644,12 @@ static void process_hpd_state(void)
 
 	if (get_hpd_in()) {
 #ifdef CONFIG_PM_RUNTIME_HDMITX
-		if (runtime_put1 == TRUE) { 
+		if (runtime_put1 == TRUE) {
 			runtime_put = TRUE;
 
 			ret = pm_runtime_get_sync(sp_hdmitx->dev);
-			if (ret < 0) {
+			if (ret < 0)
 				pm_runtime_mark_last_busy(sp_hdmitx->dev);
-			}
 		}
 #endif
 
@@ -701,19 +682,18 @@ static void process_hpd_state(void)
 		msleep(2000);
 
 		if (runtime_put1 == TRUE) {
-			runtime_put = TRUE ;
+			runtime_put = TRUE;
 			runtime_put1 = FALSE;
 
 			ret = pm_runtime_get_sync(sp_hdmitx->dev);
-			if (ret < 0) {
+			if (ret < 0)
 				pm_runtime_mark_last_busy(sp_hdmitx->dev);
-			}
 		}
 #endif
 	}
 }
 
-#if 0//def CONFIG_EDID_READ
+#ifdef SKIP_PLLTV
 extern void disp_set_plltv(void);
 #endif
 
@@ -730,12 +710,13 @@ static void process_rsen_state(void)
 		config_audio(&g_cur_hdmi_cfg.audio);
 		start();
 
-#if 0//def CONFIG_EDID_READ
-		if(edid_skip_timing_update) {
+#ifdef SKIP_PLLTV
+		if (edid_skip_timing_update) {
 			disp_set_plltv();//call display function
 			edid_skip_timing_update = 0;
 		}
 #endif
+
 		// update state
 		g_hdmitx_state = FSM_HDCP;
 	} else {
@@ -777,9 +758,9 @@ static void process_hdcp_state(void)
 					HDMITX_INFO("switch to DVI mode\n");
 				else if (get_hdmitx_mode() == HDMITX_MODE_HDMI)
 					HDMITX_INFO("switch to HDMI mode\n");
-			}
-			else
+			} else {
 				HDMITX_DBG("rsen out\n");
+			}
 
 			g_hdmitx_state = FSM_RSEN;
 		}
@@ -818,13 +799,12 @@ static irqreturn_t hdmitx_irq_handler(int irq, void *data)
 	if (hal_hdmitx_get_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
 		if (hal_hdmitx_get_ddc_status(DDC_STUS_FIFO_FULL, sp_hdmitx->hdmitxbase)) {
 			edid_data_ofs += hal_hdmitx_get_fifodata_cnt(sp_hdmitx->hdmitxbase);
-			for (cnt = edid_data_ofs - DDC_FIFO_CAPACITY; cnt < edid_data_ofs; cnt++) {
+			for (cnt = edid_data_ofs - DDC_FIFO_CAPACITY; cnt < edid_data_ofs; cnt++)
 				edid[cnt] = hal_hdmitx_get_edid(sp_hdmitx->hdmitxbase);
-			}
 		}
 
 		hal_hdmitx_clear_interrupt1_status(INTERRUPT1_DDC_FIFO_FULL, sp_hdmitx->hdmitxbase);
-	}	
+	}
 
 	return IRQ_HANDLED;
 }
@@ -833,20 +813,20 @@ static int hdmitx_state_handler(void *data)
 {
 	while (!kthread_should_stop()) {
 		switch (g_hdmitx_state) {
-			case FSM_HPD:
-				process_hpd_state();
-				break;
-			case FSM_RSEN:
-				process_rsen_state();
-				break;
-			case FSM_HDCP:
-				process_hdcp_state();
-				break;
-			default:
-				break;
+		case FSM_HPD:
+			process_hpd_state();
+			break;
+		case FSM_RSEN:
+			process_rsen_state();
+			break;
+		case FSM_HDCP:
+			process_hdcp_state();
+			break;
+		default:
+			break;
 		}
 
-		msleep(1);
+		fsleep(1000);
 	}
 
 	return 0;
@@ -858,6 +838,7 @@ void hdmitx_set_timming(enum hdmitx_timing timing)
 	g_new_hdmi_cfg.video.timing = timing;
 	mutex_unlock(&g_hdmitx_mutex);
 }
+EXPORT_SYMBOL(hdmitx_set_timming);
 
 void hdmitx_get_timming(enum hdmitx_timing *timing)
 {
@@ -901,11 +882,13 @@ int hdmitx_enable_display(int enforced)
 
 	return err;
 }
+EXPORT_SYMBOL(hdmitx_enable_display);
 
 void hdmitx_disable_display(void)
 {
 	stop();
 }
+EXPORT_SYMBOL(hdmitx_disable_display);
 
 void hdmitx_enable_pattern(void)
 {
@@ -916,10 +899,6 @@ void hdmitx_disable_pattern(void)
 {
 	hal_hdmitx_disable_pattern(sp_hdmitx->hdmitxbase);
 }
-
-EXPORT_SYMBOL(hdmitx_enable_display);
-EXPORT_SYMBOL(hdmitx_disable_display);
-EXPORT_SYMBOL(hdmitx_set_timming);
 
 static int hdmitx_fops_open(struct inode *inode, struct file *pfile)
 {
@@ -949,65 +928,57 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 	unsigned char rx_ready, enable;
 
 	switch (cmd) {
-
-		case HDMITXIO_SET_TIMING:
-			if (copy_from_user((void*) &timing, (const void __user *) arg, sizeof(enum hdmitx_timing))) {
-				err = -1;
-			} else {
-				hdmitx_set_timming(timing);
-			}
-			break;
-		case HDMITXIO_GET_TIMING:
-			hdmitx_get_timming(&timing);
-			if (copy_to_user((void __user *) arg, (const void *) &timing, sizeof(enum hdmitx_timing))) {
-				err = -1;
-			}
-			break;
-		case HDMITXIO_SET_COLOR_DEPTH:
-			if (copy_from_user((void*) &color_depth, (const void __user *) arg, sizeof(enum hdmitx_color_depth))) {
-				err = -1;
-			} else {
-				hdmitx_set_color_depth(color_depth);
-			}
-			break;
-		case HDMITXIO_GET_COLOR_DEPTH:
-			hdmitx_get_color_depth(&color_depth);
-			if (copy_to_user((void __user *) arg, (const void *) &color_depth, sizeof(enum hdmitx_color_depth))) {
-				err = -1;
-			}
-			break;
-		case HDMITXIO_GET_RX_READY:
-			rx_ready = hdmitx_get_rx_ready();
-			if (copy_to_user((void __user *) arg, (const void *) &rx_ready, sizeof(unsigned char))) {
-				err = -1;
-			}
-			break;
-		case HDMITXIO_DISPLAY:
-			if (copy_from_user((void*) &enable, (const void __user *) arg, sizeof(unsigned char))) {
-				err = -1;
-			} else {
-				if (enable) {
-					hdmitx_enable_display(0);
-				} else {
-					hdmitx_disable_display();
-				}
-			}
-			break;
-		case HDMITXIO_PTG:
-			if (copy_from_user((void*) &enable, (const void __user *) arg, sizeof(unsigned char))) {
-				err = -1;
-			} else {
-				if (enable) {
-					hdmitx_enable_pattern();
-				} else {
-					hdmitx_disable_pattern();
-				}
-			}
-			break;
-		default:
-			HDMITX_ERR("Invalid hdmitx ioctl commnad\n");
+	case HDMITXIO_SET_TIMING:
+		if (copy_from_user((void *) &timing, (const void __user *) arg, sizeof(enum hdmitx_timing)))
 			err = -1;
-			break;
+		else
+			hdmitx_set_timming(timing);
+		break;
+	case HDMITXIO_GET_TIMING:
+		hdmitx_get_timming(&timing);
+		if (copy_to_user((void __user *) arg, (const void *) &timing, sizeof(enum hdmitx_timing)))
+			err = -1;
+		break;
+	case HDMITXIO_SET_COLOR_DEPTH:
+		if (copy_from_user((void *) &color_depth, (const void __user *) arg, sizeof(enum hdmitx_color_depth)))
+			err = -1;
+		else
+			hdmitx_set_color_depth(color_depth);
+		break;
+	case HDMITXIO_GET_COLOR_DEPTH:
+		hdmitx_get_color_depth(&color_depth);
+		if (copy_to_user((void __user *) arg, (const void *) &color_depth, sizeof(enum hdmitx_color_depth)))
+			err = -1;
+		break;
+	case HDMITXIO_GET_RX_READY:
+		rx_ready = hdmitx_get_rx_ready();
+		if (copy_to_user((void __user *) arg, (const void *) &rx_ready, sizeof(unsigned char)))
+			err = -1;
+		break;
+	case HDMITXIO_DISPLAY:
+		if (copy_from_user((void *) &enable, (const void __user *) arg, sizeof(unsigned char))) {
+			err = -1;
+		} else {
+			if (enable)
+				hdmitx_enable_display(0);
+			else
+				hdmitx_disable_display();
+		}
+		break;
+	case HDMITXIO_PTG:
+		if (copy_from_user((void *) &enable, (const void __user *) arg, sizeof(unsigned char))) {
+			err = -1;
+		} else {
+			if (enable)
+				hdmitx_enable_pattern();
+			else
+				hdmitx_disable_pattern();
+		}
+		break;
+	default:
+		HDMITX_ERR("Invalid hdmitx ioctl commnad\n");
+		err = -1;
+		break;
 	}
 
 	return -1;
@@ -1022,72 +993,66 @@ static int hdmitx_probe(struct platform_device *pdev)
 	int ret;
 
 	match = of_match_device(dev->driver->of_match_table, dev);
-	if (!match) {
+	if (!match)
 		return -EINVAL;
-	}
 
-	sp_hdmitx = (sp_hdmitx_t *)devm_kzalloc(&pdev->dev, sizeof(sp_hdmitx_t), GFP_KERNEL);
-	if (!sp_hdmitx) {
+	sp_hdmitx = devm_kzalloc(&pdev->dev, sizeof(struct sp_hdmitx_t), GFP_KERNEL);
+	if (!sp_hdmitx)
 		return -ENOMEM;
-	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	sp_hdmitx->hdmitxbase = devm_ioremap_resource(dev, res);
-	if (IS_ERR(sp_hdmitx->hdmitxbase)) {
+	if (IS_ERR(sp_hdmitx->hdmitxbase))
 		return PTR_ERR(sp_hdmitx->hdmitxbase);
-	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	sp_hdmitx->moon4base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(sp_hdmitx->moon4base)) {
+	if (IS_ERR(sp_hdmitx->moon4base))
 		return PTR_ERR(sp_hdmitx->moon4base);
-	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	sp_hdmitx->moon5base = devm_ioremap_resource(dev, res);
-	if (IS_ERR(sp_hdmitx->moon5base)) {
+	if (IS_ERR(sp_hdmitx->moon5base))
 		return PTR_ERR(sp_hdmitx->moon5base);
-	}
 
 	sp_hdmitx->clk = devm_clk_get(&pdev->dev, NULL);
-	if (IS_ERR(sp_hdmitx->clk)) {
+	if (IS_ERR(sp_hdmitx->clk))
 		return PTR_ERR(sp_hdmitx->clk);
-	}
 
 	ret = clk_prepare(sp_hdmitx->clk);
 	if (ret < 0) {
-		dev_err(dev, "failed to prepare clk: %d\n", ret);
+		HDMITX_ERR("failed to prepare clk: %d\n", ret);
 		return ret;
 	}
 	clk_enable(sp_hdmitx->clk);
 
 	sp_hdmitx->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(sp_hdmitx->rstc)) {
-		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
+		HDMITX_ERR("Failed to retrieve reset controller!\n");
 		return PTR_ERR(sp_hdmitx->rstc);
 	}
 
 	ret = reset_control_deassert(sp_hdmitx->rstc);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
+		HDMITX_ERR("Failed to deassert reset line (err = %d)!\n", ret);
 		return -ENODEV;
 	}
 
 	HDMITX_INFO("HDMITX installed\n");
 
-	/*initialize hardware settings*/
+	/* initialize hardware settings */
 	hal_hdmitx_init(sp_hdmitx->hdmitxbase);
 
-	/*initialize software settings*/
+	/* initialize software settings */
 	// reset hdmi config
 #ifdef CONFIG_HDMI_MODE
 	g_cur_hdmi_cfg.mode = HDMITX_MODE_HDMI;
 	g_hdmitx_mode = 1;
-#endif
-
-#ifdef CONFIG_DVI_MODE
+	HDMITX_INFO("HDMI mode\n");
+#elif defined CONFIG_DVI_MODE
 	g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
 	g_hdmitx_mode = 0;
+	HDMITX_INFO("DVI mode\n");
 #endif
 
 	g_cur_hdmi_cfg.video.timing      = HDMITX_TIMING_480P;
@@ -1158,11 +1123,10 @@ static int hdmitx_remove(struct platform_device *pdev)
 	/*deinitialize software settings*/
 	if (g_hdmitx_task) {
 		err = kthread_stop(g_hdmitx_task);
-		if (err) {
+		if (err)
 			HDMITX_ERR("kthread_stop failed: %d\n", err);
-		} else {
+		else
 			g_hdmitx_task = NULL;
-		}
 	}
 
 	g_hdmitx_state = FSM_INIT;
@@ -1171,7 +1135,7 @@ static int hdmitx_remove(struct platform_device *pdev)
 
 #ifndef CONFIG_PM_RUNTIME_HDMITX
 	clk_disable(sp_hdmitx->clk);
-#else 
+#else
 	pm_runtime_put(&pdev->dev);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
