@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2021 Sunplus
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  */
 //#define DEBUG
 #include <linux/module.h>
@@ -742,4 +743,3 @@ static void __init sp_clk_setup(struct device_node *np)
 }
 
 CLK_OF_DECLARE(sp_clkc, "sunplus,sp-clkc", sp_clk_setup);
-

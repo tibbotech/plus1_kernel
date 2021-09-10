@@ -1,6 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2021 Sunplus
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  */
 #ifndef _DT_BINDINGS_CLOCK_SUNPLUS_Q645_H
 #define _DT_BINDINGS_CLOCK_SUNPLUS_Q645_H

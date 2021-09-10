@@ -2,8 +2,8 @@
 /*
  * SP7021 reset driver
  *
- * Copyright (C) 2015-2016 Sunplus Incorporated - http://www.sunplus.com/
- *
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  *
  *
  * This program is free software; you can redistribute it and/or modify

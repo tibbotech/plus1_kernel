@@ -2,7 +2,7 @@
 /*
  * Sunplus Remote Processor driver
  *
- * Copyright (C) 2021 Sunplus
+ * Copyright (C) 2021 Sunplus Technology Co., Ltd.
  *
  * Based on origin Zynq Remote Processor driver
  *

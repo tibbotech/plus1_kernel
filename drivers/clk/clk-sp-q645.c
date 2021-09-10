@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Copyright (C) 2021 Sunplus
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  */
 //#define DEBUG
 #include <linux/module.h>
