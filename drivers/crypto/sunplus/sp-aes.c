@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 /**
  * Cryptographic API.
  * Support for OMAP AES HW acceleration.
@@ -6,7 +11,7 @@
  * it under the terms of the GNU General Public License version 2 as published
  * by the Free Software Foundation.
  */
-
+//#define DEBUG
 #include <crypto/internal/aead.h>
 #include <crypto/internal/skcipher.h>
 #include <crypto/aes.h>
@@ -23,7 +28,7 @@
 
 /* structs */
 struct sp_aes_ctx {
-	crypto_ctx_t base;
+	struct crypto_ctx_s base;
 
 	u8 *tmp, *iv;
 	dma_addr_t pa; // workbuf phy addr
@@ -70,29 +75,29 @@ static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 }
 
 /*
-  * counter = counter  + 1
-  *  counter:small endian
-  */
+ * counter = counter + 1
+ * counter: small endian
+ */
 static void ctr_inc1(u8 *counter, u32 len)
- {
-     u32 n = 0;
-     u8 c;
+{
+	u32 n = 0;
+	u8 c;
 
-     do {
-         c = counter[n];
-         ++c;
-         counter[n] = c;
-         if (c)
-             return;
-         ++n;
-     } while (n < len);
- }
+	do {
+		c = counter[n];
+		++c;
+		counter[n] = c;
+		if (c)
+			return;
+		++n;
+	} while (n < len);
+}
 
 
 /*
-  * counter = counter  + inc
-  *  counter:small endian
-  */
+ * counter = counter + inc
+ * counter: small endian
+ */
 static void ctr_inc(u8 *counter, u32 len, u32 inc)
 {
 	u32 c, c1;
@@ -103,30 +108,29 @@ static void ctr_inc(u8 *counter, u32 len, u32 inc)
 	c += inc;
 	*p = __cpu_to_le32(c);
 
-	if ((c >= inc) && (c >= c1)) {
+	if ((c >= inc) && (c >= c1))
 		return;
-	}
 
 	ctr_inc1(counter + sizeof(u32), len - sizeof(u32));
 }
 
-static void reverse_iv(u8 *dst, u8* src)
+static void reverse_iv(u8 *dst, u8 *src)
 {
 	int i = AES_BLOCK_SIZE;
-	while (i--) {
+
+	while (i--)
 		dst[i] = *(src++);
-	}
 }
 
 static void dump_sglist(struct scatterlist *sglist, int count)
 {
-#if 0
+#ifdef DEBUG
 	int i;
 	struct scatterlist *sg;
 
-	printk("sglist: %p\n", sglist);
+	pr_info("sglist: %p\n", sglist);
 	for_each_sg(sglist, sg, count, i) {
-		printk("\t%08x (%08x)\n", sg_dma_address(sg), sg_dma_len(sg));
+		pr_info("\t%08x (%08x)\n", sg_dma_address(sg), sg_dma_len(sg));
 	}
 #endif
 }
@@ -137,12 +141,12 @@ static int sp_blk_aes_set_key(struct crypto_skcipher *tfm,
 	struct sp_aes_ctx *ctx = crypto_tfm_ctx(crypto_skcipher_tfm(tfm));
 
 	SP_CRYPTO_TRACE();
-#if 1 // TODO: dirty hack code, fix me
+	// TODO: dirty hack code, fix me
 	if (key_len & 1) {
 		key_len &= ~1;
 		ctx->base.mode = M_AES_CTR | (32 << 24); // GCTR M = 32;
 	}
-#endif
+
 	if (key_len != AES_KEYSIZE_128 && key_len != AES_KEYSIZE_192 && key_len != AES_KEYSIZE_256) {
 		SP_CRYPTO_ERR("unsupported AES key length: %d\n", key_len);
 		return -EINVAL;
@@ -175,13 +179,13 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 	u32 nbytes = req->cryptlen;
 	struct crypto_skcipher *tfm = crypto_skcipher_reqtfm(req);
 	struct sp_aes_ctx *ctx = crypto_skcipher_ctx(tfm);
-	crypto_ctx_t *ctx0 = &ctx->base;
-	trb_ring_t *ring = AES_RING(ctx0->dd);
+	struct crypto_ctx_s *ctx0 = &ctx->base;
+	struct trb_ring_s *ring = AES_RING(ctx0->dd);
 	dma_addr_t iv_phy, key_phy, tmp_phy = 0;
 	u32 mode = ctx0->mode & M_MMASK;
 	u32 mm = ctx0->mode | enc; // AESPAR0 (trb.para.mode)
 
-	//printk(">>>>> %08x <<<<<\n", mm);
+	//pr_info(">>>>> %08x <<<<<\n", mm);
 	//dump_stack();
 	if (mode == M_AES_CTR) { // CTR mode: reverse iv byte-order for HW
 		reverse_iv(ctx->iv, req->iv);
@@ -202,14 +206,14 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 	dst_cnt = sg_nents(dst);
 
 	//dump_sglist(src, src_cnt);
-	if(unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
+	if (unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
 		SP_CRYPTO_ERR("sp aes map src sg  fail\n");
 		return -EINVAL;
 	}
 	dump_sglist(src, src_cnt);
 
 	//dump_sglist(dst, dst_cnt);
-	if(unlikely(dma_map_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
+	if (unlikely(dma_map_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
 		SP_CRYPTO_ERR("sp aes map dst sg  fail\n");
 		dma_unmap_sg(SP_CRYPTO_DEV, src,  src_cnt, DMA_TO_DEVICE);
 		return -EINVAL;
@@ -225,8 +229,9 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 
 	while (processed < nbytes) {
 		u32 reast;
-		trb_t *trb;
-		if (BOTH_WALK == flag) {
+		struct trb_s *trb;
+
+		if (flag == BOTH_WALK) {
 			src_phy = sg_dma_address(sp);
 			dst_phy = sg_dma_address(dp);
 			if (sg_dma_len(sp) > sg_dma_len(dp)) {
@@ -234,7 +239,7 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 				dp = sg_next(dp);
 				flag = DST_WALK;
 				SP_CRYPTO_TRACE();
-			} else if(sg_dma_len(sp) == sg_dma_len(dp)) {
+			} else if (sg_dma_len(sp) == sg_dma_len(dp)) {
 				process = sg_dma_len(sp);
 				sp = sg_next(sp);
 				dp = sg_next(dp);
@@ -246,15 +251,15 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 				flag = SRC_WALK;
 				SP_CRYPTO_TRACE();
 			}
-		} else if (DST_WALK == flag) {
+		} else if (flag == DST_WALK) {
 			src_phy += process;
 			dst_phy = sg_dma_address(dp);
 			reast = sg_dma_len(sp) - (src_phy - sg_dma_address(sp));
-			if(reast > sg_dma_len(dp)) {
+			if (reast > sg_dma_len(dp)) {
 				process = sg_dma_len(dp);
 				dp = sg_next(dp);
 				flag = DST_WALK;
-			} else if(reast == sg_dma_len(dp)) {
+			} else if (reast == sg_dma_len(dp)) {
 				process = sg_dma_len(dp);
 				dp = sg_next(dp);
 				sp = sg_next(sp);
@@ -264,15 +269,15 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 				sp = sg_next(sp);
 				flag = SRC_WALK;
 			}
-		} else if (SRC_WALK == flag) {
+		} else if (flag == SRC_WALK) {
 			src_phy = sg_dma_address(sp);
 			dst_phy += process;
 			reast = sg_dma_len(dp) - (dst_phy - sg_dma_address(dp));
-			if(reast > sg_dma_len(sp)) {
+			if (reast > sg_dma_len(sp)) {
 				process = sg_dma_len(sp);
 				sp = sg_next(sp);
 				flag = SRC_WALK;
-			} else if(reast == sg_dma_len(sp)) {
+			} else if (reast == sg_dma_len(sp)) {
 				process = sg_dma_len(sp);
 				dp = sg_next(dp);
 				sp = sg_next(sp);
@@ -319,14 +324,7 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 		}
 	};
 	SP_CRYPTO_TRACE();
-#if 1
 	BUG_ON(processed != nbytes);
-#else
-	if (processed != nbytes) {
-		SP_CRYPTO_ERR("proccessed %d bytes != need process %d bytes\n", processed, nbytes);
-		ret = -EINVAL;
-	}
-#endif
 
 out:
 	mutex_unlock(&ring->lock);
@@ -364,7 +362,8 @@ static int sp_blk_aes_decrypt(struct skcipher_request *req)
  * setting cra_blocksize to 1. Even using blkcipher_walk_virt_block
  * during encrypt/decrypt doesn't solve this problem, because it calls
  * blkcipher_walk_done under the covers, which doesn't use walk->blocksize,
- * but instead uses this tfm->blocksize. */
+ * but instead uses this tfm->blocksize.
+ */
 struct skcipher_alg sp_aes_alg[] = {
 
 	{
@@ -374,13 +373,13 @@ struct skcipher_alg sp_aes_alg[] = {
 		.base.cra_blocksize	 = AES_BLOCK_SIZE,
 		.base.cra_alignmask	 = 0xf,
 		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module 	 = THIS_MODULE,
+		.base.cra_module	 = THIS_MODULE,
 		.base.cra_init		 = sp_cra_aes_ecb_init,
 		.base.cra_exit		 = sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize 	 = AES_BLOCK_SIZE,
-		.setkey 	 = sp_blk_aes_set_key,
+		.ivsize		 = AES_BLOCK_SIZE,
+		.setkey		 = sp_blk_aes_set_key,
 		.encrypt	 = sp_blk_aes_encrypt,
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
@@ -391,13 +390,13 @@ struct skcipher_alg sp_aes_alg[] = {
 		.base.cra_blocksize	 = AES_BLOCK_SIZE,
 		.base.cra_alignmask	 = 0xf,
 		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module 	 = THIS_MODULE,
+		.base.cra_module	 = THIS_MODULE,
 		.base.cra_init		 = sp_cra_aes_cbc_init,
 		.base.cra_exit		 = sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize 	 = AES_BLOCK_SIZE,
-		.setkey 	 = sp_blk_aes_set_key,
+		.ivsize		 = AES_BLOCK_SIZE,
+		.setkey		 = sp_blk_aes_set_key,
 		.encrypt	 = sp_blk_aes_encrypt,
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
@@ -408,13 +407,13 @@ struct skcipher_alg sp_aes_alg[] = {
 		.base.cra_blocksize	 = 1, // TODO: AES_BLOCK_SIZE ???
 		.base.cra_alignmask	 = 0xf,
 		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module 	 = THIS_MODULE,
+		.base.cra_module	 = THIS_MODULE,
 		.base.cra_init		 = sp_cra_aes_ctr_init,
 		.base.cra_exit		 = sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize 	 = AES_BLOCK_SIZE,
-		.setkey 	 = sp_blk_aes_set_key,
+		.ivsize		 = AES_BLOCK_SIZE,
+		.setkey		 = sp_blk_aes_set_key,
 		.encrypt	 = sp_blk_aes_encrypt,
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
@@ -438,33 +437,37 @@ EXPORT_SYMBOL(sp_aes_init);
 void sp_aes_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
-	trb_ring_t *ring = AES_RING(dev);
+	struct trb_ring_s *ring = AES_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER
-	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n", __FUNCTION__,
+	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n", __func__,
 		flag, dev->reg->AES_ER, dev->reg->AESDMA_CRCR, ring->trb_sem.count/*kfifo_len(&ring->f)*/);
 #else
-	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n", __FUNCTION__, flag, dev->reg->AES_ER, dev->reg->AESDMA_CRCR);
+	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n", __func__,
+		flag, dev->reg->AES_ER, dev->reg->AESDMA_CRCR);
 #endif
 	if (flag & AES_TRB_IF) { // autodma/trb done
-		trb_t *trb = ring->head;
+		struct trb_s *trb = ring->head;
+
 		ring->irq_count++;
-		if (!trb->cc) dump_trb(trb);
+		if (!trb->cc)
+			dump_trb(trb);
 		while (trb->cc) {
 			//dump_trb(trb);
 			if (trb->ioc) {
-				crypto_ctx_t *ctx = trb->priv;
+				struct crypto_ctx_s *ctx = trb->priv;
+
 				if (ctx->type == SP_CRYPTO_AES) {
 #ifdef TRACE_WAIT_ORDER
 					wait_queue_head_t *w;
+
 					BUG_ON(!kfifo_get(&ring->f, &w));
 					BUG_ON(w != &ctx->wait);
 #endif
 					ctx->done = true;
 					wake_up(&ctx->wait);
-				}
-				else {
-					printk("\nAES_SKIP: %08x\n", ctx->type);
+				} else {
+					pr_info("\nAES_SKIP: %08x\n", ctx->type);
 					dump_trb(trb);
 				}
 			}
@@ -480,4 +483,3 @@ void sp_aes_irq(void *devid, u32 flag)
 	SP_CRYPTO_INF("\n");
 }
 EXPORT_SYMBOL(sp_aes_irq);
-
