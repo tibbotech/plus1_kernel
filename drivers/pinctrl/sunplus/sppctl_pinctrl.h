@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * SP7021 pinmux controller driver.
  * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
@@ -23,10 +24,10 @@
 int sppctl_pinctrl_init(struct platform_device *_pdev);
 void sppctl_pinctrl_clea(struct platform_device *_pdev);
 
-#define D(x,y) (x)*8+(y)
+#define D(x, y) ((x)*8+(y))
 
 extern const struct pinctrl_pin_desc sppctlpins_all[];
 extern const size_t sppctlpins_allSZ;
-extern const unsigned sppctlpins_G[];
+extern const unsigned int sppctlpins_G[];
 
 #endif // SPPCTL_PINCTRL_H
