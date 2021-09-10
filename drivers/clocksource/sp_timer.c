@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -38,7 +43,7 @@ static int sp_timer_irqs[SP_TIMER_NR_IRQS];
 
 u64 sp_read_sched_clock(void)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)(sp_timer_base);
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)(sp_timer_base);
 	u32 val0, val1;
 
 	pstc_avReg->stcl_2 = 0;
@@ -54,7 +59,7 @@ u64 sp_read_sched_clock(void)
 
 static void sp_stc_hw_init(int reset_counter)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)(sp_timer_base);
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)(sp_timer_base);
 	u32 system_clk;
 
 	system_clk = (270 * 1000 * 1000); /* 270MHz */
@@ -118,7 +123,8 @@ static struct cycstc_stat_st {
 
 static u32 sp_stc_ts_per_sec(void)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)(sp_timer_base);
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)(sp_timer_base);
+
 	return SP_STC_FREQ / ((pstc_avReg->stc_divisor & 0x3fff) + 1);
 }
 
@@ -126,7 +132,9 @@ static u32 sp_stc_ts_per_sec(void)
 static u32 cycstc_ts2us(u32 ts)
 {
 	u64 val = (u64)ts * USEC_PER_SEC;
+
 	do_div(val, sp_stc_ts_per_sec());
+
 	return (u32)val;
 }
 
@@ -140,10 +148,8 @@ static irqreturn_t cycstc_timer2_isr(int irq, void *dev_id)
 		   ((0xffffffffU - cyc_stat.base_ts) + now_ts + 1);
 
 	if (delta_ts < cyc_stat.interval_ts) {
-		if(printk_ratelimit()) {
-			printk("cycstc: delta_ts comes early -%u ts ! samples=%u\n",
-			       cyc_stat.interval_ts - delta_ts, cyc_stat.samples);
-		}
+		pr_info_ratelimited("cycstc: delta_ts comes early -%u ts ! samples=%u\n",
+				cyc_stat.interval_ts - delta_ts, cyc_stat.samples);
 		delta_ts = cyc_stat.interval_ts;
 	}
 
@@ -163,9 +169,9 @@ static irqreturn_t cycstc_timer2_isr(int irq, void *dev_id)
 
 	if (cyc_stat.act_ts > cyc_stat.max_ts)
 		cyc_stat.max_ts = cyc_stat.act_ts;
-	if (cyc_stat.act_ts < cyc_stat.min_ts) {
+	if (cyc_stat.act_ts < cyc_stat.min_ts)
 		cyc_stat.min_ts = cyc_stat.act_ts;
-	}
+
 	cyc_stat.sum_ts += cyc_stat.act_ts;
 	cyc_stat.samples++;
 
@@ -202,20 +208,20 @@ const static struct cycstc_setup_t {
 } cycstc_setup[STCINT_TMR_NUM] = {
 #if (SP_STC_FREQ == 13500000)
 	[STCINT_TMR_1HZ]        = {    1, SP_STC_AV_TIMER23_CTL_SRC_EXT, (1350 - 1), (10000 - 1) }, /* 10KHz */
-	[STCINT_TMR_2HZ]        = {    2, SP_STC_AV_TIMER23_CTL_SRC_EXT, ( 135 - 1), (50000 - 1) }, /* 100KHz */
-	[STCINT_TMR_10HZ]       = {   10, SP_STC_AV_TIMER23_CTL_SRC_EXT, (  27 - 1), (50000 - 1) }, /* 500KHz */
-	[STCINT_TMR_100HZ]      = {  100, SP_STC_AV_TIMER23_CTL_SRC_EXT, (   3 - 1), (45000 - 1) }, /* 4.5MHz */
-	[STCINT_TMR_500HZ]      = {  500, SP_STC_AV_TIMER23_CTL_SRC_EXT, (   1 - 1), (27000 - 1) }, /* 13.5MHz */
-	[STCINT_TMR_1000HZ]     = { 1000, SP_STC_AV_TIMER23_CTL_SRC_EXT, (   1 - 1), (13500 - 1) },
-	[STCINT_TMR_2000HZ]     = { 2000, SP_STC_AV_TIMER23_CTL_SRC_EXT, (   1 - 1), ( 6750 - 1) },
+	[STCINT_TMR_2HZ]        = {    2, SP_STC_AV_TIMER23_CTL_SRC_EXT,  (135 - 1), (50000 - 1) }, /* 100KHz */
+	[STCINT_TMR_10HZ]       = {   10, SP_STC_AV_TIMER23_CTL_SRC_EXT,   (27 - 1), (50000 - 1) }, /* 500KHz */
+	[STCINT_TMR_100HZ]      = {  100, SP_STC_AV_TIMER23_CTL_SRC_EXT,    (3 - 1), (45000 - 1) }, /* 4.5MHz */
+	[STCINT_TMR_500HZ]      = {  500, SP_STC_AV_TIMER23_CTL_SRC_EXT,    (1 - 1), (27000 - 1) }, /* 13.5MHz */
+	[STCINT_TMR_1000HZ]     = { 1000, SP_STC_AV_TIMER23_CTL_SRC_EXT,    (1 - 1), (13500 - 1) },
+	[STCINT_TMR_2000HZ]     = { 2000, SP_STC_AV_TIMER23_CTL_SRC_EXT,    (1 - 1),  (6750 - 1) },
 #elif (SP_STC_FREQ == 270000000)
 	[STCINT_TMR_1HZ]	= {    1, SP_STC_AV_TIMER23_CTL_SRC_STC, (6750 - 1), (40000 - 1) }, /* 40KHz */
 	[STCINT_TMR_2HZ]	= {    2, SP_STC_AV_TIMER23_CTL_SRC_STC, (2700 - 1), (50000 - 1) }, /* 100KHz */
 	[STCINT_TMR_10HZ]	= {   10, SP_STC_AV_TIMER23_CTL_SRC_STC, (2700 - 1), (10000 - 1) },
-	[STCINT_TMR_100HZ]	= {  100, SP_STC_AV_TIMER23_CTL_SRC_STC, ( 270 - 1), (10000 - 1) }, /* 1MHz */
-	[STCINT_TMR_500HZ]	= {  500, SP_STC_AV_TIMER23_CTL_SRC_STC, (   9 - 1), (60000 - 1) }, /* 30MHz */
-	[STCINT_TMR_1000HZ]	= { 1000, SP_STC_AV_TIMER23_CTL_SRC_STC, (   9 - 1), (30000 - 1) },
-	[STCINT_TMR_2000HZ]	= { 2000, SP_STC_AV_TIMER23_CTL_SRC_STC, (   3 - 1), (45000 - 1) }, /* 60MHz */
+	[STCINT_TMR_100HZ]	= {  100, SP_STC_AV_TIMER23_CTL_SRC_STC,  (270 - 1), (10000 - 1) }, /* 1MHz */
+	[STCINT_TMR_500HZ]	= {  500, SP_STC_AV_TIMER23_CTL_SRC_STC,    (9 - 1), (60000 - 1) }, /* 30MHz */
+	[STCINT_TMR_1000HZ]	= { 1000, SP_STC_AV_TIMER23_CTL_SRC_STC,    (9 - 1), (30000 - 1) },
+	[STCINT_TMR_2000HZ]	= { 2000, SP_STC_AV_TIMER23_CTL_SRC_STC,    (3 - 1), (45000 - 1) }, /* 60MHz */
 #else
 #error Unexpected STC frequency
 #endif
@@ -223,14 +229,14 @@ const static struct cycstc_setup_t {
 
 static void cycstc_timer_stop(void)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)(sp_timer_base);
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)(sp_timer_base);
 
 	pstc_avReg->timer2_ctrl = 0;
 }
 
 static void cycstc_timer_start(int choice)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)(sp_timer_base);
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)(sp_timer_base);
 
 	cyc_stat = (const struct cycstc_stat_st){ 0 };
 
@@ -253,17 +259,19 @@ static void cycstc_timer_start(int choice)
 static ssize_t cycstc_test_write(struct file *file, const char __user *buf, size_t count, loff_t *ppos)
 {
 	char buffer[128];
-	int choice, len;
+	int choice, len, err;
 	u32 hz;
 
 	if ((count > sizeof(buffer)) || (copy_from_user(buffer, buf, count))) {
-		printk(KERN_ERR "%s: L#%d\n", __func__, __LINE__);
+		pr_err("%s: L#%d\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
 	cycstc_timer_stop();
 
-	sscanf(buffer, "%u", &hz);
+	err = kstrtouint(buffer, 10, &hz);
+	if (err)
+		return err;
 
 	/* Stop test */
 	if (hz == 0)
@@ -278,7 +286,7 @@ static ssize_t cycstc_test_write(struct file *file, const char __user *buf, size
 		len = sprintf(buffer, "No such hz choice! Available hz: ");
 		for (choice = 0; choice < STCINT_TMR_NUM; choice++)
 			len += sprintf(buffer + len, "%u ", cycstc_setup[choice].hz);
-		printk("%s\n", buffer);
+		pr_info("%s\n", buffer);
 		return count;
 	}
 
@@ -307,10 +315,10 @@ static int cycstc_test_show(struct seq_file *m, void *v)
 #ifdef ACT_RECORDS
 			for (now = 0; now < ACT_RECORDS; now++) {
 				if (cyc_stat.aidx == (now + 1) % ACT_RECORDS)
-					seq_printf(m, "*");
+					seq_puts(m, "*");
 				seq_printf(m, "%u ", cycstc_ts2us(cyc_stat.act_record[now]));
 			}
-			seq_printf(m, "\n");
+			seq_puts(m, "\n");
 #endif
 	}
 
@@ -322,12 +330,12 @@ static int cycstc_test_open(struct inode *inode, struct file *file)
 	return single_open(file, cycstc_test_show, NULL);
 }
 
-static const struct file_operations cycstc_test_proc_fops = {
-	.open           = cycstc_test_open,
-	.read           = seq_read,
-	.llseek         = seq_lseek,
-	.write          = cycstc_test_write,
-	.release        = single_release,
+static const struct proc_ops cycstc_test_proc_fops = {
+	.proc_open           = cycstc_test_open,
+	.proc_read           = seq_read,
+	.proc_lseek          = seq_lseek,
+	.proc_write          = cycstc_test_write,
+	.proc_release        = single_release,
 };
 
 static int __init cycstc_test_init(void)
@@ -335,10 +343,10 @@ static int __init cycstc_test_init(void)
 	struct proc_dir_entry *ent;
 	int err = 0;
 
-	printk("cycstc: init\n");
+	pr_info("cycstc: init\n");
 
 	if (!sp_timer_base) {
-		printk(KERN_ERR "%s: no timer base\n", __func__);
+		pr_err("%s: no timer base\n", __func__);
 		return -EINVAL;
 	}
 
@@ -350,13 +358,13 @@ static int __init cycstc_test_init(void)
 	err = request_irq(sp_timer_irqs[SP_TIMER_STC_TIMER2], cycstc_timer2_isr,
 			IRQF_TIMER | IRQF_TRIGGER_RISING, "cycstc_timer2_test", NULL);
 	if (err) {
-		printk(KERN_ERR "%s: failed to setup irq, err=%d\n", __func__, err);
+		pr_err("%s: failed to setup irq, err=%d\n", __func__, err);
 		BUG();
 	}
 
 	ent = proc_create("cycstc_test", 0666, NULL, &cycstc_test_proc_fops);
 	if (!ent) {
-		printk(KERN_ERR "Error: %s:%d", __func__, __LINE__);
+		pr_err("Error: %s:%d", __func__, __LINE__);
 		return -ENOENT;
 	}
 
@@ -371,7 +379,7 @@ late_initcall(cycstc_test_init);
 
 static void sp_stc_timer3_start(struct clock_event_device *evt, unsigned long cycles, int periodic)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)sp_timer_base;
 	u32 div;
 
 	/* printk(KERN_INFO "%s: mode: %d, cycles = %u\n", __func__, (int)(evt->mode), (u32)(cycles)); */
@@ -429,7 +437,8 @@ static int sp_stc_timer3_set_period(struct clock_event_device *evt)
 
 static int sp_stc_timer3_shutdown(struct clock_event_device *clkevt)
 {
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)sp_timer_base;
+
 	pstc_avReg->timer3_ctrl = 0;
 	return 0;
 }
@@ -456,7 +465,7 @@ static irqreturn_t sp_stc_timer3_isr(int irq, void *dev_id)
 static void sp_clockevent_init(void)
 {
 	int ret;
-	stc_avReg_t *pstc_avReg = (stc_avReg_t *)sp_timer_base;
+	struct stc_avReg_s *pstc_avReg = (struct stc_avReg_s *)sp_timer_base;
 	int bc_late = 0;
 
 	pstc_avReg->timer3_ctrl = 0;
@@ -490,7 +499,7 @@ static void sp_clockevent_init(void)
 			IRQF_TIMER | IRQF_IRQPOLL | IRQF_TRIGGER_RISING,
 			"sp_stc_timer3", &sp_clockevent_dev_timer3);
 	if (ret) {
-		printk(KERN_ERR "%s, %d: reg = %d\n", __FILE__, __LINE__, ret);
+		pr_err("%s, %d: reg = %d\n", __FILE__, __LINE__, ret);
 		BUG();
 	}
 }
