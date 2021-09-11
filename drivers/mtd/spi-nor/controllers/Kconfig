@@ -69,3 +69,5 @@ config SPI_SUNPLUS_SPI
 	help
 	  Enable the Sunplus SPI NOR controller driver. This driver
 	  can be used to access the SPI NOR flash.
+	  To compile this driver as a module, choose M here: the module
+	  will be called sp-spi-nor.
