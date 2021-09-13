@@ -1,4 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ *
+ *
  * sysrq handler for entering Sunplus MON mode
  *
  * "Sunplus MON" masks all TX output to console, while accepting certain
@@ -9,6 +14,7 @@
 #include <linux/sysrq.h>
 #include <linux/init.h>
 #include <linux/string.h>
+#include <linux/io.h>
 #include <mach/io_map.h>	/* IO0_ADDRESS */
 #include <mach/sp_mon.h>	/* Actual function implementations */
 #include <linux/serial_core.h>	/* struct uart_port */
@@ -27,7 +33,7 @@
 #define UART0_LSR		(UART_BASE + 0x04)
 #define UART0_DATA		(UART_BASE + 0x00)
 
-unsigned int uart0_mask_tx = 0;
+unsigned int uart0_mask_tx;
 
 static unsigned long uart_base_addrs[] = {
 	IO0_ADDRESS(0x0900), IO0_ADDRESS(0x0980), IO0_ADDRESS(0x0800),
@@ -37,10 +43,10 @@ static unsigned long uart_base_addrs[] = {
 static void dbg_putchar(char c)
 {
 	/* Wait for transmit FIFO to not be full (available for more input) */
-	while (!(*((volatile unsigned short *)(UART0_LSR)) & 0x01))
-		/* wait */;
+	while (!readl((void *)UART0_LSR) & 0x01)
+		; /* wait */
 	/* Place data to UART data port register */
-	*((volatile unsigned short *)(UART0_DATA)) = c;
+	writel(c, (void *)UART0_DATA);
 }
 
 void dbg_putc(char c)
@@ -101,24 +107,18 @@ static int pm_sysrq_init(void)
 static void skipBlanks(char *cmd, unsigned int strnCount, int *currentIdx)
 {
 	/* Blanks were replaced with '\0' for kstrtoul() to work directly */
-	while (cmd[*currentIdx] == '\0' && *currentIdx < strnCount) {
+	while (cmd[*currentIdx] == '\0' && *currentIdx < strnCount)
 		*currentIdx = *currentIdx + 1;
-	}
-	return;
 }
 
 static void getNextParam(char *cmd, unsigned int strnCount, int *currentIdx, unsigned long *param)
 {
-	while (cmd[*currentIdx] != '\0' && *currentIdx < strnCount) {
+	while (cmd[*currentIdx] != '\0' && *currentIdx < strnCount)
 		*currentIdx = *currentIdx + 1;
-	}
 
 	skipBlanks(cmd, strnCount, currentIdx);
-	if (kstrtoul(&cmd[*currentIdx], 0, param)) {
-		dbg_printf("Err: getNextParam()\n");
-	}
-
-	return;
+	if (kstrtoul(&cmd[*currentIdx], 0, param))
+		dbg_printf("Err: %s()\n", __func__);
 }
 
 static void prn_usage(void)
@@ -212,7 +212,7 @@ int sysrqCheckState(char c, struct uart_port *port)
 {
 	static char cmd[BUF_SIZE] = "";
 	/* This indicates the number of characters currently stored in array */
-	static unsigned int strnCount = 0;
+	static unsigned int strnCount; // initial value 0
 	int i = 0;
 
 	if (uart0_mask_tx == 0 || port->cons == NULL)

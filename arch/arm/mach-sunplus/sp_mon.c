@@ -1,8 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 /*
  * Code can be shared between Linux and U-Boot,
  * just change IS_LINUX accordingly
+ * Linux: IS_LINUX == 1, U-Boot: IS_LINUX == 0
  */
-/* Linux: IS_LINUX == 1, U-Boot: IS_LINUX == 0 */
 #ifndef IS_LINUX
 #define IS_LINUX 1
 #endif
@@ -11,7 +16,7 @@
 #include <asm/memory.h>	/* phys_to_virt */
 #include <mach/io_map.h>
 #include <mach/sp_mon.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/sched.h>
 #include <linux/sched/signal.h>
 #include <linux/sched/debug.h>
@@ -22,19 +27,14 @@
 #endif
 
 #if IS_LINUX
-extern void dbg_putc(char);
-extern int dbg_printf(const char *, ...);
 #define RGST_OFFSET		PA_IOB_ADDR(0)
 #else	/* U-Boot */
 #define dbg_printf		printf
 #define RGST_OFFSET		SPHE_DEVICE_BASE
 #endif
 
-#if 0
-#define DBG_PRN			dbg_printf
-#else
+//#define DBG_PRN			dbg_printf
 #define	DBG_PRN(...)
-#endif
 
 #define DUMP_CHARS_PER_LINE	16
 /* Dump / fill format */
@@ -62,27 +62,25 @@ static unsigned int getMemAddr(unsigned int physAddr)
  */
 static unsigned int safe8bitRead(unsigned int addr, unsigned char *data)
 {
-	*data = *((volatile unsigned char *)addr);
+	*data = readb((void *)addr);
 	return 1;
 }
 
 static unsigned int safe16bitRead(unsigned int addr, unsigned short *data)
 {
-	if (addr & 0x01) {
+	if (addr & 0x01)
 		return 0;
-	}
 
-	*data = *((volatile unsigned short *)addr);
+	*data = readw((void *)addr);
 	return 1;
 }
 
 static unsigned int safe32bitRead(unsigned int addr, unsigned int *data)
 {
-	if (addr & 0x03) {
+	if (addr & 0x03)
 		return 0;
-	}
 
-	*data = *((volatile unsigned int *)addr);
+	*data = readl((void *)addr);
 	return 1;
 }
 
@@ -111,12 +109,11 @@ void write_regs(unsigned int regGroupNum, unsigned int regIndex, unsigned int va
 #endif
 
 	dbg_printf("Write G%u.%2u = 0x%08X (%u)\n", regGroupNum, regIndex, value, value);
-	*((volatile unsigned int *)targetAddr) = value;
+	writel(value, (void *)targetAddr);
 
 #if IS_LINUX
 	iounmap((void *)va_addr);
 #endif
-	return;
 }
 
 /* lreg : Print specific group of registers */
@@ -144,15 +141,13 @@ void prn_regs(unsigned int regGroupNum)
 
 	DBG_PRN("Register group %u base=0x%08X\n", regGroupNum, regBaseAddr);
 	for (i = 0 ; i < 32 ; i++)
-		dbg_printf("Read G%u.%2u = 0x%08X (%u)\n",
-			   regGroupNum, i,
-			   *((volatile unsigned int *)(regBaseAddr) + i),
-			   *((volatile unsigned int *)(regBaseAddr) + i));
+		dbg_printf("Read G%u.%2u = 0x%08X (%u)\n", regGroupNum, i,
+			   readl((void *)regBaseAddr + i * 4),
+			   readl((void *)regBaseAddr + i * 4));
 
 #if IS_LINUX
 	iounmap((void *)va_base);
 #endif
-	return;
 }
 
 /* Dumps requested physical memory data */
@@ -212,7 +207,7 @@ int writeToMem(unsigned int physAddr, unsigned int value)
 	unsigned int baseAddr;
 
 	baseAddr = getMemAddr(physAddr);
-	*(volatile unsigned int *)(baseAddr & 0xFFFFFFFC) = value;
+	writel(value, (void *)(baseAddr & 0xFFFFFFFC));
 	return 1;
 }
 
@@ -220,8 +215,8 @@ int writeToMem(unsigned int physAddr, unsigned int value)
 void showTaskInfo(pid_t pid)
 {
 	struct task_struct *task, *child;
-	static const char stat_nam[] = TASK_STATE_TO_CHAR_STR;
-	unsigned state;
+	static const char stat_nam[] = "RSDTtZXxKWP";
+	u32 state;
 
 	/* If no pid, list all tasks */
 	if ((int)pid == 0) {
@@ -234,7 +229,8 @@ void showTaskInfo(pid_t pid)
 				   (state < sizeof(stat_nam) - 1) ? stat_nam[state] : '?',
 				   child->comm);
 		}
-		while_each_thread(task, child);
+		while_each_thread(task, child)
+			;
 		return;
 	}
 
@@ -247,7 +243,7 @@ void showTaskInfo(pid_t pid)
 
 		dbg_printf("pid(%d): task_struct@<0x%08X> thread_info@<0x%08X>\n",
 			   (int)pid, (int)task, (int)info);
-		show_stack(task, NULL);
+		show_stack(task, NULL, KERN_INFO);
 	}
 }
 #endif
