@@ -2,7 +2,7 @@
 /*
  *      sunplus Watchdog Driver
  *
- *      Copyright (c) 2019 Sunplus Technology Co., Ltd.
+ *      Copyright (c) 2021 Sunplus Technology Co., Ltd.
  *
  *
  *      This program is free software; you can redistribute it and/or
@@ -28,30 +28,6 @@
 #include <linux/platform_device.h>
 #include <linux/types.h>
 #include <linux/watchdog.h>
-/* ---------------------------------------------------------------------------------------------- */
-
-//#define WDT_FUNC_DEBUG
-//#define WDT_DBG_INFO
-#define WDT_DBG_ERR
-
-#ifdef WDT_FUNC_DEBUG
-#define FUNC_DBG(fmt, args ...) printk(KERN_INFO "[WDT] dbg %s() (%d) " fmt "\n", __FUNCTION__, __LINE__, ## args)
-#else
-#define FUNC_DBG(fmt, args ...)
-#endif
-
-#ifdef WDT_DBG_INFO
-#define DBG_INF(fmt, args ...) printk(KERN_INFO "[WDT] inf (%d): "  fmt "\n", __LINE__ , ## args)
-#else
-#define DBG_INF(fmt, args ...)
-#endif
-
-#ifdef WDT_DBG_ERR
-#define DBG_ERR(fmt, args ...) printk(KERN_ERR "[WDT] err (%d): "  fmt "\n", __LINE__ , ## args)
-#else
-#define DBG_ERR(fmt, args ...)
-#endif
-/* ---------------------------------------------------------------------------------------------- */
 
 #define WDT_CTRL                0x00
 #define WDT_CNT                 0x04
@@ -222,7 +198,7 @@ static int sunplus_wdt_probe(struct platform_device *pdev)
 	struct clk *clk;
 	int err;
 	int ret;
-	int val;
+
 	sunplus_wdt =
 	    devm_kzalloc(&pdev->dev, sizeof(*sunplus_wdt), GFP_KERNEL);
 	if (!sunplus_wdt)
@@ -230,14 +206,14 @@ static int sunplus_wdt_probe(struct platform_device *pdev)
 
 	clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(clk)) {
-		DBG_ERR("Can't find clock source\n");
+		dev_err(&pdev->dev, "Can't find clock source\n");
 		return PTR_ERR(clk);
-	} else {
-		ret = clk_prepare_enable(clk);
-		if (ret) {
-			DBG_ERR("Clock can't be enabled correctly\n");
-			return ret;
-		}
+	}
+
+	ret = clk_prepare_enable(clk);
+	if (ret) {
+		dev_err(&pdev->dev, "Clock can't be enabled correctly\n");
+		return ret;
 	}
 
 	platform_set_drvdata(pdev, sunplus_wdt);
@@ -325,3 +301,4 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");
 MODULE_DESCRIPTION("Sunplus WatchDog Timer Driver");
+MODULE_VERSION(DRV_VERSION);

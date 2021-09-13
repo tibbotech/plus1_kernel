@@ -1026,6 +1026,8 @@ config SUNPLUS_WATCHDOG
 	help
 	  Say Y here to include support for the watchdog timer
 	  in Sunplus SoCs.
+	  To compile this driver as a module, choose M here: the
+	  module will be called sunplus_wdt.
 
 # X86 (i386 + ia64 + x86_64) Architecture
 
