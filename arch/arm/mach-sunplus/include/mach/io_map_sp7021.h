@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #ifndef __IO_MAP_SP7021_H__
 #define __IO_MAP_SP7021_H__
 

@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -12,7 +17,6 @@
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
 #include <mach/io_map.h>
-#include <mach/clk.h>
 #include <mach/misc.h>
 #ifndef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 //#include <dt-bindings/memory/sp-q628-mem.h>
@@ -43,7 +47,7 @@ static void sp_power_off(void)
 	while (1)
 		;
 
-//	printk("PD Achip mo_gclk_en0/mo_clk_en0 to save power \n");
+//	printk("PD Achip mo_gclk_en0/mo_clk_en0 to save power\n");
 //	writel(0, regs + 0x28);
 //	writel(0, regs + 0x24);
 //
@@ -76,27 +80,27 @@ static void apply_partial_clken(void)
 		0x0000, 0x8000, 0xffff, 0x0040, 0x0000, /* G0.6~10 */
 	};
 
-	printk("apply partial clken to save power\n");
+	pr_info("apply partial clken to save power\n");
 
-	for (i = 0; i < sizeof(ps_clken) / 4; i++) {
+	for (i = 0; i < sizeof(ps_clken) / 4; i++)
 		writel(0xffff0000 | ps_clken[i], (void __iomem *)(B_SYSTEM_BASE + 4 * (1 + i)));
-	}
 }
 #endif
 
 #ifdef CONFIG_SUNPLUS_WATCHDOG
 /*
-	1.We need to reset watchdog flag(clear watchdog interrupt) here
-	because watchdog timer driver does not have an interrupt handler,
-	and before enalbe RBUS timeout. Otherwise, the intr is always in
-	the triggered state.
-	2.enable RBUS watchdog timeout trigger.
-	provied by xt.hu
-*/
+ * 1.We need to reset watchdog flag(clear watchdog interrupt) here
+ *   because watchdog timer driver does not have an interrupt handler,
+ *   and before enalbe RBUS timeout. Otherwise, the intr is always in
+ *   the triggered state.
+ * 2.enable RBUS watchdog timeout trigger.
+ *   provied by xt.hu
+ */
 static void watchdog_reset(void)
 {
 	unsigned int temp_val;
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+
 	writel(0x7482, regs + 0x0630); /* G12.12 clr wdt irq */
 	temp_val = readl(regs + 0x0274) | 0x00120012;
 	writel(temp_val, regs + 0x0274); /* G4.29 misc_ctl */
@@ -118,11 +122,12 @@ static void __init sp_init(void)
 
 #ifdef CONFIG_SUNPLUS_WATCHDOG
 	void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+
 	writel(0x7482, regs + 0x0630); /* clrirq */
 	writel(0x00120012, regs + 0x0274); /* G4.29 misc_ctl */
 #endif
 
-	printk("%s\n", __func__);
+	pr_info("%s\n", __func__);
 
 	sp_prn_uptime();
 
@@ -132,7 +137,7 @@ static void __init sp_init(void)
 
 	b_sysclk = b_pllsys_get_rate();
 
-	printk("P-chip: sys = %uMHz, cpio_ctrl = (%ubit, %s)\n", b_sysclk / 1000000,
+	pr_info("P-chip: sys = %uMHz, cpio_ctrl = (%ubit, %s)\n", b_sysclk / 1000000,
 		(io_ctrl & 2) ? 16 : 8, (io_ctrl & 1) ? "DDR" : "SDR");
 
 #ifdef CONFIG_MACH_PENTAGRAM_ACHIP
@@ -142,7 +147,7 @@ static void __init sp_init(void)
 	sysclk = coreclk / (1 + ((clk_cfg >> 3) & 1));
 	a_pllioclk = (((readl((void __iomem *)A_SYSTEM_BASE + 0x54) >> 16) & 0xff) + 1) * (27 * 1000 * 1000);
 	ioclk = a_pllioclk / (20 + 5 * ((clk_cfg >> 4) & 7)) / ((clk_cfg >> 16) & 0xff) * 10;
-	printk("C-chip: core = %uMHz, sys = %uMHz, pllio = %uMHz, cpio_bus = %uMHz\n",
+	pr_info("C-chip: core = %uMHz, sys = %uMHz, pllio = %uMHz, cpio_bus = %uMHz\n",
 		coreclk / 1000000, sysclk / 1000000, a_pllioclk / 1000000, ioclk / 1000000);
 
 #endif
@@ -185,14 +190,14 @@ static struct map_desc sp_io_desc[] __initdata = {
 
 static void __init sp_map_io(void)
 {
-	printk("%s\n", __func__);
+	pr_info("%s\n", __func__);
 
-	iotable_init(sp_io_desc, ARRAY_SIZE( sp_io_desc));
+	iotable_init(sp_io_desc, ARRAY_SIZE(sp_io_desc));
 
-	printk("P_REG: [%08x-%08x] -> [%08x-%08x]\n", PA_B_REG, PA_B_REG + SIZE_B_REG - 1,
+	pr_info("P_REG: [%08x-%08x] -> [%08x-%08x]\n", PA_B_REG, PA_B_REG + SIZE_B_REG - 1,
 		VA_B_REG, VA_B_REG + SIZE_B_REG - 1);
 #ifdef CONFIG_MACH_PENTAGRAM_ACHIP
-	printk("C_REG: [%08x-%08x] -> [%08x-%08x]\n", PA_A_REG, PA_A_REG + SIZE_A_REG - 1,
+	pr_info("C_REG: [%08x-%08x] -> [%08x-%08x]\n", PA_A_REG, PA_A_REG + SIZE_A_REG - 1,
 		VA_A_REG, VA_A_REG + SIZE_A_REG - 1);
 #endif
 }

@@ -1,16 +1,10 @@
- /*
- * Copyright (c) 2011 Samsung Electronics Co., Ltd.
- *		http://www.samsung.com
- *
- * Common Header for EXYNOS machines
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  */
-
-#ifndef __ARCH_ARM_MACH_PENTAGRAM_COMMON_H
-#define __ARCH_ARM_MACH_PENTAGRAM_COMMON_H
+#ifndef __ARCH_ARM_MACH_SUNPLUS_COMMON_H
+#define __ARCH_ARM_MACH_SUNPLUS_COMMON_H
 
 #include <linux/platform_data/cpuidle-sp7021.h>
 
@@ -21,5 +15,4 @@ extern void sp7021_enter_aftr(void);
 
 extern struct cpuidle_sp7021_data cpuidle_coupled_sp7021_data;
 
-
-#endif /* __ARCH_ARM_MACH_EXYNOS_COMMON_H */
+#endif /* __ARCH_ARM_MACH_SUNPLUS_COMMON_H */
