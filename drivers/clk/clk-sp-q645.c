@@ -578,6 +578,11 @@ static void __init sp_clkc_init(struct device_node *np)
 	clk_register_fixed_factor(NULL, "SYSTEM_D4", "SYSTEM", 0, 1, 4); // SYS_CLK/4
 
 	pr_debug("sp-clkc: register sp_clks");
+
+	/* WORKAROUND: read CSI/MIPI mux reg need clken & release reset 1st */
+	writel(0x01fe01fe, moon_regs + 0x18); // G0.6  clken
+	writel(0x01fe0000, moon_regs + 0x68); // G0.26 reset
+
 	/* sp_clks */
 	for (i = 0; i < ARRAY_SIZE(sp_clks); i++) {
 		sp_clk_t *clk = &sp_clks[i];
@@ -585,7 +590,7 @@ static void __init sp_clkc_init(struct device_node *np)
 		j = clk->id & 0xffff;
 		clks[j] = clk_register_sp_clk(clk->name,
 			clk->parent_names[0] ? clk->parent_names : default_parents,
-			(clk->mux < 32) ? mux_regs + (clk->mux << 2) : NULL/* FIXME: mipi_regs + clk->mux */,
+			(clk->mux < 32) ? mux_regs + (clk->mux << 2) : mipi_regs + clk->mux,
 			clk->width, clk->shift,
 			clk_regs + (j >> 4 << 2), j & 0x0f);
 	}
