@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #ifndef __UNCOMPRESS_H_
 #define __UNCOMPRESS_H_
 
@@ -10,7 +15,6 @@ static void putc(int c)
 	while (!(uart_base->uart_lsr & SP_UART_LSR_TX))
 		barrier();
 	uart_base->uart_data = c;
-	return;
 }
 
 static inline void flush(void)

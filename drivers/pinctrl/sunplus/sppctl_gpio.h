@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * GPIO Driver for Sunplus/Tibbo SP7021 controller
  * Copyright (C) 2020 Sunplus Tech./Tibbo Tech.
@@ -44,9 +45,6 @@
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #define MNAME "q645_gpio"
 #define M_NAM "Q645 GPIO"
-#else
-#define MNAME "i143_gpio"
-#define M_NAM "I143 GPIO"
 #endif
 #define M_LIC "GPL v2"
 #define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
@@ -54,30 +52,42 @@
 #define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
 
-#define KINF(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_INFO     MNAME": "fmt,##args); } }
-#define KERR(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_ERR      MNAME": "fmt,##args); } }
+#define KINF(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_info(MNAME ": " fmt, ##args); \
+	} while (0)
+#define KERR(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_err(MNAME ": " fmt, ##args); \
+	} while (0)
 #ifdef CONFIG_DEBUG_GPIO
-#define KDBG(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_DEBUG    MNAME": "fmt,##args); } }
+#define KDBG(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_debug(MNAME ": " fmt, ##args); \
+	} while (0)
 #else
-#define KDBG(pd,fmt,args...)
+#define KDBG(pd, fmt, args...)
 #endif
 
 #endif // SPPCTL_H
 
-typedef struct sppctlgpio_chip_T {
+struct sppctlgpio_chip_t {
 	spinlock_t lock;
 	struct gpio_chip chip;
 	void __iomem *base0;   // MASTER , OE , OUT , IN
 	void __iomem *base1;   // I_INV , O_INV , OD
 	void __iomem *base2;   // GPIO_FIRST
 	int irq[SPPCTL_GPIO_IRQS];
-} sppctlgpio_chip_t;
+};
 
 extern const char * const sppctlgpio_list_s[];
 extern const size_t GPIS_listSZ;
@@ -86,25 +96,22 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap);
 int sppctl_gpio_del(struct platform_device *_pd, void *_datap);
 
 #ifdef CONFIG_PINCTRL_SPPCTL
-#define D_PIS(x,y) "P" __stringify(x) "_0" __stringify(y)
+#define D_PIS(x, y) "P" __stringify(x) "_0" __stringify(y)
 #else
 #define D_PIS(x) "GPIO" __stringify(x)
 #endif
 
 // FIRST: MUX=0, GPIO=1
-enum muxF_MG {
+enum muxF_MG_t {
 	muxF_M = 0,
 	muxF_G = 1,
 	muxFKEEP = 2,
 };
 // MASTER: IOP=0,GPIO=1
-enum muxM_IG {
+enum muxM_IG_t {
 	muxM_I = 0,
 	muxM_G = 1,
 	muxMKEEP = 2,
 };
-
-typedef enum muxF_MG muxF_MG_t;
-typedef enum muxM_IG muxM_IG_t;
 
 #endif // SPPCTL_GPIO_H

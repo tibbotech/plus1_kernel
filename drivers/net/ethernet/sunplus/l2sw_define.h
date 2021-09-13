@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __L2SW_DEFINE_H__
 #define __L2SW_DEFINE_H__
 
@@ -26,14 +31,14 @@
 #include <linux/of_address.h>
 #include <linux/of_mdio.h>
 
+#undef pr_fmt
+#define pr_fmt(fmt)     "[L2SW]" fmt
 
 //#define CONFIG_PM
 #define INTERRUPT_IMMEDIATELY
 //#define RX_POLLING
 
-#ifdef CONFIG_SOC_I143
 //#define ZEBU_XTOR
-
 #ifdef ZEBU_XTOR
 // mac_force_mode0[11:10]: force_gmii_en[1:0]   = 0x3 (enable force function)
 // mac_force_mode0[17:16]: force_gmii_spd0[1:0] = 0x3 (1G)
@@ -45,23 +50,9 @@
 // mac_force_mode1[27:26]: force_gmii_link[1:0] = 0x3 (link up)
 #define MAC_FORCE_MODE1 0x0c0f0000
 #endif
-#endif
-/**********************************************************
- * Debug Macros
- **********************************************************/
-#define ETH_ERR(fmt, arg...)            printk(KERN_ERR     "[L2SW]" fmt, ##arg)
-#define ETH_WARNING(fmt, arg...)        printk(KERN_WARNING "[L2SW]" fmt, ##arg)
-#define ETH_NOTICE(fmt, arg...)         printk(KERN_NOTICE  "[L2SW]" fmt, ##arg)
-#define ETH_INFO(fmt, arg...)           printk(KERN_INFO    "[L2SW]" fmt, ##arg)
-#define ETH_DEBUG(fmt, arg...)          pr_debug("[L2SW]" fmt, ##arg)
-
 
 //define MAC interrupt status bit
 #define MAC_INT_DAISY_MODE_CHG          (1<<31)
-#ifdef CONFIG_SOC_I143
-#define MAC_INT_MEM_TEST_DONE           (1<<29)
-#define MAC_INT_TCPUDP_CHKSUM_ERR       (1<<24)
-#endif
 #define MAC_INT_IP_CHKSUM_ERR           (1<<23)
 #define MAC_INT_WDOG_TIMER1_EXP         (1<<22)
 #define MAC_INT_WDOG_TIMER0_EXP         (1<<21)
@@ -83,7 +74,6 @@
 #define MAC_INT_TX_DES_ERR              (1<<1)
 #define MAC_INT_RX_DES_ERR              (1<<0)
 
-#ifdef CONFIG_SOC_SP7021
 #define MAC_INT_RX                      (MAC_INT_RX_DONE_H | MAC_INT_RX_DONE_L | MAC_INT_RX_DES_ERR)
 #define MAC_INT_TX                      (MAC_INT_TX_DONE_L | MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR)
 #define MAC_INT_MASK_DEF                (MAC_INT_DAISY_MODE_CHG | MAC_INT_IP_CHKSUM_ERR | MAC_INT_WDOG_TIMER1_EXP | \
@@ -91,30 +81,10 @@
 					MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | MAC_INT_TX_SOC_PAUSE_ON | \
 					MAC_INT_RX_SOC_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | MAC_INT_TX_LAN0_QUE_FULL | \
 					MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
-#else
-// Note that due to a hardware bug, TCPUDP_APPEND_ERROR cannot be masked. Must handle it.
-#define MAC_INT_RX                      (MAC_INT_RX_DONE_L | MAC_INT_RX_DONE_H | MAC_INT_RX_L_DESCF | MAC_INT_RX_H_DESCF)
-#define MAC_INT_RX_MASK_DEF             (0)
-#define MAC_INT_TX                      (MAC_INT_TCPUDP_CHKSUM_ERR | MAC_INT_PORT_ST_CHG | MAC_INT_TX_DONE_L | \
-					MAC_INT_TX_DONE_H | MAC_INT_TX_DES_ERR | MAC_INT_RX_DES_ERR)
-#define MAC_INT_TX_MASK_DEF             (MAC_INT_DAISY_MODE_CHG | MAC_INT_MEM_TEST_DONE | \
-					MAC_INT_TCPUDP_CHKSUM_ERR | MAC_INT_IP_CHKSUM_ERR | \
-					MAC_INT_WDOG_TIMER1_EXP | MAC_INT_WDOG_TIMER0_EXP | MAC_INT_INTRUDER_ALERT | \
-					MAC_INT_BC_STORM | MAC_INT_MUST_DROP_LAN | MAC_INT_GLOBAL_QUE_FULL | \
-					MAC_INT_TX_SOC_PAUSE_ON | MAC_INT_RX_SOC_QUE_FULL | MAC_INT_TX_LAN1_QUE_FULL | \
-					MAC_INT_TX_LAN0_QUE_FULL)
-#define MAC_INT_MASK_DEF                (MAC_INT_RX_MASK_DEF | MAC_INT_TX_MASK_DEF)
-#endif
 
 /*define port ability*/
-#ifdef CONFIG_SOC_SP7021
 #define PORT_ABILITY_LINK_ST_P1         (1<<25)
 #define PORT_ABILITY_LINK_ST_P0         (1<<24)
-#else
-#define PORT_ABILITY_LINK_ST_P1         (1<<28)
-#define PORT_ABILITY_LINK_ST_P0         (1<<27)
-#endif
-
 
 /*define PHY command bit*/
 #define PHY_WT_DATA_MASK                0xffff0000
@@ -134,7 +104,6 @@
 #define POK_INT_THS_MASK                0x000E0000
 #define VLAN_TH_MASK                    0x00000007
 
-
 /*define tx descriptor bit*/
 #define OWN_BIT                         (1<<31)
 #define FS_BIT                          (1<<25)
@@ -146,15 +115,9 @@
 #define TO_VLAN_GROUP1                  0x00002000
 
 #define EOR_BIT                         (1<<31)
-#ifdef CONFIG_SOC_I143
-#define IP_CHKSUM_APPEND                (1<<30)
-#define TCP_UDP_CHKSUM_APPEND           (1<<29)
-#endif
-
 
 /*define rx descriptor bit*/
 #define ERR_CODE                        (0xf<<26)
-#ifdef CONFIG_SOC_SP7021
 #define RX_TCP_UDP_CHKSUM_BIT           (1<<23)
 #define RX_IP_CHKSUM_BIT                (1<<18)
 
@@ -165,17 +128,6 @@
 #define TWDE_BIT                        (1<<20)
 #define CC_MASK                         0x000f0000
 #define TBE_MASK                        0x00070000
-#else
-#define RX_TCP_UDP_CHKSUM_FAIL          (1<<23)
-#define RX_IP_CHKSUM_FAIL               (1<<18)
-#if 0
-#define OWC_BIT                         (1<<30)
-#define BUR_BIT                         (1<<29)
-#define LNKF_BIT                        (1<<28)
-#define TWDE_BIT                        (1<<27)
-#define CC_MASK                         (0xf<<16)
-#endif
-#endif
 
 // Address table search
 #define MAC_ADDR_LOOKUP_IDLE            (1<<2)
@@ -187,19 +139,13 @@
 #define MAC_AT_TABLE_END                (1<<1)
 #define MAC_AT_DATA_READY               (1<<0)
 
-
-#define MAC_PHY_ADDR                    0x01    /* define by hardware */
+#define MAC_PHY_ADDR                    0x01	/* define by hardware */
 
 /*config descriptor*/
 #define TX_DESC_NUM                     16
 #define MAC_GUARD_DESC_NUM              2
-#ifdef CONFIG_SOC_SP7021
 #define RX_QUEUE0_DESC_NUM              16
 #define RX_QUEUE1_DESC_NUM              16
-#else
-#define RX_QUEUE0_DESC_NUM              64
-#define RX_QUEUE1_DESC_NUM              64
-#endif
 #define TX_DESC_QUEUE_NUM               1
 #define RX_DESC_QUEUE_NUM               2
 
@@ -211,7 +157,6 @@
 #define TX_OFFSET                       0
 
 #define ETHERNET_MAC_ADDR_LEN           6
-
 
 struct mac_desc {
 	volatile u32 cmd1;
@@ -237,11 +182,7 @@ struct l2sw_common {
 	s32 desc_size;
 	struct clk *clk;
 	struct reset_control *rstc;
-#ifdef CONFIG_SOC_SP7021
 	int irq;
-#else
-	int irq[4];
-#endif
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
 	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];
@@ -295,6 +236,4 @@ struct l2sw_mac {
 	u8 vlan_id;
 };
 
-
 #endif
-

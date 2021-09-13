@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * GPIO Driver for Sunplus/Tibbo SP7021 controller
  * Copyright (C) 2020 Sunplus Tech./Tibbo Tech.
@@ -19,100 +20,115 @@
 #include <linux/moduleparam.h>
 #include <linux/init.h>
 #include <linux/seq_file.h>
-#include <asm/io.h>
+#include <linux/io.h>
 
 #include "sppctl_gpio_ops.h"
 #include "sppctl_gpio.h"
 
-
-#if 0 //Test code for GPIO_INT0
+__attribute((unused))
 static irqreturn_t gpio_int_0(int irq, void *data)
 {
-	printk(KERN_INFO "register gpio int0 trigger \n");
-	return (IRQ_HANDLED);
+	pr_info("register gpio int0 trigger\n");
+	return IRQ_HANDLED;
 }
-#endif
 
 #ifndef SPPCTL_H
-int sppctl_gpio_resmap(struct platform_device *_pd, sppctlgpio_chip_t *_pc)
+int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_pc)
 {
 	struct resource *rp;
 
 	// res0
-	if (IS_ERR(rp = platform_get_resource(_pd, IORESOURCE_MEM, 1))) {
-		KERR(&(_pd->dev), "%s get res#0 ERR\n", __FUNCTION__);
-		return (PTR_ERR(rp));
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 1);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#0 ERR\n", __func__);
+		return PTR_ERR(rp);
 	}
-	KDBG(&(_pd->dev), "mres #0:%px\n", rp);
-	if (!rp) return (-EFAULT);
+	KDBG(&(_pd->dev), "mres #0:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
 	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-	if (IS_ERR(_pc->base0 = devm_ioremap_resource(&(_pd->dev), rp))) {
-		KERR(&(_pd->dev), "%s map res#0 ERR\n", __FUNCTION__);
-		return (PTR_ERR(_pc->base0));
+
+	_pc->base0 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base0)) {
+		KERR(&(_pd->dev), "%s map res#0 ERR\n", __func__);
+		return PTR_ERR(_pc->base0);
 	}
 
 #ifdef CONFIG_PINCTRL_SPPCTL_Q645
 	// res2
-	if (IS_ERR(rp = platform_get_resource(_pd, IORESOURCE_MEM, 2))) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __FUNCTION__);
-		return (PTR_ERR(rp));
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
+		return PTR_ERR(rp);
 	}
-	KDBG(&(_pd->dev), "mres #2:%px\n", rp);
-	if (!rp) return (-EFAULT);
+	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
 	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-	if (IS_ERR(_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp))) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
-		return (PTR_ERR(_pc->base2));
+
+	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base2)) {
+		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
+		return PTR_ERR(_pc->base2);
 	}
 #else
 	// res1
-	if (IS_ERR(rp = platform_get_resource(_pd, IORESOURCE_MEM, 2))) {
-		KERR(&(_pd->dev), "%s get res#1 ERR\n", __FUNCTION__);
-		return (PTR_ERR(rp));
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#1 ERR\n", __func__);
+		return PTR_ERR(rp);
 	}
-	KDBG(&(_pd->dev), "mres #1:%px\n", rp);
-	if (!rp) return (-EFAULT);
+	KDBG(&(_pd->dev), "mres #1:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
 	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-	if (IS_ERR(_pc->base1 = devm_ioremap_resource(&(_pd->dev), rp))) {
-		KERR(&(_pd->dev), "%s map res#1 ERR\n", __FUNCTION__);
-		return (PTR_ERR(_pc->base1));
+
+	_pc->base1 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base1)) {
+		KERR(&(_pd->dev), "%s map res#1 ERR\n", __func__);
+		return PTR_ERR(_pc->base1);
 	}
 
 	// res2
-	if (IS_ERR(rp = platform_get_resource(_pd, IORESOURCE_MEM, 3))) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __FUNCTION__);
-		return (PTR_ERR(rp));
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
+		return PTR_ERR(rp);
 	}
-	KDBG(&(_pd->dev), "mres #2:%px\n", rp);
-	if (!rp) return (-EFAULT);
+	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
 	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-	if (IS_ERR(_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp))) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __FUNCTION__);
-		return (PTR_ERR(_pc->base2));
+
+	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base2)) {
+		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
+		return PTR_ERR(_pc->base2);
 	}
 #endif
 
-	return (0);
+	return 0;
 }
 #endif // SPPCTL_H
 
 int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 {
 	struct device_node *np = _pd->dev.of_node, *npi;
-	sppctlgpio_chip_t *pc = NULL;
+	struct sppctlgpio_chip_t *pc = NULL;
 	struct gpio_chip *gchip = NULL;
 	int err = 0, i = 0, npins;
 #ifdef SPPCTL_H
-	sppctl_pdata_t *_pctrlp = (sppctl_pdata_t *)_datap;
+	struct sppctl_pdata_t *_pctrlp = (struct sppctl_pdata_t *)_datap;
 #endif
 
 	if (!np) {
 		KERR(&(_pd->dev), "invalid devicetree node\n");
-		return (-EINVAL);
+		return -EINVAL;
 	}
+
 	if (!of_device_is_available(np)) {
 		KERR(&(_pd->dev), "devicetree status is not available\n");
-		return (-ENODEV);
+		return -ENODEV;
 	}
 
 	// print_device_tree_node(np, 0);
@@ -122,13 +138,17 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 			break;
 		}
 	}
-	if (of_find_property(np, "gpio-controller", NULL)) i = 1;
+
+	if (of_find_property(np, "gpio-controller", NULL))
+		i = 1;
 	if (i == 0) {
 		KERR(&(_pd->dev), "is not gpio-controller\n");
-		return (-ENODEV);
+		return -ENODEV;
 	}
 
-	if (!(pc = devm_kzalloc(&(_pd->dev), sizeof(*pc), GFP_KERNEL))) return (-ENOMEM);
+	pc = devm_kzalloc(&(_pd->dev), sizeof(*pc), GFP_KERNEL);
+	if (!pc)
+		return -ENOMEM;
 	gchip = &(pc->chip);
 
 #ifdef SPPCTL_H
@@ -137,7 +157,9 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	pc->base2 = _pctrlp->base2;
 	_pctrlp->gpiod = pc;
 #else
-	if ((err = sppctl_gpio_resmap(_pd, pc)) != 0) return (err);
+	err = sppctl_gpio_resmap(_pd, pc);
+	if (err != 0)
+		return err;
 #endif
 
 	gchip->label =             MNAME;
@@ -177,9 +199,10 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 #endif
 
 	// FIXME: can't set pc globally
-	if ((err = devm_gpiochip_add_data(&(_pd->dev), gchip, pc)) < 0) {
+	err = devm_gpiochip_add_data(&(_pd->dev), gchip, pc);
+	if (err < 0) {
 		KERR(&(_pd->dev), "gpiochip add failed\n");
-		return (err);
+		return err;
 	}
 
 	npins = platform_irq_count(_pd);
@@ -187,54 +210,47 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 		pc->irq[i] = irq_of_parse_and_map(np, i);
 		KDBG(&(_pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[i]);
 	}
-#if 0 //Test code for GPIO_INT0
-	err = devm_request_irq(&(_pd->dev), pc->irq[0], gpio_int_0, IRQF_TRIGGER_RISING, "sppctl_gpio_int0", _pd);
-	KDBG(&(_pd->dev), "register gpio int0 irq \n");
-	if (err) {
-		KDBG(&(_pd->dev), "register gpio int0 irq err \n");
-		return (err);
-	}
-#endif
 
 	spin_lock_init(&(pc->lock));
 
 #ifndef SPPCTL_H
-	printk(KERN_INFO M_NAM" by "M_ORG" "M_CPR);
+	pr_info(M_NAM " by " M_ORG " " M_CPR);
 #endif
-	return (0);
+
+	return 0;
 }
 
 int sppctl_gpio_del(struct platform_device *_pd, void *_datap)
 {
-	//sppctlgpio_chip_t *cp;
+	//struct sppctlgpio_chip_t *cp;
 
 	// FIXME: can't use globally now
-	//if ((cp = platform_get_drvdata(_pd)) == NULL) return (-ENODEV);
+	//cp = platform_get_drvdata(_pd);
+	//if (cp == NULL)
+	//	return -ENODEV;
 	//gpiochip_remove(&(cp->chip));
 	// FIX: remove spinlock_t ?
-	return (0);
+	return 0;
 }
 
 #ifndef SPPCTL_H
 static const struct of_device_id sppctl_gpio_of_match[] = {
 #ifdef CONFIG_PINCTRL_SPPCTL
 	{ .compatible = "sunplus,sp7021-gpio" },
-#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 	{ .compatible = "sunplus,q645-gpio" },
-#else
-	{ .compatible = "sunplus,i143-gpio" },
 #endif
 	{ /* null */ }
 };
 
 static int sppctl_gpio_probe(struct platform_device *_pd)
 {
-	return (sppctl_gpio_new(_pd, NULL));
+	return sppctl_gpio_new(_pd, NULL);
 }
 
-static int sppctl_gpio_remove(struct platform_device *_pd, void *_data)
+static int sppctl_gpio_remove(struct platform_device *_pd)
 {
-	return (sppctl_gpio_del(_pd, NULL));
+	return sppctl_gpio_del(_pd, NULL);
 }
 MODULE_DEVICE_TABLE(of, sppctl_gpio_of_match);
 MODULE_ALIAS("platform:" MNAME);

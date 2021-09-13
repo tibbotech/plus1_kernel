@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+//#define DEBUG
 #include <linux/module.h>
 #include <linux/clk.h>
 #include <linux/clk-provider.h>
@@ -11,7 +17,7 @@
 #include <mach/io_map.h>
 #include <dt-bindings/clock/sp-q628.h>
 
-//#define TRACE	pr_info("### %s:%d (%d)\n", __FUNCTION__, __LINE__, (clk->reg - REG(4, 0)) / 4)
+//#define TRACE	pr_info("### %s:%d (%d)\n", __func__, __LINE__, (clk->reg - REG(4, 0)) / 4)
 #define TRACE
 
 #ifndef clk_readl
@@ -61,7 +67,7 @@ struct sp_pll {
 	unsigned long	brate;		/* base rate, FIXME: replace brate with muldiv */
 	int		div_shift;
 	int		div_width;
-	u32 		p[P_MAX];	/* for hold PLLTV/PLLA parameters */
+	u32		p[P_MAX];	/* for hold PLLTV/PLLA parameters */
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
@@ -198,10 +204,10 @@ static long plltv_integer_div(struct sp_pll *clk, unsigned long freq)
 
 	/* check freq */
 	if (freq < F_MIN) {
-		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __FUNCTION__, __LINE__, freq, F_MIN);
+		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __func__, __LINE__, freq, F_MIN);
 		freq = F_MIN;
 	} else if (freq > F_MAX) {
-		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __FUNCTION__, __LINE__, freq, F_MAX);
+		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __func__, __LINE__, freq, F_MAX);
 		freq = F_MAX;
 	}
 
@@ -213,7 +219,7 @@ static long plltv_integer_div(struct sp_pll *clk, unsigned long freq)
 #ifdef PLLTV_STEP_DIR
 CALC:
 	if (!calc_times) {
-		pr_err("[%s:%d] freq:%lu out of recalc times\n", __FUNCTION__, __LINE__, freq);
+		pr_err("[%s:%d] freq:%lu out of recalc times\n", __func__, __LINE__, freq);
 		return -ETIMEOUT;
 	}
 #endif
@@ -229,9 +235,8 @@ CALC:
 	for (m = 0; m_table[m]; m++) {
 		nf = fvco * m_table[m];
 		n = nf / F_27M;
-		if ((n * F_27M) == nf) {
+		if ((n * F_27M) == nf)
 			break;
-		}
 	}
 	m = m_table[m];
 
@@ -241,7 +246,7 @@ CALC:
 		calc_times--;
 		goto CALC;
 #else
-		pr_err("[%s:%d] freq:%lu not found a valid setting\n", __FUNCTION__, __LINE__, freq);
+		pr_err("[%s:%d] freq:%lu not found a valid setting\n", __func__, __LINE__, freq);
 		return -EINVAL;
 #endif
 	}
@@ -253,7 +258,7 @@ CALC:
 	clk->p[DIVM]    = m;
 
 	pr_info("[%s:%d]   M:%u N:%u R:%u   CKREF:%lu  FVCO:%lu  FCKOUT:%lu\n",
-		__FUNCTION__, __LINE__, m, n, r, fvco /m, fvco, freq);
+		__func__, __LINE__, m, n, r, (fvco / m), fvco, freq);
 
 	return freq;
 }
@@ -290,16 +295,14 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 	int sdm, ph;
 
 	TRACE;
-#if 1
 	/* check freq */
 	if (freq < F_MIN) {
-		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __FUNCTION__, __LINE__, freq, F_MIN);
+		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __func__, __LINE__, freq, F_MIN);
 		freq = F_MIN;
 	} else if (freq > F_MAX) {
-		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __FUNCTION__, __LINE__, freq, F_MAX);
+		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __func__, __LINE__, freq, F_MAX);
 		freq = F_MAX;
 	}
-#endif
 
 	/* DIVR 0~3 */
 	for (r = 0; r <= 3; r++) {
@@ -313,16 +316,7 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 	/* PH_SEL 1/0 */
 	for (ph = 1; ph >= 0; ph--) {
 		const u32 *pp = pt[ph];
-#if 0
-		/* Q628: for nint == p1, saving time */
-		u32 ms = (F_27M * pp[1] / pp[0]) / fvco;
-		if (ms > 32)
-			ms &= ~1;
-		else if (!ms)
-			ms++;
-#else
 		u32 ms = 1;
-#endif
 
 		/* SDM_MOD 0/1 */
 		for (sdm = 0; sdm <= 1; sdm++) {
@@ -385,14 +379,14 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 	}
 
 	if (!fout) {
-		pr_err("[%s:%d] freq:%lu not found a valid setting\n", __FUNCTION__, __LINE__, freq);
+		pr_err("[%s:%d] freq:%lu not found a valid setting\n", __func__, __LINE__, freq);
 		return -EINVAL;
 	}
 
 	//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n", mods[clk->p[SDM_MOD]], clk->p[PH_SEL], clk->p[NFRA], clk->p[DIVM], clk->p[DIVR]);
 
 	pr_info("[%s:%d] real out:%lu/%lu Hz(%u, %u, sign %u)\n",
-		__FUNCTION__, __LINE__, fout, freq, diff_min_quotient, diff_min_remainder, diff_min_sign);
+		__func__, __LINE__, fout, freq, diff_min_quotient, diff_min_remainder, diff_min_sign);
 
 	return fout;
 }
@@ -557,10 +551,12 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		} else {
 			/* integer divider */
 			u32 n = MASK_GET(0, 8, reg2) + 1;
+
 			ret = (prate / m * n) >> r;
 		}
 	} else {
 		u32 fbdiv = MASK_GET(clk->div_shift, clk->div_width, reg) + 1;
+
 		ret = clk->brate * fbdiv;
 	}
 	//pr_info("recalc_rate: %lu -> %lu\n", prate, ret);
@@ -590,6 +586,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		plltv_set_rate(clk);
 	else if (clk->div_width) {
 		u32 fbdiv = sp_pll_calc_div(clk, rate);
+
 		reg |= MASK_SET(clk->div_shift, clk->div_width, fbdiv - 1);
 	}
 
@@ -627,6 +624,7 @@ static void sp_pll_disable(struct clk_hw *hw)
 static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
+
 	return clk_readl(clk->reg) & BIT(clk->pd_bit);
 }
 
@@ -692,6 +690,7 @@ struct clk *clk_register_sp_pll(const char *name, const char *parent,
 static void __init sp_clk_setup(struct device_node *np)
 {
 	int i, j;
+
 	pr_info("@@@ Sunplus clock init\n");
 
 	/* TODO: PLLs initial */
@@ -729,6 +728,7 @@ static void __init sp_clk_setup(struct device_node *np)
 	/* gates */
 	for (i = 0; i < ARRAY_SIZE(gates); i++) {
 		char s[10];
+
 		j = gates[i] & 0xffff;
 		sprintf(s, "clken%02x", j);
 		clks[j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
@@ -743,4 +743,3 @@ static void __init sp_clk_setup(struct device_node *np)
 }
 
 CLK_OF_DECLARE(sp_clkc, "sunplus,sp-clkc", sp_clk_setup);
-

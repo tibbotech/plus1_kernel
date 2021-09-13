@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __L2SW_HAL_H__
 #define __L2SW_HAL_H__
 
@@ -5,15 +10,12 @@
 #include "l2sw_define.h"
 #include "l2sw_desc.h"
 
-
 #define HWREG_W(M, N)           (l2sw_reg_base->M = N)
 #define HWREG_R(M)              (l2sw_reg_base->M)
 #define MOON5REG_W(M, N)        (moon5_reg_base->M = N)
 #define MOON5REG_R(M)           (moon5_reg_base->M)
 
-
 #define MDIO_RW_TIMEOUT_RETRY_NUMBERS 500
-
 
 int l2sw_reg_base_set(void __iomem *baseaddr);
 
@@ -62,6 +64,5 @@ int phy_cfg(struct l2sw_mac *mac);
 void l2sw_enable_port(struct l2sw_mac *mac);
 
 void regs_print(void);
-
 
 #endif

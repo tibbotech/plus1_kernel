@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * SP7021 pinmux controller driver.
  * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
@@ -20,11 +21,11 @@
 #include "sppctl.h"
 
 
-typedef struct sppctl_sdata_T {
+struct sppctl_sdata_t {
 	uint8_t i;
 	uint8_t ridx;
-	sppctl_pdata_t *pdata;
-} sppctl_sdata_t;
+	struct sppctl_pdata_t *pdata;
+};
 
 void sppctl_sysfs_init(struct platform_device *_pdev);
 void sppctl_sysfs_clean(struct platform_device *_pdev);

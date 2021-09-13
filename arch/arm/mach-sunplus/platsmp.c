@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #include <linux/delay.h>
 #include <linux/init.h>
 #include <linux/io.h>
@@ -14,22 +19,20 @@
 #include <asm/smp_scu.h>
 #include <asm/firmware.h>
 
+#include <mach/misc.h>
+
 #ifdef CONFIG_HAVE_ARM_SCU
 #include <asm/smp_scu.h>
 #endif
 
 #define OF_CPU_BOOT       "cpu-boot-reg"
 
-extern void sc_smp_cpu_die(unsigned int cpu);
-
 static DEFINE_SPINLOCK(boot_lock);
 
 /* XXX pentagram_pen_release is cargo culted code - DO NOT COPY XXX */
-volatile int pentagram_pen_release = -1;
-
+int pentagram_pen_release = -1;
 
 #ifdef CONFIG_HOTPLUG_CPU
-
 /*
  * Write pen_release in a way that is guaranteed to be visible to all
  * observers, irrespective of whether they're taking part in coherency
@@ -38,10 +41,9 @@ volatile int pentagram_pen_release = -1;
 static void write_pen_release(int val)
 {
 	pentagram_pen_release = val;
-	smp_wmb();
+	smp_wmb(); /* memory barrier */
 	sync_cache_w(&pentagram_pen_release);
 }
-
 
 static bool sc_smp_cpu_can_disable(unsigned int cpu)
 {
@@ -51,7 +53,6 @@ static bool sc_smp_cpu_can_disable(unsigned int cpu)
 
 	return true;
 }
-
 #endif /* CONFIG_HOTPLUG_CPU */
 
 static void sc_smp_secondary_init(unsigned int cpu)
@@ -100,9 +101,9 @@ static void __init sc_smp_prepare_cpus(unsigned int max_cpus)
 {
 #ifdef CONFIG_HAVE_ARM_SCU
 	struct device_node *scu = of_find_matching_node(NULL, sc_scu_match);
-	if (scu) {
+
+	if (scu)
 		scu_enable(of_iomap(scu, 0));
-	}
 #endif
 }
 
@@ -112,7 +113,7 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	u32 mpidr = cpu_logical_map(cpu);
 	u32 core_id = MPIDR_AFFINITY_LEVEL(mpidr, 0);
 	unsigned long timeout;
-	int ret = -ENOSYS;
+	int ret;
 	void __iomem *va;
 
 	spin_lock(&boot_lock);
@@ -145,7 +146,6 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 	writel(__pa_symbol(secondary_startup), va);
 
-
 	/* Ensure the write is visible to the secondary core */
 	smp_wmb();
 
@@ -155,7 +155,7 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 
 	timeout = jiffies + (1 * HZ);
 	while (time_before(jiffies, timeout)) {
-		smp_rmb();
+		smp_rmb(); /* memory barrier */
 
 		arch_send_wakeup_ipi_mask(cpumask_of(cpu));
 
@@ -168,8 +168,7 @@ static int sc_smp_boot_secondary(unsigned int cpu, struct task_struct *idle)
 	ret = pentagram_pen_release != -1 ? -ETIMEDOUT : 0;
 
 	//pr_info("pentagram_pen_release end = %d, cpu_id = %d\n", pentagram_pen_release, core_id);
-
-	//pr_info("pentagram_pen_release end ret = %d \n", ret);
+	//pr_info("pentagram_pen_release end ret = %d\n", ret);
 
 	spin_unlock(&boot_lock);
 

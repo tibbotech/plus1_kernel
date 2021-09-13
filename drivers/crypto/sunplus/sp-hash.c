@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
 #include <crypto/algapi.h>
 #include <crypto/internal/hash.h>
 #include <crypto/hash.h>
@@ -31,7 +36,7 @@
 #define WORKBUF_SIZE			(65536)
 
 struct sp_hash_ctx {
-	crypto_ctx_t base;
+	struct crypto_ctx_s base;
 
 	// working buffer: blocks(src) + key(ghash only) + buf(digest)
 
@@ -57,8 +62,8 @@ struct sp_hash_ctx {
 static int do_blocks(struct sp_hash_ctx *ctx, u32 len)
 {
 	int ret = 0;
-	crypto_ctx_t *ctx0 = &ctx->base;
-	trb_t *trb;
+	struct crypto_ctx_s *ctx0 = &ctx->base;
+	struct trb_s *trb;
 
 	SP_CRYPTO_TRACE();
 	//dump_buf(ctx->blocks, len);
@@ -69,7 +74,8 @@ static int do_blocks(struct sp_hash_ctx *ctx, u32 len)
 		ctx->buf_phy,		// iv
 		ctx->key_phy,		// key
 		len, ctx0->mode, true);
-	if (!trb) return -EINTR;
+	if (!trb)
+		return -EINTR;
 
 	SP_CRYPTO_TRACE();
 	ret = crypto_ctx_exec(ctx0);
@@ -164,7 +170,7 @@ static int sp_shash_export(struct shash_desc *desc, void *out)
 	struct sp_hash_ctx *ctx = crypto_tfm_ctx(&desc->tfm->base);
 
 	memcpy(out, ctx->buf, ctx->digest_len);
-	//printk("%s: ", __FUNCTION__); dump_buf(out, ctx->digest_len);
+	//pr_info("%s: ", __func__); dump_buf(out, ctx->digest_len);
 
 	return 0;
 }
@@ -175,7 +181,7 @@ static int sp_shash_import(struct shash_desc *desc, const void *in)
 
 	memcpy(ctx->buf, in, ctx->digest_len);
 
-    return 0;
+	return 0;
 }
 
 static int sp_shash_update(struct shash_desc *desc, const u8 *data,
@@ -196,8 +202,9 @@ static int sp_shash_update(struct shash_desc *desc, const u8 *data,
 		do {
 			memcpy(ctx->blocks + ctx->bytes, data, avail); // fill blocks
 			ret = do_blocks(ctx, bsize);
-			if (ret) goto out;
-			
+			if (ret)
+				goto out;
+
 			data += avail;
 			len -= avail;
 
@@ -256,15 +263,14 @@ static int sp_shash_final(struct shash_desc *desc, u8 *out)
 	}
 
 	// process blocks
-	//printk("%s: ", __FUNCTION__); dump_buf(ctx->block, p - ctx->block);
+	//pr_info("%s: ", __func__); dump_buf(ctx->block, p - ctx->block);
 	ctx->base.mode |= M_FINAL;
 	ret = do_blocks(ctx, p - ctx->blocks);
 	ctx->base.mode &= ~M_FINAL;
 
 	mutex_unlock(&HASH_RING(ctx->base.dd)->lock);
-	if (!ret) {
+	if (!ret)
 		sp_shash_export(desc, out);
-	}
 
 	return ret;
 }
@@ -276,13 +282,13 @@ static int sp_shash_ghash_setkey(struct crypto_shash *tfm,
 	struct sp_hash_ctx *ctx = crypto_tfm_ctx(&tfm->base);
 
 	SP_CRYPTO_TRACE();
-#if 1 // TODO: dirty hack code, fix me
+	// TODO: dirty hack code, fix me
 	if (keylen & 1) {
 		// called from crypto_gcm_setkey (gcm.c)
 		keylen &= ~1;
 		ctx->digest_len = GHASH_DIGEST_SIZE;
 	}
-#endif
+
 	//dump_stack();
 	//dump_buf(key, keylen);
 	if (keylen != GHASH_KEY_SIZE) {
@@ -299,10 +305,10 @@ static int sp_shash_ghash_setkey(struct crypto_shash *tfm,
 static int sp_shash_init(struct shash_desc *desc)
 {
 	struct sp_hash_ctx *ctx = crypto_tfm_ctx(&desc->tfm->base);
-	crypto_ctx_t *ctx0 = &ctx->base;
+	struct crypto_ctx_s *ctx0 = &ctx->base;
 
 	SP_CRYPTO_TRACE();
-	//printk("!!! %s: %d\n", __FUNCTION__, ctx->digest_len);
+	//pr_info("!!! %s: %d\n", __func__, ctx->digest_len);
 	//dump_stack();
 	if (!ctx->digest_len) {
 		// called from crypto_create_session (CIOCGSESSION)
@@ -333,8 +339,7 @@ static int sp_shash_init(struct shash_desc *desc)
 	return 0;
 }
 
-static struct shash_alg sp_shash_alg[] =
-{
+static struct shash_alg sp_shash_alg[] = {
 	{
 		.digestsize	=	MD5_DIGEST_SIZE,
 		.init		=	sp_shash_init,
@@ -344,30 +349,30 @@ static struct shash_alg sp_shash_alg[] =
 		.import		=	sp_shash_import,
 		.base		=	{
 			.cra_name		=	"md5",
-			.cra_driver_name = 	"sp-md5",
+			.cra_driver_name =	"sp-md5",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	MD5_HMAC_BLOCK_SIZE,
 			.cra_module		=	THIS_MODULE,
-			.cra_priority	= 	300,
-			.cra_ctxsize	= 	sizeof(struct sp_hash_ctx),
-			.cra_alignmask	= 	0,
-			.cra_init		= 	sp_cra_md5_init,
-			.cra_exit		= 	sp_cra_exit,
+			.cra_priority	=	300,
+			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
+			.cra_alignmask	=	0,
+			.cra_init		=	sp_cra_md5_init,
+			.cra_exit		=	sp_cra_exit,
 		},
 	},
 	{
 		.digestsize =	GHASH_DIGEST_SIZE,
 		.init		=	sp_shash_init,
-		.setkey 	=	sp_shash_ghash_setkey,
-		.update 	=	sp_shash_update,
+		.setkey		=	sp_shash_ghash_setkey,
+		.update		=	sp_shash_update,
 		.final		=	sp_shash_final,
 		.base		=	{
 			.cra_name		=	"ghash",
-			.cra_driver_name =  "sp-ghash",
+			.cra_driver_name =	"sp-ghash",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	GHASH_BLOCK_SIZE,
-			.cra_module 	=	THIS_MODULE,
-			.cra_priority	= 	300,
+			.cra_module		=	THIS_MODULE,
+			.cra_priority	=	300,
 			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
 			.cra_alignmask	=	0,
 			.cra_init		=	sp_cra_ghash_init,
@@ -377,16 +382,16 @@ static struct shash_alg sp_shash_alg[] =
 	{
 		.digestsize =	SHA3_224_DIGEST_SIZE,
 		.init		=	sp_shash_init,
-		.update 	=	sp_shash_update,
+		.update		=	sp_shash_update,
 		.final		=	sp_shash_final,
-		.export 	=	sp_shash_export,
-		.import 	=	sp_shash_import,
+		.export		=	sp_shash_export,
+		.import		=	sp_shash_import,
 		.base		=	{
 			.cra_name		=	"sha3-224",
-			.cra_driver_name =  "sp-sha3-224",
+			.cra_driver_name =	"sp-sha3-224",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	SHA3_224_BLOCK_SIZE,
-			.cra_module 	=	THIS_MODULE,
+			.cra_module		=	THIS_MODULE,
 			.cra_priority	=	300,
 			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
 			.cra_alignmask	=	0,
@@ -397,16 +402,16 @@ static struct shash_alg sp_shash_alg[] =
 	{
 		.digestsize =	SHA3_256_DIGEST_SIZE,
 		.init		=	sp_shash_init,
-		.update 	=	sp_shash_update,
+		.update		=	sp_shash_update,
 		.final		=	sp_shash_final,
 		.export		=	sp_shash_export,
 		.import		=	sp_shash_import,
 		.base		=	{
 			.cra_name		=	"sha3-256",
-			.cra_driver_name =  "sp-sha3-256",
+			.cra_driver_name =	"sp-sha3-256",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	SHA3_256_BLOCK_SIZE,
-			.cra_module 	=	THIS_MODULE,
+			.cra_module		=	THIS_MODULE,
 			.cra_priority	=	300,
 			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
 			.cra_alignmask	=	0,
@@ -417,16 +422,16 @@ static struct shash_alg sp_shash_alg[] =
 	{
 		.digestsize =	SHA3_384_DIGEST_SIZE,
 		.init		=	sp_shash_init,
-		.update 	=	sp_shash_update,
+		.update		=	sp_shash_update,
 		.final		=	sp_shash_final,
 		.export		=	sp_shash_export,
 		.import		=	sp_shash_import,
 		.base		=	{
 			.cra_name		=	"sha3-384",
-			.cra_driver_name =  "sp-sha3-384",
+			.cra_driver_name =	"sp-sha3-384",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	SHA3_384_BLOCK_SIZE,
-			.cra_module 	=	THIS_MODULE,
+			.cra_module		=	THIS_MODULE,
 			.cra_priority	=	300,
 			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
 			.cra_alignmask	=	0,
@@ -437,16 +442,16 @@ static struct shash_alg sp_shash_alg[] =
 	{
 		.digestsize =	SHA3_512_DIGEST_SIZE,
 		.init		=	sp_shash_init,
-		.update 	=	sp_shash_update,
+		.update		=	sp_shash_update,
 		.final		=	sp_shash_final,
 		.export		=	sp_shash_export,
 		.import		=	sp_shash_import,
 		.base		=	{
 			.cra_name		=	"sha3-512",
-			.cra_driver_name =  "sp-sha3-512",
+			.cra_driver_name =	"sp-sha3-512",
 			.cra_flags		=	CRYPTO_ALG_TYPE_SHASH,
 			.cra_blocksize	=	SHA3_512_BLOCK_SIZE,
-			.cra_module 	=	THIS_MODULE,
+			.cra_module		=	THIS_MODULE,
 			.cra_priority	=	300,
 			.cra_ctxsize	=	sizeof(struct sp_hash_ctx),
 			.cra_alignmask	=	0,
@@ -456,7 +461,6 @@ static struct shash_alg sp_shash_alg[] =
 	},
 };
 
-
 int sp_hash_finit(void)
 {
 	SP_CRYPTO_TRACE();
@@ -464,7 +468,6 @@ int sp_hash_finit(void)
 	return 0;
 }
 EXPORT_SYMBOL(sp_hash_finit);
-
 
 int sp_hash_init(void)
 {
@@ -476,31 +479,39 @@ EXPORT_SYMBOL(sp_hash_init);
 void sp_hash_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
-	trb_ring_t *ring = HASH_RING(dev);
+	struct trb_ring_s *ring = HASH_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER
-	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n", __FUNCTION__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR, kfifo_len(&ring->f));
+	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n",
+		__func__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR, kfifo_len(&ring->f));
 #else
-	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n", __FUNCTION__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR);
+	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n",
+		__func__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR);
 #endif
 	if (flag & HASH_TRB_IF) { // autodma/trb done
-		trb_t *trb = ring->head;
+		struct trb_s *trb = ring->head;
+
 		ring->irq_count++;
-		if (!trb->cc) dump_trb(trb);
+		if (!trb->cc)
+			dump_trb(trb);
+
 		while (trb->cc) {
 			//dump_trb(trb);
 			if (trb->ioc) {
-				crypto_ctx_t *ctx = trb->priv;
+				struct crypto_ctx_s *ctx = trb->priv;
+
 				if (ctx->type == SP_CRYPTO_HASH) {
 #ifdef TRACE_WAIT_ORDER
 					wait_queue_head_t *w;
+
 					BUG_ON(!kfifo_get(&ring->f, &w));
 					BUG_ON(w != &ctx->wait);
 #endif
 					ctx->done = true;
-					if (ctx->mode & M_FINAL) wake_up(&ctx->wait);
-				}
-				else printk("HASH_SKIP\n");
+					if (ctx->mode & M_FINAL)
+						wake_up(&ctx->wait);
+				} else
+					pr_info("HASH_SKIP\n");
 			}
 			trb = trb_put(ring);
 		}
@@ -514,4 +525,3 @@ void sp_hash_irq(void *devid, u32 flag)
 	SP_CRYPTO_INF("\n");
 }
 EXPORT_SYMBOL(sp_hash_irq);
-

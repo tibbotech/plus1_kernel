@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * SP7021 pinmux controller driver.
  * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
@@ -22,10 +23,8 @@
 #define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
 #ifdef CONFIG_PINCTRL_SPPCTL
 #define M_NAM "SP7021 PinCtl"
-#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #define M_NAM "Q645 PinCtl"
-#else
-#define M_NAM "I143 PinCtl"
 #endif
 #define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
@@ -53,7 +52,7 @@
 #include <linux/pinctrl/pinconf-generic.h>
 #ifdef CONFIG_PINCTRL_SPPCTL
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
-#elif defined (CONFIG_PINCTRL_SPPCTL_Q645)
+#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 #else
 #include <dt-bindings/pinctrl/sppctl-i143.h>
@@ -62,25 +61,35 @@
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
-#define KINF(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_INFO     MNAME": "fmt,##args); } }
-#define KERR(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_ERR      MNAME": "fmt,##args); } }
+#define KINF(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_info(MNAME ": " fmt, ##args); \
+	} while (0)
+#define KERR(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_err(MNAME ": " fmt, ##args); \
+	} while (0)
 #ifdef CONFIG_PINCTRL_SPPCTL_DEBUG
-#define KDBG(pd,fmt,args...) { \
-	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
-	} else { printk(KERN_DEBUG    MNAME": "fmt,##args); } }
+#define KDBG(pd, fmt, args...) \
+	do { \
+		if ((pd) != NULL) \
+			dev_info((pd), fmt, ##args); \
+		else \
+			pr_debug(MNAME ": " fmt, ##args); \
+	} while (0)
 #else
-#define KDBG(pd,fmt,args...)
+#define KDBG(pd, fmt, args...)
 #endif
 
 #include "sppctl_gpio.h"
 
-typedef struct sppctlgpio_chip_T sppctlgpio_chip_t;
-
-typedef struct sppctl_pdata_T {
+struct sppctl_pdata_t {
 	char name[SPPCTL_MAX_NAM];
 	uint8_t debug;
 	char fwname[SPPCTL_MAX_NAM];
@@ -94,56 +103,58 @@ typedef struct sppctl_pdata_T {
 	struct pinctrl_desc pdesc;
 	struct pinctrl_dev *pcdp;
 	struct pinctrl_gpio_range gpio_range;
-	sppctlgpio_chip_t *gpiod;
-} sppctl_pdata_t;
+	struct sppctlgpio_chip_t *gpiod;
+};
 
-typedef struct sppctl_reg_T {
+struct sppctl_reg_t {
 	uint16_t v;     // value part
 	uint16_t m;     // mask part
-} sppctl_reg_t;
+};
 
 #include "sppctl_sysfs.h"
 #include "sppctl_pinctrl.h"
 
-void sppctl_gmx_set(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz, uint8_t _rval);
-uint8_t sppctl_gmx_get(sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uint8_t _bsiz);
-void sppctl_pin_set(sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun);
-uint8_t sppctl_fun_get(sppctl_pdata_t *_p, uint8_t _pin);
+void sppctl_gmx_set(struct sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff,
+		    uint8_t _bsiz, uint8_t _rval);
+uint8_t sppctl_gmx_get(struct sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff,
+		       uint8_t _bsiz);
+void sppctl_pin_set(struct sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun);
+uint8_t sppctl_fun_get(struct sppctl_pdata_t *_p, uint8_t _pin);
 void sppctl_loadfw(struct device *_dev, const char *_fwname);
 
-typedef enum {
+enum fOFF_t {
 	fOFF_0, // nowhere
 	fOFF_M, // in mux registers
 	fOFF_G, // mux group registers
 	fOFF_I, // in iop registers
-} fOFF_t;
+};
 
-typedef struct {
+struct sppctlgrp_t {
 	const char * const name;
 	const uint8_t gval;             // value for register
 	const unsigned * const pins;    // list of pins
-	const unsigned pnum;            // number of pins
-} sppctlgrp_t;
+	const unsigned int pnum;        // number of pins
+};
 
-#define EGRP(n,v,p) { \
+#define EGRP(n, v, p) { \
 	.name = n, \
 	.gval = (v), \
 	.pins = (p), \
 	.pnum = ARRAY_SIZE(p), \
 }
 
-typedef struct {
+struct func_t {
 	const char * const name;
-	const fOFF_t freg;          // function register type
+	const enum fOFF_t freg;     // function register type
 	const uint8_t roff;         // register offset
 	const uint8_t boff;         // bit offset
 	const uint8_t blen;         // number of bits
-	const sppctlgrp_t * const grps; // list of groups
-	const unsigned gnum;        // number of groups
+	const struct sppctlgrp_t * const grps; // list of groups
+	const unsigned int gnum;    // number of groups
 	const char *grps_sa[5];     // array of pointers to func's grps names
-} func_t;
+};
 
-#define FNCE(n,r,o,bo,bl,g) { \
+#define FNCE(n, r, o, bo, bl, g) { \
 	.name = n, \
 	.freg = r, \
 	.roff = o, \
@@ -153,7 +164,7 @@ typedef struct {
 	.gnum = ARRAY_SIZE(g), \
 }
 
-#define FNCN(n,r,o,bo,bl) { \
+#define FNCN(n, r, o, bo, bl) { \
 	.name = n, \
 	.freg = r, \
 	.roff = o, \
@@ -162,16 +173,16 @@ typedef struct {
 	.grps = NULL, \
 	.gnum = 0, \
 }
-extern func_t list_funcs[];
+extern struct func_t list_funcs[];
 extern const size_t list_funcsSZ;
 
 extern const char * const sppctlpmux_list_s[];
 extern const size_t PMUX_listSZ;
 
-typedef struct grp2fp_map_T {
+struct grp2fp_map_t {
 	uint16_t f_idx; // function index
 	uint16_t g_idx; // pins/group index inside function
-} grp2fp_map_t;
+};
 
 // for debug
 void print_device_tree_node(struct device_node *node, int depth);

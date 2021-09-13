@@ -1,8 +1,12 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __L2SW_DESC_H__
 #define __L2SW_DESC_H__
 
 #include "l2sw_define.h"
-
 
 void rx_descs_flush(struct l2sw_common *comm);
 
@@ -21,6 +25,5 @@ u32 rx_descs_init(struct l2sw_common *comm);
 u32 descs_alloc(struct l2sw_common *comm);
 
 u32 descs_init(struct l2sw_common *comm);
-
 
 #endif

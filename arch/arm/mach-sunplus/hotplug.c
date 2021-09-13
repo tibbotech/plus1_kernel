@@ -1,4 +1,7 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
+ *  Copyright (C) Sunplus Technology Co., Ltd.
+ *
  *  Copyright (C) 2002 ARM Ltd.
  *  All Rights Reserved
  *
@@ -38,7 +41,8 @@ static inline void cpu_leave_lowpower(void)
 {
 	unsigned int v;
 
-	asm volatile(	"mrc	p15, 0, %0, c1, c0, 0\n"
+	asm volatile(
+	"   mrc	p15, 0, %0, c1, c0, 0\n"
 	"	orr	%0, %0, %1\n"
 	"	mcr	p15, 0, %0, c1, c0, 0\n"
 	"	mrc	p15, 0, %0, c1, c0, 1\n"

@@ -729,7 +729,7 @@
 			compatible = "sunplus,sp7021-hdmitx";
 			clocks = <&clkc HDMI_TX>;
 			resets = <&rstc RST_HDMI_TX>;
-			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>, <0x9C000080 0x80>;
+			reg = <0x9C00BE00 0x3FC>, <0x9C000200 0x80>, <0x9C000280 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <105 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -741,6 +741,7 @@
 			reg = <0x9C102100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <14 IRQ_TYPE_LEVEL_HIGH>;
+			tpl-support;
 		};
 
 		sp_ehci1: usb@0x9C103100 {
@@ -750,6 +751,7 @@
 			reg = <0x9C103100 0x68>;
 			interrupt-parent = <&intc>;
 			interrupts = <17 IRQ_TYPE_LEVEL_HIGH>;
+			tpl-support;
 		};
 
 		sp_ohci0: usb@0x9C102080 {

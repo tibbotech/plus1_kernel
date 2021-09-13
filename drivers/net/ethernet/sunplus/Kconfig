@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: GPL-2.0
 #
 # Sunplus Ethernet device configuration
 #
@@ -13,7 +14,6 @@ config NET_VENDOR_SUNPLUS
 	help
 	  If you have a Sunplus network (Ethernet) device belonging to this class,
 	  say Y.
-
 	  Note that the answer to this question doesn't directly affect
 	  the kernel: saying N will just cause the configurator to skip all
 	  the questions about Sunplus device. If you say Y, you will be asked
