@@ -120,7 +120,7 @@
 //		};
 		video_codec_reserve: vcodec {
 			no-map;
-			reg = <0x00 0x10000000 0x00 0x08000000>;
+			reg = <0x00 0x2f000000 0x00 0x10000000>;
 		};
 
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
@@ -1040,14 +1040,23 @@
 		status = "disabled";
 	};
 
+	video_codec {
+		compatible = "sunplus,q645-hantro-codec";
+		clocks = <&clkc VIDEO_CODEC>;
+		clock-names = "clk_vcodec";
+		resets = <&rstc RST_VIDEO_CODEC>;
+		reset-names = "rstc_vcodec";
+	};
+
 	video_codec_dec: hantro_vc8000d@0xf8168000 {
 		compatible = "sunplus,q645-hantro-vc8000d";
-		reg = <0x00 0xf8168000 0x00 0xfff>;
+		reg = <0x00 0xf8168000 0x00 0x1d8>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc VCD>;
 		clock-names = "clk_vc8000d";
 		resets = <&rstc RST_VCD>;
+		reset-names = "rstc_vc8000d";
 	};
 
 	video_codec_enc: hantro_vc8000e@0xf80ff000 {
@@ -1058,6 +1067,7 @@
 		clocks = <&clkc VCE>;
 		clock-names = "clk_vc8000e";
 		resets = <&rstc RST_VCE>;
+		reset-names = "rstc_vc8000e";
 	};
 
 	video_codec_emem {
@@ -1065,6 +1075,10 @@
 		memory-region = <&video_codec_reserve>;
 	};
 
+	video_codec_dmem {
+		compatible = "sunplus,q645-hantro-dmem";
+		memory-region = <&video_codec_reserve>;
+	};
 
 	poweroff {
 		compatible = "sunplus,sp-poweroff";
