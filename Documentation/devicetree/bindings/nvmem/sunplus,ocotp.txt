@@ -1,0 +1,44 @@
+Device-Tree bindings of sp-ocotp device
+
+Required properties:
+- compatible: Should be
+				"sunplus,sp7021-ocotp" for sp7021
+				"sunplus,q645-ocotp0" for q645
+				"sunplus,q645-ocotp1" for q645
+				"sunplus,q645-ocotp2" for q645
+- reg: Physical base address and length of the controller's register
+- clocks: Clock phandles (see clock-controller for details)
+- resets: Reset phandles (see reset-controller for details)
+
+/* Data cells */
+Child nodes of sp-ocotp, bindings of which as described in
+bindings/nvmem/nvmem.txt
+
+Example:
+
+otp: otp@0x9C00AF00 {
+	compatible = "sunplus,sp7021-ocotp";
+	reg = <0x9C00AF00 0x34>, <0x9C00AF80 0x58>;
+	reg-names = "hb_gpio", "otprx";
+	clocks = <&clkc OTPRX>;
+	resets = <&rstc RST_OTPRX>;
+
+	/* Data cells */
+	#address-cells = <1>;
+	#size-cells = <1>;
+	therm_calib: therm_calib {
+		reg = <0x14 0x3>;
+	};
+	mac_addr0: mac_addr0 {
+		reg = <0x34 0x6>;
+	};
+	mac_addr1: mac_addr1 {
+		reg = <0x3A 0x6>;
+	};
+	disc_vol0: disc_vol0 {
+		reg = <0x18 0x2>;
+	};
+	disc_vol1: disc_vol1 {
+		reg = <0x18 0x2>;
+	};
+};

@@ -87,8 +87,12 @@
 #define OTP_READ_ADDRESS                0x50
 #define RD_OTP_ADDRESS                  0x1F
 
-typedef struct {
+extern int sp_ocotp_probe(struct platform_device *pdev);
+extern int sp_ocotp_remove(struct platform_device *pdev);
+
+struct sp_otp_vX_t {
 	int size;
-} sp_otp_vX_t;
+};
 
 #endif /* __SP_OCOTP_FW_H_ */
+
