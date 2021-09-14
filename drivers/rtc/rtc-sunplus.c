@@ -1,28 +1,33 @@
-/*
- * How to test RTC:
- *
- * 1. use kernel commands
- * hwclock - query and set the hardware clock (RTC)
- *
- * (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
- * date 121209002014 # Set system to 2014/Dec/12 09:00
- * (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
- * hwclock -s # Set the System Time from the Hardware Clock
- * (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
- * date 121213002014 # Set system to 2014/Dec/12 13:00
- * (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
- * hwclock -w # Set the Hardware Clock to the current System Time
- * (for i in `seq 10000`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' && hwclock -r; sleep 1); done)
- *
- * How to setup alarm (e.g., 10 sec later):
- *     echo 0 > /sys/class/rtc/rtc0/wakealarm && \
- *     nnn=`date '+%s'` && echo $nnn && nnn=`expr $nnn + 10` && echo $nnn > /sys/class/rtc/rtc0/wakealarm
- *
- *
- * 2. use RTC Driver Test Program (\linux\application\module_test\rtc\rtc-test.c)
- *
- */
+// SPDX-License-Identifier: GPL-2.0-or-later
 
+/**************************************************************************************************/
+/* How to test RTC:										  */
+/*												  */
+/* 1. use kernel commands									  */
+/* hwclock - query and set the hardware clock (RTC)						  */
+/*												  */
+/* (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' */
+/*								&& hwclock -r; sleep 1); done)	  */
+/* date 121209002014 # Set system to 2014/Dec/12 09:00						  */
+/* (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' */
+/*								&& hwclock -r; sleep 1); done)	  */
+/* hwclock -s # Set the System Time from the Hardware Clock					  */
+/* (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' */
+/*								&& hwclock -r; sleep 1); done)	  */
+/* date 121213002014 # Set system to 2014/Dec/12 13:00						  */
+/* (for i in `seq 5`; do (echo ------ && echo -n 'date      : ' && date && echo -n 'hwclock -r: ' */
+/*								&& hwclock -r; sleep 1); done)	  */
+/* hwclock -w # Set the Hardware Clock to the current System Time				  */
+/* (for i in `seq 10000`; do (echo ------ && echo -n 'date  : ' && date && echo -n 'hwclock -r: ' */
+/*								&& hwclock -r; sleep 1); done)	  */
+/*												  */
+/* How to setup alarm (e.g., 10 sec later):							  */
+/*     echo 0 > /sys/class/rtc/rtc0/wakealarm && nnn=`date '+%s'` && echo $nnn && \		  */
+/*     nnn=`expr $nnn + 10` && echo $nnn > /sys/class/rtc/rtc0/wakealarm			  */
+/*												  */
+/* 2. use RTC Driver Test Program (\linux\application\module_test\rtc\rtc-test.c)		  */
+/*												  */
+/**************************************************************************************************/
 #include <linux/module.h>
 #include <linux/err.h>
 #include <linux/rtc.h>
@@ -31,29 +36,15 @@
 #include <linux/reset.h>
 #include <linux/of.h>
 #include <linux/ktime.h>
+#include <linux/io.h>
 
 /* ---------------------------------------------------------------------------------------------- */
-//#define DEBUG           // Unmark to enable dynamic debug
-#if 0
-#define FUNC_DEBUG() printk(KERN_DEBUG "[RTC] Debug: %s(%d)\n", __FUNCTION__, __LINE__)
-#else
-#define FUNC_DEBUG()
-#endif
+#define FUNC_DEBUG() pr_debug("[RTC] Debug: %s(%d)\n", __func__, __LINE__)
 
-#if 1
 #define RTC_DEBUG(fmt, args ...) pr_debug("[RTC] Debug: " fmt, ## args)
-#else
-#define RTC_DEBUG(fmt, args ...)
-#endif
-
-#if 1
-#define RTC_INFO(fmt, args ...) printk(KERN_INFO "[RTC] Info: " fmt, ## args)
-#else
-#define RTC_INFO(fmt, args ...)
-#endif
-
-#define RTC_WARN(fmt, args ...) printk(KERN_WARNING "[RTC] Warning: " fmt, ## args)
-#define RTC_ERR(fmt, args ...) printk(KERN_ERR "[RTC] Error: " fmt, ## args)
+#define RTC_INFO(fmt, args ...) pr_info("[RTC] Info: " fmt, ## args)
+#define RTC_WARN(fmt, args ...) pr_warn("[RTC] Warning: " fmt, ## args)
+#define RTC_ERR(fmt, args ...) pr_err("[RTC] Error: " fmt, ## args)
 /* ---------------------------------------------------------------------------------------------- */
 
 struct sunplus_rtc {
@@ -67,106 +58,104 @@ struct sunplus_rtc {
 
 struct sunplus_rtc sp_rtc;
 
-#define RTC_REG_NAME             "rtc_reg"
+#define RTC_REG_NAME		"rtc_reg"
 
 #ifdef CONFIG_SOC_SP7021
 struct sp_rtc_reg {
-	volatile unsigned int rsv00;
-	volatile unsigned int rsv01;
-	volatile unsigned int rsv02;
-	volatile unsigned int rsv03;
-	volatile unsigned int rsv04;
-	volatile unsigned int rsv05;
-	volatile unsigned int rsv06;
-	volatile unsigned int rsv07;
-	volatile unsigned int rsv08;
-	volatile unsigned int rsv09;
-	volatile unsigned int rsv10;
-	volatile unsigned int rsv11;
-	volatile unsigned int rsv12;
-	volatile unsigned int rsv13;
-	volatile unsigned int rsv14;
-	volatile unsigned int rsv15;
-	volatile unsigned int rtc_ctrl;
-	volatile unsigned int rtc_timer_out;
-	volatile unsigned int rtc_divider;
-	volatile unsigned int rtc_timer_set;
-	volatile unsigned int rtc_alarm_set;
-	volatile unsigned int rtc_user_data;
-	volatile unsigned int rtc_reset_record;
-	volatile unsigned int rtc_battery_ctrl;
-	volatile unsigned int rtc_trim_ctrl;
-	volatile unsigned int rsv25;
-	volatile unsigned int rsv26;
-	volatile unsigned int rsv27;
-	volatile unsigned int rsv28;
-	volatile unsigned int rsv29;
-	volatile unsigned int rsv30;
-	volatile unsigned int rsv31;
+	unsigned int rsv00;
+	unsigned int rsv01;
+	unsigned int rsv02;
+	unsigned int rsv03;
+	unsigned int rsv04;
+	unsigned int rsv05;
+	unsigned int rsv06;
+	unsigned int rsv07;
+	unsigned int rsv08;
+	unsigned int rsv09;
+	unsigned int rsv10;
+	unsigned int rsv11;
+	unsigned int rsv12;
+	unsigned int rsv13;
+	unsigned int rsv14;
+	unsigned int rsv15;
+	unsigned int rtc_ctrl;
+	unsigned int rtc_timer_out;
+	unsigned int rtc_divider;
+	unsigned int rtc_timer_set;
+	unsigned int rtc_alarm_set;
+	unsigned int rtc_user_data;
+	unsigned int rtc_reset_record;
+	unsigned int rtc_battery_ctrl;
+	unsigned int rtc_trim_ctrl;
+	unsigned int rsv25;
+	unsigned int rsv26;
+	unsigned int rsv27;
+	unsigned int rsv28;
+	unsigned int rsv29;
+	unsigned int rsv30;
+	unsigned int rsv31;
 };
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 #define INT_STATUS_MASK		0x1
 #define INT_STATUS_UPDATE	0x0
 #define INT_STATUS_ALARM	0x1
 
 struct sp_rtc_reg {
-	volatile unsigned int rsv00;
-	volatile unsigned int rtc_ctrl;
-	volatile unsigned int rtc_timer;
-	volatile unsigned int rtc_ontime_set;
-	volatile unsigned int rtc_clock_set;
-	volatile unsigned int rsv05;
-	volatile unsigned int rtc_periodic_set;
-	volatile unsigned int rtc_int_status;
-	volatile unsigned int rsv08;
-	volatile unsigned int rsv09;
-	volatile unsigned int sys_rtc_cnt_31_0;
-	volatile unsigned int sys_rtc_cnt_63_32;
-	volatile unsigned int rsv12;
-	volatile unsigned int rsv13;
-	volatile unsigned int rsv14;
-	volatile unsigned int rsv15;
-	volatile unsigned int rsv16;
-	volatile unsigned int rsv17;
-	volatile unsigned int rsv18;
-	volatile unsigned int rsv19;
-	volatile unsigned int rsv20;
-	volatile unsigned int rsv21;
-	volatile unsigned int rsv22;
-	volatile unsigned int rsv23;
-	volatile unsigned int rsv24;
-	volatile unsigned int rsv25;
-	volatile unsigned int rsv26;
-	volatile unsigned int rsv27;
-	volatile unsigned int rsv28;
-	volatile unsigned int rsv29;
-	volatile unsigned int rsv30;
-	volatile unsigned int rsv31;
+	unsigned int rsv00;
+	unsigned int rtc_ctrl;
+	unsigned int rtc_timer;
+	unsigned int rtc_ontime_set;
+	unsigned int rtc_clock_set;
+	unsigned int rsv05;
+	unsigned int rtc_periodic_set;
+	unsigned int rtc_int_status;
+	unsigned int rsv08;
+	unsigned int rsv09;
+	unsigned int sys_rtc_cnt_31_0;
+	unsigned int sys_rtc_cnt_63_32;
+	unsigned int rsv12;
+	unsigned int rsv13;
+	unsigned int rsv14;
+	unsigned int rsv15;
+	unsigned int rsv16;
+	unsigned int rsv17;
+	unsigned int rsv18;
+	unsigned int rsv19;
+	unsigned int rsv20;
+	unsigned int rsv21;
+	unsigned int rsv22;
+	unsigned int rsv23;
+	unsigned int rsv24;
+	unsigned int rsv25;
+	unsigned int rsv26;
+	unsigned int rsv27;
+	unsigned int rsv28;
+	unsigned int rsv29;
+	unsigned int rsv30;
+	unsigned int rsv31;
 };
 #endif
-static volatile struct sp_rtc_reg *rtc_reg_ptr = NULL;
-
-//static struct platform_device *sp_rtc_device0;
+static struct sp_rtc_reg *rtc_reg_ptr;
 
 #ifdef CONFIG_SOC_SP7021
 static void sp_get_seconds(unsigned long *secs)
 {
-	*secs = (unsigned long)(rtc_reg_ptr->rtc_timer_out);
+	*secs = (unsigned long)readl(&rtc_reg_ptr->rtc_timer_out);
 }
 
 static void sp_set_seconds(unsigned long secs)
 {
-	rtc_reg_ptr->rtc_timer_set = (u32)(secs);
+	writel((u32)secs, &rtc_reg_ptr->rtc_timer_set);
 }
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 static void sp_get_seconds(unsigned long *secs)
 {
-	*secs = (unsigned long)(rtc_reg_ptr->rtc_timer);
+	*secs = (unsigned long)readl(&rtc_reg_ptr->rtc_timer);
 }
 
 static void sp_set_seconds(unsigned long secs)
 {
-	rtc_reg_ptr->rtc_clock_set = (u32)(secs);
+	writel((u32)secs, &rtc_reg_ptr->rtc_clock_set);
 }
 #endif
 
@@ -176,10 +165,9 @@ static int sp_rtc_read_time(struct device *dev, struct rtc_time *tm)
 
 	sp_get_seconds(&secs);
 	rtc_time64_to_tm(secs, tm);
-#if 0
 	RTC_DEBUG("%s:  RTC date/time to %d-%d-%d, %02d:%02d:%02d.\r\n",
-	       __func__, tm->tm_mday, tm->tm_mon + 1, tm->tm_year, tm->tm_hour, tm->tm_min, tm->tm_sec);
-#endif
+		__func__, tm->tm_mday, tm->tm_mon + 1, tm->tm_year,
+					tm->tm_hour, tm->tm_min, tm->tm_sec);
 
 	return rtc_valid_tm(tm);
 }
@@ -198,19 +186,23 @@ static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
 
-	rtc_reg_ptr->rtc_ctrl = (1 << (16+4)) | (1 << 4);       /* Keep RTC from system reset */
+	// Keep RTC from system reset
+	writel((1 << (16+4)) | (1 << 4), &rtc_reg_ptr->rtc_ctrl);
+
 	return 0;
 }
 
 static int sp_rtc_resume(struct platform_device *pdev)
 {
-	/*
-	 * Because RTC is still powered during suspend,
-	 * there is nothing to do here.
-	 */
+	/*						*/
+	/* Because RTC is still powered during suspend,	*/
+	/* there is nothing to do here.			*/
+	/*						*/
 	FUNC_DEBUG();
 
-	rtc_reg_ptr->rtc_ctrl = (1 << (16+4)) | (1 << 4);       /* Keep RTC from system reset */
+	// Keep RTC from system reset
+	writel((1 << (16+4)) | (1 << 4), &rtc_reg_ptr->rtc_ctrl);
+
 	return 0;
 }
 
@@ -221,6 +213,7 @@ static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	secs = rtc_tm_to_time64(tm);
 	RTC_DEBUG("%s, secs = %lu\n", __func__, secs);
 	sp_set_seconds(secs);
+
 	return 0;
 }
 
@@ -241,15 +234,14 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 			sp_rtc.set_alarm_again = 1;
 	}
 
-	rtc_reg_ptr->rtc_alarm_set = (u32)(alarm_time);
-	wmb();
+	writel((u32)alarm_time, &rtc_reg_ptr->rtc_alarm_set);
+	wmb();			// make sure settings are effective.
 
-	/* enable alarm here after enabling update irq */
-	if (rtc->uie_rtctimer.enabled) {
-		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
-	} else if (!rtc->aie_timer.enabled) {
-		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
-	}
+	// enable alarm for update irq
+	if (rtc->uie_rtctimer.enabled)
+		writel((0x003F << 16) | 0x17, &rtc_reg_ptr->rtc_ctrl);
+	else if (!rtc->aie_timer.enabled)
+		writel((0x0007 << 16) | 0x0, &rtc_reg_ptr->rtc_ctrl);
 
 	return 0;
 }
@@ -258,7 +250,7 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	unsigned int alarm_time;
 
-	alarm_time = rtc_reg_ptr->rtc_alarm_set;
+	alarm_time = readl(&rtc_reg_ptr->rtc_alarm_set);
 	RTC_DEBUG("%s, alarm_time: %u\n", __func__, alarm_time);
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
 
@@ -270,13 +262,13 @@ static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	struct rtc_device *rtc = dev_get_drvdata(dev);
 
 	if (enabled)
-		rtc_reg_ptr->rtc_ctrl = (0x003F << 16) | 0x0017;
+		writel((0x003F << 16) | 0x17, &rtc_reg_ptr->rtc_ctrl);
 	else if (!rtc->uie_rtctimer.enabled)
-		rtc_reg_ptr->rtc_ctrl = (0x0007 << 16) | 0x0;
+		writel((0x0007 << 16) | 0x0, &rtc_reg_ptr->rtc_ctrl);
 
 	return 0;
 }
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct rtc_device *rtc = dev_get_drvdata(dev);
@@ -293,15 +285,14 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 			sp_rtc.set_alarm_again = 1;
 	}
 
-	rtc_reg_ptr->rtc_ontime_set = (u32)(alarm_time);
-	wmb();
+	writel((u32)alarm_time, &rtc_reg_ptr->rtc_ontime_set);
+	wmb();			// make sure settings are effective.
 
-	/* enable alarm here after enabling update IRQ */
-	if (rtc->uie_rtctimer.enabled) {
-		rtc_reg_ptr->rtc_ctrl = 0x13;
-	} else if (!rtc->aie_timer.enabled) {
-		rtc_reg_ptr->rtc_ctrl &= 0x1C;
-	}
+	// enable alarm here after enabling update IRQ
+	if (rtc->uie_rtctimer.enabled)
+		writel(0x13, &rtc_reg_ptr->rtc_ctrl);
+	else if (!rtc->aie_timer.enabled)
+		writel(0x1C, &rtc_reg_ptr->rtc_ctrl);
 
 	return 0;
 }
@@ -310,7 +301,7 @@ static int sp_rtc_read_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	unsigned int alarm_time;
 
-	alarm_time = rtc_reg_ptr->rtc_ontime_set;
+	alarm_time = readl(&rtc_reg_ptr->rtc_ontime_set);
 	RTC_DEBUG("%s, alarm_time: %u\n", __func__, alarm_time);
 	rtc_time64_to_tm((unsigned long)(alarm_time), &alrm->time);
 
@@ -322,9 +313,9 @@ static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	struct rtc_device *rtc = dev_get_drvdata(dev);
 
 	if (enabled)
-		rtc_reg_ptr->rtc_ctrl = 0x13;
+		writel(0x13, &rtc_reg_ptr->rtc_ctrl);
 	else if (!rtc->uie_rtctimer.enabled)
-		rtc_reg_ptr->rtc_ctrl &= 0x1C;
+		writel(0x1C, &rtc_reg_ptr->rtc_ctrl);
 
 	return 0;
 }
@@ -344,7 +335,7 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
 #ifdef CONFIG_SOC_Q645
-	if ((rtc_reg_ptr->rtc_int_status & INT_STATUS_MASK) == INT_STATUS_ALARM) {
+	if ((readl(&rtc_reg_ptr->rtc_int_status) & INT_STATUS_MASK) == INT_STATUS_ALARM) {
 #endif
 		if (rtc->uie_rtctimer.enabled) {
 			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_UF);
@@ -367,23 +358,24 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 }
 
 #ifdef CONFIG_SOC_SP7021
-/*
- mode   bat_charge_rsel   bat_charge_dsel   bat_charge_en     Remarks
- 0xE            x              x                 0            Disable
- 0x1            0              0                 1            0.86mA (2K Ohm with diode)
- 0x5            1              0                 1            1.81mA (250 Ohm with diode)
- 0x9            2              0                 1            2.07mA (50 Ohm with diode)
- 0xD            3              0                 1            16.0mA (0 Ohm with diode)
- 0x3            0              1                 1            1.36mA (2K Ohm without diode)
- 0x7            1              1                 1            3.99mA (250 Ohm without diode)
- 0xB            2              1                 1            4.41mA (50 Ohm without diode)
- 0xF            3              1                 1            16.0mA (0 Ohm without diode)
-*/
+/* ---------------------------------------------------------------------------------------------- */
+/* mode   bat_charge_rsel   bat_charge_dsel   bat_charge_en     Remarks				  */
+/* 0xE            x              x                 0            Disable				  */
+/* 0x1            0              0                 1            0.86mA (2K Ohm with diode)	  */
+/* 0x5            1              0                 1            1.81mA (250 Ohm with diode)	  */
+/* 0x9            2              0                 1            2.07mA (50 Ohm with diode)	  */
+/* 0xD            3              0                 1            16.0mA (0 Ohm with diode)	  */
+/* 0x3            0              1                 1            1.36mA (2K Ohm without diode)	  */
+/* 0x7            1              1                 1            3.99mA (250 Ohm without diode)	  */
+/* 0xB            2              1                 1            4.41mA (50 Ohm without diode)	  */
+/* 0xF            3              1                 1            16.0mA (0 Ohm without diode)	  */
+/* ---------------------------------------------------------------------------------------------- */
 static void sp_rtc_set_batt_charge_ctrl(u32 _mode)
 {
 	u8 m = _mode & 0x000F;
+
 	RTC_DEBUG("battery charge mode: 0x%X\n", m);
-	rtc_reg_ptr->rtc_battery_ctrl = (0x000F << 16) | m;
+	writel((0x000F << 16) | m, &rtc_reg_ptr->rtc_battery_ctrl);
 }
 #endif
 
@@ -403,40 +395,42 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);
 #ifdef CONFIG_SOC_SP7021
 	RTC_DEBUG("res = 0x%x\n", res->start);
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 	RTC_DEBUG("res = 0x%llx\n", res->start);
 #endif
 
 	if (res) {
 		reg_base = devm_ioremap_resource(&plat_dev->dev, res);
-		if (IS_ERR(reg_base)) {
+		if (IS_ERR(reg_base))
 			RTC_ERR("%s devm_ioremap_resource fail\n", RTC_REG_NAME);
-		}
 	}
 	RTC_DEBUG("reg_base = 0x%lx\n", (unsigned long)reg_base);
 
 	// clk
 	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev, NULL);
 	RTC_DEBUG("sp_rtc->clk = 0x%lx\n", (unsigned long)sp_rtc.rtcclk);
-	if (IS_ERR(sp_rtc.rtcclk)) {
+	if (IS_ERR(sp_rtc.rtcclk))
 		RTC_DEBUG("devm_clk_get fail\n");
-	}
+
 	ret = clk_prepare_enable(sp_rtc.rtcclk);
 
 	// reset
 	sp_rtc.rstc = devm_reset_control_get(&plat_dev->dev, NULL);
-	RTC_DEBUG("sp_rtc->rstc = 0x%lx \n", (unsigned long)sp_rtc.rstc);
+	RTC_DEBUG("sp_rtc->rstc = 0x%lx\n", (unsigned long)sp_rtc.rstc);
 	if (IS_ERR(sp_rtc.rstc)) {
 		ret = PTR_ERR(sp_rtc.rstc);
 		RTC_ERR("SPI failed to retrieve reset controller: %d\n", ret);
 		goto free_clk;
 	}
+
 	ret = reset_control_deassert(sp_rtc.rstc);
 	if (ret)
 		goto free_clk;
 
-	rtc_reg_ptr = (volatile struct sp_rtc_reg *)(reg_base);
-	rtc_reg_ptr->rtc_ctrl = (1 << (16+4)) | (1 << 4);       /* Keep RTC from system reset */
+	rtc_reg_ptr = (struct sp_rtc_reg *)(reg_base);
+
+	// Keep RTC from system reset
+	writel((1 << (16+4)) | (1 << 4), &rtc_reg_ptr->rtc_ctrl);
 
 	// request irq
 	irq = platform_get_irq(plat_dev, 0);
@@ -465,7 +459,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 #ifdef CONFIG_SOC_SP7021
 	rtc = devm_rtc_device_register(&plat_dev->dev, "sp7021-rtc", &sp_rtc_ops, THIS_MODULE);
-#elif defined (CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 	rtc = devm_rtc_device_register(&plat_dev->dev, "q645-rtc", &sp_rtc_ops, THIS_MODULE);
 #endif
 	if (IS_ERR(rtc)) {
@@ -477,7 +471,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 #ifdef CONFIG_SOC_SP7021
 	RTC_INFO("sp7021-rtc loaded\n");
-#elif defined (CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 	RTC_INFO("q645-rtc loaded\n");
 #endif
 
@@ -493,7 +487,6 @@ free_clk:
 
 static int sp_rtc_remove(struct platform_device *plat_dev)
 {
-	//struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 	reset_control_assert(sp_rtc.rstc);
 
 	return 0;
@@ -502,7 +495,7 @@ static int sp_rtc_remove(struct platform_device *plat_dev)
 static const struct of_device_id sp_rtc_of_match[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-rtc" },
-#elif defined (CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 	{ .compatible = "sunplus,q645-rtc" },
 #endif
 	{ /* sentinel */ }
@@ -517,7 +510,7 @@ static struct platform_driver sp_rtc_driver = {
 	.driver  = {
 #ifdef CONFIG_SOC_SP7021
 		.name = "sp7021-rtc",
-#elif defined (CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 		.name = "q645-rtc",
 #endif
 		.owner = THIS_MODULE,
@@ -529,3 +522,4 @@ module_platform_driver(sp_rtc_driver);
 MODULE_AUTHOR("Sunplus");
 MODULE_DESCRIPTION("Sunplus RTC driver");
 MODULE_LICENSE("GPL");
+
