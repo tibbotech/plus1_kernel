@@ -1021,11 +1021,13 @@ config VISCONTI_WATCHDOG
 
 config SUNPLUS_WATCHDOG
 	tristate "Sunplus watchdog support"
-	depends on SOC_SP7021
+	depends on SOC_SP7021 || SOC_Q645
 	select WATCHDOG_CORE
 	help
 	  Say Y here to include support for the watchdog timer
 	  in Sunplus SoCs.
+	  To compile this driver as a module, choose M here: the
+	  module will be called sunplus_wdt.
 
 # X86 (i386 + ia64 + x86_64) Architecture
 

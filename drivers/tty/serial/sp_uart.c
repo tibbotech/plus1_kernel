@@ -31,9 +31,11 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #ifdef CONFIG_SOC_Q645
+#include <dt-bindings/clock/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 #endif
 #ifdef CONFIG_SOC_SP7021
+#include <dt-bindings/clock/sp-q628.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #endif
 #include <linux/delay.h>
@@ -1280,10 +1282,11 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
+#ifdef CONFIG_SOC_Q645
 	/*
 	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
 	 * For real chip, the baudrate is 115200.
-	 * */
+	 */
 	if (baud == 921600) {
 		/* Don't change port->uartclk to CLK_HIGH_UART, keep the value of lower clk src */
 		clk = CLK_HIGH_UART;
@@ -1291,16 +1294,19 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port, struct ktermios
 	} else {
 		clk = port->uartclk;
 	}
+#else
+	clk = port->uartclk;
+#endif
 
 	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
 	while (!(sp_uart_get_line_status(port->membase) & SP_UART_LSR_TXE)) {
 		/* Send all data in Tx FIFO before changing clock source, it should be UART0 only */
 	}
 
-	/* Switch clock source: 0 for sysclk, 1 for 27M */
-	sp_uart_set_clk_src(port->membase, clk == 27000000);
+	/* Switch clock source: 0 for sysclk, 1 for XTAL */
+	sp_uart_set_clk_src(port->membase, clk == XTAL);
 
-	/* printk("UART clock: %d, baud: %d\n", clk, baud); */
+	/* printk("UART clock: %u, baud: %u\n", clk, baud); */
 	clk += baud >> 1;
 	div = clk / baud;
 	ext = div & 0x0F;
@@ -1987,7 +1993,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 #if 0
 	clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(clk)) {
-		port->uartclk = (27 * 1000 * 1000); /* default */
+		port->uartclk = XTAL; /* XTAL */
 	} else {
 		port->uartclk = clk_get_rate(clk);
 	}
@@ -2025,7 +2031,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	clk = sunplus_uart_ports[pdev->id].clk;
 
 	if (IS_ERR(clk)) {
-		port->uartclk = (27 * 1000 * 1000); /* default */
+		port->uartclk = XTAL; /* XTAL */
 	} else {
 		port->uartclk = clk_get_rate(clk);
 	}

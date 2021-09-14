@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 
 #include <linux/firmware/sp-ocotp.h>
 
-extern int sp_ocotp_probe(struct platform_device *);
-extern int sp_ocotp_remove(struct platform_device *);
-
-static int efuse2_sunplus_platform_probe(struct platform_device *dev) {
+static int efuse2_sunplus_platform_probe(struct platform_device *dev)
+{
 #ifdef CONFIG_SOC_Q645
 	dev->id = 3;
 #endif
@@ -15,7 +15,7 @@ static int efuse2_sunplus_platform_probe(struct platform_device *dev) {
 	return sp_ocotp_probe(dev);
 }
 
-const sp_otp_vX_t  sp_otp2_v0 = {
+const struct sp_otp_vX_t  sp_otp2_v0 = {
 	.size = QAK645_EFUSE2_SIZE,
 };
 
@@ -34,7 +34,8 @@ static struct platform_driver sp_otp2_driver = {
 	}
 };
 
-static int __init sp_otp2_drv_new(void) {
+static int __init sp_otp2_drv_new(void)
+{
 #ifdef CONFIG_SOC_Q645
 	return platform_driver_register(&sp_otp2_driver);
 #else
@@ -43,7 +44,8 @@ static int __init sp_otp2_drv_new(void) {
 }
 subsys_initcall(sp_otp2_drv_new);
 
-static void __exit sp_otp2_drv_del(void) {
+static void __exit sp_otp2_drv_del(void)
+{
 	platform_driver_unregister(&sp_otp2_driver);
 }
 module_exit(sp_otp2_drv_del);

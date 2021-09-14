@@ -1,13 +1,13 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include <linux/of_device.h>
 
 #include <linux/firmware/sp-ocotp.h>
 
-extern int sp_ocotp_probe(struct platform_device *);
-extern int sp_ocotp_remove(struct platform_device *);
-
-static int efuse0_sunplus_platform_probe(struct platform_device *dev) {
+static int efuse0_sunplus_platform_probe(struct platform_device *dev)
+{
 #ifdef CONFIG_SOC_Q645
 	dev->id = 1;
 #endif
@@ -16,15 +16,11 @@ static int efuse0_sunplus_platform_probe(struct platform_device *dev) {
 }
 
 #ifdef CONFIG_SOC_SP7021
-const sp_otp_vX_t  sp_otp_v0 = {
+const struct sp_otp_vX_t  sp_otp_v0 = {
 	.size = QAC628_OTP_SIZE,
 };
-#elif defined(CONFIG_SOC_I143)
-const sp_otp_vX_t  sp_otp_v0 = {
-	.size = I143_OTP_SIZE,
-};
-#elif defined(CONFIG_SOC_Q645)
-const sp_otp_vX_t  sp_otp_v0 = {
+#elif defined CONFIG_SOC_Q645
+const struct sp_otp_vX_t  sp_otp_v0 = {
 	.size = QAK645_EFUSE0_SIZE,
 };
 #endif
@@ -32,9 +28,7 @@ const sp_otp_vX_t  sp_otp_v0 = {
 static const struct of_device_id sp_ocotp0_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_otp_v0  },
-#elif defined(CONFIG_SOC_I143)
-	{ .compatible = "sunplus,i143-ocotp", .data = &sp_otp_v0  },
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 	{ .compatible = "sunplus,q645-ocotp0", .data = &sp_otp_v0  },
 #endif
 	{ }
@@ -47,25 +41,25 @@ static struct platform_driver sp_otp0_driver = {
 	.driver    = {
 #ifdef CONFIG_SOC_SP7021
 		.name           = "sunplus,sp7021-ocotp",
-#elif defined(CONFIG_SOC_I143)
-		.name		= "sunplus,i143-ocotp",
-
-#elif defined(CONFIG_SOC_Q645)
+#elif defined CONFIG_SOC_Q645
 		.name           = "sunplus,q645-ocotp0",
 #endif
 		.of_match_table = sp_ocotp0_dt_ids,
 	}
 };
 
-static int __init sp_otp0_drv_new(void) {
+static int __init sp_otp0_drv_new(void)
+{
 	return platform_driver_register(&sp_otp0_driver);
 }
 subsys_initcall(sp_otp0_drv_new);
 
-static void __exit sp_otp0_drv_del(void) {
+static void __exit sp_otp0_drv_del(void)
+{
 	platform_driver_unregister(&sp_otp0_driver);
 }
 module_exit(sp_otp0_drv_del);
 
 MODULE_DESCRIPTION("Sunplus OCOTP0 driver");
 MODULE_LICENSE("GPL v2");
+
