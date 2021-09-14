@@ -518,7 +518,7 @@
 		};
 #endif
 
-		icm: icm@G81 {
+		icm: icm@0x9c002880 {
 			compatible = "sunplus,sp7021-icm";
 			clocks = <&clkc ICM>;
 			resets = <&rstc RST_ICM>;

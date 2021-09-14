@@ -68,13 +68,10 @@ static u32 mux_table[] = { 0x00, 0x01, 0x03, 0x07, 0x0f };
 static struct clk *clks[CLK_MAX + AC_MAX + PLL_MAX];
 static struct clk_onecell_data clk_data;
 static void __iomem *moon_regs;
-static void __iomem *mipi_regs;
 
 #define clk_regs	(moon_regs + 0x004) /* G0.1 ~ CLKEN */
 #define mux_regs	(moon_regs + 0x100)	/* G2.0 ~ CLK_SEL */
 #define pll_regs	(moon_regs + 0x200) /* G4.0 ~ PLL */
-
-#define MIPI_REGS(group, idx)	(((group - 165) * 32 + idx) * 4)
 
 struct sp_clk_s {
 	const char *name;
@@ -176,14 +173,14 @@ static struct sp_clk_s sp_clks[] = {
 	_(SPI_COMBO_4),
 
 	_(SPI_COMBO_5),
-	_(CSIIW0,		MIPI_REGS(165, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(MIPICSI0,		MIPI_REGS(165, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(CSIIW1,		MIPI_REGS(167, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(MIPICSI1,		MIPI_REGS(167, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(CSIIW2,		MIPI_REGS(169, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(MIPICSI2,		MIPI_REGS(169, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(CSIIW3,		MIPI_REGS(171, 22),	1,	1, {"f_320m", "f_300m"}),
-	_(MIPICSI3,		MIPI_REGS(171, 22),	1,	1, {"f_320m", "f_300m"}),
+	_(CSIIW0,		0,	0,	0, {"f_320m"}),
+	_(MIPICSI0,		0,	0,	0, {"f_320m"}),
+	_(CSIIW1,		0,	0,	0, {"f_320m"}),
+	_(MIPICSI1,		0,	0,	0, {"f_320m"}),
+	_(CSIIW2,		0,	0,	0, {"f_320m"}),
+	_(MIPICSI2,		0,	0,	0, {"f_320m"}),
+	_(CSIIW3,		0,	0,	0, {"f_320m"}),
+	_(MIPICSI3,		0,	0,	0, {"f_320m"}),
 	_(VCL),
 	_(DISP_PWM,		0,	0,	0, {"f_200m"}),
 	_(I2CM1),
@@ -538,14 +535,12 @@ static void __init sp_clkc_init(struct device_node *np)
 	}
 
 	moon_regs = of_iomap(np, 0);
-	mipi_regs = of_iomap(np, 1);
-	if (WARN_ON(!moon_regs || !mipi_regs)) {
+	if (WARN_ON(!moon_regs)) {
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
 
 	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
-	pr_debug("sp-clkc: mipi_regs = %llx", (u64)mipi_regs);
 
 	/* PLLs */
 	clks[PLLS] = clk_register_sp_pll("PLLS", PLLS_CTL, 14);
@@ -579,10 +574,6 @@ static void __init sp_clkc_init(struct device_node *np)
 
 	pr_debug("sp-clkc: register sp_clks");
 
-	/* WORKAROUND: read CSI/MIPI mux reg need clken & release reset 1st */
-	writel(0x01fe01fe, moon_regs + 0x18); // G0.6  clken
-	writel(0x01fe0000, moon_regs + 0x68); // G0.26 reset
-
 	/* sp_clks */
 	for (i = 0; i < ARRAY_SIZE(sp_clks); i++) {
 		struct sp_clk_s *clk = &sp_clks[i];
@@ -590,7 +581,7 @@ static void __init sp_clkc_init(struct device_node *np)
 		j = clk->id & 0xffff;
 		clks[j] = clk_register_sp_clk(clk->name,
 			clk->parent_names[0] ? clk->parent_names : default_parents,
-			(clk->mux < 32) ? mux_regs + (clk->mux << 2) : mipi_regs + clk->mux,
+			mux_regs + (clk->mux << 2),
 			clk->width, clk->shift,
 			clk_regs + (j >> 4 << 2), j & 0x0f);
 	}

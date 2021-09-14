@@ -3,6 +3,17 @@
 # Platform drivers
 #	Most drivers here are currently for webcam support
 
+menuconfig ETHOS_N_NPU_DRIVERS
+	tristate "ML Inference Processor ETHOS_N_NPU"
+	help
+	  Say Y here to enable hardware ml inference processor
+
+if ETHOS_N_NPU_DRIVERS
+
+source "drivers/media/platform/sunplus/ethos-n78/Kconfig"
+
+endif # ETHOS_N_NPU_DRIVERS
+
 menuconfig V4L_PLATFORM_DRIVERS
 	bool "V4L platform devices"
 	default y
