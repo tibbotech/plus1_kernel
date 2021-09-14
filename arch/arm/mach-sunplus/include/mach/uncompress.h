@@ -8,7 +8,22 @@
 
 #include <soc/sunplus/sp_uart.h>
 
-static regs_uart_t *uart_base = ((regs_uart_t *)(LL_UART_PADDR));
+struct regs_uart_t {
+	u32 uart_data;
+	u32 uart_lsr;
+	u32 uart_msr;
+	u32 uart_lcr;
+	u32 uart_mcr;
+	u32 uart_div_l;
+	u32 uart_div_h;
+	u32 uart_isc;
+	u32 uart_tx_residue;
+	u32 uart_rx_residue;
+	u32 uart_rx_threshold;
+	u32 uart_clk_src;
+};
+
+static struct regs_uart_t *uart_base = ((struct regs_uart_t *)(LL_UART_PADDR));
 
 static void putc(int c)
 {
