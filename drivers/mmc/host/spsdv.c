@@ -193,7 +193,8 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	if (clk > f_max)
 		clk = f_max;
 
-	clkdiv = ((SPSDC_SYS_CLK)/clk)-1;
+	clkdiv = (clk_get_rate(host->clk)/clk)-1;
+	//clkdiv = ((SPSDC_SYS_CLK)/clk)-1;
 	if( (SPSDC_SYS_CLK % clk) > (clk/10) ){
 	   clkdiv++;
 	   spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk, 
