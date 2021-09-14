@@ -161,8 +161,7 @@
 		clkc: clkc@0xf8000004 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
-			reg = <0x00 0xf8000000 0x00 0x280>, // MOON G0 ~ G4
-			      <0x00 0xf8005280 0x00 0x400>; // MIPI G165 ~ G172
+			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
 		};
 	};
 
