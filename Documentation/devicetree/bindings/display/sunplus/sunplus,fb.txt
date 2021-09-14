@@ -1,0 +1,10 @@
+Device-Tree bindings for fb driver
+
+Required properties:
+- compatible: Should be "sunplus,sp7021-fb"
+
+Example:
+
+		fb_device {
+			compatible = "sunplus,sp7021-fb";
+		};

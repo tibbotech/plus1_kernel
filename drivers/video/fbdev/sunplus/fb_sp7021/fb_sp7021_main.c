@@ -1,30 +1,10 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2018 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-
-/**
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
  * @file fb_sp7021_main.c
  * @brief linux kernel framebuffer main driver
  * @author PoChou Chen
  */
+
 /**************************************************************************
  * Header Files
  **************************************************************************/
@@ -95,14 +75,14 @@ static struct fb_ops framebuffer_ops = {
 	.fb_pan_display		= _sp7021_fb_pan_display,
 	.fb_setcmap			= _sp7021_fb_setcmap,
 	.fb_ioctl			= _sp7021_fb_ioctl,
-	.fb_fillrect    	= cfb_fillrect,
-	.fb_copyarea    	= cfb_copyarea,
-	.fb_imageblit   	= cfb_imageblit,
+	.fb_fillrect		= cfb_fillrect,
+	.fb_copyarea		= cfb_copyarea,
+	.fb_imageblit		= cfb_imageblit,
 };
 
 static const struct of_device_id _sp7021_fb_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-fb", },
-	{ /* Sentinel */ }
+	{}
 };
 MODULE_DEVICE_TABLE(of, _sp7021_fb_dt_ids);
 
@@ -167,7 +147,7 @@ static int _sp7021_fb_create_device(struct platform_device *pdev,
 	fbWorkMem->fbsize = fbWorkMem->fbpagesize * fbWorkMem->fbpagenum;
 
 	/* Allocate Buffer */
-	fbWorkMem->fbmem = (void __iomem *)dma_alloc_coherent(&pdev->dev,
+	fbWorkMem->fbmem = dma_alloc_coherent(&pdev->dev,
 			fbWorkMem->fbsize, &fb_phymem, GFP_KERNEL | __GFP_ZERO);
 
 	if (!fbWorkMem->fbmem) {
@@ -361,8 +341,7 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 					&info->var.green);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(blue++),
 					&info->var.blue);
-		}
-		else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGBA_8888) {
+		} else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGBA_8888) {
 			palette[i] = sp7021_fb_chan_by_field((unsigned char)*(red++),
 					&info->var.red);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(green++),
@@ -370,9 +349,8 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(blue++),
 					&info->var.blue);
 			palette[i] |= 0x000000ff;
-		}		
-		else if ( (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) || 
-					(fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGB_565) ) {
+		} else if ((fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) ||
+					(fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGB_565)) {
 			palette[i] = sp7021_fb_chan_by_field((unsigned char)trans,
 					&info->var.transp);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(red++),
@@ -381,8 +359,7 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 					&info->var.green);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(blue++),
 					&info->var.blue);
-		}
-		else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_ARGB_4444) {
+		} else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_ARGB_4444) {
 			palette[i] = 0xf000f000;
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(red++),
 					&info->var.red);
@@ -390,8 +367,7 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 					&info->var.green);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(blue++),
 					&info->var.blue);
-		}
-		else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGBA_4444) {
+		} else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_RGBA_4444) {
 			palette[i] = sp7021_fb_chan_by_field((unsigned char)*(red++),
 					&info->var.red);
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(green++),
@@ -399,8 +375,7 @@ static int _sp7021_fb_setcmap(struct fb_cmap *cmap, struct fb_info *info)
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(blue++),
 					&info->var.blue);
 			palette[i] |= 0x000f000f;
-		}
-		else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_ARGB_1555) {
+		} else if (fb_par->ColorFmt == DRV_OSD_REGION_FORMAT_ARGB_1555) {
 			palette[i] = 0x80008000;
 			palette[i] |= sp7021_fb_chan_by_field((unsigned char)*(red++),
 					&info->var.red);
@@ -444,7 +419,7 @@ static int _sp7021_fb_remove(struct platform_device *pdev)
 	}
 
 	DRV_IRQ_DISABLE();
-	
+
 	DRV_OSD_Set_UI_UnInit();
 
 	return 0;
@@ -486,7 +461,7 @@ static int _sp7021_fb_probe(struct platform_device *pdev)
 		goto ERROR_HANDLE_FB_INIT;
 
 	DRV_OSD_Set_UI_Init(&Info);
-	
+
 	DRV_IRQ_ENABLE();
 
 	fb_par = (struct framebuffer_t *)gFB_INFO->par;

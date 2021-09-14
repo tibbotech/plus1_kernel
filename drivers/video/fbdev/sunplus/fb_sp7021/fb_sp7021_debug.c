@@ -1,30 +1,10 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2019 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-
-/**
- * @file fb_sp7021_debug.c
- * @brief linux kernel framebuffer debug driver
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
+ * @file fb_sp7021_main.c
+ * @brief linux kernel framebuffer main driver
  * @author PoChou Chen
  */
+
 /**************************************************************************
  *                         H E A D E R   F I L E S
  **************************************************************************/
@@ -261,8 +241,7 @@ static void _Draw_Bmpfile(char *filename,
 				color |= sp7021_fb_chan_by_field(
 						tmpbuf[line_index],
 						&fbinfo->var.blue);
-
-#if 0
+#ifdef FB_DEBUG_SP7021
 				mod_dbg("B:%x G:%x R:%x A:%x",
 					tmpbuf[line_index],
 					tmpbuf[line_index + 1],
