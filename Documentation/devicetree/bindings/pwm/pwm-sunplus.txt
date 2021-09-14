@@ -1,0 +1,52 @@
+Sunplus SP7021 PWM driver bindings
+--------------------------------------
+
+Required parameters:
+- compatible :	"sunplus,sp7021-pwm"
+- #pwm-cells :	Number of cells used to specify a PWM. First cell
+			specifies the per-chip index of the PWM to use and the
+			second cell is the period in nanoseconds - fixed to 2.
+- reg :	Physical base address and length of the controller's
+		registers.
+- clocks : Clock phandles (see clock-controller for details).
+- resets : Reset phandles (see reset-controller for details).
+- pinctrl-names: 	Set to "default".
+- pinctrl-0:	List of phandles pointing to pin configuration nodes
+			for PWM module.
+
+Optional properties:
+- none
+
+Example:
+
+		pwm: pwm@0x9c007a00 {
+			#pwm-cells = <2>;
+			compatible = "sunplus,sp7021-pwm";
+			reg = <0x9c007a00 0x80>;
+			clocks = <&clkc DISP_PWM>;
+			resets = <&rstc RST_DISP_PWM>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pins_pwm>;
+		};
+
+		pctl: pctl@0x9C000100 {
+			compatible = "sunplus,sp7021-pctl";
+			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
+			gpio-controller;
+			#gpio-cells = <2>;
+			clocks = <&clkc GPIO>;
+			resets = <&rstc RST_GPIO>;
+
+			pins_pwm: pins_pwm {
+				sppctl,pins = <
+					SPPCTL_IOPAD(1,SPPCTL_PCTL_G_PMUX,MUXF_PWM0,0)
+					SPPCTL_IOPAD(2,SPPCTL_PCTL_G_PMUX,MUXF_PWM1,0)
+					SPPCTL_IOPAD(3,SPPCTL_PCTL_G_PMUX,MUXF_PWM2,0)
+					SPPCTL_IOPAD(4,SPPCTL_PCTL_G_PMUX,MUXF_PWM3,0)
+					SPPCTL_IOPAD(5,SPPCTL_PCTL_G_PMUX,MUXF_PWM4,0)
+					SPPCTL_IOPAD(6,SPPCTL_PCTL_G_PMUX,MUXF_PWM5,0)
+					SPPCTL_IOPAD(7,SPPCTL_PCTL_G_PMUX,MUXF_PWM6,0)
+					SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_PWM7,0)
+				>;
+			};
+		};

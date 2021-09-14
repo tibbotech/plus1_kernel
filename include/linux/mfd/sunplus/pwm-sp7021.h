@@ -1,3 +1,14 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ * PWM device header file for SUNPLUS SoCs
+ *
+ * Copyright (C) 2020 SUNPLUS Inc.
+ *
+ * Author:	PoChou Chen <pochou.chen@sunplus.com>
+ *	Hammer Hsieh <hammer.hsieh@sunplus.com>
+ *
+ */
+
 #ifndef __PWM_SP7021_H__
 #define __PWM_SP7021_H__
 
@@ -9,8 +20,8 @@
 struct _PWM_DD_REG_ {
 	union {
 		struct {
-			u32 dd					:16;//b(0-15)
-			u32 :16;
+			u32 dd	:16;//b(0-15)
+			u32:16;
 		};
 		u32 idx_all;
 	};
@@ -20,10 +31,10 @@ STATIC_ASSERT(sizeof(struct _PWM_DD_REG_) == 4);
 struct _PWM_DU_REG_ {
 	union {
 		struct {
-			u32 pwm_du				:8;	//b(0-7)
-			u32 pwm_du_dd_sel		:2;	//b(8-9)
-			u32						:6;	//b(10-15)
-			u32 :16;
+			u32 pwm_du :8;			//b(0-7)
+			u32 pwm_du_dd_sel	:2;	//b(8-9)
+			u32:6;					//b(10-15)
+			u32:16;
 		};
 		u32 idx_all;
 	};
@@ -36,7 +47,7 @@ struct _PWM_REG_ {
 		struct {
 			u32 pwm_en				:8;	//b(0-7)
 			u32 pwm_bypass			:8;	//b(8-15)
-			u32 :16;
+			u32:16;
 		};
 		u32 grp244_0;
 	};
@@ -47,13 +58,13 @@ struct _PWM_REG_ {
 			u32 pwm_cnt2_en			:1;	//b(2)
 			u32 pwm_cnt3_en			:1;	//b(3)
 			u32 pwm_clk54_en		:1;	//b(4)
-			u32						:3;	//b(5-7)
+			u32:3;						//b(5-7)
 			u32 pwm_dd0_sync_off	:1;	//b(8)
 			u32 pwm_dd1_sync_off	:1;	//b(9)
 			u32 pwm_dd2_sync_off	:1;	//b(10)
 			u32 pwm_dd3_sync_off	:1;	//b(11)
-			u32						:4;	//b(12-15)
-			u32 :16;
+			u32:4;						//b(12-15)
+			u32:16;
 		};
 		u32 grp244_1;
 	};
