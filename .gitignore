@@ -160,3 +160,6 @@ x509.genkey
 
 # Documentation toolchain
 sphinx_*/
+
+drivers/media/platform/sunplus/videocodec/*.c
+drivers/media/platform/sunplus/videocodec/*.h

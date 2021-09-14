@@ -1,0 +1,22 @@
+Sunplus SoCs Watchdog timer
+
+Required properties:
+
+- compatible should contain:
+	"sunplus,sp7021-wdt": for SP7021
+	"sunplus,q645-wdt": for Q645
+
+- reg : Specifies base physical address and size of the registers.
+
+Optional properties:
+- timeout-sec: contains the watchdog timeout in seconds.
+- #reset-cells: Should be 1.
+
+Example:
+
+watchdog: watchdog@0x9c000630 {
+	compatible = "sunplus,sp7021-wdt";
+	reg = <0x9c000630 0x08>, <0x9C000274 0x04>;
+	clocks = <&clkc STC0>;
+	resets = <&rstc RST_STC0>;
+};
