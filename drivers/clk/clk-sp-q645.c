@@ -72,7 +72,7 @@ static void __iomem *moon_regs;
 #define mux_regs	(moon_regs + 0x100)	/* G2.0 ~ CLK_SEL */
 #define pll_regs	(moon_regs + 0x200) /* G4.0 ~ PLL */
 
-struct sp_clk_s {
+struct sp_clk {
 	const char *name;
 	u32 id;		/* defined in sp-q645.h, also for gate (reg_idx<<4)|(shift) */
 	u32 mux;	/* mux reg_idx: MOON2.xx */
@@ -85,7 +85,7 @@ static const char * const default_parents[] = { EXT_CLK };
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
-static struct sp_clk_s sp_clks[] = {
+static struct sp_clk sp_clks[] = {
 	_(SYSTEM,		0,	0,	2, {"f_600m", "f_750m", "f_500m"}),
 	_(CA55CORE0,	0,	6,	1, {"PLLC", "SYSTEM"}),
 	_(CA55CORE1,	0,	11,	1, {"PLLC", "SYSTEM"}),
@@ -477,38 +477,35 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg, u32 bp)
 }
 
 static struct clk *
-clk_register_sp_clk(const char *name, const char * const *parent_names,
-		void __iomem *reg_mux, u8 width, u8 shift,
-		void __iomem *reg_gate, u8 bit_idx)
+clk_register_sp_clk(struct sp_clk *sp_clk)
 {
+	const char * const *parent_names = sp_clk->parent_names[0] ? sp_clk->parent_names : default_parents;
 	struct clk_mux *mux = NULL;
 	struct clk_gate *gate;
 	struct clk *clk;
 
-	if (reg_mux && width) {
-		pr_debug("%-14s: reg_mux  = %llx", name, (u64)reg_mux);
+	if (sp_clk->width) {
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 		if (!mux)
 			return ERR_PTR(-ENOMEM);
-		mux->reg = reg_mux;
-		mux->shift = shift;
-		mux->mask = BIT(width) - 1;
+		mux->reg = mux_regs + (sp_clk->mux << 2);
+		mux->shift = sp_clk->shift;
+		mux->mask = BIT(sp_clk->width) - 1;
 		mux->table = mux_table;
 		mux->flags = CLK_MUX_HIWORD_MASK | CLK_MUX_ROUND_CLOSEST;
 	}
 
-	pr_debug("%-14s: reg_gate = %llx (%s)", name, (u64)reg_gate, parent_names[0]);
 	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
 	if (!gate) {
 		kfree(mux);
 		return ERR_PTR(-ENOMEM);
 	}
-	gate->reg = reg_gate;
-	gate->bit_idx = bit_idx;
+	gate->reg = clk_regs + (sp_clk->id >> 4 << 2);
+	gate->bit_idx = sp_clk->id & 0x0f;
 	gate->flags = CLK_GATE_HIWORD_MASK;
 
-	clk = clk_register_composite(NULL, name,
-					parent_names, mux ? width + 1 : 1,
+	clk = clk_register_composite(NULL, sp_clk->name, parent_names,
+					mux ? sp_clk->width + 1 : 1,
 					mux ? &mux->hw : NULL, &clk_mux_ops,
 					NULL, NULL,
 					&gate->hw, &clk_gate_ops,
@@ -518,13 +515,12 @@ clk_register_sp_clk(const char *name, const char * const *parent_names,
 		kfree(gate);
 	}
 
-	pr_debug("%-14s: clk = %llx", name, (u64)clk);
 	return clk;
 }
 
 static void __init sp_clkc_init(struct device_node *np)
 {
-	int i, j;
+	int i;
 
 	pr_info("sp-clkc init\n");
 
@@ -575,14 +571,10 @@ static void __init sp_clkc_init(struct device_node *np)
 
 	/* sp_clks */
 	for (i = 0; i < ARRAY_SIZE(sp_clks); i++) {
-		struct sp_clk_s *clk = &sp_clks[i];
+		struct sp_clk *sp_clk = &sp_clks[i];
+		int j = sp_clk->id;
 
-		j = clk->id & 0xffff;
-		clks[j] = clk_register_sp_clk(clk->name,
-			clk->parent_names[0] ? clk->parent_names : default_parents,
-			mux_regs + (clk->mux << 2),
-			clk->width, clk->shift,
-			clk_regs + (j >> 4 << 2), j & 0x0f);
+		clks[j] = clk_register_sp_clk(sp_clk);
 	}
 
 	pr_debug("sp-clkc: of_clk_add_provider");
