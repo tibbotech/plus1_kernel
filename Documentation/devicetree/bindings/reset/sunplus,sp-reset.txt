@@ -1,0 +1,21 @@
+Sunplus SP7021/Q645 SoC reset controller
+
+Required properties:
+- compatible : Must contain one of
+  - "sunplus,sp-reset"
+  - "sunplus,q645-reset"
+- #reset-cells : Specifies the number of cells needed to encode reset
+                 line, should be 1
+- reg : Offset and length of the register set for the device
+
+Optional properties:
+- reg-names	: The names of the 'reg'
+
+Example:
+
+	rstc: reset@0xf8000054 {
+		compatible = "sunplus,q645-reset";
+		#reset-cells = <1>;
+		reg = <0x00 0xf8000054 0x00 0x28>;
+		reg-names = "reset";
+	};

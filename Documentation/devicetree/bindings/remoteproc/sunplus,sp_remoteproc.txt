@@ -1,0 +1,28 @@
+Sunplus Soc Co-Processor Bindings
+
+This binding provides support for ARM926/Cortex M4 Co-processor found on some
+Sunplus SoCs.
+
+Required properties:
+- compatible ：Should contain entries for this and backward compatible
+- reg : Offset and length of the register set for the device
+- interrupt-parent : phandle to the parent interrupt controller.
+- interrupts : the device's interrupt number
+- resets : phandles to the reset lines needed for this power demain sequence
+	as described in ../reset/reset.txt
+- memory-region : Reserved memory (See: ../reserved-memory/reserved-memory.txt)
+
+Optional properties:
+- firmware : Co-processor firmware filename
+
+Example:
+
+	remoteproc0: remoteproc@0 {
+		compatible = "sunplus,sp_remoteproc";
+		firmware = "firmware";
+		reg = <0 0xf8007ffc 0 4>; /* mbox G255.31, cpu0 to cpu2 direct reg07 */
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>; /* CPU2_TO_0_DIRECT_INT7 */
+		resets = <&rstc RST_CM4>;
+		memory-region = <&rproc_0_reserved>, <&vdev0buffer>, <&vdev0vring0>, <&vdev0vring1>;
+	};

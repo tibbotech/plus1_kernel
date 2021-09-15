@@ -1,0 +1,17 @@
+Sunplus SoC Clock Generator
+
+Required properties:
+- compatible :Must contain one of
+  - "sunplus,sp-clkc"
+  - "sunplus,q645-clkc"
+- #clock-cells : Specifies the number of cells needed to encode clock
+                 line, should be 1
+- reg : Offset and length of the register set for the device
+
+Example:
+
+    clkc: clkc@0xf8000000 {
+        #clock-cells = <1>;
+        compatible = "sunplus,q645-clkc";
+        reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
+    };
