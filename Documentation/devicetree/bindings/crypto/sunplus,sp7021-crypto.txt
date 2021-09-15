@@ -1,0 +1,21 @@
+Sunplus SP7021 SoC Crypto Engines / Security Accelerator (SEC)
+
+Required properties:
+- compatible : Should contain entries for this and backward compatible
+- reg : Offset and length of the register set for the device
+- clocks : phandle to clock-controller plus clock-specifier pair
+- resets : phandles to the reset lines needed for this power demain sequence
+	as described in ../reset/reset.txt
+- interrupt-parent : phandle to the parent interrupt controller.
+- interrupts : the SEC's interrupt number
+
+Example:
+
+	crypto: crypto@G84 {
+		compatible = "sunplus,sp7021-crypto";
+		reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
+		clocks = <&clkc SEC>;
+		resets = <&rstc RST_SEC>;
+		interrupt-parent = <&intc>;
+		interrupts = <148 IRQ_TYPE_LEVEL_HIGH>;
+	};
