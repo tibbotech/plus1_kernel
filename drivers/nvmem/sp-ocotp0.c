@@ -9,10 +9,21 @@ extern int sp_ocotp_remove(struct platform_device *);
 
 static int efuse0_sunplus_platform_probe(struct platform_device *dev) {
 #ifdef CONFIG_SOC_Q645
-	dev->id = 1;
-#endif
+	void n78_clk_register(void);
+	int ret;
 
+	dev->id = 1;
+	ret = sp_ocotp_probe(dev);
+
+	/* n78_clk_register need read settings from OTP0,
+	 * calling it after OTP0 ready.
+	 */
+	n78_clk_register();
+
+	return ret;
+#else
 	return sp_ocotp_probe(dev);
+#endif
 }
 
 #ifdef CONFIG_SOC_SP7021

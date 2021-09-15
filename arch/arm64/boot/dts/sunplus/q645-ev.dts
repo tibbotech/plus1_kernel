@@ -158,10 +158,11 @@
 			clock-output-names = "f_320m";
 		};
 
-		clkc: clkc@0xf8000004 {
+		clkc: clkc@0xf8000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
+			nvmem-cells = <&n78_clksel>;
 		};
 	};
 
@@ -744,6 +745,9 @@
 		};
 		disc_vol1: disc_vol1 {
 			reg = <0x18 0x2>;
+		};
+		n78_clksel: n78_clksel {
+			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
 		};
 	};
 
