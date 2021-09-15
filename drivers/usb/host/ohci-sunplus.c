@@ -1,18 +1,20 @@
-/*
- * Generic platform ohci driver
- *
- * Copyright 2007 Michael Buesch <m@bues.ch>
- * Copyright 2011-2012 Hauke Mehrtens <hauke@hauke-m.de>
- *
- * Derived from the OCHI-SSB driver
- * Derived from the OHCI-PCI driver
- * Copyright 1999 Roman Weissgaerber
- * Copyright 2000-2002 David Brownell
- * Copyright 1999 Linus Torvalds
- * Copyright 1999 Gregory P. Smith
- *
- * Licensed under the GNU/GPL. See COPYING for details.
- */
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+/**************************************************************************************************/
+/* Generic platform ohci driver									  */
+/*												  */
+/* Copyright 2007 Michael Buesch <m@bues.ch>							  */
+/* Copyright 2011-2012 Hauke Mehrtens <hauke@hauke-m.de>					  */
+/*												  */
+/* Derived from the OCHI-SSB driver								  */
+/* Derived from the OHCI-PCI driver								  */
+/* Copyright 1999 Roman Weissgaerber								  */
+/* Copyright 2000-2002 David Brownell								  */
+/* Copyright 1999 Linus Torvalds								  */
+/* Copyright 1999 Gregory P. Smith								  */
+/*												  */
+/* Licensed under the GNU/GPL. See COPYING for details.						  */
+/**************************************************************************************************/
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/hrtimer.h>
@@ -66,13 +68,13 @@ struct ohci_hcd_sp {
 
 void __iomem *ohci_res_moon0;
 
-#if 1				/*fix ohci msi */
-/*
-*twofish suggest that latency should not
-*exceed 8192 clock cycles(system clock),about 24.8us
-*/
+/* fix ohci msi */
+/*							*/
+/* twofish suggest that latency should not		*/
+/* exceed 8192 clock cycles(system clock),about 24.8us	*/
+/*							*/
 s32 get_td_retry_time = 24;
-#endif
+
 
 static struct clk *ohci_clk[USB_PORT_NUM];
 
@@ -90,14 +92,10 @@ static int ohci_platform_reset(struct usb_hcd *hcd)
 	if (pdata->no_big_frame_no)
 		ohci->flags |= OHCI_QUIRK_FRAME_NO;
 
-	#if 0
-	ohci_hcd_init(ohci);
-	#else
 	ohci->next_statechange = jiffies;
-	spin_lock_init (&ohci->lock);
-	INIT_LIST_HEAD (&ohci->pending);
+	spin_lock_init(&ohci->lock);
+	INIT_LIST_HEAD(&ohci->pending);
 	INIT_LIST_HEAD(&ohci->eds_in_use);
-	#endif
 
 	err = ohci_init(ohci);
 
@@ -118,9 +116,10 @@ static int ohci_platform_start(struct usb_hcd *hcd)
 	return err;
 }
 
-u8 otg0_vbus_off = 0;
-u8 otg1_vbus_off = 0;
+u8 otg0_vbus_off;
 EXPORT_SYMBOL_GPL(otg0_vbus_off);
+
+u8 otg1_vbus_off;
 EXPORT_SYMBOL_GPL(otg1_vbus_off);
 
 static int ohci_update_device(struct usb_hcd *hcd, struct usb_device *udev)
@@ -175,14 +174,15 @@ static const struct hc_driver ohci_platform_hc_driver = {
 };
 
 #ifdef CONFIG_USB_HOST_RESET
-#define 	RESET_UPHY(x,ret,addr)	{				\
-				ret	 = ioread32(addr);		\
+#define RESET_UPHY(x, ret, addr) {					\
+				ret = ioread32(addr);			\
 				ret |= (1<<(9+x))|(1<<(12+x));		\
-				iowrite32(ret,addr);			\
+				iowrite32(ret, addr);			\
 				ret &= ~((1<<(9+x))|(1<<(12+x)));	\
-				iowrite32(ret,addr);			\
-			}
-#define		REG_UPHY_RESET_OFFSET	(18)
+				iowrite32(ret, addr);			\
+}
+
+#define	REG_UPHY_RESET_OFFSET	(18)
 #endif
 
 #ifdef CONFIG_USB_HOST_RESET
@@ -192,40 +192,39 @@ static int ohci_reset_thread(void *arg)
 	struct ohci_hcd *ohci = (struct ohci_hcd *)arg;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
-
 	u32 val;
 	int i;
-	//int flag = 1;
 
 	while (1) {
 
 		if (sp_ohci->flag & (RESET_UPHY_SIGN | RESET_HC_SIGN)) {
 
 			while (hcd->self.devmap.devicemap[0] != 2)
-				msleep(1);
+				fsleep(1000);
 
-			if (hcd->self.devmap.devicemap[0] > 2) {
+			if (hcd->self.devmap.devicemap[0] > 2)
 				goto NEXT_LOOP;
-			}
 
 			for (i = 1; i < 128 / (8 * sizeof(unsigned long)); i++) {
-				if (hcd->self.devmap.devicemap[i]) {
+				if (hcd->self.devmap.devicemap[i])
 					goto NEXT_LOOP;
-				}
 			}
 
-			/*hcd->irq will be set to 0 by ohci_stop() */
-			if (pdev->id == 1) {
+			/* hcd->irq will be set to 0 by ohci_stop() */
+			if (pdev->id == 1)
 				i = SP_IRQ_OHCI_USB0;
-			} else if (pdev->id == 2) {
+			else if (pdev->id == 2)
 				i = SP_IRQ_OHCI_USB1;
-			}
 
 			if (sp_ohci->flag & RESET_UPHY_SIGN) {
-				writel(RF_MASK_V_SET(1 << (13 + (pdev->id - 1))), ohci_res_moon0 + USB_RESET_OFFSET);
-				writel(RF_MASK_V_CLR(1 << (13 + (pdev->id - 1))), ohci_res_moon0 + USB_RESET_OFFSET);
-				writel(RF_MASK_V_SET(1 << (10 + (pdev->id - 1))), ohci_res_moon0 + USB_RESET_OFFSET);
-				writel(RF_MASK_V_CLR(1 << (10 + (pdev->id - 1))), ohci_res_moon0 + USB_RESET_OFFSET);
+				writel(RF_MASK_V_SET(1 << (13 + (pdev->id - 1))),
+							ohci_res_moon0 + USB_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (13 + (pdev->id - 1))),
+							ohci_res_moon0 + USB_RESET_OFFSET);
+				writel(RF_MASK_V_SET(1 << (10 + (pdev->id - 1))),
+							ohci_res_moon0 + USB_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (10 + (pdev->id - 1))),
+							ohci_res_moon0 + USB_RESET_OFFSET);
 
 				sp_ohci->flag = RESET_SENDER;
 			} else {
@@ -235,7 +234,7 @@ static int ohci_reset_thread(void *arg)
 			hcd->irq = i;
 			usb_remove_hcd(hcd);
 			ohci_usb_reset(ohci);
-			msleep(1);
+			fsleep(1000);
 			usb_add_hcd(hcd, i, IRQF_SHARED);
 		}
 
@@ -249,38 +248,33 @@ NEXT_LOOP:
 #endif
 
 #ifdef CONFIG_USB_HOST_RESET
-static int ohci_notifier_call(struct notifier_block *self,
-			      unsigned long action, void *dev)
+static int ohci_notifier_call(struct notifier_block *self, unsigned long action, void *dev)
 {
 	struct usb_device *udev = (struct usb_device *)dev;
-
 	struct usb_hcd *hcd_e;
 	struct platform_device *pdev_e;
 	u32 *ptr;
-
 	struct ohci_hcd_sp *sp_ohci = container_of((void *)self,
-						   struct ohci_hcd_sp,
-						   ohci_notifier);
+							struct ohci_hcd_sp,
+							ohci_notifier);
 	struct ohci_hcd *ohci = (struct ohci_hcd *)sp_ohci;
 	struct usb_hcd *hcd_o = ohci_to_hcd(ohci);
-	struct platform_device *pdev_o =
-	    to_platform_device(hcd_o->self.controller);
+	struct platform_device *pdev_o = to_platform_device(hcd_o->self.controller);
 
-	//printk("notifier ohci\n");
+	pr_debug("notifier ohci\n");
 
 	if (action == USB_DEVICE_ADD) {
 
-		if (!udev->parent) {	//roothub add
+		if (!udev->parent) {	// roothub add
 
 			hcd_e = bus_to_hcd(udev->bus);
 			pdev_e = to_platform_device(hcd_e->self.controller);
 			ptr = (u32 *) ((u8 *) hcd_e->hcd_priv +
-				       hcd_e->driver->hcd_priv_size -
-				       sizeof(u32)
-			    );
-			//printk("notifier ohci %p 0x%x\n",ptr,*ptr);
+						hcd_e->driver->hcd_priv_size -
+						sizeof(u32));
+			pr_debug("notifier ohci %p 0x%x\n", ptr, *ptr);
 
-			//EHCI&OHCI on one port
+			// EHCI&OHCI on one port
 			if ((pdev_e != pdev_o) && (pdev_e->id == pdev_o->id)) {
 				if (ptr && (*ptr & RESET_SENDER)) {
 					sp_ohci->flag =
@@ -296,80 +290,57 @@ static int ohci_notifier_call(struct notifier_block *self,
 #endif
 
 #ifdef CONFIG_USB_SP_UDC_HOST
-static int udc_notifier_call(struct notifier_block *self,
-			     unsigned long action, void *dev)
+static int udc_notifier_call(struct notifier_block *self, unsigned long action, void *dev)
 {
-	struct ohci_hcd_sp *sp_ohci = container_of((void *)self,
-						   struct ohci_hcd_sp,
-						   udc_notifier);
+	struct ohci_hcd_sp *sp_ohci = container_of((void *)self, struct ohci_hcd_sp,
+								udc_notifier);
 	struct ohci_hcd *ohci = (struct ohci_hcd *)sp_ohci;
 	struct usb_hcd *hcd = ohci_to_hcd(ohci);
+	struct udc_hcd_platform_device *udc_dev = (struct udc_hcd_platform_device *)dev;
 
-	struct udc_hcd_platform_device *udc_dev =
-	    (struct udc_hcd_platform_device *)dev;
-
-	//u32 *grop1 = (u32*)VA_IOB_ADDR(1*32*4);
-	//u32 ret;
-
-	//printk("udc notifier %lx %x %p\n",action,hcd->rh_registered,hcd);
+	pr_debug("udc notifier %lx %x %p\n", action, hcd->rh_registered, hcd);
 
 	if (hcd->rh_registered == 1)
-		//usb_remove_hcd(hcd);
 
 		if (action == USB_DEVICE_ADD) {
-			//if(hcd->rh_registered == 1)
-			//      usb_remove_hcd(hcd);
-			//ret = ioread32(grop1 + 10);
-			//ret &= ~(1<<4);
-			//iowrite32(ret,grop1 + 10);
 			while (HC_IS_RUNNING(hcd->state))
-				msleep(1);
-			//SET_TO_UDC_OHCI(udc_dev->state);
+				fsleep(1000);
+
 			SET_TO_UDC(udc_dev->state);
 		}
 
 	if (action == USB_DEVICE_REMOVE) {
-
-		//if(hcd->rh_registered == 1)
-		//      usb_remove_hcd(hcd);
-
-		//ret = ioread32(grop1 + 10);
-		//ret |= (1<<4);
-		//iowrite32(ret,grop1 + 10);
-
-		//usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
+		// TBD
+		// TBD
 	}
 
 	return 0;
 }
 #endif
 
-#if 1				/*fix ohci msi */
-static ssize_t show_get_td_retry_time(struct device *dev,
-				      struct device_attribute *attr, char *buf)
+/* fix ohci msi */
+static ssize_t get_td_retry_time_show(struct device *dev,
+					struct device_attribute *attr, char *buf)
 {
-	printk(KERN_DEBUG "get get_td_retry_time\n");
+	pr_debug("get get_td_retry_time\n");
 
 	return sprintf(buf, "%d\n", get_td_retry_time);
 }
 
-static ssize_t store_get_td_retry_time(struct device *dev,
+static ssize_t get_td_retry_time_store(struct device *dev,
 				       struct device_attribute *attr,
 				       const char *buf, size_t count)
 {
-	printk(KERN_DEBUG "set get_td_retry_time\n");
-	if (kstrtouint(buf, 0, &get_td_retry_time) == 0) {
-		printk(KERN_DEBUG "%d\n", get_td_retry_time);
-	} else {
-		printk(KERN_NOTICE "set get_td_retry_time fail\n");
-	}
+	pr_debug("set get_td_retry_time\n");
+	if (kstrtouint(buf, 0, &get_td_retry_time) == 0)
+		pr_debug("%d\n", get_td_retry_time);
+	else
+		pr_debug("set get_td_retry_time fail\n");
 
 	return count;
 }
 
-static DEVICE_ATTR(get_td_retry_time, S_IWUSR | S_IRUSR,
-		   show_get_td_retry_time, store_get_td_retry_time);
-#endif
+static DEVICE_ATTR_RW(get_td_retry_time);
 
 static struct usb_ohci_pdata usb_ohci_pdata = {
 };
@@ -381,18 +352,16 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	int irq;
 	int err = -ENOMEM;
 
-#if defined(CONFIG_USB_HOST_RESET) || defined(CONFIG_USB_SP_UDC_HOST)
+#if defined CONFIG_USB_HOST_RESET || defined CONFIG_USB_SP_UDC_HOST
 	struct ohci_hcd_sp *ohci_sp;
 #endif
-
-	//BUG_ON(!dev->dev.platform_data);
 
 	if (usb_disabled())
 		return -ENODEV;
 
 	dev->dev.platform_data = &usb_ohci_pdata;
 
-	/*enable usb controller clock*/
+	/* enable usb controller clock */
 	ohci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
 	if (IS_ERR(ohci_clk[dev->id - 1])) {
 		pr_err("not found clk source\n");
@@ -403,14 +372,14 @@ int ohci_sunplus_probe(struct platform_device *dev)
 
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
-		pr_err("no irq provieded");
+		pr_err("no irq provieded\n");
 		return irq;
 	}
-	printk("ohci_id:%d,irq:%d\n",dev->id,irq);
+	pr_debug("ohci_id:%d,irq:%d\n", dev->id, irq);
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
-		pr_err("no memory recourse provieded");
+		pr_err("no memory recourse provieded\n");
 		return -ENXIO;
 	}
 
@@ -424,7 +393,7 @@ int ohci_sunplus_probe(struct platform_device *dev)
 
 #ifdef	CONFIG_USB_USE_PLATFORM_RESOURCE
 	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
-		pr_err("controller already in use");
+		pr_err("controller already in use\n");
 		err = -EBUSY;
 		goto err_put_hcd;
 	}
@@ -438,9 +407,8 @@ int ohci_sunplus_probe(struct platform_device *dev)
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
 	ohci_res_moon0 = devm_ioremap(&dev->dev, res_mem->start, resource_size(res_mem));
-	if (IS_ERR(ohci_res_moon0)) {
+	if (IS_ERR(ohci_res_moon0))
 		return PTR_ERR(ohci_res_moon0);
-	}
 
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
 	if (err)
@@ -461,9 +429,8 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	}
 #endif
 
-#if 1				/*fix ohci msi */
+	/*fix ohci msi */
 	device_create_file(&dev->dev, &dev_attr_get_td_retry_time);
-#endif
 
 #ifdef CONFIG_USB_HOST_RESET
 	//struct ohci_hcd_sp *ohci_sp = (struct ohci_hcd_sp *)hcd_to_ohci(hcd);
@@ -471,12 +438,12 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	usb_register_notify(&ohci_sp->ohci_notifier);
 
 	ohci_sp->flag = 0;
-	printk(KERN_DEBUG "flag *** %d %d %px\n", sizeof(struct ohci_hcd_sp),
-	       hcd->driver->hcd_priv_size, &ohci_sp->flag);
+	pr_debug("flag *** %d %d %p\n", sizeof(struct ohci_hcd_sp),
+				hcd->driver->hcd_priv_size, &ohci_sp->flag);
 
 	ohci_sp->reset_thread = kthread_create(ohci_reset_thread,
-					       hcd_to_ohci(hcd),
-					       "ohci_reset_polling");
+						hcd_to_ohci(hcd),
+						"ohci_reset_polling");
 
 	if (IS_ERR(ohci_sp->reset_thread)) {
 		pr_err("Create OHCI(%d) reset thread fail!\n", dev->id);
@@ -508,9 +475,8 @@ int ohci_sunplus_remove(struct platform_device *dev)
 	struct ohci_hcd_sp *ohci_sp = (struct ohci_hcd_sp *)hcd_to_ohci(hcd);
 #endif
 
-#if 1				/*fix ohci msi */
+	/*fix ohci msi */
 	device_remove_file(&dev->dev, &dev_attr_get_td_retry_time);
-#endif
 
 #ifdef CONFIG_USB_SP_UDC_HOST
 	if (dev->id == 3)
@@ -531,7 +497,7 @@ int ohci_sunplus_remove(struct platform_device *dev)
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 
-	/*disable usb controller clock*/
+	/* disable usb controller clock */
 	clk_disable(ohci_clk[dev->id - 1]);
 
 	return 0;
@@ -545,12 +511,13 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
-	printk("%s.%d\n",__FUNCTION__, __LINE__);
+	pr_debug("%s.%d\n", __func__, __LINE__);
+
 	rc = ohci_suspend(hcd, do_wakeup);
 	if (rc)
 		return rc;
 
-	/*disable usb controller clock*/
+	/* disable usb controller clock */
 	clk_disable(ohci_clk[dev->id - 1]);
 
 	return 0;
@@ -558,10 +525,11 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 
 static int ohci_sunplus_drv_resume(struct device *dev)
 {
-	struct usb_hcd *hcd			= dev_get_drvdata(dev);
+	struct usb_hcd *hcd = dev_get_drvdata(dev);
 
-	printk("%s.%d\n",__FUNCTION__, __LINE__);
-	/*enable usb controller clock*/
+	pr_debug("%s.%d\n", __func__, __LINE__);
+
+	/* enable usb controller clock */
 	clk_prepare(ohci_clk[dev->id - 1]);
 	clk_enable(ohci_clk[dev->id - 1]);
 
@@ -570,7 +538,7 @@ static int ohci_sunplus_drv_resume(struct device *dev)
 	return 0;
 }
 
-struct dev_pm_ops ohci_sunplus_pm_ops = {
+struct dev_pm_ops const ohci_sunplus_pm_ops = {
 	.suspend = ohci_sunplus_drv_suspend,
 	.resume = ohci_sunplus_drv_resume,
 };
