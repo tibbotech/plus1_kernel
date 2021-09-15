@@ -24,7 +24,7 @@
 #include <linux/pm_runtime.h>
 #endif
 #include "include/hal_hdmitx.h"
-#if defined(CONFIG_SOC_SP7021) && defined(CONFIG_VIDEO_SP7021_DISP)
+#if defined CONFIG_SOC_SP7021 && defined CONFIG_VIDEO_SP7021_DISP
 #include <media/sunplus/disp/sp7021/display.h> //#ifdef TIMING_SYNC_720P60
 #endif
 
@@ -441,10 +441,12 @@ static void read_edid(void)
 
 	edid_data_ofs = 0;
 	hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_CLEAR_FIFO, edid_data_ofs, sp_hdmitx->hdmitxbase);
+	mdelay(3);
 
 	do {
 		if (hal_hdmitx_get_ddc_status(DDC_STUS_CMD_DONE, sp_hdmitx->hdmitxbase))
-			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ, edid_data_ofs, sp_hdmitx->hdmitxbase);
+			hal_hdmitx_ddc_cmd(HDMITX_DDC_CMD_SEQ_READ,
+							edid_data_ofs, sp_hdmitx->hdmitxbase);
 
 		mdelay(10);
 		if (timeout-- == 0) {
@@ -467,7 +469,8 @@ static void parse_edid(void)
 	unsigned int audio = FALSE,  yuv444 = FALSE, yuv422 = FALSE;
 	unsigned int rgb_limit = FALSE, yuv_limit = FALSE;
 
-	HDMITX_DBG("=================== EDID START ===================\n");
+	HDMITX_DBG("=================== EDID START ==================\n");
+	HDMITX_DBG("(addr)                    (data)\n");
 	for (i = 0; i < EDID_CAPACITY; i += DDC_FIFO_CAPACITY) {
 		HDMITX_DBG("%03u~%03u : 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\n",
 						  i, i + 7,
@@ -487,10 +490,14 @@ static void parse_edid(void)
 				break;
 		}
 	}
-	HDMITX_DBG("==================== EDID END ====================\n");
-	HDMITX_DBG("Checksum = 0x%04X\n", sum);
+	HDMITX_DBG("==================== EDID END ===================\n");
 
-	//monitor
+	if ((sum & 0xFF) == 0)
+		HDMITX_DBG("Checksum = 0x%04X -> successfull\n", sum);
+	else
+		HDMITX_DBG("Checksum = 0x%04X -> failed\n", sum);
+
+	// monitor
 	for (i = 0; i < 13; i++)
 		name[i] = 0;
 	i = 72;
@@ -510,7 +517,7 @@ static void parse_edid(void)
 	}
 	HDMITX_INFO("Monitor %s", name);
 
-	//mode
+	// mode
 	if (edid[126] == 0) {
 		g_cur_hdmi_cfg.mode = HDMITX_MODE_DVI;
 		g_hdmitx_mode = 0;
@@ -520,7 +527,7 @@ static void parse_edid(void)
 	}
 
 	if (g_cur_hdmi_cfg.mode == HDMITX_MODE_DVI) {
-		//timing
+		// timing
 		data = (edid[58] & 0xF0);
 		data = ((data << 4) | edid[56]);
 		HDMITX_INFO("DVI horizontal Max. Timing : %u\n", data);
@@ -561,7 +568,7 @@ static void parse_edid(void)
 
 		i = 132;
 
-		//data blocks from byte 132 to byte (128+d-1)
+		// data blocks from byte 132 to byte (128+d-1)
 		while ((d != 4) && (i < (128 + d - 1))) {
 			data = edid[i];
 
@@ -587,24 +594,30 @@ static void parse_edid(void)
 		}
 
 	#ifdef CONVERSION_INIT_BY_EDID
-		if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB) {
+		if (g_cur_hdmi_cfg.video.conversion ==
+				HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_FULL_RGB) {
 			if (rgb_limit == TRUE)
-				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
-		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444) {
+				g_cur_hdmi_cfg.video.conversion =
+					HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+		} else if (g_cur_hdmi_cfg.video.conversion ==
+				HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV444) {
 			if (yuv444 == FALSE)
-				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
-		} else if (g_cur_hdmi_cfg.video.conversion == HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422) {
+				g_cur_hdmi_cfg.video.conversion =
+					HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+		} else if (g_cur_hdmi_cfg.video.conversion ==
+				HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_YUV422) {
 			if (yuv422 == FALSE)
-				g_cur_hdmi_cfg.video.conversion = HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
+				g_cur_hdmi_cfg.video.conversion =
+					HDMITX_COLOR_SPACE_CONV_LIMITED_YUV444_TO_LIMITED_RGB;
 		}
 	#endif
 
-		//detailed timing descriptors
+		// detailed timing descriptors
 		if (d != 0) {
 			i = 128 + d;
 			pre_data = 0;
 			while ((i < (EDID_CAPACITY - 1)) && (edid[i] != 0)) {
-				//timing
+				// timing
 				data = (edid[i+7] & 0xF0);
 				data = ((data << 4) | edid[i+5]);
 
@@ -712,7 +725,8 @@ static void process_rsen_state(void)
 
 #ifdef SKIP_PLLTV
 		if (edid_skip_timing_update) {
-			disp_set_plltv();//call display function
+			//call display function
+			disp_set_plltv();
 			edid_skip_timing_update = 0;
 		}
 #endif
@@ -929,34 +943,40 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 
 	switch (cmd) {
 	case HDMITXIO_SET_TIMING:
-		if (copy_from_user((void *) &timing, (const void __user *) arg, sizeof(enum hdmitx_timing)))
+		if (copy_from_user((void *) &timing, (const void __user *) arg,
+								sizeof(enum hdmitx_timing)))
 			err = -1;
 		else
 			hdmitx_set_timming(timing);
 		break;
 	case HDMITXIO_GET_TIMING:
 		hdmitx_get_timming(&timing);
-		if (copy_to_user((void __user *) arg, (const void *) &timing, sizeof(enum hdmitx_timing)))
+		if (copy_to_user((void __user *) arg, (const void *) &timing,
+								sizeof(enum hdmitx_timing)))
 			err = -1;
 		break;
 	case HDMITXIO_SET_COLOR_DEPTH:
-		if (copy_from_user((void *) &color_depth, (const void __user *) arg, sizeof(enum hdmitx_color_depth)))
+		if (copy_from_user((void *) &color_depth, (const void __user *) arg,
+								sizeof(enum hdmitx_color_depth)))
 			err = -1;
 		else
 			hdmitx_set_color_depth(color_depth);
 		break;
 	case HDMITXIO_GET_COLOR_DEPTH:
 		hdmitx_get_color_depth(&color_depth);
-		if (copy_to_user((void __user *) arg, (const void *) &color_depth, sizeof(enum hdmitx_color_depth)))
+		if (copy_to_user((void __user *) arg, (const void *) &color_depth,
+								sizeof(enum hdmitx_color_depth)))
 			err = -1;
 		break;
 	case HDMITXIO_GET_RX_READY:
 		rx_ready = hdmitx_get_rx_ready();
-		if (copy_to_user((void __user *) arg, (const void *) &rx_ready, sizeof(unsigned char)))
+		if (copy_to_user((void __user *) arg, (const void *) &rx_ready,
+								sizeof(unsigned char)))
 			err = -1;
 		break;
 	case HDMITXIO_DISPLAY:
-		if (copy_from_user((void *) &enable, (const void __user *) arg, sizeof(unsigned char))) {
+		if (copy_from_user((void *) &enable, (const void __user *) arg,
+								sizeof(unsigned char))) {
 			err = -1;
 		} else {
 			if (enable)
@@ -966,7 +986,8 @@ static long hdmitx_fops_ioctl(struct file *pfile, unsigned int cmd, unsigned lon
 		}
 		break;
 	case HDMITXIO_PTG:
-		if (copy_from_user((void *) &enable, (const void __user *) arg, sizeof(unsigned char))) {
+		if (copy_from_user((void *) &enable, (const void __user *) arg,
+								sizeof(unsigned char))) {
 			err = -1;
 		} else {
 			if (enable)
@@ -1072,7 +1093,8 @@ static int hdmitx_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
-	err = devm_request_irq(&pdev->dev, irq, hdmitx_irq_handler, IRQF_TRIGGER_HIGH, "hdmitx irq", pdev);
+	err = devm_request_irq(&pdev->dev, irq, hdmitx_irq_handler, IRQF_TRIGGER_HIGH,
+									"hdmitx irq", pdev);
 	if (err) {
 		HDMITX_ERR("devm_request_irq failed: %d\n", err);
 		return err;
@@ -1117,10 +1139,10 @@ static int hdmitx_remove(struct platform_device *pdev)
 	struct miscdevice *misc = platform_get_drvdata(pdev);
 	int err = 0;
 
-	/*deinitialize hardware settings*/
+	/* deinitialize hardware settings */
 	hal_hdmitx_deinit(sp_hdmitx->hdmitxbase);
 
-	/*deinitialize software settings*/
+	/* deinitialize software settings */
 	if (g_hdmitx_task) {
 		err = kthread_stop(g_hdmitx_task);
 		if (err)
