@@ -121,7 +121,7 @@ static struct sp_clk sp_clks[] = {
 	_(SPACC),
 	_(INTERRUPT),
 
-	_(N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}), /* FIXME: HWLOCK_N78_CLK_SEL OTP0(41:40) */
+	_(N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}),
 	_(SYSTOP),
 	_(OTPRX),
 	_(PMC),
@@ -519,6 +519,37 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	return clk;
 }
 
+#include <linux/nvmem-consumer.h>
+
+static struct device_node *my_np;
+
+/* called from sp-ocotp0.c: efuse0_sunplus_platform_probe() */
+void n78_clk_register(void)
+{
+	struct nvmem_cell *cell; // OTP0[41:40] HWLOCK_N78_CLK_SEL
+	u8 hwlock = 0;
+	u8 *data;
+
+	cell = of_nvmem_cell_get(my_np, NULL);
+	if (IS_ERR_OR_NULL(cell)) {
+		pr_warn("n78_clk get nvmem_cells fail: %ld\n", PTR_ERR(cell));
+		return;
+	}
+
+	data = nvmem_cell_read(cell, NULL);
+	nvmem_cell_put(cell);
+	if (data)
+		hwlock = data[0] & 3;
+
+	if (hwlock) {
+		/* using fixed_rate_clk replace sp_clk */
+		clk_unregister_composite(clks[N78]);
+		clks[N78] = clk_register_fixed_rate(NULL, "N78", NULL, 0,
+				(hwlock == 1) ? 500000000 : 250000000);
+	}
+}
+EXPORT_SYMBOL_GPL(n78_clk_register);
+
 static void __init sp_clkc_init(struct device_node *np)
 {
 	int i;
@@ -537,6 +568,7 @@ static void __init sp_clkc_init(struct device_node *np)
 	}
 
 	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
+	my_np = np; // save for n78_clk_register
 
 	/* PLLs */
 	clks[PLLS] = clk_register_sp_pll("PLLS", PLLS_CTL, 14);
