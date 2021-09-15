@@ -1,0 +1,29 @@
+* Sunplus SP7021 ICM IP *
+
+The SP7021 ICM IP block which provides input capture module Code implementations.
+
+Required properties:
+- compatible: Must be "sunplus,sp7021-icm"
+- clocks : Clock phandles (see clock-controller for details).
+- resets : Reset phandles (see reset-controller for details).
+- reg: Should contain Sunplus SP7021 ICM IP block registers
+  location and length.
+- interrupt-parent: interrupt phandles(see interrupt-controller for details).
+- interrupts: should contain SP7021 interrupt number
+Optional properties:
+- none
+
+Example
+---------------------------------------
+  icm: icm@0x9C002880 {
+    compatible = "sunplus,sp7021-icm";
+    clocks = <&clkc ICM>;
+    resets = <&rstc RST_ICM>;
+    reg = <0x9c002880 0x80>;
+    interrupt-parent = <&intc>;
+    interrupts =
+      <92 IRQ_TYPE_EDGE_RISING>, /* icm0 */
+      <93 IRQ_TYPE_EDGE_RISING>, /* icm1 */
+      <94 IRQ_TYPE_EDGE_RISING>, /* icm2 */
+      <95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
+  };

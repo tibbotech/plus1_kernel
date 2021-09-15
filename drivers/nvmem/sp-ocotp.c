@@ -36,7 +36,6 @@
 
 #include <linux/firmware/sp-ocotp.h>
 
-
 enum base_type {
 	HB_GPIO,
 	OTPRX,
@@ -55,6 +54,7 @@ struct sp_otp_data_t {
 
 static int sp_otp_wait(void __iomem *_base)
 {
+	struct sp_otprx_reg *otprx_reg_ptr = (struct sp_otprx_reg *)(_base);
 	int timeout = OTP_READ_TIMEOUT;
 	unsigned int status;
 
@@ -63,7 +63,7 @@ static int sp_otp_wait(void __iomem *_base)
 		if (timeout-- == 0)
 			return -ETIMEDOUT;
 
-		status = readl(_base + OTP_STATUS);
+		status = readl(&otprx_reg_ptr->otp_cmd_status);
 	} while ((status & OTP_READ_DONE) != OTP_READ_DONE);
 
 	return 0;
@@ -71,9 +71,14 @@ static int sp_otp_wait(void __iomem *_base)
 
 int sp_otp_read_real(struct sp_otp_data_t *_otp, int addr, char *value)
 {
+	struct sp_hb_gpio_reg *hb_gpio_reg_ptr;
+	struct sp_otprx_reg *otprx_reg_ptr;
 	unsigned int addr_data;
 	unsigned int byte_shift;
 	int ret = 0;
+
+	hb_gpio_reg_ptr = (struct sp_hb_gpio_reg *)(_otp->base[HB_GPIO]);
+	otprx_reg_ptr = (struct sp_otprx_reg *)(_otp->base[OTPRX]);
 
 	addr_data = addr % (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
 	addr_data = addr_data / OTP_WORD_SIZE;
@@ -84,16 +89,16 @@ int sp_otp_read_real(struct sp_otp_data_t *_otp, int addr, char *value)
 	addr = addr / (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
 	addr = addr * OTP_BIT_ADDR_OF_BANK;
 
-	writel(0x0, _otp->base[OTPRX] + OTP_STATUS);
-	writel(addr, _otp->base[OTPRX] + OTP_READ_ADDRESS);
-	writel(0x1E04, _otp->base[OTPRX] + OTP_CONTROL2);
+	writel(0x0, &otprx_reg_ptr->otp_cmd_status);
+	writel(addr, &otprx_reg_ptr->otp_addr);
+	writel(0x1E04, &otprx_reg_ptr->otp_cmd);
 
 	ret = sp_otp_wait(_otp->base[OTPRX]);
 	if (ret < 0)
 		return ret;
 
-	*value = (readl(_otp->base[HB_GPIO] + ADDRESS_8_DATA + addr_data *
-			OTP_WORD_SIZE) >> (8 * byte_shift)) & 0xFF;
+	*value = (readl(&hb_gpio_reg_ptr->hb_gpio_rgst_bus32_9 +
+				addr_data) >> (8 * byte_shift)) & 0xFF;
 
 	return ret;
 }
@@ -144,6 +149,7 @@ static int sp_ocotp_read(void *_c, unsigned int _off, void *_v, size_t _l)
 disable_clk:
 	clk_disable(otp->clk);
 	dev_dbg(otp->dev, "OTP read complete");
+
 	return ret;
 }
 

@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ * @file fb_sp7021_main.h
+ * @brief linux kernel framebuffer main driver
+ * @author PoChou Chen
+ */
+
 #ifndef __FONT_API_H__
 #define __FONT_API_H__
 
@@ -14,4 +21,3 @@ extern void FONT_GetString_ptr(char *src_str,
 		int pixel_len);
 
 #endif /* __FONT_API_H__ */
-
