@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /**
  * (C) Copyright 2019 Sunplus Technology. <http://www.sunplus.com/>
  *
@@ -27,13 +28,14 @@
 
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
-#define _append_suffix(l, s) reserved##s[l]
+#define _append_suffix(l, s) (reserved##s[l])
 
 struct spsdc_regs {
 #define SPSDC_MEDIA_NONE 0
 #define SPSDC_MEDIA_SD 6
 #define SPSDC_MEDIA_MS 7
 	u32 card_mediatype;
+
 	u32 __rsvd_regs(1);
 	u32 card_cpu_page_cnt;
 	u32 card_ctl_page_cnt;
@@ -56,6 +58,7 @@ struct spsdc_regs {
 	u32 sdram_sector_7_addr;
 	u32 sdram_sector_7_size;
 	u32 sdram_sector_cnt;
+
 	u32 __rsvd_regs(10);
 
 	u32 __rsvd_regs(11);
@@ -128,6 +131,7 @@ struct spsdc_regs {
 	u32 sd_tx_dummy_num;
 	u32 sd_crc16buf3;
 	u32 sd_clk_dly;
+
 	u32 __rsvd_regs(17);
 
 	u32 __rsvd_regs(32);
@@ -157,11 +161,13 @@ struct spsdc_regs {
 	u32 dma_hw_page_cnt;
 	u32 dma_cmp;
 	u32 dma_int_en;
+
 	u32 __rsvd_regs(1);
 	u32 dma_hw_wait_num15_0;
 	u32 dma_hw_wait_num31_16;
 	u32 dma_hw_delay_num;
 	u32 dma_debug;
+
 	u32 __rsvd_regs(2);
 };
 
@@ -199,7 +205,8 @@ struct spsdc_host {
 #define SPSDC_PIO_MODE 1
 	int dmapio_mode;
 	/* for purpose of reducing context switch, only when transfer data that
-	   length is greater than `dma_int_threshold' should use interrupt */
+	 *  length is greater than `dma_int_threshold' should use interrupt
+	 */
 	int dma_int_threshold;
 	int dma_use_int; /* should raise irq when dma done */
 	struct sg_mapping_iter sg_miter; /* for pio mode to access sglist */

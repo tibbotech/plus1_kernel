@@ -1,3 +1,10 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+/*
+ * @file fb_sp7021_main.h
+ * @brief linux kernel framebuffer main driver
+ * @author PoChou Chen
+ */
+
 #ifndef __FB_SP7021_H__
 #define __FB_SP7021_H__
 

@@ -5,8 +5,8 @@
  * Copyright (C) 2020 SUNPLUS Inc.
  *
  * Author:	PoChou Chen <pochou.chen@sunplus.com>
- * 			Hammer Hsieh <hammer.hsieh@sunplus.com>
- *         
+ *	Hammer Hsieh <hammer.hsieh@sunplus.com>
+ *
  */
 
 /**************************************************************************
@@ -112,8 +112,8 @@ static const struct pwm_ops _sunplus_pwm_ops = {
 
 static const struct of_device_id _sunplus_pwm_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-pwm", },
-	{ .compatible = "sunplus,i143-pwm", },
-	{ /* Sentinel */ }
+/*	{ .compatible = "sunplus,i143-pwm", }, */
+	{}
 };
 MODULE_DEVICE_TABLE(of, _sunplus_pwm_dt_ids);
 
@@ -204,31 +204,28 @@ static void _sunplus_savepwmclk(struct pwm_chip *chip, struct pwm_device *pwm)
 #elif defined(CONFIG_SOC_I143)
 	u32 dd_sel = 0;
 
-	if (pwm->hwpwm%2) {
+	if (pwm->hwpwm%2)
 		dd_sel = pPWMReg->pwm_du[((pwm->hwpwm)-1)/2].pwm_du_dd_sel_1;
-	}
-	else {
+	else
 		dd_sel = pPWMReg->pwm_du[(pwm->hwpwm)/2].pwm_du_dd_sel_0;
-	}
 
 	dev_dbg(chip->dev, "pwm clk:%d dd_sel:%d\n",
 			pwm->hwpwm, dd_sel);
 
-	if(!(pPWMReg->pwm_dd[dd_sel].dd))
+	if (!(pPWMReg->pwm_dd[dd_sel].dd))
 		return;
 
 	for (i = 0; i < ePWM_MAX; ++i) {
-		if(i%2) {
+		if (i%2) {
 			if ((pPWMReg->grp244_0 & (1 << i))
 				&& (pPWMReg->pwm_du[(i-1)/2].pwm_du_dd_sel_1 == dd_sel))
 				break;
-		}
-		else {
+		} else {
 			if ((pPWMReg->grp244_0 & (1 << i))
 				&& (pPWMReg->pwm_du[i/2].pwm_du_dd_sel_0 == dd_sel))
 				break;
 		}
-	}	
+	}
 
 	if (i == ePWM_MAX) {
 		pPWMReg->pwm_dd[dd_sel].dd = 0;
@@ -286,8 +283,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 		else
 			dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0;
 #endif
-	}
-	else
+	} else
 		dd_sel_old = ePWM_DD_MAX;
 
 	/* find the same freq and turnon clk source */
@@ -307,7 +303,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 #if defined(CONFIG_SOC_SP7021)
 			tmp2 = pPWMReg->pwm_du[i].pwm_du_dd_sel;
 #elif defined(CONFIG_SOC_I143)
-			if(i%2)
+			if (i%2)
 				tmp2 = pPWMReg->pwm_du[(i-1)/2].pwm_du_dd_sel_1;
 			else
 				tmp2 = pPWMReg->pwm_du[i/2].pwm_du_dd_sel_0;
@@ -363,8 +359,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 		if (pwm->hwpwm%2) {
 			pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_1 = duty;
 			pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_dd_sel_1 = dd_sel_new;
-		}
-		else {
+		} else {
 			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_0 = duty;
 			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0 = dd_sel_new;
 		}
@@ -372,7 +367,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 	}
 
 	if ((dd_sel_old != dd_sel_new) && (dd_sel_old != ePWM_DD_MAX))
-#if defined(CONFIG_SOC_SP7021)	
+#if defined(CONFIG_SOC_SP7021)
 		pPWMReg->grp244_1 &= ~(1 << dd_sel_old);
 #elif defined(CONFIG_SOC_I143)
 		pPWMReg->pwm_dd[dd_sel_old].dd = 0;
@@ -394,7 +389,7 @@ static int _sunplus_pwm_polarity(struct pwm_chip *chip,
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
 	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
 
-	if(polarity == PWM_POLARITY_NORMAL)
+	if (polarity == PWM_POLARITY_NORMAL)
 		pPWMReg->pwm_inv &= ~(1 << pwm->hwpwm);
 	else
 		pPWMReg->pwm_inv |= (1 << pwm->hwpwm);
