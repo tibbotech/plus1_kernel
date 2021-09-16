@@ -35,39 +35,11 @@ static int loglevel = SPMMC_LOG_WARNING;
 /**
  * we do not need `SPMMC_LOG_' prefix here, when specify @level.
  */
-
-//#define MMC_FUNC_DEBUG
-//#define MMC_DBG_INFO
-#define MMC_DBG_ERR
-#define MMC_DBG_WARN
-
-
-#ifdef MMC_FUNC_DEBUG
-#define FUNC_DBG(fmt, args ...) pr_info("[MMC] dbg %s() (%d) " fmt "\n", __func__, __LINE__, ## args)
-#else
-#define FUNC_DBG(fmt, args ...)
-#endif
-
-#ifdef MMC_DBG_INFO
-#define DBG_INF(fmt, args ...) pr_info("[MMC] inf (%d): "  fmt "\n", __LINE__, ## args)
-#else
-#define DBG_INF(fmt, args ...)
-#endif
-
-#ifdef MMC_DBG_ERR
-#define DBG_ERR(fmt, args ...) pr_info("[MMC] err (%d): "  fmt "\n", __LINE__, ## args)
-#else
-#define DBG_ERR(fmt, args ...)
-#endif
-
-#ifdef MMC_DBG_WARN
-#define DBG_WARN(fmt, args ...) pr_info("[MMC] warn (%d): "  fmt "\n", __LINE__, ## args)
-#else
-#define DBG_WARN(fmt, args ...)
-#endif
-
-
-
+#define spmmc_pr(level, fmt, ...)	\
+		do {	\
+			if (unlikely(SPMMC_LOG_##level <= loglevel)) \
+				pr_info("SPMMC [" #level "] " fmt, ##__VA_ARGS__);	\
+		} while (0)
 
 static const u8 tuning_blk_pattern_4bit[] = {
 	0xff, 0x0f, 0xff, 0x00, 0xff, 0xcc, 0xc3, 0xcc,
@@ -149,16 +121,16 @@ static void spmmc_dump_regs(struct spmmc_host *host, int start_group, int start_
 		return;
 	end = p + len;
 	groups = (len + 31) / 32;
-	FUNC_DBG("groups = %d\n", groups);
-	FUNC_DBG("### dump sd card controller registers start ###\n");
+	pr_info("groups = %d\n", groups);
+	pr_info("### dump sd card controller registers start ###\n");
 	for (i = 0; i < groups; i++) {
 		for (j =  start_reg; j < 32 && p < end; j++) {
-			pr_debug("g%02d.%02d = 0x%08x\n", i+start_group, j, readl(p));
+			pr_info("g%02d.%02d = 0x%08x\n", i+start_group, j, readl(p));
 			p++;
 		}
 		start_reg = 0;
 	}
-	FUNC_DBG("### dump sd card controller registers end ###\n");
+	pr_info("### dump sd card controller registers end ###\n");
 }
 #endif /* ifdef SPMMC_DEBUG */
 
@@ -241,7 +213,7 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
-	DBG_INF("set bus clock to %d\n", clk);
+	spmmc_pr(INFO, "set bus clock to %d\n", clk);
 	#ifdef CONFIG_SOC_SP7021
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	#endif
@@ -251,9 +223,9 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#ifdef CONFIG_SOC_Q645
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif
-	DBG_INF("clkdiv= %d\n", clkdiv);
+	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
 	if (clkdiv > 0xfff) {
-		DBG_WARN("clock %d is too low to be set!\n", clk);
+		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
 	}
 	value = bitfield_replace(value, 20, 12, clkdiv);
@@ -332,7 +304,7 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 		value = bitfield_replace(value, 1, 1, 0);
 		writel(value, &host->base->sd_config0);
 	}
-	DBG_INF("set bus timing to %s\n", timing_name);
+	spmmc_pr(INFO, "set bus timing to %s\n", timing_name);
 }
 
 static void spmmc_set_bus_width(struct spmmc_host *host, int width)
@@ -357,7 +329,7 @@ static void spmmc_set_bus_width(struct spmmc_host *host, int width)
 		bus_width = 1;
 		break;
 	};
-	DBG_INF("set bus width to %d bit(s)\n", bus_width);
+	spmmc_pr(INFO, "set bus width to %d bit(s)\n", bus_width);
 	writel(value, &host->base->sd_config0);
 }
 
@@ -398,7 +370,7 @@ static void spmmc_sw_reset(struct spmmc_host *host)
 {
 	u32 value;
 
-	FUNC_DBG("sw reset\n");
+	spmmc_pr(DEBUG, "sw reset\n");
 	/* Must reset dma operation first, or it will*/
 	/* be stuck on sd_state == 0x1c00 because of*/
 	/* a controller software reset bug */
@@ -413,7 +385,7 @@ static void spmmc_sw_reset(struct spmmc_host *host)
 	writel(0x7, &host->base->sd_rst);
 	while (readl(&host->base->sd_hw_state) & BIT(6))
 		;
-	FUNC_DBG("sw reset done\n");
+	spmmc_pr(DEBUG, "sw reset done\n");
 }
 
 static void spmmc_prepare_cmd(struct spmmc_host *host, struct mmc_command *cmd)
@@ -492,7 +464,7 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 
 		count = dma_map_sg(host->mmc->parent, data->sg, data->sg_len, dma_direction);
 		if (unlikely(!count || count > SPMMC_MAX_DMA_MEMORY_SECTORS)) {
-			DBG_ERR("error occured at dma_mapp_sg: count = %d\n", count);
+			spmmc_pr(ERROR, "error occured at dma_mapp_sg: count = %d\n", count);
 			data->error = -EINVAL;
 			return;
 		}
@@ -566,10 +538,10 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 	if (unlikely(value & SPMMC_SDSTATE_ERROR)) {
 		u32 timing_cfg0 = 0;
 
-		FUNC_DBG("%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
-		FUNC_DBG("%s sd_state: 0x%08x\n", __func__, value);
+		spmmc_pr(DEBUG, "%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
+		spmmc_pr(VERBOSE, "%s sd_state: 0x%08x\n", __func__, value);
 		value = readl(&host->base->sd_status);
-		FUNC_DBG("%s sd_status: 0x%08x\n", __func__, value);
+		spmmc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
 
 		if (host->tuning_info.enable_tuning) {
 			timing_cfg0 = readl(&host->base->sd_timing_config0);
@@ -721,7 +693,7 @@ static void spmmc_controller_init(struct spmmc_host *host)
 		ret = reset_control_deassert(host->rstc);
 	}
 	if (ret)
-		DBG_WARN("Failed to reset SD controller!\n");
+		spmmc_pr(WARNING, "Failed to reset SD controller!\n");
 	value = readl(&host->base->card_mediatype_srcdst);
 	value = bitfield_replace(value, 0, 3, SPMMC_MEDIA_SD);
 	writel(value, &host->base->card_mediatype_srcdst);
@@ -737,7 +709,7 @@ static void spmmc_controller_init(struct spmmc_host *host)
 		value = bitfield_replace(value, 2, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
-		DBG_INF("use signal voltage 1.8V for eMMC\n");
+		spmmc_pr(INFO, "use signal voltage 1.8V for eMMC\n");
 	}
 #endif
 }
@@ -750,15 +722,15 @@ static void spmmc_set_power_mode(struct spmmc_host *host, struct mmc_ios *ios)
 	switch (ios->power_mode) {
 		/* power off->up->on */
 	case MMC_POWER_ON:
-		FUNC_DBG("set MMC_POWER_ON\n");
+		spmmc_pr(DEBUG, "set MMC_POWER_ON\n");
 		spmmc_controller_init(host);
 		pm_runtime_get_sync(host->mmc->parent);
 		break;
 	case MMC_POWER_UP:
-		FUNC_DBG("set MMC_POWER_UP\n");
+		spmmc_pr(DEBUG, "set MMC_POWER_UP\n");
 		break;
 	case MMC_POWER_OFF:
-		FUNC_DBG("set MMC_POWER_OFF\n");
+		spmmc_pr(DEBUG, "set MMC_POWER_OFF\n");
 		pm_runtime_put(host->mmc->parent);
 		break;
 	}
@@ -792,7 +764,7 @@ static void spmmc_finish_request(struct spmmc_host *host, struct mmc_request *mr
 	spmmc_check_error(host, mrq);
 	host->mrq = NULL;
 	mutex_unlock(&host->mrq_lock);
-	DBG_INF("request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
+	spmmc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
 	mmc_request_done(host->mmc, mrq);
 }
 
@@ -833,7 +805,7 @@ static void spmmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
-	DBG_INF("%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
+	spmmc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
 
 	spmmc_prepare_cmd(host, cmd);
@@ -844,7 +816,7 @@ static void spmmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		spmmc_wait_finish(host);
 		spmmc_check_error(host, mrq);
 		host->mrq = NULL;
-		DBG_INF("request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
+		spmmc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
 			 cmd->error, cmd->opcode, cmd->resp[0], cmd->resp[1], cmd->resp[2], cmd->resp[3]);
 		mutex_unlock(&host->mrq_lock);
 		mmc_request_done(host->mmc, mrq);
@@ -903,10 +875,10 @@ int spmmc_get_cd(struct mmc_host *mmc)
 	if (mmc_can_gpio_cd(mmc))
 		ret = mmc_gpio_get_cd(mmc);
 	else
-		DBG_WARN("no gpio assigned for card detection\n");
+		spmmc_pr(WARNING, "no gpio assigned for card detection\n");
 
 	if (ret < 0) {
-		DBG_ERR("Failed to get card presence status\n");
+		spmmc_pr(ERROR, "Failed to get card presence status\n");
 		ret = 0;
 	}
 
@@ -934,7 +906,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 		return -EIO;
 
 	if (ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
-		DBG_WARN("can not switch voltage, only support 3.3v -> 1.8v switch!\n");
+		spmmc_pr(WARNING, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
 
@@ -985,7 +957,7 @@ static int spmmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	if (!blk_test)
 		return -ENOMEM;
 
-	DBG_INF("%s\n", __func__);
+	spmmc_pr(INFO, "%s\n", __func__);
 	host->tuning_info.enable_tuning = 0;
 	do {
 		struct mmc_request mrq = {NULL};
@@ -1025,16 +997,16 @@ static int spmmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 			if (!memcmp(blk_pattern, blk_test, blksz))
 				candidate_dly |= (1 << smpl_dly);
 		} else {
-			FUNC_DBG("Tuning error: cmd.error:%d, data.error:%d\n",
+			spmmc_pr(DEBUG, "Tuning error: cmd.error:%d, data.error:%d\n",
 				cmd.error, data.error);
 		}
 	} while (smpl_dly++ <= SPMMC_MAX_TUNABLE_DLY);
 	host->tuning_info.enable_tuning = 1;
 
-	FUNC_DBG("sampling delay candidates: %x\n", candidate_dly);
+	spmmc_pr(DEBUG, "sampling delay candidates: %x\n", candidate_dly);
 	if (candidate_dly) {
 		smpl_dly = __find_best_delay(candidate_dly);
-		FUNC_DBG("set sampling delay to: %d\n", smpl_dly);
+		spmmc_pr(DEBUG, "set sampling delay to: %d\n", smpl_dly);
 		value = readl(&host->base->sd_timing_config0);
 		value = bitfield_replace(value, 12, 3, smpl_dly); /* sd_rd_rsp_dly_sel */
 		value = bitfield_replace(value, 16, 3, smpl_dly); /* sd_rd_dat_dly_sel */
@@ -1262,7 +1234,7 @@ static ssize_t config_show(struct device *dev, struct device_attribute *attr, ch
 	int len;
 
 	if (!host) {
-		DBG_ERR("No host data!\n");
+		pr_err("No host data!\n");
 		return 0;
 	}
 
@@ -1287,12 +1259,12 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 	struct spmmc_config *p;
 
 	if (!host) {
-		DBG_ERR("No host data!\n");
+		pr_err("No host data!\n");
 		return 0;
 	}
 	tmp = kmalloc(count, GFP_KERNEL);
 	if (!tmp) {
-		DBG_ERR("No enough memory for operation!\n");
+		//pr_err("No enough memory for operation!\n");
 		return 0;
 	}
 	memcpy(tmp, buf, count);
@@ -1302,14 +1274,14 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 		while (p->name && strcasecmp(p->name, name))
 			p++;
 		if (p->name) {
-			DBG_INF("trying to set config %s to %s\n", name, arg);
+			spmmc_pr(INFO, "trying to set config %s to %s\n", name, arg);
 			ret = p->store(host, arg);
 			if (ret == SPMMC_CFG_REINIT)
 				need_reinit = 1;
 			else if (ret == SPMMC_CFG_FAIL)
-				DBG_ERR("Invalid argument '%s' to config %s\n", arg, name);
+				pr_err("Invalid argument '%s' to config %s\n", arg, name);
 		} else {
-			DBG_ERR("Invalid config name: %s\n", name);
+			pr_err("Invalid config name: %s\n", name);
 		}
 	}
 
@@ -1339,7 +1311,7 @@ static ssize_t loglevel_store(struct device *dev, struct device_attribute *attr,
 		return count;
 	}
 out:
-	DBG_ERR("Invalid value\n");
+	pr_err("Invalid value\n");
 	return 0;
 }
 static DEVICE_ATTR_RW(loglevel);
@@ -1400,50 +1372,50 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 
 	host->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(host->clk)) {
-		DBG_ERR("Can not find clock source\n");
+		spmmc_pr(ERROR, "Can not find clock source\n");
 		ret = PTR_ERR(host->clk);
 		goto probe_free_host;
 	}
 
 	host->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(host->rstc)) {
-		DBG_ERR("Can not find reset controller\n");
+		spmmc_pr(ERROR, "Can not find reset controller\n");
 		ret = PTR_ERR(host->rstc);
 		goto probe_free_host;
 	}
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(resource)) {
-		DBG_ERR("get sd register resource fail\n");
+		spmmc_pr(ERROR, "get sd register resource fail\n");
 		ret = PTR_ERR(resource);
 		goto probe_free_host;
 	}
 
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
-		DBG_ERR("register size is not right\n");
+		spmmc_pr(ERROR, "register size is not right\n");
 		ret = -EINVAL;
 		goto probe_free_host;
 	}
 
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
 	if (IS_ERR((void *)host->base)) {
-		DBG_ERR("devm_ioremap_resource fail\n");
+		spmmc_pr(ERROR, "devm_ioremap_resource fail\n");
 		ret = PTR_ERR((void *)host->base);
 		goto probe_free_host;
 	}
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
-		DBG_ERR("get sd irq resource fail\n");
+		spmmc_pr(ERROR, "get sd irq resource fail\n");
 		ret = -EINVAL;
 		goto probe_free_host;
 	}
 	if (devm_request_irq(&pdev->dev, host->irq, spmmc_irq, IRQF_SHARED, dev_name(&pdev->dev), host)) {
-		DBG_ERR("Failed to request sd card interrupt.\n");
+		spmmc_pr(ERROR, "Failed to request sd card interrupt.\n");
 		ret = -ENOENT;
 		goto probe_free_host;
 	}
-	DBG_INF("spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
+	spmmc_pr(INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
 
 	ret = mmc_of_parse(mmc);
 	if (ret)
@@ -1462,7 +1434,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	mmc->ops = &spmmc_ops;
 	mmc->f_min = SPMMC_MIN_CLK;
 	if (mmc->f_max > SPMMC_MAX_CLK) {
-		FUNC_DBG("max-frequency is too high, set it to %d\n", SPMMC_MAX_CLK);
+		spmmc_pr(DEBUG, "max-frequency is too high, set it to %d\n", SPMMC_MAX_CLK);
 		mmc->f_max = SPMMC_MAX_CLK;
 	}
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
@@ -1486,7 +1458,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	return 0;
 
 probe_clk_unprepare:
-	DBG_ERR("unable to enable controller clock\n");
+	spmmc_pr(ERROR, "unable to enable controller clock\n");
 	clk_unprepare(host->clk);
 probe_free_host:
 	spmmc_device_remove_sysfs(pdev);
@@ -1500,7 +1472,7 @@ static int spmmc_drv_remove(struct platform_device *dev)
 {
 	struct spmmc_host *host = platform_get_drvdata(dev);
 
-	DBG_INF("%s\n", __func__);
+	spmmc_pr(INFO, "%s\n", __func__);
 
 	mmc_remove_host(host->mmc);
 	clk_disable(host->clk);
@@ -1551,7 +1523,7 @@ static int spmmc_pm_resume(struct device *dev)
 #ifdef CONFIG_PM_RUNTIME
 static int spmmc_pm_runtime_suspend(struct device *dev)
 {
-	FUNC_DBG("%s\n", __func__);
+	spmmc_pr(DEBUG, "%s\n", __func__);
 	struct spmmc_host *host;
 
 	host = dev_get_drvdata(dev);
@@ -1561,7 +1533,7 @@ static int spmmc_pm_runtime_suspend(struct device *dev)
 
 static int spmmc_pm_runtime_resume(struct device *dev)
 {
-	FUNC_DBG("%s\n", __func__);
+	spmmc_pr(DEBUG, "%s\n", __func__);
 	struct spmmc_host *host;
 
 	host = dev_get_drvdata(dev);
