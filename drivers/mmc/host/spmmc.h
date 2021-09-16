@@ -31,7 +31,7 @@
 #endif
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
-#define _append_suffix(l, s) reserved##s[l]
+#define _append_suffix(l, s) (reserved##s[l])
 
 struct spmmc_regs {
 #define SPMMC_MEDIA_NONE 0

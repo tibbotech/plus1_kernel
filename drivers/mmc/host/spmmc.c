@@ -854,7 +854,7 @@ static void spmmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		if (data)
 			spmmc_prepare_data(host, data);
 
-		if (unlikely(host->dmapio_mode && (data == SPMMC_PIO_MODE))) {
+		if (unlikely(host->dmapio_mode == SPMMC_PIO_MODE && data)) {
 			u32 value;
 			/* pio data transfer do not use interrupt */
 			value = readl(&host->base->sd_int);
