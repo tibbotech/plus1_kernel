@@ -6,3 +6,12 @@ config MIPICSI_RX_SUNPLUS_SP7021
 	default n
 	help
 	  This driver supports the MIPI/CSI-RX device on the Sunplus SP7021 SoC.
+
+config MIPICSI_RX_SUNPLUS_Q645
+	tristate "Sunplus Q645 MIPI/CSI-RX driver"
+	depends on SOC_Q645 && VIDEO_DEV && VIDEO_V4L2
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEOBUF2_VMALLOC
+	default n
+	help
+	  This driver supports the MIPI/CSI-RX device on the Sunplus Q645 SoC.

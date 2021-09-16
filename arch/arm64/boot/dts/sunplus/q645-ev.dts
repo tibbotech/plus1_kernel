@@ -985,8 +985,8 @@
 	};
 
 	mipicsi0: mipicsirx@0xf8005280 {
-		compatible = "sunplus,sp7021-mipicsi-rx";
-		reg = <0xf8005280 0x80>, <0xf8005300 0x80>;
+		compatible = "sunplus,q645-mipicsi-rx";
+		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
@@ -1000,8 +1000,8 @@
 	};
 
 	mipicsi1: mipicsirx@0xf8005380 {
-		compatible = "sunplus,sp7021-mipicsi-rx";
-		reg = <0xf8005380 0x80>, <0xf8005400 0x80>;
+		compatible = "sunplus,q645-mipicsi-rx";
+		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
@@ -1015,8 +1015,8 @@
 	};
 
 	mipicsi2: mipicsirx@0xf8005480 {
-		compatible = "sunplus,sp7021-mipicsi-rx";
-		reg = <0xf8005480 0x80>, <0xf8005500 0x80>;
+		compatible = "sunplus,q645-mipicsi-rx";
+		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
@@ -1030,8 +1030,8 @@
 	};
 
 	mipicsi3: mipicsirx@0xf8005580 {
-		compatible = "sunplus,sp7021-mipicsi-rx";
-		reg = <0xf8005580 0x80>, <0xf8005600 0x80>;
+		compatible = "sunplus,q645-mipicsi-rx";
+		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
