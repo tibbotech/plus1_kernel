@@ -22,29 +22,25 @@
 #include <linux/uaccess.h>
 #include "spsdv2.h"
 
+enum loglevel {
+	SPSDC_LOG_OFF,
+	SPSDC_LOG_ERROR,
+	SPSDC_LOG_WARNING,
+	SPSDC_LOG_INFO,
+	SPSDC_LOG_DEBUG,
+	SPSDC_LOG_VERBOSE,
+	SPSDC_LOG_MAX
+};
+static int loglevel = SPSDC_LOG_WARNING;
 
-//#define SD_FUNC_DEBUG
-//#define SD_DBG_INFO
-#define SD_DBG_ERR
-
-#ifdef SD_FUNC_DEBUG
-#define FUNC_DBG(fmt, args ...) pr_info("[SD] dbg %s() (%d) " fmt "\n", __func__, __LINE__, ## args)
-#else
-#define FUNC_DBG(fmt, args ...)
-#endif
-
-#ifdef SD_DBG_INFO
-#define DBG_INF(fmt, args ...)      pr_info("[SD] inf (%d): "  fmt "\n", __LINE__, ## args)
-#else
-#define DBG_INF(fmt, args ...)
-#endif
-
-#ifdef SD_DBG_ERR
-#define DBG_ERR(fmt, args ...) pr_info("[SD] err (%d): "  fmt "\n", __LINE__, ## args)
-#else
-#define DBG_ERR(fmt, args ...)
-#endif
-
+/**
+ * we do not need `SPSDC_LOG_' prefix here, when specify @level.
+ */
+#define spsdc_pr(level, fmt, ...)	\
+	do {	\
+		if (unlikely(SPSDC_LOG_##level <= loglevel))	\
+			pr_info("SPSDC [" #level "] " fmt, ##__VA_ARGS__);	\
+	} while (0)
 
 /* Produces a mask of set bits covering a range of a 32-bit value */
 static inline u32 bitfield_mask(u32 shift, u32 width)
@@ -96,16 +92,16 @@ static void spsdc_dump_regs(struct spsdc_host *host, int start_group, int start_
 		return;
 	end = p + len;
 	groups = (len + 31) / 32;
-	DBG_INF("groups = %d\n", groups);
-	DBG_INF("### dump sd card controller registers start ###\n");
+	pr_info("groups = %d\n", groups);
+	pr_info("### dump sd card controller registers start ###\n");
 	for (i = 0; i < groups; i++) {
 		for (j =  start_reg; j < 32 && p < end; j++) {
-			DBG_INF("g%02d.%02d = 0x%08x\n", i+start_group, j, readl(p));
+			pr_info("g%02d.%02d = 0x%08x\n", i+start_group, j, readl(p));
 			p++;
 		}
 		start_reg = 0;
 	}
-	DBG_INF("### dump sd card controller registers end ###\n");
+	pr_info("### dump sd card controller registers end ###\n");
 }
 #endif
 
@@ -196,10 +192,10 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	if (clk >= SPSDC_50M_CLK)
 		clk = f_max;
 
-	DBG_INF("set bus clock to %d\n", clk);
+	spsdc_pr(INFO, "set bus clock to %d\n", clk);
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	if (clkdiv > 0xfff) {
-		DBG_INF("clock %d is too low to be set!\n", clk);
+		spsdc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
 	}
 	value = bitfield_replace(value, 0, 12, clkdiv);
@@ -234,7 +230,7 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		timing_name = "hs";
 		break;
 	}
-	DBG_INF("set bus timing to %s\n", timing_name);
+	spsdc_pr(INFO, "set bus timing to %s\n", timing_name);
 	writel(value, &host->base->sd_timing_config0);
 }
 
@@ -260,7 +256,7 @@ static void spsdc_set_bus_width(struct spsdc_host *host, int width)
 		bus_width = 1;
 		break;
 	};
-	DBG_INF("set bus width to %d bit(s)\n", bus_width);
+	spsdc_pr(INFO, "set bus width to %d bit(s)\n", bus_width);
 	writel(value, &host->base->sd_config);
 }
 /**
@@ -300,7 +296,7 @@ static void spsdc_select_mode(struct spsdc_host *host, int mode)
 
 static void spsdc_sw_reset(struct spsdc_host *host)
 {
-	DBG_INF("sw reset\n");
+	spsdc_pr(DEBUG, "sw reset\n");
 	writel(0x7, &host->base->sd_rst);
 	writel(0x6, &host->base->dma_hw_stop_rst);
 	while (readl(&host->base->dma_hw_stop_rst) & BIT(2))
@@ -309,7 +305,7 @@ static void spsdc_sw_reset(struct spsdc_host *host)
 	writel(0x0, &host->base->dma_ctrl);
 	writel(0x1, &host->base->dma_ctrl);
 	writel(0x0, &host->base->dma_ctrl);
-	DBG_INF("sw reset done\n");
+	spsdc_pr(DEBUG, "sw reset done\n");
 }
 
 static void spsdc_prepare_cmd(struct spsdc_host *host, struct mmc_command *cmd)
@@ -398,7 +394,7 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 		int i, count = dma_map_sg(host->mmc->parent, data->sg, data->sg_len, dma_direction);
 
 		if (unlikely(!count || count > SPSDC_MAX_DMA_MEMORY_SECTORS)) {
-			DBG_ERR("error occured at dma_mapp_sg: count = %d\n", count);
+			spsdc_pr(ERROR, "error occured at dma_mapp_sg: count = %d\n", count);
 			data->error = -EINVAL;
 			return;
 		}
@@ -528,10 +524,10 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	if (unlikely(value & SPSDC_SDSTATE_ERROR)) {
 		u32 timing_cfg0, timing_cfg1;
 
-		DBG_INF("%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
-		DBG_INF("%s sd_state: 0x%08x\n", __func__, value);
+		spsdc_pr(DEBUG, "%s cmd %d with data %p error!\n", __func__, cmd->opcode, data);
+		spsdc_pr(VERBOSE, "%s sd_state: 0x%08x\n", __func__, value);
 		value = readl(&host->base->sd_status);
-		DBG_INF("%s sd_status: 0x%08x\n", __func__, value);
+		spsdc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
 		timing_cfg0 = readl(&host->base->sd_timing_config0);
 		host->tuning_info.wr_dly = bitfield_extract(timing_cfg0, 12, 3);
 		timing_cfg1 = readl(&host->base->sd_timing_config1);
@@ -634,7 +630,7 @@ static void spsdc_controller_init(struct spsdc_host *host)
 		ret = reset_control_deassert(host->rstc);
 	}
 	if (ret)
-		DBG_INF("Failed to reset SD controller!\n");
+		spsdc_pr(WARNING, "Failed to reset SD controller!\n");
 	value = readl(&host->base->card_mediatype);
 	value = bitfield_replace(value, 0, 3, SPSDC_MEDIA_SD);
 	writel(value, &host->base->card_mediatype);
@@ -648,15 +644,15 @@ static void spsdc_set_power_mode(struct spsdc_host *host, struct mmc_ios *ios)
 	switch (ios->power_mode) {
 		/* power off->up->on */
 	case MMC_POWER_ON:
-		DBG_INF("set MMC_POWER_ON\n");
+		spsdc_pr(DEBUG, "set MMC_POWER_ON\n");
 		spsdc_controller_init(host);
 		pm_runtime_get_sync(host->mmc->parent);
 		break;
 	case MMC_POWER_UP:
-		DBG_INF("set MMC_POWER_UP\n");
+		spsdc_pr(DEBUG, "set MMC_POWER_UP\n");
 		break;
 	case MMC_POWER_OFF:
-		DBG_INF("set MMC_POWER_OFF\n");
+		spsdc_pr(DEBUG, "set MMC_POWER_OFF\n");
 		pm_runtime_put(host->mmc->parent);
 		break;
 	}
@@ -702,7 +698,7 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 #endif
 
 	mutex_unlock(&host->mrq_lock);
-	DBG_INF("request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
+	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
 	mmc_request_done(host->mmc, mrq);
 }
 
@@ -750,7 +746,7 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
-	DBG_INF("%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
+	spsdc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
 
 #ifdef SPSDC_WIDTH_SWITCH
@@ -774,7 +770,7 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		spsdc_wait_finish(host);
 		spsdc_check_error(host, mrq);
 		host->mrq = NULL;
-		DBG_INF("request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
+		spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
 			 cmd->error, cmd->opcode, cmd->resp[0], cmd->resp[1], cmd->resp[2], cmd->resp[3]);
 		mutex_unlock(&host->mrq_lock);
 		mmc_request_done(host->mmc, mrq);
@@ -833,10 +829,10 @@ int spsdc_get_cd(struct mmc_host *mmc)
 	if (mmc_can_gpio_cd(mmc))
 		ret = mmc_gpio_get_cd(mmc);
 	else
-		DBG_INF("no gpio assigned for card detection\n");
+		spsdc_pr(WARNING, "no gpio assigned for card detection\n");
 
 	if (ret < 0) {
-		DBG_ERR("Failed to get card presence status\n");
+		spsdc_pr(ERROR, "Failed to get card presence status\n");
 		ret = 0;
 	}
 
@@ -1055,7 +1051,7 @@ static ssize_t config_show(struct device *dev, struct device_attribute *attr, ch
 	int len;
 
 	if (!host) {
-		DBG_ERR("No host data!\n");
+		pr_err("No host data!\n");
 		return 0;
 	}
 
@@ -1080,7 +1076,7 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 	struct spsdc_config *p;
 
 	if (!host) {
-		DBG_ERR("No host data!\n");
+		pr_err("No host data!\n");
 		return 0;
 	}
 	tmp = kmalloc(count, GFP_KERNEL);
@@ -1094,14 +1090,14 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 		while (p->name && strcasecmp(p->name, name))
 			p++;
 		if (p->name) {
-			DBG_INF("trying to set config %s to %s\n", name, arg);
+			spsdc_pr(INFO, "trying to set config %s to %s\n", name, arg);
 			ret = p->store(host, arg);
 			if (ret == SPSDC_CFG_REINIT)
 				need_reinit = 1;
 			else if (ret == SPSDC_CFG_FAIL)
-				DBG_ERR("Invalid argument '%s' to config %s\n", arg, name);
+				pr_err("Invalid argument '%s' to config %s\n", arg, name);
 		} else {
-			DBG_ERR("Invalid config name: %s\n", name);
+			pr_err("Invalid config name: %s\n", name);
 		}
 	}
 
@@ -1114,17 +1110,45 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RW(config);
 
+static ssize_t loglevel_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", loglevel);
+}
+
+static ssize_t loglevel_store(struct device *dev, struct device_attribute *attr,
+			const char *buf, size_t count)
+{
+	unsigned long val;
+
+	if (kstrtoul(buf, 10, &val))
+		goto out;
+	if (val < SPSDC_LOG_MAX) {
+		loglevel = val;
+		return count;
+	}
+out:
+	pr_err("Invalid value\n");
+	return 0;
+}
+static DEVICE_ATTR_RW(loglevel);
+
 static int spsdc_device_create_sysfs(struct platform_device *pdev)
 {
 	int ret;
 
+	ret = device_create_file(&pdev->dev, &dev_attr_loglevel);
+	if (ret)
+		return ret;
 	ret = device_create_file(&pdev->dev, &dev_attr_config);
+	if (ret)
+		device_remove_file(&pdev->dev, &dev_attr_loglevel);
 	return ret;
 }
 
 static void spsdc_device_remove_sysfs(struct platform_device *pdev)
 {
 	device_remove_file(&pdev->dev, &dev_attr_config);
+	device_remove_file(&pdev->dev, &dev_attr_loglevel);
 }
 
 static void tsklet_func_finish_req(unsigned long data)
@@ -1163,50 +1187,50 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 	host->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(host->clk)) {
-		DBG_ERR("Can not find clock source\n");
+		spsdc_pr(ERROR, "Can not find clock source\n");
 		ret = PTR_ERR(host->clk);
 		goto probe_free_host;
 	}
 
 	host->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(host->rstc)) {
-		DBG_ERR("Can not find reset controller\n");
+		spsdc_pr(ERROR, "Can not find reset controller\n");
 		ret = PTR_ERR(host->rstc);
 		goto probe_free_host;
 	}
 
 	resource = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(resource)) {
-		DBG_ERR("get sd register resource fail\n");
+		spsdc_pr(ERROR, "get sd register resource fail\n");
 		ret = PTR_ERR(resource);
 		goto probe_free_host;
 	}
 
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
-		DBG_ERR("register size is not right\n");
+		spsdc_pr(ERROR, "register size is not right\n");
 		ret = -EINVAL;
 		goto probe_free_host;
 	}
 
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
 	if (IS_ERR((void *)host->base)) {
-		DBG_ERR("devm_ioremap_resource fail\n");
+		spsdc_pr(ERROR, "devm_ioremap_resource fail\n");
 		ret = PTR_ERR((void *)host->base);
 		goto probe_free_host;
 	}
 
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
-		DBG_ERR("get sd irq resource fail\n");
+		spsdc_pr(ERROR, "get sd irq resource fail\n");
 		ret = -EINVAL;
 		goto probe_free_host;
 	}
 	if (devm_request_irq(&pdev->dev, host->irq, spsdc_irq, IRQF_SHARED, dev_name(&pdev->dev), host)) {
-		DBG_ERR("Failed to request sd card interrupt.\n");
+		spsdc_pr(ERROR, "Failed to request sd card interrupt.\n");
 		ret = -ENOENT;
 		goto probe_free_host;
 	}
-	DBG_INF("spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
+	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%p, irq:%d\n", host->base, host->irq);
 
 
 	ret = mmc_of_parse(mmc);
@@ -1227,7 +1251,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	mmc->ops = &spsdc_ops;
 	mmc->f_min = SPSDC_MIN_CLK;
 	if (mmc->f_max > SPSDC_MAX_CLK) {
-		DBG_INF("max-frequency is too high, set it to %d\n", SPSDC_MAX_CLK);
+		spsdc_pr(DEBUG, "max-frequency is too high, set it to %d\n", SPSDC_MAX_CLK);
 		mmc->f_max = SPSDC_MAX_CLK;
 	}
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
@@ -1251,7 +1275,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	return 0;
 
 probe_clk_unprepare:
-	DBG_ERR("unable to enable controller clock\n");
+	spsdc_pr(ERROR, "unable to enable controller clock\n");
 	clk_unprepare(host->clk);
 probe_free_host:
 	spsdc_device_remove_sysfs(pdev);
@@ -1265,7 +1289,7 @@ static int spsdc_drv_remove(struct platform_device *dev)
 {
 	struct spsdc_host *host = platform_get_drvdata(dev);
 
-	DBG_INF("%s\n", __func__);
+	spsdc_pr(INFO, "%s\n", __func__);
 	mmc_remove_host(host->mmc);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
@@ -1317,7 +1341,7 @@ static int spsdc_pm_runtime_suspend(struct device *dev)
 {
 	struct spsdc_host *host;
 
-	DBG_INF("%s\n", __func__);
+	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
 	if (__clk_is_enabled(host->clk))
 		clk_disable(host->clk);
@@ -1329,14 +1353,14 @@ static int spsdc_pm_runtime_resume(struct device *dev)
 	struct spsdc_host *host;
 	int ret = 0;
 
-	DBG_INF("%s\n", __func__);
+	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
 	if (!host->mmc)
 		return -EINVAL;
 	if (mmc_can_gpio_cd(host->mmc)) {
 		ret = mmc_gpio_get_cd(host->mmc);
 		if (!ret) {
-			DBG_INF("No card insert\n");
+			spsdc_pr(DEBUG, "No card insert\n");
 			return 0;
 		}
 	}
