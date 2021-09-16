@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0+ */
 /**
  * (C) Copyright 2019 Sunplus Technology. <http://www.sunplus.com/>
  *
@@ -24,10 +25,10 @@
 #define SPMMC_MAX_TUNABLE_DLY 7
 #ifdef CONFIG_SOC_I143
 #define SPMMC_SYS_CLK	270000000
-#endif 
+#endif
 #ifdef CONFIG_SOC_Q645
 #define SPMMC_SYS_CLK	360000000
-#endif 
+#endif
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
 #define _append_suffix(l, s) reserved##s[l]
@@ -169,8 +170,8 @@ struct spmmc_host {
 #define SPMMC_DMA_MODE 0
 #define SPMMC_PIO_MODE 1
 	int dmapio_mode;
-	/* for purpose of reducing context switch, only when transfer data that
-	   length is greater than `dma_int_threshold' should use interrupt */
+	/* for purpose of reducing context switch, only when transfer data that*/
+	/* length is greater than `dma_int_threshold' should use interrupt */
 	int dma_int_threshold;
 	struct sg_mapping_iter sg_miter; /* for pio mode to access sglist */
 	int dma_use_int; /* should raise irq when dma done */
