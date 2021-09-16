@@ -35,8 +35,6 @@ static int loglevel = SPMMC_LOG_WARNING;
 /**
  * we do not need `SPMMC_LOG_' prefix here, when specify @level.
  */
-//#define spmmc_pr(level, fmt, ...)	\
-//	if (unlikely(SPMMC_LOG_##level <= loglevel)) printk("SPMMC [" #level "] " fmt, ##__VA_ARGS__)
 
 //#define MMC_FUNC_DEBUG
 //#define MMC_DBG_INFO
@@ -1571,7 +1569,7 @@ static int spmmc_pm_runtime_resume(struct device *dev)
 }
 #endif /* ifdef CONFIG_PM_RUNTIME */
 
-static struct dev_pm_ops spmmc_pm_ops = {
+static const struct dev_pm_ops spmmc_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(spmmc_pm_suspend, spmmc_pm_resume)
 #ifdef CONFIG_PM_RUNTIME
 	SET_RUNTIME_PM_OPS(spmmc_pm_runtime_suspend, spmmc_pm_runtime_resume, NULL)
