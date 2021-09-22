@@ -13,7 +13,11 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/uaccess.h>
+#ifndef CONFIG_SOC_Q645
 #include "sp_bch.h"
+#else
+#include "sp_bch_q645.h"
+#endif
 
 static struct sp_bch_chip __this;
 
@@ -53,10 +57,15 @@ static int sp_bch_blank(dma_addr_t ecc, int len)
 static int sp_bch_reset(struct sp_bch_chip *chip)
 {
 	struct sp_bch_regs *regs = chip->regs;
-	unsigned long timeout = jiffies + msecs_to_jiffies(50);
+	unsigned long timeout;
 
 	/* reset controller */
 	writel(SRR_RESET, &regs->srr);
+#ifndef CONFIG_SOC_Q645
+	timeout = jiffies + msecs_to_jiffies(50);
+#else
+	timeout = jiffies + msecs_to_jiffies(100);
+#endif
 	while (jiffies < timeout) {
 		if (!(readl(&regs->srr) & SRR_RESET))
 			break;
@@ -287,7 +296,7 @@ ecc_detected:
 	nand->ecc.strength = bits;
 	nand->ecc.bytes = ((12 + (size >> 9)) * bits + 7) >> 3;
 
-	if(parity_sector_sz)
+	if (parity_sector_sz)
 			*parity_sector_sz = pssz;
 
 	/* sanity check */
@@ -329,6 +338,9 @@ int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
+#ifdef CONFIG_SOC_Q645
+	writel(~(IER_FAIL|IER_DONE), &regs->ier);
+#endif
 
 	chip->busy = 1;
 	writel(CR0_START | CR0_ENCODE | chip->cr0, &regs->cr0);
@@ -362,6 +374,9 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
+#ifdef CONFIG_SOC_Q645
+	writel(~(IER_FAIL|IER_DONE), &regs->ier);
+#endif
 
 	chip->busy = 1;
 	writel(CR0_START | CR0_DECODE | chip->cr0, &regs->cr0);
@@ -369,8 +384,12 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	status = readl(&regs->sr);
 	if (ret) {
 		printk(KERN_WARNING "sp_bch: decode timeout\n");
+#ifdef CONFIG_SOC_Q645
+	} else if ((readl(&regs->fsr) != 0) || (status&SR_BLANK_00)) {
+#else
 	} else if (readl(&regs->fsr) != 0) {
-		if((status & SR_BLANK_FF)) {
+#endif
+		if ((status & SR_BLANK_FF)) {
 			//printk("sp_bch: decode all FF!\n");
 			ret = 0;
 		} else {
@@ -389,7 +408,11 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 }
 EXPORT_SYMBOL(sp_bch_decode);
 
+#ifdef CONFIG_SOC_Q645
+int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc, int dec_src)
+#else
 int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc)
+#endif
 {
 	struct sp_bch_chip *chip = &__this;
 	struct sp_bch_regs *regs = chip->regs;
@@ -398,10 +421,16 @@ int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc)
 	mutex_lock(&chip->lock);
 
 	writel(SRR_RESET, &regs->srr);
-	writel((uint32_t) buf, &regs->buf);
-	writel((uint32_t) ecc, &regs->ecc);
+	writel((u32)((ulong)buf), &regs->buf);
+	writel((u32)((ulong)ecc), &regs->ecc);
+#ifdef CONFIG_SOC_Q645
+	writel((IER_FAIL|IER_DONE), &regs->ier);
+#endif
 
 	value = chip->cr0
+#ifdef CONFIG_SOC_Q645
+		| CR0_DECSRC(dec_src)
+#endif
 		| (enc ? CR0_ENCODE : CR0_DECODE)
 		| CR0_AUTOSTART;
 	writel(value, &regs->cr0);
@@ -420,9 +449,17 @@ int sp_autobch_result(struct mtd_info *mtd)
 	int ret = 0;
 	int status;
 
+#ifdef CONFIG_SOC_Q645
+	mutex_lock(&chip->lock);
+#endif
+
 	status = readl(&regs->sr);
+#ifdef CONFIG_SOC_Q645
+	if ((readl(&regs->fsr) != 0) || (status&SR_BLANK_00)) {
+#else
 	if (readl(&regs->fsr) != 0) {
-		if((status & SR_BLANK_FF)) {
+#endif
+		if ((status & SR_BLANK_FF)) {
 			//printk("decode all FF!\n");
 			ret = 0;
 		} else {
@@ -433,7 +470,15 @@ int sp_autobch_result(struct mtd_info *mtd)
 		sp_bch_reset(chip);
 	} else {
 		mtd->ecc_stats.corrected += SR_ERR_BITS(status);
+#ifdef CONFIG_SOC_Q645
+		writel(SR_DONE|SR_FAIL, &regs->sr);
+		writel(ISR_BCH, &regs->isr);
+#endif
 	}
+
+#ifdef CONFIG_SOC_Q645
+	mutex_unlock(&chip->lock);
+#endif
 
 	return ret;
 }
@@ -465,7 +510,11 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (!buf)
 		return -ENOMEM;
 	/* make sure it's 32 bytes aligned */
+#ifndef CONFIG_SOC_Q645
 	req = (void *)(((unsigned)buf + 31) & 0xffffffe0);
+#else
+	req = (void *)(((unsigned long)buf + 31) & 0xffffffffffffffe0);
+#endif
 
 	switch (cmd) {
 	case SP_BCH_IOC1K60ENC:
@@ -481,9 +530,16 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		writel(buf_phys, &regs->buf);
 		writel(ecc_phys, &regs->ecc);
+#ifdef CONFIG_SOC_Q645
+		writel(~(IER_FAIL|IER_DONE), &regs->ier);
+#endif
 
 		chip->busy = 1;
+#ifndef CONFIG_SOC_Q645
 		writel(CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
+#else
+		writel(CR0_BMODE(5) | CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
+#endif
 		if (sp_bch_wait(chip)) {
 			printk(KERN_ERR "sp_bch: 1k60 encode timeout\n");
 			ret = -EFAULT;
@@ -511,9 +567,16 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		writel(buf_phys, &regs->buf);
 		writel(ecc_phys, &regs->ecc);
+#ifdef CONFIG_SOC_Q645
+		writel(~(IER_FAIL|IER_DONE), &regs->ier);
+#endif
 
 		chip->busy = 1;
+#ifndef CONFIG_SOC_Q645
 		writel(CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
+#else
+		writel(CR0_BMODE(5) | CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
+#endif
 		if (sp_bch_wait(chip)) {
 			printk(KERN_ERR "sp_bch: 1k60 decode timeout\n");
 			ret = -EFAULT;
@@ -546,7 +609,11 @@ static struct file_operations sp_bch_fops = {
 };
 
 static struct miscdevice sp_bch_dev = {
+#ifndef CONFIG_SOC_Q645
 	.name = "sunplus,sp7021-bch",
+#else
+	.name = "sunplus,q645-bch",
+#endif
 	.fops = &sp_bch_fops,
 };
 #endif
@@ -610,8 +677,8 @@ static int sp_bch_probe(struct platform_device *pdev)
 	}
 
 	ret = request_irq(res_irq->start,sp_bch_irq,IRQF_SHARED,"sp_bch",chip);
-	if(ret) {
-		printk(KERN_ERR"sp_bch: request IRQ(%d) fail\n",res_irq->start);
+	if (ret) {
+		printk(KERN_ERR"sp_bch: request IRQ fail\n");
 		goto err;
 	}
 
@@ -620,9 +687,9 @@ static int sp_bch_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, chip);
 
-	#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
+#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
 	misc_register(&sp_bch_dev);
-	#endif
+#endif
 
 	return 0;
 
@@ -647,9 +714,9 @@ static int sp_bch_remove(struct platform_device *pdev)
 {
 	struct sp_bch_chip *chip = platform_get_drvdata(pdev);
 
-	#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
+#ifdef CONFIG_SPBCH_SUPPORT_IOCTL
 	misc_deregister(&sp_bch_dev);
-	#endif
+#endif
 
 	if (!chip)
 		BUG();
@@ -697,7 +764,11 @@ static struct resource sp_bch_res[] = {
 };
 
 static struct platform_device sp_bch_device = {
+#ifndef CONFIG_SOC_Q645
 	.name  = "sunplus,sp7021-bch",
+#else
+	.name  = "sunplus,q645-bch",
+#endif
 	.id    = 0,
 	.num_resources = ARRAY_SIZE(sp_bch_res),
 	.resource  = sp_bch_res,
@@ -706,6 +777,7 @@ static struct platform_device sp_bch_device = {
 
 static const struct of_device_id sp_bch_of_match[] = {
 	{ .compatible = "sunplus,sp7021-bch" },
+	{ .compatible = "sunplus,q645-bch" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sp_bch_of_match);

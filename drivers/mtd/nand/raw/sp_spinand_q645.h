@@ -28,7 +28,7 @@
 #if 0 // For zebu_sim
 #define CONFIG_SPINAND_READ_TIMING_SEL  0
 #define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
-#define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA
+#define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA_AUTOBCH
 #define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
 #else
 #define CONFIG_SPINAND_READ_TIMING_SEL  2
