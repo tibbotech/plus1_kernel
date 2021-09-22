@@ -95,6 +95,8 @@ extern int uphy0_irq_num;
 extern int uphy1_irq_num;
 extern void __iomem *uphy0_base_addr;
 extern void __iomem *uphy1_base_addr;
+extern void __iomem *uphy0_res_moon4;
+extern void __iomem *uphy1_res_moon4;
 
 extern u8 max_topo_level;
 extern bool tid_test_flag;
@@ -108,7 +110,6 @@ extern struct timer_list hnp_polling_timer;
 #endif
 
 #define	ENABLE_VBUS_POWER(port)
-
 #define	DISABLE_VBUS_POWER(port)
 
 static inline void uphy_force_disc(int en, int port)
@@ -136,6 +137,29 @@ static inline void uphy_force_disc(int en, int port)
 	uphy_force_disc(0, (port));	\
 	ENABLE_VBUS_POWER(port);	\
 } while (0)
+
+static inline int get_uphy_swing(int port)
+{
+	void __iomem *uphy_ctl2_addr = port ? (uphy1_res_moon4 + UPHY1_CTL2_OFFSET)
+						: (uphy0_res_moon4 + UPHY0_CTL2_OFFSET);
+	u32 val;
+
+	val = readl(uphy_ctl2_addr);
+
+	return (val >> 8) & 0xFF;
+}
+
+static inline int set_uphy_swing(u32 swing, int port)
+{
+	void __iomem *uphy_ctl2_addr = port ? (uphy1_res_moon4 + UPHY1_CTL2_OFFSET)
+						: (uphy0_res_moon4 + UPHY0_CTL2_OFFSET);
+
+	writel(RF_MASK_V_CLR(0x3F << 8), uphy_ctl2_addr);
+	writel(RF_MASK_V_SET((swing & 0x3F) << 8), uphy_ctl2_addr);
+	writel(RF_MASK_V_SET(1 << 15), uphy_ctl2_addr);
+
+	return 0;
+}
 
 static inline int get_disconnect_level(int port)
 {
@@ -187,6 +211,5 @@ static inline void reinit_uphy(int port)
 	writel(0x17, reg_addr + UPHY_INTER_SIGNAL_REG_OFFSET);
 	#endif
 }
-
 #endif	/* __SP_USB_H */
 

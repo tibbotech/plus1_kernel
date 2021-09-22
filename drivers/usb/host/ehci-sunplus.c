@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 /*
  * Generic platform ehci driver
  *
@@ -33,6 +35,7 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/of.h>
+#include <mach/io_map.h>
 
 #include "ehci.h"
 
@@ -51,9 +54,7 @@ static int ehci_platform_reset(struct usb_hcd *hcd)
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
 	struct usb_ehci_pdata *pdata = pdev->dev.platform_data;
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-#if 0
 	int port_num = pdev->id - 1;
-#endif
 	int retval;
 
 	hcd->has_tt = pdata->has_tt;
@@ -66,12 +67,10 @@ static int ehci_platform_reset(struct usb_hcd *hcd)
 	if (retval)
 		return retval;
 
-#if 0
-	if (pdata->port_power_on)
+	if (pdata->power_on)
 		ehci_port_power(ehci, port_num, 1);
-	if (pdata->port_power_off)
+	if (pdata->power_off)
 		ehci_port_power(ehci, port_num, 0);
-#endif
 
 	return 0;
 }
@@ -108,33 +107,24 @@ static const struct hc_driver ehci_platform_hc_driver = {
 };
 
 #ifdef CONFIG_SWITCH_USB_ROLE
+#define USB_UPHY_REG				(3)
 
-#define USB_UPHY_REG	(3)
-
-static ssize_t show_usb_role(struct device *dev,
-			     struct device_attribute *attr, char *buf)
+static ssize_t usb_role_switch_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	//struct platform_device *pdev = to_platform_device(dev);
-
 	return 0;
 }
 
-static ssize_t store_usb_role(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t count)
+static ssize_t usb_role_switch_store(struct device *dev, struct device_attribute *attr,
+							const char *buf, size_t count)
 {
-#if 0
 	struct platform_device *pdev = to_platform_device(dev);
-	//struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
-	//struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-
 	u32 switch_usb_role;
-	volatile u32 *grop1 = (u32 *) VA_IOB_ADDR(2 * 32 * 4);
+	u32 *grop1 = (u32 *) VA_IOB_ADDR(2 * 32 * 4);
 	u32 ret;
 
 	/* 0:host , 1:device */
 	if (kstrtouint(buf, 0, &switch_usb_role) == 0) {
-		//printk("usb rold -> %x\n", switch_usb_role);
+		pr_debug("usb rold -> %x\n", switch_usb_role);
 		ret = ioread32(grop1 + USB_UPHY_REG);
 
 		ret |= (1 << ((pdev->id - 1) * 8 + 4));
@@ -144,24 +134,22 @@ static ssize_t store_usb_role(struct device *dev,
 		} else
 			ret |= (3 << ((pdev->id - 1) * 8 + 5));
 
-		//printk("usb ret -> %x\n", ret);
+		pr_debug("usb ret -> %x\n", ret);
 		iowrite32(ret, grop1 + USB_UPHY_REG);
 	}
-#endif
+
 	return count;
 }
 
-static DEVICE_ATTR(usb_role_switch,
-		   S_IWUSR | S_IRUSR, show_usb_role, store_usb_role);
+static DEVICE_ATTR_RW(usb_role_switch);
 
 /* switch usb speed ( fs/hs ) */
-static ssize_t show_usb_speed(struct device *dev,
+static ssize_t usb_speed_switch_show(struct device *dev,
 			      struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
 	struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-
 	u32 result;
 
 	result = ehci_readl(ehci, &ehci->regs->configured_flag);
@@ -169,13 +157,12 @@ static ssize_t show_usb_speed(struct device *dev,
 	return sprintf(buf, "%d\n", result);
 }
 
-#define MAX_PORT_NUM  					2
-#define POWER_RESET_TIME 				500
-#define ENABLE_FORCE_HOST_DISCONNECT    1
-#define DISABLE_FORCE_HOST_DISCONNECT   0
-static ssize_t store_usb_speed(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
+#define MAX_PORT_NUM				2
+#define POWER_RESET_TIME			500
+#define ENABLE_FORCE_HOST_DISCONNECT		1
+#define DISABLE_FORCE_HOST_DISCONNECT		0
+static ssize_t usb_speed_switch_store(struct device *dev, struct device_attribute *attr,
+							const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
@@ -190,118 +177,102 @@ static ssize_t store_usb_speed(struct device *dev,
 			DISABLE_VBUS_POWER(port_num);
 			uphy_force_disc(ENABLE_FORCE_HOST_DISCONNECT, port_num);
 			msleep(POWER_RESET_TIME);
-			ehci_writel(ehci,
-				    FLAG_CF & usb_host_owner,
-				    &ehci->regs->configured_flag);
+			ehci_writel(ehci, FLAG_CF & usb_host_owner,
+						&ehci->regs->configured_flag);
 			uphy_force_disc(DISABLE_FORCE_HOST_DISCONNECT,
 					port_num);
 			ENABLE_VBUS_POWER(port_num);
-		} else if (MAX_PORT_NUM == port_num) {
-			printk(KERN_NOTICE
-			       "warning,port 2 is not supported to power reset\n");
-			ehci_writel(ehci,
-				    FLAG_CF & usb_host_owner,
-				    &ehci->regs->configured_flag);
+		} else if (port_num == MAX_PORT_NUM) {
+			pr_notice("warning,port 2 is not supported to power reset\n");
+			ehci_writel(ehci, FLAG_CF & usb_host_owner,
+						&ehci->regs->configured_flag);
 		} else {
-			printk(KERN_NOTICE "error port num:%d\n", port_num);
+			pr_notice("error port num:%d\n", port_num);
 		}
 	}
 
 	return count;
 }
 
-static DEVICE_ATTR(usb_speed_switch,
-		   S_IWUSR | S_IRUSR, show_usb_speed, store_usb_speed);
+static DEVICE_ATTR_RW(usb_speed_switch);
 
-#if 0
-static ssize_t show_usb_swing(struct device *dev,
-			      struct device_attribute *attr, char *buf)
+static ssize_t usb_uphy_swing_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 
 	return sprintf(buf, "%d\n", get_uphy_swing(pdev->id - 1));
 }
 
-static ssize_t store_usb_swing(struct device *dev,
-			       struct device_attribute *attr,
-			       const char *buf, size_t count)
+static ssize_t usb_uphy_swing_store(struct device *dev, struct device_attribute *attr,
+							const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
-	//struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
-	//struct ehci_hcd *ehci = hcd_to_ehci(hcd);
-
 	u32 swing_val;
 
-	if (kstrtouint(buf, 0, &swing_val) == 0) {
+	if (kstrtouint(buf, 0, &swing_val) == 0)
 		set_uphy_swing(swing_val, pdev->id - 1);
-	}
 
 	return count;
 }
 
-static DEVICE_ATTR(usb_uphy_swing,
-		   S_IWUSR | S_IRUSR, show_usb_swing, store_usb_swing);
-#endif
+static DEVICE_ATTR_RW(usb_uphy_swing);
 
-static ssize_t show_usb_disconnect_level(struct device *dev,
-					 struct device_attribute *attr,
-					 char *buf)
+static ssize_t usb_disconnect_level_show(struct device *dev, struct device_attribute *attr,
+										char *buf)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	u32 disc_level;
 
 	disc_level = get_disconnect_level(pdev->id - 1);
-	printk(KERN_DEBUG
-	       "port:%d,get disconnect level:0x%x\n", pdev->id - 1, disc_level);
+	pr_notice("port:%d,get disconnect level:0x%x\n", pdev->id - 1, disc_level);
 
 	return sprintf(buf, "0x%x\n", disc_level);
 }
 
-static ssize_t store_usb_disconnect_level(struct device *dev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count)
+static ssize_t usb_disconnect_level_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	u32 disc_level;
 
 	if (kstrtouint(buf, 0, &disc_level) == 0) {
-		printk(KERN_DEBUG
-		       "port:%d,set disconnect level:0x%x\n",
-		       pdev->id - 1, disc_level);
+		pr_notice("port:%d,set disconnect level:0x%x\n", pdev->id - 1, disc_level);
 		set_disconnect_level(disc_level, pdev->id - 1);
 	}
 
 	return count;
 }
 
-static DEVICE_ATTR(usb_disconnect_level,
-		   S_IWUSR | S_IRUSR, show_usb_disconnect_level,
-		   store_usb_disconnect_level);
+static DEVICE_ATTR_RW(usb_disconnect_level);
 
-static ssize_t store_usb_ctrl_reset(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t usb_ctrl_reset_show(struct device *dev, struct device_attribute *attr,
+										char *buf)
+{
+	return 0;
+}
+
+static ssize_t usb_ctrl_reset_store(struct device *dev,
+						struct device_attribute *attr,
+						const char *buf, size_t count)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = (struct usb_hcd *)platform_get_drvdata(pdev);
-	/*struct ehci_hcd *ehci = hcd_to_ehci(hcd); */
 	u32 val = 1;
 
-	if (kstrtouint(buf, 0, &val)) {
+	if (kstrtouint(buf, 0, &val))
 		return 1;
-	}
 
-	if (NULL == hcd) {
-		printk(KERN_NOTICE "store_usb_ctrl_reset: usb controller invalid\n");
+	if (hcd == NULL) {
+		pr_notice("store_usb_ctrl_reset: usb controller invalid\n");
 		return count;
 	}
-	printk(KERN_DEBUG "Will reset usb controller val=%d\n", val);
+	pr_notice("Will reset usb controller val=%d\n", val);
 
 	return count;
 }
 
-static DEVICE_ATTR(usb_ctrl_reset, S_IWUSR, NULL, store_usb_ctrl_reset);
-
+static DEVICE_ATTR_RW(usb_ctrl_reset);
 #endif
 
 static struct usb_ehci_pdata usb_ehci_pdata = {
@@ -317,14 +288,12 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	struct usb_phy *otg_phy;
 #endif
 
-	//BUG_ON(!dev->dev.platform_data);
-
 	if (usb_disabled())
 		return -ENODEV;
 
 	dev->dev.platform_data = &usb_ehci_pdata;
 
-	/*enable usb controller clock*/
+	/* enable usb controller clock */
 	ehci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
 	if (IS_ERR(ehci_clk[dev->id - 1])) {
 		pr_err("not found clk source\n");
@@ -335,10 +304,10 @@ int ehci_sunplus_probe(struct platform_device *dev)
 
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
-		pr_err("no irq provieded,ret:%d\n",irq);
+		pr_err("no irq provieded,ret:%d\n", irq);
 		return irq;
 	}
-	printk(KERN_DEBUG "ehci_id:%d,irq:%d\n",dev->id,irq);
+	pr_debug("ehci_id:%d,irq:%d\n", dev->id, irq);
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
@@ -346,8 +315,7 @@ int ehci_sunplus_probe(struct platform_device *dev)
 		return -ENXIO;
 	}
 
-	hcd = usb_create_hcd(&ehci_platform_hc_driver, &dev->dev,
-			     dev_name(&dev->dev));
+	hcd = usb_create_hcd(&ehci_platform_hc_driver, &dev->dev, dev_name(&dev->dev));
 	if (!hcd)
 		return -ENOMEM;
 
@@ -371,21 +339,20 @@ int ehci_sunplus_probe(struct platform_device *dev)
 #endif
 
 	err = usb_add_hcd(hcd, irq, IRQF_SHARED);
-	printk(KERN_DEBUG "hcd_irq:%d,%d\n",hcd->irq,irq);
+	pr_debug("hcd_irq:%d,%d\n", hcd->irq, irq);
 	if (err)
 		goto err_iounmap;
 
 	platform_set_drvdata(dev, hcd);
 
-/****************************************************/
+/**************************************************************************************************/
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	if (dev->id < 3) {
 		otg_phy = usb_get_transceiver_sp(dev->id - 1);
-		if(otg_phy){
+		if (otg_phy) {
 			err = otg_set_host(otg_phy->otg, &hcd->self);
 			if (err < 0) {
-				dev_err(&dev->dev,
-					"unable to register with transceiver\n");
+				dev_err(&dev->dev, "unable to register with transceiver\n");
 				goto err_iounmap;
 			}
 		}
@@ -416,6 +383,7 @@ err_release_region:
 err_put_hcd:
 #endif
 	usb_put_hcd(hcd);
+
 	return err;
 }
 EXPORT_SYMBOL_GPL(ehci_sunplus_probe);
@@ -445,7 +413,7 @@ int ehci_sunplus_remove(struct platform_device *dev)
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 
-	/*disable usb controller clock*/
+	/* disable usb controller clock */
 	clk_disable(ehci_clk[dev->id - 1]);
 
 	return 0;
@@ -459,12 +427,12 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
-	printk(KERN_DEBUG "%s.%d\n",__FUNCTION__, __LINE__);
+	pr_debug("%s.%d\n", __func__, __LINE__);
 	rc = ehci_suspend(hcd, do_wakeup);
 	if (rc)
 		return rc;
 
-	/*disable usb controller clock*/
+	/* disable usb controller clock */
 	clk_disable(ehci_clk[dev->id - 1]);
 
 	return 0;
@@ -474,8 +442,9 @@ static int ehci_sunplus_drv_resume(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 
-	printk(KERN_DEBUG "%s.%d\n",__FUNCTION__, __LINE__);
-	/*enable usb controller clock*/
+	pr_debug("%s.%d\n", __func__, __LINE__);
+
+	/* enable usb controller clock */
 	clk_prepare(ehci_clk[dev->id - 1]);
 	clk_enable(ehci_clk[dev->id - 1]);
 
@@ -484,7 +453,7 @@ static int ehci_sunplus_drv_resume(struct device *dev)
 	return 0;
 }
 
-struct dev_pm_ops ehci_sunplus_pm_ops = {
+struct dev_pm_ops const ehci_sunplus_pm_ops = {
 	.suspend = ehci_sunplus_drv_suspend,
 	.resume = ehci_sunplus_drv_resume,
 };

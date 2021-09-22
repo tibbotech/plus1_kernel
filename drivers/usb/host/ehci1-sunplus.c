@@ -1,12 +1,12 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+
 #include <linux/usb/sp_usb.h>
 #include <linux/module.h>
 #include <linux/platform_device.h>
 #include "ehci-sunplus.h"
 
-extern void usb_hcd_platform_shutdown(struct platform_device *dev);
-
-static int ehci1_sunplus_platform_probe(struct platform_device *dev){
-
+static int ehci1_sunplus_platform_probe(struct platform_device *dev)
+{
 	dev->id = 2;
 
 	return ehci_sunplus_probe(dev);
@@ -15,8 +15,6 @@ static int ehci1_sunplus_platform_probe(struct platform_device *dev){
 static const struct of_device_id ehci1_sunplus_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-ehci1" },
-#elif defined(CONFIG_SOC_I143)
-	{ .compatible = "sunplus,sunplus-i143-usb-ehci1" },
 #endif
 	{ }
 };
@@ -35,20 +33,20 @@ static struct platform_driver ehci1_hcd_sunplus_driver = {
 	}
 };
 
-/*-------------------------------------------------------------------------*/
-
+/* ---------------------------------------------------------------------------------------------- */
 static int __init ehci1_sunplus_init(void)
 {
 #ifdef CONFIG_SOC_Q645
 	return -1;
 #else
 	if (sp_port1_enabled & PORT1_ENABLED) {
-		printk(KERN_NOTICE "register ehci1_hcd_sunplus_driver\n");
+		pr_notice("register ehci1_hcd_sunplus_driver\n");
 		return platform_driver_register(&ehci1_hcd_sunplus_driver);
-	} else {
-		printk(KERN_NOTICE "warn,port1 not enable,not register ehci1 sunplus hcd driver\n");
-		return -1;
 	}
+
+	pr_notice("warn,port1 not enable,not register ehci1 sunplus hcd driver\n");
+	return -1;
+
 #endif
 }
 module_init(ehci1_sunplus_init);
