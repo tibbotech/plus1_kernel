@@ -1,25 +1,5 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2018 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-/**
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
  * @file disp_vpp.c
  * @brief
  * @author PoChou Chen
@@ -47,15 +27,15 @@
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-static volatile DISP_VPOST_REG_t *pVPOSTReg;
-static volatile DISP_DDFCH_REG_t *pDDFCHReg;
+static struct DISP_VPOST_REG_t *pVPOSTReg;
+static struct DISP_DDFCH_REG_t *pDDFCHReg;
 /**************************************************************************
  *             F U N C T I O N    I M P L E M E N T A T I O N S           *
  **************************************************************************/
 void DRV_VPP_Init(void *pInHWReg1, void *pInHWReg2)
 {
-	pVPOSTReg = (DISP_VPOST_REG_t *)pInHWReg1;
-	pDDFCHReg = (DISP_DDFCH_REG_t *)pInHWReg2;
+	pVPOSTReg = (struct DISP_VPOST_REG_t *)pInHWReg1;
+	pDDFCHReg = (struct DISP_DDFCH_REG_t *)pInHWReg2;
 }
 
 int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int output_h)
@@ -64,15 +44,16 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 	int vpp_adj, user_mode;
+
 	vpp_adj = (int)disp_dev->TTLPar.ttl_vpp_adj;
 	user_mode = (int)disp_dev->TTLPar.set_user_mode;
-	if(user_mode)
+	if (user_mode)
 		pVPOSTReg->vpost_mas_sla = 0x1; //en user mode
 
 	#else
 		pVPOSTReg->vpost_mas_sla = 0x1; //en user mode
 	#endif
-	
+
 	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	pVPOSTReg->vpost_o_act_xstart = 0; //x active
 	pVPOSTReg->vpost_o_act_ystart = vpp_adj; //y active
@@ -100,23 +81,17 @@ int vpost_setting(int x, int y, int input_w, int input_h, int output_w, int outp
 		pVPOSTReg->vpost_config1 = 0x11;
 		pVPOSTReg->vpost_i_xstart = x;
 		pVPOSTReg->vpost_i_ystart = y;
-	}
-	else {
+	} else {
 		pVPOSTReg->vpost_config1 = 0x1;
 		pVPOSTReg->vpost_i_xstart = 0;
 		pVPOSTReg->vpost_i_ystart = 0;
 	}
-#if 0//def TTL_USER_MODE_SUPPORT
+
 	pVPOSTReg->vpost_i_xlen = input_w;
 	pVPOSTReg->vpost_i_ylen = input_h;
 	pVPOSTReg->vpost_o_xlen = output_w;
 	pVPOSTReg->vpost_o_ylen = output_h;
-#else
-	pVPOSTReg->vpost_i_xlen = input_w;
-	pVPOSTReg->vpost_i_ylen = input_h;
-	pVPOSTReg->vpost_o_xlen = output_w;
-	pVPOSTReg->vpost_o_ylen = output_h;
-#endif
+
 	pVPOSTReg->vpost_config2 = 4; //VPOST CHKSUM_EN
 	//pVPOSTReg->vpost_config2 = 5; //VPOST CHKSUM_EN | BIST_EN //colorbar test pattern
 	//pVPOSTReg->vpost_config2 = 7; //VPOST CHKSUM_EN | BIST_MMODE | BIST_EN //border test pattern
@@ -131,11 +106,12 @@ void sp_disp_set_ttl_vpp(void)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 	int vpp_adj;
+
 	vpp_adj = (int)disp_dev->TTLPar.ttl_vpp_adj;
-	
+
 	pVPOSTReg->vpost_o_act_xstart = 0; //x active
 	pVPOSTReg->vpost_o_act_ystart = vpp_adj; //y active
-	
+
 }
 EXPORT_SYMBOL(sp_disp_set_ttl_vpp);
 #endif
@@ -148,9 +124,9 @@ int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int yuv_fmt)
 	pDDFCHReg->ddfch_latch_en = 1;
 	if (yuv_fmt == 0)
 		pDDFCHReg->ddfch_mode_option = 0; //source yuv420 NV12
-	else if(yuv_fmt == 1)
+	else if (yuv_fmt == 1)
 		pDDFCHReg->ddfch_mode_option = 0x400; //source yuv422 NV16
-	else if(yuv_fmt == 2)
+	else if (yuv_fmt == 2)
 		pDDFCHReg->ddfch_mode_option = 0x800; //source yuv422 YUY2
 
 	pDDFCHReg->ddfch_enable = 0xd0;

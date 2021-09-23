@@ -186,12 +186,8 @@ static unsigned char edid[EDID_CAPACITY];
 static unsigned int edid_data_ofs;
 #ifdef CONFIG_EDID_READ
 static unsigned char edid_read_timeout = FALSE;
-unsigned int  edid_dvi_horizontal;
-EXPORT_SYMBOL(edid_dvi_horizontal);
-unsigned int  edid_dvi_vertical;
-EXPORT_SYMBOL(edid_dvi_vertical);
-unsigned int  edid_skip_timing_update;
-EXPORT_SYMBOL(edid_skip_timing_update);
+unsigned int edid_dvi_horizontal;
+unsigned int edid_dvi_vertical;
 #endif
 static unsigned char g_hdmitx_mode;
 module_param(g_hdmitx_mode, byte, 0644);
@@ -530,19 +526,13 @@ static void parse_edid(void)
 		// timing
 		data = (edid[58] & 0xF0);
 		data = ((data << 4) | edid[56]);
-		HDMITX_INFO("DVI horizontal Max. Timing : %u\n", data);
 		edid_dvi_horizontal = data;
+		HDMITX_INFO("DVI horizontal Max. Timing : %u\n", edid_dvi_horizontal);
 
 		data = (edid[61] & 0xF0);
 		data = ((data << 4) | edid[59]);
-		HDMITX_INFO("DVI vertical Max. Timing : %u\n", data);
 		edid_dvi_vertical = data;
-
-		if (((edid_dvi_horizontal == 800) && (edid_dvi_vertical == 480)) ||
-			((edid_dvi_horizontal == 1024) && (edid_dvi_vertical == 600)))
-			edid_skip_timing_update = 1;
-		else
-			edid_skip_timing_update = 0;
+		HDMITX_INFO("DVI vertical Max. Timing : %u\n", edid_dvi_vertical);
 
 	#ifdef TIMING_INIT_BY_EDID
 		if (data <= 480)

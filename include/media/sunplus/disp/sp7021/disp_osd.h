@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef __DISP_OSD_H__
 #define __DISP_OSD_H__
 
@@ -32,7 +34,7 @@ enum DRV_OsdTransparencyMode_e {
 	DRV_OSD_TRANSPARENCY_ALL			/*!< the whole region is transparent */
 };
 
-typedef u32 DRV_OsdRegionHandle_t;
+//typedef u32 DRV_OsdRegionHandle_t;
 
 enum DRV_OsdBlendMethod_e {
 	DRV_OSD_BLEND_REPLACE,		/*!< OSD blend method is region alpha replace */
@@ -40,15 +42,14 @@ enum DRV_OsdBlendMethod_e {
 	MAX_BLEND_METHOD,
 };
 
-typedef struct _DRV_Region_Info_t
-{
+struct DRV_Region_Info {
 	u32 bufW;
 	u32 bufH;
 	u32 startX;
 	u32 startY;
 	u32 actW;
 	u32 actH;
-} DRV_Region_Info_t;
+};
 
 struct colormode_t {
 	char name[24];

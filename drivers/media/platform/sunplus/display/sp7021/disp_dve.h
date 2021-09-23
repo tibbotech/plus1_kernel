@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef __DISP_DVE_H__
 #define __DISP_DVE_H__
 

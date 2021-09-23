@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef __DISP_VPP_H__
 #define __DISP_VPP_H__
 
@@ -12,5 +14,6 @@ void sp_disp_set_ttl_vpp(void);
 #endif
 int ddfch_setting(int luma_addr, int chroma_addr, int w, int h, int is_yuv422);
 
+extern void sp_disp_set_ttl_vpp(void);
 #endif	//__DISP_VPP_H__
 

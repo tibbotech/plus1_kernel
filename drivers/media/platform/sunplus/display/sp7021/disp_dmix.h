@@ -1,3 +1,5 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef __DISP_DMIX_H__
 #define __DISP_DMIX_H__
 
@@ -8,7 +10,7 @@
 #define DMIX_LUMA_SLOPE_MIN		(0.60)
 #define DMIX_LUMA_SLOPE_MAX		(1.40)
 
-typedef enum {
+enum DRV_DMIX_InputSel_t {
 	DRV_DMIX_VPP0 = 0,
 	DRV_DMIX_VPP1,	//unsupported
 	DRV_DMIX_VPP2,	//unsupported
@@ -17,15 +19,15 @@ typedef enum {
 	DRV_DMIX_OSD2,	//unsupported
 	DRV_DMIX_OSD3,	//unsupported
 	DRV_DMIX_PTG,
-} DRV_DMIX_InputSel_e;
+};
 
-typedef enum {
+enum DRV_DMIX_LayerMode_t {
 	DRV_DMIX_AlphaBlend,
 	DRV_DMIX_Transparent,
 	DRV_DMIX_Opacity,
-} DRV_DMIX_LayerMode_e;
+};
 
-typedef enum {
+enum DRV_DMIX_LayerId_t {
 	DRV_DMIX_BG,
 	DRV_DMIX_L1,
 	DRV_DMIX_L2,	//unsupported
@@ -33,72 +35,72 @@ typedef enum {
 	DRV_DMIX_L4,	//unsupported
 	DRV_DMIX_L5,	//unsupported
 	DRV_DMIX_L6,
-} DRV_DMIX_LayerId_e;
+};
 
-typedef enum {
+enum DRV_DMIX_TPG_t {
 	DRV_DMIX_TPG_BGC,
 	DRV_DMIX_TPG_V_COLORBAR,
 	DRV_DMIX_TPG_H_COLORBAR,
 	DRV_DMIX_TPG_BORDER,
 	DRV_DMIX_TPG_SNOW,
 	DRV_DMIX_TPG_MAX,
-} DRV_DMIX_TPG_e;
+};
 
-typedef struct DRV_DMIX_PlaneAlpha_s {
-	DRV_DMIX_LayerId_e Layer;
-	UINT32 EnPlaneAlpha;
-	UINT32 EnFixAlpha;
-	UINT32 AlphaValue;
-} DRV_DMIX_PlaneAlpha_t;
+struct DRV_DMIX_PlaneAlpha_t {
+	enum DRV_DMIX_LayerId_t Layer;
+	unsigned int EnPlaneAlpha;
+	unsigned int EnFixAlpha;
+	unsigned int AlphaValue;
+};
 
-typedef struct DRV_DMIX_Luma_Adj_s {
-	UINT32 enable;
-	UINT32 brightness;
-	UINT32 contrast;
+struct DRV_DMIX_Luma_Adj_t {
+	unsigned int enable;
+	unsigned int brightness;
+	unsigned int contrast;
 	//-------------
-	UINT16 CP1_Dst;
-	UINT16 CP1_Src;
-	UINT16 CP2_Dst;
-	UINT16 CP2_Src;
-	UINT16 CP3_Dst;
-	UINT16 CP3_Src;
-	UINT16 Slope0;
-	UINT16 Slope1;
-	UINT16 Slope2;
-	UINT16 Slope3;
-} DRV_DMIX_Luma_Adj_t;
+	unsigned short CP1_Dst;
+	unsigned short CP1_Src;
+	unsigned short CP2_Dst;
+	unsigned short CP2_Src;
+	unsigned short CP3_Dst;
+	unsigned short CP3_Src;
+	unsigned short Slope0;
+	unsigned short Slope1;
+	unsigned short Slope2;
+	unsigned short Slope3;
+};
 
-typedef struct DRV_DMIX_Chroma_Adj_s {
-	UINT32 enable;
-	UINT16 satcos;
-	UINT16 satsin;
-} DRV_DMIX_Chroma_Adj_t;
+struct DRV_DMIX_Chroma_Adj_t {
+	unsigned int enable;
+	unsigned short satcos;
+	unsigned short satsin;
+};
 
-typedef struct DRV_DMIX_Layer_Set_s {
-	DRV_DMIX_LayerId_e Layer;
-	DRV_DMIX_LayerMode_e LayerMode;
-	DRV_DMIX_InputSel_e FG_Sel;
-} DRV_DMIX_Layer_Set_t;
+struct DRV_DMIX_Layer_Set_t {
+	enum DRV_DMIX_LayerId_t Layer;
+	enum DRV_DMIX_LayerMode_t LayerMode;
+	enum DRV_DMIX_InputSel_t FG_Sel;
+};
 
 void DRV_DMIX_Pixel_En_Sel(void);
 void DRV_DMIX_Init(void *pInReg);
-DRV_Status_e DRV_DMIX_PTG_ColorBar(DRV_DMIX_TPG_e tpg_sel,
+enum DRV_Status_t DRV_DMIX_PTG_ColorBar(enum DRV_DMIX_TPG_t tpg_sel,
 		int bg_color_yuv,
 		int border_len);
-void DRV_DMIX_PTG_Color_Set(UINT32 color);
-void DRV_DMIX_PTG_Color_Set_YCbCr(UINT8 enable, UINT8 Y, UINT8 Cb, UINT8 Cr);
-DRV_Status_e DRV_DMIX_Layer_Init(DRV_DMIX_LayerId_e Layer,
-		DRV_DMIX_LayerMode_e LayerMode,
-		DRV_DMIX_InputSel_e FG_Sel);
-DRV_Status_e DRV_DMIX_Layer_Set(DRV_DMIX_LayerMode_e LayerMode,
-		DRV_DMIX_InputSel_e FG_Sel);
-void DRV_DMIX_Layer_Get(DRV_DMIX_Layer_Set_t *pLayerInfo);
-DRV_Status_e DRV_DMIX_Plane_Alpha_Set(DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo);
+void DRV_DMIX_PTG_Color_Set(unsigned int color);
+void DRV_DMIX_PTG_Color_Set_YCbCr(unsigned char enable, unsigned char Y, unsigned char Cb, unsigned char Cr);
+enum DRV_Status_t DRV_DMIX_Layer_Init(enum DRV_DMIX_LayerId_t Layer,
+		enum DRV_DMIX_LayerMode_t LayerMode,
+		enum DRV_DMIX_InputSel_t FG_Sel);
+enum DRV_Status_t DRV_DMIX_Layer_Set(enum DRV_DMIX_LayerMode_t LayerMode,
+		enum DRV_DMIX_InputSel_t FG_Sel);
+void DRV_DMIX_Layer_Get(struct DRV_DMIX_Layer_Set_t *pLayerInfo);
+enum DRV_Status_t DRV_DMIX_Plane_Alpha_Set(struct DRV_DMIX_PlaneAlpha_t *PlaneAlphaInfo);
 void DRV_DMIX_PQ_OnOff(int OutId, int enable);
-void DRV_DMIX_Luma_Adjust_Set(DRV_DMIX_Luma_Adj_t *LumaAdjInfo);
-void DRV_DMIX_Luma_Adjust_Get(DRV_DMIX_Luma_Adj_t *LumaAdjInfo);
-void DRV_DMIX_Chroma_Adjust_Set(DRV_DMIX_Chroma_Adj_t *ChromaAdjInfo);
-void DRV_DMIX_Chroma_Adjust_Get(DRV_DMIX_Chroma_Adj_t *ChromaAdjInfo);
+void DRV_DMIX_Luma_Adjust_Set(struct DRV_DMIX_Luma_Adj_t *LumaAdjInfo);
+void DRV_DMIX_Luma_Adjust_Get(struct DRV_DMIX_Luma_Adj_t *LumaAdjInfo);
+void DRV_DMIX_Chroma_Adjust_Set(struct DRV_DMIX_Chroma_Adj_t *ChromaAdjInfo);
+void DRV_DMIX_Chroma_Adjust_Get(struct DRV_DMIX_Chroma_Adj_t *ChromaAdjInfo);
 
 #endif	/* __DISP_DMIX_H__ */
 

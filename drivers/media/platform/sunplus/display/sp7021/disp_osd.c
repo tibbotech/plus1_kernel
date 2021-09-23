@@ -1,25 +1,5 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2018 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-/**
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
  * @file disp_osd.c
  * @brief
  * @author PoChou Chen
@@ -113,10 +93,9 @@ struct HW_OSD_Header_s {
 
 	u32 reserved3[24];	// need 128 bytes for HDR
 };
-STATIC_ASSERT(sizeof(struct HW_OSD_Header_s) == 128);
 
 struct Region_Manager_s {
-	DRV_Region_Info_t	RegionInfo;
+	struct DRV_Region_Info	RegionInfo;
 
 	enum DRV_OsdRegionFormat_e	Format;
 	u32					Align;
@@ -137,13 +116,12 @@ struct Region_Manager_s {
 	//structure size should be 32 alignment.
 	u32 reserved[4];
 };
-STATIC_ASSERT((sizeof(struct Region_Manager_s) % 4) == 0);
 
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-static DISP_OSD_REG_t *pOSDReg;
-static DISP_GPOST_REG_t *pGPOSTReg;
+static struct DISP_OSD_REG_t *pOSDReg;
+static struct DISP_GPOST_REG_t *pGPOSTReg;
 
 static struct Region_Manager_s *gpWinRegion;
 static u32 gpWinRegion_phy;
@@ -157,38 +135,25 @@ void DRV_OSD_Init(void *pInHWReg1, void *pInHWReg2)
 {
 	struct sp_disp_device *pDispWorkMem = gDispWorkMem;
 
-	pOSDReg = (DISP_OSD_REG_t *)pInHWReg1;
-	pGPOSTReg = (DISP_GPOST_REG_t *)pInHWReg2;
+	pOSDReg = (struct DISP_OSD_REG_t *)pInHWReg1;
+	pGPOSTReg = (struct DISP_GPOST_REG_t *)pInHWReg2;
 
 	init_waitqueue_head(&pDispWorkMem->osd_wait);
 	spin_lock_init(&pDispWorkMem->osd_lock);
 
 }
 
-DRV_Status_e DRV_OSD_SetClut(DRV_OsdRegionHandle_t region, u32 *pClutDataPtr)
+enum DRV_Status_t DRV_OSD_SetClut(u32 region, u32 *pClutDataPtr)
 {
 	struct Region_Manager_s *pRegionManager =
 		(struct Region_Manager_s *)region;
-	u32 copysize = 0;
 
 	if (pRegionManager && pClutDataPtr) {
-		//switch (pRegionManager->Format) {
-		//case DRV_OSD_REGION_FORMAT_8BPP:
-			copysize = 256 * 4;
-		//	break;
-		//default:
-		//	goto Return;
-		//}
-		memcpy(pRegionManager->Hdr_ClutAddr, pClutDataPtr, copysize);
+		memcpy(pRegionManager->Hdr_ClutAddr, pClutDataPtr, 256 * 4);
 
 		return DRV_SUCCESS;
 	}
 
-//Return:
-//	sp_disp_err("Incorrect region handle, pClutDataPtr 0x%x\n",
-//			(u32)pClutDataPtr);
-//
-//	return DRV_ERR_INVALID_HANDLE;
 	return DRV_SUCCESS;
 }
 
@@ -212,7 +177,7 @@ void DRV_OSD_IRQ(void)
 					+ (pRegionManager->BmpSize
 					* (pRegionManager->CurrBufID & 0xf))));
 		if (pRegionManager->PaletteAddr)
-			DRV_OSD_SetClut((DRV_OsdRegionHandle_t)pRegionManager,
+			DRV_OSD_SetClut((u32)pRegionManager,
 					(u32 *)pRegionManager->PaletteAddr);
 	}
 
@@ -224,7 +189,6 @@ void DRV_OSD_IRQ(void)
 	spin_unlock(&pDispWorkMem->osd_lock);
 }
 
-//#ifdef SUPPORT_DEBUG_MON
 void DRV_OSD_Info(void)
 {
 	struct HW_OSD_Header_s *pOsdHdr = (struct HW_OSD_Header_s *)gpOsdHeader;
@@ -254,24 +218,19 @@ void DRV_OSD_Info(void)
 
 void DRV_OSD_HDR_Show(void)
 {
-	#if 0 //OSD HEADER data
-	int *ptr = (int *)gpOsdHeader;
-	int i;
-	for (i = 0; i < 8; ++i)
-		sp_disp_info("%d: 0x%08x\n", i, *(ptr+i));
-	#else //OSD HEADER data (with swap)
 	int i;
 	u32 *osd_header;
+
 	osd_header = (u32 *)gpOsdHeader;
 	sp_disp_info("-- osd header --\n");
 	for (i = 0; i < 8; ++i)
 		sp_disp_info("%d: 0x%08x\n", i, osd_header[i]);
 	sp_disp_info("-- osd header(swap) --\n");
 	for (i = 0; i < 256; ++i) {
-		if(i%32 ==0)
+		if (i%32 == 0)
 			sp_disp_info("%d: 0x%08x\n", i, SWAP32(osd_header[32+i]));
 	}
-	#endif
+
 }
 
 void DRV_OSD_HDR_Write(int offset, int value)
@@ -280,7 +239,6 @@ void DRV_OSD_HDR_Write(int offset, int value)
 
 	*(ptr+offset) = value;
 }
-//#endif
 
 void DRV_OSD_GetColormode_Vars(struct colormode_t *var,
 		enum DRV_OsdRegionFormat_e Fmt)
@@ -421,9 +379,6 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 	struct sp_disp_device *pDispWorkMem = gDispWorkMem;
 
 	u32 *osd_header;
-#if 0 //#ifdef CONFIG_PM_RUNTIME_DISP
-	int ret;
-#endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 	if (pm_runtime_get_sync(pDispWorkMem->pdev) < 0)
@@ -431,7 +386,8 @@ void DRV_OSD_Set_UI_Init(struct UI_FB_Info_t *pinfo)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	pm_runtime_put(pDispWorkMem->pdev);		// Starting count timeout.
+	/* Starting count timeout */
+	pm_runtime_put(pDispWorkMem->pdev);
 #endif
 
 	gpOsdHeader = dma_alloc_coherent(pDispWorkMem->pdev,
@@ -541,7 +497,8 @@ void DRV_OSD_WaitVSync(void)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	pm_runtime_put(pDispWorkMem->pdev);		// Starting count timeout.
+	/* Starting count timeout */
+	pm_runtime_put(pDispWorkMem->pdev);
 #endif
 
 	if (!pRegionManager)
@@ -581,42 +538,40 @@ EXPORT_SYMBOL(DRV_OSD_SetVisibleBuffer);
 void DRV_IRQ_DISABLE(void)
 {
 	g_disp_state = 1;
-	//printk(KERN_INFO "FB_IRQ_DISABLE \n");
-	//printk(KERN_INFO "g_disp_state = %d \n", g_disp_state);
+
 }
 EXPORT_SYMBOL(DRV_IRQ_DISABLE);
 
 void DRV_IRQ_ENABLE(void)
 {
 	g_disp_state = 0;
-	//printk(KERN_INFO "FB_IRQ_ENABLE \n");
-	//printk(KERN_INFO "g_disp_state = %d \n", g_disp_state);
+
 }
 EXPORT_SYMBOL(DRV_IRQ_ENABLE);
+
 #ifdef	SP_DISP_OSD_PARM
 void DRV_OSD_Clear_OSD_Header(int osd_layer)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 	u32 *osd_header;
 	int i;
-	
-	sp_disp_dbg("DRV_OSD_Clear_OSD_Header for osd%d \n",osd_layer);
+
+	sp_disp_dbg("%s for osd%d\n", __func__, osd_layer);
 
 	if ((!disp_dev->Osd0Header) || (!disp_dev->Osd1Header))
 		return;
 
 	if (osd_layer == 0) {
 		osd_header = (u32 *)disp_dev->Osd0Header;
-		//printk(KERN_INFO "disp_dev->Osd0Header %p \n",disp_dev->Osd0Header);
-		//printk(KERN_INFO "disp_dev->Osd0Header_phy %x \n",disp_dev->Osd0Header_phy);
-	}
-	else if (osd_layer == 1) {
+		//printk(KERN_INFO "disp_dev->Osd0Header %p\n", disp_dev->Osd0Header);
+		//printk(KERN_INFO "disp_dev->Osd0Header_phy %x\n", disp_dev->Osd0Header_phy);
+	} else if (osd_layer == 1) {
 		osd_header = (u32 *)disp_dev->Osd1Header;
-		//printk(KERN_INFO "disp_dev->Osd1Header %p \n",disp_dev->Osd1Header);
-		//printk(KERN_INFO "disp_dev->Osd1Header_phy %x \n",disp_dev->Osd1Header_phy);
+		//printk(KERN_INFO "disp_dev->Osd1Header %p\n", disp_dev->Osd1Header);
+		//printk(KERN_INFO "disp_dev->Osd1Header_phy %x\n", disp_dev->Osd1Header_phy);
 	}
 
-	for (i = 0;i < 8; i++)
+	for (i = 0; i < 8; i++)
 		osd_header[i] = 0;
 
 }
@@ -626,7 +581,7 @@ void DRV_OSD_INIT_OSD_Header(void)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 
-	sp_disp_dbg("DRV_OSD_INIT_OSD_Header \n");
+	sp_disp_dbg("%s\n", __func__);
 
 	disp_dev->Osd0Header = dma_alloc_coherent(disp_dev->pdev,
 			sizeof(struct HW_OSD_Header_s) + 1024,
@@ -657,15 +612,9 @@ void DRV_OSD_SET_OSD_Header(struct UI_FB_Info_t *pinfo, int osd_layer)
 
 	u32 *osd_header;
 	u32 *osd_palette;
-
-	#if 1
 	int i;
-	#endif
-#if 0 //#ifdef CONFIG_PM_RUNTIME_DISP
-	int ret;
-#endif
 
-	sp_disp_dbg("DRV_OSD_SET_OSD_Header for osd%d \n", osd_layer);
+	sp_disp_dbg("%s for osd%d\n", __func__, osd_layer);
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 	if (pm_runtime_get_sync(disp_dev->pdev) < 0)
@@ -673,19 +622,19 @@ void DRV_OSD_SET_OSD_Header(struct UI_FB_Info_t *pinfo, int osd_layer)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	pm_runtime_put(disp_dev->pdev);		// Starting count timeout.
+	/* Starting count timeout */
+	pm_runtime_put(disp_dev->pdev);
 #endif
 
 	//OSD Header/Palette set
 	if (osd_layer == 0) {
 		osd_header = (u32 *)disp_dev->Osd0Header;
 		osd_palette = (u32 *)disp_dev->Osd0Header+32;
-	}
-	else if (osd_layer == 1) {
+	} else if (osd_layer == 1) {
 		osd_header = (u32 *)disp_dev->Osd1Header;
 		osd_palette = (u32 *)disp_dev->Osd1Header+32;
 	}
-	
+
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP)
 		osd_header[0] = SWAP32(0x82001000);
 	else
@@ -709,13 +658,12 @@ void DRV_OSD_SET_OSD_Header(struct UI_FB_Info_t *pinfo, int osd_layer)
 		| OSD_CTRL_A32B32_EN
 		| OSD_CTRL_FIFO_DEPTH;
 
-	if (osd_layer == 0) {
+	if (osd_layer == 0)
 		pOSDReg->osd_base_addr = disp_dev->Osd0Header_phy;
-	}
-	else if (osd_layer == 1) {
+	else if (osd_layer == 1)
 		pOSDReg->osd_base_addr = disp_dev->Osd1Header_phy;
-	}		
-	
+
+
 	pOSDReg->osd_hvld_offset = 0;
 	pOSDReg->osd_vvld_offset = 0;
 	pOSDReg->osd_hvld_width = disp_dev->panelRes.width;
@@ -738,47 +686,43 @@ void DRV_OSD_SET_OSD_Header(struct UI_FB_Info_t *pinfo, int osd_layer)
 	if (pinfo->UI_ColorFmt == DRV_OSD_REGION_FORMAT_8BPP) {
 		if (osd_layer == 0) {
 			if (disp_dev->dev[0]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
-				sp_disp_dbg("osd0 palette grey scale \n");
+				sp_disp_dbg("osd0 palette grey scale\n");
 				for (i = 0; i < 256; i++) {
 					osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
 					//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
 				}
-			}
-			else if (disp_dev->dev[0]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
-				sp_disp_dbg("osd0 palette 256 color \n");
+			} else if (disp_dev->dev[0]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+				sp_disp_dbg("osd0 palette 256 color\n");
 				for (i = 0; i < 256; i++) {
 					//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
 					osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
 				}
 			}
-		}
-		else if (osd_layer == 1) {
+		} else if (osd_layer == 1) {
 			if (disp_dev->dev[1]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
-				sp_disp_dbg("osd0 palette grey scale \n");
+				sp_disp_dbg("osd0 palette grey scale\n");
 				for (i = 0; i < 256; i++) {
 					osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
 					//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
 				}
-			}
-			else if (disp_dev->dev[1]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
-				sp_disp_dbg("osd0 palette 256 color \n");
+			} else if (disp_dev->dev[1]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+				sp_disp_dbg("osd0 palette 256 color\n");
 				for (i = 0; i < 256; i++) {
 					//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
 					osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
 				}
 			}
 		}
-		
 	}
 
-	#if 0
-	sp_disp_dbg("--- osd header --- \n");
-	for (i = 0;i < 8; i++)
-		sp_disp_dbg("osd_header[%d] 0x%08x \n",i, SWAP32(osd_header[i]));
-	sp_disp_dbg("--- osd palette --- \n");
-	for (i = 0;i < 256; i++)
+	#ifdef SP7021_OSD_DEBUG
+	sp_disp_dbg("--- osd header ---\n");
+	for (i = 0; i < 8; i++)
+		sp_disp_dbg("osd_header[%d] 0x%08x\n", i, SWAP32(osd_header[i]));
+	sp_disp_dbg("--- osd palette ---\n");
+	for (i = 0; i < 256; i++)
 		if (i%32 == 0)
-			sp_disp_dbg("osd_palette[%d] 0x%08x \n",i, SWAP32(osd_palette[i]));
+			sp_disp_dbg("osd_palette[%d] 0x%08x\n", i, SWAP32(osd_palette[i]));
 	#endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
