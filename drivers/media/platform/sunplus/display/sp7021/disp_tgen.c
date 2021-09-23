@@ -1,25 +1,5 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2018 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-/**
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
  * @file disp_tgen.c
  * @brief
  * @author PoChou Chen
@@ -46,7 +26,7 @@
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
-static DISP_TGEN_REG_t *pTGENReg;
+static struct DISP_TGEN_REG_t *pTGENReg;
 
 #ifdef SP_DISP_DEBUG
 	static const char * const StrFmt[] = {"480P", "576P", "720P", "1080P", "User Mode"};
@@ -58,27 +38,16 @@ static DISP_TGEN_REG_t *pTGENReg;
  **************************************************************************/
 void DRV_TGEN_Init(void *pInHWReg)
 {
-	pTGENReg = (DISP_TGEN_REG_t *)pInHWReg;
+	pTGENReg = (struct DISP_TGEN_REG_t *)pInHWReg;
 
 	pTGENReg->tgen_config = 0x0007;		// latch mode on
 	pTGENReg->tgen_source_sel = 0x0;
 	pTGENReg->tgen_user_int2_config = 400;
-
-#if 0//def TTL_USER_MODE_SUPPORT
-	pTGENReg->tgen_dtg_config = 1; //TGEN USER MODE
-	pTGENReg->tgen_dtg_total_pixel = 408; //Total pixel
-	pTGENReg->tgen_dtg_ds_line_start_cd_point = 320; //line start
-	pTGENReg->tgen_dtg_total_line = 262; //Total line
-	pTGENReg->tgen_dtg_field_end_line = 260; //field end line
-	pTGENReg->tgen_dtg_start_line = 19; //start line
-	//pTGENReg->tgen_reset = 1;
-#endif
-
 }
 
-void DRV_TGEN_GetFmtFps(DRV_VideoFormat_e *fmt, DRV_FrameRate_e *fps)
+void DRV_TGEN_GetFmtFps(enum DRV_VideoFormat_t *fmt, enum DRV_FrameRate_t *fps)
 {
-	UINT32 tmp_dtg_config = 0;
+	unsigned int tmp_dtg_config = 0;
 
 	tmp_dtg_config = pTGENReg->tgen_dtg_config;
 
@@ -97,17 +66,17 @@ unsigned int DRV_TGEN_GetLineCntNow(void)
 }
 EXPORT_SYMBOL(DRV_TGEN_GetLineCntNow);
 
-void DRV_TGEN_SetUserInt1(UINT32 count)
+void DRV_TGEN_SetUserInt1(unsigned int count)
 {
 	pTGENReg->tgen_user_int1_config = count & 0xfff;
 }
 
-void DRV_TGEN_SetUserInt2(UINT32 count)
+void DRV_TGEN_SetUserInt2(unsigned int count)
 {
 	pTGENReg->tgen_user_int2_config = count & 0xfff;
 }
 
-int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
+int DRV_TGEN_Set(struct DRV_SetTGEN_t *SetTGEN)
 {
 	if (SetTGEN->fmt >= DRV_FMT_MAX) {
 		sp_disp_err("Timing format:%d error\n", SetTGEN->fmt);
@@ -135,7 +104,7 @@ int DRV_TGEN_Set(DRV_SetTGEN_t *SetTGEN)
 
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
     #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-void sp_disp_set_ttl_tgen(DRV_SetTGEN_t *SetTGEN)
+void sp_disp_set_ttl_tgen(struct DRV_SetTGEN_t *SetTGEN)
 {
 	if (SetTGEN->fmt == DRV_FMT_USER_MODE) {
 		pTGENReg->tgen_dtg_total_pixel = SetTGEN->htt;
@@ -149,9 +118,9 @@ void sp_disp_set_ttl_tgen(DRV_SetTGEN_t *SetTGEN)
 #endif
 #endif
 
-void DRV_TGEN_Get(DRV_SetTGEN_t *GetTGEN)
+void DRV_TGEN_Get(struct DRV_SetTGEN_t *GetTGEN)
 {
-	UINT32 tmp;
+	unsigned int tmp;
 
 	tmp = pTGENReg->tgen_dtg_config;
 
@@ -166,7 +135,7 @@ void DRV_TGEN_Reset(void)
 	pTGENReg->tgen_reset |= 0x1;
 }
 
-int DRV_TGEN_Adjust(DRV_TGEN_Input_e Input, UINT32 Adjust)
+int DRV_TGEN_Adjust(enum DRV_TGEN_Input_t Input, unsigned int Adjust)
 {
 	switch (Input) {
 	case DRV_TGEN_VPP0:

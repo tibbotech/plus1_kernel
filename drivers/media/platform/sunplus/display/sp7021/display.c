@@ -1,26 +1,5 @@
-/**************************************************************************
- *                                                                        *
- *         Copyright (c) 2018 by Sunplus Inc.                             *
- *                                                                        *
- *  This software is copyrighted by and is the property of Sunplus        *
- *  Inc. All rights are reserved by Sunplus Inc.                          *
- *  This software may only be used in accordance with the                 *
- *  corresponding license agreement. Any unauthorized use, duplication,   *
- *  distribution, or disclosure of this software is expressly forbidden.  *
- *                                                                        *
- *  This Copyright notice MUST not be removed or modified without prior   *
- *  written consent of Sunplus Technology Co., Ltd.                       *
- *                                                                        *
- *  Sunplus Inc. reserves the right to modify this software               *
- *  without notice.                                                       *
- *                                                                        *
- *  Sunplus Inc.                                                          *
- *  19, Innovation First Road, Hsinchu Science Park                       *
- *  Hsinchu City 30078, Taiwan, R.O.C.                                    *
- *                                                                        *
- **************************************************************************/
-
-/**
+// SPDX-License-Identifier: GPL-2.0-or-later
+/*
  * @file display.c
  * @brief display driver
  * @author PoChou Chen
@@ -33,14 +12,14 @@
 #include <linux/uaccess.h>
 #include <linux/platform_device.h>
 #include <linux/interrupt.h>
-#include <asm/io.h>
+#include <linux/io.h>
 #include <linux/of.h>
 #include <linux/of_irq.h>
 #include <linux/clk.h>
 #include <linux/reset.h>
 
 #include <linux/fs.h>
-#include <asm/uaccess.h>
+#include <linux/uaccess.h>
 #include <linux/proc_fs.h>
 #include <linux/seq_file.h>
 
@@ -85,31 +64,11 @@
 	#define MON_CMD_LEN			(256)
 #endif
 
-//#if defined(TTL_USER_MODE_SUPPORT)
-#if 0//defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
-	#ifdef TTL_MODE_1280_720
-		#define VPP_WIDTH	1280
-		#define VPP_HEIGHT	720
-	#elif TTL_MODE_1024_600
-		#define VPP_WIDTH	1024
-		#define VPP_HEIGHT	600
-	#elif TTL_MODE_800_480
-		#define VPP_WIDTH	800
-		#define VPP_HEIGHT	480
-	#elif TTL_MODE_320_240
-		#define VPP_WIDTH	320
-		#define VPP_HEIGHT	240
-	#else
-		#define VPP_WIDTH	720
-		#define VPP_HEIGHT	480
-	#endif
-#else
-	#define VPP_WIDTH	720//512//242
-	#define VPP_HEIGHT	480//300//255
-#endif
+#define VPP_WIDTH	720//320//800//1024//1280
+#define VPP_HEIGHT	480//240//480//600//720
 
 #ifdef SP_DISP_V4L2_SUPPORT
-static unsigned int allocator = 0;
+static unsigned int allocator;
 module_param(allocator, uint, 0444);
 MODULE_PARM_DESC(allocator, " memory allocator selection, default is 0.\n"
 			     "\t    0 == dma-contig\n"
@@ -119,10 +78,8 @@ MODULE_PARM_DESC(allocator, " memory allocator selection, default is 0.\n"
 #define DISP_OSD1_NAME		    "sp_disp_osd1"
 #define DISP_VPP0_NAME		    "sp_disp_vpp0"
 
-#if 0
-#define print_List()
-#else
-static void print_List(struct list_head *head){
+static void print_List(struct list_head *head)
+{
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
 
@@ -135,8 +92,6 @@ static void print_List(struct list_head *head){
 	}
 	sp_disp_dbg("********************************************************\n");
 }
-#endif
-
 #endif
 /**************************************************************************
  *               F U N C T I O N    D E C L A R A T I O N S               *
@@ -152,69 +107,44 @@ static int _open_flush_proc(struct inode *inode, struct file *file);
 static ssize_t _write_flush_proc(struct file *filp, const char __user *buffer, size_t len, loff_t *f_pos);
 #endif
 
-#ifdef TIMING_SYNC_720P60
-extern int hdmitx_enable_display(int);
-extern void hdmitx_set_timming(enum hdmitx_timing timing);
-#endif
-
-#if 0//def CONFIG_EDID_READ
-extern unsigned int edid_dvi_horizontal, edid_dvi_vertical;
-#endif
-
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 void sp_disp_set_ttl_clk(void);
-extern void sp_disp_set_ttl_vpp(void);
+//extern void sp_disp_set_ttl_vpp(void);
 #endif
 #endif
 
 extern void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdmi);
 
 int g_disp_state = 1;
-int g_disp_hdmi_skip_plltv = 0;
 EXPORT_SYMBOL(g_disp_state);
+int g_disp_hdmi_skip_plltv;
 EXPORT_SYMBOL(g_disp_hdmi_skip_plltv);
-
-#ifdef CONFIG_EDID_READ
-int g_disp_update_timing = 0;
-EXPORT_SYMBOL(g_disp_update_timing);
-void disp_set_plltv(void);
-#endif
 /**************************************************************************
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
-static volatile UINT32 *G1;
-static volatile UINT32 *G4;
+static volatile unsigned int *G1;
+static volatile unsigned int *G4;
 #endif
 struct sp_disp_device *gDispWorkMem;
 
-static struct of_device_id _display_ids[] = {
+static const struct of_device_id _display_ids[] = {
 	{ .compatible = "sunplus,sp7021-display"},
-	{ /* sentinel */ }
+	{}
 };
 MODULE_DEVICE_TABLE(of, _display_ids);
 
-#if 0//def CONFIG_EDID_READ
-void disp_set_plltv(void)
-{
-	printk("disp_set_plltv test \n");
-	g_disp_update_timing = 1;
-}
-EXPORT_SYMBOL(disp_set_plltv);
-#endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 static int sp_disp_runtime_suspend(struct device *dev)
 {
 	struct sp_disp_device *disp_dev = dev_get_drvdata(dev);
-	
-	sp_disp_dbg("runtime suppend \n");
-	//reset_control_assert(disp_dev->rstc);
-	
-	#if 1
-	// Disable 'dispplay' and 'hdmitx' clock.
 
+	sp_disp_dbg("runtime suppend\n");
+	//reset_control_assert(disp_dev->rstc);
+
+	// Disable 'dispplay' and 'hdmitx' clock.
 	clk_disable(disp_dev->tgen_clk);
 	clk_disable(disp_dev->dmix_clk);
 	clk_disable(disp_dev->osd0_clk);
@@ -224,8 +154,6 @@ static int sp_disp_runtime_suspend(struct device *dev)
 	clk_disable(disp_dev->dve_clk);
 	//clk_disable(disp_dev->hdmi_clk);
 
-	#endif
-
 	return 0;
 }
 
@@ -233,47 +161,36 @@ static int sp_disp_runtime_resume(struct device *dev)
 {
 	struct sp_disp_device *disp_dev = dev_get_drvdata(dev);
 	int ret;
-	sp_disp_dbg("runtime resume \n");
-	//reset_control_deassert(disp_dev->rstc);
 
-	#if 1
-	// Enable 'display' clock.
+	sp_disp_dbg("runtime resume\n");
+
 	ret = clk_prepare_enable(disp_dev->tgen_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable tgen_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable tgen_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->dmix_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable dmix_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable dmix_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->osd0_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable osd0_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable osd0_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->gpost0_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable gpost0_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable gpost0_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->vpost_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable vpost_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable vpost_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->ddfch_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable ddfch_clk! \n");
-	}
+	if (ret)
+		sp_disp_err("Failed to enable ddfch_clk!\n");
+
 	ret = clk_prepare_enable(disp_dev->dve_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable dve_clk! \n");
-	}
-	#if 0
-	// Enable 'hdmitx' clock.
-	ret = clk_prepare_enable(disp_dev->hdmi_clk);
-	if (ret) {
-		sp_disp_err("Failed to enable hdmi_clk! \n");
-	}
-	#endif	
-	#endif
+	if (ret)
+		sp_disp_err("Failed to enable dve_clk!\n");
 
 	return 0;
 }
@@ -302,7 +219,6 @@ static struct platform_driver _display_driver = {
 module_platform_driver(_display_driver);
 
 #ifdef SUPPORT_DEBUG_MON
-#if 1 //KERNEL 5.10
 static const struct proc_ops sp_disp_proc_ops = {
 	.proc_open = _open_flush_proc,
 	.proc_write = _write_flush_proc,
@@ -310,18 +226,8 @@ static const struct proc_ops sp_disp_proc_ops = {
 	.proc_lseek  = seq_lseek,
 	.proc_release = single_release,
 };
-#else //KERNEL 5.4
-static const struct file_operations proc_fops = {
-	.owner = THIS_MODULE,
-	.open = _open_flush_proc,
-	.write = _write_flush_proc,
-	.read = seq_read,
-	.llseek  = seq_lseek,
-	.release = seq_release,
-};
-#endif
 
-struct proc_dir_entry *entry = NULL;
+struct proc_dir_entry *entry;
 #endif
 
 #ifdef SP_DISP_V4L2_SUPPORT
@@ -331,7 +237,7 @@ static int sp_disp_open(struct file *file)
 	struct video_device *vdev = video_devdata(file);
 	struct sp_disp_fh *fh;
 
-	sp_disp_dbg("sp_disp_open \n");
+	sp_disp_dbg("%s\n", __func__);
 
 #ifdef CONFIG_PM_RUNTIME_DISP
 	if (pm_runtime_get_sync(disp_dev->pdev) < 0)
@@ -340,10 +246,8 @@ static int sp_disp_open(struct file *file)
 
 	/* Allocate memory for the file handle object */
 	fh = kmalloc(sizeof(struct sp_disp_device), GFP_KERNEL);
-	if (!fh) {
-		sp_disp_err("Allocate memory fail\n");
+	if (!fh)
 		return -ENOMEM;
-	}
 
 	/* store pointer to fh in private_data member of file */
 	file->private_data = fh;
@@ -370,13 +274,13 @@ static int sp_disp_release(struct file *file)
 {
 	struct sp_disp_device *disp_dev = video_drvdata(file);
 	int ret;
-	
-	sp_disp_dbg("sp_disp_release \n");
-	
+
+	sp_disp_dbg("%s\n", __func__);
+
 	mutex_lock(&disp_dev->lock);
-	
-	ret = _vb2_fop_release(file,NULL);
-	
+
+	ret = _vb2_fop_release(file, NULL);
+
 	mutex_unlock(&disp_dev->lock);
 
 #ifdef CONFIG_PM_RUNTIME_DISP
@@ -391,8 +295,8 @@ static const struct v4l2_file_operations sp_disp_fops = {
 	.open				= sp_disp_open,
 	.release			= sp_disp_release,
 	.unlocked_ioctl		= video_ioctl2,
-	.mmap 				= vb2_fop_mmap,
-	.poll 				= vb2_fop_poll,
+	.mmap				= vb2_fop_mmap,
+	.poll				= vb2_fop_poll,
 };
 
 static const struct vb2_mem_ops *const sp_mem_ops[2] = {
@@ -400,44 +304,42 @@ static const struct vb2_mem_ops *const sp_mem_ops[2] = {
 	&vb2_vmalloc_memops,
 };
 
-static int sp_queue_setup(struct vb2_queue *vq, unsigned *nbuffers, unsigned *nplanes,
-		       unsigned sizes[], struct device *alloc_devs[])
+static int sp_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers, unsigned int *nplanes,
+		       unsigned int sizes[], struct device *alloc_devs[])
 {
 	/* Get the file handle object and layer object */
 	struct sp_disp_layer *layer = vb2_get_drv_priv(vq);
 	struct sp_disp_device *disp_dev = layer->disp_dev;
-	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;	
-	unsigned size = 0;
+	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
+	unsigned int size = 0;
 
-	sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, layer->video_dev.name);
+	sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, layer->video_dev.name);
 
-	if(!(strcmp(DISP_OSD0_NAME, layer->video_dev.name)))
+	if (!(strcmp(DISP_OSD0_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, layer->video_dev.name)))
+	else if (!(strcmp(DISP_OSD1_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, layer->video_dev.name)))
+	else if (!(strcmp(DISP_VPP0_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_2;
 
-	if(disp_dev->dev[dev_id]) {
+	if (disp_dev->dev[dev_id])
 		size = layer->fmt.fmt.pix.sizeimage;
-	}
 
 	if (*nplanes) {
-		if (sizes[0] < size) {
+		if (sizes[0] < size)
 			return -EINVAL;
-		}
+
 		size = sizes[0];
-	}	
-	
+	}
+
 	*nplanes = 1;
 	sizes[0] = size;
 
 	/* Store number of buffers allocated in numbuffer member */
-	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS) {
+	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS)
 		*nbuffers = MIN_BUFFERS - vq->num_buffers;
-	}
-		
-	sp_disp_dbg("[%s:%d] count = %u, size = %u \n", __FUNCTION__, __LINE__, *nbuffers, sizes[0]);
+
+	sp_disp_dbg("[%s:%d] count = %u, size = %u\n", __func__, __LINE__, *nbuffers, sizes[0]);
 
 	return 0;
 
@@ -460,7 +362,7 @@ static int sp_buf_prepare(struct vb2_buffer *vb)
 	pm_runtime_put(disp->pdev);		// Starting count timeout.
 #endif
 
-	sp_disp_dbg("[%s:%d] buf size = %ld \n", __FUNCTION__, __LINE__, size);
+	sp_disp_dbg("[%s:%d] buf size = %ld\n", __func__, __LINE__, size);
 
 	vb2_set_plane_payload(vb, 0, layer->fmt.fmt.pix.sizeimage);
 
@@ -500,8 +402,8 @@ static void sp_buf_queue(struct vb2_buffer *vb)
 	pm_runtime_put(disp->pdev);		// Starting count timeout.
 #endif
 
-	sp_disp_dbg("[%s:%d] buf queue \n", __FUNCTION__, __LINE__);
-	
+	sp_disp_dbg("[%s:%d] buf queue\n", __func__, __LINE__);
+
 	// Add the buffer to the DMA queue.
 	spin_lock_irqsave(&disp->dma_queue_lock, flags);
 	list_add_tail(&buf->list, &layer->dma_queue);
@@ -517,7 +419,7 @@ out:
 
 }
 
-static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
+static int sp_start_streaming(struct vb2_queue *vq, unsigned int count)
 {
 	struct sp_disp_layer *layer = vb2_get_drv_priv(vq);
 	struct sp_disp_device *disp = layer->disp_dev;
@@ -529,7 +431,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 #ifdef CONFIG_PM_RUNTIME_DISP
 	if (pm_runtime_get_sync(disp->pdev) < 0)
 		goto out;
-	
+
 	pm_runtime_put(disp->pdev);		// Starting count timeout.
 #endif
 
@@ -540,19 +442,16 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 
 	layer->sequence = 0;
 
-	if(!(strcmp(DISP_OSD0_NAME, layer->video_dev.name))) {
+	if (!(strcmp(DISP_OSD0_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_0;
-	}
-	else if(!(strcmp(DISP_OSD1_NAME, layer->video_dev.name))) {
+	else if (!(strcmp(DISP_OSD1_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_1;
-	}
-	else if(!(strcmp(DISP_VPP0_NAME, layer->video_dev.name))) {
+	else if (!(strcmp(DISP_VPP0_NAME, layer->video_dev.name)))
 		dev_id = SP_DISP_DEVICE_2;
-	}
 	else
-		sp_disp_dbg("[%s:%d] unknown Layer queue \n", __FUNCTION__, __LINE__);
-	
-	sp_disp_dbg("[%s:%d] Layer name = %s , count = %d \n", __FUNCTION__, __LINE__, layer->video_dev.name, count);
+		sp_disp_dbg("[%s:%d] unknown Layer queue\n", __func__, __LINE__);
+
+	sp_disp_dbg("[%s:%d] Layer name = %s , count = %d\n", __func__, __LINE__, layer->video_dev.name, count);
 
 	spin_lock_irqsave(&disp->dma_queue_lock, flags);
 
@@ -567,119 +466,99 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 
 	spin_unlock_irqrestore(&disp->dma_queue_lock, flags);
 
-	if(dev_id == SP_DISP_DEVICE_0) {
-		if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
+	if (dev_id == SP_DISP_DEVICE_0) {
+		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
 			Info.UI_ColorFmt = 0xe;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB32 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB32\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
 			Info.UI_ColorFmt = 0xd;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ABGR32 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ABGR32\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
 			Info.UI_ColorFmt = 0xb;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB444 \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB444\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
 			Info.UI_ColorFmt = 0xa;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB444 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB444\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
 			Info.UI_ColorFmt = 0x9;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB555 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB555\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
 			Info.UI_ColorFmt = 0x8;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB565 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB565\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
 			Info.UI_ColorFmt = 0x4;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
 			Info.UI_ColorFmt = 0x2;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_PAL8 \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_PAL8\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
 			Info.UI_ColorFmt = 0x2;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_GREY \n");
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_GREY\n");
 		}
 
 		Info.UI_width = layer->fmt.fmt.pix.width;
 		Info.UI_height = layer->fmt.fmt.pix.height;
 		Info.UI_bufAddr = addr;
 
-		sp_disp_dbg("[%s:%d] width = %d , height = %d \n", __FUNCTION__, __LINE__,Info.UI_width,Info.UI_height);
-		sp_disp_dbg("[%s:%d] addr = 0x%08lx \n", __FUNCTION__, __LINE__,addr);
+		sp_disp_dbg("[%s:%d] width = %d , height = %d\n", __func__, __LINE__, Info.UI_width, Info.UI_height);
+		sp_disp_dbg("[%s:%d] addr = 0x%08lx\n", __func__, __LINE__, addr);
 
 		#ifdef	SP_DISP_OSD_PARM
-		DRV_OSD_SET_OSD_Header(&Info,0);
+		DRV_OSD_SET_OSD_Header(&Info, 0);
 		#endif
 
-	}
-	else if(dev_id == SP_DISP_DEVICE_1) {
-		if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
+	} else if (dev_id == SP_DISP_DEVICE_1) {
+		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
 			Info.UI_ColorFmt = 0xe;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB32 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB32\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
 			Info.UI_ColorFmt = 0xd;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ABGR32 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ABGR32\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
 			Info.UI_ColorFmt = 0xb;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB444 \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB444\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
 			Info.UI_ColorFmt = 0xa;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB444 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB444\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
 			Info.UI_ColorFmt = 0x9;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB555 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_ARGB555\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
 			Info.UI_ColorFmt = 0x8;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB565 \n");
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_RGB565\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
 			Info.UI_ColorFmt = 0x4;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
 			Info.UI_ColorFmt = 0x2;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_PAL8 \n");
-		}	
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_PAL8\n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
 			Info.UI_ColorFmt = 0x2;
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_GREY \n");
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_GREY\n");
 		}
 
 		Info.UI_width = layer->fmt.fmt.pix.width;
 		Info.UI_height = layer->fmt.fmt.pix.height;
 		Info.UI_bufAddr = addr;
 
-		sp_disp_dbg("[%s:%d] width = %d , height = %d \n", __FUNCTION__, __LINE__,Info.UI_width,Info.UI_height);
-		sp_disp_dbg("[%s:%d] addr = 0x%08lx \n", __FUNCTION__, __LINE__,addr);
-		
+		sp_disp_dbg("[%s:%d] width = %d , height = %d\n", __func__, __LINE__, Info.UI_width, Info.UI_height);
+		sp_disp_dbg("[%s:%d] addr = 0x%08lx\n", __func__, __LINE__, addr);
+
 		#ifdef	SP_DISP_OSD_PARM
-		DRV_OSD_SET_OSD_Header(&Info,1);
+		DRV_OSD_SET_OSD_Header(&Info, 1);
 		#endif
-	}
-	else if(dev_id == SP_DISP_DEVICE_2) {
-		sp_disp_dbg("[%s:%d] width = %d , height = %d \n", __FUNCTION__, __LINE__,layer->fmt.fmt.pix.width,layer->fmt.fmt.pix.height);
-		sp_disp_dbg("[%s:%d] addr = 0x%08lx \n", __FUNCTION__, __LINE__,addr);
-		
-		if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV12 \n");
-			ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);	
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV16 \n");
+	} else if (dev_id == SP_DISP_DEVICE_2) {
+		sp_disp_dbg("[%s:%d] width = %d , height = %d\n", __func__, __LINE__, layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height);
+		sp_disp_dbg("[%s:%d] addr = 0x%08lx\n", __func__, __LINE__, addr);
+
+		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV12\n");
+			ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_NV16\n");
 			ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 1);
-		}
-		else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
-			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV \n");
+		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+			sp_disp_dbg("set fmt = V4L2_PIX_FMT_YUYV\n");
 			ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 2);
 		}
 	}
@@ -713,28 +592,26 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 //	int is_hdmi = 1;
 //#endif
 
-	sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, layer->video_dev.name);
+	sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, layer->video_dev.name);
 
 	if (!layer->streaming) {
 		sp_disp_dbg("Device has stopped already!\n");
 		return;
 	}
 
-	if(!(strcmp(DISP_OSD0_NAME, layer->video_dev.name))) {
+	if (!(strcmp(DISP_OSD0_NAME, layer->video_dev.name))) {
 		dev_id = SP_DISP_DEVICE_0;
 		#ifdef	SP_DISP_OSD_PARM
 		DRV_OSD_Clear_OSD_Header(0);
 		#endif
 		sp_disp_set_vpp_resolution_v4l2(disp, is_hdmi);
-	}
-	else if(!(strcmp(DISP_OSD1_NAME, layer->video_dev.name))) {
+	} else if (!(strcmp(DISP_OSD1_NAME, layer->video_dev.name))) {
 		dev_id = SP_DISP_DEVICE_1;
 		#ifdef	SP_DISP_OSD_PARM
 		DRV_OSD_Clear_OSD_Header(1);
 		#endif
 		sp_disp_set_vpp_resolution_v4l2(disp, is_hdmi);
-	}
-	else if(!(strcmp(DISP_VPP0_NAME, layer->video_dev.name))) {
+	} else if (!(strcmp(DISP_VPP0_NAME, layer->video_dev.name))) {
 		dev_id = SP_DISP_DEVICE_2;
 		sp_disp_set_vpp_resolution_v4l2(disp, is_hdmi);
 	}
@@ -744,9 +621,8 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	// Release all active buffers.
 	spin_lock_irqsave(&disp->dma_queue_lock, flags);
 
-	if (layer->cur_frm != NULL) {
+	if (layer->cur_frm != NULL)
 		vb2_buffer_done(&layer->cur_frm->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-	}
 
 	while (!list_empty(&layer->dma_queue)) {
 		buf = list_entry(layer->dma_queue.next, struct sp_disp_buffer, list);
@@ -779,42 +655,38 @@ static int sp_vidioc_querycap(struct file *file, void *priv, struct v4l2_capabil
 	struct sp_disp_fh *fh = priv;
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 
-	if(!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
+	if (!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_2;
 
-	if(disp_dev->dev[dev_id]) {
-		sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__,disp_dev->dev[dev_id]->video_dev.name);
+	if (disp_dev->dev[dev_id]) {
+		sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
 
-		if(!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		if (!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
 			strlcpy(vcap->card, "SP DISPLAY Card", sizeof(vcap->card));
 			strlcpy(vcap->bus_info, "SP DISP Device BUS OSD0", sizeof(vcap->bus_info));
 			vcap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
 			vcap->capabilities = vcap->device_caps | V4L2_CAP_DEVICE_CAPS;
-		}
-		else if(!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		} else if (!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
 			strlcpy(vcap->card, "SP DISPLAY Card", sizeof(vcap->card));
 			strlcpy(vcap->bus_info, "SP DISP Device BUS OSD1", sizeof(vcap->bus_info));
 			vcap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
 			vcap->capabilities = vcap->device_caps | V4L2_CAP_DEVICE_CAPS;
-		}
-		else if(!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		} else if (!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
 			strlcpy(vcap->card, "SP DISPLAY Card", sizeof(vcap->card));
 			strlcpy(vcap->bus_info, "SP DISP Device BUS VPP0", sizeof(vcap->bus_info));
 			vcap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
 			vcap->capabilities = vcap->device_caps | V4L2_CAP_DEVICE_CAPS;
-		}
-		else
-			sp_disp_dbg("[%s:%d] unknown layer !! \n", __FUNCTION__, __LINE__);
-	}
-	else {
-		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty \n", __FUNCTION__, __LINE__, dev_id);
+		} else
+			sp_disp_dbg("[%s:%d] unknown layer !!\n", __func__, __LINE__);
+	} else {
+		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty\n", __func__, __LINE__, dev_id);
 	}
 
 	return 0;
@@ -835,52 +707,48 @@ static int sp_display_g_fmt(struct file *file, void *priv,
 
 	#if !defined(TTL_USER_MODE_SUPPORT) || !defined(HDMI_USER_MODE_SUPPORT)
 	//#ifndef TTL_USER_MODE_SUPPORT
-	DRV_VideoFormat_e tgen_fmt;
-	DRV_FrameRate_e tgen_fps;
+	enum DRV_VideoFormat_t tgen_fmt;
+	enum DRV_FrameRate_t tgen_fps;
 
-	DRV_TGEN_GetFmtFps(&tgen_fmt,&tgen_fps);
-	sp_disp_dbg("[%s:%d] tgen.fmt = %s \n", __FUNCTION__, __LINE__,StrFmt[tgen_fmt]);
-	sp_disp_dbg("[%s:%d] tgen.fps = %s \n", __FUNCTION__, __LINE__,StrFps[tgen_fps]);
+	DRV_TGEN_GetFmtFps(&tgen_fmt, &tgen_fps);
+	sp_disp_dbg("[%s:%d] tgen.fmt = %s\n", __func__, __LINE__, StrFmt[tgen_fmt]);
+	sp_disp_dbg("[%s:%d] tgen.fps = %s\n", __func__, __LINE__, StrFps[tgen_fps]);
 	#endif
 
 	memset(fmtstr, 0, 8);
 
 	/* If buffer type is video output */
-	if (V4L2_BUF_TYPE_VIDEO_OUTPUT != fmt->type) {
-		sp_disp_err("[%s:%d] invalid type\n", __FUNCTION__, __LINE__);
+	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
+		sp_disp_err("[%s:%d] invalid type\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if(!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
+	if (!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_2;
 
-	if(disp_dev->dev[dev_id]) {
+	if (disp_dev->dev[dev_id]) {
 		fmt1 = &disp_dev->dev[dev_id]->fmt;
-		sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__,disp_dev->dev[dev_id]->video_dev.name);
+		sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
 
-		if(!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		if (!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			memcpy(fmtstr, &disp_dev->dev[dev_id]->fmt.fmt.pix.pixelformat, 4);
-			sp_disp_dbg("[%s:%d] cur fmt = %s \n", __FUNCTION__, __LINE__, fmtstr);
-		}
-		else if(!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+			sp_disp_dbg("[%s:%d] cur fmt = %s\n", __func__, __LINE__, fmtstr);
+		} else if (!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			memcpy(fmtstr, &disp_dev->dev[dev_id]->fmt.fmt.pix.pixelformat, 4);
-			sp_disp_dbg("[%s:%d] cur fmt = %s \n", __FUNCTION__, __LINE__, fmtstr);
-		}
-		else if(!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+			sp_disp_dbg("[%s:%d] cur fmt = %s\n", __func__, __LINE__, fmtstr);
+		} else if (!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			memcpy(fmtstr, &disp_dev->dev[dev_id]->fmt.fmt.pix.pixelformat, 4);
-			sp_disp_dbg("[%s:%d] cur fmt = %s \n", __FUNCTION__, __LINE__, fmtstr);
-		}
-		else
-			sp_disp_dbg("[%s:%d] unknown layer !! \n", __FUNCTION__, __LINE__);
+			sp_disp_dbg("[%s:%d] cur fmt = %s\n", __func__, __LINE__, fmtstr);
+		} else
+			sp_disp_dbg("[%s:%d] unknown layer !!\n", __func__, __LINE__);
 		/* Fill in the information about format */
 		fmt->fmt.pix = fmt1->fmt.pix;
-	}
-	else {
-		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty \n", __FUNCTION__, __LINE__, dev_id);
+	} else {
+		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty\n", __func__, __LINE__, dev_id);
 	}
 
 	return 0;
@@ -968,7 +836,7 @@ static struct sp_fmt osd0_formats[] = {
 		.depth    = 32,
 		.walign   = 1,
 		.halign   = 1,
-	},	
+	},
 };
 
 static struct sp_fmt osd1_formats[] = {
@@ -1052,7 +920,7 @@ static struct sp_fmt osd1_formats[] = {
 		.depth    = 32,
 		.walign   = 1,
 		.halign   = 1,
-	},	
+	},
 };
 
 static struct sp_fmt vpp0_formats[] = {
@@ -1111,64 +979,60 @@ static int sp_display_enum_fmt(struct file *file, void  *priv,
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 	struct sp_fmt *fmt;
 
-	if(!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
+	if (!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_2;
 
-	//sp_disp_dbg("[%s:%d] sp_display_enum_fmt , name = %s \n", __FUNCTION__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
+	//sp_disp_dbg("[%s:%d] sp_display_enum_fmt , name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
 
-	if(disp_dev->dev[dev_id]) {
-		if(!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+	if (disp_dev->dev[dev_id]) {
+		if (!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			if (fmtdesc->index == 0) {
-				sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
-				sp_disp_dbg("[%s:%d] Support-formats = %d \n", __FUNCTION__, __LINE__, ARRAY_SIZE(osd0_formats));
+				sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
+				sp_disp_dbg("[%s:%d] Support-formats = %d\n", __FUN__func__CTION__, __LINE__, ARRAY_SIZE(osd0_formats));
 			}
 
 			if (fmtdesc->index >= ARRAY_SIZE(osd0_formats)) {
-				//sp_disp_err("[%s:%d] stop\n", __FUNCTION__, __LINE__);
+				//sp_disp_err("[%s:%d] stop\n", __func__, __LINE__);
 				return -EINVAL;
 			}
 			fmt = &osd0_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
-		}
-		else if(!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		} else if (!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			if (fmtdesc->index == 0) {
-				sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
-				sp_disp_dbg("[%s:%d] Support-formats = %d \n", __FUNCTION__, __LINE__, ARRAY_SIZE(osd1_formats));
+				sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
+				sp_disp_dbg("[%s:%d] Support-formats = %d\n", __func__, __LINE__, ARRAY_SIZE(osd1_formats));
 			}
 
 			if (fmtdesc->index >= ARRAY_SIZE(osd1_formats)) {
-				//sp_disp_err("[%s:%d] stop\n", __FUNCTION__, __LINE__);
+				//sp_disp_err("[%s:%d] stop\n", __func__, __LINE__);
 				return -EINVAL;
 			}
 			fmt = &osd1_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
-			fmtdesc->pixelformat = fmt->fourcc;			
-		}
-		else if(!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+			fmtdesc->pixelformat = fmt->fourcc;
+		} else if (!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			if (fmtdesc->index == 0) {
-				sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
-				sp_disp_dbg("[%s:%d] Support-formats = %d \n", __FUNCTION__, __LINE__, ARRAY_SIZE(vpp0_formats));
+				sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
+				sp_disp_dbg("[%s:%d] Support-formats = %d\n", __func__, __LINE__, ARRAY_SIZE(vpp0_formats));
 			}
 
 			if (fmtdesc->index >= ARRAY_SIZE(vpp0_formats)) {
-				//sp_disp_err("[%s:%d] stop\n", __FUNCTION__, __LINE__);
+				//sp_disp_err("[%s:%d] stop\n", __func__, __LINE__);
 				return -EINVAL;
 			}
 			fmt = &vpp0_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
-		}
-		else
-			sp_disp_dbg("[%s:%d] unknown layer !! \n", __FUNCTION__, __LINE__);
+		} else
+			sp_disp_dbg("[%s:%d] unknown layer !!\n", __func__, __LINE__);
 
-	}
-	else {
-		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty \n", __FUNCTION__, __LINE__, dev_id);
+	} else {
+		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty\n", __func__, __LINE__, dev_id);
 	}
 
 	return 0;
@@ -1179,15 +1043,14 @@ static int sp_try_format(struct sp_disp_device *disp_dev,
 {
 	struct sp_vout_layer_info *pixfmt0 = &sp_vout_layer[layer_id];
 	struct sp_fmt *pixfmt1 = NULL;
-	int i,match=0;
+	int i, match = 0;
 
 	if (pixfmt0->formats_size <= 0) {
-		sp_disp_err("[%s:%d] invalid formats \n", __FUNCTION__, __LINE__);
+		sp_disp_err("[%s:%d] invalid formats\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	for(i = 0; i < (pixfmt0->formats_size) ; i++)
-	{	
+	for (i = 0; i < (pixfmt0->formats_size) ; i++) {
 		if (layer_id == 0)
 			pixfmt1 = &osd0_formats[i];
 		else if (layer_id == 1)
@@ -1195,14 +1058,14 @@ static int sp_try_format(struct sp_disp_device *disp_dev,
 		else if (layer_id == 2)
 			pixfmt1 = &vpp0_formats[i];
 
-		if(pixfmt->pixelformat == pixfmt1->fourcc) {
+		if (pixfmt->pixelformat == pixfmt1->fourcc) {
 			match = 1;
-			sp_disp_dbg("[%s:%d] found match \n", __FUNCTION__, __LINE__);
+			sp_disp_dbg("[%s:%d] found match\n", __func__, __LINE__);
 			break;
 		}
 	}
-	if(!match) {
-		sp_disp_dbg("[%s:%d] not found match \n", __FUNCTION__, __LINE__);
+	if (!match) {
+		sp_disp_dbg("[%s:%d] not found match\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -1218,18 +1081,18 @@ static int sp_display_try_fmt(struct file *file, void *priv,
 	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
 	int ret;
 
-	sp_disp_dbg("[%s:%d] sp_display_try_fmt \n", __FUNCTION__, __LINE__);
+	sp_disp_dbg("[%s:%d]\n", __func__, __LINE__);
 
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
-		sp_disp_err("[%s:%d] Invalid V4L2 buffer type!\n", __FUNCTION__, __LINE__);
+		sp_disp_err("[%s:%d] Invalid V4L2 buffer type!\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if(!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
+	if (!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_2;
 
 	/* Check for valid pixel format */
@@ -1251,20 +1114,20 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 	int ret;
 	char fmtstr[8];
 
-	sp_disp_dbg("[%s:%d] sp_display_s_fmt \n", __FUNCTION__, __LINE__);
+	sp_disp_dbg("[%s:%d]\n", __func__, __LINE__);
 
-	memset(fmtstr,0,8);
+	memset(fmtstr, 0, 8);
 
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
-		sp_disp_err("[%s:%d] invalid type \n", __FUNCTION__, __LINE__);
+		sp_disp_err("[%s:%d] invalid type\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
-	if(!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
+	if (!(strcmp(DISP_OSD0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_0;
-	else if(!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_OSD1_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_1;
-	else if(!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
+	else if (!(strcmp(DISP_VPP0_NAME, fh->fh.vdev->name)))
 		dev_id = SP_DISP_DEVICE_2;
 
 	/* Check for valid pixel format */
@@ -1272,13 +1135,13 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 	if (ret)
 		return ret;
 
-	if(disp_dev->dev[dev_id]) {
-		sp_disp_dbg("[%s:%d] Layer name = %s \n", __FUNCTION__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
-		sp_disp_dbg("[%s:%d] width  = %d , height = %d \n", __FUNCTION__, __LINE__, pixfmt->width, pixfmt->height);
+	if (disp_dev->dev[dev_id]) {
+		sp_disp_dbg("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
+		sp_disp_dbg("[%s:%d] width  = %d , height = %d\n", __func__, __LINE__, pixfmt->width, pixfmt->height);
 		memcpy(fmtstr, &pixfmt->pixelformat, 4);
-		sp_disp_dbg("[%s:%d] set fmt = %s \n", __FUNCTION__, __LINE__, fmtstr);
+		sp_disp_dbg("[%s:%d] set fmt = %s\n", __func__, __LINE__, fmtstr);
 
-		if(!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		if (!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			disp_dev->dev[dev_id]->fmt.type                 = fmt->type;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.width        = pixfmt->width;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.height       = pixfmt->height;
@@ -1289,8 +1152,7 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
 			//disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = (pixfmt->width)*(pixfmt->height)*4;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
-		}
-		else if(!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		} else if (!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			disp_dev->dev[dev_id]->fmt.type                 = fmt->type;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.width        = pixfmt->width;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.height       = pixfmt->height;
@@ -1301,8 +1163,7 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
 			//disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = (pixfmt->width)*(pixfmt->height)*4;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
-		}
-		else if(!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
+		} else if (!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
 			disp_dev->dev[dev_id]->fmt.type                 = fmt->type;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.width        = pixfmt->width;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.height       = pixfmt->height;
@@ -1313,39 +1174,37 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 			disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = pixfmt->sizeimage;
 			//disp_dev->dev[dev_id]->fmt.fmt.pix.sizeimage    = (pixfmt->width)*(pixfmt->height)*4;
 			disp_dev->dev[dev_id]->fmt.fmt.pix.colorspace   = pixfmt->colorspace;
-		}
-		else
-			sp_disp_dbg("[%s:%d] unknown layer !! \n", __FUNCTION__, __LINE__);
+		} else
+			sp_disp_dbg("[%s:%d] unknown layer !!\n", __func__, __LINE__);
 
-	}
-	else {
-		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty \n", __FUNCTION__, __LINE__, dev_id);
+	} else {
+		sp_disp_dbg("[%s:%d] disp_dev->dev[%d] empty\n", __func__, __LINE__, dev_id);
 	}
 
 	return 0;
 }
 
 static const struct v4l2_ioctl_ops sp_disp_ioctl_ops = {
-	.vidioc_querycap                = sp_vidioc_querycap,
-	.vidioc_g_fmt_vid_out    		= sp_display_g_fmt,
-	.vidioc_enum_fmt_vid_out 		= sp_display_enum_fmt,
-	.vidioc_s_fmt_vid_out    		= sp_display_s_fmt,
-	.vidioc_try_fmt_vid_out  		= sp_display_try_fmt,
-	.vidioc_reqbufs                 = vb2_ioctl_reqbufs,
-	.vidioc_querybuf                = vb2_ioctl_querybuf,
-	.vidioc_create_bufs             = vb2_ioctl_create_bufs,
-	.vidioc_prepare_buf             = vb2_ioctl_prepare_buf,
-	.vidioc_qbuf                    = vb2_ioctl_qbuf,
-	.vidioc_dqbuf                   = vb2_ioctl_dqbuf,
-	.vidioc_expbuf                  = vb2_ioctl_expbuf,
-	.vidioc_streamon                = vb2_ioctl_streamon,
-	.vidioc_streamoff               = vb2_ioctl_streamoff,
+	.vidioc_querycap				= sp_vidioc_querycap,
+	.vidioc_g_fmt_vid_out			= sp_display_g_fmt,
+	.vidioc_enum_fmt_vid_out		= sp_display_enum_fmt,
+	.vidioc_s_fmt_vid_out			= sp_display_s_fmt,
+	.vidioc_try_fmt_vid_out			= sp_display_try_fmt,
+	.vidioc_reqbufs					= vb2_ioctl_reqbufs,
+	.vidioc_querybuf				= vb2_ioctl_querybuf,
+	.vidioc_create_bufs				= vb2_ioctl_create_bufs,
+	.vidioc_prepare_buf				= vb2_ioctl_prepare_buf,
+	.vidioc_qbuf					= vb2_ioctl_qbuf,
+	.vidioc_dqbuf					= vb2_ioctl_dqbuf,
+	.vidioc_expbuf					= vb2_ioctl_expbuf,
+	.vidioc_streamon				= vb2_ioctl_streamon,
+	.vidioc_streamoff				= vb2_ioctl_streamoff,
 };
 #endif
 /**************************************************************************
  *                     S T A T I C   F U N C T I O N                      *
  **************************************************************************/
-static UINT32 *vpp_yuv_ptr;
+static unsigned int *vpp_yuv_ptr;
 int vpp_alloc_size;
 
 static irqreturn_t _display_irq_field_start(int irq, void *param)
@@ -1354,7 +1213,7 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 	struct sp_disp_device *disp_dev = platform_get_drvdata(param);
 	struct sp_disp_layer *layer;
 	struct UI_FB_Info_t Info;
-	unsigned long addr;	
+	unsigned long addr;
 	struct sp_disp_buffer *next_frm;
 	int i;
 
@@ -1364,7 +1223,7 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 	for (i = 0; i < SP_DISP_MAX_DEVICES; i++) {
 		layer = disp_dev->dev[i];
 
-		if ( !disp_dev->dev[i] )
+		if (!disp_dev->dev[i])
 			continue;
 
 		if (layer->skip_first_int) {
@@ -1379,101 +1238,77 @@ static irqreturn_t _display_irq_field_start(int irq, void *param)
 						struct  sp_disp_buffer, list);
 				/* Remove that from the buffer queue */
 				list_del_init(&next_frm->list);
-				
+
 				/* Mark state of the frame to active */
 				next_frm->vb.vb2_buf.state = VB2_BUF_STATE_ACTIVE;
 
 				addr = vb2_dma_contig_plane_dma_addr(&next_frm->vb.vb2_buf, 0);
 
-				#if 1
-				if(i == 0) {
-					if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
+				if (i == 0) {
+					if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32)
 						Info.UI_ColorFmt = 0xe;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32)
 						Info.UI_ColorFmt = 0xd;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444)
 						Info.UI_ColorFmt = 0xb;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444)
 						Info.UI_ColorFmt = 0xa;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555)
 						Info.UI_ColorFmt = 0x9;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565)
 						Info.UI_ColorFmt = 0x8;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 						Info.UI_ColorFmt = 0x4;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8)
 						Info.UI_ColorFmt = 0x2;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY)
 						Info.UI_ColorFmt = 0x2;
-					}
 
 					Info.UI_width = layer->fmt.fmt.pix.width;
 					Info.UI_height = layer->fmt.fmt.pix.height;
 					Info.UI_bufAddr = addr;
 
 					#ifdef	SP_DISP_OSD_PARM
-					DRV_OSD_SET_OSD_Header(&Info,0);
+					DRV_OSD_SET_OSD_Header(&Info, 0);
 					#endif
 
-				}
-				else if(i == 1) {
-					if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
+				} else if (i == 1) {
+					if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32)
 						Info.UI_ColorFmt = 0xe;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32)
 						Info.UI_ColorFmt = 0xd;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444)
 						Info.UI_ColorFmt = 0xb;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444)
 						Info.UI_ColorFmt = 0xa;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555)
 						Info.UI_ColorFmt = 0x9;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565)
 						Info.UI_ColorFmt = 0x8;
-					}
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 						Info.UI_ColorFmt = 0x4;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8)
 						Info.UI_ColorFmt = 0x2;
-					}	
-					else if(layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY)
 						Info.UI_ColorFmt = 0x2;
-					}
 
 					Info.UI_width = layer->fmt.fmt.pix.width;
 					Info.UI_height = layer->fmt.fmt.pix.height;
 					Info.UI_bufAddr = addr;
 
 					#ifdef	SP_DISP_OSD_PARM
-					DRV_OSD_SET_OSD_Header(&Info,1);
+					DRV_OSD_SET_OSD_Header(&Info, 1);
 					#endif
 
-				}
-				else if(i == 2) {
-					if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
-						ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);	
-					}
-					else if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
+				} else if (i == 2) {
+					if (disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12)
+						ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 0);
+					else if (disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16)
 						ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 1);
-					}
-					else if(disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
+					else if (disp_dev->dev[2]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 						ddfch_setting(addr, addr + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT, VPP_WIDTH, VPP_HEIGHT, 2);
-					}
 				}
-				#endif
+
 				layer->cur_frm->vb.vb2_buf.timestamp = ktime_get_ns();
 				layer->cur_frm->vb.field = layer->fmt.fmt.pix.field;
 				layer->cur_frm->vb.sequence = layer->sequence++;
@@ -1500,24 +1335,6 @@ static irqreturn_t _display_irq_field_end(int irq, void *param)
 
 static irqreturn_t _display_irq_field_int1(int irq, void *param)
 {
-#ifdef HDMI_USER_MODE_SUPPORT
-#if 0//def CONFIG_EDID_READ
-	if (g_disp_update_timing== 1) {
-        if( (edid_dvi_horizontal == 800) && (edid_dvi_vertical == 480) ) {
-            G4[14] = 0xFFFF0001; 	//G4.14
-            G4[15] = 0xFFFF0084; 	//G4.15
-            G4[16] = 0xFFFF0815; 	//G4.16 33MHz
-        }
-        else if( (edid_dvi_horizontal == 1024) && (edid_dvi_vertical == 600) ) {
-            G4[14] = 0xFFFF0001; 	//G4.14
-            G4[15] = 0xFFFF0084; 	//G4.15
-            G4[16] = 0xFFFF0821; 	//G4.16 51MHz
-        }
-		g_disp_update_timing = 0;
-	}
-#endif
-#endif
-
 	return IRQ_HANDLED;
 }
 
@@ -1527,25 +1344,9 @@ static irqreturn_t _display_irq_field_int2(int irq, void *param)
 }
 
 #ifdef SUPPORT_DEBUG_MON
-typedef struct _BMP_HEADER
-{
-	unsigned short reserved0;
-	unsigned short identifier;
-	unsigned int file_size;
-	unsigned int reserved1;
-	unsigned int data_offset;
-	unsigned int header_size;
-	unsigned int width;
-	unsigned int height;
-	unsigned short planes;
-	unsigned short bpp;
-	unsigned int compression;
-	unsigned short reserved;
-} BMP_HEADER;
-
 int _show_flush_proc(struct seq_file *m, void *v)
 {
-	sp_disp_info("_show_flush_proc_2 \n");
+	sp_disp_info("%s\n", __func__);
 
 	return 0;
 }
@@ -1555,13 +1356,13 @@ int _open_flush_proc(struct inode *inode, struct file *file)
 	return single_open(file, _show_flush_proc, NULL);
 }
 
-static char* _mon_skipspace(char *p)
+static char *_mon_skipspace(char *p)
 {
 	if (p == NULL)
 		return NULL;
-	while (1)
-	{
+	while (1) {
 		int c = p[0];
+
 		if (c == ' ' || c == '\t' || c == '\v')
 			p++;
 		else
@@ -1570,7 +1371,7 @@ static char* _mon_skipspace(char *p)
 	return p;
 }
 
-static char* _mon_readint(char *p, int *x)
+static char *_mon_readint(char *p, int *x)
 {
 	int base = 10;
 	int cnt, retval;
@@ -1585,25 +1386,21 @@ static char* _mon_readint(char *p, int *x)
 
 	p = _mon_skipspace(p);
 
-	if (p[0] == '0' && p[1] == 'x')
-	{
+	if (p[0] == '0' && p[1] == 'x') {
 		base = 16;
 		p += 2;
 	}
-	if (p[0] == '0' && p[1] == 'o')
-	{
+	if (p[0] == '0' && p[1] == 'o') {
 		base = 8;
 		p += 2;
 	}
-	if (p[0] == '0' && p[1] == 'b')
-	{
+	if (p[0] == '0' && p[1] == 'b') {
 		base = 2;
 		p += 2;
 	}
 
 	retval = 0;
-	for (cnt = 0; 1; cnt++)
-	{
+	for (cnt = 0; 1; cnt++) {
 		int c = *p++;
 		int val;
 
@@ -1631,21 +1428,21 @@ static char* _mon_readint(char *p, int *x)
 
 static void _debug_cmd(char *tmpbuf)
 {
-	UINT32 ret;
-	DRV_SetTGEN_t SetTGEN;
+	unsigned int ret;
+	struct DRV_SetTGEN_t SetTGEN;
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
     #if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 	struct sp_disp_device *disp_dev = gDispWorkMem;
-	int hfp,hp,hbp,hac,htot,vfp,vp,vbp,vac,vtot;
-	int clk,divm,divn,divr;
-	int rgb_swap,clk_pol,vpp_adj,osd_adj;
-	
+	int hfp, hp, hbp, hac, htot, vfp, vp, vbp, vac, vtot;
+	int clk, divm, divn, divr;
+	int rgb_swap, clk_pol, vpp_adj, osd_adj;
+
 	hfp = (int)(disp_dev->TTLPar.hfp);
 	hp = (int)(disp_dev->TTLPar.hsync);
 	hbp = (int)(disp_dev->TTLPar.hbp);
 	hac = (int)(disp_dev->TTLPar.hactive);
 	htot = hfp + hp + hbp + hac;
-	
+
 	vfp = (int)(disp_dev->TTLPar.vfp);
 	vp = (int)(disp_dev->TTLPar.vsync);
 	vbp = (int)(disp_dev->TTLPar.vbp);
@@ -1655,116 +1452,112 @@ static void _debug_cmd(char *tmpbuf)
 #endif
 	tmpbuf = _mon_skipspace(tmpbuf);
 
-	sp_disp_dbg("run disp debug cmd \n");
+	sp_disp_dbg("run disp debug cmd\n");
 
-	if (!strncasecmp(tmpbuf, "fc", 2))
-	{
+	if (!strncasecmp(tmpbuf, "fc", 2)) {
 		int mode = 0;
 
 		tmpbuf = _mon_readint(tmpbuf + 2, (int *)&mode);
 
 		DRV_DVE_SetMode(mode);
 
-		switch (mode)
-		{
-			default:
-			case 0:
-				SetTGEN.fmt = DRV_FMT_480P;
-				SetTGEN.fps = DRV_FrameRate_5994Hz;
-				break;
-			case 1:
-				SetTGEN.fmt = DRV_FMT_576P;
-				SetTGEN.fps = DRV_FrameRate_50Hz;
-				break;
-			case 2:
-				SetTGEN.fmt = DRV_FMT_720P;
-				SetTGEN.fps = DRV_FrameRate_5994Hz;
-				break;
-			case 3:
-				SetTGEN.fmt = DRV_FMT_720P;
-				SetTGEN.fps = DRV_FrameRate_50Hz;
-				break;
-			case 4:
-				SetTGEN.fmt = DRV_FMT_1080P;
-				SetTGEN.fps = DRV_FrameRate_5994Hz;
-				break;
-			case 5:
-				SetTGEN.fmt = DRV_FMT_1080P;
-				SetTGEN.fps = DRV_FrameRate_50Hz;
-				break;
-			case 6:
-				SetTGEN.fmt = DRV_FMT_1080P;
-				SetTGEN.fps = DRV_FrameRate_24Hz;
-				break;
-			case 7:
-	#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
-				SetTGEN.fmt = DRV_FMT_USER_MODE;
-				SetTGEN.fps = DRV_FrameRate_5994Hz;
-	#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-				SetTGEN.htt = (int)disp_dev->TTLPar.hfp + \
-											(int)disp_dev->TTLPar.hsync + \
-											(int)disp_dev->TTLPar.hbp + \
-											(int)disp_dev->TTLPar.hactive;
-				SetTGEN.vtt = (int)disp_dev->TTLPar.vfp + \
-											(int)disp_dev->TTLPar.vsync + \
-											(int)disp_dev->TTLPar.vbp + \
-											(int)disp_dev->TTLPar.vactive;				
-				SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync + \
-											(int)disp_dev->TTLPar.vbp + 1;
-				SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
-				SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
-	#else
+		switch (mode) {
+		default:
+		case 0:
+			SetTGEN.fmt = DRV_FMT_480P;
+			SetTGEN.fps = DRV_FrameRate_5994Hz;
+			break;
+		case 1:
+			SetTGEN.fmt = DRV_FMT_576P;
+			SetTGEN.fps = DRV_FrameRate_50Hz;
+			break;
+		case 2:
+			SetTGEN.fmt = DRV_FMT_720P;
+			SetTGEN.fps = DRV_FrameRate_5994Hz;
+			break;
+		case 3:
+			SetTGEN.fmt = DRV_FMT_720P;
+			SetTGEN.fps = DRV_FrameRate_50Hz;
+			break;
+		case 4:
+			SetTGEN.fmt = DRV_FMT_1080P;
+			SetTGEN.fps = DRV_FrameRate_5994Hz;
+			break;
+		case 5:
+			SetTGEN.fmt = DRV_FMT_1080P;
+			SetTGEN.fps = DRV_FrameRate_50Hz;
+			break;
+		case 6:
+			SetTGEN.fmt = DRV_FMT_1080P;
+			SetTGEN.fps = DRV_FrameRate_24Hz;
+			break;
+		case 7:
+#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
+			SetTGEN.fmt = DRV_FMT_USER_MODE;
+			SetTGEN.fps = DRV_FrameRate_5994Hz;
+#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
+			SetTGEN.htt = (int)disp_dev->TTLPar.hfp +
+										(int)disp_dev->TTLPar.hsync +
+										(int)disp_dev->TTLPar.hbp +
+										(int)disp_dev->TTLPar.hactive;
+			SetTGEN.vtt = (int)disp_dev->TTLPar.vfp +
+										(int)disp_dev->TTLPar.vsync +
+										(int)disp_dev->TTLPar.vbp +
+										(int)disp_dev->TTLPar.vactive;
+			SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync +
+										(int)disp_dev->TTLPar.vbp + 1;
+			SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
+			SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
+#else
 #ifdef TTL_MODE_1280_720
-				SetTGEN.htt = 1352;
-				SetTGEN.vtt = 730;
-				SetTGEN.v_bp = 24;//TBD
-				SetTGEN.hactive = 1280;
-				SetTGEN.vactive = 720;
+			SetTGEN.htt = 1352;
+			SetTGEN.vtt = 730;
+			SetTGEN.v_bp = 24;//TBD
+			SetTGEN.hactive = 1280;
+			SetTGEN.vactive = 720;
 #endif
 #ifdef TTL_MODE_1024_600
-				SetTGEN.htt = 1344;
-				SetTGEN.vtt = 635;
-				SetTGEN.v_bp = 24;
-				SetTGEN.hactive = 1024;
-				SetTGEN.vactive = 600;
+			SetTGEN.htt = 1344;
+			SetTGEN.vtt = 635;
+			SetTGEN.v_bp = 24;
+			SetTGEN.hactive = 1024;
+			SetTGEN.vactive = 600;
 #endif
 #ifdef TTL_MODE_800_480
-				SetTGEN.htt = 1056;
-				SetTGEN.vtt = 525;
-				SetTGEN.v_bp = 27;
-				SetTGEN.hactive = 800;
-				SetTGEN.vactive = 480;
+			SetTGEN.htt = 1056;
+			SetTGEN.vtt = 525;
+			SetTGEN.v_bp = 27;
+			SetTGEN.hactive = 800;
+			SetTGEN.vactive = 480;
 #endif
 #ifdef TTL_MODE_320_240
-				SetTGEN.htt = 408;
-				SetTGEN.vtt = 262;
-				SetTGEN.v_bp = 19;
-				SetTGEN.hactive = 320;
-				SetTGEN.vactive = 240;
+			SetTGEN.htt = 408;
+			SetTGEN.vtt = 262;
+			SetTGEN.v_bp = 19;
+			SetTGEN.hactive = 320;
+			SetTGEN.vactive = 240;
 #endif
-	#endif
-				sp_disp_dbg("set TGEN user mode\n");
-	#else
-				sp_disp_dbg("user mode unsupport\n");
-	#endif
-				break;
+#endif
+			sp_disp_dbg("set TGEN user mode\n");
+#else
+			sp_disp_dbg("user mode unsupport\n");
+#endif
+			break;
 		}
 
 		ret = DRV_TGEN_Set(&SetTGEN);
 		if (ret != DRV_SUCCESS)
 			sp_disp_err("TGEN Set failed, ret = %d\n", ret);
-	}
-	else if (!strncasecmp(tmpbuf, "osd", 3))
-	{
+	} else if (!strncasecmp(tmpbuf, "osd", 3)) {
 		tmpbuf = _mon_skipspace(tmpbuf + 3);
 
 		if (!strncasecmp(tmpbuf, "info", 4))
 			DRV_OSD_Info();
 		else if (!strncasecmp(tmpbuf, "hdrs", 4))
 			DRV_OSD_HDR_Show();
-		else if (!strncasecmp(tmpbuf, "hdrw", 4))
-		{
+		else if (!strncasecmp(tmpbuf, "hdrw", 4)) {
 			int offset, value;
+
 			tmpbuf = _mon_readint(tmpbuf + 4, (int *)&offset);
 			tmpbuf = _mon_readint(tmpbuf, (int *)&value);
 			DRV_OSD_HDR_Write(offset, value);
@@ -1776,137 +1569,132 @@ static void _debug_cmd(char *tmpbuf)
 		tmpbuf = _mon_skipspace(tmpbuf + 3);
 
 		if (!strncasecmp(tmpbuf, "dump", 4)) {
-			sp_disp_info("ttl dump \n");
-			if(disp_dev->TTLPar.dts_exist)
-				sp_disp_info("ttl parameter exist \n");
-			sp_disp_info("ttl_clk %d , m %d , n %d , r %d \n",(int)disp_dev->TTLPar.clk,(int)disp_dev->TTLPar.divm,(int)disp_dev->TTLPar.divn, (int)disp_dev->TTLPar.divr);
-			sp_disp_info("ttl_hor : %d %d %d %d , %d \n", hfp, hp, hbp, hac, htot);
-			sp_disp_info("ttl_ver : %d %d %d %d , %d \n", vfp, vp, vbp, vac, vtot);
-			if(disp_dev->TTLPar.ttl_rgb_swap)
-				sp_disp_info("ttl_rgb with swap %d \n",(int)disp_dev->TTLPar.ttl_rgb_swap);
+			sp_disp_info("ttl dump\n");
+			if (disp_dev->TTLPar.dts_exist)
+				sp_disp_info("ttl parameter exist\n");
+			sp_disp_info("ttl_clk %d , m %d , n %d , r %d\n", (int)disp_dev->TTLPar.clk, (int)disp_dev->TTLPar.divm, (int)disp_dev->TTLPar.divn, (int)disp_dev->TTLPar.divr);
+			sp_disp_info("ttl_hor : %d %d %d %d , %d\n", hfp, hp, hbp, hac, htot);
+			sp_disp_info("ttl_ver : %d %d %d %d , %d\n", vfp, vp, vbp, vac, vtot);
+			if (disp_dev->TTLPar.ttl_rgb_swap)
+				sp_disp_info("ttl_rgb with swap %d\n", (int)disp_dev->TTLPar.ttl_rgb_swap);
 			else
-				sp_disp_info("ttl_rgb normal %d \n",(int)disp_dev->TTLPar.ttl_rgb_swap);
-			if(disp_dev->TTLPar.ttl_clock_pol)
-				sp_disp_info("ttl_clock_pol invert %d \n",(int)disp_dev->TTLPar.ttl_clock_pol);
+				sp_disp_info("ttl_rgb normal %d\n", (int)disp_dev->TTLPar.ttl_rgb_swap);
+			if (disp_dev->TTLPar.ttl_clock_pol)
+				sp_disp_info("ttl_clock_pol invert %d\n", (int)disp_dev->TTLPar.ttl_clock_pol);
 			else
-				sp_disp_info("ttl_clock_pol normal %d \n",(int)disp_dev->TTLPar.ttl_clock_pol);
+				sp_disp_info("ttl_clock_pol normal %d\n", (int)disp_dev->TTLPar.ttl_clock_pol);
 
-			sp_disp_info("ttl_vpp_adj : %d \n",(int)disp_dev->TTLPar.ttl_vpp_adj);
-			sp_disp_info("ttl_osd_adj : %d \n",(int)disp_dev->TTLPar.ttl_osd_adj);
-			//sp_disp_info("ttl_parm_adj : %d \n",(int)disp_dev->TTLPar.ttl_parm_adj);
+			sp_disp_info("ttl_vpp_adj : %d\n", (int)disp_dev->TTLPar.ttl_vpp_adj);
+			sp_disp_info("ttl_osd_adj : %d\n", (int)disp_dev->TTLPar.ttl_osd_adj);
+			//sp_disp_info("ttl_parm_adj : %d\n", (int)disp_dev->TTLPar.ttl_parm_adj);
 
-		}
-		else if (!strncasecmp(tmpbuf, "update", 6)) {
+		} else if (!strncasecmp(tmpbuf, "update", 6)) {
 			sp_disp_info("ttl para update\n");
 			#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
 			sp_disp_set_ttl_clk();
 			#endif
-			
+
 			SetTGEN.fmt = DRV_FMT_USER_MODE;
 			SetTGEN.fps = DRV_FrameRate_5994Hz;
-			SetTGEN.htt = (int)disp_dev->TTLPar.hfp + \
-							(int)disp_dev->TTLPar.hsync + \
-							(int)disp_dev->TTLPar.hbp + \
+			SetTGEN.htt = (int)disp_dev->TTLPar.hfp +
+							(int)disp_dev->TTLPar.hsync +
+							(int)disp_dev->TTLPar.hbp +
 							(int)disp_dev->TTLPar.hactive;
-			SetTGEN.vtt = (int)disp_dev->TTLPar.vfp + \
-							(int)disp_dev->TTLPar.vsync + \
-							(int)disp_dev->TTLPar.vbp + \
-							(int)disp_dev->TTLPar.vactive;					
-			SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync + \
+			SetTGEN.vtt = (int)disp_dev->TTLPar.vfp +
+							(int)disp_dev->TTLPar.vsync +
+							(int)disp_dev->TTLPar.vbp +
+							(int)disp_dev->TTLPar.vactive;
+			SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync +
 							(int)disp_dev->TTLPar.vbp + 1;
 			SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
 			SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
 			sp_disp_set_ttl_tgen(&SetTGEN);
-			
+
 			sp_disp_set_ttl_dve();
 			sp_disp_set_ttl_vpp();
 
-		}
-		else if (!strncasecmp(tmpbuf, "clk", 3)) {
+		} else if (!strncasecmp(tmpbuf, "clk", 3)) {
 			sp_disp_info("ttl clk set\n");
 			tmpbuf = _mon_readint(tmpbuf + 3, &clk);
 			tmpbuf = _mon_readint(tmpbuf, &divm);
 			tmpbuf = _mon_readint(tmpbuf, &divn);
 			tmpbuf = _mon_readint(tmpbuf, &divr);
-			if(clk > 20000)
+			if (clk > 20000)
 				disp_dev->TTLPar.clk = (unsigned int)clk;
-			if((divm >= 0) && (divm <=31))
+			if ((divm >= 0) && (divm <= 31))
 				disp_dev->TTLPar.divm = (unsigned int)divm;
-			if((divn >= 0) && (divn <=127))
+			if ((divn >= 0) && (divn <= 127))
 				disp_dev->TTLPar.divn = (unsigned int)divn;
-			if((divr >= 0) && (divr <=2))
+			if ((divr >= 0) && (divr <= 2))
 				disp_dev->TTLPar.divr = (unsigned int)divr;
-		}
-		else if (!strncasecmp(tmpbuf, "hor", 3)) {
+		} else if (!strncasecmp(tmpbuf, "hor", 3)) {
 			sp_disp_info("ttl hor set\n");
 			tmpbuf = _mon_readint(tmpbuf + 3, &hfp);
 			tmpbuf = _mon_readint(tmpbuf, &hp);
 			tmpbuf = _mon_readint(tmpbuf, &hbp);
 			tmpbuf = _mon_readint(tmpbuf, &hac);
-			if((hfp > 0) && (hfp <=500))
+			if ((hfp > 0) && (hfp <= 500))
 				disp_dev->TTLPar.hfp = (unsigned int)hfp;
 			else
-				sp_disp_info("ttl hor hfp over! \n");
-			if((hp > 0) && (hp <=500))
+				sp_disp_info("ttl hor hfp over!\n");
+			if ((hp > 0) && (hp <= 500))
 				disp_dev->TTLPar.hsync = (unsigned int)hp;
 			else
-				sp_disp_info("ttl hor hp over! \n");
-			if((hbp > 0) && (hbp <=500))
+				sp_disp_info("ttl hor hp over!\n");
+			if ((hbp > 0) && (hbp <= 500))
 				disp_dev->TTLPar.hbp = (unsigned int)hbp;
 			else
-				sp_disp_info("ttl hor hbp over! \n");
-			if((hac > 0) && (hac <=5000))
+				sp_disp_info("ttl hor hbp over!\n");
+			if ((hac > 0) && (hac <= 5000))
 				disp_dev->TTLPar.hactive = (unsigned int)hac;
 			else
-				sp_disp_info("ttl hor hac over! \n");
+				sp_disp_info("ttl hor hac over!\n");
 
-		}
-		else if (!strncasecmp(tmpbuf, "ver", 3)) {
+		} else if (!strncasecmp(tmpbuf, "ver", 3)) {
 			sp_disp_info("ttl ver set\n");
 			tmpbuf = _mon_readint(tmpbuf + 3, &vfp);
 			tmpbuf = _mon_readint(tmpbuf, &vp);
 			tmpbuf = _mon_readint(tmpbuf, &vbp);
 			tmpbuf = _mon_readint(tmpbuf, &vac);
-			if((vfp > 0) && (vfp <=500))
+			if ((vfp > 0) && (vfp <= 500))
 				disp_dev->TTLPar.vfp = (unsigned int)vfp;
 			else
-				sp_disp_info("ttl ver vfp over! \n");	
-			if((vp > 0) && (vp <=500))
+				sp_disp_info("ttl ver vfp over!\n");
+			if ((vp > 0) && (vp <=  500))
 				disp_dev->TTLPar.vsync = (unsigned int)vp;
 			else
-				sp_disp_info("ttl ver vp over! \n");	
-			if((vbp > 0) && (vbp <=500))
+				sp_disp_info("ttl ver vp over!\n");
+			if ((vbp > 0) && (vbp <= 500))
 				disp_dev->TTLPar.vbp = (unsigned int)vbp;
 			else
-				sp_disp_info("ttl ver vbp over! \n");	
-			if((vac > 0) && (vac <=5000))
+				sp_disp_info("ttl ver vbp over!\n");
+			if ((vac > 0) && (vac <= 5000))
 				disp_dev->TTLPar.vactive = (unsigned int)vac;
 			else
-				sp_disp_info("ttl ver vac over! \n");	
-		}
-		else if (!strncasecmp(tmpbuf, "adj", 3)) {
+				sp_disp_info("ttl ver vac over!\n");
+		} else if (!strncasecmp(tmpbuf, "adj", 3)) {
 			sp_disp_info("ttl adj set\n");
 			tmpbuf = _mon_readint(tmpbuf + 3, &rgb_swap);
 			tmpbuf = _mon_readint(tmpbuf, &clk_pol);
 			tmpbuf = _mon_readint(tmpbuf, &vpp_adj);
 			tmpbuf = _mon_readint(tmpbuf, &osd_adj);
 
-			if((rgb_swap >= 0) && (rgb_swap <=1))
+			if ((rgb_swap >= 0) && (rgb_swap <= 1))
 				disp_dev->TTLPar.ttl_rgb_swap = (unsigned int)rgb_swap;
 			else
-				sp_disp_info("ttl adj rgb_swap over! \n");	
-			if((clk_pol >= 0) && (clk_pol <=1))
+				sp_disp_info("ttl adj rgb_swap over!\n");
+			if ((clk_pol >= 0) && (clk_pol <= 1))
 				disp_dev->TTLPar.ttl_clock_pol = (unsigned int)clk_pol;
 			else
-				sp_disp_info("ttl adj clk_pol over! \n");
-			if((vpp_adj >= 0) && (vpp_adj <=100))
+				sp_disp_info("ttl adj clk_pol over!\n");
+			if ((vpp_adj >= 0) && (vpp_adj <= 100))
 				disp_dev->TTLPar.ttl_vpp_adj = (unsigned int)vpp_adj;
 			else
-				sp_disp_info("ttl adj vpp_adj over! \n");
-			if((osd_adj >= 0) && (osd_adj <=100))
+				sp_disp_info("ttl adj vpp_adj over!\n");
+			if ((osd_adj >= 0) && (osd_adj <= 100))
 				disp_dev->TTLPar.ttl_osd_adj = (unsigned int)osd_adj;
 			else
-				sp_disp_info("ttl adj osd_adj over! \n");
+				sp_disp_info("ttl adj osd_adj over!\n");
 		}
 	}
 	#endif
@@ -1922,14 +1710,12 @@ static ssize_t _write_flush_proc(struct file *filp, const char __user *buffer, s
 	char pbuf[MON_CMD_LEN];
 	char *tmpbuf = pbuf;
 
-	if (len > sizeof(pbuf))
-	{
+	if (len > sizeof(pbuf)) {
 		sp_disp_err("intput error len:%d!\n", (int)len);
 		return -ENOSPC;
 	}
 
-	if (copy_from_user(tmpbuf, buffer, len))
-	{
+	if (copy_from_user(tmpbuf, buffer, len)) {
 		sp_disp_err("intput error!\n");
 		return -EFAULT;
 	}
@@ -1940,9 +1726,7 @@ static ssize_t _write_flush_proc(struct file *filp, const char __user *buffer, s
 		tmpbuf[len - 1] = '\0';
 
 	if (!strncasecmp(tmpbuf, "dispmon", 7))
-	{
 		_debug_cmd(tmpbuf + 7);
-	}
 
 	return len;
 }
@@ -1964,7 +1748,7 @@ static int _display_init_irq(struct platform_device *pdev)
 {
 	int irq;
 	int num_irq = of_irq_count(pdev->dev.of_node);
-	UINT32 ret;
+	unsigned int ret;
 
 	sp_disp_info("irq num:%d\n", num_irq);
 
@@ -2025,91 +1809,91 @@ ERROR:
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
-		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_720x480.h"
 		};
 		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
-		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_720x480.h"
 		};
 		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
-		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_720x480.h"
 		};
 		#else
-		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_720x480.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
-		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1280x720.h"
 		};
 		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
-		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_1280x720.h"
-		};	
+		};
 		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
-		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_1280x720.h"
 		};
 		#else //YUV420_NV12
-		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1280x720.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 1024) && (VPP_HEIGHT == 600))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
-		char vpp_yuv_array[1024*600*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1024*600*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1024x600.h"
 		};
 		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
-		char vpp_yuv_array[1024*600*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1024*600*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_1024x600.h"
-		};	
+		};
 		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
-		char vpp_yuv_array[1024*600*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1024*600*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_1024x600.h"
 		};
 		#else //YUV420_NV12
-		char vpp_yuv_array[1024*600*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1024*600*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1024x600.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 800) && (VPP_HEIGHT == 480))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
-		char vpp_yuv_array[896*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_800x480.h"
 		};
 		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
-		char vpp_yuv_array[896*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_800x480.h"
-		};	
+		};
 		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
-		char vpp_yuv_array[896*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_800x480.h"
 		};
 		#else //YUV420_NV12
-		char vpp_yuv_array[896*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_800x480.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 320) && (VPP_HEIGHT == 240))
 		#if (VPP_FMT_TTL == 0) //YUV420_NV12
-		char vpp_yuv_array[384*240*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[384*240*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_320x240.h"
 		};
 		#elif (VPP_FMT_TTL == 1) //YUV422_NV16
-		char vpp_yuv_array[384*240*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[384*240*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_320x240.h"
-		};	
+		};
 		#elif (VPP_FMT_TTL == 2) //YUV422_YUY2
-		char vpp_yuv_array[384*240*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[384*240*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_320x240.h"
 		};
 		#else //YUV420_NV12
-		char vpp_yuv_array[384*240*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[384*240*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_320x240.h"
 		};
 		#endif
@@ -2117,55 +1901,55 @@ ERROR:
 #else
 	#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
 		#if (VPP_FMT_HDMI == 0) //YUV420_NV12
-		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_720x480.h"
 		};
 		#elif (VPP_FMT_HDMI == 1) //YUV422_NV16
-		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_720x480.h"
 		};
 		#elif (VPP_FMT_HDMI == 2) //YUV422_YUY2
-		char vpp_yuv_array[768*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_720x480.h"
 		};
 		#else
-		char vpp_yuv_array[768*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[768*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_720x480.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 800) && (VPP_HEIGHT == 480))
 		#if (VPP_FMT_HDMI == 0) //YUV420_NV12
-		char vpp_yuv_array[896*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_800x480.h"
 		};
 		#elif (VPP_FMT_HDMI == 1) //YUV422_NV16
-		char vpp_yuv_array[896*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_800x480.h"
-		};	
+		};
 		#elif (VPP_FMT_HDMI == 2) //YUV422_YUY2
-		char vpp_yuv_array[896*480*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_800x480.h"
 		};
 		#else //YUV420_NV12
-		char vpp_yuv_array[896*480*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[896*480*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_800x480.h"
 		};
 		#endif
 	#elif ((VPP_WIDTH == 1280) && (VPP_HEIGHT == 720))
 		#if (VPP_FMT_HDMI == 0) //YUV420_NV12
-		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1280x720.h"
 		};
 		#elif (VPP_FMT_HDMI == 1) //YUV422_NV16
-		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_NV16_1280x720.h"
 		};
 		#elif (VPP_FMT_HDMI == 2) //YUV422_YUY2
-		char vpp_yuv_array[1280*720*2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*2] __aligned(1024) = {
 			#include "vpp_pattern/yuv422_YUY2_1280x720.h"
 		};
 		#else
-		char vpp_yuv_array[1280*720*3/2] __attribute__((aligned(1024))) = {
+		char vpp_yuv_array[1280*720*3/2] __aligned(1024) = {
 			#include "vpp_pattern/yuv420_NV12_1280x720.h"
 		};
 		#endif
@@ -2255,158 +2039,128 @@ static int _display_init_plltv(struct device *dev, struct sp_disp_device *disp_d
 {
 	int len;
 	const char *ttl_name;
-	//sp_disp_info("_display_init_plltv \n");
+	//sp_disp_info("_display_init_plltv\n");
 
 	len = of_property_read_string_index(dev->of_node, "ttl-name", 0, &ttl_name);
-	if (ttl_name) {
-		sp_disp_info("ttl-name %s \n",ttl_name);
-	}
-	
-	if (of_property_read_u32(dev->of_node, "ttl-clock-freq", &disp_dev->TTLPar.clk)) {
+	if (ttl_name)
+		sp_disp_info("ttl-name %s\n", ttl_name);
+
+	if (of_property_read_u32(dev->of_node, "ttl-clock-freq", &disp_dev->TTLPar.clk))
 		disp_dev->TTLPar.clk = 0;
-	}
-	else {
+	else
 		disp_dev->TTLPar.dts_exist = 1;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-clock-divm", &disp_dev->TTLPar.divm)) {
+	if (of_property_read_u32(dev->of_node, "ttl-clock-divm", &disp_dev->TTLPar.divm))
 		disp_dev->TTLPar.divm = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-clock-divn", &disp_dev->TTLPar.divn)) {
+	if (of_property_read_u32(dev->of_node, "ttl-clock-divn", &disp_dev->TTLPar.divn))
 		disp_dev->TTLPar.divn = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-clock-divr", &disp_dev->TTLPar.divr)) {
+	if (of_property_read_u32(dev->of_node, "ttl-clock-divr", &disp_dev->TTLPar.divr))
 		disp_dev->TTLPar.divr = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "hactive", &disp_dev->TTLPar.hactive)) {
+	if (of_property_read_u32(dev->of_node, "hactive", &disp_dev->TTLPar.hactive))
 		disp_dev->TTLPar.hactive = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "hback-porch", &disp_dev->TTLPar.hbp)) {
+	if (of_property_read_u32(dev->of_node, "hback-porch", &disp_dev->TTLPar.hbp))
 		disp_dev->TTLPar.hbp = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "hfront-porch", &disp_dev->TTLPar.hfp)) {
+	if (of_property_read_u32(dev->of_node, "hfront-porch", &disp_dev->TTLPar.hfp))
 		disp_dev->TTLPar.hfp = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "hsync-len", &disp_dev->TTLPar.hsync)) {
+	if (of_property_read_u32(dev->of_node, "hsync-len", &disp_dev->TTLPar.hsync))
 		disp_dev->TTLPar.hsync = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "vactive", &disp_dev->TTLPar.vactive)) {
+	if (of_property_read_u32(dev->of_node, "vactive", &disp_dev->TTLPar.vactive))
 		disp_dev->TTLPar.vactive = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "vback-porch", &disp_dev->TTLPar.vbp)) {
+	if (of_property_read_u32(dev->of_node, "vback-porch", &disp_dev->TTLPar.vbp))
 		disp_dev->TTLPar.vbp = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "vfront-porch", &disp_dev->TTLPar.vfp)) {
+	if (of_property_read_u32(dev->of_node, "vfront-porch", &disp_dev->TTLPar.vfp))
 		disp_dev->TTLPar.vfp = 0;
-	}
-	
-	if (of_property_read_u32(dev->of_node, "vsync-len", &disp_dev->TTLPar.vsync)) {
+
+	if (of_property_read_u32(dev->of_node, "vsync-len", &disp_dev->TTLPar.vsync))
 		disp_dev->TTLPar.vsync = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-out-enable", &disp_dev->TTLPar.ttl_out_enable)) {
+	if (of_property_read_u32(dev->of_node, "ttl-out-enable", &disp_dev->TTLPar.ttl_out_enable))
 		disp_dev->TTLPar.ttl_out_enable = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-rgb-swap", &disp_dev->TTLPar.ttl_rgb_swap)) {
+	if (of_property_read_u32(dev->of_node, "ttl-rgb-swap", &disp_dev->TTLPar.ttl_rgb_swap))
 		disp_dev->TTLPar.ttl_rgb_swap = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-clock-pol", &disp_dev->TTLPar.ttl_clock_pol)) {
+	if (of_property_read_u32(dev->of_node, "ttl-clock-pol", &disp_dev->TTLPar.ttl_clock_pol))
 		disp_dev->TTLPar.ttl_clock_pol = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "set-user-mode", &disp_dev->TTLPar.set_user_mode)) {
+	if (of_property_read_u32(dev->of_node, "set-user-mode", &disp_dev->TTLPar.set_user_mode))
 		disp_dev->TTLPar.set_user_mode = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-vpp-layer", &disp_dev->TTLPar.ttl_vpp_layer)) {
+	if (of_property_read_u32(dev->of_node, "ttl-vpp-layer", &disp_dev->TTLPar.ttl_vpp_layer))
 		disp_dev->TTLPar.ttl_vpp_layer = 2;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-vpp-adj", &disp_dev->TTLPar.ttl_vpp_adj)) {
+	if (of_property_read_u32(dev->of_node, "ttl-vpp-adj", &disp_dev->TTLPar.ttl_vpp_adj))
 		disp_dev->TTLPar.ttl_vpp_adj = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-osd-adj", &disp_dev->TTLPar.ttl_osd_adj)) {
+	if (of_property_read_u32(dev->of_node, "ttl-osd-adj", &disp_dev->TTLPar.ttl_osd_adj))
 		disp_dev->TTLPar.ttl_osd_adj = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "ttl-parm-adj", &disp_dev->TTLPar.ttl_parm_adj)) {
+	if (of_property_read_u32(dev->of_node, "ttl-parm-adj", &disp_dev->TTLPar.ttl_parm_adj))
 		disp_dev->TTLPar.ttl_parm_adj = 0;
-	}
 
-	if (of_property_read_u32(dev->of_node, "hdmi-skip-plltv", &disp_dev->TTLPar.hdmi_skip_plltv)) {
+	if (of_property_read_u32(dev->of_node, "hdmi-skip-plltv", &disp_dev->TTLPar.hdmi_skip_plltv))
 		disp_dev->TTLPar.hdmi_skip_plltv = 0;
-	}
-	else {
+	else
 		g_disp_hdmi_skip_plltv = disp_dev->TTLPar.hdmi_skip_plltv;
-	}
 
 	//decide divm , divn and divr value for TTL/HDMI user mode clk setting
-	if(disp_dev->TTLPar.dts_exist) {
-		//sp_disp_info("ttl target clk %d \n",disp_dev->TTLPar.clk);	
+	if (disp_dev->TTLPar.dts_exist) {
+		//sp_disp_info("ttl target clk %d\n", disp_dev->TTLPar.clk);
 		//TBD , auto cal by target clk
-		#if defined(HDMI_USER_MODE_DTS) || defined(TTL_USER_MODE_DTS) 
-		if((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
-			//sp_disp_info("Set plltv clk \n");
+		#if defined(HDMI_USER_MODE_DTS) || defined(TTL_USER_MODE_DTS)
+		if ((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
+			//sp_disp_info("Set plltv clk\n");
 			//with  formula ( FVCO = (27/(M+1)) * (N+1) * 2 ^R)
 			if (disp_dev->TTLPar.ttl_out_enable) {
 				G4[14] = 0x80020000; //don't bypass
 
-				if(disp_dev->TTLPar.divr == 1) {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*2;
+				if (disp_dev->TTLPar.divr == 1) {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*2;
 					G4[15] = 0x01800080; //FCKOUT=FVCO2
-				}
-				else if(disp_dev->TTLPar.divr == 2) {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*4;
+				} else if (disp_dev->TTLPar.divr == 2) {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*4;
 					G4[15] = 0x01800100; //FCKOUT=FVCO4
-				}
-				else {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*1;
+				} else {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*1;
 					G4[15] = 0x01800000; //FCKOUT=FVCO1
 				}
 
-				G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
+				G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) |
 										((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 				G4[31] = 0x00300000; //clk no div
-			}
-			else {
+			} else {
 				G1[4] = 0x00400000; //en LCDIF
 
-				G4[14] = 0xFFFF0001; 	//G4.14
+				G4[14] = 0xFFFF0001;	//G4.14
 
-				if(disp_dev->TTLPar.divr == 1) {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/2;
+				if (disp_dev->TTLPar.divr == 1) {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/2;
 					G4[15] = 0x01840084; //FCKOUT=FVCO2
-				}
-				else if(disp_dev->TTLPar.divr == 2) {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/4;
+				} else if (disp_dev->TTLPar.divr == 2) {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/4;
 					G4[15] = 0x01840104; //FCKOUT=FVCO4
-				}
-				else {
-					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/1;
+				} else {
+					disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/1;
 					G4[15] = 0x01840004; //FCKOUT=FVCO1
 				}
-				G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
+				G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) |
 										((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 				G4[31] = 0x00300000; //clk no div
 			}
-			sp_disp_dbg("Set clk %d M %d N %d R %d \n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);	
+			sp_disp_dbg("Set clk %d M %d N %d R %d\n", disp_dev->TTLPar.clk, disp_dev->TTLPar.divm, disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
 		}
 		#endif
-	}
-	else {
-		sp_disp_dbg("ttl para not exist in dts!! \n");
+	} else {
+		sp_disp_dbg("ttl para not exist in dts!!\n");
 		#ifdef TTL_MODE_1280_720
 			//clk = 59.23M //(FVCO= (27/(M+1)) * (N+1) ) M=30,N=67
 			//clk = 59.19M //(FVCO= (27/(M+1)) * (N+1) ) M=25,N=56
@@ -2414,7 +2168,7 @@ static int _display_init_plltv(struct device *dev, struct sp_disp_device *disp_d
 			disp_dev->TTLPar.divm = 8;
 			disp_dev->TTLPar.divn = 39;
 			disp_dev->TTLPar.divr = 1;
-		#endif		
+		#endif
 		#ifdef TTL_MODE_1024_600
 			//clk = 51M //(FVCO= (27/(M+1)) * (N+1) ) M=8,N=16
 			//clk = 51.55M //(FVCO= (27/(M+1)) * (N+1) ) M=10,N=20
@@ -2470,7 +2224,7 @@ static int sp_disp_initialize(struct device *dev, struct sp_disp_device *disp_de
 {
 	int ret;
 
-	sp_disp_dbg("[%s:%d] sp_disp_initialize \n", __FUNCTION__, __LINE__);
+	sp_disp_dbg("[%s:%d]\n", __func__, __LINE__);
 
 	if (!disp_dev || !dev) {
 		sp_disp_err("Null device pointers.\n");
@@ -2502,20 +2256,19 @@ static int sp_disp_set_osd_resolution(struct device *dev, struct sp_disp_device 
 {
 	#ifdef SP_DISP_V4L2_SUPPORT
 	char fmtstr[8];
-	sp_disp_dbg("set osd resolution \n");
+
+	sp_disp_dbg("set osd resolution\n");
 
 	if (of_property_read_u32(dev->of_node, "ui_width", &disp_dev->UIRes.width)) {
 		disp_dev->UIRes.width = 0;
-	}
-	else {
+	} else {
 		disp_dev->dev[0]->fmt.fmt.pix.width = disp_dev->UIRes.width;
 		disp_dev->dev[1]->fmt.fmt.pix.width = disp_dev->UIRes.width;
 	}
 
 	if (of_property_read_u32(dev->of_node, "ui_height", &disp_dev->UIRes.height)) {
 		disp_dev->UIRes.height = 0;
-	}
-	else {
+	} else {
 		disp_dev->dev[0]->fmt.fmt.pix.height = disp_dev->UIRes.height;
 		disp_dev->dev[1]->fmt.fmt.pix.height = disp_dev->UIRes.height;
 	}
@@ -2524,38 +2277,30 @@ static int sp_disp_set_osd_resolution(struct device *dev, struct sp_disp_device 
 		disp_dev->UIFmt = DRV_OSD_REGION_FORMAT_ARGB_8888;
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_8BPP) { /* 8 bit/pixel with CLUT */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_8BPP) { /* 8 bit/pixel with CLUT */
 		//disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_PAL8;
 		//disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_PAL8;
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_GREY;
-		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_GREY;		
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_YUY2) { /* 16 bit/pixel YUY2 */
+		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_GREY;
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_YUY2) { /* 16 bit/pixel YUY2 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGB_565) { /* 16 bit/pixel RGB 5:6:5 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGB_565) { /* 16 bit/pixel RGB 5:6:5 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_1555) { /* 16 bit/pixel ARGB 1:5:5:5 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_1555) { /* 16 bit/pixel ARGB 1:5:5:5 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB555;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB555;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_4444) { /* 16 bit/pixel RGBA 4:4:4:4 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_4444) { /* 16 bit/pixel RGBA 4:4:4:4 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB444;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB444;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_4444) { /* 16 bit/pixel ARGB 4:4:4:4 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_4444) { /* 16 bit/pixel ARGB 4:4:4:4 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB444;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB444;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_8888) { /* 32 bit/pixel RGBA 8:8:8:8 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_RGBA_8888) { /* 32 bit/pixel RGBA 8:8:8:8 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ABGR32;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ABGR32;
-	}
-	else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_8888) { /* 32 bit/pixel ARGB 8:8:8:8 */
+	} else if (disp_dev->UIFmt == DRV_OSD_REGION_FORMAT_ARGB_8888) { /* 32 bit/pixel ARGB 8:8:8:8 */
 		disp_dev->dev[0]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
 		disp_dev->dev[1]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
 	}
@@ -2564,15 +2309,15 @@ static int sp_disp_set_osd_resolution(struct device *dev, struct sp_disp_device 
 	DRV_OSD_INIT_OSD_Header();
 	#endif
 
-	sp_disp_dbg("ui_width = %d , ui_height = %d \n", disp_dev->UIRes.width,disp_dev->UIRes.height);
+	sp_disp_dbg("ui_width = %d , ui_height = %d\n", disp_dev->UIRes.width, disp_dev->UIRes.height);
 
-    memset(fmtstr, 0, 8);
-    memcpy(fmtstr, &disp_dev->dev[0]->fmt.fmt.pix.pixelformat, 4);
-	sp_disp_dbg("dev[0] osd0_format = %s \n", fmtstr);
+	memset(fmtstr, 0, 8);
+	memcpy(fmtstr, &disp_dev->dev[0]->fmt.fmt.pix.pixelformat, 4);
+	sp_disp_dbg("dev[0] osd0_format = %s\n", fmtstr);
 
-    memset(fmtstr, 0, 8);
-    memcpy(fmtstr, &disp_dev->dev[1]->fmt.fmt.pix.pixelformat, 4);
-	sp_disp_dbg("dev[1] osd1_format = %s \n", fmtstr);
+	memset(fmtstr, 0, 8);
+	memcpy(fmtstr, &disp_dev->dev[1]->fmt.fmt.pix.pixelformat, 4);
+	sp_disp_dbg("dev[1] osd1_format = %s\n", fmtstr);
 
 	disp_dev->dev[0]->fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 	//disp_dev->dev[0]->fmt.fmt.pix.width = norm_maxw();
@@ -2610,177 +2355,169 @@ static int sp_disp_set_output_resolution(struct sp_disp_device *disp_dev, int is
 {
 	int mode = 0;
 	int ret;
-	DRV_SetTGEN_t SetTGEN;
+	struct DRV_SetTGEN_t SetTGEN;
 
-	sp_disp_dbg("set output resolution \n");
+	sp_disp_dbg("set output resolution\n");
 
 	#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 		#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-	if(disp_dev->TTLPar.ttl_out_enable == 1)
+	if (disp_dev->TTLPar.ttl_out_enable == 1)
 		is_hdmi = 0;
 	else
 		is_hdmi = 1;
 		#endif
-	#endif	
+	#endif
 
-	if(is_hdmi) { //hdmitx output
-		if((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 480)) {
+	if (is_hdmi) { //hdmitx output
+		if ((disp_dev->UIRes.width == 720) && (disp_dev->UIRes.height == 480)) {
 			mode = 0;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_480P);
 			hdmitx_enable_display(1);
 			#endif
-		}
-		else if((disp_dev->UIRes.width == 800)&&(disp_dev->UIRes.height == 480)) {
+		} else if ((disp_dev->UIRes.width == 800) && (disp_dev->UIRes.height == 480)) {
 			mode = 7; //HDMI User Mode
-		}
-		else if((disp_dev->UIRes.width == 1024)&&(disp_dev->UIRes.height == 600)) {
+		} else if ((disp_dev->UIRes.width == 1024) && (disp_dev->UIRes.height == 600)) {
 			mode = 7; //HDMI User Mode
-		}
-		else if((disp_dev->UIRes.width == 720)&&(disp_dev->UIRes.height == 576)) {
+		} else if ((disp_dev->UIRes.width == 720) && (disp_dev->UIRes.height == 576)) {
 			mode = 1;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_576P);
 			hdmitx_enable_display(1);
 			#endif
-		}
-		else if((disp_dev->UIRes.width == 1280)&&(disp_dev->UIRes.height == 720)) {
+		} else if ((disp_dev->UIRes.width == 1280) && (disp_dev->UIRes.height == 720)) {
 			mode = 2;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_720P60);
 			hdmitx_enable_display(1);
 			#endif
-		}
-		else if((disp_dev->UIRes.width == 1920)&&(disp_dev->UIRes.height == 1080)) {
+		} else if ((disp_dev->UIRes.width == 1920) && (disp_dev->UIRes.height == 1080)) {
 			mode = 4;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_1080P60);
 			hdmitx_enable_display(1);
 			#endif
-		}
-		else {
+		} else {
 			mode = 0;
 			#ifdef TIMING_SYNC_720P60
 			hdmitx_set_timming(HDMITX_TIMING_480P);
 			hdmitx_enable_display(1);
 			#endif
 		}
-		sp_disp_dbg("hdmitx output , mode = %d \n", mode);
-	}
-	else { //TTL output
+		sp_disp_dbg("hdmitx output , mode = %d\n", mode);
+	} else { //TTL output
 		mode = 7;
-		sp_disp_dbg("TTL output , mode = %d \n", mode);
+		sp_disp_dbg("TTL output , mode = %d\n", mode);
 	}
 	DRV_DVE_SetMode(mode);
 	//DRV_DVE_SetColorbar(ENABLE);
 
-	switch (mode)
-	{
-		default:
-		case 0:
-			SetTGEN.fmt = DRV_FMT_480P;
-			SetTGEN.fps = DRV_FrameRate_5994Hz;
-			disp_dev->panelRes.width = 720;
-			disp_dev->panelRes.height = 480;
-			break;
-		case 1:
-			SetTGEN.fmt = DRV_FMT_576P;
-			SetTGEN.fps = DRV_FrameRate_50Hz;
-			disp_dev->panelRes.width = 720;
-			disp_dev->panelRes.height = 576;
-			break;
-		case 2:
-			SetTGEN.fmt = DRV_FMT_720P;
-			SetTGEN.fps = DRV_FrameRate_5994Hz;
-			disp_dev->panelRes.width = 1280;
-			disp_dev->panelRes.height = 720;
-			break;
-		case 3:
-			SetTGEN.fmt = DRV_FMT_720P;
-			SetTGEN.fps = DRV_FrameRate_50Hz;
-			disp_dev->panelRes.width = 1280;
-			disp_dev->panelRes.height = 720;
-			break;
-		case 4:
-			SetTGEN.fmt = DRV_FMT_1080P;
-			SetTGEN.fps = DRV_FrameRate_5994Hz;
-			disp_dev->panelRes.width = 1920;
-			disp_dev->panelRes.height = 1080;
-			break;
-		case 5:
-			SetTGEN.fmt = DRV_FMT_1080P;
-			SetTGEN.fps = DRV_FrameRate_50Hz;
-			disp_dev->panelRes.width = 1920;
-			disp_dev->panelRes.height = 1080;
-			break;
-		case 6:
-			SetTGEN.fmt = DRV_FMT_1080P;
-			SetTGEN.fps = DRV_FrameRate_24Hz;
-			disp_dev->panelRes.width = 1920;
-			disp_dev->panelRes.height = 1080;
-			break;
-		case 7:
+	switch (mode) {
+	default:
+	case 0:
+		SetTGEN.fmt = DRV_FMT_480P;
+		SetTGEN.fps = DRV_FrameRate_5994Hz;
+		disp_dev->panelRes.width = 720;
+		disp_dev->panelRes.height = 480;
+		break;
+	case 1:
+		SetTGEN.fmt = DRV_FMT_576P;
+		SetTGEN.fps = DRV_FrameRate_50Hz;
+		disp_dev->panelRes.width = 720;
+		disp_dev->panelRes.height = 576;
+		break;
+	case 2:
+		SetTGEN.fmt = DRV_FMT_720P;
+		SetTGEN.fps = DRV_FrameRate_5994Hz;
+		disp_dev->panelRes.width = 1280;
+		disp_dev->panelRes.height = 720;
+		break;
+	case 3:
+		SetTGEN.fmt = DRV_FMT_720P;
+		SetTGEN.fps = DRV_FrameRate_50Hz;
+		disp_dev->panelRes.width = 1280;
+		disp_dev->panelRes.height = 720;
+		break;
+	case 4:
+		SetTGEN.fmt = DRV_FMT_1080P;
+		SetTGEN.fps = DRV_FrameRate_5994Hz;
+		disp_dev->panelRes.width = 1920;
+		disp_dev->panelRes.height = 1080;
+		break;
+	case 5:
+		SetTGEN.fmt = DRV_FMT_1080P;
+		SetTGEN.fps = DRV_FrameRate_50Hz;
+		disp_dev->panelRes.width = 1920;
+		disp_dev->panelRes.height = 1080;
+		break;
+	case 6:
+		SetTGEN.fmt = DRV_FMT_1080P;
+		SetTGEN.fps = DRV_FrameRate_24Hz;
+		disp_dev->panelRes.width = 1920;
+		disp_dev->panelRes.height = 1080;
+		break;
+	case 7:
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
-			SetTGEN.fmt = DRV_FMT_USER_MODE;
-			SetTGEN.fps = DRV_FrameRate_5994Hz;
-			#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-					SetTGEN.htt = (int)disp_dev->TTLPar.hfp + \
-									(int)disp_dev->TTLPar.hsync + \
-									(int)disp_dev->TTLPar.hbp + \
-									(int)disp_dev->TTLPar.hactive;
-					SetTGEN.vtt = (int)disp_dev->TTLPar.vfp + \
-									(int)disp_dev->TTLPar.vsync + \
-									(int)disp_dev->TTLPar.vbp + \
-									(int)disp_dev->TTLPar.vactive;					
-					SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync + \
-									(int)disp_dev->TTLPar.vbp + 1;
-					SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
-					SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
-					disp_dev->panelRes.width = (int)disp_dev->TTLPar.hactive;
-					disp_dev->panelRes.height = (int)disp_dev->TTLPar.vactive;
-			#else
-				#ifdef TTL_MODE_1280_720
-					SetTGEN.htt = 1352;
-					SetTGEN.vtt = 730;
-					SetTGEN.v_bp = 24;//TBD
-					SetTGEN.hactive = 1280;
-					SetTGEN.vactive = 720;
-					disp_dev->panelRes.width = 1280;
-					disp_dev->panelRes.height = 720;
-				#endif			
-				#ifdef TTL_MODE_1024_600
-					SetTGEN.htt = 1344;
-					SetTGEN.vtt = 635;
-					SetTGEN.v_bp = 24;
-					SetTGEN.hactive = 1024;
-					SetTGEN.vactive = 600;
-					disp_dev->panelRes.width = 1024;
-					disp_dev->panelRes.height = 600;
-				#endif
-				#ifdef TTL_MODE_800_480
-					SetTGEN.htt = 1056;
-					SetTGEN.vtt = 525;
-					SetTGEN.v_bp = 27;
-					SetTGEN.hactive = 800;
-					SetTGEN.vactive = 480;
-					disp_dev->panelRes.width = 800;
-					disp_dev->panelRes.height = 480;
-				#endif
-				#ifdef TTL_MODE_320_240
-					SetTGEN.htt = 408;
-					SetTGEN.vtt = 262;
-					SetTGEN.v_bp = 19;
-					SetTGEN.hactive = 320;
-					SetTGEN.vactive = 240;
-					disp_dev->panelRes.width = 320;
-					disp_dev->panelRes.height = 240;
-				#endif
+		SetTGEN.fmt = DRV_FMT_USER_MODE;
+		SetTGEN.fps = DRV_FrameRate_5994Hz;
+		#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
+				SetTGEN.htt = (int)disp_dev->TTLPar.hfp +
+								(int)disp_dev->TTLPar.hsync +
+								(int)disp_dev->TTLPar.hbp +
+								(int)disp_dev->TTLPar.hactive;
+				SetTGEN.vtt = (int)disp_dev->TTLPar.vfp +
+								(int)disp_dev->TTLPar.vsync +
+								(int)disp_dev->TTLPar.vbp +
+								(int)disp_dev->TTLPar.vactive;
+				SetTGEN.v_bp = (int)disp_dev->TTLPar.vsync +
+								(int)disp_dev->TTLPar.vbp + 1;
+				SetTGEN.hactive = (int)disp_dev->TTLPar.hactive;
+				SetTGEN.vactive = (int)disp_dev->TTLPar.vactive;
+				disp_dev->panelRes.width = (int)disp_dev->TTLPar.hactive;
+				disp_dev->panelRes.height = (int)disp_dev->TTLPar.vactive;
+		#else
+			#ifdef TTL_MODE_1280_720
+				SetTGEN.htt = 1352;
+				SetTGEN.vtt = 730;
+				SetTGEN.v_bp = 24;//TBD
+				SetTGEN.hactive = 1280;
+				SetTGEN.vactive = 720;
+				disp_dev->panelRes.width = 1280;
+				disp_dev->panelRes.height = 720;
 			#endif
-			sp_disp_dbg("set TGEN user mode \n");
+			#ifdef TTL_MODE_1024_600
+				SetTGEN.htt = 1344;
+				SetTGEN.vtt = 635;
+				SetTGEN.v_bp = 24;
+				SetTGEN.hactive = 1024;
+				SetTGEN.vactive = 600;
+				disp_dev->panelRes.width = 1024;
+				disp_dev->panelRes.height = 600;
+			#endif
+			#ifdef TTL_MODE_800_480
+				SetTGEN.htt = 1056;
+				SetTGEN.vtt = 525;
+				SetTGEN.v_bp = 27;
+				SetTGEN.hactive = 800;
+				SetTGEN.vactive = 480;
+				disp_dev->panelRes.width = 800;
+				disp_dev->panelRes.height = 480;
+			#endif
+			#ifdef TTL_MODE_320_240
+				SetTGEN.htt = 408;
+				SetTGEN.vtt = 262;
+				SetTGEN.v_bp = 19;
+				SetTGEN.hactive = 320;
+				SetTGEN.vactive = 240;
+				disp_dev->panelRes.width = 320;
+				disp_dev->panelRes.height = 240;
+			#endif
+		#endif
+		sp_disp_dbg("set TGEN user mode\n");
 #else
-			sp_disp_dbg("user mode unsupport\n");
+		sp_disp_dbg("user mode unsupport\n");
 #endif
-			break;
+		break;
 	}
 
 	ret = DRV_TGEN_Set(&SetTGEN);
@@ -2789,12 +2526,12 @@ static int sp_disp_set_output_resolution(struct sp_disp_device *disp_dev, int is
 		return ret;
 	}
 
-	sp_disp_dbg("UI_width = %d , UI_height = %d \n" , disp_dev->UIRes.width, disp_dev->UIRes.height);
-	sp_disp_dbg("OUT_width = %d , OUT_height = %d \n" , disp_dev->panelRes.width, disp_dev->panelRes.height);
+	sp_disp_dbg("UI_width = %d , UI_height = %d\n", disp_dev->UIRes.width, disp_dev->UIRes.height);
+	sp_disp_dbg("OUT_width = %d , OUT_height = %d\n", disp_dev->panelRes.width, disp_dev->panelRes.height);
 	#ifdef SP_DISP_V4L2_SUPPORT
-	sp_disp_dbg("OSD0_width = %d , OSD0_height = %d \n" , disp_dev->dev[0]->fmt.fmt.pix.width, disp_dev->dev[0]->fmt.fmt.pix.height);
-	sp_disp_dbg("OSD1_width = %d , OSD1_height = %d \n" , disp_dev->dev[1]->fmt.fmt.pix.width, disp_dev->dev[1]->fmt.fmt.pix.height);
-	sp_disp_dbg("VPP0_width = %d , VPP0_height = %d \n" , disp_dev->dev[2]->fmt.fmt.pix.width, disp_dev->dev[2]->fmt.fmt.pix.height);
+	sp_disp_dbg("OSD0_width = %d , OSD0_height = %d\n", disp_dev->dev[0]->fmt.fmt.pix.width, disp_dev->dev[0]->fmt.fmt.pix.height);
+	sp_disp_dbg("OSD1_width = %d , OSD1_height = %d\n", disp_dev->dev[1]->fmt.fmt.pix.width, disp_dev->dev[1]->fmt.fmt.pix.height);
+	sp_disp_dbg("VPP0_width = %d , VPP0_height = %d\n", disp_dev->dev[2]->fmt.fmt.pix.width, disp_dev->dev[2]->fmt.fmt.pix.height);
 	#endif
 
 	return 0;
@@ -2806,7 +2543,7 @@ static int sp_disp_init_multi_layer(int i, struct platform_device *pdev, struct 
 	struct sp_disp_layer *disp_layer = NULL;
 	struct video_device *vbd = NULL;
 
-	//sp_disp_dbg("init layer for dev[%d] \n", i);
+	//sp_disp_dbg("init layer for dev[%d]\n", i);
 	/* Allocate memory for four plane display objects */
 
 	disp_dev->dev[i] =
@@ -2841,7 +2578,7 @@ static int sp_disp_init_multi_layer(int i, struct platform_device *pdev, struct 
 		strlcpy(vbd->name, DISP_VPP0_NAME, sizeof(vbd->name));
 
 	disp_layer->device_id = i;
-	sp_disp_dbg("init dev[%d] Layer name = %s \n", i, vbd->name);
+	sp_disp_dbg("init dev[%d] Layer name = %s\n", i, vbd->name);
 
 	return 0;
 }
@@ -2852,7 +2589,7 @@ static int sp_disp_reg_multi_layer(int i, struct platform_device *pdev, struct s
 	int ret;
 	int vid_num = 10;
 
-	//sp_disp_dbg("[%s:%d] sp_disp_reg_multi_layer \n", __FUNCTION__, __LINE__);
+	//sp_disp_dbg("[%s:%d] sp_disp_reg_multi_layer\n", __func__, __LINE__);
 	/* Allocate memory for four plane display objects */
 
 	/* initialize vb2 queue */
@@ -2888,7 +2625,7 @@ static int sp_disp_reg_multi_layer(int i, struct platform_device *pdev, struct s
 		goto err_video_register;
 	}
 
-	sp_disp_dbg("reg  dev[%d] to /dev/video%d \n", i, (vid_num + i));
+	sp_disp_dbg("reg  dev[%d] to /dev/video%d\n", i, (vid_num + i));
 
 	disp_dev->dev[i]->disp_dev = disp_dev;
 	platform_set_drvdata(pdev, disp_dev);
@@ -2900,7 +2637,7 @@ static int sp_disp_reg_multi_layer(int i, struct platform_device *pdev, struct s
 err_vb2_queue_init:
 err_video_register:
 	/* Unregister video device */
-	video_unregister_device(&disp_dev->dev[i]->video_dev);		
+	video_unregister_device(&disp_dev->dev[i]->video_dev);
 	kfree(disp_dev->dev[i]);
 	disp_dev->dev[i] = NULL;
 
@@ -2916,19 +2653,19 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	#ifdef SP_DISP_V4L2_SUPPORT
 	char fmtstr[8];
 	#endif
-	sp_disp_dbg("set vpp resolution \n");
+	sp_disp_dbg("set vpp resolution\n");
 
 	#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 		#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-	if(disp_dev->TTLPar.ttl_out_enable == 1)
+	if (disp_dev->TTLPar.ttl_out_enable == 1)
 		is_hdmi = 0;
 	else
 		is_hdmi = 1;
 		#endif
 	#endif
 
-	if(is_hdmi) { //hdmitx output
-		sp_disp_dbg("hdmitx output \n");
+	if (is_hdmi) { //hdmitx output
+		sp_disp_dbg("hdmitx output\n");
 		#if ((VPP_WIDTH == 720) && (VPP_HEIGHT == 480))
 		vpost_setting((720-VPP_WIDTH)>>1, (480-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 720, 480);
 		#elif ((VPP_WIDTH == 800) && (VPP_HEIGHT == 480))
@@ -2944,20 +2681,19 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 		#else
 		ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 		#endif
-	}
-	else { //TTL output
-		sp_disp_dbg("TTL output \n");
+	} else { //TTL output
+		sp_disp_dbg("TTL output\n");
 	#ifdef TTL_USER_MODE_DTS
-		vpost_setting(((int)(disp_dev->TTLPar.hactive)-VPP_WIDTH)>>1, \
-						((int)(disp_dev->TTLPar.vactive)-VPP_HEIGHT)>>1, \
-						VPP_WIDTH, \
-						VPP_HEIGHT, \
-		 				(int)(disp_dev->TTLPar.hactive), \
-		  				(int)(disp_dev->TTLPar.vactive));
+		vpost_setting(((int)(disp_dev->TTLPar.hactive)-VPP_WIDTH)>>1,
+						((int)(disp_dev->TTLPar.vactive)-VPP_HEIGHT)>>1,
+						VPP_WIDTH,
+						VPP_HEIGHT,
+						(int)(disp_dev->TTLPar.hactive),
+						(int)(disp_dev->TTLPar.vactive));
 	#else
 	#ifdef TTL_MODE_1280_720
 		vpost_setting((1280-VPP_WIDTH)>>1, (720-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1280, 720);
-	#endif	
+	#endif
 	#ifdef TTL_MODE_1024_600
 		vpost_setting((1024-VPP_WIDTH)>>1, (600-VPP_HEIGHT)>>1, VPP_WIDTH, VPP_HEIGHT, 1024, 600);
 	#endif
@@ -2979,7 +2715,7 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 	}
 
 	#ifdef SP_DISP_V4L2_SUPPORT
-	if(disp_dev->dev[2]) {
+	if (disp_dev->dev[2]) {
 		disp_dev->dev[2]->fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
 		disp_dev->dev[2]->fmt.fmt.pix.width = VPP_WIDTH;
 		disp_dev->dev[2]->fmt.fmt.pix.height = VPP_HEIGHT;
@@ -3007,8 +2743,8 @@ static int sp_disp_set_vpp_resolution(struct device *dev, struct sp_disp_device 
 
 		memset(fmtstr, 0, 8);
 		memcpy(fmtstr, &disp_dev->dev[2]->fmt.fmt.pix.pixelformat, 4);
-		sp_disp_dbg("dev[2] vpp0_format = %s \n", fmtstr);
-		sp_disp_dbg("VPP_WIDTH = %d , VPP_HEIGHT = %d \n", VPP_WIDTH, VPP_HEIGHT);
+		sp_disp_dbg("dev[2] vpp0_format = %s\n", fmtstr);
+		sp_disp_dbg("VPP_WIDTH = %d , VPP_HEIGHT = %d\n", VPP_WIDTH, VPP_HEIGHT);
 	}
 	#endif
 
@@ -3021,70 +2757,65 @@ void sp_disp_set_ttl_clk(void)
 {
 	struct sp_disp_device *disp_dev = gDispWorkMem;
 
-	if((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
-		//sp_disp_info("Set plltv clk \n");
+	if ((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
+		//sp_disp_info("Set plltv clk\n");
 		//with  formula ( FVCO = (27/(M+1)) * (N+1) * 2 ^R)
 		if (disp_dev->TTLPar.ttl_out_enable) {
 			G4[14] = 0x80020000; //don't bypass
 
-			if(disp_dev->TTLPar.divr == 1) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*2;
+			if (disp_dev->TTLPar.divr == 1) {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*2;
 				G4[15] = 0x01800080; //FCKOUT=FVCO2
-			}
-			else if(disp_dev->TTLPar.divr == 2) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*4;
+			} else if (disp_dev->TTLPar.divr == 2) {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*4;
 				G4[15] = 0x01800100; //FCKOUT=FVCO4
-			}
-			else {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*1;
+			} else {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*1;
 				G4[15] = 0x01800000; //FCKOUT=FVCO1
 			}
 
-			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
+			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) |
 									((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 			G4[31] = 0x00300000; //clk no div
-		}
-		else {
-			G4[14] = 0xFFFF0001; 	//G4.14
+		} else {
+			G4[14] = 0xFFFF0001;	//G4.14
 
-			if(disp_dev->TTLPar.divr == 1) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/2;
+			if (disp_dev->TTLPar.divr == 1) {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/2;
 				G4[15] = 0x01840084; //FCKOUT=FVCO2
-			}
-			else if(disp_dev->TTLPar.divr == 2) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/4;
+			} else if (disp_dev->TTLPar.divr == 2) {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/4;
 				G4[15] = 0x01840104; //FCKOUT=FVCO4
-			}
-			else {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/1;
+			} else {
+				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)/1;
 				G4[15] = 0x01840004; //FCKOUT=FVCO1
 			}
-			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
+			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) |
 									((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 			G4[31] = 0x00300000; //clk no div
 		}
-		sp_disp_info("Set clk %d M %d N %d R %d \n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);	
+		sp_disp_info("Set clk %d M %d N %d R %d\n", disp_dev->TTLPar.clk, disp_dev->TTLPar.divm, disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
 	}
 
-	//sp_disp_info("Set clk %d M %d N %d R %d \n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
+	//sp_disp_info("Set clk %d M %d N %d R %d\n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
 	//if((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
 	//	//with  formula ( FVCO = (27/(M+1)) * (N+1) * 2 ^R)
 	//	G4[14] = 0x80020000; //don't bypass
 	//
 	//	if(disp_dev->TTLPar.divr == 1) {
-	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*2;
+	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*2;
 	//		G4[15] = 0x01800080; //FCKOUT=FVCO2
 	//	}
 	//	else if(disp_dev->TTLPar.divr == 2) {
-	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*4;
+	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*4;
 	//		G4[15] = 0x01800100; //FCKOUT=FVCO4
 	//	}
 	//	else {
-	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*1;
+	//		disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn + 1)*1;
 	//		G4[15] = 0x01800000; //FCKOUT=FVCO1
 	//	}
 	//
-	//	G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | 
+	//	G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) |
 	//							((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
 	//	G4[31] = 0x00300000; //clk no div
 	//}
@@ -3095,26 +2826,26 @@ void sp_disp_set_ttl_clk(void)
 	//	G4[16] = 0xFFFF0000; //don't care
 	//	G4[31] = 0x00200020; //clk div4
 	//}
-	//sp_disp_info("Target clk %d M %d N %d R %d \n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
+	//sp_disp_info("Target clk %d M %d N %d R %d\n", disp_dev->TTLPar.clk,disp_dev->TTLPar.divm, disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);
 }
 #endif
 #endif
 
 void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdmi)
 {
-	sp_disp_dbg("set vpp resolution \n");
+	sp_disp_dbg("set vpp resolution\n");
 
 	#if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
 		#if defined(TTL_USER_MODE_DTS) || defined(HDMI_USER_MODE_DTS)
-	if(disp_dev->TTLPar.ttl_out_enable == 1)
+	if (disp_dev->TTLPar.ttl_out_enable == 1)
 		is_hdmi = 0;
 	else
 		is_hdmi = 1;
 		#endif
-	#endif	
+	#endif
 
-	if(is_hdmi) { //hdmitx output
-		sp_disp_dbg("hdmitx output \n");
+	if (is_hdmi) { //hdmitx output
+		sp_disp_dbg("hdmitx output\n");
 		#ifdef SP_DISP_VPP_FIXED_ADDR
 		vpp_alloc_size = (VPP_FMT_HDMI)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
 		vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
@@ -3123,9 +2854,8 @@ void sp_disp_set_vpp_resolution_v4l2(struct sp_disp_device *disp_dev, int is_hdm
 		#else
 		ddfch_setting(virt_to_phys(vpp_yuv_array), virt_to_phys((vpp_yuv_array + ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT)), VPP_WIDTH, VPP_HEIGHT, VPP_FMT_HDMI);
 		#endif
-	}
-	else { //TTL output
-		sp_disp_dbg("TTL output \n");
+	} else { //TTL output
+		sp_disp_dbg("TTL output\n");
 		#ifdef SP_DISP_VPP_FIXED_ADDR
 		vpp_alloc_size = (VPP_FMT_TTL)?(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*2):(ALIGN(VPP_WIDTH, 128)*VPP_HEIGHT*3/2);
 		vpp_yuv_ptr = ioremap(0x00120000, vpp_alloc_size);
@@ -3148,20 +2878,20 @@ static int _display_probe(struct platform_device *pdev)
 #else
 		int is_hdmi = 1;
 #endif
-	DISP_REG_t *pTmpRegBase = NULL;
-	
+	struct DISP_REG_t *pTmpRegBase = NULL;
+
 #ifdef SP_DISP_V4L2_SUPPORT
 	int i;
 #endif
-	sp_disp_info("[%s:%d] disp probe ... \n", __FUNCTION__, __LINE__);
+	sp_disp_info("[%s:%d] disp probe ...\n", __func__, __LINE__);
 
 	// Allocate memory for 'sp_disp_device'.
 	disp_dev = kzalloc(sizeof(struct sp_disp_device), GFP_KERNEL);
 	if (!disp_dev) {
-		sp_disp_err("Failed to allocate memory!\n");
 		ret = -ENOMEM;
 		goto err_alloc;
 	}
+
 	#ifdef SP_DISP_V4L2_SUPPORT
 	disp_dev->pdev = &pdev->dev;
 	#endif
@@ -3178,7 +2908,7 @@ static int _display_probe(struct platform_device *pdev)
 	}
 
 #if defined(TTL_USER_MODE_SUPPORT) || defined(HDMI_USER_MODE_SUPPORT)
-    
+
 	G1 = ioremap(0x9c000080, 32*4);
 	G4 = ioremap(0x9c000200, 32*4);
 
@@ -3189,78 +2919,7 @@ static int _display_probe(struct platform_device *pdev)
 		sp_disp_err("Error: %s, %d\n", __func__, __LINE__);
 		return -1;
 	}
-
-	#if 0 //defined(HDMI_USER_MODE_DTS) || defined(TTL_USER_MODE_DTS) 
-	if((disp_dev->TTLPar.set_user_mode) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
-		//sp_disp_info("Set plltv clk \n");
-		//with  formula ( FVCO = (27/(M+1)) * (N+1) * 2 ^R)
-		if (disp_dev->TTLPar.ttl_out_enable) {
-			G4[14] = 0x80020000; //don't bypass
-
-			if(disp_dev->TTLPar.divr == 1) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*2;
-				G4[15] = 0x01800080; //FCKOUT=FVCO2
-			}
-			else if(disp_dev->TTLPar.divr == 2) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*4;
-				G4[15] = 0x01800100; //FCKOUT=FVCO4
-			}
-			else {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)*1;
-				G4[15] = 0x01800000; //FCKOUT=FVCO1
-			}
-
-			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
-									((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
-			G4[31] = 0x00300000; //clk no div
-		}
-		else {
-			G4[14] = 0xFFFF0001; 	//G4.14
-
-			if(disp_dev->TTLPar.divr == 1) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/2;
-				G4[15] = 0x01840084; //FCKOUT=FVCO2
-			}
-			else if(disp_dev->TTLPar.divr == 2) {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/4;
-				G4[15] = 0x01840104; //FCKOUT=FVCO4
-			}
-			else {
-				disp_dev->TTLPar.clk = (27000000/(disp_dev->TTLPar.divm+1)) * (disp_dev->TTLPar.divn +1)/1;
-				G4[15] = 0x01840004; //FCKOUT=FVCO1
-			}
-			G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
-									((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
-			G4[31] = 0x00300000; //clk no div
-		}
-		sp_disp_dbg("Set clk %d M %d N %d R %d \n",disp_dev->TTLPar.clk,disp_dev->TTLPar.divm,disp_dev->TTLPar.divn, disp_dev->TTLPar.divr);	
-	}
-	#if 0//defined(TTL_USER_MODE_DTS) 
-	//sp_disp_info("( M %d N %d ) \n",disp_dev->TTLPar.divm,disp_dev->TTLPar.divn);
-	//sp_disp_info("Target clk %d \n",disp_dev->TTLPar.clk);
-	if((disp_dev->TTLPar.clk) && ((disp_dev->TTLPar.divm) || (disp_dev->TTLPar.divn))) {
-		//sp_disp_info("Set plltv clk \n");
-		//with  formula ( FVCO = (27/(M+1)) * (N+1) * 2 ^R)
-		G4[14] = 0x80020000; //don't bypass
-		#ifdef TTL_MODE_1280_720
-		G4[15] = 0x01800080; //FCKOUT=FVCO2
-		#endif
-		G4[16] = 0xFFFF0000 | ((disp_dev->TTLPar.divm << 8) & 0x0000ff00) | \
-								((disp_dev->TTLPar.divn << 0) & 0x0000ff); //Set M/N value for FVCO gen
-		G4[31] = 0x00300000; //clk no div
-	}
-	else {
-		//with  formula ( FVCO = (27/ div2 or div4 )
-		disp_dev->TTLPar.clk = 27000000/4;
-		G4[14] = 0x80418041; //en pll , clk = 27M
-		G4[16] = 0xFFFF0000; //don't care
-		G4[31] = 0x00200020; //clk div4
-	}
-	//sp_disp_info("new Target clk %d \n",disp_dev->TTLPar.clk);
-	#endif
-	#else
-
-	//sp_disp_info(" use default ttl setting!! \n");
+	//sp_disp_info(" use default ttl setting!!\n");
 	#ifdef TTL_MODE_1280_720
 		G4[14] = 0x80020000; //don't bypass
 		G4[15] = 0x01800080; //FCKOUT=FVCO2
@@ -3282,44 +2941,29 @@ static int _display_probe(struct platform_device *pdev)
 		G4[31] = 0x00300000; //clk no div
 	#endif
 	#ifdef TTL_MODE_320_240
-		#if 0
-		//method 1 , 27 div4 = 6.75M
-		G4[14] = 0x80418041; //en pll , clk = 27M
-		//G4[16] = 0xFFFF0000; //don't care
-		G4[31] = 0x00200020; //clk div4
-		#else
+		/*
+		 * method 1 , 27 div4 = 6.75M
+		 * G4[14] = 0x80418041; //en pll , clk = 27M
+		 * G4[16] = 0xFFFF0000; //don't care
+		 * G4[31] = 0x00200020; //clk div4
+		 */
 		//method2
 		G4[14] = 0x80020000; //don't bypass
 		G4[16] = 0xFFFF0300; //en pll , clk = 6.75M //(FVCO= (27/(M+1)) * (N+1) ) M=3,N=0
 		//G4[16] = 0xFFFF0300; //en pll , clk = 6.43M //(FVCO= (27/(M+1)) * (N+1) ) M=20,N=4
 		G4[31] = 0x00300000; //clk no div
-		#endif
-	#endif
-
 	#endif
 
 #endif
 
-#if 0//def CONFIG_EDID_READ
-		sp_disp_dbg("DVI horizontal Max. Timingg : %u\n", edid_dvi_horizontal);
-		sp_disp_dbg("DVI vertical Max. Timingg : %u\n", edid_dvi_vertical);
-#endif
-
-	ret = sp_disp_get_register_base(pdev, (void**)&pTmpRegBase,0);
-	if (ret) {
+	ret = sp_disp_get_register_base(pdev, (void **)&pTmpRegBase, 0);
+	if (ret)
 		return ret;
-	}
 
 	disp_dev->pHWRegBase = pTmpRegBase;
 
-	ret = sp_disp_get_register_base(pdev, (void**)&disp_dev->bio,1);
-	if (ret) {
-		return ret;
-	}
-
 	ret = _display_init_clk(pdev);
-	if (ret)
-	{
+	if (ret) {
 		sp_disp_err("init clk error.\n");
 		return ret;
 	}
@@ -3330,13 +2974,12 @@ static int _display_probe(struct platform_device *pdev)
 	DRV_DVE_Init((void *)&pTmpRegBase->dve);
 	DRV_VPP_Init((void *)&pTmpRegBase->vpost, (void *)&pTmpRegBase->ddfch);
 	DRV_OSD_Init((void *)&pTmpRegBase->osd, (void *)&pTmpRegBase->gpost);
-
 	// DMIX setting
-	/****************************************
-	* BG: PTG
-	* L1: VPP0
-	* L6: OSD0
-	*****************************************/
+	/*
+	 * BG: PTG
+	 * L1: VPP0
+	 * L6: OSD0
+	 */
 	DRV_DMIX_Layer_Init(DRV_DMIX_BG, DRV_DMIX_AlphaBlend, DRV_DMIX_PTG);
 
 	if (disp_dev->TTLPar.ttl_vpp_layer == 0)
@@ -3352,9 +2995,8 @@ static int _display_probe(struct platform_device *pdev)
 
 #ifdef SP_DISP_V4L2_SUPPORT
 	ret = sp_disp_initialize(&pdev->dev, disp_dev);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 	for (i = 0; i < SP_DISP_MAX_DEVICES; i++) {
 		if (sp_disp_init_multi_layer(i, pdev, disp_dev)) {
@@ -3364,37 +3006,34 @@ static int _display_probe(struct platform_device *pdev)
 		if (sp_disp_reg_multi_layer(i, pdev, disp_dev)) {
 			ret = -ENODEV;
 			return ret;
-		}		
+		}
 	}
 	#endif
 
 	ret = sp_disp_set_osd_resolution(&pdev->dev, disp_dev);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 	ret = sp_disp_set_vpp_resolution(&pdev->dev, disp_dev, is_hdmi);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
-	ret = sp_disp_set_output_resolution(disp_dev,is_hdmi);
-	if (ret) {
+	ret = sp_disp_set_output_resolution(disp_dev, is_hdmi);
+	if (ret)
 		return ret;
-	}
 
 #ifdef SUPPORT_DEBUG_MON
-	entry = proc_create(MON_PROC_NAME, S_IRUGO, NULL, &sp_disp_proc_ops);
+	entry = proc_create(MON_PROC_NAME, 0444, NULL, &sp_disp_proc_ops);
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	sp_disp_dbg("[%s:%d] runtime enable \n", __FUNCTION__, __LINE__);
-	pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+	sp_disp_dbg("[%s:%d] runtime enable\n", __func__, __LINE__);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 #endif
-	sp_disp_info("[%s:%d] disp probe done \n", __FUNCTION__, __LINE__);
+	sp_disp_info("[%s:%d] disp probe done\n", __func__, __LINE__);
 
 	return 0;
 
@@ -3414,7 +3053,7 @@ static int _display_remove(struct platform_device *pdev)
 	int i;
 	#endif
 
-	sp_disp_dbg("[%s:%d]\n", __FUNCTION__, __LINE__);
+	sp_disp_dbg("[%s:%d]\n", __func__, __LINE__);
 
 	_display_destory_irq(pdev);
 	_display_destory_clk(pdev);
@@ -3449,7 +3088,7 @@ static int _display_remove(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_PM_RUNTIME_DISP
-	sp_disp_dbg("[%s:%d] runtime disable \n", __FUNCTION__, __LINE__);
+	sp_disp_dbg("[%s:%d] runtime disable\n", __func__, __LINE__);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
 #endif
@@ -3460,16 +3099,16 @@ static int _display_remove(struct platform_device *pdev)
 static int _display_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct sp_disp_device *disp_dev = platform_get_drvdata(pdev);
-	//sp_disp_dbg("[%s:%d] suspend \n", __FUNCTION__, __LINE__);
+	//sp_disp_dbg("[%s:%d] suspend\n", __func__, __LINE__);
 	reset_control_assert(disp_dev->rstc);
-		
+
 	return 0;
 }
 
 static int _display_resume(struct platform_device *pdev)
 {
 	struct sp_disp_device *disp_dev = platform_get_drvdata(pdev);
-	//sp_disp_dbg("[%s:%d] resume \n", __FUNCTION__, __LINE__);
+	//sp_disp_dbg("[%s:%d] resume\n", __func__, __LINE__);
 	reset_control_deassert(disp_dev->rstc);
 
 	return 0;
