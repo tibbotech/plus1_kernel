@@ -10,6 +10,7 @@
 #include <linux/of.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
+#include <linux/usb/otg.h>
 
 #define RF_MASK_V(_mask, _val)			(((_mask) << 16) | (_val))
 #define RF_MASK_V_SET(_mask)			(((_mask) << 16) | (_mask))
@@ -105,9 +106,12 @@ extern u8 sp_port1_enabled;
 extern uint accessory_port_id;
 extern bool enum_rx_active_flag[USB_PORT_NUM];
 extern struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];
-#ifdef CONFIG_USB_SUNPLUS_OTG
 extern struct timer_list hnp_polling_timer;
-#endif
+
+void usb_switch(int device);
+void detech_start(void);
+
+extern void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 
 #define	ENABLE_VBUS_POWER(port)
 #define	DISABLE_VBUS_POWER(port)

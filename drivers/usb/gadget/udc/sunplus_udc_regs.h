@@ -1,14 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
 #ifndef _SUNPLUS_UDC_REGS_H
 #define _SUNPLUS_UDC_REGS_H
-/*USB_DEV_REG.pdf*/
-//#define AHB_USBD_BASE 0x40000800
-#undef AHB_USBD_BASE
-#define AHB_USBD_BASE0		0x9c102800
-#define AHB_USBD_END0		0x9c102c00
-#define AHB_USBD_BASE1		0x9c103800
-#define AHB_USBD_END1		0x9c103c00
-
-/*G0:--DMA Control Registers */
+/* G0:--DMA Control Registers */
 #define  UEP12DMACS		0x000
 #define  UEP12DMADA		0x004
 #define  UDADMAS		0x008
@@ -28,7 +22,7 @@
 #define  UDEPBDMACS		0x040
 #define  UDEPBDMADA		0x044
 
-/*G1:--System Domain Interrupt Registers */
+/* G1:--System Domain Interrupt Registers */
 #define  UDCCS			0x080
 #define  UDCIE			0x084
 #define  UDCIF			0x088
@@ -48,7 +42,7 @@
 #define  UDEPCDMA_RCSR		0x0f4
 #define  UDEPCDMA_RTR		0x0f8
 
-/*G2:--EP0/1/2/3/4 Control Registers */
+/* G2:--EP0/1/2/3/4 Control Registers */
 #define  UDLCSET		0x100
 #define  UDLCSTL		0x104
 #define  UDLCADDR		0x10c
@@ -80,7 +74,7 @@
 #define  UDEP4DATA		0x178
 #define  UDEP4VB		0x17c
 
-/*G3:--EP5/6/7  Control Registers */
+/* G3:--EP5/6/7  Control Registers */
 #define  UDEP5CTRL		0x180
 #define  UDEP5HDLEN		0x184
 #define  UDEP5FRAME		0x188
@@ -102,7 +96,7 @@
 #define  UDEP7DATA		0x1ec
 #define  UDEP7VB		0x1f0
 
-/*G4:--EP8/9/A/B  Control Registers */
+/* G4:--EP8/9/A/B  Control Registers */
 #define  UDEP89C		0x200
 #define  UDEP89PPC		0x204
 #define  UDEP89FS		0x208
@@ -128,7 +122,7 @@
 #define  UDEPBONAKCN		0x260
 #define  UDEPABS		0x264
 
-/*G5:--EPC/D  Control Registers */
+/* G5:--EPC/D  Control Registers */
 #define  UDEPCCTRL		0x280
 #define  UDEPCRPT		0x284
 #define  UDEPCWPT		0x288
@@ -139,7 +133,7 @@
 #define  UDEPDST		0x29c
 #define  UDEPDDATA		0x2a0
 
-/*G6:--Phyclk Domain Interrupt Registers */
+/* G6:--Phyclk Domain Interrupt Registers */
 #define  UDLIF			0x300
 #define  UDLIE			0x304
 #define  UDNBIF			0x308
@@ -149,7 +143,7 @@
 #define  IP_Name		0x378
 #define  VERSION		0x37c
 
-/*G7:--Bulk Out FIFO Control Registeres */
+/* G7:--Bulk Out FIFO Control Registeres */
 #define  UDEP2PPC		0x380
 #define  UDEP2FS		0x384
 #define  UDEP2PIC		0x388
@@ -174,25 +168,28 @@
 #define  UDEPBFDP		0x3d0
 #define  UDEPBVB		0x3d4
 
- /*DMA*/
-#define  DMA_EN           	(1 << 31)
+/* DMA */
+#define  DMA_EN			(1 << 31)
 #define  DMA_FLUSHEND		(1 << 30)
 #define  DMA_FLUSH		(1 << 29)
 #define  DMA_WRITE		(1 << 28)
 #define  DMA_COUNT_ALIGN	(1 << 27)
-#define  DMA_COUNT_MASK		((1 << 22) - 1)	/*21bit:0x1F FF FF */
-/*AUDIO COUNT MASK*/
-#define  DMAA_COUNT_MASK	((1 << 16) - 1)	/*15bit:0x1F FF */
-/*USB Device Controller Control Status (UDCCS)*/
-#define  USB_CLK_EN           	(1 << 31)
+#define  DMA_COUNT_MASK		((1 << 22) - 1)		/* 21bit:0x1F FF FF */
+
+/* AUDIO COUNT MASK */
+#define  DMAA_COUNT_MASK	((1 << 16) - 1)		/* 15bit:0x1F FF */
+
+/* USB Device Controller Control Status (UDCCS) */
+#define  USB_CLK_EN		(1 << 31)
 #define  UPHY_CLK_CSS           (1 << 30)
-#define  UPHY_SUSP           	(1 << 29)
+#define  UPHY_SUSP		(1 << 29)
 #define  ISSUE_RESUME           (1 << 28)
-#define  VBUS_PRE           	(1 << 25)
-#define  VBUS           	(1 << 24)
-#define  VBUS_SAMPLE_MASK	((1 << 16) - 1)	/*15bit:0x1F FF */
-/*UDCIE UDCIF*/
-#define EPC_TRB_IF 		(1 << 15)
+#define  VBUS_PRE		(1 << 25)
+#define  VBUS			(1 << 24)
+#define  VBUS_SAMPLE_MASK	((1 << 16) - 1)		/* 15bit:0x1F FF */
+
+/* UDCIE UDCIF */
+#define EPC_TRB_IF		(1 << 15)
 #define VIDEO_TRB_IF		(1 << 14)
 #define AUDIO_TRB_IF		(1 << 13)
 #define EPC_ERF_IF		(1 << 12)
@@ -208,18 +205,20 @@
 #define AUDIO_DMA_IF		(1 << 2)
 #define EP12_DMA_IF		(1 << 1)
 #define VBUS_IF			(1 << 0)
-/*UDADMA_CRCR*/
-#define  CRPTR_MASK		0xFFFFFFC0	/*0xFF FF FF C0 */
+
+/* UDADMA_CRCR */
+#define  CRPTR_MASK		0xFFFFFFC0		/* 0xFF FF FF C0 */
 #define  CRR			(1 << 3)
 #define  CS			(1 << 1)
 #define  RCS			(1 << 0)
-#define  ERBA_MASK		0xFFFFFFF0	/*0xFF FF FF F0 */
-#define  ERBP_MASK		0xFFFFFFF0	/*0xFF FF FF F0 */
-#define  CRT			(1 << 0)	/*Command Ring Trig */
-/*USB Device Linker Layer Controller Setting (UDLCSET)*/
-#define  CURR_LINSTATE_MASK	(0X3 << 18)	/*bit18~19 */
-#define  CURR_ALT_MASK		(0XF << 13)	/*bit13~16 */
-#define  CURR_INTF_MASK		(0XF << 9)	/*bit9~12 */
+#define  ERBA_MASK		0xFFFFFFF0		/* 0xFF FF FF F0 */
+#define  ERBP_MASK		0xFFFFFFF0		/* 0xFF FF FF F0 */
+#define  CRT			(1 << 0)		/* Command Ring Trig */
+
+/* USB Device Linker Layer Controller Setting (UDLCSET) */
+#define  CURR_LINSTATE_MASK	(0X3 << 18)		/* bit18~19 */
+#define  CURR_ALT_MASK		(0XF << 13)		/* bit13~16 */
+#define  CURR_INTF_MASK		(0XF << 9)		/* bit9~12 */
 #define  CURR_SPEED		(1 << 8)
 #define SUPP_SYNCFRAME		(1 << 5)
 #define SUPP_SETDESC		(1 << 4)
@@ -227,9 +226,10 @@
 #define FORCE_FULLSP		(1 << 2)
 #define SIM_MODE		(1 << 1)
 #define SOFT_DISC		(1 << 0)
-/*UDLCSTL */
+
+/* UDLCSTL */
 #define CLREPDSTL		(1 << 26)
-#define CLREPBSTL 		(1 << 25)
+#define CLREPBSTL		(1 << 25)
 #define CLREPASTL		(1 << 24)
 #define CLREP9STL		(1 << 23)
 #define CLREP8STL		(1 << 22)
@@ -250,18 +250,21 @@
 #define SETEP2STL		(1 << 2)
 #define SETEP1STL		(1 << 1)
 #define SETEP0STL		(1 << 0)
-/*Device address register*/
+
+/* Device address register */
 #define ADDR_VLD		(1 << 7)
-#define  DEV_ADDR_MASK		((1 << 7) - 1)	/*6bit */
-/*UDEP0CS*/
+#define  DEV_ADDR_MASK		((1 << 7) - 1)		/* 6bit */
+
+/* UDEP0CS */
 #define EP0_OUT_EMPTY		(1 << 5)
 #define EP0_OVLD		(1 << 4)
 #define CLR_EP0_OUT_VLD		(1 << 3)
 #define EP0_IVLD		(1 << 2)
 #define SET_EP0_IN_VLD		(1 << 1)
-#define EP0_DIR			(1 << 0) /*IN*/
-#define  EP0_DATA_CNTR_MASK		((1 << 7) - 1)	/*6bit */
-/*UDEP12C*/
+#define EP0_DIR			(1 << 0)		/* IN */
+#define  EP0_DATA_CNTR_MASK	((1 << 7) - 1)		/* 6bit */
+
+/* UDEP12C */
 #define SET_EP_IVLD		(1 << 4)
 #define CLR_EP_OVLD		(1 << 3)
 #define RESET_PIPO_FIFO		(1 << 2)
@@ -270,7 +273,8 @@
 #define CURR_BUFF		(1 << 2)
 #define SWITCH_BUFF		(1 << 1)
 #define AUTO_SWITCH_EN		(1 << 0)
-/*UDEP12FS*/
+
+/* UDEP12FS */
 #define N_MSDC_CMD		(1 << 7)
 #define A_FIFO_EMPTY		(1 << 6)
 #define A_EP_OVLD		(1 << 5)
@@ -281,11 +285,12 @@
 #define EP_IVLD			(1 << 0)
 #define RESET_EP_PING_CNTR	(1 << 12)
 #define RESET_EP_PONG_CNTR	(1 << 12)
+
 /* EP3CS */
-#define EP3_VLD        		(1 << 3)
-#define EP3_EN       		(1 << 0)
-#define EP4_VLD        		(1 << 3)
-#define EP4_EN       		(1 << 0)
+#define EP3_VLD			(1 << 3)
+#define EP3_EN			(1 << 0)
+#define EP4_VLD			(1 << 3)
+#define EP4_EN			(1 << 0)
 #define UDEP5FLUSH		(1 << 2)
 #define UDEP5HDEN		(1 << 1)
 #define UDEP5EN			(1 << 0)
@@ -297,9 +302,10 @@
 #define UDEP5FRAMESTILL		(1 << 2)
 #define UDEP5FRAMESRC		(1 << 1)
 #define UDEP5FRAMEPT		(1 << 0)
-#define EP6_VLD        		(1 << 3)
-#define EP6_EN       		(1 << 0)
-/*UDEP89C*/
+#define EP6_VLD			(1 << 3)
+#define EP6_EN			(1 << 0)
+
+/* UDEP89C */
 #define SET_EP8_IVLD		(1 << 4)
 #define CLR_EP9_OVLD		(1 << 3)
 #define EP89_RESET_PIPO_FIFO	(1 << 2)
@@ -360,13 +366,15 @@
 #define EP8N_IF			(1 << 2)
 #define EP89PIPO_IF		(1 << 1)
 #define EP8DMA_IF		(1 << 0)
-/*UEP12DMACS cotroll RX */
-#define RX_STEP1        	(1 << 24)
-#define RX_STEP2        	(1 << 25)
-#define RX_STEP3        	((1 << 24) | (1 << 25))
-#define RX_STEP4        	(1 << 26)
-#define RX_STEP5        	((1 << 24) | (1 << 26))
-#define RX_STEP6        	((1 << 25) | (1 << 26))
-#define RX_STEP7        	((1 << 24) | (1 << 25) | (1 << 26))
 
-#endif /*_SUNPLUS_UDC_REGS_H*/
+/* UEP12DMACS cotroll RX */
+#define RX_STEP1		(1 << 24)
+#define RX_STEP2		(1 << 25)
+#define RX_STEP3		((1 << 24) | (1 << 25))
+#define RX_STEP4		(1 << 26)
+#define RX_STEP5		((1 << 24) | (1 << 26))
+#define RX_STEP6		((1 << 25) | (1 << 26))
+#define RX_STEP7		((1 << 24) | (1 << 25) | (1 << 26))
+
+#endif /* _SUNPLUS_UDC_REGS_H */
+
