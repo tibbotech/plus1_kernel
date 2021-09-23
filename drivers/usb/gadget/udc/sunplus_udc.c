@@ -361,7 +361,7 @@ static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descri
 	u32 linker_int_en;
 	u32 bulk_int_en;
 
-	DEBUG_INFO(">>> %s", __func__);
+	DEBUG_DBG(">>> %s", __func__);
 
 	ep = to_sp_ep(_ep);
 
@@ -373,7 +373,7 @@ static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descri
 	}
 
 	dev = ep->dev;
-	DEBUG_INFO("dev->driver = %xh, dev->gadget.speed = %d", dev->driver, dev->gadget.speed);
+	DEBUG_DBG("dev->driver = %xh, dev->gadget.speed = %d", dev->driver, dev->gadget.speed);
 	if (!dev->driver || dev->gadget.speed == USB_SPEED_UNKNOWN)
 		return -ESHUTDOWN;
 
@@ -389,7 +389,7 @@ static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descri
 	linker_int_en   = udc_read(UDLIE);
 	bulk_int_en     = udc_read(UDNBIE);
 
-	DEBUG_INFO("ep->num = %d", ep->num);
+	DEBUG_DBG("ep->num = %d", ep->num);
 
 	switch (ep->num) {
 	case EP0:
@@ -418,12 +418,12 @@ static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descri
 	udc_write(bulk_int_en, UDNBIE);
 
 	/* print some debug message */
-	DEBUG_INFO("enable %s(%d) ep%x%s-blk max %02x", _ep->name, ep->num, desc->bEndpointAddress,
+	DEBUG_DBG("enable %s(%d) ep%x%s-blk max %02x", _ep->name, ep->num, desc->bEndpointAddress,
 					desc->bEndpointAddress & USB_DIR_IN ? "in" : "out", max);
 
 	local_irq_restore(flags);
 	sp_udc_set_halt(_ep, 0);
-	DEBUG_INFO("<<< %s", __func__);
+	DEBUG_DBG("<<< %s", __func__);
 
 	return 0;
 }
@@ -510,7 +510,7 @@ static struct usb_request *sp_udc_alloc_request(struct usb_ep *_ep, gfp_t mem_fl
 {
 	struct sp_request *req;
 
-	DEBUG_INFO(">>> %s...", __func__);
+	DEBUG_DBG(">>> %s...", __func__);
 
 	if (!_ep)
 		return NULL;
@@ -521,7 +521,7 @@ static struct usb_request *sp_udc_alloc_request(struct usb_ep *_ep, gfp_t mem_fl
 
 	req->req.dma = DMA_ADDR_INVALID;
 	INIT_LIST_HEAD(&req->queue);
-	DEBUG_INFO("<<< %s...", __func__);
+	DEBUG_DBG("<<< %s...", __func__);
 
 	return &req->req;
 }
@@ -726,11 +726,11 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *dev, struct sp_ep *ep,
 
 			if (DescType == 0x1) {
 				if (udc_read(UDLCSET) & CURR_SPEED) {
-					DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_FULL");
+					DEBUG_DBG("DESCRIPTOR SPeed = USB_SPEED_FULL");
 					dev->gadget.speed = USB_SPEED_FULL;
 					bulkep_dma_block_size = FULL_SPEED_DMA_SIZE;
 				} else {
-					DEBUG_INFO("DESCRIPTOR SPeed = USB_SPEED_HIGH");
+					DEBUG_DBG("DESCRIPTOR SPeed = USB_SPEED_HIGH");
 					dev->gadget.speed = USB_SPEED_HIGH;
 					bulkep_dma_block_size = HIGH_SPEED_DMA_SIZE;
 				}
@@ -852,7 +852,7 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *dev, struct sp_ep *ep,
 		}
 	}
 
-	DEBUG_DBG("ep0state *** %s, Request = %d, RequestType = %d, from = %d",
+	DEBUG_DBG("ep0state *** %s, Request=%d, RequestType=%d, from=%d",
 				ep0states[dev->ep0state], crq->bRequest, crq->bRequestType, cf);
 	DEBUG_DBG("<<< %s...", __func__);
 }
@@ -908,7 +908,7 @@ static int sp_udc_write_ep0_fifo(struct sp_ep *ep, struct sp_request *req)
 	else
 		is_last = 1;
 
-	DEBUG_INFO("write ep0: count=%d, actual=%d, length=%d, last=%d, zero=%d\n",
+	DEBUG_DBG("write ep0: count=%d, actual=%d, length=%d, last=%d, zero=%d",
 			count, req->req.actual, req->req.length, is_last, req->req.zero);
 
 	if (is_last) {
@@ -1089,7 +1089,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 	unsigned long t;
 	int ret = 0;
 
-	DEBUG_INFO(">>> %s...", __func__);
+	DEBUG_DBG(">>> %s...", __func__);
 
 	if (dma_xferlen_ep11 == 0) {
 		if (cur_length <= bulkep_dma_block_size) {
@@ -1099,7 +1099,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 
 		udc_write(udc_read(UDNBIE) & (~EP11O_IF), UDNBIE);
 
-		DEBUG_INFO("req.length=%d req.actual=%d, req->req.dma = %xh UDCIF = %xh",
+		DEBUG_DBG("req.length=%d req.actual=%d, req->req.dma=%xh UDCIF=%xh",
 				req->req.length, req->req.actual, req->req.dma, udc_read(UDCIF));
 
 		if (req->req.dma == DMA_ADDR_INVALID) {
@@ -1107,7 +1107,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 								(u8 *)req->req.buf,
 								cur_length, DMA_FROM_DEVICE);
 			if (dma_mapping_error(ep->dev->gadget.dev.parent, req->req.dma)) {
-				DEBUG_INFO("dma_mapping_error");
+				DEBUG_DBG("dma_mapping_error");
 				return 1;
 			}
 		}
@@ -1126,7 +1126,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 			if ((udc_read(UDEPBFS) & 0x22) == 0x20)
 				udc_write(udc_read(UDEPBPPC) | SWITCH_BUFF, UDEPBPPC);
 
-			DEBUG_INFO("cur_len=%d actual_len=%d req.dma=%xh dma_len=%d\t"
+			DEBUG_DBG("cur_len=%d actual_len=%d req.dma=%xh dma_len=%d\t"
 					"\b\b\b\b\bUDEPBDMACS = %xh UDEPBFS = %xh UDCIF = %xh",
 					cur_length, actual_length, req->req.dma, dma_xferlen,
 					udc_read(UDEPBDMACS), udc_read(UDEPBFS), udc_read(UDCIF));
@@ -1135,20 +1135,20 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 
 			while ((udc_read(UDEPBDMACS) & DMA_EN) != 0) {
 				udc_write(udc_read(UDCIE) | EPB_DMA_IF, UDCIE);
-				DEBUG_INFO(">>cur_len=%d actual_len=%d req.dma=%xh dma_len=%d\t"
+				DEBUG_DBG(">>cur_len=%d actual_len=%d req.dma=%xh dma_len=%d\t"
 						"\b\b\b\b\bUDEPBDMACS = %xh UDCIE = %xh UDCIF = %xh",
 						cur_length, actual_length, req->req.dma,
 						dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDCIE),
 						udc_read(UDCIF));
 
 				if (time_after(jiffies, t + 10 * HZ)) {
-					DEBUG_INFO("dma error: UDEPBDMACS = %xh",
+					DEBUG_DBG("dma error: UDEPBDMACS = %xh",
 								udc_read(UDEPBDMACS));
 					break;
 				}
 			}
 
-			DEBUG_INFO("UDCIF = %xh", udc_read(UDCIF));
+			DEBUG_DBG("UDCIF = %xh", udc_read(UDCIF));
 
 			actual_length += dma_xferlen;
 		}
@@ -1164,13 +1164,13 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 
 		udc_write(udc_read(UDNBIE) | EP11O_IF, UDNBIE);
 
-		DEBUG_INFO("UDEPBDMACS = %x", udc_read(UDEPBDMACS));
-		DEBUG_INFO("<<< %s...", __func__);
+		DEBUG_DBG("UDEPBDMACS = %x", udc_read(UDEPBDMACS));
+		DEBUG_DBG("<<< %s...", __func__);
 
 		return 1;
 	}
 
-	DEBUG_INFO("<<< %s...", __func__);
+	DEBUG_DBG("<<< %s...", __func__);
 
 	return ret;
 }
@@ -1459,7 +1459,7 @@ static int sp_udc_int_in(struct sp_ep *ep, struct sp_request *req)
 	udc_write((1 << 0) | (1 << 3), UDEP3CTRL);
 	req->req.actual += count;
 
-	DEBUG_INFO("write ep3, count = %d, actual = %d, length = %d, zero = %d",
+	DEBUG_DBG("write ep3, count = %d, actual = %d, length = %d, zero = %d",
 				count, req->req.actual, req->req.length, req->req.zero);
 
 	if (req->req.actual == req->req.length) {

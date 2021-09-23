@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
-/*
- * Generic platform ehci driver
- *
- * Copyright 2007 Steven Brown <sbrown@cortland.com>
- * Copyright 2010-2012 Hauke Mehrtens <hauke@hauke-m.de>
- *
- * Derived from the ohci-ssb driver
- * Copyright 2007 Michael Buesch <m@bues.ch>
- *
- * Derived from the EHCI-PCI driver
- * Copyright (c) 2000-2004 by David Brownell
- *
- * Derived from the ohci-pci driver
- * Copyright 1999 Roman Weissgaerber
- * Copyright 2000-2002 David Brownell
- * Copyright 1999 Linus Torvalds
- * Copyright 1999 Gregory P. Smith
- *
- * Licensed under the GNU/GPL. See COPYING for details.
- */
+/**************************************************************************************************/
+/* Generic platform ehci driver									  */
+/*												  */
+/* Copyright 2007 Steven Brown <sbrown@cortland.com>						  */
+/* Copyright 2010-2012 Hauke Mehrtens <hauke@hauke-m.de>					  */
+/*												  */
+/* Derived from the ohci-ssb driver								  */
+/* Copyright 2007 Michael Buesch <m@bues.ch>							  */
+/*												  */
+/* Derived from the EHCI-PCI driver								  */
+/* Copyright (c) 2000-2004 by David Brownell							  */
+/*												  */
+/* Derived from the ohci-pci driver								  */
+/* Copyright 1999 Roman Weissgaerber								  */
+/* Copyright 2000-2002 David Brownell								  */
+/* Copyright 1999 Linus Torvalds								  */
+/* Copyright 1999 Gregory P. Smith								  */
+/*												  */
+/* Licensed under the GNU/GPL. See COPYING for details.						  */
+/**************************************************************************************************/
 #include <linux/acpi.h>
 #include <linux/clk.h>
 #include <linux/dma-mapping.h>

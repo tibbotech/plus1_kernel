@@ -1,0 +1,25 @@
+Device-Tree bindings of sp_otg0/sp_otg1 device
+
+Required properties:
+- compatible: Should be
+				"sunplus,sp7021-usb-otg0" for sp_otg0 of sp7021
+				"sunplus,sp7021-usb-otg1" for sp_otg1 of sp7021
+- reg: Physical base address and length of the controller's register
+- interrupt-parent: Interrupt phandles (see interrupt-controller for details)
+- interrupts: interrupt number to the cpu.
+
+Example:
+
+	sp_otg0: usb@0x9c102400 {
+			compatible = "sunplus,sp7021-usb-otg0";
+			reg = <0x9c102400 0x70>, <0x9c000200 0x80>;
+			interrupt-parent = <&intc>;
+			interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+		};
+
+	sp_otg1: usb@0x9c103400 {
+		compatible = "sunplus,sp7021-usb-otg1";
+		reg = <0x9c103400 0x70>, <0x9c000200 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+	};

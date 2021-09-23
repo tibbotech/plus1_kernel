@@ -108,8 +108,15 @@ extern bool enum_rx_active_flag[USB_PORT_NUM];
 extern struct semaphore enum_rx_active_reset_sem[USB_PORT_NUM];
 extern struct timer_list hnp_polling_timer;
 
-void usb_switch(int device);
-void detech_start(void);
+extern u8 otg0_vbus_off;
+extern u8 otg1_vbus_off;
+
+extern void phy0_otg_ctrl(void);
+extern void phy1_otg_ctrl(void);
+
+extern void udc_otg_ctrl(void);
+extern void usb_switch(int device);
+extern void detech_start(void);
 
 extern void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 
