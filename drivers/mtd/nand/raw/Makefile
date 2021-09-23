@@ -59,7 +59,6 @@ obj-$(CONFIG_MTD_NAND_MESON)		+= meson_nand.o
 obj-$(CONFIG_MTD_NAND_CADENCE)		+= cadence-nand-controller.o
 obj-$(CONFIG_MTD_NAND_ARASAN)		+= arasan-nand-controller.o
 obj-$(CONFIG_MTD_NAND_SUNPLUS)		+= sp_spinand.o sp_bch.o sp_spinand_ids.o
-obj-$(CONFIG_MTD_NAND_SUNPLUS_Q645)	+= sp_spinand_q645.o sp_bch_q645.o sp_spinand_ids.o
 
 nand-objs := nand_base.o nand_legacy.o nand_bbt.o nand_timings.o nand_ids.o
 nand-objs += nand_onfi.o

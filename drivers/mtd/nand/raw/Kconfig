@@ -431,18 +431,11 @@ config MTD_NAND_MESON
 	  This controller is found on Meson SoCs.
 
 config MTD_NAND_SUNPLUS
-	tristate "Support for NAND controller on Sunplus SP7021 SoC"
-	depends on SOC_SP7021
+	tristate "Support for NAND controller on Sunplus SoCs"
+	depends on SOC_SP7021 || SOC_Q645
 	help
-	  Enables support for NAND controller on Sunplus SP7021 SoC.
-	  This controller is found on Sunplus SP7021 SoC.
-
-config MTD_NAND_SUNPLUS_Q645
-	tristate "Support for NAND controller on Sunplus Q645 SoC"
-	depends on SOC_Q645
-	help
-	  Enables support for NAND controller on Sunplus Q645 SoC.
-	  This controller is found on Sunplus Q645 SoC.
+	  Enables support for NAND controller on Sunplus SoCs.
+	  This controller is found on Sunplus SoCs.
 
 config MTD_NAND_GPIO
 	tristate "GPIO assisted NAND controller"
