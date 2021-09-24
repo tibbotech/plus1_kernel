@@ -16,7 +16,9 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-#define SPSDC_SYS_CLK	222750000
+#define SPSDC_CLK_360M	360000000
+#define SPSDC_CLK_220M	222750000
+
 #define SPSDC_MIN_CLK	400000
 #define SPSDC_MAX_CLK	111375000
 #define SPSDC_MAX_BLK_COUNT 65535
@@ -274,6 +276,7 @@ struct spsdc_tuning_info {
 
 struct spsdc_compatible {
 	int mode; /* SD/SDIO/eMMC */
+	int source_clk;
 };
 
 
@@ -289,6 +292,7 @@ struct spsdc_host {
 	struct mmc_host *mmc;
 	struct mmc_request *mrq; /* current mrq */
 
+	int soc_clk;
 	int irq;
 	int use_int; /* should raise irq when done */
 	int power_state; /* current power state: off/up/on */

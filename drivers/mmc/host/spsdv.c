@@ -187,20 +187,29 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	unsigned int clkdiv;
 	int f_min = host->mmc->f_min;
 	int f_max = host->mmc->f_max;
+	int soc_clk  = clk_get_rate(host->clk);
 	u32 value = readl(&host->base->sd_config0);
+
 	if (clk < f_min)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
+	if(host->soc_clk != soc_clk){
+		spsdc_pr(ERROR, "CCF clock error CCF_clk : %d source_clk : %d",soc_clk,host->soc_clk);
+		soc_clk = host->soc_clk;
+	}
 
-	clkdiv = ((SPSDC_SYS_CLK)/clk)-1;
-	if( (SPSDC_SYS_CLK % clk) > (clk/10) ){
+
+
+	clkdiv = (soc_clk/clk)-1;
+
+	if( (clk_get_rate(host->clk) % clk) > (clk/10) ){
 	   clkdiv++;
 	   spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk, 
-	    SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
+	    soc_clk,clkdiv,(soc_clk /(clkdiv+1)));
 	}else{
 	   spsdc_pr(INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d \n",clk, 
-	   	 SPSDC_SYS_CLK,clkdiv,(SPSDC_SYS_CLK /(clkdiv+1)));
+	   	 soc_clk,clkdiv,(soc_clk /(clkdiv+1)));
 	}
 
 
@@ -1037,13 +1046,25 @@ static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	writel(value, &host->base->sd_int);
 }
 
-
-static const struct spsdc_compatible sp_sdcard_compat = {
+static const struct spsdc_compatible sp_sd_645_compat = {
 	.mode = SPSDC_MODE_SD,
+	.source_clk = SPSDC_CLK_220M,
 };
 
-static const struct spsdc_compatible sp_sdio_compat = {
+static const struct spsdc_compatible sp_sdio_645_compat = {
 	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_220M,
+};
+
+
+static const struct spsdc_compatible sp_sd_143_compat = {
+	.mode = SPSDC_MODE_SD,
+	.source_clk = SPSDC_CLK_360M,
+};
+
+static const struct spsdc_compatible sp_sdio_143_compat = {
+	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_360M,
 };
 
 
@@ -1051,19 +1072,19 @@ static const struct spsdc_compatible sp_sdio_compat = {
 static const struct of_device_id spsdc_of_table[] = {
 	{
 		.compatible = "sunplus,q645-card",
-		.data = &sp_sdcard_compat,
+		.data = &sp_sd_645_compat,
 	},
 	{
 		.compatible = "sunplus,q645-sdio",
-		.data = &sp_sdio_compat,
+		.data = &sp_sdio_645_compat,
 	},
 	{
 		.compatible = "sunplus,i143-card1",
-		.data = &sp_sdcard_compat,
+		.data = &sp_sd_143_compat,
 	},
 	{
 		.compatible = "sunplus,i143-sdio",
-		.data = &sp_sdio_compat,
+		.data = &sp_sdio_143_compat,
 	},	
 	{/* sentinel */}
 };
@@ -1479,6 +1500,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 	dev_mode = of_device_get_match_data(&pdev->dev);
 	spsdc_select_mode(host, dev_mode->mode);
+	host->soc_clk = dev_mode->source_clk;
 
 	mmc->caps |= MMC_CAP_4_BIT_DATA  | MMC_CAP_SD_HIGHSPEED
 		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25 
