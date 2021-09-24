@@ -1,17 +1,9 @@
-/*
- * ov9281.c - ov9281 Image Sensor Driver
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * ov9281 (with Sunplus IT ISP) Image Sensor Driver
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/clk.h>
@@ -31,11 +23,11 @@
 #include "ov9281_isp.h"
 
 // YUYV/YUY2, YUV422
-static struct regval ov9281_setting_720P_1280_720 [] = {
+static const struct regval ov9281_setting_720P_1280_720[] = {
 	{REG_NULL, 0x00}
-}; 
+};
 
-struct ov9281_mode_info ov9281_mode_data[OV9281_NUM_MODES] = {
+static const struct ov9281_mode_info ov9281_mode_data[OV9281_NUM_MODES] = {
 	{OV9281_MODE_720P_1280_720, SUBSAMPLING,
 	 1280, 2592, 720, 1944,
 	 ov9281_setting_720P_1280_720,
@@ -139,8 +131,8 @@ static int ov9281_write_array(struct i2c_client *client, const struct regval *re
 					OV9281_REG_VALUE_08BIT,
 					regs[i].val);
 		//ov9281_read_reg(client, regs[i].addr, OV9281_REG_VALUE_08BIT, &val);
-		//	printk("i=%4d:, reg=%4x, val=%4x, rb_val=%4x\n",
-		//	i, regs[i].addr, regs[i].val, val);
+		//		  printk("i=%4d:, reg=%4x, val=%4x, rb_val=%4x\n",
+		//		  i, regs[i].addr, regs[i].val, val);
 	}
 
 	return ret;
@@ -155,8 +147,8 @@ static int ov9281_set_mode(struct ov9281 *ov9281)
 	int ret = 0;
 
 	FUNC_DEBUG();
-	DBG_INFO("%s, id: %d, dn_mode: %d, %dx%d\n", __FUNCTION__,
-		mode->id, mode->dn_mode, mode->hact, mode->vact);
+	DBG_INFO("%s, id: %d, dn_mode: %d, %dx%d\n", __func__,
+		 mode->id, mode->dn_mode, mode->hact, mode->vact);
 
 	dn_mode = mode->dn_mode;
 	orig_dn_mode = orig_mode->dn_mode;
@@ -171,16 +163,12 @@ static int ov9281_set_mode(struct ov9281 *ov9281)
 
 	//if ((dn_mode == SUBSAMPLING && orig_dn_mode == SCALING) ||
 	//    (dn_mode == SCALING && orig_dn_mode == SUBSAMPLING)) {
-	//	/*
-	//	 * change between subsampling and scaling
-	//	 * go through exposure calculation
-	//	 */
+	//	// change between subsampling and scaling
+	//	// go through exposure calculation
 	//	ret = ov9281_set_mode_exposure_calc(ov9281, mode);
 	//} else {
-	//	/*
-	//	 * change inside subsampling or scaling
-	//	 * download firmware directly
-	//	 */
+	//	// change inside subsampling or scaling
+	//	// download firmware directly
 	//	ret = ov9281_set_mode_direct(ov9281, mode);
 	//}
 
@@ -199,16 +187,16 @@ static int ov9281_set_framefmt(struct ov9281 *ov9281,
 	const struct regval *reg_list;
 
 	FUNC_DEBUG();
-	DBG_INFO("%s, format->code: 0x%04x\n", __FUNCTION__, format->code);
+	DBG_INFO("%s, format->code: 0x%04x\n", __func__, format->code);
 
 	switch (format->code) {
-		case MEDIA_BUS_FMT_YUYV8_2X8:
-			/* SBGGR, RAW10 */
-			reg_list = ov9281_setting_720P_1280_720;
-			break;
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+		/* SBGGR, RAW10 */
+		reg_list = ov9281_setting_720P_1280_720;
+		break;
 
-		default:
-			return -EINVAL;
+	default:
+		return -EINVAL;
 	}
 
 	//ret = ov9281_write_array(ov9281->i2c_client, reg_list);
@@ -222,18 +210,16 @@ static int ov9281_set_stream_mipi(struct ov9281 *ov9281, bool on)
 	const struct regval *reg_list;
 
 	FUNC_DEBUG();
-	DBG_INFO("%s, on: %d\n", __FUNCTION__, on);
+	DBG_INFO("%s, on: %d\n", __func__, on);
 
-	if (on){
+	if (on)
 		reg_list = ov9281_start_settings;
-	} else {
+	else
 		reg_list = ov9281_stop_settings;
-	}
 
 	ret = ov9281_write_array(ov9281->i2c_client, reg_list);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 	return 0;
 }
@@ -245,8 +231,8 @@ static int ov9281_s_stream(struct v4l2_subdev *sd, int enable)
 
 	FUNC_DEBUG();
 	DBG_INFO("%s, streaming: %d, pending_mode_change: %d, pending_fmt_change: %d\n",
-			__FUNCTION__, ov9281->streaming, ov9281->pending_mode_change,
-			ov9281->pending_fmt_change);
+		 __func__, ov9281->streaming, ov9281->pending_mode_change,
+		 ov9281->pending_fmt_change);
 
 	mutex_lock(&ov9281->lock);
 
@@ -273,9 +259,9 @@ static int ov9281_s_stream(struct v4l2_subdev *sd, int enable)
 			ov9281->streaming = enable;
 	}
 out:
-	if (ret) {
+	if (ret)
 		DBG_ERR("Start streaming failed while write sensor registers!\n");
-	}
+
 	mutex_unlock(&ov9281->lock);
 	return ret;
 }
@@ -295,24 +281,22 @@ ov9281_find_mode(struct ov9281 *ov9281, enum ov9281_frame_rate fr,
 				      hact, vact,
 				      width, height);
 
-	DBG_INFO("%s, mode: %px, width: %d, height: %d, nearest: %d\n",
-		__FUNCTION__, mode, width, height, nearest);
+	DBG_INFO("%s, mode: %p, width: %d, height: %d, nearest: %d\n",
+		 __func__, mode, width, height, nearest);
 
-	if (!mode ||
-	    (!nearest && (mode->hact != width || mode->vact != height)))
+	if (!mode || (!nearest && (mode->hact != width || mode->vact != height)))
 		return NULL;
 
 	/* Only 1280x720 can operate at 30fps (for now) */
-	if (fr == OV9281_30_FPS &&
-	    !(mode->hact == 1280 && mode->vact == 720))
+	if (fr == OV9281_30_FPS && !(mode->hact == 1280 && mode->vact == 720))
 		return NULL;
 
 	return mode;
 }
 
 static int ov9281_enum_mbus_code(struct v4l2_subdev *sd,
-								struct v4l2_subdev_pad_config *cfg,
-								struct v4l2_subdev_mbus_code_enum *code)
+				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_mbus_code_enum *code)
 {
 	FUNC_DEBUG();
 
@@ -324,13 +308,14 @@ static int ov9281_enum_mbus_code(struct v4l2_subdev *sd,
 	code->code = ov9281_formats[code->index].code;
 
 	DBG_INFO("%s, index: %d, code: 0x%04x\n",
-		__FUNCTION__, code->index, code->code);
+		 __func__, code->index, code->code);
+
 	return 0;
 }
 
 static int ov9281_enum_frame_size(struct v4l2_subdev *sd,
-								struct v4l2_subdev_pad_config *cfg,
-								struct v4l2_subdev_frame_size_enum *fse)
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *fse)
 {
 	FUNC_DEBUG();
 
@@ -345,9 +330,10 @@ static int ov9281_enum_frame_size(struct v4l2_subdev *sd,
 	fse->max_height = fse->min_height;
 
 	DBG_INFO("%s, index: %d, min_w: %d, max_w: %d, min_h: %d, max_h: %d\n",
-		__FUNCTION__, fse->index,
-		fse->min_width, fse->max_width,
-		fse->min_height, fse->max_height);
+		 __func__, fse->index,
+		 fse->min_width, fse->max_width,
+		 fse->min_height, fse->max_height);
+
 	return 0;
 }
 
@@ -370,11 +356,10 @@ static int ov9281_try_frame_interval(struct ov9281 *ov9281,
 		goto find_mode;
 	}
 
-	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator),
-			minfps, maxfps);
+	fps = clamp_val(DIV_ROUND_CLOSEST(fi->denominator, fi->numerator), minfps, maxfps);
 
 	DBG_INFO("%s, fps: %d, numerator: %d, denominator = %d\n",
-		__FUNCTION__, fps, fi->numerator, fi->denominator);
+		 __func__, fps, fi->numerator, fi->denominator);
 
 	best_fps = minfps;
 	for (i = 0; i < ARRAY_SIZE(ov9281_framerates); i++) {
@@ -413,13 +398,12 @@ static int ov9281_enum_frame_interval(
 	tpf.numerator = 1;
 	tpf.denominator = ov9281_framerates[fie->index];
 
-	ret = ov9281_try_frame_interval(ov9281, &tpf,
-					fie->width, fie->height);
+	ret = ov9281_try_frame_interval(ov9281, &tpf, fie->width, fie->height);
 	if (ret < 0)
 		return -EINVAL;
 
 	DBG_INFO("%s, index: %d, numerator: %d, denominator = %d\n",
-		__FUNCTION__, fie->index, tpf.numerator, tpf.denominator);
+		 __func__, fie->index, tpf.numerator, tpf.denominator);
 
 	fie->interval = tpf;
 	return 0;
@@ -439,8 +423,7 @@ static int ov9281_get_fmt(struct v4l2_subdev *sd,
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
-		fmt = v4l2_subdev_get_try_format(&ov9281->subdev, cfg,
-						 format->pad);
+		fmt = v4l2_subdev_get_try_format(&ov9281->subdev, cfg, format->pad);
 	else
 		fmt = &ov9281->fmt;
 #else
@@ -487,7 +470,7 @@ static int ov9281_try_fmt_internal(struct v4l2_subdev *sd,
 	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
 
 	DBG_INFO("%s, code: 0x%04x, width: %d, height: %d\n",
-		__FUNCTION__, fmt->code, fmt->width, fmt->height);
+		 __func__, fmt->code, fmt->width, fmt->height);
 
 	return 0;
 }
@@ -505,7 +488,7 @@ static int ov9281_set_fmt(struct v4l2_subdev *sd,
 
 	FUNC_DEBUG();
 	DBG_INFO("%s, mbus_fmt code: 0x%04x, %dx%d\n",
-			__FUNCTION__, mbus_fmt->code, mbus_fmt->width, mbus_fmt->height);
+		 __func__, mbus_fmt->code, mbus_fmt->width, mbus_fmt->height);
 
 	if (format->pad != 0)
 		return -EINVAL;
@@ -517,13 +500,12 @@ static int ov9281_set_fmt(struct v4l2_subdev *sd,
 		goto out;
 	}
 
-	ret = ov9281_try_fmt_internal(sd, mbus_fmt,
-				      ov9281->current_fr, &new_mode);
+	ret = ov9281_try_fmt_internal(sd, mbus_fmt, ov9281->current_fr, &new_mode);
 	if (ret)
 		goto out;
 
 	DBG_INFO("%s, mbus_fmt->code: 0x%04x, ov9281->fmt.code: 0x%04x\n",
-			__FUNCTION__, mbus_fmt->code, ov9281->fmt.code);
+		 __func__, mbus_fmt->code, ov9281->fmt.code);
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
@@ -545,8 +527,8 @@ static int ov9281_set_fmt(struct v4l2_subdev *sd,
 		ov9281->pending_fmt_change = true;
 
 	DBG_INFO("%s, code: 0x%04x, pending_mode_change: %d, pending_fmt_change: %d\n",
-			__FUNCTION__, ov9281->fmt.code, ov9281->pending_mode_change,
-			ov9281->pending_fmt_change);
+		 __func__, ov9281->fmt.code, ov9281->pending_mode_change,
+		 ov9281->pending_fmt_change);
 
 out:
 	mutex_unlock(&ov9281->lock);
@@ -609,9 +591,8 @@ static int ov9281_probe(struct i2c_client *client, const struct i2c_device_id *i
 	DBG_INFO("Initialized V4L2 I2C subdevice.\n");
 
 	ret = ov9281_check_sensor_id(ov9281, client);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	sd->internal_ops = &ov9281_internal_ops;
@@ -652,13 +633,13 @@ static int ov9281_remove(struct i2c_client *client)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_OF)
-static const struct of_device_id ov9281_of_match[] = {
-	{ .compatible = "ovti,ov9281_isp" },
-	{},
-};
-MODULE_DEVICE_TABLE(of, ov9281_of_match);
-#endif
+//#if IS_ENABLED(CONFIG_OF)
+//static const struct of_device_id ov9281_of_match[] = {
+//	{ .compatible = "sunplus,ov9281_isp" },
+//	{},
+//};
+//MODULE_DEVICE_TABLE(of, ov9281_of_match);
+//#endif
 
 static const struct i2c_device_id ov9281_match_id[] = {
 	{ "ov9281_isp", 0 },
@@ -673,7 +654,7 @@ static struct i2c_driver ov9281_i2c_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "ov9281_isp",
-		.of_match_table = of_match_ptr(ov9281_of_match),
+		//.of_match_table = of_match_ptr(ov9281_of_match),
 	},
 };
 

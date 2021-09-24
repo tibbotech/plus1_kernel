@@ -1,28 +1,30 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __OV9281_ISP_H__
 #define __OV9281_ISP_H__
 
-#if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[OV9281_ISP] %s (L:%d)\n", __FUNCTION__, __LINE__)
-#else
+//#define FUNC_DEBUG()            pr_info("[OV9281_ISP] %s (L:%d)\n", __func__, __LINE__)
 #define FUNC_DEBUG()
-#endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[OV9281_ISP] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[OV9281_ISP] ERR: " fmt, ## args)
+#define DBG_INFO(fmt, args ...) pr_info("[OV9281_ISP] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)  pr_err("[OV9281_ISP] ERR: " fmt, ## args)
 
-#define REG_NULL                                0xFFFF
+#define REG_NULL                0xFFFF
 
 /* OV9281 Registers */
-#define OV9281_REG_CHIP_ID                      0x300A
-#define CHIP_ID                                 0x9281
-#define OV9281_REG_CTRL_MODE                    0x0100
-#define OV9281_MODE_SW_STANDBY                  0x0
-#define OV9281_MODE_STREAMING                   BIT(0)
+#define OV9281_REG_CHIP_ID      0x300A
+#define CHIP_ID                 0x9281
+#define OV9281_REG_CTRL_MODE    0x0100
+#define OV9281_MODE_SW_STANDBY  0x0
+#define OV9281_MODE_STREAMING   BIT(0)
 
-#define OV9281_REG_VALUE_08BIT                  1
-#define OV9281_REG_VALUE_16BIT                  2
-#define OV9281_REG_VALUE_24BIT                  3
+#define OV9281_REG_VALUE_08BIT  1
+#define OV9281_REG_VALUE_16BIT  2
+#define OV9281_REG_VALUE_24BIT  3
 
-#define to_ov9281(sd)                           container_of(sd, struct ov9281, subdev)
+#define to_ov9281(sd)           container_of(sd, struct ov9281, subdev)
 
 
 enum ov9281_mode_id {
@@ -88,7 +90,7 @@ struct ov9281 {
 	//struct sp_subdev_sensor_data    sensor_data;
 
 
-	/* 
+	/*
 	 * from ov5640 driver
 	 */
 	struct i2c_client               *i2c_client;
@@ -122,7 +124,7 @@ struct ov9281 {
 	//u32 ae_low, ae_high, ae_target;
 
 	bool                            pending_mode_change;
-	bool							streaming;
+	bool                            streaming;
 };
 
 #endif

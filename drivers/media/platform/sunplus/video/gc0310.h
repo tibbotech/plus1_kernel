@@ -1,24 +1,26 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __GC0310_H__
 #define __GC0310_H__
 
-#if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[GC0310] %s (L:%d)\n", __FUNCTION__, __LINE__)
-#else
+//#define FUNC_DEBUG()            pr_info("[GC0310] %s (L:%d)\n", __func__, __LINE__)
 #define FUNC_DEBUG()
-#endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[GC0310] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[GC0310] ERR: " fmt, ## args)
+#define DBG_INFO(fmt, args ...) pr_info("[GC0310] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)  pr_err("[GC0310] ERR: " fmt, ## args)
 
 /* GC0310 Registers */
-#define GC0310_REG_CHIP_ID                      0xF0
-#define CHIP_ID                                 0xa310
-#define GC0310_REG_CTRL_MODE                    0x00
+#define GC0310_REG_CHIP_ID      0xF0
+#define CHIP_ID                 0xa310
+#define GC0310_REG_CTRL_MODE    0x00
 
-#define GC0310_REG_VALUE_08BIT                  1
-#define GC0310_REG_VALUE_16BIT                  2
-#define GC0310_REG_VALUE_24BIT                  3
+#define GC0310_REG_VALUE_08BIT  1
+#define GC0310_REG_VALUE_16BIT  2
+#define GC0310_REG_VALUE_24BIT  3
 
-#define to_gc0310(sd)                           container_of(sd, struct gc0310, subdev)
+#define to_gc0310(sd)           container_of(sd, struct gc0310, subdev)
 
 
 enum gc0310_mode_id {
@@ -82,7 +84,7 @@ struct gc0310 {
 	//struct sp_subdev_sensor_data    sensor_data;
 
 
-	/* 
+	/*
 	 * from ov5640 driver
 	 */
 	struct i2c_client               *i2c_client;
@@ -116,7 +118,7 @@ struct gc0310 {
 	//u32 ae_low, ae_high, ae_target;
 
 	bool                            pending_mode_change;
-	bool							streaming;
+	bool                            streaming;
 };
 
 #endif

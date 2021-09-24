@@ -1,17 +1,9 @@
-/*
- * veye290.c - veye290 Image Sensor Driver
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms and conditions of the GNU General Public License,
- * version 2, as published by the Free Software Foundation.
+ * veye290 Image Sensor Driver
  *
- * This program is distributed in the hope it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
 #include <linux/clk.h>
@@ -31,7 +23,7 @@
 #include "veye290.h"
 
 
-struct veye290_mode_info veye290_mode_data[VEYE290_NUM_MODES] = {
+static const struct veye290_mode_info veye290_mode_data[VEYE290_NUM_MODES] = {
 	{VEYE290_MODE_1080P_1920_1080, SUBSAMPLING,
 	 1920, 1920, 1080, 1080},
 };
@@ -140,8 +132,8 @@ static int veye290_write_array(struct i2c_client *client, const struct regval *r
 					VEYE290_REG_VALUE_08BIT,
 					regs[i].val);
 		//veye290_read_reg(client, regs[i].addr, VEYE290_REG_VALUE_08BIT, &val);
-		//	printk("i=%4d:, reg=%4x, val=%4x, rb_val=%4x\n",
-		//	i, regs[i].addr, regs[i].val, val);
+		//		   printk("i=%4d:, reg=%4x, val=%4x, rb_val=%4x\n",
+		//		   i, regs[i].addr, regs[i].val, val);
 	}
 
 	return ret;
@@ -170,16 +162,12 @@ static int veye290_set_mode(struct veye290 *veye290)
 
 	//if ((dn_mode == SUBSAMPLING && orig_dn_mode == SCALING) ||
 	//    (dn_mode == SCALING && orig_dn_mode == SUBSAMPLING)) {
-	//	/*
-	//	 * change between subsampling and scaling
-	//	 * go through exposure calculation
-	//	 */
+	//	// change between subsampling and scaling
+	//	// go through exposure calculation
 	//	ret = veye290_set_mode_exposure_calc(veye290, mode);
 	//} else {
-	//	/*
-	//	 * change inside subsampling or scaling
-	//	 * download firmware directly
-	//	 */
+	//	// change inside subsampling or scaling
+	//	// download firmware directly
 	//	ret = veye290_set_mode_direct(veye290, mode);
 	//}
 
@@ -190,22 +178,22 @@ static int veye290_set_mode(struct veye290 *veye290)
 }
 
 static int veye290_set_framefmt(struct veye290 *veye290,
-			       struct v4l2_mbus_framefmt *format)
+				struct v4l2_mbus_framefmt *format)
 {
 	int ret = 0;
 	const struct regval *reg_list;
 
 	FUNC_DEBUG();
-	DBG_INFO("%s, format->code: 0x%04x\n", __FUNCTION__, format->code);
+	DBG_INFO("%s, format->code: 0x%04x\n", __func__, format->code);
 
 	switch (format->code) {
-		case MEDIA_BUS_FMT_UYVY8_2X8:
-			/* YUV422, UYVY */
-			reg_list = veye290_yuy2_1920x1080_regs;
-			break;
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+		/* YUV422, UYVY */
+		reg_list = veye290_yuy2_1920x1080_regs;
+		break;
 
-		default:
-			return -EINVAL;
+	default:
+		return -EINVAL;
 	}
 
 	ret = veye290_write_array(veye290->i2c_client, reg_list);
@@ -219,18 +207,16 @@ static int veye290_set_stream_mipi(struct veye290 *veye290, bool on)
 	const struct regval *reg_list;
 
 	FUNC_DEBUG();
-	DBG_INFO("%s, on: %d\n", __FUNCTION__, on);
+	DBG_INFO("%s, on: %d\n", __func__, on);
 
-	if (on){
+	if (on)
 		reg_list = veye290_start_settings;
-	} else {
+	else
 		reg_list = veye290_stop_settings;
-	}
 
 	ret = veye290_write_array(veye290->i2c_client, reg_list);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 	return 0;
 }
@@ -242,8 +228,8 @@ static int veye290_s_stream(struct v4l2_subdev *sd, int enable)
 
 	FUNC_DEBUG();
 	DBG_INFO("%s, streaming: %d, pending_mode_change: %d, pending_fmt_change: %d\n",
-			__FUNCTION__, veye290->streaming, veye290->pending_mode_change,
-			veye290->pending_fmt_change);
+		 __func__, veye290->streaming, veye290->pending_mode_change,
+		 veye290->pending_fmt_change);
 
 	mutex_lock(&veye290->lock);
 
@@ -270,9 +256,9 @@ static int veye290_s_stream(struct v4l2_subdev *sd, int enable)
 			veye290->streaming = enable;
 	}
 out:
-	if (ret) {
+	if (ret)
 		DBG_ERR("Start streaming failed while write sensor registers!\n");
-	}
+
 	mutex_unlock(&veye290->lock);
 	return ret;
 }
@@ -283,7 +269,7 @@ static struct v4l2_subdev_video_ops veye290_subdev_video_ops = {
 
 static const struct veye290_mode_info *
 veye290_find_mode(struct veye290 *veye290, enum veye290_frame_rate fr,
-		 int width, int height, bool nearest)
+		  int width, int height, bool nearest)
 {
 	const struct veye290_mode_info *mode;
 
@@ -292,24 +278,22 @@ veye290_find_mode(struct veye290 *veye290, enum veye290_frame_rate fr,
 				      hact, vact,
 				      width, height);
 
-	DBG_INFO("%s, mode: %px, width: %d, height: %d, nearest: %d\n",
-		__FUNCTION__, mode, width, height, nearest);
+	DBG_INFO("%s, mode: %p, width: %d, height: %d, nearest: %d\n",
+		 __func__, mode, width, height, nearest);
 
-	if (!mode ||
-	    (!nearest && (mode->hact != width || mode->vact != height)))
+	if (!mode || (!nearest && (mode->hact != width || mode->vact != height)))
 		return NULL;
 
 	/* Only 640x480 can operate at 30fps (for now) */
-	if (fr == VEYE290_30_FPS &&
-	    !(mode->hact == 1920 && mode->vact == 1080))
+	if (fr == VEYE290_30_FPS && !(mode->hact == 1920 && mode->vact == 1080))
 		return NULL;
 
 	return mode;
 }
 
 static int veye290_enum_mbus_code(struct v4l2_subdev *sd,
-								struct v4l2_subdev_pad_config *cfg,
-								struct v4l2_subdev_mbus_code_enum *code)
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_mbus_code_enum *code)
 {
 	FUNC_DEBUG();
 
@@ -321,13 +305,14 @@ static int veye290_enum_mbus_code(struct v4l2_subdev *sd,
 	code->code = veye290_formats[code->index].code;
 
 	DBG_INFO("%s, index: %d, code: 0x%04x\n",
-		__FUNCTION__, code->index, code->code);
+		 __func__, code->index, code->code);
+
 	return 0;
 }
 
 static int veye290_enum_frame_size(struct v4l2_subdev *sd,
-								struct v4l2_subdev_pad_config *cfg,
-								struct v4l2_subdev_frame_size_enum *fse)
+				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_frame_size_enum *fse)
 {
 	FUNC_DEBUG();
 
@@ -342,9 +327,10 @@ static int veye290_enum_frame_size(struct v4l2_subdev *sd,
 	fse->max_height = fse->min_height;
 
 	DBG_INFO("%s, index: %d, min_w: %d, max_w: %d, min_h: %d, max_h: %d\n",
-		__FUNCTION__, fse->index,
-		fse->min_width, fse->max_width,
-		fse->min_height, fse->max_height);
+		 __func__, fse->index,
+		 fse->min_width, fse->max_width,
+		 fse->min_height, fse->max_height);
+
 	return 0;
 }
 
@@ -371,7 +357,7 @@ static int veye290_try_frame_interval(struct veye290 *veye290,
 			minfps, maxfps);
 
 	DBG_INFO("%s, fps: %d, numerator: %d, denominator = %d\n",
-		__FUNCTION__, fps, fi->numerator, fi->denominator);
+		 __func__, fps, fi->numerator, fi->denominator);
 
 	best_fps = minfps;
 	for (i = 0; i < ARRAY_SIZE(veye290_framerates); i++) {
@@ -411,20 +397,20 @@ static int veye290_enum_frame_interval(
 	tpf.denominator = veye290_framerates[fie->index];
 
 	ret = veye290_try_frame_interval(veye290, &tpf,
-					fie->width, fie->height);
+					 fie->width, fie->height);
 	if (ret < 0)
 		return -EINVAL;
 
 	DBG_INFO("%s, index: %d, numerator: %d, denominator = %d\n",
-		__FUNCTION__, fie->index, tpf.numerator, tpf.denominator);
+		 __func__, fie->index, tpf.numerator, tpf.denominator);
 
 	fie->interval = tpf;
 	return 0;
 }
 
 static int veye290_get_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
-			  struct v4l2_subdev_format *format)
+			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_format *format)
 {
 	struct veye290 *veye290 = to_veye290(sd);
 	struct v4l2_mbus_framefmt *fmt;
@@ -436,8 +422,7 @@ static int veye290_get_fmt(struct v4l2_subdev *sd,
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
-		fmt = v4l2_subdev_get_try_format(&veye290->subdev, cfg,
-						 format->pad);
+		fmt = v4l2_subdev_get_try_format(&veye290->subdev, cfg, format->pad);
 	else
 		fmt = &veye290->fmt;
 #else
@@ -452,9 +437,9 @@ static int veye290_get_fmt(struct v4l2_subdev *sd,
 }
 
 static int veye290_try_fmt_internal(struct v4l2_subdev *sd,
-				   struct v4l2_mbus_framefmt *fmt,
-				   enum veye290_frame_rate fr,
-				   const struct veye290_mode_info **new_mode)
+				    struct v4l2_mbus_framefmt *fmt,
+				    enum veye290_frame_rate fr,
+				    const struct veye290_mode_info **new_mode)
 {
 	struct veye290 *veye290 = to_veye290(sd);
 	const struct veye290_mode_info *mode;
@@ -484,14 +469,14 @@ static int veye290_try_fmt_internal(struct v4l2_subdev *sd,
 	fmt->xfer_func = V4L2_MAP_XFER_FUNC_DEFAULT(fmt->colorspace);
 
 	DBG_INFO("%s, code: 0x%04x, width: %d, height: %d\n",
-		__FUNCTION__, fmt->code, fmt->width, fmt->height);
+		 __func__, fmt->code, fmt->width, fmt->height);
 
 	return 0;
 }
 
 static int veye290_set_fmt(struct v4l2_subdev *sd,
-			  struct v4l2_subdev_pad_config *cfg,
-			  struct v4l2_subdev_format *format)
+			   struct v4l2_subdev_pad_config *cfg,
+			   struct v4l2_subdev_format *format)
 {
 	struct veye290 *veye290 = to_veye290(sd);
 	const struct veye290_mode_info *new_mode;
@@ -502,7 +487,7 @@ static int veye290_set_fmt(struct v4l2_subdev *sd,
 
 	FUNC_DEBUG();
 	DBG_INFO("%s, mbus_fmt code: 0x%04x, %dx%d\n",
-			__FUNCTION__, mbus_fmt->code, mbus_fmt->width, mbus_fmt->height);
+		 __func__, mbus_fmt->code, mbus_fmt->width, mbus_fmt->height);
 
 	if (format->pad != 0)
 		return -EINVAL;
@@ -514,13 +499,12 @@ static int veye290_set_fmt(struct v4l2_subdev *sd,
 		goto out;
 	}
 
-	ret = veye290_try_fmt_internal(sd, mbus_fmt,
-				      veye290->current_fr, &new_mode);
+	ret = veye290_try_fmt_internal(sd, mbus_fmt, veye290->current_fr, &new_mode);
 	if (ret)
 		goto out;
 
 	DBG_INFO("%s, mbus_fmt->code: 0x%04x, veye290->fmt.code: 0x%04x\n",
-			__FUNCTION__, mbus_fmt->code, veye290->fmt.code);
+		 __func__, mbus_fmt->code, veye290->fmt.code);
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	if (format->which == V4L2_SUBDEV_FORMAT_TRY)
@@ -537,13 +521,12 @@ static int veye290_set_fmt(struct v4l2_subdev *sd,
 		veye290->current_mode = new_mode;
 		veye290->pending_mode_change = true;
 	}
-	if ((mbus_fmt->code != veye290->fmt.code) ||
-		(orig_fmt.code != veye290->fmt.code))
+	if ((mbus_fmt->code != veye290->fmt.code) || (orig_fmt.code != veye290->fmt.code))
 		veye290->pending_fmt_change = true;
 
 	DBG_INFO("%s, code: 0x%04x, pending_mode_change: %d, pending_fmt_change: %d\n",
-			__FUNCTION__, veye290->fmt.code, veye290->pending_mode_change,
-			veye290->pending_fmt_change);
+		 __func__, veye290->fmt.code, veye290->pending_mode_change,
+		 veye290->pending_fmt_change);
 
 out:
 	mutex_unlock(&veye290->lock);
@@ -569,7 +552,7 @@ static int veye290_check_sensor_id(struct veye290 *veye290, struct i2c_client *c
 	int ret;
 
 	ret = veye290_read_reg(client, VEYE290_REG_CHIP_ID,
-			      VEYE290_REG_VALUE_08BIT, &val);
+			       VEYE290_REG_VALUE_08BIT, &val);
 	if ((ret != 0) || (val != CHIP_ID)) {
 		DBG_ERR("Unexpected sensor (id = 0x%04x, ret = %d)!\n", val, ret);
 		return -1;
@@ -603,9 +586,8 @@ static int veye290_probe(struct i2c_client *client, const struct i2c_device_id *
 	DBG_INFO("Initialized V4L2 I2C subdevice.\n");
 
 	ret = veye290_check_sensor_id(veye290, client);
-	if (ret) {
+	if (ret)
 		return ret;
-	}
 
 #ifdef CONFIG_VIDEO_V4L2_SUBDEV_API
 	sd->internal_ops = &veye290_internal_ops;
@@ -614,7 +596,7 @@ static int veye290_probe(struct i2c_client *client, const struct i2c_device_id *
 
 	// Let IMX290 go to standby mode
 	veye290_write_reg(veye290->i2c_client, VEYE290_REG_CTRL_MODE,
-				 VEYE290_REG_VALUE_08BIT, VEYE290_MODE_SW_STANDBY);
+			  VEYE290_REG_VALUE_08BIT, VEYE290_MODE_SW_STANDBY);
 
 	ret = v4l2_async_register_subdev(sd);
 	if (ret) {
@@ -650,13 +632,13 @@ static int veye290_remove(struct i2c_client *client)
 	return 0;
 }
 
-#if IS_ENABLED(CONFIG_OF)
-static const struct of_device_id veye290_of_match[] = {
-	{ .compatible = "veye290" },
-	{},
-};
-MODULE_DEVICE_TABLE(of, veye290_of_match);
-#endif
+//#if IS_ENABLED(CONFIG_OF)
+//static const struct of_device_id veye290_of_match[] = {
+//	{ .compatible = "sunplus,veye290" },
+//	{},
+//};
+//MODULE_DEVICE_TABLE(of, veye290_of_match);
+//#endif
 
 static const struct i2c_device_id veye290_match_id[] = {
 	{ "veye290", 0 },
@@ -671,7 +653,7 @@ static struct i2c_driver veye290_i2c_driver = {
 	.driver = {
 		.owner = THIS_MODULE,
 		.name = "veye290",
-		.of_match_table = of_match_ptr(veye290_of_match),
+		//.of_match_table = of_match_ptr(veye290_of_match),
 	},
 };
 

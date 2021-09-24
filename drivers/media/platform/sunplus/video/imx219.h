@@ -1,28 +1,30 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __IMX219_H__
 #define __IMX219_H__
 
-#if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[IMX219] %s (L:%d)\n", __FUNCTION__, __LINE__)
-#else
+//#define FUNC_DEBUG()            pr_info("[IMX219] %s (L:%d)\n", __func__, __LINE__)
 #define FUNC_DEBUG()
-#endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[IMX219] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[IMX219] ERR: " fmt, ## args)
+#define DBG_INFO(fmt, args ...) pr_info("[IMX219] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)  pr_err("[IMX219] ERR: " fmt, ## args)
 
-#define REG_NULL                                0xFFFF
+#define REG_NULL                0xFFFF
 
 /* IMX219 Registers */
-#define IMX219_REG_CHIP_ID                      0x0000
-#define CHIP_ID                                 0x0219
-#define IMX219_REG_CTRL_MODE                    0x0100
-#define IMX219_MODE_SW_STANDBY                  0x0
-#define IMX219_MODE_STREAMING                   BIT(0)
+#define IMX219_REG_CHIP_ID      0x0000
+#define CHIP_ID                 0x0219
+#define IMX219_REG_CTRL_MODE    0x0100
+#define IMX219_MODE_SW_STANDBY  0x0
+#define IMX219_MODE_STREAMING   BIT(0)
 
-#define IMX219_REG_VALUE_08BIT                  1
-#define IMX219_REG_VALUE_16BIT                  2
-#define IMX219_REG_VALUE_24BIT                  3
+#define IMX219_REG_VALUE_08BIT  1
+#define IMX219_REG_VALUE_16BIT  2
+#define IMX219_REG_VALUE_24BIT  3
 
-#define to_imx219(sd)                           container_of(sd, struct imx219, subdev)
+#define to_imx219(sd)           container_of(sd, struct imx219, subdev)
 
 
 enum imx219_mode_id {
@@ -90,7 +92,7 @@ struct imx219 {
 	//struct sp_subdev_sensor_data    sensor_data;
 
 
-	/* 
+	/*
 	 * from ov5640 driver
 	 */
 	struct i2c_client               *i2c_client;
@@ -124,7 +126,7 @@ struct imx219 {
 	//u32 ae_low, ae_high, ae_target;
 
 	bool                            pending_mode_change;
-	bool							streaming;
+	bool                            streaming;
 };
 
 #endif

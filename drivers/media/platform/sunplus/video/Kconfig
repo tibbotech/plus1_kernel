@@ -1,8 +1,16 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Sunplus video sensor configuration
+#
+
 menuconfig SUNPLUS_VIDEO_SENSOR_SUPPORT
 	bool "Sunplus Video Sensor Support"
 	help
 	  Enable video sensor support.
-	  If you have such devices, say Y.
+	  If you have video sensor devices, say Y.
+	  Note that this option doesn't include new drivers
+	  in the kernel. Saying N causes skipping all the
+	  questions in submenu.
 
 if SUNPLUS_VIDEO_SENSOR_SUPPORT
 
@@ -12,6 +20,9 @@ config VIDEO_SENSOR_GC0310
 	default n
 	help
 	  Supports video sensor GC0310.
+	  If you have GC0310 video sensor device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called gc0310.
 
 config VIDEO_SENSOR_IMX219
 	tristate "Video Sensor (IMX219) Driver"
@@ -19,6 +30,9 @@ config VIDEO_SENSOR_IMX219
 	default n
 	help
 	  Supports video sensor IMX219.
+	  If you have IMX219 video sensor device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called imx219.
 
 config VIDEO_SENSOR_VEYE290
 	tristate "Video Sensor (VEYE290) Driver"
@@ -26,6 +40,9 @@ config VIDEO_SENSOR_VEYE290
 	default n
 	help
 	  Supports video sensor VEYE290.
+	  If you have VEYE290 video sensor device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called veye290.
 
 config VIDEO_SENSOR_OV5647
 	tristate "Video Sensor (OV5647) Driver"
@@ -33,6 +50,9 @@ config VIDEO_SENSOR_OV5647
 	default n
 	help
 	  Supports video sensor OV5647.
+	  If you have OV5647 video sensor device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called ov5647.
 
 config VIDEO_SENSOR_OV9281
 	depends on SOC_SP7021 && MIPICSI_RX_SUNPLUS_SP7021
@@ -40,15 +60,21 @@ config VIDEO_SENSOR_OV9281
 	default n
 	help
 	  Supports video sensor OV9281.
+	  If you have OV9281 video sensor device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called ov9281.
 
 config VIDEO_SENSOR_OV9281_ISP
 	tristate "Video Sensor (OV9281_ISP) Driver"
 	depends on SOC_SP7021 && MIPICSI_RX_SUNPLUS_SP7021
 	default n
 	help
-	  Supports SunplusIT 3D Eye-tracker (video sensor OV9281 + ISP) board.
+	  Supports SunplusIT 3D Eye-tracker (video sensor OV9281 + ISP)
+	  board. If you have this device, say Y.
 	  This driver does not support auto sensor detection.
 	  It will be loaded in unconditionally when it is enabled.
 	  Please disable other video sensor drivers.
+	  To compile this driver as a module, choose M here.
+	  The module will be called ov9281_isp.
 
 endif

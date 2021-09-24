@@ -1,28 +1,30 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __VEYE290_H__
 #define __VEYE290_H__
 
-#if 0
-#define FUNC_DEBUG()                            printk(KERN_INFO "[VEYE290] %s (L:%d)\n", __FUNCTION__, __LINE__)
-#else
+//#define FUNC_DEBUG()            pr_info("[VEYE290] %s (L:%d)\n", __func__, __LINE__)
 #define FUNC_DEBUG()
-#endif
-#define DBG_INFO(fmt, args ...)                 printk(KERN_INFO "[VEYE290] " fmt, ## args)
-#define DBG_ERR(fmt, args ...)                  printk(KERN_ERR "[VEYE290] ERR: " fmt, ## args)
+#define DBG_INFO(fmt, args ...) pr_info("[VEYE290] " fmt, ## args)
+#define DBG_ERR(fmt, args ...)  pr_err("[VEYE290] ERR: " fmt, ## args)
 
-#define REG_NULL                                0xFFFF
+#define REG_NULL                0xFFFF
 
 /* VEYE290 Registers */
-#define VEYE290_REG_CHIP_ID                     0x0001
-#define CHIP_ID                                 0x06
-#define VEYE290_REG_CTRL_MODE                   0x000B
-#define VEYE290_MODE_SW_STANDBY                 0x0
-#define VEYE290_MODE_STREAMING                  BIT(0)
+#define VEYE290_REG_CHIP_ID     0x0001
+#define CHIP_ID                 0x06
+#define VEYE290_REG_CTRL_MODE   0x000B
+#define VEYE290_MODE_SW_STANDBY 0x0
+#define VEYE290_MODE_STREAMING  BIT(0)
 
-#define VEYE290_REG_VALUE_08BIT                 1
-#define VEYE290_REG_VALUE_16BIT                 2
-#define VEYE290_REG_VALUE_24BIT                 3
+#define VEYE290_REG_VALUE_08BIT 1
+#define VEYE290_REG_VALUE_16BIT 2
+#define VEYE290_REG_VALUE_24BIT 3
 
-#define to_veye290(sd)                          container_of(sd, struct veye290, subdev)
+#define to_veye290(sd)          container_of(sd, struct veye290, subdev)
 
 
 enum veye290_mode_id {
@@ -86,7 +88,7 @@ struct veye290 {
 	//struct sp_subdev_sensor_data    sensor_data;
 
 
-	/* 
+	/*
 	 * from ov5640 driver
 	 */
 	struct i2c_client               *i2c_client;
@@ -120,7 +122,7 @@ struct veye290 {
 	//u32 ae_low, ae_high, ae_target;
 
 	bool                            pending_mode_change;
-	bool							streaming;
+	bool                            streaming;
 };
 
 #endif
