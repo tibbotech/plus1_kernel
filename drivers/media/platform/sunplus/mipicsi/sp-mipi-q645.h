@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __SP_MIPI_H__
 #define __SP_MIPI_H__
 
@@ -14,7 +19,7 @@
 #define MIPICSI_REG_NAME                "mipicsi"
 #define CSIIW_REG_NAME                  "csiiw"
 
-#define mEXTENDED_ALIGNED(w,n)          (w%n)? ((w/n)*n+n): (w)
+#define mEXTENDED_ALIGNED(w, n)         ((w%n) ? ((w/n)*n+n) : (w))
 #define MIN_BUFFERS                     2
 
 /* SOL Sync */
@@ -30,30 +35,39 @@
 #define MIPI_CSI_BIST                   0       // Use internal pattern to test MIPI-CSI
 #define MIPI_CSI_XTOR                   0       // Import RAW10 pattern from MIPI XTOR
 
-#if 0
-#define DBG_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
+#define MIPI_RAW10_PACKED
+#define MIPI_RAW12_PACKED
+//#define MIPI_PACKED
+//#define MIPI_RAW12_TWICE
+#define MIPI_YUV
+//#define MIPI_DEBUG
+//#define MIPI_DEBUG_PRINT_LIST
+
+#ifdef MIPI_DEBUG
+#define DBG_INFO(fmt, args ...)         pr_info("[MIPI] " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
 #endif
-#define MIP_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
-#define MIP_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
+#define MIP_INFO(fmt, args ...)         pr_info("[MIPI] " fmt, ## args)
+#define MIP_ERR(fmt, args ...)          pr_err("[MIPI] ERR: " fmt, ## args)
 
-#if 0
-#define print_List()
-#else
-static void print_List(struct list_head *head){
+#ifdef MIPI_DEBUG_PRINT_LIST
+static void print_List(struct list_head *head)
+{
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
 
 	DBG_INFO("*********************************************************************************\n");
-	DBG_INFO("(HEAD addr =  %px, next = %px, prev = %px)\n", head, head->next, head->prev);
+	DBG_INFO("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);
-		DBG_INFO("list addr = %px | next = %px | prev = %px\n", &entry->stream, entry->stream.next,
-			 entry->stream.prev);
+		DBG_INFO("list addr = %p | next = %p | prev = %p\n", &entry->stream,
+			 entry->stream.next, entry->stream.prev);
 	}
 	DBG_INFO("*********************************************************************************\n");
 }
+#else
+#define print_List(x)
 #endif
 
 /* ------------------------------------------------------------------
@@ -161,38 +175,38 @@ static struct mipi_fmt mipi_formats[] = {
 		.code		= MEDIA_BUS_FMT_SRGGB12_1X12,
 		.depth		= 16,
 	}, {
-		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y8_1X8,
 		.depth		= 8,
 	}, {
 #if (MIPI_CSI_XTOR == 1)
-	#if 1 // RAW10 packed mode
-		.fourcc 	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
+	#ifdef MIPI_RAW10_PACKED // RAW10 packed mode
+		.fourcc	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y10_1X10,
 		.depth		= 10,
 	#else // RAW10 unpacked mode
-		.fourcc 	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y10_1X10,
 		.depth		= 16,
 	#endif
 #else
-		.fourcc 	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_Y10, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y10_1X10,
 		.depth		= 8,
 #endif
 	}, {
 #if (MIPI_CSI_BIST == 1)
-	#if 1 // RAW12 packed mode
-		.fourcc 	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
+	#ifdef MIPI_RAW12_PACKED // RAW12 packed mode
+		.fourcc	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y12_1X12,
 		.depth		= 12,
 	#else // RAW12 unpacked mode
-		.fourcc 	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y12_1X12,
 		.depth		= 16,
 	#endif
 #else
-		.fourcc 	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_Y12, //V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y12_1X12,
 		.depth		= 8,
 #endif
@@ -245,7 +259,7 @@ struct sp_mipi_device {
 	struct v4l2_rect                crop;
 	struct v4l2_rect                win;
 	u32                             caps;
-	unsigned                        sequence;
+	unsigned int                    sequence;
 
 	struct i2c_adapter              *i2c_adap;
 	struct sp_mipi_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
@@ -290,53 +304,53 @@ struct sp_buffer {
 
 /* mipi-csi registers */
 struct mipicsi_reg {
-	volatile unsigned int mipicsi_ststus;                   /* 00 (mipicsi) */
-	volatile unsigned int mipicsi_debug0;                   /* 01 (mipicsi) */
-	volatile unsigned int mipicsi_wc_lpf;                   /* 02 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a3;              /* 03 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a4;              /* 04 (mipicsi) */
-	volatile unsigned int mipicsi_fsm_rst;                  /* 05 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a6;              /* 06 (mipicsi) */
-	volatile unsigned int mipicsi_enable;                   /* 07 (mipicsi) */
-	volatile unsigned int mipicsi_mix_cfg;                  /* 08 (mipicsi) */
-	volatile unsigned int mipicsi_delay_ctl;                /* 09 (mipicsi) */
-	volatile unsigned int mipicsi_packet_size;              /* 10 (mipicsi) */
-	volatile unsigned int mipicsi_sot_syncword;             /* 11 (mipicsi) */
-	volatile unsigned int mipicsi_sof_sol_syncword;         /* 12 (mipicsi) */
-	volatile unsigned int mipicsi_eof_eol_syncword;         /* 13 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a14;             /* 14 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a15;             /* 15 (mipicsi) */
-	volatile unsigned int mipicsi_ecc_error;                /* 16 (mipicsi) */
-	volatile unsigned int mipicsi_crc_error;                /* 17 (mipicsi) */
-	volatile unsigned int mipicsi_ecc_cfg;                  /* 18 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a19;             /* 19 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a20;             /* 20 (mipicsi) */
-	volatile unsigned int mipicsi_lane_swap;                /* 21 (mipicsi) */
-	volatile unsigned int mipicsi_bist_cfg0;                /* 22 (mipicsi) */
-	volatile unsigned int mipicsi_bist_cfg1;                /* 23 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg0;                /* 24 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg1;                /* 25 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg2;                /* 26 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg3;                /* 27 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg4;                /* 28 (mipicsi) */
-	volatile unsigned int mipicsi_dphy_cfg5;                /* 29 (mipicsi) */
-	volatile unsigned int mipicsi_version_id;               /* 30 (mipicsi) */
+	u32 mipicsi_ststus;                   /* 00 (mipicsi) */
+	u32 mipicsi_debug0;                   /* 01 (mipicsi) */
+	u32 mipicsi_wc_lpf;                   /* 02 (mipicsi) */
+	u32 mipicsi_reserved_a3;              /* 03 (mipicsi) */
+	u32 mipicsi_reserved_a4;              /* 04 (mipicsi) */
+	u32 mipicsi_fsm_rst;                  /* 05 (mipicsi) */
+	u32 mipicsi_reserved_a6;              /* 06 (mipicsi) */
+	u32 mipicsi_enable;                   /* 07 (mipicsi) */
+	u32 mipicsi_mix_cfg;                  /* 08 (mipicsi) */
+	u32 mipicsi_delay_ctl;                /* 09 (mipicsi) */
+	u32 mipicsi_packet_size;              /* 10 (mipicsi) */
+	u32 mipicsi_sot_syncword;             /* 11 (mipicsi) */
+	u32 mipicsi_sof_sol_syncword;         /* 12 (mipicsi) */
+	u32 mipicsi_eof_eol_syncword;         /* 13 (mipicsi) */
+	u32 mipicsi_reserved_a14;             /* 14 (mipicsi) */
+	u32 mipicsi_reserved_a15;             /* 15 (mipicsi) */
+	u32 mipicsi_ecc_error;                /* 16 (mipicsi) */
+	u32 mipicsi_crc_error;                /* 17 (mipicsi) */
+	u32 mipicsi_ecc_cfg;                  /* 18 (mipicsi) */
+	u32 mipicsi_reserved_a19;             /* 19 (mipicsi) */
+	u32 mipicsi_reserved_a20;             /* 20 (mipicsi) */
+	u32 mipicsi_lane_swap;                /* 21 (mipicsi) */
+	u32 mipicsi_bist_cfg0;                /* 22 (mipicsi) */
+	u32 mipicsi_bist_cfg1;                /* 23 (mipicsi) */
+	u32 mipicsi_dphy_cfg0;                /* 24 (mipicsi) */
+	u32 mipicsi_dphy_cfg1;                /* 25 (mipicsi) */
+	u32 mipicsi_dphy_cfg2;                /* 26 (mipicsi) */
+	u32 mipicsi_dphy_cfg3;                /* 27 (mipicsi) */
+	u32 mipicsi_dphy_cfg4;                /* 28 (mipicsi) */
+	u32 mipicsi_dphy_cfg5;                /* 29 (mipicsi) */
+	u32 mipicsi_version_id;               /* 30 (mipicsi) */
 };
 
 /* mipi-csiiw registers */
 struct csiiw_reg {
-	volatile unsigned int csiiw_latch_mode;                 /* 00 (csiiw) */
-	volatile unsigned int csiiw_config0;                    /* 01 (csiiw) */
-	volatile unsigned int csiiw_base_addr;                  /* 02 (csiiw) */
-	volatile unsigned int csiiw_stride;                     /* 03 (csiiw) */
-	volatile unsigned int csiiw_frame_size;                 /* 04 (csiiw) */
-	volatile unsigned int csiiw_frame_buf;                  /* 05 (csiiw) */
-	volatile unsigned int csiiw_config1;                    /* 06 (csiiw) */
-	volatile unsigned int csiiw_frame_size_ro;              /* 07 (csiiw) */
-	volatile unsigned int csiiw_debug_info;                 /* 08 (csiiw) */
-	volatile unsigned int csiiw_config2;                    /* 09 (csiiw) */
-	volatile unsigned int csiiw_interrupt;                  /* 10 (csiiw) */
-	volatile unsigned int csiiw_version;                    /* 11 (csiiw) */
+	u32 csiiw_latch_mode;                 /* 00 (csiiw) */
+	u32 csiiw_config0;                    /* 01 (csiiw) */
+	u32 csiiw_base_addr;                  /* 02 (csiiw) */
+	u32 csiiw_stride;                     /* 03 (csiiw) */
+	u32 csiiw_frame_size;                 /* 04 (csiiw) */
+	u32 csiiw_frame_buf;                  /* 05 (csiiw) */
+	u32 csiiw_config1;                    /* 06 (csiiw) */
+	u32 csiiw_frame_size_ro;              /* 07 (csiiw) */
+	u32 csiiw_debug_info;                 /* 08 (csiiw) */
+	u32 csiiw_config2;                    /* 09 (csiiw) */
+	u32 csiiw_interrupt;                  /* 10 (csiiw) */
+	u32 csiiw_version;                    /* 11 (csiiw) */
 };
 
 #endif

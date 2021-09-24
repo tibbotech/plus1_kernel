@@ -1,8 +1,9 @@
-/*
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the BSD Licence, GNU General Public License
- * as published by the Free Software Foundation; either version 2 of the
- * License, or (at your option) any later version
+// SPDX-License-Identifier: GPL-2.0
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ *
+ * Sunplus MIPI/CSI RX Driver
+ *
  */
 
 #include <linux/clk.h>
@@ -48,7 +49,7 @@
 
 #define bytes_per_line(pixel, bpp) (ALIGN(pixel * bpp, 16))
 
-static unsigned int allocator = 0;
+static unsigned int allocator;
 module_param(allocator, uint, 0444);
 MODULE_PARM_DESC(allocator, " memory allocator selection, default is 0.\n"
 			     "\t    0 == dma-contig\n"
@@ -58,9 +59,9 @@ static int video_nr = -1;
 module_param(video_nr, int, 0444);
 MODULE_PARM_DESC(video_nr, " videoX start number, -1 is autodetect");
 
-/* ------------------------------------------------------------------
-	Constants
-   ------------------------------------------------------------------*/
+/*
+ * Constants
+ */
 static const struct sp_fmt gc0310_formats[] = {
 	{
 		.name     = "BAYER, RAW8",
@@ -72,8 +73,7 @@ static const struct sp_fmt gc0310_formats[] = {
 		.halign   = 2,
 		.mipi_lane = 1,
 		.sol_sync = SYNC_RAW8,
-	},
-	{
+	}, {
 		.name     = "YUYV/YUY2, YUV422",
 		.fourcc   = V4L2_PIX_FMT_YUYV,
 		.width    = 640,
@@ -83,7 +83,7 @@ static const struct sp_fmt gc0310_formats[] = {
 		.halign   = 1,
 		.mipi_lane = 1,
 		.sol_sync = SYNC_YUY2,
-	},
+	}
 };
 
 static const struct sp_fmt imx219_formats[] = {
@@ -97,7 +97,7 @@ static const struct sp_fmt imx219_formats[] = {
 		.halign   = 2,
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW10,
-	},
+	}
 };
 
 static const struct sp_fmt veye290_formats[] = {
@@ -111,7 +111,7 @@ static const struct sp_fmt veye290_formats[] = {
 		.halign   = 1,
 		.mipi_lane = 2,
 		.sol_sync = SYNC_YUY2,
-	},
+	}
 };
 
 static const struct sp_fmt ov5647_formats[] = {
@@ -125,7 +125,7 @@ static const struct sp_fmt ov5647_formats[] = {
 		.halign   = 2,
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW8,
-	},
+	}
 };
 
 static const struct sp_fmt ov9281_formats[] = {
@@ -139,7 +139,7 @@ static const struct sp_fmt ov9281_formats[] = {
 		.halign   = 1,
 		.mipi_lane = 2,
 		.sol_sync = SYNC_RAW10,
-	},
+	}
 };
 
 static const struct sp_fmt ov9281_isp_formats[] = {
@@ -153,7 +153,7 @@ static const struct sp_fmt ov9281_isp_formats[] = {
 		.halign   = 1,
 		.mipi_lane = 4,
 		.sol_sync = SYNC_YUY2,
-	},
+	}
 };
 
 static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
@@ -165,9 +165,7 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		},
 		.formats = gc0310_formats,
 		.formats_size = ARRAY_SIZE(gc0310_formats),
-	},
-
-	{
+	}, {
 		.name = "imx219",
 		.grp_id = 0,
 		.board_info = {
@@ -175,9 +173,7 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		},
 		.formats = imx219_formats,
 		.formats_size = ARRAY_SIZE(imx219_formats),
-	},
-
-	{
+	}, {
 		.name = "veye290",
 		.grp_id = 0,
 		.board_info = {
@@ -185,9 +181,7 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		},
 		.formats = veye290_formats,
 		.formats_size = ARRAY_SIZE(veye290_formats),
-	},
-
-	{
+	}, {
 		.name = "ov5647",
 		.grp_id = 0,
 		.board_info = {
@@ -195,9 +189,7 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		},
 		.formats = ov5647_formats,
 		.formats_size = ARRAY_SIZE(ov5647_formats),
-	},
-
-	{
+	}, {
 		.name = "ov9281",
 		.grp_id = 0,
 		.board_info = {
@@ -207,16 +199,16 @@ static struct sp_mipi_subdev_info sp_mipi_sub_devs[] = {
 		.formats_size = ARRAY_SIZE(ov9281_formats),
 	},
 /*
-	{
-		.name = "ov9281",
-		.grp_id = 0,
-		.board_info = {
-			I2C_BOARD_INFO("ov9281", 0x10),
-		},
-		.formats = ov9281_formats,
-		.formats_size = ARRAY_SIZE(ov9281_formats),
-	},
-*/
+ *	{
+ *		.name = "ov9281",
+ *		.grp_id = 0,
+ *		.board_info = {
+ *			I2C_BOARD_INFO("ov9281", 0x10),
+ *		},
+ *		.formats = ov9281_formats,
+ *		.formats_size = ARRAY_SIZE(ov9281_formats),
+ *	},
+ */
 	{
 		.name = "ov9281_isp",
 		.grp_id = 0,
@@ -249,8 +241,7 @@ static char *fourcc_to_str(u32 fmt)
 	return code;
 }
 
-static const struct mipi_fmt *find_format_by_pix(struct sp_mipi_device *mipi,
-						u32 pixelformat)
+static const struct mipi_fmt *find_format_by_pix(struct sp_mipi_device *mipi, u32 pixelformat)
 {
 	const struct mipi_fmt *fmt;
 	unsigned int k;
@@ -265,29 +256,27 @@ static const struct mipi_fmt *find_format_by_pix(struct sp_mipi_device *mipi,
 }
 
 
-/* ------------------------------------------------------------------
-	SP7021 function
-   ------------------------------------------------------------------*/
+/*
+ * SP7021 function
+ */
 static const struct sp_fmt *get_format(const struct sp_mipi_subdev_info *sdinfo, u32 pixel_fmt)
 {
 	const struct sp_fmt *formats = sdinfo->formats;
 	int size = sdinfo->formats_size;
 	unsigned int k;
 
-	for (k = 0; k < size; k++) {
-		if (formats[k].fourcc == pixel_fmt) {
+	for (k = 0; k < size; k++)
+		if (formats[k].fourcc == pixel_fmt)
 			break;
-		}
-	}
 
-	if (k == size) {
+	if (k == size)
 		return NULL;
-	}
 
 	return &formats[k];
 }
 
-static int sp_mipi_get_register_base(struct platform_device *pdev, void **membase, const char *res_name)
+static int sp_mipi_get_register_base(struct platform_device *pdev,
+				     void **membase, const char *res_name)
 {
 	struct resource *r;
 	void __iomem *p;
@@ -325,13 +314,13 @@ static void mipicsi_lane_config(struct sp_mipi_device *mipi)
 {
 	u32 mix_cfg, ana_cfg2;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	mix_cfg = readl(&mipi->mipicsi_regs->mipicsi_mix_cfg);
 	ana_cfg2 = readl(&mipi->mipicsi_regs->mipi_analog_cfg2);
 
 	DBG_INFO("%s, %d: mix_cfg: %08x, ana_cfg2: %08x\n",
-		__FUNCTION__, __LINE__, mix_cfg, ana_cfg2);
+		 __func__, __LINE__, mix_cfg, ana_cfg2);
 
 	set_field(&mix_cfg, 0x1, 0x1<<15);      // When detect EOF control word, generate EOF
 	set_field(&mix_cfg, 0x1, 0x1<<8);       // For bit sequence of a ward, transfer MSB bit first
@@ -359,7 +348,7 @@ static void mipicsi_lane_config(struct sp_mipi_device *mipi)
 	set_field(&ana_cfg2, 0x1, 0x1<<4);	    // Enable clock lane of LP mode circuit
 
 	DBG_INFO("%s, %d: mix_cfg: %08x, ana_cfg2: %08x\n",
-		__FUNCTION__, __LINE__, mix_cfg, ana_cfg2);
+		 __func__, __LINE__, mix_cfg, ana_cfg2);
 
 	writel(mix_cfg, &mipi->mipicsi_regs->mipicsi_mix_cfg);
 	writel(ana_cfg2, &mipi->mipicsi_regs->mipi_analog_cfg2);
@@ -369,17 +358,17 @@ static void mipicsi_dt_config(struct sp_mipi_device *mipi)
 {
 	u32 mix_cfg, sync_word;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	mix_cfg = readl(&mipi->mipicsi_regs->mipicsi_mix_cfg);
 	sync_word = readl(&mipi->mipicsi_regs->mipicsi_sof_sol_syncword);
 
 	DBG_INFO("%s, %d: mix_cfg: %08x, sync_word: %08x\n",
-		__FUNCTION__, __LINE__, mix_cfg, sync_word);
+		 __func__, __LINE__, mix_cfg, sync_word);
 
 	switch (mipi->cur_format->sol_sync) {
 	default:
-	case SYNC_RAW8: 		// 8 bits
+	case SYNC_RAW8:		// 8 bits
 	case SYNC_YUY2:
 		set_field(&mix_cfg, 2, 0x3<<16);    // Raw 8
 		break;
@@ -394,7 +383,7 @@ static void mipicsi_dt_config(struct sp_mipi_device *mipi)
 	set_field(&sync_word, mipi->cur_format->sol_sync, 0xffff<<0);
 
 	DBG_INFO("%s, %d: mix_cfg: %08x, sync_word: %08x\n",
-		__FUNCTION__, __LINE__, mix_cfg, sync_word);
+		 __func__, __LINE__, mix_cfg, sync_word);
 
 	writel(mix_cfg, &mipi->mipicsi_regs->mipicsi_mix_cfg);
 	writel(sync_word, &mipi->mipicsi_regs->mipicsi_sof_sol_syncword);
@@ -404,11 +393,11 @@ static void mipicsi_reset_s2p_ff(struct sp_mipi_device *mipi)
 {
 	u32 ana_cfg1;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	ana_cfg1 = readl(&mipi->mipicsi_regs->mipi_analog_cfg1);
 
-	DBG_INFO("%s, %d: ana_cfg1: %08x\n", __FUNCTION__, __LINE__, ana_cfg1);
+	DBG_INFO("%s, %d: ana_cfg1: %08x\n", __func__, __LINE__, ana_cfg1);
 
 	// Reset Serial-to-parallel Flip-flop
 	set_field(&ana_cfg1, 0x1, 0x1<<0);      // RSTS2P = 1: Reset mode
@@ -423,13 +412,13 @@ static void csiiw_fs_config(struct sp_mipi_device *mipi)
 {
 	u32 stride, frame_size, val;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	stride = readl(&mipi->csiiw_regs->csiiw_stride);
 	frame_size = readl(&mipi->csiiw_regs->csiiw_frame_size);
 
 	DBG_INFO("%s, %d: stride: %08x, frame_size: %08x\n",
-		__FUNCTION__, __LINE__, stride, frame_size);
+		 __func__, __LINE__, stride, frame_size);
 
 	// Set LINE_STRIDE field of csiiw_stride
 	val = mEXTENDED_ALIGNED(mipi->v_fmt.fmt.pix.bytesperline, 16);
@@ -442,7 +431,7 @@ static void csiiw_fs_config(struct sp_mipi_device *mipi)
 	set_field(&frame_size, mipi->v_fmt.fmt.pix.height, 0xfff<<16);
 
 	DBG_INFO("%s, %d: stride: %08x, frame_size: %08x\n",
-		__FUNCTION__, __LINE__, stride, frame_size);
+		 __func__, __LINE__, stride, frame_size);
 
 	writel(stride, &mipi->csiiw_regs->csiiw_stride);
 	writel(frame_size, &mipi->csiiw_regs->csiiw_frame_size);
@@ -458,11 +447,11 @@ static void csiiw_enable(struct sp_mipi_device *mipi)
 {
 	u32 config0;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	config0 = readl(&mipi->csiiw_regs->csiiw_config0);
 
-	DBG_INFO("%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
+	DBG_INFO("%s, %d: config0: %08x\n", __func__, __LINE__, config0);
 
 	//writel(0x12701, &mipi->csiiw_regs->csiiw_config0);
 	set_field(&config0, 0x0, 0x1<<17);  // Disable frame end IRQ mask
@@ -471,7 +460,7 @@ static void csiiw_enable(struct sp_mipi_device *mipi)
 	set_field(&config0, 0x7, 0x7<<8);   // Bus command queue for rate control
 	set_field(&config0, 0x1, 0x1<<0);   // Enable CSIIW function
 
-	DBG_INFO("%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
+	DBG_INFO("%s, %d: config0: %08x\n", __func__, __LINE__, config0);
 
 	writel(config0, &mipi->csiiw_regs->csiiw_config0);
 }
@@ -480,11 +469,11 @@ static void csiiw_disable(struct sp_mipi_device *mipi)
 {
 	u32 config0;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	config0 = readl(&mipi->csiiw_regs->csiiw_config0);
 
-	DBG_INFO("%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
+	DBG_INFO("%s, %d: config0: %08x\n", __func__, __LINE__, config0);
 
 	//writel(0x12701, &mipi->csiiw_regs->csiiw_config0);
 	set_field(&config0, 0x1, 0x1<<17);  // Enable frame end IRQ mask
@@ -493,7 +482,7 @@ static void csiiw_disable(struct sp_mipi_device *mipi)
 	//set_field(&config0, 0x7, 0x7<<8);   // Bus command queue for rate control
 	set_field(&config0, 0x0, 0x1<<0);   // Disable CSIIW function
 
-	DBG_INFO("%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
+	DBG_INFO("%s, %d: config0: %08x\n", __func__, __LINE__, config0);
 
 	writel(config0, &mipi->csiiw_regs->csiiw_config0);
 }
@@ -502,7 +491,7 @@ static void mipicsi_init(struct sp_mipi_device *mipi)
 {
 	u32 val;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	val = 0;
 	set_field(&val, 0x1, 0x1<<15);      // When detect EOF control word, generate EOF
@@ -524,12 +513,12 @@ static void mipicsi_init(struct sp_mipi_device *mipi)
 	writel(0x1001, &mipi->mipicsi_regs->mipi_analog_cfg1);
 	udelay(1);
 	writel(0x1000, &mipi->mipicsi_regs->mipi_analog_cfg1);
-	writel(0x1, &mipi->mipicsi_regs->mipicsi_enable);				// Enable MIPICSI
+	writel(0x1, &mipi->mipicsi_regs->mipicsi_enable);		// Enable MIPICSI
 }
 
 static void csiiw_init(struct sp_mipi_device *mipi)
 {
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	writel(0x1, &mipi->csiiw_regs->csiiw_latch_mode);               // latch mode should be enable before base address setup
 
@@ -544,11 +533,6 @@ static void csiiw_init(struct sp_mipi_device *mipi)
 
 irqreturn_t csiiw_fs_isr(int irq, void *dev_instance)
 {
-	struct sp_mipi_device *mipi = dev_instance;
-
-	if (mipi->streaming) {
-	}
-
 	return IRQ_HANDLED;
 }
 
@@ -569,8 +553,7 @@ irqreturn_t csiiw_fe_isr(int irq, void *dev_instance)
 		// One frame is just being captured, get the next frame-buffer
 		// from the queue. If no frame-buffer is available in queue,
 		// hold on to the current buffer.
-		if (!list_empty(&mipi->dma_queue))
-		{
+		if (!list_empty(&mipi->dma_queue)) {
 			// One video frame is just being captured, if next frame
 			// is available, delete the frame from queue.
 			next_frm = list_entry(mipi->dma_queue.next, struct sp_buffer, list);
@@ -602,17 +585,16 @@ static int csiiw_irq_init(struct sp_mipi_device *mipi)
 
 	mipi->fs_irq = irq_of_parse_and_map(mipi->pdev->of_node, 0);
 	ret = devm_request_irq(mipi->pdev, mipi->fs_irq, csiiw_fs_isr, 0, "csiiw_fs", mipi);
-	if (ret) {
+	if (ret)
 		goto err_fs_irq;
-	}
 
 	mipi->fe_irq = irq_of_parse_and_map(mipi->pdev->of_node, 1);
 	ret = devm_request_irq(mipi->pdev, mipi->fe_irq, csiiw_fe_isr, 0, "csiiw_fe", mipi);
-	if (ret) {
+	if (ret)
 		goto err_fe_irq;
-	}
 
-	MIP_INFO("Installed csiiw interrupts (fs_irq=%d, fe_irq=%d).\n", mipi->fs_irq , mipi->fe_irq);
+	MIP_INFO("Installed csiiw interrupts (fs_irq=%d, fe_irq=%d).\n",
+		 mipi->fs_irq, mipi->fe_irq);
 	return 0;
 
 err_fe_irq:
@@ -621,16 +603,15 @@ err_fs_irq:
 	return ret;
 }
 
-static int sp_queue_setup(struct vb2_queue *vq, unsigned *nbuffers, unsigned *nplanes,
-		       unsigned sizes[], struct device *alloc_devs[])
+static int sp_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers, unsigned int *nplanes,
+			  unsigned int sizes[], struct device *alloc_devs[])
 {
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vq);
-	unsigned size = mipi->v_fmt.fmt.pix.sizeimage;
+	unsigned int size = mipi->v_fmt.fmt.pix.sizeimage;
 
 	if (*nplanes) {
-		if (sizes[0] < size) {
+		if (sizes[0] < size)
 			return -EINVAL;
-		}
 
 		size = sizes[0];
 	}
@@ -639,11 +620,10 @@ static int sp_queue_setup(struct vb2_queue *vq, unsigned *nbuffers, unsigned *np
 	*nplanes = 1;
 	sizes[0] = size;
 
-	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS) {
+	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS)
 		*nbuffers = MIN_BUFFERS - vq->num_buffers;
-	}
 
-	DBG_INFO("%s: count = %u, size = %u\n", __FUNCTION__, *nbuffers, sizes[0]);
+	DBG_INFO("%s: count = %u, size = %u\n", __func__, *nbuffers, sizes[0]);
 	return 0;
 }
 
@@ -675,12 +655,12 @@ static void sp_buf_queue(struct vb2_buffer *vb)
 	// Add the buffer to the DMA queue.
 	spin_lock_irqsave(&mipi->dma_queue_lock, flags);
 	list_add_tail(&buf->list, &mipi->dma_queue);
-	DBG_INFO("%s: list_add\n", __FUNCTION__);
+	//DBG_INFO("%s: list_add\n", __func__);
 	print_List(&mipi->dma_queue);
 	spin_unlock_irqrestore(&mipi->dma_queue_lock, flags);
 }
 
-static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
+static int sp_start_streaming(struct vb2_queue *vq, unsigned int count)
 {
 	struct sp_mipi_device *mipi = vb2_get_drv_priv(vq);
 	struct sp_mipi_subdev_info *sdinfo;
@@ -690,7 +670,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	//u32 analog_cfg1;
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	if (mipi->streaming) {
 		MIP_ERR("Device has started streaming!\n");
@@ -722,7 +702,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 
 	sdinfo = mipi->current_subdev;
 	ret = v4l2_device_call_until_err(&mipi->v4l2_dev, sdinfo->grp_id,
-					video, s_stream, 1);
+					 video, s_stream, 1);
 	if (ret && (ret != -ENOIOCTLCMD)) {
 		MIP_ERR("streamon failed in subdevice!\n");
 
@@ -737,7 +717,7 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned count)
 	mipi->streaming = true;
 	mipi->skip_first_int = true;
 
-	DBG_INFO("%s: cur_frm = %p, addr = %08lx\n", __FUNCTION__, mipi->cur_frm, addr);
+	DBG_INFO("%s: cur_frm = %p, addr = %08lx\n", __func__, mipi->cur_frm, addr);
 
 	return 0;
 }
@@ -750,7 +730,7 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	unsigned long flags;
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	if (!mipi->streaming) {
 		MIP_ERR("Device has stopped already!\n");
@@ -773,9 +753,8 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	// Release all active buffers.
 	spin_lock_irqsave(&mipi->dma_queue_lock, flags);
 
-	if (mipi->cur_frm != NULL) {
+	if (mipi->cur_frm != NULL)
 		vb2_buffer_done(&mipi->cur_frm->vb.vb2_buf, VB2_BUF_STATE_ERROR);
-	}
 
 	while (!list_empty(&mipi->dma_queue)) {
 		buf = list_entry(mipi->dma_queue.next, struct sp_buffer, list);
@@ -798,14 +777,14 @@ static const struct vb2_ops sp_video_qops = {
 };
 
 //===================================================================================
-/* ------------------------------------------------------------------
-	V4L2 ioctrl operations
-   ------------------------------------------------------------------*/
+/*
+ * V4L2 ioctrl operations
+ */
 static int vidioc_querycap(struct file *file, void *priv, struct v4l2_capability *vcap)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	strlcpy(vcap->driver, "SP MIPI Driver", sizeof(vcap->driver));
 	strlcpy(vcap->card, "SP MIPI Camera Card", sizeof(vcap->card));
@@ -817,13 +796,12 @@ static int vidioc_querycap(struct file *file, void *priv, struct v4l2_capability
 	return 0;
 }
 
-static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv,
-				struct v4l2_fmtdesc *f)
+static int vidioc_enum_fmt_vid_cap(struct file *file, void  *priv, struct v4l2_fmtdesc *f)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	const struct mipi_fmt *fmt = NULL;
 
-	DBG_INFO("%s: index = %d\n", __FUNCTION__, f->index);
+	DBG_INFO("%s: index = %d\n", __func__, f->index);
 
 	if (f->index >= mipi->num_active_fmt)
 		return -EINVAL;
@@ -842,7 +820,7 @@ static int __subdev_set_format(struct sp_mipi_device *mipi,
 	struct v4l2_mbus_framefmt *mbus_fmt = &sd_fmt.format;
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	sd_fmt.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	sd_fmt.pad = 0;
@@ -853,17 +831,16 @@ static int __subdev_set_format(struct sp_mipi_device *mipi,
 	if (ret)
 		return ret;
 
-	DBG_INFO("%s, %dx%d code:%04X\n", __FUNCTION__,
+	DBG_INFO("%s, %dx%d code:%04X\n", __func__,
 		fmt->width, fmt->height, fmt->code);
 
 	return 0;
 }
 
-static int sp_calc_format_size(struct sp_mipi_device *mipi,
-				const struct mipi_fmt *fmt,
-				struct v4l2_format *f)
+static int sp_calc_format_size(struct sp_mipi_device *mipi, const struct mipi_fmt *fmt,
+			       struct v4l2_format *f)
 {
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	if (!fmt) {
 		MIP_ERR("No mipi_fmt provided!\n");
@@ -872,28 +849,25 @@ static int sp_calc_format_size(struct sp_mipi_device *mipi,
 
 	v4l_bound_align_image(&f->fmt.pix.width, 48, MAX_WIDTH, 2,
 			      &f->fmt.pix.height, 32, MAX_HEIGHT, 0, 0);
-	f->fmt.pix.bytesperline = bytes_per_line(f->fmt.pix.width,
-						 fmt->depth >> 3);
-	f->fmt.pix.sizeimage = f->fmt.pix.height *
-			       f->fmt.pix.bytesperline;
+	f->fmt.pix.bytesperline = bytes_per_line(f->fmt.pix.width, fmt->depth >> 3);
+	f->fmt.pix.sizeimage = f->fmt.pix.height * f->fmt.pix.bytesperline;
 
 	MIP_INFO("%s, fourcc: %s size: %dx%d, bpl: %d, img_size: %d\n",
-		__FUNCTION__, fourcc_to_str(f->fmt.pix.pixelformat),
-		f->fmt.pix.width, f->fmt.pix.height,
-		f->fmt.pix.bytesperline, f->fmt.pix.sizeimage);
+		 __func__, fourcc_to_str(f->fmt.pix.pixelformat),
+		 f->fmt.pix.width, f->fmt.pix.height,
+		 f->fmt.pix.bytesperline, f->fmt.pix.sizeimage);
 
 	return 0;
 }
 
-static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
-			       struct v4l2_format *f)
+static int vidioc_try_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	const struct mipi_fmt *fmt;
 	struct v4l2_subdev_frame_size_enum fse;
 	int ret, found;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	fmt = find_format_by_pix(mipi, f->fmt.pix.pixelformat);
 	if (!fmt) {
@@ -905,8 +879,8 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 		f->fmt.pix.pixelformat = fmt->fourcc;
 	}
 
-	DBG_INFO("%s: pixel_format: %s, code = 0x%04x\n", __FUNCTION__,
-		fourcc_to_str(fmt->fourcc), fmt->code);
+	DBG_INFO("%s: pixel_format: %s, code = 0x%04x\n", __func__,
+		 fourcc_to_str(fmt->fourcc), fmt->code);
 
 	f->fmt.pix.field = mipi->v_fmt.fmt.pix.field;
 
@@ -918,14 +892,14 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	fse.which = V4L2_SUBDEV_FORMAT_ACTIVE;
 	for (fse.index = 0; ; fse.index++) {
 		ret = v4l2_device_call_until_err(&mipi->v4l2_dev,
-				mipi->current_subdev->grp_id, pad, enum_frame_size, NULL,
-				&fse);
+				mipi->current_subdev->grp_id, pad, enum_frame_size,
+				NULL, &fse);
 
 		if (ret)
 			break;
 
 		DBG_INFO("idx: %d, code: 0x%04x, min_width: %d, min_height: %d\n",
-			fse.index, fse.code, fse.min_width, fse.min_height);
+			 fse.index, fse.code, fse.min_width, fse.min_height);
 
 		if ((f->fmt.pix.width == fse.max_width) &&
 		    (f->fmt.pix.height == fse.max_height)) {
@@ -954,8 +928,7 @@ static int vidioc_try_fmt_vid_cap(struct file *file, void *priv,
 	return sp_calc_format_size(mipi, fmt, f);
 }
 
-static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
-			     struct v4l2_format *f)
+static int vidioc_s_fmt_vid_cap(struct file *file, void *priv, struct v4l2_format *f)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	//struct vb2_queue *q = &ctx->vb_vidq;
@@ -964,7 +937,7 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	struct v4l2_mbus_framefmt mbus_fmt;
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	//if (vb2_is_busy(q)) {
 	//	ctx_dbg(3, ctx, "%s device busy\n", __func__);
@@ -981,8 +954,8 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 
 	fmt = find_format_by_pix(mipi, f->fmt.pix.pixelformat);
 
-	MIP_INFO("%s, pixel_format: %s, code = 0x%04x\n", __FUNCTION__,
-		fourcc_to_str(fmt->fourcc), fmt->code);
+	MIP_INFO("%s, pixel_format: %s, code = 0x%04x\n", __func__,
+		 fourcc_to_str(fmt->fourcc), fmt->code);
 
 	v4l2_fill_mbus_format(&mbus_fmt, &f->fmt.pix, fmt->code);
 
@@ -993,13 +966,13 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	/* Just double check nothing has gone wrong */
 	if (mbus_fmt.code != fmt->code) {
 		MIP_ERR("%s subdev changed format on us, this should not happen!\n",
-			__FUNCTION__);
+			__func__);
 		return -EINVAL;
 	}
 
 	v4l2_fill_pix_format(&mipi->v_fmt.fmt.pix, &mbus_fmt);
 	mipi->v_fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-	mipi->v_fmt.fmt.pix.pixelformat  = fmt->fourcc;
+	mipi->v_fmt.fmt.pix.pixelformat = fmt->fourcc;
 	sp_calc_format_size(mipi, fmt, &mipi->v_fmt);
 	mipi->fmt = fmt;
 	mipi->m_fmt = mbus_fmt;
@@ -1009,13 +982,13 @@ static int vidioc_s_fmt_vid_cap(struct file *file, void *priv,
 	cur_fmt = get_format(mipi->current_subdev, fmt->fourcc);
 	if (cur_fmt == NULL) {
 		MIP_ERR("%s can't get mipicsi setting info!\n",
-			__FUNCTION__);
+			__func__);
 		return -EINVAL;
 	}
 	mipi->cur_format = cur_fmt;
 
-	DBG_INFO("%s: name: %s, fourcc: %s\n", __FUNCTION__,
-		cur_fmt->name, fourcc_to_str(cur_fmt->fourcc));
+	DBG_INFO("%s: name: %s, fourcc: %s\n", __func__,
+		 cur_fmt->name, fourcc_to_str(cur_fmt->fourcc));
 
 	return 0;
 }
@@ -1025,17 +998,16 @@ static int vidioc_g_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	*f = mipi->v_fmt;
 
 	return 0;
 }
 
-static int vidioc_enum_input(struct file *file, void *priv,
-							struct v4l2_input *inp)
+static int vidioc_enum_input(struct file *file, void *priv, struct v4l2_input *inp)
 {
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	if (inp->index > 0)
 		return -EINVAL;
@@ -1048,7 +1020,7 @@ static int vidioc_enum_input(struct file *file, void *priv,
 
 static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
 {
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	*i = 0;
 	return 0;
@@ -1056,7 +1028,7 @@ static int vidioc_g_input(struct file *file, void *priv, unsigned int *i)
 
 static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 {
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	if (i > 0)
 		return -EINVAL;
@@ -1066,7 +1038,7 @@ static int vidioc_s_input(struct file *file, void *priv, unsigned int i)
 
 /* timeperframe is arbitrary and continuous */
 static int vidioc_enum_frameintervals(struct file *file, void *priv,
-				   struct v4l2_frmivalenum *fival)
+				      struct v4l2_frmivalenum *fival)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	const struct mipi_fmt *fmt;
@@ -1078,21 +1050,21 @@ static int vidioc_enum_frameintervals(struct file *file, void *priv,
 	};
 	int ret;
 
-	DBG_INFO("%s: index = %d\n", __FUNCTION__, fival->index);
+	DBG_INFO("%s: index = %d\n", __func__, fival->index);
 
 	fmt = find_format_by_pix(mipi, fival->pixel_format);
 	if (!fmt)
 		return -EINVAL;
 
-	DBG_INFO("%s: pixel_format: %s, code = 0x%04x\n", __FUNCTION__,
-		fourcc_to_str(fmt->fourcc), fmt->code);
+	DBG_INFO("%s: pixel_format: %s, code = 0x%04x\n", __func__,
+		 fourcc_to_str(fmt->fourcc), fmt->code);
 
 	fie.code = fmt->code;
 	ret = v4l2_device_call_until_err(&mipi->v4l2_dev,
 		mipi->current_subdev->grp_id, pad, enum_frame_interval, NULL, &fie);
 
-	DBG_INFO("%s: numerator: %d, denominator = %d\n", __FUNCTION__,
-		fie.interval.numerator, fie.interval.denominator);
+	DBG_INFO("%s: numerator: %d, denominator = %d\n", __func__,
+		 fie.interval.numerator, fie.interval.denominator);
 
 	if (ret)
 		return ret;
@@ -1124,15 +1096,15 @@ static const struct v4l2_ioctl_ops sp_mipi_ioctl_ops = {
 };
 
 //===================================================================================
-/* ------------------------------------------------------------------
-	V4L2 file operations
-   ------------------------------------------------------------------*/
+/*
+ * V4L2 file operations
+ */
 static int sp_mipi_open(struct file *file)
 {
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
 	if (pm_runtime_get_sync(mipi->pdev) < 0)
@@ -1142,9 +1114,8 @@ static int sp_mipi_open(struct file *file)
 	mutex_lock(&mipi->lock);
 
 	ret = v4l2_fh_open(file);
-	if (ret) {
+	if (ret)
 		MIP_ERR("v4l2_fh_open failed!\n");
-	}
 
 	mutex_unlock(&mipi->lock);
 	return ret;
@@ -1162,7 +1133,7 @@ static int sp_mipi_release(struct file *file)
 	struct sp_mipi_device *mipi = video_drvdata(file);
 	int ret;
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	mutex_lock(&mipi->lock);
 
@@ -1189,7 +1160,6 @@ static const struct v4l2_file_operations sp_mipi_fops = {
 };
 
 //===================================================================================
-extern const struct vb2_mem_ops sp_vb2_dma_contig_memops;
 static const struct vb2_mem_ops *const sp_mem_ops[2] = {
 #ifdef CONFIG_MIPICSI_RX_SUNPLUS_SP7021
 	&sp_vb2_dma_contig_memops,
@@ -1199,9 +1169,9 @@ static const struct vb2_mem_ops *const sp_mem_ops[2] = {
 	&vb2_vmalloc_memops,
 };
 
-/* ------------------------------------------------------------------
-	SP-MIPI driver probe
-   ------------------------------------------------------------------*/
+/*
+ * SP-MIPI driver probe
+ */
 static int sp_mipi_probe(struct platform_device *pdev)
 {
 	struct sp_mipi_device *mipi;
@@ -1232,18 +1202,17 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, mipi);
 
 	// Get and set 'mipicsi' register base.
-	ret = sp_mipi_get_register_base(pdev, (void**)&mipi->mipicsi_regs, MIPICSI_REG_NAME);
-	if (ret) {
+	ret = sp_mipi_get_register_base(pdev, (void **)&mipi->mipicsi_regs, MIPICSI_REG_NAME);
+	if (ret)
 		return ret;
-	}
 
 	// Get and set 'csiiw' register base.
-	ret = sp_mipi_get_register_base(pdev, (void**)&mipi->csiiw_regs, CSIIW_REG_NAME);
-	if (ret) {
+	ret = sp_mipi_get_register_base(pdev, (void **)&mipi->csiiw_regs, CSIIW_REG_NAME);
+	if (ret)
 		return ret;
-	}
+
 	MIP_INFO("%s, mipicsi_regs = 0x%p, csiiw_regs = 0x%p\n",
-		__FUNCTION__, mipi->mipicsi_regs, mipi->csiiw_regs);
+		 __func__, mipi->mipicsi_regs, mipi->csiiw_regs);
 
 	// Get clock resource 'clk_mipicsi'.
 	mipi->mipicsi_clk = devm_clk_get(dev, "clk_mipicsi");
@@ -1281,14 +1250,14 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	mipi->cam_gpio0 = devm_gpiod_get(&pdev->dev, "cam_gpio0", GPIOD_OUT_HIGH);
 	if (!IS_ERR(mipi->cam_gpio0)) {
 		MIP_INFO("cam_gpio0 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio0));
-		gpiod_set_value(mipi->cam_gpio0,1);
+		gpiod_set_value(mipi->cam_gpio0, 1);
 	}
 
 	// Get cam_gpio1.
 	mipi->cam_gpio1 = devm_gpiod_get(&pdev->dev, "cam_gpio1", GPIOD_OUT_HIGH);
 	if (!IS_ERR(mipi->cam_gpio1)) {
 		MIP_INFO("cam_gpio1 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio1));
-		gpiod_set_value(mipi->cam_gpio1,1);
+		gpiod_set_value(mipi->cam_gpio1, 1);
 	}
 
 	// Get i2c id.
@@ -1338,12 +1307,11 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	spin_lock_init(&mipi->dma_queue_lock);
 	mutex_init(&mipi->lock);
 
-	if (allocator >= ARRAY_SIZE(sp_mem_ops)) {
+	if (allocator >= ARRAY_SIZE(sp_mem_ops))
 		allocator = 0;
-	}
-	if (allocator == 0) {
+
+	if (allocator == 0)
 		dma_coerce_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(32));
-	}
 
 	// Start creating the vb2 queues.
 	q = &mipi->buffer_queue;
@@ -1371,7 +1339,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	vfd = &mipi->video_dev;
 	vfd->fops       = &sp_mipi_fops;
 	vfd->ioctl_ops  = &sp_mipi_ioctl_ops;
-	vfd->device_caps= mipi->caps;
+	vfd->device_caps = mipi->caps;
 	vfd->release    = video_device_release_empty;
 	vfd->v4l2_dev   = &mipi->v4l2_dev;
 	vfd->queue      = &mipi->buffer_queue;
@@ -1397,7 +1365,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		ret = -ENOMEM;
 		goto err_alloc_mipi_cfg;
 	}
-	memcpy (sp_mipi_cfg, &psp_mipi_cfg, sizeof(*sp_mipi_cfg));
+	memcpy(sp_mipi_cfg, &psp_mipi_cfg, sizeof(*sp_mipi_cfg));
 	sp_mipi_cfg->i2c_adapter_id = mipi->i2c_id;
 	num_subdevs = sp_mipi_cfg->num_subdevs;
 	mipi->cfg = sp_mipi_cfg;
@@ -1452,14 +1420,15 @@ static int sp_mipi_probe(struct platform_device *pdev)
 
 		DBG_INFO("idx: %d, code: 0x%04x\n", i, mbus_code.code);
 
-		for(j = 0; j < ARRAY_SIZE(mipi_formats); j++) {
+		for (j = 0; j < ARRAY_SIZE(mipi_formats); j++) {
 			struct mipi_fmt *fmt;
 
 			fmt = &mipi_formats[j];
 
 			if (mbus_code.code == fmt->code) {
 				MIP_INFO("matched fourcc: %s, code: %04x, num: %d",
-					fourcc_to_str(fmt->fourcc), mbus_code.code, mipi->num_active_fmt);
+					 fourcc_to_str(fmt->fourcc), mbus_code.code,
+					 mipi->num_active_fmt);
 				mipi->active_fmt[i] = fmt;
 				mipi->num_active_fmt++;
 				break;
@@ -1472,12 +1441,11 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	csiiw_init(mipi);
 
 	ret = csiiw_irq_init(mipi);
-	if (ret) {
+	if (ret)
 		goto err_csiiw_irq_init;
-	}
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
-	pm_runtime_set_autosuspend_delay(&pdev->dev,5000);
+	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -1524,7 +1492,7 @@ static int sp_mipi_remove(struct platform_device *pdev)
 {
 	struct sp_mipi_device *mipi = platform_get_drvdata(pdev);
 
-	DBG_INFO("%s\n", __FUNCTION__);
+	DBG_INFO("%s\n", __func__);
 
 	i2c_put_adapter(mipi->i2c_adap);
 	kfree(mipi->cfg);
@@ -1567,15 +1535,13 @@ static int sp_mipi_resume(struct platform_device *pdev)
 
 	// Enable 'mipicsi' clock.
 	ret = clk_prepare_enable(mipi->mipicsi_clk);
-	if (ret) {
+	if (ret)
 		MIP_ERR("Failed to enable \'mipicsi\' clock!\n");
-	}
 
 	// Enable 'csiiw' clock.
 	ret = clk_prepare_enable(mipi->csiiw_clk);
-	if (ret) {
+	if (ret)
 		MIP_ERR("Failed to enable \'csiiw\' clock!\n");
-	}
 
 	return 0;
 }
@@ -1603,15 +1569,13 @@ static int sp_mipi_runtime_resume(struct device *dev)
 
 	// Enable 'mipicsi' clock.
 	ret = clk_prepare_enable(mipi->mipicsi_clk);
-	if (ret) {
+	if (ret)
 		MIP_ERR("Failed to enable \'mipicsi\' clock!\n");
-	}
 
 	// Enable 'csiiw' clock.
 	ret = clk_prepare_enable(mipi->csiiw_clk);
-	if (ret) {
+	if (ret)
 		MIP_ERR("Failed to enable \'csiiw\' clock!\n");
-	}
 
 	return 0;
 }

@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Sunplus MIPI/CSI RX driver configuration
+#
+
 config MIPICSI_RX_SUNPLUS_SP7021
 	tristate "Sunplus SP7021 MIPI/CSI-RX driver"
 	depends on SOC_SP7021 && VIDEO_DEV && VIDEO_V4L2
@@ -5,7 +10,11 @@ config MIPICSI_RX_SUNPLUS_SP7021
 	select VIDEOBUF2_VMALLOC
 	default n
 	help
-	  This driver supports the MIPI/CSI-RX device on the Sunplus SP7021 SoC.
+	  This driver supports the MIPI/CSI-RX device on the
+	  Sunplus SP7021 SoC. If you have the device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called sp-mipi-sp7021.
+
 
 config MIPICSI_RX_SUNPLUS_Q645
 	tristate "Sunplus Q645 MIPI/CSI-RX driver"
@@ -14,4 +23,7 @@ config MIPICSI_RX_SUNPLUS_Q645
 	select VIDEOBUF2_VMALLOC
 	default n
 	help
-	  This driver supports the MIPI/CSI-RX device on the Sunplus Q645 SoC.
+	  This driver supports the MIPI/CSI-RX device on the
+	  Sunplus Q645 SoC. If you have the device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called sp-mipi-q645.

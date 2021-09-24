@@ -1,3 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/* Copyright Sunplus Technology Co., Ltd.
+ *       All rights reserved.
+ */
+
 #ifndef __SP_MIPI_H__
 #define __SP_MIPI_H__
 
@@ -14,7 +19,7 @@
 #define MIPICSI_REG_NAME                "mipicsi"
 #define CSIIW_REG_NAME                  "csiiw"
 
-#define mEXTENDED_ALIGNED(w,n)          (w%n)? ((w/n)*n+n): (w)
+#define mEXTENDED_ALIGNED(w, n)         ((w%n) ? ((w/n)*n+n) : (w))
 #define MIN_BUFFERS                     2
 
 /* SOL Sync */
@@ -24,18 +29,20 @@
 #define SYNC_RAW10                      0x2B
 #define SYNC_YUY2                       0x1E
 
-#if 0
-#define DBG_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
+//#define MIPI_DEBUG
+//#define MIPI_DEBUG_PRINT_LIST
+
+#ifdef MIPI_DEBUG
+#define DBG_INFO(fmt, args ...)         pr_info("[MIPI] " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
 #endif
-#define MIP_INFO(fmt, args ...)         printk(KERN_INFO "[MIPI] " fmt, ## args)
-#define MIP_ERR(fmt, args ...)          printk(KERN_ERR "[MIPI] ERR: " fmt, ## args)
+#define MIP_INFO(fmt, args ...)         pr_info("[MIPI] " fmt, ## args)
+#define MIP_ERR(fmt, args ...)          pr_err("[MIPI] ERR: " fmt, ## args)
 
-#if 1
-#define print_List(x)
-#else
-static void print_List(struct list_head *head){
+#ifdef MIPI_DEBUG_PRINT_LIST
+static void print_List(struct list_head *head)
+{
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
 
@@ -43,11 +50,13 @@ static void print_List(struct list_head *head){
 	DBG_INFO("(HEAD addr =  %p, next = %p, prev = %p)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);
-		DBG_INFO("list addr = %p | next = %p | prev = %p\n", &entry->stream, entry->stream.next,
-			 entry->stream.prev);
+		DBG_INFO("list addr = %p | next = %p | prev = %p\n", &entry->stream,
+			 entry->stream.next, entry->stream.prev);
 	}
 	DBG_INFO("*********************************************************************************\n");
 }
+#else
+#define print_List(x)
 #endif
 
 /* ------------------------------------------------------------------
@@ -155,15 +164,15 @@ static struct mipi_fmt mipi_formats[] = {
 		.code		= MEDIA_BUS_FMT_SRGGB12_1X12,
 		.depth		= 16,
 	}, {
-		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y8_1X8,
 		.depth		= 8,
 	}, {
-		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y10_1X10,
 		.depth		= 8,
 	}, {
-		.fourcc 	= V4L2_PIX_FMT_GREY,
+		.fourcc	= V4L2_PIX_FMT_GREY,
 		.code		= MEDIA_BUS_FMT_Y12_1X12,
 		.depth		= 8,
 	},
@@ -215,7 +224,7 @@ struct sp_mipi_device {
 	struct v4l2_rect                crop;
 	struct v4l2_rect                win;
 	u32                             caps;
-	unsigned                        sequence;
+	unsigned int                    sequence;
 
 	struct i2c_adapter              *i2c_adap;
 	struct sp_mipi_subdev_info      *current_subdev;        /* pointer to currently selected sub device */
@@ -260,39 +269,41 @@ struct sp_buffer {
 
 /* mipi-csi registers */
 struct mipicsi_reg {
-	volatile unsigned int mipicsi_ststus;                   /* 00 (mipicsi) */
-	volatile unsigned int mipi_debug0;                      /* 01 (mipicsi) */
-	volatile unsigned int mipi_wc_lpf;                      /* 02 (mipicsi) */
-	volatile unsigned int mipi_analog_cfg0;                 /* 03 (mipicsi) */
-	volatile unsigned int mipi_analog_cfg1;                 /* 04 (mipicsi) */
-	volatile unsigned int mipicsi_fsm_rst;                  /* 05 (mipicsi) */
-	volatile unsigned int mipi_analog_cfg2;                 /* 06 (mipicsi) */
-	volatile unsigned int mipicsi_enable;                   /* 07 (mipicsi) */
-	volatile unsigned int mipicsi_mix_cfg;                  /* 08 (mipicsi) */
-	volatile unsigned int mipicsi_delay_ctl;                /* 09 (mipicsi) */
-	volatile unsigned int mipicsi_packet_size;              /* 10 (mipicsi) */
-	volatile unsigned int mipicsi_sot_syncword;             /* 11 (mipicsi) */
-	volatile unsigned int mipicsi_sof_sol_syncword;         /* 12 (mipicsi) */
-	volatile unsigned int mipicsi_eof_eol_syncword;         /* 13 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a14;             /* 14 (mipicsi) */
-	volatile unsigned int mipicsi_reserved_a15;             /* 15 (mipicsi) */
-	volatile unsigned int mipicsi_ecc_error;                /* 16 (mipicsi) */
-	volatile unsigned int mipicsi_crc_error;                /* 17 (mipicsi) */
-	volatile unsigned int mipicsi_ecc_cfg;                  /* 18 (mipicsi) */
-	volatile unsigned int mipi_analog_cfg3;                 /* 19 (mipicsi) */
-	volatile unsigned int mipi_analog_cfg4;                 /* 20 (mipicsi) */
+	u32 mipicsi_ststus;                   /* 00 (mipicsi) */
+	u32 mipi_debug0;                      /* 01 (mipicsi) */
+	u32 mipi_wc_lpf;                      /* 02 (mipicsi) */
+	u32 mipi_analog_cfg0;                 /* 03 (mipicsi) */
+	u32 mipi_analog_cfg1;                 /* 04 (mipicsi) */
+	u32 mipicsi_fsm_rst;                  /* 05 (mipicsi) */
+	u32 mipi_analog_cfg2;                 /* 06 (mipicsi) */
+	u32 mipicsi_enable;                   /* 07 (mipicsi) */
+	u32 mipicsi_mix_cfg;                  /* 08 (mipicsi) */
+	u32 mipicsi_delay_ctl;                /* 09 (mipicsi) */
+	u32 mipicsi_packet_size;              /* 10 (mipicsi) */
+	u32 mipicsi_sot_syncword;             /* 11 (mipicsi) */
+	u32 mipicsi_sof_sol_syncword;         /* 12 (mipicsi) */
+	u32 mipicsi_eof_eol_syncword;         /* 13 (mipicsi) */
+	u32 mipicsi_reserved_a14;             /* 14 (mipicsi) */
+	u32 mipicsi_reserved_a15;             /* 15 (mipicsi) */
+	u32 mipicsi_ecc_error;                /* 16 (mipicsi) */
+	u32 mipicsi_crc_error;                /* 17 (mipicsi) */
+	u32 mipicsi_ecc_cfg;                  /* 18 (mipicsi) */
+	u32 mipi_analog_cfg3;                 /* 19 (mipicsi) */
+	u32 mipi_analog_cfg4;                 /* 20 (mipicsi) */
 };
 
 /* mipi-csiiw registers */
 struct csiiw_reg {
-	volatile unsigned int csiiw_latch_mode;                 /* 00 (csiiw) */
-	volatile unsigned int csiiw_config0;                    /* 01 (csiiw) */
-	volatile unsigned int csiiw_base_addr;                  /* 02 (csiiw) */
-	volatile unsigned int csiiw_stride;                     /* 03 (csiiw) */
-	volatile unsigned int csiiw_frame_size;                 /* 04 (csiiw) */
-	volatile unsigned int csiiw_frame_buf;                  /* 05 (csiiw) */
-	volatile unsigned int csiiw_config1;                    /* 06 (csiiw) */
-	volatile unsigned int csiiw_frame_size_ro;              /* 07 (csiiw) */
+	u32 csiiw_latch_mode;                 /* 00 (csiiw) */
+	u32 csiiw_config0;                    /* 01 (csiiw) */
+	u32 csiiw_base_addr;                  /* 02 (csiiw) */
+	u32 csiiw_stride;                     /* 03 (csiiw) */
+	u32 csiiw_frame_size;                 /* 04 (csiiw) */
+	u32 csiiw_frame_buf;                  /* 05 (csiiw) */
+	u32 csiiw_config1;                    /* 06 (csiiw) */
+	u32 csiiw_frame_size_ro;              /* 07 (csiiw) */
 };
+
+extern const struct vb2_mem_ops sp_vb2_dma_contig_memops;
 
 #endif

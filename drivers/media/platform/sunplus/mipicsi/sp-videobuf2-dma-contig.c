@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * videobuf2-dma-contig.c - DMA contig memory allocator for videobuf2
  *
@@ -21,6 +22,9 @@
 #include <media/videobuf2-v4l2.h>
 #include <media/videobuf2-dma-contig.h>
 #include <media/videobuf2-memops.h>
+
+#define REMAP_TO_CACHEABLE
+#define STREAMING_DMA
 
 struct vb2_dc_buf {
 	struct device			*dev;
@@ -131,14 +135,16 @@ static void vb2_dc_put(void *buf_priv)
 		sg_free_table(buf->sgt_base);
 		kfree(buf->sgt_base);
 	}
-#if 1
-	dma_free_attrs(buf->dev, buf->size, buf->cookie, buf->dma_addr,
-		       buf->attrs);
-#else
+
+#ifdef STREAMING_DMA
 	dma_unmap_single_attrs(buf->dev, buf->dma_addr, buf->size,
 			       buf->dma_dir, buf->attrs);
 	kfree(buf->cookie);
+#else
+	dma_free_attrs(buf->dev, buf->size, buf->cookie, buf->dma_addr,
+		       buf->attrs);
 #endif
+
 	put_device(buf->dev);
 	kfree(buf);
 }
@@ -152,15 +158,13 @@ static void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 	if (WARN_ON(!dev))
 		return ERR_PTR(-EINVAL);
 
-	buf = kzalloc(sizeof *buf, GFP_KERNEL);
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
 	buf->attrs = attrs;
-#if 1
-	buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
-					GFP_KERNEL | gfp_flags, buf->attrs);
-#else
+
+#ifdef STREAMING_DMA
 	buf->cookie = kmalloc(size, GFP_KERNEL | gfp_flags);
 	buf->dma_addr = dma_map_single_attrs(dev, buf->cookie, size,
 					     buf->dma_dir, buf->attrs);
@@ -169,7 +173,11 @@ static void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 		buf->dma_addr = (dma_addr_t)NULL;
 		return ERR_PTR(-ENOMEM);
 	}
+#else
+	buf->cookie = dma_alloc_attrs(dev, size, &buf->dma_addr,
+				      GFP_KERNEL | gfp_flags, buf->attrs);
 #endif
+
 	if (!buf->cookie) {
 		dev_err(dev, "dma_alloc_coherent of size %ld failed\n", size);
 		kfree(buf);
@@ -196,13 +204,23 @@ static void *vb2_dc_alloc(struct device *dev, unsigned long attrs,
 static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
 {
 	struct vb2_dc_buf *buf = buf_priv;
-	//int ret;
+#ifndef REMAP_TO_CACHEABLE
+	int ret;
+#endif
 
 	if (!buf) {
-		printk(KERN_ERR "No buffer to map\n");
+		pr_err("No buffer to map\n");
 		return -EINVAL;
 	}
-#if 0
+
+#ifdef REMAP_TO_CACHEABLE
+	vma->vm_flags |= VM_LOCKED;
+	if (remap_pfn_range(vma, vma->vm_start, buf->dma_addr>>PAGE_SHIFT,
+			    vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
+		pr_err("%s(): remap_pfn_range() failed\n", __func__);
+		return -ENOBUFS;
+	}
+#else
 	ret = dma_mmap_attrs(buf->dev, vma, buf->cookie,
 		buf->dma_addr, buf->size, buf->attrs);
 
@@ -210,14 +228,8 @@ static int vb2_dc_mmap(void *buf_priv, struct vm_area_struct *vma)
 		pr_err("Remapping memory failed, error: %d\n", ret);
 		return ret;
 	}
-#else
-	vma->vm_flags |= VM_LOCKED;
-	if (remap_pfn_range(vma, vma->vm_start, buf->dma_addr>>PAGE_SHIFT,
-			    vma->vm_end - vma->vm_start, vma->vm_page_prot)) {
-		pr_err("%s(): remap_pfn_range() failed\n", __FUNCTION__);
-		return -ENOBUFS;
-	}
 #endif
+
 	vma->vm_flags		|= VM_DONTEXPAND | VM_DONTDUMP;
 	vma->vm_private_data	= &buf->handler;
 	vma->vm_ops		= &vb2_common_vm_ops;
@@ -404,7 +416,7 @@ static struct sg_table *vb2_dc_get_base_sgt(struct vb2_dc_buf *buf)
 
 	sgt = kmalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt) {
-		dev_err(buf->dev, "failed to alloc sg table\n");
+		//dev_err(buf->dev, "failed to alloc sg table\n");
 		return NULL;
 	}
 
@@ -507,7 +519,7 @@ static void *vb2_dc_get_userptr(struct device *dev, unsigned long vaddr,
 	if (WARN_ON(!dev))
 		return ERR_PTR(-EINVAL);
 
-	buf = kzalloc(sizeof *buf, GFP_KERNEL);
+	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
 	if (!buf)
 		return ERR_PTR(-ENOMEM);
 
@@ -544,7 +556,7 @@ static void *vb2_dc_get_userptr(struct device *dev, unsigned long vaddr,
 
 	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
 	if (!sgt) {
-		pr_err("failed to allocate sg table\n");
+		//pr_err("failed to allocate sg table\n");
 		ret = -ENOMEM;
 		goto fail_pfnvec;
 	}
