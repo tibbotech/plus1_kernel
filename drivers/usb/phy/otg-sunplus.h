@@ -150,52 +150,52 @@ struct sp_regs_otg {
 	u32 otg_int_st;
 
 	u32 a_wait_vrise_tmr;
-	u32 b_send_srp_tmr;	//5
+	u32 b_send_srp_tmr;
 	u32 b_se0_srp_tmr;
 	u32 b_data_pls_tmr;
 	u32 b_srp_fail_tmr;
-	u32 b_svld_bcon_tmr;	//9
+	u32 b_svld_bcon_tmr;
 	u32 b_aidl_bdis_tmr;
 	u32 a_bdis_acon_tmr;
 	u32 ldis_dschg_tmr;
 	u32 a_bcon_sdb_tmr;
 	u32 a_bcon_ldb_tmr;
-	u32 a_adp_prb_tmr;	//15
+	u32 a_adp_prb_tmr;
 	u32 b_adp_prb_tmr;
 	u32 b_adp_detach_tmr;
 	u32 adp_chng_precision;
 	u32 a_wait_vfall_tmr;
 	u32 a_wait_bcon_tmr;
-	u32 a_aidl_bdis_tmr;	//21
+	u32 a_aidl_bdis_tmr;
 	u32 b_ase0_brst_tmr;
 	u32 a_bidl_adis_tmr;
 	u32 adp_chrg_time;
 	u32 vbus_pules_time;
-	u32 a_bcon_sdb_win;	//26
+	u32 a_bcon_sdb_win;
 	u32 otg_debug_reg;
 	u32 adp_debug_reg;
 };
 
 struct sp_regs_moon4 {
-	u32 mo4_pllsp_ctl_0;  //0x200
-	u32 mo4_pllsp_ctl_1;  //0x204
-	u32 mo4_pllsp_ctl_2;  //0x208
-	u32 mo4_pllsp_ctl_3;  //0x20c
-	u32 mo4_pllsp_ctl_4;  //0x210
-	u32 mo4_pllsp_ctl_5;  //0x214
-	u32 mo4_pllsp_ctl_6;  //0x218
-	u32 mo4_plla_ctl_0;   //0x21c
-	u32 mo4_plla_ctl_1;   //0x220
-	u32 mo4_plla_ctl_2;   //0x224
-	u32 mo4_plla_ctl_3;   //0x228
-	u32 mo4_plla_ctl_4;   //0x22c
-	u32 mo4_plle_ctl;     //0x230
-	u32 mo4_pllf_ctl;     //0x234
-	u32 mo4_plltv_ctl_0;  //0x238
-	u32 mo4_plltv_ctl_1;  //0x23c
-	u32 mo4_plltv_ctl_2;  //0x240
-	u32 mo4_usbc_ctl;     //0x244
-	u32 mo4_uphy0_ctl_0;  //0x248
+	u32 mo4_pllsp_ctl_0;
+	u32 mo4_pllsp_ctl_1;
+	u32 mo4_pllsp_ctl_2;
+	u32 mo4_pllsp_ctl_3;
+	u32 mo4_pllsp_ctl_4;
+	u32 mo4_pllsp_ctl_5;
+	u32 mo4_pllsp_ctl_6;
+	u32 mo4_plla_ctl_0;
+	u32 mo4_plla_ctl_1;
+	u32 mo4_plla_ctl_2;
+	u32 mo4_plla_ctl_3;
+	u32 mo4_plla_ctl_4;
+	u32 mo4_plle_ctl;
+	u32 mo4_pllf_ctl;
+	u32 mo4_plltv_ctl_0;
+	u32 mo4_plltv_ctl_1;
+	u32 mo4_plltv_ctl_2;
+	u32 mo4_usbc_ctl;
+	u32 mo4_uphy0_ctl_0;
 	u32 mo4_uphy0_ctl_1;
 	u32 mo4_uphy0_ctl_2;
 	u32 mo4_uphy0_ctl_3;

@@ -35,6 +35,7 @@ static int __init usb_otg0_sunplus_init(void)
 	}
 
 	pr_notice("otg0 not enabled\n");
+
 	return 0;
 }
 fs_initcall(usb_otg0_sunplus_init);

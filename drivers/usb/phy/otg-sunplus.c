@@ -8,7 +8,6 @@
 #include <linux/usb.h>
 #include <linux/kthread.h>
 #include <linux/usb/hcd.h>
-
 #include <linux/platform_device.h>
 #include <linux/usb/sp_usb.h>
 #include <linux/usb/otg.h>

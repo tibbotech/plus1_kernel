@@ -18,7 +18,7 @@
 /* Copyright 1999 Linus Torvalds								  */
 /* Copyright 1999 Gregory P. Smith								  */
 /*												  */
-/* Licensed under the GNU/GPL. See COPYING for details.						  */
+/* Licensed under the GNU/GPL. See COPYING for details						  */
 /**************************************************************************************************/
 #include <linux/acpi.h>
 #include <linux/clk.h>

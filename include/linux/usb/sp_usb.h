@@ -45,7 +45,6 @@
 #define PIN_MUX_CTRL				0x8C
 
 #define USBC_CTL_OFFSET				0x44
-
 #define UPHY0_CTL0_OFFSET			0x48
 #define UPHY0_CTL1_OFFSET			0x4C
 #define UPHY0_CTL2_OFFSET			0x50

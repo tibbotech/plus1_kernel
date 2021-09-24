@@ -2566,7 +2566,7 @@ void detech_start(void)
 #ifdef	CONFIG_USB_HOST_RESET_SP
 	udc_init_c();
 #endif
-	DEBUG_NOTICE("%s......", __func__);
+	DEBUG_NOTICE("%s...", __func__);
 }
 EXPORT_SYMBOL(detech_start);
 
