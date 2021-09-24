@@ -59,9 +59,8 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 {
 	struct sk_buff *skb, *new_skb;
 	struct skb_info *sinfo;
-
-	volatile struct mac_desc *desc;
-	volatile struct mac_desc *h_desc;
+	struct mac_desc *desc;
+	struct mac_desc *h_desc;
 	u32 rx_pos, pkg_len;
 	u32 cmd;
 	u32 num, rx_count;
