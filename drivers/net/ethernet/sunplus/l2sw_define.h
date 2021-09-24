@@ -159,10 +159,10 @@
 #define ETHERNET_MAC_ADDR_LEN           6
 
 struct mac_desc {
-	volatile u32 cmd1;
-	volatile u32 cmd2;
-	volatile u32 addr1;
-	volatile u32 addr2;
+	u32 cmd1;
+	u32 cmd2;
+	u32 addr1;
+	u32 addr2;
 };
 
 struct skb_info {
@@ -186,15 +186,15 @@ struct l2sw_common {
 
 	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
 	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];
-	volatile u32 rx_pos[RX_DESC_QUEUE_NUM];
+	u32 rx_pos[RX_DESC_QUEUE_NUM];
 	u32 rx_desc_num[RX_DESC_QUEUE_NUM];
 	u32 rx_desc_buff_size;
 
 	struct mac_desc *tx_desc;
 	struct skb_info tx_temp_skb_info[TX_DESC_NUM];
-	volatile u32 tx_done_pos;
-	volatile u32 tx_pos;
-	volatile u32 tx_desc_full;
+	u32 tx_done_pos;
+	u32 tx_pos;
+	u32 tx_desc_full;
 
 	struct mii_bus *mii_bus;
 	struct phy_device *phy_dev;
