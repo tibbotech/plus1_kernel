@@ -213,8 +213,8 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif 
 	#ifdef CONFIG_SOC_Q645
-	clkdiv = (SPMMC_SYS_CLK/clk)-1;
-	#endif 
+	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
+	#endif
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
