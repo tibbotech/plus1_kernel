@@ -674,6 +674,14 @@
 		status = "disabled";
 	};
 
+	pwm: pwm@0xf8008f80 {
+		#pwm-cells = <2>;
+		compatible = "sunplus,q645-pwm";
+		reg = <0x0 0xf8008f80 0x0 0x100>;
+		clocks = <&clkc DISP_PWM>;
+		resets = <&rstc RST_DISP_PWM>;
+	};
+
 	rtc: rtc@0xf8003a00 {
 		compatible = "sunplus,q645-rtc";
 		reg = <0x0 0xf8003a00 0x0 0x14>;

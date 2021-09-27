@@ -23,6 +23,8 @@
 #include <linux/mfd/sunplus/pwm-sp7021.h>
 #elif defined(CONFIG_SOC_I143)
 #include <linux/mfd/sunplus/pwm-i143.h>
+#elif defined(CONFIG_SOC_Q645)
+#include <linux/mfd/sunplus/pwm-q645.h>
 #endif
 /**************************************************************************
  *                           C O N S T A N T S                            *
@@ -33,6 +35,9 @@
 #elif defined(CONFIG_SOC_I143)
 #define DRV_NAME "i143-pwm"
 #define DESC_NAME "I143 PWM Driver"
+#elif defined(CONFIG_SOC_Q645)
+#define DRV_NAME "q645-pwm"
+#define DESC_NAME "Q645 PWM Driver"
 #endif
 
 #define SUNPLUS_PWM_NUM		ePWM_MAX
@@ -51,6 +56,15 @@ struct sunplus_pwm {
 	struct clk *clk;
 };
 
+#if defined(CONFIG_SOC_Q645)
+enum {
+	ePWM0,
+	ePWM1,
+	ePWM2,
+	ePWM3,
+	ePWM_MAX
+};
+#else
 enum {
 	ePWM0,
 	ePWM1,
@@ -62,6 +76,7 @@ enum {
 	ePWM7,
 	ePWM_MAX
 };
+#endif
 
 enum {
 	ePWM_DD0,
@@ -81,7 +96,7 @@ static int _sunplus_pwm_config(struct pwm_chip *chip,
 							struct pwm_device *pwm,
 							int duty_ns,
 							int period_ns);
-#if defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
 static int _sunplus_pwm_polarity(struct pwm_chip *chip,
 							struct pwm_device *pwm,
 							enum pwm_polarity polarity);
@@ -104,7 +119,7 @@ static const struct pwm_ops _sunplus_pwm_ops = {
 	.enable = _sunplus_pwm_enable,
 	.disable = _sunplus_pwm_disable,
 	.config = _sunplus_pwm_config,
-#if defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
 	.set_polarity = _sunplus_pwm_polarity,
 #endif
 	.owner = THIS_MODULE,
@@ -113,6 +128,7 @@ static const struct pwm_ops _sunplus_pwm_ops = {
 static const struct of_device_id _sunplus_pwm_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-pwm", },
 /*	{ .compatible = "sunplus,i143-pwm", }, */
+	{ .compatible = "sunplus,q645-pwm", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, _sunplus_pwm_dt_ids);
@@ -172,6 +188,17 @@ static void _sunplus_reg_init(void *base)
 	pPWMReg->pwm_du[2].idx_all = 0x00000000;
 	pPWMReg->pwm_du[3].idx_all = 0x00000000;
 	pPWMReg->grp245_0 = 0x00000000;
+#elif defined(CONFIG_SOC_Q645)
+	pPWMReg->grp287_0 = 0x0f000000;
+	pPWMReg->pwm_dd[0].idx_all = 0x00000000;
+	pPWMReg->pwm_dd[1].idx_all = 0x00000000;
+	pPWMReg->pwm_dd[2].idx_all = 0x00000000;
+	pPWMReg->pwm_dd[3].idx_all = 0x00000000;
+	pPWMReg->pwm_du[0].idx_all = 0x00000000;
+	pPWMReg->pwm_du[1].idx_all = 0x00000000;
+	pPWMReg->pwm_du[2].idx_all = 0x00000000;
+	pPWMReg->pwm_du[3].idx_all = 0x00000000;
+	pPWMReg->grp288_0 = 0x00000000;
 #endif
 
 }
@@ -232,8 +259,27 @@ static void _sunplus_savepwmclk(struct pwm_chip *chip, struct pwm_device *pwm)
 		dev_dbg(chip->dev, "save pwm clk:%d dd_sel:%d\n",
 			pwm->hwpwm, dd_sel);
 	}
-#endif
+#elif defined(CONFIG_SOC_Q645)
+	u32 dd_sel = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
 
+	dev_dbg(chip->dev, "pwm clk:%d dd_sel:%d\n",
+			pwm->hwpwm, dd_sel);
+
+	if (!(pPWMReg->pwm_dd[dd_sel].dd))
+		return;
+
+	for (i = 0; i < ePWM_MAX; ++i) {
+		if ((pPWMReg->grp287_0 & (1 << i))
+			&& (pPWMReg->pwm_du[i].pwm_du_dd_sel == dd_sel))
+			break;
+	}
+
+	if (i == ePWM_MAX) {
+		pPWMReg->pwm_dd[dd_sel].dd = 0;
+		dev_dbg(chip->dev, "save pwm clk:%d dd_sel:%d\n",
+			pwm->hwpwm, dd_sel);
+	}
+#endif
 }
 
 static int _sunplus_setpwm(struct pwm_chip *chip,
@@ -272,6 +318,14 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 		if (pPWMReg->pwm_dd[i].dd)
 			pwm_dd_en |= (1 << i);
 	}
+#elif defined(CONFIG_SOC_Q645)
+	if (dd_freq >= 0x3ffff)
+		dd_freq = 0x3ffff;
+
+	for (i = 0; i < ePWM_DD_MAX; ++i) {
+		if (pPWMReg->pwm_dd[i].dd)
+			pwm_dd_en |= (1 << i);
+	}
 #endif
 
 	if (pwm_dd_en & (1 << pwm->hwpwm)) {
@@ -282,6 +336,8 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 			dd_sel_old = pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_dd_sel_1;
 		else
 			dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0;
+#elif defined(CONFIG_SOC_Q645)
+		dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
 #endif
 	} else
 		dd_sel_old = ePWM_DD_MAX;
@@ -307,6 +363,8 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 				tmp2 = pPWMReg->pwm_du[(i-1)/2].pwm_du_dd_sel_1;
 			else
 				tmp2 = pPWMReg->pwm_du[i/2].pwm_du_dd_sel_0;
+#elif defined(CONFIG_SOC_Q645)
+			tmp2 = pPWMReg->pwm_du[i].pwm_du_dd_sel;
 #endif
 
 			if ((pwm_dd_en & (1 << i))
@@ -363,6 +421,9 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_0 = duty;
 			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0 = dd_sel_new;
 		}
+#elif defined(CONFIG_SOC_Q645)
+		pPWMReg->pwm_du[pwm->hwpwm].pwm_du = duty;
+		pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel = dd_sel_new;
 #endif
 	}
 
@@ -370,6 +431,8 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 #if defined(CONFIG_SOC_SP7021)
 		pPWMReg->grp244_1 &= ~(1 << dd_sel_old);
 #elif defined(CONFIG_SOC_I143)
+		pPWMReg->pwm_dd[dd_sel_old].dd = 0;
+#elif defined(CONFIG_SOC_Q645)
 		pPWMReg->pwm_dd[dd_sel_old].dd = 0;
 #endif
 
@@ -381,7 +444,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 	return 0;
 }
 
-#if defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
 static int _sunplus_pwm_polarity(struct pwm_chip *chip,
 		struct pwm_device *pwm,
 		enum pwm_polarity polarity)

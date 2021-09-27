@@ -1,8 +1,8 @@
-Sunplus SP7021 PWM driver bindings
+Sunplus SoC PWM driver bindings
 --------------------------------------
 
 Required parameters:
-- compatible :	"sunplus,sp7021-pwm"
+- compatible :	"sunplus,sp7021-pwm" or "sunplus,q645-pwm"
 - #pwm-cells :	Number of cells used to specify a PWM. First cell
 			specifies the per-chip index of the PWM to use and the
 			second cell is the period in nanoseconds - fixed to 2.
@@ -17,7 +17,7 @@ Required parameters:
 Optional properties:
 - none
 
-Example:
+Example1:
 
 		pwm: pwm@0x9c007a00 {
 			#pwm-cells = <2>;
@@ -50,3 +50,28 @@ Example:
 				>;
 			};
 		};
+
+Example2:
+
+	pwm: pwm@0xf8008f80 {
+		#pwm-cells = <2>;
+		compatible = "sunplus,q645-pwm";
+		reg = <0x0 0xf8008f80 0x0 0x100>;
+		clocks = <&clkc DISP_PWM>;
+		resets = <&rstc RST_DISP_PWM>;
+	};
+
+	pctl: pctl@0xf8000100 {
+		compatible = "sunplus,q645-pctl";
+		reg = <0x0 0xf8000100 0x0 0x100>,
+		      <0x0 0xf8000280 0x0 0x180>,
+		      <0x0 0xf80032e4 0x0 0x1c>,
+		      <0x0 0xf8000080 0x0 0x20>;
+		gpio-controller;
+		#gpio-cells = <2>;
+
+		pwm_pins: pinmux_pwm_pins {
+			sppctl,function = "PWM";
+			sppctl,groups = "PWM";
+		};
+	};
