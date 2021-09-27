@@ -207,7 +207,7 @@ static void sp_cbdma_tst_basic(void *data)
 		if (cbdma_info[i].sram_size) {
 			printk(KERN_INFO "Test for %s ------------------------\n", cbdma_info[i].name);
 			printk(KERN_INFO "MEMSET test\n");
-			
+
 			val = atomic_read(&isr_cnt);
 			cbdma_info[i].cbdma_ptr->int_en = 0;
 			cbdma_info[i].cbdma_ptr->length = BUF_SIZE_DRAM - UNALIGNED_DROP_S - UNALIGNED_DROP_E;
@@ -246,7 +246,7 @@ static void sp_cbdma_tst_basic(void *data)
 				BUG_ON(*u32_ptr != expected_u32);
 				u32_ptr++;
 			}
-			
+
 			printk(KERN_INFO "MEMSET test: OK\n\n");
 			printk(KERN_INFO "SRAM r/w test\n");
 
@@ -271,7 +271,7 @@ static void sp_cbdma_tst_basic(void *data)
 
 			printk(KERN_INFO "SRAM r/w test: OK\n\n");
 			printk(KERN_INFO "R/W test\n");
-			
+
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va);
 			val_u32 = (u32)(u32_ptr);
 			test_size = MIN(cbdma_info[i].sram_size, BUF_SIZE_DRAM) >> 1;
@@ -365,7 +365,7 @@ static void sp_cbdma_tst_basic(void *data)
 			}
 			printk(KERN_INFO "R/W test: OK\n\n");
 			printk(KERN_INFO "COPY test\n");
-			
+
 			test_size = BUF_SIZE_DRAM >> 1;
 			u32_ptr = (u32 *)(cbdma_info[i].buf_va + test_size);
 			val_u32 = (u32)(u32_ptr);
@@ -997,7 +997,7 @@ static int sp_cbdma_tst_thread(void *data)
 	msleep(100);	/* let console be available */
 	printk(KERN_INFO "%s, %d\n", __func__, __LINE__);
 
-	sp_cbdma_tst_basic(data);	
+	sp_cbdma_tst_basic(data);
 #if ((UNALIGNED_DROP_S | UNALIGNED_DROP_E) != 0)
 	return 0;
 #endif
@@ -1048,9 +1048,9 @@ while(1)
 			wmb();
 			while (1) {
 				if (cbdma_info[i].cbdma_ptr->config & CBDMA_CONFIG_GO) {
-					/* Still running */					
+					/* Still running */
 					//printk(KERN_INFO "MEMSET test: OK\n\n");
-					msleep(500);	/* let console be available */		
+					msleep(500);	/* let console be available */
 					continue;
 				}
 				if (atomic_read(&isr_cnt) == val) {
@@ -1078,7 +1078,7 @@ while(1)
 			if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_STOP_CTL0)
 			{
 				writel(0x00200000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
-				printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
+				printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 				break;
 			}
 			else
@@ -1093,7 +1093,7 @@ while(1)
 			if((reg&(QACCEPT_B_NOT_ACCEPT_CTL1|QDENY_DENY_CTL1|QREQ_B_NOT_REQ_CTL1))==Q_STOP_CTL1)
 			{
 				writel(0x20000000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
-				printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
+				printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 				break;
 			}
 			else
@@ -1128,7 +1128,7 @@ while(1)
 			wmb();
 			while (1) {
 				if (cbdma_info[i].cbdma_ptr->config & CBDMA_CONFIG_GO) {
-					/* Still running */					
+					/* Still running */
 					msleep(500);	/* let console be available */
 					continue;
 				}
@@ -1160,7 +1160,7 @@ while(1)
 
 					if(reg==0xee)
 					{
-						//printk(KERN_INFO "%s() clk disable QCBDMA=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));					
+						//printk(KERN_INFO "%s() clk disable QCBDMA=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 						//printk(KERN_INFO "%s() clk disable BASE2=%x QAdr=%x\n", __func__,B_SYSTEM_BASE,(B_SYSTEM_BASE + 32*4*30+ 4*2));
 						writel(0x20200000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
 						//printk(KERN_INFO "%s() sleep2\n", __func__);
@@ -1200,7 +1200,7 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 	unsigned int reg;
 
 	while(1)
-	{			
+	{
 			sram_ptr0 = (u32 *)ioremap(cbdma_info[0].sram_addr, 40*1024);
 			for(i=0;i<20;i++)
 			{
@@ -1227,11 +1227,11 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 				}
 
 			}
-			
+
 			//#else
 			//sram_ptr0 = (u32 *)ioremap(cbdma_info[0].sram_addr, 40*1024);
 			sram_ptr1 = (u32 *)ioremap(cbdma_info[1].sram_addr, 4*1024);
-			
+
 			for(i=0;i<20;i++)
 			{
 				*(sram_ptr1+i)=0x11;
@@ -1257,12 +1257,12 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 				}
 
 			}
-			
+
 
 			reg=readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2
 			printk(KERN_INFO "%s() Power Domain=%x\n", __func__,reg);
 
-			reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));//0x9C000424, iop_data1			
+			reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));//0x9C000424, iop_data1
 			printk(KERN_INFO "iop_data1=%x \n",reg);
 			if(reg==0xdd)
 			{
@@ -1280,12 +1280,12 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 					printk(KERN_INFO "%s() Power Domain Group 2 =%x\n", __func__,reg);
 
 					if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_STOP_CTL0)
-					{					
-						printk(KERN_INFO "%s() Q_STOP_CTL0\n", __func__); 		
+					{
+						printk(KERN_INFO "%s() Q_STOP_CTL0\n", __func__);
 						//writel(0x00200000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
-						writel(0x00010000, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3));				
-						printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
-						printk(KERN_INFO "%s() QCBDMA0 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));				
+						writel(0x00010000, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3));
+						printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
+						printk(KERN_INFO "%s() QCBDMA0 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));
 
 						for(i=0;i<5;i++)
 						{
@@ -1310,33 +1310,33 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 
 						writel(0xaa, (void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));
 
-						printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
+						printk(KERN_INFO "%s() QCBDMA0=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 
-						printk(KERN_INFO "%s() QCBDMA0 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));				
-						
+						printk(KERN_INFO "%s() QCBDMA0 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));
+
 						break;
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_DENIED_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA0 Q_DENIED_CTL0\n", __func__);		
-						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
+						printk(KERN_INFO "%s() QCBDMA0 Q_DENIED_CTL0\n", __func__);
+						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2,
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_CONTINUE_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA0 Q_CONTINUE_CTL0\n", __func__);		
+						printk(KERN_INFO "%s() QCBDMA0 Q_CONTINUE_CTL0\n", __func__);
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_RNU_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA0 Q_RNU_CTL0\n", __func__);	
+						printk(KERN_INFO "%s() QCBDMA0 Q_RNU_CTL0\n", __func__);
 						break;
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_REQUEST_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA0 Q_REQUEST_CTL0\n", __func__);		
+						printk(KERN_INFO "%s() QCBDMA0 Q_REQUEST_CTL0\n", __func__);
 					}
 					//else
 					//{
-					//	writel(0x00080000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
+					//	writel(0x00080000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2,
 					//}
 					msleep(500);
 				}
@@ -1346,15 +1346,15 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 
 				while(1)
 				{
-				
+
 					printk(KERN_INFO "%s() clk run->stop QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 					reg=readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
 					if((reg&(QACCEPT_B_NOT_ACCEPT_CTL1|QDENY_DENY_CTL1|QREQ_B_NOT_REQ_CTL1))==Q_STOP_CTL1)
 					{
 						//writel(0x20000000, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));
 						writel(0x00020000, (void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3));
-						printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
-						printk(KERN_INFO "%s() QCBDMA1 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));				
+						printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
+						printk(KERN_INFO "%s() QCBDMA1 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));
 
 						for(i=0;i<5;i++)
 						{
@@ -1379,29 +1379,29 @@ static void sp_qtest_cbdma_sram_rw(void *data)
 
 						writel(0xaa, (void __iomem *)(B_SYSTEM_BASE + 32*4*8+ 4*9));
 
-						printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));				
+						printk(KERN_INFO "%s() QCBDMA1=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2)));
 
-						printk(KERN_INFO "%s() QCBDMA1 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));		
-						
+						printk(KERN_INFO "%s() QCBDMA1 clk=%x\n", __func__,readl((void __iomem *)(B_SYSTEM_BASE + 32*4*0+ 4*3)));
+
 						break;
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_DENIED_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA1 Q_DENIED_CTL0\n", __func__);		
-						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2, 
+						printk(KERN_INFO "%s() QCBDMA1 Q_DENIED_CTL0\n", __func__);
+						writel(0x00080008, (void __iomem *)(B_SYSTEM_BASE + 32*4*30+ 4*2));//0x9C000F08, Power Domain Group 2,
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_CONTINUE_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA1 Q_CONTINUE_CTL0\n", __func__);		
+						printk(KERN_INFO "%s() QCBDMA1 Q_CONTINUE_CTL0\n", __func__);
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_RNU_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA1 Q_RNU_CTL0\n", __func__);	
+						printk(KERN_INFO "%s() QCBDMA1 Q_RNU_CTL0\n", __func__);
 						break;
 					}
 					else if((reg&(QACCEPT_B_NOT_ACCEPT_CTL0|QDENY_DENY_CTL0|QREQ_B_NOT_REQ_CTL0))==Q_REQUEST_CTL0)
 					{
-						printk(KERN_INFO "%s() QCBDMA1 Q_REQUEST_CTL0\n", __func__);		
+						printk(KERN_INFO "%s() QCBDMA1 Q_REQUEST_CTL0\n", __func__);
 					}
 					//else
 					//{
@@ -1437,8 +1437,8 @@ static int sp_qtest_cbdma_thread(void *data)
 	msleep(100);	/* let console be available */
 	printk(KERN_INFO "%s, %d\n", __func__, __LINE__);
 
-	//sp_qtest_cbdma_basic(data);	
-	sp_qtest_cbdma_sram_rw(data);	
+	//sp_qtest_cbdma_basic(data);
+	sp_qtest_cbdma_sram_rw(data);
 
 	for (i = 0; i < NUM_CBDMA; i++) {
 		if (cbdma_info[i].buf_va) {
@@ -1477,7 +1477,7 @@ static irqreturn_t sp_cbdma_tst_irq(int irq, void *args)
 
 	ptr = (struct cbdma_info_s *)(args);
 	int_flag = ptr->cbdma_ptr->int_flag;
-	
+
 	//printk(KERN_INFO  "%s, %d, %s, int_flag: 0x%x, isr_cnt: %d\n", __func__, __LINE__, ptr->irq_name, int_flag, atomic_read(&isr_cnt));
 	BUG_ON(int_flag != CBDMA_INT_FLAG_DONE);
 
@@ -1573,7 +1573,7 @@ static int sp_qtest_cbdma_probe(struct platform_device *pdev)
 		printk(KERN_INFO "Start a thread for test ...\n");
 		thread_ptr = kthread_run(sp_qtest_cbdma_thread, cbdma_info, "sp_qtest_cbdma_thread");
 		//thread_ptr = kthread_run(sp_cbdma_tst_thread, cbdma_info, "sp_cbdma_tst_thread");
-		
+
 	}
 
 	idx_cbdma++;
@@ -1669,7 +1669,7 @@ static int sp_qtest_rw_cbdma_probe(struct platform_device *pdev)
 		printk(KERN_INFO "Start a thread for test ...\n");
 		thread_ptr = kthread_run(sp_qtest_cbdma_thread, cbdma_info, "sp_qtest_cbdma_thread");
 		//thread_ptr = kthread_run(sp_cbdma_tst_thread, cbdma_info, "sp_cbdma_tst_thread");
-		
+
 	}
 
 	idx_cbdma++;
@@ -1682,7 +1682,7 @@ static struct platform_driver qtest_driver = {
 	.driver		= {
 		.name		= "sp_qtest_cbdma",
 		.of_match_table	= of_match_ptr(sp_qtest_dt_ids),
-		
+
 	},
 	.id_table	= sp_qtest_devtypes,
 	.probe		= sp_qtest_rw_cbdma_probe,
