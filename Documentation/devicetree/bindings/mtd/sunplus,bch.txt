@@ -1,0 +1,22 @@
+Device-Tree bindings of sp_bch device
+
+Required properties:
+- compatible: Should be
+				"sunplus,sunplus,sp7021-bch" for bch of sp7021
+				"sunplus,sunplus,q645-bch" for bch of q645
+- reg: Physical base address and length of the controller's register
+- interrupt-parent: Interrupt phandles (see interrupt-controller for details)
+- interrupts: interrupt number to the cpu.
+- clocks: Clock phandles (see clock-controller for details)
+- resets: Reset phandles (see reset-controller for details)
+
+Example:
+
+	bch0: bch@sp_bch {
+		compatible = "sunplus,sp7021-bch";
+		reg = <0x9c101000 0x20>;
+		interrupt-parent = <&intc>;
+		interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc BCH>;
+		resets = <&rstc RST_BCH>;
+	};

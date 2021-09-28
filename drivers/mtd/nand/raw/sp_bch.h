@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __SP_BCH_H
 #define __SP_BCH_H
 #include <linux/clk.h>
@@ -70,8 +71,8 @@ struct sp_bch_regs {
 #define SR_BLANK_00               BIT(28)       /* data are all 0x00 */
 #define SR_BLANK_FF               BIT(24)       /* data are all 0xff */
 
-#define SP_BCH_IOC1K60ENC        _IOWR('S', 0, struct sp_bch_req)
-#define SP_BCH_IOC1K60DEC        _IOWR('S', 1, struct sp_bch_req)
+#define SP_BCH_IOC1K60ENC         _IOWR('S', 0, struct sp_bch_req)
+#define SP_BCH_IOC1K60DEC         _IOWR('S', 1, struct sp_bch_req)
 
 struct sp_bch_chip {
 	struct device *dev;

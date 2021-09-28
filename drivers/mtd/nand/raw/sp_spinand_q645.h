@@ -1,8 +1,4 @@
-/*
- * Sunplus Technology
- * SPDX-License-Identifier:     GPL-2.0+
- */
-
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __SP_SPINAND_H
 #define __SP_SPINAND_H
 #include <linux/clk.h>
@@ -18,6 +14,7 @@
 #define SP_SPINAND_REG_BASE       0xF8002B80    // RF_GRP(87, 0)
 #define SP_SPINAND_IRQ            23
 #define CONFIG_SPINAND_DEV_IN_DTS
+#define ZEBU_SIM                  0             // For zebu_sim
 
 /*
  *  spi nand functional related configs
@@ -25,7 +22,7 @@
 #define CONFIG_SPINAND_CLK_DIV          4
 #define CONFIG_SPINAND_READ_BITMODE     SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_WRITE_BITMODE    SPINAND_4BIT_MODE
-#if 0 // For zebu_sim
+#if ZEBU_SIM
 #define CONFIG_SPINAND_READ_TIMING_SEL  0
 #define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
 #define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA_AUTOBCH
@@ -42,15 +39,15 @@
 #define SPINAND_DEBUG_ON
 #ifdef SPINAND_DEBUG_ON
 #define TAG "[SPI-NAND] "
-#define SPINAND_LOGE(fmt, ...) printk(KERN_ERR TAG fmt,##__VA_ARGS__)
-#define SPINAND_LOGW(fmt, ...) printk(KERN_WARNING TAG fmt,##__VA_ARGS__)
-#define SPINAND_LOGI(fmt, ...) printk(KERN_INFO TAG fmt,##__VA_ARGS__)
-#define SPINAND_LOGD(fmt, ...) printk(KERN_DEBUG TAG fmt,##__VA_ARGS__)
+#define SPINAND_LOGE(fmt, ...) pr_err(TAG fmt, ##__VA_ARGS__)
+#define SPINAND_LOGW(fmt, ...) pr_warn(TAG fmt, ##__VA_ARGS__)
+#define SPINAND_LOGI(fmt, ...) pr_info(TAG fmt, ##__VA_ARGS__)
+#define SPINAND_LOGD(fmt, ...) pr_devel(TAG fmt, ##__VA_ARGS__)
 #else
-#define SPINAND_LOGE(fmt, ...)  do{}while(0)
-#define SPINAND_LOGW(fmt, ...)  do{}while(0)
-#define SPINAND_LOGI(fmt, ...)  do{}while(0)
-#define SPINAND_LOGD(fmt, ...)  do{}while(0)
+#define SPINAND_LOGE(fmt, ...)  do {} while (0)
+#define SPINAND_LOGW(fmt, ...)  do {} while (0)
+#define SPINAND_LOGI(fmt, ...)  do {} while (0)
+#define SPINAND_LOGD(fmt, ...)  do {} while (0)
 #endif
 
 /*
@@ -338,7 +335,7 @@ struct sp_spinand_regs {
 struct sp_spinand_info {
 	struct device *dev;
 	struct clk *clk;
-	struct mtd_info* mtd;
+	struct mtd_info *mtd;
 	struct nand_chip nand;
 	void __iomem *regs;
 	wait_queue_head_t wq;
@@ -369,6 +366,11 @@ struct sp_spinand_info {
 	u8 dev_protection;      /* protection value by reading feature(0xA0) */
 	u8 bch_dec_src;         /* BCH decode data source. 0:spi-nand controller, 1:system memory */
 };
+
+/**************************************************************************
+ *                 E X T E R N A L   R E F E R E N C E S                  *
+ **************************************************************************/
+extern struct nand_flash_dev sp_spinand_ids[];
 
 #endif /* __SP_SPINAND_H */
 

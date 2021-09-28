@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 #ifndef __SP_BCH_H
 #define __SP_BCH_H
 #include <linux/clk.h>
@@ -36,7 +37,7 @@ struct sp_bch_regs {
 #define CR0_AUTOSTART              BIT(1)
 #define CR0_ENCODE                 0
 #define CR0_DECODE                 BIT(4)
-#define CR0_DECSRC(n)             (((n)==0) << 2)
+#define CR0_DECSRC(n)             (((n) == 0) << 2)
 #define CR0_CMODE_1024x60         (0 << 8)
 #define CR0_CMODE_1024x40         (1 << 8)
 #define CR0_CMODE_1024x24         (2 << 8)

@@ -1,0 +1,23 @@
+Device-Tree bindings of sp_spinand device
+
+Required properties:
+- compatible: Should be
+				"sunplus,sunplus,sp7021-spinand" for bch of sp7021
+				"sunplus,sunplus,q645-spi-nand" for bch of q645
+- reg: Physical base address and length of the controller's register
+- interrupt-parent: Interrupt phandles (see interrupt-controller for details)
+- interrupts: interrupt number to the cpu.
+- clocks: Clock phandles (see clock-controller for details)
+- resets: Reset phandles (see reset-controller for details)
+
+Example:
+
+	spinand0: spinand@sp_spinand {
+		compatible = "sunplus,sp7021-spinand";
+		reg = <0x9c002B80 0x50>;
+		interrupt-parent = <&intc>;
+		interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
+		linux,part-probe = "ofpart", "sunplus_part";
+		clocks = <&clkc SPIND>;
+		resets = <&rstc RST_SPIND>;
+	};
