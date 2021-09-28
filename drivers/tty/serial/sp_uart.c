@@ -40,7 +40,7 @@
 #include <dt-bindings/pinctrl/sppctl-q645.h>
 #endif
 #ifdef CONFIG_SOC_SP7021
-#include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/clock/sp-sp7021.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #endif
 #include <linux/delay.h>

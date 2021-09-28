@@ -15,7 +15,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <mach/io_map.h>
-#include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/clock/sp-sp7021.h>
 
 //#define TRACE	pr_info("### %s:%d (%d)\n", __func__, __LINE__, (clk->reg - REG(4, 0)) / 4)
 #define TRACE

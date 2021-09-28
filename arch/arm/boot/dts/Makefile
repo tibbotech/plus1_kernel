@@ -1408,3 +1408,12 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-opp-zaius.dtb \
 	aspeed-bmc-portwell-neptune.dtb \
 	aspeed-bmc-quanta-q71l.dtb
+dtb-$(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) += \
+	sp7021-bpi-f2p.dtb \
+	sp7021-bpi-f2s.dtb \
+	sp7021-demov2.dtb \
+	sp7021-demov3.dtb \
+	sp7021-ev.dtb \
+	sp7021-ev-ttl.dtb \
+	sp7021-ltpp3g2revD.dtb \
+	sp7021-ltpp3g2-sunplus.dtb

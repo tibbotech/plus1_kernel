@@ -5,7 +5,6 @@
  * Copyright (C) Sunplus Technology Co., Ltd.
  *       All rights reserved.
  *
- * Based on arch/arm/mach-s3c2410/pm.c
  * Copyright (c) 2006 Simtec Electronics
  *	Ben Dooks <ben@simtec.co.uk>
  *

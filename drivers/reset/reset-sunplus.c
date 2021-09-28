@@ -26,9 +26,7 @@
 #include <linux/reboot.h>
 
 #if defined(CONFIG_SOC_SP7021)
-#include <dt-bindings/reset/sp-q628.h>
-#elif defined(CONFIG_SOC_I143)
-#include <dt-bindings/reset/sp-i143.h>
+#include <dt-bindings/reset/sp-sp7021.h>
 #elif defined(CONFIG_SOC_Q645)
 #include <dt-bindings/reset/sp-q645.h>
 #endif
