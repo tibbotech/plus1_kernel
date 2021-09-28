@@ -294,7 +294,7 @@ static ssize_t setdata_store(struct device *dev, struct device_attribute *attr, 
 	unsigned char num[1], value[4];
 	unsigned char ret = count;
 	unsigned int i, setnum, setvalue;
-	long val;
+	unsigned long val;
 	ssize_t status;
 
 	num[0] = buf[0];
@@ -302,7 +302,7 @@ static ssize_t setdata_store(struct device *dev, struct device_attribute *attr, 
 		value[i] = buf[2+i];
 
 	setnum = (unsigned int)num[0];
-	status = kstrtol(value, 0, &val);
+	status = kstrtoul(value, 16, &val);
 	if (status)
 		return status;
 	setvalue = val;
@@ -325,12 +325,12 @@ static ssize_t setgpio_store(struct device *dev, struct device_attribute *attr, 
 	int ret = count;
 	unsigned char num[1];
 	unsigned int setnum;
-	long val;
+	unsigned long val;
 	ssize_t status;
 
 	DBG_INFO("iop_store_setgpio\n");
 	num[0] = buf[0];
-	status = kstrtol(buf, 0, &val);
+	status = kstrtoul(buf, 16, &val);
 	if (status)
 		return status;
 	setnum = val;
