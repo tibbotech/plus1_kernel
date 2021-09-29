@@ -139,7 +139,7 @@ static ssize_t normalcode_write(struct file *filp, struct kobject *kobj,
 	if (RECEIVE_CODE_SIZE == NORMAL_CODE_MAX_SIZE) {
 		DBG_INFO("source code size=%x\n", RECEIVE_CODE_SIZE);
 		hal_iop_load_normal_code(iop->iop_regs);
-		//hal_iop_get_iop_data(iop->iop_regs);
+		hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Update normal code 64K\n");
 		RECEIVE_CODE_SIZE = 0;
 	}
@@ -187,7 +187,7 @@ static ssize_t standbycode_write(struct file *filp, struct kobject *kobj,
 	if (RECEIVE_CODE_SIZE == STANDBY_CODE_MAX_SIZE) {
 		DBG_INFO("source code size=%x\n", RECEIVE_CODE_SIZE);
 		hal_iop_load_standby_code(iop->iop_regs);
-		//hal_iop_get_iop_data(iop->iop_regs);
+		hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Update standby code 16K\n");
 		RECEIVE_CODE_SIZE = 0;
 	}
@@ -211,9 +211,11 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr, con
 
 	if (buf[0] == '0') {
 		hal_iop_normalmode(iop->iop_regs);
+		hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Switch to normal mode.\n");
 	} else if (buf[0] == '1') {
 		hal_iop_standbymode(iop->iop_regs);
+		hal_iop_get_iop_data(iop->iop_regs);
 		DBG_INFO("Switch to standby mode.\n");
 	} else {
 		DBG_INFO("echo 0 or 1 mode\n");
@@ -300,15 +302,17 @@ static ssize_t setdata_store(struct device *dev, struct device_attribute *attr, 
 	num[0] = buf[0];
 	for (i = 0; i < 4; i++)
 		value[i] = buf[2+i];
-
-	setnum = (unsigned int)num[0];
+		
 	status = kstrtoul(value, 16, &val);
 	if (status)
 		return status;
-	setvalue = val;
+	
+	setnum = (unsigned int)num[0];
+	setvalue = val;	
 	DBG_INFO("setnum=%x\n", setnum);
 	DBG_INFO("setvalue=%x\n", setvalue);
 	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);
+	hal_iop_get_iop_data(iop->iop_regs);
 	return ret;
 }
 
