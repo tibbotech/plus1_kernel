@@ -1,16 +1,8 @@
 if ARCH_PENTAGRAM
 
-choice
-	prompt "Sunplus Pentagram SOC"
-	default MACH_PENTAGRAM_SP7021_ACHIP
-	help
-	  Support for Sunplus SP7021 SOC:
-	  AChip: 4 Cores ARM Cortex-A7
-	  BChip: ARM926EJ-S
-	  Currently, only AChip is supported.
-
-config MACH_PENTAGRAM_SP7021_ACHIP
-	bool "SP7021 A+B support"
+config SOC_SP7021
+	bool "Sunplus SP7021 SoC support"
+	default y
 	select CPU_V7
 	select ARM_GIC
 	select SP_INTC
@@ -22,19 +14,13 @@ config MACH_PENTAGRAM_SP7021_ACHIP
 	select PINCTRL_SPPCTL
 	select OF_OVERLAY
 	select GPIOLIB
+	help
+	  Support for Sunplus SP7021 SoC. It is based on ARM 4-core
+	  Cotex-A7 with various peripherals (ex: I2C, SPI, SDIO,
+	  Ethernet and etc.), FPGA interface,  chip-to-chip bus.
+	  It is designed for industrial control.
 
-config MACH_PENTAGRAM_SP7021_BCHIP
-	bool "SP7021 B support"
-	select CPU_ARM926T
-	select SP_INTC
-	select COMMON_CLK_SP7021
-	select CLKSRC_SP_TIMER
-	select PINCTRL
-	select PINCTRL_SPPCTL
-
-endchoice
-
-menu "Pentagram options"
+menu "Sunplus SP7021 SoC options"
 
 config SP_PARTIAL_CLKEN
 	bool "Use partial clken to save power"
@@ -43,28 +29,19 @@ config SP_PARTIAL_CLKEN
 	  Only enable partial clken in moon settings to save power.
 	  Device drivers should enable their own clken bit during
 	  driver init or driver probe.
-	  Refer drivers/misc/sp_icm.c:sp_icm_probe()
+	  It is enabled by default.
 
 config SP_MON
-	bool "Sunplus MON (SysRq:a)"
+	bool "Sunplus MON (SysRq: a)"
 	select MAGIC_SYSRQ
 	help
 	  Enable Sunplus MON shell in SysRq.
-	  Sunplus MON(Monitor) shell offered a simple commandline
+	  Sunplus MON (Monitor) shell offers a simple command-line
 	  with 5 commands: lreg/wreg/lw/sw/task.
 	  lreg/wreg: read/write reg groups
 	  lw/sw: read/write memory
 	  task: dump kernel task info
 
 endmenu
-
-config SOC_SP7021
-	def_bool MACH_PENTAGRAM_SP7021_ACHIP || MACH_PENTAGRAM_SP7021_BCHIP
-
-config SOC_I143
-	def_bool MACH_PENTAGRAM_I143_ACHIP
-
-config MACH_PENTAGRAM_ACHIP
-	def_bool MACH_PENTAGRAM_SP7021_ACHIP || MACH_PENTAGRAM_I143_ACHIP
 
 endif

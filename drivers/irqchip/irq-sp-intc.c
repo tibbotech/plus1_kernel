@@ -18,7 +18,7 @@
 #include <linux/of_irq.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h>
 
-#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_SP7021)
 #define SUPPORT_IRQ_GRP_REG
 #endif
 
@@ -480,7 +480,7 @@ int __init sp_intc_init(int hwirq_start, int irqs, void __iomem *base0, void __i
 	return 0;
 }
 
-#if defined(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) || defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_SP7021)
 static cpumask_t *u2cpumask(u32 mask, cpumask_t *cpumask)
 {
 	unsigned int i;

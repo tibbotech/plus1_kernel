@@ -106,7 +106,7 @@ static unsigned char hdmi_audio_infoframe[HDMI_INFOFRAME_SIZE(AUDIO)] = {
 /*					 FUNCTION DECLARATIONS					  */
 /* ---------------------------------------------------------------------------------------------- */
 
-#if defined CONFIG_SOC_SP7021 && !defined CONFIG_MACH_PENTAGRAM_SP7021_BCHIP
+#if defined CONFIG_SOC_SP7021
 	#ifdef CONFIG_VIDEO_SP7021_DISP
 extern int g_disp_hdmi_skip_plltv;
 	#endif
@@ -130,7 +130,7 @@ static void apply_pixel_clock(void __iomem *moon4base)
 		break;
 	}
 
-#if defined CONFIG_SOC_SP7021 && !defined CONFIG_MACH_PENTAGRAM_SP7021_BCHIP
+#if defined CONFIG_SOC_SP7021
 	#ifdef CONFIG_VIDEO_SP7021_DISP
 	if (g_disp_hdmi_skip_plltv) {
 		;//hdmi_skip_plltv
