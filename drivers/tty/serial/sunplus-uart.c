@@ -330,105 +330,6 @@ static inline void wait_for_xmitr(struct uart_port *port)
 	}
 }
 
-static void sunplus_uart_console_putchar(struct uart_port *port, int ch)
-{
-	wait_for_xmitr(port);
-	sp_uart_put_char(port, ch);
-}
-
-static void sunplus_console_write(struct console *co,
-	const char *s, unsigned int count)
-{
-	unsigned long flags;
-	int locked = 1;
-	struct sunplus_uart_port *sp_port;
-	struct sunplus_uartdma_info *uartdma_tx;
-	struct regs_uatxdma *txdma_reg;
-	struct regs_uatxgdma *gdma_reg;
-
-	local_irq_save(flags);
-
-#if defined(SUPPORT_SYSRQ)
-	if (sunplus_uart_ports[co->index].uport.sysrq)
-#else
-	if (0)
-#endif
-	{
-		locked = 0;
-	} else if (oops_in_progress) {
-		locked = spin_trylock(&sunplus_uart_ports[co->index].uport.lock);
-	} else {
-		spin_lock(&sunplus_uart_ports[co->index].uport.lock);
-	}
-
-	sp_port = (struct sunplus_uart_port *)(sunplus_uart_ports[co->index].uport.private_data);
-	uartdma_tx = sp_port->uartdma_tx;
-	if (uartdma_tx) {
-		txdma_reg = (struct regs_uatxdma *)(uartdma_tx->membase);
-		gdma_reg = (struct regs_uatxgdma *)(uartdma_tx->gdma_membase);
-		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) {
-			/* ring buffer for UART's Tx has been enabled */
-			uart_console_write(&sunplus_uart_ports[co->index].uport,
-				s, count, sunplus_uart_console_putchar);
-		} else {
-			/* Refer to .startup() */
-			if (uartdma_tx->buf_va == NULL) {
-				uartdma_tx->buf_va =
-					dma_alloc_coherent(sunplus_uart_ports[co->index].uport.dev,
-					UATXDMA_BUF_SZ, &(uartdma_tx->dma_handle), GFP_KERNEL);
-				/*
-				 * This message can't be sent to console
-				 * because it's not ready yet
-				 */
-				if (uartdma_tx->buf_va == NULL)
-					panic("Die here.");
-
-				/*
-				 * set 1ms , set wr_adr , set start_addr/end_addr ,
-				 * set bind to uart# , set int enable ,
-				 * set txdma enable (Use ring buffer for UART's Tx)
-				 */
-				writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));
-				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
-				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));
-				writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1),
-					&(txdma_reg->txdma_end_addr));
-				writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
-				writel(0x41, &(gdma_reg->gdma_int_en));
-				writel(0x00000005, &(txdma_reg->txdma_enable));
-			}
-		}
-	} else {
-		uart_console_write(&sunplus_uart_ports[co->index].uport,
-			s, count, sunplus_uart_console_putchar);
-	}
-
-	if (locked)
-		spin_unlock(&sunplus_uart_ports[co->index].uport.lock);
-
-	local_irq_restore(flags);
-}
-
-static int __init sunplus_console_setup(struct console *co, char *options)
-{
-	int ret = 0;
-	int baud = 115200;
-	int bits = 8;
-	int parity = 'n';
-	int flow = 'n';
-
-	if ((co->index >= NUM_UART) || (co->index < 0))
-		return -EINVAL;
-
-	if (options)
-		uart_parse_options(options, &baud, &parity, &bits, &flow);
-
-	ret = uart_set_options(&sunplus_uart_ports[co->index].uport,
-		co, baud, parity, bits, flow);
-
-	return ret;
-}
-
 /*
  * Documentation/serial/driver:
  * tx_empty(port)
@@ -1743,12 +1644,111 @@ static const struct uart_ops sunplus_uart_ops = {
 
 static struct uart_driver sunplus_uart_driver;
 
+#ifdef CONFIG_SERIAL_SUNPLUS_CONSOLE
+static void sunplus_uart_console_putchar(struct uart_port *port, int ch)
+{
+	wait_for_xmitr(port);
+	sp_uart_put_char(port, ch);
+}
+
+static void sunplus_console_write(struct console *co,
+	const char *s, unsigned int count)
+{
+	unsigned long flags;
+	int locked = 1;
+	struct sunplus_uart_port *sp_port;
+	struct sunplus_uartdma_info *uartdma_tx;
+	struct regs_uatxdma *txdma_reg;
+	struct regs_uatxgdma *gdma_reg;
+
+	local_irq_save(flags);
+
+#if defined(SUPPORT_SYSRQ)
+	if (sunplus_uart_ports[co->index].uport.sysrq)
+#else
+	if (0)
+#endif
+	{
+		locked = 0;
+	} else if (oops_in_progress) {
+		locked = spin_trylock(&sunplus_uart_ports[co->index].uport.lock);
+	} else {
+		spin_lock(&sunplus_uart_ports[co->index].uport.lock);
+	}
+
+	sp_port = (struct sunplus_uart_port *)(sunplus_uart_ports[co->index].uport.private_data);
+	uartdma_tx = sp_port->uartdma_tx;
+	if (uartdma_tx) {
+		txdma_reg = (struct regs_uatxdma *)(uartdma_tx->membase);
+		gdma_reg = (struct regs_uatxgdma *)(uartdma_tx->gdma_membase);
+		if (readl(&(txdma_reg->txdma_enable)) == 0x00000005) {
+			/* ring buffer for UART's Tx has been enabled */
+			uart_console_write(&sunplus_uart_ports[co->index].uport,
+				s, count, sunplus_uart_console_putchar);
+		} else {
+			/* Refer to .startup() */
+			if (uartdma_tx->buf_va == NULL) {
+				uartdma_tx->buf_va =
+					dma_alloc_coherent(sunplus_uart_ports[co->index].uport.dev,
+					UATXDMA_BUF_SZ, &(uartdma_tx->dma_handle), GFP_KERNEL);
+				/*
+				 * This message can't be sent to console
+				 * because it's not ready yet
+				 */
+				if (uartdma_tx->buf_va == NULL)
+					panic("Die here.");
+
+				/*
+				 * set 1ms , set wr_adr , set start_addr/end_addr ,
+				 * set bind to uart# , set int enable ,
+				 * set txdma enable (Use ring buffer for UART's Tx)
+				 */
+				writel((CLK_HIGH_UART / 1000), &(txdma_reg->txdma_tmr_unit));
+				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_wr_adr));
+				writel((u32)(uartdma_tx->dma_handle), &(txdma_reg->txdma_start_addr));
+				writel(((u32)(uartdma_tx->dma_handle) + UATXDMA_BUF_SZ - 1),
+					&(txdma_reg->txdma_end_addr));
+				writel(uartdma_tx->which_uart, &(txdma_reg->txdma_sel));
+				writel(0x41, &(gdma_reg->gdma_int_en));
+				writel(0x00000005, &(txdma_reg->txdma_enable));
+			}
+		}
+	} else {
+		uart_console_write(&sunplus_uart_ports[co->index].uport,
+			s, count, sunplus_uart_console_putchar);
+	}
+
+	if (locked)
+		spin_unlock(&sunplus_uart_ports[co->index].uport.lock);
+
+	local_irq_restore(flags);
+}
+
+static int __init sunplus_console_setup(struct console *co, char *options)
+{
+	int ret = 0;
+	int baud = 115200;
+	int bits = 8;
+	int parity = 'n';
+	int flow = 'n';
+
+	if ((co->index >= NUM_UART) || (co->index < 0))
+		return -EINVAL;
+
+	if (options)
+		uart_parse_options(options, &baud, &parity, &bits, &flow);
+
+	ret = uart_set_options(&sunplus_uart_ports[co->index].uport,
+		co, baud, parity, bits, flow);
+
+	return ret;
+}
+
 static struct console sunplus_console = {
 	.name		= DEVICE_NAME,
 	.write		= sunplus_console_write,
 	.device		= uart_console_device,	/* default */
 	.setup		= sunplus_console_setup,
-	/* .early_setup	= , */
 	/*
 	 * CON_ENABLED,
 	 * CON_CONSDEV: preferred console,
@@ -1757,9 +1757,9 @@ static struct console sunplus_console = {
 	 */
 	.flags		= CON_PRINTBUFFER,
 	.index		= -1,
-	/* .cflag	= , */
 	.data		= &sunplus_uart_driver
 };
+#endif
 
 static struct uart_driver sunplus_uart_driver = {
 	.owner		= THIS_MODULE,
@@ -1768,7 +1768,9 @@ static struct uart_driver sunplus_uart_driver = {
 	.major		= SP_UART_MAJOR,
 	.minor		= SP_UART_MINOR_START,
 	.nr		= NUM_UART,
+#ifdef CONFIG_SERIAL_SUNPLUS_CONSOLE
 	.cons		= &sunplus_console
+#endif
 };
 
 struct platform_device *sunpluse_uart_platform_device;
@@ -1969,8 +1971,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->fifosize = 128;
 	port->line = pdev->id;
 
+#ifdef CONFIG_SERIAL_SUNPLUS_CONSOLE
 	if (pdev->id == 0)
 		port->cons = &sunplus_console;
+#endif
 #ifdef TTYS_GPIO
 	if (pdev->id == 1) {
 		uart_gpio = of_get_named_gpio(pdev->dev.of_node,
@@ -2145,6 +2149,7 @@ module_init(sunplus_uart_init);
 
 module_param(uart0_as_console, uint, 0444);
 
+#ifdef CONFIG_SERIAL_EARLYCON
 static void sunplus_uart_putc(struct uart_port *port, int c)
 {
 	unsigned int status;
@@ -2177,6 +2182,7 @@ int __init sunplus_uart_early_setup(struct earlycon_device *device,
 }
 OF_EARLYCON_DECLARE(sp_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
 OF_EARLYCON_DECLARE(sp_uart, "sunplus,q645-uart", sunplus_uart_early_setup);
+#endif
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Sunplus Technology");

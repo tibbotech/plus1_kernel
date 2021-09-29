@@ -1,23 +1,25 @@
 Sunplus SP7021 UART controller
 
 Required properties:
-- compatible : should be "sunplus,sp7021-uart" for SP7021 controllers
-- reg : address and length of the register space
-- interrupt-parent: interrupt phandles(see interrupt-controller for details).
+- compatible: should be "sunplus,sp7021-uart" for SP7021 controller
+              should be "sunplus,q645-uart" for Q645 controller
+- reg: address and length of the register space
+- interrupt-parent: interrupt phandle
 - interrupts: should contain SP7021 interrupt number
-- clocks : Clock phandles (see clock-controller for details).
-- resets : Reset phandles (see reset-controller for details).
-- pinctrl-names : should be "default".
-- pinctrl-0 : pinctrl phandles (see pinctrl-controller for details).
+- clocks: Clock phandle
+- resets: Reset phandle
+- pinctrl-names: should be "default"
+- pinctrl-0: pinctrl phandle
 
 Optional properties for DMA mode:
-- compatible : should be "sunplus,sp7021-uart" for SP7021 controllers
-- reg : address and length of the register space
-- interrupt-parent: interrupt phandles(see interrupt-controller for details).
+- compatible: should be "sunplus,sp7021-uart" for SP7021 controller
+              should be "sunplus,q645-uart" for Q645 controlle
+- reg: address and length of the register space
+- interrupt-parent: interrupt phandle
 - interrupts: should contain SP7021 interrupt number
-- clocks : Clock phandles (see clock-controller for details).
-- resets : Reset phandles (see reset-controller for details).
-- which-uart : select 1/2/3/4 for DMA mode.
+- clocks: Clock phandle
+- resets: Reset phandle
+- which-uart: select UART #1, #2, #3 or #4 for DMA mode
 
 Note:
 UART0 TX/RX output, PIO mode only
@@ -28,144 +30,48 @@ UART4 TX/RX/CTS/RTS output, PIO/DMA mode selectable
 
 Example for PIO mode:
 
-		uart0: serial@sp_uart0 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c000900 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA0>;
-			resets = <&rstc RST_UA0>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pins_uart0>;
-		};
+	uart0: serial@sp_uart0 {
+		compatible = "sunplus,sp7021-uart";
+		reg = <0x9c000900 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA0>;
+		resets = <&rstc RST_UA0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_uart0>;
+	};
 
-		uart1: serial@sp_uart1 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c000980 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA1>;
-			resets = <&rstc RST_UA1>;
-		};
-
-		uart2: serial@sp_uart2 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c000800 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <55 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA2>;
-			resets = <&rstc RST_UA2>;
-		};
-
-		uart3: serial@sp_uart3 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c000880 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <56 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA3>;
-			resets = <&rstc RST_UA3>;
-		};
-
-		uart4: serial@sp_uart4 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008780 0x80>;
-			interrupt-parent = <&intc>;
-			interrupts = <134 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UA4>;
-			resets = <&rstc RST_UA4>;
-		};
-
-		pctl: pctl@0x9C000100 {
-			compatible = "sunplus,sp7021-pctl";
-			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
-			gpio-controller;
-			#gpio-cells = <2>;
-			clocks = <&clkc GPIO>;
-			resets = <&rstc RST_GPIO>;
-
-			pins_uart0: pins_uart0 {
-				sppctl,groups = "UA0";
-				sppctl,function = "UA0";
-			};
-      pins_uart1: pins_uart1 {
-        sppctl,pins = <
-          SPPCTL_IOPAD(1,SPPCTL_PCTL_G_PMUX,MUXF_UA1_TX,0)
-          SPPCTL_IOPAD(2,SPPCTL_PCTL_G_PMUX,MUXF_UA1_RX,0)
-          SPPCTL_IOPAD(3,SPPCTL_PCTL_G_PMUX,MUXF_UA1_RTS,0)
-          SPPCTL_IOPAD(4,SPPCTL_PCTL_G_PMUX,MUXF_UA1_CTS,0)
-        >;
-      };
-      pins_uart2: pins_uart2 {
-        sppctl,pins = <
-          SPPCTL_IOPAD(5,SPPCTL_PCTL_G_PMUX,MUXF_UA2_TX,0)
-          SPPCTL_IOPAD(6,SPPCTL_PCTL_G_PMUX,MUXF_UA2_RX,0)
-          SPPCTL_IOPAD(7,SPPCTL_PCTL_G_PMUX,MUXF_UA2_RTS,0)
-          SPPCTL_IOPAD(8,SPPCTL_PCTL_G_PMUX,MUXF_UA2_CTS,0)
-        >;
-      };
-      pins_uart3: pins_uart3 {
-        sppctl,pins = <
-          SPPCTL_IOPAD(9,SPPCTL_PCTL_G_PMUX,MUXF_UA3_TX,0)
-          SPPCTL_IOPAD(10,SPPCTL_PCTL_G_PMUX,MUXF_UA3_RX,0)
-          SPPCTL_IOPAD(11,SPPCTL_PCTL_G_PMUX,MUXF_UA3_RTS,0)
-          SPPCTL_IOPAD(12,SPPCTL_PCTL_G_PMUX,MUXF_UA3_CTS,0)
-        >;
-      };
-      pins_uart4: pins_uart4 {
-        sppctl,pins = <
-          SPPCTL_IOPAD(13,SPPCTL_PCTL_G_PMUX,MUXF_UA4_TX,0)
-          SPPCTL_IOPAD(14,SPPCTL_PCTL_G_PMUX,MUXF_UA4_RX,0)
-          SPPCTL_IOPAD(15,SPPCTL_PCTL_G_PMUX,MUXF_UA4_RTS,0)
-          SPPCTL_IOPAD(16,SPPCTL_PCTL_G_PMUX,MUXF_UA4_CTS,0)
-        >;
-      };
-    };
+	uart1: serial@sp_uart1 {
+		compatible = "sunplus,sp7021-uart";
+		reg = <0x9c000980 0x80>;
+		interrupt-parent = <&intc>;
+		interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UA1>;
+		resets = <&rstc RST_UA1>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_uart1>;
+	};
 
 Example for DMA mode:
 
-#ifdef ENABLE_DMARX0
-		/* DMA Rx for UARTx */
-		uartdmarx0: serial@sp_uartdmarx0 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008980 0x40>;
-			interrupt-parent = <&intc>;
-			interrupts = <138 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA>, <&clkc PERI0>;
-			clock-names = "UADMA", "PERI0";
-			resets = <&rstc RST_UADMA>;
-			which-uart = <1>;
-		};
-#endif
-#ifdef ENABLE_DMARX1
-		uartdmarx1: serial@sp_uartdmarx1 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c0089c0 0x40>;
-			interrupt-parent = <&intc>;
-			interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA>,	<&clkc PERI1>;
-			clock-names = "UADMA", "PERI1";
-			resets = <&rstc RST_UADMA>;
-			which-uart = <2>;
-		};
-#endif
-#ifdef ENABLE_DMATX0
-		/* DMA Tx for UARTx */
-		uartdmatx0: serial@sp_uartdmatx0 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008a00 0x40>, <0x9c008880 0x80>;
-			clocks = <&clkc HWUA>, <&clkc PERI0>;
-			clock-names = "HWUA", "PERI0";
-			resets = <&rstc RST_HWUA>;
-			which-uart = <1>;
-		};
-#endif
-#ifdef ENABLE_DMATX1
-		uartdmatx1: serial@sp_uartdmatx1 {
-			compatible = "sunplus,sp7021-uart";
-			reg = <0x9c008a40 0x40>, <0x9c008900 0x80>;
-			clocks = <&clkc HWUA>, <&clkc PERI1>;
-			clock-names = "HWUA", "PERI1";
-			resets = <&rstc RST_HWUA>;
-			which-uart = <2>;
-		};
-#endif
+	/* RX DMA for UART2 */
+	uartdmarx1: serial@sp_uartdmarx1 {
+		compatible = "sunplus,sp7021-uart";
+		reg = <0x9c0089c0 0x40>;
+		interrupt-parent = <&intc>;
+		interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADMA>,	<&clkc PERI1>;
+		clock-names = "UADMA", "PERI1";
+		resets = <&rstc RST_UADMA>;
+		which-uart = <2>;
+	};
+
+	/* TX DMA for UART2 */
+	uartdmatx1: serial@sp_uartdmatx1 {
+		compatible = "sunplus,sp7021-uart";
+		reg = <0x9c008a40 0x40>, <0x9c008900 0x80>;
+		clocks = <&clkc HWUA>, <&clkc PERI1>;
+		clock-names = "HWUA", "PERI1";
+		resets = <&rstc RST_HWUA>;
+		which-uart = <2>;
+	};
