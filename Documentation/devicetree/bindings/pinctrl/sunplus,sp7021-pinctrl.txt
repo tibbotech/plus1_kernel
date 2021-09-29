@@ -36,8 +36,8 @@ Required properties in subnode:
 
 Example:
 
-#include <dt-bindings/reset/sp-q628.h>
-#include <dt-bindings/clock/sp-q628.h>
+#include <dt-bindings/reset/sp-sp7021.h>
+#include <dt-bindings/clock/sp-sp7021.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 
