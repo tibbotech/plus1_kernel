@@ -3,54 +3,20 @@ if ARCH_PENTAGRAM
 choice
 	prompt "Sunplus Pentagram SOC"
 	default MACH_PENTAGRAM_SP7021_ACHIP
-
-config MACH_PENTAGRAM_8388_ACHIP
-        bool "8388 A support"
-        select CPU_V7
-        select ARM_GIC
-	select HAVE_SMP
-	select MIGHT_HAVE_CACHE_L2X0
-	select CLKSRC_SP_TIMER
-
-config MACH_PENTAGRAM_8388_BCHIP
-        bool "8388 B support"
-        select CPU_ARM926T
-        select SP_INTC
-	select CLKSRC_SP_TIMER
-
-config MACH_PENTAGRAM_I136_ACHIP
-        bool "I136 A+B support"
-        select CPU_V7
-        select ARM_GIC
-	select SP_INTC
-	select HAVE_SMP
-	select HAVE_ARM_ARCH_TIMER
-	select CLKSRC_SP_TIMER
-
-config MACH_PENTAGRAM_I137_BCHIP
-        bool "I137 B support"
-        select CPU_ARM926T
-        select SP_INTC
-	select CLKSRC_SP_TIMER
-
-config MACH_PENTAGRAM_3502_ACHIP
-	bool "3502 A support"
-	select CPU_V7
-	select ARM_GIC
-	select HAVE_SMP
-	select MIGHT_HAVE_CACHE_L2X0
-	select CLKSRC_SP_TIMER
-	select HAVE_ARM_SCU
-	select ARM_GLOBAL_TIMER
+	help
+	  Support for Sunplus SP7021 SOC:
+	  AChip: 4 Cores ARM Cortex-A7
+	  BChip: ARM926EJ-S
+	  Currently, only AChip is supported.
 
 config MACH_PENTAGRAM_SP7021_ACHIP
-        bool "SP7021 A+B support"
-        select CPU_V7
-        select ARM_GIC
-        select SP_INTC
+	bool "SP7021 A+B support"
+	select CPU_V7
+	select ARM_GIC
+	select SP_INTC
 	select HAVE_SMP
 	select ARM_PSCI
-    select COMMON_CLK_SP7021
+	select COMMON_CLK_SP7021
 	select CLKSRC_SP_TIMER
 	select PINCTRL
 	select PINCTRL_SPPCTL
@@ -58,23 +24,13 @@ config MACH_PENTAGRAM_SP7021_ACHIP
 	select GPIOLIB
 
 config MACH_PENTAGRAM_SP7021_BCHIP
-        bool "SP7021 B support"
-        select CPU_ARM926T
-        select SP_INTC
-    select COMMON_CLK_SP7021
+	bool "SP7021 B support"
+	select CPU_ARM926T
+	select SP_INTC
+	select COMMON_CLK_SP7021
 	select CLKSRC_SP_TIMER
 	select PINCTRL
 	select PINCTRL_SPPCTL
-
-config MACH_PENTAGRAM_I143_ACHIP
-	bool "I143 A+B support"
-	select CPU_V7
-	select ARM_GIC
-	select SP_INTC
-	select HAVE_SMP
-	select PINCTRL
-	select PINCTRL_SP_I143
-	select OF_OVERLAY
 
 endchoice
 
@@ -85,13 +41,20 @@ config SP_PARTIAL_CLKEN
 	default y
 	help
 	  Only enable partial clken in moon settings to save power.
-	  Device drivers should enable their own clken during driver init.
+	  Device drivers should enable their own clken bit during
+	  driver init or driver probe.
+	  Refer drivers/misc/sp_icm.c:sp_icm_probe()
 
 config SP_MON
 	bool "Sunplus MON (SysRq:a)"
 	select MAGIC_SYSRQ
 	help
 	  Enable Sunplus MON shell in SysRq.
+	  Sunplus MON(Monitor) shell offered a simple commandline
+	  with 5 commands: lreg/wreg/lw/sw/task.
+	  lreg/wreg: read/write reg groups
+	  lw/sw: read/write memory
+	  task: dump kernel task info
 
 endmenu
 
