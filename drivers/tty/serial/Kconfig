@@ -1025,6 +1025,12 @@ config SERIAL_SP_UART
 	select SERIAL_CORE
 	select SERIAL_CORE_CONSOLE
 	select SERIAL_EARLYCON
+	help
+	  Select this option if you would like to use sunplus serial port as
+	  console(default UA0 set as console).
+
+	  If you enable this option, sunplus serial ports in the system will
+	  be registered as ttyS0.
 
 config SERIAL_SIFIVE
 	tristate "SiFive UART support"
