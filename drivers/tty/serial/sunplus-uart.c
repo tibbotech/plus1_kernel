@@ -1366,7 +1366,7 @@ static int sunplus_uart_ops_request_port(struct uart_port *port)
 static void sunplus_uart_ops_config_port(struct uart_port *port, int type)
 {
 	if (type & UART_CONFIG_TYPE) {
-		port->type = PORT_SP;
+		port->type = PORT_SUNPLUS;
 		sunplus_uart_ops_request_port(port);
 	}
 }
@@ -2180,8 +2180,8 @@ int __init sunplus_uart_early_setup(struct earlycon_device *device,
 	device->con->write = sunplus_uart_early_write;
 	return 0;
 }
-OF_EARLYCON_DECLARE(sp_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
-OF_EARLYCON_DECLARE(sp_uart, "sunplus,q645-uart", sunplus_uart_early_setup);
+OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
+OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,q645-uart", sunplus_uart_early_setup);
 #endif
 
 MODULE_LICENSE("GPL");

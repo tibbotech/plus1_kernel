@@ -280,6 +280,6 @@
 #define PORT_LINFLEXUART	122
 
 /* Sunplus UART */
-#define PORT_SP		199
+#define PORT_SUNPLUS	123
 
 #endif /* _UAPILINUX_SERIAL_CORE_H */
