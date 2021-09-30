@@ -1408,7 +1408,7 @@ dtb-$(CONFIG_ARCH_ASPEED) += \
 	aspeed-bmc-opp-zaius.dtb \
 	aspeed-bmc-portwell-neptune.dtb \
 	aspeed-bmc-quanta-q71l.dtb
-dtb-$(CONFIG_MACH_PENTAGRAM_SP7021_ACHIP) += \
+dtb-$(CONFIG_SOC_SP7021) += \
 	sp7021-bpi-f2p.dtb \
 	sp7021-bpi-f2s.dtb \
 	sp7021-demov2.dtb \

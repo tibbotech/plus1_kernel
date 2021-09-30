@@ -4,7 +4,7 @@
 #include <linux/io.h>
 #include "hal_iop.h"
 
-#define DEBUG_MESSAGE
+//#define DEBUG_MESSAGE
 //#define early_printk
 
 #define IOP_KDBG_INFO
@@ -33,7 +33,7 @@ void hal_iop_init(void __iomem *iopbase)
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
 	unsigned long *IOP_base_for_normal = (unsigned long *)SP_IOP_RESERVE_BASE;
 	unsigned char *IOP_kernel_base;
-	//unsigned int reg;
+	unsigned int reg;
 
 	//int wLen = IOP_CODE_SIZE;
 	//clock enable
@@ -48,22 +48,32 @@ void hal_iop_init(void __iomem *iopbase)
 #elif defined(CONFIG_SOC_Q645)
 	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
 #endif
-	pIopReg->iop_control |= 0x01;
-	#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-	#endif
 
-	pIopReg->iop_control &= ~(0x8000);
-	//pIopReg->iop_control &= ~(0x200);
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x01;
+	writel(reg, &pIopReg->iop_control);
+
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
+	//pIopReg->iop_control &= ~(0x200);//watchdog can reset IOP
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
-	pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
-	pIopReg->iop_control &= ~(0x01);
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	reg	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
+
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
+
 	iop_code_mode = 0;
 }
 EXPORT_SYMBOL(hal_iop_init);
@@ -76,10 +86,6 @@ void hal_gpio_init(void __iomem *iopbase, unsigned char gpio_number)
 	//gpio_master(gpio_number,0);
 	writel(0xFE02, &pIopReg->iop_data0);
 	writel(gpio_number, &pIopReg->iop_data1);
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-#endif
 }
 EXPORT_SYMBOL(hal_gpio_init);
 
@@ -88,7 +94,7 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
 	unsigned long *IOP_base_for_normal = (unsigned long *)SP_IOP_RESERVE_BASE;
 	unsigned char *IOP_kernel_base;
-	//unsigned int reg;
+	unsigned int reg;
 
 	//int wLen = IOP_CODE_SIZE;
 	//clock enable
@@ -104,29 +110,31 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
 #endif
 
-	pIopReg->iop_control |= 0x01;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x01;
+	writel(reg, &pIopReg->iop_control);
 
-	#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-	#endif
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
 
-	pIopReg->iop_control &= ~(0x8000);
 	//pIopReg->iop_control &= ~(0x200);//watchdog can reset IOP
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
-	pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
-	pIopReg->iop_control &= ~(0x01);
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	reg	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
+
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
 
 	iop_code_mode = 0;
 }
@@ -138,7 +146,7 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
 	unsigned long *IOP_base_for_standby = (unsigned long *)(SP_IOP_RESERVE_BASE);
 	unsigned char *IOP_kernel_base;
-	//unsigned int reg;
+	unsigned int reg;
 
 	//int wLen = IOP_CODE_SIZE;
 	//clock enable
@@ -152,33 +160,33 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 #elif defined(CONFIG_SOC_Q645)
 	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
 #endif
+	//pIopReg->iop_control |= 0x01;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x01;
+	writel(reg, &pIopReg->iop_control);
 
-
-	pIopReg->iop_control |= 0x01;
-
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
-
-
-	pIopReg->iop_control &= ~(0x8000);
+	//pIopReg->iop_control &= ~(0x8000);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
 	//pIopReg->iop_control&=~(0x200);//watchdog can reset IOP
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
-	pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
-	pIopReg->iop_control &= ~(0x01);
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
 
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
+	//pIopReg->iop_control &= ~(0x01);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
 
 	iop_code_mode = 1;
 }
@@ -189,7 +197,7 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
 	unsigned long *IOP_base_for_normal = (unsigned long *)SP_IOP_RESERVE_BASE;
 	unsigned char *IOP_kernel_base;
-	//unsigned int reg;
+	unsigned int reg;
 
 	//int wLen = IOP_CODE_SIZE;
 	//clock enable
@@ -204,30 +212,33 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
 #endif
 
-	pIopReg->iop_control |= 0x01;
+	//pIopReg->iop_control |= 0x01;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x01;
+	writel(reg, &pIopReg->iop_control);
 
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
-
-	pIopReg->iop_control &= ~(0x8000);
+	//pIopReg->iop_control &= ~(0x8000);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
 	//pIopReg->iop_control &= ~(0x200);
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
-	pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
-	pIopReg->iop_control &= ~(0x01);
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_normal) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	reg	= (unsigned int) ((unsigned long)(IOP_base_for_normal) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
 
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
+	//pIopReg->iop_control &= ~(0x01);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
 
 	iop_code_mode = 0;
 }
@@ -238,7 +249,7 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
 	unsigned long *IOP_base_for_standby = (unsigned long *)(SP_IOP_RESERVE_BASE);
 	unsigned char *IOP_kernel_base;
-	//unsigned int reg;
+	unsigned int reg;
 
 	//int wLen = IOP_CODE_SIZE;
 	//clock enable
@@ -253,30 +264,33 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
 #endif
 
-	pIopReg->iop_control |= 0x01;
+	//pIopReg->iop_control |= 0x01;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x01;
+	writel(reg, &pIopReg->iop_control);
 
-#ifdef DEBUG_MESSAGE
-DBG_INFO("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-	pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-DBG_INFO("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-	pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
-
-
-	pIopReg->iop_control &= ~(0x8000);
+	//pIopReg->iop_control &= ~(0x8000);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
 	//pIopReg->iop_control &= ~(0x200);
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
-	pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
-	pIopReg->iop_control &= ~(0x01);
-#ifdef DEBUG_MESSAGE
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-#endif
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
+
+	//pIopReg->iop_control &= ~(0x01);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
 
 	iop_code_mode = 1;
 }
@@ -285,11 +299,25 @@ EXPORT_SYMBOL(hal_iop_standbymode);
 void hal_iop_get_iop_data(void __iomem *iopbase)
 {
 	struct regs_iop_t *pIopReg = (struct regs_iop_t *)iopbase;
+	unsigned short value_0, value_1, value_2, value_3, value_4, value_5;
+	unsigned short value_6, value_7, value_8, value_9, value_10, value_11;
 
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-			pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-			pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
+	value_0 = readl(&pIopReg->iop_data0);
+	value_1 = readl(&pIopReg->iop_data1);
+	value_2 = readl(&pIopReg->iop_data2);
+	value_3 = readl(&pIopReg->iop_data3);
+	value_4 = readl(&pIopReg->iop_data4);
+	value_5 = readl(&pIopReg->iop_data5);
+	value_6 = readl(&pIopReg->iop_data6);
+	value_7 = readl(&pIopReg->iop_data7);
+	value_8 = readl(&pIopReg->iop_data8);
+	value_9 = readl(&pIopReg->iop_data9);
+	value_10 = readl(&pIopReg->iop_data10);
+	value_11 = readl(&pIopReg->iop_data11);
+	DBG_INFO("%s(%d) iop_data0=%x iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
+			value_0, value_1, value_2, value_3, value_4, value_5);
+	DBG_INFO("%s(%d) iop_data6=%x iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
+			value_6, value_7, value_8, value_9, value_10, value_11);
 }
 EXPORT_SYMBOL(hal_iop_get_iop_data);
 
@@ -300,55 +328,51 @@ void hal_iop_set_iop_data(void __iomem *iopbase, unsigned int num, unsigned int 
 	switch (num) {
 	case '0':
 	case 0:
-		pIopReg->iop_data0 = value;
+		writel(value, &pIopReg->iop_data0);
 		break;
 	case '1':
 	case 1:
-		pIopReg->iop_data1 = value;
+		writel(value, &pIopReg->iop_data1);
 		break;
 	case '2':
 	case 2:
-		pIopReg->iop_data2 = value;
+		writel(value, &pIopReg->iop_data2);
 		break;
 	case '3':
 	case 3:
-		pIopReg->iop_data3 = value;
+		writel(value, &pIopReg->iop_data3);
 		break;
 	case '4':
 	case 4:
-		pIopReg->iop_data4 = value;
+		writel(value, &pIopReg->iop_data4);
 		break;
 	case '5':
 	case 5:
-		pIopReg->iop_data5 = value;
+		writel(value, &pIopReg->iop_data5);
 		break;
 	case '6':
 	case 6:
-		pIopReg->iop_data6 = value;
+		writel(value, &pIopReg->iop_data6);
 		break;
 	case '7':
 	case 7:
-		pIopReg->iop_data7 = value;
+		writel(value, &pIopReg->iop_data7);
 		break;
 	case '8':
 	case 8:
-		pIopReg->iop_data8 = value;
+		writel(value, &pIopReg->iop_data8);
 		break;
 	case '9':
 	case 9:
-		pIopReg->iop_data9 = value;
+		writel(value, &pIopReg->iop_data9);
 		break;
 	case 'A':
-		pIopReg->iop_data10 = value;
+		writel(value, &pIopReg->iop_data10);
 		break;
 	case 'B':
-		pIopReg->iop_data11 = value;
+		writel(value, &pIopReg->iop_data11);
 		break;
 	}
-	DBG_INFO("%s(%d) iop_data0=%x	 iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-			pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	DBG_INFO("%s(%d) iop_data6=%x	 iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-			pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
 }
 EXPORT_SYMBOL(hal_iop_set_iop_data);
 
@@ -401,9 +425,15 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//early_printk("[IOP iopbase: 0x%x	ioppmcbase: 0x%x   ioprtcbase: 0x%x!!\n", (unsigned int)(iopbase)
 	//	, (unsigned int)(ioppmcbase), (unsigned int)(ioprtcbase));
 
-	pIopReg->iop_control &= ~(0x8000);
-	pIopReg->iop_control |= 0x1;
+	//pIopReg->iop_control &= ~(0x8000);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
 
+	//pIopReg->iop_control |= 0x1;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x1;
+	writel(reg, &pIopReg->iop_control);
 
 	//RTC set
 
@@ -437,16 +467,26 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//early_printk("Leon  hal_iop_suspend rtc_ctrl=0x%x\n", pIopRtcReg->rtc_ctrl);
 
 	//PMC set
-	pIopPmcReg->PMC_TIMER = 0x00010001; //0x0a0a
-	pIopPmcReg->PMC_CTRL |= 0x23; // disable system reset PMC, enalbe power down 27M, enable gating 27M
-
-	pIopPmcReg->XTAL27M_PASSWORD_I = 0x55aa00ff;
-	pIopPmcReg->XTAL27M_PASSWORD_II = 0x00ff55aa;
-	pIopPmcReg->XTAL32K_PASSWORD_I = 0xaa00ff55;
-	pIopPmcReg->XTAL32K_PASSWORD_II = 0xff55aa00;
-	pIopPmcReg->CLK27M_PASSWORD_I = 0xaaff0055;
-	pIopPmcReg->CLK27M_PASSWORD_II = 0x5500aaff;
-	pIopPmcReg->PMC_TIMER2 = 0x01000100;
+	//pIopPmcReg->PMC_TIMER = 0x00010001; //0x0a0a
+	writel(0x00010001, &pIopPmcReg->PMC_TIMER);
+	//pIopPmcReg->PMC_CTRL |= 0x23; // disable system reset PMC, enalbe power down 27M, enable gating 27M
+	reg = readl(&pIopPmcReg->PMC_CTRL);
+	reg |= 0x23;
+	writel(reg, &pIopPmcReg->PMC_CTRL);
+	//pIopPmcReg->XTAL27M_PASSWORD_I = 0x55aa00ff;
+	writel(0x55aa00ff, &pIopPmcReg->XTAL27M_PASSWORD_I);
+	//pIopPmcReg->XTAL27M_PASSWORD_II = 0x00ff55aa;
+	writel(0x00ff55aa, &pIopPmcReg->XTAL27M_PASSWORD_II);
+	//pIopPmcReg->XTAL32K_PASSWORD_I = 0xaa00ff55;
+	writel(0xaa00ff55, &pIopPmcReg->XTAL32K_PASSWORD_I);
+	//pIopPmcReg->XTAL32K_PASSWORD_II = 0xff55aa00;
+	writel(0xff55aa00, &pIopPmcReg->XTAL32K_PASSWORD_II);
+	//pIopPmcReg->CLK27M_PASSWORD_I = 0xaaff0055;
+	writel(0xaaff0055, &pIopPmcReg->CLK27M_PASSWORD_I);
+	//pIopPmcReg->CLK27M_PASSWORD_II = 0x5500aaff;
+	writel(0x5500aaff, &pIopPmcReg->CLK27M_PASSWORD_II);
+	//pIopPmcReg->PMC_TIMER2 = 0x01000100;
+	writel(0x01000100, &pIopPmcReg->PMC_TIMER2);
 
 	//early_printk("hal_iop_suspend PMC_TIMER=0x%x\n", pIopPmcReg->PMC_TIMER);
 	//early_printk("hal_iop_suspend PMC_CTRL=0x%x\n", pIopPmcReg->PMC_CTRL);
@@ -504,14 +544,25 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//regs0->iop_control &= ~(0x0200);//disable watchdog event reset IOP
 	// *iop_control |= 0x0200;//disable watchdog event reset IOP
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
-	pIopReg->iop_base_adr_h = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
 
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
 
 	// *iop_control &= ~(0x01);
-	pIopReg->iop_control &= ~(0x01);
+	//pIopReg->iop_control &= ~(0x01);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
+
 	#ifdef early_printk
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
 		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
@@ -523,7 +574,10 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	while ((pIopReg->iop_data2&IOP_READY) != IOP_READY)
 		;
 
-	pIopReg->iop_data2 |= RISC_READY;
+	//pIopReg->iop_data2 |= RISC_READY;
+	reg = readl(&pIopReg->iop_data2);
+	reg |= RISC_READY;
+	writel(reg, &pIopReg->iop_control);
 
 	#ifdef early_printk
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
@@ -533,8 +587,11 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
 	#endif
 
-	pIopReg->iop_data5 = 0x00;
-	pIopReg->iop_data6 = 0x60;
+	//pIopReg->iop_data5 = 0x00;
+	writel(0x00, &pIopReg->iop_data5);
+	//pIopReg->iop_data6 = 0x60;
+	writel(0x60, &pIopReg->iop_data6);
+
 	while (1) {
 		if (pIopReg->iop_data7 == 0xaaaa)
 			break;
@@ -567,7 +624,9 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//early_printk("Leon	g30.9=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30 + 4*9)));
 	//early_printk("Leon	g30.10=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30 + 4*10)));
 	#endif
-	pIopReg->iop_data1 = 0xdd; //8051 bin file call Ultra low function.
+	//pIopReg->iop_data1 = 0xdd; //8051 bin file call Ultra low function.
+	writel(0xdd, &pIopReg->iop_data1);
+
 	#ifdef DEBUG_MESSAGE
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
 		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
@@ -596,20 +655,38 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 #endif
 
 	early_printk("%s(%d)\n", __func__, __LINE__);
-	pIopReg->iop_control &= ~(0x8000);
-	pIopReg->iop_control |= 0x1;
+	//pIopReg->iop_control &= ~(0x8000);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x8000);
+	writel(reg, &pIopReg->iop_control);
+
+	//pIopReg->iop_control |= 0x1;
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x1;
+	writel(reg, &pIopReg->iop_control);
 
 	//PMC set
-	pIopPmcReg->PMC_TIMER = 0x00010001; //0x0a0a
-	pIopPmcReg->PMC_CTRL |= 0x23; // disable system reset PMC, enalbe power down 27M, enable gating 27M
+	//pIopPmcReg->PMC_TIMER = 0x00010001; //0x0a0a
+	writel(0x00010001, &pIopPmcReg->PMC_TIMER);
+	//pIopPmcReg->PMC_CTRL |= 0x23; // disable system reset PMC, enalbe power down 27M, enable gating 27M
+	reg = readl(&pIopPmcReg->PMC_CTRL);
+	reg |= 0x23;
+	writel(reg, &pIopPmcReg->PMC_CTRL);
 
-	pIopPmcReg->XTAL27M_PASSWORD_I = 0x55aa00ff;
-	pIopPmcReg->XTAL27M_PASSWORD_II = 0x00ff55aa;
-	pIopPmcReg->XTAL32K_PASSWORD_I = 0xaa00ff55;
-	pIopPmcReg->XTAL32K_PASSWORD_II = 0xff55aa00;
-	pIopPmcReg->CLK27M_PASSWORD_I = 0xaaff0055;
-	pIopPmcReg->CLK27M_PASSWORD_II = 0x5500aaff;
-	pIopPmcReg->PMC_TIMER2 = 0x01000100;
+	//pIopPmcReg->XTAL27M_PASSWORD_I = 0x55aa00ff;
+	writel(0x55aa00ff, &pIopPmcReg->XTAL27M_PASSWORD_I);
+	//pIopPmcReg->XTAL27M_PASSWORD_II = 0x00ff55aa;
+	writel(0x00ff55aa, &pIopPmcReg->XTAL27M_PASSWORD_II);
+	//pIopPmcReg->XTAL32K_PASSWORD_I = 0xaa00ff55;
+	writel(0xaa00ff55, &pIopPmcReg->XTAL32K_PASSWORD_I);
+	//pIopPmcReg->XTAL32K_PASSWORD_II = 0xff55aa00;
+	writel(0xff55aa00, &pIopPmcReg->XTAL32K_PASSWORD_II);
+	//pIopPmcReg->CLK27M_PASSWORD_I = 0xaaff0055;
+	writel(0xaaff0055, &pIopPmcReg->CLK27M_PASSWORD_I);
+	//pIopPmcReg->CLK27M_PASSWORD_II = 0x5500aaff;
+	writel(0x5500aaff, &pIopPmcReg->CLK27M_PASSWORD_II);
+	//pIopPmcReg->PMC_TIMER2 = 0x01000100;
+	writel(0x01000100, &pIopPmcReg->PMC_TIMER2);
 
 	//IOP Hardware IP reset
 	reg = readl((void __iomem *)(B_SYSTEM_BASE + 4 * 21));
@@ -627,19 +704,31 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	//regs0->iop_control &= ~(0x0200);//disable watchdog event reset IOP
 	// *iop_control |= 0x0200;//disable watchdog event reset IOP
 #ifdef CONFIG_SOC_SP7021
-	pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	//pIopReg->iop_control |= 0x0200;//disable watchdog event reset IOP
+	reg = readl(&pIopReg->iop_control);
+	reg |= 0x0200;//disable watchdog event reset IOP
+	writel(reg, &pIopReg->iop_control);
 #endif
-	pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
-	pIopReg->iop_base_adr_h = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	//pIopReg->iop_base_adr_l = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) & 0xFFFF);
+	writel(reg, &pIopReg->iop_base_adr_l);
+	//pIopReg->iop_base_adr_h	= (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	reg = (unsigned int) ((unsigned long)(IOP_base_for_standby) >> 16);
+	writel(reg, &pIopReg->iop_base_adr_h);
 
 	// *iop_control &= ~(0x01);
-	pIopReg->iop_control &= ~(0x01);
+	//pIopReg->iop_control &= ~(0x01);
+	reg = readl(&pIopReg->iop_control);
+	reg &= ~(0x01);
+	writel(reg, &pIopReg->iop_control);
 
 	early_printk("%s(%d) IOP_READY=%x\n", __func__, __LINE__, pIopReg->iop_data2);
 	while ((pIopReg->iop_data2&IOP_READY) != IOP_READY)
 		;
 
-	pIopReg->iop_data2 = RISC_READY;
+	//pIopReg->iop_data2 = RISC_READY;
+	writel(RISC_READY, &pIopReg->iop_data2);
+
 	early_printk("%s(%d) RISC_READY=%x\n", __func__, __LINE__, pIopReg->iop_data2);
 
 	#ifdef early_printk
@@ -648,8 +737,12 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	early_printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
 		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
 	#endif
-	pIopReg->iop_data5 = 0x00;
-	pIopReg->iop_data6 = 0x60;
+
+	//pIopReg->iop_data5 = 0x00;
+	writel(0x00, &pIopReg->iop_data5);
+	//pIopReg->iop_data6 = 0x60;
+	writel(0x60, &pIopReg->iop_data6);
+
 	while (1) {
 		if (pIopReg->iop_data7 == 0xaaaa)
 			break;
@@ -681,7 +774,8 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	early_printk("Leon	g30.10=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*30 + 4*10)));
 	#endif
 
-	pIopReg->iop_data1 = 0xdd; //8051 bin file call Ultra low function.
+	//pIopReg->iop_data1 = 0xdd; //8051 bin file call Ultra low function.
+	writel(0xdd, &pIopReg->iop_data1);
 	mdelay(10);
 	#ifdef early_printk
 	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
@@ -706,17 +800,22 @@ void hal_iop_S1mode(void __iomem *iopbase)
 	while ((pIopReg->iop_data2&IOP_READY) != IOP_READY)
 		;
 
-	pIopReg->iop_data2 = RISC_READY;
+	//pIopReg->iop_data2 = RISC_READY;
+	writel(RISC_READY, &pIopReg->iop_data2);
 	early_printk("%s(%d) RISC_READY=%x\n", __func__, __LINE__, pIopReg->iop_data2);
 
-	pIopReg->iop_data5 = 0x00;
-	pIopReg->iop_data6 = 0x60;
+	//pIopReg->iop_data5 = 0x00;
+	writel(0x00, &pIopReg->iop_data5);
+	//pIopReg->iop_data6 = 0x60;
+	writel(0x60, &pIopReg->iop_data6);
+
 	while (1) {
 		if (pIopReg->iop_data7 == 0xaaaa)
 			break;
 	}
 
-	pIopReg->iop_data1 = 0xee; //8051 bin file call S1_mode function.
+	//pIopReg->iop_data1 = 0xee; //8051 bin file call S1_mode function.
+	writel(0xee, &pIopReg->iop_data1);
 	FUNC_DEBUG();
 
 }

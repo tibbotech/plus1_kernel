@@ -6,7 +6,7 @@
 #ifndef __MACH_IO_MAP_H
 #define __MACH_IO_MAP_H
 
-#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
+#if defined(CONFIG_SOC_SP7021)
 #include "io_map_sp7021.h"
 #endif
 

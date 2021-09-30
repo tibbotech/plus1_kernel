@@ -323,12 +323,18 @@ config COMMON_CLK_VC5
 config COMMON_CLK_SP7021
 	def_bool OF && COMMON_CLK && SOC_SP7021
 	help
-	  Support for the Sunplus SP7021 SoC clocks.
+	  This driver supports the Sunplus SP7021 SoC clocks.
+	  It implemented SP7021 PLLs/gate.
+	  Not all features of the PLL are currently supported
+	  by the driver.
 
 config COMMON_CLK_SP_Q645
 	def_bool OF && COMMON_CLK && SOC_Q645
 	help
-	  Support for the Sunplus Q645 SoC clocks.
+	  This driver supports the Sunplus Q645 SoC clocks,
+	  It implemented Q645 PLL/mux/gate.
+	  Not all features of the PLL are currently supported
+	  by the driver.
 
 config COMMON_CLK_STM32MP157
 	def_bool COMMON_CLK && MACH_STM32MP157
