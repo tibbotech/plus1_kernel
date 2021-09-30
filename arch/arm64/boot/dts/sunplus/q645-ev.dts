@@ -107,22 +107,21 @@
 			reg = <0x0 0x00100000 0x0 0x00100000>;//SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
 		};
 
-//		sec_region2 {
-//			reg = <0x00 0x200000 0x00 0x200000>;
-//		};
-		fb_reserve:fb {
-			no-map;
-			reg = <0x0 0x200000 0x0 0x00200000>;//size 16M 400000
-		};
-//		fb_reserve:fb {
-//			no-map;
-//			reg = <0x0 0x3c000000 0x0 0x01000000>;//size 16M 3c000000
-//		};
-		video_codec_reserve: vcodec {
-			no-map;
-			reg = <0x00 0x2f000000 0x00 0x10000000>;
+		sec_region2 {
+			reg = <0x00 0x200000 0x00 0x200000>;
 		};
 
+		/* simple_fb reserver memory 0x4fc00000~0x50000000 total 4M */
+		fb_reserve:fb {
+			no-map;
+			reg = <0x0 0x4fc00000 0x0 0x00400000>;
+		};
+		/* video_codec reserve memory 0x50000000~0x60000000 total 256M */
+		video_codec_reserve: vcodec {
+			no-map;
+			reg = <0x00 0x50000000 0x00 0x10000000>;
+		};
+		/* ethosn reserve memory 0x60000000~0x80000000 total 512M */
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
 		ethosn_reserved: ethosn_reserved@60000000 {
 			compatible = "shared-dma-pool";
