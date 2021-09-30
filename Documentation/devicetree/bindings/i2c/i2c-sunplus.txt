@@ -1,0 +1,29 @@
+* Sunplus's I2C controller
+
+The Sunplus's I2C controller is used to interface with I2C devices.
+
+Required properties:
+- compatible:
+ Should be "sunplus,sp7021-i2cm":  for i2c sp7021
+ Should be "sunplus,q645-i2cm":    for i2c sp7021
+
+Optional properties:
+  - clock-frequency: Frequency in Hz of the bus when transfer, the default value
+    is 100000.
+
+
+Example:
+
+		i2cm0: i2c@sp_i2cm0 {
+			compatible = "sunplus,sp7021-i2cm";
+			reg = <0x9c004600 0x80>, <0x9c004680 0x80>;
+			reg-names = "i2cm", "i2cmdma";
+			interrupt-parent = <&intc>;
+			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc I2CM0>;
+			resets = <&rstc RST_I2CM0>;
+		};
+
+	&i2cm0 {
+		clock-frequency = <100000>;
+	};
