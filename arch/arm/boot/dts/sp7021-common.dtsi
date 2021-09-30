@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source (include) for Sunplus SP7021 SoC
+ *                (Common portion)
+ *
+ * Copyright (C) 2021 Sunplus Technology Co.
+ */
+
 /dts-v1/;
 
 #include "skeleton.dtsi"
@@ -134,7 +142,7 @@
 			clock-frequency = <931000000>;
 			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
-		cpu@1 {
+		cpu1: cpu@1 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <1>;
@@ -143,7 +151,7 @@
 			clock-frequency = <931000000>;
 			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
-		cpu@2 {
+		cpu2: cpu@2 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <2>;
@@ -152,7 +160,7 @@
 			clock-frequency = <931000000>;
 			cpu-idle-states = <&CLUSTER_SLEEP_BIG>;
 		};
-		cpu@3 {
+		cpu3: cpu@3 {
 			compatible = "arm,cortex-a7";
 			device_type = "cpu";
 			reg = <3>;
@@ -188,6 +196,7 @@
 			     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
 	/* A modules */
