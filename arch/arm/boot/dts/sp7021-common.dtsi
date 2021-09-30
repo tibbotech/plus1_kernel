@@ -1,3 +1,11 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source (include) for Sunplus SP7021 SoC
+ *                (Common portion)
+ *
+ * Copyright (C) 2021 Sunplus Technology Co.
+ */
+
 /dts-v1/;
 
 #include "skeleton.dtsi"
