@@ -39,13 +39,13 @@
 #endif
 
 #ifdef I2C_DBG_INFO
-	#define DBG_INFO(fmt, args ...)    pr_info("[I2C] Info (%d):  "  fmt, __LINE__, ## args)
+	#define DBG_INFO(fmt, args ...)    pr_info("[I2C] Info (%d):  "  fmt"\n", __LINE__, ## args)
 #else
 	#define DBG_INFO(fmt, args ...)
 #endif
 
 #ifdef I2C_DBG_ERR
-	#define DBG_ERR(fmt, args ...)    pr_info("[I2C] Error (%d):  "  fmt, __LINE__, ## args)
+	#define DBG_ERR(fmt, args ...)    pr_info("[I2C] Error (%d):  "  fmt"\n", __LINE__, ## args)
 #else
 	#define DBG_ERR(fmt, args ...)
 #endif
@@ -862,7 +862,6 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 {
 	//struct I2C_Irq_Event_t_ *pstIrqEvent = (I2C_Irq_Event_t *)args;
 	struct SpI2C_If_t_ *pstSpI2CInfo = args;
-	struct I2C_Cmd_t_ *pstCmdInfo = &(pstSpI2CInfo->stCmdInfo);
 	struct I2C_Irq_Event_t_ *pstIrqEvent = &(pstSpI2CInfo->stIrqEvent);
 	struct regs_i2cm_s *sr = (struct regs_i2cm_s *)pstSpI2CInfo->i2c_regs;
 	unsigned char w_data[32] = {0};

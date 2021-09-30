@@ -1391,7 +1391,7 @@ config SCx200_ACB
 
 config I2C_SUNPLUS
 	tristate "Sunplus I2C driver"
-	depends on SOC_SP7021 || SOC_I143
+	depends on SOC_SP7021 || SOC_Q645
 	help
 	  This driver supports the I2C device on the Sunplus processor chip.
 
