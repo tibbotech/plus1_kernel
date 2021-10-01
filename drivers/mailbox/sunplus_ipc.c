@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /**
- * @file    sp_ipc.c
+ * @file    sunplus_ipc.c
  * @brief   Implement of Sunplus IPC Linux driver.
  * @author  qinjian
  */
@@ -17,10 +17,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/delay.h>
-
-//#include "sp_cbdma.h"
-//#include <mach/sp_ipc.h>
-#include "sp_ipc.h"
+#include "sunplus_ipc.h"
 
 //#define IPC_TIMEOUT_DEBUG
 //#define IPC_REG_OVERWRITE

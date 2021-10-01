@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later*/
 /**
- * @file    sp_ipc.h
+ * @file    sunplus_ipc.h
  * @brief   Declaration of Sunplus IPC Linux Driver.
  * @author  qinjian
  */
@@ -153,9 +153,11 @@ do { \
 		_j = _i & 0x0F; \
 		sprintf(ss + _j * 3, "%02x%c", _p[_i], _s[_j]); \
 		_i++; \
-		if (!(_i & 0x0F)) printf(ss); \
+		if (!(_i & 0x0F))\
+			printf(ss); \
 	} \
-	if (_l & 0x0F) printf(ss); \
+	if (_l & 0x0F)\
+		printf(ss); \
 } while (0)
 
 #define var_dump(v) \
@@ -171,7 +173,8 @@ do { \
 	printf("%s: %s %u\n", ss, (r->F_DIR)?"RES":"REQ", r->CMD); \
 	l = r->DATA_LEN; \
 	hex_dump(r, (l > RPC_DATA_SIZE) ? 24 : (16 + l)); \
-	if (l > RPC_DATA_SIZE) hex_dump(r->DATA_PTR, l + 4); \
+	if (l > RPC_DATA_SIZE)\
+		hex_dump(r->DATA_PTR, l + 4); \
 	printf("\n"); \
 } while (0)
 
