@@ -28,14 +28,12 @@
 #ifdef CONFIG_ARCH_ZYNQ
 #define LOCAL_TEST
 #endif
-
 #define IPC_FUNC_DEBUG
 #ifdef IPC_FUNC_DEBUG
 #define DBG_INFO(fmt, args ...)	pr_info("K_IPC: " fmt, ## args)
 #else
 #define DBG_INFO(fmt, args ...)
 #endif
-
 
 /***************** * PA (B) *****************/
 //#define	PA_B_REG		0x9C000000
@@ -77,8 +75,8 @@
 #define REG_GROUP_B2A		REG_GROUP(259)
 #endif
 
-#define IPC_LOCAL			((ipc_t *)REG_GROUP_A2B)
-#define IPC_REMOTE			((ipc_t *)REG_GROUP_B2A)
+#define IPC_LOCAL			((struct ipc_t *)REG_GROUP_A2B)
+#define IPC_REMOTE			((struct ipc_t *)REG_GROUP_B2A)
 
 #ifdef IPC_USE_CBDMA
 #define IPC_CBDMA_NAME      "sp_cbdma.0"
@@ -139,7 +137,7 @@
 
 #define WAIT_INIT(wait, t) \
 { \
-	wait_t *w = (wait_t *)(wait); \
+	struct wait_t *w = (struct wait_t *)(wait); \
 	if (w->timeout == msecs_to_jiffies(t)) { \
 		w->waked = 0; \
 		init_waitqueue_head(&w->wq); \
@@ -149,7 +147,7 @@
 }
 #define DOWN(wait) \
 { \
-	wait_t *w = (wait_t *)(wait); \
+	struct wait_t *w = (struct wait_t *)(wait); \
 	if (w->timeout) { \
 		long r; \
 		r = wait_event_interruptible_timeout(w->wq, w->waked, w->timeout); \
@@ -165,7 +163,7 @@
 
 #define UP(wait) \
 { \
-	wait_t *w = (wait_t *)(wait); \
+	struct wait_t *w = (struct wait_t *)(wait); \
 	if (w->timeout) { \
 		w->waked = 1; \
 		if (!list_empty(&w->wq.head))\
@@ -204,7 +202,7 @@
  *                          D A T A    T Y P E S                          *
  **************************************************************************/
 
-typedef struct {
+struct wait_t {
 	u32 timeout;
 	union {
 		struct {
@@ -213,50 +211,50 @@ typedef struct {
 		};
 		struct semaphore sem;
 	};
-} wait_t;
+};
 
-typedef struct {
-	rpc_t	rpc;
-	wait_t	wait_response;
-} request_t;
+struct request_t {
+	struct rpc_t	rpc;
+	struct wait_t	wait_response;
+};
 
-typedef struct {
-	rpc_t	data[FIFO_SIZE];
+struct rpc_fifo_t {
+	struct rpc_t	data[FIFO_SIZE];
 	u32		in;						// write pointer
 	u32		out;					// read pointer
-	wait_t	wait;
-} rpc_fifo_t;
+	struct wait_t	wait;
+};
 #ifdef IPC_USE_CBDMA
-typedef struct ipc_cbdma_t {
+struct ipc_cbdma_t {
 	struct device *cbdma_device;
 	u32 phy_addr;
 	u32 size;
 	void  *vir_addr;
 	struct mutex  cbdma_lock;
-} ipc_cbdma_t;
+};
 #else
-typedef struct {
+struct ipc_sequense_t {
 	u32 seq;
 	struct mutex lock;
-} ipc_sequense_t;
+};
 #endif
 
-typedef struct {
+struct sp_ipc_t {
 	struct miscdevice dev;			// ipc device
 	struct mutex write_lock;
 	struct task_struct *rpc_res;	// rpc RESPONSE thread
-	rpc_fifo_t	res_fifo;			// rpc RESPONSE fifo
-	rpc_fifo_t	*fifo[SERVER_NUMS];	// server fifo
+	struct rpc_fifo_t	res_fifo;			// rpc RESPONSE fifo
+	struct rpc_fifo_t	*fifo[SERVER_NUMS];	// server fifo
 	u32	pid[SERVER_NUMS];			// server pid
 #ifdef IPC_USE_CBDMA
 	struct ipc_cbdma_t cbdma;
 #else
-	ipc_sequense_t seq;
+	struct ipc_sequense_t seq;
 #endif
 #ifdef LOCAL_TEST
-	ipc_t	local;
+	struct ipc_t	local;
 #endif
-} sp_ipc_t;
+};
 
 /**************************************************************************
  *                 E X T E R N A L    R E F E R E N C E S                 *
@@ -270,7 +268,7 @@ typedef struct {
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 
-static sp_ipc_t *ipc;
+static struct sp_ipc_t *ipc;
 
 /******************************* CACHE FUNCS ******************************/
 
@@ -388,17 +386,17 @@ static void irq_trigger(int irq)
 /********************************* RPC HAL ********************************/
 
 #ifndef IPC_USE_CBDMA
-static void ipc_seq_init(ipc_sequense_t *seq)
+static void ipc_seq_init(struct ipc_sequense_t *seq)
 {
 	seq->seq = 0;
 	mutex_init(&seq->lock);
 }
-static void ipc_seq_finit(ipc_sequense_t *seq)
+static void ipc_seq_finit(struct ipc_sequense_t *seq)
 {
 	seq->seq = 0;
 	mutex_destroy(&seq->lock);
 }
-static inline u32 ipc_seq_inc(ipc_sequense_t *seq)
+static inline u32 ipc_seq_inc(struct ipc_sequense_t *seq)
 {
 	u32 s;
 
@@ -408,7 +406,7 @@ static inline u32 ipc_seq_inc(ipc_sequense_t *seq)
 	mutex_unlock(&seq->lock);
 	return s;
 }
-static inline void rpc_add_seq(rpc_t *rpc)
+static inline void rpc_add_seq(struct rpc_t *rpc)
 {
 	u32 seq = ipc_seq_inc(&ipc->seq);
 	u16 len = rpc->DATA_LEN;
@@ -419,7 +417,7 @@ static inline void rpc_add_seq(rpc_t *rpc)
 	rpc->SEQ = seq;
 }
 
-static int rpc_check_seq(rpc_t *rpc)
+static int rpc_check_seq(struct rpc_t *rpc)
 {
 	u32 seq = rpc->SEQ;
 	u32 *addr = __VA(rpc->SEQ_ADDR);
@@ -457,7 +455,7 @@ static void ipc_memcpy(void *dst, void *src, u32 len)
 	}
 }
 
-static void rpc_copy(rpc_t *dst, rpc_t *src)
+static void rpc_copy(struct rpc_t *dst, struct rpc_t *src)
 {
 	int len;
 
@@ -503,7 +501,7 @@ static void rpc_copy(rpc_t *dst, rpc_t *src)
 	}
 }
 
-static void rpc_read_hw(rpc_t *rpc)
+static void rpc_read_hw(struct rpc_t *rpc)
 {
 	trace();
 	rpc_copy(rpc, &IPC_REMOTE->RPC);
@@ -526,7 +524,7 @@ static int WAIT_IPC_WRITEABLE(u32 mask)
 	return ret;
 }
 
-static int rpc_write_hw(rpc_t *rpc)
+static int rpc_write_hw(struct rpc_t *rpc)
 {
 	int ret = IPC_SUCCESS;
 
@@ -558,7 +556,7 @@ out:
 
 /******************************** RPC FIFO ********************************/
 
-static int rpc_fifo_get(rpc_fifo_t *fifo, rpc_t *rpc)
+static int rpc_fifo_get(struct rpc_fifo_t *fifo, struct rpc_t *rpc)
 {
 	trace();
 	DOWN(&fifo->wait);
@@ -574,7 +572,7 @@ static int rpc_fifo_get(rpc_fifo_t *fifo, rpc_t *rpc)
 	return IPC_SUCCESS;
 }
 
-static int rpc_fifo_put(rpc_fifo_t *fifo, rpc_t *rpc)
+static int rpc_fifo_put(struct rpc_fifo_t *fifo, struct rpc_t *rpc)
 {
 	trace();
 	if ((fifo->in - fifo->out) == FIFO_SIZE) {		// fifo is full
@@ -598,14 +596,14 @@ static int rpc_fifo_put(rpc_fifo_t *fifo, rpc_t *rpc)
 
 static irqreturn_t rpc_isr(int irq, void *dev_id)
 {
-	rpc_t rpc;
+	struct rpc_t rpc;
 
 	trace();
 	rpc_read_hw(&rpc);
 
 	if (rpc.F_DIR == RPC_REQUEST) {
 		int sid = rpc.CMD >> SERVER_ID_OFFSET;		// server id
-		rpc_fifo_t *fifo = ipc->fifo[sid];
+		struct rpc_fifo_t *fifo = ipc->fifo[sid];
 
 		trace();
 		if (fifo == NULL) {
@@ -617,7 +615,7 @@ static irqreturn_t rpc_isr(int irq, void *dev_id)
 			RESPONSE(&rpc, IPC_FAIL_BUSY);
 		}
 	} else {
-		request_t *req = (request_t *)rpc.REQ_H;
+		struct request_t *req = (struct request_t *)rpc.REQ_H;
 
 		if (rpc.F_TYPE != REQ_NO_REP) {
 			rpc_copy(&req->rpc, &rpc);
@@ -638,7 +636,7 @@ static int rpc_res_thread(void *param)
 	WAIT_INIT(&ipc->res_fifo.wait, 0);
 
 	while (!kthread_should_stop()) {
-		rpc_t rpc;
+		struct rpc_t rpc;
 
 		if (rpc_fifo_get(&ipc->res_fifo, &rpc) == IPC_SUCCESS)
 			rpc_write_hw(&rpc);
@@ -648,7 +646,7 @@ static int rpc_res_thread(void *param)
 
 /**************************************************************************/
 
-static int rpc_from_user(rpc_t *rpc, rpc_t __user *rpc_user)
+static int rpc_from_user(struct rpc_t *rpc, struct rpc_t __user *rpc_user)
 {
 	u32 len;
 #ifdef IPC_USE_CBDMA
@@ -682,15 +680,15 @@ static int rpc_from_user(rpc_t *rpc, rpc_t __user *rpc_user)
 	return IPC_SUCCESS;
 }
 
-static int rpc_from_user_new(rpc_t *rpc, rpc_user_t *user, rpc_new_t __user *rpc_user)
+static int rpc_from_user_new(struct rpc_t *rpc, struct rpc_user_t *user, struct rpc_new_t __user *rpc_user)
 {
 	rpc_from_user(rpc, &rpc_user->rpc);
-	copy_from_user(user, &rpc_user->user, sizeof(rpc_user_t));
+	copy_from_user(user, &rpc_user->user, sizeof(struct rpc_user_t));
 	return IPC_SUCCESS;
 }
 #define RET(r)	((r > 511) ? (r - 1024) : r)
 
-static int rpc_to_user(rpc_t __user *rpc_user, rpc_t *rpc)
+static int rpc_to_user(struct rpc_t __user *rpc_user, struct rpc_t *rpc)
 {
 	int ret = IPC_SUCCESS;
 	u32 len = rpc->DATA_LEN;
@@ -732,9 +730,9 @@ static int rpc_to_user(rpc_t __user *rpc_user, rpc_t *rpc)
 
 /****************************** RPC INTERFACE ******************************/
 
-static int rpc_read(rpc_t __user *rpc_user)
+static int rpc_read(struct rpc_t __user *rpc_user)
 {
-	request_t *req;
+	struct request_t *req;
 	int ret = get_user(req, &rpc_user->REQ_H);
 	u32 sid = (u32)req;								// server id
 
@@ -744,7 +742,7 @@ static int rpc_read(rpc_t __user *rpc_user)
 		ret = rpc_to_user(rpc_user, &req->rpc);
 		FREE(req);
 	} else {											// read request
-		rpc_t rpc;
+		struct rpc_t rpc;
 
 		if (rpc_fifo_get(ipc->fifo[sid], &rpc) == IPC_SUCCESS)// get a rpc from fifo
 			rpc_to_user(rpc_user, &rpc);
@@ -753,10 +751,10 @@ static int rpc_read(rpc_t __user *rpc_user)
 	return ret;
 }
 
-static int rpc_write(rpc_t __user *rpc_user)
+static int rpc_write(struct rpc_t __user *rpc_user)
 {
-	request_t *req = (request_t *)MALLOC(sizeof(request_t));
-	rpc_t *rpc = &req->rpc;
+	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
+	struct rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user(rpc, rpc_user);
 
 	trace();
@@ -784,11 +782,11 @@ static int rpc_write(rpc_t __user *rpc_user)
 	return ret;
 }
 
-static int rpc_write_new(rpc_new_t __user *rpc_user)
+static int rpc_write_new(struct rpc_new_t __user *rpc_user)
 {
-	request_t *req = (request_t *)MALLOC(sizeof(request_t));
-	rpc_user_t user = {0};
-	rpc_t *rpc = &req->rpc;
+	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
+	struct rpc_user_t user = {0};
+	struct rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user_new(rpc, &user, rpc_user);
 
 	trace();
@@ -822,8 +820,8 @@ static int rpc_write_new(rpc_new_t __user *rpc_user)
 int IPC_FunctionCall(int cmd, void *data, int len)
 {
 	int ret;
-	request_t *req = (request_t *)MALLOC(sizeof(request_t));
-	rpc_t *rpc = &req->rpc;
+	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
+	struct rpc_t *rpc = &req->rpc;
 	void *p = NULL;						// temp buffer for cache align
 #ifdef IPC_USE_CBDMA
 	dma_addr_t dst;
@@ -891,8 +889,8 @@ EXPORT_SYMBOL(IPC_FunctionCall);
 int IPC_FunctionCall_timeout(int cmd, void *data, int len, u32 timeout)
 {
 	int ret;
-	request_t *req = (request_t *)MALLOC(sizeof(request_t));
-	rpc_t *rpc = &req->rpc;
+	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
+	struct rpc_t *rpc = &req->rpc;
 	void *p = NULL;						// temp buffer for cache align
 #ifdef IPC_USE_CBDMA
 	dma_addr_t dst;
@@ -966,7 +964,7 @@ EXPORT_SYMBOL(IPC_FunctionCall_timeout);
 
 static int reg_server(int sid)
 {
-	rpc_fifo_t *fifo = ipc->fifo[sid];
+	struct rpc_fifo_t *fifo = ipc->fifo[sid];
 
 	trace();
 	if (fifo) {
@@ -979,9 +977,9 @@ static int reg_server(int sid)
 			return IPC_FAIL_BUSY;		// already running
 		}
 		rcu_read_unlock();
-		memset(fifo, 0, sizeof(rpc_fifo_t));
+		memset(fifo, 0, sizeof(struct rpc_fifo_t));
 	} else {
-		fifo = ZALLOC(sizeof(rpc_fifo_t));
+		fifo = ZALLOC(sizeof(struct rpc_fifo_t));
 		if (fifo == NULL)
 			return IPC_FAIL_NOMEM;
 	}
@@ -1024,8 +1022,8 @@ static ssize_t sp_ipc_read(struct file *filp, char __user *buffer,
 	int val;
 
 	trace();
-	if (length == sizeof(rpc_t))
-		ret = rpc_read((rpc_t __user *)buffer);
+	if (length == sizeof(struct rpc_t))
+		ret = rpc_read((struct rpc_t __user *)buffer);
 	val = (ret ? RET_K(ret) : length);
 
 	return val;
@@ -1057,10 +1055,10 @@ static ssize_t sp_ipc_write(struct file *filp, const char __user *buffer,
 
 		get_user(sid, (int __user *)buffer);
 		ret = reg_server(sid);
-	} else if (length == sizeof(rpc_t))
-		ret = rpc_write((rpc_t __user *)buffer);
-	else if (length == sizeof(rpc_new_t))
-		ret = rpc_write_new((rpc_new_t __user *)buffer);
+	} else if (length == sizeof(struct rpc_t))
+		ret = rpc_write((struct rpc_t __user *)buffer);
+	else if (length == sizeof(struct rpc_new_t))
+		ret = rpc_write_new((struct rpc_new_t __user *)buffer);
 	val = (ret ? RET_K(ret) : length);
 
 	return val;
@@ -1100,13 +1098,13 @@ static int sp_ipc_probe(struct platform_device *pdev)
 	int ret = -ENXIO;
 	struct resource *res_mem;
 
-	ipc = devm_kzalloc(&pdev->dev, sizeof(sp_ipc_t), GFP_KERNEL);
+	ipc = devm_kzalloc(&pdev->dev, sizeof(struct sp_ipc_t), GFP_KERNEL);
 	if (ipc == NULL) {
 		DBG_INFO("sp_ipc_t malloc fail\n");
 		ret	= -ENOMEM;
 		goto fail_kmalloc;
 	}
-	DBG_INFO("sp_ipc_probe_03\n");
+	DBG_INFO("sp_ipc_probe_05\n");
 
 	/* init */
 	mutex_init(&ipc->write_lock);
