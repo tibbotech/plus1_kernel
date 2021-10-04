@@ -172,7 +172,7 @@
 
 		idle-states {
 			CLUSTER_SLEEP_BIG: cluster-sleep-big {
-				compatible = "sp7021,idle-state";
+				compatible = "sunplus,sp7021-idle-state";
 				//local-timer-stop;
 				entry-latency-us = <8000>;
 				exit-latency-us = <700>;
@@ -180,7 +180,7 @@
 			};
 #if 0
 			CLUSTER_SLEEP_LITTLE: cluster-sleep-little {
-				compatible = "sp7021,idle-state";
+				compatible = "sunplus,sp7021-idle-state";
 				local-timer-stop;
 				entry-latency-us = <1000>;
 				exit-latency-us = <500>;
