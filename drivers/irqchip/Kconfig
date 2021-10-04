@@ -430,9 +430,6 @@ config GOLDFISH_PIC
          Say yes here to enable Goldfish interrupt controller driver used
          for Goldfish based virtual platforms.
 
-config SP_INTC
-	bool "Sunplus interrupt controller"
-
 config QCOM_PDC
 	bool "QCOM PDC"
 	depends on ARCH_QCOM
@@ -599,5 +596,11 @@ config MST_IRQ
 	select IRQ_DOMAIN_HIERARCHY
 	help
 	  Support MStar Interrupt Controller.
+
+config SUNPLUS_SP7021_INTC
+	bool "Sunplus SP7021 interrupt controller"
+	help
+          Say yes here to enable Sunplus SP7021 interrupt controller
+          driver.
 
 endmenu

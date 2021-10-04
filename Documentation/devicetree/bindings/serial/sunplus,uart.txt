@@ -1,0 +1,78 @@
+Sunplus UART controller
+
+Required properties:
+ - compatible: Must contain one of
+    - "sunplus,sp7021-uart": for SP7021 SoC
+    - "sunplus,q645-uart": for Q645 SoC
+ - reg: addresses and length of the register sets for UART controller
+ - interrupt-parent: handle to interrupt parent
+ - interrupts: number and type of interrupt, type should be high-level
+ - clocks: clock selector for UART controller
+ - resets: reset controller selector for UART controller
+ - pinctrl-names: should be "default"
+ - pinctrl-0: pinctrl phandle
+
+Optional properties for DMA mode:
+ - compatible: Must contain one of
+    - "sunplus,sp7021-uart": for SP7021 controller
+    - "sunplus,q645-uart": for Q645 controlle
+ - reg: addresses and length of the register sets for UART DMA controller
+ - interrupt-parent: interrupt phandle
+ - interrupts: should contain SP7021 interrupt number
+ - clocks: clock selector for UART DMA controller
+ - resets: reset controller selector for UART DMA controller
+ - which-uart: select UART #1, #2, #3 or #4 for DMA mode
+
+Note:
+UART0 TX/RX output, PIO mode only
+UART1 TX/RX/CTS/RTS output, PIO/DMA mode selectable
+UART2 TX/RX/CTS/RTS output, PIO/DMA mode selectable
+UART3 TX/RX/CTS/RTS output, PIO/DMA mode selectable
+UART4 TX/RX/CTS/RTS output, PIO/DMA mode selectable
+
+Example for PIO mode:
+uart0: serial@sp_uart0 {
+	compatible = "sunplus,sp7021-uart";
+	reg = <0x9c000900 0x80>;
+	interrupt-parent = <&intc>;
+	interrupts = <53 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clkc UA0>;
+	resets = <&rstc RST_UA0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart0>;
+};
+
+uart1: serial@sp_uart1 {
+	compatible = "sunplus,sp7021-uart";
+	reg = <0x9c000980 0x80>;
+	interrupt-parent = <&intc>;
+	interrupts = <54 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clkc UA1>;
+	resets = <&rstc RST_UA1>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_uart1>;
+};
+
+Example for DMA mode:
+
+/* RX DMA for UART2 */
+uartdmarx1: serial@sp_uartdmarx1 {
+	compatible = "sunplus,sp7021-uart";
+	reg = <0x9c0089c0 0x40>;
+	interrupt-parent = <&intc>;
+	interrupts = <139 IRQ_TYPE_LEVEL_HIGH>;
+	clocks = <&clkc UADMA>,	<&clkc PERI1>;
+	clock-names = "UADMA", "PERI1";
+	resets = <&rstc RST_UADMA>;
+	which-uart = <2>;
+};
+
+/* TX DMA for UART2 */
+uartdmatx1: serial@sp_uartdmatx1 {
+	compatible = "sunplus,sp7021-uart";
+	reg = <0x9c008a40 0x40>, <0x9c008900 0x80>;
+	clocks = <&clkc HWUA>, <&clkc PERI1>;
+	clock-names = "HWUA", "PERI1";
+	resets = <&rstc RST_HWUA>;
+	which-uart = <2>;
+};

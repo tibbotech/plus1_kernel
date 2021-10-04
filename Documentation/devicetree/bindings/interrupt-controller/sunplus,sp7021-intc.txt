@@ -1,26 +1,32 @@
-Sunplus Soc interrupt controller
+Sunplus SP7021 SoC interrupt controller
 
 Required properties:
-- compatible : should be "sunplus,sp-intc"
-- interrupt-controller: identifies the node as an interrupt controller
-- #interrupt-cells : specifies the number of cells needed to encode an interrupt
-    source, should be 1.
-- reg : Offset and length of the register set for the device
-- interrupt-parent : phandle to the parent interrupt controller.
-- interrupts : specifies the interrupt line in the interrupt-parent controller
-- ext0-mask : cpu affiniity of EXT_INT0
-- ext1-mask : cpu affiniity of EXT_INT1
+ - compatible: should be "sunplus,sp7021-intc"
+ - interrupt-controller: identifies the node as an interrupt controller
+ - #interrupt-cells: specifies the number of cells needed to encode an interrupt
+                     source, should be 2.
+ - reg: addresses and length of the register sets for interrupt controller.
+ - interrupt-parent: phandle to the parent interrupt controller.
+ - interrupts: specifies the interrupt lines to the interrupt-parent controller
+               The first item is interrupt type, the second is interrupt number,
+               and the latest is trigger type.
+ - ext0-mask: cpu affiniity of EXT_INT0
+ - ext1-mask: cpu affiniity of EXT_INT1
+   - mask:
+     Setting bit 0 to 1 means the interrupt will be sent to core 0.
+     Setting bit 1 to 1 means the interrupt will be sent to core 1.
+     Setting bit 2 to 1 means the interrupt will be sent to core 2.
+     Setting bit 3 to 1 means the interrupt will be sent to core 3.
 
 Example:
-
-    intc: interrupt-controller@G15 {
-        compatible = "sunplus,sp-intc";
-        interrupt-controller;
-        #interrupt-cells = <2>;
-        reg = <0x9c000780 0x80>, <0x9c000a80 0x80>;
-        interrupt-parent = <&gic>;
-        interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
-                    <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
-        ext0-mask = <0xf>; /* core0-3 */
-        ext1-mask = <0xe>; /* core1-3 */
-    };
+intc: interrupt-controller@0x9c000780 {
+	compatible = "sunplus,sp7021-intc";
+	interrupt-controller;
+	#interrupt-cells = <2>;
+	reg = <0x9c000780 0x80>, <0x9c000a80 0x80>;
+	interrupt-parent = <&gic>;
+	interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
+		     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
+	ext0-mask = <0xf>; /* core0-3 */
+	ext1-mask = <0xe>; /* core1-3 */
+};

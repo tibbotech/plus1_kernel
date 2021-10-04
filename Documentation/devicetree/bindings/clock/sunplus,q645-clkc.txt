@@ -1,0 +1,14 @@
+Sunplus Q645 SoC clock controller
+
+Required properties:
+- compatible: should be "sunplus,q645-clkc"
+- #clock-cells: Specifies the number of cells needed to encode clock line,
+                should be 1.
+- reg: address and length of the register set for clock controller
+
+Example:
+clkc: clkc@0xf8000000 {
+	compatible = "sunplus,q645-clkc";
+	#clock-cells = <1>;
+	reg = <0x00 0xf8000000 0x00 0x280>;
+};

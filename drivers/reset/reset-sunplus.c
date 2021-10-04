@@ -113,7 +113,7 @@ static const struct reset_control_ops sp_reset_ops = {
 };
 
 static const struct of_device_id sp_reset_dt_ids[] = {
-	{ .compatible = "sunplus,sp-reset", },
+	{ .compatible = "sunplus,sp7021-reset", },
 	{ .compatible = "sunplus,q645-reset", },
 	{ /* sentinel */ },
 };
@@ -143,7 +143,7 @@ static int sp_reset_probe(struct platform_device *pdev)
 static struct platform_driver sp_reset_driver = {
 	.probe	= sp_reset_probe,
 	.driver = {
-		.name = "sp-reset",
+		.name = "sunplus-reset",
 		.of_match_table	= sp_reset_dt_ids,
 	},
 };
@@ -154,8 +154,6 @@ static int __init sp_reset_init(void)
 }
 arch_initcall(sp_reset_init);
 
-
 MODULE_AUTHOR("Edwin Chiu <edwin.chiu@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus Reset Driver");
 MODULE_LICENSE("GPL");
-MODULE_ALIAS("platform: sp-reset");

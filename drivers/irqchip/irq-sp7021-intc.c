@@ -527,7 +527,6 @@ arch_initcall(sp_intc_ext_adjust)
 #endif
 
 #ifdef CONFIG_OF
-
 int __init sp_intc_init_dt(struct device_node *node, struct device_node *parent)
 {
 	void __iomem *base0, *base1;
@@ -575,5 +574,9 @@ int __init sp_intc_init_dt(struct device_node *node, struct device_node *parent)
 
 	return 0;
 }
-IRQCHIP_DECLARE(sp_intc, "sunplus,sp-intc", sp_intc_init_dt);
+IRQCHIP_DECLARE(sp_intc, "sunplus,sp7021-intc", sp_intc_init_dt);
 #endif
+
+MODULE_AUTHOR("Jian Qin <qinjian.cqplus1.com>");
+MODULE_DESCRIPTION("Sunplus SP7021 Interrupt Controller Driver");
+MODULE_LICENSE("GPL");

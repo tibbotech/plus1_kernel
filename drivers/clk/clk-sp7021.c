@@ -742,4 +742,8 @@ static void __init sp_clk_setup(struct device_node *np)
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 }
 
-CLK_OF_DECLARE(sp_clkc, "sunplus,sp-clkc", sp_clk_setup);
+CLK_OF_DECLARE(sp_clkc, "sunplus,sp7021-clkc", sp_clk_setup);
+
+MODULE_AUTHOR("Jian Qin <qinjian.cqplus1.com>");
+MODULE_DESCRIPTION("Sunplus SP7021 Clock Driver");
+MODULE_LICENSE("GPL");
