@@ -17,7 +17,7 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-#define SPSDC_CLK_360M	360000000
+#define SPSDC_CLK_360M	358333333
 #define SPSDC_CLK_220M	222750000
 
 #define SPSDC_MIN_CLK	400000
