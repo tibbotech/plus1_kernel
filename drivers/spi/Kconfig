@@ -966,7 +966,7 @@ config SPI_SUNPLUS_SP7021
 	depends on SOC_SP7021
 	help
 	  Enable the Sunplus SP7021 spi controller driver.
-	  
+
 config SPI_SUNPLUS
 	tristate "Sunplus SPI controller"
 	depends on SOC_Q645

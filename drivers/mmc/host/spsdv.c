@@ -199,10 +199,7 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clk = f_max;
 	if (host->soc_clk != soc_clk) {
 		spsdc_pr(ERROR, "CCF clock error CCF_clk : %d source_clk : %d", soc_clk, host->soc_clk);
-		soc_clk = host->soc_clk;
 	}
-
-
 
 	clkdiv = (soc_clk/clk)-1;
 
@@ -220,7 +217,6 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clkdiv = 0xfff;
 	}
 	value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, clkdiv);
-	//value = bitfield_replace(value, SPSDC_sdfqsel_w12, 12, 2);
 	writel(value, &host->base->sd_config0);
 
 	/* In order to reduce the frequency of context switch,
@@ -437,9 +433,7 @@ static void spsdc_prepare_cmd(struct spsdc_host *host, struct mmc_command *cmd)
 		value = bitfield_replace(value, SPSDC_sdrspchk_w01, 1, 1); /* sdrspchk_en */
 	else
 		value = bitfield_replace(value, SPSDC_sdrspchk_w01, 1, 0);
-	//writel(value, &host->base->sd_config0);
 
-	//value = readl(&host->base->sd_config);
 	if (unlikely(cmd->flags & MMC_RSP_136))
 		value = bitfield_replace(value, SPSDC_sdrsptype_w01, 1, 1); /* sdrsptype */
 	else
@@ -470,13 +464,14 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 
 	/* to prevent of the responses of CMD18/25 being overrided by CMD12's,
 	 * send CMD12 by ourself instead of by controller automatically
+	 *
+	 *	if ((cmd->opcode == MMC_READ_MULTIPLE_BLOCK) || (cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK))
+	 *	value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 0); // sd_len_mode
+	 *	else
+	 *	value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 1);
+	 *
 	 */
-#if (0)
-	if ((cmd->opcode == MMC_READ_MULTIPLE_BLOCK) || (cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK))
-		value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 0); /* sd_len_mode */
-	else
-		value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 1);
-#endif
+
 	value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 1);
 
 	if (likely(host->dmapio_mode == SPSDC_DMA_MODE)) {
@@ -551,7 +546,7 @@ static int __send_stop_cmd(struct spsdc_host *host, struct mmc_command *stop)
 	return 0;
 }
 
-/**
+/*
  * check if error occured during transaction.
  * @host -  host
  * @mrq - the mrq
@@ -954,7 +949,6 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 		return -EIO;
 
 	if (ios->signal_voltage != MMC_SIGNAL_VOLTAGE_180) {
-		//printk(KERN_INFO,  "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		spsdc_pr(INFO, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
@@ -982,12 +976,10 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 			break;
 		//if (value >> 4 == 0)
 			i++;
-	    //spsdc_pr(WARNING, "1V8 result %d\n",value >> 4);
 		spsdc_pr(INFO, "1V8 result %d\n", value >> 4);
 	}
 
 		spsdc_pr(INFO, "1V8 result out %d\n", value >> 4);
-	    //spsdc_pr(WARNING, "1V8 result out %d\n",value >> 4);
 
 #else
 
@@ -995,7 +987,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	value = readl(&host->base->sd_vol_ctrl);
 	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 	writel(value, &host->base->sd_vol_ctrl);
-	//spsdc_pr(VERBOSE, "base->sd_vol_ctrl!  0x%x\n",readl(&host->base->sd_vol_ctrl));
+
 	spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n", readl(&host->base->sd_vol_ctrl));
 
 	mdelay(20);
@@ -1025,23 +1017,23 @@ static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 
 static const struct spsdc_compatible sp_sd_645_compat = {
 	.mode = SPSDC_MODE_SD,
-	.source_clk = SPSDC_CLK_220M,
+	.source_clk = SPSDC_CLK_360M,
 };
 
 static const struct spsdc_compatible sp_sdio_645_compat = {
 	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_220M,
+	.source_clk = SPSDC_CLK_360M,
 };
 
 
 static const struct spsdc_compatible sp_sd_143_compat = {
 	.mode = SPSDC_MODE_SD,
-	.source_clk = SPSDC_CLK_360M,
+	.source_clk = SPSDC_CLK_220M,
 };
 
 static const struct spsdc_compatible sp_sdio_143_compat = {
 	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_360M,
+	.source_clk = SPSDC_CLK_220M,
 };
 
 

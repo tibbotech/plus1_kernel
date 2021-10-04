@@ -1,5 +1,6 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later*/
 /**
- * @file    sp_ipc.h
+ * @file    sunplus_ipc.h
  * @brief   Declaration of Sunplus IPC Linux Driver.
  * @author  qinjian
  */
@@ -56,7 +57,7 @@ enum {
 #define RPC_DATA_REGS		16
 #endif
 #define RPC_DATA_SIZE		(RPC_DATA_REGS * 4)
-#define RPC_HEAD_SIZE		(sizeof(rpc_t) - RPC_DATA_SIZE)
+#define RPC_HEAD_SIZE		(sizeof(struct rpc_t) - RPC_DATA_SIZE)
 
 #define MAILBOX_NUM			8
 
@@ -70,45 +71,43 @@ enum {
 #define u32		unsigned int
 #endif
 
-typedef struct {
-	void*		REQ_H;					// Request Handler
-	u16 		DATA_LEN;				// In/Out Data Length in Bytes
-	u16			CMD 	: 10;			// Command ID / Return Value
-	u16 		RSV 	: 3;
-	u16 		F_TYPE	: 2;			// Request Type
-	u16 		F_DIR	: 1;			// REQUEST / RESPONSE
+struct rpc_t {
+	void	*REQ_H;// Request Handler
+	u16		DATA_LEN;// In/Out Data Length in Bytes
+	u16	CMD	: 10;// Command ID / Return Value
+	u16 RSV	: 3;
+	u16	F_TYPE	: 2;// Request Type
+	u16	F_DIR	: 1;// REQUEST / RESPONSE
 #ifndef IPC_USE_CBDMA
-	void*		SEQ_ADDR;
-	u32 		SEQ;
+	void	*SEQ_ADDR;
+	u32		SEQ;
 #endif
 	union {
 		u32		DATA[RPC_DATA_REGS];	// if DATA_LEN <= RPC_DATA_SIZE
 		struct {						// if DATA_LEN >  RPC_DATA_SIZE
-			void*	DATA_PTR;			// Cache Aligned
-			void*	DATA_PTR_ORG;		// Backup (INTERNAL_USE)
+			void	*DATA_PTR;			// Cache Aligned
+			void	*DATA_PTR_ORG;		// Backup (INTERNAL_USE)
 		};
 	};
-} rpc_t;
+};
 
-typedef struct {
+struct rpc_user_t {
 	u32 timeout;
-}rpc_user_t;
+};
 
-typedef struct {
-	rpc_t rpc;
-	rpc_user_t user;
-}rpc_new_t;
+struct rpc_new_t {
+	struct rpc_t rpc;
+	struct rpc_user_t user;
+};
 
-typedef struct {
-	u32			TRIGGER;				// Reg00
-	u32			F_RW;					// Reg01
-	u32			F_OVERWRITE;			// Reg02
-	u32			RSV;					// Reg03
-
-	rpc_t		RPC;					// Reg04~23
-
-	u32			MBOX[MAILBOX_NUM];		// Reg24~31
-} ipc_t;
+struct ipc_t {
+	u32				TRIGGER;				// Reg00
+	u32				F_RW;					// Reg01
+	u32				F_OVERWRITE;			// Reg02
+	u32				RSV;					// Reg03
+	struct rpc_t	RPC;					// Reg04~23
+	u32				MBOX[MAILBOX_NUM];		// Reg24~31
+};
 
 typedef int (*ipc_func)(void *data);
 typedef void (*ipc_mbfunc)(int id, u32 data);
@@ -124,7 +123,7 @@ typedef void (*ipc_mbfunc)(int id, u32 data);
 #else
 #define print(...)
 #endif
-#define trace()		print("++++ %s(%d) ++++\n", __FUNCTION__, __LINE__)
+#define trace()		print("++++ %s(%d) ++++\n", __func__, __LINE__)
 
 #ifdef MEM_DEBUG
 #define MALLOC(n) \
@@ -145,7 +144,7 @@ do { \
 
 #define hex_dump(p, l) \
 do { \
-	static char _s[] = "       |       \n"; \
+	static const char _s[] = "       |       \n"; \
 	char ss[52] = ""; \
 	u8 *_p = (u8 *)(p); \
 	int _l = (l); \
@@ -154,25 +153,28 @@ do { \
 		_j = _i & 0x0F; \
 		sprintf(ss + _j * 3, "%02x%c", _p[_i], _s[_j]); \
 		_i++; \
-		if (!(_i & 0x0F)) printf(ss); \
+		if (!(_i & 0x0F))\
+			printf(ss); \
 	} \
-	if (_l & 0x0F) printf(ss); \
+	if (_l & 0x0F)\
+		printf(ss); \
 } while (0)
 
 #define var_dump(v) \
 do { \
-	printf("%s(%d) %p:\n", __FUNCTION__, __LINE__, &(v)); \
+	printf("%s(%d) %p:\n", __func__, __LINE__, &(v)); \
 	hex_dump(&(v), sizeof(v)); \
 } while (0)
 
 #define _rpc_dump(ss, rr) \
 do { \
-	rpc_t *r = (rpc_t *)(rr); \
+	struct rpc_t *r = (struct rpc_t *)(rr); \
 	int l; \
 	printf("%s: %s %u\n", ss, (r->F_DIR)?"RES":"REQ", r->CMD); \
 	l = r->DATA_LEN; \
 	hex_dump(r, (l > RPC_DATA_SIZE) ? 24 : (16 + l)); \
-	if (l > RPC_DATA_SIZE) hex_dump(r->DATA_PTR, l + 4); \
+	if (l > RPC_DATA_SIZE)\
+		hex_dump(r->DATA_PTR, l + 4); \
 	printf("\n"); \
 } while (0)
 

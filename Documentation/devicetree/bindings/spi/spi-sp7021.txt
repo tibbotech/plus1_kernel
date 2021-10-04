@@ -1,0 +1,44 @@
+* Sunplus spi sp7021 controller *
+
+Sunplus spi sp7021 controller .
+
+Required properties:
+- compatible:
+ Should be "sunplus,sp7021-spi-controller":   for spi sp7021
+
+Optional properties:
+- spi-max-frequency: Maximum operating clock frequency.
+
+- cs-gpios: see spi-bus.txt.
+
+- spi-slave: slave mode
+
+Example:
+
+	spi_controller0: spi@sp_spi_controller0 {
+		compatible = "sunplus,sp7021-spi-controller";
+		reg = <0x9C002D80 0x80>, <0x9C002E00 0x80>;
+		reg-names = "spi_master", "spi_slave";
+		interrupt-parent = <&intc>;
+		interrupt-names = "dma_w_intr",
+			"mas_risc_intr",
+			"slave_risc_intr";
+		interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
+			<146 IRQ_TYPE_LEVEL_HIGH>,
+			<145 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_0>;
+		clock-names = "sys_pll";
+		resets = <&rstc RST_SPI_COMBO_0>;
+	};
+
+	&spi_controller0 {
+		spi-max-frequency = <50000000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_spim0>;
+		cs-gpios = <&pctl 10 GPIO_ACTIVE_HIGH>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		spi@0 {
+			............
+		};
+};

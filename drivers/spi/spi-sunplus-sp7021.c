@@ -121,7 +121,6 @@
 #define CPOL_FD (1<<0)
 #define CPHA_R (1<<1)
 #define CPHA_W (1<<2)
-#define LSB_SEL (1<<4)
 #define CS_POR (1<<5)
 
 #define SPI_FD_BUSY (1<<7)

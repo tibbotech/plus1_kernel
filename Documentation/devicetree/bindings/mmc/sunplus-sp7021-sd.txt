@@ -1,0 +1,46 @@
+* Sunplus SP7021 SD/SDIO controller *
+
+The Sunplus SD/SDIO controllerbto support  SD, and SDIO 
+
+This file documents the properties used by the Sunplus SP7021 SD/SDIO driver.
+
+Required properties:
+- compatible:
+ Should be "sunplus,sp7021-card1": for SD   sp7021
+ Should be "sunplus,sp7021-sdio":  for SDIO sp7021
+
+Optional properties:
+- max-frequency: Maximum operating clock frequency, default 52MHz.
+
+Example:
+	mmc1: mmc@sdcard {
+		compatible = "sunplus,sp7021-card1";
+		reg = <0x9c003e80 0x280>;
+		interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc CARD_CTL1>;
+		resets = <&rstc RST_CARD_CTL1>;
+		bus-width = <4>;
+		max-frequency = <52000000>;
+		disable-wp;
+		cap-sd-highspeed;
+		no-sdio;
+		no-mmc;
+	};
+
+	sdio: sdio@sdcard {
+		compatible = "sunplus,sp7021-sdio";
+		reg = <0x9c008400 0x280>;
+		interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc CARD_CTL4>;
+		resets = <&rstc RST_CARD_CTL4>;
+		bus-width = <4>;
+		max-frequency = <52000000>;
+		non-removable;
+		disable-wp;
+		cap-sd-highspeed;
+		cap-sdio-irq;
+		no-sd;
+		no-mmc;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};	

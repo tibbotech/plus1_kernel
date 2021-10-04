@@ -541,7 +541,6 @@ config ARCH_PENTAGRAM
 	bool "Sunplus Pentagram architectures"
 	select CLKSRC_OF
 	select COMMON_CLK
-	select COMMON_CLK_SP7021
 	select GENERIC_CLOCKEVENTS
 	select GENERIC_IRQ_CHIP
 	select GENERIC_IRQ_MULTI_HANDLER
@@ -550,6 +549,8 @@ config ARCH_PENTAGRAM
 	select USE_OF
 	select RTC_CLASS
 	select RESET_SUNPLUS
+	help
+	  Support for Sunplus SoC family.
 
 endchoice
 
