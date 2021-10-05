@@ -13,7 +13,7 @@
 	model = "SP7021/CA7/BPI-F2S";
 
 	chosen {
-		bootargs = "console=ttyS0,115200 root=/dev/ram rw loglevel=8 user_debug=255 earlyprintk";
+		bootargs = "console=ttyS0,115200 loglevel=8 user_debug=255 earlyprintk";
 		stdout-path = "serial0:115200n8";
 	};
 
@@ -52,27 +52,37 @@
 };
 
 &spi_controller0 {
-	spi-max-frequency = <50000000>;
-	//spi-cpha;
-	//spi-cpol;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spi0>;
-	status = "disabled";
+	cs-gpios = <&pctl 26 GPIO_ACTIVE_LOW>, <&pctl 28 GPIO_ACTIVE_LOW>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	spi@0 {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <5000000>;
+		reg = <0x0>;
+		status = "okay";
+	};
+	spi@1 {
+		compatible = "rohm,dh2228fv";
+		spi-max-frequency = <5000000>;
+		reg = <0x1>;
+		status = "okay";
+	};
 };
 
 &spi_controller1 {
-	spi-max-frequency = <50000000>;
+	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller2 {
-	spi-max-frequency = <50000000>;
+	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller3 {
-	spi-max-frequency = <50000000>;
-	//spi-slave;
+	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
@@ -80,7 +90,6 @@
 	clock-frequency = <100000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2cm0_pins>;
-	status = "disabled";
 };
 
 &i2cm1 {
@@ -109,7 +118,6 @@
 &uart1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_uart1>;
-	status = "disabled";
 };
 
 &uart2 {
@@ -309,7 +317,8 @@
 
 	pins_spi0: pinmux_pins_spi0 {
 		sppctl,pins = <
-			SPPCTL_IOPAD(26,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_EN,0)
+			SPPCTL_IOPAD(26,SPPCTL_PCTL_G_GPIO,0,0)
+			SPPCTL_IOPAD(28,SPPCTL_PCTL_G_GPIO,0,0)
 			SPPCTL_IOPAD(23,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_DO,0)
 			SPPCTL_IOPAD(25,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_DI,0)
 			SPPCTL_IOPAD(27,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_CLK,0)
