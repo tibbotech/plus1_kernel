@@ -148,7 +148,7 @@ void WAIT_INIT(struct wait_t *wait, int t)
 	struct wait_t *w = (struct wait_t *)(wait);
 
 	if (t == 0)
-		sema_init(&w->sem, 0);
+		sema_init(&w->sem, 1);
 	else {
 		w->timeout = msecs_to_jiffies(t);
 		w->waked = 0;
