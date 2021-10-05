@@ -144,7 +144,7 @@ do { \
 
 #define hex_dump(p, l) \
 do { \
-	static const char _s[] = "       |       \n"; \
+	static const char _s[] = "       |       |\n"; \
 	char ss[52] = ""; \
 	u8 *_p = (u8 *)(p); \
 	int _l = (l); \
