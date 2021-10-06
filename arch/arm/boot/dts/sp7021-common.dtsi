@@ -497,35 +497,20 @@
 				reg = <0x18 0x2>;
 			};
 		};
-#if 1
+
 		cbdma: cbdma@sp_cbdma {
-			compatible = "sunplus,sp7021-c-cbdma";
+			compatible = "sunplus,sp7021-cb-cdma";
 			reg = <0x9c000d00 0x80>;
 			reg-names = "cb_dma";
 			interrupt-parent = <&intc>;
 			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			sp,addrwidth = <0x20>;
 			dma-channel-0 {
-				compatible = "xlnx,axi-cdma-channel";
+				compatible = "sp,cb-cdma-channel";
 				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+				sp,datawidth = <0x20>;
 			};
 		};
-#else
-		cbdma: cbdma@sp_cbdma {
-			compatible = "sunplus,sp7021-cbdma";
-			reg = <0x9c000d00 0x80>;
-			reg-names = "cb_dma";
-			interrupt-parent = <&intc>;
-			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
-			dma-channel-0 {
-				compatible = "xlnx,axi-dma-mm2s-channel";
-				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
-			};
-			dma-channel-1 {
-				compatible = "xlnx,axi-dma-s2mm-channel";
-				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
-			};
-		};
-#endif
 
 		icm: icm@0x9c002880 {
 			compatible = "sunplus,sp7021-icm";

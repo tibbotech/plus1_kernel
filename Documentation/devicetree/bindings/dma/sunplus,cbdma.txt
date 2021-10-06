@@ -1,0 +1,35 @@
+Device-Tree bindings of sp_cbdma device
+
+Required properties:
+- compatible: Should be one of-
+				"sunplus,sp7021-cb-dma"
+				"sunplus,sp7021-cb-cdma"
+- reg: Physical base address and length of the controller's register
+- reg-names:  List of registers
+- interrupt-parent: Interrupt phandles (see interrupt-controller for details)
+- interrupts: interrupt number to the cpu.
+
+Required child node properties:
+- compatible:
+	For CDMA: It should be "sunplus,sp7021-cb-cdma".
+	For DMA: It should be either "sp,cb-dma-mm2s-channel"
+	or "sp,cb-dma-s2mm-channel".
+- interrupts: interrupt number to the cpu.
+- sp,datawidth: Should contain the stream data width, take values
+	{32,64...1024}.
+
+Example:
+
+	cbdma: cbdma@sp_cbdma {
+		compatible = "sunplus,sp7021-cb-cdma";
+		reg = <0x9c000d00 0x80>;
+		reg-names = "cb_dma";
+		interrupt-parent = <&intc>;
+		interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+		sp,addrwidth = <0x20>;
+		dma-channel-0 {
+			compatible = "sp,cb-cdma-channel";
+			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+			sp,datawidth = <0x20>;
+		};
+	};
