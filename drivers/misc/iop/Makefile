@@ -4,7 +4,7 @@
 
 	# call from kernel build system
 
-	obj-$(CONFIG_SUNPLUS_IOP) += sp_iop.o
+	obj-$(CONFIG_SUNPLUS_IOP) += sunplus_iop.o
 	obj-$(CONFIG_SUNPLUS_IOP) += hal_iop.o
 	obj-$(CONFIG_SUNPLUS_IOP) += iopnormal.o
 	obj-$(CONFIG_SUNPLUS_IOP) += iopstandby.o

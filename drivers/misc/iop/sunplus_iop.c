@@ -15,7 +15,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/of_address.h>
 #include "hal_iop.h"
-#include "sp_iop.h"
+#include "sunplus_iop.h"
 #include "iop_ioctl.h"
 #include <linux/delay.h>
 #include <linux/of.h>

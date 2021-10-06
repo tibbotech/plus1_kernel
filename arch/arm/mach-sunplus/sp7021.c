@@ -19,7 +19,7 @@
 #include <mach/io_map.h>
 #include <mach/misc.h>
 #ifdef CONFIG_SUNPLUS_IOP
-#include <../drivers/misc/iop/sp_iop.h>
+#include <../drivers/misc/iop/sunplus_iop.h>
 #endif
 #include "common.h"
 
