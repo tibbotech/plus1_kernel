@@ -33,6 +33,7 @@
 //#define IOP_GET_GPIO
 //#define IOP_UPDATE_FW
 //#define RESERVE_CODE
+//#define IOP_RESERVE_INFO
 
 int IOP_GPIO;
 unsigned long SP_IOP_RESERVE_BASE;
@@ -77,16 +78,6 @@ struct sp_iop_t {
 	int irq;
 };
 
-//typedef struct IOP_SYS_RegBase_t_ {
-//	void __iomem *moon0_regs;
-//	void __iomem *qctl_regs;
-//	void __iomem *pmc_regs;
-//	void __iomem *rtc_regs;
-
-//} IOP_SYS_RegBase_t;
-
-//static IOP_SYS_RegBase_t stIopSysRegBase;
-
 /*****************************************************************
  *						  G L O B A L	 D A T A
  ******************************************************************/
@@ -107,14 +98,12 @@ static ssize_t normalcode_read(struct file *filp, struct kobject *kobj,
 
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, NORMAL_CODE_MAX_SIZE);
 	memcpy(buf, (unsigned char *)IOP_kernel_base+offset, count);
-	//printk("offset=%llx\n", offset);
 	//DBG_INFO("filp->f_pos=%llx\n", filp->f_pos);
 
 	if (offset == (NORMAL_CODE_MAX_SIZE - count))
 		DBG_INFO("get_standbycode\n");
 	return count;
 }
-
 
 static ssize_t normalcode_write(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
@@ -146,8 +135,6 @@ static ssize_t normalcode_write(struct file *filp, struct kobject *kobj,
 	return count;
 }
 
-
-
 static ssize_t standbycode_read(struct file *filp, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t count)
@@ -157,7 +144,6 @@ static ssize_t standbycode_read(struct file *filp, struct kobject *kobj,
 
 	IOP_kernel_base = (unsigned char *)ioremap((unsigned long)IOP_base_for_normal, STANDBY_CODE_MAX_SIZE);
 	memcpy(buf, (unsigned char *)IOP_kernel_base+offset, count);
-	//printk("offset=%llx\n", offset);
 	//DBG_INFO("filp->f_pos=%llx\n", filp->f_pos);
 	if (offset == (STANDBY_CODE_MAX_SIZE - count))
 		DBG_INFO("get_standbycode\n");
@@ -245,7 +231,6 @@ static ssize_t wakein_store(struct device *dev, struct device_attribute *attr, c
 
 	if (buf[0] == '0') {
 		DBG_INFO("Disable WAKE_IN\n");
-		//reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
 		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
 		reg = 0x08000000;
 		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
@@ -302,13 +287,13 @@ static ssize_t setdata_store(struct device *dev, struct device_attribute *attr, 
 	num[0] = buf[0];
 	for (i = 0; i < 4; i++)
 		value[i] = buf[2+i];
-		
+
 	status = kstrtoul(value, 16, &val);
 	if (status)
 		return status;
-	
+
 	setnum = (unsigned int)num[0];
-	setvalue = val;	
+	setvalue = val;
 	DBG_INFO("setnum=%x\n", setnum);
 	DBG_INFO("setvalue=%x\n", setvalue);
 	hal_iop_set_iop_data(iop->iop_regs, setnum, setvalue);
@@ -614,19 +599,14 @@ static int sp_iop_start(struct sp_iop_t *iopbase)
 #ifdef RESERVE_CODE
 static int sp_iop_suspend(struct sp_iop_t *iopbase)
 {
-	//early_printk("[MBOX_%d] %08x (%u)\n", i, d, d);
-	//early_printk("sp_iop_suspend\n");
 	FUNC_DEBUG();
 	hal_iop_suspend(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
 }
-
 #endif
 
 static int sp_iop_shutdown(struct sp_iop_t *iopbase)
 {
-	//early_printk("[MBOX_%d] %08x (%u)\n", i, d, d);
-	//early_printk("sp_iop_shutdown\n");
 	FUNC_DEBUG();
 	hal_iop_shutdown(iopbase->iop_regs, iopbase->pmc_regs);
 	return IOP_SUCCESS;
@@ -691,9 +671,10 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 
 	SP_IOP_RESERVE_BASE = mem_res.start;
 	SP_IOP_RESERVE_SIZE = resource_size(&mem_res);
-	//DBG_INFO("mem_res.start=%lx\n", SP_IOP_RESERVE_BASE);
-	//DBG_INFO("mem_res.size=%lx\n", SP_IOP_RESERVE_SIZE);
-
+	#ifdef IOP_RESERVE_INFO
+	DBG_INFO("mem_res.start=%lx\n", SP_IOP_RESERVE_BASE);
+	DBG_INFO("mem_res.size=%lx\n", SP_IOP_RESERVE_SIZE);
+	#endif
 
 	ret = sp_iop_start(iop);
 	if (ret != 0) {
@@ -829,8 +810,6 @@ static struct platform_driver sp_iop_platform_driver = {
 	}
 };
 
-
-
 module_platform_driver(sp_iop_platform_driver);
 
 /**************************************************************************
@@ -840,5 +819,3 @@ module_platform_driver(sp_iop_platform_driver);
 MODULE_AUTHOR("Sunplus Technology");
 MODULE_DESCRIPTION("Sunplus IOP Driver");
 MODULE_LICENSE("GPL");
-
-
