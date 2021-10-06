@@ -65,46 +65,6 @@ static inline u32 bitfield_replace(u32 reg_val, u32 shift, u32 width, u32 val)
 #define __bitfield_replace(value, shift, width, new_value)		\
 	(bitfield_replace(value, shift, width, new_value)|bitfield_mask(shift+16, width))
 
-#ifdef SPSDC_DEBUG
-#define SPSDC_REG_SIZE (sizeof(struct spsdc_regs)) /* register address space size */
-#define SPSDC_REG_GRPS (sizeof(struct spsdc_regs) / 128) /* we organize 32 registers as a group */
-#define SPSDC_REG_CNT  (sizeof(struct spsdc_regs) / 4) /* total registers */
-
-/**
- * dump a range of registers.
- * @host: host
- * @start_group: dump start from which group, base is 0
- * @start_reg: dump start from which register in @start_group
- * @len: how many registers to dump
- */
-static void spsdc_dump_regs(struct spsdc_host *host, int start_group, int start_reg, int len)
-{
-	u32 *p = (u32 *)host->base;
-	u32 *reg_end = p + SPSDC_REG_CNT;
-	u32 *end;
-	int groups;
-	int i, j;
-
-	if (start_group > SPSDC_REG_GRPS || start_reg > 31)
-		return;
-	p += start_group * 32 + start_reg;
-	if (p > reg_end)
-		return;
-	end = p + len;
-	groups = (len + 31) / 32;
-	pr_info("groups = %d\n", groups);
-	pr_info("### dump sd card controller registers start ###\n");
-	for (i = 0; i < groups; i++) {
-		for (j =  start_reg; j < 32 && p < end; j++) {
-			pr_info("g%02d.%02d = 0x%08x\n", i+start_group, j, readl(p));
-			p++;
-		}
-		start_reg = 0;
-	}
-	pr_info("### dump sd card controller registers end ###\n");
-}
-#endif
-
 /**
  * wait for transaction done, return -1 if error.
  */
@@ -702,7 +662,6 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 	mmc_request_done(host->mmc, mrq);
 }
 
-
 /* Interrupt Service Routine */
 irqreturn_t spsdc_irq(int irq, void *dev_id)
 {
@@ -859,298 +818,6 @@ static const struct mmc_host_ops spsdc_ops = {
 	.enable_sdio_irq = spsdc_enable_sdio_irq,
 };
 
-/****** sysfs files ******/
-struct spsdc_config {
-	char *name;
-#define SPSDC_CFG_SUCCESS	0
-#define SPSDC_CFG_FAIL		-1
-#define SPSDC_CFG_REINIT	1 /* successed and need re-initialize */
-	int (*store)(struct spsdc_host *host, const char *arg);
-	int (*show)(struct spsdc_host *host, char *buf);
-};
-
-static int config_controller_clock_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "controller clock: %lu\n", clk_get_rate(host->clk));
-}
-
-static int config_bus_clock_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "*bus_clock: %d\n", host->mmc->ios.clock);
-}
-
-static int config_bus_clock_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	if (val >= host->mmc->f_min && val <= SPSDC_MAX_CLK) {
-		host->mmc->f_max = val;
-		return SPSDC_CFG_REINIT;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_bus_width_show(struct spsdc_host *host, char *buf)
-{
-	int bus_width;
-
-	switch (host->mmc->ios.bus_width) {
-	case MMC_BUS_WIDTH_8:
-		bus_width = 8;
-		break;
-	case MMC_BUS_WIDTH_4:
-		bus_width = 4;
-		break;
-	default:
-		bus_width = 1;
-		break;
-	};
-	return sprintf(buf, "*bus_width: %d\n", bus_width);
-}
-
-static int config_bus_width_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	switch (val) {
-	case 8:
-		host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	case 4:
-		host->mmc->caps &= ~MMC_CAP_8_BIT_DATA;
-		host->mmc->caps |= MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	case 1:
-		host->mmc->caps &= ~MMC_CAP_8_BIT_DATA;
-		host->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	default:
-		return SPSDC_CFG_FAIL;
-	}
-}
-
-static int config_mode_show(struct spsdc_host *host, char *buf)
-{
-	char *mode;
-
-	switch (host->mode) {
-	case SPSDC_MODE_SD:
-		mode = "SD";
-		break;
-	case SPSDC_MODE_SDIO:
-		mode = "SDIO";
-		break;
-	case SPSDC_MODE_EMMC:
-		mode = "eMMC";
-		break;
-	}
-	return sprintf(buf, "*mode: %s\n", mode);
-}
-
-static int config_mode_store(struct spsdc_host *host, const char *arg)
-{
-	if (!strcasecmp("sd", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_SD);
-		return SPSDC_CFG_REINIT;
-	}
-	if (!strcasecmp("sdio", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_SDIO);
-		return SPSDC_CFG_REINIT;
-	}
-	if (!strcasecmp("emmc", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_EMMC);
-		return SPSDC_CFG_REINIT;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_dmapio_mode_show(struct spsdc_host *host, char *buf)
-{
-	char *dmapio_mode;
-
-	switch (host->dmapio_mode) {
-	case SPSDC_DMA_MODE:
-		dmapio_mode = "DMA";
-		break;
-	case SPSDC_PIO_MODE:
-		dmapio_mode = "PIO";
-		break;
-	}
-	return sprintf(buf, "*dmapio_mode: %s\n", dmapio_mode);
-}
-
-static int config_dmapio_mode_store(struct spsdc_host *host, const char *arg)
-{
-	if (!strcasecmp("dma", arg)) {
-		host->dmapio_mode = SPSDC_DMA_MODE;
-		return SPSDC_CFG_SUCCESS;
-	}
-	if (!strcasecmp("pio", arg)) {
-		host->dmapio_mode = SPSDC_PIO_MODE;
-		return SPSDC_CFG_SUCCESS;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_dma_int_threshold_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "*dma_int_threshold: %d\n", host->dma_int_threshold);
-}
-
-static int config_dma_int_threshold_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	host->dma_int_threshold = val;
-	return SPSDC_CFG_SUCCESS;
-}
-
-static struct spsdc_config spsdc_configs[] = {
-	{
-		.name = "controller clock",
-		.show = config_controller_clock_show,
-	},
-	{
-		.name = "mode",
-		.show = config_mode_show,
-		.store = config_mode_store
-	},
-	{
-		.name = "bus_clock",
-		.show = config_bus_clock_show,
-		.store = config_bus_clock_store
-	},
-	{
-		.name = "bus_width",
-		.show = config_bus_width_show,
-		.store = config_bus_width_store
-	},
-	{
-		.name = "dmapio_mode",
-		.show = config_dmapio_mode_show,
-		.store = config_dmapio_mode_store
-	},
-	{
-		.name = "dma_int_threshold",
-		.show = config_dma_int_threshold_show,
-		.store = config_dma_int_threshold_store
-	},
-	{} /* sentinel */
-};
-
-static ssize_t config_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct spsdc_host *host = dev_get_drvdata(dev);
-	struct spsdc_config *p = spsdc_configs;
-	int len;
-
-	if (!host) {
-		pr_err("No host data!\n");
-		return 0;
-	}
-
-	len = sprintf(buf, "configures start with '*' could be configured:\n");
-	while (p->name) {
-		if (p->show)
-			len += p->show(host, buf + len);
-		p++;
-	}
-	return len;
-
-}
-
-static ssize_t config_store(struct device *dev, struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	struct spsdc_host *host = dev_get_drvdata(dev);
-	char *tmp;
-	char *name, *arg,  **s;
-	int ret;
-	int need_reinit = 0;
-	struct spsdc_config *p;
-
-	if (!host) {
-		pr_err("No host data!\n");
-		return 0;
-	}
-	tmp = kmalloc(count, GFP_KERNEL);
-	if (!tmp)
-		return 0;
-
-	memcpy(tmp, buf, count);
-	s = &tmp;
-	while ((name = strsep(s, "\n")) && (arg = strsep(s, "\n"))) {
-		p = spsdc_configs;
-		while (p->name && strcasecmp(p->name, name))
-			p++;
-		if (p->name) {
-			spsdc_pr(INFO, "trying to set config %s to %s\n", name, arg);
-			ret = p->store(host, arg);
-			if (ret == SPSDC_CFG_REINIT)
-				need_reinit = 1;
-			else if (ret == SPSDC_CFG_FAIL)
-				pr_err("Invalid argument '%s' to config %s\n", arg, name);
-		} else {
-			pr_err("Invalid config name: %s\n", name);
-		}
-	}
-
-	if (need_reinit) {
-		mmc_remove_host(host->mmc);
-		mmc_add_host(host->mmc);
-	}
-	kfree(tmp);
-	return count;
-}
-static DEVICE_ATTR_RW(config);
-
-static ssize_t loglevel_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", loglevel);
-}
-
-static ssize_t loglevel_store(struct device *dev, struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	unsigned long val;
-
-	if (kstrtoul(buf, 10, &val))
-		goto out;
-	if (val < SPSDC_LOG_MAX) {
-		loglevel = val;
-		return count;
-	}
-out:
-	pr_err("Invalid value\n");
-	return 0;
-}
-static DEVICE_ATTR_RW(loglevel);
-
-static int spsdc_device_create_sysfs(struct platform_device *pdev)
-{
-	int ret;
-
-	ret = device_create_file(&pdev->dev, &dev_attr_loglevel);
-	if (ret)
-		return ret;
-	ret = device_create_file(&pdev->dev, &dev_attr_config);
-	if (ret)
-		device_remove_file(&pdev->dev, &dev_attr_loglevel);
-	return ret;
-}
-
-static void spsdc_device_remove_sysfs(struct platform_device *pdev)
-{
-	device_remove_file(&pdev->dev, &dev_attr_config);
-	device_remove_file(&pdev->dev, &dev_attr_loglevel);
-}
-
 static void tsklet_func_finish_req(unsigned long data)
 {
 	struct spsdc_host *host = (struct spsdc_host *)data;
@@ -1167,11 +834,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	struct resource *resource;
 	struct spsdc_host *host;
 	unsigned int mode;
-
-	ret = spsdc_device_create_sysfs(pdev);
-
-	if (ret)
-		return ret;
 
 	mmc = mmc_alloc_host(sizeof(*host), &pdev->dev);
 	if (!mmc) {
@@ -1208,8 +870,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
 		spsdc_pr(ERROR, "register size is not right\n");
-		ret = -EINVAL;
-		goto probe_free_host;
 	}
 
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
@@ -1238,9 +898,9 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 
 	ret = clk_prepare(host->clk);
-
 	if (ret)
 		goto probe_free_host;
+
 	ret = clk_enable(host->clk);
 	if (ret)
 		goto probe_clk_unprepare;
@@ -1278,7 +938,6 @@ probe_clk_unprepare:
 	spsdc_pr(ERROR, "unable to enable controller clock\n");
 	clk_unprepare(host->clk);
 probe_free_host:
-	spsdc_device_remove_sysfs(pdev);
 	if (mmc)
 		mmc_free_host(mmc);
 
@@ -1296,7 +955,6 @@ static int spsdc_drv_remove(struct platform_device *dev)
 	pm_runtime_disable(&dev->dev);
 	platform_set_drvdata(dev, NULL);
 	mmc_free_host(host->mmc);
-	spsdc_device_remove_sysfs(dev);
 
 	return 0;
 }
@@ -1406,6 +1064,6 @@ static struct platform_driver spsdc_driver = {
 };
 module_platform_driver(spsdc_driver);
 
-MODULE_AUTHOR("zy.bai <zy.bai@sunmedia.com.cn>");
-MODULE_DESCRIPTION("Sunplus MMC/SD/SDIO host controller v2.0 driver");
+MODULE_AUTHOR("lh.kuo <lh.kuo@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus SD/SDIO host controller v2.0 driver");
 MODULE_LICENSE("GPL v2");
