@@ -1,1 +1,1 @@
-obj-$(CONFIG_SUNPLUS_AXI_MONITOR) += sp_axi.o
+obj-$(CONFIG_SUNPLUS_AXI_MONITOR) += sunplus_axi.o

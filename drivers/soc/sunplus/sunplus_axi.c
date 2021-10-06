@@ -13,7 +13,7 @@
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/dma-mapping.h>
-#include "sp_axi.h"
+#include "sunplus_axi.h"
 #include "axi_ioctl.h"
 
 #include <linux/delay.h>

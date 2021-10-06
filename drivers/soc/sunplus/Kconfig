@@ -9,5 +9,9 @@ config SUNPLUS_AXI_MONITOR
 	default n
 	help
 	  Sunplus breakpoint analysis of backbone-dram problem.
+	  In order to speed up the breakpoint analysis of the
+	  BackBone-Dram proble. Quickly locate which Master/Slave
+	  caused the system to crash.
+
 #source "drivers/soc/iop/qtest/Kconfig"
 endmenu
