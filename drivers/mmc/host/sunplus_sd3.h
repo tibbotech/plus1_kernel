@@ -2,7 +2,7 @@
 /**
  * (C) Copyright 2019 Sunplus Technology. <http://www.sunplus.com/>
  *
- * Sunplus SD host controller v2.0
+ * Sunplus SD host controller v3.0
  */
 #ifndef __SPSDC_H__
 #define __SPSDC_H__

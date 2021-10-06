@@ -198,7 +198,7 @@ struct spsdc_host {
 
 
 #ifdef SPSDC_WIDTH_SWITCH
-        int restore_4bit_sdio_bus;
+	int restore_4bit_sdio_bus;
 #endif
 
 #define SPSDC_DMA_MODE 0
