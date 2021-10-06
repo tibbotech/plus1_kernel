@@ -2,7 +2,7 @@
 /**
  * (C) Copyright 2019 Sunplus Technology. <http://www.sunplus.com/>
  *
- * Sunplus SD host controller v2.0
+ * Sunplus SD host controller v3.0
  *
  */
 #include <linux/module.h>
@@ -639,9 +639,6 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	return ret;
 }
 
-
-
-
 static void spsdc_xfer_data_pio(struct spsdc_host *host, struct mmc_data *data)
 {
 	u32 *buf; /* tx/rx 4 bytes one time in pio mode */
@@ -814,7 +811,6 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct mmc_data *data;
 	struct mmc_command *cmd;
 	int ret = 0;
-	u32 value;
 
 	ret = mutex_lock_interruptible(&host->mrq_lock);
 	host->mrq = mrq;
@@ -827,6 +823,7 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 //}
 
 #ifdef HW_VOLTAGE_1V8
+	u32 value;
 
 	value = readl(&host->base->sd_vol_ctrl);
 	value = bitfield_replace(value, SPSDC_vol_tmr_w02, 2, 3); /* 1ms timeout for 400K */
@@ -933,7 +930,6 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 {
 	struct spsdc_host *host = mmc_priv(mmc);
 	u32 value;
-	u32 i;
 
 	spsdc_pr(INFO, "start_signal_voltage_switch: host->voltage %d ios->voltage %d!\n", host->signal_voltage, ios->signal_voltage);
 
@@ -952,8 +948,6 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 		spsdc_pr(INFO, "can not switch voltage, only support 3.3v -> 1.8v switch!\n");
 		return -EIO;
 	}
-
-
 
 #ifdef HW_VOLTAGE_1V8
 
@@ -994,7 +988,6 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	spsdc_txdummy(host, 400);
 	mdelay(1);
 
-
 	#endif
 
 	host->signal_voltage = ios->signal_voltage;
@@ -1025,7 +1018,6 @@ static const struct spsdc_compatible sp_sdio_645_compat = {
 	.source_clk = SPSDC_CLK_360M,
 };
 
-
 static const struct spsdc_compatible sp_sd_143_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_220M,
@@ -1035,7 +1027,6 @@ static const struct spsdc_compatible sp_sdio_143_compat = {
 	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_220M,
 };
-
 
 
 static const struct of_device_id spsdc_of_table[] = {
@@ -1072,298 +1063,6 @@ static const struct mmc_host_ops spsdc_ops = {
 	.enable_sdio_irq = spsdc_enable_sdio_irq,
 };
 
-/****** sysfs files ******/
-struct spsdc_config {
-	char *name;
-#define SPSDC_CFG_SUCCESS	0
-#define SPSDC_CFG_FAIL		-1
-#define SPSDC_CFG_REINIT	1 /* successed and need re-initialize */
-	int (*store)(struct spsdc_host *host, const char *arg);
-	int (*show)(struct spsdc_host *host, char *buf);
-};
-
-static int config_controller_clock_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "controller clock: %lu\n", clk_get_rate(host->clk));
-}
-
-static int config_bus_clock_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "*bus_clock: %d\n", host->mmc->ios.clock);
-}
-
-static int config_bus_clock_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	if (val >= host->mmc->f_min && val <= SPSDC_MAX_CLK) {
-		host->mmc->f_max = val;
-		return SPSDC_CFG_REINIT;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_bus_width_show(struct spsdc_host *host, char *buf)
-{
-	int bus_width;
-
-	switch (host->mmc->ios.bus_width) {
-	case MMC_BUS_WIDTH_8:
-		bus_width = 8;
-		break;
-	case MMC_BUS_WIDTH_4:
-		bus_width = 4;
-		break;
-	default:
-		bus_width = 1;
-		break;
-	};
-	return sprintf(buf, "*bus_width: %d\n", bus_width);
-}
-
-static int config_bus_width_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	switch (val) {
-	case 8:
-		host->mmc->caps |= MMC_CAP_8_BIT_DATA | MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	case 4:
-		host->mmc->caps &= ~MMC_CAP_8_BIT_DATA;
-		host->mmc->caps |= MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	case 1:
-		host->mmc->caps &= ~MMC_CAP_8_BIT_DATA;
-		host->mmc->caps &= ~MMC_CAP_4_BIT_DATA;
-		return SPSDC_CFG_REINIT;
-	default:
-		return SPSDC_CFG_FAIL;
-	}
-}
-
-static int config_mode_show(struct spsdc_host *host, char *buf)
-{
-	int ret = 0;
-
-	switch (host->mode) {
-	case SPSDC_MODE_SD:
-		ret = sprintf(buf, "*mode: SD\n");
-		break;
-	case SPSDC_MODE_SDIO:
-		ret = sprintf(buf, "*mode: SDIO\n");
-		break;
-	case SPSDC_MODE_EMMC:
-		ret = sprintf(buf, "*mode: eMMC\n");
-		break;
-	}
-	return ret;
-}
-
-static int config_mode_store(struct spsdc_host *host, const char *arg)
-{
-	if (!strcasecmp("sd", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_SD);
-		return SPSDC_CFG_REINIT;
-	}
-	if (!strcasecmp("sdio", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_SDIO);
-		return SPSDC_CFG_REINIT;
-	}
-	if (!strcasecmp("emmc", arg)) {
-		spsdc_select_mode(host, SPSDC_MODE_EMMC);
-		return SPSDC_CFG_REINIT;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_dmapio_mode_show(struct spsdc_host *host, char *buf)
-{
-	int ret = 0;
-
-	switch (host->dmapio_mode) {
-	case SPSDC_DMA_MODE:
-		ret = sprintf(buf, "*dmapio_mode: DMA\n");
-		break;
-	case SPSDC_PIO_MODE:
-		ret = sprintf(buf, "*dmapio_mode: PIO\n");
-		break;
-	}
-	return ret;
-}
-
-static int config_dmapio_mode_store(struct spsdc_host *host, const char *arg)
-{
-	if (!strcasecmp("dma", arg)) {
-		host->dmapio_mode = SPSDC_DMA_MODE;
-		return SPSDC_CFG_SUCCESS;
-	}
-	if (!strcasecmp("pio", arg)) {
-		host->dmapio_mode = SPSDC_PIO_MODE;
-		return SPSDC_CFG_SUCCESS;
-	}
-	return SPSDC_CFG_FAIL;
-}
-
-static int config_dma_int_threshold_show(struct spsdc_host *host, char *buf)
-{
-	return sprintf(buf, "*dma_int_threshold: %d\n", host->dma_int_threshold);
-}
-
-static int config_dma_int_threshold_store(struct spsdc_host *host, const char *arg)
-{
-	unsigned long val;
-
-	if (kstrtoul(arg, 10, &val))
-		return SPSDC_CFG_FAIL;
-	host->dma_int_threshold = val;
-	return SPSDC_CFG_SUCCESS;
-}
-
-static struct spsdc_config spsdc_configs[] = {
-	{
-		.name = "controller clock",
-		.show = config_controller_clock_show,
-	},
-	{
-		.name = "mode",
-		.show = config_mode_show,
-		.store = config_mode_store
-	},
-	{
-		.name = "bus_clock",
-		.show = config_bus_clock_show,
-		.store = config_bus_clock_store
-	},
-	{
-		.name = "bus_width",
-		.show = config_bus_width_show,
-		.store = config_bus_width_store
-	},
-	{
-		.name = "dmapio_mode",
-		.show = config_dmapio_mode_show,
-		.store = config_dmapio_mode_store
-	},
-	{
-		.name = "dma_int_threshold",
-		.show = config_dma_int_threshold_show,
-		.store = config_dma_int_threshold_store
-	},
-	{} /* sentinel */
-};
-
-static ssize_t config_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct spsdc_host *host = dev_get_drvdata(dev);
-	struct spsdc_config *p = spsdc_configs;
-	int len;
-
-	if (!host) {
-		pr_err("No host data!\n");
-		return 0;
-	}
-
-	len = sprintf(buf, "configures start with '*' could be configured:\n");
-	while (p->name) {
-		if (p->show)
-			len += p->show(host, buf + len);
-		p++;
-	}
-	return len;
-
-}
-
-static ssize_t config_store(struct device *dev, struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	struct spsdc_host *host = dev_get_drvdata(dev);
-	char *tmp;
-	char *name, *arg,  **s;
-	int ret;
-	int need_reinit = 0;
-	struct spsdc_config *p;
-
-	if (!host) {
-		pr_err("No host data!\n");
-		return 0;
-	}
-	tmp = kmalloc(count, GFP_KERNEL);
-	if (!tmp)
-		return 0;
-
-	memcpy(tmp, buf, count);
-	s = &tmp;
-	while ((name = strsep(s, "\n")) && (arg = strsep(s, "\n"))) {
-		p = spsdc_configs;
-		while (p->name && strcasecmp(p->name, name))
-			p++;
-		if (p->name) {
-			spsdc_pr(INFO, "trying to set config %s to %s\n", name, arg);
-			ret = p->store(host, arg);
-			if (ret == SPSDC_CFG_REINIT)
-				need_reinit = 1;
-			else if (ret == SPSDC_CFG_FAIL)
-				spsdc_pr(ERROR, "Invalid argument '%s' to config %s\n", arg, name);
-		} else {
-			spsdc_pr(ERROR, "Invalid config name: %s\n", name);
-		}
-	}
-
-	if (need_reinit) {
-		mmc_remove_host(host->mmc);
-		mmc_add_host(host->mmc);
-	}
-	kfree(tmp);
-	return count;
-}
-static DEVICE_ATTR_RW(config);
-
-static ssize_t loglevel_show(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	return sprintf(buf, "%d\n", loglevel);
-}
-
-static ssize_t loglevel_store(struct device *dev, struct device_attribute *attr,
-			const char *buf, size_t count)
-{
-	unsigned long val;
-
-	if (kstrtoul(buf, 10, &val))
-		goto out;
-	if (val < SPSDC_LOG_MAX) {
-		loglevel = val;
-		return count;
-	}
-out:
-	pr_err("Invalid value\n");
-	return 0;
-}
-static DEVICE_ATTR_RW(loglevel);
-
-static int spsdc_device_create_sysfs(struct platform_device *pdev)
-{
-	int ret;
-
-	ret = device_create_file(&pdev->dev, &dev_attr_loglevel);
-	if (ret)
-		return ret;
-	ret = device_create_file(&pdev->dev, &dev_attr_config);
-	if (ret)
-		device_remove_file(&pdev->dev, &dev_attr_loglevel);
-	return ret;
-}
-
-static void spsdc_device_remove_sysfs(struct platform_device *pdev)
-{
-	device_remove_file(&pdev->dev, &dev_attr_config);
-	device_remove_file(&pdev->dev, &dev_attr_loglevel);
-}
-
 static void tsklet_func_finish_req(unsigned long data)
 {
 	struct spsdc_host *host = (struct spsdc_host *)data;
@@ -1380,11 +1079,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	struct resource *resource;
 	struct spsdc_host *host;
 	const struct spsdc_compatible *dev_mode;
-
-	ret = spsdc_device_create_sysfs(pdev);
-
-	if (ret)
-		return ret;
 
 	mmc = mmc_alloc_host(sizeof(*host), &pdev->dev);
 	if (!mmc) {
@@ -1448,7 +1142,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	}
 	spsdc_pr(INFO, "spsdc driver probe, reg base:0x%08x, irq:%d\n", (unsigned int)(long)host->base, host->irq);
 
-
 	ret = mmc_of_parse(mmc);
 	if (ret)
 		goto probe_free_host;
@@ -1505,7 +1198,6 @@ probe_clk_unprepare:
 	spsdc_pr(ERROR, "unable to enable controller clock\n");
 	clk_unprepare(host->clk);
 probe_free_host:
-	spsdc_device_remove_sysfs(pdev);
 	if (mmc)
 		mmc_free_host(mmc);
 
@@ -1523,7 +1215,6 @@ static int spsdc_drv_remove(struct platform_device *dev)
 	pm_runtime_disable(&dev->dev);
 	platform_set_drvdata(dev, NULL);
 	mmc_free_host(host->mmc);
-	spsdc_device_remove_sysfs(dev);
 
 	return 0;
 }
@@ -1620,6 +1311,6 @@ static struct platform_driver spsdc_driver = {
 };
 module_platform_driver(spsdc_driver);
 
-MODULE_AUTHOR("zy.bai <zy.bai@sunmedia.com.cn>");
-MODULE_DESCRIPTION("Sunplus MMC/SD/SDIO host controller v2.0 driver");
+MODULE_AUTHOR("lh.kuo <lh.kuo@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus SD/SDIO host controller v3.0 driver");
 MODULE_LICENSE("GPL v2");
