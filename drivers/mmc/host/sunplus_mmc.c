@@ -19,7 +19,7 @@
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
 
-#include "spmmc.h"
+#include "sunplus_mmc.h"
 
 enum loglevel {
 	SPMMC_LOG_OFF,
