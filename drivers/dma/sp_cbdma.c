@@ -7,7 +7,7 @@
  */
 #include <linux/bitops.h>
 #include <linux/dmapool.h>
-#include <linux/dma/xilinx_dma.h>
+#include <linux/dma-mapping.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
@@ -20,7 +20,7 @@
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
-#include "../dmaengine.h"
+#include "dmaengine.h"
 
 /* cb-dma platform related configs */
 #define CB_DMA_REG_NAME	"cb_dma"
@@ -1933,8 +1933,8 @@ static const struct sp_cbdma_config cdma_config = {
 };
 
 static const struct of_device_id sp_cbdma_of_ids[] = {
-	{ .compatible = "sunplus,sp7021-cb-dma", .data = &dma_config },
-	{ .compatible = "sunplus,sp7021-cb-cdma", .data = &cdma_config },
+	{ .compatible = "sunplus,cb-dma", .data = &dma_config },
+	{ .compatible = "sunplus,cb-cdma", .data = &cdma_config },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_cbdma_of_ids);
@@ -1977,6 +1977,7 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 		return PTR_ERR(xdev->regs);
 
 	/* The SRAM buffer of CB-DMA */
+#ifndef CONFIG_SOC_Q645
 	if (((u32)(io->start)) == 0x9C000D00) {
 		/* CBDMA0 */
 		xdev->sram_addr = 0x9E800000;
@@ -1986,6 +1987,10 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 		xdev->sram_addr = 0x9E820000;
 		xdev->sram_size = 4 << 10;
 	}
+#else
+	xdev->sram_addr = 0xFA200000;
+	xdev->sram_size = 256 << 10;
+#endif
 	dev_info(xdev->dev, "SRAM:%d bytes@0x%x\n", xdev->sram_size, xdev->sram_addr);
 
 	/* Retrieve the DMA engine properties from the device tree */
@@ -2101,7 +2106,7 @@ static int sp_cbdma_remove(struct platform_device *pdev)
 
 static struct platform_driver sp_cbdma_driver = {
 	.driver = {
-		.name	= "sunplus,sp7021-cbdma",
+		.name	= "sunplus,cbdma",
 		.of_match_table = sp_cbdma_of_ids,
 	},
 		.probe = sp_cbdma_probe,

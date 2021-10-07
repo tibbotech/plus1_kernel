@@ -2,8 +2,8 @@ Device-Tree bindings of sp_cbdma device
 
 Required properties:
 - compatible: Should be one of-
-				"sunplus,sp7021-cb-dma"
-				"sunplus,sp7021-cb-cdma"
+				"sunplus,cb-dma"
+				"sunplus,cb-cdma"
 - reg: Physical base address and length of the controller's register
 - reg-names:  List of registers
 - interrupt-parent: Interrupt phandles (see interrupt-controller for details)
@@ -21,7 +21,7 @@ Required child node properties:
 Example:
 
 	cbdma: cbdma@sp_cbdma {
-		compatible = "sunplus,sp7021-cb-cdma";
+		compatible = "sunplus,cb-cdma";
 		reg = <0x9c000d00 0x80>;
 		reg-names = "cb_dma";
 		interrupt-parent = <&intc>;

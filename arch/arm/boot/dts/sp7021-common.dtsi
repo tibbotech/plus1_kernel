@@ -499,7 +499,7 @@
 		};
 
 		cbdma: cbdma@sp_cbdma {
-			compatible = "sunplus,sp7021-cb-cdma";
+			compatible = "sunplus,cb-cdma";
 			reg = <0x9c000d00 0x80>;
 			reg-names = "cb_dma";
 			interrupt-parent = <&intc>;
