@@ -352,7 +352,7 @@ static int sp_remoteproc_remove(struct platform_device *pdev)
 
 /* Match table for OF platform binding */
 static const struct of_device_id sp_remoteproc_match[] = {
-	{ .compatible = "sunplus,sp_remoteproc", },
+	{ .compatible = "sunplus,sp-rproc", },
 	{ /* end of list */ },
 };
 MODULE_DEVICE_TABLE(of, sp_remoteproc_match);
