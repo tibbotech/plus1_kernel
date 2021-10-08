@@ -1,0 +1,62 @@
+# SPDX-License-Identifier: GPL-2.0
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/i2c/i2c-sunplus.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus's I2C controller
+
+allOf:
+  - $ref: /schemas/i2c/i2c-controller.yaml#
+
+maintainers:
+  - lh.kuo <lh.kuo@sunplus.com>
+
+properties:
+  compatible:
+    oneOf:
+      - enum:
+          - sunplus,sp7021-i2cm
+          - sunplus,q645-i2cm
+
+  reg:
+    minItems: 1
+    maxItems: 2
+    items:
+      - const: i2cm
+      - const: i2cmdma
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+  clock-frequency:
+    enum: [ 100000, 400000 ]
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - resets
+
+examples:
+  - |
+		i2cm0: i2c@sp_i2cm0 {
+			compatible = "sunplus,sp7021-i2cm";
+			reg = <0x9c004600 0x80>, <0x9c004680 0x80>;
+			reg-names = "i2cm", "i2cmdma";
+			interrupt-parent = <&intc>;
+			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc I2CM0>;
+			resets = <&rstc RST_I2CM0>;
+		};
+
+	&i2cm0 {
+		clock-frequency = <100000>;
+	};
