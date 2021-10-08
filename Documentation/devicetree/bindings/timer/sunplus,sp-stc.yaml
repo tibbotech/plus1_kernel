@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/timer/sunplus,sp-stc.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SoC Timers Bindings
+
+maintainers:
+  - Qin Jian <qinjian@cqplus1.com>
+
+properties:
+  compatible:
+    const: sunplus,sp-stc
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 4
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    timer@A_G19 {
+      compatible = "sunplus,sp-stc";
+      reg = <0x9ec00980 0x80>;
+      interrupt-parent = <&gic>;
+      interrupts = <GIC_SPI 1 IRQ_TYPE_EDGE_RISING>, /* timer0 */
+                   <GIC_SPI 2 IRQ_TYPE_EDGE_RISING>, /* timer1 */
+                   <GIC_SPI 3 IRQ_TYPE_EDGE_RISING>, /* timer2 */
+                   <GIC_SPI 4 IRQ_TYPE_EDGE_RISING>; /* timer3 */
+    };
+
+...
