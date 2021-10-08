@@ -868,10 +868,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
-	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
-		spsdc_pr(ERROR, "register size is not right\n");
-	}
-
 	host->base = devm_ioremap_resource(&pdev->dev, resource);
 	if (IS_ERR((void *)host->base)) {
 		spsdc_pr(ERROR, "devm_ioremap_resource fail\n");

@@ -197,9 +197,8 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
-	if (host->soc_clk != soc_clk) {
+	if (host->soc_clk != soc_clk)
 		spsdc_pr(ERROR, "CCF clock error CCF_clk : %d source_clk : %d", soc_clk, host->soc_clk);
-	}
 
 	clkdiv = (soc_clk/clk)-1;
 
@@ -1037,14 +1036,6 @@ static const struct of_device_id spsdc_of_table[] = {
 	{
 		.compatible = "sunplus,q645-sdio",
 		.data = &sp_sdio_645_compat,
-	},
-	{
-		.compatible = "sunplus,i143-card1",
-		.data = &sp_sd_143_compat,
-	},
-	{
-		.compatible = "sunplus,i143-sdio",
-		.data = &sp_sdio_143_compat,
 	},
 	{/* sentinel */}
 };

@@ -1,20 +1,45 @@
-* Sunplus SD/SDIO controller *
+# SPDX-License-Identifier: GPL-2.0
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/mmc/sunplus-sd3.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
 
-The Sunplus SD/SDIO controllerbto support  SD, and SDIO 
+title: Sunplus SD/SDIO controller
 
-This file documents the properties used by the Sunplus SD/SDIO driver.
+maintainers:
+  - lh.kuo <lh.kuo@sunplus.com>
 
-Required properties:
-- compatible:
- Should be "sunplus,q645-card":   for SD q645
- Should be "sunplus,q645-sdio":   for SDIO q645
- Should be "sunplus,i143-card1":  for SD i143
- Should be "sunplus,i143-sdio":   for SDIO i143
+allOf:
+  - $ref: mmc-controller.yaml#
 
-Optional properties:
-- max-frequency: Maximum operating clock frequency, default 52MHz.
+properties:
+  compatible:
+    enum:
+      - sunplus,q645-card
+      - sunplus,q645-sdio
 
-Example:
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - resets
+
+
+examples:
+  - |
 	mmc1: mmc@0xf8003e80 {
 		compatible = "sunplus,q645-card";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
@@ -52,5 +77,4 @@ Example:
 		no-mmc;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		status = "disabled";
 	};

@@ -1,18 +1,45 @@
-* Sunplus SP7021 SD/SDIO controller *
+# SPDX-License-Identifier: GPL-2.0
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/mmc/sunplus-sd2.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
 
-The Sunplus SD/SDIO controllerbto support  SD, and SDIO 
+title: Sunplus SD/SDIO controller
 
-This file documents the properties used by the Sunplus SP7021 SD/SDIO driver.
+maintainers:
+  - lh.kuo <lh.kuo@sunplus.com>
 
-Required properties:
-- compatible:
- Should be "sunplus,sp7021-card1": for SD   sp7021
- Should be "sunplus,sp7021-sdio":  for SDIO sp7021
+allOf:
+  - $ref: mmc-controller.yaml#
 
-Optional properties:
-- max-frequency: Maximum operating clock frequency, default 52MHz.
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-card1
+      - sunplus,sp7021-sdio
 
-Example:
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - resets
+
+
+examples:
+  - |
 	mmc1: mmc@sdcard {
 		compatible = "sunplus,sp7021-card1";
 		reg = <0x9c003e80 0x280>;
