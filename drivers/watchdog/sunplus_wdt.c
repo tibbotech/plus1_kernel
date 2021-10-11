@@ -272,8 +272,7 @@ static int sunplus_wdt_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id sunplus_wdt_dt_ids[] = {
-	{.compatible = "sunplus,sp7021-wdt"},
-	{.compatible = "sunplus,q645-wdt"},
+	{.compatible = "sunplus,sp-wdt"},
 	{ /* sentinel */ }
 };
 

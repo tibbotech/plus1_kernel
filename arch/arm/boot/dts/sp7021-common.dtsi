@@ -570,7 +570,7 @@
 		};
 
 		watchdog: watchdog@0x9c000630 {
-			compatible = "sunplus,sp7021-wdt";
+			compatible = "sunplus,sp-wdt";
 			reg = <0x9c000630 0x08>, <0x9C000274 0x04>;
 			clocks = <&clkc STC0>;
 			resets = <&rstc RST_STC0>;
