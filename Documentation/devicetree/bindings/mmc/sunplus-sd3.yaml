@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: GPL-2.0
+# SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/mmc/sunplus-sd3.yaml#
@@ -40,41 +40,38 @@ required:
 
 examples:
   - |
-	mmc1: mmc@0xf8003e80 {
-		compatible = "sunplus,q645-card";
-		reg = <0x0 0xf8003e80 0x0 0x180>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc CARD_CTL1>;
-		resets = <&rstc RST_CARD_CTL1>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sdcard_pins>;
-		cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
-		bus-width = <4>;
-		max-frequency = <52000000>;
-		disable-wp;
-		cap-sd-highspeed;
-		no-sdio;
-		no-mmc;
-	};
-
-	sdio: sdio@0xf8008400 {
-		compatible = "sunplus,q645-sdio";
-		reg = < 0x0 0xf8008400 0x0 0x180>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc CARD_CTL2>;
-		resets = <&rstc RST_CARD_CTL2>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&sdio_pins>;
-		bus-width = <4>;
-		max-frequency = <52000000>;
-		non-removable;
-		disable-wp;
-		cap-sd-highspeed;
-		cap-sdio-irq;
-		no-sd;
-		no-mmc;
-		#address-cells = <1>;
-		#size-cells = <0>;
-	};
+        mmc1: mmc@0xf8003e80 {
+                compatible = sunplus,q645-card";
+                reg = <0x0 0xf8003e80 0x0 0x180>;
+                interrupt-parent = <&gic>;
+                interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clkc CARD_CTL1>;
+                resets = <&rstc RST_CARD_CTL1>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&sdcard_pins>;
+                cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
+                bus-width = <4>;
+                max-frequency = <52000000>;
+                disable-wp;
+                cap-sd-highspeed;
+                no-sdio;
+                no-mmc;
+        };
+        sdio: sdio@0xf8008400 {
+                compatible = "sunplus,q645-sdio";
+                reg = < 0x0 0xf8008400 0x0 0x180>;
+                interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
+                clocks = <&clkc CARD_CTL2>;
+                resets = <&rstc RST_CARD_CTL2>;
+                pinctrl-names = "default";
+                pinctrl-0 = <&sdio_pins>;
+                bus-width = <4>;
+                max-frequency = <52000000>;
+                non-removable;
+                disable-wp;
+                cap-sd-highspeed;
+                cap-sdio-irq;
+                no-sd;
+                no-mmc;
+        };
+...
