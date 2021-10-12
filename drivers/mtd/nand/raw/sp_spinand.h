@@ -18,7 +18,6 @@
 /*
  *  spi nand functional related configs
  */
-#define CONFIG_SPINAND_CLK_DIV          1
 #define CONFIG_SPINAND_READ_BITMODE     SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_WRITE_BITMODE    SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_READ_TIMING_SEL  2

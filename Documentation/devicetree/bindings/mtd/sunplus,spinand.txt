@@ -6,9 +6,28 @@ Required properties:
 				"sunplus,sunplus,q645-spi-nand" for bch of q645
 - reg: Physical base address and length of the controller's register
 - interrupt-parent: Interrupt phandles (see interrupt-controller for details)
-- interrupts: interrupt number to the cpu.
+- interrupts: Interrupt number to the cpu.
 - clocks: Clock phandles (see clock-controller for details)
 - resets: Reset phandles (see reset-controller for details)
+- spinand-clk-div: The settings of SPI interface clock frequency division
+	The range of the frequency division setting is from 1 to 7. The CLK_SPI is
+	the SPI-NAND source clock. It takes following values:
+	For SP7021. The frequency of CLK_SPI is 202.5 MHz.
+	{1}, CLK_SPI/2  = 101.250 MHz
+	{2}, CLK_SPI/4  =  50.625 MHz
+	{3}, CLK_SPI/6  =  33.750 MHz
+	{4}, CLK_SPI/8  =  25.313 MHz
+	{5}, CLK_SPI/16 =  12.656 MHz
+	{6}, CLK_SPI/24 =   8.438 MHz
+	{7}, CLK_SPI/32 =   6.328 MHz
+	For Q645. The frequency of CLK_SPI is 600.0 MHz.
+	{1}, CLK_SPI/2  = 300.000 MHz
+	{2}, CLK_SPI/4  = 150.000 MHz
+	{3}, CLK_SPI/6  = 100.000 MHz
+	{4}, CLK_SPI/8  =  75.000 MHz
+	{5}, CLK_SPI/16 =  37.500 MHz
+	{6}, CLK_SPI/24 =  25.000 MHz
+	{7}, CLK_SPI/32 =  18.750 MHz
 
 Example:
 
@@ -17,7 +36,7 @@ Example:
 		reg = <0x9c002B80 0x50>;
 		interrupt-parent = <&intc>;
 		interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
-		linux,part-probe = "ofpart", "sunplus_part";
 		clocks = <&clkc SPIND>;
 		resets = <&rstc RST_SPIND>;
+		spinand-clk-div = <1>;
 	};

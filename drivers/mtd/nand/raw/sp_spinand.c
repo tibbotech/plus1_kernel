@@ -1105,7 +1105,9 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	int i;
 	u32 value;
 	u32 id;
+	u32 frequency;
 	struct device *dev = &pdev->dev;
+	struct device_node *node = pdev->dev.of_node;
 	struct resource *res_mem;
 	struct resource *res_irq;
 	struct clk *clk;
@@ -1168,6 +1170,14 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		info->clk = clk;
 	}
 
+	frequency = clk_get_rate(clk);
+	if (!value) {
+		SPINAND_LOGE("Failed to get clock rate\n");
+		ret = -ENXIO;
+		goto err1;
+	}
+	SPINAND_LOGI("source clock frequency: %d Hz\n", frequency);
+
 	info->buff.size = CONFIG_SPINAND_BUF_SZ;
 	#ifdef CONFIG_SPINAND_USE_SRAM
 	info->buff.phys = (dma_addr_t)CONFIG_SPINAND_SRAM_ADDR;
@@ -1191,7 +1201,22 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	}
 	info->irq = res_irq->start;
 
-	info->spi_clk_div = CONFIG_SPINAND_CLK_DIV;
+	ret = of_property_read_u32(node, "spinand-clk-div", &value);
+	if (ret < 0) {
+		value = 7;      // CLK_SPI/32
+		SPINAND_LOGW("default spi_clk_div\n");
+	}
+	info->spi_clk_div = value;
+
+    // Calculate SPI interface clock frequency
+	// SCK_MODE : 1    2    3    4    5     6     7
+	// Freq Div : 1/2  1/4  1/6  1/8  1/16  1/24  1/32
+	if (info->spi_clk_div < 5)
+		value = info->spi_clk_div * 2;
+	else
+		value = (info->spi_clk_div - 5) * 8 + 16;
+	frequency /= value;
+	SPINAND_LOGI("SPI clock frequency: %d Hz\n", frequency);
 
 	if (spi_nand_reset(info) < 0) {
 		SPINAND_LOGE("reset device fail\n");

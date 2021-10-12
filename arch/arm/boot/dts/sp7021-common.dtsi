@@ -979,9 +979,9 @@
 			reg = <0x9c002B80 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
-			linux,part-probe = "ofpart", "sunplus_part";
 			clocks = <&clkc SPIND>;
 			resets = <&rstc RST_SPIND>;
+			spinand-clk-div = <1>;
 		};
 
 		bch0: bch@sp_bch {

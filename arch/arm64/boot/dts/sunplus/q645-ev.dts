@@ -734,11 +734,11 @@
 		reg = <0x0 0xf8002b80 0x0 0x60>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
-		linux,part-probe = "ofpart", "sunplus_part";
 		clocks = <&clkc SPIND>;
 		resets = <&rstc RST_SPIND>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nand_pins>;
+		spinand-clk-div = <4>;
 	};
 
 	otp0: otp@0xf800af00 {
