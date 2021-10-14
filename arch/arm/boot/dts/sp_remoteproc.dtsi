@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for Sunplus Remoteproc
+ *
+ * Copyright (C) 2021 Sunplus Technology Co.
+ */
+
 / {
 	reserved-memory {
 		vdev0vring0: vdev0vring0@1e800000 {

@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for Sunplus Ev TTL board
+ *
+ * Copyright (C) 2021 Sunplus Technology Co.
+ */
+
 /dts-v1/;
 
 #include "sp7021-common.dtsi"

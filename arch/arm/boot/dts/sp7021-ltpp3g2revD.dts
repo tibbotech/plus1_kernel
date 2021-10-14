@@ -1,8 +1,10 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
- * {desc_long}
- * Copyright (C) 2020 Tibbo Tech. - http://tibbo.com/tps/
- * License: GPLv2 or later
+ * Device Tree Source for Tibbo LTPP board G2 (Rev. D)
+ *
+ * Copyright (C) 2021 Sunplus Technology Co.
  */
+
 /dts-v1/;
 
 #include "sp7021-ltpp3g2revD.dtsi"
