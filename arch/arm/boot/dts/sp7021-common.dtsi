@@ -130,9 +130,10 @@
 			clock-output-names = "A_pll0";
 		};
 
-		clkc: clkc@0 {
+		clkc: clkc@9c000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7021-clkc";
+			reg = <0x9c000000 0x80>;
 		};
 	};
 
@@ -245,7 +246,7 @@
 #if 0
 		/* Each Cortex A-7 has its own system timer, it's not required if armv7-timer is enabled. */
 		/* This timer will be used in sp_timer_test.c */
-		timer@A_G19 {
+		timer@9ec00980 {
 			compatible = "sunplus,sp-stc";
 			reg = <0x9ec00980 0x80>;
 			interrupt-parent = <&gic>;
@@ -296,7 +297,7 @@
 
 		interrupt-parent = <&intc>;
 
-		intc: interrupt-controller@0x9c000780 {
+		intc: interrupt-controller@9c000780 {
 			compatible = "sunplus,sp7021-intc";
 			interrupt-controller;
 			#interrupt-cells = <2>;
@@ -540,7 +541,7 @@
 			interrupts = <29 IRQ_TYPE_EDGE_RISING>; /* fpga_ext0 */
 		};
 
-		crypto: crypto@G84 {
+		crypto: crypto@9c002a00 {
 			compatible = "sunplus,sp7021-crypto";
 			reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
 			clocks = <&clkc SEC>;
@@ -638,7 +639,7 @@
 		};
 #endif
 
-		rstc: reset@0x9c000054 {
+		rstc: reset@9c000054 {
 			compatible = "sunplus,sp7021-reset";
 			#reset-cells = <1>;
 			reg = <0x9c000054 0x28>;
