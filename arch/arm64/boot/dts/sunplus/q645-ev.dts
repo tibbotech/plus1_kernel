@@ -88,7 +88,7 @@
 		stdout-path = "serial0:921600n8";
 	};
 
-	memory@0x0 {
+	memory@0 {
 		device_type = "memory";
 		reg = <0x00 0x00 0x00 0x80000000>;
 	};
@@ -157,7 +157,7 @@
 			clock-output-names = "f_320m";
 		};
 
-		clkc: clkc@0xf8000000 {
+		clkc: clkc@f8000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
 			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
@@ -244,7 +244,7 @@
 		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
-	gic: interrupt-controller@0xfa001000 {
+	gic: interrupt-controller@fa001000 {
 		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
 		interrupt-controller;
@@ -264,7 +264,7 @@
 			     <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
-	rstc: reset@0xf8000054 {
+	rstc: reset@f8000054 {
 		compatible = "sunplus,q645-reset";
 		#reset-cells = <1>;
 		reg = <0x00 0xf8000054 0x00 0x28>;
@@ -363,7 +363,7 @@
 		};
 #endif
 
-	uart0: serial@0xf8000900 {
+	uart0: serial@f8000900 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -376,7 +376,7 @@
 		pinctrl-0 = <&uart0_pins>;
 	};
 
-	uart1: serial@0xf8000980 {
+	uart1: serial@f8000980 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000980 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -390,7 +390,7 @@
 		status = "disabled";
 	};
 
-	uart2: serial@0xf8000800 {
+	uart2: serial@f8000800 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000800 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -404,7 +404,7 @@
 		status = "disabled";
 	};
 
-	uart3: serial@0xf8004380 {
+	uart3: serial@f8004380 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8004380 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -418,7 +418,7 @@
 		status = "disabled";
 	};
 
-	uart4: serial@0xf8000880 {
+	uart4: serial@f8000880 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8000880 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -430,7 +430,7 @@
 		status = "disabled";
 	};
 
-	uadbg: serial@0xf800f900 {
+	uadbg: serial@f800f900 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -442,7 +442,7 @@
 		status = "disabled";
 	};
 
-	uart6: serial@0xf8008280 {
+	uart6: serial@f8008280 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8008280 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -454,7 +454,7 @@
 		status = "disabled";
 	};
 
-	uart7: serial@0xf8008300 {
+	uart7: serial@f8008300 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8008300 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -466,7 +466,7 @@
 		status = "disabled";
 	};
 
-	uart8: serial@0xf8008380 {
+	uart8: serial@f8008380 {
 		compatible = "sunplus,q645-uart";
 		reg = <0x00 0xf8008380 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -478,7 +478,7 @@
 		status = "disabled";
 	};
 
-	i2cm0: i2cm@0xf8004600 {
+	i2cm0: i2cm@f8004600 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf8004600 0x0 0x80>, <0x0 0xf8004680 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -492,7 +492,7 @@
 		status = "disabled";
 	};
 
-	i2cm1: i2cm@0xf8004700 {
+	i2cm1: i2cm@f8004700 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf8004700 0x0 0x80>, <0x0 0xf8004780 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -506,7 +506,7 @@
 		status = "disabled";
 	};
 
-	i2cm2: i2cm@0xf8004800 {
+	i2cm2: i2cm@f8004800 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf8004800 0x0 0x80>, <0x0 0xf8004880 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -520,7 +520,7 @@
 		status = "disabled";
 	};
 
-	i2cm3: i2cm@0xf8004900 {
+	i2cm3: i2cm@f8004900 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf8004900 0x0 0x80>, <0x0 0xf8004980 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -534,7 +534,7 @@
 		status = "disabled";
 	};
 
-	i2cm4: i2cm@0xf800fe00 {
+	i2cm4: i2cm@f800fe00 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf800fe00 0x0 0x80>, <0x0 0xf800fe80 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -548,7 +548,7 @@
 		status = "disabled";
 	};
 
-	i2cm5: i2cm@0xf800ff00 {
+	i2cm5: i2cm@f800ff00 {
 		compatible = "sunplus,q645-i2cm";
 		reg = <0x0 0xf800ff00 0x0 0x80>, <0x0 0xf800ff80 0x0 0x80>;
 		reg-names = "i2cm", "i2cmdma";
@@ -562,7 +562,7 @@
 		status = "disabled";
 	};
 
-	spi_controller0: spi@0xf8002c80 {
+	spi_controller0: spi@f8002c80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002c80 0x0 0x80>, <0x0 0xf8002d00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -582,7 +582,7 @@
 		status = "disabled";
 	};
 
-	spi_controller1: spi@0xf8002d80 {
+	spi_controller1: spi@f8002d80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002d80 0x0 0x80>, <0x0 0xf8002e00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -602,7 +602,7 @@
 		status = "disabled";
 	};
 
-	spi_controller2: spi@0xf8002e80 {
+	spi_controller2: spi@f8002e80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002e80 0x0 0x80>, <0x0 0xf8002f00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -622,7 +622,7 @@
 		status = "disabled";
 	};
 
-	spi_controller3: spi@0xf8004000 {
+	spi_controller3: spi@f8004000 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004000 0x0 0x80>, <0x0 0xf8004080 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -642,7 +642,7 @@
 		status = "disabled";
 	};
 
-	spi_controller4: spi@0xf8004100 {
+	spi_controller4: spi@f8004100 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004100 0x0 0x80>, <0x0 0xf8004180 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -662,7 +662,7 @@
 		status = "disabled";
 	};
 
-	spi_controller5: spi@0xf8004200 {
+	spi_controller5: spi@f8004200 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004200 0x0 0x80>, <0x0 0xf8004280 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
@@ -682,7 +682,7 @@
 		status = "disabled";
 	};
 
-	pwm: pwm@0xf8008f80 {
+	pwm: pwm@f8008f80 {
 		#pwm-cells = <2>;
 		compatible = "sunplus,q645-pwm";
 		reg = <0x0 0xf8008f80 0x0 0x100>;
@@ -690,7 +690,7 @@
 		resets = <&rstc RST_DISP_PWM>;
 	};
 
-	rtc: rtc@0xf8003a00 {
+	rtc: rtc@f8003a00 {
 		compatible = "sunplus,q645-rtc";
 		reg = <0x0 0xf8003a00 0x0 0x14>;
 		reg-names = "rtc_reg";
@@ -714,7 +714,7 @@
 		};
 	};
 
-	sp_spinor0: spinor@0xf8000b00 {
+	sp_spinor0: spinor@f8000b00 {
 		compatible = "sunplus,q645-spi-nor";
 		reg = <0x0 0xf8000b00 0x0 0x80>, <0x0 0xf8000080 0x0 0x80>;
 		interrupt-parent = <&gic>;
@@ -729,7 +729,7 @@
 		write-timing-selection = <0>;
 	};
 
-	spinand0: spinand@0xf8002b80 {
+	spinand0: spinand@f8002b80 {
 		compatible = "sunplus,q645-spi-nand";
 		reg = <0x0 0xf8002b80 0x0 0x60>;
 		interrupt-parent = <&gic>;
@@ -741,7 +741,7 @@
 		spinand-clk-div = <4>;
 	};
 
-	otp0: otp@0xf800af00 {
+	otp0: otp@f800af00 {
 		compatible = "sunplus,q645-ocotp0";
 		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
@@ -769,7 +769,7 @@
 		};
 	};
 
-	otp1: otp@0xf8018580 {
+	otp1: otp@f8018580 {
 		compatible = "sunplus,q645-ocotp1";
 		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
@@ -777,7 +777,7 @@
 		resets = <&rstc RST_OTPRX>;
 	};
 
-	otp2: otp@0xf8002780 {
+	otp2: otp@f8002780 {
 		compatible = "sunplus,q645-ocotp2";
 		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
@@ -785,7 +785,7 @@
 		resets = <&rstc RST_OTPRX>;
 	};
 
-	bch0: bch@0xf8101000 {
+	bch0: bch@f8101000 {
 		compatible = "sunplus,q645-bch";
 		reg = <0x0 0xf8101000 0x0 0x30>;
 		interrupt-parent = <&gic>;
@@ -803,7 +803,7 @@
 		format = "r5g6b5";
 	};
 
-	malig31: malig31@0xf8170000 {
+	malig31: malig31@f8170000 {
 		compatible = "arm,mali-midgard";
 		reg = <0x00 0xf8170000 0x00 0x4000>;
 		interrupt-parent = <&gic>;
@@ -826,7 +826,7 @@
 			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
 */
-	ethosn: ethosn@0xf8200000 {
+	ethosn: ethosn@f8200000 {
 		compatible = "ethosn";
 		reg = <0x00 0xf8200000 0x00 0x100000>;
 		memory-region = <&ethosn_reserved>;
@@ -845,7 +845,7 @@
 		};
 	};
 
-	mmc0: mmc@0xf8003b00 {
+	mmc0: mmc@f8003b00 {
 		compatible = "sunplus,q645-emmc";
 		reg = <0x0 0xf8003b00 0x0 0x180>;
 		interrupt-parent = <&gic>;
@@ -864,7 +864,7 @@
 		no-sd;
 	};
 
-	iop: iop@0xf8000400 {
+	iop: iop@f8000400 {
 		compatible = "sunplus,q645-iop";
 		reg = <0x0 0xf8000400 0x0 0x80>, <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000F00 0x0 0x80>, <0x0 0xf8003100 0x0 0x80>, <0x0 0xf8012B80 0x0 0x80>;
 		interrupt-parent = <&gic>;
@@ -874,7 +874,7 @@
 	};
 
 
-	mmc1: mmc@0xf8003e80 {
+	mmc1: mmc@f8003e80 {
 		compatible = "sunplus,q645-card";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
 		interrupt-parent = <&gic>;
@@ -892,7 +892,7 @@
 		no-mmc;
 	};
 
-	sdio: sdio@0xf8008400 {
+	sdio: sdio@f8008400 {
 		compatible = "sunplus,q645-sdio";
 		reg = < 0x0 0xf8008400 0x0 0x180>;
 		interrupt-parent = <&gic>;
@@ -914,7 +914,7 @@
 		status = "disabled";
 	};
 
-	ehci0: usb@0xf8102100 {
+	ehci0: usb@f8102100 {
 		compatible = "sunplus,q645-usb-ehci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
@@ -923,7 +923,7 @@
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	ohci0: usb@0xf8102080 {
+	ohci0: usb@f8102080 {
 		compatible = "sunplus,q645-usb-ohci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
@@ -932,7 +932,7 @@
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	usbdrd3_0: usb@0xf80a1000{
+	usbdrd3_0: usb@f80a1000{
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -955,7 +955,7 @@
 		};
 	};
 
-	u3phy0: uphy@0xf80bd000 {
+	u3phy0: uphy@f80bd000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>;
 		clock-names = "clkc_u3phy";
@@ -967,7 +967,7 @@
 		status = "disabled";
 	};
 
-	usbdrd3_1: usb@0xf80af000 {
+	usbdrd3_1: usb@f80af000 {
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -990,7 +990,7 @@
 		};
 	};
 
-	u3phy1: uphy@0xf80be000 {
+	u3phy1: uphy@f80be000 {
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY1>;
 		clock-names = "clkc_u3phy";
@@ -1002,7 +1002,7 @@
 		status = "disabled";
 	};
 
-	mipicsi0: mipicsirx@0xf8005280 {
+	mipicsi0: mipicsirx@f8005280 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1017,7 +1017,7 @@
 		status = "disabled";
 	};
 
-	mipicsi1: mipicsirx@0xf8005380 {
+	mipicsi1: mipicsirx@f8005380 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1032,7 +1032,7 @@
 		status = "disabled";
 	};
 
-	mipicsi2: mipicsirx@0xf8005480 {
+	mipicsi2: mipicsirx@f8005480 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1047,7 +1047,7 @@
 		status = "disabled";
 	};
 
-	mipicsi3: mipicsirx@0xf8005580 {
+	mipicsi3: mipicsirx@f8005580 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1070,7 +1070,7 @@
 		reset-names = "rstc_vcodec";
 	};
 
-	video_codec_dec: hantro_vc8000d@0xf8168000 {
+	video_codec_dec: hantro_vc8000d@f8168000 {
 		compatible = "sunplus,q645-hantro-vc8000d";
 		reg = <0x00 0xf8168000 0x00 0x1d8>;
 		interrupt-parent = <&gic>;
@@ -1081,7 +1081,7 @@
 		reset-names = "rstc_vc8000d";
 	};
 
-	video_codec_enc: hantro_vc8000e@0xf80ff000 {
+	video_codec_enc: hantro_vc8000e@f80ff000 {
 		compatible = "sunplus,q645-hantro-vc8000e";
 		reg = <0x00 0xf80ff000 0x00 0xfff>;
 		interrupt-parent = <&gic>;
@@ -1106,14 +1106,14 @@
 		compatible = "sunplus,sp-poweroff";
 	};
 
-	watchdog: watchdog@0xf8000628 {
+	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,sp-wdt";
 		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
 		clocks = <&clkc STC0>;
 		resets = <&rstc RST_STC0>;
 	};
 #if 0
-	ipc_test: ipc_test@0xf8007f80 {
+	ipc_test: ipc_test@f8007f80 {
 		compatible = "sunplus,q645-ipc-test";
 		reg = <0x0 0xf8007f80 0x0 0x100>; /* G255 ~ G256 */
 		interrupt-parent = <&gic>;
@@ -1140,7 +1140,7 @@
 #endif
 
 
-	pctl: pctl@0xf8000100 {
+	pctl: pctl@f8000100 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
 		      <0x0 0xf8000280 0x0 0x180>,
