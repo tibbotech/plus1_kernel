@@ -126,7 +126,6 @@
 		ethosn_reserved: ethosn_reserved@60000000 {
 			compatible = "shared-dma-pool";
 			reg = <0 0x60000000 0 0x20000000>;
-			dma-ranges = <0x0 0x0 0x0 0x0 0x1000 0x0>;
 			no-map;
 		};
 	};
