@@ -29,7 +29,7 @@
 		};
 	};
 
-	remoteproc0: remoteproc@0 {
+	remoteproc0: remoteproc@9c00817c {
 		compatible = "sunplus,sp-rproc";
 		firmware = "firmware";
 		reg = <0x9c00817c 4>, /* mbox G258.31 */

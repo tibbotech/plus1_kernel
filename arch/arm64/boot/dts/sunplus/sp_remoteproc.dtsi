@@ -22,7 +22,7 @@
 		};
 	};
 
-	remoteproc0: remoteproc@0 {
+	remoteproc0: remoteproc@f8007ffc {
 		compatible = "sunplus,sp-rproc";
 		firmware = "firmware";
 		reg = <0 0xf8007ffc 0 4>; /* mbox G255.31, cpu0 to cpu2 direct reg07 */

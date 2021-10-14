@@ -11,8 +11,7 @@ maintainers:
 
 properties:
   compatible:
-    const:
-      - sunplus,sp-rproc
+    const: sunplus,sp-rproc
 
   firmware:
     description: |
@@ -20,7 +19,7 @@ properties:
       file located on the firmware search path
 
   reg:
-    maxItems: 1
+    maxItems: 2
 
   interrupts:
     maxItems: 1
@@ -51,16 +50,21 @@ required:
   - resets
   - memory-region
 
+additionalProperties: true
+
 examples:
   - |
-    remoteproc0: remoteproc@0 {
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+
+    remoteproc0: remoteproc@9c00817c {
       compatible = "sunplus,sp-rproc";
       firmware = "firmware";
-      reg = <0 0xf8007ffc 0 4>; /* mbox G255.31, cpu0 to cpu2 direct reg07 */
-      interrupt-parent = <&gic>;
-      interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>; /* CPU2_TO_0_DIRECT_INT7 */
-      resets = <&rstc RST_CM4>;
+      reg = <0x9c00817c 4>, /* mbox G258.31 */
+            <0x9e809ff8 4>; /* boot A926 */
+      interrupt-parent = <&intc>;
+      interrupts = <189 IRQ_TYPE_EDGE_RISING>; /* ACHIPCPU0_DIRECT_INT7 */
+      resets = <&rstc RST_A926>;
       memory-region = <&rproc_0_reserved>, <&vdev0buffer>, <&vdev0vring0>, <&vdev0vring1>;
-  };
-
+    };
 ...
