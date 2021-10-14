@@ -30,7 +30,7 @@ additionalProperties: false
 
 examples:
   - |
-    rstc: reset@0x9c000054 {
+    rstc: reset@9c000054 {
       compatible = "sunplus,sp7021-reset";
       #reset-cells = <1>;
       reg = <0x9c000054 0x28>;

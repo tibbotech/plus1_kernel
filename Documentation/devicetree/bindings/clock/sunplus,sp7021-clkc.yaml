@@ -16,17 +16,22 @@ properties:
   "#clock-cells":
     const: 1
 
+  reg:
+    maxItems: 1
+
 required:
   - compatible
   - "#clock-cells"
+  - reg
 
 additionalProperties: false
 
 examples:
   - |
-    clkc: clkc@0 {
+    clkc: clkc@9c000000 {
       compatible = "sunplus,sp7021-clkc";
       #clock-cells = <1>;
+      reg = <0x9c000000 0x80>;
     };
 
 ...

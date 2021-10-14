@@ -47,9 +47,13 @@ required:
   - reg
   - interrupts
 
+additionalProperties: false
+
 examples:
   - |
-    intc: interrupt-controller@G15 {
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+    intc: interrupt-controller@9c000780 {
         compatible = "sunplus,sp-intc";
         interrupt-controller;
         #interrupt-cells = <2>;
