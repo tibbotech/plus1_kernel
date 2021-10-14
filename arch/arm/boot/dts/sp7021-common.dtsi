@@ -8,8 +8,6 @@
 
 /dts-v1/;
 
-#include "skeleton.dtsi"
-
 #include <dt-bindings/clock/sp-sp7021.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/sp-intc.h>
@@ -17,6 +15,13 @@
 #include <dt-bindings/reset/sp-sp7021.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
+
+/ {
+	#address-cells = <1>;
+	#size-cells = <1>;
+	memory { device_type = "memory"; reg = <0 0>; };
+};
+
 
 #include "sp_remoteproc.dtsi"
 

@@ -1,8 +1,5 @@
 / {
 	reserved-memory {
-		#address-cells = <1>;
-		#size-cells = <1>;
-		ranges;
 		vdev0vring0: vdev0vring0@1e800000 {
 			no-map;
 			compatible = "shared-dma-pool";
