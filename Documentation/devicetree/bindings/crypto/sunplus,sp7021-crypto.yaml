@@ -11,8 +11,7 @@ maintainers:
 
 properties:
   compatible:
-    const:
-      - sunplus,sp7021-crypto
+    const: sunplus,sp7021-crypto
 
   reg:
     maxItems: 1
@@ -30,14 +29,18 @@ required:
   - compatible
   - reg
   - clocks
-	- resets
+  - resets
   - interrupts
 
 additionalProperties: false
 
 examples:
   - |
-    crypto: crypto@G84 {
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+
+    crypto: crypto@9c002a00 {
       compatible = "sunplus,sp7021-crypto";
       reg = <0x9c002a00 0x100>; /* G84 ~ G85 */
       clocks = <&clkc SEC>;

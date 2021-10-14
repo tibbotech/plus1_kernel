@@ -28,7 +28,9 @@ additionalProperties: false
 
 examples:
   - |
-    timer@A_G19 {
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+
+    timer@9ec00980 {
       compatible = "sunplus,sp-stc";
       reg = <0x9ec00980 0x80>;
       interrupt-parent = <&gic>;
