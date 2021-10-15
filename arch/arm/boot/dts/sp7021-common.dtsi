@@ -23,7 +23,7 @@
 };
 
 
-#include "sp_remoteproc.dtsi"
+#include "sp7021-remoteproc.dtsi"
 
 #ifndef ENABLE_DMARX0
 #define ENABLE_DMARX0 1
