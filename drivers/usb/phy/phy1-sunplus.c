@@ -52,7 +52,7 @@ static void uphy1_init(struct platform_device *pdev)
 	u32 val;
 	u32 set;
 	void __iomem *usb_otp_reg;
-	char *disc_name = "disc_vol1";
+	char *disc_name = "disc_vol";
 	ssize_t otp_l = 0;
 	char *otp_v;
 
