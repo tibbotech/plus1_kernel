@@ -6,9 +6,6 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
 
 title: Sunplus SD/SDIO controller
 
-allOf:
-  - $ref: mmc-controller.yaml#
-
 maintainers:
   - lh.kuo <lh.kuo@sunplus.com>
 
@@ -31,12 +28,28 @@ properties:
   resets:
     maxItems: 1
 
+  pinctrl-names:
+    description:
+      A pinctrl state named "default" must be defined.
+    const: default
+
+  pinctrl-0:
+    description:
+      A phandle to the default pinctrl state.
+
+  max-frequency: true
+
+allOf:
+  - $ref: "mmc-controller.yaml"
+
 required:
   - compatible
   - reg
   - interrupts
   - clocks
   - resets
+  - pinctrl-names
+  - pinctrl-0
 
 additionalProperties: false
 
@@ -51,6 +64,9 @@ examples:
        interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
        clocks = <&clkc CARD_CTL1>;
        resets = <&rstc RST_CARD_CTL1>;
+       pinctrl-names = "default";
+       pinctrl-0 = <&mmc1_mux &mmc1_mux_cd>;
+       max-frequency = <52000000>;
     };
     sdio: mmc@9C008400 {
        compatible = "sunplus,sp7021-sdio";
@@ -58,5 +74,8 @@ examples:
        interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
        clocks = <&clkc CARD_CTL1>;
        resets = <&rstc RST_CARD_CTL1>;
+       pinctrl-names = "default";
+       pinctrl-0 = <&pins_sdio>;
+       max-frequency = <52000000>;
     };   
 ...
