@@ -40,6 +40,15 @@ properties:
   clock-frequency:
     enum: [ 100000, 400000 ]
 
+  pinctrl-names:
+    description:
+      A pinctrl state named "default" must be defined.
+    const: default
+
+  pinctrl-0:
+    description:
+      A phandle to the default pinctrl state.
+
 required:
   - compatible
   - reg
@@ -47,6 +56,8 @@ required:
   - interrupts
   - clocks
   - resets
+  - pinctrl-names
+  - pinctrl-0
 
 additionalProperties: false
 
@@ -64,5 +75,7 @@ examples:
         clocks = <&clkc I2CM0>;
         resets = <&rstc RST_I2CM0>;
         clock-frequency = <100000>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&i2cm0_pins>;
     };
 ...
