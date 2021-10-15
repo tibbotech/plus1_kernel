@@ -6,11 +6,11 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
 
 title: Sunplus SD/SDIO controller
 
-maintainers:
-  - lh.kuo <lh.kuo@sunplus.com>
-
 allOf:
   - $ref: mmc-controller.yaml#
+
+maintainers:
+  - lh.kuo <lh.kuo@sunplus.com>
 
 properties:
   compatible:
@@ -19,7 +19,8 @@ properties:
       - sunplus,sp7021-sdio
 
   reg:
-    maxItems: 1
+    items:
+      - description: Base address and length of the SD/SDIO registers
 
   interrupts:
     maxItems: 1
@@ -37,34 +38,25 @@ required:
   - clocks
   - resets
 
+additionalProperties: false
+
 examples:
   - |
-        mmc1: mmc@sdcard {
-                compatible = "sunplus,sp7021-card1";
-                reg = <0x9c003e80 0x280>;
-                interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clkc CARD_CTL1>;
-                resets = <&rstc RST_CARD_CTL1>;
-                bus-width = <4>;
-                max-frequency = <52000000>;
-                disable-wp;
-                cap-sd-highspeed;
-                no-sdio;
-                no-mmc;
-        };
-        sdio: sdio@sdcard {
-                compatible = "sunplus,sp7021-sdio";
-                reg = <0x9c008400 0x280>;
-                interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
-                clocks = <&clkc CARD_CTL4>;
-                resets = <&rstc RST_CARD_CTL4>;
-                bus-width = <4>;
-                max-frequency = <52000000>;
-                non-removable;
-                disable-wp;
-                cap-sd-highspeed;
-                cap-sdio-irq;
-                no-sd;
-                no-mmc;
-        };
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+    #include <dt-bindings/interrupt-controller/irq.h>
+    mmc1: mmc@9C003e80 {
+       compatible = "sunplus,sp7021-card1";
+       reg = <0x9c003e80 0x280>;
+       interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+       clocks = <&clkc CARD_CTL1>;
+       resets = <&rstc RST_CARD_CTL1>;
+    };
+    sdio: mmc@9C008400 {
+       compatible = "sunplus,sp7021-sdio";
+       reg = <0x9c008400 0x280>;
+       interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+       clocks = <&clkc CARD_CTL1>;
+       resets = <&rstc RST_CARD_CTL1>;
+    };   
 ...
