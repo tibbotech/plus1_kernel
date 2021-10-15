@@ -54,7 +54,7 @@ examples:
     #include <dt-bindings/interrupt-controller/arm-gic.h>
 
     intc: interrupt-controller@9c000780 {
-        compatible = "sunplus,sp-intc";
+        compatible = "sunplus,sp7021-intc";
         interrupt-controller;
         #interrupt-cells = <2>;
         reg = <0x9c000780 0x80>, <0x9c000a80 0x80>;
