@@ -48,7 +48,7 @@
 		ranges;
 
 		intc: interrupt-controller@G9 {
-			compatible = "sunplus,sp-intc";
+			compatible = "sunplus,sp7021-intc";
 			interrupt-controller;
 			#interrupt-cells = <2>;
 			reg = <0x9c000480 0x80>, /* G9  */

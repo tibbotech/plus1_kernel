@@ -10,7 +10,7 @@
 
 #include <dt-bindings/clock/sp-sp7021.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
-#include <dt-bindings/interrupt-controller/sp-intc.h>
+#include <dt-bindings/interrupt-controller/sp7021-intc.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/reset/sp-sp7021.h>
 #include <dt-bindings/gpio/gpio.h>

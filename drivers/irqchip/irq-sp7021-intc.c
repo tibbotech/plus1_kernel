@@ -16,7 +16,7 @@
 #include <linux/irqchip/chained_irq.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
-#include <dt-bindings/interrupt-controller/sp-intc.h>
+#include <dt-bindings/interrupt-controller/sp7021-intc.h>
 
 #if defined(CONFIG_SOC_SP7021)
 #define SUPPORT_IRQ_GRP_REG

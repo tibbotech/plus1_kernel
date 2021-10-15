@@ -158,7 +158,7 @@
 
 		/* B modules */
 		intc: interrupt-controller@G15 {
-			compatible = "sunplus,sp-intc";
+			compatible = "sunplus,sp7021-intc";
 			interrupt-controller;
 			#interrupt-cells = <2>;
 			reg = <0x9c000780 0x80>, /* G15 */
