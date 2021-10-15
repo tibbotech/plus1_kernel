@@ -4,13 +4,13 @@
 $id: http://devicetree.org/schemas/arm/sunplus,sp7021.yaml#
 $schema: http://devicetree.org/meta-schemas/core.yaml#
 
-title: Sunplus SP7021 Platforms Device Tree Bindings
+title: Sunplus SP7021 Boards Device Tree Bindings
 
 maintainers:
   - qinjian <qinjian@cqplus1.com>
 
 description: |
-  Boards with Sunplus SP7021 SOC
+  Boards with Sunplus SP7021 SoC
 
 properties:
   $nodename:
