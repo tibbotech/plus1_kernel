@@ -38,7 +38,7 @@ Example1:
 			resets = <&rstc RST_GPIO>;
 
 			pins_pwm: pins_pwm {
-				sppctl,pins = <
+				pins = <
 					SPPCTL_IOPAD(1,SPPCTL_PCTL_G_PMUX,MUXF_PWM0,0)
 					SPPCTL_IOPAD(2,SPPCTL_PCTL_G_PMUX,MUXF_PWM1,0)
 					SPPCTL_IOPAD(3,SPPCTL_PCTL_G_PMUX,MUXF_PWM2,0)
@@ -71,7 +71,7 @@ Example2:
 		#gpio-cells = <2>;
 
 		pwm_pins: pinmux_pwm_pins {
-			sppctl,function = "PWM";
-			sppctl,groups = "PWM";
+			function = "PWM";
+			groups = "PWM";
 		};
 	};

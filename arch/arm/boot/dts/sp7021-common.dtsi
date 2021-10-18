@@ -1040,88 +1040,88 @@
 			resets = <&rstc RST_GPIO>;
 
 			pins_uart0: pins_uart0 {
-				sppctl,groups = "UA0";
-				sppctl,function = "UA0";
+				function = "UA0";
+				groups = "UA0";
 			};
 
 			emmc_mux: emmc_mux {
-				sppctl,groups = "CARD0_EMMC";
-				sppctl,function = "CARD0_EMMC";
+				function = "CARD0_EMMC";
+				groups = "CARD0_EMMC";
 			};
 
 			mmc1_mux: mmc1_mux {
-				sppctl,groups = "SD_CARD";
-				sppctl,function = "SD_CARD";
+				function = "SD_CARD";
+				groups = "SD_CARD";
 			};
 
 			pins_spinand0: pins_spinand0 {
-				sppctl,groups = "SPI_NAND";
-				sppctl,function = "SPI_NAND";
+				function = "SPI_NAND";
+				groups = "SPI_NAND";
 			};
 
 			aud_i2s_in: aud_i2s_in {
-				sppctl,groups = "AUD_EXT_ADC_IFX0";
-				sppctl,function = "AUD_EXT_ADC_IFX0";
+				function = "AUD_EXT_ADC_IFX0";
+				groups = "AUD_EXT_ADC_IFX0";
 			};
 			aud_i2s_out: aud_i2s_out {
-				sppctl,groups = "AUD_EXT_DAC_IFX0";
-				sppctl,function = "AUD_EXT_DAC_IFX0";
+				function = "AUD_EXT_DAC_IFX0";
+				groups = "AUD_EXT_DAC_IFX0";
 			};
 			aud_spdi: aud_spdi {
-				sppctl,groups = "AUD_IEC_RX0";
-				sppctl,function = "SPDIF_RX";
+				function = "SPDIF_RX";
+				groups = "AUD_IEC_RX0";
 			};
 			aud_spdo: aud_spdo {
-				sppctl,groups = "AUD_IEC_TX0";
-				sppctl,function = "SPDIF_TX";
+				function = "SPDIF_TX";
+				groups = "AUD_IEC_TX0";
 			};
 			aud_tdmr: aud_tdmr {
-				sppctl,groups = "TDMRX_IFX0";
-				sppctl,function = "TDMRX_IFX0";
+				function = "TDMRX_IFX0";
+				groups = "TDMRX_IFX0";
 			};
 			aud_tdmt: aud_tdmt {
-				sppctl,groups = "TDMTX_IFX0";
-				sppctl,function = "TDMTX_IFX0";
+				function = "TDMTX_IFX0";
+				groups = "TDMTX_IFX0";
 			};
 			aud_pdmr: aud_pdmr {
-				sppctl,groups = "PDMRX_IFX0";
-				sppctl,function = "PDMRX_IFX0";
+				function = "PDMRX_IFX0";
+				groups = "PDMRX_IFX0";
 			};
 
 			spi_flash1_mux: spi_flash1_mux {
-				sppctl,groups = "SPI_FLASH1";
-				sppctl,function = "SPI_FLASH";
+				function = "SPI_FLASH";
+				groups = "SPI_FLASH1";
 			};
 			spi_flash2_mux: spi_flash2_mux {
-				sppctl,groups = "SPI_FLASH2";
-				sppctl,function = "SPI_FLASH";
+				function = "SPI_FLASH";
+				groups = "SPI_FLASH2";
 			};
 
-			spi_fla4b2_mux: spi_fla4b2_mux {
-				sppctl,groups = "SPI_FLASH_4BIT2";
-				sppctl,function = "SPI_FLASH_4BIT";
-			};
 			spi_fla4b1_mux: spi_fla4b1_mux {
-				sppctl,groups = "SPI_FLASH_4BIT1";
-				sppctl,function = "SPI_FLASH_4BIT";
+				function = "SPI_FLASH_4BIT";
+				groups = "SPI_FLASH_4BIT1";
+			};
+			spi_fla4b2_mux: spi_fla4b2_mux {
+				function = "SPI_FLASH_4BIT";
+				groups = "SPI_FLASH_4BIT2";
 			};
 
 			hdmi_A_tx1: hdmi_A_tx1_pins {
-				sppctl,groups = "HDMI_TX1";
-				sppctl,function = "HDMI_TX";
+				function = "HDMI_TX";
+				groups = "HDMI_TX1";
 			};
 			hdmi_A_tx2: hdmi_A_tx2_pins {
-				sppctl,groups = "HDMI_TX2";
-				sppctl,function = "HDMI_TX";
+				function = "HDMI_TX";
+				groups = "HDMI_TX2";
 			};
 			hdmi_A_tx3: hdmi_A_tx3_pins {
-				sppctl,groups = "HDMI_TX3";
-				sppctl,function = "HDMI_TX";
+				function = "HDMI_TX";
+				groups = "HDMI_TX3";
 			};
 
 			fpga_mux: fpga_mux {
-				sppctl,groups = "FPGA_IFX";
-				sppctl,function = "FPGA_IFX";
+				function = "FPGA_IFX";
+				groups = "FPGA_IFX";
 			};
 		};
 	};
