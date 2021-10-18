@@ -1,0 +1,66 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd . Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/usb/sunplus,sp7021-usb-ohci.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SP7021 OHCI Device Tree bindings for port0/port1
+
+maintainers:
+  - Vincent Shih <vincent.shih@sunplus.com>
+
+allOf:
+  - $ref: usb-hcd.yaml#
+
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-usb-ohci0
+      - sunplus,sp7021-usb-ohci1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+  reg:
+    maxItems: 2
+
+  interrupts:
+    maxItems: 1
+
+required:
+  - compatible
+  - clocks
+  - resets
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    sp_ohci0: usb@9C102080 {
+      compatible = "sunplus,sp7021-usb-ohci0";
+      clocks = <&clkc USBC0>;
+      resets = <&rstc RST_USBC0>;
+      reg = <0x9C102080 0x68>, <0x9C000000 0x80>;
+      interrupt-parent = <&intc>;
+      interrupts = <15 IRQ_TYPE_LEVEL_HIGH>;
+    };
+
+    sp_ohci1: usb@9C103080 {
+      compatible = "sunplus,sp7021-usb-ohci1";
+      clocks = <&clkc USBC1>;
+      resets = <&rstc RST_USBC1>;
+      reg = <0x9C103080 0x68>, <0x9C000000 0x80>;
+      interrupt-parent = <&intc>;
+      interrupts = <18 IRQ_TYPE_LEVEL_HIGH>;
+    };
+...

@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd . Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/usb/sunplus,sp7021-usb-otg.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SP7021 OTG Device Tree bindings for port0/port1
+
+maintainers:
+  - Vincent Shih <vincent.shih@sunplus.com>
+
+allOf:
+  - $ref: usb-hcd.yaml#
+
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-usb-otg0
+      - sunplus,sp7021-usb-otg1
+
+  reg:
+    maxItems: 2
+
+  interrupts:
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+
+    sp_otg0: usb@9c102400 {
+      compatible = "sunplus,sp7021-usb-otg0";
+      reg = <0x9c102400 0x70>, <0x9c000200 0x80>;
+      interrupt-parent = <&intc>;
+      interrupts = <11 IRQ_TYPE_LEVEL_HIGH>;
+    };
+
+    sp_otg1: usb@9c103400 {
+      compatible = "sunplus,sp7021-usb-otg1";
+      reg = <0x9c103400 0x70>, <0x9c000200 0x80>;
+      interrupt-parent = <&intc>;
+      interrupts = <10 IRQ_TYPE_LEVEL_HIGH>;
+    };
+...
