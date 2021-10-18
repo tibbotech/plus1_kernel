@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-# Copyright (C) Sunplus Ltd. Co. 2021
+# Copyright (C) Sunplus Co., Ltd. 2021
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/mtd/sunplus,spinor.yaml#
@@ -61,11 +61,17 @@ properties:
 
   read-timing-selection:
     description: Read timing adjustment value
-    const: 1
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 0
+    maximum: 7
+    default: 1
 
   write-timing-selection:
     description: Write timing adjustment value
-    const: 1
+    $ref: /schemas/types.yaml#/definitions/uint32
+    minimum: 0
+    maximum: 1
+    default: 1
 
 additionalProperties: false
 
@@ -102,4 +108,3 @@ examples:
         write-timing-selection = <1>;
     };
 ...
-

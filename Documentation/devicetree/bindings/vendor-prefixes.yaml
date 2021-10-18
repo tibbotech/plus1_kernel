@@ -1038,7 +1038,7 @@ patternProperties:
   "^sunchip,.*":
     description: Shenzhen Sunchip Technology Co., Ltd
   "^sunplus,.*":
-    description: Sunplus Technology Co., Ltd
+    description: Sunplus Technology Co., Ltd.
   "^SUNW,.*":
     description: Sun Microsystems, Inc
   "^swir,.*":
