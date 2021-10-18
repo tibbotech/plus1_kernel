@@ -1,0 +1,116 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd. Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/soc/sunplus/sunplus-axi.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus AXI Monitor controller
+
+maintainers:
+  - tony.huang <tony.huang@sunplus.com>
+
+description: |
+  In order to speed up the breakpoint analysis of the BackBone-Dram problem.
+  Quickly locate which Master/Slave caused the system crash.
+
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-axi
+
+  reg:
+    items:
+      - description: Global Monitor registers regions
+      - description: CBDMA0_MB registers regions
+      - description: CBDMA1_MB registers regions
+      - description: UART2AXI_MA registers regions
+      - description: NBS_MA registers regions
+      - description: SPI_NOR_MA registers regions
+      - description: BIO0_MA registers regions
+      - description: BIO1_MA registers regions
+      - description: I2C2CBUS registers regions
+      - description: DARD0_MA registers regions
+      - description: CARD1_MA registers regions
+      - description: CARD4_MA registers regions
+      - description: BR_CB registers regions
+      - description: SPI_NB_SL registers regions
+      - description: SPI_NOR_SL registers regions
+      - description: CBDMA0_CB registers regions
+      - description: CBDMA1_CB registers regions
+      - description: BIO_SL registers regions
+      - description: SD0_SL registers regions
+      - description: CBDMA registers regions
+
+  reg-names:
+    items:
+      - const: axi_mon
+      - const: axi_4
+      - const: axi_5
+      - const: axi_12
+      - const: axi_21
+      - const: axi_22
+      - const: axi_27
+      - const: axi_28
+      - const: axi_31
+      - const: axi_32
+      - const: axi_33
+      - const: axi_34
+      - const: axi_41
+      - const: axi_42
+      - const: axi_43
+      - const: axi_45
+      - const: axi_46
+      - const: axi_47
+      - const: axi_49
+      - const: axi_cbdma
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    minItems: 1
+
+  resets:
+    maxItems: 1
+
+  bus-width:
+    maxItems: 1
+
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - interrupts
+  - clocks
+  - resets
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+    axi: axi@9c012B80 {
+        compatible = "sunplus,sp7021-axi";
+        reg = <0x9c012B80 0x80>, <0x9c012E00 0x80>, <0x9c012E80 0x80>,
+            <0x9c013200 0x80>, <0x9c013680 0x80>, <0x9c013700 0x80>,
+            <0x9c013980 0x80>, <0x9c013A00 0x80>, <0x9c013B80 0x80>,
+            <0x9c013C00 0x80>, <0x9c013C80 0x80>, <0x9c013D00 0x80>,
+            <0x9c014080 0x80>, <0x9c014100 0x80>, <0x9c014180 0x80>,
+            <0x9c014280 0x80>, <0x9c014300 0x80>, <0x9c014380 0x80>,
+            <0x9c014480 0x80>, <0x9c000D00 0x80>;
+        reg-names = "axi_mon", "axi_4", "axi_5",
+                "axi_12", "axi_21", "axi_22",
+                "axi_27", "axi_28", "axi_31",
+                "axi_32", "axi_33", "axi_34",
+                "axi_41", "axi_42", "axi_43",
+                "axi_45", "axi_46", "axi_47",
+                "axi_49", "axi_cbdma";
+        interrupt-parent = <&intc>;
+        interrupts = <103 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&clkc AXI_GLOBAL>;
+        resets = <&rstc RST_AXI_GLOBAL>;
+    };    
+...
