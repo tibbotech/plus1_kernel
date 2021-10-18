@@ -36,8 +36,8 @@ required:
   - interrupts
   - clocks
   - resets
-  - bus-width
 
+unevaluatedProperties: false
 
 examples:
   - |

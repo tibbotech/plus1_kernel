@@ -82,6 +82,8 @@ required:
   - clocks
   - resets
 
+additionalProperties: false
+
 examples:
   - |
     #include <dt-bindings/interrupt-controller/irq.h>
