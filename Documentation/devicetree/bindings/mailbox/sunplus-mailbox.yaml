@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd. Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/mailbox/sunplus-mailbox.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus Mailbox controller
+
+maintainers:
+  - tony.huang <tony.huang@sunplus.com>
+
+description: |
+  The driver is to communicate with the Mailbox related hardware
+  and get the information.
+
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-ipc
+
+  reg:
+    description:
+      Group 258 Transfer data from ACHIP-CPU0 to ARM926
+      Group 259 Transfer data from ARM926 to ACHIP-CPU0
+
+  interrupts:
+    maxItems: 18
+
+required:
+  - compatible
+  - reg
+  - interrupts
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/interrupt-controller/arm-gic.h>
+    ipc: ipc@9c008100 {
+        compatible = "sunplus,sp7021-ipc";
+        reg = <0x9c008100 0x100>; /* G258 ~ G259 */
+        interrupt-parent = <&intc>;
+        interrupts =
+            <182 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT0 */
+            <183 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT1 */
+            <184 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT2 */
+            <185 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT3 */
+            <186 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT4 */
+            <187 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT5 */
+            <188 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT6 */
+            <189 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_DIRECT_INT7 */
+            <190 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT0 */
+            <191 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT1 */
+            <192 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT2 */
+            <193 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT3 */
+            <194 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT4 */
+            <195 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT5 */
+            <196 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT6 */
+            <197 IRQ_TYPE_EDGE_RISING>, /* A926_DIRECT_INT7 */
+            <198 IRQ_TYPE_EDGE_RISING>, /* ACHIPCPU0_INT */
+            <199 IRQ_TYPE_EDGE_RISING>; /* A926_INT */
+    };
+...
