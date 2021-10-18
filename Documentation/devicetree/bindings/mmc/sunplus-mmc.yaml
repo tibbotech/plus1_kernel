@@ -30,10 +30,6 @@ properties:
   resets:
     maxItems: 1
 
-  bus-width:
-    maxItems: 1
-
-
 required:
   - compatible
   - reg
