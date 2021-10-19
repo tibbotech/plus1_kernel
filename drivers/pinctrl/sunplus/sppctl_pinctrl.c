@@ -370,10 +370,10 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	u8 p_p, p_g, p_f, p_l;
 	unsigned long *configs;
 	int i, size = 0;
-	const __be32 *list = of_get_property(_dn, "sppctl,pins", &size);
+	const __be32 *list = of_get_property(_dn, "pins", &size);
 	struct property *prop;
 	const char *s_f, *s_g;
-	int nmG = of_property_count_strings(_dn, "sppctl,groups");
+	int nmG = of_property_count_strings(_dn, "groups");
 	struct func_t *f = NULL;
 
 	//print_device_tree_node(_dn, 0);
@@ -442,9 +442,9 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	}
 
 	// handle pin-group function
-	if (nmG > 0 && of_property_read_string(_dn, "sppctl,function", &s_f) == 0) {
+	if (nmG > 0 && of_property_read_string(_dn, "function", &s_f) == 0) {
 		KDBG(_pd->dev, "found func: %s\n", s_f);
-		of_property_for_each_string(_dn, "sppctl,groups", prop, s_g) {
+		of_property_for_each_string(_dn, "groups", prop, s_g) {
 			KDBG(_pd->dev, " %s: %s\n", s_f, s_g);
 			(*_map)[*_nm].type = PIN_MAP_TYPE_MUX_GROUP;
 			(*_map)[*_nm].data.mux.function = s_f;
@@ -456,7 +456,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	}
 
 	// handle zero function
-	list = of_get_property(_dn, "sppctl,zero_func", &size);
+	list = of_get_property(_dn, "zero_func", &size);
 	if (list) {
 		for (i = 0; i < size/sizeof(*list); i++) {
 			dt_fun = be32_to_cpu(list[i]);

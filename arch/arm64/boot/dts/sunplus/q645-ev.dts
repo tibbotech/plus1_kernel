@@ -1146,235 +1146,235 @@
 		#gpio-cells = <2>;
 
 		uart0_pins: pinmux_uart0_pins {
-			sppctl,function = "UART0";
-			sppctl,groups = "UART0";
+			function = "UART0";
+			groups = "UART0";
 		};
 
 		uart1_pins: pinmux_uart1_pins {
-			sppctl,function = "UART1";
-			sppctl,groups = "UART1";
+			function = "UART1";
+			groups = "UART1";
 		};
 
 		uart2_pins: pinmux_uart2_pins {
-			sppctl,function = "UART2";
-			sppctl,groups = "UART2";
+			function = "UART2";
+			groups = "UART2";
 		};
 
 		uart3_pins: pinmux_uart3_pins {
-			sppctl,function = "UART3";
-			sppctl,groups = "UART3";
+			function = "UART3";
+			groups = "UART3";
 		};
 
 		uart4_pins: pinmux_uart4_pins {
-			sppctl,function = "UART4";
-			sppctl,groups = "UART4";
+			function = "UART4";
+			groups = "UART4";
 		};
 
 		uadbg_pins: pinmux_uadbg_pins {
-			sppctl,function = "UADBG";
-			sppctl,groups = "UADBG";
+			function = "UADBG";
+			groups = "UADBG";
 		};
 
 		uart6_pins: pinmux_uart6_pins {
-			sppctl,function = "UART6";
-			sppctl,groups = "UART6";
+			function = "UART6";
+			groups = "UART6";
 		};
 
 		uart7_pins: pinmux_uart7_pins {
-			sppctl,function = "UART7";
-			sppctl,groups = "UART7";
+			function = "UART7";
+			groups = "UART7";
 		};
 
 		uart8_pins: pinmux_uart8_pins {
-			sppctl,function = "UART8";
-			sppctl,groups = "UART8";
+			function = "UART8";
+			groups = "UART8";
 		};
 
 		emmc_pins: pinmux_emmc_pins {
-			sppctl,function = "CARD0_EMMC";
-			sppctl,groups = "CARD0_EMMC";
+			function = "CARD0_EMMC";
+			groups = "CARD0_EMMC";
 		};
 
 		sdcard_pins: pinmux_sdcard_pins {
-			sppctl,function = "SD_CARD";
-			sppctl,groups = "SD_CARD";
-			sppctl,pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
+			function = "SD_CARD";
+			groups = "SD_CARD";
+			pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
 		};
 
 		sdio_pins: pinmux_sdio_pins {
-			sppctl,function = "SDIO";
-			sppctl,groups = "SDIO";
+			function = "SDIO";
+			groups = "SDIO";
 		};
 
 		spi_nor_pins: pinmux_spi_nor_pins {
-			sppctl,function = "SPI_FLASH";
-			sppctl,groups = "SPI_FLASH";
+			function = "SPI_FLASH";
+			groups = "SPI_FLASH";
 		};
 
 		spi_nand_pins: pinmux_spi_nand_pins {
-			sppctl,function = "SPI_NAND";
-			sppctl,groups = "SPI_NAND1";
+			function = "SPI_NAND";
+			groups = "SPI_NAND1";
 		};
 
 		spim0_pins: pinmux_spim0_pins {
-			sppctl,function = "SPI_MASTER0";
-			sppctl,groups = "SPI_MASTER0";
+			function = "SPI_MASTER0";
+			groups = "SPI_MASTER0";
 		};
 		spis0_pins: pinmux_spis0_pins {
-			sppctl,function = "SPI_SLAVE0";
-			sppctl,groups = "SPI_SLAVE0";
+			function = "SPI_SLAVE0";
+			groups = "SPI_SLAVE0";
 		};
 		spim1_pins: pinmux_spim1_pins {
-			sppctl,function = "SPI_MASTER1";
-			sppctl,groups = "SPI_MASTER1";
+			function = "SPI_MASTER1";
+			groups = "SPI_MASTER1";
 		};
 		spis1_pins: pinmux_spis1_pins {
-			sppctl,function = "SPI_SLAVE1";
-			sppctl,groups = "SPI_SLAVE1";
+			function = "SPI_SLAVE1";
+			groups = "SPI_SLAVE1";
 		};
 		spim2_pins: pinmux_spim2_pins {
-			sppctl,function = "SPI_MASTER2";
-			sppctl,groups = "SPI_MASTER2";
+			function = "SPI_MASTER2";
+			groups = "SPI_MASTER2";
 		};
 		spis2_pins: pinmux_spis2_pins {
-			sppctl,function = "SPI_SLAVE2";
-			sppctl,groups = "SPI_SLAVE2";
+			function = "SPI_SLAVE2";
+			groups = "SPI_SLAVE2";
 		};
 		spim3_pins: pinmux_spim3_pins {
-			sppctl,function = "SPI_MASTER3";
-			sppctl,groups = "SPI_MASTER3";
+			function = "SPI_MASTER3";
+			groups = "SPI_MASTER3";
 		};
 		spis3_pins: pinmux_spis3_pins {
-			sppctl,function = "SPI_SLAVE3";
-			sppctl,groups = "SPI_SLAVE3";
+			function = "SPI_SLAVE3";
+			groups = "SPI_SLAVE3";
 		};
 		spim4_pins: pinmux_spim4_pins {
-			sppctl,function = "SPI_MASTER4";
-			sppctl,groups = "SPI_MASTER4";
+			function = "SPI_MASTER4";
+			groups = "SPI_MASTER4";
 		};
 		spis4_pins: pinmux_spis4_pins {
-			sppctl,function = "SPI_SLAVE4";
-			sppctl,groups = "SPI_SLAVE4";
+			function = "SPI_SLAVE4";
+			groups = "SPI_SLAVE4";
 		};
 		spim5_pins: pinmux_spim5_pins {
-			sppctl,function = "SPI_MASTER5";
-			sppctl,groups = "SPI_MASTER5";
+			function = "SPI_MASTER5";
+			groups = "SPI_MASTER5";
 		};
 		spis5_pins: pinmux_spis5_pins {
-			sppctl,function = "SPI_SLAVE5";
-			sppctl,groups = "SPI_SLAVE5";
+			function = "SPI_SLAVE5";
+			groups = "SPI_SLAVE5";
 		};
 
 		i2cm0_pins: pinmux_i2cm0_pins {
-			sppctl,function = "I2C_MASTER0";
-			sppctl,groups = "I2C_MASTER0";
+			function = "I2C_MASTER0";
+			groups = "I2C_MASTER0";
 		};
 		i2cm1_pins: pinmux_i2cm1_pins {
-			sppctl,function = "I2C_MASTER1";
-			sppctl,groups = "I2C_MASTER1";
+			function = "I2C_MASTER1";
+			groups = "I2C_MASTER1";
 		};
 		i2cm2_pins: pinmux_i2cm2_pins {
-			sppctl,function = "I2C_MASTER2";
-			sppctl,groups = "I2C_MASTER2";
+			function = "I2C_MASTER2";
+			groups = "I2C_MASTER2";
 		};
 		i2cm3_pins: pinmux_i2cm3_pins {
-			sppctl,function = "I2C_MASTER3";
-			sppctl,groups = "I2C_MASTER3";
+			function = "I2C_MASTER3";
+			groups = "I2C_MASTER3";
 		};
 		i2cm4_pins: pinmux_i2cm4_pins {
-			sppctl,function = "I2C_MASTER4";
-			sppctl,groups = "I2C_MASTER4";
+			function = "I2C_MASTER4";
+			groups = "I2C_MASTER4";
 		};
 		i2cm5_pins: pinmux_i2cm5_pins {
-			sppctl,function = "I2C_MASTER5";
-			sppctl,groups = "I2C_MASTER5";
+			function = "I2C_MASTER5";
+			groups = "I2C_MASTER5";
 		};
 
 		pwm_pins: pinmux_pwm_pins {
-			sppctl,function = "PWM";
-			sppctl,groups = "PWM";
+			function = "PWM";
+			groups = "PWM";
 		};
 
 		aud_dac_clk_pins: pinmux_aud_dac_clk_pins {
-			sppctl,function = "AUD_DAC_CLK";
-			sppctl,groups = "AUD_DAC_CLK";
+			function = "AUD_DAC_CLK";
+			groups = "AUD_DAC_CLK";
 		};
 		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck_pins {
-			sppctl,function = "AUD_TDMTX_XCK";
-			sppctl,groups = "AUD_TDMTX_XCK";
+			function = "AUD_TDMTX_XCK";
+			groups = "AUD_TDMTX_XCK";
 		};
 		aud_au2_data0_pins: pinmux_aud_au2_data0_pins {
-			sppctl,function = "AUD_AU2_DATA0";
-			sppctl,groups = "AUD_AU2_DATA0";
+			function = "AUD_AU2_DATA0";
+			groups = "AUD_AU2_DATA0";
 		};
 		aud_au1_data0_pins: pinmux_aud_au1_data0_pins {
-			sppctl,function = "AUD_AU1_DATA0";
-			sppctl,groups = "AUD_AU1_DATA0";
+			function = "AUD_AU1_DATA0";
+			groups = "AUD_AU1_DATA0";
 		};
 		aud_au2_ck_pins: pinmux_aud_au2_ck_pins {
-			sppctl,function = "AUD_AU2_CK";
-			sppctl,groups = "AUD_AU2_CK";
+			function = "AUD_AU2_CK";
+			groups = "AUD_AU2_CK";
 		};
 		aud_au1_ck_pins: pinmux_aud_au1_ck_pins {
-			sppctl,function = "AUD_AU1_CK";
-			sppctl,groups = "AUD_AU1_CK";
+			function = "AUD_AU1_CK";
+			groups = "AUD_AU1_CK";
 		};
 		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0_pins {
-			sppctl,function = "AUD_AU_ADC_DATA0";
-			sppctl,groups = "AUD_AU_ADC_DATA0";
+			function = "AUD_AU_ADC_DATA0";
+			groups = "AUD_AU_ADC_DATA0";
 		};
 		aud_adc2_data0_pins: pinmux_aud_adc2_data0_pins {
-			sppctl,function = "AUD_ADC2_DATA0";
-			sppctl,groups = "AUD_ADC2_DATA0";
+			function = "AUD_ADC2_DATA0";
+			groups = "AUD_ADC2_DATA0";
 		};
 		aud_adc1_data0_pins: pinmux_aud_adc1_data0_pins {
-			sppctl,function = "AUD_ADC1_DATA0";
-			sppctl,groups = "AUD_ADC1_DATA0";
+			function = "AUD_ADC1_DATA0";
+			groups = "AUD_ADC1_DATA0";
 		};
 		aud_aud_tdm_pins: pinmux_aud_aud_tdm_pins {
-			sppctl,function = "AUD_AUD_TDM";
-			sppctl,groups = "AUD_AUD_TDM";
+			function = "AUD_AUD_TDM";
+			groups = "AUD_AUD_TDM";
 		};
 		spdif_in_pins: pinmux_spdif_in_pins {
-			sppctl,function = "SPDIF_IN";
-			sppctl,groups = "SPDIF_IN_X1";
+			function = "SPDIF_IN";
+			groups = "SPDIF_IN_X1";
 		};
 		spdif_out_pins: pinmux_spdif_out_pins {
-			sppctl,function = "SPDIF_OUT";
-			sppctl,groups = "SPDIF_OUT_X1";
+			function = "SPDIF_OUT";
+			groups = "SPDIF_OUT_X1";
 		};
 
 		gpio_int0_pins: pinmux_gpio_int0_pins {
-			sppctl,function = "INT0";
-			sppctl,groups = "INT0_X1";
+			function = "INT0";
+			groups = "INT0_X1";
 		};
 		gpio_int1_pins: pinmux_gpio_int1_pins {
-			sppctl,function = "INT1";
-			sppctl,groups = "INT1_X1";
+			function = "INT1";
+			groups = "INT1_X1";
 		};
 		gpio_int2_pins: pinmux_gpio_int2_pins {
-			sppctl,function = "INT2";
-			sppctl,groups = "INT2_X1";
+			function = "INT2";
+			groups = "INT2_X1";
 		};
 		gpio_int3_pins: pinmux_gpio_int3_pins {
-			sppctl,function = "INT3";
-			sppctl,groups = "INT3_X1";
+			function = "INT3";
+			groups = "INT3_X1";
 		};
 		gpio_int4_pins: pinmux_gpio_int4_pins {
-			sppctl,function = "INT4";
-			sppctl,groups = "INT4_X1";
+			function = "INT4";
+			groups = "INT4_X1";
 		};
 		gpio_int5_pins: pinmux_gpio_int5_pins {
-			sppctl,function = "INT5";
-			sppctl,groups = "INT5_X1";
+			function = "INT5";
+			groups = "INT5_X1";
 		};
 		gpio_int6_pins: pinmux_gpio_int6_pins {
-			sppctl,function = "INT6";
-			sppctl,groups = "INT6_X1";
+			function = "INT6";
+			groups = "INT6_X1";
 		};
 		gpio_int7_pins: pinmux_gpio_int7_pins {
-			sppctl,function = "INT7";
-			sppctl,groups = "INT7_X1";
+			function = "INT7";
+			groups = "INT7_X1";
 		};
 	};
 };
