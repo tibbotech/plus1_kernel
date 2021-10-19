@@ -1,0 +1,90 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd. Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/display/sunplus/sunplus,display.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SoC Device-Tree bindings for display driver
+
+maintainers:
+  - Hammer Hsieh <hammer.hsieh@sunplus.com>
+
+properties:
+  compatible:
+    items:
+      - const: sunplus,sp7021-display
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 4
+
+  clocks:
+    maxItems: 8
+
+  clock-names:
+    items:
+      - const: DISP_TGEN
+      - const: DISP_DMIX
+      - const: DISP_OSD0
+      - const: DISP_GPOST0
+      - const: DISP_VPOST
+      - const: DISP_DDFCH
+      - const: DISP_DVE
+      - const: DISP_HDMI
+
+  resets:
+    maxItems: 8
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - clock-names
+  - resets
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/interrupt-controller/sp-intc.h>
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+
+    sp_display: display@9c005c80 {
+      compatible = "sunplus,sp7021-display";
+      reg = <0x9c005c80 0x1980>;
+      interrupt-parent = <&intc>;
+      interrupts = <0 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+        <1 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+        <4 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>,
+        <5 (IRQ_TYPE_EDGE_RISING | SP_INTC_EXT_INT1)>;
+      clocks = <&clkc TGEN>,
+        <&clkc DMIX>,
+        <&clkc OSD0>,
+        <&clkc GPOST0>,
+        <&clkc VPOST>,
+        <&clkc DDFCH>,
+        <&clkc DVE>,
+        <&clkc HDMI_TX>;
+      clock-names = "DISP_TGEN",
+        "DISP_DMIX",
+        "DISP_OSD0",
+        "DISP_GPOST0",
+        "DISP_VPOST",
+        "DISP_DDFCH",
+        "DISP_DVE",
+        "DISP_HDMI";
+      resets = <&rstc RST_TGEN>,
+        <&rstc RST_DMIX>,
+        <&rstc RST_OSD0>,
+        <&rstc RST_GPOST0>,
+        <&rstc RST_VPOST>,
+        <&rstc RST_DDFCH>,
+        <&rstc RST_DVE>,
+        <&rstc RST_HDMI_TX>;
+    };
