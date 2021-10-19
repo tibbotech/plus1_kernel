@@ -4,371 +4,186 @@
  *
  * Copyright (C) 2020 SUNPLUS Inc.
  *
- * Author:	PoChou Chen <pochou.chen@sunplus.com>
- *	Hammer Hsieh <hammer.hsieh@sunplus.com>
+ * Author:	Hammer Hsieh <hammer.hsieh@sunplus.com>
  *
  */
 
-/**************************************************************************
- *                         H E A D E R   F I L E S
- **************************************************************************/
-/* #define DEBUG */
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
-#if defined(CONFIG_SOC_SP7021)
-#include <linux/mfd/sunplus/pwm-sp7021.h>
-#elif defined(CONFIG_SOC_I143)
-#include <linux/mfd/sunplus/pwm-i143.h>
-#elif defined(CONFIG_SOC_Q645)
-#include <linux/mfd/sunplus/pwm-q645.h>
-#endif
-/**************************************************************************
- *                           C O N S T A N T S                            *
- **************************************************************************/
+
+#define PWM_CLK_MANAGEMENT
+
+#define SUNPLUS_PWM_NUM		ePWM_MAX
+#define SUNPLUS_PWM_FREQ	ePWM_FREQ_MAX
+#define PWM_CNT_BIT_SHIFT	8
+#define PWM_FREQ_SCALER		256
+#define PWM_DD_SEL_BIT_MASK	0x3
+#define ePWM_DD_MAX		4
+#define ePWM_DD_UNKNOWN ePWM_DD_MAX
+
 #if defined(CONFIG_SOC_SP7021)
 #define DRV_NAME "sp7021-pwm"
 #define DESC_NAME "SP7021 PWM Driver"
-#elif defined(CONFIG_SOC_I143)
-#define DRV_NAME "i143-pwm"
-#define DESC_NAME "I143 PWM Driver"
+#ifdef PWM_CLK_MANAGEMENT
+#define ePWM_MAX		8
+#else
+#define ePWM_MAX		4
+#endif
+#define ePWM_FREQ_MAX 0xffff
+#define ePWM_DUTY_MAX 0x00ff
+#define PWM_CONTROL0	0x000
+#define PWM_CONTROL1	0x001
+#define PWM_FREQ_BASE	0x002
+#define PWM_DUTY_BASE	0x006
+#define PWM_DD_SEL_BIT_SHIFT	8
 #elif defined(CONFIG_SOC_Q645)
 #define DRV_NAME "q645-pwm"
 #define DESC_NAME "Q645 PWM Driver"
+#define ePWM_MAX		4
+#define ePWM_FREQ_MAX 0x3ffff
+#define ePWM_DUTY_MAX 0x00fff
+#define PWM_CONTROL0	0x000
+#define PWM_CONTROL1	0x020
+#define PWM_FREQ_BASE	0x011
+#define PWM_DUTY_BASE	0x001
+#define PWM_DD_SEL_BIT_SHIFT	16
+#define PWM_INV_BIT_SHIFT	8
 #endif
 
-#define SUNPLUS_PWM_NUM		ePWM_MAX
-
-/**************************************************************************
- *                              M A C R O S                               *
- **************************************************************************/
-#define to_sunplus_pwm(chip)	container_of(chip, struct sunplus_pwm, chip)
-
-/**************************************************************************
- *                          D A T A    T Y P E S                          *
- **************************************************************************/
 struct sunplus_pwm {
 	struct pwm_chip chip;
-	void __iomem *base;
+	void __iomem *regs;
 	struct clk *clk;
 };
 
-#if defined(CONFIG_SOC_Q645)
-enum {
-	ePWM0,
-	ePWM1,
-	ePWM2,
-	ePWM3,
-	ePWM_MAX
-};
-#else
-enum {
-	ePWM0,
-	ePWM1,
-	ePWM2,
-	ePWM3,
-	ePWM4,
-	ePWM5,
-	ePWM6,
-	ePWM7,
-	ePWM_MAX
-};
-#endif
-
-enum {
-	ePWM_DD0,
-	ePWM_DD1,
-	ePWM_DD2,
-	ePWM_DD3,
-	ePWM_DD_MAX
-};
-
-/**************************************************************************
- *               F U N C T I O N    D E C L A R A T I O N S               *
- **************************************************************************/
-static void _sunplus_pwm_unexport(struct pwm_chip *chip, struct pwm_device *pwm);
-static int _sunplus_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm);
-static void _sunplus_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm);
-static int _sunplus_pwm_config(struct pwm_chip *chip,
-							struct pwm_device *pwm,
-							int duty_ns,
-							int period_ns);
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
-static int _sunplus_pwm_polarity(struct pwm_chip *chip,
-							struct pwm_device *pwm,
-							enum pwm_polarity polarity);
-#endif
-static int _sunplus_pwm_probe(struct platform_device *pdev);
-static int _sunplus_pwm_remove(struct platform_device *pdev);
-
-#ifdef CONFIG_PM
-static int __maybe_unused _sunplus_pwm_suspend(struct device *dev);
-static int __maybe_unused _sunplus_pwm_resume(struct device *dev);
-static int __maybe_unused _sunplus_pwm_runtime_suspend(struct device *dev);
-static int __maybe_unused _sunplus_pwm_runtime_resume(struct device *dev);
-#endif
-
-/**************************************************************************
- *                         G L O B A L    D A T A                         *
- **************************************************************************/
-static const struct pwm_ops _sunplus_pwm_ops = {
-	.free = _sunplus_pwm_unexport,
-	.enable = _sunplus_pwm_enable,
-	.disable = _sunplus_pwm_disable,
-	.config = _sunplus_pwm_config,
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
-	.set_polarity = _sunplus_pwm_polarity,
-#endif
-	.owner = THIS_MODULE,
-};
-
-static const struct of_device_id _sunplus_pwm_dt_ids[] = {
-	{ .compatible = "sunplus,sp7021-pwm", },
-/*	{ .compatible = "sunplus,i143-pwm", }, */
-	{ .compatible = "sunplus,q645-pwm", },
-	{}
-};
-MODULE_DEVICE_TABLE(of, _sunplus_pwm_dt_ids);
-
-#ifdef CONFIG_PM
-static const struct dev_pm_ops _sunplus_pwm_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(_sunplus_pwm_suspend, _sunplus_pwm_resume)
-	SET_RUNTIME_PM_OPS(_sunplus_pwm_runtime_suspend,
-				_sunplus_pwm_runtime_resume, NULL)
-};
-#endif
-
-static struct platform_driver _sunplus_pwm_driver = {
-	.probe		= _sunplus_pwm_probe,
-	.remove		= _sunplus_pwm_remove,
-	.driver		= {
-		.name	= DRV_NAME,
-		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(_sunplus_pwm_dt_ids),
-#ifdef CONFIG_PM
-		.pm		= &_sunplus_pwm_pm_ops,
-#endif
-	},
-};
-module_platform_driver(_sunplus_pwm_driver);
-
-/**************************************************************************
- *             F U N C T I O N    I M P L E M E N T A T I O N S           *
- **************************************************************************/
-static void _sunplus_reg_init(void *base)
+static inline struct sunplus_pwm *to_sunplus_pwm(struct pwm_chip *chip)
 {
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)base;
-
-#if defined(CONFIG_SOC_SP7021)
-	pPWMReg->grp244_0 = 0x0000;
-	pPWMReg->grp244_1 = 0x0f00;
-	pPWMReg->pwm_dd[0].idx_all = 0x0000;
-	pPWMReg->pwm_dd[1].idx_all = 0x0000;
-	pPWMReg->pwm_dd[2].idx_all = 0x0000;
-	pPWMReg->pwm_dd[3].idx_all = 0x0000;
-	pPWMReg->pwm_du[0].idx_all = 0x0000;
-	pPWMReg->pwm_du[1].idx_all = 0x0000;
-	pPWMReg->pwm_du[2].idx_all = 0x0000;
-	pPWMReg->pwm_du[3].idx_all = 0x0000;
-	pPWMReg->pwm_du[4].idx_all = 0x0000;
-	pPWMReg->pwm_du[5].idx_all = 0x0000;
-	pPWMReg->pwm_du[6].idx_all = 0x0000;
-	pPWMReg->pwm_du[7].idx_all = 0x0000;
-#elif defined(CONFIG_SOC_I143)
-	pPWMReg->grp244_0 = 0x00f00000;
-	pPWMReg->pwm_dd[0].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[1].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[2].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[3].idx_all = 0x00000000;
-	pPWMReg->pwm_du[0].idx_all = 0x00000000;
-	pPWMReg->pwm_du[1].idx_all = 0x00000000;
-	pPWMReg->pwm_du[2].idx_all = 0x00000000;
-	pPWMReg->pwm_du[3].idx_all = 0x00000000;
-	pPWMReg->grp245_0 = 0x00000000;
-#elif defined(CONFIG_SOC_Q645)
-	pPWMReg->grp287_0 = 0x0f000000;
-	pPWMReg->pwm_dd[0].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[1].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[2].idx_all = 0x00000000;
-	pPWMReg->pwm_dd[3].idx_all = 0x00000000;
-	pPWMReg->pwm_du[0].idx_all = 0x00000000;
-	pPWMReg->pwm_du[1].idx_all = 0x00000000;
-	pPWMReg->pwm_du[2].idx_all = 0x00000000;
-	pPWMReg->pwm_du[3].idx_all = 0x00000000;
-	pPWMReg->grp288_0 = 0x00000000;
-#endif
-
+	return container_of(chip, struct sunplus_pwm, chip);
 }
 
-static void _sunplus_savepwmclk(struct pwm_chip *chip, struct pwm_device *pwm)
+static void sunplus_reg_init(void __iomem *p)
 {
-	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
+	u32 i;
+
+#if defined(CONFIG_SOC_SP7021)
+	writel(0x0000, p + PWM_CONTROL0 * 4);
+	writel(0x0f0f, p + PWM_CONTROL1 * 4);
+#elif defined(CONFIG_SOC_Q645)
+	writel(0x00000000, p + PWM_CONTROL0 * 4);
+	writel(0x00000000, p + PWM_CONTROL1 * 4);
+#endif
+	for (i = 0; i < ePWM_MAX; i++) {
+		writel(0, p + (PWM_FREQ_BASE + i) * 4);
+		writel(0, p + (PWM_DUTY_BASE + i) * 4);
+	}
+}
+
+#ifdef PWM_CLK_MANAGEMENT
+static void sunplus_savepwmclk(struct sunplus_pwm *chip,
+		struct pwm_device *pwm)
+{
+	u32 cur_dd_sel, cur_dd_value, dd_sel_tmp;
+	u32 pwm_du_en;
 	int i;
-#if defined(CONFIG_SOC_SP7021)
-	u32 dd_sel = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
 
-	dev_dbg(chip->dev, "pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
+	cur_dd_sel = readl(chip->regs + (PWM_DUTY_BASE + pwm->hwpwm) * 4);
+	cur_dd_sel = (cur_dd_sel >> PWM_DD_SEL_BIT_SHIFT) & PWM_DD_SEL_BIT_MASK;
+	cur_dd_value = readl(chip->regs + (PWM_FREQ_BASE + cur_dd_sel) * 4);
+	pwm_du_en = readl(chip->regs + PWM_CONTROL0 * 4);
+	pwm_du_en = pwm_du_en & 0xff;
 
-	if (!(pPWMReg->grp244_1 & (1 << dd_sel)))
+	/* check pwm clk source */
+	if (!(cur_dd_value))
 		return;
 
+	/* scan all enable pwm channel */
 	for (i = 0; i < ePWM_MAX; ++i) {
-		if ((pPWMReg->grp244_0 & (1 << i))
-			&& (pPWMReg->pwm_du[i].pwm_du_dd_sel == dd_sel))
+		dd_sel_tmp = readl(chip->regs + (PWM_DUTY_BASE + i) * 4);
+		dd_sel_tmp = (dd_sel_tmp >> PWM_DD_SEL_BIT_SHIFT) & PWM_DD_SEL_BIT_MASK;
+		if ((pwm_du_en & (1 << i)) && (dd_sel_tmp == cur_dd_sel))
 			break;
 	}
 
-	if (i == ePWM_MAX) {
-		pPWMReg->grp244_1 &= ~(1 << dd_sel);
-		dev_dbg(chip->dev, "save pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
-	}
-#elif defined(CONFIG_SOC_I143)
-	u32 dd_sel = 0;
+	/* clean pwm channel value and clk source select */
+	writel(0, chip->regs + (PWM_DUTY_BASE + pwm->hwpwm) * 4);
 
-	if (pwm->hwpwm%2)
-		dd_sel = pPWMReg->pwm_du[((pwm->hwpwm)-1)/2].pwm_du_dd_sel_1;
-	else
-		dd_sel = pPWMReg->pwm_du[(pwm->hwpwm)/2].pwm_du_dd_sel_0;
+	/* turn off unused pwm clk source */
+	if (i == ePWM_MAX)
+		writel(0, chip->regs + (PWM_FREQ_BASE + cur_dd_sel) * 4);
 
-	dev_dbg(chip->dev, "pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
-
-	if (!(pPWMReg->pwm_dd[dd_sel].dd))
-		return;
-
-	for (i = 0; i < ePWM_MAX; ++i) {
-		if (i%2) {
-			if ((pPWMReg->grp244_0 & (1 << i))
-				&& (pPWMReg->pwm_du[(i-1)/2].pwm_du_dd_sel_1 == dd_sel))
-				break;
-		} else {
-			if ((pPWMReg->grp244_0 & (1 << i))
-				&& (pPWMReg->pwm_du[i/2].pwm_du_dd_sel_0 == dd_sel))
-				break;
-		}
-	}
-
-	if (i == ePWM_MAX) {
-		pPWMReg->pwm_dd[dd_sel].dd = 0;
-		dev_dbg(chip->dev, "save pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
-	}
-#elif defined(CONFIG_SOC_Q645)
-	u32 dd_sel = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
-
-	dev_dbg(chip->dev, "pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
-
-	if (!(pPWMReg->pwm_dd[dd_sel].dd))
-		return;
-
-	for (i = 0; i < ePWM_MAX; ++i) {
-		if ((pPWMReg->grp287_0 & (1 << i))
-			&& (pPWMReg->pwm_du[i].pwm_du_dd_sel == dd_sel))
-			break;
-	}
-
-	if (i == ePWM_MAX) {
-		pPWMReg->pwm_dd[dd_sel].dd = 0;
-		dev_dbg(chip->dev, "save pwm clk:%d dd_sel:%d\n",
-			pwm->hwpwm, dd_sel);
-	}
-#endif
 }
+#endif
 
-static int _sunplus_setpwm(struct pwm_chip *chip,
+#ifdef PWM_CLK_MANAGEMENT
+static int sunplus_setpwm(struct sunplus_pwm *chip,
 		struct pwm_device *pwm,
 		int duty_ns,
 		int period_ns)
 {
-	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
 	u32 dd_sel_old = ePWM_DD_MAX, dd_sel_new = ePWM_DD_MAX;
-	u32 duty = 0, dd_freq = 0x80;
-	u32 tmp2;
+	u32 dd_sel_tmp, du_value_tmp, duty;
+	u32 dd_value_tmp, dd_freq, value;
+	u32 pwm_dd_en, pwm_du_en, dd_used_status;
 	u64 tmp;
-	u32 pwm_dd_en = 0;
 	int i;
 
-	tmp = clk_get_rate(pdata->clk) * (u64)period_ns;
-	dd_freq = (u32)div64_u64(tmp, 256000000000ULL);
-
-	dev_dbg(chip->dev, "set pwm:%d source clk rate:%llu duty_freq:0x%x(%d)\n",
-			pwm->hwpwm, tmp, dd_freq, dd_freq);
+	/* cal pwm freq and check value under range */
+	tmp = clk_get_rate(chip->clk) * (u64)period_ns;
+	tmp = DIV_ROUND_CLOSEST_ULL(tmp, NSEC_PER_SEC);
+	tmp = DIV_ROUND_CLOSEST_ULL(tmp, PWM_FREQ_SCALER);
+	dd_freq = (u32)tmp;
 
 	if (dd_freq == 0)
 		return -EINVAL;
 
-#if defined(CONFIG_SOC_SP7021)
-	if (dd_freq >= 0xffff)
-		dd_freq = 0xffff;
+	if (dd_freq >= ePWM_FREQ_MAX)
+		dd_freq = ePWM_FREQ_MAX;
 
-	pwm_dd_en = pPWMReg->grp244_1 & (0xff >> (8 - ePWM_DD_MAX));
-#elif defined(CONFIG_SOC_I143)
-	if (dd_freq >= 0x3ffff)
-		dd_freq = 0x3ffff;
-
+	/* read all clk source and PWM channel status */
+	pwm_du_en = readl(chip->regs + PWM_CONTROL0 * 4);
+	pwm_du_en = pwm_du_en & 0xff;
 	for (i = 0; i < ePWM_DD_MAX; ++i) {
-		if (pPWMReg->pwm_dd[i].dd)
+		dd_value_tmp = readl(chip->regs + (PWM_FREQ_BASE + i) * 4);
+		if (dd_value_tmp)
 			pwm_dd_en |= (1 << i);
 	}
-#elif defined(CONFIG_SOC_Q645)
-	if (dd_freq >= 0x3ffff)
-		dd_freq = 0x3ffff;
 
+	/* get current pwm channel dd_sel */
+	dd_sel_old = readl(chip->regs + (PWM_DUTY_BASE + pwm->hwpwm) * 4);
+	dd_sel_old = (dd_sel_old >> PWM_DD_SEL_BIT_SHIFT) & PWM_DD_SEL_BIT_MASK;
+	if (!(pwm_dd_en & (1 << dd_sel_old)))
+		dd_sel_old = ePWM_DD_UNKNOWN;
+
+	/* find the same freq and turn on clk source */
 	for (i = 0; i < ePWM_DD_MAX; ++i) {
-		if (pPWMReg->pwm_dd[i].dd)
-			pwm_dd_en |= (1 << i);
-	}
-#endif
-
-	if (pwm_dd_en & (1 << pwm->hwpwm)) {
-#if defined(CONFIG_SOC_SP7021)
-		dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
-#elif defined(CONFIG_SOC_I143)
-		if (pwm->hwpwm%2)
-			dd_sel_old = pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_dd_sel_1;
-		else
-			dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0;
-#elif defined(CONFIG_SOC_Q645)
-		dd_sel_old = pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel;
-#endif
-	} else
-		dd_sel_old = ePWM_DD_MAX;
-
-	/* find the same freq and turnon clk source */
-	for (i = 0; i < ePWM_DD_MAX; ++i) {
+		dd_value_tmp = readl(chip->regs + (PWM_FREQ_BASE + i) * 4);
 		if ((pwm_dd_en & (1 << i))
-			&& (pPWMReg->pwm_dd[i].dd == dd_freq))
+			&& (dd_value_tmp == dd_freq))
 			break;
 	}
-	if (i != ePWM_DD_MAX)
+	if (i != ePWM_DD_UNKNOWN)
 		dd_sel_new = i;
 
+	/* in case of all clk source unused */
+	if ((!pwm_dd_en) && (!pwm_du_en))
+		dd_sel_new = 0;
+
 	/* dd_sel only myself used */
-	if (dd_sel_new == ePWM_DD_MAX) {
+	if (dd_sel_new == ePWM_DD_UNKNOWN) {
 		for (i = 0; i < ePWM_MAX; ++i) {
 			if (i == pwm->hwpwm)
 				continue;
-#if defined(CONFIG_SOC_SP7021)
-			tmp2 = pPWMReg->pwm_du[i].pwm_du_dd_sel;
-#elif defined(CONFIG_SOC_I143)
-			if (i%2)
-				tmp2 = pPWMReg->pwm_du[(i-1)/2].pwm_du_dd_sel_1;
-			else
-				tmp2 = pPWMReg->pwm_du[i/2].pwm_du_dd_sel_0;
-#elif defined(CONFIG_SOC_Q645)
-			tmp2 = pPWMReg->pwm_du[i].pwm_du_dd_sel;
-#endif
 
-			if ((pwm_dd_en & (1 << i))
-					&& (tmp2 == dd_sel_old))
+			dd_sel_tmp = readl(chip->regs + (PWM_DUTY_BASE + i) * 4);
+			dd_sel_tmp = (dd_sel_tmp >> PWM_DD_SEL_BIT_SHIFT) & PWM_DD_SEL_BIT_MASK;
+
+			if ((pwm_du_en & (1 << i))
+					&& (dd_sel_tmp == dd_sel_old))
 				break;
 		}
 		if (i == ePWM_MAX)
@@ -376,7 +191,7 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 	}
 
 	/* find unused clk source */
-	if (dd_sel_new == ePWM_DD_MAX) {
+	if (dd_sel_new == ePWM_DD_UNKNOWN) {
 		for (i = 0; i < ePWM_DD_MAX; ++i) {
 			if (!(pwm_dd_en & (1 << i)))
 				break;
@@ -384,106 +199,106 @@ static int _sunplus_setpwm(struct pwm_chip *chip,
 		dd_sel_new = i;
 	}
 
-	if (dd_sel_new == ePWM_DD_MAX) {
-		dev_err(chip->dev, "pwm%d Can't found clk source[0x%x(%d)/256].\n",
+	if (dd_sel_new == ePWM_DD_UNKNOWN) {
+		pr_err("pwm%d Can't found clk source[0x%x(%d)].\n",
 				pwm->hwpwm, dd_freq, dd_freq);
 		return -EBUSY;
 	}
+	/* set clk source for pwm freq */
+	writel(dd_freq, chip->regs + (PWM_FREQ_BASE + dd_sel_new) * 4);
 
-#if defined(CONFIG_SOC_SP7021)
-	pPWMReg->grp244_1 |= (1 << dd_sel_new);
-#endif
-	pPWMReg->pwm_dd[dd_sel_new].dd = dd_freq;
-
-	dev_dbg(chip->dev, "%s:%d found clk source:%d and set [0x%x(%d)/256]\n",
-			__func__, __LINE__, dd_sel_new, dd_freq, dd_freq);
-
+	/* cal and set pwm duty */
+	value = readl(chip->regs + PWM_CONTROL0 * 4);
 	if (duty_ns == period_ns) {
-		pPWMReg->pwm_bypass |= (1 << pwm->hwpwm);
-		dev_dbg(chip->dev, "%s:%d set pwm:%d bypass duty\n",
-				__func__, __LINE__, pwm->hwpwm);
+		value |= (1 << (pwm->hwpwm + PWM_CNT_BIT_SHIFT));
+		writel(value, chip->regs + PWM_CONTROL0 * 4);
+		duty = (ePWM_DUTY_MAX + 1);
 	} else {
-		pPWMReg->pwm_bypass &= ~(1 << pwm->hwpwm);
+		value &= ~(1 << (pwm->hwpwm + PWM_CNT_BIT_SHIFT));
+		writel(value, chip->regs + PWM_CONTROL0 * 4);
 
-		tmp = (u64)duty_ns * 256 + (period_ns >> 1);
-		duty = (u32)div_u64(tmp, (u32)period_ns);
-
-		dev_dbg(chip->dev, "%s:%d set pwm:%d duty:0x%x(%d)\n",
-				__func__, __LINE__, pwm->hwpwm, duty, duty);
-#if defined(CONFIG_SOC_SP7021)
-		pPWMReg->pwm_du[pwm->hwpwm].pwm_du = duty;
-		pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel = dd_sel_new;
-#elif defined(CONFIG_SOC_I143)
-		if (pwm->hwpwm%2) {
-			pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_1 = duty;
-			pPWMReg->pwm_du[(pwm->hwpwm-1)/2].pwm_du_dd_sel_1 = dd_sel_new;
-		} else {
-			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_0 = duty;
-			pPWMReg->pwm_du[pwm->hwpwm/2].pwm_du_dd_sel_0 = dd_sel_new;
-		}
-#elif defined(CONFIG_SOC_Q645)
-		pPWMReg->pwm_du[pwm->hwpwm].pwm_du = duty;
-		pPWMReg->pwm_du[pwm->hwpwm].pwm_du_dd_sel = dd_sel_new;
-#endif
+		tmp = (u64)duty_ns * (ePWM_DUTY_MAX + 1) + (period_ns >> 1);
+		tmp = DIV_ROUND_CLOSEST_ULL(tmp, (u64)period_ns);
+		duty = (u32)tmp;
+		value = duty;
+		value |= (dd_sel_new << PWM_DD_SEL_BIT_SHIFT);
+		writel(value, chip->regs + (PWM_DUTY_BASE + pwm->hwpwm) * 4);
 	}
 
-	if ((dd_sel_old != dd_sel_new) && (dd_sel_old != ePWM_DD_MAX))
-#if defined(CONFIG_SOC_SP7021)
-		pPWMReg->grp244_1 &= ~(1 << dd_sel_old);
-#elif defined(CONFIG_SOC_I143)
-		pPWMReg->pwm_dd[dd_sel_old].dd = 0;
-#elif defined(CONFIG_SOC_Q645)
-		pPWMReg->pwm_dd[dd_sel_old].dd = 0;
-#endif
+	/* chk unused pwm clk source and turn off it */
+	if ((dd_sel_old != dd_sel_new) && (dd_sel_old != ePWM_DD_MAX)) {
+		dd_used_status = 0;
+		for (i = 0; i < ePWM_MAX; ++i) {
+			value = readl(chip->regs + (PWM_DUTY_BASE + i) * 4);
+			dd_sel_tmp = (value >> PWM_DD_SEL_BIT_SHIFT) & PWM_DD_SEL_BIT_MASK;
+			du_value_tmp = value & ePWM_DUTY_MAX;
+			if (du_value_tmp != 0)
+				dd_used_status |= (1 << dd_sel_tmp);
+		}
 
-	dev_dbg(chip->dev, "%s:%d pwm:%d, output freq:%lu Hz, duty:%u%%\n",
-			__func__, __LINE__,
-			pwm->hwpwm, clk_get_rate(pdata->clk) / (dd_freq * 256),
-			(duty * 100) / 256);
+		if ((pwm_dd_en & (1 << dd_sel_old)) != (dd_used_status & (1 << dd_sel_old)))
+			writel(0, chip->regs + (PWM_FREQ_BASE + dd_sel_old) * 4);
+	}
 
-	return 0;
-}
-
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_Q645)
-static int _sunplus_pwm_polarity(struct pwm_chip *chip,
-		struct pwm_device *pwm,
-		enum pwm_polarity polarity)
-{
-	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
-
-	if (polarity == PWM_POLARITY_NORMAL)
-		pPWMReg->pwm_inv &= ~(1 << pwm->hwpwm);
-	else
-		pPWMReg->pwm_inv |= (1 << pwm->hwpwm);
+	pr_debug("pwm:%d, output freq:%lu Hz, duty:%u%%\n",
+			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * 256),
+			(duty * 100) / (ePWM_DUTY_MAX + 1));
 
 	return 0;
 }
-#endif
-
-static int _sunplus_pwm_config(struct pwm_chip *chip,
+#else
+static int sunplus_setpwm(struct sunplus_pwm *chip,
 		struct pwm_device *pwm,
 		int duty_ns,
 		int period_ns)
 {
-	dev_dbg(chip->dev, "%s:%d set pwm:%d enable:%d duty_ns:%d period_ns:%d\n",
-			__func__, __LINE__,
-			pwm->hwpwm, pwm_is_enabled(pwm),
-			duty_ns, period_ns);
+	u32 duty, dd_freq, value;
+	u64 tmp;
 
-	if (pwm_is_enabled(pwm)) {
-		if (_sunplus_setpwm(chip, pwm, duty_ns, period_ns))
-			return -EBUSY;
+	/* cal pwm freq and check value under range */
+	tmp = clk_get_rate(chip->clk) * (u64)period_ns;
+	tmp = DIV_ROUND_CLOSEST_ULL(tmp, NSEC_PER_SEC);
+	tmp = DIV_ROUND_CLOSEST_ULL(tmp, PWM_FREQ_SCALER);
+	dd_freq = (u32)tmp;
+
+	if (dd_freq == 0)
+		return -EINVAL;
+
+	if (dd_freq >= ePWM_FREQ_MAX)
+		dd_freq = ePWM_FREQ_MAX;
+
+	/* set clk source for pwm freq */
+	writel(dd_freq, chip->regs + (PWM_FREQ_BASE + pwm->hwpwm) * 4);
+
+	/* cal and set pwm duty */
+	value = readl(chip->regs + PWM_CONTROL0 * 4);
+	if (duty_ns == period_ns) {
+		value |= (1 << (pwm->hwpwm + PWM_CNT_BIT_SHIFT));
+		writel(value, chip->regs + PWM_CONTROL0 * 4);
+		duty = (ePWM_DUTY_MAX + 1);
+	} else {
+		value &= ~(1 << (pwm->hwpwm + PWM_CNT_BIT_SHIFT));
+		writel(value, chip->regs + PWM_CONTROL0 * 4);
+
+		tmp = (u64)duty_ns * (ePWM_DUTY_MAX + 1) + (period_ns >> 1);
+		tmp = DIV_ROUND_CLOSEST_ULL(tmp, (u64)period_ns);
+		duty = (u32)tmp;
+		value = duty;
+		value |= (pwm->hwpwm << PWM_DD_SEL_BIT_SHIFT);
+		writel(value, chip->regs + (PWM_DUTY_BASE + pwm->hwpwm) * 4);
 	}
+
+	pr_debug("pwm:%d, output freq:%lu Hz, duty:%u%%\n",
+			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * 256),
+			(duty * 100) / (ePWM_DUTY_MAX + 1));
 
 	return 0;
 }
+#endif
 
-static void _sunplus_pwm_unexport(struct pwm_chip *chip, struct pwm_device *pwm)
+static void sunplus_pwm_unexport(struct pwm_chip *chip,
+		struct pwm_device *pwm)
 {
-	dev_dbg(chip->dev, "%s:%d unexport pwm:%d\n",
-		__func__, __LINE__, pwm->hwpwm);
-
 	if (pwm_is_enabled(pwm)) {
 		struct pwm_state state;
 
@@ -493,22 +308,21 @@ static void _sunplus_pwm_unexport(struct pwm_chip *chip, struct pwm_device *pwm)
 	}
 }
 
-static int _sunplus_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
+static int sunplus_pwm_enable(struct pwm_chip *chip,
+		struct pwm_device *pwm)
 {
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
 	u32 period = pwm_get_period(pwm);
 	u32 duty_cycle = pwm_get_duty_cycle(pwm);
-
-	dev_dbg(chip->dev, "%s:%d duty_ns:%d period_ns:%d\n",
-			__func__, __LINE__,
-			duty_cycle, period);
+	u32 value;
 
 	pm_runtime_get_sync(chip->dev);
 
-	if (!_sunplus_setpwm(chip, pwm, duty_cycle, period))
-		pPWMReg->pwm_en |= (1 << pwm->hwpwm);
-	else {
+	if (!sunplus_setpwm(pdata, pwm, duty_cycle, period)) {
+		value = readl(pdata->regs + PWM_CONTROL0 * 4);
+		value |= (1 << pwm->hwpwm);
+		writel(value, pdata->regs + PWM_CONTROL0 * 4);
+	} else {
 		pm_runtime_put(chip->dev);
 		return -EBUSY;
 	}
@@ -516,20 +330,71 @@ static int _sunplus_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 	return 0;
 }
 
-static void _sunplus_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
+static void sunplus_pwm_disable(struct pwm_chip *chip,
+		struct pwm_device *pwm)
 {
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
+	u32 value;
 
-	dev_dbg(chip->dev, "%s:%d pwm:%d\n", __func__, __LINE__, pwm->hwpwm);
+	value = readl(pdata->regs + PWM_CONTROL0 * 4);
+	value &= ~(1 << pwm->hwpwm);
+	writel(value, pdata->regs + PWM_CONTROL0 * 4);
 
-	pPWMReg->pwm_en &= ~(1 << pwm->hwpwm);
-	_sunplus_savepwmclk(chip, pwm);
+#ifdef PWM_CLK_MANAGEMENT
+	sunplus_savepwmclk(pdata, pwm);
+#endif
 
 	pm_runtime_put(chip->dev);
 }
 
-static int _sunplus_pwm_probe(struct platform_device *pdev)
+static int sunplus_pwm_config(struct pwm_chip *chip,
+		struct pwm_device *pwm,
+		int duty_ns,
+		int period_ns)
+{
+	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
+
+	if (pwm_is_enabled(pwm)) {
+		if (sunplus_setpwm(pdata, pwm, duty_ns, period_ns))
+			return -EBUSY;
+	}
+
+	return 0;
+}
+
+#if defined(CONFIG_SOC_Q645)
+static int sunplus_pwm_polarity(struct pwm_chip *chip,
+		struct pwm_device *pwm,
+		enum pwm_polarity polarity)
+{
+	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
+	u32 value;
+
+	value = readl(pdata->regs + PWM_CONTROL1 * 4);
+
+	if (polarity == PWM_POLARITY_NORMAL)
+		value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
+	else
+		value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
+
+	writel(value, pdata->regs + PWM_CONTROL1 * 4);
+
+	return 0;
+}
+#endif
+
+static const struct pwm_ops _sunplus_pwm_ops = {
+	.free = sunplus_pwm_unexport,
+	.enable = sunplus_pwm_enable,
+	.disable = sunplus_pwm_disable,
+	.config = sunplus_pwm_config,
+#if defined(CONFIG_SOC_Q645)
+	.set_polarity = sunplus_pwm_polarity,
+#endif
+	.owner = THIS_MODULE,
+};
+
+static int sunplus_pwm_probe(struct platform_device *pdev)
 {
 	struct sunplus_pwm *pdata;
 	struct resource *res;
@@ -546,26 +411,19 @@ static int _sunplus_pwm_probe(struct platform_device *pdev)
 		return -ENODEV;
 	}
 
+	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
+	if (pdata == NULL)
+		return -ENOMEM;
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res)) {
 		dev_err(&pdev->dev, "get resource memory from devicetree node.\n");
 		return PTR_ERR(res);
 	}
-
-	pdata = devm_kzalloc(&pdev->dev, sizeof(*pdata), GFP_KERNEL);
-	if (pdata == NULL)
-		return -ENOMEM;
-
-	pdata->chip.dev = &pdev->dev;
-	pdata->chip.ops = &_sunplus_pwm_ops;
-	pdata->chip.npwm = SUNPLUS_PWM_NUM;
-	/* pwm cell = 2 (of_pwm_simple_xlate) */
-	pdata->chip.of_xlate = NULL;
-
-	pdata->base = devm_ioremap_resource(&pdev->dev, res);
-	if (IS_ERR(pdata->base)) {
+	pdata->regs = devm_ioremap_resource(&pdev->dev, res);
+	if (IS_ERR(pdata->regs)) {
 		dev_err(&pdev->dev, "mapping resource memory.\n");
-		return PTR_ERR(pdata->base);
+		return PTR_ERR(pdata->regs);
 	}
 
 	pdata->clk = devm_clk_get(&pdev->dev, NULL);
@@ -579,8 +437,16 @@ static int _sunplus_pwm_probe(struct platform_device *pdev)
 		return ret;
 	}
 
-	/* init module reg */
-	_sunplus_reg_init(pdata->base);
+	pdata->chip.dev = &pdev->dev;
+	pdata->chip.ops = &_sunplus_pwm_ops;
+	pdata->chip.base = -1;
+	pdata->chip.npwm = SUNPLUS_PWM_NUM;
+	/* pwm cell = 2 (of_pwm_simple_xlate) */
+	pdata->chip.of_xlate = NULL;
+
+	sunplus_reg_init(pdata->regs);
+
+	platform_set_drvdata(pdev, pdata);
 
 	ret = pwmchip_add(&pdata->chip);
 	if (ret < 0) {
@@ -588,8 +454,6 @@ static int _sunplus_pwm_probe(struct platform_device *pdev)
 		clk_disable_unprepare(pdata->clk);
 		return ret;
 	}
-
-	platform_set_drvdata(pdev, pdata);
 
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -599,7 +463,7 @@ static int _sunplus_pwm_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int _sunplus_pwm_remove(struct platform_device *pdev)
+static int sunplus_pwm_remove(struct platform_device *pdev)
 {
 	struct sunplus_pwm *pdata;
 	int ret;
@@ -618,34 +482,58 @@ static int _sunplus_pwm_remove(struct platform_device *pdev)
 	return ret;
 }
 
+static const struct of_device_id sunplus_pwm_dt_ids[] = {
+	{ .compatible = "sunplus,sp7021-pwm", },
+	{ .compatible = "sunplus,q645-pwm", },
+	{}
+};
+MODULE_DEVICE_TABLE(of, sunplus_pwm_dt_ids);
+
 #ifdef CONFIG_PM
-static int __maybe_unused _sunplus_pwm_suspend(struct device *dev)
+static int __maybe_unused sunplus_pwm_suspend(struct device *dev)
 {
-	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
 	return pm_runtime_force_suspend(dev);
 }
 
-static int __maybe_unused _sunplus_pwm_resume(struct device *dev)
+static int __maybe_unused sunplus_pwm_resume(struct device *dev)
 {
-	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
 	return pm_runtime_force_resume(dev);
 }
 
-static int __maybe_unused _sunplus_pwm_runtime_suspend(struct device *dev)
+static int __maybe_unused sunplus_pwm_runtime_suspend(struct device *dev)
 {
-	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
 	clk_disable(devm_clk_get(dev, NULL));
 	return 0;
 }
 
-static int __maybe_unused _sunplus_pwm_runtime_resume(struct device *dev)
+static int __maybe_unused sunplus_pwm_runtime_resume(struct device *dev)
 {
-	dev_dbg(dev, "%s:%d\n", __func__, __LINE__);
 	return clk_enable(devm_clk_get(dev, NULL));
 }
 #endif
 
+#ifdef CONFIG_PM
+static const struct dev_pm_ops sunplus_pwm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sunplus_pwm_suspend, sunplus_pwm_resume)
+	SET_RUNTIME_PM_OPS(sunplus_pwm_runtime_suspend,
+				sunplus_pwm_runtime_resume, NULL)
+};
+#endif
+
+static struct platform_driver sunplus_pwm_driver = {
+	.probe		= sunplus_pwm_probe,
+	.remove		= sunplus_pwm_remove,
+	.driver		= {
+		.name	= DRV_NAME,
+		.owner	= THIS_MODULE,
+		.of_match_table = of_match_ptr(sunplus_pwm_dt_ids),
+#ifdef CONFIG_PM
+		.pm		= &sunplus_pwm_pm_ops,
+#endif
+	},
+};
+module_platform_driver(sunplus_pwm_driver);
+
 MODULE_DESCRIPTION(DESC_NAME);
 MODULE_AUTHOR("SUNPLUS,Inc");
 MODULE_LICENSE("GPL v2");
-

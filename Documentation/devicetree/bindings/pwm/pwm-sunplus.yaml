@@ -1,0 +1,54 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd. Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/pwm/pwm-sunplus.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SoC PWM Controller
+
+maintainers:
+  - Hammer Hsieh <hammer.hsieh@sunplus.com>
+
+properties:
+  '#pwm-cells':
+    const: 2
+
+  compatible:
+    items:
+      - const: sunplus,sp7021-pwm
+
+  reg:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+required:
+  - '#pwm-cells'
+  - compatible
+  - reg
+  - clocks
+  - resets
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+
+    pwm: pwm@9c007a00 {
+      #pwm-cells = <2>;
+      compatible = "sunplus,sp7021-pwm";
+      reg = <0x9c007a00 0x80>;
+      clocks = <&clkc DISP_PWM>;
+      resets = <&rstc RST_DISP_PWM>;
+      pinctrl-names = "default";
+      pinctrl-0 = <&pins_pwm>;
+    };
+
+...
