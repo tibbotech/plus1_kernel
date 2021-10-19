@@ -20,7 +20,8 @@
 
 #define MNAME "sppctl"
 #define M_LIC "GPL v2"
-#define M_AUT "Dvorkin Dmitry dvorkin@tibbo.com"
+#define M_AUT1 "Dvorkin Dmitry <dvorkin@tibbo.com>"
+#define M_AUT2 "Wells Lu <wells.lu@sunplus.com>"
 #ifdef CONFIG_PINCTRL_SPPCTL
 #define M_NAM "SP7021 PinCtl"
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)

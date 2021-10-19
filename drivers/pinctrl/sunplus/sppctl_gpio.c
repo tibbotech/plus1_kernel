@@ -279,7 +279,8 @@ static void __exit sppctl_gpio_exit(void)
 module_exit(sppctl_gpio_exit);
 
 MODULE_LICENSE(M_LIC);
-MODULE_AUTHOR(M_AUT);
+MODULE_AUTHOR(M_AUT1);
+MODULE_AUTHOR(M_AUT2);
 MODULE_DESCRIPTION(M_NAM);
 
 #endif // SPPCTL_H

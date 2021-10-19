@@ -47,7 +47,8 @@
 #define M_NAM "Q645 GPIO"
 #endif
 #define M_LIC "GPL v2"
-#define M_AUT "Dvorkin Dmitry <dvorkin@tibbo.com>"
+#define M_AUT1 "Dvorkin Dmitry <dvorkin@tibbo.com>"
+#define M_AUT2 "Wells Lu <wells.lu@sunplus.com>"
 
 #define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"

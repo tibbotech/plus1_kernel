@@ -1195,6 +1195,7 @@ static struct platform_driver sp_spi_nor_driver = {
 };
 module_platform_driver(sp_spi_nor_driver);
 
-MODULE_AUTHOR("Sunplus");
+MODULE_AUTHOR("Chingchou Huang <chingchou.huang@sunplus.com>");
+MODULE_AUTHOR("Wells Lu <wells.lu@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus spi nor driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");

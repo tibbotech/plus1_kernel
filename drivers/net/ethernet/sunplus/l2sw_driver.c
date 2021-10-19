@@ -921,4 +921,6 @@ static struct platform_driver l2sw_driver = {
 
 module_platform_driver(l2sw_driver);
 
+MODULE_AUTHOR("Wells Lu <wells.lu@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus 10M/100M Ethernet (with L2 switch) driver");
 MODULE_LICENSE("GPL v2");
