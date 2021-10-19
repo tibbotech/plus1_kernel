@@ -975,9 +975,9 @@
 			resets = <&rstc RST_SPI_COMBO_3>;
 		};
 
-		spinand0: spinand@9c002B80 {
+		spinand0: spinand@9C002B80 {
 			compatible = "sunplus,sp7021-spinand";
-			reg = <0x9c002B80 0x50>;
+			reg = <0x9C002B80 0x50>;
 			interrupt-parent = <&intc>;
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIND>;
@@ -985,9 +985,9 @@
 			spinand-clk-div = <1>;
 		};
 
-		bch0: bch@9c101000 {
+		bch0: bch@9C101000 {
 			compatible = "sunplus,sp7021-bch";
-			reg = <0x9c101000 0x20>;
+			reg = <0x9C101000 0x20>;
 			interrupt-parent = <&intc>;
 			interrupts = <58 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc BCH>;

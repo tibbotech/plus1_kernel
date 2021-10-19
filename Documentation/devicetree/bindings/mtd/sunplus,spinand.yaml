@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Ltd. Co. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/mtd/sunplus,spinand.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus SPI-NAND Controller Device Tree Bindings
+
+maintainers:
+  - Cheng Chung Ho <cc.ho@sunplus.com>
+
+properties:
+  compatible:
+    enum:
+      - sunplus,sp7021-spinand
+      - sunplus,q645-spi-nand
+
+  reg:
+    maxItems: 1
+
+  interrupts:
+    maxItems: 1
+
+  clocks:
+    maxItems: 1
+
+  resets:
+    maxItems: 1
+
+  spinand-clk-div:
+    description: |
+      This setting is SPI interface clock frequency division. The range of the
+      frequency division setting is from 1 to 7. The CLK_SPI is the SPI-NAND
+      source clock. It takes following values:
+      For SP7021. The frequency of CLK_SPI is 202.5 MHz.
+      {1}, CLK_SPI/2  = 101.250 MHz
+      {2}, CLK_SPI/4  =  50.625 MHz
+      {3}, CLK_SPI/6  =  33.750 MHz
+      {4}, CLK_SPI/8  =  25.313 MHz
+      {5}, CLK_SPI/16 =  12.656 MHz
+      {6}, CLK_SPI/24 =   8.438 MHz
+      {7}, CLK_SPI/32 =   6.328 MHz
+      For Q645. The frequency of CLK_SPI is 600.0 MHz.
+      {1}, CLK_SPI/2  = 300.000 MHz
+      {2}, CLK_SPI/4  = 150.000 MHz
+      {3}, CLK_SPI/6  = 100.000 MHz
+      {4}, CLK_SPI/8  =  75.000 MHz
+      {5}, CLK_SPI/16 =  37.500 MHz
+      {6}, CLK_SPI/24 =  25.000 MHz
+      {7}, CLK_SPI/32 =  18.750 MHz
+    minimum: 1
+    maximum: 7
+    default: 1
+
+additionalProperties: false
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - clocks
+  - resets
+  - spinand-clk-div
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+    spinand0: spinand@9C002B80 {
+        compatible = "sunplus,sp7021-spinand";
+        reg = <0x9C002B80 0x50>;
+        interrupt-parent = <&intc>;
+        interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
+        clocks = <&clkc SPIND>;
+        resets = <&rstc RST_SPIND>;
+        spinand-clk-div = <1>;
+    };
+...
