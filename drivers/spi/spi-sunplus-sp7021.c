@@ -1019,14 +1019,14 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		if (total_len > SPI_TRANS_DATA_SIZE)
 			ret = pentagram_spi_master_transfer(ctlr, spi, xfer);
 
-		if (xfer->delay_usecs)
-			spspi_delay_ns(xfer->delay_usecs * 1000);
+		if (xfer->delay.value)
+			spspi_delay_ns(xfer->delay.value * 1000);
 		if (xfer->cs_change) {
 			if (list_is_last(&xfer->transfer_list, &m->transfers))
 				keep_cs = true;
 			else {
 				pentagram_set_cs(spi, false);
-				spi_delay_to_ns(&xfer->word_delay, xfer);
+				spi_delay_to_ns(&xfer->cs_change_delay, xfer);
 				pentagram_set_cs(spi, true);
 			}
 		}
@@ -1355,6 +1355,6 @@ static struct platform_driver pentagram_spi_controller_driver = {
 };
 module_platform_driver(pentagram_spi_controller_driver);
 
-MODULE_AUTHOR("Sunplus");
+MODULE_AUTHOR("lH Kuo <lh.kuo@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus SPI controller driver");
 MODULE_LICENSE("GPL");
