@@ -1,8 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 config FB_SP7021
 	tristate "SP7021 Graphics Backend framebuffer support"
-	# depends on FB && SOC_SP7021 && VIDEO_SP7021_DISP
-	default y if FB && SOC_SP7021 && VIDEO_SP7021_DISP
+	depends on FB && SOC_SP7021 && VIDEO_SP7021_DISP && VIDEO_V4L2
 	select FB_CFB_FILLRECT
 	select FB_CFB_COPYAREA
 	select FB_CFB_IMAGEBLIT
