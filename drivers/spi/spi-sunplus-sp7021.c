@@ -1357,4 +1357,4 @@ module_platform_driver(pentagram_spi_controller_driver);
 
 MODULE_AUTHOR("lH Kuo <lh.kuo@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus SPI controller driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");

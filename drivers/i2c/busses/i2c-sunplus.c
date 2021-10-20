@@ -1918,6 +1918,6 @@ static void __exit sp_i2c_adap_exit(void)
 }
 module_exit(sp_i2c_adap_exit);
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sunplus Technology");
-MODULE_DESCRIPTION("Sunplus I2C Master Driver");
+MODULE_AUTHOR("lH Kuo <lh.kuo@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus I2c controller driver");
+MODULE_LICENSE("GPL v2");

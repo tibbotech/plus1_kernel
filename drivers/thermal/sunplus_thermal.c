@@ -282,6 +282,6 @@ static struct platform_driver sp7021_thermal_driver = {
 };
 module_platform_driver(sp7021_thermal_driver);
 
-MODULE_AUTHOR("Sunplus");
+MODULE_AUTHOR("lH Kuo <lh.kuo@sunplus.com>");
 MODULE_DESCRIPTION("Thermal driver for SP7021 SoC");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
