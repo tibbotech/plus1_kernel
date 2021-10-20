@@ -241,7 +241,7 @@ static struct sp_axi_t *axi_monitor;
 #define AXI_KDBG_ERR
 
 #ifdef AXI_FUNC_DEBUG
-	#define FUNC_DEBUG()    pr_info("[AXI] Debug: %s(%d)\n", __func__, __LINE__)
+	#define FUNC_DEBUG()    pr_info("[AXI]: %s(%d)\n", __func__, __LINE__)
 #else
 	#define FUNC_DEBUG()
 #endif
@@ -268,15 +268,10 @@ struct sunplus_axi {
 
 struct sunplus_axi sp_axi;
 
-
 #define CBDMA0_SRAM_ADDRESS (0x9E800000) // 40KB
 #define CBDMA1_SRAM_ADDRESS (0x9E820000) // 4KB
 #define CBDMA_TEST_SOURCE      ((void *) 0x9EA00000)
 #define CBDMA_TEST_DESTINATION ((void *) 0x9EA01000)
-//#define CBDMA_TEST_SOURCE      ((void *) 0x00000000)
-//#define CBDMA_TEST_DESTINATION ((void *) 0x00020000)
-//#define CBDMA_TEST_SIZE        (128 << 10)
-//#define CBDMA_TEST_SIZE        (8 << 20)
 #define CBDMA_TEST_SIZE       0x1000
 #ifdef CONFIG_SOC_SP7021
 void cbdma_memcpy(void __iomem *axi_cbdma_regs, int id, void *dst, void *src, unsigned int length)
@@ -284,25 +279,11 @@ void cbdma_memcpy(void __iomem *axi_cbdma_regs, int id, void *dst, void *src, un
 	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;
 
 	DBG_INFO("[CBDMA:%d]: Copy %d KB from 0x%08x to 0x%08x\n", id, length>>10, (unsigned int) src, (unsigned int)dst);
-	//volatile struct cbdma_regs *cbdma;
-	//if (id)
-	//	cbdma = CBDMA1_REG;
-	//else
-	//	cbdma = CBDMA0_REG;
-	// clear all int status
-	//cbdma->int_status = 0x7f;
+
 	writel(0x7f, &axi_cbdma->int_flag);
-	// set copy mode
-	//cbdma->config = 0x00030003;
 	writel(0x00030003, &axi_cbdma->config);
-	// set write data length
-	//cbdma->dma_length = length;
 	writel(length, &axi_cbdma->length);
-	// set write start address
-	//cbdma->src_adr = (unsigned) src;
 	writel((unsigned int) src, &axi_cbdma->src_adr);
-	// set write end address
-	//cbdma->des_adr = (unsigned) dst;
 	writel((unsigned int) dst, &axi_cbdma->des_adr);
 }
 
@@ -311,12 +292,7 @@ void cbdma_kick_go(void __iomem *axi_cbdma_regs, int id)
 	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;
 
 	DBG_INFO("[CBDMA:%d]: Start\n", id);
-	//volatile struct cbdma_regs *cbdma;
-	//if (id)
-	//	cbdma = CBDMA1_REG;
-	//else
-	//	cbdma = CBDMA0_REG;
-	//cbdma->config |= 0x00000100;
+
 	writel(0x00030103, &axi_cbdma->config);
 }
 
@@ -324,15 +300,7 @@ void cbdma_test(void __iomem *axi_cbdma_regs)
 {
 	regs_axi_cbdma_t *axi_cbdma = (regs_axi_cbdma_t *)axi_cbdma_regs;
 
-	//create_sequential_pattern(CBDMA_TEST_SOURCE, CBDMA_TEST_SIZE);
-	//dcache_disable();
-	// cbdma 0 test
-	//read data from main memory then write to other space of main memory
 	cbdma_memcpy(axi_monitor->axi_cbdma_regs, 0, CBDMA_TEST_DESTINATION, CBDMA_TEST_SOURCE, CBDMA_TEST_SIZE);
-	// polling
-
-	//printk("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", cbdma_get_interrupt_status(0));
-	//cbdma_enable_interrupt(iop->axi_cbdma_regs, 0, 0);
 	cbdma_kick_go(axi_monitor->axi_cbdma_regs, 0);
 	readl(&axi_cbdma->int_flag);
 	DBG_INFO("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));
@@ -344,18 +312,6 @@ void cbdma_test(void __iomem *axi_cbdma_regs)
 
 	DBG_INFO("\n");
 	DBG_INFO("[DBG] cbdma_get_interrupt_status(0) : 0x%08x\n", readl(&axi_cbdma->int_flag));
-	//cbdma_clear_interrupt_status(0);
-
-	//g_cbmda_finished = 0;
-	//cbdma_interrupt_control_mask(0, 1);
-	//cbdma_kick_go(0);
-	//printf("g_cbmda_transfer\n");
-	//while (g_cbmda_finished == 0)
-	//	;
-	//printf("g_cbmda_finished\n");
-
-	//check_sequential_pattern(CBDMA_TEST_DESTINATION, CBDMA_TEST_SIZE);
-	//dcache_enable();
 	DBG_INFO("CBDMA test finished.\n");
 }
 #endif
@@ -674,7 +630,6 @@ void axi_mon_unexcept_access_sAddr(void __iomem *axi_mon_regs, void __iomem *axi
 	//unexpect access
 	//bit20: timeout=0, bit16:unexpect_r_access=1, bit12:unexpect_w_access=1,
 	//bit8: special_r_data=0, bit4: special_w_data=0, bit0: monitor enable=1.
-	//writel(0x00011001, &axi_id->sub_ip_monitor);
 	writel(0x00011001, &axi_id->sub_ip_monitor);
 }
 
@@ -733,15 +688,11 @@ void axi_mon_BW_Value(void __iomem *axi_id_regs)
 
 	DBG_INFO("axi_id=0x%p\n", axi_id);
 	temp = readl(&axi_id->sub_bw);
-	DBG_INFO("sub_bw=0x%lld\n", temp);
+	DBG_INFO("sub_bw=0x%llx\n", temp);
 	temp = readl(&axi_id->sub_wcomd_count);
-	//DBG_INFO("sub_wcomd_count=0x%p\n",temp);
 	temp = readl(&axi_id->axi_wcomd_execute_cycle_time);
-	//DBG_INFO("axi_wcomd_execute_cycle_time=0x%p\n",temp);
 	temp = readl(&axi_id->axi_rcomd_count);
-	//DBG_INFO("axi_rcomd_count=0x%p\n",temp);
 	temp = readl(&axi_id->axi_rcomd_execute_cycle_time);
-	//DBG_INFO("axi_rcomd_execute_cycle_time=0x%p\n",temp);
 }
 
 #ifdef CONFIG_SOC_I143
@@ -772,43 +723,25 @@ void Dummy_Master(void __iomem *axi_id_regs, unsigned int data)
 		DBG_INFO("error_flag_for_self=0x%p\n", temp);
 
 		num_of_complete_cmds = readl(&axi_id->calculate_the_num_of_complete_cmds);
-		//DBG_INFO("calculate_the_num_of_complete_cmds=%p\n",num_of_complete_cmds);
-		//DBG_INFO("calculate_the_num_of_complete_cmds=%lld\n",num_of_complete_cmds);
 		temp = num_of_complete_cmds*8*16;	//8*16bytes=8*128bits
-		//DBG_INFO("temp*8*16=%lld\n",temp);
 		nat = temp/1000000000;
-		//DBG_INFO("temp nat=%lld\n",nat);
 		num_of_complete_cmds = readl(&axi_id->calculate_the_num_of_complete_cmds);
 		temp = num_of_complete_cmds*16;
-		//DBG_INFO("temp*16=%lld\n",temp);
 		temp = temp%1000000000;
-		//DBG_INFO("temp dec=%lld\n",temp);
 		dec = temp/10000000;
-		//DBG_INFO("temp dec=%lld\n",dec);
 		DBG_INFO("data_amount=%d.%d\n", nat, dec);
 		data_value = nat*100+dec;
-		//DBG_INFO("data_value=%d\n",data_value);
 
 
 		time_amount = readl(&axi_id->calculate_the_cycle_counts);
-		//DBG_INFO("calculate_the_cycle_counts=%lld\n",time_amount);
 		temp = time_amount*5; //for I143 200MHz
-		//temp = time_amount*10;	//for I143 101MHz
-		//DBG_INFO("temp*5=%lld\n",temp);
 		nat = temp/1000000000;
-		//DBG_INFO("temp nat=%lld\n",nat);
 		time_amount = readl(&axi_id->calculate_the_cycle_counts);
 		temp = time_amount*5;
 		temp = temp%1000000000;
-		//DBG_INFO("temp dec=%lld\n",temp);
 		dec = temp/10000000;
-		//DBG_INFO("temp dec=%lld\n",dec);
 		DBG_INFO("time_amount=%d.%d\n", nat, dec);
 		time_value = nat*100+dec;
-		//DBG_INFO("time_value=%d\n",time_value);
-
-		//value = (double)data_value/(double)time_value;
-		//DBG_INFO("value=%2.2f\n",value);
 		axi_mon_BW_Value(axi_monitor->axi_id9_regs);
 	}
 
@@ -1074,8 +1007,6 @@ static ssize_t dummy_master_store(struct device *dev, struct device_attribute *a
 	if (status)
 		return status;
 	num = val;
-	//DBG_INFO("AXI device_id=%d\n", AxiDeviceID);
-	//DBG_INFO("BW_update_period=0x%x\n", BW_update_period);
 	Dummy_Master(axi_monitor->dummy_master_regs, num);
 	return ret;
 }
@@ -1135,12 +1066,9 @@ static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned long
 	struct resource *r;
 	void __iomem *p;
 
-	FUNC_DEBUG();
-	DBG_INFO("[AXI] register name  : %s!!\n", res_name);
-
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if (r == NULL) {
-		DBG_INFO("[AXI] platform_get_resource_byname fail\n");
+		DBG_ERR("[AXI] platform_get_resource_byname fail\n");
 		return -ENODEV;
 	}
 
@@ -1151,11 +1079,9 @@ static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned long
 	}
 
 #ifdef CONFIG_SOC_SP7021
-	DBG_INFO("[AXI] ioremap addr : 0x%x!!\n", (unsigned int)p);
 	*membase = (unsigned int)p;
 #endif
 #ifdef CONFIG_SOC_I143
-	DBG_INFO("[AXI] ioremap addr : 0x%llx!!\n", (unsigned long long)p);
 	*membase = (unsigned long long)p;
 #endif
 	return IOP_SUCCESS;
