@@ -47,8 +47,6 @@ examples:
       reg = <0x9c007a00 0x80>;
       clocks = <&clkc DISP_PWM>;
       resets = <&rstc RST_DISP_PWM>;
-      pinctrl-names = "default";
-      pinctrl-0 = <&pins_pwm>;
     };
 
 ...
