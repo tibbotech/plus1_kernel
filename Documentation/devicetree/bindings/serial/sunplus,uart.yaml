@@ -31,8 +31,19 @@ properties:
     maxItems: 2
 
   clock-names:
-    minItems: 1
-    maxItems: 2
+    oneOf:
+      - items:
+        - const: UADMA
+        - const: PERI0
+      - items:
+        - const: UADMA
+        - const: PERI1
+      - items:
+        - const: HWUA
+        - const: PERI0
+      - items:
+        - const: HWUA
+        - const: PERI1
 
   resets:
     maxItems: 1
