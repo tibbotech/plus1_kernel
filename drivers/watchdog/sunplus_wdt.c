@@ -31,7 +31,6 @@
 
 #define WDT_CTRL                0x00
 #define WDT_CNT                 0x04
-//#define MISCELLANEOUS_CTRL		0x00
 
 #define WDT_STOP				0x3877
 #define WDT_RESUME				0x4A4B
@@ -58,7 +57,6 @@
 #define STC_CLK				90000
 
 #define DRV_NAME		"sunplus-wdt"
-#define DRV_VERSION		"1.0"
 
 static bool nowayout = WATCHDOG_NOWAYOUT;
 static unsigned int timeout;
@@ -121,7 +119,6 @@ static int sunplus_wdt_ping(struct watchdog_device *wdt_dev)
 	writel(WDT_UNLOCK, wdt_base + WDT_CTRL);
 	/*tiemrw_cnt[3:0]cant be write,only [19:4] can be write.*/
 	cnt_val = (wdt_dev->timeout * STC_CLK) >> 4;
-	//cnt_val = (wdt_dev->timeout * 90) >> 4; //test_for_q645,time dilation > 6000,so cnt div 1000
 	writel(cnt_val, wdt_base + WDT_CNT);
 	writel(WDT_RESUME, wdt_base + WDT_CTRL);
 
@@ -298,7 +295,6 @@ module_param(nowayout, bool, 0);
 MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 			__MODULE_STRING(WATCHDOG_NOWAYOUT) ")");
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sunplus Technology");
+MODULE_AUTHOR("XianTao Hu <xt.hu@cqplus1.com>");
 MODULE_DESCRIPTION("Sunplus WatchDog Timer Driver");
-MODULE_VERSION(DRV_VERSION);
+MODULE_LICENSE("GPL v2");
