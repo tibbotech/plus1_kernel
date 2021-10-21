@@ -553,6 +553,8 @@ static int __init sp_timer_init_of(struct device_node *np)
 {
 	u32 nr_irqs, i;
 
+	dump_stack();
+
 	nr_irqs = of_irq_count(np);
 
 	for (i = SP_TIMER_STC_TIMER0; i < nr_irqs; i++) {
@@ -571,3 +573,7 @@ static int __init sp_timer_init_of(struct device_node *np)
 }
 
 TIMER_OF_DECLARE(sp_timer, "sunplus,sp-stc", sp_timer_init_of);
+
+MODULE_AUTHOR("Qin Jian <qinjian@cqplus1.com>");
+MODULE_DESCRIPTION("Sunplus SP7021 STC Driver");
+MODULE_LICENSE("GPL v2");

@@ -665,6 +665,6 @@ static void __exit sp_crypto_module_exit(void)
 module_init(sp_crypto_module_init);
 module_exit(sp_crypto_module_exit);
 
-MODULE_DESCRIPTION("sunplus aes sha3 rsa hw acceleration support.");
+MODULE_AUTHOR("Qin Jian <qinjian@cqplus1.com>");
+MODULE_DESCRIPTION("Sunplus SP7021 Crypto Engine Driver");
 MODULE_LICENSE("GPL v2");
-MODULE_AUTHOR("sunplus ltd jz.xiang");

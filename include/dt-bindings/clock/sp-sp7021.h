@@ -3,8 +3,8 @@
  * Copyright (C) Sunplus Technology Co., Ltd.
  *       All rights reserved.
  */
-#ifndef _DT_BINDINGS_CLOCK_SUNPLUS_Q628_H
-#define _DT_BINDINGS_CLOCK_SUNPLUS_Q628_H
+#ifndef _DT_BINDINGS_CLOCK_SUNPLUS_SP7021_H
+#define _DT_BINDINGS_CLOCK_SUNPLUS_Sp7021_H
 
 #define XTAL            27000000
 
