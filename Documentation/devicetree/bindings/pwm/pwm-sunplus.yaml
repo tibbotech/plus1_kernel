@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-# Copyright (C) Sunplus Ltd. Co. 2021
+# Copyright (C) Sunplus Co., Ltd. 2021
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/pwm/pwm-sunplus.yaml#
