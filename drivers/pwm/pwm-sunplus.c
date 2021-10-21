@@ -28,7 +28,7 @@
 
 #if defined(CONFIG_SOC_SP7021)
 #define DRV_NAME "sp7021-pwm"
-#define DESC_NAME "SP7021 PWM Driver"
+#define DESC_NAME "Sunplus SP7021 PWM Driver"
 #ifdef PWM_CLK_MANAGEMENT
 #define ePWM_MAX		8
 #else
@@ -43,7 +43,7 @@
 #define PWM_DD_SEL_BIT_SHIFT	8
 #elif defined(CONFIG_SOC_Q645)
 #define DRV_NAME "q645-pwm"
-#define DESC_NAME "Q645 PWM Driver"
+#define DESC_NAME "Sunplus Q645 PWM Driver"
 #define ePWM_MAX		4
 #define ePWM_FREQ_MAX 0x3ffff
 #define ePWM_DUTY_MAX 0x00fff
@@ -535,5 +535,5 @@ static struct platform_driver sunplus_pwm_driver = {
 module_platform_driver(sunplus_pwm_driver);
 
 MODULE_DESCRIPTION(DESC_NAME);
-MODULE_AUTHOR("SUNPLUS,Inc");
+MODULE_AUTHOR("Hammer Hsieh <hammer.hsieh@sunplus.com>");
 MODULE_LICENSE("GPL v2");
