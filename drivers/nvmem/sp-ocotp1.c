@@ -50,6 +50,7 @@ static void __exit sp_otp1_drv_del(void)
 }
 module_exit(sp_otp1_drv_del);
 
-MODULE_DESCRIPTION("Sunplus OCOTP1 driver");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus On-Chip OTP (eFuse 1) driver");
 MODULE_LICENSE("GPL v2");
 

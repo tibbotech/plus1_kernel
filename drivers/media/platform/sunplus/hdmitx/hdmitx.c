@@ -1190,5 +1190,7 @@ static int sp_hdmitx_runtime_resume(struct device *dev)
 }
 #endif
 
-MODULE_DESCRIPTION("HDMITX driver");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus HDMITX driver");
+MODULE_LICENSE("GPL v2");
+

@@ -250,6 +250,7 @@ static void __exit usb_phy0_sunplus_exit(void)
 }
 module_exit(usb_phy0_sunplus_exit);
 
-MODULE_ALIAS("sunplus_usb_phy0");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus USB PHY (port 0) driver");
+MODULE_LICENSE("GPL v2");
 

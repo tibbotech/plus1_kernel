@@ -519,7 +519,7 @@ static struct platform_driver sp_rtc_driver = {
 };
 module_platform_driver(sp_rtc_driver);
 
-MODULE_AUTHOR("Sunplus");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus RTC driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
 
