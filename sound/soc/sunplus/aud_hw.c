@@ -5,10 +5,16 @@
  ***********************************************************************/
 #include "audclk.h"
 #include "aud_hw.h"
-#include "spsoc_pcm.h"
+
 //#include <mach/gpio_drv.h>
 //#include <mach/sp_config.h>
+#if defined(CONFIG_SND_SOC_AUD628)
+#include "spsoc_pcm.h"
 #include "spsoc_util.h"
+#elif defined(CONFIG_SND_SOC_AUD645)
+#include "spsoc_pcm-645.h"
+#include "spsoc_util-645.h"
+#endif
 
 /******************************************************************************
 	Local Defines
@@ -107,9 +113,10 @@ void  AUDHW_Set_PLL(void)
 
 void AUDHW_pin_mx(void)
 {
+#if defined(CONFIG_SND_SOC_AUD628)
 	//int i;
-	volatile RegisterFile_G1 * regs0 = (volatile RegisterFile_G1 *)REG(1,0);
-	//volatile RegisterFile_G2 * regs1 = (volatile RegisterFile_G2 *)REG(2,0);
+	volatile RegisterFile_G1 *regs0 = (volatile RegisterFile_G1 *) REG(1,0);
+	//volatile RegisterFile_G2 *regs1 = (volatile RegisterFile_G2 *) REG(2,0);
 
 	//i = regs0->rf_sft_cfg1;
 	//regs0->rf_sft_cfg1 = (0xFFFF0000 | i | (0x1 << 15));
@@ -123,11 +130,12 @@ void AUDHW_pin_mx(void)
 	//{
 	//	regs1->G002_RESERVED[i]	= 0xffff0000;
 	//}
+#endif
 }
 
 void AUDHW_clk_cfg(void)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile	RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	// 147M	Setting
 	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  //PLLA, 256FS
 	regs0->aud_ext_adc_xck_cfg	= 0xC883;	//PLLA,	256FS
@@ -148,7 +156,7 @@ void AUDHW_clk_cfg(void)
 void AUDHW_Mixer_Setting(void)
 {
         UINT32 val;
-        volatile RegisterFile_Audio	*regs0 = (volatile RegisterFile_Audio*)audio_base;
+        volatile RegisterFile_Audio	*regs0 = (volatile RegisterFile_Audio*) audio_base;
         //67. 0~4
         regs0->aud_grm_master_gain	= 0x80000000;	//aud_grm_master_gain
         regs0->aud_grm_gain_control_0 	= 0x80808080;	//aud_grm_gain_control_0
@@ -156,18 +164,15 @@ void AUDHW_Mixer_Setting(void)
         regs0->aud_grm_gain_control_2 	= 0x808000;	//aud_grm_gain_control_2
         regs0->aud_grm_gain_control_3 	= 0x80808080;	//aud_grm_gain_control_3
         regs0->aud_grm_gain_control_4 	= 0x0000007f;	//aud_grm_gain_control_4
-
         //val = 0x204;				  	//1=pcm, mix75, mix73
         //val = val|0x08100000;			  	//1=pcm, mix79, mix77
         val = 0x20402040;
         regs0->aud_grm_mix_control_1 	= val;		//aud_grm_mix_control_1
         val = 0;
         regs0->aud_grm_mix_control_2 	= val;		//aud_grm_mix_control_2
-
         //EXT DAC I2S
         regs0->aud_grm_switch_0 	= 0x76543210;	//aud_grm_switch_0
         regs0->aud_grm_switch_1 	= 0xBA98;	//aud_grm_switch_1
-
         //INT DAC I2S
         regs0->aud_grm_switch_int	= 0x76543210;	//aud_grm_switch_int
         regs0->aud_grm_delta_volume	= 0x8000;	//aud_grm_delta_volume
@@ -175,13 +180,12 @@ void AUDHW_Mixer_Setting(void)
         regs0->aud_grm_delta_ramp_risc  = 0x8000;	//aud_grm_delta_ramp_risc
         regs0->aud_grm_delta_ramp_linein= 0x8000;	//aud_grm_delta_ramp_linein
         regs0->aud_grm_other	     	= 0x4;		//aud_grm_other for A20
-
         regs0->aud_grm_switch_hdmi_tx   = 0x76543210; //aud_grm_switch_hdmi_tx
 }
 
 void AUDHW_int_dac_adc_Setting(void)
 {
-        volatile RegisterFile_Audio	* regs0	= (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+        volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
         regs0->int_dac_ctrl1	|= (0x1<<31);	//ADAC reset (normal mode)
         regs0->int_dac_ctrl0	= 0xC41B8F5F;	//power	down DA0, DA1 &	DA2, enable auto sleep
@@ -201,7 +205,7 @@ void AUDHW_int_dac_adc_Setting(void)
 void AUDHW_Cfg_AdcIn(void)
 {
 	int val;
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 
 	regs0->adcp_ch_enable   = 0x0;		//adcp_ch_enable
@@ -254,21 +258,21 @@ void AUDHW_Cfg_AdcIn(void)
 
 void AUDHW_SystemInit(void)
 {
-        volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *)audio_base;//(volatile	RegisterFile_Audio *)REG(60,0);
+        volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) audio_base;//(volatile	RegisterFile_Audio *)REG(60,0);
 
-        AUD_INFO("!!!audio_base 0x%x\n", regs0);
-        AUD_INFO("!!!aud_fifo_reset	0x%x\n", &(regs0->aud_fifo_reset));
+        AUD_INFO("!!!audio_base 0x%px\n", regs0);
+        AUD_INFO("!!!aud_fifo_reset	0x%px\n", &(regs0->aud_fifo_reset));
         //reset aud fifo
         regs0->audif_ctrl	= 0x1;	   //aud_ctrl=1
         AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
         regs0->audif_ctrl	= 0x0;	   //aud_ctrl=0
         while(regs0->aud_fifo_reset);
-
+#if defined(CONFIG_SND_SOC_AUD628)
         regs0->pdm_rx_cfg2 	= 0;
         regs0->pdm_rx_cfg1 	= 0x76543210;
         regs0->pdm_rx_cfg0 	= 0x110004;
         regs0->pdm_rx_cfg0 	= 0x10004;
-
+#endif
         regs0->pcm_cfg	   	= 0x4d;
         regs0->hdmi_tx_i2s_cfg 	= 0x4d;
         regs0->hdmi_rx_i2s_cfg 	= 0x24d;	// 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
@@ -314,7 +318,7 @@ void AUDHW_SystemInit(void)
 
 INT32 AUD_Set_DacAnalogGain( AUD_ChannelIdx_e tag, int pgaGain)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile	RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile	RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	switch(	tag )
 	{
@@ -371,9 +375,13 @@ void snd_aud_config(void)
         regs0->aud_a3_base 	= dma_initial;
         regs0->aud_a4_base 	= dma_initial;
         regs0->aud_a5_base 	= dma_initial;
-        regs0->aud_a6_base	= dma_initial;
+        regs0->aud_a6_base	= dma_initial;       
         regs0->aud_a20_base	= dma_initial;
-        
+#if defined(CONFIG_SND_SOC_AUD645)
+	regs0->aud_a19_base	= dma_initial;
+	regs0->aud_a26_base	= dma_initial;
+	regs0->aud_a27_base	= dma_initial;
+#endif        
         dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
         regs0->aud_a13_base	= dma_initial;
         regs0->aud_a16_base	= dma_initial;
@@ -384,14 +392,18 @@ void snd_aud_config(void)
 	regs0->aud_a23_base 	= dma_initial;
 	regs0->aud_a24_base 	= dma_initial;
 	regs0->aud_a25_base 	= dma_initial;
-	//regs0->aud_delta_0 = 0x10;
+#if defined(CONFIG_SND_SOC_AUD645)
+	regs0->aud_a10_base	= dma_initial;
+	regs0->aud_a11_base	= dma_initial;
+	regs0->aud_a14_base	= dma_initial;
+#endif
 #endif
 	return;
 }
 
 void AUD_hw_free(void)
 {
-	volatile RegisterFile_Audio *regs0 = (volatile	RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile	RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	regs0->aud_grm_master_gain = 0;
 }
 

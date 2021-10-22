@@ -1,6 +1,6 @@
 menuconfig SND_SOC_SUNPLUS
 	tristate "ASoC support for Sunplus"
-	#depends on ARCH_PENTAGRAM
+	#depends on ARCH_SUNPLUS
 	select SND_SOC_SPDIF
 	default y
 	help
@@ -10,6 +10,11 @@ menuconfig SND_SOC_SUNPLUS
 
 config SND_SOC_AUD628
 	tristate "support Q628 codec"
-	depends on SND_SOC_SUNPLUS
+	depends on SND_SOC_SUNPLUS && SOC_SP7021
+	default y
+	
+config SND_SOC_AUD645
+	tristate "support Q645 codec"
+	depends on SND_SOC_SUNPLUS && SOC_Q645
 	default y
 

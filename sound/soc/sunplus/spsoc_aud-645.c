@@ -21,8 +21,8 @@
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
 
-#include "spsoc_util.h"
-#include "spsoc_pcm.h"
+#include "spsoc_util-645.h"
+#include "spsoc_pcm-645.h"
 #include "aud_hw.h"
 
 /***********************************************************
@@ -46,14 +46,14 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);//substream->private_data;
 	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);//rtd->cpu_dai;
 	unsigned int pll_out;
-	int ret=0;
+	int ret = 0;
 
-	AUD_INFO("%s IN\n",__func__);
+	AUD_INFO("%s IN\n", __func__);
 	pll_out = params_rate(params);
-	AUD_INFO("%s, pull out %d channels %d\n",__func__, pll_out, params_channels(params));
-	AUD_INFO("%s, periods %d period_size %d\n",__func__, params_periods(params),params_period_size(params));
-	AUD_INFO("%s, periods_bytes 0x%x\n",__func__, params_period_bytes(params));
-	AUD_INFO("%s, buffer_size 0x%x buffer_bytes 0x%x\n",__func__, params_buffer_size(params),params_buffer_bytes(params));
+	AUD_INFO("%s, pull out %d channels %d\n", __func__, pll_out, params_channels(params));
+	AUD_INFO("%s, periods %d period_size %d\n", __func__, params_periods(params), params_period_size(params));
+	AUD_INFO("%s, periods_bytes 0x%x\n", __func__, params_period_bytes(params));
+	AUD_INFO("%s, buffer_size 0x%x buffer_bytes 0x%x\n", __func__, params_buffer_size(params), params_buffer_bytes(params));
 	switch(pll_out)
 	{
 		case 8000:
@@ -77,10 +77,10 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 			AUD_INFO("NO support the rate");
 			break;
 	}
-	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE )
+	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
 	
-	AUD_INFO("%s OUT\n",__func__);
+	AUD_INFO("%s OUT\n", __func__);
 	if (ret < 0)
 		return ret;
 	return 0;
@@ -90,107 +90,66 @@ static struct snd_soc_ops spsoc_aud_ops = {
 	.hw_params = spsoc_hw_params,
 };
 
-SND_SOC_DAILINK_DEFS(sp_i2s,
-	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-i2s-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-codec-dai")),
+SND_SOC_DAILINK_DEFS(sp_i2s_0,
+	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-i2s-dai-0")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-codec-i2s-dai-0")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
+
+SND_SOC_DAILINK_DEFS(sp_i2s_1,
+	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-i2s-dai-1")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-codec-i2s-dai-1")),
+	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
+
+SND_SOC_DAILINK_DEFS(sp_i2s_2,
+	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-i2s-dai-2")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-codec-i2s-dai-2")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
 
 SND_SOC_DAILINK_DEFS(sp_tdm,
 	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-tdm-driver-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-codec-tdm-dai")),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
-
-SND_SOC_DAILINK_DEFS(sp_pdm,
-	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-pdm-driver-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-codec-pdm-dai")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-codec-tdm-dai")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
 
 SND_SOC_DAILINK_DEFS(sp_spdif,
 	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-spdif-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-spdif-dai")),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
-
-SND_SOC_DAILINK_DEFS(sp_i2shdmi,
-	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-i2s-hdmi-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-i2s-hdmi-dai")),
-	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
-
-SND_SOC_DAILINK_DEFS(sp_spdifhdmi,
-	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-spdif-hdmi-dai")),
-	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec",
-				      "aud-spdif-hdmi-dai")),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-spdif-dai")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
 	
 static struct snd_soc_dai_link spsoc_aud_dai[] = {
 	{
-		.name		= "aud_i2s",
-		.stream_name	= "aud_dac0",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-codec-dai",
-		//.cpu_dai_name	= "spsoc-i2s-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
+		.name		= "aud_i2s_0",
+		.stream_name	= "aud_dac0",		
 		.ops 		= &spsoc_aud_ops,
-		SND_SOC_DAILINK_REG(sp_i2s),
+		SND_SOC_DAILINK_REG(sp_i2s_0),
 	},
 	{
 		.name 		= "aud_tdm",
 		.stream_name	= "aud_tdm0",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-codec-tdm-dai",
-		//.cpu_dai_name	= "spsoc-tdm-driver-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 		SND_SOC_DAILINK_REG(sp_tdm),
 	},
 	{
-		.name 		= "aud_pdm",
-		.stream_name	= "aud_pdm0",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-codec-pdm-dai",
-		//.cpu_dai_name	= "spsoc-pdm-driver-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
+		.name		= "aud_i2s_1",
+		.stream_name	= "aud_dac1",
 		.ops 		= &spsoc_aud_ops,
-		SND_SOC_DAILINK_REG(sp_pdm),
+		SND_SOC_DAILINK_REG(sp_i2s_1),
+	},
+	{
+		.name		= "aud_i2s_2",
+		.stream_name	= "aud_dac2",
+		.ops 		= &spsoc_aud_ops,
+		SND_SOC_DAILINK_REG(sp_i2s_2),
 	},
 	{
 		.name 		= "aud_spdif",
 		.stream_name	= "aud_spdif0",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-spdif-dai",
-		//.cpu_dai_name	= "spsoc-spdif-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 		SND_SOC_DAILINK_REG(sp_spdif),
-	},
-	{
-		.name 		= "aud_i2s_hdmi",
-		.stream_name	= "aud_i2shdmi",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-i2s-hdmi-dai",
-		//.cpu_dai_name	= "spsoc-i2s-hdmi-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
-		.ops 		= &spsoc_aud_ops,
-		SND_SOC_DAILINK_REG(sp_i2shdmi),
-	},
-	{
-		.name 		= "aud_spdif_hdmi",
-		.stream_name	= "aud_spdifhdmi",
-		//.codec_name 	= "aud-codec",
-		//.codec_dai_name = "aud-spdif-hdmi-dai",
-		//.cpu_dai_name	= "spsoc-spdif-hdmi-dai",
-		//.platform_name 	= "spsoc-pcm-driver",
-		.ops 		= &spsoc_aud_ops,
-		SND_SOC_DAILINK_REG(sp_spdifhdmi),
-	},
+	},	
 };
 static struct snd_soc_card spsoc_smdk = {
 	.name		= "sp-aud",		// card name
-	.long_name 	= "Q628, Sunplus Technology Inc.",
+	.long_name 	= "Q645, Sunplus Technology Inc.",
 	.owner 		= THIS_MODULE,
 	.dai_link 	= spsoc_aud_dai,
 	.num_links 	= ARRAY_SIZE(spsoc_aud_dai),

@@ -6,8 +6,13 @@
 */
 
 #include "spdif.h"
-#include "spsoc_util.h"
+#if defined(CONFIG_SND_SOC_AUD628)
 #include "spsoc_pcm.h"
+#include "spsoc_util.h"
+#elif defined(CONFIG_SND_SOC_AUD645)
+#include "spsoc_pcm-645.h"
+#include "spsoc_util-645.h"
+#endif
 
 void F_InitIEC( UINT32 user_disc_fmt, UINT32 fs, UINT16 CodecCapability)
 {
