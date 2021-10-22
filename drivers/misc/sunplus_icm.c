@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 /*
  * Sunplus SP7021 SoC ICM(Input Capture Module) driver
+ *
+ * Author:	Hammer Hsieh <hammer.hsieh@sunplus.com>
  */
 
 #include <linux/module.h>
@@ -12,7 +14,7 @@
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
 #include <linux/delay.h>
-#include <misc/sp_icm.h>
+#include <misc/sunplus_icm.h>
 
 #define NUM_ICM 4
 
@@ -95,7 +97,7 @@ do { \
  * u32 pwh; pulse width high
  * u32 pwl; pulse width low
  */
-struct sp_icm_reg {
+struct sunplus_icm_reg {
 	u32 cfg0;
 	u32 cfg1;
 
@@ -107,20 +109,20 @@ struct sp_icm_reg {
 	u32 pwl;
 };
 
-struct sp_icm_dev {
-	struct sp_icm_reg *reg;
+struct sunplus_icm_dev {
+	struct sunplus_icm_reg *reg;
 	int irq;
 	struct clk *clk;
 	struct device *dev;
 };
 
-static struct sp_icm_dev sp_icm;
-static sp_icm_cbf cbfs[NUM_ICM];
+static struct sunplus_icm_dev sunplus_icm;
+static sunplus_icm_cbf cbfs[NUM_ICM];
 
-static irqreturn_t sp_icm_isr(int irq, void *dev_id)
+static irqreturn_t sunplus_icm_isr(int irq, void *dev_id)
 {
-	int i = irq - sp_icm.irq;
-	struct sp_icm_reg *icm = &sp_icm.reg[i];
+	int i = irq - sunplus_icm.irq;
+	struct sunplus_icm_reg *icm = &sunplus_icm.reg[i];
 	u32 cnt, fstate;
 	int clk_bk;
 	//TRACE("");
@@ -138,15 +140,15 @@ static irqreturn_t sp_icm_isr(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
-int sp_icm_setcfg(int i, struct sp_icm_cfg *cfg)
+int sunplus_icm_setcfg(int i, struct sunplus_icm_cfg *cfg)
 {
-	struct sp_icm_reg *icm;
+	struct sunplus_icm_reg *icm;
 
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	RPM_GET(sp_icm.dev);
-	icm = &sp_icm.reg[i];
+	RPM_GET(sunplus_icm.dev);
+	icm = &sunplus_icm.reg[i];
 	ICM_SETCFG(0, MUXSEL, cfg->muxsel);
 	ICM_SETCFG(0, CLKSEL, cfg->clksel);
 	ICM_SETCFG(1, EEMODE, cfg->eemode);
@@ -154,21 +156,21 @@ int sp_icm_setcfg(int i, struct sp_icm_cfg *cfg)
 	ICM_SETCFG(1, DTIMES, cfg->dtimes);
 	icm->cntscl = cfg->cntscl;
 	icm->tstscl = cfg->tstscl;
-	RPM_PUT(sp_icm.dev);
+	RPM_PUT(sunplus_icm.dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_setcfg);
+EXPORT_SYMBOL(sunplus_icm_setcfg);
 
-int sp_icm_getcfg(int i, struct sp_icm_cfg *cfg)
+int sunplus_icm_getcfg(int i, struct sunplus_icm_cfg *cfg)
 {
-	struct sp_icm_reg *icm;
+	struct sunplus_icm_reg *icm;
 
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	RPM_GET(sp_icm.dev);
-	icm = &sp_icm.reg[i];
+	RPM_GET(sunplus_icm.dev);
+	icm = &sunplus_icm.reg[i];
 	cfg->muxsel = ICM_GETCFG(0, MUXSEL);
 	cfg->clksel = ICM_GETCFG(0, CLKSEL);
 	cfg->eemode = ICM_GETCFG(1, EEMODE);
@@ -176,87 +178,87 @@ int sp_icm_getcfg(int i, struct sp_icm_cfg *cfg)
 	cfg->dtimes = ICM_GETCFG(1, DTIMES);
 	cfg->cntscl = icm->cntscl;
 	cfg->tstscl = icm->tstscl;
-	RPM_PUT(sp_icm.dev);
+	RPM_PUT(sunplus_icm.dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_getcfg);
+EXPORT_SYMBOL(sunplus_icm_getcfg);
 
-int sp_icm_reload(int i)
+int sunplus_icm_reload(int i)
 {
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	RPM_GET(sp_icm.dev);
-	sp_icm.reg[i].cfg0 = ICM_RELOAD;
-	RPM_PUT(sp_icm.dev);
+	RPM_GET(sunplus_icm.dev);
+	sunplus_icm.reg[i].cfg0 = ICM_RELOAD;
+	RPM_PUT(sunplus_icm.dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_reload);
+EXPORT_SYMBOL(sunplus_icm_reload);
 
-int sp_icm_enable(int i, sp_icm_cbf cbf)
+int sunplus_icm_enable(int i, sunplus_icm_cbf cbf)
 {
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
 	cbfs[i] = cbf;
-	RPM_GET(sp_icm.dev);
-	sp_icm.reg[i].cfg0 = ICM_ENABLE;
+	RPM_GET(sunplus_icm.dev);
+	sunplus_icm.reg[i].cfg0 = ICM_ENABLE;
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_enable);
+EXPORT_SYMBOL(sunplus_icm_enable);
 
-int sp_icm_disable(int i)
+int sunplus_icm_disable(int i)
 {
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	sp_icm.reg[i].cfg0 = ICM_DISABLE;
-	sp_icm.reg[i].cfg1 = ICM_FCLEAR; /* clear fifo */
-	RPM_PUT(sp_icm.dev);
+	sunplus_icm.reg[i].cfg0 = ICM_DISABLE;
+	sunplus_icm.reg[i].cfg1 = ICM_FCLEAR; /* clear fifo */
+	RPM_PUT(sunplus_icm.dev);
 	cbfs[i] = NULL;
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_disable);
+EXPORT_SYMBOL(sunplus_icm_disable);
 
-int sp_icm_fstate(int i, u32 *fstate)
+int sunplus_icm_fstate(int i, u32 *fstate)
 {
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	RPM_GET(sp_icm.dev);
-	*fstate = sp_icm.reg[i].cfg1 & ICM_FMASK;
-	RPM_PUT(sp_icm.dev);
+	RPM_GET(sunplus_icm.dev);
+	*fstate = sunplus_icm.reg[i].cfg1 & ICM_FMASK;
+	RPM_PUT(sunplus_icm.dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_fstate);
+EXPORT_SYMBOL(sunplus_icm_fstate);
 
-int sp_icm_pwidth(int i, u32 *pwh, u32 *pwl)
+int sunplus_icm_pwidth(int i, u32 *pwh, u32 *pwl)
 {
 	if (i < 0 || i >= NUM_ICM)
 		return -EINVAL;
 
-	RPM_GET(sp_icm.dev);
-	*pwh = sp_icm.reg[i].pwh;
-	*pwl = sp_icm.reg[i].pwl;
-	RPM_PUT(sp_icm.dev);
+	RPM_GET(sunplus_icm.dev);
+	*pwh = sunplus_icm.reg[i].pwh;
+	*pwl = sunplus_icm.reg[i].pwl;
+	RPM_PUT(sunplus_icm.dev);
 
 	return 0;
 }
-EXPORT_SYMBOL(sp_icm_pwidth);
+EXPORT_SYMBOL(sunplus_icm_pwidth);
 
-#ifdef CONFIG_SP_ICM_TEST /* test & example */
+#ifdef CONFIG_SUNPLUS_ICM_TEST /* test & example */
 static u32 tscnt; /* test signal counter */
 
 static void test_cbf(int i, u32 cnt, u32 fstate)
 {
 	u32 pwh, pwl;
 
-	sp_icm_pwidth(i, &pwh, &pwl);
+	sunplus_icm_pwidth(i, &pwh, &pwl);
 	pr_info("icm%d_%05u: %10u %04x %u %u\n", i, ++tscnt, cnt, fstate,
 			pwh, pwl);
 }
@@ -264,9 +266,9 @@ static void test_cbf(int i, u32 cnt, u32 fstate)
 static void test_help(void)
 {
 	pr_info(
-		"sp_icm test:\n"
+		"sunplus_icm test:\n"
 		"  echo <icm:0~3> [function] [params...]\n"
-		" > /sys/module/sp_icm/parameters/test\n"
+		" > /sys/module/sunplus_icm/parameters/test\n"
 		"  * if no function & params, dump icm cfg & state\n"
 		"  function:\n"
 		"    0: disable icm, no params\n"
@@ -284,7 +286,7 @@ static int test_set(const char *val, const struct kernel_param *kp)
 	int i, f, muxsel, clksel, eemode, etimes, dtimes;
 	int cntscl, tstscl, tstime;
 	u32 fstate, pwh, pwl;
-	struct sp_icm_cfg cfg;
+	struct sunplus_icm_cfg cfg;
 	int ret;
 
 	i = f = muxsel = clksel = eemode = etimes = dtimes
@@ -297,14 +299,14 @@ static int test_set(const char *val, const struct kernel_param *kp)
 		switch (f) {
 		case 0: /* disable */
 disable:
-			sp_icm_disable(i);
+			sunplus_icm_disable(i);
 			pr_info("icm%d: tscnt = %u\n", i, tscnt);
 			tscnt = 0;
 			return 0;
 
 		case 1: /* enable */
 		case 2: /* reload */
-			sp_icm_getcfg(i, &cfg);
+			sunplus_icm_getcfg(i, &cfg);
 			if (muxsel != -1)
 				cfg.muxsel = (u32)muxsel;
 			if (clksel != -1)
@@ -319,22 +321,22 @@ disable:
 				cfg.cntscl = (u32)cntscl;
 			if (tstscl != -1)
 				cfg.tstscl = (u32)tstscl;
-			sp_icm_setcfg(i, &cfg);
+			sunplus_icm_setcfg(i, &cfg);
 			if (f == 1) {
-				sp_icm_enable(i, test_cbf);
+				sunplus_icm_enable(i, test_cbf);
 				if (tstime > 0) {
 					mdelay(tstime);
 					goto disable;
 				}
 			} else
-				sp_icm_reload(i);
+				sunplus_icm_reload(i);
 			return 0;
 
 		case -1:
-			sp_icm_getcfg(i, &cfg);
-			sp_icm_fstate(i, &fstate);
-			sp_icm_pwidth(i, &pwh, &pwl);
-			pr_info("sp_icm%d cfg & state:", i);
+			sunplus_icm_getcfg(i, &cfg);
+			sunplus_icm_fstate(i, &fstate);
+			sunplus_icm_pwidth(i, &pwh, &pwl);
+			pr_info("sunplus_icm%d cfg & state:", i);
 			pr_info("muxsel: %u", cfg.muxsel);
 			pr_info("clksel: %u", cfg.clksel);
 			pr_info("eemode: %u", cfg.eemode);
@@ -359,15 +361,15 @@ module_param_cb(test, &test_ops, NULL, 0600);
 #endif
 
 
-static const struct of_device_id sp_icm_of_match[] = {
+static const struct of_device_id sunplus_icm_of_match[] = {
 	{ .compatible = "sunplus,sp7021-icm" },
 	{},
 };
-MODULE_DEVICE_TABLE(of, sp_icm_of_match);
+MODULE_DEVICE_TABLE(of, sunplus_icm_of_match);
 
-static int sp_icm_probe(struct platform_device *pdev)
+static int sunplus_icm_probe(struct platform_device *pdev)
 {
-	struct sp_icm_dev *dev = &sp_icm;
+	struct sunplus_icm_dev *dev = &sunplus_icm;
 	struct resource *res_mem, *res_irq;
 	int i = 0;
 	int ret = 0;
@@ -405,8 +407,8 @@ static int sp_icm_probe(struct platform_device *pdev)
 	RPM_PUT(dev->dev);
 
 	while (i < NUM_ICM) {
-		ret = devm_request_irq(&pdev->dev, dev->irq + i, sp_icm_isr,
-			IRQF_TRIGGER_RISING, "sp_icm", dev);
+		ret = devm_request_irq(&pdev->dev, dev->irq + i, sunplus_icm_isr,
+			IRQF_TRIGGER_RISING, "sunplus_icm", dev);
 		if (ret)
 			return -ENODEV;
 		i++;
@@ -415,7 +417,7 @@ static int sp_icm_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int __maybe_unused sp_icm_suspend(struct device *dev)
+static int __maybe_unused sunplus_icm_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int irq = platform_get_irq(pdev, 0);
@@ -427,7 +429,7 @@ static int __maybe_unused sp_icm_suspend(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused sp_icm_resume(struct device *dev)
+static int __maybe_unused sunplus_icm_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	int irq = platform_get_irq(pdev, 0);
@@ -439,37 +441,37 @@ static int __maybe_unused sp_icm_resume(struct device *dev)
 	return 0;
 }
 
-static int __maybe_unused sp_icm_runtime_suspend(struct device *dev)
+static int __maybe_unused sunplus_icm_runtime_suspend(struct device *dev)
 {
 	TRACE("");
-	clk_disable(sp_icm.clk);
+	clk_disable(sunplus_icm.clk);
 	return 0;
 }
 
-static int __maybe_unused sp_icm_runtime_resume(struct device *dev)
+static int __maybe_unused sunplus_icm_runtime_resume(struct device *dev)
 {
 	TRACE("");
-	clk_enable(sp_icm.clk);
+	clk_enable(sunplus_icm.clk);
 	return 0;
 }
 
-static const struct dev_pm_ops sp_icm_pm_ops = {
-	SET_SYSTEM_SLEEP_PM_OPS(sp_icm_suspend, sp_icm_resume)
-	SET_RUNTIME_PM_OPS(sp_icm_runtime_suspend, sp_icm_runtime_resume, NULL)
+static const struct dev_pm_ops sunplus_icm_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sunplus_icm_suspend, sunplus_icm_resume)
+	SET_RUNTIME_PM_OPS(sunplus_icm_runtime_suspend, sunplus_icm_runtime_resume, NULL)
 };
 
-static struct platform_driver sp_icm_driver = {
-	.probe		= sp_icm_probe,
+static struct platform_driver sunplus_icm_driver = {
+	.probe		= sunplus_icm_probe,
 	.driver		= {
-		.name	= "sp_icm",
+		.name	= "sunplus_icm",
 		.owner	= THIS_MODULE,
-		.pm     = &sp_icm_pm_ops,
-		.of_match_table = of_match_ptr(sp_icm_of_match),
+		.pm     = &sunplus_icm_pm_ops,
+		.of_match_table = of_match_ptr(sunplus_icm_of_match),
 	},
 };
 
-module_platform_driver(sp_icm_driver);
+module_platform_driver(sunplus_icm_driver);
 
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sunplus Technology");
-MODULE_DESCRIPTION("Sunplus ICM driver");
+MODULE_DESCRIPTION("Sunplus ICM(Input Capture) driver");
+MODULE_AUTHOR("Hammer Hsieh <hammer.hsieh@sunplus.com>");
+MODULE_LICENSE("GPL v2");

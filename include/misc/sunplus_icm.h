@@ -1,10 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
  * Sunplus SP7021 SoC ICM(Input Capture Module) driver header file
+ *
+ * Author:	Hammer Hsieh <hammer.hsieh@sunplus.com>
  */
 
-#ifndef __SP_ICM_H__
-#define __SP_ICM_H__
+#ifndef __SUNPLUS_ICM_H__
+#define __SUNPLUS_ICM_H__
 
 /*
  * muxsel: input signal source select
@@ -49,7 +51,7 @@
  * tstscl: test signal clock prescaler: 0 ~ (2^32-1)
  * tst_clk = sysclk / (tstscl + 1)
  */
-struct sp_icm_cfg {
+struct sunplus_icm_cfg {
 	u32 muxsel; /* input signal source select */
 	u32 clksel; /* internal counter clock select */
 	u32 eemode; /* edge event mode */
@@ -71,15 +73,15 @@ struct sp_icm_cfg {
  * cnt   : internal counter
  * fstate: fifo state
  */
-typedef void (*sp_icm_cbf)(int icm, u32 cnt, u32 fstate);
+typedef void (*sunplus_icm_cbf)(int icm, u32 cnt, u32 fstate);
 
 /*
  * icm: 0 ~ 3 (icm0 ~ icm3)
  */
-extern int sp_icm_config(int icm, struct sp_icm_cfg *cfg);
-extern int sp_icm_reload(int icm);
-extern int sp_icm_enable(int icm, sp_icm_cbf cbf);
-extern int sp_icm_disable(int icm);
-extern int sp_icm_pwidth(int icm, u32 *pwh, u32 *pwl);
+extern int sunplus_icm_config(int icm, struct sunplus_icm_cfg *cfg);
+extern int sunplus_icm_reload(int icm);
+extern int sunplus_icm_enable(int icm, sunplus_icm_cbf cbf);
+extern int sunplus_icm_disable(int icm);
+extern int sunplus_icm_pwidth(int icm, u32 *pwh, u32 *pwl);
 
-#endif /* __SP_ICM_H__ */
+#endif /* __SUNPLUS_ICM_H__ */
