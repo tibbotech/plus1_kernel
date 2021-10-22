@@ -52,7 +52,7 @@ static void __exit usb_otg0_sunplus_exit(void)
 }
 module_exit(usb_otg0_sunplus_exit);
 
-MODULE_ALIAS("sunplus_usb_otg0");
-MODULE_AUTHOR("qiang.deng");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus USB OTG (port 0) driver");
+MODULE_LICENSE("GPL v2");
 

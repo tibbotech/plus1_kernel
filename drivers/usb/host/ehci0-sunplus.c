@@ -54,6 +54,7 @@ static void __exit ehci0_sunplus_cleanup(void)
 }
 module_exit(ehci0_sunplus_cleanup);
 
-MODULE_ALIAS("platform:ehci0-sunplus");
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus USB EHCI (port 0) driver");
+MODULE_LICENSE("GPL v2");
 

@@ -543,3 +543,4 @@ struct dev_pm_ops const ohci_sunplus_pm_ops = {
 	.resume = ohci_sunplus_drv_resume,
 };
 #endif
+

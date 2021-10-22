@@ -2611,5 +2611,7 @@ static void __exit udc_exit(void)
 module_init(udc_init);
 module_exit(udc_exit);
 
-MODULE_LICENSE("GPL");
+MODULE_AUTHOR("Vincent Shih <vincent.shih@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus USB UDC driver");
+MODULE_LICENSE("GPL v2");
 
