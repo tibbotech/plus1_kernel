@@ -739,7 +739,16 @@
 		resets = <&rstc RST_SPIND>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nand_pins>;
-		spinand-clk-div = <4>;
+		spi-max-frequency = <75000000>;
+	};
+
+	bch0: bch@f8101000 {
+		compatible = "sunplus,q645-bch";
+		reg = <0x0 0xf8101000 0x0 0x30>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc BCH>;
+		resets = <&rstc RST_BCH>;
 	};
 
 	otp0: otp@f800af00 {
@@ -781,15 +790,6 @@
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
-	};
-
-	bch0: bch@f8101000 {
-		compatible = "sunplus,q645-bch";
-		reg = <0x0 0xf8101000 0x0 0x30>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc BCH>;
-		resets = <&rstc RST_BCH>;
 	};
 
 	fb_device {

@@ -982,7 +982,7 @@
 			interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPIND>;
 			resets = <&rstc RST_SPIND>;
-			spinand-clk-div = <1>;
+			spi-max-frequency = <110000000>;
 		};
 
 		bch0: bch@9C101000 {

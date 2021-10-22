@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
-# Copyright (C) Sunplus Ltd. Co. 2021
+# Copyright (C) Sunplus Co., Ltd. 2021
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/mtd/sunplus,spinand.yaml#
@@ -28,30 +28,20 @@ properties:
   resets:
     maxItems: 1
 
-  spinand-clk-div:
+  pinctrl-names:
     description: |
-      This setting is SPI interface clock frequency division. The range of the
-      frequency division setting is from 1 to 7. The CLK_SPI is the SPI-NAND
-      source clock. It takes following values:
-      For SP7021. The frequency of CLK_SPI is 202.5 MHz.
-      {1}, CLK_SPI/2  = 101.250 MHz
-      {2}, CLK_SPI/4  =  50.625 MHz
-      {3}, CLK_SPI/6  =  33.750 MHz
-      {4}, CLK_SPI/8  =  25.313 MHz
-      {5}, CLK_SPI/16 =  12.656 MHz
-      {6}, CLK_SPI/24 =   8.438 MHz
-      {7}, CLK_SPI/32 =   6.328 MHz
-      For Q645. The frequency of CLK_SPI is 600.0 MHz.
-      {1}, CLK_SPI/2  = 300.000 MHz
-      {2}, CLK_SPI/4  = 150.000 MHz
-      {3}, CLK_SPI/6  = 100.000 MHz
-      {4}, CLK_SPI/8  =  75.000 MHz
-      {5}, CLK_SPI/16 =  37.500 MHz
-      {6}, CLK_SPI/24 =  25.000 MHz
-      {7}, CLK_SPI/32 =  18.750 MHz
-    minimum: 1
-    maximum: 7
-    default: 1
+      Names corresponding to the numbered pinctrl states.
+      A pinctrl state named "default" must be defined.
+    const: default
+
+  pinctrl-0:
+    description: A handle to the 'default' state of pin configuration
+  
+  spi-max-frequency:
+    description: The maximum operating frequency of SPI NAND flash.
+    minimum: 6000000
+    maximum: 300000000
+    default: 50000000
 
 additionalProperties: false
 
@@ -61,7 +51,9 @@ required:
   - interrupts
   - clocks
   - resets
-  - spinand-clk-div
+  - pinctrl-names
+  - pinctrl-0
+  - spi-max-frequency
 
 examples:
   - |
@@ -75,6 +67,8 @@ examples:
         interrupts = <149 IRQ_TYPE_LEVEL_HIGH>;
         clocks = <&clkc SPIND>;
         resets = <&rstc RST_SPIND>;
-        spinand-clk-div = <1>;
+        pinctrl-names = "default";
+        pinctrl-0 = <&pins_spinand0>;
+        spi-max-frequency = <110000000>;
     };
 ...

@@ -1105,7 +1105,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	int i;
 	u32 value;
 	u32 id;
-	u32 frequency;
+	u32 clk_freq, max_freq;
 	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
 	struct resource *res_mem;
@@ -1170,13 +1170,13 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		info->clk = clk;
 	}
 
-	frequency = clk_get_rate(clk);
-	if (!value) {
+	clk_freq = clk_get_rate(clk);
+	if (!clk_freq) {
 		SPINAND_LOGE("Failed to get clock rate\n");
 		ret = -ENXIO;
 		goto err1;
 	}
-	SPINAND_LOGI("source clock frequency: %d Hz\n", frequency);
+	SPINAND_LOGI("source clock frequency: %d Hz\n", clk_freq);
 
 	info->buff.size = CONFIG_SPINAND_BUF_SZ;
 	#ifdef CONFIG_SPINAND_USE_SRAM
@@ -1201,22 +1201,31 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	}
 	info->irq = res_irq->start;
 
-	ret = of_property_read_u32(node, "spinand-clk-div", &value);
+	ret = of_property_read_u32(node, "spi-max-frequency", &max_freq);
 	if (ret < 0) {
-		value = 7;      // CLK_SPI/32
-		SPINAND_LOGW("default spi_clk_div\n");
+		max_freq = 50000000;    // Hz
+		SPINAND_LOGW("default SPI max frequency: %d Hz\n", max_freq);
 	}
-	info->spi_clk_div = value;
 
     // Calculate SPI interface clock frequency
 	// SCK_MODE : 1    2    3    4    5     6     7
 	// Freq Div : 1/2  1/4  1/6  1/8  1/16  1/24  1/32
-	if (info->spi_clk_div < 5)
-		value = info->spi_clk_div * 2;
-	else
-		value = (info->spi_clk_div - 5) * 8 + 16;
-	frequency /= value;
-	SPINAND_LOGI("SPI clock frequency: %d Hz\n", frequency);
+	for (i = 1; i < 8; i++) {
+		if (i < 5)
+			value = i * 2;
+		else
+			value = (i - 5) * 8 + 16;
+
+		if ((clk_freq/value) <= max_freq)
+			break;
+
+		if (i == 7) {
+			SPINAND_LOGW("touched min division setting: %d\n", i);
+			break;
+		}
+	}
+	info->spi_clk_div = i;
+	SPINAND_LOGI("SPI clock frequency: %d Hz\n", (clk_freq/value));
 
 	if (spi_nand_reset(info) < 0) {
 		SPINAND_LOGE("reset device fail\n");
@@ -1500,8 +1509,6 @@ static void __exit sp_spinand_module_exit(void)
 module_init(sp_spinand_module_init);
 module_exit(sp_spinand_module_exit);
 
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Sunplus SPINAND flash controller");
-
-
-
+MODULE_AUTHOR("Cheng Chung Ho <cc.ho@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus SPI-NAND flash controller driver");
+MODULE_LICENSE("GPL v2");

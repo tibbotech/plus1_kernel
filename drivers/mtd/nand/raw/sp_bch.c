@@ -820,9 +820,9 @@ static void __exit sp_bch_module_exit(void)
 	#endif
 }
 
-arch_initcall(sp_bch_module_init);  //module_init(sp_bch_module_init);
+arch_initcall(sp_bch_module_init);
 module_exit(sp_bch_module_exit);
 
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Sunplus BCH controller");
-
+MODULE_AUTHOR("Cheng Chung Ho <cc.ho@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus BCH engine driver");
+MODULE_LICENSE("GPL v2");
