@@ -1,0 +1,86 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+# Copyright (C) Sunplus Co., Ltd. 2021
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/dma/sunplus,cbdma.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Sunplus CB-DMA Controller Device Tree Bindings
+
+maintainers:
+  - Cheng Chung Ho <cc.ho@sunplus.com>
+
+properties:
+  compatible:
+    enum:
+      - sunplus,cb-dma
+      - sunplus,cb-cdma
+
+  reg:
+    maxItems: 1
+
+  reg-names:
+    items:
+      - const: cb_dma
+
+  interrupts:
+    maxItems: 1
+
+  addrwidth:
+    description: DMA addressing size in bits.
+    enum:
+      - 32
+      - 64
+
+patternProperties:
+  '^.*$':
+    if:
+      type: object
+    then:
+      description: DMA channel nodes.
+
+      properties:
+        compatible:
+          enum:
+            - sunplus,cb-cdma-channel
+            - sunplus,cb-dma-mm2s-channel
+            - sunplus,cb-dma-s2mm-channel
+
+        interrupts:
+          maxItems: 1
+
+        datawidth:
+          description: The stream data width.
+          minimum: 32
+          maximum: 1024
+          default: 32
+
+      additionalProperties: false
+
+additionalProperties: false
+
+required:
+  - compatible
+  - reg
+  - interrupts
+  - addrwidth
+
+examples:
+  - |
+    #include <dt-bindings/interrupt-controller/irq.h>
+    #include <dt-bindings/clock/sp-sp7021.h>
+    #include <dt-bindings/reset/sp-sp7021.h>
+    cbdma: cbdma@9c000d00 {
+        compatible = "sunplus,cb-cdma";
+        reg = <0x9c000d00 0x80>;
+        reg-names = "cb_dma";
+        interrupt-parent = <&intc>;
+        interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+        addrwidth = <0x20>;
+        dma-channel-0 {
+            compatible = "sunplus,cb-cdma-channel";
+            interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
+            datawidth = <0x20>;
+        };
+    };
+...

@@ -507,11 +507,11 @@
 			reg-names = "cb_dma";
 			interrupt-parent = <&intc>;
 			interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
-			sp,addrwidth = <0x20>;
+			addrwidth = <0x20>;
 			dma-channel-0 {
-				compatible = "sp,cb-cdma-channel";
+				compatible = "sunplus,cb-cdma-channel";
 				interrupts = <128 IRQ_TYPE_LEVEL_HIGH>;
-				sp,datawidth = <0x20>;
+				datawidth = <0x20>;
 			};
 		};
 

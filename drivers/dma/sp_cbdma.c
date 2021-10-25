@@ -1787,13 +1787,13 @@ static int sp_dma_chan_probe(struct sp_dma_device *xdev,
 	INIT_LIST_HEAD(&chan->active_list);
 
 	/* Retrieve the channel properties from the device tree */
-	has_dre = of_property_read_bool(node, "sp,include-dre");
+	has_dre = of_property_read_bool(node, "include-dre");
 
-	chan->genlock = of_property_read_bool(node, "sp,genlock-mode");
+	chan->genlock = of_property_read_bool(node, "genlock-mode");
 
-	err = of_property_read_u32(node, "sp,datawidth", &value);
+	err = of_property_read_u32(node, "datawidth", &value);
 	if (err) {
-		dev_err(xdev->dev, "missing sp,datawidth property\n");
+		dev_err(xdev->dev, "missing datawidth property\n");
 		return err;
 	}
 	width = value >> 3; /* Convert bits to bytes */
@@ -1805,11 +1805,11 @@ static int sp_dma_chan_probe(struct sp_dma_device *xdev,
 	if (!has_dre)
 		xdev->common.copy_align = fls(width - 1);
 
-	if (of_device_is_compatible(node, "sp,cb-vdma-mm2s-channel") ||
-	    of_device_is_compatible(node, "sp,cb-dma-mm2s-channel") ||
-	    of_device_is_compatible(node, "sp,cb-cdma-channel")) {
+	if (of_device_is_compatible(node, "sunplus,cb-vdma-mm2s-channel") ||
+	    of_device_is_compatible(node, "sunplus,cb-dma-mm2s-channel") ||
+	    of_device_is_compatible(node, "sunplus,cb-cdma-channel")) {
 	    // Change direction from DMA_MEM_TO_DEV to DMA_MEM_TO_MEM for cdma
-		if (of_device_is_compatible(node, "sp,cb-cdma-channel"))
+		if (of_device_is_compatible(node, "sunplus,cb-cdma-channel"))
 			chan->direction = DMA_MEM_TO_MEM;
 		else
 			chan->direction = DMA_MEM_TO_DEV;
@@ -1818,9 +1818,9 @@ static int sp_dma_chan_probe(struct sp_dma_device *xdev,
 
 		chan->ctrl_offset = SP_CBDMA_MM2S_CTRL_OFFSET;
 	} else if (of_device_is_compatible(node,
-					   "sp,cb-vdma-s2mm-channel") ||
+					   "sunplus,cb-vdma-s2mm-channel") ||
 		   of_device_is_compatible(node,
-					   "sp,cb-dma-s2mm-channel")) {
+					   "sunplus,cb-dma-s2mm-channel")) {
 		chan->direction = DMA_DEV_TO_MEM;
 		chan->id = chan_id;
 		chan->tdest = chan_id - xdev->nr_channels;
@@ -1994,13 +1994,13 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 	dev_info(xdev->dev, "SRAM:%d bytes@0x%x\n", xdev->sram_size, xdev->sram_addr);
 
 	/* Retrieve the DMA engine properties from the device tree */
-	xdev->has_sg = of_property_read_bool(node, "sp,include-sg");
+	xdev->has_sg = of_property_read_bool(node, "include-sg");
 	if (xdev->dma_config->dmatype == DMA_TYPE_DMA)
-		xdev->mcdma = of_property_read_bool(node, "sp,mcdma");
+		xdev->mcdma = of_property_read_bool(node, "mcdma");
 
-	err = of_property_read_u32(node, "sp,addrwidth", &addr_width);
+	err = of_property_read_u32(node, "addrwidth", &addr_width);
 	if (err < 0)
-		dev_warn(xdev->dev, "missing sp,addrwidth property\n");
+		dev_warn(xdev->dev, "missing addrwidth property\n");
 
 	if (addr_width > 32)
 		xdev->ext_addr = true;
@@ -2119,6 +2119,6 @@ module_platform_driver(sp_cbdma_driver);
 /**************************************************************************
  *                  M O D U L E    D E C L A R A T I O N                  *
  **************************************************************************/
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Sunplus Technology");
-MODULE_DESCRIPTION("Sunplus CBDMA Driver");
+MODULE_AUTHOR("Cheng Chung Ho <cc.ho@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus CB-DMA controller driver");
+MODULE_LICENSE("GPL v2");

@@ -707,11 +707,11 @@
 		reg-names = "cb_dma";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
-		sp,addrwidth = <0x20>;
+		addrwidth = <0x20>;
 		dma-channel-0 {
-			compatible = "sp,cb-cdma-channel";
+			compatible = "sunplus,cb-cdma-channel";
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
-			sp,datawidth = <0x20>;
+			datawidth = <0x20>;
 		};
 	};
 
