@@ -21,7 +21,7 @@ properties:
     const: 2
 
   reg:
-    maxItems: 1
+    maxItems: 2
 
   interrupts:
     description:
