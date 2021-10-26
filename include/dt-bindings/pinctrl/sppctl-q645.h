@@ -1,7 +1,8 @@
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Sunplus I143 pinmux pinctrl bindings.
+ * Sunplus Q645 pinmux pinctrl bindings.
  * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
- * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
+ * Author: Wells Lu <wells.lu@sunplus.com>
  */
 
 #ifndef _DT_BINDINGS_PINCTRL_SPPCTL_Q645_H
