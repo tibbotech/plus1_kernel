@@ -1877,5 +1877,9 @@ static struct platform_driver sp_mipicsi_rx_driver = {
 
 module_platform_driver(sp_mipicsi_rx_driver);
 
-MODULE_DESCRIPTION("Sunplus MIPI/CSI-RX driver");
-MODULE_LICENSE("GPL");
+/**************************************************************************
+ *                  M O D U L E    D E C L A R A T I O N                  *
+ **************************************************************************/
+MODULE_AUTHOR("Cheng Chung Ho <cc.ho@sunplus.com>");
+MODULE_DESCRIPTION("Sunplus MIPI-CSI RX controller driver");
+MODULE_LICENSE("GPL v2");
