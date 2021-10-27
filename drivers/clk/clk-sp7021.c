@@ -14,7 +14,6 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/delay.h>
-#include <mach/io_map.h>
 #include <dt-bindings/clock/sp-sp7021.h>
 
 //#define TRACE	pr_info("### %s:%d (%d)\n", __func__, __LINE__, (clk->reg - REG(4, 0)) / 4)
@@ -32,13 +31,13 @@
 })
 #define MASK_GET(shift, width, value)	(((value) >> (shift)) & ((1 << (width)) - 1))
 
-#define REG(g, i)	((void __iomem *)VA_IOB_ADDR(((g) * 32 + (i)) * 4))
+#define REG(i)	(pll_regs + (i) * 4)
 
-#define PLLA_CTL	REG(4, 7)
-#define PLLE_CTL	REG(4, 12)
-#define PLLF_CTL	REG(4, 13)
-#define PLLTV_CTL	REG(4, 14)
-#define PLLSYS_CTL	REG(4, 26)
+#define PLLA_CTL	REG(7)
+#define PLLE_CTL	REG(12)
+#define PLLF_CTL	REG(13)
+#define PLLTV_CTL	REG(14)
+#define PLLSYS_CTL	REG(26)
 
 #define EXTCLK		"extclk"
 
@@ -70,6 +69,10 @@ struct sp_pll {
 	u32		p[P_MAX];	/* for hold PLLTV/PLLA parameters */
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
+
+#define clk_regs	(moon_regs + 0x000) /* G0 ~ CLKEN */
+#define pll_regs	(moon_regs + 0x200) /* G4 ~ PLL */
+static void __iomem *moon_regs;
 
 #define P_EXTCLK	(1 << 16)
 static const char * const parents[] = {
@@ -178,7 +181,7 @@ static DEFINE_SPINLOCK(plltv_lock);
 #define _M		1000000UL
 #define F_27M		(27 * _M)
 
-/************************************************* PLL_TV *************************************************/
+/******************************************** PLL_TV *******************************************/
 
 //#define PLLTV_STEP_DIR (?) /* Unit: HZ */
 
@@ -192,7 +195,9 @@ static DEFINE_SPINLOCK(plltv_lock);
 static long plltv_integer_div(struct sp_pll *clk, unsigned long freq)
 {
 	/* valid m values: 27M must be divisible by m, 0 means end */
-	static const u32 m_table[] = {1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 25, 27, 30, 32, 0};
+	static const u32 m_table[] = {
+		1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16, 18, 20, 24, 25, 27, 30, 32, 0
+	};
 	u32 m, n, r;
 #ifdef PLLTV_STEP_DIR
 	u32 step = (PLLTV_STEP_DIR > 0) ? PLLTV_STEP_DIR : -PLLTV_STEP_DIR;
@@ -204,10 +209,12 @@ static long plltv_integer_div(struct sp_pll *clk, unsigned long freq)
 
 	/* check freq */
 	if (freq < F_MIN) {
-		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __func__, __LINE__, freq, F_MIN);
+		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n",
+			__func__, __LINE__, freq, F_MIN);
 		freq = F_MIN;
 	} else if (freq > F_MAX) {
-		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __func__, __LINE__, freq, F_MAX);
+		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n",
+			__func__, __LINE__, freq, F_MAX);
 		freq = F_MAX;
 	}
 
@@ -263,7 +270,7 @@ CALC:
 	return freq;
 }
 
-/* paramters for PLLTV fractional divider */
+/* parameters for PLLTV fractional divider */
 /* FIXME: better parameter naming */
 static const u32 pt[][5] = {
 	/* conventional fractional */
@@ -297,10 +304,12 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 	TRACE;
 	/* check freq */
 	if (freq < F_MIN) {
-		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n", __func__, __LINE__, freq, F_MIN);
+		pr_warn("[%s:%d] freq:%lu < F_MIN:%lu, round up\n",
+			__func__, __LINE__, freq, F_MIN);
 		freq = F_MIN;
 	} else if (freq > F_MAX) {
-		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n", __func__, __LINE__, freq, F_MAX);
+		pr_warn("[%s:%d] freq:%lu > F_MAX:%lu, round down\n",
+			__func__, __LINE__, freq, F_MAX);
 		freq = F_MAX;
 	}
 
@@ -338,7 +347,8 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 
 				nfra = (((nf % pp[3]) * mod * pp[4]) + (F_27M / 2)) / F_27M;
 				if (nfra)
-					diff_freq = (f * (nint + pp[2]) / pp[0]) - (f * (mod - nfra) / mod / pp[4]);
+					diff_freq = (f * (nint + pp[2]) / pp[0]) -
+								(f * (mod - nfra) / mod / pp[4]);
 				else
 					diff_freq = (f * (nint) / pp[0]);
 
@@ -346,7 +356,9 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 				diff_freq_remainder = ((diff_freq % m) * 1000) / m;
 
 				pr_info("m = %d N.f = %2d.%03d%03d, nfra = %d/%d  fout = %u\n",
-					m, nint, (nfra * 1000) / mod, (((nfra * 1000) % mod) * 1000) / mod, nfra, mod, diff_freq_quotient);
+					m, nint, (nfra * 1000) / mod,
+					(((nfra * 1000) % mod) * 1000) / mod,
+					nfra, mod, diff_freq_quotient);
 
 				if (freq > diff_freq_quotient) {
 					diff_freq_quotient  = freq - diff_freq_quotient - 1;
@@ -358,7 +370,8 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 				}
 
 				if ((diff_min_quotient > diff_freq_quotient) ||
-					((diff_min_quotient == diff_freq_quotient) && (diff_min_remainder > diff_freq_remainder))) {
+					((diff_min_quotient == diff_freq_quotient) &&
+					(diff_min_remainder > diff_freq_remainder))) {
 
 					/* found a closer freq, save parameters */
 					TRACE;
@@ -383,10 +396,12 @@ static long plltv_fractional_div(struct sp_pll *clk, unsigned long freq)
 		return -EINVAL;
 	}
 
-	//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n", mods[clk->p[SDM_MOD]], clk->p[PH_SEL], clk->p[NFRA], clk->p[DIVM], clk->p[DIVR]);
+	//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n",
+	//	mods[clk->p[SDM_MOD]], clk->p[PH_SEL], clk->p[NFRA], clk->p[DIVM], clk->p[DIVR]);
 
 	pr_info("[%s:%d] real out:%lu/%lu Hz(%u, %u, sign %u)\n",
-		__func__, __LINE__, fout, freq, diff_min_quotient, diff_min_remainder, diff_min_sign);
+		__func__, __LINE__, fout, freq,
+		diff_min_quotient, diff_min_remainder, diff_min_sign);
 
 	return fout;
 }
@@ -404,7 +419,8 @@ static void plltv_set_rate(struct sp_pll *clk)
 {
 	u32 reg;
 
-	//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n", mods[clk->p[SDM_MOD]], clk->p[PH_SEL], clk->p[NFRA], clk->p[DIVM], clk->p[DIVR]);
+	//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n",
+	//	mods[clk->p[SDM_MOD]], clk->p[PH_SEL], clk->p[NFRA], clk->p[DIVM], clk->p[DIVR]);
 	reg  = MASK_SET(1, 1, clk->p[SEL_FRA]);
 	reg |= MASK_SET(2, 1, clk->p[SDM_MOD]);
 	reg |= MASK_SET(4, 1, clk->p[PH_SEL]);
@@ -419,7 +435,7 @@ static void plltv_set_rate(struct sp_pll *clk)
 	clk_writel(reg, clk->reg + 8);
 }
 
-/************************************************* PLL_A *************************************************/
+/******************************************** PLL_A ********************************************/
 
 /* from Q628_PLLs_REG_setting.xlsx */
 struct {
@@ -481,7 +497,7 @@ static long plla_round_rate(struct sp_pll *clk, unsigned long rate)
 	return pa[i].rate;
 }
 
-/************************************************* SP_PLL *************************************************/
+/******************************************* SP_PLL ********************************************/
 
 static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 {
@@ -533,7 +549,6 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 	} else if (clk->div_width == DIV_TV) {
 		u32 m, r, reg2;
 
-		//pr_info("!!!!!!! %px:%px %08x\n", clk, clk->reg, reg);
 		r = MASK_GET(7, 2, clk_readl(clk->reg + 4));
 		reg2 = clk_readl(clk->reg + 8);
 		m = MASK_GET(8, 7, reg2) + 1;
@@ -544,9 +559,10 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 			u32 ph   = MASK_GET(4, 1, reg);
 			u32 nfra = MASK_GET(6, 7, reg);
 			const u32 *pp = pt[ph];
-			//pr_info("MOD:%u PH_SEL:%u NFRA:%u M:%u R:%u\n", mods[sdm], ph, nfra, m, r);
+
 			ret = prate >> r;
-			ret = (ret * (pp[1] + pp[2]) / pp[0]) - (ret * (mods[sdm] - nfra) / mods[sdm] / pp[4]);
+			ret = (ret * (pp[1] + pp[2]) / pp[0]) -
+				  (ret * (mods[sdm] - nfra) / mods[sdm] / pp[4]);
 			ret /= m;
 		} else {
 			/* integer divider */
@@ -691,7 +707,13 @@ static void __init sp_clk_setup(struct device_node *np)
 {
 	int i, j;
 
-	pr_info("@@@ Sunplus clock init\n");
+	pr_info("sp-clkc init\n");
+
+	moon_regs = of_iomap(np, 0);
+	if (WARN_ON(!moon_regs)) {
+		pr_warn("sp-clkc regs missing.\n");
+		return; // -EIO
+	}
 
 	/* TODO: PLLs initial */
 
@@ -732,9 +754,8 @@ static void __init sp_clk_setup(struct device_node *np)
 		j = gates[i] & 0xffff;
 		sprintf(s, "clken%02x", j);
 		clks[j] = clk_register_gate(NULL, s, parents[gates[i] >> 16], CLK_IGNORE_UNUSED,
-			REG(0, j >> 4), j & 0x0f,
+			clk_regs + (j >> 4) * 4, j & 0x0f,
 			CLK_GATE_HIWORD_MASK, NULL);
-		//printk("%02x %px %px.%d\n", j, clks[j], REG(0, j >> 4), j & 0x0f);
 	}
 
 	clk_data.clks = clks;
