@@ -6,7 +6,7 @@
 #ifndef __ARCH_ARM_MACH_SUNPLUS_COMMON_H
 #define __ARCH_ARM_MACH_SUNPLUS_COMMON_H
 
-#include <linux/platform_data/cpuidle-sp7021.h>
+#include <linux/platform_data/cpuidle-sunplus.h>
 
 extern void sp7021_cpu_power_down(int cpu);
 extern void sp7021_pm_central_suspend(void);
