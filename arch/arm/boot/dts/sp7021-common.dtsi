@@ -305,8 +305,8 @@
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
 				     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
-			ext0-mask = <0xf>; /* core0-3 */
-			ext1-mask = <0xe>; /* core1-3 */
+			sunplus,ext0-mask = <0xf>; /* core0-3 */
+			sunplus,ext1-mask = <0xe>; /* core1-3 */
 		};
 
 #ifdef ENABLE_DMARX0

@@ -508,14 +508,14 @@ static int __init sp_intc_ext_adjust(void)
 	}
 
 	cpumask = CPU_MASK_NONE;
-	if (!of_property_read_u32(node, "ext0-mask", &mask)) {
+	if (!of_property_read_u32(node, "sunplus,ext0-mask", &mask)) {
 		pr_info("%d: ext0-mask=0x%x\n", sp_intc.virq[0], mask);
 		if (irq_set_affinity(sp_intc.virq[0], u2cpumask(mask, &cpumask)))
 			pr_err("failed to set ext0 cpumask=0x%x\n", mask);
 	}
 
 	cpumask = CPU_MASK_NONE;
-	if (!of_property_read_u32(node, "ext1-mask", &mask)) {
+	if (!of_property_read_u32(node, "sunplus,ext1-mask", &mask)) {
 		pr_info("%d: ext1-mask=0x%x\n", sp_intc.virq[1], mask);
 		if (irq_set_affinity(sp_intc.virq[1], u2cpumask(mask, &cpumask)))
 			pr_err("failed to set ext1 cpumask=0x%x\n", mask);

@@ -19,27 +19,32 @@ properties:
 
   "#interrupt-cells":
     const: 2
+    description:
+      The first cell is the IRQ number, the second cell the trigger
+      type as defined in interrupt.txt in this directory.
 
   reg:
     maxItems: 2
 
   interrupts:
+    maxItems: 2
     description:
-      Interrupts references to primary interrupt controller
+      EXT_INT0 & EXT_INT1, 2 interrupts references to primary interrupt
+      controller.
 
-  ext0-mask:
+  sunplus,ext0-mask:
     description:
       cpu affinity of EXT_INT0.
     $ref: "/schemas/types.yaml#/definitions/uint32"
     minimum: 1
-    maximum: 16
+    maximum: 15
 
-  ext1-mask:
+  sunplus,ext1-mask:
     description:
       cpu affinity of EXT_INT1.
     $ref: "/schemas/types.yaml#/definitions/uint32"
     minimum: 1
-    maximum: 16
+    maximum: 15
 
 required:
   - compatible
@@ -62,8 +67,8 @@ examples:
         interrupt-parent = <&gic>;
         interrupts = <GIC_SPI 5 IRQ_TYPE_LEVEL_HIGH>, /* EXT_INT0 */
                     <GIC_SPI 6 IRQ_TYPE_LEVEL_HIGH>; /* EXT_INT1 */
-        ext0-mask = <0xf>; /* core0-3 */
-        ext1-mask = <0xe>; /* core1-3 */
+        sunplus,ext0-mask = <0xf>; /* core0-3 */
+        sunplus,ext1-mask = <0xe>; /* core1-3 */
     };
 
 ...
