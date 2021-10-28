@@ -4,11 +4,12 @@
 #
 
 config PINCTRL_SPPCTL
-	bool "Sunplus SP7021 pinmux and gpio driver"
+	bool "Sunplus SP7021 pinmux and GPIO driver"
 	depends on SOC_SP7021
+	depends on OF && HAS_IOMEM
 	select PINMUX
 	select GENERIC_PINCTRL_GROUPS
-	select CONFIG_GENERIC_PINMUX_FUNCTIONS
+	select GENERIC_PINMUX_FUNCTIONS
 	select PINCONF
 	select GENERIC_PINCONF
 	select OF_GPIO
@@ -18,16 +19,17 @@ config PINCTRL_SPPCTL
 	select GPIOLIB_IRQCHIP
 	help
 	  Say Y here to support Sunplus SP7021 pinmux controller.
-	  The driveer is selected automatically by platform.
+	  The driver is selected automatically by platform.
 	  This driver requires the pinctrl framework.
 	  GPIO is provided by the same driver.
 
 config PINCTRL_SPPCTL_Q645
-	bool "Sunplus Q645 pinmux and gpio driver"
+	bool "Sunplus Q645 pinmux and GPIO driver"
 	depends on SOC_Q645
+	depends on OF && HAS_IOMEM
 	select PINMUX
 	select GENERIC_PINCTRL_GROUPS
-	select CONFIG_GENERIC_PINMUX_FUNCTIONS
+	select GENERIC_PINMUX_FUNCTIONS
 	select PINCONF
 	select GENERIC_PINCONF
 	select OF_GPIO
@@ -37,7 +39,7 @@ config PINCTRL_SPPCTL_Q645
 	select GPIOLIB_IRQCHIP
 	help
 	  Say Y here to support Sunplus Q645 pinmux controller.
-	  The driveer is selected automatically by platform.
+	  The driver is selected automatically by platform.
 	  This driver requires the pinctrl framework.
 	  GPIO is provided by the same driver.
 
@@ -47,5 +49,5 @@ config PINCTRL_SPPCTL_DEBUG
 	help
 	  Say Y if you need to debug Sunplus pinmux driver in-depth.
 	  Pin control driver will output more messages if you enable
-	  this item. This function is dependant on DEBUG_PINCTRL. It
+	  this item. This function is dependent on DEBUG_PINCTRL. It
 	  should be enabled first.
