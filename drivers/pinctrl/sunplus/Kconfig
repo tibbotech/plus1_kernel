@@ -49,5 +49,5 @@ config PINCTRL_SPPCTL_DEBUG
 	help
 	  Say Y if you need to debug Sunplus pinmux driver in-depth.
 	  Pin control driver will output more messages if you enable
-	  this item. This function is dependant on DEBUG_PINCTRL. It
+	  this item. This function is dependent on DEBUG_PINCTRL. It
 	  should be enabled first.
