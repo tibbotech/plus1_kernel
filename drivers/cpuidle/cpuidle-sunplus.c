@@ -15,7 +15,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/slab.h>
-#include <linux/platform_data/cpuidle-sunplus-sp7021.h>
+#include <linux/platform_data/cpuidle-sunplus.h>
 #include <linux/io.h>      //for support readl and writel
 #include <mach/io_map.h>   //for support A_SYSTEM_BASE
 
