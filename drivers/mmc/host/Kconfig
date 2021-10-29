@@ -19,8 +19,9 @@ config SP_SDV2
 	depends on SOC_SP7021
 	default m
 	help
-	  If you say yes here, you will get support for the Secure Digital Host
-	  Interface on Sunplus SP7021 SoCs. This includes support for SD cards.
+	  This selects the Sunplus SP7021 SD/SDIO controller.
+	  If you have a controller with this interface, say Y or M here..
+
 	  If unsure, say N.
 
 config SP_SDV

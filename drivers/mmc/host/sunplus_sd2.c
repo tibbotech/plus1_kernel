@@ -163,7 +163,7 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 
 	/* In order to reduce the frequency of context switch,
 	 * if it is high speed or upper, we do not use interrupt
-	 * when send a command that without data transfering.
+	 * when send a command that without data.
 	 */
 	if (clk > 25000000)
 		host->use_int = 0;
@@ -273,7 +273,8 @@ static void spsdc_prepare_cmd(struct spsdc_host *host, struct mmc_command *cmd)
 
 	u32 value;
 
-	writeb((u8)(cmd->opcode | 0x40), &host->base->sd_cmdbuf0); /* add start bit, according to spec, command format */
+	/* add start bit, according to spec, command format */
+	writeb((u8)(cmd->opcode | 0x40), &host->base->sd_cmdbuf0);
 	writeb((u8)((cmd->arg >> 24) & 0x000000ff), &host->base->sd_cmdbuf1);
 	writeb((u8)((cmd->arg >> 16) & 0x000000ff), &host->base->sd_cmdbuf2);
 	writeb((u8)((cmd->arg >> 8) & 0x000000ff), &host->base->sd_cmdbuf3);
@@ -333,11 +334,12 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 		value = bitfield_replace(value, 4, 2, 1);
 		writel(0x21, &host->base->dma_srcdst);
 	}
-	/* to prevent of the responses of CMD18/25 being overrided by CMD12's,
+	/* to prevent of the responses of CMD18/25 being over by CMD12's,
 	 * send CMD12 by ourself instead of by controller automatically
 	 *
 	 *	#if 0
-	 *	if ((cmd->opcode == MMC_READ_MULTIPLE_BLOCK) || (cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK))
+	 *	if ((cmd->opcode == MMC_READ_MULTIPLE_BLOCK)
+	 *	|| (cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK))
 	 *		value = bitfield_replace(value, 2, 1, 0); //sd_len_mode
 	 *	else
 	 *		value = bitfield_replace(value, 2, 1, 1);
@@ -354,7 +356,7 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 		int i, count = dma_map_sg(host->mmc->parent, data->sg, data->sg_len, dma_direction);
 
 		if (unlikely(!count || count > SPSDC_MAX_DMA_MEMORY_SECTORS)) {
-			spsdc_pr(ERROR, "error occured at dma_mapp_sg: count = %d\n", count);
+			spsdc_pr(ERROR, "error at dma_mapp_sg: count = %d\n", count);
 			data->error = -EINVAL;
 			return;
 		}
@@ -469,7 +471,7 @@ static int __switch_sdio_bus_width(struct spsdc_host *host, int width)
 #endif
 
 /**
- * check if error occured during transaction.
+ * check if error during transaction.
  * @host -  host
  * @mrq - the mrq
  * @return 0 if no error otherwise the error number.
@@ -658,7 +660,8 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 #endif
 
 	mutex_unlock(&host->mrq_lock);
-	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
+	spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n",
+		cmd->error, cmd->opcode, cmd->resp[0]);
 	mmc_request_done(host->mmc, mrq);
 }
 
@@ -709,7 +712,8 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
 
 #ifdef SPSDC_WIDTH_SWITCH
-	if (SD_IO_RW_EXTENDED == cmd->opcode && MMC_BUS_WIDTH_4 == bus_width && data->blocks*data->blksz <= 4) {
+	if (SD_IO_RW_EXTENDED == cmd->opcode && MMC_BUS_WIDTH_4 == bus_width
+		&& data->blocks*data->blksz <= 4) {
 		if (__switch_sdio_bus_width(host, MMC_BUS_WIDTH_1)) {
 			cmd->error = -1;
 			host->mrq = NULL;
@@ -730,7 +734,8 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		spsdc_check_error(host, mrq);
 		host->mrq = NULL;
 		spsdc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
-			 cmd->error, cmd->opcode, cmd->resp[0], cmd->resp[1], cmd->resp[2], cmd->resp[3]);
+			 cmd->error, cmd->opcode, cmd->resp[0],
+				cmd->resp[1], cmd->resp[2], cmd->resp[3]);
 		mutex_unlock(&host->mrq_lock);
 		mmc_request_done(host->mmc, mrq);
 	} else {
@@ -881,7 +886,8 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto probe_free_host;
 	}
-	if (devm_request_irq(&pdev->dev, host->irq, spsdc_irq, IRQF_SHARED, dev_name(&pdev->dev), host)) {
+	if (devm_request_irq(&pdev->dev, host->irq, spsdc_irq,
+		IRQF_SHARED, dev_name(&pdev->dev), host)) {
 		spsdc_pr(ERROR, "Failed to request sd card interrupt.\n");
 		ret = -ENOENT;
 		goto probe_free_host;
@@ -915,9 +921,10 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	/* Host controller supports up to "SPSDC_MAX_DMA_MEMORY_SECTORS",
 	 * a.k.a. max scattered memory segments per request
 	 */
+	/* Limited by the max value of dma_size & data_length, set it to 512 bytes for now */
 	mmc->max_segs = SPSDC_MAX_DMA_MEMORY_SECTORS;
 	mmc->max_req_size = SPSDC_MAX_BLK_COUNT * 512;
-	mmc->max_blk_size = 512; /* Limited by the max value of dma_size & data_length, set it to 512 bytes for now */
+	mmc->max_blk_size = 512;
 	mmc->max_blk_count = SPSDC_MAX_BLK_COUNT; /* Limited by sd_page_num */
 
 	dev_set_drvdata(&pdev->dev, host);
@@ -944,7 +951,6 @@ static int spsdc_drv_remove(struct platform_device *dev)
 {
 	struct spsdc_host *host = platform_get_drvdata(dev);
 
-	spsdc_pr(INFO, "%s\n", __func__);
 	mmc_remove_host(host->mmc);
 	clk_disable(host->clk);
 	clk_unprepare(host->clk);
@@ -995,7 +1001,6 @@ static int spsdc_pm_runtime_suspend(struct device *dev)
 {
 	struct spsdc_host *host;
 
-	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
 	if (__clk_is_enabled(host->clk))
 		clk_disable(host->clk);
@@ -1007,7 +1012,6 @@ static int spsdc_pm_runtime_resume(struct device *dev)
 	struct spsdc_host *host;
 	int ret = 0;
 
-	spsdc_pr(DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
 	if (!host->mmc)
 		return -EINVAL;
