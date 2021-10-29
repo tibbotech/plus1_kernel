@@ -2077,8 +2077,6 @@ static int sunplus_uart_runtime_suspend(struct device *dev)
 {
 	struct platform_device *uartpdev = to_platform_device(dev);
 
-	pr_info("%s\n", __func__);
-
 	/* Don't suspend uart0 for cmd line usage */
 	if ((uartpdev->id < NUM_UART) && (uartpdev->id > 0))
 		reset_control_assert(sunplus_uart_ports[uartpdev->id].rstc);
@@ -2089,8 +2087,6 @@ static int sunplus_uart_runtime_suspend(struct device *dev)
 static int sunplus_uart_runtime_resume(struct device *dev)
 {
 	struct platform_device *uartpdev = to_platform_device(dev);
-
-	pr_info("%s\n", __func__);
 
 	if (uartpdev->id < NUM_UART) {
 		clk_prepare_enable(sunplus_uart_ports[uartpdev->id].clk);

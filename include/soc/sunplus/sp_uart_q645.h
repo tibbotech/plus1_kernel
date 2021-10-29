@@ -76,19 +76,19 @@
 #define SP_UART_MCR_DTS		(1 << 0)
 
 /* DMA-RX, dma_enable_sel */
-#define DMA_INT			(1 << 31)
+#define DMA_INT				(1 << 31)
 #define DMA_MSI_ID_SHIFT	12
 #define DMA_MSI_ID_MASK		(0x7F << DMA_MSI_ID_SHIFT)
 #define DMA_SEL_UARTX_SHIFT	8
 #define DMA_SEL_UARTX_MASK	(0x0F << DMA_SEL_UARTX_SHIFT)
 #define DMA_SW_RST_B		(1 << 7)
-#define DMA_INIT		(1 << 6)
-#define DMA_GO			(1 << 5)
+#define DMA_INIT			(1 << 6)
+#define DMA_GO				(1 << 5)
 #define DMA_AUTO_ENABLE		(1 << 4)
 #define DMA_TIMEOUT_INT_EN	(1 << 3)
 #define DMA_P_SAFE_DISABLE	(1 << 2)
 #define DMA_PBUS_DATA_SWAP	(1 << 1)
-#define DMA_ENABLE		(1 << 0)
+#define DMA_ENABLE			(1 << 0)
 
 #if !defined(__ASSEMBLY__)
 #define UART_SZ			0x80
