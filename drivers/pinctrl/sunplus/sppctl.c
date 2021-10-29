@@ -38,14 +38,16 @@ void print_device_tree_node(struct device_node *node, int depth)
 	++depth;
 	if (depth == 1) {
 		pr_info("%s{ name = %s\n", indent, node->name);
-		for (properties = node->properties; properties != NULL; properties = properties->next)
+		for (properties = node->properties; properties != NULL;
+			properties = properties->next)
 			pr_info("%s  %s (%d)\n", indent, properties->name, properties->length);
 		pr_info("%s}\n", indent);
 	}
 
 	for_each_child_of_node(node, child) {
 		pr_info("%s{ name = %s\n", indent, child->name);
-		for (properties = child->properties; properties != NULL; properties = properties->next)
+		for (properties = child->properties; properties != NULL;
+			properties = properties->next)
 			pr_info("%s  %s (%d)\n", indent, properties->name, properties->length);
 		print_device_tree_node(child, depth);
 		pr_info("%s}\n", indent);
@@ -56,7 +58,8 @@ void sppctl_gmx_set(struct sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, uin
 		    uint8_t _rval)
 {
 	uint32_t *r;
-	struct sppctl_reg_t x = { .m = (~(~0 << _bsiz)) << _boff, .v = ((uint16_t)_rval) << _boff };
+	struct sppctl_reg_t x = { .m = (~(~0 << _bsiz)) << _boff,
+				  .v = ((uint16_t)_rval) << _boff };
 
 	if (_p->debug > 1)
 		KDBG(_p->pcdp->dev, "%s(x%X,x%X,x%X,x%X) m:x%X v:x%X\n",

@@ -54,7 +54,7 @@ int stpctl_c_p_get(struct pinctrl_dev *_pd, unsigned int _pin, unsigned long *_c
 
 	default:
 		//KINF(_pd->dev, "%s(%d) skipping:x%X\n", __FUNCTION__, _pin, param);
-		return -ENOTSUPP;
+		return -EOPNOTSUPP;
 	}
 	*_cfg = pinconf_to_config_packed(param, arg);
 

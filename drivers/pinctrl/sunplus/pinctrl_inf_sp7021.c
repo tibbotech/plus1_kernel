@@ -58,15 +58,23 @@ const size_t sppctlpins_allSZ = ARRAY_SIZE(sppctlpins_all);
 
 // pmux groups: some pins are muxable. group = pin
 const char * const sppctlpmux_list_s[] = {
-	D_PIS(0, 0), //D_PIS(0, 1), D_PIS(0, 2), D_PIS(0, 3), D_PIS(0, 4), D_PIS(0, 5), D_PIS(0, 6), D_PIS(0, 7),
-	D_PIS(1, 0), D_PIS(1, 1), D_PIS(1, 2), D_PIS(1, 3), D_PIS(1, 4), D_PIS(1, 5), D_PIS(1, 6), D_PIS(1, 7),
-	D_PIS(2, 0), D_PIS(2, 1), D_PIS(2, 2), D_PIS(2, 3), D_PIS(2, 4), D_PIS(2, 5), D_PIS(2, 6), D_PIS(2, 7),
-	D_PIS(3, 0), D_PIS(3, 1), D_PIS(3, 2), D_PIS(3, 3), D_PIS(3, 4), D_PIS(3, 5), D_PIS(3, 6), D_PIS(3, 7),
-	D_PIS(4, 0), D_PIS(4, 1), D_PIS(4, 2), D_PIS(4, 3), D_PIS(4, 4), D_PIS(4, 5), D_PIS(4, 6), D_PIS(4, 7),
-	D_PIS(5, 0), D_PIS(5, 1), D_PIS(5, 2), D_PIS(5, 3), D_PIS(5, 4), D_PIS(5, 5), D_PIS(5, 6), D_PIS(5, 7),
-	D_PIS(6, 0), D_PIS(6, 1), D_PIS(6, 2), D_PIS(6, 3), D_PIS(6, 4), D_PIS(6, 5), D_PIS(6, 6), D_PIS(6, 7),
-	D_PIS(7, 0), D_PIS(7, 1), D_PIS(7, 2), D_PIS(7, 3), D_PIS(7, 4), D_PIS(7, 5), D_PIS(7, 6), D_PIS(7, 7),
-	D_PIS(8, 0), D_PIS(8, 1), D_PIS(8, 2), D_PIS(8, 3), D_PIS(8, 4), D_PIS(8, 5), D_PIS(8, 6), D_PIS(8, 7)
+	D_PIS(0, 0),
+	D_PIS(1, 0), D_PIS(1, 1), D_PIS(1, 2), D_PIS(1, 3),
+	D_PIS(1, 4), D_PIS(1, 5), D_PIS(1, 6), D_PIS(1, 7),
+	D_PIS(2, 0), D_PIS(2, 1), D_PIS(2, 2), D_PIS(2, 3),
+	D_PIS(2, 4), D_PIS(2, 5), D_PIS(2, 6), D_PIS(2, 7),
+	D_PIS(3, 0), D_PIS(3, 1), D_PIS(3, 2), D_PIS(3, 3),
+	D_PIS(3, 4), D_PIS(3, 5), D_PIS(3, 6), D_PIS(3, 7),
+	D_PIS(4, 0), D_PIS(4, 1), D_PIS(4, 2), D_PIS(4, 3),
+	D_PIS(4, 4), D_PIS(4, 5), D_PIS(4, 6), D_PIS(4, 7),
+	D_PIS(5, 0), D_PIS(5, 1), D_PIS(5, 2), D_PIS(5, 3),
+	D_PIS(5, 4), D_PIS(5, 5), D_PIS(5, 6), D_PIS(5, 7),
+	D_PIS(6, 0), D_PIS(6, 1), D_PIS(6, 2), D_PIS(6, 3),
+	D_PIS(6, 4), D_PIS(6, 5), D_PIS(6, 6), D_PIS(6, 7),
+	D_PIS(7, 0), D_PIS(7, 1), D_PIS(7, 2), D_PIS(7, 3),
+	D_PIS(7, 4), D_PIS(7, 5), D_PIS(7, 6), D_PIS(7, 7),
+	D_PIS(8, 0), D_PIS(8, 1), D_PIS(8, 2), D_PIS(8, 3),
+	D_PIS(8, 4), D_PIS(8, 5), D_PIS(8, 6), D_PIS(8, 7)
 };
 // gpio: is defined in gpio_inf_sp7021.c
 const size_t PMUX_listSZ = sizeof(sppctlpmux_list_s)/sizeof(*(sppctlpmux_list_s));
@@ -85,7 +93,9 @@ static const struct sppctlgrp_t sp7021grps_spi4[] = {
 	EGRP("SPI_FLASH_4BIT2", 2, pins_spi42)
 };
 
-static const unsigned int pins_snan[] = { D(9, 4), D(9, 5), D(9, 6), D(9, 7), D(10, 0), D(10, 1) };
+static const unsigned int pins_snan[] = {
+	D(9, 4), D(9, 5), D(9, 6), D(9, 7), D(10, 0), D(10, 1)
+};
 static const struct sppctlgrp_t sp7021grps_snan[] = {
 	EGRP("SPI_NAND", 1, pins_snan)
 };
@@ -97,7 +107,9 @@ static const struct sppctlgrp_t sp7021grps_emmc[] = {
 	EGRP("CARD0_EMMC", 1, pins_emmc)
 };
 
-static const unsigned int pins_sdsd[] = { D(8, 1), D(8, 2), D(8, 3), D(8, 4), D(8, 5), D(8, 6) };
+static const unsigned int pins_sdsd[] = {
+	D(8, 1), D(8, 2), D(8, 3), D(8, 4), D(8, 5), D(8, 6)
+};
 static const struct sppctlgrp_t sp7021grps_sdsd[] = {
 	EGRP("SD_CARD", 1, pins_sdsd)
 };
@@ -171,7 +183,9 @@ static const struct sppctlgrp_t sp7021grps_spdo[] = {
 	EGRP("AUD_IEC_TX0", 1, pins_spdo)
 };
 
-static const unsigned int pins_tdmt[] = { D(2, 5), D(2, 6), D(2, 7), D(3, 0), D(3, 1), D(3, 2) };
+static const unsigned int pins_tdmt[] = {
+	D(2, 5), D(2, 6), D(2, 7), D(3, 0), D(3, 1), D(3, 2)
+};
 static const struct sppctlgrp_t sp7021grps_tdmt[] = {
 	EGRP("TDMTX_IFX0", 1, pins_tdmt)
 };
@@ -181,12 +195,16 @@ static const struct sppctlgrp_t sp7021grps_tdmr[] = {
 	EGRP("TDMRX_IFX0", 1, pins_tdmr)
 };
 
-static const unsigned int pins_pdmr[] = { D(1, 7), D(2, 0), D(2, 1), D(2, 2), D(2, 3) };
+static const unsigned int pins_pdmr[] = {
+	D(1, 7), D(2, 0), D(2, 1), D(2, 2), D(2, 3)
+};
 static const struct sppctlgrp_t sp7021grps_pdmr[] = {
 	EGRP("PDMRX_IFX0", 1, pins_pdmr)
 };
 
-static const unsigned int pins_pcmt[] = { D(3, 7), D(4, 0), D(4, 1), D(4, 2), D(4, 3), D(4, 4) };
+static const unsigned int pins_pcmt[] = {
+	D(3, 7), D(4, 0), D(4, 1), D(4, 2), D(4, 3), D(4, 4)
+};
 static const struct sppctlgrp_t sp7021grps_pcmt[] = {
 	EGRP("PCM_IEC_TX", 1, pins_pcmt)
 };
@@ -231,12 +249,16 @@ static const struct sppctlgrp_t sp7021grps_u2ax[] = {
 	EGRP("UART2AXI", 1, pins_u2ax)
 };
 
-static const unsigned int pins_u0ic[] = { D(0, 0), D(0, 1), D(0, 4), D(0, 5), D(1, 0), D(1, 1) };
+static const unsigned int pins_u0ic[] = {
+	D(0, 0), D(0, 1), D(0, 4), D(0, 5), D(1, 0), D(1, 1)
+};
 static const struct sppctlgrp_t sp7021grps_u0ic[] = {
 	EGRP("USB0_I2C", 1, pins_u0ic)
 };
 
-static const unsigned int pins_u1ic[] = { D(0, 2), D(0, 3), D(0, 6), D(0, 7), D(1, 2), D(1, 3) };
+static const unsigned int pins_u1ic[] = {
+	D(0, 2), D(0, 3), D(0, 6), D(0, 7), D(1, 2), D(1, 3)
+};
 static const struct sppctlgrp_t sp7021grps_u1ic[] = {
 	EGRP("USB1_I2C", 1, pins_u1ic)
 };
@@ -409,7 +431,7 @@ struct func_t list_funcs[] = {
 	FNCN("I2CM2_DAT",       fOFF_M, 0x2C, 8, 7),
 	FNCN("I2CM3_CLK",       fOFF_M, 0x2D, 0, 7),
 	FNCN("I2CM3_DAT",       fOFF_M, 0x2D, 8, 7),
-	FNCN("UA1_TX",          fOFF_M, 0x2E, 0, 7),    // +4x muxable UARTS (#0 is not muxable)
+	FNCN("UA1_TX",          fOFF_M, 0x2E, 0, 7),    // +4x muxable UARTS
 	FNCN("UA1_RX",          fOFF_M, 0x2E, 8, 7),
 	FNCN("UA1_CTS",         fOFF_M, 0x2F, 0, 7),
 	FNCN("UA1_RTS",         fOFF_M, 0x2F, 8, 7),
@@ -450,8 +472,8 @@ struct func_t list_funcs[] = {
 	FNCE("FPGA_IFX",        fOFF_G, 0x01, 12, 1, sp7021grps_fpga),
 	FNCE("HDMI_TX",         fOFF_G, 0x01, 13, 2, sp7021grps_hdmi),
 
-	FNCE("AUD_EXT_ADC_IFX0", fOFF_G, 0x01, 15, 1, sp7021grps_eadc),   // I2S audio in
-	FNCE("AUD_EXT_DAC_IFX0", fOFF_G, 0x02,  0, 1, sp7021grps_edac),   // I2S audio out
+	FNCE("AUD_EXT_ADC_IFX0", fOFF_G, 0x01, 15, 1, sp7021grps_eadc), // I2S audio in
+	FNCE("AUD_EXT_DAC_IFX0", fOFF_G, 0x02,  0, 1, sp7021grps_edac), // I2S audio out
 	FNCE("SPDIF_RX",        fOFF_G, 0x02,  2, 1, sp7021grps_spdi),
 	FNCE("SPDIF_TX",        fOFF_G, 0x02,  3, 1, sp7021grps_spdo),
 	FNCE("TDMTX_IFX0",      fOFF_G, 0x02,  4, 1, sp7021grps_tdmt),
@@ -461,7 +483,7 @@ struct func_t list_funcs[] = {
 	FNCE("LCDIF",           fOFF_G, 0x04,  6, 1, sp7021grps_lcdi),
 	FNCE("DVD_DSP_DEBUG",   fOFF_G, 0x02,  8, 1, sp7021grps_dvdd),
 	FNCE("I2C_DEBUG",       fOFF_G, 0x02,  9, 1, sp7021grps_i2cd),
-	FNCE("I2C_SLAVE",       fOFF_G, 0x02, 10, 1, sp7021grps_i2cs),   // I2C slave
+	FNCE("I2C_SLAVE",       fOFF_G, 0x02, 10, 1, sp7021grps_i2cs), // I2C slave
 	FNCE("WAKEUP",          fOFF_G, 0x02, 11, 1, sp7021grps_wakp),
 	FNCE("UART2AXI",        fOFF_G, 0x02, 12, 2, sp7021grps_u2ax),
 	FNCE("USB0_I2C",        fOFF_G, 0x02, 14, 2, sp7021grps_u0ic),

@@ -55,8 +55,6 @@
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #include <dt-bindings/pinctrl/sppctl-q645.h>
-#else
-#include <dt-bindings/pinctrl/sppctl-i143.h>
 #endif
 
 #define SPPCTL_MAX_NAM 64
