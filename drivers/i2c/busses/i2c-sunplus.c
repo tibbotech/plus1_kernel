@@ -86,7 +86,7 @@
 
 //control0
 #define I2C_CTL0_FREQ(x)                  (x<<24)  //bit[26:24]
-#define I2C_CTL0_PREFETCH                 (1<<18)  //Now as read mode need to set high, otherwise don¡¦t care
+#define I2C_CTL0_PREFETCH                 (1<<18)
 #define I2C_CTL0_RESTART_EN               (1<<17)  //0:disable 1:enable
 #define I2C_CTL0_SUBADDR_EN               (1<<16)  //For restart mode need to set high
 #define I2C_CTL0_SW_RESET                 (1<<15)
@@ -595,7 +595,6 @@ void sp_i2cm_rw_mode_set(struct regs_i2cm_s *sr, enum I2C_RW_Mode_e_ rw_mode)
 void sp_i2cm_int_en0_set(struct regs_i2cm_s *sr, unsigned int int0)
 {
 		writel(int0, &sr->int_en0);
-		//printk("hal_i2cm_int_en0_set int_en0: 0x%x\n", readl(&(pI2cMReg[device_id]->int_en0)));
 }
 
 void sp_i2cm_int_en1_set(struct regs_i2cm_s *sr, unsigned int rdata_en)
@@ -644,7 +643,8 @@ void sp_i2cm_manual_trigger(struct regs_i2cm_s *sr)
 		writel(val, &sr->i2cm_mode);
 }
 
-void sp_i2cm_int_en0_with_thershold_set(struct regs_i2cm_s *sr, unsigned int int0, unsigned char threshold)
+void sp_i2cm_int_en0_with_thershold_set(struct regs_i2cm_s *sr,
+                       unsigned int int0, unsigned char threshold)
 {
 	unsigned int val;
 
@@ -897,14 +897,16 @@ case I2C_DMA_WRITE_STATE:
 					if (pstIrqEvent->dDataIndex >= pstIrqEvent->dDataTotalLen)
 						w_data[j] = 0;
 					else
-						w_data[j] = pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex];
+                                               w_data[j] =
+                                               pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex];
 
 					pstIrqEvent->dDataIndex++;
 					}
 					    sp_i2cm_data0_set(sr, (unsigned int *)w_data);
 					    pstIrqEvent->dBurstCount--;
 					if (pstIrqEvent->dBurstCount == 0) {
-						sp_i2cm_int_en0_disable(sr, (I2C_EN0_EMPTY_THRESHOLD_INT | I2C_EN0_EMPTY_INT));
+                                               sp_i2cm_int_en0_disable(sr,
+                                               (I2C_EN0_EMPTY_THRESHOLD_INT | I2C_EN0_EMPTY_INT));
 						break;
 					}
 				}
@@ -949,10 +951,12 @@ case I2C_DMA_READ_STATE:
 					if (k >= 8)
 						k -= 8;
 
-					sp_i2cm_data_get(sr, k, (unsigned int *)(&pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex]));
+                                       sp_i2cm_data_get(sr,
+               k, (unsigned int *)(&pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex]));
 					pstIrqEvent->dDataIndex += 4;
 				}
-				sp_i2cm_rdata_flag_clear(sr, (((1 << I2C_BURST_RDATA_BYTES) - 1) << (I2C_BURST_RDATA_BYTES * i)));
+                               sp_i2cm_rdata_flag_clear(sr,
+               (((1 << I2C_BURST_RDATA_BYTES) - 1) << (I2C_BURST_RDATA_BYTES * i)));
 				pstIrqEvent->dRegDataIndex += (I2C_BURST_RDATA_BYTES / 4);
 				if (pstIrqEvent->dRegDataIndex >= 8)
 					pstIrqEvent->dBurstCount--;
@@ -973,7 +977,8 @@ case I2C_DMA_READ_STATE:
 			}
 
 				for (i = 0; i < pstIrqEvent->dBurstRemainder; i++)
-					pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex + i] = r_data[i];
+                                       pstIrqEvent->pDataBuf[pstIrqEvent->dDataIndex + i]
+                                                       = r_data[i];
 			}
 
 				DBG_INFO("I2C read success !!\n");
@@ -1187,7 +1192,8 @@ int sp_i2cm_read(struct I2C_Cmd_t_ *pstCmdInfo, struct SpI2C_If_t_ *pstSpI2CInfo
 	sp_i2cm_int_en2_set(sr, int2);
 	sp_i2cm_manual_trigger(sr);	//start send data
 
-	ret = wait_event_timeout(pstSpI2CInfo->wait, pstIrqEvent->stIrqFlag.bActiveDone, (I2C_SLEEP_TIMEOUT * HZ) / 500);
+       ret = wait_event_timeout(pstSpI2CInfo->wait,
+               pstIrqEvent->stIrqFlag.bActiveDone, (I2C_SLEEP_TIMEOUT * HZ) / 500);
 	if (ret == 0) {
 		DBG_ERR("I2C read timeout !!\n");
 		ret = I2C_ERR_TIMEOUT_OUT;
@@ -1377,7 +1383,8 @@ int sp_i2cm_dma_write(struct I2C_Cmd_t_ *pstCmdInfo, struct SpI2C_If_t_ *pstSpI2
 	sp_i2cm_dma_go_set(sr_dma);
 
 
-	ret = wait_event_timeout(pstSpI2CInfo->wait, pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 200);
+       ret = wait_event_timeout(pstSpI2CInfo->wait,
+                               pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 200);
 	if (ret == 0) {
 		DBG_ERR("I2C DMA write timeout !!\n");
 		ret = I2C_ERR_TIMEOUT_OUT;
@@ -1520,7 +1527,9 @@ int sp_i2cm_dma_read(struct I2C_Cmd_t_ *pstCmdInfo, struct SpI2C_If_t_ *pstSpI2C
 		sp_i2cm_manual_trigger(sr); //start send data
 
 
-	ret = wait_event_timeout(pstSpI2CInfo->wait, pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 200);
+       ret = wait_event_timeout(pstSpI2CInfo->wait,
+                               pstIrqEvent->stIrqDmaFlag.bDmaDone, (I2C_SLEEP_TIMEOUT * HZ) / 200);
+
 	if (ret == 0) {
 		DBG_ERR("I2C DMA read timeout !!\n");
 		ret = I2C_ERR_TIMEOUT_OUT;
@@ -1534,7 +1543,8 @@ int sp_i2cm_dma_read(struct I2C_Cmd_t_ *pstCmdInfo, struct SpI2C_If_t_ *pstSpI2C
 	if (dma_r_addr == pstSpI2CInfo->dma_phy_base)
 		memcpy(pstCmdInfo->pRdData, pstSpI2CInfo->dma_vir_base, pstCmdInfo->dRdDataCnt);
 	else
-		dma_unmap_single(pstSpI2CInfo->dev, dma_r_addr, pstCmdInfo->dRdDataCnt, DMA_FROM_DEVICE);
+               dma_unmap_single(pstSpI2CInfo->dev,
+                                       dma_r_addr, pstCmdInfo->dRdDataCnt, DMA_FROM_DEVICE);
 
 	pstIrqEvent->eRWState = I2C_IDLE_STATE;
 	pstIrqEvent->bI2CBusy = 0;
@@ -1597,8 +1607,8 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 				pstCmdInfo->dWrDataCnt = restart_write_cnt;
 				pstCmdInfo->pWrData = restart_w_data;
 				DBG_INFO("I2C_M_RD dWrDataCnt =%d ", pstCmdInfo->dWrDataCnt);
-				DBG_INFO("I2C_M_RD pstCmdInfo->pWrData[0] =%x ", pstCmdInfo->pWrData[0]);
-				DBG_INFO("I2C_M_RD pstCmdInfo->pWrData[1] =%x ", pstCmdInfo->pWrData[1]);
+                               DBG_INFO("I2C_M_RD pWrData[0] =%x ", pstCmdInfo->pWrData[0]);
+                               DBG_INFO("I2C_M_RD pWrData[1] =%x ", pstCmdInfo->pWrData[1]);
 				restart_en = 0;
 				pstCmdInfo->dRestartEn = 1;
 			}
@@ -1621,7 +1631,8 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 					ret = sp_i2cm_write(pstCmdInfo, pstSpI2CInfo);
 				} else {
 					ret = sp_i2cm_dma_write(pstCmdInfo, pstSpI2CInfo);
-					i2c_put_dma_safe_msg_buf(pstCmdInfo->pWrData, &msgs[i], true);
+                                       i2c_put_dma_safe_msg_buf(pstCmdInfo->pWrData,
+                                                       &msgs[i], true);
 				}
 		}
 
@@ -1774,7 +1785,8 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	return ret;
 
 free_dma:
-	dma_free_coherent(&pdev->dev, I2C_BUFFER_SIZE, pstSpI2CInfo->dma_vir_base, pstSpI2CInfo->dma_phy_base);
+       dma_free_coherent(&pdev->dev, I2C_BUFFER_SIZE,
+                       pstSpI2CInfo->dma_vir_base, pstSpI2CInfo->dma_phy_base);
 
 err_reset_assert:
 	reset_control_assert(pstSpI2CInfo->rstc);
@@ -1797,7 +1809,8 @@ static int sp_i2c_remove(struct platform_device *pdev)
 	pm_runtime_set_suspended(&pdev->dev);
 #endif
 
-	dma_free_coherent(&pdev->dev, I2C_BUFFER_SIZE, pstSpI2CInfo->dma_vir_base, pstSpI2CInfo->dma_phy_base);
+       dma_free_coherent(&pdev->dev, I2C_BUFFER_SIZE,
+                       pstSpI2CInfo->dma_vir_base, pstSpI2CInfo->dma_phy_base);
 
 	i2c_del_adapter(p_adap);
 	if (p_adap->nr < I2C_MASTER_NUM) {
