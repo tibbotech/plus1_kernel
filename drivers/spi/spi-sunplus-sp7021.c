@@ -35,7 +35,7 @@
 #define SPI_DBG_ERR
 
 #ifdef SPI_FUNC_DEBUG
-#define FUNC_DBG(fmt, args ...) pr_info("[SPI] dbg %s() (%d) " fmt "\n", __func__, __LINE__, ## args)
+#define FUNC_DBG(fmt, args ...) pr_info("[SPI] dbg (%d): "  fmt "\n", __LINE__, ## args)
 #else
 #define FUNC_DBG(fmt, args ...)
 #endif
@@ -167,7 +167,7 @@ struct SPI_MAS {
 	unsigned int MST_TX_DATA_7_6_5_4                   ; // 02  (ADDR : 0x9C00_2D88)
 	unsigned int MST_TX_DATA_11_10_9_8                 ; // 03  (ADDR : 0x9C00_2D8C)
 	unsigned int MST_TX_DATA_15_14_13_12               ; // 04  (ADDR : 0x9C00_2D90)
-	unsigned int G091_RESERVED_0[4]                    ; //     (ADDR : 0x9C00_2D94) ~ (ADDR : 0x9C00_2DA0)
+	unsigned int G091_RESERVED_0[4]                    ; //     (ADDR : 0x9C00_2D94-2DA0)
 	unsigned int MST_RX_DATA_3_2_1_0                   ; // 09  (ADDR : 0x9C00_2DA4)
 	unsigned int MST_RX_DATA_7_6_5_4                   ; // 10  (ADDR : 0x9C00_2DA8)
 	unsigned int MST_RX_DATA_11_10_9_8                 ; // 11  (ADDR : 0x9C00_2DAC)
@@ -201,19 +201,19 @@ struct SPI_SLA {
 	unsigned int SLV_TX_DATA_10_9_8_7                  ; // 02  (ADDR : 0x9C00_2E08)
 	unsigned int SLV_TX_DATA_14_13_12_11               ; // 03  (ADDR : 0x9C00_2E0C)
 	unsigned int SLV_TX_DATA_15                        ; // 04  (ADDR : 0x9C00_2E10)
-	unsigned int G092_RESERVED_0[4]                    ; //     (ADDR : 0x9C00_2E14) ~ (ADDR : 0x9C00_2E20)
+	unsigned int G092_RESERVED_0[4]                    ; //     (ADDR : 0x9C00_2E14-2E20)
 	unsigned int SLV_RX_DATA_3_2_1_0                   ; // 09  (ADDR : 0x9C00_2E24)
 	unsigned int SLV_RX_DATA_7_6_5_4                   ; // 10  (ADDR : 0x9C00_2E28)
 	unsigned int SLV_RX_DATA_11_10_9_8                 ; // 11  (ADDR : 0x9C00_2E2C)
 	unsigned int SLV_RX_DATA_15_14_13_12               ; // 12  (ADDR : 0x9C00_2E30)
-	unsigned int G092_RESERVED_1[4]                    ; //     (ADDR : 0x9C00_2E34) ~ (ADDR : 0x9C00_2E40)
+	unsigned int G092_RESERVED_1[4]                    ; //     (ADDR : 0x9C00_2E34-2E40)
 	unsigned int RISC_INT_DATA_RDY                     ; // 17  (ADDR : 0x9C00_2E44)
 	unsigned int SLV_DMA_CTRL                          ; // 18  (ADDR : 0x9C00_2E48)
 	unsigned int SLV_DMA_LENGTH                        ; // 19  (ADDR : 0x9C00_2E4C)
 	unsigned int SLV_DMA_INI_ADDR                      ; // 20  (ADDR : 0x9C00_2E50)
-	unsigned int G092_RESERVED_2[2]                    ; //     (ADDR : 0x9C00_2E54) ~ (ADDR : 0x9C00_2E58)
+	unsigned int G092_RESERVED_2[2]                    ; //     (ADDR : 0x9C00_2E54-2E58)
 	unsigned int ADDR_SPI_BUSY                         ; // 23  (ADDR : 0x9C00_2E5C)
-	unsigned int G092_RESERVED_3[8]                    ; //     (ADDR : 0x9C00_2E60) ~ (ADDR : 0x9C00_2E7C)
+	unsigned int G092_RESERVED_3[8]                    ; //     (ADDR : 0x9C00_2E60-2E7C)
 };
 
 
@@ -317,7 +317,8 @@ int pentagram_spi_slave_dma_rw(struct spi_device *spi, u8 *buf, unsigned int len
 		writel_relaxed(DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
 		writel_relaxed(len, &spis_reg->SLV_DMA_LENGTH);
 		writel_relaxed(pspim->tx_dma_phy_base, &spis_reg->SLV_DMA_INI_ADDR);
-		writel(readl(&spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
+		writel(readl(&spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY,
+					&spis_reg->RISC_INT_DATA_RDY);
 		//regs1->SLV_DMA_CTRL = 0x4d;
 		//regs1->SLV_DMA_LENGTH = 0x50;
 		//regs1->SLV_DMA_INI_ADDR = 0x300;
@@ -378,7 +379,8 @@ int pentagram_spi_S_rw(struct spi_device *_s, struct spi_transfer *_t, int RW_ph
 		writel_relaxed(DMA_WRITE, &spis_reg->SLV_DMA_CTRL);
 		writel_relaxed(_t->len, &spis_reg->SLV_DMA_LENGTH);
 		writel_relaxed(_t->tx_dma, &spis_reg->SLV_DMA_INI_ADDR);
-		writel(readl(&spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY, &spis_reg->RISC_INT_DATA_RDY);
+		writel(readl(&spis_reg->RISC_INT_DATA_RDY) | SLAVE_DATA_RDY,
+				&spis_reg->RISC_INT_DATA_RDY);
 
 		if (wait_for_completion_interruptible(&pspim->sla_isr))
 			dev_err(devp, "%s() wait_for_completion timeout\n", __func__);
@@ -540,7 +542,8 @@ static void spspi_delay_ns(u32 _ns)
 }
 
 // called from *transfer* functions, set clock there
-static void pentagram_spi_setup_transfer(struct spi_device *_s, struct spi_controller *_c, struct spi_transfer *_t)
+static void pentagram_spi_setup_transfer(struct spi_device *_s,
+					struct spi_controller *_c, struct spi_transfer *_t)
 {
 	struct pentagram_spi_master *pspim = spi_master_get_devdata(_c);
 	struct SPI_MAS *spim_reg = (struct SPI_MAS *)pspim->mas_base;
@@ -553,7 +556,6 @@ static void pentagram_spi_setup_transfer(struct spi_device *_s, struct spi_contr
 
 	dev_dbg(&(_s->dev), "setup %dHz", _s->max_speed_hz);
 	dev_dbg(&(_s->dev), "tx %p, rx %p, len %d", _t->tx_buf, _t->rx_buf, _t->len);
-	dev_dbg(&(_s->dev), "cs_chang: %d speed_hz %dHz %d bpw", _t->cs_change, _t->speed_hz, _t->bits_per_word);
 	// set clock
 	clk_rate = clk_get_rate(pspim->spi_clk);
 	if (_t->speed_hz <= _s->max_speed_hz)
@@ -591,7 +593,6 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	FUNC_DBG();
 
 	memset(&pspim->tx_data_buf[0], 0, SPI_TRANS_DATA_SIZE);
-	dev_dbg(&(_c->dev), "tx _data_buf[0] 0x%02x _cur_len %d transfers_cnt %d\n", pspim->tx_data_buf[0], pspim->tx_cur_len, transfers_cnt);
 	dev_dbg(&(_c->dev), "txrx: tx %p, rx %p, len %d\n", t->tx_buf, t->rx_buf, t->len);
 
 	mutex_lock(&pspim->buf_lock);
@@ -618,7 +619,7 @@ static int pentagram_spi_master_combine_write_read(struct spi_controller *_c,
 	reg_temp &= CLEAN_FLUG_MASK;
 	reg_temp |= FD_SEL;
 	// set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
-	reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;    //   | CPHA_R for sunplus slave | CPHA_W for BMP280
+	reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;
 	reg_temp |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 	writel(reg_temp, &sr->SPI_FD_CONFIG);
 	DBG_INF("SPI_FD_CONFIG =0x%x", readl(&sr->SPI_FD_CONFIG));
@@ -679,10 +680,8 @@ static int pentagram_spi_master_transfer(struct spi_controller *_c, struct spi_d
 
 	memset(&pspim->tx_data_buf[0], 0, SPI_TRANS_DATA_SIZE);
 
-	dev_dbg(&(_s->dev), "tx _data_buf[0] 0x%02x _cur_len %d xfer_cnt %d\n", pspim->tx_data_buf[0], pspim->tx_cur_len, xfer_cnt);
 	dev_dbg(&(_s->dev), "txrx: tx %p, rx %p, len %d\n", t->tx_buf, t->rx_buf, t->len);
 
-	DBG_INF("tx: tx %08x, tx+1 %08x, tx+DATA_SIZE %08x, [tx+DATA_SIZE] %08x", t->tx_buf, t->tx_buf+1,
 	t->tx_buf+SPI_TRANS_DATA_SIZE, &(t->tx_buf[SPI_TRANS_DATA_SIZE]));
 
 	for (i = 0; i <= xfer_cnt; i++) {
@@ -702,8 +701,6 @@ static int pentagram_spi_master_transfer(struct spi_controller *_c, struct spi_d
 		if (t->tx_buf)
 			memcpy(pspim->tx_data_buf, t->tx_buf+i*SPI_TRANS_DATA_SIZE, xfer_len);
 
-		dev_dbg(&(_s->dev), "data_len %d loop_cnt %d pspim->tx_cur_len:%d\n", xfer_len, i, pspim->tx_cur_len);
-
 		// set SPI FIFO data for full duplex (SPI_FD fifo_data)  91.13
 		if (pspim->tx_cur_len < xfer_len) {
 			reg_temp = min(pspim->data_unit, xfer_len);
@@ -716,13 +713,15 @@ static int pentagram_spi_master_transfer(struct spi_controller *_c, struct spi_d
 		reg_temp &= CLEAN_FLUG_MASK;
 		reg_temp |= FD_SEL;
 		// set SPI master config for full duplex (SPI_FD_CONFIG)  91.15
-		reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;	  //   | CPHA_R for sunplus slave | CPHA_W for BMP280
+		reg_temp |= FINISH_FLAG_MASK | TX_EMP_FLAG_MASK | RX_FULL_FLAG_MASK;
 		reg_temp |= WRITE_BYTE(0) | READ_BYTE(0);  // set read write byte from fifo
 		writel(reg_temp, &sr->SPI_FD_CONFIG);
 		dev_dbg(&(_s->dev), "SPI_FD_CONFIG =0x%x", readl(&sr->SPI_FD_CONFIG));
 		// set SPI STATUS and start SPI for full duplex (SPI_FD_STATUS)  91.13
-		dev_dbg(&(_s->dev), "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ", TOTAL_LENGTH(xfer_len), TX_LENGTH(xfer_len), xfer_len);
-		writel(TOTAL_LENGTH(xfer_len) | TX_LENGTH(xfer_len) | SPI_START_FD, &sr->SPI_FD_STATUS);
+		dev_dbg(&(_s->dev), "TOTAL_LENGTH =0x%x  TX_LENGTH =0x%x xfer_len =0x%x ",
+					TOTAL_LENGTH(xfer_len), TX_LENGTH(xfer_len), xfer_len);
+		writel(TOTAL_LENGTH(xfer_len) | TX_LENGTH(xfer_len) | SPI_START_FD,
+					&sr->SPI_FD_STATUS);
 		DBG_INF("set SPI_FD_STATUS =0x%x", readl(&sr->SPI_FD_STATUS));
 
 		cret = wait_for_completion_interruptible_timeout(&pspim->isr_done, timeout);
@@ -760,8 +759,6 @@ static int pentagram_spi_D_setup(struct spi_device *_s)
 #ifdef CONFIG_PM_RUNTIME_SPI
 
 	struct pentagram_spi_master *pspim = spi_controller_get_devdata(_s->controller);
-
-	dev_dbg(&(_s->dev), "spi_id:%d mode:%X controller_state:%p\n", pspim->ctlr->bus_num, _s->mode, spi_get_ctldata(_s));
 
 	if (pm_runtime_enabled(pspim->dev)) {
 		ret = pm_runtime_get_sync(pspim->dev)
@@ -969,7 +966,6 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 			first_xfer = xfer;
 		total_len +=  xfer->len;
 
-		dev_dbg(&(spi->dev), "xfer tx %p, rx %p, len %d\n", xfer->tx_buf, xfer->rx_buf, xfer->len);
 		/* all combined transfers have to have the same speed */
 		if (first_xfer->speed_hz != xfer->speed_hz) {
 			dev_err(&(spi->dev), "unable to change speed between transfers\n");
@@ -983,7 +979,7 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 //			break;
 //		}
 		if (xfer->len > SPI_MSG_DATA_SIZE) {
-			dev_err(&(spi->dev), "over total transfer length xfer->len = %d", xfer->len);
+			dev_err(&(spi->dev), "over total trans-length xfer->len = %d", xfer->len);
 			ret = -EINVAL;
 			break;
 		}
@@ -1012,7 +1008,6 @@ static int pentagram_spi_M_transfer_one_message(struct spi_controller *ctlr, str
 		if (xfer_cnt > 0) {
 			spspi_prep_transfer(ctlr, spi);
 			pentagram_spi_setup_transfer(spi, ctlr, first_xfer);
-			dev_dbg(&(spi->dev), "start_xfer  xfer->len : %d   xfer_cnt : %d", xfer->len, xfer_cnt);
 			ret = pentagram_spi_master_combine_write_read(ctlr, first_xfer, xfer_cnt);
 		}
 
@@ -1073,7 +1068,8 @@ static int pentagram_spi_controller_probe(struct platform_device *pdev)
 	mode = SPI_MASTER;
 	if (pdev->dev.of_node) {
 		pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
-		mode = of_property_read_bool(pdev->dev.of_node, "spi-slave") ? SPI_SLAVE : SPI_MASTER;
+		if (of_property_read_bool(pdev->dev.of_node, "spi-slave"))
+			mode = SPI_SLAVE;
 	}
 	dev_dbg(&pdev->dev, "pdev->id = %d\n", pdev->id);
 

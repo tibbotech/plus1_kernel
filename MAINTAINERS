@@ -16759,10 +16759,17 @@ F:	drivers/i2c/busses/i2c-sunplus.c
 
 SUNPLUS SD/SDIO HOST CONTROLLER INTERFACE DRIVER
 M:	LH Kuo <lh.kuo@sunplus.com>
-L:	sdricohcs-devel@lists.sourceforge.net (subscribers-only)
+L:	linux-mmc@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/mmc/sunplus-sd2.yaml
 F:	drivers/mmc/host/sunplus_sd2.*
+
+SUNPLUS SPI CONTROLLER INTERFACE DRIVER
+M:	LH Kuo <lh.kuo@sunplus.com>
+L:	linux-spi@vger.kernel.org
+S:	Maintained
+F:	Documentation/devicetree/bindings/spi/spi-sunplus-sp7021.yaml
+F:	drivers/spi/spi-sunplus-sp7021.c
 
 SUPERH
 M:	Yoshinori Sato <ysato@users.sourceforge.jp>

@@ -820,6 +820,28 @@ config SPI_SUN6I
 	help
 	  This enables using the SPI controller on the Allwinner A31 SoCs.
 
+config SPI_SUNPLUS_SP7021
+	tristate "Sunplus SP7021 SPI controller"
+	depends on SOC_SP7021
+	help
+	  This enable Sunplus SP7021 spi controller driver on the SP7021 SoCs.
+	  This driver can also be built as a module. If so, the module will be
+	  called as spi-sunplus-sp7021.
+
+	  If you have a  Sunplus SP7021 platform say Y here.
+	  If unsure, say N.
+
+config SPI_SUNPLUS
+	tristate "Sunplus SPI controller"
+	depends on SOC_Q645
+	help
+	  This enable Sunplus SoCs spi controller driver on the Sunplus  SoCs.
+	  This driver can also be built as a module. If so, the module will be
+	  called as spi-sunplus.
+
+	  If you have a  Sunplus platform say Y here.
+	  If unsure, say N.
+
 config SPI_SYNQUACER
 	tristate "Socionext's SynQuacer HighSpeed SPI controller"
 	depends on ARCH_SYNQUACER || COMPILE_TEST
@@ -961,17 +983,6 @@ config SPI_ZYNQMP_GQSPI
 	help
 	  Enables Xilinx GQSPI controller driver for Zynq UltraScale+ MPSoC.
 
-config SPI_SUNPLUS_SP7021
-	tristate "Sunplus SP7021 SPI controller"
-	depends on SOC_SP7021
-	help
-	  Enable the Sunplus SP7021 spi controller driver.
-
-config SPI_SUNPLUS
-	tristate "Sunplus SPI controller"
-	depends on SOC_Q645
-	help
-	  Enable the Sunplus spi controller driver.
 
 config SPI_AMD
 	tristate "AMD SPI controller"
