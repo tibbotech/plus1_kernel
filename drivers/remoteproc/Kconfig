@@ -264,7 +264,7 @@ config STM32_RPROC
 
 config SUNPLUS_REMOTEPROC
 	tristate "Sunplus remoteproc support"
-	depends on ARCH_PENTAGRAM || SOC_Q645
+	depends on ARCH_SUNPLUS || SOC_Q645
 	select RPMSG_VIRTIO
 	help
 	  Say y here to support ARM926 remote processors via the remote

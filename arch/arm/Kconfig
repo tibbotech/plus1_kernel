@@ -537,7 +537,7 @@ config ARCH_OMAP1
 	help
 	  Support for older TI OMAP1 (omap7xx, omap15xx or omap16xx)
 
-config ARCH_PENTAGRAM
+config ARCH_SUNPLUS
 	bool "Sunplus Pentagram architectures"
 	select CLKSRC_OF
 	select COMMON_CLK

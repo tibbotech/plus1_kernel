@@ -741,7 +741,7 @@ config MICROCHIP_PIT64B
 
 config CLKSRC_SP_TIMER
 	bool "Clocksource using Sunplus STC timer"
-	depends on ARCH_PENTAGRAM
+	depends on ARCH_SUNPLUS
 	select TIMER_PROBE
 	select TIMER_OF
 

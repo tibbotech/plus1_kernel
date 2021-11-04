@@ -1,6 +1,6 @@
 menuconfig SND_SOC_SUNPLUS
 	tristate "ASoC support for Sunplus"
-	#depends on ARCH_PENTAGRAM
+	#depends on ARCH_SUNPLUS
 	select SND_SOC_SPDIF
 	default y
 	help

@@ -81,7 +81,7 @@
 #define CLEAR_ADDR_BIT (~(0x180))
 #define ADDR_BIT(x) (x<<7)
 #define DMA_DATA_RDY (1<<0)
-#define PENTAGRAM_SPI_SLAVE_SET (0x2c)
+#define SUNPLUS_SPI_SLAVE_SET (0x2c)
 
 
 #define FINISH_FLAG (1<<6)
