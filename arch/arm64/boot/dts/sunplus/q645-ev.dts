@@ -929,6 +929,17 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 	};
+	audio: audio@0xf8001e00 {
+		compatible = "sunplus,Q645-audio";
+		reg = <0x00 0xf8001e00 0x00 0x700>;
+		reg-names = "audio";
+		clocks = <&clkc AUD>, <&clkc PLLA>;
+		clock-names = "aud", "pll_a";
+		resets = <&rstc RST_AUD>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&aud_au_adc_data0_pins>;
+		status = "disabled";
+	};
 
 	usbdrd3_0: usb@f80a1000{
 		compatible = "sunplus,q645-dwcusb3";

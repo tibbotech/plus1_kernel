@@ -131,7 +131,7 @@ static void sp_pdm_rx_en(bool on)
         	val = CFG_PDM_RGST_SET;
     	regs0->pdm_rx_cfg0 = val;
     	val = regs0->pdm_rx_cfg0;
-    	AUD_INFO("pdm_rx_cfg0 0x%x\n", val);
+    	AUD_INFO("pdm_rx_cfg0 0x%lx\n", val);
 }
 
 static void sp_pdm_rx_dma_en(bool on)
@@ -146,7 +146,7 @@ static void sp_pdm_rx_dma_en(bool on)
         	val &= ~(TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
     	regs0->aud_fifo_enable = val;
     	val = regs0->aud_fifo_enable;
-    	AUD_INFO("aud_fifo_enable 0x%x\n", val);
+    	AUD_INFO("aud_fifo_enable 0x%lx\n", val);
 #if 1
     	if (on){      
         	//val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
@@ -168,7 +168,7 @@ static void sp_pdm_rx_dma_en(bool on)
         	val &= (~aud_enable_tdmpdm_c);
     	regs0->aud_enable = val;
     	val = regs0->aud_enable;
-    	AUD_INFO("aud_enable 0x%x\n", val);
+    	AUD_INFO("aud_enable 0x%lx\n", val);
 }
 
 #define SP_pdm_RATES    SNDRV_PCM_RATE_44100//(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000)
@@ -217,15 +217,15 @@ static int sp_pdm_hw_params(struct snd_pcm_substream *substream,
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
 	struct snd_pcm_runtime *runtime = substream->runtime;
-    	struct sp_pdm_info *pdm = snd_soc_dai_get_drvdata(socdai);
+    	//struct sp_pdm_info *pdm = snd_soc_dai_get_drvdata(socdai);
     	struct snd_dmaengine_dai_dma_data *dma_data;
     	unsigned int ch_num = 32;
     	//unsigned int mask = 0;
     	unsigned int ret = 0;
     	//unsigned long val;
 
-    	AUD_INFO("%s IN\n", __func__ );
-    	AUD_INFO("%s, stream=%d, pdm->dma_capture=0x%08x\n", __func__, substream->stream, pdm->dma_capture);
+    	AUD_INFO("%s IN\n", __func__);
+    	//AUD_INFO("%s, stream=%d, pdm->dma_capture=0x%px\n", __func__, substream->stream, pdm->dma_capture);
     
     	dma_data = snd_soc_dai_get_dma_data(socdai, substream);
     	dma_data->addr_width = ch_num >> 3;
@@ -380,7 +380,7 @@ static int sp_pdm_probe(struct platform_device *pdev)
 
     	sp_pdm->reg_base = audio_base;
 
-    	AUD_NOTICE("%s, reg_base=%08x\n", __func__, sp_pdm->reg_base);
+    	AUD_NOTICE("%s, reg_base=%px\n", __func__, sp_pdm->reg_base);
 
     	sp_pdm_init_state(sp_pdm);
     	platform_set_drvdata(pdev, sp_pdm);

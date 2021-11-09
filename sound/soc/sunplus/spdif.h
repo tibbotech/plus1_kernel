@@ -7,7 +7,11 @@
 #ifndef _SPSOC_SPDIF_H
 #define _SPSOC_SPDIF_H
 
+#if defined(CONFIG_SND_SOC_AUD628)
 #include "spsoc_util.h"
+#elif defined(CONFIG_SND_SOC_AUD645)
+#include "spsoc_util-645.h"
+#endif
 
 
 /* SPDIF_MODE  */

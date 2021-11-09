@@ -2,7 +2,11 @@
 #define __AUD_HW_H__
 
 //#include "types.h"
+#if defined(CONFIG_SND_SOC_AUD628)
 #include "spsoc_util.h"
+#elif defined(CONFIG_SND_SOC_AUD645)
+#include "spsoc_util-645.h"
+#endif
 #include "audclk.h"
 
 

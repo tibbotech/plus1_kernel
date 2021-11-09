@@ -11,8 +11,11 @@
 #include <linux/delay.h>
 #include <linux/timer.h>
 
+#if defined(CONFIG_SND_SOC_AUD628)
 #include "spsoc_util.h"
-
+#elif defined(CONFIG_SND_SOC_AUD645)
+#include "spsoc_util-645.h"
+#endif
 //#define SYNCHRONIZE_IO		__asm__ __volatile__ ("dmb" : : : "memory")
 #define SYNCHRONIZE_IO		__asm__ __volatile__ ("" : : : "memory")
 
@@ -62,37 +65,45 @@ void delay_ms(UINT32 ms_count)
 
 UINT32 HWREG_R(UINT32 reg_name)
 {
-	UINT32 rdata = 0, addr = 0;
-	UINT32 group = 0, reg = 0;
+	unsigned int rdata = 0, addr = 0;
+	unsigned int group = 0, reg = 0;
+        volatile uint32_t *remap_addr;
 
 	reg = reg_name % 100;
-	group = (reg_name - reg)/100;
+	group = (reg_name - reg) / 100;
 
 	addr = (REG_BASEADDR);
-	addr = addr + group*32*4 + reg*4;
-	addr = (unsigned int)ioremap(addr, 4);
-	rdata = (*(volatile unsigned int *)(addr));
+	addr = addr + group * 32 * 4 + reg * 4;
+	//addr = (unsigned int)ioremap(addr, 4);
+	remap_addr = ioremap(addr, 4);
+	//rdata = (*(volatile unsigned int *)(addr));
+	rdata = *remap_addr;
 	SYNCHRONIZE_IO;
 
-	iounmap((volatile unsigned int *)(addr));
+	//iounmap((volatile unsigned int *)(addr));
+	iounmap(remap_addr);
 	//printk(KERN_INFO "reg read addr :: 0x%x\n", addr);
 	return rdata;
 }
 
 void HWREG_W(UINT32 reg_name, UINT32 val)
 {
-	UINT32 addr = 0x0;
-	UINT32 group = 0, reg = 0;
-
+	unsigned int addr = 0x0;
+	unsigned int group = 0, reg = 0;
+	volatile uint32_t *remap_addr;
+	
 	reg = reg_name % 100;
-	group = (reg_name - reg)/100;
+	group = (reg_name - reg) / 100;
 
 	addr = (REG_BASEADDR);
-	addr = addr + group*32*4 + reg*4;
-	addr = (unsigned int)ioremap(addr, 4);
-	(*(volatile unsigned int *)(addr)) = val;
+	addr = addr + group * 32 * 4 + reg * 4;
+	//addr = (unsigned int)ioremap(addr, 4);
+	remap_addr = ioremap(addr, 4);
+	//(*(volatile unsigned int *)(addr)) = val;
+	*remap_addr = val;
 	//SYNCHRONIZE_IO;
-	iounmap((volatile unsigned int *)(addr));
+	//iounmap((volatile unsigned int *)(addr));
+	iounmap(remap_addr);
 	//xil_printf("reg write 0x%x, val=0x%x\n\r", addr, val);
 	return;
 }
