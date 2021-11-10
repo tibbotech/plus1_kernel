@@ -116,7 +116,7 @@
 			no-map;
 			reg = <0x0 0x3fc00000 0x0 0x00400000>;
 		};
-		/* video_codec reserve memory 0x50000000~0x60000000 total 128M */
+		/* video_codec reserve memory 0x58000000~0x60000000 total 128M */
 		video_codec_reserve: vcodec {
 			no-map;
 			reg = <0x00 0x58000000 0x00 0x8000000>;
