@@ -84,7 +84,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8 uio_pdrv_genirq.of_id=generic-uio-ev";
 		stdout-path = "serial0:921600n8";
 	};
 
@@ -825,6 +825,23 @@
 			compatible = "ethosn-core";
 			status = "okay";
 		};
+	};
+
+	uioev: uio@f816e000 {
+		compatible = "generic-uio-ev";
+		reg = <0x0 0xf816e000 0x0 0x1000>,        /*   4KB */
+		      <0x0 0x50000000 0x0 0x08000000>,    /* 128MB */
+		      <0x0 0x40000000 0x0 0x10000000>;    /* 256MB */
+		reg-names = "arconnect",
+		            "ev_code_mem",
+		            "ev_shared_mem";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH >; /* IRQ number is 165 */
+		clocks = <&clkc EVDN>;
+		clock-names = "clk_evdn";
+		resets = <&rstc RST_EVDN>;
+		reset-names = "rstc_evdn";
+		status = "okay";
 	};
 
 	mmc0: mmc@0xf8003b00 {
