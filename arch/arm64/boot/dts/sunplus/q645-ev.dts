@@ -84,7 +84,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8 uio_pdrv_genirq.of_id=generic-uio-ev";
 		stdout-path = "serial0:921600n8";
 	};
 
@@ -111,15 +111,15 @@
 			reg = <0x00 0x200000 0x00 0x200000>;
 		};
 
-		/* simple_fb reserver memory 0x4fc00000~0x50000000 total 4M */
+		/* simple_fb reserver memory 0x3fc00000~0x40000000 total 4M */
 		fb_reserve:fb {
 			no-map;
-			reg = <0x0 0x4fc00000 0x0 0x00400000>;
+			reg = <0x0 0x3fc00000 0x0 0x00400000>;
 		};
-		/* video_codec reserve memory 0x50000000~0x60000000 total 256M */
+		/* video_codec reserve memory 0x50000000~0x60000000 total 128M */
 		video_codec_reserve: vcodec {
 			no-map;
-			reg = <0x00 0x50000000 0x00 0x10000000>;
+			reg = <0x00 0x58000000 0x00 0x8000000>;
 		};
 		/* ethosn reserve memory 0x60000000~0x80000000 total 512M */
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
@@ -841,6 +841,23 @@
 			compatible = "ethosn-core";
 			status = "okay";
 		};
+	};
+
+	uioev: uio@f816e000 {
+		compatible = "generic-uio-ev";
+		reg = <0x0 0xf816e000 0x0 0x1000>,        /*   4KB */
+		      <0x0 0x50000000 0x0 0x08000000>,    /* 128MB */
+		      <0x0 0x40000000 0x0 0x10000000>;    /* 256MB */
+		reg-names = "arconnect",
+		            "ev_code_mem",
+		            "ev_shared_mem";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH >; /* IRQ number is 165 */
+		clocks = <&clkc EVDN>;
+		clock-names = "clk_evdn";
+		resets = <&rstc RST_EVDN>;
+		reset-names = "rstc_evdn";
+		status = "okay";
 	};
 
 	mmc0: mmc@f8003b00 {
