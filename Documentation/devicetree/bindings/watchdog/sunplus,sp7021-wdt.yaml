@@ -2,10 +2,10 @@
 # Copyright (C) Sunplus Co., Ltd. 2021
 %YAML 1.2
 ---
-$id: "http://devicetree.org/schemas/watchdog/sunplus,wdt.yaml#"
-$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+$id: http://devicetree.org/schemas/watchdog/sunplus,sp7021-wdt.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
 
-title: Sunplus SoCs Watchdog timer
+title: Sunplus SoCs Watchdog Device Tree Bindings
 
 maintainers:
   - XianTao Hu <xt.hu@cqplus1.com>
@@ -15,12 +15,12 @@ allOf:
 
 properties:
   compatible:
-    enum:
-      - sunplus,sp7021-wdt
-      - sunplus,q645-wdt
+    const: sunplus,sp7021-wdt
 
   reg:
-    maxItems: 2
+    items:
+      - description: Base address and length of the watchdog registers
+      - description: Base address and length of the miscellaneous control registers
 
   clocks:
     maxItems: 1
@@ -28,22 +28,20 @@ properties:
   resets:
     maxItems: 1
 
-additionalProperties: false
-
 required:
   - compatible
   - reg
   - clocks
   - resets
 
+additionalProperties: false
+
 examples:
   - |
-    #include <dt-bindings/clock/sp-sp7021.h>
-    #include <dt-bindings/reset/sp-sp7021.h>
     watchdog: watchdog@9c000630 {
         compatible = "sunplus,sp7021-wdt";
         reg = <0x9c000630 0x08>, <0x9C000274 0x04>;
-        clocks = <&clkc STC0>;
-        resets = <&rstc RST_STC0>;
+        clocks = <&clkc 0x24>;
+        resets = <&rstc 0x14>;
     };
 ...

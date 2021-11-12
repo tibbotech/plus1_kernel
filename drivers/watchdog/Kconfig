@@ -1021,7 +1021,7 @@ config VISCONTI_WATCHDOG
 
 config SUNPLUS_WATCHDOG
 	tristate "Sunplus watchdog support"
-	depends on SOC_SP7021 || SOC_Q645
+	depends on ARCH_SUNPLUS || COMPILE_TEST
 	select WATCHDOG_CORE
 	help
 	  Say Y here to include support for the watchdog timer
