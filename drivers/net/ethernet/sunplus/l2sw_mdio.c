@@ -15,9 +15,9 @@ static int mii_write(struct mii_bus *bus, int phy_id, int regnum, u16 val)
 	return mdio_write(phy_id, regnum, val);
 }
 
-u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
+u32 mdio_init(struct platform_device *pdev, struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(net_dev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 	struct mii_bus *mii_bus;
 	struct device_node *mdio_node;
 	u32 ret;
@@ -47,9 +47,9 @@ u32 mdio_init(struct platform_device *pdev, struct net_device *net_dev)
 	return ret;
 }
 
-void mdio_remove(struct net_device *net_dev)
+void mdio_remove(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(net_dev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 
 	if (mac->comm->mii_bus != NULL) {
 		mdiobus_unregister(mac->comm->mii_bus);
@@ -58,25 +58,25 @@ void mdio_remove(struct net_device *net_dev)
 	}
 }
 
-static void mii_linkchange(struct net_device *netdev)
+static void mii_linkchange(struct net_device *ndev)
 {
 }
 
-int mac_phy_probe(struct net_device *netdev)
+int mac_phy_probe(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(netdev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 	struct phy_device *phydev;
 	int i;
 
-	phydev = of_phy_connect(mac->net_dev, mac->comm->phy1_node, mii_linkchange,
+	phydev = of_phy_connect(mac->ndev, mac->comm->phy1_node, mii_linkchange,
 				0, PHY_INTERFACE_MODE_RGMII_ID);
 	if (!phydev) {
-		pr_err(" \"%s\" has no phy found\n", netdev->name);
+		pr_err(" \"%s\" has no phy found\n", ndev->name);
 		return -1;
 	}
 
 	if (mac->comm->phy2_node) {
-		of_phy_connect(mac->net_dev, mac->comm->phy2_node, mii_linkchange,
+		of_phy_connect(mac->ndev, mac->comm->phy2_node, mii_linkchange,
 			       0, PHY_INTERFACE_MODE_RGMII_ID);
 	}
 
@@ -96,9 +96,9 @@ int mac_phy_probe(struct net_device *netdev)
 	return 0;
 }
 
-void mac_phy_start(struct net_device *netdev)
+void mac_phy_start(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(netdev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 
 #ifdef PHY_RUN_STATEMACHINE
 	phy_start(mac->comm->phy_dev);
@@ -114,7 +114,7 @@ void mac_phy_start(struct net_device *netdev)
 		}
 	}
 
-	phydev = phy_attach(netdev, dev_name(&phydev->dev), 0, PHY_INTERFACE_MODE_GMII);
+	phydev = phy_attach(ndev, dev_name(&phydev->dev), 0, PHY_INTERFACE_MODE_GMII);
 	if (IS_ERR(phydev)) {
 		pr_err(" Failed to attach phy!\n");
 		return;
@@ -129,9 +129,9 @@ void mac_phy_start(struct net_device *netdev)
 #endif
 }
 
-void mac_phy_stop(struct net_device *netdev)
+void mac_phy_stop(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(netdev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 
 	if (mac->comm->phy_dev != NULL) {
 #ifdef PHY_RUN_STATEMACHINE
@@ -143,9 +143,9 @@ void mac_phy_stop(struct net_device *netdev)
 	}
 }
 
-void mac_phy_remove(struct net_device *netdev)
+void mac_phy_remove(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(netdev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 
 	if (mac->comm->phy_dev != NULL) {
 #ifdef PHY_RUN_STATEMACHINE

@@ -274,8 +274,8 @@ void mac_switch_mode(struct l2sw_mac *mac)
 		mac->to_vlan = 0x1;	// vlan group: 0
 		mac->vlan_id = 0x0;	// vlan group: 0
 
-		if (mac->next_netdev) {
-			struct l2sw_mac *mac2 = netdev_priv(mac->next_netdev);
+		if (mac->next_ndev) {
+			struct l2sw_mac *mac2 = netdev_priv(mac->next_ndev);
 
 			mac2->cpu_port = 0x1;	// soc0
 			mac2->lan_port = 0x2;	// forward to port 1
@@ -337,21 +337,21 @@ void mac_enable_port_sa_learning(void)
 	HWREG_W(port_cntl1, reg & (~(0x3 << 8)));
 }
 
-void rx_mode_set(struct net_device *net_dev)
+void rx_mode_set(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(net_dev);
+	struct l2sw_mac *mac = netdev_priv(ndev);
 	u32 mask, reg, rx_mode;
 
-	pr_debug(" net_dev->flags = %08x\n", net_dev->flags);
+	pr_debug(" ndev->flags = %08x\n", ndev->flags);
 
 	mask = (mac->lan_port << 2) | (mac->lan_port << 0);
 	reg = HWREG_R(cpu_cntl);
 
-	if (net_dev->flags & IFF_PROMISC) {	/* Set promiscuous mode */
+	if (ndev->flags & IFF_PROMISC) {	/* Set promiscuous mode */
 		// Allow MC and unknown UC packets
 		rx_mode = (mac->lan_port << 2) | (mac->lan_port << 0);
-	} else if ((!netdev_mc_empty(net_dev) && (net_dev->flags & IFF_MULTICAST)) ||
-		   (net_dev->flags & IFF_ALLMULTI)) {
+	} else if ((!netdev_mc_empty(ndev) && (ndev->flags & IFF_MULTICAST)) ||
+		   (ndev->flags & IFF_ALLMULTI)) {
 		// Allow MC packets
 		rx_mode = (mac->lan_port << 2);
 	} else {

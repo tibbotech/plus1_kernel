@@ -23,18 +23,18 @@ bool mac_init(struct l2sw_mac *mac)
 void mac_soft_reset(struct l2sw_mac *mac)
 {
 	u32 i;
-	struct net_device *net_dev2;
+	struct net_device *ndev2;
 
-	if (netif_carrier_ok(mac->net_dev)) {
-		netif_carrier_off(mac->net_dev);
-		netif_stop_queue(mac->net_dev);
+	if (netif_carrier_ok(mac->ndev)) {
+		netif_carrier_off(mac->ndev);
+		netif_stop_queue(mac->ndev);
 	}
 
-	net_dev2 = mac->next_netdev;
-	if (net_dev2) {
-		if (netif_carrier_ok(net_dev2)) {
-			netif_carrier_off(net_dev2);
-			netif_stop_queue(net_dev2);
+	ndev2 = mac->next_ndev;
+	if (ndev2) {
+		if (netif_carrier_ok(ndev2)) {
+			netif_carrier_off(ndev2);
+			netif_stop_queue(ndev2);
 		}
 	}
 
@@ -56,15 +56,15 @@ void mac_soft_reset(struct l2sw_mac *mac)
 	mac_hw_start(mac);
 	mb();			// make sure settings are effective.
 
-	if (!netif_carrier_ok(mac->net_dev)) {
-		netif_carrier_on(mac->net_dev);
-		netif_start_queue(mac->net_dev);
+	if (!netif_carrier_ok(mac->ndev)) {
+		netif_carrier_on(mac->ndev);
+		netif_start_queue(mac->ndev);
 	}
 
-	if (net_dev2) {
-		if (!netif_carrier_ok(net_dev2)) {
-			netif_carrier_on(net_dev2);
-			netif_start_queue(net_dev2);
+	if (ndev2) {
+		if (!netif_carrier_ok(ndev2)) {
+			netif_carrier_on(ndev2);
+			netif_start_queue(ndev2);
 		}
 	}
 }

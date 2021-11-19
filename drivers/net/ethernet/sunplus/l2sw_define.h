@@ -172,7 +172,7 @@ struct skb_info {
 };
 
 struct l2sw_common {
-	struct net_device *net_dev;
+	struct net_device *ndev;
 	struct platform_device *pdev;
 	int dual_nic;
 	int sa_learning;
@@ -222,9 +222,9 @@ struct l2sw_common {
 
 struct l2sw_mac {
 	struct platform_device *pdev;
-	struct net_device *net_dev;
+	struct net_device *ndev;
 	struct l2sw_common *comm;
-	struct net_device *next_netdev;
+	struct net_device *next_ndev;
 
 	struct net_device_stats dev_stats;
 

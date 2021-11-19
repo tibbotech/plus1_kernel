@@ -11,20 +11,20 @@
 static inline void port_status_change(struct l2sw_mac *mac)
 {
 	u32 reg;
-	struct net_device *net_dev = (struct net_device *)mac->net_dev;
+	struct net_device *ndev = (struct net_device *)mac->ndev;
 
 	reg = read_port_ability();
 	if (mac->comm->dual_nic) {
-		if (!netif_carrier_ok(net_dev) && (reg & PORT_ABILITY_LINK_ST_P0)) {
-			netif_carrier_on(net_dev);
-			netif_start_queue(net_dev);
-		} else if (netif_carrier_ok(net_dev) && !(reg & PORT_ABILITY_LINK_ST_P0)) {
-			netif_carrier_off(net_dev);
-			netif_stop_queue(net_dev);
+		if (!netif_carrier_ok(ndev) && (reg & PORT_ABILITY_LINK_ST_P0)) {
+			netif_carrier_on(ndev);
+			netif_start_queue(ndev);
+		} else if (netif_carrier_ok(ndev) && !(reg & PORT_ABILITY_LINK_ST_P0)) {
+			netif_carrier_off(ndev);
+			netif_stop_queue(ndev);
 		}
 
-		if (mac->next_netdev) {
-			struct net_device *ndev2 = mac->next_netdev;
+		if (mac->next_ndev) {
+			struct net_device *ndev2 = mac->next_ndev;
 
 			if (!netif_carrier_ok(ndev2) && (reg & PORT_ABILITY_LINK_ST_P1)) {
 				netif_carrier_on(ndev2);
@@ -35,14 +35,14 @@ static inline void port_status_change(struct l2sw_mac *mac)
 			}
 		}
 	} else {
-		if (!netif_carrier_ok(net_dev) &&
+		if (!netif_carrier_ok(ndev) &&
 		    (reg & (PORT_ABILITY_LINK_ST_P1 | PORT_ABILITY_LINK_ST_P0))) {
-			netif_carrier_on(net_dev);
-			netif_start_queue(net_dev);
-		} else if (netif_carrier_ok(net_dev) &&
+			netif_carrier_on(ndev);
+			netif_start_queue(ndev);
+		} else if (netif_carrier_ok(ndev) &&
 		    !(reg & (PORT_ABILITY_LINK_ST_P1 | PORT_ABILITY_LINK_ST_P0))) {
-			netif_carrier_off(net_dev);
-			netif_stop_queue(net_dev);
+			netif_carrier_off(ndev);
+			netif_stop_queue(ndev);
 		}
 	}
 }
@@ -90,7 +90,7 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 				struct l2sw_mac *mac2;
 
 				ndev2_pkt = 1;
-				mac2 = (mac->next_netdev) ? netdev_priv(mac->next_netdev) : NULL;
+				mac2 = (mac->next_ndev) ? netdev_priv(mac->next_ndev) : NULL;
 				dev_stats = (mac2) ? &mac2->dev_stats : &mac->dev_stats;
 			} else {
 				ndev2_pkt = 0;
@@ -118,7 +118,7 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 				dev_stats->rx_dropped++;
 				goto NEXT;
 			}
-			new_skb->dev = mac->net_dev;
+			new_skb->dev = mac->ndev;
 
 			dma_unmap_single(&mac->pdev->dev, sinfo->mapping, comm->rx_desc_buff_size,
 					 DMA_FROM_DEVICE);
@@ -137,14 +137,14 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 			//print_packet(skb);
 
 			if (ndev2_pkt) {
-				struct net_device *netdev2 = mac->next_netdev;
+				struct net_device *netdev2 = mac->next_ndev;
 
 				if (netdev2) {
 					skb->protocol = eth_type_trans(skb, netdev2);
 					rx_skb(netdev_priv(netdev2), skb);
 				}
 			} else {
-				skb->protocol = eth_type_trans(skb, mac->net_dev);
+				skb->protocol = eth_type_trans(skb, mac->ndev);
 				rx_skb(mac, skb);
 			}
 
@@ -215,8 +215,8 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 			pr_err(" skb is null!\n");
 
 		smac = mac;
-		if ((mac->next_netdev) && ((cmd & TO_VLAN_MASK) == TO_VLAN_GROUP1))
-			smac = netdev_priv(mac->next_netdev);
+		if ((mac->next_ndev) && ((cmd & TO_VLAN_MASK) == TO_VLAN_GROUP1))
+			smac = netdev_priv(mac->next_ndev);
 
 		if (unlikely(cmd & (ERR_CODE))) {
 			//pr_err(" TX Error = %x\n", cmd);
@@ -239,12 +239,12 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 
 	comm->tx_done_pos = tx_done_pos;
 	if (!comm->tx_desc_full) {
-		if (netif_queue_stopped(mac->net_dev))
-			netif_wake_queue(mac->net_dev);
+		if (netif_queue_stopped(mac->ndev))
+			netif_wake_queue(mac->ndev);
 
-		if (mac->next_netdev) {
-			if (netif_queue_stopped(mac->next_netdev))
-				netif_wake_queue(mac->next_netdev);
+		if (mac->next_ndev) {
+			if (netif_queue_stopped(mac->next_ndev))
+				netif_wake_queue(mac->next_ndev);
 		}
 	}
 }
@@ -260,19 +260,19 @@ void tx_do_tasklet(unsigned long data)
 
 irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 {
-	struct net_device *net_dev;
+	struct net_device *ndev;
 	struct l2sw_mac *mac;
 	struct l2sw_common *comm;
 	u32 status;
 
 	//pr_info("[%s] IN\n", __func__);
-	net_dev = (struct net_device *)dev_id;
-	if (unlikely(net_dev == NULL)) {
-		pr_err(" net_dev is null!\n");
+	ndev = (struct net_device *)dev_id;
+	if (unlikely(ndev == NULL)) {
+		pr_err(" ndev is null!\n");
 		return -1;
 	}
 
-	mac = netdev_priv(net_dev);
+	mac = netdev_priv(ndev);
 	comm = mac->comm;
 
 	spin_lock(&comm->lock);
@@ -359,15 +359,15 @@ int l2sw_get_irq(struct platform_device *pdev, struct l2sw_common *comm)
 }
 
 int l2sw_request_irq(struct platform_device *pdev, struct l2sw_common *comm,
-		     struct net_device *net_dev)
+		     struct net_device *ndev)
 {
 	int rc;
 
 	rc = devm_request_irq(&pdev->dev, comm->irq, ethernet_interrupt, 0,
-			      net_dev->name, net_dev);
+			      ndev->name, ndev);
 	if (rc != 0) {
 		pr_err(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",
-		       net_dev->irq, net_dev->name, rc);
+		       ndev->irq, ndev->name, rc);
 	}
 	return rc;
 }

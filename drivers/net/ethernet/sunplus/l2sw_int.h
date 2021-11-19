@@ -16,6 +16,6 @@ int rx_poll(struct napi_struct *napi, int budget);
 irqreturn_t ethernet_interrupt(int irq, void *dev_id);
 int l2sw_get_irq(struct platform_device *pdev, struct l2sw_common *comm);
 int l2sw_request_irq(struct platform_device *pdev, struct l2sw_common *comm,
-		     struct net_device *net_dev);
+		     struct net_device *ndev);
 
 #endif

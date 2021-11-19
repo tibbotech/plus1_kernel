@@ -141,7 +141,7 @@ u32 rx_descs_init(struct l2sw_common *comm)
 			if (!skb)
 				goto MEM_ALLOC_FAIL;
 
-			skb->dev = comm->net_dev;
+			skb->dev = comm->ndev;
 			skb_reserve(skb, RX_OFFSET);	/* +data +tail */
 
 			rx_skbinfo[j].skb = skb;
