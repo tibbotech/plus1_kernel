@@ -8,8 +8,9 @@
 #include <linux/nvmem-consumer.h>
 #include "l2sw_driver.h"
 
+/* OUI of Sunplus Technology Co., Ltd. */
 static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {
-	0x88, 0x88, 0x88, 0x88, 0x88, 0x80
+	0xfc, 0x4b, 0xbc, 0x00, 0x00, 0x00
 };
 
 /*********************************************************************
@@ -310,42 +311,43 @@ static const struct net_device_ops netdev_ops = {
 	.ndo_get_stats = ethernet_get_stats,
 };
 
-char *sp7021_otp_read_mac(struct device *_d, ssize_t *_l, char *_name)
+char *sp7021_otp_read_mac(struct device *dev, ssize_t *len, char *name)
 {
-	char *ret = NULL;
-	struct nvmem_cell *c = nvmem_cell_get(_d, _name);
+	struct nvmem_cell *cell = nvmem_cell_get(dev, name);
+	char *ret;
 
-	if (IS_ERR_OR_NULL(c)) {
-		pr_err(" OTP %s read failure: %ld", _name, PTR_ERR(c));
+	if (IS_ERR_OR_NULL(cell)) {
+		pr_err(" OTP %s read failure: %ld", name, PTR_ERR(cell));
 		return NULL;
 	}
 
-	ret = nvmem_cell_read(c, _l);
-	nvmem_cell_put(c);
-	pr_debug(" %zd bytes are read from OTP %s.", *_l, _name);
+	ret = nvmem_cell_read(cell, len);
+	nvmem_cell_put(cell);
+	pr_debug(" %zd bytes are read from OTP %s.", *len, name);
 
 	return ret;
 }
 
 static void check_mac_vendor_id_and_convert(char *mac_addr)
 {
-	// Byte order of MAC address of some samples are reversed.
-	// Check vendor id and convert byte order if it is wrong.
+	/* Byte order of MAC address of some samples are reversed.
+	 * Check vendor id and convert byte order if it is wrong.
+	 */
 	if ((mac_addr[5] == 0xFC) && (mac_addr[4] == 0x4B) && (mac_addr[3] == 0xBC) &&
 	    ((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
 		char tmp;
 
-		// Swap mac_addr[0] and mac_addr[5]
+		/* Swap mac_addr[0] and mac_addr[5] */
 		tmp = mac_addr[0];
 		mac_addr[0] = mac_addr[5];
 		mac_addr[5] = tmp;
 
-		// Swap mac_addr[1] and mac_addr[4]
+		/* Swap mac_addr[1] and mac_addr[4] */
 		tmp = mac_addr[1];
 		mac_addr[1] = mac_addr[4];
 		mac_addr[4] = tmp;
 
-		// Swap mac_addr[2] and mac_addr[3]
+		/* Swap mac_addr[2] and mac_addr[3] */
 		tmp = mac_addr[2];
 		mac_addr[2] = mac_addr[3];
 		mac_addr[3] = tmp;
@@ -368,9 +370,11 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 
 	//pr_info("[%s] IN\n", __func__);
 
-	/* allocate the devices, and also allocate l2sw_mac, we can get it by netdev_priv() */
+	/* Allocate the devices, and also allocate l2sw_mac,
+	 * we can get it by netdev_priv().
+	 */
 	ndev = alloc_etherdev(sizeof(struct l2sw_mac));
-	if (ndev == NULL) {
+	if (!ndev) {
 		*r_ndev = NULL;
 		return -ENOMEM;
 	}
@@ -382,17 +386,17 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	mac->pdev = pdev;
 	mac->next_ndev = NULL;
 
-	// Get property 'mac-addr0' or 'mac-addr1' from dts.
+	/* Get property 'mac-addr0' or 'mac-addr1' from dts. */
 	otp_v = sp7021_otp_read_mac(&pdev->dev, &otp_l, m_addr_name);
 	if ((otp_l < 6) || IS_ERR_OR_NULL(otp_v)) {
 		pr_info(" OTP mac %s (len = %zd) is invalid, using default!\n",
 			m_addr_name, otp_l);
 		otp_l = 0;
 	} else {
-		// Check if mac-address is valid or not. If not, copy from default.
+		/* Check if mac-address is valid or not. If not, copy from default. */
 		memcpy(mac->mac_addr, otp_v, 6);
 
-		// Byte order of Some samples are reversed. Convert byte order here.
+		/* Byte order of Some samples are reversed. Convert byte order here. */
 		check_mac_vendor_id_and_convert(mac->mac_addr);
 
 		if (!is_valid_ether_addr(mac->mac_addr)) {
@@ -401,9 +405,12 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 			otp_l = 0;
 		}
 	}
+
 	if (otp_l != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
-		mac->mac_addr[5] += eth_no;
+		mac->mac_addr[3] = get_random_int() % 256;
+		mac->mac_addr[4] = get_random_int() % 256;
+		mac->mac_addr[5] = get_random_int() % 256;
 	}
 
 	pr_info(" HW Addr = %pM\n", mac->mac_addr);
@@ -411,7 +418,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	memcpy(ndev->dev_addr, mac->mac_addr, ETHERNET_MAC_ADDR_LEN);
 
 	ret = register_netdev(ndev);
-	if (ret != 0) {
+	if (ret) {
 		pr_err(" Failed to register net device \"%s\" (ret = %d)!\n", ndev->name, ret);
 		free_netdev(ndev);
 		*r_ndev = NULL;
