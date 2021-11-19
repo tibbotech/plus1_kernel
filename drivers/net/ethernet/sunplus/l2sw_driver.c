@@ -117,17 +117,18 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 {
 	struct l2sw_mac *mac = netdev_priv(ndev);
 	struct l2sw_common *comm = mac->comm;
+	struct skb_info *skbinfo;
+	struct mac_desc *txdesc;
+	unsigned long flags;
 	u32 tx_pos;
 	u32 cmd1;
 	u32 cmd2;
-	struct mac_desc *txdesc;
-	struct skb_info *skbinfo;
-	unsigned long flags;
 
 	//pr_info("[%s] IN\n", __func__);
 	//print_packet(skb);
 
-	if (unlikely(comm->tx_desc_full == 1)) {	/* no desc left, wait for tx interrupt */
+	if (unlikely(comm->tx_desc_full == 1)) {
+		/* No TX descriptors left. Wait for tx interrupt. */
 		pr_err(" TX descriptor queue full when xmit!\n");
 		return NETDEV_TX_BUSY;
 	}
@@ -136,13 +137,15 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	/* if skb size shorter than 60, fill it with '\0' */
 	if (unlikely(skb->len < ETH_ZLEN)) {
 		if (skb_tailroom(skb) >= (ETH_ZLEN - skb->len)) {
-			memset(__skb_put(skb, ETH_ZLEN - skb->len), '\0', ETH_ZLEN - skb->len);
+			memset(__skb_put(skb, ETH_ZLEN - skb->len), '\0',
+			       ETH_ZLEN - skb->len);
 		} else {
 			struct sk_buff *old_skb = skb;
 
 			skb = dev_alloc_skb(ETH_ZLEN + TX_OFFSET);
 			if (skb) {
-				memset(skb->data + old_skb->len, '\0', ETH_ZLEN - old_skb->len);
+				memset(skb->data + old_skb->len, '\0',
+				       ETH_ZLEN - old_skb->len);
 				memcpy(skb->data, old_skb->data, old_skb->len);
 				skb_put(skb, ETH_ZLEN);	/* add data to an sk_buff */
 				dev_kfree_skb_irq(old_skb);
@@ -152,13 +155,22 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		}
 	}
 
-	spin_lock_irqsave(&mac->comm->lock, flags);
+	spin_lock_irqsave(&comm->lock, flags);
 	tx_pos = comm->tx_pos;
 	txdesc = &comm->tx_desc[tx_pos];
 	skbinfo = &comm->tx_temp_skb_info[tx_pos];
 	skbinfo->len = skb->len;
 	skbinfo->skb = skb;
-	skbinfo->mapping = dma_map_single(&mac->pdev->dev, skb->data, skb->len, DMA_TO_DEVICE);
+	skbinfo->mapping = dma_map_single(&comm->pdev->dev, skb->data,
+					  skb->len, DMA_TO_DEVICE);
+	if (dma_mapping_error(&comm->pdev->dev, skbinfo->mapping)) {
+		ndev->stats.tx_errors++;
+		skbinfo->mapping = 0;
+		dev_kfree_skb_irq(skb);
+		skbinfo->skb = NULL;
+		goto xmit_drop;
+	}
+
 	cmd1 = (OWN_BIT | FS_BIT | LS_BIT | (mac->to_vlan << 12) | (skb->len & LEN_MASK));
 	cmd2 = skb->len & LEN_MASK;
 
@@ -168,7 +180,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 
 	txdesc->addr1 = skbinfo->mapping;
 	txdesc->cmd2 = cmd2;
-	wmb();			// Set OWN_BIT after other fields of descriptor are effective.
+	wmb();	/* Set OWN_BIT after other fields of descriptor are effective. */
 	txdesc->cmd1 = cmd1;
 
 	NEXT_TX(tx_pos);
@@ -184,7 +196,8 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	/* trigger gmac to transmit */
 	tx_trigger();
 
-	spin_unlock_irqrestore(&mac->comm->lock, flags);
+xmit_drop:
+	spin_unlock_irqrestore(&comm->lock, flags);
 	return NETDEV_TX_OK;
 }
 
@@ -273,19 +286,6 @@ static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd
 	return 0;
 }
 
-static int ethernet_change_mtu(struct net_device *ndev, int new_mtu)
-{
-	if (netif_running(ndev))
-		return -EBUSY;
-
-	if (new_mtu < 68 || new_mtu > ETH_DATA_LEN)
-		return -EINVAL;
-
-	ndev->mtu = new_mtu;
-
-	return 0;
-}
-
 static void ethernet_tx_timeout(struct net_device *ndev, unsigned int txqueue)
 {
 }
@@ -306,7 +306,6 @@ static const struct net_device_ops netdev_ops = {
 	.ndo_set_rx_mode = ethernet_set_rx_mode,
 	.ndo_set_mac_address = ethernet_set_mac_address,
 	.ndo_do_ioctl = ethernet_do_ioctl,
-	.ndo_change_mtu = ethernet_change_mtu,
 	.ndo_tx_timeout = ethernet_tx_timeout,
 	.ndo_get_stats = ethernet_get_stats,
 };

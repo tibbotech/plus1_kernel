@@ -10,8 +10,8 @@
 
 static inline void port_status_change(struct l2sw_mac *mac)
 {
-	u32 reg;
 	struct net_device *ndev = (struct net_device *)mac->ndev;
+	u32 reg;
 
 	reg = read_port_ability();
 	if (mac->comm->dual_nic) {
@@ -101,38 +101,47 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 			if (unlikely((cmd & ERR_CODE) || (pkg_len < 64))) {
 				dev_stats->rx_length_errors++;
 				dev_stats->rx_dropped++;
-				goto NEXT;
+				goto spl2sw_rx_poll_next;
 			}
 
 			if (unlikely(cmd & RX_IP_CHKSUM_BIT)) {
 				//pr_info(" RX IP Checksum error!\n");
 				dev_stats->rx_crc_errors++;
 				dev_stats->rx_dropped++;
-				goto NEXT;
+				goto spl2sw_rx_poll_next;
 			}
 
-			/* allocate an skbuff for receiving, and it's an inline function */
+			/* Allocate an skbuff for receiving. */
 			new_skb = __dev_alloc_skb(comm->rx_desc_buff_size + RX_OFFSET,
 						  GFP_ATOMIC | GFP_DMA);
-			if (unlikely(new_skb == NULL)) {
-				dev_stats->rx_dropped++;
-				goto NEXT;
+			if (unlikely(!new_skb)) {
+				dev_stats->rx_errors++;
+				desc->cmd2 = (rx_pos == comm->rx_desc_num[queue] - 1) ?
+					     EOR_BIT : 0;
+				goto spl2sw_rx_poll_err;
 			}
 			new_skb->dev = mac->ndev;
 
-			dma_unmap_single(&mac->pdev->dev, sinfo->mapping, comm->rx_desc_buff_size,
-					 DMA_FROM_DEVICE);
+			dma_unmap_single(&comm->pdev->dev, sinfo->mapping,
+					 comm->rx_desc_buff_size, DMA_FROM_DEVICE);
 
 			skb = sinfo->skb;
 			skb->ip_summed = CHECKSUM_NONE;
 
-			/*skb_put will judge if tail exceeds end, but __skb_put won't */
+			/* skb_put will judge if tail exceeds end, but __skb_put won't. */
 			__skb_put(skb, (pkg_len - 4 > comm->rx_desc_buff_size) ?
 				       comm->rx_desc_buff_size : pkg_len - 4);
 
-			sinfo->mapping = dma_map_single(&mac->pdev->dev, new_skb->data,
+			sinfo->mapping = dma_map_single(&comm->pdev->dev, new_skb->data,
 							comm->rx_desc_buff_size,
 							DMA_FROM_DEVICE);
+			if (dma_mapping_error(&comm->pdev->dev, sinfo->mapping)) {
+				dev_kfree_skb(new_skb);
+				dev_stats->rx_errors++;
+				desc->cmd2 = (rx_pos == comm->rx_desc_num[queue] - 1) ?
+					     EOR_BIT : 0;
+				goto spl2sw_rx_poll_err;
+			}
 			sinfo->skb = new_skb;
 			//print_packet(skb);
 
@@ -150,22 +159,25 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 
 			desc->addr1 = sinfo->mapping;
 
-NEXT:
+spl2sw_rx_poll_next:
 			desc->cmd2 = (rx_pos == comm->rx_desc_num[queue] - 1) ?
 				     EOR_BIT | MAC_RX_LEN_MAX : MAC_RX_LEN_MAX;
-			wmb();	// Set OWN_BIT after other fields of descriptor are effective.
-			desc->cmd1 = OWN_BIT | (comm->rx_desc_buff_size & LEN_MASK);
+spl2sw_rx_poll_err:
+			wmb();	/* Set OWN_BIT after other fields of descriptor are effective. */
+			desc->cmd1 = OWN_BIT;
 
 			NEXT_RX(queue, rx_pos);
 
-			// If there are packets in high-priority queue, stop processing low-priority queue.
+			/* If there are packets in high-priority queue,
+			 * stop processing low-priority queue.
+			 */
 			if ((queue == 1) && ((h_desc->cmd1 & OWN_BIT) == 0))
 				break;
 		}
 
 		comm->rx_pos[queue] = rx_pos;
 
-		// Save pointer to last rx descriptor of high-priority queue.
+		/* Save pointer to last rx descriptor of high-priority queue. */
 		if (queue == 0)
 			h_desc = comm->rx_desc[queue] + rx_pos;
 	}

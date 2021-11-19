@@ -18,12 +18,12 @@ void descs_clean(struct l2sw_common *comm);
 
 void descs_free(struct l2sw_common *comm);
 
-u32 tx_descs_init(struct l2sw_common *comm);
+void tx_descs_init(struct l2sw_common *comm);
 
-u32 rx_descs_init(struct l2sw_common *comm);
+int  rx_descs_init(struct l2sw_common *comm);
 
-u32 descs_alloc(struct l2sw_common *comm);
+int  descs_alloc(struct l2sw_common *comm);
 
-u32 descs_init(struct l2sw_common *comm);
+int  descs_init(struct l2sw_common *comm);
 
 #endif
