@@ -507,6 +507,8 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				mac_hw_stop(mac);
 
 				mac2 = netdev_priv(ndev2);
+				mac_hw_addr_del(mac2);
+				//mac_hw_addr_print();
 
 				// unregister and free net device.
 				unregister_netdev(ndev2);
@@ -517,8 +519,6 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
 				rx_mode_set(ndev);
-				mac_hw_addr_del(mac2);
-				//mac_hw_addr_print();
 
 				// If eth0 is up, turn on lan 0 and 1 when switching to daisy-chain mode.
 				if (comm->enable & 0x1)
@@ -610,12 +610,10 @@ static int l2sw_probe(struct platform_device *pdev)
 	if (platform_get_drvdata(pdev) != NULL)
 		return -ENODEV;
 
-	// Allocate memory for l2sw 'common' area.
-	comm = kmalloc(sizeof(struct l2sw_common), GFP_KERNEL);
-	if (comm == NULL)
+	/* Allocate memory for 'l2sw_common' area. */
+	comm = devm_kzalloc(&pdev->dev, sizeof(*comm), GFP_KERNEL);
+	if (!comm)
 		return -ENOMEM;
-	pr_debug(" comm = %p\n", comm);
-	memset(comm, '\0', sizeof(struct l2sw_common));
 	comm->pdev = pdev;
 
 	/*
@@ -876,8 +874,6 @@ static int l2sw_remove(struct platform_device *pdev)
 
 	clk_disable(mac->comm->clk);
 
-	// Free 'common' area.
-	kfree(mac->comm);
 	return 0;
 }
 
