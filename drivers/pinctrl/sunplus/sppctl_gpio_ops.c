@@ -314,7 +314,7 @@ int sppctlgpio_f_scf(struct gpio_chip *_c, unsigned int _n, unsigned long _conf)
 
 	case PIN_CONFIG_PERSIST_STATE:
 		KDBG(_c->parent, "f_scf(%03d,%lX) not support pinconf:%d\n", _n, _conf, cp);
-		ret = -EOPNOTSUPP;
+		ret = -ENOTSUPP;
 		break;
 
 	default:

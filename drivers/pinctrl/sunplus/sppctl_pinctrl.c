@@ -53,8 +53,8 @@ int stpctl_c_p_get(struct pinctrl_dev *_pd, unsigned int _pin, unsigned long *_c
 		break;
 
 	default:
-		//KINF(_pd->dev, "%s(%d) skipping:x%X\n", __FUNCTION__, _pin, param);
-		return -EOPNOTSUPP;
+		//KINF(_pd->dev, "%s(%d) skipping:x%X\n", __func__, _pin, param);
+		return -ENOTSUPP;
 	}
 	*_cfg = pinconf_to_config_packed(param, arg);
 
@@ -103,7 +103,7 @@ int stpctl_c_p_set(struct pinctrl_dev *_pd, unsigned int _pin, unsigned long *_c
 
 int stpctl_c_g_get(struct pinctrl_dev *_pd, unsigned int _gid, unsigned long *_config)
 {
-	// KINF(_pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
+	// KINF(_pd->dev, "%s(%d)\n", __func__, _gid);
 	// FIXME: add data
 	return 0;
 }
@@ -111,7 +111,7 @@ int stpctl_c_g_get(struct pinctrl_dev *_pd, unsigned int _gid, unsigned long *_c
 int stpctl_c_g_set(struct pinctrl_dev *_pd, unsigned int _gid, unsigned long *_configs,
 		   unsigned int _num_configs)
 {
-	// KINF(_pd->dev, "%s(%d,,%d)\n", __FUNCTION__, _gid, _num_configs);
+	// KINF(_pd->dev, "%s(%d,,%d)\n", __func__, _gid, _num_configs);
 	// FIXME: delete ?
 	return 0;
 }
@@ -119,19 +119,19 @@ int stpctl_c_g_set(struct pinctrl_dev *_pd, unsigned int _gid, unsigned long *_c
 #ifdef CONFIG_DEBUG_FS
 void stpctl_c_d_show(struct pinctrl_dev *_pd, struct seq_file *s, unsigned int _off)
 {
-	// KINF(_pd->dev, "%s(%d)\n", __FUNCTION__, _off);
+	// KINF(_pd->dev, "%s(%d)\n", __func__, _off);
 	seq_printf(s, " %s", dev_name(_pd->dev));
 }
 
 void stpctl_c_d_group_show(struct pinctrl_dev *_pd, struct seq_file *s, unsigned int _gid)
 {
 	// group: freescale/pinctrl-imx.c, 448
-	// KINF(_pd->dev, "%s(%d)\n", __FUNCTION__, _gid);
+	// KINF(_pd->dev, "%s(%d)\n", __func__, _gid);
 }
 
 void stpctl_c_d_config_show(struct pinctrl_dev *_pd, struct seq_file *s, unsigned long _config)
 {
-	// KINF(_pd->dev, "%s(%ld)\n", __FUNCTION__, _config);
+	// KINF(_pd->dev, "%s(%ld)\n", __func__, _config);
 }
 #else
 #define stpctl_c_d_show NULL
@@ -491,7 +491,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 
 void stpctl_o_mfre(struct pinctrl_dev *_pd, struct pinctrl_map *_map, unsigned int num_maps)
 {
-	//KINF(_pd->dev, "%s(%d)\n", __FUNCTION__, num_maps);
+	//KINF(_pd->dev, "%s(%d)\n", __func__, num_maps);
 	// FIXME: test
 	pinctrl_utils_free_map(_pd, _map, num_maps);
 }
