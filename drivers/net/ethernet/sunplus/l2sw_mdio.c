@@ -4,6 +4,48 @@
  */
 
 #include "l2sw_mdio.h"
+#include "l2sw_register.h"
+
+#define MDIO_READ_CMD   0x02
+#define MDIO_WRITE_CMD  0x01
+
+static int mdio_access(struct l2sw_mac *mac, u8 op_cd, u8 phy_addr, u8 reg_addr, u32 wdata)
+{
+	struct l2sw_common *comm = mac->comm;
+	u32 val, ret;
+
+	writel((wdata << 16) | (op_cd << 13) | (reg_addr << 8) | phy_addr,
+	       comm->l2sw_reg_base + L2SW_PHY_CNTL_REG0);
+
+	ret = read_poll_timeout(readl, val, val & op_cd, 10, 1000, 1,
+				comm->l2sw_reg_base + L2SW_PHY_CNTL_REG1);
+	if (ret == 0)
+		return val >> 16;
+	else
+		return ret;
+}
+
+int mdio_read(struct l2sw_mac *mac, int phy_id, int regnum)
+{
+	int ret;
+
+	ret = mdio_access(mac, MDIO_READ_CMD, phy_id, regnum, 0);
+	if (ret < 0)
+		return -EIO;
+
+	return ret;
+}
+
+int mdio_write(struct l2sw_mac *mac, int phy_id, int regnum, u16 val)
+{
+	int ret;
+
+	ret = mdio_access(mac, MDIO_WRITE_CMD, phy_id, regnum, val);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
+}
 
 static int mii_read(struct mii_bus *bus, int phy_id, int regnum)
 {
@@ -157,4 +199,17 @@ void mac_phy_remove(struct net_device *ndev)
 #endif
 		mac->comm->phy_dev = NULL;
 	}
+}
+
+int phy_cfg(struct l2sw_mac *mac)
+{
+	// Bug workaround:
+	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
+	// to the bit to decide to enable or disable flow-control.
+	mdio_write(mac, mac->comm->phy1_addr, 4,
+		   mdio_read(mac, mac->comm->phy1_addr, 4) | (1 << 10));
+	mdio_write(mac, mac->comm->phy2_addr, 4,
+		   mdio_read(mac, mac->comm->phy2_addr, 4) | (1 << 10));
+
+	return 0;
 }

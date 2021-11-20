@@ -7,6 +7,7 @@
 #include <linux/reset.h>
 #include <linux/nvmem-consumer.h>
 #include "l2sw_driver.h"
+#include "l2sw_register.h"
 
 /* OUI of Sunplus Technology Co., Ltd. */
 static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {
@@ -194,7 +195,7 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 	wmb();	/* make sure settings are effective. */
 
 	/* trigger gmac to transmit */
-	tx_trigger(mac);
+	writel((0x1 << 1), comm->l2sw_reg_base + L2SW_CPU_TX_TRIG);
 
 xmit_drop:
 	spin_unlock_irqrestore(&comm->lock, flags);
@@ -209,7 +210,7 @@ static void ethernet_set_rx_mode(struct net_device *ndev)
 		unsigned long flags;
 
 		spin_lock_irqsave(&comm->ioctl_lock, flags);
-		rx_mode_set(ndev);
+		mac_rx_mode_set(mac);
 		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 	}
 }
@@ -459,7 +460,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			mac_disable_port_sa_learning(mac);
 			mac_addr_table_del_all(mac);
 			mac_switch_mode(mac);
-			rx_mode_set(ndev);
+			mac_rx_mode_set(mac);
 			//mac_hw_addr_print(mac);
 
 			init_netdev(mac->pdev, 1, &ndev2);	// Initialize the 2nd net device (eth1)
@@ -470,7 +471,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				ndev2->irq = comm->irq;
 
 				mac_switch_mode(mac);
-				rx_mode_set(ndev2);
+				mac_rx_mode_set(mac2);
 				mac_hw_addr_set(mac2);
 				//mac_hw_addr_print();
 			}
@@ -517,7 +518,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 
 				comm->dual_nic = 0;
 				mac_switch_mode(mac);
-				rx_mode_set(ndev);
+				mac_rx_mode_set(mac);
 
 				// If eth0 is up, turn on lan 0 and 1 when switching to daisy-chain mode.
 				if (comm->enable & 0x1)
@@ -731,7 +732,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		pr_info(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
 	}
 
-	l2sw_enable_port(mac);
+	mac_enable_port(mac);
 
 #ifndef ZEBU_XTOR
 	if (comm->phy1_node) {
@@ -788,7 +789,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		mac_enable_port_sa_learning(mac);
 	else
 		mac_disable_port_sa_learning(mac);
-	rx_mode_set(ndev);
+	mac_rx_mode_set(mac);
 	//mac_hw_addr_print(mac);
 
 	if (comm->dual_nic) {
@@ -803,7 +804,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		pr_debug(" ndev = %p, mac = %p, comm = %p\n", ndev2, mac2, mac2->comm);
 
 		mac_switch_mode(mac);
-		rx_mode_set(ndev2);
+		mac_rx_mode_set(mac2);
 		mac_hw_addr_set(mac2);	// Set MAC address for the second net device.
 		//mac_hw_addr_print(mac);
 	}

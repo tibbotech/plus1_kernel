@@ -8,7 +8,6 @@
 
 #include "l2sw_define.h"
 #include "l2sw_register.h"
-#include "l2sw_hal.h"
 #include "l2sw_int.h"
 #include "l2sw_mdio.h"
 #include "l2sw_mac.h"
