@@ -11,19 +11,17 @@ bool mac_init(struct l2sw_mac *mac)
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++)
 		mac->comm->rx_pos[i] = 0;
-	mb();			// make sure settings are effective.
+	mb();	/* make sure settings are effective. */
 
-	//mac_hw_reset(mac);
 	mac_hw_init(mac);
-	mb();			// make sure settings are effective.
 
 	return 1;
 }
 
 void mac_soft_reset(struct l2sw_mac *mac)
 {
-	u32 i;
 	struct net_device *ndev2;
+	u32 i;
 
 	if (netif_carrier_ok(mac->ndev)) {
 		netif_carrier_off(mac->ndev);
@@ -38,9 +36,7 @@ void mac_soft_reset(struct l2sw_mac *mac)
 		}
 	}
 
-	mac_hw_reset(mac);
 	mac_hw_stop(mac);
-	mb();			// make sure settings are effective.
 
 	//descs_clean(mac->comm);
 	rx_descs_flush(mac->comm);
@@ -50,11 +46,10 @@ void mac_soft_reset(struct l2sw_mac *mac)
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++)
 		mac->comm->rx_pos[i] = 0;
-	mb();			// make sure settings are effective.
+	mb();	/* make sure settings are effective. */
 
 	mac_hw_init(mac);
 	mac_hw_start(mac);
-	mb();			// make sure settings are effective.
 
 	if (!netif_carrier_ok(mac->ndev)) {
 		netif_carrier_on(mac->ndev);

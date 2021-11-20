@@ -5,54 +5,27 @@
 
 #include "l2sw_hal.h"
 
-static struct l2sw_reg *l2sw_reg_base;
-static struct moon5_reg *moon5_reg_base;
-
-int l2sw_reg_base_set(void __iomem *baseaddr)
-{
-	l2sw_reg_base = (struct l2sw_reg *)baseaddr;
-	pr_debug(" l2sw_reg_base = %p\n", l2sw_reg_base);
-
-	if (l2sw_reg_base == NULL)
-		return -1;
-
-	return 0;
-}
-
-int moon5_reg_base_set(void __iomem *baseaddr)
-{
-	moon5_reg_base = (struct moon5_reg *)baseaddr;
-	pr_debug(" moon5_reg_base = %p\n", moon5_reg_base);
-
-	if (moon5_reg_base == NULL)
-		return -1;
-
-	return 0;
-}
-
 void mac_hw_stop(struct l2sw_mac *mac)
 {
 	struct l2sw_common *comm = mac->comm;
 	u32 reg, disable;
 
 	if (comm->enable == 0) {
-		HWREG_W(sw_int_mask_0, 0xffffffff);
-		HWREG_W(sw_int_status_0, 0xffffffff & (~MAC_INT_PORT_ST_CHG));
+		writel(0xffffffff, comm->l2sw_reg_base + L2SW_SW_INT_MASK_0);
+		writel(0xffffffff & (~MAC_INT_PORT_ST_CHG),
+		       comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0);
 
-		reg = HWREG_R(cpu_cntl);
-		HWREG_W(cpu_cntl, (0x3 << 6) | reg);	// Disable cpu 0 and cpu 1.
+		// Disable cpu 0 and cpu 1.
+		reg = readl(comm->l2sw_reg_base + L2SW_CPU_CNTL);
+		writel((0x3 << 6) | reg, comm->l2sw_reg_base + L2SW_CPU_CNTL);
 	}
 
 	if (comm->dual_nic) {
+		// Disable lan 0 and lan 1.
 		disable = ((~comm->enable) & 0x3) << 24;
-		reg = HWREG_R(port_cntl0);
-		HWREG_W(port_cntl0, disable | reg);	// Disable lan 0 and lan 1.
-		wmb();		// make sure settings are effective.
+		reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0);
+		writel(disable | reg, comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 	}
-}
-
-void mac_hw_reset(struct l2sw_mac *mac)
-{
 }
 
 void mac_hw_start(struct l2sw_mac *mac)
@@ -60,81 +33,90 @@ void mac_hw_start(struct l2sw_mac *mac)
 	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	//enable cpu port 0 (6) & port 0 crc padding (8)
-	reg = HWREG_R(cpu_cntl);
-	HWREG_W(cpu_cntl, (reg & (~(0x1 << 6))) | (0x1 << 8));
-	wmb();			// make sure settings are effective.
+	/* Enable cpu port 0 (6) & port 0 crc padding (8) */
+	reg = readl(comm->l2sw_reg_base + L2SW_CPU_CNTL);
+	writel((reg & (~(0x1 << 6))) | (0x1 << 8), comm->l2sw_reg_base + L2SW_CPU_CNTL);
 
-	//enable lan 0 & lan 1
-	reg = HWREG_R(port_cntl0);
-	HWREG_W(port_cntl0, reg & (~(comm->enable << 24)));
-	wmb();			// make sure settings are effective.
+	/* Enable lan 0 & lan 1 */
+	reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0);
+	writel(reg & (~(comm->enable << 24)), comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 
 	//regs_print();
 }
 
 void mac_hw_addr_set(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	HWREG_W(w_mac_15_0, mac->mac_addr[0] + (mac->mac_addr[1] << 8));
-	HWREG_W(w_mac_47_16, mac->mac_addr[2] + (mac->mac_addr[3] << 8) +
-		(mac->mac_addr[4] << 16) + (mac->mac_addr[5] << 24));
-	wmb();			// make sure settings are effective.
+	/* Write MAC address. */
+	writel(mac->mac_addr[0] + (mac->mac_addr[1] << 8),
+	       comm->l2sw_reg_base + L2SW_W_MAC_15_0);
+	writel(mac->mac_addr[2] + (mac->mac_addr[3] << 8) + (mac->mac_addr[4] << 16) +
+	       (mac->mac_addr[5] << 24), comm->l2sw_reg_base + L2SW_W_MAC_47_16);
 
-	// Set aging=1
-	HWREG_W(wt_mac_ad0, (mac->cpu_port << 10) + (mac->vlan_id << 7) + (1 << 4) + 0x1);
-	wmb();			// make sure settings are effective.
+	/* Set aging=1 */
+	writel((mac->cpu_port << 10) + (mac->vlan_id << 7) + (1 << 4) + 0x1,
+	       comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 
+	/* Wait for completing. */
 	do {
-		reg = HWREG_R(wt_mac_ad0);
+		reg = readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 		ndelay(10);
 		pr_debug(" wt_mac_ad0 = %08x\n", reg);
 	} while ((reg & (0x1 << 1)) == 0x0);
-	pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0), HWREG_R(w_mac_47_16),
-		 HWREG_R(w_mac_15_0) & 0xffff);
+	pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n",
+		 readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0),
+		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
+		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//mac_hw_addr_print();
+	//mac_hw_addr_print(mac);
 }
 
 void mac_hw_addr_del(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	HWREG_W(w_mac_15_0, mac->mac_addr[0] + (mac->mac_addr[1] << 8));
-	HWREG_W(w_mac_47_16, mac->mac_addr[2] + (mac->mac_addr[3] << 8) +
-		(mac->mac_addr[4] << 16) + (mac->mac_addr[5] << 24));
-	wmb();			// make sure settings are effective.
+	/* Write MAC address. */
+	writel(mac->mac_addr[0] + (mac->mac_addr[1] << 8),
+	       comm->l2sw_reg_base + L2SW_W_MAC_15_0);
+	writel(mac->mac_addr[2] + (mac->mac_addr[3] << 8) + (mac->mac_addr[4] << 16) +
+	       (mac->mac_addr[5] << 24), comm->l2sw_reg_base + L2SW_W_MAC_47_16);
 
-	HWREG_W(wt_mac_ad0, (0x1 << 12) + (mac->vlan_id << 7) + 0x1);
-	wmb();			// make sure settings are effective.
+	/* Wait for completing. */
+	writel((0x1 << 12) + (mac->vlan_id << 7) + 0x1,
+	       comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 	do {
-		reg = HWREG_R(wt_mac_ad0);
+		reg = readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 		ndelay(10);
 		pr_debug(" wt_mac_ad0 = %08x\n", reg);
 	} while ((reg & (0x1 << 1)) == 0x0);
-	pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0),
-		 HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0) & 0xffff);
+	pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n",
+		 readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0),
+		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
+		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//mac_hw_addr_print();
+	//mac_hw_addr_print(mac);
 }
 
-void mac_addr_table_del_all(void)
+void mac_addr_table_del_all(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	// Wait for address table being idle.
+	/* Wait for address table being idle. */
 	do {
-		reg = HWREG_R(addr_tbl_srch);
+		reg = readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 		ndelay(10);
 	} while (!(reg & MAC_ADDR_LOOKUP_IDLE));
 
-	// Search address table from start.
-	HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_BEGIN_SEARCH_ADDR);
-	mb();			// make sure settings are effective.
+	/* Search address table from start. */
+	writel(readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH) | MAC_BEGIN_SEARCH_ADDR,
+	       comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 	while (1) {
 		do {
-			reg = HWREG_R(addr_tbl_st);
+			reg = readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_ST);
 			ndelay(10);
 			pr_debug(" addr_tbl_st = %08x\n", reg);
 		} while (!(reg & (MAC_AT_TABLE_END | MAC_AT_DATA_READY)));
@@ -147,47 +129,50 @@ void mac_addr_table_del_all(void)
 			 (reg >> 22) & 0x3ff, (reg >> 12) & 0x3, (reg >> 10) & 0x3,
 			 (reg >> 7) & 0x7, (reg >> 4) & 0x7, (reg >> 3) & 0x1, (reg >> 2) & 0x1);
 
-		// Delete all entries which are learnt from lan ports.
+		/* Delete all entries which are learnt from lan ports. */
 		if ((reg >> 12) & 0x3) {
-			HWREG_W(w_mac_15_0, HWREG_R(MAC_ad_ser0));
-			wmb();	// make sure settings are effective.
-			HWREG_W(w_mac_47_16, HWREG_R(MAC_ad_ser1));
-			wmb();	// make sure settings are effective.
+			writel(readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER0),
+			       comm->l2sw_reg_base + L2SW_W_MAC_15_0);
+			writel(readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER1),
+			       comm->l2sw_reg_base + L2SW_W_MAC_47_16);
 
-			HWREG_W(wt_mac_ad0, (0x1 << 12) + (reg & (0x7 << 7)) + 0x1);
-			wmb();	// make sure settings are effective.
+			writel((0x1 << 12) + (reg & (0x7 << 7)) + 0x1,
+			       comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 			do {
-				reg = HWREG_R(wt_mac_ad0);
+				reg = readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0);
 				ndelay(10);
 				pr_debug(" wt_mac_ad0 = %08x\n", reg);
 			} while ((reg & (0x1 << 1)) == 0x0);
-			pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n", HWREG_R(wt_mac_ad0),
-				 HWREG_R(w_mac_47_16), HWREG_R(w_mac_15_0) & 0xffff);
+			pr_debug(" mac_ad0 = %08x, mac_ad = %08x%04x\n",
+				 readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0),
+				 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
+				 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 		}
-		// Search next.
-		wmb();		// make sure settings are effective.
 
-		HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_SEARCH_NEXT_ADDR);
+		/* Search next. */
+		writel(readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH) | MAC_SEARCH_NEXT_ADDR,
+		       comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 	}
 }
 
 __attribute__((unused))
-void mac_hw_addr_print(void)
+void mac_hw_addr_print(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg, regl, regh;
 
 	// Wait for address table being idle.
 	do {
-		reg = HWREG_R(addr_tbl_srch);
+		reg = readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 		ndelay(10);
 	} while (!(reg & MAC_ADDR_LOOKUP_IDLE));
 
 	// Search address table from start.
-	HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_BEGIN_SEARCH_ADDR);
-	mb();			// make sure settings are effective.
+	writel(readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH) | MAC_BEGIN_SEARCH_ADDR,
+	       comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 	while (1) {
 		do {
-			reg = HWREG_R(addr_tbl_st);
+			reg = readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_ST);
 			ndelay(10);
 			//pr_info(" addr_tbl_st = %08x\n", reg);
 		} while (!(reg & (MAC_AT_TABLE_END | MAC_AT_DATA_READY)));
@@ -195,9 +180,9 @@ void mac_hw_addr_print(void)
 		if (reg & MAC_AT_TABLE_END)
 			break;
 
-		regl = HWREG_R(MAC_ad_ser0);
+		regl = readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER0);
 		ndelay(10);	// delay here is necessary or you will get all 0 of MAC_ad_ser1.
-		regh = HWREG_R(MAC_ad_ser1);
+		regh = readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER1);
 
 		//pr_info(" addr_tbl_st = %08x\n", reg);
 		pr_info(" AT #%u: port=%01x, cpu=%01x, vid=%u, aging=%u, proxy=%u, mc_ingress=%u, HWaddr=%02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -206,8 +191,9 @@ void mac_hw_addr_print(void)
 			regl & 0xff, (regl >> 8) & 0xff, regh & 0xff, (regh >> 8) & 0xff,
 			(regh >> 16) & 0xff, (regh >> 24) & 0xff);
 
-		// Search next.
-		HWREG_W(addr_tbl_srch, HWREG_R(addr_tbl_srch) | MAC_SEARCH_NEXT_ADDR);
+		/* Search next. */
+		writel(readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH) | MAC_SEARCH_NEXT_ADDR,
+		       comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH);
 	}
 }
 
@@ -216,51 +202,56 @@ void mac_hw_init(struct l2sw_mac *mac)
 	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	reg = HWREG_R(cpu_cntl);
-	HWREG_W(cpu_cntl, (0x3 << 6) | reg);	// Disable cpu0 and cpu 1.
-	wmb();			// make sure settings are effective.
+	/* Disable cpu0 and cpu 1. */
+	reg = readl(comm->l2sw_reg_base + L2SW_CPU_CNTL);
+	writel((0x3 << 6) | reg, comm->l2sw_reg_base + L2SW_CPU_CNTL);
 
-	/* descriptor base address */
-	HWREG_W(tx_lbase_addr_0, mac->comm->desc_dma);
-	HWREG_W(tx_hbase_addr_0, mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM);
-	HWREG_W(rx_hbase_addr_0, mac->comm->desc_dma +
-		sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
-	HWREG_W(rx_lbase_addr_0, mac->comm->desc_dma +
-		sizeof(struct mac_desc) * (TX_DESC_NUM + MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM));
-	wmb();			// make sure settings are effective.
+	/* Descriptor base address */
+	writel(mac->comm->desc_dma, comm->l2sw_reg_base + L2SW_TX_LBASE_ADDR_0);
+	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM,
+	       comm->l2sw_reg_base + L2SW_TX_HBASE_ADDR_0);
+	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM +
+	       MAC_GUARD_DESC_NUM), comm->l2sw_reg_base + L2SW_RX_HBASE_ADDR_0);
+	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM +
+	       MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM),
+	       comm->l2sw_reg_base + L2SW_RX_LBASE_ADDR_0);
 
-	// Threshold values
-	HWREG_W(fl_cntl_th, 0x4a3a2d1d);	// Fc_rls_th=0x4a,  Fc_set_th=0x3a,  Drop_rls_th=0x2d, Drop_set_th=0x1d
-	HWREG_W(cpu_fl_cntl_th, 0x4a3a1212);	// Cpu_rls_th=0x4a, Cpu_set_th=0x3a, Cpu_th=0x12,      Port_th=0x12
-	HWREG_W(pri_fl_cntl, 0xf6680000);	// mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1
+	/* Fc_rls_th=0x4a, Fc_set_th=0x3a, Drop_rls_th=0x2d, Drop_set_th=0x1d */
+	writel(0x4a3a2d1d, comm->l2sw_reg_base + L2SW_FL_CNTL_TH);
 
-	// High-active LED
-	reg = HWREG_R(led_port0);
-	HWREG_W(led_port0, reg | (1 << 28));
+	/* Cpu_rls_th=0x4a, Cpu_set_th=0x3a, Cpu_th=0x12, Port_th=0x12 */
+	writel(0x4a3a1212, comm->l2sw_reg_base + L2SW_CPU_FL_CNTL_TH);
+
+	/* mtcc_lmt=0xf, Pri_th_l=6, Pri_th_h=6, weigh_8x_en=1 */
+	writel(0xf6680000, comm->l2sw_reg_base + L2SW_PRI_FL_CNTL);
+
+	/* High-active LED */
+	reg = readl(comm->l2sw_reg_base + L2SW_LED_PORT0);
+	writel(reg | (1 << 28), comm->l2sw_reg_base + L2SW_LED_PORT0);
 
 	/* phy address */
-	reg = HWREG_R(mac_force_mode);
+	reg = readl(comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 	reg = (reg & (~(0x1f << 16))) | ((mac->comm->phy1_addr & 0x1f) << 16);
 	reg = (reg & (~(0x1f << 24))) | ((mac->comm->phy2_addr & 0x1f) << 24);
-	HWREG_W(mac_force_mode, reg);
+	writel(reg, comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 
-	//disable cpu port0 aging (12)
-	//disable cpu port0 learning (14)
-	//enable UC and MC packets
-	reg = HWREG_R(cpu_cntl);
-	HWREG_W(cpu_cntl, (reg & (~((0x1 << 14) | (0x3c << 0)))) | (0x1 << 12));
+	/* Disable cpu port0 aging (12)
+	 * Disable cpu port0 learning (14)
+	 * Enable UC and MC packets
+	 */
+	reg = readl(comm->l2sw_reg_base + L2SW_CPU_CNTL);
+	writel((reg & (~((0x1 << 14) | (0x3c << 0)))) | (0x1 << 12),
+	       comm->l2sw_reg_base + L2SW_CPU_CNTL);
 
 	mac_switch_mode(mac);
 
 	if (!comm->dual_nic) {
-		//enable lan 0 & lan 1
-		reg = HWREG_R(port_cntl0);
-		HWREG_W(port_cntl0, reg & (~(0x3 << 24)));
-		wmb();		// make sure settings are effective.
+		/* enable lan 0 & lan 1 */
+		reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0);
+		writel(reg & (~(0x3 << 24)), comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 	}
 
-	wmb();			// make sure settings are effective.
-	HWREG_W(sw_int_mask_0, MAC_INT_MASK_DEF);
+	writel(MAC_INT_MASK_DEF, comm->l2sw_reg_base + L2SW_SW_INT_MASK_0);
 }
 
 void mac_switch_mode(struct l2sw_mac *mac)
@@ -282,20 +273,25 @@ void mac_switch_mode(struct l2sw_mac *mac)
 			mac2->to_vlan = 0x2;	// vlan group: 1
 			mac2->vlan_id = 0x1;	// vlan group: 1
 		}
-		//port 0: VLAN group 0
-		//port 1: VLAN group 1
-		HWREG_W(PVID_config0, (1 << 4) + 0);
 
-		//VLAN group 0: cpu0+port0
-		//VLAN group 1: cpu0+port1
-		HWREG_W(VLAN_memset_config0, (0xa << 8) + 0x9);
+		/* Port 0: VLAN group 0
+		 * Port 1: VLAN group 1
+		 */
+		writel((1 << 4) + 0, comm->l2sw_reg_base + L2SW_PVID_CONFIG0);
 
-		//RMC forward: to cpu
-		//LED: 60mS
-		//BC storm prev: 31 BC
-		reg = HWREG_R(sw_glb_cntl);
-		HWREG_W(sw_glb_cntl, (reg & (~((0x3 << 25) | (0x3 << 23) | (0x3 << 4)))) |
-			(0x1 << 25) | (0x1 << 23) | (0x1 << 4));
+		/* VLAN group 0: cpu0+port0
+		 * VLAN group 1: cpu0+port1
+		 */
+		writel((0xa << 8) + 0x9, comm->l2sw_reg_base + L2SW_VLAN_MEMSET_CONFIG0);
+
+		/* RMC forward: to cpu
+		 * LED: 60mS
+		 * BC storm prev: 31 BC
+		 */
+		reg = readl(comm->l2sw_reg_base + L2SW_SW_GLB_CNTL);
+		writel((reg & (~((0x3 << 25) | (0x3 << 23) | (0x3 << 4)))) |
+		       (0x1 << 25) | (0x1 << 23) | (0x1 << 4),
+		       comm->l2sw_reg_base + L2SW_SW_GLB_CNTL);
 	} else {
 		mac->cpu_port = 0x1;	// soc0
 		mac->lan_port = 0x3;	// forward to port 0 and 1
@@ -303,82 +299,89 @@ void mac_switch_mode(struct l2sw_mac *mac)
 		mac->vlan_id = 0x0;	// vlan group: 0
 		comm->enable = 0x3;	// enable lan 0 and 1
 
-		//port 0: VLAN group 0
-		//port 1: VLAN group 0
-		HWREG_W(PVID_config0, (0 << 4) + 0);
+		/* Port 0: VLAN group 0
+		 * port 1: VLAN group 0
+		 */
+		writel((0 << 4) + 0, comm->l2sw_reg_base + L2SW_PVID_CONFIG0);
 
-		//VLAN group 0: cpu0+port1+port0
-		HWREG_W(VLAN_memset_config0, (0x0 << 8) + 0xb);
+		/* VLAN group 0: cpu0+port1+port0 */
+		writel((0x0 << 8) + 0xb, comm->l2sw_reg_base + L2SW_VLAN_MEMSET_CONFIG0);
 
-		//RMC forward: broadcast
-		//LED: 60mS
-		//BC storm prev: 31 BC
-		reg = HWREG_R(sw_glb_cntl);
-		HWREG_W(sw_glb_cntl, (reg & (~((0x3 << 25) | (0x3 << 23) | (0x3 << 4)))) |
-			(0x0 << 25) | (0x1 << 23) | (0x1 << 4));
+		/* RMC forward: broadcast
+		 * LED: 60mS
+		 * BC storm prev: 31 BC
+		 */
+		reg = readl(comm->l2sw_reg_base + L2SW_SW_GLB_CNTL);
+		writel((reg & (~((0x3 << 25) | (0x3 << 23) | (0x3 << 4)))) |
+		       (0x0 << 25) | (0x1 << 23) | (0x1 << 4),
+		       comm->l2sw_reg_base + L2SW_SW_GLB_CNTL);
 	}
 }
 
-void mac_disable_port_sa_learning(void)
+void mac_disable_port_sa_learning(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	// Disable lan port SA learning.
-	reg = HWREG_R(port_cntl1);
-	HWREG_W(port_cntl1, reg | (0x3 << 8));
+	/* Disable lan port SA learning. */
+	reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL1);
+	writel(reg | (0x3 << 8), comm->l2sw_reg_base + L2SW_PORT_CNTL1);
 }
 
-void mac_enable_port_sa_learning(void)
+void mac_enable_port_sa_learning(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
-	// Disable lan port SA learning.
-	reg = HWREG_R(port_cntl1);
-	HWREG_W(port_cntl1, reg & (~(0x3 << 8)));
+	/* Disable lan port SA learning. */
+	reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL1);
+	writel(reg & (~(0x3 << 8)), comm->l2sw_reg_base + L2SW_PORT_CNTL1);
 }
 
 void rx_mode_set(struct net_device *ndev)
 {
 	struct l2sw_mac *mac = netdev_priv(ndev);
+	struct l2sw_common *comm = mac->comm;
 	u32 mask, reg, rx_mode;
 
 	pr_debug(" ndev->flags = %08x\n", ndev->flags);
 
 	mask = (mac->lan_port << 2) | (mac->lan_port << 0);
-	reg = HWREG_R(cpu_cntl);
+	reg = readl(comm->l2sw_reg_base + L2SW_CPU_CNTL);
 
 	if (ndev->flags & IFF_PROMISC) {	/* Set promiscuous mode */
-		// Allow MC and unknown UC packets
+		/* Allow MC and unknown UC packets */
 		rx_mode = (mac->lan_port << 2) | (mac->lan_port << 0);
 	} else if ((!netdev_mc_empty(ndev) && (ndev->flags & IFF_MULTICAST)) ||
 		   (ndev->flags & IFF_ALLMULTI)) {
-		// Allow MC packets
+		/* Allow MC packets */
 		rx_mode = (mac->lan_port << 2);
 	} else {
-		// Disable MC and unknown UC packets
+		/* Disable MC and unknown UC packets */
 		rx_mode = 0;
 	}
 
-	HWREG_W(cpu_cntl, (reg & (~mask)) | ((~rx_mode) & mask));
-	pr_debug(" cpu_cntl = %08x\n", HWREG_R(cpu_cntl));
+	writel((reg & (~mask)) | ((~rx_mode) & mask), comm->l2sw_reg_base + L2SW_CPU_CNTL);
+	pr_debug(" cpu_cntl = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_CNTL));
 }
 
 #define MDIO_READ_CMD   0x02
 #define MDIO_WRITE_CMD  0x01
 
-static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata)
+static int mdio_access(struct l2sw_mac *mac, u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 value, time = 0;
 
-	HWREG_W(phy_cntl_reg0, (wdata << 16) | (op_cd << 13) | (dev_reg_addr << 8) | phy_addr);
-	wmb();			// make sure settings are effective.
+	writel((wdata << 16) | (op_cd << 13) | (dev_reg_addr << 8) | phy_addr,
+	       comm->l2sw_reg_base + L2SW_PHY_CNTL_REG0);
 	do {
 		if (++time > MDIO_RW_TIMEOUT_RETRY_NUMBERS) {
 			pr_err(" mdio failed to operate!\n");
 			time = 0;
 		}
 
-		value = HWREG_R(phy_cntl_reg1);
+		value = readl(comm->l2sw_reg_base + L2SW_PHY_CNTL_REG1);
 	} while ((value & 0x3) == 0);
 
 	if (time == 0)
@@ -387,67 +390,77 @@ static int mdio_access(u8 op_cd, u8 dev_reg_addr, u8 phy_addr, u32 wdata)
 	return value >> 16;
 }
 
-u32 mdio_read(u32 phy_id, u16 regnum)
+int mdio_read(struct l2sw_mac *mac, int phy_id, int regnum)
 {
-	int sdVal = 0;
+	int ret;
 
-	sdVal = mdio_access(MDIO_READ_CMD, regnum, phy_id, 0);
-	if (sdVal < 0)
+	ret = mdio_access(mac, MDIO_READ_CMD, regnum, phy_id, 0);
+	if (ret < 0)
 		return -EIO;
 
-	return sdVal;
+	return ret;
 }
 
-u32 mdio_write(u32 phy_id, u32 regnum, u16 val)
+int mdio_write(struct l2sw_mac *mac, int phy_id, int regnum, u16 val)
 {
-	int sdVal = 0;
+	int ret;
 
-	sdVal = mdio_access(MDIO_WRITE_CMD, regnum, phy_id, val);
-	if (sdVal < 0)
+	ret = mdio_access(mac, MDIO_WRITE_CMD, regnum, phy_id, val);
+	if (ret < 0)
 		return -EIO;
 
 	return 0;
 }
 
-inline void tx_trigger(void)
+void tx_trigger(struct l2sw_mac *mac)
 {
-	HWREG_W(cpu_tx_trig, (0x1 << 1));
+	struct l2sw_common *comm = mac->comm;
+
+	writel((0x1 << 1), comm->l2sw_reg_base + L2SW_CPU_TX_TRIG);
 }
 
-inline void write_sw_int_mask0(u32 value)
+void write_sw_int_mask0(struct l2sw_mac *mac, u32 value)
 {
-	HWREG_W(sw_int_mask_0, value);
+	struct l2sw_common *comm = mac->comm;
+
+	writel(value, comm->l2sw_reg_base + L2SW_SW_INT_MASK_0);
 }
 
-inline void write_sw_int_status0(u32 value)
+void write_sw_int_status0(struct l2sw_mac *mac, u32 value)
 {
-	HWREG_W(sw_int_status_0, value);
+	struct l2sw_common *comm = mac->comm;
+
+	writel(value, comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0);
 }
 
-inline u32 read_sw_int_status0(void)
+u32 read_sw_int_status0(struct l2sw_mac *mac)
 {
-	return HWREG_R(sw_int_status_0);
+	struct l2sw_common *comm = mac->comm;
+
+	return readl(comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0);
 }
 
-inline u32 read_port_ability(void)
+u32 read_port_ability(struct l2sw_mac *mac)
 {
-	return HWREG_R(port_ability);
+	struct l2sw_common *comm = mac->comm;
+
+	return readl(comm->l2sw_reg_base + L2SW_PORT_ABILITY);
 }
 
 void l2sw_enable_port(struct l2sw_mac *mac)
 {
+	struct l2sw_common *comm = mac->comm;
 	u32 reg;
 
 	//set clock
-	reg = MOON5REG_R(mo4_l2sw_clksw_ctl);
-	MOON5REG_W(mo4_l2sw_clksw_ctl, reg | (0xf << 16) | 0xf);
+	reg = readl(comm->moon5_reg_base + MOON5_MO4_L2SW_CLKSW_CTL);
+	writel(reg | (0xf << 16) | 0xf, comm->moon5_reg_base + MOON5_MO4_L2SW_CLKSW_CTL);
 
 	//phy address
-	reg = HWREG_R(mac_force_mode);
+	reg = readl(comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 	reg = (reg & (~(0x1f << 16))) | ((mac->comm->phy1_addr & 0x1f) << 16);
 	reg = (reg & (~(0x1f << 24))) | ((mac->comm->phy2_addr & 0x1f) << 24);
-	HWREG_W(mac_force_mode, reg);
-	wmb();			// make sure settings are effective.
+	writel(reg, comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 }
 
 int phy_cfg(struct l2sw_mac *mac)
@@ -455,79 +468,83 @@ int phy_cfg(struct l2sw_mac *mac)
 	// Bug workaround:
 	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
 	// to the bit to decide to enable or disable flow-control.
-	mdio_write(mac->comm->phy1_addr, 4, mdio_read(mac->comm->phy1_addr, 4) | (1 << 10));
-	mdio_write(mac->comm->phy2_addr, 4, mdio_read(mac->comm->phy2_addr, 4) | (1 << 10));
+	mdio_write(mac, mac->comm->phy1_addr, 4,
+		   mdio_read(mac, mac->comm->phy1_addr, 4) | (1 << 10));
+	mdio_write(mac, mac->comm->phy2_addr, 4,
+		   mdio_read(mac, mac->comm->phy2_addr, 4) | (1 << 10));
 
 	return 0;
 }
 
 __attribute__((unused))
-void regs_print(void)
+void regs_print(struct l2sw_mac *mac)
 {
-	pr_info(" sw_int_status_0     = %08x\n", HWREG_R(sw_int_status_0));
-	pr_info(" sw_int_mask_0       = %08x\n", HWREG_R(sw_int_mask_0));
-	pr_info(" fl_cntl_th          = %08x\n", HWREG_R(fl_cntl_th));
-	pr_info(" cpu_fl_cntl_th      = %08x\n", HWREG_R(cpu_fl_cntl_th));
-	pr_info(" pri_fl_cntl         = %08x\n", HWREG_R(pri_fl_cntl));
-	pr_info(" vlan_pri_th         = %08x\n", HWREG_R(vlan_pri_th));
-	pr_info(" En_tos_bus          = %08x\n", HWREG_R(En_tos_bus));
-	pr_info(" Tos_map0            = %08x\n", HWREG_R(Tos_map0));
-	pr_info(" Tos_map1            = %08x\n", HWREG_R(Tos_map1));
-	pr_info(" Tos_map2            = %08x\n", HWREG_R(Tos_map2));
-	pr_info(" Tos_map3            = %08x\n", HWREG_R(Tos_map3));
-	pr_info(" Tos_map4            = %08x\n", HWREG_R(Tos_map4));
-	pr_info(" Tos_map5            = %08x\n", HWREG_R(Tos_map5));
-	pr_info(" Tos_map6            = %08x\n", HWREG_R(Tos_map6));
-	pr_info(" Tos_map7            = %08x\n", HWREG_R(Tos_map7));
-	pr_info(" global_que_status   = %08x\n", HWREG_R(global_que_status));
-	pr_info(" addr_tbl_srch       = %08x\n", HWREG_R(addr_tbl_srch));
-	pr_info(" addr_tbl_st         = %08x\n", HWREG_R(addr_tbl_st));
-	pr_info(" MAC_ad_ser0         = %08x\n", HWREG_R(MAC_ad_ser0));
-	pr_info(" MAC_ad_ser1         = %08x\n", HWREG_R(MAC_ad_ser1));
-	pr_info(" wt_mac_ad0          = %08x\n", HWREG_R(wt_mac_ad0));
-	pr_info(" w_mac_15_0          = %08x\n", HWREG_R(w_mac_15_0));
-	pr_info(" w_mac_47_16         = %08x\n", HWREG_R(w_mac_47_16));
-	pr_info(" PVID_config0        = %08x\n", HWREG_R(PVID_config0));
-	pr_info(" PVID_config1        = %08x\n", HWREG_R(PVID_config1));
-	pr_info(" VLAN_memset_config0 = %08x\n", HWREG_R(VLAN_memset_config0));
-	pr_info(" VLAN_memset_config1 = %08x\n", HWREG_R(VLAN_memset_config1));
-	pr_info(" port_ability        = %08x\n", HWREG_R(port_ability));
-	pr_info(" port_st             = %08x\n", HWREG_R(port_st));
-	pr_info(" cpu_cntl            = %08x\n", HWREG_R(cpu_cntl));
-	pr_info(" port_cntl0          = %08x\n", HWREG_R(port_cntl0));
-	pr_info(" port_cntl1          = %08x\n", HWREG_R(port_cntl1));
-	pr_info(" port_cntl2          = %08x\n", HWREG_R(port_cntl2));
-	pr_info(" sw_glb_cntl         = %08x\n", HWREG_R(sw_glb_cntl));
-	pr_info(" l2sw_rsv1           = %08x\n", HWREG_R(l2sw_rsv1));
-	pr_info(" led_port0           = %08x\n", HWREG_R(led_port0));
-	pr_info(" led_port1           = %08x\n", HWREG_R(led_port1));
-	pr_info(" led_port2           = %08x\n", HWREG_R(led_port2));
-	pr_info(" led_port3           = %08x\n", HWREG_R(led_port3));
-	pr_info(" led_port4           = %08x\n", HWREG_R(led_port4));
-	pr_info(" watch_dog_trig_rst  = %08x\n", HWREG_R(watch_dog_trig_rst));
-	pr_info(" watch_dog_stop_cpu  = %08x\n", HWREG_R(watch_dog_stop_cpu));
-	pr_info(" phy_cntl_reg0       = %08x\n", HWREG_R(phy_cntl_reg0));
-	pr_info(" phy_cntl_reg1       = %08x\n", HWREG_R(phy_cntl_reg1));
-	pr_info(" mac_force_mode      = %08x\n", HWREG_R(mac_force_mode));
-	pr_info(" VLAN_group_config0  = %08x\n", HWREG_R(VLAN_group_config0));
-	pr_info(" VLAN_group_config1  = %08x\n", HWREG_R(VLAN_group_config1));
-	pr_info(" flow_ctrl_th3       = %08x\n", HWREG_R(flow_ctrl_th3));
-	pr_info(" queue_status_0      = %08x\n", HWREG_R(queue_status_0));
-	pr_info(" debug_cntl          = %08x\n", HWREG_R(debug_cntl));
-	pr_info(" queue_status_0      = %08x\n", HWREG_R(queue_status_0));
-	pr_info(" debug_cntl          = %08x\n", HWREG_R(debug_cntl));
-	pr_info(" l2sw_rsv2           = %08x\n", HWREG_R(l2sw_rsv2));
-	pr_info(" mem_test_info       = %08x\n", HWREG_R(mem_test_info));
-	pr_info(" sw_int_status_1     = %08x\n", HWREG_R(sw_int_status_1));
-	pr_info(" sw_int_mask_1       = %08x\n", HWREG_R(sw_int_mask_1));
-	pr_info(" cpu_tx_trig         = %08x\n", HWREG_R(cpu_tx_trig));
-	pr_info(" tx_hbase_addr_0     = %08x\n", HWREG_R(tx_hbase_addr_0));
-	pr_info(" tx_lbase_addr_0     = %08x\n", HWREG_R(tx_lbase_addr_0));
-	pr_info(" rx_hbase_addr_0     = %08x\n", HWREG_R(rx_hbase_addr_0));
-	pr_info(" rx_lbase_addr_0     = %08x\n", HWREG_R(rx_lbase_addr_0));
-	pr_info(" tx_hw_addr_0        = %08x\n", HWREG_R(tx_hw_addr_0));
-	pr_info(" tx_lw_addr_0        = %08x\n", HWREG_R(tx_lw_addr_0));
-	pr_info(" rx_hw_addr_0        = %08x\n", HWREG_R(rx_hw_addr_0));
-	pr_info(" rx_lw_addr_0        = %08x\n", HWREG_R(rx_lw_addr_0));
-	pr_info(" cpu_port_cntl_reg_0 = %08x\n", HWREG_R(cpu_port_cntl_reg_0));
+	struct l2sw_common *comm = mac->comm;
+
+	pr_info(" sw_int_status_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0));
+	pr_info(" sw_int_mask_0       = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_MASK_0));
+	pr_info(" fl_cntl_th          = %08x\n", readl(comm->l2sw_reg_base + L2SW_FL_CNTL_TH));
+	pr_info(" cpu_fl_cntl_th      = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_FL_CNTL_TH));
+	pr_info(" pri_fl_cntl         = %08x\n", readl(comm->l2sw_reg_base + L2SW_PRI_FL_CNTL));
+	pr_info(" vlan_pri_th         = %08x\n", readl(comm->l2sw_reg_base + L2SW_VLAN_PRI_TH));
+	pr_info(" En_tos_bus          = %08x\n", readl(comm->l2sw_reg_base + L2SW_EN_TOS_BUS));
+	pr_info(" Tos_map0            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP0));
+	pr_info(" Tos_map1            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP1));
+	pr_info(" Tos_map2            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP2));
+	pr_info(" Tos_map3            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP3));
+	pr_info(" Tos_map4            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP4));
+	pr_info(" Tos_map5            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP5));
+	pr_info(" Tos_map6            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP6));
+	pr_info(" Tos_map7            = %08x\n", readl(comm->l2sw_reg_base + L2SW_TOS_MAP7));
+	pr_info(" global_que_status   = %08x\n", readl(comm->l2sw_reg_base + L2SW_GLOBAL_QUE_STATUS));
+	pr_info(" addr_tbl_srch       = %08x\n", readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_SRCH));
+	pr_info(" addr_tbl_st         = %08x\n", readl(comm->l2sw_reg_base + L2SW_ADDR_TBL_ST));
+	pr_info(" MAC_ad_ser0         = %08x\n", readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER0));
+	pr_info(" MAC_ad_ser1         = %08x\n", readl(comm->l2sw_reg_base + L2SW_MAC_AD_SER1));
+	pr_info(" wt_mac_ad0          = %08x\n", readl(comm->l2sw_reg_base + L2SW_WT_MAC_AD0));
+	pr_info(" w_mac_15_0          = %08x\n", readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0));
+	pr_info(" w_mac_47_16         = %08x\n", readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16));
+	pr_info(" PVID_config0        = %08x\n", readl(comm->l2sw_reg_base + L2SW_PVID_CONFIG0));
+	pr_info(" PVID_config1        = %08x\n", readl(comm->l2sw_reg_base + L2SW_PVID_CONFIG1));
+	pr_info(" VLAN_memset_config0 = %08x\n", readl(comm->l2sw_reg_base + L2SW_VLAN_MEMSET_CONFIG0));
+	pr_info(" VLAN_memset_config1 = %08x\n", readl(comm->l2sw_reg_base + L2SW_VLAN_MEMSET_CONFIG1));
+	pr_info(" port_ability        = %08x\n", readl(comm->l2sw_reg_base + L2SW_PORT_ABILITY));
+	pr_info(" port_st             = %08x\n", readl(comm->l2sw_reg_base + L2SW_PORT_ST));
+	pr_info(" cpu_cntl            = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_CNTL));
+	pr_info(" port_cntl0          = %08x\n", readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0));
+	pr_info(" port_cntl1          = %08x\n", readl(comm->l2sw_reg_base + L2SW_PORT_CNTL1));
+	pr_info(" port_cntl2          = %08x\n", readl(comm->l2sw_reg_base + L2SW_PORT_CNTL2));
+	pr_info(" sw_glb_cntl         = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_GLB_CNTL));
+	pr_info(" l2sw_sw_reset       = %08x\n", readl(comm->l2sw_reg_base + L2SW_L2SW_SW_RESET));
+	pr_info(" led_port0           = %08x\n", readl(comm->l2sw_reg_base + L2SW_LED_PORT0));
+	pr_info(" led_port1           = %08x\n", readl(comm->l2sw_reg_base + L2SW_LED_PORT1));
+	pr_info(" led_port2           = %08x\n", readl(comm->l2sw_reg_base + L2SW_LED_PORT2));
+	pr_info(" led_port3           = %08x\n", readl(comm->l2sw_reg_base + L2SW_LED_PORT3));
+	pr_info(" led_port4           = %08x\n", readl(comm->l2sw_reg_base + L2SW_LED_PORT4));
+	pr_info(" watch_dog_trig_rst  = %08x\n", readl(comm->l2sw_reg_base + L2SW_WATCH_DOG_TRIG_RST));
+	pr_info(" watch_dog_stop_cpu  = %08x\n", readl(comm->l2sw_reg_base + L2SW_WATCH_DOG_STOP_CPU));
+	pr_info(" phy_cntl_reg0       = %08x\n", readl(comm->l2sw_reg_base + L2SW_PHY_CNTL_REG0));
+	pr_info(" phy_cntl_reg1       = %08x\n", readl(comm->l2sw_reg_base + L2SW_PHY_CNTL_REG1));
+	pr_info(" mac_force_mode      = %08x\n", readl(comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE));
+	pr_info(" VLAN_group_config0  = %08x\n", readl(comm->l2sw_reg_base + L2SW_VLAN_GROUP_CONFIG0));
+	pr_info(" VLAN_group_config1  = %08x\n", readl(comm->l2sw_reg_base + L2SW_VLAN_GROUP_CONFIG1));
+	pr_info(" flow_ctrl_th3       = %08x\n", readl(comm->l2sw_reg_base + L2SW_FLOW_CTRL_TH3));
+	pr_info(" queue_status_0      = %08x\n", readl(comm->l2sw_reg_base + L2SW_QUEUE_STATUS_0));
+	pr_info(" debug_cntl          = %08x\n", readl(comm->l2sw_reg_base + L2SW_DEBUG_CNTL));
+	pr_info(" queue_status_0      = %08x\n", readl(comm->l2sw_reg_base + L2SW_QUEUE_STATUS_0));
+	pr_info(" debug_cntl          = %08x\n", readl(comm->l2sw_reg_base + L2SW_DEBUG_CNTL));
+	pr_info(" l2sw_rsv2           = %08x\n", readl(comm->l2sw_reg_base + L2SW_RESERVED_1));
+	pr_info(" mem_test_info       = %08x\n", readl(comm->l2sw_reg_base + L2SW_MEM_TEST_INFO));
+	pr_info(" sw_int_status_1     = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_STATUS_1));
+	pr_info(" sw_int_mask_1       = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_MASK_1));
+	pr_info(" cpu_tx_trig         = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_TX_TRIG));
+	pr_info(" tx_hbase_addr_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_TX_HBASE_ADDR_0));
+	pr_info(" tx_lbase_addr_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_TX_LBASE_ADDR_0));
+	pr_info(" rx_hbase_addr_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_RX_HBASE_ADDR_0));
+	pr_info(" rx_lbase_addr_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_RX_LBASE_ADDR_0));
+	pr_info(" tx_hw_addr_0        = %08x\n", readl(comm->l2sw_reg_base + L2SW_TX_HW_ADDR_0));
+	pr_info(" tx_lw_addr_0        = %08x\n", readl(comm->l2sw_reg_base + L2SW_TX_LW_ADDR_0));
+	pr_info(" rx_hw_addr_0        = %08x\n", readl(comm->l2sw_reg_base + L2SW_RX_HW_ADDR_0));
+	pr_info(" rx_lw_addr_0        = %08x\n", readl(comm->l2sw_reg_base + L2SW_RX_LW_ADDR_0));
+	pr_info(" cpu_port_cntl_reg_0 = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_PORT_CNTL_REG_0));
 }

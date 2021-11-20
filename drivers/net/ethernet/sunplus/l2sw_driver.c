@@ -191,10 +191,10 @@ static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 		//pr_info(" TX Descriptor Queue Full!\n");
 	}
 	comm->tx_pos = tx_pos;
-	wmb();			// make sure settings are effective.
+	wmb();	/* make sure settings are effective. */
 
 	/* trigger gmac to transmit */
-	tx_trigger();
+	tx_trigger(mac);
 
 xmit_drop:
 	spin_unlock_irqrestore(&comm->lock, flags);
@@ -242,9 +242,9 @@ static int ethernet_set_mac_address(struct net_device *ndev, void *addr)
 
 static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd)
 {
+	struct mii_ioctl_data *data = if_mii(ifr);
 	struct l2sw_mac *mac = netdev_priv(ndev);
 	struct l2sw_common *comm = mac->comm;
-	struct mii_ioctl_data *data = if_mii(ifr);
 	unsigned long flags;
 
 	pr_debug(" if = %s, cmd = %04x\n", ifr->ifr_ifrn.ifrn_name, cmd);
@@ -268,14 +268,14 @@ static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd
 
 	case SIOCGMIIREG:
 		spin_lock_irqsave(&comm->ioctl_lock, flags);
-		data->val_out = mdio_read(data->phy_id, data->reg_num);
+		data->val_out = mdio_read(mac, data->phy_id, data->reg_num);
 		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 		pr_debug(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
 		spin_lock_irqsave(&comm->ioctl_lock, flags);
-		mdio_write(data->phy_id, data->reg_num, data->val_in);
+		mdio_write(mac, data->phy_id, data->reg_num, data->val_in);
 		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 		break;
 
@@ -455,12 +455,12 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 
 			comm->dual_nic = 1;
 			comm->sa_learning = 0;
-			//mac_hw_addr_print();
-			mac_disable_port_sa_learning();
-			mac_addr_table_del_all();
+			//mac_hw_addr_print(mac);
+			mac_disable_port_sa_learning(mac);
+			mac_addr_table_del_all(mac);
 			mac_switch_mode(mac);
 			rx_mode_set(ndev);
-			//mac_hw_addr_print();
+			//mac_hw_addr_print(mac);
 
 			init_netdev(mac->pdev, 1, &ndev2);	// Initialize the 2nd net device (eth1)
 			if (ndev2) {
@@ -486,16 +486,16 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		if (buf[0] == '2') {
 			if (comm->sa_learning == 1) {
 				comm->sa_learning = 0;
-				//mac_hw_addr_print();
-				mac_disable_port_sa_learning();
-				mac_addr_table_del_all();
-				//mac_hw_addr_print();
+				//mac_hw_addr_print(mac);
+				mac_disable_port_sa_learning(mac);
+				mac_addr_table_del_all(mac);
+				//mac_hw_addr_print(mac);
 			}
 		} else {
 			if (comm->sa_learning == 0) {
 				comm->sa_learning = 1;
-				mac_enable_port_sa_learning();
-				//mac_hw_addr_print();
+				mac_enable_port_sa_learning(mac);
+				//mac_hw_addr_print(mac);
 			}
 		}
 
@@ -507,7 +507,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 
 				mac2 = netdev_priv(ndev2);
 				mac_hw_addr_del(mac2);
-				//mac_hw_addr_print();
+				//mac_hw_addr_print(mac);
 
 				// unregister and free net device.
 				unregister_netdev(ndev2);
@@ -626,41 +626,37 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Get memory resoruce 0 from dts.
 	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (r_mem != NULL) {
-		pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-		if (l2sw_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start,
-						   (r_mem->end - r_mem->start + 1))) != 0) {
-			pr_err(" ioremap failed!\n");
-			ret = -ENOMEM;
-			goto out_free_comm;
-		}
-	} else {
+	if (!r_mem) {
 		pr_err(" No MEM resource 0 found!\n");
-		ret = -ENXIO;
-		goto out_free_comm;
+		return -ENXIO;
+	}
+	pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
+
+	comm->l2sw_reg_base = devm_ioremap(&pdev->dev, r_mem->start,
+					   (r_mem->end - r_mem->start + 1));
+	if (!comm->l2sw_reg_base) {
+		pr_err(" ioremap failed!\n");
+		return -ENOMEM;
 	}
 
 	// Get memory resoruce 1 from dts.
 	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (r_mem != NULL) {
-		pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-		if (moon5_reg_base_set(devm_ioremap(&pdev->dev, r_mem->start,
-						    (r_mem->end - r_mem->start + 1))) != 0) {
-			pr_err(" ioremap failed!\n");
-			ret = -ENOMEM;
-			goto out_free_comm;
-		}
-	} else {
+	if (!r_mem) {
 		pr_err(" No MEM resource 1 found!\n");
-		ret = -ENXIO;
-		goto out_free_comm;
+		return -ENXIO;
+	}
+	pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
+
+	comm->moon5_reg_base = devm_ioremap(&pdev->dev, r_mem->start,
+					    (r_mem->end - r_mem->start + 1));
+	if (!comm->moon5_reg_base) {
+		pr_err(" ioremap failed!\n");
+		return -ENOMEM;
 	}
 
 	// Get irq resource from dts.
-	if (l2sw_get_irq(pdev, comm) != 0) {
-		ret = -ENXIO;
-		goto out_free_comm;
-	}
+	if (l2sw_get_irq(pdev, comm) != 0)
+		return -ENXIO;
 
 	// Get L2-switch mode.
 	ret = of_property_read_u32(pdev->dev.of_node, "mode", &mode);
@@ -682,15 +678,13 @@ static int l2sw_probe(struct platform_device *pdev)
 	comm->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(comm->clk)) {
 		dev_err(&pdev->dev, "Failed to retrieve clock controller!\n");
-		ret = PTR_ERR(comm->clk);
-		goto out_free_comm;
+		return PTR_ERR(comm->clk);
 	}
 
 	comm->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(comm->rstc)) {
 		dev_err(&pdev->dev, "Failed to retrieve reset controller!\n");
-		ret = PTR_ERR(comm->rstc);
-		goto out_free_comm;
+		return PTR_ERR(comm->rstc);
 	}
 
 	// Enable clock.
@@ -702,14 +696,13 @@ static int l2sw_probe(struct platform_device *pdev)
 	ret = reset_control_deassert(comm->rstc);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to deassert reset line (err = %d)!\n", ret);
-		ret = -ENODEV;
-		goto out_free_comm;
+		return -ENODEV;
 	}
 	udelay(1);
 
 	ret = init_netdev(pdev, 0, &ndev);	// Initialize the 1st net device (eth0)
 	if (ndev == NULL)
-		goto out_free_comm;
+		return ret;
 
 	platform_set_drvdata(pdev, ndev);	// Pointed by drvdata net device.
 
@@ -781,7 +774,7 @@ static int l2sw_probe(struct platform_device *pdev)
 
 	// Set MAC address
 	mac_hw_addr_set(mac);
-	//mac_hw_addr_print();
+	//mac_hw_addr_print(mac);
 
 #ifdef CONFIG_DYNAMIC_MODE_SWITCHING_BY_SYSFS
 	/* Add the device attributes */
@@ -790,13 +783,13 @@ static int l2sw_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Error creating sysfs files!\n");
 #endif
 
-	mac_addr_table_del_all();
+	mac_addr_table_del_all(mac);
 	if (comm->sa_learning)
-		mac_enable_port_sa_learning();
+		mac_enable_port_sa_learning(mac);
 	else
-		mac_disable_port_sa_learning();
+		mac_disable_port_sa_learning(mac);
 	rx_mode_set(ndev);
-	//mac_hw_addr_print();
+	//mac_hw_addr_print(mac);
 
 	if (comm->dual_nic) {
 		init_netdev(pdev, 1, &ndev2);
@@ -812,7 +805,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		mac_switch_mode(mac);
 		rx_mode_set(ndev2);
 		mac_hw_addr_set(mac2);	// Set MAC address for the second net device.
-		//mac_hw_addr_print();
+		//mac_hw_addr_print(mac);
 	}
 
 fail_to_init_2nd_port:
@@ -826,9 +819,6 @@ out_freemdio:
 out_unregister_dev:
 #endif
 	unregister_netdev(ndev);
-
-out_free_comm:
-	kfree(comm);
 	return ret;
 }
 

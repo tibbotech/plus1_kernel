@@ -172,6 +172,9 @@ struct skb_info {
 };
 
 struct l2sw_common {
+	void __iomem *l2sw_reg_base;
+	void __iomem *moon5_reg_base;
+
 	struct net_device *ndev;
 	struct platform_device *pdev;
 	int dual_nic;

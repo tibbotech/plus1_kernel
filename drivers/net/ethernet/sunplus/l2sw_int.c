@@ -13,7 +13,7 @@ static inline void port_status_change(struct l2sw_mac *mac)
 	struct net_device *ndev = (struct net_device *)mac->ndev;
 	u32 reg;
 
-	reg = read_port_ability();
+	reg = read_port_ability(mac);
 	if (mac->comm->dual_nic) {
 		if (!netif_carrier_ok(ndev) && (reg & PORT_ABILITY_LINK_ST_P0)) {
 			netif_carrier_on(ndev);
@@ -289,14 +289,14 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 
 	spin_lock(&comm->lock);
 
-	write_sw_int_mask0(0xffffffff);	/* mask all interrupts */
-	status = read_sw_int_status0();
+	write_sw_int_mask0(mac, 0xffffffff);	/* mask all interrupts */
+	status = read_sw_int_status0(mac);
 	//pr_info(" Int Status = %08x\n", status);
 	if (unlikely(status == 0)) {
 		pr_err(" Interrput status is null!\n");
 		goto OUT;
 	}
-	write_sw_int_status0(status);
+	write_sw_int_status0(mac, status);
 
 #ifdef RX_POLLING
 	if (napi_schedule_prep(&comm->napi))
@@ -323,7 +323,7 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 		} else {
 #ifdef INTERRUPT_IMMEDIATELY
 			tx_interrupt(mac);
-			write_sw_int_status0(status & MAC_INT_TX);
+			write_sw_int_status0(mac, status & MAC_INT_TX);
 #else
 			tasklet_schedule(&comm->tx_tasklet);
 #endif
@@ -349,8 +349,8 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	//	pr_info(" Global Queue Full!\n");
 
 OUT:
-	wmb();			// make sure settings are effective.
-	write_sw_int_mask0(MAC_INT_MASK_DEF);
+	wmb();	/* make sure settings are effective. */
+	write_sw_int_mask0(mac, MAC_INT_MASK_DEF);
 	spin_unlock(&comm->lock);
 	return IRQ_HANDLED;
 }

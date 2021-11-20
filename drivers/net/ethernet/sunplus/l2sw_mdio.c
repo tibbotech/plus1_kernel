@@ -7,23 +7,27 @@
 
 static int mii_read(struct mii_bus *bus, int phy_id, int regnum)
 {
-	return mdio_read(phy_id, regnum);
+	struct l2sw_mac *mac = bus->priv;
+
+	return mdio_read(mac, phy_id, regnum);
 }
 
 static int mii_write(struct mii_bus *bus, int phy_id, int regnum, u16 val)
 {
-	return mdio_write(phy_id, regnum, val);
+	struct l2sw_mac *mac = bus->priv;
+
+	return mdio_write(mac, phy_id, regnum, val);
 }
 
 u32 mdio_init(struct platform_device *pdev, struct net_device *ndev)
 {
 	struct l2sw_mac *mac = netdev_priv(ndev);
-	struct mii_bus *mii_bus;
 	struct device_node *mdio_node;
+	struct mii_bus *mii_bus;
 	u32 ret;
 
 	mii_bus = mdiobus_alloc();
-	if (mii_bus == NULL) {
+	if (!mii_bus) {
 		pr_err(" Failed to allocate mdio_bus memory!\n");
 		return -ENOMEM;
 	}

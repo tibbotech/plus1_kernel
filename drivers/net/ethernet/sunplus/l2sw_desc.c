@@ -20,7 +20,7 @@ void rx_descs_flush(struct l2sw_common *comm)
 			rx_desc[j].cmd2 = (j == comm->rx_desc_num[i] - 1) ?
 					  EOR_BIT | comm->rx_desc_buff_size :
 					  comm->rx_desc_buff_size;
-			wmb();	// Set OWN_BIT after other fields are ready.
+			wmb();	/* Set OWN_BIT after other fields are ready. */
 			rx_desc[j].cmd1 = OWN_BIT;
 		}
 	}
@@ -128,7 +128,7 @@ int rx_descs_init(struct l2sw_common *comm)
 	u32 i, j;
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
-		comm->rx_skb_info[i] = kzalloc(comm->rx_desc_num[i] * sizeof(*rx_skbinfo),
+		comm->rx_skb_info[i] = kcalloc(comm->rx_desc_num[i], sizeof(*rx_skbinfo),
 					       GFP_KERNEL | GFP_DMA);
 		if (!comm->rx_skb_info[i])
 			goto mem_alloc_fail;
