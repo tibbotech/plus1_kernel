@@ -115,7 +115,7 @@ int mac_phy_probe(struct net_device *ndev)
 	int i;
 
 	phydev = of_phy_connect(mac->ndev, mac->comm->phy1_node, mii_linkchange,
-				0, PHY_INTERFACE_MODE_RGMII_ID);
+				0, PHY_INTERFACE_MODE_RMII);
 	if (!phydev) {
 		pr_err(" \"%s\" has no phy found\n", ndev->name);
 		return -1;
@@ -123,7 +123,7 @@ int mac_phy_probe(struct net_device *ndev)
 
 	if (mac->comm->phy2_node) {
 		of_phy_connect(mac->ndev, mac->comm->phy2_node, mii_linkchange,
-			       0, PHY_INTERFACE_MODE_RGMII_ID);
+			       0, PHY_INTERFACE_MODE_RMII);
 	}
 
 #ifdef PHY_RUN_STATEMACHINE

@@ -246,38 +246,26 @@ static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd
 	struct mii_ioctl_data *data = if_mii(ifr);
 	struct l2sw_mac *mac = netdev_priv(ndev);
 	struct l2sw_common *comm = mac->comm;
-	unsigned long flags;
 
 	pr_debug(" if = %s, cmd = %04x\n", ifr->ifr_ifrn.ifrn_name, cmd);
 	pr_debug(" phy_id = %d, reg_num = %d, val_in = %04x\n", data->phy_id,
 		 data->reg_num, data->val_in);
 
-	// Check parameters' range.
-	if ((cmd == SIOCGMIIREG) || (cmd == SIOCSMIIREG)) {
-		if (data->reg_num > 31) {
-			pr_err(" reg_num (= %d) excesses range!\n", (int)data->reg_num);
-			return -EINVAL;
-		}
-	}
-
 	switch (cmd) {
 	case SIOCGMIIPHY:
 		if ((comm->dual_nic) && (strcmp(ifr->ifr_ifrn.ifrn_name, "eth1") == 0))
-			return comm->phy2_addr;
+			data->phy_id = comm->phy2_addr;
 		else
-			return comm->phy1_addr;
+			data->phy_id = comm->phy1_addr;
+		return 0;
 
 	case SIOCGMIIREG:
-		spin_lock_irqsave(&comm->ioctl_lock, flags);
 		data->val_out = mdio_read(mac, data->phy_id, data->reg_num);
-		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 		pr_debug(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
-		spin_lock_irqsave(&comm->ioctl_lock, flags);
 		mdio_write(mac, data->phy_id, data->reg_num, data->val_in);
-		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 		break;
 
 	default:
