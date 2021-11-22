@@ -3,10 +3,10 @@
  *       All rights reserved.
  */
 
-#ifndef __L2SW_REGISTER_H__
-#define __L2SW_REGISTER_H__
+#ifndef __SPL2SW_REGISTER_H__
+#define __SPL2SW_REGISTER_H__
 
-#include "l2sw_define.h"
+#include "spl2sw_define.h"
 
 /* Register L2SW */
 #define L2SW_SW_INT_STATUS_0		0x0

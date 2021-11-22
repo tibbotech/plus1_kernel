@@ -3,22 +3,19 @@
  *       All rights reserved.
  */
 
-#include <linux/clk.h>
-#include <linux/reset.h>
 #include <linux/nvmem-consumer.h>
-#include "l2sw_driver.h"
-#include "l2sw_register.h"
+#include <linux/reset.h>
+#include <linux/clk.h>
+
+#include "spl2sw_register.h"
+#include "spl2sw_driver.h"
+#include "spl2sw_phy.h"
 
 /* OUI of Sunplus Technology Co., Ltd. */
 static const char def_mac_addr[ETHERNET_MAC_ADDR_LEN] = {
 	0xfc, 0x4b, 0xbc, 0x00, 0x00, 0x00
 };
 
-/*********************************************************************
- *
- * net_device_ops
- *
- **********************************************************************/
 __attribute__((unused))
 void print_packet(struct sk_buff *skb)
 {
@@ -68,19 +65,20 @@ void print_packet(struct sk_buff *skb)
 	pr_info("%s\n", buf);
 }
 
-static int ethernet_open(struct net_device *ndev)
+/* net_device_ops */
+static int spl2sw_ethernet_open(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_mac *mac = netdev_priv(ndev);
 
 	pr_debug(" Open port = %x\n", mac->lan_port);
 
 	/* Start phy */
 	//netif_carrier_off(ndev);
-	//mac_phy_start(ndev);
+	//spl2sw_phy_start(ndev);
 
 	mac->comm->enable |= mac->lan_port;
 
-	mac_hw_start(mac);
+	spl2sw_mac_hw_start(mac);
 
 	netif_carrier_on(ndev);
 
@@ -92,9 +90,9 @@ static int ethernet_open(struct net_device *ndev)
 	return 0;
 }
 
-static int ethernet_stop(struct net_device *ndev)
+static int spl2sw_ethernet_stop(struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_mac *mac = netdev_priv(ndev);
 	unsigned long flags;
 
 	//pr_info("[%s] IN\n", __func__);
@@ -107,19 +105,19 @@ static int ethernet_stop(struct net_device *ndev)
 
 	spin_unlock_irqrestore(&mac->comm->lock, flags);
 
-	//mac_phy_stop(ndev);
-	mac_hw_stop(mac);
+	//spl2sw_phy_stop(ndev);
+	spl2sw_mac_hw_stop(mac);
 
 	return 0;
 }
 
 /* Transmit a packet (called by the kernel) */
-static int ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
+static int spl2sw_ethernet_start_xmit(struct sk_buff *skb, struct net_device *ndev)
 {
-	struct l2sw_mac *mac = netdev_priv(ndev);
-	struct l2sw_common *comm = mac->comm;
-	struct skb_info *skbinfo;
-	struct mac_desc *txdesc;
+	struct spl2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_common *comm = mac->comm;
+	struct spl2sw_skb_info *skbinfo;
+	struct spl2sw_mac_desc *txdesc;
 	unsigned long flags;
 	u32 tx_pos;
 	u32 cmd1;
@@ -202,23 +200,23 @@ xmit_drop:
 	return NETDEV_TX_OK;
 }
 
-static void ethernet_set_rx_mode(struct net_device *ndev)
+static void spl2sw_ethernet_set_rx_mode(struct net_device *ndev)
 {
 	if (ndev) {
-		struct l2sw_mac *mac = netdev_priv(ndev);
-		struct l2sw_common *comm = mac->comm;
+		struct spl2sw_mac *mac = netdev_priv(ndev);
+		struct spl2sw_common *comm = mac->comm;
 		unsigned long flags;
 
 		spin_lock_irqsave(&comm->ioctl_lock, flags);
-		mac_rx_mode_set(mac);
+		spl2sw_mac_rx_mode_set(mac);
 		spin_unlock_irqrestore(&comm->ioctl_lock, flags);
 	}
 }
 
-static int ethernet_set_mac_address(struct net_device *ndev, void *addr)
+static int spl2sw_ethernet_set_mac_address(struct net_device *ndev, void *addr)
 {
 	struct sockaddr *hwaddr = (struct sockaddr *)addr;
-	struct l2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_mac *mac = netdev_priv(ndev);
 
 	//pr_info("[%s] IN\n", __func__);
 
@@ -232,20 +230,20 @@ static int ethernet_set_mac_address(struct net_device *ndev, void *addr)
 	/* Delete the old Ethernet MAC address */
 	pr_debug(" HW Addr = %pM\n", mac->mac_addr);
 	if (is_valid_ether_addr(mac->mac_addr))
-		mac_hw_addr_del(mac);
+		spl2sw_mac_addr_del(mac);
 
 	/* Set the Ethernet MAC address */
 	memcpy(mac->mac_addr, hwaddr->sa_data, ndev->addr_len);
-	mac_hw_addr_set(mac);
+	spl2sw_mac_addr_set(mac);
 
 	return 0;
 }
 
-static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd)
+static int spl2sw_ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd)
 {
 	struct mii_ioctl_data *data = if_mii(ifr);
-	struct l2sw_mac *mac = netdev_priv(ndev);
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_common *comm = mac->comm;
 
 	pr_debug(" if = %s, cmd = %04x\n", ifr->ifr_ifrn.ifrn_name, cmd);
 	pr_debug(" phy_id = %d, reg_num = %d, val_in = %04x\n", data->phy_id,
@@ -260,12 +258,12 @@ static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd
 		return 0;
 
 	case SIOCGMIIREG:
-		data->val_out = mdio_read(mac, data->phy_id, data->reg_num);
+		data->val_out = spl2sw_mdio_read(mac, data->phy_id, data->reg_num);
 		pr_debug(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
-		mdio_write(mac, data->phy_id, data->reg_num, data->val_in);
+		spl2sw_mdio_write(mac, data->phy_id, data->reg_num, data->val_in);
 		break;
 
 	default:
@@ -275,13 +273,13 @@ static int ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, int cmd
 	return 0;
 }
 
-static void ethernet_tx_timeout(struct net_device *ndev, unsigned int txqueue)
+static void spl2sw_ethernet_tx_timeout(struct net_device *ndev, unsigned int txqueue)
 {
 }
 
-static struct net_device_stats *ethernet_get_stats(struct net_device *ndev)
+static struct net_device_stats *spl2sw_ethernet_get_stats(struct net_device *ndev)
 {
-	struct l2sw_mac *mac;
+	struct spl2sw_mac *mac;
 
 	//pr_info("[%s] IN\n", __func__);
 	mac = netdev_priv(ndev);
@@ -289,17 +287,17 @@ static struct net_device_stats *ethernet_get_stats(struct net_device *ndev)
 }
 
 static const struct net_device_ops netdev_ops = {
-	.ndo_open = ethernet_open,
-	.ndo_stop = ethernet_stop,
-	.ndo_start_xmit = ethernet_start_xmit,
-	.ndo_set_rx_mode = ethernet_set_rx_mode,
-	.ndo_set_mac_address = ethernet_set_mac_address,
-	.ndo_do_ioctl = ethernet_do_ioctl,
-	.ndo_tx_timeout = ethernet_tx_timeout,
-	.ndo_get_stats = ethernet_get_stats,
+	.ndo_open = spl2sw_ethernet_open,
+	.ndo_stop = spl2sw_ethernet_stop,
+	.ndo_start_xmit = spl2sw_ethernet_start_xmit,
+	.ndo_set_rx_mode = spl2sw_ethernet_set_rx_mode,
+	.ndo_set_mac_address = spl2sw_ethernet_set_mac_address,
+	.ndo_do_ioctl = spl2sw_ethernet_do_ioctl,
+	.ndo_tx_timeout = spl2sw_ethernet_tx_timeout,
+	.ndo_get_stats = spl2sw_ethernet_get_stats,
 };
 
-char *sp7021_otp_read_mac(struct device *dev, ssize_t *len, char *name)
+static char *spl2sw_otp_read_mac(struct device *dev, ssize_t *len, char *name)
 {
 	struct nvmem_cell *cell = nvmem_cell_get(dev, name);
 	char *ret;
@@ -316,7 +314,7 @@ char *sp7021_otp_read_mac(struct device *dev, ssize_t *len, char *name)
 	return ret;
 }
 
-static void check_mac_vendor_id_and_convert(char *mac_addr)
+static void spl2sw_check_mac_vendor_id_and_convert(char *mac_addr)
 {
 	/* Byte order of MAC address of some samples are reversed.
 	 * Check vendor id and convert byte order if it is wrong.
@@ -347,10 +345,10 @@ static void check_mac_vendor_id_and_convert(char *mac_addr)
  * platform_driver
  *
  **********************************************************************/
-static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_device **r_ndev)
+static u32 spl2sw_init_netdev(struct platform_device *pdev, int eth_no, struct net_device **r_ndev)
 {
 	u32 ret = -ENODEV;
-	struct l2sw_mac *mac;
+	struct spl2sw_mac *mac;
 	struct net_device *ndev;
 	char *m_addr_name = (eth_no == 0) ? "mac_addr0" : "mac_addr1";
 	ssize_t otp_l = 0;
@@ -358,10 +356,10 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 
 	//pr_info("[%s] IN\n", __func__);
 
-	/* Allocate the devices, and also allocate l2sw_mac,
+	/* Allocate the devices, and also allocate spl2sw_mac,
 	 * we can get it by netdev_priv().
 	 */
-	ndev = alloc_etherdev(sizeof(struct l2sw_mac));
+	ndev = alloc_etherdev(sizeof(struct spl2sw_mac));
 	if (!ndev) {
 		*r_ndev = NULL;
 		return -ENOMEM;
@@ -375,7 +373,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 	mac->next_ndev = NULL;
 
 	/* Get property 'mac-addr0' or 'mac-addr1' from dts. */
-	otp_v = sp7021_otp_read_mac(&pdev->dev, &otp_l, m_addr_name);
+	otp_v = spl2sw_otp_read_mac(&pdev->dev, &otp_l, m_addr_name);
 	if ((otp_l < 6) || IS_ERR_OR_NULL(otp_v)) {
 		pr_info(" OTP mac %s (len = %zd) is invalid, using default!\n",
 			m_addr_name, otp_l);
@@ -385,7 +383,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		memcpy(mac->mac_addr, otp_v, 6);
 
 		/* Byte order of Some samples are reversed. Convert byte order here. */
-		check_mac_vendor_id_and_convert(mac->mac_addr);
+		spl2sw_check_mac_vendor_id_and_convert(mac->mac_addr);
 
 		if (!is_valid_ether_addr(mac->mac_addr)) {
 			pr_info(" Invalid mac in OTP[%s] = %pM, use default!\n",
@@ -422,7 +420,7 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 static ssize_t mode_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
-	struct l2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_mac *mac = netdev_priv(ndev);
 
 	return sprintf(buf, "%d\n", (mac->comm->dual_nic) ? 1 : (mac->comm->sa_learning) ? 0 : 2);
 }
@@ -431,41 +429,41 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			  const char *buf, size_t count)
 {
 	struct net_device *ndev = dev_get_drvdata(dev);
-	struct l2sw_mac *mac = netdev_priv(ndev);
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_mac *mac = netdev_priv(ndev);
+	struct spl2sw_common *comm = mac->comm;
 	struct net_device *ndev2;
-	struct l2sw_mac *mac2;
+	struct spl2sw_mac *mac2;
 
 	if (buf[0] == '1') {
 		// Switch to dual NIC mode.
 		mutex_lock(&comm->store_mode);
 		if (!comm->dual_nic) {
-			mac_hw_stop(mac);
+			spl2sw_mac_hw_stop(mac);
 
 			comm->dual_nic = 1;
 			comm->sa_learning = 0;
-			//mac_hw_addr_print(mac);
-			mac_disable_port_sa_learning(mac);
-			mac_addr_table_del_all(mac);
-			mac_switch_mode(mac);
-			mac_rx_mode_set(mac);
-			//mac_hw_addr_print(mac);
+			//spl2sw_mac_hw_addr_print(mac);
+			spl2sw_mac_disable_port_sa_learning(mac);
+			spl2sw_mac_addr_table_del_all(mac);
+			spl2sw_mac_switch_mode(mac);
+			spl2sw_mac_rx_mode_set(mac);
+			//spl2sw_mac_hw_addr_print(mac);
 
-			init_netdev(mac->pdev, 1, &ndev2);	// Initialize the 2nd net device (eth1)
+			spl2sw_init_netdev(mac->pdev, 1, &ndev2);	// Initialize the 2nd net device (eth1)
 			if (ndev2) {
 				mac->next_ndev = ndev2;		// Pointed by previous net device.
 				mac2 = netdev_priv(ndev2);
 				mac2->comm = comm;
 				ndev2->irq = comm->irq;
 
-				mac_switch_mode(mac);
-				mac_rx_mode_set(mac2);
-				mac_hw_addr_set(mac2);
-				//mac_hw_addr_print();
+				spl2sw_mac_switch_mode(mac);
+				spl2sw_mac_rx_mode_set(mac2);
+				spl2sw_mac_addr_set(mac2);
+				//spl2sw_mac_hw_addr_print();
 			}
 
 			comm->enable &= 0x1;	// Keep lan 0, but always turn off lan 1.
-			mac_hw_start(mac);
+			spl2sw_mac_hw_start(mac);
 		}
 		mutex_unlock(&comm->store_mode);
 	} else if ((buf[0] == '0') || (buf[0] == '2')) {
@@ -475,16 +473,16 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		if (buf[0] == '2') {
 			if (comm->sa_learning == 1) {
 				comm->sa_learning = 0;
-				//mac_hw_addr_print(mac);
-				mac_disable_port_sa_learning(mac);
-				mac_addr_table_del_all(mac);
-				//mac_hw_addr_print(mac);
+				//spl2sw_mac_hw_addr_print(mac);
+				spl2sw_mac_disable_port_sa_learning(mac);
+				spl2sw_mac_addr_table_del_all(mac);
+				//spl2sw_mac_hw_addr_print(mac);
 			}
 		} else {
 			if (comm->sa_learning == 0) {
 				comm->sa_learning = 1;
-				mac_enable_port_sa_learning(mac);
-				//mac_hw_addr_print(mac);
+				spl2sw_spl2sw_mac_enable_port_sa_learning(mac);
+				//spl2sw_mac_hw_addr_print(mac);
 			}
 		}
 
@@ -492,11 +490,11 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 			struct net_device *ndev2 = mac->next_ndev;
 
 			if (!netif_running(ndev2)) {
-				mac_hw_stop(mac);
+				spl2sw_mac_hw_stop(mac);
 
 				mac2 = netdev_priv(ndev2);
-				mac_hw_addr_del(mac2);
-				//mac_hw_addr_print(mac);
+				spl2sw_mac_addr_del(mac2);
+				//spl2sw_mac_hw_addr_print(mac);
 
 				// unregister and free net device.
 				unregister_netdev(ndev2);
@@ -505,8 +503,8 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				pr_info(" Unregistered and freed net device \"eth1\"!\n");
 
 				comm->dual_nic = 0;
-				mac_switch_mode(mac);
-				mac_rx_mode_set(mac);
+				spl2sw_mac_switch_mode(mac);
+				spl2sw_mac_rx_mode_set(mac);
 
 				// If eth0 is up, turn on lan 0 and 1 when switching to daisy-chain mode.
 				if (comm->enable & 0x1)
@@ -514,7 +512,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				else
 					comm->enable = 0;
 
-				mac_hw_start(mac);
+				spl2sw_mac_hw_start(mac);
 			} else {
 				pr_err(" Error: Net device \"%s\" is running!\n", ndev2->name);
 			}
@@ -528,24 +526,24 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 }
 
 static DEVICE_ATTR_RW(mode);
-static struct attribute *l2sw_sysfs_entries[] = {
+static struct attribute *spl2sw_sysfs_entries[] = {
 	&dev_attr_mode.attr,
 	NULL,
 };
 
 static struct attribute_group l2sw_attribute_group = {
-	.attrs = l2sw_sysfs_entries,
+	.attrs = spl2sw_sysfs_entries,
 };
 #endif
 
-static int soc0_open(struct l2sw_mac *mac)
+static int spl2sw_soc0_open(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 rc;
 
 	//pr_info("[%s] IN\n", __func__);
 
-	mac_hw_stop(mac);
+	spl2sw_mac_hw_stop(mac);
 
 #ifndef INTERRUPT_IMMEDIATELY
 	//tasklet_enable(&comm->rx_tasklet);
@@ -556,39 +554,39 @@ static int soc0_open(struct l2sw_mac *mac)
 	napi_enable(&comm->napi);
 #endif
 
-	rc = descs_init(comm);
+	rc = spl2sw_descs_init(comm);
 	if (rc) {
 		pr_err(" Fail to initialize mac descriptors!\n");
 		goto INIT_DESC_FAIL;
 	}
 
 	/*start hardware port, open interrupt, start system tx queue */
-	mac_init(mac);
+	spl2sw_mac_init(mac);
 	return 0;
 
 INIT_DESC_FAIL:
-	descs_free(comm);
+	spl2sw_descs_free(comm);
 	return rc;
 }
 
-static int soc0_stop(struct l2sw_mac *mac)
+static int spl2sw_soc0_stop(struct spl2sw_mac *mac)
 {
 #ifdef RX_POLLING
 	napi_disable(&mac->comm->napi);
 #endif
 
-	mac_hw_stop(mac);
+	spl2sw_mac_hw_stop(mac);
 
-	descs_free(mac->comm);
+	spl2sw_descs_free(mac->comm);
 	return 0;
 }
 
-static int l2sw_probe(struct platform_device *pdev)
+static int spl2sw_probe(struct platform_device *pdev)
 {
-	struct l2sw_common *comm;
+	struct spl2sw_common *comm;
 	struct resource *r_mem;
 	struct net_device *ndev, *ndev2;
-	struct l2sw_mac *mac, *mac2;
+	struct spl2sw_mac *mac, *mac2;
 	u32 mode;
 	int ret = 0;
 	int rc;
@@ -598,7 +596,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	if (platform_get_drvdata(pdev) != NULL)
 		return -ENODEV;
 
-	/* Allocate memory for 'l2sw_common' area. */
+	/* Allocate memory for 'spl2sw_common' area. */
 	comm = devm_kzalloc(&pdev->dev, sizeof(*comm), GFP_KERNEL);
 	if (!comm)
 		return -ENOMEM;
@@ -644,7 +642,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 
 	// Get irq resource from dts.
-	if (l2sw_get_irq(pdev, comm) != 0)
+	if (spl2sw_get_irq(pdev, comm) != 0)
 		return -ENXIO;
 
 	// Get L2-switch mode.
@@ -689,7 +687,7 @@ static int l2sw_probe(struct platform_device *pdev)
 	}
 	udelay(1);
 
-	ret = init_netdev(pdev, 0, &ndev);	// Initialize the 1st net device (eth0)
+	ret = spl2sw_init_netdev(pdev, 0, &ndev);	// Initialize the 1st net device (eth0)
 	if (ndev == NULL)
 		return ret;
 
@@ -720,17 +718,17 @@ static int l2sw_probe(struct platform_device *pdev)
 		pr_info(" Cannot get address of phy of ethernet 2! Set to 1 by default.\n");
 	}
 
-	mac_enable_port(mac);
+	spl2sw_mac_enable_port(mac);
 
 #ifndef ZEBU_XTOR
 	if (comm->phy1_node) {
-		ret = mdio_init(pdev, ndev);
+		ret = spl2sw_mdio_init(pdev, ndev);
 		if (ret) {
 			pr_err(" Failed to initialize mdio!\n");
 			goto out_unregister_dev;
 		}
 
-		ret = mac_phy_probe(ndev);
+		ret = spl2sw_phy_probe(ndev);
 		if (ret) {
 			pr_err(" Failed to probe phy!\n");
 			goto out_freemdio;
@@ -739,7 +737,7 @@ static int l2sw_probe(struct platform_device *pdev)
 		pr_err(" Failed to get phy-handle!\n");
 	}
 
-	phy_cfg(mac);
+	spl2sw_phy_cfg(mac);
 #endif
 
 #ifdef RX_POLLING
@@ -747,7 +745,7 @@ static int l2sw_probe(struct platform_device *pdev)
 #endif
 
 	// Register irq to system.
-	if (l2sw_request_irq(pdev, comm, ndev) != 0) {
+	if (spl2sw_request_irq(pdev, comm, ndev) != 0) {
 		ret = -ENODEV;
 		goto out_freemdio;
 	}
@@ -759,11 +757,11 @@ static int l2sw_probe(struct platform_device *pdev)
 	//tasklet_disable(&comm->tx_tasklet);
 #endif
 
-	soc0_open(mac);
+	spl2sw_soc0_open(mac);
 
 	// Set MAC address
-	mac_hw_addr_set(mac);
-	//mac_hw_addr_print(mac);
+	spl2sw_mac_addr_set(mac);
+	//spl2sw_mac_hw_addr_print(mac);
 
 #ifdef CONFIG_DYNAMIC_MODE_SWITCHING_BY_SYSFS
 	/* Add the device attributes */
@@ -772,16 +770,16 @@ static int l2sw_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Error creating sysfs files!\n");
 #endif
 
-	mac_addr_table_del_all(mac);
+	spl2sw_mac_addr_table_del_all(mac);
 	if (comm->sa_learning)
-		mac_enable_port_sa_learning(mac);
+		spl2sw_spl2sw_mac_enable_port_sa_learning(mac);
 	else
-		mac_disable_port_sa_learning(mac);
-	mac_rx_mode_set(mac);
-	//mac_hw_addr_print(mac);
+		spl2sw_mac_disable_port_sa_learning(mac);
+	spl2sw_mac_rx_mode_set(mac);
+	//spl2sw_mac_hw_addr_print(mac);
 
 	if (comm->dual_nic) {
-		init_netdev(pdev, 1, &ndev2);
+		spl2sw_init_netdev(pdev, 1, &ndev2);
 		if (ndev2 == NULL)
 			goto fail_to_init_2nd_port;
 		mac->next_ndev = ndev2;	// Pointed by previous net device.
@@ -791,10 +789,10 @@ static int l2sw_probe(struct platform_device *pdev)
 		mac2->comm = comm;
 		pr_debug(" ndev = %p, mac = %p, comm = %p\n", ndev2, mac2, mac2->comm);
 
-		mac_switch_mode(mac);
-		mac_rx_mode_set(mac2);
-		mac_hw_addr_set(mac2);	// Set MAC address for the second net device.
-		//mac_hw_addr_print(mac);
+		spl2sw_mac_switch_mode(mac);
+		spl2sw_mac_rx_mode_set(mac2);
+		spl2sw_mac_addr_set(mac2);	// Set MAC address for the second net device.
+		//spl2sw_mac_hw_addr_print(mac);
 	}
 
 fail_to_init_2nd_port:
@@ -802,7 +800,7 @@ fail_to_init_2nd_port:
 
 out_freemdio:
 	if (comm->mii_bus)
-		mdio_remove(ndev);
+		spl2sw_mdio_remove(ndev);
 
 #ifndef ZEBU_XTOR
 out_unregister_dev:
@@ -811,11 +809,11 @@ out_unregister_dev:
 	return ret;
 }
 
-static int l2sw_remove(struct platform_device *pdev)
+static int spl2sw_remove(struct platform_device *pdev)
 {
 	struct net_device *ndev;
 	struct net_device *ndev2;
-	struct l2sw_mac *mac;
+	struct spl2sw_mac *mac;
 
 	//pr_info("[%s] IN\n", __func__);
 
@@ -841,10 +839,10 @@ static int l2sw_remove(struct platform_device *pdev)
 #endif
 
 	mac->comm->enable = 0;
-	soc0_stop(mac);
+	spl2sw_soc0_stop(mac);
 
-	//mac_phy_remove(ndev);
-	mdio_remove(ndev);
+	//spl2sw_phy_remove(ndev);
+	spl2sw_mdio_remove(ndev);
 
 	// Unregister and free 1st net device.
 	unregister_netdev(ndev);
@@ -856,7 +854,7 @@ static int l2sw_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_PM
-static int l2sw_suspend(struct device *dev)
+static int spl2sw_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct net_device *ndev = platform_get_drvdata(pdev);
@@ -865,7 +863,7 @@ static int l2sw_suspend(struct device *dev)
 	return 0;
 }
 
-static int l2sw_resume(struct device *dev)
+static int spl2sw_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct net_device *ndev = platform_get_drvdata(pdev);
@@ -874,33 +872,33 @@ static int l2sw_resume(struct device *dev)
 	return 0;
 }
 
-static const struct dev_pm_ops l2sw_pm_ops = {
-	.suspend = l2sw_suspend,
-	.resume = l2sw_resume,
+static const struct dev_pm_ops spl2sw_pm_ops = {
+	.suspend = spl2sw_suspend,
+	.resume = spl2sw_resume,
 };
 #endif
 
-static const struct of_device_id sp_l2sw_of_match[] = {
+static const struct of_device_id spl2sw_of_match[] = {
 	{.compatible = "sunplus,sp7021-l2sw"},
 	{ /* sentinel */ }
 };
 
-MODULE_DEVICE_TABLE(of, sp_l2sw_of_match);
+MODULE_DEVICE_TABLE(of, spl2sw_of_match);
 
-static struct platform_driver l2sw_driver = {
-	.probe = l2sw_probe,
-	.remove = l2sw_remove,
+static struct platform_driver spl2sw_driver = {
+	.probe = spl2sw_probe,
+	.remove = spl2sw_remove,
 	.driver = {
-		   .name = "sp_l2sw",
+		   .name = "spl2sw",
 		   .owner = THIS_MODULE,
-		   .of_match_table = sp_l2sw_of_match,
+		   .of_match_table = spl2sw_of_match,
 #ifdef CONFIG_PM
-		   .pm = &l2sw_pm_ops,	// not sure
+		   .pm = &spl2sw_pm_ops,	// not sure
 #endif
 		   },
 };
 
-module_platform_driver(l2sw_driver);
+module_platform_driver(spl2sw_driver);
 
 MODULE_AUTHOR("Wells Lu <wells.lu@sunplus.com>");
 MODULE_DESCRIPTION("Sunplus 10M/100M Ethernet (with L2 switch) driver");

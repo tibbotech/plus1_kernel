@@ -3,20 +3,20 @@
  *       All rights reserved.
  */
 
-#include "l2sw_desc.h"
-#include "l2sw_define.h"
+#include "spl2sw_desc.h"
+#include "spl2sw_define.h"
 
-void rx_descs_flush(struct l2sw_common *comm)
+void spl2sw_rx_descs_flush(struct spl2sw_common *comm)
 {
-	struct skb_info *rx_skbinfo;
-	struct mac_desc *rx_desc;
+	struct spl2sw_skb_info *spl2sw_rx_skbinfo;
+	struct spl2sw_mac_desc *rx_desc;
 	u32 i, j;
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
 		rx_desc = comm->rx_desc[i];
-		rx_skbinfo = comm->rx_skb_info[i];
+		spl2sw_rx_skbinfo = comm->spl2sw_rx_skb_info[i];
 		for (j = 0; j < comm->rx_desc_num[i]; j++) {
-			rx_desc[j].addr1 = rx_skbinfo[j].mapping;
+			rx_desc[j].addr1 = spl2sw_rx_skbinfo[j].mapping;
 			rx_desc[j].cmd2 = (j == comm->rx_desc_num[i] - 1) ?
 					  EOR_BIT | comm->rx_desc_buff_size :
 					  comm->rx_desc_buff_size;
@@ -26,7 +26,7 @@ void rx_descs_flush(struct l2sw_common *comm)
 	}
 }
 
-void tx_descs_clean(struct l2sw_common *comm)
+static void spl2sw_tx_descs_clean(struct spl2sw_common *comm)
 {
 	s32 buflen;
 	u32 i;
@@ -57,49 +57,49 @@ void tx_descs_clean(struct l2sw_common *comm)
 	}
 }
 
-void rx_descs_clean(struct l2sw_common *comm)
+static void spl2sw_rx_descs_clean(struct spl2sw_common *comm)
 {
-	struct skb_info *rx_skbinfo;
-	struct mac_desc *rx_desc;
+	struct spl2sw_skb_info *spl2sw_rx_skbinfo;
+	struct spl2sw_mac_desc *rx_desc;
 	u32 i, j;
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
-		if (!comm->rx_skb_info[i])
+		if (!comm->spl2sw_rx_skb_info[i])
 			continue;
 
 		rx_desc = comm->rx_desc[i];
-		rx_skbinfo = comm->rx_skb_info[i];
+		spl2sw_rx_skbinfo = comm->spl2sw_rx_skb_info[i];
 		for (j = 0; j < comm->rx_desc_num[i]; j++) {
 			rx_desc[j].cmd1 = 0;
 			wmb();	/* Clear OWN_BIT and then set other fields. */
 			rx_desc[j].cmd2 = 0;
 			rx_desc[j].addr1 = 0;
 
-			if (rx_skbinfo[j].skb) {
-				dma_unmap_single(&comm->pdev->dev, rx_skbinfo[j].mapping,
+			if (spl2sw_rx_skbinfo[j].skb) {
+				dma_unmap_single(&comm->pdev->dev, spl2sw_rx_skbinfo[j].mapping,
 						 comm->rx_desc_buff_size, DMA_FROM_DEVICE);
-				dev_kfree_skb(rx_skbinfo[j].skb);
-				rx_skbinfo[j].skb = NULL;
-				rx_skbinfo[j].mapping = 0;
+				dev_kfree_skb(spl2sw_rx_skbinfo[j].skb);
+				spl2sw_rx_skbinfo[j].skb = NULL;
+				spl2sw_rx_skbinfo[j].mapping = 0;
 			}
 		}
 
-		kfree(rx_skbinfo);
-		comm->rx_skb_info[i] = NULL;
+		kfree(spl2sw_rx_skbinfo);
+		comm->spl2sw_rx_skb_info[i] = NULL;
 	}
 }
 
-void descs_clean(struct l2sw_common *comm)
+void spl2sw_descs_clean(struct spl2sw_common *comm)
 {
-	rx_descs_clean(comm);
-	tx_descs_clean(comm);
+	spl2sw_rx_descs_clean(comm);
+	spl2sw_tx_descs_clean(comm);
 }
 
-void descs_free(struct l2sw_common *comm)
+void spl2sw_descs_free(struct spl2sw_common *comm)
 {
 	u32 i;
 
-	descs_clean(comm);
+	spl2sw_descs_clean(comm);
 	comm->tx_desc = NULL;
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++)
 		comm->rx_desc[i] = NULL;
@@ -114,26 +114,26 @@ void descs_free(struct l2sw_common *comm)
 	}
 }
 
-void tx_descs_init(struct l2sw_common *comm)
+static void spl2sw_tx_descs_init(struct spl2sw_common *comm)
 {
-	memset(comm->tx_desc, '\0', sizeof(struct mac_desc) *
+	memset(comm->tx_desc, '\0', sizeof(struct spl2sw_mac_desc) *
 	       (TX_DESC_NUM + MAC_GUARD_DESC_NUM));
 }
 
-int rx_descs_init(struct l2sw_common *comm)
+static int spl2sw_rx_descs_init(struct spl2sw_common *comm)
 {
-	struct skb_info *rx_skbinfo;
-	struct mac_desc *rx_desc;
+	struct spl2sw_skb_info *spl2sw_rx_skbinfo;
+	struct spl2sw_mac_desc *rx_desc;
 	struct sk_buff *skb;
 	u32 i, j;
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
-		comm->rx_skb_info[i] = kcalloc(comm->rx_desc_num[i], sizeof(*rx_skbinfo),
+		comm->spl2sw_rx_skb_info[i] = kcalloc(comm->rx_desc_num[i], sizeof(*spl2sw_rx_skbinfo),
 					       GFP_KERNEL | GFP_DMA);
-		if (!comm->rx_skb_info[i])
+		if (!comm->spl2sw_rx_skb_info[i])
 			goto mem_alloc_fail;
 
-		rx_skbinfo = comm->rx_skb_info[i];
+		spl2sw_rx_skbinfo = comm->spl2sw_rx_skb_info[i];
 		rx_desc = comm->rx_desc[i];
 		for (j = 0; j < comm->rx_desc_num[i]; j++) {
 			skb = __dev_alloc_skb(comm->rx_desc_buff_size + RX_OFFSET,
@@ -144,14 +144,14 @@ int rx_descs_init(struct l2sw_common *comm)
 			skb->dev = comm->ndev;
 			skb_reserve(skb, RX_OFFSET);	/* +data +tail */
 
-			rx_skbinfo[j].skb = skb;
-			rx_skbinfo[j].mapping = dma_map_single(&comm->pdev->dev, skb->data,
+			spl2sw_rx_skbinfo[j].skb = skb;
+			spl2sw_rx_skbinfo[j].mapping = dma_map_single(&comm->pdev->dev, skb->data,
 							       comm->rx_desc_buff_size,
 							       DMA_FROM_DEVICE);
-			if (dma_mapping_error(&comm->pdev->dev, rx_skbinfo[j].mapping))
+			if (dma_mapping_error(&comm->pdev->dev, spl2sw_rx_skbinfo[j].mapping))
 				goto mem_alloc_fail;
 
-			rx_desc[j].addr1 = rx_skbinfo[j].mapping;
+			rx_desc[j].addr1 = spl2sw_rx_skbinfo[j].mapping;
 			rx_desc[j].addr2 = 0;
 			rx_desc[j].cmd2 = (j == comm->rx_desc_num[i] - 1) ?
 					  EOR_BIT | comm->rx_desc_buff_size :
@@ -164,19 +164,19 @@ int rx_descs_init(struct l2sw_common *comm)
 	return 0;
 
 mem_alloc_fail:
-	rx_descs_clean(comm);
+	spl2sw_rx_descs_clean(comm);
 	return -ENOMEM;
 }
 
-int descs_alloc(struct l2sw_common *comm)
+static int spl2sw_descs_alloc(struct spl2sw_common *comm)
 {
 	s32 desc_size;
 	u32 i;
 
 	/* Alloc descriptor area  */
-	desc_size = (TX_DESC_NUM + MAC_GUARD_DESC_NUM) * sizeof(struct mac_desc);
+	desc_size = (TX_DESC_NUM + MAC_GUARD_DESC_NUM) * sizeof(struct spl2sw_mac_desc);
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++)
-		desc_size += comm->rx_desc_num[i] * sizeof(struct mac_desc);
+		desc_size += comm->rx_desc_num[i] * sizeof(struct spl2sw_mac_desc);
 
 	comm->desc_base = dma_alloc_coherent(&comm->pdev->dev, desc_size, &comm->desc_dma,
 					     GFP_KERNEL);
@@ -186,7 +186,7 @@ int descs_alloc(struct l2sw_common *comm)
 	comm->desc_size = desc_size;
 
 	/* Setup Tx descriptor */
-	comm->tx_desc = (struct mac_desc *)comm->desc_base;
+	comm->tx_desc = (struct spl2sw_mac_desc *)comm->desc_base;
 
 	/* Setup Rx descriptor */
 	comm->rx_desc[0] = &comm->tx_desc[TX_DESC_NUM + MAC_GUARD_DESC_NUM];
@@ -196,7 +196,7 @@ int descs_alloc(struct l2sw_common *comm)
 	return 0;
 }
 
-int descs_init(struct l2sw_common *comm)
+int spl2sw_descs_init(struct spl2sw_common *comm)
 {
 	u32 i, ret;
 
@@ -208,7 +208,7 @@ int descs_init(struct l2sw_common *comm)
 
 	for (i = 0; i < RX_DESC_QUEUE_NUM; i++) {
 		comm->rx_desc[i] = NULL;
-		comm->rx_skb_info[i] = NULL;
+		comm->spl2sw_rx_skb_info[i] = NULL;
 		comm->rx_pos[i] = 0;
 	}
 	comm->rx_desc_buff_size = MAC_RX_LEN_MAX;
@@ -222,13 +222,13 @@ int descs_init(struct l2sw_common *comm)
 		comm->tx_temp_skb_info[i].skb = NULL;
 
 	/* Allocate tx & rx descriptors. */
-	ret = descs_alloc(comm);
+	ret = spl2sw_descs_alloc(comm);
 	if (ret) {
 		pr_err(" Failed to allocate tx & rx descriptors!\n");
 		return ret;
 	}
 
-	tx_descs_init(comm);
+	spl2sw_tx_descs_init(comm);
 
-	return rx_descs_init(comm);
+	return spl2sw_rx_descs_init(comm);
 }

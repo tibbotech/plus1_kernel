@@ -3,8 +3,8 @@
  *       All rights reserved.
  */
 
-#ifndef __L2SW_DEFINE_H__
-#define __L2SW_DEFINE_H__
+#ifndef __SPL2SW_DEFINE_H__
+#define __SPL2SW_DEFINE_H__
 
 #include <linux/module.h>
 #include <linux/init.h>
@@ -154,20 +154,20 @@
 
 #define ETHERNET_MAC_ADDR_LEN           6
 
-struct mac_desc {
+struct spl2sw_mac_desc {
 	u32 cmd1;
 	u32 cmd2;
 	u32 addr1;
 	u32 addr2;
 };
 
-struct skb_info {
+struct spl2sw_skb_info {
 	struct sk_buff *skb;
 	u32 mapping;
 	u32 len;
 };
 
-struct l2sw_common {
+struct spl2sw_common {
 	void __iomem *l2sw_reg_base;
 	void __iomem *moon5_reg_base;
 
@@ -183,14 +183,14 @@ struct l2sw_common {
 	struct reset_control *rstc;
 	int irq;
 
-	struct mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
-	struct skb_info *rx_skb_info[RX_DESC_QUEUE_NUM];
+	struct spl2sw_mac_desc *rx_desc[RX_DESC_QUEUE_NUM];
+	struct spl2sw_skb_info *spl2sw_rx_skb_info[RX_DESC_QUEUE_NUM];
 	u32 rx_pos[RX_DESC_QUEUE_NUM];
 	u32 rx_desc_num[RX_DESC_QUEUE_NUM];
 	u32 rx_desc_buff_size;
 
-	struct mac_desc *tx_desc;
-	struct skb_info tx_temp_skb_info[TX_DESC_NUM];
+	struct spl2sw_mac_desc *tx_desc;
+	struct spl2sw_skb_info tx_temp_skb_info[TX_DESC_NUM];
 	u32 tx_done_pos;
 	u32 tx_pos;
 	u32 tx_desc_full;
@@ -219,10 +219,10 @@ struct l2sw_common {
 	u8 enable;
 };
 
-struct l2sw_mac {
+struct spl2sw_mac {
 	struct platform_device *pdev;
 	struct net_device *ndev;
-	struct l2sw_common *comm;
+	struct spl2sw_common *comm;
 	struct net_device *next_ndev;
 
 	struct net_device_stats dev_stats;

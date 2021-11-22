@@ -3,15 +3,15 @@
  *       All rights reserved.
  */
 
-#include "l2sw_define.h"
-#include "l2sw_int.h"
-#include "l2sw_driver.h"
-#include "l2sw_register.h"
+#include "spl2sw_define.h"
+#include "spl2sw_int.h"
+#include "spl2sw_driver.h"
+#include "spl2sw_register.h"
 
-static inline void port_status_change(struct l2sw_mac *mac)
+static void spl2sw_port_status_change(struct spl2sw_mac *mac)
 {
 	struct net_device *ndev = (struct net_device *)mac->ndev;
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	reg = readl(comm->l2sw_reg_base + L2SW_PORT_ABILITY);
@@ -48,7 +48,7 @@ static inline void port_status_change(struct l2sw_mac *mac)
 	}
 }
 
-static inline void rx_skb(struct l2sw_mac *mac, struct sk_buff *skb)
+static void spl2sw_rx_skb(struct spl2sw_mac *mac, struct sk_buff *skb)
 {
 	mac->dev_stats.rx_packets++;
 	mac->dev_stats.rx_bytes += skb->len;
@@ -56,19 +56,19 @@ static inline void rx_skb(struct l2sw_mac *mac, struct sk_buff *skb)
 	netif_rx(skb);
 }
 
-static inline void rx_interrupt(struct l2sw_mac *mac)
+static void spl2sw_rx_interrupt(struct spl2sw_mac *mac)
 {
+	struct spl2sw_common *comm = mac->comm;
+	struct net_device_stats *dev_stats;
 	struct sk_buff *skb, *new_skb;
-	struct skb_info *sinfo;
-	struct mac_desc *desc;
-	struct mac_desc *h_desc;
+	struct spl2sw_skb_info *sinfo;
+	struct spl2sw_mac_desc *desc;
+	struct spl2sw_mac_desc *h_desc;
 	u32 rx_pos, pkg_len;
 	u32 cmd;
 	u32 num, rx_count;
 	s32 queue;
-	struct l2sw_common *comm = mac->comm;
 	int ndev2_pkt;
-	struct net_device_stats *dev_stats;
 
 	// Process high-priority queue and then low-priority queue.
 	for (queue = 0; queue < RX_DESC_QUEUE_NUM; queue++) {
@@ -77,7 +77,7 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 		//pr_info(" queue = %d, rx_pos = %d, rx_count = %d\n", queue, rx_pos, rx_count);
 
 		for (num = 0; num < rx_count; num++) {
-			sinfo = comm->rx_skb_info[queue] + rx_pos;
+			sinfo = comm->spl2sw_rx_skb_info[queue] + rx_pos;
 			desc = comm->rx_desc[queue] + rx_pos;
 			cmd = desc->cmd1;
 			//pr_info(" rx_pos = %d, RX: cmd1 = %08x, cmd2 = %08x\n", rx_pos, cmd, desc->cmd2);
@@ -88,7 +88,7 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 			}
 
 			if ((comm->dual_nic) && ((cmd & PKTSP_MASK) == PKTSP_PORT1)) {
-				struct l2sw_mac *mac2;
+				struct spl2sw_mac *mac2;
 
 				ndev2_pkt = 1;
 				mac2 = (mac->next_ndev) ? netdev_priv(mac->next_ndev) : NULL;
@@ -151,11 +151,11 @@ static inline void rx_interrupt(struct l2sw_mac *mac)
 
 				if (netdev2) {
 					skb->protocol = eth_type_trans(skb, netdev2);
-					rx_skb(netdev_priv(netdev2), skb);
+					spl2sw_rx_skb(netdev_priv(netdev2), skb);
 				}
 			} else {
 				skb->protocol = eth_type_trans(skb, mac->ndev);
-				rx_skb(mac, skb);
+				spl2sw_rx_skb(mac, skb);
 			}
 
 			desc->addr1 = sinfo->mapping;
@@ -187,31 +187,31 @@ spl2sw_rx_poll_err:
 #ifndef INTERRUPT_IMMEDIATELY
 void rx_do_tasklet(unsigned long data)
 {
-	struct l2sw_mac *mac = (struct l2sw_mac *)data;
+	struct spl2sw_mac *mac = (struct spl2sw_mac *)data;
 
-	rx_interrupt(mac);
+	spl2sw_rx_interrupt(mac);
 }
 #endif
 
 #ifdef RX_POLLING
 int rx_poll(struct napi_struct *napi, int budget)
 {
-	struct l2sw_mac *mac = container_of(napi, struct l2sw_mac, napi);
+	struct spl2sw_mac *mac = container_of(napi, struct spl2sw_mac, napi);
 
-	rx_interrupt(mac);
+	spl2sw_rx_interrupt(mac);
 	napi_complete(napi);
 
 	return 0;
 }
 #endif
 
-static inline void tx_interrupt(struct l2sw_mac *mac)
+static void spl2sw_tx_interrupt(struct spl2sw_mac *mac)
 {
 	u32 tx_done_pos;
 	u32 cmd;
-	struct skb_info *skbinfo;
-	struct l2sw_mac *smac;
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_skb_info *skbinfo;
+	struct spl2sw_mac *smac;
+	struct spl2sw_common *comm = mac->comm;
 
 	tx_done_pos = comm->tx_done_pos;
 	//pr_info(" tx_done_pos = %d\n", tx_done_pos);
@@ -265,17 +265,17 @@ static inline void tx_interrupt(struct l2sw_mac *mac)
 #ifndef INTERRUPT_IMMEDIATELY
 void tx_do_tasklet(unsigned long data)
 {
-	struct l2sw_mac *mac = (struct l2sw_mac *)data;
+	struct spl2sw_mac *mac = (struct spl2sw_mac *)data;
 
-	tx_interrupt(mac);
+	spl2sw_tx_interrupt(mac);
 }
 #endif
 
-irqreturn_t ethernet_interrupt(int irq, void *dev_id)
+irqreturn_t spl2sw_ethernet_interrupt(int irq, void *dev_id)
 {
 	struct net_device *ndev;
-	struct l2sw_mac *mac;
-	struct l2sw_common *comm;
+	struct spl2sw_mac *mac;
+	struct spl2sw_common *comm;
 	u32 status;
 
 	//pr_info("[%s] IN\n", __func__);
@@ -311,7 +311,7 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 			mac->dev_stats.rx_fifo_errors++;
 		}
 #ifdef INTERRUPT_IMMEDIATELY
-		rx_interrupt(mac);
+		spl2sw_rx_interrupt(mac);
 #else
 		tasklet_schedule(&comm->rx_tasklet);
 #endif
@@ -322,10 +322,10 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 		if (unlikely(status & MAC_INT_TX_DES_ERR)) {
 			pr_err(" Illegal TX Descriptor Error\n");
 			mac->dev_stats.tx_fifo_errors++;
-			mac_soft_reset(mac);
+			spl2sw_mac_soft_reset(mac);
 		} else {
 #ifdef INTERRUPT_IMMEDIATELY
-			tx_interrupt(mac);
+			spl2sw_tx_interrupt(mac);
 			writel(status & MAC_INT_TX,
 			       comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0);
 #else
@@ -335,7 +335,7 @@ irqreturn_t ethernet_interrupt(int irq, void *dev_id)
 	}
 
 	if (status & MAC_INT_PORT_ST_CHG)	/* link status changed */
-		port_status_change(mac);
+		spl2sw_port_status_change(mac);
 
 	//if (status & MAC_INT_RX_H_DESCF)
 	//	pr_info(" RX High-priority Descriptor Full!\n");
@@ -359,7 +359,7 @@ OUT:
 	return IRQ_HANDLED;
 }
 
-int l2sw_get_irq(struct platform_device *pdev, struct l2sw_common *comm)
+int spl2sw_get_irq(struct platform_device *pdev, struct spl2sw_common *comm)
 {
 	struct resource *res;
 
@@ -374,12 +374,12 @@ int l2sw_get_irq(struct platform_device *pdev, struct l2sw_common *comm)
 	return 0;
 }
 
-int l2sw_request_irq(struct platform_device *pdev, struct l2sw_common *comm,
+int spl2sw_request_irq(struct platform_device *pdev, struct spl2sw_common *comm,
 		     struct net_device *ndev)
 {
 	int rc;
 
-	rc = devm_request_irq(&pdev->dev, comm->irq, ethernet_interrupt, 0,
+	rc = devm_request_irq(&pdev->dev, comm->irq, spl2sw_ethernet_interrupt, 0,
 			      ndev->name, ndev);
 	if (rc != 0) {
 		pr_err(" Failed to request irq #%d for \"%s\" (rc = %d)!\n",

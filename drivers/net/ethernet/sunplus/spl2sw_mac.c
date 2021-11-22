@@ -3,11 +3,11 @@
  *       All rights reserved.
  */
 
-#include "l2sw_mac.h"
+#include "spl2sw_mac.h"
 
-void mac_hw_stop(struct l2sw_mac *mac)
+void spl2sw_mac_hw_stop(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg, disable;
 
 	if (comm->enable == 0) {
@@ -28,9 +28,9 @@ void mac_hw_stop(struct l2sw_mac *mac)
 	}
 }
 
-void mac_hw_start(struct l2sw_mac *mac)
+void spl2sw_mac_hw_start(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Enable cpu port 0 (6) & port 0 crc padding (8) */
@@ -41,12 +41,12 @@ void mac_hw_start(struct l2sw_mac *mac)
 	reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 	writel(reg & (~(comm->enable << 24)), comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 
-	//mac_regs_print();
+	//spl2sw_mac_regs_print();
 }
 
-void mac_hw_addr_set(struct l2sw_mac *mac)
+void spl2sw_mac_addr_set(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Write MAC address. */
@@ -70,12 +70,12 @@ void mac_hw_addr_set(struct l2sw_mac *mac)
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//mac_hw_addr_print(mac);
+	//spl2sw_mac_hw_addr_print(mac);
 }
 
-void mac_hw_addr_del(struct l2sw_mac *mac)
+void spl2sw_mac_addr_del(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Write MAC address. */
@@ -97,12 +97,12 @@ void mac_hw_addr_del(struct l2sw_mac *mac)
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//mac_hw_addr_print(mac);
+	//spl2sw_mac_hw_addr_print(mac);
 }
 
-void mac_addr_table_del_all(struct l2sw_mac *mac)
+void spl2sw_mac_addr_table_del_all(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Wait for address table being idle. */
@@ -156,9 +156,9 @@ void mac_addr_table_del_all(struct l2sw_mac *mac)
 }
 
 __attribute__((unused))
-void mac_hw_addr_print(struct l2sw_mac *mac)
+void spl2sw_mac_hw_addr_print(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg, regl, regh;
 
 	// Wait for address table being idle.
@@ -197,9 +197,9 @@ void mac_hw_addr_print(struct l2sw_mac *mac)
 	}
 }
 
-void mac_hw_init(struct l2sw_mac *mac)
+void spl2sw_mac_hw_init(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Disable cpu0 and cpu 1. */
@@ -208,11 +208,11 @@ void mac_hw_init(struct l2sw_mac *mac)
 
 	/* Descriptor base address */
 	writel(mac->comm->desc_dma, comm->l2sw_reg_base + L2SW_TX_LBASE_ADDR_0);
-	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * TX_DESC_NUM,
+	writel(mac->comm->desc_dma + sizeof(struct spl2sw_mac_desc) * TX_DESC_NUM,
 	       comm->l2sw_reg_base + L2SW_TX_HBASE_ADDR_0);
-	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM +
+	writel(mac->comm->desc_dma + sizeof(struct spl2sw_mac_desc) * (TX_DESC_NUM +
 	       MAC_GUARD_DESC_NUM), comm->l2sw_reg_base + L2SW_RX_HBASE_ADDR_0);
-	writel(mac->comm->desc_dma + sizeof(struct mac_desc) * (TX_DESC_NUM +
+	writel(mac->comm->desc_dma + sizeof(struct spl2sw_mac_desc) * (TX_DESC_NUM +
 	       MAC_GUARD_DESC_NUM + RX_QUEUE0_DESC_NUM),
 	       comm->l2sw_reg_base + L2SW_RX_LBASE_ADDR_0);
 
@@ -243,7 +243,7 @@ void mac_hw_init(struct l2sw_mac *mac)
 	writel((reg & (~((0x1 << 14) | (0x3c << 0)))) | (0x1 << 12),
 	       comm->l2sw_reg_base + L2SW_CPU_CNTL);
 
-	mac_switch_mode(mac);
+	spl2sw_mac_switch_mode(mac);
 
 	if (!comm->dual_nic) {
 		/* enable lan 0 & lan 1 */
@@ -254,9 +254,9 @@ void mac_hw_init(struct l2sw_mac *mac)
 	writel(MAC_INT_MASK_DEF, comm->l2sw_reg_base + L2SW_SW_INT_MASK_0);
 }
 
-void mac_switch_mode(struct l2sw_mac *mac)
+void spl2sw_mac_switch_mode(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	if (comm->dual_nic) {
@@ -266,7 +266,7 @@ void mac_switch_mode(struct l2sw_mac *mac)
 		mac->vlan_id = 0x0;	// vlan group: 0
 
 		if (mac->next_ndev) {
-			struct l2sw_mac *mac2 = netdev_priv(mac->next_ndev);
+			struct spl2sw_mac *mac2 = netdev_priv(mac->next_ndev);
 
 			mac2->cpu_port = 0x1;	// soc0
 			mac2->lan_port = 0x2;	// forward to port 1
@@ -318,9 +318,9 @@ void mac_switch_mode(struct l2sw_mac *mac)
 	}
 }
 
-void mac_disable_port_sa_learning(struct l2sw_mac *mac)
+void spl2sw_mac_disable_port_sa_learning(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Disable lan port SA learning. */
@@ -328,9 +328,9 @@ void mac_disable_port_sa_learning(struct l2sw_mac *mac)
 	writel(reg | (0x3 << 8), comm->l2sw_reg_base + L2SW_PORT_CNTL1);
 }
 
-void mac_enable_port_sa_learning(struct l2sw_mac *mac)
+void spl2sw_spl2sw_mac_enable_port_sa_learning(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	/* Disable lan port SA learning. */
@@ -338,9 +338,9 @@ void mac_enable_port_sa_learning(struct l2sw_mac *mac)
 	writel(reg & (~(0x3 << 8)), comm->l2sw_reg_base + L2SW_PORT_CNTL1);
 }
 
-void mac_rx_mode_set(struct l2sw_mac *mac)
+void spl2sw_mac_rx_mode_set(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	struct net_device *ndev = mac->ndev;
 	u32 mask, reg, rx_mode;
 
@@ -365,9 +365,9 @@ void mac_rx_mode_set(struct l2sw_mac *mac)
 	pr_debug(" cpu_cntl = %08x\n", readl(comm->l2sw_reg_base + L2SW_CPU_CNTL));
 }
 
-void mac_enable_port(struct l2sw_mac *mac)
+void spl2sw_mac_enable_port(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
 	//set clock
@@ -381,7 +381,7 @@ void mac_enable_port(struct l2sw_mac *mac)
 	writel(reg, comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 }
 
-bool mac_init(struct l2sw_mac *mac)
+bool spl2sw_mac_init(struct spl2sw_mac *mac)
 {
 	u32 i;
 
@@ -389,12 +389,12 @@ bool mac_init(struct l2sw_mac *mac)
 		mac->comm->rx_pos[i] = 0;
 	mb();	/* make sure settings are effective. */
 
-	mac_hw_init(mac);
+	spl2sw_mac_hw_init(mac);
 
 	return 1;
 }
 
-void mac_soft_reset(struct l2sw_mac *mac)
+void spl2sw_mac_soft_reset(struct spl2sw_mac *mac)
 {
 	struct net_device *ndev2;
 	u32 i;
@@ -412,10 +412,10 @@ void mac_soft_reset(struct l2sw_mac *mac)
 		}
 	}
 
-	mac_hw_stop(mac);
+	spl2sw_mac_hw_stop(mac);
 
-	//descs_clean(mac->comm);
-	rx_descs_flush(mac->comm);
+	//spl2sw_descs_clean(mac->comm);
+	spl2sw_rx_descs_flush(mac->comm);
 	mac->comm->tx_pos = 0;
 	mac->comm->tx_done_pos = 0;
 	mac->comm->tx_desc_full = 0;
@@ -424,8 +424,8 @@ void mac_soft_reset(struct l2sw_mac *mac)
 		mac->comm->rx_pos[i] = 0;
 	mb();	/* make sure settings are effective. */
 
-	mac_hw_init(mac);
-	mac_hw_start(mac);
+	spl2sw_mac_hw_init(mac);
+	spl2sw_mac_hw_start(mac);
 
 	if (!netif_carrier_ok(mac->ndev)) {
 		netif_carrier_on(mac->ndev);
@@ -441,9 +441,9 @@ void mac_soft_reset(struct l2sw_mac *mac)
 }
 
 __attribute__((unused))
-void mac_regs_print(struct l2sw_mac *mac)
+void spl2sw_mac_regs_print(struct spl2sw_mac *mac)
 {
-	struct l2sw_common *comm = mac->comm;
+	struct spl2sw_common *comm = mac->comm;
 
 	pr_info(" sw_int_status_0     = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_STATUS_0));
 	pr_info(" sw_int_mask_0       = %08x\n", readl(comm->l2sw_reg_base + L2SW_SW_INT_MASK_0));

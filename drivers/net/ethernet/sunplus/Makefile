@@ -2,5 +2,5 @@
 #
 # Makefile for the Sunplus network device drivers.
 #
-obj-$(CONFIG_NET_VENDOR_SUNPLUS) += sp_l2sw.o
-sp_l2sw-objs := l2sw_driver.o l2sw_int.o l2sw_desc.o l2sw_mac.o l2sw_mdio.o
+obj-$(CONFIG_NET_VENDOR_SUNPLUS) += spl2sw.o
+spl2sw-objs := spl2sw_driver.o spl2sw_int.o spl2sw_desc.o spl2sw_mac.o spl2sw_mdio.o spl2sw_phy.o
