@@ -258,12 +258,12 @@ static int spl2sw_ethernet_do_ioctl(struct net_device *ndev, struct ifreq *ifr, 
 		return 0;
 
 	case SIOCGMIIREG:
-		data->val_out = spl2sw_mdio_read(mac, data->phy_id, data->reg_num);
+		data->val_out = spl2sw_mdio_read(comm, data->phy_id, data->reg_num);
 		pr_debug(" val_out = %04x\n", data->val_out);
 		break;
 
 	case SIOCSMIIREG:
-		spl2sw_mdio_write(mac, data->phy_id, data->reg_num, data->val_in);
+		spl2sw_mdio_write(comm, data->phy_id, data->reg_num, data->val_in);
 		break;
 
 	default:
@@ -442,12 +442,12 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 
 			comm->dual_nic = 1;
 			comm->sa_learning = 0;
-			//spl2sw_mac_hw_addr_print(mac);
+			//spl2sw_mac_addr_print(mac);
 			spl2sw_mac_disable_port_sa_learning(mac);
 			spl2sw_mac_addr_table_del_all(mac);
 			spl2sw_mac_switch_mode(mac);
 			spl2sw_mac_rx_mode_set(mac);
-			//spl2sw_mac_hw_addr_print(mac);
+			//spl2sw_mac_addr_print(mac);
 
 			spl2sw_init_netdev(mac->pdev, 1, &ndev2);	// Initialize the 2nd net device (eth1)
 			if (ndev2) {
@@ -459,7 +459,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 				spl2sw_mac_switch_mode(mac);
 				spl2sw_mac_rx_mode_set(mac2);
 				spl2sw_mac_addr_set(mac2);
-				//spl2sw_mac_hw_addr_print();
+				//spl2sw_mac_addr_print();
 			}
 
 			comm->enable &= 0x1;	// Keep lan 0, but always turn off lan 1.
@@ -473,16 +473,16 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 		if (buf[0] == '2') {
 			if (comm->sa_learning == 1) {
 				comm->sa_learning = 0;
-				//spl2sw_mac_hw_addr_print(mac);
+				//spl2sw_mac_addr_print(mac);
 				spl2sw_mac_disable_port_sa_learning(mac);
 				spl2sw_mac_addr_table_del_all(mac);
-				//spl2sw_mac_hw_addr_print(mac);
+				//spl2sw_mac_addr_print(mac);
 			}
 		} else {
 			if (comm->sa_learning == 0) {
 				comm->sa_learning = 1;
 				spl2sw_spl2sw_mac_enable_port_sa_learning(mac);
-				//spl2sw_mac_hw_addr_print(mac);
+				//spl2sw_mac_addr_print(mac);
 			}
 		}
 
@@ -494,7 +494,7 @@ static ssize_t mode_store(struct device *dev, struct device_attribute *attr,
 
 				mac2 = netdev_priv(ndev2);
 				spl2sw_mac_addr_del(mac2);
-				//spl2sw_mac_hw_addr_print(mac);
+				//spl2sw_mac_addr_print(mac);
 
 				// unregister and free net device.
 				unregister_netdev(ndev2);
@@ -722,7 +722,13 @@ static int spl2sw_probe(struct platform_device *pdev)
 
 #ifndef ZEBU_XTOR
 	if (comm->phy1_node) {
-		ret = spl2sw_mdio_init(pdev, ndev);
+		comm->mdio_node = of_get_parent(mac->comm->phy1_node);
+		if (!comm->mdio_node) {
+			pr_err(" Failed to get mdio node!\n");
+			goto out_unregister_dev;
+		}
+
+		ret = spl2sw_mdio_init(comm);
 		if (ret) {
 			pr_err(" Failed to initialize mdio!\n");
 			goto out_unregister_dev;
@@ -761,7 +767,7 @@ static int spl2sw_probe(struct platform_device *pdev)
 
 	// Set MAC address
 	spl2sw_mac_addr_set(mac);
-	//spl2sw_mac_hw_addr_print(mac);
+	//spl2sw_mac_addr_print(mac);
 
 #ifdef CONFIG_DYNAMIC_MODE_SWITCHING_BY_SYSFS
 	/* Add the device attributes */
@@ -776,7 +782,7 @@ static int spl2sw_probe(struct platform_device *pdev)
 	else
 		spl2sw_mac_disable_port_sa_learning(mac);
 	spl2sw_mac_rx_mode_set(mac);
-	//spl2sw_mac_hw_addr_print(mac);
+	//spl2sw_mac_addr_print(mac);
 
 	if (comm->dual_nic) {
 		spl2sw_init_netdev(pdev, 1, &ndev2);
@@ -792,15 +798,14 @@ static int spl2sw_probe(struct platform_device *pdev)
 		spl2sw_mac_switch_mode(mac);
 		spl2sw_mac_rx_mode_set(mac2);
 		spl2sw_mac_addr_set(mac2);	// Set MAC address for the second net device.
-		//spl2sw_mac_hw_addr_print(mac);
+		//spl2sw_mac_addr_print(mac);
 	}
 
 fail_to_init_2nd_port:
 	return 0;
 
 out_freemdio:
-	if (comm->mii_bus)
-		spl2sw_mdio_remove(ndev);
+	spl2sw_mdio_remove(comm);
 
 #ifndef ZEBU_XTOR
 out_unregister_dev:
@@ -842,7 +847,7 @@ static int spl2sw_remove(struct platform_device *pdev)
 	spl2sw_soc0_stop(mac);
 
 	//spl2sw_phy_remove(ndev);
-	spl2sw_mdio_remove(ndev);
+	spl2sw_mdio_remove(mac->comm);
 
 	// Unregister and free 1st net device.
 	unregister_netdev(ndev);

@@ -24,7 +24,7 @@ void spl2sw_mac_hw_start(struct spl2sw_mac *mac);
 void spl2sw_mac_addr_set(struct spl2sw_mac *mac);
 void spl2sw_mac_addr_del(struct spl2sw_mac *mac);
 void spl2sw_mac_addr_table_del_all(struct spl2sw_mac *mac);
-void spl2sw_mac_hw_addr_print(struct spl2sw_mac *mac);
+void spl2sw_mac_addr_print(struct spl2sw_mac *mac);
 void spl2sw_mac_hw_init(struct spl2sw_mac *mac);
 void spl2sw_mac_switch_mode(struct spl2sw_mac *mac);
 void spl2sw_mac_disable_port_sa_learning(struct spl2sw_mac *mac);

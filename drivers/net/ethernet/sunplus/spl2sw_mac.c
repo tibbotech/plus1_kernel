@@ -70,7 +70,7 @@ void spl2sw_mac_addr_set(struct spl2sw_mac *mac)
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//spl2sw_mac_hw_addr_print(mac);
+	//spl2sw_mac_addr_print(mac);
 }
 
 void spl2sw_mac_addr_del(struct spl2sw_mac *mac)
@@ -97,7 +97,7 @@ void spl2sw_mac_addr_del(struct spl2sw_mac *mac)
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_47_16),
 		 readl(comm->l2sw_reg_base + L2SW_W_MAC_15_0) & 0xffff);
 
-	//spl2sw_mac_hw_addr_print(mac);
+	//spl2sw_mac_addr_print(mac);
 }
 
 void spl2sw_mac_addr_table_del_all(struct spl2sw_mac *mac)
@@ -156,7 +156,7 @@ void spl2sw_mac_addr_table_del_all(struct spl2sw_mac *mac)
 }
 
 __attribute__((unused))
-void spl2sw_mac_hw_addr_print(struct spl2sw_mac *mac)
+void spl2sw_mac_addr_print(struct spl2sw_mac *mac)
 {
 	struct spl2sw_common *comm = mac->comm;
 	u32 reg, regl, regh;

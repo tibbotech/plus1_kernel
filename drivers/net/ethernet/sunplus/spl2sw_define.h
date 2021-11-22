@@ -211,6 +211,7 @@ struct spl2sw_common {
 	struct napi_struct napi;
 #endif
 
+	struct device_node *mdio_node;
 	struct device_node *phy1_node;
 	struct device_node *phy2_node;
 	u8 phy1_addr;

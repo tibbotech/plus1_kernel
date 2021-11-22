@@ -10,9 +10,9 @@
 
 #define PHY_RUN_STATEMACHINE
 
-int  spl2sw_mdio_read(struct spl2sw_mac *mac, int phy_id, int regnum);
-int  spl2sw_mdio_write(struct spl2sw_mac *mac, int phy_id, int regnum, u16 val);
-u32  spl2sw_mdio_init(struct platform_device *pdev, struct net_device *ndev);
-void spl2sw_mdio_remove(struct net_device *ndev);
+int  spl2sw_mdio_read(struct spl2sw_common *comm, int phy_id, int regnum);
+int  spl2sw_mdio_write(struct spl2sw_common *comm, int phy_id, int regnum, u16 val);
+u32  spl2sw_mdio_init(struct spl2sw_common *comm);
+void spl2sw_mdio_remove(struct spl2sw_common *comm);
 
 #endif

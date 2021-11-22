@@ -109,10 +109,10 @@ int spl2sw_phy_cfg(struct spl2sw_mac *mac)
 	// Bug workaround:
 	// Flow-control of phy should be enabled. L2SW IP flow-control will refer
 	// to the bit to decide to enable or disable flow-control.
-	spl2sw_mdio_write(mac, mac->comm->phy1_addr, 4,
-		   spl2sw_mdio_read(mac, mac->comm->phy1_addr, 4) | (1 << 10));
-	spl2sw_mdio_write(mac, mac->comm->phy2_addr, 4,
-		   spl2sw_mdio_read(mac, mac->comm->phy2_addr, 4) | (1 << 10));
+	spl2sw_mdio_write(mac->comm, mac->comm->phy1_addr, 4,
+		   spl2sw_mdio_read(mac->comm, mac->comm->phy1_addr, 4) | (1 << 10));
+	spl2sw_mdio_write(mac->comm, mac->comm->phy2_addr, 4,
+		   spl2sw_mdio_read(mac->comm, mac->comm->phy2_addr, 4) | (1 << 10));
 
 	return 0;
 }
