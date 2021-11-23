@@ -8,8 +8,6 @@
 
 #include "spl2sw_define.h"
 
-#define PHY_RUN_STATEMACHINE
-
 int  spl2sw_phy_probe(struct net_device *ndev);
 void spl2sw_phy_start(struct net_device *ndev);
 void spl2sw_phy_stop(struct net_device *ndev);

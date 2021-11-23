@@ -82,7 +82,6 @@ u32 spl2sw_mdio_init(struct spl2sw_common *comm)
 	ret = of_mdiobus_register(mii_bus, comm->mdio_node);
 	if (ret) {
 		pr_err(" Failed to register mii bus (ret = %d)!\n", ret);
-		mdiobus_free(mii_bus);
 		return ret;
 	}
 
