@@ -1,5 +1,5 @@
-#ifndef __DEBUG_LL__
-#define __DEBUG_LL__
+#ifndef __LL_UART_H_
+#define __LL_UART_H_
 
 #include <mach/io_map.h>
 
