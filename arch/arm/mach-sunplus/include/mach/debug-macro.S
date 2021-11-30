@@ -3,7 +3,7 @@
  * Copyright (C) Sunplus Technology Co., Ltd.
  *       All rights reserved.
  */
-#include <soc/sunplus/sp_uart.h>
+#include <mach/ll_uart.h>
 
 		.macro	addruart, rp, rv, tmp
 		ldr	\rp, =LL_UART_PADDR @ physical

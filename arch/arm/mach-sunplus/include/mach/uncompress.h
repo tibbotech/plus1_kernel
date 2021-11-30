@@ -6,7 +6,7 @@
 #ifndef __UNCOMPRESS_H_
 #define __UNCOMPRESS_H_
 
-#include <soc/sunplus/sp_uart.h>
+#include <mach/ll_uart.h>
 
 struct regs_uart_t {
 	u32 uart_data;
