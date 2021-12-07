@@ -765,8 +765,8 @@
 		mac_addr0: mac_addr0@34 {
 			reg = <0x34 0x6>;
 		};
-		mac_addr1: mac_addr1@3A {
-			reg = <0x3A 0x6>;
+		mac_addr1: mac_addr1@3a {
+			reg = <0x3a 0x6>;
 		};
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
@@ -881,7 +881,7 @@
 
 	iop: iop@f8000400 {
 		compatible = "sunplus,q645-iop";
-		reg = <0x0 0xf8000400 0x0 0x80>, <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000F00 0x0 0x80>, <0x0 0xf8003100 0x0 0x80>, <0x0 0xf8012B80 0x0 0x80>;
+		reg = <0x0 0xf8000400 0x0 0x80>, <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000f00 0x0 0x80>, <0x0 0xf8003100 0x0 0x80>, <0x0 0xf8012b80 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH>;
 		reg-names = "iop", "iop_moon0", "iop_qctl", "iop_pmc", "axi_mon";
@@ -1228,7 +1228,7 @@
 		sdcard_pins: pinmux_sdcard_pins {
 			function = "SD_CARD";
 			groups = "SD_CARD";
-			pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO,0,0) >;
+			pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		sdio_pins: pinmux_sdio_pins {
