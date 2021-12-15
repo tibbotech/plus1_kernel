@@ -24,11 +24,6 @@
 #define WDT_LOCK				0xAB01
 #define WDT_CONMAX				0xDEAF
 
-#define RBUS_WDT_RST        BIT(1)
-#define STC_WDT_RST         BIT(4)
-
-#define MASK_SET(mask)		((mask) | (mask << 16))
-
 #define SP_WDT_MAX_TIMEOUT		11U
 #define SP_WDT_DEFAULT_TIMEOUT	10
 
@@ -53,7 +48,7 @@ struct sp_wdt_priv {
 };
 
 static int sp_wdt_restart(struct watchdog_device *wdev,
-			       unsigned long action, void *data)
+			  unsigned long action, void *data)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
@@ -91,9 +86,8 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 }
 
 static int sp_wdt_set_timeout(struct watchdog_device *wdev,
-				   unsigned int timeout)
+			      unsigned int timeout)
 {
-
 	wdev->timeout = timeout;
 	sp_wdt_ping(wdev);
 
@@ -133,33 +127,6 @@ static unsigned int sp_wdt_get_timeleft(struct watchdog_device *wdev)
 	return val;
 }
 
-/*
- * 1.We need to reset watchdog flag(clear watchdog interrupt) here
- * because watchdog timer driver does not have an interrupt handler,
- * and before enable STC and RBUS watchdog timeout. Otherwise,
- * the intr is always in the triggered state.
- * 2.Enable STC and RBUS watchdog timeout trigger.
- * 3.Watchdog counter is running, need to be stopped.
- */
-static int sp_wdt_hw_init(struct watchdog_device *wdev, void __iomem *rst_en)
-{
-	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
-	void __iomem *base = priv->base;
-	u32 val;
-
-	writel(WDT_CLRIRQ, base + WDT_CTRL);
-	val = readl(rst_en);
-	val |= MASK_SET(STC_WDT_RST);
-	val |= MASK_SET(RBUS_WDT_RST);
-	writel(val, rst_en);
-
-	sp_wdt_stop(wdev);
-	writel(WDT_LOCK, base + WDT_CTRL);
-	writel(WDT_CONMAX, base + WDT_CTRL);
-
-	return 0;
-}
-
 static const struct watchdog_info sp_wdt_info = {
 	.identity	= DEVICE_NAME,
 	.options	= WDIOF_SETTIMEOUT |
@@ -193,7 +160,6 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	struct sp_wdt_priv *priv;
 	struct resource *wdt_res;
 	int err;
-	void __iomem *rst_en;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -230,13 +196,6 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
-	/* The registers accessed here shared by multiple drivers. */
-	wdt_res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	rst_en =
-	    devm_ioremap(dev, wdt_res->start, resource_size(wdt_res));
-	if (IS_ERR(rst_en))
-		return PTR_ERR(rst_en);
-
 	priv->wdev.info = &sp_wdt_info;
 	priv->wdev.ops = &sp_wdt_ops;
 	priv->wdev.timeout = SP_WDT_DEFAULT_TIMEOUT;
@@ -249,8 +208,6 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	watchdog_set_restart_priority(&priv->wdev, 128);
 
 	watchdog_set_drvdata(&priv->wdev, priv);
-
-	sp_wdt_hw_init(&priv->wdev, rst_en);
 
 	watchdog_stop_on_reboot(&priv->wdev);
 	err = devm_watchdog_register_device(dev, &priv->wdev);
