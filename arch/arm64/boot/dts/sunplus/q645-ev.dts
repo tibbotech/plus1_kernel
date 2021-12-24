@@ -1228,7 +1228,7 @@
 		sdcard_pins: pinmux_sdcard_pins {
 			function = "SD_CARD";
 			groups = "SD_CARD";
-			pins = <SPPCTL_IOPAD(62,SPPCTL_PCTL_G_GPIO, 0, 0) >;
+			pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		sdio_pins: pinmux_sdio_pins {
