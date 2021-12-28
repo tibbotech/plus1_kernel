@@ -824,7 +824,7 @@ config SPI_SUNPLUS_SP7021
 	tristate "Sunplus SP7021 SPI controller"
 	depends on SOC_SP7021
 	help
-	  This enable Sunplus SP7021 spi controller driver on the SP7021 SoCs.
+	  This enables Sunplus SP7021 SPI controller driver on the SP7021 SoCs.
 	  This driver can also be built as a module. If so, the module will be
 	  called as spi-sunplus-sp7021.
 

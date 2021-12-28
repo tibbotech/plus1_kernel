@@ -16751,28 +16751,28 @@ S:	Maintained
 F:	drivers/net/ethernet/dlink/sundance.c
 
 SUNPLUS I2C CONTROLLER INTERFACE DRIVER
-M:	LH Kuo <lh.kuo@sunplus.com>
+M:	Li-hao Kuo <lhjeff911@gmail.com>
 L:	linux-i2c@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/i2c/i2c-sunplus.yaml
 F:	drivers/i2c/busses/i2c-sunplus.c
 
 SUNPLUS SD/SDIO HOST CONTROLLER INTERFACE DRIVER
-M:	LH Kuo <lh.kuo@sunplus.com>
+M:	Li-hao Kuo <lhjeff911@gmail.com>
 L:	linux-mmc@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/mmc/sunplus-sd2.yaml
-F:	drivers/mmc/host/sunplus_sd2.*
+F:	drivers/mmc/host/sunplus_sd2.c
 
 SUNPLUS SPI CONTROLLER INTERFACE DRIVER
-M:	LH Kuo <lh.kuo@sunplus.com>
+M:	Li-hao Kuo <lhjeff911@gmail.com>
 L:	linux-spi@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/spi/spi-sunplus-sp7021.yaml
 F:	drivers/spi/spi-sunplus-sp7021.c
 
 SUNPLUS THERMAL DRIVER
-M:	LH Kuo <lh.kuo@sunplus.com>
+M:	Li-hao Kuo <lhjeff911@gmail.com>
 L:	linux-pm@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/thermal/sunplus_thermal.yaml

@@ -11,28 +11,28 @@ allOf:
   - $ref: "spi-controller.yaml"
 
 maintainers:
-  - lh.kuo <lh.kuo@sunplus.com>
+  - Li-hao Kuo <lhjeff911@gmail.com>
 
 properties:
   compatible:
     enum:
-      - sunplus,sp7021-spi-controller
+      - sunplus,sp7021-spi
 
   reg:
     items:
-      - description: Base address and length of the SPI master registers
-      - description: Base address and length of the SPI slave registers
+      - the SPI master registers
+      - the SPI slave registers
 
   reg-names:
     items:
-      - const: spi_master
-      - const: spi_slave
+      - const: master
+      - const: slave
 
   interrupt-names:
     items:
-      - const: dma_w_intr
-      - const: mas_risc_intr
-      - const: slave_risc_intr
+      - const: dma_w
+      - const: mas_risc
+      - const: slave_risc
 
   interrupts:
     minItems: 3
@@ -40,21 +40,8 @@ properties:
   clocks:
     maxItems: 1
 
-  clocks-names:
-    items:
-      - const: sys_pll
-
   resets:
     maxItems: 1
-
-  pinctrl-names:
-    description:
-      A pinctrl state named "default" must be defined.
-    const: default
-
-  pinctrl-0:
-    description:
-      A phandle to the default pinctrl state.
 
 required:
   - compatible
@@ -68,26 +55,25 @@ required:
   - pinctrl-names
   - pinctrl-0
 
-additionalProperties: false
+unevaluatedProperties: false
 
 examples:
   - |
     #include <dt-bindings/clock/sp-sp7021.h>
     #include <dt-bindings/reset/sp-sp7021.h>
     #include <dt-bindings/interrupt-controller/irq.h>
-    spi_controller0: spi@9C002D80 {
-        compatible = "sunplus,sp7021-spi-controller";
+    spi@9C002D80 {
+        compatible = "sunplus,sp7021-spi";
         reg = <0x9C002D80 0x80>, <0x9C002E00 0x80>;
-        reg-names = "spi_master", "spi_slave";
+        reg-names = "master", "slave";
         interrupt-parent = <&intc>;
-        interrupt-names = "dma_w_intr",
-                          "mas_risc_intr",
-                          "slave_risc_intr";
+        interrupt-names = "dma_w",
+                          "mas_risc",
+                          "slave_risc";
         interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
                      <146 IRQ_TYPE_LEVEL_HIGH>,
                      <145 IRQ_TYPE_LEVEL_HIGH>;
         clocks = <&clkc SPI_COMBO_0>;
-        clocks-names = "sys_pll";
         resets = <&rstc RST_SPI_COMBO_0>;
         pinctrl-names = "default";
         pinctrl-0 = <&pins_spi0>;
