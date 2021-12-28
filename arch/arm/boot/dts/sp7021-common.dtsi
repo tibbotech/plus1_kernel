@@ -413,10 +413,9 @@
 			interrupts = <163 IRQ_TYPE_EDGE_RISING>;
 		};
 
-		thermal: serial@9c000280 {
+		thermal: thermal@9c000280 {
 			compatible = "sunplus,sp7021-thermal";
-			reg = <0x9c000280 0x80>, <0x9c000200 0x80>;
-			reg-names = "thermal_reg", "thermal_moon4";
+			reg = <0x9c000280 0x80>;
 			#thermal-sensor-cells = <0>;
 			nvmem-cell-names = "therm_calib";
 			nvmem-cells = <&therm_calib>;
@@ -645,8 +644,8 @@
 
 		i2cm0: i2c@9c004600 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004600 0x80>, <0x9c004680 0x80>;
-			reg-names = "i2cm", "i2cmdma";
+			reg = <0x9c004600 0x80>, <0x9c004680 0x80>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM0>;
@@ -655,8 +654,8 @@
 
 		i2cm1: i2c@9c004700 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004700 0x80>, <0x9c004780 0x80>;
-			reg-names = "i2cm", "i2cmdma";
+			reg = <0x9c004700 0x80>, <0x9c004780 0x80>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM1>;
@@ -665,8 +664,8 @@
 
 		i2cm2: i2c@9c004800 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004800 0x80>, <0x9c004880 0x80>;
-			reg-names = "i2cm", "i2cmdma";
+			reg = <0x9c004800 0x80>, <0x9c004880 0x80>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM2>;
@@ -675,8 +674,8 @@
 
 		i2cm3: i2c@9c004900 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004900 0x80>, <0x9c004980 0x80>;
-			reg-names = "i2cm", "i2cmdma";
+			reg = <0x9c004900 0x80>, <0x9c004980 0x80>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM3>;
@@ -911,67 +910,63 @@
 			#size-cells = <0>;
 		};
 
-		spi_controller0: spi@9c002d80 {
-			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9c002d80 0x80>, <0x9c002e00 0x80>;
-			reg-names = "spi_master", "spi_slave";
+		spi_controller0: spi@9C002D80 {
+			compatible = "sunplus,sp7021-spi";
+			reg = <0x9C002D80 0x80>, <0x9C002E00 0x80>;
+			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
-			interrupt-names = "dma_w_intr",
-					  "mas_risc_intr",
-					  "slave_risc_intr";
+			interrupt-names = "dma_w",
+					  "mas_risc",
+					  "slave_risc";
 			interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
 				     <146 IRQ_TYPE_LEVEL_HIGH>,
 				     <145 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_0>;
-			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_0>;
 		};
 
-		spi_controller1: spi@9c00f480 {
-			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9c00f480 0x80>, <0x9c00f500 0x80>;
-			reg-names = "spi_master", "spi_slave";
+		spi_controller1: spi@9C00F480 {
+			compatible = "sunplus,sp7021-spi";
+			reg = <0x9C00F480 0x80>, <0x9C00F500 0x80>;
+			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
-			interrupt-names = "dma_w_intr",
-					  "mas_risc_intr",
-					  "slave_risc_intr";
+			interrupt-names = "dma_w",
+					  "mas_risc",
+					  "slave_risc";
 			interrupts = <67 IRQ_TYPE_LEVEL_HIGH>,
 				     <69 IRQ_TYPE_LEVEL_HIGH>,
 				     <68 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_1>;
-			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_1>;
 		};
 
-		spi_controller2: spi@9c00f600 {
-			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9c00f600 0x80>, <0x9c00f680 0x80>;
-			reg-names = "spi_master", "spi_slave";
+		spi_controller2: spi@9C00F600 {
+			compatible = "sunplus,sp7021-spi";
+			reg = <0x9C00F600 0x80>, <0x9C00F680 0x80>;
+			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
-			interrupt-names = "dma_w_intr",
-					  "mas_risc_intr",
-					  "slave_risc_intr";
+			interrupt-names = "dma_w",
+					  "mas_risc",
+					  "slave_risc";
 			interrupts = <70 IRQ_TYPE_LEVEL_HIGH>,
 				     <72 IRQ_TYPE_LEVEL_HIGH>,
 				     <71 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_2>;
-			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_2>;
 		};
 
-		spi_controller3: spi@9c00f780 {
-			compatible = "sunplus,sp7021-spi-controller";
-			reg = <0x9c00f780 0x80>, <0x9c00f800 0x80>;
-			reg-names = "spi_master", "spi_slave";
+		spi_controller3: spi@9C00F780 {
+			compatible = "sunplus,sp7021-spi";
+			reg = <0x9C00F780 0x80>, <0x9C00F800 0x80>;
+			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
-			interrupt-names = "dma_w_intr",
-					  "mas_risc_intr",
-					  "slave_risc_intr";
+			interrupt-names = "dma_w",
+					  "mas_risc",
+					  "slave_risc";
 			interrupts = <73 IRQ_TYPE_LEVEL_HIGH>,
 				     <75 IRQ_TYPE_LEVEL_HIGH>,
 				     <74 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc SPI_COMBO_3>;
-			clock-names = "sys_pll";
 			resets = <&rstc RST_SPI_COMBO_3>;
 		};
 
