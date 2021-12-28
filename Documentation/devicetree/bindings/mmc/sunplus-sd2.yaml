@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-# Copyright (C) Sunplus Co., Ltd. 2021
+# Copyright (C) Sunplus Co., Ltd.
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/mmc/sunplus-sd2.yaml#
@@ -8,12 +8,12 @@ $schema: http://devicetree.org/meta-schemas/core.yaml#
 title: Sunplus SD/SDIO controller
 
 maintainers:
-  - lh.kuo <lh.kuo@sunplus.com>
+  - Li-hao Kuo <lhjeff911@gmail.com>
 
 properties:
   compatible:
     enum:
-      - sunplus,sp7021-card1
+      - sunplus,sp7021-card
       - sunplus,sp7021-sdio
 
   reg:
@@ -28,15 +28,6 @@ properties:
 
   resets:
     maxItems: 1
-
-  pinctrl-names:
-    description:
-      A pinctrl state named "default" must be defined.
-    const: default
-
-  pinctrl-0:
-    description:
-      A phandle to the default pinctrl state.
 
   max-frequency: true
 
@@ -59,8 +50,8 @@ examples:
     #include <dt-bindings/clock/sp-sp7021.h>
     #include <dt-bindings/reset/sp-sp7021.h>
     #include <dt-bindings/interrupt-controller/irq.h>
-    mmc1: mmc@9C003e80 {
-       compatible = "sunplus,sp7021-card1";
+    sdcard: sdcard@9c003e80 {
+       compatible = "sunplus,sp7021-card";
        reg = <0x9c003e80 0x280>;
        interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
        clocks = <&clkc CARD_CTL1>;
@@ -69,7 +60,7 @@ examples:
        pinctrl-0 = <&mmc1_mux &mmc1_mux_cd>;
        max-frequency = <52000000>;
     };
-    sdio: mmc@9C008400 {
+    sdio: mmc@9c008400 {
        compatible = "sunplus,sp7021-sdio";
        reg = <0x9c008400 0x280>;
        interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
@@ -78,5 +69,5 @@ examples:
        pinctrl-names = "default";
        pinctrl-0 = <&pins_sdio>;
        max-frequency = <52000000>;
-    };   
+    };
 ...
