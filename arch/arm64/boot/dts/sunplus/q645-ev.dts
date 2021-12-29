@@ -1134,7 +1134,7 @@
 
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,q645-wdt";
-		reg = <0x00 0xf8000628 0x00 0x08>;
+		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
 		clocks = <&clkc STC0>;
 		resets = <&rstc RST_STC0>;
 	};

@@ -18,7 +18,9 @@ properties:
     const: sunplus,sp7021-wdt
 
   reg:
-    maxItems: 1
+    items:
+      - description: watchdog registers regions
+      - description: miscellaneous control registers regions
 
   clocks:
     maxItems: 1
@@ -38,7 +40,7 @@ examples:
   - |
     watchdog: watchdog@9c000630 {
         compatible = "sunplus,sp7021-wdt";
-        reg = <0x9c000630 0x08>;
+        reg = <0x9c000630 0x08>, <0x9C000274 0x04>;
         clocks = <&clkc 0x24>;
         resets = <&rstc 0x14>;
     };
