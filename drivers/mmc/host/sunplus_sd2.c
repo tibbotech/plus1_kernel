@@ -277,18 +277,15 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 	u32 value = readl(host->base + SPSD2_SD_TIMING_CONF0_REG);
 	int clkdiv = FIELD_GET(SPSDC_CONF_CLK_DIV, readl(host->base + SPSD2_SD_CONF_REG));
 	int delay = (clkdiv / 2 < 7) ? clkdiv / 2 : 7;
-	char *timing_name;
 
 	switch (timing) {
 	case MMC_TIMING_LEGACY:
 		value &= ~SPSDC_TIMING_CONF0_HS_EN;
-		timing_name = "legacy";
 		break;
 	case MMC_TIMING_SD_HS:
 	case MMC_TIMING_MMC_HS:
 		value |= SPSDC_TIMING_CONF0_HS_EN |
 			FIELD_PREP(SPSDC_TIMING_CONF0_WRTD, delay);
-		timing_name = "hs";
 		break;
 	}
 	writel(value, host->base + SPSD2_SD_TIMING_CONF0_REG);
@@ -297,23 +294,19 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 static void spsdc_set_bus_width(struct spsdc_host *host, int width)
 {
 	u32 value = readl(host->base + SPSD2_SD_CONF_REG);
-	int bus_width;
 
 	switch (width) {
 	case MMC_BUS_WIDTH_8:
 		value &= ~SPSDC_CONF_4BIT_MODE;
 		value |= SPSDC_CONF_MMC8BIT;
-		bus_width = 8;
 		break;
 	case MMC_BUS_WIDTH_4:
 		value |= SPSDC_CONF_4BIT_MODE;
 		value &= ~SPSDC_CONF_MMC8BIT;
-		bus_width = 4;
 		break;
 	default:
 		value &= ~SPSDC_CONF_4BIT_MODE;
 		value &= ~SPSDC_CONF_MMC8BIT;
-		bus_width = 1;
 		break;
 	};
 	writel(value, host->base + SPSD2_SD_CONF_REG);
@@ -740,7 +733,7 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 }
 
 /* Interrupt Service Routine */
-irqreturn_t spsdc_irq(int irq, void *dev_id)
+static irqreturn_t spsdc_irq(int irq, void *dev_id)
 {
 	struct spsdc_host *host = dev_id;
 	u32 value = readl(host->base + SPSD2_SD_INT_REG);
@@ -771,8 +764,12 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	struct mmc_command *cmd;
 	struct mmc_data *data;
 	int bus_width = mmc->ios.bus_width;
+	int ret;
 
-	mutex_lock_interruptible(&host->mrq_lock);
+	ret = mutex_lock_interruptible(&host->mrq_lock);
+	if (ret)
+		return;
+
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
@@ -846,7 +843,7 @@ static void spsdc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
  *   -ENOSYS when not supported (equal to NULL callback)
  *   or a negative errno value when something bad happened
  */
-int spsdc_get_cd(struct mmc_host *mmc)
+static int spsdc_get_cd(struct mmc_host *mmc)
 {
 	int ret = 0;
 
@@ -1094,6 +1091,7 @@ static struct platform_driver spsdc_driver = {
 	.resume = spsdc_drv_resume,
 	.driver = {
 		.name = "spsdc",
+		.owner = THIS_MODULE,
 #ifdef CONFIG_PM
 		.pm = &spsdc_pm_ops,
 #endif
