@@ -250,28 +250,28 @@
 	pinctrl-names = "default";
 
 	i2cm0_pins: pinmux_i2cm0_pins {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(12, SPPCTL_PCTL_G_PMUX, MUXF_I2CM0_DAT, 0)
 			SPPCTL_IOPAD(13, SPPCTL_PCTL_G_PMUX, MUXF_I2CM0_CLK, 0)
 		>;
 	};
 
 	i2cm1_tpm_pins: pinmux_i2cm1_tpm_pins {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(64, SPPCTL_PCTL_G_PMUX, MUXF_I2CM1_DAT, 0)
 			SPPCTL_IOPAD(61, SPPCTL_PCTL_G_PMUX, MUXF_I2CM1_CLK, 0)
 		>;
 	};
 
 	i2cm2_mipicsi_pins: pinmux_i2cm2_mipicsi_pins {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(8, SPPCTL_PCTL_G_PMUX, MUXF_I2CM2_DAT, 0)
 			SPPCTL_IOPAD(9, SPPCTL_PCTL_G_PMUX, MUXF_I2CM2_CLK, 0)
 		>;
 	};
 
 	l2sw_f2p_pins: pinmux_l2sw_f2p_pins {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(49, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_CLK_OUT, 0)
 			SPPCTL_IOPAD(44, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_MAC_SMI_MDC, 0)
 			SPPCTL_IOPAD(43, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_MAC_SMI_MDIO, 0)
@@ -288,7 +288,7 @@
 			SPPCTL_IOPAD(55, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_P1_MAC_RMII_RXD0, 0)
 			SPPCTL_IOPAD(56, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_P1_MAC_RMII_RXD1, 0)
 		>;
-		zero_func = <
+		sunplus,zerofunc = <
 			MUXF_L2SW_LED_FLASH0
 			MUXF_L2SW_LED_FLASH1
 			MUXF_L2SW_LED_ON0
@@ -300,7 +300,7 @@
 	};
 
 	pins_sdio: pins_sdio {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(30, SPPCTL_PCTL_G_PMUX, MUXF_SDIO_CLK, 0)
 			SPPCTL_IOPAD(31, SPPCTL_PCTL_G_PMUX, MUXF_SDIO_CMD, 0)
 			SPPCTL_IOPAD(33, SPPCTL_PCTL_G_PMUX, MUXF_SDIO_D0, 0)
@@ -311,22 +311,22 @@
 	};
 
 	mmc1_mux_cd: mmc1_mux_cd {
-		pins = < SPPCTL_IOPAD(91, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		sunplus,pins = < SPPCTL_IOPAD(91, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 	};
 
 	mipicsi0_pins: pinmux_mipicsi0_pins {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(92, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OU1)
 			SPPCTL_IOPAD(93, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OU1)
 		>;
 	};
 
 	gpio_leds_pins: pinmux_gpio_leds_pins {
-		pins = < SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT) >;
+		sunplus,pins = < SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT) >;
 	};
 
 	pins_uart1: pins_uart1 {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(11, SPPCTL_PCTL_G_PMUX, MUXF_UA1_TX, 0)
 			SPPCTL_IOPAD(10, SPPCTL_PCTL_G_PMUX, MUXF_UA1_RX, 0)
 			SPPCTL_IOPAD(7, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
@@ -334,7 +334,7 @@
 	};
 
 	pins_uart2: pins_uart2 {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(41, SPPCTL_PCTL_G_PMUX, MUXF_UA2_TX, 0)
 			SPPCTL_IOPAD(40, SPPCTL_PCTL_G_PMUX, MUXF_UA2_RX, 0)
 			SPPCTL_IOPAD(6, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
@@ -342,7 +342,7 @@
 	};
 
 	pins_uart3: pins_uart3 {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(45, SPPCTL_PCTL_G_PMUX, MUXF_UA3_TX, 0)
 			SPPCTL_IOPAD(42, SPPCTL_PCTL_G_PMUX, MUXF_UA3_RX, 0)
 			SPPCTL_IOPAD(32, SPPCTL_PCTL_G_PMUX, MUXF_UA3_RTS, 0)
@@ -351,7 +351,7 @@
 	};
 
 	pins_uart4: pins_uart4 {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(14, SPPCTL_PCTL_G_PMUX, MUXF_UA4_TX, 0)
 			SPPCTL_IOPAD(16, SPPCTL_PCTL_G_PMUX, MUXF_UA4_RX, 0)
 			SPPCTL_IOPAD(20, SPPCTL_PCTL_G_PMUX, MUXF_UA4_RTS, 0)
@@ -360,7 +360,7 @@
 	};
 
 	pins_spi0: pinmux_pins_spi0 {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(26, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
 			SPPCTL_IOPAD(28, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
 			SPPCTL_IOPAD(23, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_DO, 0)
@@ -370,7 +370,7 @@
 	};
 
 	pins_pwm: pinmux_pins_pwm {
-		pins = <
+		sunplus,pins = <
 			SPPCTL_IOPAD(36, SPPCTL_PCTL_G_PMUX, MUXF_PWM0, 0)
 			SPPCTL_IOPAD(37, SPPCTL_PCTL_G_PMUX, MUXF_PWM1, 0)
 			SPPCTL_IOPAD(38, SPPCTL_PCTL_G_PMUX, MUXF_PWM2, 0)

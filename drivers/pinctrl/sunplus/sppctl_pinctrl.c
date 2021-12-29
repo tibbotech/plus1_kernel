@@ -370,7 +370,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	u8 p_p, p_g, p_f, p_l;
 	unsigned long *configs;
 	int i, size = 0;
-	const __be32 *list = of_get_property(_dn, "pins", &size);
+	const __be32 *list = of_get_property(_dn, "sunplus,pins", &size);
 	struct property *prop;
 	const char *s_f, *s_g;
 	int nmG = of_property_count_strings(_dn, "groups");
@@ -456,7 +456,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	}
 
 	// handle zero function
-	list = of_get_property(_dn, "zero_func", &size);
+	list = of_get_property(_dn, "sunplus,zerofunc", &size);
 	if (list) {
 		for (i = 0; i < size/sizeof(*list); i++) {
 			dt_fun = be32_to_cpu(list[i]);
