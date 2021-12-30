@@ -1176,234 +1176,234 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		uart0_pins: pinmux_uart0_pins {
+		uart0_pins: pinmux_uart0-pins {
 			function = "UART0";
 			groups = "UART0";
 		};
 
-		uart1_pins: pinmux_uart1_pins {
+		uart1_pins: pinmux_uart1-pins {
 			function = "UART1";
 			groups = "UART1";
 		};
 
-		uart2_pins: pinmux_uart2_pins {
+		uart2_pins: pinmux_uart2-pins {
 			function = "UART2";
 			groups = "UART2";
 		};
 
-		uart3_pins: pinmux_uart3_pins {
+		uart3_pins: pinmux_uart3-pins {
 			function = "UART3";
 			groups = "UART3";
 		};
 
-		uart4_pins: pinmux_uart4_pins {
+		uart4_pins: pinmux_uart4-pins {
 			function = "UART4";
 			groups = "UART4";
 		};
 
-		uadbg_pins: pinmux_uadbg_pins {
+		uadbg_pins: pinmux_uadbg-pins {
 			function = "UADBG";
 			groups = "UADBG";
 		};
 
-		uart6_pins: pinmux_uart6_pins {
+		uart6_pins: pinmux_uart6-pins {
 			function = "UART6";
 			groups = "UART6";
 		};
 
-		uart7_pins: pinmux_uart7_pins {
+		uart7_pins: pinmux_uart7-pins {
 			function = "UART7";
 			groups = "UART7";
 		};
 
-		uart8_pins: pinmux_uart8_pins {
+		uart8_pins: pinmux_uart8-pins {
 			function = "UART8";
 			groups = "UART8";
 		};
 
-		emmc_pins: pinmux_emmc_pins {
+		emmc_pins: pinmux_emmc-pins {
 			function = "CARD0_EMMC";
 			groups = "CARD0_EMMC";
 		};
 
-		sdcard_pins: pinmux_sdcard_pins {
+		sdcard_pins: pinmux_sdcard-pins {
 			function = "SD_CARD";
 			groups = "SD_CARD";
 			sunplus,pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
-		sdio_pins: pinmux_sdio_pins {
+		sdio_pins: pinmux_sdio-pins {
 			function = "SDIO";
 			groups = "SDIO";
 		};
 
-		spi_nor_pins: pinmux_spi_nor_pins {
+		spi_nor_pins: pinmux_spi_nor-pins {
 			function = "SPI_FLASH";
 			groups = "SPI_FLASH";
 		};
 
-		spi_nand_pins: pinmux_spi_nand_pins {
+		spi_nand_pins: pinmux_spi_nand-pins {
 			function = "SPI_NAND";
 			groups = "SPI_NAND1";
 		};
 
-		spim0_pins: pinmux_spim0_pins {
+		spim0_pins: pinmux_spim0-pins {
 			function = "SPI_MASTER0";
 			groups = "SPI_MASTER0";
 		};
-		spis0_pins: pinmux_spis0_pins {
+		spis0_pins: pinmux_spis0-pins {
 			function = "SPI_SLAVE0";
 			groups = "SPI_SLAVE0";
 		};
-		spim1_pins: pinmux_spim1_pins {
+		spim1_pins: pinmux_spim1-pins {
 			function = "SPI_MASTER1";
 			groups = "SPI_MASTER1";
 		};
-		spis1_pins: pinmux_spis1_pins {
+		spis1_pins: pinmux_spis1-pins {
 			function = "SPI_SLAVE1";
 			groups = "SPI_SLAVE1";
 		};
-		spim2_pins: pinmux_spim2_pins {
+		spim2_pins: pinmux_spim2-pins {
 			function = "SPI_MASTER2";
 			groups = "SPI_MASTER2";
 		};
-		spis2_pins: pinmux_spis2_pins {
+		spis2_pins: pinmux_spis2-pins {
 			function = "SPI_SLAVE2";
 			groups = "SPI_SLAVE2";
 		};
-		spim3_pins: pinmux_spim3_pins {
+		spim3_pins: pinmux_spim3-pins {
 			function = "SPI_MASTER3";
 			groups = "SPI_MASTER3";
 		};
-		spis3_pins: pinmux_spis3_pins {
+		spis3_pins: pinmux_spis3-pins {
 			function = "SPI_SLAVE3";
 			groups = "SPI_SLAVE3";
 		};
-		spim4_pins: pinmux_spim4_pins {
+		spim4_pins: pinmux_spim4-pins {
 			function = "SPI_MASTER4";
 			groups = "SPI_MASTER4";
 		};
-		spis4_pins: pinmux_spis4_pins {
+		spis4_pins: pinmux_spis4-pins {
 			function = "SPI_SLAVE4";
 			groups = "SPI_SLAVE4";
 		};
-		spim5_pins: pinmux_spim5_pins {
+		spim5_pins: pinmux_spim5-pins {
 			function = "SPI_MASTER5";
 			groups = "SPI_MASTER5";
 		};
-		spis5_pins: pinmux_spis5_pins {
+		spis5_pins: pinmux_spis5-pins {
 			function = "SPI_SLAVE5";
 			groups = "SPI_SLAVE5";
 		};
 
-		i2cm0_pins: pinmux_i2cm0_pins {
+		i2cm0_pins: pinmux_i2cm0-pins {
 			function = "I2C_MASTER0";
 			groups = "I2C_MASTER0";
 		};
-		i2cm1_pins: pinmux_i2cm1_pins {
+		i2cm1_pins: pinmux_i2cm1-pins {
 			function = "I2C_MASTER1";
 			groups = "I2C_MASTER1";
 		};
-		i2cm2_pins: pinmux_i2cm2_pins {
+		i2cm2_pins: pinmux_i2cm2-pins {
 			function = "I2C_MASTER2";
 			groups = "I2C_MASTER2";
 		};
-		i2cm3_pins: pinmux_i2cm3_pins {
+		i2cm3_pins: pinmux_i2cm3-pins {
 			function = "I2C_MASTER3";
 			groups = "I2C_MASTER3";
 		};
-		i2cm4_pins: pinmux_i2cm4_pins {
+		i2cm4_pins: pinmux_i2cm4-pins {
 			function = "I2C_MASTER4";
 			groups = "I2C_MASTER4";
 		};
-		i2cm5_pins: pinmux_i2cm5_pins {
+		i2cm5_pins: pinmux_i2cm5-pins {
 			function = "I2C_MASTER5";
 			groups = "I2C_MASTER5";
 		};
 
-		pwm_pins: pinmux_pwm_pins {
+		pwm_pins: pinmux_pwm-pins {
 			function = "PWM";
 			groups = "PWM";
 		};
 
-		aud_dac_clk_pins: pinmux_aud_dac_clk_pins {
+		aud_dac_clk_pins: pinmux_aud_dac_clk-pins {
 			function = "AUD_DAC_CLK";
 			groups = "AUD_DAC_CLK";
 		};
-		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck_pins {
+		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck-pins {
 			function = "AUD_TDMTX_XCK";
 			groups = "AUD_TDMTX_XCK";
 		};
-		aud_au2_data0_pins: pinmux_aud_au2_data0_pins {
+		aud_au2_data0_pins: pinmux_aud_au2_data0-pins {
 			function = "AUD_AU2_DATA0";
 			groups = "AUD_AU2_DATA0";
 		};
-		aud_au1_data0_pins: pinmux_aud_au1_data0_pins {
+		aud_au1_data0_pins: pinmux_aud_au1_data0-pins {
 			function = "AUD_AU1_DATA0";
 			groups = "AUD_AU1_DATA0";
 		};
-		aud_au2_ck_pins: pinmux_aud_au2_ck_pins {
+		aud_au2_ck_pins: pinmux_aud_au2_ck-pins {
 			function = "AUD_AU2_CK";
 			groups = "AUD_AU2_CK";
 		};
-		aud_au1_ck_pins: pinmux_aud_au1_ck_pins {
+		aud_au1_ck_pins: pinmux_aud_au1_ck-pins {
 			function = "AUD_AU1_CK";
 			groups = "AUD_AU1_CK";
 		};
-		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0_pins {
+		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0-pins {
 			function = "AUD_AU_ADC_DATA0";
 			groups = "AUD_AU_ADC_DATA0";
 		};
-		aud_adc2_data0_pins: pinmux_aud_adc2_data0_pins {
+		aud_adc2_data0_pins: pinmux_aud_adc2_data0-pins {
 			function = "AUD_ADC2_DATA0";
 			groups = "AUD_ADC2_DATA0";
 		};
-		aud_adc1_data0_pins: pinmux_aud_adc1_data0_pins {
+		aud_adc1_data0_pins: pinmux_aud_adc1_data0-pins {
 			function = "AUD_ADC1_DATA0";
 			groups = "AUD_ADC1_DATA0";
 		};
-		aud_aud_tdm_pins: pinmux_aud_aud_tdm_pins {
+		aud_aud_tdm_pins: pinmux_aud_aud_tdm-pins {
 			function = "AUD_AUD_TDM";
 			groups = "AUD_AUD_TDM";
 		};
-		spdif_in_pins: pinmux_spdif_in_pins {
+		spdif_in_pins: pinmux_spdif_in-pins {
 			function = "SPDIF_IN";
 			groups = "SPDIF_IN_X1";
 		};
-		spdif_out_pins: pinmux_spdif_out_pins {
+		spdif_out_pins: pinmux_spdif_out-pins {
 			function = "SPDIF_OUT";
 			groups = "SPDIF_OUT_X1";
 		};
 
-		gpio_int0_pins: pinmux_gpio_int0_pins {
+		gpio_int0_pins: pinmux_gpio_int0-pins {
 			function = "INT0";
 			groups = "INT0_X1";
 		};
-		gpio_int1_pins: pinmux_gpio_int1_pins {
+		gpio_int1_pins: pinmux_gpio_int1-pins {
 			function = "INT1";
 			groups = "INT1_X1";
 		};
-		gpio_int2_pins: pinmux_gpio_int2_pins {
+		gpio_int2_pins: pinmux_gpio_int2-pins {
 			function = "INT2";
 			groups = "INT2_X1";
 		};
-		gpio_int3_pins: pinmux_gpio_int3_pins {
+		gpio_int3_pins: pinmux_gpio_int3-pins {
 			function = "INT3";
 			groups = "INT3_X1";
 		};
-		gpio_int4_pins: pinmux_gpio_int4_pins {
+		gpio_int4_pins: pinmux_gpio_int4-pins {
 			function = "INT4";
 			groups = "INT4_X1";
 		};
-		gpio_int5_pins: pinmux_gpio_int5_pins {
+		gpio_int5_pins: pinmux_gpio_int5-pins {
 			function = "INT5";
 			groups = "INT5_X1";
 		};
-		gpio_int6_pins: pinmux_gpio_int6_pins {
+		gpio_int6_pins: pinmux_gpio_int6-pins {
 			function = "INT6";
 			groups = "INT6_X1";
 		};
-		gpio_int7_pins: pinmux_gpio_int7_pins {
+		gpio_int7_pins: pinmux_gpio_int7-pins {
 			function = "INT7";
 			groups = "INT7_X1";
 		};
