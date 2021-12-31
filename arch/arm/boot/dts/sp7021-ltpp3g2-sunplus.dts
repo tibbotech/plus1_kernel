@@ -271,35 +271,35 @@
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_gpio_nobinded>;
 
-	pins_gpio_nobinded: pins_gpio_nobinded {
+	pins_gpio_nobinded: pinmux_gpio_nobinded-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(30, SPPCTL_PCTL_G_GPIO, 0, 0)   /* was L2SW_LED_FLASH1 */
 			SPPCTL_IOPAD(39, SPPCTL_PCTL_G_GPIO, 0, 0)   /* was L2SW_LED_ON1  */
 		>;
 	};
 
-	i2cm0_pins: pinmux_i2cm0_pins {
+	i2cm0_pins: pinmux_i2cm0-pins {
 		sunplus,pins = <
 			/*SPPCTL_IOPAD(12, SPPCTL_PCTL_G_PMUX, MUXF_I2CM0_DAT, 0)*/
 			/*SPPCTL_IOPAD(13, SPPCTL_PCTL_G_PMUX, MUXF_I2CM0_CLK, 0)*/
 		>;
 	};
 
-	i2cm1_mipicsi_tpm_pins: pinmux_i2cm1_mipicsi_tpm_pins {
+	i2cm1_mipicsi_tpm_pins: pinmux_i2cm1_mipicsi_tpm-pins {
 		sunplus,pins = <
 			/*SPPCTL_IOPAD(64, SPPCTL_PCTL_G_PMUX, MUXF_I2CM1_DAT, 0)*/
 			/*SPPCTL_IOPAD(61, SPPCTL_PCTL_G_PMUX, MUXF_I2CM1_CLK, 0)*/
 		>;
 	};
 
-	pins_i2ctps: pins_i2ctps {
+	pins_i2ctps: pinmux_i2ctps-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(1, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT | SPPCTL_PCTL_L_ONV | SPPCTL_PCTL_L_ODR)
 			SPPCTL_IOPAD(2, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT | SPPCTL_PCTL_L_ONV | SPPCTL_PCTL_L_ODR)
 		>;
 	};
 
-	l2sw_demo_board_v3_pins: l2sw_demo_board_v3_pins {
+	l2sw_demo_board_v3_pins: pinmux_l2sw_demov3-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(63, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_CLK_OUT, 0)
 			SPPCTL_IOPAD(71, SPPCTL_PCTL_G_PMUX, MUXF_L2SW_MAC_SMI_MDC, 0)
@@ -330,7 +330,7 @@
 	};
 
 	// AP6256 WiFi
-	pins_sdio: pins_sdio {
+	pins_sdio: pinmux_sdio-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(44, SPPCTL_PCTL_G_PMUX, MUXF_SDIO_D1, 0)
 			SPPCTL_IOPAD(45, SPPCTL_PCTL_G_PMUX, MUXF_SDIO_D0, 0)
@@ -341,51 +341,51 @@
 		>;
 	};
 
-	pins_sdio_reset: pins_sdio_reset {
+	pins_sdio_reset: pinmux_sdio_reset-pins {
 		sunplus,pins = <
 			/* additional reset pin for BRCM */
 			SPPCTL_IOPAD(83, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OU1)
 		>;
 	};
 
-	pins_vbus_usb0: pins_vbus_usb0 {
+	pins_vbus_usb0: pinmux_vbus_usb0-pins {
 		sunplus,pins = < SPPCTL_IOPAD(90, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT) >;
 	};
-	pins_vbus_usb1: pins_vbus_usb1 {
+	pins_vbus_usb1: pinmux_vbus_usb1-pins {
 		sunplus,pins = < SPPCTL_IOPAD(91, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT) >;
 	};
 
-	mmc1_mux_cd: mmc1_mux_cd {
+	mmc1_mux_cd: pinmux_mmc1_cd-pins {
 		sunplus,pins = < SPPCTL_IOPAD(0, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 	};
 
-	mipicsi0_pins: pinmux_mipicsi0_pins {
+	mipicsi0_pins: pinmux_mipicsi0-pins {
 		sunplus,pins = <
 			/*SPPCTL_IOPAD(92, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OU1)*/
 			/*SPPCTL_IOPAD(93, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OU1)*/
 		>;
 	};
 
-	gpio_leds_pins: pinmux_gpio_leds_pins {
+	gpio_leds_pins: pinmux_gpio_leds-pins {
 		sunplus,pins = < SPPCTL_IOPAD(6, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT) >;
 	};
 
-	leds_s0_slp: user_leds_s0_slp {
+	leds_s0_slp: pinmux_user_leds_s0_slp-pins {
 		sunplus,pins = < SPPCTL_IOPAD(7, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 	};
 
-	tpsleds_pins: user_tpsleds_pins {
+	tpsleds_pins: pinmux_user_tpsleds-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(4, SPPCTL_PCTL_G_GPIO, 0, 0)
 			SPPCTL_IOPAD(5, SPPCTL_PCTL_G_GPIO, 0, 0)
 		>;
 	};
 
-	buzzer0_pins: user_buzzer0_pins {
+	buzzer0_pins: pinmux_user_buzzer0-pins {
 		sunplus,pins = < SPPCTL_IOPAD(48, SPPCTL_PCTL_G_PMUX, MUXF_PWM0, 0) >;
 	};
 
-	pins_uart1: pins_uart1 {
+	pins_uart1: pinmux_uart1-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(8, SPPCTL_PCTL_G_PMUX, MUXF_UA1_TX, 0)
 			SPPCTL_IOPAD(9, SPPCTL_PCTL_G_PMUX, MUXF_UA1_RX, 0)
@@ -394,7 +394,7 @@
 		>;
 	};
 
-	pins_uart2: pins_uart2 {
+	pins_uart2: pinmux_uart2-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(12, SPPCTL_PCTL_G_PMUX, MUXF_UA2_TX, 0)
 			SPPCTL_IOPAD(13, SPPCTL_PCTL_G_PMUX, MUXF_UA2_RX, 0)
@@ -403,7 +403,7 @@
 		>;
 	};
 
-	pins_uart3: pins_uart3 {
+	pins_uart3: pinmux_uart3-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(16, SPPCTL_PCTL_G_PMUX, MUXF_UA3_TX, 0)
 			SPPCTL_IOPAD(17, SPPCTL_PCTL_G_PMUX, MUXF_UA3_RX, 0)
@@ -413,7 +413,7 @@
 	};
 
 	// AP6256 Bluetooth
-	pins_uart4: pins_uart4 {
+	pins_uart4: pinmux_uart4-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(20, SPPCTL_PCTL_G_PMUX, MUXF_UA4_TX, 0)
 			SPPCTL_IOPAD(21, SPPCTL_PCTL_G_PMUX, MUXF_UA4_RX, 0)
@@ -422,7 +422,7 @@
 		>;
 	};
 
-	pins_btuart: pins_btuart {
+	pins_btuart: pinmux_btuart-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(40, SPPCTL_PCTL_G_PMUX, MUXF_UA4_RX, 0)
 			SPPCTL_IOPAD(41, SPPCTL_PCTL_G_PMUX, MUXF_UA4_TX, 0)
@@ -431,11 +431,11 @@
 		>;
 	};
 
-	pins_bt_reset: pins_bt_reset {
+	pins_bt_reset: pinmux_bt_reset-pins {
 		sunplus,pins = < SPPCTL_IOPAD(82, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 	};
 
-	pins_spi0: pinmux_pins_spi0 {
+	pins_spi0: pinmux_spi0-pins {
 		sunplus,pins = <
 			/*SPPCTL_IOPAD(26, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_EN, 0) */
 			/*SPPCTL_IOPAD(23, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_DO, 0) */
@@ -444,7 +444,7 @@
 		>;
 	};
 
-	pins_pwm: pinmux_pins_pwm {
+	pins_pwm: pinmux_pwm-pins {
 		sunplus,pins = <
 			/*SPPCTL_IOPAD(36, SPPCTL_PCTL_G_PMUX, MUXF_PWM0, 0)*/
 			/*SPPCTL_IOPAD(37, SPPCTL_PCTL_G_PMUX, MUXF_PWM1, 0)*/

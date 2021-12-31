@@ -1033,87 +1033,87 @@
 			clocks = <&clkc GPIO>;
 			resets = <&rstc RST_GPIO>;
 
-			pins_uart0: pins_uart0 {
+			pins_uart0: pinmux_uart0-pins {
 				function = "UA0";
 				groups = "UA0";
 			};
 
-			emmc_mux: emmc_mux {
+			emmc_mux: pinmux_emmc-pins {
 				function = "CARD0_EMMC";
 				groups = "CARD0_EMMC";
 			};
 
-			mmc1_mux: mmc1_mux {
+			mmc1_mux: pinmux_mmc1-pins {
 				function = "SD_CARD";
 				groups = "SD_CARD";
 			};
 
-			pins_spinand0: pins_spinand0 {
+			pins_spinand0: pinmux_spinand0-pins {
 				function = "SPI_NAND";
 				groups = "SPI_NAND";
 			};
 
-			aud_i2s_in: aud_i2s_in {
+			aud_i2s_in: pinmux_aud_i2s_in-pins {
 				function = "AUD_EXT_ADC_IFX0";
 				groups = "AUD_EXT_ADC_IFX0";
 			};
-			aud_i2s_out: aud_i2s_out {
+			aud_i2s_out: pinmux_aud_i2s_out-pins {
 				function = "AUD_EXT_DAC_IFX0";
 				groups = "AUD_EXT_DAC_IFX0";
 			};
-			aud_spdi: aud_spdi {
+			aud_spdi: pinmux_aud_spdi-pins {
 				function = "SPDIF_RX";
 				groups = "AUD_IEC_RX0";
 			};
-			aud_spdo: aud_spdo {
+			aud_spdo: pinmux_aud_spdo-pins {
 				function = "SPDIF_TX";
 				groups = "AUD_IEC_TX0";
 			};
-			aud_tdmr: aud_tdmr {
+			aud_tdmr: pinmux_aud_tdmr-pins {
 				function = "TDMRX_IFX0";
 				groups = "TDMRX_IFX0";
 			};
-			aud_tdmt: aud_tdmt {
+			aud_tdmt: pinmux_aud_tdmt-pins {
 				function = "TDMTX_IFX0";
 				groups = "TDMTX_IFX0";
 			};
-			aud_pdmr: aud_pdmr {
+			aud_pdmr: pinmux_aud_pdmr-pins {
 				function = "PDMRX_IFX0";
 				groups = "PDMRX_IFX0";
 			};
 
-			spi_flash1_mux: spi_flash1_mux {
+			spi_flash1_mux: pinmux_spi_flash1-pins {
 				function = "SPI_FLASH";
 				groups = "SPI_FLASH1";
 			};
-			spi_flash2_mux: spi_flash2_mux {
+			spi_flash2_mux: pinmux_spi_flash2-pins {
 				function = "SPI_FLASH";
 				groups = "SPI_FLASH2";
 			};
 
-			spi_fla4b1_mux: spi_fla4b1_mux {
+			spi_fla4b1_mux: pinmux_spi_fla4b1-pins {
 				function = "SPI_FLASH_4BIT";
 				groups = "SPI_FLASH_4BIT1";
 			};
-			spi_fla4b2_mux: spi_fla4b2_mux {
+			spi_fla4b2_mux: pinmux_spi_fla4b2-pins {
 				function = "SPI_FLASH_4BIT";
 				groups = "SPI_FLASH_4BIT2";
 			};
 
-			hdmi_A_tx1: hdmi_A_tx1_pins {
+			hdmi_A_tx1: pinmux_hdmi_tx1-pins {
 				function = "HDMI_TX";
 				groups = "HDMI_TX1";
 			};
-			hdmi_A_tx2: hdmi_A_tx2_pins {
+			hdmi_A_tx2: pinmux_hdmi_tx2-pins {
 				function = "HDMI_TX";
 				groups = "HDMI_TX2";
 			};
-			hdmi_A_tx3: hdmi_A_tx3_pins {
+			hdmi_A_tx3: pinmux_hdmi_tx3-pins {
 				function = "HDMI_TX";
 				groups = "HDMI_TX3";
 			};
 
-			fpga_mux: fpga_mux {
+			fpga_mux: pinmux_fpga-pins {
 				function = "FPGA_IFX";
 				groups = "FPGA_IFX";
 			};
