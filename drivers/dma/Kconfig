@@ -712,13 +712,12 @@ config ZX_DMA
 
 config SUNPLUS_CBDMA
 	tristate "Sunplus CBDMA driver support"
-	depends on SOC_SP7021 || SOC_Q645
+	depends on SOC_SP7021 || SOC_Q645 || SOC_Q654
 	help
 	  Enable support for the Sunplus CB-DMA (CBUS DMA) controller.
 	  This DMA engine is found on Sunplus SoCs. This DMA engine is
 	  very flexible. It has an SRAM buffer which can be used as a
 	  CBUS master storage device (Data RAM).
-
 
 # driver files
 source "drivers/dma/bestcomm/Kconfig"

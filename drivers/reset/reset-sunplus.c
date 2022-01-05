@@ -29,6 +29,8 @@
 #include <dt-bindings/reset/sp-sp7021.h>
 #elif defined(CONFIG_SOC_Q645)
 #include <dt-bindings/reset/sp-q645.h>
+#elif defined(CONFIG_SOC_Q654)
+#include <dt-bindings/reset/sp-q654.h>
 #endif
 
 #define BITASSERT(id, val)          ((1 << (16 + id)) | (val << id))
@@ -46,8 +48,7 @@ to_sp_reset_data(struct reset_controller_dev *rcdev)
 	return container_of(rcdev, struct sp_reset_data, rcdev);
 }
 
-static int sp_reset_update(struct reset_controller_dev *rcdev,
-			      unsigned long id, bool assert)
+static int sp_reset_update(struct reset_controller_dev *rcdev, unsigned long id, bool assert)
 {
 	struct sp_reset_data *data = to_sp_reset_data(rcdev);
 	int reg_width = sizeof(u32)/2;
@@ -65,8 +66,7 @@ static int sp_reset_update(struct reset_controller_dev *rcdev,
 	return 0;
 }
 
-static int sp_reset_assert(struct reset_controller_dev *rcdev,
-			      unsigned long id)
+static int sp_reset_assert(struct reset_controller_dev *rcdev, unsigned long id)
 {
 	return sp_reset_update(rcdev, id, true);
 }
@@ -78,8 +78,7 @@ static int sp_reset_deassert(struct reset_controller_dev *rcdev,
 	return sp_reset_update(rcdev, id, false);
 }
 
-static int sp_reset_status(struct reset_controller_dev *rcdev,
-			      unsigned long id)
+static int sp_reset_status(struct reset_controller_dev *rcdev, unsigned long id)
 {
 	struct sp_reset_data *data = to_sp_reset_data(rcdev);
 	int reg_width = sizeof(u32)/2;
@@ -92,8 +91,7 @@ static int sp_reset_status(struct reset_controller_dev *rcdev,
 	return !!(reg & BIT(offset));
 }
 
-static int sp_restart(struct notifier_block *this, unsigned long mode,
-				void *cmd)
+static int sp_restart(struct notifier_block *this, unsigned long mode, void *cmd)
 {
 	sp_reset_assert(&sp_reset.rcdev, RST_SYSTEM);
 	sp_reset_deassert(&sp_reset.rcdev, RST_SYSTEM);
@@ -115,6 +113,7 @@ static const struct reset_control_ops sp_reset_ops = {
 static const struct of_device_id sp_reset_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-reset", },
 	{ .compatible = "sunplus,q645-reset", },
+	{ .compatible = "sunplus,q654-reset", },
 	{ /* sentinel */ },
 };
 

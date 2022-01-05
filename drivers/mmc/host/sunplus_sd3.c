@@ -1017,6 +1017,16 @@ static const struct spsdc_compatible sp_sdio_645_compat = {
 	.source_clk = SPSDC_CLK_360M,
 };
 
+static const struct spsdc_compatible sp_sd_654_compat = {
+	.mode = SPSDC_MODE_SD,
+	.source_clk = SPSDC_CLK_360M,
+};
+
+static const struct spsdc_compatible sp_sdio_654_compat = {
+	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_360M,
+};
+
 static const struct spsdc_compatible sp_sd_143_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_220M,
@@ -1036,6 +1046,14 @@ static const struct of_device_id spsdc_of_table[] = {
 	{
 		.compatible = "sunplus,q645-sdio",
 		.data = &sp_sdio_645_compat,
+	},
+	{
+		.compatible = "sunplus,q654-card",
+		.data = &sp_sd_654_compat,
+	},
+	{
+		.compatible = "sunplus,q654-sdio",
+		.data = &sp_sdio_654_compat,
 	},
 	{/* sentinel */}
 };

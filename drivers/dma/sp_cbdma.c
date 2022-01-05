@@ -1977,7 +1977,10 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 		return PTR_ERR(xdev->regs);
 
 	/* The SRAM buffer of CB-DMA */
-#ifndef CONFIG_SOC_Q645
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+	xdev->sram_addr = 0xFA200000;
+	xdev->sram_size = 256 << 10;
+#else
 	if (((u32)(io->start)) == 0x9C000D00) {
 		/* CBDMA0 */
 		xdev->sram_addr = 0x9E800000;
@@ -1987,9 +1990,6 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 		xdev->sram_addr = 0x9E820000;
 		xdev->sram_size = 4 << 10;
 	}
-#else
-	xdev->sram_addr = 0xFA200000;
-	xdev->sram_size = 256 << 10;
 #endif
 	dev_info(xdev->dev, "SRAM:%d bytes@0x%x\n", xdev->sram_size, xdev->sram_addr);
 

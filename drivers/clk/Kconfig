@@ -336,6 +336,14 @@ config COMMON_CLK_Q645
 	  Not all features of the PLL are currently supported
 	  by the driver.
 
+config COMMON_CLK_Q654
+	def_bool OF && COMMON_CLK && SOC_Q654
+	help
+	  This driver supports the Sunplus Q654 SoC clocks,
+	  It implemented Q654 PLL/mux/gate.
+	  Not all features of the PLL are currently supported
+	  by the driver.
+
 config COMMON_CLK_STM32MP157
 	def_bool COMMON_CLK && MACH_STM32MP157
 	help

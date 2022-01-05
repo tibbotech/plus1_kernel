@@ -47,7 +47,7 @@ struct sp_otp_data_t {
 	void __iomem *base[BASEMAX];
 	struct clk *clk;
 	struct nvmem_config *config;
-#ifdef CONFIG_SOC_Q645
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	int id;
 #endif
 };
@@ -111,12 +111,12 @@ static int sp_ocotp_read(void *_c, unsigned int _off, void *_v, size_t _l)
 	char value[4];
 	int ret;
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	dev_dbg(otp->dev, "OTP read %u bytes at %u", _l, _off);
 
 	if ((_off >= QAC628_OTP_SIZE) || (_l == 0) || ((_off + _l) > QAC628_OTP_SIZE))
 		return -EINVAL;
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	dev_dbg(otp->dev, "OTP read %lu bytes at %u", _l, _off);
 
 	if (otp->id == 0) {
@@ -153,7 +153,7 @@ disable_clk:
 	return ret;
 }
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 static struct nvmem_config sp_ocotp_nvmem_config = {
 	.name = "sp-ocotp",
 	.read_only = true,
@@ -163,7 +163,7 @@ static struct nvmem_config sp_ocotp_nvmem_config = {
 	.reg_read = sp_ocotp_read,
 	.owner = THIS_MODULE,
 };
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 static struct nvmem_config sp_ocotp_nvmem_config[3] = {
 	{
 		.name = "sp-ocotp0",
@@ -220,9 +220,9 @@ int sp_ocotp_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	otp->dev = dev;
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	otp->config = &sp_ocotp_nvmem_config;
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	otp->id = pdev->id-1;
 	otp->config = &sp_ocotp_nvmem_config[otp->id];
 #endif
@@ -248,10 +248,10 @@ int sp_ocotp_probe(struct platform_device *pdev)
 	}
 	clk_enable(otp->clk);
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	sp_ocotp_nvmem_config.priv = otp;
 	sp_ocotp_nvmem_config.dev = dev;
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	sp_ocotp_nvmem_config[otp->id].priv = otp;
 	sp_ocotp_nvmem_config[otp->id].dev = dev;
 #endif
@@ -259,9 +259,9 @@ int sp_ocotp_probe(struct platform_device *pdev)
 	// devm_* >= 4.15 kernel
 	// nvmem = devm_nvmem_register(dev, &sp_ocotp_nvmem_config);
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	nvmem = nvmem_register(&sp_ocotp_nvmem_config);
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	nvmem = nvmem_register(&sp_ocotp_nvmem_config[otp->id]);
 #endif
 	if (IS_ERR(nvmem)) {
@@ -271,12 +271,12 @@ int sp_ocotp_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, nvmem);
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	dev_dbg(dev, "clk:%ld banks:%d x wpb:%d x wsize:%d = %d",
 		clk_get_rate(otp->clk),
 		QAC628_OTP_NUM_BANKS, OTP_WORDS_PER_BANK,
 		OTP_WORD_SIZE, QAC628_OTP_SIZE);
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	if (otp->id == 0) {
 		dev_dbg(dev, "clk:%ld banks:%d x wpd:%d x wsize:%ld = %ld",
 			clk_get_rate(otp->clk),

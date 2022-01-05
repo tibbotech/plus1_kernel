@@ -60,7 +60,7 @@ struct sunplus_rtc sp_rtc;
 
 #define RTC_REG_NAME		"rtc_reg"
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 struct sp_rtc_reg {
 	unsigned int rsv00;
 	unsigned int rsv01;
@@ -95,7 +95,7 @@ struct sp_rtc_reg {
 	unsigned int rsv30;
 	unsigned int rsv31;
 };
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 #define INT_STATUS_MASK		0x1
 #define INT_STATUS_UPDATE	0x0
 #define INT_STATUS_ALARM	0x1
@@ -137,7 +137,7 @@ struct sp_rtc_reg {
 #endif
 static struct sp_rtc_reg *rtc_reg_ptr;
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 static void sp_get_seconds(unsigned long *secs)
 {
 	*secs = (unsigned long)readl(&rtc_reg_ptr->rtc_timer_out);
@@ -147,7 +147,7 @@ static void sp_set_seconds(unsigned long secs)
 {
 	writel((u32)secs, &rtc_reg_ptr->rtc_timer_set);
 }
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 static void sp_get_seconds(unsigned long *secs)
 {
 	*secs = (unsigned long)readl(&rtc_reg_ptr->rtc_timer);
@@ -217,7 +217,7 @@ static int sp_rtc_set_time(struct device *dev, struct rtc_time *tm)
 	return 0;
 }
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct rtc_device *rtc = dev_get_drvdata(dev);
@@ -268,7 +268,7 @@ static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 
 	return 0;
 }
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 {
 	struct rtc_device *rtc = dev_get_drvdata(dev);
@@ -334,7 +334,7 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 	struct platform_device *plat_dev = dev_id;
 	struct rtc_device *rtc = platform_get_drvdata(plat_dev);
 
-#ifdef CONFIG_SOC_Q645
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	if ((readl(&rtc_reg_ptr->rtc_int_status) & INT_STATUS_MASK) == INT_STATUS_ALARM) {
 #endif
 		if (rtc->uie_rtctimer.enabled) {
@@ -350,7 +350,7 @@ static irqreturn_t rtc_irq_handler(int irq, void *dev_id)
 			rtc_update_irq(rtc, 1, RTC_IRQF | RTC_AF);
 			RTC_DEBUG("[RTC] alarm irq\n");
 		}
-#ifdef CONFIG_SOC_Q645
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	}
 #endif
 
@@ -393,9 +393,9 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	// find and map our resources
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, RTC_REG_NAME);
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	RTC_DEBUG("res = 0x%x\n", res->start);
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
 	RTC_DEBUG("res = 0x%llx\n", res->start);
 #endif
 
@@ -457,10 +457,12 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	device_init_wakeup(&plat_dev->dev, 1);
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	rtc = devm_rtc_device_register(&plat_dev->dev, "sp7021-rtc", &sp_rtc_ops, THIS_MODULE);
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645)
 	rtc = devm_rtc_device_register(&plat_dev->dev, "q645-rtc", &sp_rtc_ops, THIS_MODULE);
+#elif defined(CONFIG_SOC_Q654)
+	rtc = devm_rtc_device_register(&plat_dev->dev, "q654-rtc", &sp_rtc_ops, THIS_MODULE);
 #endif
 	if (IS_ERR(rtc)) {
 		ret = PTR_ERR(rtc);
@@ -469,10 +471,12 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 	platform_set_drvdata(plat_dev, rtc);
 
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	RTC_INFO("sp7021-rtc loaded\n");
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645)
 	RTC_INFO("q645-rtc loaded\n");
+#elif defined(CONFIG_SOC_Q654)
+	RTC_INFO("q654-rtc loaded\n");
 #endif
 
 	return 0;
@@ -493,10 +497,12 @@ static int sp_rtc_remove(struct platform_device *plat_dev)
 }
 
 static const struct of_device_id sp_rtc_of_match[] = {
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 	{ .compatible = "sunplus,sp7021-rtc" },
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-rtc" },
+#elif defined(CONFIG_SOC_Q654)
+	{ .compatible = "sunplus,q654-rtc" },
 #endif
 	{ /* sentinel */ }
 };
@@ -508,10 +514,12 @@ static struct platform_driver sp_rtc_driver = {
 	.suspend = sp_rtc_suspend,
 	.resume  = sp_rtc_resume,
 	.driver  = {
-#ifdef CONFIG_SOC_SP7021
+#if defined(CONFIG_SOC_SP7021)
 		.name = "sp7021-rtc",
-#elif defined CONFIG_SOC_Q645
+#elif defined(CONFIG_SOC_Q645)
 		.name = "q645-rtc",
+#elif defined(CONFIG_SOC_Q654)
+		.name = "q654-rtc",
 #endif
 		.owner = THIS_MODULE,
 		.of_match_table = sp_rtc_of_match,
