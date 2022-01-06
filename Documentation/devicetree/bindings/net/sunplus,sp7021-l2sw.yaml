@@ -23,8 +23,8 @@ properties:
 
   reg:
     items:
-      - description: Base address and length of the L2SW registers.
-      - description: Base address and length of the MOON5 registers.
+      - description: the L2SW registers.
+      - description: the MOON5 registers.
 
   reg-names:
     items:
@@ -32,19 +32,12 @@ properties:
       - const: moon5
 
   interrupts:
-    description: |
-      Contains number and type of interrupt. Number should be 66.
-      Type should be high-level trigger
     maxItems: 1
 
   clocks:
-    description: |
-      Clock controller selector for Ethernet MAC controller.
     maxItems: 1
 
   resets:
-    description: |
-      Reset controller selector for Ethernet MAC controller.
     maxItems: 1
 
   phy-handle1:
@@ -85,6 +78,10 @@ properties:
     $ref: /schemas/types.yaml#/definitions/uint32
     enum: [ 0, 1, 2 ]
 
+  mdio:
+    $ref: mdio.yaml#
+    unevaluatedProperties: false
+
 additionalProperties: false
 
 required:
@@ -100,6 +97,7 @@ required:
   - pinctrl-0
   - nvmem-cells
   - nvmem-cell-names
+  - mdio
 
 examples:
   - |
@@ -121,5 +119,16 @@ examples:
         nvmem-cells = <&mac_addr0>, <&mac_addr1>;
         nvmem-cell-names = "mac_addr0", "mac_addr1";
         mode = < 1 >;
+
+        mdio {
+            #address-cells = <1>;
+            #size-cells = <0>;
+            eth_phy0: ethernet-phy@0 {
+                reg = <0>;
+            };
+            eth_phy1: ethernet-phy@1 {
+                reg = <1>;
+            };
+        };
     };
 ...

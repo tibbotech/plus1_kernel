@@ -848,17 +848,16 @@
 			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
-		};
 
-		mdio {
-			compatible = "sunplus,sp7021-mdio";
-			#address-cells = <1>;
-			#size-cells = <0>;
-			eth_phy0: ethernet-phy@0 {
-				reg = <0>;
-			};
-			eth_phy1: ethernet-phy@1 {
-				reg = <1>;
+			mdio {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				eth_phy0: ethernet-phy@0 {
+					reg = <0>;
+				};
+				eth_phy1: ethernet-phy@1 {
+					reg = <1>;
+				};
 			};
 		};
 
