@@ -271,95 +271,95 @@
 	};
 
 #ifdef ENABLE_DMARX0
-		/* DMA Rx for UARTx */
-		uartdmarx0: serial@sp_uartdmarx0 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008980 0x00 0x40>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA01>;
-			clock-names = "UADMA01";
-			resets = <&rstc RST_UADMA01>;
-			which-uart = <0>;
-		};
+	/* DMA Rx for UARTx */
+	uartdmarx0: serial@sp_uartdmarx0 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008980 0x00 0x40>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADMA01>;
+		clock-names = "UADMA01";
+		resets = <&rstc RST_UADMA01>;
+		which-uart = <0>;
+	};
 #endif
 #ifdef ENABLE_DMARX1
-		uartdmarx1: serial@sp_uartdmarx1 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf80089c0 0x00 0x40>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA01>;
-			clock-names = "UADMA01";
-			resets = <&rstc RST_UADMA01>;
-			which-uart = <1>;
-		};
+	uartdmarx1: serial@sp_uartdmarx1 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf80089c0 0x00 0x40>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADMA01>;
+		clock-names = "UADMA01";
+		resets = <&rstc RST_UADMA01>;
+		which-uart = <1>;
+	};
 #endif
 #ifdef ENABLE_DMARX2
-		uartdmarx2: serial@sp_uartdmarx2 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008700 0x00 0x40>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA23>;
-			clock-names = "UADMA23";
-			resets = <&rstc RST_UADMA23>;
-			which-uart = <2>;
-		};
+	uartdmarx2: serial@sp_uartdmarx2 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008700 0x00 0x40>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADMA23>;
+		clock-names = "UADMA23";
+		resets = <&rstc RST_UADMA23>;
+		which-uart = <2>;
+	};
 #endif
 #ifdef ENABLE_DMARX3
-		uartdmarx3: serial@sp_uartdmarx3 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008740 0x00 0x40>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc UADMA23>;
-			clock-names = "UADMA23";
-			resets = <&rstc RST_UADMA23>;
-			which-uart = <3>;
-		};
+	uartdmarx3: serial@sp_uartdmarx3 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008740 0x00 0x40>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc UADMA23>;
+		clock-names = "UADMA23";
+		resets = <&rstc RST_UADMA23>;
+		which-uart = <3>;
+	};
 #endif
 
 #ifdef ENABLE_DMATX0
-		/* DMA Tx for UARTx */
-		uartdmatx0: serial@sp_uartdmatx0 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
-			clocks = <&clkc GDMAUA>;
-			clock-names = "GDMAUA";
-			resets = <&rstc RST_GDMAUA>;
-			which-uart = <0>;
-		};
+	/* DMA Tx for UARTx */
+	uartdmatx0: serial@sp_uartdmatx0 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
+		clocks = <&clkc GDMAUA>;
+		clock-names = "GDMAUA";
+		resets = <&rstc RST_GDMAUA>;
+		which-uart = <0>;
+	};
 #endif
 #ifdef ENABLE_DMATX1
-		uartdmatx1: serial@sp_uartdmatx1 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
-			clocks = <&clkc GDMAUA>;
-			clock-names = "GDMAUA";
-			resets = <&rstc RST_GDMAUA>;
-			which-uart = <1>;
-		};
+	uartdmatx1: serial@sp_uartdmatx1 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
+		clocks = <&clkc GDMAUA>;
+		clock-names = "GDMAUA";
+		resets = <&rstc RST_GDMAUA>;
+		which-uart = <1>;
+	};
 #endif
 #ifdef ENABLE_DMATX2
-		uartdmatx2: serial@sp_uartdmatx2 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
-			clocks = <&clkc GDMAUA>;
-			clock-names = "GDMAUA";
-			resets = <&rstc RST_GDMAUA>;
-			which-uart = <2>;
-		};
+	uartdmatx2: serial@sp_uartdmatx2 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
+		clocks = <&clkc GDMAUA>;
+		clock-names = "GDMAUA";
+		resets = <&rstc RST_GDMAUA>;
+		which-uart = <2>;
+	};
 #endif
 #ifdef ENABLE_DMATX3
-		uartdmatx3: serial@sp_uartdmatx3 {
-			compatible = "sunplus,q645-uart";
-			reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
-			clocks = <&clkc GDMAUA>;
-			clock-names = "GDMAUA";
-			resets = <&rstc RST_GDMAUA>;
-			which-uart = <3>;
-		};
+	uartdmatx3: serial@sp_uartdmatx3 {
+		compatible = "sunplus,q645-uart";
+		reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
+		clocks = <&clkc GDMAUA>;
+		clock-names = "GDMAUA";
+		resets = <&rstc RST_GDMAUA>;
+		which-uart = <3>;
+	};
 #endif
 
 	uart0: serial@f8000900 {
@@ -958,7 +958,7 @@
 		status = "disabled";
 	};
 
-	usbdrd3_0: usb@f80a1000{
+	usb3drd0: usb@f80a1000{
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -993,7 +993,7 @@
 		status = "disabled";
 	};
 
-	usbdrd3_1: usb@f80af000 {
+	usb3drd1: usb@f80af000 {
 		compatible = "sunplus,q645-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -1028,7 +1028,7 @@
 		status = "disabled";
 	};
 
-	mipicsi0: mipicsirx@f8005280 {
+	mipicsirx0: mipicsirx@f8005280 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1043,7 +1043,7 @@
 		status = "disabled";
 	};
 
-	mipicsi1: mipicsirx@f8005380 {
+	mipicsirx1: mipicsirx@f8005380 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1058,7 +1058,7 @@
 		status = "disabled";
 	};
 
-	mipicsi2: mipicsirx@f8005480 {
+	mipicsirx2: mipicsirx@f8005480 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1073,7 +1073,7 @@
 		status = "disabled";
 	};
 
-	mipicsi3: mipicsirx@f8005580 {
+	mipicsirx3: mipicsirx@f8005580 {
 		compatible = "sunplus,q645-mipicsi-rx";
 		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
@@ -1164,7 +1164,6 @@
 			<GIC_SPI 127 IRQ_TYPE_EDGE_RISING>; /* MAILBOX_to_CM4 CPU1_INT */
 	};
 #endif
-
 
 	pctl: pctl@f8000100 {
 		compatible = "sunplus,q645-pctl";

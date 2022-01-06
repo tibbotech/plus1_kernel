@@ -126,7 +126,7 @@
 #define VCLCORE1        AC(1)
 #define VCLCORE2        AC(2)
 
-#define AC_MAX         3
+#define AC_MAX          3
 
 /* plls */
 #define PLL(i)          (CLK_MAX + AC_MAX + i)

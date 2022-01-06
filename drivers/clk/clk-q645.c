@@ -15,6 +15,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <dt-bindings/clock/sp-q645.h>
+#include <linux/nvmem-consumer.h>
 
 //#define TRACE	pr_info("### %s:%d (%d)\n", __FUNCTION__, __LINE__, (clk->reg - REG(4, 0)) / 4)
 #define TRACE
@@ -47,13 +48,13 @@
 #define PSTDIV	12
 
 #define FBKDIV_WIDTH	8
-#define FBKDIV_MIN		64
-#define FBKDIV_MAX		(FBKDIV_MIN + BIT(FBKDIV_WIDTH) - 1)
+#define FBKDIV_MIN	64
+#define FBKDIV_MAX	(FBKDIV_MIN + BIT(FBKDIV_WIDTH) - 1)
 
 struct sp_pll {
 	struct clk_hw	hw;
 	void __iomem	*reg;
-	spinlock_t		lock;
+	spinlock_t	lock;
 
 	long brate;
 	u32 idiv; // struct divs[] index
@@ -518,8 +519,6 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 
 	return clk;
 }
-
-#include <linux/nvmem-consumer.h>
 
 static struct device_node *my_np;
 

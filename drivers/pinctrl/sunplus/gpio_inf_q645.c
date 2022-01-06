@@ -17,7 +17,6 @@
 
 #include "sppctl_gpio.h"
 
-
 const char * const sppctlgpio_list_s[] = {
 	D_PIS(0),   D_PIS(1),   D_PIS(2),   D_PIS(3),
 	D_PIS(4),   D_PIS(5),   D_PIS(6),   D_PIS(7),

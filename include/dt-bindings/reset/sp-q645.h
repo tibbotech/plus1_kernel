@@ -6,7 +6,6 @@
 #ifndef _DT_BINDINGS_RST_SUNPLUS_Q645_H
 #define _DT_BINDINGS_RST_SUNPLUS_Q645_H
 
-
 /* mo_reset0 ~ mo_reset4 */
 #define RST_SYSTEM              0x00
 #define RST_CA55CORE0           0x01

@@ -17,6 +17,8 @@
 
 #include "sppctl.h"
 
+#define P(x) PINCTRL_PIN(x, D_PIS(x))
+
 // function: GPIO. list of groups (pins)
 const unsigned int sppctlpins_G[] = {
 	  0,   1,   2,   3,   4,   5,   6,   7,
@@ -34,8 +36,6 @@ const unsigned int sppctlpins_G[] = {
 	 96,  97,  98,  99, 100, 101, 102, 103,
 	104, 105, 106, 107
 };
-
-#define P(x) PINCTRL_PIN(x, D_PIS(x))
 
 const struct pinctrl_pin_desc sppctlpins_all[] = {
 	P(0),   P(1),   P(2),   P(3),   P(4),   P(5),   P(6),   P(7),
