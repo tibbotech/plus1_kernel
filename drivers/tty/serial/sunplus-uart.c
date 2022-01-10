@@ -24,8 +24,8 @@
 
 #if defined(CONFIG_SOC_Q645)
 #include <soc/sunplus/sp_uart_q645.h>
-#elif defined(CONFIG_SOC_Q654)
-#include <soc/sunplus/sp_uart_q654.h>
+#elif defined(CONFIG_SOC_SP7350)
+#include <soc/sunplus/sp_uart_sp7350.h>
 #else
 #include <soc/sunplus/sp_uart.h>
 #endif
@@ -40,9 +40,9 @@
 #if defined(CONFIG_SOC_Q645)
 #include <dt-bindings/clock/sp-q645.h>
 #include <dt-bindings/pinctrl/sppctl-q645.h>
-#elif defined(CONFIG_SOC_Q654)
-#include <dt-bindings/clock/sp-q654.h>
-#include <dt-bindings/pinctrl/sppctl-q654.h>
+#elif defined(CONFIG_SOC_SP7350)
+#include <dt-bindings/clock/sp-sp7350.h>
+#include <dt-bindings/pinctrl/sppctl-sp7350.h>
 #elif defined(CONFIG_SOC_SP7021)
 #include <dt-bindings/clock/sp-sp7021.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
@@ -50,13 +50,13 @@
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define NUM_UART	9	/* serial0,  ... */
 #else
 #define NUM_UART	6	/* serial0,  ... */
 #endif
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define NUM_UARTDMARX	4	/* serial10, ... */
 #define NUM_UARTDMATX	4	/* serial20, ... */
 #else
@@ -101,7 +101,7 @@
 #ifdef CONFIG_SOC_I143
 #define CLK_HIGH_UART			202500000
 #define UART_RATIO			29
-#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define CLK_HIGH_UART			32000000
 #define UART_RATIO			17
 #else
@@ -1172,7 +1172,7 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port,
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	/*
 	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
 	 * For real chip, the baudrate is 115200.
@@ -2070,7 +2070,7 @@ static int sunplus_uart_platform_driver_resume(struct platform_device *pdev)
 static const struct of_device_id sp_uart_of_match[] = {
 	{ .compatible = "sunplus,sp7021-uart" },
 	{ .compatible = "sunplus,q645-uart" },
-	{ .compatible = "sunplus,q654-uart" },
+	{ .compatible = "sunplus,sp7350-uart" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sp_uart_of_match);
@@ -2181,7 +2181,7 @@ int __init sunplus_uart_early_setup(struct earlycon_device *device,
 }
 OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,sp7021-uart", sunplus_uart_early_setup);
 OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,q645-uart", sunplus_uart_early_setup);
-OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,q654-uart", sunplus_uart_early_setup);
+OF_EARLYCON_DECLARE(sunplus_uart, "sunplus,sp7350-uart", sunplus_uart_early_setup);
 #endif
 
 MODULE_LICENSE("GPL");

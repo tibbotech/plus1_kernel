@@ -223,10 +223,10 @@ config RESET_TI_SYSCON
 
 config RESET_SUNPLUS
 	bool "Sunplus SoCs Reset Driver"
-	default SOC_SP7021 || SOC_Q645 || SOC_Q654
+	default SOC_SP7021 || SOC_Q645 || SOC_SP7350
 	help
 	  This enables the reset driver support for Sunplus SP7021, Q645 and
-	  Q654 SoC family. Say Y if you want to control reset signals by the
+	  SP7350 SoC family. Say Y if you want to control reset signals by the
 	  reset controller. Otherwise, say N.
 	  This will be enabled by default.
 

@@ -1048,11 +1048,11 @@ static const struct of_device_id spsdc_of_table[] = {
 		.data = &sp_sdio_645_compat,
 	},
 	{
-		.compatible = "sunplus,q654-card",
+		.compatible = "sunplus,sp7350-card",
 		.data = &sp_sd_654_compat,
 	},
 	{
-		.compatible = "sunplus,q654-sdio",
+		.compatible = "sunplus,sp7350-sdio",
 		.data = &sp_sdio_654_compat,
 	},
 	{/* sentinel */}

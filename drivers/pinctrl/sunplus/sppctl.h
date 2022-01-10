@@ -26,8 +26,8 @@
 #define M_NAM "SP7021 PinCtl"
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #define M_NAM "Q645 PinCtl"
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q654)
-#define M_NAM "Q654 PinCtl"
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+#define M_NAM "SP7350 PinCtl"
 #endif
 #define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
@@ -57,8 +57,8 @@
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #include <dt-bindings/pinctrl/sppctl-q645.h>
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q654)
-#include <dt-bindings/pinctrl/sppctl-q654.h>
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+#include <dt-bindings/pinctrl/sppctl-sp7350.h>
 #endif
 
 #define SPPCTL_MAX_NAM 64

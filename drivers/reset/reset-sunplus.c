@@ -29,8 +29,8 @@
 #include <dt-bindings/reset/sp-sp7021.h>
 #elif defined(CONFIG_SOC_Q645)
 #include <dt-bindings/reset/sp-q645.h>
-#elif defined(CONFIG_SOC_Q654)
-#include <dt-bindings/reset/sp-q654.h>
+#elif defined(CONFIG_SOC_SP7350)
+#include <dt-bindings/reset/sp-sp7350.h>
 #endif
 
 #define BITASSERT(id, val)          ((1 << (16 + id)) | (val << id))
@@ -113,7 +113,7 @@ static const struct reset_control_ops sp_reset_ops = {
 static const struct of_device_id sp_reset_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-reset", },
 	{ .compatible = "sunplus,q645-reset", },
-	{ .compatible = "sunplus,q654-reset", },
+	{ .compatible = "sunplus,sp7350-reset", },
 	{ /* sentinel */ },
 };
 

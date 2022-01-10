@@ -1178,7 +1178,7 @@ static int sp_spi_nor_resume(struct platform_device *pdev)
 static const struct of_device_id sp_spi_nor_ids[] = {
 	{.compatible = "sunplus,sp-spi-nor"},
 	{.compatible = "sunplus,q645-spi-nor"},
-	{.compatible = "sunplus,q654-spi-nor"},
+	{.compatible = "sunplus,sp7350-spi-nor"},
 	{}
 };
 MODULE_DEVICE_TABLE(of, sp_spi_nor_ids);

@@ -54,7 +54,7 @@ int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_p
 		return PTR_ERR(_pc->base0);
 	}
 
-#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_Q654)
+#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
 	// res2
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
@@ -239,8 +239,8 @@ static const struct of_device_id sppctl_gpio_of_match[] = {
 	{ .compatible = "sunplus,sp7021-gpio" },
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 	{ .compatible = "sunplus,q645-gpio" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q654)
-	{ .compatible = "sunplus,q654-gpio" },
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+	{ .compatible = "sunplus,sp7350-gpio" },
 #endif
 	{ /* null */ }
 };

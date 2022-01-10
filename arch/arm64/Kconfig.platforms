@@ -337,15 +337,15 @@ config SOC_Q645
 	help
 	  This enables support of Sunplus Q645 Soc
 
-config SOC_Q654
-	bool "Sunplus Q654 Soc"
+config SOC_SP7350
+	bool "Sunplus SP7350 Soc"
 	select COMMON_CLK
-	select COMMON_CLK_Q654
+	select COMMON_CLK_SP7350
 	select RESET_CONTROLLER
 	select RESET_SUNPLUS
 	select SERIAL_SUNPLUS
 	select SERIAL_SUNPLUS_CONSOLE
 	help
-	  This enables support of Sunplus Q654 Soc
+	  This enables support of Sunplus SP7350 Soc
 
 endmenu

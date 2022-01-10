@@ -1,12 +1,12 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Sunplus Q654 pinmux pinctrl bindings.
+ * Sunplus SP7350 pinmux pinctrl bindings.
  * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
  * Author: Wells Lu <wells.lu@sunplus.com>
  */
 
-#ifndef _DT_BINDINGS_PINCTRL_SPPCTL_Q654_H
-#define _DT_BINDINGS_PINCTRL_SPPCTL_Q654_H
+#ifndef _DT_BINDINGS_PINCTRL_SPPCTL_SP7350_H
+#define _DT_BINDINGS_PINCTRL_SPPCTL_SP7350_H
 
 #include <dt-bindings/pinctrl/sppctl.h>
 

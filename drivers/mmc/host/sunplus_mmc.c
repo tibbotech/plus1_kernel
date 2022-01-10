@@ -220,7 +220,7 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif
-	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	#endif
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
@@ -1563,7 +1563,7 @@ static const struct of_device_id spmmc_of_table[] = {
 		.data = (void *)SPMMC_MODE_EMMC,
 	},
 	{
-		.compatible = "sunplus,q654-emmc",
+		.compatible = "sunplus,sp7350-emmc",
 		.data = (void *)SPMMC_MODE_EMMC,
 	},
 	{/* sentinel */}

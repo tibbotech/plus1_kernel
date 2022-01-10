@@ -432,7 +432,7 @@ config MTD_NAND_MESON
 
 config MTD_NAND_SUNPLUS
 	tristate "Support Sunplus SPI-NAND controller"
-	depends on SOC_SP7021 || SOC_Q645 || SOC_Q654
+	depends on SOC_SP7021 || SOC_Q645 || SOC_SP7350
 	help
 	  Enables support for Sunplus SPI-NAND controller on SoCs.
 	  This controller is found on Sunplus SoCs.

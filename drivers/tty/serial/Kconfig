@@ -1589,7 +1589,7 @@ config SERIAL_SUNPLUS
 	select SERIAL_CORE
 	help
 	  Select this option if you would like to use Sunplus serial port on
-	  Sunplus Soc SP7021, Q645, and Q654.
+	  Sunplus Soc SP7021, Q645, and SP7350.
 	  If you enable this option, Sunplus serial ports in the system will
 	  be registered as ttySx.
 

@@ -45,9 +45,9 @@
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 #define MNAME "q645_gpio"
 #define M_NAM "Q645 GPIO"
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q654)
-#define MNAME "q654_gpio"
-#define M_NAM "Q654 GPIO"
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+#define MNAME "sp7350_gpio"
+#define M_NAM "SP7350 GPIO"
 #endif
 #define M_LIC "GPL v2"
 #define M_AUT1 "Dvorkin Dmitry <dvorkin@tibbo.com>"

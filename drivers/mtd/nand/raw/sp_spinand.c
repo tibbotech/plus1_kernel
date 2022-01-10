@@ -15,7 +15,7 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/of.h>
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #include "sp_bch_q645.h"
 #include "sp_spinand_q645.h"
 #else
@@ -417,7 +417,7 @@ static int spi_nand_select_die(struct sp_spinand_info *info, u32 id)
 	return wait_spi_idle(info);
 }
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 static int spi_nand_wait_dev_idle(struct sp_spinand_info *info)
 {
 	unsigned long timeout = jiffies + msecs_to_jiffies(CONFIG_SPINAND_TIMEOUT);
@@ -639,7 +639,7 @@ int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
 	}
 	writel(value, &regs->spi_col_addr);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel(page_size, &regs->device_parity_addr);
 #endif
 
@@ -651,7 +651,7 @@ int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
 	writel((u32)((ulong)buf+info->page_size), &regs->mem_parity_addr);
 
 	value = SPINAND_BCH_DATA_LEN(info->parity_sector_size)
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		| SPINAND_BCH_DECSRC(info->bch_dec_src)
 #endif
 		| SPINAND_BCH_BLOCKS(info->nand.ecc.steps - 1)
@@ -666,7 +666,7 @@ int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_USR_READCACHE_EN;
 	writel(value, &regs->spi_auto_cfg);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	sp_autobch_config(info->mtd, buf, buf+info->page_size, 0, info->bch_dec_src);
 #else
 	sp_autobch_config(info->mtd, buf, buf+info->page_size, 0);
@@ -728,7 +728,7 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 	}
 	writel(value, &regs->spi_col_addr);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel(page_size, &regs->device_parity_addr);
 #endif
 
@@ -740,7 +740,7 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 	writel((u32)((ulong)buf+info->page_size), &regs->mem_parity_addr);
 
 	value = SPINAND_BCH_DATA_LEN(info->parity_sector_size)
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		| SPINAND_BCH_DECSRC(info->bch_dec_src)
 #endif
 		| SPINAND_BCH_BLOCKS(info->nand.ecc.steps - 1)
@@ -757,7 +757,7 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 		| SPINAND_AUTOWEL_BF_PRGMLOAD;
 	writel(value, &regs->spi_auto_cfg);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	sp_autobch_config(info->mtd, buf, buf+info->page_size, 1, info->bch_dec_src);
 #else
 	sp_autobch_config(info->mtd, buf, buf+info->page_size, 1);
@@ -765,7 +765,7 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 
 	ret = spi_nand_trigger_and_wait_dma(info);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel(0, &regs->spi_bch);
 
 	if (!ret) {
@@ -1274,7 +1274,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		goto err1;
 	}
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	info->bch_dec_src = CONFIG_SPINAND_AUTOBCH_DECSRC;
 #endif
 	info->trs_mode = CONFIG_SPINAND_TRSMODE;
@@ -1341,7 +1341,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 
 	SPINAND_LOGI("====Sunplus SPI-NAND Driver====\n");
 	SPINAND_LOGI("==spi nand driver info==\n");
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	SPINAND_LOGI("regs = 0x%p@0x%08llx, size = %lld\n",
 		info->regs, res_mem->start, res_mem->end-res_mem->start);
 	SPINAND_LOGI("buffer = 0x%p@0x%08llx, size = %d\n",
@@ -1469,8 +1469,8 @@ static struct platform_device sp_spinand_device = {
 static const struct of_device_id sunplus_nand_of_match[] = {
 #if defined(CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-spi-nand" },
-#elif defined(CONFIG_SOC_Q654)
-	{ .compatible = "sunplus,q654-spi-nand" },
+#elif defined(CONFIG_SOC_SP7350)
+	{ .compatible = "sunplus,sp7350-spi-nand" },
 #else
 	{ .compatible = "sunplus,sp7021-spinand" },
 #endif

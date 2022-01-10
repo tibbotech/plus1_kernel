@@ -3,14 +3,14 @@
 
 /dts-v1/;
 
-#define CONFIG_SOC_Q654
+#define CONFIG_SOC_SP7350
 
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/gpio/gpio.h>
-#include <dt-bindings/clock/sp-q654.h>
-#include <dt-bindings/reset/sp-q654.h>
-#include <dt-bindings/pinctrl/sppctl-q654.h>
+#include <dt-bindings/clock/sp-sp7350.h>
+#include <dt-bindings/reset/sp-sp7350.h>
+#include <dt-bindings/pinctrl/sppctl-sp7350.h>
 
 #include "sp_remoteproc.dtsi"
 
@@ -25,8 +25,8 @@
 //#define ENABLE_DMATX3
 
 / {
-	model = "Sunplus Q654";
-	compatible = "sunplus,sp-q654";
+	model = "Sunplus SP7350";
+	compatible = "sunplus,sp7350";
 	interrupt-parent = <&gic>;
 	#address-cells = <2>;
 	#size-cells = <2>;
@@ -133,7 +133,7 @@
 
 		clkc: clkc@f8000000 {
 			#clock-cells = <1>;
-			compatible = "sunplus,q654-clkc";
+			compatible = "sunplus,sp7350-clkc";
 			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
 			nvmem-cells = <&n78_clksel>;
 		};
@@ -239,7 +239,7 @@
 	};
 
 	rstc: reset@f8000054 {
-		compatible = "sunplus,q654-reset";
+		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
 		reg = <0x00 0xf8000054 0x00 0x28>;
 		reg-names = "reset";
@@ -248,7 +248,7 @@
 #ifdef ENABLE_DMARX0
 	/* DMA Rx for UARTx */
 	uartdmarx0: serial@sp_uartdmarx0 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008980 0x00 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
@@ -260,7 +260,7 @@
 #endif
 #ifdef ENABLE_DMARX1
 	uartdmarx1: serial@sp_uartdmarx1 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf80089c0 0x00 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
@@ -272,7 +272,7 @@
 #endif
 #ifdef ENABLE_DMARX2
 	uartdmarx2: serial@sp_uartdmarx2 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008700 0x00 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
@@ -284,7 +284,7 @@
 #endif
 #ifdef ENABLE_DMARX3
 	uartdmarx3: serial@sp_uartdmarx3 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008740 0x00 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
@@ -298,7 +298,7 @@
 #ifdef ENABLE_DMATX0
 	/* DMA Tx for UARTx */
 	uartdmatx0: serial@sp_uartdmatx0 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
@@ -308,7 +308,7 @@
 #endif
 #ifdef ENABLE_DMATX1
 	uartdmatx1: serial@sp_uartdmatx1 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
@@ -318,7 +318,7 @@
 #endif
 #ifdef ENABLE_DMATX2
 	uartdmatx2: serial@sp_uartdmatx2 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
@@ -328,7 +328,7 @@
 #endif
 #ifdef ENABLE_DMATX3
 	uartdmatx3: serial@sp_uartdmatx3 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
@@ -338,7 +338,7 @@
 #endif
 
 	uart0: serial@f8000900 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8000900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
@@ -351,7 +351,7 @@
 	};
 
 	uart1: serial@f8000980 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8000980 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
@@ -365,7 +365,7 @@
 	};
 
 	uart2: serial@f8000800 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8000800 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
@@ -379,7 +379,7 @@
 	};
 
 	uart3: serial@f8004380 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8004380 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
@@ -393,7 +393,7 @@
 	};
 
 	uart4: serial@f8000880 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8000880 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
@@ -405,7 +405,7 @@
 	};
 
 	uadbg: serial@f800f900 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
@@ -417,7 +417,7 @@
 	};
 
 	uart6: serial@f8008280 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008280 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
@@ -429,7 +429,7 @@
 	};
 
 	uart7: serial@f8008300 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008300 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
@@ -441,7 +441,7 @@
 	};
 
 	uart8: serial@f8008380 {
-		compatible = "sunplus,q654-uart";
+		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8008380 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
@@ -454,7 +454,7 @@
 
 	pwm: pwm@f8008f80 {
 		#pwm-cells = <2>;
-		compatible = "sunplus,q654-pwm";
+		compatible = "sunplus,sp7350-pwm";
 		reg = <0x0 0xf8008f80 0x0 0x100>;
 		clocks = <&clkc DISP_PWM>;
 		resets = <&rstc RST_DISP_PWM>;
@@ -463,7 +463,7 @@
 	};
 
 	rtc: rtc@f8003a00 {
-		compatible = "sunplus,q654-rtc";
+		compatible = "sunplus,sp7350-rtc";
 		reg = <0x0 0xf8003a00 0x0 0x14>;
 		reg-names = "rtc_reg";
 		clocks = <&clkc RTC>;
@@ -487,7 +487,7 @@
 	};
 
 	sp_spinor0: spinor@f8000b00 {
-		compatible = "sunplus,q654-spi-nor";
+		compatible = "sunplus,sp7350-spi-nor";
 		reg = <0x0 0xf8000b00 0x0 0x80>, <0x0 0xf8000080 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
@@ -502,7 +502,7 @@
 	};
 
 	spinand0: spinand@f8002b80 {
-		compatible = "sunplus,q654-spi-nand";
+		compatible = "sunplus,sp7350-spi-nand";
 		reg = <0x0 0xf8002b80 0x0 0x60>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 23 IRQ_TYPE_LEVEL_HIGH>;
@@ -514,7 +514,7 @@
 	};
 
 	bch0: bch@f8101000 {
-		compatible = "sunplus,q654-bch";
+		compatible = "sunplus,sp7350-bch";
 		reg = <0x0 0xf8101000 0x0 0x30>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 24 IRQ_TYPE_LEVEL_HIGH>;
@@ -523,7 +523,7 @@
 	};
 
 	otp0: otp@f800af00 {
-		compatible = "sunplus,q654-ocotp0";
+		compatible = "sunplus,sp7350-ocotp0";
 		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
@@ -548,7 +548,7 @@
 	};
 
 	otp1: otp@f8018580 {
-		compatible = "sunplus,q654-ocotp1";
+		compatible = "sunplus,sp7350-ocotp1";
 		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
@@ -556,7 +556,7 @@
 	};
 
 	otp2: otp@f8002780 {
-		compatible = "sunplus,q654-ocotp2";
+		compatible = "sunplus,sp7350-ocotp2";
 		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
@@ -573,7 +573,7 @@
 	};
 
 	mmc0: mmc@f8003b00 {
-		compatible = "sunplus,q654-emmc";
+		compatible = "sunplus,sp7350-emmc";
 		reg = <0x0 0xf8003b00 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
@@ -592,7 +592,7 @@
 	};
 
 	mmc1: mmc@f8003e80 {
-		compatible = "sunplus,q654-card";
+		compatible = "sunplus,sp7350-card";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
@@ -610,7 +610,7 @@
 	};
 
 	sdio: sdio@f8008400 {
-		compatible = "sunplus,q654-sdio";
+		compatible = "sunplus,sp7350-sdio";
 		reg = < 0x0 0xf8008400 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
@@ -632,7 +632,7 @@
 	};
 
 	ehci0: usb@f8102100 {
-		compatible = "sunplus,q654-usb-ehci0";
+		compatible = "sunplus,sp7350-usb-ehci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102100 0x00 0x68>;
@@ -641,7 +641,7 @@
 	};
 
 	ohci0: usb@f8102080 {
-		compatible = "sunplus,q654-usb-ohci0";
+		compatible = "sunplus,sp7350-usb-ohci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
@@ -650,7 +650,7 @@
 	};
 
 	audio: audio@0xf8001e00 {
-		compatible = "sunplus,q654-audio";
+		compatible = "sunplus,sp7350-audio";
 		reg = <0x00 0xf8001e00 0x00 0x700>;
 		reg-names = "audio";
 		clocks = <&clkc AUD>, <&clkc PLLA>;
@@ -662,7 +662,7 @@
 	};
 
 	usb3drd0: usb@f80a1000{
-		compatible = "sunplus,q654-dwcusb3";
+		compatible = "sunplus,sp7350-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -685,7 +685,7 @@
 	};
 
 	u3phy0: uphy@f80bd000 {
-		compatible = "sunplus,q654-usb3-phy";
+		compatible = "sunplus,sp7350-usb3-phy";
 		clocks = <&clkc U3PHY0>;
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_U3PHY0>;
@@ -697,7 +697,7 @@
 	};
 
 	mipicsirx0: mipicsirx@f8005280 {
-		compatible = "sunplus,q654-mipicsi-rx";
+		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
@@ -712,7 +712,7 @@
 	};
 
 	mipicsirx1: mipicsirx@f8005380 {
-		compatible = "sunplus,q654-mipicsi-rx";
+		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
@@ -727,7 +727,7 @@
 	};
 
 	mipicsirx2: mipicsirx@f8005480 {
-		compatible = "sunplus,q654-mipicsi-rx";
+		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
@@ -742,7 +742,7 @@
 	};
 
 	mipicsirx3: mipicsirx@f8005580 {
-		compatible = "sunplus,q654-mipicsi-rx";
+		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
@@ -757,7 +757,7 @@
 	};
 
 	video_codec {
-		compatible = "sunplus,q654-hantro-codec";
+		compatible = "sunplus,sp7350-hantro-codec";
 		clocks = <&clkc VIDEO_CODEC>;
 		clock-names = "clk_vcodec";
 		resets = <&rstc RST_VIDEO_CODEC>;
@@ -765,7 +765,7 @@
 	};
 
 	video_codec_dec: hantro_vc8000d@f8168000 {
-		compatible = "sunplus,q654-hantro-vc8000d";
+		compatible = "sunplus,sp7350-hantro-vc8000d";
 		reg = <0x00 0xf8168000 0x00 0x1d8>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH>;
@@ -776,7 +776,7 @@
 	};
 
 	video_codec_enc: hantro_vc8000e@f80ff000 {
-		compatible = "sunplus,q654-hantro-vc8000e";
+		compatible = "sunplus,sp7350-hantro-vc8000e";
 		reg = <0x00 0xf80ff000 0x00 0xfff>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
@@ -787,12 +787,12 @@
 	};
 
 	video_codec_emem {
-		compatible = "sunplus,q654-hantro-emem";
+		compatible = "sunplus,sp7350-hantro-emem";
 		memory-region = <&video_codec_reserve>;
 	};
 
 	video_codec_dmem {
-		compatible = "sunplus,q654-hantro-dmem";
+		compatible = "sunplus,sp7350-hantro-dmem";
 		memory-region = <&video_codec_reserve>;
 	};
 
@@ -801,14 +801,14 @@
 	};
 
 	watchdog: watchdog@f8000628 {
-		compatible = "sunplus,q654-wdt";
+		compatible = "sunplus,sp7350-wdt";
 		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
 		clocks = <&clkc STC0>;
 		resets = <&rstc RST_STC0>;
 	};
 #if 0
 	ipc_test: ipc_test@f8007f80 {
-		compatible = "sunplus,q654-ipc-test";
+		compatible = "sunplus,sp7350-ipc-test";
 		reg = <0x0 0xf8007f80 0x0 0x100>; /* G255 ~ G256 */
 		interrupt-parent = <&gic>;
 		interrupts =
@@ -834,7 +834,7 @@
 #endif
 
 	pctl: pctl@f8000100 {
-		compatible = "sunplus,q654-pctl";
+		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8000100 0x0 0x100>,
 		      <0x0 0xf8000280 0x0 0x180>,
 		      <0x0 0xf80032e4 0x0 0x1c>,

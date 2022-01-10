@@ -8,7 +8,7 @@
 
 static int efuse1_sunplus_platform_probe(struct platform_device *dev)
 {
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	dev->id = 2;
 #endif
 
@@ -23,7 +23,7 @@ static const struct of_device_id sp_ocotp1_dt_ids[] = {
 #if defined (CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-ocotp1", .data = &sp_otp1_v0  },
 #else
-	{ .compatible = "sunplus,q654-ocotp1", .data = &sp_otp1_v0  },
+	{ .compatible = "sunplus,sp7350-ocotp1", .data = &sp_otp1_v0  },
 #endif
 	{ }
 };
@@ -40,7 +40,7 @@ static struct platform_driver sp_otp1_driver = {
 
 static int __init sp_otp1_drv_new(void)
 {
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	return platform_driver_register(&sp_otp1_driver);
 #else
 	return -1;

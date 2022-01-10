@@ -18,7 +18,7 @@
 #include <linux/mtd/mtd.h>
 #include <linux/mtd/rawnand.h>
 #include <linux/uaccess.h>
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #include "sp_bch_q645.h"
 #else
 #include "sp_bch.h"
@@ -67,7 +67,7 @@ static int sp_bch_reset(struct sp_bch_chip *chip)
 
 	/* reset controller */
 	writel(SRR_RESET, &regs->srr);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	timeout = jiffies + msecs_to_jiffies(100);
 #else
 	timeout = jiffies + msecs_to_jiffies(50);
@@ -345,7 +345,7 @@ int sp_bch_encode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel(~(IER_FAIL|IER_DONE), &regs->ier);
 #endif
 
@@ -382,7 +382,7 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	writel(SRR_RESET, &regs->srr);
 	writel(buf, &regs->buf);
 	writel(ecc, &regs->ecc);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel(~(IER_FAIL|IER_DONE), &regs->ier);
 #endif
 
@@ -392,7 +392,7 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 	status = readl(&regs->sr);
 	if (ret) {
 		pr_warn("sp_bch: decode timeout\n");
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	} else if ((readl(&regs->fsr) != 0) || (status&SR_BLANK_00)) {
 #else
 	} else if (readl(&regs->fsr) != 0) {
@@ -416,7 +416,7 @@ int sp_bch_decode(struct mtd_info *mtd, dma_addr_t buf, dma_addr_t ecc)
 }
 EXPORT_SYMBOL(sp_bch_decode);
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc, int dec_src)
 #else
 int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc)
@@ -431,12 +431,12 @@ int sp_autobch_config(struct mtd_info *mtd, void *buf, void *ecc, int enc)
 	writel(SRR_RESET, &regs->srr);
 	writel((u32)((ulong)buf), &regs->buf);
 	writel((u32)((ulong)ecc), &regs->ecc);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	writel((IER_FAIL|IER_DONE), &regs->ier);
 #endif
 
 	value = chip->cr0
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		| CR0_DECSRC(dec_src)
 #endif
 		| (enc ? CR0_ENCODE : CR0_DECODE)
@@ -457,12 +457,12 @@ int sp_autobch_result(struct mtd_info *mtd)
 	int ret = 0;
 	int status;
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	mutex_lock(&chip->lock);
 #endif
 
 	status = readl(&regs->sr);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if ((readl(&regs->fsr) != 0) || (status&SR_BLANK_00)) {
 #else
 	if (readl(&regs->fsr) != 0) {
@@ -478,13 +478,13 @@ int sp_autobch_result(struct mtd_info *mtd)
 		sp_bch_reset(chip);
 	} else {
 		mtd->ecc_stats.corrected += SR_ERR_BITS(status);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		writel(SR_DONE|SR_FAIL, &regs->sr);
 		writel(ISR_BCH, &regs->isr);
 #endif
 	}
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	mutex_unlock(&chip->lock);
 #endif
 
@@ -518,7 +518,7 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (!buf)
 		return -ENOMEM;
 	/* make sure it's 32 bytes aligned */
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	req = (void *)(((unsigned long)buf + 31) & 0xffffffffffffffe0);
 #else
 	req = (void *)(((unsigned int)buf + 31) & 0xffffffe0);
@@ -538,12 +538,12 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		writel(buf_phys, &regs->buf);
 		writel(ecc_phys, &regs->ecc);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		writel(~(IER_FAIL|IER_DONE), &regs->ier);
 #endif
 
 		chip->busy = 1;
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		writel(CR0_BMODE(5) | CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
 #else
 		writel(CR0_START | CR0_ENCODE | CR0_CMODE_1024x60, &regs->cr0);
@@ -575,12 +575,12 @@ static long sp_bch_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		writel(buf_phys, &regs->buf);
 		writel(ecc_phys, &regs->ecc);
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		writel(~(IER_FAIL|IER_DONE), &regs->ier);
 #endif
 
 		chip->busy = 1;
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_Q654)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		writel(CR0_BMODE(5) | CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
 #else
 		writel(CR0_START | CR0_DECODE | CR0_CMODE_1024x60, &regs->cr0);
@@ -779,7 +779,7 @@ static struct platform_device sp_bch_device = {
 static const struct of_device_id sp_bch_of_match[] = {
 	{ .compatible = "sunplus,sp7021-bch" },
 	{ .compatible = "sunplus,q645-bch" },
-	{ .compatible = "sunplus,q654-bch" },
+	{ .compatible = "sunplus,sp7350-bch" },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sp_bch_of_match);

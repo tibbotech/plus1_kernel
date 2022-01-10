@@ -14,7 +14,7 @@
 #include <linux/io.h>
 #include <linux/err.h>
 #include <linux/delay.h>
-#include <dt-bindings/clock/sp-q654.h>
+#include <dt-bindings/clock/sp-sp7350.h>
 #include <linux/nvmem-consumer.h>
 
 //#define TRACE	pr_info("### %s:%d (%d)\n", __FUNCTION__, __LINE__, (clk->reg - REG(4, 0)) / 4)
@@ -76,7 +76,7 @@ static void __iomem *moon_regs;
 
 struct sp_clk {
 	const char *name;
-	u32 id;		/* defined in sp-q654.h, also for gate (reg_idx<<4)|(shift) */
+	u32 id;		/* defined in sp-sp7350.h, also for gate (reg_idx<<4)|(shift) */
 	u32 mux;	/* mux reg_idx: MOON2.xx */
 	u32 shift;	/* mux shift */
 	u32 width;	/* mux width */
@@ -203,7 +203,7 @@ static struct sp_clk sp_clks[] = {
 
 /************************************************* PLL_A *************************************************/
 
-/* from Q654_PLLA_REG_setting.xlsx */
+/* from SP7350_PLLA_REG_setting.xlsx */
 struct {
 	u32 rate;
 	u32 regs[6];
@@ -594,4 +594,4 @@ static void __init sp_clkc_init(struct device_node *np)
 	pr_info("sp-clkc init done!\n");
 }
 
-CLK_OF_DECLARE(sp_clkc, "sunplus,q654-clkc", sp_clkc_init);
+CLK_OF_DECLARE(sp_clkc, "sunplus,sp7350-clkc", sp_clkc_init);

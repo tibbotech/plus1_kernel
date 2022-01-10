@@ -3,8 +3,8 @@
  * Copyright (C) Sunplus Technology Co., Ltd.
  *       All rights reserved.
  */
-#ifndef _DT_BINDINGS_RST_SUNPLUS_Q654_H
-#define _DT_BINDINGS_RST_SUNPLUS_Q654_H
+#ifndef _DT_BINDINGS_RST_SUNPLUS_SP7350_H
+#define _DT_BINDINGS_RST_SUNPLUS_SP7350_H
 
 /* mo_reset0 ~ mo_reset4 */
 #define RST_SYSTEM              0x00

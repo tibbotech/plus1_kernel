@@ -271,8 +271,8 @@ config SPRD_EFUSE
 	  will be called nvmem-sprd-efuse.
 
 config NVMEM_SUNPLUS_OCOTP
-  tristate "Sunplus SoC OTP support"
-  depends on SOC_SP7021 || SOC_I143 || SOC_Q645 || SOC_Q654
+	tristate "Sunplus SoC OTP support"
+	depends on SOC_SP7021 || SOC_I143 || SOC_Q645 || SOC_SP7350
 	depends on HAS_IOMEM
 	help
 	  This is a driver for the On-chip OTP controller (OCOTP) available on

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * GPIO Driver for Sunplus Q654 controller
+ * GPIO Driver for Sunplus SP7350 controller
  * Copyright (C) 2020 Sunplus Tech./Tibbo Tech.
  * Author: Dvorkin Dmitry <dvorkin@tibbo.com>
  *

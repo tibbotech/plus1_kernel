@@ -16,7 +16,7 @@ config MMC_DEBUG
 
 config SP_EMMC
 	tristate "Sunplus MMC Host Controller (v4.51)"
-	depends on SOC_SP7021 || SOC_I143 || SOC_Q645 || SOC_Q654
+	depends on SOC_SP7021 || SOC_I143 || SOC_Q645 || SOC_SP7350
 	default y
 	help
 	  If you say yes here, you will get support for eMMC host interface
@@ -35,7 +35,7 @@ config MMC_SP_SDV2
 
 config SP_SDV
 	tristate "Sunplus SD/SDIO Controller"
-	depends on SOC_Q645 || SOC_Q654
+	depends on SOC_Q645 || SOC_SP7350
 	help
 	  If you say yes here, you will get support for the Secure Digital Host
 	  Interface on Sunplus SoCs. This includes support for SD cards.

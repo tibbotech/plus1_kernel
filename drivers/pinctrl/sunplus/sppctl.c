@@ -204,7 +204,7 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __func__);
 		return PTR_ERR(_pc->base0);
 	}
-#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_Q654)
+#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
 	// res2
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
@@ -362,8 +362,8 @@ static const struct of_device_id sppctl_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-pctl" },
 #elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
 	{ .compatible = "sunplus,q645-pctl" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q654)
-	{ .compatible = "sunplus,q654-pctl" },
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+	{ .compatible = "sunplus,sp7350-pctl" },
 #endif
 	{ /* zero */ }
 };

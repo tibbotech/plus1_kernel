@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-or-later */
 /*
- * Sunplus Q654 SoC UART driver header file
+ * Sunplus SP7350 SoC UART driver header file
  */
 
 #ifndef __SP_UART_H__
