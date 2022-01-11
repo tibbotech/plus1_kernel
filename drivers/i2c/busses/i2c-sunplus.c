@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-only
 /*
- * Copyright (c) 2021 Sunplus Inc.
+ * Copyright (c) Sunplus Inc.
  * Author: Li-hao Kuo <lhjeff911@gmail.com>
  */
 
@@ -23,11 +23,9 @@
 #define SP_I2C_STD_FREQ                      100
 #define SP_I2C_FAST_FREQ                     400
 #define SP_I2C_SLEEP_TIMEOUT                 200
-#define SP_I2C_SCL_DELAY                     1  //SCl dalay xT
-
-#define SP_CLK_SOURCE_FREQ                   27000  // KHz(27MHz)
-#define SP_BUFFER_SIZE                       1024// Byte
-//burst write use
+#define SP_I2C_SCL_DELAY                     1
+#define SP_CLK_SOURCE_FREQ                   27000
+#define SP_BUFFER_SIZE                       1024
 #define SP_I2C_EMP_THOLD                     4
 
 #define SP_I2C_BURST_RDATA_BYTES             16
@@ -81,13 +79,6 @@
 #define SP_I2C_MODE_MANUAL_TRIG              BIT(0)
 
 #define SP_I2C_DATA0_REG                     0x0060
-#define SP_I2C_DATA4_REG                     0x0064
-#define SP_I2C_DATA8_REG                     0x0068
-#define SP_I2C_DATA12_REG                    0x006c
-#define SP_I2C_DATA16_REG                    0x0070
-#define SP_I2C_DATA20_REG                    0x0074
-#define SP_I2C_DATA24_REG                    0x0078
-#define SP_I2C_DATA28_REG                    0x007c
 
 #define SP_I2C_DMA_CONF_REG                  0x0004
 #define SP_I2C_DMA_LEN_REG                   0x0008
@@ -236,15 +227,15 @@ struct i2c_compatible {
 };
 
 struct sp_i2c_dev {
-	struct i2c_adapter adap;
 	struct device *dev;
+	struct i2c_adapter adap;
 	struct sp_i2c_cmd spi2c_cmd;
 	struct sp_i2c_irq_event spi2c_irq;
 	struct clk *clk;
 	struct reset_control *rstc;
-	unsigned int i2c_clk_freq;
 	unsigned int mode;
 	unsigned int total_port;
+	unsigned int i2c_clk_freq;
 	int irq;
 	void __iomem *i2c_regs;
 	void __iomem *i2c_dma_regs;
@@ -311,34 +302,7 @@ static void sp_i2cm_data_get(void __iomem *sr, unsigned int index, void *rxdata)
 {
 	unsigned int *rdata = rxdata;
 
-	switch (index) {
-	case 0:
-		*rdata = readl(sr + SP_I2C_DATA0_REG);
-		break;
-	case 1:
-		*rdata = readl(sr + SP_I2C_DATA4_REG);
-		break;
-	case 2:
-		*rdata = readl(sr + SP_I2C_DATA8_REG);
-		break;
-	case 3:
-		*rdata = readl(sr + SP_I2C_DATA12_REG);
-		break;
-	case 4:
-		*rdata = readl(sr + SP_I2C_DATA16_REG);
-		break;
-	case 5:
-		*rdata = readl(sr + SP_I2C_DATA20_REG);
-		break;
-	case 6:
-		*rdata = readl(sr + SP_I2C_DATA24_REG);
-		break;
-	case 7:
-		*rdata = readl(sr + SP_I2C_DATA28_REG);
-		break;
-	default:
-		break;
-	}
+	*rdata = readl(sr + SP_I2C_DATA0_REG + (index * 4));
 }
 
 static void sp_i2cm_rdata_flag_clear(void __iomem *sr, unsigned int flag)
@@ -821,7 +785,6 @@ static int _sp_i2cm_init(unsigned int device_id, struct sp_i2c_dev *spi2c)
 static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_dev *spi2c)
 {
 	int ret;
-	struct resource *res;
 
 	spi2c->i2c_regs = devm_platform_ioremap_resource_byname(pdev, "i2cm");
 	if (IS_ERR(spi2c->i2c_regs))
@@ -1300,6 +1263,16 @@ static const struct of_device_id sp_i2c_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_i2c_of_match);
 
+static void sp_i2c_disable_unprepare(void *data)
+{
+	clk_disable_unprepare(data);
+}
+
+static void sp_i2c_reset_control_assert(void *data)
+{
+	reset_control_assert(data);
+}
+
 static int sp_i2c_probe(struct platform_device *pdev)
 {
 	struct sp_i2c_dev *spi2c;
@@ -1341,9 +1314,17 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	if (ret)
 		return dev_err_probe(&pdev->dev, ret, "failed to enable clk\n");
 
+	ret = devm_add_action_or_reset(dev, sp_i2c_disable_unprepare, spi2c->clk);
+	if (ret)
+		return ret;
+
 	ret = reset_control_deassert(spi2c->rstc);
 	if (ret)
 		dev_err_probe(&pdev->dev, ret, "failed to deassert reset\n");
+
+	ret = devm_add_action_or_reset(dev, sp_i2c_reset_control_assert, spi2c->rstc);
+	if (ret)
+		return ret;
 
 	init_waitqueue_head(&spi2c->wait);
 
@@ -1443,7 +1424,6 @@ static struct platform_driver sp_i2c_driver = {
 	.probe		= sp_i2c_probe,
 	.remove		= sp_i2c_remove,
 	.driver		= {
-		.owner		= THIS_MODULE,
 		.name		= "sunplus-i2cm",
 		.of_match_table = sp_i2c_of_match,
 		.pm     = sp_i2c_pm_ops,

@@ -31,7 +31,7 @@ properties:
   interrupt-names:
     items:
       - const: dma_w
-      - const: mas_risc
+      - const: master_risc
       - const: slave_risc
 
   interrupts:
@@ -68,7 +68,7 @@ examples:
         reg-names = "master", "slave";
         interrupt-parent = <&intc>;
         interrupt-names = "dma_w",
-                          "mas_risc",
+                          "master_risc",
                           "slave_risc";
         interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
                      <146 IRQ_TYPE_LEVEL_HIGH>,

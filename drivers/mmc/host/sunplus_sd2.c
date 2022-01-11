@@ -69,9 +69,6 @@
 #define SPSDC_CONF_SD_MODE		BIT(16)
 #define SPSDC_CONF_MMC8BIT		BIT(18)
 #define SPSDC_CONF_SDIO_MODE		BIT(20)
-#define SPSDC_MODE_SDIO			2
-#define SPSDC_MODE_EMMC			1
-#define SPSDC_MODE_SD			0
 
 #define SPSD2_SD_CTRL_REG		0x00C8
 #define SPSDC_CTRL_CMD_TRIG		BIT(0)
@@ -143,34 +140,33 @@ enum {
 	SPSDC_PIO_MODE = 1,
 };
 
+enum SPSDC_MODE {
+	SPSDC_MODE_SD = 0,
+	SPSDC_MODE_SDIO = 1,
+};
+
 struct spsdc_host {
 	void __iomem *base;
 	struct clk *clk;
 	struct reset_control *rstc;
-	int mode; /* SD/SDIO/eMMC */
 	spinlock_t lock; /* controller lock */
-	struct mutex mrq_lock;
-	/* tasklet used to handle error then finish the request */
-	struct tasklet_struct tsklet_finish_req;
 	struct mmc_host *mmc;
+	struct mutex mrq_lock;
 	struct mmc_request *mrq; /* current mrq */
-	int irq;
-	int use_int; /* should raise irq when done */
-	int power_state; /* current power state: off/up/on */
-	int restore_4bit_sdio_bus;
-	int dmapio_mode;
-	/* for purpose of reducing context switch, only when transfer data that
-	 *  length is greater than `dma_int_threshold' should use interrupt
-	 */
-	int dma_int_threshold;
-	int dma_use_int; /* should raise irq when dma done */
 	struct sg_mapping_iter sg_miter; /* for pio mode to access sglist */
 	struct spsdc_tuning_info tuning_info;
+	/* tasklet used to handle error then finish the request */
+	struct tasklet_struct tsklet_finish_req;
+	int irq;
+	int mode; /* SD/SDIO*/
+	int use_int; /* should raise irq when done */
+	int power_state; /* current power state: off/up/on */
+	int dmapio_mode;
+	int dma_use_int; /* should raise irq when dma done */
+	int dma_int_threshold;
+	int restore_4bit_sdio_bus;
 };
 
-/**
- * wait for transaction done, return -1 if error.
- */
 static inline int spsdc_wait_finish(struct spsdc_host *host)
 {
 	/* Wait for transaction finish */
@@ -180,9 +176,9 @@ static inline int spsdc_wait_finish(struct spsdc_host *host)
 		if (readl(host->base + SPSD2_SD_STATE_REG) & SPSDC_STATE_FINISH)
 			return 0;
 		if (readl(host->base + SPSD2_SD_STATE_REG) & SPSDC_STATE_ERROR)
-			return -1;
+			return -EIO;
 	}
-	return -1;
+	return -ETIMEDOUT;
 }
 
 static inline int spsdc_wait_sdstatus(struct spsdc_host *host, unsigned int status_bit)
@@ -193,9 +189,9 @@ static inline int spsdc_wait_sdstatus(struct spsdc_host *host, unsigned int stat
 		if (readl(host->base + SPSD2_SD_STATUS_REG) & status_bit)
 			return 0;
 		if (readl(host->base + SPSD2_SD_STATE_REG) & SPSDC_STATE_ERROR)
-			return -1;
+			return -EIO;
 	}
-	return -1;
+	return -ETIMEDOUT;
 }
 
 #define spsdc_wait_rspbuf_full(host) spsdc_wait_sdstatus(host, SPSDC_STS_RSP_BUF_FULL)
@@ -262,7 +258,8 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	value &= ~SPSDC_CONF_CLK_DIV;
 	value |= FIELD_PREP(SPSDC_CONF_CLK_DIV, clkdiv);
 	writel(value, host->base + SPSD2_SD_CONF_REG);
-	/* In order to reduce the frequency of context switch,
+	/*
+	 *In order to reduce the frequency of context switch,
 	 * if it is high speed or upper, we do not use interrupt
 	 * when send a command that without data.
 	 */
@@ -312,25 +309,21 @@ static void spsdc_set_bus_width(struct spsdc_host *host, int width)
 	writel(value, host->base + SPSD2_SD_CONF_REG);
 }
 
-/**
+/*
  * select the working mode of controller: sd/sdio/emmc
  */
-static void spsdc_select_mode(struct spsdc_host *host, int mode)
+static void spsdc_select_mode(struct spsdc_host *host)
 {
 	u32 value = readl(host->base + SPSD2_SD_CONF_REG);
 
-	host->mode = mode;
-	/* set `sdmmcmode', as it will sample data at fall edge
+	/*
+	 *set `sdmmcmode', as it will sample data at fall edge
 	 * of SD bus clock if `sdmmcmode' is not set when
 	 * `sd_high_speed_en' is not set, which is not compliant
 	 * with SD specification
 	 */
 	value |= SPSDC_CONF_SD_MODE;
-	switch (mode) {
-	case SPSDC_MODE_EMMC:
-		value &= ~SPSDC_CONF_SDIO_MODE;
-		writel(value, host->base + SPSD2_SD_CONF_REG);
-		break;
+	switch (host->mode) {
 	case SPSDC_MODE_SDIO:
 		value |= SPSDC_CONF_SDIO_MODE;
 		writel(value, host->base + SPSD2_SD_CONF_REG);
@@ -363,12 +356,11 @@ static void spsdc_prepare_cmd(struct spsdc_host *host, struct mmc_command *cmd)
 {
 	u32 value;
 
-	writeb((u8)(cmd->opcode | 0x40), host->base + SPSD2_SD_CMD_BUF0_REG);
-	writeb((u8)((cmd->arg >> 24) & 0x000000ff), host->base + SPSD2_SD_CMD_BUF1_REG);
-	writeb((u8)((cmd->arg >> 16) & 0x000000ff), host->base + SPSD2_SD_CMD_BUF2_REG);
-	writeb((u8)((cmd->arg >> 8) & 0x000000ff), host->base + SPSD2_SD_CMD_BUF3_REG);
-	writeb((u8)((cmd->arg >> 0) & 0x000000ff), host->base + SPSD2_SD_CMD_BUF4_REG);
-
+	writeb((cmd->opcode | 0x40), host->base + SPSD2_SD_CMD_BUF0_REG);
+	writeb(((cmd->arg >> 24) & 0xff), host->base + SPSD2_SD_CMD_BUF1_REG);
+	writeb(((cmd->arg >> 16) & 0xff), host->base + SPSD2_SD_CMD_BUF2_REG);
+	writeb(((cmd->arg >> 8) & 0xff), host->base + SPSD2_SD_CMD_BUF3_REG);
+	writeb(((cmd->arg >> 0) & 0xff), host->base + SPSD2_SD_CMD_BUF4_REG);
 	/* disable interrupt if needed */
 	value = readl(host->base + SPSD2_SD_INT_REG);
 	value |= SPSDC_SDINT_SDCMP_CLR;
@@ -422,7 +414,8 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 		value |= FIELD_PREP(SPSDC_CONF0_TRANS_MODE, SPSDC_TRANS_WR_MODE);
 		writel(0x21, host->base + SPSD2_DMA_SRCDST_REG);
 	}
-	/* to prevent of the responses of CMD18/25 being by CMD12's,
+	/*
+	 *to prevent of the responses of CMD18/25 being by CMD12's,
 	 * send CMD12 by ourself instead of by controller automatically
 	 *
 	 *	#if 0
@@ -552,7 +545,7 @@ static int __switch_sdio_bus_width(struct spsdc_host *host, int width)
 	return ret;
 }
 
-/**
+/*
  * check if error during transaction.
  * @host -  host
  * @mrq - the mrq
@@ -694,7 +687,7 @@ static void spsdc_set_power_mode(struct spsdc_host *host, struct mmc_ios *ios)
 	host->power_state = ios->power_mode;
 }
 
-/**
+/*
  * 1. unmap scatterlist if needed;
  * 2. get response & check error conditions;
  * 3. unlock host->mrq_lock
@@ -751,7 +744,6 @@ static irqreturn_t spsdc_irq(int irq, void *dev_id)
 		else
 			spsdc_finish_request(host, host->mrq);
 	}
-
 	if ((value & SPSDC_SDINT_SDIO) && (value & SPSDC_SDINT_SDIOEN))
 		mmc_signal_sdio_irq(host->mmc);
 	spin_unlock(&host->lock);
@@ -773,9 +765,8 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	host->mrq = mrq;
 	data = mrq->data;
 	cmd = mrq->cmd;
-
-	if (cmd->opcode == SD_IO_RW_EXTENDED && bus_width ==
-			MMC_BUS_WIDTH_4 && data->blocks * data->blksz <= 4) {
+	if (cmd->opcode == SD_IO_RW_EXTENDED && bus_width == MMC_BUS_WIDTH_4 &&
+		data->blocks * data->blksz <= 4) {
 		if (__switch_sdio_bus_width(host, MMC_BUS_WIDTH_1)) {
 			cmd->error = -1;
 			host->mrq = NULL;
@@ -799,7 +790,6 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	} else {
 		if (data)
 			spsdc_prepare_data(host, data);
-
 		if ((host->dmapio_mode && data) ==  SPSDC_PIO_MODE) {
 			u32 value;
 			/* pio data transfer do not use interrupt */
@@ -832,11 +822,11 @@ static void spsdc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	spsdc_set_bus_timing(host, ios->timing);
 	spsdc_set_bus_width(host, ios->bus_width);
 	/* ensure mode is correct, because we might have hw reset the controller */
-	spsdc_select_mode(host, host->mode);
+	spsdc_select_mode(host);
 	mutex_unlock(&host->mrq_lock);
 }
 
-/**
+/*
  * Return values for the get_cd callback should be:
  *   0 for a absent card
  *   1 for a present card
@@ -899,7 +889,6 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	struct mmc_host *mmc;
 	struct resource *res;
 	struct spsdc_host *host;
-	unsigned int mode;
 	int ret = 0;
 
 	mmc = mmc_alloc_host(sizeof(*host), &pdev->dev);
@@ -963,19 +952,20 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 	mmc->ocr_avail = MMC_VDD_32_33 | MMC_VDD_33_34;
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
-	/* Host controller supports up to "SPSDC_MAX_DMA_MEMORY_SECTORS",
-	 * a.k.a. max scattered memory segments per request
-	 */
 	/* Limited by the max value of dma_size & data_length, set it to 512 bytes for now */
 	mmc->max_segs = SPSDC_MAX_DMA_MEMORY_SECTORS;
 	mmc->max_req_size = SPSDC_MAX_BLK_COUNT * 512;
 	mmc->max_blk_size = 512;
 	mmc->max_blk_count = SPSDC_MAX_BLK_COUNT; /* Limited by sd_page_num */
 
+	if (mmc->caps2 & MMC_CAP2_NO_SDIO)
+		host->mode = SPSDC_MODE_SD;
+	else
+		host->mode = SPSDC_MODE_SDIO;
+
 	dev_set_drvdata(&pdev->dev, host);
 	spsdc_controller_init(host);
-	mode = (int)of_device_get_match_data(&pdev->dev);
-	spsdc_select_mode(host, mode);
+	spsdc_select_mode(host);
 	mmc_add_host(mmc);
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
@@ -1032,7 +1022,7 @@ static int spsdc_pm_resume(struct device *dev)
 	pm_runtime_force_resume(dev);
 	return 0;
 }
-#endif /* ifdef CONFIG_PM_SLEEP */
+#endif
 
 #ifdef CONFIG_PM_RUNTIME_SD
 static int spsdc_pm_runtime_suspend(struct device *dev)
@@ -1060,7 +1050,7 @@ static int spsdc_pm_runtime_resume(struct device *dev)
 	}
 	return clk_enable(host->clk);
 }
-#endif /* ifdef CONFIG_PM_RUNTIME_SD */
+#endif
 
 static const struct dev_pm_ops spsdc_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(spsdc_pm_suspend, spsdc_pm_resume)
@@ -1071,16 +1061,8 @@ static const struct dev_pm_ops spsdc_pm_ops = {
 #endif /* ifdef CONFIG_PM */
 
 static const struct of_device_id spsdc_of_table[] = {
-	{
-		.compatible = "sunplus,sp7021-card",
-		.data = (void *)SPSDC_MODE_SD,
-	},
-	{
-		.compatible = "sunplus,sp7021-sdio",
-		.data = (void *)SPSDC_MODE_SDIO,
-	},
+	{ .compatible = "sunplus,sp7021-sdhci" },
 	{/* sentinel */}
-
 };
 MODULE_DEVICE_TABLE(of, spsdc_of_table);
 
@@ -1091,7 +1073,6 @@ static struct platform_driver spsdc_driver = {
 	.resume = spsdc_drv_resume,
 	.driver = {
 		.name = "spsdc",
-		.owner = THIS_MODULE,
 #ifdef CONFIG_PM
 		.pm = &spsdc_pm_ops,
 #endif

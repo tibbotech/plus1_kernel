@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: (GPL-2.0 OR BSD-2-Clause)
-# Copyright (C) Sunplus Co., Ltd. 2021
+# Copyright (C) Sunplus Co., Ltd.
 %YAML 1.2
 ---
 $id: http://devicetree.org/schemas/i2c/i2c-sunplus.yaml#
@@ -23,11 +23,13 @@ properties:
     items:
       - description: I2C registers
       - description: I2C DMA registers
+      - description: I2C DMA power registers
 
   reg-names:
     items:
       - const: i2cm
       - const: i2cmdma
+      - const: i2cdmapower
 
   interrupts:
     maxItems: 1
@@ -57,8 +59,8 @@ examples:
     #include <dt-bindings/interrupt-controller/irq.h>
     i2c@9C004600 {
         compatible = "sunplus,sp7021-i2cm";
-        reg = <0x9c004600 0x80>, <0x9c004680 0x80>;
-        reg-names = "i2cm", "i2cmdma";
+        reg = <0x9c004600 0x80>, <0x9c004680 0x80>, <0x9c000000 0x80>;
+        reg-names = "i2cm", "i2cmdma", "i2cdmapower";
         interrupt-parent = <&intc>;
         interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
         clocks = <&clkc I2CM0>;

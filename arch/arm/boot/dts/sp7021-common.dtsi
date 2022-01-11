@@ -878,7 +878,7 @@
 		};
 
 		mmc1: sdcard@9c003e80 {
-			compatible = "sunplus,sp7021-card";
+			compatible = "sunplus,sp7021-sdhci";
 			reg = <0x9c003e80 0x280>;
 			interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL1>;
@@ -892,7 +892,7 @@
 		};
 
 		sdio: sdio@9c008400 {
-			compatible = "sunplus,sp7021-sdio";
+			compatible = "sunplus,sp7021-sdhci";
 			reg = <0x9c008400 0x280>;
 			interrupts = <22 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc CARD_CTL4>;
@@ -915,7 +915,7 @@
 			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w",
-					  "mas_risc",
+					  "master_risc",
 					  "slave_risc";
 			interrupts = <144 IRQ_TYPE_LEVEL_HIGH>,
 				     <146 IRQ_TYPE_LEVEL_HIGH>,
@@ -930,7 +930,7 @@
 			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w",
-					  "mas_risc",
+					  "master_risc",
 					  "slave_risc";
 			interrupts = <67 IRQ_TYPE_LEVEL_HIGH>,
 				     <69 IRQ_TYPE_LEVEL_HIGH>,
@@ -945,7 +945,7 @@
 			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w",
-					  "mas_risc",
+					  "master_risc",
 					  "slave_risc";
 			interrupts = <70 IRQ_TYPE_LEVEL_HIGH>,
 				     <72 IRQ_TYPE_LEVEL_HIGH>,
@@ -960,7 +960,7 @@
 			reg-names = "master", "slave";
 			interrupt-parent = <&intc>;
 			interrupt-names = "dma_w",
-					  "mas_risc",
+					  "master_risc",
 					  "slave_risc";
 			interrupts = <73 IRQ_TYPE_LEVEL_HIGH>,
 				     <75 IRQ_TYPE_LEVEL_HIGH>,
