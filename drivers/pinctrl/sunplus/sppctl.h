@@ -64,6 +64,9 @@
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
+#define SPPCTL_MUXABLE_MIN 8
+#define SPPCTL_MUXABLE_MAX 71
+
 #define KINF(pd, fmt, args...) \
 	do { \
 		if ((pd) != NULL) \

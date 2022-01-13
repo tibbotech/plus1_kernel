@@ -91,6 +91,7 @@ struct sppctlgpio_chip_t {
 	void __iomem *base1;   // I_INV , O_INV , OD
 	void __iomem *base2;   // GPIO_FIRST
 	int irq[SPPCTL_GPIO_IRQS];
+	int irq_pin[SPPCTL_GPIO_IRQS];
 };
 
 extern const char * const sppctlgpio_list_s[];

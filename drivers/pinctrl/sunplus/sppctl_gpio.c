@@ -206,6 +206,7 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	}
 
 	npins = platform_irq_count(_pd);
+	for (i = 0; i < SPPCTL_GPIO_IRQS; i++) pc->irq_pin[ i] = -1;
 	for (i = 0; i < npins && i < SPPCTL_GPIO_IRQS; i++) {
 		pc->irq[i] = irq_of_parse_and_map(np, i);
 		KDBG(&(_pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[i]);
