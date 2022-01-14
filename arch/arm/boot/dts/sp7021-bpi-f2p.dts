@@ -48,7 +48,7 @@
 	//spi-cpha;
 	//spi-cpol;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pins_spi0>;
+	pinctrl-0 = <&pins_spim0>;
 	status = "disabled";
 };
 
@@ -339,12 +339,12 @@
 		>;
 	};
 
-	pins_spi0: pinmux_pins_spi0 {
+	pins_spim0: pinmux_pins_spim0 {
 		sppctl,pins = <
-			SPPCTL_IOPAD(26,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_EN,0)
-			SPPCTL_IOPAD(23,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_DO,0)
-			SPPCTL_IOPAD(25,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_DI,0)
-			SPPCTL_IOPAD(27,SPPCTL_PCTL_G_PMUX,MUXF_SPI0S_CLK,0)
+			SPPCTL_IOPAD(26,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_EN,0)
+			SPPCTL_IOPAD(23,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DO,0)
+			SPPCTL_IOPAD(25,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_DI,0)
+			SPPCTL_IOPAD(27,SPPCTL_PCTL_G_PMUX,MUXF_SPIM0_CLK,0)
 		>;
 	};
 
