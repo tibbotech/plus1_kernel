@@ -54,7 +54,7 @@
 &spi_controller0 {
 	spi-max-frequency = <25000000>;
 	pinctrl-names = "default";
-	pinctrl-0 = <&pins_spi0>;
+	pinctrl-0 = <&pins_spim0>;
 	cs-gpios = <&pctl 26 GPIO_ACTIVE_LOW>, <&pctl 28 GPIO_ACTIVE_LOW>;
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -359,13 +359,13 @@
 		>;
 	};
 
-	pins_spi0: pinmux_spi0-pins {
+	pins_spim0: pinmux_spim0-pins {
 		sunplus,pins = <
 			SPPCTL_IOPAD(26, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
 			SPPCTL_IOPAD(28, SPPCTL_PCTL_G_GPIO, 0, SPPCTL_PCTL_L_OUT)
-			SPPCTL_IOPAD(23, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_DO, 0)
-			SPPCTL_IOPAD(25, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_DI, 0)
-			SPPCTL_IOPAD(27, SPPCTL_PCTL_G_PMUX, MUXF_SPI0S_CLK, 0)
+			SPPCTL_IOPAD(23, SPPCTL_PCTL_G_PMUX, MUXF_SPIM0_DO, 0)
+			SPPCTL_IOPAD(25, SPPCTL_PCTL_G_PMUX, MUXF_SPIM0_DI, 0)
+			SPPCTL_IOPAD(27, SPPCTL_PCTL_G_PMUX, MUXF_SPIM0_CLK, 0)
 		>;
 	};
 
