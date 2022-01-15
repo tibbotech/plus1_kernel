@@ -1033,6 +1033,15 @@
 		pctl: pctl@0x9C000100 {
 			compatible = "sunplus,sp7021-pctl";
 			reg = <0x9C000100 0x100>, <0x9C000300 0x80>, <0x9C000380 0x80>, <0x9C0032e4 0x1C>, <0x9C000080 0x20>;
+			interrupt-parent = <&intc>;
+			interrupts = <120 IRQ_TYPE_LEVEL_HIGH>,
+				     <121 IRQ_TYPE_LEVEL_HIGH>,
+				     <122 IRQ_TYPE_LEVEL_HIGH>,
+				     <123 IRQ_TYPE_LEVEL_HIGH>,
+				     <124 IRQ_TYPE_LEVEL_HIGH>,
+				     <125 IRQ_TYPE_LEVEL_HIGH>,
+				     <126 IRQ_TYPE_LEVEL_HIGH>,
+				     <127 IRQ_TYPE_LEVEL_HIGH>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			clocks = <&clkc GPIO>;
