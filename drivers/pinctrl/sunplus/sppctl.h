@@ -62,6 +62,9 @@
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
+#define SPPCTL_MUXABLE_MIN 8
+#define SPPCTL_MUXABLE_MAX 71
+
 #define KINF(pd,fmt,args...) { \
 	if ((pd) != NULL) { dev_info((pd),""fmt,##args);  \
 	} else { printk(KERN_INFO     MNAME": "fmt,##args); } }
