@@ -326,8 +326,26 @@ void sppctlgpio_f_dsh(struct seq_file *_s, struct gpio_chip *_c)
 
 int sppctlgpio_i_map(struct gpio_chip *_c, unsigned _off)
 {
-	sppctlgpio_chip_t *pc = (sppctlgpio_chip_t *)gpiochip_get_data(_c);
+	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
+	int i;
 
-	if (_off >= 8 && _off < 15) return (pc->irq[_off - 8]);
-	return (-ENXIO);
+#ifdef SUPPORT_PINMUX
+	if ( _off < SPPCTL_MUXABLE_MIN || _off > SPPCTL_MUXABLE_MAX) {
+	  KERR(_c->parent, "i_map: %d is not muxable\n", _off);
+	  return -ENXIO;
+	}
+#endif
+
+	for ( i = 0; i < SPPCTL_GPIO_IRQS; i++) {
+	  if ( pc->irq[ i] < 0) continue;
+	  if ( pc->irq_pin[ i] == _off) return pc->irq[ i];
+	  sppctlgpio_u_magpi_set( _c, _off, muxF_M, muxMKEEP);
+#ifdef SUPPORT_PINMUX
+	  sppctl_pin_set( ( struct sppctl_pdata_t *)( _c->parent->platform_data), _off - 7, MUXF_GPIO_INT0 + i - 2);
+#endif
+	  pc->irq_pin[ i] = _off;
+	  KDBG(_c->parent, "i_map: pin %d muxed to %d irq\n", _off, pc->irq[ i]);
+	  return pc->irq[ i];
+	}
+	return -ENXIO;
 }
