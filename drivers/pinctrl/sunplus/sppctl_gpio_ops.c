@@ -20,6 +20,9 @@
 
 #include "sppctl_gpio.h"
 
+#ifdef CONFIG_PINCTRL_SPPCTL
+#define SUPPORT_PINMUX
+#endif
 
 #define SPPCTL_GPIO_OFF_GFR     0x00
 #ifdef CONFIG_PINCTRL_SPPCTL_Q645
