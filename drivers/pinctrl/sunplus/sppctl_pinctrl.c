@@ -147,22 +147,8 @@ int stpctl_m_req(struct pinctrl_dev *_pd, unsigned _pin)
 
 int stpctl_m_fre(struct pinctrl_dev *_pd, unsigned _pin)
 {
-#ifdef SUPPORT_PINMUX
-	struct sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata(_pd);
-#endif
-	struct sppctlgpio_chip_t *pc = ( struct sppctlgpio_chip_t *)gpiochip_get_data( range->gc);
-	int i;
-	KDBG(_pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
-	// if irq is binded - free it
-	for ( i = 0; i < SPPCTL_GPIO_IRQS; i++) {
-	  if ( pc->irq[ i] < 0) continue;
-	  if ( pc->irq_pin[ i] != _pin) continue;
-	  KDBG(_pd->dev, "%s(%03d) detouching from irq: %d\n", __FUNCTION__, _pin, pc->irq[ i]);
-#ifdef SUPPORT_PINMUX
-	  sppctl_pin_set( pctrl, 0, MUXF_GPIO_INT0 + i - 2);
-#endif
-	  pc->irq_pin[ i] = -1;
-       }
+	KDBG(_pd->dev, "%s(%d)\n", __func__, _pin);
+	return 0;
 }
 
 int stpctl_m_f_cnt(struct pinctrl_dev *_pd)
@@ -261,7 +247,22 @@ int stpctl_m_gpio_req(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range,
 
 void stpctl_m_gpio_fre(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin)
 {
+#ifdef SUPPORT_PINMUX
+	sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata(_pd);
+#endif
+	sppctlgpio_chip_t *pc = ( sppctlgpio_chip_t *)gpiochip_get_data( range->gc);
+	int i;
 	KDBG(_pd->dev, "%s(%d)\n", __FUNCTION__, _pin);
+	// if irq is binded - free it
+	for ( i = 0; i < SPPCTL_GPIO_IRQS; i++) {
+	  if ( pc->irq[ i] < 0) continue;
+	  if ( pc->irq_pin[ i] != _pin) continue;
+	  KDBG(_pd->dev, "%s(%03d) detouching from irq: %d\n", __FUNCTION__, _pin, pc->irq[ i]);
+#ifdef SUPPORT_PINMUX
+	  sppctl_pin_set( pctrl, 0, MUXF_GPIO_INT0 + i - 2);
+#endif
+	  pc->irq_pin[ i] = -1;
+       }
 }
 int stpctl_m_gpio_sdir(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range, unsigned _pin, bool _in)
 {
