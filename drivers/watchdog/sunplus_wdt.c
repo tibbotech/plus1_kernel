@@ -85,15 +85,6 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 	return 0;
 }
 
-static int sp_wdt_set_timeout(struct watchdog_device *wdev,
-			      unsigned int timeout)
-{
-	wdev->timeout = timeout;
-	sp_wdt_ping(wdev);
-
-	return 0;
-}
-
 static int sp_wdt_stop(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
@@ -139,7 +130,6 @@ static const struct watchdog_ops sp_wdt_ops = {
 	.start		= sp_wdt_start,
 	.stop		= sp_wdt_stop,
 	.ping		= sp_wdt_ping,
-	.set_timeout	= sp_wdt_set_timeout,
 	.get_timeleft	= sp_wdt_get_timeleft,
 	.restart	= sp_wdt_restart,
 };
@@ -165,29 +155,29 @@ static int sp_wdt_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	priv->clk = devm_clk_get(dev, NULL);
-	if (IS_ERR(priv->clk)) {
-		dev_err(dev, "Can't find clock source\n");
-		return PTR_ERR(priv->clk);
-	}
+	if (IS_ERR(priv->clk))
+		return dev_err_probe(dev, PTR_ERR(priv->clk),
+				     "Failed to get clock\n");
 
 	err = clk_prepare_enable(priv->clk);
-	if (err) {
-		dev_err(dev, "Clock can't be enabled correctly\n");
-		return err;
-	}
-
-	/* The timer and watchdog shared the STC reset */
-	priv->rstc = devm_reset_control_get_shared(dev, NULL);
-	if (!IS_ERR(priv->rstc))
-		reset_control_deassert(priv->rstc);
-
-	err = devm_add_action_or_reset(dev, sp_reset_control_assert,
-				       priv->rstc);
 	if (err)
-		return err;
+		return dev_err_probe(dev, err,
+				     "Failed to enable clock\n");
 
 	err = devm_add_action_or_reset(dev, sp_clk_disable_unprepare,
 				       priv->clk);
+	if (err)
+		return err;
+
+	/* The timer and watchdog shared the STC reset */
+	priv->rstc = devm_reset_control_get_shared(dev, NULL);
+	if (IS_ERR(priv->rstc))
+		return PTR_ERR(priv->rstc);
+
+	reset_control_deassert(priv->rstc);
+
+	err = devm_add_action_or_reset(dev, sp_reset_control_assert,
+				       priv->rstc);
 	if (err)
 		return err;
 
@@ -275,4 +265,4 @@ module_platform_driver(sp_wdt_driver);
 
 MODULE_AUTHOR("Xiantao Hu <xt.hu@cqplus1.com>");
 MODULE_DESCRIPTION("Sunplus Watchdog Timer Driver");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
