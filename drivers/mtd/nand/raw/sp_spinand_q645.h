@@ -10,10 +10,6 @@
 #ifdef CONFIG_SPINAND_USE_SRAM
 #define CONFIG_SPINAND_SRAM_ADDR  (0xFA200000)
 #endif
-#define SPI_NAND_DIRECT_MAP       0xF4000000
-#define SP_SPINAND_REG_BASE       0xF8002B80    // RF_GRP(87, 0)
-#define SP_SPINAND_IRQ            23
-#define CONFIG_SPINAND_DEV_IN_DTS
 #define ZEBU_SIM                  0             // For zebu_sim
 
 /*

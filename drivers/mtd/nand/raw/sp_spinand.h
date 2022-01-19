@@ -6,14 +6,10 @@
 /*
  *  spi nand platform related configs
  */
-#define CONFIG_SPINAND_USE_SRAM
+//#define CONFIG_SPINAND_USE_SRAM
 #ifdef CONFIG_SPINAND_USE_SRAM
 #define CONFIG_SPINAND_SRAM_ADDR  (0x9e800000)
 #endif
-#define SPI_NAND_DIRECT_MAP       0x9dff0000
-#define SP_SPINAND_REG_BASE       0x9C002B80  //RF_GRP(87, 0)
-#define SP_SPINAND_IRQ            149
-#define CONFIG_SPINAND_DEV_IN_DTS
 
 /*
  *  spi nand functional related configs

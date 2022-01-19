@@ -1183,7 +1183,7 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	info->buff.phys = (dma_addr_t)CONFIG_SPINAND_SRAM_ADDR;
 	info->buff.virt = ioremap(info->buff.phys, info->buff.size);
 	#else
-	info->buff.virt = dma_alloc_coherent(NULL, info->buff.size,
+	info->buff.virt = dma_alloc_coherent(&pdev->dev, info->buff.size,
 		&info->buff.phys, GFP_KERNEL);
 	#endif
 
@@ -1444,28 +1444,6 @@ int sp_spinand_resume(struct platform_device *pdev)
 	return 0;
 }
 
-#ifndef CONFIG_SPINAND_DEV_IN_DTS
-static struct resource sp_spinand_res[] = {
-	{
-		.start = SP_SPINAND_REG_BASE,
-		.end   = SP_SPINAND_REG_BASE + sizeof(struct sp_spinand_regs),
-		.flags = IORESOURCE_MEM,
-	},
-	{
-		.start = SP_SPINAND_IRQ,
-		.end   = SP_SPINAND_IRQ,
-		.flags = IORESOURCE_IRQ,
-	},
-};
-
-static struct platform_device sp_spinand_device = {
-	.name  = "sunplus,spi-nand",
-	.id    = 0,
-	.num_resources = ARRAY_SIZE(sp_spinand_res),
-	.resource  = sp_spinand_res,
-};
-#endif
-
 static const struct of_device_id sunplus_nand_of_match[] = {
 #if defined(CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-spi-nand" },
@@ -1492,9 +1470,6 @@ static struct platform_driver sp_spinand_driver = {
 
 static int __init sp_spinand_module_init(void)
 {
-	#ifndef CONFIG_SPINAND_DEV_IN_DTS
-	platform_device_register(&sp_spinand_device);
-	#endif
 	platform_driver_register(&sp_spinand_driver);
 	return 0;
 }
@@ -1502,9 +1477,6 @@ static int __init sp_spinand_module_init(void)
 static void __exit sp_spinand_module_exit(void)
 {
 	platform_driver_unregister(&sp_spinand_driver);
-	#ifndef CONFIG_SPINAND_DEV_IN_DTS
-	platform_device_unregister(&sp_spinand_device);
-	#endif
 }
 
 module_init(sp_spinand_module_init);
