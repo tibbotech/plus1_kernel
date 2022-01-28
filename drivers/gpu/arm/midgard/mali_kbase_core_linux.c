@@ -122,6 +122,8 @@
 
 #include <mali_kbase_caps.h>
 
+#include <linux/io.h>
+
 /* GPU IRQ Tags */
 #define	JOB_IRQ_TAG	0
 #define MMU_IRQ_TAG	1
@@ -5203,8 +5205,20 @@ static int kbase_platform_device_probe(struct platform_device *pdev)
 {
 	struct kbase_device *kbdev;
 	int err = 0;
+	void __iomem *otp0 = NULL;
+	unsigned int reg_value;
 
 	printk("kbase_platform_device_probe \n");
+	
+	/* Check gpu disable by OTP or not */  
+	otp0 = ioremap(0xF800AF00,32*4);
+	reg_value = readl((otp0 + 0));
+	printk("G350.0=0x%x \n", reg_value);
+	if (reg_value & 0x800){
+		dev_err(&pdev->dev, "gpu disabled\n");
+		return -1;
+	} 
+	
 
 	mali_kbase_print_cs_experimental();
 
