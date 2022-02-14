@@ -341,7 +341,7 @@ static void mipicsi_lane_config(struct sp_mipi_device *mipi)
 
 	case 4: // 4 lanes
 		set_field(&mix_cfg, 0x2, 0x3<<20);  // 0x2: 4 lanes
-		set_field(&ana_cfg2, 0x3, 0xf<<0);  // Enable data lane of LP mode circuit for data lane 0/1/2/3
+		set_field(&ana_cfg2, 0xf, 0xf<<0);  // Enable data lane of LP mode circuit for data lane 0/1/2/3
 		break;
 	}
 
