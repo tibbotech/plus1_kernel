@@ -80,8 +80,8 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 	struct snd_pcm_substream *substream = iprtd->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	unsigned int delta;
-	unsigned int appl_ofs;
-	  	
+	unsigned int appl_ofs;	
+	
 	appl_ofs = runtime->control->appl_ptr % runtime->buffer_size;
 	if (atomic_read(&iprtd->running)) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -161,19 +161,19 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 		    	  	iprtd->offset = regs0->aud_a13_ptr & 0xfffffc;
 		    	else // tdm, pdm
 		    	  	iprtd->offset = regs0->aud_a22_ptr & 0xfffffc;
-		    	  		    	  
-			AUD_DEBUG("C:?_ptr=0x%x\n",iprtd->offset);
-            
+		    
+			AUD_DEBUG("C:?_ptr=0x%x\n", iprtd->offset);
+			
             		if (iprtd->offset >= iprtd->last_offset)
 			        delta = iprtd->offset - iprtd->last_offset;			          			      
 		        else
-			        delta = iprtd->size + iprtd->offset- iprtd->last_offset;			          
+			        delta = iprtd->size + iprtd->offset - iprtd->last_offset;			          
 			     
             		if (delta >= iprtd->period )  //ending normal
 		        {		        
 			        iprtd->last_offset = iprtd->offset;			         
 			        snd_pcm_period_elapsed(substream);
-			        AUD_DEBUG("C:?_ptr=0x%x \n",iprtd->offset);
+			        AUD_DEBUG("C:?_ptr=0x%x \n", iprtd->offset);
 		        }
 		}
 	}
@@ -183,7 +183,7 @@ static enum hrtimer_restart snd_hrtimer_callback(struct hrtimer *hrt)
 {
 	struct spsoc_runtime_data *iprtd = container_of(hrt, struct spsoc_runtime_data, hrt);
 
-	AUD_DEBUG("%s \n", __func__);
+	AUD_DEBUG("%s %d\n", __func__, atomic_read(&iprtd->running));
 	//if (!atomic_read(&iprtd->running))
     	if (atomic_read(&iprtd->running) == 2)
 	{
@@ -585,7 +585,7 @@ static int spsoc_pcm_prepare(struct snd_soc_component *component, struct snd_pcm
 			     	break;
 			case SP_SPDIF:
 			    	regs0->aud_fifo_reset = SPDIF_C_INC0;
-			      	while ((regs0->aud_fifo_reset&SPDIF_C_INC0) != 0);
+			      	while ((regs0->aud_fifo_reset & SPDIF_C_INC0) != 0);
 			      	break;
 			default:
 			     	AUD_INFO("###Wrong device no.\n");
@@ -629,11 +629,11 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 					        regs0->aud_inc_0 = I2S_P_INC0;
 					        AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
 					} else if (substream->pcm->device == SP_I2S_1) {
-						AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
+						AUD_INFO("***a6_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
 					        while((regs0->aud_inc_0 & I2S_P_INC1) != 0) {};
 					        regs0->aud_inc_0 = I2S_P_INC1;
 					} else if (substream->pcm->device == SP_I2S_2) {
-						AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a19_ptr, regs0->aud_a19_cnt, startthreshold);
+						AUD_INFO("***a19_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a19_ptr, regs0->aud_a19_cnt, startthreshold);
 					        while((regs0->aud_inc_0 & I2S_P_INC2) != 0) {};
 					        regs0->aud_inc_0 = I2S_P_INC2;
 					} else if (substream->pcm->device == SP_TDM) {
@@ -790,12 +790,12 @@ static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_su
 			        while(regs0->aud_a0_cnt != 0) {};
 			        regs0->aud_inc_0 = TDM_P_INC0;
 		    	} else if (substream->pcm->device == SP_I2S_1) {
-		    		AUD_DEBUG("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes, count);
+		    		AUD_DEBUG("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes, count);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC1) != 0) {};
 		    	  	while(regs0->aud_a6_cnt != 0) {};
 		    	  	regs0->aud_inc_0 = I2S_P_INC1;
 		    	} else if (substream->pcm->device == SP_I2S_2) {
-		    		AUD_DEBUG("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a19_ptr, hwbuf, pos, count_bytes, count);
+		    		AUD_DEBUG("***%s IN, aud_a19_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a19_ptr, hwbuf, pos, count_bytes, count);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC2) != 0) {};
 		    	  	while(regs0->aud_a19_cnt != 0) {};
 		    	  	regs0->aud_inc_0 = I2S_P_INC2;
@@ -818,10 +818,10 @@ static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_su
 		    		AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	      	while((regs0->aud_inc_0 & I2S_P_INC0) != 0) {};
 		    	} else if (substream->pcm->device == SP_I2S_1) {
-		    		AUD_INFO("###%s IN, aud_a5_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
+		    		AUD_INFO("###%s IN, aud_a6_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC1) != 0) {};
 		    	} else if (substream->pcm->device == SP_I2S_2) {
-		    		AUD_INFO("###%s IN, aud_a5_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a19_ptr, hwbuf, pos, count_bytes);
+		    		AUD_INFO("###%s IN, aud_a19_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a19_ptr, hwbuf, pos, count_bytes);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC2) != 0) {};
 		    	} else if (substream->pcm->device == SP_SPDIF) {
 		    		AUD_INFO("###%s IN, aud_a5_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);

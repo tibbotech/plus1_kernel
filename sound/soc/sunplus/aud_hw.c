@@ -172,14 +172,22 @@ void AUDHW_Mixer_Setting(void)
         regs0->aud_grm_mix_control_2 	= val;		//aud_grm_mix_control_2
         //EXT DAC I2S
         regs0->aud_grm_switch_0 	= 0x76543210;	//aud_grm_switch_0
+#if defined(CONFIG_SND_SOC_AUD628)
         regs0->aud_grm_switch_1 	= 0xBA98;	//aud_grm_switch_1
+#else
+	regs0->aud_grm_switch_1 	= 0x98;	//aud_grm_switch_1
+#endif
         //INT DAC I2S
         regs0->aud_grm_switch_int	= 0x76543210;	//aud_grm_switch_int
         regs0->aud_grm_delta_volume	= 0x8000;	//aud_grm_delta_volume
         regs0->aud_grm_delta_ramp_pcm   = 0x8000;	//aud_grm_delta_ramp_pcm
         regs0->aud_grm_delta_ramp_risc  = 0x8000;	//aud_grm_delta_ramp_risc
         regs0->aud_grm_delta_ramp_linein= 0x8000;	//aud_grm_delta_ramp_linein
+#if defined(CONFIG_SND_SOC_AUD628)
         regs0->aud_grm_other	     	= 0x4;		//aud_grm_other for A20
+#else
+	regs0->aud_grm_other	     	= 0x0;		//aud_grm_other for A20
+#endif
         regs0->aud_grm_switch_hdmi_tx   = 0x76543210; //aud_grm_switch_hdmi_tx
 }
 
@@ -210,6 +218,9 @@ void AUDHW_Cfg_AdcIn(void)
 
 	regs0->adcp_ch_enable   = 0x0;		//adcp_ch_enable
 	regs0->adcp_fubypass	= 0x7777;	//adcp_fubypass
+#if defined(CONFIG_SND_SOC_AUD645)
+	regs0->adcp_mode_ctrl	|= 0x300;       //enable ch2/3
+#endif	
 	regs0->adcp_risc_gain   = 0x1111;	//adcp_risc_gain, all gains are 1x
 	regs0->G069_reserved_00 = 0x3;		//adcprc A16~18
 	val			= 0x650100;	//steplen0=0, Eth_off=0x65, Eth_on=0x100, steplen0=0
@@ -273,11 +284,18 @@ void AUDHW_SystemInit(void)
         regs0->pdm_rx_cfg0 	= 0x110004;
         regs0->pdm_rx_cfg0 	= 0x10004;
 #endif
-        regs0->pcm_cfg	   	= 0x4d;
-        regs0->hdmi_tx_i2s_cfg 	= 0x4d;
+        regs0->pcm_cfg	   	= 0x4d; //tx0
+        regs0->hdmi_tx_i2s_cfg 	= 0x4d; //tx2
+#if defined(CONFIG_SND_SOC_AUD628)	
         regs0->hdmi_rx_i2s_cfg 	= 0x24d;	// 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
-        regs0->ext_adc_cfg	= 0x4d;
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
+#else
+	//regs0->G060_reserved_9	= 0x1037;
+	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx1
+	regs0->int_adc_dac_cfg	= 0x004d004d;	//0x001c004d // rx2 tx1
+#endif
+        regs0->ext_adc_cfg	= 0x24d; //rx0
+        //regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
 
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
@@ -293,8 +311,12 @@ void AUDHW_SystemInit(void)
         // config playback timer //
         regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
         regs0->aud_apt_data	= 0x00f0001e;	// aud_apt_parameter, parameter for 48khz
-
-        regs0->adcp_ch_enable  	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1
+#if defined(CONFIG_SND_SOC_AUD645)
+        regs0->adcp_ch_enable  	= 0xF;		//adcp_ch_enable, Only enable ADCP ch2&3
+        regs0->G067_reserved_30 |= 0x03;
+#else
+	regs0->adcp_ch_enable  	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1
+#endif
         regs0->aud_apt_mode	= 0;		//clear reset of PTimer before enable FIFO
 
         regs0->aud_fifo_enable 	= 0x0;		//aud_fifo_enable
