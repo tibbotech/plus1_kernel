@@ -582,7 +582,7 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 };
 
 static const struct of_device_id sp7021_spi_controller_ids[] = {
-	{ .compatible = "sunplus,sp7021-spi" },
+	{ .compatible = "sunplus,q645-spi-controller" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sp7021_spi_controller_ids);
@@ -600,4 +600,4 @@ module_platform_driver(sp7021_spi_controller_driver);
 
 MODULE_AUTHOR("Li-hao Kuo <lhjeff911@gmail.com>");
 MODULE_DESCRIPTION("Sunplus SPI controller driver");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
