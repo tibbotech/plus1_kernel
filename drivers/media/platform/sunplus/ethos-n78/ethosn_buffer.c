@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2019 Arm Limited. All rights reserved.
+ * (C) COPYRIGHT 2018-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -28,7 +28,6 @@
 #include <linux/anon_inodes.h>
 #include <linux/device.h>
 #include <linux/file.h>
-#include <linux/fs.h>
 #include <linux/slab.h>
 #include <linux/types.h>
 
@@ -45,13 +44,20 @@ static int ethosn_buffer_mmap(struct file *file,
 static loff_t ethosn_buffer_llseek(struct file *file,
 				   loff_t offset,
 				   int whence);
+static long ethosn_buffer_ioctl(struct file *file,
+				unsigned int cmd,
+				unsigned long arg);
 static int ethosn_dma_view_release(struct inode *const inode,
 				   struct file *const file);
 
 static const struct file_operations ethosn_buffer_fops = {
-	.release = &ethosn_buffer_release,
-	.mmap    = &ethosn_buffer_mmap,
-	.llseek  = &ethosn_buffer_llseek,
+	.release        = &ethosn_buffer_release,
+	.mmap           = &ethosn_buffer_mmap,
+	.llseek         = &ethosn_buffer_llseek,
+	.unlocked_ioctl = &ethosn_buffer_ioctl,
+#ifdef CONFIG_COMPAT
+	.compat_ioctl   = &ethosn_buffer_ioctl,
+#endif
 };
 
 static bool is_ethosn_buffer_file(const struct file *const file)
@@ -72,6 +78,24 @@ static const struct file_operations ethosn_dma_view_fops = {
 static bool is_ethosn_dma_view_file(const struct file *const file)
 {
 	return file->f_op == &ethosn_dma_view_fops;
+}
+
+static int ethosn_dma_view_release(struct inode *const inode,
+				   struct file *const file)
+{
+	struct ethosn_buffer *buf = file->private_data;
+	struct ethosn_device *ethosn = buf->ethosn;
+
+	if (WARN_ON(!is_ethosn_dma_view_file(file)))
+		return -EBADF;
+
+	dev_dbg(ethosn->dev, "Release DMA view. handle=0x%pK\n", buf);
+
+	put_device(ethosn->dev);
+
+	kfree(buf);
+
+	return 0;
 }
 
 static void buffer_unmap_and_free_dma(struct ethosn_buffer *buf,
@@ -161,6 +185,36 @@ static loff_t ethosn_buffer_llseek(struct file *const file,
 		return -EINVAL;
 }
 
+static long ethosn_buffer_ioctl(struct file *file,
+				unsigned int cmd,
+				unsigned long arg)
+{
+	struct ethosn_buffer *buf = file->private_data;
+	struct ethosn_device *ethosn = buf->ethosn;
+	int ret = 0;
+
+	switch (cmd) {
+	case ETHOSN_IOCTL_SYNC_FOR_CPU: {
+		dev_dbg(ethosn->dev, "ETHOSN_IOCTL_SYNC_FOR_CPU\n");
+
+		ethosn_dma_sync_for_cpu(ethosn->allocator, buf->dma_info);
+
+		break;
+	}
+	case ETHOSN_IOCTL_SYNC_FOR_DEVICE: {
+		dev_dbg(ethosn->dev, "ETHOSN_IOCTL_SYNC_FOR_DEVICE\n");
+
+		ethosn_dma_sync_for_device(ethosn->allocator, buf->dma_info);
+		break;
+	}
+	default: {
+		ret = -EINVAL;
+	}
+	}
+
+	return ret;
+}
+
 /**
  * ethosn_buffer_register() - Register a new Ethos-N buffer
  * @ethosn: [in]     pointer to Ethos-N device
@@ -230,7 +284,8 @@ int ethosn_buffer_register(struct ethosn_device *ethosn,
 
 	if (buf_req->flags & MB_ZERO) {
 		memset(buf->dma_info->cpu_addr, 0, buf->dma_info->size);
-		dev_dbg(ethosn->dev, "Zeroed ethosn buffer 0x%pK\n", buf);
+		ethosn_dma_sync_for_device(ethosn->allocator, buf->dma_info);
+		dev_dbg(ethosn->dev, "Zeroed device buffer 0x%pK\n", buf);
 	}
 
 	log.request = *buf_req;
@@ -287,71 +342,24 @@ struct ethosn_buffer *ethosn_buffer_get(int fd)
  */
 void put_ethosn_buffer(struct ethosn_buffer *buf)
 {
-	if (WARN_ON(!buf || !buf->file || !is_ethosn_buffer_file(buf->file)))
+	if (WARN_ON(!buf))
+		return;
+
+	if (WARN_ON(!buf->file))
+		return;
+
+	if (WARN_ON(!is_ethosn_buffer_file(buf->file)))
 		return;
 
 	fput(buf->file);
 }
 
-static int ethosn_dma_view_release(struct inode *const inode,
-				   struct file *const file)
-{
-	struct ethosn_buffer *buf = file->private_data;
-	struct ethosn_device *ethosn = buf->ethosn;
-
-	if (WARN_ON(!is_ethosn_dma_view_file(file)))
-		return -EBADF;
-
-	dev_dbg(ethosn->dev, "Release DMA view. handle=0x%pK\n", buf);
-
-	put_device(ethosn->dev);
-
-	kfree(buf);
-
-	return 0;
-}
-
 /**
- * ethosn_get_dma_view_fd() - Creates a file handle that provides access to an
- * existing DMA buffer.
+ * ethosn_get_dma_view_fops() - Get dma view file operations.
  *
- * Return: File descriptor on success (positive), else error code (negative).
+ * Return: File operations reference.
  */
-int ethosn_get_dma_view_fd(struct ethosn_device *ethosn,
-			   struct ethosn_dma_info *dma_info)
+const struct file_operations *ethosn_get_dma_view_fops(void)
 {
-	struct ethosn_buffer *buf;
-	int fd;
-
-	/* Re-use the ethosn_buffer struct as there is a lot of overlap in
-	 * functionality
-	 */
-	buf = kzalloc(sizeof(*buf), GFP_KERNEL);
-	if (!buf)
-		return -ENOMEM;
-
-	dev_dbg(ethosn->dev,
-		"Create DMA view handle. handle=0x%pK\n", buf);
-
-	buf->ethosn = ethosn;
-	buf->dma_info = dma_info;
-
-	fd = anon_inode_getfd("ethosn-dma-view", &ethosn_dma_view_fops, buf,
-			      O_RDONLY | O_CLOEXEC);
-	if (fd < 0)
-		goto err_kfree;
-
-	buf->file = fget(fd);
-	buf->file->f_mode |= FMODE_LSEEK;
-
-	fput(buf->file);
-
-	get_device(ethosn->dev);
-
-	return fd;
-
-err_kfree:
-	kfree(buf);
-
-	return fd;
+	return &ethosn_dma_view_fops;
 }

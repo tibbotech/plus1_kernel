@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2020 Arm Limited.
+ * (C) COPYRIGHT 2018-2021 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -23,8 +23,6 @@
 #ifndef _ETHOSN_DMA_H_
 #define _ETHOSN_DMA_H_
 
-#include "ethosn_firmware.h"
-
 #include <linux/dma-mapping.h>
 #include <linux/types.h>
 
@@ -35,6 +33,16 @@
 
 struct device;
 struct vm_area_struct;
+
+/**
+ * Streams identifier
+ */
+enum  ethosn_stream_id {
+	ETHOSN_STREAM_FIRMWARE       = 0,
+	ETHOSN_STREAM_WORKING_DATA   = 1,
+	ETHOSN_STREAM_COMMAND_STREAM = 2,
+	ETHOSN_STREAM_DMA            = 3,
+};
 
 /*
  * Used to save the result of dma_alloc calls for matching dma_free calls.
@@ -113,10 +121,9 @@ struct ethosn_dma_allocator *ethosn_dma_allocator_create(struct device *dev);
 /**
  * ethosn_dma_allocator_destroy() - Destroy the allocator and free all internal
  * resources.
- * @allocator: Allocator object
- * @allocator: The allocator to destroy
+ * @allocator: pointer to location of the allocator object to destory
  */
-void ethosn_dma_allocator_destroy(struct ethosn_dma_allocator *allocator);
+void ethosn_dma_allocator_destroy(struct ethosn_dma_allocator **allocator);
 
 /**
  * ethosn_dma_alloc_and_map() - Allocate and map DMA memory

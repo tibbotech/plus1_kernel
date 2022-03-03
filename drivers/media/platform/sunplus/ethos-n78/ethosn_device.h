@@ -70,11 +70,13 @@ struct ethosn_device {
 	struct device                 *dev;
 	struct cdev                   cdev;
 	struct mutex                  mutex;
+	int                           parent_id;
 	int                           num_cores;
 	struct ethosn_inference_queue queue;
 	struct ethosn_dma_allocator   *allocator;
 	uint32_t                      current_busy_cores;
 	uint32_t                      status_mask;
+	struct dentry                 *debug_dir;
 };
 
 struct ethosn_core {
@@ -84,6 +86,7 @@ struct ethosn_core {
 	struct debugfs_regset32     debug_regset;
 
 	void __iomem                *top_regs;
+	uintptr_t                   phys_addr;
 	int                         queue_size;
 
 	struct ethosn_device        *parent;
@@ -92,7 +95,8 @@ struct ethosn_core {
 	struct ethosn_addr_map      firmware_map;
 	struct ethosn_addr_map      work_data_map;
 	struct ethosn_dma_info      *firmware;
-	struct ethosn_dma_info      *firmware_stack;
+	struct ethosn_dma_info      *firmware_stack_main;
+	struct ethosn_dma_info      *firmware_stack_task;
 	struct ethosn_dma_info      *firmware_vtable;
 	struct ethosn_dma_info      *mailbox;
 	struct ethosn_dma_info      *mailbox_request;
@@ -109,12 +113,6 @@ struct ethosn_core {
 		void   *data;
 		size_t size;
 	}            fw_and_hw_caps;
-
-	/* Information on memory regions */
-	bool         ethosn_f_stream_configured;
-	bool         ethosn_wd_stream_configured;
-	bool         ethosn_cs_stream_configured;
-	bool         ethosn_mpu_enabled;
 
 	struct mutex mutex;
 
@@ -189,6 +187,12 @@ int ethosn_device_init(struct ethosn_core *core);
  * @core:	Pointer to Ethos-N core.
  */
 void ethosn_device_deinit(struct ethosn_core *core);
+
+/**
+ * ethosn_init_reserved_mem() - Initialize reserved memory.
+ * @dev:	Pointer to device.
+ */
+int ethosn_init_reserved_mem(struct device *const dev);
 
 /**
  * to_ethosn_addr() - Convert Linux address to Ethos-N address.
@@ -433,24 +437,6 @@ int ethosn_send_ping(struct ethosn_core *core);
 int ethosn_send_inference(struct ethosn_core *core,
 			  dma_addr_t buffer_array,
 			  uint64_t user_arg);
-
-/**
- * ethosn_send_stream_request() - Send region request to Ethos-N .
- * @core:	Pointer to Ethos-N core.
- * @stream_id:	Stream identifier.
- *
- * Return: 0 on success, else error code.
- */
-int ethosn_send_stream_request(struct ethosn_core *core,
-			       enum ethosn_stream_id stream_id);
-
-/**
- * ethosn_send_mpu_enable_request() - Send Mpu enable request to Ethos-N .
- * @core:		Pointer to Ethos-N core.
- *
- * Return: 0 on success, else error code.
- */
-int ethosn_send_mpu_enable_request(struct ethosn_core *core);
 
 /* ethosn_profiling_enabled() - Get status of the profiling enabled switch.
  *

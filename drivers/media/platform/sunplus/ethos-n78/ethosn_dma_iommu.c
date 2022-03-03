@@ -22,6 +22,7 @@
 
 #include "ethosn_dma_iommu.h"
 
+#include "ethosn_backport.h"
 #include "ethosn_device.h"
 
 #include <linux/iommu.h>
@@ -39,7 +40,6 @@
  */
 #define IOMMU_COMMAND_STREAM_ADDR_BASE   0xC0000000UL
 #define IOMMU_DMA_ADDR_BASE              0xE0000000UL
-#define IOMMU_DMA_INTERMEDIATE_ADDR_BASE 0x100000000UL
 
 /* IOMMU address space size, use the same for all streams. */
 #define IOMMU_ADDR_SIZE 0x20000000UL
@@ -58,7 +58,6 @@ struct ethosn_iommu_domain {
 	struct ethosn_iommu_stream stream_working_data;
 	struct ethosn_iommu_stream stream_command_stream;
 	struct ethosn_iommu_stream stream_dma;
-	struct ethosn_iommu_stream stream_dma_intermediate;
 };
 
 struct ethosn_allocator_internal {
@@ -97,10 +96,6 @@ static struct ethosn_iommu_stream *iommu_get_stream(
 		stream = &domain->stream_dma;
 		break;
 
-	case ETHOSN_STREAM_DMA_INTERMEDIATE:
-		stream = &domain->stream_dma_intermediate;
-		break;
-
 	default:
 		break;
 	}
@@ -130,10 +125,6 @@ static dma_addr_t iommu_get_addr_base(struct ethosn_dma_allocator *allocator,
 		addr = IOMMU_DMA_ADDR_BASE;
 		break;
 
-	case ETHOSN_STREAM_DMA_INTERMEDIATE:
-		addr = IOMMU_DMA_INTERMEDIATE_ADDR_BASE;
-		break;
-
 	default:
 		break;
 	}
@@ -148,20 +139,22 @@ static resource_size_t iommu_get_addr_size(
 	return IOMMU_ADDR_SIZE;
 }
 
-static dma_addr_t iommu_alloc_iova(struct ethosn_dma_info_internal *dma,
-				   struct ethosn_iommu_domain *domain,
+static dma_addr_t iommu_alloc_iova(struct device *dev,
+				   struct ethosn_dma_info_internal *dma,
 				   struct ethosn_iommu_stream *stream)
 {
 	unsigned long start = 0;
 	unsigned long flags;
+	int ret;
 	int nr_pages = DIV_ROUND_UP(dma->info.size, PAGE_SIZE);
 	dma_addr_t iova = 0;
 
 	spin_lock_irqsave(&stream->lock, flags);
 
-	start = bitmap_find_next_zero_area(stream->bitmap, stream->bits, 0,
-					   nr_pages, 0);
-	if (start > stream->bits)
+	ret = ethosn_bitmap_find_next_zero_area(dev,
+						&stream->bitmap, stream->bits,
+						nr_pages, &start);
+	if (ret)
 		goto ret;
 
 	bitmap_set(stream->bitmap, start, nr_pages);
@@ -198,14 +191,10 @@ static void iommu_free_pages(struct ethosn_dma_allocator *allocator,
 {
 	int i;
 
-	for (i = 0; i < nr_pages; ++i) {
-		if (dma_addr[i])
-			dma_unmap_page(allocator->dev, dma_addr[i],
-				       PAGE_SIZE, DMA_BIDIRECTIONAL);
-
-		if (pages[i])
-			__free_page(pages[i]);
-	}
+	for (i = 0; i < nr_pages; ++i)
+		if (dma_addr[i] && pages[i])
+			dma_free_pages(allocator->dev, PAGE_SIZE, pages[i],
+				       dma_addr[i], DMA_BIDIRECTIONAL);
 }
 
 static struct ethosn_dma_info *iommu_alloc(
@@ -245,19 +234,17 @@ static struct ethosn_dma_info *iommu_alloc(
 		goto free_pages_list;
 
 	for (i = 0; i < nr_pages; ++i) {
-		pages[i] = alloc_page(gfp);
+		pages[i] = dma_alloc_pages(allocator->dev, PAGE_SIZE,
+					   &dma_addr[i], DMA_BIDIRECTIONAL,
+					   gfp);
+
 		if (!pages[i])
 			goto free_pages;
-
-		dma_addr[i] =
-			dma_map_page(allocator->dev, pages[i], 0,
-				     PAGE_SIZE,
-				     DMA_BIDIRECTIONAL);
 
 		if (dma_mapping_error(allocator->dev, dma_addr[i])) {
 			dev_err(allocator->dev,
 				"failed to dma map pa 0x%llX\n",
-				page_to_phys(dma_info->pages[i]));
+				page_to_phys(pages[i]));
 			__free_page(pages[i]);
 			goto free_pages;
 		}
@@ -295,9 +282,9 @@ early_exit:
 
 static void iommu_unmap_iova_pages(struct ethosn_dma_info_internal *dma_info,
 				   struct iommu_domain *domain,
-				   struct ethosn_iommu_stream *stream)
+				   struct ethosn_iommu_stream *stream,
+				   int nr_pages)
 {
-	int nr_pages = DIV_ROUND_UP(dma_info->info.size, PAGE_SIZE);
 	int i;
 
 	for (i = 0; i < nr_pages; ++i) {
@@ -317,8 +304,6 @@ static void iommu_unmap_iova_pages(struct ethosn_dma_info_internal *dma_info,
 					IOMMU_READ);
 		}
 	}
-
-	iommu_free_iova(dma_info->info.iova_addr, stream, nr_pages);
 }
 
 static int iommu_iova_map(struct ethosn_dma_allocator *allocator,
@@ -347,7 +332,8 @@ static int iommu_iova_map(struct ethosn_dma_allocator *allocator,
 	if (!dma_info->pages)
 		goto early_exit;
 
-	start_addr = iommu_alloc_iova(dma_info, domain, stream);
+	start_addr = iommu_alloc_iova(allocator_private->allocator.dev,
+				      dma_info, stream);
 	if (!start_addr)
 		goto early_exit;
 
@@ -356,6 +342,16 @@ static int iommu_iova_map(struct ethosn_dma_allocator *allocator,
 
 	if ((prot & ETHOSN_PROT_WRITE) == ETHOSN_PROT_WRITE)
 		iommu_prot |= IOMMU_WRITE;
+
+	if ((dma_info->info.iova_addr) &&
+	    (dma_info->info.iova_addr != start_addr)) {
+		dev_err(allocator->dev,
+			"Invalid iova: 0x%llX != 0x%llX\n",
+			dma_info->info.iova_addr, start_addr);
+		goto free_iova;
+	}
+
+	dma_info->info.iova_addr = start_addr;
 
 	dev_dbg(allocator->dev,
 		"%s: mapping %lu bytes starting at 0x%llX prot 0x%x\n",
@@ -384,22 +380,33 @@ static int iommu_iova_map(struct ethosn_dma_allocator *allocator,
 		}
 	}
 
-	if ((dma_info->info.iova_addr) &&
-	    (dma_info->info.iova_addr != start_addr)) {
-		dev_err(allocator->dev,
-			"Invalid iova: 0x%llX != 0x%llX\n",
-			dma_info->info.iova_addr, start_addr);
-		goto unmap_pages;
-	}
-
-	dma_info->info.iova_addr = start_addr;
-
 ret:
 
 	return 0;
 
 unmap_pages:
-	iommu_unmap_iova_pages(dma_info, domain->iommu_domain, stream);
+	/* remap the current i-th page if it needs to */
+	if (stream->page)
+		iommu_map(
+			domain->iommu_domain,
+			start_addr + i * PAGE_SIZE,
+			page_to_phys(stream->page),
+			PAGE_SIZE,
+			IOMMU_READ);
+
+	/* Unmap only the actual number of pages mapped i.e. i */
+	iommu_unmap_iova_pages(dma_info, domain->iommu_domain, stream, i);
+
+free_iova:
+
+	/* iommu_alloc_iova allocs the total number of pages,
+	 * so it needs to free all of iovas irrespectively of
+	 * how many have been actually mapped.
+	 * Use start_addr since dma_info isn't updated in the
+	 * case of error.
+	 */
+	iommu_free_iova(start_addr, stream, nr_pages);
+
 early_exit:
 
 	return -ENOMEM;
@@ -421,8 +428,14 @@ static void iommu_iova_unmap(struct ethosn_dma_allocator *allocator,
 	if (!stream)
 		return;
 
-	if (dma_info->info.size)
-		iommu_unmap_iova_pages(dma_info, domain->iommu_domain, stream);
+	if (dma_info->info.size) {
+		int nr_pages = DIV_ROUND_UP(dma_info->info.size, PAGE_SIZE);
+
+		iommu_unmap_iova_pages(dma_info, domain->iommu_domain, stream,
+				       nr_pages);
+
+		iommu_free_iova(dma_info->info.iova_addr, stream, nr_pages);
+	}
 }
 
 static void iommu_free(struct ethosn_dma_allocator *allocator,
@@ -519,8 +532,7 @@ static int iommu_stream_init(struct ethosn_allocator_internal *allocator,
 	stream->bits = bitmap_size * BITS_PER_BYTE;
 	spin_lock_init(&stream->lock);
 
-	if ((stream_id == ETHOSN_STREAM_DMA) ||
-	    (stream_id == ETHOSN_STREAM_DMA_INTERMEDIATE))
+	if (stream_id == ETHOSN_STREAM_DMA)
 		return 0;
 
 	stream->page = alloc_page(GFP_KERNEL);
@@ -602,22 +614,25 @@ static void iommu_stream_deinit(struct ethosn_allocator_internal *allocator,
 static void iommu_allocator_destroy(struct ethosn_dma_allocator *_allocator)
 {
 	struct ethosn_allocator_internal *allocator;
+	struct iommu_domain *domain;
 	struct device *dev;
 
 	if (!_allocator)
 		return;
 
 	allocator = container_of(_allocator, typeof(*allocator), allocator);
+	domain = allocator->ethosn_iommu_domain.iommu_domain;
 	dev = _allocator->dev;
 
 	iommu_stream_deinit(allocator, ETHOSN_STREAM_FIRMWARE);
 	iommu_stream_deinit(allocator, ETHOSN_STREAM_WORKING_DATA);
 	iommu_stream_deinit(allocator, ETHOSN_STREAM_COMMAND_STREAM);
 	iommu_stream_deinit(allocator, ETHOSN_STREAM_DMA);
-	iommu_stream_deinit(allocator, ETHOSN_STREAM_DMA_INTERMEDIATE);
 
 	memset(allocator, 0, sizeof(struct ethosn_allocator_internal));
 	devm_kfree(dev, allocator);
+
+	ethosn_iommu_put_domain_for_dev(dev, domain);
 }
 
 struct ethosn_dma_allocator *ethosn_dma_iommu_allocator_create(
@@ -644,11 +659,11 @@ struct ethosn_dma_allocator *ethosn_dma_iommu_allocator_create(
 		.sync_for_cpu    = iommu_sync_for_cpu,
 	};
 	struct ethosn_allocator_internal *allocator;
-	struct iommu_domain *domain;
+	struct iommu_domain *domain = NULL;
 	size_t bitmap_size;
 	int ret;
 
-	domain = iommu_get_domain_for_dev(dev);
+	domain = ethosn_iommu_get_domain_for_dev(dev);
 
 	allocator = devm_kzalloc(dev,
 				 sizeof(struct ethosn_allocator_internal),
@@ -683,12 +698,6 @@ struct ethosn_dma_allocator *ethosn_dma_iommu_allocator_create(
 		if (ret)
 			goto err_stream_dma;
 
-		ret = iommu_stream_init(allocator,
-					ETHOSN_STREAM_DMA_INTERMEDIATE,
-					bitmap_size);
-		if (ret)
-			goto err_stream_dma_intermediate;
-
 		allocator->allocator.ops = &ops;
 	} else {
 		allocator->allocator.ops = &ops_no_iommu;
@@ -698,8 +707,6 @@ struct ethosn_dma_allocator *ethosn_dma_iommu_allocator_create(
 
 	return &allocator->allocator;
 
-err_stream_dma_intermediate:
-	iommu_stream_deinit(allocator, ETHOSN_STREAM_DMA);
 err_stream_dma:
 	iommu_stream_deinit(allocator, ETHOSN_STREAM_COMMAND_STREAM);
 err_stream_command_stream:

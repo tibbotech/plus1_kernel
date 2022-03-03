@@ -32,6 +32,7 @@
 #include <linux/log2.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
 
@@ -58,7 +59,7 @@ module_param(severity, int, 0660);
 static int ethosn_queue_size = 65536;
 module_param_named(queue_size, ethosn_queue_size, int, 0440);
 
-static bool profiling_enabled = 0;
+static bool profiling_enabled;
 module_param_named(profiling, profiling_enabled, bool, 0664);
 
 /* Clock frequency expressed in MHz */
@@ -288,35 +289,6 @@ static void ethosn_mailbox_free(struct ethosn_core *core)
 	}
 }
 
-/**
- * ethosn_streams_init() - Initialize the stream memory regions.
- * @core:	Pointer to Ethos-N core.
- *
- * Return: 0 on success, else error code.
- */
-static int ethosn_streams_init(struct ethosn_core *core)
-{
-	int ret;
-
-	ret = ethosn_send_stream_request(core, ETHOSN_STREAM_FIRMWARE);
-	if (ret)
-		return ret;
-
-	ret = ethosn_send_stream_request(core, ETHOSN_STREAM_WORKING_DATA);
-	if (ret)
-		return ret;
-
-	ret = ethosn_send_stream_request(core, ETHOSN_STREAM_COMMAND_STREAM);
-	if (ret)
-		return ret;
-
-	ret = ethosn_send_mpu_enable_request(core);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
 void ethosn_write_top_reg(struct ethosn_core *core,
 			  const u32 page,
 			  const u32 offset,
@@ -338,6 +310,21 @@ u32 ethosn_read_top_reg(struct ethosn_core *core,
 /* Exported for use by test module */
 EXPORT_SYMBOL(ethosn_read_top_reg);
 
+static int ethosn_task_stack_init(struct ethosn_core *core)
+{
+	u32 stack_addr = to_ethosn_addr(core->firmware_stack_task->iova_addr,
+					&core->work_data_map);
+
+	if (IS_ERR_VALUE((unsigned long)stack_addr))
+		return -EFAULT;
+
+	stack_addr += core->firmware_stack_task->size;
+
+	ethosn_write_top_reg(core, DL1_RP, GP_TASK_STACK, stack_addr);
+
+	return 0;
+}
+
 /**
  * ethosn_boot_firmware() - Boot firmware.
  * @core:	Pointer to Ethos-N core.
@@ -353,12 +340,12 @@ static int ethosn_boot_firmware(struct ethosn_core *core)
 	memset(vtable, 0, core->firmware_vtable->size);
 
 	/* Set vtable stack pointer */
-	vtable[0] = to_ethosn_addr(core->firmware_stack->iova_addr,
+	vtable[0] = to_ethosn_addr(core->firmware_stack_main->iova_addr,
 				   &core->work_data_map);
 	if (vtable[0] >= (uint32_t)-MAX_ERRNO)
 		return (int)vtable[0];
 
-	vtable[0] += core->firmware_stack->size;
+	vtable[0] += core->firmware_stack_main->size;
 
 	/* Set vtable reset program counter */
 	vtable[1] = to_ethosn_addr(core->firmware->iova_addr,
@@ -401,24 +388,39 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 #ifdef ETHOSN_NS
 	struct dl1_sysctlr0_r sysctlr0 = { .word = 0 };
 	unsigned int timeout;
-#if 1//reset workarround
-    static volatile uint32_t *RESET_REG;//moon n78 reset
-	RESET_REG = ioremap(0xF800005C, 32*4);
+#if 0//SW monitor reset
+    static volatile uint32_t *reset_reg, *reset_req;
+	reset_reg = ioremap(0xF800005C, 32*4);//moon n78 HW reset
+	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
 #endif
 
+#if 1//HW auto reset
+    static volatile uint32_t *reset_req;//moon n78 reset
+	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
+	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+#endif
 	dev_info(core->dev, "Hard reset the hardware.\n");
 
 	/* Initiate hard reset */
 	sysctlr0.bits.hard_rstreq = 1;
 	ethosn_write_top_reg(core, DL1_RP, DL1_SYSCTLR0, sysctlr0.word);
 
-    udelay(10);//original 1us
+#if 0//SW monitor reset
+	/* Wait for hard reset request (0xF8000164.bit12)to 1. 
+	Then it can reset N78 manually with Moon N78 reset reg(0xF800005C.bit0) */
+	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
+	     timeout += ETHOSN_RESET_WAIT_US) {
 
-#if 1//reset workarround
-    RESET_REG[0] =	(1|(1<<16));//mon n78 reset enable
-	udelay(10);
-    RESET_REG[0] =	(0|(1<<16));//mon n78 reset disable
-	udelay(10);
+		if ((reset_req[0] & 0x1000) == 0x1000)
+			break;
+
+		udelay(ETHOSN_RESET_WAIT_US);
+	}
+    // Do N78 Moon HW reset
+    reset_reg[0] =	(1|(1<<16));//mon n78 reset enable
+	udelay(1);
+    reset_reg[0] =	(0|(1<<16));//mon n78 reset disable
+	udelay(1);
 #endif
 
 	/* Wait for hard reset to complete */
@@ -432,8 +434,6 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 
 		udelay(ETHOSN_RESET_WAIT_US);
 	}
-	
-	dev_info(core->dev, "Hard reset, Wait pass.\n");
 
 	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
 		dev_err(core->dev, "Failed to hard reset the hardware.\n");
@@ -450,43 +450,53 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 	 * with a SMC call. The call will block until the reset is done or
 	 * timeout.
 	 */
-	return ethosn_smc_core_reset(core, 1);
+	return ethosn_smc_core_reset(core->dev, core->phys_addr, 1);
 #endif
 }
 
 static int ethosn_soft_reset(struct ethosn_core *core)
 {
 #ifdef ETHOSN_NS
-
 	struct dl1_sysctlr0_r sysctlr0 = { .word = 0 };
 	unsigned int timeout;
 	
-	//uint32_t temp;
 	//for waveform dump using
 	//static volatile uint32_t *G0;
 	//G0 = ioremap(0xF8000000, 32*4);
 	//G0[0] = 0xabcd1234;
-
-#if 1//reset workarround
-    static volatile uint32_t *RESET_REG;//moon n78 reset
-	RESET_REG = ioremap(0xF800005C, 32*4);
+#if 0//SW monitor reset
+    static volatile uint32_t *reset_reg, *reset_req;
+	reset_reg = ioremap(0xF800005C, 32*4);//moon n78 HW reset
+	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
 #endif
-	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-	//printk("NPU DL1_NPU_ID: %x\n",temp);
+#if 1//HW auto reset
+    static volatile uint32_t *reset_req;//moon n78 reset
+	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
+	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+#endif
 
 	dev_info(core->dev, "Soft reset the hardware.\n");
 
 	/* Soft reset, block new AXI requests */
 	sysctlr0.bits.soft_rstreq = 3;
-
 	ethosn_write_top_reg(core, DL1_RP, DL1_SYSCTLR0, sysctlr0.word);
-    udelay(10);//original 1us
 
-#if 1//reset workarround
-    RESET_REG[0] =	(1|(1<<16));//mon n78 reset enable
-	udelay(10);
-    RESET_REG[0] =	(0|(1<<16));//mon n78 reset disable
-	udelay(10);
+#if 0//SW monitor reset
+	/* Wait for hard reset request (0xF8000164.bit12)to 1. 
+	Then it can reset N78 manually with Moon N78 reset reg(0xF800005C.bit0) */
+	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
+	     timeout += ETHOSN_RESET_WAIT_US) {
+
+		if ((reset_req[0] & 0x1000) == 0x1000)
+			break;
+
+		udelay(ETHOSN_RESET_WAIT_US);
+	}
+    // Do N78 Moon HW reset
+    reset_reg[0] =	(1|(1<<16));//mon n78 reset enable
+	udelay(1);
+    reset_reg[0] =	(0|(1<<16));//mon n78 reset disable
+	udelay(1);
 #endif
 
 	/* Wait for reset to complete */
@@ -500,10 +510,6 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 
 		udelay(ETHOSN_RESET_WAIT_US);
 	}
-		 
-	dev_info(core->dev, "Soft reset, Wait pass.\n");
-	//temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);//hang up
-	//printk("DL1_REGISTERS_SIZE: %x\n",temp);
 
 	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
 		dev_warn(core->dev,
@@ -514,25 +520,15 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	}
 
 #else
-    //uint32_t temp;
+
 	/*
 	 * Access to DL1 registers is blocked in secure mode so reset is done
 	 * with a SMC call. The call will block until the reset is done or
 	 * timeout.
 	 */
-	if (ethosn_smc_core_reset(core, 0))
+	if (ethosn_smc_core_reset(core->dev, core->phys_addr, 0))
 		return -ETIME;
-	#if 0
-	    //because smc reset do ethosn_delegate_to_ns(). read DL1 reg here for test
-		temp = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-		printk("DL1_NPU_ID: %x\n",temp);		
-		temp = ethosn_read_top_reg(core, DL1_RP, DL1_REGISTERS_SIZE);
-		printk("DL1_REGISTERS_SIZE: %x\n",temp);
-		temp = ethosn_read_top_reg(core, DL1_RP, DL1_GP2);
-		printk("DL1_GP2: %x\n",temp);		
-		temp = ethosn_read_top_reg(core, DL1_RP, DL1_STREAM0_NSAID);
-		printk("DL1_STREAM0_NSAID: %x\n",temp);	
-	#endif	
+
 #endif
 
 	return 0;
@@ -889,6 +885,13 @@ static int ethosn_send_configure_profiling(struct ethosn_core *core,
 	struct ethosn_firmware_profiling_configuration fw_new_config;
 	int i;
 
+	if (num_hw_counters > ETHOSN_PROFILING_MAX_HW_COUNTERS) {
+		dev_err(core->dev,
+			"Invalid number of hardware profiling counters\n");
+
+		return -EINVAL;
+	}
+
 	fw_new_config.enable_profiling = enable;
 
 	if (!IS_ERR_OR_NULL(buffer)) {
@@ -1060,47 +1063,82 @@ int ethosn_send_inference(struct ethosn_core *core,
 				    sizeof(request));
 }
 
-int ethosn_send_stream_request(struct ethosn_core *core,
-			       enum ethosn_stream_id stream_id)
+/**
+ * ethosn_send_region_request() - Send memory region request to device.
+ * @core:	Pointer to core device.
+ * @region_id:	Memory region identifier.
+ *
+ * Return: 0 on success, else error code.
+ */
+static int ethosn_send_region_request(struct ethosn_core *core,
+				      enum ethosn_region_id region_id)
 {
-	struct ethosn_message_stream_request request;
+	struct ethosn_message_region_request request = { 0 };
 
-	request.stream_id = stream_id;
-	request.size = ethosn_dma_get_addr_size(core->allocator, stream_id);
+	switch (region_id) {
+	case ETHOSN_REGION_FIRMWARE:
+		request.addr = to_ethosn_addr(
+			ethosn_dma_get_addr_base(core->allocator,
+						 ETHOSN_STREAM_FIRMWARE),
+			&core->firmware_map);
+
+		request.size = ethosn_dma_get_addr_size(core->allocator,
+							ETHOSN_STREAM_FIRMWARE);
+		break;
+	case ETHOSN_REGION_WORKING_DATA_MAIN:
+		request.addr = to_ethosn_addr(
+			ethosn_dma_get_addr_base(core->allocator,
+						 ETHOSN_STREAM_WORKING_DATA),
+			&core->work_data_map);
+
+		request.size = ethosn_dma_get_addr_size(
+			core->allocator,
+			ETHOSN_STREAM_WORKING_DATA);
+		break;
+	case ETHOSN_REGION_WORKING_DATA_TASK:
+		request.addr = to_ethosn_addr(
+			core->firmware_stack_task->iova_addr,
+			&core->work_data_map);
+
+		request.size = core->firmware_stack_task->size;
+		break;
+	case ETHOSN_REGION_COMMAND_STREAM:
+		request.addr = to_ethosn_addr(
+			ethosn_dma_get_addr_base(core->allocator,
+						 ETHOSN_STREAM_COMMAND_STREAM),
+			&core->dma_map);
+
+		request.size = ethosn_dma_get_addr_size(
+			core->allocator,
+			ETHOSN_STREAM_COMMAND_STREAM);
+		break;
+	default:
+		dev_err(core->dev, "Unknown memory region ID: %u", region_id);
+
+		return -EFAULT;
+	}
+
 	if (request.size == 0)
 		return -EFAULT;
 
-	switch (stream_id) {
-	case ETHOSN_STREAM_FIRMWARE:
-		core->ethosn_f_stream_configured = false;
-		break;
+	request.id = region_id;
 
-	case ETHOSN_STREAM_WORKING_DATA:
-		core->ethosn_wd_stream_configured = false;
-		break;
+	dev_dbg(core->dev, "-> Region=%u, addr=0x%x, size=0x%x\n",
+		request.id, request.addr, request.size);
 
-	case ETHOSN_STREAM_COMMAND_STREAM:
-		core->ethosn_cs_stream_configured = false;
-		break;
-
-	default:
-
-		return -EINVAL;
-	}
-
-	dev_dbg(core->dev,
-		"-> Stream=%u. size=0x%x", request.stream_id,
-		request.size);
-
-	return ethosn_write_message(core, ETHOSN_MESSAGE_STREAM_REQUEST,
+	return ethosn_write_message(core, ETHOSN_MESSAGE_REGION_REQUEST,
 				    &request,
 				    sizeof(request));
 }
 
-int ethosn_send_mpu_enable_request(struct ethosn_core *core)
+/**
+ * ethosn_send_mpu_enable_request() - Send Mpu enable request to device.
+ * @core:		Pointer to core device.
+ *
+ * Return: 0 on success, else error code.
+ */
+static int ethosn_send_mpu_enable_request(struct ethosn_core *core)
 {
-	core->ethosn_mpu_enabled = false;
-
 	dev_dbg(core->dev,
 		"-> Mpu enable.");
 
@@ -1257,7 +1295,7 @@ static struct ethosn_big_fw_desc *find_big_fw_desc(struct ethosn_core *core,
 			big_fw->desc[i].arch_max);
 	}
 
-	dev_dbg(core->dev, "Cannot find compatible FW in BIG FW.\n");
+	dev_err(core->dev, "Cannot find compatible FW in BIG FW.\n");
 
 	return ERR_PTR(-EINVAL);
 }
@@ -1266,7 +1304,7 @@ static int verify_firmware(struct ethosn_core *core,
 			   struct ethosn_big_fw *big_fw)
 {
 	if (big_fw->fw_ver_major != ETHOSN_FIRMWARE_VERSION_MAJOR) {
-		dev_dbg(core->dev,
+		dev_err(core->dev,
 			"Wrong firmware version. Version %u.x.x is required.\n",
 			ETHOSN_FIRMWARE_VERSION_MAJOR);
 
@@ -1327,16 +1365,18 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_STREAM_FIRMWARE,
 						 GFP_KERNEL);
 
-	if (IS_ERR(core->firmware))
+	if (IS_ERR_OR_NULL(core->firmware)) {
+		ret = -ENOMEM;
 		goto release_fw;
+	}
 
 	memcpy(core->firmware->cpu_addr, fw->data + big_fw_desc->offset,
 	       big_fw_desc->size);
 	ethosn_dma_sync_for_device(core->allocator, core->firmware);
 
-	/* Allocate stack */
-	if (!core->firmware_stack)
-		core->firmware_stack =
+	/* Allocate task stack */
+	if (!core->firmware_stack_task)
+		core->firmware_stack_task =
 			ethosn_dma_alloc_and_map(core->allocator,
 						 ETHOSN_STACK_SIZE,
 						 ETHOSN_PROT_READ |
@@ -1344,10 +1384,25 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_STREAM_WORKING_DATA,
 						 GFP_KERNEL);
 
-	if (IS_ERR(core->firmware_stack))
+	if (IS_ERR_OR_NULL(core->firmware_stack_task)) {
+		ret = -ENOMEM;
 		goto free_firmware;
+	}
 
-	ethosn_dma_sync_for_device(core->allocator, core->firmware_stack);
+	/* Allocate main stack */
+	if (!core->firmware_stack_main)
+		core->firmware_stack_main =
+			ethosn_dma_alloc_and_map(core->allocator,
+						 ETHOSN_STACK_SIZE,
+						 ETHOSN_PROT_READ |
+						 ETHOSN_PROT_WRITE,
+						 ETHOSN_STREAM_WORKING_DATA,
+						 GFP_KERNEL);
+
+	if (IS_ERR_OR_NULL(core->firmware_stack_main)) {
+		ret = -ENOMEM;
+		goto free_stack_task;
+	}
 
 	/* Allocate vtable */
 	if (!core->firmware_vtable)
@@ -1360,15 +1415,20 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_STREAM_FIRMWARE,
 						 GFP_KERNEL);
 
-	if (IS_ERR(core->firmware_vtable))
-		goto free_stack;
+	if (IS_ERR_OR_NULL(core->firmware_vtable)) {
+		ret = -ENOMEM;
+		goto free_stack_main;
+	}
 
 	release_firmware(fw);
 
 	return 0;
 
-free_stack:
-	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack,
+free_stack_main:
+	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_main,
+				  ETHOSN_STREAM_WORKING_DATA);
+free_stack_task:
+	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_task,
 				  ETHOSN_STREAM_WORKING_DATA);
 free_firmware:
 	ethosn_dma_unmap_and_free(core->allocator, core->firmware,
@@ -1410,12 +1470,48 @@ static int firmware_init(struct ethosn_core *core)
 	return 0;
 }
 
+/**
+ * ethosn_regions_init() - Initialize the memory regions.
+ * @core:	Pointer to Ethos-N core.
+ *
+ * Return: 0 on success, else error code.
+ */
+static int ethosn_regions_init(struct ethosn_core *core)
+{
+	int ret;
+
+	ret = ethosn_send_region_request(core, ETHOSN_REGION_FIRMWARE);
+	if (ret)
+		return ret;
+
+	ret = ethosn_send_region_request(core, ETHOSN_REGION_WORKING_DATA_MAIN);
+	if (ret)
+		return ret;
+
+	ret = ethosn_send_region_request(core, ETHOSN_REGION_WORKING_DATA_TASK);
+	if (ret)
+		return ret;
+
+	ret = ethosn_send_region_request(core, ETHOSN_REGION_COMMAND_STREAM);
+	if (ret)
+		return ret;
+
+	ret = ethosn_send_mpu_enable_request(core);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
 int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 {
 	int timeout;
 	int ret;
 
-	dev_info(core->dev, "Reset the ethosn\n");
+	dev_info(core->dev, "Reset core device\n");
+
+	/* Firmware is not running */
+	core->firmware_running = false;
 
 	/* Load the firmware */
 	ret = firmware_init(core);
@@ -1467,13 +1563,40 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	if (ret)
 		return ret;
 
+	/* Initialize the firmware task stack */
+	ret = ethosn_task_stack_init(core);
+	if (ret)
+		return ret;
+
 	/* Boot the firmware */
 	ret = ethosn_boot_firmware(core);
 	if (ret)
 		return ret;
 
-	/* Init streams regions */
-	ret = ethosn_streams_init(core);
+	dev_info(core->dev, "Waiting for core device\n");
+
+	/* Wait for firmware to set GP_MAILBOX to 0 which indicates that it has
+	 * booted
+	 */
+	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
+	     timeout += ETHOSN_RESET_WAIT_US) {
+		if (ethosn_read_top_reg(core, DL1_RP, GP_MAILBOX) == 0)
+			break;
+
+		udelay(ETHOSN_RESET_WAIT_US);
+	}
+
+	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
+		dev_err(core->dev, "Timeout while waiting for core device\n");
+
+		return -ETIME;
+	}
+
+	/* Firmware is now up and running */
+	core->firmware_running = true;
+
+	/* Init memory regions */
+	ret = ethosn_regions_init(core);
 	if (ret != 0)
 		return ret;
 
@@ -1501,38 +1624,6 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	if (ret != 0)
 		return ret;
 
-	dev_info(core->dev, "Waiting for Ethos-N\n");
-
-	/* Wait for firmware to set GP2 to 0 which indicates that it has booted.
-	 * Also wait for it to reply with the FW & HW caps message.
-	 * This is necessary so that the user can't query us for the caps before
-	 * they are ready.
-	 * Also wait for the memory regions to be correctly setup. This is
-	 * necessary to execute inferences.
-	 */
-	for (timeout = 0; timeout < ETHOSN_RESET_TIMEOUT_US;
-	     timeout += ETHOSN_RESET_WAIT_US) {
-		bool mem_ready = core->ethosn_f_stream_configured &&
-				 core->ethosn_wd_stream_configured &&
-				 core->ethosn_cs_stream_configured &&
-				 core->ethosn_mpu_enabled;
-
-		if (ethosn_read_top_reg(core, DL1_RP, GP_MAILBOX) == 0 &&
-		    core->fw_and_hw_caps.size > 0U && mem_ready &&
-		    !core->profiling.is_waiting_for_firmware_ack)
-			break;
-
-		udelay(ETHOSN_RESET_WAIT_US);
-	}
-
-	if (timeout >= ETHOSN_RESET_TIMEOUT_US) {
-		dev_err(core->dev, "Timeout while waiting for Ethos-N\n");
-
-		return -ETIME;
-	}
-
-	core->firmware_running = true;
-
 	return 0;
 }
 
@@ -1546,9 +1637,13 @@ static void ethosn_firmware_deinit(struct ethosn_core *core)
 				  ETHOSN_STREAM_FIRMWARE);
 	core->firmware = NULL;
 
-	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack,
+	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_main,
 				  ETHOSN_STREAM_WORKING_DATA);
-	core->firmware_stack = NULL;
+	core->firmware_stack_main = NULL;
+
+	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_task,
+				  ETHOSN_STREAM_WORKING_DATA);
+	core->firmware_stack_task = NULL;
 
 	ethosn_dma_unmap_and_free(core->allocator, core->firmware_vtable,
 				  ETHOSN_STREAM_FIRMWARE);
@@ -1800,8 +1895,8 @@ static void dfs_init(struct ethosn_core *core)
 	char name[16];
 
 	/* Create debugfs directory */
-	snprintf(name, sizeof(name), "ethosn%u", core->dev->id);
-	core->debug_dir = debugfs_create_dir(name, NULL);
+	snprintf(name, sizeof(name), "core%u", core->core_id);
+	core->debug_dir = debugfs_create_dir(name, core->parent->debug_dir);
 	if (IS_ERR_OR_NULL(core->debug_dir))
 		return;
 
@@ -1915,6 +2010,23 @@ void ethosn_device_deinit(struct ethosn_core *core)
 			ETHOSN_STREAM_WORKING_DATA);
 		core->profiling.firmware_buffer_pending = NULL;
 	}
+}
+
+static void ethosn_release_reserved_mem(void *const dev)
+{
+	of_reserved_mem_device_release((struct device *)dev);
+}
+
+int ethosn_init_reserved_mem(struct device *const dev)
+{
+	int ret;
+
+	ret = of_reserved_mem_device_init(dev);
+	if (ret)
+		return ret;
+
+	return devm_add_action_or_reset(dev, ethosn_release_reserved_mem,
+					dev);
 }
 
 bool ethosn_profiling_enabled(void)

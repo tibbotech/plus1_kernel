@@ -345,6 +345,10 @@ struct ethosn_log_firmware_header {
 	ETHOSN_IO(0x09)
 #define ETHOSN_IOCTL_GET_VERSION \
 	ETHOSN_IO(0x0a)
+#define ETHOSN_IOCTL_SYNC_FOR_CPU \
+	ETHOSN_IO(0x0b)
+#define ETHOSN_IOCTL_SYNC_FOR_DEVICE \
+	ETHOSN_IO(0x0c)
 
 /*
  * Results from reading an inference file descriptor.
@@ -361,8 +365,8 @@ struct ethosn_log_firmware_header {
 #define MB_ZERO   00000010
 
 /* Version information */
-#define ETHOSN_KERNEL_MODULE_VERSION_MAJOR 1
-#define ETHOSN_KERNEL_MODULE_VERSION_MINOR 1
+#define ETHOSN_KERNEL_MODULE_VERSION_MAJOR 2
+#define ETHOSN_KERNEL_MODULE_VERSION_MINOR 0
 #define ETHOSN_KERNEL_MODULE_VERSION_PATCH 0
 
 /**

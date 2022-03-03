@@ -39,7 +39,6 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
-#include <linux/of_reserved_mem.h>
 #include <linux/of_platform.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
@@ -214,26 +213,17 @@ static int handle_message(struct ethosn_core *core)
 		header.type, header.length);
 
 	switch (header.type) {
-	case ETHOSN_MESSAGE_STREAM_RESPONSE: {
-		struct ethosn_message_stream_response *rsp =
+	case ETHOSN_MESSAGE_REGION_RESPONSE: {
+		struct ethosn_message_region_response *rsp =
 			core->mailbox_message;
-		bool configured = rsp->status == ETHOSN_STREAM_STATUS_OK;
 
-		dev_dbg(core->dev, "<- Stream=%u. status=%u\n",
-			rsp->stream_id, rsp->status);
-
-		if (rsp->stream_id == ETHOSN_STREAM_FIRMWARE)
-			core->ethosn_f_stream_configured = configured;
-		else if (rsp->stream_id == ETHOSN_STREAM_WORKING_DATA)
-			core->ethosn_wd_stream_configured = configured;
-		else if (rsp->stream_id == ETHOSN_STREAM_COMMAND_STREAM)
-			core->ethosn_cs_stream_configured = configured;
+		dev_dbg(core->dev, "<- Region=%u. status=%u\n", rsp->id,
+			rsp->status);
 
 		break;
 	}
 	case ETHOSN_MESSAGE_MPU_ENABLE_RESPONSE: {
 		dev_dbg(core->dev, "<- Mpu enabled\n");
-		core->ethosn_mpu_enabled = true;
 		break;
 	}
 	case ETHOSN_MESSAGE_FW_HW_CAPS_RESPONSE: {
@@ -309,26 +299,6 @@ static int handle_message(struct ethosn_core *core)
 	return 1;
 }
 
-static void ethosn_release_reserved_mem(void *const dev)
-{
-	of_reserved_mem_device_release((struct device *)dev);
-}
-
-static int ethosn_init_reserved_mem(struct device *const dev)
-{
-	int ret;
-
-	ret = of_reserved_mem_device_init(dev);
-
-	if (ret)
-		dev_err(dev, "failed to initialise reserved memory\n");
-	else
-		ret = devm_add_action_or_reset(dev, ethosn_release_reserved_mem,
-					       dev);
-
-	return ret;
-}
-
 /**
  * ethosn_irq_bottom() - IRQ bottom handler
  * @work:	Work structure part of Ethos-N core
@@ -373,7 +343,7 @@ static void ethosn_irq_bottom(struct work_struct *work)
 		ethosn_dump_gps(core);
 
 		dev_warn(core->dev,
-			 "Reset Ethos-N core due to error interrupt. irq_status=0x%08x\n",
+			 "Reset core due to error interrupt. irq_status=0x%08x\n",
 			 status.word);
 
 		if (core->firmware_running) {
@@ -492,163 +462,6 @@ static int ethosn_init_interrupt(struct ethosn_core *const core,
 	return 0;
 }
 
-static ssize_t architecture_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_npu_id_r scylla_id;
-
-	scylla_id.word = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-
-	return scnprintf(buf, PAGE_SIZE, "%u.%u.%u\n",
-			 scylla_id.bits.arch_major, scylla_id.bits.arch_minor,
-			 scylla_id.bits.arch_rev);
-}
-
-static ssize_t product_show(struct device *dev,
-			    struct device_attribute *attr,
-			    char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_npu_id_r scylla_id;
-
-	scylla_id.word = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-
-	return scnprintf(buf, PAGE_SIZE, "%u\n", scylla_id.bits.product_major);
-}
-
-static ssize_t version_show(struct device *dev,
-			    struct device_attribute *attr,
-			    char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_npu_id_r scylla_id;
-
-	scylla_id.word = ethosn_read_top_reg(core, DL1_RP, DL1_NPU_ID);
-
-	return scnprintf(buf, PAGE_SIZE, "%u.%u.%u\n",
-			 scylla_id.bits.version_major,
-			 scylla_id.bits.version_minor,
-			 scylla_id.bits.version_status);
-}
-
-static ssize_t unit_count_show(struct device *dev,
-			       struct device_attribute *attr,
-			       char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_unit_count_r unit_count;
-
-	unit_count.word = ethosn_read_top_reg(core, DL1_RP, DL1_UNIT_COUNT);
-
-	return scnprintf(buf, PAGE_SIZE,
-			 "quad_count=%u\n"
-			 "engines_per_quad=%u\n"
-			 "dfc_emc_per_engine=%u\n",
-			 unit_count.bits.quad_count,
-			 unit_count.bits.engines_per_quad,
-			 unit_count.bits.dfc_emc_per_engine);
-}
-
-static ssize_t mce_features_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_mce_features_r mce;
-
-	mce.word = ethosn_read_top_reg(core, DL1_RP, DL1_MCE_FEATURES);
-
-	return scnprintf(buf, PAGE_SIZE,
-			 "ifm_generated_per_engine=%u\n"
-			 "ofm_generated_per_engine=%u\n"
-			 "mce_num_macs=%u\n"
-			 "mce_num_acc=%u\n"
-			 "winograd_support=%u\n"
-			 "tsu_16bit_sequence_support=%u\n"
-			 "ofm_scaling_16bit_support=%u\n",
-			 mce.bits.ifm_generated_per_engine,
-			 mce.bits.ofm_generated_per_engine,
-			 mce.bits.mce_num_macs,
-			 mce.bits.mce_num_acc,
-			 mce.bits.winograd_support,
-			 mce.bits.tsu_16bit_sequence_support,
-			 mce.bits.ofm_scaling_16bit_support);
-}
-
-static ssize_t dfc_features_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_dfc_features_r dfc;
-
-	dfc.word = ethosn_read_top_reg(core, DL1_RP, DL1_DFC_FEATURES);
-
-	return scnprintf(buf, PAGE_SIZE,
-			 "dfc_mem_size_per_emc=%u\n"
-			 "bank_count=%u\n",
-			 dfc.bits.dfc_mem_size_per_emc << 12,
-			 dfc.bits.bank_count);
-}
-
-static ssize_t ple_features_show(struct device *dev,
-				 struct device_attribute *attr,
-				 char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_ple_features_r ple;
-
-	ple.word = ethosn_read_top_reg(core, DL1_RP, DL1_PLE_FEATURES);
-
-	return scnprintf(buf, PAGE_SIZE,
-			 "ple_input_mem_size=%u\n"
-			 "ple_output_mem_size=%u\n"
-			 "ple_vrf_mem_size=%u\n"
-			 "ple_mem_size=%u\n",
-			 ple.bits.ple_input_mem_size << 8,
-			 ple.bits.ple_output_mem_size << 8,
-			 ple.bits.ple_vrf_mem_size << 4,
-			 ple.bits.ple_mem_size << 8);
-}
-
-static ssize_t ecoid_show(struct device *dev,
-			  struct device_attribute *attr,
-			  char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	struct dl1_ecoid_r ecoid;
-
-	ecoid.word = ethosn_read_top_reg(core, DL1_RP, DL1_ECOID);
-
-	return scnprintf(buf, PAGE_SIZE, "%x\n", ecoid.bits.ecoid);
-}
-
-static ssize_t firmware_reset_store(struct device *dev,
-				    struct device_attribute *attr,
-				    const char *buf,
-				    size_t count)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-	int ret;
-
-	ret = ethosn_reset_and_start_ethosn(core);
-	if (ret != 0)
-		return ret;
-
-	return count;
-}
-
 static ssize_t num_cores_show(struct device *dev,
 			      struct device_attribute *attr,
 			      char *buf)
@@ -668,66 +481,12 @@ static ssize_t status_mask_show(struct device *dev,
 			 ethosn->status_mask);
 }
 
-static ssize_t variant_show(struct device *dev,
-			    struct device_attribute *attr,
-			    char *buf)
-{
-	struct ethosn_device *ethosn = dev_get_drvdata(dev);
-	struct ethosn_core *core = ethosn->core[0];
-
-	struct dl1_unit_count_r unit_count;
-	struct dl1_mce_features_r mce_features;
-	struct dl1_vector_engine_features_r ve_features;
-	struct dl1_dfc_features_r dfc_features;
-
-	uint32_t engines, igs, ogs, tops, ple_ratio, sram;
-
-	mce_features.word = ethosn_read_top_reg(core, DL1_RP, DL1_MCE_FEATURES);
-	unit_count.word = ethosn_read_top_reg(core, DL1_RP, DL1_UNIT_COUNT);
-	ve_features.word = ethosn_read_top_reg(core, DL1_RP,
-					       DL1_VECTOR_ENGINE_FEATURES);
-	dfc_features.word = ethosn_read_top_reg(core, DL1_RP, DL1_DFC_FEATURES);
-
-	engines = unit_count.bits.quad_count * unit_count.bits.engines_per_quad;
-	igs = engines * mce_features.bits.ifm_generated_per_engine;
-	ogs = engines * mce_features.bits.ofm_generated_per_engine;
-	/* Calculate TOPS, assuming the standard frequency of 1GHz. */
-	tops = (mce_features.bits.mce_num_macs * igs * ogs * 2) / 1024;
-	ple_ratio = ((ve_features.bits.ple_lanes + 1) * engines) / tops;
-	sram = (dfc_features.bits.dfc_mem_size_per_emc << 12) *
-	       unit_count.bits.dfc_emc_per_engine * engines;
-
-	return scnprintf(buf, PAGE_SIZE,
-			 "%uTOPS_%uPLE_RATIO_%uKB\n",
-			 tops, ple_ratio, sram / 1024);
-}
-
-static const DEVICE_ATTR_RO(architecture);
-static const DEVICE_ATTR_RO(product);
-static const DEVICE_ATTR_RO(version);
-static const DEVICE_ATTR_RO(unit_count);
-static const DEVICE_ATTR_RO(mce_features);
-static const DEVICE_ATTR_RO(dfc_features);
-static const DEVICE_ATTR_RO(ple_features);
-static const DEVICE_ATTR_RO(ecoid);
-static const DEVICE_ATTR_WO(firmware_reset);
 static const DEVICE_ATTR_RO(num_cores);
 static const DEVICE_ATTR_RO(status_mask);
-static const DEVICE_ATTR_RO(variant);
 
 static const struct attribute *attrs[] = {
-	&dev_attr_architecture.attr,
-	&dev_attr_product.attr,
-	&dev_attr_version.attr,
-	&dev_attr_unit_count.attr,
-	&dev_attr_mce_features.attr,
-	&dev_attr_dfc_features.attr,
-	&dev_attr_ple_features.attr,
-	&dev_attr_ecoid.attr,
-	&dev_attr_firmware_reset.attr,
 	&dev_attr_num_cores.attr,
 	&dev_attr_status_mask.attr,
-	&dev_attr_variant.attr,
 	NULL
 };
 
@@ -882,8 +641,8 @@ static long ethosn_ioctl(struct file *const filep,
 
 		/* If the user provided a NULL pointer then simply return the
 		 * size of the data.
-		 * If they provided a valid pointer then copy the data to them.
-		 **/
+		 * If they provided a valid pointer then copy the data to them
+		 */
 		if (!udata) {
 			ret = core->fw_and_hw_caps.size;
 		} else {
@@ -896,6 +655,12 @@ static long ethosn_ioctl(struct file *const filep,
 				ret = 0;
 			}
 		}
+
+		/* It may happen that users ask for capabilities before the
+		 * firmware has responded, in that case a fault is reported
+		 */
+		if (core->fw_and_hw_caps.size == 0)
+			ret = -EAGAIN;
 
 		mutex_unlock(&core->mutex);
 
@@ -1047,7 +812,7 @@ get_counter_value_end:
 
 		if (timeout >= ETHOSN_PING_TIMEOUT_US) {
 			dev_err(core->dev,
-				"Timeout while waiting for Ethos-N to pong\n");
+				"Timeout while waiting for device to pong\n");
 			ret = -ETIME;
 			goto ping_put;
 		}
@@ -1083,13 +848,15 @@ static void ethosn_device_release(void *const opaque)
 	}
 
 	sysfs_remove_files(&ethosn->dev->kobj, attrs);
+	debugfs_remove_recursive(ethosn->debug_dir);
 
 	device_destroy(&ethosn_class, cdev->dev);
 	cdev_del(cdev);
 	ida_simple_remove(&ethosn_ida, MINOR(cdev->dev));
 }
 
-static int ethosn_device_create(struct ethosn_device *ethosn)
+static int ethosn_device_create(struct ethosn_device *ethosn,
+				int id)
 {
 	static const struct file_operations ethosn_fops = {
 		.owner          = THIS_MODULE,
@@ -1102,11 +869,7 @@ static int ethosn_device_create(struct ethosn_device *ethosn)
 
 	struct device *sysdev;
 	dev_t devt;
-	int id, ret;
-
-	id = ida_simple_get(&ethosn_ida, 0, ETHOSN_MAX_DEVICES, GFP_KERNEL);
-	if (id < 0)
-		return id;
+	int ret;
 
 	devt = MKDEV(ethosn_major, id);
 
@@ -1116,7 +879,8 @@ static int ethosn_device_create(struct ethosn_device *ethosn)
 	ret = cdev_add(&ethosn->cdev, devt, 1);
 	if (ret) {
 		dev_err(ethosn->dev, "unable to add character device\n");
-		goto err_remove_ida;
+
+		return ret;
 	}
 
 	sysdev = device_create(&ethosn_class, ethosn->dev, devt, ethosn,
@@ -1139,8 +903,6 @@ destroy_device:
 	device_destroy(&ethosn_class, ethosn->cdev.dev);
 err_remove_chardev:
 	cdev_del(&ethosn->cdev);
-err_remove_ida:
-	ida_simple_remove(&ethosn_ida, id);
 
 	return ret;
 }
@@ -1165,7 +927,8 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 			       bool force_firmware_level_interrupts)
 {
 	struct ethosn_profiling_config config = {};
-	int ret = ethosn_smc_version_check(core);
+	const phys_addr_t core_addr = top_regs->start;
+	int ret = ethosn_smc_version_check(core->dev);
 
     //for dump waveform using
 	//static volatile uint32_t *G0;
@@ -1173,27 +936,26 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 
 	//printk("smcv_ret: %x\n",ret);
 #ifdef ETHOSN_NS
-	int secure;
 
 	/*
-	 * If the Arm Ethos-N NPU SiP service is available verify the NPU's
+	 * If the SiP service is available verify the NPU's
 	 * secure status. If not, assume it's non-secure.
 	 */
-	secure = !ret ? ethosn_smc_is_secure(core) : 0;
-	if (secure) {
-		if (secure == 1) {
+	ret = !ret ? ethosn_smc_is_secure(core->dev, core_addr) : 0;
+	if (ret) {
+		if (ret == 1) {
 			dev_err(core->dev,
-				"NPU in secure mode, non-secure kernel not supported.\n");
-			secure = -EPERM;
+				"Device in secure mode, non-secure kernel not supported.\n");
+			ret = -EPERM;
 		}
 
-		return secure;
+		return ret;
 	}
 
 #else
 	if (ret) {
 		dev_err(core->dev,
-			"Arm Ethos-N NPU SiP service required for secure kernel.\n");
+			"SiP service required for secure kernel.\n");
 
 		return -EPERM;
 	}
@@ -1202,6 +964,7 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 
 	mutex_init(&core->mutex);
 
+	core->phys_addr = core_addr;
 	core->top_regs = ethosn_map_iomem(core, top_regs, TOP_REG_SIZE);
 	if (IS_ERR(core->top_regs))
 		return PTR_ERR(core->top_regs);
@@ -1233,18 +996,12 @@ static int ethosn_driver_probe(struct ethosn_core *core,
     
 	ret = ethosn_device_init(core);
 	if (ret)
-	{
-		dev_info(core->dev, "destroy_allocator\n");
 		goto destroy_allocator;
-	}
-    
+
 	ret = ethosn_reset_and_start_ethosn(core);
 	if (ret)
-	{
-		dev_info(core->dev, "device_deinit\n");
 		goto device_deinit;
-    }
-	
+
 	pm_runtime_mark_last_busy(core->dev);
 	pm_runtime_put_autosuspend(core->dev);
 
@@ -1255,7 +1012,7 @@ static int ethosn_driver_probe(struct ethosn_core *core,
 device_deinit:
 	ethosn_device_deinit(core);
 destroy_allocator:
-	ethosn_dma_allocator_destroy(core->allocator);
+	ethosn_dma_allocator_destroy(&core->allocator);
 
 	return ret;
 }
@@ -1408,23 +1165,11 @@ static int ethosn_pdev_remove(struct platform_device *pdev)
 {
 	struct ethosn_device *ethosn =
 		dev_get_drvdata(&pdev->dev);
-	int i = 0;
-
-	while (i < ethosn->num_cores) {
-		struct ethosn_core *core = ethosn->core[i];
-
-		/* We need to disable the runtime pm and
-		 * hence wake up the core before tear down
-		 */
-		pm_runtime_disable(core->dev);
-
-		ethosn_device_deinit(core);
-		ethosn_dma_allocator_destroy(core->allocator);
-		i++;
-	}
 
 	/* Force depopulating children */
 	of_platform_depopulate(&pdev->dev);
+
+	ethosn_dma_allocator_destroy(&ethosn->allocator);
 
 	return 0;
 }
@@ -1446,6 +1191,8 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 	unsigned int num_of_npus = 0;
 	int resource_idx = 0;
 	struct ethosn_device *ethosn = NULL;
+	int platform_id = -1;
+	char name[16];
 
 	dma_set_mask_and_coherent(&pdev->dev,
 				  DMA_BIT_MASK(ETHOSN_SMMU_MAX_ADDR_BITS));
@@ -1458,11 +1205,17 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 		return -EINVAL;
 	}
 
+	platform_id = ida_simple_get(&ethosn_ida, 0,
+				     ETHOSN_MAX_DEVICES,
+				     GFP_KERNEL);
+	if (platform_id < 0)
+		return platform_id;
+
 	/* We need to allocate the parent device (ie struct
 	 * ethosn_parent_device) only for the first time.
 	 */
-	dev_dbg(&pdev->dev, "Probing Ethos-N device with %d core\n",
-		num_of_npus);
+	dev_dbg(&pdev->dev, "Probing Ethos-N device id %u with %u core%s\n",
+		platform_id, num_of_npus, num_of_npus > 1 ? "s" : "");
 
 	ethosn = devm_kzalloc(&pdev->dev, sizeof(*ethosn),
 			      GFP_KERNEL);
@@ -1471,10 +1224,14 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 
 	ethosn_global_device_for_testing = ethosn;
 
+	ethosn->parent_id = platform_id;
 	ethosn->dev = &pdev->dev;
 
 	ethosn->current_busy_cores = 0;
 	ethosn->status_mask = 0;
+
+	snprintf(name, sizeof(name), "ethosn%u", ethosn->parent_id);
+	ethosn->debug_dir = debugfs_create_dir(name, NULL);
 
 	/* Create a top level allocator for parent device
 	 */
@@ -1526,13 +1283,16 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 	/* Currently we assume that the reserved memory is
 	 * common to all the NPUs
 	 */
-	if (!ethosn_smmu_available(&pdev->dev)) {
-		dev_dbg(&pdev->dev, "Init reserved mem\n");
+	dev_dbg(&pdev->dev, "Init reserved mem\n");
 
-		ret = ethosn_init_reserved_mem(&pdev->dev);
+	ret = ethosn_init_reserved_mem(&pdev->dev);
+	if (ret)
+		dev_dbg(&pdev->dev,
+			"Reserved mem not present or init failed\n");
+
+	if (!ethosn_smmu_available(&pdev->dev))
 		if (ret)
 			goto err_depopulate_device;
-	}
 
 	/* Enumerate irqs */
 	num_irqs = ethosn_pdev_enum_interrupts(
@@ -1571,7 +1331,7 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 			goto err_depopulate_device;
 	}
 
-	ret = ethosn_device_create(ethosn);
+	ret = ethosn_device_create(ethosn, platform_id);
 	if (ret)
 		goto err_depopulate_device;
 
@@ -1582,10 +1342,11 @@ err_depopulate_device:
 err_free_core_list:
 	devm_kfree(&pdev->dev, ethosn->core);
 err_destroy_allocator:
-	ethosn_dma_allocator_destroy(ethosn->allocator);
+	ethosn_dma_allocator_destroy(&ethosn->allocator);
 err_free_ethosn:
 	devm_kfree(&pdev->dev, ethosn);
 err_early_exit:
+	ida_simple_remove(&ethosn_ida, platform_id);
 
 	return ret;
 }
@@ -1716,7 +1477,7 @@ static int ethosn_class_init(void)
 
 	ret = class_register(&ethosn_class);
 	if (ret) {
-		pr_err("class_register failed for ethosn\n");
+		pr_err("class_register failed for device\n");
 		goto cleanup_ethosn;
 	}
 

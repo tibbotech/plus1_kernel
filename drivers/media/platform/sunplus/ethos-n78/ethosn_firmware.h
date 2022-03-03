@@ -47,8 +47,8 @@
  * This is common for the fat binary (ethosn.bin) and the individual
  * firmware binaries (sub-components of the fat binary).
  */
-#define ETHOSN_FIRMWARE_VERSION_MAJOR 1
-#define ETHOSN_FIRMWARE_VERSION_MINOR 1
+#define ETHOSN_FIRMWARE_VERSION_MAJOR 3
+#define ETHOSN_FIRMWARE_VERSION_MINOR 0
 #define ETHOSN_FIRMWARE_VERSION_PATCH 0
 
 /** Max length of a cache line. Used to separate host and Ethos-N data. */
@@ -279,11 +279,11 @@ enum ethosn_message_type {
 	/* void */
 	ETHOSN_MESSAGE_CONFIGURE_PROFILING_ACK,
 
-	/* ethosn_message_stream_request */
-	ETHOSN_MESSAGE_STREAM_REQUEST,
+	/* ethosn_message_region_request */
+	ETHOSN_MESSAGE_REGION_REQUEST,
 
-	/* ethosn_message_stream_response */
-	ETHOSN_MESSAGE_STREAM_RESPONSE,
+	/* ethosn_message_region_response */
+	ETHOSN_MESSAGE_REGION_RESPONSE,
 
 	/* ethosn_message_time_sync_request */
 	ETHOSN_MESSAGE_TIME_SYNC,
@@ -410,6 +410,11 @@ struct ethosn_message_text {
  ******************************************************************************/
 
 /**
+ * Max number of hardware profiling counters
+ */
+#define ETHOSN_PROFILING_MAX_HW_COUNTERS 6U
+
+/**
  * struct ethosn_firmware_profiling_configuration - Message payload sent to the
  *	firmware for a ETHOSN_MESSAGE_CONFIGURE_PROFILING message. Describes the
  *	profiling configuration that the firmware should set itself to.
@@ -419,11 +424,12 @@ struct ethosn_message_text {
  *                  write its profiling data.
  */
 struct ethosn_firmware_profiling_configuration {
-	bool                                   enable_profiling;
-	ethosn_address_t                       buffer_address;
-	uint32_t                               buffer_size;
-	uint32_t                               num_hw_counters;
-	enum ethosn_profiling_hw_counter_types hw_counters[6];
+	bool             enable_profiling;
+	ethosn_address_t buffer_address;
+	uint32_t         buffer_size;
+	uint32_t         num_hw_counters;
+	enum ethosn_profiling_hw_counter_types
+			 hw_counters[ETHOSN_PROFILING_MAX_HW_COUNTERS];
 };
 
 /**
@@ -482,46 +488,47 @@ struct ethosn_message_time_sync_request {
  ******************************************************************************/
 
 /**
- * Streams identifier
+ * Region identifier
  */
-enum  ethosn_stream_id {
-	ETHOSN_STREAM_FIRMWARE         = 0,
-	ETHOSN_STREAM_WORKING_DATA     = 1,
-	ETHOSN_STREAM_COMMAND_STREAM   = 2,
-	ETHOSN_STREAM_DMA              = 3,
-	ETHOSN_STREAM_DMA_INTERMEDIATE = 4,
+enum  ethosn_region_id {
+	ETHOSN_REGION_FIRMWARE          = 0,
+	ETHOSN_REGION_WORKING_DATA_MAIN = 1,
+	ETHOSN_REGION_WORKING_DATA_TASK = 2,
+	ETHOSN_REGION_COMMAND_STREAM    = 3,
 };
 
 /**
- * struct ethosn_message_stream_request - Memory stream message
- * @var stream_id:	Stream id
- * @var size:		Size of the stream memory region
+ * struct ethosn_message_region_request - Memory region message
+ * @var id:	Region id
+ * @var addr:	Region starting address
+ * @var size:	Region size
  *
  * Following a ethosn_message_type.
  */
-struct ethosn_message_stream_request {
-	uint32_t stream_id;
+struct ethosn_message_region_request {
+	uint32_t id;
+	uint32_t addr;
 	uint32_t size;
 };
 
 /**
  * Region setup status.
  */
-enum ethosn_stream_status {
-	ETHOSN_STREAM_STATUS_OK,
-	ETHOSN_STREAM_STATUS_ERROR,
-	ETHOSN_STREAM_STATUS_MAX
+enum ethosn_region_status {
+	ETHOSN_REGION_STATUS_OK,
+	ETHOSN_REGION_STATUS_ERROR,
+	ETHOSN_REGION_STATUS_MAX
 };
 
 /**
- * struct ethosn_message_stream_response - Memory stream response message
- * @var stream_id:	Stream id
- * @var status:         Stream memory region size setup status.
+ * struct ethosn_message_region_response - Memory region response message
+ * @var id:	Region id
+ * @var status:	Memory region setup status
  *
  * Following a ethosn_message_header.
  */
-struct ethosn_message_stream_response {
-	uint32_t stream_id;
+struct ethosn_message_region_response {
+	uint32_t id;
 	uint32_t status;
 };
 
@@ -534,6 +541,7 @@ struct ethosn_message_stream_response {
 #define GP_MAILBOX                      DL1_GP2
 #define GP_STREAM1_ADDRESS_EXTEND       DL1_GP3
 #define GP_STREAM2_ADDRESS_EXTEND       DL1_GP4
+#define GP_TASK_STACK                   DL1_GP5
 
 #pragma pack(pop)
 
