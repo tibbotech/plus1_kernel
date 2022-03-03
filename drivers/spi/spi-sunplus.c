@@ -444,7 +444,9 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 		ctlr = devm_spi_alloc_master(dev, sizeof(*pspim));
 	if (!ctlr)
 		return -ENOMEM;
-	device_set_node(&ctlr->dev, pdev->dev.fwnode);
+	//device_set_node(&ctlr->dev, pdev->dev.fwnode);
+	//dev_fwnode(dev);
+	ctlr->dev.of_node = pdev->dev.of_node;
 	ctlr->bus_num = pdev->id;
 	ctlr->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
 	ctlr->auto_runtime_pm = true;
@@ -582,7 +584,7 @@ static const struct dev_pm_ops sp7021_spi_pm_ops = {
 };
 
 static const struct of_device_id sp7021_spi_controller_ids[] = {
-	{ .compatible = "sunplus,sp7021-spi" },
+	{ .compatible = "sunplus,q645-spi-controller" },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sp7021_spi_controller_ids);
@@ -600,4 +602,4 @@ module_platform_driver(sp7021_spi_controller_driver);
 
 MODULE_AUTHOR("Li-hao Kuo <lhjeff911@gmail.com>");
 MODULE_DESCRIPTION("Sunplus SPI controller driver");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");

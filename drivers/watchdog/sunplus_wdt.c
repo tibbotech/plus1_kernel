@@ -14,20 +14,20 @@
 #include <linux/reset.h>
 #include <linux/watchdog.h>
 
-#define WDT_CTRL                0x00
-#define WDT_CNT                 0x04
+#define WDT_CTRL		0x00
+#define WDT_CNT			0x04
 
-#define WDT_STOP				0x3877
-#define WDT_RESUME				0x4A4B
-#define WDT_CLRIRQ				0x7482
-#define WDT_UNLOCK				0xAB00
-#define WDT_LOCK				0xAB01
-#define WDT_CONMAX				0xDEAF
+#define WDT_STOP		0x3877
+#define WDT_RESUME		0x4A4B
+#define WDT_CLRIRQ		0x7482
+#define WDT_UNLOCK		0xAB00
+#define WDT_LOCK		0xAB01
+#define WDT_CONMAX		0xDEAF
 
-#define SP_WDT_MAX_TIMEOUT		11U
+#define SP_WDT_MAX_TIMEOUT	11U
 #define SP_WDT_DEFAULT_TIMEOUT	10
 
-#define STC_CLK				90000
+#define STC_CLK			90000
 
 #define DEVICE_NAME		"sunplus-wdt"
 
@@ -148,7 +148,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct sp_wdt_priv *priv;
-	int err;
+	int ret;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -156,30 +156,26 @@ static int sp_wdt_probe(struct platform_device *pdev)
 
 	priv->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(priv->clk))
-		return dev_err_probe(dev, PTR_ERR(priv->clk),
-				     "Failed to get clock\n");
+		return dev_err_probe(dev, PTR_ERR(priv->clk), "Failed to get clock\n");
 
-	err = clk_prepare_enable(priv->clk);
-	if (err)
-		return dev_err_probe(dev, err,
-				     "Failed to enable clock\n");
+	ret = clk_prepare_enable(priv->clk);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to enable clock\n");
 
-	err = devm_add_action_or_reset(dev, sp_clk_disable_unprepare,
-				       priv->clk);
-	if (err)
-		return err;
+	ret = devm_add_action_or_reset(dev, sp_clk_disable_unprepare, priv->clk);
+	if (ret)
+		return ret;
 
 	/* The timer and watchdog shared the STC reset */
 	priv->rstc = devm_reset_control_get_shared(dev, NULL);
 	if (IS_ERR(priv->rstc))
-		return PTR_ERR(priv->rstc);
+		return dev_err_probe(dev, PTR_ERR(priv->rstc), "Failed to get reset\n");
 
 	reset_control_deassert(priv->rstc);
 
-	err = devm_add_action_or_reset(dev, sp_reset_control_assert,
-				       priv->rstc);
-	if (err)
-		return err;
+	ret = devm_add_action_or_reset(dev, sp_reset_control_assert, priv->rstc);
+	if (ret)
+		return ret;
 
 	priv->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(priv->base))
@@ -192,23 +188,13 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	priv->wdev.min_timeout = 1;
 	priv->wdev.parent = dev;
 
+	watchdog_set_drvdata(&priv->wdev, priv);
 	watchdog_init_timeout(&priv->wdev, timeout, dev);
 	watchdog_set_nowayout(&priv->wdev, nowayout);
+	watchdog_stop_on_reboot(&priv->wdev);
 	watchdog_set_restart_priority(&priv->wdev, 128);
 
-	watchdog_set_drvdata(&priv->wdev, priv);
-
-	watchdog_stop_on_reboot(&priv->wdev);
-	err = devm_watchdog_register_device(dev, &priv->wdev);
-	if (err)
-		return err;
-
-	platform_set_drvdata(pdev, priv);
-
-	dev_info(dev, "Watchdog enabled (timeout=%d sec%s.)\n",
-		 priv->wdev.timeout, nowayout ? ", nowayout" : "");
-
-	return 0;
+	return devm_watchdog_register_device(dev, &priv->wdev);
 }
 
 static const struct of_device_id sp_wdt_of_match[] = {
@@ -217,47 +203,11 @@ static const struct of_device_id sp_wdt_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_wdt_of_match);
 
-static int __maybe_unused sp_wdt_suspend(struct device *dev)
-{
-	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
-
-	if (watchdog_active(&priv->wdev))
-		sp_wdt_stop(&priv->wdev);
-
-	reset_control_assert(priv->rstc);
-	clk_disable_unprepare(priv->clk);
-
-	return 0;
-}
-
-static int __maybe_unused sp_wdt_resume(struct device *dev)
-{
-	int err;
-
-	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
-
-	err = clk_prepare_enable(priv->clk);
-	if (err) {
-		dev_err(dev, "Clock can't be enabled correctly\n");
-		return err;
-	}
-
-	reset_control_deassert(priv->rstc);
-
-	if (watchdog_active(&priv->wdev))
-		sp_wdt_start(&priv->wdev);
-
-	return 0;
-}
-
-static SIMPLE_DEV_PM_OPS(sp_wdt_pm_ops, sp_wdt_suspend, sp_wdt_resume);
-
 static struct platform_driver sp_wdt_driver = {
 	.probe = sp_wdt_probe,
 	.driver = {
 		   .name = DEVICE_NAME,
 		   .of_match_table = sp_wdt_of_match,
-		   .pm = &sp_wdt_pm_ops,
 	},
 };
 

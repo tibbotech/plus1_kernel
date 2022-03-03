@@ -61,18 +61,13 @@
 #define SP7021_FINISH_FLAG_MASK		BIT(15)
 #define SP7021_CLEAN_RW_BYTE		GENMASK(10, 7)
 #define SP7021_CLEAN_FLUG_MASK		GENMASK(15, 11)
+#define SP7021_CLK_MASK			GENMASK(31, 16)
 
 #define SP7021_INT_BYPASS		BIT(3)
 #define SP7021_CLR_MASTER_INT		BIT(6)
 
 #define SP7021_SPI_DATA_SIZE		(255)
 #define SP7021_FIFO_DATA_LEN		(16)
-
-enum SP_SPI_MODE {
-	SP7021_SLAVE_READ = 0,
-	SP7021_SLAVE_WRITE = 1,
-	SP7021_SPI_IDLE = 2,
-};
 
 enum {
 	SP7021_MASTER_MODE = 0,
@@ -109,7 +104,8 @@ static irqreturn_t sp7021_spi_slave_irq(int irq, void *dev)
 	unsigned int data_status;
 
 	data_status = readl(pspim->s_base + SP7021_DATA_RDY_REG);
-	writel(data_status | SP7021_SLAVE_CLR_INT, pspim->s_base + SP7021_DATA_RDY_REG);
+	data_status |= SP7021_SLAVE_CLR_INT;
+	writel(data_status , pspim->s_base + SP7021_DATA_RDY_REG);
 	complete(&pspim->slave_isr);
 	return IRQ_HANDLED;
 }
@@ -123,17 +119,19 @@ static int sp7021_spi_slave_abort(struct spi_controller *ctlr)
 	return 0;
 }
 
-int sp7021_spi_slave_tx(struct spi_device *spi, struct spi_transfer *xfer)
+static int sp7021_spi_slave_tx(struct spi_device *spi, struct spi_transfer *xfer)
 {
 	struct sp7021_spi_ctlr *pspim = spi_controller_get_devdata(spi->controller);
+	u32 value;
 
 	reinit_completion(&pspim->slave_isr);
-	writel(SP7021_SLAVE_DMA_EN | SP7021_SLAVE_DMA_RW | FIELD_PREP(SP7021_SLAVE_DMA_CMD, 3),
-	       pspim->s_base + SP7021_SLAVE_DMA_CTRL_REG);
+	value = SP7021_SLAVE_DMA_EN | SP7021_SLAVE_DMA_RW | FIELD_PREP(SP7021_SLAVE_DMA_CMD, 3);
+	writel(value, pspim->s_base + SP7021_SLAVE_DMA_CTRL_REG);
 	writel(xfer->len, pspim->s_base + SP7021_SLAVE_DMA_LENGTH_REG);
 	writel(xfer->tx_dma, pspim->s_base + SP7021_SLAVE_DMA_ADDR_REG);
-	writel(readl(pspim->s_base + SP7021_DATA_RDY_REG) | SP7021_SLAVE_DATA_RDY,
-	       pspim->s_base + SP7021_DATA_RDY_REG);
+	value = readl(pspim->s_base + SP7021_DATA_RDY_REG);
+	value |= SP7021_SLAVE_DATA_RDY;
+	writel(value, pspim->s_base + SP7021_DATA_RDY_REG);
 	if (wait_for_completion_interruptible(&pspim->isr_done)) {
 		dev_err(&spi->dev, "%s() wait_for_completion err\n", __func__);
 		return -EINTR;
@@ -141,14 +139,14 @@ int sp7021_spi_slave_tx(struct spi_device *spi, struct spi_transfer *xfer)
 	return 0;
 }
 
-int sp7021_spi_slave_rx(struct spi_device *spi, struct spi_transfer *xfer)
+static int sp7021_spi_slave_rx(struct spi_device *spi, struct spi_transfer *xfer)
 {
 	struct sp7021_spi_ctlr *pspim = spi_controller_get_devdata(spi->controller);
-	int ret = 0;
+	u32 value;
 
 	reinit_completion(&pspim->isr_done);
-	writel(SP7021_SLAVE_DMA_EN | FIELD_PREP(SP7021_SLAVE_DMA_CMD, 3),
-	       pspim->s_base + SP7021_SLAVE_DMA_CTRL_REG);
+	value = SP7021_SLAVE_DMA_EN | FIELD_PREP(SP7021_SLAVE_DMA_CMD, 3);
+	writel(value, pspim->s_base + SP7021_SLAVE_DMA_CTRL_REG);
 	writel(xfer->len, pspim->s_base + SP7021_SLAVE_DMA_LENGTH_REG);
 	writel(xfer->rx_dma, pspim->s_base + SP7021_SLAVE_DMA_ADDR_REG);
 	if (wait_for_completion_interruptible(&pspim->isr_done)) {
@@ -156,10 +154,10 @@ int sp7021_spi_slave_rx(struct spi_device *spi, struct spi_transfer *xfer)
 		return -EINTR;
 	}
 	writel(SP7021_SLAVE_SW_RST, pspim->s_base + SP7021_SLAVE_DMA_CTRL_REG);
-	return ret;
+	return 0;
 }
 
-void sp7021_spi_master_rb(struct sp7021_spi_ctlr *pspim, unsigned int len)
+static void sp7021_spi_master_rb(struct sp7021_spi_ctlr *pspim, unsigned int len)
 {
 	int i;
 
@@ -170,7 +168,7 @@ void sp7021_spi_master_rb(struct sp7021_spi_ctlr *pspim, unsigned int len)
 	}
 }
 
-void sp7021_spi_master_wb(struct sp7021_spi_ctlr *pspim, unsigned int len)
+static void sp7021_spi_master_wb(struct sp7021_spi_ctlr *pspim, unsigned int len)
 {
 	int i;
 
@@ -187,9 +185,8 @@ static irqreturn_t sp7021_spi_master_irq(int irq, void *dev)
 	unsigned int tx_cnt, total_len;
 	unsigned int tx_len, rx_cnt;
 	unsigned int fd_status;
-	unsigned long flags;
-	u32 value;
 	bool isrdone = false;
+	u32 value;
 
 	fd_status = readl(pspim->m_base + SP7021_SPI_STATUS_REG);
 	tx_cnt = FIELD_GET(SP7021_TX_CNT_MASK, fd_status);
@@ -202,7 +199,7 @@ static irqreturn_t sp7021_spi_master_irq(int irq, void *dev)
 	if (tx_len == 0 && total_len == 0)
 		return IRQ_NONE;
 
-	spin_lock_irqsave(&pspim->lock, flags);
+	spin_lock_irq(&pspim->lock);
 
 	rx_cnt = FIELD_GET(SP7021_RX_CNT_MASK, fd_status);
 	if (fd_status & SP7021_RX_FULL_FLAG)
@@ -237,13 +234,12 @@ static irqreturn_t sp7021_spi_master_irq(int irq, void *dev)
 		value |= SP7021_CLR_MASTER_INT;
 		writel(value, pspim->m_base + SP7021_INT_BUSY_REG);
 		writel(SP7021_FINISH_FLAG, pspim->m_base + SP7021_SPI_STATUS_REG);
-
 		isrdone = true;
 	}
 
 	if (isrdone)
 		complete(&pspim->isr_done);
-	spin_unlock_irqrestore(&pspim->lock, flags);
+	spin_unlock_irq(&pspim->lock);
 	return IRQ_HANDLED;
 }
 
@@ -296,11 +292,11 @@ static void sp7021_spi_setup_clk(struct spi_controller *ctlr, struct spi_transfe
 	u32 clk_rate, clk_sel, div;
 
 	clk_rate = clk_get_rate(pspim->spi_clk);
-	div = clk_rate / xfer->speed_hz;
-	if (div < 2)
-		div = 2;
+	div = max(2U, clk_rate / xfer->speed_hz);
+
 	clk_sel = (div / 2) - 1;
-	pspim->xfer_conf |= (clk_sel<< 16);
+	pspim->xfer_conf &= ~SP7021_CLK_MASK;
+	pspim->xfer_conf |= FIELD_PREP(SP7021_CLK_MASK, clk_sel);
 	writel(pspim->xfer_conf, pspim->m_base + SP7021_SPI_CONFIG_REG);
 }
 
@@ -312,7 +308,6 @@ static int sp7021_spi_master_transfer_one(struct spi_controller *ctlr, struct sp
 	unsigned int xfer_cnt, xfer_len, last_len;
 	unsigned int i, len_temp;
 	u32 reg_temp;
-	int ret;
 
 	xfer_cnt = xfer->len / SP7021_SPI_DATA_SIZE;
 	last_len = xfer->len % SP7021_SPI_DATA_SIZE;
@@ -350,6 +345,7 @@ static int sp7021_spi_master_transfer_one(struct spi_controller *ctlr, struct sp
 
 		if (!wait_for_completion_interruptible_timeout(&pspim->isr_done, timeout)) {
 			dev_err(&spi->dev, "wait_for_completion err\n");
+			mutex_unlock(&pspim->buf_lock);
 			return -ETIMEDOUT;
 		}
 
@@ -364,9 +360,8 @@ static int sp7021_spi_master_transfer_one(struct spi_controller *ctlr, struct sp
 			writel(pspim->xfer_conf, pspim->m_base + SP7021_SPI_CONFIG_REG);
 
 		mutex_unlock(&pspim->buf_lock);
-		ret = 0;
 	}
-	return ret;
+	return 0;
 }
 
 static int sp7021_spi_slave_transfer_one(struct spi_controller *ctlr, struct spi_device *spi,
@@ -374,42 +369,25 @@ static int sp7021_spi_slave_transfer_one(struct spi_controller *ctlr, struct spi
 {
 	struct sp7021_spi_ctlr *pspim = spi_master_get_devdata(ctlr);
 	struct device *dev = pspim->dev;
-	int mode, ret = 0;
+	int ret;
 
-	mode = SP7021_SPI_IDLE;
-	if (pspim->mode == SP7021_SLAVE_MODE) {
-		if (xfer->tx_buf && xfer->rx_buf) {
-			dev_dbg(&ctlr->dev, "%s() wrong command\n", __func__);
-			ret = -EINVAL;
-		} else if (xfer->tx_buf) {
-			xfer->tx_dma = dma_map_single(dev, (void *)xfer->tx_buf,
-						      xfer->len, DMA_TO_DEVICE);
-			if (dma_mapping_error(dev, xfer->tx_dma))
-				return -ENOMEM;
-			mode = SP7021_SLAVE_WRITE;
-		} else if (xfer->rx_buf) {
-			xfer->rx_dma = dma_map_single(dev, xfer->rx_buf, xfer->len,
-						      DMA_FROM_DEVICE);
-			if (dma_mapping_error(dev, xfer->rx_dma))
-				return -ENOMEM;
-			mode = SP7021_SLAVE_READ;
-		}
-
-		switch (mode) {
-		case SP7021_SLAVE_WRITE:
-			sp7021_spi_slave_tx(spi, xfer);
-			break;
-		case SP7021_SLAVE_READ:
-			sp7021_spi_slave_rx(spi, xfer);
-			break;
-		default:
-			break;
-		}
-
-		if (xfer->tx_buf)
-			dma_unmap_single(dev, xfer->tx_dma, xfer->len, DMA_TO_DEVICE);
-		if (xfer->rx_buf)
-			dma_unmap_single(dev, xfer->rx_dma, xfer->len, DMA_FROM_DEVICE);
+	if (xfer->tx_buf && !xfer->rx_buf) {
+		xfer->tx_dma = dma_map_single(dev, (void *)xfer->tx_buf,
+					      xfer->len, DMA_TO_DEVICE);
+		if (dma_mapping_error(dev, xfer->tx_dma))
+			return -ENOMEM;
+		ret = sp7021_spi_slave_tx(spi, xfer);
+		dma_unmap_single(dev, xfer->tx_dma, xfer->len, DMA_TO_DEVICE);
+	} else if (xfer->rx_buf && !xfer->tx_buf) {
+		xfer->rx_dma = dma_map_single(dev, xfer->rx_buf, xfer->len,
+					      DMA_FROM_DEVICE);
+		if (dma_mapping_error(dev, xfer->rx_dma))
+			return -ENOMEM;
+		ret = sp7021_spi_slave_rx(spi, xfer);
+		dma_unmap_single(dev, xfer->rx_dma, xfer->len, DMA_FROM_DEVICE);
+	} else {
+		dev_dbg(&ctlr->dev, "%s() wrong command\n", __func__);
+		return -EINVAL;
 	}
 
 	spi_finalize_current_transfer(ctlr);
@@ -435,10 +413,10 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 
 	pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
 
-	if (device_property_read_bool(&pdev->dev, "spi-slave"))
+	if (device_property_read_bool(dev, "spi-slave"))
 		mode = SP7021_SLAVE_MODE;
 	else
-		mode = SP7021_MASTER_MODE;		
+		mode = SP7021_MASTER_MODE;
 
 	if (mode == SP7021_SLAVE_MODE)
 		ctlr = devm_spi_alloc_slave(dev, sizeof(*pspim));
@@ -447,6 +425,7 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 	if (!ctlr)
 		return -ENOMEM;
 	//device_set_node(&ctlr->dev, pdev->dev.fwnode);
+	//dev_fwnode(dev);
 	ctlr->dev.of_node = pdev->dev.of_node;
 	ctlr->bus_num = pdev->id;
 	ctlr->mode_bits = SPI_CPOL | SPI_CPHA | SPI_CS_HIGH | SPI_LSB_FIRST;
@@ -490,16 +469,6 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 	if (pspim->s_irq < 0)
 		return pspim->s_irq;
 
-	ret = devm_request_irq(dev, pspim->m_irq, sp7021_spi_master_irq,
-			       IRQF_TRIGGER_RISING, pdev->name, pspim);
-	if (ret)
-		return ret;
-
-	ret = devm_request_irq(dev, pspim->s_irq, sp7021_spi_slave_irq,
-			       IRQF_TRIGGER_RISING, pdev->name, pspim);
-	if (ret)
-		return ret;
-
 	pspim->spi_clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(pspim->spi_clk))
 		return dev_err_probe(dev, PTR_ERR(pspim->spi_clk), "clk get fail\n");
@@ -524,13 +493,22 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
+	ret = devm_request_irq(dev, pspim->m_irq, sp7021_spi_master_irq,
+			       IRQF_TRIGGER_RISING, pdev->name, pspim);
+	if (ret)
+		return ret;
+
+	ret = devm_request_irq(dev, pspim->s_irq, sp7021_spi_slave_irq,
+			       IRQF_TRIGGER_RISING, pdev->name, pspim);
+	if (ret)
+		return ret;
+
 	pm_runtime_enable(dev);
 	ret = spi_register_controller(ctlr);
 	if (ret) {
 		pm_runtime_disable(dev);
 		return dev_err_probe(dev, ret, "spi_register_master fail\n");
 	}
-
 	return 0;
 }
 
@@ -541,7 +519,6 @@ static int sp7021_spi_controller_remove(struct platform_device *pdev)
 	spi_unregister_controller(ctlr);
 	pm_runtime_disable(&pdev->dev);
 	pm_runtime_set_suspended(&pdev->dev);
-
 	return 0;
 }
 
@@ -562,6 +539,7 @@ static int __maybe_unused sp7021_spi_controller_resume(struct device *dev)
 	return clk_prepare_enable(pspim->spi_clk);
 }
 
+#ifdef CONFIG_PM
 static int sp7021_spi_runtime_suspend(struct device *dev)
 {
 	struct spi_controller *ctlr = dev_get_drvdata(dev);
@@ -577,6 +555,7 @@ static int sp7021_spi_runtime_resume(struct device *dev)
 
 	return reset_control_deassert(pspim->rstc);
 }
+#endif
 
 static const struct dev_pm_ops sp7021_spi_pm_ops = {
 	SET_RUNTIME_PM_OPS(sp7021_spi_runtime_suspend,

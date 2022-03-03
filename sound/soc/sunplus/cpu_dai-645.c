@@ -31,27 +31,22 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
         
 	// 147M	Setting				
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000)) {
-		if (source == SNDRV_PCM_STREAM_PLAYBACK) {
-			regs0->aud_ext_dac_xck_cfg = 0x6883; //PLLA. 
-			if (pll_id == SP_I2S_0) 				
+		//if (source == SNDRV_PCM_STREAM_PLAYBACK) {
+			
+			if (pll_id == SP_I2S_0) {
+				regs0->aud_ext_dac_xck_cfg = 0x6883; //PLLA.  				
 				regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
-			else if(pll_id == SP_I2S_1) {
+			} else if(pll_id == SP_I2S_1) {
 				regs0->aud_int_dac_xck_cfg = 0x6887;
 				regs0->aud_int_dac_bck_cfg = 0x6001;
 			} else if(pll_id == SP_I2S_2) {
 				regs0->aud_hdmi_tx_mclk_cfg = 0x6883;
 				regs0->aud_hdmi_tx_bck_cfg = 0x6003;
-			} else if(pll_id == SP_SPDIF)
+			} else if(pll_id == SP_SPDIF) {
+				regs0->aud_ext_dac_xck_cfg = 0x6883; //PLLA.
 				regs0->aud_iec0_bclk_cfg = 0x6001; //128FS. 48kHz = 147MHz/3/4/2/(128)
-			else {
+			} else {
 			}									
-		} else {
-			regs0->aud_ext_adc_xck_cfg = 0xC883; 
-			if (pll_id == SP_I2S_0)				
-				regs0->aud_ext_adc_bck_cfg = 0x6003; //64FS
-			else
-				regs0->aud_ext_adc_bck_cfg = 0x6001; //64FS
-		}
 	} else if ((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000)) {
 		regs0->aud_ext_dac_xck_cfg = 0x6881; //PLLA, 256FS
 		if (source == SNDRV_PCM_STREAM_PLAYBACK) {
@@ -69,20 +64,19 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 				regs0->aud_ext_adc_bck_cfg = 0x6001;	//64FS
 		}
 	} else if ((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
-		if (source == SNDRV_PCM_STREAM_PLAYBACK) {
-			regs0->aud_ext_dac_xck_cfg = 0x6880; //256FS
-			if (pll_id == SP_I2S_0)						
-				regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS
-			else if(pll_id == SP_SPDIF)
-				regs0->aud_iec0_bclk_cfg = 0x6001; //128FS
-			else {
-			}				
+		if (pll_id == SP_I2S_0) {
+			regs0->aud_ext_dac_xck_cfg = 0x6880; //PLLA.  				
+			regs0->aud_ext_dac_bck_cfg = 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+		} else if(pll_id == SP_I2S_1) {
+			regs0->aud_int_dac_xck_cfg = 0x6884;
+			regs0->aud_int_dac_bck_cfg = 0x6001;
+		} else if(pll_id == SP_I2S_2) {
+			regs0->aud_hdmi_tx_mclk_cfg = 0x6880;
+			regs0->aud_hdmi_tx_bck_cfg = 0x6003;
+		} else if(pll_id == SP_SPDIF) {
+			regs0->aud_ext_dac_xck_cfg = 0x6883; //PLLA.
+			regs0->aud_iec0_bclk_cfg = 0x6001; //128FS. 48kHz = 147MHz/3/4/2/(128)
 		} else {
-			regs0->aud_ext_adc_xck_cfg = 0xC880;	//256FS
-			if (pll_id == SP_I2S_0)
-				regs0->aud_ext_adc_bck_cfg = 0x6003;	//64FS
-			else
-				regs0->aud_ext_adc_bck_cfg = 0x6001;
 		}
 	} else if (SAMPLE_RATE == 32000) {
 		if (source == SNDRV_PCM_STREAM_PLAYBACK){
@@ -223,10 +217,10 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 		      	regs0->aud_fifo_enable |= I2S_C_INC0;
 		        regs0->aud_fifo_reset	= I2S_C_INC0;
 	    		while ((regs0->aud_fifo_reset & I2S_C_INC0)) {};
-			regs0->aud_enable |= aud_enable_i2s_c;
+			regs0->aud_enable |= aud_enable_i2s0_c;
 	        } else {
 		      regs0->aud_fifo_enable &=	(~I2S_C_INC0);
-		      regs0->aud_enable	&= (~aud_enable_i2s_c);
+		      regs0->aud_enable	&= (~aud_enable_i2s0_c);
 	      	}
 	} else if (dev_no == SP_I2S_1) {
 		if (on){
@@ -235,10 +229,10 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 		      	regs0->aud_fifo_enable |= I2S_C_INC1;
 		        regs0->aud_fifo_reset	= I2S_C_INC1;
 	    		while ((regs0->aud_fifo_reset & I2S_C_INC1)) {};
-			regs0->aud_enable |= aud_enable_i2s_c;
+			regs0->aud_enable |= aud_enable_i2s1_c;
 	        } else {
 		      regs0->aud_fifo_enable &=	(~I2S_C_INC1);
-		      regs0->aud_enable	&= (~aud_enable_i2s_c);
+		      regs0->aud_enable	&= (~aud_enable_i2s1_c);
 	      	}
 	} else if (dev_no == SP_I2S_2) {
 		if (on) {
@@ -247,10 +241,10 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 		      	regs0->aud_fifo_enable |= I2S_C_INC2;
 		        regs0->aud_fifo_reset	= I2S_C_INC2;
 	    		while ((regs0->aud_fifo_reset & I2S_C_INC2)) {};
-			regs0->aud_enable |= aud_enable_i2s_c;
+			regs0->aud_enable |= aud_enable_i2s2_c;
 	        } else {
 		      regs0->aud_fifo_enable &=	(~I2S_C_INC2);
-		      regs0->aud_enable	&= (~aud_enable_i2s_c);
+		      regs0->aud_enable	&= (~aud_enable_i2s2_c);
 	      	}
 	} else {
 	      	if (on) {

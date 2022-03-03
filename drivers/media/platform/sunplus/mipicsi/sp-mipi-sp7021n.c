@@ -145,7 +145,7 @@ static void sp_mipicsi_lane_config(struct sp_mipi_device *mipi)
 
 		case 4: /* 4 lanes */
 			set_field(&mix_cfg, 0x2, 0x3<<20);	/* 0x2: 4 lanes */
-			set_field(&ana_cfg2, 0x3, 0xf<<0);	/* Enable data lane of LP mode circuit for data lane 0/1/2/3 */
+			set_field(&ana_cfg2, 0xf, 0xf<<0);	/* Enable data lane of LP mode circuit for data lane 0/1/2/3 */
 			break;
 	}
 
@@ -1533,9 +1533,9 @@ static int sp_mipi_graph_notify_bound(struct v4l2_async_notifier *notifier,
 					      subdev->fwnode,
 					      MEDIA_PAD_FL_SOURCE);
 
-	dev_dbg(mipi->dev, "subdev->entity: 0x%px\n", &subdev->entity); /* CCHo: Add for debugging */
-	dev_dbg(mipi->dev, "src_pad: %d\n", src_pad); /* CCHo: Add for debugging */
-	dev_dbg(mipi->dev, "&mipi->vdev->entity: 0x%px\n", &mipi->vdev->entity); /* CCHo: Add for debugging */
+	dev_dbg(mipi->dev, "subdev->entity: 0x%px\n", &subdev->entity);
+	dev_dbg(mipi->dev, "src_pad: %d\n", src_pad);
+	dev_dbg(mipi->dev, "&mipi->vdev->entity: 0x%px\n", &mipi->vdev->entity);
 
 	ret = media_create_pad_link(&subdev->entity, src_pad,
 				    &mipi->vdev->entity, 0,

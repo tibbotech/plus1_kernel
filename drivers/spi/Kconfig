@@ -822,7 +822,7 @@ config SPI_SUN6I
 
 config SPI_SUNPLUS_SP7021
 	tristate "Sunplus SP7021 SPI controller"
-	depends on SOC_SP7021
+	depends on SOC_SP7021 || COMPILE_TEST
 	help
 	  This enables Sunplus SP7021 SPI controller driver on the SP7021 SoCs.
 	  This driver can also be built as a module. If so, the module will be
@@ -833,7 +833,7 @@ config SPI_SUNPLUS_SP7021
 
 config SPI_SUNPLUS
 	tristate "Sunplus SPI controller"
-	depends on SOC_Q645
+	depends on SOC_Q645 || COMPILE_TEST
 	help
 	  This enable Sunplus SoCs spi controller driver on the Sunplus  SoCs.
 	  This driver can also be built as a module. If so, the module will be

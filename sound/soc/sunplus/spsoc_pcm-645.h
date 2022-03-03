@@ -36,10 +36,13 @@
 #define SPDIF_P_INC0  		(0x1 << 5)
 #define SPDIF_C_INC0  		(0x1 << 13)
 
-#define aud_enable_i2stdm_p	(0x01 | (0x1df << 16)) //??
-#define aud_enable_i2s1_p	(0x01 << 15) 
-#define aud_enable_i2s2_p	(0x01 << 13) 
-#define aud_enable_i2s_c    	(0x01 << 11)
+#define aud_enable_i2stdm_p	(0x01 | (0x1df << 16))
+#define aud_enable_i2s1_p	(0x01 << 13) 
+#define aud_enable_i2s2_p	(0x01 << 15)
+//#define aud_enable_i2s_c    	(0x01 << 11)
+#define aud_enable_i2s0_c    	(0x01 << 3)
+#define aud_enable_i2s1_c    	(0x01 << 11)
+#define aud_enable_i2s2_c    	(0x01 << 5)
 #define aud_enable_spdiftx0_p  	(0x01 << 1)
 #define aud_enable_spdif_c  	(0x01 << 6)
 //#define aud_enable_tdm_p    	(0x01 | (0x5f<<16))
