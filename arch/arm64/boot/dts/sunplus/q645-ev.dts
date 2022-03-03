@@ -828,7 +828,7 @@
 			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>;
 */
-	ethosn: ethosn@f8200000 {
+	ethosn0: ethosn@f8200000 {
 		compatible = "ethosn";
 		reg = <0x00 0xf8200000 0x00 0x100000>;
 		memory-region = <&ethosn_reserved>;
