@@ -102,7 +102,9 @@ struct sppctl_pdata_t {
 	void *sysfs_sdp;
 	void __iomem *baseF;    // functions
 	void __iomem *base0;    // MASTER , OE , OUT , IN
+#ifdef CONFIG_PINCTRL_SPPCTL
 	void __iomem *base1;    // I_INV , O_INV , OD
+#endif
 	void __iomem *base2;    // GPIO_FIRST
 	void __iomem *baseI;    // IOP
 	// pinctrl-related
