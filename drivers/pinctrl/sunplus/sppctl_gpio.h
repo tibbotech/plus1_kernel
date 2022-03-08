@@ -88,7 +88,9 @@ struct sppctlgpio_chip_t {
 	spinlock_t lock;
 	struct gpio_chip chip;
 	void __iomem *base0;   // MASTER , OE , OUT , IN
+#ifdef CONFIG_PINCTRL_SPPCTL
 	void __iomem *base1;   // I_INV , O_INV , OD
+#endif
 	void __iomem *base2;   // GPIO_FIRST
 	int irq[SPPCTL_GPIO_IRQS];
 	int irq_pin[SPPCTL_GPIO_IRQS];

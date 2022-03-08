@@ -54,24 +54,7 @@ int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_p
 		return PTR_ERR(_pc->base0);
 	}
 
-#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-	// res2
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->base2)) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
-		return PTR_ERR(_pc->base2);
-	}
-#else
+#ifdef CONFIG_PINCTRL_SPPCTL
 	// res1
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
@@ -91,6 +74,23 @@ int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_p
 
 	// res2
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
+		return PTR_ERR(rp);
+	}
+	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
+
+	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base2)) {
+		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
+		return PTR_ERR(_pc->base2);
+	}
+#else
+	// res2
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
 		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
 		return PTR_ERR(rp);
@@ -153,7 +153,9 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 
 #ifdef SPPCTL_H
 	pc->base0 = _pctrlp->base0;
+#ifdef CONFIG_PINCTRL_SPPCTL
 	pc->base1 = _pctrlp->base1;
+#endif
 	pc->base2 = _pctrlp->base2;
 	_pctrlp->gpiod = pc;
 #else

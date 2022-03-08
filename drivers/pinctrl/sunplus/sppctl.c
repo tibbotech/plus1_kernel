@@ -204,41 +204,7 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __func__);
 		return PTR_ERR(_pc->base0);
 	}
-#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-	// res2
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->base2)) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
-		return PTR_ERR(_pc->base2);
-	}
-
-	// iop
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->baseI)) {
-		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
-		return PTR_ERR(_pc->baseI);
-	}
-#else
+#ifdef CONFIG_PINCTRL_SPPCTL
 	// res1
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
@@ -275,6 +241,40 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 
 	// iop
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 4);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
+		return PTR_ERR(rp);
+	}
+	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
+
+	_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->baseI)) {
+		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
+		return PTR_ERR(_pc->baseI);
+	}
+#else
+	// res2
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
+		return PTR_ERR(rp);
+	}
+	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
+
+	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base2)) {
+		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
+		return PTR_ERR(_pc->base2);
+	}
+
+	// iop
+	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
 	if (IS_ERR(rp)) {
 		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
 		return PTR_ERR(rp);
