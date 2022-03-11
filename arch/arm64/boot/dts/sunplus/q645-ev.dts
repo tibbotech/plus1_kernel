@@ -570,9 +570,9 @@
 		reg = <0x0 0xf8002c80 0x0 0x80>, <0x0 0xf8002d00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
@@ -590,9 +590,9 @@
 		reg = <0x0 0xf8002d80 0x0 0x80>, <0x0 0xf8002e00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
@@ -610,9 +610,9 @@
 		reg = <0x0 0xf8002e80 0x0 0x80>, <0x0 0xf8002f00 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
@@ -630,9 +630,9 @@
 		reg = <0x0 0xf8004000 0x0 0x80>, <0x0 0xf8004080 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
@@ -650,9 +650,9 @@
 		reg = <0x0 0xf8004100 0x0 0x80>, <0x0 0xf8004180 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
@@ -670,9 +670,9 @@
 		reg = <0x0 0xf8004200 0x0 0x80>, <0x0 0xf8004280 0x0 0x80>;
 		reg-names = "spi_master", "spi_slave";
 		interrupt-parent = <&gic>;
-		interrupt-names = "dma_w_intr",
-				  "mas_risc_intr",
-				  "slave_risc_intr";
+		interrupt-names = "dma_w",
+					  "master_risc",
+					  "slave_risc";
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;

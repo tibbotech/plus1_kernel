@@ -6,21 +6,19 @@
 
 #include <linux/bitfield.h>
 #include <linux/clk.h>
-#include <linux/cpufreq.h>
 #include <linux/delay.h>
-#include <linux/err.h>
-#include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/platform_device.h>
 #include <linux/reset.h>
-#include <linux/rtc.h>
 #include <linux/thermal.h>
 
-#define DISABLE_THREMAL		(BIT(31) | BIT(15))
-#define ENABLE_THREMAL		BIT(31)
-#define SP_THREMAL_MASK		GENMASK(10, 0)
+#define DISABLE_THERMAL		(BIT(31) | BIT(15))
+#define ENABLE_THERMAL		BIT(31)
+#define SP_THERMAL_MASK		GENMASK(10, 0)
+#define SP_TCODE_HIGH_MASK	GENMASK(10, 8)
+#define SP_TCODE_LOW_MASK	GENMASK(7, 0)
 
 #define TEMP_RATE		608
 #define TEMP_BASE		3500
@@ -34,45 +32,31 @@ struct sp_thermal_data {
 	struct thermal_zone_device *pcb_tz;
 	struct platform_device *pdev;
 	enum thermal_device_mode mode;
-	long sensor_temp;
 	void __iomem *regs;
 	int otp_temp0;
-	int otp_temp1;
 	u32 id;
 };
 
-char *sp7021_otp_coef_read(struct device *dev, ssize_t *len)
+static char sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
 {
-	char *ret = NULL;
-	struct nvmem_cell *c = nvmem_cell_get(dev, "therm_calib");
-
-	if (IS_ERR_OR_NULL(c)) {
-		dev_err(dev, "OTP read failure:%ld", PTR_ERR(c));
-		return NULL;
-	}
-	ret = nvmem_cell_read(c, len);
-	nvmem_cell_put(c);
-	dev_dbg(dev, "%d bytes read from OTP", *len);
-	return ret;
-}
-
-static void sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *_d)
-{
-	ssize_t otp_l = 0;
+	struct nvmem_cell *cell;
+	ssize_t otp_l;
 	char *otp_v;
 
-	otp_v = sp7021_otp_coef_read(_d, &otp_l);
+	cell = nvmem_cell_get(dev, "calib");
+	if (IS_ERR(cell))
+		return ERR_CAST(cell);
+
+	otp_v = nvmem_cell_read(cell, &otp_l);
+	nvmem_cell_put(cell);
+
 	if (otp_l < 3)
-		return;
-	if (IS_ERR_OR_NULL(otp_v))
-		return;
-	sp_data->otp_temp0 = otp_v[0] | (otp_v[1] << 8);
-	sp_data->otp_temp0 = otp_v[0] | (otp_v[1] << 8);
-	sp_data->otp_temp0 = FIELD_GET(SP_THREMAL_MASK, sp_data->otp_temp0);
-	sp_data->otp_temp1 = (otp_v[1] >> 3) | (otp_v[2] << 5);
-	sp_data->otp_temp1 = FIELD_GET(SP_THREMAL_MASK, sp_data->otp_temp1);
+		return -EINVAL;
+	sp_data->otp_temp0 = FIELD_PREP(SP_TCODE_LOW_MASK, otp_v[0]) |
+			     FIELD_PREP(SP_TCODE_HIGH_MASK, otp_v[1]);
 	if (sp_data->otp_temp0 == 0)
 		sp_data->otp_temp0 = TEMP_OTP_BASE;
+	return 0;
 }
 
 static int sp_thermal_get_sensor_temp(void *data, int *temp)
@@ -81,10 +65,9 @@ static int sp_thermal_get_sensor_temp(void *data, int *temp)
 	int t_code;
 
 	t_code = readl(sp_data->regs + SP_THERMAL_STS0_REG);
-	t_code = FIELD_GET(SP_THREMAL_MASK, t_code);
+	t_code = FIELD_GET(SP_THERMAL_MASK, t_code);
 	*temp = ((sp_data->otp_temp0 - t_code) * 10000 / TEMP_RATE) + TEMP_BASE;
 	*temp *= 10;
-	dev_dbg(&(sp_data->pdev->dev), "tc:%d t:%d", t_code, *temp);
 	return 0;
 }
 
@@ -92,20 +75,16 @@ static struct thermal_zone_of_device_ops sp_of_thermal_ops = {
 	.get_temp = sp_thermal_get_sensor_temp,
 };
 
-static int sp_thermal_register_sensor(struct platform_device *pdev, struct sp_thermal_data *data,
-				       int index)
+static int sp_thermal_register_sensor(struct platform_device *pdev,
+				      struct sp_thermal_data *data, int index)
 {
-	int ret;
-
 	data->id = index;
 	data->pcb_tz = devm_thermal_zone_of_sensor_register(&pdev->dev,
-					data->id, data, &sp_of_thermal_ops);
-	if (!IS_ERR_OR_NULL(data->pcb_tz))
-		return 0;
-	ret = PTR_ERR(data->pcb_tz);
-	data->pcb_tz = NULL;
-	dev_err(&pdev->dev, "sensor#%d reg fail: %d\n", index, ret);
-	return ret;
+							    data->id,
+							    data, &sp_of_thermal_ops);
+	if (IS_ERR_OR_NULL(data->pcb_tz))
+		return PTR_ERR(data->pcb_tz);
+	return 0;
 }
 
 static int sp7021_thermal_probe(struct platform_device *pdev)
@@ -114,28 +93,28 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 	struct resource *res;
 	int ret;
 
-	sp_data = devm_kzalloc(&(pdev->dev), sizeof(*sp_data), GFP_KERNEL);
+	sp_data = devm_kzalloc(&pdev->dev, sizeof(*sp_data), GFP_KERNEL);
 	if (!sp_data)
 		return -ENOMEM;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res))
-		return dev_err_probe(&(pdev->dev), PTR_ERR(res), "resource get fail\n");
+		return dev_err_probe(&pdev->dev, PTR_ERR(res), "resource get fail\n");
 
-	sp_data->regs = devm_ioremap(&(pdev->dev), res->start, resource_size(res));
+	sp_data->regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
 	if (IS_ERR(sp_data->regs))
-		return dev_err_probe(&(pdev->dev), PTR_ERR(sp_data->regs), "mas_base get fail\n");
+		return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->regs), "mas_base get fail\n");
 
-	writel(ENABLE_THREMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
+	writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
 
 	platform_set_drvdata(pdev, sp_data);
-	sp7021_get_otp_temp_coef(sp_data, &pdev->dev);
+	ret = sp7021_get_otp_temp_coef(sp_data, &pdev->dev);
 	ret = sp_thermal_register_sensor(pdev, sp_data, 0);
 
 	return ret;
 }
 
-static int sp7021_thermal_remove(struct platform_device *_pd)
+static int sp7021_thermal_remove(struct platform_device *pdev)
 {
 	return 0;
 }
@@ -158,4 +137,4 @@ module_platform_driver(sp7021_thermal_driver);
 
 MODULE_AUTHOR("Li-hao Kuo <lhjeff911@gmail.com>");
 MODULE_DESCRIPTION("Thermal driver for SP7021 SoC");
-MODULE_LICENSE("GPL v2");
+MODULE_LICENSE("GPL");
