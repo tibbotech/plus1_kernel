@@ -398,12 +398,14 @@ static int ethosn_hard_reset(struct ethosn_core *core)
     static volatile uint32_t *reset_req;//moon n78 reset
 	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
 	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+	udelay(1);
 #endif
 	dev_info(core->dev, "Hard reset the hardware.\n");
 
 	/* Initiate hard reset */
 	sysctlr0.bits.hard_rstreq = 1;
 	ethosn_write_top_reg(core, DL1_RP, DL1_SYSCTLR0, sysctlr0.word);
+	udelay(1);
 
 #if 0//SW monitor reset
 	/* Wait for hard reset request (0xF8000164.bit12)to 1. 
@@ -473,6 +475,7 @@ static int ethosn_soft_reset(struct ethosn_core *core)
     static volatile uint32_t *reset_req;//moon n78 reset
 	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
 	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+	udelay(1);
 #endif
 
 	dev_info(core->dev, "Soft reset the hardware.\n");
@@ -480,6 +483,7 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 	/* Soft reset, block new AXI requests */
 	sysctlr0.bits.soft_rstreq = 3;
 	ethosn_write_top_reg(core, DL1_RP, DL1_SYSCTLR0, sysctlr0.word);
+	udelay(1);
 
 #if 0//SW monitor reset
 	/* Wait for hard reset request (0xF8000164.bit12)to 1. 
