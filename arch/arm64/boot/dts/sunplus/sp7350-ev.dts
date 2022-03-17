@@ -12,8 +12,6 @@
 #include <dt-bindings/reset/sp-sp7350.h>
 #include <dt-bindings/pinctrl/sppctl-sp7350.h>
 
-#include "sp_remoteproc.dtsi"
-
 //#define ENABLE_DMARX0
 //#define ENABLE_DMARX1
 //#define ENABLE_DMARX2
@@ -111,6 +109,28 @@
 		video_codec_reserve: vcodec@58000000 {
 			no-map;
 			reg = <0x0 0x58000000 0x0 0x8000000>;
+		};
+
+		/* reserved for remoteproc */
+		vdev0vring0: vdev0vring0@1e800000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0 0x1e800000 0 0x4000>;
+		};
+		vdev0vring1: vdev0vring1@1e804000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0 0x1e804000 0 0x4000>;
+		};
+		vdev0buffer: vdev0buffer@1e808000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0 0x1e808000 0 0x100000>;
+		};
+		rproc_0_reserved: rproc@1e000000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0 0x1e000000 0 0x800000>;
 		};
 	};
 
@@ -252,6 +272,16 @@
 		#reset-cells = <1>;
 		reg = <0x00 0xf8000054 0x00 0x28>;
 		reg-names = "reset";
+	};
+
+	remoteproc0: remoteproc@f8007ffc {
+		compatible = "sunplus,sp-rproc";
+		firmware = "firmware";
+		reg = <0 0xf8007ffc 0 4>; /* mbox G255.31, cpu0 to cpu2 direct reg07 */
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>; /* CPU2_TO_0_DIRECT_INT7 */
+		resets = <&rstc RST_CM4>;
+		memory-region = <&rproc_0_reserved>, <&vdev0buffer>, <&vdev0vring0>, <&vdev0vring1>;
 	};
 
 #ifdef ENABLE_DMARX0
