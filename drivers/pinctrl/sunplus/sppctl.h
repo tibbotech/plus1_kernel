@@ -61,6 +61,10 @@
 #include <dt-bindings/pinctrl/sppctl-sp7350.h>
 #endif
 
+#ifdef CONFIG_PINCTRL_SPPCTL
+#define SUPPORT_PINMUX
+#endif
+
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
@@ -100,7 +104,9 @@ struct sppctl_pdata_t {
 	uint8_t debug;
 	char fwname[SPPCTL_MAX_NAM];
 	void *sysfs_sdp;
+#ifdef SUPPORT_PINMUX
 	void __iomem *baseF;    // functions
+#endif
 	void __iomem *base0;    // MASTER , OE , OUT , IN
 #ifdef CONFIG_PINCTRL_SPPCTL
 	void __iomem *base1;    // I_INV , O_INV , OD

@@ -21,10 +21,6 @@
 #include "sppctl_pinctrl.h"
 #include "sppctl_gpio_ops.h"
 
-#ifdef CONFIG_PINCTRL_SPPCTL
-#define SUPPORT_PINMUX
-#endif
-
 char const **unq_grps;
 size_t unq_grpsSZ;
 struct grp2fp_map_t *g2fp_maps;

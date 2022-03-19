@@ -102,7 +102,9 @@ void sppctl_pin_set(struct sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun)
 		     __func__, _pin, _fun, func, x.m, x.v);
 
 	r = (uint32_t *)&x;
+#ifdef SUPPORT_PINMUX
 	writel(*r, _p->baseF + func);
+#endif
 }
 
 uint8_t sppctl_fun_get(struct sppctl_pdata_t *_p,  uint8_t _fun)
@@ -110,7 +112,11 @@ uint8_t sppctl_fun_get(struct sppctl_pdata_t *_p,  uint8_t _fun)
 	uint8_t pin = 0x00;
 	uint8_t func = (_fun >> 1) << 2;
 	struct sppctl_reg_t *x;
+#ifdef SUPPORT_PINMUX
 	uint32_t r = readl(_p->baseF + func);
+#else
+	uint32_t r = 0;
+#endif
 
 	x = (struct sppctl_reg_t *)&r;
 	if (_fun % 2 == 0)
@@ -171,8 +177,9 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 {
 	struct resource *rp;
 
+#ifdef SUPPORT_PINMUX
 	// resF
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 0);
+	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "moon2");
 	if (IS_ERR(rp)) {
 		KERR(&(_pd->dev), "%s get res#F ERR\n", __func__);
 		return PTR_ERR(rp);
@@ -187,9 +194,10 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#F ERR\n", __func__);
 		return PTR_ERR(_pc->baseF);
 	}
+#endif
 
 	// res0
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 1);
+	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "gpioxt");
 	if (IS_ERR(rp)) {
 		KERR(&(_pd->dev), "%s get res#0 ERR\n", __func__);
 		return PTR_ERR(rp);
@@ -204,9 +212,10 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#0 ERR\n", __func__);
 		return PTR_ERR(_pc->base0);
 	}
+
 #ifdef CONFIG_PINCTRL_SPPCTL
 	// res1
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
+	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "gpioxt2");
 	if (IS_ERR(rp)) {
 		KERR(&(_pd->dev), "%s get res#1 ERR\n", __func__);
 		return PTR_ERR(rp);
@@ -221,75 +230,42 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#1 ERR\n", __func__);
 		return PTR_ERR(_pc->base1);
 	}
-
-	// res2
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->base2)) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
-		return PTR_ERR(_pc->base2);
-	}
-
-	// iop
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 4);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->baseI)) {
-		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
-		return PTR_ERR(_pc->baseI);
-	}
-#else
-	// res2
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->base2)) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
-		return PTR_ERR(_pc->base2);
-	}
-
-	// iop
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 3);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->baseI)) {
-		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
-		return PTR_ERR(_pc->baseI);
-	}
 #endif
+
+	// res2
+	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "first");
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
+		return PTR_ERR(rp);
+	}
+	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
+
+	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->base2)) {
+		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
+		return PTR_ERR(_pc->base2);
+	}
+
+	// iop
+	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "moon1");
+	if (IS_ERR(rp)) {
+		KERR(&(_pd->dev), "%s get res#I ERR\n", __func__);
+		return PTR_ERR(rp);
+	}
+	KDBG(&(_pd->dev), "mres #I:%p\n", rp);
+	if (!rp)
+		return -EFAULT;
+	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
+
+	_pc->baseI = devm_ioremap_resource(&(_pd->dev), rp);
+	if (IS_ERR(_pc->baseI)) {
+		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
+		return PTR_ERR(_pc->baseI);
+	}
+
 	return 0;
 }
 
