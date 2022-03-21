@@ -626,21 +626,6 @@ static int spl2sw_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	// Get memory resoruce 1 from dts.
-	r_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (!r_mem) {
-		pr_err(" No MEM resource 1 found!\n");
-		return -ENXIO;
-	}
-	pr_debug(" res->name = \"%s\", r_mem->start = %pa\n", r_mem->name, &r_mem->start);
-
-	comm->moon5_reg_base = devm_ioremap(&pdev->dev, r_mem->start,
-					    (r_mem->end - r_mem->start + 1));
-	if (!comm->moon5_reg_base) {
-		pr_err(" ioremap failed!\n");
-		return -ENOMEM;
-	}
-
 	// Get irq resource from dts.
 	if (spl2sw_get_irq(pdev, comm) != 0)
 		return -ENXIO;

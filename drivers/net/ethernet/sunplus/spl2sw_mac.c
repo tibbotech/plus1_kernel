@@ -370,10 +370,6 @@ void spl2sw_mac_enable_port(struct spl2sw_mac *mac)
 	struct spl2sw_common *comm = mac->comm;
 	u32 reg;
 
-	//set clock
-	reg = readl(comm->moon5_reg_base + MOON5_MO4_L2SW_CLKSW_CTL);
-	writel(reg | (0xf << 16) | 0xf, comm->moon5_reg_base + MOON5_MO4_L2SW_CLKSW_CTL);
-
 	//phy address
 	reg = readl(comm->l2sw_reg_base + L2SW_MAC_FORCE_MODE);
 	reg = (reg & (~(0x1f << 16))) | ((mac->comm->phy1_addr & 0x1f) << 16);
