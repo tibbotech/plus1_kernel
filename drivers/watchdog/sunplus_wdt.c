@@ -24,6 +24,7 @@
 #define WDT_LOCK		0xAB01
 #define WDT_CONMAX		0xDEAF
 
+/* TIMEOUT_MAX = ffff0/90kHz =11.65, so longer than 11 seconds will time out. */
 #define SP_WDT_MAX_TIMEOUT	11U
 #define SP_WDT_DEFAULT_TIMEOUT	10
 
@@ -62,22 +63,23 @@ static int sp_wdt_restart(struct watchdog_device *wdev,
 	return 0;
 }
 
-/* TIMEOUT_MAX = ffff0/90kHz =11.65,so longer than 11 seconds will time out */
 static int sp_wdt_ping(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
 	u32 count;
-	u32 actual;
 
-	actual = min(wdev->timeout, SP_WDT_MAX_TIMEOUT);
-
-	if (actual > SP_WDT_MAX_TIMEOUT) {
+	if (wdev->timeout > SP_WDT_MAX_TIMEOUT) {
+		/* WDT_CONMAX sets the count to the maximum (down-counting). */
 		writel(WDT_CONMAX, base + WDT_CTRL);
 	} else {
 		writel(WDT_UNLOCK, base + WDT_CTRL);
-		/* tiemrw_cnt[3:0]can't be write,only [19:4] can be write. */
-		count = (actual * STC_CLK) >> 4;
+		/*
+		 * Watchdog timer is a 20-bit down-counting based on STC_CLK.
+		 * This register bits[16:0] is from bit[19:4] of the watchdog
+		 * timer counter.
+		 */
+		count = (wdev->timeout * STC_CLK) >> 4;
 		writel(count, base + WDT_CNT);
 		writel(WDT_LOCK, base + WDT_CTRL);
 	}

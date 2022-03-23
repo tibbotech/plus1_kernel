@@ -5,7 +5,7 @@
 $id: http://devicetree.org/schemas/watchdog/sunplus,sp7021-wdt.yaml#
 $schema: http://devicetree.org/meta-schemas/core.yaml#
 
-title: Sunplus SoCs Watchdog Device Tree Bindings
+title: Sunplus SoCs Watchdog
 
 maintainers:
   - XianTao Hu <xt.hu@cqplus1.com>
@@ -40,7 +40,7 @@ examples:
   - |
     watchdog: watchdog@9c000630 {
         compatible = "sunplus,sp7021-wdt";
-        reg = <0x9c000630 0x08>, <0x9C000274 0x04>;
+        reg = <0x9c000630 0x08>, <0x9c000274 0x04>;
         clocks = <&clkc 0x24>;
         resets = <&rstc 0x14>;
     };
