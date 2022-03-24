@@ -315,19 +315,20 @@ static int sunplus_pwm_enable(struct pwm_chip *chip,
 	u32 period = pwm_get_period(pwm);
 	u32 duty_cycle = pwm_get_duty_cycle(pwm);
 	u32 value;
+	int ret;
 
 	pm_runtime_get_sync(chip->dev);
 
-	if (!sunplus_setpwm(pdata, pwm, duty_cycle, period)) {
+	ret = sunplus_setpwm(pdata, pwm, duty_cycle, period);
+	if (!ret) {
 		value = readl(pdata->regs + PWM_CONTROL0 * 4);
 		value |= (1 << pwm->hwpwm);
 		writel(value, pdata->regs + PWM_CONTROL0 * 4);
 	} else {
 		pm_runtime_put(chip->dev);
-		return -EBUSY;
 	}
 
-	return 0;
+	return ret;
 }
 
 static void sunplus_pwm_disable(struct pwm_chip *chip,
@@ -355,8 +356,7 @@ static int sunplus_pwm_config(struct pwm_chip *chip,
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
 
 	if (pwm_is_enabled(pwm)) {
-		if (sunplus_setpwm(pdata, pwm, duty_ns, period_ns))
-			return -EBUSY;
+		return( sunplus_setpwm(pdata, pwm, duty_ns, period_ns));
 	}
 
 	return 0;
