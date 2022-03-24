@@ -414,8 +414,7 @@ static int _sunplus_pwm_config(struct pwm_chip *chip,
 			duty_ns, period_ns);
 
 	if (pwm_is_enabled(pwm)) {
-		if (_sunplus_setpwm(chip, pwm, duty_ns, period_ns))
-			return -EBUSY;
+		return(_sunplus_setpwm(chip, pwm, duty_ns, period_ns));
 	}
 
 	return 0;
@@ -441,6 +440,7 @@ static int _sunplus_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 	struct _PWM_REG_ *pPWMReg = (struct _PWM_REG_ *)pdata->base;
 	u32 period = pwm_get_period(pwm);
 	u32 duty_cycle = pwm_get_duty_cycle(pwm);
+	int ret;
 
 	dev_dbg(chip->dev, "%s:%d duty_ns:%d period_ns:%d\n",
 			__func__, __LINE__,
@@ -448,14 +448,13 @@ static int _sunplus_pwm_enable(struct pwm_chip *chip, struct pwm_device *pwm)
 
 	pm_runtime_get_sync(chip->dev);
 
-	if (!_sunplus_setpwm(chip, pwm, duty_cycle, period))
+	ret = _sunplus_setpwm(chip, pwm, duty_cycle, period);
+	if (!ret)
 		pPWMReg->pwm_en |= (1 << pwm->hwpwm);
-	else {
+	else
 		pm_runtime_put(chip->dev);
-		return -EBUSY;
-	}
 
-	return 0;
+	return ret;
 }
 
 static void _sunplus_pwm_disable(struct pwm_chip *chip, struct pwm_device *pwm)
