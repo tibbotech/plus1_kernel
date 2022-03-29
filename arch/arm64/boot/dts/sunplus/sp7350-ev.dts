@@ -163,7 +163,8 @@
 		clkc: clkc@f8000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
+			reg = <0x00 0xf8800000 0x00 0x80>,  // MOON G0
+				<0x00 0xf8000000 0x00 0x280>;  // MOON G1 ~ G4
 			nvmem-cells = <&n78_clksel>;
 		};
 	};
@@ -270,7 +271,7 @@
 	rstc: reset@f8000054 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8000054 0x00 0x28>;
+		reg = <0x00 0xf8800054 0x00 0x28>;
 		reg-names = "reset";
 	};
 
@@ -378,7 +379,7 @@
 
 	uart0: serial@f8000900 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8000900 0x00 0x80>;
+		reg = <0x00 0xf8800180 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
@@ -391,7 +392,7 @@
 
 	uart1: serial@f8000980 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8000980 0x00 0x80>;
+		reg = <0x00 0xf8800200 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
@@ -405,7 +406,7 @@
 
 	uart2: serial@f8000800 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8000800 0x00 0x80>;
+		reg = <0x00 0xf8800280 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
@@ -419,7 +420,7 @@
 
 	uart3: serial@f8004380 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8004380 0x00 0x80>;
+		reg = <0x00 0xf8800300 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,

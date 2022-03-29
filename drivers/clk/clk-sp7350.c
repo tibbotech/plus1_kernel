@@ -68,9 +68,9 @@ static u32 mux_table[] = { 0x00, 0x01, 0x03, 0x07, 0x0f };
 
 static struct clk *clks[CLK_MAX + AC_MAX + PLL_MAX];
 static struct clk_onecell_data clk_data;
-static void __iomem *moon_regs;
+static void __iomem *moon_AO_regs,*moon_regs;
 
-#define clk_regs	(moon_regs + 0x004) /* G0.1 ~ CLKEN */
+#define clk_regs	(moon_AO_regs + 0x004) /* G0.1 ~ CLKEN */
 #define mux_regs	(moon_regs + 0x100)	/* G2.0 ~ CLK_SEL */
 #define pll_regs	(moon_regs + 0x200) /* G4.0 ~ PLL */
 
@@ -531,13 +531,18 @@ static void __init sp_clkc_init(struct device_node *np)
 		return; // -ENXIO
 	}
 
-	moon_regs = of_iomap(np, 0);
+	moon_AO_regs = of_iomap(np, 0);
+	if (WARN_ON(!moon_AO_regs)) {
+		pr_warn("sp-clkc AO regs missing.\n");
+		return; // -EIO
+	}
+	moon_regs = of_iomap(np, 1);
 	if (WARN_ON(!moon_regs)) {
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
 
-	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
+	pr_debug("sp-clkc: moon_AO_regs = %llx,moon_regs = %llx", (u64)moon_AO_regs, (u64)moon_regs);
 
 	/* PLLs */
 	clks[PLLS] = clk_register_sp_pll("PLLS", PLLS_CTL, 14);
