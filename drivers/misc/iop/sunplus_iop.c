@@ -28,7 +28,7 @@
 
 /* ---------------------------------------------------------------------------------------------- */
 //#define IOP_KDBG_INFO
-#define IOP_FUNC_DEBUG
+//#define IOP_FUNC_DEBUG
 #define IOP_KDBG_ERR
 //#define IOP_GET_GPIO
 //#define IOP_UPDATE_FW
@@ -38,9 +38,8 @@
 int IOP_GPIO;
 unsigned long SP_IOP_RESERVE_BASE;
 unsigned long SP_IOP_RESERVE_SIZE;
-#ifdef CONFIG_SOC_Q645
-unsigned long B_SYSTEM_BASE;
-#endif
+unsigned long B_REG;
+
 #ifdef IOP_KDBG_INFO
 	#define FUNC_DEBUG()	pr_info("K_IOP: %s(%d)\n", __func__, __LINE__)
 #else
@@ -231,15 +230,15 @@ static ssize_t wakein_store(struct device *dev, struct device_attribute *attr, c
 
 	if (buf[0] == '0') {
 		DBG_INFO("Disable WAKE_IN\n");
-		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+		reg = readl((void __iomem *)(B_REG + 32*4*1 + 4*2));
 		reg = 0x08000000;
-		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+		writel(reg, (void __iomem *)(B_REG + 32*4*1 + 4*2));
 		iop_wake_in = 0;
 	} else if (buf[0] == '1') {
 		DBG_INFO("Enable WAKE_IN\n");
-		reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+		reg = readl((void __iomem *)(B_REG + 32*4*1 + 4*2));
 		reg |= 0x08000800;
-		writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+		writel(reg, (void __iomem *)(B_REG + 32*4*1 + 4*2));
 		iop_wake_in = 1;
 	} else {
 		DBG_INFO("echo 0 or 1 mode\n");
@@ -515,9 +514,10 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long
 {
 	struct resource *r;
 	void __iomem *p;
+	int ret;
 
 	FUNC_DEBUG();
-	//DBG_INFO("register name  : %s!!\n", res_name);
+	DBG_INFO("register name  : %s!!\n", res_name);
 
 	r = platform_get_resource_byname(pdev, IORESOURCE_MEM, res_name);
 	if (r == NULL) {
@@ -530,17 +530,15 @@ static int _sp_iop_get_register_base(struct platform_device *pdev, unsigned long
 		DBG_ERR("ioremap fail\n");
 		return PTR_ERR(p);
 	}
-
-	//DBG_INFO("ioremap addr : 0x%x!!\n", (unsigned int)p);
-	#ifdef CONFIG_SOC_Q645
-	B_SYSTEM_BASE = (unsigned long)p;
-	#endif
+	ret = strcmp(res_name, IOP_MOON0_REG_NAME);
+	if (!ret) {
+		B_REG = (unsigned long)p;
+		DBG_INFO("B_REG : 0x%x!!\n", (unsigned long)B_REG);
+	}
 	*membase = (unsigned long)p;
 
 	return IOP_SUCCESS;
 }
-
-
 
 static int _sp_iop_get_resources(struct platform_device *pdev, struct sp_iop_t *pstSpIOPInfo)
 {
@@ -556,14 +554,12 @@ static int _sp_iop_get_resources(struct platform_device *pdev, struct sp_iop_t *
 	}
 	pstSpIOPInfo->iop_regs = (void __iomem *)membase;
 
-
-
-	//ret = _sp_iop_get_register_base(pdev, &membase, IOP_MOON0_REG_NAME);
-	//if (ret) {
-	//	DBG_ERR("[IOP] %s (%d) ret = %d\n", __func__, __LINE__, ret);
-	//	return ret;
-	//}
-	//pstSpIOPInfo->moon0_regs = (void __iomem *)membase;
+	ret = _sp_iop_get_register_base(pdev, &membase, IOP_MOON0_REG_NAME);
+	if (ret) {
+		DBG_ERR("%s (%d) ret = %d\n", __func__, __LINE__, ret);
+		return ret;
+	}
+	pstSpIOPInfo->moon0_regs = (void __iomem *)membase;
 
 	ret = _sp_iop_get_register_base(pdev, &membase, IOP_QCTL_REG_NAME);
 	if (ret) {
@@ -578,13 +574,6 @@ static int _sp_iop_get_resources(struct platform_device *pdev, struct sp_iop_t *
 		return ret;
 	}
 	pstSpIOPInfo->pmc_regs = (void __iomem *)membase;
-
-	//ret = _sp_iop_get_register_base(pdev, &membase, IOP_RTC_REG_NAME);
-	//if (ret) {
-	//	DBG_ERR("[IOP] %s (%d) ret = %d\n", __func__, __LINE__, ret);
-	//	return ret;
-	//}
-	//pstSpIOPInfo->rtc_regs = (void __iomem *)membase;
 
 	return IOP_SUCCESS;
 }

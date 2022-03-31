@@ -39,9 +39,9 @@ void hal_iop_init(void __iomem *iopbase)
 	memset((unsigned char *)IOP_kernel_base, 0, NORMAL_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	reg = readl(&pIopReg->iop_control);
@@ -91,9 +91,9 @@ void hal_iop_load_normal_code(void __iomem *iopbase)
 	memcpy((unsigned char *)IOP_kernel_base, NormalCode, RECEIVE_CODE_SIZE);
 
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	reg = readl(&pIopReg->iop_control);
@@ -134,9 +134,9 @@ void hal_iop_load_standby_code(void __iomem *iopbase)
 	memset((unsigned char *)IOP_kernel_base, 0, RECEIVE_CODE_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, StandbyCode, RECEIVE_CODE_SIZE);
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 	reg = readl(&pIopReg->iop_control);
 	reg |= 0x01;
@@ -174,9 +174,9 @@ void hal_iop_normalmode(void __iomem *iopbase)
 	memset((unsigned char *)IOP_kernel_base, 0, NORMAL_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopNormalCode, NORMAL_CODE_MAX_SIZE);
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	reg = readl(&pIopReg->iop_control);
@@ -215,9 +215,9 @@ void hal_iop_standbymode(void __iomem *iopbase)
 	memset((unsigned char *)IOP_kernel_base, 0, STANDBY_CODE_MAX_SIZE);
 	memcpy((unsigned char *)IOP_kernel_base, IopStandbyCode, STANDBY_CODE_MAX_SIZE);
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	reg = readl(&pIopReg->iop_control);
@@ -361,9 +361,9 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	unsigned long *IOP_base_for_standby = (unsigned long *)(SP_IOP_RESERVE_BASE);
 
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	reg = readl(&pIopReg->iop_control);
@@ -388,26 +388,18 @@ void hal_iop_suspend(void __iomem *iopbase, void __iomem *ioppmcbase)
 	writel(0x01000100, &pIopPmcReg->PMC_TIMER2);
 
 	//IOP Hardware IP reset
-	reg = readl((void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	reg = readl((void __iomem *)(B_REG + 4 * 21));
 	reg |= 0x10;
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	writel(reg, (void __iomem *)(B_REG + 4 * 21));
 	reg &= ~(0x10);
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	writel(reg, (void __iomem *)(B_REG + 4 * 21));
 
 
-	writel(0x00ff0085, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*1));
+	writel(0x00ff0085, (void __iomem *)(B_REG + 32*4*1 + 4*1));
 
-	reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+	reg = readl((void __iomem *)(B_REG + 32*4*1 + 4*2));
 	reg |= 0x08000800;
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
-
-	#ifdef early_printk
-	early_printk("Leon	g1.0=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*0)));
-	early_printk("Leon	g1.1=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*1)));
-	early_printk("Leon	g1.2=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2)));
-	early_printk("Leon	g1.3=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*3)));
-	early_printk("Leon	g1.4=0x%x\n", readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*4)));
-	#endif
+	writel(reg, (void __iomem *)(B_REG + 32*4*1 + 4*2));
 
 #ifdef CONFIG_SOC_SP7021
 	reg = readl(&pIopReg->iop_control);
@@ -494,9 +486,9 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	FUNC_DEBUG();
 
 #ifdef CONFIG_SOC_SP7021
-	writel(0x00100010, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00100010, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #elif defined(CONFIG_SOC_Q645)
-	writel(0x00800080, (void __iomem *)(B_SYSTEM_BASE + 32*4*0 + 4*1));
+	writel(0x00800080, (void __iomem *)(B_REG + 32*4*0 + 4*1));
 #endif
 
 	early_printk("%s(%d)\n", __func__, __LINE__);
@@ -523,17 +515,17 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	writel(0x01000100, &pIopPmcReg->PMC_TIMER2);
 
 	//IOP Hardware IP reset
-	reg = readl((void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	reg = readl((void __iomem *)(B_REG + 4 * 21));
 	reg |= 0x10;
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	writel(reg, (void __iomem *)(B_REG + 4 * 21));
 	reg &= ~(0x10);
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 4 * 21));
+	writel(reg, (void __iomem *)(B_REG + 4 * 21));
 
-	writel(0x00ff0085, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*1));
+	writel(0x00ff0085, (void __iomem *)(B_REG + 32*4*1 + 4*1));
 
-	reg = readl((void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+	reg = readl((void __iomem *)(B_REG + 32*4*1 + 4*2));
 	reg |= 0x08000800;
-	writel(reg, (void __iomem *)(B_SYSTEM_BASE + 32*4*1 + 4*2));
+	writel(reg, (void __iomem *)(B_REG + 32*4*1 + 4*2));
 
 #ifdef CONFIG_SOC_SP7021
 	reg = readl(&pIopReg->iop_control);
