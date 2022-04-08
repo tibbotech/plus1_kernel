@@ -199,7 +199,7 @@ static irqreturn_t sp7021_spi_master_irq(int irq, void *dev)
 	if (tx_len == 0 && total_len == 0)
 		return IRQ_NONE;
 
-	spin_lock_irq(&pspim->lock);
+	//spin_lock_irq(&pspim->lock); // remove irq lock
 
 	rx_cnt = FIELD_GET(SP7021_RX_CNT_MASK, fd_status);
 	if (fd_status & SP7021_RX_FULL_FLAG)
@@ -239,7 +239,7 @@ static irqreturn_t sp7021_spi_master_irq(int irq, void *dev)
 
 	if (isrdone)
 		complete(&pspim->isr_done);
-	spin_unlock_irq(&pspim->lock);
+	//spin_unlock_irq(&pspim->lock);
 	return IRQ_HANDLED;
 }
 
