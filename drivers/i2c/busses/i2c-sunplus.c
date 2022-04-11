@@ -785,6 +785,7 @@ static int _sp_i2cm_init(unsigned int device_id, struct sp_i2c_dev *spi2c)
 static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_dev *spi2c)
 {
 	int ret;
+	struct resource *res;
 
 	spi2c->i2c_regs = devm_platform_ioremap_resource_byname(pdev, "i2cm");
 	if (IS_ERR(spi2c->i2c_regs))
