@@ -39,3 +39,33 @@ config MIPICSI_RX_SUNPLUS_Q645
 	  Sunplus Q645 SoC. If you have the device, say Y.
 	  To compile this driver as a module, choose M here.
 	  The module will be called sp-mipi-q645.
+
+config VIDEO_SUNPLUS_Q654_CSI2
+	tristate "Sunplus Q654 MIPI CSI-2 Receiver"
+	depends on VIDEO_V4L2 && OF
+	depends on SOC_Q654
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select RESET_CONTROLLER
+	select V4L2_FWNODE
+	help
+	  Support for Sunplus MIPI CSI-2 receiver.
+	  Supports Q654 SoC.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sp-mipi-q654.
+
+config VIDEO_SUNPLUS_Q654_VIN
+	tristate "Sunplus Q654 Video Input (VIN) Driver"
+	depends on VIDEO_V4L2 && OF
+	depends on SOC_Q654
+	select MEDIA_CONTROLLER
+	select VIDEO_V4L2_SUBDEV_API
+	select VIDEOBUF2_DMA_CONTIG
+	select V4L2_FWNODE
+	help
+	  Support for Sunplus Video Input (VIN) driver.
+	  Supports Q654 SoC.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called sp-vin-q654.
