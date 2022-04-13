@@ -98,6 +98,10 @@
 			reg = <0x00000000 0x00100000>;
 		};
 
+        video_codec_reserve: vcodec {
+			no-map;
+			reg = <0x00200000 0x00060000>;
+		};
 		/* reserved for remoteproc */
 		vdev0vring0: vdev0vring0@1e800000 {
 			no-map;
@@ -1052,19 +1056,38 @@
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
 		};
 
+		video_codec_dec {
+			compatible = "sunplus,q645-hantro-vc8000d";
+			reg = <0xf8168000 0x1ff>;
+			interrupts = <167 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc 0x2e>;
+			clock-names = "clk_vc8000d";
+			resets = <&rstc 0x3e>;
+		};
+
+		video_codec_enc {
+			compatible = "sunplus,q645-hantro-vc8000e";
+			reg = <0xf80ff000 0x1f1>;
+			interrupts = <77 IRQ_TYPE_LEVEL_HIGH>;
+			clocks = <&clkc 0x2f>;
+			clock-names = "clk_vc8000e";
+			resets = <&rstc 0x3f>;
+		};
+
+		video_codec_emem {
+			compatible = "sunplus,q645-hantro-emem";
+			memory-region = <&video_codec_reserve>;
+		};
+
+		video_codec_dmem {
+			compatible = "sunplus,q645-hantro-dmem";
+			memory-region = <&video_codec_reserve>;
+		};
+
 		pctl: pinctl@9c000100 {
 			compatible = "sunplus,sp7021-pctl";
 			reg = <0x9c000100 0x100>, <0x9c000300 0x80>, <0x9c000380 0x80>, <0x9c0032e4 0x1c>, <0x9c000080 0x20>;
 			reg-names = "moon2", "gpioxt", "gpioxt2", "first", "moon1";
-			interrupt-parent = <&intc>;
-			interrupts = <120 IRQ_TYPE_LEVEL_HIGH>,
-				     <121 IRQ_TYPE_LEVEL_HIGH>,
-				     <122 IRQ_TYPE_LEVEL_HIGH>,
-				     <123 IRQ_TYPE_LEVEL_HIGH>,
-				     <124 IRQ_TYPE_LEVEL_HIGH>,
-				     <125 IRQ_TYPE_LEVEL_HIGH>,
-				     <126 IRQ_TYPE_LEVEL_HIGH>,
-				     <127 IRQ_TYPE_LEVEL_HIGH>;
 			gpio-controller;
 			#gpio-cells = <2>;
 			clocks = <&clkc GPIO>;

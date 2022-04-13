@@ -785,6 +785,7 @@ static int _sp_i2cm_init(unsigned int device_id, struct sp_i2c_dev *spi2c)
 static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_dev *spi2c)
 {
 	int ret;
+	struct resource *res;
 
 	spi2c->i2c_regs = devm_platform_ioremap_resource_byname(pdev, "i2cm");
 	if (IS_ERR(spi2c->i2c_regs))
@@ -794,9 +795,19 @@ static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_de
 	if (IS_ERR(spi2c->i2c_dma_regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_dma_regs), "regs get fail\n");
 
-	spi2c->i2c_power_regs = devm_platform_ioremap_resource_byname(pdev, "i2cdmapower");
-	if (IS_ERR(spi2c->i2c_power_regs))
+	//spi2c->i2c_power_regs = devm_platform_ioremap_resource_byname(pdev, "i2cdmapower");
+	//if (IS_ERR(spi2c->i2c_power_regs))
+	//	spi2c->i2c_power_regs = 0;
+
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "i2cdmapower");
+	if (IS_ERR(res))
+		dev_err_probe(&pdev->dev, PTR_ERR(res), "resource get fail\n");
+
+	spi2c->i2c_power_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+	if (IS_ERR(spi2c->i2c_power_regs)){
 		spi2c->i2c_power_regs = 0;
+		dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_power_regs), "power regs get fail\\n");
+	}
 
 	spi2c->irq = platform_get_irq(pdev, 0);
 	if (spi2c->irq < 0)
