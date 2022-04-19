@@ -40,6 +40,19 @@ config MIPICSI_RX_SUNPLUS_Q645
 	  To compile this driver as a module, choose M here.
 	  The module will be called sp-mipi-q645.
 
+config MIPICSI_RX_SUNPLUS_Q645_NEW
+	tristate "Sunplus Q645 new MIPI/CSI-RX driver"
+	depends on SOC_Q645 && VIDEO_DEV && VIDEO_V4L2
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEOBUF2_VMALLOC
+	select V4L2_FWNODE
+	default n
+	help
+	  This driver supports the MIPI/CSI-RX device on the
+	  Sunplus Q645 SoC. If you have the device, say Y.
+	  To compile this driver as a module, choose M here.
+	  The module will be called sp-mipi-q645.
+
 config VIDEO_SUNPLUS_Q654_CSI2
 	tristate "Sunplus Q654 MIPI CSI-2 Receiver"
 	depends on VIDEO_V4L2 && OF
