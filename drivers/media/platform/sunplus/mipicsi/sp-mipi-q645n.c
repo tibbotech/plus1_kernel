@@ -35,7 +35,6 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <linux/videodev2.h>
-#include <mach/io_map.h>
 #include <media/v4l2-common.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-image-sizes.h>
@@ -67,38 +66,22 @@ static inline struct sp_mipi_device *notifier_to_mipi(struct v4l2_async_notifier
 /* Register accessors */
 static inline u32 csi_readl(struct sp_mipi_device *mipi, u32 reg)
 {
-#if defined(SIM_ON_SP7021)
-	return 0;
-#else
 	return readl(mipi->mipicsi_regs + reg);
-#endif
 }
 
 static inline void csi_writel(struct sp_mipi_device *mipi, u32 reg, u32 value)
 {
-#if defined(SIM_ON_SP7021)
-	dev_dbg(mipi->dev, "%s, reg: 0x%02x, value: 0x%08x\n", __func__, reg, value);
-#else
 	writel(value, mipi->mipicsi_regs + reg);
-#endif
 }
 
 static inline u32 iw_readl(struct sp_mipi_device *mipi, u32 reg)
 {
-#if defined(SIM_ON_SP7021)
-	return 0;
-#else
 	return readl(mipi->csiiw_regs + reg);
-#endif
 }
 
 static inline void iw_writel(struct sp_mipi_device *mipi, u32 reg, u32 value)
 {
-#if defined(SIM_ON_SP7021)
-	dev_dbg(mipi->dev, "%s, reg: 0x%02x, value: 0x%08x\n", __func__, reg, value);
-#else
 	writel(value, mipi->csiiw_regs + reg);
-#endif
 }
 
 static inline void set_field(u32 *valp, u32 field, u32 mask)
@@ -223,34 +206,22 @@ static void sp_mipicsi_reset_s2p_ff(struct sp_mipi_device *mipi)
 	dev_dbg(mipi->dev, "%s, %d: dphy_cfg0: %08x\n", __func__, __LINE__, val);
 
 	/* Reset Serial-to-parallel Flip-flop */
-	set_field(&val, 0x1, 0x1<<0);		/* RSTS2P = 1: Reset mode */
+	set_field(&val, 0x1, 0x1<<1);		/* RSTS2P = 1: Reset mode */
 	udelay(1);
 	csi_writel(mipi, MIPICSI_DPHY_CFG0, val);
 	udelay(1);
-	set_field(&val, 0x0, 0x1<<0);		/* RSTS2P = 0: Normal mode (default) */
+	set_field(&val, 0x0, 0x1<<1);		/* RSTS2P = 0: Normal mode (default) */
 	csi_writel(mipi, MIPICSI_DPHY_CFG0, val);
 
 }
 
 #if defined(MIPI_CSI_BIST)
-static void sp_mipicsi_bist_control(struct sp_mipi_device *mipi, u8 on)
-{
-	u32 val = 0;
-
-	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
-
-	val = csi_readl(mipi, MIPICSI_BIST_CFG1);
-	set_field(&val, on, 0x1<<0); 			/* Enable BIST function */
-	csi_writel(mipi, MIPICSI_BIST_CFG1, val);
-}
-
 /* BIST_Mode field: Internal pattern format selection
  * 0: Color bar for YUY2 format
  * 1: Border for YUY2 format
  * 2: Gray bar for RAW12 format
  */
 #define BIST_MODE_YUY2_PATTERN	0
-
 
 static void sp_mipicsi_bist_config(struct sp_mipi_device *mipi, u8 dt)
 {
@@ -269,12 +240,28 @@ static void sp_mipicsi_bist_config(struct sp_mipi_device *mipi, u8 dt)
 	set_field(&val, width, 0x1fff<<0);		/* Horizontal size of internal pattern. 1920 */
 	csi_writel(mipi, MIPICSI_BIST_CFG1, val);
 
+	dev_dbg(mipi->dev, "%s, %d, bist_cfg1: %08x\n", __func__, __LINE__, val);
+
 	val = 0;
 	if (dt == 0x2b) mode = 2;				/* Gray bar for RAW12 */	
 	val = csi_readl(mipi, MIPICSI_BIST_CFG0);
 	set_field(&val, mode, 0x3<<4);		/* Gray bar for RAW12 format */
 	set_field(&val, 0x1, 0x1<<1);		/* Use internal clock for BIST */
 	set_field(&val, 0x0, 0x1<<0);		/* Disable MIPI internal pattern */
+	csi_writel(mipi, MIPICSI_BIST_CFG0, val);
+
+	dev_dbg(mipi->dev, "%s, %d, bist_cfg0: %08x\n", __func__, __LINE__, val);
+
+}
+
+static void sp_mipicsi_bist_control(struct sp_mipi_device *mipi, u8 on)
+{
+	u32 val = 0;
+
+	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
+
+	val = csi_readl(mipi, MIPICSI_BIST_CFG0);
+	set_field(&val, on, 0x1<<0); 			/* Enable BIST function */
 	csi_writel(mipi, MIPICSI_BIST_CFG0, val);
 }
 #endif
@@ -849,7 +836,7 @@ static int sp_mipi_start_streaming(struct vb2_queue *vq, unsigned int count)
 	mipi->streaming = true;
 	mipi->skip_first_int = true;
 
-	dev_dbg(mipi->dev, "%s: cur_frm = %p, addr = %08x\n", __func__, mipi->cur_frm, addr);
+	dev_dbg(mipi->dev, "%s: cur_frm = %p, addr = %08llx\n", __func__, mipi->cur_frm, addr);
 
 	return 0;
 

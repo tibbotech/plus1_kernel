@@ -16,9 +16,8 @@
 #include <media/v4l2-ioctl.h>
 
 /* Compliler switch */
-#define SIM_ON_SP7021		/* Do Q645 simulation on SP7021 platform */
-//#define MIPI_CSI_BIST		/* Enable MIPI-CSI BIST function */
-//#define BIST_RAW12_TO_RAW10		/* Use internal patten RAW12 gray bar to test RAW10 format */
+//#define MIPI_CSI_BIST			/* Enable MIPI-CSI BIST function */
+//#define BIST_RAW12_TO_RAW10	/* Use internal patten RAW12 gray bar to test RAW10 format */
 
 #define CSI_DRV_NAME		"sp_mipi_csi-rx"
 #define MIPICSI_REG_NAME	"mipicsi"
@@ -28,12 +27,12 @@
 #define MIN_BUFFERS		2
 
 /* SOL Sync Word */
+#define SYNC_YUY2		0x1E
 #define SYNC_RGB565		0x22
 #define SYNC_RGB888		0x24
 #define SYNC_RAW8		0x2A
 #define SYNC_RAW10		0x2B
 #define SYNC_RAW12		0x2C
-#define SYNC_YUY2		0x1E
 
 #define MIN_WIDTH		16U
 #define MAX_WIDTH		2592U
