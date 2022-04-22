@@ -31,6 +31,9 @@
 #define QAK645_EFUSE2_SIZE		(QAK645_EFUSE2_NUM_BANKS * OTP_WORDS_PER_BANK * \
 										OTP_WORD_SIZE)
 
+#define QAK654_OTP_NUM_BANKS            8
+#define QAK654_OTP_SIZE                 (QAK654_OTP_NUM_BANKS * OTP_WORDS_PER_BANK * OTP_WORD_SIZE)
+
 #define OTP_READ_TIMEOUT                20000
 
 /* HB_GPIO register map */

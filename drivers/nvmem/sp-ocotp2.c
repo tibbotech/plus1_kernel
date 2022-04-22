@@ -8,7 +8,7 @@
 
 static int efuse2_sunplus_platform_probe(struct platform_device *dev)
 {
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 	dev->id = 3;
 #endif
 
@@ -20,10 +20,8 @@ const struct sp_otp_vX_t  sp_otp2_v0 = {
 };
 
 static const struct of_device_id sp_ocotp2_dt_ids[] = {
-#if defined (CONFIG_SOC_Q645)
+#if defined(CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-ocotp2", .data = &sp_otp2_v0  },
-#else
-	{ .compatible = "sunplus,sp7350-ocotp2", .data = &sp_otp2_v0  },
 #endif
 	{ }
 };
@@ -40,7 +38,7 @@ static struct platform_driver sp_otp2_driver = {
 
 static int __init sp_otp2_drv_new(void)
 {
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 	return platform_driver_register(&sp_otp2_driver);
 #else
 	return -1;

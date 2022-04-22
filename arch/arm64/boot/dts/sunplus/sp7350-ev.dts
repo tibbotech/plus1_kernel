@@ -563,7 +563,7 @@
 	};
 
 	otp0: otp@f800af00 {
-		compatible = "sunplus,sp7350-ocotp0";
+		compatible = "sunplus,sp7350-ocotp";
 		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;

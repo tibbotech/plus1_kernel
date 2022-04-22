@@ -21,9 +21,6 @@ static int efuse0_sunplus_platform_probe(struct platform_device *dev)
 	n78_clk_register();
 
 	return ret;
-#elif defined(CONFIG_SOC_SP7350)
-	dev->id = 1;
-	return sp_ocotp_probe(dev);
 #else
 	return sp_ocotp_probe(dev);
 #endif
@@ -33,19 +30,23 @@ static int efuse0_sunplus_platform_probe(struct platform_device *dev)
 const struct sp_otp_vX_t  sp_otp_v0 = {
 	.size = QAC628_OTP_SIZE,
 };
-#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#elif defined(CONFIG_SOC_Q645)
 const struct sp_otp_vX_t  sp_otp_v0 = {
 	.size = QAK645_EFUSE0_SIZE,
+};
+#elif defined(CONFIG_SOC_SP7350)
+const struct sp_otp_vX_t  sp_otp_v0 = {
+	.size = QAK654_OTP_SIZE,
 };
 #endif
 
 static const struct of_device_id sp_ocotp0_dt_ids[] = {
 #if defined(CONFIG_SOC_SP7021)
 	{ .compatible = "sunplus,sp7021-ocotp", .data = &sp_otp_v0  },
-#elif defined (CONFIG_SOC_Q645)
+#elif defined(CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-ocotp0", .data = &sp_otp_v0  },
-#elif defined (CONFIG_SOC_SP7350)
-	{ .compatible = "sunplus,sp7350-ocotp0", .data = &sp_otp_v0  },
+#elif defined(CONFIG_SOC_SP7350)
+	{ .compatible = "sunplus,sp7350-ocotp", .data = &sp_otp_v0  },
 #endif
 	{ }
 };
@@ -55,7 +56,7 @@ static struct platform_driver sp_otp0_driver = {
 	.probe     = efuse0_sunplus_platform_probe,
 	.remove    = sp_ocotp_remove,
 	.driver    = {
-#if defined(CONFIG_SOC_SP7021)
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_SP7350)
 		.name           = "sunplus,ocotp",
 #else
 		.name           = "sunplus,ocotp0",
