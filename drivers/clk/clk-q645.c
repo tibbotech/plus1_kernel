@@ -58,7 +58,6 @@ struct sp_pll {
 
 	long brate;
 	u32 idiv; // struct divs[] index
-	u32 fbkdiv; // 64~(64+255)
 	u32 bp; // bypass bit_idx
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
@@ -88,12 +87,12 @@ static const char * const default_parents[] = { EXT_CLK };
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
 static struct sp_clk sp_clks[] = {
-	_(SYSTEM,		0,	0,	2, {"f_600m", "f_750m", "f_500m"}),
+	_(SYSTEM,	0,	0,	2, {"f_600m", "f_750m", "f_500m"}),
 	_(CA55CORE0,	0,	6,	1, {"PLLC", "SYSTEM"}),
 	_(CA55CORE1,	0,	11,	1, {"PLLC", "SYSTEM"}),
 	_(CA55CORE2,	1,	0,	1, {"PLLC", "SYSTEM"}),
 	_(CA55CORE3,	1,	5,	1, {"PLLC", "SYSTEM"}),
-	_(CA55CUL3,		1,	10,	1, {"f_1200m", "SYSTEM"}),
+	_(CA55CUL3,	1,	10,	1, {"f_1200m", "SYSTEM"}),
 	_(CA55),
 	_(IOP),
 	_(PBUS0),
@@ -113,16 +112,16 @@ static struct sp_clk sp_clks[] = {
 	_(DUMMY_MASTER0),
 	_(DUMMY_MASTER1),
 	_(DUMMY_MASTER2),
-	_(EVDN,			3,	4,	1, {"f_800m", "f_1000m"}),
+	_(EVDN,		3,	4,	1, {"f_800m", "f_1000m"}),
 	_(SDPROT0),
 	_(UMCTL2),
-	_(GPU,			2,	9,	3, {"f_800m", "f_1000m", "f_1080m", "f_400m"}),
-	_(HSM,			2,	5,	1, {"f_500m", "SYSTEM"}),
+	_(GPU,		2,	9,	3, {"f_800m", "f_1000m", "f_1080m", "f_400m"}),
+	_(HSM,		2,	5,	1, {"f_500m", "SYSTEM"}),
 	_(RBUS_TOP),
 	_(SPACC),
 	_(INTERRUPT),
 
-	_(N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}),
+	_(N78,		3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}),
 	_(SYSTOP),
 	_(OTPRX),
 	_(PMC),
@@ -130,33 +129,33 @@ static struct sp_clk sp_clks[] = {
 	_(RBUS_BLOCKB),
 	_(RBUS_rsv1),
 	_(RBUS_rsv2),
-	_(RTC,			0,	0,	0, {"f_32k"}),
+	_(RTC,		0,	0,	0, {"rtcclk"}),
 	_(MIPZ),
-	_(SPIFL,		3,	11,	1, {"f_360m", "f_216m"}),
+	_(SPIFL,	3,	11,	1, {"f_360m", "f_216m"}),
 	_(BCH),
-	_(SPIND,		3,	10,	1, {"f_600m", "f_800m"}),
+	_(SPIND,	3,	10,	1, {"f_600m", "f_800m"}),
 	_(UADMA01),
 	_(UADMA23),
-	_(UA0,			2,	13,	1, {EXT_CLK, "f_200m"}),
+	_(UA0,		2,	13,	1, {EXT_CLK, "f_200m"}),
 
-	_(UA1,			2,	14,	1, {EXT_CLK, "f_200m"}),
-	_(UA2,			2,	15,	1, {EXT_CLK, "f_200m"}),
-	_(UA3,			3,	0,	1, {EXT_CLK, "f_200m"}),
+	_(UA1,		2,	14,	1, {EXT_CLK, "f_200m"}),
+	_(UA2,		2,	15,	1, {EXT_CLK, "f_200m"}),
+	_(UA3,		3,	0,	1, {EXT_CLK, "f_200m"}),
 	_(UA4),
 	_(UA5),
-	_(UADBG,		3,	1,	1, {EXT_CLK, "f_200m"}),
+	_(UADBG,	3,	1,	1, {EXT_CLK, "f_200m"}),
 	_(UART2AXI),
 	_(GDMAUA),
 	_(UPHY0),
-	_(USB30C0,		2,	2,	1, {"f_125m", "f_125m"}), /* CLKPIPE0_SRC also 125m */
-	_(USB30C1,		2,	3,	1, {"f_125m", "f_125m"}), /* CLKPIPE1_SRC also 125m */
-	_(U3PHY0,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
-	_(U3PHY1,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
+	_(USB30C0,	2,	2,	1, {"f_125m", "f_125m"}), /* CLKPIPE0_SRC also 125m */
+	_(USB30C1,	2,	3,	1, {"f_125m", "f_125m"}), /* CLKPIPE1_SRC also 125m */
+	_(U3PHY0,	2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
+	_(U3PHY1,	2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
 	_(USBC0),
-	_(VCD,			0,	0,	0, {"f_360m"}),
-	_(VCE,			24,	9,	2, {"f_540m", "f_600m", "f_750m"}),
+	_(VCD,		0,	0,	0, {"f_360m"}),
+	_(VCE,		24,	9,	2, {"f_540m", "f_600m", "f_750m"}),
 
-	_(CM4,			3,	5,	2, {"SYSTEM", "SYSTEM_D2", "SYSTEM_D4"}), /* SYS_CLK, SYS_CLK/2, SYS_CLK/4 */
+	_(CM4,		3,	5,	2, {"SYSTEM", "SYSTEM_D2", "SYSTEM_D4"}), /* SYS_CLK, SYS_CLK/2, SYS_CLK/4 */
 	_(STC0),
 	_(STC_AV0),
 	_(STC_AV1),
@@ -164,7 +163,7 @@ static struct sp_clk sp_clks[] = {
 	_(MAILBOX),
 	_(PAI),
 	_(PAII),
-	_(DDRPHY,		0,	0,	0, {"f_800m"}),
+	_(DDRPHY,	0,	0,	0, {"f_800m"}),
 	_(DDRCTL),
 	_(I2CM0),
 	_(SPI_COMBO_0),
@@ -174,16 +173,16 @@ static struct sp_clk sp_clks[] = {
 	_(SPI_COMBO_4),
 
 	_(SPI_COMBO_5),
-	_(CSIIW0,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI0,		0,	0,	0, {"f_320m"}),
-	_(CSIIW1,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI1,		0,	0,	0, {"f_320m"}),
-	_(CSIIW2,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI2,		0,	0,	0, {"f_320m"}),
-	_(CSIIW3,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI3,		0,	0,	0, {"f_320m"}),
+	_(CSIIW0,	0,	0,	0, {"mipiclk"}),
+	_(MIPICSI0,	0,	0,	0, {"mipiclk"}),
+	_(CSIIW1,	0,	0,	0, {"mipiclk"}),
+	_(MIPICSI1,	0,	0,	0, {"mipiclk"}),
+	_(CSIIW2,	0,	0,	0, {"mipiclk"}),
+	_(MIPICSI2,	0,	0,	0, {"mipiclk"}),
+	_(CSIIW3,	0,	0,	0, {"mipiclk"}),
+	_(MIPICSI3,	0,	0,	0, {"mipiclk"}),
 	_(VCL),
-	_(DISP_PWM,		0,	0,	0, {"f_200m"}),
+	_(DISP_PWM,	0,	0,	0, {"f_200m"}),
 	_(I2CM1),
 	_(I2CM2),
 	_(I2CM3),
@@ -196,9 +195,9 @@ static struct sp_clk sp_clks[] = {
 	_(AUD),
 	_(VIDEO_CODEC),
 
-	_(VCLCORE0,		25,	0,	4, {"f_500m", "f_600m", "f_400m", "f_300m", "f_200m"}),
-	_(VCLCORE1,		25,	4,	3, {"f_400m", "f_500m", "f_300m", "f_200m"}),
-	_(VCLCORE2,		25,	7,	3, {"f_300m", "f_400m", "f_100m", "f_200m"}),
+	_(VCLCORE0,	25,	0,	4, {"f_500m", "f_600m", "f_400m", "f_300m", "f_200m"}),
+	_(VCLCORE1,	25,	4,	3, {"f_400m", "f_500m", "f_300m", "f_200m"}),
+	_(VCLCORE2,	25,	7,	3, {"f_300m", "f_400m", "f_100m", "f_200m"}),
 };
 
 /************************************************* PLL_A *************************************************/
@@ -485,6 +484,7 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	struct clk_mux *mux = NULL;
 	struct clk_gate *gate;
 	struct clk *clk;
+	int num_parents = sp_clk->width + 1;
 
 	if (sp_clk->width) {
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
@@ -506,12 +506,12 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	gate->bit_idx = sp_clk->id & 0x0f;
 	gate->flags = CLK_GATE_HIWORD_MASK;
 
-	clk = clk_register_composite(NULL, sp_clk->name, parent_names,
-					mux ? sp_clk->width + 1 : 1,
-					mux ? &mux->hw : NULL, &clk_mux_ops,
-					NULL, NULL,
-					&gate->hw, &clk_gate_ops,
-					CLK_IGNORE_UNUSED);
+	clk = clk_register_composite(NULL, sp_clk->name,
+				     parent_names, num_parents,
+				     mux ? &mux->hw : NULL, &clk_mux_ops,
+				     NULL, NULL,
+				     &gate->hw, &clk_gate_ops,
+				     CLK_IGNORE_UNUSED);
 	if (IS_ERR(clk)) {
 		kfree(mux);
 		kfree(gate);

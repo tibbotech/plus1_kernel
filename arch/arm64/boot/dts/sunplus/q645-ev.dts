@@ -1073,7 +1073,6 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <2>;
 		status = "disabled";
 	};
 
@@ -1088,7 +1087,6 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <3>;
 		status = "disabled";
 	};
 
@@ -1103,7 +1101,6 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <4>;
 		status = "disabled";
 	};
 
@@ -1118,7 +1115,6 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <5>;
 		status = "disabled";
 	};
 
