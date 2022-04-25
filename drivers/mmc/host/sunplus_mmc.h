@@ -17,10 +17,20 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-/* #define SPMMC_SUPPORT_VOLTAGE_1V8 */
-/* #define SPMMC_EMMC_VCCQ_1V8 */
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#define SPMMC_SUPPORT_VOLTAGE_1V8
+#define SPMMC_EMMC_VCCQ_1V8
+#endif 
+
 #define SPMMC_MIN_CLK	400000
+#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
 #define SPMMC_MAX_CLK	52000000
+#elif defined(CONFIG_SOC_Q645)
+#define SPMMC_MAX_CLK	200000000
+#elif defined(CONFIG_SOC_SP7350)
+#define SPMMC_MAX_CLK	400000000
+#endif
+
 #define SPMMC_MAX_BLK_COUNT 65536
 #define SPMMC_MAX_TUNABLE_DLY 7
 #ifdef CONFIG_SOC_I143
