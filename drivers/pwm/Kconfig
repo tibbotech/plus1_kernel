@@ -462,8 +462,8 @@ config PWM_SPRD
 
 config PWM_SUNPLUS
 	tristate "Sunplus PWM support"
-	depends on SOC_SP7021 || SOC_Q645
-	default y if SOC_SP7021 || SOC_Q645
+	depends on SOC_SP7021 || SOC_Q645 || SOC_SP7350
+	default y if SOC_SP7021 || SOC_Q645 || SOC_SP7350
 	help
 	  Generic PWM driver for Sunplus SP7021/Q645 SoC.
 

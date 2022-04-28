@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-2.0
 /*
  * PWM device driver for SUNPLUS SoCs
  *
@@ -53,6 +53,18 @@
 #define PWM_DUTY_BASE	0x001
 #define PWM_DD_SEL_BIT_SHIFT	16
 #define PWM_INV_BIT_SHIFT	8
+#elif defined(CONFIG_SOC_SP7350)
+#define DRV_NAME "sp7350-pwm"
+#define DESC_NAME "Sunplus SP7350 PWM Driver"
+#define ePWM_MAX		4
+#define ePWM_FREQ_MAX 0x3ffff
+#define ePWM_DUTY_MAX 0x00fff
+#define PWM_CONTROL0	0x000
+#define PWM_CONTROL1	0x020
+#define PWM_FREQ_BASE	0x011
+#define PWM_DUTY_BASE	0x001
+#define PWM_DD_SEL_BIT_SHIFT	16
+#define PWM_INV_BIT_SHIFT	8
 #endif
 
 struct sunplus_pwm {
@@ -73,7 +85,7 @@ static void sunplus_reg_init(void __iomem *p)
 #if defined(CONFIG_SOC_SP7021)
 	writel(0x0000, p + PWM_CONTROL0 * 4);
 	writel(0x0f0f, p + PWM_CONTROL1 * 4);
-#elif defined(CONFIG_SOC_Q645)
+#elif defined(CONFIG_SOC_Q645)  || defined(CONFIG_SOC_SP7350)
 	writel(0x00000000, p + PWM_CONTROL0 * 4);
 	writel(0x00000000, p + PWM_CONTROL1 * 4);
 #endif
@@ -362,7 +374,7 @@ static int sunplus_pwm_config(struct pwm_chip *chip,
 	return 0;
 }
 
-#if defined(CONFIG_SOC_Q645)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 static int sunplus_pwm_polarity(struct pwm_chip *chip,
 		struct pwm_device *pwm,
 		enum pwm_polarity polarity)
@@ -388,7 +400,7 @@ static const struct pwm_ops _sunplus_pwm_ops = {
 	.enable = sunplus_pwm_enable,
 	.disable = sunplus_pwm_disable,
 	.config = sunplus_pwm_config,
-#if defined(CONFIG_SOC_Q645)
+#if defined(CONFIG_SOC_Q645)  || defined(CONFIG_SOC_SP7350)
 	.set_polarity = sunplus_pwm_polarity,
 #endif
 	.owner = THIS_MODULE,
@@ -454,7 +466,6 @@ static int sunplus_pwm_probe(struct platform_device *pdev)
 		clk_disable_unprepare(pdata->clk);
 		return ret;
 	}
-
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	pm_runtime_get_sync(&pdev->dev);
@@ -485,6 +496,7 @@ static int sunplus_pwm_remove(struct platform_device *pdev)
 static const struct of_device_id sunplus_pwm_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-pwm", },
 	{ .compatible = "sunplus,q645-pwm", },
+	{ .compatible = "sunplus,sp7350-pwm", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, sunplus_pwm_dt_ids);
@@ -526,7 +538,7 @@ static struct platform_driver sunplus_pwm_driver = {
 	.driver		= {
 		.name	= DRV_NAME,
 		.owner	= THIS_MODULE,
-		.of_match_table = of_match_ptr(sunplus_pwm_dt_ids),
+		.of_match_table = sunplus_pwm_dt_ids,
 #ifdef CONFIG_PM
 		.pm		= &sunplus_pwm_pm_ops,
 #endif

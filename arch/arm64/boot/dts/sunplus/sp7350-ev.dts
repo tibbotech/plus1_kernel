@@ -492,10 +492,10 @@
 		status = "disabled";
 	};
 
-	pwm: pwm@f8008f80 {
+	pwm: pwm@f8800d80 {
 		#pwm-cells = <2>;
 		compatible = "sunplus,sp7350-pwm";
-		reg = <0x0 0xf8008f80 0x0 0x100>;
+		reg = <0x0 0xf8800d80 0x0 0x100>;
 		clocks = <&clkc DISP_PWM>;
 		resets = <&rstc RST_DISP_PWM>;
 		//pinctrl-names = "default";
