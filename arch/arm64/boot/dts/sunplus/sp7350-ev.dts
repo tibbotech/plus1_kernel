@@ -163,8 +163,7 @@
 		clkc: clkc@f8000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8800000 0x00 0x80>,  // MOON G0
-				<0x00 0xf8000000 0x00 0x280>;  // MOON G1 ~ G4
+			reg = <0x00 0xf8800000 0x00 0x280>;  // MOON G0
 			nvmem-cells = <&n78_clksel>;
 		};
 	};
@@ -379,7 +378,7 @@
 
 	uart0: serial@f8000900 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8800180 0x00 0x80>;
+		reg = <0x00 0xf8801900 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
@@ -877,7 +876,7 @@
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8000280 0x0 0x180>,
 		      <0x0 0xf80032e4 0x0 0x1c>,
-		      <0x0 0xf8000080 0x0 0x20>;
+		      <0x0 0xf8800080 0x0 0x20>;
 		reg-names = "gpioxt", "first", "moon1";
 		gpio-controller;
 		#gpio-cells = <2>;
