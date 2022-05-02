@@ -82,8 +82,8 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8 uio_pdrv_genirq.of_id=generic-uio-ev";
-		stdout-path = "serial0:921600n8";
+		bootargs = "console=ttyS0,115200 earlycon loglevel=8 uio_pdrv_genirq.of_id=generic-uio-ev";
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory@0 {
