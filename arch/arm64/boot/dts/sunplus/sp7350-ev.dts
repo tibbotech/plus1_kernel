@@ -58,8 +58,7 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
-		serial4 = &uart4;
-		serial5 = &uadbg;
+		serial5 = &ua2axi;
 		serial6 = &uart6;
 		serial7 = &uart7;
 		serial8 = &uart8;
@@ -431,19 +430,7 @@
 		status = "disabled";
 	};
 
-	uart4: serial@f8000880 {
-		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8000880 0x00 0x80>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UA4>;
-		resets = <&rstc RST_UA4>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart4_pins>;
-		status = "disabled";
-	};
-
-	uadbg: serial@f800f900 {
+	ua2axi: serial@f800f900 {
 		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -451,7 +438,7 @@
 		clocks = <&clkc UADBG>;
 		resets = <&rstc RST_UADBG>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&uadbg_pins>;
+		pinctrl-0 = <&ua2axi_pins>;
 		status = "disabled";
 	};
 
@@ -872,12 +859,12 @@
 	};
 #endif
 
-	pctl: pinctl@f8000280 {
+	pctl: pinctl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
-		reg = <0x0 0xf8000280 0x0 0x180>,
-		      <0x0 0xf80032e4 0x0 0x1c>,
-		      <0x0 0xf8800080 0x0 0x20>;
-		reg-names = "gpioxt", "first", "moon1";
+		reg = <0x0 0xf8800080 0x0 0x20>,
+		      <0x0 0xf8000280 0x0 0x180>,
+		      <0x0 0xf88032e4 0x0 0x1c>;
+		reg-names = "moon1", "gpioxt", "first";
 		gpio-controller;
 		#gpio-cells = <2>;
 
@@ -901,14 +888,9 @@
 			groups = "UART3";
 		};
 
-		uart4_pins: pinmux_uart4-pins {
-			function = "UART4";
-			groups = "UART4";
-		};
-
-		uadbg_pins: pinmux_uadbg-pins {
-			function = "UADBG";
-			groups = "UADBG";
+		ua2axi_pins: pinmux_ua2axi-pins {
+			function = "UA2AXI";
+			groups = "UA2AXI";
 		};
 
 		uart6_pins: pinmux_uart6-pins {
@@ -952,78 +934,70 @@
 			groups = "SPI_NAND1";
 		};
 
-		spim0_pins: pinmux_spim0-pins {
-			function = "SPI_MASTER0";
-			groups = "SPI_MASTER0";
+		spicombo0_pins: pinmux_spicombo0-pins {
+			function = "SPI_COMBO0";
+			groups = "SPI_COMBO0";
 		};
-		spis0_pins: pinmux_spis0-pins {
-			function = "SPI_SLAVE0";
-			groups = "SPI_SLAVE0";
+		spicombo1_pins: pinmux_spicombo1-pins {
+			function = "SPI_COMBO1";
+			groups = "SPI_COMBO1";
 		};
-		spim1_pins: pinmux_spim1-pins {
-			function = "SPI_MASTER1";
-			groups = "SPI_MASTER1";
+		spicombo2_pins: pinmux_spicombo2-pins {
+			function = "SPI_COMBO2";
+			groups = "SPI_COMBO2";
 		};
-		spis1_pins: pinmux_spis1-pins {
-			function = "SPI_SLAVE1";
-			groups = "SPI_SLAVE1";
+		spicombo3_pins: pinmux_spicombo3-pins {
+			function = "SPI_COMBO3";
+			groups = "SPI_COMBO3";
 		};
-		spim2_pins: pinmux_spim2-pins {
-			function = "SPI_MASTER2";
-			groups = "SPI_MASTER2";
+		spicombo4_pins: pinmux_spicombo4-pins {
+			function = "SPI_COMBO4";
+			groups = "SPI_COMBO4";
 		};
-		spis2_pins: pinmux_spis2-pins {
-			function = "SPI_SLAVE2";
-			groups = "SPI_SLAVE2";
-		};
-		spim3_pins: pinmux_spim3-pins {
-			function = "SPI_MASTER3";
-			groups = "SPI_MASTER3";
-		};
-		spis3_pins: pinmux_spis3-pins {
-			function = "SPI_SLAVE3";
-			groups = "SPI_SLAVE3";
-		};
-		spim4_pins: pinmux_spim4-pins {
-			function = "SPI_MASTER4";
-			groups = "SPI_MASTER4";
-		};
-		spis4_pins: pinmux_spis4-pins {
-			function = "SPI_SLAVE4";
-			groups = "SPI_SLAVE4";
-		};
-		spim5_pins: pinmux_spim5-pins {
-			function = "SPI_MASTER5";
-			groups = "SPI_MASTER5";
-		};
-		spis5_pins: pinmux_spis5-pins {
-			function = "SPI_SLAVE5";
-			groups = "SPI_SLAVE5";
+		spicombo5_pins: pinmux_spicombo5-pins {
+			function = "SPI_COMBO5";
+			groups = "SPI_COMBO5";
 		};
 
-		i2cm0_pins: pinmux_i2cm0-pins {
-			function = "I2C_MASTER0";
-			groups = "I2C_MASTER0";
+		i2ccombo0_pins: pinmux_i2ccombo0-pins {
+			function = "I2C_COMBO0";
+			groups = "I2C_COMBO0";
 		};
-		i2cm1_pins: pinmux_i2cm1-pins {
-			function = "I2C_MASTER1";
-			groups = "I2C_MASTER1";
+		i2ccombo1_pins: pinmux_i2ccombo1-pins {
+			function = "I2C_COMBO1";
+			groups = "I2C_COMBO1";
 		};
-		i2cm2_pins: pinmux_i2cm2-pins {
-			function = "I2C_MASTER2";
-			groups = "I2C_MASTER2";
+		i2ccombo2_pins: pinmux_i2ccombo2-pins {
+			function = "I2C_COMBO2";
+			groups = "I2C_COMBO2";
 		};
-		i2cm3_pins: pinmux_i2cm3-pins {
-			function = "I2C_MASTER3";
-			groups = "I2C_MASTER3";
+		i2ccombo3_pins: pinmux_i2ccombo3-pins {
+			function = "I2C_COMBO3";
+			groups = "I2C_COMBO3";
 		};
-		i2cm4_pins: pinmux_i2cm4-pins {
-			function = "I2C_MASTER4";
-			groups = "I2C_MASTER4";
+		i2ccombo4_pins: pinmux_i2ccombo4-pins {
+			function = "I2C_COMBO4";
+			groups = "I2C_COMBO4";
 		};
-		i2cm5_pins: pinmux_i2cm5-pins {
-			function = "I2C_MASTER5";
-			groups = "I2C_MASTER5";
+		i2ccombo5_pins: pinmux_i2ccombo5-pins {
+			function = "I2C_COMBO5";
+			groups = "I2C_COMBO5";
+		};
+		i2ccombo6_pins: pinmux_i2ccombo6-pins {
+			function = "I2C_COMBO6";
+			groups = "I2C_COMBO6";
+		};
+		i2ccombo7_pins: pinmux_i2ccombo7-pins {
+			function = "I2C_COMBO7";
+			groups = "I2C_COMBO7";
+		};
+		i2ccombo8_pins: pinmux_i2ccombo8-pins {
+			function = "I2C_COMBO8";
+			groups = "I2C_COMBO8";
+		};
+		i2ccombo9_pins: pinmux_i2ccombo9-pins {
+			function = "I2C_COMBO9";
+			groups = "I2C_COMBO9";
 		};
 
 		pwm_pins: pinmux_pwm-pins {

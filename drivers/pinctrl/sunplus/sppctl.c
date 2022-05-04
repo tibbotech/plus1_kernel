@@ -86,6 +86,7 @@ uint8_t sppctl_gmx_get(struct sppctl_pdata_t *_p, uint8_t _roff, uint8_t _boff, 
 
 void sppctl_pin_set(struct sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun)
 {
+#ifdef SUPPORT_PINMUX
 	uint32_t *r;
 	struct sppctl_reg_t x = { .m = 0x007F, .v = (uint16_t)_pin };
 	uint8_t func = (_fun >> 1) << 2;
@@ -102,21 +103,17 @@ void sppctl_pin_set(struct sppctl_pdata_t *_p, uint8_t _pin, uint8_t _fun)
 		     __func__, _pin, _fun, func, x.m, x.v);
 
 	r = (uint32_t *)&x;
-#ifdef SUPPORT_PINMUX
 	writel(*r, _p->baseF + func);
 #endif
 }
 
 uint8_t sppctl_fun_get(struct sppctl_pdata_t *_p,  uint8_t _fun)
 {
+#ifdef SUPPORT_PINMUX
 	uint8_t pin = 0x00;
 	uint8_t func = (_fun >> 1) << 2;
 	struct sppctl_reg_t *x;
-#ifdef SUPPORT_PINMUX
 	uint32_t r = readl(_p->baseF + func);
-#else
-	uint32_t r = 0;
-#endif
 
 	x = (struct sppctl_reg_t *)&r;
 	if (_fun % 2 == 0)
@@ -129,6 +126,9 @@ uint8_t sppctl_fun_get(struct sppctl_pdata_t *_p,  uint8_t _fun)
 		     __func__, _fun, func, x->m, x->v, pin);
 
 	return pin;
+#else
+	return 0;
+#endif
 }
 
 static void sppctl_fwload_cb(const struct firmware *_fw, void *_ctx)
