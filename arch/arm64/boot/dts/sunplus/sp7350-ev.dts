@@ -488,9 +488,9 @@
 		//pinctrl-0 = <&pwm_pins>;
 	};
 
-	rtc: rtc@f8003a00 {
+	rtc: rtc@f8801180 {
 		compatible = "sunplus,sp7350-rtc";
-		reg = <0x0 0xf8003a00 0x0 0x14>;
+		reg = <0x0 0xf8801180 0x0 0x30>;
 		reg-names = "rtc_reg";
 		clocks = <&clkc RTC>;
 		resets = <&rstc RST_RTC>;
