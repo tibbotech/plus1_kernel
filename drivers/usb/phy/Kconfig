@@ -7,6 +7,11 @@ menu "USB Physical Layer drivers"
 config SUNPLUS_USB_PHY
 	tristate "Sunplus USB PHY"
 	select NVMEM_SUNPLUS_OCOTP
+	
+config SUNPLUS_SYNOPSYS_USB3_PHY
+	bool "Sunplus synopsys USB3 PHY"
+	depends on SOC_Q645 && USB_DWC3
+	default y
 
 config USB_PHY
 	select EXTCON
