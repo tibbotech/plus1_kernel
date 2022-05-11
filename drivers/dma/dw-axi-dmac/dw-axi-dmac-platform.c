@@ -146,30 +146,68 @@ static inline u32 axi_chan_irq_read(struct axi_dma_chan *chan)
 static inline void axi_chan_disable(struct axi_dma_chan *chan)
 {
 	u32 val;
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	u32 dmac_chan_addr;
 
+	if (chan->id < DMAC_CHAN_NUM_THRESHOLD)
+		dmac_chan_addr = DMAC_CHEN_L;
+	else
+		dmac_chan_addr = DMAC_CHEN_H;
+
+	val = axi_dma_ioread32(chan->chip, dmac_chan_addr);
+	val &= ~(BIT(chan->id) << DMAC_CHAN_SHIFT);
+	val |=   BIT(chan->id) << DMAC_CHAN_WE_SHIFT;
+	axi_dma_iowrite32(chan->chip, dmac_chan_addr, val);
+#else
 	val = axi_dma_ioread32(chan->chip, DMAC_CHEN);
 	val &= ~(BIT(chan->id) << DMAC_CHAN_EN_SHIFT);
 	val |=   BIT(chan->id) << DMAC_CHAN_EN_WE_SHIFT;
 	axi_dma_iowrite32(chan->chip, DMAC_CHEN, val);
+#endif
 }
 
 static inline void axi_chan_enable(struct axi_dma_chan *chan)
 {
 	u32 val;
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	u32 dmac_chan_addr;
 
+	if (chan->id < DMAC_CHAN_NUM_THRESHOLD)
+		dmac_chan_addr = DMAC_CHEN_L;
+	else
+		dmac_chan_addr = DMAC_CHEN_H;
+
+	val = axi_dma_ioread32(chan->chip, dmac_chan_addr);
+	val |= BIT(chan->id) << DMAC_CHAN_SHIFT |
+	       BIT(chan->id) << DMAC_CHAN_WE_SHIFT;
+	axi_dma_iowrite32(chan->chip, dmac_chan_addr, val);
+#else
 	val = axi_dma_ioread32(chan->chip, DMAC_CHEN);
 	val |= BIT(chan->id) << DMAC_CHAN_EN_SHIFT |
 	       BIT(chan->id) << DMAC_CHAN_EN_WE_SHIFT;
 	axi_dma_iowrite32(chan->chip, DMAC_CHEN, val);
+#endif
 }
 
 static inline bool axi_chan_is_hw_enable(struct axi_dma_chan *chan)
 {
 	u32 val;
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	u32 dmac_chan_addr;
 
+	if (chan->id < DMAC_CHAN_NUM_THRESHOLD)
+		dmac_chan_addr = DMAC_CHEN_L;
+	else
+		dmac_chan_addr = DMAC_CHEN_H;
+
+	val = axi_dma_ioread32(chan->chip, dmac_chan_addr);
+
+	return !!(val & (BIT(chan->id) << DMAC_CHAN_SHIFT));
+#else
 	val = axi_dma_ioread32(chan->chip, DMAC_CHEN);
 
 	return !!(val & (BIT(chan->id) << DMAC_CHAN_EN_SHIFT));
+#endif
 }
 
 static void axi_dma_hw_init(struct axi_dma_chip *chip)
@@ -651,13 +689,28 @@ static int dma_chan_pause(struct dma_chan *dchan)
 	unsigned long flags;
 	unsigned int timeout = 20; /* timeout iterations */
 	u32 val;
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	u32 dmac_chan_addr;
+#endif
 
 	spin_lock_irqsave(&chan->vc.lock, flags);
 
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	if (chan->id < DMAC_CHAN_NUM_THRESHOLD)
+		dmac_chan_addr = DMAC_CHSUS_L;
+	else
+		dmac_chan_addr = DMAC_CHSUS_H;
+
+	val = axi_dma_ioread32(chan->chip, dmac_chan_addr);
+	val |= BIT(chan->id) << DMAC_CHAN_SHIFT |
+	       BIT(chan->id) << DMAC_CHAN_WE_SHIFT;
+	axi_dma_iowrite32(chan->chip, dmac_chan_addr, val);
+#else
 	val = axi_dma_ioread32(chan->chip, DMAC_CHEN);
 	val |= BIT(chan->id) << DMAC_CHAN_SUSP_SHIFT |
 	       BIT(chan->id) << DMAC_CHAN_SUSP_WE_SHIFT;
 	axi_dma_iowrite32(chan->chip, DMAC_CHEN, val);
+#endif
 
 	do  {
 		if (axi_chan_irq_read(chan) & DWAXIDMAC_IRQ_SUSPENDED)
@@ -679,11 +732,24 @@ static int dma_chan_pause(struct dma_chan *dchan)
 static inline void axi_chan_resume(struct axi_dma_chan *chan)
 {
 	u32 val;
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	u32 dmac_chan_addr;
 
+	if (chan->id < DMAC_CHAN_NUM_THRESHOLD)
+		dmac_chan_addr = DMAC_CHSUS_L;
+	else
+		dmac_chan_addr = DMAC_CHSUS_H;
+
+	val = axi_dma_ioread32(chan->chip, dmac_chan_addr);
+	val &= ~(BIT(chan->id) << DMAC_CHAN_SHIFT);
+	val |=	(BIT(chan->id) << DMAC_CHAN_WE_SHIFT);
+	axi_dma_iowrite32(chan->chip, dmac_chan_addr, val);
+#else
 	val = axi_dma_ioread32(chan->chip, DMAC_CHEN);
 	val &= ~(BIT(chan->id) << DMAC_CHAN_SUSP_SHIFT);
 	val |=  (BIT(chan->id) << DMAC_CHAN_SUSP_WE_SHIFT);
 	axi_dma_iowrite32(chan->chip, DMAC_CHEN, val);
+#endif
 
 	chan->is_paused = false;
 }

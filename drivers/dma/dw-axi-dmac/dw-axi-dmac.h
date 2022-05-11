@@ -18,7 +18,9 @@
 
 #include "../virt-dma.h"
 
-#define DMAC_MAX_CHANNELS	8
+#define DMAX_CHAN_NUM_OVER_EIGHT
+
+#define DMAC_MAX_CHANNELS	16
 #define DMAC_MAX_MASTERS	2
 #define DMAC_MAX_BLK_SIZE	0x200000
 
@@ -116,6 +118,7 @@ static inline struct axi_dma_chan *dchan_to_axi_dma_chan(struct dma_chan *dchan)
 
 #define COMMON_REG_LEN		0x100
 #define CHAN_REG_LEN		0x100
+#define DMAC_CHAN_NUM_THRESHOLD	16
 
 /* Common registers offset */
 #define DMAC_ID			0x000 /* R DMAC ID */
@@ -124,6 +127,10 @@ static inline struct axi_dma_chan *dchan_to_axi_dma_chan(struct dma_chan *dchan)
 #define DMAC_CHEN		0x018 /* R/W DMAC Channel Enable */
 #define DMAC_CHEN_L		0x018 /* R/W DMAC Channel Enable 00-31 */
 #define DMAC_CHEN_H		0x01C /* R/W DMAC Channel Enable 32-63 */
+#define DMAC_CHSUS_L		0x020 /* R/W DMAC Channel Suspend 00-31 */
+#define DMAC_CHSUS_H		0x024 /* R/W DMAC Channel Suspend 32-63 */
+#define DMAC_CHABORT_L		0x028 /* R/W DMAC Channel Abort 00-31 */
+#define DMAC_CHABORT_H		0x02C /* R/W DMAC Channel Abort 32-63 */
 #define DMAC_INTSTATUS		0x030 /* R DMAC Interrupt Status */
 #define DMAC_COMMON_INTCLEAR	0x038 /* W DMAC Interrupt Clear */
 #define DMAC_COMMON_INTSTATUS_ENA 0x040 /* R DMAC Interrupt Status Enable */
@@ -170,6 +177,9 @@ static inline struct axi_dma_chan *dchan_to_axi_dma_chan(struct dma_chan *dchan)
 
 #define DMAC_CHAN_SUSP_SHIFT		16
 #define DMAC_CHAN_SUSP_WE_SHIFT		24
+
+#define DMAC_CHAN_SHIFT			0
+#define DMAC_CHAN_WE_SHIFT		16
 
 /* CH_CTL_H */
 #define CH_CTL_H_ARLEN_EN		BIT(6)
