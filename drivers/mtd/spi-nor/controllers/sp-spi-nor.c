@@ -265,37 +265,45 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 	u32 value = 0;
 
 	dev_dbg(pspi->dev, "chip 0x%x freq %d", pspi->chipsel, pspi->clk_rate);
+
 	if (pspi->chipsel == 0)
 		value = A_CHIP;
 	else
 		value = B_CHIP;
-
-	switch (pspi->clk_rate) {
-	case 100000000:
-		value |= SPI_CLK_D_2;
-		break;
-	case 50000000:
+#if defined (CONFIG_SOC_Q645)
+	// SPI-NOR source clock = 360.0 MHz
+	if (pspi->clk_rate >= 90000000)
 		value |= SPI_CLK_D_4;
-		break;
-	case 33000000:
+	else if (pspi->clk_rate >= 60000000)
 		value |= SPI_CLK_D_6;
-		break;
-	case 25000000:
+	else if (pspi->clk_rate >= 45000000)
 		value |= SPI_CLK_D_8;
-		break;
-	case 12000000:
+	else if (pspi->clk_rate >= 22000000)
 		value |= SPI_CLK_D_16;
-		break;
-	case  8000000:
+	else if (pspi->clk_rate >= 15000000)
 		value |= SPI_CLK_D_24;
-		break;
-	case  6000000:
-	default:
+	else
 		value |= SPI_CLK_D_32;
-		break;
-	}
+#else
+	// SPI-NOR source clock = 202.3 MHz
+	if (pspi->clk_rate >= 100000000)
+		value |= SPI_CLK_D_2;
+	else if (pspi->clk_rate >= 50000000)
+		value |= SPI_CLK_D_4;
+	else if (pspi->clk_rate >= 33000000)
+		value |= SPI_CLK_D_6;
+	else if (pspi->clk_rate >= 25000000)
+		value |= SPI_CLK_D_8;
+	else if (pspi->clk_rate >= 12000000)
+		value |= SPI_CLK_D_16;
+	else if (pspi->clk_rate >=  8000000)
+		value |= SPI_CLK_D_24;
+	else
+		value |= SPI_CLK_D_32;
+#endif
 	spi_reg = (struct SPI_NOR_REG *)pspi->io_base;
 	writel(value, &spi_reg->spi_ctrl);
+
 #if (SP_SPINOR_DMA)
 	value = (0x2 << 22) | (0x16 << 16) | pspi->rw_timing_sel;
 		//2 = 200(MHz) * 10 / 1000 (minium val = 3), 0x16 = 105 * 200(MHz) / 1000.
@@ -486,7 +494,7 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
 			len = 0;
 		}
 
-		dev_dbg(pspi->dev, "w remain len  0x%x\n", len);
+		//dev_dbg(pspi->dev, "w remain len  0x%x\n", len);
 		if (temp_len > 0)
 			memcpy(pspi->buff.virt, data_in, temp_len); // copy data to dma
 
@@ -585,7 +593,7 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
 			len = 0;
 		}
 
-		dev_dbg(pspi->dev, "r remain len  0x%x\n", len);
+		//dev_dbg(pspi->dev, "r remain len  0x%x\n", len);
 		value =  (readl(&spi_reg->spi_cfg0) & CLEAR_DATA64_LEN) |  temp_len | DATA64_EN;
 		if (opcode == 5)//need to check
 			value |= SPI_TRS_MODE;
@@ -915,12 +923,10 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 
 static ssize_t sp_spi_nor_read(struct spi_nor *nor, loff_t from, size_t len, u_char *buf)
 {
-	struct sp_spi_nor *pspi = nor->priv;
 	u8 opcode = nor->read_opcode;
 	unsigned int offset = (unsigned int)from;
 
-	dev_dbg(pspi->dev, "%s\n", __func__);
-	dev_dbg(pspi->dev, "read cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
+	//dev_dbg(nor->dev, "read cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
 #if (SP_SPINOR_DMA)
 	sp_spi_nor_xfer_dmaread(nor, opcode, offset, 0x3, buf, len);
 #else
@@ -932,13 +938,10 @@ static ssize_t sp_spi_nor_read(struct spi_nor *nor, loff_t from, size_t len, u_c
 static ssize_t sp_spi_nor_write(struct spi_nor *nor, loff_t to,
 				size_t len, const u_char *buf)
 {
-	struct sp_spi_nor *pspi = nor->priv;
 	u8 opcode = nor->program_opcode;
 	unsigned int offset = (unsigned int)to;
 
-	dev_dbg(pspi->dev, "%s\n", __func__);
-
-	dev_dbg(pspi->dev, "write cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
+	//dev_dbg(nor->dev, "write cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
 #if (SP_SPINOR_DMA)
 	sp_spi_nor_xfer_dmawrite(nor, opcode, offset, 0x3, buf, len);
 #else
@@ -949,9 +952,7 @@ static ssize_t sp_spi_nor_write(struct spi_nor *nor, loff_t to,
 
 static int sp_spi_nor_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, size_t len)
 {
-	struct sp_spi_nor *pspi = nor->priv;
-
-	dev_dbg(pspi->dev, "%s cmd 0x%x len 0x%x\n", __func__, opcode, len);
+	//dev_dbg(nor->dev, "%s cmd 0x%x len 0x%x\n", __func__, opcode, len);
 #if (SP_SPINOR_DMA)
 	sp_spi_nor_xfer_dmaread(nor, opcode, 0, 0, buf, len);
 #else
@@ -962,13 +963,12 @@ static int sp_spi_nor_read_reg(struct spi_nor *nor, u8 opcode, u8 *buf, size_t l
 
 static int sp_spi_nor_write_reg(struct spi_nor *nor, u8 opcode, const u8 *buf, size_t len)
 {
-	struct sp_spi_nor *pspi = nor->priv;
 	const u8 *data_in = buf;
 	u32 addr = 0;
 	int addr_len = 0;
 	int data_len = 0;
 
-	dev_dbg(pspi->dev, "%s cmd 0x%x len 0x%x\n", __func__, opcode, len);
+	//dev_dbg(nor->dev, "%s cmd 0x%x len 0x%x\n", __func__, opcode, len);
 	switch (opcode) {
 	case SPINOR_OP_BE_4K:
 		addr_len = len;
@@ -1055,8 +1055,8 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 	pspi->buff.size = CFG_BUFF_MAX;
 	pspi->buff.virt = dma_alloc_coherent(dev, PAGE_ALIGN(pspi->buff.size),
 					     &pspi->buff.phys, GFP_DMA | GFP_KERNEL);
-	dev_dbg(pspi->dev, "phy 0x%x virt 0x%x size 0x%x\n", pspi->buff.phys,
-	       (int)pspi->buff.virt, pspi->buff.size);
+	//dev_dbg(pspi->dev, "phy 0x%x virt 0x%x size 0x%x\n", pspi->buff.phys,
+	//       (int)pspi->buff.virt, pspi->buff.size);
 	if (!pspi->buff.virt) {
 		ret = -ENOMEM;
 		dev_err(&pdev->dev, "spi nor:Failed to allocate dma\n");
@@ -1190,7 +1190,6 @@ static struct platform_driver sp_spi_nor_driver = {
 	.resume = sp_spi_nor_resume,
 	.driver = {
 		.name = "sp-spi-nor",
-		.owner = THIS_MODULE,
 		.of_match_table = sp_spi_nor_ids,
 	},
 };
