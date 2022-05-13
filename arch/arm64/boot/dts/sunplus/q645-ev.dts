@@ -598,7 +598,7 @@
 	spi_controller0: spi@f8002c80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002c80 0x0 0x80>, <0x0 0xf8002d00 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -607,7 +607,6 @@
 			     <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_0>;
-		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_0>;
 		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
@@ -618,7 +617,7 @@
 	spi_controller1: spi@f8002d80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002d80 0x0 0x80>, <0x0 0xf8002e00 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -627,7 +626,6 @@
 			     <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_1>;
-		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_1>;
 		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
@@ -638,7 +636,7 @@
 	spi_controller2: spi@f8002e80 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8002e80 0x0 0x80>, <0x0 0xf8002f00 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -658,7 +656,7 @@
 	spi_controller3: spi@f8004000 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004000 0x0 0x80>, <0x0 0xf8004080 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -667,7 +665,6 @@
 			     <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_3>;
-		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_3>;
 		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
@@ -678,7 +675,7 @@
 	spi_controller4: spi@f8004100 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004100 0x0 0x80>, <0x0 0xf8004180 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -687,7 +684,6 @@
 			     <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_4>;
-		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_4>;
 		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
@@ -698,7 +694,7 @@
 	spi_controller5: spi@f8004200 {
 		compatible = "sunplus,q645-spi-controller";
 		reg = <0x0 0xf8004200 0x0 0x80>, <0x0 0xf8004280 0x0 0x80>;
-		reg-names = "spi_master", "spi_slave";
+		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
 					  "master_risc",
@@ -707,7 +703,6 @@
 			     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_5>;
-		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_5>;
 		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";

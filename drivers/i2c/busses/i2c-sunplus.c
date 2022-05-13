@@ -795,6 +795,8 @@ static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_de
 	if (IS_ERR(spi2c->i2c_dma_regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_dma_regs), "regs get fail\n");
 
+	if (spi2c->mode == SP_I2C_DMA_POWER_SW) {
+
 	//spi2c->i2c_power_regs = devm_platform_ioremap_resource_byname(pdev, "i2cdmapower");
 	//if (IS_ERR(spi2c->i2c_power_regs))
 	//	spi2c->i2c_power_regs = 0;
@@ -807,6 +809,7 @@ static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_de
 	if (IS_ERR(spi2c->i2c_power_regs)){
 		spi2c->i2c_power_regs = 0;
 		dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_power_regs), "power regs get fail\\n");
+	}
 	}
 
 	spi2c->irq = platform_get_irq(pdev, 0);
@@ -1308,7 +1311,11 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	else
 		spi2c->i2c_clk_freq = SP_I2C_STD_FREQ * 1000;
 
+	dev_mode = of_device_get_match_data(&pdev->dev);
+	spi2c->mode = dev_mode->mode;
+	spi2c->total_port = dev_mode->total_port;
 	spi2c->dev = &pdev->dev;
+
 	ret = _sp_i2cm_get_resources(pdev, spi2c);
 	if (ret != SPI2C_SUCCESS)
 		return ret;
@@ -1339,9 +1346,6 @@ static int sp_i2c_probe(struct platform_device *pdev)
 
 	init_waitqueue_head(&spi2c->wait);
 
-	dev_mode = of_device_get_match_data(&pdev->dev);
-	spi2c->mode = dev_mode->mode;
-	spi2c->total_port = dev_mode->total_port;
 	p_adap = &spi2c->adap;
 	sprintf(p_adap->name, "%s%d", "sunplus-i2cm", device_id);
 	p_adap->algo = &sp_algorithm;
