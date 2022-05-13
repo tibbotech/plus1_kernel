@@ -259,8 +259,6 @@ static irqreturn_t sunplus_spi_master_irq(int irq, void *dev)
 	if (tx_len == 0 && total_len == 0)
 		return IRQ_NONE;
 
-	spin_lock_irq(&pspim->lock);
-	
 	if(pspim->dev_comp->ver ==1)
 		rx_cnt = FIELD_GET(SUNPLUS_RX_CNT_MASK, fd_status);
 	else
@@ -321,7 +319,7 @@ static irqreturn_t sunplus_spi_master_irq(int irq, void *dev)
 
 	if (isrdone)
 		complete(&pspim->isr_done);
-	spin_unlock_irq(&pspim->lock);
+
 	return IRQ_HANDLED;
 }
 
@@ -652,7 +650,6 @@ static int sunplus_spi_dma_transfer(struct spi_controller *ctlr,
 
 {
 	struct sunplus_spi_ctlr *pspim = spi_master_get_devdata(ctlr);
-	struct device *dev = pspim->dev;
 	int ret;
 	
 	sunplus_prep_transfer(ctlr);
@@ -669,7 +666,7 @@ static int sunplus_spi_dma_transfer(struct spi_controller *ctlr,
 		pspim->rx_sgl_len = sg_dma_len(pspim->rx_sgl);
 	}
 
-	sunplus_spi_master_fullduplex_dma(ctlr, xfer);
+	ret = sunplus_spi_master_fullduplex_dma(ctlr, xfer);
 	//spi_finalize_current_transfer(ctlr);
 	return ret;
 }
@@ -677,7 +674,6 @@ static int sunplus_spi_dma_transfer(struct spi_controller *ctlr,
 // spi master irq handler
 static irqreturn_t sunplus_spi_master_irq_dma(int _irq, void *dev)
 {
-	unsigned long flags;
 	struct sunplus_spi_ctlr *pspim = dev;
 	struct spi_transfer *xfer = pspim->cur_xfet;
 	struct spi_controller *ctlr = pspim->ctlr;

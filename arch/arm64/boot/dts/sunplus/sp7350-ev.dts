@@ -488,9 +488,9 @@
 		//pinctrl-0 = <&pwm_pins>;
 	};
 
-	rtc: rtc@f8003a00 {
+	rtc: rtc@f8801180 {
 		compatible = "sunplus,sp7350-rtc";
-		reg = <0x0 0xf8003a00 0x0 0x14>;
+		reg = <0x0 0xf8801180 0x0 0x30>;
 		reg-names = "rtc_reg";
 		clocks = <&clkc RTC>;
 		resets = <&rstc RST_RTC>;
@@ -510,6 +510,21 @@
 			interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 			datawidth = <0x20>;
 		};
+	};
+
+	dmac: dma-controller@f80fc000 {
+		compatible = "snps,axi-dma-1.01a";
+		reg = <0x00 0xf80fc000 0x00 0x10a0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
+		#dma-cells = <1>;
+		dma-channels = <16>;
+		snps,dma-masters = <2>;
+		snps,data-width = <3>;
+		snps,block-size = <4096 4096 4096 4096 4096 4096 4096 4096
+									4096 4096 4096 4096 4096 4096 4096 4096>;
+		snps,priority = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15>;
+		snps,axi-max-burst-len = <16>;
 	};
 
 	sp_spinor0: spinor@f8000b00 {

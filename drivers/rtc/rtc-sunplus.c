@@ -37,6 +37,7 @@
 #include <linux/of.h>
 #include <linux/ktime.h>
 #include <linux/io.h>
+#include <linux/delay.h>
 
 /* ---------------------------------------------------------------------------------------------- */
 #define FUNC_DEBUG() pr_debug("[RTC] Debug: %s(%d)\n", __func__, __LINE__)
@@ -292,7 +293,9 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	if (rtc->uie_rtctimer.enabled)
 		writel(0x13, &rtc_reg_ptr->rtc_ctrl);
 	else if (!rtc->aie_timer.enabled)
-		writel(0x1C, &rtc_reg_ptr->rtc_ctrl);
+		writel(0x10, &rtc_reg_ptr->rtc_ctrl);
+
+	udelay(10);
 
 	return 0;
 }
@@ -315,7 +318,7 @@ static int sp_rtc_alarm_irq_enable(struct device *dev, unsigned int enabled)
 	if (enabled)
 		writel(0x13, &rtc_reg_ptr->rtc_ctrl);
 	else if (!rtc->uie_rtctimer.enabled)
-		writel(0x1C, &rtc_reg_ptr->rtc_ctrl);
+		writel(0x10, &rtc_reg_ptr->rtc_ctrl);
 
 	return 0;
 }
