@@ -753,7 +753,7 @@
 		resets = <&rstc RST_SPIFL>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nor_pins>;
-		spi-max-frequency = <22000000>;
+		spi-max-frequency = <60000000>;
 		spi-chip-selection = <0>;
 		read-timing-selection = <0>;
 		write-timing-selection = <0>;
