@@ -992,7 +992,7 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		status = "disabled";
+		//status = "disabled";
 
 		usbdrd_dwc3_0: dwc3 {
 			compatible = "synopsys,dwc3";
@@ -1005,21 +1005,24 @@
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
-			//phy_type = "utmi_wide";
-			status = "disabled";
+			phy_type = "utmi_wide";
+			//status = "disabled";
 		};
 	};
 
 	u3phy0: uphy@f80bd000 {
 		compatible = "sunplus,q645-usb3-phy";
-		clocks = <&clkc U3PHY0>;
-		clock-names = "clkc_u3phy";
-		resets = <&rstc RST_U3PHY0>;
-		reset-names = "rstc_u3phy";
+		clocks = <&clkc U3PHY0>, <&clkc USB30C0>;
+		clock-names = "clkc_u3phy", "clkc_u3";
+		resets = <&rstc RST_U3PHY0>, <&rstc RST_USB30C0>;
+		reset-names = "rstc_u3phy","rstc_u3";
 		reg = <0x0 0xf80bd000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
-		status = "disabled";
+		pinctrl-names = "default";
+		pinctrl-0 = <&u3phy_pins>;
+		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
+		//status = "disabled";
 	};
 
 	usb3drd1: usb@f80af000 {
@@ -1375,6 +1378,10 @@
 		pwm_pins: pinmux_pwm-pins {
 			function = "PWM";
 			groups = "PWM";
+		};
+		
+		u3phy_pins: u3phy_type_c_pinmux_gpio-pins {
+			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		aud_dac_clk_pins: pinmux_aud_dac_clk-pins {
