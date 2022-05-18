@@ -94,7 +94,7 @@ static inline void set_field(u32 *valp, u32 field, u32 mask)
 }
 
 static int sp_get_register_base(struct platform_device *pdev,
-				     void **membase, const char *res_name)
+				     void **membase, const char *res_name, u8 share)
 {
 	struct resource *r;
 	void __iomem *p;
@@ -105,15 +105,45 @@ static int sp_get_register_base(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	p = devm_ioremap_resource(&pdev->dev, r);
-	if (IS_ERR(p)) {
-		dev_err(&pdev->dev, "devm_ioremap_resource failed!\n");
-		return PTR_ERR(p);
+	if (share) {
+		p = devm_ioremap(&pdev->dev, r->start, (r->end - r->start + 1));
+		if (IS_ERR(p)) {
+			dev_err(&pdev->dev, "devm_ioremap failed!\n");
+			return PTR_ERR(p);
+		}
+	} else {
+		p = devm_ioremap_resource(&pdev->dev, r);
+		if (IS_ERR(p)) {
+			dev_err(&pdev->dev, "devm_ioremap_resource failed!\n");
+			return PTR_ERR(p);
+		}
 	}
 
 	*membase = p;
 
 	return 0;
+}
+
+static void sp_ana_macro_cfg(struct sp_mipi_device *mipi, u8 on)
+{
+	void __iomem *reg_addr = mipi->moon3_regs + 0x64;
+	u32 val;
+
+	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
+
+	/* MIPI-CSI0/2 ports share analog macros with CPIO. Set G3.25
+	 * register to swich the analog macros for MIPI-CSI0/2 ports.
+	 */
+	if ((mipi->id == 0) || (mipi->id == 2)) {
+		val = readl(reg_addr);
+		if (mipi->id == 0)
+			set_field(&val, on, 0x1<<14);		/* MO_EN_MIPI0_RX */
+		else
+			set_field(&val, on, 0x1<<15);		/* MO_EN_MIPI2_RX */
+		val = val | 0xffff0000;
+		writel(val, reg_addr);
+		dev_info(mipi->dev, "Enable ANA macro for MIPI-CSI%d\n", mipi->id);
+	}
 }
 
 static void sp_mipicsi_lane_config(struct sp_mipi_device *mipi)
@@ -1849,10 +1879,19 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 	struct v4l2_fwnode_endpoint ep = { .bus_type = 0 };
 	char data_lanes[V4L2_FWNODE_CSI2_MAX_DATA_LANES * 2];
 	unsigned int i;
+	u32 id;
 	int ret;
 
 	np_source_ep_node = &source_ep_node;
 	np_source_node = &source_node;
+
+	/* Make sure MIPI-CSI id is present and sane */
+	ret = of_property_read_u32(np, "sunplus,id", &id);
+	if (ret) {
+		dev_err(mipi->dev, "%pOF: No sunplus,id property found\n", np);
+		return -EINVAL;
+	}
+	mipi->id = id;
 
 #if defined(MIPI_CSI_BIST)
 	return 0;
@@ -1938,11 +1977,15 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = sp_get_register_base(pdev, (void **)&mipi->mipicsi_regs, MIPICSI_REG_NAME);
+	ret = sp_get_register_base(pdev, (void **)&mipi->mipicsi_regs, MIPICSI_REG_NAME, 0);
 	if (ret)
 		return ret;
 
-	ret = sp_get_register_base(pdev, (void **)&mipi->csiiw_regs, CSIIW_REG_NAME);
+	ret = sp_get_register_base(pdev, (void **)&mipi->csiiw_regs, CSIIW_REG_NAME, 0);
+	if (ret)
+		return ret;
+
+	ret = sp_get_register_base(pdev, (void **)&mipi->moon3_regs, MOON3_REG_NAME, 1);
 	if (ret)
 		return ret;
 
@@ -2068,8 +2111,8 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_media_entity_cleanup;
 	}
 
-	dev_dbg(mipi->dev, "Device registered as %s\n",
-		video_device_node_name(mipi->vdev));
+	dev_info(mipi->dev, "Device MIPI-CSI%d registered as %s\n",
+		mipi->id, video_device_node_name(mipi->vdev));
 
 	/* Start creating the vb2 queues. */
 	q = &mipi->buffer_queue;
@@ -2097,6 +2140,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_media_entity_cleanup;
 
+	sp_ana_macro_cfg(mipi, 1);
 	sp_mipicsi_init(mipi);
 	sp_csiiw_init(mipi);
 
@@ -2116,6 +2160,7 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	return 0;
 
 err_cleanup:
+	sp_ana_macro_cfg(mipi, 0);
 	v4l2_async_notifier_cleanup(&mipi->notifier);
 err_media_entity_cleanup:
 	media_entity_cleanup(&mipi->vdev->entity);
@@ -2136,6 +2181,8 @@ err_kfree_mipi:
 static int sp_mipi_remove(struct platform_device *pdev)
 {
 	struct sp_mipi_device *mipi = platform_get_drvdata(pdev);
+
+	sp_ana_macro_cfg(mipi, 0);
 
 	video_device_release(mipi->vdev);
 	v4l2_device_unregister(&mipi->v4l2_dev);

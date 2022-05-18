@@ -22,6 +22,11 @@
 //#define ENABLE_DMATX2
 //#define ENABLE_DMATX3
 
+//#define IMX219_IN0
+//#define IMX219_IN1
+//#define IMX219_IN2
+//#define IMX219_IN3
+
 / {
 	model = "Sunplus Q645";
 	compatible = "sunplus,sp-q645";
@@ -153,6 +158,38 @@
 			reg = <0 0x1e000000 0 0x800000>;
 		};
 	};
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2cm0 */
+	imx219_0_clk: camera0-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2cm1 */
+	imx219_1_clk: camera1-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2cm2 */
+	imx219_2_clk: camera2-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
+	imx219_3_clk: camera3-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
 
 	clocks {
 		#address-cells = <2>;
@@ -523,6 +560,26 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2cm0_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2cm0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_0_clk>;
+
+			port {
+				imx219_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm1: i2cm@f8004700 {
@@ -537,6 +594,26 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2cm1_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2cm1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_1: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_1_clk>;
+
+			port {
+				imx219_1: endpoint {
+					remote-endpoint = <&csi2_1>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm2: i2cm@f8004800 {
@@ -551,6 +628,26 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2cm2_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2cm2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_2_clk>;
+
+			port {
+				imx219_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm3: i2cm@f8004900 {
@@ -565,6 +662,26 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2cm3_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_3: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_3_clk>;
+
+			port {
+				imx219_3: endpoint {
+					remote-endpoint = <&csi2_3>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm4: i2cm@f800fe00 {
@@ -1059,8 +1176,8 @@
 
 	mipicsirx0: mipicsirx@f8005280 {
 		compatible = "sunplus,q645-mipicsi-rx";
-		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>, <0x0 0xf8000180 0x0 0x80>;
+		reg-names = "mipicsi", "csiiw", "moon3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
@@ -1068,13 +1185,26 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		sunplus,id = <0>;
 		status = "disabled";
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2cm0 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_0: endpoint {
+				remote-endpoint = <&imx219_0>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx1: mipicsirx@f8005380 {
 		compatible = "sunplus,q645-mipicsi-rx";
-		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>, <0x0 0xf8000180 0x0 0x80>;
+		reg-names = "mipicsi", "csiiw", "moon3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
@@ -1082,13 +1212,26 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		sunplus,id = <1>;
 		status = "disabled";
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2cm1 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_1: endpoint {
+				remote-endpoint = <&imx219_1>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx2: mipicsirx@f8005480 {
 		compatible = "sunplus,q645-mipicsi-rx";
-		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>, <0x0 0xf8000180 0x0 0x80>;
+		reg-names = "mipicsi", "csiiw", "moon3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
@@ -1096,13 +1239,26 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		sunplus,id = <2>;
 		status = "disabled";
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2cm2 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_2: endpoint {
+				remote-endpoint = <&imx219_2>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx3: mipicsirx@f8005580 {
 		compatible = "sunplus,q645-mipicsi-rx";
-		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>, <0x0 0xf8000180 0x0 0x80>;
+		reg-names = "mipicsi", "csiiw", "moon3";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
@@ -1110,7 +1266,20 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		sunplus,id = <3>;
 		status = "disabled";
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_3: endpoint {
+				remote-endpoint = <&imx219_3>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	video_codec {

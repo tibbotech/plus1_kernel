@@ -22,6 +22,7 @@
 #define CSI_DRV_NAME		"sp_mipi_csi-rx"
 #define MIPICSI_REG_NAME	"mipicsi"
 #define CSIIW_REG_NAME		"csiiw"
+#define MOON3_REG_NAME		"moon3"
 
 #define mEXTENDED_ALIGNED(w, n)	((w%n) ? ((w/n)*n+n) : (w))
 #define MIN_BUFFERS		2
@@ -69,6 +70,7 @@ struct sp_mipi_device {
 	struct device	*dev;		/* parent device */
 	void __iomem	*mipicsi_regs;
 	void __iomem	*csiiw_regs;
+	void __iomem	*moon3_regs;
 	struct clk		*mipicsi_clk;
 	struct clk		*csiiw_clk;
 	struct reset_control	*mipicsi_rstc;
@@ -76,6 +78,7 @@ struct sp_mipi_device {
 	unsigned int	sequence;
 	struct list_head		dma_queue;		/* Queue of filled frames */
 	struct sp_mipi_buffer	*cur_frm;		/* Pointer pointing to current v4l2_buffer */
+	u32				id;			/* MIPI-CSI port ID */
 
 	struct v4l2_device		v4l2_dev;
 	struct video_device 	*vdev;
