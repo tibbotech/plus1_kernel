@@ -337,7 +337,7 @@ irqreturn_t sp_crypto_irq(int irq, void *dev_id)
 	u32 flag;
 
 	W(SECIF, secif); // clear int
-	pr_info("<%04x>", secif);
+	//pr_info("<%04x>", secif);
 
 	/* aes hash rsa may come at one irq */
 	flag = secif & (AES_TRB_IF | AES_ERF_IF | AES_DMA_IF | AES_CMD_RD_IF);
