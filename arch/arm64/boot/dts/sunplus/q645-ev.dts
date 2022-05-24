@@ -1104,21 +1104,24 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
-		status = "disabled";
-
+		clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
+		clock-names = "ref","bus_early","suspend";
+		resets = <&rstc RST_USB30C0>;
+		//status = "disabled";
+		
 		usbdrd_dwc3_0: dwc3 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80a1000 0x0 0xe000>;
-			clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
-			clock-names = "ref","bus_early","suspend";
-			resets = <&rstc RST_USB30C0>;
+			//clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
+			//clock-names = "ref","bus_early","suspend";
+			//resets = <&rstc RST_USB30C0>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
 			phy_type = "utmi_wide";
-			status = "disabled";
+			//status = "disabled";
 		};
 	};
 
@@ -1134,7 +1137,7 @@
 		//pinctrl-names = "default";
 		//pinctrl-0 = <&u3phy_pins>;
 		//typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	usb3drd1: usb@f80af000 {
