@@ -1084,7 +1084,9 @@
 		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
 	};
+	
 	audio: audio@0xf8001e00 {
 		compatible = "sunplus,Q645-audio";
 		reg = <0x00 0xf8001e00 0x00 0x700>;
@@ -1098,7 +1100,7 @@
 	};
 
 	usb3drd0: usb@f80a1000{
-		compatible = "sunplus,q645-dwcusb3";
+		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -1115,25 +1117,28 @@
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
-			//phy_type = "utmi_wide";
+			phy_type = "utmi_wide";
 			status = "disabled";
 		};
 	};
 
 	u3phy0: uphy@f80bd000 {
-		compatible = "sunplus,q645-usb3-phy";
-		clocks = <&clkc U3PHY0>;
-		clock-names = "clkc_u3phy";
+		compatible = "sunplus,usb3-phy";
+		clocks = <&clkc U3PHY0>, <&clkc USB30C0>;
+		clock-names = "clkc_u3phy", "clkc_u3";
 		resets = <&rstc RST_U3PHY0>;
 		reset-names = "rstc_u3phy";
 		reg = <0x0 0xf80bd000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&u3phy_pins>;
+		//typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
 	usb3drd1: usb@f80af000 {
-		compatible = "sunplus,q645-dwcusb3";
+		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -1156,9 +1161,9 @@
 	};
 
 	u3phy1: uphy@f80be000 {
-		compatible = "sunplus,q645-usb3-phy";
-		clocks = <&clkc U3PHY1>;
-		clock-names = "clkc_u3phy";
+		compatible = "sunplus,usb3-phy";
+		clocks = <&clkc U3PHY1>, <&clkc USB30C1>;
+		clock-names = "clkc_u3phy", "clkc_u3";
 		resets = <&rstc RST_U3PHY1>;
 		reset-names = "rstc_u3phy";
 		reg = <0x0 0xf80be000 0x0 0x80>;
