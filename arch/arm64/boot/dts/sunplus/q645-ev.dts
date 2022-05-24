@@ -974,7 +974,9 @@
 		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
 	};
+	
 	audio: audio@0xf8001e00 {
 		compatible = "sunplus,Q645-audio";
 		reg = <0x00 0xf8001e00 0x00 0x700>;
@@ -988,7 +990,7 @@
 	};
 
 	usb3drd0: usb@f80a1000{
-		compatible = "sunplus,q645-dwcusb3";
+		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
@@ -1014,14 +1016,14 @@
 		compatible = "sunplus,q645-usb3-phy";
 		clocks = <&clkc U3PHY0>, <&clkc USB30C0>;
 		clock-names = "clkc_u3phy", "clkc_u3";
-		resets = <&rstc RST_U3PHY0>, <&rstc RST_USB30C0>;
-		reset-names = "rstc_u3phy","rstc_u3";
+		resets = <&rstc RST_U3PHY0>;
+		reset-names = "rstc_u3phy";
 		reg = <0x0 0xf80bd000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&u3phy_pins>;
-		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
+		//pinctrl-names = "default";
+		//pinctrl-0 = <&u3phy_pins>;
+		//typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
 		//status = "disabled";
 	};
 
@@ -1054,7 +1056,7 @@
 		clock-names = "clkc_u3phy";
 		resets = <&rstc RST_U3PHY1>;
 		reset-names = "rstc_u3phy";
-		reg = <0x0 0xf80be000 0x0 0x80>;
+		reg = <0x0 0xf80be000 0x0 0x80>, <0x00 0xf8000000 0x00 0x200>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
@@ -1378,10 +1380,6 @@
 		pwm_pins: pinmux_pwm-pins {
 			function = "PWM";
 			groups = "PWM";
-		};
-		
-		u3phy_pins: u3phy_type_c_pinmux_gpio-pins {
-			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		aud_dac_clk_pins: pinmux_aud_dac_clk-pins {
