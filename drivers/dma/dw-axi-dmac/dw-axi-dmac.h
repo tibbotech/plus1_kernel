@@ -237,7 +237,17 @@ enum {
 #define CH_CTL_L_SRC_MAST		BIT(0)
 
 /* CH_CFG_H */
+#define DST_OSR_LMT			27
+#define SRC_OSR_LMT			23
+
+#define DST_OSR_LMT_VALUE		15
+#define SRC_OSR_LMT_VALUE		15
+
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+#define CH_CFG_H_PRIORITY_POS		15
+#else
 #define CH_CFG_H_PRIORITY_POS		17
+#endif
 #define CH_CFG_H_HS_SEL_DST_POS		4
 #define CH_CFG_H_HS_SEL_SRC_POS		3
 enum {

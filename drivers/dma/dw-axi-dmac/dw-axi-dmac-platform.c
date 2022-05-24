@@ -327,10 +327,20 @@ static void axi_chan_block_xfer_start(struct axi_dma_chan *chan,
 	       DWAXIDMAC_MBLK_TYPE_LL << CH_CFG_L_SRC_MULTBLK_TYPE_POS);
 	axi_chan_iowrite32(chan, CH_CFG_L, reg);
 
+#ifdef DMAX_CHAN_NUM_OVER_EIGHT
+	reg = (DST_OSR_LMT_VALUE << DST_OSR_LMT |
+	       SRC_OSR_LMT_VALUE << SRC_OSR_LMT |
+	       DWAXIDMAC_TT_FC_MEM_TO_MEM_DMAC << CH_CFG_H_TT_FC_POS |
+	       priority << CH_CFG_H_PRIORITY_POS |
+	       DWAXIDMAC_HS_SEL_HW << CH_CFG_H_HS_SEL_DST_POS |
+	       DWAXIDMAC_HS_SEL_HW << CH_CFG_H_HS_SEL_SRC_POS);
+#else
 	reg = (DWAXIDMAC_TT_FC_MEM_TO_MEM_DMAC << CH_CFG_H_TT_FC_POS |
 	       priority << CH_CFG_H_PRIORITY_POS |
 	       DWAXIDMAC_HS_SEL_HW << CH_CFG_H_HS_SEL_DST_POS |
 	       DWAXIDMAC_HS_SEL_HW << CH_CFG_H_HS_SEL_SRC_POS);
+#endif
+
 	axi_chan_iowrite32(chan, CH_CFG_H, reg);
 
 	write_chan_llp(chan, first->vd.tx.phys | lms);

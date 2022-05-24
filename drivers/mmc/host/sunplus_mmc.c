@@ -278,6 +278,10 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 	case MMC_TIMING_MMC_HS200:
 		timing_name = "mmc HS200";
 		break;
+	case MMC_TIMING_MMC_HS400:
+		host->ddr_enabled = 1;
+		timing_name = "mmc HS400";
+		break;
 	default:
 		timing_name = "invalid";
 		hs_en = 0;
