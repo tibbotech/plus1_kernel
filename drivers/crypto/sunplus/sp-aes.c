@@ -128,7 +128,7 @@ static void dump_sglist(struct scatterlist *sglist, int count)
 	int i;
 	struct scatterlist *sg;
 
-	pr_info("sglist: %p\n", sglist);
+	pr_info("sglist: %px\n", sglist);
 	for_each_sg(sglist, sg, count, i) {
 		pr_info("\t%08x (%08x)\n", sg_dma_address(sg), sg_dma_len(sg));
 	}
@@ -437,14 +437,15 @@ EXPORT_SYMBOL(sp_aes_init);
 void sp_aes_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
+	struct sp_crypto_reg *reg = dev->reg;
 	struct trb_ring_s *ring = AES_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER
 	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n", __func__,
-		flag, dev->reg->AES_ER, dev->reg->AESDMA_CRCR, ring->trb_sem.count/*kfifo_len(&ring->f)*/);
+		flag, reg->AES_ER, reg->AESDMA_CRCR, ring->trb_sem.count/*kfifo_len(&ring->f)*/);
 #else
 	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n", __func__,
-		flag, dev->reg->AES_ER, dev->reg->AESDMA_CRCR);
+		flag, reg->AES_ER, reg->AESDMA_CRCR);
 #endif
 	if (flag & AES_TRB_IF) { // autodma/trb done
 		struct trb_s *trb = ring->head;
@@ -476,8 +477,8 @@ void sp_aes_irq(void *devid, u32 flag)
 	}
 #ifdef USE_ERF
 	if (flag & AES_ERF_IF) { // event ring full
-		SP_CRYPTO_ERR("\n!!! %08x %08x\n", dev->reg->AESDMA_ERBAR, dev->reg->AESDMA_ERDPR);
-		dev->reg->AESDMA_RCSR |= AUTODMA_RCSR_ERF; // clear event ring full
+		SP_CRYPTO_ERR("\n!!! %08x %08x\n", reg->AESDMA_ERBAR, reg->AESDMA_ERDPR);
+		reg->AESDMA_RCSR |= AUTODMA_RCSR_ERF; // clear event ring full
 	}
 #endif
 	SP_CRYPTO_INF("\n");

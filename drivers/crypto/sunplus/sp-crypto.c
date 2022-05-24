@@ -11,8 +11,6 @@
 #include <linux/reset.h>
 #include <linux/interrupt.h>
 #include <linux/of_platform.h>
-#include <linux/io.h>
-#include <mach/io_map.h>
 
 #include "sp-crypto.h"
 #include "sp-aes.h"
@@ -34,7 +32,7 @@ void dump_buf(u8 *buf, u32 len)
 	char ss[52] = "";
 	u32 i = 0, j;
 
-	pr_info("buf:%p, len:%d\n", buf, len);
+	pr_info("buf:%px, len:%d\n", buf, len);
 	while (i < len) {
 		j = i & 0x0F;
 		sprintf(ss + j * 3, "%02x%c", buf[i], s[j]);
@@ -55,19 +53,19 @@ EXPORT_SYMBOL(dump_buf);
 
 static char *print_trb(char *p, struct trb_s *trb)
 {
-	OUT("trb ========== %p\n", trb);
+	OUT("trb ========== %px\n", trb);
 	OUT(" c:0x%x\n", trb->c);
 	OUT("cc:0x%x\n", trb->cc);
 	OUT("tc:0x%x\n", trb->tc);
 	OUT("ioc:0x%x\n", trb->ioc);
 	OUT("type:0x%x\n", trb->type);
 	OUT("size:0x%x\n", trb->size);
-	OUT("sptr:0x%0x\n", trb->sptr);
-	OUT("dptr:0x%0x\n", trb->dptr);
+	OUT("sptr:%px\n", (void *)trb->sptr);
+	OUT("dptr:%px\n", (void *)trb->dptr);
 	OUT("mode:0x%x\n", trb->mode);
-	OUT("iptr:0x%x\n", trb->iptr);
-	OUT("kptr:0x%x\n", trb->kptr);
-	OUT("priv:%p\n", trb->priv);
+	OUT("iptr:%px\n", (void *)trb->iptr);
+	OUT("kptr:%px\n", (void *)trb->kptr);
+	OUT("priv:%px\n", trb->priv);
 
 	return p;
 }
@@ -84,8 +82,8 @@ static char *print_hw(char *p, struct trb_s *trb)
 	OUT("AES_ER   : %08x\n", R(AES_ER));
 	OUT("AES_CRCR : %08x\n", R(AESDMA_CRCR));
 	OUT("sem.count: %d\n", ring->trb_sem.count);
-	OUT("head     : %p\n", ring->head);
-	OUT("tail     : %p\n", ring->tail);
+	OUT("head     : %px\n", ring->head);
+	OUT("tail     : %px\n", ring->tail);
 	OUT("triggers : %d\n", ring->trigger_count);
 	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
@@ -106,8 +104,8 @@ static char *print_hw(char *p, struct trb_s *trb)
 	OUT("HASH_ER  : %08x\n", R(HASH_ER));
 	OUT("HAHS_CRCR: %08x\n", R(HASHDMA_CRCR));
 	OUT("sem.count: %d\n", ring->trb_sem.count);
-	OUT("head     : %p\n", ring->head);
-	OUT("tail     : %p\n", ring->tail);
+	OUT("head     : %px\n", ring->head);
+	OUT("tail     : %px\n", ring->tail);
 	OUT("triggers : %d\n", ring->trigger_count);
 	OUT("irqs     : %d\n", ring->irq_count);
 #ifdef TRACE_WAIT_ORDER
@@ -145,10 +143,7 @@ static int hwcfg_set(const char *val, const struct kernel_param *kp)
 	int en_aes = -1, en_hash = -1, pr = 1;
 	int ret;
 
-	ret = sscanf(val, "%d %d %d", &en_aes, &en_hash, &pr);
-	if (ret)
-		return ret;
-
+	sscanf(val, "%d %d %d", &en_aes, &en_hash, &pr);
 	if (en_aes >= 0) {
 		if (en_aes > 1)
 			en_aes = 1 - f_aes; // toggle
@@ -213,7 +208,7 @@ int crypto_ctx_exec(struct crypto_ctx_s *ctx)
 			WR(HASHDMA_RTR, | AUTODMA_TRIGGER);		// trigger autodma run
 		}
 
-		//if (!(ctx->mode & M_FINAL))
+		if (!(ctx->mode & M_FINAL))
 		{ // busy-waiting, can't sleep in hash //update
 			while (!ctx->done)
 				cpu_relax(); // TODO: handle timeout
@@ -342,7 +337,7 @@ irqreturn_t sp_crypto_irq(int irq, void *dev_id)
 	u32 flag;
 
 	W(SECIF, secif); // clear int
-	//pr_info("<%04x>", secif);
+	pr_info("<%04x>", secif);
 
 	/* aes hash rsa may come at one irq */
 	flag = secif & (AES_TRB_IF | AES_ERF_IF | AES_DMA_IF | AES_CMD_RD_IF);
@@ -441,23 +436,16 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	struct sp_crypto_reg *reg;
 	struct resource *res_irq;
 	struct trb_ring_s *ring;
-	u32 phy_addr;
+	dma_addr_t phy_addr;
 	struct sp_crypto_dev *dev = sp_dd_tb;//platform_get_drvdata(pdev);
-	struct resource *res_mem;
-	void __iomem *membase;
 	int ret = 0;
 
 	SP_CRYPTO_TRACE();
 
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res_mem)
-		return -ENODEV;
+	dev->reg = devm_platform_ioremap_resource(pdev, 0);
+	if (!dev->reg)
+		return -ENXIO;
 
-	membase = devm_ioremap_resource(&pdev->dev, res_mem);
-	if (IS_ERR(membase))
-		return PTR_ERR(membase);
-
-	dev->reg = membase;
 	dev->device = &pdev->dev;
 
 	res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -466,6 +454,7 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	dev->irq = res_irq->start;
 
+#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	dev->clk = devm_clk_get(&pdev->dev, NULL);
 	ERR_OUT(dev->clk, goto out0, "get clk");
 	ret = clk_prepare_enable(dev->clk);
@@ -476,10 +465,11 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	ERR_OUT(dev->clk, goto out1, "get reset_control");
 	ret = reset_control_deassert(dev->rstc);
 	ERR_OUT(dev->clk, goto out1, "deassert reset_control");
+#endif
 
 	platform_set_drvdata(pdev, dev);
 	reg = dev->reg;
-	SP_CRYPTO_INF("SP_CRYPTO_ENGINE @ %p =================\n", reg);
+	SP_CRYPTO_INF("SP_CRYPTO_ENGINE @ %px =================\n", reg);
 
 	/////////////////////////////////////////////////////////////////////////////////
 
@@ -508,9 +498,9 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	W(HASHDMA_RCSR, HASH_EVENT_RING_SIZE - 1);
 	WR(HASHDMA_RCSR, | AUTODMA_RCSR_ERF);
 	WR(HASHDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: HW issue, autodma enable must be alone
-	SP_CRYPTO_INF("HASH_RING === VA:%p PA:%08x\n", ring->trb, phy_addr);
+	SP_CRYPTO_INF("HASH_RING === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
 	SP_CRYPTO_INF("HASH_RCSR: %08x\n", R(HASHDMA_RCSR));
-	SP_CRYPTO_INF("HASH_RING: %08x %d\n", phy_addr, ring->trb_sem.count);
+	SP_CRYPTO_INF("HASH_RING: %px %d\n", (void *)phy_addr, ring->trb_sem.count);
 	SP_CRYPTO_INF("HASH_CR  : %08x\n", R(HASH_CR));
 	SP_CRYPTO_INF("HASH_ER  : %08x\n", R(HASH_ER));
 
@@ -529,9 +519,9 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	W(AESDMA_RCSR, AES_EVENT_RING_SIZE - 1);
 	WR(AESDMA_RCSR, | AUTODMA_RCSR_ERF);
 	WR(AESDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: same as above
-	SP_CRYPTO_INF("AES_RING  === VA:%p PA:%08x\n", ring->trb, phy_addr);
+	SP_CRYPTO_INF("AES_RING  === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
 	SP_CRYPTO_INF("AES_RCSR : %08x\n", R(AESDMA_RCSR));
-	SP_CRYPTO_INF("AES_RING : %08x %d\n", phy_addr, ring->trb_sem.count);
+	SP_CRYPTO_INF("AES_RING : %px %d\n", (void *)phy_addr, ring->trb_sem.count);
 	SP_CRYPTO_INF("AES_CR   : %08x\n", R(AES_CR));
 	SP_CRYPTO_INF("AES_ER   : %08x\n", R(AES_ER));
 
@@ -554,10 +544,12 @@ out4:
 out3:
 	trb_ring_free(HASH_RING(dev));
 out2:
+#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	reset_control_assert(dev->rstc);
 out1:
 	clk_disable_unprepare(dev->clk);
 out0:
+#endif
 	return ret;
 }
 
@@ -581,14 +573,17 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	/* free resource */
 	trb_ring_free(AES_RING(dev));
 	trb_ring_free(HASH_RING(dev));
+#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	reset_control_assert(dev->rstc);
 	clk_disable_unprepare(dev->clk);
+#endif
 
 	return 0;
 }
 
 static const struct of_device_id sp_crypto_of_match[] = {
 	{ .compatible = "sunplus,sp7021-crypto" },
+	{ .compatible = "sunplus,sp7350-crypto" },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_crypto_of_match);
@@ -625,7 +620,7 @@ static int __init sp_crypto_module_init(void)
 		platform_device_add(pdev);
 
 		SP_CRYPTO_INF("SP_CRYPTO_ENGINE_%d =================\n", i);
-		SP_CRYPTO_INF("reg     : %p\n", sp_dd_tb[i].reg);
+		SP_CRYPTO_INF("reg     : %px\n", sp_dd_tb[i].reg);
 		SP_CRYPTO_INF("regsize : %d\n", sizeof(struct sp_crypto_reg));
 	}
 

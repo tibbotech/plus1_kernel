@@ -177,8 +177,10 @@ struct sp_crypto_dev {
 	u32 irq;
 	u32 version;
 	u32 devid;
+#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	struct clk *clk;
 	struct reset_control *rstc;
+#endif
 	struct device *device;
 #ifdef USE_REF
 	atomic_t rsa_ref_cnt;	/*reference count */
@@ -499,14 +501,15 @@ struct sp_crypto_reg {
 /* funciton  */
 #define ERR_OUT(err, goto_label, info, ...) \
 do { \
-	if (IS_ERR((void *)(err))) { \
-		ret = PTR_ERR((void *)(err)); \
+	void *_err = (void *)((unsigned long)(err)); \
+	if (IS_ERR(_err)) { \
+		ret = PTR_ERR(_err); \
 		SP_CRYPTO_ERR("ERR(%d) @ %s(%d): "info"\n", ret, __func__, __LINE__, ##__VA_ARGS__); \
 		goto_label; \
 	} \
 } while (0)
 
-//#define SP_CRYPTO_TRACE()  pr_debug("%s:%d\n", __func__, __LINE__)
+//#define SP_CRYPTO_TRACE()  pr_info("%s:%d\n", __func__, __LINE__)
 #define SP_CRYPTO_TRACE()
 #define SP_CRYPTO_ERR(fmt, ...)  pr_err(fmt, ##__VA_ARGS__)
 #define SP_CRYPTO_WAR(fmt, ...)  pr_warn(fmt, ##__VA_ARGS__)

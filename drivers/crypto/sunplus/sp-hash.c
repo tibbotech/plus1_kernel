@@ -334,7 +334,7 @@ static int sp_shash_init(struct shash_desc *desc)
 		mutex_lock(&HASH_RING(ctx0->dd)->lock);
 	}
 
-	//SP_CRYPTO_INF("sp_shash_init: %08x %d %d --- %p %p %p\n", ctx->base.mode, ctx->digest_len, ctx->block_size, ctx->buf, ctx->block, ctx->base.mode == M_GHASH ? ctx->key : NULL);
+	//SP_CRYPTO_INF("sp_shash_init: %08x %d %d --- %px %px %px\n", ctx->base.mode, ctx->digest_len, ctx->block_size, ctx->buf, ctx->block, ctx->base.mode == M_GHASH ? ctx->key : NULL);
 
 	return 0;
 }
@@ -479,14 +479,15 @@ EXPORT_SYMBOL(sp_hash_init);
 void sp_hash_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
+	struct sp_crypto_reg *reg = dev->reg;
 	struct trb_ring_s *ring = HASH_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER
 	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x %d\n",
-		__func__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR, kfifo_len(&ring->f));
+		__func__, flag, reg->HASH_ER, reg->HASHDMA_CRCR, kfifo_len(&ring->f));
 #else
 	SP_CRYPTO_INF(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> %s:%08x %08x %08x\n",
-		__func__, flag, dev->reg->HASH_ER, dev->reg->HASHDMA_CRCR);
+		__func__, flag, reg->HASH_ER, reg->HASHDMA_CRCR);
 #endif
 	if (flag & HASH_TRB_IF) { // autodma/trb done
 		struct trb_s *trb = ring->head;
@@ -518,8 +519,8 @@ void sp_hash_irq(void *devid, u32 flag)
 	}
 #ifdef USE_ERF
 	if (flag & HASH_ERF_IF) { // event ring full
-		SP_CRYPTO_ERR("\n!!! %08x %08x\n", dev->reg->HASHDMA_ERBAR, dev->reg->HASHDMA_ERDPR);
-		dev->reg->HASHDMA_RCSR |= AUTODMA_RCSR_ERF; // clear event ring full
+		SP_CRYPTO_ERR("\n!!! %08x %08x\n", reg->HASHDMA_ERBAR, reg->HASHDMA_ERDPR);
+		reg->HASHDMA_RCSR |= AUTODMA_RCSR_ERF; // clear event ring full
 	}
 #endif
 	SP_CRYPTO_INF("\n");

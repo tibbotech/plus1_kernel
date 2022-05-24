@@ -725,7 +725,7 @@ static int rsa_random_test_case(void *para)
 	mode = kmalloc(256, GFP_KERNEL);
 
 	pr_info("[%d]\tkeypair\te1bits\te2bits\tnbits\tA(bits)\t     hw_enc     hw_dec     sw_enc     sw_dec\n", pid);
-	i = para ? (int)para : ARRAY_SIZE(rsa_keyparit);
+	i = para ? *(int *)para : ARRAY_SIZE(rsa_keyparit);
 	j = 0;
 	while (i-- && !rsa_tt_stop) {
 		u32 e1_pure_len, e2_pure_len;
@@ -884,12 +884,13 @@ static void testcase(int i)
 
 static void rsa_mt_test(int t)
 {
+	static int loops = -1;
 	int i;
 
 	for (i = 0; i < t; i++)
-		kthread_run(rsa_random_test_case, (void *)-1, "rsa_tt%d", i);
+		kthread_run(rsa_random_test_case, &loops, "rsa_tt%d", i);
 
-	rsa_random_test_case((void *)-1);
+	rsa_random_test_case(&loops);
 
 	rsa_tt_stop = 1;
 }

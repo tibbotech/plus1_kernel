@@ -15,10 +15,15 @@ source "drivers/crypto/allwinner/Kconfig"
 
 config CRYPTO_DEV_SP
 	tristate "Support for Sunplus Crypto Engine"
-	depends on SOC_SP7021
+	depends on SOC_SP7021 || SOC_SP7350
 	select CRYPTO_BLKCIPHER
-	select CRYPRO_ECB
-	select MPILIB
+	select CRYPTO_SKCIPHER2
+	select CRYPTO_GCM
+	select CRYPTO_CBC
+	select CRYPTO_CTR
+	select CRYPTO_ECB
+	select CRYPTO_HMAC
+	select CRYPTO_SHA1
 	help
 	  Say 'Y' to support Sunplus AES/SHA3/HASH/RSA acceletor.
 	  If unsure say M. The compiled module will be
@@ -27,9 +32,12 @@ config CRYPTO_DEV_SP
 config CRYPTO_DEV_SP_TEST
 	bool "Sunplus Crypto Engine test code"
 	depends on CRYPTO_DEV_SP
+	select CRYPTO_AES
+	select CRYPTO_RSA
+	select CRYPTO_GHASH
 	select CRYPTO_MD5
-	select CRYPTO_SHA1
 	select CRYPTO_SHA3
+	select MPILIB
 	help
 	  echo <test_id> > /sys/module/spcrypto/parameters/test
 	  test_id
@@ -47,7 +55,7 @@ config CRYPTO_DEV_PADLOCK
 	  (so called VIA PadLock ACE, Advanced Cryptography Engine)
 	  that provides instructions for very fast cryptographic
 	  operations with supported algorithms.
-	  
+
 	  The instructions are used only when the CPU supports them.
 	  Otherwise software encryption is used.
 
