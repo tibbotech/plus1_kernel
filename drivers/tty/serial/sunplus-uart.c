@@ -1437,14 +1437,12 @@ static void sunplus_uart_ops_poll_put_char(struct uart_port *port,
 static int sunplus_uart_ops_poll_get_char(struct uart_port *port)
 {
 	unsigned int status;
-	unsigned char data;
 
-	do {
-		status = sp_uart_get_line_status(port->membase);
-	} while (!(status & SP_UART_LSR_RX));
-
-	data = sp_uart_get_char(port->membase);
-	return (int)data;
+	status = sp_uart_get_line_status(port->membase);
+	if (status & SP_UART_LSR_RX)
+		return sp_uart_get_char(port->membase);
+	else
+		return NO_POLL_CHAR;
 }
 
 #endif /* CONFIG_CONSOLE_POLL */
