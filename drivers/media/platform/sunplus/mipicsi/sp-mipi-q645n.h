@@ -48,8 +48,9 @@
 struct sp_mipi_format {
 	u32 fourcc;
 	u32 mbus_code;
-	u8	bpp;
-	u8	sol_sync;	/* sync of start of line */
+	u8 bpp;			/* Bits per pixel */
+	u8 bpc;			/* Bits per color channel */
+	u8 csi_dt;		/* CSI data type in DI byte */
 };
 
 struct sp_mipi_framesize {

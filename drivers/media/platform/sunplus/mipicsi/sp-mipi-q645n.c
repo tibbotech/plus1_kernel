@@ -94,7 +94,7 @@ static inline void set_field(u32 *valp, u32 field, u32 mask)
 }
 
 static int sp_get_register_base(struct platform_device *pdev,
-				     void **membase, const char *res_name, u8 share)
+				     void **membase, const char *res_name)
 {
 	struct resource *r;
 	void __iomem *p;
@@ -105,45 +105,15 @@ static int sp_get_register_base(struct platform_device *pdev,
 		return -ENODEV;
 	}
 
-	if (share) {
-		p = devm_ioremap(&pdev->dev, r->start, (r->end - r->start + 1));
-		if (IS_ERR(p)) {
-			dev_err(&pdev->dev, "devm_ioremap failed!\n");
-			return PTR_ERR(p);
-		}
-	} else {
-		p = devm_ioremap_resource(&pdev->dev, r);
-		if (IS_ERR(p)) {
-			dev_err(&pdev->dev, "devm_ioremap_resource failed!\n");
-			return PTR_ERR(p);
-		}
+	p = devm_ioremap_resource(&pdev->dev, r);
+	if (IS_ERR(p)) {
+		dev_err(&pdev->dev, "devm_ioremap_resource failed!\n");
+		return PTR_ERR(p);
 	}
 
 	*membase = p;
 
 	return 0;
-}
-
-static void sp_ana_macro_cfg(struct sp_mipi_device *mipi, u8 on)
-{
-	void __iomem *reg_addr = mipi->moon3_regs + 0x64;
-	u32 val;
-
-	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
-
-	/* MIPI-CSI0/2 ports share analog macros with CPIO. Set G3.25
-	 * register to swich the analog macros for MIPI-CSI0/2 ports.
-	 */
-	if ((mipi->id == 0) || (mipi->id == 2)) {
-		val = readl(reg_addr);
-		if (mipi->id == 0)
-			set_field(&val, on, 0x1<<14);		/* MO_EN_MIPI0_RX */
-		else
-			set_field(&val, on, 0x1<<15);		/* MO_EN_MIPI2_RX */
-		val = val | 0xffff0000;
-		writel(val, reg_addr);
-		dev_info(mipi->dev, "Enable ANA macro for MIPI-CSI%d\n", mipi->id);
-	}
 }
 
 static void sp_mipicsi_lane_config(struct sp_mipi_device *mipi)
@@ -191,13 +161,13 @@ static void sp_mipicsi_lane_config(struct sp_mipi_device *mipi)
 
 static void sp_mipicsi_dt_config(struct sp_mipi_device *mipi)
 {
-	u32 sol_sync = mipi->sd_format->sol_sync;
+	u32 csi_dt = mipi->sd_format->csi_dt;
 	u32 mix_cfg, sync_word;
 
 	mix_cfg = csi_readl(mipi, MIPICSI_MIX_CFG);
 	sync_word = csi_readl(mipi, MIPICSI_SOF_SOL_SYNCWORD);
 
-	switch (sol_sync) {
+	switch (csi_dt) {
 	default:
 	case SYNC_RAW8: 		/* 8 bits */
 	case SYNC_YUY2:
@@ -218,7 +188,7 @@ static void sp_mipicsi_dt_config(struct sp_mipi_device *mipi)
 	set_field(&sync_word, 0x00, 0xffff<<16);	/* SOF_SYNCWORD */
 	//set_field(&sync_word, 0x2B, 0xffff<<0);	/* SOL_SYNCWORD */
 #endif
-	set_field(&sync_word, sol_sync, 0xffff<<0);
+	set_field(&sync_word, csi_dt, 0xffff<<0);
 
 	dev_dbg(mipi->dev, "%s, %d: mix_cfg: %08x, sync_word: %08x\n",
 		__func__, __LINE__, mix_cfg, sync_word);
@@ -344,33 +314,41 @@ static void sp_mipicsi_init(struct sp_mipi_device *mipi)
 
 static void sp_csiiw_dt_config(struct sp_mipi_device *mipi)
 {
-	u32 sol_sync = mipi->sd_format->sol_sync;
 	u32 config0;
 
 	config0 = iw_readl(mipi, CSIIW_CONFIG0);
 
-	switch (sol_sync) {
+	switch (mipi->sd_format->bpc) {
 	default:
-	case SYNC_RAW8: 		/* 8 bits */
-	case SYNC_YUY2:
-		set_field(&config0, 0, 0x3<<4);		/* Source is 8 bits per pixel */
+	case 8:
+		set_field(&config0, 0, 0x3<<4);     /* Source is 8 bits per pixel */
+		set_field(&config0, 1, 0x1<<16);	/* Disable packed mode */
 		break;
 
-	case SYNC_RAW10:		/* 10 bits */
-		set_field(&config0, 1, 0x3<<4);		/* Source is 10 bits per pixel */
+	case 10:
+		set_field(&config0, 1, 0x3<<4);     /* Source is 10 bits per pixel */
+
+		if (mipi->sd_format->bpp == mipi->sd_format->bpc)
+			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
+		else
+			set_field(&config0, 1, 0x1<<16); 	/* Disable packed mode */
 		break;
 
-	case SYNC_RAW12:		/* 12 bits */
+	case 12:
 #if defined(MIPI_CSI_BIST) && defined(BIST_RAW12_TO_RAW10)
 		set_field(&config0, 1, 0x3<<4);		/* Source is 10 bits per pixel */
 #else
-		set_field(&config0, 2, 0x3<<4);		/* Source is 12 bits per pixel */
+		set_field(&config0, 2, 0x3<<4);     /* Source is 12 bits per pixel */
 #endif
+
+		if (mipi->sd_format->bpp == mipi->sd_format->bpc)
+			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
+		else
+			set_field(&config0, 1, 0x1<<16); 	/* Disable packed mode */
 		break;
 	}
 
-	dev_dbg(mipi->dev, "%s, %d, config0: %08x\n",
-		__func__, __LINE__, config0);
+	dev_dbg(mipi->dev, "%s, %d, config0: %08x\n", __func__, __LINE__, config0);
 
 	iw_writel(mipi, CSIIW_CONFIG0, config0);
 }
@@ -378,7 +356,7 @@ static void sp_csiiw_dt_config(struct sp_mipi_device *mipi)
 static void sp_csiiw_fs_config(struct sp_mipi_device *mipi)
 {
 	struct v4l2_pix_format *pix = &mipi->fmt.fmt.pix;
-	u32 sol_sync = mipi->sd_format->sol_sync;
+	u32 csi_dt = mipi->sd_format->csi_dt;
 	u32 stride, frame_size, val;
 
 	stride = iw_readl(mipi, CSIIW_STRIDE);
@@ -390,7 +368,7 @@ static void sp_csiiw_fs_config(struct sp_mipi_device *mipi)
 
 
 	/* Set XLEN field of csiiw_frame_size */
-	switch (sol_sync) {
+	switch (csi_dt) {
 	default:
 	case SYNC_YUY2:
 		val = pix->bytesperline;
@@ -849,7 +827,7 @@ static int sp_mipi_start_streaming(struct vb2_queue *vq, unsigned int count)
 	sp_mipicsi_lane_config(mipi);
 	sp_mipicsi_dt_config(mipi);
 #if defined(MIPI_CSI_BIST)
-	sp_mipicsi_bist_config(mipi, mipi->sd_format->sol_sync);
+	sp_mipicsi_bist_config(mipi, mipi->sd_format->csi_dt);
 #endif
 	sp_csiiw_wr_dma_addr(mipi, addr);
 	sp_csiiw_fs_config(mipi);
@@ -1481,87 +1459,146 @@ static const struct sp_mipi_format sp_mipi_formats[] = {
 		.fourcc = V4L2_PIX_FMT_YUYV,
 		.mbus_code = MEDIA_BUS_FMT_YUYV8_2X8,
 		.bpp = 16,
-		.sol_sync = SYNC_YUY2,
+		.bpc = 8,
+		.csi_dt = SYNC_YUY2,
 	}, {
 		.fourcc = V4L2_PIX_FMT_UYVY,
 		.mbus_code = MEDIA_BUS_FMT_UYVY8_2X8,
 		.bpp = 16,
-		.sol_sync = SYNC_YUY2,
+		.bpc = 8,
+		.csi_dt = SYNC_YUY2,
 	}, {
 		.fourcc = V4L2_PIX_FMT_YVYU,
 		.mbus_code = MEDIA_BUS_FMT_YVYU8_2X8,
 		.bpp = 16,
-		.sol_sync = SYNC_YUY2,
+		.bpc = 8,
+		.csi_dt = SYNC_YUY2,
 	}, {
 		.fourcc = V4L2_PIX_FMT_VYUY,
 		.mbus_code = MEDIA_BUS_FMT_VYUY8_2X8,
 		.bpp = 16,
-		.sol_sync = SYNC_YUY2,
-	}, {
-		.fourcc = V4L2_PIX_FMT_RGB565,	/* gggbbbbb rrrrrggg */
-		.mbus_code = MEDIA_BUS_FMT_RGB565_2X8_LE,
-		.bpp = 16,
-		.sol_sync = SYNC_RGB565,
-	}, {
-		.fourcc = V4L2_PIX_FMT_RGB565X,	/* rrrrrggg gggbbbbb */
-		.mbus_code = MEDIA_BUS_FMT_RGB565_2X8_BE,
-		.bpp = 16,
-		.sol_sync = SYNC_RGB565,
-	}, {
-		.fourcc = V4L2_PIX_FMT_RGB24,	/* rgb */
-		.mbus_code = MEDIA_BUS_FMT_RGB888_2X12_LE,
-		.bpp = 24,
-		.sol_sync = SYNC_RGB888,
-	}, {
-		.fourcc = V4L2_PIX_FMT_BGR24,	/* bgr */
-		.mbus_code = MEDIA_BUS_FMT_RGB888_2X12_BE,
-		.bpp = 24,
-		.sol_sync = SYNC_RGB888,
-	}, {
-		.fourcc = V4L2_PIX_FMT_JPEG,
-		.mbus_code = MEDIA_BUS_FMT_JPEG_1X8,
-		.bpp = 8,
-		.sol_sync = SYNC_RAW8,
+		.bpc = 8,
+		.csi_dt = SYNC_YUY2,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SBGGR8,
 		.mbus_code = MEDIA_BUS_FMT_SBGGR8_1X8,
 		.bpp = 8,
-		.sol_sync = SYNC_RAW8,
+		.bpc = 8,
+		.csi_dt = SYNC_RAW8,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SGBRG8,
 		.mbus_code = MEDIA_BUS_FMT_SGBRG8_1X8,
 		.bpp = 8,
-		.sol_sync = SYNC_RAW8,
+		.bpc = 8,
+		.csi_dt = SYNC_RAW8,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SGRBG8,
 		.mbus_code = MEDIA_BUS_FMT_SGRBG8_1X8,
 		.bpp = 8,
-		.sol_sync = SYNC_RAW8,
+		.bpc = 8,
+		.csi_dt = SYNC_RAW8,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SRGGB8,
 		.mbus_code = MEDIA_BUS_FMT_SRGGB8_1X8,
 		.bpp = 8,
-		.sol_sync = SYNC_RAW8,
+		.bpc = 8,
+		.csi_dt = SYNC_RAW8,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SBGGR10P,
+		.mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10,
+		.bpp = 10,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGBRG10P,
+		.mbus_code = MEDIA_BUS_FMT_SGBRG10_1X10,
+		.bpp = 10,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGRBG10P,
+		.mbus_code = MEDIA_BUS_FMT_SGRBG10_1X10,
+		.bpp = 10,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SRGGB10P,
+		.mbus_code = MEDIA_BUS_FMT_SRGGB10_1X10,
+		.bpp = 10,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SBGGR10,
 		.mbus_code = MEDIA_BUS_FMT_SBGGR10_1X10,
-		.bpp = 10,
-		.sol_sync = SYNC_RAW10,
+		.bpp = 16,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SGBRG10,
 		.mbus_code = MEDIA_BUS_FMT_SGBRG10_1X10,
-		.bpp = 10,
-		.sol_sync = SYNC_RAW10,
+		.bpp = 16,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SGRBG10,
 		.mbus_code = MEDIA_BUS_FMT_SGRBG10_1X10,
-		.bpp = 10,
-		.sol_sync = SYNC_RAW10,
+		.bpp = 16,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
 	}, {
 		.fourcc = V4L2_PIX_FMT_SRGGB10,
 		.mbus_code = MEDIA_BUS_FMT_SRGGB10_1X10,
-		.bpp = 10,
-		.sol_sync = SYNC_RAW10,
+		.bpp = 16,
+		.bpc = 10,
+		.csi_dt = SYNC_RAW10,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SBGGR12P,
+		.mbus_code = MEDIA_BUS_FMT_SBGGR12_1X12,
+		.bpp = 12,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGBRG12P,
+		.mbus_code = MEDIA_BUS_FMT_SGBRG12_1X12,
+		.bpp = 12,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGRBG12P,
+		.mbus_code = MEDIA_BUS_FMT_SGRBG12_1X12,
+		.bpp = 12,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SRGGB12P,
+		.mbus_code = MEDIA_BUS_FMT_SRGGB12_1X12,
+		.bpp = 12,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SBGGR12,
+		.mbus_code = MEDIA_BUS_FMT_SBGGR12_1X12,
+		.bpp = 16,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGBRG12,
+		.mbus_code = MEDIA_BUS_FMT_SGBRG12_1X12,
+		.bpp = 16,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SGRBG12,
+		.mbus_code = MEDIA_BUS_FMT_SGRBG12_1X12,
+		.bpp = 16,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
+	}, {
+		.fourcc = V4L2_PIX_FMT_SRGGB12,
+		.mbus_code = MEDIA_BUS_FMT_SRGGB12_1X12,
+		.bpp = 16,
+		.bpc = 12,
+		.csi_dt = SYNC_RAW12,
 	},
 };
 
@@ -1977,15 +2014,11 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	if (ret)
 		return ret;
 
-	ret = sp_get_register_base(pdev, (void **)&mipi->mipicsi_regs, MIPICSI_REG_NAME, 0);
+	ret = sp_get_register_base(pdev, (void **)&mipi->mipicsi_regs, MIPICSI_REG_NAME);
 	if (ret)
 		return ret;
 
-	ret = sp_get_register_base(pdev, (void **)&mipi->csiiw_regs, CSIIW_REG_NAME, 0);
-	if (ret)
-		return ret;
-
-	ret = sp_get_register_base(pdev, (void **)&mipi->moon3_regs, MOON3_REG_NAME, 1);
+	ret = sp_get_register_base(pdev, (void **)&mipi->csiiw_regs, CSIIW_REG_NAME);
 	if (ret)
 		return ret;
 
@@ -2140,7 +2173,6 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_media_entity_cleanup;
 
-	sp_ana_macro_cfg(mipi, 1);
 	sp_mipicsi_init(mipi);
 	sp_csiiw_init(mipi);
 
@@ -2160,7 +2192,6 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	return 0;
 
 err_cleanup:
-	sp_ana_macro_cfg(mipi, 0);
 	v4l2_async_notifier_cleanup(&mipi->notifier);
 err_media_entity_cleanup:
 	media_entity_cleanup(&mipi->vdev->entity);
@@ -2181,8 +2212,6 @@ err_kfree_mipi:
 static int sp_mipi_remove(struct platform_device *pdev)
 {
 	struct sp_mipi_device *mipi = platform_get_drvdata(pdev);
-
-	sp_ana_macro_cfg(mipi, 0);
 
 	video_device_release(mipi->vdev);
 	v4l2_device_unregister(&mipi->v4l2_dev);
