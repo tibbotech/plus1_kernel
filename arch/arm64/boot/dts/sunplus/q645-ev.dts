@@ -213,7 +213,7 @@
 		clkc: clkc@f8000000 {
 			#clock-cells = <1>;
 			compatible = "sunplus,q645-clkc";
-			reg = <0x00 0xf8000000 0x00 0x280>; // MOON G0 ~ G4
+			reg = <0x0 0xf8000000 0x0 0x280>; // MOON G0 ~ G4
 			nvmem-cells = <&n78_clksel>;
 		};
 	};
@@ -227,7 +227,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbf0>;
+			cpu-release-addr = <0x0 0xfa23fbf0>;
 			next-level-cache = <&L2_0>;
 		};
 
@@ -236,7 +236,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbe8>;
+			cpu-release-addr = <0x0 0xfa23fbe8>;
 			next-level-cache = <&L2_1>;
 		};
 
@@ -245,7 +245,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbe0>;
+			cpu-release-addr = <0x0 0xfa23fbe0>;
 			next-level-cache = <&L2_2>;
 		};
 
@@ -254,7 +254,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
 			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbd8>;
+			cpu-release-addr = <0x0 0xfa23fbd8>;
 			next-level-cache = <&L2_3>;
 		};
 
@@ -301,10 +301,10 @@
 		compatible = "arm,gic-400";
 		#interrupt-cells = <3>;
 		interrupt-controller;
-		reg = <0x00 0xfa001000 0x00 0x1000>,
-		      <0x00 0xfa002000 0x00 0x2000>,
-		      <0x00 0xfa004000 0x00 0x2000>,
-		      <0x00 0xfa006000 0x00 0x2000>;
+		reg = <0x0 0xfa001000 0x0 0x1000>,
+		      <0x0 0xfa002000 0x0 0x2000>,
+		      <0x0 0xfa004000 0x0 0x2000>,
+		      <0x0 0xfa006000 0x0 0x2000>;
 	};
 
 	timer {
@@ -320,7 +320,7 @@
 	rstc: reset@f8000054 {
 		compatible = "sunplus,q645-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8000054 0x00 0x28>;
+		reg = <0x0 0xf8000054 0x0 0x28>;
 		reg-names = "reset";
 	};
 
@@ -338,7 +338,7 @@
 	/* DMA Rx for UARTx */
 	uartdmarx0: serial@sp_uartdmarx0 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008980 0x00 0x40>;
+		reg = <0x0 0xf8008980 0x0 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADMA01>;
@@ -350,7 +350,7 @@
 #ifdef ENABLE_DMARX1
 	uartdmarx1: serial@sp_uartdmarx1 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf80089c0 0x00 0x40>;
+		reg = <0x0 0xf80089c0 0x0 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADMA01>;
@@ -362,7 +362,7 @@
 #ifdef ENABLE_DMARX2
 	uartdmarx2: serial@sp_uartdmarx2 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008700 0x00 0x40>;
+		reg = <0x0 0xf8008700 0x0 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADMA23>;
@@ -374,7 +374,7 @@
 #ifdef ENABLE_DMARX3
 	uartdmarx3: serial@sp_uartdmarx3 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008740 0x00 0x40>;
+		reg = <0x0 0xf8008740 0x0 0x40>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADMA23>;
@@ -388,7 +388,7 @@
 	/* DMA Tx for UARTx */
 	uartdmatx0: serial@sp_uartdmatx0 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
+		reg = <0x0 0xf8008a00 0x0 0x40>, <0x0 0xf8008880 0x0 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
@@ -398,7 +398,7 @@
 #ifdef ENABLE_DMATX1
 	uartdmatx1: serial@sp_uartdmatx1 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
+		reg = <0x0 0xf8008a40 0x0 0x40>, <0x0 0xf8008900 0x0 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
@@ -408,7 +408,7 @@
 #ifdef ENABLE_DMATX2
 	uartdmatx2: serial@sp_uartdmatx2 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
+		reg = <0x0 0xf8008b80 0x0 0x40>, <0x0 0xf8008a80 0x0 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
@@ -418,7 +418,7 @@
 #ifdef ENABLE_DMATX3
 	uartdmatx3: serial@sp_uartdmatx3 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
+		reg = <0x0 0xf8008bc0 0x0 0x40>, <0x0 0xf8008b00 0x0 0x80>;
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
@@ -428,7 +428,7 @@
 
 	uart0: serial@f8000900 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8000900 0x00 0x80>;
+		reg = <0x0 0xf8000900 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
@@ -441,7 +441,7 @@
 
 	uart1: serial@f8000980 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8000980 0x00 0x80>;
+		reg = <0x0 0xf8000980 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
@@ -455,7 +455,7 @@
 
 	uart2: serial@f8000800 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8000800 0x00 0x80>;
+		reg = <0x0 0xf8000800 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
@@ -469,7 +469,7 @@
 
 	uart3: serial@f8004380 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8004380 0x00 0x80>;
+		reg = <0x0 0xf8004380 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
@@ -483,7 +483,7 @@
 
 	uart4: serial@f8000880 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8000880 0x00 0x80>;
+		reg = <0x0 0xf8000880 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA4>;
@@ -495,7 +495,7 @@
 
 	uadbg: serial@f800f900 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf800f900 0x00 0x80>;
+		reg = <0x0 0xf800f900 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 35 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UADBG>;
@@ -507,7 +507,7 @@
 
 	uart6: serial@f8008280 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008280 0x00 0x80>;
+		reg = <0x0 0xf8008280 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA6>;
@@ -519,7 +519,7 @@
 
 	uart7: serial@f8008300 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008300 0x00 0x80>;
+		reg = <0x0 0xf8008300 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA7>;
@@ -531,7 +531,7 @@
 
 	uart8: serial@f8008380 {
 		compatible = "sunplus,q645-uart";
-		reg = <0x00 0xf8008380 0x00 0x80>;
+		reg = <0x0 0xf8008380 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA8>;
@@ -892,7 +892,7 @@
 
 	otp0: otp@f800af00 {
 		compatible = "sunplus,q645-ocotp0";
-		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
+		reg = <0x0 0xf800af00 0x0 0x34>, <0x0 0xf800af80 0x0 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -917,7 +917,7 @@
 
 	otp1: otp@f8018580 {
 		compatible = "sunplus,q645-ocotp1";
-		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
+		reg = <0x0 0xf8018580 0x0 0x34>, <0x0 0xf8018600 0x0 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -925,7 +925,7 @@
 
 	otp2: otp@f8002780 {
 		compatible = "sunplus,q645-ocotp2";
-		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
+		reg = <0x0 0xf8002780 0x0 0x34>, <0x0 0xf8002800 0x0 0x58>;
 		reg-names = "hb_gpio", "otprx";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -942,7 +942,7 @@
 
 	malig31: malig31@f8170000 {
 		compatible = "arm,mali-midgard";
-		reg = <0x00 0xf8170000 0x00 0x4000>;
+		reg = <0x0 0xf8170000 0x0 0x4000>;
 		interrupt-parent = <&gic>;
 		interrupts =
 			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
@@ -965,7 +965,7 @@
 */
 	ethosn0: ethosn@f8200000 {
 		compatible = "ethosn";
-		reg = <0x00 0xf8200000 0x00 0x100000>;
+		reg = <0x0 0xf8200000 0x0 0x100000>;
 		memory-region = <&ethosn_reserved>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>,
@@ -1072,7 +1072,7 @@
 		compatible = "sunplus,q645-usb-ehci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
-		reg = <0x00 0xf8102100 0x00 0x68>;
+		reg = <0x0 0xf8102100 0x0 0x68>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -1081,7 +1081,7 @@
 		compatible = "sunplus,q645-usb-ohci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
-		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
+		reg = <0x0 0xf8102080 0x0 0x68>, <0x0 0xf8000000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
@@ -1089,7 +1089,7 @@
 
 	audio: audio@0xf8001e00 {
 		compatible = "sunplus,Q645-audio";
-		reg = <0x00 0xf8001e00 0x00 0x700>;
+		reg = <0x0 0xf8001e00 0x0 0x700>;
 		reg-names = "audio";
 		clocks = <&clkc AUD>, <&clkc PLLA>;
 		clock-names = "aud", "pll_a";
@@ -1287,7 +1287,7 @@
 
 	video_codec_dec: hantro_vc8000d@f8168000 {
 		compatible = "sunplus,q645-hantro-vc8000d";
-		reg = <0x00 0xf8168000 0x00 0x1d8>;
+		reg = <0x0 0xf8168000 0x0 0x1d8>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 167 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc VCD>;
@@ -1298,7 +1298,7 @@
 
 	video_codec_enc: hantro_vc8000e@f80ff000 {
 		compatible = "sunplus,q645-hantro-vc8000e";
-		reg = <0x00 0xf80ff000 0x00 0xfff>;
+		reg = <0x0 0xf80ff000 0x0 0xfff>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 77 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc VCE>;
@@ -1323,7 +1323,7 @@
 
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,q645-wdt";
-		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
+		reg = <0x0 0xf8000628 0x0 0x08>, <0x0 0xf8000248 0x0 0x04>;
 		clocks = <&clkc STC0>;
 		resets = <&rstc RST_STC0>;
 	};
