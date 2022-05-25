@@ -1029,7 +1029,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	/* SP_UART_ISC_TXM is enabled in .start_tx() */
 	interrupt_en = 0;
 	if (uartdma_rx == NULL)
-		interrupt_en |= SP_UART_ISC_RXM;
+		interrupt_en |= SP_UART_ISC_RXM | SP_UART_ISC_LSM;
 
 	sp_uart_set_int_en(port->membase, interrupt_en);
 
@@ -1972,8 +1972,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	port->line = pdev->id;
 
 #ifdef CONFIG_SERIAL_SUNPLUS_CONSOLE
-	if (pdev->id == 0)
+	if (pdev->id == 0) {
+		port->has_sysrq = 1;
 		port->cons = &sunplus_console;
+	}
 #endif
 #ifdef TTYS_GPIO
 	if (pdev->id == 1) {
