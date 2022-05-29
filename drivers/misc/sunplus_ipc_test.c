@@ -11,8 +11,29 @@
 #include <linux/smp.h>
 #include <linux/kernel.h>
 
+/* MAILBOX2 CPU0(CA55) to CPU2(CM4)*/
+#define DIRECT_CPU0_TO_CPU2_0 0x60
+#define DIRECT_CPU0_TO_CPU2_1 0x64
+#define DIRECT_CPU0_TO_CPU2_2 0x68
+#define DIRECT_CPU0_TO_CPU2_3 0x6C
+#define DIRECT_CPU0_TO_CPU2_4 0x70
+#define DIRECT_CPU0_TO_CPU2_5 0x74
+#define DIRECT_CPU0_TO_CPU2_6 0x78
+#define DIRECT_CPU0_TO_CPU2_7 0x7C
+
+/* MAILBOX2 CPU2(CM4) to CPU0(CA55)*/
+#define DIRECT_CPU2_TO_CPU0_0 0x60
+#define DIRECT_CPU2_TO_CPU0_1 0x64
+#define DIRECT_CPU2_TO_CPU0_2 0x68
+#define DIRECT_CPU2_TO_CPU0_3 0x6C
+#define DIRECT_CPU2_TO_CPU0_4 0x70
+#define DIRECT_CPU2_TO_CPU0_5 0x74
+#define DIRECT_CPU2_TO_CPU0_6 0x78
+#define DIRECT_CPU2_TO_CPU0_7 0x7C
+
 struct sp_ipc_test_dev {
-	u32 *reg;
+	void __iomem *mailbox2_cpu0_to_cpu2;
+	void __iomem *mailbox2_cpu2_to_cpu0;
 };
 
 #ifdef CONFIG_SOC_Q645
@@ -27,25 +48,16 @@ struct sp_ipc_test_dev {
 #else
 #define DBG_INFO(fmt, args ...)
 #endif
-#define INTERRUPT_MSG
 
-static struct sp_ipc_test_dev sp_ipc_test;
+static struct sp_ipc_test_dev *sp_ipc_test;
 
 static irqreturn_t sp_ipc_test_isr(int irq, void *dev_id)
 {
 	int value;
 
 	DBG_INFO("!!!%d@CPU%d!!!\n", irq, smp_processor_id());
-#ifdef INTERRUPT_MSG
-	value = readl(&sp_ipc_test.reg[56]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[57]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[58]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[59]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[60]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[61]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[62]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	value = readl(&sp_ipc_test.reg[63]); //trigger CPU2_TO_CPU0 DIRECT_INT
-#endif
+	value = readl(sp_ipc_test->mailbox2_cpu0_to_cpu2+DIRECT_CPU0_TO_CPU2_7);
+	DBG_INFO("%08x\n", value);
 	return IRQ_HANDLED;
 }
 
@@ -71,10 +83,10 @@ static int test_set(const char *val, const struct kernel_param *kp)
 		test_help();
 		break;
 	case 1:
-		DBG_INFO("%08x\n", sp_ipc_test.reg[i]);
+		DBG_INFO("%08x\n", readl(sp_ipc_test->mailbox2_cpu0_to_cpu2+DIRECT_CPU0_TO_CPU2_0));
 		break;
 	case 2:
-		sp_ipc_test.reg[i] = value;
+		writel(value, sp_ipc_test->mailbox2_cpu0_to_cpu2+DIRECT_CPU0_TO_CPU2_0);
 		break;
 	}
 
@@ -94,18 +106,32 @@ MODULE_DEVICE_TABLE(of, sp_ipc_test_of_match);
 
 static int sp_ipc_test_probe(struct platform_device *pdev)
 {
-	struct sp_ipc_test_dev *dev = &sp_ipc_test;
+	struct sp_ipc_test_dev *dev;
 	struct resource *res_mem, *res_irq;
 	int i, irq_number, ret = 0;
 
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res_mem)
-		return -ENODEV;
+	sp_ipc_test = devm_kzalloc(&pdev->dev, sizeof(struct sp_ipc_test_dev), GFP_KERNEL);
+    if (!sp_ipc_test)
+	{
+		ret = -ENOMEM;
+		goto fail_kmalloc;
+	}
 
-	dev->reg = devm_ioremap_resource(&pdev->dev, res_mem);
-	if (IS_ERR((void *)dev->reg))
-		return PTR_ERR((void *)dev->reg);
+	res_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cpu0_to_cpu2");
+	sp_ipc_test->mailbox2_cpu0_to_cpu2 = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR(sp_ipc_test->mailbox2_cpu0_to_cpu2))
+	{
+		dev_err(&pdev->dev, "ioremap fail\n");
+		return PTR_ERR(sp_ipc_test->mailbox2_cpu0_to_cpu2);
+	}
 
+	res_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "cpu2_to_cpu0");
+	sp_ipc_test->mailbox2_cpu2_to_cpu0 = devm_ioremap_resource(&pdev->dev, res_mem);
+	if (IS_ERR(sp_ipc_test->mailbox2_cpu2_to_cpu0))
+	{
+		dev_err(&pdev->dev, "ioremap fail\n");
+		return PTR_ERR(sp_ipc_test->mailbox2_cpu2_to_cpu0);
+	}
 
 	for (i = 0; i < NUM_IRQ; i++) {
 		res_irq = platform_get_resource(pdev, IORESOURCE_IRQ, i);
@@ -122,32 +148,9 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 		}
 		DBG_INFO("%s:%d %d\n", __func__, __LINE__, ret);
 	}
+	return ret;
 
-#ifdef CONFIG_SOC_Q645
-	writel(1, &dev->reg[0]); // trigger CPU0_TO_CPU2 INT
-	writel(0x12345624, &dev->reg[24]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345625, &dev->reg[25]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345626, &dev->reg[26]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345627, &dev->reg[27]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345628, &dev->reg[28]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345629, &dev->reg[29]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345630, &dev->reg[30]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(0x12345631, &dev->reg[31]); // trigger CPU0_TO_CPU2 DIRECT_INT
-	writel(1, &dev->reg[32]); // trigger CPU2_TO_CPU0 INT
-	writel(0x87654356, &dev->reg[56]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654357, &dev->reg[57]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654358, &dev->reg[58]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654359, &dev->reg[59]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654360, &dev->reg[60]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654361, &dev->reg[61]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654362, &dev->reg[62]); //trigger CPU2_TO_CPU0 DIRECT_INT
-	writel(0x87654363, &dev->reg[63]); //trigger CPU2_TO_CPU0 DIRECT_INT
-#else
-	dev->reg[0] = 1; // trigger A2B INT
-	dev->reg[31] = 0x12345678; // trigger A2B DIRECT_INT
-	dev->reg[32] = 1; // trigger B2A INT
-	dev->reg[63] = 0x87654321; // trigger B2A DIRECT_INT
-#endif
+	fail_kmalloc:
 	return ret;
 }
 
