@@ -26,27 +26,27 @@
 #define CACHE_LINE_MASK			(CACHE_LINE_SIZE - 1)
 #define CACHE_ALIGN(l)			ALIGN(l, CACHE_LINE_SIZE)
 
-#define TRB_SIZE				sizeof(struct trb_s)
+#define TRB_SIZE			sizeof(struct trb_s)
 
-#define AES_RING(p)				((p)->rings[0])
+#define AES_RING(p)			((p)->rings[0])
 #define HASH_RING(p)			((p)->rings[1])
-#define TRB_RING(p)				((p)->dd->rings[(p)->type - SP_CRYPTO_AES])
+#define TRB_RING(p)			((p)->dd->rings[(p)->type - SP_CRYPTO_AES])
 
 #define HASH_CMD_RING_SIZE		(PAGE_SIZE / TRB_SIZE)
 #define HASH_CMD_RING_SG		(1)
 #define AES_CMD_RING_SIZE		(PAGE_SIZE / TRB_SIZE)
 #define AES_CMD_RING_SG			(1)
-#define HASH_EVENT_RING_SIZE	(HASH_CMD_RING_SIZE * HASH_CMD_RING_SG)
+#define HASH_EVENT_RING_SIZE		(HASH_CMD_RING_SIZE * HASH_CMD_RING_SG)
 #define AES_EVENT_RING_SIZE		(AES_CMD_RING_SIZE * AES_CMD_RING_SG)
 
 #define TRB_RING_ALIGN_MASK		(32 - 1)
 
 #define BUS_SMALL_ENDIAN
-#define dev_reg					u32
+#define dev_reg				u32
 #define BITS_PER_REG			(32)
 #define SP_TRB_PARA_LEN			(12)
 
-#define AUTODMA_CRCR_ADDR_MASK	(~TRB_RING_ALIGN_MASK)
+#define AUTODMA_CRCR_ADDR_MASK		(~TRB_RING_ALIGN_MASK)
 #define AUTODMA_CRCR_CP			(1 << 4)
 #define AUTODMA_CRCR_CRR		(1 << 3)
 #define AUTODMA_CRCR_CS			(1 << 1)
@@ -54,7 +54,7 @@
 
 #define AUTODMA_RCSR_EN			(1 << 31)
 #define AUTODMA_RCSR_ERF		(1 << 30)
-#define AUTODMA_RCSR_SIZE_MASK	(0xffff)
+#define AUTODMA_RCSR_SIZE_MASK		(0xffff)
 
 #define AUTODMA_ERBAR_ERBA_MASK	(~TRB_RING_ALIGN_MASK)
 #define AUTODMA_TRIGGER			(1)
@@ -68,8 +68,8 @@
 #define SP_CRYPTO_TRUE			(1)
 #define SP_CRYPTO_FALSE			(0)
 
-#define TRB_NORMAL				(1)
-#define TRB_LINK				(2)
+#define TRB_NORMAL			(1)
+#define TRB_LINK			(2)
 
 #define R(r)		readl_relaxed(&reg->r)
 #define W(r, v)		writel_relaxed(v, &reg->r)
@@ -81,11 +81,20 @@ enum {
 	SP_CRYPTO_RSA,
 };
 
+extern void *base_va;
+/*A2P: Addr to Pointer */
+#ifdef CONFIG_SOC_SP7350
+#define A2P(a, b)	((void *)((dma_addr_t)(a) + ((dma_addr_t)(b) >> 32 << 32)))
+#else
+#define A2P(a, b)	((void *)((dma_addr_t)(a)))
+#endif
+#define P2A(p)		((u32)(dma_addr_t)(p))
+
 struct trb_s {
 
 	/* Cycle bits. indicates the current cycle of the ring */
 #ifdef BUS_SMALL_ENDIAN
-	void *priv;
+	u32 priv;
 #else				/*  */
 	u32 c;
 	//u32 rsv0:31;
@@ -125,17 +134,17 @@ struct trb_s {
 	/*For link TRB indicates the trb_next segment address.
 	 * or  Source data pointer(depend on ENDC)
 	 */
-	dma_addr_t sptr;
+	u32 sptr;
 
 	/* Destination data pointer (depend on ENDC)
 	 */
-	dma_addr_t dptr;
+	u32 dptr;
 
 	/* Parameter
 	 */
 	u32 mode;
-	dma_addr_t iptr; /* Initial Vector/Counter (IV/ICB) pointer */
-	dma_addr_t kptr; /* AES/GHASH: Key/Sub-Key pointer */
+	u32 iptr; /* Initial Vector/Counter (IV/ICB) pointer */
+	u32 kptr; /* AES/GHASH: Key/Sub-Key pointer */
 
 #ifdef BUS_SMALL_ENDIAN
 	//u32 rsv3:31;
@@ -144,7 +153,7 @@ struct trb_s {
 	u32 c;
 
 #else				/*  */
-	void *priv;
+	u32 priv;
 
 #endif				/*  */
 };

@@ -499,7 +499,7 @@ void sp_hash_irq(void *devid, u32 flag)
 		while (trb->cc) {
 			//dump_trb(trb);
 			if (trb->ioc) {
-				struct crypto_ctx_s *ctx = trb->priv;
+				struct crypto_ctx_s *ctx = A2P(trb->priv, base_va);
 
 				if (ctx->type == SP_CRYPTO_HASH) {
 #ifdef TRACE_WAIT_ORDER
