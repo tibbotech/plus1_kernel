@@ -53,9 +53,8 @@ struct sp_rproc_pdata {
 	struct ipi_info ipis[MAX_NUM_VRINGS];
 	struct list_head fw_mems;
 	u32 __iomem *mbox;
-#ifdef CONFIG_ARCH_SUNPLUS
 	u32 __iomem *boot;
-#else
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	struct reset_control *rstc; // FIXME: RST_A926 not worked
 #endif
 };
@@ -111,11 +110,15 @@ static int sp_rproc_start(struct rproc *rproc)
 	/* Trigger pending kicks */
 	kick_pending_ipi(rproc);
 
-#ifdef CONFIG_ARCH_SUNPLUS
 	// set remote start addr to boot register,
-	writel(rproc->bootaddr, local->boot);
-#else
+#if defined(CONFIG_SOC_Q645)
+	writel(0xFF0000|(rproc->bootaddr >> 24), local->boot);
 	reset_control_deassert(local->rstc);
+#elif defined (CONFIG_SOC_SP7350)
+	writel(0xFFFF0000|(rproc->bootaddr >> 16), local->boot);
+	reset_control_deassert(local->rstc);
+#else
+	writel(rproc->bootaddr, local->boot);
 #endif
 
 	return 0;
@@ -157,11 +160,11 @@ static int sp_rproc_stop(struct rproc *rproc)
 	struct device *dev = rproc->dev.parent;
 
 	dev_dbg(dev, "%s\n", __func__);
-#ifdef CONFIG_ARCH_SUNPLUS
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	reset_control_assert(local->rstc);
+#else
 	// send remote reset signal
 	writel(0xDEADC0DE, local->mbox);
-#else
-	reset_control_assert(local->rstc);
 #endif
 
 	return 0;
@@ -299,14 +302,13 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		goto probe_failed;
 	}
 
-#ifdef CONFIG_ARCH_SUNPLUS
 	local->boot = devm_platform_ioremap_resource(pdev, 1);
 	if (IS_ERR((void *)local->boot)) {
 		ret = PTR_ERR((void *)local->boot);
 		dev_err(&pdev->dev, "ioremap boot reg failed: %d\n", ret);
 		goto probe_failed;
 	}
-#else
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	local->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(local->rstc)) {
 		ret = PTR_ERR(local->rstc);
