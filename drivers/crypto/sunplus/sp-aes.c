@@ -456,7 +456,7 @@ void sp_aes_irq(void *devid, u32 flag)
 		while (trb->cc) {
 			//dump_trb(trb);
 			if (trb->ioc) {
-				struct crypto_ctx_s *ctx = trb->priv;
+				struct crypto_ctx_s *ctx = A2P(trb->priv, base_va);
 
 				if (ctx->type == SP_CRYPTO_AES) {
 #ifdef TRACE_WAIT_ORDER

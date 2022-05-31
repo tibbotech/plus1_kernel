@@ -25,10 +25,7 @@ static struct sp_crypto_dev sp_dd_tb[1];
 
 void dump_buf(u8 *buf, u32 len)
 {
-	static const char s[] = {
-		' ', ' ', ' ', ' ', ' ', ' ', ' ', '|',
-		' ', ' ', ' ', ' ', ' ', ' ', ' ', '\n'
-	};
+	static const char s[] = "       |       \n";
 	char ss[52] = "";
 	u32 i = 0, j;
 
@@ -60,12 +57,12 @@ static char *print_trb(char *p, struct trb_s *trb)
 	OUT("ioc:0x%x\n", trb->ioc);
 	OUT("type:0x%x\n", trb->type);
 	OUT("size:0x%x\n", trb->size);
-	OUT("sptr:%px\n", (void *)trb->sptr);
-	OUT("dptr:%px\n", (void *)trb->dptr);
+	OUT("sptr:0x%08x\n", trb->sptr);
+	OUT("dptr:0x%08x\n", trb->dptr);
 	OUT("mode:0x%x\n", trb->mode);
-	OUT("iptr:%px\n", (void *)trb->iptr);
-	OUT("kptr:%px\n", (void *)trb->kptr);
-	OUT("priv:%px\n", trb->priv);
+	OUT("iptr:0x%08x\n", trb->iptr);
+	OUT("kptr:0x%08x\n", trb->kptr);
+	OUT("priv:0x%08x\n", trb->priv);
 
 	return p;
 }
@@ -175,8 +172,11 @@ static const struct kernel_param_ops hwcfg_ops = {
 };
 module_param_cb(hwcfg, &hwcfg_ops, NULL, 0600);
 
+void *base_va;
+
 int crypto_ctx_init(struct crypto_ctx_s *ctx, int type)
 {
+	base_va = ctx;
 	init_waitqueue_head(&ctx->wait);
 	ctx->dd = sp_crypto_alloc_dev(SP_CRYPTO_AES);
 	//sema_init(&ctx->sem, 1);
@@ -208,7 +208,7 @@ int crypto_ctx_exec(struct crypto_ctx_s *ctx)
 			WR(HASHDMA_RTR, | AUTODMA_TRIGGER);		// trigger autodma run
 		}
 
-		if (!(ctx->mode & M_FINAL))
+		//if (!(ctx->mode & M_FINAL))
 		{ // busy-waiting, can't sleep in hash //update
 			while (!ctx->done)
 				cpu_relax(); // TODO: handle timeout
@@ -226,6 +226,7 @@ int crypto_ctx_exec(struct crypto_ctx_s *ctx)
 	ret = wait_event_interruptible_timeout(ctx->wait, ctx->done, 60*HZ);
 	if (!ret)
 		ret = -ETIMEDOUT;
+
 	return (ret < 0) ? ret : 0;
 }
 
@@ -242,7 +243,7 @@ struct trb_s *crypto_ctx_queue(struct crypto_ctx_s *ctx,
 		if (ioc)
 			kfifo_put(&ring->f, &ctx->wait);
 #endif
-		trb->priv = ctx;
+		trb->priv = P2A(ctx);
 		trb->ioc  = ioc;
 		trb->size = len;
 		trb->sptr = src;
@@ -261,7 +262,7 @@ struct trb_s *crypto_ctx_queue(struct crypto_ctx_s *ctx,
 inline struct trb_s *trb_next(struct trb_s *trb)
 {
 	trb++;
-	return (trb->type == TRB_LINK) ? (struct trb_s *)(trb->dptr) : trb;
+	return (trb->type == TRB_LINK) ? A2P(trb->dptr, trb) : trb;
 }
 
 inline struct trb_s *trb_get(struct trb_ring_s *ring)
@@ -315,8 +316,8 @@ static struct trb_ring_s *trb_ring_new(struct device *dev, u32 size)
 	size--;
 	ring->link = ring->trb + size;
 	ring->link->type = TRB_LINK;
-	ring->link->sptr = ring->pa;				// PA
-	ring->link->dptr = (dma_addr_t)ring->trb;	// VA
+	ring->link->sptr = ring->pa;		// PA
+	ring->link->dptr = P2A(ring->trb);	// VA
 	while (size--)
 		ring->trb[size].type = TRB_NORMAL;
 
