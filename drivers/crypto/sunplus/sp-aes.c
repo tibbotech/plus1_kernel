@@ -74,6 +74,7 @@ static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 	crypto_ctx_exit(crypto_tfm_ctx(tfm));
 }
 
+#ifndef CONFIG_SOC_SP7350
 /*
  * counter = counter + 1
  * counter: small endian
@@ -121,6 +122,7 @@ static void reverse_iv(u8 *dst, u8 *src)
 	while (i--)
 		dst[i] = *(src++);
 }
+#endif
 
 static void dump_sglist(struct scatterlist *sglist, int count)
 {
@@ -187,8 +189,13 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 
 	//pr_info(">>>>> %08x <<<<<\n", mm);
 	//dump_stack();
-	if (mode == M_AES_CTR) { // CTR mode: reverse iv byte-order for HW
+	if (mode == M_AES_CTR) {
+#ifdef CONFIG_SOC_SP7350
+		memcpy(ctx->iv, req->iv, ctx->ivlen);
+#else
+		// reverse iv byte-order for HW
 		reverse_iv(ctx->iv, req->iv);
+#endif
 	} else {
 		memcpy(ctx->iv, req->iv, ctx->ivlen);
 		if (mode == M_AES_CBC && enc == M_DEC) {
@@ -341,8 +348,12 @@ out:
 		scatterwalk_map_and_copy(req->iv, dst,
 			nbytes - ctx->ivlen, ctx->ivlen, 0);
 	} else if (mode == M_AES_CTR) {
+#ifdef CONFIG_SOC_SP7350
+		memcpy(req->iv, ctx->iv, ctx->ivlen);
+#else
 		ctr_inc(ctx->iv, ctx->ivlen, nbytes / AES_BLOCK_SIZE);
 		reverse_iv(req->iv, ctx->iv);
+#endif
 	}
 
 	return ret;
