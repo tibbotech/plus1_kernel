@@ -268,7 +268,8 @@
 	remoteproc0: remoteproc@f8007ffc {
 		compatible = "sunplus,sp-rproc";
 		firmware = "firmware";
-		reg = <0 0xf8007ffc 0 4>; /* mbox G255.31, cpu0 to cpu2 direct reg07 */
+		reg = <0 0xf8007ffc 0 4>, /* mbox G255.31, cpu0 to cpu2 direct reg07 */
+		      <0 0xf8800250 0 4>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 125 IRQ_TYPE_LEVEL_HIGH>; /* CPU2_TO_0_DIRECT_INT7 */
 		resets = <&rstc RST_CM4>;
