@@ -134,7 +134,7 @@
 		};
 
 		/* simple frame-buffer reserve memory: 0xb7c00000~0xb7ffffff, total 4M */
-		fb_reserve: fb@df200000 {
+		fb_reserve: fb@b7c00000 {
 			reg = <0x0 0xb7c00000 0x0 0x400000>;
 			no-map;
 		};

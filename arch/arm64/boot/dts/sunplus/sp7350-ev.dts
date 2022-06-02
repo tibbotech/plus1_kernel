@@ -61,7 +61,6 @@
 		serial5 = &ua2axi;
 		serial6 = &uart6;
 		serial7 = &uart7;
-		serial8 = &uart8;
 
 		spi0 = &sp_spinor0;
 	};
@@ -459,18 +458,6 @@
 		status = "disabled";
 	};
 
-	uart8: serial@f8008380 {
-		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008380 0x00 0x80>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 164 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UA8>;
-		resets = <&rstc RST_UA8>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&uart8_pins>;
-		status = "disabled";
-	};
-
 	pwm: pwm@f8800d80 {
 		#pwm-cells = <2>;
 		compatible = "sunplus,sp7350-pwm";
@@ -748,7 +735,7 @@
 			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
 		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
+		resets = <&rstc RST_MIPICSI0>, <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
 		i2c-id = <2>;
 		status = "disabled";
@@ -763,7 +750,7 @@
 			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
 		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
+		resets = <&rstc RST_MIPICSI1>, <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
 		i2c-id = <3>;
 		status = "disabled";
@@ -778,7 +765,7 @@
 			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
 		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
+		resets = <&rstc RST_MIPICSI2>, <&rstc RST_VI2_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
 		i2c-id = <4>;
 		status = "disabled";
@@ -793,7 +780,7 @@
 			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
 		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;
+		resets = <&rstc RST_MIPICSI3>, <&rstc RST_VI3_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
 		i2c-id = <5>;
 		status = "disabled";
