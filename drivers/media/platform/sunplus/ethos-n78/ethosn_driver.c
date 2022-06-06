@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited.
+ * (C) COPYRIGHT 2018-2022 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -25,7 +25,6 @@
 #include "ethosn_buffer.h"
 #include "ethosn_device.h"
 #include "ethosn_firmware.h"
-#include "ethosn_log.h"
 #include "ethosn_network.h"
 #include "ethosn_core.h"
 #include "ethosn_smc.h"
@@ -88,7 +87,7 @@ static void __iomem *ethosn_map_iomem(const struct ethosn_core *const core,
 				      const struct resource *const res,
 				      const resource_size_t size)
 {
-	const resource_size_t rsize = !res ? 0 : resource_size(res);
+	const resource_size_t rsize = resource_size(res);
 	void __iomem *ptr;
 	char *full_res_name;
 
@@ -131,6 +130,78 @@ static void __iomem *ethosn_map_iomem(const struct ethosn_core *const core,
 			res->name, res->start, size);
 
 	return ptr;
+}
+
+static const char *severity_to_kern_level(const struct device *dev,
+					  uint32_t severity)
+{
+	switch (severity) {
+	case ETHOSN_LOG_PANIC: {
+		return KERN_CRIT;
+	}
+	case ETHOSN_LOG_ERROR: {
+		return KERN_ERR;
+	}
+	case ETHOSN_LOG_WARNING: {
+		return KERN_WARNING;
+	}
+	case ETHOSN_LOG_INFO: {
+		return KERN_INFO;
+	}
+	case ETHOSN_LOG_DEBUG:
+	/* Fall-through */
+	case ETHOSN_LOG_VERBOSE: {
+		return KERN_DEBUG;
+	}
+	default: {
+		dev_err(dev, "Unknown text message severity level: %u\n",
+			severity);
+
+		return KERN_ERR;
+	}
+	}
+}
+
+static const char *err_msg_status_to_str(uint32_t status)
+{
+	switch (status) {
+	case ETHOSN_ERROR_STATUS_INVALID_STATE:
+
+		return "Invalid state";
+	case ETHOSN_ERROR_STATUS_INVALID_MESSAGE:
+
+		return "Invalid message";
+	case ETHOSN_ERROR_STATUS_FAILED:
+
+		return "Request failed";
+	default: {
+		return "Unknown status";
+	}
+	}
+}
+
+static const char *err_msg_type_to_str(uint32_t message_type)
+{
+	switch (message_type) {
+	case ETHOSN_MESSAGE_INFERENCE_REQUEST: {
+		return "Inference request";
+	}
+	case ETHOSN_MESSAGE_CONFIGURE_PROFILING: {
+		return "Configure profiling request";
+	}
+	case ETHOSN_MESSAGE_TIME_SYNC: {
+		return "Time sync request";
+	}
+	case ETHOSN_MESSAGE_MPU_ENABLE_REQUEST: {
+		return "Mpu enable request";
+	}
+	case ETHOSN_MESSAGE_FW_HW_CAPS_REQUEST: {
+		return "FW & HW capabilities request";
+	}
+	default: {
+		return "Unknown request";
+	}
+	}
 }
 
 /**
@@ -217,9 +288,15 @@ static int handle_message(struct ethosn_core *core)
 		struct ethosn_message_region_response *rsp =
 			core->mailbox_message;
 
-		dev_dbg(core->dev, "<- Region=%u. status=%u\n", rsp->id,
-			rsp->status);
+		if (rsp->status != ETHOSN_REGION_STATUS_OK) {
+			dev_err(core->dev,
+				"<- Region=%u request error. status=%u\n",
+				rsp->id, rsp->status);
 
+			return -EFAULT;
+		}
+
+		dev_dbg(core->dev, "<- Region=%u setup\n", rsp->id);
 		break;
 	}
 	case ETHOSN_MESSAGE_MPU_ENABLE_RESPONSE: {
@@ -227,7 +304,7 @@ static int handle_message(struct ethosn_core *core)
 		break;
 	}
 	case ETHOSN_MESSAGE_FW_HW_CAPS_RESPONSE: {
-		dev_dbg(core->dev, "<- FW & HW Capabilities\n");
+		dev_dbg(core->dev, "<- FW & HW capabilities\n");
 
 		/* Free previous memory (if any) */
 		if (core->fw_and_hw_caps.data)
@@ -278,15 +355,25 @@ static int handle_message(struct ethosn_core *core)
 		/* Null terminate str. One byte has been reserved for this. */
 		*eos = '\0';
 
-		dev_info(core->dev, "<- Text. text=\"%s\"\n",
-			 rtrim(text->text, "\n"));
+		dev_printk(severity_to_kern_level(core->dev, text->severity),
+			   core->dev, "<- Text. text=\"%s\"\n",
+			   rtrim(text->text, "\n"));
 		break;
 	}
 	case ETHOSN_MESSAGE_CONFIGURE_PROFILING_ACK: {
-		dev_dbg(core->dev,
-			"<- ETHOSN_MESSAGE_CONFIGURE_PROFILING_ACK\n");
+		dev_dbg(core->dev, "<- Configured profiling\n");
 		ethosn_configure_firmware_profiling_ack(core);
 		break;
+	}
+	case ETHOSN_MESSAGE_ERROR_RESPONSE: {
+		struct ethosn_message_error_response *rsp =
+			core->mailbox_message;
+
+		dev_err(core->dev, "<- %s(%u) error. status=%s(%u)\n",
+			err_msg_type_to_str(rsp->type), rsp->type,
+			err_msg_status_to_str(rsp->status), rsp->status);
+
+		return -EFAULT;
 	}
 	default: {
 		dev_warn(core->dev,
@@ -310,6 +397,7 @@ static void ethosn_irq_bottom(struct work_struct *work)
 	struct ethosn_core *core = container_of(work, struct ethosn_core,
 						irq_work);
 	struct dl1_irq_status_r status;
+	bool error_status;
 	int ret;
 
 	ret = mutex_lock_interruptible(&core->mutex);
@@ -335,16 +423,24 @@ static void ethosn_irq_bottom(struct work_struct *work)
 		ret = handle_message(core);
 	} while (ret > 0);
 
-	/* Inference failed. Reset firmware. */
-	if (status.bits.setirq_err ||
-	    status.bits.tol_err || status.bits.func_err ||
-	    status.bits.rec_err || status.bits.unrec_err) {
-		/* Failure may happen before the firmware is deemed running. */
-		ethosn_dump_gps(core);
+	error_status = status.bits.setirq_err || status.bits.tol_err ||
+		       status.bits.func_err || status.bits.rec_err ||
+		       status.bits.unrec_err;
 
-		dev_warn(core->dev,
-			 "Reset core due to error interrupt. irq_status=0x%08x\n",
-			 status.word);
+	/* Mailbox or IRQ error reported. Reset firmware. */
+	if (ret < 0 || error_status) {
+		/* Failure may happen before the firmware is deemed running. */
+		if (error_status) {
+			ethosn_dump_gps(core);
+
+			dev_warn(core->dev,
+				 "Reset core due to error interrupt. irq_status=0x%08x\n",
+				 status.word);
+		} else {
+			dev_warn(core->dev,
+				 "Reset core due to mailbox error. status=%d\n",
+				 ret);
+		}
 
 		if (core->firmware_running) {
 			(void)ethosn_reset_and_start_ethosn(core);
@@ -583,6 +679,31 @@ static long ethosn_ioctl(struct file *const filep,
 
 		dev_dbg(ethosn->dev,
 			"IOCTL: Created buffer. fd=%d\n", ret);
+
+		mutex_unlock(&ethosn->mutex);
+
+		break;
+	}
+	case ETHOSN_IOCTL_IMPORT_BUFFER: {
+		struct ethosn_dma_buf_req dma_buf_req;
+
+		if (copy_from_user(&dma_buf_req, udata, sizeof(dma_buf_req))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		ret = mutex_lock_interruptible(&ethosn->mutex);
+		if (ret)
+			break;
+
+		dev_dbg(ethosn->dev,
+			"IOCTL: Import buffer. size=%zu, flags=0x%x\n",
+			dma_buf_req.size, dma_buf_req.flags);
+
+		ret = ethosn_buffer_import(ethosn, &dma_buf_req);
+
+		dev_dbg(ethosn->dev,
+			"IOCTL: Imported buffer. fd=%d\n", ret);
 
 		mutex_unlock(&ethosn->mutex);
 
@@ -1324,6 +1445,14 @@ static int ethosn_pdev_probe(struct platform_device *pdev)
 			goto err_depopulate_device;
 		}
 
+		if (!top_regs) {
+			dev_err(ethosn->core[resource_idx]->dev,
+				"ethosn-core address not specified");
+
+			ret = -EINVAL;
+			goto err_depopulate_device;
+		}
+
 		ret = ethosn_driver_probe(ethosn->core[resource_idx], top_regs,
 					  irq_numbers, irq_flags, num_irqs,
 					  force_firmware_level_interrupts);
@@ -1533,3 +1662,7 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Arm Limited");
 MODULE_DESCRIPTION("Arm Ethos-N Driver");
 MODULE_VERSION(ETHOSN_DRIVER_VERSION);
+/* From kernel version 5.15, the dma_buf symbols are in a separate namespace */
+#if (KERNEL_VERSION(5, 15, 0) <= LINUX_VERSION_CODE)
+MODULE_IMPORT_NS(DMA_BUF);
+#endif

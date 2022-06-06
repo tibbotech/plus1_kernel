@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited.
+ * (C) COPYRIGHT 2018-2022 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -28,7 +28,6 @@
 #include "ethosn_device.h"
 #include "ethosn_dma.h"
 #include "ethosn_firmware.h"
-#include "ethosn_log.h"
 #include "uapi/ethosn.h"
 
 #include <linux/anon_inodes.h>
@@ -42,11 +41,10 @@
 #include <linux/pm_runtime.h>
 #include <linux/poll.h>
 #include <linux/slab.h>
+#include <linux/stddef.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
 #include <linux/wait.h>
-
-#include <stdbool.h>
 
 #define ETHOSN_INFERENCE_ABORTED   -1
 
@@ -234,10 +232,10 @@ static void inference_kref_release(struct kref *kref)
 	dev_dbg(ifr_to_dev(inference),
 		"Released inference. handle=0x%pK\n", inference);
 
-	put_network(network);
-
 	free_buffers(network->num_inputs, inference->inputs);
 	free_buffers(network->num_outputs, inference->outputs);
+
+	put_network(network);
 
 	kfree(inference);
 }
@@ -340,7 +338,6 @@ int ethosn_schedule_inference(struct ethosn_inference *inference)
 	struct ethosn_device *ethosn = core->parent;
 	uint32_t core_id = core->core_id;
 	struct device *core_dev = core->dev;
-	struct ethosn_dma_allocator *allocator = ethosn->allocator;
 	u32 i;
 	int ret;
 
@@ -360,8 +357,6 @@ int ethosn_schedule_inference(struct ethosn_inference *inference)
 		struct ethosn_dma_info *dma_info =
 			inference->inputs[i]->dma_info;
 
-		ethosn_dma_sync_for_device(allocator, dma_info);
-
 		ret = update_bindings(network,
 				      core_id,
 				      1,
@@ -377,8 +372,6 @@ int ethosn_schedule_inference(struct ethosn_inference *inference)
 	for (i = 0; i < network->num_outputs; ++i) {
 		struct ethosn_dma_info *dma_info =
 			inference->outputs[i]->dma_info;
-
-		ethosn_dma_sync_for_device(allocator, dma_info);
 
 		ret = update_bindings(network,
 				      core_id,
@@ -420,19 +413,23 @@ int ethosn_schedule_inference(struct ethosn_inference *inference)
 				   network->inference_data[core_id]);
 	core->current_inference = inference;
 
+	pm_runtime_get_sync(core->dev);
+
 	/* send the inference to the core assigned to it */
 	ret = ethosn_send_inference(core,
 				    network->inference_data[core_id]->iova_addr,
 				    (ptrdiff_t)inference);
 	if (ret) {
 		core->current_inference = NULL;
+		pm_runtime_mark_last_busy(core->dev);
+		pm_runtime_put(core->dev);
 
 		goto out_inference_error;
 	}
 
 	get_inference(inference);
 	ethosn->current_busy_cores |= (1 << core_id);
-	dev_dbg(core_dev, "Scheduled inference 0x%pK on core_id = %d\n",
+	dev_dbg(core_dev, "Scheduled inference 0x%pK on core_id = %u\n",
 		inference,
 		core_id);
 
@@ -440,7 +437,7 @@ int ethosn_schedule_inference(struct ethosn_inference *inference)
 
 out_inference_error:
 	dev_err(core_dev,
-		"Error scheduling inference 0x%pK: %d on core_id = %d\n",
+		"Error scheduling inference 0x%pK: %d on core_id = %u\n",
 		inference, ret, core_id);
 	inference->status = ETHOSN_INFERENCE_ERROR;
 
@@ -563,6 +560,11 @@ static int inference_release(struct inode *inode,
 	 * This would prevent the kernel module from being unloaded
 	 * when requested.
 	 */
+
+	/*
+	 * Check inference status before locking the mutex since it might not
+	 * be necessary.
+	 */
 	if (inference->status == ETHOSN_INFERENCE_SCHEDULED) {
 		/*
 		 * Use the same mutex that is used for adding
@@ -572,22 +574,35 @@ static int inference_release(struct inode *inode,
 
 		mutex_lock(
 			&ethosn->queue.inference_queue_mutex);
-		list_del(&inference->queue_node);
+
+		/* Inference might be running or completed by now */
+		if (inference->status == ETHOSN_INFERENCE_SCHEDULED)
+			list_del(&inference->queue_node);
+
 		mutex_unlock(
 			&ethosn->queue.inference_queue_mutex);
 	}
 
+	/*
+	 * Check inference status before locking the mutex since it might not
+	 * be necessary or even possible i.e. core is assigned only for running
+	 * inferences.
+	 */
 	if (inference->status == ETHOSN_INFERENCE_RUNNING) {
 		struct ethosn_core *core = inference->core;
 
-		dev_warn(core->dev,
-			 "Reset Ethos-N due to error inference abort. handle=0x%pK\n",
-			 inference);
 		mutex_lock(&core->mutex);
 
-		(void)ethosn_reset_and_start_ethosn(core);
-		ethosn_network_poll(core, inference,
-				    ETHOSN_INFERENCE_STATUS_ERROR);
+		/* Inference might be completed by now */
+		if (inference->status == ETHOSN_INFERENCE_RUNNING) {
+			dev_warn(core->dev,
+				 "Reset Ethos-N due to error inference abort. handle=0x%pK\n",
+				 inference);
+
+			(void)ethosn_reset_and_start_ethosn(core);
+			ethosn_network_poll(core, inference,
+					    ETHOSN_INFERENCE_STATUS_ERROR);
+		}
 
 		mutex_unlock(&core->mutex);
 	}
@@ -654,7 +669,6 @@ static int ethosn_inference_register(struct ethosn_network *network,
 	struct ethosn_device *ethosn = network->ethosn;
 	struct ethosn_core *core = ethosn->core[0];
 	struct ethosn_inference *inference;
-	struct ethosn_log_uapi_inference_req log;
 	int ret_fd, ret;
 
 	inference = inference_create(network, req);
@@ -674,13 +688,6 @@ static int ethosn_inference_register(struct ethosn_network *network,
 
 	dev_dbg(ifr_to_dev(inference),
 		"Registered inference. handle=0x%pK\n", inference);
-
-	log.request = *req;
-	log.handle = (ptrdiff_t)inference;
-	log.network_handle = (ptrdiff_t)network;
-	log.fd = ret_fd;
-	ethosn_log_uapi(core, ETHOSN_IOCTL_SCHEDULE_INFERENCE, &log,
-			sizeof(log));
 
 	ret = mutex_lock_interruptible(
 		&ethosn->queue.inference_queue_mutex);
@@ -703,29 +710,15 @@ static int ethosn_inference_register(struct ethosn_network *network,
 		 */
 		core = ethosn->core[i];
 
-		pm_runtime_get_sync(core->dev);
-
 		ret = mutex_lock_interruptible(&core->mutex);
 
 		/* Return the file descriptor */
-		if (ret) {
-			pm_runtime_mark_last_busy(core->dev);
-			pm_runtime_put(core->dev);
-
+		if (ret)
 			goto end;
-		}
 
 		if (core->current_inference == NULL) {
 			found = true;
 			ethosn_schedule_queued_inference(core);
-		}
-
-		/* ethosn_schedule_queued_inference modifies current_inference,
-		 * put if nothing has been scheduled on this core
-		 */
-		if (!found || (found && !core->current_inference)) {
-			pm_runtime_mark_last_busy(core->dev);
-			pm_runtime_put(core->dev);
 		}
 
 		mutex_unlock(&core->mutex);
@@ -1009,7 +1002,8 @@ static int alloc_init_inference_data(struct ethosn_network *network,
 			ethosn_dma_alloc_and_map(core->allocator,
 						 size, ETHOSN_PROT_READ,
 						 ETHOSN_STREAM_COMMAND_STREAM,
-						 GFP_KERNEL);
+						 GFP_KERNEL,
+						 "network-inference-data");
 		if (IS_ERR_OR_NULL(network->inference_data[i]))
 			return ret;
 
@@ -1019,7 +1013,8 @@ static int alloc_init_inference_data(struct ethosn_network *network,
 				req->intermediate_data_size,
 				ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
 				ETHOSN_STREAM_DMA,
-				GFP_KERNEL);
+				GFP_KERNEL,
+				"network-intermediate-data");
 
 		if (IS_ERR_OR_NULL(network->intermediate_data[i]))
 			return ret;
@@ -1121,7 +1116,8 @@ static struct ethosn_network *create_network(struct ethosn_device *ethosn,
 
 	network->constant_dma_data = ethosn_dma_alloc(ethosn->allocator,
 						      net_req->dma_data.size,
-						      GFP_KERNEL);
+						      GFP_KERNEL,
+						      "network-constant-dma-data");
 
 	if (IS_ERR_OR_NULL(network->constant_dma_data))
 		goto err_free_network;
@@ -1146,7 +1142,8 @@ static struct ethosn_network *create_network(struct ethosn_device *ethosn,
 	network->constant_cu_data =
 		ethosn_dma_alloc(ethosn->allocator,
 				 net_req->cu_data.size,
-				 GFP_KERNEL);
+				 GFP_KERNEL,
+				 "network-constant-cu-data");
 	if (IS_ERR_OR_NULL(network->constant_cu_data))
 		goto err_free_network;
 
@@ -1219,7 +1216,6 @@ int ethosn_network_register(struct ethosn_device *ethosn,
 	};
 
 	struct ethosn_network *network;
-	struct ethosn_log_uapi_network_req log;
 	int fd;
 
 	network = create_network(ethosn, net_req);
@@ -1242,16 +1238,6 @@ int ethosn_network_register(struct ethosn_device *ethosn,
 	dev_dbg(ethosn->dev,
 		"Registered network. handle=0x%pK\n", network);
 
-	log.request = *net_req;
-	log.handle = (ptrdiff_t)network;
-	log.fd = fd;
-
-	/* FIXME :- ethosn_log_uapi() needs to be invoked on ethosn.
-	 * This will be fixed in a subsequent patch.
-	 */
-	ethosn_log_uapi(ethosn->core[0], ETHOSN_IOCTL_REGISTER_NETWORK, &log,
-			sizeof(log));
-
 	return fd;
 }
 
@@ -1260,24 +1246,17 @@ void ethosn_network_poll(struct ethosn_core *core,
 			 int status)
 {
 	if (inference) {
-		struct ethosn_dma_allocator *allocator =
-			core->parent->allocator;
-		int i;
-
 		inference->status = status;
-
-		for (i = 0; i < inference->network->num_outputs; ++i)
-			ethosn_dma_sync_for_cpu(
-				allocator,
-				inference->outputs[i]->dma_info);
 
 		wake_up_poll(&inference->poll_wqh, EPOLLIN);
 
 		dev_dbg(core->dev,
-			"END_INFERENCE: inference 0x%pK time %llu on core_id = %d",
+			"END_INFERENCE: inference 0x%pK time %llu on core_id = %u",
 			inference, ktime_get_ns(), core->core_id);
 
 		ethosn_put_inference(inference);
+		pm_runtime_mark_last_busy(core->dev);
+		pm_runtime_put(core->dev);
 	}
 
 	/* Reset current running inference. */
@@ -1285,12 +1264,4 @@ void ethosn_network_poll(struct ethosn_core *core,
 
 	/* Schedule next queued inference. */
 	ethosn_schedule_queued_inference(core);
-
-	/* ethosn_schedule_queued_inference modifies current_inference,
-	 * put if nothing has been scheduled on this core
-	 */
-	if (!core->current_inference) {
-		pm_runtime_mark_last_busy(core->dev);
-		pm_runtime_put(core->dev);
-	}
 }
