@@ -160,6 +160,12 @@ struct ethosn_buffer_req {
 	__u32 flags;
 };
 
+struct ethosn_dma_buf_req {
+	__u32  fd;
+	__u32  flags;
+	size_t size;
+};
+
 /*****************************************************************************
  * Capabilities
  *****************************************************************************/
@@ -178,107 +184,6 @@ struct ethosn_fw_hw_capabilities {
 /*****************************************************************************
  * Logging
  *****************************************************************************/
-
-/**
- * Magic word "ANPU" that prefix all messages.
- *
- * Messages are stored in native byte order. The magic word can be used to
- * detect if the log has been stored in the same byte order as the application
- * unpacking the log is using.
- */
-#define ETHOSN_LOG_MAGIC                   0x414e5055
-
-/**
- * enum ethosn_log_type - Message type.
- */
-enum ethosn_log_type {
-	ETHOSN_LOG_TYPE_TEXT     = 0,
-	ETHOSN_LOG_TYPE_UAPI     = 1,
-	ETHOSN_LOG_TYPE_FIRMWARE = 2,
-	ETHOSN_LOG_TYPE_MAX
-};
-
-/**
- * struct ethosn_log_timeval - Portable time value format.
- * @sec:		Seconds since 1970-01-01, Unix time epoch.
- * @nsec:		Nano seconds.
- */
-struct ethosn_log_timeval {
-	__u64 sec;
-	__u64 nsec;
-} __packed;
-
-/**
- * struct ethosn_log_header - Common header for all messages stored in RAM
- * buffer.
- * @magic:		Magic word.
- * @length:		Length of message, excluding this header.
- * @type:		Message type.
- * @timestamp:		Time stamp.
- */
-struct ethosn_log_header {
-	__u32                     magic;
-	__u32                     length;
-	__u32                     type;
-	struct ethosn_log_timeval timestamp;
-} __packed;
-
-/**
- * struct ethosn_log_uapi_header - Common header for all UAPI log messages.
- * @ioctl:		IOCTL number.
- */
-struct ethosn_log_uapi_header {
-	__u32 ioctl;
-} __packed;
-
-/**
- * struct ethosn_log_uapi_buffer_req - Log buffer request.
- * @request:		UAPI request.
- * @handle:		Handle identifier.
- * @fd:			User space file descriptor.
- */
-struct ethosn_log_uapi_buffer_req {
-	struct ethosn_buffer_req request;
-	__u64                    handle;
-	__u32                    fd;
-} __packed;
-
-/**
- * struct ethosn_log_uapi_network_req - Log network request.
- * @request:		UAPI request.
- * @handle:		Handle identifier.
- * @fd:			User space file descriptor.
- */
-struct ethosn_log_uapi_network_req {
-	struct ethosn_network_req request;
-	__u64                     handle;
-	__u32                     fd;
-} __packed;
-
-/**
- * struct ethosn_log_uapi_inference_req - Log inference request.
- * @request:		UAPI request.
- * @handle:		Handle identifier.
- * @network_handle:	Network handle the inference is connected to.
- * @fd:			User space file descriptor.
- */
-struct ethosn_log_uapi_inference_req {
-	struct ethosn_inference_req request;
-	__u64                       handle;
-	__u64                       network_handle;
-	__u32                       fd;
-} __packed;
-
-/**
- * enum ethosn_log_firmware_direction - Direction of firmware message.
- * @ETHOSN_LOG_FIRMWARE_INPUT:	Host<-Firmware.
- * @ETHOSN_LOG_FIRMWARE_OUTPUT:	Host->Firmware.
- */
-enum ethosn_log_firmware_direction {
-	ETHOSN_LOG_FIRMWARE_INPUT,
-	ETHOSN_LOG_FIRMWARE_OUTPUT,
-	ETHOSN_LOG_FIRMWARE_MAX
-};
 
 /**
  * struct ethosn_profiling_config - Global profiling options which can be
@@ -306,16 +211,6 @@ enum ethosn_poll_counter_name {
 	ETHOSN_POLL_COUNTER_NAME_PM_SUSPEND,
 	ETHOSN_POLL_COUNTER_NAME_PM_RESUME,
 };
-
-/**
- * struct ethosn_log_firmware_header - Firmware log header.
- * @inference:		Current running inference handle.
- * @direction:		Message direction.
- */
-struct ethosn_log_firmware_header {
-	__u64 inference;
-	__u32 direction;
-} __packed;
 
 #define ETHOSN_IOCTL_BASE       0x01
 #define ETHOSN_IO(nr)           _IO(ETHOSN_IOCTL_BASE, nr)
@@ -349,6 +244,8 @@ struct ethosn_log_firmware_header {
 	ETHOSN_IO(0x0b)
 #define ETHOSN_IOCTL_SYNC_FOR_DEVICE \
 	ETHOSN_IO(0x0c)
+#define ETHOSN_IOCTL_IMPORT_BUFFER \
+	ETHOSN_IO(0x0d)
 
 /*
  * Results from reading an inference file descriptor.

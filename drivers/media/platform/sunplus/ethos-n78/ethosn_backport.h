@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2021 Arm Limited.
+ * (C) COPYRIGHT 2021-2022 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -23,6 +23,7 @@
 #ifndef _ETHOSN_BACKPORT_H_
 #define _ETHOSN_BACKPORT_H_
 
+#include <linux/dma-buf.h>
 #include <linux/dma-mapping.h>
 #include <linux/fs.h>
 #include <linux/iommu.h>
@@ -68,8 +69,11 @@ struct iommu_domain *ethosn_iommu_get_domain_for_dev(struct device *dev);
 
 int ethosn_bitmap_find_next_zero_area(struct device *dev,
 				      void **bitmap,
-				      size_t bits,
+				      size_t *bits,
 				      int nr_pages,
 				      unsigned long *start);
+
+struct sg_table *ethosn_dma_buf_map_attachment(
+	struct dma_buf_attachment *attach);
 
 #endif /* _ETHOSN_BACKPORT_H_ */

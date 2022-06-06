@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited.
+ * (C) COPYRIGHT 2018-2022 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -24,7 +24,6 @@
 
 #include "ethosn_backport.h"
 #include "ethosn_firmware.h"
-#include "ethosn_log.h"
 #include "ethosn_smc.h"
 
 #include <linux/firmware.h>
@@ -66,7 +65,7 @@ module_param_named(profiling, profiling_enabled, bool, 0664);
 static int clock_frequency = 1000;
 module_param_named(clock_frequency, clock_frequency, int, 0440);
 
-static bool stashing_enabled;
+static bool stashing_enabled = true;
 module_param_named(stashing, stashing_enabled, bool, 0440);
 
 /* Exposes global access to the most-recently created Ethos-N core for testing
@@ -207,7 +206,8 @@ static int mailbox_alloc(struct ethosn_core *core)
 			sizeof(struct ethosn_mailbox),
 			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
 			ETHOSN_STREAM_WORKING_DATA,
-			GFP_KERNEL);
+			GFP_KERNEL,
+			"mailbox-header");
 	if (IS_ERR_OR_NULL(core->mailbox)) {
 		dev_warn(core->dev,
 			 "Failed to allocate memory for mailbox");
@@ -221,7 +221,8 @@ static int mailbox_alloc(struct ethosn_core *core)
 			core->queue_size,
 			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
 			ETHOSN_STREAM_WORKING_DATA,
-			GFP_KERNEL);
+			GFP_KERNEL,
+			"mailbox-request");
 	if (IS_ERR_OR_NULL(core->mailbox_request)) {
 		dev_warn(core->dev,
 			 "Failed to allocate memory for mailbox request queue");
@@ -234,7 +235,8 @@ static int mailbox_alloc(struct ethosn_core *core)
 					 core->queue_size,
 					 ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
 					 ETHOSN_STREAM_WORKING_DATA,
-					 GFP_KERNEL);
+					 GFP_KERNEL,
+					 "mailbox-response");
 	if (IS_ERR_OR_NULL(core->mailbox_response)) {
 		dev_warn(core->dev,
 			 "Failed to allocate memory for mailbox response queue");
@@ -397,8 +399,11 @@ static int ethosn_hard_reset(struct ethosn_core *core)
 #if 1//HW auto reset
     static volatile uint32_t *reset_req;//moon n78 reset
 	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
-	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
-	udelay(1);
+	if ((reset_req[0] & 0x2000) != 0x2000)//if N78 HW auto reset is disabled.
+	{
+	    reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+	    udelay(1);
+	}
 #endif
 	dev_info(core->dev, "Hard reset the hardware.\n");
 
@@ -474,8 +479,11 @@ static int ethosn_soft_reset(struct ethosn_core *core)
 #if 1//HW auto reset
     static volatile uint32_t *reset_req;//moon n78 reset
 	reset_req = ioremap(0xF8000164, 32*4);//moon n78 reset control
-	reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
-	udelay(1);
+	if ((reset_req[0] & 0x2000) != 0x2000)//if N78 HW auto reset is disabled.
+	{
+	    reset_req[0] = 0x2000|(0x2000<<16);//enable N78 HW auto reset (0xF8000164.bit13)
+	    udelay(1);
+	}
 #endif
 
 	dev_info(core->dev, "Soft reset the hardware.\n");
@@ -715,38 +723,13 @@ int ethosn_read_message(struct ethosn_core *core,
 {
 	struct ethosn_queue *queue = core->mailbox_response->cpu_addr;
 	bool ret;
-	uint32_t read_pending;
-
-	if (core->mailbox_response->size <
-	    (sizeof(*queue) + queue->capacity) ||
-	    !is_power_of_2(queue->capacity)) {
-		dev_err(core->dev,
-			"Illegal mailbox queue capacity. alloc_size=%zu, queue capacity=%u\n",
-			core->mailbox_request->size, queue->capacity);
-
-		return -EFAULT;
-	}
 
 	ethosn_dma_sync_for_cpu(core->allocator, core->mailbox_response);
 
 	ret = ethosn_queue_read(queue, (uint8_t *)header,
-				sizeof(struct ethosn_message_header),
-				&read_pending);
+				sizeof(struct ethosn_message_header));
 	if (!ret)
 		return 0;
-
-	/*
-	 * It's possible that the "writing" side (e.g. CU firmware) has written
-	 * the header but hasn't yet written the payload. In this case we give
-	 * up and will try again once the "writing" side sends the interrupt to
-	 * indicate it has finished writing the whole message.
-	 */
-	if ((ethosn_queue_get_size(queue) -
-	     sizeof(struct ethosn_message_header)) <
-	    header->length)
-		return 0;
-
-	queue->read = read_pending;
 
 	dev_dbg(core->dev,
 		"Received message. type=%u, length=%u, read=%u, write=%u.\n",
@@ -754,16 +737,22 @@ int ethosn_read_message(struct ethosn_core *core,
 		queue->write);
 
 	if (length < header->length) {
-		dev_warn(core->dev,
-			 "Message too large to read. header.length=%u, length=%zu.\n",
-			 header->length, length);
+		dev_err(core->dev,
+			"Message too large to read. header.length=%u, length=%zu.\n",
+			header->length, length);
 
 		ethosn_queue_skip(queue, header->length);
 
 		return -ENOMEM;
 	}
 
-	ret = ethosn_queue_read(queue, data, header->length, &read_pending);
+	/*
+	 * We assume that if there is any data in the queue at all
+	 * then the full message is available. Partial messages should not be
+	 * observable, as the firmware updates its write pointer only
+	 * once the full message is written.
+	 */
+	ret = ethosn_queue_read(queue, data, header->length);
 	if (!ret) {
 		dev_err(core->dev,
 			"Failed to read message payload. size=%u, queue capacity=%u\n",
@@ -772,16 +761,16 @@ int ethosn_read_message(struct ethosn_core *core,
 		return -EFAULT;
 	}
 
-	queue->read = read_pending;
-
 	ethosn_dma_sync_for_device(core->allocator, core->mailbox_response);
 
-	ethosn_log_firmware(core, ETHOSN_LOG_FIRMWARE_INPUT, header, data);
 	if (core->profiling.config.enable_profiling)
 		++core->profiling.mailbox_messages_received;
 
 	return 1;
 }
+
+/* Exported for use by test module * */
+EXPORT_SYMBOL(ethosn_read_message);
 
 /**
  * ethosn_write_message() - Write message to queue.
@@ -804,16 +793,10 @@ int ethosn_write_message(struct ethosn_core *core,
 	};
 	bool ret;
 	uint32_t write_pending;
-
-	if (core->mailbox_response->size <
-	    (sizeof(*queue) + queue->capacity) ||
-	    !is_power_of_2(queue->capacity)) {
-		dev_err(core->dev,
-			"Illegal mailbox queue capacity. alloc_size=%zu, queue capacity=%u\n",
-			core->mailbox_request->size, queue->capacity);
-
-		return -EFAULT;
-	}
+	const uint8_t *buffers[2] = {
+		(const uint8_t *)&header, (const uint8_t *)data
+	};
+	uint32_t sizes[2] = { sizeof(header), length };
 
 	ethosn_dma_sync_for_cpu(core->allocator, core->mailbox_request);
 
@@ -821,21 +804,14 @@ int ethosn_write_message(struct ethosn_core *core,
 		"Write message. type=%u, length=%zu, read=%u, write=%u.\n",
 		type, length, queue->read, queue->write);
 
-	write_pending = queue->write;
-
 	ret =
-		ethosn_queue_write(queue, (uint8_t *)&header,
-				   sizeof(struct ethosn_message_header),
+		ethosn_queue_write(queue, buffers, sizes, 2,
 				   &write_pending);
 	if (!ret)
 		return ret;
 
-	ret = ethosn_queue_write(queue, data, length, &write_pending);
-	if (!ret)
-		return ret;
-
 	/*
-	 * Sync the payload before committing the updated write pointer so that
+	 * Sync the data before committing the updated write pointer so that
 	 * the "reading" side (e.g. CU firmware) can't read invalid data.
 	 */
 	ethosn_dma_sync_for_device(core->allocator, core->mailbox_request);
@@ -849,7 +825,6 @@ int ethosn_write_message(struct ethosn_core *core,
 	ethosn_dma_sync_for_device(core->allocator, core->mailbox_request);
 	ethosn_notify_firmware(core);
 
-	ethosn_log_firmware(core, ETHOSN_LOG_FIRMWARE_OUTPUT, &header, data);
 	if (core->profiling.config.enable_profiling)
 		++core->profiling.mailbox_messages_sent;
 
@@ -867,7 +842,7 @@ int ethosn_send_fw_hw_capabilities_request(struct ethosn_core *core)
 	if (core->fw_and_hw_caps.size > 0U)
 		return 0;
 
-	dev_dbg(core->dev, "-> FW & HW Capabilities\n");
+	dev_dbg(core->dev, "-> FW & HW capabilities\n");
 
 	return ethosn_write_message(core, ETHOSN_MESSAGE_FW_HW_CAPS_REQUEST,
 				    NULL, 0);
@@ -919,7 +894,7 @@ static int ethosn_send_configure_profiling(struct ethosn_core *core,
 	}
 
 	dev_dbg(core->dev,
-		"-> ETHOSN_MESSAGE_CONFIGURE_PROFILING, enable_profiling=%d, buffer_address=0x%08llx, buffer_size=%d\n",
+		"-> Configure profiling, enable_profiling=%d, buffer_address=0x%08llx, buffer_size=%d\n",
 		fw_new_config.enable_profiling, fw_new_config.buffer_address,
 		fw_new_config.buffer_size);
 
@@ -959,7 +934,8 @@ int ethosn_configure_firmware_profiling(struct ethosn_core *core,
 				new_config->firmware_buffer_size,
 				ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
 				ETHOSN_STREAM_WORKING_DATA,
-				GFP_KERNEL);
+				GFP_KERNEL,
+				"profiling-firmware-buffer");
 		if (IS_ERR(core->profiling.firmware_buffer_pending)) {
 			dev_err(core->dev,
 				"Error allocating firmware profiling buffer.\n");
@@ -1034,7 +1010,7 @@ int ethosn_send_time_sync(struct ethosn_core *core)
 {
 	struct ethosn_message_time_sync_request request;
 
-	dev_dbg(core->dev, "-> Time Sync\n");
+	dev_dbg(core->dev, "-> Time sync\n");
 
 	request.timestamp = ktime_get_real_ns();
 
@@ -1367,7 +1343,8 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_PROT_READ |
 						 ETHOSN_PROT_WRITE,
 						 ETHOSN_STREAM_FIRMWARE,
-						 GFP_KERNEL);
+						 GFP_KERNEL,
+						 "firmware-code");
 
 	if (IS_ERR_OR_NULL(core->firmware)) {
 		ret = -ENOMEM;
@@ -1386,7 +1363,8 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_PROT_READ |
 						 ETHOSN_PROT_WRITE,
 						 ETHOSN_STREAM_WORKING_DATA,
-						 GFP_KERNEL);
+						 GFP_KERNEL,
+						 "firmware-stack-task");
 
 	if (IS_ERR_OR_NULL(core->firmware_stack_task)) {
 		ret = -ENOMEM;
@@ -1401,7 +1379,8 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_PROT_READ |
 						 ETHOSN_PROT_WRITE,
 						 ETHOSN_STREAM_WORKING_DATA,
-						 GFP_KERNEL);
+						 GFP_KERNEL,
+						 "firmware-stack-main");
 
 	if (IS_ERR_OR_NULL(core->firmware_stack_main)) {
 		ret = -ENOMEM;
@@ -1417,7 +1396,8 @@ static int firmware_load(struct ethosn_core *core,
 						 ETHOSN_PROT_READ |
 						 ETHOSN_PROT_WRITE,
 						 ETHOSN_STREAM_FIRMWARE,
-						 GFP_KERNEL);
+						 GFP_KERNEL,
+						 "firmware-vtable");
 
 	if (IS_ERR_OR_NULL(core->firmware_vtable)) {
 		ret = -ENOMEM;
@@ -1516,6 +1496,13 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 
 	/* Firmware is not running */
 	core->firmware_running = false;
+
+	/* Clear any outstanding configuration */
+	if (core->profiling.is_waiting_for_firmware_ack) {
+		ret = ethosn_configure_firmware_profiling_ack(core);
+		if (ret)
+			return ret;
+	}
 
 	/* Load the firmware */
 	ret = firmware_init(core);
@@ -1935,15 +1922,10 @@ int ethosn_device_init(struct ethosn_core *core)
 	/* Initialize debugfs */
 	dfs_init(core);
 
-	/* Initialize log */
-	ret = ethosn_log_init(core);
-	if (ret)
-		goto remove_debufs;
-
 	/* Load the firmware */
 	ret = firmware_init(core);
 	if (ret)
-		goto deinit_log;
+		goto remove_debufs;
 
 	/* Allocate the mailbox structure */
 	ret = mailbox_alloc(core);
@@ -1961,9 +1943,6 @@ int ethosn_device_init(struct ethosn_core *core)
 
 deinit_firmware:
 	ethosn_firmware_deinit(core);
-
-deinit_log:
-	ethosn_log_deinit(core);
 
 remove_debufs:
 	dfs_deinit(core);
@@ -1988,10 +1967,9 @@ void ethosn_device_deinit(struct ethosn_core *core)
 
 	ethosn_global_core_for_testing = NULL;
 
-	ethosn_hard_reset(core);
+	ethosn_reset(core);
 	ethosn_firmware_deinit(core);
 	ethosn_mailbox_free(core);
-	ethosn_log_deinit(core);
 	dfs_deinit(core);
 	mutex_unlock(&core->mutex);
 	if (core->fw_and_hw_caps.data) {

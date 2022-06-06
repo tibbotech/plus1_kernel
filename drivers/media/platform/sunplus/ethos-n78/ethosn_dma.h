@@ -70,6 +70,8 @@ struct ethosn_dma_allocator {
  * @alloc:             Allocate DMA memory
  * @free               Free DMA memory allocated with alloc
  * @map                Map virtual addresses
+ * @import             Attach and map the buffer into the device memory space
+ * @release            Release and unmap the buffer from the device memory space
  * @unmap              Unmap virtual addresses
  * @sync_for_device    Transfer ownership of the memory buffer to the Ethos-N by
  *                     flushing the CPU cache
@@ -90,22 +92,35 @@ struct ethosn_dma_allocator_ops {
 				      struct ethosn_dma_info *dma_info,
 				      int prot,
 				      enum ethosn_stream_id stream_id);
-	void            (*unmap)(struct ethosn_dma_allocator *allocator,
-				 struct ethosn_dma_info *dma_info,
-				 enum ethosn_stream_id stream_id);
-	void            (*free)(struct ethosn_dma_allocator *allocator,
-				struct ethosn_dma_info *dma_info);
-	void            (*sync_for_device)(struct ethosn_dma_allocator *
-					   allocator,
-					   struct ethosn_dma_info *dma_info);
-	void            (*sync_for_cpu)(struct ethosn_dma_allocator *allocator,
-					struct ethosn_dma_info *dma_info);
-	int             (*mmap)(struct ethosn_dma_allocator *allocator,
-				struct vm_area_struct *const vma,
-				const struct ethosn_dma_info *const dma_info);
-	dma_addr_t      (*get_addr_base)(struct ethosn_dma_allocator *allocator,
+	struct ethosn_dma_info *(*import)(struct ethosn_dma_allocator *
+					  allocator,
+					  int fd,
+					  size_t size);
+	void (*release)(struct ethosn_dma_allocator *
+			allocator,
+			struct ethosn_dma_info *const
+			dma_info);
+	void (*unmap)(struct ethosn_dma_allocator *allocator,
+		      struct ethosn_dma_info *dma_info,
+		      enum ethosn_stream_id stream_id);
+	void (*free)(struct ethosn_dma_allocator *allocator,
+		     struct ethosn_dma_info *dma_info);
+	void (*sync_for_device)(struct ethosn_dma_allocator *
+				allocator,
+				struct ethosn_dma_info *
+				dma_info);
+	void (*sync_for_cpu)(struct ethosn_dma_allocator *
+			     allocator,
+			     struct ethosn_dma_info *dma_info);
+	int  (*mmap)(struct ethosn_dma_allocator *allocator,
+		     struct vm_area_struct *const vma,
+		     const struct ethosn_dma_info *const
+		     dma_info);
+	dma_addr_t      (*get_addr_base)(struct ethosn_dma_allocator *
+					 allocator,
 					 enum ethosn_stream_id stream_id);
-	resource_size_t (*get_addr_size)(struct ethosn_dma_allocator *allocator,
+	resource_size_t (*get_addr_size)(struct ethosn_dma_allocator *
+					 allocator,
 					 enum ethosn_stream_id stream_id);
 };
 
@@ -132,6 +147,8 @@ void ethosn_dma_allocator_destroy(struct ethosn_dma_allocator **allocator);
  * @prot: read/write protection
  * @stream_id: Stream identifier
  * @gfp: GFP flags
+ * @debug_tag: (optional) string to identify the allocation. This will be
+ *   printed to the console if debug prints are enabled.
  *
  * Return:
  *  Pointer to ethosn_dma_info struct representing the allocation
@@ -142,15 +159,16 @@ struct ethosn_dma_info *ethosn_dma_alloc_and_map(
 	size_t size,
 	int prot,
 	enum ethosn_stream_id stream_id,
-	gfp_t gfp);
+	gfp_t gfp,
+	const char *debug_tag);
 
 /**
  * ethosn_dma_alloc() - Allocate DMA memory without mapping
  * @allocator: Allocator object
  * @size: bytes of memory
- * @prot: read/write protection
- * @stream_id: Stream identifier
  * @gfp: GFP flags
+ * @debug_tag: (optional) string to identify the allocation. This will be
+ *   printed to the console if debug prints are enabled.
  *
  * Return:
  *  Pointer to ethosn_dma_info struct representing the allocation
@@ -158,7 +176,8 @@ struct ethosn_dma_info *ethosn_dma_alloc_and_map(
  */
 struct ethosn_dma_info *ethosn_dma_alloc(struct ethosn_dma_allocator *allocator,
 					 size_t size,
-					 gfp_t gfp);
+					 gfp_t gfp,
+					 const char *debug_tag);
 
 /**
  * ethosn_dma_map() - Map DMA memory
@@ -256,5 +275,28 @@ void ethosn_dma_sync_for_device(struct ethosn_dma_allocator *allocator,
  */
 void ethosn_dma_sync_for_cpu(struct ethosn_dma_allocator *allocator,
 			     struct ethosn_dma_info *dma_info);
+
+/**
+ * ethosn_dma_import() - Import shared DMA buffer
+ * @allocator: Allocator object
+ * @fd: file descriptor for the shared DMA buffer
+ * @size: size of the shared buffer
+ *
+ * Return:
+ * * 0 - Success
+ * * Negative error code
+ */
+struct ethosn_dma_info *ethosn_dma_import(
+	struct ethosn_dma_allocator *allocator,
+	int fd,
+	size_t size);
+
+/**
+ * ethosn_dma_release() - Release shared DMA buffer
+ * @allocator: Allocator object
+ * @dma_info: Allocation information
+ */
+void ethosn_dma_release(struct ethosn_dma_allocator *allocator,
+			struct ethosn_dma_info *const dma_info);
 
 #endif /* _ETHOSN_DMA_H_ */
