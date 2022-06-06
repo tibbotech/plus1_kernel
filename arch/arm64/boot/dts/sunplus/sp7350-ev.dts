@@ -129,7 +129,7 @@
 		#size-cells = <2>;
 		ranges;
 
-		extclk: clk@osc0 {
+		extclk: osc0 {
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
 			clock-frequency = <XTAL>;
