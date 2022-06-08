@@ -1388,7 +1388,7 @@
 	};
 #endif
 
-	pctl: pinctl@f8000280 {
+	pctl: pinctrl@f8000280 {
 		compatible = "sunplus,q645-pctl";
 		reg = <0x0 0xf8000280 0x0 0x180>,
 		      <0x0 0xf80032e4 0x0 0x1c>,

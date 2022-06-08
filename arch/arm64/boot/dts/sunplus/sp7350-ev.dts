@@ -863,7 +863,7 @@
 	};
 #endif
 
-	pctl: pinctl@f8800080 {
+	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x20>,
 		      <0x0 0xf8000280 0x0 0x180>,
