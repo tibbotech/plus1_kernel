@@ -707,6 +707,10 @@ static int sp_iop_platform_driver_probe(struct platform_device *pdev)
 	sp_iop_reserve_base(iop);
 	sp_iop_reserve_size(iop);
 	#endif
+
+	#ifdef CONFIG_SOC_Q645
+	pm_power_off = sp_iop_platform_driver_poweroff;
+	#endif
 	return 0;
 
 

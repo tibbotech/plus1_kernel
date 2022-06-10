@@ -541,45 +541,26 @@ void hal_iop_shutdown(void __iomem *iopbase, void __iomem *ioppmcbase)
 	reg &= ~(0x01);
 	writel(reg, &pIopReg->iop_control);
 
-	early_printk("%s(%d) IOP_READY=%x\n", __func__, __LINE__, pIopReg->iop_data2);
+	#ifdef CONFIG_SOC_Q645
+	mdelay(1);
+	#endif
 	while ((pIopReg->iop_data2&IOP_READY) != IOP_READY)
 		;
 
 	writel(RISC_READY, &pIopReg->iop_data2);
-
-	early_printk("%s(%d) RISC_READY=%x\n", __func__, __LINE__, pIopReg->iop_data2);
-
-	#ifdef early_printk
-	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-	early_printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-	#endif
-
 	writel(0x00, &pIopReg->iop_data5);
 	writel(0x60, &pIopReg->iop_data6);
 
+	#ifdef CONFIG_SOC_Q645
+	mdelay(1);
+	#endif
 	while (1) {
 		if (pIopReg->iop_data7 == 0xaaaa)
 			break;
-		#ifdef early_printk
-		early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-			pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-		early_printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-			pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-		#endif
 	}
 
 	writel(0xdd, &pIopReg->iop_data1);//8051 bin file call Ultra low function.
 	mdelay(10);
-	#ifdef early_printk
-	early_printk("%s(%d) iop_data0=%x  iop_data1=%x iop_data2=%x iop_data3=%x iop_data4=%x iop_data5=%x\n", __func__, __LINE__,
-		pIopReg->iop_data0, pIopReg->iop_data1, pIopReg->iop_data2, pIopReg->iop_data3, pIopReg->iop_data4, pIopReg->iop_data5);
-
-	early_printk("%s(%d) iop_data6=%x  iop_data7=%x iop_data8=%x iop_data9=%x iop_data10=%x iop_data11=%x\n", __func__, __LINE__,
-		pIopReg->iop_data6, pIopReg->iop_data7, pIopReg->iop_data8, pIopReg->iop_data9, pIopReg->iop_data10, pIopReg->iop_data11);
-	#endif
-
 }
 EXPORT_SYMBOL(hal_iop_shutdown);
 
