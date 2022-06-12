@@ -6,7 +6,7 @@
 #ifndef _DT_BINDINGS_RST_SUNPLUS_SP7350_H
 #define _DT_BINDINGS_RST_SUNPLUS_SP7350_H
 
-/* mo_reset0 ~ mo_reset4 */
+/* mo_reset0 ~ mo_reset11 */
 #define RST_SYSTEM              0x00
 #define RST_CA55CORE0           0x01
 #define RST_CA55CORE1           0x02
@@ -26,7 +26,7 @@
 
 #define RST_CBDMA0              0x10
 #define RST_CPIOR               0x11
-#define RST_DDR_PHY0            0x12
+#define RST_DDRPHY              0x12
 #define RST_TZC                 0x13
 #define RST_DDRCTL              0x14
 #define RST_DRAM                0x15
@@ -163,12 +163,12 @@
 #define RST_I2CM7               0x90
 #define RST_I2CM8               0x91
 #define RST_I2CM9               0x92
-#define RST_SPI_COMBO_0         0x93
-#define RST_SPI_COMBO_1         0x94
-#define RST_SPI_COMBO_2         0x95
-#define RST_SPI_COMBO_3         0x96
-#define RST_SPI_COMBO_4         0x97
-#define RST_SPI_COMBO_5         0x98
+#define RST_SPICB0              0x93
+#define RST_SPICB1              0x94
+#define RST_SPICB2              0x95
+#define RST_SPICB3              0x96
+#define RST_SPICB4              0x97
+#define RST_SPICB5              0x98
 #define RST_PD_AXI_DMA          0x99
 #define RST_PD_CA55             0x9a
 #define RST_PD_CARD0            0x9b
@@ -195,7 +195,7 @@
 #define RST_PD_SPI_NOR          0xaf
 
 #define RST_PD_UART2AXI         0xb0
-#define RST_PD_USB30C           0xb1
+#define RST_PD_USB30C0          0xb1
 #define RST_PD_USBC0            0xb2
 #define RST_PD_VCD              0xb3
 #define RST_PD_VCE              0xb4
@@ -209,7 +209,7 @@
 #define RST_PD_AUD              0xbc
 #define RST_PD_CM4              0xbd
 #define RST_PD_HWUA_TX_GDMA     0xbe
-#define RST_PD_QCTRL            0xbf
+#define RST_QCTRL               0xbf
 
 #define RST_MAX                 0xc0
 

@@ -76,12 +76,12 @@
 		i2c4 = &i2cm4;
 		i2c5 = &i2cm5;
 
-		sp_spi0 = &spi_controller0;
-		sp_spi1 = &spi_controller1;
-		sp_spi2 = &spi_controller2;
-		sp_spi3 = &spi_controller3;
-		sp_spi4 = &spi_controller4;
-		sp_spi5 = &spi_controller5;
+		spicb0 = &spi_controller0;
+		spicb1 = &spi_controller1;
+		spicb2 = &spi_controller2;
+		spicb3 = &spi_controller3;
+		spicb4 = &spi_controller4;
+		spicb5 = &spi_controller5;
 
 		spi0 = &sp_spinor0;
 	};
@@ -114,22 +114,22 @@
 		};
 
 		/* remoteproc reserve memory: 0x01000000-0x01907fff, total 9M+32K */
-		rproc_0_reserved: rproc@01000000 {
+		rproc_0_reserved: rproc@1000000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x01000000 0x0 0x800000>;
 			no-map;
 		};
-		vdev0buffer: vdev0buffer@01800000 {
+		vdev0buffer: vdev0buffer@1800000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x01800000 0x0 0x100000>;
 			no-map;
 		};
-		vdev0vring0: vdev0vring0@01900000 {
+		vdev0vring0: vdev0vring0@1900000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x01900000 0x0 0x4000>;
 			no-map;
 		};
-		vdev0vring1: vdev0vring1@01904000 {
+		vdev0vring1: vdev0vring1@1904000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x01904000 0x0 0x4000>;
 			no-map;
@@ -915,7 +915,7 @@
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
 		};
-		n78_clksel: n78_clksel@05 {
+		n78_clksel: n78_clksel@5 {
 			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
 		};
 	};
@@ -1092,7 +1092,7 @@
 		status = "disabled";
 	};
 
-	audio: audio@0xf8001e00 {
+	audio: audio@f8001e00 {
 		compatible = "sunplus,Q645-audio";
 		reg = <0x0 0xf8001e00 0x0 0x700>;
 		reg-names = "audio";
@@ -1104,7 +1104,7 @@
 		status = "disabled";
 	};
 
-	usb3drd0: usb@f80a1000{
+	usb3drd0: usb3drd0{
 		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -1113,7 +1113,7 @@
 		clock-names = "ref","bus_early","suspend";
 		resets = <&rstc RST_USB30C0>;
 
-		usbdrd_dwc3_0: dwc3 {
+		usbdrd_dwc3_0: dwc3@f80a1000 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			interrupt-parent = <&gic>;
@@ -1139,14 +1139,14 @@
 		reset-names = "rstc_u3phy";
 	};
 
-	usb3drd1: usb@f80af000 {
+	usb3drd1: usb3drd1 {
 		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 		status = "disabled";
 
-		usbdrd_dwc3_1: dwc3 {
+		usbdrd_dwc3_1: dwc3@f80af000 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80af000 0x0 0xe000>;
 			interrupt-parent = <&gic>;

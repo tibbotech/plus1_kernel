@@ -154,7 +154,6 @@
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
 			reg = <0x00 0xf8800000 0x00 0x280>;  // MOON G0
-			nvmem-cells = <&n78_clksel>;
 		};
 	};
 
@@ -572,9 +571,6 @@
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
 		};
-		n78_clksel: n78_clksel@05 {
-			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
-		};
 	};
 
 	otp1: otp@f8018580 {
@@ -679,7 +675,7 @@
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 	};
 
-	audio: audio@0xf8001e00 {
+	audio: audio@f8001e00 {
 		compatible = "sunplus,sp7350-audio";
 		reg = <0x00 0xf8001e00 0x00 0x700>;
 		reg-names = "audio";
@@ -691,14 +687,14 @@
 		status = "disabled";
 	};
 
-	usb3drd0: usb@f80a1000{
+	usb3drd0: usb3drd0{
 		compatible = "sunplus,sp7350-dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
 		status = "disabled";
 
-		usbdrd_dwc3_0: dwc3 {
+		usbdrd_dwc3_0: dwc3@f80a1000 {
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
