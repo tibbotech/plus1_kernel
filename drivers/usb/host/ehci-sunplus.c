@@ -35,7 +35,6 @@
 #include <linux/usb/hcd.h>
 #include <linux/usb/ehci_pdriver.h>
 #include <linux/usb/of.h>
-#include <mach/io_map.h>
 
 #include "ehci.h"
 

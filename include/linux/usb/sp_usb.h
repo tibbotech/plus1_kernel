@@ -20,6 +20,10 @@
 #define USB_PORT1_ID				1
 #define USB_PORT_NUM				3
 
+#define PORT0_ENABLED				(1 << 0)
+#define PORT1_ENABLED				(1 << 1)
+#define PORT2_ENABLED				(1 << 3)
+
 #define	VBUS_GPIO_CTRL_0			90
 #define	VBUS_GPIO_CTRL_1			91
 
@@ -33,9 +37,6 @@
 #define GET_BC_MODE				0xFF00
 #define APHY_PROBE_CTRL				0x38
 
-#define PORT0_ENABLED				(1 << 0)
-#define PORT1_ENABLED				(1 << 1)
-#define PORT2_ENABLED				(1 << 3)
 #define POWER_SAVING_SET			(1 << 5)
 #define ECO_PATH_SET				(1 << 6)
 #define	UPHY_DISC_0				(1 << 2)
@@ -70,7 +71,16 @@
 
 #define	UPHY_DEBUG_SIGNAL_REG_OFFSET		0x30
 #define UPHY_INTER_SIGNAL_REG_OFFSET		0xc
-#define USB_OTP_REG				0x9c00af18
+
+#if defined(CONFIG_SOC_Q645)
+// MOON0
+#define USBC0_RESET_OFFSET			0x60
+
+// UPHY0
+#define GLO_CTRL0_OFFSET			0x70
+#define GLO_CTRL1_OFFSET			0x74
+#define GLO_CTRL2_OFFSET			0x78
+#endif
 
 #define PORT_OWNERSHIP				0x00002000
 #define CURRENT_CONNECT_STATUS			0x00000001

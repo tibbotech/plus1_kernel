@@ -42,7 +42,11 @@ char *otp_read_disc1(struct device *_d, ssize_t *_l, char *_name)
 
 	ret = nvmem_cell_read(c, _l);
 	nvmem_cell_put(c);
+#if defined(CONFIG_SOC_SP7021)
 	dev_dbg(_d, "%d bytes read from OTP %s", *_l, _name);
+#else
+	dev_dbg(_d, "%ld bytes read from OTP %s", *_l, _name);
+#endif
 
 	return ret;
 }
@@ -51,12 +55,9 @@ static void uphy1_init(struct platform_device *pdev)
 {
 	u32 val;
 	u32 set;
-	void __iomem *usb_otp_reg;
 	char *disc_name = "disc_vol";
 	ssize_t otp_l = 0;
 	char *otp_v;
-
-	usb_otp_reg = ioremap(USB_OTP_REG, 1);
 
 	/* 1. Default value modification */
 	writel(RF_MASK_V(0xffff, 0x4002), uphy1_res_moon4 + UPHY1_CTL0_OFFSET);
@@ -104,10 +105,10 @@ static void uphy1_init(struct platform_device *pdev)
 	writel(RF_MASK_V_SET(1 << 11), uphy1_res_moon0 + USB_RESET_OFFSET);
 	writel(RF_MASK_V_CLR(1 << 11), uphy1_res_moon0 + USB_RESET_OFFSET);
 
-	/* port 1 uphy clk fix */
+	/* 6. port 1 uphy clk fix */
 	writel(RF_MASK_V_SET(1 << 6), uphy1_res_moon4 + UPHY1_CTL2_OFFSET);
 
-	/* 6. switch to host */
+	/* 7. switch to host */
 	writel(RF_MASK_V_SET(3 << 12), uphy1_res_moon4 + USBC_CTL_OFFSET);
 
 	#ifdef CONFIG_USB_SUNPLUS_OTG
@@ -116,11 +117,9 @@ static void uphy1_init(struct platform_device *pdev)
 	mdelay(1);
 	#endif
 
-	/* 7. AC & ACB */
+	/* 8. AC & ACB */
 	writel(RF_MASK_V_SET(1 << 11), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
 	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
-
-	iounmap(usb_otp_reg);
 }
 
 static int sunplus_usb_phy1_probe(struct platform_device *pdev)
