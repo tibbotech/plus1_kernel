@@ -1082,6 +1082,7 @@
 		interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 		nvmem-cell-names = "disc_vol";
 		nvmem-cells = <&disc_vol>;
+		status = "disabled";
 	};
 
 	ehci0: usb@f8102100 {
@@ -1091,6 +1092,7 @@
 		reg = <0x0 0xf8102100 0x0 0x68>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
 	};
 
 	ohci0: usb@f8102080 {
@@ -1100,6 +1102,7 @@
 		reg = <0x0 0xf8102080 0x0 0x68>, <0x0 0xf8000000 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
 	};
 
 	audio: audio@f8001e00 {
