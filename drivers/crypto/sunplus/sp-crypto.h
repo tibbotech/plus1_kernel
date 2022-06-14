@@ -83,12 +83,8 @@ enum {
 
 extern void *base_va;
 /*A2P: Addr to Pointer */
-#ifdef CONFIG_SOC_SP7350
-#define A2P(a, b)	((void *)((dma_addr_t)(a) + ((dma_addr_t)(b) >> 32 << 32)))
-#else
-#define A2P(a, b)	((void *)((dma_addr_t)(a)))
-#endif
-#define P2A(p)		((u32)(dma_addr_t)(p))
+#define A2P(a, b)	((void *)((uintptr_t)(a) + ((uintptr_t)(b) >> 16 >> 16 << 16 << 16)))
+#define P2A(p)		((u32)(uintptr_t)(p))
 
 struct trb_s {
 

@@ -450,15 +450,12 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg, u32 bp)
 		.parent_names = &parent,
 		.ops = &sp_pll_ops,
 		.num_parents = 1,
-		.flags = CLK_IGNORE_UNUSED
+		.flags = CLK_IGNORE_UNUSED | CLK_IS_CRITICAL
 	};
 
 	pll = kzalloc(sizeof(*pll), GFP_KERNEL);
 	if (!pll)
 		return ERR_PTR(-ENOMEM);
-
-	if (reg == PLLS_CTL)
-		initd.flags |= CLK_IS_CRITICAL;
 
 	pll->hw.init = &initd;
 	pll->reg = reg;
