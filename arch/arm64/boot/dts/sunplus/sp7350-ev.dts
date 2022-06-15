@@ -80,46 +80,42 @@
 		#size-cells = <2>;
 		ranges;
 
-		cm4_reserve@0 {
-			reg = <0x0 0x0 0x0 0x100000>;
-		};
-
 		tfa_reserve@200000 {
 			reg = <0x0 0x200000 0x0 0x100000>;
 			no-map;
 		};
 
-		/* simple frame-buffer reserve memory: 0x3fc00000 ~ 0x3fffffff, total 4M */
-		fb_reserve: fb@3fc00000 {
-			reg = <0x0 0x3fc00000 0x0 0x400000>;
+		/* remoteproc reserve memory: 0x01000000-0x01907fff, total 9M+32K */
+		rproc_0_reserved: rproc@1000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x01000000 0x0 0x800000>;
+			no-map;
+		};
+		vdev0buffer: vdev0buffer@1800000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x01800000 0x0 0x100000>;
+			no-map;
+		};
+		vdev0vring0: vdev0vring0@1900000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x01900000 0x0 0x4000>;
+			no-map;
+		};
+		vdev0vring1: vdev0vring1@1904000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x01904000 0x0 0x4000>;
 			no-map;
 		};
 
-		/* Video codec reserve memory: 0x58000000 ~ 0x5fffffff, total 128M */
-		video_codec_reserve: vcodec@58000000 {
-			reg = <0x0 0x58000000 0x0 0x8000000>;
+		/* simple frame-buffer reserve memory: 0x77c00000 ~ 0x77ffffff, total 4M */
+		fb_reserve: fb@77c00000 {
+			reg = <0x0 0x77c00000 0x0 0x400000>;
 			no-map;
 		};
 
-		/* remoteproc reserve memory: 0x1e000000 ~ 0x1e907fff, 9M+32K */
-		vdev0vring0: vdev0vring0@1e800000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e800000 0 0x4000>;
-			no-map;
-		};
-		vdev0vring1: vdev0vring1@1e804000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e804000 0 0x4000>;
-			no-map;
-		};
-		vdev0buffer: vdev0buffer@1e808000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e808000 0 0x100000>;
-			no-map;
-		};
-		rproc_0_reserved: rproc@1e000000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e000000 0 0x800000>;
+		/* Video codec reserve memory: 0x780000000 ~ 0x7fffffff, total 128M */
+		video_codec_reserve: vcodec@78000000 {
+			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
 	};
