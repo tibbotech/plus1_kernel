@@ -146,10 +146,10 @@
 			clock-output-names = "f_320m";
 		};
 
-		clkc: clkc@f8000000 {
+		clkc: clkc@f8800104 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8800000 0x00 0x280>;  // MOON G0
+			reg = <0x00 0xf8800104 0x00 0x7c>;  // MOON G2.1~G3
 		};
 	};
 
@@ -725,7 +725,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
+		clocks = <&clkc MIPICSI0>, <&clkc VI0_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -740,7 +740,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
+		clocks = <&clkc MIPICSI1>, <&clkc VI1_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -755,7 +755,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
+		clocks = <&clkc MIPICSI2>, <&clkc VI2_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_VI2_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -770,7 +770,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
+		clocks = <&clkc MIPICSI3>, <&clkc VI3_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_VI3_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
