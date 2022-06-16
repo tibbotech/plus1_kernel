@@ -22,6 +22,7 @@
 
 #define EXT_CLK "extclk"
 
+#if 0
 #define MASK_SET(shift, width, value) \
 ({ \
 	u32 m = ((1 << (width)) - 1) << (shift); \
@@ -593,5 +594,52 @@ static void __init sp_clkc_init(struct device_node *np)
 	}
 	pr_info("sp-clkc init done!\n");
 }
+#else
+static struct clk *clks[CLK_MAX];
+static struct clk_onecell_data clk_data;
+static void __iomem *moon_regs;
+
+struct clk *clk_register_gate(struct device *dev, const char *name,
+		const char *parent_name, unsigned long flags,
+		void __iomem *reg, u8 bit_idx,
+		u8 clk_gate_flags, spinlock_t *lock);
+
+static void __init sp_clkc_init(struct device_node *np)
+{
+	int i;
+
+	pr_info("sp-clkc init\n");
+
+	moon_regs = of_iomap(np, 0);
+	if (WARN_ON(!moon_regs)) {
+		pr_warn("sp-clkc regs missing.\n");
+		return; // -EIO
+	}
+
+	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
+
+	/* enable all clks */
+	for (i = 0; i < 12; i++)
+		writel(0xffffffff, moon_regs + i * 4);
+
+	/* gates */
+	for (i = 0; i < CLK_MAX; i++) {
+		char name[10];
+
+		sprintf(name, "clken%02x", i);
+		clks[i] = clk_register_gate(NULL, name, EXT_CLK,
+			CLK_IGNORE_UNUSED,
+			moon_regs + (i >> 4) * 4,
+			i & 0x0f,
+			CLK_GATE_HIWORD_MASK,
+			NULL);
+	}
+
+	pr_debug("sp-clkc: of_clk_add_provider");
+	clk_data.clks = clks;
+	clk_data.clk_num = ARRAY_SIZE(clks);
+	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+}
+#endif
 
 CLK_OF_DECLARE(sp_clkc, "sunplus,sp7350-clkc", sp_clkc_init);
