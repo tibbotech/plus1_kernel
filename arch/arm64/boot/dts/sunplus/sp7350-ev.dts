@@ -85,25 +85,25 @@
 			no-map;
 		};
 
-		/* remoteproc reserve memory: 0x01000000-0x01907fff, total 9M+32K */
-		rproc_0_reserved: rproc@1000000 {
+		/* remoteproc reserve memory: 0x77000000-0x77907fff, total 9M+32K */
+		rproc_0_reserved: rproc@77000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01000000 0x0 0x800000>;
+			reg = <0x0 0x77000000 0x0 0x800000>;
 			no-map;
 		};
-		vdev0buffer: vdev0buffer@1800000 {
+		vdev0buffer: vdev0buffer@77800000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01800000 0x0 0x100000>;
+			reg = <0x0 0x77800000 0x0 0x100000>;
 			no-map;
 		};
-		vdev0vring0: vdev0vring0@1900000 {
+		vdev0vring0: vdev0vring0@77900000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01900000 0x0 0x4000>;
+			reg = <0x0 0x77900000 0x0 0x4000>;
 			no-map;
 		};
-		vdev0vring1: vdev0vring1@1904000 {
+		vdev0vring1: vdev0vring1@77904000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01904000 0x0 0x4000>;
+			reg = <0x0 0x77904000 0x0 0x4000>;
 			no-map;
 		};
 
@@ -858,9 +858,9 @@
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x20>,
-		      <0x0 0xf8000280 0x0 0x180>,
-		      <0x0 0xf88032e4 0x0 0x1c>;
-		reg-names = "moon1", "gpioxt", "first";
+		      <0x0 0xf88032e4 0x0 0x1c>,
+		      <0x0 0xf8803380 0x0 0x180>;
+		reg-names = "moon1", "first", "gpioxt";
 		gpio-controller;
 		#gpio-cells = <2>;
 
