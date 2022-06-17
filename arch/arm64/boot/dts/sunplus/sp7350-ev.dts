@@ -255,7 +255,7 @@
 	rstc: reset@f8000054 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8800054 0x00 0x28>;
+		reg = <0x00 0xf8800004 0x00 0x30>;
 		reg-names = "reset";
 	};
 
