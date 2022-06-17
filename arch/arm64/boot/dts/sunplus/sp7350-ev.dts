@@ -80,46 +80,42 @@
 		#size-cells = <2>;
 		ranges;
 
-		cm4_reserve@0 {
-			reg = <0x0 0x0 0x0 0x100000>;
-		};
-
 		tfa_reserve@200000 {
 			reg = <0x0 0x200000 0x0 0x100000>;
 			no-map;
 		};
 
-		/* simple frame-buffer reserve memory: 0x3fc00000 ~ 0x3fffffff, total 4M */
-		fb_reserve: fb@3fc00000 {
-			reg = <0x0 0x3fc00000 0x0 0x400000>;
+		/* remoteproc reserve memory: 0x77000000-0x77907fff, total 9M+32K */
+		rproc_0_reserved: rproc@77000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x77000000 0x0 0x800000>;
+			no-map;
+		};
+		vdev0buffer: vdev0buffer@77800000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x77800000 0x0 0x100000>;
+			no-map;
+		};
+		vdev0vring0: vdev0vring0@77900000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x77900000 0x0 0x4000>;
+			no-map;
+		};
+		vdev0vring1: vdev0vring1@77904000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x77904000 0x0 0x4000>;
 			no-map;
 		};
 
-		/* Video codec reserve memory: 0x58000000 ~ 0x5fffffff, total 128M */
-		video_codec_reserve: vcodec@58000000 {
-			reg = <0x0 0x58000000 0x0 0x8000000>;
+		/* simple frame-buffer reserve memory: 0x77c00000 ~ 0x77ffffff, total 4M */
+		fb_reserve: fb@77c00000 {
+			reg = <0x0 0x77c00000 0x0 0x400000>;
 			no-map;
 		};
 
-		/* remoteproc reserve memory: 0x1e000000 ~ 0x1e907fff, 9M+32K */
-		vdev0vring0: vdev0vring0@1e800000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e800000 0 0x4000>;
-			no-map;
-		};
-		vdev0vring1: vdev0vring1@1e804000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e804000 0 0x4000>;
-			no-map;
-		};
-		vdev0buffer: vdev0buffer@1e808000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e808000 0 0x100000>;
-			no-map;
-		};
-		rproc_0_reserved: rproc@1e000000 {
-			compatible = "shared-dma-pool";
-			reg = <0 0x1e000000 0 0x800000>;
+		/* Video codec reserve memory: 0x780000000 ~ 0x7fffffff, total 128M */
+		video_codec_reserve: vcodec@78000000 {
+			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
 	};
@@ -150,10 +146,10 @@
 			clock-output-names = "f_320m";
 		};
 
-		clkc: clkc@f8000000 {
+		clkc: clkc@f8800104 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8800000 0x00 0x280>;  // MOON G0
+			reg = <0x00 0xf8800104 0x00 0x7c>;  // MOON G2.1~G3
 		};
 	};
 
@@ -259,7 +255,7 @@
 	rstc: reset@f8000054 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8800054 0x00 0x28>;
+		reg = <0x00 0xf8800004 0x00 0x30>;
 		reg-names = "reset";
 	};
 
@@ -729,7 +725,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
+		clocks = <&clkc MIPICSI0>, <&clkc VI0_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -744,7 +740,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
+		clocks = <&clkc MIPICSI1>, <&clkc VI1_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -759,7 +755,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
+		clocks = <&clkc MIPICSI2>, <&clkc VI2_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_VI2_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -774,7 +770,7 @@
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
+		clocks = <&clkc MIPICSI3>, <&clkc VI3_CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_VI3_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
@@ -862,9 +858,9 @@
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x20>,
-		      <0x0 0xf8000280 0x0 0x180>,
-		      <0x0 0xf88032e4 0x0 0x1c>;
-		reg-names = "moon1", "gpioxt", "first";
+		      <0x0 0xf88032e4 0x0 0x1c>,
+		      <0x0 0xf8803380 0x0 0x180>;
+		reg-names = "moon1", "first", "gpioxt";
 		gpio-controller;
 		#gpio-cells = <2>;
 
