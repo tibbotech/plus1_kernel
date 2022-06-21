@@ -299,75 +299,75 @@ static const unsigned int pins_int_x6[] = { 106 };
 static const unsigned int pins_int_x7[] = { 107 };
 static const struct sppctlgrp_t q645grps_int0[] = {
 	EGRP("INT0_X1", 1, pins_int_x1),
-	EGRP("INT0_X2", 1, pins_int_x2),
-	EGRP("INT0_X3", 1, pins_int_x3),
-	EGRP("INT0_X4", 1, pins_int_x4),
-	EGRP("INT0_X5", 1, pins_int_x5),
-	EGRP("INT0_X6", 1, pins_int_x6),
-	EGRP("INT0_X7", 1, pins_int_x7)
+	EGRP("INT0_X2", 2, pins_int_x2),
+	EGRP("INT0_X3", 3, pins_int_x3),
+	EGRP("INT0_X4", 4, pins_int_x4),
+	EGRP("INT0_X5", 5, pins_int_x5),
+	EGRP("INT0_X6", 6, pins_int_x6),
+	EGRP("INT0_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int1[] = {
 	EGRP("INT1_X1", 1, pins_int_x1),
-	EGRP("INT1_X2", 1, pins_int_x2),
-	EGRP("INT1_X3", 1, pins_int_x3),
-	EGRP("INT1_X4", 1, pins_int_x4),
-	EGRP("INT1_X5", 1, pins_int_x5),
-	EGRP("INT1_X6", 1, pins_int_x6),
-	EGRP("INT1_X7", 1, pins_int_x7)
+	EGRP("INT1_X2", 2, pins_int_x2),
+	EGRP("INT1_X3", 3, pins_int_x3),
+	EGRP("INT1_X4", 4, pins_int_x4),
+	EGRP("INT1_X5", 5, pins_int_x5),
+	EGRP("INT1_X6", 6, pins_int_x6),
+	EGRP("INT1_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int2[] = {
 	EGRP("INT2_X1", 1, pins_int_x1),
-	EGRP("INT2_X2", 1, pins_int_x2),
-	EGRP("INT2_X3", 1, pins_int_x3),
-	EGRP("INT2_X4", 1, pins_int_x4),
-	EGRP("INT2_X5", 1, pins_int_x5),
-	EGRP("INT2_X6", 1, pins_int_x6),
-	EGRP("INT2_X7", 1, pins_int_x7)
+	EGRP("INT2_X2", 2, pins_int_x2),
+	EGRP("INT2_X3", 3, pins_int_x3),
+	EGRP("INT2_X4", 4, pins_int_x4),
+	EGRP("INT2_X5", 5, pins_int_x5),
+	EGRP("INT2_X6", 6, pins_int_x6),
+	EGRP("INT2_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int3[] = {
 	EGRP("INT3_X1", 1, pins_int_x1),
-	EGRP("INT3_X2", 1, pins_int_x2),
-	EGRP("INT3_X3", 1, pins_int_x3),
-	EGRP("INT3_X4", 1, pins_int_x4),
-	EGRP("INT3_X5", 1, pins_int_x5),
-	EGRP("INT3_X6", 1, pins_int_x6),
-	EGRP("INT3_X7", 1, pins_int_x7)
+	EGRP("INT3_X2", 2, pins_int_x2),
+	EGRP("INT3_X3", 3, pins_int_x3),
+	EGRP("INT3_X4", 4, pins_int_x4),
+	EGRP("INT3_X5", 5, pins_int_x5),
+	EGRP("INT3_X6", 6, pins_int_x6),
+	EGRP("INT3_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int4[] = {
 	EGRP("INT4_X1", 1, pins_int_x1),
-	EGRP("INT4_X2", 1, pins_int_x2),
-	EGRP("INT4_X3", 1, pins_int_x3),
-	EGRP("INT4_X4", 1, pins_int_x4),
-	EGRP("INT4_X5", 1, pins_int_x5),
-	EGRP("INT4_X6", 1, pins_int_x6),
-	EGRP("INT4_X7", 1, pins_int_x7)
+	EGRP("INT4_X2", 2, pins_int_x2),
+	EGRP("INT4_X3", 3, pins_int_x3),
+	EGRP("INT4_X4", 4, pins_int_x4),
+	EGRP("INT4_X5", 5, pins_int_x5),
+	EGRP("INT4_X6", 6, pins_int_x6),
+	EGRP("INT4_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int5[] = {
 	EGRP("INT5_X1", 1, pins_int_x1),
-	EGRP("INT5_X2", 1, pins_int_x2),
-	EGRP("INT5_X3", 1, pins_int_x3),
-	EGRP("INT5_X4", 1, pins_int_x4),
-	EGRP("INT5_X5", 1, pins_int_x5),
-	EGRP("INT5_X6", 1, pins_int_x6),
-	EGRP("INT5_X7", 1, pins_int_x7)
+	EGRP("INT5_X2", 2, pins_int_x2),
+	EGRP("INT5_X3", 3, pins_int_x3),
+	EGRP("INT5_X4", 4, pins_int_x4),
+	EGRP("INT5_X5", 5, pins_int_x5),
+	EGRP("INT5_X6", 6, pins_int_x6),
+	EGRP("INT5_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int6[] = {
 	EGRP("INT6_X1", 1, pins_int_x1),
-	EGRP("INT6_X2", 1, pins_int_x2),
-	EGRP("INT6_X3", 1, pins_int_x3),
-	EGRP("INT6_X4", 1, pins_int_x4),
-	EGRP("INT6_X5", 1, pins_int_x5),
-	EGRP("INT6_X6", 1, pins_int_x6),
-	EGRP("INT6_X7", 1, pins_int_x7)
+	EGRP("INT6_X2", 2, pins_int_x2),
+	EGRP("INT6_X3", 3, pins_int_x3),
+	EGRP("INT6_X4", 4, pins_int_x4),
+	EGRP("INT6_X5", 5, pins_int_x5),
+	EGRP("INT6_X6", 6, pins_int_x6),
+	EGRP("INT6_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t q645grps_int7[] = {
 	EGRP("INT7_X1", 1, pins_int_x1),
-	EGRP("INT7_X2", 1, pins_int_x2),
-	EGRP("INT7_X3", 1, pins_int_x3),
-	EGRP("INT7_X4", 1, pins_int_x4),
-	EGRP("INT7_X5", 1, pins_int_x5),
-	EGRP("INT7_X6", 1, pins_int_x6),
-	EGRP("INT7_X7", 1, pins_int_x7)
+	EGRP("INT7_X2", 2, pins_int_x2),
+	EGRP("INT7_X3", 3, pins_int_x3),
+	EGRP("INT7_X4", 4, pins_int_x4),
+	EGRP("INT7_X5", 5, pins_int_x5),
+	EGRP("INT7_X6", 6, pins_int_x6),
+	EGRP("INT7_X7", 7, pins_int_x7)
 };
 
 struct func_t list_funcs[] = {
@@ -422,16 +422,16 @@ struct func_t list_funcs[] = {
 
 	FNCE("SPDIF_IN",        fOFF_G, 4,  0, 3, q645grps_spdif_in),
 	FNCE("SPDIF_OUT",       fOFF_G, 4,  3, 3, q645grps_spdif_out),
-	FNCE("INT0",            fOFF_G, 4, 10, 3, q645grps_int0),
-	FNCE("INT1",            fOFF_G, 4, 13, 3, q645grps_int1),
+	FNCE("INT0",            fOFF_G, 4, 11, 3, q645grps_int0),
 
-	FNCE("INT2",            fOFF_G, 5,  0, 3, q645grps_int2),
-	FNCE("INT3",            fOFF_G, 5,  3, 3, q645grps_int3),
-	FNCE("INT4",            fOFF_G, 5,  6, 3, q645grps_int4),
-	FNCE("INT5",            fOFF_G, 5,  9, 3, q645grps_int5),
-	FNCE("INT6",            fOFF_G, 5, 12, 3, q645grps_int6),
+	FNCE("INT1",            fOFF_G, 5,  0, 3, q645grps_int1),
+	FNCE("INT2",            fOFF_G, 5,  3, 3, q645grps_int2),
+	FNCE("INT3",            fOFF_G, 5,  6, 3, q645grps_int3),
+	FNCE("INT4",            fOFF_G, 5,  9, 3, q645grps_int4),
+	FNCE("INT5",            fOFF_G, 5, 12, 3, q645grps_int5),
 
-	FNCE("INT7",            fOFF_G, 6,  0, 3, q645grps_int7)
+	FNCE("INT6",            fOFF_G, 6,  0, 3, q645grps_int6),
+	FNCE("INT7",            fOFF_G, 6,  3, 3, q645grps_int7)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
