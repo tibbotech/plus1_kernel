@@ -32,6 +32,9 @@ struct csi2_dev;
 /* Compliler switch */
 //#define MIPI_CSI_BIST		/* Enable MIPI-CSI BIST function */
 
+/* Max number on CSI instances that can be in a system */
+#define CSI_MAX_NUM 6
+
 /* Register offsets and bits */
 #define MIPICSI_STATUS			0x00	/* 165.0 MIPICSI key signal status (mipicsi_status) */
 #define MIPI_WC_CH01			0x04	/* 165.1 MIPICSI CH0 and CH1 word count value (mipi_wc_ch01) */
@@ -64,6 +67,19 @@ struct csi2_dev;
 #define MIPI_CH3_CONFIG			0x70	/* 165.28 CH3 function configuration (mipi_ch3_config) */
 #define VERSION_ID				0x74	/* 165.29 Version ID (Version_ID) */
 
+#ifdef MIPI_CSI_BIST
+static unsigned int bist_mode = 0;
+module_param(bist_mode, uint, 0444);
+MODULE_PARM_DESC(bist_mode, " Internal pattern format selection, default is 0.\n"
+				"\t    0 == Color bar for YUY2 format\n"
+				"\t    1 == Border for YUY2 format\n"
+				"\t    1 == Gray bar for RAW12 format\n");
+
+static unsigned int bist_ch = 0;
+module_param(bist_ch, uint, 0444);
+MODULE_PARM_DESC(bist_ch, " Internal pattern output channel, default is 0.");
+#endif
+
 struct csi2_format {
 	u32 code;
 	unsigned int datatype;
@@ -71,18 +87,22 @@ struct csi2_format {
 };
 
 static const struct csi2_format csi2_formats[] = {
-	{ .code = MEDIA_BUS_FMT_UYVY8_2X8,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_VYUY8_2X8,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_YUYV8_2X8,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_YVYU8_2X8,	.datatype = 0x1e, .bpp = 16 },
-	{ .code = MEDIA_BUS_FMT_SBGGR8_1X8, 	.datatype = 0x2a, .bpp = 8 },
-	{ .code = MEDIA_BUS_FMT_SGBRG8_1X8, 	.datatype = 0x2a, .bpp = 8 },
-	{ .code = MEDIA_BUS_FMT_SGRBG8_1X8, 	.datatype = 0x2a, .bpp = 8 },
-	{ .code = MEDIA_BUS_FMT_SRGGB8_1X8, 	.datatype = 0x2a, .bpp = 8 },
-	{ .code = MEDIA_BUS_FMT_SBGGR10_1X10, 	.datatype = 0x2b, .bpp = 10 },
-	{ .code = MEDIA_BUS_FMT_SGBRG10_1X10, 	.datatype = 0x2b, .bpp = 10 },
-	{ .code = MEDIA_BUS_FMT_SGRBG10_1X10, 	.datatype = 0x2b, .bpp = 10 },
-	{ .code = MEDIA_BUS_FMT_SRGGB10_1X10, 	.datatype = 0x2b, .bpp = 10 },
+	{ .code = MEDIA_BUS_FMT_UYVY8_2X8, .datatype = 0x1e, .bpp = 16 },
+	{ .code = MEDIA_BUS_FMT_VYUY8_2X8, .datatype = 0x1e, .bpp = 16 },
+	{ .code = MEDIA_BUS_FMT_YUYV8_2X8, .datatype = 0x1e, .bpp = 16 },
+	{ .code = MEDIA_BUS_FMT_YVYU8_2X8, .datatype = 0x1e, .bpp = 16 },
+	{ .code = MEDIA_BUS_FMT_SBGGR8_1X8, .datatype = 0x2a, .bpp = 8 },
+	{ .code = MEDIA_BUS_FMT_SGBRG8_1X8, .datatype = 0x2a, .bpp = 8 },
+	{ .code = MEDIA_BUS_FMT_SGRBG8_1X8, .datatype = 0x2a, .bpp = 8 },
+	{ .code = MEDIA_BUS_FMT_SRGGB8_1X8, .datatype = 0x2a, .bpp = 8 },
+	{ .code = MEDIA_BUS_FMT_SBGGR10_1X10, .datatype = 0x2b, .bpp = 10 },
+	{ .code = MEDIA_BUS_FMT_SGBRG10_1X10, .datatype = 0x2b, .bpp = 10 },
+	{ .code = MEDIA_BUS_FMT_SGRBG10_1X10, .datatype = 0x2b, .bpp = 10 },
+	{ .code = MEDIA_BUS_FMT_SRGGB10_1X10, .datatype = 0x2b, .bpp = 10 },
+	{ .code = MEDIA_BUS_FMT_SBGGR12_1X12, .datatype = 0x2c, .bpp = 12 },
+	{ .code = MEDIA_BUS_FMT_SGBRG12_1X12, .datatype = 0x2c, .bpp = 12 },
+	{ .code = MEDIA_BUS_FMT_SGRBG12_1X12, .datatype = 0x2c, .bpp = 12 },
+	{ .code = MEDIA_BUS_FMT_SRGGB12_1X12, .datatype = 0x2c, .bpp = 12 },
 };
 
 static const struct csi2_format *csi2_code_to_fmt(unsigned int code)
@@ -117,9 +137,11 @@ struct csi2_info {
 struct csi2_dev {
 	struct device *dev;
 	void __iomem *base;
+	void __iomem *base2;
 	const struct csi2_info *info;
 	struct clk *clk;
 	struct reset_control *rstc;
+	unsigned int id;
 
 	struct v4l2_subdev subdev;
 	struct media_pad pads[NR_OF_CSI2_PAD];
@@ -153,21 +175,12 @@ static inline struct csi2_dev *notifier_to_csi2(struct v4l2_async_notifier *n)
 
 static inline u32 csi_readl(struct csi2_dev *priv, u32 reg)
 {
-#if 0 // CCHo: Do Q654 simulation on SP7021 platform
-	return 0;
-#else
 	return readl(priv->base + reg);
-#endif
 }
 
 static inline void csi_writel(struct csi2_dev *priv, u32 reg, u32 value)
 {
-#if 0 // CCHo: Do Q654 simulation on SP7021 platform
-	dev_dbg(priv->dev, "%s, reg: 0x%02x, value: 0x%08x\n",
-		__func__, reg, value);
-#else
 	writel(value, priv->base + reg);
-#endif
 }
 
 static inline void set_field(u32 *valp, u32 field, u32 mask)
@@ -283,7 +296,7 @@ static int csi2_get_active_lanes(struct csi2_dev *priv,
 	*lanes = priv->lanes;
 
 #if defined(MIPI_CSI_BIST)
-	dev_dbg(priv->dev, "Skip sending 'get_mbus_config' command\n",);
+	dev_dbg(priv->dev, "Skip sending 'get_mbus_config' command\n");
 	return 0;
 #endif
 
@@ -413,6 +426,29 @@ static void csi2_vc_config(struct csi2_dev *priv)
 	csi_writel(priv, MIPI_CH1_CONFIG, 0x01<<30);		/* Connect CSI-IW1 to VC1 */
 	csi_writel(priv, MIPI_CH2_CONFIG, 0x02<<30);		/* Connect CSI-IW2 to VC2 */
 	csi_writel(priv, MIPI_CH3_CONFIG, 0x03<<30);		/* Connect CSI-IW3 to VC3 */
+
+#if 1 /* CCHo: Get MIPICSI23_SEL G164 resource */
+	/* MIPI-CSI2 and MIPI-CSI3 ports share VI23-CSIIW2 and VI23-CSIIW3. 
+	 * Configure MIPICSI23_SEL (G164) to select the virtual channel source
+	 * of VI23-CSIIW2 AND VI23-CSIIW3.
+	 */
+	if ((priv->id == 2) || (priv->id == 3)) {
+		if (priv->base2 == NULL) {
+			dev_warn(priv->dev, "No MIPICSI23_SEL resource\n");
+		} else {
+			if (((priv->id == 2) && (priv->num_channels <= 2)) || (priv->id == 3))
+				writel(1, priv->base2);		/* VI23-CSIIW2/3 source from MIPI-CSI3 */
+			else if ((priv->id == 2) && (priv->num_channels > 2))
+				writel(0, priv->base2);		/* VI23-CSIIW2/3 source from MIPI-CSI2 */
+
+		#if 1 /* CCHo: For debugging*/
+			dev_info(priv->dev, "mipicsi23_sel: %08x, \n", readl(priv->base2));
+		#else
+			dev_dbg(priv->dev, "mipicsi23_sel: %08x, \n", readl(priv->base2));
+		#endif
+		}
+	}
+#endif
 }
 
 static void csi2_dt_config(struct csi2_dev *priv, unsigned int dt)
@@ -476,26 +512,18 @@ static void csi2_bist_control(struct csi2_dev *priv, u8 on)
 	csi_writel(priv, MIPICSI_ENABLE, val);
 }
 
-/* BIST_Mode field: Internal pattern format selection
- * 0: Color bar for YUY2 format
- * 1: Border for YUY2 format
- * 2: Gray bar for RAW12 format
- */
-#define BIST_MODE_YUY2_PATTERN	0
-#define BIST_CH_SELECTION		0
-
 static void csi2_bist_config(struct csi2_dev *priv, unsigned int dt, u8 ch)
 {
 	u32 height = priv->mf.height;
 	u32 width = priv->mf.width;
 	u32 val;
-	u8 mode = BIST_MODE_YUY2_PATTERN;
+	u8 mode = bist_mode;
 
 	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
 
 	/* Use internal pattern to test MIPI-CSI */
 	val = 0;
-	if (dt == 0x2b) width = width/2;		/* One pixel is output twice for RAW12 */
+	if (dt == 0x2c) width = width/2;		/* One pixel is output twice for RAW12 */
 	set_field(&val, height, 0xfff<<16);		/* Vertical size of internal pattern */
 	set_field(&val, width, 0x1fff<<0);		/* Horizontal size of internal pattern */
 	csi_writel(priv, MIPI_CH0_BIST_SIZE, val);
@@ -504,12 +532,14 @@ static void csi2_bist_config(struct csi2_dev *priv, unsigned int dt, u8 ch)
 	csi_writel(priv, MIPI_CH3_BIST_SIZE, val);
 
 	val = 0;
-	if (dt == 0x2b) mode = 2;				/* Gray bar for RAW12 */	
+	if (dt == 0x2c) mode = 2;				/* Gray bar for RAW12 */
 	val = csi_readl(priv, MIPICSI_ENABLE);
 	set_field(&val, ch, 0x3<<24);			/* Select BIST pattern output to channel x */
 	set_field(&val, mode, 0x3<<20);			/* Gray bar for RAW12 format */
 	set_field(&val, 1, 0x1<<17);			/* Use internal clock for BIST */
 	csi_writel(priv, MIPICSI_ENABLE, val);
+
+	dev_info(priv->dev, "BIST mode: %d, BIST channel: %d \n",mode, ch);
 }
 #endif
 
@@ -595,7 +625,7 @@ static int csi2_start_receiver(struct csi2_dev *priv)
 	 */
 	csi2_vc_config(priv);
 #if defined(MIPI_CSI_BIST)
-	csi2_bist_config(priv, format->datatype, BIST_CH_SELECTION);
+	csi2_bist_config(priv, format->datatype, bist_ch);
 #endif
 
 	/*
@@ -917,9 +947,29 @@ static int csi2_parse_dt(struct csi2_dev *priv)
 	struct fwnode_handle *fwnode;
 	struct device_node *ep;
 	struct v4l2_fwnode_endpoint v4l2_ep = { .bus_type = 0 };
+	u32 id;
 	int ret;
 
 	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
+
+	/* Make sure CSI id is present and sane */
+	ret = of_property_read_u32(priv->dev->of_node, "sunplus,id", &id);
+	if (ret) {
+		dev_err(priv->dev, "%pOF: No sunplus,id property found\n",
+			priv->dev->of_node);
+		return ret;
+	}
+
+	if (id >= CSI_MAX_NUM) {
+		dev_err(priv->dev, "%pOF: Invalid sunplus,id '%u'\n",
+			priv->dev->of_node, id);
+		ret = -EINVAL;
+		return ret;
+	}
+
+	priv->id = id;
+
+	dev_dbg(priv->dev, "%s, MIPI-CSI ID is %d\n", __func__, priv->id);
 
 	/* Read virtual channel propoties */
 	ret = of_property_read_u32(priv->dev->of_node, "max_channels", &priv->max_channels);
@@ -936,6 +986,19 @@ static int csi2_parse_dt(struct csi2_dev *priv)
 
 	dev_dbg(priv->dev, "%s, max_channels: %d, num_channels: %d\n",
 		__func__, priv->max_channels, priv->num_channels);
+
+#if defined(MIPI_CSI_BIST)
+	/* For BIST test, skip bounding a sensor */
+	if (priv->num_channels == 2)
+		priv->lanes = 2;		/* Set active lane number here */
+	else if (priv->num_channels == 4)
+		priv->lanes = 4;		/* Set active lane number here */
+	else
+		return -EINVAL;
+
+	dev_dbg(priv->dev, "%s, Skip bounding a sensor\n", __func__);
+	return ret;
+#endif
 
 	/* Get endpoint */
 	ep = of_graph_get_endpoint_by_regs(priv->dev->of_node, 0, 0);
@@ -959,12 +1022,6 @@ static int csi2_parse_dt(struct csi2_dev *priv)
 		of_node_put(ep);
 		return ret;
 	}
-
-#if defined(MIPI_CSI_BIST)
-	/* For BIST test, skip bounding a sensor */
-	dev_dbg(priv->dev, "%s, Skip bounding a sensor\n", __func__);
-	return ret;
-#endif
 
 	fwnode = fwnode_graph_get_remote_endpoint(of_fwnode_handle(ep));
 	of_node_put(ep);
@@ -1010,6 +1067,49 @@ static int csi2_phy_post_init(struct csi2_dev *priv)
 }
 
 /* -----------------------------------------------------------------------------
+ * sysfs.
+ */
+#ifdef MIPI_CSI_BIST
+static ssize_t csi2_bist_mode_show (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", bist_mode);
+}
+
+static ssize_t csi2_bist_mode_store (struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	bist_mode = simple_strtoul(buf, NULL, 16);
+
+	return count;
+}
+
+static DEVICE_ATTR(bist_mode, S_IWUSR|S_IRUGO, csi2_bist_mode_show, csi2_bist_mode_store);
+
+static ssize_t csi2_bist_ch_show (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", bist_ch);
+}
+
+static ssize_t csi2_bist_ch_store (struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	bist_ch = simple_strtoul(buf, NULL, 16);
+
+	return count;
+}
+
+static DEVICE_ATTR(bist_ch, S_IWUSR|S_IRUGO, csi2_bist_ch_show, csi2_bist_ch_store);
+
+static struct attribute *csi2_attributes[] = {
+	&dev_attr_bist_mode.attr,
+	&dev_attr_bist_ch.attr,
+	NULL,
+};
+
+static struct attribute_group csi2_attribute_group = {
+	.attrs = csi2_attributes,
+};
+#endif
+
+/* -----------------------------------------------------------------------------
  * Platform Device Driver.
  */
 
@@ -1029,8 +1129,31 @@ static int csi2_probe_resources(struct csi2_dev *priv,
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
-	dev_dbg(priv->dev, "%s, res->start: 0x%08x, name: %s\n",
+	dev_dbg(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
 		__func__, res->start, res->name);
+
+#if 1 /* CCHo: Get MIPICSI23_SEL G164 resource */
+	/* MIPI-CSI2 and MIPI-CSI3 ports share VI23-CSIIW2 and VI23-CSIIW3. 
+	 * They need to get resource MIPICSI23_SEL (G164) to select the virtual
+	 * channel source of VI23-CSIIW2 AND VI23-CSIIW3.
+	 */
+	if ((res->start == 0xF8005380) || (res->start == 0xF8005400)) {
+		res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+		priv->base2 = devm_ioremap(&pdev->dev, res->start, (res->end - res->start + 1));
+		if (IS_ERR(priv->base2))
+			return PTR_ERR(priv->base2);
+
+	#if 1 /* CCHo: For debugging*/
+		dev_info(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
+			__func__, res->start, res->name);
+	#else
+		dev_dbg(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
+			__func__, res->start, res->name);
+	#endif
+	} else {
+		priv->base2 = NULL;
+	}
+#endif
 
 	priv->clk = devm_clk_get(&pdev->dev, "clk_mipicsi");
 	if (IS_ERR(priv->clk))
@@ -1041,26 +1164,16 @@ static int csi2_probe_resources(struct csi2_dev *priv,
 	return PTR_ERR_OR_ZERO(priv->rstc);
 }
 
-static const struct csi2_info sp_csi2_info_q654 = {
+static const struct csi2_info sp_csi2_info_sp7350 = {
 	.init_phtw = csi2_init_phtw,
 	.phy_post_init = csi2_phy_post_init,
 	.num_channels = 4,
 };
 
-static const struct csi2_info sp_csi2_info_sp7021 = {
-	.init_phtw = csi2_init_phtw,
-	.phy_post_init = csi2_phy_post_init,
-	.num_channels = 1,
-};
-
 static const struct of_device_id sp_csi2_of_table[] = {
 	{
-		.compatible = "sunplus,sp7021-mipi-csi2",
-		.data = &sp_csi2_info_sp7021,
-	},
-	{
-		.compatible = "sunplus,q654-mipi-csi2",
-		.data = &sp_csi2_info_q654,
+		.compatible = "sunplus,sp7350-mipicsi-rx",
+		.data = &sp_csi2_info_sp7350,
 	},
 	{ /* sentinel */ },
 };
@@ -1129,6 +1242,15 @@ static int sp_csi2_probe(struct platform_device *pdev)
 		goto error;
 
 	csi2_init(priv);
+
+#ifdef MIPI_CSI_BIST
+	/* Add the device attribute group into sysfs */
+	ret = sysfs_create_group(&pdev->dev.kobj, &csi2_attribute_group);
+	if (ret != 0) {
+		dev_err(priv->dev, "Failed to create sysfs files!\n");
+		goto error;
+	}
+#endif
 
 #ifdef CONFIG_PM_RUNTIME_MIPICSI
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);

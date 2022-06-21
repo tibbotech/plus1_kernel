@@ -979,21 +979,48 @@ static int vin_mc_init(struct vin_dev *vin)
 /* -----------------------------------------------------------------------------
  * Platform Device Driver
  */
-static const struct vin_group_route sp_info_q654_routes[] = {
+
+/* The field description of the 'mask' flag.
+ * Bit 03~00: Output channel of CSI-2
+ * Bit 11~04: VIN port
+ */
+static const struct vin_group_route sp_info_sp7350_routes[] = {
+#if 1 /* CCHo: 6 pipelines */
 	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
-	{ .csi = VIN_CSI1, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(5) },
-	{ .csi = VIN_CSI2, .channel = 2, .vin = 2, .mask = BIT(2) | BIT(6) },
-	{ .csi = VIN_CSI3, .channel = 3, .vin = 3, .mask = BIT(3) | BIT(7) },
+	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
+	{ .csi = VIN_CSI1, .channel = 0, .vin = 2, .mask = BIT(0) | BIT(5) },
+	{ .csi = VIN_CSI1, .channel = 1, .vin = 3, .mask = BIT(1) | BIT(5) },
+	{ .csi = VIN_CSI2, .channel = 0, .vin = 4, .mask = BIT(0) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 1, .vin = 5, .mask = BIT(1) | BIT(6) },
+	{ .csi = VIN_CSI3, .channel = 0, .vin = 6, .mask = BIT(0) | BIT(7) },
+	{ .csi = VIN_CSI3, .channel = 1, .vin = 7, .mask = BIT(1) | BIT(7) },
+	{ .csi = VIN_CSI4, .channel = 0, .vin = 8, .mask = BIT(0) | BIT(8) },
+	{ .csi = VIN_CSI4, .channel = 1, .vin = 9, .mask = BIT(1) | BIT(8) },
+	{ .csi = VIN_CSI5, .channel = 0, .vin = 10, .mask = BIT(0) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 1, .vin = 11, .mask = BIT(1) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 2, .vin = 12, .mask = BIT(2) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 3, .vin = 13, .mask = BIT(3) | BIT(9) },
 	{ /* Sentinel */ }
+#else  /* CCHo: 3 pipelines, MIPI-CSI2 4 VC */
+	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
+	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
+	{ .csi = VIN_CSI1, .channel = 0, .vin = 2, .mask = BIT(0) | BIT(5) },
+	{ .csi = VIN_CSI1, .channel = 1, .vin = 3, .mask = BIT(1) | BIT(5) },
+	{ .csi = VIN_CSI2, .channel = 0, .vin = 4, .mask = BIT(0) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 1, .vin = 5, .mask = BIT(1) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 2, .vin = 6, .mask = BIT(2) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 3, .vin = 7, .mask = BIT(3) | BIT(6) },
+	{ /* Sentinel */ }
+#endif
 };
 
-static const struct vin_info sp_info_q654 = {
+static const struct vin_info sp_info_sp7350 = {
 	.model = SP_Q654,
 	.use_mc = false,
 	.nv12 = false,
 	.max_width = 4096,
 	.max_height = 4096,
-	.routes = sp_info_q654_routes,
+	.routes = sp_info_sp7350_routes,
 };
 
 #ifdef TWO_PIPELINES
@@ -1012,44 +1039,10 @@ static const struct vin_group_route sp_info_sp7021_routes[] = {
 };
 #endif
 
-static const struct vin_info sp_info_sp7021 = {
-	.model = SP_Q628,
-	.use_mc = false,
-	.nv12 = false,
-	.max_width = 4096,
-	.max_height = 4096,
-	.routes = sp_info_sp7021_routes,
-};
-
-static const struct vin_group_route sp_info_sp7021_mc_routes[] = {
-	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 2, .vin = 2, .mask = BIT(2) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 3, .vin = 3, .mask = BIT(3) | BIT(4) },
-	{ /* Sentinel */ }
-};
-
-static const struct vin_info sp_info_sp7021_mc = {
-	.model = SP_Q628,
-	.use_mc = true,
-	.nv12 = false,
-	.max_width = 4096,
-	.max_height = 4096,
-	.routes = sp_info_sp7021_mc_routes,
-};
-
 static const struct of_device_id sp_vin_of_id_table[] = {
 	{
-		.compatible = "sunplus,q654-vin",
-		.data = &sp_info_q654,
-	},
-	{
-		.compatible = "sunplus,sp7021-vin",
-		.data = &sp_info_sp7021,
-	},
-	{
-		.compatible = "sunplus,sp7021-vin-mc",
-		.data = &sp_info_sp7021_mc,
+		.compatible = "sunplus,sp7350-vin",
+		.data = &sp_info_sp7350,
 	},
 	{ /* Sentinel */ },
 };

@@ -64,48 +64,62 @@ static inline void set_field(u32 *valp, u32 field, u32 mask)
 
 static inline u32 csiiw_readl(struct vin_dev *vin, u32 offset)
 {
-#if 0 // CCHo: Do Q654 simulation on SP7021 platform
-	return 0;
-#else
 	return readl(vin->base + offset);
-#endif
 }
 
 static inline void csiiw_writel(struct vin_dev *vin, u32 offset, u32 value)
 {
-#if 0 // CCHo: Do Q654 simulation on SP7021 platform
-	dev_dbg(vin->dev, "%s, offset: 0x%02x, value: 0x%08x\n", __func__, offset, value);
-#else
 	writel(value, vin->base + offset);
-#endif
 }
 
 static void csiiw_dt_config(struct vin_dev *vin)
 {
-	u32 config0;
+	u32 config0, config2;
 
 	config0 = csiiw_readl(vin, CSIIW_CONFIG0);
+	config2 = csiiw_readl(vin, CSIIW_CONFIG2);
 
-	dev_dbg(vin->dev, "%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
 
-	switch (vin->vin_fmt->src_bpp) {
+	dev_dbg(vin->dev, "%s, %d, config0: %08x, config2: %08x\n",
+			__FUNCTION__, __LINE__, config0, config2);
+
+	switch (vin->vin_fmt->bpc) {
 	default:
 	case 8:
 		set_field(&config0, 0, 0x3<<4);     /* Source is 8 bits per pixel */
+		set_field(&config0, 0, 0x1<<16);	/* Disable packed mode */
 		break;
 
 	case 10:
 		set_field(&config0, 1, 0x3<<4);     /* Source is 10 bits per pixel */
+
+		if (vin->vin_fmt->bpp == vin->vin_fmt->bpc)
+			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
+		else
+			set_field(&config0, 0, 0x1<<16); 	/* Disable packed mode */
 		break;
 
 	case 12:
 		set_field(&config0, 2, 0x3<<4);     /* Source is 12 bits per pixel */
+
+		if (vin->vin_fmt->bpp == vin->vin_fmt->bpc)
+			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
+		else
+			set_field(&config0, 0, 0x1<<16); 	/* Disable packed mode */
 		break;
 	}
 
-	dev_dbg(vin->dev, "%s, %d: config0: %08x\n", __FUNCTION__, __LINE__, config0);
+	/* Packed mode does not support stride mode for DRAM DMA writes */
+	if (config0 & 0x00010000)
+		set_field(&config2, 1, 0x1<<0);		/* Set NO_STRIDE_EN to 1 for packed mode */
+	else
+		set_field(&config2, 0, 0x1<<0);		/* Set NO_STRIDE_EN to 0 for unpacked mode */
+
+	dev_dbg(vin->dev, "%s, %d, config0: %08x, config2: %08x\n",
+			__FUNCTION__, __LINE__, config0, config2);
 
 	csiiw_writel(vin, CSIIW_CONFIG0, config0);
+	csiiw_writel(vin, CSIIW_CONFIG2, config2);
 }
 
 static void csiiw_fs_config(struct vin_dev *vin)
@@ -185,12 +199,9 @@ static void csiiw_init(struct vin_dev *vin)
 	csiiw_writel(vin, CSIIW_STRIDE, 0x500);
 	csiiw_writel(vin, CSIIW_FRAME_SIZE, 0x3200500);
 	csiiw_writel(vin, CSIIW_FRAME_BUF, 0x00000100);	/* set offset to trigger DRAM write */
-	#if defined(PACKED_MODE) // Enable pack mode. Temporary code.
-	csiiw_writel(vin, CSIIW_CONFIG0, 0xf12700);		/* Disable csiiw, packed mode */
-	#else
 	csiiw_writel(vin, CSIIW_CONFIG0, 0xf02700);		/* Disable csiiw, unpacked mode */
-	#endif
 	csiiw_writel(vin, CSIIW_INTERRUPT, 0x1111);		/* Disable and clean fs_irq and fe_irq */
+	//csiiw_writel(vin, CSIIW_CONFIG2, 0x0001);		/* NO_STRIDE_EN = 1 */
 #endif
 }
 
@@ -528,8 +539,8 @@ static irqreturn_t vin_fe_irq(int irq, void *data)
 	/* Prepare for capture and update state */
 	// vnms = rvin_read(vin, VNMS_REG);
 	// slot = (vnms & VNMS_FBS_MASK) >> VNMS_FBS_SHIFT;
-	// Check which VIN's interrupt and set 'slot' with the number of VIN
-	slot = vin->id;
+	/* For Sunplus CSI-IW, there is only one DMA slot. */
+	slot = 0;		/* It means DMA slot */
 
 	/*
 	 * To hand buffers back in a known order to userspace start
@@ -694,6 +705,8 @@ static int vin_mc_validate_format(struct vin_dev *vin, struct v4l2_subdev *sd,
 	case MEDIA_BUS_FMT_UYVY8_2X8:
 	case MEDIA_BUS_FMT_UYVY10_2X10:
 	case MEDIA_BUS_FMT_RGB888_1X24:
+	case MEDIA_BUS_FMT_SBGGR10_1X10:
+	case MEDIA_BUS_FMT_SBGGR12_1X12:
 		break;
 	case MEDIA_BUS_FMT_SBGGR8_1X8:
 		if (vin->format.pixelformat != V4L2_PIX_FMT_SBGGR8)

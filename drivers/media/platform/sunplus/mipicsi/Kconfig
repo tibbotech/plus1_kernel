@@ -56,7 +56,7 @@ config MIPICSI_RX_SUNPLUS_Q645_NEW
 config VIDEO_SUNPLUS_Q654_CSI2
 	tristate "Sunplus Q654 MIPI CSI-2 Receiver"
 	depends on VIDEO_V4L2 && OF
-	depends on SOC_Q654
+	depends on SOC_SP7350
 	select MEDIA_CONTROLLER
 	select VIDEO_V4L2_SUBDEV_API
 	select RESET_CONTROLLER
@@ -71,7 +71,7 @@ config VIDEO_SUNPLUS_Q654_CSI2
 config VIDEO_SUNPLUS_Q654_VIN
 	tristate "Sunplus Q654 Video Input (VIN) Driver"
 	depends on VIDEO_V4L2 && OF
-	depends on SOC_Q654
+	depends on SOC_SP7350
 	select MEDIA_CONTROLLER
 	select VIDEO_V4L2_SUBDEV_API
 	select VIDEOBUF2_DMA_CONTIG
