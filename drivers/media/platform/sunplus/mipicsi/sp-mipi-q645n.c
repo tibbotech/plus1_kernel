@@ -24,6 +24,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_graph.h>
 #include <linux/of_irq.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/pci.h>
 #include <linux/platform_device.h>
 #ifdef CONFIG_PM_RUNTIME_MIPI
@@ -322,7 +323,7 @@ static void sp_csiiw_dt_config(struct sp_mipi_device *mipi)
 	default:
 	case 8:
 		set_field(&config0, 0, 0x3<<4);     /* Source is 8 bits per pixel */
-		set_field(&config0, 1, 0x1<<16);	/* Disable packed mode */
+		set_field(&config0, 0, 0x1<<16);	/* Disable packed mode */
 		break;
 
 	case 10:
@@ -331,7 +332,7 @@ static void sp_csiiw_dt_config(struct sp_mipi_device *mipi)
 		if (mipi->sd_format->bpp == mipi->sd_format->bpc)
 			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
 		else
-			set_field(&config0, 1, 0x1<<16); 	/* Disable packed mode */
+			set_field(&config0, 0, 0x1<<16); 	/* Disable packed mode */
 		break;
 
 	case 12:
@@ -344,7 +345,7 @@ static void sp_csiiw_dt_config(struct sp_mipi_device *mipi)
 		if (mipi->sd_format->bpp == mipi->sd_format->bpc)
 			set_field(&config0, 1, 0x1<<16); 	/* Enable packed mode */
 		else
-			set_field(&config0, 1, 0x1<<16); 	/* Disable packed mode */
+			set_field(&config0, 0, 0x1<<16); 	/* Disable packed mode */
 		break;
 	}
 
@@ -1985,6 +1986,19 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 	}
 
 	dev_dbg(mipi->dev, "Found connected device %pOFn\n", np_source_node);
+
+	ret = of_reserved_mem_device_init(mipi->dev);
+	if (ret) {
+		dev_err(mipi->dev, "Could not get reserved memory!\n");
+		goto done;
+	}
+
+	ret = dma_set_coherent_mask(mipi->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_warn(mipi->dev, "32-bit consistent DMA enable failed\n");
+	}
+
+	dev_dbg(mipi->dev, "Reserved memory initialization done\n");
 
 done:
 	of_node_put(np);

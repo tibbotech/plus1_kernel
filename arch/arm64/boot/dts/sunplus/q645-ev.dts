@@ -135,10 +135,17 @@
 			no-map;
 		};
 
-		/* simple frame-buffer reserve memory: 0xb7c00000~0xb7ffffff, total 4M */
-		fb_reserve: fb@b7c00000 {
-			reg = <0x0 0xb7c00000 0x0 0x400000>;
+		/* simple frame-buffer reserve memory: 0xabc00000~0xabffffff, total 4M */
+		fb_reserve: fb@abc00000 {
+			reg = <0x0 0xabc00000 0x0 0x400000>;
 			no-map;
+		};
+
+		/* mipi-csi rx reserve memory: 0xac000000~0xb7ffffff, total 192M */
+		mipicsirx_reserve: mipicsirx@ac000000 {
+			no-map;
+			compatible = "shared-dma-pool";
+			reg = <0x0 0xac000000 0x0 0x0c000000>;
 		};
 
 		/* video codec reserve memory: 0xb8000000~0xbfffffff, total 128M */
@@ -1198,6 +1205,7 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <0>;
 		status = "disabled";
 
@@ -1225,6 +1233,7 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <1>;
 		status = "disabled";
 
@@ -1252,6 +1261,7 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <2>;
 		status = "disabled";
 
@@ -1279,6 +1289,7 @@
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;
 		reset-names = "rstc_mipicsi", "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <3>;
 		status = "disabled";
 
