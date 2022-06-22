@@ -24,7 +24,9 @@
 #define SPSDC_MAX_CLK	111375000
 #define SPSDC_MAX_BLK_COUNT 65535
 
-
+#if defined(CONFIG_SOC_SP7350)
+#define SPMMC_SYS_CLK	360000000
+#endif
 
 #define __rsvd_regs(l) __append_suffix(l, __COUNTER__)
 #define __append_suffix(l, s) _append_suffix(l, s)
