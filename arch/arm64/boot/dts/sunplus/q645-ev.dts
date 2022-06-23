@@ -143,9 +143,9 @@
 
 		/* mipi-csi rx reserve memory: 0xac000000~0xb7ffffff, total 192M */
 		mipicsirx_reserve: mipicsirx@ac000000 {
-			no-map;
 			compatible = "shared-dma-pool";
 			reg = <0x0 0xac000000 0x0 0x0c000000>;
+			no-map;
 		};
 
 		/* video codec reserve memory: 0xb8000000~0xbfffffff, total 128M */
