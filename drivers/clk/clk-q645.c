@@ -617,6 +617,16 @@ static void __init sp_clkc_init(struct device_node *np)
 
 		if (clk)
 			pr_debug("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
+			
+		//Default GPU clock is 800M which source is PLLD.(GPUclk=PLLD/2, if PLLD=1600M, GPUclk is 800M)	
+		//Due to PLLD only set 667M due to EVB quality, GPUclk become 334M.
+		//Change GPU clock to 1G which source is PLLN, it will prevent influence by PLLD.	
+		if (__clk_get_name(clk) == "GPU")
+		{
+	    pr_info("clk_set_rate\n");
+			clk_set_rate(clk,1000000000);
+			pr_info("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
+		}	
 	}
 	pr_info("sp-clkc init done!\n");
 }
