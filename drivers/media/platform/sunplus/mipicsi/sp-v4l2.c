@@ -17,7 +17,7 @@
 
 #include "sp-vin.h"
 
-#define VIN_DEFAULT_FORMAT	V4L2_PIX_FMT_SRGGB8
+#define VIN_DEFAULT_FORMAT	V4L2_PIX_FMT_SBGGR8
 #define VIN_DEFAULT_WIDTH	640
 #define VIN_DEFAULT_HEIGHT	480
 #define VIN_DEFAULT_FIELD	V4L2_FIELD_NONE
@@ -28,54 +28,93 @@
  */
 
 static const struct vin_video_format vin_formats[] = {
-	{
-		.fourcc			= V4L2_PIX_FMT_YUYV,
-		.mbus_code		= MEDIA_BUS_FMT_YUYV8_2X8,
-		.bpp			= 16,
-		.src_bpp		= 8,
-	},
-	{
-		.fourcc			= V4L2_PIX_FMT_YVYU,
-		.mbus_code		= MEDIA_BUS_FMT_YVYU8_2X8,
-		.bpp			= 16,
-		.src_bpp 		= 8,
-	},
+#if 1
 	{
 		.fourcc 		= V4L2_PIX_FMT_UYVY,
 		.mbus_code		= MEDIA_BUS_FMT_UYVY8_2X8,
 		.bpp			= 16,
-		.src_bpp 		= 8,
-	},
-	{
-		.fourcc 		= V4L2_PIX_FMT_VYUY,
-		.mbus_code		= MEDIA_BUS_FMT_VYUY8_2X8,
-		.bpp			= 16,
-		.src_bpp 		= 8,
+		.bpc			= 8,
 	},
 	{
 		.fourcc			= V4L2_PIX_FMT_SBGGR8,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR8_1X8,
 		.bpp			= 8,
-		.src_bpp 		= 8,
+		.bpc 			= 8,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SBGGR10,
+		.mbus_code		= MEDIA_BUS_FMT_SBGGR10_1X10,
+		.bpp			= 16,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SBGGR10P,
+		.mbus_code		= MEDIA_BUS_FMT_SBGGR10_1X10,
+		.bpp			= 10,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SBGGR12,
+		.mbus_code		= MEDIA_BUS_FMT_SBGGR12_1X12,
+		.bpp			= 16,
+		.bpc			= 12,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SBGGR12P,
+		.mbus_code		= MEDIA_BUS_FMT_SBGGR12_1X12,
+		.bpp			= 12,
+		.bpc			= 12,
+	},
+#else
+	{
+		.fourcc			= V4L2_PIX_FMT_YUYV,
+		.mbus_code		= MEDIA_BUS_FMT_YUYV8_2X8,
+		.bpp			= 16,
+		.bpc		= 8,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_YVYU,
+		.mbus_code		= MEDIA_BUS_FMT_YVYU8_2X8,
+		.bpp			= 16,
+		.bpc 		= 8,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_UYVY,
+		.mbus_code		= MEDIA_BUS_FMT_UYVY8_2X8,
+		.bpp			= 16,
+		.bpc 		= 8,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_VYUY,
+		.mbus_code		= MEDIA_BUS_FMT_VYUY8_2X8,
+		.bpp			= 16,
+		.bpc 		= 8,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_SBGGR8,
+		.mbus_code		= MEDIA_BUS_FMT_SBGGR8_1X8,
+		.bpp			= 8,
+		.bpc 		= 8,
 	},
 	{
 		.fourcc			= V4L2_PIX_FMT_SGBRG8,
 		.mbus_code		= MEDIA_BUS_FMT_SGBRG8_1X8,
 		.bpp			= 8,
-		.src_bpp 		= 8,
+		.bpc 		= 8,
 	},
 	{
 		.fourcc			= V4L2_PIX_FMT_SGRBG8,
 		.mbus_code		= MEDIA_BUS_FMT_SGRBG8_1X8,
 		.bpp			= 8,
-		.src_bpp 		= 8,
+		.bpc 		= 8,
 	},
 	{
 		.fourcc			= V4L2_PIX_FMT_SRGGB8,
 		.mbus_code		= MEDIA_BUS_FMT_SRGGB8_1X8,
 		.bpp			= 8,
-		.src_bpp 		= 8,
+		.bpc 		= 8,
 	},
+#endif
 };
 
 /*  Print Four-character-code (FOURCC) */
@@ -926,8 +965,8 @@ int vin_v4l2_register(struct vin_dev *vin)
 
 	video_set_drvdata(&vin->vdev, vin);
 
-	v4l2_info(&vin->v4l2_dev, "Device registered as %s\n",
-		  video_device_node_name(&vin->vdev));
+	v4l2_info(&vin->v4l2_dev, "Device VIN%u registered as %s\n",
+		  vin->id, video_device_node_name(&vin->vdev));
 
 	return ret;
 }

@@ -13,7 +13,7 @@ static int ehci1_sunplus_platform_probe(struct platform_device *dev)
 }
 
 static const struct of_device_id ehci1_sunplus_dt_ids[] = {
-#ifdef CONFIG_SOC_SP7021
+#if defined (CONFIG_SOC_SP7021)
 	{ .compatible = "sunplus,sp7021-usb-ehci1" },
 #endif
 	{ }
@@ -36,7 +36,7 @@ static struct platform_driver ehci1_hcd_sunplus_driver = {
 /* ---------------------------------------------------------------------------------------------- */
 static int __init ehci1_sunplus_init(void)
 {
-#ifdef CONFIG_SOC_Q645
+#if defined (CONFIG_SOC_Q645) || (CONFIG_SOC_SP7350)
 	return -1;
 #else
 	if (sp_port1_enabled & PORT1_ENABLED) {

@@ -34,7 +34,7 @@
 #define HW_BUFFER_MASK 0x7f
 
 /* Max number on VIN instances that can be in a system */
-#define VIN_MAX_NUM 8
+#define VIN_MAX_NUM 14
 
 struct vin_group;
 
@@ -45,10 +45,20 @@ enum model_id {
 };
 
 enum vin_csi_id {
-	VIN_CSI0,
-	VIN_CSI1,
-	VIN_CSI2,
-	VIN_CSI3,
+	VIN_CSI0,		/* VI0_CSIIW0 */
+	VIN_CSI1,		/* VI0_CSIIW1 */
+	VIN_CSI2,		/* VI1_CSIIW0 */
+	VIN_CSI3,		/* VI1_CSIIW1 */
+	VIN_CSI4,		/* VI23_CSIIW0 */
+	VIN_CSI5,		/* VI23_CSIIW1 */
+	VIN_CSI6,		/* VI23_CSIIW2 */
+	VIN_CSI7,		/* VI23_CSIIW3 */
+	VIN_CSI8,		/* VI4_CSIIW0 */
+	VIN_CSI9,		/* VI4_CSIIW1 */
+	VIN_CSI10,		/* VI5_CSIIW0 */
+	VIN_CSI11,		/* VI5_CSIIW1 */
+	VIN_CSI12,		/* VI5_CSIIW2 */
+	VIN_CSI13,		/* VI5_CSIIW3 */
 	VIN_CSI_MAX,
 };
 
@@ -85,13 +95,14 @@ enum vin_buffer_type {
 /**
  * struct vin_video_format - Data format stored in memory
  * @fourcc:	Pixelformat
- * @bpp:	Bytes per pixel
+ * @bpp:	Bits per pixel
+ * @bpc:	Bits per color channel
  */
 struct vin_video_format {
 	u32 fourcc;
 	u32 mbus_code;
-	u8 bpp;
-	u8 src_bpp;
+	u8 bpp;			/* Bits per pixel */
+	u8 bpc;			/* Bits per color channel */
 };
 
 /**

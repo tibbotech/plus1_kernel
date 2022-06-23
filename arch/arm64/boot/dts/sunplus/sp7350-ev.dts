@@ -85,25 +85,25 @@
 			no-map;
 		};
 
-		/* remoteproc reserve memory: 0x01000000-0x01907fff, total 9M+32K */
-		rproc_0_reserved: rproc@1000000 {
+		/* remoteproc reserve memory: 0x77000000-0x77907fff, total 9M+32K */
+		rproc_0_reserved: rproc@77000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01000000 0x0 0x800000>;
+			reg = <0x0 0x77000000 0x0 0x800000>;
 			no-map;
 		};
-		vdev0buffer: vdev0buffer@1800000 {
+		vdev0buffer: vdev0buffer@77800000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01800000 0x0 0x100000>;
+			reg = <0x0 0x77800000 0x0 0x100000>;
 			no-map;
 		};
-		vdev0vring0: vdev0vring0@1900000 {
+		vdev0vring0: vdev0vring0@77900000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01900000 0x0 0x4000>;
+			reg = <0x0 0x77900000 0x0 0x4000>;
 			no-map;
 		};
-		vdev0vring1: vdev0vring1@1904000 {
+		vdev0vring1: vdev0vring1@77904000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x01904000 0x0 0x4000>;
+			reg = <0x0 0x77904000 0x0 0x4000>;
 			no-map;
 		};
 
@@ -146,10 +146,10 @@
 			clock-output-names = "f_320m";
 		};
 
-		clkc: clkc@f8000000 {
+		clkc: clkc@f8800104 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8800000 0x00 0x280>;  // MOON G0
+			reg = <0x00 0xf8800104 0x00 0x7c>;  // MOON G2.1~G3
 		};
 	};
 
@@ -255,7 +255,7 @@
 	rstc: reset@f8000054 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8800054 0x00 0x28>;
+		reg = <0x00 0xf8800004 0x00 0x30>;
 		reg-names = "reset";
 	};
 
@@ -718,64 +718,814 @@
 		status = "disabled";
 	};
 
-	mipicsirx0: mipicsirx@f8005280 {
+	mipicsirx0: csirx@f8005280 {
 		compatible = "sunplus,sp7350-mipicsi-rx";
-		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005280 0x0 0x80>;
+		reg-names = "mipicsi";
+		clocks = <&clkc MIPICSI0>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI0>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <0>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi0_in: endpoint {
+					remote-endpoint = <&imx219_0>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi0vin0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin0csi0>;
+				};
+
+				csi0vin1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin1csi0>;
+				};
+			};
+		};
+	};
+
+	vin0: video@f8005580 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005580 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 36 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 37 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI0_CSIIW0>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI0_CSIIW0>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <0>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin0csi0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&csi0vin0>;
+				};
+			};
+		};
+	};
+
+	vin1: video@f8005600 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005600 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 39 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI0_CSIIW1>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI0_CSIIW1>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <1>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin1csi0: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&csi0vin1>;
+				};
+			};
+		};
+	};
+
+	mipicsirx1: csirx@f8005300 {
+		compatible = "sunplus,sp7350-mipicsi-rx";
+		reg = <0x0 0xf8005300 0x0 0x80>;
+		reg-names = "mipicsi";
+		clocks = <&clkc MIPICSI1>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI1>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <1>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi1_in: endpoint {
+					remote-endpoint = <&imx219_1>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi1vin2: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin2csi1>;
+				};
+
+				csi1vin3: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin3csi1>;
+				};
+			};
+		};
+	};
+
+	vin2: video@f8005680 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005680 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 40 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 41 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI1_CSIIW0>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI1_CSIIW0>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <2>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin2csi1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&csi1vin2>;
+				};
+			};
+		};
+	};
+
+	vin3: video@f8005700 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005700 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 42 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 43 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI1_CSIIW1>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI1_CSIIW1>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <3>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin3csi1: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&csi1vin3>;
+				};
+			};
+		};
+	};
+
+	mipicsirx2: csirx@f8005380 {
+		compatible = "sunplus,sp7350-mipicsi-rx";
+		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005200 0x0 0x80>;
+		reg-names = "mipicsi", "mipicsi23sel";
+		clocks = <&clkc MIPICSI2>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI2>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <2>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_in: endpoint {
+					remote-endpoint = <&imx219_2>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi2vin4: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin4csi2>;
+				};
+
+				csi2vin5: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin5csi2>;
+				};
+			};
+		};
+	};
+
+	vin4: video@f8005780 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005780 0x0 0x80>;
+		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
-		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI0>, <&rstc RST_VI0_CSIIW0>;
-		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <2>;
-		status = "disabled";
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI23_CSIIW0>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI23_CSIIW0>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <4>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin4csi2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&csi2vin4>;
+				};
+			};
+		};
 	};
 
-	mipicsirx1: mipicsirx@f8005380 {
-		compatible = "sunplus,sp7350-mipicsi-rx";
-		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+	vin5: video@f8005800 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005800 0x0 0x80>;
+		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
-		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI1>, <&rstc RST_VI1_CSIIW0>;
-		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <3>;
-		status = "disabled";
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI23_CSIIW1>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI23_CSIIW1>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <5>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin5csi2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&csi2vin5>;
+				};
+			};
+		};
 	};
 
-	mipicsirx2: mipicsirx@f8005480 {
+	mipicsirx3: csirx@f8005400 {
 		compatible = "sunplus,sp7350-mipicsi-rx";
-		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+		reg = <0x0 0xf8005400 0x0 0x80>, <0x0 0xf8005200 0x0 0x80>;
+		reg-names = "mipicsi", "mipicsi23sel";
+		clocks = <&clkc MIPICSI3>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI3>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <3>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi3_in: endpoint {
+					remote-endpoint = <&imx219_3>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi3vin6: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin6csi3>;
+				};
+
+				csi3vin7: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin7csi3>;
+				};
+			};
+		};
+	};
+
+	vin6: video@f8005880 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005880 0x0 0x80>;
+		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
-		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI2>, <&rstc RST_VI2_CSIIW0>;
-		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <4>;
-		status = "disabled";
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI23_CSIIW2>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI23_CSIIW2>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <6>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin6csi3: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&csi3vin6>;
+				};
+			};
+		};
 	};
 
-	mipicsirx3: mipicsirx@f8005580 {
-		compatible = "sunplus,sp7350-mipicsi-rx";
-		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
-		reg-names = "mipicsi", "csiiw";
+	vin7: video@f8005900 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005900 0x0 0x80>;
+		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
 			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
-		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
-		clock-names = "clk_mipicsi", "clk_csiiw";
-		resets = <&rstc RST_MIPICSI3>, <&rstc RST_VI3_CSIIW0>;
-		reset-names = "rstc_mipicsi", "rstc_csiiw";
-		i2c-id = <5>;
-		status = "disabled";
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI23_CSIIW3>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI23_CSIIW3>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <7>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin7csi3: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&csi3vin7>;
+				};
+			};
+		};
+	};
+
+	mipicsirx4: csirx@f8005480 {
+		compatible = "sunplus,sp7350-mipicsi-rx";
+		reg = <0x0 0xf8005480 0x0 0x80>;
+		reg-names = "mipicsi";
+		clocks = <&clkc MIPICSI2>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI4>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <4>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <2>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi4_in: endpoint {
+					remote-endpoint = <&imx219_4>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi4vin8: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin8csi4>;
+				};
+
+				csi4vin9: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin9csi4>;
+				};
+			};
+		};
+	};
+
+	vin8: video@f8005980 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005980 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 44 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 45 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI4_CSIIW0>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI4_CSIIW0>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <8>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin8csi4: endpoint@4 {
+					reg = <4>;
+					remote-endpoint = <&csi4vin8>;
+				};
+			};
+		};
+	};
+
+	vin9: video@f8005a00 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005a00 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 46 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 47 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI4_CSIIW1>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI4_CSIIW1>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <9>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin9csi4: endpoint@4 {
+					reg = <4>;
+					remote-endpoint = <&csi4vin9>;
+				};
+			};
+		};
+	};
+
+	mipicsirx5: csirx@f8005500 {
+		compatible = "sunplus,sp7350-mipicsi-rx";
+		reg = <0x0 0xf8005500 0x0 0x80>;
+		reg-names = "mipicsi";
+		clocks = <&clkc MIPICSI3>;
+		clock-names = "clk_mipicsi";
+		resets = <&rstc RST_MIPICSI5>;
+		reset-names = "rstc_mipicsi";
+		sunplus,id = <5>;
+		status = "okay";
+
+		/* Virtual channel related properties */
+		max_channels = <4>;
+		num_channels = <4>;
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
+	#if 0
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi5_in: endpoint {
+					remote-endpoint = <&imx219_5>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+				};
+			};
+	#endif
+
+			/* Output port node, multiple endpoints, connected to VIN modules */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				csi5vin10: endpoint@0 {
+					reg = <0>;
+					remote-endpoint = <&vin10csi5>;
+				};
+
+				csi5vin11: endpoint@1 {
+					reg = <1>;
+					remote-endpoint = <&vin11csi5>;
+				};
+
+				csi5vin12: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin12csi5>;
+				};
+
+				csi5vin13: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin13csi5>;
+				};
+			};
+		};
+	};
+
+	vin10: video@f8005a80 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005a80 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 170 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 171 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI5_CSIIW0>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI5_CSIIW0>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <10>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin10csi5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&csi5vin10>;
+				};
+			};
+		};
+	};
+
+	vin11: video@f8005b00 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005b00 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 172 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 173 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI5_CSIIW1>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI5_CSIIW1>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <11>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin11csi5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&csi5vin11>;
+				};
+			};
+		};
+	};
+
+	vin12: video@f8005b80 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005b80 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 174 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 175 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI5_CSIIW2>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI5_CSIIW2>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <12>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin12csi5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&csi5vin12>;
+				};
+			};
+		};
+	};
+
+	vin13: video@f8005c00 {
+		compatible = "sunplus,sp7350-vin";
+		reg = <0x0 0xf8005c00 0x0 0x80>;
+		reg-names = "csiiw";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 176 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 177 IRQ_TYPE_EDGE_RISING>;
+		interrupt-names = "fs_irq", "fe_irq";
+		clocks = <&clkc VI5_CSIIW3>;
+		clock-names = "clk_csiiw";
+		resets = <&rstc RST_VI5_CSIIW3>;
+		reset-names = "rstc_csiiw";
+		sunplus,id = <13>;
+		status = "okay";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			/* Input port node, default mode, connected to CSI-2 receivers */
+			port@1 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				reg = <1>;
+
+				vin13csi5: endpoint@5 {
+					reg = <5>;
+					remote-endpoint = <&csi5vin13>;
+				};
+			};
+		};
 	};
 
 	video_codec {
@@ -858,9 +1608,9 @@
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x20>,
-		      <0x0 0xf8000280 0x0 0x180>,
-		      <0x0 0xf88032e4 0x0 0x1c>;
-		reg-names = "moon1", "gpioxt", "first";
+		      <0x0 0xf88032e4 0x0 0x1c>,
+		      <0x0 0xf8803380 0x0 0x180>;
+		reg-names = "moon1", "first", "gpioxt";
 		gpio-controller;
 		#gpio-cells = <2>;
 

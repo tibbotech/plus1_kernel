@@ -193,6 +193,10 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 	int soc_clk  = clk_get_rate(host->clk);
 	u32 value = readl(&host->base->sd_config0);
 
+	#ifdef CONFIG_SOC_SP7350 // Added temporarily. Remove when CCF is ready.
+	soc_clk = SPMMC_SYS_CLK;
+	#endif
+
 	if (clk < f_min)
 		clk = f_min;
 	if (clk > f_max)

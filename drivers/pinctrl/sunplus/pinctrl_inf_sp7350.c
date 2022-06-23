@@ -316,75 +316,75 @@ static const unsigned int pins_int_x6[] = { 106 };
 static const unsigned int pins_int_x7[] = { 107 };
 static const struct sppctlgrp_t sp7350grps_int0[] = {
 	EGRP("INT0_X1", 1, pins_int_x1),
-	EGRP("INT0_X2", 1, pins_int_x2),
-	EGRP("INT0_X3", 1, pins_int_x3),
-	EGRP("INT0_X4", 1, pins_int_x4),
-	EGRP("INT0_X5", 1, pins_int_x5),
-	EGRP("INT0_X6", 1, pins_int_x6),
-	EGRP("INT0_X7", 1, pins_int_x7)
+	EGRP("INT0_X2", 2, pins_int_x2),
+	EGRP("INT0_X3", 3, pins_int_x3),
+	EGRP("INT0_X4", 4, pins_int_x4),
+	EGRP("INT0_X5", 5, pins_int_x5),
+	EGRP("INT0_X6", 6, pins_int_x6),
+	EGRP("INT0_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int1[] = {
 	EGRP("INT1_X1", 1, pins_int_x1),
-	EGRP("INT1_X2", 1, pins_int_x2),
-	EGRP("INT1_X3", 1, pins_int_x3),
-	EGRP("INT1_X4", 1, pins_int_x4),
-	EGRP("INT1_X5", 1, pins_int_x5),
-	EGRP("INT1_X6", 1, pins_int_x6),
-	EGRP("INT1_X7", 1, pins_int_x7)
+	EGRP("INT1_X2", 2, pins_int_x2),
+	EGRP("INT1_X3", 3, pins_int_x3),
+	EGRP("INT1_X4", 4, pins_int_x4),
+	EGRP("INT1_X5", 5, pins_int_x5),
+	EGRP("INT1_X6", 6, pins_int_x6),
+	EGRP("INT1_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int2[] = {
 	EGRP("INT2_X1", 1, pins_int_x1),
-	EGRP("INT2_X2", 1, pins_int_x2),
-	EGRP("INT2_X3", 1, pins_int_x3),
-	EGRP("INT2_X4", 1, pins_int_x4),
-	EGRP("INT2_X5", 1, pins_int_x5),
-	EGRP("INT2_X6", 1, pins_int_x6),
-	EGRP("INT2_X7", 1, pins_int_x7)
+	EGRP("INT2_X2", 2, pins_int_x2),
+	EGRP("INT2_X3", 3, pins_int_x3),
+	EGRP("INT2_X4", 4, pins_int_x4),
+	EGRP("INT2_X5", 5, pins_int_x5),
+	EGRP("INT2_X6", 6, pins_int_x6),
+	EGRP("INT2_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int3[] = {
 	EGRP("INT3_X1", 1, pins_int_x1),
-	EGRP("INT3_X2", 1, pins_int_x2),
-	EGRP("INT3_X3", 1, pins_int_x3),
-	EGRP("INT3_X4", 1, pins_int_x4),
-	EGRP("INT3_X5", 1, pins_int_x5),
-	EGRP("INT3_X6", 1, pins_int_x6),
-	EGRP("INT3_X7", 1, pins_int_x7)
+	EGRP("INT3_X2", 2, pins_int_x2),
+	EGRP("INT3_X3", 3, pins_int_x3),
+	EGRP("INT3_X4", 4, pins_int_x4),
+	EGRP("INT3_X5", 5, pins_int_x5),
+	EGRP("INT3_X6", 6, pins_int_x6),
+	EGRP("INT3_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int4[] = {
 	EGRP("INT4_X1", 1, pins_int_x1),
-	EGRP("INT4_X2", 1, pins_int_x2),
-	EGRP("INT4_X3", 1, pins_int_x3),
-	EGRP("INT4_X4", 1, pins_int_x4),
-	EGRP("INT4_X5", 1, pins_int_x5),
-	EGRP("INT4_X6", 1, pins_int_x6),
-	EGRP("INT4_X7", 1, pins_int_x7)
+	EGRP("INT4_X2", 2, pins_int_x2),
+	EGRP("INT4_X3", 3, pins_int_x3),
+	EGRP("INT4_X4", 4, pins_int_x4),
+	EGRP("INT4_X5", 5, pins_int_x5),
+	EGRP("INT4_X6", 6, pins_int_x6),
+	EGRP("INT4_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int5[] = {
 	EGRP("INT5_X1", 1, pins_int_x1),
-	EGRP("INT5_X2", 1, pins_int_x2),
-	EGRP("INT5_X3", 1, pins_int_x3),
-	EGRP("INT5_X4", 1, pins_int_x4),
-	EGRP("INT5_X5", 1, pins_int_x5),
-	EGRP("INT5_X6", 1, pins_int_x6),
-	EGRP("INT5_X7", 1, pins_int_x7)
+	EGRP("INT5_X2", 2, pins_int_x2),
+	EGRP("INT5_X3", 3, pins_int_x3),
+	EGRP("INT5_X4", 4, pins_int_x4),
+	EGRP("INT5_X5", 5, pins_int_x5),
+	EGRP("INT5_X6", 6, pins_int_x6),
+	EGRP("INT5_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int6[] = {
 	EGRP("INT6_X1", 1, pins_int_x1),
-	EGRP("INT6_X2", 1, pins_int_x2),
-	EGRP("INT6_X3", 1, pins_int_x3),
-	EGRP("INT6_X4", 1, pins_int_x4),
-	EGRP("INT6_X5", 1, pins_int_x5),
-	EGRP("INT6_X6", 1, pins_int_x6),
-	EGRP("INT6_X7", 1, pins_int_x7)
+	EGRP("INT6_X2", 2, pins_int_x2),
+	EGRP("INT6_X3", 3, pins_int_x3),
+	EGRP("INT6_X4", 4, pins_int_x4),
+	EGRP("INT6_X5", 5, pins_int_x5),
+	EGRP("INT6_X6", 6, pins_int_x6),
+	EGRP("INT6_X7", 7, pins_int_x7)
 };
 static const struct sppctlgrp_t sp7350grps_int7[] = {
 	EGRP("INT7_X1", 1, pins_int_x1),
-	EGRP("INT7_X2", 1, pins_int_x2),
-	EGRP("INT7_X3", 1, pins_int_x3),
-	EGRP("INT7_X4", 1, pins_int_x4),
-	EGRP("INT7_X5", 1, pins_int_x5),
-	EGRP("INT7_X6", 1, pins_int_x6),
-	EGRP("INT7_X7", 1, pins_int_x7)
+	EGRP("INT7_X2", 2, pins_int_x2),
+	EGRP("INT7_X3", 3, pins_int_x3),
+	EGRP("INT7_X4", 4, pins_int_x4),
+	EGRP("INT7_X5", 5, pins_int_x5),
+	EGRP("INT7_X6", 6, pins_int_x6),
+	EGRP("INT7_X7", 7, pins_int_x7)
 };
 
 struct func_t list_funcs[] = {
@@ -414,39 +414,40 @@ struct func_t list_funcs[] = {
 	FNCE("I2C_COMBO6",      fOFF_G, 2,  5, 1, sp7350grps_i2ccombo6),
 	FNCE("I2C_COMBO7",      fOFF_G, 2,  6, 1, sp7350grps_i2ccombo7),
 	FNCE("SPI_COMBO0",      fOFF_G, 2,  7, 1, sp7350grps_spicombo0),
-	FNCE("SPI_COMBO1",      fOFF_G, 2,  9, 1, sp7350grps_spicombo1),
-	FNCE("SPI_COMBO2",      fOFF_G, 2, 10, 1, sp7350grps_spicombo2),
-	FNCE("SPI_COMBO3",      fOFF_G, 2, 11, 1, sp7350grps_spicombo3),
-	FNCE("SPI_COMBO4",      fOFF_G, 2, 12, 1, sp7350grps_spicombo4),
-	FNCE("SPI_COMBO5",      fOFF_G, 2, 13, 1, sp7350grps_spicombo5),
-	FNCE("I2C_COMBO0",      fOFF_G, 2, 14, 1, sp7350grps_i2ccombo0),
-	FNCE("I2C_COMBO1",      fOFF_G, 2, 15, 1, sp7350grps_i2ccombo1),
+	FNCE("SPI_COMBO1",      fOFF_G, 2, 10, 1, sp7350grps_spicombo1),
+	FNCE("SPI_COMBO2",      fOFF_G, 2, 11, 1, sp7350grps_spicombo2),
+	FNCE("SPI_COMBO3",      fOFF_G, 2, 12, 1, sp7350grps_spicombo3),
+	FNCE("SPI_COMBO4",      fOFF_G, 2, 13, 1, sp7350grps_spicombo4),
+	FNCE("SPI_COMBO5",      fOFF_G, 2, 14, 1, sp7350grps_spicombo5),
+	FNCE("I2C_COMBO0",      fOFF_G, 2, 15, 1, sp7350grps_i2ccombo0),
 
-	FNCE("I2C_COMBO2",      fOFF_G, 3,  0, 1, sp7350grps_i2ccombo2),
-	FNCE("I2C_COMBO8",      fOFF_G, 3,  1, 1, sp7350grps_i2ccombo8),
-	FNCE("I2C_COMBO9",      fOFF_G, 3,  2, 1, sp7350grps_i2ccombo9),
-	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3,  3, 1, sp7350grps_aud_tdmtx_xck),
-	FNCE("AUD_DAC_CLK",     fOFF_G, 3,  4, 1, sp7350grps_aud_dac_clk),
-	FNCE("AUD_AU2_DATA0",   fOFF_G, 3,  5, 1, sp7350grps_aud_au2_data0),
-	FNCE("AUD_AU1_DATA0",   fOFF_G, 3,  6, 1, sp7350grps_aud_au1_data0),
-	FNCE("AUD_AU2_CK",      fOFF_G, 3,  7, 1, sp7350grps_aud_au2_ck),
-	FNCE("AUD_AU1_CK",      fOFF_G, 3,  8, 1, sp7350grps_aud_au1_ck),
-	FNCE("AUD_AU_ADC_DATA0",fOFF_G, 3,  9, 1, sp7350grps_aud_au_adc_data0),
-	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 10, 1, sp7350grps_aud_adc2_data0),
-	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 11, 1, sp7350grps_aud_adc1_data0),
-	FNCE("AUD_AUD_TDM",     fOFF_G, 3, 12, 1, sp7350grps_aud_aud_tdm),
-	FNCE("SPDIF_IN",        fOFF_G, 3, 13, 3, sp7350grps_spdif_in),
+	FNCE("I2C_COMBO1",      fOFF_G, 3,  0, 1, sp7350grps_i2ccombo1),
+	FNCE("I2C_COMBO2",      fOFF_G, 3,  1, 1, sp7350grps_i2ccombo2),
+	FNCE("I2C_COMBO8",      fOFF_G, 3,  2, 1, sp7350grps_i2ccombo8),
+	FNCE("I2C_COMBO9",      fOFF_G, 3,  3, 1, sp7350grps_i2ccombo9),
+	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3,  4, 1, sp7350grps_aud_tdmtx_xck),
+	FNCE("AUD_DAC_CLK",     fOFF_G, 3,  5, 1, sp7350grps_aud_dac_clk),
+	FNCE("AUD_AU2_DATA0",   fOFF_G, 3,  6, 1, sp7350grps_aud_au2_data0),
+	FNCE("AUD_AU1_DATA0",   fOFF_G, 3,  7, 1, sp7350grps_aud_au1_data0),
+	FNCE("AUD_AU2_CK",      fOFF_G, 3,  8, 1, sp7350grps_aud_au2_ck),
+	FNCE("AUD_AU1_CK",      fOFF_G, 3,  9, 1, sp7350grps_aud_au1_ck),
+	FNCE("AUD_AU_ADC_DATA0",fOFF_G, 3, 10, 1, sp7350grps_aud_au_adc_data0),
+	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 11, 1, sp7350grps_aud_adc2_data0),
+	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 12, 1, sp7350grps_aud_adc1_data0),
+	FNCE("AUD_AUD_TDM",     fOFF_G, 3, 13, 1, sp7350grps_aud_aud_tdm),
 
-	FNCE("SPDIF_OUT",       fOFF_G, 4,  0, 3, sp7350grps_spdif_out),
-	FNCE("INT0",            fOFF_G, 4,  6, 3, sp7350grps_int0),
-	FNCE("INT1",            fOFF_G, 4,  9, 3, sp7350grps_int1),
-	FNCE("INT2",            fOFF_G, 4, 12, 3, sp7350grps_int2),
+	FNCE("SPDIF_IN",        fOFF_G, 4,  0, 3, sp7350grps_spdif_in),
+	FNCE("SPDIF_OUT",       fOFF_G, 4,  3, 3, sp7350grps_spdif_out),
+	FNCE("INT0",            fOFF_G, 4,  9, 3, sp7350grps_int0),
+	FNCE("INT1",            fOFF_G, 4, 12, 3, sp7350grps_int1),
 
-	FNCE("INT3",            fOFF_G, 5,  0, 3, sp7350grps_int3),
-	FNCE("INT4",            fOFF_G, 5,  3, 3, sp7350grps_int4),
-	FNCE("INT5",            fOFF_G, 5,  6, 3, sp7350grps_int5),
-	FNCE("INT6",            fOFF_G, 5,  9, 3, sp7350grps_int6),
-	FNCE("INT7",            fOFF_G, 5, 12, 3, sp7350grps_int7)
+	FNCE("INT2",            fOFF_G, 5,  0, 3, sp7350grps_int2),
+	FNCE("INT3",            fOFF_G, 5,  3, 3, sp7350grps_int3),
+	FNCE("INT4",            fOFF_G, 5,  6, 3, sp7350grps_int4),
+	FNCE("INT5",            fOFF_G, 5,  9, 3, sp7350grps_int5),
+	FNCE("INT6",            fOFF_G, 5, 12, 3, sp7350grps_int6),
+
+	FNCE("INT7",            fOFF_G, 6,  0, 3, sp7350grps_int7)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
