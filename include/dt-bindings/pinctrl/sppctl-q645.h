@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Sunplus Q645 pinmux pinctrl bindings.
- * Copyright (C) Sunplus Tech/Tibbo Tech. 2020
+ * Copyright (C) Sunplus Technology
  * Author: Wells Lu <wells.lu@sunplus.com>
  */
 
@@ -46,8 +46,8 @@
 #define GROP_I2C_MASTER3	32
 #define GROP_I2C_MASTER4	33
 #define GROP_I2C_MASTER5	34
-#define GROP_AUD_DAC_CLK	35
-#define GROP_AUD_TDMTX_XCK	36
+#define GROP_AUD_TDMTX_XCK	35
+#define GROP_AUD_DAC_XCK	36
 #define GROP_AUD_AU2_DATA0	37
 #define GROP_AUD_AU1_DATA0	38
 #define GROP_AUD_AU2_CK		39

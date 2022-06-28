@@ -1571,13 +1571,13 @@
 			groups = "PWM";
 		};
 
-		aud_dac_clk_pins: pinmux_aud_dac_clk-pins {
-			function = "AUD_DAC_CLK";
-			groups = "AUD_DAC_CLK";
-		};
 		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck-pins {
 			function = "AUD_TDMTX_XCK";
 			groups = "AUD_TDMTX_XCK";
+		};
+		aud_dac_xck_pins: pinmux_aud_dac_xck-pins {
+			function = "AUD_DAC_XCK";
+			groups = "AUD_DAC_XCK";
 		};
 		aud_au2_data0_pins: pinmux_aud_au2_data0-pins {
 			function = "AUD_AU2_DATA0";
@@ -1607,9 +1607,9 @@
 			function = "AUD_ADC1_DATA0";
 			groups = "AUD_ADC1_DATA0";
 		};
-		aud_aud_tdm_pins: pinmux_aud_aud_tdm-pins {
-			function = "AUD_AUD_TDM";
-			groups = "AUD_AUD_TDM";
+		aud_tdm_pins: pinmux_aud_tdm-pins {
+			function = "AUD_TDM";
+			groups = "AUD_TDM";
 		};
 		spdif_in_pins: pinmux_spdif_in-pins {
 			function = "SPDIF_IN";

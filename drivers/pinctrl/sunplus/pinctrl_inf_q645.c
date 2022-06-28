@@ -217,9 +217,9 @@ static const struct sppctlgrp_t q645grps_pwm[] = {
 	EGRP("PWM", 1, pins_pwm)
 };
 
-static const unsigned int pins_aud_dac_clk[] = { 62, 63 };
-static const struct sppctlgrp_t q645grps_aud_dac_clk[] = {
-	EGRP("AUD_DAC_CLK", 1, pins_aud_dac_clk)
+static const unsigned int pins_aud_dac_xck[] = { 62, 63 };
+static const struct sppctlgrp_t q645grps_aud_dac_xck[] = {
+	EGRP("AUD_DAC_XCK", 1, pins_aud_dac_xck)
 };
 
 static const unsigned int pins_aud_tdmtx_xck[] = { 62 };
@@ -262,9 +262,9 @@ static const struct sppctlgrp_t q645grps_aud_adc1_data0[] = {
 	EGRP("AUD_ADC1_DATA0", 1, pins_aud_adc1_data0)
 };
 
-static const unsigned int pins_aud_aud_tdm[] = { 3, 64, 92, 93 };
-static const struct sppctlgrp_t q645grps_aud_aud_tdm[] = {
-	EGRP("AUD_AUD_TDM", 1, pins_aud_aud_tdm)
+static const unsigned int pins_aud_tdm[] = { 3, 64, 92, 93 };
+static const struct sppctlgrp_t q645grps_aud_tdm[] = {
+	EGRP("AUD_TDM", 1, pins_aud_tdm)
 };
 
 static const unsigned int pins_spdif1[] = { 91 };
@@ -410,7 +410,7 @@ struct func_t list_funcs[] = {
 	FNCE("I2C_MASTER4",     fOFF_G, 3,  4, 1, q645grps_i2cm4),
 	FNCE("I2C_MASTER5",     fOFF_G, 3,  5, 1, q645grps_i2cm5),
 	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3,  6, 1, q645grps_aud_tdmtx_xck),
-	FNCE("AUD_DAC_CLK",     fOFF_G, 3,  7, 1, q645grps_aud_dac_clk),
+	FNCE("AUD_DAC_XCK",     fOFF_G, 3,  7, 1, q645grps_aud_dac_xck),
 	FNCE("AUD_AU2_DATA0",   fOFF_G, 3,  8, 1, q645grps_aud_au2_data0),
 	FNCE("AUD_AU1_DATA0",   fOFF_G, 3,  9, 1, q645grps_aud_au1_data0),
 	FNCE("AUD_AU2_CK",      fOFF_G, 3, 10, 1, q645grps_aud_au2_ck),
@@ -418,7 +418,7 @@ struct func_t list_funcs[] = {
 	FNCE("AUD_AU_ADC_DATA0", fOFF_G, 3, 12, 1, q645grps_aud_au_adc_data0),
 	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 13, 1, q645grps_aud_adc2_data0),
 	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 14, 1, q645grps_aud_adc1_data0),
-	FNCE("AUD_AUD_TDM",     fOFF_G, 3, 15, 1, q645grps_aud_aud_tdm),
+	FNCE("AUD_TDM",         fOFF_G, 3, 15, 1, q645grps_aud_tdm),
 
 	FNCE("SPDIF_IN",        fOFF_G, 4,  0, 3, q645grps_spdif_in),
 	FNCE("SPDIF_OUT",       fOFF_G, 4,  3, 3, q645grps_spdif_out),
