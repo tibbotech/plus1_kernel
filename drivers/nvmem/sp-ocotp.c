@@ -39,6 +39,9 @@
 enum base_type {
 	HB_GPIO,
 	OTPRX,
+#if defined(CONFIG_SOC_SP7350)
+	OTP_KEY,
+#endif
 	BASEMAX,
 };
 
@@ -73,12 +76,18 @@ int sp_otp_read_real(struct sp_otp_data_t *_otp, int addr, char *value)
 {
 	struct sp_hb_gpio_reg *hb_gpio_reg_ptr;
 	struct sp_otprx_reg *otprx_reg_ptr;
+#if defined(CONFIG_SOC_SP7350)
+	struct sp_otp_key_reg *otp_key_reg_ptr;
+#endif
 	unsigned int addr_data;
 	unsigned int byte_shift;
 	int ret = 0;
 
 	hb_gpio_reg_ptr = (struct sp_hb_gpio_reg *)(_otp->base[HB_GPIO]);
 	otprx_reg_ptr = (struct sp_otprx_reg *)(_otp->base[OTPRX]);
+#if defined(CONFIG_SOC_SP7350)
+	otp_key_reg_ptr = (struct sp_otp_key_reg *)(_otp->base[OTP_KEY]);
+#endif
 
 	addr_data = addr % (OTP_WORD_SIZE * OTP_WORDS_PER_BANK);
 	addr_data = addr_data / OTP_WORD_SIZE;
@@ -97,8 +106,18 @@ int sp_otp_read_real(struct sp_otp_data_t *_otp, int addr, char *value)
 	if (ret < 0)
 		return ret;
 
+#if defined(CONFIG_SOC_SP7350)
+	if (addr < (16 * 32)) {
+		*value = (readl(&hb_gpio_reg_ptr->hb_gpio_rgst_bus32_9 +
+				addr_data) >> (8 * byte_shift)) & 0xFF;
+	} else {
+		*value = (readl(&otp_key_reg_ptr->block0_addr +
+				addr_data) >> (8 * byte_shift)) & 0xFF;
+	}
+#else
 	*value = (readl(&hb_gpio_reg_ptr->hb_gpio_rgst_bus32_9 +
 				addr_data) >> (8 * byte_shift)) & 0xFF;
+#endif
 
 	return ret;
 }
@@ -251,6 +270,13 @@ int sp_ocotp_probe(struct platform_device *pdev)
 	otp->base[OTPRX] = devm_ioremap_resource(dev, res);
 	if (IS_ERR(otp->base[OTPRX]))
 		return PTR_ERR(otp->base[OTPRX]);
+
+#if defined(CONFIG_SOC_SP7350)
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "otp_key");
+	otp->base[OTP_KEY] = devm_ioremap_resource(dev, res);
+	if (IS_ERR(otp->base[OTP_KEY]))
+		return PTR_ERR(otp->base[OTP_KEY]);
+#endif
 
 	otp->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(otp->clk))

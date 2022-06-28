@@ -511,6 +511,21 @@
 		snps,axi-max-burst-len = <16>;
 	};
 
+	ethernet: stmmac@f8103000 {
+		compatible = "snps,dwmac-3.70a";
+		reg = <0x00 0xf8103000 0x00 0x2000>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "macirq";
+		//st,syscon = <&syscfg 0x4>;
+		snps,mixed-burst;
+		snps,ps-speed = <1000>;
+		phy-mode = "rgmii";
+		//mac-mode = "rgmii";
+		nvmem-cell-names = "mac-address";
+		nvmem-cells = <&mac_addr>;
+	};
+
 	sp_spinor0: spinor@f8000b00 {
 		compatible = "sunplus,sp7350-spi-nor";
 		reg = <0x0 0xf8000b00 0x0 0x80>;
@@ -547,10 +562,11 @@
 		resets = <&rstc RST_BCH>;
 	};
 
-	otp0: otp@f800af00 {
+	otp0: otp@f8802380 {
 		compatible = "sunplus,sp7350-ocotp";
-		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
+		reg = <0x00 0xf8802380 0x00 0x60>, <0x00 0xf8802400 0x00 0x80>,
+				<0x00 0xf8802480 0x00 0x18>;
+		reg-names = "hb_gpio", "otprx", "otp_key";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
 		#address-cells = <1>;
@@ -558,31 +574,15 @@
 		therm_calib: therm_calib@14 {
 			reg = <0x14 0x3>;
 		};
-		mac_addr0: mac_addr0@34 {
+		mac_addr: mac-address@34 {
 			reg = <0x34 0x6>;
-		};
-		mac_addr1: mac_addr1@3a {
-			reg = <0x3a 0x6>;
 		};
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
 		};
-	};
-
-	otp1: otp@f8018580 {
-		compatible = "sunplus,sp7350-ocotp1";
-		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
-		clocks = <&clkc OTPRX>;
-		resets = <&rstc RST_OTPRX>;
-	};
-
-	otp2: otp@f8002780 {
-		compatible = "sunplus,sp7350-ocotp2";
-		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
-		clocks = <&clkc OTPRX>;
-		resets = <&rstc RST_OTPRX>;
+		n78_clksel: n78_clksel@05 {
+			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
+		};
 	};
 
 	fb_device {
