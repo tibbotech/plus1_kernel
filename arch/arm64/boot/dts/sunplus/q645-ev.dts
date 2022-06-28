@@ -1120,7 +1120,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins>;
+		pinctrl-0 = <&aud_adc0_data0_pins>;
 		status = "disabled";
 	};
 
@@ -1595,9 +1595,9 @@
 			function = "AUD_AU1_CK";
 			groups = "AUD_AU1_CK";
 		};
-		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0-pins {
-			function = "AUD_AU_ADC_DATA0";
-			groups = "AUD_AU_ADC_DATA0";
+		aud_adc0_data0_pins: pinmux_aud_adc0_data0-pins {
+			function = "AUD_ADC0_DATA0";
+			groups = "AUD_ADC0_DATA0";
 		};
 		aud_adc2_data0_pins: pinmux_aud_adc2_data0-pins {
 			function = "AUD_ADC2_DATA0";
