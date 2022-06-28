@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Sunplus SP7350 Pin Controller Driver.
+ * Sunplus SP7350 Pin Controller Driver
  * Copyright (C) Sunplus Technology
  */
 
@@ -78,12 +78,12 @@ static const struct sppctlgrp_t sp7350grps_sdio30[] = {
 	EGRP("SDIO", 1, pins_sdio30),
 };
 
-static const unsigned pins_para_nand[] = { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36 };
+static const unsigned int pins_para_nand[] = { 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36 };
 static const struct sppctlgrp_t sp7350grps_para_nand[] = {
 	EGRP("PARA_NAND", 1, pins_para_nand),
 };
 
-static const unsigned pins_usb_otg[] = { 18, 19 };
+static const unsigned int pins_usb_otg[] = { 18, 19 };
 static const struct sppctlgrp_t sp7350grps_usb_otg[] = {
 	EGRP("USB_OTG", 1, pins_usb_otg),
 };
@@ -315,11 +315,11 @@ static const struct sppctlgrp_t sp7350grps_aud_au1_ck[] = {
 	EGRP("AUD_AU1_CK", 1, pins_aud_au1_ck),
 };
 
-static const unsigned int pins_aud_au_adc_data0_x1[] = { 94, 95, 96, 97 };
-static const unsigned int pins_aud_au_adc_data0_x2[] = { 72, 73, 74, 75 };
-static const struct sppctlgrp_t sp7350grps_aud_au_adc_data0[] = {
-	EGRP("AUD_AU_ADC_DATA0_X1", 1, pins_aud_au_adc_data0_x1),
-	EGRP("AUD_AU_ADC_DATA0_X2", 2, pins_aud_au_adc_data0_x2),
+static const unsigned int pins_aud_adc0_data0_x1[] = { 94, 95, 96, 97 };
+static const unsigned int pins_aud_adc0_data0_x2[] = { 72, 73, 74, 75 };
+static const struct sppctlgrp_t sp7350grps_aud_adc0_data0[] = {
+	EGRP("AUD_ADC0_DATA0_X1", 1, pins_aud_adc0_data0_x1),
+	EGRP("AUD_ADC0_DATA0_X2", 2, pins_aud_adc0_data0_x2),
 };
 
 static const unsigned int pins_aud_adc2_data0[] = { 82 };
@@ -495,17 +495,17 @@ static const struct sppctlgrp_t sp7350grps_int7[] = {
 };
 
 struct func_t list_funcs[] = {
-	FNCN("GPIO",            fOFF_0, 0,  0, 0),
-	FNCN("IOP",             fOFF_0, 0,  0, 0),
+	FNCN("GPIO",            fOFF_0, 0, 0, 0),
+	FNCN("IOP",             fOFF_0, 0, 0, 0),
 
-	FNCE("SPI_FLASH",       fOFF_G, 1,  0, 1, sp7350grps_spif),
-	FNCE("CARD0_EMMC",      fOFF_G, 1,  1, 1, sp7350grps_emmc),
-	FNCE("SPI_NAND",        fOFF_G, 1,  2, 2, sp7350grps_spi_nand),
-	FNCE("SD_CARD",         fOFF_G, 1,  4, 1, sp7350grps_sdc30),
-	FNCE("SDIO",            fOFF_G, 1,  5, 1, sp7350grps_sdio30),
-	FNCE("PARA_NAND",       fOFF_G, 1,  6, 1, sp7350grps_para_nand),
-	FNCE("USB_OTG",         fOFF_G, 1,  7, 1, sp7350grps_usb_otg),
-	FNCE("GMAC",            fOFF_G, 1,  9, 1, sp7350grps_gmac),
+	FNCE("SPI_FLASH",       fOFF_G, 1, 0,  1, sp7350grps_spif),
+	FNCE("CARD0_EMMC",      fOFF_G, 1, 1,  1, sp7350grps_emmc),
+	FNCE("SPI_NAND",        fOFF_G, 1, 2,  2, sp7350grps_spi_nand),
+	FNCE("SD_CARD",         fOFF_G, 1, 4,  1, sp7350grps_sdc30),
+	FNCE("SDIO",            fOFF_G, 1, 5,  1, sp7350grps_sdio30),
+	FNCE("PARA_NAND",       fOFF_G, 1, 6,  1, sp7350grps_para_nand),
+	FNCE("USB_OTG",         fOFF_G, 1, 7,  1, sp7350grps_usb_otg),
+	FNCE("GMAC",            fOFF_G, 1, 9,  1, sp7350grps_gmac),
 	FNCE("UART3",           fOFF_G, 1, 10, 1, sp7350grps_uart3),
 	FNCE("PWM0",            fOFF_G, 1, 11, 1, sp7350grps_pwm0),
 	FNCE("PWM1",            fOFF_G, 1, 11, 1, sp7350grps_pwm1),
@@ -513,52 +513,54 @@ struct func_t list_funcs[] = {
 	FNCE("PWM3",            fOFF_G, 1, 11, 1, sp7350grps_pwm3),
 	FNCE("UART0",           fOFF_G, 1, 12, 1, sp7350grps_uart0),
 	FNCE("UART1",           fOFF_G, 1, 13, 1, sp7350grps_uart1),
+	FNCE("UART1_FC",        fOFF_G, 1, 13, 1, sp7350grps_uart1_fc),
 	FNCE("UART2",           fOFF_G, 1, 14, 1, sp7350grps_uart2),
+	FNCE("UART2_FC",        fOFF_G, 1, 14, 1, sp7350grps_uart2_fc),
 	FNCE("UADBG",           fOFF_G, 1, 15, 1, sp7350grps_uadbg),
 
-	FNCE("UART6",           fOFF_G, 2,  0, 1, sp7350grps_uart6),
-	FNCE("UART7",           fOFF_G, 2,  1, 1, sp7350grps_uart7),
-	FNCE("I2C_COMBO3",      fOFF_G, 2,  2, 1, sp7350grps_i2c_combo3),
-	FNCE("I2C_COMBO4",      fOFF_G, 2,  3, 1, sp7350grps_i2c_combo4),
-	FNCE("I2C_COMBO5",      fOFF_G, 2,  4, 1, sp7350grps_i2c_combo5),
-	FNCE("I2C_COMBO6",      fOFF_G, 2,  5, 1, sp7350grps_i2c_combo6),
-	FNCE("I2C_COMBO7",      fOFF_G, 2,  6, 1, sp7350grps_i2c_combo7),
-	FNCE("SPI_MASTER0",     fOFF_G, 2,  8, 1, sp7350grps_spi_master0),
-	FNCE("SPI_MASTER0",     fOFF_G, 2, 10, 1, sp7350grps_spi_master1),
-	FNCE("SPI_MASTER0",     fOFF_G, 2, 11, 1, sp7350grps_spi_master2),
-	FNCE("SPI_MASTER0",     fOFF_G, 2, 12, 1, sp7350grps_spi_master3),
-	FNCE("SPI_MASTER0",     fOFF_G, 2, 13, 1, sp7350grps_spi_master4),
+	FNCE("UART6",           fOFF_G, 2, 0,  1, sp7350grps_uart6),
+	FNCE("UART7",           fOFF_G, 2, 1,  1, sp7350grps_uart7),
+	FNCE("I2C_COMBO3",      fOFF_G, 2, 2,  1, sp7350grps_i2c_combo3),
+	FNCE("I2C_COMBO4",      fOFF_G, 2, 3,  1, sp7350grps_i2c_combo4),
+	FNCE("I2C_COMBO5",      fOFF_G, 2, 4,  1, sp7350grps_i2c_combo5),
+	FNCE("I2C_COMBO6",      fOFF_G, 2, 5,  1, sp7350grps_i2c_combo6),
+	FNCE("I2C_COMBO7",      fOFF_G, 2, 6,  1, sp7350grps_i2c_combo7),
+	FNCE("SPI_MASTER0",     fOFF_G, 2, 8,  1, sp7350grps_spi_master0),
+	FNCE("SPI_MASTER1",     fOFF_G, 2, 10, 1, sp7350grps_spi_master1),
+	FNCE("SPI_MASTER2",     fOFF_G, 2, 11, 1, sp7350grps_spi_master2),
+	FNCE("SPI_MASTER3",     fOFF_G, 2, 12, 1, sp7350grps_spi_master3),
+	FNCE("SPI_MASTER4",     fOFF_G, 2, 13, 1, sp7350grps_spi_master4),
 	FNCE("SPI_SLAVE0",      fOFF_G, 2, 14, 1, sp7350grps_spi_slave0),
 	FNCE("I2C_COMBO0",      fOFF_G, 2, 15, 1, sp7350grps_i2c_combo0),
 
-	FNCE("I2C_COMBO1",      fOFF_G, 3,  0, 1, sp7350grps_i2c_combo1),
-	FNCE("I2C_COMBO2",      fOFF_G, 3,  1, 1, sp7350grps_i2c_combo2),
-	FNCE("I2C_COMBO8",      fOFF_G, 3,  2, 1, sp7350grps_i2c_combo8),
-	FNCE("I2C_COMBO9",      fOFF_G, 3,  3, 1, sp7350grps_i2c_combo9),
-	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3,  4, 1, sp7350grps_aud_tdmtx_xck),
-	FNCE("AUD_DAC_XCK",     fOFF_G, 3,  5, 1, sp7350grps_aud_dac_xck),
-	FNCE("AUD_DAC_XCK1",    fOFF_G, 3,  5, 1, sp7350grps_aud_dac_xck1),
-	FNCE("AUD_AU2_DATA0",   fOFF_G, 3,  6, 1, sp7350grps_aud_au2_data0),
-	FNCE("AUD_AU1_DATA0",   fOFF_G, 3,  7, 1, sp7350grps_aud_au1_data0),
-	FNCE("AUD_AU2_CK",      fOFF_G, 3,  8, 1, sp7350grps_aud_au2_ck),
-	FNCE("AUD_AU1_CK",      fOFF_G, 3,  9, 1, sp7350grps_aud_au1_ck),
-	FNCE("AUD_AU_ADC_DATA0",fOFF_G, 3, 10, 1, sp7350grps_aud_au_adc_data0),
+	FNCE("I2C_COMBO1",      fOFF_G, 3, 0,  1, sp7350grps_i2c_combo1),
+	FNCE("I2C_COMBO2",      fOFF_G, 3, 1,  1, sp7350grps_i2c_combo2),
+	FNCE("I2C_COMBO8",      fOFF_G, 3, 2,  1, sp7350grps_i2c_combo8),
+	FNCE("I2C_COMBO9",      fOFF_G, 3, 3,  1, sp7350grps_i2c_combo9),
+	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3, 4,  1, sp7350grps_aud_tdmtx_xck),
+	FNCE("AUD_DAC_XCK",     fOFF_G, 3, 5,  1, sp7350grps_aud_dac_xck),
+	FNCE("AUD_DAC_XCK1",    fOFF_G, 3, 5,  1, sp7350grps_aud_dac_xck1),
+	FNCE("AUD_AU2_DATA0",   fOFF_G, 3, 6,  1, sp7350grps_aud_au2_data0),
+	FNCE("AUD_AU1_DATA0",   fOFF_G, 3, 7,  1, sp7350grps_aud_au1_data0),
+	FNCE("AUD_AU2_CK",      fOFF_G, 3, 8,  1, sp7350grps_aud_au2_ck),
+	FNCE("AUD_AU1_CK",      fOFF_G, 3, 9,  1, sp7350grps_aud_au1_ck),
+	FNCE("AUD_ADC0_DATA0",  fOFF_G, 3, 10, 1, sp7350grps_aud_adc0_data0),
 	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 11, 1, sp7350grps_aud_adc2_data0),
 	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 12, 1, sp7350grps_aud_adc1_data0),
 	FNCE("AUD_TDM",         fOFF_G, 3, 13, 1, sp7350grps_aud_tdm),
 
-	FNCE("SPDIF_IN",        fOFF_G, 4,  0, 3, sp7350grps_spdif_in),
-	FNCE("SPDIF_OUT",       fOFF_G, 4,  3, 3, sp7350grps_spdif_out),
-	FNCE("INT0",            fOFF_G, 4,  9, 3, sp7350grps_int0),
+	FNCE("SPDIF_IN",        fOFF_G, 4, 0,  3, sp7350grps_spdif_in),
+	FNCE("SPDIF_OUT",       fOFF_G, 4, 3,  3, sp7350grps_spdif_out),
+	FNCE("INT0",            fOFF_G, 4, 9,  3, sp7350grps_int0),
 	FNCE("INT1",            fOFF_G, 4, 12, 3, sp7350grps_int1),
 
-	FNCE("INT2",            fOFF_G, 5,  0, 3, sp7350grps_int2),
-	FNCE("INT3",            fOFF_G, 5,  3, 3, sp7350grps_int3),
-	FNCE("INT4",            fOFF_G, 5,  6, 3, sp7350grps_int4),
-	FNCE("INT5",            fOFF_G, 5,  9, 3, sp7350grps_int5),
+	FNCE("INT2",            fOFF_G, 5, 0,  3, sp7350grps_int2),
+	FNCE("INT3",            fOFF_G, 5, 3,  3, sp7350grps_int3),
+	FNCE("INT4",            fOFF_G, 5, 6,  3, sp7350grps_int4),
+	FNCE("INT5",            fOFF_G, 5, 9,  3, sp7350grps_int5),
 	FNCE("INT6",            fOFF_G, 5, 12, 3, sp7350grps_int6),
 
-	FNCE("INT7",            fOFF_G, 6,  0, 3, sp7350grps_int7),
+	FNCE("INT7",            fOFF_G, 6, 0,  3, sp7350grps_int7),
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
