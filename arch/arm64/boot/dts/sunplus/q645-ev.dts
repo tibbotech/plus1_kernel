@@ -838,8 +838,9 @@
 		reg = <0x0 0xf8008f80 0x0 0x100>;
 		clocks = <&clkc DISP_PWM>;
 		resets = <&rstc RST_DISP_PWM>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&pwm_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwm_pins>;
+		status = "disabled";
 	};
 
 	rtc: rtc@f8003a00 {
@@ -1120,10 +1121,10 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_adc0_data0_pins>, <&aud_dac_xck_pins>; //i2s0
-			    //<&aud_au1_data0_pins>, <&aud_au1_ck_pins>, //i2s1
-			    //<&aud_au2_data0_pins>, <&aud_au2_ck_pins>; //i2s2
-			    //<&aud_tdm_pins>, <&aud_tdmtx_xck_pins>; //tdm
+		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>; //i2s0
+		//pinctrl-0 = <&aud_au1_data0_pins &aud_au1_ck_pins>; //i2s1
+		//pinctrl-0 = <&aud_au2_data0_pins &aud_au2_ck_pins>; //i2s2
+		//pinctrl-0 = <&aud_tdm_pins &aud_tdmtx_xck_pins>; //tdm
 		status = "disabled";
 	};
 
@@ -1598,9 +1599,9 @@
 			function = "AUD_AU1_CK";
 			groups = "AUD_AU1_CK";
 		};
-		aud_adc0_data0_pins: pinmux_aud_adc0_data0-pins {
-			function = "AUD_ADC0_DATA0";
-			groups = "AUD_ADC0_DATA0";
+		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0-pins {
+			function = "AUD_AU_ADC_DATA0";
+			groups = "AUD_AU_ADC_DATA0";
 		};
 		aud_adc2_data0_pins: pinmux_aud_adc2_data0-pins {
 			function = "AUD_ADC2_DATA0";

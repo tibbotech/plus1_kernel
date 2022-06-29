@@ -236,9 +236,9 @@ static const struct sppctlgrp_t q645grps_aud_au1_ck[] = {
 	EGRP("AUD_AU1_CK", 1, pins_aud_au1_ck)
 };
 
-static const unsigned int pins_aud_adc0_data0[] = { 3, 64, 92, 93 };
-static const struct sppctlgrp_t q645grps_aud_adc0_data0[] = {
-	EGRP("AUD_ADC0_DATA0", 1, pins_aud_adc0_data0)
+static const unsigned int pins_aud_au_adc_data0[] = { 3, 64, 92, 93 };
+static const struct sppctlgrp_t q645grps_aud_au_adc_data0[] = {
+	EGRP("AUD_AU_ADC_DATA0", 1, pins_aud_au_adc_data0)
 };
 
 static const unsigned int pins_aud_adc2_data0[] = { 5 };
@@ -404,7 +404,7 @@ struct func_t list_funcs[] = {
 	FNCE("AUD_AU1_DATA0",   fOFF_G, 3, 9,  1, q645grps_aud_au1_data0),
 	FNCE("AUD_AU2_CK",      fOFF_G, 3, 10, 1, q645grps_aud_au2_ck),
 	FNCE("AUD_AU1_CK",      fOFF_G, 3, 11, 1, q645grps_aud_au1_ck),
-	FNCE("AUD_ADC0_DATA0",  fOFF_G, 3, 12, 1, q645grps_aud_adc0_data0),
+	FNCE("AUD_AU_ADC_DATA0",fOFF_G, 3, 12, 1, q645grps_aud_au_adc_data0),
 	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 13, 1, q645grps_aud_adc2_data0),
 	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 14, 1, q645grps_aud_adc1_data0),
 	FNCE("AUD_TDM",         fOFF_G, 3, 15, 1, q645grps_aud_tdm),
