@@ -58,7 +58,7 @@
 		serial1 = &uart1;
 		serial2 = &uart2;
 		serial3 = &uart3;
-		serial5 = &ua2axi;
+		serial5 = &uadbg;
 		serial6 = &uart6;
 		serial7 = &uart7;
 
@@ -385,7 +385,7 @@
 		clocks = <&clkc UA1>;
 		resets = <&rstc RST_UA1>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&uart1_pins>;
+		pinctrl-0 = <&uart1_pins &uart1_fc_pins>;
 		status = "disabled";
 	};
 
@@ -399,7 +399,7 @@
 		clocks = <&clkc UA2>;
 		resets = <&rstc RST_UA2>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&uart2_pins>;
+		pinctrl-0 = <&uart2_pins &uart2_fc_pins>;
 		status = "disabled";
 	};
 
@@ -417,7 +417,7 @@
 		status = "disabled";
 	};
 
-	ua2axi: serial@f800f900 {
+	uadbg: serial@f800f900 {
 		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf800f900 0x00 0x80>;
 		interrupt-parent = <&gic>;
@@ -425,7 +425,7 @@
 		clocks = <&clkc UADBG>;
 		resets = <&rstc RST_UADBG>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&ua2axi_pins>;
+		pinctrl-0 = <&uadbg_pins>;
 		status = "disabled";
 	};
 
@@ -459,8 +459,9 @@
 		reg = <0x0 0xf8800d80 0x0 0x100>;
 		clocks = <&clkc DISP_PWM>;
 		resets = <&rstc RST_DISP_PWM>;
-		//pinctrl-names = "default";
-		//pinctrl-0 = <&pwm_pins>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pwm0_pins &pwm1_pins &pwm2_pins &pwm3_pins>;
+		status = "disabled";
 	};
 
 	rtc: rtc@f8801180 {
@@ -511,6 +512,21 @@
 		snps,axi-max-burst-len = <16>;
 	};
 
+	ethernet: stmmac@f8103000 {
+		compatible = "snps,dwmac-3.70a";
+		reg = <0x00 0xf8103000 0x00 0x2000>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "macirq";
+		//st,syscon = <&syscfg 0x4>;
+		snps,mixed-burst;
+		snps,ps-speed = <1000>;
+		phy-mode = "rgmii";
+		//mac-mode = "rgmii";
+		nvmem-cell-names = "mac-address";
+		nvmem-cells = <&mac_addr>;
+	};
+
 	sp_spinor0: spinor@f8000b00 {
 		compatible = "sunplus,sp7350-spi-nor";
 		reg = <0x0 0xf8000b00 0x0 0x80>;
@@ -547,10 +563,11 @@
 		resets = <&rstc RST_BCH>;
 	};
 
-	otp0: otp@f800af00 {
+	otp0: otp@f8802380 {
 		compatible = "sunplus,sp7350-ocotp";
-		reg = <0x00 0xf800af00 0x00 0x34>, <0x00 0xf800af80 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
+		reg = <0x00 0xf8802380 0x00 0x60>, <0x00 0xf8802400 0x00 0x80>,
+				<0x00 0xf8802480 0x00 0x18>;
+		reg-names = "hb_gpio", "otprx", "otp_key";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
 		#address-cells = <1>;
@@ -558,31 +575,15 @@
 		therm_calib: therm_calib@14 {
 			reg = <0x14 0x3>;
 		};
-		mac_addr0: mac_addr0@34 {
+		mac_addr: mac-address@34 {
 			reg = <0x34 0x6>;
-		};
-		mac_addr1: mac_addr1@3a {
-			reg = <0x3a 0x6>;
 		};
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
 		};
-	};
-
-	otp1: otp@f8018580 {
-		compatible = "sunplus,sp7350-ocotp1";
-		reg = <0x00 0xf8018580 0x00 0x34>, <0x00 0xf8018600 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
-		clocks = <&clkc OTPRX>;
-		resets = <&rstc RST_OTPRX>;
-	};
-
-	otp2: otp@f8002780 {
-		compatible = "sunplus,sp7350-ocotp2";
-		reg = <0x00 0xf8002780 0x00 0x34>, <0x00 0xf8002800 0x00 0x58>;
-		reg-names = "hb_gpio", "otprx";
-		clocks = <&clkc OTPRX>;
-		resets = <&rstc RST_OTPRX>;
+		n78_clksel: n78_clksel@5 {
+			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
+		};
 	};
 
 	fb_device {
@@ -679,7 +680,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins>;
+		pinctrl-0 = <&aud_adc0_data0_pins>;
 		status = "disabled";
 	};
 
@@ -1579,9 +1580,10 @@
 		resets = <&rstc RST_STC0>;
 	};
 #if 0
-	ipc_test: ipc_test@f8007f80 {
+	ipc_test: ipc_test@f8008100 {
 		compatible = "sunplus,sp7350-ipc-test";
-		reg = <0x0 0xf8007f80 0x0 0x100>; /* G255 ~ G256 */
+		reg = <0x0 0xf8008100 0x0 0x7C>, <0x0 0xf8008180 0x0 0x80>; /* G258 ~ G259 */
+		reg-names = "cpu0_to_cpu2", "cpu2_to_cpu0";
 		interrupt-parent = <&gic>;
 		interrupts =
 			<GIC_SPI 9 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT0 */
@@ -1614,46 +1616,6 @@
 		gpio-controller;
 		#gpio-cells = <2>;
 
-		uart0_pins: pinmux_uart0-pins {
-			function = "UART0";
-			groups = "UART0";
-		};
-
-		uart1_pins: pinmux_uart1-pins {
-			function = "UART1";
-			groups = "UART1";
-		};
-
-		uart2_pins: pinmux_uart2-pins {
-			function = "UART2";
-			groups = "UART2";
-		};
-
-		uart3_pins: pinmux_uart3-pins {
-			function = "UART3";
-			groups = "UART3";
-		};
-
-		ua2axi_pins: pinmux_ua2axi-pins {
-			function = "UA2AXI";
-			groups = "UA2AXI";
-		};
-
-		uart6_pins: pinmux_uart6-pins {
-			function = "UART6";
-			groups = "UART6";
-		};
-
-		uart7_pins: pinmux_uart7-pins {
-			function = "UART7";
-			groups = "UART7";
-		};
-
-		uart8_pins: pinmux_uart8-pins {
-			function = "UART8";
-			groups = "UART8";
-		};
-
 		emmc_pins: pinmux_emmc-pins {
 			function = "CARD0_EMMC";
 			groups = "CARD0_EMMC";
@@ -1665,11 +1627,6 @@
 			sunplus,pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
-		sdio_pins: pinmux_sdio-pins {
-			function = "SDIO";
-			groups = "SDIO";
-		};
-
 		spi_nor_pins: pinmux_spi_nor-pins {
 			function = "SPI_FLASH";
 			groups = "SPI_FLASH";
@@ -1677,87 +1634,164 @@
 
 		spi_nand_pins: pinmux_spi_nand-pins {
 			function = "SPI_NAND";
-			groups = "SPI_NAND1";
+			groups = "SPI_NAND_X1";
 		};
 
-		spicombo0_pins: pinmux_spicombo0-pins {
-			function = "SPI_COMBO0";
-			groups = "SPI_COMBO0";
-		};
-		spicombo1_pins: pinmux_spicombo1-pins {
-			function = "SPI_COMBO1";
-			groups = "SPI_COMBO1";
-		};
-		spicombo2_pins: pinmux_spicombo2-pins {
-			function = "SPI_COMBO2";
-			groups = "SPI_COMBO2";
-		};
-		spicombo3_pins: pinmux_spicombo3-pins {
-			function = "SPI_COMBO3";
-			groups = "SPI_COMBO3";
-		};
-		spicombo4_pins: pinmux_spicombo4-pins {
-			function = "SPI_COMBO4";
-			groups = "SPI_COMBO4";
-		};
-		spicombo5_pins: pinmux_spicombo5-pins {
-			function = "SPI_COMBO5";
-			groups = "SPI_COMBO5";
+		para_nand_pins: pinmux_para_nand-pins {
+			function = "PARA_NAND";
+			groups = "PARA_NAND";
 		};
 
-		i2ccombo0_pins: pinmux_i2ccombo0-pins {
+		uart0_pins: pinmux_uart0-pins {
+			function = "UART0";
+			groups = "UART0_X1";
+		};
+
+		uart1_pins: pinmux_uart1-pins {
+			function = "UART1";
+			groups = "UART1_X1";
+		};
+		uart1_fc_pins: pinmux_uart1_fc-pins {
+			function = "UART1_FC";
+			groups = "UART1_FC_X1";
+		};
+
+		uart2_pins: pinmux_uart2-pins {
+			function = "UART2";
+			groups = "UART2_X1";
+		};
+		uart2_fc_pins: pinmux_uart2_fc-pins {
+			function = "UART2_FC";
+			groups = "UART2_FC_X1";
+		};
+
+		uart3_pins: pinmux_uart3-pins {
+			function = "UART3";
+			groups = "UART3_X1";
+		};
+
+		uadbg_pins: pinmux_uadbg-pins {
+			function = "UADBG";
+			groups = "UADBG";
+		};
+
+		uart6_pins: pinmux_uart6-pins {
+			function = "UART6";
+			groups = "UART6_X1";
+		};
+
+		uart7_pins: pinmux_uart7-pins {
+			function = "UART7";
+			groups = "UART7";
+		};
+
+		spi_master0_pins: pinmux_spi_master0-pins {
+			function = "SPI_MASTER0";
+			groups = "SPI_MASTER0_X1";
+		};
+		spi_master1_pins: pinmux_spi_master1-pins {
+			function = "SPI_MASTER1";
+			groups = "SPI_MASTER1_X1";
+		};
+		spi_master2_pins: pinmux_spi_master2-pins {
+			function = "SPI_MASTER2";
+			groups = "SPI_MASTER2";
+		};
+		spi_master3_pins: pinmux_spi_master3-pins {
+			function = "SPI_MASTER3";
+			groups = "SPI_MASTER3_X1";
+		};
+		spi_master4_pins: pinmux_spi_master4-pins {
+			function = "SPI_MASTER4";
+			groups = "SPI_MASTER4";
+		};
+		spi_slave0_pins: pinmux_spi_slave0-pins {
+			function = "SPI_SLAVE0";
+			groups = "SPI_SLAVE0_X1";
+		};
+
+		i2c_combo0_pins: pinmux_i2c_combo0-pins {
 			function = "I2C_COMBO0";
-			groups = "I2C_COMBO0";
+			groups = "I2C_COMBO0_X1";
 		};
-		i2ccombo1_pins: pinmux_i2ccombo1-pins {
+		i2c_combo1_pins: pinmux_i2c_combo1-pins {
 			function = "I2C_COMBO1";
 			groups = "I2C_COMBO1";
 		};
-		i2ccombo2_pins: pinmux_i2ccombo2-pins {
+		i2c_combo2_pins: pinmux_i2c_combo2-pins {
 			function = "I2C_COMBO2";
-			groups = "I2C_COMBO2";
+			groups = "I2C_COMBO2_X1";
 		};
-		i2ccombo3_pins: pinmux_i2ccombo3-pins {
+		i2c_combo3_pins: pinmux_i2c_combo3-pins {
 			function = "I2C_COMBO3";
 			groups = "I2C_COMBO3";
 		};
-		i2ccombo4_pins: pinmux_i2ccombo4-pins {
+		i2c_combo4_pins: pinmux_i2c_combo4-pins {
 			function = "I2C_COMBO4";
 			groups = "I2C_COMBO4";
 		};
-		i2ccombo5_pins: pinmux_i2ccombo5-pins {
+		i2c_combo5_pins: pinmux_i2c_combo5-pins {
 			function = "I2C_COMBO5";
 			groups = "I2C_COMBO5";
 		};
-		i2ccombo6_pins: pinmux_i2ccombo6-pins {
+		i2c_combo6_pins: pinmux_i2c_combo6-pins {
 			function = "I2C_COMBO6";
-			groups = "I2C_COMBO6";
+			groups = "I2C_COMBO6_X1";
 		};
-		i2ccombo7_pins: pinmux_i2ccombo7-pins {
+		i2c_combo7_pins: pinmux_i2c_combo7-pins {
 			function = "I2C_COMBO7";
-			groups = "I2C_COMBO7";
+			groups = "I2C_COMBO7_X1";
 		};
-		i2ccombo8_pins: pinmux_i2ccombo8-pins {
+		i2c_combo8_pins: pinmux_i2c_combo8-pins {
 			function = "I2C_COMBO8";
-			groups = "I2C_COMBO8";
+			groups = "I2C_COMBO8_X1";
 		};
-		i2ccombo9_pins: pinmux_i2ccombo9-pins {
+		i2c_combo9_pins: pinmux_i2c_combo9-pins {
 			function = "I2C_COMBO9";
-			groups = "I2C_COMBO9";
+			groups = "I2C_COMBO9_X1";
 		};
 
-		pwm_pins: pinmux_pwm-pins {
-			function = "PWM";
-			groups = "PWM";
+		gmac_pins: pinmux_gmac-pins {
+			function = "GMAC";
+			groups = "GMAC";
 		};
 
-		aud_dac_clk_pins: pinmux_aud_dac_clk-pins {
-			function = "AUD_DAC_CLK";
-			groups = "AUD_DAC_CLK";
+		sdio_pins: pinmux_sdio-pins {
+			function = "SDIO";
+			groups = "SDIO";
 		};
+
+		pwm0_pins: pinmux_pwm0-pins {
+			function = "PWM0";
+			groups = "PWM0_X1";
+		};
+
+		pwm1_pins: pinmux_pwm1-pins {
+			function = "PWM1";
+			groups = "PWM1_X1";
+		};
+
+		pwm2_pins: pinmux_pwm2-pins {
+			function = "PWM2";
+			groups = "PWM2_X1";
+		};
+
+		pwm3_pins: pinmux_pwm3-pins {
+			function = "PWM3";
+			groups = "PWM3_X1";
+		};
+
 		aud_tdmtx_xck_pins: pinmux_aud_tdmtx_xck-pins {
 			function = "AUD_TDMTX_XCK";
 			groups = "AUD_TDMTX_XCK";
+		};
+		aud_dac_xck_pins: pinmux_aud_dac_xck-pins {
+			function = "AUD_DAC_XCK";
+			groups = "AUD_DAC_XCK";
+		};
+		aud_dac_xck1_pins: pinmux_aud_dac_xck1-pins {
+			function = "AUD_DAC_XCK1";
+			groups = "AUD_DAC_XCK1";
 		};
 		aud_au2_data0_pins: pinmux_aud_au2_data0-pins {
 			function = "AUD_AU2_DATA0";
@@ -1775,9 +1809,9 @@
 			function = "AUD_AU1_CK";
 			groups = "AUD_AU1_CK";
 		};
-		aud_au_adc_data0_pins: pinmux_aud_au_adc_data0-pins {
-			function = "AUD_AU_ADC_DATA0";
-			groups = "AUD_AU_ADC_DATA0";
+		aud_adc0_data0_pins: pinmux_aud_adc0_data0-pins {
+			function = "AUD_ADC0_DATA0";
+			groups = "AUD_ADC0_DATA0_X1";
 		};
 		aud_adc2_data0_pins: pinmux_aud_adc2_data0-pins {
 			function = "AUD_ADC2_DATA0";
@@ -1787,9 +1821,9 @@
 			function = "AUD_ADC1_DATA0";
 			groups = "AUD_ADC1_DATA0";
 		};
-		aud_aud_tdm_pins: pinmux_aud_aud_tdm-pins {
-			function = "AUD_AUD_TDM";
-			groups = "AUD_AUD_TDM";
+		aud_tdm_pins: pinmux_aud_tdm-pins {
+			function = "AUD_TDM";
+			groups = "AUD_TDM";
 		};
 		spdif_in_pins: pinmux_spdif_in-pins {
 			function = "SPDIF_IN";

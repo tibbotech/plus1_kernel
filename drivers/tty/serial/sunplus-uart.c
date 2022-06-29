@@ -554,6 +554,8 @@ static void sunplus_uart_ops_start_tx(struct uart_port *port)
 			hrtimer_start(&sp_port->DelayRtsBeforeSend, ktime, HRTIMER_MODE_REL);
 			return;
 		}
+		ktime = ktime_set(0, 500000); //500us
+		hrtimer_start(&sp_port->CheckTXE, ktime, HRTIMER_MODE_REL);
 	}
 	__start_tx(port);
 }

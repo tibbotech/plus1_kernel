@@ -102,7 +102,8 @@ static const struct sppctlgrp_t sp7021grps_snan[] = {
 
 static const unsigned int pins_emmc[] = {
 	D(9, 0), D(9, 1), D(9, 2), D(9, 3), D(9, 4), D(9, 5),
-	D(9, 6), D(9, 7), D(10, 0), D(10, 1) };
+	D(9, 6), D(9, 7), D(10, 0), D(10, 1)
+};
 static const struct sppctlgrp_t sp7021grps_emmc[] = {
 	EGRP("CARD0_EMMC", 1, pins_emmc)
 };
@@ -190,7 +191,9 @@ static const struct sppctlgrp_t sp7021grps_tdmt[] = {
 	EGRP("TDMTX_IFX0", 1, pins_tdmt)
 };
 
-static const unsigned int pins_tdmr[] = { D(1, 7), D(2, 0), D(2, 1), D(2, 2) };
+static const unsigned int pins_tdmr[] = {
+	D(1, 7), D(2, 0), D(2, 1), D(2, 2)
+};
 static const struct sppctlgrp_t sp7021grps_tdmr[] = {
 	EGRP("TDMRX_IFX0", 1, pins_tdmr)
 };
@@ -210,12 +213,10 @@ static const struct sppctlgrp_t sp7021grps_pcmt[] = {
 };
 
 static const unsigned int pins_lcdi[] = {
-	D(1, 4), D(1, 5),
-	D(1, 6), D(1, 7), D(2, 0), D(2, 1), D(2, 2), D(2, 3),
-	D(2, 4), D(2, 5), D(2, 6), D(2, 7), D(3, 0), D(3, 1),
-	D(3, 2), D(3, 3), D(3, 4), D(3, 5), D(3, 6), D(3, 7),
-	D(4, 0), D(4, 1), D(4, 2), D(4, 3), D(4, 4), D(4, 5),
-	D(4, 6), D(4, 7)
+	D(1, 4), D(1, 5), D(1, 6), D(1, 7),
+	D(2, 0), D(2, 1), D(2, 2), D(2, 3), D(2, 4), D(2, 5), D(2, 6), D(2, 7),
+	D(3, 0), D(3, 1), D(3, 2), D(3, 3), D(3, 4), D(3, 5), D(3, 6), D(3, 7),
+	D(4, 0), D(4, 1), D(4, 2), D(4, 3), D(4, 4), D(4, 5), D(4, 6), D(4, 7)
 };
 static const struct sppctlgrp_t sp7021grps_lcdi[] = {
 	EGRP("LCDIF", 1, pins_lcdi)
@@ -244,7 +245,9 @@ static const struct sppctlgrp_t sp7021grps_wakp[] = {
 	EGRP("WAKEUP", 1, pins_wakp)
 };
 
-static const unsigned int pins_u2ax[] = { D(2, 0), D(2, 1), D(3, 0), D(3, 1) };
+static const unsigned int pins_u2ax[] = {
+	D(2, 0), D(2, 1), D(3, 0), D(3, 1)
+};
 static const struct sppctlgrp_t sp7021grps_u2ax[] = {
 	EGRP("UART2AXI", 1, pins_u2ax)
 };
@@ -275,8 +278,8 @@ static const struct sppctlgrp_t sp7021grps_u1ot[] = {
 
 static const unsigned int pins_uphd[] = {
 	D(0, 1), D(0, 2), D(0, 3), D(7, 4), D(7, 5), D(7, 6),
-	D(7, 7), D(8, 0), D(8, 1), D(8, 2), D(8, 3),
-	D(9, 7), D(10, 2), D(10, 3), D(10, 4)
+	D(7, 7), D(8, 0), D(8, 1), D(8, 2), D(8, 3), D(9, 7),
+	D(10, 2), D(10, 3), D(10, 4)
 };
 static const struct sppctlgrp_t sp7021grps_up0d[] = {
 	EGRP("UPHY0_DEBUG", 1, pins_uphd)
@@ -321,7 +324,7 @@ static const struct sppctlgrp_t sp7021grps_prbp[] = {
 
 static const unsigned int pins_anai[] = { D(0, 4), D(0, 5) };
 static const struct sppctlgrp_t sp7021grps_anai[] = {
-	EGRP("ANA_I2C_IF", 1, pins_anai),
+	EGRP("ANA_I2C_IF", 1, pins_anai)
 };
 
 static const unsigned int pins_anat[] = {
@@ -461,41 +464,41 @@ struct func_t list_funcs[] = {
 	FNCN("GPIO_INT6",       fOFF_M, 0x3B, 0, 7),
 	FNCN("GPIO_INT7",       fOFF_M, 0x3B, 8, 7),
 	// offset from 0x9C000080
-	FNCE("SPI_FLASH",       fOFF_G, 0x01,  0, 2, sp7021grps_spif),
-	FNCE("SPI_FLASH_4BIT",  fOFF_G, 0x01,  2, 2, sp7021grps_spi4),
-	FNCE("SPI_NAND",        fOFF_G, 0x01,  4, 1, sp7021grps_snan),
-	FNCE("CARD0_EMMC",      fOFF_G, 0x01,  5, 1, sp7021grps_emmc),
-	FNCE("SD_CARD",         fOFF_G, 0x01,  6, 1, sp7021grps_sdsd),
-	FNCE("UA0",             fOFF_G, 0x01,  7, 1, sp7021grps_uar0),
-	FNCE("ACHIP_DEBUG",     fOFF_G, 0x01,  8, 2, sp7021grps_adbg),
-	FNCE("ACHIP_UA2AXI",    fOFF_G, 0x01, 10, 2, sp7021grps_au2x),
-	FNCE("FPGA_IFX",        fOFF_G, 0x01, 12, 1, sp7021grps_fpga),
-	FNCE("HDMI_TX",         fOFF_G, 0x01, 13, 2, sp7021grps_hdmi),
+	FNCE("SPI_FLASH",       fOFF_G, 1, 0,  2, sp7021grps_spif),
+	FNCE("SPI_FLASH_4BIT",  fOFF_G, 1, 2,  2, sp7021grps_spi4),
+	FNCE("SPI_NAND",        fOFF_G, 1, 4,  1, sp7021grps_snan),
+	FNCE("CARD0_EMMC",      fOFF_G, 1, 5,  1, sp7021grps_emmc),
+	FNCE("SD_CARD",         fOFF_G, 1, 6,  1, sp7021grps_sdsd),
+	FNCE("UA0",             fOFF_G, 1, 7,  1, sp7021grps_uar0),
+	FNCE("ACHIP_DEBUG",     fOFF_G, 1, 8,  2, sp7021grps_adbg),
+	FNCE("ACHIP_UA2AXI",    fOFF_G, 1, 10, 2, sp7021grps_au2x),
+	FNCE("FPGA_IFX",        fOFF_G, 1, 12, 1, sp7021grps_fpga),
+	FNCE("HDMI_TX",         fOFF_G, 1, 13, 2, sp7021grps_hdmi),
 
-	FNCE("AUD_EXT_ADC_IFX0", fOFF_G, 0x01, 15, 1, sp7021grps_eadc), // I2S audio in
-	FNCE("AUD_EXT_DAC_IFX0", fOFF_G, 0x02,  0, 1, sp7021grps_edac), // I2S audio out
-	FNCE("SPDIF_RX",        fOFF_G, 0x02,  2, 1, sp7021grps_spdi),
-	FNCE("SPDIF_TX",        fOFF_G, 0x02,  3, 1, sp7021grps_spdo),
-	FNCE("TDMTX_IFX0",      fOFF_G, 0x02,  4, 1, sp7021grps_tdmt),
-	FNCE("TDMRX_IFX0",      fOFF_G, 0x02,  5, 1, sp7021grps_tdmr),
-	FNCE("PDMRX_IFX0",      fOFF_G, 0x02,  6, 1, sp7021grps_pdmr),
-	FNCE("PCM_IEC_TX",      fOFF_G, 0x02,  7, 1, sp7021grps_pcmt),
-	FNCE("LCDIF",           fOFF_G, 0x04,  6, 1, sp7021grps_lcdi),
-	FNCE("DVD_DSP_DEBUG",   fOFF_G, 0x02,  8, 1, sp7021grps_dvdd),
-	FNCE("I2C_DEBUG",       fOFF_G, 0x02,  9, 1, sp7021grps_i2cd),
-	FNCE("I2C_SLAVE",       fOFF_G, 0x02, 10, 1, sp7021grps_i2cs), // I2C slave
-	FNCE("WAKEUP",          fOFF_G, 0x02, 11, 1, sp7021grps_wakp),
-	FNCE("UART2AXI",        fOFF_G, 0x02, 12, 2, sp7021grps_u2ax),
-	FNCE("USB0_I2C",        fOFF_G, 0x02, 14, 2, sp7021grps_u0ic),
-	FNCE("USB1_I2C",        fOFF_G, 0x03,  0, 2, sp7021grps_u1ic),
-	FNCE("USB0_OTG",        fOFF_G, 0x03,  2, 1, sp7021grps_u0ot),
-	FNCE("USB1_OTG",        fOFF_G, 0x03,  3, 1, sp7021grps_u1ot),
-	FNCE("UPHY0_DEBUG",     fOFF_G, 0x03,  4, 1, sp7021grps_up0d),
-	FNCE("UPHY1_DEBUG",     fOFF_G, 0x03,  5, 1, sp7021grps_up1d),
-	FNCE("UPHY0_EXT",       fOFF_G, 0x03,  6, 1, sp7021grps_upex),
-	FNCE("PROBE_PORT",      fOFF_G, 0x03,  7, 2, sp7021grps_prbp),
-	FNCE("ANA_I2C_IF",      fOFF_G, 0x03,  7, 2, sp7021grps_anai),
-	FNCE("ANA_TEST_IF",     fOFF_G, 0x03,  7, 2, sp7021grps_anat)
+	FNCE("AUD_EXT_ADC_IFX0", fOFF_G, 1, 15, 1, sp7021grps_eadc),   // I2S audio in
+	FNCE("AUD_EXT_DAC_IFX0", fOFF_G, 2, 0,  1, sp7021grps_edac),   // I2S audio out
+	FNCE("SPDIF_RX",        fOFF_G, 2, 2,  1, sp7021grps_spdi),
+	FNCE("SPDIF_TX",        fOFF_G, 2, 3,  1, sp7021grps_spdo),
+	FNCE("TDMTX_IFX0",      fOFF_G, 2, 4,  1, sp7021grps_tdmt),
+	FNCE("TDMRX_IFX0",      fOFF_G, 2, 5,  1, sp7021grps_tdmr),
+	FNCE("PDMRX_IFX0",      fOFF_G, 2, 6,  1, sp7021grps_pdmr),
+	FNCE("PCM_IEC_TX",      fOFF_G, 2, 7,  1, sp7021grps_pcmt),
+	FNCE("LCDIF",           fOFF_G, 4, 6,  1, sp7021grps_lcdi),
+	FNCE("DVD_DSP_DEBUG",   fOFF_G, 2, 8,  1, sp7021grps_dvdd),
+	FNCE("I2C_DEBUG",       fOFF_G, 2, 9,  1, sp7021grps_i2cd),
+	FNCE("I2C_SLAVE",       fOFF_G, 2, 10, 1, sp7021grps_i2cs),   // I2C slave
+	FNCE("WAKEUP",          fOFF_G, 2, 11, 1, sp7021grps_wakp),
+	FNCE("UART2AXI",        fOFF_G, 2, 12, 2, sp7021grps_u2ax),
+	FNCE("USB0_I2C",        fOFF_G, 2, 14, 2, sp7021grps_u0ic),
+	FNCE("USB1_I2C",        fOFF_G, 3, 0,  2, sp7021grps_u1ic),
+	FNCE("USB0_OTG",        fOFF_G, 3, 2,  1, sp7021grps_u0ot),
+	FNCE("USB1_OTG",        fOFF_G, 3, 3,  1, sp7021grps_u1ot),
+	FNCE("UPHY0_DEBUG",     fOFF_G, 3, 4,  1, sp7021grps_up0d),
+	FNCE("UPHY1_DEBUG",     fOFF_G, 3, 5,  1, sp7021grps_up1d),
+	FNCE("UPHY0_EXT",       fOFF_G, 3, 6,  1, sp7021grps_upex),
+	FNCE("PROBE_PORT",      fOFF_G, 3, 7,  2, sp7021grps_prbp),
+	FNCE("ANA_I2C_IF",      fOFF_G, 3, 7,  2, sp7021grps_anai),
+	FNCE("ANA_TEST_IF",     fOFF_G, 3, 7,  2, sp7021grps_anat)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);

@@ -1,18 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
- * Sunplus Q645 pinmux controller driver.
- * Copyright (C) Sunplus Tech/Tibbo Tech. 2021
- * Author: Wells Lu <wells.lu@sunplus.com>
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation; either version 2 of the License, or
- * (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * Sunplus Q645 Pin Controller Driver
+ * Copyright (C) Sunplus Technology
  */
 
 #include "sppctl.h"
@@ -217,9 +206,9 @@ static const struct sppctlgrp_t q645grps_pwm[] = {
 	EGRP("PWM", 1, pins_pwm)
 };
 
-static const unsigned int pins_aud_dac_clk[] = { 62, 63 };
-static const struct sppctlgrp_t q645grps_aud_dac_clk[] = {
-	EGRP("AUD_DAC_CLK", 1, pins_aud_dac_clk)
+static const unsigned int pins_aud_dac_xck[] = { 62, 63 };
+static const struct sppctlgrp_t q645grps_aud_dac_xck[] = {
+	EGRP("AUD_DAC_XCK", 1, pins_aud_dac_xck)
 };
 
 static const unsigned int pins_aud_tdmtx_xck[] = { 62 };
@@ -247,9 +236,9 @@ static const struct sppctlgrp_t q645grps_aud_au1_ck[] = {
 	EGRP("AUD_AU1_CK", 1, pins_aud_au1_ck)
 };
 
-static const unsigned int pins_aud_au_adc_data0[] = { 3, 64, 92, 93 };
-static const struct sppctlgrp_t q645grps_aud_au_adc_data0[] = {
-	EGRP("AUD_AU_ADC_DATA0", 1, pins_aud_au_adc_data0)
+static const unsigned int pins_aud_adc0_data0[] = { 3, 64, 92, 93 };
+static const struct sppctlgrp_t q645grps_aud_adc0_data0[] = {
+	EGRP("AUD_ADC0_DATA0", 1, pins_aud_adc0_data0)
 };
 
 static const unsigned int pins_aud_adc2_data0[] = { 5 };
@@ -262,9 +251,9 @@ static const struct sppctlgrp_t q645grps_aud_adc1_data0[] = {
 	EGRP("AUD_ADC1_DATA0", 1, pins_aud_adc1_data0)
 };
 
-static const unsigned int pins_aud_aud_tdm[] = { 3, 64, 92, 93 };
-static const struct sppctlgrp_t q645grps_aud_aud_tdm[] = {
-	EGRP("AUD_AUD_TDM", 1, pins_aud_aud_tdm)
+static const unsigned int pins_aud_tdm[] = { 3, 64, 92, 93 };
+static const struct sppctlgrp_t q645grps_aud_tdm[] = {
+	EGRP("AUD_TDM", 1, pins_aud_tdm)
 };
 
 static const unsigned int pins_spdif1[] = { 91 };
@@ -371,18 +360,18 @@ static const struct sppctlgrp_t q645grps_int7[] = {
 };
 
 struct func_t list_funcs[] = {
-	FNCN("GPIO",            fOFF_0, 0,  0, 0),
-	FNCN("IOP",             fOFF_0, 0,  0, 0),
+	FNCN("GPIO",            fOFF_0, 0, 0, 0),
+	FNCN("IOP",             fOFF_0, 0, 0, 0),
 
-	FNCE("SPI_FLASH",       fOFF_G, 1,  0, 1, q645grps_spif),
-	FNCE("UART4",           fOFF_G, 1,  1, 1, q645grps_uart4),
-	FNCE("PWM",             fOFF_G, 1,  2, 1, q645grps_pwm),
-	FNCE("CARD0_EMMC",      fOFF_G, 1,  3, 1, q645grps_emmc),
-	FNCE("SPI_NAND",        fOFF_G, 1,  4, 2, q645grps_snand),
-	FNCE("SD_CARD",         fOFF_G, 1,  6, 1, q645grps_sdc30),
-	FNCE("SDIO",            fOFF_G, 1,  7, 1, q645grps_sdio30),
-	FNCE("UART0",           fOFF_G, 1,  8, 1, q645grps_uart0),
-	FNCE("UART1",           fOFF_G, 1,  9, 1, q645grps_uart1),
+	FNCE("SPI_FLASH",       fOFF_G, 1, 0,  1, q645grps_spif),
+	FNCE("UART4",           fOFF_G, 1, 1,  1, q645grps_uart4),
+	FNCE("PWM",             fOFF_G, 1, 2,  1, q645grps_pwm),
+	FNCE("CARD0_EMMC",      fOFF_G, 1, 3,  1, q645grps_emmc),
+	FNCE("SPI_NAND",        fOFF_G, 1, 4,  2, q645grps_snand),
+	FNCE("SD_CARD",         fOFF_G, 1, 6,  1, q645grps_sdc30),
+	FNCE("SDIO",            fOFF_G, 1, 7,  1, q645grps_sdio30),
+	FNCE("UART0",           fOFF_G, 1, 8,  1, q645grps_uart0),
+	FNCE("UART1",           fOFF_G, 1, 9,  1, q645grps_uart1),
 	FNCE("UART2",           fOFF_G, 1, 10, 1, q645grps_uart2),
 	FNCE("UART3",           fOFF_G, 1, 11, 1, q645grps_uart3),
 	FNCE("UADBG",           fOFF_G, 1, 12, 1, q645grps_uadbg),
@@ -390,12 +379,12 @@ struct func_t list_funcs[] = {
 	FNCE("UART7",           fOFF_G, 1, 14, 1, q645grps_uart7),
 	FNCE("UART8",           fOFF_G, 1, 15, 1, q645grps_uart8),
 
-	FNCE("SPI_MASTER0",     fOFF_G, 2,  0, 1, q645grps_spimaster0),
-	FNCE("SPI_SLAVE0",      fOFF_G, 2,  1, 1, q645grps_spislave0),
-	FNCE("SPI_MASTER1",     fOFF_G, 2,  6, 1, q645grps_spimaster1),
-	FNCE("SPI_SLAVE1",      fOFF_G, 2,  7, 1, q645grps_spislave1),
-	FNCE("SPI_MASTER2",     fOFF_G, 2,  8, 1, q645grps_spimaster2),
-	FNCE("SPI_SLAVE2",      fOFF_G, 2,  9, 1, q645grps_spislave2),
+	FNCE("SPI_MASTER0",     fOFF_G, 2, 0,  1, q645grps_spimaster0),
+	FNCE("SPI_SLAVE0",      fOFF_G, 2, 1,  1, q645grps_spislave0),
+	FNCE("SPI_MASTER1",     fOFF_G, 2, 6,  1, q645grps_spimaster1),
+	FNCE("SPI_SLAVE1",      fOFF_G, 2, 7,  1, q645grps_spislave1),
+	FNCE("SPI_MASTER2",     fOFF_G, 2, 8,  1, q645grps_spimaster2),
+	FNCE("SPI_SLAVE2",      fOFF_G, 2, 9,  1, q645grps_spislave2),
 	FNCE("SPI_MASTER3",     fOFF_G, 2, 10, 1, q645grps_spimaster3),
 	FNCE("SPI_SLAVE3",      fOFF_G, 2, 11, 1, q645grps_spislave3),
 	FNCE("SPI_MASTER4",     fOFF_G, 2, 12, 1, q645grps_spimaster4),
@@ -403,35 +392,35 @@ struct func_t list_funcs[] = {
 	FNCE("SPI_MASTER5",     fOFF_G, 2, 14, 1, q645grps_spimaster5),
 	FNCE("SPI_SLAVE5",      fOFF_G, 2, 15, 1, q645grps_spislave5),
 
-	FNCE("I2C_MASTER0",     fOFF_G, 3,  0, 1, q645grps_i2cm0),
-	FNCE("I2C_MASTER1",     fOFF_G, 3,  1, 1, q645grps_i2cm1),
-	FNCE("I2C_MASTER2",     fOFF_G, 3,  2, 1, q645grps_i2cm2),
-	FNCE("I2C_MASTER3",     fOFF_G, 3,  3, 1, q645grps_i2cm3),
-	FNCE("I2C_MASTER4",     fOFF_G, 3,  4, 1, q645grps_i2cm4),
-	FNCE("I2C_MASTER5",     fOFF_G, 3,  5, 1, q645grps_i2cm5),
-	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3,  6, 1, q645grps_aud_tdmtx_xck),
-	FNCE("AUD_DAC_CLK",     fOFF_G, 3,  7, 1, q645grps_aud_dac_clk),
-	FNCE("AUD_AU2_DATA0",   fOFF_G, 3,  8, 1, q645grps_aud_au2_data0),
-	FNCE("AUD_AU1_DATA0",   fOFF_G, 3,  9, 1, q645grps_aud_au1_data0),
+	FNCE("I2C_MASTER0",     fOFF_G, 3, 0,  1, q645grps_i2cm0),
+	FNCE("I2C_MASTER1",     fOFF_G, 3, 1,  1, q645grps_i2cm1),
+	FNCE("I2C_MASTER2",     fOFF_G, 3, 2,  1, q645grps_i2cm2),
+	FNCE("I2C_MASTER3",     fOFF_G, 3, 3,  1, q645grps_i2cm3),
+	FNCE("I2C_MASTER4",     fOFF_G, 3, 4,  1, q645grps_i2cm4),
+	FNCE("I2C_MASTER5",     fOFF_G, 3, 5,  1, q645grps_i2cm5),
+	FNCE("AUD_TDMTX_XCK",   fOFF_G, 3, 6,  1, q645grps_aud_tdmtx_xck),
+	FNCE("AUD_DAC_XCK",     fOFF_G, 3, 7,  1, q645grps_aud_dac_xck),
+	FNCE("AUD_AU2_DATA0",   fOFF_G, 3, 8,  1, q645grps_aud_au2_data0),
+	FNCE("AUD_AU1_DATA0",   fOFF_G, 3, 9,  1, q645grps_aud_au1_data0),
 	FNCE("AUD_AU2_CK",      fOFF_G, 3, 10, 1, q645grps_aud_au2_ck),
 	FNCE("AUD_AU1_CK",      fOFF_G, 3, 11, 1, q645grps_aud_au1_ck),
-	FNCE("AUD_AU_ADC_DATA0", fOFF_G, 3, 12, 1, q645grps_aud_au_adc_data0),
+	FNCE("AUD_ADC0_DATA0",  fOFF_G, 3, 12, 1, q645grps_aud_adc0_data0),
 	FNCE("AUD_ADC2_DATA0",  fOFF_G, 3, 13, 1, q645grps_aud_adc2_data0),
 	FNCE("AUD_ADC1_DATA0",  fOFF_G, 3, 14, 1, q645grps_aud_adc1_data0),
-	FNCE("AUD_AUD_TDM",     fOFF_G, 3, 15, 1, q645grps_aud_aud_tdm),
+	FNCE("AUD_TDM",         fOFF_G, 3, 15, 1, q645grps_aud_tdm),
 
-	FNCE("SPDIF_IN",        fOFF_G, 4,  0, 3, q645grps_spdif_in),
-	FNCE("SPDIF_OUT",       fOFF_G, 4,  3, 3, q645grps_spdif_out),
+	FNCE("SPDIF_IN",        fOFF_G, 4, 0,  3, q645grps_spdif_in),
+	FNCE("SPDIF_OUT",       fOFF_G, 4, 3,  3, q645grps_spdif_out),
 	FNCE("INT0",            fOFF_G, 4, 11, 3, q645grps_int0),
 
-	FNCE("INT1",            fOFF_G, 5,  0, 3, q645grps_int1),
-	FNCE("INT2",            fOFF_G, 5,  3, 3, q645grps_int2),
-	FNCE("INT3",            fOFF_G, 5,  6, 3, q645grps_int3),
-	FNCE("INT4",            fOFF_G, 5,  9, 3, q645grps_int4),
+	FNCE("INT1",            fOFF_G, 5, 0,  3, q645grps_int1),
+	FNCE("INT2",            fOFF_G, 5, 3,  3, q645grps_int2),
+	FNCE("INT3",            fOFF_G, 5, 6,  3, q645grps_int3),
+	FNCE("INT4",            fOFF_G, 5, 9,  3, q645grps_int4),
 	FNCE("INT5",            fOFF_G, 5, 12, 3, q645grps_int5),
 
-	FNCE("INT6",            fOFF_G, 6,  0, 3, q645grps_int6),
-	FNCE("INT7",            fOFF_G, 6,  3, 3, q645grps_int7)
+	FNCE("INT6",            fOFF_G, 6, 0,  3, q645grps_int6),
+	FNCE("INT7",            fOFF_G, 6, 3,  3, q645grps_int7)
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);

@@ -88,6 +88,16 @@ struct sp_otprx_reg {
 	unsigned int rsv31;
 };
 
+/* OTP_KEY register map */
+struct sp_otp_key_reg {
+	unsigned int block0_addr;
+	unsigned int block1_addr;
+	unsigned int block2_addr;
+	unsigned int block3_addr;
+	unsigned int hw_do_addr;
+	unsigned int tsmc_do_addr;
+};
+
 // otp_prog_ctl
 #define PIO_MODE                        0x07
 
