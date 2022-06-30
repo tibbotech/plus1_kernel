@@ -131,7 +131,7 @@
 			clock-output-names = "extclk";
 		};
 
-		divextclk: clk@0 {
+		divextclk: divextclk {
 			#clock-cells = <0>;
 			compatible = "fixed-factor-clock";
 			clocks  = <&extclk>;
@@ -140,7 +140,7 @@
 			clock-output-names = "extdivclk";
 		};
 
-		A_pll0: clk@A_pll0 {
+		A_pll0: a-pll0 {
 			#clock-cells = <0>;
 			compatible = "fixed-clock";
 			clock-frequency = <2000000000>;
