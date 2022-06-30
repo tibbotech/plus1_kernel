@@ -16,12 +16,6 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 
-/ {
-	#address-cells = <1>;
-	#size-cells = <1>;
-	memory { device_type = "memory"; reg = <0 0>; };
-};
-
 #ifndef ENABLE_DMARX0
 #define ENABLE_DMARX0 1
 #endif
@@ -38,7 +32,11 @@
 / {
 	model = "Sunplus SP7021 (CA7)";
 	compatible = "sunplus,sp7021-achip";
+
 	interrupt-parent = <&gic>;
+
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	aliases {
 #ifdef ENABLE_DMARX0
@@ -88,12 +86,12 @@
 		#size-cells = <1>;
 		ranges;
 
-		iop_reserve: iop_device {
+		iop_reserve: iop_device@100000 {
 			no-map;
 			reg = <0x00100000 0x00100000>;  // SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
 		};
 
-		a926_reserve: a926_memory {
+		a926_reserve: a926_memory@0 {
 			no-map;
 			reg = <0x00000000 0x00100000>;
 		};
