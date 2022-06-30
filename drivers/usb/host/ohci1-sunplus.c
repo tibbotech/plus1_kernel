@@ -35,7 +35,7 @@ static struct platform_driver ohci1_hcd_sunplus_driver = {
 
 static int __init ohci1_sunplus_init(void)
 {
-#if defined (CONFIG_SOC_Q645) || (CONFIG_SOC_SP7350)
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
 	return -1;
 #else
 	if (sp_port1_enabled & PORT1_ENABLED) {
