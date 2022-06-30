@@ -41,69 +41,60 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	// 147M	Setting
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000))
 	{
-	   	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	//PLLA, 256FS
-	   	regs0->aud_ext_adc_xck_cfg  	= 0x6883;   	//PLLA, 256FS
-	   	regs0->aud_ext_dac_xck_cfg  	= 0x6883;   	//PLLA, 256FS
-	   	regs0->aud_int_dac_xck_cfg  	= 0x6887;   	//PLLA, 128FS
-	   	regs0->aud_int_adc_xck_cfg	= 0x6883;   	//PLLA, 256FS
-	   	//regs0->aud_bt_xck_cfg     	= 0x7080;   	//DPLL, 256FS
+	   	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	
+	   	regs0->aud_ext_adc_xck_cfg  	= 0x6883;   	
+	   	regs0->aud_ext_dac_xck_cfg  	= 0x6883;   	 
+	   	regs0->aud_int_dac_xck_cfg  	= 0x6887;   	
+	   	regs0->aud_int_adc_xck_cfg	= 0x6883;   	   	
 	}
 	else if((SAMPLE_RATE ==	88200) || (SAMPLE_RATE == 96000))
 	{
-		regs0->aud_hdmi_tx_mclk_cfg	= 0x6881;	//PLLA,	256FS
-		regs0->aud_ext_adc_xck_cfg	= 0x6881;	//PLLA, 256FS
-		regs0->aud_ext_dac_xck_cfg   	= 0x6881;	//PLLA, 256FS
-		regs0->aud_int_dac_xck_cfg   	= 0x6883;	//PLLA, 128FS
-		regs0->aud_int_adc_xck_cfg  	= 0x6881;	//PLLA, 256FS
-		//regs0->aud_bt_xck_cfg		= 0x7080;	//DPLL, 256FS
+		regs0->aud_hdmi_tx_mclk_cfg	= 0x6881;	
+		regs0->aud_ext_adc_xck_cfg	= 0x6881;	
+		regs0->aud_ext_dac_xck_cfg   	= 0x6881;	
+		regs0->aud_int_dac_xck_cfg   	= 0x6883;	
+		regs0->aud_int_adc_xck_cfg  	= 0x6881;		
 	}
 	else if((SAMPLE_RATE ==	176400)	|| (SAMPLE_RATE	== 192000))
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6880;  	//PLLA, 256FS
-		regs0->aud_ext_adc_xck_cfg  	= 0x6880;	//PLLA,	256FS
-		regs0->aud_ext_dac_xck_cfg  	= 0x6880;	//PLLA,	256FS
-		regs0->aud_int_dac_xck_cfg  	= 0x6881;	//PLLA,	128FS
-		regs0->aud_int_adc_xck_cfg  	= 0x6880;	//PLLA,	256FS
-		//regs0->aud_bt_xck_cfg		= 0x7080;	//DPLL, 256FS
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6880;  	
+		regs0->aud_ext_adc_xck_cfg  	= 0x6880;	
+		regs0->aud_ext_dac_xck_cfg  	= 0x6880;	
+		regs0->aud_int_dac_xck_cfg  	= 0x6881;	
+		regs0->aud_int_adc_xck_cfg  	= 0x6880;	
 	}
 	else if(SAMPLE_RATE == 32000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6887;  	//PLLA, 256FS
-		regs0->aud_ext_adc_xck_cfg  	= 0x6887;	//PLLA,	256FS
-		regs0->aud_ext_dac_xck_cfg  	= 0x6887;	//PLLA,	256FS
-		regs0->aud_int_dac_xck_cfg  	= 0x688F;	//PLLA,	128FS
-		regs0->aud_int_adc_xck_cfg  	= 0x6887;	//PLLA,	256FS
-		//regs0->aud_bt_xck_cfg		= 0x7080;	//DPLL, 256FS
-
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6887;  	
+		regs0->aud_ext_adc_xck_cfg  	= 0x6887;	
+		regs0->aud_ext_dac_xck_cfg  	= 0x6887;	
+		regs0->aud_int_dac_xck_cfg  	= 0x688F;	
+		regs0->aud_int_adc_xck_cfg  	= 0x6887;	
 	}
 	else if(SAMPLE_RATE == 64000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	//PLLA, 256FS
-		regs0->aud_ext_adc_xck_cfg  	= 0x6883;	//PLLA,	256FS
-		regs0->aud_ext_dac_xck_cfg  	= 0x6883;	//PLLA,	256FS
-		regs0->aud_int_dac_xck_cfg  	= 0x6887;	//PLLA,	128FS
-		regs0->aud_int_adc_xck_cfg  	= 0x6883;	//PLLA,	256FS
-		//regs0->aud_bt_xck_cfg		= 0x7080;	//DPLL, 256FS
-
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	
+		regs0->aud_ext_adc_xck_cfg  	= 0x6883;	
+		regs0->aud_ext_dac_xck_cfg  	= 0x6883;	
+		regs0->aud_int_dac_xck_cfg  	= 0x6887;	
+		regs0->aud_int_adc_xck_cfg  	= 0x6883;	
 	}
 	else if(SAMPLE_RATE == 128000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6881;	//PLLA, 256FS
-		regs0->aud_ext_adc_xck_cfg  	= 0x6881;	//PLLA,	256FS
-		regs0->aud_ext_dac_xck_cfg  	= 0x6881;	//PLLA,	256FS
-		regs0->aud_int_dac_xck_cfg  	= 0x6883;	//PLLA,	128FS
-		regs0->aud_int_adc_xck_cfg  	= 0x6881;	//PLLA,	256FS
-		//regs0->aud_bt_xck_cfg		= 0x7080;	//DPLL, 256FS
-
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6881;	
+		regs0->aud_ext_adc_xck_cfg  	= 0x6881;	
+		regs0->aud_ext_dac_xck_cfg  	= 0x6881;	
+		regs0->aud_int_dac_xck_cfg  	= 0x6883;	
+		regs0->aud_int_adc_xck_cfg  	= 0x6881;	
 	}
-	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_int_dac_bck_cfg  	= 0x6001;	//64FS
-	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_bt_bck_cfg		= 0x6007;	//32FS,	16/16, 2 slot
-	regs0->aud_iec0_bclk_cfg    	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS
-	regs0->aud_iec1_bclk_cfg    	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS (HDMI SPDIF)
-	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS
+	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	
+	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	
+	regs0->aud_int_dac_bck_cfg  	= 0x6001;	
+	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	
+	regs0->aud_bt_bck_cfg		= 0x6007;	
+	regs0->aud_iec0_bclk_cfg    	= 0x6001;	
+	regs0->aud_iec1_bclk_cfg    	= 0x6001;	
+	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;	
 }
 #endif
 void  AUDHW_Set_PLL(void)
@@ -123,7 +114,7 @@ void AUDHW_pin_mx(void)
 	////regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
 	//regs0->rf_sft_cfg2 = 0xffff004d;//I2STX, PDMRX,	SPDIFRX
 	AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
-	AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg2);
+	AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg3);
 
 	//regs1->G002_RESERVED[1]	= 0xffff0000; // Need to set when you want to use spdif
 	//for(i=0; i<64; i++)
@@ -137,20 +128,20 @@ void AUDHW_clk_cfg(void)
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	// 147M	Setting
-	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  //PLLA, 256FS
-	regs0->aud_ext_adc_xck_cfg	= 0xC883;	//PLLA,	256FS
-	regs0->aud_ext_dac_xck_cfg  	= 0x6883;	//PLLA,	256FS
-	regs0->aud_int_dac_xck_cfg  	= 0x6887;	//PLLA,	128FS
-	regs0->aud_int_adc_xck_cfg  	= 0x6883;	//PLLA,	256FS
-
-	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_int_dac_bck_cfg  	= 0x6001;	//64FS
-	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	//64FS
-	regs0->aud_bt_bck_cfg	    	= 0x6007;	//32FS,	16/16, 2 slot
-	regs0->aud_iec0_bclk_cfg    	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS
-	regs0->aud_iec1_bclk_cfg    	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS (HDMI SPDIF)
-	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;	//XCK from EXT_DAC_XCK,	128FS
+	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  
+	regs0->aud_ext_adc_xck_cfg	= 0xC883;	
+	regs0->aud_ext_dac_xck_cfg  	= 0x6883;	
+	regs0->aud_int_dac_xck_cfg  	= 0x6887;	
+	regs0->aud_int_adc_xck_cfg  	= 0x6883;	
+	
+	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	
+	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	
+	regs0->aud_int_dac_bck_cfg  	= 0x6001;			
+	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	
+	regs0->aud_bt_bck_cfg	    	= 0x6007;	
+	regs0->aud_iec0_bclk_cfg    	= 0x6001;	
+	regs0->aud_iec1_bclk_cfg    	= 0x6001;	
+	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;
 }
 
 void AUDHW_Mixer_Setting(void)
@@ -263,7 +254,7 @@ void AUDHW_Cfg_AdcIn(void)
 
 	val = regs0->adcp_risc_gain;
 	val = val&0xff0f;
-	val = val | 0x10;
+	val = val|0x10;
 	regs0->adcp_risc_gain = val;
 }
 
@@ -289,14 +280,13 @@ void AUDHW_SystemInit(void)
 #if defined(CONFIG_SND_SOC_AUD628)	
         regs0->hdmi_rx_i2s_cfg 	= 0x24d;	// 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
+        regs0->ext_adc_cfg	= 0x24d; //rx0
 #else
 	//regs0->G060_reserved_9	= 0x1037;
 	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx1
 	regs0->int_adc_dac_cfg	= 0x004d004d;	//0x001c004d // rx2 tx1
+	regs0->ext_adc_cfg	= 0x4d; //rx0
 #endif
-        regs0->ext_adc_cfg	= 0x24d; //rx0
-        //regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
-
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
         regs0->iec0_par1_out 	= 0x00000000;	//pcm_iec_par1_out
@@ -312,7 +302,7 @@ void AUDHW_SystemInit(void)
         regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
         regs0->aud_apt_data	= 0x00f0001e;	// aud_apt_parameter, parameter for 48khz
 #if defined(CONFIG_SND_SOC_AUD645)
-        regs0->adcp_ch_enable  	= 0xF;		//adcp_ch_enable, Only enable ADCP ch2&3
+        regs0->adcp_ch_enable  	= 0xf;		//adcp_ch_enable, Only enable ADCP ch2&3
         regs0->G067_reserved_30 |= 0x03;
 #else
 	regs0->adcp_ch_enable  	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1

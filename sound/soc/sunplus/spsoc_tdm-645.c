@@ -231,51 +231,26 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     	AUD_INFO("%s rate %d capture %d\n", __func__, SAMPLE_RATE, capture);
         //147M settings
     	if (SAMPLE_RATE == 32000) {
-    		if (capture){
-    			regs0->tdm_rx_xck_cfg = 0x6981;
-    	  		regs0->tdm_rx_bck_cfg = 0x6001;
-    		} else {
-    			regs0->tdm_tx_xck_cfg = 0x6981;
-    	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	    	  	
+    		regs0->tdm_tx_xck_cfg = 0x6880;
+    	  	regs0->tdm_tx_bck_cfg = 0x6001;   	  	    	  	
     	} else if ((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
-    		regs0->tdm_tx_xck_cfg = 0x6803;
-    	  	regs0->tdm_tx_bck_cfg = 0x6081;
-    		#if 0
-    		if (capture) {
-    			regs0->tdm_rx_xck_cfg = 0x6883;
-    	  		regs0->tdm_rx_bck_cfg = 0x6001;
-    		} else {
-    			regs0->tdm_tx_xck_cfg = 0x6883;
-    	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    	  	
-    	  		regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS //??? need to check
-    	  		regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS //??? need to check
-    		}
-    		#endif        	
+    		regs0->tdm_tx_xck_cfg = 0x6880; // 48k = 147M/xck/bck/512, (16 channels)
+    	  	regs0->tdm_tx_bck_cfg = 0x6001;	// 48k = 147M/xck/bck/256, (8 channels)
+    	  	regs0->aud_ext_dac_xck_cfg = 0x6883; // The ext_dac_xck/bck need to set to 48k.
+    	  	regs0->aud_ext_dac_bck_cfg = 0x6003;
     	} else if ((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
-    		if (capture) {
-    			regs0->tdm_rx_xck_cfg = 0x6881;
-    	  		regs0->tdm_rx_bck_cfg = 0x6001; 
-    		} else {
-    			regs0->tdm_tx_xck_cfg = 0x6881;
-    	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	       
+    		regs0->tdm_tx_xck_cfg = 0x6800;
+    	  	regs0->tdm_tx_bck_cfg = 0x6081;  	  	       
     	} else if ((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
-    		if (capture) {
-    			regs0->tdm_rx_xck_cfg = 0x6881;
-    	  		regs0->tdm_rx_bck_cfg = 0x6000;
-    		} else {
-    			regs0->tdm_tx_xck_cfg = 0x6881;
-    	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	    	  	
+    		regs0->tdm_tx_xck_cfg = 0x6800;
+    	  	regs0->tdm_tx_bck_cfg = 0x6081;  	    	  	
     	} else {
     	  	regs0->tdm_tx_xck_cfg = 0;
     	  	regs0->tdm_tx_bck_cfg = 0;
     	  	regs0->tdm_rx_xck_cfg = 0;
     	  	regs0->tdm_rx_bck_cfg = 0;
-    	  	regs0->aud_ext_dac_xck_cfg  = 0;   //PLLA, 256FS //??? need to check
-    	  	regs0->aud_ext_dac_bck_cfg  = 0;   //64FS //??? need to check
+    	  	regs0->aud_ext_dac_xck_cfg  = 0;   
+    	  	regs0->aud_ext_dac_bck_cfg  = 0;   
     	}    	
 }
 
@@ -291,6 +266,7 @@ static void sp_tdm_tx_en(bool on)
     	} else
         	val &= ~(TDM_TX_ENABLE);
     	regs0->tdm_tx_cfg0 = val;
+    	regs0->tdm_rx_cfg0 = val;
     
     	AUD_INFO("tdm_tx_cfg0 0x%x\n", regs0->tdm_tx_cfg0);
 }
@@ -307,6 +283,7 @@ static void sp_tdm_rx_en(bool on)
     	} else
         	val &= ~(TDM_RX_ENABLE);
     	regs0->tdm_rx_cfg0 = val;
+    	regs0->tdm_tx_cfg0 = val;
     
     	AUD_INFO("tdm_rx_cfg0 0x%x\n", regs0->tdm_rx_cfg0);
 }
@@ -318,19 +295,17 @@ static void sp_tdm_tx_dma_en(bool on)
 
     	val = regs0->aud_fifo_enable;
     	if (on) {
-    	  	if ((val & (Main_PCM7 | Main_PCM6 | Main_PCM5 | Main_PCM4 | Main_PCM3 | Main_PCM2 | Main_PCM1 | Main_PCM0)) != 0)
+    	  	if ((val & TDM_P_INC0) != 0)
     	  	  	return;
-        	val |= (Main_PCM7 | Main_PCM6 | Main_PCM5 | Main_PCM4 | Main_PCM3 | Main_PCM2 | Main_PCM1 | Main_PCM0);
+        	val |= TDM_P_INC0;
     	} else
-        	val &= ~(Main_PCM7 | Main_PCM6 | Main_PCM5 | Main_PCM4 | Main_PCM3 | Main_PCM2 | Main_PCM1 | Main_PCM0);
+        	val &= ~TDM_P_INC0;
     	regs0->aud_fifo_enable = val;
     
     	AUD_INFO("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
 #if 1
     	if (on) {
-    	  	//val = (Main_PCM5 | Main_PCM4 | Main_PCM3 | Main_PCM2 | Main_PCM1 | Main_PCM0);
         	regs0->aud_fifo_reset = val;
-        	//AUD_INFO("aud_fifo_reset 0x%x\n", val);
         	while ((regs0->aud_fifo_reset & val));
     	}
 #endif
@@ -351,18 +326,15 @@ static void sp_tdm_rx_dma_en(bool on)
 
     	val = regs0->aud_fifo_enable;
     	if (on)
-        	val |= (TDM_PDM_RX7 | TDM_PDM_RX6 | TDM_PDM_RX5 | TDM_PDM_RX4 | TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
+        	val |= TDMPDM_C_INC0;
     	else
-        	val &= ~(TDM_PDM_RX7 | TDM_PDM_RX6 | TDM_PDM_RX5 | TDM_PDM_RX4 | TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
+        	val &= ~TDMPDM_C_INC0;
     	regs0->aud_fifo_enable = val;
     
     	AUD_INFO("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
 #if 1
     	if (on) {      
-        	//val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
         	regs0->aud_fifo_reset = val;
-        
-        	//AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
         	while((regs0->aud_fifo_reset & val)) {};               
     	}
 #endif
@@ -495,9 +467,9 @@ static int sp_tdm_hw_params(struct snd_pcm_substream *substream,
        		AUD_INFO("tdm_rx_cfg2 0x%x\n", regs0->tdm_rx_cfg2);        
         	AUD_INFO("tdm_rx_cfg3 0x%x\n", regs0->tdm_rx_cfg3);
     	}else{
-    	  	regs0->tdm_tx_cfg1 = 0x00000000;// slot delay = 1T
+    	  	regs0->tdm_tx_cfg1 = 0x00100000;// slot delay = 1T, //0x00100110 word and slot right justify
         	regs0->tdm_tx_cfg2 = 0x00010000;// FSYNC_HI_WIDTH = 1
-        	val = (wd_width << 12) | (ts_width << 8) | ch_num;// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
+        	val = (wd_width << 12) | (ts_width << 8) | 0x10;//ch_num; hard code set 16 chs// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
         	//val = 0x10008;
         	regs0->tdm_tx_cfg3 = val;
         
@@ -523,10 +495,6 @@ static int sp_tdm_trigger(struct snd_pcm_substream *substream, int cmd,
     	switch (cmd) {
     		case SNDRV_PCM_TRIGGER_START:
         		if (capture) {
-            			//val = sp_tdm_readl(sp_tdm, Host_FIFO_Reset);
-            			//val |= (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
-            			//sp_tdm_writel(sp_tdm, Host_FIFO_Reset, val);
-         
             			sp_tdm_rx_dma_en(true);
         		} //else {
             			//val = sp_tdm_readl(sp_tdm, Host_FIFO_Reset);
@@ -629,11 +597,12 @@ static void sp_tdm_init_state(struct sp_tdm_info *tdm)
     	regs0->tdm_rx_cfg0 	= (0x0 << 12);
     	regs0->tdm_rx_cfg1 	= 0x00100000;
     	regs0->tdm_rx_cfg2 	= 0x00010000;
-    	regs0->tdm_rx_cfg3 	= 0x00014008;
-    	regs0->tdm_tx_cfg0 	= (0x2 << 4);
+    	regs0->tdm_rx_cfg3 	= 0x00018010;
+    	
+    	regs0->tdm_tx_cfg0 	= (0x0 << 4);
     	regs0->tdm_tx_cfg1 	= 0x00100000;
     	regs0->tdm_tx_cfg2 	= 0x00010000;
-    	regs0->tdm_tx_cfg3 	= 0x0001400C;
+    	regs0->tdm_tx_cfg3 	= 0x00018010;
     	regs0->tdmpdm_tx_sel 	= 0x01;
     
 }

@@ -34,7 +34,7 @@ extern struct device_node *audionp;
 #define AUD_WARNING(fmt, arg ...)	printk(KERN_WARNING "[alsa] " fmt, ## arg)
 #define AUD_NOTICE(fmt, arg ...)	printk(KERN_NOTICE "[alsa] " fmt, ## arg)
 #define AUD_INFO(fmt, arg ...)	    	printk(KERN_INFO "[alsa] " fmt, ## arg)//((void)0)
-#define AUD_DEBUG(fmt, arg ...)    	((void) 0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
+#define AUD_DEBUG(fmt, arg ...)    	((void)0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
 
 /**********************************************************
  *

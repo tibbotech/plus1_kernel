@@ -611,22 +611,17 @@ static void __init sp_clkc_init(struct device_node *np)
 	clk_data.clk_num = ARRAY_SIZE(clks);
 	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
 
+	//Default GPU clock is 800M which source is PLLD.(GPUclk=PLLD/2, if PLLD=1600M, GPUclk is 800M)
+	//Due to PLLD only set 667M due to EVB quality, GPUclk become 334M.
+	//Change GPU clock to 1G which source is PLLN, it will prevent influence by PLLD.
+	clk_set_rate(clks[GPU], 1000000000);
+
 	pr_debug("===================================================");
 	for (i = 0; i < ARRAY_SIZE(clks); i++) {
 		struct clk *clk = clks[i];
 
 		if (clk)
 			pr_debug("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
-			
-		//Default GPU clock is 800M which source is PLLD.(GPUclk=PLLD/2, if PLLD=1600M, GPUclk is 800M)	
-		//Due to PLLD only set 667M due to EVB quality, GPUclk become 334M.
-		//Change GPU clock to 1G which source is PLLN, it will prevent influence by PLLD.	
-		if (__clk_get_name(clk) == "GPU")
-		{
-	    pr_info("clk_set_rate\n");
-			clk_set_rate(clk,1000000000);
-			pr_info("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
-		}	
 	}
 	pr_info("sp-clkc init done!\n");
 }

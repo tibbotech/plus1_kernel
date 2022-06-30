@@ -325,7 +325,7 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
     	prtd->fifosize_from_user = prtd->size;
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
     	{ 
-    		reserve_buf = 4800000 / params_rate(params); //100*48000/rate
+    		reserve_buf = 480000 / params_rate(params); //10*48000/rate
     		
     	  	prtd->poll_time_ns = div_u64((u64)(params_period_size(params) - reserve_buf) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
         	//prtd->poll_time_ns =div_u64((u64)params_period_size(params) * 1000000000UL +  96000 - 1, 480000);
@@ -763,7 +763,7 @@ static int spsoc_pcm_mmap(struct snd_soc_component *component, struct snd_pcm_su
 	return ret;
 #endif
 }
-unsigned int last_remainder=0;
+unsigned int last_remainder = 0;
 
 static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_substream *substream, int channel,
 		          unsigned long pos, void __user *buf, unsigned long count)
