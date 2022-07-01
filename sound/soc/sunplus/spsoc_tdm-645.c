@@ -382,28 +382,27 @@ static int sp_tdm_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
     	switch (fmt) {
     		case SND_SOC_DAIFMT_CBM_CFM: // TX/RX master
         		tdm->master = 1;
-        		val = regs0->tdm_tx_cfg0;
-
         		val = regs0->tdm_rx_cfg0;
-        		val |= RX_PATH0_1_SELECT;
+        		val = regs0->tdm_tx_cfg0;
         		val &= ~TDM_RX_SLAVE_ENABLE;
         		regs0->tdm_rx_cfg0 = val;
+        		regs0->tdm_tx_cfg0 = val;
         		break;
 
     		case SND_SOC_DAIFMT_CBS_CFS: // TX/RX slave
         		tdm->master = 0;
-        		val = regs0->tdm_tx_cfg0;
-
         		val = regs0->tdm_rx_cfg0;
-        		val |= (TDM_RX_SLAVE_ENABLE | RX_PATH0_1_SELECT);
+        		val = regs0->tdm_tx_cfg0;
+        		val |= TDM_RX_SLAVE_ENABLE;
         		regs0->tdm_rx_cfg0 = val;
+        		regs0->tdm_tx_cfg0 = val;
         		break;
 
     		default:
         		dev_err(cpu_dai->dev, "Unknown master/slave format\n");
         		return -EINVAL;
     	}
-    	AUD_INFO("master tdm_rx_cfg0 0x%x\n", val);
+    	AUD_INFO("master tdm_rx/tx_cfg0 0x%x\n", val);
     	return 0;
 }
 
@@ -459,7 +458,7 @@ static int sp_tdm_hw_params(struct snd_pcm_substream *substream,
     	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
         	regs0->tdm_rx_cfg1 = 0x00100000;// slot delay = 1T
         	regs0->tdm_rx_cfg2 = 0x00010000;// FSYNC_HI_WIDTH = 1
-        	val = (wd_width << 12) | (ts_width << 8) | ch_num;// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
+        	val = (wd_width << 12) | (ts_width << 8) | 0x10;//ch_num;// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
         	//val = 0x10008;
         	regs0->tdm_rx_cfg3 = val;
         
