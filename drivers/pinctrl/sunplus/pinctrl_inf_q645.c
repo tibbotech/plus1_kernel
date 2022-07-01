@@ -58,7 +58,7 @@ static const struct sppctlgrp_t q645grps_spif[] = {
 
 static const unsigned int pins_emmc[] = { 12, 13, 14, 15, 16, 17, 18, 19, 20, 21 };
 static const struct sppctlgrp_t q645grps_emmc[] = {
-	EGRP("CARD0_EMMC", 1, pins_emmc)
+	EGRP("EMMC", 1, pins_emmc)
 };
 
 static const unsigned int pins_snand1[] = { 16, 17, 18, 19, 20, 21 };
@@ -366,7 +366,7 @@ struct func_t list_funcs[] = {
 	FNCE("SPI_FLASH",       fOFF_G, 1, 0,  1, q645grps_spif),
 	FNCE("UART4",           fOFF_G, 1, 1,  1, q645grps_uart4),
 	FNCE("PWM",             fOFF_G, 1, 2,  1, q645grps_pwm),
-	FNCE("CARD0_EMMC",      fOFF_G, 1, 3,  1, q645grps_emmc),
+	FNCE("EMMC",            fOFF_G, 1, 3,  1, q645grps_emmc),
 	FNCE("SPI_NAND",        fOFF_G, 1, 4,  2, q645grps_snand),
 	FNCE("SD_CARD",         fOFF_G, 1, 6,  1, q645grps_sdc30),
 	FNCE("SDIO",            fOFF_G, 1, 7,  1, q645grps_sdio30),
