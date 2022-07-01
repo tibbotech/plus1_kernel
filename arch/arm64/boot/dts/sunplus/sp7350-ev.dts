@@ -1617,8 +1617,8 @@
 		#gpio-cells = <2>;
 
 		emmc_pins: pinmux_emmc-pins {
-			function = "CARD0_EMMC";
-			groups = "CARD0_EMMC";
+			function = "EMMC";
+			groups = "EMMC";
 		};
 
 		sdcard_pins: pinmux_sdcard-pins {
