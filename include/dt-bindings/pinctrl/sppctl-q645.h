@@ -16,7 +16,7 @@
 #define GROP_SPI_FLASH		2
 #define GROP_UART4		3
 #define GROP_PWM		4
-#define GROP_CARD0_EMMC		5
+#define GROP_EMMC		5
 #define GROP_SPI_NAND		6
 #define GROP_SD_CARD		7
 #define GROP_SDIO		8

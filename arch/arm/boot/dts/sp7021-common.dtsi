@@ -16,12 +16,6 @@
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
 
-/ {
-	#address-cells = <1>;
-	#size-cells = <1>;
-	memory { device_type = "memory"; reg = <0 0>; };
-};
-
 #ifndef ENABLE_DMARX0
 #define ENABLE_DMARX0 1
 #endif
@@ -38,7 +32,11 @@
 / {
 	model = "Sunplus SP7021 (CA7)";
 	compatible = "sunplus,sp7021-achip";
+
 	interrupt-parent = <&gic>;
+
+	#address-cells = <1>;
+	#size-cells = <1>;
 
 	aliases {
 #ifdef ENABLE_DMARX0
@@ -75,10 +73,10 @@
 		i2c2 = &i2cm2;
 		i2c3 = &i2cm3;
 
-		sp_spi0 = &spi_controller0;
-		sp_spi1 = &spi_controller1;
-		sp_spi2 = &spi_controller2;
-		sp_spi3 = &spi_controller3;
+		sp-spi0 = &spi_controller0;
+		sp-spi1 = &spi_controller1;
+		sp-spi2 = &spi_controller2;
+		sp-spi3 = &spi_controller3;
 
 		spi0 = &sp_spinor0;
 	};
@@ -88,40 +86,36 @@
 		#size-cells = <1>;
 		ranges;
 
-		iop_reserve: iop_device {
-			no-map;
+		iop_reserve: iop_device@100000 {
 			reg = <0x00100000 0x00100000>;  // SP_IOP_RESERVE_BASE SP_IOP_RESERVE_SIZE
+			no-map;
 		};
 
-		a926_reserve: a926_memory {
-			no-map;
+		a926_reserve: a926_memory@0 {
 			reg = <0x00000000 0x00100000>;
+			no-map;
 		};
 
-        video_codec_reserve: vcodec {
-			no-map;
-			reg = <0x00200000 0x00060000>;
-		};
 		/* reserved for remoteproc */
 		vdev0vring0: vdev0vring0@1e800000 {
-			no-map;
 			compatible = "shared-dma-pool";
 			reg = <0x1e800000 0x4000>;
+			no-map;
 		};
 		vdev0vring1: vdev0vring1@1e804000 {
-			no-map;
 			compatible = "shared-dma-pool";
 			reg = <0x1e804000 0x4000>;
+			no-map;
 		};
 		vdev0buffer: vdev0buffer@1e808000 {
-			no-map;
 			compatible = "shared-dma-pool";
 			reg = <0x1e808000 0x100000>;
+			no-map;
 		};
 		rproc_0_reserved: rproc@1e000000 {
-			no-map;
 			compatible = "shared-dma-pool";
 			reg = <0x1e000000 0x800000>;
+			no-map;
 		};
 	};
 
@@ -131,32 +125,33 @@
 		ranges;
 
 		extclk: osc0 {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <27000000>;
 			clock-output-names = "extclk";
+
 		};
 
-		divextclk: clk@0 {
-			#clock-cells = <0>;
+		divextclk: divextclk {
 			compatible = "fixed-factor-clock";
+			#clock-cells = <0>;
 			clocks  = <&extclk>;
 			clock-mult = <1>;
 			clock-div = <2>;
 			clock-output-names = "extdivclk";
 		};
 
-		A_pll0: clk@A_pll0 {
-			#clock-cells = <0>;
+		A_pll0: a-pll0 {
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <2000000000>;
 			clock-output-names = "A_pll0";
 		};
 
 		clkc: clkc@9c000000 {
-			#clock-cells = <1>;
 			compatible = "sunplus,sp7021-clkc";
-			reg = <0x9c000000 0x280>; // G0:CLKEN ~ G4:PLL
+			reg = <0x9c000000 0x280>;
+			#clock-cells = <1>;
 		};
 	};
 
@@ -228,31 +223,31 @@
 		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
+	timer: timer {
+		compatible = "arm,armv7-timer";
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
+		clock-frequency = <27000000>;
+		arm,cpu-registers-not-fw-configured;
+	};
+
 	/* A modules */
-	soc@A {
+	soc-A {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges;
 
-		gic: interrupt-controller@CPU {
+		gic: interrupt-controller@9f101000 {
 			compatible = "arm,cortex-a7-gic";
+			reg = <0x9f101000 0x1000>, <0x9f102000 0x2000>, <0x9f104000 0x2000>, <0x9f106000 0x2000>;
 			interrupt-controller;
 			#interrupt-cells = <3>;
-			reg = <0x9f101000 0x1000>, <0x9f102000 0x2000>, <0x9f104000 0x2000>, <0x9f106000 0x2000>;
 		};
 
-		timer: timer@CPU {
-			compatible = "arm,armv7-timer";
-			interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>,
-				     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(4) | IRQ_TYPE_LEVEL_LOW)>;
-			clock-frequency = <27000000>;
-			arm,cpu-registers-not-fw-configured;
-		};
-
-		dma0@A_G11 {
+		dma0@9ec00580 {
 			compatible = "sunplus,sp-dma0";
 			reg = <0x9ec00580 0x180>; /* G11 ~ G13 */
 			interrupt-parent = <&gic>;
@@ -312,7 +307,7 @@
 	};
 
 	/* B modules */
-	soc@B {
+	soc-B {
 		compatible = "simple-bus";
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -561,7 +556,7 @@
 				<95 IRQ_TYPE_EDGE_RISING>; /* icm3 */
 		};
 
-		fbio_led: fbio_led@70000000 {
+		fbio_led: fbio_led@9c106000 {
 			compatible = "sunplus,sp7021-fbio-led";
 			clocks = <&clkc FIO_CTL>, <&clkc FPGA>;
 			clock-names = "fio", "fpga";
@@ -1054,34 +1049,6 @@
 			clock-names = "clk_mipicsi", "clk_csiiw";
 			resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
 			reset-names = "rstc_mipicsi", "rstc_csiiw";
-		};
-
-		video_codec_dec {
-			compatible = "sunplus,q645-hantro-vc8000d";
-			reg = <0xf8168000 0x1ff>;
-			interrupts = <167 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc 0x2e>;
-			clock-names = "clk_vc8000d";
-			resets = <&rstc 0x3e>;
-		};
-
-		video_codec_enc {
-			compatible = "sunplus,q645-hantro-vc8000e";
-			reg = <0xf80ff000 0x1f1>;
-			interrupts = <77 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkc 0x2f>;
-			clock-names = "clk_vc8000e";
-			resets = <&rstc 0x3f>;
-		};
-
-		video_codec_emem {
-			compatible = "sunplus,q645-hantro-emem";
-			memory-region = <&video_codec_reserve>;
-		};
-
-		video_codec_dmem {
-			compatible = "sunplus,q645-hantro-dmem";
-			memory-region = <&video_codec_reserve>;
 		};
 
 		pctl: pinctl@9c000100 {
