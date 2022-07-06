@@ -382,14 +382,16 @@ static int sunplus_pwm_polarity(struct pwm_chip *chip,
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
 	u32 value;
 
-	value = readl(pdata->regs + PWM_CONTROL1 * 4);
+	if (pwm_is_enabled(pwm)) {
+		value = readl(pdata->regs + PWM_CONTROL1 * 4);
 
-	if (polarity == PWM_POLARITY_NORMAL)
-		value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
-	else
-		value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
+		if (polarity == PWM_POLARITY_NORMAL)
+			value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
+		else
+			value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
 
-	writel(value, pdata->regs + PWM_CONTROL1 * 4);
+		writel(value, pdata->regs + PWM_CONTROL1 * 4);
+	}
 
 	return 0;
 }
