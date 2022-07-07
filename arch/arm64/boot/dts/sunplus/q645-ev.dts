@@ -1161,6 +1161,9 @@
 		clock-names = "clkc_u3phy", "clkc_u3";
 		resets = <&rstc RST_U3PHY0>;
 		reset-names = "rstc_u3phy";
+		pinctrl-names = "default";
+		pinctrl-0 = <&typec_pins>;
+		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
 	};
 
 	usb3drd1: usb3drd1 {
@@ -1481,6 +1484,9 @@
 			sunplus,pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
+		typec_pins: pinmux_typec-pins {
+			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
 		sdio_pins: pinmux_sdio-pins {
 			function = "SDIO";
 			groups = "SDIO";
