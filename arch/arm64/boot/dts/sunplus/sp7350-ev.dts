@@ -605,11 +605,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&emmc_pins>;
 		bus-width = <8>;
-		max-frequency = <45000000>;
+		max-frequency = <400000000>;
 		non-removable;
 		disable-wp;
 		cap-mmc-highspeed;
-		mmc-ddr-3_3v;
+		mmc-hs400-1_8v;
 		no-sdio;
 		no-sd;
 	};

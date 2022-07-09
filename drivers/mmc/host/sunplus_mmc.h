@@ -20,7 +20,10 @@
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define SPMMC_SUPPORT_VOLTAGE_1V8
 #define SPMMC_EMMC_VCCQ_1V8
-#endif 
+#endif
+#ifdef CONFIG_SOC_SP7350
+#define HS400
+#endif
 
 #define SPMMC_MIN_CLK	400000
 #if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_I143)
@@ -142,7 +145,9 @@ struct spmmc_regs {
 	u32 sd_cmdbuf4;
 	u32 sd_rspbuf0_3;
 	u32 sd_rspbuf4_5;
-
+	#ifdef HS400
+	u32 softpad_cfg0;
+	#endif
 	u32 __rsvd_regs(32);
 };
 

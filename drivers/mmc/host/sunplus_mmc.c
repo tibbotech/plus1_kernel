@@ -247,6 +247,9 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 
 static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 {
+	#ifdef HS400
+	u32 x;
+	#endif
 	u32 value = readl(&host->base->sd_config1);
 	int clkdiv = readl(&host->base->sd_config0) >> 20;
 	int delay = clkdiv/2 < 7 ? clkdiv/2 : 7;
@@ -285,6 +288,27 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 	case MMC_TIMING_MMC_HS400:
 		host->ddr_enabled = 1;
 		timing_name = "mmc HS400";
+		#ifdef HS400
+		x = readl(&host->base->sd_config0);
+		x = bitfield_replace(x, 20, 12, 1);//sdfqset
+		writel(x, &host->base->sd_config0);
+		//spmmc_pr(INFO, "sdfqset=1\n");
+		x = readl(&host->base->sd_config0);
+		x = bitfield_replace(x, 19, 1, 1);//sdhs400mode
+		writel(x, &host->base->sd_config0);
+		//spmmc_pr(INFO, "sdhs400mode=1\n");
+		x = readl(&host->base->softpad_cfg0);
+		x = bitfield_replace(x, 2, 1, 1);//RG_RX_EDGEA=1
+		writel(x, &host->base->softpad_cfg0);
+		//spmmc_pr(INFO, "RG_RX_EDGEA=1\n");
+		x = readl(&host->base->softpad_cfg0);
+		x = bitfield_replace(x, 7, 1, 1);//RG_RSP_EDGEA=1
+		writel(x, &host->base->softpad_cfg0);
+		//spmmc_pr(INFO, "RG_RSP_EDGEA=1\n");
+		x = readl(&host->base->card_mediatype_srcdst);
+		x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
+		writel(x, &host->base->card_mediatype_srcdst);
+		#endif
 		break;
 	default:
 		timing_name = "invalid";
@@ -1043,7 +1067,9 @@ static const struct mmc_host_ops spmmc_ops = {
 	.set_ios = spmmc_set_ios,
 	.get_cd = spmmc_get_cd,
 #ifdef SPMMC_SUPPORT_VOLTAGE_1V8
+#ifdef PLATFORM_SP7350 // Q645 don't need run this function. Becasue MMC test have -110 error.
 	.card_busy = spmmc_card_busy,
+#endif
 	.start_signal_voltage_switch = spmmc_start_signal_voltage_switch,
 #endif
 	.execute_tuning = spmmc_execute_tuning,
@@ -1359,6 +1385,9 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	struct resource *resource;
 	struct spmmc_host *host;
 	unsigned int mode;
+	#ifdef HS400
+	u32 x;
+	#endif
 
 	ret = spmmc_device_create_sysfs(pdev);
 	if (ret) {
@@ -1463,6 +1492,11 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 
+	#ifdef HS400
+	x = readl(&host->base->card_mediatype_srcdst);
+	x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
+	writel(x, &host->base->card_mediatype_srcdst);
+	#endif
 	return 0;
 
 probe_clk_unprepare:
