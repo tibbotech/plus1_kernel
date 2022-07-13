@@ -411,6 +411,7 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	}
 
 	*_map = kcalloc(*_nm + nmG, sizeof(**_map), GFP_KERNEL);
+	if ( *_map == NULL) return -ENOMEM;
 	for (i = 0; i < (*_nm); i++) {
 		dt_pin = be32_to_cpu(list[i]);
 		p_p = SPPCTL_PCTLD_P(dt_pin);
