@@ -248,6 +248,11 @@ void sppctl_sysfs_init(struct platform_device *_pd)
 	int i, ret, ridx = 0;
 	const char * tmpp;
 
+	sppctl_sysfs_Fap = (struct bin_attribute *)kzalloc(list_funcsSZ*sizeof(struct bin_attribute), GFP_KERNEL);
+	if ( sppctl_sysfs_Fap == NULL) return;
+	sdp = (sppctl_sdata_t *)kzalloc(list_funcsSZ*sizeof(sppctl_sdata_t), GFP_KERNEL);
+	if ( sdp == NULL) return;
+	
 	for (i = 0; i < ARRAY_SIZE(sppctl_sysfs_attrsD); i++) {
 		ret = device_create_file(&(_pd->dev), &sppctl_sysfs_attrsD[i]);
 		if (ret) KERR(&(_pd->dev), "createD[%d] error\n", i);
@@ -259,8 +264,6 @@ void sppctl_sysfs_init(struct platform_device *_pd)
 	}
 
 	i = -1;
-	sppctl_sysfs_Fap = (struct bin_attribute *)kzalloc(list_funcsSZ*sizeof(struct bin_attribute), GFP_KERNEL);
-	sdp = (sppctl_sdata_t *)kzalloc(list_funcsSZ*sizeof(sppctl_sdata_t), GFP_KERNEL);
 	for (i = 0; i < list_funcsSZ; i++) {
 		if (list_funcs[i].freg == fOFF_0) continue;
 		if (list_funcs[i].freg == fOFF_I) continue;
@@ -296,11 +299,11 @@ void sppctl_sysfs_clean(struct platform_device *_pd)
 	}
 
 	i = -1;
-	for (i = 0; i < list_funcsSZ; i++) {
+	for (i = 0; i < list_funcsSZ && sppctl_sysfs_Fap; i++) {
 		if (list_funcs[i].freg == fOFF_0) continue;
 		if (list_funcs[i].freg == fOFF_I) continue;
 		device_remove_bin_file(&(_pd->dev), &(sppctl_sysfs_Fap[i]));
 	}
-	kfree(sppctl_sysfs_Fap);
-	kfree((sppctl_sdata_t *)(_p->sysfs_sdp));
+	if ( sppctl_sysfs_Fap) kfree(sppctl_sysfs_Fap);
+	if ( _p->sysfs_sdp) kfree((sppctl_sdata_t *)(_p->sysfs_sdp));
 }
