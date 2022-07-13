@@ -918,13 +918,14 @@ int spmmc_get_cd(struct mmc_host *mmc)
 }
 
 #ifdef SPMMC_SUPPORT_VOLTAGE_1V8
+#ifdef PLATFORM_SP7350
 static int spmmc_card_busy(struct mmc_host *mmc)
 {
 	struct spmmc_host *host = mmc_priv(mmc);
 
 	return !(readl(&host->base->sd_status) & SPMMC_SDSTATUS_DAT0_PIN_STATUS);
 }
-
+#endif
 static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_ios *ios)
 {
 	struct spmmc_host *host = mmc_priv(mmc);
