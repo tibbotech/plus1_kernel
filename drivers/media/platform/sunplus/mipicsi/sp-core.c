@@ -985,7 +985,25 @@ static int vin_mc_init(struct vin_dev *vin)
  * Bit 11~04: VIN port
  */
 static const struct vin_group_route sp_info_sp7350_routes[] = {
-#if 1 /* CCHo: 6 pipelines */
+#if defined(MIPI_CSI_4VC)
+	/* 5 pipelines, MIPI-CSI2 has 4 VCs */
+	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
+	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
+	{ .csi = VIN_CSI1, .channel = 0, .vin = 2, .mask = BIT(0) | BIT(5) },
+	{ .csi = VIN_CSI1, .channel = 1, .vin = 3, .mask = BIT(1) | BIT(5) },
+	{ .csi = VIN_CSI2, .channel = 0, .vin = 4, .mask = BIT(0) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 1, .vin = 5, .mask = BIT(1) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 2, .vin = 6, .mask = BIT(0) | BIT(6) },
+	{ .csi = VIN_CSI2, .channel = 3, .vin = 7, .mask = BIT(1) | BIT(6) },
+	{ .csi = VIN_CSI4, .channel = 0, .vin = 8, .mask = BIT(0) | BIT(8) },
+	{ .csi = VIN_CSI4, .channel = 1, .vin = 9, .mask = BIT(1) | BIT(8) },
+	{ .csi = VIN_CSI5, .channel = 0, .vin = 10, .mask = BIT(0) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 1, .vin = 11, .mask = BIT(1) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 2, .vin = 12, .mask = BIT(2) | BIT(9) },
+	{ .csi = VIN_CSI5, .channel = 3, .vin = 13, .mask = BIT(3) | BIT(9) },
+	{ /* Sentinel */ }
+#else
+	/* 6 pipelines, MIPI-CSI2 has 2 VCs */
 	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
 	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
 	{ .csi = VIN_CSI1, .channel = 0, .vin = 2, .mask = BIT(0) | BIT(5) },
@@ -1001,16 +1019,6 @@ static const struct vin_group_route sp_info_sp7350_routes[] = {
 	{ .csi = VIN_CSI5, .channel = 2, .vin = 12, .mask = BIT(2) | BIT(9) },
 	{ .csi = VIN_CSI5, .channel = 3, .vin = 13, .mask = BIT(3) | BIT(9) },
 	{ /* Sentinel */ }
-#else  /* CCHo: 3 pipelines, MIPI-CSI2 4 VC */
-	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
-	{ .csi = VIN_CSI1, .channel = 0, .vin = 2, .mask = BIT(0) | BIT(5) },
-	{ .csi = VIN_CSI1, .channel = 1, .vin = 3, .mask = BIT(1) | BIT(5) },
-	{ .csi = VIN_CSI2, .channel = 0, .vin = 4, .mask = BIT(0) | BIT(6) },
-	{ .csi = VIN_CSI2, .channel = 1, .vin = 5, .mask = BIT(1) | BIT(6) },
-	{ .csi = VIN_CSI2, .channel = 2, .vin = 6, .mask = BIT(2) | BIT(6) },
-	{ .csi = VIN_CSI2, .channel = 3, .vin = 7, .mask = BIT(3) | BIT(6) },
-	{ /* Sentinel */ }
 #endif
 };
 
@@ -1022,22 +1030,6 @@ static const struct vin_info sp_info_sp7350 = {
 	.max_height = 4096,
 	.routes = sp_info_sp7350_routes,
 };
-
-#ifdef TWO_PIPELINES
-static const struct vin_group_route sp_info_sp7021_routes[] = {
-	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
-	{ .csi = VIN_CSI1, .channel = 0, .vin = 1, .mask = BIT(0) | BIT(5) },
-	{ /* Sentinel */ }
-};
-#else
-static const struct vin_group_route sp_info_sp7021_routes[] = {
-	{ .csi = VIN_CSI0, .channel = 0, .vin = 0, .mask = BIT(0) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 1, .vin = 1, .mask = BIT(1) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 2, .vin = 2, .mask = BIT(2) | BIT(4) },
-	{ .csi = VIN_CSI0, .channel = 3, .vin = 3, .mask = BIT(3) | BIT(4) },
-	{ /* Sentinel */ }
-};
-#endif
 
 static const struct of_device_id sp_vin_of_id_table[] = {
 	{

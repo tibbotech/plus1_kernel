@@ -23,9 +23,9 @@
 
 /* Compliler switch */
 //#define MC_MODE_DEFAULT	/* Set link by default to test MC mode */
-//#define TWO_VC			/* Create 2 virtual channels for test */
-//#define TWO_PIPELINES		/* Create 2 pipelines for test */
 //#define MIPI_CSI_BIST		/* Enable MIPI-CSI BIST function */
+//#define MIPI_CSI_XTOR		/* Import RAW10 pattern from MIPI XTOR */
+//#define MIPI_CSI_4VC		/* Switch MIPI-CSI2 to 4-VC mode */
 
 /* Number of HW buffers */
 #define HW_BUFFER_NUM 1

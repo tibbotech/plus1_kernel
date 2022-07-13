@@ -22,6 +22,9 @@
 //#define ENABLE_DMATX2
 //#define ENABLE_DMATX3
 
+//#define MIPI_CSI_4VC
+//#define MIPI_CSI_XTOR
+
 / {
 	model = "Sunplus SP7350";
 	compatible = "sunplus,sp7350";
@@ -728,11 +731,15 @@
 		resets = <&rstc RST_MIPICSI0>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <0>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef MIPI_CSI_XTOR
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -850,7 +857,7 @@
 		resets = <&rstc RST_MIPICSI1>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <1>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -972,11 +979,15 @@
 		resets = <&rstc RST_MIPICSI2>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <2>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef MIPI_CSI_4VC
+		num_channels = <4>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -1013,6 +1024,18 @@
 					reg = <1>;
 					remote-endpoint = <&vin5csi2>;
 				};
+
+#ifdef MIPI_CSI_4VC
+				csi2vin6: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&vin6csi2>;
+				};
+
+				csi2vin7: endpoint@3 {
+					reg = <3>;
+					remote-endpoint = <&vin7csi2>;
+				};
+#endif
 			};
 		};
 	};
@@ -1085,6 +1108,7 @@
 		};
 	};
 
+#ifndef MIPI_CSI_4VC
 	mipicsirx3: csirx@f8005400 {
 		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005400 0x0 0x80>, <0x0 0xf8005200 0x0 0x80>;
@@ -1094,7 +1118,7 @@
 		resets = <&rstc RST_MIPICSI3>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <3>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -1138,6 +1162,7 @@
 			};
 		};
 	};
+#endif
 
 	vin6: video@f8005880 {
 		compatible = "sunplus,sp7350-vin";
@@ -1165,10 +1190,17 @@
 
 				reg = <1>;
 
+#ifdef MIPI_CSI_4VC
+				vin6csi2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&csi2vin6>;
+				};
+#else
 				vin6csi3: endpoint@3 {
 					reg = <3>;
 					remote-endpoint = <&csi3vin6>;
 				};
+#endif
 			};
 		};
 	};
@@ -1199,10 +1231,17 @@
 
 				reg = <1>;
 
+#ifdef MIPI_CSI_4VC
+				vin7csi2: endpoint@2 {
+					reg = <2>;
+					remote-endpoint = <&csi2vin7>;
+				};
+#else
 				vin7csi3: endpoint@3 {
 					reg = <3>;
 					remote-endpoint = <&csi3vin7>;
 				};
+#endif
 			};
 		};
 	};
@@ -1216,7 +1255,7 @@
 		resets = <&rstc RST_MIPICSI4>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <4>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -1338,7 +1377,7 @@
 		resets = <&rstc RST_MIPICSI5>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <5>;
-		status = "okay";
+		status = "disabled";
 
 		/* Virtual channel related properties */
 		max_channels = <4>;

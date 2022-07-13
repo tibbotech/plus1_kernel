@@ -192,9 +192,6 @@ static void csiiw_init(struct vin_dev *vin)
 {
 	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
 
-#if defined(TWO_VC) || defined(TWO_PIPELINES)
-	// Don't do csiiw_init() for csiiw1 on sp7021. Chip will hang up.
-#else
 	csiiw_writel(vin, CSIIW_LATCH_MODE, 0x1);		/* Enable before base addr setup */
 	csiiw_writel(vin, CSIIW_STRIDE, 0x500);
 	csiiw_writel(vin, CSIIW_FRAME_SIZE, 0x3200500);
@@ -202,7 +199,6 @@ static void csiiw_init(struct vin_dev *vin)
 	csiiw_writel(vin, CSIIW_CONFIG0, 0xf02700);		/* Disable csiiw, unpacked mode */
 	csiiw_writel(vin, CSIIW_INTERRUPT, 0x1111);		/* Disable and clean fs_irq and fe_irq */
 	//csiiw_writel(vin, CSIIW_CONFIG2, 0x0001);		/* NO_STRIDE_EN = 1 */
-#endif
 }
 
 static void csiiw_enable(struct vin_dev *vin)

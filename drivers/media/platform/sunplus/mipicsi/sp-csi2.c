@@ -31,6 +31,7 @@ struct csi2_dev;
 
 /* Compliler switch */
 //#define MIPI_CSI_BIST		/* Enable MIPI-CSI BIST function */
+//#define MIPI_CSI_XTOR		/* Import RAW10 pattern from MIPI XTOR */
 
 /* Max number on CSI instances that can be in a system */
 #define CSI_MAX_NUM 6
@@ -254,7 +255,7 @@ static int csi2_calc_mbps(struct csi2_dev *priv, unsigned int bpp,
 
 	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR)
 	return 100;		// Return 100MHz for BIST mode
 #endif
 
@@ -295,7 +296,7 @@ static int csi2_get_active_lanes(struct csi2_dev *priv,
 
 	*lanes = priv->lanes;
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR)
 	dev_dbg(priv->dev, "Skip sending 'get_mbus_config' command\n");
 	return 0;
 #endif
@@ -347,7 +348,11 @@ static void csi2_lane_config(struct csi2_dev *priv, u8 lanes)
 	ana_cfg5 = csi_readl(priv, MIPI_ANALOG_CFG5);
 
 	set_field(&mix_cfg, 0x1, 0x1<<15);		/* When detect EOF control word, generate EOF */
+#if defined(MIPI_CSI_XTOR)
+	set_field(&mix_cfg, 0x0, 0x1<<8);		/* For bit sequence of a word, transfer LSB bit first */
+#else
 	set_field(&mix_cfg, 0x1, 0x1<<8);		/* For bit sequence of a word, transfer MSB bit first */
+#endif
 	set_field(&mix_cfg, 0x1, 0x1<<2);		/* Set PHY to normal mode */
 
 	dev_dbg(priv->dev, "%s, lanes: %d\n", __func__, lanes);
@@ -418,6 +423,10 @@ static void csi2_vc_config(struct csi2_dev *priv)
 	csi_writel(priv, MIPICSI_SOF_SYNCWORD, sof_syncword);
 	csi_writel(priv, MIPICSI_EOF_SYNCWORD, eof_syncword);
 	csi_writel(priv, MIPICSI_SOL_SYNCWORD, sol_syncword);
+#if defined(MIPI_CSI_XTOR)
+	/* Set LESP_SYNCWORD and LSSP_SYNCWORD to prevent other bugs */
+	csi_writel(priv, MIPICSI_LSLE_SYNCWORD, (0x03<<8)|(0x02));	/* LESP_SYNCWORD=0x03, LSSP_SYNCWORD=0x02*/
+#endif
 
 	/* Configure the connection between CSI-IW channels and Virtual channels
 	 * Note: This connection shoud be based on the routing.
@@ -427,7 +436,6 @@ static void csi2_vc_config(struct csi2_dev *priv)
 	csi_writel(priv, MIPI_CH2_CONFIG, 0x02<<30);		/* Connect CSI-IW2 to VC2 */
 	csi_writel(priv, MIPI_CH3_CONFIG, 0x03<<30);		/* Connect CSI-IW3 to VC3 */
 
-#if 1 /* CCHo: Get MIPICSI23_SEL G164 resource */
 	/* MIPI-CSI2 and MIPI-CSI3 ports share VI23-CSIIW2 and VI23-CSIIW3. 
 	 * Configure MIPICSI23_SEL (G164) to select the virtual channel source
 	 * of VI23-CSIIW2 AND VI23-CSIIW3.
@@ -441,14 +449,9 @@ static void csi2_vc_config(struct csi2_dev *priv)
 			else if ((priv->id == 2) && (priv->num_channels > 2))
 				writel(0, priv->base2);		/* VI23-CSIIW2/3 source from MIPI-CSI2 */
 
-		#if 1 /* CCHo: For debugging*/
-			dev_info(priv->dev, "mipicsi23_sel: %08x, \n", readl(priv->base2));
-		#else
 			dev_dbg(priv->dev, "mipicsi23_sel: %08x, \n", readl(priv->base2));
-		#endif
 		}
 	}
-#endif
 }
 
 static void csi2_dt_config(struct csi2_dev *priv, unsigned int dt)
@@ -714,6 +717,8 @@ static void csi2_stop(struct csi2_dev *priv)
 	csi2_enter_standby(priv);
 #if defined(MIPI_CSI_BIST)
 	csi2_bist_control(priv, 0);
+#elif defined(MIPI_CSI_XTOR)
+	// Blank
 #else
 	v4l2_subdev_call(priv->remote, video, s_stream, 0);
 #endif
@@ -729,7 +734,7 @@ static int csi2_s_stream(struct v4l2_subdev *sd, int enable)
 
 	mutex_lock(&priv->lock);
 
-#if !defined(MIPI_CSI_BIST)
+#if !(defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR))
 	if (!priv->remote) {
 		ret = -ENODEV;
 		goto out;
@@ -998,6 +1003,12 @@ static int csi2_parse_dt(struct csi2_dev *priv)
 
 	dev_dbg(priv->dev, "%s, Skip bounding a sensor\n", __func__);
 	return ret;
+#elif defined(MIPI_CSI_XTOR)
+	/* For XTOR test, skip bounding a sensor */
+	priv->lanes = 4;		/* Set active lane number here */
+
+	dev_dbg(priv->dev, "%s, Skip bounding a sensor\n", __func__);
+	return ret;
 #endif
 
 	/* Get endpoint */
@@ -1132,7 +1143,6 @@ static int csi2_probe_resources(struct csi2_dev *priv,
 	dev_dbg(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
 		__func__, res->start, res->name);
 
-#if 1 /* CCHo: Get MIPICSI23_SEL G164 resource */
 	/* MIPI-CSI2 and MIPI-CSI3 ports share VI23-CSIIW2 and VI23-CSIIW3. 
 	 * They need to get resource MIPICSI23_SEL (G164) to select the virtual
 	 * channel source of VI23-CSIIW2 AND VI23-CSIIW3.
@@ -1143,17 +1153,11 @@ static int csi2_probe_resources(struct csi2_dev *priv,
 		if (IS_ERR(priv->base2))
 			return PTR_ERR(priv->base2);
 
-	#if 1 /* CCHo: For debugging*/
-		dev_info(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
-			__func__, res->start, res->name);
-	#else
 		dev_dbg(priv->dev, "%s, res->start: 0x%08llx, name: %s\n",
 			__func__, res->start, res->name);
-	#endif
 	} else {
 		priv->base2 = NULL;
 	}
-#endif
 
 	priv->clk = devm_clk_get(&pdev->dev, "clk_mipicsi");
 	if (IS_ERR(priv->clk))
