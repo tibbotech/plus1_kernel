@@ -26,6 +26,8 @@
 //#define IMX219_IN1
 //#define IMX219_IN2
 //#define IMX219_IN3
+//#define TP2815_IN0
+//#define TP2815_IN2
 
 / {
 	model = "Sunplus Q645";
@@ -189,6 +191,22 @@
 
 #ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
 	imx219_3_clk: camera3-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef TP2815_IN0 /* Add tp2815 subnode in i2cm0 */
+	tp2815_0_clk: camera0-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2cm2 */
+	tp2815_2_clk: camera2-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <24000000>;
@@ -585,6 +603,26 @@
 			};
 		};
 #endif
+
+#ifdef TP2815_IN0 /* Add tp2815 subnode in i2cm0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_0_clk>;
+
+			port {
+				tp2815_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2 3 4>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm1: i2cm@f8004700 {
@@ -647,6 +685,26 @@
 				imx219_2: endpoint {
 					remote-endpoint = <&csi2_2>;
 					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2cm0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_2_clk>;
+
+			port {
+				tp2815_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+					data-lanes = <1 2 3 4>;
 					clock-noncontinuous;
 					link-frequencies = /bits/ 64 <456000000>;
 				};
@@ -1227,6 +1285,18 @@
 			};
 		};
 #endif
+
+#ifdef TP2815_IN0 /* Add tp2815 subnode in i2cm0 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_0: endpoint {
+				remote-endpoint = <&tp2815_0>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx1: mipicsirx@f8005380 {
@@ -1280,6 +1350,18 @@
 				bus-type = <4>;
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
+			};
+		};
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2cm2 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_2: endpoint {
+				remote-endpoint = <&tp2815_2>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2 3 4>;
 			};
 		};
 #endif

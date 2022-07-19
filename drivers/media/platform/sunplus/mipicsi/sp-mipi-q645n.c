@@ -59,6 +59,16 @@ static int video_nr = -1;
 module_param(video_nr, int, 0444);
 MODULE_PARM_DESC(video_nr, " videoX start number, -1 is autodetect");
 
+#ifdef MIPI_CSI_BIST
+static unsigned int bist_mode = 0;
+module_param(bist_mode, uint, 0444);
+MODULE_PARM_DESC(bist_mode, " Internal pattern format selection, default is 0.\n"
+				"\t    0 == Color bar for YUY2 format\n"
+				"\t    1 == Border for YUY2 format\n"
+				"\t    1 == Gray bar for RAW12 format\n");
+#endif
+
+
 static inline struct sp_mipi_device *notifier_to_mipi(struct v4l2_async_notifier *n)
 {
 	return container_of(n, struct sp_mipi_device, notifier);
@@ -217,38 +227,31 @@ static void sp_mipicsi_reset_s2p_ff(struct sp_mipi_device *mipi)
 }
 
 #if defined(MIPI_CSI_BIST)
-/* BIST_Mode field: Internal pattern format selection
- * 0: Color bar for YUY2 format
- * 1: Border for YUY2 format
- * 2: Gray bar for RAW12 format
- */
-#define BIST_MODE_YUY2_PATTERN	0
-
 static void sp_mipicsi_bist_config(struct sp_mipi_device *mipi, u8 dt)
 {
 	struct v4l2_pix_format *pix = &mipi->fmt.fmt.pix;
 	u32 height = pix->height;
 	u32 width = pix->width;
 	u32 val;
-	u8 mode = BIST_MODE_YUY2_PATTERN;
+	u8 mode = bist_mode;
 
 	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
 
 	val = 0;
-	if (dt == 0x2b) width = width/2;		/* One pixel is output twice for RAW12 */
+	if (dt == 0x2c) width = width/2;		/* One pixel is output twice for RAW12 */
 	val = csi_readl(mipi, MIPICSI_BIST_CFG1);
-	set_field(&val, height, 0xfff<<16);		/* Vertical size of internal pattern. 1080 */
-	set_field(&val, width, 0x1fff<<0);		/* Horizontal size of internal pattern. 1920 */
+	set_field(&val, height, 0xfff<<16);		/* Vertical size of internal pattern */
+	set_field(&val, width, 0x1fff<<0);		/* Horizontal size of internal pattern */
 	csi_writel(mipi, MIPICSI_BIST_CFG1, val);
 
 	dev_dbg(mipi->dev, "%s, %d, bist_cfg1: %08x\n", __func__, __LINE__, val);
 
 	val = 0;
-	if (dt == 0x2b) mode = 2;				/* Gray bar for RAW12 */	
+	if (dt == 0x2c) mode = 2;				/* Gray bar for RAW12 */
 	val = csi_readl(mipi, MIPICSI_BIST_CFG0);
-	set_field(&val, mode, 0x3<<4);		/* Gray bar for RAW12 format */
-	set_field(&val, 0x1, 0x1<<1);		/* Use internal clock for BIST */
-	set_field(&val, 0x0, 0x1<<0);		/* Disable MIPI internal pattern */
+	set_field(&val, mode, 0x3<<4);			/* Internal pattern format */
+	set_field(&val, 0x1, 0x1<<1);			/* Use internal clock for BIST */
+	set_field(&val, 0x0, 0x1<<0);			/* Disable MIPI internal pattern */
 	csi_writel(mipi, MIPICSI_BIST_CFG0, val);
 
 	dev_dbg(mipi->dev, "%s, %d, bist_cfg0: %08x\n", __func__, __LINE__, val);
@@ -1607,27 +1610,38 @@ static const struct sp_mipi_format sp_mipi_formats[] = {
 static int sp_mipi_formats_init_bist(struct sp_mipi_device *mipi)
 {
 	const struct sp_mipi_format *sd_fmts[ARRAY_SIZE(sp_mipi_formats)];
-	unsigned int num_fmts = 0, i, j;
+	unsigned int num_fmts = 0, i, j, k;
+	u32 bist_fmt[2] = {MEDIA_BUS_FMT_YUYV8_2X8, MEDIA_BUS_FMT_SBGGR12_1X12};
 
 	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
 
-	for (i = 0; i < ARRAY_SIZE(sp_mipi_formats); i++) {
-		/* Code supported, have we got this fourcc yet? */
-		for (j = 0; j < num_fmts; j++)
-			if (sd_fmts[j]->fourcc ==
-					sp_mipi_formats[i].fourcc) {
-				/* Already available */
-				dev_dbg(mipi->dev, "Skipping fourcc/code: %4.4s/0x%x\n",
-					(char *)&sd_fmts[j]->fourcc,
-					sd_fmts[j]->mbus_code);
-				break;
+	for (k = 0; k < ARRAY_SIZE(bist_fmt); k++) {
+		for (i = 0; i < ARRAY_SIZE(sp_mipi_formats); i++) {
+			if (sp_mipi_formats[i].mbus_code != bist_fmt[k])
+				continue;
+
+			/* Exclude JPEG if BT656 bus is selected */
+			if (sp_mipi_formats[i].fourcc == V4L2_PIX_FMT_JPEG &&
+				mipi->bus_type == V4L2_MBUS_BT656)
+				continue;
+
+			/* Code supported, have we got this fourcc yet? */
+			for (j = 0; j < num_fmts; j++)
+				if (sd_fmts[j]->fourcc ==
+						sp_mipi_formats[i].fourcc) {
+					/* Already available */
+					dev_dbg(mipi->dev, "Skipping fourcc/code: %4.4s/0x%x\n",
+						(char *)&sd_fmts[j]->fourcc,
+						bist_fmt[k]);
+					break;
+				}
+			if (j == num_fmts) {
+				/* New */
+				sd_fmts[num_fmts++] = sp_mipi_formats + i;
+				dev_dbg(mipi->dev, "Supported fourcc/code: %4.4s/0x%x\n",
+					(char *)&sd_fmts[num_fmts - 1]->fourcc,
+					sd_fmts[num_fmts - 1]->mbus_code);
 			}
-		if (j == num_fmts) {
-			/* New */
-			sd_fmts[num_fmts++] = sp_mipi_formats + i;
-			dev_dbg(mipi->dev, "Supported fourcc/code: %4.4s/0x%x\n",
-				(char *)&sd_fmts[num_fmts - 1]->fourcc,
-				sd_fmts[num_fmts - 1]->mbus_code);
 		}
 	}
 
@@ -1932,7 +1946,7 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 	mipi->id = id;
 
 #if defined(MIPI_CSI_BIST)
-	return 0;
+	goto init_mem;
 #endif
 
 	/* Get bus characteristics from devicetree */
@@ -1987,6 +2001,9 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 
 	dev_dbg(mipi->dev, "Found connected device %pOFn\n", np_source_node);
 
+#if defined(MIPI_CSI_BIST)
+init_mem:
+#endif
 	ret = of_reserved_mem_device_init(mipi->dev);
 	if (ret) {
 		dev_err(mipi->dev, "Could not get reserved memory!\n");
@@ -2004,6 +2021,34 @@ done:
 	of_node_put(np);
 	return ret;
 }
+
+/* -----------------------------------------------------------------------------
+ * sysfs.
+ */
+#ifdef MIPI_CSI_BIST
+static ssize_t csi2_bist_mode_show (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", bist_mode);
+}
+
+static ssize_t csi2_bist_mode_store (struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	bist_mode = simple_strtoul(buf, NULL, 16);
+
+	return count;
+}
+
+static DEVICE_ATTR(bist_mode, S_IWUSR|S_IRUGO, csi2_bist_mode_show, csi2_bist_mode_store);
+
+static struct attribute *csi2_attributes[] = {
+	&dev_attr_bist_mode.attr,
+	NULL,
+};
+
+static struct attribute_group csi2_attribute_group = {
+	.attrs = csi2_attributes,
+};
+#endif
 
 /*
  * SP-MIPI driver probe
@@ -2193,6 +2238,15 @@ static int sp_mipi_probe(struct platform_device *pdev)
 	ret = sp_csiiw_irq_init(mipi);
 	if (ret)
 		goto err_cleanup;
+
+#ifdef MIPI_CSI_BIST
+	/* Add the device attribute group into sysfs */
+	ret = sysfs_create_group(&dev->kobj, &csi2_attribute_group);
+	if (ret != 0) {
+		dev_err(dev, "Failed to create sysfs files!\n");
+		goto err_cleanup;
+	}
+#endif
 
 #ifdef CONFIG_PM_RUNTIME_MIPI
 	pm_runtime_set_autosuspend_delay(&pdev->dev, 5000);
