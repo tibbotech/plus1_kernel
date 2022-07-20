@@ -321,7 +321,6 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 	return 0;
 }
 
-#if (SP_SPINOR_DMA)
 static void spi_nor_io_CUST_config(struct SPI_NOR_REG *reg_base, u8 cmd_b, u8 addr_b, u8 data_b,
 				   struct SPI_ENHANCE enhance, u8 dummy)
 {
@@ -441,6 +440,7 @@ static void sp_spi_cfg12_set(struct SPI_NOR_REG *reg_base, u8 cmd)
 	}
 }
 
+#if (SP_SPINOR_DMA)
 static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8 addr_len,
 				const u8 *buf, size_t len)
 {
@@ -497,8 +497,11 @@ static int sp_spi_nor_xfer_dmawrite(struct spi_nor *nor, u8 opcode, u32 addr, u8
 		//dev_dbg(pspi->dev, "w remain len  0x%x\n", len);
 		if (temp_len > 0)
 			memcpy(pspi->buff.virt, data_in, temp_len); // copy data to dma
-
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+		value =  (readl(&spi_reg->spi_cfg0) & CLEAR_DATA64_LEN) | temp_len | (1<<19);
+#else
 		value =  (readl(&spi_reg->spi_cfg0) & CLEAR_DATA64_LEN) | temp_len;
+#endif
 		writel(value, &spi_reg->spi_cfg0);
 
 		writel(pspi->buff.phys, &spi_reg->spi_mem_data_addr);
@@ -647,38 +650,23 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
 static unsigned char sp_spi_nor_rdsr(struct SPI_NOR_REG *reg_base)
 {
 	unsigned char data;
-	struct SPI_NOR_REG *spi_reg = (SPI_NOR_REG *)reg_base;
+	struct SPI_NOR_REG *spi_reg = (struct SPI_NOR_REG *)reg_base;
 	unsigned int reg_temp;
 
+	sp_spi_cfg12_set(spi_reg, 0x5);
 	reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 	reg_temp |= READ_CMD | BYTE_0 | ADDR_0B | CUST_CMD(0x05);
-	while ((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
-		;
+	while ((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0);
 
 	writel(0, &spi_reg->spi_data);
 	writel(reg_temp, &spi_reg->spi_ctrl);
 	reg_temp = readl(&spi_reg->spi_auto_cfg);
 	reg_temp |= PIO_TRIGGER;
 	writel(reg_temp, &spi_reg->spi_auto_cfg);
-	while ((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER) != 0)
-		;
+	while ((readl(&spi_reg->spi_auto_cfg) & PIO_TRIGGER) != 0);
 
 	data = readl(&spi_reg->spi_status) & 0xff;
 	return data;
-}
-
-static void sp_spi_nor_wait_for_sram_empty(void)
-{
-	if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
-		ktime_get_real_ts64(&ts);
-		while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0) {
-			ktime_get_real_ts64(&ts_out);
-			if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
-				dev_dbg(pspi->dev, "timeout\n");
-				break;
-			}
-		}
-	}
 }
 
 static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 addr_len,
@@ -703,7 +691,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 	if (total_count == 0) {
 		while ((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
 			dev_dbg(pspi->dev, "wait ctrl busy\n");
-
+		sp_spi_cfg12_set(spi_reg, cmd);
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp |= WRITE_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
@@ -736,6 +724,7 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		while ((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
 			dev_dbg(pspi->dev, "wait ctrl busy\n");
 
+		sp_spi_cfg12_set(spi_reg, cmd);
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp |= WRITE_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
@@ -759,8 +748,18 @@ static int sp_spi_nor_xfer_write(struct spi_nor *nor, u8 opcode, u32 addr, u8 ad
 		writel(reg_temp, &spi_reg->spi_auto_cfg);
 
 		while (data_count > 0) {
-			if (readl(&spi_reg->spi_status_2) & SRAM_FULL)
-				sp_spi_nor_wait_for_sram_empty();
+			if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
+				if (readl(&spi_reg->spi_status_2) & SRAM_FULL) {
+					ktime_get_real_ts64(&ts);
+					while ((readl(&spi_reg->spi_status_2) & SRAM_EMPTY) == 0) {
+						ktime_get_real_ts64(&ts_out);
+						if ((ts_out.tv_nsec - ts.tv_nsec) > SPI_TIMEOUT) {
+							dev_dbg(pspi->dev, "timeout\n");
+							break;
+						}
+					}
+				}
+			}
 
 			if (data_count >= 4) {
 				data_temp = (data_in[3] << 24) | (data_in[2] << 16) |
@@ -833,7 +832,7 @@ static int sp_spi_nor_xfer_read(struct spi_nor *nor, u8 opcode, u32 addr, u8 add
 
 		while ((readl(&spi_reg->spi_ctrl) & SPI_CTRL_BUSY) != 0)
 			dev_dbg(pspi->dev, "wait ctrl busy\n");
-
+		sp_spi_cfg12_set(spi_reg, cmd);
 		reg_temp = readl(&spi_reg->spi_ctrl) & CLEAR_CUST_CMD;
 		reg_temp |= READ_CMD | BYTE_0 | ADDR_0B | CUST_CMD(cmd);
 		cfg0 = readl(&spi_reg->spi_cfg0);
