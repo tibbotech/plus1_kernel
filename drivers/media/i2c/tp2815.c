@@ -523,6 +523,7 @@ static const u32 codes[] = {
 /* Mode configs */
 #if 1 /* CCHo */
 static const struct imx219_mode supported_modes[] = {
+	#if 0 // CCHo: 1080P has now output
 	{
 		/* 1080P 30fps cropped */
 		.width = 1920,
@@ -539,13 +540,14 @@ static const struct imx219_mode supported_modes[] = {
 			.regs = mode_1920_1080_regs,
 		},
 	},
+	#endif
 	{
 		/* 720P 30fps mode */
 		.width = 1280,
 		.height = 720,
 		.crop = {
-			.left = 1008,
-			.top = 760,
+			.left = 0,
+			.top = 0,
 			.width = 1280,
 			.height = 720
 		},
