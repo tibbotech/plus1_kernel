@@ -201,6 +201,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 
 static const struct of_device_id sp_wdt_of_match[] = {
 	{.compatible = "sunplus,sp7021-wdt", },
+	{.compatible = "sunplus,q645-wdt", },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_wdt_of_match);
