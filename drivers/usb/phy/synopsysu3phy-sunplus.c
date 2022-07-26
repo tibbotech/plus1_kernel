@@ -78,6 +78,7 @@ static irqreturn_t u3phy_int(int irq, void *dev)
 
 static void typec_gpio(struct work_struct *work)
 {
+	
 	struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir.work);
 	//struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir);
 	volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
@@ -95,12 +96,20 @@ static void typec_gpio(struct work_struct *work)
 		if (gpio_get_value(98)) {
 			writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			wait_event(u3phy->wq, !u3phy->busy);
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+			if (!result) {
+				dev_err(u3phy->dev, "reset failed 3\n");
+				//return -ETIME;
+			}
 			u3phy->dir = 1;
 		} else {
 			writel(result | 0x11, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			wait_event(u3phy->wq, !u3phy->busy);
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+			if (!result) {
+				dev_err(u3phy->dev, "reset failed 4\n");
+				//return -ETIME;
+			}
 			u3phy->dir = 0;
 		}
 		result = readl(dwc3portsc_reg) & ~((0xf<<5) |(0x1<<16));
@@ -114,6 +123,7 @@ static void typec_gpio(struct work_struct *work)
 
 static void synopsys_u3phy_init(struct platform_device *pdev)
 {
+	struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
 	struct uphy_u3_regs *dwc3phy_reg;// = (struct uphy_u3_regs *) u3phy_base_addr;
 	unsigned int result;
@@ -130,13 +140,22 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 	result = readl(&dwc3phy_reg->cfg[1]);
 	writel(result | 0x3, &dwc3phy_reg->cfg[1]);
 	u3phy->busy = 1;
-	wait_event(u3phy->wq, !u3phy->busy);
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+	if (!result) {
+		dev_err(dev, "reset failed 1\n");
+		//return -ETIME;
+	}
+		
 
 	result = readl(&dwc3phy_reg->cfg[5]) & 0xFFE0;
 
 	writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 	u3phy->busy = 1;
-	wait_event(u3phy->wq, !u3phy->busy);
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+	if (!result) {
+		dev_err(dev, "reset failed 2\n");
+		//return -ETIME;
+	}
 	u3phy->dir = 1;
 }
 
@@ -159,7 +178,7 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	struct usb3_phy *u3phy;
 	int typecdir;
 
-	dev_dbg(dev, "%s\n", __func__);
+	dev_info(dev, "%s\n", __func__);
 	u3phy = devm_kzalloc(dev, sizeof(*u3phy), GFP_KERNEL);
 	if (!u3phy)
 		return -ENOMEM;
@@ -261,6 +280,7 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	//disable_irq(u3phy->irq);
 	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
 	//schedule_work(&u3phy->typecdir);
+	dev_info(dev, "%s end\n", __func__);
 	return 0;
 }
 
