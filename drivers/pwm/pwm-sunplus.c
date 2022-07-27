@@ -16,12 +16,9 @@
 #include <linux/clk.h>
 #include <linux/pm_runtime.h>
 
-#define PWM_CLK_MANAGEMENT
-
 #define SUNPLUS_PWM_NUM		ePWM_MAX
 #define SUNPLUS_PWM_FREQ	ePWM_FREQ_MAX
 #define PWM_CNT_BIT_SHIFT	8
-#define PWM_FREQ_SCALER		256
 #define PWM_DD_SEL_BIT_MASK	0x3
 #define ePWM_DD_MAX		4
 #define ePWM_DD_UNKNOWN ePWM_DD_MAX
@@ -29,11 +26,13 @@
 #if defined(CONFIG_SOC_SP7021)
 #define DRV_NAME "sp7021-pwm"
 #define DESC_NAME "Sunplus SP7021 PWM Driver"
+#define PWM_CLK_MANAGEMENT
 #ifdef PWM_CLK_MANAGEMENT
 #define ePWM_MAX		8
 #else
 #define ePWM_MAX		4
 #endif
+#define PWM_FREQ_SCALER		256
 #define ePWM_FREQ_MAX 0xffff
 #define ePWM_DUTY_MAX 0x00ff
 #define PWM_CONTROL0	0x000
@@ -44,7 +43,9 @@
 #elif defined(CONFIG_SOC_Q645)
 #define DRV_NAME "q645-pwm"
 #define DESC_NAME "Sunplus Q645 PWM Driver"
+//#define PWM_CLK_MANAGEMENT
 #define ePWM_MAX		4
+#define PWM_FREQ_SCALER		4096
 #define ePWM_FREQ_MAX 0x3ffff
 #define ePWM_DUTY_MAX 0x00fff
 #define PWM_CONTROL0	0x000
@@ -56,7 +57,9 @@
 #elif defined(CONFIG_SOC_SP7350)
 #define DRV_NAME "sp7350-pwm"
 #define DESC_NAME "Sunplus SP7350 PWM Driver"
+//#define PWM_CLK_MANAGEMENT
 #define ePWM_MAX		4
+#define PWM_FREQ_SCALER		4096
 #define ePWM_FREQ_MAX 0x3ffff
 #define ePWM_DUTY_MAX 0x00fff
 #define PWM_CONTROL0	0x000
@@ -143,6 +146,17 @@ static int sunplus_setpwm(struct sunplus_pwm *chip,
 	u32 pwm_dd_en, pwm_du_en, dd_used_status;
 	u64 tmp;
 	int i;
+
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	value = readl(chip->regs + PWM_CONTROL1 * 4);
+
+	if (pwm->state.polarity == PWM_POLARITY_NORMAL)
+		value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
+	else
+		value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
+
+	writel(value, chip->regs + PWM_CONTROL1 * 4);
+#endif
 
 	/* cal pwm freq and check value under range */
 	tmp = clk_get_rate(chip->clk) * (u64)period_ns;
@@ -253,7 +267,7 @@ static int sunplus_setpwm(struct sunplus_pwm *chip,
 	}
 
 	pr_debug("pwm:%d, output freq:%lu Hz, duty:%u%%\n",
-			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * 256),
+			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * PWM_FREQ_SCALER),
 			(duty * 100) / (ePWM_DUTY_MAX + 1));
 
 	return 0;
@@ -266,6 +280,17 @@ static int sunplus_setpwm(struct sunplus_pwm *chip,
 {
 	u32 duty, dd_freq, value;
 	u64 tmp;
+
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	value = readl(chip->regs + PWM_CONTROL1 * 4);
+
+	if (pwm->state.polarity == PWM_POLARITY_NORMAL)
+		value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
+	else
+		value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
+
+	writel(value, chip->regs + PWM_CONTROL1 * 4);
+#endif
 
 	/* cal pwm freq and check value under range */
 	tmp = clk_get_rate(chip->clk) * (u64)period_ns;
@@ -301,7 +326,7 @@ static int sunplus_setpwm(struct sunplus_pwm *chip,
 	}
 
 	pr_debug("pwm:%d, output freq:%lu Hz, duty:%u%%\n",
-			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * 256),
+			pwm->hwpwm, clk_get_rate(chip->clk) / (dd_freq * PWM_FREQ_SCALER),
 			(duty * 100) / (ePWM_DUTY_MAX + 1));
 
 	return 0;
@@ -318,6 +343,7 @@ static void sunplus_pwm_unexport(struct pwm_chip *chip,
 		state.enabled = 0;
 		pwm_apply_state(pwm, &state);
 	}
+
 }
 
 static int sunplus_pwm_enable(struct pwm_chip *chip,
@@ -367,9 +393,8 @@ static int sunplus_pwm_config(struct pwm_chip *chip,
 {
 	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
 
-	if (pwm_is_enabled(pwm)) {
+	if (pwm_is_enabled(pwm))
 		return( sunplus_setpwm(pdata, pwm, duty_ns, period_ns));
-	}
 
 	return 0;
 }
@@ -379,20 +404,6 @@ static int sunplus_pwm_polarity(struct pwm_chip *chip,
 		struct pwm_device *pwm,
 		enum pwm_polarity polarity)
 {
-	struct sunplus_pwm *pdata = to_sunplus_pwm(chip);
-	u32 value;
-
-	if (pwm_is_enabled(pwm)) {
-		value = readl(pdata->regs + PWM_CONTROL1 * 4);
-
-		if (polarity == PWM_POLARITY_NORMAL)
-			value &= ~(1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT));
-		else
-			value |= 1 << (pwm->hwpwm + PWM_INV_BIT_SHIFT);
-
-		writel(value, pdata->regs + PWM_CONTROL1 * 4);
-	}
-
 	return 0;
 }
 #endif
