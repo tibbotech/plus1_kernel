@@ -85,7 +85,7 @@ static void typec_gpio(struct work_struct *work)
 		struct uphy_u3_regs *dwc3phy_reg;
 		unsigned int result;
 		volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
-		volatile uint32_t *dwc3test_reg = ioremap(0xf80ad164, 32);
+		//volatile uint32_t *dwc3test_reg = ioremap(0xf80ad164, 32);
 
 		dwc3phy_reg = (struct uphy_u3_regs *) u3phy->u3phy_base_addr;
 
@@ -112,10 +112,10 @@ static void typec_gpio(struct work_struct *work)
 			}
 			u3phy->dir = 0;
 		}
-		result = readl(dwc3portsc_reg) & ~((0xf<<5) |(0x1<<16));
+		result = readl(dwc3portsc_reg) & ~((0xf<<5) | (0x1<<16));
 		writel(result | (0x1<<16) | (0x5<<5), dwc3portsc_reg);
 		iounmap(dwc3portsc_reg);
-		iounmap(dwc3test_reg);
+		//iounmap(dwc3test_reg);
 	}
 	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(1));
 	//schedule_work(&u3phy->typecdir);
