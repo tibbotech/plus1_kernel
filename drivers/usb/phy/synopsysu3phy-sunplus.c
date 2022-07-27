@@ -78,17 +78,17 @@ static irqreturn_t u3phy_int(int irq, void *dev)
 
 static void typec_gpio(struct work_struct *work)
 {
-	
 	struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir.work);
-	//struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir);
-	volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
-	volatile uint32_t *dwc3test_reg = ioremap(0xf80ad164, 32);
-	struct uphy_u3_regs *dwc3phy_reg;
-	unsigned int result;
-
-	dwc3phy_reg = (struct uphy_u3_regs *) u3phy->u3phy_base_addr;
 
 	if (u3phy->dir != gpio_get_value(98)) {
+		//struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir);
+		struct uphy_u3_regs *dwc3phy_reg;
+		unsigned int result;
+		volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
+		volatile uint32_t *dwc3test_reg = ioremap(0xf80ad164, 32);
+
+		dwc3phy_reg = (struct uphy_u3_regs *) u3phy->u3phy_base_addr;
+
 		result = readl(dwc3portsc_reg);
 		writel(result | 0x2, dwc3portsc_reg);
 
@@ -145,7 +145,7 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 		dev_err(dev, "reset failed 1\n");
 		//return -ETIME;
 	}
-		
+
 
 	result = readl(&dwc3phy_reg->cfg[5]) & 0xFFE0;
 
