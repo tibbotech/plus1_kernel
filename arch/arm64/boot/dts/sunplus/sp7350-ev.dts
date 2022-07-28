@@ -23,7 +23,6 @@
 //#define ENABLE_DMATX3
 
 //#define MIPI_CSI_4VC
-//#define MIPI_CSI_XTOR
 
 / {
 	model = "Sunplus SP7350";
@@ -735,11 +734,7 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
-#ifdef MIPI_CSI_XTOR
-		num_channels = <1>;
-#else
 		num_channels = <2>;
-#endif
 
 		ports {
 			#address-cells = <1>;
