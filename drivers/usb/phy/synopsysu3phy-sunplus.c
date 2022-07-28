@@ -34,7 +34,10 @@ struct moon0_regs {
 	unsigned int cfg3[32];		       // 189.0
 };
 #endif
-struct uphy_u3_regs {
+struct u3phy_regs {
+	unsigned int cfg[32];		       // 189.0
+};
+struct u3c_regs {
 	unsigned int cfg[32];		       // 189.0
 };
 //struct u3_portsc_regs {
@@ -48,7 +51,7 @@ struct uphy_u3_regs {
 struct usb3_phy {
 	struct device		*dev;
 	void __iomem 		*u3phy_base_addr;
-	//void __iomem 		*u3_portsc_addr;
+	void __iomem 		*u3_portsc_addr;
 	//void __iomem 		*u3_test_addr;
 	struct clk 		*u3_clk;
 	struct clk 		*u3phy_clk;
@@ -64,7 +67,7 @@ struct usb3_phy {
 static irqreturn_t u3phy_int(int irq, void *dev)
 {
 	struct usb3_phy *u3phy = dev;
-	struct uphy_u3_regs *dwc3phy_reg = u3phy->u3phy_base_addr;
+	struct u3phy_regs *dwc3phy_reg = u3phy->u3phy_base_addr;
 	unsigned int result;
 
 	result = readl(&dwc3phy_reg->cfg[2]);
@@ -81,22 +84,23 @@ static void typec_gpio(struct work_struct *work)
 	struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir.work);
 
 	if (u3phy->dir != gpio_get_value(98)) {
-		//struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir);
-		struct uphy_u3_regs *dwc3phy_reg;
+		struct u3phy_regs *dwc3phy_reg;
+		struct u3c_regs *dwc3portsc_reg;
 		unsigned int result;
-		volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
+		//volatile uint32_t *dwc3portsc_reg = ioremap(0xf80a1430, 32);
 		//volatile uint32_t *dwc3test_reg = ioremap(0xf80ad164, 32);
 
-		dwc3phy_reg = (struct uphy_u3_regs *) u3phy->u3phy_base_addr;
+		dwc3phy_reg = (struct u3phy_regs *) u3phy->u3phy_base_addr;
+		dwc3portsc_reg = (struct u3c_regs *) u3phy->u3_portsc_addr;
 
-		result = readl(dwc3portsc_reg);
-		writel(result | 0x2, dwc3portsc_reg);
+		result = readl(&dwc3portsc_reg->cfg[0]);
+		writel(result | 0x2, &dwc3portsc_reg->cfg[0]);
 
 		result = readl(&dwc3phy_reg->cfg[5]) & 0xffe0;
 		if (gpio_get_value(98)) {
 			writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
 			if (!result) {
 				dev_err(u3phy->dev, "reset failed 3\n");
 				//return -ETIME;
@@ -105,19 +109,19 @@ static void typec_gpio(struct work_struct *work)
 		} else {
 			writel(result | 0x11, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
 			if (!result) {
 				dev_err(u3phy->dev, "reset failed 4\n");
 				//return -ETIME;
 			}
 			u3phy->dir = 0;
 		}
-		result = readl(dwc3portsc_reg) & ~((0xf<<5) | (0x1<<16));
-		writel(result | (0x1<<16) | (0x5<<5), dwc3portsc_reg);
-		iounmap(dwc3portsc_reg);
+		result = readl(&dwc3portsc_reg->cfg[0]) & ~((0xf<<5) | (0x1<<16));
+		writel(result | (0x1<<16) | (0x5<<5), &dwc3portsc_reg->cfg[0]);
+		//iounmap(dwc3portsc_reg);
 		//iounmap(dwc3test_reg);
 	}
-	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(1));
+	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(10));
 	//schedule_work(&u3phy->typecdir);
 }
 
@@ -125,7 +129,7 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
-	struct uphy_u3_regs *dwc3phy_reg;// = (struct uphy_u3_regs *) u3phy_base_addr;
+	struct u3phy_regs *dwc3phy_reg;
 	unsigned int result;
 
 	clk_prepare_enable(u3phy->u3_clk);
@@ -135,12 +139,12 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 	mdelay(1);
 	reset_control_deassert(u3phy->u3phy_rst);
 
-	dwc3phy_reg = (struct uphy_u3_regs *) u3phy->u3phy_base_addr;
+	dwc3phy_reg = (struct u3phy_regs *) u3phy->u3phy_base_addr;
 
 	result = readl(&dwc3phy_reg->cfg[1]);
 	writel(result | 0x3, &dwc3phy_reg->cfg[1]);
 	u3phy->busy = 1;
-	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
 	if (!result) {
 		dev_err(dev, "reset failed 1\n");
 		//return -ETIME;
@@ -151,7 +155,7 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 
 	writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 	u3phy->busy = 1;
-	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(10));
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
 	if (!result) {
 		dev_err(dev, "reset failed 2\n");
 		//return -ETIME;
@@ -220,41 +224,27 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	if (IS_ERR(u3phy->u3phy_base_addr)) {
 		return PTR_ERR(u3phy->u3phy_base_addr);
 	}
-#if 0
+
+#if 1
 	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
-	u3phy->u3_portsc_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
+	u3phy->u3_portsc_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	if (IS_ERR(u3phy->u3_portsc_addr)) {
 		return PTR_ERR(u3phy->u3_portsc_addr);
 	}
-	printk("u3 portsc addr 0x%lx", u3phy_res_mem->start);
-	printk("u3 portsc addr 0x%lx", u3phy->u3_portsc_addr);
+	//printk("u3 portsc addr 0x%lx\n", u3phy_res_mem->start);
+	//printk("u3 portsc addr 0x%lx\n", u3phy->u3_portsc_addr);
 
-	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	//u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
-	u3phy->u3_test_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
-	if (IS_ERR(u3phy->u3_test_addr)) {
-		return PTR_ERR(u3phy->u3_test_addr);
-	}
-	printk("u3 test addr 0x%lx", u3phy_res_mem->start);
-	printk("u3 test addr 0x%lx", u3phy->u3_test_addr);
+	//u3phy->u3_test_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
+	//if (IS_ERR(u3phy->u3_test_addr)) {
+	//	return PTR_ERR(u3phy->u3_test_addr);
+	//}
+	//printk("u3 test addr 0x%lx", u3phy_res_mem->start);
+	//printk("u3 test addr 0x%lx", u3phy->u3_test_addr);
 #endif
-#if 0
-	moon_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	moon_base_addr = devm_ioremap(&pdev->dev, moon_res_mem->start, resource_size(moon_res_mem));
-	if (IS_ERR(moon_base_addr)) {
-		return PTR_ERR(moon_base_addr);
-	}
-	//clk_disable(u3phy->u3_clk);
-	volatile struct moon0_regs *moon_reg = (volatile struct moon0_regs *) moon_base_addr;
-	int val;
 
-	val = readl(&moon_reg->clken[3]);
-	printk("moon clk 0x%x", val);
-	clk_disable_unprepare(u3phy->u3_clk);
-	val = readl(&moon_reg->clken[3]);
-	printk("af moon clk 0x%x", val);
-#endif
 	u3phy->irq = platform_get_irq(pdev, 0);
 	init_waitqueue_head(&u3phy->wq);
 	if (u3phy->irq <= 0) {
