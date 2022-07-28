@@ -172,6 +172,10 @@ static u32 vin_format_bytesperline(struct vin_dev *vin,
 	case V4L2_PIX_FMT_NV16:
 		align = 0x20;
 		break;
+	case V4L2_PIX_FMT_SBGGR10P:
+	case V4L2_PIX_FMT_SBGGR12P:
+		align = 0x01;
+		break;
 	default:
 		align = 0x10;
 		break;
