@@ -1005,7 +1005,7 @@ static int csi2_parse_dt(struct csi2_dev *priv)
 	return ret;
 #elif defined(MIPI_CSI_XTOR)
 	/* For XTOR test, skip bounding a sensor */
-	priv->lanes = 4;		/* Set active lane number here */
+	priv->lanes = 1;		/* Set active lane number here */
 
 	dev_dbg(priv->dev, "%s, Skip bounding a sensor\n", __func__);
 	return ret;

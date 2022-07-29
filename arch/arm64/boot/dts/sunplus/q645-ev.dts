@@ -1212,7 +1212,7 @@
 
 	u3phy0: uphy@f80bd000 {
 		compatible = "sunplus,usb3-phy";
-		reg = <0x0 0xf80bd000 0x0 0x80>;
+		reg = <0x0 0xf80bd000 0x0 0x80>, <0x0 0xf80a1430 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc U3PHY0>, <&clkc USB30C0>;
@@ -1438,6 +1438,16 @@
 	poweroff {
 		compatible = "sunplus,sp-poweroff";
 	};
+
+#if 0
+	dummymaster: dm@f8000700 {
+		compatible = "sunplus,q645-dm-test";
+		reg = <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000700 0x0 0x80>,
+			<0x0 0xf800a880 0x0 0x80>, <0x0 0xf800a900 0x0 0x80>; /* G14 G337 G338*/
+		clocks = <&clkc DUMMY_MASTER0>, <&clkc DUMMY_MASTER1>, <&clkc DUMMY_MASTER2>;
+		resets = <&rstc DUMMY_MASTER0>, <&rstc DUMMY_MASTER1>, <&rstc DUMMY_MASTER2>;
+	};
+#endif
 
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,q645-wdt";
