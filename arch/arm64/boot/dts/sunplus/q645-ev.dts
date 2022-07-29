@@ -1439,6 +1439,16 @@
 		compatible = "sunplus,sp-poweroff";
 	};
 
+#if 0
+	dummymaster: dm@f8000700 {
+		compatible = "sunplus,q645-dm-test";
+		reg = <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000700 0x0 0x80>,
+			<0x0 0xf800a880 0x0 0x80>, <0x0 0xf800a900 0x0 0x80>; /* G14 G337 G338*/
+		clocks = <&clkc DUMMY_MASTER0>, <&clkc DUMMY_MASTER1>, <&clkc DUMMY_MASTER2>;
+		resets = <&rstc DUMMY_MASTER0>, <&rstc DUMMY_MASTER1>, <&rstc DUMMY_MASTER2>;
+	};
+#endif
+
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,q645-wdt";
 		reg = <0x0 0xf8000628 0x0 0x08>, <0x0 0xf8000248 0x0 0x04>;
