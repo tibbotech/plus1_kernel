@@ -534,8 +534,10 @@ void n78_clk_register(void)
 
 	data = nvmem_cell_read(cell, NULL);
 	nvmem_cell_put(cell);
-	if (data)
+	if (data) {
 		hwlock = data[0] & 3;
+		kfree(data);
+	}
 
 	if (hwlock) {
 		/* using fixed_rate_clk replace sp_clk */
