@@ -36,9 +36,9 @@
 #define SYNC_RAW12		0x2C
 
 #define MIN_WIDTH		16U
-#define MAX_WIDTH		2592U
+#define MAX_WIDTH		4096U
 #define MIN_HEIGHT		16U
-#define MAX_HEIGHT		2592U
+#define MAX_HEIGHT		4096U
 
 /* 
  * ------------------------------------------------------------------
