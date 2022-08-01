@@ -15,7 +15,6 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 
-static struct resource *u3phy_res_mem;
 #if 0
 static struct resource *moon_res_mem;
 void __iomem *moon_base_addr;
@@ -52,16 +51,15 @@ struct usb3_phy {
 	struct device		*dev;
 	void __iomem 		*u3phy_base_addr;
 	void __iomem 		*u3_portsc_addr;
-	//void __iomem 		*u3_test_addr;
 	struct clk 		*u3_clk;
 	struct clk 		*u3phy_clk;
 	struct reset_control 	*u3phy_rst;
 	int			irq;
 	wait_queue_head_t 	wq;
 	int			busy;
-	//struct work_struct	typecdir;
 	struct delayed_work	typecdir;
 	int			dir;
+	int			gpiodir;
 };
 #if 1
 static irqreturn_t u3phy_int(int irq, void *dev)
@@ -83,7 +81,7 @@ static void typec_gpio(struct work_struct *work)
 {
 	struct usb3_phy *u3phy = container_of(work, struct usb3_phy, typecdir.work);
 
-	if (u3phy->dir != gpio_get_value(98)) {
+	if (u3phy->dir != gpio_get_value(u3phy->gpiodir)) {
 		struct u3phy_regs *dwc3phy_reg;
 		struct u3c_regs *dwc3portsc_reg;
 		unsigned int result;
@@ -97,7 +95,7 @@ static void typec_gpio(struct work_struct *work)
 		writel(result | 0x2, &dwc3portsc_reg->cfg[0]);
 
 		result = readl(&dwc3phy_reg->cfg[5]) & 0xffe0;
-		if (gpio_get_value(98)) {
+		if (gpio_get_value(u3phy->gpiodir)) {
 			writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
 			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
@@ -178,9 +176,9 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 		printk(KERN_NOTICE "Can't get vbus pin %d", usb_vbus_gpio[port_id]);
 	printk(KERN_NOTICE "%s,usb1_vbus_gpio_pin:%d\n",__FUNCTION__,usb_vbus_gpio[port_id]);
 #endif
+	struct resource *u3phy_res_mem;
 	struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy;
-	int typecdir;
 
 	dev_info(dev, "%s\n", __func__);
 	u3phy = devm_kzalloc(dev, sizeof(*u3phy), GFP_KERNEL);
@@ -219,7 +217,6 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 #endif
     	//phy3 settings
     	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	u3phy->u3phy_base_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
 	if (IS_ERR(u3phy->u3phy_base_addr)) {
 		return PTR_ERR(u3phy->u3phy_base_addr);
@@ -227,22 +224,10 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 
 #if 1
 	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	u3phy->u3_portsc_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	if (IS_ERR(u3phy->u3_portsc_addr)) {
 		return PTR_ERR(u3phy->u3_portsc_addr);
 	}
-	//printk("u3 portsc addr 0x%lx\n", u3phy_res_mem->start);
-	//printk("u3 portsc addr 0x%lx\n", u3phy->u3_portsc_addr);
-
-	//u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
-	//u3phy->u3_test_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
-	//if (IS_ERR(u3phy->u3_test_addr)) {
-	//	return PTR_ERR(u3phy->u3_test_addr);
-	//}
-	//printk("u3 test addr 0x%lx", u3phy_res_mem->start);
-	//printk("u3 test addr 0x%lx", u3phy->u3_test_addr);
 #endif
 
 	u3phy->irq = platform_get_irq(pdev, 0);
@@ -251,25 +236,19 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 		printk("ERR\n");
 		return -EINVAL;
 	}
-	ret = devm_request_irq(dev, u3phy->irq, u3phy_int,
-			       IRQF_SHARED, pdev->name, u3phy);//request_irq(u3phy->irq, u3phy_int, IRQF_SHARED, dev->name, u3phy);
+	ret = devm_request_irq(dev, u3phy->irq, u3phy_int, IRQF_SHARED, pdev->name, u3phy);
 	if (ret) {
 		dev_dbg(u3phy->dev, "usb3 phy: unable to register IRQ(%d)\n", u3phy->irq);
 		free_irq(u3phy->irq, u3phy);
 	}
-	//disable_irq(u3phy->irq);
 
-	typecdir = of_get_named_gpio(pdev->dev.of_node, "typec-gpios", 0);
-	if (!gpio_is_valid(typecdir))
-		dev_err(dev, "Wrong pin %d configured for type c", typecdir);
+	u3phy->gpiodir = of_get_named_gpio(pdev->dev.of_node, "typec-gpios", 0);
+	if (!gpio_is_valid(u3phy->gpiodir))
+		dev_err(dev, "Wrong pin %d configured for type c", u3phy->gpiodir);
 
-	//enable_irq(u3phy->irq);
-	//INIT_WORK(&u3phy->typecdir, typec_gpio);
 	INIT_DELAYED_WORK(&u3phy->typecdir, typec_gpio);
 	synopsys_u3phy_init(pdev);
-	//disable_irq(u3phy->irq);
 	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
-	//schedule_work(&u3phy->typecdir);
 	dev_info(dev, "%s end\n", __func__);
 	return 0;
 }
@@ -282,12 +261,13 @@ static int sunplus_usb_synopsys_u3phy_remove(struct platform_device *pdev)
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
 
 	iounmap(u3phy->u3phy_base_addr);
-	release_mem_region(u3phy_res_mem->start, resource_size(u3phy_res_mem));
+	iounmap(u3phy->u3_portsc_addr);
 	/*disable uphy2/3 system clock*/
 	clk_disable_unprepare(u3phy->u3_clk);
 	clk_disable_unprepare(u3phy->u3phy_clk);
-	//free_irq(u3phy->irq, u3phy_int);
+	free_irq(u3phy->irq, u3phy_int);
 	cancel_delayed_work_sync(&u3phy->typecdir);
+	gpio_free(u3phy->gpiodir);
 #if 0
 	gpio_free(usb_vbus_gpio[port_id]);
 #endif

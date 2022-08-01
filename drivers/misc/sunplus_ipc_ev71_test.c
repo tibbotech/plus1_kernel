@@ -41,178 +41,65 @@ static irqreturn_t sp_ipc_test_isr(int irq, void *dev_id)
 #ifdef INTERRUPT_MSG//check irq sent to CA55 from CA55-EV71 Mailbox
 	#if (EV71_SELF_TEST == 0)
     switch (irq) {
-		case 58:  //swirq 0 to 1
+		case 57:  //swirq 0 to 1
 			for (i=4;i < 24; i++){
 				if (readl(&sp_ipc_test.reg[1]) & (0x01 << i)){  //check normal data lock status to determine which data is written
 					value = readl(&sp_ipc_test.reg[i]);//read cpu0 to 1 normal_reg which is locked
 					DBG_INFO("data%d = %d\n", i, value);
+					break;
 				}
 			}
 			if (i >= 24) DBG_INFO("No normal data is written\n");
-			writel(0, &sp_ipc_test.reg[0]); // de-assert CPU0_TO_CPU1_INT  CA55_IRQ_58  EV71_IRQ_33
+			writel(0, &sp_ipc_test.reg[0]); // de-assert CPU0_TO_CPU1_INT  CA55_IRQ_57  EV71_IRQ_33
 			irq_trigged = 1;
 			break;
-		case 57:  //swirq 1 to 0
+		case 56:  //swirq 1 to 0
 			for (i=4;i < 24; i++){
 				if (readl(&sp_ipc_test.reg[33]) & (0x01 << i)){  //check normal data lock status to determine which data is written
 					value = readl(&sp_ipc_test.reg[i+32]);//read cpu1 to 0 normal_reg which is locked
 					DBG_INFO("data%d = %d\n", i+32, value);
+					break;
 				}
 			}
 			if (i >= 24) DBG_INFO("No normal data is written\n");
-			writel(0, &sp_ipc_test.reg[32]); // de-assert CPU1_TO_CPU0_INT CA55_IRQ_57	
-			irq_trigged = 1;
-			break;
-		case 49:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 24)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 24);
-			}
-			value = readl(&sp_ipc_test.reg[24]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT0
-			DBG_INFO("data24: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 50:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 25)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 25);
-			}			
-			value = readl(&sp_ipc_test.reg[25]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT1
-			DBG_INFO("data25: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 51:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 26)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 26);
-			}			
-			value = readl(&sp_ipc_test.reg[26]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT2
-			DBG_INFO("data26: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 52:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 27)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 27);
-			}			
-			value = readl(&sp_ipc_test.reg[27]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT3
-			DBG_INFO("data27: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 53:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 28)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 28);
-			}			
-			value = readl(&sp_ipc_test.reg[28]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT4
-			DBG_INFO("data28: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 54:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 29)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 29);
-			}			
-			value = readl(&sp_ipc_test.reg[29]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT5
-			DBG_INFO("data29: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 55:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 30)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 30);
-			}			
-			value = readl(&sp_ipc_test.reg[30]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT6
-			DBG_INFO("data30: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 56:
-			if (readl(&sp_ipc_test.reg[1]) & (0x01 << 31)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 31);
-			}			
-			value = readl(&sp_ipc_test.reg[31]); //read CPU0_TO_CPU1 CPU1_DIRECT_INT7
-			DBG_INFO("data31: %x\n", value);
-			irq_trigged = 1;
-			break;
-
-
-		case 41:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 24)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 56);
-			}			
-			value = readl(&sp_ipc_test.reg[56]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT0
-			DBG_INFO("data56: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 42:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 25)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 57);
-			}			
-			value = readl(&sp_ipc_test.reg[57]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT1
-			DBG_INFO("data57: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 43:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 26)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 58);
-			}			
-			value = readl(&sp_ipc_test.reg[58]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT2
-			DBG_INFO("data58: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 44:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 27)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 59);
-			}			
-			value = readl(&sp_ipc_test.reg[59]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT3
-			DBG_INFO("data59: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 45:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 28)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 60);
-			}			
-			value = readl(&sp_ipc_test.reg[60]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT4
-			DBG_INFO("data60: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 46:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 29)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 61);
-			}			
-			value = readl(&sp_ipc_test.reg[61]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT5
-			DBG_INFO("data61: %x\n", value);
-			irq_trigged = 1;
-			break;
-		case 47:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 30)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 62);
-			}			
-			value = readl(&sp_ipc_test.reg[62]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT6
-			DBG_INFO("data62: %x\n", value);
+			writel(0, &sp_ipc_test.reg[32]); // de-assert CPU1_TO_CPU0_INT CA55_IRQ_56	
 			irq_trigged = 1;
 			break;
 		case 48:
-			if (readl(&sp_ipc_test.reg[33]) & (0x01 << 31)){  //check data lock status 
-				DBG_INFO("data%d lock\n", 63);
+		case 49:
+		case 50:
+        case 51:
+		case 52:
+		case 53:
+		case 54:
+		case 55:
+			if (readl(&sp_ipc_test.reg[1]) & (0x01 << (irq-24))){  //check data lock status to determine if data is written or not			
+				value = readl(&sp_ipc_test.reg[(irq-24)]); //read CPU0_TO_CPU1 CPU1_DIRECT_REG00~07
+				DBG_INFO("data%d: %x\n",(irq-24), value);
+			}
+			else{
+				DBG_INFO("No direct data is written\n");
+			}
+			irq_trigged = 1;
+			break;
+		case 40:
+		case 41:
+		case 42:
+		case 43:
+		case 44:
+		case 45:
+		case 46:
+		case 47:	
+			if (readl(&sp_ipc_test.reg[33]) & (0x01 << (irq-16))){  //check data lock status 
+				value = readl(&sp_ipc_test.reg[(irq+16)]); //read CPU1_TO_CPU0 CPU0_DIRECT_REG00~07
+				DBG_INFO("data%d: %x\n",(irq+16),value);
+			}
+			else{
+				DBG_INFO("No direct data is written\n");
 			}			
-			value = readl(&sp_ipc_test.reg[63]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT7
-			DBG_INFO("data63: %x\n", value);
 			irq_trigged = 1;
 			break;
     	}
-	    #if 0	
-    if (irq > 50){
-		value = readl(&sp_ipc_test.reg[56]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT0
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[57]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT1
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[58]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT2
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[59]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT3
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[60]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT4
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[61]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT5
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[62]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT6
-		DBG_INFO("data: %x\n", value);
-		value = readl(&sp_ipc_test.reg[63]); //read CPU1_TO_CPU0 CPU0_DIRECT_INT7
-	    DBG_INFO("data: %x\n", value);}
-	    #endif	
 	#endif	
 #endif
 	return IRQ_HANDLED;
@@ -312,7 +199,7 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 			}
 
 			DBG_INFO("swirq to 1\n");
-			writel(1, &dev->reg[0]); // trigger CPU0_TO_CPU1_INT  CA55_IRQ_58  EV71_IRQ_33
+			writel(1, &dev->reg[0]); // trigger CPU0_TO_CPU1_INT  CA55_IRQ_57  EV71_IRQ_33
 			
 			for (timeout = 0;timeout < 10000;timeout += 100){
 				if (irq_trigged) {
@@ -345,7 +232,7 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 			}
 
 			DBG_INFO("swirq to 0\n");
-			writel(1, &dev->reg[32]); // trigger CPU1_TO_CPU0_INT CA55_IRQ_57	
+			writel(1, &dev->reg[32]); // trigger CPU1_TO_CPU0_INT CA55_IRQ_56	
 			
 			for (timeout = 0;timeout < 10000;timeout += 100){
 				if (irq_trigged) {
@@ -394,17 +281,7 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 			}		
 		}		
 	}
-    	#if 0
-	writel(1, &dev->reg[0]);           // trigger CPU0_TO_CPU1_INT  CA55_IRQ_58  EV71_IRQ_33
-	writel(0x12345670, &dev->reg[24]); // trigger CPU0_TO_CPU1 DIRECT_INT0  CA55_IRQ_49  EV71_IRQ_17
-	writel(0x12345671, &dev->reg[25]); // trigger CPU0_TO_CPU1 DIRECT_INT1  CA55_IRQ_50  EV71_IRQ_18
-	writel(0x12345672, &dev->reg[26]); // trigger CPU0_TO_CPU1 DIRECT_INT2  CA55_IRQ_51  EV71_IRQ_23
-	writel(0x12345673, &dev->reg[27]); // trigger CPU0_TO_CPU1 DIRECT_INT3  CA55_IRQ_52  EV71_IRQ_28
-	writel(0x12345674, &dev->reg[28]); // trigger CPU0_TO_CPU1 DIRECT_INT4  CA55_IRQ_53  EV71_IRQ_29
-	writel(0x12345675, &dev->reg[29]); // trigger CPU0_TO_CPU1 DIRECT_INT5  CA55_IRQ_54  EV71_IRQ_30
-	writel(0x12345676, &dev->reg[30]); // trigger CPU0_TO_CPU1 DIRECT_INT6  CA55_IRQ_55  EV71_IRQ_31
-	writel(0x12345677, &dev->reg[31]); // trigger CPU0_TO_CPU1 DIRECT_INT7  CA55_IRQ_56  EV71_IRQ_32
-		#endif
+
 
     for (i = 0; i < 8; i ++){
 		if (readl(&dev->reg[33]) & (0x01 << (i+24))){  //check data lock status 
@@ -436,17 +313,7 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 			}		
 		}		
 	}
-    	#if 0
-	writel(1, &dev->reg[32]);          // trigger CPU1_TO_CPU0_INT CA55_IRQ_57
-	writel(0x87654320, &dev->reg[56]); //trigger CPU1_TO_CPU0 DIRECT_INT0  CA55_IRQ_41
-	writel(0x87654321, &dev->reg[57]); //trigger CPU1_TO_CPU0 DIRECT_INT1  CA55_IRQ_42
-	writel(0x87654322, &dev->reg[58]); //trigger CPU1_TO_CPU0 DIRECT_INT2  CA55_IRQ_43
-	writel(0x87654323, &dev->reg[59]); //trigger CPU1_TO_CPU0 DIRECT_INT3  CA55_IRQ_44
-	writel(0x87654324, &dev->reg[60]); //trigger CPU1_TO_CPU0 DIRECT_INT4  CA55_IRQ_45
-	writel(0x87654325, &dev->reg[61]); //trigger CPU1_TO_CPU0 DIRECT_INT5  CA55_IRQ_46
-	writel(0x87654326, &dev->reg[62]); //trigger CPU1_TO_CPU0 DIRECT_INT6  CA55_IRQ_47
-	writel(0x87654327, &dev->reg[63]); //trigger CPU1_TO_CPU0 DIRECT_INT7  CA55_IRQ_48
-		#endif
+
 	#endif
 #else
 	dev->reg[0] = 1; // trigger A2B INT
