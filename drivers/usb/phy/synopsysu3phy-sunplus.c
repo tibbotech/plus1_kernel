@@ -15,7 +15,6 @@
 #include <linux/delay.h>
 #include <linux/wait.h>
 
-static struct resource *u3phy_res_mem;
 #if 0
 static struct resource *moon_res_mem;
 void __iomem *moon_base_addr;
@@ -177,6 +176,7 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 		printk(KERN_NOTICE "Can't get vbus pin %d", usb_vbus_gpio[port_id]);
 	printk(KERN_NOTICE "%s,usb1_vbus_gpio_pin:%d\n",__FUNCTION__,usb_vbus_gpio[port_id]);
 #endif
+	struct resource *u3phy_res_mem;
 	struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy;
 
@@ -217,7 +217,6 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 #endif
     	//phy3 settings
     	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	//u3phy_base_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	u3phy->u3phy_base_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
 	if (IS_ERR(u3phy->u3phy_base_addr)) {
 		return PTR_ERR(u3phy->u3phy_base_addr);
@@ -263,7 +262,6 @@ static int sunplus_usb_synopsys_u3phy_remove(struct platform_device *pdev)
 
 	iounmap(u3phy->u3phy_base_addr);
 	iounmap(u3phy->u3_portsc_addr);
-	release_mem_region(u3phy_res_mem->start, resource_size(u3phy_res_mem));
 	/*disable uphy2/3 system clock*/
 	clk_disable_unprepare(u3phy->u3_clk);
 	clk_disable_unprepare(u3phy->u3phy_clk);
