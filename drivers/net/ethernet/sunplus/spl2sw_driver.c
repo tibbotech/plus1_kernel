@@ -392,6 +392,9 @@ static u32 spl2sw_init_netdev(struct platform_device *pdev, int eth_no, struct n
 		}
 	}
 
+	if (!IS_ERR_OR_NULL(otp_v))
+		kfree(otp_v);
+
 	if (otp_l != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
 		mac->mac_addr[3] = get_random_int() % 256;

@@ -54,6 +54,10 @@ static char sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct dev
 		return -EINVAL;
 	sp_data->otp_temp0 = FIELD_PREP(SP_TCODE_LOW_MASK, otp_v[0]) |
 			     FIELD_PREP(SP_TCODE_HIGH_MASK, otp_v[1]);
+
+	if (!IS_ERR(otp_v))
+		kfree(otp_v);
+
 	if (sp_data->otp_temp0 == 0)
 		sp_data->otp_temp0 = TEMP_OTP_BASE;
 	return 0;

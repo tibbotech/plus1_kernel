@@ -54,7 +54,7 @@ char *otp_read_disc1(struct device *_d, ssize_t *_l, char *_name)
 static void uphy1_init(struct platform_device *pdev)
 {
 	u32 val;
-	u32 set;
+	u32 set = 0;
 	char *disc_name = "disc_vol";
 	ssize_t otp_l = 0;
 	char *otp_v;
@@ -81,7 +81,12 @@ static void uphy1_init(struct platform_device *pdev)
 
 	/* 4. board uphy 1 internal register modification for tid certification */
 	otp_v = otp_read_disc1(&pdev->dev, &otp_l, disc_name);
-	set = ((*otp_v >> 5) | (*(otp_v + 1) << 3)) & OTP_DISC_LEVEL_BIT;
+
+	if (!IS_ERR_OR_NULL(otp_v)) {
+		set = ((*otp_v >> 5) | (*(otp_v + 1) << 3)) & OTP_DISC_LEVEL_BIT;
+		kfree(otp_v);
+	}
+
 	if (set == 0)
 		set = 0xD;
 

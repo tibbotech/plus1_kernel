@@ -72,9 +72,13 @@
 #define	UPHY_DEBUG_SIGNAL_REG_OFFSET		0x30
 #define UPHY_INTER_SIGNAL_REG_OFFSET		0xc
 
-#if defined(CONFIG_SOC_Q645)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 // MOON0
+	#if defined(CONFIG_SOC_Q645)
 #define USBC0_RESET_OFFSET			0x60
+	#elif defined(CONFIG_SOC_SP7350)
+#define USBC0_RESET_OFFSET			0x18
+	#endif
 
 // UPHY0
 #define GLO_CTRL0_OFFSET			0x70
