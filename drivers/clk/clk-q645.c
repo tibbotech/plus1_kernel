@@ -534,7 +534,7 @@ void n78_clk_register(void)
 
 	data = nvmem_cell_read(cell, NULL);
 	nvmem_cell_put(cell);
-	if (data) {
+	if (!IS_ERR(data)) {
 		hwlock = data[0] & 3;
 		kfree(data);
 	}
