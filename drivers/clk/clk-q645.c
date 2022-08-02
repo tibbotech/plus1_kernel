@@ -189,9 +189,9 @@ static struct sp_clk sp_clks[] = {
 	_(I2CM4),
 	_(I2CM5),
 
-	_(UA6		12,	0,	1, {EXT_CLK, "f_200m"}),
-	_(UA7		12,	1,	1, {EXT_CLK, "f_200m"}),
-	_(UA8		12,	2,	1, {EXT_CLK, "f_200m"}),
+	_(UA6,		12,	0,	1, {EXT_CLK, "f_200m"}),
+	_(UA7,		12,	1,	1, {EXT_CLK, "f_200m"}),
+	_(UA8,		12,	2,	1, {EXT_CLK, "f_200m"}),
 	_(AUD),
 	_(VIDEO_CODEC),
 
