@@ -460,9 +460,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000900 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA0>;
 		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
@@ -473,9 +471,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000980 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA1>;
 		resets = <&rstc RST_UA1>;
 		pinctrl-names = "default";
@@ -487,9 +483,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000800 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA2>;
 		resets = <&rstc RST_UA2>;
 		pinctrl-names = "default";
@@ -501,9 +495,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8004380 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA3>;
 		resets = <&rstc RST_UA3>;
 		pinctrl-names = "default";
