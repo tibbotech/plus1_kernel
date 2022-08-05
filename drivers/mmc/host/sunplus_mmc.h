@@ -17,6 +17,8 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
+//#define MEASUREMENT_SIGNAL
+
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define SPMMC_SUPPORT_VOLTAGE_1V8
 #define SPMMC_EMMC_VCCQ_1V8
@@ -151,6 +153,62 @@ struct spmmc_regs {
 	u32 __rsvd_regs(32);
 };
 
+#ifdef MEASUREMENT_SIGNAL
+union spmmc_reg_timing_config0 {
+	u32 val;
+
+	struct {
+		u32 sd_clk_dly_sel	: 3;
+		u32 resv1		: 1;
+		u32 sd_wr_dat_dly_sel	: 3;
+		u32 resv2		: 1;
+		u32 sd_wr_cmd_dly_sel	: 3;
+		u32 resv3		: 1;
+		u32 sd_rd_rsp_dly_sel	: 3;
+		u32 resv4		: 1;
+		u32 sd_rd_dat_dly_sel	: 3;
+		u32 resv5		: 1;
+		u32 sd_rd_crc_dly_sel	: 3;
+		u32 resv6		: 1;
+	} bits;
+};
+
+union spmmc_reg_config0 {
+	u32 val;
+
+	struct {
+		u32 sdpiomode		: 1;
+		u32 sdddrmode		: 1;
+		u32 sd_len_mode		: 1;
+		u32 ddr_rx_first_hcyc	: 1;
+		u32 sd_trans_mode	: 2;
+		u32 sdautorsp		: 1;
+		u32 sdcmddummy		: 1;
+		u32 sdrspchk_en		: 1;
+		u32 sdiomode		: 1;
+		u32 sdmmcmode		: 1;
+		u32 sddatawd		: 1;
+		u32 sdrsptmren		: 1;
+		u32 sdcrctmren		: 1;
+		u32 rx4_en		: 1;
+		u32 sdrsptype		: 1;
+		u32 detect_tmr		: 2;
+		u32 mmc8_en		: 1;
+		u32 selci		: 1;
+		u32 sdfqsel		: 12;
+	} bits;
+};
+
+union spmmc_softpad_config {
+	u32 val;
+#define SPMMC_MAX_SOFTPAD_LEVEL 5
+	struct {
+		u32 rd_rsp_level	: 2;
+		u32 resv1		: 2;
+		u32 rd_dat_level	: 2;
+		u32 resv2		: 2;
+	} bits;
+};
 struct spmmc_tuning_info {
 	int enable_tuning;
 	int need_tuning;
@@ -164,11 +222,55 @@ struct spmmc_tuning_info {
 	u32 clk_dly:3;
 };
 
+struct pad_ctl_regs {
+	unsigned int pull_down_enable[4];  // 101.0 - 101.3
+	unsigned int driving_selector0[4]; // 101.4 - 101.7
+	unsigned int driving_selector1[4]; // 101.8 - 101.11
+	unsigned int driving_selector2[4]; // 101.12 - 101.15
+	unsigned int driving_selector3[4]; // 101.16 - 101.19
+	unsigned int reserved_20[2];       // 101.20 - 101.21
+	unsigned int sd_config[1];         // 101.22
+	unsigned int sdio_config[1];       // 101.23
+	unsigned int reserved_24[1];       // 101.24
+	unsigned int gpio_first[4];        // 101.25
+	unsigned int reserved_29[3];       // 101.29 - 101.31
+};
+
+struct pad_soft_regs {
+	unsigned int emmc_sftpad_ctl[3];  // 102.0 - 101.2
+	unsigned int sdind_sftpad_ctl[2]; // 101.3 - 101.4
+	unsigned int sd_sftpad_ctl[2]; // 101.5 - 101.6
+	unsigned int sdio_sftpad_ctl[2]; // 101.7 - 101.8
+	unsigned int reserved_29[23];       // 101.9 - 101.31
+};
+#else
+struct spmmc_tuning_info {
+	int enable_tuning;
+	int need_tuning;
+#define SPMMC_MAX_RETRIES (8 * 8)
+	int retried; /* how many times has been retried */
+	u32 rd_crc_dly:3;
+	u32 rd_dat_dly:3;
+	u32 rd_rsp_dly:3;
+	u32 wr_cmd_dly:3;
+	u32 wr_dat_dly:3;
+	u32 clk_dly:3;
+};
+#endif
+
 struct spmmc_host {
 	struct spmmc_regs *base;
+#ifdef MEASUREMENT_SIGNAL
+	struct pad_ctl_regs *pad_base;
+	struct pad_soft_regs *soft_base;
+#endif
 	struct clk *clk;
 	struct reset_control *rstc;
 	int mode; /* SD/SDIO/eMMC */
+#ifdef MEASUREMENT_SIGNAL
+	u32 mmc_no;
+	u32 driving;
+#endif
 	spinlock_t lock; /* controller lock */
 	struct mutex mrq_lock;
 	/* tasklet used to handle error then finish the request */

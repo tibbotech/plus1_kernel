@@ -20,6 +20,11 @@
 #include <linux/uaccess.h>
 
 #include "sunplus_mmc.h"
+#ifdef MEASUREMENT_SIGNAL
+#include <linux/io.h>
+#include "../core/host.h"
+#include "../core/core.h"
+#endif
 
 enum loglevel {
 	SPMMC_LOG_OFF,
@@ -1229,6 +1234,367 @@ static int config_dma_int_threshold_store(struct spmmc_host *host, const char *a
 	return SPMMC_CFG_SUCCESS;
 }
 
+#ifdef MEASUREMENT_SIGNAL
+static void spmmc_set_pad_driving_strength(struct spmmc_host *host, u32 pin, u32 strength)
+{
+	int reg_off = pin / 32;
+	int bit_mask = 1 << (pin % 32);
+	u32 value;
+
+	strength = (strength > 15) ? 15 : strength;
+
+	value = readl(&host->pad_base->driving_selector0[reg_off]);
+	if (strength & 1)
+		value |= bit_mask;
+	else
+		value &= ~bit_mask;
+	writel(value, &host->pad_base->driving_selector0[reg_off]);
+
+	value = readl(&host->pad_base->driving_selector1[reg_off]);
+	if (strength & 2)
+		value |= bit_mask;
+	else
+		value &= ~bit_mask;
+	writel(value, &host->pad_base->driving_selector1[reg_off]);
+
+	value = readl(&host->pad_base->driving_selector2[reg_off]);
+	if (strength & 4)
+		value |= bit_mask;
+	else
+		value &= ~bit_mask;
+	writel(value, &host->pad_base->driving_selector2[reg_off]);
+
+	value = readl(&host->pad_base->driving_selector3[reg_off]);
+	if (strength & 8)
+		value |= bit_mask;
+	else
+		value &= ~bit_mask;
+	writel(value, &host->pad_base->driving_selector3[reg_off]);
+}
+
+void spmmc_init_driving(struct spmmc_host *host, u8 level)
+{
+	int i;
+
+	// SD-CARD		: 28, 29, 30, 31, 32, 33
+	// SDIO 		: 34, 35, 36, 37, 38, 39
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		for (i = 23; i <= 39; i++)
+			spmmc_set_pad_driving_strength(host, i, level);
+		break;
+	case SPMMC_MODE_EMMC:
+		for (i = 12; i <= 21; i++)
+			spmmc_set_pad_driving_strength(host, i, level);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		for (i = 28; i <= 33; i++)
+			spmmc_set_pad_driving_strength(host, i, level);
+		break;
+	}
+
+}
+
+static const char * const spmmc_sd_cap_str[] = {
+	"cap-sd-normalspeed",
+	"cap-sd-highspeed",
+	"sd-uhs-sdr12",
+	"sd-uhs-sdr25",
+	"sd-uhs-sdr50",
+	"sd-uhs-ddr50",
+	"sd-uhs-sdr104",
+};
+
+static const char * const spmmc_mmc_cap_str[] = {
+	"cap-mmc-normalspeed",
+	"cap-mmc-highspeed",
+	"mmc-ddr",
+	"mmc-hs200",
+};
+
+static int config_sd_cap_show(struct spmmc_host *host, char *buf)
+{
+	u32 idx = 0;
+
+	if (host->mode == SPMMC_MODE_EMMC) {
+		if (host->mmc->caps2 & MMC_CAP2_HS200)
+			idx = 3;
+		else if (host->mmc->caps & MMC_CAP_DDR)
+			idx = 2;
+		else if (host->mmc->caps & MMC_CAP_MMC_HIGHSPEED)
+			idx = 1;
+		return sprintf(buf, "MMC capability: %s\n",
+			spmmc_mmc_cap_str[idx]);
+	}
+
+	if (host->mmc->caps & MMC_CAP_UHS_SDR104)
+		idx = 6;
+	else if (host->mmc->caps & MMC_CAP_UHS_DDR50)
+		idx = 5;
+	else if (host->mmc->caps & MMC_CAP_UHS_SDR50)
+		idx = 4;
+	else if (host->mmc->caps & MMC_CAP_UHS_SDR25)
+		idx = 3;
+	else if (host->mmc->caps & MMC_CAP_UHS_SDR12)
+		idx = 2;
+	else if (host->mmc->caps & MMC_CAP_SD_HIGHSPEED)
+		idx = 1;
+	return sprintf(buf, "SD capability: %s\n", spmmc_sd_cap_str[idx]);
+}
+
+static int config_mmc_cap_store(struct spmmc_host *host, const char *arg)
+{
+	u32 idx = 0;
+
+	if (!strcasecmp("hs200", arg))
+		idx = 3;
+	else if (!strcasecmp("ddr", arg))
+		idx = 2;
+	else if (!strcasecmp("highspeed", arg))
+		idx = 1;
+	else if (!strcasecmp("normalspeed", arg))
+		idx = 0;
+	else
+		return SPMMC_CFG_FAIL;
+
+	host->mmc->caps &= ~(MMC_CAP_MMC_HIGHSPEED | MMC_CAP_DDR);
+	host->mmc->caps2 &= ~(MMC_CAP2_HS200);
+	switch (idx) {
+	case 3:
+		host->mmc->caps2 |= MMC_CAP2_HS200;
+		fallthrough;
+	case 2:
+		host->mmc->caps |= MMC_CAP_DDR;
+		fallthrough;
+	case 1:
+		host->mmc->caps |= MMC_CAP_MMC_HIGHSPEED;
+	}
+	return SPMMC_CFG_REINIT;
+}
+
+static int config_sd_cap_store(struct spmmc_host *host, const char *arg)
+{
+	u32 idx = 0;
+
+	if (host->mode == SPMMC_MODE_EMMC)
+		return config_mmc_cap_store(host, arg);
+
+	if (!strcasecmp("sdr104", arg))
+		idx = 6;
+	else if (!strcasecmp("ddr50", arg))
+		idx = 5;
+	else if (!strcasecmp("sdr50", arg))
+		idx = 4;
+	else if (!strcasecmp("sdr25", arg))
+		idx = 3;
+	else if (!strcasecmp("sdr12", arg))
+		idx = 2;
+	else if (!strcasecmp("highspeed", arg))
+		idx = 1;
+	else if (!strcasecmp("normalspeed", arg))
+		idx = 0;
+	else
+		return SPMMC_CFG_FAIL;
+
+	host->mmc->caps &= ~(MMC_CAP_UHS | MMC_CAP_SD_HIGHSPEED);
+	switch (idx) {
+	case 6:
+		host->mmc->caps |= MMC_CAP_UHS_SDR104;
+		fallthrough;
+	case 5:
+		host->mmc->caps |= MMC_CAP_UHS_DDR50;
+		fallthrough;
+	case 4:
+		host->mmc->caps |= MMC_CAP_UHS_SDR50;
+		fallthrough;
+	case 3:
+		host->mmc->caps |= MMC_CAP_UHS_SDR25;
+		fallthrough;
+	case 2:
+		host->mmc->caps |= MMC_CAP_UHS_SDR12;
+		fallthrough;
+	case 1:
+		host->mmc->caps |= MMC_CAP_SD_HIGHSPEED;
+	}
+	return SPMMC_CFG_REINIT;
+}
+
+static int config_driving_show(struct spmmc_host *host, char *buf)
+{
+	return sprintf(buf, "*driving=%d\n", host->driving);
+}
+
+static int config_driving_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+
+	if (kstrtoul(arg, 0, &val) || val > 7)
+		return SPMMC_CFG_FAIL;
+
+	host->driving = val;
+	spmmc_init_driving(host, host->driving);
+
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_auto_tuning_show(struct spmmc_host *host, char *buf)
+{
+	return sprintf(buf, "*auto_tuning: %s\n",
+				host->tuning_info.enable_tuning ?
+				"on" : "off");
+}
+
+static int config_auto_tuning_store(struct spmmc_host *host, const char *arg)
+{
+	if (!strcasecmp("on", arg)) {
+		host->tuning_info.enable_tuning = 1;
+		return SPMMC_CFG_SUCCESS;
+	}
+	if (!strcasecmp("off", arg)) {
+		host->tuning_info.enable_tuning = 0;
+		return SPMMC_CFG_SUCCESS;
+	}
+
+	return SPMMC_CFG_FAIL;
+}
+
+static int config_clk_dly_show(struct spmmc_host *host, char *buf)
+{
+	union spmmc_reg_timing_config0 timing;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	return sprintf(buf, "*clk_dly=%d\n", timing.bits.sd_clk_dly_sel);
+}
+
+static int config_clk_dly_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	union spmmc_reg_timing_config0 timing;
+
+	if (kstrtoul(arg, 0, &val) || val > 7)
+		return SPMMC_CFG_FAIL;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	timing.bits.sd_clk_dly_sel = val;
+	writel(timing.val, &host->base->sd_timing_config0);
+
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_wr_dly_show(struct spmmc_host *host, char *buf)
+{
+	union spmmc_reg_timing_config0 timing;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	return sprintf(buf, "*wr_dly=%d\n", timing.bits.sd_wr_dat_dly_sel);
+}
+
+static int config_wr_dly_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	union spmmc_reg_timing_config0 timing;
+
+	if (kstrtoul(arg, 0, &val) || val > 7)
+		return SPMMC_CFG_FAIL;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	timing.bits.sd_wr_dat_dly_sel = val;
+	writel(timing.val, &host->base->sd_timing_config0);
+
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_rd_dly_show(struct spmmc_host *host, char *buf)
+{
+	union spmmc_reg_timing_config0 timing;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	return sprintf(buf, "*rd_dly=%d\n", timing.bits.sd_rd_dat_dly_sel);
+}
+
+static int config_rd_dly_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	union spmmc_reg_timing_config0 timing;
+
+	if (kstrtoul(arg, 0, &val) || val > 7)
+		return SPMMC_CFG_FAIL;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	timing.bits.sd_rd_dat_dly_sel = val;
+	writel(timing.val, &host->base->sd_timing_config0);
+
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_rd_crc_dly_show(struct spmmc_host *host, char *buf)
+{
+	union spmmc_reg_timing_config0 timing;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	return sprintf(buf, "*rd_crc_dly=%d\n", timing.bits.sd_rd_crc_dly_sel);
+}
+
+static int config_rd_crc_dly_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	union spmmc_reg_timing_config0 timing;
+
+	if (kstrtoul(arg, 0, &val) || val > 7)
+		return SPMMC_CFG_FAIL;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	timing.bits.sd_rd_crc_dly_sel = val;
+	writel(timing.val, &host->base->sd_timing_config0);
+
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_timing_param_show(struct spmmc_host *host, char *buf)
+{
+	union spmmc_reg_timing_config0 timing;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	return sprintf(buf, "*rddat: %d\n"
+			    "*rdcrc: %d\n"
+			    "*rdrsp: %d\n"
+			    "*wrcmd: %d\n"
+			    "*wrdat: %d\n",
+				timing.bits.sd_rd_dat_dly_sel,
+				timing.bits.sd_rd_crc_dly_sel,
+				timing.bits.sd_rd_rsp_dly_sel,
+				timing.bits.sd_wr_cmd_dly_sel,
+				timing.bits.sd_wr_dat_dly_sel);
+}
+
+static int config_timing_param_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	union spmmc_reg_timing_config0 timing;
+	char *param, *val_s;
+	char **s = (char **)&arg;
+
+	timing.val = readl(&host->base->sd_timing_config0);
+	while ((param = strsep(s, "=")) && (val_s = strsep(s, ","))) {
+		if (kstrtoul(val_s, 0, &val) || val > 7)
+			return SPMMC_CFG_FAIL;
+		if (strcasecmp(param, "rddat") == 0)
+			timing.bits.sd_rd_dat_dly_sel = val;
+		else if (strcasecmp(param, "rdcrc") == 0)
+			timing.bits.sd_rd_crc_dly_sel = val;
+		else if (strcasecmp(param, "rdrsp") == 0)
+			timing.bits.sd_rd_rsp_dly_sel = val;
+		else if (strcasecmp(param, "wrcmd") == 0)
+			timing.bits.sd_wr_cmd_dly_sel = val;
+		else if (strcasecmp(param, "wrdat") == 0)
+			timing.bits.sd_wr_dat_dly_sel = val;
+	}
+	writel(timing.val, &host->base->sd_timing_config0);
+	return SPMMC_CFG_SUCCESS;
+}
+#endif
+
 static struct spmmc_config spmmc_configs[] = {
 	{
 		.name = "controller clock",
@@ -1259,6 +1625,48 @@ static struct spmmc_config spmmc_configs[] = {
 		.show = config_dma_int_threshold_show,
 		.store = config_dma_int_threshold_store
 	},
+#ifdef MEASUREMENT_SIGNAL
+	{
+		.name = "capability",
+		.show = config_sd_cap_show,
+		.store = config_sd_cap_store
+	},
+	{
+		.name = "driving",
+		.show = config_driving_show,
+		.store = config_driving_store
+	},
+	{
+		.name = "auto_tuning",
+		.show = config_auto_tuning_show,
+		.store = config_auto_tuning_store
+	},
+	{
+		.name = "clk_dly",
+		.show = config_clk_dly_show,
+		.store = config_clk_dly_store
+	},
+	{
+		.name = "wr_dly",
+		.show = config_wr_dly_show,
+		.store = config_wr_dly_store
+	},
+	{
+		.name = "rd_dly",
+		.show = config_rd_dly_show,
+		.store = config_rd_dly_store
+	},
+	{
+		.name = "rd_crc_dly",
+		.show = config_rd_crc_dly_show,
+		.store = config_rd_crc_dly_store
+	},
+	{
+		.name = "timing_param",
+		.show = config_timing_param_show,
+		.store = config_timing_param_store
+	},
+#endif
 	{} /* sentinel */
 };
 
@@ -1291,6 +1699,9 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 	char *name, *arg,  **s;
 	int ret;
 	int need_reinit = 0;
+	#ifdef MEASUREMENT_SIGNAL
+	int need_disable_pm = 0;
+	#endif
 	struct spmmc_config *p;
 
 	if (!host) {
@@ -1304,7 +1715,13 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 	}
 	memcpy(tmp, buf, count);
 	s = &tmp;
-	while ((name = strsep(s, "\n")) && (arg = strsep(s, "\n"))) {
+	#ifdef MEASUREMENT_SIGNAL
+	if (!pm_runtime_enabled(dev)) {
+		pm_runtime_enable(dev);
+		need_disable_pm = 1;
+	}
+	#endif
+	while ((name = strsep(s, " \n")) && (arg = strsep(s, " \n"))) {
 		p = spmmc_configs;
 		while (p->name && strcasecmp(p->name, name))
 			p++;
@@ -1319,9 +1736,17 @@ static ssize_t config_store(struct device *dev, struct device_attribute *attr,
 			pr_err("Invalid config name: %s\n", name);
 		}
 	}
-
+	#ifdef MEASUREMENT_SIGNAL
+	if (need_disable_pm)
+			pm_runtime_disable(dev);
+	#endif
 	if (need_reinit) {
 		mmc_remove_host(host->mmc);
+		#ifdef MEASUREMENT_SIGNAL
+		if (!mmc_card_is_removable(host->mmc) &&
+			host->mmc->rescan_entered)
+			host->mmc->rescan_entered = 0;
+		#endif
 		mmc_add_host(host->mmc);
 	}
 	kfree(tmp);
@@ -1384,6 +1809,10 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	int ret = 0;
 	struct mmc_host *mmc;
 	struct resource *resource;
+	#ifdef MEASUREMENT_SIGNAL
+	struct resource *res_driving;
+	struct resource *res_soft;
+	#endif
 	struct spmmc_host *host;
 	unsigned int mode;
 	#ifdef HS400
@@ -1429,6 +1858,22 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
+#ifdef MEASUREMENT_SIGNAL
+	res_driving = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (IS_ERR(res_driving)) {
+		spmmc_pr(ERROR, "get sd register res_driving fail\n");
+		ret = PTR_ERR(res_driving);
+		goto probe_free_host;
+	}
+
+	res_soft = platform_get_resource(pdev, IORESOURCE_MEM, 2);
+	if (IS_ERR(res_soft)) {
+		spmmc_pr(ERROR, "get sd register res_soft fail\n");
+		ret = PTR_ERR(res_soft);
+		goto probe_free_host;
+	}
+#endif
+
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
 		spmmc_pr(ERROR, "register size is not right\n");
 		ret = -EINVAL;
@@ -1442,6 +1887,25 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
+#ifdef MEASUREMENT_SIGNAL
+	host->pad_base = devm_ioremap(&pdev->dev, res_driving->start, resource_size(res_driving));
+	if (IS_ERR((void *)host->pad_base)) {
+		spmmc_pr(ERROR, "devm_ioremap_resource pad fail\n");
+		ret = PTR_ERR((void *)host->pad_base);
+		goto probe_free_host;
+	}
+
+	host->soft_base = devm_ioremap(&pdev->dev, res_soft->start, resource_size(res_soft));
+	if (IS_ERR((void *)host->soft_base)) {
+		spmmc_pr(ERROR, "devm_ioremap_resource soft fail\n");
+		ret = PTR_ERR((void *)host->soft_base);
+		goto probe_free_host;
+	}
+
+	//spmmc_pr(INFO, "SPSDC [host->base] 0x%x  resource 0x%x" , host->base, resource->start);
+	//spmmc_pr(INFO, "SPSDC [host->pad_base] 0x%x  resource 0x%x" , host->pad_base, (unsigned int)res_driving->start);
+	//spmmc_pr(INFO, "SPSDC [host->soft_base] 0x%x  resource 0x%x" , host->soft_base, (unsigned int)res_soft->start);
+#endif
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
 		spmmc_pr(ERROR, "get sd irq resource fail\n");

@@ -1064,7 +1064,7 @@
 
 	mmc0: mmc@f8003b00 {
 		compatible = "sunplus,q645-emmc";
-		reg = <0x0 0xf8003b00 0x0 0x180>;
+		reg = <0x0 0xf8003b00 0x0 0x180>, <0x0 0xf8003280 0x0 0x80>, <0x0 0xf8003300 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL0>;
