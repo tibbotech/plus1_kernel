@@ -374,7 +374,7 @@
 		clocks = <&clkc UADMA01>;
 		clock-names = "UADMA01";
 		resets = <&rstc RST_UADMA01>;
-		which-uart = <0>;
+		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMARX1
@@ -386,7 +386,7 @@
 		clocks = <&clkc UADMA01>;
 		clock-names = "UADMA01";
 		resets = <&rstc RST_UADMA01>;
-		which-uart = <1>;
+		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMARX2
@@ -398,7 +398,7 @@
 		clocks = <&clkc UADMA23>;
 		clock-names = "UADMA23";
 		resets = <&rstc RST_UADMA23>;
-		which-uart = <2>;
+		which-uart = <3>;
 	};
 #endif
 #ifdef ENABLE_DMARX3
@@ -410,7 +410,7 @@
 		clocks = <&clkc UADMA23>;
 		clock-names = "UADMA23";
 		resets = <&rstc RST_UADMA23>;
-		which-uart = <3>;
+		which-uart = <6>;
 	};
 #endif
 
@@ -422,7 +422,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <0>;
+		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMATX1
@@ -432,7 +432,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <1>;
+		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMATX2
@@ -442,7 +442,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <2>;
+		which-uart = <3>;
 	};
 #endif
 #ifdef ENABLE_DMATX3
@@ -452,7 +452,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <3>;
+		which-uart = <6>;
 	};
 #endif
 
