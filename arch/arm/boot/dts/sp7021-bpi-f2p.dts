@@ -51,7 +51,6 @@
 };
 
 &spi_controller0 {
-	spi-max-frequency = <25000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spim0>;
 	cs-gpios = <&pctl 26 GPIO_ACTIVE_LOW>, <&pctl 28 GPIO_ACTIVE_LOW>;
@@ -72,17 +71,14 @@
 };
 
 &spi_controller1 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller2 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller3 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 

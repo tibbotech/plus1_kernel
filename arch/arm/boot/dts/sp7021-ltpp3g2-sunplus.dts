@@ -94,7 +94,6 @@
 };
 
 &spi_controller0 {
-	spi-max-frequency = <50000000>;
 	spi-cpha;
 	spi-cpol;
 	pinctrl-names = "default";
@@ -103,21 +102,18 @@
 };
 
 &spi_controller1 {
-	spi-max-frequency = <50000000>;
 	spi-cpha;
 	spi-cpol;
 	status = "disabled";
 };
 
 &spi_controller2 {
-	spi-max-frequency = <50000000>;
 	spi-cpha;
 	spi-cpol;
 	status = "disabled";
 };
 
 &spi_controller3 {
-	spi-max-frequency = <50000000>;
 	spi-slave;
 	status = "disabled";
 };

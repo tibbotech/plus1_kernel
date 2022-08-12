@@ -71,17 +71,14 @@
 };
 
 &spi_controller1 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller2 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 
 &spi_controller3 {
-	spi-max-frequency = <25000000>;
 	status = "disabled";
 };
 

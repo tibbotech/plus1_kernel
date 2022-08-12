@@ -311,7 +311,6 @@
 };
 
 &spi_controller0 {
-	spi-max-frequency = <1500000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spim0>;
 	cs-gpios = <&pctl 40 GPIO_ACTIVE_HIGH>;
@@ -325,7 +324,6 @@
 };
 
 &spi_controller1 {
-	spi-max-frequency = <50000000>;
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -337,7 +335,6 @@
 };
 
 &spi_controller2 {
-	spi-max-frequency = <50000000>;
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
@@ -349,7 +346,6 @@
 };
 
 &spi_controller3 {
-	spi-max-frequency = <50000000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pins_spis3>;
 	spi-slave;
