@@ -31,7 +31,7 @@
 //#define IOP_REG_NAME        "iop"
 
 //#define C_CHIP
-#define P_CHIP
+//#define P_CHIP
 
 #ifdef C_CHIP
 /*for AXI monitor*/
@@ -232,6 +232,87 @@ struct sp_axi_t {
 static struct sp_axi_t *axi_monitor;
 #endif//#ifdef CONFIG_SOC_I143
 #endif//#ifdef P_CHIP
+
+#ifdef CONFIG_SOC_Q645
+/*for AXI monitor*/
+#define AXI_MONITOR_REG_NAME      "axi_mon"
+#define AXI_IP_00_REG_NAME		  "axi_0"
+#define AXI_IP_01_REG_NAME		  "axi_1"
+#define AXI_IP_02_REG_NAME		  "axi_2"
+#define AXI_IP_03_REG_NAME		  "axi_3"
+#define AXI_IP_04_REG_NAME        "axi_4"
+#define AXI_IP_06_REG_NAME	      "axi_6"
+#define AXI_IP_07_REG_NAME		  "axi_7"
+#define AXI_IP_08_REG_NAME		  "axi_8"
+#define AXI_IP_09_REG_NAME        "axi_9"
+#define AXI_IP_10_REG_NAME        "axi_10"
+#define AXI_IP_11_REG_NAME		  "axi_11"
+#define AXI_IP_13_REG_NAME		  "axi_13"
+#define AXI_IP_14_REG_NAME        "axi_14"
+#define AXI_IP_15_REG_NAME        "axi_15"
+#define AXI_IP_16_REG_NAME	      "axi_16"
+#define AXI_IP_17_REG_NAME		  "axi_17"
+#define AXI_IP_18_REG_NAME		  "axi_18"
+#define AXI_IP_19_REG_NAME        "axi_19"
+#define DEVICE_NAME			"sunplus,q645-axi"
+
+/*Device ID*/
+#define CA55		0
+#define N78_MA		1
+#define G31_MA	    2
+#define RB_SL		3
+#define SDPROT0_SL	4
+#define CPIOL0_MA	6
+#define CPIOL1_MA	7
+#define CSIIW0_MA	8
+#define CSIIW1_MA	9
+#define VCL_MA		10
+#define CPIOL_SL	11
+#define CPIOR0_MA	13
+#define CPIOR1_MA	14
+#define CSIIW2_MA	15
+#define CSIIW3_MA	16
+#define USB30C0_MA	17
+#define USB30C1_MA	18
+#define CPIOR_SL	19
+#define valid_id	1
+#define invalid_id	0
+
+struct sp_axi_t {
+	struct miscdevice dev;
+	struct mutex write_lock;
+	//void __iomem *iop_regs;
+	//void __iomem *moon0_regs;
+	//void __iomem *qctl_regs;
+	//void __iomem *pmc_regs;
+	//void __iomem *rtc_regs;
+	/*for AXI monitor*/
+	void __iomem *axi_mon_regs;
+	void __iomem *axi_id0_regs;
+	void __iomem *axi_id1_regs;
+	void __iomem *axi_id2_regs;
+	void __iomem *axi_id3_regs;
+	void __iomem *axi_id4_regs;
+	void __iomem *axi_id6_regs;
+	void __iomem *axi_id7_regs;
+	void __iomem *axi_id8_regs;
+	void __iomem *axi_id9_regs;
+	void __iomem *axi_id10_regs;
+	void __iomem *axi_id11_regs;
+	void __iomem *axi_id13_regs;
+	void __iomem *axi_id14_regs;
+	void __iomem *axi_id15_regs;
+	void __iomem *axi_id16_regs;
+	void __iomem *axi_id17_regs;
+	void __iomem *axi_id18_regs;
+	void __iomem *axi_id19_regs;
+	void __iomem *axi_cbdma_regs;
+	void __iomem *current_id_regs;
+	int irq;
+};
+static struct sp_axi_t *axi_monitor;
+#endif
+
 
 
 /*AXI Monitor Validation end*/
@@ -508,6 +589,85 @@ void Get_current_id(unsigned char device_id)
 		}
 #endif// #ifdef CONFIG_SOC_I143
 #endif
+
+#ifdef CONFIG_SOC_Q645
+		/*Device ID*/
+		switch (device_id) {
+		case CA55:
+			DBG_INFO("CA55\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id0_regs;
+			break;
+		case N78_MA:
+			DBG_INFO("N78_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id1_regs;
+			break;
+		case G31_MA:
+			DBG_INFO("G31_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id2_regs;
+			break;
+		case RB_SL:
+			DBG_INFO("RB_SL\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id3_regs;
+			break;
+		case SDPROT0_SL:
+			DBG_INFO("SDPROT0_SL\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id4_regs;
+			break;
+		case CPIOL0_MA:
+			DBG_INFO("CPIOL0_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id6_regs;
+			break;
+		case CPIOL1_MA:
+			DBG_INFO("CPIOL1_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id7_regs;
+			break;
+		case CSIIW0_MA:
+			DBG_INFO("CSIIW0_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id8_regs;
+			break;
+		case CSIIW1_MA:
+			DBG_INFO("CSIIW1_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id9_regs;
+			break;
+		case VCL_MA:
+			DBG_INFO("VCL_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id10_regs;
+			break;
+		case CPIOL_SL:
+			DBG_INFO("CPIOL_SL\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id11_regs;
+			break;
+		case CPIOR0_MA:
+			DBG_INFO("CPIOR0_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id13_regs;
+			break;	
+		case CPIOR1_MA:
+			DBG_INFO("CPIOR1_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id14_regs;
+			break;	
+		case CSIIW2_MA:
+			DBG_INFO("CSIIW2_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id15_regs;
+			break;
+		case CSIIW3_MA:
+			DBG_INFO("CSIIW3_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id16_regs;
+			break;
+		case USB30C0_MA:
+			DBG_INFO("USB30C0_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id17_regs;
+			break;
+		case USB30C1_MA:
+			DBG_INFO("USB30C1_MA\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id18_regs;
+			break;
+		case CPIOR_SL:
+			DBG_INFO("CPIOR_SL\n");
+			axi_monitor->current_id_regs = axi_monitor->axi_id19_regs;
+			break;
+		}
+#endif// #ifdef CONFIG_SOC_I143
+
 }
 
 static int Check_current_id(unsigned char device_id)
@@ -581,6 +741,35 @@ static int Check_current_id(unsigned char device_id)
 	}
 #endif
 #endif
+
+#ifdef CONFIG_SOC_Q645
+	switch (device_id) {
+	case CA55:
+	case N78_MA:
+	case G31_MA:
+	case RB_SL:
+	case SDPROT0_SL:
+	case CPIOL0_MA:
+	case CPIOL1_MA:
+	case CSIIW0_MA:
+	case CSIIW1_MA:
+	case VCL_MA:
+	case CPIOL_SL:
+	case CPIOR0_MA:
+	case CPIOR1_MA:
+	case CSIIW2_MA:
+	case CSIIW3_MA:
+	case USB30C0_MA:
+	case USB30C1_MA:
+	case CPIOR_SL:
+		DBG_INFO("valid_id");
+		return valid_id;
+	default:
+		DBG_INFO("invalid_id");
+		return invalid_id;
+	}
+#endif
+
 }
 
 static irqreturn_t axi_irq_handler(int irq, void *data)
@@ -674,11 +863,13 @@ void axi_mon_BW_Monitor(void __iomem *axi_mon_regs, void __iomem *axi_id_regs, u
 	regs_axi_t *axi = (regs_axi_t *)axi_mon_regs;
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
 
-	DBG_INFO("axi_mon_regs=0x%p\n", axi);
-	DBG_INFO("axi_id=0x%p\n", axi_id);
+	DBG_INFO("axi_mon_regs=0x%px\n", axi);
+	DBG_INFO("axi_id=0x%px\n", axi_id);
 
-	//data = BW update period, BW Monitor Start=1
-	writel(0x00000010 | (data << 12), &axi->axi_control);
+	//data = BW update period, BW Monitor Start=1, Latency Monitor Start =1
+	writel(0x00000111 | (data << 12), &axi->axi_control);	
+	//IP Monitor Enable = 1
+	writel(0x00000001, &axi_id->sub_ip_monitor);
 }
 
 void axi_mon_BW_Value(void __iomem *axi_id_regs)
@@ -686,13 +877,21 @@ void axi_mon_BW_Value(void __iomem *axi_id_regs)
 	regs_submonitor_t *axi_id = (regs_submonitor_t *)axi_id_regs;
 	unsigned long long temp;
 
-	DBG_INFO("axi_id=0x%p\n", axi_id);
+	DBG_INFO("axi_id=0x%px\n", axi_id);
+	temp = readl(&axi_id->sub_ip_monitor);
+	DBG_INFO("sub_ip_monitor=0x%llx\n", temp);
+	temp = readl(&axi_id->sub_event);
+	DBG_INFO("sub_event=0x%llx\n", temp);
 	temp = readl(&axi_id->sub_bw);
 	DBG_INFO("sub_bw=0x%llx\n", temp);
 	temp = readl(&axi_id->sub_wcomd_count);
+	DBG_INFO("sub_wcomd_count=0x%llx\n", temp);
 	temp = readl(&axi_id->axi_wcomd_execute_cycle_time);
+	DBG_INFO("axi_wcomd_execute_cycle_time=0x%llx\n", temp);
 	temp = readl(&axi_id->axi_rcomd_count);
+	DBG_INFO("axi_rcomd_count=0x%llx\n", temp);
 	temp = readl(&axi_id->axi_rcomd_execute_cycle_time);
+	DBG_INFO("axi_rcomd_execute_cycle_time=0x%llx\n", temp);
 }
 
 #ifdef CONFIG_SOC_I143
@@ -958,6 +1157,7 @@ static ssize_t bw_monitor_show(struct device *dev, struct device_attribute *attr
 	ssize_t len = 0;
 
 	DBG_INFO("[AXI] %s\n", __func__);
+	axi_mon_BW_Value(axi_monitor->current_id_regs);
 	return len;
 }
 
@@ -1062,6 +1262,9 @@ static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned int 
 #ifdef CONFIG_SOC_I143
 static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned long long *membase, const char *res_name)
 #endif
+#ifdef CONFIG_SOC_Q645
+static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned long long *membase, const char *res_name)
+#endif
 {
 	struct resource *r;
 	void __iomem *p;
@@ -1084,6 +1287,10 @@ static int _sp_axi_get_register_base(struct platform_device *pdev, unsigned long
 #ifdef CONFIG_SOC_I143
 	*membase = (unsigned long long)p;
 #endif
+#ifdef CONFIG_SOC_Q645
+	*membase = (unsigned long long)p;
+#endif
+
 	return IOP_SUCCESS;
 }
 
@@ -1095,6 +1302,9 @@ static int _sp_axi_get_resources(struct platform_device *pdev, struct sp_axi_t *
 	unsigned int membase = 0;
 #endif
 #ifdef CONFIG_SOC_I143
+	unsigned long long membase = 0;
+#endif
+#ifdef CONFIG_SOC_Q645
 	unsigned long long membase = 0;
 #endif
 
@@ -1424,6 +1634,142 @@ static int _sp_axi_get_resources(struct platform_device *pdev, struct sp_axi_t *
 		DBG_ERR("dummy master %s (%d) ret = %d\n", __func__, __LINE__, ret);
 #endif//#ifdef CONFIG_SOC_I143
 #endif
+#ifdef CONFIG_SOC_Q645
+		/*for AXI monitor*/
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_mon_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_00_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id0_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_01_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id1_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_02_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id2_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_03_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id3_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_04_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id4_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_06_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id6_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_07_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id7_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_08_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id8_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_09_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id9_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_10_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id10_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_11_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id11_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_13_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id13_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_14_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id14_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_15_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id15_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_16_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id16_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_17_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id17_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_18_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id18_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_19_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id19_regs = (void __iomem *)membase;
+#endif//#ifdef CONFIG_SOC_Q645
+
 	return IOP_SUCCESS;
 }
 
@@ -1495,6 +1841,7 @@ static int sp_axi_platform_driver_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_dummy_master);
 #endif
 
+#if defined(C_CHIP) || defined(P_CHIP)
 	/* clk*/
 	DBG_INFO("Enable AXI clock\n");
 	sp_axi.axiclk = devm_clk_get(&pdev->dev, NULL);
@@ -1515,17 +1862,18 @@ static int sp_axi_platform_driver_probe(struct platform_device *pdev)
 	ret = reset_control_deassert(sp_axi.rstc);
 	if (ret)
 		goto free_clk;
-
+#endif
 
 
 fail_regdev:
 	mutex_destroy(&axi_monitor->write_lock);
 fail_kmalloc:
 	return ret;
+#if defined(C_CHIP) || defined(P_CHIP)
 free_clk:
 	clk_disable_unprepare(sp_axi.axiclk);
 	return ret;
-
+#endif
 }
 
 static int sp_axi_platform_driver_remove(struct platform_device *pdev)
@@ -1552,6 +1900,7 @@ static int sp_axi_platform_driver_resume(struct platform_device *pdev)
 static const struct of_device_id sp_axi_of_match[] = {
 	{ .compatible = "sunplus,sp7021-axi" },
 	{ .compatible = "sunplus,i143-axi", },
+	{ .compatible = "sunplus,q645-axi", },
 	{ /* sentinel */ },
 };
 
