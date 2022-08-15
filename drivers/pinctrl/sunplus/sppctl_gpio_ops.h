@@ -82,4 +82,6 @@ int sppctlgpio_xlate(struct gpio_chip *_c, const struct of_phandle_args *_a,
 
 int sppctlgpio_i_map(struct gpio_chip *_c, unsigned int _off);
 
+void sppctlgpio_unmux_irq( struct gpio_chip *_c, unsigned _pin);
+
 #endif // SPPCTL_GPIO_OPS_H
