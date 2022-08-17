@@ -1061,6 +1061,8 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 
 	sp_i2cm_reset(sr);
 
+	dma_unmap_single(spi2c->dev, spi2c_cmd->write_data,
+			spi2c_cmd->write_cnt, DMA_TO_DEVICE);
 	return ret;
 }
 
@@ -1171,6 +1173,8 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 	spi2c_irq->busy = 0;
 
 	sp_i2cm_reset(sr);
+	dma_unmap_single(spi2c->dev, spi2c_cmd->read_data,
+			spi2c_cmd->read_cnt, DMA_FROM_DEVICE);
 	return ret;
 }
 
