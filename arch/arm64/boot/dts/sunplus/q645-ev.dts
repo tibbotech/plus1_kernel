@@ -29,6 +29,8 @@
 //#define TP2815_IN0
 //#define TP2815_IN2
 
+//#define SPI_SLAVE
+
 / {
 	model = "Sunplus Q645";
 	compatible = "sunplus,sp-q645";
@@ -836,8 +838,17 @@
 		clocks = <&clkc SPI_COMBO_3>;
 		resets = <&rstc RST_SPI_COMBO_3>;
 		pinctrl-names = "default";
+#ifdef SPI_SLAVE
+		pinctrl-0 = <&spis3_pins>;
+		slave;
+		slave@0 {
+			compatible = "rohm,dh2228fv";
+			reg = <0x0>;
+			status = "okay";
+		};
+#else
 		pinctrl-0 = <&spim3_pins>;
-		status = "disabled";
+#endif
 	};
 
 	spi_controller4: spi@f8004100 {
