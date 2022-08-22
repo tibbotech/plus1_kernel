@@ -872,21 +872,8 @@
 			interrupts = <66 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc L2SW>;
 			resets = <&rstc RST_L2SW>;
-			phy-handle1 = <&eth_phy0>;
-			phy-handle2 = <&eth_phy1>;
 			nvmem-cell-names = "mac_addr0", "mac_addr1";
 			nvmem-cells = <&mac_addr0>, <&mac_addr1>;
-
-			mdio {
-				#address-cells = <1>;
-				#size-cells = <0>;
-				eth_phy0: ethernet-phy@0 {
-					reg = <0>;
-				};
-				eth_phy1: ethernet-phy@1 {
-					reg = <1>;
-				};
-			};
 		};
 
 		mmc0: mmc@9c003b00 {

@@ -67,6 +67,19 @@
 &l2sw {
  pinctrl-names = "default";
  pinctrl-0 = <&ethA_pins &eth0_pins &eth1_pins>;
+
+ phy-handle1 = <&eth_phy0>;
+ phy-handle2 = <&eth_phy1>;
+ mdio {
+   #address-cells = <1>;
+   #size-cells = <0>;
+   eth_phy0: ethernet-phy@0 {
+     reg = <0>;
+   };
+   eth_phy1: ethernet-phy@1 {
+     reg = <1>;
+   };
+ };
 };
 
 &mmc0 {
