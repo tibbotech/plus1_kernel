@@ -41,6 +41,8 @@ void spl2sw_mac_hw_start(struct spl2sw_mac *mac)
 	reg = readl(comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 	writel(reg & (~(comm->enable << 24)), comm->l2sw_reg_base + L2SW_PORT_CNTL0);
 
+	writel(MAC_INT_MASK_DEF, comm->l2sw_reg_base + L2SW_SW_INT_MASK_0);
+
 	//spl2sw_mac_regs_print();
 }
 
