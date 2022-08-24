@@ -809,9 +809,9 @@ static int sunplus_spi_slave_fd_burst_xfer(struct spi_controller *ctlr, struct s
 	reg_temp |= SUNPLUS_SLAVESLA_DATA_READY;
 	writel(reg_temp, pspim->s_base + SUNPLUS_SLAVE_CFG_REG);
 
-	for (i = 0; i <= 14; i++) {
-		pr_info(" Group spi_reg %d value 0x%x\n",i ,readl(pspim->s_base + (i * 4)));
-	}
+	//for (i = 0; i <= 14; i++) {
+	//	pr_info(" Group spi_reg %d value 0x%x\n",i ,readl(pspim->s_base + (i * 4)));
+	//}
 
 	if (wait_for_completion_interruptible(&pspim->slave_isr)) {
 		dev_err(dev, "wait_for_completion\n");
@@ -863,7 +863,7 @@ static int sunplus_spi_slave_transfer_one(struct spi_controller *ctlr, struct sp
 	struct sunplus_spi_ctlr *pspim = spi_master_get_devdata(ctlr);
 
 	if (pspim->dev_comp->ver > 1) {
-		if((xfer->tx_buf) && (xfer->len > 16)) 
+		if(xfer->len > 16) 
 			return sunplus_spi_slave_fd_dma_xfer(ctlr, spi, xfer);
 		else
 			return sunplus_spi_slave_fd_burst_xfer(ctlr, spi, xfer);
@@ -951,7 +951,7 @@ static int sunplus_spi_controller_probe(struct platform_device *pdev)
 	struct spi_controller *ctlr;
 	int mode, ret;
 
-	pdev->id = of_alias_get_id(pdev->dev.of_node, "spicb");
+	pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
 
 	if (device_property_read_bool(dev, "slave"))
 		mode = SUNPLUS_SLAVE_MODE;

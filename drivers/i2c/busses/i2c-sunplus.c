@@ -159,15 +159,23 @@ enum sp_i2c_switch_e_ {
 	SP_I2C_DMA_POWER_SW = 1,
 };
 
+enum sp_i2c_xfer_mode {
+	I2C_PIO_MODE,
+	I2C_DMA_MODE,
+};
+
 struct sp_i2c_cmd {
+	unsigned int xfer_mode;
 	unsigned int dev_id;
 	unsigned int freq;
 	unsigned int slave_addr;
 	unsigned int restart_en;
-	unsigned int write_cnt;
-	unsigned int read_cnt;
+	unsigned int xfer_cnt;
+	unsigned int restart_write_cnt;
 	unsigned char *write_data;
 	unsigned char *read_data;
+	dma_addr_t dma_w_addr;
+	dma_addr_t dma_r_addr;
 };
 
 struct sp_i2c_irq_dma_flag {
@@ -839,11 +847,13 @@ static int sp_i2cm_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 		return -ENXIO;
 	}
 
+	//pr_info("sp_i2cm_read %d\n",spi2c_cmd->xfer_cnt);
+
 	memset(spi2c_irq, 0, sizeof(*spi2c_irq));
 	spi2c_irq->busy = 1;
 
-	write_cnt = spi2c_cmd->write_cnt;
-	read_cnt = spi2c_cmd->read_cnt;
+	write_cnt = spi2c_cmd->restart_write_cnt;
+	read_cnt = spi2c_cmd->xfer_cnt;
 
 	if (spi2c_cmd->restart_en) {
 		if (write_cnt > 32) {
@@ -887,8 +897,8 @@ static int sp_i2cm_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 	sp_i2cm_active_mode_set(sr, I2C_TRIGGER);
 
 	if (spi2c_cmd->restart_en) {
-		write_cnt = spi2c_cmd->write_cnt  / 4;
-		if (spi2c_cmd->write_cnt % 4)
+		write_cnt = spi2c_cmd->restart_write_cnt / 4;
+		if (spi2c_cmd->restart_write_cnt % 4)
 			write_cnt += 1;
 
 		sp_i2cm_data_tx(sr, spi2c_cmd->write_data, write_cnt);
@@ -926,16 +936,20 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 	unsigned int int0 = 0;
 	int ret = SPI2C_SUCCESS;
 	int i = 0;
+	dma_addr_t dma_w_addr = 0;
+
 
 	if (spi2c_irq->busy || spi2c_cmd->dev_id > spi2c->total_port) {
 		dev_err(spi2c->dev, "IO error !!\n");
 		return -ENXIO;
 	}
 
+	//pr_info("sp_i2cm_wr %d\n",spi2c_cmd->xfer_cnt);
+
 	memset(spi2c_irq, 0, sizeof(*spi2c_irq));
 	spi2c_irq->busy = 1;
 
-	write_cnt = spi2c_cmd->write_cnt;
+	write_cnt = spi2c_cmd->xfer_cnt;
 
 	if (write_cnt > 0xFFFF) {
 		spi2c_irq->busy = 0;
@@ -943,6 +957,15 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 			"I2C write count is invalid !! write count=%d\n", write_cnt);
 		return -EINVAL;
 	}
+
+	dma_w_addr = dma_map_single(spi2c->dev, spi2c_cmd->write_data,
+				    spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
+
+	if (dma_mapping_error(spi2c->dev, dma_w_addr))
+		return -ENOMEM;
+
+	dma_unmap_single(spi2c->dev, dma_w_addr,
+			spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
 
 	burst_cnt = write_cnt  / 4;
 	if (write_cnt % 4)
@@ -991,7 +1014,7 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 	return ret;
 }
 
-static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
+static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c, struct i2c_msg *msgs)
 {
 	struct sp_i2c_irq_event *spi2c_irq = &spi2c->spi2c_irq;
 	void __iomem *sr_dma = spi2c->i2c_dma_regs;
@@ -999,7 +1022,6 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 	unsigned int int0 = 0;
 	unsigned int dma_int = 0;
 	int ret = SPI2C_SUCCESS;
-	dma_addr_t dma_w_addr = 0;
 
 	if (spi2c_irq->busy || spi2c_cmd->dev_id > spi2c->total_port) {
 		dev_err(spi2c->dev, "IO error !!\n");
@@ -1012,19 +1034,13 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 	memset(spi2c_irq, 0, sizeof(*spi2c_irq));
 	spi2c_irq->busy = 1;
 
-	if (spi2c_cmd->write_cnt > 0xFFFF) {
+	if (spi2c_cmd->xfer_cnt > 0xFFFF) {
 		spi2c_irq->busy = 0;
-		dev_err(spi2c->dev, "write count = %d is invalid!\n", spi2c_cmd->write_cnt);
+		dev_err(spi2c->dev, "write count = %d is invalid!\n", spi2c_cmd->xfer_cnt);
 		return -EINVAL;
 	}
 
 	spi2c_irq->rw_state = SPI2C_STATE_DMA_WR;
-
-	dma_w_addr = dma_map_single(spi2c->dev, spi2c_cmd->write_data,
-				    spi2c_cmd->write_cnt, DMA_TO_DEVICE);
-
-	if (dma_mapping_error(spi2c->dev, dma_w_addr))
-		return -ENOMEM;
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMPTY_INT
 	 | SP_I2C_EN0_DATA_NACK_INT | SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
@@ -1040,8 +1056,8 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 	sp_i2cm_rw_mode_set(sr, I2C_WRITE_MODE);
 	sp_i2cm_int_en0_set(sr, int0);
 
-	sp_i2cm_dma_addr_set(sr_dma, dma_w_addr);
-	sp_i2cm_dma_length_set(sr_dma, spi2c_cmd->write_cnt);
+	sp_i2cm_dma_addr_set(sr_dma, spi2c_cmd->dma_w_addr);
+	sp_i2cm_dma_length_set(sr_dma, spi2c_cmd->xfer_cnt);
 	sp_i2cm_dma_rw_mode_set(sr_dma, I2C_DMA_READ_MODE);
 	sp_i2cm_dma_int_en_set(sr_dma, dma_int);
 	sp_i2cm_dma_go_set(sr_dma);
@@ -1060,13 +1076,10 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 	spi2c_irq->busy = 0;
 
 	sp_i2cm_reset(sr);
-
-	dma_unmap_single(spi2c->dev, spi2c_cmd->write_data,
-			spi2c_cmd->write_cnt, DMA_TO_DEVICE);
 	return ret;
 }
 
-static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
+static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c, struct i2c_msg *msgs)
 {
 	struct sp_i2c_irq_event *spi2c_irq = &spi2c->spi2c_irq;
 	void __iomem *sr_dma = spi2c->i2c_dma_regs;
@@ -1076,7 +1089,6 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 	unsigned int read_cnt = 0;
 	unsigned int dma_int = 0;
 	int ret = SPI2C_SUCCESS;
-	dma_addr_t dma_r_addr = 0;
 
 	if (spi2c_irq->busy || spi2c_cmd->dev_id > spi2c->total_port) {
 		dev_err(spi2c->dev, "IO error !!\n");
@@ -1089,8 +1101,8 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 	memset(spi2c_irq, 0, sizeof(*spi2c_irq));
 	spi2c_irq->busy = 1;
 
-	write_cnt = spi2c_cmd->write_cnt;
-	read_cnt = spi2c_cmd->read_cnt;
+	write_cnt = spi2c_cmd->restart_write_cnt;
+	read_cnt = spi2c_cmd->xfer_cnt;
 
 	if (spi2c_cmd->restart_en) {
 		if (write_cnt > 32) {
@@ -1107,12 +1119,6 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 			"I2C read count is invalid !! read count=%d\n", read_cnt);
 		return -EINVAL;
 	}
-
-	dma_r_addr = dma_map_single(spi2c->dev, spi2c_cmd->read_data,
-				    spi2c_cmd->read_cnt, DMA_FROM_DEVICE);
-
-	if (dma_mapping_error(spi2c->dev, dma_r_addr))
-		return -ENOMEM;
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMPTY_INT | SP_I2C_EN0_DATA_NACK_INT
 		| SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
@@ -1134,8 +1140,8 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 		sp_i2cm_active_mode_set(sr, I2C_TRIGGER);
 		sp_i2cm_rw_mode_set(sr, I2C_RESTART_MODE);
 		sp_i2cm_trans_cnt_set(sr, write_cnt, read_cnt);
-		write_cnt = spi2c_cmd->write_cnt  / 4;
-		if (spi2c_cmd->write_cnt % 4)
+		write_cnt = spi2c_cmd->restart_write_cnt  / 4;
+		if (spi2c_cmd->restart_write_cnt % 4)
 			write_cnt += 1;
 
 		sp_i2cm_data_tx(sr, spi2c_cmd->write_data, write_cnt);
@@ -1149,8 +1155,8 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 	sp_i2cm_int_en1_set(sr, int1);
 	sp_i2cm_int_en2_set(sr, int2);
 
-	sp_i2cm_dma_addr_set(sr_dma, dma_r_addr);
-	sp_i2cm_dma_length_set(sr_dma, spi2c_cmd->read_cnt);
+	sp_i2cm_dma_addr_set(sr_dma, spi2c_cmd->dma_r_addr);
+	sp_i2cm_dma_length_set(sr_dma, spi2c_cmd->xfer_cnt);
 	sp_i2cm_dma_rw_mode_set(sr_dma, I2C_DMA_WRITE_MODE);
 	sp_i2cm_dma_int_en_set(sr_dma, dma_int);
 	sp_i2cm_dma_go_set(sr_dma);
@@ -1173,8 +1179,6 @@ static int sp_i2cm_dma_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi
 	spi2c_irq->busy = 0;
 
 	sp_i2cm_reset(sr);
-	dma_unmap_single(spi2c->dev, spi2c_cmd->read_data,
-			spi2c_cmd->read_cnt, DMA_FROM_DEVICE);
 	return ret;
 }
 
@@ -1185,6 +1189,8 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 	unsigned char restart_w_data[32] = {0};
 	unsigned int  restart_write_cnt = 0;
 	unsigned int  restart_en = 0;
+	u8 *r_buf;
+	u8 *w_buf;
 	int ret = SPI2C_SUCCESS;
 	int i = 0;
 
@@ -1204,6 +1210,9 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 	for (i = 0; i < num; i++) {
 		if (msgs[i].flags & I2C_M_TEN)
 			return -EINVAL;
+		r_buf = NULL;
+		w_buf = NULL;
+		spi2c_cmd->xfer_mode = I2C_PIO_MODE;
 
 		spi2c_cmd->slave_addr = msgs[i].addr;
 		if (msgs[i].flags & I2C_M_NOSTART) {
@@ -1214,34 +1223,60 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 			restart_en = 1;
 			continue;
 		}
+		//pr_info(" xfer len %d\n",msgs[i].len);
+		spi2c_cmd->xfer_cnt  = msgs[i].len;
 		if (msgs[i].flags & I2C_M_RD) {
 			if (restart_en == 1) {
-				spi2c_cmd->write_cnt = restart_write_cnt;
+				spi2c_cmd->restart_write_cnt = restart_write_cnt;
 				spi2c_cmd->write_data = restart_w_data;
 				restart_en = 0;
 				spi2c_cmd->restart_en = 1;
 			}
-			spi2c_cmd->read_cnt = msgs[i].len;
-			spi2c_cmd->read_data = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
 
-			if (spi2c_cmd->read_cnt < 4 || !spi2c_cmd->read_data) {
+			if(spi2c_cmd->xfer_cnt > 16) {
+				r_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+				if (r_buf) {
+					spi2c_cmd->dma_r_addr = dma_map_single(spi2c->dev, r_buf,
+						spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
+					if (dma_mapping_error(spi2c->dev, spi2c_cmd->dma_r_addr))
+						i2c_put_dma_safe_msg_buf(r_buf, &msgs[i], false);
+					else
+						spi2c_cmd->xfer_mode = I2C_DMA_MODE;
+				}
+			}
+
+			if (spi2c_cmd->xfer_mode == I2C_PIO_MODE) {
 				spi2c_cmd->read_data = msgs[i].buf;
 				ret = sp_i2cm_read(spi2c_cmd, spi2c);
 			} else {
-				ret = sp_i2cm_dma_read(spi2c_cmd, spi2c);
-				i2c_put_dma_safe_msg_buf(spi2c_cmd->read_data, &msgs[i], true);
+				ret = sp_i2cm_dma_read(spi2c_cmd, spi2c, &msgs[i]);
+				dma_unmap_single(spi2c->dev, spi2c_cmd->dma_r_addr,
+					spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
+				i2c_put_dma_safe_msg_buf(r_buf, &msgs[i], true);
+				
 			}
 		} else {
-			spi2c_cmd->write_cnt = msgs[i].len;
-			spi2c_cmd->write_data = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
-				if (spi2c_cmd->write_cnt < 4 || !spi2c_cmd->write_data) {
-					spi2c_cmd->write_data = msgs[i].buf;
-					ret = sp_i2cm_write(spi2c_cmd, spi2c);
-				} else {
-					ret = sp_i2cm_dma_write(spi2c_cmd, spi2c);
-					i2c_put_dma_safe_msg_buf(spi2c_cmd->write_data,
-								 &msgs[i], true);
+			if(spi2c_cmd->xfer_cnt > 16) {
+				w_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+				if (w_buf) {
+					spi2c_cmd->dma_w_addr = dma_map_single(spi2c->dev, w_buf,
+				    				spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
+					if (dma_mapping_error(spi2c->dev, spi2c_cmd->dma_w_addr))
+						i2c_put_dma_safe_msg_buf(w_buf, &msgs[i], false);
+					else
+						spi2c_cmd->xfer_mode = I2C_DMA_MODE;
 				}
+			}
+			
+			if (spi2c_cmd->xfer_mode == I2C_PIO_MODE) {
+				spi2c_cmd->write_data = msgs[i].buf;
+				ret = sp_i2cm_write(spi2c_cmd, spi2c);
+			} else {
+				ret = sp_i2cm_dma_write(spi2c_cmd, spi2c, &msgs[i]);
+				dma_unmap_single(spi2c->dev, spi2c_cmd->dma_w_addr,
+					spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
+				i2c_put_dma_safe_msg_buf(w_buf, &msgs[i], true);
+			}
 		}
 		if (ret != SPI2C_SUCCESS)
 			return -EIO;
