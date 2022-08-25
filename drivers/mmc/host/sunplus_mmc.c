@@ -147,6 +147,9 @@ static inline void spmmc_softpad_get(
 	u32 value;
 
 	switch (host->mode) {
+	case SPMMC_MODE_EMMC:
+		value = readl(&host->soft_base->emmc_sftpad_ctl[0]);
+		break;
 	case SPMMC_MODE_SDIO:
 		value = readl(&host->soft_base->sdio_sftpad_ctl[0]);
 		break;
@@ -154,6 +157,7 @@ static inline void spmmc_softpad_get(
 	default:
 		value = readl(&host->soft_base->sd_sftpad_ctl[0]);
 		break;
+
 	}
 	config->bits.rd_rsp_level = bitfield_extract(value, 16, 2);
 	config->bits.rd_dat_level = bitfield_extract(value, 18, 2);
@@ -170,6 +174,9 @@ static inline void spmmc_softpad_set(
 	spmmc_pr(DEBUG, "softpad_set  host->mode %d\n", host->mode);
 
 	switch (host->mode) {
+	case SPMMC_MODE_EMMC:
+		value = readl(&host->soft_base->emmc_sftpad_ctl[0]);
+		break;
 	case SPMMC_MODE_SDIO:
 		value = readl(&host->soft_base->sdio_sftpad_ctl[0]);
 		break;
@@ -187,6 +194,9 @@ static inline void spmmc_softpad_set(
 				config->bits.rd_dat_level);
 
 	switch (host->mode) {
+	case SPMMC_MODE_EMMC:
+		writel(value, &host->soft_base->emmc_sftpad_ctl[0]);
+		break;
 	case SPMMC_MODE_SDIO:
 		writel(value, &host->soft_base->sdio_sftpad_ctl[0]);
 		break;
@@ -203,6 +213,9 @@ static inline void spmmc_softpad_en(struct spmmc_host *host, u8 en)
 
 	return;
 	switch (host->mode) {
+	case SPMMC_MODE_EMMC:
+		value = readl(&host->soft_base->emmc_sftpad_ctl[1]);
+		break;
 	case SPMMC_MODE_SDIO:
 		value = readl(&host->soft_base->sdio_sftpad_ctl[1]);
 		break;
@@ -220,6 +233,9 @@ static inline void spmmc_softpad_en(struct spmmc_host *host, u8 en)
 		value = bitfield_replace(value, 1, 5, 0);
 	}
 	switch (host->mode) {
+	case SPMMC_MODE_EMMC:
+		writel(value, &host->soft_base->emmc_sftpad_ctl[1]);
+		break;
 	case SPMMC_MODE_SDIO:
 		writel(value, &host->soft_base->sdio_sftpad_ctl[1]);
 		break;

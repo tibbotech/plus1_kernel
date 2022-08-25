@@ -242,7 +242,7 @@ struct pad_ctl_regs {
 };
 
 struct pad_soft_regs {
-	unsigned int emmc_sftpad_ctl[3];  // 102.0 - 101.2
+	unsigned int emmc_sftpad_ctl[3];  // 101.0 - 101.2
 	unsigned int sdind_sftpad_ctl[2]; // 101.3 - 101.4
 	unsigned int sd_sftpad_ctl[2]; // 101.5 - 101.6
 	unsigned int sdio_sftpad_ctl[2]; // 101.7 - 101.8
