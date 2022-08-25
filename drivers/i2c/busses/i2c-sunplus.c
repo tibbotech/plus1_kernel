@@ -160,8 +160,8 @@ enum sp_i2c_switch_e_ {
 };
 
 enum sp_i2c_xfer_mode {
-	I2C_PIO_MODE,
-	I2C_DMA_MODE,
+	I2C_PIO_MODE = 0,
+	I2C_DMA_MODE = 1,
 };
 
 struct sp_i2c_cmd {
@@ -936,8 +936,6 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 	unsigned int int0 = 0;
 	int ret = SPI2C_SUCCESS;
 	int i = 0;
-	dma_addr_t dma_w_addr = 0;
-
 
 	if (spi2c_irq->busy || spi2c_cmd->dev_id > spi2c->total_port) {
 		dev_err(spi2c->dev, "IO error !!\n");
@@ -957,15 +955,6 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 			"I2C write count is invalid !! write count=%d\n", write_cnt);
 		return -EINVAL;
 	}
-
-	dma_w_addr = dma_map_single(spi2c->dev, spi2c_cmd->write_data,
-				    spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
-
-	if (dma_mapping_error(spi2c->dev, dma_w_addr))
-		return -ENOMEM;
-
-	dma_unmap_single(spi2c->dev, dma_w_addr,
-			spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
 
 	burst_cnt = write_cnt  / 4;
 	if (write_cnt % 4)
@@ -1234,7 +1223,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 			}
 
 			if(spi2c_cmd->xfer_cnt > 16) {
-				r_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+				r_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (r_buf) {
 					spi2c_cmd->dma_r_addr = dma_map_single(spi2c->dev, r_buf,
 						spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
@@ -1257,7 +1246,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 			}
 		} else {
 			if(spi2c_cmd->xfer_cnt > 16) {
-				w_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 4);
+				w_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (w_buf) {
 					spi2c_cmd->dma_w_addr = dma_map_single(spi2c->dev, w_buf,
 				    				spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
