@@ -17,7 +17,8 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-//#define MEASUREMENT_SIGNAL
+//#define MEASUREMENT_SIGNAL //for AC timing measurement
+//#define SPMMC_SOFTPAD //for AC timing measurement
 
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define SPMMC_SUPPORT_VOLTAGE_1V8
@@ -212,6 +213,10 @@ union spmmc_softpad_config {
 struct spmmc_tuning_info {
 	int enable_tuning;
 	int need_tuning;
+#ifdef SPMMC_SOFTPAD
+	int tuning_finish;
+	int softpad_tuning;
+#endif
 #define SPMMC_MAX_RETRIES (8 * 8)
 	int retried; /* how many times has been retried */
 	u32 rd_crc_dly:3;

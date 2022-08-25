@@ -139,6 +139,99 @@ static void spmmc_dump_regs(struct spmmc_host *host, int start_group, int start_
 }
 #endif /* ifdef SPMMC_DEBUG */
 
+#ifdef SPMMC_SOFTPAD
+static inline void spmmc_softpad_get(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value;
+
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		value = readl(&host->soft_base->sdio_sftpad_ctl[0]);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		value = readl(&host->soft_base->sd_sftpad_ctl[0]);
+		break;
+	}
+	config->bits.rd_rsp_level = bitfield_extract(value, 16, 2);
+	config->bits.rd_dat_level = bitfield_extract(value, 18, 2);
+}
+
+static inline void spmmc_softpad_set(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value,i;
+
+
+	return;
+	spmmc_pr(DEBUG, "softpad_set  host->mode %d\n", host->mode);
+
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		value = readl(&host->soft_base->sdio_sftpad_ctl[0]);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		value = readl(&host->soft_base->sd_sftpad_ctl[0]);
+		break;
+	}
+
+	value = bitfield_replace(value, 16, 2,
+			config->bits.rd_rsp_level);
+	/* Dat 0~3 set the same level */
+	for (i = 0; i < 4; i++)
+		value = bitfield_replace(value, 18 + 2 * i, 2,
+				config->bits.rd_dat_level);
+
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		writel(value, &host->soft_base->sdio_sftpad_ctl[0]);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		writel(value, &host->soft_base->sd_sftpad_ctl[0]);
+		break;
+	}
+}
+
+static inline void spmmc_softpad_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	return;
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		value = readl(&host->soft_base->sdio_sftpad_ctl[1]);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		value = readl(&host->soft_base->sd_sftpad_ctl[1]);
+		break;
+	}
+
+	if (en) {
+		value = bitfield_replace(value, 0, 1, 0);
+		value = bitfield_replace(value, 1, 5, 0x1F);
+	} else {
+		value = bitfield_replace(value, 0, 1, 1);
+		value = bitfield_replace(value, 1, 5, 0);
+	}
+	switch (host->mode) {
+	case SPMMC_MODE_SDIO:
+		writel(value, &host->soft_base->sdio_sftpad_ctl[1]);
+		break;
+	case SPMMC_MODE_SD:
+	default:
+		writel(value, &host->soft_base->sd_sftpad_ctl[1]);
+		break;
+	}
+
+}
+#endif
+
 /**
  * wait for transaction done, return -1 if error.
  */
@@ -260,6 +353,9 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 	int delay = clkdiv/2 < 7 ? clkdiv/2 : 7;
 	int hs_en = 1;
 	char *timing_name;
+#ifdef SPMMC_SOFTPAD
+	union spmmc_softpad_config softpad = {0};
+#endif
 
 	host->ddr_enabled = 0;
 	switch (timing) {
@@ -341,6 +437,20 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 		value = bitfield_replace(value, 1, 1, 0);
 		writel(value, &host->base->sd_config0);
 	}
+
+#ifdef SPMMC_SOFTPAD
+	/* Softpad setting */
+	if (hs_en) {
+		host->tuning_info.softpad_tuning = 1;
+		host->tuning_info.tuning_finish = 0;
+		spmmc_softpad_en(host, 1);
+		spmmc_softpad_set(host, &softpad);
+	} else {
+		host->tuning_info.softpad_tuning = 0;
+		spmmc_softpad_en(host, 0);
+	}
+#endif
+
 	spmmc_pr(INFO, "set bus timing to %s\n", timing_name);
 }
 
