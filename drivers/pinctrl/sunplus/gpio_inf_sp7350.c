@@ -44,7 +44,7 @@ const char * const sppctlgpio_list_s[] = {
 	D_PIS(92),  D_PIS(93),  D_PIS(94),  D_PIS(95),
 	D_PIS(96),  D_PIS(97),  D_PIS(98),  D_PIS(99),
 	D_PIS(100), D_PIS(101), D_PIS(102), D_PIS(103),
-	D_PIS(104), D_PIS(105), D_PIS(106), D_PIS(107)
+	D_PIS(104), D_PIS(105),
 };
 
 const size_t GPIS_listSZ = sizeof(sppctlgpio_list_s)/sizeof(*(sppctlgpio_list_s));
