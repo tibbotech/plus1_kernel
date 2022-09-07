@@ -543,6 +543,7 @@ struct imx219 {
 	struct clk *xclk; /* system clock to IMX219 */
 	u32 xclk_freq;
 
+	struct gpio_desc *power_gpio;
 	struct gpio_desc *reset_gpio;
 	struct regulator_bulk_data supplies[IMX219_NUM_SUPPLIES];
 
@@ -1144,6 +1145,8 @@ static int imx219_power_on(struct device *dev)
 		goto reg_off;
 	}
 
+	gpiod_set_value_cansleep(imx219->power_gpio, 1);
+	udelay(1);
 	gpiod_set_value_cansleep(imx219->reset_gpio, 1);
 	usleep_range(IMX219_XCLR_MIN_DELAY_US,
 		     IMX219_XCLR_MIN_DELAY_US + IMX219_XCLR_DELAY_RANGE_US);
@@ -1163,6 +1166,8 @@ static int imx219_power_off(struct device *dev)
 	struct imx219 *imx219 = to_imx219(sd);
 
 	gpiod_set_value_cansleep(imx219->reset_gpio, 0);
+	udelay(1);
+	gpiod_set_value_cansleep(imx219->power_gpio, 0);
 	regulator_bulk_disable(IMX219_NUM_SUPPLIES, imx219->supplies);
 	clk_disable_unprepare(imx219->xclk);
 
@@ -1467,6 +1472,9 @@ static int imx219_probe(struct i2c_client *client)
 	}
 
 	/* Request optional enable pin */
+	imx219->power_gpio = devm_gpiod_get_optional(dev, "power",
+						     GPIOD_OUT_HIGH);
+
 	imx219->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						     GPIOD_OUT_HIGH);
 

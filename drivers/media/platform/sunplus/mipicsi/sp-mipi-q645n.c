@@ -2109,18 +2109,6 @@ static int sp_mipi_probe(struct platform_device *pdev)
 		goto err_kfree_mipi;
 	}
 
-	mipi->cam_gpio0 = devm_gpiod_get(&pdev->dev, "cam_gpio0", GPIOD_OUT_HIGH);
-	if (!IS_ERR(mipi->cam_gpio0)) {
-		dev_info(dev, "cam_gpio0 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio0));
-		gpiod_set_value(mipi->cam_gpio0, 1);
-	}
-
-	mipi->cam_gpio1 = devm_gpiod_get(&pdev->dev, "cam_gpio1", GPIOD_OUT_HIGH);
-	if (!IS_ERR(mipi->cam_gpio1)) {
-		dev_info(dev, "cam_gpio1 is at G_MX[%d].\n", desc_to_gpio(mipi->cam_gpio1));
-		gpiod_set_value(mipi->cam_gpio1, 1);
-	}
-
 	ret = clk_prepare_enable(mipi->mipicsi_clk);
 	if (ret) {
 		dev_err(dev, "Failed to enable \'mipicsi\' clock!\n");

@@ -586,6 +586,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_0_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_0_pins>;
+			power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_0: endpoint {
@@ -640,6 +644,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_1_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_1_pins>;
+			power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_1: endpoint {
@@ -674,6 +682,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_2_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_2_pins>;
+			power-gpios = <&pctl 77 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 78 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_2: endpoint {
@@ -728,6 +740,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_3_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_3_pins>;
+			power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 80 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_3: endpoint {
@@ -1595,6 +1611,7 @@
 		typec_pins: pinmux_typec-pins {
 			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
+
 		sdio_pins: pinmux_sdio-pins {
 			function = "SDIO";
 			groups = "SDIO";
@@ -1683,6 +1700,34 @@
 			function = "I2C_MASTER5";
 			groups = "I2C_MASTER5";
 		};
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2cm0 */
+		camera_0_pins: pinmux_camera_0-pins {
+			sunplus,pins = < SPPCTL_IOPAD(71, SPPCTL_PCTL_G_GPIO, 0, 0)
+							 SPPCTL_IOPAD(72, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
+#endif
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2cm1 */
+		camera_1_pins: pinmux_camera_1-pins {
+			sunplus,pins = < SPPCTL_IOPAD(73, SPPCTL_PCTL_G_GPIO, 0, 0)
+							 SPPCTL_IOPAD(74, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
+#endif
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2cm2 */
+		camera_2_pins: pinmux_camera_2-pins {
+			sunplus,pins = < SPPCTL_IOPAD(77, SPPCTL_PCTL_G_GPIO, 0, 0)
+							 SPPCTL_IOPAD(78, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
+#endif
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
+		camera_3_pins: pinmux_camera_3-pins {
+			sunplus,pins = < SPPCTL_IOPAD(79, SPPCTL_PCTL_G_GPIO, 0, 0)
+							 SPPCTL_IOPAD(80, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
+#endif
 
 		pwm_pins: pinmux_pwm-pins {
 			function = "PWM";
