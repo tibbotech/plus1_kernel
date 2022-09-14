@@ -108,21 +108,21 @@ void aud_pdm_clk_cfg(unsigned int SAMPLE_RATE)
     	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;//(volatile RegisterFile_Audio*)REG(60,0);
 
    	 AUD_INFO("%s %d\n", __func__, SAMPLE_RATE );
-        //147M settings    	
+        //147M settings
         if(SAMPLE_RATE > 0) {
         	regs0->pdm_rx_xck_cfg = 0x6883;
-    	  	regs0->pdm_rx_bck_cfg = 0x6003;   	
+    	  	regs0->pdm_rx_bck_cfg = 0x6003;
     	}else{
     	  	regs0->pdm_rx_xck_cfg = 0;
     	 	regs0->pdm_rx_bck_cfg = 0;
-    	}    	
+    	}
 }
 
 static void sp_pdm_rx_en(bool on)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
     	unsigned long val;
-    
+
     	val = regs0->pdm_rx_cfg0;//sp_pdm_readl(pdm, PDM_RXCFG0);
     	if (on){
         	val |= CFG_PDM_RGST_SET;
@@ -148,12 +148,12 @@ static void sp_pdm_rx_dma_en(bool on)
     	val = regs0->aud_fifo_enable;
     	AUD_INFO("aud_fifo_enable 0x%lx\n", val);
 #if 1
-    	if (on){      
+    	if (on){
         	//val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
         	regs0->aud_fifo_reset = val;
         	//AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
         	while ((regs0->aud_fifo_reset & val));
-       
+
         	//AUD_INFO("aud_audhwya 0x%lx\n", regs0->aud_audhwya);
 	     	//AUD_INFO("aud_a23_base 0x%lx\n", regs0->aud_a23_base);
 	      	//AUD_INFO("aud_a23_length 0x%lx\n", regs0->aud_a23_length);
@@ -202,12 +202,12 @@ static int sp_pdm_set_fmt(struct snd_soc_dai *cpu_dai, unsigned int fmt)
     	unsigned long val;
 
     	AUD_INFO("%s IN, fmt=0x%x\n", __func__, fmt);
-    
+
     	pdm->master = 1;
     	//val = sp_pdm_readl(pdm, TDM_RXCFG0);
     	val = 0x04;
     	regs0->pdm_rx_cfg0 = val;
-    
+
     	return 0;
 }
 
@@ -226,19 +226,19 @@ static int sp_pdm_hw_params(struct snd_pcm_substream *substream,
 
     	AUD_INFO("%s IN\n", __func__);
     	//AUD_INFO("%s, stream=%d, pdm->dma_capture=0x%px\n", __func__, substream->stream, pdm->dma_capture);
-    
+
     	dma_data = snd_soc_dai_get_dma_data(socdai, substream);
     	dma_data->addr_width = ch_num >> 3;
     	ch_num = params_channels(params);
-    	AUD_INFO("%s, params=%x\n", __func__, params_format(params));    
+    	AUD_INFO("%s, params=%x\n", __func__, params_format(params));
     	AUD_INFO("ts_width=%d\n", runtime->frame_bits);
-    
+
     	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE){
     	  	regs0->pdm_rx_cfg1 = 0x76543210;
     	  	regs0->pdm_rx_cfg2 = 0;
-        
+
         	AUD_INFO("pdm_rx_cfg1 0x%x\n", regs0->pdm_rx_cfg1);
-        	AUD_INFO("pdm_rx_cfg2 0x%x\n", regs0->pdm_rx_cfg2);        
+        	AUD_INFO("pdm_rx_cfg2 0x%x\n", regs0->pdm_rx_cfg2);
     	}
 
     	return ret;
@@ -260,25 +260,25 @@ static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
         		if (capture) {
             			sp_pdm_rx_dma_en(true);
             			sp_pdm_rx_en(true);//Need to add this.
-        		} 
+        		}
         		break;
     		case SNDRV_PCM_TRIGGER_RESUME:
     		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
         		if (capture)
             			sp_pdm_rx_dma_en(true);
-        
+
        			 break;
     		case SNDRV_PCM_TRIGGER_STOP:
         		if (capture){
             			sp_pdm_rx_dma_en(false);
             			//sp_pdm_rx_en(false);
-        		}        
+        		}
         		break;
     		case SNDRV_PCM_TRIGGER_SUSPEND:
     		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
         		if (capture)
             			sp_pdm_rx_dma_en(false);
-        
+
         		break;
     		default:
         		ret = -EINVAL;
@@ -297,7 +297,7 @@ static int sp_pdm_startup(struct snd_pcm_substream *substream,
 
     	AUD_INFO("%s IN, operation c or p %d\n", __func__, capture);
     	if (capture)
-        	sp_pdm_rx_en(true);    
+        	sp_pdm_rx_en(true);
     	return 0;
 }
 
@@ -309,7 +309,7 @@ static void sp_pdm_shutdown(struct snd_pcm_substream *substream,
 
     	AUD_INFO("%s IN\n", __func__ );
     	if (capture)
-        	sp_pdm_rx_en(false);    
+        	sp_pdm_rx_en(false);
     	aud_pdm_clk_cfg(0);
 }
 
@@ -338,7 +338,7 @@ static const struct snd_soc_component_driver sp_pdm_component = {
 static void sp_pdm_init_state(struct sp_pdm_info *pdm)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
-	 
+
 	regs0->pdm_rx_cfg0 = 0;
 	regs0->pdm_rx_cfg1 = 0x76543210;
 	regs0->pdm_rx_cfg2 = 0;
@@ -365,7 +365,7 @@ static int sp_pdm_probe(struct platform_device *pdev)
     	struct device *dev = &pdev->dev;
     	struct sp_pdm_info *sp_pdm;
     	int ret;
-	
+
 	AUD_INFO("%s IN\n", __func__);
         if (!of_device_is_available(audionp)) {
 		dev_err(&pdev->dev, "devicetree status is not available\n");

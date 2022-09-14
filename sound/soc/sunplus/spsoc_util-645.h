@@ -294,7 +294,7 @@ typedef struct
     	unsigned int  aud_opt_test_pat                      ; // 24
     	unsigned int  aud_sys_status0                       ; // 25
     	unsigned int  aud_sys_status1                       ; // 26
-    	unsigned int  int_adc_ctrl1                         ; // 27 
+    	unsigned int  int_adc_ctrl1                         ; // 27
     	unsigned int  bt_mute_flag                          ; // 28 other_status
     	unsigned int  cdrpll_losd_ctrl                      ; // 29
     	unsigned int  G063_reserved_30                      ; // 30 losd_release_cnt
@@ -541,7 +541,7 @@ typedef struct
     	unsigned int  G72_reserved_11                       ;//11 tdm_tx_info_1
     	unsigned int  G72_reserved_12                       ;//12 tdm_tx_info_2
     	unsigned int  G72_reserved_13                       ;//13
-    	unsigned int  pdm_rx_cfg0                           ;//14 
+    	unsigned int  pdm_rx_cfg0                           ;//14
     	unsigned int  pdm_rx_cfg1                           ;//15
     	unsigned int  pdm_rx_cfg2                           ;//16
     	unsigned int  pdm_rx_cfg3                           ;//17
@@ -559,7 +559,7 @@ typedef struct
     	unsigned int  G72_reserved_29                       ;//29 hdmi_rx_bck_cfg
     	unsigned int  tdmpdm_tx_sel                         ;//30
     	unsigned int  G72_reserved_31                       ;//31 aud_ext_dac_xck1_cfg
-    	
+
     	unsigned int  G073_RESERVED[32]                     ;
 } RegisterFile_Audio;
 

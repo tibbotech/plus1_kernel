@@ -1,5 +1,5 @@
 /*
- * spdif.h - spsoc digital interface(IEC0/1) 
+ * spdif.h - spsoc digital interface(IEC0/1)
  *
  *  Copyright (C) 2013 S+
  */
@@ -15,12 +15,12 @@
 
 
 /* SPDIF_MODE  */
-#define SPDIF_MODE_NONE		   	0 
-#define SPDIF_MODE_PCM			1 
-#define SPDIF_MODE_RAW			2 
-#define SPDIF_MODE_REENC		3 
-#define SPDIF_MODE_IECRX		4 
-#define SPDIF_MODE_PCM_DECAY 		5 
+#define SPDIF_MODE_NONE		   	0
+#define SPDIF_MODE_PCM			1
+#define SPDIF_MODE_RAW			2
+#define SPDIF_MODE_REENC		3
+#define SPDIF_MODE_IECRX		4
+#define SPDIF_MODE_PCM_DECAY 		5
 #define SPDIF_MODE_MAX			5
 
 /* HDMI_MODE */
@@ -34,7 +34,7 @@
 #define HDMI_MODE_MAX			6
 
 /* DISC_FORMAT */
-#define DISC_FORMAT_DVD	  	0 
+#define DISC_FORMAT_DVD	  	0
 #define DISC_FORMAT_CD		1
 #define DISC_FORMAT_DTSCD	2
 
@@ -46,7 +46,7 @@
 #define CATEGORY_CD	0x80
 #define CATEGORY_DVD	0x98
 
-/* Channel status : Sampling Rate (bit28 - bit31)  */   
+/* Channel status : Sampling Rate (bit28 - bit31)  */
 #define SampleRate_44K	0x0
 #define SampleRate_88K	0x1
 #define SampleRate_22K	0x2
@@ -72,9 +72,9 @@ typedef enum _CGMSMode
 typedef enum _CCA_Type
 {
 	unlimited_copy		= 0x0,
-	//no_use				  = 0x1,	
+	//no_use				  = 0x1,
 	one_copy_allowed	= 0x2,
-	no_copy_allowed		= 0x3,	
+	no_copy_allowed		= 0x3,
 }CCA_Type;
 
 /***********************************************************************

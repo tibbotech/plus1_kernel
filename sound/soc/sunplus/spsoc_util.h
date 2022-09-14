@@ -544,7 +544,7 @@ typedef struct
     	UINT32  G72_reserved_11                       ;//11
     	UINT32  G72_reserved_12                       ;//12
     	UINT32  G72_reserved_13                       ;//13
-    	UINT32  pdm_rx_cfg0                           ;//14 
+    	UINT32  pdm_rx_cfg0                           ;//14
     	UINT32  pdm_rx_cfg1                           ;//15
     	UINT32  pdm_rx_cfg2                           ;//16
     	UINT32  pdm_rx_cfg3                           ;//17

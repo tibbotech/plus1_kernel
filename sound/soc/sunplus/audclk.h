@@ -7,7 +7,7 @@
 #define	AUDCLK_XCKPAD_ENABLE		  	0x2000
 
 /********zjg************************/
-#define AUDCLK_128XCK_01024			0x698f			// 147.456/144,	128*8k,	
+#define AUDCLK_128XCK_01024			0x698f			// 147.456/144,	128*8k,
 #define	AUDCLK_128XCK_02048     		0x6987			// 147.456/72,	128*16k,
 
 #define	AUDCLK_128XCK_DPLL_14112		0x701f			// 45.1584/32,	128*11.025k,
@@ -16,7 +16,7 @@
 #define	AUDCLK_128XCK_DPLL_11290		0x7003			// 45.1584/4,		128*88.2k,
 #define	AUDCLK_128XCK_DPLL_22579		0x7001			// 45.1584/2,		128*176.4k,
 
-#define AUDCLK_256XCK_02048 		  	0x6987			// 147.456/72,	256*8k,	
+#define AUDCLK_256XCK_02048 		  	0x6987			// 147.456/72,	256*8k,
 #define	AUDCLK_256XCK_04096			0x6983			// 147.456/36,	256*16k,
 
 #define	AUDCLK_256XCK_DPLL_28224 		0x700f			// 45.1584/16,	256*11.025k,

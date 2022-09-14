@@ -41,60 +41,60 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 	// 147M	Setting
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000))
 	{
-	   	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	
-	   	regs0->aud_ext_adc_xck_cfg  	= 0x6883;   	
-	   	regs0->aud_ext_dac_xck_cfg  	= 0x6883;   	 
-	   	regs0->aud_int_dac_xck_cfg  	= 0x6887;   	
-	   	regs0->aud_int_adc_xck_cfg	= 0x6883;   	   	
+	   	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;
+	   	regs0->aud_ext_adc_xck_cfg  	= 0x6883;
+	   	regs0->aud_ext_dac_xck_cfg  	= 0x6883;
+	   	regs0->aud_int_dac_xck_cfg  	= 0x6887;
+	   	regs0->aud_int_adc_xck_cfg	= 0x6883;
 	}
 	else if((SAMPLE_RATE ==	88200) || (SAMPLE_RATE == 96000))
 	{
-		regs0->aud_hdmi_tx_mclk_cfg	= 0x6881;	
-		regs0->aud_ext_adc_xck_cfg	= 0x6881;	
-		regs0->aud_ext_dac_xck_cfg   	= 0x6881;	
-		regs0->aud_int_dac_xck_cfg   	= 0x6883;	
-		regs0->aud_int_adc_xck_cfg  	= 0x6881;		
+		regs0->aud_hdmi_tx_mclk_cfg	= 0x6881;
+		regs0->aud_ext_adc_xck_cfg	= 0x6881;
+		regs0->aud_ext_dac_xck_cfg   	= 0x6881;
+		regs0->aud_int_dac_xck_cfg   	= 0x6883;
+		regs0->aud_int_adc_xck_cfg  	= 0x6881;
 	}
 	else if((SAMPLE_RATE ==	176400)	|| (SAMPLE_RATE	== 192000))
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6880;  	
-		regs0->aud_ext_adc_xck_cfg  	= 0x6880;	
-		regs0->aud_ext_dac_xck_cfg  	= 0x6880;	
-		regs0->aud_int_dac_xck_cfg  	= 0x6881;	
-		regs0->aud_int_adc_xck_cfg  	= 0x6880;	
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6880;
+		regs0->aud_ext_adc_xck_cfg  	= 0x6880;
+		regs0->aud_ext_dac_xck_cfg  	= 0x6880;
+		regs0->aud_int_dac_xck_cfg  	= 0x6881;
+		regs0->aud_int_adc_xck_cfg  	= 0x6880;
 	}
 	else if(SAMPLE_RATE == 32000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6887;  	
-		regs0->aud_ext_adc_xck_cfg  	= 0x6887;	
-		regs0->aud_ext_dac_xck_cfg  	= 0x6887;	
-		regs0->aud_int_dac_xck_cfg  	= 0x688F;	
-		regs0->aud_int_adc_xck_cfg  	= 0x6887;	
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6887;
+		regs0->aud_ext_adc_xck_cfg  	= 0x6887;
+		regs0->aud_ext_dac_xck_cfg  	= 0x6887;
+		regs0->aud_int_dac_xck_cfg  	= 0x688F;
+		regs0->aud_int_adc_xck_cfg  	= 0x6887;
 	}
 	else if(SAMPLE_RATE == 64000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  	
-		regs0->aud_ext_adc_xck_cfg  	= 0x6883;	
-		regs0->aud_ext_dac_xck_cfg  	= 0x6883;	
-		regs0->aud_int_dac_xck_cfg  	= 0x6887;	
-		regs0->aud_int_adc_xck_cfg  	= 0x6883;	
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;
+		regs0->aud_ext_adc_xck_cfg  	= 0x6883;
+		regs0->aud_ext_dac_xck_cfg  	= 0x6883;
+		regs0->aud_int_dac_xck_cfg  	= 0x6887;
+		regs0->aud_int_adc_xck_cfg  	= 0x6883;
 	}
 	else if(SAMPLE_RATE == 128000)
 	{
-		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6881;	
-		regs0->aud_ext_adc_xck_cfg  	= 0x6881;	
-		regs0->aud_ext_dac_xck_cfg  	= 0x6881;	
-		regs0->aud_int_dac_xck_cfg  	= 0x6883;	
-		regs0->aud_int_adc_xck_cfg  	= 0x6881;	
+		regs0->aud_hdmi_tx_mclk_cfg 	= 0x6881;
+		regs0->aud_ext_adc_xck_cfg  	= 0x6881;
+		regs0->aud_ext_dac_xck_cfg  	= 0x6881;
+		regs0->aud_int_dac_xck_cfg  	= 0x6883;
+		regs0->aud_int_adc_xck_cfg  	= 0x6881;
 	}
-	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	
-	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	
-	regs0->aud_int_dac_bck_cfg  	= 0x6001;	
-	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	
-	regs0->aud_bt_bck_cfg		= 0x6007;	
-	regs0->aud_iec0_bclk_cfg    	= 0x6001;	
-	regs0->aud_iec1_bclk_cfg    	= 0x6001;	
-	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;	
+	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;
+	regs0->aud_ext_dac_bck_cfg  	= 0x6003;
+	regs0->aud_int_dac_bck_cfg  	= 0x6001;
+	regs0->aud_ext_adc_bck_cfg  	= 0x6003;
+	regs0->aud_bt_bck_cfg		= 0x6007;
+	regs0->aud_iec0_bclk_cfg    	= 0x6001;
+	regs0->aud_iec1_bclk_cfg    	= 0x6001;
+	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;
 }
 #endif
 void  AUDHW_Set_PLL(void)
@@ -128,19 +128,19 @@ void AUDHW_clk_cfg(void)
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 	// 147M	Setting
-	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;  
-	regs0->aud_ext_adc_xck_cfg	= 0xC883;	
-	regs0->aud_ext_dac_xck_cfg  	= 0x6883;	
-	regs0->aud_int_dac_xck_cfg  	= 0x6887;	
-	regs0->aud_int_adc_xck_cfg  	= 0x6883;	
-	
-	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;	
-	regs0->aud_ext_dac_bck_cfg  	= 0x6003;	
-	regs0->aud_int_dac_bck_cfg  	= 0x6001;			
-	regs0->aud_ext_adc_bck_cfg  	= 0x6003;	
-	regs0->aud_bt_bck_cfg	    	= 0x6007;	
-	regs0->aud_iec0_bclk_cfg    	= 0x6001;	
-	regs0->aud_iec1_bclk_cfg    	= 0x6001;	
+	regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;
+	regs0->aud_ext_adc_xck_cfg	= 0xC883;
+	regs0->aud_ext_dac_xck_cfg  	= 0x6883;
+	regs0->aud_int_dac_xck_cfg  	= 0x6887;
+	regs0->aud_int_adc_xck_cfg  	= 0x6883;
+
+	regs0->aud_hdmi_tx_bck_cfg  	= 0x6003;
+	regs0->aud_ext_dac_bck_cfg  	= 0x6003;
+	regs0->aud_int_dac_bck_cfg  	= 0x6001;
+	regs0->aud_ext_adc_bck_cfg  	= 0x6003;
+	regs0->aud_bt_bck_cfg	    	= 0x6007;
+	regs0->aud_iec0_bclk_cfg    	= 0x6001;
+	regs0->aud_iec1_bclk_cfg    	= 0x6001;
 	regs0->aud_pcm_iec_bclk_cfg 	= 0x6001;
 }
 
@@ -211,7 +211,7 @@ void AUDHW_Cfg_AdcIn(void)
 	regs0->adcp_fubypass	= 0x7777;	//adcp_fubypass
 #if defined(CONFIG_SND_SOC_AUD645)
 	regs0->adcp_mode_ctrl	|= 0x300;       //enable ch2/3
-#endif	
+#endif
 	regs0->adcp_risc_gain   = 0x1111;	//adcp_risc_gain, all gains are 1x
 	regs0->G069_reserved_00 = 0x3;		//adcprc A16~18
 	val			= 0x650100;	//steplen0=0, Eth_off=0x65, Eth_on=0x100, steplen0=0
@@ -275,22 +275,22 @@ void AUDHW_SystemInit(void)
         regs0->pdm_rx_cfg0 	= 0x110004;
         regs0->pdm_rx_cfg0 	= 0x10004;
 #endif
-        regs0->pcm_cfg	   	= 0x4d; //tx0
-        regs0->hdmi_tx_i2s_cfg 	= 0x4d; //tx2
-#if defined(CONFIG_SND_SOC_AUD628)	
+        regs0->pcm_cfg	   	= 0x4d; //q645 tx0
+        regs0->hdmi_tx_i2s_cfg 	= 0x4d; //q645 tx2
+#if defined(CONFIG_SND_SOC_AUD628)
         regs0->hdmi_rx_i2s_cfg 	= 0x24d;	// 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
         regs0->ext_adc_cfg	= 0x24d; //rx0
 #else
 	//regs0->G060_reserved_9	= 0x1037;
-	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx1
-	regs0->int_adc_dac_cfg	= 0x004d004d;	//0x001c004d // rx2 tx1
+	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
+	regs0->int_adc_dac_cfg	= 0x004d004d;	//0x001c004d // rx1 tx1
 	regs0->ext_adc_cfg	= 0x4d; //rx0
 #endif
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
         regs0->iec0_par1_out 	= 0x00000000;	//pcm_iec_par1_out
-        
+
         regs0->iec1_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
         regs0->iec1_par1_out 	= 0x00000000;	//pcm_iec_par1_out
 
@@ -379,7 +379,7 @@ void snd_aud_config(void)
 	regs0->aud_a3_base 	= 0;	//0->aud_a2_base + DRAM_PCM_BUF_LENGTH;
 	regs0->aud_a4_base 	= 0;	//0->aud_a3_base + DRAM_PCM_BUF_LENGTH;
 #else
-        dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1); 
+        dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1);
 	regs0->aud_audhwya 	= aud_param.fifoInfo.pcmtx_physAddrBase;
         regs0->aud_a0_base 	= dma_initial;
         regs0->aud_a1_base 	= dma_initial;
@@ -387,13 +387,13 @@ void snd_aud_config(void)
         regs0->aud_a3_base 	= dma_initial;
         regs0->aud_a4_base 	= dma_initial;
         regs0->aud_a5_base 	= dma_initial;
-        regs0->aud_a6_base	= dma_initial;       
+        regs0->aud_a6_base	= dma_initial;
         regs0->aud_a20_base	= dma_initial;
 #if defined(CONFIG_SND_SOC_AUD645)
 	regs0->aud_a19_base	= dma_initial;
 	regs0->aud_a26_base	= dma_initial;
 	regs0->aud_a27_base	= dma_initial;
-#endif        
+#endif
         dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
         regs0->aud_a13_base	= dma_initial;
         regs0->aud_a16_base	= dma_initial;

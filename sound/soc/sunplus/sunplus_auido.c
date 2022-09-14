@@ -48,7 +48,7 @@ static int sunplus_audio_remove(struct platform_device *pdev);
  *                         G L O B A L    D A T A                         *
  **************************************************************************/
 void __iomem *audio_base;
-#if defined(CONFIG_SND_SOC_AUD628) 
+#if defined(CONFIG_SND_SOC_AUD628)
 struct clk *peri0_clocken;
 #elif defined(CONFIG_SND_SOC_AUD645)
 struct reset_control *clk_rst;
@@ -78,8 +78,8 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 {
 	struct resource *res;
 	struct device_node *np = pdev->dev.of_node;
-	int err;   
-  	
+	int err;
+
 	AUD_INFO("%s IN\n", __func__);
 
 	if (!np) {
@@ -102,10 +102,10 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "mapping resource memory 0.\n");
 		return PTR_ERR(audio_base);
 	}
-	//AUD_INFO("start=%zx end=%zx\n", res->start, res->end);	  
+	//AUD_INFO("start=%zx end=%zx\n", res->start, res->end);
 	AUD_INFO("audio_base=%px\n", audio_base);
-	//clock enable  
-#if defined(CONFIG_SND_SOC_AUD628)  
+	//clock enable
+#if defined(CONFIG_SND_SOC_AUD628)
     	peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
     	if (IS_ERR(peri0_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 1.\n");
@@ -117,7 +117,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return err;
 	}
 #endif
-	//clock enable  
+	//clock enable
     	aud_clocken = devm_clk_get(&pdev->dev, "aud");
     	if (IS_ERR(aud_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 0.\n");
@@ -130,37 +130,37 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return err;
 	}
 #if defined(CONFIG_SND_SOC_AUD645)
-	//reset 
+	//reset
 	clk_rst = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(clk_rst)) {
 		dev_err(&pdev->dev, "aud failed to retrieve reset controlle\n");
 		return PTR_ERR(clk_rst);
 	}
-	
+
 	err = reset_control_assert(clk_rst);
 	if (err)
 		dev_err(&pdev->dev, "reset assert fail\n");
 	err = reset_control_deassert(clk_rst);
 	if (err)
-		dev_err(&pdev->dev, "reset deassert fail\n"); 
-#endif		 	  
-	//plla setting  
+		dev_err(&pdev->dev, "reset deassert fail\n");
+#endif
+	//plla setting
 	plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
     	if (IS_ERR(plla_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 2.\n");
 		return PTR_ERR(plla_clocken);
-	}	  
+	}
 	err = clk_set_rate(plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz, //driver/clk-sp-q628.c
 
 	if (err) {
 	  	dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
 		return err;
-	}	  
+	}
 	err = clk_prepare_enable(plla_clocken);
 	if (err) {
 	  	dev_err(&pdev->dev, "enable clock 2 false.\n");
 		return err;
-	}  
+	}
 
 	return 0;
 }
@@ -169,7 +169,7 @@ static int sunplus_audio_remove(struct platform_device *pdev)
 {
 	AUD_INFO("%s IN\n", __func__);
 	audio_base = NULL;
-#if defined(CONFIG_SND_SOC_AUD628) 
+#if defined(CONFIG_SND_SOC_AUD628)
 	clk_disable(peri0_clocken);
 #endif
 	clk_disable(aud_clocken);

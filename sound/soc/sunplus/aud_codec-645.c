@@ -136,7 +136,7 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.formats 	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
-	}, 	
+	},
 	{
 		.name = "aud-spdif-dai",
 		.playback = {
@@ -154,7 +154,7 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.formats 	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
-	},	
+	},
 };
 #if 0
 static int aud_probe(struct snd_soc_codec *codec)
@@ -209,7 +209,7 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 
 	SOC_DOUBLE_TLV("A2 Playback Volume", 	reg_aud_grm_gain_control_6,  	0,  	8, 	0x80, 	0, 	volume_tlv),
 	SOC_DOUBLE_TLV("A3 Playback Volume", 	reg_aud_grm_gain_control_6, 	16, 	24, 	0x80, 	0, 	volume_tlv),
-	
+
 	SOC_SINGLE_TLV("A4 Playback Volume 1", 	reg_aud_grm_gain_control_7, 	14, 	2<<16, 		0, 	volume_tlv),
 	SOC_SINGLE_TLV("A4 Playback Volume 2", 	reg_aud_grm_gain_control_8, 	14, 	2<<16, 		0, 	volume_tlv),
     	SOC_DOUBLE_TLV("A20 Playback Volume", 	reg_aud_grm_gain_control_10,  	0,	8, 	0x80, 	0, 	volume_tlv),
@@ -325,7 +325,7 @@ static unsigned int audreg_read(struct snd_soc_component *component, unsigned in
 	//val = (int)(*(volatile unsigned int *) (addr));
 	val = *addr;
 	//SYNCHRONIZE_IO;
-    
+
     	//AUD_INFO("*val=%08x\n", val);
 	return val;
 	//return HWREG_R(reg);
@@ -341,7 +341,7 @@ static int audreg_write(struct snd_soc_component *component, unsigned int reg,un
 	addr = (audio_base + addr_g * 32 * 4 + addr_i * 4);
 	*addr = value;
 	//SYNCHRONIZE_IO;
-	  
+
 	//AUD_INFO("val=%08x\n", (*(volatile unsigned int *)(addr)));
 	//HWREG_W(reg,value);
 	return 0;
@@ -384,7 +384,7 @@ static int aud_codec_probe(struct platform_device *pdev)
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud,
 				  	      audcodec_dai, ARRAY_SIZE(audcodec_dai));
-		                     
+
 	return ret;
 }
 

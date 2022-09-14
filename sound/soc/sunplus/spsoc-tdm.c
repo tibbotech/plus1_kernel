@@ -230,7 +230,7 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     		}else{
     			regs0->tdm_tx_xck_cfg = 0x6981;
     	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	    	  	
+    		}
     	}else if((SAMPLE_RATE == 44100) || (SAMPLE_RATE == 64000) || (SAMPLE_RATE == 48000)) {
     		if (capture){
     			regs0->tdm_rx_xck_cfg = 0x6883;
@@ -238,18 +238,18 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     		}else{
     			regs0->tdm_tx_xck_cfg = 0x6883;
     	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    	  	
+
     	  		regs0->aud_ext_dac_xck_cfg  = 0x6883;   //PLLA, 256FS //??? need to check
     	  		regs0->aud_ext_dac_bck_cfg  = 0x6003;   //64FS //??? need to check
-    		}        	
+    		}
     	}else if((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
     		if (capture){
     			regs0->tdm_rx_xck_cfg = 0x6881;
-    	  		regs0->tdm_rx_bck_cfg = 0x6001; 
+    	  		regs0->tdm_rx_bck_cfg = 0x6001;
     		}else{
     			regs0->tdm_tx_xck_cfg = 0x6881;
     	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	       
+    		}
     	}else if((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
     		if (capture){
     			regs0->tdm_rx_xck_cfg = 0x6881;
@@ -257,7 +257,7 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     		}else{
     			regs0->tdm_tx_xck_cfg = 0x6881;
     	  		regs0->tdm_tx_bck_cfg = 0x6001;
-    		}    	  	    	  	
+    		}
     	}else{
     	  	regs0->tdm_tx_xck_cfg = 0;
     	  	regs0->tdm_tx_bck_cfg = 0;
@@ -265,7 +265,7 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     	  	regs0->tdm_rx_bck_cfg = 0;
     	  	regs0->aud_ext_dac_xck_cfg  = 0;   //PLLA, 256FS //??? need to check
     	  	regs0->aud_ext_dac_bck_cfg  = 0;   //64FS //??? need to check
-    	}    	
+    	}
 }
 
 static void sp_tdm_tx_en(bool on)
@@ -280,7 +280,7 @@ static void sp_tdm_tx_en(bool on)
     	}else
         	val &= ~(TDM_TX_ENABLE);
     	regs0->tdm_tx_cfg0 = val;
-    
+
     	AUD_INFO("tdm_tx_cfg0 0x%x\n", regs0->tdm_tx_cfg0);
 }
 
@@ -296,7 +296,7 @@ static void sp_tdm_rx_en(bool on)
     	}else
         	val &= ~(TDM_RX_ENABLE);
     	regs0->tdm_rx_cfg0 = val;
-    
+
     	AUD_INFO("tdm_rx_cfg0 0x%x\n", regs0->tdm_rx_cfg0);
 }
 
@@ -313,7 +313,7 @@ static void sp_tdm_tx_dma_en(bool on)
     	}else
         	val &= ~(Main_PCM5 | Main_PCM4 | Main_PCM3 | Main_PCM2 | Main_PCM1 | Main_PCM0);
     	regs0->aud_fifo_enable = val;
-    
+
     	AUD_INFO("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
 #if 1
     	if (on){
@@ -329,7 +329,7 @@ static void sp_tdm_tx_dma_en(bool on)
     	else
         	val &= (~aud_enable_i2stdm_p);
     	regs0->aud_enable = val;
-    
+
     	AUD_INFO("aud_enable 0x%x\n", regs0->aud_enable);
 }
 
@@ -344,15 +344,15 @@ static void sp_tdm_rx_dma_en(bool on)
     	else
         	val &= ~(TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
     	regs0->aud_fifo_enable = val;
-    
+
     	AUD_INFO("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
 #if 1
-    	if (on){      
+    	if (on){
         	//val = (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
         	regs0->aud_fifo_reset = val;
-        
+
         	//AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
-        	while((regs0->aud_fifo_reset&val));               
+        	while((regs0->aud_fifo_reset&val));
     	}
 #endif
     	val = regs0->aud_enable;
@@ -361,7 +361,7 @@ static void sp_tdm_rx_dma_en(bool on)
     	else
         	val &= (~aud_enable_tdmpdm_c);
     	regs0->aud_enable = val;
-    
+
     	AUD_INFO("aud_enable 0x%x\n", regs0->aud_enable);
 }
 
@@ -441,7 +441,7 @@ static int sp_tdm_hw_params(struct snd_pcm_substream *substream,
 
     	AUD_INFO("%s IN\n", __func__ );
     	//AUD_INFO("%s, stream=%d, tdm->dma_capture=0x%px\n", __func__, substream->stream, tdm->dma_capture);
-    
+
     	dma_data = snd_soc_dai_get_dma_data(socdai, substream);
     	dma_data->addr_width = ch_num >> 3;
     	ch_num = params_channels(params);
@@ -480,9 +480,9 @@ static int sp_tdm_hw_params(struct snd_pcm_substream *substream,
         	val = (wd_width<<12)|(ts_width<<8)| ch_num;// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
         	//val = 0x10008;
         	regs0->tdm_rx_cfg3 = val;
-        
-        	AUD_INFO("tdm_rx_cfg1 0x%x\n", regs0->tdm_rx_cfg1);        
-       		AUD_INFO("tdm_rx_cfg2 0x%x\n", regs0->tdm_rx_cfg2);        
+
+        	AUD_INFO("tdm_rx_cfg1 0x%x\n", regs0->tdm_rx_cfg1);
+       		AUD_INFO("tdm_rx_cfg2 0x%x\n", regs0->tdm_rx_cfg2);
         	AUD_INFO("tdm_rx_cfg3 0x%x\n", regs0->tdm_rx_cfg3);
     	}else{
     	  	regs0->tdm_tx_cfg1 = 0x00000000;// slot delay = 1T
@@ -490,9 +490,9 @@ static int sp_tdm_hw_params(struct snd_pcm_substream *substream,
         	val = (wd_width<<12)|(ts_width<<8)|ch_num;// bit# per word = 20, bit# per slot = 24, slot# per frame = 8
         	//val = 0x10008;
         	regs0->tdm_tx_cfg3 = val;
-        
-        	AUD_INFO("tdm_tx_cfg1 0x%x\n", regs0->tdm_tx_cfg1);        
-        	AUD_INFO("tdm_tx_cfg2 0x%x\n", regs0->tdm_tx_cfg2);        
+
+        	AUD_INFO("tdm_tx_cfg1 0x%x\n", regs0->tdm_tx_cfg1);
+        	AUD_INFO("tdm_tx_cfg2 0x%x\n", regs0->tdm_tx_cfg2);
         	AUD_INFO("tdm_tx_cfg3 0x%x\n", regs0->tdm_tx_cfg3);
         	sp_tdm_tx_dma_en(true);//Need to add here
     	}
@@ -516,7 +516,7 @@ static int sp_tdm_trigger(struct snd_pcm_substream *substream, int cmd,
             			//val = sp_tdm_readl(sp_tdm, Host_FIFO_Reset);
             			//val |= (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
             			//sp_tdm_writel(sp_tdm, Host_FIFO_Reset, val);
-         
+
             			sp_tdm_rx_dma_en(true);
         		} //else {
             			//val = sp_tdm_readl(sp_tdm, Host_FIFO_Reset);
@@ -554,7 +554,7 @@ static int sp_tdm_trigger(struct snd_pcm_substream *substream, int cmd,
         		ret = -EINVAL;
         		break;
     	}
-    
+
     	return ret;
 }
 
@@ -617,7 +617,7 @@ static void sp_tdm_init_state(struct sp_tdm_info *tdm)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*)audio_base;
 	//int val;
-	  
+
     	regs0->tdm_rx_cfg0 	= (0x0<<12);
     	regs0->tdm_rx_cfg1 	= 0x00100000;
     	regs0->tdm_rx_cfg2 	= 0x00010000;
@@ -627,7 +627,7 @@ static void sp_tdm_init_state(struct sp_tdm_info *tdm)
     	regs0->tdm_tx_cfg2 	= 0x00010000;
     	regs0->tdm_tx_cfg3 	= 0x0001400C;
     	regs0->tdmpdm_tx_sel 	= 0x01;
-    
+
 }
 
 #define AUD_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_S24_3BE )
@@ -655,7 +655,7 @@ static int sp_tdm_probe(struct platform_device *pdev)
     	struct device *dev = &pdev->dev;
     	struct sp_tdm_info *sp_tdm;
     	int ret;
-	
+
 	AUD_INFO("%s IN\n", __func__);
         if (!of_device_is_available(audionp)) {
 		dev_err(&pdev->dev, "devicetree status is not available\n");

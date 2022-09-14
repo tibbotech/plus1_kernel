@@ -79,7 +79,7 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	}
 	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE)
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
-	
+
 	AUD_INFO("%s OUT\n", __func__);
 	if (ret < 0)
 		return ret;
@@ -114,11 +114,11 @@ SND_SOC_DAILINK_DEFS(sp_spdif,
 	DAILINK_COMP_ARRAY(COMP_CPU("spsoc-spdif-dai")),
 	DAILINK_COMP_ARRAY(COMP_CODEC("aud-codec", "aud-spdif-dai")),
 	DAILINK_COMP_ARRAY(COMP_PLATFORM("spsoc-pcm-driver")));
-	
+
 static struct snd_soc_dai_link spsoc_aud_dai[] = {
 	{
 		.name		= "aud_i2s_0",
-		.stream_name	= "aud_dac0",		
+		.stream_name	= "aud_dac0",
 		.ops 		= &spsoc_aud_ops,
 		SND_SOC_DAILINK_REG(sp_i2s_0),
 	},
@@ -145,7 +145,7 @@ static struct snd_soc_dai_link spsoc_aud_dai[] = {
 		.stream_name	= "aud_spdif0",
 		.ops 		= &spsoc_aud_ops,
 		SND_SOC_DAILINK_REG(sp_spdif),
-	},	
+	},
 };
 static struct snd_soc_card spsoc_smdk = {
 	.name		= "sp-aud",		// card name

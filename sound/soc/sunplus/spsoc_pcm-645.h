@@ -16,8 +16,8 @@
 #define PERIOD_BYTES_MAX_CONS 	(64 * 1024)
 
 #define NUM_FIFO_TX		8 // A0~A4, A20, A26~A27
-#define NUM_FIFO_RX		8 // A22~A25, A14, A17~A18, A21	
-#define NUM_FIFO		(NUM_FIFO_TX + NUM_FIFO_RX)	
+#define NUM_FIFO_RX		8 // A22~A25, A14, A17~A18, A21
+#define NUM_FIFO		(NUM_FIFO_TX + NUM_FIFO_RX)
 
 #define SP_I2S_0                0
 #define SP_TDM                  1
@@ -37,7 +37,7 @@
 #define SPDIF_C_INC0  		(0x1 << 13)
 
 #define aud_enable_i2stdm_p	(0x01 | (0x1df << 16))
-#define aud_enable_i2s1_p	(0x01 << 13) 
+#define aud_enable_i2s1_p	(0x01 << 13)
 #define aud_enable_i2s2_p	(0x01 << 15)
 //#define aud_enable_i2s_c    	(0x01 << 11)
 #define aud_enable_i2s0_c    	(0x01 << 3)
@@ -59,7 +59,7 @@ struct spsoc_runtime_data {
 	dma_addr_t 	dma_buffer;		/* physical address of dma buffer */
 	dma_addr_t 	dma_buffer_end;	/* first address beyond DMA buffer */
 	size_t 		period_size;
-	
+
 	struct 		hrtimer hrt;
 	struct 		tasklet_struct tasklet;
 	int 		poll_time_ns;
@@ -139,7 +139,7 @@ typedef enum
 {
 	FIFO_Enable = 0,
 	FIFO_Disable,
-	FIFO_Pause,	
+	FIFO_Pause,
 }FIFO_STATE;
 
 typedef struct  t_AUD_FIFO_PARAMS {
@@ -176,7 +176,7 @@ typedef struct t_AUD_GAIN_PARAMS {
 	unsigned int volumeScale;	// master gain
 	unsigned int volumeVal;	//master gain
 	unsigned int fifoNum;
-	unsigned int fifoGain;	
+	unsigned int fifoGain;
 }AUD_GAIN_PARAMS;
 
 #define FS_6K   0x8000
@@ -225,7 +225,7 @@ typedef struct t_AUD_I2SCFG_PARAMS {
 	unsigned int intadc;
 	unsigned int extadc;
 	unsigned int hdmitx;
-	unsigned int hdmirx;	
+	unsigned int hdmirx;
 }AUD_I2SCFG_PARAMS;
 
 typedef struct t_auddrv_param
@@ -233,7 +233,7 @@ typedef struct t_auddrv_param
 	AUD_FIFO_PARAMS	fifoInfo;
 	AUD_GAIN_PARAMS	gainInfo;
 	AUD_FSCLK_PARAMS	fsclkInfo;
-	AUD_I2SCFG_PARAMS	i2scfgInfo;	
+	AUD_I2SCFG_PARAMS	i2scfgInfo;
 	unsigned int spdif_mode;
 	unsigned int hdmi_mode;
 	unsigned int CGMS_mode;
@@ -257,7 +257,7 @@ typedef struct t_AUD_APT_PARAMS {
 typedef struct t_AUD_PTS_PARAMS {
 	unsigned int w_pts;	// write a PTS
 	unsigned int r_pts;	// read the current pts reproted by audhw
-	unsigned int pcm0_ptr;	
+	unsigned int pcm0_ptr;
 }AUD_PTS_PARAMS;
 
 typedef struct t_AUD_CGMS_PARAMS {
@@ -274,7 +274,7 @@ typedef struct t_AUD_channelstatus_PARAMS {
 
 typedef enum
 {
-	bt_i2s_mode = 0,	
+	bt_i2s_mode = 0,
 	bt_pcm_mode1,	// slave, short sync, LSB, 16-bit with 16-cycle, 2 slot, pcmbck=256K
 	bt_pcm_mode2,	// slave, short sync, LSB, 16-bit with 16-cycle, 1 slot, pcmbck=128K
 	bt_pcm_mode3,	// master, short sync, LSB, 16-bit with 16-cycle, 16 slot, pcmbck=2048K
@@ -292,7 +292,7 @@ typedef enum
 	Output_Stereo = 0,	// (L/R)
 	Output_LL,
 	Output_RR,
-	Output_LRswitch,	// LR exchange	
+	Output_LRswitch,	// LR exchange
 }Output_mode_e;
 
 

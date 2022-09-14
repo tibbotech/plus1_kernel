@@ -138,7 +138,7 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
-		},		
+		},
 		.ops = &aud_dai_ops,
 	},
 	{
@@ -149,7 +149,7 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
-		},		
+		},
 		.ops = &aud_dai_ops,
 	},
 };
@@ -206,7 +206,7 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 
 	SOC_DOUBLE_TLV("A2 Playback Volume", 	reg_aud_grm_gain_control_6,  	0,  	8, 	0x80, 	0, 	volume_tlv),
 	SOC_DOUBLE_TLV("A3 Playback Volume", 	reg_aud_grm_gain_control_6, 	16, 	24, 	0x80, 	0, 	volume_tlv),
-	
+
 	SOC_SINGLE_TLV("A4 Playback Volume 1", 	reg_aud_grm_gain_control_7, 	14, 	2<<16, 	0, 	volume_tlv),
 	SOC_SINGLE_TLV("A4 Playback Volume 2", 	reg_aud_grm_gain_control_8, 	14, 	2<<16, 	0, 	volume_tlv),
     	SOC_DOUBLE_TLV("A20 Playback Volume", 	reg_aud_grm_gain_control_10,  	0,	8, 	0x80, 	0, 	volume_tlv),
@@ -314,14 +314,14 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 static unsigned int audreg_read(struct snd_soc_component *component, unsigned int reg)
 {
 	int val, addr_g, addr_i, addr;
-	  
+
 	//AUD_INFO("r*audio_base=%08x\n", audio_base);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i)/100 - 60;
 	addr = (int)(audio_base + addr_g*32*4 + addr_i*4);
 	val = (*(volatile unsigned int *)(addr));
 	//SYNCHRONIZE_IO;
-    
+
     	//AUD_INFO("*val=%08x\n", val);
 	return val;
 	//return HWREG_R(reg);
@@ -330,14 +330,14 @@ static unsigned int audreg_read(struct snd_soc_component *component, unsigned in
 static int audreg_write(struct snd_soc_component *component, unsigned int reg,unsigned int value)
 {
 	int  addr_g, addr_i, addr;
-	  
+
 	//AUD_INFO("w*audio_base=%08x, val = 0x%x\n", audio_base, value);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i)/100 - 60;
 	addr = (int)(audio_base + addr_g*32*4 + addr_i*4);
 	(*(volatile unsigned int *)(addr)) = value;
 	//SYNCHRONIZE_IO;
-	  
+
 	//AUD_INFO("val=%08x\n", (*(volatile unsigned int *)(addr)));
 	//HWREG_W(reg,value);
 	return 0;
@@ -380,7 +380,7 @@ static int aud_codec_probe(struct platform_device *pdev)
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud,
 				  	      audcodec_dai, ARRAY_SIZE(audcodec_dai));
-		                     
+
 	return ret;
 }
 

@@ -91,7 +91,7 @@ void HWREG_W(UINT32 reg_name, UINT32 val)
 	unsigned int addr = 0x0;
 	unsigned int group = 0, reg = 0;
 	volatile uint32_t *remap_addr;
-	
+
 	reg = reg_name % 100;
 	group = (reg_name - reg) / 100;
 
