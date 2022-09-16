@@ -215,25 +215,17 @@
 
 #define CLK_MAX             0xc0
 
-/* additional clks: not listed @ above */
-#define AC(i)           (CLK_MAX + i)
-
-#define VCLCORE0        AC(0)
-#define VCLCORE1        AC(1)
-#define VCLCORE2        AC(2)
-
-#define AC_MAX          3
-
 /* plls */
-#define PLL(i)          (CLK_MAX + AC_MAX + i)
+#define PLL(i)          (CLK_MAX + i)
 
-#define PLLS            PLL(0)
+#define PLLA            PLL(0)
 #define PLLC            PLL(1)
-#define PLLN            PLL(2)
-#define PLLH            PLL(3)
-#define PLLD            PLL(4)
-#define PLLA            PLL(5)
+#define PLLL3           PLL(2)
+#define PLLD            PLL(3)
+#define PLLH            PLL(4)
+#define PLLN            PLL(5)
+#define PLLS            PLL(6)
 
-#define PLL_MAX         6
+#define PLL_MAX         7
 
 #endif

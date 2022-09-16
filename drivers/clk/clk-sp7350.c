@@ -22,7 +22,6 @@
 
 #define EXT_CLK "extclk"
 
-#if 0
 #define MASK_SET(shift, width, value) \
 ({ \
 	u32 m = ((1 << (width)) - 1) << (shift); \
@@ -32,21 +31,29 @@
 
 #define REG(i)	(pll_regs + (i) * 4)
 
-#define PLLH_CTL	REG(1)
-#define PLLN_CTL	REG(4)
-#define PLLS_CTL	REG(7)
-#define PLLC_CTL	REG(10)
-#define PLLD_CTL	REG(13)
-#define PLLA_CTL	REG(24)
+#define PLLA_CTL	REG(0)
+#define PLLC_CTL	REG(5)
+#define PLLL3_CTL	REG(8)
+#define PLLD_CTL	REG(11)
+#define PLLH_CTL	REG(14)
+#define PLLN_CTL	REG(17)
+#define PLLS_CTL	REG(20)
 
-#define IS_PLLH()	(clk->reg == PLLH_CTL)
 #define IS_PLLA()	(clk->reg == PLLA_CTL)
+#define IS_PLLC()	(clk->reg == PLLC_CTL)
+#define IS_PLLL3()	(clk->reg == PLLL3_CTL)
+#define IS_PLLD()	(clk->reg == PLLD_CTL)
+#define IS_PLLH()	(clk->reg == PLLH_CTL)
+#define IS_PLLS()	(clk->reg == PLLS_CTL)
+#define IS_PLLHS()	(IS_PLLH() || IS_PLLS())
 
-#define PD_N	0
+#define BP	0	/* Reg 0 */
 #define PREDIV	1
-#define PRESCL	3
-#define FBKDIV	4
-#define PSTDIV	12
+#define PSTDIV	3
+#define FBKDIV	7
+#define PRESCL	15
+#define BNKSEL	0	/* Reg 1 */
+#define PD_N	2
 
 #define FBKDIV_WIDTH	8
 #define FBKDIV_MIN	64
@@ -60,25 +67,24 @@ struct sp_pll {
 	long brate;
 	u32 idiv; // struct divs[] index
 	u32 fbkdiv; // 64~(64+255)
-	u32 bp; // bypass bit_idx
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
-static u32 mux_table[] = { 0x00, 0x01, 0x03, 0x07, 0x0f };
+static u32 mux_table[] = { 0x00, 0x01, 0x03, 0x07, 0x0f, 0x1f };
+static u32 mux_table_sd[] = { 0x00, 0x01, 0x02, 0x03 };
+static u32 mux_table_fl[] = { 0x00, 0x01, 0x02, 0x03, 0x06, 0x07 };
 #define MAX_PARENTS ARRAY_SIZE(mux_table)
 
-static struct clk *clks[CLK_MAX + AC_MAX + PLL_MAX];
+static struct clk *clks[CLK_MAX + PLL_MAX];
 static struct clk_onecell_data clk_data;
-static void __iomem *moon_regs;
+static void __iomem *clk_regs;
 
-#define clk_regs	(moon_regs + 0x004) /* G0.1 ~ CLKEN */
-#define mux_regs	(moon_regs + 0x100)	/* G2.0 ~ CLK_SEL */
-#define pll_regs	(moon_regs + 0x200) /* G4.0 ~ PLL */
+#define pll_regs	(clk_regs + 31 * 4)	/* G3.0  ~ PLL */
 
 struct sp_clk {
 	const char *name;
 	u32 id;		/* defined in sp-sp7350.h, also for gate (reg_idx<<4)|(shift) */
-	u32 mux;	/* mux reg_idx: MOON2.xx */
+	u32 mux;	/* mux reg_idx: based from G3.0 */
 	u32 shift;	/* mux shift */
 	u32 width;	/* mux width */
 	const char *parent_names[MAX_PARENTS];
@@ -88,145 +94,229 @@ static const char * const default_parents[] = { EXT_CLK };
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
-static struct sp_clk sp_clks[] = {
-	_(SYSTEM,		0,	0,	2, {"f_600m", "f_750m", "f_500m"}),
-	_(CA55CORE0,	0,	6,	1, {"PLLC", "SYSTEM"}),
-	_(CA55CORE1,	0,	11,	1, {"PLLC", "SYSTEM"}),
-	_(CA55CORE2,	1,	0,	1, {"PLLC", "SYSTEM"}),
-	_(CA55CORE3,	1,	5,	1, {"PLLC", "SYSTEM"}),
-	_(CA55CUL3,		1,	10,	1, {"f_1200m", "SYSTEM"}),
-	_(CA55),
-	_(IOP),
-	_(PBUS0),
-	_(PBUS1),
-	_(PBUS2),
-	_(PBUS3),
-	_(BR0),
-	_(CARD_CTL0,	3,	7,	1, {"f_360m", "f_800m"}),
-	_(CARD_CTL1,	3,	8,	1, {"f_360m", "f_800m"}),
-	_(CARD_CTL2,	3,	9,	1, {"f_360m", "f_800m"}),
+static const char *gmac_parents_alt[] = {"PLLS_50", "PLLS_25", "PLLS_2P5"}; // for G5.19[0] == 1
 
+static struct sp_clk sp_clks[] = {
+	_(SYSTEM,	24,	0,	2, {"PLLS_500", "PLLS_333", "PLLS_400"}),
+	_(CA55CORE0,	29,	0,	3, {"PLLC", "PLLC_D2", "PLLC_D3", "PLLC_D4"}),
+	_(CA55CORE1,	29,	3,	3, {"PLLC", "PLLC_D2", "PLLC_D3", "PLLC_D4"}),
+	_(CA55CORE2,	29,	6,	3, {"PLLC", "PLLC_D2", "PLLC_D3", "PLLC_D4"}),
+	_(CA55CORE3,	29,	9,	3, {"PLLC", "PLLC_D2", "PLLC_D3", "PLLC_D4"}),
+	_(CA55CUL3,	29,	12,	3, {"PLLL3", "PLLL3_D2", "PLLL3_D3", "PLLL3_D4"}),
+	_(CA55),
+	_(GMAC,		23,	10,	2, {"PLLS_125", "PLLS_25", "PLLS_2P5"}),
+	_(RBUS,		23,	6,	2, {"PLLS_400", "PLLS_100", "PLLS_200"}),
+	_(RBUS_BLOCKB),
+	_(SYSTOP),
+	_(THERMAL),
+	_(BR0),
+	_(CARD_CTL0,	23,	0,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
+	_(CARD_CTL1,	23,	4,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
+	_(CARD_CTL2,	23,	2,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
 	_(CBDMA0),
-	_(CPIOL),
 	_(CPIOR),
-	_(DDR_PHY0),
-	_(SDCTRL0),
+	_(DDRPHY,	0,	0,	0, {"PLLD"}),
+	_(TZC),
+	_(DDRCTL,	0,	0,	0, {"SYSAO"}),
+	_(DRAM,		0,	0,	0, {"PLLD"}),
+	_(VCL),
+	_(VCL0,		24,	2,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
+	_(VCL1,		24,	6,	3, {"PLLS_500", "PLLH_307", "PLLS_200", "PLLS_400"}),
+	_(VCL2,		24,	9,	3, {"PLLS_400", "PLLS_200", "PLLH_307", "PLLS_100"}),
+	_(VCL3,		24,	12,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
+	_(VCL4),
+	_(VCL5,		25,	0,	1, {"PLLS_400", "PLLS_200"}),
 	_(DUMMY_MASTER0),
 	_(DUMMY_MASTER1),
 	_(DUMMY_MASTER2),
-	_(EVDN,			3,	4,	1, {"f_800m", "f_1000m"}),
-	_(SDPROT0),
-	_(UMCTL2),
-	_(GPU,			2,	9,	3, {"f_800m", "f_1000m", "f_1080m", "f_400m"}),
-	_(HSM,			2,	5,	1, {"f_500m", "SYSTEM"}),
-	_(RBUS_TOP),
-	_(SPACC),
-	_(INTERRUPT),
-
-	_(N78,			3,	2,	2, {"f_1000m", "f_1200m", "f_1080m"}),
-	_(SYSTOP),
+	_(DISPSYS),
+	_(DMIX),
+	_(GPOST0),
+	_(GPOST1),
+	_(GPOST2),
+	_(GPOST3),
+	_(IMGREAD0),
+	_(MIPITX,	25,	7,	5, {"PLLH_MIPI", "PLLH_MIPI_D2", "PLLH_MIPI_D4", "PLLH_MIPI_D8", "PLLH_MIPI_D16", "PLLH"}),
+	_(OSD0),
+	_(OSD1),
+	_(OSD2),
+	_(OSD3),
+	_(TCON,		25,	7,	5, {"PLLH_MIPI", "PLLH_MIPI_D2", "PLLH_MIPI_D4", "PLLH_MIPI_D8", "PLLH_MIPI_D16", "PLLH"}),
+	_(TGEN),
+	_(VPOST0),
+	_(VSCL0),
+	_(MIPICSI0),
+	_(MIPICSI1),
+	_(MIPICSI2),
+	_(MIPICSI3),
+	_(MIPICSI4),
+	_(MIPICSI5),
+	_(VI0_CSIIW0),
+	_(VI0_CSIIW1),
+	_(VI1_CSIIW0),
+	_(VI1_CSIIW1),
+	_(VI2_CSIIW0),
+	_(VI2_CSIIW1),
+	_(VI3_CSIIW0),
+	_(VI3_CSIIW1),
+	_(VI3_CSIIW2),
+	_(VI3_CSIIW3),
+	_(VI4_CSIIW0),
+	_(VI4_CSIIW1),
+	_(VI4_CSIIW2),
+	_(VI4_CSIIW3),
+	_(VI5_CSIIW0),
+	_(VI5_CSIIW1),
+	_(VI5_CSIIW2),
+	_(VI5_CSIIW3),
+	_(MIPICSI23_SEL),
+	_(VI23_CSIIW1),
+	_(VI23_CSIIW2),
+	_(VI23_CSIIW3),
+	_(VI23_CSIIW0),
 	_(OTPRX),
-	_(PMC),
-	_(RBUS_BLOCKA),
-	_(RBUS_BLOCKB),
-	_(RBUS_rsv1),
-	_(RBUS_rsv2),
-	_(RTC,			0,	0,	0, {"f_32k"}),
-	_(MIPZ),
-	_(SPIFL,		3,	11,	1, {"f_360m", "f_216m"}),
+	_(PRNG),
+	_(SEMAPHORE),
+	_(INTERRUPT),
+	//_(SPIFL,	25,	1,	3, {"PLLH_716", "PLLH_358", "PLLH_537", "PLLH_268", "PLLH_614", "PLLH_307"}),
+	_(SPIFL,	0,	0,	0, {"PLLS_500"}),
 	_(BCH),
-	_(SPIND,		3,	10,	1, {"f_600m", "f_800m"}),
+	_(SPIND,	25,	4,	3, {"PLLH_716", "PLLH_358", "PLLH_537", "PLLH_268", "PLLH_614", "PLLH_307"}),
 	_(UADMA01),
 	_(UADMA23),
-	_(UA0,			2,	13,	1, {EXT_CLK, "f_200m"}),
-
-	_(UA1,			2,	14,	1, {EXT_CLK, "f_200m"}),
-	_(UA2,			2,	15,	1, {EXT_CLK, "f_200m"}),
-	_(UA3,			3,	0,	1, {EXT_CLK, "f_200m"}),
-	_(UA4),
-	_(UA5),
-	_(UADBG,		3,	1,	1, {EXT_CLK, "f_200m"}),
-	_(UART2AXI),
-	_(GDMAUA),
+	_(UA0,		27,	10,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(UA1,		27,	12,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(UA2,		27,	14,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(UA3,		28,	0,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(UADBG,	23,	8,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	//_(UART2AXI,	23,	8,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
 	_(UPHY0),
-	_(USB30C0,		2,	2,	1, {"f_125m", "f_125m"}), /* CLKPIPE0_SRC also 125m */
-	_(USB30C1,		2,	3,	1, {"f_125m", "f_125m"}), /* CLKPIPE1_SRC also 125m */
-	_(U3PHY0,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
-	_(U3PHY1,		2,	0,	2, {"f_100m", "f_50m", EXT_CLK}),
+	_(USB30C0),
+	_(U3PHY0,	25,	14,	2, {EXT_CLK, "PLLS_50", "PLLS_100"}),
 	_(USBC0),
-	_(VCD,			0,	0,	0, {"f_360m"}),
-	_(VCE,			24,	9,	2, {"f_540m", "f_600m", "f_750m"}),
-
-	_(CM4,			3,	5,	2, {"SYSTEM", "SYSTEM_D2", "SYSTEM_D4"}), /* SYS_CLK, SYS_CLK/2, SYS_CLK/4 */
+	_(VCD,		0,	0,	0, {"PLLH_358"}),
+	_(VCE,		0,	0,	0, {"PLLH_537"}),
+	_(VIDEO_CODEC),
+	_(MAILBOX),
+	_(AXI_DMA),
+	_(PNAND,	23,	13,	2, {"PLLS_400", "PLLS_100", "PLLS_200"}),
+	_(SEC),
+	//_(rsv1),
+	_(STC_AV3),
+	_(STC_TIMESTAMP),
+	_(STC_AV4),
+	_(NICTOP),
+	_(NICPAII),
+	_(NICPAI),
+	_(NPU,		23,	15,	1, {"PLLN", "PLLN_D2"}),
+	_(SECGRP_PAI),
+	_(SECGRP_PAII),
+	_(SECGRP_MAIN),
+	_(DPLL),
+	_(HBUS),
+	_(AUD),
+	_(AXIM_TOP),
+	_(AXIM_PAI),
+	_(AXIM_PAII),
+	_(SYSAO,	28,	6,	3, {"PLLS_200", "PLLS_50", EXT_CLK, "PLLS_100"}),
+	_(PMC),
+	_(RTC),
+	_(INTERRUPT_AO),
+	_(UA6,		28,	2,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(UA7,		28,	4,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
+	_(GDMAUA),
+	_(CM4,		27,	2,	3, {"PLLS_400", "PLLS_100", "PLLS_200", EXT_CLK}),
 	_(STC0),
 	_(STC_AV0),
 	_(STC_AV1),
 	_(STC_AV2),
-	_(MAILBOX),
-	_(PAI),
-	_(PAII),
-	_(DDRPHY,		0,	0,	0, {"f_800m"}),
-	_(DDRCTL),
-	_(I2CM0),
-	_(SPI_COMBO_0),
-	_(SPI_COMBO_1),
-	_(SPI_COMBO_2),
-	_(SPI_COMBO_3),
-	_(SPI_COMBO_4),
-
-	_(SPI_COMBO_5),
-	_(CSIIW0,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI0,		0,	0,	0, {"f_320m"}),
-	_(CSIIW1,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI1,		0,	0,	0, {"f_320m"}),
-	_(CSIIW2,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI2,		0,	0,	0, {"f_320m"}),
-	_(CSIIW3,		0,	0,	0, {"f_320m"}),
-	_(MIPICSI3,		0,	0,	0, {"f_320m"}),
-	_(VCL),
-	_(DISP_PWM,		0,	0,	0, {"f_200m"}),
-	_(I2CM1),
-	_(I2CM2),
-	_(I2CM3),
-	_(I2CM4),
-	_(I2CM5),
-
-	_(UA6),
-	_(UA7),
-	_(UA8),
-	_(AUD),
-	_(VIDEO_CODEC),
-
-	_(VCLCORE0,		25,	0,	4, {"f_500m", "f_600m", "f_400m", "f_300m", "f_200m"}),
-	_(VCLCORE1,		25,	4,	3, {"f_400m", "f_500m", "f_300m", "f_200m"}),
-	_(VCLCORE2,		25,	7,	3, {"f_300m", "f_400m", "f_100m", "f_200m"}),
+	_(AHB_DMA),
+	_(SAR12B,	0,	0,	0, {"PLLS_100"}),
+	_(DISP_PWM,	27,	5,	1, {EXT_CLK, "PLLS_200"}),
+	_(NICPIII),
+	_(GPIO_AO_INT),
+	_(I2CM0,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM1,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM2,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM3,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM4,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM5,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM6,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM7,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM8,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(I2CM9,	27,	6,	2, {"PLLS_100", "PLLS_50", EXT_CLK}),
+	_(SPICB0,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(SPICB1,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(SPICB2,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(SPICB3,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(SPICB4,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(SPICB5,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+	_(PD_AXI_DMA),
+	_(PD_CA55),
+	_(PD_CARD0),
+	_(PD_CARD1),
+	_(PD_CARD2),
+	_(PD_CBDMA0),
+	_(PD_CPIOR0),
+	_(PD_CPIOR1),
+	_(PD_CSDBG),
+	_(PD_CSETR),
+	_(PD_DUMMY0),
+	_(PD_DUMMY1),
+	_(PD_GMAC),
+	_(PD_IMGREAD0),
+	_(PD_NBS),
+	_(PD_NPU),
+	_(PD_OSD0),
+	_(PD_OSD1),
+	_(PD_OSD2),
+	_(PD_OSD3),
+	_(PD_SEC),
+	_(PD_SPI_ND),
+	_(PD_SPI_NOR),
+	_(PD_UART2AXI),
+	_(PD_USB30C0),
+	_(PD_USBC0),
+	_(PD_VCD),
+	_(PD_VCE),
+	_(PD_VCL),
+	_(PD_VI0_CSII),
+	_(PD_VI1_CSII),
+	_(PD_VI23_CSII),
+	_(PD_VI4_CSII),
+	_(PD_VI5_CSII),
+	_(PD_AHB_DMA),
+	_(PD_AUD),
+	_(PD_CM4),
+	_(PD_HWUA_TX_GDMA),
+	_(QCTRL),
 };
 
 /************************************************* PLL_A *************************************************/
 
-/* from SP7350_PLLA_REG_setting.xlsx */
+/* from PLLA_Q654_REG_setting_220701.xlsx */
 struct {
 	u32 rate;
-	u32 regs[6];
+	u32 regs[5];
 } pa[] = {
 	{
 		.rate = 135475200,
 		.regs = {
-			0x5473, // G4.24
-			0x0a11, // G4.25
-			0x0014, // G4.26
-			0x00c2, // G4.27
-			0x0bfd, // G4.28
+			0x5200,
+			0xf02c,
+			0x0c21,
+			0x3fd0,
+			0x1954,
 		}
 	},
 	{
 		.rate = 147456000,
 		.regs = {
-			0x5473,
-			0x0a11,
-			0x0028,
-			0x01f5,
-			0x0bfd,
+			0x5200,
+			0xf02c,
+			0x1f51,
+			0x3fd0,
+			0x1968,
 		}
 	},
 };
@@ -268,50 +358,79 @@ struct sp_div {
 	BITS((prediv - 1), (prescl - 1), (pstdiv - 1)) \
 }
 
-#define DIV2_BITS	BITS(3, 1, 3)
-
-static struct sp_div divs[] = {
-	DIV(4, 1, 4), // 32
-	DIV(3, 1, 4), // 24
-	DIV(3, 1, 3), // 18
-	DIV(2, 1, 4), // 16
-	DIV(2, 1, 3), // 12
-	DIV(3, 2, 3), // 9
-	DIV(4, 1, 1), // 8
-	DIV(3, 1, 1), // 6
-	DIV(2, 1, 1), // 4
-	DIV(3, 2, 1), // 3
-	DIV(1, 1, 1), // 2
+static const struct sp_div divs_0[] = {
 	DIV(1, 2, 1), // 1
+	DIV(1, 1, 1), // 2
+	DIV(3, 2, 1), // 3
+	DIV(2, 1, 1), // 4
+	DIV(3, 1, 1), // 6
+	DIV(4, 1, 1), // 8
+	DIV(3, 2, 3), // 9
+	DIV(2, 1, 3), // 12
+	DIV(2, 1, 4), // 16
+	DIV(3, 1, 3), // 18
+	DIV(3, 1, 4), // 24
+	DIV(4, 1, 4), // 32
 };
+
+#define DIVD(prediv, prescl, pstdiv) \
+{ \
+	prediv * 2 / prescl * pstdiv_d[pstdiv], \
+	BITS((prediv - 1), (prescl - 1), pstdiv) \
+}
+
+static const int pstdiv_d[] = {1, 3, 6, 12};
+static const struct sp_div divs_d[] = {
+	DIVD(1, 2, 0),	// 1
+	DIVD(1, 1, 0),	// 2
+	DIVD(3, 2, 0),	// 3
+	DIVD(2, 1, 0),	// 4
+	DIVD(3, 1, 0),	// 6
+	DIVD(4, 1, 0),	// 8
+	DIVD(3, 2, 1),	// 9
+	DIVD(2, 1, 1),	// 12
+	DIVD(3, 1, 1),	// 18
+	DIVD(4, 1, 1),	// 24
+	DIVD(3, 1, 2),	// 36
+	DIVD(4, 1, 2),	// 48
+	DIVD(3, 1, 3),	// 72
+	DIVD(4, 1, 3),	// 96
+};
+
+#define divs		(IS_PLLD() ? divs_d : divs_0)
+#define divs_size	(IS_PLLD() ? ARRAY_SIZE(divs_d) : ARRAY_SIZE(divs_0))
 
 static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 {
 	long ret = 0, mr = 0;
-	int mi = 0, md = 0x7fffffff, d;
-	int i, j = IS_PLLH() ? (ARRAY_SIZE(divs) - 6) : 0;
+	int mi = 0, md = 0x7fffffff;
+	int i = IS_PLLHS() ? 6 : divs_size;
+	const struct sp_div *div = &divs[i - 1];
 
-	for (i = ARRAY_SIZE(divs) - 1; i >= j; i--) {
-		long br = clk->brate * 2 / divs[i].div2;
+	//pr_info("calc_rate: %lu\n", rate);
+
+	while (i--) {
+		long br = clk->brate * 2 / div->div2;
 
 		ret = DIV_ROUND_CLOSEST(rate, br);
 		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
-			//pr_info(">>>%u>>> %ld * %ld = %ld - %lu\n", divs[i].div2, br, ret, br * ret, rate);
-			br *= ret;
-			if (br < rate)
-				d = rate - br;
-			else if (br > rate)
-				d = br - rate;
-			else { // br == rate
-				clk->idiv = i;
-				return ret;
-			}
+                        long d, rr;
+
+			rr = br * ret;
+			if (rr <= rate)
+				d = rate - rr;
+			else if (rr > rate)
+				d = rr - rate;
+			//pr_info(">>>%u>>> %ld * %ld = %ld - %lu = %ld\n", div->div2, br, ret, br * ret, rate, d);
+
 			if (d < md) {
-				md = d;
 				mi = i;
 				mr = ret;
+                                if (!d) break;
+				md = d;
 			}
 		}
+		div--;
 	}
 
 	clk->idiv = mi;
@@ -344,12 +463,11 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 {
 	struct sp_pll *clk = to_sp_pll(hw);
 	u32 reg = readl(clk->reg);
-	u32 bp = clk->bp;
 	unsigned long ret;
 
 	//TRACE;
 	//pr_info("%08x\n", reg);
-	if (readl(clk->reg + (bp / 16) * 4) & BIT(bp % 16)) // bypass ?
+	if (readl(clk->reg) & BIT(BP)) // bypass ?
 		ret = prate;
 	else if (IS_PLLA())
 		ret = pa[clk->idiv].rate;
@@ -359,7 +477,9 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		u32 prescl = MASK_GET(PRESCL, 1, reg) + 1;
 		u32 pstdiv = MASK_GET(PSTDIV, 2, reg) + 1;
 
-		ret = clk->brate / prediv * fbkdiv * prescl / (IS_PLLH() ? 1 : pstdiv);
+		ret = clk->brate / prediv * fbkdiv * prescl;
+		if (!IS_PLLHS())
+			ret /= IS_PLLD() ? pstdiv_d[pstdiv - 1] : pstdiv;
 	}
 	//pr_info("recalc_rate: %lu -> %lu\n", prate, ret);
 
@@ -371,36 +491,52 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 {
 	struct sp_pll *clk = to_sp_pll(hw);
 	unsigned long flags;
-	u32 bp = clk->bp;
 	u32 reg;
 
 	//TRACE;
-	//pr_info("set_rate: %lu -> %lu\n", prate, rate);
+	//pr_info("set_rate: %lu -> %lu (%d)\n", prate, rate, readl(clk->reg + 8) & 0x100);
 
 	spin_lock_irqsave(&clk->lock, flags);
 
-	reg = BIT((bp % 16) + 16); // BP_HIWORD_MASK
+	reg = BIT(BP + 16); // BP_HIWORD_MASK
 
 	if (rate == prate) {
-		reg |= BIT(bp % 16);
-		writel(reg, clk->reg + (bp / 16) * 4); // set bp
+		reg |= BIT(BP);
+		writel(reg, clk->reg); // set bp
 	} else if (IS_PLLA())
 		PLLA_set_rate(clk);
 	else {
 		u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
 
-		if (bp > 16)
-			writel(reg, clk->reg + (bp / 16) * 4); // clear bp @ another reg
-		reg |= 0x3ffe0000; // BIT[13:1] HIWORD_MASK
+		reg |= IS_PLLHS() ? 0xffc60000 : 0xfffe0000; // HIWORD_MASK
 		reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[clk->idiv].bits;
+
+		if (IS_PLLC())
+			writel(0x00010001, pll_regs + 30 * 4);  // G3.30[0] = 1
+		else if (IS_PLLL3())
+			writel(0x80008000, pll_regs + 29 * 4);  // G3.29[15] = 1
+
 		writel(reg, clk->reg);
+
+		if (IS_PLLC() || IS_PLLL3()) {
+#if 0 // FIXME: clock ready signal always 0 @ ZEBU
+			do {
+				reg = readl(clk->reg + 8) & 0x100;
+				pr_info("%u", reg);
+			} while (!reg); // wait clock ready
+#endif
+			if (IS_PLLC())
+				writel(0x00010000, pll_regs + 30 * 4);  // G3.30[0] = 0
+			else
+				writel(0x80000000, pll_regs + 29 * 4);  // G3.29[15] = 0
+		}
 	}
 
 	spin_unlock_irqrestore(&clk->lock, flags);
 
 	return 0;
 }
-
+#if 0
 static int sp_pll_enable(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
@@ -408,7 +544,7 @@ static int sp_pll_enable(struct clk_hw *hw)
 
 	TRACE;
 	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg); /* power up */
+	writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg + 4); /* power up */
 	spin_unlock_irqrestore(&clk->lock, flags);
 
 	return 0;
@@ -421,7 +557,7 @@ static void sp_pll_disable(struct clk_hw *hw)
 
 	TRACE;
 	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16), clk->reg); /* power down */
+	writel(BIT(PD_N + 16), clk->reg + 4); /* power down */
 	spin_unlock_irqrestore(&clk->lock, flags);
 }
 
@@ -429,19 +565,21 @@ static int sp_pll_is_enabled(struct clk_hw *hw)
 {
 	struct sp_pll *clk = to_sp_pll(hw);
 
-	return readl(clk->reg) & BIT(PD_N);
+	return readl(clk->reg + 4) & BIT(PD_N);
 }
-
+#endif
 static const struct clk_ops sp_pll_ops = {
+#if 0
 	.enable = sp_pll_enable,
 	.disable = sp_pll_disable,
 	.is_enabled = sp_pll_is_enabled,
+#endif
 	.round_rate = sp_pll_round_rate,
 	.recalc_rate = sp_pll_recalc_rate,
 	.set_rate = sp_pll_set_rate
 };
 
-struct clk *clk_register_sp_pll(const char *name, void __iomem *reg, u32 bp)
+struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 {
 	struct sp_pll *pll;
 	struct clk *clk;
@@ -465,7 +603,6 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg, u32 bp)
 	pll->hw.init = &initd;
 	pll->reg = reg;
 	pll->brate = (reg == PLLN_CTL) ? (XTAL / 2) : XTAL;
-	pll->bp = bp;
 	spin_lock_init(&pll->lock);
 
 	clk = clk_register(NULL, &pll->hw);
@@ -486,15 +623,33 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	struct clk_mux *mux = NULL;
 	struct clk_gate *gate;
 	struct clk *clk;
+	int num_parents = sp_clk->width + 1;
 
 	if (sp_clk->width) {
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 		if (!mux)
 			return ERR_PTR(-ENOMEM);
-		mux->reg = mux_regs + (sp_clk->mux << 2);
+		mux->reg = pll_regs + sp_clk->mux * 4;
 		mux->shift = sp_clk->shift;
 		mux->mask = BIT(sp_clk->width) - 1;
 		mux->table = mux_table;
+		switch (sp_clk->id) {
+			case CARD_CTL0:
+			case CARD_CTL1:
+			case CARD_CTL2:
+				mux->table = mux_table_sd;
+				num_parents = ARRAY_SIZE(mux_table_sd);
+				break;
+			case SPIFL:
+			case SPIND:
+				mux->table = mux_table_fl;
+				num_parents = ARRAY_SIZE(mux_table_fl);
+				break;
+			case GMAC:
+				if (readl(pll_regs + (64 + 19) * 4) & 1) // G5.19[0]
+					parent_names = gmac_parents_alt;
+				break;
+		}
 		mux->flags = CLK_MUX_HIWORD_MASK | CLK_MUX_ROUND_CLOSEST;
 	}
 
@@ -507,8 +662,7 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	gate->bit_idx = sp_clk->id & 0x0f;
 	gate->flags = CLK_GATE_HIWORD_MASK;
 
-	clk = clk_register_composite(NULL, sp_clk->name, parent_names,
-					mux ? sp_clk->width + 1 : 1,
+	clk = clk_register_composite(NULL, sp_clk->name, parent_names, num_parents,
 					mux ? &mux->hw : NULL, &clk_mux_ops,
 					NULL, NULL,
 					&gate->hw, &clk_gate_ops,
@@ -521,57 +675,71 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	return clk;
 }
 
+#define SP_REGISTER(pll)	\
+	clks[pll] = clk_register_sp_pll(#pll, pll##_CTL)
+
 static void __init sp_clkc_init(struct device_node *np)
 {
 	int i;
 
 	pr_info("sp-clkc init\n");
 
-	if (moon_regs) {
-		pr_warn("sp-clkc already present.\n");
-		return; // -ENXIO
-	}
-
-	moon_regs = of_iomap(np, 0);
-	if (WARN_ON(!moon_regs)) {
+	clk_regs = of_iomap(np, 0);
+	if (WARN_ON(!clk_regs)) {
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
 
-	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
+	pr_debug("sp-clkc: clk_regs = %llx", (u64)clk_regs);
+	/* enable all clks */
+	for (i = 0; i < 12; i++)
+		writel(0xffffffff, clk_regs + i * 4);
 
 	/* PLLs */
-	clks[PLLS] = clk_register_sp_pll("PLLS", PLLS_CTL, 14);
-	clks[PLLC] = clk_register_sp_pll("PLLC", PLLC_CTL, 14);
-	clks[PLLN] = clk_register_sp_pll("PLLN", PLLN_CTL, 14);
-	clks[PLLH] = clk_register_sp_pll("PLLH", PLLH_CTL, 24); // BP: 16 + 8
-	clks[PLLD] = clk_register_sp_pll("PLLD", PLLD_CTL, 14);
-	clks[PLLA] = clk_register_sp_pll("PLLA", PLLA_CTL, 2);
+	SP_REGISTER(PLLA);
+	SP_REGISTER(PLLC);
+	SP_REGISTER(PLLL3);
+	SP_REGISTER(PLLD);
+	SP_REGISTER(PLLH);
+	SP_REGISTER(PLLN);
+	SP_REGISTER(PLLS);
 
 	pr_debug("sp-clkc: register fixed_rate/factor");
 	/* fixed frequency & fixed factor */
-	clk_register_fixed_factor(NULL, "f_1200m", "PLLS", 0, 1, 2);
-	clk_register_fixed_factor(NULL, "f_600m",  "PLLS", 0, 1, 4);
-	clk_register_fixed_factor(NULL, "f_300m",  "PLLS", 0, 1, 8);
-	clk_register_fixed_factor(NULL, "f_750m",  "PLLC", 0, 1, 2);
-	clk_register_fixed_factor(NULL, "f_1000m", "PLLN", 0, 1, 1);
-	clk_register_fixed_factor(NULL, "f_500m",  "PLLN", 0, 1, 2);
-	clk_register_fixed_factor(NULL, "f_250m",  "PLLN", 0, 1, 4);
-	clk_register_fixed_factor(NULL, "f_125m",  "PLLN", 0, 1, 8);
-	clk_register_fixed_factor(NULL, "f_1080m", "PLLH", 0, 1, 2);
-	clk_register_fixed_factor(NULL, "f_540m",  "PLLH", 0, 1, 4);
-	clk_register_fixed_factor(NULL, "f_360m",  "PLLH", 0, 1, 6);
-	clk_register_fixed_factor(NULL, "f_216m",  "PLLH", 0, 1, 10);
-	clk_register_fixed_factor(NULL, "f_800m",  "PLLD", 0, 1, 2);
-	clk_register_fixed_factor(NULL, "f_400m",  "PLLD", 0, 1, 4);
-	clk_register_fixed_factor(NULL, "f_200m",  "PLLD", 0, 1, 8);
-	clk_register_fixed_factor(NULL, "f_100m", EXT_CLK, 0, 4, 1);
-	clk_register_fixed_factor(NULL, "f_50m",  EXT_CLK, 0, 2, 1);
-	clk_register_fixed_factor(NULL, "SYSTEM_D2", "SYSTEM", 0, 1, 2); // SYS_CLK/2
-	clk_register_fixed_factor(NULL, "SYSTEM_D4", "SYSTEM", 0, 1, 4); // SYS_CLK/4
+	clk_register_fixed_factor(NULL, "PLLC_D2", "PLLC", 0, 1, 2);
+	clk_register_fixed_factor(NULL, "PLLC_D3", "PLLC", 0, 1, 3);
+	clk_register_fixed_factor(NULL, "PLLC_D4", "PLLC", 0, 1, 4);
+
+	clk_register_fixed_factor(NULL, "PLLL3_D2", "PLLL3", 0, 1, 2);
+	clk_register_fixed_factor(NULL, "PLLL3_D3", "PLLL3", 0, 1, 3);
+	clk_register_fixed_factor(NULL, "PLLL3_D4", "PLLL3", 0, 1, 4);
+
+	clk_register_fixed_factor(NULL, "PLLN_D2", "PLLN", 0, 1, 2);
+
+	clk_register_fixed_factor(NULL, "PLLH_716", "PLLH", 0, 1, 3);
+	clk_register_fixed_factor(NULL, "PLLH_614", "PLLH", 0, 2, 7);
+	clk_register_fixed_factor(NULL, "PLLH_537", "PLLH", 0, 1, 4);
+	clk_register_fixed_factor(NULL, "PLLH_358", "PLLH", 0, 1, 6);
+	clk_register_fixed_factor(NULL, "PLLH_307", "PLLH", 0, 1, 7);
+	clk_register_fixed_factor(NULL, "PLLH_268", "PLLH", 0, 1, 8);
+	clk_register_fixed_factor(NULL, "PLLH_MIPI", "PLLH", 0, 1, 9);
+	clk_register_fixed_factor(NULL, "PLLH_MIPI_D2",  "PLLH_MIPI", 0, 1, 2);
+	clk_register_fixed_factor(NULL, "PLLH_MIPI_D4",  "PLLH_MIPI", 0, 1, 4);
+	clk_register_fixed_factor(NULL, "PLLH_MIPI_D8",  "PLLH_MIPI", 0, 1, 8);
+	clk_register_fixed_factor(NULL, "PLLH_MIPI_D16", "PLLH_MIPI", 0, 1, 16);
+
+	clk_register_fixed_factor(NULL, "PLLS_800", "PLLS", 0, 2, 5);
+	clk_register_fixed_factor(NULL, "PLLS_500", "PLLS", 0, 1, 4);
+	clk_register_fixed_factor(NULL, "PLLS_400", "PLLS", 0, 1, 5);
+	clk_register_fixed_factor(NULL, "PLLS_333", "PLLS", 0, 1, 6);
+	clk_register_fixed_factor(NULL, "PLLS_200", "PLLS", 0, 1, 10);
+	clk_register_fixed_factor(NULL, "PLLS_125", "PLLS", 0, 1, 16);
+	clk_register_fixed_factor(NULL, "PLLS_100", "PLLS", 0, 1, 20);
+	clk_register_fixed_factor(NULL, "PLLS_50",  "PLLS", 0, 1, 40);
+	clk_register_fixed_factor(NULL, "PLLS_25",  "PLLS", 0, 1, 80);
+	clk_register_fixed_factor(NULL, "PLLS_2P5", "PLLS", 0, 1, 800);
 
 	pr_debug("sp-clkc: register sp_clks");
-
 	/* sp_clks */
 	for (i = 0; i < ARRAY_SIZE(sp_clks); i++) {
 		struct sp_clk *sp_clk = &sp_clks[i];
@@ -580,66 +748,28 @@ static void __init sp_clkc_init(struct device_node *np)
 		clks[j] = clk_register_sp_clk(sp_clk);
 	}
 
-	pr_debug("sp-clkc: of_clk_add_provider");
-	clk_data.clks = clks;
-	clk_data.clk_num = ARRAY_SIZE(clks);
-	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
-
-	pr_debug("===================================================");
-	for (i = 0; i < ARRAY_SIZE(clks); i++) {
-		struct clk *clk = clks[i];
-
-		if (clk)
-			pr_debug("[%02x] %-14s: %lu", i, __clk_get_name(clk), clk_get_rate(clk));
-	}
-	pr_info("sp-clkc init done!\n");
-}
-#else
-static struct clk *clks[CLK_MAX];
-static struct clk_onecell_data clk_data;
-static void __iomem *moon_regs;
-
-struct clk *clk_register_gate(struct device *dev, const char *name,
-		const char *parent_name, unsigned long flags,
-		void __iomem *reg, u8 bit_idx,
-		u8 clk_gate_flags, spinlock_t *lock);
-
-static void __init sp_clkc_init(struct device_node *np)
-{
-	int i;
-
-	pr_info("sp-clkc init\n");
-
-	moon_regs = of_iomap(np, 0);
-	if (WARN_ON(!moon_regs)) {
-		pr_warn("sp-clkc regs missing.\n");
-		return; // -EIO
-	}
-
-	pr_debug("sp-clkc: moon_regs = %llx", (u64)moon_regs);
-
-	/* enable all clks */
-	for (i = 0; i < 12; i++)
-		writel(0xffffffff, moon_regs + i * 4);
-
-	/* gates */
-	for (i = 0; i < CLK_MAX; i++) {
-		char name[10];
-
-		sprintf(name, "clken%02x", i);
-		clks[i] = clk_register_gate(NULL, name, EXT_CLK,
-			CLK_IGNORE_UNUSED,
-			moon_regs + (i >> 4) * 4,
-			i & 0x0f,
-			CLK_GATE_HIWORD_MASK,
-			NULL);
-	}
-
-	pr_debug("sp-clkc: of_clk_add_provider");
-	clk_data.clks = clks;
-	clk_data.clk_num = ARRAY_SIZE(clks);
-	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
-}
+#if 0 // test
+	pr_info("TEST:\n");
+	clk_set_rate(clks[UA2], 250);
+	pr_info("%-20s%lu\n", "UA2", clk_get_rate(clks[UA2]));
+	//clk_set_rate(clks[UA0], 260000000);
+	//pr_info("%-20s%lu\n", "UA0", clk_get_rate(clks[UA0]));
+	clk_set_rate(clks[CA55CORE3], 250000000);
+	pr_info("%-20s%lu\n", "CA55CORE3", clk_get_rate(clks[CA55CORE3]));
+	clk_set_rate(clks[CA55CORE2], 250000000);
+	pr_info("%-20s%lu\n", "CA55CORE2", clk_get_rate(clks[CA55CORE2]));
+	clk_set_rate(clks[CA55CORE1], 250000000);
+	pr_info("%-20s%lu\n", "CA55CORE1", clk_get_rate(clks[CA55CORE1]));
+	//clk_set_rate(clks[CA55CORE0], 250000000);
+	//pr_info("%-20s%lu\n", "CA55CORE0", clk_get_rate(clks[CA55CORE0]));
+	clk_set_rate(clks[PLLC], 800000000);
+	pr_info("%-20s%lu\n", "PLLC", clk_get_rate(clks[PLLC]));
 #endif
+
+	pr_debug("sp-clkc: of_clk_add_provider");
+	clk_data.clks = clks;
+	clk_data.clk_num = ARRAY_SIZE(clks);
+	of_clk_add_provider(np, of_clk_src_onecell_get, &clk_data);
+}
 
 CLK_OF_DECLARE(sp_clkc, "sunplus,sp7350-clkc", sp_clkc_init);

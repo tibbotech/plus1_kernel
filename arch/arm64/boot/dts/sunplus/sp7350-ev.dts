@@ -151,7 +151,7 @@
 		clkc: clkc@f8800104 {
 			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
-			reg = <0x00 0xf8800104 0x00 0x7c>;  // MOON G2.1~G3
+			reg = <0x00 0xf8800104 0x00 0x1fc>;  // MOON G2.1~G6
 		};
 	};
 
