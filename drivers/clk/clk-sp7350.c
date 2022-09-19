@@ -39,12 +39,12 @@
 #define PLLN_CTL	REG(17)
 #define PLLS_CTL	REG(20)
 
-#define IS_PLLA()	(clk->reg == PLLA_CTL)
-#define IS_PLLC()	(clk->reg == PLLC_CTL)
-#define IS_PLLL3()	(clk->reg == PLLL3_CTL)
-#define IS_PLLD()	(clk->reg == PLLD_CTL)
-#define IS_PLLH()	(clk->reg == PLLH_CTL)
-#define IS_PLLS()	(clk->reg == PLLS_CTL)
+#define IS_PLLA()	(pll->reg == PLLA_CTL)
+#define IS_PLLC()	(pll->reg == PLLC_CTL)
+#define IS_PLLL3()	(pll->reg == PLLL3_CTL)
+#define IS_PLLD()	(pll->reg == PLLD_CTL)
+#define IS_PLLH()	(pll->reg == PLLH_CTL)
+#define IS_PLLS()	(pll->reg == PLLS_CTL)
 #define IS_PLLHS()	(IS_PLLH() || IS_PLLS())
 
 #define BP	0	/* Reg 0 */
@@ -400,7 +400,7 @@ static const struct sp_div divs_d[] = {
 #define divs		(IS_PLLD() ? divs_d : divs_0)
 #define divs_size	(IS_PLLD() ? ARRAY_SIZE(divs_d) : ARRAY_SIZE(divs_0))
 
-static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
+static long sp_pll_calc_div(struct sp_pll *pll, unsigned long rate)
 {
 	long ret = 0, mr = 0;
 	int mi = 0, md = 0x7fffffff;
@@ -410,7 +410,7 @@ static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 	//pr_info("calc_rate: %lu\n", rate);
 
 	while (i--) {
-		long br = clk->brate * 2 / div->div2;
+		long br = pll->brate * 2 / div->div2;
 
 		ret = DIV_ROUND_CLOSEST(rate, br);
 		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
@@ -433,14 +433,14 @@ static long sp_pll_calc_div(struct sp_pll *clk, unsigned long rate)
 		div--;
 	}
 
-	clk->idiv = mi;
+	pll->idiv = mi;
 	return mr;
 }
 
 static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 		unsigned long *prate)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
+	struct sp_pll *pll = to_sp_pll(hw);
 	long ret;
 
 	TRACE;
@@ -449,10 +449,10 @@ static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (rate == *prate)
 		ret = *prate; /* bypass */
 	else if (IS_PLLA())
-		ret = PLLA_round_rate(clk, rate);
+		ret = PLLA_round_rate(pll, rate);
 	else {
-		ret = sp_pll_calc_div(clk, rate);
-		ret = clk->brate * 2 / divs[clk->idiv].div2 * ret;
+		ret = sp_pll_calc_div(pll, rate);
+		ret = pll->brate * 2 / divs[pll->idiv].div2 * ret;
 	}
 
 	return ret;
@@ -461,23 +461,23 @@ static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		unsigned long prate)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
-	u32 reg = readl(clk->reg);
+	struct sp_pll *pll = to_sp_pll(hw);
+	u32 reg = readl(pll->reg);
 	unsigned long ret;
 
 	//TRACE;
 	//pr_info("%08x\n", reg);
-	if (readl(clk->reg) & BIT(BP)) // bypass ?
+	if (readl(pll->reg) & BIT(BP)) // bypass ?
 		ret = prate;
 	else if (IS_PLLA())
-		ret = pa[clk->idiv].rate;
+		ret = pa[pll->idiv].rate;
 	else {
 		u32 fbkdiv = MASK_GET(FBKDIV, FBKDIV_WIDTH, reg) + 64;
 		u32 prediv = MASK_GET(PREDIV, 2, reg) + 1;
 		u32 prescl = MASK_GET(PRESCL, 1, reg) + 1;
 		u32 pstdiv = MASK_GET(PSTDIV, 2, reg) + 1;
 
-		ret = clk->brate / prediv * fbkdiv * prescl;
+		ret = pll->brate / prediv * fbkdiv * prescl;
 		if (!IS_PLLHS())
 			ret /= IS_PLLD() ? pstdiv_d[pstdiv - 1] : pstdiv;
 	}
@@ -489,39 +489,39 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		unsigned long prate)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
+	struct sp_pll *pll = to_sp_pll(hw);
 	unsigned long flags;
 	u32 reg;
 
 	//TRACE;
-	//pr_info("set_rate: %lu -> %lu (%d)\n", prate, rate, readl(clk->reg + 8) & 0x100);
+	//pr_info("set_rate: %lu -> %lu (%d)\n", prate, rate, readl(pll->reg + 8) & 0x100);
 
-	spin_lock_irqsave(&clk->lock, flags);
+	spin_lock_irqsave(&pll->lock, flags);
 
 	reg = BIT(BP + 16); // BP_HIWORD_MASK
 
 	if (rate == prate) {
 		reg |= BIT(BP);
-		writel(reg, clk->reg); // set bp
+		writel(reg, pll->reg); // set bp
 	} else if (IS_PLLA())
-		PLLA_set_rate(clk);
+		PLLA_set_rate(pll);
 	else {
-		u32 fbkdiv = sp_pll_calc_div(clk, rate) - FBKDIV_MIN;
+		u32 fbkdiv = sp_pll_calc_div(pll, rate) - FBKDIV_MIN;
 
 		reg |= IS_PLLHS() ? 0xffc60000 : 0xfffe0000; // HIWORD_MASK
-		reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[clk->idiv].bits;
+		reg |= MASK_SET(FBKDIV, FBKDIV_WIDTH, fbkdiv) | divs[pll->idiv].bits;
 
 		if (IS_PLLC())
 			writel(0x00010001, pll_regs + 30 * 4);  // G3.30[0] = 1
 		else if (IS_PLLL3())
 			writel(0x80008000, pll_regs + 29 * 4);  // G3.29[15] = 1
 
-		writel(reg, clk->reg);
+		writel(reg, pll->reg);
 
 		if (IS_PLLC() || IS_PLLL3()) {
 #if 0 // FIXME: clock ready signal always 0 @ ZEBU
 			do {
-				reg = readl(clk->reg + 8) & 0x100;
+				reg = readl(pll->reg + 8) & 0x100;
 				pr_info("%u", reg);
 			} while (!reg); // wait clock ready
 #endif
@@ -532,40 +532,40 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		}
 	}
 
-	spin_unlock_irqrestore(&clk->lock, flags);
+	spin_unlock_irqrestore(&pll->lock, flags);
 
 	return 0;
 }
 #if 0
 static int sp_pll_enable(struct clk_hw *hw)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
+	struct sp_pll *pll = to_sp_pll(hw);
 	unsigned long flags;
 
 	TRACE;
-	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16) | BIT(PD_N), clk->reg + 4); /* power up */
-	spin_unlock_irqrestore(&clk->lock, flags);
+	spin_lock_irqsave(&pll->lock, flags);
+	writel(BIT(PD_N + 16) | BIT(PD_N), pll->reg + 4); /* power up */
+	spin_unlock_irqrestore(&pll->lock, flags);
 
 	return 0;
 }
 
 static void sp_pll_disable(struct clk_hw *hw)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
+	struct sp_pll *pll = to_sp_pll(hw);
 	unsigned long flags;
 
 	TRACE;
-	spin_lock_irqsave(&clk->lock, flags);
-	writel(BIT(PD_N + 16), clk->reg + 4); /* power down */
-	spin_unlock_irqrestore(&clk->lock, flags);
+	spin_lock_irqsave(&pll->lock, flags);
+	writel(BIT(PD_N + 16), pll->reg + 4); /* power down */
+	spin_unlock_irqrestore(&pll->lock, flags);
 }
 
 static int sp_pll_is_enabled(struct clk_hw *hw)
 {
-	struct sp_pll *clk = to_sp_pll(hw);
+	struct sp_pll *pll = to_sp_pll(hw);
 
-	return readl(clk->reg + 4) & BIT(PD_N);
+	return readl(pll->reg + 4) & BIT(PD_N);
 }
 #endif
 static const struct clk_ops sp_pll_ops = {
