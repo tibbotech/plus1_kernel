@@ -437,6 +437,13 @@ config MTD_NAND_SUNPLUS
 	  Enables support for Sunplus SPI-NAND controller on SoCs.
 	  This controller is found on Sunplus SoCs.
 
+config MTD_PARA_NAND_SUNPLUS
+	tristate "Support Sunplus PARA-NAND controller"
+	depends on SOC_SP7350
+	help
+	  Enables support for Sunplus PARA-NAND controller on SoCs.
+	  This controller is found on Sunplus SoCs.
+
 config MTD_NAND_GPIO
 	tristate "GPIO assisted NAND controller"
 	depends on GPIOLIB || COMPILE_TEST
