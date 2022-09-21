@@ -64,9 +64,9 @@ struct sp_pll {
 	void __iomem	*reg;
 	spinlock_t	lock;
 
-	long brate;
-	u32 idiv; // struct divs[] index
-	u32 fbkdiv; // 64~(64+255)
+	long	brate;
+	u32	idiv; // struct divs[] index
+	u32	fbkdiv; // 64~(64+255)
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
@@ -294,7 +294,7 @@ static struct sp_clk sp_clks[] = {
 
 /************************************************* PLL_A *************************************************/
 
-/* from PLLA_Q654_REG_setting_220701.xlsx */
+/* from PLLA_Q654_REG_setting_220701.xlsx with LKDTOUT & TEST bits set to 0 */
 struct {
 	u32 rate;
 	u32 regs[5];
@@ -306,7 +306,7 @@ struct {
 			0xf02c,
 			0x0c21,
 			0x3fd0,
-			0x1954,
+			0x0154,
 		}
 	},
 	{
@@ -316,23 +316,28 @@ struct {
 			0xf02c,
 			0x1f51,
 			0x3fd0,
-			0x1968,
+			0x0168,
 		}
 	},
 };
 
-static void PLLA_set_rate(struct sp_pll *clk)
+static ulong plla_get_rate(struct sp_pll *pll)
 {
-	const u32 *pp = pa[clk->idiv].regs;
+	pll->idiv = (readl(pll->reg + 8) == pa[1].regs[2]);
+	return pa[pll->idiv].rate;
+}
+
+static void plla_set_rate(struct sp_pll *pll)
+{
+	const u32 *pp = pa[pll->idiv].regs;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(pa->regs); i++) {
-		writel(0xffff0000 | pp[i], clk->reg + (i * 4));
-		pr_debug("%04x\n", pp[i]);
+		writel(0xffff0000 | pp[i], pll->reg + (i * 4));
 	}
 }
 
-static long PLLA_round_rate(struct sp_pll *clk, unsigned long rate)
+static ulong plla_round_rate(struct sp_pll *pll, ulong rate)
 {
 	int i = ARRAY_SIZE(pa);
 
@@ -340,7 +345,7 @@ static long PLLA_round_rate(struct sp_pll *clk, unsigned long rate)
 		if (rate >= pa[i].rate)
 			break;
 	}
-	clk->idiv = i;
+	pll->idiv = i;
 	return pa[i].rate;
 }
 
@@ -400,9 +405,9 @@ static const struct sp_div divs_d[] = {
 #define divs		(IS_PLLD() ? divs_d : divs_0)
 #define divs_size	(IS_PLLD() ? ARRAY_SIZE(divs_d) : ARRAY_SIZE(divs_0))
 
-static long sp_pll_calc_div(struct sp_pll *pll, unsigned long rate)
+static ulong sp_pll_calc_div(struct sp_pll *pll, ulong rate)
 {
-	long ret = 0, mr = 0;
+	ulong ret = 0, mr = 0;
 	int mi = 0, md = 0x7fffffff;
 	int i = IS_PLLHS() ? 6 : divs_size;
 	const struct sp_div *div = &divs[i - 1];
@@ -437,8 +442,8 @@ static long sp_pll_calc_div(struct sp_pll *pll, unsigned long rate)
 	return mr;
 }
 
-static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
-		unsigned long *prate)
+static long sp_pll_round_rate(struct clk_hw *hw, ulong rate,
+		ulong *prate)
 {
 	struct sp_pll *pll = to_sp_pll(hw);
 	long ret;
@@ -449,7 +454,7 @@ static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 	if (rate == *prate)
 		ret = *prate; /* bypass */
 	else if (IS_PLLA())
-		ret = PLLA_round_rate(pll, rate);
+		ret = plla_round_rate(pll, rate);
 	else {
 		ret = sp_pll_calc_div(pll, rate);
 		ret = pll->brate * 2 / divs[pll->idiv].div2 * ret;
@@ -458,19 +463,19 @@ static long sp_pll_round_rate(struct clk_hw *hw, unsigned long rate,
 	return ret;
 }
 
-static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
-		unsigned long prate)
+static ulong sp_pll_recalc_rate(struct clk_hw *hw,
+		ulong prate)
 {
 	struct sp_pll *pll = to_sp_pll(hw);
 	u32 reg = readl(pll->reg);
-	unsigned long ret;
+	ulong ret;
 
 	//TRACE;
 	//pr_info("%08x\n", reg);
 	if (readl(pll->reg) & BIT(BP)) // bypass ?
 		ret = prate;
 	else if (IS_PLLA())
-		ret = pa[pll->idiv].rate;
+		ret = plla_get_rate(pll);
 	else {
 		u32 fbkdiv = MASK_GET(FBKDIV, FBKDIV_WIDTH, reg) + 64;
 		u32 prediv = MASK_GET(PREDIV, 2, reg) + 1;
@@ -481,16 +486,16 @@ static unsigned long sp_pll_recalc_rate(struct clk_hw *hw,
 		if (!IS_PLLHS())
 			ret /= IS_PLLD() ? pstdiv_d[pstdiv - 1] : pstdiv;
 	}
-	//pr_info("recalc_rate: %lu -> %lu\n", prate, ret);
+	//pr_info("recalc_rate: %lu %lu -> %lu\n", pll->brate, prate, ret);
 
 	return ret;
 }
 
-static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
-		unsigned long prate)
+static int sp_pll_set_rate(struct clk_hw *hw, ulong rate,
+		ulong prate)
 {
 	struct sp_pll *pll = to_sp_pll(hw);
-	unsigned long flags;
+	ulong flags;
 	u32 reg;
 
 	//TRACE;
@@ -504,7 +509,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 		reg |= BIT(BP);
 		writel(reg, pll->reg); // set bp
 	} else if (IS_PLLA())
-		PLLA_set_rate(pll);
+		plla_set_rate(pll);
 	else {
 		u32 fbkdiv = sp_pll_calc_div(pll, rate) - FBKDIV_MIN;
 
@@ -540,7 +545,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 static int sp_pll_enable(struct clk_hw *hw)
 {
 	struct sp_pll *pll = to_sp_pll(hw);
-	unsigned long flags;
+	ulong flags;
 
 	TRACE;
 	spin_lock_irqsave(&pll->lock, flags);
@@ -553,7 +558,7 @@ static int sp_pll_enable(struct clk_hw *hw)
 static void sp_pll_disable(struct clk_hw *hw)
 {
 	struct sp_pll *pll = to_sp_pll(hw);
-	unsigned long flags;
+	ulong flags;
 
 	TRACE;
 	spin_lock_irqsave(&pll->lock, flags);
@@ -576,14 +581,14 @@ static const struct clk_ops sp_pll_ops = {
 #endif
 	.round_rate = sp_pll_round_rate,
 	.recalc_rate = sp_pll_recalc_rate,
-	.set_rate = sp_pll_set_rate
+	.set_rate = sp_pll_set_rate,
 };
 
 struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 {
 	struct sp_pll *pll;
 	struct clk *clk;
-	//unsigned long flags = 0;
+	//ulong flags = 0;
 	const char *parent = EXT_CLK;
 	struct clk_init_data initd = {
 		.name = name,
@@ -596,9 +601,6 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 	pll = kzalloc(sizeof(*pll), GFP_KERNEL);
 	if (!pll)
 		return ERR_PTR(-ENOMEM);
-
-	if (reg == PLLS_CTL)
-		initd.flags |= CLK_IS_CRITICAL;
 
 	pll->hw.init = &initd;
 	pll->reg = reg;
@@ -616,8 +618,7 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 	return clk;
 }
 
-static struct clk *
-clk_register_sp_clk(struct sp_clk *sp_clk)
+static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 {
 	const char * const *parent_names = sp_clk->parent_names[0] ? sp_clk->parent_names : default_parents;
 	struct clk_mux *mux = NULL;
@@ -662,11 +663,12 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 	gate->bit_idx = sp_clk->id & 0x0f;
 	gate->flags = CLK_GATE_HIWORD_MASK;
 
-	clk = clk_register_composite(NULL, sp_clk->name, parent_names, num_parents,
-					mux ? &mux->hw : NULL, &clk_mux_ops,
-					NULL, NULL,
-					&gate->hw, &clk_gate_ops,
-					CLK_IGNORE_UNUSED);
+	clk = clk_register_composite(NULL, sp_clk->name,
+				     parent_names, num_parents,
+				     mux ? &mux->hw : NULL, &clk_mux_ops,
+				     NULL, NULL,
+				     &gate->hw, &clk_gate_ops,
+				     CLK_IGNORE_UNUSED);
 	if (IS_ERR(clk)) {
 		kfree(mux);
 		kfree(gate);
@@ -749,21 +751,21 @@ static void __init sp_clkc_init(struct device_node *np)
 	}
 
 #if 0 // test
-	pr_info("TEST:\n");
+	printk("TEST:\n");
 	clk_set_rate(clks[UA2], 250);
 	pr_info("%-20s%lu\n", "UA2", clk_get_rate(clks[UA2]));
-	//clk_set_rate(clks[UA0], 260000000);
-	//pr_info("%-20s%lu\n", "UA0", clk_get_rate(clks[UA0]));
-	clk_set_rate(clks[CA55CORE3], 250000000);
+	clk_set_rate(clks[UA3], 260000000);
+	pr_info("%-20s%lu\n", "UA3", clk_get_rate(clks[UA3]));
+	//clk_set_rate(clks[CA55CORE3], 250000000);
 	pr_info("%-20s%lu\n", "CA55CORE3", clk_get_rate(clks[CA55CORE3]));
-	clk_set_rate(clks[CA55CORE2], 250000000);
+	//clk_set_rate(clks[CA55CORE2], 250000000);
 	pr_info("%-20s%lu\n", "CA55CORE2", clk_get_rate(clks[CA55CORE2]));
-	clk_set_rate(clks[CA55CORE1], 250000000);
+	//clk_set_rate(clks[CA55CORE1], 250000000);
 	pr_info("%-20s%lu\n", "CA55CORE1", clk_get_rate(clks[CA55CORE1]));
 	//clk_set_rate(clks[CA55CORE0], 250000000);
-	//pr_info("%-20s%lu\n", "CA55CORE0", clk_get_rate(clks[CA55CORE0]));
-	clk_set_rate(clks[PLLC], 800000000);
-	pr_info("%-20s%lu\n", "PLLC", clk_get_rate(clks[PLLC]));
+	pr_info("%-20s%lu\n", "CA55CORE0", clk_get_rate(clks[CA55CORE0]));
+	//clk_set_rate(clks[PLLC], 800000000);
+	//pr_info("%-20s%lu\n", "PLLC", clk_get_rate(clks[PLLC]));
 #endif
 
 	pr_debug("sp-clkc: of_clk_add_provider");
