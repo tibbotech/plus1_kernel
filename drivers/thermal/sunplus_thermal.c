@@ -13,6 +13,7 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/thermal.h>
+#include <linux/slab.h>
 
 #define DISABLE_THERMAL		(BIT(31) | BIT(15))
 #define ENABLE_THERMAL		BIT(31)
@@ -37,7 +38,7 @@ struct sp_thermal_data {
 	u32 id;
 };
 
-static char sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
+static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
 {
 	struct nvmem_cell *cell;
 	ssize_t otp_l;
@@ -45,7 +46,7 @@ static char sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct dev
 
 	cell = nvmem_cell_get(dev, "calib");
 	if (IS_ERR(cell))
-		return ERR_CAST(cell);
+		return (int) cell;
 
 	otp_v = nvmem_cell_read(cell, &otp_l);
 	nvmem_cell_put(cell);
