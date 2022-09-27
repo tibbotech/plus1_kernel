@@ -49,6 +49,7 @@ struct clk *plla_clocken;
 
 static const struct of_device_id _sp7021_audio_dt_ids[] = {
 	{ .compatible = "sunplus,sp7021-audio", },
+	{ },
 };
 MODULE_DEVICE_TABLE(of, _sp7021_audio_dt_ids);
 
