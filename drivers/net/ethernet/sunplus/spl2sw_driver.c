@@ -321,22 +321,9 @@ static void spl2sw_check_mac_vendor_id_and_convert(char *mac_addr)
 	 */
 	if ((mac_addr[5] == 0xFC) && (mac_addr[4] == 0x4B) && (mac_addr[3] == 0xBC) &&
 	    ((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
-		char tmp;
-
-		/* Swap mac_addr[0] and mac_addr[5] */
-		tmp = mac_addr[0];
-		mac_addr[0] = mac_addr[5];
-		mac_addr[5] = tmp;
-
-		/* Swap mac_addr[1] and mac_addr[4] */
-		tmp = mac_addr[1];
-		mac_addr[1] = mac_addr[4];
-		mac_addr[4] = tmp;
-
-		/* Swap mac_addr[2] and mac_addr[3] */
-		tmp = mac_addr[2];
-		mac_addr[2] = mac_addr[3];
-		mac_addr[3] = tmp;
+		swap(mac_addr[0], mac_addr[5]);
+		swap(mac_addr[1], mac_addr[4]);
+		swap(mac_addr[2], mac_addr[3]);
 	}
 }
 
@@ -381,6 +368,13 @@ static u32 spl2sw_init_netdev(struct platform_device *pdev, int eth_no, struct n
 	} else {
 		/* Check if mac-address is valid or not. If not, copy from default. */
 		memcpy(mac->mac_addr, otp_v, 6);
+
+		/* Order of MAC address stored in OTP are reverse.
+		 * Convert them to correct order.
+		 */
+		swap(mac->mac_addr[0], mac->mac_addr[5]);
+		swap(mac->mac_addr[1], mac->mac_addr[4]);
+		swap(mac->mac_addr[2], mac->mac_addr[3]);
 
 		/* Byte order of Some samples are reversed. Convert byte order here. */
 		spl2sw_check_mac_vendor_id_and_convert(mac->mac_addr);
