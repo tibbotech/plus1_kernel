@@ -178,37 +178,6 @@ static const struct mtd_ooblayout_ops sp_pnand_ooblayout_ops = {
 	.free = sp_pnand_ooblayout_free,
 };
 
-static uint8_t sp_pnand_bbt_pattern[] = { 'B', 'b', 't', '0' };
-static uint8_t sp_pnand_mirror_pattern[] = { '1', 't', 'b', 'B' };
-
-static struct nand_bbt_descr sp_pnand_bbt_mirror_descr = {
-	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE
-	    | NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
-	.offs = 0,
-	.len = 4,
-	.veroffs = 4,
-	.maxblocks = 4,
-	.pattern = sp_pnand_mirror_pattern
-};
-
-static struct nand_bbt_descr sp_pnand_bbt_main_descr = {
-	.options = NAND_BBT_LASTBLOCK | NAND_BBT_CREATE | NAND_BBT_WRITE
-	    | NAND_BBT_2BIT | NAND_BBT_VERSION | NAND_BBT_PERCHIP,
-	.offs = 0,
-	.len = 4,
-	.veroffs = 4,
-	.maxblocks = 4,
-	.pattern = sp_pnand_bbt_pattern
-};
-
-static uint8_t sp_pnand_scan_ff_pattern[] = { 0xff, 0xff, 0xff, 0xff };
-
-static struct nand_bbt_descr sp_pnand_largepage_flashbased = {
-	.offs = 0,
-	.len = 4,
-	.pattern = sp_pnand_scan_ff_pattern
-};
-
 static void sp_pnand_set_warmup_cycle(struct nand_chip *chip,
 			u8 wr_cyc, u8 rd_cyc)
 {
@@ -1261,10 +1230,6 @@ static int sp_pnand_attach_chip(struct nand_chip *chip)
 
 	memorg = nanddev_get_memorg(&chip->base);
 
-	chip->bbt_td = &sp_pnand_bbt_main_descr;
-	chip->bbt_md = &sp_pnand_bbt_mirror_descr;
-	chip->badblock_pattern = &sp_pnand_largepage_flashbased;
-
 	//usually, spare size is 1/32 page size
 	if (data->spare < (mtd->writesize >> 5))
 		data->spare = (mtd->writesize >> 5);
@@ -1409,449 +1374,6 @@ static const struct nand_controller_ops sp_pnand_controller_ops = {
 	.attach_chip = sp_pnand_attach_chip,
 };
 
-#define MTD_TEST
-#ifdef MTD_TEST
-
-int mtdtest_erase_eraseblock(struct mtd_info *mtd, unsigned int ebnum)//0,1
-{
-	int err;
-	struct erase_info ei;
-	loff_t addr = (loff_t)ebnum * mtd->erasesize;
-
-	memset(&ei, 0, sizeof(struct erase_info));
-	ei.addr = addr;
-	ei.len  = mtd->erasesize;
-
-	err = mtd_erase(mtd, &ei);
-	if (err) {
-		pr_info("error %d while erasing EB %d\n", err, ebnum);
-		return err;
-	}
-
-	return 0;
-}
-
-int mtdtest_write(struct mtd_info *mtd, loff_t addr, size_t size,
-		const void *buf)
-{
-	size_t written;
-	int err;
-
-	err = mtd_write(mtd, addr, size, &written, buf);
-	if (!err && written != size)
-		err = -EIO;
-	if (err)
-		pr_err("error: write failed at %#llx\n", addr);
-
-	return err;
-}
-
-int mtdtest_read(struct mtd_info *mtd, loff_t addr, size_t size, void *buf)
-{
-	size_t read;
-	int err;
-
-	err = mtd_read(mtd, addr, size, &read, buf);
-	/* Ignore corrected ECC errors */
-	if (mtd_is_bitflip(err))
-		err = 0;
-	if (!err && read != size)
-		err = -EIO;
-	if (err)
-		pr_err("error: read failed at %#llx\n", addr);
-
-	return err;
-}
-
-#include <linux/sched/signal.h>
-
-static inline int mtdtest_relax(void)
-{
-	cond_resched();
-	if (signal_pending(current)) {
-		pr_info("aborting test due to pending signal!\n");
-		return -EINTR;
-	}
-
-	return 0;
-}
-
-int mtdtest(int dev)
-{
-	struct mtd_info *mtd;
-	loff_t addr;
-
-	int err, ebcnt, i, j, tmp, pgcnt, pgsize, bufsize, errcnt;
-	struct rnd_state rnd_state;
-	unsigned char *writebuf, *twopages, *boundary;
-	unsigned int *debug;
-
-	pr_info("MTD device: %d\n", dev);
-
-	mtd = get_mtd_device(NULL, dev);
-	if (IS_ERR(mtd)) {
-		err = PTR_ERR(mtd);
-		pr_err("error: cannot get MTD device\n");
-		return err;
-	}
-
-	pgcnt = mtd->erasesize / mtd->writesize;
-	pgsize = mtd->writesize;
-	bufsize = 2 * pgsize;
-	tmp = mtd->size;
-	do_div(tmp, mtd->erasesize);
-	ebcnt = tmp;
-
-	writebuf = kmalloc(mtd->erasesize, GFP_KERNEL);
-	if (!writebuf)
-		goto out;
-	twopages = kmalloc(bufsize, GFP_KERNEL);
-	if (!twopages)
-		goto out;
-	boundary = kmalloc(bufsize, GFP_KERNEL);
-	if (!boundary)
-		goto out;
-
-#if 1
-	debug = NULL;
-
-	debug = ioremap(0xf8000000, 4);
-	if(debug == NULL) {
-		printk("ioremap debug error\n");
-		return -1;
-	}
-
-	*debug = (unsigned int)(0xabcd1234);
-
-	iounmap(debug);
-#endif
-
-	for (i = 0; i < ebcnt; ++i) {
-		err = mtdtest_erase_eraseblock(mtd, i);
-		if (err)
-			return err;
-		cond_resched();
-	}
-
-
-	prandom_seed_state(&rnd_state, 1);
-	pr_info("writing whole device\n");
-	for (i = 0; i < ebcnt; ++i) {
-		addr = (loff_t)i * mtd->erasesize;
-		prandom_bytes_state(&rnd_state, writebuf, mtd->erasesize);
-		cond_resched();
-		err = mtdtest_write(mtd, addr, mtd->erasesize, writebuf);
-		if (err)
-			goto out;
-		if (i % 256 == 0)
-			pr_info("written up to eraseblock %u\n", i);
-
-		err = mtdtest_relax();
-		if (err)
-			goto out;
-	}
-	pr_info("written %u eraseblocks\n", i);
-
-	/* Check all eraseblocks */
-	prandom_seed_state(&rnd_state, 1);
-	pr_info("verifying all eraseblocks\n");
-	for (i = 0; i < ebcnt; ++i) {
-
-		addr = (loff_t)i * mtd->erasesize;
-		prandom_bytes_state(&rnd_state, writebuf, mtd->erasesize);
-		for (j = 0; j < pgcnt - 1; ++j, addr += pgsize) {
-			err = mtdtest_read(mtd, addr, bufsize, twopages);
-			if (err)
-				goto out;
-			if (memcmp(twopages, writebuf + (j * pgsize), bufsize)) {
-				pr_err("error: verify failed at %#llx\n",
-				       (long long)addr);
-				errcnt += 1;
-			}
-
-		}
-
-		if (i % 256 == 0)
-			pr_info("verified up to eraseblock %u\n", i);
-
-		err = mtdtest_relax();
-		if (err)
-			goto out;
-	}
-	pr_info("verified %u eraseblocks\n", i);
-
-#if 1
-	debug = NULL;
-
-	debug = ioremap(0xf8000000, 4);
-	if(debug == NULL) {
-		printk("ioremap debug error\n");
-		return -1;
-	}
-
-	*debug = (unsigned int)(0xabcddcba);
-
-	iounmap(debug);
-#endif
-
-out:
-	kfree(writebuf);
-	kfree(twopages);
-	kfree(boundary);
-	put_mtd_device(mtd);
-	return 0;
-}
-#if 0
-static struct mtd_info *mtd1;
-static unsigned char *iobuf;
-static unsigned char *iobuf1;
-static unsigned char *bbt;
-
-static int pgsize;
-static int ebcnt;
-static int pgcnt;
-
-static int read_eraseblock_by_page(int ebnum)
-{
-	struct mtd_info *mtd = mtd1;
-	int i, ret, err = 0;
-	loff_t addr = (loff_t)ebnum * mtd->erasesize;
-	void *buf = iobuf;
-	void *oobbuf = iobuf1;
-
-	for (i = 0; i < pgcnt; i++) {
-		memset(buf, 0 , pgsize);
-		ret = mtdtest_read(mtd, addr, pgsize, buf);
-		if (ret) {
-			if (!err)
-				err = ret;
-		}
-		if (mtd->oobsize) {
-			struct mtd_oob_ops ops;
-
-			ops.mode      = MTD_OPS_PLACE_OOB;
-			ops.len       = 0;
-			ops.retlen    = 0;
-			ops.ooblen    = mtd->oobsize;
-			ops.oobretlen = 0;
-			ops.ooboffs   = 0;
-			ops.datbuf    = NULL;
-			ops.oobbuf    = oobbuf;
-			ret = mtd_read_oob(mtd, addr, &ops);
-			if ((ret && !mtd_is_bitflip(ret)) ||
-					ops.oobretlen != mtd->oobsize) {
-				pr_err("error: read oob failed at "
-						  "%#llx\n", (long long)addr);
-				if (!err)
-					err = ret;
-				if (!err)
-					err = -EINVAL;
-			}
-			oobbuf += mtd->oobsize;
-		}
-		addr += pgsize;
-		buf += pgsize;
-	}
-
-	return err;
-}
-
-static void dump_eraseblock(int ebnum)
-{
-	struct mtd_info *mtd= mtd1;
-	int i, j, n;
-	char line[128];
-	int pg, oob;
-
-	pr_info("dumping eraseblock %d\n", ebnum);
-	n = mtd->erasesize;
-	for (i = 0; i < n;) {
-		char *p = line;
-
-		p += sprintf(p, "%05x: ", i);
-		for (j = 0; j < 32 && i < n; j++, i++)
-			p += sprintf(p, "%02x", (unsigned int)iobuf[i]);
-		printk(KERN_CRIT "%s\n", line);
-		cond_resched();
-	}
-	if (!mtd->oobsize)
-		return;
-	pr_info("dumping oob from eraseblock %d\n", ebnum);
-	n = mtd->oobsize;
-	for (pg = 0, i = 0; pg < pgcnt; pg++)
-		for (oob = 0; oob < n;) {
-			char *p = line;
-
-			p += sprintf(p, "%05x: ", i);
-			for (j = 0; j < 32 && oob < n; j++, oob++, i++)
-				p += sprintf(p, "%02x",
-					     (unsigned int)iobuf1[i]);
-			printk(KERN_CRIT "%s\n", line);
-			cond_resched();
-		}
-}
-
-static int is_block_bad(struct mtd_info *mtd, unsigned int ebnum)
-{
-	int ret;
-	loff_t addr = (loff_t)ebnum * mtd->erasesize;
-
-	ret = mtd_block_isbad(mtd, addr);
-	if (ret)
-		pr_info("block %d is bad\n", ebnum);
-
-	return ret;
-}
-
-int mtdtest_scan_for_bad_eraseblocks(struct mtd_info *mtd, unsigned char *bbt,
-					unsigned int eb, int ebcnt)
-{
-	int i, bad = 0;
-
-	if (!mtd_can_have_bb(mtd))
-		return 0;
-
-	pr_info("scanning for bad eraseblocks\n");
-	for (i = 0; i < ebcnt; ++i) {
-		bbt[i] = is_block_bad(mtd, eb + i) ? 1 : 0;
-		if (bbt[i])
-			bad += 1;
-		cond_resched();
-	}
-	pr_info("scanned %d eraseblocks, %d are bad\n", i, bad);
-
-	return 0;
-}
-
-static int mtd_readtest_init(void)
-{
-	struct mtd_info *mtd;
-	int dev = 10;
-	unsigned int *debug;
-	uint64_t tmp;
-	int err, i;
-
-	printk(KERN_INFO "\n");
-	printk(KERN_INFO "=================================================\n");
-
-	if (dev < 0) {
-		pr_info("Please specify a valid mtd-device via module parameter\n");
-		return -EINVAL;
-	}
-
-	pr_info("MTD device: %d\n", dev);
-
-	mtd1 = get_mtd_device(NULL, dev);
-	mtd = mtd1;
-
-	if (IS_ERR(mtd)) {
-		err = PTR_ERR(mtd);
-		pr_err("error: Cannot get MTD device\n");
-		return err;
-	}
-
-	if (mtd->writesize == 1) {
-		pr_info("not NAND flash, assume page size is 512 "
-		       "bytes.\n");
-		pgsize = 512;
-	} else
-		pgsize = mtd->writesize;
-
-	tmp = mtd->size;
-	do_div(tmp, mtd->erasesize);
-	ebcnt = tmp;
-	pgcnt = mtd->erasesize / pgsize;
-
-	pr_info("MTD device size %llu, eraseblock size %u, "
-	       "page size %u, count of eraseblocks %u, pages per "
-	       "eraseblock %u, OOB size %u\n",
-	       (unsigned long long)mtd->size, mtd->erasesize,
-	       pgsize, ebcnt, pgcnt, mtd->oobsize);
-
-	err = -ENOMEM;
-	iobuf = kmalloc(mtd->erasesize, GFP_KERNEL);
-	if (!iobuf)
-		goto out;
-	iobuf1 = kmalloc(mtd->erasesize, GFP_KERNEL);
-	if (!iobuf1)
-		goto out;
-
-	bbt = kzalloc(ebcnt, GFP_KERNEL);
-	if (!bbt)
-		goto out;
-	err = mtdtest_scan_for_bad_eraseblocks(mtd, bbt, 0, ebcnt);
-	if (err)
-		goto out;
-
-	/* Read all eraseblocks 1 page at a time */
-	pr_info("testing page read\n");
-
-#if 1
-	debug = NULL;
-
-	debug = ioremap(0xf8000000, 4);
-	if(debug == NULL) {
-		printk("ioremap debug error\n");
-		return -1;
-	}
-
-	*debug = (unsigned int)(0xabcd1234);
-
-	iounmap(debug);
-#endif
-
-	for (i = 0; i < ebcnt; ++i) {
-		int ret;
-
-		if (bbt[i])
-			continue;
-		ret = read_eraseblock_by_page(i);
-		if (ret) {
-			dump_eraseblock(i);
-			if (!err)
-				err = ret;
-		}
-
-		ret = mtdtest_relax();
-		if (ret) {
-			err = ret;
-			goto out;
-		}
-	}
-
-#if 1
-	debug = NULL;
-
-	debug = ioremap(0xf8000000, 4);
-	if(debug == NULL) {
-		printk("ioremap debug error\n");
-		return -1;
-	}
-
-	*debug = (unsigned int)(0xabcddcba);
-
-	iounmap(debug);
-#endif
-
-	if (err)
-		pr_info("finished with errors\n");
-	else
-		pr_info("finished\n");
-
-out:
-
-	kfree(iobuf);
-	kfree(iobuf1);
-	kfree(bbt);
-	put_mtd_device(mtd);
-	if (err)
-		pr_info("error %d occurred\n", err);
-	printk(KERN_INFO "=================================================\n");
-	return err;
-}
-#endif
-#endif
-
 /*
  * Probe for the NAND device.
  */
@@ -1871,7 +1393,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	struct mtd_partition *partitions = NULL;
 	int num_partitions = 0;
 
-	printk("[PNAND]Entry nand probe\n");
+	sp_pnand_dbg("Entry Nand Probe\n");
 
 	ret = chipnum = size = type = 0;
 	/* Allocate memory for the device structure (and zero it) */
@@ -1963,7 +1485,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	#endif
 #endif
 
-	//lichun@add, for SP v2.4
+	//for SP v2.4
 	data->max_spare = 32;
 	data->spare_ch_offset = 5; //shift 5 means 0x20
 	data->seed_val = 0;
@@ -1987,7 +1509,6 @@ static int sp_pnand_probe(struct platform_device *pdev)
 */
 	}
 #endif
-	//~lichun@add
 
 	val = readl(data->io_base + AHB_SLAVEPORT_SIZE);
 	val &= ~0xFFF0FF;
@@ -2058,9 +1579,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	chip->legacy.waitfunc = sp_pnand_wait;
 	chip->legacy.chip_delay = 0;
 	chip->options = NAND_NO_SUBPAGE_WRITE;// | NAND_OWN_BUFFERS;
-	//chip->options |= NAND_BBM_FIRSTPAGE | NAND_BBM_SECONDPAGE;
-
-#if 1
+#if 0
 	// FIXME: Expect bad block management properly work after removing the option.
 	chip->options |= NAND_SKIP_BBTSCAN | NAND_NO_BBM_QUIRK;
 #endif
@@ -2162,11 +1681,8 @@ static int sp_pnand_probe(struct platform_device *pdev)
 		num_partitions = ARRAY_SIZE(sp_pnand_partition_info);
 	}
 	ret = mtd_device_register(mtd, partitions, num_partitions);
-	if (!ret) {
-		mtdtest(10);
-		//mtd_readtest_init();
+	if (!ret)
 		return ret;
-	}
 
 	nand_cleanup(chip);
 out_unset_drv:

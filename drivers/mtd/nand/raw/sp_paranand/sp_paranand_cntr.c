@@ -22,10 +22,7 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/mtd/bbm.h>
-
-//#include <linux/moduleparam.h>
 #include <linux/iopoll.h>
-//#include <linux/reset.h>
 
 #include "sp_paranand.h"
 
@@ -95,7 +92,7 @@ static int sp_pnand_check_cmdq(struct nand_chip *chip)
 		cond_resched();
 	}
 	if(ret != 0)
-		printk("check cmdq timeout");
+		printk(KERN_ERR "check cmdq timeout");
 	return ret;
 }
 
@@ -278,7 +275,6 @@ int byte_rd(struct nand_chip *chip, int real_pg, int col, int len,
 	int status, i, tmp_col, tmp_len, cmd_len, ret;
 	u_char *buf;
 	int j;
-	//unsigned long timeo;
 
 	ret = 0;
 	tmp_col = col;
@@ -498,7 +494,7 @@ int sp_pnand_check_bad_spare(struct nand_chip *chip, int pg)
 
 		for(i = 0; i < spare_phy_len; i++) {
 			if(*(spare_buf + i) != 0xFF) {
-				printk("D[%d]:0x%x\n", i, *(spare_buf + i));
+				DBGLEVEL1(sp_pnand_dbg("D[%d]:0x%x\n", i, *(spare_buf + i)));
 				for(j = 0; j < 8; j ++) {
 					if((*(spare_buf + i) & (0x1 << j)) == 0)
 						errbit_num ++;
@@ -514,7 +510,7 @@ int sp_pnand_check_bad_spare(struct nand_chip *chip, int pg)
 				chan = (data->cur_chan - 4) << 3;
 				ecc_corr_bit_spare = (readl(data->io_base + ECC_CORRECT_BIT_FOR_SPARE_REG2) >> chan) & 0x7F;
 			}
-			printk("spare_phy_len = %d, errbit_num = %d\n", spare_phy_len, errbit_num);
+			DBGLEVEL1(sp_pnand_dbg("spare_phy_len = %d, errbit_num = %d\n", spare_phy_len, errbit_num));
 
 			if(errbit_num > ecc_corr_bit_spare + 1)
 				ret = 1;
@@ -533,7 +529,6 @@ static int sp_nfc_wait_cmd_fifo_empty(struct sp_pnand_data *nfc)
 	u32 status;
 	int ret;
 
-	//
 	ret = readl_poll_timeout(nfc->io_base + CMDQUEUE_STATUS, status,
 				 status & CMDQUEUE_STATUS_EMPTY(nfc->cur_chan), 1,
 				 NFC_DEFAULT_TIMEOUT_MS * 1000);
@@ -561,51 +556,37 @@ int rd_pg_by_dma(struct nand_chip *nand, int real_pg, uint8_t *data_buf)
 	enum dma_data_direction ddir = DMA_FROM_DEVICE;
 	enum dma_transfer_direction tdir = DMA_DEV_TO_MEM;
 	dma_cookie_t cookie;
-	//struct completion finished;
 	DECLARE_COMPLETION_ONSTACK(finished);
 	int ret = 0;
-#if 0
-	unsigned int *debug = NULL;
 
-	debug = ioremap(0xf8000000, 4);
-	if(debug == NULL) {
-		printk("ioremap debug error\n");
-		return -1;
-	}
+	sg_init_one(&sg, data_buf, ecc->steps * ecc->size);
 
-	*debug = (unsigned int)(0xabcd1234);
-
-	iounmap(debug);
-#endif
-	sg_init_one(&sg, data_buf, ecc->steps * ecc->size);//////////////////////////////////////////////
-	//sg_init_one(&sg, data_buf, 1024);
 	/* streaming DMA, flush cache in the beginning of transfer */
 	ret = dma_map_sg(nfc->dev, &sg, 1, ddir);
 	if (!ret) {
-		printk("dma_map_sg failed!\n");
+		dev_err(nfc->dev, "Failed to map DMA buffer\n");
 		return -ENOMEM;
 	}
 
 	tx = dmaengine_prep_slave_sg(nfc->dmac, &sg, 1, tdir, DMA_PREP_INTERRUPT);
 	if (!tx) {
-		printk("dmaengine_prep_slave_sg failed!\n");
+		dev_err(nfc->dev, "Failed to prepare DMA S/G list\n");
 		ret = -EINVAL;
 		goto err_unmap_buf;
 	}
 
 	tx->callback = sp_nand_slave_dma_transfer_finished;
 	tx->callback_param = &finished;
-	//init_completion(&finished);
 
 	cookie = dmaengine_submit(tx);
-	//printk("[paranand]%d\n", __LINE__);
+
 	if (dma_submit_error(cookie)) {
-		printk("dma_submit_error failed!\n");
+		dev_err(nfc->dev, "Failed to do DMA tx submit\n");
 		goto err_unmap_buf;
 	}
-	//printk("[paranand]%d\n", __LINE__);
+
 	dma_async_issue_pending(nfc->dmac);
-	//printk("[paranand]%d\n", __LINE__);
+
 	/* config cmd register and fire the transfer*/
 	cmd_f.row_cycle = ROW_ADDR_3CYCLE;
 	cmd_f.col_cycle = COL_ADDR_2CYCLE;
@@ -622,11 +603,11 @@ int rd_pg_by_dma(struct nand_chip *nand, int real_pg, uint8_t *data_buf)
 		printk("sp_pnand_issue_cmd failed!\n");
 		goto err_unmap_buf;
 	}
-//	printk("[paranand]%d\n", __LINE__);
+
 	sp_pnand_wait(nand);
-//	printk("[paranand]%d\n", __LINE__);
+
 	wait_for_completion(&finished);
-//	printk("[paranand]%d\n", __LINE__);
+
 err_unmap_buf:
 	/* streaming DMA, invalid cached in the end of transfer */
 	dma_unmap_sg(nfc->dev, &sg, 1, ddir);
@@ -645,30 +626,32 @@ int wr_pg_by_dma(struct nand_chip *nand, int real_pg, const uint8_t *data_buf)
 	enum dma_data_direction ddir = DMA_TO_DEVICE;
 	enum dma_transfer_direction tdir = DMA_MEM_TO_DEV;
 	dma_cookie_t cookie;
-	//struct completion finished;
 	DECLARE_COMPLETION_ONSTACK(finished);
 	int ret = 0;
 
 	sg_init_one(&sg, data_buf, ecc->steps * ecc->size);
 	/* streaming DMA, flush cache in the beginning of transfer */
 	ret = dma_map_sg(nfc->dev, &sg, 1, ddir);
-	if (!ret)
+	if (!ret) {
+		dev_err(nfc->dev, "Failed to map DMA buffer\n");
 		return -ENOMEM;
+	}
 
 	tx = dmaengine_prep_slave_sg(nfc->dmac, &sg, 1, tdir, DMA_PREP_INTERRUPT);
 	if (!tx) {
+		dev_err(nfc->dev, "Failed to prepare DMA S/G list\n");
 		ret = -EINVAL;
 		goto err_unmap_buf;
 	}
 
 	tx->callback = sp_nand_slave_dma_transfer_finished;
 	tx->callback_param = &finished;
-	//init_completion(&finished);
 
 	cookie = dmaengine_submit(tx);
-
-	if (dma_submit_error(cookie))
+	if (dma_submit_error(cookie)) {
+		dev_err(nfc->dev, "Failed to do DMA tx submit\n");
 		goto err_unmap_buf;
+	}
 
 	dma_async_issue_pending(nfc->dmac);
 
@@ -717,10 +700,8 @@ int sp_pnand_read_page_by_dma(struct nand_chip *nand,
 	if (ret == 0)
 		return 0;
 
-	printk("Failed to read page by dma! Use PIO mode\n");
+	DBGLEVEL1(sp_pnand_dbg("Failed to read page by dma! Use PIO mode\n"));
 	return sp_pnand_read_page(nand, buf, oob_required, page);
-	//return ret;
-
 }
 
 int sp_pnand_write_page_by_dma(struct nand_chip *nand,
@@ -742,9 +723,8 @@ int sp_pnand_write_page_by_dma(struct nand_chip *nand,
 	if (ret == 0)
 		return 0;
 
-	printk("Failed to write page by dma! Use PIO mode\n");
+	DBGLEVEL1(sp_pnand_dbg("Failed to write page by dma! Use PIO mode\n"));
 	return sp_pnand_write_page(nand, buf, oob_required, page);
-	//return ret;
 }
 
 int sp_pnand_read_page(struct nand_chip *chip,
@@ -918,7 +898,6 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 			CMD_START_CE(data->sel_chip) | CMD_SPARE_NUM(data->spare);
 
 	if(w_wo_spare == 0) {
-		//memcpy((data->io_base + SPARE_SRAM + (data->cur_chan << data->spare_ch_offset)), p, mtd->oobsize);
 		for(i = 0; i < mtd->oobsize; i += 4) {
 			memcpy(data->io_base + SPARE_SRAM + i, p + i, 4);
 		}
@@ -938,7 +917,7 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 
 	if (sp_pnand_wait(chip) == NAND_STATUS_FAIL) {
 		status = -EIO;
-		printk("FAILED\n");
+		printk(KERN_ERR "FAILED\n");
 	}
 out:
 	return status;
@@ -1033,7 +1012,6 @@ int sp_pnand_write_oob(struct nand_chip *chip, int page)
 		"write_oob: ch = %d, ce = %d, page = 0x%x, real page:0x%x, sz = %d, oobsz = %d\n",
 		data->cur_chan, data->sel_chip, data->page_addr, real_pg, mtd->writesize, mtd->oobsize));
 
-	//memcpy(data->io_base + SPARE_SRAM + (data->cur_chan << data->spare_ch_offset), buf, mtd->oobsize);
 	for(i = 0; i < mtd->oobsize; i += 4) {
 		memcpy(data->io_base + SPARE_SRAM + i, buf + i, 4);
 	}
