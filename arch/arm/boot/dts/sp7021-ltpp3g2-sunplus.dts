@@ -22,58 +22,56 @@
 		reg = <0x00000000 0x20000000>; /* 512MB */
 	};
 
-	soc@B {
-		led {
-			compatible = "gpio-leds";
-			pinctrl-names = "default", "sleep";
-			pinctrl-0 = <&gpio_leds_pins>;
-			pinctrl-1 = <&leds_s0_slp>;
-			system-led {
-				label = "system-led";
-				gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
-				default-state = "off";
-				linux,default-trigger = "heartbeat";
-			};
-			led@2 {
-				label = "SG";
-				gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
-				linux,default-trigger = "mmc0";
-				default-state = "off";
-			};
+	led {
+		compatible = "gpio-leds";
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&gpio_leds_pins>;
+		pinctrl-1 = <&leds_s0_slp>;
+		system-led {
+			label = "system-led";
+			gpios = <&pctl 6 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+			linux,default-trigger = "heartbeat";
 		};
-		tpsleds: tpsleds {
-			compatible = "tpsleds";
-			pinctrl-names = "default";
-			pinctrl-0 = <&tpsleds_pins>;
-			status = "okay";
-			init-val = <0x0>;
-			gpios = <&pctl 5 GPIO_ACTIVE_HIGH
-				 &pctl 4 GPIO_ACTIVE_HIGH
+		led@2 {
+			label = "SG";
+			gpios = <&pctl 7 GPIO_ACTIVE_HIGH>;
+			linux,default-trigger = "mmc0";
+			default-state = "off";
+		};
+	};
+	tpsleds: tpsleds {
+		compatible = "tpsleds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&tpsleds_pins>;
+		status = "okay";
+		init-val = <0x0>;
+		gpios = <&pctl 5 GPIO_ACTIVE_HIGH
+			  &pctl 4 GPIO_ACTIVE_HIGH
 			>;
-		};
-		buzzer0 {
-			compatible = "pwm-beeper";
-			pinctrl-names = "default";
-			pinctrl-0 = <&buzzer0_pins>;
-			pwms = <&pwm 0 1000000 0>;
-		};
-		i2c_tps: i2c-tps { /* eeprom */
-			compatible = "i2c-gpio";
-			i2c-gpio,scl-open-drain;
-			i2c-gpio,sda-open-drain;
-			i2c-gpio,delay-us = <1>;/* ~100 kHz */
-			#address-cells = <1>;
-			#size-cells = <0>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&pins_i2ctps>;
-			gpios = <&pctl 2 GPIO_ACTIVE_HIGH     /* SDA */
-				 &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
+	};
+	buzzer0 {
+		compatible = "pwm-beeper";
+		pinctrl-names = "default";
+		pinctrl-0 = <&buzzer0_pins>;
+		pwms = <&pwm 0 1000000 0>;
+	};
+	i2c_tps: i2c-tps { /* eeprom */
+		compatible = "i2c-gpio";
+		i2c-gpio,scl-open-drain;
+		i2c-gpio,sda-open-drain;
+		i2c-gpio,delay-us = <1>;	/* ~100 kHz */
+		#address-cells = <1>;
+		#size-cells = <0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&pins_i2ctps>;
+		gpios = <&pctl 2 GPIO_ACTIVE_HIGH     /* SDA */
+			  &pctl 1 GPIO_ACTIVE_HIGH     /* SCL */
 			>;
-			eeprom: eeprom@50 {
-				compatible = "at,24c16";
-				reg = <0x50>;
-				pagesize = <16>;
-			};
+		eeprom: eeprom@50 {
+			compatible = "at,24c16";
+			reg = <0x50>;
+			pagesize = <16>;
 		};
 	};
 };
