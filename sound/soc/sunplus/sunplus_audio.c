@@ -20,7 +20,7 @@
  *                                                                        *
  **************************************************************************/
 /**
- * @file sp7021-audio.c
+ * @file sunplus-audio.c
  */
 /**************************************************************************
  *                         H E A D E R   F I L E S
@@ -92,7 +92,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "devicetree status is not available\n");
 		return -ENODEV;
 	}
-        //audio register base
+	//audio register base
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res)) {
 		dev_err(&pdev->dev, "get resource memory from devicetree node 0.\n");
@@ -107,27 +107,27 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 	AUD_INFO("audio_base=%px\n", audio_base);
 	//clock enable
 #if defined(CONFIG_SND_SOC_AUD628)
-    	peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
-    	if (IS_ERR(peri0_clocken)) {
+	peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
+	if (IS_ERR(peri0_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 1.\n");
 		return PTR_ERR(peri0_clocken);
 	}
 	err = clk_prepare_enable(peri0_clocken);
 	if (err) {
-	  	dev_err(&pdev->dev, "enable clock 1 false.\n");
+		dev_err(&pdev->dev, "enable clock 1 false.\n");
 		return err;
 	}
 #endif
 	//clock enable
-    	aud_clocken = devm_clk_get(&pdev->dev, "aud");
-    	if (IS_ERR(aud_clocken)) {
+	aud_clocken = devm_clk_get(&pdev->dev, "aud");
+	if (IS_ERR(aud_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 0.\n");
 		return PTR_ERR(aud_clocken);
 	}
 
 	err = clk_prepare_enable(aud_clocken);
 	if (err) {
-	  	dev_err(&pdev->dev, "enable clock 0 false.\n");
+		dev_err(&pdev->dev, "enable clock 0 false.\n");
 		return err;
 	}
 #if defined(CONFIG_SND_SOC_AUD645)
@@ -147,19 +147,19 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 #endif
 	//plla setting
 	plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
-    	if (IS_ERR(plla_clocken)) {
+	if (IS_ERR(plla_clocken)) {
 		dev_err(&pdev->dev, "get clock from devicetree node 2.\n");
 		return PTR_ERR(plla_clocken);
 	}
 	err = clk_set_rate(plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz, //driver/clk-sp-q628.c
 
 	if (err) {
-	  	dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
+		dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
 		return err;
 	}
 	err = clk_prepare_enable(plla_clocken);
 	if (err) {
-	  	dev_err(&pdev->dev, "enable clock 2 false.\n");
+		dev_err(&pdev->dev, "enable clock 2 false.\n");
 		return err;
 	}
 
