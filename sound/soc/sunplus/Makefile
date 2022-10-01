@@ -7,7 +7,7 @@ snd-soc-spsoc_aud3502-objs := spsoc_aud.o
 snd-soc-spsoc_util-objs := spsoc_util.o
 snd-soc-aud_hw-objs := aud_hw.o
 snd-soc-spdif-objs := spdif.o
-snd_soc_audio-objs := sunplus_auido.o
+snd_soc_audio-objs := sunplus_audio.o
 
 obj-$(CONFIG_SND_SOC_AUD628)	+= snd_soc_audio.o
 obj-$(CONFIG_SND_SOC_AUD628)	+= snd-soc-aud3502.o
@@ -31,7 +31,7 @@ snd-soc-spsoc_aud3502-objs := spsoc_aud-645.o
 snd-soc-spsoc_util-objs := spsoc_util.o
 snd-soc-aud_hw-objs := aud_hw.o
 snd-soc-spdif-objs := spdif.o
-snd_soc_audio-objs := sunplus_auido.o
+snd_soc_audio-objs := sunplus_audio.o
 
 obj-$(CONFIG_SND_SOC_AUD645)	+= snd_soc_audio.o
 obj-$(CONFIG_SND_SOC_AUD645)	+= snd-soc-aud3502.o
