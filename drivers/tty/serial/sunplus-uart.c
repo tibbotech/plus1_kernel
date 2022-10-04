@@ -50,15 +50,20 @@
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 #define NUM_UART	9	/* serial0,  ... */
+#elif defined(CONFIG_SOC_SP7350)
+#define NUM_UART	8	/* serial0,  ... */
 #else
 #define NUM_UART	6	/* serial0,  ... */
 #endif
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 #define NUM_UARTDMARX	4	/* serial10, ... */
 #define NUM_UARTDMATX	4	/* serial20, ... */
+#elif defined(CONFIG_SOC_SP7350)
+#define NUM_UARTDMARX	8	/* serial10, ... */
+#define NUM_UARTDMATX	8	/* serial20, ... */
 #else
 #define NUM_UARTDMARX	2	/* serial10, ... */
 #define NUM_UARTDMATX	2	/* serial20, ... */
@@ -702,7 +707,66 @@ static void receive_chars(struct uart_port *port)
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char lsr = sp_uart_get_line_status(port->membase);
 	unsigned int ch, flag;
+	#if defined(CONFIG_SOC_SP7350)
+	struct sunplus_uart_port *sp_port =
+		(struct sunplus_uart_port *)(port->private_data);
+	struct sunplus_uartdma_info *uartdma_rx = sp_port->uartdma_rx;
+	struct regs_uarxdma *rxdma_reg;
+	struct regs_uatxgdma *gdma_reg;
+	//u32 offset_sw, offset_hw, rx_size, dma_start;
+	u32 offset_sw, rx_size, dma_start;
+	//u8 *sw_ptr, *buf_end_ptr, *u8_ptr;
+	u8 *sw_ptr, *buf_end_ptr;
+	u32 icount_rx, value, rx_fifo_residue;
+	u32 tmp_u32;
+	//u8 tmp_buf[32];
+	#endif
 
+	#if defined(CONFIG_SOC_SP7350)
+	if (uartdma_rx) {
+		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
+		gdma_reg = (struct regs_uatxgdma *)(uartdma_rx->gdma_membase);
+
+		rx_fifo_residue = readl(port->membase + SP_UART_RX_RESIDUE);
+		writel(rx_fifo_residue,(&(gdma_reg->gdma_length))); //set gdma length
+		value = readl((&(rxdma_reg->rxdma_wr_adr)));
+		writel(value,(&(gdma_reg->gdma_addr))); //set gdma addr
+		writel(0x00000105,(&(gdma_reg->gdma_config))); //set gdma DMA_GO
+
+		/* wait DMA_GO=0 */
+		value = readl(&(gdma_reg->gdma_config));
+		value = (value & 0x00000100) >> 8;
+		while (value) {
+			value = readl(&(gdma_reg->gdma_config));
+			value = (value & 0x00000100) >> 8;			
+		}
+
+		writel(0x00000001,(&(gdma_reg->gdma_int_flag))); //write 1 to clear DMA_DONE flag
+
+		dma_start = readl(&(rxdma_reg->rxdma_start_addr));
+		offset_sw = readl(&(rxdma_reg->rxdma_wr_adr)) - dma_start;
+
+		rx_size = rx_fifo_residue;
+		sw_ptr = (u8 *)(uartdma_rx->buf_va + offset_sw);
+		buf_end_ptr = (u8 *)(uartdma_rx->buf_va + UARXDMA_BUF_SZ);
+
+		icount_rx = 0;
+		while (rx_size > icount_rx) {	
+			port->icount.rx++;
+			uart_insert_char(port, 0, SP_UART_LSR_OE,
+				(unsigned int)(*sw_ptr), TTY_NORMAL);
+			sw_ptr++;
+			icount_rx++;
+			
+			if (sw_ptr >= buf_end_ptr) {
+				sw_ptr = (u8 *)(uartdma_rx->buf_va);
+			}
+		}
+		tmp_u32 = readl(&(rxdma_reg->rxdma_wr_adr)) + rx_size;
+		writel(tmp_u32,(&(rxdma_reg->rxdma_wr_adr))); //set rxdma_wr_addr
+
+	} else {
+	#endif
 	do {
 		ch = sp_uart_get_char(port->membase);
 
@@ -764,6 +828,9 @@ static void receive_chars(struct uart_port *port)
 ignore_char:
 		lsr = sp_uart_get_line_status(port->membase);
 	} while (lsr & SP_UART_LSR_RX);
+#if defined(CONFIG_SOC_SP7350)
+	}
+#endif
 
 	if (tty) {
 		spin_unlock(&port->lock);
@@ -790,6 +857,8 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 	return IRQ_HANDLED;
 }
 
+#if defined(CONFIG_SOC_SP7350)
+#else
 /* called by ISR */
 static void receive_chars_rxdma(struct uart_port *port)
 {
@@ -889,6 +958,7 @@ static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 /*
  * Documentation/serial/driver:
@@ -905,7 +975,6 @@ static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 static int sunplus_uart_ops_startup(struct uart_port *port)
 {
 	int ret;
-	u32 timeout, interrupt_en;
 	struct sunplus_uart_port *sp_port =
 		(struct sunplus_uart_port *)(port->private_data);
 	struct sunplus_uartdma_info *uartdma_rx, *uartdma_tx;
@@ -913,6 +982,11 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	struct regs_uatxdma *txdma_reg;
 	struct regs_uatxgdma *gdma_reg;
 	unsigned int ch;
+	#if defined(CONFIG_SOC_SP7350)
+	u32 interrupt_en;
+	#else
+	u32 timeout, interrupt_en;
+	#endif
 
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 		hrtimer_cancel(&sp_port->DelayRtsAfterSend);
@@ -930,6 +1004,47 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	if (ret)
 		return ret;
 
+	#if defined(CONFIG_SOC_SP7350)
+	uartdma_rx = sp_port->uartdma_rx;
+	if (uartdma_rx) {
+		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
+		gdma_reg = (struct regs_uatxgdma *)(uartdma_rx->gdma_membase);
+		DBG_INFO("Enable RXDMA for %s\n", sp_port->name);
+
+		if (uartdma_rx->buf_va == NULL) {
+			/* Drop data in Rx FIFO (PIO mode) */
+			while (sp_uart_get_line_status(port->membase) & SP_UART_LSR_RX)
+				ch = sp_uart_get_char(port->membase);
+
+			uartdma_rx->buf_va =
+				dma_alloc_coherent(port->dev, UATXDMA_BUF_SZ,
+				&(uartdma_rx->dma_handle), GFP_KERNEL);
+			if (uartdma_rx->buf_va == NULL) {
+				DBG_ERR("%s, %d, Can't allocation buffer for %s\n",
+					__func__, __LINE__, sp_port->name);
+				ret = -ENOMEM;
+				goto error_01;
+			}
+			DBG_INFO("DMA buffer (Rx) for %s: VA: 0x%px, PA: 0x%x\n",
+				sp_port->name, uartdma_rx->buf_va, (u32)(uartdma_rx->dma_handle));
+
+			/*
+			 * set 1ms , set wr_adr , set start_addr/end_addr ,
+			 * set bind to uart# , set int enable ,
+			 * set rxdma enable (Use ring buffer for UART's Tx)
+			 */
+			writel((CLK_HIGH_UART / 1000), &(rxdma_reg->rxdma_tmr_unit));
+			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_wr_adr));
+			writel((u32)(uartdma_rx->dma_handle), &(rxdma_reg->rxdma_start_addr));
+			writel(((u32)(uartdma_rx->dma_handle) + UATXDMA_BUF_SZ - 1),
+				&(rxdma_reg->rxdma_end_addr));
+			writel((uartdma_rx->which_uart << 16), &(rxdma_reg->rxdma_sel));
+			writel((u32)(uartdma_rx->dma_handle), &(gdma_reg->gdma_addr));
+			writel(0x00000001, &(gdma_reg->gdma_int_en));
+			writel(0x00000002, &(rxdma_reg->rxdma_enable));
+		}
+	}
+	#else
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
 		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
@@ -986,6 +1101,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			goto error_00;
 		}
 	}
+	#endif
 
 	uartdma_tx = sp_port->uartdma_tx;
 	if (uartdma_tx) {
@@ -1030,8 +1146,12 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 
 	/* SP_UART_ISC_TXM is enabled in .start_tx() */
 	interrupt_en = 0;
+	#if defined(CONFIG_SOC_SP7350)
+	interrupt_en |= SP_UART_ISC_RXM | SP_UART_ISC_LSM;
+	#else
 	if (uartdma_rx == NULL)
 		interrupt_en |= SP_UART_ISC_RXM | SP_UART_ISC_LSM;
+	#endif
 
 	sp_uart_set_int_en(port->membase, interrupt_en);
 
@@ -1056,11 +1176,18 @@ error_01:
 	if (uartdma_rx) {
 		dma_free_coherent(port->dev, UARXDMA_BUF_SZ,
 			uartdma_rx->buf_va, uartdma_rx->dma_handle);
+		#if defined(CONFIG_SOC_SP7350)
+		#else
 		free_irq(uartdma_rx->irq, port);
+		#endif
 	}
+#if defined(CONFIG_SOC_SP7350)
+#else
 error_00:
+#endif
 	free_irq(port->irq, port);
 	return ret;
+
 }
 
 /*
@@ -1082,12 +1209,15 @@ error_00:
 static void sunplus_uart_ops_shutdown(struct uart_port *port)
 {
 	unsigned long flags;
+	#if defined(CONFIG_SOC_SP7350)
+	#else
 	struct sunplus_uart_port *sp_port =
 		(struct sunplus_uart_port *)(port->private_data);
 	struct sunplus_uartdma_info *uartdma_rx;
 	struct regs_uarxdma *rxdma_reg;
 	//struct sunplus_uartdma_info *uartdma_tx;
 	//struct regs_uatxdma *txdma_reg;
+	#endif
 
 	spin_lock_irqsave(&port->lock, flags);
 	sp_uart_set_int_en(port->membase, 0);	/* disable all interrupt */
@@ -1095,6 +1225,8 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 
 	free_irq(port->irq, port);
 
+	#if defined(CONFIG_SOC_SP7350)
+	#else
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
 		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
@@ -1105,6 +1237,7 @@ static void sunplus_uart_ops_shutdown(struct uart_port *port)
 		free_irq(uartdma_rx->irq, port);
 		DBG_INFO("free_irq(%d)\n", uartdma_rx->irq);
 	}
+	#endif
 
 	/* Disable flow control of Tx, so that queued data can be sent out
 	 * There is no way for s/w to let h/w abort in the middle of
@@ -1811,6 +1944,8 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		DBG_INFO("Setup DMA Tx %d\n", (pdev->id - ID_BASE_DMATX));
 	}
 	if (idx_offset >= 0) {
+#if defined(CONFIG_SOC_SP7350)
+#else
 		DBG_INFO("Enable DMA clock(s)\n");
 		clk = devm_clk_get(&pdev->dev, NULL);
 		if (IS_ERR(clk)) {
@@ -1823,7 +1958,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			DBG_ERR("Clock can't be enabled correctly\n");
 			return ret;
 		}
-
+#endif
 		if (idx_offset == 0)
 			idx = idx_offset + pdev->id - ID_BASE_DMARX;
 		else
@@ -1857,6 +1992,8 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		if (IS_ERR(sunplus_uartdma[idx].membase))
 			return PTR_ERR(sunplus_uartdma[idx].membase);
 
+#if defined(CONFIG_SOC_SP7350)
+#else
 		if (IS_UARTDMARX_ID(pdev->id)) {
 			irq = platform_get_irq(pdev, 0);
 			if (irq < 0)
@@ -1864,6 +2001,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 
 			sunplus_uartdma[idx].irq = irq;
 		} else {
+#endif
 			res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 			if (!res_mem)
 				return -ENODEV;
@@ -1877,7 +2015,10 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			DBG_INFO("gdma_phy: 0x%x gdma_membase: 0x%p\n",
 				res_mem->start,
 				sunplus_uartdma[idx].gdma_membase);
+#if defined(CONFIG_SOC_SP7350)
+#else
 		}
+#endif
 
 		if (of_property_read_u32(pdev->dev.of_node, "which-uart", &idx_which_uart) != 0) {
 			DBG_ERR("\"which-uart\" is not assigned.");
@@ -1889,11 +2030,18 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		}
 		sunplus_uartdma[idx].which_uart = idx_which_uart;
 
+#if defined(CONFIG_SOC_SP7350)
+		DBG_INFO("adr: 0x%lx, base: 0x%p, uart: %d\n",
+			sunplus_uartdma[idx].addr_phy,
+			sunplus_uartdma[idx].membase,
+			sunplus_uartdma[idx].which_uart);
+#else
 		DBG_INFO("adr: 0x%lx, base: 0x%p, irq: %d, uart: %d\n",
 			sunplus_uartdma[idx].addr_phy,
 			sunplus_uartdma[idx].membase,
 			sunplus_uartdma[idx].irq,
 			sunplus_uartdma[idx].which_uart);
+#endif
 
 		return 0;
 	} else if (pdev->id < 0 || pdev->id >= NUM_UART) {

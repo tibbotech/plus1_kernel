@@ -12,15 +12,17 @@
 #include <dt-bindings/reset/sp-sp7350.h>
 #include <dt-bindings/pinctrl/sppctl-sp7350.h>
 
-//#define ENABLE_DMARX0
 //#define ENABLE_DMARX1
 //#define ENABLE_DMARX2
 //#define ENABLE_DMARX3
+//#define ENABLE_DMARX6
+//#define ENABLE_DMARX7
 
-//#define ENABLE_DMATX0
 //#define ENABLE_DMATX1
 //#define ENABLE_DMATX2
 //#define ENABLE_DMATX3
+//#define ENABLE_DMATX6
+//#define ENABLE_DMATX7
 
 //#define MIPI_CSI_4VC
 
@@ -32,9 +34,6 @@
 	#size-cells = <2>;
 
 	aliases {
-#ifdef ENABLE_DMARX0
-		serial10 = &uartdmarx0;
-#endif
 #ifdef ENABLE_DMARX1
 		serial11 = &uartdmarx1;
 #endif
@@ -44,8 +43,11 @@
 #ifdef ENABLE_DMARX3
 		serial13 = &uartdmarx3;
 #endif
-#ifdef ENABLE_DMATX0
-		serial20 = &uartdmatx0;
+#ifdef ENABLE_DMARX6
+		serial16 = &uartdmarx6;
+#endif
+#ifdef ENABLE_DMARX7
+		serial17 = &uartdmarx7;
 #endif
 #ifdef ENABLE_DMATX1
 		serial21 = &uartdmatx1;
@@ -55,6 +57,12 @@
 #endif
 #ifdef ENABLE_DMATX3
 		serial23 = &uartdmatx3;
+#endif
+#ifdef ENABLE_DMATX6
+		serial26 = &uartdmatx6;
+#endif
+#ifdef ENABLE_DMATX7
+		serial27 = &uartdmatx7;
 #endif
 		serial0 = &uart0;
 		serial1 = &uart1;
@@ -272,118 +280,101 @@
 		memory-region = <&rproc_0_reserved>, <&vdev0buffer>, <&vdev0vring0>, <&vdev0vring1>;
 	};
 
-#ifdef ENABLE_DMARX0
-	/* DMA Rx for UARTx */
-	uartdmarx0: serial@sp_uartdmarx0 {
-		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008980 0x00 0x40>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UADMA01>;
-		clock-names = "UADMA01";
-		resets = <&rstc RST_UADMA01>;
-		which-uart = <0>;
-	};
-#endif
 #ifdef ENABLE_DMARX1
 	uartdmarx1: serial@sp_uartdmarx1 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf80089c0 0x00 0x40>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UADMA01>;
-		clock-names = "UADMA01";
-		resets = <&rstc RST_UADMA01>;
+		reg = <0x00 0xf8801b00 0x00 0x40>, <0x00 0xf8801a00 0x00 0x80>;
 		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMARX2
 	uartdmarx2: serial@sp_uartdmarx2 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008700 0x00 0x40>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UADMA23>;
-		clock-names = "UADMA23";
-		resets = <&rstc RST_UADMA23>;
+		reg = <0x00 0xf8801d00 0x00 0x40>, <0x00 0xf8801c00 0x00 0x80>;
 		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMARX3
 	uartdmarx3: serial@sp_uartdmarx3 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008740 0x00 0x40>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc UADMA23>;
-		clock-names = "UADMA23";
-		resets = <&rstc RST_UADMA23>;
+		reg = <0x00 0xf8801f00 0x00 0x40>, <0x00 0xf8801e00 0x00 0x80>;
 		which-uart = <3>;
 	};
 #endif
 
-#ifdef ENABLE_DMATX0
-	/* DMA Tx for UARTx */
-	uartdmatx0: serial@sp_uartdmatx0 {
+#ifdef ENABLE_DMARX6
+	uartdmarx6: serial@sp_uartdmarx6 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008a00 0x00 0x40>, <0x00 0xf8008880 0x00 0x80>;
-		clocks = <&clkc GDMAUA>;
-		clock-names = "GDMAUA";
-		resets = <&rstc RST_GDMAUA>;
-		which-uart = <0>;
+		reg = <0x00 0xf8802100 0x00 0x40>, <0x00 0xf8802000 0x00 0x80>;
+		which-uart = <6>;
 	};
 #endif
+
+#ifdef ENABLE_DMARX7
+	uartdmarx7: serial@sp_uartdmarx7 {
+		compatible = "sunplus,sp7350-uart";
+		reg = <0x00 0xf8802300 0x00 0x40>, <0x00 0xf8802200 0x00 0x80>;
+		which-uart = <7>;
+	};
+#endif
+
 #ifdef ENABLE_DMATX1
 	uartdmatx1: serial@sp_uartdmatx1 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008a40 0x00 0x40>, <0x00 0xf8008900 0x00 0x80>;
-		clocks = <&clkc GDMAUA>;
-		clock-names = "GDMAUA";
-		resets = <&rstc RST_GDMAUA>;
+		reg = <0x00 0xf8801b40 0x00 0x40>, <0x00 0xf8801a80 0x00 0x80>;
+		//clocks = <&clkc GDMAUA>;
 		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMATX2
 	uartdmatx2: serial@sp_uartdmatx2 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008b80 0x00 0x40>, <0x00 0xf8008a80 0x00 0x80>;
-		clocks = <&clkc GDMAUA>;
-		clock-names = "GDMAUA";
-		resets = <&rstc RST_GDMAUA>;
+		reg = <0x00 0xf8801d40 0x00 0x40>, <0x00 0xf8801c80 0x00 0x80>;
+		//clocks = <&clkc GDMAUA>;
 		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMATX3
 	uartdmatx3: serial@sp_uartdmatx3 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008bc0 0x00 0x40>, <0x00 0xf8008b00 0x00 0x80>;
-		clocks = <&clkc GDMAUA>;
-		clock-names = "GDMAUA";
-		resets = <&rstc RST_GDMAUA>;
+		reg = <0x00 0xf8801f40 0x00 0x40>, <0x00 0xf8801e80 0x00 0x80>;
+		//clocks = <&clkc GDMAUA>;
 		which-uart = <3>;
 	};
 #endif
+#ifdef ENABLE_DMATX6
+	uartdmatx6: serial@sp_uartdmatx6 {
+		compatible = "sunplus,sp7350-uart";
+		reg = <0x00 0xf8802140 0x00 0x40>, <0x00 0xf8802080 0x00 0x80>;
+		//clocks = <&clkc GDMAUA>;
+		which-uart = <6>;
+	};
+#endif
+#ifdef ENABLE_DMATX7
+	uartdmatx7: serial@sp_uartdmatx7 {
+		compatible = "sunplus,sp7350-uart";
+		reg = <0x00 0xf8802340 0x00 0x40>, <0x00 0xf8802280 0x00 0x80>;
+		//clocks = <&clkc GDMAUA>;
+		which-uart = <7>;
+	};
+#endif
 
-	uart0: serial@f8000900 {
+	uart0: serial@f8801900 {
 		compatible = "sunplus,sp7350-uart";
 		reg = <0x00 0xf8801900 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA0>;
 		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart0_pins>;
 	};
 
-	uart1: serial@f8000980 {
+	uart1: serial@f8801980 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8800200 0x00 0x80>;
+		reg = <0x00 0xf8801980 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA1>;
 		resets = <&rstc RST_UA1>;
 		pinctrl-names = "default";
@@ -391,13 +382,11 @@
 		status = "disabled";
 	};
 
-	uart2: serial@f8000800 {
+	uart2: serial@f8801b80 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8800280 0x00 0x80>;
+		reg = <0x00 0xf8801b80 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA2>;
 		resets = <&rstc RST_UA2>;
 		pinctrl-names = "default";
@@ -405,13 +394,11 @@
 		status = "disabled";
 	};
 
-	uart3: serial@f8004380 {
+	uart3: serial@f8801d80 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8800300 0x00 0x80>;
+		reg = <0x00 0xf8801d80 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA3>;
 		resets = <&rstc RST_UA3>;
 		pinctrl-names = "default";
@@ -431,9 +418,9 @@
 		status = "disabled";
 	};
 
-	uart6: serial@f8008280 {
+	uart6: serial@f8801f80 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008280 0x00 0x80>;
+		reg = <0x00 0xf8801f80 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 162 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA6>;
@@ -443,11 +430,11 @@
 		status = "disabled";
 	};
 
-	uart7: serial@f8008300 {
+	uart7: serial@f8802180 {
 		compatible = "sunplus,sp7350-uart";
-		reg = <0x00 0xf8008300 0x00 0x80>;
+		reg = <0x00 0xf8802180 0x00 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 163 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 159 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA7>;
 		resets = <&rstc RST_UA7>;
 		pinctrl-names = "default";
