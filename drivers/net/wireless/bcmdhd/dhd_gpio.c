@@ -2,6 +2,12 @@
 #include <osl.h>
 #include <dhd_linux.h>
 #include <linux/gpio.h>
+#ifdef BCMDHD_DTS
+#include <linux/of_gpio.h>
+#endif
+#ifdef BCMDHD_PLATDEV
+#include <linux/platform_device.h>
+#endif
 
 #if defined(BUS_POWER_RESTORE) && defined(BCMSDIO)
 #include <linux/mmc/core.h>
@@ -11,7 +17,11 @@
 #endif /* defined(BUS_POWER_RESTORE) && defined(BCMSDIO) */
 
 #ifdef CONFIG_DHD_USE_STATIC_BUF
-#ifdef BCMDHD_MDRIVER
+#ifdef DHD_STATIC_IN_DRIVER
+extern int dhd_static_buf_init(void);
+extern void dhd_static_buf_exit(void);
+#endif /* DHD_STATIC_IN_DRIVER */
+#if defined(BCMDHD_MDRIVER) && !defined(DHD_STATIC_IN_DRIVER)
 extern void *dhd_wlan_mem_prealloc(uint bus_type, int index,
 	int section, unsigned long size);
 #else
@@ -21,7 +31,7 @@ extern void *dhd_wlan_mem_prealloc(int section, unsigned long size);
 
 #ifdef BCMDHD_DTS
 /* This is sample code in dts file.
-bcmdhd {
+bcmdhd_wlan {
 	compatible = "android,bcmdhd_wlan";
 	gpio_wl_reg_on = <&gpio GPIOH_4 GPIO_ACTIVE_HIGH>;
 	gpio_wl_host_wake = <&gpio GPIOZ_15 GPIO_ACTIVE_HIGH>;
@@ -47,13 +57,15 @@ dhd_wlan_set_power(int on, wifi_adapter_info_t *adapter)
 				return -EIO;
 			}
 		}
-#if defined(BUS_POWER_RESTORE)
-#if defined(BCMSDIO) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#ifdef BUS_POWER_RESTORE
+#ifdef BCMSDIO
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 		if (adapter->sdio_func && adapter->sdio_func->card && adapter->sdio_func->card->host) {
 			mdelay(100);
 			printf("======== mmc_power_restore_host! ========\n");
 			mmc_power_restore_host(adapter->sdio_func->card->host);
 		}
+#endif
 #elif defined(BCMPCIE)
 		if (adapter->pci_dev) {
 			mdelay(100);
@@ -72,12 +84,14 @@ dhd_wlan_set_power(int on, wifi_adapter_info_t *adapter)
 		/* Lets customer power to get stable */
 		mdelay(100);
 	} else {
-#if defined(BUS_POWER_RESTORE)
-#if defined(BCMSDIO) && (LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0))
+#ifdef BUS_POWER_RESTORE
+#ifdef BCMSDIO
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 32) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 0)
 		if (adapter->sdio_func && adapter->sdio_func->card && adapter->sdio_func->card->host) {
 			printf("======== mmc_power_save_host! ========\n");
 			mmc_power_save_host(adapter->sdio_func->card->host);
 		}
+#endif
 #elif defined(BCMPCIE)
 		if (adapter->pci_dev) {
 			printf("======== pci_set_power_state PCI_D3hot! ========\n");
@@ -102,12 +116,14 @@ dhd_wlan_set_power(int on, wifi_adapter_info_t *adapter)
 	return err;
 }
 
-static int dhd_wlan_set_reset(int onoff)
+static int
+dhd_wlan_set_reset(int onoff)
 {
 	return 0;
 }
 
-static int dhd_wlan_set_carddetect(int present)
+static int
+dhd_wlan_set_carddetect(int present)
 {
 	int err = 0;
 
@@ -136,7 +152,8 @@ static int dhd_wlan_set_carddetect(int present)
 	return err;
 }
 
-static int dhd_wlan_get_mac_addr(unsigned char *buf, int ifidx)
+static int
+dhd_wlan_get_mac_addr(unsigned char *buf, int ifidx)
 {
 	int err = 0;
 
@@ -231,16 +248,17 @@ struct wifi_platform_data dhd_wlan_control = {
 	.get_country_code = dhd_wlan_get_country_code,
 };
 
-int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
+static int
+dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 {
 #ifdef BCMDHD_DTS
 	char wlan_node[32];
 	struct device_node *root_node = NULL;
 #endif
 	int err = 0;
-	int gpio_wl_reg_on;
+	int gpio_wl_reg_on = -1;
 #ifdef CUSTOMER_OOB
-	int gpio_wl_host_wake;
+	int gpio_wl_host_wake = -1;
 	int host_oob_irq = -1;
 	uint host_oob_irq_flags = 0;
 #endif
@@ -249,18 +267,32 @@ int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 	* WL_REG_ON and WL_HOST_WAKE.
 	*/
 #ifdef BCMDHD_DTS
+#ifdef BCMDHD_PLATDEV
+	if (adapter->pdev) {
+		root_node = adapter->pdev->dev.of_node;
+		strcpy(wlan_node, root_node->name);
+	} else {
+		printf("%s: adapter->pdev is NULL\n", __FUNCTION__);
+		return -1;
+	}
+#else
 	strcpy(wlan_node, DHD_DT_COMPAT_ENTRY);
-	printf("======== Get GPIO from DTS(%s) ========\n", wlan_node);
 	root_node = of_find_compatible_node(NULL, NULL, wlan_node);
+#endif
+	printf("======== Get GPIO from DTS(%s) ========\n", wlan_node);
 	if (root_node) {
 		gpio_wl_reg_on = of_get_named_gpio(root_node, GPIO_WL_REG_ON_PROPNAME, 0);
 #ifdef CUSTOMER_OOB
+#ifdef CUSTOMER_HW_SUNPLUS
+		host_oob_irq = platform_get_irq(adapter->pdev, 0);
+#else
 		gpio_wl_host_wake = of_get_named_gpio(root_node, GPIO_WL_HOST_WAKE_PROPNAME, 0);
+#endif
 #endif
 	} else
 #endif
 	{
-		gpio_wl_reg_on = 2;
+		gpio_wl_reg_on = -1;
 #ifdef CUSTOMER_OOB
 		gpio_wl_host_wake = -1;
 #endif
@@ -269,8 +301,8 @@ int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 	if (gpio_wl_reg_on >= 0) {
 		err = gpio_request(gpio_wl_reg_on, "WL_REG_ON");
 		if (err < 0) {
-			printf("%s: gpio_request(%d) for WL_REG_ON failed\n",
-				__FUNCTION__, gpio_wl_reg_on);
+			printf("%s: gpio_request(%d) for WL_REG_ON failed %d\n",
+				__FUNCTION__, gpio_wl_reg_on, err);
 			gpio_wl_reg_on = -1;
 		}
 	}
@@ -280,22 +312,22 @@ int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 	if (gpio_wl_host_wake >= 0) {
 		err = gpio_request(gpio_wl_host_wake, "bcmdhd");
 		if (err < 0) {
-			printf("%s: gpio_request(%d) for WL_HOST_WAKE failed\n",
-				__FUNCTION__, gpio_wl_host_wake);
+			printf("%s: gpio_request(%d) for WL_HOST_WAKE failed %d\n",
+				__FUNCTION__, gpio_wl_host_wake, err);
 			return -1;
 		}
 		adapter->gpio_wl_host_wake = gpio_wl_host_wake;
 		err = gpio_direction_input(gpio_wl_host_wake);
 		if (err < 0) {
-			printf("%s: gpio_direction_input(%d) for WL_HOST_WAKE failed\n",
-				__FUNCTION__, gpio_wl_host_wake);
+			printf("%s: gpio_direction_input(%d) for WL_HOST_WAKE failed %d\n",
+				__FUNCTION__, gpio_wl_host_wake, err);
 			gpio_free(gpio_wl_host_wake);
 			return -1;
 		}
 		host_oob_irq = gpio_to_irq(gpio_wl_host_wake);
 		if (host_oob_irq < 0) {
-			printf("%s: gpio_to_irq(%d) for WL_HOST_WAKE failed\n",
-				__FUNCTION__, gpio_wl_host_wake);
+			printf("%s: gpio_to_irq(%d) for WL_HOST_WAKE failed %d\n",
+				__FUNCTION__, gpio_wl_host_wake, host_oob_irq);
 			gpio_free(gpio_wl_host_wake);
 			return -1;
 		}
@@ -322,7 +354,8 @@ int dhd_wlan_init_gpio(wifi_adapter_info_t *adapter)
 	return 0;
 }
 
-static void dhd_wlan_deinit_gpio(wifi_adapter_info_t *adapter)
+static void
+dhd_wlan_deinit_gpio(wifi_adapter_info_t *adapter)
 {
 	int gpio_wl_reg_on = adapter->gpio_wl_reg_on;
 #ifdef CUSTOMER_OOB
@@ -343,21 +376,70 @@ static void dhd_wlan_deinit_gpio(wifi_adapter_info_t *adapter)
 #endif /* CUSTOMER_OOB */
 }
 
-int dhd_wlan_init_plat_data(wifi_adapter_info_t *adapter)
+#if defined(BCMDHD_MDRIVER)
+static void
+dhd_wlan_init_adapter(wifi_adapter_info_t *adapter)
+{
+#ifdef ADAPTER_IDX
+	if (ADAPTER_IDX == 0) {
+		adapter->bus_num = 1;
+		adapter->slot_num = 1;
+	} else if (ADAPTER_IDX == 1) {
+		adapter->bus_num = 2;
+		adapter->slot_num = 1;
+	}
+	adapter->index = ADAPTER_IDX;
+#ifdef BCMSDIO
+	adapter->bus_type = SDIO_BUS;
+#elif defined(BCMPCIE)
+	adapter->bus_type = PCI_BUS;
+#elif defined(BCMDBUS)
+	adapter->bus_type = USB_BUS;
+#endif
+	printf("bus_type=%d, bus_num=%d, slot_num=%d\n",
+		adapter->bus_type, adapter->bus_num, adapter->slot_num);
+#endif /* ADAPTER_IDX */
+
+#ifdef DHD_STATIC_IN_DRIVER
+	adapter->index = 0;
+#elif !defined(ADAPTER_IDX)
+#ifdef BCMSDIO
+	adapter->index = 0;
+#elif defined(BCMPCIE)
+	adapter->index = 1;
+#elif defined(BCMDBUS)
+	adapter->index = 2;
+#endif
+#endif /* DHD_STATIC_IN_DRIVER */
+}
+#endif /* BCMDHD_MDRIVER */
+
+int
+dhd_wlan_init_plat_data(wifi_adapter_info_t *adapter)
 {
 	int err = 0;
 
-	printf("======== %s ========\n", __FUNCTION__);
-	if (adapter->index == -1) {
-		adapter->index = 0;
-	}
+#ifdef BCMDHD_MDRIVER
+	dhd_wlan_init_adapter(adapter);
+#endif /* BCMDHD_MDRIVER */
+
 	err = dhd_wlan_init_gpio(adapter);
+	if (err)
+		goto exit;
+
+#ifdef DHD_STATIC_IN_DRIVER
+	err = dhd_static_buf_init();
+#endif
+
+exit:
 	return err;
 }
 
-void dhd_wlan_deinit_plat_data(wifi_adapter_info_t *adapter)
+void
+dhd_wlan_deinit_plat_data(wifi_adapter_info_t *adapter)
 {
-	printf("======== %s ========\n", __FUNCTION__);
+#ifdef DHD_STATIC_IN_DRIVER
+	dhd_static_buf_exit();
+#endif
 	dhd_wlan_deinit_gpio(adapter);
 }
-

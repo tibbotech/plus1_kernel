@@ -2,7 +2,7 @@
  * Common stats definitions for clients of dongle
  * ports
  *
- * Copyright (C) 1999-2019, Broadcom.
+ * Copyright (C) 2020, Broadcom.
  *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -18,14 +18,10 @@
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
  *
- *      Notwithstanding the above, under no circumstances may you combine this
- * software in any way with any other Broadcom software provided under a license
- * other than the GPL, without Broadcom's express prior written consent.
- *
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dngl_stats.h 716269 2017-08-17 09:22:46Z $
+ * $Id$
  */
 
 #ifndef _dngl_stats_h_
@@ -35,6 +31,7 @@
 #include <802.11.h>
 #include <linux/compat.h>
 
+/* XXX happens to mirror a section of linux's net_device_stats struct */
 typedef struct {
 	unsigned long	rx_packets;		/* total packets received */
 	unsigned long	tx_packets;		/* total packets transmitted */
@@ -99,7 +96,11 @@ typedef enum {
 						     * element UTF-8 SSID bit is set
 						     */
 #define WIFI_CAPABILITY_COUNTRY      0x00000020     /* set is 802.11 Country Element is present */
+#ifdef LINUX
 #define PACK_ATTRIBUTE __attribute__ ((packed))
+#else
+#define PACK_ATTRIBUTE
+#endif
 typedef struct {
 	wifi_interface_mode mode;     /* interface mode */
 	uint8 mac_addr[6];               /* interface mac address (self) */

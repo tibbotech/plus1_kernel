@@ -1171,6 +1171,18 @@
 		status = "disabled";
 	};
 
+#if 0
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_int2_pins>;
+		gpio_wl_reg_on = <&pctl 53 GPIO_ACTIVE_LOW>;
+		gpio_wl_host_wake = <&pctl 2 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
+
 	sp_uphy0: uphy@f8004a80 {
 		compatible = "sunplus,q645-usb-phy0";
 		clocks = <&clkc UPHY0>;

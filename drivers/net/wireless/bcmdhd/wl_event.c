@@ -7,19 +7,19 @@
 #define EVENT_ERROR(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_ERROR_LEVEL) { \
-			printk(KERN_ERR DHD_LOG_PREFIX "[%s] EVENT-ERROR) %s : " arg1, name, __func__, ## args); \
+			printf("[%s] EVENT-ERROR) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 #define EVENT_TRACE(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_TRACE_LEVEL) { \
-			printk(KERN_INFO DHD_LOG_PREFIX "[%s] EVENT-TRACE) %s : " arg1, name, __func__, ## args); \
+			printf("[%s] EVENT-TRACE) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 #define EVENT_DBG(name, arg1, args...) \
 	do { \
 		if (android_msg_level & ANDROID_DBG_LEVEL) { \
-			printk(KERN_INFO DHD_LOG_PREFIX "[%s] EVENT-DBG) %s : " arg1, name, __func__, ## args); \
+			printf("[%s] EVENT-DBG) %s : " arg1, name, __func__, ## args); \
 		} \
 	} while (0)
 
@@ -312,7 +312,8 @@ wl_ext_event_create_handler(struct wl_event_params *event_params)
 #else
 	/* Allocate workqueue for event */
 	if (!event_params->event_workq) {
-		event_params->event_workq = alloc_workqueue("ext_eventd", WQ_MEM_RECLAIM | WQ_HIGHPRI, 0);
+		event_params->event_workq = alloc_workqueue("ext_eventd",
+			WQ_MEM_RECLAIM | WQ_HIGHPRI | WQ_UNBOUND, 0);
 	}
 
 	if (!event_params->event_workq) {
@@ -386,6 +387,7 @@ wl_ext_event_register(struct net_device *dev, dhd_pub_t *dhd, uint32 event,
 			mutex_unlock(&event_params->event_sync);
 			return -ENOMEM;
 		}
+		memset(leaf, 0, sizeof(event_handler_list_t));
 		leaf->next = NULL;
 		leaf->dev = dev;
 		leaf->etype = event;
