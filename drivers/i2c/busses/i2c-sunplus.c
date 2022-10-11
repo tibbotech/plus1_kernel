@@ -1222,7 +1222,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 				spi2c_cmd->restart_en = 1;
 			}
 
-			if(spi2c_cmd->xfer_cnt > 16) {
+			if(spi2c_cmd->xfer_cnt >= 16) {
 				r_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (r_buf) {
 					spi2c_cmd->dma_r_addr = dma_map_single(spi2c->dev, r_buf,
@@ -1245,7 +1245,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 				
 			}
 		} else {
-			if(spi2c_cmd->xfer_cnt > 16) {
+			if(spi2c_cmd->xfer_cnt >= 16) {
 				w_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (w_buf) {
 					spi2c_cmd->dma_w_addr = dma_map_single(spi2c->dev, w_buf,

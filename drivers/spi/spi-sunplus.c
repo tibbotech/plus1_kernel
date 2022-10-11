@@ -298,7 +298,7 @@ static void sunplus_spi_slave_rb(struct sunplus_spi_ctlr *pspim, unsigned int le
 		if (loop - i)
 			j = 4;
 		else
-			j = (len % 4);
+			j = (len % 4) ? (len % 4) : 4;
 
 		for (k = 0; k < j; k++) {
 			pspim->rx_buf[pspim->rx_cur_len + k] = (reg_temp  >> (k * 8)) & 0xff;
@@ -323,7 +323,7 @@ static void sunplus_spi_slave_wb(struct sunplus_spi_ctlr *pspim, unsigned int le
 		if (loop - i)
 			j = 4;
 		else
-			j = (len % 4);
+			j = (len % 4) ? (len % 4) : 4;
 
 		for (k = 0; k < j; k++) {
 			reg_temp |= (pspim->tx_buf[pspim->tx_cur_len + k] & 0xff) << k * 8;
@@ -825,7 +825,7 @@ static int sunplus_spi_slave_fd_burst_xfer(struct spi_controller *ctlr, struct s
 	return 0;
 }
 
-static int sunplus_spi_slave_helfduplex_transfer(struct spi_controller *ctlr, struct spi_device *spi,
+static int sunplus_spi_slave_halfduplex_transfer(struct spi_controller *ctlr, struct spi_device *spi,
 				       struct spi_transfer *xfer)
 {
 	struct sunplus_spi_ctlr *pspim = spi_master_get_devdata(ctlr);
@@ -869,7 +869,7 @@ static int sunplus_spi_slave_transfer_one(struct spi_controller *ctlr, struct sp
 			return sunplus_spi_slave_fd_burst_xfer(ctlr, spi, xfer);
 	}
 	else
-		return sunplus_spi_slave_helfduplex_transfer(ctlr, spi, xfer);
+		return sunplus_spi_slave_halfduplex_transfer(ctlr, spi, xfer);
 
 }
 
