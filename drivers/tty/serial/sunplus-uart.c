@@ -50,15 +50,20 @@
 #include <linux/delay.h>
 #include <linux/hrtimer.h>
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 #define NUM_UART	9	/* serial0,  ... */
+#elif defined(CONFIG_SOC_SP7350)
+#define NUM_UART	8	/* serial0,  ... */
 #else
 #define NUM_UART	6	/* serial0,  ... */
 #endif
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 #define NUM_UARTDMARX	4	/* serial10, ... */
 #define NUM_UARTDMATX	4	/* serial20, ... */
+#elif defined(CONFIG_SOC_SP7350)
+#define NUM_UARTDMARX	8	/* serial10, ... */
+#define NUM_UARTDMATX	8	/* serial20, ... */
 #else
 #define NUM_UARTDMARX	2	/* serial10, ... */
 #define NUM_UARTDMATX	2	/* serial20, ... */
@@ -790,6 +795,8 @@ static irqreturn_t sunplus_uart_irq(int irq, void *args)
 	return IRQ_HANDLED;
 }
 
+#if defined(CONFIG_SOC_SP7350)
+#else
 /* called by ISR */
 static void receive_chars_rxdma(struct uart_port *port)
 {
@@ -889,6 +896,7 @@ static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 
 	return IRQ_HANDLED;
 }
+#endif
 
 /*
  * Documentation/serial/driver:
@@ -905,7 +913,14 @@ static irqreturn_t sunplus_uart_rxdma_irq(int irq, void *args)
 static int sunplus_uart_ops_startup(struct uart_port *port)
 {
 	int ret;
-	u32 timeout, interrupt_en;
+	#if defined(CONFIG_SOC_SP7350)
+	struct sunplus_uart_port *sp_port =
+	(struct sunplus_uart_port *)(port->private_data);
+	struct sunplus_uartdma_info *uartdma_rx, *uartdma_tx;
+	struct regs_uatxdma *txdma_reg;
+	struct regs_uatxgdma *gdma_reg;
+	u32 interrupt_en;
+	#else
 	struct sunplus_uart_port *sp_port =
 		(struct sunplus_uart_port *)(port->private_data);
 	struct sunplus_uartdma_info *uartdma_rx, *uartdma_tx;
@@ -913,6 +928,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	struct regs_uatxdma *txdma_reg;
 	struct regs_uatxgdma *gdma_reg;
 	unsigned int ch;
+	u32 timeout, interrupt_en;
+	#endif
 
 	if (sp_port->uport.rs485.flags & SER_RS485_ENABLED) {
 		hrtimer_cancel(&sp_port->DelayRtsAfterSend);
@@ -930,6 +947,8 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 	if (ret)
 		return ret;
 
+	#if defined(CONFIG_SOC_SP7350)
+	#else
 	uartdma_rx = sp_port->uartdma_rx;
 	if (uartdma_rx) {
 		rxdma_reg = (struct regs_uarxdma *)(uartdma_rx->membase);
@@ -986,6 +1005,7 @@ static int sunplus_uart_ops_startup(struct uart_port *port)
 			goto error_00;
 		}
 	}
+	#endif
 
 	uartdma_tx = sp_port->uartdma_tx;
 	if (uartdma_tx) {
@@ -1056,11 +1076,18 @@ error_01:
 	if (uartdma_rx) {
 		dma_free_coherent(port->dev, UARXDMA_BUF_SZ,
 			uartdma_rx->buf_va, uartdma_rx->dma_handle);
+		#if defined(CONFIG_SOC_SP7350)
+		#else
 		free_irq(uartdma_rx->irq, port);
+		#endif
 	}
+#if defined(CONFIG_SOC_SP7350)
+#else
 error_00:
+#endif
 	free_irq(port->irq, port);
 	return ret;
+
 }
 
 /*
@@ -1811,6 +1838,11 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		DBG_INFO("Setup DMA Tx %d\n", (pdev->id - ID_BASE_DMATX));
 	}
 	if (idx_offset >= 0) {
+#if defined(CONFIG_SOC_SP7350)
+		/* in case of UART DMA clock not enabled as default,
+		   remove this define for SP7350 GDMA clock enabled by DTS.
+		*/
+#else
 		DBG_INFO("Enable DMA clock(s)\n");
 		clk = devm_clk_get(&pdev->dev, NULL);
 		if (IS_ERR(clk)) {
@@ -1823,7 +1855,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 			DBG_ERR("Clock can't be enabled correctly\n");
 			return ret;
 		}
-
+#endif
 		if (idx_offset == 0)
 			idx = idx_offset + pdev->id - ID_BASE_DMARX;
 		else

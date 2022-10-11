@@ -15,6 +15,8 @@
 #define SP_UART_DIV_L		0x14
 #define SP_UART_DIV_H		0x18
 #define SP_UART_ISC		0x1C
+#define SP_UART_TX_RESIDUE	0x20
+#define SP_UART_RX_RESIDUE	0x24
 
 /* lsr
  * 1: trasmit fifo is empty
@@ -107,6 +109,7 @@ struct regs_uart {
 	u32 uart_clk_src;
 };
 
+#if 0
 struct regs_uarxdma {
 	u32 rxdma_enable_sel;
 	u32 rxdma_start_addr;
@@ -118,6 +121,20 @@ struct regs_uarxdma {
 	u32 rxdma_end_addr;
 	u32 rxdma_databytes;
 	u32 rxdma_debug_info;
+};
+#endif
+
+struct regs_uarxdma {
+	u32 rxdma_enable;
+	u32 rxdma_sel;
+	u32 rxdma_start_addr;
+	u32 rxdma_end_addr;
+	u32 rxdma_wr_adr;
+	u32 rxdma_rd_adr;
+	u32 rxdma_status;
+	u32 rxdma_tmr_unit;
+	u32 rxdma_tmr_cnt;
+	u32 rxdma_rst_done;
 };
 
 struct regs_uatxdma {
