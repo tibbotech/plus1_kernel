@@ -62,7 +62,7 @@
 		SPINAND_LOGI("%s = 0x%08X\n", reg_name[i], readl(p));
 }
 
-static int get_iomode_cfg(u32 io_mode)
+static int get_iomode_cfg(u32 io_mode, u32 d1oen)
 {
 	int cfg = -1;
 
@@ -84,7 +84,7 @@ static int get_iomode_cfg(u32 io_mode)
 		cfg = SPINAND_CMD_BITMODE(1)
 			| SPINAND_CMD_DQ(1)
 			| SPINAND_ADDR_BITMODE(1)
-			| SPINAND_ADDR_DQ(1)
+			| SPINAND_ADDR_DQ(d1oen? 2:1)		// 1->2. Solve D1 delay issue for write
 			| SPINAND_DATA_BITMODE(3);
 	} else if (io_mode == SPINAND_DUAL_MODE) {
 		cfg = SPINAND_CMD_BITMODE(1)
@@ -483,7 +483,7 @@ int spi_nand_read_by_dma(struct sp_spinand_info *info, u32 io_mode,
 	u32 plane_sel_mode = info->plane_sel_mode;
 	u32 page_size = info->page_size;
 	int cmd = get_iomode_readcmd(io_mode);
-	int cfg = get_iomode_cfg(io_mode);
+	int cfg = get_iomode_cfg(io_mode, 0);
 	u32 value = 0;
 
 	if (cmd < 0 || cfg < 0)
@@ -538,7 +538,11 @@ int spi_nand_write_by_dma(struct sp_spinand_info *info, u32 io_mode,
 	u32 plane_sel_mode = info->plane_sel_mode;
 	u32 page_size = info->page_size;
 	int cmd = get_iomode_writecmd(io_mode);
-	int cfg = get_iomode_cfg(io_mode);
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	int cfg = get_iomode_cfg(io_mode, 1);
+#else
+	int cfg = get_iomode_cfg(io_mode, 0);
+#endif
 	u32 value = 0;
 	int ret;
 
@@ -602,7 +606,7 @@ int spi_nand_pageread_autobch(struct sp_spinand_info *info, u32 io_mode,
 	u32 plane_sel_mode = info->plane_sel_mode;
 	u32 page_size = info->page_size;
 	int cmd = get_iomode_readcmd(io_mode);
-	int cfg = get_iomode_cfg(io_mode);
+	int cfg = get_iomode_cfg(io_mode, 0);
 	u32 value = 0;
 	int ret;
 
@@ -689,7 +693,11 @@ int spi_nand_pagewrite_autobch(struct sp_spinand_info *info, u32 io_mode,
 	u32 plane_sel_mode = info->plane_sel_mode;
 	u32 page_size = info->page_size;
 	int cmd = get_iomode_writecmd(io_mode);
-	int cfg = get_iomode_cfg(io_mode);
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	int cfg = get_iomode_cfg(io_mode, 1);
+#else
+	int cfg = get_iomode_cfg(io_mode, 0);
+#endif
 	u32 value = 0;
 	int ret = 0;
 
