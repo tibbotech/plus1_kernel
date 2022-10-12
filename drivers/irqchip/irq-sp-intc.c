@@ -196,6 +196,19 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 #endif
 		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
+	case IRQ_TYPE_EDGE_BOTH:
+#ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
+		if ((data->hwirq >= HW_IRQ_GPIO_INT0) && (data->hwirq <= HW_IRQ_GPIO_INT7)) {
+			edge_trigger[data->hwirq] = IRQ_TYPE_EDGE_FALLING;
+			writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
+		} else {
+			writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
+		}
+#else
+		writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
+#endif
+		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
+		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
 		edge_trigger[data->hwirq] = IRQ_TYPE_NONE;
