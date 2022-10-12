@@ -60,9 +60,6 @@ static struct sp_intctl {
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
 #define HW_IRQ_GPIO_INT0                120
 #define HW_IRQ_GPIO_INT7                127
-#define SP_IRQ_TYPE_EDGE_NONE           0x00
-#define SP_IRQ_TYPE_EDGE_RISING         0x01
-#define SP_IRQ_TYPE_EDGE_FALLING        0x02
 #define SP_IRQ_TYPE_EDGE_ACTIVE         0x80
 static char edge_trigger[SP_INTC_HWIRQ_MAX-SP_INTC_HWIRQ_MIN];
 #endif
@@ -94,9 +91,9 @@ static void sp_intc_ack_irq(struct irq_data *data)
 
 	spin_lock(&sp_intc.lock);
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
-	if (edge_trigger[data->hwirq] & (SP_IRQ_TYPE_EDGE_RISING|SP_IRQ_TYPE_EDGE_FALLING)) {
+	if (edge_trigger[data->hwirq] & (IRQ_TYPE_EDGE_BOTH)) {
 		u32 trig_lvl = readl_relaxed(&sp_intc.g0->intr_polarity[idx]);
-		if (edge_trigger[data->hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+		if (edge_trigger[data->hwirq] == IRQ_TYPE_EDGE_RISING) {
 			trig_lvl |= mask;
 		} else {
 			trig_lvl &= ~mask;
@@ -176,7 +173,7 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 	case IRQ_TYPE_EDGE_RISING:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
 		if ((data->hwirq >= HW_IRQ_GPIO_INT0) && (data->hwirq <= HW_IRQ_GPIO_INT7)) {
-			edge_trigger[data->hwirq] = SP_IRQ_TYPE_EDGE_RISING;
+			edge_trigger[data->hwirq] = IRQ_TYPE_EDGE_RISING;
 			writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		} else {
 			writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
@@ -189,7 +186,7 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 	case IRQ_TYPE_EDGE_FALLING:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
 		if ((data->hwirq >= HW_IRQ_GPIO_INT0) && (data->hwirq <= HW_IRQ_GPIO_INT7)) {
-			edge_trigger[data->hwirq] = SP_IRQ_TYPE_EDGE_FALLING;
+			edge_trigger[data->hwirq] = IRQ_TYPE_EDGE_FALLING;
 			writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		} else {
 			writel_relaxed((edge_type | mask), &sp_intc.g0->intr_type[idx]);
@@ -201,21 +198,21 @@ static int sp_intc_set_type(struct irq_data *data, unsigned int flow_type)
 		break;
 	case IRQ_TYPE_LEVEL_HIGH:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
-		edge_trigger[data->hwirq] = SP_IRQ_TYPE_EDGE_NONE;
+		edge_trigger[data->hwirq] = IRQ_TYPE_NONE;
 #endif
 		writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		writel_relaxed((trig_lvl & ~mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	case IRQ_TYPE_LEVEL_LOW:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
-		edge_trigger[data->hwirq] = SP_IRQ_TYPE_EDGE_NONE;
+		edge_trigger[data->hwirq] = IRQ_TYPE_NONE;
 #endif
 		writel_relaxed((edge_type & ~mask), &sp_intc.g0->intr_type[idx]);
 		writel_relaxed((trig_lvl | mask), &sp_intc.g0->intr_polarity[idx]);
 		break;
 	default:
 #ifdef WORKAROUND_FOR_EDGE_TRIGGER_BUG
-		edge_trigger[data->hwirq] = SP_IRQ_TYPE_EDGE_NONE;
+		edge_trigger[data->hwirq] = IRQ_TYPE_NONE;
 #endif
 		spin_unlock_irqrestore(&sp_intc.lock, flags);
 		pr_err("%s: type=%d\n", __func__, flow_type);
@@ -309,7 +306,7 @@ static void sp_intc_handle_ext0_cascaded(struct irq_desc *desc)
 			u32 mask = 1 << (hwirq % 32);
 
 			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
-			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+			if (edge_trigger[hwirq] == IRQ_TYPE_EDGE_RISING) {
 				trig_lvl &= ~mask;
 			} else {
 				trig_lvl |= mask;
@@ -338,7 +335,7 @@ static void sp_intc_handle_ext1_cascaded(struct irq_desc *desc)
 			u32 mask = 1 << (hwirq % 32);
 
 			edge_trigger[hwirq] &= ~SP_IRQ_TYPE_EDGE_ACTIVE;
-			if (edge_trigger[hwirq] == SP_IRQ_TYPE_EDGE_RISING) {
+			if (edge_trigger[hwirq] == IRQ_TYPE_EDGE_RISING) {
 				trig_lvl &= ~mask;
 			} else {
 				trig_lvl |= mask;
