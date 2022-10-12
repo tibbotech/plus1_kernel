@@ -679,10 +679,9 @@ static void check_mac_vendor_id_and_convert(char *mac_addr)
 	// Check vendor id and convert byte order if it is wrong.
 	if ((mac_addr[5] == 0xFC) && (mac_addr[4] == 0x4B) && (mac_addr[3] == 0xBC) &&
 		((mac_addr[0] != 0xFC) || (mac_addr[1] != 0x4B) || (mac_addr[2] != 0xBC))) {
-		char tmp;
-		tmp = mac_addr[0]; mac_addr[0] = mac_addr[5]; mac_addr[5] = tmp;
-		tmp = mac_addr[1]; mac_addr[1] = mac_addr[4]; mac_addr[4] = tmp;
-		tmp = mac_addr[2]; mac_addr[2] = mac_addr[3]; mac_addr[3] = tmp;
+		swap(mac_addr[0], mac_addr[5]);
+		swap(mac_addr[1], mac_addr[4]);
+		swap(mac_addr[2], mac_addr[3]);
 	}
 }
 
@@ -724,6 +723,13 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 		// Check if mac-address is valid or not. If not, copy from default.
 		memcpy(mac->mac_addr, otp_v, 6);
 
+		/* Order of MAC address stored in OTP are reverse.
+		 * Convert them to correct order.
+		 */
+		swap(mac->mac_addr[0], mac->mac_addr[5]);
+		swap(mac->mac_addr[1], mac->mac_addr[4]);
+		swap(mac->mac_addr[2], mac->mac_addr[3]);
+
 		// Byte order of Some samples are reversed. Convert byte order here.
 		check_mac_vendor_id_and_convert(mac->mac_addr);
 
@@ -733,6 +739,10 @@ static u32 init_netdev(struct platform_device *pdev, int eth_no, struct net_devi
 			otp_l = 0;
 		}
 	}
+
+	if (!IS_ERR_OR_NULL(otp_v))
+		kfree(otp_v);
+
 	if (otp_l != 6) {
 		memcpy(mac->mac_addr, def_mac_addr, ETHERNET_MAC_ADDR_LEN);
 		mac->mac_addr[5] += eth_no;
