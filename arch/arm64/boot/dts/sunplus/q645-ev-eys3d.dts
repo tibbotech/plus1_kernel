@@ -29,6 +29,8 @@
 //#define TP2815_IN0
 //#define TP2815_IN2
 
+//#define SPI_SLAVE
+
 //#define ESP876_IN0
 //#define ESP876_IN1
 //#define ESP876_IN2
@@ -411,7 +413,7 @@
 		clocks = <&clkc UADMA01>;
 		clock-names = "UADMA01";
 		resets = <&rstc RST_UADMA01>;
-		which-uart = <0>;
+		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMARX1
@@ -423,7 +425,7 @@
 		clocks = <&clkc UADMA01>;
 		clock-names = "UADMA01";
 		resets = <&rstc RST_UADMA01>;
-		which-uart = <1>;
+		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMARX2
@@ -435,7 +437,7 @@
 		clocks = <&clkc UADMA23>;
 		clock-names = "UADMA23";
 		resets = <&rstc RST_UADMA23>;
-		which-uart = <2>;
+		which-uart = <3>;
 	};
 #endif
 #ifdef ENABLE_DMARX3
@@ -447,7 +449,7 @@
 		clocks = <&clkc UADMA23>;
 		clock-names = "UADMA23";
 		resets = <&rstc RST_UADMA23>;
-		which-uart = <3>;
+		which-uart = <6>;
 	};
 #endif
 
@@ -459,7 +461,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <0>;
+		which-uart = <1>;
 	};
 #endif
 #ifdef ENABLE_DMATX1
@@ -469,7 +471,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <1>;
+		which-uart = <2>;
 	};
 #endif
 #ifdef ENABLE_DMATX2
@@ -479,7 +481,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <2>;
+		which-uart = <3>;
 	};
 #endif
 #ifdef ENABLE_DMATX3
@@ -489,7 +491,7 @@
 		clocks = <&clkc GDMAUA>;
 		clock-names = "GDMAUA";
 		resets = <&rstc RST_GDMAUA>;
-		which-uart = <3>;
+		which-uart = <6>;
 	};
 #endif
 
@@ -497,9 +499,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000900 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA0>;
 		resets = <&rstc RST_UA0>;
 		pinctrl-names = "default";
@@ -510,9 +510,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000980 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 72 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA1>;
 		resets = <&rstc RST_UA1>;
 		pinctrl-names = "default";
@@ -524,9 +522,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8000800 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 157 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA2>;
 		resets = <&rstc RST_UA2>;
 		pinctrl-names = "default";
@@ -538,9 +534,7 @@
 		compatible = "sunplus,q645-uart";
 		reg = <0x0 0xf8004380 0x0 0x80>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 160 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 161 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 158 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc UA3>;
 		resets = <&rstc RST_UA3>;
 		pinctrl-names = "default";
@@ -629,6 +623,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_0_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_0_pins>;
+			power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_0: endpoint {
@@ -703,6 +701,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_1_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_1_pins>;
+			power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_1: endpoint {
@@ -757,6 +759,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_2_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_2_pins>;
+			power-gpios = <&pctl 77 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 78 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_2: endpoint {
@@ -831,6 +837,10 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_3_clk>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&camera_3_pins>;
+			power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
+			reset-gpios = <&pctl 80 GPIO_ACTIVE_HIGH>;
 
 			port {
 				imx219_3: endpoint {
@@ -905,7 +915,6 @@
 			     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_0>;
 		resets = <&rstc RST_SPI_COMBO_0>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spim0_pins>;
 		status = "disabled";
@@ -924,7 +933,6 @@
 			     <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_1>;
 		resets = <&rstc RST_SPI_COMBO_1>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spim1_pins>;
 		status = "disabled";
@@ -944,7 +952,6 @@
 		clocks = <&clkc SPI_COMBO_2>;
 		clock-names = "sys_pll";
 		resets = <&rstc RST_SPI_COMBO_2>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spim2_pins>;
 		status = "disabled";
@@ -963,10 +970,18 @@
 			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_3>;
 		resets = <&rstc RST_SPI_COMBO_3>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
+#ifdef SPI_SLAVE
+		pinctrl-0 = <&spis3_pins>;
+		slave;
+		slave@0 {
+			compatible = "rohm,dh2228fv";
+			reg = <0x0>;
+			status = "okay";
+		};
+#else
 		pinctrl-0 = <&spim3_pins>;
-		status = "disabled";
+#endif
 	};
 
 	spi_controller4: spi@f8004100 {
@@ -982,7 +997,6 @@
 			     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_4>;
 		resets = <&rstc RST_SPI_COMBO_4>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spim4_pins>;
 		status = "disabled";
@@ -1001,7 +1015,6 @@
 			     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc SPI_COMBO_5>;
 		resets = <&rstc RST_SPI_COMBO_5>;
-		spi-max-frequency = <50000000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spim5_pins>;
 		status = "disabled";
@@ -1189,7 +1202,7 @@
 
 	mmc0: mmc@f8003b00 {
 		compatible = "sunplus,q645-emmc";
-		reg = <0x0 0xf8003b00 0x0 0x180>;
+		reg = <0x0 0xf8003b00 0x0 0x180>, <0x0 0xf8003280 0x0 0x80>, <0x0 0xf8003300 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL0>;
@@ -1215,6 +1228,25 @@
 		memory-region = <&iop_reserve>;
 	};
 
+	axi: axi@f8012b80 {
+		compatible = "sunplus,q645-axi";
+		reg = <0x0 0xf8012b80 0x0 0x80>, <0x0 0xf8012c00 0x0 0x80>, <0x0 0xf8012c80 0x0 0x80>,
+			<0x0 0xf8012d00 0x0 0x80>, <0x0 0xf8012d80 0x0 0x80>, <0x0 0xf8012e00 0x0 0x80>,
+			<0x0 0xf8012f00 0x0 0x80>, <0x0 0xf8012f80 0x0 0x80>, <0x0 0xf8013000 0x0 0x80>,
+			<0x0 0xf8013080 0x0 0x80>, <0x0 0xf8013100 0x0 0x80>, <0x0 0xf8013180 0x0 0x80>,
+			<0x0 0xf8013280 0x0 0x80>, <0x0 0xf8013300 0x0 0x80>, <0x0 0xf8013380 0x0 0x80>,
+			<0x0 0xf8013400 0x0 0x80>, <0x0 0xf8013480 0x0 0x80>, <0x0 0xf8013500 0x0 0x80>,
+			<0x0 0xf8013580 0x0 0x80>;
+		reg-names = "axi_mon", "axi_0", "axi_1",
+			"axi_2", "axi_3", "axi_4",
+			"axi_6", "axi_7", "axi_8",
+			"axi_9", "axi_10", "axi_11",
+			"axi_13", "axi_14", "axi_15",
+			"axi_16", "axi_17", "axi_18",
+			"axi_19";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH>;
+	};
 
 	mmc1: mmc@f8003e80 {
 		compatible = "sunplus,q645-card";
@@ -1256,6 +1288,18 @@
 		status = "disabled";
 	};
 
+#if 0
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_int2_pins>;
+		gpio_wl_reg_on = <&pctl 53 GPIO_ACTIVE_LOW>;
+		gpio_wl_host_wake = <&pctl 2 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
+
 	sp_uphy0: uphy@f8004a80 {
 		compatible = "sunplus,q645-usb-phy0";
 		clocks = <&clkc UPHY0>;
@@ -1296,7 +1340,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>; //i2s0
+		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>, <&aud_adc1_data0_pins &aud_au1_ck_pins>, <&aud_adc2_data0_pins &aud_au2_ck_pins>; //in/out i2s0 in i2s1/2
 		//pinctrl-0 = <&aud_au1_data0_pins &aud_au1_ck_pins>; //i2s1
 		//pinctrl-0 = <&aud_au2_data0_pins &aud_au2_ck_pins>; //i2s2
 		//pinctrl-0 = <&aud_tdm_pins &aud_tdmtx_xck_pins>; //tdm
@@ -1329,7 +1373,7 @@
 
 	u3phy0: uphy@f80bd000 {
 		compatible = "sunplus,usb3-phy";
-		reg = <0x0 0xf80bd000 0x0 0x80>;
+		reg = <0x0 0xf80bd000 0x0 0x80>, <0x0 0xf80a1430 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc U3PHY0>, <&clkc USB30C0>;
@@ -1604,6 +1648,16 @@
 		compatible = "sunplus,sp-poweroff";
 	};
 
+#if 0
+	dummymaster: dm@f8000700 {
+		compatible = "sunplus,q645-dm-test";
+		reg = <0x0 0xf8000000 0x0 0x80>, <0x0 0xf8000700 0x0 0x80>,
+			<0x0 0xf800a880 0x0 0x80>, <0x0 0xf800a900 0x0 0x80>; /* G14 G337 G338*/
+		clocks = <&clkc DUMMY_MASTER0>, <&clkc DUMMY_MASTER1>, <&clkc DUMMY_MASTER2>;
+		resets = <&rstc DUMMY_MASTER0>, <&rstc DUMMY_MASTER1>, <&rstc DUMMY_MASTER2>;
+	};
+#endif
+
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,q645-wdt";
 		reg = <0x0 0xf8000628 0x0 0x08>, <0x0 0xf8000248 0x0 0x04>;
@@ -1734,6 +1788,7 @@
 		typec_pins: pinmux_typec-pins {
 			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
+
 		sdio_pins: pinmux_sdio-pins {
 			function = "SDIO";
 			groups = "SDIO";
