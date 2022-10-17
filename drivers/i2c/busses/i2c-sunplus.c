@@ -20,138 +20,138 @@
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
 
-#define SP_I2C_STD_FREQ                      100
-#define SP_I2C_FAST_FREQ                     400
-#define SP_I2C_SLEEP_TIMEOUT                 200
-#define SP_I2C_SCL_DELAY                     1
-#define SP_CLK_SOURCE_FREQ                   27000
-#define SP_BUFFER_SIZE                       1024
-#define SP_I2C_EMP_THOLD                     4
+#define SP_I2C_STD_FREQ				100
+#define SP_I2C_FAST_FREQ			400
+#define SP_I2C_SLEEP_TIMEOUT			200
+#define SP_I2C_SCL_DELAY			1
+#define SP_CLK_SOURCE_FREQ			27000
+#define SP_BUFFER_SIZE				1024
+#define SP_I2C_EMP_THOLD			4
 
-#define SP_I2C_BURST_RDATA_BYTES             16
-#define SP_I2C_BURST_RDATA_FLAG              (BIT(31) | BIT(15))
-#define SP_I2C_BURST_RDATA_ALL_FLAG          GENMASK(31, 0)
+#define SP_I2C_BURST_RDATA_BYTES		16
+#define SP_I2C_BURST_RDATA_FLAG			(BIT(31) | BIT(15))
+#define SP_I2C_BURST_RDATA_ALL_FLAG		GENMASK(31, 0)
 
 #define SP_I2C_CTL0_REG 0x0000
 //control0
-#define SP_I2C_CTL0_FREQ_MASK                GENMASK(26, 24)
-#define SP_I2C_CTL0_PREFETCH                 BIT(18)
-#define SP_I2C_CTL0_RESTART_EN               BIT(17)
-#define SP_I2C_CTL0_SUBADDR_EN               BIT(16)
-#define SP_I2C_CTL0_SW_RESET                 BIT(15)
-#define SP_I2C_CTL0_SLAVE_ADDR_MASK          GENMASK(7, 1)
+#define SP_I2C_CTL0_FREQ_MASK			GENMASK(26, 24)
+#define SP_I2C_CTL0_PREFETCH			BIT(18)
+#define SP_I2C_CTL0_RESTART_EN			BIT(17)
+#define SP_I2C_CTL0_SUBADDR_EN			BIT(16)
+#define SP_I2C_CTL0_SW_RESET			BIT(15)
+#define SP_I2C_CTL0_SLAVE_ADDR_MASK		GENMASK(7, 1)
 
 #define SP_I2C_CTL1_REG 0x0004
 //control1
-#define SP_I2C_CTL1_ALL_CLR                  GENMASK(9, 0)
-#define SP_I2C_CTL1_EMP_CLR                  BIT(9)
-#define SP_I2C_CTL1_SCL_HOLD_TOO_LONG_CLR    BIT(8)
-#define SP_I2C_CTL1_SCL_WAIT_CLR             BIT(7)
-#define SP_I2C_CTL1_EMP_THOLD_CLR            BIT(6)
-#define SP_I2C_CTL1_DATA_NACK_CLR            BIT(5)
-#define SP_I2C_CTL1_ADDRESS_NACK_CLR         BIT(4)
-#define SP_I2C_CTL1_BUSY_CLR                 BIT(3)
-#define SP_I2C_CTL1_CLKERR_CLR               BIT(2)
-#define SP_I2C_CTL1_DONE_CLR                 BIT(1)
-#define SPI2C_CTL1_SIFBUSY_CLR               BIT(0)
+#define SP_I2C_CTL1_ALL_CLR			GENMASK(9, 0)
+#define SP_I2C_CTL1_EMP_CLR			BIT(9)
+#define SP_I2C_CTL1_SCL_HOLD_TOO_LONG_CLR	BIT(8)
+#define SP_I2C_CTL1_SCL_WAIT_CLR		BIT(7)
+#define SP_I2C_CTL1_EMP_THOLD_CLR		BIT(6)
+#define SP_I2C_CTL1_DATA_NACK_CLR		BIT(5)
+#define SP_I2C_CTL1_ADDRESS_NACK_CLR		BIT(4)
+#define SP_I2C_CTL1_BUSY_CLR			BIT(3)
+#define SP_I2C_CTL1_CLKERR_CLR			BIT(2)
+#define SP_I2C_CTL1_DONE_CLR			BIT(1)
+#define SPI2C_CTL1_SIFBUSY_CLR			BIT(0)
 
 #define SP_I2C_CTL2_REG 0x0008
 //control2
-#define SP_I2C_CTL2_FREQ_CUSTOM_MASK         GENMASK(10, 0)  // 11 bit
-#define SP_I2C_CTL2_SCL_DELAY_MASK           GENMASK(25, 24)
-#define SP_I2C_CTL2_SDA_HALF_ENABLE          BIT(31)
+#define SP_I2C_CTL2_FREQ_CUSTOM_MASK		GENMASK(10, 0)  // 11 bit
+#define SP_I2C_CTL2_SCL_DELAY_MASK		GENMASK(25, 24)
+#define SP_I2C_CTL2_SDA_HALF_ENABLE		BIT(31)
 
-#define SP_I2C_INT_REG                       0x001c
-#define SP_I2C_INT_EN0_REG                   0x0020
-#define SP_I2C_MOD_REG                       0x0024
-#define SP_I2C_CTL6_REG                      0x0030
-#define SP_I2C_INT_EN1_REG                   0x0034
-#define SP_I2C_STATUS3_REG                   0x0038
-#define SP_I2C_STATUS4_REG                   0x0040
-#define SP_I2C_INT_EN2_REG                   0x0040
-#define SP_I2C_CTL7_REG                      0x0044
+#define SP_I2C_INT_REG				0x001c
+#define SP_I2C_INT_EN0_REG			0x0020
+#define SP_I2C_MOD_REG				0x0024
+#define SP_I2C_CTL6_REG				0x0030
+#define SP_I2C_INT_EN1_REG			0x0034
+#define SP_I2C_STATUS3_REG			0x0038
+#define SP_I2C_STATUS4_REG			0x0040
+#define SP_I2C_INT_EN2_REG			0x0040
+#define SP_I2C_CTL7_REG				0x0044
 //control7
-#define SP_I2C_CTL7_RD_MASK                  GENMASK(31, 16)
-#define SP_I2C_CTL7_WR_MASK                  GENMASK(15, 0)  //bit[31:16]
+#define SP_I2C_CTL7_RD_MASK			GENMASK(31, 16)
+#define SP_I2C_CTL7_WR_MASK			GENMASK(15, 0)  //bit[31:16]
 //i2c master mode
-#define SP_I2C_MODE_DMA_MODE                 BIT(2)
-#define SP_I2C_MODE_MANUAL_MODE              BIT(1)
-#define SP_I2C_MODE_MANUAL_TRIG              BIT(0)
+#define SP_I2C_MODE_DMA_MODE			BIT(2)
+#define SP_I2C_MODE_MANUAL_MODE			BIT(1)
+#define SP_I2C_MODE_MANUAL_TRIG			BIT(0)
 
-#define SP_I2C_DATA0_REG                     0x0060
+#define SP_I2C_DATA0_REG			0x0060
 
-#define SP_I2C_DMA_CONF_REG                  0x0004
-#define SP_I2C_DMA_LEN_REG                   0x0008
-#define SP_I2C_DMA_ADDR_REG                  0x000c
+#define SP_I2C_DMA_CONF_REG			0x0004
+#define SP_I2C_DMA_LEN_REG			0x0008
+#define SP_I2C_DMA_ADDR_REG			0x000c
 //dma config
-#define SP_I2C_DMA_CFG_DMA_GO                BIT(8)
-#define SP_I2C_DMA_CFG_NON_BUF_MODE          BIT(2)
-#define SP_I2C_DMA_CFG_SAME_SLAVE            BIT(1)
-#define SP_I2C_DMA_CFG_DMA_MODE              BIT(0)
+#define SP_I2C_DMA_CFG_DMA_GO			BIT(8)
+#define SP_I2C_DMA_CFG_NON_BUF_MODE		BIT(2)
+#define SP_I2C_DMA_CFG_SAME_SLAVE		BIT(1)
+#define SP_I2C_DMA_CFG_DMA_MODE			BIT(0)
 
 #define SP_I2C_DMA_FLAG_REG 0x0014
 //dma interrupt flag
-#define SP_I2C_DMA_INT_LENGTH0_FLAG          BIT(6)
-#define SP_I2C_DMA_INT_THRESHOLD_FLAG        BIT(5)
-#define SP_I2C_DMA_INT_IP_TIMEOUT_FLAG       BIT(4)
-#define SP_I2C_DMA_INT_GDMA_TIMEOUT_FLAG     BIT(3)
-#define SP_I2C_DMA_INT_WB_EN_ERROR_FLAG      BIT(2)
-#define SP_I2C_DMA_INT_WCNT_ERROR_FLAG       BIT(1)
-#define SP_I2C_DMA_INT_DMA_DONE_FLAG         BIT(0)
+#define SP_I2C_DMA_INT_LENGTH0_FLAG		BIT(6)
+#define SP_I2C_DMA_INT_THRESHOLD_FLAG		BIT(5)
+#define SP_I2C_DMA_INT_IP_TIMEOUT_FLAG		BIT(4)
+#define SP_I2C_DMA_INT_GDMA_TIMEOUT_FLAG	BIT(3)
+#define SP_I2C_DMA_INT_WB_EN_ERROR_FLAG		BIT(2)
+#define SP_I2C_DMA_INT_WCNT_ERROR_FLAG		BIT(1)
+#define SP_I2C_DMA_INT_DMA_DONE_FLAG		BIT(0)
 
 #define SP_I2C_DMA_INT_EN_REG 0x0018
 //dma interrupt enable
-#define SP_I2C_DMA_EN_LENGTH0_INT            BIT(6)
-#define SP_I2C_DMA_EN_THRESHOLD_INT          BIT(5)
-#define SP_I2C_DMA_EN_IP_TIMEOUT_INT         BIT(4)
-#define SP_I2C_DMA_EN_GDMA_TIMEOUT_INT       BIT(3)
-#define SP_I2C_DMA_EN_WB_EN_ERROR_INT        BIT(2)
-#define SP_I2C_DMA_EN_WCNT_ERROR_INT         BIT(1)
-#define SP_I2C_DMA_EN_DMA_DONE_INT           BIT(0)
+#define SP_I2C_DMA_EN_LENGTH0_INT		BIT(6)
+#define SP_I2C_DMA_EN_THRESHOLD_INT		BIT(5)
+#define SP_I2C_DMA_EN_IP_TIMEOUT_INT		BIT(4)
+#define SP_I2C_DMA_EN_GDMA_TIMEOUT_INT		BIT(3)
+#define SP_I2C_DMA_EN_WB_EN_ERROR_INT		BIT(2)
+#define SP_I2C_DMA_EN_WCNT_ERROR_INT		BIT(1)
+#define SP_I2C_DMA_EN_DMA_DONE_INT		BIT(0)
 //interrupt
-#define SP_I2C_INT_RINC_INDEX                GENMASK(20, 18) //bit[20:18]
-#define SP_I2C_INT_WINC_INDEX                GENMASK(17, 15) //bit[17:15]
-#define SP_I2C_INT_SCL_HOLD_TOO_LONG_FLAG    BIT(11)
-#define SP_I2C_INT_WFIFO_ENABLE              BIT(10)
-#define SP_I2C_INT_FULL_FLAG                 BIT(9)
-#define SP_I2C_INT_EMPTY_FLAG                BIT(8)
-#define SP_I2C_INT_SCL_WAIT_FLAG             BIT(7)
-#define SP_I2C_INT_EMPTY_THRESHOLD_FLAG      BIT(6)
-#define SP_I2C_INT_DATA_NACK_FLAG            BIT(5)
-#define SP_I2C_INT_ADDRESS_NACK_FLAG         BIT(4)
-#define SP_I2C_INT_BUSY_FLAG                 BIT(3)
-#define SP_I2C_INT_CLKERR_FLAG               BIT(2)
-#define SP_I2C_INT_DONE_FLAG                 BIT(1)
-#define SP_I2C_INT_SIFBUSY_FLAG              BIT(0)
+#define SP_I2C_INT_RINC_INDEX			GENMASK(20, 18) //bit[20:18]
+#define SP_I2C_INT_WINC_INDEX			GENMASK(17, 15) //bit[17:15]
+#define SP_I2C_INT_SCL_HOLD_TOO_LONG_FLAG	BIT(11)
+#define SP_I2C_INT_WFIFO_ENABLE			BIT(10)
+#define SP_I2C_INT_FULL_FLAG			BIT(9)
+#define SP_I2C_INT_EMPTY_FLAG			BIT(8)
+#define SP_I2C_INT_SCL_WAIT_FLAG		BIT(7)
+#define SP_I2C_INT_EMPTY_THRESHOLD_FLAG		BIT(6)
+#define SP_I2C_INT_DATA_NACK_FLAG		BIT(5)
+#define SP_I2C_INT_ADDRESS_NACK_FLAG		BIT(4)
+#define SP_I2C_INT_BUSY_FLAG			BIT(3)
+#define SP_I2C_INT_CLKERR_FLAG			BIT(2)
+#define SP_I2C_INT_DONE_FLAG			BIT(1)
+#define SP_I2C_INT_SIFBUSY_FLAG			BIT(0)
 //interrupt enable0
-#define SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT     BIT(13)
-#define SP_I2C_EN0_NACK_INT                  BIT(12)
-#define SP_I2C_EN0_CTL_EMP_THOLD             GENMASK(11, 9)
-#define SP_I2C_EN0_EMPTY_INT                 BIT(8)
-#define SP_I2C_EN0_SCL_WAIT_INT              BIT(7)
-#define SP_I2C_EN0_EMP_THOLD_INT             BIT(6)
-#define SP_I2C_EN0_DATA_NACK_INT             BIT(5)
-#define SP_I2C_EN0_ADDRESS_NACK_INT          BIT(4)
-#define SP_I2C_EN0_BUSY_INT                  BIT(3)
-#define SP_I2C_EN0_CLKERR_INT                BIT(2)
-#define SP_I2C_EN0_DONE_INT                  BIT(1)
-#define SP_I2C_EN0_SIFBUSY_INT               BIT(0)
+#define SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT	BIT(13)
+#define SP_I2C_EN0_NACK_INT			BIT(12)
+#define SP_I2C_EN0_CTL_EMP_THOLD		GENMASK(11, 9)
+#define SP_I2C_EN0_EMPTY_INT			BIT(8)
+#define SP_I2C_EN0_SCL_WAIT_INT			BIT(7)
+#define SP_I2C_EN0_EMP_THOLD_INT		BIT(6)
+#define SP_I2C_EN0_DATA_NACK_INT		BIT(5)
+#define SP_I2C_EN0_ADDRESS_NACK_INT		BIT(4)
+#define SP_I2C_EN0_BUSY_INT			BIT(3)
+#define SP_I2C_EN0_CLKERR_INT			BIT(2)
+#define SP_I2C_EN0_DONE_INT			BIT(1)
+#define SP_I2C_EN0_SIFBUSY_INT			BIT(0)
 
-#define SP_I2C_RESET(id, val)                (((1 << 16) | (val)) << (id))
-#define SP_I2C_CLKEN(id, val)                (((1 << 16) | (val)) << (id))
-#define SP_I2C_GCLKEN(id, val)               (((1 << 16) | (val)) << (id))
+#define SP_I2C_RESET(id, val)			(((1 << 16) | (val)) << (id))
+#define SP_I2C_CLKEN(id, val)			(((1 << 16) | (val)) << (id))
+#define SP_I2C_GCLKEN(id, val)			(((1 << 16) | (val)) << (id))
 
-#define SP_I2C_POWER_CLKEN3                  0x0010
-#define SP_I2C_POWER_GCLKEN3                 0x0038
-#define SP_I2C_POWER_RESET3                  0x0060
+#define SP_I2C_POWER_CLKEN3			0x0010
+#define SP_I2C_POWER_GCLKEN3			0x0038
+#define SP_I2C_POWER_RESET3			0x0060
 
 enum sp_state_e_ {
-	SPI2C_SUCCESS = 0,    /* successful */
-	SPI2C_STATE_WR = 1,  /* i2c is write */
-	SPI2C_STATE_RD = 2,   /* i2c is read */
-	SPI2C_STATE_IDLE = 3,   /* i2c is idle */
-	SPI2C_STATE_DMA_WR = 4,/* i2c is dma write */
-	SPI2C_STATE_DMA_RD = 5, /* i2c is dma read */
+	SPI2C_SUCCESS = 0,	/* successful */
+	SPI2C_STATE_WR = 1,	/* i2c is write */
+	SPI2C_STATE_RD = 2,	/* i2c is read */
+	SPI2C_STATE_IDLE = 3,	/* i2c is idle */
+	SPI2C_STATE_DMA_WR = 4	/* i2c is dma write */
+	SPI2C_STATE_DMA_RD = 5,	/* i2c is dma read */
 };
 
 enum sp_i2c_switch_e_ {
@@ -369,7 +369,7 @@ static void sp_i2cm_trans_cnt_set(void __iomem *sr, unsigned int write_cnt,
 	u32 ctl7 = 0;
 
 	ctl7 = FIELD_PREP(SP_I2C_CTL7_RD_MASK, read_cnt) |
-			  FIELD_PREP(SP_I2C_CTL7_WR_MASK, write_cnt);
+		FIELD_PREP(SP_I2C_CTL7_WR_MASK, write_cnt);
 	writel(ctl7, sr + SP_I2C_CTL7_REG);
 }
 
@@ -408,7 +408,7 @@ static void sp_i2cm_rw_mode_set(void __iomem *sr, enum sp_i2c_mode rw_mode)
 	default:
 	case I2C_WRITE_MODE:
 		ctl0 &= ~(SP_I2C_CTL0_PREFETCH |
-				SP_I2C_CTL0_RESTART_EN | SP_I2C_CTL0_SUBADDR_EN);
+			  SP_I2C_CTL0_RESTART_EN | SP_I2C_CTL0_SUBADDR_EN);
 		break;
 	case I2C_READ_MODE:
 		ctl0 &= (~(SP_I2C_CTL0_RESTART_EN | SP_I2C_CTL0_SUBADDR_EN));
@@ -416,7 +416,7 @@ static void sp_i2cm_rw_mode_set(void __iomem *sr, enum sp_i2c_mode rw_mode)
 		break;
 	case I2C_RESTART_MODE:
 		ctl0 |= (SP_I2C_CTL0_PREFETCH |
-				SP_I2C_CTL0_RESTART_EN | SP_I2C_CTL0_SUBADDR_EN);
+			 SP_I2C_CTL0_RESTART_EN | SP_I2C_CTL0_SUBADDR_EN);
 		break;
 	}
 	writel(ctl0, sr + SP_I2C_CTL0_REG);
@@ -635,65 +635,65 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 
 	_sp_i2cm_intflag_check(spi2c, spi2c_irq);
 
-switch (spi2c_irq->rw_state) {
-case SPI2C_STATE_WR:
-case SPI2C_STATE_DMA_WR:
-	if (spi2c_irq->irq_flag.active_done) {
-		spi2c_irq->ret = SPI2C_SUCCESS;
-		wake_up(&spi2c->wait);
-	} else if (spi2c_irq->irq_flag.addr_nack || spi2c_irq->irq_flag.data_nack) {
-		if (spi2c_irq->rw_state == SPI2C_STATE_DMA_WR)
-			dev_err(spi2c->dev, "DMA write NACK!\n");
-		else {
-			if (spi2c_irq->irq_flag.addr_nack)
-				dev_warn(spi2c->dev, "write addr NACK!\n");
-			if (spi2c_irq->irq_flag.data_nack)
-				dev_err(spi2c->dev, "write data NACK!\n");
-		}
-
-		spi2c_irq->ret = -ENXIO;
-		spi2c_irq->irq_flag.active_done = 1;
-		wake_up(&spi2c->wait);
-		sp_i2cm_reset(sr);
-	} else if (spi2c_irq->irq_flag.scl_hold_too_long) {
-		spi2c_irq->ret = -EINVAL;
-		spi2c_irq->irq_flag.active_done = 1;
-		wake_up(&spi2c->wait);
-		sp_i2cm_reset(sr);
-	} else if (spi2c_irq->irq_flag.fifo_empty) {
-		spi2c_irq->ret = -ENXIO;
-		spi2c_irq->irq_flag.active_done = 1;
-		wake_up(&spi2c->wait);
-		sp_i2cm_reset(sr);
-	} else if ((spi2c_irq->burst_cnt > 0) &&
-			(spi2c_irq->rw_state == SPI2C_STATE_WR)) {
-		if (spi2c_irq->irq_flag.emp_thold) {
-			for (i = 0; i < SP_I2C_EMP_THOLD; i++) {
-				for (j = 0; j < 4; j++) {
-					if (spi2c_irq->data_index >=
-					    spi2c_irq->data_total_len)
-						w_data[j] = 0;
-					else
-						w_data[j] =
-					spi2c_irq->data_buf[spi2c_irq->data_index];
-					spi2c_irq->data_index++;
-				}
-				sp_i2cm_data0_set(sr, w_data);
-				spi2c_irq->burst_cnt--;
-				if (spi2c_irq->burst_cnt == 0) {
-					sp_i2cm_int_en0_disable(sr,
-								SP_I2C_EN0_EMP_THOLD_INT |
-								SP_I2C_EN0_EMPTY_INT);
-					break;
-				}
+	switch (spi2c_irq->rw_state) {
+	case SPI2C_STATE_WR:
+	case SPI2C_STATE_DMA_WR:
+		if (spi2c_irq->irq_flag.active_done) {
+			spi2c_irq->ret = SPI2C_SUCCESS;
+			wake_up(&spi2c->wait);
+		} else if (spi2c_irq->irq_flag.addr_nack || spi2c_irq->irq_flag.data_nack) {
+			if (spi2c_irq->rw_state == SPI2C_STATE_DMA_WR)
+				dev_err(spi2c->dev, "DMA write NACK!\n");
+			else {
+				if (spi2c_irq->irq_flag.addr_nack)
+					dev_warn(spi2c->dev, "write addr NACK!\n");
+				if (spi2c_irq->irq_flag.data_nack)
+					dev_err(spi2c->dev, "write data NACK!\n");
 			}
-				sp_i2cm_status_clear(sr, SP_I2C_CTL1_EMP_THOLD_CLR);
-		}
-	}
-	break;
 
-case SPI2C_STATE_RD:
-case SPI2C_STATE_DMA_RD:
+			spi2c_irq->ret = -ENXIO;
+			spi2c_irq->irq_flag.active_done = 1;
+			wake_up(&spi2c->wait);
+			sp_i2cm_reset(sr);
+		} else if (spi2c_irq->irq_flag.scl_hold_too_long) {
+			spi2c_irq->ret = -EINVAL;
+			spi2c_irq->irq_flag.active_done = 1;
+			wake_up(&spi2c->wait);
+			sp_i2cm_reset(sr);
+		} else if (spi2c_irq->irq_flag.fifo_empty) {
+			spi2c_irq->ret = -ENXIO;
+			spi2c_irq->irq_flag.active_done = 1;
+			wake_up(&spi2c->wait);
+			sp_i2cm_reset(sr);
+		} else if ((spi2c_irq->burst_cnt > 0) &&
+			   (spi2c_irq->rw_state == SPI2C_STATE_WR)) {
+			if (spi2c_irq->irq_flag.emp_thold) {
+				for (i = 0; i < SP_I2C_EMP_THOLD; i++) {
+					for (j = 0; j < 4; j++) {
+						if (spi2c_irq->data_index >=
+						    spi2c_irq->data_total_len)
+							w_data[j] = 0;
+						else
+							w_data[j] =
+								spi2c_irq->data_buf[spi2c_irq->data_index];
+						spi2c_irq->data_index++;
+					}
+					sp_i2cm_data0_set(sr, w_data);
+					spi2c_irq->burst_cnt--;
+					if (spi2c_irq->burst_cnt == 0) {
+						sp_i2cm_int_en0_disable(sr,
+									SP_I2C_EN0_EMP_THOLD_INT |
+									SP_I2C_EN0_EMPTY_INT);
+						break;
+					}
+				}
+				sp_i2cm_status_clear(sr, SP_I2C_CTL1_EMP_THOLD_CLR);
+			}
+		}
+		break;
+
+	case SPI2C_STATE_RD:
+	case SPI2C_STATE_DMA_RD:
 		if (spi2c_irq->irq_flag.addr_nack || spi2c_irq->irq_flag.data_nack) {
 			if (spi2c_irq->rw_state == SPI2C_STATE_DMA_RD)
 				dev_err(spi2c->dev, "DMA read NACK!!\n");
@@ -714,52 +714,52 @@ case SPI2C_STATE_DMA_RD:
 			spi2c_irq->irq_flag.active_done = 1;
 			wake_up(&spi2c->wait);
 			sp_i2cm_reset(sr);
-} else {
-	if (spi2c_irq->burst_cnt > 0 && spi2c_irq->rw_state == SPI2C_STATE_RD) {
-		sp_i2cm_rdata_flag_get(sr, &rdata_flag);
-		for (i = 0; i < (32 / SP_I2C_BURST_RDATA_BYTES); i++) {
-			bit_index = (SP_I2C_BURST_RDATA_BYTES - 1) + (SP_I2C_BURST_RDATA_BYTES * i);
-			if (rdata_flag & (1 << bit_index)) {
-				for (j = 0; j < (SP_I2C_BURST_RDATA_BYTES / 4); j++) {
-					k = spi2c_irq->reg_data_index + j;
-					if (k >= 8)
-						k -= 8;
+		} else {
+			if (spi2c_irq->burst_cnt > 0 && spi2c_irq->rw_state == SPI2C_STATE_RD) {
+				sp_i2cm_rdata_flag_get(sr, &rdata_flag);
+				for (i = 0; i < (32 / SP_I2C_BURST_RDATA_BYTES); i++) {
+					bit_index = (SP_I2C_BURST_RDATA_BYTES - 1) + (SP_I2C_BURST_RDATA_BYTES * i);
+					if (rdata_flag & (1 << bit_index)) {
+						for (j = 0; j < (SP_I2C_BURST_RDATA_BYTES / 4); j++) {
+							k = spi2c_irq->reg_data_index + j;
+							if (k >= 8)
+								k -= 8;
 
-					sp_i2cm_data_get(sr, k, &spi2c_irq->data_buf
-							 [spi2c_irq->data_index]);
-					spi2c_irq->data_index += 4;
+							sp_i2cm_data_get(sr, k, &spi2c_irq->data_buf
+									 [spi2c_irq->data_index]);
+							spi2c_irq->data_index += 4;
+						}
+						sp_i2cm_rdata_flag_clear(sr, (((1 << SP_I2C_BURST_RDATA_BYTES) -
+									       1) << (SP_I2C_BURST_RDATA_BYTES * i)));
+						spi2c_irq->reg_data_index += (SP_I2C_BURST_RDATA_BYTES / 4);
+						if (spi2c_irq->reg_data_index >= 8)
+							spi2c_irq->burst_cnt--;
+					}
 				}
-				sp_i2cm_rdata_flag_clear(sr, (((1 << SP_I2C_BURST_RDATA_BYTES) -
-							 1) << (SP_I2C_BURST_RDATA_BYTES * i)));
-				spi2c_irq->reg_data_index += (SP_I2C_BURST_RDATA_BYTES / 4);
-				if (spi2c_irq->reg_data_index >= 8)
-					spi2c_irq->burst_cnt--;
 			}
-		}
-	}
-		if (spi2c_irq->irq_flag.active_done) {
-			if (spi2c_irq->burst_remainder && spi2c_irq->rw_state == SPI2C_STATE_RD) {
-				j = 0;
-			for (i = 0; i < (SP_I2C_BURST_RDATA_BYTES / 4); i++) {
-				k = spi2c_irq->reg_data_index + i;
-				if (k >= 8)
-					k -= 8;
-				sp_i2cm_data_get(sr, k, &r_data[j]);
-				j += 4;
-			}
+			if (spi2c_irq->irq_flag.active_done) {
+				if (spi2c_irq->burst_remainder && spi2c_irq->rw_state == SPI2C_STATE_RD) {
+					j = 0;
+					for (i = 0; i < (SP_I2C_BURST_RDATA_BYTES / 4); i++) {
+						k = spi2c_irq->reg_data_index + i;
+						if (k >= 8)
+							k -= 8;
+						sp_i2cm_data_get(sr, k, &r_data[j]);
+						j += 4;
+					}
 
-				for (i = 0; i < spi2c_irq->burst_remainder; i++)
-					spi2c_irq->data_buf[spi2c_irq->data_index + i] = r_data[i];
-			}
+					for (i = 0; i < spi2c_irq->burst_remainder; i++)
+						spi2c_irq->data_buf[spi2c_irq->data_index + i] = r_data[i];
+				}
 				spi2c_irq->ret = SPI2C_SUCCESS;
 				wake_up(&spi2c->wait);
+			}
 		}
-	}
-	break;
+		break;
 
-default:
-	break;
-}
+	default:
+		break;
+	}
 
 	_sp_i2cm_dma_intflag_check(spi2c, spi2c_irq);
 	switch (spi2c_irq->rw_state) {
@@ -809,19 +809,19 @@ static int _sp_i2cm_get_resources(struct platform_device *pdev, struct sp_i2c_de
 
 	if (spi2c->mode == SP_I2C_DMA_POWER_SW) {
 
-	//spi2c->i2c_power_regs = devm_platform_ioremap_resource_byname(pdev, "i2cdmapower");
-	//if (IS_ERR(spi2c->i2c_power_regs))
-	//	spi2c->i2c_power_regs = 0;
+		//spi2c->i2c_power_regs = devm_platform_ioremap_resource_byname(pdev, "i2cdmapower");
+		//if (IS_ERR(spi2c->i2c_power_regs))
+		//	spi2c->i2c_power_regs = 0;
 
-	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "i2cdmapower");
-	if (IS_ERR(res))
-		dev_err_probe(&pdev->dev, PTR_ERR(res), "resource get fail\n");
+		res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "i2cdmapower");
+		if (IS_ERR(res))
+			dev_err_probe(&pdev->dev, PTR_ERR(res), "resource get fail\n");
 
-	spi2c->i2c_power_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
-	if (IS_ERR(spi2c->i2c_power_regs)){
-		spi2c->i2c_power_regs = 0;
-		dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_power_regs), "power regs get fail\\n");
-	}
+		spi2c->i2c_power_regs = devm_ioremap(&pdev->dev, res->start, resource_size(res));
+		if (IS_ERR(spi2c->i2c_power_regs)){
+			spi2c->i2c_power_regs = 0;
+			dev_err_probe(&pdev->dev, PTR_ERR(spi2c->i2c_power_regs), "power regs get fail\\n");
+		}
 	}
 
 	spi2c->irq = platform_get_irq(pdev, 0);
@@ -879,7 +879,7 @@ static int sp_i2cm_read(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 	burst_r = read_cnt % SP_I2C_BURST_RDATA_BYTES;
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMPTY_INT | SP_I2C_EN0_DATA_NACK_INT
-			| SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
+		| SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
 	if (burst_cnt) {
 		int1 = SP_I2C_BURST_RDATA_FLAG;
 		int2 = SP_I2C_BURST_RDATA_ALL_FLAG;
@@ -965,7 +965,7 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 		burst_cnt += 1;
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMPTY_INT | SP_I2C_EN0_DATA_NACK_INT
-			| SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
+		| SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
 
 	if (burst_cnt)
 		int0 |= SP_I2C_EN0_EMP_THOLD_INT;
@@ -1036,7 +1036,7 @@ static int sp_i2cm_dma_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *sp
 	spi2c_irq->rw_state = SPI2C_STATE_DMA_WR;
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMPTY_INT
-	 | SP_I2C_EN0_DATA_NACK_INT | SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
+		| SP_I2C_EN0_DATA_NACK_INT | SP_I2C_EN0_ADDRESS_NACK_INT | SP_I2C_EN0_DONE_INT);
 
 	dma_int = SP_I2C_DMA_EN_DMA_DONE_INT;
 
@@ -1230,7 +1230,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 				r_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (r_buf) {
 					spi2c_cmd->dma_r_addr = dma_map_single(spi2c->dev, r_buf,
-						spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
+									       spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
 					if (dma_mapping_error(spi2c->dev, spi2c_cmd->dma_r_addr))
 						i2c_put_dma_safe_msg_buf(r_buf, &msgs[i], false);
 					else
@@ -1244,30 +1244,28 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 			} else {
 				ret = sp_i2cm_dma_read(spi2c_cmd, spi2c, &msgs[i]);
 				dma_unmap_single(spi2c->dev, spi2c_cmd->dma_r_addr,
-					spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
+						 spi2c_cmd->xfer_cnt, DMA_FROM_DEVICE);
 				i2c_put_dma_safe_msg_buf(r_buf, &msgs[i], true);
-				
 			}
 		} else {
 			if(spi2c_cmd->xfer_cnt >= 16) {
 				w_buf = i2c_get_dma_safe_msg_buf(&msgs[i], 16);
 				if (w_buf) {
 					spi2c_cmd->dma_w_addr = dma_map_single(spi2c->dev, w_buf,
-				    				spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
+									       spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
 					if (dma_mapping_error(spi2c->dev, spi2c_cmd->dma_w_addr))
 						i2c_put_dma_safe_msg_buf(w_buf, &msgs[i], false);
 					else
 						spi2c_cmd->xfer_mode = I2C_DMA_MODE;
 				}
 			}
-			
 			if (spi2c_cmd->xfer_mode == I2C_PIO_MODE) {
 				spi2c_cmd->write_data = msgs[i].buf;
 				ret = sp_i2cm_write(spi2c_cmd, spi2c);
 			} else {
 				ret = sp_i2cm_dma_write(spi2c_cmd, spi2c, &msgs[i]);
 				dma_unmap_single(spi2c->dev, spi2c_cmd->dma_w_addr,
-					spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
+						 spi2c_cmd->xfer_cnt, DMA_TO_DEVICE);
 				i2c_put_dma_safe_msg_buf(w_buf, &msgs[i], true);
 			}
 		}
