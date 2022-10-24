@@ -7,24 +7,26 @@ menu "USB Physical Layer drivers"
 config SUNPLUS_USB_PHY
 	tristate "Sunplus USB PHY"
 	select NVMEM_SUNPLUS_OCOTP
-	
-config SUNPLUS_SYNOPSYS_USB3_PHY
-	bool "Sunplus synopsys USB3 PHY"
-	depends on SOC_Q645 && USB_DWC3
-	default y
-
-config USB_PHY
-	select EXTCON
-	def_bool n
 
 config USB_SUNPLUS_OTG
 	bool "support sunplus otg driver"
 #	depends on USB_GADGET_SUNPLUS && GEMINI_USB
-  depends on USB_EHCI_HCD || USB_GADGET_SUNPLUS
+	depends on USB_EHCI_HCD || USB_GADGET_SUNPLUS
 #	select USB_OTG
 	select USB_OTG_UTILS
 	help
-		support sunplus otg driver.
+	  Support Sunplus OTG driver.
+
+config SUNPLUS_SYNOPSYS_USB3_PHY
+	bool "Sunplus Synopsys USB3 PHY"
+	help
+	  Enable this to support Sunplus USB3 phy. This driver provides
+	  interface to interact with USB 3.0 PHY of Synopsys that is part
+	  of Sunplus SOC.
+
+config USB_PHY
+	select EXTCON
+	def_bool n
 
 #
 # USB Transceiver Drivers
