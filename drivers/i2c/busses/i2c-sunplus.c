@@ -150,7 +150,7 @@ enum sp_state_e_ {
 	SPI2C_STATE_WR = 1,	/* i2c is write */
 	SPI2C_STATE_RD = 2,	/* i2c is read */
 	SPI2C_STATE_IDLE = 3,	/* i2c is idle */
-	SPI2C_STATE_DMA_WR = 4	/* i2c is dma write */
+	SPI2C_STATE_DMA_WR = 4,	/* i2c is dma write */
 	SPI2C_STATE_DMA_RD = 5,	/* i2c is dma read */
 };
 
