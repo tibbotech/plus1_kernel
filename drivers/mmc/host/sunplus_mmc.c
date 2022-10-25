@@ -339,7 +339,10 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#endif
 
 	#ifdef CONFIG_SOC_Q645
-	clkdiv = clk_get_rate(host->clk)/clk-1;
+	if(clk_get_rate(host->clk) < SPMMC_SYS_CLK)
+		clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
+	else
+		clkdiv = clk_get_rate(host->clk)/clk-1;
 	#endif
 
 	#ifdef CONFIG_SOC_SP7350 //for zebu test, temp
