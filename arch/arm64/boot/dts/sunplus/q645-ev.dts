@@ -1224,11 +1224,18 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>, <&aud_adc1_data0_pins &aud_au1_ck_pins>, <&aud_adc2_data0_pins &aud_au2_ck_pins>; //in/out i2s0 in i2s1/2  
+		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>, <&aud_adc1_data0_pins &aud_au1_ck_pins>, <&aud_adc2_data0_pins &aud_au2_ck_pins>; //in/out i2s0 in i2s1/2
 		//pinctrl-0 = <&aud_au1_data0_pins &aud_au1_ck_pins>; //i2s1
 		//pinctrl-0 = <&aud_au2_data0_pins &aud_au2_ck_pins>; //i2s2
 		//pinctrl-0 = <&aud_tdm_pins &aud_tdmtx_xck_pins>; //tdm
 		status = "disabled";
+	};
+
+	extcon_dwc3drd: extcon_usb3 {
+		compatible = "linux,extcon-usb-gpio";
+		pinctrl-names = "default";
+		pinctrl-0 = <&dwc3id_pins>;
+		id-gpio = <&pctl 99 GPIO_ACTIVE_HIGH>;
 	};
 
 	usb3drd0: usb3drd0{
@@ -1249,9 +1256,11 @@
 			//clock-names = "ref","bus_early","suspend";
 			//resets = <&rstc RST_USB30C0>;
 			maximum-speed = "super-speed";
-			dr_mode = "host";
+			dr_mode = "otg";
 			snps,dis_u2_susphy_quirk;
 			phy_type = "utmi_wide";
+			usb-role-switch;
+			extcon = <&extcon_dwc3drd>;
 		};
 	};
 
@@ -1623,6 +1632,10 @@
 
 		typec_pins: pinmux_typec-pins {
 			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+		};
+
+		dwc3id_pins: pinmux_usb3id-pins {
+			sunplus,pins = < SPPCTL_IOPAD(99, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		sdio_pins: pinmux_sdio-pins {
