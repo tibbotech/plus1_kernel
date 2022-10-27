@@ -59,11 +59,16 @@ static void uphy1_init(struct platform_device *pdev)
 	ssize_t otp_l = 0;
 	char *otp_v;
 
-	/* 1. Default value modification */
+	/* 1. reset UPHY 1 */
+	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
+	mdelay(1);
+
+	/* 2. Default value modification */
 	writel(RF_MASK_V(0xffff, 0x4002), uphy1_res_moon4 + UPHY1_CTL0_OFFSET);
 	writel(RF_MASK_V(0xffff, 0x8747), uphy1_res_moon4 + UPHY1_CTL1_OFFSET);
 
-	/* 2. PLL power off/on twice */
+	/* 3. PLL power off/on twice */
 	writel(RF_MASK_V(0xffff, 0x88), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
 	mdelay(1);
 	writel(RF_MASK_V(0xffff, 0x80), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
@@ -73,11 +78,6 @@ static void uphy1_init(struct platform_device *pdev)
 	writel(RF_MASK_V(0xffff, 0x80), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
 	mdelay(1);
 	writel(RF_MASK_V(0xffff, 0x00), uphy1_res_moon4 + UPHY1_CTL3_OFFSET);
-
-	/* 3. reset UPHY 1 */
-	writel(RF_MASK_V_SET(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
-	writel(RF_MASK_V_CLR(1 << 14), uphy1_res_moon0 + USB_RESET_OFFSET);
-	mdelay(1);
 
 	/* 4. board uphy 1 internal register modification for tid certification */
 	otp_v = otp_read_disc1(&pdev->dev, &otp_l, disc_name);

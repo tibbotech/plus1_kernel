@@ -61,15 +61,29 @@ static void uphy0_init(struct platform_device *pdev)
 	ssize_t otp_l = 0;
 	char *otp_v;
 
-	/* 1. Default value modification */
+	/* 1. reset UPHY0 */
+#if defined(CONFIG_SOC_SP7021)
+	writel(RF_MASK_V_SET(1 << 13), uphy0_res_moon0 + USB_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 13), uphy0_res_moon0 + USB_RESET_OFFSET);
+#elif defined(CONFIG_SOC_Q645)
+	writel(RF_MASK_V_SET(1 << 8), uphy0_res_moon0 + USBC0_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 8), uphy0_res_moon0 + USBC0_RESET_OFFSET);
+#elif defined(CONFIG_SOC_SP7350)
+	writel(RF_MASK_V_SET(1 << 12), uphy0_res_moon0 + USBC0_RESET_OFFSET);
+	writel(RF_MASK_V_CLR(1 << 12), uphy0_res_moon0 + USBC0_RESET_OFFSET);
+#endif
+
+	mdelay(1);
+
+	/* 2. Default value modification */
 #if defined(CONFIG_SOC_SP7021)
 	writel(RF_MASK_V(0xffff, 0x4002), uphy0_res_moon4 + UPHY0_CTL0_OFFSET);
 	writel(RF_MASK_V(0xffff, 0x8747), uphy0_res_moon4 + UPHY0_CTL1_OFFSET);
 #elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
-	writel(0x28888002, uphy0_base_addr + GLO_CTRL0_OFFSET);
+	writel(0x28888102, uphy0_base_addr + GLO_CTRL0_OFFSET);
 #endif
 
-	/* 2. PLL power off/on twice */
+	/* 3. PLL power off/on twice */
 #if defined(CONFIG_SOC_SP7021)
 	writel(RF_MASK_V(0xffff, 0x88), uphy0_res_moon4 + UPHY0_CTL3_OFFSET);
 	mdelay(1);
@@ -91,20 +105,6 @@ static void uphy0_init(struct platform_device *pdev)
 	mdelay(1);
 	writel(0x00, uphy0_base_addr + GLO_CTRL2_OFFSET);
 #endif
-
-	/* 3. reset UPHY0 */
-#if defined(CONFIG_SOC_SP7021)
-	writel(RF_MASK_V_SET(1 << 13), uphy0_res_moon0 + USB_RESET_OFFSET);
-	writel(RF_MASK_V_CLR(1 << 13), uphy0_res_moon0 + USB_RESET_OFFSET);
-#elif defined(CONFIG_SOC_Q645)
-	writel(RF_MASK_V_SET(1 << 8), uphy0_res_moon0 + USBC0_RESET_OFFSET);
-	writel(RF_MASK_V_CLR(1 << 8), uphy0_res_moon0 + USBC0_RESET_OFFSET);
-#elif defined(CONFIG_SOC_SP7350)
-	writel(RF_MASK_V_SET(1 << 12), uphy0_res_moon0 + USBC0_RESET_OFFSET);
-	writel(RF_MASK_V_CLR(1 << 12), uphy0_res_moon0 + USBC0_RESET_OFFSET);
-#endif
-
-	mdelay(1);
 
 	/* 4. board uphy 0 internal register modification for tid certification */
 	otp_v = otp_read_disc0(&pdev->dev, &otp_l, disc_name);
