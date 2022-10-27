@@ -25,6 +25,8 @@
 #include "ethosn_backport.h"
 #include "ethosn_firmware.h"
 #include "ethosn_smc.h"
+#include "scylla_addr_fields_public.h"
+#include "scylla_regs_public.h"
 
 #include <linux/firmware.h>
 #include <linux/iommu.h>
@@ -34,6 +36,8 @@
 #include <linux/of_reserved_mem.h>
 #include <linux/uaccess.h>
 #include <linux/time.h>
+#include <linux/poll.h>
+#include <linux/jiffies.h>
 
 /* Number of bits the MCU Vector Table address is shifted. */
 #define SYSCTLR0_INITVTOR_SHIFT         7
@@ -46,7 +50,7 @@
 
 /* Timeout in us when resetting the Ethos-N */
 #define ETHOSN_RESET_TIMEOUT_US         (10 * 1000 * 1000)
-#define ETHOSN_RESET_WAIT_US            1
+#define ETHOSN_RESET_WAIT_US            1000
 
 /* Regset32 entry */
 #define REGSET32(r) { __stringify(r), \
@@ -189,6 +193,86 @@ static int ethosn_mailbox_init(struct ethosn_core *core)
 	return 0;
 }
 
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+
+static void debug_monitor_channel_timer_callback(struct timer_list *timer)
+{
+	struct ethosn_core *core = container_of(timer, struct ethosn_core,
+						debug_monitor_channel_timer);
+
+	wake_up_poll(&core->debug_monitor_channel_read_poll_wqh, EPOLLIN);
+}
+
+#endif
+
+/**
+ * ethosn_debug_monitor_channel_init() - Initialize the debug_monitor_channel
+ * structure.
+ * @core:	Pointer to Ethos-N core.
+ *
+ * Return: 0 on success, else error code.
+ */
+static int ethosn_debug_monitor_channel_init(struct ethosn_core *core)
+{
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+	struct ethosn_debug_monitor_channel *debug_monitor_channel =
+		core->debug_monitor_channel->cpu_addr;
+	struct ethosn_queue *request =
+		core->debug_monitor_channel_request->cpu_addr;
+	struct ethosn_queue *response =
+		core->debug_monitor_channel_response->cpu_addr;
+	resource_size_t debug_monitor_channel_addr;
+
+	/* Clear memory */
+	memset(debug_monitor_channel, 0, core->debug_monitor_channel->size);
+	memset(request, 0, core->debug_monitor_channel_request->size);
+	memset(response, 0, core->debug_monitor_channel_response->size);
+
+	/* Setup queue sizes */
+	request->capacity = core->debug_monitor_channel_request->size -
+			    sizeof(struct ethosn_queue);
+	response->capacity = core->debug_monitor_channel_response->size -
+			     sizeof(struct ethosn_queue);
+
+	/* Set Ethos-N addresses from debug_monitor_channel to queues */
+	debug_monitor_channel->request = to_ethosn_addr(
+		core->debug_monitor_channel_request->iova_addr,
+		&core->work_data_map);
+	if (IS_ERR_VALUE((unsigned long)debug_monitor_channel->request))
+		return -EFAULT;
+
+	debug_monitor_channel->response = to_ethosn_addr(
+		core->debug_monitor_channel_response->iova_addr,
+		&core->work_data_map);
+	if (IS_ERR_VALUE((unsigned long)debug_monitor_channel->response))
+		return -EFAULT;
+
+	debug_monitor_channel_addr = to_ethosn_addr(
+		core->debug_monitor_channel->iova_addr,
+		&core->work_data_map);
+	if (IS_ERR_VALUE((unsigned long)debug_monitor_channel_addr))
+		return -EFAULT;
+
+	init_waitqueue_head(&core->debug_monitor_channel_read_poll_wqh);
+
+	timer_setup(&core->debug_monitor_channel_timer,
+		    debug_monitor_channel_timer_callback, 0);
+
+	/* Sync memory to device */
+	ethosn_dma_sync_for_device(core->allocator,
+				   core->debug_monitor_channel);
+	ethosn_dma_sync_for_device(core->allocator,
+				   core->debug_monitor_channel_request);
+	ethosn_dma_sync_for_device(core->allocator,
+				   core->debug_monitor_channel_response);
+
+	ethosn_write_top_reg(core, DL1_RP, GP_DEBUG_MONITOR_CHANNEL,
+			     debug_monitor_channel_addr);
+#endif
+
+	return 0;
+}
+
 /**
  * mailbox_alloc() - Allocate the mailbox.
  * @core:	Pointer to Ethos-N core.
@@ -268,6 +352,85 @@ err_exit:
 }
 
 /**
+ * debug_monitor_channel_alloc() - Allocate the debug_monitor_channel.
+ * @core:	Pointer to Ethos-N core.
+ *
+ * Return: 0 on success, else error code.
+ */
+static int debug_monitor_channel_alloc(struct ethosn_core *core)
+{
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+	struct ethosn_dma_allocator *allocator = core->allocator;
+	int ret = -ENOMEM;
+
+	core->debug_monitor_channel =
+		ethosn_dma_alloc_and_map(
+			allocator,
+			sizeof(struct ethosn_debug_monitor_channel),
+			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+			ETHOSN_STREAM_WORKING_DATA,
+			GFP_KERNEL,
+			"debug_monitor_channel-header");
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel)) {
+		dev_warn(core->dev,
+			 "Failed to allocate memory for debug_monitor_channel");
+		goto err_exit;
+	}
+
+	/* Note that we use the same size for the queues here as we do for the
+	 * mailbox queues. This is fairly arbitrary.
+	 */
+	core->debug_monitor_channel_request =
+		ethosn_dma_alloc_and_map(
+			allocator,
+			sizeof(struct ethosn_queue) +
+			core->queue_size,
+			ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+			ETHOSN_STREAM_WORKING_DATA,
+			GFP_KERNEL,
+			"debug_monitor_channel-request");
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel_request)) {
+		dev_warn(core->dev,
+			 "Failed to allocate memory for debug_monitor_channel request queue");
+		goto err_free_debug_monitor_channel;
+	}
+
+	core->debug_monitor_channel_response =
+		ethosn_dma_alloc_and_map(allocator,
+					 sizeof(struct ethosn_queue) +
+					 core->queue_size,
+					 ETHOSN_PROT_READ | ETHOSN_PROT_WRITE,
+					 ETHOSN_STREAM_WORKING_DATA,
+					 GFP_KERNEL,
+					 "debug_monitor_channel-response");
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel_response)) {
+		dev_warn(core->dev,
+			 "Failed to allocate memory for debug_monitor_channel response queue");
+		goto err_free_debug_monitor_channel_request;
+	}
+
+	return 0;
+
+	ethosn_dma_unmap_and_free(allocator,
+				  core->debug_monitor_channel_response,
+				  ETHOSN_STREAM_WORKING_DATA);
+err_free_debug_monitor_channel_request:
+	ethosn_dma_unmap_and_free(allocator,
+				  core->debug_monitor_channel_request,
+				  ETHOSN_STREAM_WORKING_DATA);
+err_free_debug_monitor_channel:
+	ethosn_dma_unmap_and_free(allocator, core->debug_monitor_channel,
+				  ETHOSN_STREAM_WORKING_DATA);
+err_exit:
+
+	return ret;
+#else
+
+	return 0;
+#endif
+}
+
+/**
  * ethosn_mailbox_free() - Free the mailbox.
  * @core:	Pointer to Ethos-N core.
  */
@@ -289,6 +452,31 @@ static void ethosn_mailbox_free(struct ethosn_core *core)
 		devm_kfree(core->parent->dev, core->mailbox_message);
 		core->mailbox_message = NULL;
 	}
+}
+
+/**
+ * ethosn_debug_monitor_channel_free() - Free the debug_monitor_channel.
+ * @core:	Pointer to Ethos-N core.
+ */
+static void ethosn_debug_monitor_channel_free(struct ethosn_core *core)
+{
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+	del_timer(&core->debug_monitor_channel_timer);
+
+	ethosn_dma_unmap_and_free(core->allocator, core->debug_monitor_channel,
+				  ETHOSN_STREAM_WORKING_DATA);
+	core->debug_monitor_channel = NULL;
+
+	ethosn_dma_unmap_and_free(core->allocator,
+				  core->debug_monitor_channel_request,
+				  ETHOSN_STREAM_WORKING_DATA);
+	core->debug_monitor_channel_request = NULL;
+
+	ethosn_dma_unmap_and_free(core->allocator,
+				  core->debug_monitor_channel_response,
+				  ETHOSN_STREAM_WORKING_DATA);
+	core->debug_monitor_channel_response = NULL;
+#endif
 }
 
 void ethosn_write_top_reg(struct ethosn_core *core,
@@ -348,12 +536,15 @@ static int ethosn_boot_firmware(struct ethosn_core *core)
 		return (int)vtable[0];
 
 	vtable[0] += core->firmware_stack_main->size;
+	dev_dbg(core->dev, "vtable[0] (SP) = 0x%x\n", vtable[0]);
 
 	/* Set vtable reset program counter */
 	vtable[1] = to_ethosn_addr(core->firmware->iova_addr,
 				   &core->firmware_map) + 1;
 	if (vtable[1] >= (uint32_t)-MAX_ERRNO)
 		return (int)vtable[1];
+
+	dev_dbg(core->dev, "vtable[1] (PC) = 0x%x\n", vtable[1]);
 
 	ethosn_dma_sync_for_device(core->allocator, core->firmware_vtable);
 
@@ -567,39 +758,48 @@ void ethosn_set_power_ctrl(struct ethosn_core *core,
 }
 
 /**
- * ethosn_set_mmu_stream_id() - Configure the mmu stream id0.
+ * ethosn_set_mmu_stream_ids() - Configure the mmu stream IDs.
  * @core:	Pointer to Ethos-N core
  *
  * Return: Negative error code on error, zero otherwise
  */
-int ethosn_set_mmu_stream_id(struct ethosn_core *core)
+static int ethosn_set_mmu_stream_ids(struct ethosn_core *core)
 {
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(core->dev);
 	int ret = -EINVAL;
-	unsigned int stream_id;
-	static const int mmusid_0 = DL1_STREAM0_MMUSID;
+	u32 smmu_stream_id;
+
+	if (!fwspec)
+		return ret;
 
 	/*
 	 * Currently, it is permitted to define only one stream id in the dts
 	 * file. There is no advantage of defining multiple stream ids when
 	 * the device uses all the streams at almost all the times.
 	 */
-	if (fwspec->num_ids > 1) {
+	if (fwspec->num_ids != 1) {
 		dev_err(core->dev,
-			"Support for multiple streams for a single device is not allowed\n");
+			"Number of stream IDs specified(%u) for the device is invalid. Only one stream for a single device is allowed\n",
+			fwspec->num_ids);
 
 		return ret;
 	}
 
-	stream_id = fwspec->ids[0];
+	smmu_stream_id = fwspec->ids[0];
 
 	/*
 	 * The value of stream id fetched from the dts is used to program the
-	 * STREAM0_MMUSID register. The other stream id registers are programmed
-	 * based on this value in the firmware.
+	 * multiple STREAM*_MMUSID registers.
 	 */
-	ethosn_write_top_reg(core, DL1_RP, mmusid_0, stream_id);
-	ethosn_write_top_reg(core, DL1_RP, GP_MMUSID0, stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM0_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM1_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM2_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM3_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM4_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM5_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM6_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM7_MMUSID, smmu_stream_id);
+	ethosn_write_top_reg(core, DL1_RP, DL1_STREAM8_MMUSID, smmu_stream_id);
 
 	return 0;
 }
@@ -1158,6 +1358,7 @@ struct ethosn_big_fw {
 		uint32_t arch_max;
 		uint32_t offset;
 		uint32_t size;
+		uint32_t ple_offset;
 	} desc[];
 } __packed;
 
@@ -1304,10 +1505,15 @@ static int verify_firmware(struct ethosn_core *core,
 static int firmware_load(struct ethosn_core *core,
 			 const char *firmware_name)
 {
+	const bool smmu_available = ethosn_smmu_available(core->dev);
 	const struct firmware *fw;
 	struct ethosn_big_fw *big_fw;
 	struct ethosn_big_fw_desc *big_fw_desc;
-	size_t size;
+	size_t code_size;
+	size_t ple_kernels_size;
+	size_t ple_kernels_offset;
+	size_t fw_size;
+	size_t fw_offset;
 	int ret = -ENOMEM;
 
 	/* Request firmware binary */
@@ -1328,32 +1534,74 @@ static int firmware_load(struct ethosn_core *core,
 		return ret;
 
 	dev_dbg(core->dev,
-		"Found FW. arch_min=0x%08x, arch_max=0x%08x, offset=0x%08x, size=0x%08x",
+		"Found FW. arch_min=0x%08x, arch_max=0x%08x, offset=0x%08x, ple_offset=0x%08x, size=0x%08x",
 		big_fw_desc->arch_min,
 		big_fw_desc->arch_max,
 		big_fw_desc->offset,
+		big_fw_desc->ple_offset,
 		big_fw_desc->size);
 	/* Make sure code size is at least 256 KB */
-	size = max_t(size_t, ETHOSN_CODE_SIZE, big_fw_desc->size);
+	code_size = max_t(size_t, ETHOSN_CODE_SIZE, big_fw_desc->size);
+
+	fw_size = smmu_available ? big_fw_desc->ple_offset : code_size;
+	fw_offset = big_fw_desc->offset;
 
 	/* Allocate memory for firmware code */
-	if (!core->firmware)
+	if (!core->firmware) {
 		core->firmware =
-			ethosn_dma_alloc_and_map(core->allocator, size,
-						 ETHOSN_PROT_READ |
-						 ETHOSN_PROT_WRITE,
-						 ETHOSN_STREAM_FIRMWARE,
-						 GFP_KERNEL,
-						 "firmware-code");
+			ethosn_dma_alloc(core->allocator, fw_size,
+					 GFP_KERNEL,
+					 "firmware-code");
 
-	if (IS_ERR_OR_NULL(core->firmware)) {
-		ret = -ENOMEM;
-		goto release_fw;
+		if (IS_ERR_OR_NULL(core->firmware)) {
+			ret = -ENOMEM;
+			goto release_fw;
+		}
+
+		ret = ethosn_dma_map(core->allocator, core->firmware,
+				     ETHOSN_PROT_READ |
+				     ETHOSN_PROT_WRITE,
+				     ETHOSN_STREAM_FIRMWARE);
+		if (ret) {
+			ret = -ENOMEM;
+			goto free_firmware;
+		}
 	}
 
-	memcpy(core->firmware->cpu_addr, fw->data + big_fw_desc->offset,
-	       big_fw_desc->size);
+	memcpy(core->firmware->cpu_addr, fw->data + fw_offset,
+	       fw_size);
 	ethosn_dma_sync_for_device(core->allocator, core->firmware);
+
+	if (smmu_available) {
+		ple_kernels_size = code_size - big_fw_desc->ple_offset;
+		ple_kernels_offset = fw_offset + big_fw_desc->ple_offset;
+
+		/* Allocate memory for PLE kernels code */
+		if (!core->ple_kernels) {
+			core->ple_kernels = ethosn_dma_alloc(core->allocator,
+							     ple_kernels_size,
+							     GFP_KERNEL,
+							     "ple-kernels");
+
+			if (IS_ERR_OR_NULL(core->ple_kernels)) {
+				ret = -ENOMEM;
+				goto unmap_firmware;
+			}
+
+			ret = ethosn_dma_map(core->allocator, core->ple_kernels,
+					     ETHOSN_PROT_READ,
+					     ETHOSN_STREAM_FIRMWARE);
+			if (ret) {
+				ret = -ENOMEM;
+				goto free_ple_kernels;
+			}
+		}
+
+		memcpy(core->ple_kernels->cpu_addr,
+		       fw->data + ple_kernels_offset,
+		       ple_kernels_size);
+		ethosn_dma_sync_for_device(core->allocator, core->ple_kernels);
+	}
 
 	/* Allocate task stack */
 	if (!core->firmware_stack_task)
@@ -1368,7 +1616,7 @@ static int firmware_load(struct ethosn_core *core,
 
 	if (IS_ERR_OR_NULL(core->firmware_stack_task)) {
 		ret = -ENOMEM;
-		goto free_firmware;
+		goto unmap_ple_kernels;
 	}
 
 	/* Allocate main stack */
@@ -1414,9 +1662,19 @@ free_stack_main:
 free_stack_task:
 	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_task,
 				  ETHOSN_STREAM_WORKING_DATA);
+unmap_ple_kernels:
+	if (!core->ple_kernels)
+		goto unmap_firmware;
+
+	ethosn_dma_unmap(core->allocator, core->ple_kernels,
+			 ETHOSN_STREAM_FIRMWARE);
+free_ple_kernels:
+	ethosn_dma_free(core->allocator, core->ple_kernels);
+unmap_firmware:
+	ethosn_dma_unmap(core->allocator, core->firmware,
+			 ETHOSN_STREAM_FIRMWARE);
 free_firmware:
-	ethosn_dma_unmap_and_free(core->allocator, core->firmware,
-				  ETHOSN_STREAM_FIRMWARE);
+	ethosn_dma_free(core->allocator, core->firmware);
 release_fw:
 	release_firmware(fw);
 
@@ -1514,9 +1772,9 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 	if (ret)
 		return ret;
 
-	/* Set MMU Stream id0 if iommu is present */
+	/* Setup the MMU Stream IDs if iommu is present */
 	if (ethosn_smmu_available(core->dev)) {
-		ret = ethosn_set_mmu_stream_id(core);
+		ret = ethosn_set_mmu_stream_ids(core);
 		if (ret)
 			return ret;
 	}
@@ -1551,6 +1809,11 @@ int ethosn_reset_and_start_ethosn(struct ethosn_core *core)
 
 	/* Initialize the mailbox */
 	ret = ethosn_mailbox_init(core);
+	if (ret)
+		return ret;
+
+	/* Initialize the debug_monitor_channel */
+	ret = ethosn_debug_monitor_channel_init(core);
 	if (ret)
 		return ret;
 
@@ -1627,6 +1890,12 @@ static void ethosn_firmware_deinit(struct ethosn_core *core)
 	ethosn_dma_unmap_and_free(core->allocator, core->firmware,
 				  ETHOSN_STREAM_FIRMWARE);
 	core->firmware = NULL;
+
+	if (core->ple_kernels)
+		ethosn_dma_unmap_and_free(core->allocator, core->ple_kernels,
+					  ETHOSN_STREAM_FIRMWARE);
+
+	core->ple_kernels = NULL;
 
 	ethosn_dma_unmap_and_free(core->allocator, core->firmware_stack_main,
 				  ETHOSN_STREAM_WORKING_DATA);
@@ -1843,6 +2112,214 @@ cleanup:
 	return ret;
 }
 
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+
+/**
+ * debug_monitor_channel_read - Called when a userspace process reads the
+ *			        debug_monitor_channel debugfs entry,
+ *                              to read data from the firmware debug monitor
+ *
+ *
+ * @file:		File handle.
+ * @buf_user:		User space buffer.
+ * @count:		Size of user space buffer.
+ * @position:		Current file position (not used).
+ *
+ * Return: Number of bytes read, else error code.
+ */
+static ssize_t debug_monitor_channel_read(struct file *file,
+					  char __user *buf_user,
+					  size_t count,
+					  loff_t *position)
+{
+	struct ethosn_core *core = file->f_inode->i_private;
+	ssize_t num_bytes_read;
+	struct ethosn_queue *queue;
+	ssize_t ret;
+
+	/* Report error if the response queue has not been set up */
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel_response))
+		return -EINVAL;
+
+	queue = core->debug_monitor_channel_response->cpu_addr;
+
+	/* Block, waiting for at least one byte to be available */
+	while (1) {
+		/* Sync the queue header so that we can read an up-to-date write
+		 * pointer from the firmware
+		 */
+		ethosn_dma_sync_for_cpu(core->allocator,
+					core->debug_monitor_channel_response);
+		if (ethosn_queue_get_size(queue) > 0)
+			/* Data available */
+			break;
+
+		/* Support non-blocking read, if enabled */
+		if (file->f_flags & O_NONBLOCK)
+			return -EAGAIN;
+
+		/* Allow Ctrl-C (or similar) to break out */
+		if (signal_pending(current) != 0)
+			return -EINTR;
+	}
+
+	/* Copy data to userspace.This is a simple / slow implementation that
+	 * avoids having to create a kernel space buffer
+	 */
+	num_bytes_read = 0;
+	while (num_bytes_read < count) {
+		uint8_t data;
+
+		ret = ethosn_queue_read(queue, &data, 1);
+		if (!ret)
+			break; /* No more bytes available. */
+
+		ret = put_user(data, buf_user);
+		if (ret)
+			return ret;
+
+		++num_bytes_read;
+		++buf_user;
+	}
+
+	ret = num_bytes_read;
+
+	/* Sync the queue header so that the firmware can read our up-to-date
+	 * read pointer
+	 */
+	ethosn_dma_sync_for_device(core->allocator,
+				   core->debug_monitor_channel_response);
+
+	return ret;
+}
+
+/**
+ * debug_monitor_channel_write - Called when a userspace process writes the
+ *			         debug_monitor_channel debugfs entry,
+ *                               to write data to the firmware debug monitor
+ *
+ *
+ * @file:		File handle.
+ * @buf_user:		User space buffer.
+ * @count:		Size of user space buffer.
+ * @position:		Current file position (not used).
+ *
+ * Return: Number of bytes read, else error code.
+ */
+static ssize_t debug_monitor_channel_write(struct file *file,
+					   const __user char *buf_user,
+					   size_t count,
+					   loff_t *position)
+{
+	struct ethosn_core *core = file->f_inode->i_private;
+	ssize_t num_bytes_written;
+	struct ethosn_queue *queue;
+	bool ret;
+	uint32_t write_pending;
+
+	/* Report error if the response queue has not been set up */
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel_request))
+		return -EINVAL;
+
+	queue = core->debug_monitor_channel_request->cpu_addr;
+
+	/* Sync the queue header so that we can read an up-to-date read pointer
+	 * from the firmware
+	 */
+	ethosn_dma_sync_for_cpu(core->allocator,
+				core->debug_monitor_channel_request);
+
+	/* Copy data from userspace. This is a simple/slow implementation that
+	 * avoids having to create a kernel space buffer
+	 */
+	num_bytes_written = 0;
+	while (num_bytes_written < count) {
+		uint8_t data;
+		const uint8_t *buffers[1] = { &data };
+		const uint32_t sizes[1] = { 1 };
+
+		ret = get_user(data, buf_user);
+		if (ret)
+			return ret;
+
+		ret = ethosn_queue_write(queue, buffers, sizes, 1,
+					 &write_pending);
+		if (!ret)
+			break; /* No space left in queue. */
+
+		++num_bytes_written;
+		++buf_user;
+
+		/* Sync the queue data so that the firmware can read our new
+		 * data
+		 */
+		ethosn_dma_sync_for_device(core->allocator,
+					   core->debug_monitor_channel_request);
+
+		/*
+		 * Update the write pointer after the data has been written and
+		 * is visible to the firmware.
+		 */
+		queue->write = write_pending;
+
+		/* Sync the new write pointer to make sure it's visible to the
+		 * firmware.
+		 */
+		ethosn_dma_sync_for_device(core->allocator,
+					   core->debug_monitor_channel_request);
+	}
+
+	return num_bytes_written;
+}
+
+/**
+ * debug_monitor_channel_poll - Called when a userspace process polls the
+ *			        debug_monitor_channel debugfs entry,
+ *                              to check if data can be read/written to it
+ */
+static __poll_t debug_monitor_channel_poll(struct file *file,
+					   struct poll_table_struct *wait)
+{
+	struct ethosn_core *core = file->f_inode->i_private;
+	struct ethosn_queue *queue;
+	__poll_t ret = 0;
+
+	/* Can't be read/written if the response queue has not been set up */
+	if (IS_ERR_OR_NULL(core->debug_monitor_channel_response))
+		return 0;
+
+	queue = core->debug_monitor_channel_response->cpu_addr;
+
+	/* Register our wait queue and start a timer which will signal the wait
+	 * queue after a short delay.
+	 * We don't have a better way of knowing when data arrives (e.g. an
+	 * interrupt like
+	 * we do for the mailbox.
+	 */
+	poll_wait(file, &core->debug_monitor_channel_read_poll_wqh, wait);
+	mod_timer(&core->debug_monitor_channel_timer,
+		  jiffies + msecs_to_jiffies(10));
+
+	/* Check if data is available for reading.
+	 * First sync the queue header so that we can read an up-to-date write
+	 * pointer from the firmware
+	 */
+	ethosn_dma_sync_for_cpu(core->allocator,
+				core->debug_monitor_channel_response);
+	if (ethosn_queue_get_size(queue) > 0)
+		ret = (EPOLLIN | EPOLLRDNORM); /* Data is available*/
+
+	/* Unconditionally declare that data can be written. This might not be
+	 * accurate if the firmware has got behind on reading data and the
+	 * request queue is full, but we don't implement this check.
+	 */
+	ret |= (EPOLLOUT | EPOLLWRNORM);
+
+	return ret;
+}
+
+#endif
+
 static void dfs_deinit(struct ethosn_core *core)
 {
 	debugfs_remove_recursive(core->debug_dir);
@@ -1883,6 +2360,15 @@ static void dfs_init(struct ethosn_core *core)
 		.owner = THIS_MODULE,
 		.read  = &firmware_profiling_read
 	};
+
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+	static const struct file_operations debug_monitor_channel_fops = {
+		.owner = THIS_MODULE,
+		.read  = &debug_monitor_channel_read,
+		.write = &debug_monitor_channel_write,
+		.poll  = &debug_monitor_channel_poll,
+	};
+#endif
 	char name[16];
 
 	/* Create debugfs directory */
@@ -1906,6 +2392,15 @@ static void dfs_init(struct ethosn_core *core)
 	debugfs_create_file("firmware_profiling", 0400, core->debug_dir,
 			    core,
 			    &firmware_profiling_fops);
+
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+
+	/* Expose the debug monitor channel to user-space as a file, for GDB to
+	 * connect to
+	 */
+	debugfs_create_file("debug_monitor_channel", 0440,
+			    core->debug_dir, core, &debug_monitor_channel_fops);
+#endif
 }
 
 /****************************************************************************
@@ -1929,6 +2424,11 @@ int ethosn_device_init(struct ethosn_core *core)
 
 	/* Allocate the mailbox structure */
 	ret = mailbox_alloc(core);
+	if (ret)
+		goto deinit_firmware;
+
+	/* Allocate the debug_monitor_channel structure */
+	ret = debug_monitor_channel_alloc(core);
 	if (ret)
 		goto deinit_firmware;
 
@@ -1970,6 +2470,7 @@ void ethosn_device_deinit(struct ethosn_core *core)
 	ethosn_reset(core);
 	ethosn_firmware_deinit(core);
 	ethosn_mailbox_free(core);
+	ethosn_debug_monitor_channel_free(core);
 	dfs_deinit(core);
 	mutex_unlock(&core->mutex);
 	if (core->fw_and_hw_caps.data) {

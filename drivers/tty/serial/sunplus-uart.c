@@ -2029,20 +2029,20 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 		sunplus_uartdma_rx_binding(pdev->id);
 
 	if (sunplus_uart_ports[pdev->id].uartdma_rx)
-		DBG_ERR("%s's Rx is in DMA mode.\n",
+		dev_info(&pdev->dev, "%s's Rx is in DMA mode.\n",
 			sunplus_uart_ports[pdev->id].name);
 	else
-		DBG_ERR("%s's Rx is in PIO mode.\n",
+		dev_info(&pdev->dev, "%s's Rx is in PIO mode.\n",
 			sunplus_uart_ports[pdev->id].name);
 
 	sunplus_uart_ports[pdev->id].uartdma_tx =
 		sunplus_uartdma_tx_binding(pdev->id);
 
 	if (sunplus_uart_ports[pdev->id].uartdma_tx)
-		DBG_ERR("%s's Tx is in DMA mode.\n",
+		dev_info(&pdev->dev, "%s's Tx is in DMA mode.\n",
 			sunplus_uart_ports[pdev->id].name);
 	else
-		DBG_ERR("%s's Tx is in PIO mode.\n",
+		dev_info(&pdev->dev, "%s's Tx is in PIO mode.\n",
 			sunplus_uart_ports[pdev->id].name);
 
 	ret = uart_add_one_port(&sunplus_uart_driver, port);

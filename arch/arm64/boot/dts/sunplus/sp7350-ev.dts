@@ -55,7 +55,7 @@
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8";
+		bootargs = "console=ttyS0,921600 earlycon loglevel=8 no_console_suspend ";
 		stdout-path = "serial0:921600n8";
 	};
 
@@ -150,8 +150,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
-			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbf0>;
+			enable-method = "psci";
 			next-level-cache = <&L2_0>;
 		};
 
@@ -159,8 +158,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
-			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbe8>;
+			enable-method = "psci";
 			next-level-cache = <&L2_1>;
 		};
 
@@ -168,8 +166,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
-			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbe0>;
+			enable-method = "psci";
 			next-level-cache = <&L2_2>;
 		};
 
@@ -177,8 +174,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
-			enable-method = "spin-table";
-			cpu-release-addr = <0x00 0xfa23fbd8>;
+			enable-method = "psci";
 			next-level-cache = <&L2_3>;
 		};
 
@@ -211,6 +207,11 @@
 			cache-level = <3>;
 		};
 	};
+
+	psci {
+		compatible = "arm,psci-0.2";
+		method = "smc";
+    };
 
 	arm-pmu {
 		compatible = "arm,cortex-a55-pmu", "arm,armv8-pmuv3";

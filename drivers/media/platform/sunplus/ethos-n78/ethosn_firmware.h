@@ -47,7 +47,7 @@
  * This is common for the fat binary (ethosn.bin) and the individual
  * firmware binaries (sub-components of the fat binary).
  */
-#define ETHOSN_FIRMWARE_VERSION_MAJOR 4
+#define ETHOSN_FIRMWARE_VERSION_MAJOR 5
 #define ETHOSN_FIRMWARE_VERSION_MINOR 0
 #define ETHOSN_FIRMWARE_VERSION_PATCH 0
 
@@ -259,6 +259,18 @@ struct ethosn_mailbox {
 	uint32_t         severity;
 };
 
+/**
+ * struct ethosn_debug_monitor_channel - Two-way debug monitor communications
+ * channel.
+ * @var request:	Pointer to message queue going from host to Ethos-N .
+ * @var response:	Pointer to message queue going from Ethos-N to host.
+ *
+ */
+struct ethosn_debug_monitor_channel {
+	ethosn_address_t request;
+	ethosn_address_t response;
+};
+
 /******************************************************************************
  * Message types
  ******************************************************************************/
@@ -331,15 +343,28 @@ struct ethosn_message_header {
 /******************************************************************************
  * Inference
  ******************************************************************************/
+enum ethosn_buffer_type {
+	ETHOSN_BUFFER_INPUT,
+	ETHOSN_BUFFER_INTERMEDIATE,
+	ETHOSN_BUFFER_OUTPUT,
+	ETHOSN_BUFFER_CONSTANT,
+	ETHOSN_BUFFER_CMD_FW,
+	ETHOSN_BUFFER_MAX
+};
 
 /**
  * struct ethosn_buffer_desc - Buffer descriptor
  * @var address:	Pointer to buffer.
  * @var size:		Size in bytes of buffer.
+ * @var type		Type of the buffer, as a member of ethosn_buffer_type.
+ *			Stored as a uint32_t to have a well-defined size,
+ *			as this struct needs to be consistent between kernel
+ *			module and firmware.
  */
 struct ethosn_buffer_desc {
 	ethosn_address_t address;
 	uint32_t         size;
+	uint32_t         type;
 };
 
 /**
@@ -570,11 +595,11 @@ struct ethosn_message_error_response {
  * between kernel driver and firmware
  */
 #define GP_IRQ                          DL1_GP0
-#define GP_MMUSID0                      DL1_GP1
 #define GP_MAILBOX                      DL1_GP2
 #define GP_STREAM1_ADDRESS_EXTEND       DL1_GP3
 #define GP_STREAM2_ADDRESS_EXTEND       DL1_GP4
 #define GP_TASK_STACK                   DL1_GP5
+#define GP_DEBUG_MONITOR_CHANNEL        DL1_GP6
 
 #pragma pack(pop)
 

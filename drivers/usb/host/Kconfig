@@ -5,7 +5,7 @@
 comment "USB Host Controller Drivers"
 
 config USB_USE_PLATFORM_RESOURCE
-	bool "GEMINI Use USB Platfrom Resource"
+	bool "GEMINI Use USB Platform Resource"
 	depends on USB
 	default n
 

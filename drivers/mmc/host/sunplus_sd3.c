@@ -985,7 +985,7 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 	value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 	writel(value, &host->base->sd_vol_ctrl);
 
-	spsdc_pr(WARNING, "base->sd_vol_ctrl!  0x%x\n", readl(&host->base->sd_vol_ctrl));
+	spsdc_pr(INFO, "base->sd_vol_ctrl!  0x%x\n", readl(&host->base->sd_vol_ctrl));
 
 	mdelay(20);
 	spsdc_txdummy(host, 400);

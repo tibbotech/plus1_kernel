@@ -1,6 +1,6 @@
 /*
  *
- * (C) COPYRIGHT 2018-2021 Arm Limited.
+ * (C) COPYRIGHT 2018-2022 Arm Limited.
  *
  * This program is free software and is provided to you under the terms of the
  * GNU General Public License version 2 as published by the Free Software
@@ -23,8 +23,6 @@
 #ifndef _ETHOSN_DEVICE_H_
 #define _ETHOSN_DEVICE_H_
 
-#include "scylla_addr_fields_public.h"
-#include "scylla_regs_public.h"
 #include "ethosn_dma.h"
 #include "ethosn_firmware.h"
 #include "uapi/ethosn.h"
@@ -95,6 +93,7 @@ struct ethosn_core {
 	struct ethosn_addr_map      firmware_map;
 	struct ethosn_addr_map      work_data_map;
 	struct ethosn_dma_info      *firmware;
+	struct ethosn_dma_info      *ple_kernels;
 	struct ethosn_dma_info      *firmware_stack_main;
 	struct ethosn_dma_info      *firmware_stack_task;
 	struct ethosn_dma_info      *firmware_vtable;
@@ -102,8 +101,39 @@ struct ethosn_core {
 	struct ethosn_dma_info      *mailbox_request;
 	struct ethosn_dma_info      *mailbox_response;
 	void                        *mailbox_message;
-	uint32_t                    num_pongs_received;
-	bool                        firmware_running;
+
+#if defined(ETHOSN_KERNEL_MODULE_DEBUG_MONITOR)
+
+	/*
+	 * DMA info for a struct of type ethosn_debug_monitor_channel which is a
+	 * two-way communication
+	 * channel with the debug monitor in the firmware.
+	 */
+	struct ethosn_dma_info *debug_monitor_channel;
+
+	/* DMA info for a struct of type ethosn_queue which is the one-way
+	 * communication channel from
+	 * the kernel to the firmware.
+	 */
+	struct ethosn_dma_info *debug_monitor_channel_request;
+
+	/* DMA info for a struct of type ethosn_queue which is the one-way
+	 * communication channel from
+	 * the firmware to the kernel.
+	 */
+	struct ethosn_dma_info *debug_monitor_channel_response;
+
+	/* Wait queue used to signal that there might be debug monitor data
+	 * available for a reading userspace
+	 * process.
+	 */
+	wait_queue_head_t debug_monitor_channel_read_poll_wqh;
+	/* Timer used to signal the above wait queue on a periodic interval. */
+	struct timer_list debug_monitor_channel_timer;
+#endif
+
+	uint32_t          num_pongs_received;
+	bool              firmware_running;
 
 	/* Stores the response from the firmware containing capabilities data.
 	 * This is allocated when the data is received from the firmware and
@@ -302,14 +332,6 @@ int ethosn_reset(struct ethosn_core *core);
  */
 void ethosn_set_power_ctrl(struct ethosn_core *core,
 			   bool clk_on);
-
-/**
- * ethosn_set_mmu_stream_id() - Configure the mmu stream id0.
- * @core:-	Pointer to the Ethos-N core
- *
- * Return: Negative error code on error, zero otherwise
- */
-int ethosn_set_mmu_stream_id(struct ethosn_core *core);
 
 /**
  * ethosn_set_addr_ext() - Set address extension offset for stream.

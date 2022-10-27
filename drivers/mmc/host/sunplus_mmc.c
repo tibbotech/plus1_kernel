@@ -334,14 +334,23 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif
-	#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_SP7350)
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	#endif
+
+	#ifdef CONFIG_SOC_Q645
+	if(clk_get_rate(host->clk) < SPMMC_SYS_CLK)
+		clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
+	else
+		clkdiv = clk_get_rate(host->clk)/clk-1;
+	#endif
+
 	#ifdef CONFIG_SOC_SP7350 //for zebu test, temp
 	if(soc_clk != SPMMC_SYS_CLK)
 		clkdiv = (SPMMC_SYS_CLK+clk)/clk-1;
 	#endif
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
+	spmmc_pr(INFO, "bus clock = %d / %d\n", clk_get_rate(host->clk), (clkdiv + 1));
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;

@@ -70,7 +70,7 @@
 
 /* Timeout in us when pinging the Ethos-N and waiting for a pong. */
 #define ETHOSN_PING_TIMEOUT_US (10 * 1000 * 1000)
-#define ETHOSN_PING_WAIT_US 1
+#define ETHOSN_PING_WAIT_US 1000
 
 #define ETHOSN_MAX_NUM_IRQS 3
 
@@ -722,9 +722,10 @@ static long ethosn_ioctl(struct file *const filep,
 			break;
 
 		dev_dbg(ethosn->dev,
-			"IOCTL: Register network. num_dma=%u, num_cu=%u, num_inputs=%u, num_outputs=%u\n",
+			"IOCTL: Register network. num_dma=%u, num_cu=%u, num_intermediates=%u, num_inputs=%u, num_outputs=%u\n",
 			net_req.dma_buffers.num,
 			net_req.cu_buffers.num,
+			net_req.intermediate_buffers.num,
 			net_req.input_buffers.num,
 			net_req.output_buffers.num);
 
