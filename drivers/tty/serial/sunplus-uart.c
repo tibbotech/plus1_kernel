@@ -103,15 +103,13 @@
 #define UATXDMA_BUF_SZ			PAGE_SIZE
 /* ------------------------------------------------------------------------- */
 /* Refer zebu: testbench/uart.cc */
-#ifdef CONFIG_SOC_I143
-#define CLK_HIGH_UART			202500000
-#define UART_RATIO			29
-#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_SP7350)
 #define CLK_HIGH_UART			32000000
 #define UART_RATIO			17
+#elif defined(CONFIG_SOC_Q645)
+#define CLK_HIGH_UART			200000000
 #else
 #define CLK_HIGH_UART			202500000
-#define UART_RATIO			232
 #endif
 /* ------------------------------------------------------------------------- */
 #if defined(CONFIG_SP_MON)
@@ -1201,7 +1199,7 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port,
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_SP7350)
 	/*
 	 * For zebu, the baudrate is 921600, Clock should be switched to CLK_HIGH_UART
 	 * For real chip, the baudrate is 115200.
