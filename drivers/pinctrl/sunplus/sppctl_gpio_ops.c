@@ -364,6 +364,10 @@ int sppctlgpio_i_map(struct gpio_chip *_c, unsigned int _off)
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
 	int i;
 
+#if !defined(CONFIG_PINCTRL_SPPCTL)
+	return -ENXIO;
+#endif
+
 	if ( _off < SPPCTL_MUXABLE_MIN || _off > SPPCTL_MUXABLE_MAX) {
 	  KERR(_c->parent, "i_map: %d is not muxable\n", _off);
 	  return -ENXIO;
