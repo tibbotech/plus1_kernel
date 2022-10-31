@@ -163,9 +163,9 @@ struct spmmc_host {
 static inline int spmmc_wait_finish(struct spmmc_host *host)
 {
 	u32 state;
-	
+
 	return readl_poll_timeout(host->base + SPMMC_SD_STATE_REG, state,
-					(state & SPMMC_SDSTATE_FINISH), 10000, SPMMC_TIMEOUT);
+					(state & SPMMC_SDSTATE_FINISH), 10, SPMMC_TIMEOUT);
 }
 
 static inline int spmmc_wait_sdstatus(struct spmmc_host *host, unsigned int status_bit)
@@ -173,7 +173,7 @@ static inline int spmmc_wait_sdstatus(struct spmmc_host *host, unsigned int stat
 	u32 status;
 
 	return readl_poll_timeout(host->base + SPMMC_SD_STATUS_REG, status,
-					(status & status_bit), 10000, SPMMC_TIMEOUT);
+					(status & status_bit), 10, SPMMC_TIMEOUT);
 }
 
 #define spmmc_wait_rspbuf_full(host) spmmc_wait_sdstatus(host, SPMMC_SDSTATUS_RSP_BUF_FULL)
@@ -228,7 +228,7 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	clkdiv = (clk_get_rate(host->clk) + clk) / clk - 1;
 	if (clkdiv > 0xfff)
 		clkdiv = 0xfff;
-
+	value &= ~SPMMC_CLOCK_DIVISION;
 	value |= FIELD_PREP(SPMMC_CLOCK_DIVISION, clkdiv);
 	writel(value, host->base + SPMMC_SD_CONFIG0_REG);
 }
@@ -266,7 +266,9 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 		value |= SPMMC_SD_HIGH_SPEED_EN;
 		writel(value, host->base + SPMMC_SD_CONFIG1_REG);
 		value = readl(host->base + SPMMC_SD_TIMING_CONFIG0_REG);
+		value &= ~SPMMC_SD_WRITE_DATA_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_WRITE_DATA_DELAY, delay);
+		value &= ~SPMMC_SD_WRITE_COMMAND_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_WRITE_COMMAND_DELAY, delay);
 		writel(value, host->base + SPMMC_SD_TIMING_CONFIG0_REG);
 	} else {
@@ -389,6 +391,7 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 	writel(data->blksz - 1, host->base + SPMMC_SD_BLOCKSIZE_REG);
 	value = readl(host->base + SPMMC_SD_CONFIG0_REG);
 	if (data->flags & MMC_DATA_READ) {
+		value &= ~SPMMC_SD_TRANS_MODE;
 		value |= FIELD_PREP(SPMMC_SD_TRANS_MODE, 2);
 		value &= ~SPMMC_SD_AUTO_RESPONSE;
 		value &= ~SPMMC_SD_CMD_DUMMY;
@@ -399,6 +402,7 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 		srcdst |= FIELD_PREP(SPMMC_DMA_DESTINATION, 0x1);
 		writel(srcdst, host->base + SPMMC_CARD_MEDIATYPE_SRCDST_REG);
 	} else {
+		value &= ~SPMMC_SD_TRANS_MODE;
 		value |= FIELD_PREP(SPMMC_SD_TRANS_MODE, 1);
 		srcdst = readl(host->base + SPMMC_CARD_MEDIATYPE_SRCDST_REG);
 		srcdst &= ~SPMMC_DMA_SOURCE;
@@ -475,7 +479,7 @@ static void spmmc_send_stop_cmd(struct spmmc_host *host)
 	writel(value, host->base + SPMMC_SD_INT_REG);
 	spmmc_trigger_transaction(host);
 	readl_poll_timeout_atomic(host->base + SPMMC_SD_STATE_REG, value,
-					(value & SPMMC_SDSTATE_FINISH), 1, SPMMC_TIMEOUT);
+				  (value & SPMMC_SDSTATE_FINISH), 1, SPMMC_TIMEOUT);
 }
 
 static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
@@ -540,14 +544,19 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 		spmmc_sw_reset(host);
 
 		if (host->tuning_info.enable_tuning) {
+			timing_cfg0 &= ~SPMMC_SD_READ_CRC_DELAY;
 			timing_cfg0 |= FIELD_PREP(SPMMC_SD_READ_CRC_DELAY,
 						       host->tuning_info.rd_crc_dly);
+			timing_cfg0 &= ~SPMMC_SD_READ_DATA_DELAY;
 			timing_cfg0 |= FIELD_PREP(SPMMC_SD_READ_DATA_DELAY,
 						       host->tuning_info.rd_dat_dly);
+			timing_cfg0 &= ~SPMMC_SD_READ_RESPONSE_DELAY;
 			timing_cfg0 |= FIELD_PREP(SPMMC_SD_READ_RESPONSE_DELAY,
 						       host->tuning_info.rd_rsp_dly);
+			timing_cfg0 &= ~SPMMC_SD_WRITE_COMMAND_DELAY;
 			timing_cfg0 |= FIELD_PREP(SPMMC_SD_WRITE_COMMAND_DELAY,
 						       host->tuning_info.wr_cmd_dly);
+			timing_cfg0 &= ~SPMMC_SD_WRITE_DATA_DELAY;
 			timing_cfg0 |= FIELD_PREP(SPMMC_SD_WRITE_DATA_DELAY,
 						       host->tuning_info.wr_dat_dly);
 			writel(timing_cfg0, host->base + SPMMC_SD_TIMING_CONFIG0_REG);
@@ -634,6 +643,7 @@ static void spmmc_controller_init(struct spmmc_host *host)
 	}
 
 	value = readl(host->base + SPMMC_CARD_MEDIATYPE_SRCDST_REG);
+	value &= ~SPMMC_MEDIA_TYPE;
 	value |= FIELD_PREP(SPMMC_MEDIA_TYPE, SPMMC_MEDIA_SD);
 	writel(value, host->base + SPMMC_CARD_MEDIATYPE_SRCDST_REG);
 }
@@ -771,8 +781,11 @@ static int spmmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	host->tuning_info.enable_tuning = 0;
 	do {
 		value = readl(host->base + SPMMC_SD_TIMING_CONFIG0_REG);
+		value &= ~SPMMC_SD_READ_RESPONSE_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_RESPONSE_DELAY, smpl_dly);
+		value &= ~SPMMC_SD_READ_DATA_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_DATA_DELAY, smpl_dly);
+		value &= ~SPMMC_SD_READ_CRC_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_CRC_DELAY, smpl_dly);
 		writel(value, host->base + SPMMC_SD_TIMING_CONFIG0_REG);
 
@@ -786,8 +799,11 @@ static int spmmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	if (candidate_dly) {
 		smpl_dly = __find_best_delay(candidate_dly);
 		value = readl(host->base + SPMMC_SD_TIMING_CONFIG0_REG);
+		value &= ~SPMMC_SD_READ_RESPONSE_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_RESPONSE_DELAY, smpl_dly);
+		value &= ~SPMMC_SD_READ_DATA_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_DATA_DELAY, smpl_dly);
+		value &= ~SPMMC_SD_READ_CRC_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_CRC_DELAY, smpl_dly);
 		writel(value, host->base + SPMMC_SD_TIMING_CONFIG0_REG);
 		return 0;
@@ -888,7 +904,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	pm_runtime_set_active(&pdev->dev);
 	pm_runtime_enable(&pdev->dev);
 	mmc_add_host(mmc);
-	printk(" spmmc-mmc_v10_12\n");
+
 	return ret;
 
 probe_free_host:
