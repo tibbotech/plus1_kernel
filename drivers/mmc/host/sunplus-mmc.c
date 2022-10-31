@@ -434,9 +434,15 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 				writel(dma_addr, host->base + SPMMC_DMA_BASE_ADDR_REG);
 				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_0_SIZE_REG);
 			} else {
+				#ifdef CONFIG_SOC_Q645
+				reg_addr = host->base + SPMMC_SDRAM_SECTOR_1_ADDR_REG + (i - 1) * 8;
+				writel(dma_addr, reg_addr);
+				writel(dma_size, reg_addr + 4);
+				#else
 				reg_addr = host->base + SPMMC_SDRAM_SECTOR_1_ADDR_REG + (i - 1) * 2;
 				writel(dma_addr, reg_addr);
 				writel(dma_size, reg_addr + 1);
+				#endif
 			}
 		}
 		value &= ~SPMMC_SD_PIO_MODE;
