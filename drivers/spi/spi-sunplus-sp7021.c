@@ -105,7 +105,7 @@ static irqreturn_t sp7021_spi_slave_irq(int irq, void *dev)
 
 	data_status = readl(pspim->s_base + SP7021_DATA_RDY_REG);
 	data_status |= SP7021_SLAVE_CLR_INT;
-	writel(data_status , pspim->s_base + SP7021_DATA_RDY_REG);
+	writel(data_status, pspim->s_base + SP7021_DATA_RDY_REG);
 	complete(&pspim->slave_isr);
 	return IRQ_HANDLED;
 }
@@ -411,7 +411,11 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 	struct spi_controller *ctlr;
 	int mode, ret;
 
-	pdev->id = of_alias_get_id(pdev->dev.of_node, "sp_spi");
+	pdev->id = of_alias_get_id(pdev->dev.of_node, "sp-spi");
+	if (pdev->id < 0) {
+		dev_err(dev, "no OF entry for SunPlus SPI\n");
+		return pdev->id;
+	}
 
 	if (device_property_read_bool(dev, "spi-slave"))
 		mode = SP7021_SLAVE_MODE;
@@ -509,6 +513,10 @@ static int sp7021_spi_controller_probe(struct platform_device *pdev)
 		pm_runtime_disable(dev);
 		return dev_err_probe(dev, ret, "spi_register_master fail\n");
 	}
+	if (mode == SP7021_SLAVE_MODE)
+		dev_info(dev, "slave mode\n");
+	else
+		dev_info(dev, "master mode\n");
 	return 0;
 }
 
