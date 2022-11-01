@@ -108,6 +108,7 @@
 #define UART_RATIO			17
 #elif defined(CONFIG_SOC_Q645)
 #define CLK_HIGH_UART			200000000
+#define CLK_XTAL_UART			25000000
 #else
 #define CLK_HIGH_UART			202500000
 #endif
@@ -1194,8 +1195,10 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port,
 	u32 clk, ext, div, div_l, div_h, baud;
 	u32 lcr;
 	unsigned long flags;
-	//struct sunplus_uart_port *sp_port =
-	//	(struct sunplus_uart_port *)(port->private_data);
+#if defined(CONFIG_SOC_Q645)
+	struct sunplus_uart_port *sp_port =
+		(struct sunplus_uart_port *)(port->private_data);
+#endif
 
 	baud = uart_get_baud_rate(port, termios, oldtermios, 0, (CLK_HIGH_UART >> 4));
 
@@ -1215,6 +1218,14 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port,
 		clk = port->uartclk;
 	}
 #else
+#if defined(CONFIG_SOC_Q645)
+	if (baud > 115200) {
+		clk_set_rate(sp_port->clk, CLK_HIGH_UART);
+	} else {
+		clk_set_rate(sp_port->clk, CLK_XTAL_UART);
+	}
+	port->uartclk = clk_get_rate(sp_port->clk);
+#endif
 	clk = port->uartclk;
 #endif
 
