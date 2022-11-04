@@ -1614,8 +1614,8 @@ static int sunplus_uart_config_rs485(struct uart_port *_up,
 		(struct sunplus_uart_port *)_up->private_data;
 	int val;
 
-	// no enable/disable is possible if there no rts_gpio
-	if (IS_ERR(_sup->rts_gpio)) {
+	// No enabling is possible if there no rts_gpio
+	if ((_rs485->flags & SER_RS485_ENABLED) && IS_ERR(_sup->rts_gpio)) {
 		DBG_ERR("%s %s No valid rts_gpio - skipping rs485\n",
 			_up->name, __func__);
 		_up->rs485.flags &= ~SER_RS485_ENABLED;
