@@ -46,6 +46,19 @@
 #define SPMMC_MAX_DMA_MEMORY_SECTORS	8
 
 #define SPMMC_SDRAM_SECTOR_1_ADDR_REG 0x0018
+#define SPMMC_SDRAM_SECTOR_1_LENG_REG 0x001C
+#define SPMMC_SDRAM_SECTOR_2_ADDR_REG 0x0020
+#define SPMMC_SDRAM_SECTOR_2_LENG_REG 0x0024
+#define SPMMC_SDRAM_SECTOR_3_ADDR_REG 0x0028
+#define SPMMC_SDRAM_SECTOR_3_LENG_REG 0x002C
+#define SPMMC_SDRAM_SECTOR_4_ADDR_REG 0x0030
+#define SPMMC_SDRAM_SECTOR_4_LENG_REG 0x0034
+#define SPMMC_SDRAM_SECTOR_5_ADDR_REG 0x0038
+#define SPMMC_SDRAM_SECTOR_5_LENG_REG 0x003C
+#define SPMMC_SDRAM_SECTOR_6_ADDR_REG 0x0040
+#define SPMMC_SDRAM_SECTOR_6_LENG_REG 0x0044
+#define SPMMC_SDRAM_SECTOR_7_ADDR_REG 0x0048
+#define SPMMC_SDRAM_SECTOR_7_LENG_REG 0x004C
 
 #define SPMMC_SD_INT_REG	0x0088
 #define SPMMC_SDINT_SDCMPEN	BIT(0)
@@ -417,7 +430,6 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 		struct scatterlist *sg;
 		dma_addr_t dma_addr;
 		unsigned int dma_size;
-		u32 *reg_addr;
 		int i, count = 1;
 
 		count = dma_map_sg(host->mmc->parent, data->sg, data->sg_len,
@@ -433,16 +445,27 @@ static void spmmc_prepare_data(struct spmmc_host *host, struct mmc_data *data)
 			if (i == 0) {
 				writel(dma_addr, host->base + SPMMC_DMA_BASE_ADDR_REG);
 				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_0_SIZE_REG);
-			} else {
-				#ifdef CONFIG_SOC_Q645
-				reg_addr = host->base + SPMMC_SDRAM_SECTOR_1_ADDR_REG + (i - 1) * 8;
-				writel(dma_addr, reg_addr);
-				writel(dma_size, reg_addr + 4);
-				#else
-				reg_addr = host->base + SPMMC_SDRAM_SECTOR_1_ADDR_REG + (i - 1) * 2;
-				writel(dma_addr, reg_addr);
-				writel(dma_size, reg_addr + 1);
-				#endif
+			} else if (i == 1) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_1_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_1_LENG_REG);
+			} else if (i == 2) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_2_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_2_LENG_REG);
+			} else if (i == 3) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_3_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_3_LENG_REG);
+			} else if (i == 4) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_4_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_4_LENG_REG);
+			} else if (i == 5) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_5_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_5_LENG_REG);
+			} else if (i == 6) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_6_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_6_LENG_REG);
+			} else if (i == 7) {
+				writel(dma_addr, host->base + SPMMC_SDRAM_SECTOR_7_ADDR_REG);
+				writel(dma_size, host->base + SPMMC_SDRAM_SECTOR_7_LENG_REG);
 			}
 		}
 		value &= ~SPMMC_SD_PIO_MODE;
