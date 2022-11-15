@@ -1160,7 +1160,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <72000000>;
 		non-removable;
 		disable-wp;
 		cap-sd-highspeed;
@@ -1178,7 +1178,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&gpio_int2_pins>;
 		gpio_wl_reg_on = <&pctl 53 GPIO_ACTIVE_LOW>;
-		gpio_wl_host_wake = <&pctl 2 GPIO_ACTIVE_LOW>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 2 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -1819,7 +1818,7 @@
 		};
 		gpio_int2_pins: pinmux_gpio_int2-pins {
 			function = "INT2";
-			groups = "INT2_X1";
+			groups = "INT2_X3";
 		};
 		gpio_int3_pins: pinmux_gpio_int3-pins {
 			function = "INT3";

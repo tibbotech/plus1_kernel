@@ -20,6 +20,9 @@
 #include <linux/clk.h>
 #include <linux/bitops.h>
 #include <linux/uaccess.h>
+#include <linux/io.h>
+#include "../core/host.h"
+#include "../core/core.h"
 #include "sunplus_sd3.h"
 
 enum loglevel {
@@ -64,6 +67,17 @@ static inline u32 bitfield_replace(u32 reg_val, u32 shift, u32 width, u32 val)
 /* for register value with mask bits */
 #define __bitfield_replace(value, shift, width, new_value)		\
 	(bitfield_replace(value, shift, width, new_value) | bitfield_mask(shift+16, width))
+
+static const u8 tuning_blk_pattern_4bit[] = {
+	0xff, 0x0f, 0xff, 0x00, 0xff, 0xcc, 0xc3, 0xcc,
+	0xc3, 0x3c, 0xcc, 0xff, 0xfe, 0xff, 0xfe, 0xef,
+	0xff, 0xdf, 0xff, 0xdd, 0xff, 0xfb, 0xff, 0xfb,
+	0xbf, 0xff, 0x7f, 0xff, 0x77, 0xf7, 0xbd, 0xef,
+	0xff, 0xf0, 0xff, 0xf0, 0x0f, 0xfc, 0xcc, 0x3c,
+	0xcc, 0x33, 0xcc, 0xcf, 0xff, 0xef, 0xff, 0xee,
+	0xff, 0xfd, 0xff, 0xfd, 0xdf, 0xff, 0xbf, 0xff,
+	0xbb, 0xff, 0xf7, 0xff, 0xf7, 0x7f, 0x7b, 0xde,
+};
 
 #ifdef SPSDC_DEBUG
 #define SPSDC_REG_SIZE (sizeof(struct spsdc_regs)) /* register address space size */
@@ -208,12 +222,9 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 
 	if ((clk_get_rate(host->clk) % clk) > (clk/10)) {
 		clkdiv++;
-		spsdc_pr(INFO, "clk down to %d,SYS_CLK %d,clkdiv %d real_clk %d\n", clk,
-			soc_clk, clkdiv, (soc_clk / (clkdiv+1)));
-	} else {
+	} 
 		spsdc_pr(INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d\n", clk,
 			soc_clk, clkdiv, (soc_clk / (clkdiv+1)));
-	}
 
 	if (clkdiv > 0xfff) {
 		spsdc_pr(WARNING, "clock %d is too low to be set!\n", clk);
@@ -239,9 +250,15 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 	int wr_delay = clkdiv < 7 ? 1 : 7;
 	int rd_delay = clkdiv < 7 ? clkdiv+1 : 7;
 	int hs_en = 1;
+	union spmmc_reg_timing_config0 reg_timing;
 	char *timing_name;
 
 	host->ddr_enabled = 0;
+	reg_timing.bits.sd_wr_dat_dly_sel = wr_delay;
+	reg_timing.bits.sd_wr_cmd_dly_sel = wr_delay;
+	reg_timing.bits.sd_rd_dat_dly_sel = rd_delay;
+	reg_timing.bits.sd_rd_rsp_dly_sel = rd_delay;
+	reg_timing.bits.sd_rd_crc_dly_sel = rd_delay;
 
 	switch (timing) {
 	case MMC_TIMING_LEGACY:
@@ -252,24 +269,26 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		timing_name = "mmc high-speed";
 		break;
 	case MMC_TIMING_SD_HS:
-		wr_delay = 1;
-		rd_delay = 4;
+		reg_timing.val = 0x444110;
 		timing_name = "sd high-speed";
 		break;
 	case MMC_TIMING_UHS_SDR50:
-		wr_delay = 1;
-		rd_delay = 3;
+		if(host->mode == SPSDC_MODE_SDIO)
+			reg_timing.val = 0x444340;
+		else
+			reg_timing.val = 0x333110;
 		timing_name = "sd uhs SDR50";
 		break;
 	case MMC_TIMING_UHS_SDR104:
-		wr_delay = 1;
-		rd_delay = 3;
+		if(host->mode == SPSDC_MODE_SDIO)
+			reg_timing.val = 0x444340;
+		else
+			reg_timing.val = 0x444340;
 		timing_name = "sd uhs SDR104";
 		break;
 	case MMC_TIMING_UHS_DDR50:
 		host->ddr_enabled = 1;
-		wr_delay = 2;
-		rd_delay = 4;
+		reg_timing.val = 0x444220;
 		timing_name = "sd uhs DDR50";
 		break;
 	case MMC_TIMING_MMC_DDR52:
@@ -288,15 +307,8 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 	if (hs_en) {
 		value = bitfield_replace(value, SPSDC_sdhigh_speed_en_w01, 1, 1); /* sd_high_speed_en */
 		writel(value, &host->base->sd_config1);
-		value = readl(&host->base->sd_timing_config0);
-		value = bitfield_replace(value, SPSDC_sd_wr_dat_dly_sel_w03, 3, wr_delay); /* sd_wr_dat_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_wr_cmd_dly_sel_w03, 3, wr_delay); /* sd_wr_cmd_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_dat_dly_sel_w03, 3, rd_delay); /* sd_wr_dat_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_rsp_dly_sel_w03, 3, rd_delay); /* sd_wr_cmd_dly_sel */
-		value = bitfield_replace(value, SPSDC_sd_rd_crc_dly_sel_w03, 3, rd_delay); /* sd_wr_cmd_dly_sel */
-
-		spsdc_pr(VERBOSE, "sd_timing_config0: 0x%08x\n", value);
-		writel(value, &host->base->sd_timing_config0);
+		spsdc_pr(VERBOSE, "sd_timing_config0: 0x%08x\n", reg_timing.val);
+		writel(reg_timing.val, &host->base->sd_timing_config0);
 	} else {
 		value = bitfield_replace(value, SPSDC_sdhigh_speed_en_w01, 1, 0);
 		writel(value, &host->base->sd_config1);
@@ -474,7 +486,6 @@ static void spsdc_prepare_data(struct spsdc_host *host, struct mmc_data *data)
 	 *	value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 1);
 	 *
 	 */
-
 	value = bitfield_replace(value, SPSDC_sd_len_mode_w01, 1, 1);
 
 	if (likely(host->dmapio_mode == SPSDC_DMA_MODE)) {
@@ -562,7 +573,7 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 	struct mmc_data *data = mrq->data;
 	u32 value = readl(&host->base->sd_state);
 	u32 crc_token = bitfield_extract(value, SPSDC_sdcrdcrc_w03, 3);
-	u32 timing_cfg0 = readl(&host->base->sd_timing_config0);
+	union spmmc_reg_timing_config0 timing;
 	int clkdiv = readl(&host->base->sd_config0) >> SPSDC_sdfqsel_w12;
 
 	if (unlikely(value & SPSDC_SDSTATE_ERROR)) {
@@ -572,41 +583,37 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		spsdc_pr(VERBOSE, "%s sd_status: 0x%08x\n", __func__, value);
 
 		if (host->tuning_info.enable_tuning) {
-			timing_cfg0 = readl(&host->base->sd_timing_config0);
-			host->tuning_info.rd_crc_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3);
-			host->tuning_info.rd_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3);
-			host->tuning_info.rd_rsp_dly = bitfield_extract(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3);
-			host->tuning_info.wr_cmd_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3);
-			host->tuning_info.wr_dat_dly = bitfield_extract(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3);
+			timing.val = readl(&host->base->sd_timing_config0);
 		}
+                
 		if (value & SPSDC_SDSTATUS_RSP_TIMEOUT) {
 			spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RSP_TIMEOUT\n");
-			ret = -ETIMEDOUT;
-			host->tuning_info.wr_cmd_dly++;
+			ret = (host->tuning_info.enable_tuning) ? -ETIMEDOUT : -1;
+			timing.bits.sd_wr_cmd_dly_sel++;
 		} else if (value & SPSDC_SDSTATUS_RSP_CRC7_ERROR) {
 			spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RSP_CRC7_ERROR\n");
-			ret = -EILSEQ;
-			host->tuning_info.rd_rsp_dly++;
+			ret = (host->tuning_info.enable_tuning) ? -EILSEQ : -1;
+			timing.bits.sd_rd_rsp_dly_sel++;
 		} else if (data) {
 			if ((value & SPSDC_SDSTATUS_STB_TIMEOUT)) {
 				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_STB_TIMEOUT\n");
-				ret = -ETIMEDOUT;
-				host->tuning_info.rd_dat_dly++;
+				ret = (host->tuning_info.enable_tuning) ? -ETIMEDOUT : -1;
+				timing.bits.sd_rd_dat_dly_sel++;
 			} else if (value & SPSDC_SDSTATUS_RDATA_CRC16_ERROR) {
 				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_RDATA_CRC16_ERROR\n");
-				ret = -EILSEQ;
-				host->tuning_info.rd_dat_dly++;
+				ret = (host->tuning_info.enable_tuning) ? -EILSEQ : -1;
+				timing.bits.sd_rd_dat_dly_sel++;
 			} else if (value & SPSDC_SDSTATUS_CARD_CRC_CHECK_TIMEOUT) {
 				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_CARD_CRC_CHECK_TIMEOUT\n");
-				ret = -ETIMEDOUT;
-				host->tuning_info.rd_crc_dly++;
+				ret = (host->tuning_info.enable_tuning) ? -ETIMEDOUT : -1;
+				timing.bits.sd_rd_crc_dly_sel++;
 			} else if (value & SPSDC_SDSTATUS_CRC_TOKEN_CHECK_ERROR) {
 				spsdc_pr(VERBOSE, "SPSDC_SDSTATUS_CRC_TOKEN_CHECK_ERROR\n");
-				ret = -EILSEQ;
+				ret = (host->tuning_info.enable_tuning) ? -EILSEQ : -1;
 				if (crc_token == 0x5)
-					host->tuning_info.wr_dat_dly++;
+					timing.bits.sd_wr_dat_dly_sel++;
 				else
-					host->tuning_info.rd_crc_dly++;
+					timing.bits.sd_rd_crc_dly_sel++;
 			}
 			}
 		cmd->error = ret;
@@ -615,7 +622,8 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 			data->bytes_xfered = 0;
 		}
 
-		if (!host->tuning_info.need_tuning) {
+		//if (!host->tuning_info.need_tuning) {
+		if (!host->tuning_info.need_tuning && host->tuning_info.enable_tuning) {
 			if (clkdiv >= 500)
 				cmd->retries = 1; /* retry it */
 			else
@@ -626,12 +634,7 @@ static int spsdc_check_error(struct spsdc_host *host, struct mmc_request *mrq)
 		mdelay(100);
 
 		if (host->tuning_info.enable_tuning) {
-			timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_crc_dly_sel_w03, 3, host->tuning_info.rd_crc_dly); /* sd_wr_dat_dly_sel */
-			timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_dat_dly_sel_w03, 3, host->tuning_info.rd_dat_dly); /* sd_wr_cmd_dly_sel */
-			timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_rd_rsp_dly_sel_w03, 3, host->tuning_info.rd_rsp_dly); /* sd_wr_dat_dly_sel */
-			timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_cmd_dly_sel_w03, 3, host->tuning_info.wr_cmd_dly); /* sd_wr_cmd_dly_sel */
-			timing_cfg0 = bitfield_replace(timing_cfg0, SPSDC_sd_wr_dat_dly_sel_w03, 3, host->tuning_info.wr_dat_dly); /* sd_wr_cmd_dly_sel */
-			writel(timing_cfg0, &host->base->sd_timing_config0);
+			writel(timing.val, &host->base->sd_timing_config0);
 		}
 
 	} else if (data) {
@@ -784,8 +787,13 @@ irqreturn_t spsdc_irq(int irq, void *dev_id)
 {
 	struct spsdc_host *host = dev_id;
 	u32 value = readl(&host->base->sd_int);
+	unsigned int sdio_no_irq = 1;
 
-	spin_lock(&host->lock);
+	if ((value & SPSDC_SDINT_SDIO) && (value & SPSDC_SDINT_SDIOEN)){
+		mmc_signal_sdio_irq(host->mmc);
+		sdio_no_irq = 0;
+	}
+
 	if ((value & SPSDC_SDINT_SDCMP) &&
 		(value & SPSDC_SDINT_SDCMPEN)) {
 		value = bitfield_replace(value, SPSDC_sdcmpen_w01, 1, 0); /* disable sdcmmp */
@@ -799,12 +807,11 @@ irqreturn_t spsdc_irq(int irq, void *dev_id)
 		else
 			spsdc_finish_request(host, host->mrq);
 
-	}
-	if ((value & SPSDC_SDINT_SDIO) &&
-		(value & SPSDC_SDINT_SDIOEN)) {
+		value = readl(&host->base->sd_int);
+		if ((value & SPSDC_SDINT_SDIO) && (value & SPSDC_SDINT_SDIOEN) && (sdio_no_irq))
 		mmc_signal_sdio_irq(host->mmc);
+
 	}
-	spin_unlock(&host->lock);
 	return IRQ_HANDLED;
 }
 
@@ -998,6 +1005,166 @@ static int spmmc_start_signal_voltage_switch(struct mmc_host *mmc, struct mmc_io
 }
 #endif /* ifdef SPMMC_SUPPORT_VOLTAGE_1V8 */
 
+#ifdef SPMMC_SUPPORT_EXECUTE_TUNING
+
+/**
+ * the strategy is:
+ * 1. if several continuous delays are acceptable, we choose a middle one;
+ * 2. otherwise, we choose the first one.
+ */
+static int spmmc_find_best_delay(u32 valid, u32 valid_cnt, u32 *best)
+{
+	u32 cnt = 0, start = 0;
+	u32 max_cnt = 0, max_start = 0;
+	u32 i, find = 0;
+
+	for (i = 0; i < 32; i++) {
+		if (valid & (1 << i)) {
+			if (cnt == 0)
+				start = i;
+			cnt++;
+		} else {
+			if (cnt >= valid_cnt) {
+				if (cnt > max_cnt) {
+					max_cnt = cnt;
+					max_start = start;
+				}
+			}
+			cnt = 0;
+		}
+	}
+
+	if (max_cnt) {
+		*best = max_start + (max_cnt / 2);
+		find = 1;
+	} else if (cnt > max_cnt && cnt > valid_cnt) {
+		*best = start + (cnt / 2);
+		find = 1;
+	}
+
+	return  (find) ? 0 : -1;
+}
+
+static void spsdc_dly_set(union spmmc_reg_timing_config0 *timing, u32 item, u32 dly)
+{
+	switch (item) {
+	case RD_CRC_DLY:
+		timing->bits.sd_rd_crc_dly_sel = dly & 0x07;
+		break;
+	case RD_DAT_DLY:
+		timing->bits.sd_rd_dat_dly_sel = dly & 0x07;
+		break;
+	case RD_RSP_DLY:
+		timing->bits.sd_rd_rsp_dly_sel = dly & 0x07;
+		break;
+	case WR_DAT_DLY:
+		timing->bits.sd_wr_dat_dly_sel = dly & 0x07;
+		break;
+	case WR_CMD_DLY:
+		timing->bits.sd_wr_cmd_dly_sel = dly & 0x07;
+		break;
+	default:
+		timing->bits.sd_rd_crc_dly_sel = dly & 0x07;
+		break;
+	}
+}
+
+static int spsdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
+{
+	struct spsdc_host *host = mmc_priv(mmc);
+	const u8 *blk_pattern;
+	u8 *blk_test;
+	int blksz;
+	u32 smpl_dly = 0, candidate_dly = 0;
+	union spmmc_reg_timing_config0 timing;
+	u32 value, item;
+
+	blk_pattern = tuning_blk_pattern_4bit;
+	blksz = sizeof(tuning_blk_pattern_4bit);
+	blk_test = kmalloc(blksz, GFP_KERNEL);
+
+
+	if (host->tuning_info.tuning_finish)
+		return 0;
+	if(host->mode == SPSDC_MODE_SD)
+		return 0;
+
+	if (!((mmc->ios.timing == MMC_TIMING_MMC_HS200) ||
+	      (mmc->ios.timing == MMC_TIMING_UHS_SDR104) ||
+	      (mmc->ios.timing == MMC_TIMING_UHS_SDR50)))
+		return 0;
+
+	spsdc_pr(INFO, "%s\n", __func__);
+	host->tuning_info.enable_tuning = 0;
+	for (item = 0; item < 6; item++) {
+		candidate_dly = 0;
+		//for (dly = 0; dly < 0x20; dly++) {
+		for (smpl_dly = 0; smpl_dly < 0x08; smpl_dly++) {
+			struct mmc_request mrq = {NULL};
+			struct mmc_command cmd = {0};
+			struct mmc_command stop = {0};
+			struct mmc_data data = {0};
+			struct scatterlist sg;
+
+			cmd.opcode = opcode;
+			cmd.arg = 0;
+			cmd.flags = MMC_RSP_R1 | MMC_CMD_ADTC;
+
+			stop.opcode = MMC_STOP_TRANSMISSION;
+			stop.arg = 0;
+			stop.flags = MMC_RSP_R1B | MMC_CMD_AC;
+
+			data.blksz = blksz;
+			data.blocks = 1;
+			data.flags = MMC_DATA_READ;
+			data.sg = &sg;
+			data.sg_len = 1;
+
+			sg_init_one(&sg, blk_test, blksz);
+			mrq.cmd = &cmd;
+			mrq.stop = &stop;
+			mrq.data = &data;
+			host->mrq = &mrq;
+
+			timing.val = readl(&host->base->sd_timing_config0);
+			value = timing.val;
+			spsdc_dly_set(&timing, item, smpl_dly);
+			writel(timing.val, &host->base->sd_timing_config0);
+			//mdelay(1);
+			mmc_wait_for_req(mmc, &mrq);
+			if (!cmd.error && !data.error) {
+				if (!memcmp(blk_pattern, blk_test, blksz))
+					candidate_dly |= (1 << smpl_dly);
+			} else {
+				spsdc_pr(DEBUG, "Tuning error: cmd.error:%d, data.error:%d\n",
+				cmd.error, data.error);
+			}
+		}
+		spsdc_pr(DEBUG, "sampling delay candidates: %x\n", candidate_dly);
+		if (candidate_dly) {
+			spmmc_find_best_delay(candidate_dly, 3, &smpl_dly);
+			//smpl_dly = __find_best_delay(candidate_dly);
+			spsdc_pr(DEBUG, "set sampling delay to: %d\n", smpl_dly);
+	
+			timing.val = readl(&host->base->sd_timing_config0);
+			value = timing.val;
+			spsdc_dly_set(&timing, item, smpl_dly);
+			writel(timing.val, &host->base->sd_timing_config0);
+			host->tuning_info.tuning_finish = 1;
+		}
+	}
+	host->tuning_info.enable_tuning = 1;
+	spsdc_pr(DEBUG,"tuning: %#x old: %#x\n",  timing.val, value);
+	pr_info("tuning: %#x old: %#x\n",  timing.val, value);
+	timing.val = readl(&host->base->sd_timing_config0);
+	host->tuning_info.tuning_finish = 1;
+
+	return 0;
+}
+
+
+#endif
+
 static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 {
 	struct spsdc_host *host = mmc_priv(mmc);
@@ -1074,6 +1241,9 @@ static const struct mmc_host_ops spsdc_ops = {
 	.start_signal_voltage_switch = spmmc_start_signal_voltage_switch,
 #endif
 	.enable_sdio_irq = spsdc_enable_sdio_irq,
+#ifdef SPMMC_SUPPORT_EXECUTE_TUNING
+	.execute_tuning = spsdc_execute_tuning,
+#endif
 };
 
 static void tsklet_func_finish_req(unsigned long data)

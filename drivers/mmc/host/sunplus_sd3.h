@@ -21,7 +21,7 @@
 #define SPSDC_CLK_220M	222750000
 
 #define SPSDC_MIN_CLK	400000
-#define SPSDC_MAX_CLK	111375000
+#define SPSDC_MAX_CLK	190005000
 #define SPSDC_MAX_BLK_COUNT 65535
 
 #if defined(CONFIG_SOC_SP7350)
@@ -37,10 +37,13 @@
 /* #define SPMMC_EMMC_VCCQ_1V8 */
 
 #define SPMMC_SUPPORT_VOLTAGE_1V8
+//#define SPMMC_SUPPORT_EXECUTE_TUNING
 
 #ifdef SPMMC_SUPPORT_VOLTAGE_1V8
 //#define HW_VOLTAGE_1V8
 #endif
+
+#define SPMMC_MAX_TUNABLE_DLY 7
 
 //#define SPMMC_SDIO_1V8
 
@@ -257,19 +260,32 @@ struct spsdc_regs {
 	u32 __rsvd_regs(32);
 };
 
+
+union spmmc_softpad_config {
+	u32 val;
+#define SPMMC_MAX_SOFTPAD_LEVEL 5
+	struct {
+		u32 rd_rsp_level	: 2;
+		u32 resv1		: 2;
+		u32 rd_dat_level	: 2;
+		u32 resv2		: 2;
+	} bits;
+};
+
+enum {
+	RD_RSP_DLY = 0,
+	WR_CMD_DLY = 1,
+	RD_DAT_DLY = 2,
+	RD_CRC_DLY = 3,
+	WR_DAT_DLY = 4,
+};
+
 struct spsdc_tuning_info {
 	int enable_tuning;
 	int need_tuning;
+	u32 tuning_finish  : 1;	
 #define SPSDC_MAX_RETRIES (8 * 8)
 	int retried; /* how many times has been retried */
-
-	u32 rd_crc_dly:3;
-	u32 rd_dat_dly:3;
-	u32 rd_rsp_dly:3;
-	u32 wr_cmd_dly:3;
-	u32 wr_dat_dly:3;
-	u32 clk_dly:3;
-
 };
 
 struct spsdc_compatible {
@@ -277,9 +293,55 @@ struct spsdc_compatible {
 	int source_clk;
 };
 
+struct pad_ctl_regs {
+	unsigned int pull_down_enable[4];  // 101.0 - 101.3
+	unsigned int driving_selector0[4]; // 101.4 - 101.7
+	unsigned int driving_selector1[4]; // 101.8 - 101.11
+	unsigned int driving_selector2[4]; // 101.12 - 101.15
+	unsigned int driving_selector3[4]; // 101.16 - 101.19
+	unsigned int reserved_20[2];       // 101.20 - 101.21
+	unsigned int sd_config[1];         // 101.22
+	unsigned int sdio_config[1];       // 101.23
+	unsigned int reserved_24[1];       // 101.24
+	unsigned int gpio_first[4];        // 101.25
+	unsigned int reserved_29[3];       // 101.29 - 101.31
+};
+
+union spmmc_reg_timing_config0 {
+	u32 val;
+
+	struct {
+		u32 sd_clk_dly_sel	: 3;
+		u32 resv1		: 1;
+		u32 sd_wr_dat_dly_sel	: 3;
+		u32 resv2		: 1;
+		u32 sd_wr_cmd_dly_sel	: 3;
+		u32 resv3		: 1;
+		u32 sd_rd_rsp_dly_sel	: 3;
+		u32 resv4		: 1;
+		u32 sd_rd_dat_dly_sel	: 3;
+		u32 resv5		: 1;
+		u32 sd_rd_crc_dly_sel	: 3;
+		u32 resv6		: 1;
+	} bits;
+};
+
+struct pad_soft_regs {
+	unsigned int emmc_sftpad_ctl[3];  // 102.0 - 101.2
+	unsigned int sdind_sftpad_ctl[2]; // 101.3 - 101.4
+	unsigned int sd_sftpad_ctl[2]; // 101.5 - 101.6
+	unsigned int sdio_sftpad_ctl[2]; // 101.7 - 101.8
+	unsigned int reserved_29[23];       // 101.9 - 101.31
+};
+
+
 
 struct spsdc_host {
 	struct spsdc_regs *base;
+	struct pad_ctl_regs *pad_base;
+	struct pad_soft_regs *soft_base;
+	struct spsdc_tuning_info tuning_info;
+	u32 driving;
 	struct clk *clk;
 	struct reset_control *rstc;
 	int mode; /* SD/SDIO/eMMC */
@@ -306,7 +368,20 @@ struct spsdc_host {
 	int dma_int_threshold;
 	int dma_use_int; /* should raise irq when dma done */
 	struct sg_mapping_iter sg_miter; /* for pio mode to access sglist */
-	struct spsdc_tuning_info tuning_info;
 };
+
+
+/****** sysfs files ******/
+struct spmmc_config {
+	char *name;
+#define SPMMC_CFG_SUCCESS	0
+#define SPMMC_CFG_FAIL		-1
+#define SPMMC_CFG_REINIT	1 /* succeeded and need re-initialize */
+	int (*store)(struct spsdc_host *host, const char *arg);
+	int (*show)(struct spsdc_host *host, char *buf);
+};
+
+extern struct spmmc_config spmmc_test_configs[];
+
 
 #endif /* #ifndef __SPSDC_H__ */
