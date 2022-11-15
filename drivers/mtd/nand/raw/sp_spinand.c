@@ -169,7 +169,7 @@ int spi_nand_trigger_and_wait_dma(struct sp_spinand_info *info)
 	value |= SPINAND_DMA_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
-	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	ret = wait_event_timeout(info->wq, !info->busy, HZ/10);
 	if (!ret) {
 		if (info->busy) {
 			SPINAND_LOGE("wait dma done timeout!\n");
@@ -204,7 +204,7 @@ int spi_nand_trigger_and_wait_pio(struct sp_spinand_info *info)
 		| SPINAND_USR_CMD_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
-	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	ret = wait_event_timeout(info->wq, !info->busy, HZ/10);
 	if (!ret) {
 		if (info->busy) {
 			SPINAND_LOGE("wait pio done timeout!\n");
