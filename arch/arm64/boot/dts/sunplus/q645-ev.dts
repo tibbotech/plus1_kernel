@@ -1143,7 +1143,7 @@
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <120000000>;
 		disable-wp;
 		cap-sd-highspeed;
 		no-sdio;
