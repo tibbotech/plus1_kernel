@@ -27,7 +27,8 @@
 #define SPMMC_MAX_CLK			52000000
 #define SPMMC_MAX_BLK_COUNT		65536
 #define SPMMC_MAX_TUNABLE_DLY	7
-#define SPMMC_TIMEOUT			500000
+#define SPMMC_TIMEOUT_US		500000
+#define SPMMC_POLL_DELAY_US		10
 
 #define SPMMC_CARD_MEDIATYPE_SRCDST_REG 0x0000
 #define SPMMC_MEDIA_TYPE		GENMASK(2, 0)
@@ -163,7 +164,6 @@ struct spmmc_host {
 	void __iomem *base;
 	struct clk *clk;
 	struct reset_control *rstc;
-	spinlock_t lock; /* Prevent races with irq handler */
 	struct mmc_host *mmc;
 	struct mmc_request *mrq; /* current mrq */
 	int irq;
@@ -178,7 +178,7 @@ static inline int spmmc_wait_finish(struct spmmc_host *host)
 	u32 state;
 
 	return readl_poll_timeout(host->base + SPMMC_SD_STATE_REG, state,
-					(state & SPMMC_SDSTATE_FINISH), 10, SPMMC_TIMEOUT);
+					(state & SPMMC_SDSTATE_FINISH), SPMMC_POLL_DELAY_US, SPMMC_TIMEOUT_US);
 }
 
 static inline int spmmc_wait_sdstatus(struct spmmc_host *host, unsigned int status_bit)
@@ -186,7 +186,7 @@ static inline int spmmc_wait_sdstatus(struct spmmc_host *host, unsigned int stat
 	u32 status;
 
 	return readl_poll_timeout(host->base + SPMMC_SD_STATUS_REG, status,
-					(status & status_bit), 10, SPMMC_TIMEOUT);
+					(status & status_bit), SPMMC_POLL_DELAY_US, SPMMC_TIMEOUT_US);
 }
 
 #define spmmc_wait_rspbuf_full(host) spmmc_wait_sdstatus(host, SPMMC_SDSTATUS_RSP_BUF_FULL)
@@ -351,7 +351,7 @@ static void spmmc_sw_reset(struct spmmc_host *host)
 	writel(value, host->base + SPMMC_HW_DMA_CTRL_REG);
 	writel(0x7, host->base + SPMMC_SD_RST_REG);
 	readl_poll_timeout_atomic(host->base + SPMMC_SD_HW_STATE_REG, value,
-				  !(value & BIT(6)), 1, SPMMC_TIMEOUT);
+				  !(value & BIT(6)), 1, SPMMC_TIMEOUT_US);
 }
 
 static void spmmc_prepare_cmd(struct spmmc_host *host, struct mmc_command *cmd)
@@ -507,8 +507,8 @@ static void spmmc_send_stop_cmd(struct spmmc_host *host)
 	value |= FIELD_PREP(SPMMC_SDINT_SDCMPEN, 0);
 	writel(value, host->base + SPMMC_SD_INT_REG);
 	spmmc_trigger_transaction(host);
-	readl_poll_timeout_atomic(host->base + SPMMC_SD_STATE_REG, value,
-				  (value & SPMMC_SDSTATE_FINISH), 1, SPMMC_TIMEOUT);
+	readl_poll_timeout(host->base + SPMMC_SD_STATE_REG, value,
+				  (value & SPMMC_SDSTATE_FINISH), 1, SPMMC_TIMEOUT_US);
 }
 
 static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
@@ -604,7 +604,7 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
  * 1. if several continuous delays are acceptable, we choose a middle one;
  * 2. otherwise, we choose the first one.
  */
-static inline int __find_best_delay(u8 candidate_dly)
+static inline int spmmc_find_best_delay(u8 candidate_dly)
 {
 	int f, w, value;
 
@@ -713,15 +713,12 @@ static irqreturn_t spmmc_irq(int irq, void *dev_id)
 	struct spmmc_host *host = dev_id;
 	u32 value = readl(host->base + SPMMC_SD_INT_REG);
 
-	spin_lock(&host->lock);
 	if ((value & SPMMC_SDINT_SDCMP) && (value & SPMMC_SDINT_SDCMPEN)) {
 		value &= ~SPMMC_SDINT_SDCMPEN;
 		value |= SPMMC_SDINT_SDCMPCLR;
 		writel(value, host->base + SPMMC_SD_INT_REG);
-		spmmc_finish_request(host, host->mrq);
+		return IRQ_WAKE_THREAD;
 	}
-	spin_unlock(&host->lock);
-
 	return IRQ_HANDLED;
 }
 
@@ -826,7 +823,7 @@ static int spmmc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 	host->tuning_info.enable_tuning = 1;
 
 	if (candidate_dly) {
-		smpl_dly = __find_best_delay(candidate_dly);
+		smpl_dly = spmmc_find_best_delay(candidate_dly);
 		value = readl(host->base + SPMMC_SD_TIMING_CONFIG0_REG);
 		value &= ~SPMMC_SD_READ_RESPONSE_DELAY;
 		value |= FIELD_PREP(SPMMC_SD_READ_RESPONSE_DELAY, smpl_dly);
@@ -851,11 +848,8 @@ static const struct mmc_host_ops spmmc_ops = {
 static irqreturn_t spmmc_func_finish_req(int irq, void *dev_id)
 {
 	struct spmmc_host *host = dev_id;
-	unsigned long flags;
 
-	spin_lock_irqsave(&host->lock, flags);
 	spmmc_finish_request(host, host->mrq);
-	spin_unlock_irqrestore(&host->lock, flags);
 
 	return IRQ_HANDLED;
 }
@@ -908,7 +902,6 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	if (ret)
 		goto probe_free_host;
 
-	spin_lock_init(&host->lock);
 	mmc->ops = &spmmc_ops;
 	mmc->f_min = SPMMC_MIN_CLK;
 	if (mmc->f_max > SPMMC_MAX_CLK)
@@ -934,6 +927,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	pm_runtime_enable(&pdev->dev);
 	mmc_add_host(mmc);
 
+	dev_info(&pdev->dev, "sunplus-mmc V.01\n");
 	return ret;
 
 probe_free_host:
