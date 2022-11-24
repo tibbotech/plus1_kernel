@@ -643,12 +643,12 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 			wake_up(&spi2c->wait);
 		} else if (spi2c_irq->irq_flag.addr_nack || spi2c_irq->irq_flag.data_nack) {
 			if (spi2c_irq->rw_state == SPI2C_STATE_DMA_WR)
-				dev_err(spi2c->dev, "DMA write NACK!\n");
+				dev_dbg(spi2c->dev, "DMA write NACK!\n");
 			else {
 				if (spi2c_irq->irq_flag.addr_nack)
-					dev_warn(spi2c->dev, "write addr NACK!\n");
+					dev_dbg(spi2c->dev, "write addr NACK!\n");
 				if (spi2c_irq->irq_flag.data_nack)
-					dev_err(spi2c->dev, "write data NACK!\n");
+					dev_dbg(spi2c->dev, "write data NACK!\n");
 			}
 
 			spi2c_irq->ret = -ENXIO;
@@ -696,9 +696,9 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 	case SPI2C_STATE_DMA_RD:
 		if (spi2c_irq->irq_flag.addr_nack || spi2c_irq->irq_flag.data_nack) {
 			if (spi2c_irq->rw_state == SPI2C_STATE_DMA_RD)
-				dev_err(spi2c->dev, "DMA read NACK!!\n");
+				dev_dbg(spi2c->dev, "DMA read NACK!!\n");
 			else
-				dev_err(spi2c->dev, "read NACK!!\n");
+				dev_dbg(spi2c->dev, "read NACK!!\n");
 
 			spi2c_irq->ret = -ENXIO;
 			spi2c_irq->irq_flag.active_done = 1;
