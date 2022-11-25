@@ -161,9 +161,9 @@ int spi_nand_trigger_and_wait_dma(struct sp_spinand_info *info)
 	value |= SPINAND_DMA_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
-	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	ret = wait_event_timeout(info->wq, !info->busy, HZ/10);
 	if (!ret) {
-		if(info->busy) {
+		if (info->busy) {
 			SPINAND_LOGE("wait dma done timeout!\n");
 			//dump_spi_regs(info);
 			ret = -ETIME;
@@ -196,9 +196,9 @@ int spi_nand_trigger_and_wait_pio(struct sp_spinand_info *info)
 		| SPINAND_USR_CMD_TRIGGER;
 	writel(value, &regs->spi_auto_cfg);
 
-	ret = wait_event_interruptible_timeout(info->wq, !info->busy, HZ/10);
+	ret = wait_event_timeout(info->wq, !info->busy, HZ/10);
 	if (!ret) {
-		if(info->busy) {
+		if (info->busy) {
 			SPINAND_LOGE("wait pio done timeout!\n");
 			//dump_spi_regs(info);
 			ret = -ETIME;
@@ -300,8 +300,8 @@ int spi_nand_reset(struct sp_spinand_info *info)
 		| SPINAND_USRCMD_ADDRSZ(0);
 	writel(value, &regs->spi_ctrl);
 
-	value = SPINAND_READ_TIMING(CONFIG_SPINAND_READ_TIMING_SEL);;
-	writel(value ,&regs->spi_timing);
+	value = SPINAND_READ_TIMING(CONFIG_SPINAND_READ_TIMING_SEL);
+	writel(value, &regs->spi_timing);
 
 	value = SPINAND_LITTLE_ENDIAN
 		| SPINAND_TRS_MODE;
