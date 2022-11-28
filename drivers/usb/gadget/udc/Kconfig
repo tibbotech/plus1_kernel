@@ -165,6 +165,13 @@ config USB_SP_UDC
  	help
 	   This option selects the USB device controller for Sunplus SP7021.
 
+config USB_SP_UDC2
+ 	tristate "Sunplus USB Device Controller ver2.0"
+ 	depends on SOC_Q645
+ 	select USB_GADGET_DUALSPEED
+ 	help
+	   This option selects the USB device controller ver2.0.
+
 # if there's only one gadget driver, using only two bulk endpoints,
 # don't waste memory for the other endpoints
 config USB_PXA25X_SMALL
