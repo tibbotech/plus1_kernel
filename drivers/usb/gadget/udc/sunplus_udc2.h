@@ -1,5 +1,5 @@
 /*
- * linux/drivers/usb/gadget/sp_udc.h
+ * linux/drivers/usb/gadget/sunplus_udc2.h
  * Sunplus on-chip full/high speed USB device controllers
  *
  * Copyright (C) 2004-2007 Herbert Pötzl - Arnaud Patard
@@ -11,12 +11,11 @@
  * (at your option) any later version.
  */
 
-#ifndef _SP_UDC_H
-#define _SP_UDC_H
+#ifndef _SUNPLUS_UDC2_H
+#define _SUNPLUS_UDC2_H
 
 #include <linux/interrupt.h>
 #include <linux/usb/gadget.h>
-
 
 //#define CONFIG_BOOT_ON_ZEBU
 
@@ -134,22 +133,22 @@
 #define LTRB_IOC			(1<<5)
 #define LTRB_TYPE(x)			((x & 0xfc00) >> 10)
 
-/*Device controller event TRB*/
+/* Device controller event TRB */
 #define ETRB_CC(x)			((x>>24)&0xFF)		/* entry2 */
 #define ETRB_C(x)			((x)&(1<<0))
 #define ETRB_TYPE(x)			((x>>10)&0x3F)
 
-/*Setup stage event TRB*/
-#define ETRB_SDL(x)			(x)			/* entry0:wValue,bRequest,bmRequestType */
-#define ETRB_SDH(x)			(x)			/* entry1:wLength,wIndex */
+/* Setup stage event TRB */
+#define ETRB_SDL(x)			(x)			/* entry0:wValue, bRequest,bmRequestType */
+#define ETRB_SDH(x)			(x)			/* entry1:wLength, wIndex */
 #define	ETRB_ENUM(x)			((x>>16)&0xF)		/* entry3 */
 
-/*Transfer event TRB*/
+/* Transfer event TRB */
 #define	ETRB_TRBP(x)			(x)			/* entry0 */
 #define	ETRB_LEN(x)			(x&0xFFFFFF)		/* entry2 */
 #define	ETRB_EID(x)			((x>>16)&0x1F)		/* entry3 */
 
-/*SOF event TRB*/
+/* SOF event TRB */
 #define ETRB_FNUM(x)			(x&0x1FFFF)		/* entry2 */
 #define	ETRB_SLEN(x)			((x>>11)&0x1FFF)
 
@@ -163,7 +162,7 @@
 #define DEV_EVENT_TRB			48
 #define SOF_EVENT_TRB			49
 
-/*completion codes*/
+/* completion codes */
 #define INVALID_TRB			0
 #define SUCCESS_TRB			1
 #define DATA_BUF_ERR			2
@@ -384,10 +383,10 @@ struct udc_reg {
 };
 
 struct sp_request {
-	struct list_head	 queue;		/* ep's requests */
-	struct usb_request	 req;
-	struct trb_data *transfer_trb;		/* pointer transfer trb*/
-	uint8_t		*buffer;
+	struct list_head	queue;			/* ep's requests */
+	struct usb_request	req;
+	struct trb_data		*transfer_trb;		/* pointer transfer trb*/
+	uint8_t			*buffer;
 };
 
 /* USB Device endpoint struct */

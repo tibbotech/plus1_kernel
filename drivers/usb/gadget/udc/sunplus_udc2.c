@@ -714,7 +714,7 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 		if ((ep->is_in && (ep_num == EP0)) || (!ep->is_in && (ep_num != EP0))) {
 			req = list_entry (ep->queue.next, struct sp_request, queue);
 			memcpy((uint8_t *)req->req.buf, data_buf, len_zh);
-			__dma_unmap_area(data_buf, len_zh, DMA_FROM_DEVICE);
+			dma_sync_single_for_cpu(udc->dev, ep_trb->ptr, len_zh, DMA_FROM_DEVICE);
 		}
 	}
 #else
@@ -726,7 +726,7 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 		else
 			len_zh = len_zh * CACHE_LINE_SIZE;
 
-		__dma_unmap_area(data_buf, len_zh, DMA_FROM_DEVICE);
+		dma_sync_single_for_cpu(udc->dev, ep_trb->ptr, len_zh, DMA_FROM_DEVICE);
 	}
 #endif
 
@@ -1190,11 +1190,11 @@ static void hal_udc_fill_transfer_trb(struct trb_data *t_trb, struct udc_endpoin
 	if (!ep->is_in) {
 		tmp_trb->dir = 0;	/* 0 is out */
 		if (ep->transfer_len)
-			__dma_unmap_area(ep->transfer_buff, len_zh, DMA_FROM_DEVICE);
+			dma_sync_single_for_cpu(ep->dev->dev, tmp_trb->ptr, len_zh, DMA_FROM_DEVICE);
 	} else {
 		tmp_trb->dir = 1;	/* 1 is IN */
 		if (ep->transfer_len)
-			__flush_dcache_area(ep->transfer_buff, len_zh);
+			dma_sync_single_for_device(ep->dev->dev, tmp_trb->ptr, len_zh, DMA_TO_DEVICE);
 	}
 
 	if (ep->type == UDC_EP_TYPE_ISOC)
@@ -1383,7 +1383,7 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 			len_zh = len_zh * CACHE_LINE_SIZE;
 
 		if (ep->is_in) {
-			__flush_dcache_area(data, len_zh);
+			dma_sync_single_for_device(udc->dev, virt_to_phys(req->buffer), len_zh, DMA_TO_DEVICE);
 
 			if (EP_NUM(ep_addr) == EP0)
 				memcpy(req->buffer, (uint8_t *)data, USB_COMP_EP0_BUFSIZ);
@@ -2482,7 +2482,6 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 	return 0;
 }
 
-#if 1
 void usb_switch(int device)
 {
 	if (device) {
@@ -2513,7 +2512,6 @@ static ssize_t udc_ctrl_store(struct device *dev, struct device_attribute *attr,
 	return count;
 }
 static DEVICE_ATTR_RW(udc_ctrl);
-#endif
 
 static int sp_udc_probe(struct platform_device *pdev)
 {
@@ -2587,11 +2585,11 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->gadget.ep0 = &(udc->ep_data[0].ep);
 	udc->gadget.name = DRIVER_NAME;
 	udc->gadget.max_speed = USB_SPEED_HIGH;
-	#if 1	/* High Speed */
+#if 1	/* High Speed */
 	udc->def_run_full_speed = false;
-	#else	/* Full Speed */
+#else	/* Full Speed */
 	udc->def_run_full_speed = true;
-	#endif
+#endif
 
 	sp_udc_ep_init(udc);
 	retval = request_irq(udc->irq_num, sp_udc_irq,
@@ -2607,13 +2605,13 @@ static int sp_udc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, udc);
 	tasklet_init(&udc->event_task, (pfunc) handle_event, (unsigned long)udc);
 
-	#if 0
+#if 0
 	timer_setup(&udc->sof_polling_timer, udc_sof_polling, 0);
 	udc->sof_polling_timer.expires = jiffies + HZ / 20;
 
 	timer_setup(&udc->before_sof_polling_timer, udc_before_sof_polling, 0);
 	udc->before_sof_polling_timer.expires = jiffies + 1 * HZ;
-	#endif
+#endif
 
 	udc->bus_reset_finish = false;
 	udc->frame_num = 0;
@@ -2688,6 +2686,9 @@ static int sp_udc_remove(struct platform_device *pdev)
 
 	UDC_LOGD("%s start\n", __func__);
 
+	device_remove_file(&pdev->dev, &dev_attr_udc_ctrl);
+	device_remove_file(&pdev->dev, &dev_attr_debug);
+
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver) {
 		UDC_LOGE("+%s.%d\n", __func__, __LINE__);
@@ -2706,8 +2707,12 @@ static int sp_udc_remove(struct platform_device *pdev)
 	iounmap(udc->reg);
 	platform_set_drvdata(pdev, NULL);
 	sp_udc_arry[udc->port_num] = NULL;
+
+#if 0
 	del_timer(&udc->before_sof_polling_timer);
 	del_timer(&udc->sof_polling_timer);
+#endif
+
 	kfree(udc);
 
 	UDC_LOGI("%s success\n", __func__);
