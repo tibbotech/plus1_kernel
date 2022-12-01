@@ -45,16 +45,18 @@ struct ipi_info {
  * @rproc: pointer to remoteproc instance
  * @ipis: interrupt processor interrupts statistics
  * @fw_mems: list of firmware memories
- * @mbox: mbox register to trigger remote
+ * @mbox0to2: mbox register for cpu0(local) to cpu2(remote)
+ * @mbox2to0: mbox register for cpu2(remote) to cpu0(local)
  * @boot: boot register to boot remote
  */
 struct sp_rproc_pdata {
 	struct rproc *rproc;
 	struct ipi_info ipis[MAX_NUM_VRINGS];
 	struct list_head fw_mems;
-	u32 __iomem *mbox;
+	u32 __iomem *mbox0to2;
 	u32 __iomem *boot;
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	u32 __iomem *mbox2to0; // read to clear intr
 	struct reset_control *rstc; // FIXME: RST_A926 not worked
 #endif
 };
@@ -82,7 +84,7 @@ static void ipi_kick(void)
 
 #define RPROC_TRIGGER \
 do { \
-	writel(local->ipis[i].notifyid, local->mbox); \
+	writel(local->ipis[i].notifyid, local->mbox0to2); \
 } while (0)
 
 static void kick_pending_ipi(struct rproc *rproc)
@@ -164,7 +166,7 @@ static int sp_rproc_stop(struct rproc *rproc)
 	reset_control_assert(local->rstc);
 #else
 	// send remote reset signal
-	writel(0xDEADC0DE, local->mbox);
+	writel(0xDEADC0DE, local->mbox0to2);
 #endif
 
 	return 0;
@@ -254,6 +256,11 @@ static struct rproc_ops sp_rproc_ops = {
 
 static irqreturn_t sp_remoteproc_interrupt(int irq, void *dev_id)
 {
+	struct sp_rproc_pdata *local = rproc->priv;
+
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	readl(local->mbox2to0); // read to clear intr
+#endif
 	ipi_kick();
 
 	return IRQ_HANDLED;
@@ -295,10 +302,10 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		goto probe_failed;
 	}
 
-	local->mbox = devm_platform_ioremap_resource(pdev, 0);
-	if (IS_ERR((void *)local->mbox)) {
-		ret = PTR_ERR((void *)local->mbox);
-		dev_err(&pdev->dev, "ioremap mbox reg failed: %d\n", ret);
+	local->mbox0to2 = devm_platform_ioremap_resource(pdev, 0);
+	if (IS_ERR((void *)local->mbox0to2)) {
+		ret = PTR_ERR((void *)local->mbox0to2);
+		dev_err(&pdev->dev, "ioremap mbox0to2 reg failed: %d\n", ret);
 		goto probe_failed;
 	}
 
@@ -308,7 +315,15 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "ioremap boot reg failed: %d\n", ret);
 		goto probe_failed;
 	}
+
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	local->mbox2to0 = devm_platform_ioremap_resource(pdev, 2);
+	if (IS_ERR((void *)local->mbox2to0)) {
+		ret = PTR_ERR((void *)local->mbox2to0);
+		dev_err(&pdev->dev, "ioremap mbox2to0 reg failed: %d\n", ret);
+		goto probe_failed;
+	}
+
 	local->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(local->rstc)) {
 		ret = PTR_ERR(local->rstc);
