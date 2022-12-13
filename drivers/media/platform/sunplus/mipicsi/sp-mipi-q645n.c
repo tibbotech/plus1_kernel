@@ -660,7 +660,7 @@ static int sp_mipi_pipeline_s_fmt(struct sp_mipi_device *mipi,
 
 	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 	*format = fmt;
 	return 0;
 #endif
@@ -733,6 +733,8 @@ static int sp_mipi_pipeline_s_stream(struct sp_mipi_device *mipi, int state)
 
 #if defined(MIPI_CSI_BIST)
 	sp_mipicsi_bist_control(mipi, state);
+	return 0;
+#elif defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 	return 0;
 #endif
 
@@ -1003,7 +1005,7 @@ static int sp_mipi_try_fmt(struct sp_mipi_device *mipi, struct v4l2_format *f,
 
 	ret = v4l2_subdev_call(mipi->source, pad, set_fmt,
 			       &pad_cfg, &format);
-#if defined(MIPI_CSI_BIST) 
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 	ret = 0;
 #else
 	if (ret < 0)
@@ -1606,7 +1608,7 @@ static const struct sp_mipi_format sp_mipi_formats[] = {
 	},
 };
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 static int sp_mipi_formats_init_bist(struct sp_mipi_device *mipi)
 {
 	const struct sp_mipi_format *sd_fmts[ARRAY_SIZE(sp_mipi_formats)];
@@ -1887,7 +1889,7 @@ static int sp_mipi_graph_init(struct sp_mipi_device *mipi)
 
 	dev_dbg(mipi->dev, "%s, %d\n", __func__, __LINE__);
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 	sp_mipi_formats_init_bist(mipi);
 	return 0;
 #endif
@@ -1945,7 +1947,8 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 	}
 	mipi->id = id;
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
+	mipi->bus.num_data_lanes = 1;	// The default is 1 lane
 	goto init_mem;
 #endif
 
@@ -2001,7 +2004,7 @@ static int sp_mipi_parse_dt(struct sp_mipi_device *mipi)
 
 	dev_dbg(mipi->dev, "Found connected device %pOFn\n", np_source_node);
 
-#if defined(MIPI_CSI_BIST)
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR) || defined(MIPI_CSI_QUALITY)
 init_mem:
 #endif
 	ret = of_reserved_mem_device_init(mipi->dev);

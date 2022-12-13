@@ -17,6 +17,8 @@
 
 /* Compliler switch */
 //#define MIPI_CSI_BIST			/* Enable MIPI-CSI BIST function */
+//#define MIPI_CSI_XTOR			/* Import test patterns from MIPI XTOR */
+//#define MIPI_CSI_QUALITY		/* Import test patterns from MIPI PHY */
 //#define BIST_RAW12_TO_RAW10	/* Use internal patten RAW12 gray bar to test RAW10 format */
 
 #define CSI_DRV_NAME		"sp_mipi_csi-rx"
