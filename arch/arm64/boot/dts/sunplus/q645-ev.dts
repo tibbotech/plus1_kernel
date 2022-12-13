@@ -1145,6 +1145,7 @@
 		cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
 		max-frequency = <120000000>;
+		sunplus-driver-type = <0>;
 		disable-wp;
 		cap-sd-highspeed;
 		no-sdio;
@@ -1162,6 +1163,7 @@
 		pinctrl-0 = <&sdio_pins>;
 		bus-width = <4>;
 		max-frequency = <72000000>;
+		sunplus-driver-type = <1>;
 		non-removable;
 		disable-wp;
 		cap-sd-highspeed;

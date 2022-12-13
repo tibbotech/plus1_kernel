@@ -274,14 +274,14 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		break;
 	case MMC_TIMING_UHS_SDR50:
 		if(host->mode == SPSDC_MODE_SDIO)
-			reg_timing.val = 0x444340;
+			reg_timing.val = 0x666550;
 		else
 			reg_timing.val = 0x333110;
 		timing_name = "sd uhs SDR50";
 		break;
 	case MMC_TIMING_UHS_SDR104:
 		if(host->mode == SPSDC_MODE_SDIO)
-			reg_timing.val = 0x444340;
+			reg_timing.val = 0x666330;
 		else
 			reg_timing.val = 0x444340;
 		timing_name = "sd uhs SDR104";
@@ -1178,6 +1178,18 @@ static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
 	writel(value, &host->base->sd_int);
 }
 
+static int spmmc_select_drive_strength(
+	struct mmc_card *card, unsigned int max_dtr,
+	int host_drv, int card_drv, int *drv_type)
+{
+	struct spsdc_host *host = mmc_priv(card->host);
+
+	*drv_type = 0; /* Default driver */
+	if (mmc_driver_type_mask(host->target_drv) & card_drv)
+		*drv_type = host->target_drv;
+	return *drv_type;
+}
+
 static const struct spsdc_compatible sp_sd_645_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
@@ -1244,6 +1256,7 @@ static const struct mmc_host_ops spsdc_ops = {
 #ifdef SPMMC_SUPPORT_EXECUTE_TUNING
 	.execute_tuning = spsdc_execute_tuning,
 #endif
+	.select_drive_strength = spmmc_select_drive_strength,
 };
 
 static void tsklet_func_finish_req(unsigned long data)
@@ -1272,6 +1285,9 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	spsdc_pr(INFO, "%s\n", __func__);
 
 	host = mmc_priv(mmc);
+	if (!of_property_read_u32(pdev->dev.of_node, "sunplus-driver-type", &host->target_drv))
+		host->target_drv = 0;	//0:TypeB 1:TypeA 2:TypeC 3:TypeD		
+
 	host->mmc = mmc;
 	host->power_state = MMC_POWER_OFF;
 	host->dma_int_threshold = 1024;

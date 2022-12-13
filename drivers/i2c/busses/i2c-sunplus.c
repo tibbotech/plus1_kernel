@@ -1321,7 +1321,6 @@ static int sp_i2c_probe(struct platform_device *pdev)
 {
 	struct sp_i2c_dev *spi2c;
 	struct i2c_adapter *p_adap;
-	unsigned int i2c_clk_freq;
 	int device_id = 0;
 	int ret = SPI2C_SUCCESS;
 	struct device *dev = &pdev->dev;
@@ -1336,9 +1335,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	if (!spi2c)
 		return -ENOMEM;
 
-	if (!of_property_read_u32(pdev->dev.of_node, "clock-frequency", &i2c_clk_freq))
-		spi2c->i2c_clk_freq = i2c_clk_freq;
-	else
+	if (!of_property_read_u32(pdev->dev.of_node, "clock-frequency", &spi2c->i2c_clk_freq))
 		spi2c->i2c_clk_freq = SP_I2C_STD_FREQ * 1000;
 
 	dev_mode = of_device_get_match_data(&pdev->dev);
