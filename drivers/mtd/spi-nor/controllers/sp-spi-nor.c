@@ -569,7 +569,7 @@ static int sp_spi_nor_xfer_dmaread(struct spi_nor *nor, u8 opcode, u32 addr, u8 
 			break;
 		}
 	}
-
+	
 	sp_spi_cfg12_set(spi_reg, opcode);
 
 	ctrl = readl(&spi_reg->spi_ctrl) & (CLEAR_CUST_CMD & (~AUTO_SPI_WEL_EN));
@@ -927,6 +927,8 @@ static ssize_t sp_spi_nor_read(struct spi_nor *nor, loff_t from, size_t len, u_c
 
 	//dev_dbg(nor->dev, "read cmd 0x%x addr 0x%x len 0x%x\n", opcode, offset, len);
 #if (SP_SPINOR_DMA)
+	if (opcode == 0x3)
+		opcode = 0xb; //winbond 03 command has 50 MHz limitation 
 	sp_spi_nor_xfer_dmaread(nor, opcode, offset, 0x3, buf, len);
 #else
 	sp_spi_nor_xfer_read(nor, opcode, offset, 0x3, buf, len);
