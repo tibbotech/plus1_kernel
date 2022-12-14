@@ -368,6 +368,9 @@ struct spsdc_host {
 	int dma_int_threshold;
 	int dma_use_int; /* should raise irq when dma done */
 	struct sg_mapping_iter sg_miter; /* for pio mode to access sglist */
+	int target_drv;
+	int curr_drv;
+
 };
 
 
