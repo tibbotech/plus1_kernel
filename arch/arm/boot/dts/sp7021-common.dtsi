@@ -692,6 +692,14 @@
 			resets = <&rstc RST_DISP_PWM>;
 		};
 
+		spsoc-pcm-driver {
+			compatible = "sunplus,Q628-audio-pcm";
+		};
+
+		aud-codec {
+			compatible = "sunplus,Q628-audio-codec";
+		};
+
 		audio: audio@0x9c001e00 {
 			compatible = "sunplus,sp7021-audio";
 			reg = <0x9c001e00 0x680>;
