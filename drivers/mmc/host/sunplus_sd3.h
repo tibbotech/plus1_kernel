@@ -44,6 +44,7 @@
 #endif
 
 #define SPMMC_MAX_TUNABLE_DLY 7
+#define SPMMC_TIMEOUT_US 50000000
 
 //#define SPMMC_SDIO_1V8
 
