@@ -1185,7 +1185,7 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 	u8 *r_buf;
 	u8 *w_buf;
 	int ret = SPI2C_SUCCESS;
-	int i = 0;
+	int i,j;
 
 	ret = pm_runtime_get_sync(spi2c->dev);
 
@@ -1210,8 +1210,8 @@ static int sp_master_xfer(struct i2c_adapter *adap, struct i2c_msg *msgs, int nu
 		spi2c_cmd->slave_addr = msgs[i].addr;
 		if (msgs[i].flags & I2C_M_NOSTART) {
 			restart_write_cnt = msgs[i].len;
-			for (i = 0; i < restart_write_cnt; i++)
-				restart_w_data[i] = msgs[i].buf[i];
+			for (j = 0; j < restart_write_cnt; j++)
+				restart_w_data[j] = msgs[i].buf[j];
 
 			restart_en = 1;
 			continue;
