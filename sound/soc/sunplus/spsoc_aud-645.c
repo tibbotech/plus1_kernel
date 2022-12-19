@@ -1,50 +1,20 @@
 /*
- * File:         sound/soc/sunplus/spsoc-aud3502.c
- * Author:       <@sunplus.com>
+ * ALSA SoC Q645 aud driver
  *
- * Created:      Mar 8 2013
- * Description:  Board driver for aud3502 sound chip
+ * Author:	 <@sunplus.com>
  *
- */
-
+*/
 #include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/platform_device.h>
-#include <linux/slab.h>
-#include <linux/dma-mapping.h>
-#include <linux/device.h>
-#include <linux/delay.h>
-
-#include <sound/core.h>
-#include <sound/pcm.h>
 #include <sound/pcm_params.h>
 #include <sound/soc.h>
-
-#include "spsoc_util-645.h"
-#include "spsoc_pcm-645.h"
 #include "aud_hw.h"
-
-/***********************************************************
-*		Feature Definition
-************************************************************/
-#define En_SPDIFIN0
-#define En_SPDIFIN1
-#define En_SPDIFIN2
-
-#ifdef En_AUD_BT
-	#undef En_SPDIFIN1
-#endif
-
-#ifdef En_SPDIFIN1
-	#undef En_AUD_BT
-#endif
+#include "spsoc_util-645.h"
 
 static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	                   struct snd_pcm_hw_params *params)
 {
-	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);//substream->private_data;
-	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);//rtd->cpu_dai;
+	struct snd_soc_pcm_runtime *rtd = asoc_substream_to_rtd(substream);
+	struct snd_soc_dai *cpu_dai = asoc_rtd_to_cpu(rtd, 0);
 	unsigned int pll_out;
 	int ret = 0;
 
@@ -187,8 +157,6 @@ static void __exit snd_spsoc_audio_exit(void)
 }
 module_exit(snd_spsoc_audio_exit);
 
-
+MODULE_AUTHOR("Sunplus Technology Inc.");
+MODULE_DESCRIPTION("Sunplus Q645 audio card driver");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("ALSA SoC Sunplus AUD");
-MODULE_AUTHOR("Sunplus DSP");
-MODULE_ALIAS("platform:spsoc-audio");

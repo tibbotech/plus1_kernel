@@ -1,39 +1,23 @@
 /*
- * File:         sound/soc/sunplus/spsoc-pcm.c
- * Author:       <@sunplus.com>
+ * ALSA SoC Q645 pcm driver
  *
- * Created:      Mar 12 2013
- * Description:  ALSA PCM interface for S+ Chip
+ * Author:	 <@sunplus.com>
  *
- */
+*/
 
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/platform_device.h>
-#include <linux/slab.h>
+#include <linux/of_platform.h>
 #include <linux/dma-mapping.h>
-#include <linux/compat.h>
-#include <linux/fs.h>
-#include <linux/cdev.h>
-#include <linux/delay.h>
 #include <linux/time.h>
-#include <linux/vmalloc.h>
-
-#include <sound/core.h>
-#include <sound/pcm.h>
 #include <sound/pcm_params.h>
-#include <sound/soc.h>
-#include <linux/fs.h>
-
 #include "spsoc_pcm-645.h"
 #include "spsoc_util-645.h"
 #include "aud_hw.h"
-#include "spdif.h"
 
+void __iomem *pcmaudio_base;
 /*--------------------------------------------------------------------------
 *						Feature definition
 *--------------------------------------------------------------------------*/
-
 #define USE_KELNEL_MALLOC
 
 /*--------------------------------------------------------------------------
@@ -54,28 +38,17 @@ static const struct snd_pcm_hardware spsoc_pcm_hardware = {
 	.channels_max	  	= 16,
 };
 
-const u8  VolTab_Scale16[16] = {
-	0x00,	0x02,	0x03,	0x04,
-	0x05,	0x07,	0x09,	0x0c,
-	0x11,	0x16,	0x1e,	0x28,
-	0x36,	0x47,	0x5f,	0x80,
-};
-
 /*--------------------------------------------------------------------------
 *							Global Parameters
 *--------------------------------------------------------------------------*/
 auddrv_param aud_param;
 
-static struct cdev spaud_fops_cdev;	// for file operation
-#define spaud_fops_MAJOR	222		// for file operation
-
 /*--------------------------------------------------------------------------
 *
 *--------------------------------------------------------------------------*/
-
 static void hrtimer_pcm_tasklet(unsigned long priv)
 {
-    	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+    	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
 	struct spsoc_runtime_data *iprtd = (struct spsoc_runtime_data *) priv;
 	struct snd_pcm_substream *substream = iprtd->substream;
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -242,7 +215,7 @@ static int spsoc_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 	}
 
 	AUD_INFO("spsoc-pcm:"
-		 "preallocate_dma_buffer: area=%px, addr=%llx, size=%ld\n",
+		 "preallocate_dma_buffer %s %d: area=%px, addr=%llx, size=%ld\n", substream->name, stream,
 		  buf->area,
 		  buf->addr,
 		 size);
@@ -309,7 +282,7 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;
-	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
         int reserve_buf;
 
 	AUD_INFO("%s IN, params_rate=%d\n", __func__, params_rate(params));
@@ -443,7 +416,7 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
 
 static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) audio_base;
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *iprtd = runtime->private_data;
 	int dma_initial;
@@ -544,9 +517,9 @@ static int spsoc_pcm_prepare(struct snd_soc_component *component, struct snd_pcm
 {
     	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *iprtd = runtime->private_data;
-	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
-	AUD_INFO("%s IN, buffer_size=0x%lx\n", __func__, runtime->buffer_size);
+	AUD_INFO("%s IN, buffer_size=0x%lx devname %s\n", __func__, runtime->buffer_size, dev_name(component->dev));
 
 	//tasklet_kill(&iprtd->tasklet);
 
@@ -613,7 +586,7 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;
 	unsigned int startthreshold = 0;
-	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) audio_base;//(volatile RegisterFile_Audio *)REG(60,0);
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
 	AUD_INFO("%s IN, cmd %d pcm->device %d\n", __func__, cmd, substream->pcm->device);
 	switch (cmd) {
@@ -667,10 +640,6 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 				AUD_INFO("C:prtd->start_threshold=0x%x, startthreshold=0x%x", prtd->start_threshold, startthreshold);
                 		regs0->aud_delta_0 = startthreshold;
 			      	prtd->start_threshold = 0;
-			      	//#if (aud_test_mode) //for test
-			        //regs0->aud_embedded_input_ctrl = aud_test_mode;
-			        //AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
-			      	//#endif
 		        }
 
 		#if (aud_test_mode) //for test
@@ -776,12 +745,11 @@ static int spsoc_pcm_mmap(struct snd_soc_component *component, struct snd_pcm_su
 	return ret;
 #endif
 }
-unsigned int last_remainder = 0;
 
 static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_substream *substream, int channel,
 		          unsigned long pos, void __user *buf, unsigned long count)
 {
-	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) audio_base;
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
 	int ret = 0;
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd = runtime->private_data;
@@ -908,7 +876,7 @@ static int spsoc_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
-	AUD_INFO("%s IN\n", __func__);
+	AUD_INFO("%s IN %s %s %s\n", __func__, dev_name(component->dev), rtd->dai_link->name, rtd->dai_link->stream_name);
 
 	if (!card->dev->dma_mask)
 		card->dev->dma_mask = &spsoc_pcm_dmamask;
@@ -988,19 +956,6 @@ struct file_operations aud_f_ops = {
 	.mmap           = spsoc_reg_mmap,
 };
 
-void audfops_init(void)
-{
-	cdev_init(&spaud_fops_cdev, &aud_f_ops);
-
-	if (cdev_add(&spaud_fops_cdev, MKDEV(spaud_fops_MAJOR, 0), 1) ||
-		register_chrdev_region(MKDEV(spaud_fops_MAJOR, 0), 1, "/dev/spaud_fops") < 0)
-	AUD_ERR("fail to register '/dev/spaud_fops' for file operations\n");
-
-	device_create(sound_class, NULL, MKDEV(spaud_fops_MAJOR, 0), NULL, "spaud_fops");
-
-	AUD_INFO("audfops_init '/dev/spaud_fops' OK\n");
-}
-
 static  int preallocate_dma_buffer(struct platform_device *pdev)
 {
 	unsigned int size;
@@ -1048,14 +1003,14 @@ static void dma_free_dma_buffers(struct platform_device *pdev)
 {
 	unsigned int size;
 
-	size = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
+	size = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX + NUM_FIFO_RX);
 #ifdef USE_KELNEL_MALLOC
-	dma_free_coherent(NULL, size,
+	dma_free_coherent(&pdev->dev, size,
 		          (unsigned int *) aud_param.fifoInfo.pcmtx_virtAddrBase, aud_param.fifoInfo.pcmtx_physAddrBase);
 #else
 	//gp_chunk_free( (void *)aud_param.fifoInfo.pcmtx_virtAddrBase);
 #endif
-
+#if 0
 	size = DRAM_PCM_BUF_LENGTH*NUM_FIFO_RX;
 #ifdef USE_KELNEL_MALLOC
 	dma_free_coherent(NULL, size,
@@ -1063,28 +1018,52 @@ static void dma_free_dma_buffers(struct platform_device *pdev)
 #else
 	//gp_chunk_free((void*)aud_param.fifoInfo.mic_virtAddrBase);
 #endif
+#endif
 }
 
-static int snd_spsoc_probe(struct platform_device *pdev)
+void __iomem *pcm_get_spaud_data(void)
+{
+	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,Q645-audio");
+	struct platform_device *spaudpdev = of_find_device_by_node(np);
+	struct sunplus_audio_base *spauddata = NULL;
+
+	if (!np) {
+		//dev_err(&pdev->dev, "devicetree status is not available\n");
+		goto out;
+	}
+
+	spaudpdev = of_find_device_by_node(np);
+	if (!spaudpdev)
+		goto out;
+
+	spauddata = dev_get_drvdata(&spaudpdev->dev);
+	if (!spauddata)
+		spauddata = ERR_PTR(-EPROBE_DEFER);
+
+out:
+	of_node_put(np);
+
+	return spauddata->audio_base;
+}
+
+static int snd_spsoc_pcm_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	AUD_INFO("%s IN\n", __func__);
-        if (!of_device_is_available(audionp)) {
-		dev_err(&pdev->dev, "devicetree status is not available\n");
-		return -ENODEV;
-	}
+	AUD_INFO("%s IN %s\n", __func__, dev_name(&pdev->dev));
+	pcmaudio_base = pcm_get_spaud_data();
+	AUD_INFO("audio_base2=%px\n", pcmaudio_base);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &sunplus_soc_platform, NULL, 0);
 	// create & register device for file operation, used for 'ioctl'
-	//audfops_init();
+
 	memset(&aud_param, 0, sizeof(struct t_auddrv_param));
 	memset(&aud_param.fifoInfo , 0, sizeof(struct t_AUD_FIFO_PARAMS));
-	memset(&aud_param.gainInfo , 0, sizeof(struct t_AUD_GAIN_PARAMS));
-	memset(&aud_param.fsclkInfo , 0, sizeof(struct t_AUD_FSCLK_PARAMS));
-	memset(&aud_param.i2scfgInfo , 0, sizeof(struct t_AUD_I2SCFG_PARAMS));
+	//memset(&aud_param.gainInfo , 0, sizeof(struct t_AUD_GAIN_PARAMS));
+	//memset(&aud_param.fsclkInfo , 0, sizeof(struct t_AUD_FSCLK_PARAMS));
+	//memset(&aud_param.i2scfgInfo , 0, sizeof(struct t_AUD_I2SCFG_PARAMS));
 
-	aud_param.fsclkInfo.freq_mask = 0x0667;	//192K
+	//aud_param.fsclkInfo.freq_mask = 0x0667;	//192K
 	ret = preallocate_dma_buffer(pdev);
 
 	return ret;
@@ -1092,54 +1071,29 @@ static int snd_spsoc_probe(struct platform_device *pdev)
 
 static int snd_spsoc_remove(struct platform_device *pdev)
 {
-	//snd_soc_unregister_platform(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 	dma_free_dma_buffers(pdev);
 	return 0;
 }
 
+static const struct of_device_id sunplus_audio_pcm_dt_ids[] = {
+	{ .compatible = "sunplus,Q645-audio-pcm", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, sunplus_audio_pcm_dt_ids);
+
 static struct platform_driver snd_spsoc_driver = {
 	.driver = {
 		.name	= "spsoc-pcm-driver",
-		.owner 	= THIS_MODULE,
+		//.owner 	= THIS_MODULE,
+		.of_match_table	= of_match_ptr(sunplus_audio_pcm_dt_ids),
 	},
 
-	.probe	= snd_spsoc_probe,
+	.probe	= snd_spsoc_pcm_probe,
 	.remove = snd_spsoc_remove,
 };
-
-#if 0	// for kernel 3.4.5
 module_platform_driver(snd_spsoc_driver);
-#else
-static struct platform_device *spsoc_pcm_device;
 
-static int __init snd_spsoc_pcm_init(void)
-{
-	int ret = 0;
-
-	ret = platform_driver_register(&snd_spsoc_driver);
-	//AUD_INFO("register pcm driver for platform(spcoc_pcm):: %d\n", ret);
-	AUD_INFO("%s IN, create soc_card\n", __func__);
-
-	//zjg
-	spsoc_pcm_device = platform_device_alloc("spsoc-pcm-driver", -1);
-	if (!spsoc_pcm_device)
-		return -ENOMEM;
-
-	ret = platform_device_add(spsoc_pcm_device);
-	if (ret)
-		platform_device_put(spsoc_pcm_device);
-
-	return ret;
-}
-module_init(snd_spsoc_pcm_init);
-
-static void __exit snd_spsoc_pcm_exit(void)
-{
-	platform_driver_unregister(&snd_spsoc_driver);
-}
-module_exit(snd_spsoc_pcm_exit);
-#endif
-
-MODULE_AUTHOR("Sunplus DSP");
-MODULE_DESCRIPTION("S+ SoC ALSA PCM module");
+MODULE_AUTHOR("Sunplus Technology Inc.");
+MODULE_DESCRIPTION("Sunplus SoC ALSA PCM module");
 MODULE_LICENSE("GPL");

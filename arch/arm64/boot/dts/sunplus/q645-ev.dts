@@ -1228,6 +1228,14 @@
 		status = "disabled";
 	};
 
+	spsoc-pcm-driver {
+		compatible = "sunplus,Q645-audio-pcm";
+	};
+
+	aud-codec {
+		compatible = "sunplus,Q645-audio-codec";
+	};
+
 	audio: audio@f8001e00 {
 		compatible = "sunplus,Q645-audio";
 		reg = <0x0 0xf8001e00 0x0 0x700>;
