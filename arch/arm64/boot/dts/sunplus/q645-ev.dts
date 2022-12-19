@@ -1268,7 +1268,7 @@
 			//clock-names = "ref","bus_early","suspend";
 			//resets = <&rstc RST_USB30C0>;
 			maximum-speed = "super-speed";
-			dr_mode = "otg";
+			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
 			phy_type = "utmi_wide";
 			usb-role-switch;
