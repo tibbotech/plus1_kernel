@@ -1,23 +1,22 @@
 /*
  * spsoc-pcm.h - ALSA PCM interface for the Sunplus SoC.
  *
- *  Copyright (C) 2013 S+
+ *  Copyright (C) 2022 S+
  */
 
 #ifndef _SPSOC_PCM_H
 #define _SPSOC_PCM_H
-#include <linux/hrtimer.h>
+
 #include <linux/interrupt.h>
 
-
-#define DRAM_PCM_BUF_LENGTH	(128*1024)
+#define DRAM_PCM_BUF_LENGTH	(128 * 1024)
 
 #define PERIOD_BYTES_MIN_CONS 	128
-#define PERIOD_BYTES_MAX_CONS 	(64*1024)
+#define PERIOD_BYTES_MAX_CONS 	(64 * 1024)
 
-#define NUM_FIFO_TX		6	// A0~A4, A20
-#define NUM_FIFO_RX		4 // A22~A25	
-#define NUM_FIFO		(NUM_FIFO_TX+NUM_FIFO_RX)	
+#define NUM_FIFO_TX		6 // A0~A4, A20
+#define NUM_FIFO_RX		4 // A22~A25
+#define NUM_FIFO		(NUM_FIFO_TX + NUM_FIFO_RX)
 
 #define SP_I2S                  0
 #define SP_TDM                  1
@@ -44,15 +43,14 @@
 
 #define aud_test_mode		(0)
 
-#define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH*4)
-#define MIC_Delay_Byte		(DRAM_PCM_BUF_LENGTH*0.75)
+#define DRAM_HDMI_BUF_LENGTH	(DRAM_PCM_BUF_LENGTH * 4)
 
 struct spsoc_runtime_data {
 	spinlock_t	lock;
 	dma_addr_t dma_buffer;		/* physical address of dma buffer */
 	dma_addr_t dma_buffer_end;	/* first address beyond DMA buffer */
 	size_t period_size;
-	
+
 	struct hrtimer hrt;
 	struct tasklet_struct tasklet;
 	int poll_time_ns;
@@ -73,67 +71,6 @@ struct spsoc_runtime_data {
 	atomic_t running;
 
 };
-
-#define AUDYA_NEW_MODE
-
-/*--------------------------------------------------------------------------
-*							IOCTL Command
-*--------------------------------------------------------------------------*/
-typedef enum
-{
-	/* fifo */
-	AUDDRV_IOCTL1_FIFO_ENABLE	= 0x9001,
-	AUDDRV_IOCTL1_FIFO_DISABLE,
-	AUDDRV_IOCTL1_FIFO_PAUSE,
-	AUDDRV_IOCTL1_FIFO_RESET,
-	AUDDRV_IOCTL1_GET_FIFOFLAG,
-	AUDDRV_IOCTL1_GETINFO_FIFO,
-	/* gain */
-	AUDDRV_IOCTL1_RAMPUP         	= 0x9101,
-	AUDDRV_IOCTL1_RAMPDOWN,
-	AUDDRV_IOCTL1_Mute,
-	AUDDRV_IOCTL1_Demute,
-	AUDDRV_IOCTL1_SET_VOLUME,
-	AUDDRV_IOCTL1_GETINTO_GAIN,
-	AUDDRV_IOCTL1_SET_FIFOGAIN,
-	AUDDRV_IOCTL1_GET_FIFOGAIN,
-	/* clock */
-	AUDDRV_IOCTL1_SET_SAMPLERATE 	= 0x9201,
-	AUDDRV_IOCTL1_SET_IntDAC_FS,
-	AUDDRV_IOCTL1_SET_ExtDAC_FS,
-	AUDDRV_IOCTL1_SET_SPDIF_FS,
-	AUDDRV_IOCTL1_SET_HDMI_IEC_FS,
-	AUDDRV_IOCTL1_SET_HDMI_I2S_FS,
-	AUDDRV_IOCTL1_SET_FreqMask,
-	AUDDRV_IOCTL1_GETINFO_FS,
-	/* data format */
-	AUDDRV_IOCTL1_GET_I2SCFG   	= 0x9301,
-	AUDDRV_IOCTL1_SET_PCMFMT,
-	/* audio pts */
-	AUDDRV_IOCTL1_SET_APT        	= 0x9401,
-	AUDDRV_IOCTL1_SET_PTS,
-	AUDDRV_IOCTL1_GET_PTS,
-	/* spdif/hdmi */
-	AUDDRV_IOCTL1_Set_CMGS		= 0x9501,
-	AUDDRV_IOCTL1_UpdateIEC0_ChannelStatus,
-	AUDDRV_IOCTL1_UpdateIEC1_ChannelStatus,
-	AUDDRV_IOCTL1_SET_SPDIF_MODE,
-	AUDDRV_IOCTL1_GET_SPDIF_MODE,
-	AUDDRV_IOCTL1_SET_HDMI_MODE,
-	AUDDRV_IOCTL1_GET_HDMI_MODE,
-	/* bluetooth */
-	AUDDRV_IOCTL1_SET_BT_CFG 	= 0x9601,
-	/* GRM switch */
-	AUDDRV_IOCTL1_SET_VCDMIX 	= 0x9701,
-	AUDDRV_IOCTL1_SET_OUTPUT_MODE,
-}IOCTL_command;
-
-typedef enum
-{
-	FIFO_Enable = 0,
-	FIFO_Disable,
-	FIFO_Pause,	
-}FIFO_STATE;
 
 typedef struct  t_AUD_FIFO_PARAMS{
 	unsigned int en_flag;		// enable or disable
@@ -160,35 +97,14 @@ typedef struct  t_AUD_FIFO_PARAMS{
 	unsigned int Buf_TotalLen;
 }AUD_FIFO_PARAMS;
 
-#define PCM_RAMPUP	1
-#define PCM_RAMPDOWN	0
-
 typedef struct t_AUD_GAIN_PARAMS {
 	unsigned int rampflag;		// Ramp up or down
 	unsigned int muteflag;
 	unsigned int volumeScale;	// master gain
 	unsigned int volumeVal;	//master gain
 	unsigned int fifoNum;
-	unsigned int fifoGain;	
+	unsigned int fifoGain;
 }AUD_GAIN_PARAMS;
-
-#define FS_6K   0x8000
-#define FS_8K   0x5000
-#define FS_11K  0x6000
-#define FS_12K  0x7000
-#define FS_16K  0x1000
-#define FS_22K  0x2000
-#define FS_24K  0x4000
-#define FS_32K  0x0001
-#define FS_44K  0x0002
-#define FS_48K  0x0004
-#define FS_64K  0x0010
-#define FS_88K  0x0020
-#define FS_96K  0x0040
-#define FS_128K 0x0100
-#define FS_176K 0x0200
-#define FS_192K 0x0400
-#define FS_MAX  0x8000
 
 typedef struct t_AUD_FSCLK_PARAMS {
 	unsigned int IntDAC_clk;
@@ -218,7 +134,7 @@ typedef struct t_AUD_I2SCFG_PARAMS {
 	unsigned int intadc;
 	unsigned int extadc;
 	unsigned int hdmitx;
-	unsigned int hdmirx;	
+	unsigned int hdmirx;
 }AUD_I2SCFG_PARAMS;
 
 typedef struct t_auddrv_param
@@ -226,67 +142,12 @@ typedef struct t_auddrv_param
 	AUD_FIFO_PARAMS	fifoInfo;
 	AUD_GAIN_PARAMS	gainInfo;
 	AUD_FSCLK_PARAMS	fsclkInfo;
-	AUD_I2SCFG_PARAMS	i2scfgInfo;	
+	AUD_I2SCFG_PARAMS	i2scfgInfo;
 	unsigned int spdif_mode;
 	unsigned int hdmi_mode;
 	unsigned int CGMS_mode;
 } auddrv_param;
 
 extern auddrv_param aud_param;
-
-typedef enum
-{
-	FIFOSmpCnt_Init = 0,
-	FIFOSmpCnt_Enable,
-	FIFOSmpCnt_Disable,
-	FIFOSmpCnt_Reset,
-}AUDFIFOSmpCnt_e;
-
-typedef struct t_AUD_APT_PARAMS {
-	unsigned int apt_mode;
-	unsigned int fs;
-}AUD_APT_PARAMS;
-
-typedef struct t_AUD_PTS_PARAMS {
-	unsigned int w_pts;	// write a PTS
-	unsigned int r_pts;	// read the current pts reproted by audhw
-	unsigned int pcm0_ptr;	
-}AUD_PTS_PARAMS;
-
-typedef struct t_AUD_CGMS_PARAMS {
-	unsigned char CGMS_type;
-	unsigned char iec0_bitwidth;
-	unsigned char disc_type;	// CD(0) or DVD(1)
-}AUD_CGMS_PARAMS;
-
-typedef struct t_AUD_channelstatus_PARAMS {
-	unsigned int user_disc_fmt;
-	unsigned int fs_id;
-	unsigned short CodecCapability;
-}AUD_channelstatus_PARAMS;
-
-typedef enum
-{
-	bt_i2s_mode = 0,	
-	bt_pcm_mode1,	// slave, short sync, LSB, 16-bit with 16-cycle, 2 slot, pcmbck=256K
-	bt_pcm_mode2,	// slave, short sync, LSB, 16-bit with 16-cycle, 1 slot, pcmbck=128K
-	bt_pcm_mode3,	// master, short sync, LSB, 16-bit with 16-cycle, 16 slot, pcmbck=2048K
-	bt_pcm_mode4,	// master, long sync, MSB, 16-bit with 16-cycle, 2 slot, pcmbck=256K
-	bt_pcm_mode5,	// master, long sync, MSB, 16-bit with 16-cycle, 1 slot, pcmbck=128K
-}bluetooth_mode_e;
-
-typedef struct t_AUD_VCDMIX_PARAMS {
-	unsigned char en_mode;	// 1:enable, 0:disable
-	unsigned char fifoNum;		// ex: FIFO_PCM0
-}AUD_VCDMIX_PARAMS;
-
-typedef enum
-{
-	Output_Stereo = 0,	// (L/R)
-	Output_LL,
-	Output_RR,
-	Output_LRswitch,	// LR exchange	
-}Output_mode_e;
-
 
 #endif /* _SPSOC_PCM_H */

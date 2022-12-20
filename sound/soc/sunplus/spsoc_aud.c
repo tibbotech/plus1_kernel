@@ -1,45 +1,17 @@
 /*
- * File:         sound/soc/sunplus/spsoc-aud3502.c
- * Author:       <@sunplus.com>
+ * ALSA SoC AUD7021 aud driver
  *
- * Created:      Mar 8 2013
- * Description:  Board driver for aud3502 sound chip
+ * Author:	 <@sunplus.com>
  *
- */
+*/
 
 #include <linux/module.h>
-#include <linux/moduleparam.h>
-#include <linux/init.h>
-#include <linux/platform_device.h>
-#include <linux/slab.h>
-#include <linux/dma-mapping.h>
-#include <linux/device.h>
-#include <linux/delay.h>
-
-#include <sound/core.h>
-#include <sound/pcm.h>
 #include <sound/pcm_params.h>
-#include <sound/soc.h>
-
-#include "spsoc_util.h"
-#include "spsoc_pcm.h"
 #include "aud_hw.h"
 
 /***********************************************************
 *		Feature Definition
 ************************************************************/
-#define En_SPDIFIN0
-#define En_SPDIFIN1
-#define En_SPDIFIN2
-
-#ifdef En_AUD_BT
-	#undef En_SPDIFIN1
-#endif
-
-#ifdef En_SPDIFIN1
-	#undef En_AUD_BT
-#endif
-
 static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	                   struct snd_pcm_hw_params *params)
 {
@@ -54,8 +26,7 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	AUD_INFO("%s, periods %d period_size %d\n",__func__, params_periods(params),params_period_size(params));
 	AUD_INFO("%s, periods_bytes 0x%x\n",__func__, params_period_bytes(params));
 	AUD_INFO("%s, buffer_size 0x%x buffer_bytes 0x%x\n",__func__, params_buffer_size(params),params_buffer_bytes(params));
-	switch(pll_out)
-	{
+	switch(pll_out) {
 		case 8000:
 		case 16000:
 		case 32000:
@@ -78,8 +49,8 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 			break;
 	}
 	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE )
-		ret=snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
-	
+		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
+
 	AUD_INFO("%s OUT\n",__func__);
 	if (ret < 0)
 		return ret;
@@ -94,55 +65,55 @@ static struct snd_soc_dai_link spsoc_aud_dai[] = {
 	{
 		.name		= "aud_i2s",
 		.stream_name	= "aud_dac0",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-codec-dai",
 		.cpu_dai_name	= "spsoc-i2s-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 	{
 		.name 		= "aud_tdm",
 		.stream_name	= "aud_tdm0",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-codec-tdm-dai",
 		.cpu_dai_name	= "spsoc-tdm-driver-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 	{
 		.name 		= "aud_pdm",
 		.stream_name	= "aud_pdm0",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-codec-pdm-dai",
 		.cpu_dai_name	= "spsoc-pdm-driver-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 	{
 		.name 		= "aud_spdif",
 		.stream_name	= "aud_spdif0",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-spdif-dai",
 		.cpu_dai_name	= "spsoc-spdif-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 	{
 		.name 		= "aud_i2s_hdmi",
 		.stream_name	= "aud_i2shdmi",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-i2s-hdmi-dai",
 		.cpu_dai_name	= "spsoc-i2s-hdmi-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 	{
 		.name 		= "aud_spdif_hdmi",
 		.stream_name	= "aud_spdifhdmi",
-		.codec_name 	= "aud-codec",
+		.codec_name 	= "soc@B:aud-codec",
 		.codec_dai_name = "aud-spdif-hdmi-dai",
 		.cpu_dai_name	= "spsoc-spdif-hdmi-dai",
-		.platform_name 	= "spsoc-pcm-driver",
+		.platform_name 	= "soc@B:spsoc-pcm-driver",
 		.ops 		= &spsoc_aud_ops,
 	},
 };
@@ -186,8 +157,7 @@ static void __exit snd_spsoc_audio_exit(void)
 }
 module_exit(snd_spsoc_audio_exit);
 
-
+MODULE_AUTHOR("Sunplus Technology Inc.");
+MODULE_DESCRIPTION("Sunplus sp7021 audio card driver");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("ALSA SoC Sunplus AUD");
-MODULE_AUTHOR("Sunplus DSP");
-MODULE_ALIAS("platform:spsoc-audio");
+
