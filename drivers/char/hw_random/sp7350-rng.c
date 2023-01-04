@@ -15,6 +15,7 @@
 #include <linux/delay.h>
 #include <linux/of_irq.h>
 #include <linux/pm_runtime.h>
+#include <linux/clk.h>
 #include <linux/reset.h>
 
 #define SP7350_RNG_DATA		0x00	/* Data register */
@@ -35,6 +36,7 @@ struct sp7350_rng {
 static int sp7350_rng_init(struct hwrng *rng)
 {
 	struct sp7350_rng *priv = to_sp7350_rng(rng);
+	int ret;
 
 	ret = clk_prepare_enable(priv->clk);
 	if (ret)
