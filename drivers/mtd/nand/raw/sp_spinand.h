@@ -17,6 +17,7 @@
 #define CONFIG_SPINAND_READ_BITMODE     SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_WRITE_BITMODE    SPINAND_4BIT_MODE
 #define CONFIG_SPINAND_READ_TIMING_SEL  2
+#define CONFIG_SPINAND_CS_DISACTIVE_CYC 0 /* 20ns = 0 x 1.6ns + 20ns */
 #define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA
 #define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
 #define CONFIG_SPINAND_BUF_SZ           (8 << 10)
@@ -155,7 +156,7 @@
  *  macros for spi_timing register
  */
 #define SPINAND_CS_SH_CYC(x)         (((x)&0x3f)<<22)
-#define SPINAND_CD_DISACTIVE_CYC(x)  (((x)&0x3f)<<16)
+#define SPINAND_CS_DISACTIVE_CYC(x)  (((x)&0x3f)<<16)
 #define SPINAND_READ_TIMING(x)       (((x)&0x07)<<1)  //0~7 are allowed
 #define SPINAND_WRITE_TIMING(x)      (((x)&0x01))     //0~1 are allowed
 

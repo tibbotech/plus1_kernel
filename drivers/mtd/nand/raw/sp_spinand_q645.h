@@ -19,11 +19,13 @@
 #define CONFIG_SPINAND_WRITE_BITMODE    SPINAND_4BIT_MODE
 #if ZEBU_SIM
 #define CONFIG_SPINAND_READ_TIMING_SEL  0
+#define CONFIG_SPINAND_CS_DISACTIVE_CYC 0 /* 20ns = 0 x 1.6ns + 20ns */
 #define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
 #define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA_AUTOBCH
 #define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
 #else
 #define CONFIG_SPINAND_READ_TIMING_SEL  2
+#define CONFIG_SPINAND_CS_DISACTIVE_CYC 22 /* 55ns = 22 x 1.6ns + 20ns */
 #define CONFIG_SPINAND_AUTOBCH_DECSRC   0 /* BCH decode data source. 0:spi-nand ctrl, 1:system memory */
 #define CONFIG_SPINAND_TRSMODE          SPINAND_TRS_DMA_AUTOBCH
 #define CONFIG_SPINAND_TRSMODE_RAW      SPINAND_TRS_DMA
@@ -164,7 +166,7 @@
  *  macros for spi_timing register
  */
 #define SPINAND_CS_SH_CYC(x)         (((x)&0x3f)<<22)
-#define SPINAND_CD_DISACTIVE_CYC(x)  (((x)&0x3f)<<16)
+#define SPINAND_CS_DISACTIVE_CYC(x)  (((x)&0x3f)<<16)
 #define SPINAND_READ_TIMING(x)       (((x)&0x07)<<1)  //0~7 are allowed
 #define SPINAND_WRITE_TIMING(x)      (((x)&0x01))     //0~1 are allowed
 

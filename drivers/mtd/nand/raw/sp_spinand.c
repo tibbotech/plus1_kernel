@@ -308,7 +308,8 @@ int spi_nand_reset(struct sp_spinand_info *info)
 		| SPINAND_USRCMD_ADDRSZ(0);
 	writel(value, &regs->spi_ctrl);
 
-	value = SPINAND_READ_TIMING(CONFIG_SPINAND_READ_TIMING_SEL);
+	value = SPINAND_CS_DISACTIVE_CYC(CONFIG_SPINAND_CS_DISACTIVE_CYC)
+		| SPINAND_READ_TIMING(CONFIG_SPINAND_READ_TIMING_SEL);
 	writel(value, &regs->spi_timing);
 
 	value = SPINAND_LITTLE_ENDIAN

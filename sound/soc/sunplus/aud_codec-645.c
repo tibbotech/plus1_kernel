@@ -1,43 +1,18 @@
 /*
- * ALSA SoC AUD3502 codec driver
+ * ALSA SoC Q645 codec driver
  *
  * Author:	 <@sunplus.com>
  *
 */
 
 #include <linux/module.h>
-#include <linux/init.h>
-#include <linux/platform_device.h>
-#include <linux/slab.h>
-#include <linux/dma-mapping.h>
-
-#include <sound/core.h>
-#include <sound/pcm.h>
-#include <sound/pcm_params.h>
-#include <sound/soc.h>
+#include <linux/of_platform.h>
 #include <sound/tlv.h>
 #include "spsoc_util-645.h"
 
+void __iomem *codecaudio_base;
 #define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
 
-struct device_node *audionp;
-#if 0
-/*================================================================
- *						codec driver
- *===============================================================*/
-static int aud_dai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-
-static int aud_dai_hw_params(struct snd_pcm_substream *substream,
-	                     struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-#else
 /*================================================================
  *						codec driver
  *===============================================================*/
@@ -56,7 +31,6 @@ static int aud_dai_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-#endif
 static const struct snd_soc_dai_ops aud_dai_ops = {
 	.startup 	= aud_dai_startup,
 	.hw_params	= aud_dai_hw_params,
@@ -83,7 +57,6 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 	},
 	{
 		.name = "aud-codec-tdm-dai",
-		#if 1
 		.playback = {
 			.stream_name 	= "TDM playback",
 			.channels_min 	= 2,
@@ -91,7 +64,6 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 			.rates 		= AUD_RATES_C,
 			.formats 	= AUD_FORMATS,
 		},
-		#endif
 		.capture = {
 			.stream_name 	= "TDM Capture",
 			.channels_min	= 2,
@@ -156,49 +128,10 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.ops = &aud_dai_ops,
 	},
 };
-#if 0
-static int aud_probe(struct snd_soc_codec *codec)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
 
-static int aud_suspend(struct snd_soc_codec *codec)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-
-static int aud_resume(struct snd_soc_codec *codec)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-
-static int aud_remove(struct snd_soc_codec *codec)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-
-static int aud_set_sysclk(struct snd_soc_codec *codec, int clk_id,
-			                    int source, unsigned int freq, int dir)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
-
-static int aud_set_pll(struct snd_soc_codec *codec, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
-{
-	AUD_INFO("%s IN\n", __func__);
-	return 0;
-}
- #endif
 static const DECLARE_TLV_DB_SCALE(volume_tlv, -6000, 0, 1);
-static const char *cpm0_5_out[] = {"pcm0","pcm5"};
-
+static const char *cpm0_5_out[] = {"pcm0", "pcm5"};
 static const struct soc_enum cpm0_5_out_enum = SOC_ENUM_DOUBLE(reg_aud_grm_gain_control_8, 16, 17, 2, cpm0_5_out);
-
 
 static const struct snd_kcontrol_new aud_snd_controls[] = {
 	/* master gains */
@@ -309,127 +242,107 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 	SOC_SINGLE("Mix82",	reg_aud_grm_mix_control_2,	25,	1,	0),
 	SOC_SINGLE("Mix83",	reg_aud_grm_mix_control_2,	26,	1,	0),
 	SOC_SINGLE("Mix84",	reg_aud_grm_mix_control_2,	27,	1,	0),
-
 	//SOC_SINGLE_TLV()
 };
 
-
 static unsigned int audreg_read(struct snd_soc_component *component, unsigned int reg)
 {
-	int val, addr_g, addr_i;//, addr;
-	volatile uint32_t *addr;
-	//AUD_INFO("r*audio_base=%08x\n", audio_base);
+	int val, addr_g, addr_i;
+	volatile uint32_t * addr;
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i) / 100 - 60;
-	addr = (audio_base + addr_g * 32 * 4 + addr_i * 4);
+	addr = (codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
 	//val = (int)(*(volatile unsigned int *) (addr));
 	val = *addr;
 	//SYNCHRONIZE_IO;
 
     	//AUD_INFO("*val=%08x\n", val);
 	return val;
-	//return HWREG_R(reg);
 }
 
 static int audreg_write(struct snd_soc_component *component, unsigned int reg,unsigned int value)
 {
-	int  addr_g, addr_i;//, addr;
+	int  addr_g, addr_i;
 	volatile uint32_t *addr;
-	//AUD_INFO("w*audio_base=%08x, val = 0x%x\n", audio_base, value);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i) / 100 - 60;
-	addr = (audio_base + addr_g * 32 * 4 + addr_i * 4);
+	addr = (codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
 	*addr = value;
 	//SYNCHRONIZE_IO;
 
 	//AUD_INFO("val=%08x\n", (*(volatile unsigned int *)(addr)));
-	//HWREG_W(reg,value);
 	return 0;
 }
 
-#if 0
-static struct snd_soc_codec_driver soc_codec_dev_aud = {
-	.probe		= aud_probe,
-	.remove		= aud_remove,
-	.suspend	= aud_suspend,
-	.resume		= aud_resume,
-	.set_sysclk	= aud_set_sysclk,
-	.set_pll	= aud_set_pll,
-	.read		= audreg_read,  //changed core func !
-	.write		= audreg_write,
-
-	.component_driver = {
-		.controls	= aud_snd_controls,
-		.num_controls	=  ARRAY_SIZE(aud_snd_controls),
-	},
-};
-#endif
 static const struct snd_soc_component_driver soc_codec_dev_aud = {
 	//.name = "aud-codec",
-	.read		= audreg_read,  //changed core func !
+	.read		= audreg_read,
 	.write		= audreg_write,
 	.controls	= aud_snd_controls,
 	.num_controls	= ARRAY_SIZE(aud_snd_controls),
 };
 
+void __iomem *codec_get_spaud_data(void)
+{
+	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,Q645-audio");
+	struct platform_device *spaudpdev = of_find_device_by_node(np);
+	struct sunplus_audio_base *spauddata = NULL;
+
+	if (!np) {
+		//dev_err(&pdev->dev, "devicetree status is not available\n");
+		goto out;
+	}
+
+	spaudpdev = of_find_device_by_node(np);
+	if (!spaudpdev)
+		goto out;
+
+	spauddata = dev_get_drvdata(&spaudpdev->dev);
+	if (!spauddata)
+		spauddata = ERR_PTR(-EPROBE_DEFER);
+
+out:
+	of_node_put(np);
+
+	return spauddata->audio_base;
+}
+
 static int aud_codec_probe(struct platform_device *pdev)
 {
 	int ret = 0;
-	AUD_INFO("%s IN\n", __func__);
-        audionp = of_find_node_by_name(NULL, "audio");
-        if (!of_device_is_available(audionp)) {
-		dev_err(&pdev->dev, "devicetree status is not available\n");
-		return -ENODEV;
-	}
 
-	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud,
-				  	      audcodec_dai, ARRAY_SIZE(audcodec_dai));
+	codecaudio_base = codec_get_spaud_data();
+	AUD_INFO("%s IN %s\n", __func__, dev_name(&pdev->dev));
+
+	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud, audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
 	return ret;
 }
 
 static int aud_codec_remove(struct platform_device *pdev)
 {
-	//snd_soc_unregister_codec(&pdev->dev);
+	snd_soc_unregister_component(&pdev->dev);
 
 	return 0;
 }
 
-static struct platform_driver aud_codec_driver = {
-	.probe	= aud_codec_probe,
-	.remove	= aud_codec_remove,
+static const struct of_device_id sunplus_audio_codec_dt_ids[] = {
+	{ .compatible = "sunplus,Q645-audio-codec", },
+	{ },
+};
+MODULE_DEVICE_TABLE(of, sunplus_audio_codec_dt_ids);
+
+static struct platform_driver spaud_codec_driver = {
 	.driver	= {
 		.name	= "aud-codec",
-		.owner	= THIS_MODULE,
+		//.owner	= THIS_MODULE,
+		.of_match_table	= of_match_ptr(sunplus_audio_codec_dt_ids),
 	},
+	.probe	= aud_codec_probe,
+	.remove	= aud_codec_remove,
 };
+module_platform_driver(spaud_codec_driver);
 
-
-static struct platform_device *spsoc_pcm_device;
-static int __init aud_modinit(void)
-{
-	int ret = platform_driver_register(&aud_codec_driver);
-
-	spsoc_pcm_device = platform_device_alloc("aud-codec", -1);
-	if (!spsoc_pcm_device)
-		return -ENOMEM;
-
-	AUD_INFO("%s IN, create soc_card\n", __func__);
-
-	ret = platform_device_add(spsoc_pcm_device);
-	if (ret)
-		platform_device_put(spsoc_pcm_device);
-
-	return ret;
-}
-module_init(aud_modinit);
-
-static void __exit aud_modexit(void)
-{
-	platform_driver_unregister(&aud_codec_driver);
-}
-module_exit(aud_modexit);
-
+MODULE_AUTHOR("Sunplus Technology Inc.");
+MODULE_DESCRIPTION("Sunplus codec driver");
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("ASoC AUD codec driver");
-MODULE_AUTHOR("Sunplus DSP");
