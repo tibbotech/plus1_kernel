@@ -51,6 +51,13 @@
 		serial6 = &uart6;
 		serial7 = &uart7;
 
+		spim0 = &spi_controller0;
+		spim1 = &spi_controller1;
+		spim2 = &spi_controller2;
+		spim3 = &spi_controller3;
+		spim4 = &spi_controller4;
+		spis5 = &spi_controller5;
+
 		spi0 = &sp_spinor0;
 	};
 
@@ -382,6 +389,252 @@
 		resets = <&rstc RST_UA7>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart7_pins>;
+		status = "disabled";
+	};
+
+	ahbdma1: dma@f8821000 {
+		compatible = "snps,dma-spear1340";
+		reg =<0x0 0xf8821000 0x0 0x400>;
+		interrupt-parent = <GIC_SPI_ IRQ_TYPE_LEVEL_HIGH>;
+		dma-channels = <8>;
+		#dma-cells = <3>;
+		dma-requests = <16>;
+		chan_allocation_order = <1>;
+		chan_priority = <1>;
+		block_size = <0xfff>;
+		dma-masters = <4>;
+		data-width = <2 2 2 2>;
+		multi-block = <0 0 0 0 0 0 0 0>;
+		snps,max-burst-len = <128 128 128 128 128 128 128 128>;
+	};
+
+	spi_controller0: spi@f8822000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8822000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO_0>;
+		resets = <&rstc RST_SPI_COMBO_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim0_pins>;
+		dmas = <&ahbdma1 0 0 0>,
+						<&ahbdma1 1 0 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	spi_controller1: spi@f8823000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8823000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO1_0>;
+		resets = <&rstc RST_SPI_COMB1_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim1_pins>;
+		dmas = <&ahbdma1 2 0 0>,
+						<&ahbdma1 3 0 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	spi2: spi_controller2@f8824000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8824000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO2_0>;
+		resets = <&rstc RST_SPI_COMB2_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim2_pins>;
+		dmas = <&ahbdma1 4 0 0>,
+						<&ahbdma1 5 0 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	spi3: spi_controller3@f8825000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8825000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO3_0>;
+		resets = <&rstc RST_SPI_COMB3_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim3_pins>;
+		dmas = <&ahbdma1 6 0 0>,
+						<&ahbdma1 7 0 0>;
+		dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	spi4: spi_controller4@f8826000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8826000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO4_0>;
+		resets = <&rstc RST_SPI_COMB4_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim4_pins>;
+		//dmas = <&ahbdma1 6 0 0>,
+		//				<&ahbdma1 7 0 0>;
+		//dma-names = "rx", "tx";
+		status = "disabled";
+	};
+
+	spi5: spi_controller4@f8827000 {
+		compatible = "snps,dw-apb-ssi";
+		reg =<0x0 0xf8827000 0x0 0x100>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc SPI_COMBO5_0>;
+		resets = <&rstc RST_SPI_COMB5_0>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&spim5_pins>;
+		status = "disabled";
+	};
+
+	i2c0: i2c@f8828000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf8828000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM0>;
+		resets = <&rstc RST_I2CM0>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm0_pins>;
+		status = "disabled";
+	};
+
+	i2c1: i2c@f8829000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf8829000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM1>;
+		resets = <&rstc RST_I2CM1>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm1_pins>;
+		status = "disabled";
+	};
+
+	i2c2: i2c@f882a000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882a000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM2>;
+		resets = <&rstc RST_I2CM2>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm2_pins>;
+		status = "disabled";
+	};
+
+	i2c3: i2c@f882b000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882b000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM3>;
+		resets = <&rstc RST_I2CM3>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm3_pins>;
+		status = "disabled";
+	};
+
+	i2c4: i2c@f882c000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882c000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM4>;
+		resets = <&rstc RST_I2CM4>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm4_pins>;
+		status = "disabled";
+	};
+
+	i2c5: i2c@f882d000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882d000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM5>;
+		resets = <&rstc RST_I2CM5>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm5_pins>;
+		status = "disabled";
+	};
+
+	i2c5: i2c@f882d000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882d000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM5>;
+		resets = <&rstc RST_I2CM5>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm5_pins>;
+		status = "disabled";
+	};
+
+
+	i2c6: i2c@f882e000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882e000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM6>;
+		resets = <&rstc RST_I2CM6>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm6_pins>;
+		status = "disabled";
+	};
+
+	i2c7: i2c@f882f000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882f000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM7>;
+		resets = <&rstc RST_I2CM7>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm7_pins>;
+		status = "disabled";
+	};
+
+	i2c8: i2c@f8830000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf8830000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM8>;
+		resets = <&rstc RST_I2CM8>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2cm8_pins>;
 		status = "disabled";
 	};
 
