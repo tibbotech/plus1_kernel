@@ -132,7 +132,11 @@ static const struct usb_ep_ops sp_ep_ops = {
 };
 
 static const struct of_device_id sunplus_udc_ids[] = {
+#if defined (CONFIG_SOC_Q645)
 	{ .compatible = "sunplus,q645-usb-udc" },
+#elif defined (CONFIG_SOC_SP7350)
+	{ .compatible = "sunplus,sp7350-usb-udc" },
+#endif
 	{ }
 };
 MODULE_DEVICE_TABLE(of, sunplus_udc_ids);
@@ -2484,11 +2488,19 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 
 void usb_switch(int device)
 {
+#if defined (CONFIG_SOC_Q645)
 	if (device) {
 		writel(0x00030001, moon3_reg + 0x58);
 	} else {
 		writel(0x00030003, moon3_reg + 0x58);
 	}
+#elif defined (CONFIG_SOC_SP7350)
+	if (device) {
+		writel(0x00030001, moon4_reg + 0x28);
+	} else {
+		writel(0x00030003, moon4_reg + 0x28);
+	}
+#endif
 }
 
 static ssize_t udc_ctrl_show(struct device *dev, struct device_attribute *attr, char *buffer)
@@ -2573,8 +2585,13 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (res_mem) {
+#if defined (CONFIG_SOC_Q645)
 		moon3_reg= devm_ioremap_resource(&pdev->dev, res_mem);
 		if (IS_ERR(moon3_reg)) {
+#elif defined (CONFIG_SOC_SP7350)
+		moon4_reg= devm_ioremap_resource(&pdev->dev, res_mem);
+		if (IS_ERR(moon4_reg)) {
+#endif
 			retval = -ENOMEM;
 			goto err_map;
 		}

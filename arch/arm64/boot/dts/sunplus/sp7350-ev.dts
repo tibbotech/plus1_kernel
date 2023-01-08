@@ -879,9 +879,19 @@
 		compatible = "sunplus,sp7350-usb-ohci0";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
-		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8000000 0x00 0x80>;
+		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8800000 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
+	udc: usb@f8102800 {
+		compatible = "sunplus,q645-usb-udc";
+		clocks = <&clkc USBC0>;
+		resets = <&rstc RST_USBC0>;
+		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8800200 0x0 0x80>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
+		status = "disabled";
 	};
 
 	audio: audio@f8001e00 {

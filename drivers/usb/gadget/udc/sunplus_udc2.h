@@ -415,6 +415,7 @@ struct udc_endpoint {
 };
 
 void __iomem 		*moon3_reg;
+void __iomem 		*moon4_reg;
 
 struct sp_udc {
 	bool 			 aset_flag; 			/* auto set flag, If this flag is true, zero packet will not be sent */
