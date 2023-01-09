@@ -217,6 +217,7 @@ static int ohci_reset_thread(void *arg)
 				i = SP_IRQ_OHCI_USB1;
 
 			if (sp_ohci->flag & RESET_UPHY_SIGN) {
+#if defined (CONFIG_SOC_SP7021)
 				writel(RF_MASK_V_SET(1 << (13 + (pdev->id - 1))),
 							ohci_res_moon0 + USB_RESET_OFFSET);
 				writel(RF_MASK_V_CLR(1 << (13 + (pdev->id - 1))),
@@ -225,7 +226,25 @@ static int ohci_reset_thread(void *arg)
 							ohci_res_moon0 + USB_RESET_OFFSET);
 				writel(RF_MASK_V_CLR(1 << (10 + (pdev->id - 1))),
 							ohci_res_moon0 + USB_RESET_OFFSET);
-
+#elif defined (CONFIG_SOC_Q645)
+				writel(RF_MASK_V_SET(1 << (8 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (8 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_SET(1 << (13 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (13 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+#elif defined (CONFIG_SOC_SP7350)
+				writel(RF_MASK_V_SET(1 << (12 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (12 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_SET(1 << (15 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+				writel(RF_MASK_V_CLR(1 << (15 + (pdev->id - 1))),
+							ohci_res_moon0 + USBC0_RESET_OFFSET);
+#endif
 				sp_ohci->flag = RESET_SENDER;
 			} else {
 				sp_ohci->flag = 0;
