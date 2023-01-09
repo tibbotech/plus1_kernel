@@ -51,12 +51,12 @@
 		serial6 = &uart6;
 		serial7 = &uart7;
 
-		spim0 = &spi_controller0;
-		spim1 = &spi_controller1;
-		spim2 = &spi_controller2;
-		spim3 = &spi_controller3;
-		spim4 = &spi_controller4;
-		spis5 = &spi_controller5;
+		//spim0 = &spi_controller0;
+		//spim1 = &spi_controller1;
+		//spim2 = &spi_controller2;
+		//spim3 = &spi_controller3;
+		//spim4 = &spi_controller4;
+		//spis5 = &spi_controller5;
 
 		spi0 = &sp_spinor0;
 	};
@@ -392,6 +392,7 @@
 		status = "disabled";
 	};
 
+#if 0
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spear1340";
 		reg =<0x0 0xf8821000 0x0 0x400>;
@@ -418,9 +419,9 @@
 		clocks = <&clkc SPI_COMBO_0>;
 		resets = <&rstc RST_SPI_COMBO_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim0_pins>;
+		pinctrl-0 = <&spi_master0_pins>;
 		dmas = <&ahbdma1 0 0 0>,
-						<&ahbdma1 1 0 0>;
+				<&ahbdma1 1 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 	};
@@ -435,7 +436,7 @@
 		clocks = <&clkc SPI_COMBO1_0>;
 		resets = <&rstc RST_SPI_COMB1_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim1_pins>;
+		pinctrl-0 = <&spi_master1_pins>;
 		dmas = <&ahbdma1 2 0 0>,
 						<&ahbdma1 3 0 0>;
 		dma-names = "rx", "tx";
@@ -452,7 +453,7 @@
 		clocks = <&clkc SPI_COMBO2_0>;
 		resets = <&rstc RST_SPI_COMB2_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim2_pins>;
+		pinctrl-0 = <&spi_master2_pins>;
 		dmas = <&ahbdma1 4 0 0>,
 						<&ahbdma1 5 0 0>;
 		dma-names = "rx", "tx";
@@ -469,7 +470,7 @@
 		clocks = <&clkc SPI_COMBO3_0>;
 		resets = <&rstc RST_SPI_COMB3_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim3_pins>;
+		pinctrl-0 = <&spi_master3_pins>;
 		dmas = <&ahbdma1 6 0 0>,
 						<&ahbdma1 7 0 0>;
 		dma-names = "rx", "tx";
@@ -486,7 +487,7 @@
 		clocks = <&clkc SPI_COMBO4_0>;
 		resets = <&rstc RST_SPI_COMB4_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim4_pins>;
+		pinctrl-0 = <&spi_master4_pins>;
 		//dmas = <&ahbdma1 6 0 0>,
 		//				<&ahbdma1 7 0 0>;
 		//dma-names = "rx", "tx";
@@ -503,7 +504,7 @@
 		clocks = <&clkc SPI_COMBO5_0>;
 		resets = <&rstc RST_SPI_COMB5_0>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&spim5_pins>;
+		pinctrl-0 = <&spi_slave0_pins>;
 		status = "disabled";
 	};
 
@@ -516,7 +517,7 @@
 		resets = <&rstc RST_I2CM0>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm0_pins>;
+		pinctrl-0 = <&i2c_combo0_pins>;
 		status = "disabled";
 	};
 
@@ -529,7 +530,7 @@
 		resets = <&rstc RST_I2CM1>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm1_pins>;
+		pinctrl-0 = <&i2c_combo1_pins>;
 		status = "disabled";
 	};
 
@@ -542,7 +543,7 @@
 		resets = <&rstc RST_I2CM2>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm2_pins>;
+		pinctrl-0 = <&i2c_combo2_pins>;
 		status = "disabled";
 	};
 
@@ -555,7 +556,7 @@
 		resets = <&rstc RST_I2CM3>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm3_pins>;
+		pinctrl-0 = <&i2c_combo3_pins>;
 		status = "disabled";
 	};
 
@@ -568,7 +569,7 @@
 		resets = <&rstc RST_I2CM4>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm4_pins>;
+		pinctrl-0 = <&i2c_combo4_pins>;
 		status = "disabled";
 	};
 
@@ -581,23 +582,9 @@
 		resets = <&rstc RST_I2CM5>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm5_pins>;
+		pinctrl-0 = <&i2c_combo5_pins>;
 		status = "disabled";
 	};
-
-	i2c5: i2c@f882d000 {
-		compatible = "snps,designware-i2c";
-		reg =<0x0 0xf882d000 0x0 0x100>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc I2CM5>;
-		resets = <&rstc RST_I2CM5>;
-		clock-frequency = <400000>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm5_pins>;
-		status = "disabled";
-	};
-
 
 	i2c6: i2c@f882e000 {
 		compatible = "snps,designware-i2c";
@@ -608,7 +595,7 @@
 		resets = <&rstc RST_I2CM6>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm6_pins>;
+		pinctrl-0 = <&i2c_combo6_pins>;
 		status = "disabled";
 	};
 
@@ -621,7 +608,7 @@
 		resets = <&rstc RST_I2CM7>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm7_pins>;
+		pinctrl-0 = <&i2c_combo7_pins>;
 		status = "disabled";
 	};
 
@@ -634,9 +621,24 @@
 		resets = <&rstc RST_I2CM8>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2cm8_pins>;
+		pinctrl-0 = <&i2c_combo8_pins>;
 		status = "disabled";
 	};
+
+	i2c9: i2c@f8831000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf8831000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM5>;
+		resets = <&rstc RST_I2CM5>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c_combo9_pins>;
+		status = "disabled";
+	};
+
+#endif
 
 	pwm: pwm@f8800d80 {
 		#pwm-cells = <2>;
