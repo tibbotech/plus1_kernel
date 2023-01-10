@@ -23,6 +23,16 @@
 
 #define CACHE_LINE_SIZE 		64
 
+/* moon3 */
+#define M3_SCFG_22			0x58
+
+/* moon4 */
+#define M4_SCFG_10			0x28
+
+#define USB_MODE_MASK			0x3
+#define USB_HOST_MODE			0x3
+#define USB_DEVICE_MODE			0x1
+
 /* run speeed & max ep condig config */
 #define UDC_FULL_SPEED			0x1
 #define UDC_HIGH_SPEED			0x3

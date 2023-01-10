@@ -2490,15 +2490,15 @@ void usb_switch(int device)
 {
 #if defined (CONFIG_SOC_Q645)
 	if (device) {
-		writel(0x00030001, moon3_reg + 0x58);
+		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon3_reg + M3_SCFG_22);
 	} else {
-		writel(0x00030003, moon3_reg + 0x58);
+		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon3_reg + M3_SCFG_22);
 	}
 #elif defined (CONFIG_SOC_SP7350)
 	if (device) {
-		writel(0x00030001, moon4_reg + 0x28);
+		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon3_reg + M4_SCFG_10);
 	} else {
-		writel(0x00030003, moon4_reg + 0x28);
+		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon3_reg + M4_SCFG_10);
 	}
 #endif
 }
