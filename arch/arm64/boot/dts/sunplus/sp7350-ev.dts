@@ -396,7 +396,8 @@
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spear1340";
 		reg =<0x0 0xf8821000 0x0 0x400>;
-		interrupt-parent = <GIC_SPI_ IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>;
 		dma-channels = <8>;
 		#dma-cells = <3>;
 		dma-requests = <16>;
@@ -416,8 +417,8 @@
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO_0>;
-		resets = <&rstc RST_SPI_COMBO_0>;
+		clocks = <&clkc SPICB0>;
+		resets = <&rstc RST_SPICB0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master0_pins>;
 		dmas = <&ahbdma1 0 0 0>,
@@ -433,59 +434,59 @@
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO1_0>;
-		resets = <&rstc RST_SPI_COMB1_0>;
+		clocks = <&clkc SPICB1>;
+		resets = <&rstc RST_SPICB1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master1_pins>;
-		dmas = <&ahbdma1 2 0 0>,
-						<&ahbdma1 3 0 0>;
-		dma-names = "rx", "tx";
+		//dmas = <&ahbdma1 2 0 0>,
+		//				<&ahbdma1 3 0 0>;
+		//dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
-	spi2: spi_controller2@f8824000 {
+	spi_controller2: spi@f8824000 {
 		compatible = "snps,dw-apb-ssi";
 		reg =<0x0 0xf8824000 0x0 0x100>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO2_0>;
-		resets = <&rstc RST_SPI_COMB2_0>;
+		clocks = <&clkc SPICB2>;
+		resets = <&rstc RST_SPICB2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master2_pins>;
-		dmas = <&ahbdma1 4 0 0>,
-						<&ahbdma1 5 0 0>;
-		dma-names = "rx", "tx";
+		//dmas = <&ahbdma1 4 0 0>,
+		//				<&ahbdma1 5 0 0>;
+		//dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
-	spi3: spi_controller3@f8825000 {
+	spi_controller3: spi@f8825000 {
 		compatible = "snps,dw-apb-ssi";
 		reg =<0x0 0xf8825000 0x0 0x100>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 30 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO3_0>;
-		resets = <&rstc RST_SPI_COMB3_0>;
+		clocks = <&clkc SPICB3>;
+		resets = <&rstc RST_SPICB3>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master3_pins>;
-		dmas = <&ahbdma1 6 0 0>,
-						<&ahbdma1 7 0 0>;
-		dma-names = "rx", "tx";
+		//dmas = <&ahbdma1 6 0 0>,
+		//				<&ahbdma1 7 0 0>;
+		//dma-names = "rx", "tx";
 		status = "disabled";
 	};
 
-	spi4: spi_controller4@f8826000 {
+	spi_controller4: spi@f8826000 {
 		compatible = "snps,dw-apb-ssi";
 		reg =<0x0 0xf8826000 0x0 0x100>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 31 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO4_0>;
-		resets = <&rstc RST_SPI_COMB4_0>;
+		clocks = <&clkc SPICB4>;
+		resets = <&rstc RST_SPICB4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master4_pins>;
 		//dmas = <&ahbdma1 6 0 0>,
@@ -494,15 +495,15 @@
 		status = "disabled";
 	};
 
-	spi5: spi_controller4@f8827000 {
+	spi_controller5: spi@f8827000 {
 		compatible = "snps,dw-apb-ssi";
 		reg =<0x0 0xf8827000 0x0 0x100>;
 		#address-cells = <1>;
 		#size-cells = <0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 32 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc SPI_COMBO5_0>;
-		resets = <&rstc RST_SPI_COMB5_0>;
+		clocks = <&clkc SPICB5>;
+		resets = <&rstc RST_SPICB5>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_slave0_pins>;
 		status = "disabled";
@@ -629,9 +630,9 @@
 		compatible = "snps,designware-i2c";
 		reg =<0x0 0xf8831000 0x0 0x100>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc I2CM5>;
-		resets = <&rstc RST_I2CM5>;
+		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM9>;
+		resets = <&rstc RST_I2CM9>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo9_pins>;
