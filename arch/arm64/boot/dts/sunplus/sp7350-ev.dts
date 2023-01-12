@@ -393,6 +393,18 @@
 	};
 
 #if 0
+
+		thermal: thermal@f88002B4 {
+			compatible = "sunplus,sp7021-thermal";
+			reg =<0x0 0xf8821000 0x0 0x18>;
+			#thermal-sensor-cells = <0>;
+			nvmem-cell-names = "therm_calib";
+			nvmem-cells = <&therm_calib>;
+		};
+
+#endif
+#if 0
+
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spear1340";
 		reg =<0x0 0xf8821000 0x0 0x400>;

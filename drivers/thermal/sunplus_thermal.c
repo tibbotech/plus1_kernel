@@ -8,6 +8,8 @@
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/io.h>
+#include <linux/of.h>
+#include <linux/of_device.h>
 #include <linux/module.h>
 #include <linux/nvmem-consumer.h>
 #include <linux/platform_device.h>
@@ -17,6 +19,11 @@
 
 #define DISABLE_THERMAL		(BIT(31) | BIT(15))
 #define ENABLE_THERMAL		BIT(31)
+
+#define DISABLE_THERMAL_V2	(BIT(20) | BIT(4))
+#define ENABLE_THERMAL_V2	BIT(20)
+
+
 #define SP_THERMAL_MASK		GENMASK(10, 0)
 #define SP_TCODE_HIGH_MASK	GENMASK(10, 8)
 #define SP_TCODE_LOW_MASK	GENMASK(7, 0)
@@ -25,13 +32,27 @@
 #define TEMP_BASE		3500
 #define TEMP_OTP_BASE		1518
 
+#define TEMP_RATE_V2		590
+#define TEMP_BASE_V2		2500
+#define TEMP_OTP_BASE_V2	1534
+
 #define SP_THERMAL_CTL0_REG	0x0000
 #define SP_THERMAL_STS0_REG	0x0030
+
+#define SP_THERMAL_STS0_V2_REG	0x0018
+
+struct sunplus_thermal_compatible {
+	int ver;
+	int temp_base;
+	int temp_otp_base;
+	int temp_rate;
+};
 
 /* common data structures */
 struct sp_thermal_data {
 	struct thermal_zone_device *pcb_tz;
 	struct platform_device *pdev;
+	const struct sunplus_thermal_compatible *dev_comp;
 	enum thermal_device_mode mode;
 	void __iomem *regs;
 	int otp_temp0;
@@ -59,8 +80,9 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	if (!IS_ERR(otp_v))
 		kfree(otp_v);
 
-	if (sp_data->otp_temp0 == 0)
-		sp_data->otp_temp0 = TEMP_OTP_BASE;
+	if (sp_data->otp_temp0 == 0) 
+		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
+	
 	return 0;
 }
 
@@ -69,10 +91,16 @@ static int sp_thermal_get_sensor_temp(void *data, int *temp)
 	struct sp_thermal_data *sp_data = data;
 	int t_code;
 
-	t_code = readl(sp_data->regs + SP_THERMAL_STS0_REG);
+	if (sp_data->dev_comp->ver > 1)
+		t_code = readl(sp_data->regs + SP_THERMAL_STS0_V2_REG);
+	else
+		t_code = readl(sp_data->regs + SP_THERMAL_STS0_REG);
+	
 	t_code = FIELD_GET(SP_THERMAL_MASK, t_code);
-	*temp = ((sp_data->otp_temp0 - t_code) * 10000 / TEMP_RATE) + TEMP_BASE;
+
+	*temp = ((sp_data->otp_temp0 - t_code) * 10000 / sp_data->dev_comp->temp_rate) + sp_data->dev_comp->temp_base;
 	*temp *= 10;
+
 	return 0;
 }
 
@@ -102,6 +130,8 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 	if (!sp_data)
 		return -ENOMEM;
 
+	sp_data->dev_comp = of_device_get_match_data(&pdev->dev);
+
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (IS_ERR(res))
 		return dev_err_probe(&pdev->dev, PTR_ERR(res), "resource get fail\n");
@@ -110,7 +140,12 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 	if (IS_ERR(sp_data->regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->regs), "mas_base get fail\n");
 
-	writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
+
+	if (sp_data->dev_comp->ver > 1) {
+		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
+	} else {
+		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
+	}
 
 	platform_set_drvdata(pdev, sp_data);
 	ret = sp7021_get_otp_temp_coef(sp_data, &pdev->dev);
@@ -124,8 +159,24 @@ static int sp7021_thermal_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct sunplus_thermal_compatible sp7350_compat = {
+	.ver = 2,
+	.temp_base = 2500,
+	.temp_otp_base = 1534,
+	.temp_rate = 590,
+};
+
+static const struct sunplus_thermal_compatible sp7021_compat = {
+	.ver = 1,
+	.temp_base = 3500,
+	.temp_otp_base = 1518,
+	.temp_rate =608,
+
+};
+
 static const struct of_device_id of_sp7021_thermal_ids[] = {
-	{ .compatible = "sunplus,sp7021-thermal" },
+	{ .compatible = "sunplus,sp7350-thermal", (void *)&sp7350_compat },
+	{ .compatible = "sunplus,sp7021-thermal", (void *)&sp7021_compat },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, of_sp7021_thermal_ids);
