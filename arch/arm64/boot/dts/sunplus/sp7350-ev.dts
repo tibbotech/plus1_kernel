@@ -392,18 +392,14 @@
 		status = "disabled";
 	};
 
-#if 0
-
-		thermal: thermal@f88002B4 {
-			compatible = "sunplus,sp7021-thermal";
-			reg =<0x0 0xf8821000 0x0 0x18>;
-			#thermal-sensor-cells = <0>;
-			nvmem-cell-names = "therm_calib";
-			nvmem-cells = <&therm_calib>;
-		};
-
-#endif
-#if 0
+	thermal: thermal@f88002b4 {
+		compatible = "sunplus,sp7350-thermal";
+		reg =<0x0 0xf88002b4 0x18>;
+		#thermal-sensor-cells = <0>;
+		nvmem-cell-names = "therm_calib";
+		nvmem-cells = <&therm_calib>;
+		status = "disabled";
+	};
 
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spear1340";
@@ -420,6 +416,7 @@
 		data-width = <2 2 2 2>;
 		multi-block = <0 0 0 0 0 0 0 0>;
 		snps,max-burst-len = <128 128 128 128 128 128 128 128>;
+		status = "disabled";
 	};
 
 	spi_controller0: spi@f8822000 {
@@ -651,8 +648,6 @@
 		status = "disabled";
 	};
 
-#endif
-
 	pwm: pwm@f8800d80 {
 		#pwm-cells = <2>;
 		compatible = "sunplus,sp7350-pwm";
@@ -675,7 +670,7 @@
 		compatible = "sunplus,sp7350-rtc";
 		reg = <0x0 0xf8801180 0x0 0x30>;
 		reg-names = "rtc_reg";
-		clocks = <&clkc RTC>;
+		clocks = <&clkc RTC>;<a name=""></a>
 		resets = <&rstc RST_RTC>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
