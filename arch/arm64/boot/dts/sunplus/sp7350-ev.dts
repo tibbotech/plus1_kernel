@@ -51,12 +51,12 @@
 		serial6 = &uart6;
 		serial7 = &uart7;
 
-		//spim0 = &spi_controller0;
-		//spim1 = &spi_controller1;
-		//spim2 = &spi_controller2;
-		//spim3 = &spi_controller3;
-		//spim4 = &spi_controller4;
-		//spis5 = &spi_controller5;
+		spim0 = &spi_controller0;
+		spim1 = &spi_controller1;
+		spim2 = &spi_controller2;
+		spim3 = &spi_controller3;
+		spim4 = &spi_controller4;
+		spis5 = &spi_controller5;
 
 		spi0 = &sp_spinor0;
 	};
@@ -670,7 +670,7 @@
 		compatible = "sunplus,sp7350-rtc";
 		reg = <0x0 0xf8801180 0x0 0x30>;
 		reg-names = "rtc_reg";
-		clocks = <&clkc RTC>;<a name=""></a>
+		clocks = <&clkc RTC>;
 		resets = <&rstc RST_RTC>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
