@@ -648,6 +648,12 @@
 		status = "disabled";
 	};
 
+	adc: adc@f8802f00 {
+		compatible = "sunplus,sp7350-adc";
+		reg = <0x0 0xf8802f00 0x0 0x100>;
+		status = "disabled";
+	};
+
 	pwm: pwm@f8800d80 {
 		#pwm-cells = <2>;
 		compatible = "sunplus,sp7350-pwm";

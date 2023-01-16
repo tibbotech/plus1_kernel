@@ -116,7 +116,7 @@ static int sp_adc_read_channel(struct sp_adc_chip *sp_adc, int *val,
 		break;
 	}
 
-	*val =SP_ADC_CFG11 & mask;
+	*val = data & mask;
 	return 0;
 }
 
