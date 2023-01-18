@@ -12,7 +12,9 @@
 #include <linux/interrupt.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
-#include <linux/module.h>
+#include <linux/of_device.h>
+#include <linux/platform_device.h>
+#include <linux/io.h>
 
 #define SP_ADC_CFG02			0x0008
 #define SP_ADC_CFG0B			0x002c
@@ -59,8 +61,8 @@ static const struct sp_adc_spec sp_adc_spec = {
  */
 struct sp_adc_chip {
 	struct mutex lock;
-	struct iio_dev *indio_dev;
-	void __iomem *regs;
+	struct iio_dev	*indio_dev;
+	void __iomem	*regs;
 	u8 resolution;
 };
 
@@ -179,8 +181,10 @@ static int sp_adc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+	sp_adc = iio_priv(indio_dev);
+
 	indio_dev->info = &sp_info;
-	indio_dev->name = platform_get_device_id(pdev)->name;
+	indio_dev->name = "sunplus-adc";
 	indio_dev->modes = INDIO_DIRECT_MODE;
 	indio_dev->channels = sp_adc_channels;
 
@@ -192,9 +196,7 @@ static int sp_adc_probe(struct platform_device *pdev)
 	if (IS_ERR(sp_adc->regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(sp_adc->regs), "mas_base get fail\n");
 
-	sp_adc = iio_priv(indio_dev);
 	sp_adc->indio_dev = indio_dev;
-
 	spec = &sp_adc_spec;
 	indio_dev->num_channels = spec->num_channels;
 	sp_adc->resolution = spec->resolution;

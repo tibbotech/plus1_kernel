@@ -430,10 +430,16 @@
 		resets = <&rstc RST_SPICB0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master0_pins>;
-		dmas = <&ahbdma1 0 0 0>,
-				<&ahbdma1 1 0 0>;
-		dma-names = "rx", "tx";
+		//dmas = <&ahbdma1 0 0 0>,
+		//		<&ahbdma1 1 0 0>;
+		//dma-names = "rx", "tx";
 		status = "disabled";
+		spi@0 {
+			compatible = "rohm,dh2228fv";
+			spi-max-frequency = <5000000>;
+			reg = <0x0>;
+			status = "disabled";
+		};
 	};
 
 	spi_controller1: spi@f8823000 {
@@ -451,6 +457,12 @@
 		//				<&ahbdma1 3 0 0>;
 		//dma-names = "rx", "tx";
 		status = "disabled";
+		spi@0 {
+			compatible = "rohm,dh2228fv";
+			spi-max-frequency = <5000000>;
+			reg = <0x0>;
+			status = "disabled";
+		};
 	};
 
 	spi_controller2: spi@f8824000 {
@@ -468,6 +480,12 @@
 		//				<&ahbdma1 5 0 0>;
 		//dma-names = "rx", "tx";
 		status = "disabled";
+		spi@0 {
+			compatible = "rohm,dh2228fv";
+			spi-max-frequency = <5000000>;
+			reg = <0x0>;
+			status = "disabled";
+		};
 	};
 
 	spi_controller3: spi@f8825000 {
@@ -485,6 +503,12 @@
 		//				<&ahbdma1 7 0 0>;
 		//dma-names = "rx", "tx";
 		status = "disabled";
+		spi@0 {
+			compatible = "rohm,dh2228fv";
+			spi-max-frequency = <5000000>;
+			reg = <0x0>;
+			status = "disabled";
+		};
 	};
 
 	spi_controller4: spi@f8826000 {
@@ -502,6 +526,12 @@
 		//				<&ahbdma1 7 0 0>;
 		//dma-names = "rx", "tx";
 		status = "disabled";
+		spi@0 {
+			compatible = "rohm,dh2228fv";
+			spi-max-frequency = <5000000>;
+			reg = <0x0>;
+			status = "disabled";
+		};
 	};
 
 	spi_controller5: spi@f8827000 {
@@ -650,7 +680,7 @@
 
 	adc: adc@f8802f00 {
 		compatible = "sunplus,sp7350-adc";
-		reg = <0x0 0xf8802f00 0x0 0x100>;
+		reg = <0x0 0xf8802f00 0x0 0x80>;
 		status = "disabled";
 	};
 
