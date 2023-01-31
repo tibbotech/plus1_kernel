@@ -2496,9 +2496,9 @@ void usb_switch(int device)
 	}
 #elif defined (CONFIG_SOC_SP7350)
 	if (device) {
-		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon3_reg + M4_SCFG_10);
+		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon4_reg + M4_SCFG_10);
 	} else {
-		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon3_reg + M4_SCFG_10);
+		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon4_reg + M4_SCFG_10);
 	}
 #endif
 }
@@ -2586,10 +2586,10 @@ static int sp_udc_probe(struct platform_device *pdev)
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	if (res_mem) {
 #if defined (CONFIG_SOC_Q645)
-		moon3_reg= devm_ioremap_resource(&pdev->dev, res_mem);
+		moon3_reg = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 		if (IS_ERR(moon3_reg)) {
 #elif defined (CONFIG_SOC_SP7350)
-		moon4_reg= devm_ioremap_resource(&pdev->dev, res_mem);
+		moon4_reg = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 		if (IS_ERR(moon4_reg)) {
 #endif
 			retval = -ENOMEM;
