@@ -1006,13 +1006,13 @@ static int hdmitx_probe(struct platform_device *pdev)
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	sp_hdmitx->moon4base = devm_ioremap_resource(dev, res);
+	sp_hdmitx->moon4base = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(sp_hdmitx->moon4base)) {
 		return PTR_ERR(sp_hdmitx->moon4base);
 	}
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 2);
-	sp_hdmitx->moon5base = devm_ioremap_resource(dev, res);
+	sp_hdmitx->moon5base = devm_ioremap(dev, res->start, resource_size(res));
 	if (IS_ERR(sp_hdmitx->moon5base)) {
 		return PTR_ERR(sp_hdmitx->moon5base);
 	}

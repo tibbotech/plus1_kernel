@@ -141,7 +141,7 @@ static void uphy0_init(struct platform_device *pdev)
 	mdelay(1);
 
 	/* 3. Default value modification */
-	writel(0x18888002, uphy0_base_addr + CTRL_OFFSET);
+	writel(0x18888102, uphy0_base_addr + CTRL_OFFSET);
 
 	/* 4. PLL power off/on twice */
 	writel(0x88, uphy0_base_addr + PLL_PWR_CTRL_OFFSET);

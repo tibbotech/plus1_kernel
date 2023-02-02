@@ -47,8 +47,11 @@
 
 		i2c4 = &i2cm4;
 		i2c5 = &i2cm5;
-		
+
 		spi0 = &sp_spinor0;
+
+		usb-device0 = &sp_udc0;
+		usb-device1 = &sp_udc1;
 	};
 
 	chosen {

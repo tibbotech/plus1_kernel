@@ -71,8 +71,8 @@
 #define APHY_PROBE_OFFSET			0x5c
 #ifdef CONFIG_SOC_I143
 #define SQ_CT_CTRL_OFFSET			0x64
-#define CTRL_OFFSET				0xf0
-#define PLL_PWR_CTRL_OFFSET			0xf8
+#define CTRL_OFFSET				0x70
+#define PLL_PWR_CTRL_OFFSET			0x78
 #endif
 #define CDP_OFFSET				0
 
