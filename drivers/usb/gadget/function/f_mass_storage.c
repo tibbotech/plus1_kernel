@@ -1060,7 +1060,7 @@ static int do_verify(struct fsg_common *common)
 static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 {
 	char *VID = "sunplus";
-	char *PID = "SP7021";
+	char *PID = "I143";
 
 	struct fsg_lun *curlun = common->curlun;
 	u8	*buf = (u8 *) bh->buf;
