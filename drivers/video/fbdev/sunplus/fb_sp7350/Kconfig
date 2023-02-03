@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+config FB_SP7350
+	tristate "SP7350 framebuffer support"
+	depends on FB && SOC_SP7350 && VIDEO_SP7350_DISP
+	select FB_CFB_FILLRECT
+	select FB_CFB_COPYAREA
+	select FB_CFB_IMAGEBLIT
+	help
+	  Frame buffer driver for SP7350 based boards.
+	  Default y if SP7350 display driver exists.
+	  SP7350 support framebuffer console.
+
+config FB_SP7350_DEBUG
+	bool "External Debug support"
+	depends on FB_SP7350
+	help
+	  Say Y here, if you want to have debug support.
+	  Debug function reserved for fb further check.
+	  echo "fbinfo" > /sys/module/sp7350fb/parameter/debug
+	  can show more info for framebuffer details.
