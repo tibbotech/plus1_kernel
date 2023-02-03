@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config VIDEO_SP7350_DISP
+	tristate "SUNPLUS SP7350 DISPLAY Driver"
+	depends on VIDEO_DEV && VIDEO_V4L2 && SOC_SP7350
+	select VIDEOBUF2_DMA_CONTIG
+	select VIDEOBUF2_VMALLOC
+	# select FB_SP7350
+	default y
+	help
+		Support for the SUNPLUS SP7350 display driver.
+
+config VIDEO_SP7350_DISP_DEBUG
+	bool "External Debug support"
+	depends on VIDEO_SP7350_DISP
+	help
+	  Say Y here, if you want to have debug support.
+	  Debug function reserved for display further check.
+	  echo "dump all" > /sys/module/display_sp7350/parameter/debug
+	  can show more info for display driver details.

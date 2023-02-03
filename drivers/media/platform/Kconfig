@@ -181,6 +181,7 @@ config VIDEO_TI_CAL
 	  Camera Interface Subsystem (CAMSS).
 
 source "drivers/media/platform/sunplus/display/sp7021/Kconfig"
+source "drivers/media/platform/sunplus/display/sp7350/Kconfig"
 source "drivers/media/platform/sunplus/hdmitx/Kconfig"
 source "drivers/media/platform/sunplus/mipicsi/Kconfig"
 source "drivers/media/platform/sunplus/video/Kconfig"
