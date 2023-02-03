@@ -1888,6 +1888,79 @@
 		compatible = "sunplus,sp-poweroff";
 	};
 
+	fb_disp_device {
+		compatible = "sunplus,sp7350-fb";
+		status = "disabled";
+	};
+
+	display: display@f8005c80 {
+		compatible = "sunplus,sp7350-display";
+		reg = <0x00 0xf8005c80 0x00 0xa80>;
+		interrupt-parent = <&gic>;
+		interrupts =
+			<GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc DISPSYS>,
+			<&clkc DMIX>,
+			<&clkc GPOST0>,
+			<&clkc GPOST1>,
+			<&clkc GPOST2>,
+			<&clkc GPOST3>,
+			<&clkc IMGREAD0>,
+			<&clkc MIPITX>,
+			<&clkc OSD0>,
+			<&clkc OSD1>,
+			<&clkc OSD2>,
+			<&clkc OSD3>,
+			<&clkc TCON>,
+			<&clkc TGEN>,
+			<&clkc VPOST0>,
+			<&clkc VSCL0>;
+		resets = <&rstc DISPSYS>,
+			<&rstc DMIX>,
+			<&rstc GPOST0>,
+			<&rstc GPOST1>,
+			<&rstc GPOST2>,
+			<&rstc GPOST3>,
+			<&rstc IMGREAD0>,
+			<&rstc MIPITX>,
+			<&rstc OSD0>,
+			<&rstc OSD1>,
+			<&rstc OSD2>,
+			<&rstc OSD3>,
+			<&rstc TCON>,
+			<&rstc TGEN>,
+			<&rstc VPOST0>,
+			<&rstc VSCL0>;
+		sp7350,osd0_layer = <0 0 320 240 0xe>; /* 0xe = ARGB8888 */
+		sp7350,osd1_layer = <400 0 320 240 0xe>; /* 0xe = ARGB8888 */
+		sp7350,osd2_layer = <0 240 320 240 0xe>; /* 0xe = ARGB8888 */
+		sp7350,osd3_layer = <400 240 320 240 0xe>; /* 0xe = ARGB8888 */
+			/* 0x2 = 8bpp (ARGB)
+			 * 0x4 = YUY2
+			 * 0x8 = RGB565
+			 * 0x9 = ARGB1555
+			 * 0xa = RGBA4444
+			 * 0xb = ARGB4444
+			 * 0xd = RGBA8888
+			 * 0xe = ARGB8888
+			 */
+		sp7350,vpp0_layer = <0 0 720 480 720 480 0x2>; /* 0x2 = YUY2 */
+			/* 0x2 = YUY2
+			 * 0x3 = NV16
+			 * 0x6 = NV24
+			 * 0x7 = NV12
+			 * else UYVY
+			 */
+		sp7350,disp_output = <720 480 0x0>; /* 0x0:MIPITX DSI */
+			/* 0x0:MIPITX DSI
+			 * 0x1:MIPITX CSI
+			 */
+		status = "disabled";
+	};
+
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,sp7350-wdt";
 		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
