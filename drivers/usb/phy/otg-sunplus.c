@@ -12,18 +12,16 @@
 #include <linux/usb/otg.h>
 
 #include "otg-sunplus.h"
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 #include "../core/otg_whitelist.h"
-#endif
 
 #define DRIVER_NAME		"sp-otg"
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
+#ifdef CONFIG_USB_GADGET_SP7021
 extern void detech_start(void);
 extern void udc_otg_ctrl(void);
-#endif
 extern void phy0_otg_ctrl(void);
 extern void phy1_otg_ctrl(void);
+#endif
 
 extern struct sp_otg *sp_otg0_host;
 extern struct sp_otg *sp_otg1_host;
@@ -102,7 +100,6 @@ void dump_debug_register(struct usb_otg *otg)
 }
 EXPORT_SYMBOL(dump_debug_register);
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 {
 	u32 val;
@@ -114,12 +111,14 @@ void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 	val |= B_VBUS_REQ;
 	writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
+	#ifdef CONFIG_USB_GADGET_SP7021
 	udc_otg_ctrl();
 
 	if (otg_host->id == 1)
 		phy0_otg_ctrl();
 	else if (otg_host->id == 2)
 		phy1_otg_ctrl();
+	#endif
 }
 
 static int sp_start_hnp(struct usb_otg *otg)
@@ -139,13 +138,15 @@ static int sp_start_hnp(struct usb_otg *otg)
 
 	otg_host->otg.otg->state = OTG_STATE_A_PERIPHERAL;
 	mdelay(100);
+
+	#ifdef CONFIG_USB_GADGET_SP7021
 	detech_start();
+	#endif
 
 	otg_debug("start hnp\n");
 
 	return 0;
 }
-#endif
 
 static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 {
@@ -163,7 +164,7 @@ static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 		otg_debug("drop vbus\n");
 		ret |= A_BUS_DROP_BIT;
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 
@@ -192,20 +193,18 @@ int sp_set_host(struct usb_otg *otg, struct usb_bus *host)
 	return 0;
 }
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
 	otg->gadget = gadget;
 
 	return 0;
 }
-#endif
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
 #ifdef CONFIG_SOC_SP7021
 	return readl((u32 *)reg);
-#elif defined(CONFIG_SOC_I143)
+#elif defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	return readl((u32 *)reg);
 	#else
@@ -218,7 +217,7 @@ int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 {
 #ifdef CONFIG_SOC_SP7021
 	writel(val, (u32 *)reg);
-#elif defined(CONFIG_SOC_I143)
+#elif defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	writel(val, (u32 *)reg);
 	#else
@@ -234,7 +233,6 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.write = sp_phy_write,
 };
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 static int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
@@ -313,7 +311,9 @@ static int hnp_polling_watchdog(void *arg)
 
 						otg_start_hnp(otg_phy->otg);
 						msleep(1);
+	#ifdef CONFIG_USB_GADGET_SP7021
 						detech_start();
+	#endif
 						return 0;
 					} else {
 					  	msleep(1000);
@@ -329,7 +329,6 @@ static int hnp_polling_watchdog(void *arg)
 
 	return 0;
 }
-#endif
 
 static void sp_otg_work(struct work_struct *work)
 {
@@ -485,7 +484,7 @@ int sp_notifier_call(struct notifier_block *self, unsigned long action,
 		val |= A_BUS_DROP_BIT;
 		writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 	}
@@ -493,7 +492,7 @@ int sp_notifier_call(struct notifier_block *self, unsigned long action,
 	return 0;
 }
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 static void adp_watchdog0(struct timer_list *t)
 {
 	u32 val;
@@ -605,7 +604,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 			writel(val, &otg_host->regs_otg->mode_select);
 		}
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 		otg_host->fsm.a_wait_bcon_tmout = 1;
@@ -623,9 +622,15 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 		otg_host->fsm.id = (int_status & ID_PIN) ? 1 : 0;
 		if ((int_status & ID_PIN) == 0) {
+#ifdef CONFIG_SOC_SP7350
+			writel(~OTG_SIM & (OTG_SRP | OTG_20),
+				  &otg_host->regs_otg->mode_select);
+#else
 			writel(~OTG_SIM & (OTG_ADP | OTG_SRP | OTG_20),
 				  &otg_host->regs_otg->mode_select);
-#ifdef	CONFIG_ADP_TIMER
+#endif
+
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 			mod_timer(&otg_host->adp_timer,
 				  ADP_TIMER_FREQ + jiffies);
 #endif
@@ -645,7 +650,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 		//otg_debug("oct in %09ld.%09ld\n", t0.tv_sec, t0.tv_nsec);
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, (HZ/10) + jiffies);
 #endif
 
@@ -769,17 +774,15 @@ int sp_otg_probe(struct platform_device *dev)
 
 	otg_host->otg.otg->set_host = sp_set_host;
 	otg_host->otg.otg->set_vbus = sp_set_vbus;
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 	otg_host->otg.otg->set_peripheral = sp_set_peripheral;
 	otg_host->otg.otg->start_hnp = sp_start_hnp;
-#endif
 	otg_host->otg.otg->start_srp = sp_start_srp;
 	otg_host->otg.otg->usb_phy = &otg_host->otg;
 
 	otg_host->otg.io_priv = otg_host->regs_otg;
 	otg_host->otg.io_ops = &sp_phy_ios;
 
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 	if (dev->id == 1)
 		timer_setup(&otg_host->adp_timer, adp_watchdog0, 0);
 	else if (dev->id == 2)
@@ -797,18 +800,16 @@ int sp_otg_probe(struct platform_device *dev)
 		goto err_ioumap;
 	}
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
-	#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_GADGET_USB0
  	if (otg_host->id == 1) {
 		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg0_host, "hnp_polling");
 		wake_up_process(sp_otg0_host->hnp_polling_timer);
  	}
-	#else
+#else
  	if (otg_host->id == 2) {
 		sp_otg1_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog, sp_otg1_host, "hnp_polling");
 		wake_up_process(sp_otg1_host->hnp_polling_timer);
  	}
-	#endif
 #endif
 
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
@@ -836,20 +837,17 @@ int sp_otg_remove(struct platform_device *dev)
 {
 	struct resource *res_mem;
 	struct sp_otg *otg_host = platform_get_drvdata(dev);
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
 	int err = 0;
-#endif
 
 	if (otg_host->qwork) {
 		flush_workqueue(otg_host->qwork);
 		destroy_workqueue(otg_host->qwork);
 	}
-#ifdef	CONFIG_ADP_TIMER
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 	del_timer_sync(&otg_host->adp_timer);
 #endif
 
-#if defined(CONFIG_USB_GADGET_SP7021) || defined(CONFIG_USB_GADGET_I143)
-	#ifdef CONFIG_GADGET_USB0
+#ifdef CONFIG_GADGET_USB0
 	if (sp_otg0_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
 		if (err) {
@@ -858,7 +856,7 @@ int sp_otg_remove(struct platform_device *dev)
 			sp_otg0_host->hnp_polling_timer = NULL;
 		}
 	}
-	#else
+#else
 	if (sp_otg1_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
 		if (err) {
@@ -867,7 +865,6 @@ int sp_otg_remove(struct platform_device *dev)
 			sp_otg1_host->hnp_polling_timer = NULL;
 		}
 	}
-	#endif
 #endif
 
 	free_irq(otg_host->irq, otg_host);

@@ -32,6 +32,7 @@
 #define USB_MODE_MASK			0x3
 #define USB_HOST_MODE			0x3
 #define USB_DEVICE_MODE			0x1
+#define USB_HW_CTRL			0x0
 
 /* moon5 */
 #define M5_CFG_17			0x44
@@ -106,6 +107,7 @@
 #define DESI				(0x7)			/* DEVC_ERDP */
 #define VBUS_DIS 			(1<<16)			/* DEVC_CTRL */
 #define EINT				(1<<1)			/* DEVC_STS */
+#define VBUS_CI				(1<<0)			/* DEVC_STS */
 #define CLEAR_INT_VBUS			(0x3)			/* DEVC_STS */
 
 #define EP_EN				(1<<0)

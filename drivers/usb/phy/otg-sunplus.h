@@ -232,4 +232,5 @@ extern enum usb_dr_mode usb_get_dr_mode(struct device *dev);
 void sp_otg_update_transceiver(struct sp_otg *);
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num);
+void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 #endif

@@ -197,7 +197,6 @@ static void uphy0_init(struct platform_device *pdev)
 	writel(RF_MASK_V_SET(3 << 4), uphy0_res_moon5 + USBC_CTL_OFFSET);
 
 	#ifdef CONFIG_USB_SUNPLUS_OTG
-	writel(RF_MASK_V_SET(1 << 12), uphy0_res_moon0 + PIN_MUX_CTRL);
 	writel(RF_MASK_V_CLR(1 << 4), uphy0_res_moon5 + USBC_CTL_OFFSET);
 	mdelay(1);
 	#endif

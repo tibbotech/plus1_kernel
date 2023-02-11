@@ -42,8 +42,6 @@
 #define USB_RESET_OFFSET			0x5C
 #ifdef CONFIG_SOC_SP7021
 #define PIN_MUX_CTRL				0x8C
-#elif defined(CONFIG_SOC_I143)
-#define PIN_MUX_CTRL				0x88
 #endif
 
 #define USBC_CTL_OFFSET				0x44

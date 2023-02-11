@@ -11,8 +11,20 @@
 #include <asm/cacheflush.h>
 #include <asm/unaligned.h>
 #include <linux/usb/otg.h>
+#ifdef CONFIG_USB_SUNPLUS_OTG
+#include "../../../../phy/otg-sunplus.h"
+#endif
 
 #include "sunplus_udc.h"
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	#ifdef OTG_TEST
+static u32 dev_otg_status = 1;
+	#else
+static u32 dev_otg_status;
+	#endif
+module_param(dev_otg_status, uint, 0644);
+#endif
 
 #define DRIVER_NAME "sp-udc"
 static const char ep0name[] = "ep0";
@@ -1135,6 +1147,8 @@ static irqreturn_t sp_udc_irq(int dummy, void *_dev)
 		USBx->DEVC_STS |= EINT;
 		USBx->DEVC_IMAN |= DEVC_INTR_PENDING;
 		tasklet_schedule(&udc->event_task);
+	} else if (USBx->DEVC_STS & VBUS_CI) {
+		USBx->DEVC_STS |= VBUS_CI;
 	}
 	spin_unlock(&udc->lock);
 
@@ -1864,6 +1878,9 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 	struct usb_gadget *gadget = &udc->gadget;
 	struct usb_composite_dev *cdev = get_gadget_data(gadget);
 	struct usb_request *req = cdev->req;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	struct usb_phy *otg_phy;
+#endif
 	int value = -EOPNOTSUPP;
 	u16 w_index = le16_to_cpu(ctrl->wIndex);
 	u16 w_value = le16_to_cpu(ctrl->wValue);
@@ -1928,6 +1945,27 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 				}
 			}
 		}
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+		if ((ctrl->bRequestType == 0x80) && (ctrl->wValue == 0) && (ctrl->wIndex == 0xf000)
+									&& (ctrl->wLength == 4)) {
+			u32 status = 0;
+
+			status = dev_otg_status;
+	#if 0
+			udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
+			udc_write(((1 << 2) - 1), UDEP0VB);
+			DEBUG_DBG("get otg status, %d, %d", dev_otg_status, status);
+			memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
+			udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
+			udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
+	#endif
+			value = 0;
+
+			goto done;;
+		}
+#endif
+
 		break;
 	/* request set feature */
 	case USB_REQ_SET_FEATURE:
@@ -1987,6 +2025,26 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 					sp_udc_set_halt(&ep->ep, 1);
 			}
 		}
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+		if ((ctrl->bRequestType == 0) && (ctrl->wValue == 3) && (ctrl->wIndex == 0)
+									&& (ctrl->wLength == 0)) {
+			UDC_LOGD("set hnp feature");
+
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+			otg_phy = usb_get_transceiver_sp(0);
+	#else
+			otg_phy = usb_get_transceiver_sp(1);
+	#endif
+
+			if (!otg_phy)
+				UDC_LOGE("Get otg control fail");
+			else
+				sp_accept_b_hnp_en_feature(otg_phy->otg);
+
+		}
+#endif
+
 		value = 0;
 		break;
 
@@ -2453,6 +2511,14 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 
 void usb_switch(int port_num, int device)
 {
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	if (port_num == 0)
+		writel((USB_MODE_MASK << (4 + 16)) | (USB_HW_CTRL << 4),
+							moon5_reg + M5_CFG_17);
+	else if (port_num == 1)
+		writel((USB_MODE_MASK << (12 + 16)) | (USB_HW_CTRL << 12),
+							moon5_reg + M5_CFG_17);
+#else
 	if (device) {
 		if (port_num == 0)
 			writel((USB_MODE_MASK << (4 + 16)) | (USB_DEVICE_MODE << 4),
@@ -2468,6 +2534,7 @@ void usb_switch(int port_num, int device)
 			writel((USB_MODE_MASK << (12 + 16)) | (USB_HOST_MODE << 12),
 									moon5_reg + M5_CFG_17);
 	}
+#endif
 }
 
 static ssize_t udc_ctrl_show(struct device *dev, struct device_attribute *attr, char *buffer)
@@ -2499,15 +2566,13 @@ static int sp_udc_probe(struct platform_device *pdev)
 {
 	struct resource *res_mem;
 	struct sp_udc *udc = NULL;
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	struct usb_phy *otg_phy;
+#endif
 	resource_size_t rsrc_len;
 	resource_size_t rsrc_start;
 	int retval;
 	typedef void (*pfunc)(unsigned long);
-#if 0
-#ifdef CONFIG_SP_USB_PHY
-	struct usb_phy *phy;
-#endif
-#endif
 
 	udc = kzalloc(sizeof(*udc), GFP_KERNEL);
 	if (!udc) {
@@ -2573,6 +2638,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 #endif
 
 	sp_udc_ep_init(udc);
+
 	retval = request_irq(udc->irq_num, sp_udc_irq,
 						IRQF_TRIGGER_HIGH, dev_name(&pdev->dev), udc);
 	if (retval != 0) {
@@ -2600,6 +2666,14 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->dev = &(pdev->dev);
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
 	device_create_file(&pdev->dev, &dev_attr_debug);
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	//udc->bus_num = pdev->id;
+	otg_phy = usb_get_transceiver_sp(udc->port_num);
+	retval = otg_set_peripheral(otg_phy->otg, &udc->gadget);
+	if (retval < 0)
+		goto err_phy_init;
+#endif
 
 	retval = usb_add_gadget_udc(&pdev->dev, &udc->gadget);
 	if (retval) {
@@ -2641,11 +2715,9 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	return 0;
 
-#if 0
-#ifdef CONFIG_SP_USB_PHY
+#ifdef CONFIG_USB_SUNPLUS_OTG
 err_phy_init:
-	usb_put_phy(phy);
-#endif
+	usb_put_phy(otg_phy);
 #endif
 
 err_int:
