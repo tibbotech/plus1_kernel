@@ -114,6 +114,12 @@
 			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
+        
+		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
+		npu_reserver: npu_reserver@0x68000000 {	
+			reg = <0x0 0x68000000 0x0 0x8000000>;
+			no-map;
+		};
 	};
 
 	clocks {
@@ -757,9 +763,13 @@
 		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "macirq";
 		//st,syscon = <&syscfg 0x4>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&gmac_pins>;		
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
+		//snps,ps-speed = <100>;		
 		phy-mode = "rgmii";
+		//phy-mode = "rmii";		
 		//mac-mode = "rgmii";
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
@@ -1882,6 +1892,16 @@
 	video_codec_dmem {
 		compatible = "sunplus,sp7350-hantro-dmem";
 		memory-region = <&video_codec_reserve>;
+	};
+
+	galcore: galcore@0xf8140000 {
+		compatible = "vicore,galcore";
+		dev_name = "galcore";
+		memory-region = <&npu_reserver>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
+		reg = <0x0 0xf8140000 0x0 0x20000>;
+		status = "okay";
 	};
 
 	poweroff {

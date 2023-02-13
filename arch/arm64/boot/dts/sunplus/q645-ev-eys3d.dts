@@ -159,15 +159,15 @@
 
 		/* video codec reserve memory: 0xb8000000~0xbfffffff, total 128M */
 		video_codec_reserve: vcodec@b8000000 {
-			reg = <0x0 0xb8000000 0x0 0x8000000>;
+			reg = <0x0 0xb8000000 0x0 0x14000000>;
 			no-map;
 		};
 
 		/* EthosN reserve memory: 0xc0000000~0xdfffffff, total 512M */
 		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
-		ethosn_reserved: ethosn_reserved@c0000000 {
+		ethosn_reserved: ethosn_reserved@80000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0xc0000000 0x0 0x20000000>;
+			reg = <0x0 0x80000000 0x0 0x20000000>;
 			no-map;
 		};
 	};
