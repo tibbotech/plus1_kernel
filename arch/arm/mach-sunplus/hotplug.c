@@ -60,7 +60,7 @@ static inline void platform_do_lowpower(unsigned int cpu, int *spurious)
 	 * we can do is put the core into WFI; this is safe as the calling
 	 * code will have already disabled interrupts
 	 */
-	wfe();
+	wfi();
 }
 
 /*
