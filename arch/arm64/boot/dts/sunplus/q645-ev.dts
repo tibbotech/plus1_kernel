@@ -31,6 +31,11 @@
 
 //#define SPI_SLAVE
 
+//#define ESP876_IN0
+//#define ESP876_IN1
+//#define ESP876_IN2
+//#define ESP876_IN3
+
 / {
 	model = "Sunplus Q645";
 	compatible = "sunplus,sp-q645";
@@ -209,6 +214,38 @@
 
 #ifdef TP2815_IN2 /* Add tp2815 subnode in i2cm2 */
 	tp2815_2_clk: camera2-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef ESP876_IN0 /* Add eSP876 subnode in i2cm0 */
+	esp876_0_clk: camera0-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef ESP876_IN1 /* Add eSP876 subnode in i2cm1 */
+	esp876_1_clk: camera1-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef ESP876_IN2 /* Add eSP876 subnode in i2cm2 */
+	esp876_2_clk: camera2-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef ESP876_IN3 /* Add eSP876 subnode in i2cm3 */
+	esp876_3_clk: camera3-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <24000000>;
@@ -623,6 +660,26 @@
 			};
 		};
 #endif
+
+#ifdef ESP876_IN0 /* Add eSP876 subnode in i2cm0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@10 {
+			compatible = "eys3d,eSP876";
+			reg = <0x60>;
+			clocks = <&esp876_0_clk>;
+
+			port {
+				esp876_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm1: i2cm@f8004700 {
@@ -653,6 +710,26 @@
 
 			port {
 				imx219_1: endpoint {
+					remote-endpoint = <&csi2_1>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef ESP876_IN1 /* Add eSP876 subnode in i2cm1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_1: sensor@10 {
+			compatible = "eys3d,eSP876";
+			reg = <0x60>;
+			clocks = <&esp876_1_clk>;
+
+			port {
+				esp876_1: endpoint {
 					remote-endpoint = <&csi2_1>;
 					data-lanes = <1 2>;
 					clock-noncontinuous;
@@ -719,6 +796,26 @@
 			};
 		};
 #endif
+
+#ifdef ESP876_IN2 /* Add eSP876 subnode in i2cm2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@10 {
+			compatible = "eys3d,eSP876";
+			reg = <0x60>;
+			clocks = <&esp876_2_clk>;
+
+			port {
+				esp876_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2cm3: i2cm@f8004900 {
@@ -749,6 +846,26 @@
 
 			port {
 				imx219_3: endpoint {
+					remote-endpoint = <&csi2_3>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef ESP876_IN3 /* Add eSP876 subnode in i2cm3 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_3: sensor@10 {
+			compatible = "eys3d,eSP876";
+			reg = <0x60>;
+			clocks = <&esp876_3_clk>;
+
+			port {
+				esp876_3: endpoint {
 					remote-endpoint = <&csi2_3>;
 					data-lanes = <1 2>;
 					clock-noncontinuous;
@@ -1372,6 +1489,18 @@
 			};
 		};
 #endif
+
+#ifdef ESP876_IN0 /* Add eSP876 subnode in i2cm0 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_0: endpoint {
+				remote-endpoint = <&esp876_0>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx1: mipicsirx@f8005380 {
@@ -1394,6 +1523,18 @@
 			/* MIPI CSI-2 bus endpoint */
 			csi2_1: endpoint {
 				remote-endpoint = <&imx219_1>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
+
+#ifdef ESP876_IN1 /* Add eSP876 subnode in i2cm1 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_1: endpoint {
+				remote-endpoint = <&esp876_1>;
 				bus-type = <4>;
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
@@ -1440,6 +1581,18 @@
 			};
 		};
 #endif
+
+#ifdef ESP876_IN2 /* Add eSP876 subnode in i2cm2 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_2: endpoint {
+				remote-endpoint = <&esp876_2>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
 	};
 
 	mipicsirx3: mipicsirx@f8005580 {
@@ -1462,6 +1615,18 @@
 			/* MIPI CSI-2 bus endpoint */
 			csi2_3: endpoint {
 				remote-endpoint = <&imx219_3>;
+				bus-type = <4>;
+				clock-lanes = <0>;
+				data-lanes = <1 2>;
+			};
+		};
+#endif
+
+#ifdef ESP876_IN3 /* Add eSP876 subnode in i2cm3 */
+		port {
+			/* MIPI CSI-2 bus endpoint */
+			csi2_3: endpoint {
+				remote-endpoint = <&esp876_3>;
 				bus-type = <4>;
 				clock-lanes = <0>;
 				data-lanes = <1 2>;
