@@ -481,7 +481,7 @@ static void plla_set_rate(struct sp_pll *clk)
 
 	for (i = 0; i < ARRAY_SIZE(pa->regs); i++) {
 		clk_writel(0xffff0000 | pp[i], clk->reg + (i * 4));
-		pr_info("%04x\n", pp[i]);
+		//pr_info("%04x\n", pp[i]);
 	}
 }
 
@@ -588,7 +588,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, unsigned long rate,
 	u32 reg;
 
 	//TRACE;
-	pr_info("set_rate: %lu -> %lu\n", prate, rate);
+	//pr_info("set_rate: %lu -> %lu\n", prate, rate);
 
 	spin_lock_irqsave(clk->lock, flags);
 
