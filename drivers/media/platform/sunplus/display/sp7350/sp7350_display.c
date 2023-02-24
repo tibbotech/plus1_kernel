@@ -204,11 +204,17 @@ static irqreturn_t sp7350_display_irq_int2(int irq, void *param)
 	return IRQ_HANDLED;
 }
 
+static const char * const mipitx_format_str[] = {
+	"DSI-RGB565/CSI-16bits", "DSI-RGB666-18bits", "DSI-RGB666-24bits",
+	"DSI-RGB888/CSI-24bits", "CSI-YUV422-20bits", "none", "none", "none"};
+
 static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 {
 	u32 osd0_res[5], osd1_res[5], osd2_res[5], osd3_res[5];
 	u32 vpp0_res[7];
 	u32 out_res[3];
+	u32 mipitx_lane;
+	u32 mipitx_format;
 	int ret;
 
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
@@ -349,6 +355,47 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->out_res.height,
 		disp_dev->out_res.mipitx_mode?"CSI":"DSI");
 
+	ret = of_property_read_u32(disp_dev->pdev->of_node,
+		"sp7350,disp_mipitx_lane", &mipitx_lane);
+	if (ret)
+		disp_dev->mipitx_lane = 4;//4 lane;
+	else
+		disp_dev->mipitx_lane = mipitx_lane;
+
+	if ((mipitx_lane != 0x1) && (mipitx_lane != 0x2) && (mipitx_lane != 0x4))
+		disp_dev->mipitx_lane = 4;//4 lane;
+
+	ret = of_property_read_u32(disp_dev->pdev->of_node,
+		"sp7350,disp_mipitx_format", &mipitx_format);
+	if (ret)
+		disp_dev->mipitx_format = 3;//DSI RGB888 or CSI_24BITS
+	else
+		disp_dev->mipitx_format = mipitx_format;
+
+	if (mipitx_format >= 0x5)
+		disp_dev->mipitx_format = 3;//DSI RGB888 or CSI_24BITS
+
+	/*
+	 * decide mipitx_data_bit based on mipitx_format
+	 */
+	if (disp_dev->mipitx_format == 0x0)
+		disp_dev->mipitx_data_bit = 16;
+	else if (disp_dev->mipitx_format == 0x1)
+		disp_dev->mipitx_data_bit = 18;
+	else if (disp_dev->mipitx_format == 0x2)
+		disp_dev->mipitx_data_bit = 24;
+	else if (disp_dev->mipitx_format == 0x3)
+		disp_dev->mipitx_data_bit = 24;
+	else if (disp_dev->mipitx_format == 0x4)
+		disp_dev->mipitx_data_bit = 20;
+	else
+		disp_dev->mipitx_data_bit = 24;
+
+	pr_info("  mipitx %d lane %s data_bits %d\n",
+		disp_dev->mipitx_lane,
+		mipitx_format_str[disp_dev->mipitx_format],
+		disp_dev->mipitx_data_bit);
+
 	return ret;
 }
 
@@ -428,12 +475,25 @@ static int sp7350_display_probe(struct platform_device *pdev)
 
 	for (i = 0; i < 16; i++) {
 		disp_dev->disp_clk[i] = devm_clk_get(&pdev->dev, NULL);
+		//pr_info("default clk[%d] %ld\n", i, clk_get_rate(disp_dev->disp_clk[i]));
 		if (IS_ERR(disp_dev->disp_clk[i]))
 			return PTR_ERR(disp_dev->disp_clk[i]);
+
 		ret = clk_prepare_enable(disp_dev->disp_clk[i]);
 		if (ret)
 			return ret;
+
+		//if (i == 7) {
+		//	clk_set_rate(disp_dev->disp_clk[i], 60000000);//set 60MHz
+		//	pr_info("set clk[%d] %ld\n", i, clk_get_rate(disp_dev->disp_clk[i]));
+		//}
 	}
+
+	/*
+	 * get all necessary resolution from dts
+	 *
+	 */
+	sp7350_resolution_get(disp_dev);
 
 	//dmix must first init
 	//pr_info("%s: init dmix ...\n", __func__);
@@ -459,12 +519,6 @@ static int sp7350_display_probe(struct platform_device *pdev)
 	sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_BLENDING);
 	sp7350_dmix_layer_init(SP7350_DMIX_L3, SP7350_DMIX_OSD3, SP7350_DMIX_BLENDING);
 	sp7350_dmix_layer_init(SP7350_DMIX_L1, SP7350_DMIX_VPP0, SP7350_DMIX_BLENDING);
-
-	/*
-	 * get all necessary resolution from dts
-	 *
-	 */
-	sp7350_resolution_get(disp_dev);
 
 	/*
 	 * v4l2 init for osd/vpp layers
@@ -498,6 +552,18 @@ static int sp7350_display_probe(struct platform_device *pdev)
 	sp7350_vpp_resolution_init(disp_dev);
 
 	//pr_info("%s: set mipitx ...\n", __func__);
+	sp7350_tgen_timing_set();
+	//sp7350_tgen_timing_get();
+
+	//sp7350_tcon_timing_get();
+	sp7350_tcon_timing_set();
+	//sp7350_tcon_timing_get();
+
+	sp7350_mipitx_timing_set();
+	//sp7350_mipitx_timing_get();
+
+	sp7350_mipitx_phy_set();
+	//sp7350_mipitx_phy_get();
 
 	platform_set_drvdata(pdev, disp_dev);
 

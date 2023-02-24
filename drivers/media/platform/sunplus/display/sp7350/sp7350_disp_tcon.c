@@ -26,190 +26,39 @@ static const char * const tcon_out_package[] = {
 void sp7350_tcon_init(void)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
-	u32 tcon_width, tcon_height;
-	//u32 value = 0;
+	u32 value = 0;
 
-	tcon_width = 720; //64 128 720 1280 1920 3840
-	tcon_height = 480; //64 128 480 576 720 1080 2880
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI)
+		value |= SP7350_TCON_OUT_PACKAGE_SET(SP7350_TCON_OUT_PACKAGE_DSI_RGB888);
+	else
+		value |= SP7350_TCON_OUT_PACKAGE_SET(SP7350_TCON_OUT_PACKAGE_CSI_RGB888);
 
-	writel(0x00008127, disp_dev->base + TCON_TCON0);
-	writel(0x00008001, disp_dev->base + TCON_TCON1);
-	writel(0x00000011, disp_dev->base + TCON_TCON2);
-	writel(0x00002002, disp_dev->base + TCON_TCON3);
+	value |= SP7350_TCON_DOT_RGB888_MASK |
+		SP7350_TCON_DOT_ORDER_SET(SP7350_TCON_DOT_ORDER_RGB) |
+		SP7350_TCON_HVIF_EN | SP7350_TCON_YU_SWAP;
+	writel(value, disp_dev->base + TCON_TCON0);
 
-	if ((tcon_width == 64) && (tcon_height == 64)) {
-		writel(0x00000161, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000161, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000063, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
+	value = 0;
+	value |= SP7350_TCON_EN |
+		SP7350_TCON_STHLR_DLY_SET(SP7350_TCON_STHLR_DLY_1T);
+	writel(value, disp_dev->base + TCON_TCON1);
 
-		writel(0x00000161, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x00000164, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
+	value = 0;
+	value |= SP7350_TCON_HDS_FILTER;
+	writel(value, disp_dev->base + TCON_TCON2);
 
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x0000003f, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		writel(0x0000001c, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		writel(0x0000005c, disp_dev->base + TCON_DE_VEND); //DE_VEND
-	} else if ((tcon_width == 64) && (tcon_height == 2880)) {
-		writel(0x00000160, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000160, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000c7f, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
+	value = 0;
+	value |= SP7350_TCON_OEH_POL;
+	writel(value, disp_dev->base + TCON_TCON3);
 
-		writel(0x00000160, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x00000164, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
+	value = 0;
+	value |= SP7350_TCON_PIX_EN_SEL_SET(SP7350_TCON_PIX_EN_DIV_1_CLK_TCON);
+	writel(value, disp_dev->base + TCON_TCON4);
 
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x0000003f, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND
-	} else if ((tcon_width == 128) && (tcon_height == 128)) {
-		writel(0x00000160, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000160, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000095, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
+	value = 0;
+	value |= SP7350_TCON_CHK_SUM_EN;
+	writel(value, disp_dev->base + TCON_TCON5);
 
-		writel(0x00000160, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x00000164, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x0000007f, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		//writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		//writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND
-	} else if ((tcon_width == 720) && (tcon_height == 480)) {
-		writel(0x00000352, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000352, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x0000020c, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x00000352, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x00000356, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x000002cf, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		//writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		//writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND
-	} else if ((tcon_width == 720) && (tcon_height == 576)) {
-		writel(0x00000358, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000358, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000270, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x00000358, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x0000035c, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x000002cf, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		//writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		//writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND		
-	} else if ((tcon_width == 1280) && (tcon_height == 720)) {
-		writel(0x0000066a, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x0000066a, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x000002ed, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x0000066a, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x0000066e, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x000004ff, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		//writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		//writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND	
-	} else if ((tcon_width == 1920) && (tcon_height == 1080)) {
-		writel(0x00000890, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x00000890, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000464, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x00000890, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x00000894, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x000007ff, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		writel(0x00000000, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		writel(0x000007ff, disp_dev->base + TCON_DE_VEND); //DE_VEND			
-	} else if ((tcon_width == 3840) && (tcon_height == 64)) {
-		writel(0x000011f8, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x000011f8, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000063, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x000011f8, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x000011fc, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x00000eff, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		writel(0x0000001c, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		writel(0x0000005d, disp_dev->base + TCON_DE_VEND); //DE_VEND		
-	} else if ((tcon_width == 3840) && (tcon_height == 2880)) {
-		writel(0x000011f8, disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
-		writel(0x000011f8, disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
-		writel(0x00000c7f, disp_dev->base + TCON_STVU_START); //VTOP_VSTART
-		writel(0x00000000, disp_dev->base + TCON_STVU_END); //VTOP_VEND
-
-		writel(0x000011f8, disp_dev->base + TCON_HSYNC_START); //HSYNC_START
-		writel(0x000011fc, disp_dev->base + TCON_HSYNC_END); //HSYNC_END
-
-		writel(0x00000000, disp_dev->base + TCON_DE_HSTART); //DE_HSTART
-		writel(0x00000eff, disp_dev->base + TCON_DE_HEND); //DE_HEND
-		writel(0x00000028, disp_dev->base + TCON_DE_VSTART); //DE_VSTART
-		writel(0x00000b69, disp_dev->base + TCON_DE_VEND); //DE_VEND		
-	}
-
-	/* TPG(Test Pattern Gen) parameter
-	*/
-	if ((tcon_width == 64) && (tcon_height == 64)) {
-		//writel(0x00000000, disp_dev->base + TCON_F_RST_LINE);
-		//writel(0x00000000, disp_dev->base + TCON_RESERVED_200_05);
-		//writel(0x00000000, disp_dev->base + TCON_TPG_CTRL);
-		writel(0x00000167, disp_dev->base + TCON_TPG_HCOUNT);
-		writel(0x00004063, disp_dev->base + TCON_TPG_VCOUNT);
-		writel(0x0000003f, disp_dev->base + TCON_TPG_HACT_COUNT);
-		writel(0x0000403f, disp_dev->base + TCON_TPG_VACT_COUNT);
-
-		writel(0x000000C1, disp_dev->base + TCON_DITHER_TVOUT);
-
-	} else if ((tcon_width == 64) && (tcon_height == 2880)) {
-		writel(0x000000C1, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 128) && (tcon_height == 128)) {
-		writel(0x00000049, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 720) && (tcon_height == 480)) {
-		writel(0x00000359, disp_dev->base + TCON_TPG_HCOUNT); //857
-		writel(0x0000420c, disp_dev->base + TCON_TPG_VCOUNT); //524
-		writel(0x000002cf, disp_dev->base + TCON_TPG_HACT_COUNT); //719
-		writel(0x000041df, disp_dev->base + TCON_TPG_VACT_COUNT); //479
-
-		writel(0x00000001, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 720) && (tcon_height == 576)) {
-		writel(0x00000041, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 1280) && (tcon_height == 720)) {
-		writel(0x00000041, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 1920) && (tcon_height == 1080)) {
-		writel(0x00000001, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	} else if ((tcon_width == 3840) && (tcon_height == 64)) {
-		//TBD
-	} else if ((tcon_width == 3840) && (tcon_height == 2880)) {
-		writel(0x00000001, disp_dev->base + TCON_DITHER_TVOUT);
-		//TBD
-	}
-	writel(0x00000000, disp_dev->base + TCON_TCON4);
-	writel(0x00000004, disp_dev->base + TCON_TCON5);
-
-	//pr_info("tcon G199.00 TCON_TCON0 0x%08x\n", readl(disp_dev->base + TCON_TCON0));
-	//pr_info("tcon G199.01 TCON_TCON1 0x%08x\n", readl(disp_dev->base + TCON_TCON1));
-	//pr_info("tcon G199.02 TCON_TCON2 0x%08x\n", readl(disp_dev->base + TCON_TCON2));
-	//pr_info("tcon G199.03 TCON_TCON3 0x%08x\n", readl(disp_dev->base + TCON_TCON3));
-	//pr_info("tcon G200.15 TCON_TCON4 0x%08x\n", readl(disp_dev->base + TCON_TCON4));
-	//pr_info("tcon G200.26 TCON_TCON5 0x%08x\n", readl(disp_dev->base + TCON_TCON5));
-	//pr_info("tcon G200.00 GAMMA 0x%08x\n", readl(disp_dev->base + TCON_GAMMA0));
-	//pr_info("tcon G200.06 TPG 0x%08x\n", readl(disp_dev->base + TCON_TPG_CTRL));
-	//pr_info("tcon G200.22 DITHER 0x%08x\n", readl(disp_dev->base + TCON_DITHER_TVOUT));
 }
 
 void sp7350_tcon_reg_info(void)
@@ -585,7 +434,135 @@ void sp7350_tcon_bist_set(int bist_mode, int tcon_bist_pat)
 	value |= SP7350_TCON_TPG_PATTERN_SET(tcon_bist_pat) |
 		SP7350_TCON_TPG_MODE_SET(bist_mode);
 	writel(value , disp_dev->base + TCON_TPG_CTRL);
-	//writel((value | tcon_bist_pat << 2 | bist_mode << 0), disp_dev->base + TCON_TPG_CTRL);
 
 }
 EXPORT_SYMBOL(sp7350_tcon_bist_set);
+
+/*
+ * sp_tcon_para[x][y]
+ * y = 0-1, TCON width & height
+ * y = 2-11, TCON DE_H & Vsync_H & Hsync & DE_V & VTOP_V
+ */
+static const u32 sp_tcon_para[11][12] = {
+	/* (w   h)    DE_H       Vsync_H     Hsync       DE_V        VTOP_V     */
+	{ 720,  480,    0,  719,  850,  850,  850,  854,    0,    0,  524,    0}, /* 480P */
+	{ 720,  576,    0,  719,  856,  856,  856,  860,    0,    0,  624,    0}, /* 576P */
+	{1280,  720,    0, 1279, 1642, 1642, 1642, 1646,    0,    0,  749,    0}, /* 720P */
+	{1920, 1080,    0, 2047, 2192, 2192, 2192, 2196,    0,    0, 1124,    0}, /* 1080P */
+	{  64,   64,    0,   63,  353,  353,  353,  356,    0,    0,   99,    0}, /* 64x64 */
+	{ 128,  128,    0,  127,  352,  352,  352,  356,    0,    0,  149,    0}, /* 128x128 */
+	{  64, 2880,    0,   63,  352,  352,  352,  356,    0,    0, 3199,    0}, /* 64x2880 */
+	{3840,   64,    0, 3839, 4600, 4600, 4600, 4604,    0,    0,   99,    0}, /* 3840x64 */
+	{3840, 2880,    0, 3839, 4600, 4600, 4600, 4604,    0,    0, 3199,    0}, /* 3840x2880 */
+	{ 800,  480,    0,  799,  920,  920,  920,  924,    0,    0,  524,    0}, /* 800x480 */
+	{1024,  600,    0, 1023, 1336, 1336, 1336, 1340,    0,    0,  634,    0}  /* 1024x600 */
+};
+
+/*
+ * sp_tcon_tpg_para[x][y]
+ * y = 0-1, TCON width & height
+ * y = 2-9, TCON Hstep & Vstep & Hcnt & Vcnt & Hact & Vact & DITHER
+ */
+static const u32 sp_tcon_tpg_para[11][9] = {
+	/* (w   h)    Hstep Vstep Hcnt  Vcnt  Hact  Vact DITHER */
+	{ 720,  480,    4,    4,  857,  524,  719,  479,  0x01}, /* 480P */
+	{ 720,  576,    4,    4,  863,  624,  719,  575,  0x41}, /* 576P */
+	{1280,  720,    4,    4, 1649,  749, 1279,  719,  0x41}, /* 720P */
+	{1920, 1080,    4,    4, 2199, 1124, 1919, 1079,  0x01}, /* 1080P */
+	{  64,   64,    4,    4,  359,   99,   63,   63,  0xC1}, /* 64x64 */
+	{ 128,  128,    4,    4,  359,  149,  127,  127,  0x49}, /* 128x128 */
+	{  64, 2880,    4,    4,  359, 3199,   63, 2879,  0xC1}, /* 64x2880 */
+	{3840,   64,    4,    4, 4607,   99, 3839,   63,  0x01}, /* 3840x64 */
+	{3840, 2880,    4,    4, 4607, 3199, 3839, 2879,  0x01}, /* 3840x2880 */
+	{ 800,  480,    4,    4,  927,  524,  799,  479,  0x01}, /* 800x480 */
+	{1024,  600,    4,    4, 1343,  634, 1023,  599,  0x01}  /* 1024x600 */
+};
+
+void sp7350_tcon_timing_set(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	int i, time_cnt = 0;
+	u32 value = 0;
+
+	for (i = 0; i < 11; i++) {
+		if ((sp_tcon_para[i][0] == disp_dev->out_res.width) &&
+			(sp_tcon_para[i][1] == disp_dev->out_res.height)) {
+				time_cnt = i;
+				break;
+		}
+	}
+
+	/*
+	 * TCON H&V timing parameter
+	 */
+	writel(sp_tcon_para[time_cnt][2], disp_dev->base + TCON_DE_HSTART); //DE_HSTART
+	writel(sp_tcon_para[time_cnt][3], disp_dev->base + TCON_DE_HEND); //DE_HEND
+
+	writel(sp_tcon_para[time_cnt][4], disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
+	writel(sp_tcon_para[time_cnt][5], disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
+
+	writel(sp_tcon_para[time_cnt][6], disp_dev->base + TCON_HSYNC_START); //HSYNC_START
+	writel(sp_tcon_para[time_cnt][7], disp_dev->base + TCON_HSYNC_END); //HSYNC_END
+
+	writel(sp_tcon_para[time_cnt][8], disp_dev->base + TCON_DE_VSTART); //DE_VSTART
+	writel(sp_tcon_para[time_cnt][9], disp_dev->base + TCON_DE_VEND); //DE_VEND
+
+	writel(sp_tcon_para[time_cnt][10], disp_dev->base + TCON_STVU_START); //VTOP_VSTART
+	writel(sp_tcon_para[time_cnt][11], disp_dev->base + TCON_STVU_END); //VTOP_VEND
+
+	/*
+	 * TPG(Test Pattern Gen) parameter
+	 */
+	writel(sp_tcon_tpg_para[time_cnt][4], disp_dev->base + TCON_TPG_HCOUNT);
+	value |= (sp_tcon_tpg_para[time_cnt][2] << 12) | sp_tcon_tpg_para[time_cnt][5];
+	writel(value, disp_dev->base + TCON_TPG_VCOUNT);
+	writel(sp_tcon_tpg_para[time_cnt][6], disp_dev->base + TCON_TPG_HACT_COUNT);
+	value = 0;
+	value |= (sp_tcon_tpg_para[time_cnt][3] << 12) | sp_tcon_tpg_para[time_cnt][7];
+	writel(value, disp_dev->base + TCON_TPG_VACT_COUNT);
+
+	writel(sp_tcon_tpg_para[time_cnt][8], disp_dev->base + TCON_DITHER_TVOUT);
+
+}
+void sp7350_tcon_timing_get(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value1, value2, value3, value4;
+
+	value1 = readl(disp_dev->base + TCON_DE_HSTART); //G199.25
+	value2 = readl(disp_dev->base + TCON_DE_HEND); //G199.26
+	pr_info("  [h&v] DE_H    %04d(0x%04x) %04d(0x%04x)\n",
+		value1, value1, value2, value2);
+
+	value1 = readl(disp_dev->base + TCON_OEV_START); //G199.12
+	value2 = readl(disp_dev->base + TCON_OEV_END); //G199.13
+	pr_info("  [h&v] VSYNC_H %04d(0x%04x) %04d(0x%04x)\n",
+		value1, value1, value2, value2);
+
+	value1 = readl(disp_dev->base + TCON_HSYNC_START); //G199.23
+	value2 = readl(disp_dev->base + TCON_HSYNC_END); //G199.24
+	pr_info("  [h&v] HSYNC   %04d(0x%04x) %04d(0x%04x)\n",
+		value1, value1, value2, value2);
+
+	value1 = readl(disp_dev->base + TCON_DE_VSTART); //G199.27
+	value2 = readl(disp_dev->base + TCON_DE_VEND); //G199.28
+	pr_info("  [h&v] DE_V    %04d(0x%04x) %04d(0x%04x)\n",
+		value1, value1, value2, value2);
+
+	value1 = readl(disp_dev->base + TCON_STVU_START); //G199.20
+	value2 = readl(disp_dev->base + TCON_STVU_END); //G199.21
+	pr_info("  [h&v] VTOP_V  %04d(0x%04x) %04d(0x%04x)\n",
+		value1, value1, value2, value2);
+
+	value1 = readl(disp_dev->base + TCON_TPG_HCOUNT); //G200.07
+	value2 = readl(disp_dev->base + TCON_TPG_VCOUNT); //G200.08
+	value3 = readl(disp_dev->base + TCON_TPG_HACT_COUNT); //G200.09
+	value4 = readl(disp_dev->base + TCON_TPG_VACT_COUNT); //G200.10
+	pr_info("  [TPG] H/VSTEP     %ld %ld\n",
+		FIELD_GET(GENMASK(14,12), value2), FIELD_GET(GENMASK(14,12), value4));	
+	pr_info("  [TPG] H/V_CNT     %d(0x%04x) %ld(0x%04lx)\n",
+		value1, value1, FIELD_GET(GENMASK(11,0), value2), FIELD_GET(GENMASK(11,0), value2));
+	pr_info("  [TPG] H/V_ACT_CNT %d(0x%04x) %ld(0x%04lx)\n",
+		value3, value3, FIELD_GET(GENMASK(11,0), value4), FIELD_GET(GENMASK(11,0), value4));
+
+}

@@ -186,6 +186,9 @@ struct sp_disp_device {
 	struct sp_disp_layer_osd_res osd_res[SP_DISP_MAX_OSD_LAYER];
 	struct sp_disp_layer_vpp_res vpp_res[SP_DISP_MAX_VPP_LAYER];
 	struct sp_disp_out_res	out_res;
+	u32 mipitx_lane;
+	u32 mipitx_format;
+	u32 mipitx_data_bit;
 
 	/*
 	 * define for OSD0 layer connect to sp7350fb driver

@@ -61,13 +61,13 @@
 
 struct sp7350_tgen_timing {
 	int usr;
-	int fmt;
 	int fps;
+	int fmt;
 	u16 htt;
 	u16 vtt;
-	u16 hactive;
-	u16 vactive;
-	u16 v_bp;
+	u16 hact;
+	u16 vact;
+	u16 vbp;
 };
 
 /*
@@ -90,8 +90,8 @@ void sp7350_tgen_set_user_int1(u32 count);
 void sp7350_tgen_set_user_int2(u32 count);
 u32 sp7350_tgen_get_current_line_count(void);
 
-void sp7350_tgen_timing_set(struct sp7350_tgen_timing *tgen_tim);
-void sp7350_tgen_timing_get(struct sp7350_tgen_timing *tgen_tim);
+void sp7350_tgen_timing_set(void);
+void sp7350_tgen_timing_get(void);
 
 /*
  * SP7350 TGEN Timing Adjust Settings

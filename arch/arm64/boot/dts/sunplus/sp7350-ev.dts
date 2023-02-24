@@ -1978,6 +1978,18 @@
 			/* 0x0:MIPITX DSI
 			 * 0x1:MIPITX CSI
 			 */
+		sp7350,disp_mipitx_lane = <0x4>; /* 0x0:MIPITX lane */
+			/* 0x1 = 1 lane
+			 * 0x2 = 2 lane
+			 * 0x4 = 4 lane
+			 */
+		sp7350,disp_mipitx_format = <0x3>; /* 0x0:MIPITX format */
+			/* 0x0 = DSI RGB565 / CSI_16BITS
+			 * 0x1 = DSI RGB666_18BITS
+			 * 0x2 = DSI RGB666_24BITS
+			 * 0x3 = DSI RGB888 / CSI_24BITS
+			 * 0x4 = CSI YUV422_20BITS
+			 */
 		status = "disabled";
 	};
 
