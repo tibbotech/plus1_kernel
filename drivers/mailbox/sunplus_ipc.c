@@ -540,10 +540,12 @@ out:
 
 static int rpc_fifo_get(struct rpc_fifo_t *fifo, struct rpc_t *rpc)
 {
-	int result;
+	int ret;
 
 	trace();
-	result = DOWN(&fifo->wait);
+	ret = DOWN(&fifo->wait);
+	if (ret)
+		return ret;
 
 	if ((fifo->in - fifo->out) == 0) {				// fifo is empty
 		return IPC_FAIL;
@@ -719,11 +721,12 @@ static int rpc_read(struct rpc_t __user *rpc_user)
 	struct request_t *req;
 	int ret = get_user(req, &rpc_user->REQ_H);
 	u32 sid = (u32)req;								// server id
-	int result;
 
 	trace();
 	if (sid > SERVER_NUMS) {						// read deferred response
-		result = DOWN(&req->wait_response);
+		ret = DOWN(&req->wait_response);
+		if (ret)
+			return ret;
 		ret = rpc_to_user(rpc_user, &req->rpc);
 		FREE(req);
 	} else {											// read request
@@ -741,7 +744,6 @@ static int rpc_write(struct rpc_t __user *rpc_user)
 	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
 	struct rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user(rpc, rpc_user);
-	int result;
 
 	trace();
 	if (rpc->F_DIR == RPC_REQUEST) {
@@ -755,7 +757,9 @@ static int rpc_write(struct rpc_t __user *rpc_user)
 			return ret;
 		}
 		if (rpc->F_TYPE == REQ_WAIT_REP) {
-			result = DOWN(&req->wait_response);			// wait response
+			ret = DOWN(&req->wait_response);			// wait response
+			if (ret)
+				return ret;
 			ret = rpc_to_user(rpc_user, rpc);
 			FREE(req);
 		} else if (rpc->F_TYPE == REQ_DEFER_REP)
@@ -774,7 +778,6 @@ static int rpc_write_new(struct rpc_new_t __user *rpc_user)
 	struct rpc_user_t user = {0};
 	struct rpc_t *rpc = &req->rpc;
 	int ret = rpc_from_user_new(rpc, &user, rpc_user);
-	int result;
 
 	trace();
 	if (rpc->F_DIR == RPC_REQUEST) {
@@ -791,7 +794,9 @@ static int rpc_write_new(struct rpc_new_t __user *rpc_user)
 			return ret;
 		}
 		if (rpc->F_TYPE == REQ_WAIT_REP) {
-			result = DOWN(&req->wait_response);			// wait response
+			ret = DOWN(&req->wait_response);			// wait response
+			if (ret)
+				return ret;
 			ret = rpc_to_user(&rpc_user->rpc, rpc);
 			FREE(req);
 		} else if (rpc->F_TYPE == REQ_DEFER_REP)
@@ -807,7 +812,6 @@ static int rpc_write_new(struct rpc_new_t __user *rpc_user)
 int IPC_FunctionCall(int cmd, void *data, int len)
 {
 	int ret;
-	int result;
 	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
 	struct rpc_t *rpc = &req->rpc;
 	void *p = NULL;						// temp buffer for cache align
@@ -846,7 +850,9 @@ int IPC_FunctionCall(int cmd, void *data, int len)
 	rpc_dump("REQ", rpc);
 	WAIT_INIT(&req->wait_response, RPC_TIMEOUT);
 	rpc_write_hw(rpc);					// write request
-	result = DOWN(&req->wait_response);			// wait response
+	ret = DOWN(&req->wait_response);			// wait response
+	if (ret)
+		return ret;
 	ret = RET(rpc->CMD);
 	rpc_dump("RES", rpc);
 
@@ -877,7 +883,6 @@ EXPORT_SYMBOL(IPC_FunctionCall);
 int IPC_FunctionCall_timeout(int cmd, void *data, int len, u32 timeout)
 {
 	int ret;
-	int result;
 	struct request_t *req = (struct request_t *)MALLOC(sizeof(struct request_t));
 	struct rpc_t *rpc = &req->rpc;
 	void *p = NULL;						// temp buffer for cache align
@@ -920,7 +925,9 @@ int IPC_FunctionCall_timeout(int cmd, void *data, int len, u32 timeout)
 	rpc_dump("REQ", rpc);
 	WAIT_INIT(&req->wait_response, timeout);
 	rpc_write_hw(rpc);					// write request
-	result = DOWN(&req->wait_response);			// wait response
+	ret = DOWN(&req->wait_response);			// wait response
+	if (ret)
+		return ret;
 	ret = RET(rpc->CMD);
 	rpc_dump("RES", rpc);
 
