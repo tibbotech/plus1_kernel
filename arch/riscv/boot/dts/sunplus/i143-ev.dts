@@ -616,7 +616,7 @@
 
 		sp_otg0: usb@0x9c102400 {
 			compatible = "sunplus,i143-usb-otg0";
-			reg = <0x0 0x9c102400 0x0 0x70>, <0x0 0x9c000200 0x0 0x80>;
+			reg = <0x0 0x9c102400 0x0 0x70>;
 			interrupt-parent = <&intc>;
 			interrupts = <35 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
@@ -625,7 +625,7 @@
 
 		sp_otg1: usb@0x9c103400 {
 			compatible = "sunplus,i143-usb-otg1";
-			reg = <0x0 0x9c103400 0x0 0x70>, <0x0 0x9c000200 0x0 0x80>;
+			reg = <0x0 0x9c103400 0x0 0x70>;
 			interrupt-parent = <&intc>;
 			interrupts = <36 IRQ_TYPE_LEVEL_HIGH>;
 			pinctrl-names = "default";
