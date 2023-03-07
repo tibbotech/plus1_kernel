@@ -3,9 +3,6 @@
 
 #include <linux/usb/phy.h>
 
-#define otg_debug(fmt, args...)		printk(KERN_DEBUG "#@#OTG: "fmt, ##args)
-//#define otg_debug(fmt, args...)
-
 //#define OTG_TEST
 #define CONFIG_ADP_TIMER
 
@@ -56,7 +53,6 @@
 #define	OVERCURRENT_IF 			(1 << 0)
 
 #define ENABLE_OTG_INT(x)		iowrite32(0x3ff, x)
-
 
 extern int sp_otg_probe(struct platform_device *);
 extern int sp_otg_remove(struct platform_device *);
@@ -219,7 +215,6 @@ struct sp_regs_moon4 {
 	u32 otp_sp;
 };
 
-
 /**
  * usb_get_dr_mode - Get dual role mode for given device
  * @dev: Pointer to the given device
@@ -232,5 +227,4 @@ extern enum usb_dr_mode usb_get_dr_mode(struct device *dev);
 void sp_otg_update_transceiver(struct sp_otg *);
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num);
-void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 #endif

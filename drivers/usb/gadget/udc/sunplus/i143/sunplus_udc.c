@@ -11,13 +11,17 @@
 #include <asm/cacheflush.h>
 #include <asm/unaligned.h>
 #include <linux/usb/otg.h>
-#ifdef CONFIG_USB_SUNPLUS_OTG
-#include "../../../../phy/otg-sunplus.h"
-#endif
 
 #include "sunplus_udc.h"
-
 #ifdef CONFIG_USB_SUNPLUS_OTG
+#include "../../../../phy/otg-sunplus.h"
+
+
+extern void sp_accept_b_hnp_en_feature(struct usb_otg *);
+extern u32 otg_id_pin;
+static char *otg_status_buf;
+static char *otg_status_buf_ptr_addr;
+
 	#ifdef OTG_TEST
 static u32 dev_otg_status = 1;
 	#else
@@ -56,7 +60,7 @@ static struct sp_udc *sp_udc_arry[2] = {NULL, NULL};
 static uint test_mode;
 module_param(test_mode, uint, 0644);
 
-static uint dmsg = 0x3;
+static uint dmsg = 0x0;
 module_param(dmsg, uint, 0644);
 
 #define UDC_LOGE(fmt, arg...)		pr_err(fmt, ##arg)
@@ -499,7 +503,6 @@ static void sp_udc_nuke(struct sp_udc *udc, struct udc_endpoint *ep, int status)
 		sp_udc_done(ep, req, status);
 		spin_lock(&ep->lock);
 	}
-
 	spin_unlock_irqrestore(&ep->lock, flags);
 }
 
@@ -570,8 +573,8 @@ static uint32_t check_trb_status(struct trb_data *t_trb)
 		ret = BABBLE_ERROR;
 		break;
 	case TRANS_ERR:
-		UDC_LOGE("trans err,%p,%x,%x,%x,%x\n", t_trb,
-			t_trb->entry0, t_trb->entry1, t_trb->entry2, t_trb->entry3);
+		UDC_LOGE("trans err,%p,%x,%x,%x,%x\n", t_trb, t_trb->entry0, t_trb->entry1,
+								t_trb->entry2, t_trb->entry3);
 		ret = TRANS_ERR;
 		break;
 	case TRB_ERR:
@@ -679,9 +682,9 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 	spin_lock_irqsave(&ep->lock, flags);
 	if (!ep->ep_trb_ring_dq) {
 		spin_unlock_irqrestore(&ep->lock, flags);
-		pr_warn(" ep%d not configure\n", ep->num);
+		UDC_LOGW(" ep%d not configure\n", ep->num);
 
-		return ;
+		return;
 	}
 
 	ep_trb = (struct normal_trb *)(ep->ep_transfer_ring.trb_va +
@@ -730,6 +733,36 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 			len_zh = len_zh * CACHE_LINE_SIZE;
 
 		dma_sync_single_for_cpu(udc->dev, ep_trb->ptr, len_zh, DMA_FROM_DEVICE);
+	}
+#endif
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	#ifdef PIO_MODE
+	if (data_buf == (uint8_t *)otg_status_buf) {
+	#else
+	if (data_buf == (uint32_t *)otg_status_buf) {
+	#endif
+		struct usb_request *_req = container_of((void *)otg_status_buf_ptr_addr,
+									struct usb_request, buf);
+		struct sp_request *req = container_of(_req, struct sp_request, req);
+
+		dev_otg_status = 0;
+		otg_status_buf = NULL;
+		otg_status_buf_ptr_addr = NULL;
+
+	#ifdef PIO_MODE
+		kfree(req->buffer);
+		req->buffer = NULL;
+	#else
+		usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep->bEndpointAddress));
+	#endif
+
+		kfree(req->req.buf);
+		kfree(req);
+
+		spin_unlock_irqrestore(&ep->lock, flags);
+
+		return;
 	}
 #endif
 
@@ -816,8 +849,8 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 		udc->bus_reset_finish = true;
 		memcpy(&crq, event_trb, 8);
 
-		UDC_LOGD("s:%x,%x,%x,%x,%x\n", crq.bRequestType,
-			crq.bRequest, crq.wValue, crq.wIndex, crq.wLength);
+		UDC_LOGD("s:%x,%x,%x,%x,%x\n", crq.bRequestType, crq.bRequest, crq.wValue, crq.wIndex,
+												crq.wLength);
 
 		hal_udc_setup(udc, &crq);
 		break;
@@ -852,10 +885,14 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			UDC_LOGL("udc resume\n");
 			break;
 		case UDC_STOPED:
-			UDC_LOGL("udc stoped\n");
+			UDC_LOGL("udc stopped\n");
 			if (udc->usb_test_mode)
 				writel(bitfield_replace(readl(&USBx->GL_CS), 12, 4, 0), &USBx->GL_CS);
+
+#if 0
 			hal_udc_sw_stop_handle(udc);
+#endif
+
 			break;
 		default:
 			UDC_LOGE("not support:ret = %d\n", ret);
@@ -897,15 +934,15 @@ static void check_event_ring(struct sp_udc *udc)
 		if (trb_cc != temp_ccs) {	/*invaild event trb*/
 			if (found)
 				event_ring_dq--;
+
 			break;
 		} else {
 			found = true;
 		}
 
-		if (DEV_EVENT_TRB ==  hal_udc_check_trb_type(event_ring_dq)) {
-			if (UDC_SUSPEND == check_trb_status(event_ring_dq)) {
+		if (hal_udc_check_trb_type(event_ring_dq) == DEV_EVENT_TRB) {
+			if (UDC_SUSPEND == check_trb_status(event_ring_dq))
 				UDC_LOGD("UDC SUSPEND\n");
-			}
 		}
 
 		/* switch event segment */
@@ -948,6 +985,7 @@ static void handle_event(struct sp_udc *udc)
 	if (!udc->event_ring || !udc->driver) {
 		UDC_LOGD("handle_event return\n");
 		spin_unlock_irqrestore(&udc->lock, flags);
+
 		return;
 	}
 
@@ -978,7 +1016,7 @@ static void handle_event(struct sp_udc *udc)
 			} else {
 				temp_event_sg_count++;
 			}
-
+	
 			event_ring_dq = udc->event_ring[temp_event_sg_count].trb_va;
 			end_trb = udc->event_ring[temp_event_sg_count].end_trb_va;
 		} else {
@@ -989,12 +1027,12 @@ static void handle_event(struct sp_udc *udc)
 	}
 
 	if (valid_event_count > 0) {
-		UDC_LOGD("------valid event %d-------\n", valid_event_count);
+		UDC_LOGD("------ valid event %d -------\n", valid_event_count);
 
 		/* reacquire ring dq */
 		event_ring_dq = udc->event_ring_dq;
 	} else {
-		UDC_LOGD("------no event %p -------\n", udc->event_ring_dq);
+		UDC_LOGD("------ no event %p -------\n", udc->event_ring_dq);
 	}
 	spin_unlock_irqrestore(&udc->lock, flags);
 
@@ -1005,7 +1043,7 @@ static void handle_event(struct sp_udc *udc)
 		if (trb_cc != udc->event_ccs) {
 			break;
 		} else {
-			UDC_LOGD("------event %d-------\n", valid_event_count);
+			UDC_LOGD("------ event %d -------\n", valid_event_count);
 			hal_udc_analysis_event_trb(event_ring_dq, udc);
 			if (end_trb == event_ring_dq) {
 				if (udc->current_event_ring_seg == (udc->event_ring_seg_total - 1)) {
@@ -1167,7 +1205,7 @@ static void fill_link_trb(struct trb_data *t_trb, dma_addr_t ring)
 		t_trb->entry3 |= TRB_C;		/* toggle cycle bit */
 	}
 
-	UDC_LOGD("---fill link trb---\n");
+	UDC_LOGD("--- fill link trb ---\n");
 }
 
 static void hal_udc_fill_transfer_trb(struct trb_data *t_trb, struct udc_endpoint *ep, uint32_t ioc)
@@ -1419,7 +1457,10 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 		udc->aset_flag = false;
 		req->transfer_trb = NULL;
 
-#ifndef PIO_MODE
+#ifdef PIO_MODE
+		kfree(req->buffer);
+		req->buffer = NULL;
+#else
 		usb_gadget_unmap_request(&udc->gadget, &req->req, ep->is_in);
 #endif
 
@@ -1509,13 +1550,20 @@ int32_t hal_udc_device_connect(struct sp_udc *udc)
 	USBx->DEVC_ADDR = udc->ep_desc_pa;
 
 	/* configure ep0 */
-	hal_udc_endpoint_configure(udc, 0x00, UDC_EP_TYPE_CTRL, 0x40);
+	hal_udc_endpoint_configure(udc, 0x0, UDC_EP_TYPE_CTRL, 0x40);
 
 	/* enable interrupt */
 	hal_udc_power_control(udc, UDC_POWER_FULL);
 
 	/* run controller and reload ep0 */
-	USBx->DEVC_CS = (UDC_RUN | EP_EN);
+#ifdef CONFIG_USB_SUNPLUS_OTG
+	if (otg_id_pin == 1)
+		USBx->DEVC_CS = (UDC_RUN | EP_EN);
+	else if (otg_id_pin == 0)
+		USBx->DEVC_CS = EP_EN;
+#else
+	USBx->DEVC_CS = EP_EN;
+#endif
 
 	return 0;
 }
@@ -1553,11 +1601,12 @@ int32_t hal_udc_init(struct sp_udc *udc)
 		goto event_seg_table_malloc_fail;
 	}
 
-	UDC_LOGD("event segment table %px,%llx,%d\n", udc->event_seg_table, udc->event_seg_table_pa, udc->event_ring_seg_total);
+	UDC_LOGD("event segment table %px,%llx,%d\n", udc->event_seg_table, udc->event_seg_table_pa,
+										udc->event_ring_seg_total);
 
 	/* malloc event ring pointer */
-	udc->event_ring = (struct udc_ring *)udc_malloc_align(udc,
-		&udc->event_ring_pa, udc->event_ring_seg_total * sizeof(struct udc_ring), ALIGN_64_BYTE, GFP_DMA);
+	udc->event_ring = (struct udc_ring *)udc_malloc_align(udc, &udc->event_ring_pa,
+				udc->event_ring_seg_total * sizeof(struct udc_ring), ALIGN_64_BYTE, GFP_DMA);
 	if (!udc->event_ring) {
 		UDC_LOGE("mem_alloc evnet_ring fail\n");
 
@@ -1580,8 +1629,8 @@ int32_t hal_udc_init(struct sp_udc *udc)
 		tmp_segment_table->entry0 = tmp_ring->trb_pa;
 		tmp_segment_table->entry2 = tmp_ring->num_mem;
 
-		UDC_LOGD("Event_ring[%d]:%px,%llx -> %px,%llx\n", seg_count,
-			udc->event_ring[seg_count].trb_va, udc->event_ring[seg_count].trb_pa, tmp_ring->trb_va, tmp_ring->trb_pa);
+		UDC_LOGD("Event_ring[%d]:%px,%llx -> %px,%llx\n", seg_count, udc->event_ring[seg_count].trb_va,
+						udc->event_ring[seg_count].trb_pa, tmp_ring->trb_va, tmp_ring->trb_pa);
 	}
 
 	/* malloc ep description */
@@ -1657,7 +1706,7 @@ int32_t hal_udc_deinit(struct sp_udc *udc)
 	UDC_LOGI("udc %d deinit\n", udc->port_num);
 
 	if (udc->ep_desc) {
-		udc_free_align(udc, udc->ep_desc, udc->ep_desc_pa, ENTRY_SIZE*UDC_MAX_ENDPOINT_NUM);
+		udc_free_align(udc, udc->ep_desc, udc->ep_desc_pa, ENTRY_SIZE * UDC_MAX_ENDPOINT_NUM);
 		udc->ep_desc = NULL;
 	}
 
@@ -1668,13 +1717,13 @@ int32_t hal_udc_deinit(struct sp_udc *udc)
 		}
 
 		udc_free_align(udc, udc->event_ring, udc->event_ring_pa,
-					udc->event_ring_seg_total * sizeof(struct udc_ring));
+							udc->event_ring_seg_total * sizeof(struct udc_ring));
 		udc->event_ring = NULL;
 	}
 
 	if (udc->event_seg_table) {
 		udc_free_align(udc, udc->event_seg_table, udc->event_seg_table_pa,
-					udc->event_ring_seg_total * ENTRY_SIZE);
+							udc->event_ring_seg_total * ENTRY_SIZE);
 		udc->event_seg_table = NULL;
 	}
 
@@ -1787,7 +1836,8 @@ int32_t hal_udc_endpoint_configure(struct sp_udc *udc, uint8_t ep_addr, uint8_t 
 	INIT_LIST_HEAD(&ep->queue);
 
 	ep->ep_trb_ring_dq = ep->ep_transfer_ring.trb_va;
-	UDC_LOGD("ep_transfer_ring[%d]:%px,%llx\n", ep_num, ep->ep_transfer_ring.trb_va, ep->ep_transfer_ring.trb_pa);
+	UDC_LOGD("ep_transfer_ring[%d]:%px,%llx\n", ep_num, ep->ep_transfer_ring.trb_va,
+									ep->ep_transfer_ring.trb_pa);
 	hal_udc_fill_ep_desc(udc, ep);
 
 	spin_unlock(&ep->lock);
@@ -1947,30 +1997,97 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 		}
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
-		if ((ctrl->bRequestType == 0x80) && (ctrl->wValue == 0) && (ctrl->wIndex == 0xf000)
-									&& (ctrl->wLength == 4)) {
+		if ((ctrl->bRequestType == (USB_DIR_IN | USB_RECIP_DEVICE)) && (ctrl->wValue == 0) &&
+						(ctrl->wIndex == OTG_STS_SELECTOR) && (ctrl->wLength == 4)) {
+			struct sp_request *req;
 			u32 status = 0;
+			int32_t ret;
+
+			req = kzalloc (sizeof(struct sp_request), GFP_KERNEL);
+			if (!req) {
+				UDC_LOGE("+%s.%d,otg req allocation fails\n", __func__, __LINE__);
+				return 1;
+			}
+
+			req->req.buf = (char *)kmalloc(sizeof(u32), GFP_DMA);
+			if (!req->req.buf) {
+				UDC_LOGE("+%s.%d,otg req buffer allocation fails\n", __func__, __LINE__);
+				return 1;
+			}
+
+			otg_status_buf = req->req.buf;
+			otg_status_buf_ptr_addr = (char *)&req->req.buf;
 
 			status = dev_otg_status;
-	#if 0
-			udc_write(EP0_DIR | CLR_EP0_OUT_VLD, UDEP0CS);
-			udc_write(((1 << 2) - 1), UDEP0VB);
-			DEBUG_DBG("get otg status, %d, %d", dev_otg_status, status);
-			memcpy((char *)(base_addr + UDEP0DP), (char *)(&status), 4);
-			udc_write(udc_read(UDLIE) | EP0I_IF, UDLIE);
-			udc_write(SET_EP0_IN_VLD | EP0_DIR, UDEP0CS);
-	#endif
-			value = 0;
+			memcpy(req->req.buf, (char *)(&status), 4);
+			req->req.length = sizeof(u32);
+			req->req.zero = 0;
+			req->req.num_sgs = 0;
+			req->req.dma = DMA_ADDR_INVALID;
 
+	#ifndef PIO_MODE
+			ret = usb_gadget_map_request(&udc->gadget, &req->req, EP_DIR(ep_0->bEndpointAddress));
+			if (ret) {
+				kfree(req->req.buf);
+				kfree(req);
+
+				return ret;
+			}
+	#endif
+
+			ret = hal_udc_endpoint_transfer(udc, req, ep_0->bEndpointAddress, req->req.buf,
+								req->req.dma, req->req.length, req->req.zero);
+			UDC_LOGD("%s: ep:%x len %d, req:%px,trb:%px\n", __func__, ep_0->bEndpointAddress,
+								req->req.length, req, req->transfer_trb);
+
+			if (ret) {
+				UDC_LOGE("%s: transfer err\n", __func__);
+
+	#ifdef PIO_MODE
+				kfree(req->buffer);
+				req->buffer = NULL;
+	#else
+				usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep_0->bEndpointAddress));
+	#endif
+
+				kfree(req->req.buf);
+				kfree(req);
+
+				return -EINVAL;
+			}
+
+			value = 0;
 			goto done;;
 		}
 #endif
 
 		break;
+
 	/* request set feature */
 	case USB_REQ_SET_FEATURE:
 		/* request set feature */
 		if (ctrl->bRequestType == (USB_DIR_OUT | USB_RECIP_DEVICE)) {
+#ifdef CONFIG_USB_SUNPLUS_OTG
+			if ((ctrl->bRequestType == 0) && (ctrl->wValue == USB_DEVICE_B_HNP_ENABLE) &&
+								(ctrl->wIndex == 0) && (ctrl->wLength == 0)) {
+				UDC_LOGD("set hnp feature");
+
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+				otg_phy = usb_get_transceiver_sp(0);
+	#else
+				otg_phy = usb_get_transceiver_sp(1);
+	#endif
+
+				if (!otg_phy)
+					UDC_LOGE("Get otg control fail");
+				else
+					sp_accept_b_hnp_en_feature(otg_phy->otg);
+
+				value = 0;
+				break;
+			}
+#endif
+
 			if (w_value != USB_DEVICE_TEST_MODE && w_value != USB_DEVICE_REMOTE_WAKEUP)
 				break;
 
@@ -2026,25 +2143,6 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 			}
 		}
 
-#ifdef CONFIG_USB_SUNPLUS_OTG
-		if ((ctrl->bRequestType == 0) && (ctrl->wValue == 3) && (ctrl->wIndex == 0)
-									&& (ctrl->wLength == 0)) {
-			UDC_LOGD("set hnp feature");
-
-	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
-			otg_phy = usb_get_transceiver_sp(0);
-	#else
-			otg_phy = usb_get_transceiver_sp(1);
-	#endif
-
-			if (!otg_phy)
-				UDC_LOGE("Get otg control fail");
-			else
-				sp_accept_b_hnp_en_feature(otg_phy->otg);
-
-		}
-#endif
-
 		value = 0;
 		break;
 
@@ -2072,6 +2170,7 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 					sp_udc_set_halt(&ep->ep, 0);
 			}
 		}
+
 		value = 0;
 		break;
 
@@ -2136,9 +2235,9 @@ static void cfg_udc_ep(struct sp_udc *udc)
 
 static void sp_udc_ep_init(struct sp_udc *udc)
 {
-	u32 i;
 	struct udc_endpoint *ep;
 	unsigned long flags;
+	u32 i;
 
 	UDC_LOGI("udc %d ep_init\n", udc->port_num);
 
@@ -2161,9 +2260,9 @@ static void sp_udc_ep_init(struct sp_udc *udc)
 
 static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descriptor *desc)
 {
-	int max;
-	struct sp_udc *udc;
 	struct udc_endpoint *ep;
+	struct sp_udc *udc;
+	int max;
 
 	ep = to_sp_ep(_ep);
 	if (!_ep || !desc || desc->bDescriptorType != USB_DT_ENDPOINT) {
@@ -2309,12 +2408,17 @@ static int sp_udc_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_
 
 	list_add_tail(&req->queue, &ep->queue);
 
-	ret = hal_udc_endpoint_transfer(udc, req, ep->bEndpointAddress, _req->buf, _req->dma, _req->length, _req->zero);
-	UDC_LOGD("%s: ep:%x len %d, req:%px,trb:%px\n", __func__, ep->bEndpointAddress, _req->length, req, req->transfer_trb);
+	ret = hal_udc_endpoint_transfer(udc, req, ep->bEndpointAddress, _req->buf, _req->dma,
+										_req->length, _req->zero);
+	UDC_LOGD("%s: ep:%x len %d, req:%px,trb:%px\n", __func__, ep->bEndpointAddress, _req->length,
+										req, req->transfer_trb);
 	if (ret) {
 		UDC_LOGE("%s: transfer err\n", __func__);
 
-#ifndef PIO_MODE
+#ifdef PIO_MODE
+		kfree(req->buffer);
+		req->buffer = NULL;
+#else
 		usb_gadget_unmap_request(&udc->gadget, _req, EP_DIR(ep->bEndpointAddress));
 #endif
 
@@ -2403,6 +2507,7 @@ static struct usb_ep *sp_udc_match_ep(struct usb_gadget *_gadget,
 	if (usb_endpoint_type(desc) == USB_ENDPOINT_XFER_INT) {
 		gadget_for_each_ep(ep, _gadget) {
 			usb_ep_set_maxpacket_limit(ep, INT_MPS_SIZE);
+
 			if (ep->caps.type_int && usb_gadget_ep_match_desc(_gadget, ep, desc, ep_comp))
 				return ep;
 
@@ -2431,7 +2536,7 @@ static int sp_udc_pullup(struct usb_gadget *gadget, int is_on)
 
 	UDC_LOGD("+%s.%d,is_on:%x\n", __func__, __LINE__, is_on);
 
-	udc->vbus_active = 1;
+	//udc->vbus_active = 1;		//shih test
 
 	if (is_on) {
 		if (udc->vbus_active && udc->driver)
@@ -2509,7 +2614,7 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 	return 0;
 }
 
-void usb_switch(int port_num, int device)
+void usb_switch(struct sp_udc *udc, int port_num, int device)
 {
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	if (port_num == 0)
@@ -2519,6 +2624,8 @@ void usb_switch(int port_num, int device)
 		writel((USB_MODE_MASK << (12 + 16)) | (USB_HW_CTRL << 12),
 							moon5_reg + M5_CFG_17);
 #else
+	volatile struct udc_reg *USBx = udc->reg;
+
 	if (device) {
 		if (port_num == 0)
 			writel((USB_MODE_MASK << (4 + 16)) | (USB_DEVICE_MODE << 4),
@@ -2526,6 +2633,10 @@ void usb_switch(int port_num, int device)
 		else if (port_num == 1)
 			writel((USB_MODE_MASK << (12 + 16)) | (USB_DEVICE_MODE << 12),
 									moon5_reg + M5_CFG_17);
+
+		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
+		USBx->DEVC_CS |= UDC_RUN;
+		USBx->EP0_CS |= EP_EN;
 	} else {
 		if (port_num == 0)
 			writel((USB_MODE_MASK << (4 + 16)) | (USB_HOST_MODE << 4),
@@ -2533,6 +2644,8 @@ void usb_switch(int port_num, int device)
 		else if (port_num == 1)
 			writel((USB_MODE_MASK << (12 + 16)) | (USB_HOST_MODE << 12),
 									moon5_reg + M5_CFG_17);
+
+		USBx->DEVC_CS &= ~UDC_RUN;
 	}
 #endif
 }
@@ -2548,15 +2661,10 @@ static ssize_t udc_ctrl_store(struct device *dev, struct device_attribute *attr,
 	struct platform_device *pdev = container_of(dev, struct platform_device, dev);
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 
-	if (*buffer == 'd') {			/* d:switch uphy to device */
-		usb_switch(udc->port_num, 1);
-
-		return count;
-	} else if (*buffer == 'h') {		/* h:switch uphy to host */
-		usb_switch(udc->port_num, 0);
-
-		return count;
-	}
+	if (*buffer == 'd')			/* d:switch uphy to device */
+		usb_switch(udc, udc->port_num, 1);
+	else if (*buffer == 'h')		/* h:switch uphy to host */
+		usb_switch(udc, udc->port_num, 0);
 
 	return count;
 }
@@ -2585,7 +2693,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 #else
 	udc->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(udc->clock)) {
-		printk("not found clk source\n");
+		UDC_LOGE("not found clk source\n");
 
 		return PTR_ERR(udc->clock);
 	}
@@ -2662,13 +2770,12 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	udc->bus_reset_finish = false;
 	udc->frame_num = 0;
-	udc->vbus_active = false;
+	udc->vbus_active = true;
 	udc->dev = &(pdev->dev);
 	device_create_file(&pdev->dev, &dev_attr_udc_ctrl);
 	device_create_file(&pdev->dev, &dev_attr_debug);
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
-	//udc->bus_num = pdev->id;
 	otg_phy = usb_get_transceiver_sp(udc->port_num);
 	retval = otg_set_peripheral(otg_phy->otg, &udc->gadget);
 	if (retval < 0)
@@ -2682,6 +2789,9 @@ static int sp_udc_probe(struct platform_device *pdev)
 	}
 
 #if 0
+	// "Null pointer" will happen due to lack of gadget->udc->driver in udc_gadget_disconnect()
+	// There is still no gadget probed in this time
+	// usb_udc_vbus_handler() : connect or disconnect gadget according to vbus status
 	usb_udc_vbus_handler(&udc->gadget, udc->vbus_active);
 #endif
 
@@ -2772,6 +2882,40 @@ static int sp_udc_remove(struct platform_device *pdev)
 
 	return 0;
 }
+
+#ifdef CONFIG_USB_SUNPLUS_OTG
+void device_run_stop_ctrl(int enable)
+{
+	#ifdef CONFIG_GADGET_USB0
+	struct sp_udc *udc = sp_udc_arry[0];
+	#else
+	struct sp_udc *udc = sp_udc_arry[1];
+	#endif
+	volatile struct udc_reg *USBx = udc->reg;
+
+	if (!udc)
+		return;
+
+	if (enable) {
+		otg_id_pin = 1;
+		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
+		USBx->DEVC_CS |= UDC_RUN;
+		USBx->EP0_CS |= EP_EN;
+	} else {
+		otg_id_pin = 0;
+		USBx->DEVC_CS &= ~(UDC_RUN | EP_EN);
+	}
+}
+EXPORT_SYMBOL(device_run_stop_ctrl);
+
+void detech_start(void)
+{
+	device_run_stop_ctrl(1);
+
+	UDC_LOGD("%s...", __func__);
+}
+EXPORT_SYMBOL(detech_start);
+#endif
 
 static int __init udc_init(void)
 {

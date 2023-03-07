@@ -451,7 +451,7 @@ struct sp_udc {
 	dma_addr_t 		 ep_desc_pa;			/* ep desc phy address */
 	uint8_t			 event_ccs;			/* Consumer Cycle state */
 	uint8_t			 current_event_ring_seg;	/* current event ring segment index */
-	uint8_t			 event_ring_seg_total;		/* Total number of event ringg seg */
+	uint8_t			 event_ring_seg_total;		/* Total number of event ring seg */
 	struct segment_table 	 *event_seg_table;		/* evnet seg */
 	dma_addr_t 		 event_seg_table_pa;
 	struct udc_ring		 *event_ring;			/* evnet ring pointer ,pointer all segment event ring */
