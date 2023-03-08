@@ -30,6 +30,7 @@ static u32 dev_otg_status;
 module_param(dev_otg_status, uint, 0644);
 #endif
 
+
 #define DRIVER_NAME "sp-udc"
 static const char ep0name[] = "ep0";
 
@@ -2612,6 +2613,28 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 	return 0;
 }
 
+void device_run_stop_ctrl(int enable)
+{
+	#ifdef CONFIG_GADGET_USB0
+	struct sp_udc *udc = sp_udc_arry[0];
+	#else
+	struct sp_udc *udc = sp_udc_arry[1];
+	#endif
+	volatile struct udc_reg *USBx = udc->reg;
+
+	if (!udc)
+		return;
+
+	if (enable) {
+		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
+		USBx->DEVC_CS |= UDC_RUN;
+		USBx->EP0_CS |= EP_EN;
+	} else {
+		USBx->DEVC_CS &= ~UDC_RUN;
+	}
+}
+EXPORT_SYMBOL(device_run_stop_ctrl);
+
 void usb_switch(int port_num, int device)
 {
 #ifdef CONFIG_USB_SUNPLUS_OTG
@@ -2622,8 +2645,6 @@ void usb_switch(int port_num, int device)
 		writel((USB_MODE_MASK << (12 + 16)) | (USB_HW_CTRL << 12),
 							moon5_reg + M5_CFG_17);
 #else
-	volatile struct udc_reg *USBx = udc->reg;
-
 	if (device) {
 		if (port_num == 0)
 			writel((USB_MODE_MASK << (4 + 16)) | (USB_DEVICE_MODE << 4),
@@ -2880,28 +2901,6 @@ static int sp_udc_remove(struct platform_device *pdev)
 }
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
-void device_run_stop_ctrl(int enable)
-{
-	#ifdef CONFIG_GADGET_USB0
-	struct sp_udc *udc = sp_udc_arry[0];
-	#else
-	struct sp_udc *udc = sp_udc_arry[1];
-	#endif
-	volatile struct udc_reg *USBx = udc->reg;
-
-	if (!udc)
-		return;
-
-	if (enable) {
-		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
-		USBx->DEVC_CS |= UDC_RUN;
-		USBx->EP0_CS |= EP_EN;
-	} else {
-		USBx->DEVC_CS &= ~UDC_RUN;
-	}
-}
-EXPORT_SYMBOL(device_run_stop_ctrl);
-
 void detech_start(void)
 {
 	device_run_stop_ctrl(1);
