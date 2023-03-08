@@ -2536,8 +2536,6 @@ static int sp_udc_pullup(struct usb_gadget *gadget, int is_on)
 
 	UDC_LOGD("+%s.%d,is_on:%x\n", __func__, __LINE__, is_on);
 
-	//udc->vbus_active = 1;		//shih test
-
 	if (is_on) {
 		if (udc->vbus_active && udc->driver)
 			/* run controller pullup D+ */
@@ -2614,7 +2612,7 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 	return 0;
 }
 
-void usb_switch(struct sp_udc *udc, int port_num, int device)
+void usb_switch(int port_num, int device)
 {
 #ifdef CONFIG_USB_SUNPLUS_OTG
 	if (port_num == 0)
@@ -2634,9 +2632,7 @@ void usb_switch(struct sp_udc *udc, int port_num, int device)
 			writel((USB_MODE_MASK << (12 + 16)) | (USB_DEVICE_MODE << 12),
 									moon5_reg + M5_CFG_17);
 
-		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
-		USBx->DEVC_CS |= UDC_RUN;
-		USBx->EP0_CS |= EP_EN;
+		device_run_stop_ctrl(1);
 	} else {
 		if (port_num == 0)
 			writel((USB_MODE_MASK << (4 + 16)) | (USB_HOST_MODE << 4),
@@ -2645,7 +2641,7 @@ void usb_switch(struct sp_udc *udc, int port_num, int device)
 			writel((USB_MODE_MASK << (12 + 16)) | (USB_HOST_MODE << 12),
 									moon5_reg + M5_CFG_17);
 
-		USBx->DEVC_CS &= ~UDC_RUN;
+		device_run_stop_ctrl(0);
 	}
 #endif
 }
@@ -2662,9 +2658,9 @@ static ssize_t udc_ctrl_store(struct device *dev, struct device_attribute *attr,
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 
 	if (*buffer == 'd')			/* d:switch uphy to device */
-		usb_switch(udc, udc->port_num, 1);
+		usb_switch(udc->port_num, 1);
 	else if (*buffer == 'h')		/* h:switch uphy to host */
-		usb_switch(udc, udc->port_num, 0);
+		usb_switch(udc->port_num, 0);
 
 	return count;
 }
@@ -2897,13 +2893,11 @@ void device_run_stop_ctrl(int enable)
 		return;
 
 	if (enable) {
-		otg_id_pin = 1;
 		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
 		USBx->DEVC_CS |= UDC_RUN;
 		USBx->EP0_CS |= EP_EN;
 	} else {
-		otg_id_pin = 0;
-		USBx->DEVC_CS &= ~(UDC_RUN | EP_EN);
+		USBx->DEVC_CS &= ~UDC_RUN;
 	}
 }
 EXPORT_SYMBOL(device_run_stop_ctrl);

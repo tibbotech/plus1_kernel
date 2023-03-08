@@ -22,7 +22,7 @@ extern void detech_start(void);
 extern void udc_otg_ctrl(void);
 extern void phy0_otg_ctrl(void);
 extern void phy1_otg_ctrl(void);
-#elif defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#elif defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
 extern void device_run_stop_ctrl(int);
 u32 otg_id_pin;
 EXPORT_SYMBOL(otg_id_pin);
@@ -43,19 +43,18 @@ static struct usb_phy *phy_sp[2] = {NULL, NULL};
 
 struct usb_phy *usb_get_transceiver_sp(int bus_num)
 {
-	if (phy_sp[bus_num]){
+	if (phy_sp[bus_num])
 		return phy_sp[bus_num];
-	} else {
+	else
 		return NULL;
-	}
 }
 EXPORT_SYMBOL(usb_get_transceiver_sp);
 
 int usb_set_transceiver_sp(struct usb_phy *x, int bus_num)
 {
-	if (phy_sp[bus_num] && x){
+	if (phy_sp[bus_num] && x)
 		return -EBUSY;
-	}
+
 	phy_sp[bus_num]= x;
 	return 0;
 }
@@ -189,7 +188,7 @@ static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 		otg_debug("drop vbus\n");
 		ret |= A_BUS_DROP_BIT;
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 
@@ -228,7 +227,7 @@ int sp_phy_read(struct usb_phy *x, u32 reg)
 {
 #ifdef CONFIG_SOC_SP7021
 	return readl((u32 *)reg);
-#elif defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#elif defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	return readl((u32 *)reg);
 	#else
@@ -241,7 +240,7 @@ int sp_phy_write(struct usb_phy *x, u32 val, u32 reg)
 {
 #ifdef CONFIG_SOC_SP7021
 	writel(val, (u32 *)reg);
-#elif defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#elif defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	writel(val, (u32 *)reg);
 	#else
@@ -448,6 +447,7 @@ static void sp_otg_work(struct work_struct *work)
 			val |= A_BUS_REQ_BIT;
 			writel(val, &otg_host->regs_otg->otg_device_ctrl);
 		}
+
 		otg_host->otg.otg->state = OTG_STATE_A_WAIT_VRISE;
 		break;
 	case OTG_STATE_A_WAIT_VFALL:
@@ -490,13 +490,13 @@ static void otg_hw_init(struct sp_otg *otg_host)
 	val = readl(&otg_host->regs_otg->otg_int_st);
 
 #ifdef CONFIG_SOC_SP7350
-	writel(~OTG_SIM & (OTG_SRP | OTG_20),
-			  &otg_host->regs_otg->mode_select);
-
 	if (val & ID_PIN)
 		otg_id_pin = 1;
 	else
 		otg_id_pin = 0;
+
+	writel(~OTG_SIM & (OTG_SRP | OTG_20),
+			  &otg_host->regs_otg->mode_select);
 #else
 	if (val & ID_PIN) {
 		writel(~OTG_SIM & (OTG_SRP | OTG_20),
@@ -571,7 +571,7 @@ int sp_notifier_call(struct notifier_block *self, unsigned long action,
 		val |= A_BUS_DROP_BIT;
 		writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 	}
@@ -579,7 +579,7 @@ int sp_notifier_call(struct notifier_block *self, unsigned long action,
 	return 0;
 }
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 static void adp_watchdog0(struct timer_list *t)
 {
 	u32 val;
@@ -713,7 +713,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 		val |= A_BUS_DROP_BIT;
 		writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
 		device_run_stop_ctrl(0);
 #endif
 
@@ -726,7 +726,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 		}
 #endif
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, ADP_TIMER_FREQ + jiffies);
 #endif
 		otg_host->fsm.a_wait_bcon_tmout = 1;
@@ -765,19 +765,21 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 				  	&otg_host->regs_otg->mode_select);
 #endif
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 			mod_timer(&otg_host->adp_timer,
 				  ADP_TIMER_FREQ + jiffies);
 #endif
 
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
+			otg_id_pin = 0;
 			device_run_stop_ctrl(0);
 #endif
 		} else {
 			writel(~OTG_SIM & (OTG_SRP | OTG_20),
 				  &otg_host->regs_otg->mode_select);
 
-#if defined(CONFIG_SOC_I143) || defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_SOC_I143) || defined (CONFIG_SOC_SP7350)
+			otg_id_pin = 1;
 			device_run_stop_ctrl(1);
 #endif
 		}
@@ -797,7 +799,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 		//otg_debug("oct in %09ld.%09ld\n", t0.tv_sec, t0.tv_nsec);
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, (HZ/10) + jiffies);
 #endif
 
@@ -893,7 +895,7 @@ int sp_otg_probe(struct platform_device *dev)
 	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
 							resource_size(res_mem), otg_host->irq,
 							readl(&otg_host->regs_otg->otg_int_st));
-#elif defined(CONFIG_SOC_I143)
+#elif defined (CONFIG_SOC_I143)
 	#ifdef CONFIG_MACH_PENTAGRAM_I143_ACHIP
 	otg_debug("@@@ otg reg %d %d irq %d %x\n", res_mem->start,
 							resource_size(res_mem), otg_host->irq,
@@ -926,7 +928,7 @@ int sp_otg_probe(struct platform_device *dev)
 	otg_host->otg.io_priv = otg_host->regs_otg;
 	otg_host->otg.io_ops = &sp_phy_ios;
 
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 	if (dev->id == 1)
 		timer_setup(&otg_host->adp_timer, adp_watchdog0, 0);
 	else if (dev->id == 2)
@@ -987,27 +989,25 @@ int sp_otg_remove(struct platform_device *dev)
 		flush_workqueue(otg_host->qwork);
 		destroy_workqueue(otg_host->qwork);
 	}
-#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
+#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
 	del_timer_sync(&otg_host->adp_timer);
 #endif
 
 #ifdef CONFIG_GADGET_USB0
 	if (sp_otg0_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
-		if (err) {
+		if (err)
 			otg_debug("kthread_stop failed: %d\n", err);
-		} else {
+		else
 			sp_otg0_host->hnp_polling_timer = NULL;
-		}
 	}
 #else
 	if (sp_otg1_host->hnp_polling_timer) {
 		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
-		if (err) {
+		if (err)
 			otg_debug("kthread_stop failed: %d\n", err);
-		} else {
+		else
 			sp_otg1_host->hnp_polling_timer = NULL;
-		}
 	}
 #endif
 
