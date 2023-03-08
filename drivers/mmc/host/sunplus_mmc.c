@@ -2097,6 +2097,16 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
 	writel(x, &host->base->card_mediatype_srcdst);
 	#endif
+
+	#ifdef PLATFORM_SP7350
+	spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
+	spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
+	if ((mmc->caps&MMC_CAP_3_3V_DDR) ==  MMC_CAP_3_3V_DDR) {
+		spmmc_pr(DEBUG, "MMC_CAP_3_3V_DDR\n");
+	} else if ((mmc->caps2&MMC_CAP2_HS400_1_8V) ==  MMC_CAP2_HS400_1_8V) {
+		spmmc_pr(DEBUG, "MMC_CAP2_HS400_1_8V\n");
+	}
+	#endif
 	return 0;
 
 probe_clk_unprepare:
