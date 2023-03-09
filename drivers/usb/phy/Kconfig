@@ -12,6 +12,7 @@ config USB_SUNPLUS_OTG
 	bool "support sunplus otg driver"
 #	depends on USB_GADGET_SUNPLUS && GEMINI_USB
 	depends on USB_EHCI_HCD || USB_GADGET_SUNPLUS
+	depends on SOC_SP7021 || SOC_SP7350
 #	select USB_OTG
 	select USB_OTG_UTILS
 	help

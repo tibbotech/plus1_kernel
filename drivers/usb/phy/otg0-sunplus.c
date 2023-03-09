@@ -11,6 +11,8 @@ EXPORT_SYMBOL(sp_otg0_host);
 static const struct of_device_id otg0_sunplus_dt_ids[] = {
 #ifdef CONFIG_SOC_SP7021
 	{ .compatible = "sunplus,sp7021-usb-otg0" },
+#elif defined (CONFIG_SOC_SP7350)
+	{ .compatible = "sunplus,sp7350-usb-otg" },
 #endif
 	{ }
 };

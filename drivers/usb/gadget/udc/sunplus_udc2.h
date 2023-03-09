@@ -32,6 +32,7 @@
 #define USB_MODE_MASK			0x3
 #define USB_HOST_MODE			0x3
 #define USB_DEVICE_MODE			0x1
+#define USB_HW_CTRL			0x0
 
 /* run speeed & max ep condig config */
 #define UDC_FULL_SPEED			0x1
@@ -108,6 +109,7 @@
 #define DESI				(0x7)			/* DEVC_ERDP */
 #define VBUS_DIS 			(1<<16)			/* DEVC_CTRL */
 #define EINT				(1<<1)			/* DEVC_STS */
+#define VBUS_CI				(1<<0)			/* DEVC_STS */
 #define CLEAR_INT_VBUS			(0x3)			/* DEVC_STS */
 
 #define EP_EN				(1<<0)
@@ -452,7 +454,7 @@ struct sp_udc {
 	dma_addr_t 		 ep_desc_pa;			/* ep desc phy address */
 	uint8_t			 event_ccs;			/* Consumer Cycle state */
 	uint8_t			 current_event_ring_seg;	/* current event ring segment index */
-	uint8_t			 event_ring_seg_total;		/* Total number of event ringg seg */
+	uint8_t			 event_ring_seg_total;		/* Total number of event ring seg */
 	struct segment_table 	 *event_seg_table;		/* evnet seg */
 	dma_addr_t 		 event_seg_table_pa;
 	struct udc_ring		 *event_ring;			/* evnet ring pointer ,pointer all segment event ring */
