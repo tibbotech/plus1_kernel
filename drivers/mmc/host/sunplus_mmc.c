@@ -881,6 +881,7 @@ static void spmmc_controller_init(struct spmmc_host *host)
 		value = bitfield_replace(value, 2, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
+		host->mmc->ios.signal_voltage = MMC_SIGNAL_VOLTAGE_180;
 		spmmc_pr(INFO, "use signal voltage 1.8V for eMMC\n");
 	}
 #endif
@@ -2096,6 +2097,16 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	x = readl(&host->base->card_mediatype_srcdst);
 	x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
 	writel(x, &host->base->card_mediatype_srcdst);
+	#endif
+
+	#ifdef PLATFORM_SP7350
+	spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
+	spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
+	if ((mmc->caps&MMC_CAP_3_3V_DDR) ==  MMC_CAP_3_3V_DDR) {
+		spmmc_pr(DEBUG, "MMC_CAP_3_3V_DDR\n");
+	} else if ((mmc->caps2&MMC_CAP2_HS400_1_8V) ==  MMC_CAP2_HS400_1_8V) {
+		spmmc_pr(DEBUG, "MMC_CAP2_HS400_1_8V\n");
+	}
 	#endif
 	return 0;
 
