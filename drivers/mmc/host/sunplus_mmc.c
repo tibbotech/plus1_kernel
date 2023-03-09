@@ -881,6 +881,7 @@ static void spmmc_controller_init(struct spmmc_host *host)
 		value = bitfield_replace(value, 2, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
+		host->mmc->ios.signal_voltage = MMC_SIGNAL_VOLTAGE_180;
 		spmmc_pr(INFO, "use signal voltage 1.8V for eMMC\n");
 	}
 #endif
