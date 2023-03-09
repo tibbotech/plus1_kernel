@@ -26,13 +26,22 @@
 #include <linux/of_irq.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/reset.h>
+#include <linux/firmware.h>
+#include <linux/elf.h>
+#include <linux/suspend.h>
 
 #include "remoteproc_internal.h"
+#include "remoteproc_elf_helpers.h"
 
 #define MAX_NUM_VRINGS 2
 #define NOTIFYID_ANY (-1)
 /* Maximum on chip memories used by the driver*/
 #define MAX_ON_CHIP_MEMS        32
+
+#ifdef CONFIG_SOC_SP7350
+#define MAILBOX_CM4_TO_CA55_SUSPEND      0xaabb1234
+#define FIRMWARE_WARMBOOT_NAME           "warmboot"
+#endif
 
 /* Structure for IPIs */
 struct ipi_info {
@@ -55,7 +64,11 @@ struct sp_rproc_pdata {
 	struct list_head fw_mems;
 	u32 __iomem *mbox0to2;
 	u32 __iomem *boot;
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
+	u32 __iomem *mbox2to0; // read to clear intr
+	struct reset_control *rstc; // FIXME: RST_A926 not worked
+#elif defined(CONFIG_SOC_SP7350)
+	u64 bootaddr;
 	u32 __iomem *mbox2to0; // read to clear intr
 	struct reset_control *rstc; // FIXME: RST_A926 not worked
 #endif
@@ -117,7 +130,7 @@ static int sp_rproc_start(struct rproc *rproc)
 	writel(0xFF0000|(rproc->bootaddr >> 24), local->boot);
 	reset_control_deassert(local->rstc);
 #elif defined (CONFIG_SOC_SP7350)
-	writel(0xFFFF0000|(rproc->bootaddr >> 16), local->boot);
+	writel(0xFFFF0000|(local->bootaddr >> 16), local->boot);
 	reset_control_deassert(local->rstc);
 #else
 	writel(rproc->bootaddr, local->boot);
@@ -221,6 +234,24 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 				return -ENOMEM;
 			}
 			rproc_add_carveout(rproc, mem);
+#ifdef CONFIG_SOC_SP7350
+		} else if (strstr(node->name, "cm4runaddr") ) {
+			struct sp_rproc_pdata *local = rproc->priv;
+			mem = rproc_of_resm_mem_entry_init(dev, i,
+							rmem->size,
+							rmem->base,
+							node->name);
+			if (!mem) {
+				dev_err(dev, "unable to initialize memory-region %s\n", node->name);
+				return -ENOMEM;
+			}
+			mem->va = devm_ioremap(dev, rmem->base, rmem->size);
+			local->bootaddr = rmem->base;
+			if (!mem->va)
+				return -ENOMEM;
+
+			rproc_add_carveout(rproc, mem);
+#endif
 		} else {
 			mem = rproc_of_resm_mem_entry_init(dev, i,
 							rmem->size,
@@ -244,24 +275,112 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 	return ret;
 }
 
+#ifdef CONFIG_SOC_SP7350
+
+static void sp7350_request_firmware_callback(const struct firmware *fw, void *context)
+{
+	struct rproc *rproc = context;
+	rproc_elf_load_segments(rproc,fw);
+	release_firmware(fw);
+
+	dev_info(&rproc->dev, "Ca55 in suspend start \n");
+	pm_suspend(PM_SUSPEND_MEM);
+}
+static int sp7350_load_warmboot_firmware(struct rproc *rproc)
+{
+	int ret;
+
+	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+				      FIRMWARE_WARMBOOT_NAME, &rproc->dev, GFP_KERNEL,
+				      rproc, sp7350_request_firmware_callback);
+	if (ret < 0)
+		dev_err(&rproc->dev, "request_firmware_nowait err: %d\n", ret);
+
+	return ret;
+}
+static int sp_rproc_load(struct rproc *rproc, const struct firmware *fw)
+{
+	struct device *dev = &rproc->dev;
+	struct sp_rproc_pdata *local = rproc->priv;
+	struct elf32_hdr *ehdr;
+	struct elf32_phdr *phdr;
+	int i, ret = 0;
+	const u8 *elf_data = fw->data;
+
+	ehdr = (struct elf32_hdr *)elf_data;
+	phdr = (struct elf32_phdr *)(elf_data + ehdr->e_phoff);
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		u32 memsz = phdr->p_memsz;
+		u32 filesz = phdr->p_filesz;
+		u32 offset = phdr->p_offset;
+		void *ptr;
+		if (phdr->p_type != PT_LOAD)
+			continue;
+		dev_dbg(dev, "phdr: type %d memsz 0x%x filesz 0x%x\n",
+			phdr->p_type, memsz, filesz);
+		if (filesz > memsz) {
+			dev_err(dev, "bad phdr filesz 0x%x memsz 0x%x\n",
+				filesz, memsz);
+			ret = -EINVAL;
+			break;
+		}
+		if (offset + filesz > fw->size) {
+			dev_err(dev, "truncated fw: need 0x%x avail 0x%zx\n",
+				offset + filesz, fw->size);
+			ret = -EINVAL;
+			break;
+		}
+
+		/* grab the kernel address for this device address */
+		ptr = rproc_da_to_va(rproc, local->bootaddr, memsz);
+		if (!ptr) {
+			dev_err(dev, "bad phdr da 0x%llx mem 0x%x\n", local->bootaddr,memsz);
+			ret = -EINVAL;
+			break;
+		}
+
+		/* put the segment where the remote processor expects it */
+		if (phdr->p_filesz)
+			memcpy(ptr, elf_data + offset, phdr->p_filesz);
+	}
+	return ret;
+}
+
+
+#endif
 static struct rproc_ops sp_rproc_ops = {
 	.start		= sp_rproc_start,
 	.stop		= sp_rproc_stop,
-	.load		= rproc_elf_load_segments,
 	.parse_fw	= sp_parse_fw,
 	.find_loaded_rsc_table = rproc_elf_find_loaded_rsc_table,
 	.get_boot_addr	= rproc_elf_get_boot_addr,
 	.kick		= sp_rproc_kick,
+#ifdef CONFIG_SOC_SP7350
+	.load		= sp_rproc_load,
+#else
+	.load		= rproc_elf_load_segments,
+#endif
 };
 
 static irqreturn_t sp_remoteproc_interrupt(int irq, void *dev_id)
 {
 	struct sp_rproc_pdata *local = rproc->priv;
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 	readl(local->mbox2to0); // read to clear intr
+
+#elif defined(CONFIG_SOC_SP7350)
+
+	if(readl(local->mbox2to0) == MAILBOX_CM4_TO_CA55_SUSPEND)  // read to clear intr
+	{
+
+		sp7350_load_warmboot_firmware(rproc);
+	}
+	else
 #endif
-	ipi_kick();
+	{
+		ipi_kick();
+	}
 
 	return IRQ_HANDLED;
 }
