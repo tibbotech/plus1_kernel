@@ -118,9 +118,15 @@
 			no-map;
 		};
 
-		/* Video codec reserve memory: 0x780000000 ~ 0x7fffffff, total 128M */
-		video_codec_reserve: vcodec@78000000 {
-			reg = <0x0 0x78000000 0x0 0x8000000>;
+		/* video encoder reserve memory: 0xb8000000~0xcbffffff, total 320M */
+		video_codec_encode: vcodec@b8000000 {
+			reg = <0x0 0xb8000000 0x0 0x14000000>;
+			no-map;
+		};
+
+		/* video decoder reserve memory: 0xcc000000~0xcfffffff, total 64M */
+		video_codec_decode: vcodec@cc000000 {
+			reg = <0x0 0xcc000000 0x0 0x04000000>;
 			no-map;
 		};
 
@@ -1905,12 +1911,12 @@
 
 	video_codec_emem {
 		compatible = "sunplus,sp7350-hantro-emem";
-		memory-region = <&video_codec_reserve>;
+		memory-region = <&video_codec_encode>;
 	};
 
 	video_codec_dmem {
 		compatible = "sunplus,sp7350-hantro-dmem";
-		memory-region = <&video_codec_reserve>;
+		memory-region = <&video_codec_decode>;
 	};
 
 	galcore: galcore@f8140000 {
