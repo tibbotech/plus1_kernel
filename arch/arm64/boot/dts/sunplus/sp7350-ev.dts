@@ -85,7 +85,7 @@
 
 
 		/* warmboot reserve, run address 0x100000+8k, load firmware in rproc */
-		rproc_0_reserved: rproc0@00100000 {
+		rproc_0_reserved: rproc0@100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x100000 0x0 0x100000>;
 			no-map;
@@ -123,9 +123,9 @@
 			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
-        
+
 		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
-		npu_reserver: npu_reserver@0x68000000 {	
+		npu_reserver: npu_reserver@68000000 {
 			reg = <0x0 0x68000000 0x0 0x8000000>;
 			no-map;
 		};
@@ -773,12 +773,12 @@
 		interrupt-names = "macirq";
 		//st,syscon = <&syscfg 0x4>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&gmac_pins>;		
+		pinctrl-0 = <&gmac_pins>;
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
-		//snps,ps-speed = <100>;		
+		//snps,ps-speed = <100>;
 		phy-mode = "rgmii";
-		//phy-mode = "rmii";		
+		//phy-mode = "rmii";
 		//mac-mode = "rgmii";
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
@@ -961,7 +961,7 @@
 		status = "disabled";
 	};
 
-	otg: usb@0xf8102400 {
+	otg: usb@f8102400 {
 		compatible = "sunplus,sp7350-usb-otg";
 		reg = <0x0 0xf8102400 0x0 0x80>;
 		interrupt-parent = <&gic>;
@@ -982,7 +982,7 @@
 		pinctrl-0 = <&aud_au_adc_data0_pins>;
 		status = "disabled";
 	};
-	
+
 	extcon_dwc3drd: extcon_usb3 {
 		compatible = "linux,extcon-usb-gpio";
 		pinctrl-names = "default";
@@ -990,7 +990,7 @@
 		id-gpio = <&pctl 99 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
-	
+
 	usb3drd0: usb3drd0{
 		compatible = "sunplus,sp7350-dwcusb3";
 		#address-cells = <2>;
@@ -1003,7 +1003,7 @@
 
 		usbdrd_dwc3_0: dwc3@f80a1000 {
 			compatible = "synopsys,dwc3";
-			reg = <0x0 0xf80a1000 0x0 0xe000>;			
+			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
@@ -1027,7 +1027,7 @@
 		reset-names = "rstc_u3phy";
 		pinctrl-names = "default";
 		pinctrl-0 = <&typec_pins>;
-		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;		
+		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
 		status = "disabled";
 	};
 
@@ -1913,7 +1913,7 @@
 		memory-region = <&video_codec_reserve>;
 	};
 
-	galcore: galcore@0xf8140000 {
+	galcore: galcore@f8140000 {
 		compatible = "vicore,galcore";
 		dev_name = "galcore";
 		memory-region = <&npu_reserver>;
@@ -2065,11 +2065,11 @@
 			groups = "SD_CARD";
 			sunplus,pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
-		
+
 		typec_pins: pinmux_typec-pins {
 			sunplus,pins = < SPPCTL_IOPAD(98, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
-		
+
 		dwc3id_pins: pinmux_usb3id-pins {
 			sunplus,pins = < SPPCTL_IOPAD(99, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
