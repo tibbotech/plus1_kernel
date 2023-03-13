@@ -42,7 +42,7 @@
 #include <linux/kthread.h>
 #include <linux/usb/sp_usb.h>
 
-#ifdef CONFIG_USB_SUNPLUS_OTG
+#if defined (CONFIG_USB_SUNPLUS_OTG) || defined (CONFIG_USB_SUNPLUS_SP7350_OTG)
 #include "../phy/otg-sunplus.h"
 #endif
 
@@ -283,7 +283,7 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	struct resource *res_mem;
 	int irq;
 	int err = -ENOMEM;
-#ifdef CONFIG_USB_SUNPLUS_OTG
+#if defined (CONFIG_USB_SUNPLUS_OTG) || defined (CONFIG_USB_SUNPLUS_SP7350_OTG)
 	struct usb_phy *otg_phy;
 #endif
 
@@ -345,7 +345,7 @@ int ehci_sunplus_probe(struct platform_device *dev)
 	platform_set_drvdata(dev, hcd);
 
 /**************************************************************************************************/
-#ifdef CONFIG_USB_SUNPLUS_OTG
+#if defined (CONFIG_USB_SUNPLUS_OTG) || defined (CONFIG_USB_SUNPLUS_SP7350_OTG)
 	if (dev->id < 3) {
 		otg_phy = usb_get_transceiver_sp(dev->id - 1);
 		if (otg_phy) {

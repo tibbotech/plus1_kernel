@@ -5,7 +5,9 @@
 
 #include <linux/usb/phy.h>
 
+#ifdef CONFIG_SOC_SP7021
 #define otg_debug(fmt, args...)		pr_debug("#@#OTG: "fmt, ##args)
+#endif
 
 //#define OTG_TEST
 #define CONFIG_ADP_TIMER
