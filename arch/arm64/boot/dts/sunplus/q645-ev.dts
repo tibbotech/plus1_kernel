@@ -1224,7 +1224,7 @@
 		non-removable;
 		disable-wp;
 		cap-mmc-highspeed;
-		mmc-ddr-3_3v;
+		mmc-ddr-1_8v;
 		no-sdio;
 		no-sd;
 	};

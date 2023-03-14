@@ -2100,12 +2100,12 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	#endif
 
 	#ifdef PLATFORM_SP7350
-	spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
-	spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
-	if ((mmc->caps&MMC_CAP_3_3V_DDR) ==  MMC_CAP_3_3V_DDR) {
-		spmmc_pr(DEBUG, "MMC_CAP_3_3V_DDR\n");
-	} else if ((mmc->caps2&MMC_CAP2_HS400_1_8V) ==  MMC_CAP2_HS400_1_8V) {
-		spmmc_pr(DEBUG, "MMC_CAP2_HS400_1_8V\n");
+	//spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
+	//spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
+	if (mmc->caps&MMC_CAP_3_3V_DDR) {
+		spmmc_pr(DEBUG, "power 3.3V\n");
+	} else if ((mmc->caps&MMC_CAP_1_8V_DDR) || (mmc->caps2&MMC_CAP2_HSX00_1_8V)) {
+		spmmc_pr(DEBUG, "power 1.8V\n");
 	}
 	#endif
 	return 0;
