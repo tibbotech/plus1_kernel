@@ -657,12 +657,14 @@
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
 			clocks = <&tp2815_0_clk>;
+			input-channel = <1>;
+			input-standard = <0>;
 
 			port {
 				tp2815_0: endpoint {
 					remote-endpoint = <&csi2_0>;
 					data-lanes = <1 2 3 4>;
-					clock-noncontinuous;
+					clock-continuous;
 					link-frequencies = /bits/ 64 <456000000>;
 				};
 			};
@@ -793,12 +795,14 @@
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
 			clocks = <&tp2815_2_clk>;
+			input-channel = <1>;
+			input-standard = <0>;
 
 			port {
 				tp2815_2: endpoint {
 					remote-endpoint = <&csi2_2>;
 					data-lanes = <1 2 3 4>;
-					clock-noncontinuous;
+					clock-continuous;
 					link-frequencies = /bits/ 64 <456000000>;
 				};
 			};

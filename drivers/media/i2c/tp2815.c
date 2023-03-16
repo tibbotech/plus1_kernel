@@ -104,7 +104,7 @@
 #define IMX219_REG_TESTP_BLUE		0x0606
 #define IMX219_REG_TESTP_GREENB		0x0608
 #define IMX219_TESTP_COLOUR_MIN		0
-#define IMX219_TESTP_COLOUR_MAX		0x03ff
+#define IMX219_TESTP_COLOUR_MAX		1 //0x03ff
 #define IMX219_TESTP_COLOUR_STEP	1
 #define IMX219_TESTP_RED_DEFAULT	IMX219_TESTP_COLOUR_MAX
 #define IMX219_TESTP_GREENR_DEFAULT	0
@@ -128,29 +128,29 @@ enum {
 	CH_ALL = 4,
 	MIPI_PAGE = 8,
 };
-// video_std
+// input_std
 enum {
 	STD_TVI, // TVI
 	STD_HDA, // AHD
 };
 // video_format
 enum {
-	HD25, // 720p25
-	HD30, // 720p30
-	FHD25, // 1080p25
-	FHD30, // 1080p30
-	FHD50, // 1080p50
-	FHD60, // 1080p60
-	HD50, // 720p50
-	HD60, // 720p60
+	HD25,	// 720p25
+	HD30,	// 720p30
+	FHD25,	// 1080p25
+	FHD30,	// 1080p30
+	FHD50,	// 1080p50
+	FHD60,	// 1080p60
+	HD50,	// 720p50
+	HD60,	// 720p60
 };
 // video_output
 enum {
-	MIPI_4CH4LANE_297M = 0x1, // up to 4x720p25/30
-	MIPI_4CH4LANE_594M, // up to 4x1080p25/30
-	MIPI_4CH2LANE_594M, // up to 4x720pp25/30
-	MIPI_1CH4LANE_297M, // up to 1x720p25/30
-	MIPI_1CH4LANE_594M, // up to 1x1080p25/30
+	MIPI_4CH4LANE_297M,	// up to 4x720p25/30
+	MIPI_4CH4LANE_594M,	// up to 4x1080p25/30
+	MIPI_4CH2LANE_594M,	// up to 4x720pp25/30
+	MIPI_1CH4LANE_297M,	// up to 1x720p25/30
+	MIPI_1CH4LANE_594M,	// up to 1x1080p25/30
 };
 
 // ioctl cmd
@@ -437,6 +437,17 @@ static const struct imx219_reg raw10_framefmt_regs[] = {
 	{0x0309, 0x0a},
 };
 
+#if 1 // CCHo: TP2815
+static const char * const imx219_test_pattern_menu[] = {
+	"Disabled",
+	"Solid Color",
+};
+
+static const int imx219_test_pattern_val[] = {
+	IMX219_TEST_PATTERN_DISABLE,
+	IMX219_TEST_PATTERN_SOLID_COLOR,
+};
+#else
 static const char * const imx219_test_pattern_menu[] = {
 	"Disabled",
 	"Color Bars",
@@ -452,6 +463,7 @@ static const int imx219_test_pattern_val[] = {
 	IMX219_TEST_PATTERN_GREY_COLOR,
 	IMX219_TEST_PATTERN_PN9,
 };
+#endif
 
 /* regulator supplies */
 static const char * const imx219_supply_name[] = {
@@ -640,6 +652,7 @@ struct imx219 {
 	struct regulator_bulk_data supplies[IMX219_NUM_SUPPLIES];
 
 	struct v4l2_ctrl_handler ctrl_handler;
+
 	/* V4L2 Controls */
 	struct v4l2_ctrl *pixel_rate;
 	struct v4l2_ctrl *exposure;
@@ -650,6 +663,14 @@ struct imx219 {
 
 	/* Current mode */
 	const struct imx219_mode *mode;
+
+	/* MIPI-CSI2 bus info */
+	struct v4l2_fwnode_bus_mipi_csi2 bus;
+	enum v4l2_mbus_type bus_type;
+
+	/* TP2815 input related properties */
+	u32 input_ch;
+	u32 input_std;
 
 	/*
 	 * Mutex for serialized access:
@@ -762,10 +783,28 @@ static u32 imx219_get_format_code(struct imx219 *imx219, u32 code)
 	return codes[i];
 }
 
-void tp2815_decoder_init(struct imx219 *imx219, unsigned int ch, unsigned int fmt, unsigned int std)
+void tp2815_decoder_init(struct imx219 *imx219)
 {
-	unsigned int tmp;
 	const unsigned char SYS_MODE[5] = { 0x01, 0x02, 0x04, 0x08, 0x0f };
+	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
+	u32 fmt, ch, std, tmp;
+
+	ch = imx219->input_ch - 1;
+	std = imx219->input_std;
+
+	dev_dbg(&client->dev, "%s, %d, ch: %u, std: %u\n", __func__, __LINE__, ch, std); // CCHo addied for debugging
+
+	/* Select output format according to V4L2 MBUS frame format */
+	if (imx219->fmt.height == 720) {
+		fmt = HD30;
+	} else if (imx219->fmt.height == 1080) {
+		fmt = FHD30;
+	} else {
+		fmt = HD30;
+		dev_warn(&client->dev, "Use default format. (fmt: %u)\n", fmt);
+	}
+	dev_dbg(&client->dev, "%s, %d, fmt: %u\n", __func__, __LINE__, fmt); // CCHo addied for debugging
+
 	// 13 B
 	imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, ch);
 	imx219_write_reg(imx219, 0x45, IMX219_REG_VALUE_08BIT, 0x01);
@@ -791,6 +830,7 @@ void tp2815_decoder_init(struct imx219 *imx219, unsigned int ch, unsigned int fm
 	imx219_write_reg(imx219, 0x2c, IMX219_REG_VALUE_08BIT, 0x0a);
 	// Color GainReferenc
 	imx219_write_reg(imx219, 0x2e, IMX219_REG_VALUE_08BIT, 0x70);
+
 	// 20 B
 	if (fmt == HD25) {
 		tmp |= SYS_MODE[ch];
@@ -1174,87 +1214,48 @@ void tp2815_decoder_init(struct imx219 *imx219, unsigned int ch, unsigned int fm
 	}
 	return;
 }
-// 16B
-void tp2815_mipi_out_init(struct imx219 *imx219, unsigned int output)
+
+void tp2815_mipi_init(struct imx219 *imx219)
 {
-	// MIPI page
+	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
+	u32 output, val;
+
+	dev_dbg(&client->dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
+
+	/* The number of video inputs is the same as the number of virtual channels. */
+	switch(imx219->input_ch) {
+		case 1:		// 1 virtual channel
+			output = MIPI_1CH4LANE_297M;
+			break;
+
+		case 4: 	// 4 virtual channels
+			output = MIPI_4CH4LANE_594M;
+			break;
+
+		default:			
+			output = MIPI_4CH4LANE_594M;
+			dev_warn(&client->dev, "Use default output format. (output: %u)\n", output);
+			break;
+	}
+	dev_dbg(&client->dev, "%s, %d, output: %u\n", __func__, __LINE__, output); // CCHo addied for debugging
+
+	/* Enable MIPI page register access */
 	imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);
 	imx219_write_reg(imx219, 0x01, IMX219_REG_VALUE_08BIT, 0xf0);
-	imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x01);
-	imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x0f);
+	//imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x01);
+	//imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x0f);
 
-	// 9B
-	if (output == MIPI_4CH4LANE_594M) {
-		imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44);
-		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
-		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0C);
-		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x08);
-		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x06);
-		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x11);
-		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x0a);
+	/* MIPI NUM_LANES(0x20)
+	 * 0x20[6:4] - NUM_CHANNELS - Number of video channels to be processed
+	 * 0x20[2:0] - NUM_LANES    - Number of MIPI data lanes to use for Tx
+	 */
+	val = (imx219->input_ch<<4) | imx219->bus.num_data_lanes;
+	imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, val);
+	dev_dbg(&client->dev, "%s, %d, reg20: 0x%08x\n", __func__, __LINE__, val); // CCHo addied for debugging
 
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07);
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
-
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x33);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xb3);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x33);
-	}
-	// 9B
-	else if (output == MIPI_4CH4LANE_297M) {
-		imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44);
-		// output vin1&vin2
-		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44);
-		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0d);
-		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x04);
-		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x03);
-		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x09);
-		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x02);
-
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07);
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
-
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc4);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44);
-	}
-	// 9B
-	else if (output == MIPI_4CH2LANE_594M) {
-		imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x42);
-		// output vin1&vin2
-		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
-		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0c);
-		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x08);
-		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x06);
-		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x11);
-		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x0a);
-
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07);
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
-
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x43);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc3);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x43);
-	}
-	else if (output == MIPI_1CH4LANE_297M) {
-		imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x14); // 1 CH, 4 Lanes
-		// output vin1&vin2
-		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44);
-		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0d);
-		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x04);
-		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x03);
-		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x09);
-		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x02);
-
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07); // B2: RST_CSI; B1: RST_MUX; B0:RST_IN
-		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
-
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc4); // B7: RST_CLK_GEN
-		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44); // DIV_CSI_CLK = 1/16, DIV_PHY_CLK = 1/16
-	}
-	else if (output == MIPI_1CH4LANE_594M) {
-		imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x14); // 1 CH, 4 Lanes
+	if ((output == MIPI_4CH4LANE_594M) | (output == MIPI_1CH4LANE_594M)) {
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44); // 4 CH, 4 Lanes
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x14); // 1 CH, 4 Lanes
 		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
 		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0C);
 		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x08);
@@ -1268,21 +1269,62 @@ void tp2815_mipi_out_init(struct imx219 *imx219, unsigned int output)
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x33);
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xb3); // B7: RST_CLK_GEN
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x33); // DIV_CSI_CLK = 1/8, DIV_PHY_CLK = 1/8
+	}
+	else if ((output == MIPI_4CH4LANE_297M) | (output == MIPI_1CH4LANE_297M)) {
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44); // 4 CH, 4 Lanes
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x14); // 1 CH, 4 Lanes
+		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
+		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0d);
+		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x04);
+		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x03);
+		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x09);
+		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x02);
+
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07); // B2: RST_CSI; B1: RST_MUX; B0:RST_IN
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
+
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc4); // B7: RST_CLK_GEN
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44); // DIV_CSI_CLK = 1/16, DIV_PHY_CLK = 1/16
+	}
+	else if (output == MIPI_4CH2LANE_594M) {
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x42); // 4 CH, 2 Lanes
+		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
+		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0c);
+		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x08);
+		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x06);
+		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x11);
+		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x0a);
+
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07); // B2: RST_CSI; B1: RST_MUX; B0:RST_IN
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
+
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x43);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc3); // B7: RST_CLK_GEN
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x43); // DIV_CSI_CLK = 1/16, DIV_PHY_CLK = 1/8
 	} else {
 		printk(KERN_WARNING " %s : invalid  output format\n", __func__);
 	}
 
-	/* Enable MIPI CSI2 output */
+#if 1
+	/* Disable MIPI CSI2 output */
 	imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);
-	imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);
+#else
+	/* Enable MIPI CSI2 output */
+	//imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);
+	//imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);
+#endif
 	return;
 }
 
-void tp2815_common_init(struct imx219 *imx219, unsigned int ch, unsigned int fmt, unsigned int std,
-			unsigned int output)
+void tp2815_common_init(struct imx219 *imx219)
 {
-	tp2815_decoder_init(imx219, ch, fmt, std);
-	tp2815_mipi_out_init(imx219, output);
+	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
+
+	dev_dbg(&client->dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
+
+	tp2815_decoder_init(imx219);
+	tp2815_mipi_init(imx219);
 }
 
 static void imx219_set_default_format(struct imx219 *imx219)
@@ -1335,6 +1377,7 @@ static int imx219_set_ctrl(struct v4l2_ctrl *ctrl)
 	struct imx219 *imx219 =
 		container_of(ctrl->handler, struct imx219, ctrl_handler);
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
+	u32 val;
 	int ret;
 
 	dev_dbg(&client->dev, "%s, %d, ctrl->id: 0x%08x\n", __func__, __LINE__, ctrl->id); // CCHo addied for debugging
@@ -1388,7 +1431,37 @@ static int imx219_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_TEST_PATTERN:
 #if 1 /* CCHo */
-		ret = 0;
+		/* Page Register(0x40)
+		 * 0x40[6]   - APAGE - Enable audio register access
+		 * 0x40[3]   - MPAGE - Enable MIPI register access
+		 * 0x40[2]   - ALLWE - Enable writing all channel page register
+		 * 0x40[1:0] - PAGE  - Select channel page register
+		 * ALLWE  PAGE    Write Register      Read Register
+		 * 0      0       VIN1 Video          VIN1 Video
+		 * 0      1       VIN2 Video          VIN2 Video
+		 * 0      2       VIN3 Video          VIN3 Video
+		 * 0      3       VIN4 Video          VIN4 Video
+		 * 1      0       All VIN1-4 Video    VIN1 Video
+		 * 1      1       All VIN1-4 Video    VIN2 Video
+		 * 1      2       All VIN1-4 Video    VIN3 Video
+		 * 1      3       All VIN1-4 Video    VIN4 Video
+		 */
+		if (imx219->input_ch == 1)
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, imx219->input_ch-1);
+		else
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, (imx219->input_ch-1)|0x04);
+
+		/* FCS(0x2A[3]) - Fource free run mode
+		 * 0 = Disabled
+		 * 1 = Fource free-run                                     */
+		imx219_read_reg(imx219, 0x2a, IMX219_REG_VALUE_08BIT, &val);
+		dev_dbg(&client->dev, "%s, %d, Reg 0x2A: 0x%02x, ctrl->val: 0x%02x\n", __func__, __LINE__, val, ctrl->val); // CCHo addied for debugging
+
+		val = val & (~0x00000008);
+		val = val | (imx219_test_pattern_val[ctrl->val]<<3);
+		ret = imx219_write_reg(imx219, 0x2a, IMX219_REG_VALUE_08BIT, val);
+
+		dev_dbg(&client->dev, "%s, %d, Reg 0x2A: 0x%02x\n", __func__, __LINE__, val); // CCHo addied for debugging
 #else
 		ret = imx219_write_reg(imx219, IMX219_REG_TEST_PATTERN,
 				       IMX219_REG_VALUE_16BIT,
@@ -1432,7 +1505,37 @@ static int imx219_set_ctrl(struct v4l2_ctrl *ctrl)
 		break;
 	case V4L2_CID_TEST_PATTERN_BLUE:
 #if 1 /* CCHo */
-		ret = 0;
+		/* Page Register(0x40)
+		 * 0x40[6]   - APAGE - Enable audio register access
+		 * 0x40[3]   - MPAGE - Enable MIPI register access
+		 * 0x40[2]   - ALLWE - Enable writing all channel page register
+		 * 0x40[1:0] - PAGE  - Select channel page register
+		 * ALLWE  PAGE    Write Register      Read Register
+		 * 0      0       VIN1 Video          VIN1 Video
+		 * 0      1       VIN2 Video          VIN2 Video
+		 * 0      2       VIN3 Video          VIN3 Video
+		 * 0      3       VIN4 Video          VIN4 Video
+		 * 1      0       All VIN1-4 Video    VIN1 Video
+		 * 1      1       All VIN1-4 Video    VIN2 Video
+		 * 1      2       All VIN1-4 Video    VIN3 Video
+		 * 1      3       All VIN1-4 Video    VIN4 Video
+		 */
+		if (imx219->input_ch == 1)
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, imx219->input_ch-1);
+		else
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, (imx219->input_ch-1)|0x04);
+
+		/* LCS(0x2A[2]) - Fource free run mode color control
+		 * 0 = Normal input video data
+		 * 1 = Blue screen                                         */
+		imx219_read_reg(imx219, 0x2a, IMX219_REG_VALUE_08BIT, &val);
+		dev_dbg(&client->dev, "%s, %d, Reg 0x2A: 0x%02x, ctrl->val: 0x%02x\n", __func__, __LINE__, val, ctrl->val); // CCHo addied for debugging
+
+		val = val & (~0x00000004);
+		val = val | (ctrl->val<<2);
+		ret = imx219_write_reg(imx219, 0x2a, IMX219_REG_VALUE_08BIT, val);
+
+		dev_dbg(&client->dev, "%s, %d, Reg 0x2A: 0x%02x\n", __func__, __LINE__, val); // CCHo addied for debugging
 #else
 		ret = imx219_write_reg(imx219, IMX219_REG_TESTP_BLUE,
 				       IMX219_REG_VALUE_16BIT, ctrl->val);
@@ -1738,21 +1841,22 @@ static int imx219_start_streaming(struct imx219 *imx219)
 
 	/* set stream on register */
 #if 1 /* CCHo */
-	ret = 0;
+	ret = imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);	// Switch to MIPI register page
+
+	if (!ret) {
+		imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x01);			// MIPICKEN(b0) = 1(Enable MIPI clock output)
+		imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x0f);			// MIPIEN0/1/2/3(b3:0) = 0x0f(Enable MIPI data output)
+
+		/* Set STOPCLK(reg0x23.b1) to 0. DPHY clock lane is normal operation. */
+		ret = imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);		// STOPCLK(b1) = 0(DPHY clock lane is normal operation)
+	}
 #else
 	ret = imx219_write_reg(imx219, IMX219_REG_MODE_SELECT,
 			       IMX219_REG_VALUE_08BIT, IMX219_MODE_STREAMING);
 #endif
+
 	if (ret)
 		goto err_rpm_put;
-
-	dev_dbg(&client->dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
-
-#if 1 /* CCHo */
-	tp2815_common_init(imx219, CH_1, HD30, STD_TVI, MIPI_1CH4LANE_297M);
-#else
-	tp2815_common_init(imx219, CH_1, HD30, STD_TVI, MIPI_1CH4LANE_594M);
-#endif
 
 	/* vflip and hflip cannot change during streaming */
 	__v4l2_ctrl_grab(imx219->vflip, true);
@@ -1774,7 +1878,15 @@ static void imx219_stop_streaming(struct imx219 *imx219)
 
 	/* set stream off register */
 #if 1 /* CCHo */
-	ret = 0;
+	ret = imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);	// Switch to MIPI register page
+
+	if (!ret) {
+		imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x00);			// MIPICKEN(b0) = 0(Disable MIPI clock output)
+		imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x00);			// MIPIEN0/1/2/3(b3:0) = 0x00(Disable MIPI data output)
+
+		/* Set STOPCLK(reg0x23.b1) to 1. Force DPHY clock lane into STOP state. */
+		ret = imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);		// STOPCLK(b1) = 1(Force DPHY clock lane into STOP state)
+	}
 #else
 	ret = imx219_write_reg(imx219, IMX219_REG_MODE_SELECT,
 			       IMX219_REG_VALUE_08BIT, IMX219_MODE_STANDBY);
@@ -2104,6 +2216,9 @@ static void imx219_free_controls(struct imx219 *imx219)
 
 static int imx219_check_hwcfg(struct device *dev)
 {
+	struct i2c_client *client = to_i2c_client(dev);
+	struct v4l2_subdev *sd = i2c_get_clientdata(client);
+	struct imx219 *imx219 = to_imx219(sd);
 	struct fwnode_handle *endpoint;
 	struct v4l2_fwnode_endpoint ep_cfg = {
 		.bus_type = V4L2_MBUS_CSI2_DPHY
@@ -2126,6 +2241,12 @@ static int imx219_check_hwcfg(struct device *dev)
 		dev_err(dev, "only 4 data lanes are currently supported\n");
 		goto error_out;
 	}
+
+	memcpy(&imx219->bus, &ep_cfg.bus.mipi_csi2, sizeof(struct v4l2_fwnode_bus_mipi_csi2));
+	imx219->bus_type = ep_cfg.bus_type;
+
+	dev_dbg(dev, "%s, %d, num_data_lanes: %u, bus_type: %u\n",
+		__func__, __LINE__, imx219->bus.num_data_lanes, imx219->bus_type); // CCHo addied for debugging
 
 	/* Check the link frequency set in device tree */
 	if (!ep_cfg.nr_of_link_frequencies) {
@@ -2151,9 +2272,13 @@ error_out:
 
 static int imx219_probe(struct i2c_client *client)
 {
+	struct device_node *np = client->dev.of_node;
 	struct device *dev = &client->dev;
 	struct imx219 *imx219;
-	int ret, val;
+	u32 val;
+	int ret;
+
+	dev_dbg(dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
 
 	imx219 = devm_kzalloc(&client->dev, sizeof(*imx219), GFP_KERNEL);
 	if (!imx219)
@@ -2189,6 +2314,25 @@ static int imx219_probe(struct i2c_client *client)
 	imx219->reset_gpio = devm_gpiod_get_optional(dev, "reset",
 						     GPIOD_OUT_HIGH);
 
+	/* Obtain TP2815 input related properties */
+	ret = of_property_read_u32(np, "input-channel", &val);
+	if (ret) {
+		dev_err(dev, "%pOF: No input-channel property found\n", np);
+		return -EINVAL;
+	}
+	imx219->input_ch = val;
+
+	dev_dbg(dev, "%s, %d, input-channel: %u\n", __func__, __LINE__, imx219->input_ch); // CCHo addied for debugging
+
+	ret = of_property_read_u32(np, "input-standard", &val);
+	if (ret) {
+		dev_err(dev, "%pOF: No input-standard property found\n", np);
+		return -EINVAL;
+	}
+	imx219->input_std = val;
+
+	dev_dbg(dev, "%s, %d, input-standard: %u\n", __func__, __LINE__, imx219->input_std); // CCHo addied for debugging
+
 	/*
 	 * The sensor must be powered for imx219_identify_module()
 	 * to be able to read the CHIP_ID register
@@ -2206,13 +2350,6 @@ static int imx219_probe(struct i2c_client *client)
 
 #if 1 /*CCHo: skip this action */
 	// Blank
-	ret = imx219_write_reg(imx219, 0x40,
-				   IMX219_REG_VALUE_08BIT, 2);
-
-	ret = imx219_read_reg(imx219, 0x40,
-					IMX219_REG_VALUE_08BIT, &val);
-
-	dev_info(dev, "reg 0x40 val: 0x%02x", val);
 #else
 	/* sensor doesn't enter LP-11 state upon power up until and unless
 	 * streaming is started, so upon power up switch the modes to:
@@ -2259,10 +2396,15 @@ static int imx219_probe(struct i2c_client *client)
 		goto error_media_entity;
 	}
 
+	/* Initialize TP2815 chip */
+	tp2815_common_init(imx219);
+
 	/* Enable runtime PM and turn off the device */
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_runtime_idle(dev);
+
+	dev_info(dev, "Techpoint TP2815 driver probed!\n");
 
 	return 0;
 
@@ -2282,6 +2424,8 @@ static int imx219_remove(struct i2c_client *client)
 {
 	struct v4l2_subdev *sd = i2c_get_clientdata(client);
 	struct imx219 *imx219 = to_imx219(sd);
+
+	dev_dbg(&client->dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
 
 	v4l2_async_unregister_subdev(sd);
 	media_entity_cleanup(&sd->entity);
@@ -2318,6 +2462,6 @@ static struct i2c_driver tp2815_i2c_driver = {
 
 module_i2c_driver(tp2815_i2c_driver);
 
-MODULE_AUTHOR("Dave Stevenson <dave.stevenson@raspberrypi.com");
-MODULE_DESCRIPTION("Sony IMX219 sensor driver");
+MODULE_AUTHOR("Cheng Chung Ho <cc.ho@sunplus.com");
+MODULE_DESCRIPTION("Techpoint TP2815 driver");
 MODULE_LICENSE("GPL v2");
