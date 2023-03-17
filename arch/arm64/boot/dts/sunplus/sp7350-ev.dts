@@ -19,6 +19,7 @@
 //#define ENABLE_DMATX7
 
 //#define MIPI_CSI_4VC
+//#define LT8912B_HDMI
 
 / {
 	model = "Sunplus SP7350";
@@ -647,10 +648,49 @@
 		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM6>;
 		resets = <&rstc RST_I2CM6>;
+#ifdef LT8912B_HDMI /* Add lt8912b subnode in i2c6 */
+		clock-frequency = <100000>;
+#else
 		clock-frequency = <400000>;
+#endif
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo6_pins>;
 		status = "disabled";
+#ifdef LT8912B_HDMI /* Add lt8912b subnode in i2c6 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		lontium_lt8912b: hdmi@48 {
+			compatible = "lontium,lt8912b";
+			reg = <0x48>;
+			//reset-gpios = <&pctl 74 GPIO_ACTIVE_LOW>;
+			hdmi-timing = <0x3>;
+			/*
+			 * 0x0: 720x480
+			 * 0x2: 1280x720
+			 * 0x3: 1920x1080
+			 */
+			status = "disabled";
+			ports {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				port@0 {
+					reg = <0>;
+					lt8912b_in: endpoint {
+						remote-endpoint = <&disp_phy>;
+						data-lanes = <1 2 3 4>;
+					};
+				};
+
+				port@1 {
+					reg = <1>;
+					lt8912b_out: endpoint {
+						remote-endpoint = <&hdmi_con_out>;
+					};
+				};
+			};
+		};
+#endif
 	};
 
 	i2c7: i2c@f882f000 {
@@ -2011,7 +2051,28 @@
 			 * 0x4 = CSI YUV422_20BITS
 			 */
 		status = "disabled";
+#ifdef LT8912B_HDMI /* Add lt8912b subnode */
+		port {
+			disp_phy: endpoint {
+				remote-endpoint = <&lt8912b_in>;
+			};
+		};
+#endif
 	};
+
+#ifdef LT8912B_HDMI /* Add lt8912b subnode */
+	hdmi-connector {
+		compatible = "hdmi-connector";
+		label = "hdmi";
+		type = "a";
+
+		port {
+			hdmi_con_out: endpoint {
+				remote-endpoint = <&lt8912b_out>;
+			};
+		};
+	};
+#endif
 
 	watchdog: watchdog@f8000628 {
 		compatible = "sunplus,sp7350-wdt";
