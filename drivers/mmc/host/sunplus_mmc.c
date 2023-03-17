@@ -20,7 +20,7 @@
 #include <linux/uaccess.h>
 
 #include "sunplus_mmc.h"
-#ifdef MEASUREMENT_SIGNAL
+#if defined(MEASUREMENT_SIGNAL) || defined(PAD_MS)
 #include <linux/io.h>
 #include "../core/host.h"
 #include "../core/core.h"
@@ -1949,6 +1949,9 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	struct resource *res_driving;
 	struct resource *res_soft;
 	#endif
+	#ifdef PAD_MS
+	struct resource *res_pad_ctl2;
+	#endif
 	struct spmmc_host *host;
 	unsigned int mode;
 	#ifdef HS400
@@ -2009,6 +2012,14 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 #endif
+#ifdef PAD_MS
+	res_pad_ctl2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+	if (IS_ERR(res_pad_ctl2)) {
+		spmmc_pr(ERROR, "get sd register res_driving fail\n");
+		ret = PTR_ERR(res_pad_ctl2);
+		goto probe_free_host;
+	}
+#endif
 
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
 		spmmc_pr(ERROR, "register size is not right\n");
@@ -2037,10 +2048,19 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		ret = PTR_ERR((void *)host->soft_base);
 		goto probe_free_host;
 	}
+	//spmmc_pr(INFO, "SPMMC [host->base] 0x%x  resource 0x%x" , host->base, resource->start);
+	//spmmc_pr(INFO, "SPMMC [host->pad_base] 0x%x  resource 0x%x" , host->pad_base, (unsigned int)res_driving->start);
+	//spmmc_pr(INFO, "SPMMC [host->soft_base] 0x%x  resource 0x%x" , host->soft_base, (unsigned int)res_soft->start);
+#endif
 
-	//spmmc_pr(INFO, "SPSDC [host->base] 0x%x  resource 0x%x" , host->base, resource->start);
-	//spmmc_pr(INFO, "SPSDC [host->pad_base] 0x%x  resource 0x%x" , host->pad_base, (unsigned int)res_driving->start);
-	//spmmc_pr(INFO, "SPSDC [host->soft_base] 0x%x  resource 0x%x" , host->soft_base, (unsigned int)res_soft->start);
+#ifdef PAD_MS
+	host->pad_ctl2_base = devm_ioremap(&pdev->dev, res_pad_ctl2->start, resource_size(res_pad_ctl2));
+	if (IS_ERR((void *)host->pad_ctl2_base)) {
+		spmmc_pr(ERROR, "devm_ioremap_resource pad fail\n");
+		ret = PTR_ERR((void *)host->pad_ctl2_base);
+		goto probe_free_host;
+	}
+	//spmmc_pr(INFO, "SPMMC [host->pad_ctl2_base] 0x%x  resource 0x%x" , host->pad_ctl2_base, (unsigned int)res_pad_ctl2->start);
 #endif
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
@@ -2099,13 +2119,19 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	writel(x, &host->base->card_mediatype_srcdst);
 	#endif
 
-	#ifdef PLATFORM_SP7350
+	#ifdef PAD_MS
 	//spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
 	//spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
 	if (mmc->caps&MMC_CAP_3_3V_DDR) {
 		spmmc_pr(DEBUG, "power 3.3V\n");
+		x = readl(&host->pad_ctl2_base->pad_ms[0]);
+		x = bitfield_replace(x, 1, 1, 0);
+		writel(x, &host->pad_ctl2_base->pad_ms[0]);
 	} else if ((mmc->caps&MMC_CAP_1_8V_DDR) || (mmc->caps2&MMC_CAP2_HSX00_1_8V)) {
 		spmmc_pr(DEBUG, "power 1.8V\n");
+		x = readl(&host->pad_ctl2_base->pad_ms[0]);
+		x = bitfield_replace(x, 1, 1, 1);
+		writel(x, &host->pad_ctl2_base->pad_ms[0]);
 	}
 	#endif
 	return 0;
