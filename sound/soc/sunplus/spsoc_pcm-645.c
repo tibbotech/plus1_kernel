@@ -222,15 +222,227 @@ static int spsoc_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 
 	return 0;
 }
+#if IS_ENABLED(CONFIG_SND_SOC_AUD645)
+void hw_test(void)
+{
+	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
+	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2;
+	int j, val, run_num = 250, run_length = 384;
+	unsigned char *buf;
+	//unsigned char buf[96*4];
+	pcmdata[0] = 0x00000000;
+   	pcmdata[1] = 0x000018f9;
+   	pcmdata[2] = 0x000c7c80;
+   	pcmdata[3] = 0x30fb0018;
+   	pcmdata[4] = 0x7d80471c;
+   	pcmdata[5] = 0x00238e00;
+   	pcmdata[6] = 0x5a82002d;
+   	pcmdata[7] = 0x41006a6d;
+   	pcmdata[8] = 0x00353680;
+   	pcmdata[9] = 0x7641003b;
+   	pcmdata[10]= 0x20807d8a;
+  	pcmdata[11]= 0x003ec500;
+   	pcmdata[12]= 0x7fff003f;
+   	pcmdata[13]= 0xff807d8b;
+   	pcmdata[14]= 0x003ec580;
+   	pcmdata[15]= 0x7642003b;
+   	pcmdata[16]= 0x21006a6f;
+   	pcmdata[17]= 0x00353780;
+   	pcmdata[18]= 0x5a84002d;
+   	pcmdata[19]= 0x4200471f;
+   	pcmdata[20]= 0x00238f80;
+   	pcmdata[21]= 0x30fe0018;
+   	pcmdata[22]= 0x7f0018fc;
+   	pcmdata[23]= 0x000c7e00;
+   	pcmdata[24]= 0x00030000;
+   	pcmdata[25]= 0x0180e70a;
+   	pcmdata[26]= 0x00f38500;
+   	pcmdata[27]= 0xcf0700e7;
+   	pcmdata[28]= 0x8380b8e6;
+   	pcmdata[29]= 0x00dc7300;
+   	pcmdata[30]= 0xa58000d2;
+   	pcmdata[31]= 0xc0009595;
+   	pcmdata[32]= 0x00caca80;
+   	pcmdata[33]= 0x89c000c4;
+   	pcmdata[34]= 0xe0008276;
+   	pcmdata[35]= 0x00c13b00;
+   	pcmdata[36]= 0x800000c0;
+   	pcmdata[37]= 0x00008275;
+   	pcmdata[38]= 0x00c13a80;
+   	pcmdata[39]= 0x89bc00c4;
+   	pcmdata[40]= 0xde009590;
+   	pcmdata[41]= 0x00cac800;
+   	pcmdata[42]= 0xa57a00d2;
+  	pcmdata[43]= 0xbd00b8de;
+   	pcmdata[44]= 0x00dc6f00;
+   	pcmdata[45]= 0xceff00e7;
+   	pcmdata[46]= 0x7f80e702;
+   	pcmdata[47]= 0x00f38100;
+   	pcmdata[48]= 0x00000000;
+   	pcmdata[49]= 0x000018f9;
+   	pcmdata[50]= 0x000c7c80;
+   	pcmdata[51]= 0x30fb0018;
+   	pcmdata[52]= 0x7d80471c;
+   	pcmdata[53]= 0x00238e00;
+   	pcmdata[54]= 0x5a82002d;
+   	pcmdata[55]= 0x41006a6d;
+   	pcmdata[56]= 0x00353680;
+   	pcmdata[57]= 0x7641003b;
+   	pcmdata[58]= 0x20807d8a;
+   	pcmdata[59]= 0x003ec500;
+   	pcmdata[60]= 0x7fff003f;
+   	pcmdata[61]= 0xff807d8b;
+   	pcmdata[62]= 0x003ec580;
+   	pcmdata[63]= 0x7642003b;
+   	pcmdata[64]= 0x21006a6f;
+   	pcmdata[65]= 0x00353780;
+   	pcmdata[66]= 0x5a84002d;
+   	pcmdata[67]= 0x4200471f;
+   	pcmdata[68]= 0x00238f80;
+   	pcmdata[69]= 0x30fe0018;
+   	pcmdata[70]= 0x7f0018fc;
+   	pcmdata[71]= 0x000c7e00;
+   	pcmdata[72]= 0x00030000;
+   	pcmdata[73]= 0x0180e70a;
+   	pcmdata[74]= 0x00f38500;
+   	pcmdata[75]= 0xcf0700e7;
+   	pcmdata[76]= 0x8380b8e6;
+   	pcmdata[77]= 0x00dc7300;
+   	pcmdata[78]= 0xa58000d2;
+   	pcmdata[79]= 0xc0009595;
+   	pcmdata[80]= 0x00caca80;
+   	pcmdata[81]= 0x89c000c4;
+   	pcmdata[82]= 0xe0008276;
+   	pcmdata[83]= 0x00c13b00;
+   	pcmdata[84]= 0x800000c0;
+   	pcmdata[85]= 0x00008275;
+   	pcmdata[86]= 0x00c13a80;
+   	pcmdata[87]= 0x89bc00c4;
+   	pcmdata[88]= 0xde009590;
+   	pcmdata[89]= 0x00cac800;
+   	pcmdata[90]= 0xa57a00d2;
+   	pcmdata[91]= 0xbd00b8de;
+   	pcmdata[92]= 0x00dc6f00;
+   	pcmdata[93]= 0xceff00e7;
+   	pcmdata[94]= 0x7f80e702;
+   	pcmdata[95]= 0x00f38100;
 
+	printk("=== AUDIO I2S0 -> I2S2 test start ===\n");
+	
+	regtemp = regs0->hdmi_rx_i2s_cfg;
+	regtemp1 = regs0->ext_adc_cfg;
+	regtemp2 = regs0->int_adc_dac_cfg;
+   	regs0->hdmi_rx_i2s_cfg = 0x24d; //rx2
+	regs0->ext_adc_cfg = 0x24d; // rx0
+	regs0->int_adc_dac_cfg = 0x024d004d; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
+
+	regs0->aud_ext_dac_xck_cfg  = 0x6883; //PLLA 147M, 2 chs 64 bits  48k = 147M/12(3/4 xck)/4(bck)/64
+	regs0->aud_ext_dac_bck_cfg  = 0x6003;
+	regs0->aud_int_dac_xck_cfg  = 0x6887; //PLLA,
+	regs0->aud_int_dac_bck_cfg  = 0x6001;
+	regs0->aud_hdmi_tx_mclk_cfg = 0x6883; //PLLA,
+	regs0->aud_hdmi_tx_bck_cfg  = 0x6003;
+
+   	regs0->aud_audhwya = aud_param.fifoInfo.pcmtx_physAddrBase;
+	regs0->aud_a0_base = 0;
+	regs0->aud_a0_length = DRAM_PCM_BUF_LENGTH;
+
+	regs0->aud_a10_base = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
+	regs0->aud_a16_base = regs0->aud_a16_base + 2 * DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a10_length = 2 * DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a16_length = 2 * DRAM_PCM_BUF_LENGTH;
+
+   	val = regs0->aud_fifo_enable;
+    	val |= I2S_P_INC0 | I2S_C_INC1 | I2S_C_INC2; //| I2S_P_INC1 | I2S_P_INC2 | I2S_C_INC0;
+    	regs0->aud_fifo_enable = val;
+    	regs0->aud_fifo_reset = val;
+    	while (regs0->aud_fifo_reset);
+
+	memset((void *)aud_param.fifoInfo.pcmtx_virtAddrBase, 0, DRAM_PCM_BUF_LENGTH);
+	memset((void *)aud_param.fifoInfo.mic_virtAddrBase, 0, 4 * DRAM_PCM_BUF_LENGTH);
+   	for (j = 0; j < run_num; j++) {
+		memcpy((void *)aud_param.fifoInfo.pcmtx_virtAddrBase + j * run_length, pcmdata, run_length);		
+	}
+	//buf = (unsigned char *)aud_param.fifoInfo.pcmtx_virtAddrBase;
+   	//for(j = 0; j < 96; j++)
+	//	printk("0x%02x%02x%02x%02x\n", *(buf + j * 4 + 3), *(buf + j * 4 + 2), *(buf + j * 4 + 1), *(buf + j * 4));
+
+	val = regs0->aud_enable;
+	val |= aud_enable_i2stdm_p | aud_enable_i2s1_c | aud_enable_i2s2_c;
+	regs0->aud_enable = val;
+	val = 0;
+
+	while(1)
+	{
+		if (val++ < run_num)
+		{
+			while(regs0->aud_inc_0 != 0);
+			regs0->aud_delta_0 = run_length;
+			regs0->aud_inc_0 = I2S_P_INC0;
+			while(regs0->aud_inc_0 != 0);
+			//printk("%d\n", val);
+		}else
+			break;
+	}
+	val = run_length * run_num;
+	while ((regs0->aud_a10_cnt < val)) {
+		//printk("p aud_a0_cnt 0x%x 0x%x, a10_cnt 0x%x 0x%x\n", regs0->aud_a0_cnt, regs0->aud_a0_ptr, regs0->aud_a10_cnt, regs0->aud_a10_ptr);
+	};
+	// test end
+	regs0->aud_fifo_enable &= ~(I2S_P_INC0 | I2S_C_INC1 | I2S_C_INC2);
+	regs0->aud_enable = 0;
+
+	buf = (unsigned char *) aud_param.fifoInfo.mic_virtAddrBase;
+	val -= run_length;
+	for (j = 0; j < val; j++) {
+		//printk("0x%02x%02x%02x%02x\n", *(buf + j * 4 + 3), *(buf + j * 4 + 2), *(buf + j * 4 + 1), *(buf + j * 4));
+		if (memcmp(buf + j, (unsigned char *) pcmdata, run_length) == 0)
+			break;
+	}
+	//printk("j = %d\n", j);
+	if (j < val) {
+		#if 0		
+		val = j + run_length;
+		while (j < val) {
+			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
+			j += 4;
+		}
+		#endif
+		printk("AUDIO PASS\n");
+	} else {
+		#if 0
+		while (j < val + run_length) {
+			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
+			j += 4;
+		}
+		#endif
+		printk("AUDIO FAIL\n");
+	}
+	regs0->hdmi_rx_i2s_cfg = regtemp; 
+	regs0->ext_adc_cfg = regtemp1;
+	regs0->int_adc_dac_cfg = regtemp2; 
+	regs0->aud_a0_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1);
+	regs0->aud_a10_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
+	regs0->aud_a16_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
+	regs0->aud_a0_length = 0;
+	regs0->aud_a10_length = 0;
+	regs0->aud_a16_length = 0;
+}
+#endif
 static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_substream *substream)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd;
 	int ret = 0;
 
-	AUD_INFO("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
 
+	AUD_INFO("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
+#if IS_ENABLED(CONFIG_SND_SOC_AUD645)
+	if ((substream->pcm->device == 4) && (substream->stream == 1))
+	{
+		hw_test();
+	}
+#endif
         if (substream->pcm->device > SP_OTHER) {
         	AUD_INFO("wrong device num: %d\n", substream->pcm->device);
         	goto out;
@@ -433,9 +645,9 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
                 		regs0->aud_a2_base 	= dma_initial;
                 		regs0->aud_a3_base 	= dma_initial;
                 		regs0->aud_a4_base 	= dma_initial;
-                		regs0->aud_a20_base 	= regs0->aud_a4_base + DRAM_PCM_BUF_LENGTH;
-                    		regs0->aud_a26_base 	= regs0->aud_a20_base + DRAM_PCM_BUF_LENGTH;
-                    		regs0->aud_a27_base 	= regs0->aud_a26_base + DRAM_PCM_BUF_LENGTH;
+                		regs0->aud_a20_base 	= dma_initial;
+                    		regs0->aud_a26_base 	= dma_initial;
+                    		regs0->aud_a27_base 	= dma_initial;
 
                 		regs0->aud_a0_length 	= 0;
                 		regs0->aud_a1_length 	= 0;
