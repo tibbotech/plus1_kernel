@@ -350,7 +350,7 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 		clkdiv = (SPMMC_SYS_CLK+clk)/clk-1;
 	#endif
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
-	spmmc_pr(INFO, "bus clock = %d / %d\n", clk_get_rate(host->clk), (clkdiv + 1));
+	//spmmc_pr(INFO, "bus clock = %d / %d\n", clk_get_rate(host->clk), (clkdiv + 1));
 	if (clkdiv > 0xfff) {
 		spmmc_pr(WARNING, "clock %d is too low to be set!\n", clk);
 		clkdiv = 0xfff;
