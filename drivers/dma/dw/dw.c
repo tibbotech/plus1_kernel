@@ -29,6 +29,51 @@ static void dw_dma_initialize_chan(struct dw_dma_chan *dwc)
 	channel_writel(dwc, CFG_HI, cfghi);
 }
 
+static void dw_spi_dma_initialize_chan(struct dw_dma_chan *dwc)
+{
+	u32 cfghi = 0;
+	u32 cfglo = 0;
+
+	switch (dwc->chan.chan_id) {
+	case 0:
+		cfglo = 0x800;
+		cfghi = 0x2800;
+		break;
+	case 1:
+		cfglo = 0x800;
+		cfghi = 0x2000;
+		break;
+	case 2:
+		cfglo = 0x800;
+		cfghi = 0x3800;
+		break;
+	case 3:
+		cfglo = 0x800;
+		cfghi = 0x3000;
+		break;
+	case 4:
+		cfglo = 0x800;
+		cfghi = 0x4800;
+		break;
+	case 5:
+		cfglo = 0x800;
+		cfghi = 0x4000;
+		break;
+	case 6:
+		cfglo = 0x800;
+		cfghi = 0x5800;
+		break;
+	case 7:
+		cfglo = 0x800;
+		cfghi = 0x5000;
+		break;
+
+	}
+	channel_writel(dwc, CFG_LO, cfglo);
+	channel_writel(dwc, CFG_HI, cfghi);
+}
+
+
 static void dw_dma_suspend_chan(struct dw_dma_chan *dwc, bool drain)
 {
 	u32 cfglo = channel_readl(dwc, CFG_LO);
@@ -112,6 +157,9 @@ int dw_dma_probe(struct dw_dma_chip *chip)
 		return -ENOMEM;
 
 	/* Channel operations */
+	if(chip->chan_mode == DW_NORMAL_MODE)
+		dw->initialize_chan = dw_spi_dma_initialize_chan;
+	else
 	dw->initialize_chan = dw_dma_initialize_chan;
 	dw->suspend_chan = dw_dma_suspend_chan;
 	dw->resume_chan = dw_dma_resume_chan;

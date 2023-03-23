@@ -417,10 +417,17 @@
 	};
 
 	ahbdma1: dma@f8821000 {
-		compatible = "snps,dma-spear1340";
+		compatible = "snps,dma-spi";
 		reg =<0x0 0xf8821000 0x0 0x400>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 178 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 180 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 192 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 193 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 194 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 195 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 196 IRQ_TYPE_EDGE_RISING>,
+			     <GIC_SPI 199 IRQ_TYPE_EDGE_RISING>;
 		dma-channels = <8>;
 		#dma-cells = <3>;
 		dma-requests = <16>;

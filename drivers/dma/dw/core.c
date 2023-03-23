@@ -1144,8 +1144,11 @@ int do_dma_probe(struct dw_dma_chip *chip)
 
 	tasklet_setup(&dw->tasklet, dw_dma_tasklet);
 
-	err = request_irq(chip->irq, dw_dma_interrupt, IRQF_SHARED,
+	for(i=0; i<8; i++){
+		err = request_irq(chip->irq[i], dw_dma_interrupt, IRQF_SHARED,
 			  dw->name, dw);
+	}
+
 	if (err)
 		goto err_pdata;
 
@@ -1270,7 +1273,9 @@ int do_dma_probe(struct dw_dma_chip *chip)
 	return 0;
 
 err_dma_register:
-	free_irq(chip->irq, dw);
+	for(i=0; i<8; i++){
+		free_irq(chip->irq[i], dw);
+	}
 err_pdata:
 	pm_runtime_put_sync_suspend(chip->dev);
 	return err;
@@ -1280,13 +1285,17 @@ int do_dma_remove(struct dw_dma_chip *chip)
 {
 	struct dw_dma		*dw = chip->dw;
 	struct dw_dma_chan	*dwc, *_dwc;
+	unsigned int		i;
+
 
 	pm_runtime_get_sync(chip->dev);
 
 	do_dw_dma_off(dw);
 	dma_async_device_unregister(&dw->dma);
 
-	free_irq(chip->irq, dw);
+	for(i=0; i<8; i++){
+		free_irq(chip->irq[i], dw);
+	}
 	tasklet_kill(&dw->tasklet);
 
 	list_for_each_entry_safe(dwc, _dwc, &dw->dma.channels,
