@@ -226,7 +226,7 @@ static int spsoc_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 void hw_test(void)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
-	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2;
+	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2, regtemp3;
 	int j, val, run_num = 250, run_length = 384;
 	unsigned char *buf;
 	//unsigned char buf[96*4];
@@ -328,13 +328,15 @@ void hw_test(void)
    	pcmdata[95]= 0x00f38100;
 
 	printk("=== AUDIO I2S0 -> I2S2 test start ===\n");
-	
-	regtemp = regs0->hdmi_rx_i2s_cfg;
-	regtemp1 = regs0->ext_adc_cfg;
-	regtemp2 = regs0->int_adc_dac_cfg;
-   	regs0->hdmi_rx_i2s_cfg = 0x24d; //rx2
-	regs0->ext_adc_cfg = 0x24d; // rx0
-	regs0->int_adc_dac_cfg = 0x024d004d; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
+
+	regtemp  = regs0->pcm_cfg;
+	regtemp1 = regs0->hdmi_rx_i2s_cfg;
+	regtemp2 = regs0->ext_adc_cfg;
+	regtemp3 = regs0->int_adc_dac_cfg;
+	regs0->pcm_cfg		= 0x24d; //tx0
+   	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
+	regs0->ext_adc_cfg 	= 0x4d; // rx0
+	regs0->int_adc_dac_cfg 	= 0x004d024d; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
 
 	regs0->aud_ext_dac_xck_cfg  = 0x6883; //PLLA 147M, 2 chs 64 bits  48k = 147M/12(3/4 xck)/4(bck)/64
 	regs0->aud_ext_dac_bck_cfg  = 0x6003;
@@ -361,9 +363,9 @@ void hw_test(void)
 	memset((void *)aud_param.fifoInfo.pcmtx_virtAddrBase, 0, DRAM_PCM_BUF_LENGTH);
 	memset((void *)aud_param.fifoInfo.mic_virtAddrBase, 0, 4 * DRAM_PCM_BUF_LENGTH);
    	for (j = 0; j < run_num; j++) {
-		memcpy((void *)aud_param.fifoInfo.pcmtx_virtAddrBase + j * run_length, pcmdata, run_length);		
+		memcpy((void *)aud_param.fifoInfo.pcmtx_virtAddrBase + j * run_length, pcmdata, run_length);
 	}
-	//buf = (unsigned char *)aud_param.fifoInfo.pcmtx_virtAddrBase;
+	//buf = (unsigned char *)aud_param.fifoInfo.mic_virtAddrBase;
    	//for(j = 0; j < 96; j++)
 	//	printk("0x%02x%02x%02x%02x\n", *(buf + j * 4 + 3), *(buf + j * 4 + 2), *(buf + j * 4 + 1), *(buf + j * 4));
 
@@ -401,7 +403,7 @@ void hw_test(void)
 	}
 	//printk("j = %d\n", j);
 	if (j < val) {
-		#if 0		
+		#if 0
 		val = j + run_length;
 		while (j < val) {
 			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
@@ -411,16 +413,19 @@ void hw_test(void)
 		printk("AUDIO PASS\n");
 	} else {
 		#if 0
-		while (j < val + run_length) {
+		val += run_length;
+		while (j < val) {
 			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
 			j += 4;
 		}
 		#endif
 		printk("AUDIO FAIL\n");
 	}
-	regs0->hdmi_rx_i2s_cfg = regtemp; 
-	regs0->ext_adc_cfg = regtemp1;
-	regs0->int_adc_dac_cfg = regtemp2; 
+
+	regs0->pcm_cfg		= regtemp;
+	regs0->hdmi_rx_i2s_cfg 	= regtemp1;
+	regs0->ext_adc_cfg 	= regtemp2;
+	regs0->int_adc_dac_cfg 	= regtemp3;
 	regs0->aud_a0_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1);
 	regs0->aud_a10_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
 	regs0->aud_a16_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
