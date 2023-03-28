@@ -79,8 +79,8 @@
 		#size-cells = <2>;
 		ranges;
 
-		tfa_reserve@200000 {
-			reg = <0x0 0x200000 0x0 0x100000>;
+		fip_reserve@200000 {
+			reg = <0x0 0x200000 0x0 0x300000>;
 			no-map;
 		};
 
@@ -130,7 +130,12 @@
 			no-map;
 		};
 	};
-
+	firmware {
+		optee {
+			compatible = "linaro,optee-tz";
+			method = "smc";
+		};
+	};
 	clocks {
 		#address-cells = <2>;
 		#size-cells = <2>;
