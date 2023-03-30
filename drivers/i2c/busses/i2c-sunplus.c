@@ -474,7 +474,7 @@ static void sp_i2cm_dma_mode_enable(void __iomem *sr)
 
 static unsigned int sp_i2cm_get_dma_int_flag(void __iomem *sr_dma)
 {
-	return readl(sr_dma + SP_I2C_INT_REG);
+	return readl(sr_dma + SP_I2C_DMA_FLAG_REG);
 }
 
 static void sp_i2cm_dma_int_flag_clear(void __iomem *sr_dma, unsigned int flag)
