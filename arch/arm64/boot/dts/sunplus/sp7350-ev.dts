@@ -922,11 +922,11 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&emmc_pins>;
 		bus-width = <8>;
-		max-frequency = <200000000>;
+		max-frequency = <45000000>;
 		non-removable;
 		disable-wp;
 		cap-mmc-highspeed;
-		mmc-hs400-1_8v;
+		mmc-ddr-1_8v;
 		no-sdio;
 		no-sd;
 	};
