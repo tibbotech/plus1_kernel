@@ -108,24 +108,24 @@ static inline int spsdc_wait_finish(struct spsdc_host *host)
 {
 	/* Wait for transaction finish */
 	unsigned long timeout = jiffies + msecs_to_jiffies(5000);
-	while (!time_after(jiffies, timeout)) {
-		if (readl(&host->base->sd_state) & SPSDC_SDSTATE_FINISH)
-			return 0;
-		if (readl(&host->base->sd_state) & SPSDC_SDSTATE_ERROR)
-			return -1;
-	}
+    u32 r;
+	do {
+   		r = readl(&host->base->sd_state);
+        if ( r & SPSDC_SDSTATE_FINISH) return 0;
+		if ( r & SPSDC_SDSTATE_ERROR) return -1;
+    } while (!time_after(jiffies, timeout));
 	return -1;
 }
 
 static inline int spsdc_wait_sdstatus(struct spsdc_host *host, unsigned int status_bit)
 {
 	unsigned long timeout = jiffies + msecs_to_jiffies(5000);
-	while (!time_after(jiffies, timeout)) {
-		if (readl(&host->base->sd_status) & status_bit)
-			return 0;
-		if (readl(&host->base->sd_state) & SPSDC_SDSTATE_ERROR)
-			return -1;
-	}
+    u32 r;
+    do {
+		r = readl(&host->base->sd_status);
+		if ( r & status_bit) return 0;
+		if ( r & SPSDC_SDSTATE_ERROR) return -1;
+    } while (!time_after(jiffies, timeout));
 	return -1;
 }
 
