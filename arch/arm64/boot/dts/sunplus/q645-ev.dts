@@ -620,8 +620,8 @@
 
 	i2cm0: i2cm@f8004600 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf8004600 0x0 0x80>, <0x0 0xf8004680 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf8004600 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM0>;
@@ -700,8 +700,8 @@
 
 	i2cm1: i2cm@f8004700 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf8004700 0x0 0x80>, <0x0 0xf8004780 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf8004700 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM1>;
@@ -758,8 +758,8 @@
 
 	i2cm2: i2cm@f8004800 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf8004800 0x0 0x80>, <0x0 0xf8004880 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf8004800 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM2>;
@@ -838,8 +838,8 @@
 
 	i2cm3: i2cm@f8004900 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf8004900 0x0 0x80>, <0x0 0xf8004980 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf8004900 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM3>;
@@ -896,8 +896,8 @@
 
 	i2cm4: i2cm@f800fe00 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf800fe00 0x0 0x80>, <0x0 0xf800fe80 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf800fe00 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM4>;
@@ -910,8 +910,8 @@
 
 	i2cm5: i2cm@f800ff00 {
 		compatible = "sunplus,q645-i2cm";
-		reg = <0x0 0xf800ff00 0x0 0x80>, <0x0 0xf800ff80 0x0 0x80>;
-		reg-names = "i2cm", "i2cmdma";
+		reg = <0x0 0xf800ff00 0x0 0x100>;
+		reg-names = "i2cm";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM5>;
