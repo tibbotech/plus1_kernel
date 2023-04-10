@@ -101,10 +101,6 @@
 #define  UDEP89PPC		0x204
 #define  UDEP89FS		0x208
 #define  UDEP89PIC		0x20c
-#define  UDEP89C		0x200
-#define  UDEP89PPC		0x204
-#define  UDEP89FS		0x208
-#define  UDEP89PIC		0x20c
 #define  UDEP89POC		0x210
 #define  UDEP89FDP		0x214
 #define  UDEP89VB		0x218
