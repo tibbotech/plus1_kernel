@@ -269,14 +269,14 @@
 			     <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
-	rstc: reset@f8000054 {
+	rstc: reset@f8800004 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8800004 0x00 0x30>;
+		reg = <0x00 0xf8800004 0x00 0x3c>;
 		reg-names = "reset";
 	};
 
-	remoteproc0: remoteproc@f8007ffc {
+	remoteproc0: remoteproc@f800817c {
 		compatible = "sunplus,sp-rproc";
 		firmware = "firmware";
 		reg = <0 0xf800817c 0 4>, /* mbox G258.31, cpu0 to cpu2 direct reg07 */
@@ -2125,7 +2125,7 @@
 
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
-		reg = <0x0 0xf8800080 0x0 0x20>,
+		reg = <0x0 0xf8800080 0x0 0x2c>,
 		      <0x0 0xf88032e4 0x0 0x1c>,
 		      <0x0 0xf8803380 0x0 0x180>;
 		reg-names = "moon1", "first", "gpioxt";
