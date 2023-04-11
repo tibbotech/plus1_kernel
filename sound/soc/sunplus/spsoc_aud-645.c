@@ -20,7 +20,7 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 
 	AUD_INFO("%s IN\n", __func__);
 	pll_out = params_rate(params);
-	AUD_INFO("%s, pull out %d channels %d\n", __func__, pll_out, params_channels(params));
+	AUD_INFO("%s, pull_out %d channels %d\n", __func__, pll_out, params_channels(params));
 	AUD_INFO("%s, periods %d period_size %d\n", __func__, params_periods(params), params_period_size(params));
 	AUD_INFO("%s, periods_bytes 0x%x\n", __func__, params_period_bytes(params));
 	AUD_INFO("%s, buffer_size 0x%x buffer_bytes 0x%x\n", __func__, params_buffer_size(params), params_buffer_bytes(params));

@@ -11,7 +11,7 @@
 #include "spsoc_util-645.h"
 
 void __iomem *codecaudio_base;
-#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
+#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
 /*================================================================
  *						codec driver
@@ -42,14 +42,14 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.playback = {
 			.stream_name 	= "I2S-0 Playback",
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.stream_name 	= "I2S-0 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -78,14 +78,14 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.playback = {
 			.stream_name 	= "I2S-1 Playback",
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.stream_name 	= "I2S-1 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -96,14 +96,14 @@ static struct snd_soc_dai_driver audcodec_dai[] = {
 		.playback = {
 			.stream_name 	= "I2S-2 Playback",
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.stream_name 	= "I2S-2 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},

@@ -163,17 +163,19 @@ void AUDHW_SystemInit(void *auddrvdata)
         regs0->pdm_rx_cfg0 	= 0x110004;
         regs0->pdm_rx_cfg0 	= 0x10004;
 #endif
-        regs0->pcm_cfg	   	= 0x4d; //q645 tx0
-        regs0->hdmi_tx_i2s_cfg 	= 0x4d; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
+        
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
+	regs0->pcm_cfg	   	= 0x4d; //q645 tx0
+        regs0->hdmi_tx_i2s_cfg 	= 0x4d; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
         regs0->hdmi_rx_i2s_cfg 	= 0x24d; // 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
         regs0->ext_adc_cfg	= 0x24d; //rx0
 #else
-	//regs0->G060_reserved_9	= 0x1037;
-	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
-	regs0->int_adc_dac_cfg	= 0x004d004d;	//0x001c004d // rx1 tx1
-	regs0->ext_adc_cfg	= 0x4d; //rx0
+	regs0->pcm_cfg	   	= 0x41; //q645 tx0
+	regs0->ext_adc_cfg	= 0x41; //rx0
+        regs0->hdmi_tx_i2s_cfg 	= 0x41; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
+	regs0->hdmi_rx_i2s_cfg 	= 0x41; //rx2
+	regs0->int_adc_dac_cfg	= 0x00410041;	//0x001c004d // rx1 tx1	
 #endif
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
@@ -208,7 +210,7 @@ void AUDHW_SystemInit(void *auddrvdata)
         regs0->int_adc_ctrl	&= 0x7fffffff;
         regs0->int_adc_ctrl	|= (1<<31);
 
-	regs0->aud_fifo_mode  	= 0x20000;
+	regs0->aud_fifo_mode  	= 0x20001;
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
 	AUD_INFO("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);

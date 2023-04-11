@@ -10,7 +10,7 @@
 #include "spsoc_util-645.h"
 
 void __iomem *i2saudio_base;
-#define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
+#define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
 void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 {
@@ -333,7 +333,7 @@ static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_
 
 static int spsoc_cpu_set_pll(struct snd_soc_dai	*dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
-	AUD_INFO("%s IN %d %d dev name %s\n", __func__, freq_out, pll_id, dev_name(dai->dev));
+	AUD_INFO("%s IN %d %d dev_name %s\n", __func__, freq_out, pll_id, dev_name(dai->dev));
 
 	aud_clk_cfg(pll_id, source, freq_out);
 	return 0;
@@ -354,13 +354,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-0",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -370,13 +370,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-1",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -386,13 +386,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-2",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},

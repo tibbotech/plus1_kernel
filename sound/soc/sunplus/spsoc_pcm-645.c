@@ -28,7 +28,7 @@ static const struct snd_pcm_hardware spsoc_pcm_hardware = {
 			    	  SNDRV_PCM_INFO_MMAP_VALID |
 			    	  SNDRV_PCM_INFO_INTERLEAVED |
 			          SNDRV_PCM_INFO_PAUSE,
-	.formats	  	= (SNDRV_PCM_FMTBIT_S24_3BE | SNDRV_PCM_FMTBIT_S24_BE | SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S24_LE),
+	.formats	  	= (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE),
 	.period_bytes_min	= PERIOD_BYTES_MIN_CONS,
 	.period_bytes_max 	= PERIOD_BYTES_MAX_CONS,
 	.periods_min	  	= 2,
@@ -226,7 +226,7 @@ static int spsoc_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 void hw_test(void)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
-	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2, regtemp3;
+	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2, regtemp3, regtemp4;
 	int j, val, run_num = 250, run_length = 384;
 	unsigned char *buf;
 	//unsigned char buf[96*4];
@@ -330,12 +330,15 @@ void hw_test(void)
 	printk("=== AUDIO I2S0 -> I2S2 test start ===\n");
 
 	regtemp  = regs0->pcm_cfg;
-	regtemp1 = regs0->hdmi_rx_i2s_cfg;
-	regtemp2 = regs0->ext_adc_cfg;
-	regtemp3 = regs0->int_adc_dac_cfg;
+	regtemp1 = regs0->ext_adc_cfg;
+	regtemp2 = regs0->hdmi_tx_i2s_cfg;
+	regtemp3 = regs0->hdmi_rx_i2s_cfg;
+	regtemp4 = regs0->int_adc_dac_cfg;
+
 	regs0->pcm_cfg		= 0x24d; //tx0
+	regs0->ext_adc_cfg 	= 0x4d; //rx0
+	regs0->hdmi_tx_i2s_cfg 	= 0x4d; //tx2
    	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
-	regs0->ext_adc_cfg 	= 0x4d; // rx0
 	regs0->int_adc_dac_cfg 	= 0x004d024d; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
 
 	regs0->aud_ext_dac_xck_cfg  = 0x6883; //PLLA 147M, 2 chs 64 bits  48k = 147M/12(3/4 xck)/4(bck)/64
@@ -423,9 +426,10 @@ void hw_test(void)
 	}
 
 	regs0->pcm_cfg		= regtemp;
-	regs0->hdmi_rx_i2s_cfg 	= regtemp1;
-	regs0->ext_adc_cfg 	= regtemp2;
-	regs0->int_adc_dac_cfg 	= regtemp3;
+	regs0->ext_adc_cfg 	= regtemp1;
+	regs0->hdmi_tx_i2s_cfg 	= regtemp2;
+	regs0->hdmi_rx_i2s_cfg 	= regtemp3;
+	regs0->int_adc_dac_cfg 	= regtemp4;
 	regs0->aud_a0_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1);
 	regs0->aud_a10_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
 	regs0->aud_a16_base = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
@@ -439,7 +443,6 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *prtd;
 	int ret = 0;
-
 
 	AUD_INFO("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
 #if IS_ENABLED(CONFIG_SND_SOC_AUD645)
