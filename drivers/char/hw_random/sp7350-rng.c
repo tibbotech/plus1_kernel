@@ -24,7 +24,7 @@
 #define SP7350_RNG_DIV		0	/* 25M / (DIV + 1) */
 #define SP7350_RNG_EN		BIT(10)
 
-#define SP7350_RNG_HWM		0x7ff	/* HIWORD_MASK */
+#define SP7350_RNG_HWM		0x7ff0000	/* HIWORD_MASK */
 
 #define to_sp7350_rng(p)	container_of(p, struct sp7350_rng, rng)
 
