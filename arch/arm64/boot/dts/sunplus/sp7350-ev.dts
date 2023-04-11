@@ -2086,11 +2086,14 @@
 	};
 #endif
 
-	watchdog: watchdog@f8000628 {
+	watchdog: watchdog@f800061c {
 		compatible = "sunplus,sp7350-wdt";
-		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
-		clocks = <&clkc STC0>;
-		resets = <&rstc RST_STC0>;
+		reg = <0x00 0xf800061c 0x00 0x08>, <0x00 0xf800066c 0x00 0x08>,
+			<0x00 0xf8800258 0x00 0x04>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc STC_AV3>;
+		resets = <&rstc RST_STC_AV3>;
 	};
 #if 0
 	ipc_test: ipc_test@f8008100 {

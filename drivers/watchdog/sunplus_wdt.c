@@ -13,9 +13,16 @@
 #include <linux/platform_device.h>
 #include <linux/reset.h>
 #include <linux/watchdog.h>
+#include <linux/interrupt.h>
 
 #define WDT_CTRL		0x00
 #define WDT_CNT			0x04
+
+#ifdef CONFIG_SOC_SP7350
+#define RBUS_WDT_RST		BIT(0)
+#define STC_WDT_RST		BIT(4)
+#define MASK_SET(mask)		((mask) | (mask << 16))
+#endif
 
 #define WDT_STOP		0x3877
 #define WDT_RESUME		0x4A4B
@@ -28,7 +35,13 @@
 #define SP_WDT_MAX_TIMEOUT	11U
 #define SP_WDT_DEFAULT_TIMEOUT	10
 
+#ifdef CONFIG_SOC_SP7350
+//#define STC_CLK		1000000
+#define ZEBU_TEMP		500//zebu 3200MHz ---> 1.5MHz
+#define STC_CLK			ZEBU_TEMP
+#else
 #define STC_CLK			90000
+#endif
 
 #define DEVICE_NAME		"sunplus-wdt"
 
@@ -44,6 +57,10 @@ MODULE_PARM_DESC(nowayout, "Watchdog cannot be stopped once started (default="
 struct sp_wdt_priv {
 	struct watchdog_device wdev;
 	void __iomem *base;
+#ifdef CONFIG_SOC_SP7350
+	void __iomem *mode_sel;
+	void __iomem *base_rst;
+#endif
 	struct clk *clk;
 	struct reset_control *rstc;
 };
@@ -53,10 +70,15 @@ static int sp_wdt_restart(struct watchdog_device *wdev,
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
-
+#ifdef CONFIG_SOC_SP7350
+	void __iomem *base_rst = priv->base_rst;
+#endif
 	writel(WDT_STOP, base + WDT_CTRL);
 	writel(WDT_UNLOCK, base + WDT_CTRL);
-	writel(0x0001, base + WDT_CNT);
+	writel(0x1, base + WDT_CNT);
+#ifdef CONFIG_SOC_SP7350
+	writel(0x1, base_rst + WDT_CNT);
+#endif
 	writel(WDT_LOCK, base + WDT_CTRL);
 	writel(WDT_RESUME, base + WDT_CTRL);
 
@@ -67,13 +89,31 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
-	u32 count;
+	void __iomem *base_rst = priv->base_rst;
+#ifdef CONFIG_SOC_SP7350
+	u32 count_f;
+	u32 count_b;
+	u32 time_f;
+	u32 time_b;
 
+	time_f = wdev->timeout - wdev->pretimeout;
+	time_b = wdev->pretimeout;
+
+	count_f = time_f * STC_CLK;
+	count_b = time_b * STC_CLK;
+#else
+	u32 count;
+#endif
 	if (wdev->timeout > SP_WDT_MAX_TIMEOUT) {
 		/* WDT_CONMAX sets the count to the maximum (down-counting). */
 		writel(WDT_CONMAX, base + WDT_CTRL);
 	} else {
 		writel(WDT_UNLOCK, base + WDT_CTRL);
+#ifdef CONFIG_SOC_SP7350
+		writel(count_f, base + WDT_CNT);
+		writel(count_b, base_rst + WDT_CNT);
+#else
+
 		/*
 		 * Watchdog timer is a 20-bit down-counting based on STC_CLK.
 		 * This register bits[16:0] is from bit[19:4] of the watchdog
@@ -81,6 +121,7 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 		 */
 		count = (wdev->timeout * STC_CLK) >> 4;
 		writel(count, base + WDT_CNT);
+#endif
 		writel(WDT_LOCK, base + WDT_CTRL);
 	}
 
@@ -114,19 +155,59 @@ static unsigned int sp_wdt_get_timeleft(struct watchdog_device *wdev)
 	u32 val;
 
 	val = readl(base + WDT_CNT);
+#ifndef CONFIG_SOC_SP7350
 	val &= 0xffff;
 	val = val << 4;
-
+#endif
 	return val;
 }
 
+#ifdef CONFIG_SOC_SP7350
+static int sp_wdt_hw_init(struct watchdog_device *wdev)
+{
+	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
+	void __iomem *base = priv->base;
+	void __iomem *base_rst = priv->base_rst;
+	u32 val;
+
+	writel(WDT_CLRIRQ, base + WDT_CTRL);
+	val = readl(base_rst);
+	val |= MASK_SET(STC_WDT_RST);
+	writel(val, base_rst);
+
+	sp_wdt_stop(wdev);
+
+	return 0;
+}
+
+static irqreturn_t sp_wdt_isr(int irq, void *arg)
+{
+	struct watchdog_device *wdev = arg;
+	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
+	void __iomem *base = priv->base;
+
+	writel(WDT_CLRIRQ, base + WDT_CTRL);
+
+	watchdog_notify_pretimeout(wdev);
+
+	return IRQ_HANDLED;
+}
+#endif
 static const struct watchdog_info sp_wdt_info = {
 	.identity	= DEVICE_NAME,
 	.options	= WDIOF_SETTIMEOUT |
 			  WDIOF_MAGICCLOSE |
 			  WDIOF_KEEPALIVEPING,
 };
-
+#ifdef CONFIG_SOC_SP7350
+static const struct watchdog_info sp_wdt_pt_info = {
+	.identity	= DEVICE_NAME,
+	.options	= WDIOF_SETTIMEOUT |
+			  WDIOF_PRETIMEOUT |
+			  WDIOF_MAGICCLOSE |
+			  WDIOF_KEEPALIVEPING,
+};
+#endif
 static const struct watchdog_ops sp_wdt_ops = {
 	.owner		= THIS_MODULE,
 	.start		= sp_wdt_start,
@@ -151,7 +232,9 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct sp_wdt_priv *priv;
 	int ret;
-
+#ifdef CONFIG_SOC_SP7350
+	int irq;
+#endif
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
 		return -ENOMEM;
@@ -183,6 +266,32 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	if (IS_ERR(priv->base))
 		return PTR_ERR(priv->base);
 
+#ifdef CONFIG_SOC_SP7350
+		priv->mode_sel = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(priv->mode_sel))
+		return PTR_ERR(priv->mode_sel);
+
+	priv->base_rst = devm_platform_ioremap_resource(pdev, 2);
+	if (IS_ERR(priv->base_rst))
+		return PTR_ERR(priv->base_rst);
+#if 1
+	irq = platform_get_irq_optional(pdev, 0);
+	if (irq > 0) {
+		ret = devm_request_irq(&pdev->dev, irq, sp_wdt_isr, 0, "wdt_bark",
+				       &priv->wdev);
+		if (ret)
+			return ret;
+
+		priv->wdev.info = &sp_wdt_pt_info;
+		priv->wdev.pretimeout = SP_WDT_DEFAULT_TIMEOUT / 2;
+	} else {
+		if (irq == -EPROBE_DEFER)
+			return -EPROBE_DEFER;
+
+		priv->wdev.info = &sp_wdt_info;
+	}
+#endif
+#endif
 	priv->wdev.info = &sp_wdt_info;
 	priv->wdev.ops = &sp_wdt_ops;
 	priv->wdev.timeout = SP_WDT_DEFAULT_TIMEOUT;
@@ -191,6 +300,9 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	priv->wdev.parent = dev;
 
 	watchdog_set_drvdata(&priv->wdev, priv);
+#ifdef CONFIG_SOC_SP7350
+	sp_wdt_hw_init(&priv->wdev);
+#endif
 	watchdog_init_timeout(&priv->wdev, timeout, dev);
 	watchdog_set_nowayout(&priv->wdev, nowayout);
 	watchdog_stop_on_reboot(&priv->wdev);
@@ -202,6 +314,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 static const struct of_device_id sp_wdt_of_match[] = {
 	{.compatible = "sunplus,sp7021-wdt", },
 	{.compatible = "sunplus,q645-wdt", },
+	{.compatible = "sunplus,sp7350-wdt", },
 	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, sp_wdt_of_match);
@@ -216,6 +329,6 @@ static struct platform_driver sp_wdt_driver = {
 
 module_platform_driver(sp_wdt_driver);
 
-MODULE_AUTHOR("Xiantao Hu <xt.hu@cqplus1.com>");
+MODULE_AUTHOR("Xiantao Hu <xt.hu@sunmedia.com.cn>");
 MODULE_DESCRIPTION("Sunplus Watchdog Timer Driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");
