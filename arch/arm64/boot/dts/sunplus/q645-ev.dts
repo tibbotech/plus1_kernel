@@ -1712,6 +1712,7 @@
 		reg = <0x0 0xf8000628 0x0 0x08>, <0x0 0xf8000248 0x0 0x04>;
 		clocks = <&clkc STC0>;
 		resets = <&rstc RST_STC0>;
+		timeout-sec = <10>;
 	};
 
 #if 0
