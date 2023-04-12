@@ -31,16 +31,18 @@
 #define WDT_LOCK		0xAB01
 #define WDT_CONMAX		0xDEAF
 
-/* TIMEOUT_MAX = ffff0/90kHz =11.65, so longer than 11 seconds will time out. */
-#define SP_WDT_MAX_TIMEOUT	11U
-#define SP_WDT_DEFAULT_TIMEOUT	10
-
 #ifdef CONFIG_SOC_SP7350
 //#define STC_CLK		1000000
 #define ZEBU_TEMP		500//zebu 3200MHz ---> 1.5MHz
 #define STC_CLK			ZEBU_TEMP
+/* HW_TIMEOUT_MAX = 0xffffffff/1MHz = 4294 */
+#define SP_WDT_MAX_TIMEOUT	4294U
+#define SP_WDT_DEFAULT_TIMEOUT	10
 #else
 #define STC_CLK			90000
+/* HW_TIMEOUT_MAX = 0xffff0/90kHz =11.65 */
+#define SP_WDT_MAX_TIMEOUT	11U
+#define SP_WDT_DEFAULT_TIMEOUT	10
 #endif
 
 #define DEVICE_NAME		"sunplus-wdt"

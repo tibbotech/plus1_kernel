@@ -2094,6 +2094,7 @@
 		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc STC_AV3>;
 		resets = <&rstc RST_STC_AV3>;
+		timeout-sec = <10>;
 	};
 #if 0
 	ipc_test: ipc_test@f8008100 {
