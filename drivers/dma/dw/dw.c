@@ -29,6 +29,7 @@ static void dw_dma_initialize_chan(struct dw_dma_chan *dwc)
 	channel_writel(dwc, CFG_HI, cfghi);
 }
 
+#if defined(CONFIG_SOC_SP7350)
 static void dw_spi_dma_initialize_chan(struct dw_dma_chan *dwc)
 {
 	u32 cfghi = 0;
@@ -72,7 +73,7 @@ static void dw_spi_dma_initialize_chan(struct dw_dma_chan *dwc)
 	channel_writel(dwc, CFG_LO, cfglo);
 	channel_writel(dwc, CFG_HI, cfghi);
 }
-
+#endif
 
 static void dw_dma_suspend_chan(struct dw_dma_chan *dwc, bool drain)
 {
@@ -157,9 +158,11 @@ int dw_dma_probe(struct dw_dma_chip *chip)
 		return -ENOMEM;
 
 	/* Channel operations */
+#if defined(CONFIG_SOC_SP7350)
 	if(chip->chan_mode == DW_NORMAL_MODE)
 		dw->initialize_chan = dw_spi_dma_initialize_chan;
 	else
+#endif
 	dw->initialize_chan = dw_dma_initialize_chan;
 	dw->suspend_chan = dw_dma_suspend_chan;
 	dw->resume_chan = dw_dma_resume_chan;

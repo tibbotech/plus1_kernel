@@ -1144,10 +1144,15 @@ int do_dma_probe(struct dw_dma_chip *chip)
 
 	tasklet_setup(&dw->tasklet, dw_dma_tasklet);
 
+#if defined(CONFIG_SOC_SP7350)
 	for(i=0; i<8; i++){
 		err = request_irq(chip->irq[i], dw_dma_interrupt, IRQF_SHARED,
 			  dw->name, dw);
 	}
+#else
+	err = request_irq(chip->irq, dw_dma_interrupt, IRQF_SHARED,
+			  dw->name, dw);
+#endif
 
 	if (err)
 		goto err_pdata;
@@ -1273,9 +1278,13 @@ int do_dma_probe(struct dw_dma_chip *chip)
 	return 0;
 
 err_dma_register:
+#if defined(CONFIG_SOC_SP7350)
 	for(i=0; i<8; i++){
 		free_irq(chip->irq[i], dw);
 	}
+#else
+	free_irq(chip->irq, dw);
+#endif
 err_pdata:
 	pm_runtime_put_sync_suspend(chip->dev);
 	return err;
@@ -1285,17 +1294,22 @@ int do_dma_remove(struct dw_dma_chip *chip)
 {
 	struct dw_dma		*dw = chip->dw;
 	struct dw_dma_chan	*dwc, *_dwc;
+#if defined(CONFIG_SOC_SP7350)
 	unsigned int		i;
-
+#endif
 
 	pm_runtime_get_sync(chip->dev);
 
 	do_dw_dma_off(dw);
 	dma_async_device_unregister(&dw->dma);
 
+#if defined(CONFIG_SOC_SP7350)
 	for(i=0; i<8; i++){
 		free_irq(chip->irq[i], dw);
 	}
+#else
+	free_irq(chip->irq, dw);
+#endif
 	tasklet_kill(&dw->tasklet);
 
 	list_for_each_entry_safe(dwc, _dwc, &dw->dma.channels,
