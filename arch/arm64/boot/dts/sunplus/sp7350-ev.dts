@@ -242,10 +242,10 @@
 
 	arm-pmu {
 		compatible = "arm,cortex-a55-pmu", "arm,armv8-pmuv3";
-		interrupts = <GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 476 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 477 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
