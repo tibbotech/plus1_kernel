@@ -1058,7 +1058,7 @@
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
