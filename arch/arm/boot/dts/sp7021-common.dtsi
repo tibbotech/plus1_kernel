@@ -809,7 +809,8 @@
 			compatible = "sunplus,sp7021-usb-udc0";
 			clocks = <&clkc USBC0>;
 			resets = <&rstc RST_USBC0>;
-			reg = <0x9c102800 0x400>;
+			reg = <0x9c102800 0x400>, <0x9c000000 0x80>, <0x9c000080 0x80>,
+							<0x9c000200 0x80>, <0x9c004a80 0x80>, <0x9c00af00 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <13 IRQ_TYPE_LEVEL_HIGH>;
 		};
@@ -818,7 +819,8 @@
 			compatible = "sunplus,sp7021-usb-udc1";
 			clocks = <&clkc USBC1>;
 			resets = <&rstc RST_USBC1>;
-			reg = <0x9c103800 0x400>;
+			reg = <0x9c103800 0x400>, <0x9c000000 0x80>, <0x9c000080 0x80>,
+							<0x9c000200 0x80>, <0x9c004b00 0x80>, <0x9c00af00 0x80>;
 			interrupt-parent = <&intc>;
 			interrupts = <16 IRQ_TYPE_LEVEL_HIGH>;
 		};
