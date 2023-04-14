@@ -28,7 +28,7 @@ static const struct snd_pcm_hardware spsoc_pcm_hardware = {
 			    	  SNDRV_PCM_INFO_MMAP_VALID |
 			    	  SNDRV_PCM_INFO_INTERLEAVED |
 			          SNDRV_PCM_INFO_PAUSE,
-	.formats	  	= (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE),
+	.formats	  	= (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE),
 	.period_bytes_min	= PERIOD_BYTES_MIN_CONS,
 	.period_bytes_max 	= PERIOD_BYTES_MAX_CONS,
 	.periods_min	  	= 2,
@@ -686,6 +686,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 			      	AUD_INFO("###Wrong device no.\n");
 			      	break;
 		}
+		memset((void *)aud_param.fifoInfo.pcmtx_virtAddrBase, 0, aud_param.fifoInfo.TxBuf_TotalLen);
     	} else {
     		dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO - 1);
         	switch (substream->pcm->device) {
@@ -727,6 +728,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 	  	  	      	AUD_INFO("###Wrong device no.\n");
 	  	  	      	break;
 		}
+		memset((void *)aud_param.fifoInfo.pcmtx_virtAddrBase, 0, aud_param.fifoInfo.RxBuf_TotalLen);
 	}
 
 	AUD_INFO("%s IN, stream direction: %d,device=%d\n", __func__, substream->stream,substream->pcm->device);
@@ -1115,7 +1117,7 @@ static int spsoc_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm
 			goto out;
 	}
 
-    	aud_param.fifoInfo.Buf_TotalLen = aud_param.fifoInfo.TxBuf_TotalLen + aud_param.fifoInfo.RxBuf_TotalLen;
+    	//aud_param.fifoInfo.Buf_TotalLen = aud_param.fifoInfo.TxBuf_TotalLen + aud_param.fifoInfo.RxBuf_TotalLen;
     	return 0;
 
 out:
@@ -1183,8 +1185,10 @@ static  int preallocate_dma_buffer(struct platform_device *pdev)
 
 	aud_param.fifoInfo.pcmtx_virtAddrBase = 0;
 	aud_param.fifoInfo.mic_virtAddrBase = 0;
-    	size = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX + NUM_FIFO_RX);
-    	aud_param.fifoInfo.TxBuf_TotalLen = size;
+    	aud_param.fifoInfo.TxBuf_TotalLen = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
+    	aud_param.fifoInfo.RxBuf_TotalLen = DRAM_PCM_BUF_LENGTH * NUM_FIFO_RX;//*(NUM_FIFO_TX-1) + DRAM_HDMI_BUF_LENGTH;
+	size = aud_param.fifoInfo.TxBuf_TotalLen + aud_param.fifoInfo.RxBuf_TotalLen;
+	aud_param.fifoInfo.Buf_TotalLen = size;
 #ifdef USE_KELNEL_MALLOC
 	aud_param.fifoInfo.pcmtx_virtAddrBase = (unsigned long)dma_alloc_coherent(dev, PAGE_ALIGN(size), \
 						&aud_param.fifoInfo.pcmtx_physAddrBase, GFP_DMA | GFP_KERNEL);
@@ -1198,8 +1202,8 @@ static  int preallocate_dma_buffer(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	aud_param.fifoInfo.mic_virtAddrBase = aud_param.fifoInfo.pcmtx_virtAddrBase + DRAM_PCM_BUF_LENGTH*NUM_FIFO_TX;
-	aud_param.fifoInfo.mic_physAddrBase = aud_param.fifoInfo.pcmtx_physAddrBase + DRAM_PCM_BUF_LENGTH*NUM_FIFO_TX;
+	aud_param.fifoInfo.mic_virtAddrBase = aud_param.fifoInfo.pcmtx_virtAddrBase + aud_param.fifoInfo.TxBuf_TotalLen;
+	aud_param.fifoInfo.mic_physAddrBase = aud_param.fifoInfo.pcmtx_physAddrBase + aud_param.fifoInfo.TxBuf_TotalLen;
 #if 0
 	size = DRAM_PCM_BUF_LENGTH*NUM_FIFO_RX;//*(NUM_FIFO_TX-1) + DRAM_HDMI_BUF_LENGTH;
 	aud_param.fifoInfo.RxBuf_TotalLen = size;
@@ -1285,7 +1289,7 @@ static int snd_spsoc_pcm_probe(struct platform_device *pdev)
 
 	//aud_param.fsclkInfo.freq_mask = 0x0667;	//192K
 	ret = preallocate_dma_buffer(pdev);
-
+	memset((void *)aud_param.fifoInfo.pcmtx_virtAddrBase, 0, aud_param.fifoInfo.Buf_TotalLen);
 	return ret;
 }
 

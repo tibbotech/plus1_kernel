@@ -11,7 +11,7 @@
 #include "spsoc_util-645.h"
 
 void __iomem *codecaudio_base;
-#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE)
+#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
 /*================================================================
  *						codec driver
