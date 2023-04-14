@@ -32,7 +32,7 @@ struct sp_ep {
 	struct list_head queue;
 	unsigned long last_io;			/* jiffies timestamp */
 	struct usb_gadget *gadget;
-	struct sp_udc *dev;
+	struct sp_udc *udc;
 	const struct usb_endpoint_descriptor *desc;
 	struct usb_ep ep;
 	u8 num;
@@ -57,7 +57,7 @@ struct sp_request {
 
 struct sp_work {
 	struct work_struct work;
-	u8 ep_num;
+	struct sp_ep *ep;
 };
 
 struct sp_workqueue {
@@ -66,15 +66,16 @@ struct sp_workqueue {
 };
 
 struct sp_udc {
-	spinlock_t lock;
+	spinlock_t lock, qlock;
 
 	struct sp_ep ep[SP_MAXENDPOINTS];
-	int address;
+	int irq_num;
 	struct usb_gadget gadget;
 	struct usb_gadget_driver *driver;
-
+	struct device_attribute *dev_attr;
 	u16 devstatus;
 	int ep0state;
+	u32 dma_len_ep1, dma_xferlen_ep11;
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
 #define	ID_PIN				(1 << 16)
@@ -96,6 +97,9 @@ struct sp_udc {
 #endif
 
 	struct clk *clk;
+	void __iomem *base_addr;
+	u32 (*reg_read)(u32 reg);
+	void (*reg_write)(u32 value, u32 reg);
 };
 
 extern int Q571_get_platform(void);

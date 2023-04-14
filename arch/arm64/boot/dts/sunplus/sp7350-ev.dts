@@ -242,10 +242,10 @@
 
 	arm-pmu {
 		compatible = "arm,cortex-a55-pmu", "arm,armv8-pmuv3";
-		interrupts = <GIC_SPI 219 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 220 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 221 IRQ_TYPE_LEVEL_HIGH>,
-			     <GIC_SPI 222 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 475 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 476 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 477 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 478 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-affinity = <&cpu0>, <&cpu1>, <&cpu2>, <&cpu3>;
 	};
 
@@ -269,14 +269,14 @@
 			     <GIC_PPI 10 (GIC_CPU_MASK_RAW(15) | IRQ_TYPE_LEVEL_LOW)>;
 	};
 
-	rstc: reset@f8000054 {
+	rstc: reset@f8800004 {
 		compatible = "sunplus,sp7350-reset";
 		#reset-cells = <1>;
-		reg = <0x00 0xf8800004 0x00 0x30>;
+		reg = <0x00 0xf8800004 0x00 0x3c>;
 		reg-names = "reset";
 	};
 
-	remoteproc0: remoteproc@f8007ffc {
+	remoteproc0: remoteproc@f800817c {
 		compatible = "sunplus,sp-rproc";
 		firmware = "firmware";
 		reg = <0 0xf800817c 0 4>, /* mbox G258.31, cpu0 to cpu2 direct reg07 */
@@ -457,9 +457,9 @@
 		resets = <&rstc RST_SPICB0>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master0_pins>;
-		//dmas = <&ahbdma1 0 0 0>,
-		//		<&ahbdma1 1 0 0>;
-		//dma-names = "rx", "tx";
+		dmas = <&ahbdma1 0 0 0>,
+				<&ahbdma1 1 0 0>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
 			compatible = "rohm,dh2228fv";
@@ -480,9 +480,9 @@
 		resets = <&rstc RST_SPICB1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master1_pins>;
-		//dmas = <&ahbdma1 2 0 0>,
-		//				<&ahbdma1 3 0 0>;
-		//dma-names = "rx", "tx";
+		dmas = <&ahbdma1 2 0 0>,
+						<&ahbdma1 3 0 0>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
 			compatible = "rohm,dh2228fv";
@@ -503,9 +503,9 @@
 		resets = <&rstc RST_SPICB2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master2_pins>;
-		//dmas = <&ahbdma1 4 0 0>,
-		//				<&ahbdma1 5 0 0>;
-		//dma-names = "rx", "tx";
+		dmas = <&ahbdma1 4 0 0>,
+						<&ahbdma1 5 0 0>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
 			compatible = "rohm,dh2228fv";
@@ -526,9 +526,9 @@
 		resets = <&rstc RST_SPICB3>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master3_pins>;
-		//dmas = <&ahbdma1 6 0 0>,
-		//				<&ahbdma1 7 0 0>;
-		//dma-names = "rx", "tx";
+		dmas = <&ahbdma1 6 0 0>,
+						<&ahbdma1 7 0 0>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
 			compatible = "rohm,dh2228fv";
@@ -549,9 +549,9 @@
 		resets = <&rstc RST_SPICB4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master4_pins>;
-		//dmas = <&ahbdma1 6 0 0>,
-		//				<&ahbdma1 7 0 0>;
-		//dma-names = "rx", "tx";
+		dmas = <&ahbdma1 6 0 0>,
+						<&ahbdma1 7 0 0>;
+		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
 			compatible = "rohm,dh2228fv";
@@ -1058,7 +1058,7 @@
 			compatible = "synopsys,dwc3";
 			reg = <0x0 0xf80a1000 0x0 0xe000>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SPI 180 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
 			dr_mode = "host";
 			snps,dis_u2_susphy_quirk;
@@ -2086,11 +2086,15 @@
 	};
 #endif
 
-	watchdog: watchdog@f8000628 {
+	watchdog: watchdog@f800061c {
 		compatible = "sunplus,sp7350-wdt";
-		reg = <0x00 0xf8000628 0x00 0x08>, <0x00 0xf8000248 0x00 0x04>;
-		clocks = <&clkc STC0>;
-		resets = <&rstc RST_STC0>;
+		reg = <0x00 0xf800061c 0x00 0x08>, <0x00 0xf800066c 0x00 0x08>,
+			<0x00 0xf8800258 0x00 0x04>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc STC_AV3>;
+		resets = <&rstc RST_STC_AV3>;
+		timeout-sec = <10>;
 	};
 #if 0
 	ipc_test: ipc_test@f8008100 {
@@ -2122,7 +2126,7 @@
 
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
-		reg = <0x0 0xf8800080 0x0 0x20>,
+		reg = <0x0 0xf8800080 0x0 0x2c>,
 		      <0x0 0xf88032e4 0x0 0x1c>,
 		      <0x0 0xf8803380 0x0 0x180>;
 		reg-names = "moon1", "first", "gpioxt";

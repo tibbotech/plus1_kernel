@@ -266,13 +266,13 @@ static void sp_tdm_rx_dma_en(bool on)
 
     	AUD_INFO("aud_enable 0x%x\n", regs0->aud_enable);
 }
-
+#if 0
 #define SP_TDM_RATES    SNDRV_PCM_RATE_44100//(SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000)
 
 #define SP_TDM_FMTBIT \
         (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FORMAT_MU_LAW | \
          SNDRV_PCM_FORMAT_A_LAW)
-
+#endif
 static int sp_tdm_dai_probe(struct snd_soc_dai *dai)
 {
     	struct sunplus_audio_base *sp_tdm = dev_get_drvdata(dai->dev);
@@ -500,7 +500,7 @@ static void sp_tdm_init_state(void)
     	regs0->tdmpdm_tx_sel 	= 0x01;
 }
 
-#define AUD_FORMATS (SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE | SNDRV_PCM_FMTBIT_S24_3BE )
+#define AUD_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 static struct snd_soc_dai_driver sp_tdm_dai = {
     	.name   = "spsoc-tdm-driver-dai",
     	//.id   = 0,

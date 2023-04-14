@@ -4,13 +4,13 @@
  * Author:	 <@sunplus.com>
  *
 */
-
+#include <sound/pcm_params.h>
 #include "aud_hw.h"
 #include "spsoc_pcm-645.h"
 #include "spsoc_util-645.h"
 
 void __iomem *i2saudio_base;
-#define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S8 | SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE|SNDRV_PCM_FMTBIT_S24_3LE | SNDRV_PCM_FMTBIT_S32_LE)|(SNDRV_PCM_FMTBIT_S24_3BE )
+#define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
 void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 {
@@ -18,15 +18,50 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 
 	// 147M	Setting
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000)) {
-		regs0->aud_ext_dac_xck_cfg		= 0x6883; //If tx1, tx2 use xck need to set G62.0, xck1 need to set G92.31
+		regs0->aud_ext_dac_xck_cfg				= 0x6883; //If tx1, tx2 use xck need to set G62.0, xck1 need to set G92.31
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+			switch (source) {
+				case SNDRV_PCM_FORMAT_S24_3LE:
+					regs0->aud_ext_dac_xck_cfg	= 0x6803;
+					regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+					regs0->pcm_cfg	   		= 0x4d; //tx0
+					regs0->ext_adc_cfg		= 0x4d; //rx0
+					break;
+				case SNDRV_PCM_FORMAT_S16_LE:
+				default:
+					regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 48kHz = 147Mhz/3/4/8/(32)
+					regs0->pcm_cfg	   		= 0x61; //tx0
+					regs0->ext_adc_cfg		= 0x61; //rx0
+					break;
+			}
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6887;
+			switch (source) {
+				case SNDRV_PCM_FORMAT_S24_3LE:
+					regs0->int_adc_dac_cfg		= 0x004d004d;
+					regs0->aud_int_dac_xck_cfg 	= 0x6887;
+					break;
+				case SNDRV_PCM_FORMAT_S16_LE:
+				default:
+					regs0->int_adc_dac_cfg		= 0x00610061;
+					regs0->aud_int_dac_xck_cfg 	= 0x688f;
+					break;
+			}
 			regs0->aud_int_dac_bck_cfg 	= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
 			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			switch (source) {
+				case SNDRV_PCM_FORMAT_S24_3LE:
+					regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+					regs0->hdmi_tx_i2s_cfg 		= 0x4d; //tx2
+					regs0->hdmi_rx_i2s_cfg 		= 0x4d; //rx2
+					break;
+				case SNDRV_PCM_FORMAT_S16_LE:
+				default:
+					regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+					regs0->hdmi_tx_i2s_cfg 		= 0x61; //tx2
+					regs0->hdmi_rx_i2s_cfg 		= 0x61; //rx2
+					break;
+			}
 		} else if(pll_id == SP_SPDIF) {
 			regs0->aud_ext_dac_xck_cfg 	= 0x6883; //PLLA.
 			regs0->aud_iec0_bclk_cfg 	= 0x6001; //64FS. 48kHz = 147MHz/3/4/2/(64)
@@ -252,13 +287,16 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
 
+	AUD_INFO("%s, params=%x\n", __func__, params_format(params));
+
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 	      	if (substream->pcm->device == SP_I2S_0) {
 		  	regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 		  	regs0->G063_reserved_7 = regs0->G063_reserved_7 | 0x1; // enable
 	      	}
-	}else
+	} else {
 		sp_i2s_spdif_tx_dma_en(substream->pcm->device, true);
+	}
 
 	AUD_INFO("%s IN! G063_reserved_7 0x%x\n", __func__, regs0->G063_reserved_7);
 	return 0;
@@ -313,7 +351,35 @@ static int aud_cpudai_trigger(struct snd_pcm_substream *substream, int cmd,
 
 static int spsoc_cpu_set_fmt(struct snd_soc_dai	*codec_dai, unsigned int fmt)
 {
-	AUD_INFO("%s IN\n", __func__ );
+	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
+
+	AUD_INFO("%s IN\n", __func__);
+	switch (fmt) {
+    		case SNDRV_PCM_FORMAT_S24_3LE: //0x20
+    		//case SNDRV_PCM_FORMAT_S24_LE: //6
+#if 0
+    			regs0->pcm_cfg	   	= 0x4d; //tx0
+			regs0->ext_adc_cfg	= 0x4d; //rx0
+        		regs0->hdmi_tx_i2s_cfg 	= 0x24d; //tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
+			regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
+			regs0->int_adc_dac_cfg	= 0x024d024d; //0x001c004d // rx1 tx1
+#endif
+        		regs0->aud_fifo_mode  	= 0x20000;
+        		break;
+    		case SNDRV_PCM_FORMAT_S16_LE: //2
+#if 0
+    			regs0->pcm_cfg	   	= 0x61; //tx0
+			regs0->ext_adc_cfg	= 0x61; //rx0
+        		regs0->hdmi_tx_i2s_cfg 	= 0x261; //tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
+			regs0->hdmi_rx_i2s_cfg 	= 0x261; //rx2
+			regs0->int_adc_dac_cfg	= 0x00610061; //0x001c004d // rx1 tx1
+#endif
+        		regs0->aud_fifo_mode  	= 0x20001;
+        		break;
+    		default:
+        		dev_err(codec_dai->dev, "Unknown data format\n");
+        		return -EINVAL;
+    	}
 
 	return 0;
 }
@@ -333,9 +399,9 @@ static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_
 
 static int spsoc_cpu_set_pll(struct snd_soc_dai	*dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
-	AUD_INFO("%s IN %d %d dev name %s\n", __func__, freq_out, pll_id, dev_name(dai->dev));
+	AUD_INFO("%s IN %d %d dev_name %s\n", __func__, freq_out, pll_id, dev_name(dai->dev));
 
-	aud_clk_cfg(pll_id, source, freq_out);
+	aud_clk_cfg(pll_id, freq_in, freq_out);
 	return 0;
 }
 
@@ -354,13 +420,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-0",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -370,13 +436,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-1",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
@@ -386,13 +452,13 @@ static struct snd_soc_dai_driver  aud_cpu_dai[]=
 		.name = "spsoc-i2s-dai-2",
 		.playback = {
 			.channels_min 	= 2,
-			.channels_max 	= 10,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},
 		.capture = {
 			.channels_min 	= 2,
-			.channels_max 	= 8,
+			.channels_max 	= 2,
 			.rates 		= AUD_RATES,
 			.formats 	= AUD_FORMATS,
 		},

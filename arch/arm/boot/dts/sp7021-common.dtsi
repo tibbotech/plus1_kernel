@@ -675,8 +675,8 @@
 
 		i2cm0: i2c@9c004600 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004600 0x80>, <0x9c004680 0x80>, <0x9c000000 0x80>;
-			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
+			reg = <0x9c004600 0x100>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <174 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM0>;
@@ -685,8 +685,8 @@
 
 		i2cm1: i2c@9c004700 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004700 0x80>, <0x9c004780 0x80>, <0x9c000000 0x80>;
-			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
+			reg = <0x9c004700 0x100>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <175 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM1>;
@@ -695,8 +695,8 @@
 
 		i2cm2: i2c@9c004800 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004800 0x80>, <0x9c004880 0x80>, <0x9c000000 0x80>;
-			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
+			reg = <0x9c004800 0x100>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <176 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM2>;
@@ -705,8 +705,8 @@
 
 		i2cm3: i2c@9c004900 {
 			compatible = "sunplus,sp7021-i2cm";
-			reg = <0x9c004900 0x80>, <0x9c004980 0x80>, <0x9c000000 0x80>;
-			reg-names = "i2cm", "i2cmdma", "i2cdmapower";
+			reg = <0x9c004900 0x100>, <0x9c000000 0x80>;
+			reg-names = "i2cm", "i2cdmapower";
 			interrupt-parent = <&intc>;
 			interrupts = <177 IRQ_TYPE_LEVEL_HIGH>;
 			clocks = <&clkc I2CM3>;

@@ -24,6 +24,8 @@
 #define SP7350_RNG_DIV		0	/* 25M / (DIV + 1) */
 #define SP7350_RNG_EN		BIT(10)
 
+#define SP7350_RNG_HWM		0x7ff0000	/* HIWORD_MASK */
+
 #define to_sp7350_rng(p)	container_of(p, struct sp7350_rng, rng)
 
 struct sp7350_rng {
@@ -42,7 +44,7 @@ static int sp7350_rng_init(struct hwrng *rng)
 	if (ret)
 		return ret;
 
-	writel(SP7350_RNG_DIV | SP7350_RNG_EN,
+	writel(SP7350_RNG_DIV | SP7350_RNG_EN | SP7350_RNG_HWM,
 	       priv->base + SP7350_RNG_CTRL);
 
 	return 0;
@@ -52,7 +54,8 @@ static void sp7350_rng_cleanup(struct hwrng *rng)
 {
 	struct sp7350_rng *priv = to_sp7350_rng(rng);
 
-	writel(SP7350_RNG_DIV, priv->base + SP7350_RNG_CTRL);
+	writel(SP7350_RNG_DIV | SP7350_RNG_HWM,
+	       priv->base + SP7350_RNG_CTRL);
 
 	clk_disable_unprepare(priv->clk);
 }

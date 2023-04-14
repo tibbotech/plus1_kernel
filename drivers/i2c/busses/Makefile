@@ -107,6 +107,7 @@ i2c-stm32f7-drv-objs := i2c-stm32f7.o i2c-stm32.o
 obj-$(CONFIG_I2C_STM32F7)	+= i2c-stm32f7-drv.o
 obj-$(CONFIG_I2C_STU300)	+= i2c-stu300.o
 obj-$(CONFIG_I2C_SUN6I_P2WI)	+= i2c-sun6i-p2wi.o
+obj-$(CONFIG_I2C_SUNPLUS_NEW)	+= i2c-sunplus-new.o
 obj-$(CONFIG_I2C_SUNPLUS)	+= i2c-sunplus.o
 obj-$(CONFIG_I2C_SYNQUACER)	+= i2c-synquacer.o
 obj-$(CONFIG_I2C_TEGRA)		+= i2c-tegra.o
