@@ -163,7 +163,7 @@ void AUDHW_SystemInit(void *auddrvdata)
         regs0->pdm_rx_cfg0 	= 0x110004;
         regs0->pdm_rx_cfg0 	= 0x10004;
 #endif
-        
+
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
 	regs0->pcm_cfg	   	= 0x4d; //q645 tx0
         regs0->hdmi_tx_i2s_cfg 	= 0x4d; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
@@ -171,11 +171,11 @@ void AUDHW_SystemInit(void *auddrvdata)
         regs0->int_adc_dac_cfg	= 0x001c004d;	//0x001c004d
         regs0->ext_adc_cfg	= 0x24d; //rx0
 #else
-	regs0->pcm_cfg	   	= 0x41; //q645 tx0
-	regs0->ext_adc_cfg	= 0x41; //rx0
-        regs0->hdmi_tx_i2s_cfg 	= 0x41; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
-	regs0->hdmi_rx_i2s_cfg 	= 0x41; //rx2
-	regs0->int_adc_dac_cfg	= 0x00410041;	//0x001c004d // rx1 tx1	
+	regs0->pcm_cfg	   	= 0x61; //q645 tx0
+	regs0->ext_adc_cfg	= 0x61; //rx0
+        regs0->hdmi_tx_i2s_cfg 	= 0x61; //q645 tx2 if tx2(slave) -> rx0 -> tx1/tx0  0x24d
+	regs0->hdmi_rx_i2s_cfg 	= 0x61; //rx2
+	regs0->int_adc_dac_cfg	= 0x00610061;	//0x001c004d // rx1 tx1
 #endif
 
         regs0->iec0_par0_out 	= 0x40009800;	//config PCM_IEC_TX, pcm_iec_par0_out
