@@ -96,53 +96,55 @@ static struct sp_pnand_chip_timing chip_timing = {
 
 static struct mtd_partition sp_pnand_partition_info[] = {
 	{
-	 .name = "Header",
-	 .offset = 0,
-	 .size = 1 * SZ_128K},
+		.name = "Header",
+		.offset = 0,
+		.size = 1 * SZ_128K,
+	},
 	{
-	 .name = "Xboot1",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 3 * SZ_128K},
+		.name = "Xboot1",
+		.offset = MTDPART_OFS_APPEND,
+		.size = 3 * SZ_128K,
+	},
 	{
-	 .name = "Uboot1",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 12 * SZ_128K},
+		.name = "Uboot1",
+		.offset = MTDPART_OFS_APPEND,
+		.size = 12 * SZ_128K,
+	},
 	{
-	 .name = "Uboot2",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = SZ_2M},
+		.name = "Uboot2",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_2M,
+	},
 	{
-	 .name = "Env",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = SZ_512K},
+		.name = "Fip",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_2M,
+	},
 	{
-	 .name = "Env_redund",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = SZ_512K},
+		.name = "Env",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_512K,
+	},
 	{
-	 .name = "Reserve",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = SZ_1M},
+		.name = "Env_redund",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_512K,
+	},
 	{
-	 .name = "Dtb",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = SZ_256K},
+		.name = "Dtb",
+		.offset = MTDPART_OFS_APPEND,
+		.size = SZ_256K,
+	},
 	{
-	 .name = "Kernel",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 200 * SZ_128K},
+		.name = "Kernel",
+		.offset = MTDPART_OFS_APPEND,
+		.size = 200 * SZ_128K,
+	},
 	{
-	 .name = "Rootfs",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 224 * SZ_1M},
-	{
-	 .name = "Test",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = 2 * SZ_128K},
-	{
-	 .name = "Partition 1",
-	 .offset = MTDPART_OFS_APPEND,
-	 .size = MTDPART_SIZ_FULL},
+		.name = "Rootfs",
+		.offset = MTDPART_OFS_APPEND,
+		.size = 222 * SZ_1M,
+	},
 };
 
 static int sp_pnand_ooblayout_ecc(struct mtd_info *mtd, int section,
@@ -1389,6 +1391,14 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	int i, sel, type;
 	u32 val;
 	struct resource *r;
+	static const char * const part_types[] = {
+	//#ifdef CONFIG_MTD_CMDLINE_PARTS
+		"cmdlinepart",
+	//#else
+		//"sunplus_part",
+	//#endif
+		NULL,
+	};
 
 	struct mtd_partition *partitions = NULL;
 	int num_partitions = 0;
@@ -1676,6 +1686,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 #endif
 	}
 
+#if 1
 	if (num_partitions <= 0) {
 		partitions = sp_pnand_partition_info;
 		num_partitions = ARRAY_SIZE(sp_pnand_partition_info);
@@ -1683,6 +1694,14 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	ret = mtd_device_register(mtd, partitions, num_partitions);
 	if (!ret)
 		return ret;
+#else
+	ret = mtd_device_parse_register(mtd, part_types, NULL, NULL, 0);//xtmark
+	if (ret) {
+		printk(KERN_INFO "mtd_device_parse_register fail!\n");
+		ret = -ENXIO;
+		goto out;
+	}
+#endif
 
 	nand_cleanup(chip);
 out_unset_drv:
