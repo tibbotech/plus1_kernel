@@ -542,7 +542,7 @@ static void spmmc_sw_reset(struct spmmc_host *host)
 {
 	u32 value;
 
-	spmmc_pr(DEBUG, "sw reset\n");
+	//spmmc_pr(DEBUG, "sw reset\n");
 	/* Must reset dma operation first, or it will*/
 	/* be stuck on sd_state == 0x1c00 because of*/
 	/* a controller software reset bug */
@@ -557,7 +557,7 @@ static void spmmc_sw_reset(struct spmmc_host *host)
 	writel(0x7, &host->base->sd_rst);
 	while (readl(&host->base->sd_hw_state) & BIT(6))
 		;
-	spmmc_pr(DEBUG, "sw reset done\n");
+	//spmmc_pr(DEBUG, "sw reset done\n");
 }
 
 static void spmmc_prepare_cmd(struct spmmc_host *host, struct mmc_command *cmd)
@@ -977,6 +977,26 @@ static void spmmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	mutex_lock_interruptible(&host->mrq_lock);
 	host->mrq = mrq;
 	data = mrq->data;
+
+	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	if(mrq->sbc){
+		/* Finished CMD23 */
+		u32 value;
+		cmd = mrq->sbc;
+		spmmc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
+		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
+		spmmc_prepare_cmd(host, cmd);
+		value = readl(&host->base->sd_int);
+		value = bitfield_replace(value, 0, 1, 0); /* sdcmpen */
+		writel(value, &host->base->sd_int);
+		spmmc_trigger_transaction(host);
+		spmmc_wait_finish(host);
+		spmmc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
+			 cmd->error, cmd->opcode, cmd->resp[0], cmd->resp[1], cmd->resp[2], cmd->resp[3]);
+		mrq->sbc = NULL;
+	}
+	#endif
+
 	cmd = mrq->cmd;
 	spmmc_pr(VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		 cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
@@ -2117,6 +2137,10 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	x = readl(&host->base->card_mediatype_srcdst);
 	x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
 	writel(x, &host->base->card_mediatype_srcdst);
+	#endif
+
+	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	mmc->caps |= MMC_CAP_CMD23;
 	#endif
 
 	#ifdef PAD_MS
