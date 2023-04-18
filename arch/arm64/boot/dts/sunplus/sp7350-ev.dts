@@ -778,6 +778,14 @@
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
 	};
 
+	hwspinlock@f800f880 {
+		compatible = "sp,sunplus-hwspinlock";
+		#hwlock-cells = <1>;
+		reg = <0 0xf800f880 0 0x80>;
+		clocks = <&clkc SEMAPHORE>;
+		clock-names = "hsem";
+	};
+
 	cbdma: cbdma@sp_cbdma {
 		compatible = "sunplus,cb-cdma";
 		reg = <0x0 0xf8000d00 0x0 0x80>;
