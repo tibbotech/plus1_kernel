@@ -289,9 +289,15 @@ struct spsdc_tuning_info {
 	int retried; /* how many times has been retried */
 };
 
+enum SPSDC_MODE {
+	SPSDC_SWITCH_MODE = 0,
+	SPSDC_1V8_MODE = 1,
+};
+
 struct spsdc_compatible {
 	int mode; /* SD/SDIO/eMMC */
 	int source_clk;
+	int vol_mode;
 };
 
 struct pad_ctl_regs {

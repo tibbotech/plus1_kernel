@@ -358,18 +358,17 @@ static void spsdc_set_bus_width(struct spsdc_host *host, int width)
 /**
  * select the working mode of controller: sd/sdio/emmc
  */
-static void spsdc_select_mode(struct spsdc_host *host, int mode)
+static void spsdc_select_mode(struct spsdc_host *host)
 {
 	u32 value = readl(&host->base->sd_config0);
 
-	host->mode = mode;
 	/* set `sdmmcmode', as it will sample data at fall edge
 	 * of SD bus clock if `sdmmcmode' is not set when
 	 * `sd_high_speed_en' is not set, which is not compliant
 	 * with SD specification
 	 */
 	value = bitfield_replace(value, SPSDC_sdmmcmode_w01, 1, 1);
-	switch (mode) {
+	switch (host->mode) {
 	case SPSDC_MODE_EMMC:
 		value = bitfield_replace(value, SPSDC_sdiomode_w01, 1, 0);
 		writel(value, &host->base->sd_config0);
@@ -702,15 +701,13 @@ static void spsdc_controller_init(struct spsdc_host *host)
 	writel(value, &host->base->card_mediatype_srcdst);
 	host->signal_voltage = MMC_SIGNAL_VOLTAGE_330;
 
-
-#ifdef SPMMC_SDIO_1V8
 	/* Because we do not have a regulator to change the voltage at
 	 * runtime, we can only rely on hardware circuit to ensure that
 	 * the device pull up voltage is 1.8V(ex: wifi module AP6256) and
 	 * use the macro `SPMMC_SDIO_1V8'to indicate that. Set signal
 	 * voltage to 1.8V here.
 	 */
-	if (host->mode == SPSDC_MODE_SDIO) {
+	if ((host->mode == SPSDC_MODE_SDIO) && (host->vol_mode == SPSDC_1V8_MODE)) {
 		value = readl(&host->base->sd_vol_ctrl);
 		value = bitfield_replace(value, SPSDC_sw_set_vol_w01, 1, 1);
 		writel(value, &host->base->sd_vol_ctrl);
@@ -719,7 +716,6 @@ static void spsdc_controller_init(struct spsdc_host *host)
 		host->signal_voltage = MMC_SIGNAL_VOLTAGE_180;
 		spsdc_pr(host->mode, INFO, "use signal voltage 1.8V for SDIO\n");
 	}
-#endif
 }
 
 static void spsdc_set_power_mode(struct spsdc_host *host, struct mmc_ios *ios)
@@ -898,7 +894,7 @@ static void spsdc_set_ios(struct mmc_host *mmc, struct mmc_ios *ios)
 	spsdc_set_bus_timing(host, ios->timing);
 	spsdc_set_bus_width(host, ios->bus_width);
 	/* ensure mode is correct, because we might have hw reset the controller */
-	spsdc_select_mode(host, host->mode);
+	spsdc_select_mode(host);
 	mutex_unlock(&host->mrq_lock);
 
 }
@@ -1194,31 +1190,50 @@ static int spmmc_select_drive_strength(
 static const struct spsdc_compatible sp_sd_645_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 static const struct spsdc_compatible sp_sdio_645_compat = {
 	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_SWITCH_MODE,
+};
+
+static const struct spsdc_compatible sp_sdio_1v8_645_compat = {
+	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_1V8_MODE,
 };
 
 static const struct spsdc_compatible sp_sd_654_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 static const struct spsdc_compatible sp_sdio_654_compat = {
 	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_SWITCH_MODE,
+
+};
+
+static const struct spsdc_compatible sp_sdio_1v8_654_compat = {
+	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_1V8_MODE,
 };
 
 static const struct spsdc_compatible sp_sd_143_compat = {
 	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_220M,
+	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 static const struct spsdc_compatible sp_sdio_143_compat = {
 	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_220M,
+	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 
@@ -1232,12 +1247,20 @@ static const struct of_device_id spsdc_of_table[] = {
 		.data = &sp_sdio_645_compat,
 	},
 	{
+		.compatible = "sunplus,q645-1v8-sdio",
+		.data = &sp_sdio_1v8_645_compat,
+	},
+	{
 		.compatible = "sunplus,sp7350-card",
 		.data = &sp_sd_654_compat,
 	},
 	{
 		.compatible = "sunplus,sp7350-sdio",
 		.data = &sp_sdio_654_compat,
+	},
+	{
+		.compatible = "sunplus,sp7350-1v8-sdio",
+		.data = &sp_sdio_1v8_654_compat,
 	},
 	{/* sentinel */}
 };
@@ -1366,7 +1389,9 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 
 
 	dev_mode = of_device_get_match_data(&pdev->dev);
-	spsdc_select_mode(host, dev_mode->mode);
+	host->vol_mode = dev_mode->vol_mode;
+	host->mode = dev_mode->mode;
+	spsdc_select_mode(host);
 	host->soc_clk = dev_mode->source_clk;
 
 	mmc->caps |= MMC_CAP_4_BIT_DATA  | MMC_CAP_SD_HIGHSPEED
