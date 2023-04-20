@@ -24,25 +24,25 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 				case SNDRV_PCM_FORMAT_S24_3LE:
 					regs0->aud_ext_dac_xck_cfg	= 0x6803;
 					regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
-					regs0->pcm_cfg	   		= 0x4d; //tx0
-					regs0->ext_adc_cfg		= 0x4d; //rx0
+					regs0->pcm_cfg	   		= 0x5d; //tx0
+					regs0->ext_adc_cfg		= 0x5d; //rx0
 					break;
 				case SNDRV_PCM_FORMAT_S16_LE:
 				default:
 					regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 48kHz = 147Mhz/3/4/8/(32)
-					regs0->pcm_cfg	   		= 0x61; //tx0
-					regs0->ext_adc_cfg		= 0x61; //rx0
+					regs0->pcm_cfg	   		= 0x71; //tx0
+					regs0->ext_adc_cfg		= 0x71; //rx0
 					break;
 			}
 		} else if(pll_id == SP_I2S_1) {
 			switch (source) {
 				case SNDRV_PCM_FORMAT_S24_3LE:
-					regs0->int_adc_dac_cfg		= 0x004d004d;
+					regs0->int_adc_dac_cfg		= 0x005d005d;
 					regs0->aud_int_dac_xck_cfg 	= 0x6887;
 					break;
 				case SNDRV_PCM_FORMAT_S16_LE:
 				default:
-					regs0->int_adc_dac_cfg		= 0x00610061;
+					regs0->int_adc_dac_cfg		= 0x00710071;
 					regs0->aud_int_dac_xck_cfg 	= 0x688f;
 					break;
 			}
@@ -52,14 +52,14 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 			switch (source) {
 				case SNDRV_PCM_FORMAT_S24_3LE:
 					regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-					regs0->hdmi_tx_i2s_cfg 		= 0x4d; //tx2
-					regs0->hdmi_rx_i2s_cfg 		= 0x4d; //rx2
+					regs0->hdmi_tx_i2s_cfg 		= 0x5d; //tx2
+					regs0->hdmi_rx_i2s_cfg 		= 0x5d; //rx2
 					break;
 				case SNDRV_PCM_FORMAT_S16_LE:
 				default:
 					regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
-					regs0->hdmi_tx_i2s_cfg 		= 0x61; //tx2
-					regs0->hdmi_rx_i2s_cfg 		= 0x61; //rx2
+					regs0->hdmi_tx_i2s_cfg 		= 0x71; //tx2
+					regs0->hdmi_rx_i2s_cfg 		= 0x71; //rx2
 					break;
 			}
 		} else if(pll_id == SP_SPDIF) {
