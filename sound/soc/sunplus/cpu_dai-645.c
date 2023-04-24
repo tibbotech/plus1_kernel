@@ -22,7 +22,6 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 		if (pll_id == SP_I2S_0) {
 			switch (source) {
 				case SNDRV_PCM_FORMAT_S24_3LE:
-					regs0->aud_ext_dac_xck_cfg	= 0x6803;
 					regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
 					regs0->pcm_cfg	   		= 0x5d; //tx0
 					regs0->ext_adc_cfg		= 0x5d; //rx0

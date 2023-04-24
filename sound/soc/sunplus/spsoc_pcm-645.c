@@ -227,7 +227,7 @@ void hw_test(void)
 {
 	volatile RegisterFile_Audio * regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;
 	unsigned int pcmdata[96], regtemp, regtemp1, regtemp2, regtemp3, regtemp4;
-	int j, val, run_num = 250, run_length = 384;
+	int i, j, val, run_num = 50, run_length = 384;
 	unsigned char *buf;
 	//unsigned char buf[96*4];
 	pcmdata[0] = 0x00000000;
@@ -335,25 +335,25 @@ void hw_test(void)
 	regtemp3 = regs0->hdmi_rx_i2s_cfg;
 	regtemp4 = regs0->int_adc_dac_cfg;
 
-	regs0->pcm_cfg		= 0x24d; //tx0
-	regs0->ext_adc_cfg 	= 0x4d; //rx0
-	regs0->hdmi_tx_i2s_cfg 	= 0x4d; //tx2
-   	regs0->hdmi_rx_i2s_cfg 	= 0x4d; //rx2
-	regs0->int_adc_dac_cfg 	= 0x004d024d; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
+	regs0->pcm_cfg		= 0x71; //tx0
+	regs0->ext_adc_cfg 	= 0x71; //rx0
+	regs0->hdmi_tx_i2s_cfg 	= 0x271; //tx2
+   	regs0->hdmi_rx_i2s_cfg 	= 0x271; //rx2
+	regs0->int_adc_dac_cfg 	= 0x02710271; //rx1 tx1, if RI2S_0 tx1(slave) -> rx0 -> tx2/tx0 0x004d024d
 
-	regs0->aud_ext_dac_xck_cfg  = 0x6883; //PLLA 147M, 2 chs 64 bits  48k = 147M/12(3/4 xck)/4(bck)/64
-	regs0->aud_ext_dac_bck_cfg  = 0x6003;
-	regs0->aud_int_dac_xck_cfg  = 0x6887; //PLLA,
+	regs0->aud_ext_dac_xck_cfg  = 0x6883; //is20 PLLA 147M, 2 chs 64 bits  48k = 147M/12(3/4 xck)/4(bck)/64
+	regs0->aud_ext_dac_bck_cfg  = 0x6007;
+	regs0->aud_int_dac_xck_cfg  = 0x688f; //i2s1
 	regs0->aud_int_dac_bck_cfg  = 0x6001;
-	regs0->aud_hdmi_tx_mclk_cfg = 0x6883; //PLLA,
-	regs0->aud_hdmi_tx_bck_cfg  = 0x6003;
+	regs0->aud_hdmi_tx_mclk_cfg = 0x6883; //i2s2
+	regs0->aud_hdmi_tx_bck_cfg  = 0x6007;
 
    	regs0->aud_audhwya = aud_param.fifoInfo.pcmtx_physAddrBase;
 	regs0->aud_a0_base = 0;
 	regs0->aud_a0_length = DRAM_PCM_BUF_LENGTH;
 
 	regs0->aud_a10_base = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
-	regs0->aud_a16_base = regs0->aud_a16_base + 2 * DRAM_PCM_BUF_LENGTH;
+	regs0->aud_a16_base = regs0->aud_a10_base + 2 * DRAM_PCM_BUF_LENGTH;
 	regs0->aud_a10_length = 2 * DRAM_PCM_BUF_LENGTH;
 	regs0->aud_a16_length = 2 * DRAM_PCM_BUF_LENGTH;
 
@@ -390,39 +390,65 @@ void hw_test(void)
 			break;
 	}
 	val = run_length * run_num;
-	while ((regs0->aud_a10_cnt < val)) {
+	i = 0;
+	while ((regs0->aud_a10_cnt < val) && (regs0->aud_a16_cnt < val)) {
 		//printk("p aud_a0_cnt 0x%x 0x%x, a10_cnt 0x%x 0x%x\n", regs0->aud_a0_cnt, regs0->aud_a0_ptr, regs0->aud_a10_cnt, regs0->aud_a10_ptr);
+		if ((regs0->aud_a10_cnt == 0) && (regs0->aud_a16_cnt == 0))
+			i++;
+		if (i > val)
+			break;
 	};
 	// test end
 	regs0->aud_fifo_enable &= ~(I2S_P_INC0 | I2S_C_INC1 | I2S_C_INC2);
 	regs0->aud_enable = 0;
 
-	buf = (unsigned char *) aud_param.fifoInfo.mic_virtAddrBase;
 	val -= run_length;
-	for (j = 0; j < val; j++) {
-		//printk("0x%02x%02x%02x%02x\n", *(buf + j * 4 + 3), *(buf + j * 4 + 2), *(buf + j * 4 + 1), *(buf + j * 4));
-		if (memcmp(buf + j, (unsigned char *) pcmdata, run_length) == 0)
-			break;
-	}
-	//printk("j = %d\n", j);
-	if (j < val) {
-		#if 0
-		val = j + run_length;
-		while (j < val) {
-			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
-			j += 4;
+	for (i = 0; i < 2; i++) {
+		if (i == 0) {
+			if (regs0->aud_a16_cnt == 0) {
+				printk("AUDIO I2S1 no connect");
+				continue;
+			}
+			buf = (unsigned char *) aud_param.fifoInfo.mic_virtAddrBase + 2 * DRAM_PCM_BUF_LENGTH;
+		} else {
+			if (regs0->aud_a10_cnt == 0) {
+				printk("AUDIO I2S2 no connect");
+				continue;
+			}
+			buf = (unsigned char *) aud_param.fifoInfo.mic_virtAddrBase;
 		}
-		#endif
-		printk("AUDIO PASS\n");
-	} else {
-		#if 0
-		val += run_length;
-		while (j < val) {
-			printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
-			j += 4;
+
+		for (j = 0; j < val; j++) {
+			//printk("0x%02x%02x%02x%02x\n", *(buf + j * 4 + 3), *(buf + j * 4 + 2), *(buf + j * 4 + 1), *(buf + j * 4));
+			if (memcmp(buf + j, (unsigned char *) pcmdata, run_length) == 0)
+				break;
 		}
-		#endif
-		printk("AUDIO FAIL\n");
+		//printk("j = %d\n", j);
+		if (j < val) {
+			#if 0
+			val = j + run_length;
+			while (j < val) {
+				printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
+				j += 4;
+			}
+			#endif
+			if (i == 0)
+				printk("AUDIO I2S0->I2S1 PASS\n");
+			else
+				printk("AUDIO I2S0->I2S2 PASS\n");
+		} else {
+			#if 0
+			val += run_length;
+			while (j < val) {
+				printk("0x%02x%02x%02x%02x\n", *(buf + j + 3), *(buf + j + 2), *(buf + j + 1), *(buf + j));
+				j += 4;
+			}
+			#endif
+			if (i == 0)
+				printk("AUDIO I2S0->I2S1 FAIL\n");
+			else
+				printk("AUDIO I2S0->I2S2 FAIL\n");
+		}
 	}
 
 	regs0->pcm_cfg		= regtemp;

@@ -22,6 +22,10 @@
 #define RBUS_WDT_RST		BIT(0)
 #define STC_WDT_RST		BIT(4)
 #define MASK_SET(mask)		((mask) | (mask << 16))
+/* Mode selection */
+#define WDT_MODE_INTR		0x0
+#define WDT_MODE_RST		0x2
+#define WDT_MODE_INTR_RST	0x3
 #endif
 
 #define WDT_STOP		0x3877
@@ -65,6 +69,7 @@ struct sp_wdt_priv {
 #endif
 	struct clk *clk;
 	struct reset_control *rstc;
+	u32 mode;
 };
 
 static int sp_wdt_restart(struct watchdog_device *wdev,
@@ -165,6 +170,17 @@ static unsigned int sp_wdt_get_timeleft(struct watchdog_device *wdev)
 }
 
 #ifdef CONFIG_SOC_SP7350
+static int sp_wdt_set_mode(struct watchdog_device *wdev)
+{
+	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
+	void __iomem *mode_sel = priv->mode_sel;
+	u32 val = priv->mode;
+
+	writel(val, mode_sel);
+
+	return 0;
+}
+
 static int sp_wdt_hw_init(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
@@ -276,7 +292,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	priv->base_rst = devm_platform_ioremap_resource(pdev, 2);
 	if (IS_ERR(priv->base_rst))
 		return PTR_ERR(priv->base_rst);
-#if 1
+
 	irq = platform_get_irq_optional(pdev, 0);
 	if (irq > 0) {
 		ret = devm_request_irq(&pdev->dev, irq, sp_wdt_isr, 0, "wdt_bark",
@@ -286,15 +302,17 @@ static int sp_wdt_probe(struct platform_device *pdev)
 
 		priv->wdev.info = &sp_wdt_pt_info;
 		priv->wdev.pretimeout = SP_WDT_DEFAULT_TIMEOUT / 2;
+		priv->mode = WDT_MODE_INTR_RST;
 	} else {
 		if (irq == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
 
 		priv->wdev.info = &sp_wdt_info;
+		priv->mode = WDT_MODE_RST;
 	}
-#endif
-#endif
+#else
 	priv->wdev.info = &sp_wdt_info;
+#endif
 	priv->wdev.ops = &sp_wdt_ops;
 	priv->wdev.timeout = SP_WDT_DEFAULT_TIMEOUT;
 	priv->wdev.max_hw_heartbeat_ms = SP_WDT_MAX_TIMEOUT * 1000;
@@ -303,6 +321,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 
 	watchdog_set_drvdata(&priv->wdev, priv);
 #ifdef CONFIG_SOC_SP7350
+	sp_wdt_set_mode(&priv->wdev);
 	sp_wdt_hw_init(&priv->wdev);
 #endif
 	watchdog_init_timeout(&priv->wdev, timeout, dev);

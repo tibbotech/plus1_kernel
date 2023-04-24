@@ -1425,8 +1425,8 @@
 		reg = <0x0 0xf8005280 0x0 0x80>, <0x0 0xf8005300 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc MIPICSI0>, <&clkc CSIIW0>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI0>, <&rstc RST_CSIIW0>;
@@ -1477,8 +1477,8 @@
 		reg = <0x0 0xf8005380 0x0 0x80>, <0x0 0xf8005400 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc MIPICSI1>, <&clkc CSIIW1>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI1>, <&rstc RST_CSIIW1>;
@@ -1517,8 +1517,8 @@
 		reg = <0x0 0xf8005480 0x0 0x80>, <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc MIPICSI2>, <&clkc CSIIW2>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI2>, <&rstc RST_CSIIW2>;
@@ -1569,8 +1569,8 @@
 		reg = <0x0 0xf8005580 0x0 0x80>, <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "mipicsi", "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc MIPICSI3>, <&clkc CSIIW3>;
 		clock-names = "clk_mipicsi", "clk_csiiw";
 		resets = <&rstc RST_MIPICSI3>, <&rstc RST_CSIIW3>;

@@ -1151,15 +1151,15 @@
 		reg = <0x0 0xf8005580 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 36 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 37 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 36 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 37 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI0_CSIIW0>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <0>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1185,15 +1185,15 @@
 		reg = <0x0 0xf8005600 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 38 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 39 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 38 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI0_CSIIW1>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI0_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <1>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1273,15 +1273,15 @@
 		reg = <0x0 0xf8005680 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 40 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 41 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 40 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 41 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI1_CSIIW0>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <2>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1307,15 +1307,15 @@
 		reg = <0x0 0xf8005700 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 42 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 43 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 42 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 43 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI1_CSIIW1>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI1_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <3>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1411,15 +1411,15 @@
 		reg = <0x0 0xf8005780 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 80 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 81 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 80 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 81 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI23_CSIIW0>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <4>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1445,15 +1445,15 @@
 		reg = <0x0 0xf8005800 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 82 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 83 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 82 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 83 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI23_CSIIW1>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <5>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1535,15 +1535,15 @@
 		reg = <0x0 0xf8005880 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 84 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 85 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 84 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 85 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI23_CSIIW2>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW2>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <6>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1576,15 +1576,15 @@
 		reg = <0x0 0xf8005900 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 86 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 87 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 86 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 87 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI23_CSIIW3>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW3>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <7>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1671,15 +1671,15 @@
 		reg = <0x0 0xf8005980 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 44 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 45 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 44 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 45 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI4_CSIIW0>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI4_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <8>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1705,15 +1705,15 @@
 		reg = <0x0 0xf8005a00 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 46 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 47 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 46 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 47 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI4_CSIIW1>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI4_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <9>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1803,15 +1803,15 @@
 		reg = <0x0 0xf8005a80 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 170 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 171 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI5_CSIIW0>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <10>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1837,15 +1837,15 @@
 		reg = <0x0 0xf8005b00 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 172 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 173 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 173 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI5_CSIIW1>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <11>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1871,15 +1871,15 @@
 		reg = <0x0 0xf8005b80 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 174 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 175 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 174 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI5_CSIIW2>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW2>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <12>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
@@ -1905,15 +1905,15 @@
 		reg = <0x0 0xf8005c00 0x0 0x80>;
 		reg-names = "csiiw";
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 176 IRQ_TYPE_EDGE_RISING>,
-			     <GIC_SPI 177 IRQ_TYPE_EDGE_RISING>;
+		interrupts = <GIC_SPI 176 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 177 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "fs_irq", "fe_irq";
 		clocks = <&clkc VI5_CSIIW3>;
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW3>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <13>;
-		status = "okay";
+		status = "disabled";
 
 		ports {
 			#address-cells = <1>;
