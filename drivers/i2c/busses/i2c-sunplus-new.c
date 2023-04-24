@@ -541,6 +541,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 	unsigned char r_data[SP_I2C_BURST_RDATA_BYTES] = {0};
 	int i = 0;
 
+	if (spi2c_irq->rw_state >= SPI2C_STATE_DMA_WR) {
 	_sp_i2cm_dma_intflag_check(spi2c);
 	if (spi2c_irq->dma_done) {
 		spi2c_irq->ret = SPI2C_SUCCESS;
@@ -552,6 +553,7 @@ static irqreturn_t _sp_i2cm_irqevent_handler(int irq, void *args)
 		spi2c_irq->ret = _sp_i2cm_dma_err_check(spi2c);
 		if(spi2c_irq->ret != 0)
 			return IRQ_HANDLED;
+	}
 	}
 
 	_sp_i2cm_intflag_check(spi2c);
@@ -680,8 +682,8 @@ static int sp_i2cm_write(struct sp_i2c_cmd *spi2c_cmd, struct sp_i2c_dev *spi2c)
 
 	int0 = (SP_I2C_EN0_SCL_HOLD_TOO_LONG_INT | SP_I2C_EN0_EMP_INT | SP_I2C_EN0_DATA_NACK_INT
 		| SP_I2C_EN0_ADDR_NACK_INT | SP_I2C_EN0_DONE_INT);
-	if (spi2c_irq->burst_cnt)
-		int0 |= SP_I2C_EN0_EMP_THOLD_INT;
+	//if (spi2c_irq->burst_cnt)
+	//	int0 |= SP_I2C_EN0_EMP_THOLD_INT;
 
 	spi2c_irq->rw_state = SPI2C_STATE_WR;
 	spi2c_irq->data_total_len = write_cnt;
@@ -1012,6 +1014,9 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	const struct i2c_compatible *dev_mode;
 
+	if (pdev->dev.of_node)
+		pdev->id = of_alias_get_id(pdev->dev.of_node, "i2c");
+
 	spi2c = devm_kzalloc(&pdev->dev, sizeof(*spi2c), GFP_KERNEL);
 	if (!spi2c)
 		return -ENOMEM;
@@ -1083,7 +1088,7 @@ static int sp_i2c_probe(struct platform_device *pdev)
 	init_waitqueue_head(&spi2c->wait);
 
 	p_adap = &spi2c->adap;
-	dev_info(&pdev->dev, "%s%d", "sunplus-i2cm", pdev->id);
+	sprintf(p_adap->name, "%s%d", "sunplus-i2cm", pdev->id);
 	p_adap->algo = &sp_algorithm;
 	p_adap->algo_data = spi2c;
 	p_adap->nr = pdev->id;
