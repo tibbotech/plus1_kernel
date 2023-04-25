@@ -352,6 +352,7 @@ struct spsdc_host {
 	struct clk *clk;
 	struct reset_control *rstc;
 	int mode; /* SD/SDIO/eMMC */
+	int vol_mode; /* SD/SDIO/eMMC */
 	spinlock_t lock; /* controller lock */
 	struct mutex mrq_lock;
 	/* tasklet used to handle error then finish the request */
