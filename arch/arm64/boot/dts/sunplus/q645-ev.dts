@@ -266,6 +266,7 @@
 			method = "smc";
 		};
 	};
+
 	clocks {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -928,8 +929,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
@@ -946,8 +947,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 27 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 28 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 29 IRQ_TYPE_LEVEL_HIGH>;
@@ -964,8 +965,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 108 IRQ_TYPE_LEVEL_HIGH>;
@@ -983,8 +984,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 109 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
@@ -1010,8 +1011,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 112 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 113 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 114 IRQ_TYPE_LEVEL_HIGH>;
@@ -1028,8 +1029,8 @@
 		reg-names = "master", "slave";
 		interrupt-parent = <&gic>;
 		interrupt-names = "dma_w",
-					  "master_risc",
-					  "slave_risc";
+				  "master_risc",
+				  "slave_risc";
 		interrupts = <GIC_SPI 115 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 116 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 117 IRQ_TYPE_LEVEL_HIGH>;
@@ -1122,12 +1123,6 @@
 		therm_calib: therm_calib@14 {
 			reg = <0x14 0x3>;
 		};
-		mac_addr0: mac_addr0@34 {
-			reg = <0x34 0x6>;
-		};
-		mac_addr1: mac_addr1@3a {
-			reg = <0x3a 0x6>;
-		};
 		disc_vol: disc_vol@18 {
 			reg = <0x18 0x2>;
 		};
@@ -1156,7 +1151,7 @@
 		compatible = "simple-framebuffer";
 		memory-region = <&fb_reserve>;
 		width = <320>;      /*1280*/
-		height = <240>;      /*768*/
+		height = <240>;     /*768 */
 		stride = <(320*2)>; /*1280*2*/
 		format = "r5g6b5";
 	};
@@ -1165,8 +1160,7 @@
 		compatible = "arm,mali-midgard";
 		reg = <0x0 0xf8170000 0x0 0x4000>;
 		interrupt-parent = <&gic>;
-		interrupts =
-			     <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
+		interrupts = <GIC_SPI 170 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 171 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 172 IRQ_TYPE_LEVEL_HIGH>;
 		interrupt-names = "JOB", "MMU", "GPU";
@@ -1209,8 +1203,8 @@
 		      <0x0 0x50000000 0x0 0x08000000>,    /* 128MB */
 		      <0x0 0x40000000 0x0 0x10000000>;    /* 256MB */
 		reg-names = "arconnect",
-		            "ev_code_mem",
-		            "ev_shared_mem";
+			    "ev_code_mem",
+			    "ev_shared_mem";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH >; /* IRQ number is 165 */
 		clocks = <&clkc EVDN>;
@@ -1358,7 +1352,7 @@
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8000180 0x0 0x80>, <0x0 0xf8000000 0x0 0x80>,
-						<0x0 0xf8004a80 0x0 0x80>, <0x0 0xf800af00 0x0 0x80>;
+		      <0x0 0xf8004a80 0x0 0x80>, <0x0 0xf800af00 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
@@ -1722,14 +1716,14 @@
 		reg-names = "cpu0_to_cpu2", "cpu2_to_cpu0";
 		interrupt-parent = <&gic>;
 		interrupts =
-			<GIC_SPI 9 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT0 */
-			<GIC_SPI 10 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT1 */
-			<GIC_SPI 13 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT2 */
-			<GIC_SPI 14 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT3 */
-			<GIC_SPI 25 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT4 */
-			<GIC_SPI 26 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT5 */
-			<GIC_SPI 78 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT6 */
-			<GIC_SPI 79 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT7 */
+			<GIC_SPI 9 IRQ_TYPE_EDGE_RISING>,   /* MAILBOX_to_CM4 CPU2_DIRECT_INT0 */
+			<GIC_SPI 10 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT1 */
+			<GIC_SPI 13 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT2 */
+			<GIC_SPI 14 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT3 */
+			<GIC_SPI 25 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT4 */
+			<GIC_SPI 26 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT5 */
+			<GIC_SPI 78 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT6 */
+			<GIC_SPI 79 IRQ_TYPE_EDGE_RISING>,  /* MAILBOX_to_CM4 CPU2_DIRECT_INT7 */
 			<GIC_SPI 118 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT0 */
 			<GIC_SPI 119 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT1 */
 			<GIC_SPI 120 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT2 */
@@ -1934,29 +1928,37 @@
 
 #ifdef IMX219_IN0 /* Add imx219 subnode in i2cm0 */
 		camera_0_pins: pinmux_camera_0-pins {
-			sunplus,pins = < SPPCTL_IOPAD(71, SPPCTL_PCTL_G_GPIO, 0, 0)
-							 SPPCTL_IOPAD(72, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+			sunplus,pins = <
+				SPPCTL_IOPAD(71, SPPCTL_PCTL_G_GPIO, 0, 0)
+				SPPCTL_IOPAD(72, SPPCTL_PCTL_G_GPIO, 0, 0)
+			>;
 		};
 #endif
 
 #ifdef IMX219_IN1 /* Add imx219 subnode in i2cm1 */
 		camera_1_pins: pinmux_camera_1-pins {
-			sunplus,pins = < SPPCTL_IOPAD(73, SPPCTL_PCTL_G_GPIO, 0, 0)
-							 SPPCTL_IOPAD(74, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+			sunplus,pins = <
+				SPPCTL_IOPAD(73, SPPCTL_PCTL_G_GPIO, 0, 0)
+				SPPCTL_IOPAD(74, SPPCTL_PCTL_G_GPIO, 0, 0)
+			>;
 		};
 #endif
 
 #ifdef IMX219_IN2 /* Add imx219 subnode in i2cm2 */
 		camera_2_pins: pinmux_camera_2-pins {
-			sunplus,pins = < SPPCTL_IOPAD(77, SPPCTL_PCTL_G_GPIO, 0, 0)
-							 SPPCTL_IOPAD(78, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+			sunplus,pins = <
+				SPPCTL_IOPAD(77, SPPCTL_PCTL_G_GPIO, 0, 0)
+				SPPCTL_IOPAD(78, SPPCTL_PCTL_G_GPIO, 0, 0)
+			>;
 		};
 #endif
 
 #ifdef IMX219_IN3 /* Add imx219 subnode in i2cm3 */
 		camera_3_pins: pinmux_camera_3-pins {
-			sunplus,pins = < SPPCTL_IOPAD(79, SPPCTL_PCTL_G_GPIO, 0, 0)
-							 SPPCTL_IOPAD(80, SPPCTL_PCTL_G_GPIO, 0, 0) >;
+			sunplus,pins = <
+				SPPCTL_IOPAD(79, SPPCTL_PCTL_G_GPIO, 0, 0)
+				SPPCTL_IOPAD(80, SPPCTL_PCTL_G_GPIO, 0, 0)
+			>;
 		};
 #endif
 

@@ -130,12 +130,14 @@
 			no-map;
 		};
 	};
+
 	firmware {
 		optee {
 			compatible = "linaro,optee-tz";
 			method = "smc";
 		};
 	};
+
 	clocks {
 		#address-cells = <2>;
 		#size-cells = <2>;
@@ -238,7 +240,7 @@
 	psci {
 		compatible = "arm,psci-0.2";
 		method = "smc";
-    };
+	};
 
 	arm-pmu {
 		compatible = "arm,cortex-a55-pmu", "arm,armv8-pmuv3";
@@ -296,6 +298,7 @@
 		which-uart = <1>;
 	};
 #endif
+
 #ifdef ENABLE_DMATX2
 	uartdmatx2: serial@sp_uartdmatx2 {
 		compatible = "sunplus,sp7350-uart";
@@ -304,6 +307,7 @@
 		which-uart = <2>;
 	};
 #endif
+
 #ifdef ENABLE_DMATX3
 	uartdmatx3: serial@sp_uartdmatx3 {
 		compatible = "sunplus,sp7350-uart";
@@ -312,6 +316,7 @@
 		which-uart = <3>;
 	};
 #endif
+
 #ifdef ENABLE_DMATX6
 	uartdmatx6: serial@sp_uartdmatx6 {
 		compatible = "sunplus,sp7350-uart";
@@ -320,6 +325,7 @@
 		which-uart = <6>;
 	};
 #endif
+
 #ifdef ENABLE_DMATX7
 	uartdmatx7: serial@sp_uartdmatx7 {
 		compatible = "sunplus,sp7350-uart";
@@ -458,7 +464,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master0_pins>;
 		dmas = <&ahbdma1 0 0 0>,
-				<&ahbdma1 1 0 0>;
+		       <&ahbdma1 1 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
@@ -481,7 +487,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master1_pins>;
 		dmas = <&ahbdma1 2 0 0>,
-						<&ahbdma1 3 0 0>;
+		       <&ahbdma1 3 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
@@ -504,7 +510,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master2_pins>;
 		dmas = <&ahbdma1 4 0 0>,
-						<&ahbdma1 5 0 0>;
+		       <&ahbdma1 5 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
@@ -527,7 +533,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master3_pins>;
 		dmas = <&ahbdma1 6 0 0>,
-						<&ahbdma1 7 0 0>;
+		       <&ahbdma1 7 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
@@ -550,7 +556,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_master4_pins>;
 		dmas = <&ahbdma1 6 0 0>,
-						<&ahbdma1 7 0 0>;
+		       <&ahbdma1 7 0 0>;
 		dma-names = "rx", "tx";
 		status = "disabled";
 		spi@0 {
@@ -819,7 +825,7 @@
 		snps,dma-masters = <2>;
 		snps,data-width = <4>;
 		snps,block-size = <4096 4096 4096 4096 4096 4096 4096 4096
-									4096 4096 4096 4096 4096 4096 4096 4096>;
+				   4096 4096 4096 4096 4096 4096 4096 4096>;
 		snps,priority = <0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15>;
 		snps,axi-max-burst-len = <16>;
 	};
@@ -890,8 +896,7 @@
 
 	otp0: otp@f8802380 {
 		compatible = "sunplus,sp7350-ocotp";
-		reg = <0x00 0xf8802380 0x00 0x60>, <0x00 0xf8802400 0x00 0x80>,
-				<0x00 0xf8802480 0x00 0x18>;
+		reg = <0x00 0xf8802380 0x00 0x60>, <0x00 0xf8802400 0x00 0x80>, <0x00 0xf8802480 0x00 0x18>;
 		reg-names = "hb_gpio", "otprx", "otp_key";
 		clocks = <&clkc OTPRX>;
 		resets = <&rstc RST_OTPRX>;
@@ -1015,8 +1020,8 @@
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8800200 0x0 0x80>, <0x0 0xf8800000 0x0 0x80>,
-						<0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
-							<0x0 0xf8802380 0x0 0x80>;
+		      <0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
+		      <0x0 0xf8802380 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
