@@ -66,7 +66,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 	struct resource *res;
 	struct device_node *np = pdev->dev.of_node;
 	struct sunplus_audio_base *spauddata;
-	int err;
+	int err = 0;
 
 	AUD_INFO("%s IN %s\n", __func__, dev_name(&pdev->dev));
 
@@ -142,15 +142,15 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return PTR_ERR(spauddata->plla_clocken);
 	}
 
-	err = clk_set_rate(spauddata->plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz, //driver/clk-sp-q628.c
+	err = clk_set_rate(spauddata->plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz,
 	if (err) {
-		dev_err(&pdev->dev, "enable clock 2 set rate false.\n");
+		dev_err(&pdev->dev, "plla set rate false.\n");
 		return err;
 	}
 
 	err = clk_prepare_enable(spauddata->plla_clocken);
 	if (err) {
-		dev_err(&pdev->dev, "enable clock 2 false.\n");
+		dev_err(&pdev->dev, "enable plla false.\n");
 		return err;
 	}
 	platform_set_drvdata(pdev, spauddata);

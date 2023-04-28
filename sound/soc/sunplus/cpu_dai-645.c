@@ -5,155 +5,214 @@
  *
 */
 #include <sound/pcm_params.h>
+#include <linux/clk.h>
 #include "aud_hw.h"
 #include "spsoc_pcm-645.h"
 #include "spsoc_util-645.h"
 
 void __iomem *i2saudio_base;
+struct clk *cpudai_plla;
 #define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
 void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 {
+	static int pre_plla;
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
+	int err = 0;
 
+	if (SAMPLE_RATE == 44100) {
+		if (pre_plla != 135475200) {
+			err = clk_set_rate(cpudai_plla, 135475200);
+			pre_plla = 135475200;
+		}
+	} else if (SAMPLE_RATE != 0){
+		if (pre_plla != 147456000) {
+			err = clk_set_rate(cpudai_plla, 147456000);
+			pre_plla = 147456000;
+		}
+	}
+	if (err)
+		AUD_INFO("%s IN, plla set rate false %d\n", __func__, pre_plla);
+
+	if (source == SNDRV_PCM_FORMAT_S24_3LE) {
+		if (pll_id == SP_I2S_0) {
+			regs0->pcm_cfg	   		= 0x5d; //tx0
+			regs0->ext_adc_cfg		= 0x5d; //rx0
+		} else if (pll_id == SP_I2S_1) {
+			regs0->int_adc_dac_cfg		= 0x005d005d;
+		} else if (pll_id == SP_I2S_2) {
+			regs0->hdmi_tx_i2s_cfg 		= 0x5d; //tx2
+			regs0->hdmi_rx_i2s_cfg 		= 0x5d; //rx2
+		}// else {}
+	} else { //SNDRV_PCM_FORMAT_S16_LE
+		if (pll_id == SP_I2S_0) {
+			regs0->pcm_cfg	   		= 0x71; //tx0
+			regs0->ext_adc_cfg		= 0x71; //rx0
+		} else if (pll_id == SP_I2S_1) {
+			regs0->int_adc_dac_cfg		= 0x00710071;
+		} else if (pll_id == SP_I2S_2) {
+			regs0->hdmi_tx_i2s_cfg 		= 0x71; //tx2
+			regs0->hdmi_rx_i2s_cfg 		= 0x71; //rx2
+		}// else {}
+	}
 	// 147M	Setting
 	if((SAMPLE_RATE	== 44100) || (SAMPLE_RATE == 48000)) {
-		regs0->aud_ext_dac_xck_cfg				= 0x6883; //If tx1, tx2 use xck need to set G62.0, xck1 need to set G92.31
+		regs0->aud_ext_dac_xck_cfg			= 0x6883; //If tx1, tx2 use xck need to set G62.0, xck1 need to set G92.31
 		if (pll_id == SP_I2S_0) {
-			switch (source) {
-				case SNDRV_PCM_FORMAT_S24_3LE:
-					regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
-					regs0->pcm_cfg	   		= 0x5d; //tx0
-					regs0->ext_adc_cfg		= 0x5d; //rx0
-					break;
-				case SNDRV_PCM_FORMAT_S16_LE:
-				default:
-					regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 48kHz = 147Mhz/3/4/8/(32)
-					regs0->pcm_cfg	   		= 0x71; //tx0
-					regs0->ext_adc_cfg		= 0x71; //rx0
-					break;
-			}
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 48kHz = 147Mhz/3/4/8/(32)
 		} else if(pll_id == SP_I2S_1) {
-			switch (source) {
-				case SNDRV_PCM_FORMAT_S24_3LE:
-					regs0->int_adc_dac_cfg		= 0x005d005d;
-					regs0->aud_int_dac_xck_cfg 	= 0x6887;
-					break;
-				case SNDRV_PCM_FORMAT_S16_LE:
-				default:
-					regs0->int_adc_dac_cfg		= 0x00710071;
-					regs0->aud_int_dac_xck_cfg 	= 0x688f;
-					break;
-			}
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6887;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x688f;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6883;
-			switch (source) {
-				case SNDRV_PCM_FORMAT_S24_3LE:
-					regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-					regs0->hdmi_tx_i2s_cfg 		= 0x5d; //tx2
-					regs0->hdmi_rx_i2s_cfg 		= 0x5d; //rx2
-					break;
-				case SNDRV_PCM_FORMAT_S16_LE:
-				default:
-					regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
-					regs0->hdmi_tx_i2s_cfg 		= 0x71; //tx2
-					regs0->hdmi_rx_i2s_cfg 		= 0x71; //rx2
-					break;
-			}
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6883; //PLLA.
-			regs0->aud_iec0_bclk_cfg 	= 0x6001; //64FS. 48kHz = 147MHz/3/4/2/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6883;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+		} else { //pll_id == SP_SPDIF)
+			regs0->aud_ext_dac_xck_cfg 		= 0x6883;
+			regs0->aud_iec0_bclk_cfg 		= 0x6001;
 		}
 	} else if ((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000)) {
-		regs0->aud_ext_dac_xck_cfg = 0x6881; //PLLA.
+		regs0->aud_ext_dac_xck_cfg 			= 0x6881;
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 96kHz = 147Mhz/3/2/4/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 96kHz = 147Mhz/3/2/8/(32)
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6883;
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6883;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x6887;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6881;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6881; //PLLA.
-			regs0->aud_iec0_bclk_cfg 	= 0x6001; //64FS. 48kHz = 147MHz/3/4/2/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6881;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+		} else { //pll_id == SP_SPDIF
+			regs0->aud_ext_dac_xck_cfg 		= 0x6881;
+			regs0->aud_iec0_bclk_cfg 		= 0x6001;
 		}
 	} else if ((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
 		regs0->aud_ext_dac_xck_cfg 		= 0x6880; //PLLA.
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/3/4/4/(64)
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 192kHz = 147Mhz/3/1/4/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 192kHz = 147Mhz/3/1/8/(32)
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6881;
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6881;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x6883;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6880;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6883; //PLLA.
-			regs0->aud_iec0_bclk_cfg 	= 0x6001; //128FS. 48kHz = 147MHz/3/4/2/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6880;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+		} else {//pll_id == SP_SPDIF
+			regs0->aud_ext_dac_xck_cfg 		= 0x6883;
+			regs0->aud_iec0_bclk_cfg 		= 0x6001;
 		}
 	} else if (SAMPLE_RATE == 32000) {
-		regs0->aud_ext_dac_xck_cfg 		= 0x6981; //PLLA.
+		regs0->aud_ext_dac_xck_cfg 			= 0x6981;
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/9/2/4/(64)
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 32kHz = 147Mhz/9/2/4/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 32kHz = 147Mhz/9/2/8/(32)
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6883;
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6883;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x6887;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6981;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6981; //PLLA.
-			regs0->aud_iec0_bclk_cfg 	= 0x6003; //64FS. 48kHz = 147MHz/9/2/4/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6981;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+		} else { //pll_id == SP_SPDIF
+			regs0->aud_ext_dac_xck_cfg 		= 0x6981;
+			regs0->aud_iec0_bclk_cfg 		= 0x6003;
 		}
 	} else if (SAMPLE_RATE == 64000) {
-		regs0->aud_ext_dac_xck_cfg 		= 0x6980; //PLLA.
+		regs0->aud_ext_dac_xck_cfg 			= 0x6980;
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 48kHz = 147Mhz/9/4/(64)
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //64FS. 64kHz = 147Mhz/9/1/4/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6007; //32FS. 64kHz = 147Mhz/9/1/8/(32)
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6981;
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6981;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x6983;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6980;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6980; //PLLA.
-			regs0->aud_iec0_bclk_cfg	= 0x6003; //64FS. 48kHz = 147MHz/9/4/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6980;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6007;
+		} else { //pll_id == SP_SPDIF
+			regs0->aud_ext_dac_xck_cfg 		= 0x6980;
+			regs0->aud_iec0_bclk_cfg		= 0x6003;
 		}
 	} else if (SAMPLE_RATE == 128000) {
-		regs0->aud_ext_dac_xck_cfg 		= 0x6980; //PLLA.
+		regs0->aud_ext_dac_xck_cfg 			= 0x6980;
 		if (pll_id == SP_I2S_0) {
-			regs0->aud_ext_dac_bck_cfg 	= 0x6001; //64FS. 128kHz = 147Mhz/9/2/(64)
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_ext_dac_bck_cfg 	= 0x6001; //64FS. 128kHz = 147Mhz/9/1/2/(64)
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_ext_dac_bck_cfg 	= 0x6003; //32FS. 128kHz = 147Mhz/9/1/4/(32)
 		} else if(pll_id == SP_I2S_1) {
-			regs0->aud_int_dac_xck_cfg 	= 0x6980;
-			regs0->aud_int_dac_bck_cfg 	= 0x6001;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_int_dac_xck_cfg 	= 0x6980;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_int_dac_xck_cfg 	= 0x6981;
+
+			regs0->aud_int_dac_bck_cfg 		= 0x6001;
 		} else if(pll_id == SP_I2S_2) {
-			regs0->aud_hdmi_tx_mclk_cfg 	= 0x6980;
-			regs0->aud_hdmi_tx_bck_cfg 	= 0x6001;
-		} else if(pll_id == SP_SPDIF) {
-			regs0->aud_ext_dac_xck_cfg 	= 0x6980; //PLLA.
-			regs0->aud_iec0_bclk_cfg 	= 0x6001; //64FS. 128kHz = 147MHz/9/2/(64)
-		} else {
+			regs0->aud_hdmi_tx_mclk_cfg 		= 0x6980;
+			if (source == SNDRV_PCM_FORMAT_S24_3LE)
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6001;
+			else //SNDRV_PCM_FORMAT_S16_LE
+				regs0->aud_hdmi_tx_bck_cfg 	= 0x6003;
+		} else { //pll_id == SP_SPDIF
+			regs0->aud_ext_dac_xck_cfg 		= 0x6980;
+			regs0->aud_iec0_bclk_cfg 		= 0x6001;
 		}
         } else {
-		regs0->aud_hdmi_tx_mclk_cfg = 0;
-		regs0->aud_ext_adc_xck_cfg  = 0;
-		regs0->aud_ext_dac_xck_cfg  = 0;
-		regs0->aud_int_dac_xck_cfg  = 0;
-		regs0->aud_int_adc_xck_cfg  = 0;
+		regs0->aud_hdmi_tx_mclk_cfg 			= 0;
+		regs0->aud_ext_adc_xck_cfg  			= 0;
+		regs0->aud_ext_dac_xck_cfg  			= 0;
+		regs0->aud_int_dac_xck_cfg  			= 0;
+		regs0->aud_int_adc_xck_cfg  			= 0;
 
-		regs0->aud_hdmi_tx_bck_cfg  = 0;
-		regs0->aud_ext_dac_bck_cfg  = 0;
-		regs0->aud_int_dac_bck_cfg  = 0;
-		regs0->aud_ext_adc_bck_cfg  = 0;
-		regs0->aud_iec0_bclk_cfg    = 0;
-		regs0->aud_iec1_bclk_cfg    = 0;
+		regs0->aud_hdmi_tx_bck_cfg  			= 0;
+		regs0->aud_ext_dac_bck_cfg  			= 0;
+		regs0->aud_int_dac_bck_cfg  			= 0;
+		regs0->aud_ext_adc_bck_cfg  			= 0;
+		regs0->aud_iec0_bclk_cfg    			= 0;
+		regs0->aud_iec1_bclk_cfg   	 		= 0;
         }
 }
 
@@ -286,7 +345,7 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
 
-	AUD_INFO("%s, params=%x\n", __func__, params_format(params));
+	AUD_INFO("%s, params = %x\n", __func__, params_format(params));
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 	      	if (substream->pcm->device == SP_I2S_0) {
@@ -492,6 +551,7 @@ int sunplus_i2s_register(struct device *dev)
 
 	AUD_INFO("%s IN %s\n", __func__, dev_name(dev));
 	i2saudio_base = spauddata->audio_base;
+	cpudai_plla = spauddata->plla_clocken;
 
 	AUDHW_pin_mx();
 	AUDHW_Mixer_Setting(spauddata);
