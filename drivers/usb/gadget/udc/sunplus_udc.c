@@ -183,7 +183,9 @@ static ssize_t udc_ctrl_store(struct device *dev, struct device_attribute *attr,
 	else
 	if (strcmp(attr->attr.name, "udc_ctrl1")==0)
 		baddr = base_addr[1];
-
+	else
+		baddr = base_addr[0];
+		
 	ret = udc_read(UDLCSET, baddr) & SIM_MODE;
 	if (*buffer == 'd') {			/* d:switch uphy to device */
 		pr_info("user switch to device");
@@ -1837,7 +1839,6 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	}
 
 	if (irq_en2_flags & EP3I_IF) {
-		mdelay(1);
 		DEBUG_DBG("IRQ:ep3 in int");
 		udc->reg_write(EP3I_IF, UDLIF);
 		sp_udc_handle_ep(&udc->ep[3], NULL);
@@ -2091,12 +2092,12 @@ static int sp_udc_stop(struct usb_gadget *gadget)
 	DEBUG_DBG(">>> %s...", __func__);
 
 	/* report disconnect */
-	if (udc->driver->disconnect)
-		udc->driver->disconnect(&udc->gadget);
+	// if (udc->driver->disconnect)
+	// 	udc->driver->disconnect(&udc->gadget);
 
-	udc->driver->unbind(&udc->gadget);
-	device_del(&udc->gadget.dev);
+	// udc->driver->unbind(&udc->gadget);
 	udc->driver = NULL;
+	udc->gadget.speed = USB_SPEED_UNKNOWN;
 
 	DEBUG_DBG("<<< %s...", __func__);
 
