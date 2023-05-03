@@ -21,20 +21,17 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	pll_out = params_rate(params);
 	fmt = params_format(params);
 	AUD_INFO("%s IN, pull_out %d fmt %d channels %d\n", __func__, pll_out, fmt, params_channels(params));
-	AUD_INFO("periods %d period_size %d periods_bytes 0x%x\n", __func__, params_periods(params), params_period_size(params), params_period_bytes(params));
+	//AUD_INFO("periods 0x%x period_size 0x%x periods_bytes 0x%x\n", __func__, params_periods(params), params_period_size(params), params_period_bytes(params));
 	AUD_INFO("buffer_size 0x%x buffer_bytes 0x%x\n", params_buffer_size(params), params_buffer_bytes(params));
 
 	ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
 	switch(pll_out)
 	{
-		case 8000:
-		case 16000:
 		case 32000:
 		case 44100:
 		case 48000:
 		case 64000:
 		case 96000:
-		case 128000:
 		case 192000:
 			ret = snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, substream->stream, fmt, pll_out);
 			break;
