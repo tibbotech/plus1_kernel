@@ -157,7 +157,7 @@ void aud_tdm_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
     	  	regs0->tdm_tx_bck_cfg 		= 0x6001; // 48k = 147M/xck/bck/256, (8 channels)
     	  	regs0->aud_ext_dac_xck_cfg	= 0x6883; // The ext_dac_xck/bck need to set to 48k.
     	  	regs0->aud_ext_dac_bck_cfg 	= 0x6003;
-    	} else if ((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000) || (SAMPLE_RATE == 128000)) {
+    	} else if ((SAMPLE_RATE == 88200) || (SAMPLE_RATE == 96000)) {
     		regs0->tdm_tx_xck_cfg 		= 0x6800;
     	  	regs0->tdm_tx_bck_cfg 		= 0x6081;
     	} else if ((SAMPLE_RATE == 176400) || (SAMPLE_RATE == 192000)) {
@@ -500,7 +500,7 @@ static void sp_tdm_init_state(void)
     	regs0->tdmpdm_tx_sel 	= 0x01;
 }
 
-#define AUD_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_LE | SNDRV_PCM_FMTBIT_S24_3LE)
+#define AUD_FORMATS (SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 static struct snd_soc_dai_driver sp_tdm_dai = {
     	.name   = "spsoc-tdm-driver-dai",
     	//.id   = 0,
