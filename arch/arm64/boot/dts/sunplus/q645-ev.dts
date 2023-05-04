@@ -119,10 +119,15 @@
 			no-map;
 		};
 
-		fip_reserve@200000 {
-			reg = <0x0 0x200000 0x0 0x300000>;
-			no-map;
-		};
+		tfa_reserve@200000 {
+                        reg = <0x0 0x200000 0x0 0x100000>;
+                        no-map;
+	        };
+
+		optee_reserve@300000 {
+                        reg = <0x0 0x300000 0x0 0x200000>;
+                        no-map;
+	        };
 
 		/* remoteproc reserve memory: 0x01000000-0x01907fff, total 9M+32K */
 		rproc_0_reserved: rproc@1000000 {

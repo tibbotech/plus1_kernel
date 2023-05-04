@@ -79,11 +79,15 @@
 		#size-cells = <2>;
 		ranges;
 
-		fip_reserve@200000 {
-			reg = <0x0 0x200000 0x0 0x300000>;
-			no-map;
-		};
+                tfa_reserve@200000 {
+                        reg = <0x0 0x200000 0x0 0x100000>;
+                        no-map;
+                };
 
+                optee_reserve@300000 {
+                        reg = <0x0 0x300000 0x0 0x200000>;
+                        no-map;
+                };
 
 		/* warmboot reserve, run address 0x100000+8k, load firmware in rproc */
 		rproc_0_reserved: rproc0@100000 {
