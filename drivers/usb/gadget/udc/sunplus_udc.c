@@ -790,7 +790,9 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *udc, struct sp_ep *ep,
 		DEBUG_DBG(" ******* USB_REQ_GET_DESCRIPTOR ... ");
 		DEBUG_DBG("start get descriptor after bus reset");
 		{
-			u32 DescType = ((crq->wValue) >> 8);
+			u32 DescType;
+			udelay(200);
+			DescType = ((crq->wValue) >> 8);
 
 			if (DescType == 0x1) {
 				if (udc->reg_read(UDLCSET) & CURR_SPEED) {
@@ -824,6 +826,7 @@ static void sp_udc_handle_ep0_idle(struct sp_udc *udc, struct sp_ep *ep,
 
 	case USB_REQ_GET_STATUS:
 		DEBUG_DBG("USB_REQ_GET_STATUS ...");
+		udelay(200);
 
 #ifdef CONFIG_USB_SUNPLUS_OTG
 		if ((crq->bRequestType == 0x80) && (crq->wValue == 0) && (crq->wIndex == 0xf000)
@@ -1772,7 +1775,6 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	if (irq_en2_flags & SUS_IF) {
 		DEBUG_DBG(">>> IRQ: Suspend");
 		DEBUG_DBG("clear  Suspend Event");
-		mdelay(1);
 		udc->reg_write(SUS_IF, UDLIF);
 
 		if (udc->driver) {
@@ -1785,13 +1787,13 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 		}
 
 		udc->gadget.speed = USB_SPEED_UNKNOWN;
-		mdelay(1);
+		udelay(100);
 		DEBUG_DBG("<<< IRQ: Suspend");
 	}
 
 	if (irq_en2_flags & EP0S_IF) {
 		udc->reg_write(EP0S_IF, UDLIF);
-		mdelay(1);
+		udelay(100);
 		DEBUG_DBG("IRQ:EP0S_IF %d, udc->ep0state = %d", udc->reg_read(UDEP0CS), udc->ep0state);
 		if ((udc->reg_read(UDEP0CS) & (EP0_OVLD | EP0_OUT_EMPTY)) ==
 						(EP0_OVLD | EP0_OUT_EMPTY))
@@ -1802,7 +1804,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	}
 
 	if ((irq_en2_flags & EP0I_IF)) {
-		mdelay(1);
+		udelay(100);
 		DEBUG_DBG("IRQ:EP0I_IF %d, udc->ep0state = %d", udc->reg_read(UDEP0CS), udc->ep0state);
 		udc->reg_write(EP0I_IF, UDLIF);
 
@@ -1813,7 +1815,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	}
 
 	if ((irq_en2_flags & EP0O_IF)) {
-		mdelay(1);
+		udelay(100);
 		DEBUG_DBG("IRQ:EP0O_IF %d, udc->ep0state = %d", udc->reg_read(UDEP0CS), udc->ep0state);
 		udc->reg_write(EP0O_IF, UDLIF);
 
@@ -1847,7 +1849,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 #ifdef USE_DMA
 	if (irq_en1_flags & EPB_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep11 DMA");
-		mdelay(1);
+		udelay(10);
 		udc->reg_write(EPB_DMA_IF, UDCIF);
 		ep11_dma_handle(udc);
 		sp_sendto_workqueue(udc, 11);
