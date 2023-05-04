@@ -18,7 +18,7 @@ void __iomem *codecaudio_base;
  *===============================================================*/
 static int aud_dai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	AUD_INFO("%s IN\n", __func__);
+	pr_info("%s IN\n", __func__);
 	return 0;
 }
 
@@ -27,7 +27,7 @@ static int aud_dai_hw_params(struct snd_pcm_substream *substream,
 {
 	int rate = params_rate(params);
 
-	AUD_INFO("%s IN, rate %d\n", __func__, rate);
+	pr_info("%s IN, rate %d\n", __func__, rate);
 	return 0;
 }
 
@@ -247,13 +247,13 @@ static unsigned int audreg_read(struct snd_soc_component *component, unsigned in
 {
 	int val, addr_g, addr_i, addr;
 
-	//AUD_INFO("r*audio_base=%08x\n", audio_base);
+	//pr_info("r*audio_base=%08x\n", audio_base);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i) / 100 - 60;
 	addr = (int)(codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
 	val = (*(volatile unsigned int *)(addr));
 	//SYNCHRONIZE_IO;
-    	//AUD_INFO("*val=%08x\n", val);
+    	//pr_info("*val=%08x\n", val);
 	return val;
 }
 
@@ -261,13 +261,13 @@ static int audreg_write(struct snd_soc_component *component, unsigned int reg,un
 {
 	int  addr_g, addr_i, addr;
 
-	//AUD_INFO("w*audio_base=%08x, val = 0x%x\n", audio_base, value);
+	//pr_info("w*audio_base=%08x, val = 0x%x\n", audio_base, value);
 	addr_i = reg % 100;
 	addr_g = (reg - addr_i) / 100 - 60;
 	addr = (int)(codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
 	(*(volatile unsigned int *)(addr)) = value;
 	//SYNCHRONIZE_IO;
-	//AUD_INFO("val=%08x\n", (*(volatile unsigned int *)(addr)));
+	//pr_info("val=%08x\n", (*(volatile unsigned int *)(addr)));
 	return 0;
 }
 
@@ -291,12 +291,14 @@ void __iomem *codec_get_spaud_data(void)
 	}
 
 	spaudpdev = of_find_device_by_node(np);
-	if (!spaudpdev)
+	if (!spaudpdev) {
 		goto out;
+	}
 
 	spauddata = dev_get_drvdata(&spaudpdev->dev);
-	if (!spauddata)
+	if (!spauddata) {
 		spauddata = ERR_PTR(-EPROBE_DEFER);
+	}
 
 out:
 	of_node_put(np);
@@ -308,9 +310,9 @@ static int aud_codec_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	AUD_INFO("%s IN\n", __func__);
+	dev_info(&pdev->dev, "%s IN\n", __func__);
 	codecaudio_base = codec_get_spaud_data();
-	AUD_INFO("audio_base1=%px\n", codecaudio_base);
+	pr_info("audio_base1=%px\n", codecaudio_base);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud, audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
@@ -330,7 +332,7 @@ MODULE_DEVICE_TABLE(of, sunplus_audio_codec_dt_ids);
 
 static struct platform_driver aud_codec_driver = {
 	.driver	= {
-		.name	= "aud-codec",
+		.name		= "aud-codec",
 		//.owner	= THIS_MODULE,
 		.of_match_table	= of_match_ptr(sunplus_audio_codec_dt_ids),
 	},

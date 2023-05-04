@@ -129,7 +129,7 @@
 			no-map;
 		};
 		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
-		npu_reserver: npu_reserver@68000000 {
+		npu_reserve: npu_reserve@68000000 {
 			reg = <0x0 0x68000000 0x0 0x8000000>;
 			no-map;
 		};
@@ -1986,7 +1986,7 @@
 	galcore: galcore@f8140000 {
 		compatible = "vicore,galcore";
 		dev_name = "galcore";
-		memory-region = <&npu_reserver>;
+		memory-region = <&npu_reserve>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
 		reg = <0x0 0xf8140000 0x0 0x20000>;

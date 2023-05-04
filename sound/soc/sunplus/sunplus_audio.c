@@ -68,11 +68,11 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 	struct sunplus_audio_base *spauddata;
 	int err = 0;
 
-	AUD_INFO("%s IN %s\n", __func__, dev_name(&pdev->dev));
-
+	dev_info(&pdev->dev, "%s IN", __func__);
 	spauddata = devm_kzalloc(&pdev->dev, sizeof(*spauddata), GFP_KERNEL);
-	if (!spauddata)
+	if (!spauddata) {
 		return -ENOMEM;
+	}
 
 	if (!np) {
 		dev_err(&pdev->dev, "invalid devicetree node\n");
@@ -95,8 +95,8 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "mapping resource memory 0.\n");
 		return PTR_ERR(spauddata->audio_base);
 	}
-	//AUD_INFO("start=%zx end=%zx\n", res->start, res->end);
-	AUD_INFO("audio_base=%px\n", spauddata->audio_base);
+	//pr_info("start=%zx end=%zx\n", res->start, res->end);
+	dev_info(&pdev->dev, "audio_base=%px\n", spauddata->audio_base);
 	//clock enable
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
 	spauddata->peri0_clocken = devm_clk_get(&pdev->dev, "peri0");
@@ -129,11 +129,13 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return PTR_ERR(spauddata->clk_rst);
 	}
 	err = reset_control_assert(spauddata->clk_rst);
-	if (err)
+	if (err) {
 		dev_err(&pdev->dev, "reset assert fail\n");
+	}
 	err = reset_control_deassert(spauddata->clk_rst);
-	if (err)
+	if (err) {
 		dev_err(&pdev->dev, "reset deassert fail\n");
+	}
 #endif
 	//plla setting
 	spauddata->plla_clocken = devm_clk_get(&pdev->dev, "pll_a");
@@ -142,7 +144,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return PTR_ERR(spauddata->plla_clocken);
 	}
 
-	err = clk_set_rate(spauddata->plla_clocken, 147456000);//135475200, 147456000, 196608000 Hz,
+	err = clk_set_rate(spauddata->plla_clocken, 147456000); //135475200, 147456000, 196608000 Hz,
 	if (err) {
 		dev_err(&pdev->dev, "plla set rate false.\n");
 		return err;
@@ -166,7 +168,7 @@ static int sunplus_audio_remove(struct platform_device *pdev)
 {
 	struct sunplus_audio_base *spauddata = platform_get_drvdata(pdev);
 
-	AUD_INFO("%s IN\n", __func__);
+	dev_dbg(&pdev->dev, "%s IN\n", __func__);
 	//audio_base = NULL;
 	snd_soc_unregister_component(&pdev->dev);
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)

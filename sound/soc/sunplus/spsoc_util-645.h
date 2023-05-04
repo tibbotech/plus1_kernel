@@ -35,16 +35,6 @@ extern void __iomem *audio_base;
 
 #define AUD_RATES_C	(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000)
 
-
-/**********************************************************
- *
- **********************************************************/
-#define AUD_ERR(fmt, arg ...)		printk(KERN_ERR "[alsa] " fmt, ## arg)
-#define AUD_WARNING(fmt, arg ...)	printk(KERN_WARNING "[alsa] " fmt, ## arg)
-#define AUD_NOTICE(fmt, arg ...)	printk(KERN_NOTICE "[alsa] " fmt, ## arg)
-#define AUD_INFO(fmt, arg ...)	    	printk(KERN_INFO "[alsa] " fmt, ## arg)//((void)0)
-#define AUD_DEBUG(fmt, arg ...)    	((void)0)//printk(KERN_DEBUG "[alsa] " fmt, ##arg)
-
 /**********************************************************
  * 			Register Definition
  **********************************************************/

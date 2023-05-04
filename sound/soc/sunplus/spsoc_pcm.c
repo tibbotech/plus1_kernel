@@ -58,31 +58,32 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 
 	if (atomic_read(&iprtd->running)) {
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-			if (substream->pcm->device == SP_SPDIF)
+			if (substream->pcm->device == SP_SPDIF) {
 				iprtd->offset = regs0->aud_a5_ptr & 0xfffffc;
-			else if (substream->pcm->device == SP_SPDIFHDMI)
+			} else if (substream->pcm->device == SP_SPDIFHDMI) {
 				iprtd->offset = regs0->aud_a6_ptr & 0xfffffc;
-			else
+			} else {
                 		iprtd->offset = regs0->aud_a0_ptr & 0xfffffc;
-            		AUD_DEBUG("P:?_ptr=0x%x\n", iprtd->offset);
+                	}
+            		pr_debug("P:?_ptr=0x%x\n", iprtd->offset);
 
             		if (iprtd->offset < iprtd->fifosize_from_user) {
             			if(iprtd->usemmap_flag == 1) {
             				regs0->aud_delta_0 = iprtd->period;
             	  	  		if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)) {
-            	  	  	  		while((regs0->aud_inc_0 & I2S_P_INC0) != 0);
+            	  	  	  		while((regs0->aud_inc_0 & I2S_P_INC0) != 0) {};
             	  	  	  		regs0->aud_inc_0 = I2S_P_INC0;
             	  	  		} else if(substream->pcm->device == SP_TDM) {
-            	  	      			while((regs0->aud_inc_0 & TDM_P_INC0) != 0);
+            	  	      			while((regs0->aud_inc_0 & TDM_P_INC0) != 0) {};
             	  	      			regs0->aud_inc_0 = TDM_P_INC0;
             	  	  		} else if(substream->pcm->device == SP_SPDIF) {
-						//AUD_DEBUG("***%s IN, aud_a5_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
+						//pr_debug("***%s IN, aud_a5_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
 			        		while((regs0->aud_inc_0 & SPDIF_P_INC0) != 0) {};
 			        		//while(regs0->aud_a5_cnt != 0){};
 			        		regs0->aud_inc_0 = SPDIF_P_INC0;
 					} else {
-						if(substream->pcm->device == SP_SPDIFHDMI){
-							//AUD_DEBUG("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
+						if(substream->pcm->device == SP_SPDIFHDMI) {
+							//pr_debug("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
 			        			while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0) {};
 			        			//while(regs0->aud_a6_cnt != 0){};
 			        			regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
@@ -98,16 +99,16 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
             	  	  			} else if(substream->pcm->device == SP_TDM) {
             	  	      				while((regs0->aud_inc_0 & TDM_P_INC0) != 0);
             	  	      				regs0->aud_inc_0 = TDM_P_INC0;
-            	  	  			} else {
             	  	  			}
 					#endif
-                    				//AUD_DEBUG("*** size 0x%x periods 0x%x aud_a0_ptr 0x%x\n", iprtd->size, iprtd->period, regs0->aud_a0_ptr);
+                    				//pr_debug("*** size 0x%x periods 0x%x aud_a0_ptr 0x%x\n", iprtd->size, iprtd->period, regs0->aud_a0_ptr);
                 			} else {
                 	  			appl_ofs = (iprtd->offset + (iprtd->period >> 2)) / iprtd->period;
-                    				if (appl_ofs < iprtd->periods)
+                    				if (appl_ofs < iprtd->periods) {
             	          				iprtd->offset = iprtd->period * appl_ofs;
-            	      				else
+            	      				} else {
             	      	  				iprtd->offset = 0;//iprtd->period * appl_ofs;
+            	      	  			}
             	  			}
             	  		}
             		}
@@ -116,38 +117,40 @@ static void hrtimer_pcm_tasklet(unsigned long priv)
 
 		        //if (delta >= iprtd->period )  //ending normal
 		        //{
-			        //AUD_INFO("a0_ptr=0x%08x\n",iprtd->offset);
+			        //pr_info("a0_ptr=0x%08x\n",iprtd->offset);
 				iprtd->last_offset = iprtd->offset;
 				snd_pcm_period_elapsed(substream);
 		        //}
 		} else {
-		    	if (substream->pcm->device == SP_I2S) // i2s
+		    	if (substream->pcm->device == SP_I2S) { // i2s
 		    	  	iprtd->offset = regs0->aud_a16_ptr & 0xfffffc;
-		    	else if (substream->pcm->device == SP_SPDIF) // spdif0
+		    	} else if (substream->pcm->device == SP_SPDIF) { // spdif0
 		    	  	iprtd->offset = regs0->aud_a13_ptr & 0xfffffc;
-		    	else // tdm, pdm
+		    	} else { // tdm, pdm
 		    	  	iprtd->offset = regs0->aud_a22_ptr & 0xfffffc;
+			}
+			pr_debug("C:?_ptr=0x%x\n",iprtd->offset);
 
-			AUD_DEBUG("C:?_ptr=0x%x\n",iprtd->offset);
-
-            		if (iprtd->offset >= iprtd->last_offset)
+            		if (iprtd->offset >= iprtd->last_offset) {
 			        delta = iprtd->offset - iprtd->last_offset;
-		        else
+		        } else {
 			        delta = iprtd->size + iprtd->offset- iprtd->last_offset;
+			}
 
             		if (delta >= iprtd->period ) { //ending normal
             			if(iprtd->usemmap_flag == 1) {
             				regs0->aud_delta_0 = iprtd->period;//prtd->offset;
-        				if(substream->pcm->device == SP_I2S)
+        				if(substream->pcm->device == SP_I2S) {
             					regs0->aud_inc_0 = I2S_C_INC0;
-            				else if(substream->pcm->device == SP_SPDIF)
+            				} else if(substream->pcm->device == SP_SPDIF) {
         	  				regs0->aud_inc_0 = SPDIF_C_INC0;
-        				else
+        				} else {
             					regs0->aud_inc_0 = TDMPDM_C_INC0;
+            				}
             			}
 			        iprtd->last_offset = iprtd->offset;
 			        snd_pcm_period_elapsed(substream);
-			        AUD_DEBUG("C:?_ptr=0x%x \n",iprtd->offset);
+			        pr_debug("C:?_ptr=0x%x \n",iprtd->offset);
 		        }
 		}
 	}
@@ -157,10 +160,10 @@ static enum hrtimer_restart snd_hrtimer_callback(struct hrtimer *hrt)
 {
 	struct spsoc_runtime_data *iprtd = container_of(hrt, struct spsoc_runtime_data, hrt);
 
-	AUD_DEBUG("%s \n", __func__);
+	pr_debug("%s \n", __func__);
 	//if (!atomic_read(&iprtd->running))
     	if (atomic_read(&iprtd->running) == 2) {
-		AUD_INFO("cancel htrimer !!!\n");
+		pr_info("cancel htrimer !!!\n");
         	atomic_set(&iprtd->running, 0);
 		return HRTIMER_NORESTART;
 	}
@@ -196,12 +199,11 @@ static int spsoc_pcm_preallocate_dma_buffer(struct snd_pcm *pcm, int stream)
 
 	buf->bytes = DRAM_PCM_BUF_LENGTH;
 	if (!buf->area) {
-		pr_err("Failed to allocate dma memory\n");
-		pr_err("Please increase uncached DMA memory region\n");
+		pr_err("Failed to allocate dma memory, please increase uncached DMA memory region\n");
 		return -ENOMEM;
 	}
 
-	AUD_INFO("spsoc-pcm:"
+	pr_info("spsoc-pcm:"
 		 "preallocate_dma_buffer: area=%px, addr=%lx, size=%ld\n",
 		 (void *) buf->area,
 		 (void *) buf->addr,
@@ -216,10 +218,10 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 	struct spsoc_runtime_data *prtd;
 	int ret = 0;
 
-	AUD_INFO("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
+	pr_info("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
 
         if (substream->pcm->device > SP_OTHER) {
-        	AUD_INFO("wrong device num: %d\n", substream->pcm->device);
+        	pr_err("wrong device num: %d\n", substream->pcm->device);
         	goto out;
         }
 
@@ -227,14 +229,15 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 
 	/* Ensure that buffer size is a multiple of period size */
 	ret = snd_pcm_hw_constraint_integer(runtime, SNDRV_PCM_HW_PARAM_PERIODS);
-	if (ret < 0)
+	if (ret < 0) {
 		goto out;
+	}
 
 	snd_pcm_hw_constraint_step(runtime, 0, SNDRV_PCM_HW_PARAM_BUFFER_BYTES, 128);
 
 	prtd = kzalloc(sizeof(*prtd), GFP_KERNEL);
 	if (prtd == NULL) {
-		AUD_ERR(" memory get error(spsoc_runtime_data)\n");
+		pr_err(" memory get error(spsoc_runtime_data)\n");
 		ret = -ENOMEM;
 		goto out;
 	}
@@ -245,7 +248,7 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
  	hrtimer_init(&prtd->hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
  	prtd->hrt.function = snd_hrtimer_callback;
 	tasklet_init(&prtd->tasklet, hrtimer_pcm_tasklet,(unsigned long)prtd);
-	AUD_INFO("%s OUT \n",__func__ );
+	pr_info("%s OUT \n",__func__ );
 out:
     	return ret;
 }
@@ -254,7 +257,7 @@ static int spsoc_pcm_close(struct snd_soc_component *component, struct snd_pcm_s
 {
 	struct spsoc_runtime_data *prtd = substream->runtime->private_data;
 
-	AUD_INFO("%s IN\n", __func__);
+	pr_info("%s IN\n", __func__);
 	hrtimer_cancel(&prtd->hrt);
 	kfree(prtd);
 	return 0;
@@ -272,8 +275,8 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
         int reserve_buf;
 
-	AUD_INFO("%s IN, params_rate=%d\n", __func__, params_rate(params));
-	AUD_INFO("%s, area=0x%px, addr=0x%08x, bytes=0x%x\n", __func__, substream->dma_buffer.area, substream->dma_buffer.addr, substream->dma_buffer.bytes);
+	pr_info("%s IN, params_rate=%d\n", __func__, params_rate(params));
+	pr_info("%s, area=0x%px, addr=0x%08x, bytes=0x%x\n", __func__, substream->dma_buffer.area, substream->dma_buffer.addr, substream->dma_buffer.bytes);
 	snd_pcm_set_runtime_buffer(substream, &substream->dma_buffer);
 
 	prtd->usemmap_flag = 0;
@@ -300,14 +303,14 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
     		reserve_buf = 4800000 / params_rate(params); //100*48000/rate
     	  	prtd->poll_time_ns = div_u64((u64)(params_period_size(params) - reserve_buf) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
         	//prtd->poll_time_ns =div_u64((u64)params_period_size(params) * 1000000000UL +  96000 - 1, 480000);
-	      	AUD_INFO("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d reserve_buf %d poll_time_ns %d\n",prtd->size,prtd->periods,\
+	      	pr_info("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d reserve_buf %d poll_time_ns %d\n",prtd->size,prtd->periods,\
 		          prtd->period, params_period_size(params), reserve_buf, prtd->poll_time_ns);
     	  	switch (substream->pcm->device) {
 		        case SP_TDM:
 		            	regs0->aud_a20_length = prtd->fifosize_from_user;
-		            	AUD_INFO("TDM P\n");
+		            	pr_info("TDM P\n");
 		        case SP_I2SHDMI:
-		        	AUD_INFO("HDMI ");
+		        	pr_info("HDMI ");
 			case SP_I2S:
 			     	regs0->aud_a0_base = 0;
                 		regs0->aud_a1_base = regs0->aud_a0_base + DRAM_PCM_BUF_LENGTH;
@@ -322,25 +325,25 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
                 		regs0->aud_a2_length = prtd->fifosize_from_user;
 		            	regs0->aud_a3_length = prtd->fifosize_from_user;
 		            	regs0->aud_a4_length = prtd->fifosize_from_user;
-		            	AUD_INFO("I2S P aud_base 0x%x\n", regs0->aud_a0_base);
+		            	pr_info("I2S P aud_base 0x%x\n", regs0->aud_a0_base);
                 		break;
             		case SP_SPDIF:
             	  		regs0->aud_a5_base = 0;
             	  		regs0->aud_a5_length = prtd->fifosize_from_user;
-            	  		AUD_INFO("SPDIF P aud_base 0x%x\n", regs0->aud_a5_base);
+            	  		pr_info("SPDIF P aud_base 0x%x\n", regs0->aud_a5_base);
             	  		break;
             	  	case SP_SPDIFHDMI:
             	  		regs0->aud_a6_base = 0;
             	  		regs0->aud_a6_length = prtd->fifosize_from_user;
-            	  		AUD_INFO("HDMI SPDIF P aud_base 0x%x\n", regs0->aud_a6_base);
+            	  		pr_info("HDMI SPDIF P aud_base 0x%x\n", regs0->aud_a6_base);
             	  		break;
             		default:
-			      	AUD_INFO("###Wrong device no.\n");
+			      	pr_err("###Wrong device no.\n");
 			      	break;
 		}
     	} else {
     		prtd->poll_time_ns = div_u64((u64)(params_period_size(params)) * 1000000000UL +  params_rate(params) - 1, params_rate(params));
-		AUD_INFO("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d poll_time_ns 0x%x\n",prtd->size,prtd->periods,\
+		pr_info("prtd->size=0x%lx, prtd->periods=%d, prtd->period=%d\n, period_size=%d poll_time_ns 0x%x\n",prtd->size,prtd->periods,\
 		  	 prtd->period, params_period_size(params), prtd->poll_time_ns);
         	switch (substream->pcm->device) {
         		case SP_I2S:
@@ -352,7 +355,7 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
                 		regs0->aud_a17_length = prtd->fifosize_from_user;
                 		regs0->aud_a18_length = prtd->fifosize_from_user;
 		            	regs0->aud_a21_length = prtd->fifosize_from_user;
-		            	AUD_INFO("I2S C aud_base 0x%x\n", regs0->aud_a16_base);
+		            	pr_info("I2S C aud_base 0x%x\n", regs0->aud_a16_base);
         		    	break;
         	  	case SP_TDM:
         	  	case SP_PDM:
@@ -364,15 +367,15 @@ static int spsoc_pcm_hw_params(struct snd_soc_component *component, struct snd_p
                 		regs0->aud_a23_length = prtd->fifosize_from_user;
                 		regs0->aud_a24_length = prtd->fifosize_from_user;
 		            	regs0->aud_a25_length = prtd->fifosize_from_user;
-		            	AUD_INFO("TDM/PDM C aud_base 0x%x\n", regs0->aud_a22_base);
+		            	pr_info("TDM/PDM C aud_base 0x%x\n", regs0->aud_a22_base);
 		            	break;
 		        case SP_SPDIF:
 		        	regs0->aud_a13_base = DRAM_PCM_BUF_LENGTH * NUM_FIFO_TX;
 		        	regs0->aud_a13_length = prtd->fifosize_from_user;
-		        	AUD_INFO("SPDIF C aud_base 0x%x\n", regs0->aud_a13_base);
+		        	pr_info("SPDIF C aud_base 0x%x\n", regs0->aud_a13_base);
 		        	break;
 		       	default:
-	  	  	      	AUD_INFO("###Wrong device no.\n");
+	  	  	      	pr_err("###Wrong device no.\n");
 	  	  	      	break;
 		}
 	}
@@ -391,7 +394,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
     		dma_initial = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX - 1);
     	  	switch (substream->pcm->device) {
-		        case SP_TDM:	// tdm
+		        case SP_TDM: // tdm
 		            	regs0->aud_a20_length 	= 0;
 			case SP_I2S: // i2s
 			case SP_I2SHDMI:
@@ -418,7 +421,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
             	  		regs0->aud_a6_length 	= 0;
             	  		break;
             		default:
-			      	AUD_INFO("###Wrong device no.\n");
+			      	pr_err("###Wrong device no.\n");
 			      	break;
 		}
     	} else {
@@ -450,12 +453,12 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 		        	regs0->aud_a13_length 	= 0;
 		        	break;
 		       	default:
-	  	  	      	AUD_INFO("###Wrong device no.\n");
+	  	  	      	pr_err("###Wrong device no.\n");
 	  	  	      	break;
 		}
 	}
 
-	AUD_INFO("%s IN, stream direction: %d,device=%d\n", __func__, substream->stream,substream->pcm->device);
+	pr_info("%s IN, stream direction: %d,device=%d\n", __func__, substream->stream,substream->pcm->device);
 	return 0;
 }
 
@@ -465,7 +468,7 @@ static int spsoc_pcm_prepare(struct snd_soc_component *component, struct snd_pcm
 	struct spsoc_runtime_data *iprtd = runtime->private_data;
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
-	AUD_INFO("%s IN, buffer_size=0x%lx\n", __func__, runtime->buffer_size);
+	pr_info("%s IN, buffer_size=0x%lx\n", __func__, runtime->buffer_size);
 	//tasklet_kill(&iprtd->tasklet);
 	iprtd->offset = 0;
 	iprtd->last_offset = 0;
@@ -488,7 +491,7 @@ static int spsoc_pcm_prepare(struct snd_soc_component *component, struct snd_pcm
 	  	 	case SP_TDM:
 	  	  	 	break;
 	  	  	default:
-	  	  	   	AUD_INFO("###Wrong device no.\n");
+	  	  	   	pr_err("###Wrong device no.\n");
 	  	  	   	break;
 	 	}
 	} else {//if( substream->stream == SNDRV_PCM_STREAM_CAPTURE )
@@ -505,7 +508,7 @@ static int spsoc_pcm_prepare(struct snd_soc_component *component, struct snd_pcm
 			      	while ((regs0->aud_fifo_reset&SPDIF_C_INC0) != 0);
 			      	break;
 			default:
-			     	AUD_INFO("###Wrong device no.\n");
+			     	pr_err("###Wrong device no.\n");
 			     	break;
 	  	}
 	}
@@ -519,16 +522,16 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 	unsigned int startthreshold = 0;
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio*) pcmaudio_base;//(volatile RegisterFile_Audio *)REG(60,0);
 
-	AUD_INFO("%s IN, cmd %d pcm->device %d\n", __func__, cmd, substream->pcm->device);
+	pr_info("%s IN, cmd %d pcm->device %d\n", __func__, cmd, substream->pcm->device);
 	switch (cmd) {
 	      	case SNDRV_PCM_TRIGGER_START:
 	      	case SNDRV_PCM_TRIGGER_RESUME:
 	      	case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
 		        if((frames_to_bytes(runtime,runtime->start_threshold)%prtd->period) == 0) {
-			       	AUD_INFO("0: frame_bits %d start_threshold 0x%lx stop_threshold 0x%lx\n", runtime->frame_bits, runtime->start_threshold, runtime->stop_threshold);
+			       	pr_info("0: frame_bits %d start_threshold 0x%lx stop_threshold 0x%lx\n", runtime->frame_bits, runtime->start_threshold, runtime->stop_threshold);
 			       	startthreshold = frames_to_bytes(runtime,runtime->start_threshold);
 		        } else {
-			       	AUD_INFO("1: frame_bits %d start_threshold 0x%lx stop_threshold 0x%lx\n", runtime->frame_bits, runtime->start_threshold, runtime->stop_threshold);
+			       	pr_info("1: frame_bits %d start_threshold 0x%lx stop_threshold 0x%lx\n", runtime->frame_bits, runtime->start_threshold, runtime->stop_threshold);
 			       	startthreshold = (frames_to_bytes(runtime,runtime->start_threshold)/prtd->period+1)*prtd->period;
 		        }
 
@@ -536,20 +539,20 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 				if( prtd->trigger_flag == 0) {
 					regs0->aud_delta_0 = prtd->period;
 					if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)) {
-						AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
+						pr_info("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
 					        while((regs0->aud_inc_0 & I2S_P_INC0) != 0) {};
 					        regs0->aud_inc_0 = I2S_P_INC0;
 					} else if(substream->pcm->device == SP_TDM) {
-					        AUD_INFO("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
+					        pr_info("***a0_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a0_ptr, regs0->aud_a0_cnt, startthreshold);
 					        while((regs0->aud_inc_0 & TDM_P_INC0) != 0) {};
 					        regs0->aud_inc_0 = TDM_P_INC0;
 					} else if(substream->pcm->device == SP_SPDIF) {
-					        AUD_INFO("***a5_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a5_ptr, regs0->aud_a5_cnt, startthreshold);
+					        pr_info("***a5_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a5_ptr, regs0->aud_a5_cnt, startthreshold);
 					        while((regs0->aud_inc_0 & SPDIF_P_INC0) != 0) {};
 					        regs0->aud_inc_0 = SPDIF_P_INC0;
 					} else {
 						if (substream->pcm->device == SP_SPDIFHDMI) {
-					        	AUD_INFO("***a6_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
+					        	pr_info("***a6_ptr=0x%x cnt 0x%x startthreshold=0x%x\n",regs0->aud_a6_ptr, regs0->aud_a6_cnt, startthreshold);
 					              	while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0) {};
 					              	regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
 					        }
@@ -559,17 +562,17 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 			       	prtd->trigger_flag = 1;
 			       	prtd->start_threshold = 0;
 		        } else {// if( substream->stream == SNDRV_PCM_STREAM_CAPTURE){
-				AUD_INFO("C:prtd->start_threshold=0x%lx, startthreshold=0x%x", prtd->start_threshold, startthreshold);
+				pr_info("C:prtd->start_threshold=0x%lx, startthreshold=0x%x", prtd->start_threshold, startthreshold);
                 		regs0->aud_delta_0 = startthreshold;
 			      	prtd->start_threshold = 0;
 		        }
 		#if (aud_test_mode) //for test
 			regs0->aud_embedded_input_ctrl = aud_test_mode;
-			AUD_INFO("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
+			pr_info("!!!aud_embedded_input_ctrl = 0x%x!!!\n", regs0->aud_embedded_input_ctrl);
 		#endif
 		        if (atomic_read(&prtd->running) == 2) {
-		        	hrtimer_start(&prtd->hrt, ns_to_ktime(prtd->poll_time_ns),HRTIMER_MODE_REL);
-		        	AUD_INFO("!!!hrtimer non stop!!!\n");
+		        	hrtimer_start(&prtd->hrt, ns_to_ktime(prtd->poll_time_ns), HRTIMER_MODE_REL);
+		        	pr_info("!!!hrtimer non stop!!!\n");
 		        	//snd_hrtimer_callback(&prtd->hrt);
             			//while (atomic_read(&prtd->running) != 0);
             		}
@@ -606,7 +609,7 @@ static int spsoc_pcm_trigger(struct snd_soc_component *component, struct snd_pcm
 		        }
 		        break;
 	      	default:
-		        AUD_INFO("%s out \n",__func__ );
+		        pr_err("%s out \n",__func__ );
 		        return -EINVAL;
 	  }
 	  return 0;
@@ -618,13 +621,14 @@ static snd_pcm_uframes_t spsoc_pcm_pointer(struct snd_soc_component *component, 
 	struct spsoc_runtime_data *prtd = runtime->private_data;
 	snd_pcm_uframes_t offset,prtd_offset;
 
-	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
+	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		prtd_offset = prtd->offset;
-	else
+	} else {
 		prtd_offset = prtd->offset;
+	}
 
 	offset = bytes_to_frames(runtime, prtd_offset);
-	AUD_DEBUG("offset=0x%x", offset);
+	pr_debug("offset=0x%x", offset);
 	return offset;
 }
 
@@ -634,12 +638,12 @@ static int spsoc_pcm_mmap(struct snd_soc_component *component, struct snd_pcm_su
 	struct spsoc_runtime_data *prtd = runtime->private_data;
     	int ret = 0;
 
-	AUD_INFO("%s IN\n", __func__ );
+	pr_info("%s IN\n", __func__);
 
 	prtd->usemmap_flag = 1;
-	AUD_INFO("%s IN, stream direction: %d\n", __func__, substream->stream);
+	pr_info("%s IN, stream direction: %d\n", __func__, substream->stream);
 #ifdef USE_KELNEL_MALLOC
-        AUD_INFO("dev: 0x%px, dma_area 0x%px dma_addr 0x%x dma_bytes 0x%x\n", substream->pcm->card->dev, runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
+        pr_info("dev: 0x%px, dma_area 0x%px dma_addr 0x%x dma_bytes 0x%x\n", substream->pcm->card->dev, runtime->dma_area, runtime->dma_addr, runtime->dma_bytes);
 	ret = dma_mmap_wc(substream->pcm->card->dev, vma,
 			  runtime->dma_area,
 			  runtime->dma_addr,
@@ -667,28 +671,28 @@ static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_su
 	char *hwbuf = runtime->dma_area + pos;
 	unsigned long count_bytes = count;
 
-	if( substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-	  	//AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x \n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
+	if(substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+	  	//pr_info("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%x \n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		if(prtd->trigger_flag) {
 		    	regs0->aud_delta_0 = prtd->period;
 		    	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)) {
-		    		AUD_DEBUG("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes, count);
+		    		pr_debug("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx count 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes, count);
 		    	  	while((regs0->aud_inc_0 & I2S_P_INC0) != 0) {};
 		    	  	while(regs0->aud_a0_cnt != 0) {};
 		    	  	regs0->aud_inc_0 = I2S_P_INC0;
 		    	} else if(substream->pcm->device == SP_TDM) {
-		    		AUD_DEBUG("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
+		    		pr_debug("***%s IN, aud_a0_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 			        while((regs0->aud_inc_0 & TDM_P_INC0) != 0) {};
 			        while(regs0->aud_a0_cnt != 0) {};
 			        regs0->aud_inc_0 = TDM_P_INC0;
 			} else if(substream->pcm->device == SP_SPDIF) {
-				AUD_DEBUG("***%s IN, aud_a5_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
+				pr_debug("***%s IN, aud_a5_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
 			        while((regs0->aud_inc_0 & SPDIF_P_INC0) != 0) {};
 			        while(regs0->aud_a5_cnt != 0) {};
 			        regs0->aud_inc_0 = SPDIF_P_INC0;
 			} else {
 				if(substream->pcm->device == SP_SPDIFHDMI) {
-					AUD_DEBUG("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
+					pr_debug("***%s IN, aud_a6_ptr=0x%x, dma_area=0x%x, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
 			        	while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0) {};
 			        	while(regs0->aud_a6_cnt != 0) {};
 			        	regs0->aud_inc_0 = SPDIF_HDMI_P_INC0;
@@ -701,17 +705,17 @@ static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_su
 			//copy_from_user(hwbuf, buf, count_bytes);
 		} else {
 		    	if ((substream->pcm->device == SP_I2S) || (substream->pcm->device == SP_I2SHDMI)) {
-		    		AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
+		    		pr_info("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	      	while((regs0->aud_inc_0 & I2S_P_INC0) != 0) {};
 		    	} else if (substream->pcm->device == SP_SPDIF) {
-		    		AUD_INFO("###%s IN, aud_a5_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
+		    		pr_info("###%s IN, aud_a5_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a5_ptr, hwbuf, pos, count_bytes);
 		    	  	while((regs0->aud_inc_0 & SPDIF_P_INC0) != 0) {};
 		    	} else if (substream->pcm->device == SP_TDM) {
-		    		AUD_INFO("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
+		    		pr_info("###%s IN, aud_a0_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a0_ptr, hwbuf, pos, count_bytes);
 		    	      	while((regs0->aud_inc_0 & TDM_P_INC0) != 0) {};
 		    	} else {
 		    		if (substream->pcm->device == SP_SPDIFHDMI) {
-		    			AUD_INFO("###%s IN, aud_a6_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
+		    			pr_info("###%s IN, aud_a6_ptr=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, regs0->aud_a6_ptr, hwbuf, pos, count_bytes);
 		    	  		while((regs0->aud_inc_0 & SPDIF_HDMI_P_INC0) != 0) {};
 		    		}
 		    	}
@@ -719,23 +723,25 @@ static int spsoc_pcm_copy(struct snd_soc_component *component, struct snd_pcm_su
 		}
 		copy_from_user(hwbuf, buf, count_bytes);
 	} else { //capture
-	 	AUD_DEBUG("###%s IN, buf=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, buf, hwbuf, pos, count_bytes);
+	 	pr_debug("###%s IN, buf=0x%x, dma_area=0x%px, pos=0x%lx count_bytes 0x%lx\n", __func__, buf, hwbuf, pos, count_bytes);
 	  	if(substream->pcm->device == SP_I2S) {
-            		while((regs0->aud_inc_0 & I2S_C_INC0) != 0);
+            		while((regs0->aud_inc_0 & I2S_C_INC0) != 0) {};
 	 	} else if(substream->pcm->device == SP_SPDIF) {
 	  	  	while((regs0->aud_inc_0 & SPDIF_C_INC0) != 0) {};
-	  	} else
+	  	} else {
             		while((regs0->aud_inc_0 & TDMPDM_C_INC0) != 0) {};
+            	}
 
         	copy_to_user(buf, hwbuf , count_bytes);
 
         	regs0->aud_delta_0 = count_bytes;//prtd->offset;
-        	if(substream->pcm->device == SP_I2S)
+        	if(substream->pcm->device == SP_I2S) {
             		regs0->aud_inc_0 = I2S_C_INC0;
-        	else if(substream->pcm->device == SP_SPDIF)
+        	} else if (substream->pcm->device == SP_SPDIF) {
         	  	regs0->aud_inc_0 = SPDIF_C_INC0;
-        	else
+        	} else {
             		regs0->aud_inc_0 = TDMPDM_C_INC0;
+            	}
 	}
 	return ret;
 }
@@ -747,23 +753,27 @@ static int spsoc_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm
 	struct snd_pcm *pcm = rtd->pcm;
 	int ret = 0;
 
-	AUD_INFO("%s IN\n", __func__);
+	pr_info("%s IN\n", __func__);
 
-	if (!card->dev->dma_mask)
+	if (!card->dev->dma_mask) {
 		card->dev->dma_mask = &spsoc_pcm_dmamask;
-	if (!card->dev->coherent_dma_mask)
+	}
+	if (!card->dev->coherent_dma_mask) {
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
+	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_PLAYBACK].substream) {
 		ret = spsoc_pcm_preallocate_dma_buffer(pcm, SNDRV_PCM_STREAM_PLAYBACK);
-		if (ret)
+		if (ret) {
 			goto out;
+		}
 	}
 
 	if (pcm->streams[SNDRV_PCM_STREAM_CAPTURE].substream) {
 		ret = spsoc_pcm_preallocate_dma_buffer(pcm, SNDRV_PCM_STREAM_CAPTURE);
-		if (ret)
+		if (ret) {
 			goto out;
+		}
 	}
 
     	aud_param.fifoInfo.Buf_TotalLen = aud_param.fifoInfo.TxBuf_TotalLen + aud_param.fifoInfo.RxBuf_TotalLen;
@@ -781,22 +791,24 @@ static void spsoc_pcm_free_dma_buffers(struct snd_soc_component *component, stru
 
 	for (stream = 0; stream < 2; stream++) {
 		substream = pcm->streams[stream].substream;
-		if (!substream)
+		if (!substream) {
 			continue;
+		}
 
 		buf = &substream->dma_buffer;
-		if (!buf->area)
+		if (!buf->area) {
 			continue;
+		}
 		buf->area = NULL;
 	}
-	AUD_INFO("%s IN\n", __func__);
+	pr_info("%s IN\n", __func__);
 }
 
 int spsoc_reg_mmap(struct file *fp, struct vm_area_struct *vm)
 {
 	unsigned long pfn;
 
-	AUD_INFO("%s IN\n", __func__);
+	pr_info("%s IN\n", __func__);
 	vm->vm_flags |= VM_IO ;//| VM_RESERVED;
 	vm->vm_page_prot = pgprot_noncached(vm->vm_page_prot);
 	pfn = REG_BASEADDR >> PAGE_SHIFT;
@@ -845,9 +857,9 @@ static int preallocate_dma_buffer(struct platform_device *pdev)
 	aud_param.fifoInfo.pcmtx_virtAddrBase = (unsigned int)gp_chunk_malloc_nocache(1,0,PAGE_ALIGN(size));
 	aud_param.fifoInfo.pcmtx_physAddrBase = gp_chunk_pa( (void *)aud_param.fifoInfo.pcmtx_virtAddrBase );
 #endif
-    	AUD_INFO("pcmtx_virtAddrBase 0x%x pcmtx_physAddrBase 0x%x\n", aud_param.fifoInfo.pcmtx_virtAddrBase, aud_param.fifoInfo.pcmtx_physAddrBase);
+    	pr_info("pcmtx_virtAddrBase 0x%x pcmtx_physAddrBase 0x%x\n", aud_param.fifoInfo.pcmtx_virtAddrBase, aud_param.fifoInfo.pcmtx_physAddrBase);
 	if(!aud_param.fifoInfo.pcmtx_virtAddrBase) {
-		AUD_INFO("failed to allocate playback DMA memory\n");
+		pr_err("failed to allocate playback DMA memory\n");
 		return -ENOMEM;
 	}
 
@@ -863,9 +875,9 @@ static int preallocate_dma_buffer(struct platform_device *pdev)
 	aud_param.fifoInfo.mic_virtAddrBase = (unsigned int)gp_chunk_malloc_nocache(1,0,PAGE_ALIGN(size));
 	aud_param.fifoInfo.mic_physAddrBase = gp_chunk_pa( (void *)aud_param.fifoInfo.mic_virtAddrBase );
 #endif
-   	AUD_INFO("mic_virtAddrBase 0x%x mic_physAddrBase 0x%x\n", aud_param.fifoInfo.mic_virtAddrBase, aud_param.fifoInfo.mic_physAddrBase);
+   	pr_info("mic_virtAddrBase 0x%x mic_physAddrBase 0x%x\n", aud_param.fifoInfo.mic_virtAddrBase, aud_param.fifoInfo.mic_physAddrBase);
 	if(!aud_param.fifoInfo.mic_virtAddrBase) {
-		AUD_INFO("failed to allocate  record DMA memory\n");
+		pr_err("failed to allocate  record DMA memory\n");
 		return -ENOMEM;
 	}
 #endif
@@ -875,7 +887,6 @@ static int preallocate_dma_buffer(struct platform_device *pdev)
 static void dma_free_dma_buffers(struct platform_device *pdev)
 {
 	unsigned int size;
-	//struct device *dev = &pdev->dev;
 
 	size = DRAM_PCM_BUF_LENGTH * (NUM_FIFO_TX + NUM_FIFO_RX);
 #ifdef USE_KELNEL_MALLOC
@@ -902,17 +913,19 @@ void __iomem *pcm_get_spaud_data(void)
 	struct sunplus_audio_base *spauddata = NULL;
 
 	if (!np) {
-		//dev_err(&pdev->dev, "devicetree status is not available\n");
+		pr_err("devicetree status is not available\n");
 		goto out;
 	}
 
 	spaudpdev = of_find_device_by_node(np);
-	if (!spaudpdev)
+	if (!spaudpdev) {
 		goto out;
+	}
 
 	spauddata = dev_get_drvdata(&spaudpdev->dev);
-	if (!spauddata)
+	if (!spauddata) {
 		spauddata = ERR_PTR(-EPROBE_DEFER);
+	}
 
 out:
 	of_node_put(np);
@@ -924,10 +937,10 @@ static int snd_spsoc_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 
-	AUD_INFO("%s IN %s\n", __func__, dev_name(&pdev->dev));
+	dev_info(&pdev->dev, "%s IN\n", __func__);
 
 	pcmaudio_base = pcm_get_spaud_data();
-	AUD_INFO("audio_base2=%px\n", pcmaudio_base);
+	pr_info("audio_base2=%px\n", pcmaudio_base);
 
 	ret = devm_snd_soc_register_component(&pdev->dev, &sunplus_soc_platform, NULL, 0);
 	// create & register device for file operation, used for 'ioctl'
@@ -959,7 +972,7 @@ MODULE_DEVICE_TABLE(of, sunplus_audio_pcm_dt_ids);
 
 static struct platform_driver snd_spsoc_driver = {
 	.driver = {
-		.name	= "spsoc-pcm-driver",
+		.name		= "spsoc-pcm-driver",
 		//.owner 	= THIS_MODULE,
 		.of_match_table	= of_match_ptr(sunplus_audio_pcm_dt_ids),
 	},

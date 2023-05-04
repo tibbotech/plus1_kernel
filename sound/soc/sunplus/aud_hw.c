@@ -40,8 +40,8 @@ void AUDHW_pin_mx(void)
 	//regs0->rf_sft_cfg1 = (0xFFFF0000 | i | (0x1 << 15));
 	////regs0->rf_sft_cfg2 = 0xffff0050;//TDMTX/RX, PDM
 	//regs0->rf_sft_cfg2 = 0xffff004d;//I2STX, PDMRX,	SPDIFRX
-	AUD_INFO("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
-	AUD_INFO("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg3);
+	pr_info("***rf_sft_cfg1 %08x\n", regs0->rf_sft_cfg1);
+	pr_info("***rf_sft_cfg2 %08x\n", regs0->rf_sft_cfg3);
 
 	//regs1->G002_RESERVED[1]	= 0xffff0000; // Need to set when you want to use spdif
 	//for(i=0; i<64; i++)
@@ -114,13 +114,13 @@ void AUDHW_Cfg_AdcIn(void *auddrvdata)
 	regs0->adcp_init_ctrl = val;
 	do {
 		val = regs0->adcp_init_ctrl;
-	} while ((val&ONEHOT_B12) !=	0);
+	} while ((val&ONEHOT_B12) != 0);
 
 	val = (1<<6)|2|ONEHOT_B10;
 	regs0->adcp_init_ctrl = val;
 
 	val = 0x800000;
-	regs0->adcp_gain_0 =	val;
+	regs0->adcp_gain_0 = val;
 
 	val = regs0->adcp_risc_gain;
 	val = val&0xfff0;
@@ -131,13 +131,13 @@ void AUDHW_Cfg_AdcIn(void *auddrvdata)
 	regs0->adcp_init_ctrl = val;
 	do {
 		val = regs0->adcp_init_ctrl;
-	} while ((val&ONEHOT_B12) !=	0);
+	} while ((val&ONEHOT_B12) != 0);
 
 	val = (1<<6)|(1<<4)|2|ONEHOT_B10;
 	regs0->adcp_init_ctrl = val;
 
 	val = 0x800000;
-	regs0->adcp_gain_1 =	val;
+	regs0->adcp_gain_1 = val;
 
 	val = regs0->adcp_risc_gain;
 	val = val&0xff0f;
@@ -150,11 +150,11 @@ void AUDHW_SystemInit(void *auddrvdata)
 	struct sunplus_audio_base *pauddrvdata = auddrvdata;
         volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) pauddrvdata->audio_base;
 
-        AUD_INFO("!!!audio_base 0x%px\n", regs0);
-        AUD_INFO("!!!aud_fifo_reset	0x%px\n", &(regs0->aud_fifo_reset));
+        pr_info("!!!audio_base 0x%px\n", regs0);
+        pr_info("!!!aud_fifo_reset 0x%px\n", &(regs0->aud_fifo_reset));
         //reset aud fifo
         regs0->audif_ctrl	= 0x1;	   //aud_ctrl=1
-        AUD_INFO("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
+        pr_info("aud_fifo_reset 0x%x\n", regs0->aud_fifo_reset);
         regs0->audif_ctrl	= 0x0;	   //aud_ctrl=0
         while(regs0->aud_fifo_reset);
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
@@ -213,7 +213,7 @@ void AUDHW_SystemInit(void *auddrvdata)
 	regs0->aud_fifo_mode  	= 0x20001;
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
-	AUD_INFO("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
+	pr_info("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
 	//regs0->aud_misc_ctrl |= 0x2;
 }
 EXPORT_SYMBOL_GPL(AUDHW_SystemInit);

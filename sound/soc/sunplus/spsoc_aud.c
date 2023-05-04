@@ -17,13 +17,13 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 	unsigned int pll_out;
 	int ret=0;
 
-	AUD_INFO("%s IN\n",__func__);
+	pr_info("%s IN\n",__func__);
 	pll_out = params_rate(params);
-	AUD_INFO("%s, pull out %d channels %d\n",__func__, pll_out, params_channels(params));
-	AUD_INFO("%s, periods %d period_size %d\n",__func__, params_periods(params),params_period_size(params));
-	AUD_INFO("%s, periods_bytes 0x%x\n",__func__, params_period_bytes(params));
-	AUD_INFO("%s, buffer_size 0x%x buffer_bytes 0x%x\n",__func__, params_buffer_size(params),params_buffer_bytes(params));
-	switch(pll_out) {
+	pr_info("%s, pull out %d channels %d\n",__func__, pll_out, params_channels(params));
+	pr_info("%s, periods %d period_size %d\n",__func__, params_periods(params),params_period_size(params));
+	pr_info("%s, periods_bytes 0x%x\n",__func__, params_period_bytes(params));
+	pr_info("%s, buffer_size 0x%x buffer_bytes 0x%x\n",__func__, params_buffer_size(params),params_buffer_bytes(params));
+	switch (pll_out) {
 		case 8000:
 		case 16000:
 		case 32000:
@@ -42,15 +42,17 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,
 			ret = snd_soc_dai_set_pll(cpu_dai, substream->pcm->device, substream->stream, DPLL_FRE, pll_out);
 			break;
 		default:
-			AUD_INFO("NO support the rate");
+			pr_err("NO support the rate");
 			break;
 	}
-	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE )
+	if( substream->stream == SNDRV_PCM_STREAM_CAPTURE ) {
 		ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
+	}
 
-	AUD_INFO("%s OUT\n",__func__);
-	if (ret < 0)
+	pr_info("%s OUT\n",__func__);
+	if (ret < 0) {
 		return ret;
+	}
 	return 0;
 }
 
@@ -143,18 +145,20 @@ static int __init snd_spsoc_audio_init(void)
 
 //********************************************************************
 	spsoc_snd_device = platform_device_alloc("soc-audio", -1);	// soc-audio   aud3502-codec"
-	if (!spsoc_snd_device)
+	if (!spsoc_snd_device) {
 		return -ENOMEM;
+	}
 
-	AUD_INFO("%s IN, create soc_card\n", __func__);
+	pr_info("%s IN, create soc_card\n", __func__);
 
 	platform_set_drvdata(spsoc_snd_device, &spsoc_smdk);
 
 	ret = platform_device_add(spsoc_snd_device);
-	if (ret)
+	if (ret) {
 		platform_device_put(spsoc_snd_device);
+	}
 
-	//AUD_INFO("platform_device_add:: %d\n", ret );
+	//pr_info("platform_device_add:: %d\n", ret );
 //********************************************************************
 	return ret;
 
