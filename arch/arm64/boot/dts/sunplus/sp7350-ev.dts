@@ -845,21 +845,22 @@
 		clocks = <&clkc GMAC>;
 		clock-names = "stmmaceth";
 		resets = <&rstc RST_GMAC>, <&rstc RST_PD_GMAC>;
-		reset-names = "rstc_gmac", "rstc_pd_gmac";		
+		reset-names = "rstc_gmac", "rstc_pd_gmac";
 		//st,syscon = <&syscfg 0x4>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&gmac_pins>;		
+		pinctrl-0 = <&gmac_pins>;
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
 		/* Reset time is 20ms, 100ms for rtl8211f */
 		snps,reset-delays-us = <0 20000 100000>;
 		snps,en-tx-lpi-clockgating;
-		phy-mode = "rgmii";		
+		phy-mode = "rgmii";
 		mac-mode = "rgmii";
 		max-speed = <1000>;
 		nvmem-cell-names = "mac-address";
-		nvmem-cells = <&mac_addr>;	
-		phy-handle = <&phy0>;	
+		nvmem-cells = <&mac_addr>;
+		phy-handle = <&phy0>;
+		status = "disabled";		
 		mdio0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -868,10 +869,9 @@
 				compatible = "ethernet-phy-id001c.c916", "ethernet-phy-ieee802.3-c22";
 				reg = <0>;
 				reset-assert-us = <1000>;
-            	reset-deassert-us = <2000>;
+    			reset-deassert-us = <2000>;
 			};
-		};		
-		status = "disabled";
+		};
 	};
 
 	sp_spinor0: spinor@f8000b00 {
