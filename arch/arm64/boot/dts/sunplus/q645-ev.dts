@@ -1854,7 +1854,7 @@
 
 		spi_nand_pins: pinmux_spi_nand-pins {
 			function = "SPI_NAND";
-			groups = "SPI_NAND1";
+			groups = "SPI_NAND_X1";
 		};
 
 		spim0_pins: pinmux_spim0-pins {

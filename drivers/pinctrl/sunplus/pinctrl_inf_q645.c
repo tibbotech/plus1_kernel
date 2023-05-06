@@ -61,11 +61,11 @@ static const struct sppctlgrp_t q645grps_emmc[] = {
 	EGRP("EMMC", 1, pins_emmc)
 };
 
-static const unsigned int pins_snand1[] = { 16, 17, 18, 19, 20, 21 };
-static const unsigned int pins_snand2[] = { 6,   7,  8,  9, 10, 11 };
+static const unsigned int pins_snand_x1[] = { 16, 17, 18, 19, 20, 21 };
+static const unsigned int pins_snand_x2[] = { 6,   7,  8,  9, 10, 11 };
 static const struct sppctlgrp_t q645grps_snand[] = {
-	EGRP("SPI_NAND1", 1, pins_snand1),
-	EGRP("SPI_NAND2", 2, pins_snand2)
+	EGRP("SPI_NAND_X1", 1, pins_snand_x1),
+	EGRP("SPI_NAND_X2", 2, pins_snand_x2)
 };
 
 static const unsigned int pins_sdc30[] = { 28, 29, 30, 31, 32, 33 };
