@@ -66,6 +66,7 @@ struct sp_wdt_priv {
 #ifdef CONFIG_SOC_SP7350
 	void __iomem *mode_sel;
 	void __iomem *base_rst;
+	int irqn;
 #endif
 	struct clk *clk;
 	struct reset_control *rstc;
@@ -96,12 +97,13 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
-	void __iomem *base_rst = priv->base_rst;
 #ifdef CONFIG_SOC_SP7350
+	void __iomem *base_rst = priv->base_rst;
 	u32 count_f;
 	u32 count_b;
 	u32 time_f;
 	u32 time_b;
+	int irqn = priv->irqn;
 
 	time_f = wdev->timeout - wdev->pretimeout;
 	time_b = wdev->pretimeout;
@@ -131,7 +133,14 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 #endif
 		writel(WDT_LOCK, base + WDT_CTRL);
 	}
-
+#ifdef CONFIG_SOC_SP7350
+	/*
+	 * Workaround for pretimeout counter. See the function sp_wdt_isr()
+	 * for details .
+	 */
+	writel(WDT_CLRIRQ, base + WDT_CTRL);
+	enable_irq(irqn);
+#endif
 	return 0;
 }
 
@@ -203,10 +212,20 @@ static irqreturn_t sp_wdt_isr(int irq, void *arg)
 	struct watchdog_device *wdev = arg;
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
+	int irqn = priv->irqn;
 
-	writel(WDT_CLRIRQ, base + WDT_CTRL);
+	//writel(WDT_CLRIRQ, base + WDT_CTRL);
 
 	watchdog_notify_pretimeout(wdev);
+
+	/*
+	 * There are two counter in WDG, wdg_cnt and wdg_intrst_cnt.
+	 * When the wdg_cnt down to 0, interrupt flag = 1. For wdg_intrst_cnt
+	 * to keep counting, we need to keep the flag = 1. But if flag = 1,
+	 * the interrupt handle always acknowledge. So mask the irq, clear
+	 * the flag and enable the irq before reloading the counters.
+	 */
+	disable_irq_nosync(irqn);
 
 	return IRQ_HANDLED;
 }
@@ -303,6 +322,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 		priv->wdev.info = &sp_wdt_pt_info;
 		priv->wdev.pretimeout = SP_WDT_DEFAULT_TIMEOUT / 2;
 		priv->mode = WDT_MODE_INTR_RST;
+		priv->irqn = irq;
 	} else {
 		if (irq == -EPROBE_DEFER)
 			return -EPROBE_DEFER;
