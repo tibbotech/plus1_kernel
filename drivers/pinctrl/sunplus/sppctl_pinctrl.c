@@ -271,7 +271,7 @@ int stpctl_m_gpio_req(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range,
 void stpctl_m_gpio_fre(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range,
 		       unsigned int _pin)
 {
-	sppctlgpio_unmux_irq( range->gc, _pin);
+	sppctlgpio_unmux_irq(range->gc, _pin);
 }
 int stpctl_m_gpio_sdir(struct pinctrl_dev *_pd, struct pinctrl_gpio_range *range,
 		       unsigned int _pin, bool _in)
@@ -396,7 +396,8 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	}
 
 	*_map = kcalloc(*_nm + nmG, sizeof(**_map), GFP_KERNEL);
-	if ( *_map == NULL) return -ENOMEM;
+	if (*_map == NULL) return -ENOMEM;
+
 	for (i = 0; i < (*_nm); i++) {
 		dt_pin = be32_to_cpu(list[i]);
 		p_p = SPPCTL_PCTLD_P(dt_pin);

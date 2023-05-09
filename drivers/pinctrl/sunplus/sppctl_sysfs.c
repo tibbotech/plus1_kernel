@@ -321,9 +321,10 @@ void sppctl_sysfs_init(struct platform_device *_pd)
 	const char *tmpp;
 
 	sppctl_sysfs_Fap = kcalloc(list_funcsSZ, sizeof(struct bin_attribute), GFP_KERNEL);
-	if ( sppctl_sysfs_Fap == NULL) return;
+	if (sppctl_sysfs_Fap == NULL) return;
+
 	sdp = kcalloc(list_funcsSZ, sizeof(struct sppctl_sdata_t), GFP_KERNEL);
-	if ( sdp == NULL) return;
+	if (sdp == NULL) return;
 
 	for (i = 0; i < ARRAY_SIZE(sppctl_sysfs_attrsD); i++) {
 		ret = device_create_file(&(_pd->dev), &sppctl_sysfs_attrsD[i]);
@@ -383,6 +384,6 @@ void sppctl_sysfs_clean(struct platform_device *_pd)
 		device_remove_bin_file(&(_pd->dev), &(sppctl_sysfs_Fap[i]));
 	}
 
-	if ( sppctl_sysfs_Fap) kfree(sppctl_sysfs_Fap);
-	if ( _p->sysfs_sdp) kfree((struct sppctl_sdata_t *)(_p->sysfs_sdp));
+	if (sppctl_sysfs_Fap) kfree(sppctl_sysfs_Fap);
+	if (_p->sysfs_sdp) kfree((struct sppctl_sdata_t *)(_p->sysfs_sdp));
 }
