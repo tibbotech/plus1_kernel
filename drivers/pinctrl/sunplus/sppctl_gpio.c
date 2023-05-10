@@ -171,8 +171,8 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	gchip->parent =            &(_pd->dev);
 	gchip->owner =             THIS_MODULE;
 #ifdef SPPCTL_H
-	gchip->request =           gpiochip_generic_request; // place new calls there
-	gchip->free =              gpiochip_generic_free;
+	gchip->request =           sppctlgpio_f_request;
+	gchip->free =              sppctlgpio_f_free;
 #else
 	gchip->request =           sppctlgpio_f_req;
 	gchip->free =              sppctlgpio_f_fre;
