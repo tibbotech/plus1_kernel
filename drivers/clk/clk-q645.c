@@ -479,7 +479,7 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 {
 	const char * const *parent_names = sp_clk->parent_names[0] ? sp_clk->parent_names : default_parents;
 	struct clk_mux *mux = NULL;
-	struct clk_gate *gate;
+	struct clk_gate *gate = NULL;
 	struct clk *clk;
 	int num_parents = sp_clk->width + 1;
 
@@ -494,20 +494,22 @@ clk_register_sp_clk(struct sp_clk *sp_clk)
 		mux->flags = CLK_MUX_HIWORD_MASK | CLK_MUX_ROUND_CLOSEST;
 	}
 
-	gate = kzalloc(sizeof(*gate), GFP_KERNEL);
-	if (!gate) {
-		kfree(mux);
-		return ERR_PTR(-ENOMEM);
+	if (sp_clk->id < CLK_MAX) {
+		gate = kzalloc(sizeof(*gate), GFP_KERNEL);
+		if (!gate) {
+			kfree(mux);
+			return ERR_PTR(-ENOMEM);
+		}
+		gate->reg = clk_regs + (sp_clk->id >> 4 << 2);
+		gate->bit_idx = sp_clk->id & 0x0f;
+		gate->flags = CLK_GATE_HIWORD_MASK;
 	}
-	gate->reg = clk_regs + (sp_clk->id >> 4 << 2);
-	gate->bit_idx = sp_clk->id & 0x0f;
-	gate->flags = CLK_GATE_HIWORD_MASK;
 
 	clk = clk_register_composite(NULL, sp_clk->name,
 				     parent_names, num_parents,
 				     mux ? &mux->hw : NULL, &clk_mux_ops,
 				     NULL, NULL,
-				     &gate->hw, &clk_gate_ops,
+				     gate ? &gate->hw : NULL, &clk_gate_ops,
 				     CLK_IGNORE_UNUSED);
 	if (IS_ERR(clk)) {
 		kfree(mux);
