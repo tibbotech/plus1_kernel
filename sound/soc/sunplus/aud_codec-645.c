@@ -327,7 +327,7 @@ static int aud_codec_remove(struct platform_device *pdev)
 }
 
 static const struct of_device_id sunplus_audio_codec_dt_ids[] = {
-	{ .compatible = "sunplus,Q645-audio-codec", },
+	{ .compatible = "sunplus,audio-codec", },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, sunplus_audio_codec_dt_ids);

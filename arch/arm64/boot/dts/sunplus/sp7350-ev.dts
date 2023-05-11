@@ -860,7 +860,7 @@
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
 		phy-handle = <&phy0>;
-		status = "disabled";		
+		status = "disabled";
 		mdio0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
@@ -1062,9 +1062,19 @@
 		status = "disabled";
 	};
 
-	audio: audio@f8001e00 {
-		compatible = "sunplus,sp7350-audio";
-		reg = <0x00 0xf8001e00 0x00 0x700>;
+	spsoc-pcm-driver {
+		compatible = "sunplus,audio-pcm";
+		status = "disabled";
+	};
+
+	aud-codec {
+		compatible = "sunplus,audio-codec";
+		status = "disabled";
+	};
+
+	audio: audio@f8800480 {
+		compatible = "sunplus,audio";
+		reg = <0x00 0xf8800480 0x00 0x700>;
 		reg-names = "audio";
 		clocks = <&clkc AUD>, <&clkc PLLA>;
 		clock-names = "aud", "pll_a";
@@ -1083,7 +1093,7 @@
 	};
 
 	usb3drd0: usb3drd0{
-		compatible = "sunplus,sp7350-dwcusb3";
+		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
