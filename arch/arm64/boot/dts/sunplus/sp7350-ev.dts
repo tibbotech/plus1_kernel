@@ -936,9 +936,6 @@
 		disc_vol: disc_vol@2d {
 			reg = <0x2d 0x1>;
 		};
-		n78_clksel: n78_clksel@5 {
-			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
-		};
 	};
 
 	fb_device {
