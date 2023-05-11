@@ -215,6 +215,7 @@ struct crypto_ctx_s {
 #define M_AES_ECB	0x00000000
 #define M_AES_CBC	0x00000001
 #define M_AES_CTR	0x00000002
+#define M_CHACHA20	0x00000003
 #define M_ENC		(0 << 7)	// 0: encrypt
 #define M_DEC		(1 << 7)	// 1: decrypt
 // HASH

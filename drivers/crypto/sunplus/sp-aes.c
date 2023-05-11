@@ -22,6 +22,9 @@
 #include <linux/crypto.h>
 #include <linux/delay.h>
 #include <crypto/aes.h>
+#ifdef CONFIG_SOC_SP7350
+#include <crypto/chacha.h>
+#endif
 #include "sp-crypto.h"
 
 #define WORKBUF_SIZE (AES_BLOCK_SIZE + AES_BLOCK_SIZE + AES_MAX_KEYLENGTH)	// tmp + iv + key
@@ -65,6 +68,13 @@ static int sp_cra_aes_ctr_init(struct crypto_tfm *tfm)
 {
 	return sp_cra_aes_init(tfm, M_AES_CTR | (128 << 24)); // CTR M = 128
 }
+
+#ifdef CONFIG_SOC_SP7350
+static int sp_cra_chacha20_init(struct crypto_tfm *tfm)
+{
+	return sp_cra_aes_init(tfm, M_CHACHA20);
+}
+#endif
 
 static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 {
@@ -378,15 +388,15 @@ static int sp_blk_aes_decrypt(struct skcipher_request *req)
 struct skcipher_alg sp_aes_alg[] = {
 
 	{
-		.base.cra_name		 = "ecb(aes)",
+		.base.cra_name		= "ecb(aes)",
 		.base.cra_driver_name = "sp-aes-ecb",
-		.base.cra_priority	 = 300,
-		.base.cra_blocksize	 = AES_BLOCK_SIZE,
-		.base.cra_alignmask	 = 0xf,
-		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module	 = THIS_MODULE,
-		.base.cra_init		 = sp_cra_aes_ecb_init,
-		.base.cra_exit		 = sp_cra_aes_exit,
+		.base.cra_priority	= 300,
+		.base.cra_blocksize	= AES_BLOCK_SIZE,
+		.base.cra_alignmask	= 0xf,
+		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
+		.base.cra_module	= THIS_MODULE,
+		.base.cra_init		= sp_cra_aes_ecb_init,
+		.base.cra_exit		= sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
 		.ivsize		 = AES_BLOCK_SIZE,
@@ -395,15 +405,15 @@ struct skcipher_alg sp_aes_alg[] = {
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
 	{
-		.base.cra_name		 = "cbc(aes)",
+		.base.cra_name		= "cbc(aes)",
 		.base.cra_driver_name = "sp-aes-cbc",
-		.base.cra_priority	 = 300,
-		.base.cra_blocksize	 = AES_BLOCK_SIZE,
-		.base.cra_alignmask	 = 0xf,
-		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module	 = THIS_MODULE,
-		.base.cra_init		 = sp_cra_aes_cbc_init,
-		.base.cra_exit		 = sp_cra_aes_exit,
+		.base.cra_priority	= 300,
+		.base.cra_blocksize	= AES_BLOCK_SIZE,
+		.base.cra_alignmask	= 0xf,
+		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
+		.base.cra_module	= THIS_MODULE,
+		.base.cra_init		= sp_cra_aes_cbc_init,
+		.base.cra_exit		= sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
 		.ivsize		 = AES_BLOCK_SIZE,
@@ -412,15 +422,15 @@ struct skcipher_alg sp_aes_alg[] = {
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
 	{
-		.base.cra_name		 = "ctr(aes)",
+		.base.cra_name		= "ctr(aes)",
 		.base.cra_driver_name = "sp-aes-ctr",
-		.base.cra_priority	 = 300,
-		.base.cra_blocksize	 = 1, // TODO: AES_BLOCK_SIZE ???
-		.base.cra_alignmask	 = 0xf,
-		.base.cra_ctxsize	 = sizeof(struct sp_aes_ctx),
-		.base.cra_module	 = THIS_MODULE,
-		.base.cra_init		 = sp_cra_aes_ctr_init,
-		.base.cra_exit		 = sp_cra_aes_exit,
+		.base.cra_priority	= 300,
+		.base.cra_blocksize	= 1, // TODO: AES_BLOCK_SIZE ???
+		.base.cra_alignmask	= 0xf,
+		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
+		.base.cra_module	= THIS_MODULE,
+		.base.cra_init		= sp_cra_aes_ctr_init,
+		.base.cra_exit		= sp_cra_aes_exit,
 		.min_keysize = AES_MIN_KEY_SIZE,
 		.max_keysize = AES_MAX_KEY_SIZE,
 		.ivsize		 = AES_BLOCK_SIZE,
@@ -428,6 +438,25 @@ struct skcipher_alg sp_aes_alg[] = {
 		.encrypt	 = sp_blk_aes_encrypt,
 		.decrypt	 = sp_blk_aes_decrypt,
 	},
+#ifdef CONFIG_SOC_SP7350
+	{
+		.base.cra_name		= "chacha20",
+		.base.cra_driver_name = "sp-chacha20",
+		.base.cra_priority	= 300,
+		.base.cra_blocksize	= 1,
+		.base.cra_alignmask	= 0xf,
+		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
+		.base.cra_module	= THIS_MODULE,
+		.base.cra_init		= sp_cra_chacha20_init,
+		.base.cra_exit		= sp_cra_aes_exit,
+		.min_keysize = CHACHA_KEY_SIZE,
+		.max_keysize = CHACHA_KEY_SIZE,
+		.ivsize		 = CHACHA_IV_SIZE,
+		.setkey		 = sp_blk_aes_set_key,
+		.encrypt	 = sp_blk_aes_encrypt,
+		.decrypt	 = sp_blk_aes_decrypt,
+	},
+#endif
 };
 
 int sp_aes_finit(void)
