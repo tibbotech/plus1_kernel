@@ -927,14 +927,14 @@
 		resets = <&rstc RST_OTPRX>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		therm_calib: therm_calib@14 {
-			reg = <0x14 0x3>;
+		therm_calib: therm_calib@9 {
+			reg = <0x9 0x3>;
 		};
-		mac_addr: mac-address@34 {
-			reg = <0x34 0x6>;
+		mac_addr: mac-address@16 {
+			reg = <0x16 0x6>;
 		};
-		disc_vol: disc_vol@18 {
-			reg = <0x18 0x2>;
+		disc_vol: disc_vol@2d {
+			reg = <0x2d 0x1>;
 		};
 		n78_clksel: n78_clksel@5 {
 			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
