@@ -182,10 +182,8 @@ struct sp_crypto_dev {
 	u32 irq;
 	u32 version;
 	u32 devid;
-#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	struct clk *clk;
 	struct reset_control *rstc;
-#endif
 	struct device *device;
 #ifdef USE_REF
 	atomic_t rsa_ref_cnt;	/*reference count */
