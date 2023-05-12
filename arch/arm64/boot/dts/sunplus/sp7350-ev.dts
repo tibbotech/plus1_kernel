@@ -813,8 +813,8 @@
 	crypto: crypto@f8003d80 {
 		compatible = "sunplus,sp7350-crypto";
 		reg = <0x0 0xf8003d80 0x0 0x100>; /* G123 ~ G124 */
-		//clocks = <&clkc SEC>;
-		//resets = <&rstc RST_SEC>;
+		clocks = <&clkc SEC>;
+		resets = <&rstc RST_SEC>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
 	};
