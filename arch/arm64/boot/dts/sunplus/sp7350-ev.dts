@@ -915,8 +915,12 @@
 		reg = <0x0 0xf8120000 0x0 0xc0000>, <0x0 0xfb000000 0x0 0x4000000>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc PNAND>;
+		resets = <&rstc RST_PNAND>;
 		dmas = <&dmac 2>;
 		dma-names = "rxtx";
+		pinctrl-names = "default";
+		pinctrl-0 = <&para_nand_pins>;
 	};
 
 	otp0: otp@f8802380 {
