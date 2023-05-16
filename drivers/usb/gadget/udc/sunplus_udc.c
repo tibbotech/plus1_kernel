@@ -167,6 +167,14 @@ static inline u32 udc1_read(u32 reg);
 static inline void udc1_write(u32 value, u32 reg);
 static int udc_init_c(void __iomem *baseaddr);
 
+static void sp_print_hex_dump_bytes(const char *prefix_str, int prefix_type,
+							const void *buf, size_t len)
+{
+	if (dmsg & (1 << 3))
+		print_hex_dump(KERN_NOTICE, prefix_str, prefix_type, 16, 1,
+				buf, len, true);
+}
+
 static ssize_t udc_ctrl_show(struct device *dev, struct device_attribute *attr, char *buffer)
 {
 	return true;
@@ -986,13 +994,14 @@ static int sp_udc_write_ep0_fifo(struct sp_ep *ep, struct sp_request *req)
 
 	if (is_last) {
 		int cc = 0;
-
 		while (udc->reg_read(UDEP0CS) & EP0_IVLD) {
 			udelay(5);
 			if (cc++ > 1000)
+			{
+				pr_err ("Wait write ep0 timeout!.");
 				break;
+			}
 		}
-
 		sp_udc_done(ep, req, 0);
 		udc->reg_write(udc->reg_read(UDLIE) & (~EP0I_IF), UDLIE);
 		udc->reg_write(udc->reg_read(UDEP0CS) & (~EP0_DIR), UDEP0CS);
@@ -1141,14 +1150,6 @@ static void sp_udc_handle_ep0(struct sp_udc *udc)
 
 	sp_udc_handle_ep0_proc(ep, req, 1);
 	DEBUG_DBG("<<< %s ... ", __func__);
-}
-
-static void sp_print_hex_dump_bytes(const char *prefix_str, int prefix_type,
-							const void *buf, size_t len)
-{
-	if (dmsg & (1 << 3))
-		print_hex_dump(KERN_NOTICE, prefix_str, prefix_type, 16, 1,
-				buf, len, true);
 }
 
 #ifdef USE_DMA
@@ -1898,18 +1899,25 @@ static int sp_udc_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_
 	_req->actual = 0;
 
 	idx = ep->bEndpointAddress & 0x7F;
-	if (list_empty(&ep->queue))
-		if (idx == EP0 && sp_udc_handle_ep0_proc(ep, req, 0))
-			req = NULL;
+	do {
+		if (list_empty(&ep->queue))
+			if (idx == EP0 && sp_udc_handle_ep0_proc(ep, req, 0))
+				break;
 
-	DEBUG_DBG("req = %x, ep=%d, req_config=%d", req, idx, udc->req_config);
-	if (likely(req)) {
-		list_add_tail(&req->queue, &ep->queue);
-		if ((idx && idx != EP3) && (idx && idx != EP4))
-		{
-			sp_sendto_workqueue(udc, idx);
+		DEBUG_DBG("req = %x, ep=%d, req_config=%d", req, idx, udc->req_config);
+		if (likely(req)) {
+			list_add_tail(&req->queue, &ep->queue);
+			if ((idx && idx != EP3) && (idx && idx != EP4))
+			{
+				sp_sendto_workqueue(udc, idx);
+			}
+			else
+			{
+				if (idx)
+					sp_udc_handle_ep(&udc->ep[3], NULL);
+			}
 		}
-	}
+	} while(0);
 
 	local_irq_restore(flags);
 	DEBUG_DBG("<<< %s...", __func__);
@@ -2186,7 +2194,6 @@ static void sp_udc_reinit(struct sp_udc *udc)
 	for (i = 0; i < SP_MAXENDPOINTS; i++) {
 		struct sp_ep *ep = &udc->ep[i];
 		ep->num = i;
-		ep->fifo_size = 64;
 		ep->ep.ops = &sp_ep_ops;
 		ep->bEndpointAddress = i;
 
