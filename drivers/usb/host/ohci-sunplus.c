@@ -410,7 +410,6 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	hcd->rsrc_start = res_mem->start;
 	hcd->rsrc_len = resource_size(res_mem);
 
-#ifdef	CONFIG_USB_USE_PLATFORM_RESOURCE
 	if (!request_mem_region(hcd->rsrc_start, hcd->rsrc_len, hcd_name)) {
 		pr_err("controller already in use\n");
 		err = -EBUSY;
@@ -420,9 +419,6 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	hcd->regs = ioremap(hcd->rsrc_start, hcd->rsrc_len);
 	if (!hcd->regs)
 		goto err_release_region;
-#else
-	hcd->regs = (void *)res_mem->start;
-#endif
 
 	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 1);
 	ohci_res_moon0 = devm_ioremap(&dev->dev, res_mem->start, resource_size(res_mem));
@@ -475,12 +471,10 @@ int ohci_sunplus_probe(struct platform_device *dev)
 #endif
 	return err;
 err_iounmap:
-#ifdef	CONFIG_USB_USE_PLATFORM_RESOURCE
 	iounmap(hcd->regs);
 err_release_region:
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
 err_put_hcd:
-#endif
 	usb_put_hcd(hcd);
 	return err;
 }
@@ -509,10 +503,8 @@ int ohci_sunplus_remove(struct platform_device *dev)
 
 	usb_remove_hcd(hcd);
 
-#ifdef	CONFIG_USB_USE_PLATFORM_RESOURCE
 	iounmap(hcd->regs);
 	release_mem_region(hcd->rsrc_start, hcd->rsrc_len);
-#endif
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 

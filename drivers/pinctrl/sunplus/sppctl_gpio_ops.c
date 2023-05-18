@@ -22,10 +22,6 @@
 #include "sppctl_gpio.h"
 #include "sppctl_gpio_ops.h"
 
-#ifdef CONFIG_PINCTRL_SPPCTL
-#define SUPPORT_PINMUX
-#endif
-
 #define SPPCTL_GPIO_OFF_GFR     0x00
 #ifdef CONFIG_PINCTRL_SPPCTL_Q645
 #define SPPCTL_GPIO_OFF_CTL     0x00
@@ -53,7 +49,6 @@
 #define R32_BOF(r)              ((r)%32)
 #define R32_VAL(r, boff)        (((r)>>(boff)) & BIT(0))
 
-void sppctlgpio_unmux_irq( struct gpio_chip *_c, unsigned _pin);
 
 // who is first: GPIO(1) | MUX(0)
 int sppctlgpio_u_gfrst(struct gpio_chip *_c, unsigned int _n)
@@ -189,7 +184,19 @@ void sppctlgpio_u_seodr(struct gpio_chip *_c, unsigned int _n, unsigned int _v)
 #endif
 }
 
-#ifndef SPPCTL_H
+#ifdef SPPCTL_H
+int sppctlgpio_f_request(struct gpio_chip *_c, unsigned int _n)
+{
+	sppctlgpio_u_magpi_set(_c, _n, muxF_G, muxM_G);
+
+	return gpiochip_generic_request(_c, _n);
+}
+void sppctlgpio_f_free(struct gpio_chip *_c, unsigned int _n)
+{
+	gpiochip_generic_free(_c, _n);
+}
+
+#else
 // take pin (export/open for ex.): set GPIO_FIRST=1,GPIO_MASTER=1
 // FIX: how to prevent gpio to take over the mux if mux is the default?
 // FIX: idea: save state of MASTER/FIRST and return back after _fre?
@@ -265,7 +272,7 @@ int sppctlgpio_f_sou(struct gpio_chip *_c, unsigned int _n, int _v)
 		return 0;
 	r = (BIT(R16_BOF(_n))<<16) | ((_v & BIT(0)) << R16_BOF(_n));
 	writel(r, pc->base0 + SPPCTL_GPIO_OFF_OUT + R16_ROF(_n));
-	sppctlgpio_unmux_irq( _c, _n);
+	sppctlgpio_unmux_irq(_c, _n);
 
 	return 0;
 }
@@ -361,46 +368,47 @@ void sppctlgpio_f_dsh(struct seq_file *_s, struct gpio_chip *_c)
 
 int sppctlgpio_i_map(struct gpio_chip *_c, unsigned int _off)
 {
+#ifdef SUPPORT_PINMUX
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
 	int i;
 
-#if !defined(CONFIG_PINCTRL_SPPCTL)
-	return -ENXIO;
-#endif
-
-	if ( _off < SPPCTL_MUXABLE_MIN || _off > SPPCTL_MUXABLE_MAX) {
-	  KERR(_c->parent, "i_map: %d is not muxable\n", _off);
-	  return -ENXIO;
+	if (_off < SPPCTL_MUXABLE_MIN || _off > SPPCTL_MUXABLE_MAX) {
+		KERR(_c->parent, "i_map: %d is not muxable\n", _off);
+		return -ENXIO;
 	}
 
-	for ( i = 0; i < SPPCTL_GPIO_IRQS; i++) {
-	  if ( pc->irq[ i] < 0) continue;
-	  if ( pc->irq_pin[ i] == _off) return pc->irq[ i];
-	  if ( pc->irq_pin[ i] >= 0) continue;
-	  sppctlgpio_u_magpi_set( _c, _off, muxF_M, muxMKEEP);
-#ifdef SUPPORT_PINMUX
-	  sppctl_pin_set( ( struct sppctl_pdata_t *)( _c->parent->platform_data), _off - 7, MUXF_GPIO_INT0 + i - 2);
-#endif
-	  pc->irq_pin[ i] = _off;
-	  KDBG(_c->parent, "i_map: pin %d muxed to %d irq\n", _off, pc->irq[ i]);
-	  return pc->irq[ i];
+	for (i = 0; i < SPPCTL_GPIO_IRQS; i++) {
+		if (pc->irq[i] < 0) continue;
+		if (pc->irq_pin[i] == _off) return pc->irq[i];
+		if (pc->irq_pin[i] >= 0) continue;
+
+		sppctlgpio_u_magpi_set(_c, _off, muxF_M, muxMKEEP);
+		sppctl_pin_set((struct sppctl_pdata_t *)(_c->parent->platform_data), _off - 7, MUXF_GPIO_INT0 + i - 2);
+		pc->irq_pin[i] = _off;
+		KDBG(_c->parent, "i_map: pin %d muxed to %d irq\n", _off, pc->irq[i]);
+		return pc->irq[i];
 	}
 	KERR(_c->parent, "i_map: no free IRQ for %d\n", _off);
+#endif
+
 	return -ENXIO;
 }
 
-void sppctlgpio_unmux_irq( struct gpio_chip *_c, unsigned _pin) {
-	struct sppctlgpio_chip_t *pc = ( struct sppctlgpio_chip_t *)gpiochip_get_data( _c);
-	int i;
-	KDBG(_c->parent, "%s(%d)\n", __FUNCTION__, _pin);
-	// if irq is binded - free it
-	for ( i = 0; i < SPPCTL_GPIO_IRQS; i++) {
-	  if ( pc->irq[ i] < 0) continue;
-	  if ( pc->irq_pin[ i] != _pin) continue;
-	  KDBG(_c->parent, "%s(%03d) detouching from irq: %d\n", __FUNCTION__, _pin, pc->irq[ i]);
+void sppctlgpio_unmux_irq(struct gpio_chip *_c, unsigned _pin) {
 #ifdef SUPPORT_PINMUX
-	  sppctl_pin_set( ( struct sppctl_pdata_t *)( _c->parent->platform_data), 0, MUXF_GPIO_INT0 + i - 2);
+	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
+	int i;
+
+	KDBG(_c->parent, "%s(%d)\n", __FUNCTION__, _pin);
+
+	// if irq is binded - free it
+	for (i = 0; i < SPPCTL_GPIO_IRQS; i++) {
+		if (pc->irq[i] < 0) continue;
+		if (pc->irq_pin[i] != _pin) continue;
+
+		KDBG(_c->parent, "%s(%03d) detouching from irq: %d\n", __FUNCTION__, _pin, pc->irq[i]);
+		sppctl_pin_set((struct sppctl_pdata_t *)(_c->parent->platform_data), 0, MUXF_GPIO_INT0 + i - 2);
+		pc->irq_pin[i] = -1;
+	}
 #endif
-	  pc->irq_pin[ i] = -1;
-       }
 }

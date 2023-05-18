@@ -4,11 +4,6 @@
 #
 comment "USB Host Controller Drivers"
 
-config USB_USE_PLATFORM_RESOURCE
-	bool "GEMINI Use USB Platform Resource"
-	depends on USB
-	default n
-
 config USB_C67X00_HCD
 	tristate "Cypress C67x00 HCD support"
 	depends on HAS_IOMEM

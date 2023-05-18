@@ -165,7 +165,13 @@ struct func_t {
 	const uint8_t blen;         // number of bits
 	const struct sppctlgrp_t * const grps; // list of groups
 	const unsigned int gnum;    // number of groups
+#ifdef CONFIG_PINCTRL_SPPCTL
 	const char *grps_sa[5];     // array of pointers to func's grps names
+#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
+	const char *grps_sa[8];     // array of pointers to func's grps names
+#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+	const char *grps_sa[12];     // array of pointers to func's grps names
+#endif
 };
 
 #define FNCE(n, r, o, bo, bl, g) { \

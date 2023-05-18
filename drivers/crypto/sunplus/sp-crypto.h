@@ -182,10 +182,8 @@ struct sp_crypto_dev {
 	u32 irq;
 	u32 version;
 	u32 devid;
-#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	struct clk *clk;
 	struct reset_control *rstc;
-#endif
 	struct device *device;
 #ifdef USE_REF
 	atomic_t rsa_ref_cnt;	/*reference count */
@@ -215,6 +213,7 @@ struct crypto_ctx_s {
 #define M_AES_ECB	0x00000000
 #define M_AES_CBC	0x00000001
 #define M_AES_CTR	0x00000002
+#define M_CHACHA20	0x00000003
 #define M_ENC		(0 << 7)	// 0: encrypt
 #define M_DEC		(1 << 7)	// 1: decrypt
 // HASH

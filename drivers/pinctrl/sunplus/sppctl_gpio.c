@@ -116,7 +116,10 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	struct device_node *np = _pd->dev.of_node, *npi;
 	struct sppctlgpio_chip_t *pc = NULL;
 	struct gpio_chip *gchip = NULL;
-	int err = 0, i = 0, npins;
+	int err = 0, i = 0;
+#ifdef SUPPORT_PINMUX
+	int npins;
+#endif
 #ifdef SPPCTL_H
 	struct sppctl_pdata_t *_pctrlp = (struct sppctl_pdata_t *)_datap;
 #endif
@@ -168,8 +171,8 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	gchip->parent =            &(_pd->dev);
 	gchip->owner =             THIS_MODULE;
 #ifdef SPPCTL_H
-	gchip->request =           gpiochip_generic_request; // place new calls there
-	gchip->free =              gpiochip_generic_free;
+	gchip->request =           sppctlgpio_f_request;
+	gchip->free =              sppctlgpio_f_free;
 #else
 	gchip->request =           sppctlgpio_f_req;
 	gchip->free =              sppctlgpio_f_fre;
@@ -207,12 +210,14 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 		return err;
 	}
 
+#ifdef SUPPORT_PINMUX
 	npins = platform_irq_count(_pd);
-	for (i = 0; i < SPPCTL_GPIO_IRQS; i++) pc->irq_pin[ i] = -1;
+	for (i = 0; i < SPPCTL_GPIO_IRQS; i++) pc->irq_pin[i] = -1;
 	for (i = 0; i < npins && i < SPPCTL_GPIO_IRQS; i++) {
 		pc->irq[i] = irq_of_parse_and_map(np, i);
 		KDBG(&(_pd->dev), "setting up irq#%d -> %d\n", i, pc->irq[i]);
 	}
+#endif
 
 	spin_lock_init(&(pc->lock));
 

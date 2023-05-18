@@ -177,8 +177,8 @@
 		};
 
 		/* EthosN reserve memory: 0xc0000000~0xdfffffff, total 512M */
-		/* 'ethosn_reserved' must be page aligned (page size = 0x1000) */
-		ethosn_reserved: ethosn_reserved@80000000 {
+		/* 'ethosn_reserve' must be page aligned (page size = 0x1000) */
+		ethosn_reserve: ethosn_reserve@80000000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x80000000 0x0 0x20000000>;
 			no-map;
@@ -1186,7 +1186,7 @@
 	ethosn0: ethosn@f8200000 {
 		compatible = "ethosn";
 		reg = <0x0 0xf8200000 0x0 0x100000>;
-		memory-region = <&ethosn_reserved>;
+		memory-region = <&ethosn_reserve>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 178 IRQ_TYPE_LEVEL_HIGH>,
 			     <GIC_SPI 175 IRQ_TYPE_LEVEL_HIGH>,
@@ -1364,15 +1364,17 @@
 	};
 
 	spsoc-pcm-driver {
-		compatible = "sunplus,Q645-audio-pcm";
+		compatible = "sunplus,audio-pcm";
+		status = "disabled";
 	};
 
 	aud-codec {
-		compatible = "sunplus,Q645-audio-codec";
+		compatible = "sunplus,audio-codec";
+		status = "disabled";
 	};
 
 	audio: audio@f8001e00 {
-		compatible = "sunplus,Q645-audio";
+		compatible = "sunplus,audio";
 		reg = <0x0 0xf8001e00 0x0 0x700>;
 		reg-names = "audio";
 		clocks = <&clkc AUD>, <&clkc PLLA>;
@@ -1854,7 +1856,7 @@
 
 		spi_nand_pins: pinmux_spi_nand-pins {
 			function = "SPI_NAND";
-			groups = "SPI_NAND1";
+			groups = "SPI_NAND_X1";
 		};
 
 		spim0_pins: pinmux_spim0-pins {

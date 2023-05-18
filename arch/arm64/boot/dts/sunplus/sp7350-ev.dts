@@ -813,8 +813,8 @@
 	crypto: crypto@f8003d80 {
 		compatible = "sunplus,sp7350-crypto";
 		reg = <0x0 0xf8003d80 0x0 0x100>; /* G123 ~ G124 */
-		//clocks = <&clkc SEC>;
-		//resets = <&rstc RST_SEC>;
+		clocks = <&clkc SEC>;
+		resets = <&rstc RST_SEC>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH>;
 	};
@@ -838,19 +838,40 @@
 		compatible = "snps,dwmac-3.70a";
 		reg = <0x00 0xf8103000 0x00 0x2000>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>;
-		interrupt-names = "macirq";
+		interrupts = <GIC_SPI 19 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 21 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
+		clocks = <&clkc GMAC>;
+		clock-names = "stmmaceth";
+		resets = <&rstc RST_GMAC>, <&rstc RST_PD_GMAC>;
+		reset-names = "rstc_gmac", "rstc_pd_gmac";
 		//st,syscon = <&syscfg 0x4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&gmac_pins>;
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
-		//snps,ps-speed = <100>;
+		/* Reset time is 20ms, 100ms for rtl8211f */
+		snps,reset-delays-us = <0 20000 100000>;
+		snps,en-tx-lpi-clockgating;
 		phy-mode = "rgmii";
-		//phy-mode = "rmii";
-		//mac-mode = "rgmii";
+		mac-mode = "rgmii";
+		max-speed = <1000>;
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
+		phy-handle = <&phy0>;
+		status = "disabled";
+		mdio0 {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			compatible = "snps,dwmac-mdio";
+			phy0: ethernet-phy@0 {
+				compatible = "ethernet-phy-id001c.c916", "ethernet-phy-ieee802.3-c22";
+				reg = <0>;
+				reset-assert-us = <1000>;
+    			reset-deassert-us = <2000>;
+			};
+		};
 	};
 
 	sp_spinor0: spinor@f8000b00 {
@@ -894,8 +915,12 @@
 		reg = <0x0 0xf8120000 0x0 0xc0000>, <0x0 0xfb000000 0x0 0x4000000>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc PNAND>;
+		resets = <&rstc RST_PNAND>;
 		dmas = <&dmac 2>;
 		dma-names = "rxtx";
+		pinctrl-names = "default";
+		pinctrl-0 = <&para_nand_pins>;
 	};
 
 	otp0: otp@f8802380 {
@@ -906,17 +931,14 @@
 		resets = <&rstc RST_OTPRX>;
 		#address-cells = <1>;
 		#size-cells = <1>;
-		therm_calib: therm_calib@14 {
-			reg = <0x14 0x3>;
+		therm_calib: therm_calib@9 {
+			reg = <0x9 0x3>;
 		};
-		mac_addr: mac-address@34 {
-			reg = <0x34 0x6>;
+		mac_addr: mac-address@16 {
+			reg = <0x16 0x6>;
 		};
-		disc_vol: disc_vol@18 {
-			reg = <0x18 0x2>;
-		};
-		n78_clksel: n78_clksel@5 {
-			reg = <0x05 0x1>; // OTP0[41:40] HWLOCK_N78_CLK_SEL
+		disc_vol: disc_vol@2d {
+			reg = <0x2d 0x1>;
 		};
 	};
 
@@ -1041,9 +1063,19 @@
 		status = "disabled";
 	};
 
-	audio: audio@f8001e00 {
-		compatible = "sunplus,sp7350-audio";
-		reg = <0x00 0xf8001e00 0x00 0x700>;
+	spsoc-pcm-driver {
+		compatible = "sunplus,audio-pcm";
+		status = "disabled";
+	};
+
+	aud-codec {
+		compatible = "sunplus,audio-codec";
+		status = "disabled";
+	};
+
+	audio: audio@f8800480 {
+		compatible = "sunplus,audio";
+		reg = <0x00 0xf8800480 0x00 0x700>;
 		reg-names = "audio";
 		clocks = <&clkc AUD>, <&clkc PLLA>;
 		clock-names = "aud", "pll_a";
@@ -1062,7 +1094,7 @@
 	};
 
 	usb3drd0: usb3drd0{
-		compatible = "sunplus,sp7350-dwcusb3";
+		compatible = "sunplus,dwcusb3";
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;

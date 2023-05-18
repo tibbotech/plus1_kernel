@@ -455,7 +455,6 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	dev->irq = res_irq->start;
 
-#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	dev->clk = devm_clk_get(&pdev->dev, NULL);
 	ERR_OUT(dev->clk, goto out0, "get clk");
 	ret = clk_prepare_enable(dev->clk);
@@ -466,7 +465,6 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	ERR_OUT(dev->clk, goto out1, "get reset_control");
 	ret = reset_control_deassert(dev->rstc);
 	ERR_OUT(dev->clk, goto out1, "deassert reset_control");
-#endif
 
 	platform_set_drvdata(pdev, dev);
 	reg = dev->reg;
@@ -545,12 +543,10 @@ out4:
 out3:
 	trb_ring_free(HASH_RING(dev));
 out2:
-#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	reset_control_assert(dev->rstc);
 out1:
 	clk_disable_unprepare(dev->clk);
 out0:
-#endif
 	return ret;
 }
 
@@ -574,10 +570,8 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	/* free resource */
 	trb_ring_free(AES_RING(dev));
 	trb_ring_free(HASH_RING(dev));
-#ifndef CONFIG_SOC_SP7350 // 7350 temp disable clk & reset
 	reset_control_assert(dev->rstc);
 	clk_disable_unprepare(dev->clk);
-#endif
 
 	return 0;
 }

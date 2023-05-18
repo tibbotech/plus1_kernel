@@ -1422,9 +1422,28 @@ static void sunplus_uart_ops_config_port(struct uart_port *port, int type)
  * Locking: none.
  * Interrupts: caller dependent.
  */
-static int sunplus_uart_ops_verify_port(struct uart_port *port, struct serial_struct *serial)
+static int sunplus_uart_ops_verify_port(struct uart_port *port, struct serial_struct *ser)
 {
-	return -EINVAL;	/* Modification *serial is not allowed */
+	struct sunplus_uart_port *sp_port =
+		(struct sunplus_uart_port *)(port->private_data);
+	int ret = 0;
+
+	if (ser->irq != sp_port->uport.irq)
+		ret = -EINVAL;
+
+	if (ser->io_type != SERIAL_IO_MEM)
+		ret = -EINVAL;
+
+	if (ser->baud_base != (sp_port->uport.uartclk / 16))
+		ret = -EINVAL;
+
+	if (ser->iomem_base != (void *)sp_port->uport.mapbase)
+		ret = -EINVAL;
+
+	if (ser->hub6 != 0)
+		ret = -EINVAL;
+
+	return ret;
 }
 
 #ifdef CONFIG_CONSOLE_POLL
