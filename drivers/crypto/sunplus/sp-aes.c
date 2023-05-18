@@ -27,15 +27,17 @@
 #endif
 #include "sp-crypto.h"
 
-#define WORKBUF_SIZE (AES_BLOCK_SIZE + AES_BLOCK_SIZE + AES_MAX_KEYLENGTH)	// tmp + iv + key
+// max supported keysize == AES_KEYSIZE_256 (32 bytes)
+#define WORKBUF_SIZE(ctx) (ctx->bsize + ctx->ivlen + AES_KEYSIZE_256)	// block + iv + key
 
 /* structs */
 struct sp_aes_ctx {
 	struct crypto_ctx_s base;
 
-	u8 *tmp, *iv;
+	u8 *va, *iv;
 	dma_addr_t pa; // workbuf phy addr
 	u32 ivlen, keylen;
+	u32 bsize; // block_size
 };
 
 static int sp_cra_aes_init(struct crypto_tfm *tfm, u32 mode)
@@ -45,11 +47,12 @@ static int sp_cra_aes_init(struct crypto_tfm *tfm, u32 mode)
 	SP_CRYPTO_TRACE();
 
 	ctx->base.mode = mode;
-	ctx->ivlen = AES_BLOCK_SIZE;
+	ctx->ivlen = 16; // CHACHA_IV_SIZE == AES_BLOC_SIZE == 16
+	ctx->bsize = (mode == M_CHACHA20) ? CHACHA_BLOCK_SIZE : AES_BLOCK_SIZE;
 
 	crypto_ctx_init(&ctx->base, SP_CRYPTO_AES);
-	ctx->tmp = dma_alloc_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, &ctx->pa, GFP_KERNEL);
-	ctx->iv = ctx->tmp + AES_BLOCK_SIZE;
+	ctx->va = dma_alloc_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE(ctx), &ctx->pa, GFP_KERNEL);
+	ctx->iv = NULL; // delay inited @ 1st time call sp_blk_aes_crypt()
 
 	return 0;
 }
@@ -80,7 +83,7 @@ static void sp_cra_aes_exit(struct crypto_tfm *tfm)
 {
 	struct sp_aes_ctx *ctx = crypto_tfm_ctx(tfm);
 
-	dma_free_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE, ctx->tmp, ctx->pa);
+	dma_free_coherent(SP_CRYPTO_DEV, WORKBUF_SIZE(ctx), ctx->va, ctx->pa);
 	crypto_ctx_exit(crypto_tfm_ctx(tfm));
 }
 
@@ -166,7 +169,7 @@ static int sp_blk_aes_set_key(struct crypto_skcipher *tfm,
 
 	ctx->keylen = key_len;
 	ctx->base.mode |= (key_len / 4) << 16; // AESPAR0_NK
-	memcpy(ctx->iv + ctx->ivlen, in_key, key_len); // key: iv + ivlen
+	memcpy(ctx->va + ctx->bsize + ctx->ivlen, in_key, key_len); // key: iv + ivlen
 
 	return 0;
 }
@@ -198,23 +201,22 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 	u32 mm = ctx0->mode | enc; // AESPAR0 (trb.para.mode)
 
 	//pr_info(">>>>> %08x <<<<<\n", mm);
-	//dump_stack();
-	if (mode == M_AES_CTR) {
-#ifdef CONFIG_SOC_SP7350
+	if (mode != M_CHACHA20 || !ctx->iv) {
+		ctx->iv = ctx->va + ctx->bsize;
 		memcpy(ctx->iv, req->iv, ctx->ivlen);
-#else
+	}
+#ifdef CONFIG_SOC_SP7021
+	if (mode == M_AES_CTR) {
 		// reverse iv byte-order for HW
 		reverse_iv(ctx->iv, req->iv);
+	} else
 #endif
-	} else {
-		memcpy(ctx->iv, req->iv, ctx->ivlen);
-		if (mode == M_AES_CBC && enc == M_DEC) {
-			scatterwalk_map_and_copy(req->iv, src,
-				nbytes - ctx->ivlen, ctx->ivlen, 0);
-		}
+	if (mode == M_AES_CBC && enc == M_DEC) {
+		scatterwalk_map_and_copy(req->iv, src,
+			nbytes - ctx->ivlen, ctx->ivlen, 0);
 	}
 
-	iv_phy = ctx->pa + AES_BLOCK_SIZE;
+	iv_phy = ctx->pa + ctx->bsize;
 	key_phy = iv_phy + ctx->ivlen;
 	sp = src;
 	dp = dst;
@@ -310,10 +312,10 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 		}
 
 		process = min_t(u32, process, nbytes - processed);
-		if (process < AES_BLOCK_SIZE) {
+		if (process < ctx->bsize) {
 			tmp_phy = ctx->pa;
-		} else if (process % AES_BLOCK_SIZE) {
-			process &= ~(AES_BLOCK_SIZE - 1);
+		} else if (process % ctx->bsize) {
+			process &= ~(ctx->bsize - 1);
 			flag = NO_WALK;
 		}
 
@@ -322,7 +324,7 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 
 		SP_CRYPTO_TRACE();
 		if (tmp_phy)
-			trb = crypto_ctx_queue(ctx0, src_phy, tmp_phy, iv_phy, key_phy, AES_BLOCK_SIZE, mm, ioc);
+			trb = crypto_ctx_queue(ctx0, src_phy, tmp_phy, iv_phy, key_phy, ctx->bsize, mm, ioc);
 		else
 			trb = crypto_ctx_queue(ctx0, src_phy, dst_phy, iv_phy, key_phy, process, mm, ioc);
 		if (!trb) {
@@ -349,21 +351,23 @@ out:
 	dma_unmap_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE);
 
 	if (tmp_phy) {
-		//dump_buf(ctx->tmp, AES_BLOCK_SIZE);
-		scatterwalk_map_and_copy(ctx->tmp, dst, nbytes - process, process, 1);
+		//dump_buf(ctx->va, ctx->bsize);
+		scatterwalk_map_and_copy(ctx->va, dst, nbytes - process, process, 1);
 	}
 
 	// update iv for return
+#ifdef CONFIG_SOC_SP7021
+	if (mode == M_AES_CTR) {
+		ctr_inc(ctx->iv, ctx->ivlen, nbytes / ctx->bsize);
+		reverse_iv(req->iv, ctx->iv);
+	} else
+#endif
 	if (mode == M_AES_CBC && enc == M_ENC) {
 		scatterwalk_map_and_copy(req->iv, dst,
 			nbytes - ctx->ivlen, ctx->ivlen, 0);
-	} else if (mode == M_AES_CTR) {
-#ifdef CONFIG_SOC_SP7350
+	} else
+	if (mode != M_CHACHA20) {
 		memcpy(req->iv, ctx->iv, ctx->ivlen);
-#else
-		ctr_inc(ctx->iv, ctx->ivlen, nbytes / AES_BLOCK_SIZE);
-		reverse_iv(req->iv, ctx->iv);
-#endif
 	}
 
 	return ret;
@@ -389,72 +393,72 @@ struct skcipher_alg sp_aes_alg[] = {
 
 	{
 		.base.cra_name		= "ecb(aes)",
-		.base.cra_driver_name = "sp-aes-ecb",
+		.base.cra_driver_name	= "sp-aes-ecb",
 		.base.cra_priority	= 300,
 		.base.cra_blocksize	= AES_BLOCK_SIZE,
-		.base.cra_alignmask	= 0xf,
+		.base.cra_alignmask	= AES_BLOCK_SIZE - 1,
 		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
 		.base.cra_module	= THIS_MODULE,
 		.base.cra_init		= sp_cra_aes_ecb_init,
 		.base.cra_exit		= sp_cra_aes_exit,
-		.min_keysize = AES_MIN_KEY_SIZE,
-		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize		 = AES_BLOCK_SIZE,
-		.setkey		 = sp_blk_aes_set_key,
-		.encrypt	 = sp_blk_aes_encrypt,
-		.decrypt	 = sp_blk_aes_decrypt,
+		.min_keysize		= AES_MIN_KEY_SIZE,
+		.max_keysize		= AES_MAX_KEY_SIZE,
+		.ivsize			= AES_BLOCK_SIZE,
+		.setkey			= sp_blk_aes_set_key,
+		.encrypt		= sp_blk_aes_encrypt,
+		.decrypt		= sp_blk_aes_decrypt,
 	},
 	{
 		.base.cra_name		= "cbc(aes)",
-		.base.cra_driver_name = "sp-aes-cbc",
+		.base.cra_driver_name	= "sp-aes-cbc",
 		.base.cra_priority	= 300,
 		.base.cra_blocksize	= AES_BLOCK_SIZE,
-		.base.cra_alignmask	= 0xf,
+		.base.cra_alignmask	= AES_BLOCK_SIZE - 1,
 		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
 		.base.cra_module	= THIS_MODULE,
 		.base.cra_init		= sp_cra_aes_cbc_init,
 		.base.cra_exit		= sp_cra_aes_exit,
-		.min_keysize = AES_MIN_KEY_SIZE,
-		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize		 = AES_BLOCK_SIZE,
-		.setkey		 = sp_blk_aes_set_key,
-		.encrypt	 = sp_blk_aes_encrypt,
-		.decrypt	 = sp_blk_aes_decrypt,
+		.min_keysize		= AES_MIN_KEY_SIZE,
+		.max_keysize		= AES_MAX_KEY_SIZE,
+		.ivsize			= AES_BLOCK_SIZE,
+		.setkey			= sp_blk_aes_set_key,
+		.encrypt		= sp_blk_aes_encrypt,
+		.decrypt		= sp_blk_aes_decrypt,
 	},
 	{
 		.base.cra_name		= "ctr(aes)",
-		.base.cra_driver_name = "sp-aes-ctr",
+		.base.cra_driver_name	= "sp-aes-ctr",
 		.base.cra_priority	= 300,
-		.base.cra_blocksize	= 1, // TODO: AES_BLOCK_SIZE ???
-		.base.cra_alignmask	= 0xf,
+		.base.cra_blocksize	= 1,
+		.base.cra_alignmask	= AES_BLOCK_SIZE - 1,
 		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
 		.base.cra_module	= THIS_MODULE,
 		.base.cra_init		= sp_cra_aes_ctr_init,
 		.base.cra_exit		= sp_cra_aes_exit,
-		.min_keysize = AES_MIN_KEY_SIZE,
-		.max_keysize = AES_MAX_KEY_SIZE,
-		.ivsize		 = AES_BLOCK_SIZE,
-		.setkey		 = sp_blk_aes_set_key,
-		.encrypt	 = sp_blk_aes_encrypt,
-		.decrypt	 = sp_blk_aes_decrypt,
+		.min_keysize		= AES_MIN_KEY_SIZE,
+		.max_keysize		= AES_MAX_KEY_SIZE,
+		.ivsize			= AES_BLOCK_SIZE,
+		.setkey			= sp_blk_aes_set_key,
+		.encrypt		= sp_blk_aes_encrypt,
+		.decrypt		= sp_blk_aes_decrypt,
 	},
 #ifdef CONFIG_SOC_SP7350
 	{
 		.base.cra_name		= "chacha20",
-		.base.cra_driver_name = "sp-chacha20",
+		.base.cra_driver_name	= "sp-chacha20",
 		.base.cra_priority	= 300,
 		.base.cra_blocksize	= 1,
-		.base.cra_alignmask	= 0xf,
+		.base.cra_alignmask	= CHACHA_BLOCK_SIZE - 1,
 		.base.cra_ctxsize	= sizeof(struct sp_aes_ctx),
 		.base.cra_module	= THIS_MODULE,
 		.base.cra_init		= sp_cra_chacha20_init,
 		.base.cra_exit		= sp_cra_aes_exit,
-		.min_keysize = CHACHA_KEY_SIZE,
-		.max_keysize = CHACHA_KEY_SIZE,
-		.ivsize		 = CHACHA_IV_SIZE,
-		.setkey		 = sp_blk_aes_set_key,
-		.encrypt	 = sp_blk_aes_encrypt,
-		.decrypt	 = sp_blk_aes_decrypt,
+		.min_keysize		= CHACHA_KEY_SIZE,
+		.max_keysize		= CHACHA_KEY_SIZE,
+		.ivsize			= CHACHA_IV_SIZE,
+		.setkey			= sp_blk_aes_set_key,
+		.encrypt		= sp_blk_aes_encrypt,
+		.decrypt		= sp_blk_aes_decrypt,
 	},
 #endif
 };
