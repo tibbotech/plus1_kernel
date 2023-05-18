@@ -68,8 +68,9 @@ static void sp_pdm_rx_en(bool on)
     	if (on) {
         	val |= CFG_PDM_RGST_SET;
         	regs0->tdmpdm_tx_sel = 0;
-    	} else
+    	} else {
         	val = CFG_PDM_RGST_SET;
+        }
     	regs0->pdm_rx_cfg0 = val;
     	val = regs0->pdm_rx_cfg0;
     	pr_info("pdm_rx_cfg0 0x%lx\n", val);
@@ -81,17 +82,18 @@ static void sp_pdm_rx_dma_en(bool on)
     	unsigned long val;
 
     	val = regs0->aud_fifo_enable;
-    	if (on)
+    	if (on) {
         	val |= (TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
-    	else
+    	} else {
         	val &= ~(TDM_PDM_RX3 | TDM_PDM_RX2 | TDM_PDM_RX1 | TDM_PDM_RX0);
+        }
     	regs0->aud_fifo_enable = val;
     	val = regs0->aud_fifo_enable;
     	pr_info("aud_fifo_enable 0x%lx\n", val);
 
     	if (on) {
         	regs0->aud_fifo_reset = val;
-        	while ((regs0->aud_fifo_reset & val));
+        	while ((regs0->aud_fifo_reset & val)) {};
 
         	//pr_info("aud_audhwya 0x%lx\n", regs0->aud_audhwya);
 	     	//pr_info("aud_a23_base 0x%lx\n", regs0->aud_a23_base);
@@ -101,10 +103,11 @@ static void sp_pdm_rx_dma_en(bool on)
     	}
 
     	val = regs0->aud_enable;
-    	if (on)
+    	if (on) {
         	val |= aud_enable_tdmpdm_c;
-    	else
+    	} else {
         	val &= (~aud_enable_tdmpdm_c);
+        }
     	regs0->aud_enable = val;
     	val = regs0->aud_enable;
     	pr_info("aud_enable 0x%lx\n", val);
@@ -190,9 +193,9 @@ static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
         		break;
     		case SNDRV_PCM_TRIGGER_RESUME:
     		case SNDRV_PCM_TRIGGER_PAUSE_RELEASE:
-        		if (capture)
+        		if (capture) {
             			sp_pdm_rx_dma_en(true);
-
+            		}
        			 break;
     		case SNDRV_PCM_TRIGGER_STOP:
         		if (capture) {
@@ -202,9 +205,9 @@ static int sp_pdm_trigger(struct snd_pcm_substream *substream, int cmd,
         		break;
     		case SNDRV_PCM_TRIGGER_SUSPEND:
     		case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
-        		if (capture)
+        		if (capture) {
             			sp_pdm_rx_dma_en(false);
-
+			}
         		break;
     		default:
         		ret = -EINVAL;
@@ -220,8 +223,9 @@ static int sp_pdm_startup(struct snd_pcm_substream *substream,
     	int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 
     	pr_info("%s IN, operation c or p %d\n", __func__, capture);
-    	if (capture)
+    	if (capture) {
         	sp_pdm_rx_en(true);
+        }
     	return 0;
 }
 
@@ -231,8 +235,9 @@ static void sp_pdm_shutdown(struct snd_pcm_substream *substream,
     	int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 
     	pr_info("%s IN\n", __func__);
-    	if (capture)
+    	if (capture) {
         	sp_pdm_rx_en(false);
+        }
     	aud_pdm_clk_cfg(0);
 }
 
