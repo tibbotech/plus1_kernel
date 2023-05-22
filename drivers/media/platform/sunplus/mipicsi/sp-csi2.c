@@ -342,10 +342,10 @@ static int csi2_get_active_lanes(struct csi2_dev *priv,
 
 static void csi2_lane_config(struct csi2_dev *priv, u8 lanes)
 {
-	u32 mix_cfg, ana_cfg5;
+	u32 mix_cfg, ana_cfg0;
 
 	mix_cfg = csi_readl(priv, MIPICSI_MIX_CFG);
-	ana_cfg5 = csi_readl(priv, MIPI_ANALOG_CFG5);
+	ana_cfg0 = csi_readl(priv, MIPI_ANALOG_CFG0);
 
 	set_field(&mix_cfg, 0x1, 0x1<<15);		/* When detect EOF control word, generate EOF */
 #if defined(MIPI_CSI_XTOR)
@@ -353,7 +353,6 @@ static void csi2_lane_config(struct csi2_dev *priv, u8 lanes)
 #else
 	set_field(&mix_cfg, 0x1, 0x1<<8);		/* For bit sequence of a word, transfer MSB bit first */
 #endif
-	set_field(&mix_cfg, 0x1, 0x1<<2);		/* Set PHY to normal mode */
 
 	dev_dbg(priv->dev, "%s, lanes: %d\n", __func__, lanes);
 
@@ -362,27 +361,28 @@ static void csi2_lane_config(struct csi2_dev *priv, u8 lanes)
 		default:
 		case 1: /* 1 lane */
 			set_field(&mix_cfg, 0x0, 0x3<<20);	/* 0x0: 1 lane */
-			set_field(&ana_cfg5, 0x1, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0 */
+			set_field(&ana_cfg0, 0x1, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0 */
 			break;
 
 		case 2: /* 2 lanes */
 			set_field(&mix_cfg, 0x1, 0x3<<20);	/* 0x1: 2 lanes */
-			set_field(&ana_cfg5, 0x3, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0/1 */
+			set_field(&ana_cfg0, 0x3, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0/1 */
 			break;
 
 		case 4: /* 4 lanes */
 			set_field(&mix_cfg, 0x2, 0x3<<20);	/* 0x2: 4 lanes */
-			set_field(&ana_cfg5, 0xf, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0/1/2/3 */
+			set_field(&ana_cfg0, 0xf, 0xf<<4);	/* Enable data lane of LP mode circuit for data lane 0/1/2/3 */
 			break;
 	}
 
-	set_field(&ana_cfg5, 0x1, 0x1<<0);		/* Enable clock lane of LP mode circuit */
+	set_field(&ana_cfg0, 0x1, 0x1<<2);		/* Enable clock lane of LP mode circuit */
+	set_field(&ana_cfg0, 0x1, 0x1<<0);		/* Set PHY PDN control to normal mode */
 
-	dev_dbg(priv->dev, "%s, %d: mix_cfg: %08x, ana_cfg5: %08x\n",
-		 __func__, __LINE__, mix_cfg, ana_cfg5);
+	dev_dbg(priv->dev, "%s, %d: mix_cfg: %08x, ana_cfg0: %08x\n",
+		 __func__, __LINE__, mix_cfg, ana_cfg0);
 
 	csi_writel(priv, MIPICSI_MIX_CFG, mix_cfg);
-	csi_writel(priv, MIPI_ANALOG_CFG5, ana_cfg5);
+	csi_writel(priv, MIPI_ANALOG_CFG0, ana_cfg0);
 }
 
 static void csi2_vc_config(struct csi2_dev *priv)
@@ -548,19 +548,19 @@ static void csi2_bist_config(struct csi2_dev *priv, unsigned int dt, u8 ch)
 
 static void csi2_reset_s2p_ff(struct csi2_dev *priv)
 {
-	u32 ana_cfg1;
+	u32 ana_cfg0;
 
 	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
 
-	ana_cfg1 = csi_readl(priv, MIPI_ANALOG_CFG1);
+	ana_cfg0 = csi_readl(priv, MIPI_ANALOG_CFG0);
 
 	/* Reset Serial-to-parallel Flip-flop */
-	set_field(&ana_cfg1, 0x1, 0x1<<0);		/* RSTS2P = 1: Reset mode */
 	udelay(1);
-	csi_writel(priv, MIPI_ANALOG_CFG1, ana_cfg1);
+	set_field(&ana_cfg0, 0x1, 0x1<<1);		/* Reset mode for serial-to-parallel flip-flop */
+	csi_writel(priv, MIPI_ANALOG_CFG0, ana_cfg0);
 	udelay(1);
-	set_field(&ana_cfg1, 0x0, 0x1<<0);		/* RSTS2P = 0: Normal mode (default) */
-	csi_writel(priv, MIPI_ANALOG_CFG1, ana_cfg1);
+	set_field(&ana_cfg0, 0x0, 0x1<<1);		/* Normal mode for serial-to-parallel flip-flop */
+	csi_writel(priv, MIPI_ANALOG_CFG0, ana_cfg0);
 }
 
 static void csi2_init(struct csi2_dev *priv)
@@ -569,10 +569,11 @@ static void csi2_init(struct csi2_dev *priv)
 
 	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
 
-	val = 0;
+	val = csi_readl(priv, MIPICSI_MIX_CFG);
+	set_field(&val, 0x0, 0x3<<20);		/* MIPI input lane number is 1 lane */
+	set_field(&val, 0x1, 0x7<<16);		/* MIPI input data format is RAW10 */
 	set_field(&val, 0x1, 0x1<<15);		/* When detect EOF control word, generate EOF */
 	set_field(&val, 0x1, 0x1<<8);		/* For bit sequence of a word, transfer MSB bit first */
-	set_field(&val, 0x1, 0x1<<2);		/* Set PHY to normal mode */
 	csi_writel(priv, MIPICSI_MIX_CFG, val);
 
 	val = 0;
@@ -589,18 +590,27 @@ static void csi2_init(struct csi2_dev *priv)
 	set_field(&val, (0x0<<6|0x1e), 0xff<<0);	/* Set CH0_SOL_SYNCOWRD field */
 	csi_writel(priv, MIPICSI_SOL_SYNCWORD, val);
 
+	val = 0;
+	set_field(&val, 0x1, 0x1<<8);		/* ECC correction enable */
+	set_field(&val, 0x1, 0x1<<4);		/* ECC check enable */
+	set_field(&val, 0x0, 0x3<<0);		/* ECC code word order */
+	csi_writel(priv, MIPICSI_ECC_CFG, val);
+
+	val = csi_readl(priv, MIPI_ANALOG_CFG0);
+	set_field(&val, 0x0, 0x1<<8);		/* MIPI mode */
+	set_field(&val, 0x1, 0xf<<4);		/* Enable data lane of LP mode circuit for data lane 0 */
+	set_field(&val, 0x1, 0x1<<3);		/* Set HS mode according to the power state */
+	set_field(&val, 0x1, 0x1<<2);		/* Enable clock lane of LP mode circuit */
+	set_field(&val, 0x0, 0x1<<1);		/* Normal mode for serial-to-parallel flip-flop */
+	set_field(&val, 0x1, 0x1<<0);		/* Set PHY PDN control to normal mode */
+	csi_writel(priv, MIPI_ANALOG_CFG0, val);
+
+	csi2_reset_s2p_ff(priv);
 
 	val = 0;
-	set_field(&val, 0x1, 0xf<<4);		/* Enable data lane of LP mode circuit for data lane 0 */
-	set_field(&val, 0x1, 0x1<<0);		/* Enable clock lane of LP mode circuit */
-	csi_writel(priv, MIPI_ANALOG_CFG5, val);
-
-	csi_writel(priv, MIPICSI_ECC_CFG, 0x110);
-	csi_writel(priv, MIPI_ANALOG_CFG1, 0x1000);
-	csi_writel(priv, MIPI_ANALOG_CFG1, 0x1001);
-	udelay(1);
-	csi_writel(priv, MIPI_ANALOG_CFG1, 0x1000);
-	csi_writel(priv, MIPICSI_ENABLE, 0x1);	/* Enable MIPICSI, disable FSM reset */
+	set_field(&val, 0x0, 0xf<<1);		/* Disable FSM reset control */
+	set_field(&val, 0x1, 0xf<<0);		/* Enable MIPICSI */
+	csi_writel(priv, MIPICSI_ENABLE, val);
 }
 
 static int csi2_start_receiver(struct csi2_dev *priv)
