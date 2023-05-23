@@ -415,6 +415,7 @@ EXPORT_SYMBOL_GPL(ehci_sunplus_remove);
 static int ehci_sunplus_drv_suspend(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	struct platform_device *pdev;
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
@@ -424,7 +425,8 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 		return rc;
 
 	/* disable usb controller clock */
-	clk_disable(ehci_clk[dev->id - 1]);
+	pdev = container_of(dev, struct platform_device, dev);
+	clk_disable(ehci_clk[pdev->id - 1]);
 
 	return 0;
 }
@@ -432,12 +434,14 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 static int ehci_sunplus_drv_resume(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
+	struct platform_device *pdev;
 
 	pr_debug("%s.%d\n", __func__, __LINE__);
 
 	/* enable usb controller clock */
-	clk_prepare(ehci_clk[dev->id - 1]);
-	clk_enable(ehci_clk[dev->id - 1]);
+	pdev = container_of(dev, struct platform_device, dev);
+	clk_prepare(ehci_clk[pdev->id - 1]);
+	clk_enable(ehci_clk[pdev->id - 1]);
 
 	ehci_resume(hcd, false);
 
