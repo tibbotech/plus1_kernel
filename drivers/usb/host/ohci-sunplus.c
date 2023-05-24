@@ -529,6 +529,7 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 	if (rc)
 		return rc;
 
+	#ifndef CONFIG_SOC_SP7021
 	/* UPHY suspend enable */
 	if ((pdev->id - 1) == USB_PORT0_ID) {
 		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
@@ -537,6 +538,7 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
 								uhost1_base_addr + UHPOWERCS_PORT);
 	}
+	#endif
 
 	/* disable usb controller clock */
 	clk_disable(ohci_clk[pdev->id - 1]);
@@ -555,6 +557,7 @@ static int ohci_sunplus_drv_resume(struct device *dev)
 	clk_prepare(ohci_clk[pdev->id - 1]);
 	clk_enable(ohci_clk[pdev->id - 1]);
 
+	#ifndef CONFIG_SOC_SP7021
 	/* UPHY suspend disable */
 	if ((pdev->id - 1) == USB_PORT0_ID) {
 		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
@@ -563,6 +566,7 @@ static int ohci_sunplus_drv_resume(struct device *dev)
 		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
 								uhost1_base_addr + UHPOWERCS_PORT);
 	}
+	#endif
 
 	ohci_resume(hcd, false);
 

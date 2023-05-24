@@ -433,9 +433,6 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 								uhost1_base_addr + UHPOWERCS_PORT);
 	}
 
-	printk("suspend control = %d\n", (readl(uhost0_base_addr + UHPOWERCS_PORT) & UPHY_SUSP_CTRL) >> 8);
-	printk("suspend enable = %d\n", (readl(uhost0_base_addr + UHPOWERCS_PORT) & UPHY_SUSP_EN) >> 10);
-
 	/* disable usb controller clock */
 	clk_disable(ehci_clk[pdev->id - 1]);
 
