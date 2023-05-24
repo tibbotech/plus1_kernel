@@ -18,6 +18,7 @@ static struct resource *uphy1_res_mem;
 void __iomem *uphy1_base_addr;
 void __iomem *uphy1_res_moon0;
 void __iomem *uphy1_res_moon4;
+void __iomem *uhost1_base_addr;
 int uphy1_irq_num = -1;
 
 u8 sp_port1_enabled;
@@ -173,6 +174,11 @@ static int sunplus_usb_phy1_probe(struct platform_device *pdev)
 	uphy1_res_moon4 = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
 	if (IS_ERR(uphy1_res_moon4))
 		return PTR_ERR(uphy1_res_moon4);
+
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
+	uhost1_base_addr = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
+	if (IS_ERR(uhost1_base_addr))
+		return PTR_ERR(uhost1_base_addr);
 
 	uphy1_init(pdev);
 

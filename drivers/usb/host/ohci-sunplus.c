@@ -518,8 +518,8 @@ EXPORT_SYMBOL_GPL(ohci_sunplus_remove);
 #ifdef CONFIG_PM
 static int ohci_sunplus_drv_suspend(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	struct platform_device *pdev;
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
@@ -529,8 +529,16 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 	if (rc)
 		return rc;
 
+	/* UPHY suspend enable */
+	if ((pdev->id - 1) == USB_PORT0_ID) {
+		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
+								uhost0_base_addr + UHPOWERCS_PORT);
+	} else if ((pdev->id - 1) == USB_PORT1_ID) {
+		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
+								uhost1_base_addr + UHPOWERCS_PORT);
+	}
+
 	/* disable usb controller clock */
-	pdev = container_of(dev, struct platform_device, dev);
 	clk_disable(ohci_clk[pdev->id - 1]);
 
 	return 0;
@@ -538,15 +546,23 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 
 static int ohci_sunplus_drv_resume(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	struct platform_device *pdev;
 
 	pr_debug("%s.%d\n", __func__, __LINE__);
 
 	/* enable usb controller clock */
-	pdev = container_of(dev, struct platform_device, dev);
 	clk_prepare(ohci_clk[pdev->id - 1]);
 	clk_enable(ohci_clk[pdev->id - 1]);
+
+	/* UPHY suspend disable */
+	if ((pdev->id - 1) == USB_PORT0_ID) {
+		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
+								uhost0_base_addr + UHPOWERCS_PORT);
+	} else if ((pdev->id - 1) == USB_PORT1_ID) {
+		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
+								uhost1_base_addr + UHPOWERCS_PORT);
+	}
 
 	ohci_resume(hcd, false);
 

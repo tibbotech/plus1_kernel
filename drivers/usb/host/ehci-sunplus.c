@@ -415,7 +415,7 @@ EXPORT_SYMBOL_GPL(ehci_sunplus_remove);
 static int ehci_sunplus_drv_suspend(struct device *dev)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	struct platform_device *pdev;
+	struct platform_device *pdev = to_platform_device(dev);
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
 
@@ -424,8 +424,19 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 	if (rc)
 		return rc;
 
+	/* UPHY suspend enable */
+	if ((pdev->id - 1) == USB_PORT0_ID) {
+		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
+								uhost0_base_addr + UHPOWERCS_PORT);
+	} else if ((pdev->id - 1) == USB_PORT1_ID) {
+		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
+								uhost1_base_addr + UHPOWERCS_PORT);
+	}
+
+	printk("suspend control = %d\n", (readl(uhost0_base_addr + UHPOWERCS_PORT) & UPHY_SUSP_CTRL) >> 8);
+	printk("suspend enable = %d\n", (readl(uhost0_base_addr + UHPOWERCS_PORT) & UPHY_SUSP_EN) >> 10);
+
 	/* disable usb controller clock */
-	pdev = container_of(dev, struct platform_device, dev);
 	clk_disable(ehci_clk[pdev->id - 1]);
 
 	return 0;
@@ -433,15 +444,23 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 
 static int ehci_sunplus_drv_resume(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
-	struct platform_device *pdev;
 
 	pr_debug("%s.%d\n", __func__, __LINE__);
 
 	/* enable usb controller clock */
-	pdev = container_of(dev, struct platform_device, dev);
 	clk_prepare(ehci_clk[pdev->id - 1]);
 	clk_enable(ehci_clk[pdev->id - 1]);
+
+	/* UPHY suspend disable */
+	if ((pdev->id - 1) == USB_PORT0_ID) {
+		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
+								uhost0_base_addr + UHPOWERCS_PORT);
+	} else if ((pdev->id - 1) == USB_PORT1_ID) {
+		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
+								uhost1_base_addr + UHPOWERCS_PORT);
+	}
 
 	ehci_resume(hcd, false);
 
