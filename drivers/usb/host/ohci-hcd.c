@@ -1271,7 +1271,7 @@ MODULE_LICENSE ("GPL");
 #define TMIO_OHCI_DRIVER	ohci_hcd_tmio_driver
 #endif
 
-#ifdef CONFIG_USB_OHCI_HCD_PLATFORM
+#ifdef CONFIG_USB_OHCI_SUNPLUS
 #include "ohci-sunplus.c"
 #endif
 
