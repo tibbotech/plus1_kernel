@@ -186,13 +186,12 @@ static ssize_t udc_ctrl_store(struct device *dev, struct device_attribute *attr,
 	u32 ret = 0;
 	void __iomem *baddr = NULL;
 
-	if (strcmp(attr->attr.name, "udc_ctrl0")==0)
-		baddr = base_addr[0];
-	else
-	if (strcmp(attr->attr.name, "udc_ctrl1")==0)
-		baddr = base_addr[1];
-	else
-		baddr = base_addr[0];
+	struct platform_device *pdev;
+	struct sp_udc *udc = NULL;
+
+	pdev = container_of(dev, struct platform_device, dev);
+	udc = platform_get_drvdata(pdev);
+	baddr = udc->base_addr;
 		
 	ret = udc_read(UDLCSET, baddr) & SIM_MODE;
 	if (*buffer == 'd') {			/* d:switch uphy to device */
@@ -2404,7 +2403,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	rsrc_start = res->start;
 	rsrc_len = resource_size(res);
-	DEBUG_DBG("udc-line:%d, %lld, %lld, irq:%d", __LINE__, rsrc_start, rsrc_len, udc->irq_num);
+	pr_info("%s: %llx, %llx, irq:%d", __func__, rsrc_start, rsrc_len, udc->irq_num);
 	
 	base_addr[gadget_num] = ioremap(rsrc_start, rsrc_len);
 	udc->base_addr = base_addr[gadget_num];
@@ -2467,21 +2466,21 @@ static int sp_udc_probe(struct platform_device *pdev)
 		goto err_add_udc;
 #endif
 
-	DEBUG_DBG("udc-line:%d", __LINE__);
 	ret = usb_add_gadget_udc(&pdev->dev, &udc->gadget);
 	if (ret)
 		goto err_add_udc;
 
-	DEBUG_DBG("probe sp udc ok %x", udc->reg_read(VERSION));
 	device_create_file(&pdev->dev, udc->dev_attr);
 	gadget_num++;
+
+	pr_info("%s: udc version = %x", __func__, udc->reg_read(VERSION));
 
 	return 0;
 err_add_udc:
 	if (udc->irq_num)
 		free_irq(udc->irq_num, udc);
 err_map:
-	DEBUG_DBG("probe sp udc fail");
+	pr_err("probe sp udc fail");
 	return ret;
 err_mem:
 	release_mem_region(rsrc_start, rsrc_len);
@@ -2615,33 +2614,16 @@ void detech_start()
 }
 EXPORT_SYMBOL(detech_start);
 
-static const struct of_device_id sunplus_udc0_ids[] = {
-	{ .compatible = "sunplus,sp7021-usb-udc0" },
+static const struct of_device_id sunplus_udc_ids[] = {
+	{ .compatible = "sunplus,sp7021-usb-udc" },
 	{ }
 };
-MODULE_DEVICE_TABLE(of, sunplus_udc0_ids);
+MODULE_DEVICE_TABLE(of, sunplus_udc_ids);
 
-static const struct of_device_id sunplus_udc1_ids[] = {
-	{ .compatible = "sunplus,sp7021-usb-udc1" },
-	{ }
-};
-MODULE_DEVICE_TABLE(of, sunplus_udc1_ids);
-
-static struct platform_driver sunplus_driver_udc0 = {
+static struct platform_driver sunplus_driver_udc = {
 	.driver		= {
-		.name	= "sunplus-udc0",
-		.of_match_table = sunplus_udc0_ids,
-	},
-	.probe		= sp_udc_probe,
-	.remove		= sp_udc_remove,
-	.suspend	= sp_udc_suspend,
-	.resume		= sp_udc_resume,
-};
-
-static struct platform_driver sunplus_driver_udc1 = {
-	.driver		= {
-		.name	= "sunplus-udc1",
-		.of_match_table = sunplus_udc1_ids,
+		.name	= "sunplus-udc",
+		.of_match_table = sunplus_udc_ids,
 	},
 	.probe		= sp_udc_probe,
 	.remove		= sp_udc_remove,
@@ -2651,22 +2633,13 @@ static struct platform_driver sunplus_driver_udc1 = {
 
 static int __init udc_init(void)
 {
-	int ret;
-
-	DEBUG_INFO("register sunplus_driver_udc0");
-	ret = platform_driver_register(&sunplus_driver_udc0);
-
-	if (ret < 0)
-		return ret;
-
-	DEBUG_INFO("register sunplus_driver_udc1");
-	return  platform_driver_register(&sunplus_driver_udc1);
+	DEBUG_INFO("register sunplus_driver_udc");
+	return platform_driver_register(&sunplus_driver_udc);
 }
 
 static void __exit udc_exit(void)
 {
-	platform_driver_unregister(&sunplus_driver_udc0);
-	platform_driver_unregister(&sunplus_driver_udc1);
+	platform_driver_unregister(&sunplus_driver_udc);
 }
 
 module_init(udc_init);
