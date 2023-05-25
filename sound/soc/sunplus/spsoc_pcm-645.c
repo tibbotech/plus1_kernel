@@ -383,7 +383,7 @@ void hw_test(void)
 			break;
 		}
 	}
-	
+
 	val = run_length * run_num;
 	i = 0;
 	while ((regs0->aud_a10_cnt < val) && (regs0->aud_a16_cnt < val)) {
@@ -498,7 +498,7 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 		ret = -ENOMEM;
 		goto out;
 	}
-	
+
 	spin_lock_init(&prtd->lock);
 	runtime->private_data = prtd;
 	prtd->substream = substream;
@@ -664,7 +664,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 	struct snd_pcm_runtime *runtime = substream->runtime;
 	struct spsoc_runtime_data *iprtd = runtime->private_data;
 	int dma_initial;
-	
+
 	snd_pcm_set_runtime_buffer(substream, NULL);
 	tasklet_kill(&iprtd->tasklet);
 
@@ -1106,7 +1106,7 @@ static int spsoc_pcm_new(struct snd_soc_component *component, struct snd_soc_pcm
 	if (!card->dev->dma_mask) {
 		card->dev->dma_mask = &spsoc_pcm_dmamask;
 	}
-	
+
 	if (!card->dev->coherent_dma_mask) {
 		card->dev->coherent_dma_mask = DMA_BIT_MASK(32);
 	}
@@ -1256,7 +1256,7 @@ static void dma_free_dma_buffers(struct platform_device *pdev)
 
 void __iomem *pcm_get_spaud_data(void)
 {
-	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,Q645-audio");
+	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,audio");
 	struct platform_device *spaudpdev = of_find_device_by_node(np);
 	struct sunplus_audio_base *spauddata = NULL;
 

@@ -282,7 +282,7 @@ static const struct snd_soc_component_driver soc_codec_dev_aud = {
 
 void __iomem *codec_get_spaud_data(void)
 {
-	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,Q645-audio");
+	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,audio");
 	struct platform_device *spaudpdev = of_find_device_by_node(np);
 	struct sunplus_audio_base *spauddata = NULL;
 
