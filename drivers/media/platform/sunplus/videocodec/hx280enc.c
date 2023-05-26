@@ -113,6 +113,9 @@ DECLARE_WAIT_QUEUE_HEAD(enc_hw_queue);
 /* and this is our MAJOR; use 0 for dynamic allocation (recommended)*/
 static int hx280enc_major = 0;
 
+static struct clk *enc_clk;
+static struct reset_control *enc_rstc;
+
 /* here's all the must remember stuff */
 typedef struct
 {
@@ -344,15 +347,14 @@ static struct cdev enc_chrdev_cdev;
 
 static int enc_reset_release(struct platform_device *dev, const char *id) 
 {  
-    struct reset_control *rstc;
     int ret = 0;
 
-	rstc = devm_reset_control_get(&dev->dev, id);
+	enc_rstc = devm_reset_control_get(&dev->dev, id);
 
-	if (IS_ERR(rstc)) {
-		return PTR_ERR(rstc);
+	if (IS_ERR(enc_rstc)) {
+		return PTR_ERR(enc_rstc);
 	} else {
-		ret = reset_control_deassert(rstc);
+		ret = reset_control_deassert(enc_rstc);
 		if (ret) {
 			dev_err(&dev->dev, "failed to deassert reset line\n");
 			return ret;
@@ -365,15 +367,14 @@ static int enc_reset_release(struct platform_device *dev, const char *id)
 
 static int enc_clock_enable(struct platform_device *dev, const char *id) 
 {  
-    struct clk *clk;
     int ret = 0;
 
-    clk = devm_clk_get(&dev->dev, id);
+    enc_clk = devm_clk_get(&dev->dev, id);
 
-    if (IS_ERR(clk)) {
-        return PTR_ERR(clk);
+    if (IS_ERR(enc_clk)) {
+        return PTR_ERR(enc_clk);
     } else {
-        ret = clk_prepare_enable(clk);
+        ret = clk_prepare_enable(enc_clk);
         if (ret) {
             dev_err(&dev->dev, "enabled clock failed\n");
             return ret;
@@ -525,6 +526,36 @@ static int enc_chrdev_remove (struct platform_device *dev)
     return 0;  
 }
 
+#ifdef CONFIG_PM
+static int enc_chrdev_suspend(struct platform_device *pdev, pm_message_t state)
+{
+    clk_disable(enc_clk);
+    pr_info ("%s: clk_disable\n", __func__);
+	return 0;
+}
+
+static int enc_chrdev_resume(struct platform_device *pdev)
+{
+    int ret;
+    ret = clk_prepare_enable(enc_clk);
+    if (ret) {
+        dev_err(&pdev->dev, "enabled clock failed\n");
+        return ret;
+    }
+    ret = reset_control_deassert(enc_rstc);
+    if (ret)
+    {
+        dev_err(&pdev->dev, "failed to deassert reset\n");
+        return ret;
+    }
+    pr_info ("%s: clk_prepare_enable\n", __func__);
+	return 0;
+}
+#else
+#define enc_chrdev_suspend	NULL
+#define enc_chrdev_resume	NULL
+#endif
+
 // platform_device and platform_driver must has a same name!  
 // or it will not work normally  
 
@@ -542,6 +573,8 @@ static struct platform_driver enc_chrdev_platform_driver = {
         .owner  =   THIS_MODULE,
         .of_match_table = enc_chrdev_of_match,
     },  
+	.suspend	= enc_chrdev_suspend,
+	.resume		= enc_chrdev_resume,
 };  
 
 int __init hx280enc_init(void)

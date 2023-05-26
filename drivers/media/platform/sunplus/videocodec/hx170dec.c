@@ -134,6 +134,9 @@ typedef struct
 
 static hx170dec_t hx170dec_data; /* dynamic allocation? */
 
+static struct clk *dec_clk=NULL;
+static struct reset_control *dec_rstc;
+
 static void ResetAsic(hx170dec_t *dec);
 
 #ifdef HX170DEC_DEBUG
@@ -1136,19 +1139,19 @@ irqreturn_t hx170dec_isr(int irq, void *dev_id)
 
 static int dec_reset_release(struct platform_device *dev, const char *id)
 {
-    struct reset_control *rstc;
+    struct reset_control *dec_rstc;
     int ret = 0;
 
-    rstc = devm_reset_control_get(&dev->dev, id);
+    dec_rstc = devm_reset_control_get(&dev->dev, id);
 
-    if (IS_ERR(rstc))
+    if (IS_ERR(dec_rstc))
     {
         dev_err(&dev->dev, "failed to retrieve reset controller\n");
-        return PTR_ERR(rstc);
+        return PTR_ERR(dec_rstc);
     }
     else
     {
-        ret = reset_control_deassert(rstc);
+        ret = reset_control_deassert(dec_rstc);
         if (ret)
         {
             dev_err(&dev->dev, "failed to deassert reset line\n");
@@ -1162,18 +1165,17 @@ static int dec_reset_release(struct platform_device *dev, const char *id)
 
 static int dec_clock_enable(struct platform_device *dev, const char *id)
 {
-    struct clk *clk;
     int ret = 0;
 
-    clk = devm_clk_get(&dev->dev, id);
+    dec_clk = devm_clk_get(&dev->dev, id);
 
-    if (IS_ERR(clk))
+    if (IS_ERR(dec_clk))
     {
-        return PTR_ERR(clk);
+        return PTR_ERR(dec_clk);
     }
     else
     {
-        ret = clk_prepare_enable(clk);
+        ret = clk_prepare_enable(dec_clk);
         if (ret)
         {
             dev_err(&dev->dev, "enabled clock failed\n");
@@ -1375,6 +1377,36 @@ void ResetAsic(hx170dec_t *dev)
     }
 }
 
+#ifdef CONFIG_PM
+static int dec_chrdev_suspend(struct platform_device *pdev, pm_message_t state)
+{
+    clk_disable(dec_clk);
+    pr_info ("%s: clk_disable\n", __func__);
+	return 0;
+}
+
+static int dec_chrdev_resume(struct platform_device *pdev)
+{
+    int ret;
+    ret = clk_prepare_enable(dec_clk);
+    if (ret) {
+        dev_err(&pdev->dev, "enabled clock failed\n");
+        return ret;
+    }
+    ret = reset_control_deassert(dec_rstc);
+    if (ret)
+    {
+        dev_err(&pdev->dev, "failed to deassert reset\n");
+        return ret;
+    }
+    pr_info ("%s: clk_prepare_enable\n", __func__);
+	return 0;
+}
+#else
+#define dec_chrdev_suspend	NULL
+#define dec_chrdev_resume	NULL
+#endif
+
 static const struct of_device_id dec_chrdev_of_match[] = {
     {
         .compatible = "sunplus,q645-hantro-vc8000d",
@@ -1393,6 +1425,8 @@ static struct platform_driver dec_chrdev_platform_driver = {
         .owner = THIS_MODULE,
         .of_match_table = dec_chrdev_of_match,
     },
+	.suspend	= dec_chrdev_suspend,
+	.resume		= dec_chrdev_resume,
 };
 
 /*------------------------------------------------------------------------------
