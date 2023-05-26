@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-2.0
+
 #include <linux/kernel.h>
 #include <linux/export.h>
 #include <linux/err.h>
@@ -25,13 +27,13 @@ struct u3c_regs {
 
 struct usb3_phy {
 	struct device		*dev;
-	void __iomem 		*u3phy_base_addr;
-	void __iomem 		*u3_portsc_addr;
-	struct clk 		*u3_clk;
-	struct clk 		*u3phy_clk;
-	struct reset_control 	*u3phy_rst;
+	void __iomem		*u3phy_base_addr;
+	void __iomem		*u3_portsc_addr;
+	struct clk		*u3_clk;
+	struct clk		*u3phy_clk;
+	struct reset_control	*u3phy_rst;
 	int			irq;
-	wait_queue_head_t 	wq;
+	wait_queue_head_t	wq;
 	int			busy;
 	struct delayed_work	typecdir;
 	int			dir;
@@ -72,19 +74,17 @@ static void typec_gpio(struct work_struct *work)
 			writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
 			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-			if (!result) {
+			if (!result)
 				dev_err(u3phy->dev, "reset failed 3\n");
 				//return -ETIME;
-			}
 			u3phy->dir = 1;
 		} else {
 			writel(result | 0x11, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
 			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-			if (!result) {
+			if (!result)
 				dev_err(u3phy->dev, "reset failed 4\n");
 				//return -ETIME;
-			}
 			u3phy->dir = 0;
 		}
 		result = readl(&dwc3portsc_reg->cfg[0]) & ~((0xf<<5) | (0x1<<16));
@@ -113,19 +113,17 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 	writel(result | 0x3, &dwc3phy_reg->cfg[1]);
 	u3phy->busy = 1;
 	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-	if (!result) {
+	if (!result)
 		dev_err(dev, "reset failed 1\n");
 		//return -ETIME;
-	}
 
 	result = readl(&dwc3phy_reg->cfg[5]) & 0xFFE0;
 	writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 	u3phy->busy = 1;
 	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-	if (!result) {
+	if (!result)
 		dev_err(dev, "reset failed 2\n");
 		//return -ETIME;
-	}
 	u3phy->dir = 1;
 }
 
@@ -144,15 +142,15 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, u3phy);
 
 	/*enable u3 system clock*/
-        u3phy->u3_clk = devm_clk_get(&pdev->dev, "clkc_u3");
+	u3phy->u3_clk = devm_clk_get(&pdev->dev, "clkc_u3");
 	if (IS_ERR(u3phy->u3_clk)) {
 		dev_err(dev, "not found clk source\n");
 		return PTR_ERR(u3phy->u3_clk);
 	}
 	clk_prepare_enable(u3phy->u3_clk);
-        /*enable uphy3 system clock*/
+	/*enable uphy3 system clock*/
 
-        u3phy->u3phy_clk = devm_clk_get(&pdev->dev, "clkc_u3phy");
+	u3phy->u3phy_clk = devm_clk_get(&pdev->dev, "clkc_u3phy");
 	if (IS_ERR(u3phy->u3phy_clk)) {
 		dev_err(dev, "not found clk source\n");
 		return PTR_ERR(u3phy->u3phy_clk);
@@ -164,23 +162,21 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 		return PTR_ERR(u3phy->u3phy_rst);
 	}
 
-    	//phy3 settings
-    	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+	//phy3 settings
+	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	u3phy->u3phy_base_addr = devm_ioremap_resource(&pdev->dev, u3phy_res_mem);
-	if (IS_ERR(u3phy->u3phy_base_addr)) {
+	if (IS_ERR(u3phy->u3phy_base_addr))
 		return PTR_ERR(u3phy->u3phy_base_addr);
-	}
 
 	u3phy_res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	u3phy->u3_portsc_addr = devm_ioremap(&pdev->dev, u3phy_res_mem->start, resource_size(u3phy_res_mem));
-	if (IS_ERR(u3phy->u3_portsc_addr)) {
+	if (IS_ERR(u3phy->u3_portsc_addr))
 		return PTR_ERR(u3phy->u3_portsc_addr);
-	}
 
 	u3phy->irq = platform_get_irq(pdev, 0);
 	init_waitqueue_head(&u3phy->wq);
 	if (u3phy->irq <= 0) {
-		printk("ERR\n");
+		pr_info("ERR\n");
 		return -EINVAL;
 	}
 	ret = devm_request_irq(dev, u3phy->irq, u3phy_int, IRQF_SHARED, pdev->name, u3phy);
@@ -221,7 +217,6 @@ static const struct of_device_id synopsys_u3phy_sunplus_dt_ids[] = {
 	{ .compatible = "sunplus,usb3-phy" },
 	{ }
 };
-
 MODULE_DEVICE_TABLE(of, synopsys_u3phy_sunplus_dt_ids);
 
 static struct platform_driver sunplus_synopsys_u3phy_driver = {
@@ -232,7 +227,8 @@ static struct platform_driver sunplus_synopsys_u3phy_driver = {
 		.of_match_table = synopsys_u3phy_sunplus_dt_ids,
 	},
 };
-
 module_platform_driver(sunplus_synopsys_u3phy_driver);
+
 MODULE_ALIAS("sunplus_usb_synpsys_u3phy");
+MODULE_AUTHOR("Sunplus Technology Inc.");
 MODULE_LICENSE("GPL");
