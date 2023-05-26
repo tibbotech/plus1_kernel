@@ -1,9 +1,9 @@
-/*
- * ALSA SoC Q645 codec driver
- *
- * Author:	 <@sunplus.com>
- *
-*/
+// SPDX-License-Identifier: GPL-2.0
+// ALSA	SoC Q645 codec driver
+//
+// Author:	 <@sunplus.com>
+//
+//
 
 #include <linux/module.h>
 #include <linux/of_platform.h>
@@ -11,161 +11,161 @@
 #include "spsoc_util-645.h"
 
 void __iomem *codecaudio_base;
-#define AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
+#define	AUD_FORMATS	(SNDRV_PCM_FMTBIT_S16_LE | SNDRV_PCM_FMTBIT_S24_3LE)
 
-/*================================================================
- * codec driver
- *===============================================================*/
-static int aud_dai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
+//================================================================
+//		codec driver
+//================================================================
+static int aud_dai_startup(struct snd_pcm_substream *substream,	struct snd_soc_dai *dai)
 {
 	dev_info(dai->dev, "%s IN\n", __func__);
 	return 0;
 }
 
 static int aud_dai_hw_params(struct snd_pcm_substream *substream,
-	                     struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
+			     struct snd_pcm_hw_params *params, struct snd_soc_dai *dai)
 {
 	int rate = params_rate(params);
 
-	dev_info(dai->dev, "%s IN, rate %d\n", __func__, rate);
+	dev_info(dai->dev, "%s IN, rate	%d\n", __func__, rate);
 	return 0;
 }
 
-static const struct snd_soc_dai_ops aud_dai_ops = {
-	.startup 	= aud_dai_startup,
+static const struct snd_soc_dai_ops aud_dai_ops	= {
+	.startup	= aud_dai_startup,
 	.hw_params	= aud_dai_hw_params,
 };
 
-static struct snd_soc_dai_driver audcodec_dai[] = {
+static struct snd_soc_dai_driver audcodec_dai[]	= {
 	{
-		.name = "aud-codec-i2s-dai-0",
+		.name =	"aud-codec-i2s-dai-0",
 		.playback = {
-			.stream_name 	= "I2S-0 Playback",
-			.channels_min 	= 2,
-			.channels_max 	= 2,
-			.rates 		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "I2S-0 Playback",
+			.channels_min	= 2,
+			.channels_max	= 2,
+			.rates		= AUD_RATES,
+			.formats	= AUD_FORMATS,
 		},
 		.capture = {
-			.stream_name 	= "I2S-0 Capture",
+			.stream_name	= "I2S-0 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 2,
+			.channels_max	= 2,
 			.rates		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.formats	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
 	},
 	{
-		.name = "aud-codec-tdm-dai",
+		.name =	"aud-codec-tdm-dai",
 		.playback = {
-			.stream_name 	= "TDM playback",
-			.channels_min 	= 2,
-			.channels_max 	= 16,
-			.rates 		= AUD_RATES_C,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "TDM playback",
+			.channels_min	= 2,
+			.channels_max	= 16,
+			.rates		= AUD_RATES_C,
+			.formats	= AUD_FORMATS,
 		},
 		.capture = {
-			.stream_name 	= "TDM Capture",
+			.stream_name	= "TDM Capture",
 			.channels_min	= 2,
-			.channels_max 	= 16,
-			.rates 		= AUD_RATES_C,
-			.formats 	= AUD_FORMATS,
+			.channels_max	= 16,
+			.rates		= AUD_RATES_C,
+			.formats	= AUD_FORMATS,
 		 },
 		.ops = &aud_dai_ops,
 	},
 	{
-		.name = "aud-codec-i2s-dai-1",
+		.name =	"aud-codec-i2s-dai-1",
 		.playback = {
-			.stream_name 	= "I2S-1 Playback",
-			.channels_min 	= 2,
-			.channels_max 	= 2,
-			.rates 		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "I2S-1 Playback",
+			.channels_min	= 2,
+			.channels_max	= 2,
+			.rates		= AUD_RATES,
+			.formats	= AUD_FORMATS,
 		},
 		.capture = {
-			.stream_name 	= "I2S-1 Capture",
+			.stream_name	= "I2S-1 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 2,
+			.channels_max	= 2,
 			.rates		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.formats	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
 	},
 	{
-		.name = "aud-codec-i2s-dai-2",
+		.name =	"aud-codec-i2s-dai-2",
 		.playback = {
-			.stream_name 	= "I2S-2 Playback",
-			.channels_min 	= 2,
-			.channels_max 	= 2,
-			.rates 		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "I2S-2 Playback",
+			.channels_min	= 2,
+			.channels_max	= 2,
+			.rates		= AUD_RATES,
+			.formats	= AUD_FORMATS,
 		},
 		.capture = {
-			.stream_name 	= "I2S-2 Capture",
+			.stream_name	= "I2S-2 Capture",
 			.channels_min	= 2,
-			.channels_max 	= 2,
+			.channels_max	= 2,
 			.rates		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.formats	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
 	},
 	{
-		.name = "aud-spdif-dai",
+		.name =	"aud-spdif-dai",
 		.playback = {
-			.stream_name 	= "spdif Playback",
-			.channels_min 	= 1,
-			.channels_max 	= 2,
-			.rates 		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "spdif Playback",
+			.channels_min	= 1,
+			.channels_max	= 2,
+			.rates		= AUD_RATES,
+			.formats	= AUD_FORMATS,
 		},
 		.capture = {
-			.stream_name 	= "spdif Capture",
-			.channels_min 	= 1,
-			.channels_max 	= 2,
-			.rates 		= AUD_RATES,
-			.formats 	= AUD_FORMATS,
+			.stream_name	= "spdif Capture",
+			.channels_min	= 1,
+			.channels_max	= 2,
+			.rates		= AUD_RATES,
+			.formats	= AUD_FORMATS,
 		},
 		.ops = &aud_dai_ops,
 	},
 };
 
-static const DECLARE_TLV_DB_SCALE(volume_tlv, -6000, 0, 1);
-static const char *cpm0_5_out[] = {"pcm0", "pcm5"};
+static const DECLARE_TLV_DB_SCALE(volume_tlv, -6000, 0,	1);
+static const char *cpm0_5_out[]	= {"pcm0", "pcm5"};
 static const struct soc_enum cpm0_5_out_enum = SOC_ENUM_DOUBLE(reg_aud_grm_gain_control_8, 16, 17, 2, cpm0_5_out);
 
-static const struct snd_kcontrol_new aud_snd_controls[] = {
-	/* master gains */
-	SOC_SINGLE_TLV("Master Playback Volume",reg_aud_grm_master_gain,	8,	2<<22,		0, 	volume_tlv),
+static const struct snd_kcontrol_new aud_snd_controls[]	= {
+	/* master gains	*/
+	SOC_SINGLE_TLV("Master Playback	Volume", reg_aud_grm_master_gain,	8,	2<<22,		0,	volume_tlv),
 	/* Playback gains */
-	SOC_DOUBLE_TLV("A0 Playback Volume",	reg_aud_grm_gain_control_5,  	0,  	8, 	0x80, 	0, 	volume_tlv),
-	SOC_DOUBLE_TLV("A1 Playback Volume", 	reg_aud_grm_gain_control_5, 	16, 	24, 	0x80, 	0, 	volume_tlv),
+	SOC_DOUBLE_TLV("A0 Playback Volume",	reg_aud_grm_gain_control_5,	0,	8,	0x80,	0,	volume_tlv),
+	SOC_DOUBLE_TLV("A1 Playback Volume",	reg_aud_grm_gain_control_5,	16,	24,	0x80,	0,	volume_tlv),
 
-	SOC_DOUBLE_TLV("A2 Playback Volume", 	reg_aud_grm_gain_control_6,  	0,  	8, 	0x80, 	0, 	volume_tlv),
-	SOC_DOUBLE_TLV("A3 Playback Volume", 	reg_aud_grm_gain_control_6, 	16, 	24, 	0x80, 	0, 	volume_tlv),
+	SOC_DOUBLE_TLV("A2 Playback Volume",	reg_aud_grm_gain_control_6,	0,	8,	0x80,	0,	volume_tlv),
+	SOC_DOUBLE_TLV("A3 Playback Volume",	reg_aud_grm_gain_control_6,	16,	24,	0x80,	0,	volume_tlv),
 
-	SOC_SINGLE_TLV("A4 Playback Volume 1", 	reg_aud_grm_gain_control_7, 	14, 	2<<16, 		0, 	volume_tlv),
-	SOC_SINGLE_TLV("A4 Playback Volume 2", 	reg_aud_grm_gain_control_8, 	14, 	2<<16, 		0, 	volume_tlv),
-    	SOC_DOUBLE_TLV("A20 Playback Volume", 	reg_aud_grm_gain_control_10,  	0,	8, 	0x80, 	0, 	volume_tlv),
+	SOC_SINGLE_TLV("A4 Playback Volume 1",	reg_aud_grm_gain_control_7,	14,	2<<16,		0,	volume_tlv),
+	SOC_SINGLE_TLV("A4 Playback Volume 2",	reg_aud_grm_gain_control_8,	14,	2<<16,		0,	volume_tlv),
+	SOC_DOUBLE_TLV("A20 Playback Volume",	reg_aud_grm_gain_control_10,	0,	8,	0x80,	0,	volume_tlv),
 
 	/* Mux */
 	SOC_ENUM("pcm0 pcm5 Output",	cpm0_5_out_enum),
 
 	/* Mix */
 	SOC_SINGLE("Mix0",	reg_aud_grm_mix_control_0,	0,	1,	0),
-	SOC_SINGLE("Mix1", 	reg_aud_grm_mix_control_0,	1,	1,	0),
-	SOC_SINGLE("Mix2", 	reg_aud_grm_mix_control_0,	2,	1,	0),
-	SOC_SINGLE("Mix3", 	reg_aud_grm_mix_control_0,	3,	1,	0),
-	SOC_SINGLE("Mix4", 	reg_aud_grm_mix_control_0,	4,	1,	0),
-	SOC_SINGLE("Mix5", 	reg_aud_grm_mix_control_0,	5,	1,	0),
-	SOC_SINGLE("Mix6", 	reg_aud_grm_mix_control_0,	6,	1,	0),
-	SOC_SINGLE("Mix7", 	reg_aud_grm_mix_control_0,	7,	1,	0),
-	SOC_SINGLE("Mix8", 	reg_aud_grm_mix_control_0,	8,	1,	0),
-	SOC_SINGLE("Mix9", 	reg_aud_grm_mix_control_0,	9,	1,	0),
-	SOC_SINGLE("Mix30", 	reg_aud_grm_mix_control_0,	10,	1,	0),
-	SOC_SINGLE("Mix36", 	reg_aud_grm_mix_control_0,	11,	1,	0),
-	SOC_SINGLE("Mix46", 	reg_aud_grm_mix_control_0,	12,	1,	0),
-	SOC_SINGLE("Mix52", 	reg_aud_grm_mix_control_0,	13,	1,	0),
-	SOC_SINGLE("Mix72", 	reg_aud_grm_mix_control_0,	14,	1,	0),
+	SOC_SINGLE("Mix1",	reg_aud_grm_mix_control_0,	1,	1,	0),
+	SOC_SINGLE("Mix2",	reg_aud_grm_mix_control_0,	2,	1,	0),
+	SOC_SINGLE("Mix3",	reg_aud_grm_mix_control_0,	3,	1,	0),
+	SOC_SINGLE("Mix4",	reg_aud_grm_mix_control_0,	4,	1,	0),
+	SOC_SINGLE("Mix5",	reg_aud_grm_mix_control_0,	5,	1,	0),
+	SOC_SINGLE("Mix6",	reg_aud_grm_mix_control_0,	6,	1,	0),
+	SOC_SINGLE("Mix7",	reg_aud_grm_mix_control_0,	7,	1,	0),
+	SOC_SINGLE("Mix8",	reg_aud_grm_mix_control_0,	8,	1,	0),
+	SOC_SINGLE("Mix9",	reg_aud_grm_mix_control_0,	9,	1,	0),
+	SOC_SINGLE("Mix30",	reg_aud_grm_mix_control_0,	10,	1,	0),
+	SOC_SINGLE("Mix36",	reg_aud_grm_mix_control_0,	11,	1,	0),
+	SOC_SINGLE("Mix46",	reg_aud_grm_mix_control_0,	12,	1,	0),
+	SOC_SINGLE("Mix52",	reg_aud_grm_mix_control_0,	13,	1,	0),
+	SOC_SINGLE("Mix72",	reg_aud_grm_mix_control_0,	14,	1,	0),
 
 	SOC_SINGLE("Mix10",	reg_aud_grm_mix_control_0,	16,	1,	0),
 	SOC_SINGLE("Mix11",	reg_aud_grm_mix_control_0,	17,	1,	0),
@@ -191,7 +191,7 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 	SOC_SINGLE("Mix74",	reg_aud_grm_mix_control_1,	5,	1,	0),
 	SOC_SINGLE("Mix39",	reg_aud_grm_mix_control_1,	6,	1,	0),
 	SOC_SINGLE("Mix32",	reg_aud_grm_mix_control_1,	7,	1,	0),
-  	SOC_SINGLE("Mix33",	reg_aud_grm_mix_control_1,	8,	1,	0),
+	SOC_SINGLE("Mix33",	reg_aud_grm_mix_control_1,	8,	1,	0),
 	SOC_SINGLE("Mix34",	reg_aud_grm_mix_control_1,	9,	1,	0),
 	SOC_SINGLE("Mix35",	reg_aud_grm_mix_control_1,	10,	1,	0),
 	SOC_SINGLE("Mix75",	reg_aud_grm_mix_control_1,	11,	1,	0),
@@ -245,35 +245,37 @@ static const struct snd_kcontrol_new aud_snd_controls[] = {
 	//SOC_SINGLE_TLV()
 };
 
-static unsigned int audreg_read(struct snd_soc_component *component, unsigned int reg)
+static unsigned	int audreg_read(struct snd_soc_component *component, unsigned int reg)
 {
 	int val, addr_g, addr_i;
-	volatile uint32_t * addr;
+	volatile uint32_t *addr;
+
 	addr_i = reg % 100;
-	addr_g = (reg - addr_i) / 100 - 60;
-	addr = (codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
-	//val = (int)(*(volatile unsigned int *) (addr));
+	addr_g = (reg -	addr_i)	/ 100 -	60;
+	addr = (codecaudio_base	+ addr_g * 32 *	4 + addr_i * 4);
+	//val =	(int)(*(volatile unsigned int *) (addr));
 	val = *addr;
 	//SYNCHRONIZE_IO;
-    	//pr_info("*val=%08x\n", val);
+	//pr_info("*val=%08x\n", val);
 	return val;
 }
 
-static int audreg_write(struct snd_soc_component *component, unsigned int reg,unsigned int value)
+static int audreg_write(struct snd_soc_component *component, unsigned int reg, unsigned int value)
 {
 	int  addr_g, addr_i;
 	volatile uint32_t *addr;
+
 	addr_i = reg % 100;
-	addr_g = (reg - addr_i) / 100 - 60;
-	addr = (codecaudio_base + addr_g * 32 * 4 + addr_i * 4);
-	*addr = value;
+	addr_g = (reg -	addr_i)	/ 100 -	60;
+	addr = (codecaudio_base	+ addr_g * 32 *	4 + addr_i * 4);
+	*addr =	value;
 	//SYNCHRONIZE_IO;
-	//pr_info("val=%08x\n", (*(volatile unsigned int *)(addr)));
+	//pr_info("val=%08x\n",	(*(volatile unsigned int *)(addr)));
 	return 0;
 }
 
 static const struct snd_soc_component_driver soc_codec_dev_aud = {
-	//.name = "aud-codec",
+	//.name	= "aud-codec",
 	.read		= audreg_read,
 	.write		= audreg_write,
 	.controls	= aud_snd_controls,
@@ -282,7 +284,7 @@ static const struct snd_soc_component_driver soc_codec_dev_aud = {
 
 void __iomem *codec_get_spaud_data(void)
 {
-	struct device_node *np  = of_find_compatible_node(NULL, NULL, "sunplus,audio");
+	struct device_node *np	= of_find_compatible_node(NULL,	NULL, "sunplus,audio");
 	struct platform_device *spaudpdev = of_find_device_by_node(np);
 	struct sunplus_audio_base *spauddata = NULL;
 
@@ -292,14 +294,12 @@ void __iomem *codec_get_spaud_data(void)
 	}
 
 	spaudpdev = of_find_device_by_node(np);
-	if (!spaudpdev) {
+	if (!spaudpdev)
 		goto out;
-	}
 
 	spauddata = dev_get_drvdata(&spaudpdev->dev);
-	if (!spauddata) {
+	if (!spauddata)
 		spauddata = ERR_PTR(-EPROBE_DEFER);
-	}
 
 out:
 	of_node_put(np);
@@ -309,9 +309,9 @@ out:
 
 static int aud_codec_probe(struct platform_device *pdev)
 {
-	int ret = 0;
+	int ret	= 0;
 
-	codecaudio_base = codec_get_spaud_data();
+	codecaudio_base	= codec_get_spaud_data();
 	dev_info(&pdev->dev, "%s IN %s\n", __func__, dev_name(&pdev->dev));
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud, audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
@@ -325,11 +325,11 @@ static int aud_codec_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static const struct of_device_id sunplus_audio_codec_dt_ids[] = {
-	{ .compatible = "sunplus,audio-codec", },
+static const struct of_device_id sunplus_audio_codec_dt_ids[] =	{
+	{ .compatible =	"sunplus,audio-codec", },
 	{ },
 };
-MODULE_DEVICE_TABLE(of, sunplus_audio_codec_dt_ids);
+MODULE_DEVICE_TABLE(of,	sunplus_audio_codec_dt_ids);
 
 static struct platform_driver spaud_codec_driver = {
 	.driver	= {
@@ -345,3 +345,4 @@ module_platform_driver(spaud_codec_driver);
 MODULE_AUTHOR("Sunplus Technology Inc.");
 MODULE_DESCRIPTION("Sunplus codec driver");
 MODULE_LICENSE("GPL");
+
