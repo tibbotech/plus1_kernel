@@ -1448,6 +1448,7 @@ static int spsdc_drv_suspend(struct platform_device *dev, pm_message_t state)
 	struct spsdc_host *host;
 
 	host = platform_get_drvdata(dev);
+	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	mutex_lock(&host->mrq_lock); /* Make sure that no one is holding the controller */
 	mutex_unlock(&host->mrq_lock);
 	clk_disable(host->clk);
@@ -1466,14 +1467,28 @@ static int spsdc_drv_resume(struct platform_device *dev)
 #ifdef CONFIG_PM_SLEEP
 static int spsdc_pm_suspend(struct device *dev)
 {
+	struct spsdc_host *host;
+
+	host = dev_get_drvdata(dev);
+	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	pm_runtime_force_suspend(dev);
+	clk_disable(host->clk);	
 	return 0;
 }
 
 static int spsdc_pm_resume(struct device *dev)
 {
+	struct spsdc_host *host;
+	int ret;
+	
+	host = dev_get_drvdata(dev);
+	spsdc_pr(host->mode, INFO, "%s\n", __func__);	
+	ret = clk_enable(host->clk);
+	if (ret)
+		return ret;
+	spsdc_controller_init(host);
 	pm_runtime_force_resume(dev);
-	return 0;
+	return ret;
 }
 #endif /* ifdef CONFIG_PM_SLEEP */
 
@@ -1482,8 +1497,8 @@ static int spsdc_pm_runtime_suspend(struct device *dev)
 {
 	struct spsdc_host *host;
 
-	spsdc_pr(host->mode, DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
+	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	if (__clk_is_enabled(host->clk))
 		clk_disable(host->clk);
 	return 0;
@@ -1494,8 +1509,9 @@ static int spsdc_pm_runtime_resume(struct device *dev)
 	struct spsdc_host *host;
 	int ret = 0;
 
-	spsdc_pr(host->mode, DEBUG, "%s\n", __func__);
 	host = dev_get_drvdata(dev);
+	host->signal_voltage = 0;
+	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	if (!host->mmc)
 		return -EINVAL;
 	if (mmc_can_gpio_cd(host->mmc)) {
