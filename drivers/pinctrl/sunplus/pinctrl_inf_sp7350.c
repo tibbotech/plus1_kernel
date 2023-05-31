@@ -494,6 +494,34 @@ static const struct sppctlgrp_t sp7350grps_int7[] = {
 	EGRP("INT7_X11", 11, pins_int6_x11),
 };
 
+static const unsigned int pins_gpio_ao_int0_x1[] = { 52, 53, 54, 55, 56, 57, 58, 59 };
+static const unsigned int pins_gpio_ao_int0_x2[] = { 68, 69, 70, 71, 72, 73, 74, 75 };
+static const struct sppctlgrp_t sp7350grps_gpio_ao_int0[] = {
+	EGRP("GPIO_AO_INT0_X1", 1, pins_gpio_ao_int0_x1),
+	EGRP("GPIO_AO_INT0_X2", 1, pins_gpio_ao_int0_x2),
+};
+
+static const unsigned int pins_gpio_ao_int1_x1[] = { 60, 61, 62, 63, 64, 65, 66, 67 };
+static const unsigned int pins_gpio_ao_int1_x2[] = { 76, 77, 78, 79, 80, 81, 82, 83 };
+static const struct sppctlgrp_t sp7350grps_gpio_ao_int1[] = {
+	EGRP("GPIO_AO_INT1_X1", 1, pins_gpio_ao_int1_x1),
+	EGRP("GPIO_AO_INT1_X2", 1, pins_gpio_ao_int1_x2),
+};
+
+static const unsigned int pins_gpio_ao_int2_x1[] = { 68, 69, 70, 71, 72, 73, 74, 75 };
+static const unsigned int pins_gpio_ao_int2_x2[] = { 84, 85, 86, 87, 88, 89, 90, 91 };
+static const struct sppctlgrp_t sp7350grps_gpio_ao_int2[] = {
+	EGRP("GPIO_AO_INT2_X1", 1, pins_gpio_ao_int2_x1),
+	EGRP("GPIO_AO_INT2_X2", 1, pins_gpio_ao_int2_x2),
+};
+
+static const unsigned int pins_gpio_ao_int3_x1[] = { 76, 77, 78, 79, 80, 81, 82, 83 };
+static const unsigned int pins_gpio_ao_int3_x2[] = { 91, 92, 93, 94, 95, 96, 97, 98 };
+static const struct sppctlgrp_t sp7350grps_gpio_ao_int3[] = {
+	EGRP("GPIO_AO_INT3_X1", 1, pins_gpio_ao_int3_x1),
+	EGRP("GPIO_AO_INT3_X2", 1, pins_gpio_ao_int3_x2),
+};
+
 struct func_t list_funcs[] = {
 	FNCN("GPIO",            fOFF_0, 0, 0, 0),
 	FNCN("IOP",             fOFF_0, 0, 0, 0),
@@ -564,6 +592,10 @@ struct func_t list_funcs[] = {
 
 	FNCE("INT6",            fOFF_G, 9, 0,  4, sp7350grps_int6),
 	FNCE("INT7",            fOFF_G, 9, 4,  4, sp7350grps_int7),
+	FNCE("GPIO_AO_INT0",    fOFF_G, 9, 8,  2, sp7350grps_gpio_ao_int0),
+	FNCE("GPIO_AO_INT1",    fOFF_G, 9, 10, 2, sp7350grps_gpio_ao_int1),
+	FNCE("GPIO_AO_INT2",    fOFF_G, 9, 12, 2, sp7350grps_gpio_ao_int2),
+	FNCE("GPIO_AO_INT3",    fOFF_G, 9, 14, 2, sp7350grps_gpio_ao_int3),
 };
 
 const size_t list_funcsSZ = ARRAY_SIZE(list_funcs);
