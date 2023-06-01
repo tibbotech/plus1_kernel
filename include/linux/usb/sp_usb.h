@@ -113,8 +113,6 @@ extern u32 sdp_cfg17_value;
 
 extern int uphy0_irq_num;
 extern int uphy1_irq_num;
-extern void __iomem *uhost0_base_addr;
-extern void __iomem *uhost1_base_addr;
 extern void __iomem *uphy0_base_addr;
 extern void __iomem *uphy1_base_addr;
 extern void __iomem *uphy0_res_moon4;

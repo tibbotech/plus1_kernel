@@ -6,6 +6,7 @@ menu "USB Physical Layer drivers"
 
 config SUNPLUS_USB_PHY
 	tristate "Sunplus USB PHY"
+	depends on SOC_SP7021
 	select NVMEM_SUNPLUS_OCOTP
 
 config USB_SUNPLUS_OTG
