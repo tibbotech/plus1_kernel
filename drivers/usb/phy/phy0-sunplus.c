@@ -17,7 +17,6 @@ static struct clk *uphy0_clk;
 static struct resource *uphy0_res_mem;
 void __iomem *uphy0_base_addr;
 void __iomem *uphy0_res_moon0;
-void __iomem *uhost0_base_addr;
 #if defined (CONFIG_SOC_SP7021)|| defined (CONFIG_SOC_SP7350)
 void __iomem *uphy0_res_moon4;
 #elif defined (CONFIG_SOC_Q645)
@@ -251,11 +250,6 @@ static int sunplus_usb_phy0_probe(struct platform_device *pdev)
 	if (IS_ERR(uphy0_res_moon3))
 		return PTR_ERR(uphy0_res_moon3);
 #endif
-
-	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 3);
-	uhost0_base_addr = devm_ioremap(&pdev->dev, res_mem->start, resource_size(res_mem));
-	if (IS_ERR(uhost0_base_addr))
-		return PTR_ERR(uhost0_base_addr);
 
 	uphy0_init(pdev);
 
