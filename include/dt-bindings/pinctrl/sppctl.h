@@ -31,10 +31,19 @@
 #define SPPCTL_PCTLD_F(v)       (((v) >> 8) & 0xFF)
 #define SPPCTL_PCTLD_L(v)       (((v) >> 0) & 0xFF)
 
+
 /*
  * pack into 32-bit value:
  * pin#{8bit}, typ{8bit}, function{8bit}, flags{8bit}
  */
 #define SPPCTL_IOPAD(pin, typ, fun, fls) (((pin)<<24)|((typ)<<16)|((fun)<<8)|(fls))
+
+// GPIO_AO_INT
+#define SPPCTL_AOPIN_OUT0         (1 << 0)	// Set ao-pin to output 0.
+#define SPPCTL_AOPIN_OUT1         (1 << 1)	// Set ao-pin to output 1.
+#define SPPCTL_AOPIN_DEB          (1 << 2)	// Enable input debounce.
+#define SPPCTL_AOPIN_PIN(v)       (((v) >> 24) & 0xFF)
+#define SPPCTL_AOPIN_FLG(v)       ((v) & 0xFFFFFF)
+#define SPPCTL_AOIOPAD(pin, flg) (((pin) << 24)|(flg))
 
 #endif

@@ -65,6 +65,10 @@
 #define SUPPORT_PINMUX
 #endif
 
+#if 0 //defined(CONFIG_PINCTRL_SPPCTL_SP7350)
+#define SUPPORT_GPIO_AO_INT
+#endif
+
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
 
@@ -112,7 +116,10 @@ struct sppctl_pdata_t {
 	void __iomem *base1;    // I_INV , O_INV , OD
 #endif
 	void __iomem *base2;    // GPIO_FIRST
-	void __iomem *baseI;    // IOP
+	void __iomem *baseI;    // PIN-GROUP
+#if defined(SUPPORT_GPIO_AO_INT)
+	void __iomem *baseA;    // GPIO_AO_INT
+#endif
 	// pinctrl-related
 	struct pinctrl_desc pdesc;
 	struct pinctrl_dev *pcdp;
