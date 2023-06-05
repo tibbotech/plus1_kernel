@@ -2185,10 +2185,14 @@
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x2c>,
 		      <0x0 0xf88032e4 0x0 0x1c>,
-		      <0x0 0xf8803380 0x0 0x180>;
-		reg-names = "moon1", "first", "gpioxt";
+		      <0x0 0xf8803380 0x0 0x180>,
+		      <0x0 0xf8802f80 0x0 0x1c>;
+		reg-names = "moon1", "first", "gpioxt", "gpio_ao_int";
 		gpio-controller;
 		#gpio-cells = <2>;
+
+		sunplus,ao-pin-prescale = <2500>;
+		sunplus,ao-pin-debounce = <10>;
 
 		emmc_pins: pinmux_emmc-pins {
 			function = "EMMC";
@@ -2457,18 +2461,28 @@
 		gpio_ao_int0_pins: pinmux_gpio_ao_int0-pins {
 			function = "GPIO_AO_INT0";
 			groups = "GPIO_AO_INT0_X1";
+			sunplus,ao-pins = <
+				SPPCTL_AOIOPAD(0, SPPCTL_AOPIN_OUT0)
+				SPPCTL_AOIOPAD(1, SPPCTL_AOPIN_OUT1)
+			>;
 		};
 		gpio_ao_int1_pins: pinmux_gpio_ao_int1-pins {
 			function = "GPIO_AO_INT1";
 			groups = "GPIO_AO_INT1_X1";
+			sunplus,ao-pins = <
+				SPPCTL_AOIOPAD(8, 0)
+				SPPCTL_AOIOPAD(15, SPPCTL_AOPIN_DEB)
+			>;
 		};
 		gpio_ao_int2_pins: pinmux_gpio_ao_int2-pins {
 			function = "GPIO_AO_INT2";
 			groups = "GPIO_AO_INT2_X1";
+			sunplus,ao-pins = < SPPCTL_AOIOPAD(16, 0) >;
 		};
 		gpio_ao_int3_pins: pinmux_gpio_ao_int3-pins {
 			function = "GPIO_AO_INT3";
 			groups = "GPIO_AO_INT3_X1";
+			sunplus,ao-pins = < SPPCTL_AOIOPAD(31, 0) >;
 		};
 	};
 };

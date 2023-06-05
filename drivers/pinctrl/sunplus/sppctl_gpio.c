@@ -160,11 +160,29 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	pc->base1 = _pctrlp->base1;
 #endif
 	pc->base2 = _pctrlp->base2;
+#if defined(SUPPORT_GPIO_AO_INT)
+	pc->baseA = _pctrlp->baseA;
+#endif
 	_pctrlp->gpiod = pc;
 #else
 	err = sppctl_gpio_resmap(_pd, pc);
 	if (err != 0)
 		return err;
+#endif
+
+#if defined(SUPPORT_GPIO_AO_INT)
+	if (of_property_read_u32(np, "sunplus,ao-pin-prescale",
+	    &pc->gpio_ao_int_prescale) == 0) {
+		writel(pc->gpio_ao_int_prescale & 0xfffff, pc->baseA); // PRESCALE
+	}
+
+	if (of_property_read_u32(np, "sunplus,ao-pin-debounce",
+	    &pc->gpio_ao_int_debounce) == 0) {
+		writel(pc->gpio_ao_int_prescale & 0xff, pc->baseA + 4);// DEB_TIME
+	}
+
+	for (i = 0; i < 32; i++)
+		pc->gpio_ao_int_pins[i] = -1;
 #endif
 
 	gchip->label =             MNAME;
