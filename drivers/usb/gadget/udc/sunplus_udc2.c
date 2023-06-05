@@ -168,7 +168,33 @@ static struct platform_driver sp_udc_driver = {
 
 void udc_print_block(u8 *pBuffStar, u32 uiBuffLen)
 {
-	print_hex_dump(KERN_NOTICE, "usb", DUMP_PREFIX_ADDRESS, 16, 4, pBuffStar, uiBuffLen, false);
+	print_hex_dump(KERN_NOTICE, "usb", DUMP_PREFIX_ADDRESS, 16, 4, pBuffStar,
+									uiBuffLen, false);
+}
+
+static void power_uphy_pll(int enable)
+{
+	u32 temp;
+
+	temp = readl(uphy0_regs + GLO_CTRL2_OFFSET);
+
+	if (enable) {
+		temp &= (~PLL_PD_SEL & ~PLL_PD);
+		writel(temp, uphy0_regs + GLO_CTRL2_OFFSET);
+
+		writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) & ~CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
+
+		UDC_LOGD("uphy pll power-up\n");
+	} else {
+		temp |= (PLL_PD_SEL | PLL_PD);
+		writel(temp, uphy0_regs + GLO_CTRL2_OFFSET);
+
+		writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) | CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
+
+		UDC_LOGD("uphy pll power-down\n");
+	}
 }
 
 static void *udc_malloc_align(struct sp_udc *udc, dma_addr_t *pa,
@@ -880,6 +906,9 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 
 		switch (ret) {
 		case UDC_RESET:
+			UDC_LOGL("bus reset\n");
+			power_uphy_pll(1);
+
 			USBx->EP0_CS &= ~EP_EN;		/* dislabe ep0 */
 			if (udc->driver->reset)
 				udc->driver->reset(&udc->gadget);
@@ -889,13 +918,16 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 				mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
 #endif
 
-			UDC_LOGL("bus reset\n");
 			break;
 		case UDC_SUSPEND:
 			UDC_LOGL("udc suspend\n");
+			power_uphy_pll(0);
+
 			break;
 		case UDC_RESUME:
 			UDC_LOGL("udc resume\n");
+			power_uphy_pll(1);
+
 			break;
 		case UDC_STOPED:
 			UDC_LOGL("udc stopped\n");
@@ -911,9 +943,11 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			UDC_LOGE("not support:ret = %d\n", ret);
 			return;
 		}
+
 		break;
 	case SOF_EVENT_TRB:
 		UDC_LOGL("sof event trb\n");
+
 		break;
 	}
 }
@@ -1058,6 +1092,7 @@ static void handle_event(struct sp_udc *udc)
 		} else {
 			UDC_LOGD("------ event %d -------\n", valid_event_count);
 			hal_udc_analysis_event_trb(event_ring_dq, udc);
+
 			if (end_trb == event_ring_dq) {
 				if (udc->current_event_ring_seg == (udc->event_ring_seg_total - 1)) {
 					udc->current_event_ring_seg = 0;
@@ -1085,6 +1120,7 @@ static void handle_event(struct sp_udc *udc)
 	UDC_LOGD("ERDP_reg %x, %px\n", USBx->DEVC_ERDP, event_ring_dq);
 
 	USBx->DEVC_ERDP |= EHB;
+
 	spin_unlock_irqrestore(&udc->lock, flags);
 }
 
@@ -2654,10 +2690,14 @@ void device_run_stop_ctrl(int enable)
 		return;
 
 	if (enable) {
+		power_uphy_pll(0);
+
 		USBx->DEVC_ERSTSZ = udc->event_ring_seg_total;
 		USBx->DEVC_CS |= UDC_RUN;
 		USBx->EP0_CS |= EP_EN;
 	} else {
+		power_uphy_pll(1);
+
 		USBx->DEVC_CS &= ~UDC_RUN;
 	}
 }
@@ -2669,19 +2709,19 @@ void usb_switch(int device)
 	writel((USB_MODE_MASK << 16) | USB_HW_CTRL, moon4_reg + M4_SCFG_10);
 #else
 	if (device) {
-		#ifdef CONFIG_SOC_Q645
+	#ifdef CONFIG_SOC_Q645
 		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon3_reg + M3_SCFG_22);
-		#elif defined (CONFIG_SOC_SP7350)
+	#elif defined (CONFIG_SOC_SP7350)
 		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon4_reg + M4_SCFG_10);
-		#endif
+	#endif
 
 		device_run_stop_ctrl(1);
 	} else {
-		#ifdef CONFIG_SOC_Q645
+	#ifdef CONFIG_SOC_Q645
 		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon3_reg + M3_SCFG_22);
-		#elif defined (CONFIG_SOC_SP7350)
+	#elif defined (CONFIG_SOC_SP7350)
 		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon4_reg + M4_SCFG_10);
-		#endif
+	#endif
 
 		device_run_stop_ctrl(0);
 	}
@@ -2736,7 +2776,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	clk_prepare_enable(udc->clock);
 
 	udc->port_num = of_alias_get_id(pdev->dev.of_node, "usb-device");
-	pr_info("%s start,port_num:%d,%px\n", __func__, udc->port_num, udc);
+	pr_info("%s start, port_num:%d, %px\n", __func__, udc->port_num, udc);
 	udc->irq_num = platform_get_irq(pdev, 0);
 #endif
 
@@ -2860,8 +2900,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 #endif
 
 	sp_udc_arry[udc->port_num] = udc;
-
-	pr_info("udc%d probed successfully\n", udc->port_num);
 
 	return 0;
 

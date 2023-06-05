@@ -93,6 +93,11 @@
 #define MASK_UPHY_PLL_POWER_OFF			BIT(3 + 16)
 
 #ifdef CONFIG_USB_PORT0
+	#ifdef CONFIG_USB_SP_UDC2
+void __iomem *uphy0_regs;
+EXPORT_SYMBOL_GPL(uphy0_regs);
+	#endif
+
 u8 sp_port0_enabled;
 EXPORT_SYMBOL_GPL(sp_port0_enabled);
 
@@ -322,6 +327,10 @@ static int sp_usb_phy_probe(struct platform_device *pdev)
 	usbphy->phy_regs = devm_ioremap_resource(&pdev->dev, usbphy->phy_res_mem);
 	if (IS_ERR(usbphy->phy_regs))
 		return PTR_ERR(usbphy->phy_regs);
+
+#ifdef CONFIG_USB_SP_UDC2
+	uphy0_regs = usbphy->phy_regs;
+#endif
 
 #ifdef CONFIG_SOC_Q645
 	usbphy->moon3_res_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "moon3");
