@@ -461,18 +461,18 @@
 				sustainable-power = <100000>;
 
 				trips {
-					cpu-hott {
+					cpu_hott: cpu-hott {
 						temperature = <80000>;
 						hysteresis  = <1000>;
 						type        = "hot";
 					};
-					cpu-crit {
+					cpu_crit: cpu-crit {
 						temperature = <85000>;
 						hysteresis  = <0>;
 						type        = "critical";
 					};
 				};
-				cooling-maps {
+				cooling_maps: cooling-maps {
 					/* insert there: slowdown CPU for cpu-hott */
 				};
 			};
