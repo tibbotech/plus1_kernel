@@ -1018,6 +1018,95 @@ static void vin_notify(struct v4l2_subdev *sd,
 	}
 }
 
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_XTOR)
+int vin_v4l2_formats_init(struct vin_dev *vin)
+{
+	const struct vin_video_format *sd_fmts[ARRAY_SIZE(vin_formats)];
+	unsigned int num_fmts = 0, i, j, k;
+	u32 bist_fmt[2] = {MEDIA_BUS_FMT_YUYV8_2X8, MEDIA_BUS_FMT_SBGGR12_1X12};
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+
+
+	for (k = 0; k < ARRAY_SIZE(bist_fmt); k++) {
+		for (i = 0; i < ARRAY_SIZE(vin_formats); i++) {
+			if (vin_formats[i].mbus_code != bist_fmt[k])
+				continue;
+
+			/* Exclude JPEG if BT656 bus is selected */
+			//if (vin_formats[i].fourcc == V4L2_PIX_FMT_JPEG &&
+			//    vin->bus_type == V4L2_MBUS_BT656)
+			//	continue;
+
+			/* Code supported, have we got this fourcc yet? */
+			for (j = 0; j < num_fmts; j++)
+				if (sd_fmts[j]->fourcc ==
+						vin_formats[i].fourcc) {
+					/* Already available */
+					dev_dbg(vin->dev, "Skipping fourcc/code: %4.4s/0x%x\n",
+						(char *)&sd_fmts[j]->fourcc,
+						bist_fmt[k]);
+					break;
+				}
+			if (j == num_fmts) {
+				/* New */
+				sd_fmts[num_fmts++] = vin_formats + i;
+				dev_dbg(vin->dev, "Supported fourcc/code: %4.4s/0x%x\n",
+					(char *)&sd_fmts[num_fmts - 1]->fourcc,
+					sd_fmts[num_fmts - 1]->mbus_code);
+			}
+		}
+	}
+
+	if (!num_fmts)
+		return -ENXIO;
+
+	vin->num_of_sd_formats = num_fmts;
+	vin->sd_formats = devm_kcalloc(vin->dev,
+					num_fmts, sizeof(struct vin_video_format *),
+					GFP_KERNEL);
+	if (!vin->sd_formats) {
+		dev_err(vin->dev, "Could not allocate memory\n");
+		return -ENOMEM;
+	}
+
+	memcpy(vin->sd_formats, sd_fmts,
+	       num_fmts * sizeof(struct vin_video_format *));
+	vin->sd_format = vin->sd_formats[0];
+
+	return 0;
+}
+
+int vin_v4l2_framesizes_init(struct vin_dev *vin)
+{
+	unsigned int num_fsize = 2;
+	unsigned int i;
+	struct vin_video_framesize bist_fsizes[2] = {{1280, 720}, {1920, 1080}};
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+
+
+	vin->num_of_sd_framesizes = num_fsize;
+	vin->sd_framesizes = devm_kcalloc(vin->dev, num_fsize,
+					   sizeof(struct vin_video_framesize),
+					   GFP_KERNEL);
+	if (!vin->sd_framesizes) {
+		dev_err(vin->dev, "Could not allocate memory\n");
+		return -ENOMEM;
+	}
+
+	/* Fill array with sensor supported framesizes */
+	dev_dbg(vin->dev, "Sensor supports %u frame sizes:\n", num_fsize);
+	for (i = 0; i < vin->num_of_sd_framesizes; i++) {
+		vin->sd_framesizes[i].width = bist_fsizes[i].width;
+		vin->sd_framesizes[i].height = bist_fsizes[i].height;
+		dev_dbg(vin->dev, "%ux%u\n", vin->sd_framesizes[i].width, vin->sd_framesizes[i].height);
+	}
+
+	return 0;
+}
+
+#else
 int vin_v4l2_formats_init(struct vin_dev *vin)
 {
 	const struct vin_video_format *sd_fmts[ARRAY_SIZE(vin_formats)];
@@ -1147,6 +1236,7 @@ int vin_v4l2_framesizes_init(struct vin_dev *vin)
 
 	return 0;
 }
+#endif
 
 int vin_v4l2_set_default_fmt(struct vin_dev *vin)
 {
