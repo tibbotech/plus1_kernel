@@ -156,6 +156,22 @@ const struct vin_video_format *vin_format_from_pixel(struct vin_dev *vin,
 	return NULL;
 }
 
+static const struct vin_video_format *vin_find_format_by_fourcc(struct vin_dev *vin,
+						       unsigned int fourcc)
+{
+	unsigned int num_formats = vin->num_of_sd_formats;
+	const struct vin_video_format *fmt;
+	unsigned int i;
+
+	for (i = 0; i < num_formats; i++) {
+		fmt = vin->sd_formats[i];
+		if (fmt->fourcc == fourcc)
+			return fmt;
+	}
+
+	return NULL;
+}
+
 static u32 vin_format_bytesperline(struct vin_dev *vin,
 				    struct v4l2_pix_format *pix)
 {
@@ -342,11 +358,11 @@ static int vin_try_format(struct vin_dev *vin, u32 which,
 		src_rect->height = pix->height;
 	}
 
-	if (field != V4L2_FIELD_ANY)
-		pix->field = field;
+	//if (field != V4L2_FIELD_ANY)
+	//	pix->field = field;
 
-	pix->width = width;
-	pix->height = height;
+	//pix->width = width;
+	//pix->height = height;
 
 	vin_format_align(vin, pix);
 
@@ -385,6 +401,7 @@ static int vin_s_fmt_vid_cap(struct file *file, void *priv,
 {
 	struct vin_dev *vin = video_drvdata(file);
 	struct v4l2_rect fmt_rect, src_rect;
+	const struct vin_video_format *sd_fmt;
 	int ret;
 
 	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
@@ -393,14 +410,20 @@ static int vin_s_fmt_vid_cap(struct file *file, void *priv,
 	if (vb2_is_busy(&vin->queue))
 		return -EBUSY;
 
-	if (vb2_is_busy(&vin->queue))
-		return -EBUSY;
+	/* Check if the camera supports this format */
+	sd_fmt = vin_find_format_by_fourcc(vin, f->fmt.pix.pixelformat);
+	if (!sd_fmt)
+		return -EINVAL;
 
 	ret = vin_try_format(vin, V4L2_SUBDEV_FORMAT_ACTIVE, &f->fmt.pix,
 			      &src_rect);
 	if (ret)
 		return ret;
 
+	vin->fmt = *f;
+	vin->sd_format = sd_fmt;
+	vin->sd_framesize.width = f->fmt.pix.width;
+	vin->sd_framesize.height = f->fmt.pix.height;
 	vin->format = f->fmt.pix;
 
 	fmt_rect.top = 0;
@@ -431,69 +454,16 @@ static int vin_enum_fmt_vid_cap(struct file *file, void *priv,
 				 struct v4l2_fmtdesc *f)
 {
 	struct vin_dev *vin = video_drvdata(file);
-	unsigned int i;
-	int matched;
 
 	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
-	dev_dbg(vin->dev, "%s, f->index: 0x%04x, f->mbus_code: 0x%04x\n", __func__, f->index, f->mbus_code);
+	dev_dbg(vin->dev, "%s, f->index: 0x%04x\n", __func__, f->index);
+	dev_dbg(vin->dev, "%s, f->mbus_code: 0x%04x\n", __func__, f->mbus_code);
 
-	/*
-	 * If mbus_code is set only enumerate supported pixel formats for that
-	 * bus code. Converting from YCbCr to RGB and RGB to YCbCr is possible
-	 * with VIN, so all supported YCbCr and RGB media bus codes can produce
-	 * all of the related pixel formats. If mbus_code is not set enumerate
-	 * all possible pixelformats.
-	 *
-	 * TODO: Once raw MEDIA_BUS_FMT_SRGGB12_1X12 format is added to the
-	 * driver this needs to be extended so raw media bus code only result in
-	 * raw pixel format.
-	 */
-	switch (f->mbus_code) {
-	case 0:
-	case MEDIA_BUS_FMT_YUYV8_1X16:
-	case MEDIA_BUS_FMT_UYVY8_1X16:
-	case MEDIA_BUS_FMT_UYVY8_2X8:
-	case MEDIA_BUS_FMT_UYVY10_2X10:
-	case MEDIA_BUS_FMT_RGB888_1X24:
-		break;
-	case MEDIA_BUS_FMT_SBGGR8_1X8:
-		if (f->index)
-			return -EINVAL;
-		f->pixelformat = V4L2_PIX_FMT_SBGGR8;
-		return 0;
-	case MEDIA_BUS_FMT_SGBRG8_1X8:
-		if (f->index)
-			return -EINVAL;
-		f->pixelformat = V4L2_PIX_FMT_SGBRG8;
-		return 0;
-	case MEDIA_BUS_FMT_SGRBG8_1X8:
-		if (f->index)
-			return -EINVAL;
-		f->pixelformat = V4L2_PIX_FMT_SGRBG8;
-		return 0;
-	case MEDIA_BUS_FMT_SRGGB8_1X8:
-		if (f->index)
-			return -EINVAL;
-		f->pixelformat = V4L2_PIX_FMT_SRGGB8;
-		return 0;
-	default:
+	if (f->index >= vin->num_of_sd_formats)
 		return -EINVAL;
-	}
 
-	matched = -1;
-	for (i = 0; i < ARRAY_SIZE(vin_formats); i++) {
-		if (vin_format_from_pixel(vin, vin_formats[i].fourcc))
-			matched++;
-
-		if (matched == f->index) {
-			f->pixelformat = vin_formats[i].fourcc;
-			dev_dbg(vin->dev, "matched: %d, f->pixelformat: %s\n", matched, fourcc_to_str(f->pixelformat));
-
-			return 0;
-		}
-	}
-
-	return -EINVAL;
+	f->pixelformat = vin->sd_formats[f->index]->fourcc;
+	return 0;
 }
 
 static int vin_enum_input(struct file *file, void *priv,
@@ -526,6 +496,87 @@ static int vin_s_input(struct file *file, void *priv, unsigned int i)
 	return 0;
 }
 
+static int vin_enum_framesizes(struct file *file, void *fh,
+				struct v4l2_frmsizeenum *fsize)
+{
+	struct vin_dev *vin = video_drvdata(file);
+	struct media_pad *pad;
+	struct v4l2_subdev *subdev;
+	const struct vin_video_format *sd_fmt;
+	struct v4l2_subdev_frame_size_enum fse = {
+		.index = fsize->index,
+		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
+	};
+	int ret;
+
+	sd_fmt = vin_find_format_by_fourcc(vin, fsize->pixel_format);
+	if (!sd_fmt)
+		return -EINVAL;
+
+	fse.code = sd_fmt->mbus_code;
+
+	/* Use media pad to get v4l2 subdevice */
+	pad = media_entity_remote_pad(&vin->pad);
+	if (!pad)
+		return -EPIPE;
+
+	dev_dbg(vin->dev, "%s, pad->entity->name: %s, pad->index: %d\n", __func__, pad->entity->name, pad->index);
+
+	subdev = media_entity_to_v4l2_subdev(pad->entity);
+
+	ret = v4l2_subdev_call(subdev, pad, enum_frame_size,
+			       NULL, &fse);
+	if (ret)
+		return ret;
+
+	fsize->type = V4L2_FRMSIZE_TYPE_DISCRETE;
+	fsize->discrete.width = fse.max_width;
+	fsize->discrete.height = fse.max_height;
+
+	return 0;
+}
+
+static int vin_enum_frameintervals(struct file *file, void *fh,
+				    struct v4l2_frmivalenum *fival)
+{
+	struct vin_dev *vin = video_drvdata(file);
+	struct media_pad *pad;
+	struct v4l2_subdev *subdev;
+	const struct vin_video_format *sd_fmt;
+	struct v4l2_subdev_frame_interval_enum fie = {
+		.index = fival->index,
+		.width = fival->width,
+		.height = fival->height,
+		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
+	};
+	int ret;
+
+	sd_fmt = vin_find_format_by_fourcc(vin, fival->pixel_format);
+	if (!sd_fmt)
+		return -EINVAL;
+
+	fie.code = sd_fmt->mbus_code;
+
+	/* Use media pad to get v4l2 subdevice */
+	pad = media_entity_remote_pad(&vin->pad);
+	if (!pad)
+		return -EPIPE;
+
+	dev_dbg(vin->dev, "%s, pad->entity->name: %s, pad->index: %d\n", __func__, pad->entity->name, pad->index);
+
+	subdev = media_entity_to_v4l2_subdev(pad->entity);
+
+	ret = v4l2_subdev_call(subdev, pad,
+			       enum_frame_interval, NULL, &fie);
+	if (ret)
+		return ret;
+
+	fival->type = V4L2_FRMIVAL_TYPE_DISCRETE;
+	fival->discrete = fie.interval;
+
+	return 0;
+}
+
 static int vin_subscribe_event(struct v4l2_fh *fh,
 				const struct v4l2_event_subscription *sub)
 {
@@ -548,6 +599,9 @@ static const struct v4l2_ioctl_ops vin_ioctl_ops = {
 	.vidioc_enum_input		= vin_enum_input,
 	.vidioc_g_input			= vin_g_input,
 	.vidioc_s_input			= vin_s_input,
+
+	.vidioc_enum_framesizes		= vin_enum_framesizes,
+	.vidioc_enum_frameintervals	= vin_enum_frameintervals,
 
 	.vidioc_reqbufs			= vb2_ioctl_reqbufs,
 	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
@@ -743,12 +797,88 @@ static int vin_mc_s_fmt_vid_cap(struct file *file, void *priv,
 	return 0;
 }
 
+static int vin_mc_enum_fmt_vid_cap(struct file *file, void *priv,
+				 struct v4l2_fmtdesc *f)
+{
+	struct vin_dev *vin = video_drvdata(file);
+	unsigned int i;
+	int matched;
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+	dev_dbg(vin->dev, "%s, f->index: 0x%04x\n", __func__, f->index);
+	dev_dbg(vin->dev, "%s, f->mbus_code: 0x%04x\n", __func__, f->mbus_code);
+
+	/*
+	 * If mbus_code is set only enumerate supported pixel formats for that
+	 * bus code. Converting from YCbCr to RGB and RGB to YCbCr is possible
+	 * with VIN, so all supported YCbCr and RGB media bus codes can produce
+	 * all of the related pixel formats. If mbus_code is not set enumerate
+	 * all possible pixelformats.
+	 *
+	 * TODO: Once raw MEDIA_BUS_FMT_SRGGB12_1X12 format is added to the
+	 * driver this needs to be extended so raw media bus code only result in
+	 * raw pixel format.
+	 */
+	switch (f->mbus_code) {
+	case 0:
+	case MEDIA_BUS_FMT_YUYV8_1X16:
+	case MEDIA_BUS_FMT_UYVY8_1X16:
+	case MEDIA_BUS_FMT_UYVY8_2X8:
+	case MEDIA_BUS_FMT_UYVY10_2X10:
+	case MEDIA_BUS_FMT_RGB888_1X24:
+		break;
+	case MEDIA_BUS_FMT_SBGGR8_1X8:
+		if (f->index)
+			return -EINVAL;
+		f->pixelformat = V4L2_PIX_FMT_SBGGR8;
+		return 0;
+	case MEDIA_BUS_FMT_SGBRG8_1X8:
+		if (f->index)
+			return -EINVAL;
+		f->pixelformat = V4L2_PIX_FMT_SGBRG8;
+		return 0;
+	case MEDIA_BUS_FMT_SGRBG8_1X8:
+		if (f->index)
+			return -EINVAL;
+		f->pixelformat = V4L2_PIX_FMT_SGRBG8;
+		return 0;
+	case MEDIA_BUS_FMT_SRGGB8_1X8:
+		if (f->index)
+			return -EINVAL;
+		f->pixelformat = V4L2_PIX_FMT_SRGGB8;
+		return 0;
+	default:
+		return -EINVAL;
+	}
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+
+	matched = -1;
+	for (i = 0; i < ARRAY_SIZE(vin_formats); i++) {
+		//dev_dbg(vin->dev, "i: %d, vin_formats[i].fourcc: %s\n", i, fourcc_to_str(vin_formats[i].fourcc));
+
+		if (vin_format_from_pixel(vin, vin_formats[i].fourcc))
+			matched++;
+
+		//dev_dbg(vin->dev, "matched: %d, f->index: %d\n", matched, f->index);
+
+		if (matched == f->index) {
+			f->pixelformat = vin_formats[i].fourcc;
+			dev_dbg(vin->dev, "matched: %d, f->pixelformat: %s\n", matched, fourcc_to_str(f->pixelformat));
+
+			return 0;
+		}
+	}
+
+	return -EINVAL;
+}
+
 static const struct v4l2_ioctl_ops vin_mc_ioctl_ops = {
 	.vidioc_querycap		= vin_querycap,
 	.vidioc_try_fmt_vid_cap		= vin_mc_try_fmt_vid_cap,
 	.vidioc_g_fmt_vid_cap		= vin_g_fmt_vid_cap,
 	.vidioc_s_fmt_vid_cap		= vin_mc_s_fmt_vid_cap,
-	.vidioc_enum_fmt_vid_cap	= vin_enum_fmt_vid_cap,
+	.vidioc_enum_fmt_vid_cap	= vin_mc_enum_fmt_vid_cap,
 
 	.vidioc_reqbufs			= vb2_ioctl_reqbufs,
 	.vidioc_create_bufs		= vb2_ioctl_create_bufs,
@@ -888,17 +1018,146 @@ static void vin_notify(struct v4l2_subdev *sd,
 	}
 }
 
+int vin_v4l2_formats_init(struct vin_dev *vin)
+{
+	const struct vin_video_format *sd_fmts[ARRAY_SIZE(vin_formats)];
+	unsigned int num_fmts = 0, i, j;
+	struct v4l2_subdev *subdev;
+	struct media_pad *pad;
+	struct v4l2_subdev_mbus_code_enum mbus_code = {
+		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
+	};
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+
+	pad = media_entity_remote_pad(&vin->pad);
+	if (!pad)
+		return -EPIPE;
+
+	dev_dbg(vin->dev, "%s, pad->entity->name: %s, pad->index: %d\n", __func__, pad->entity->name, pad->index);
+
+	subdev = media_entity_to_v4l2_subdev(pad->entity);
+
+	while (!v4l2_subdev_call(subdev, pad, enum_mbus_code,
+				 NULL, &mbus_code)) {
+
+		dev_dbg(vin->dev, "%s, %d, mbus_code.code: 0x%x\n", __func__, __LINE__, mbus_code.code);
+
+		for (i = 0; i < ARRAY_SIZE(vin_formats); i++) {
+			if (vin_formats[i].mbus_code != mbus_code.code)
+				continue;
+
+			/* Exclude JPEG if BT656 bus is selected */
+			//if (vin_formats[i].fourcc == V4L2_PIX_FMT_JPEG &&
+			//    vin->bus_type == V4L2_MBUS_BT656)
+			//	continue;
+
+			/* Code supported, have we got this fourcc yet? */
+			for (j = 0; j < num_fmts; j++)
+				if (sd_fmts[j]->fourcc ==
+						vin_formats[i].fourcc) {
+					/* Already available */
+					dev_dbg(vin->dev, "Skipping fourcc/code: %4.4s/0x%x\n",
+						(char *)&sd_fmts[j]->fourcc,
+						mbus_code.code);
+					break;
+				}
+			if (j == num_fmts) {
+				/* New */
+				sd_fmts[num_fmts++] = vin_formats + i;
+				dev_dbg(vin->dev, "Supported fourcc/code: %4.4s/0x%x\n",
+					(char *)&sd_fmts[num_fmts - 1]->fourcc,
+					sd_fmts[num_fmts - 1]->mbus_code);
+			}
+		}
+		mbus_code.index++;
+	}
+
+	if (!num_fmts)
+		return -ENXIO;
+
+	vin->num_of_sd_formats = num_fmts;
+	vin->sd_formats = devm_kcalloc(vin->dev,
+					num_fmts, sizeof(struct vin_video_format *),
+					GFP_KERNEL);
+	if (!vin->sd_formats) {
+		dev_err(vin->dev, "Could not allocate memory\n");
+		return -ENOMEM;
+	}
+
+	memcpy(vin->sd_formats, sd_fmts,
+	       num_fmts * sizeof(struct vin_video_format *));
+	vin->sd_format = vin->sd_formats[0];
+
+	return 0;
+}
+
+int vin_v4l2_framesizes_init(struct vin_dev *vin)
+{
+	unsigned int num_fsize = 0;
+	struct v4l2_subdev *subdev;
+	struct media_pad *pad;
+	struct v4l2_subdev_frame_size_enum fse = {
+		.which = V4L2_SUBDEV_FORMAT_ACTIVE,
+		.code = vin->sd_format->mbus_code,
+	};
+	unsigned int ret;
+	unsigned int i;
+
+	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);
+
+	pad = media_entity_remote_pad(&vin->pad);
+	if (!pad)
+		return -EPIPE;
+
+	dev_dbg(vin->dev, "%s, pad->entity->name: %s, pad->index: %d\n", __func__, pad->entity->name, pad->index);
+
+	subdev = media_entity_to_v4l2_subdev(pad->entity);
+
+	/* Allocate discrete framesizes array */
+	while (!v4l2_subdev_call(subdev, pad, enum_frame_size,
+				 NULL, &fse))
+		fse.index++;
+
+	num_fsize = fse.index;
+	if (!num_fsize)
+		return 0;
+
+	vin->num_of_sd_framesizes = num_fsize;
+	vin->sd_framesizes = devm_kcalloc(vin->dev, num_fsize,
+					   sizeof(struct vin_video_framesize),
+					   GFP_KERNEL);
+	if (!vin->sd_framesizes) {
+		dev_err(vin->dev, "Could not allocate memory\n");
+		return -ENOMEM;
+	}
+
+	/* Fill array with sensor supported framesizes */
+	dev_dbg(vin->dev, "Sensor supports %u frame sizes:\n", num_fsize);
+	for (i = 0; i < vin->num_of_sd_framesizes; i++) {
+		fse.index = i;
+		ret = v4l2_subdev_call(subdev, pad, enum_frame_size,
+				       NULL, &fse);
+		if (ret)
+			return ret;
+		vin->sd_framesizes[fse.index].width = fse.max_width;
+		vin->sd_framesizes[fse.index].height = fse.max_height;
+		dev_dbg(vin->dev, "%ux%u\n", fse.max_width, fse.max_height);
+	}
+
+	return 0;
+}
+
 int vin_v4l2_set_default_fmt(struct vin_dev *vin)
 {
 	struct v4l2_rect fmt_rect, src_rect;
 	struct v4l2_format f = {
 		.type = V4L2_BUF_TYPE_VIDEO_CAPTURE,
 		.fmt.pix = {
-			.width = VIN_DEFAULT_WIDTH,
-			.height = VIN_DEFAULT_HEIGHT,
-			.field = VIN_DEFAULT_FIELD,
-			.pixelformat = VIN_DEFAULT_FORMAT,
-			.colorspace = VIN_DEFAULT_COLORSPACE,
+			.width = 352,
+			.height = 288,
+			.field = V4L2_FIELD_NONE,
+			.pixelformat = vin->sd_formats[0]->fourcc,
 		},
 	};
 	int ret;
@@ -911,6 +1170,10 @@ int vin_v4l2_set_default_fmt(struct vin_dev *vin)
 	if (ret)
 		return ret;
 
+	vin->fmt = f;
+	vin->sd_format = vin->sd_formats[0];
+	vin->sd_framesize.width = f.fmt.pix.width;
+	vin->sd_framesize.height = f.fmt.pix.height;
 	vin->format = f.fmt.pix;
 
 	fmt_rect.top = 0;
