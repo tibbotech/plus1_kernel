@@ -72,6 +72,7 @@ static int ehci_platform_reset(struct usb_hcd *hcd)
 
 	if (pdata->power_on)
 		ehci_port_power(ehci, port_num, 1);
+
 	if (pdata->power_off)
 		ehci_port_power(ehci, port_num, 0);
 
@@ -480,7 +481,7 @@ int ehci_sunplus_remove(struct platform_device *dev)
 
 #ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ehci_clk[dev->id - 1]);
+	clk_disable_unprepare(ehci_clk[dev->id - 1]);
 #elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if (pdata->power_off)
 		pdata->power_off(dev);
@@ -509,7 +510,7 @@ static int ehci_sunplus_drv_suspend(struct device *dev)
 
 	#ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ehci_clk[pdev->id - 1]);
+	clk_disable_unprepare(ehci_clk[pdev->id - 1]);
 	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if (pdata->power_suspend)
 		pdata->power_suspend(pdev);

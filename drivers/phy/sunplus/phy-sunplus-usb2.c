@@ -61,15 +61,19 @@
 #define PROB					FIELD_PREP(PROB_MASK, 7)
 #define GLO_CTRL0_OFFSET			0x70
 #define GLO_CTRL1_OFFSET			0x74
+#define CLK120_27_SEL				BIT(19)
+#define RX_CLK_SEL				BIT(6)
+#define TX_CLK_SEL				BIT(5)
 #define GLO_CTRL2_OFFSET			0x78
 #define PLL_PD_SEL				BIT(7)
 #define PLL_PD					BIT(3)
 
-/* GROUP MOON3 */
 #ifdef CONFIG_SOC_Q645
-#define USBC_CTL_OFFSET				0x58
+/* GROUP MOON3 */
+#define M3_SCFG_22				0x58
 #elif defined(CONFIG_SOC_SP7350)
-#define USBC_CTL_OFFSET				0x28
+/* GROUP MOON4 */
+#define M4_SCFG_10				0x28
 #endif
 #define MO1_USBC0_USB0_TYPE			BIT(2)
 #define MASK_MO1_USBC0_USB0_TYPE		BIT(2 + 16)
@@ -77,20 +81,8 @@
 #define MASK_MO1_USBC0_USB0_SEL			BIT(1 + 16)
 #define MO1_USBC0_USB0_CTRL			BIT(0)
 #define MASK_MO1_USBC0_USB0_CTRL		BIT(0 + 16)
-
-/* GROUP MOON4 */
-#define UPHY_CONTROL0				0x0
-#define UPHY_CONTROL1				0x4
-#define UPHY_CONTROL2				0x8
-#define MO1_UPHY_RX_CLK_SEL			BIT(6)
-#define MASK_MO1_UPHY_RX_CLK_SEL		BIT(6 + 16)
-#define MO1_UPHY_TX_CLK_SEL			BIT(5)
-#define MASK_MO1_UPHY_TX_CLK_SEL		BIT(5 + 16)
-#define UPHY_CONTROL3				0xc
-#define MO1_UPHY_PLL_POWER_OFF_SEL		BIT(7)
-#define MASK_MO1_UPHY_PLL_POWER_OFF_SEL		BIT(7 + 16)
-#define MO1_UPHY_PLL_POWER_OFF			BIT(3)
-#define MASK_UPHY_PLL_POWER_OFF			BIT(3 + 16)
+#define USB_HOST_MODE				(MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)
+#define USB_DEVICE_MODE				(~MO1_USBC0_USB0_SEL & MO1_USBC0_USB0_CTRL)
 
 #ifdef CONFIG_USB_PORT0
 	#ifdef CONFIG_USB_SP_UDC2
@@ -195,7 +187,7 @@ static int sp_uphy_init(struct phy *phy)
 
 	/* port 0 uphy clk fix */
 	val = readl(usbphy->phy_regs + GLO_CTRL1_OFFSET);
-	val &= ~(MO1_UPHY_RX_CLK_SEL | MO1_UPHY_TX_CLK_SEL);
+	val &= ~(RX_CLK_SEL | TX_CLK_SEL);
 	writel(val, usbphy->phy_regs + GLO_CTRL1_OFFSET);
 
 	/* battery charger */
@@ -206,19 +198,25 @@ static int sp_uphy_init(struct phy *phy)
 	/* chirp mode */
 	writel(J_FORCE_DISC_ON | J_DEBUG_CTRL_ADDR_MACRO, usbphy->phy_regs + CONFIG3);
 
-	/* switch to host (sw control) */
-	val = MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL
-		| MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL;
+	/* enable vbus if host (sw control) */
 #ifdef CONFIG_SOC_Q645
-	writel(val, usbphy->moon3_regs + USBC_CTL_OFFSET);
+	val = readl(usbphy->moon3_regs + M3_SCFG_22);
+	if ((val & USB_HOST_MODE) == USB_HOST_MODE) {
+		writel(val | MASK_MO1_USBC0_USB0_TYPE| MO1_USBC0_USB0_TYPE,
+							usbphy->moon3_regs + M3_SCFG_22);
+	}
 #elif defined(CONFIG_SOC_SP7350)
-	writel(val, usbphy->moon4_regs + USBC_CTL_OFFSET);
+	val = readl(usbphy->moon4_regs + M4_SCFG_10);
+	if ((val & USB_HOST_MODE) == USB_HOST_MODE) {
+		writel(val | MASK_MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_TYPE,
+							usbphy->moon4_regs + M4_SCFG_10);
+	}
 #endif
 
 	/* OTG control host and device */
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	val = MASK_MO1_USBC0_USB0_CTRL;
-	writel(val, usbphy->moon4_regs + USBC_CTL_OFFSET);
+	writel(val, usbphy->moon4_regs + M4_SCFG_10);
 #endif
 
 	mdelay(1);
@@ -264,6 +262,10 @@ static int sp_uphy_power_on(struct phy *phy)
 	pll_pwr_on &= (~PLL_PD_SEL & ~PLL_PD);
 	writel(pll_pwr_on, usbphy->phy_regs + GLO_CTRL2_OFFSET);
 
+	/* USB clock = 120MHz */
+	writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) & ~CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
+
 	return 0;
 
 err_reset:
@@ -283,6 +285,10 @@ static int sp_uphy_power_off(struct phy *phy)
 	temp = readl(usbphy->phy_regs + GLO_CTRL2_OFFSET);
 	temp |= PLL_PD_SEL | PLL_PD;
 	writel(temp, usbphy->phy_regs + GLO_CTRL2_OFFSET);
+
+	/* USB clock = 27MHz */
+	writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) | CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
 
 	return 0;
 }
@@ -382,6 +388,8 @@ static int sp_usb_phy_probe(struct platform_device *pdev)
 
 	phy_set_drvdata(phy, usbphy);
 	phy_provider = devm_of_phy_provider_register(&pdev->dev, of_phy_simple_xlate);
+
+	pr_info("usb 2.0 phy registered\n");
 
 	return PTR_ERR_OR_ZERO(phy_provider);
 }

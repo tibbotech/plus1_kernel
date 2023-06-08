@@ -61,7 +61,7 @@
 
 		spi0 = &sp_spinor0;
 
-		usb-device0 = &udc;
+		usb-device0 = &udc0;
 	};
 
 	chosen {
@@ -1026,7 +1026,7 @@
 	};
 
 	ehci0: usb@f8102100 {
-		compatible = "sunplus,sp7350-usb-ehci0";
+		compatible = "sunplus,sp7350-usb-ehci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102100 0x00 0x68>;
@@ -1038,7 +1038,7 @@
 	};
 
 	ohci0: usb@f8102080 {
-		compatible = "sunplus,sp7350-usb-ohci0";
+		compatible = "sunplus,sp7350-usb-ohci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8800000 0x00 0x80>;
@@ -1049,13 +1049,13 @@
 		status = "disabled";
 	};
 
-	udc: usb@f8102800 {
+	udc0: usb@f8102800 {
 		compatible = "sunplus,sp7350-usb-udc";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8800200 0x0 0x80>, <0x0 0xf8800000 0x0 0x80>,
-		      <0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
-		      <0x0 0xf8802380 0x0 0x80>;
+		      	<0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
+		      		<0x0 0xf8802380 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";

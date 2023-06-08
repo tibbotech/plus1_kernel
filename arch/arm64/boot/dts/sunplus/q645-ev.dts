@@ -94,7 +94,7 @@
 
 		spi0 = &sp_spinor0;
 
-		usb-device0 = &udc;
+		usb-device0 = &udc0;
 	};
 
 	chosen {
@@ -1335,7 +1335,7 @@
 	};
 
 	ehci0: usb@f8102100 {
-		compatible = "sunplus,q645-usb-ehci0";
+		compatible = "sunplus,q645-usb-ehci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102100 0x0 0x68>;
@@ -1347,7 +1347,7 @@
 	};
 
 	ohci0: usb@f8102080 {
-		compatible = "sunplus,q645-usb-ohci0";
+		compatible = "sunplus,q645-usb-ohci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102080 0x0 0x68>, <0x0 0xf8000000 0x0 0x80>;
@@ -1358,14 +1358,16 @@
 		status = "disabled";
 	};
 
-	udc: usb@f8102800 {
+	udc0: usb@f8102800 {
 		compatible = "sunplus,q645-usb-udc";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8000180 0x0 0x80>, <0x0 0xf8000000 0x0 0x80>,
-		      <0x0 0xf8004a80 0x0 0x80>, <0x0 0xf800af00 0x0 0x80>;
+		      	<0x0 0xf8004a80 0x0 0x80>, <0x0 0xf800af00 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
+		phys = <&sp_uphy0>;
+		phy-names = "uphy";
 		status = "disabled";
 	};
 

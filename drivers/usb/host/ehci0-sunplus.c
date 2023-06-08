@@ -16,9 +16,9 @@ static const struct of_device_id ehci0_sunplus_dt_ids[] = {
 #if defined (CONFIG_SOC_SP7021)
 	{ .compatible = "sunplus,sp7021-usb-ehci0" },
 #elif defined (CONFIG_SOC_Q645)
-	{ .compatible = "sunplus,q645-usb-ehci0" },
+	{ .compatible = "sunplus,q645-usb-ehci" },
 #elif defined (CONFIG_SOC_SP7350)
-	{ .compatible = "sunplus,sp7350-usb-ehci0" },
+	{ .compatible = "sunplus,sp7350-usb-ehci" },
 #endif
 	{ }
 };

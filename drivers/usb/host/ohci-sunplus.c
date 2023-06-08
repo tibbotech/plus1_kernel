@@ -584,7 +584,7 @@ int ohci_sunplus_remove(struct platform_device *dev)
 
 #ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ohci_clk[dev->id - 1]);
+	clk_disable_unprepare(ohci_clk[dev->id - 1]);
 #elif defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
 	if (pdata->power_off)
 		pdata->power_off(dev);
@@ -613,7 +613,7 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 
 	#ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ohci_clk[pdev->id - 1]);
+	clk_disable_unprepare(ohci_clk[pdev->id - 1]);
 	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if (pdata->power_suspend)
 		pdata->power_suspend(pdev);
