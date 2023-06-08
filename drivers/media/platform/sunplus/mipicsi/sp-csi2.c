@@ -766,6 +766,54 @@ out:
 	return ret;
 }
 
+static int csi2_enum_mbus_code(struct v4l2_subdev *sd,
+				 struct v4l2_subdev_pad_config *cfg,
+				 struct v4l2_subdev_mbus_code_enum *code)
+{
+	struct csi2_dev *priv = sd_to_csi2(sd);
+	int ret = 0;
+
+	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
+
+	ret = v4l2_subdev_call(priv->remote, pad, enum_mbus_code, NULL, code);
+
+	dev_dbg(priv->dev, "%s, %d, code->code: 0x%x, ret: %d\n", __func__, __LINE__, code->code, ret);
+
+	return ret;
+}
+
+static int csi2_enum_frame_size(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_size_enum *fse)
+{
+	struct csi2_dev *priv = sd_to_csi2(sd);
+	int ret = 0;
+
+	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
+
+	ret = v4l2_subdev_call(priv->remote, pad, enum_frame_size, NULL, fse);
+
+	dev_dbg(priv->dev, "%s, %d, fse->index: %d, ret: %d\n", __func__, __LINE__, fse->index, ret);
+
+	return ret;
+}
+
+static int csi2_enum_frame_interval(struct v4l2_subdev *sd,
+				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_frame_interval_enum *fie)
+{
+	struct csi2_dev *priv = sd_to_csi2(sd);
+	int ret = 0;
+
+	dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
+
+	ret = v4l2_subdev_call(priv->remote, pad, enum_frame_interval, NULL, fie);
+
+	dev_dbg(priv->dev, "%s, %d, fse->index: %d, ret: %d\n", __func__, __LINE__, fie->index, ret);
+
+	return ret;
+}
+
 static int csi2_set_pad_format(struct v4l2_subdev *sd,
 				struct v4l2_subdev_pad_config *cfg,
 				struct v4l2_subdev_format *format)
@@ -784,21 +832,21 @@ static int csi2_set_pad_format(struct v4l2_subdev *sd,
 		priv->mf = format->format;
 
 		/* Propagate the format to sink pad */
-		if (format->pad == 0)
+		if (format->pad == CSI2_SINK)
 		{
 			int ret;
-			struct v4l2_subdev_pad_config *pad_cfg;
-			struct v4l2_subdev_format fmt = {
-				.which = V4L2_SUBDEV_FORMAT_ACTIVE,
-				.pad = priv->remote_pad,
-				.format.width = format->format.width,
-				.format.height = format->format.height,
-				.format.code = format->format.code,
-			};
 
-			ret = v4l2_subdev_call(priv->remote, pad, set_fmt, pad_cfg, &fmt);
+			dev_dbg(priv->dev, "%s, %d\n", __func__, __LINE__);
+
+			ret = v4l2_subdev_call(priv->remote, pad, set_fmt, cfg, format);
 			if (ret < 0 && ret != -ENOIOCTLCMD)
 				return ret;
+
+			dev_dbg(priv->dev, "%s, %d, code: 0x%04x, %ux%u\n", __func__, __LINE__, format->format.code, format->format.width, format->format.height);
+
+			priv->mf = format->format;
+
+			dev_dbg(priv->dev, "%s, %d, priv->mf.code: 0x%x %ux%u\n", __func__, __LINE__, priv->mf.code, priv->mf.width, priv->mf.height);
 		}
 
 		dev_dbg(priv->dev, "%s, priv->mf.code: 0x%x %ux%u\n",
@@ -839,6 +887,10 @@ static const struct v4l2_subdev_video_ops car_csi2_video_ops = {
 };
 
 static const struct v4l2_subdev_pad_ops car_csi2_pad_ops = {
+	.enum_mbus_code = csi2_enum_mbus_code,
+	.enum_frame_size = csi2_enum_frame_size,
+	.enum_frame_interval = csi2_enum_frame_interval,
+
 	.set_fmt = csi2_set_pad_format,
 	.get_fmt = csi2_get_pad_format,
 };
