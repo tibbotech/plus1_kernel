@@ -118,6 +118,8 @@ extern void __iomem *uphy1_base_addr;
 extern void __iomem *uphy0_res_moon4;
 extern void __iomem *uphy1_res_moon4;
 
+extern void __iomem *uphy0_regs;
+
 extern u8 max_topo_level;
 extern bool tid_test_flag;
 extern u8 sp_port0_enabled;

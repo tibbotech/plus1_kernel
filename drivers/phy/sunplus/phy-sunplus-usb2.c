@@ -85,10 +85,8 @@
 #define USB_DEVICE_MODE				(~MO1_USBC0_USB0_SEL & MO1_USBC0_USB0_CTRL)
 
 #ifdef CONFIG_USB_PORT0
-	#ifdef CONFIG_USB_SP_UDC2
 void __iomem *uphy0_regs;
 EXPORT_SYMBOL_GPL(uphy0_regs);
-	#endif
 
 u8 sp_port0_enabled;
 EXPORT_SYMBOL_GPL(sp_port0_enabled);

@@ -286,6 +286,11 @@ struct hc_driver {
 	/* shutdown HCD */
 	void	(*shutdown) (struct usb_hcd *hcd);
 
+#ifdef CONFIG_USB_LOGO_TEST
+	/* usb logo test */
+	int 	(*usb_logo_test) (struct usb_hcd * hcd, int idProduct);
+#endif
+
 	/* return current frame number */
 	int	(*get_frame_number) (struct usb_hcd *hcd);
 

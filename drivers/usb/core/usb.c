@@ -47,6 +47,29 @@
 
 #include "hub.h"
 
+#ifdef CONFIG_USB_LOGO_TEST
+#include <linux/uaccess.h>
+#include <linux/proc_fs.h>
+#include <linux/usb/sp_usb.h>
+
+#define COMPARE_CHAR_NUMBER		3
+#define BASIC_VALUE			10
+#define LIMITS_OF_AUTHORITY		0666
+#define MAX_LENGTH			64
+#define DIRECTIORY_NAME			"usb_verify_test"
+#define TESET_FLAG_FILE_NAME		"specific_test_set"
+#define HUB_LEVLE_FILE_NAME		"hub_level_set"
+
+bool tid_test_flag = false;
+u8 max_topo_level = 6;
+static struct proc_dir_entry *dir_entry;
+static struct proc_dir_entry *test_flag_entry;
+static struct proc_dir_entry *hub_level_entry;
+EXPORT_SYMBOL_GPL(tid_test_flag);
+EXPORT_SYMBOL_GPL(max_topo_level);
+#endif
+
+
 const char *usbcore_name = "usbcore";
 
 static bool nousb;	/* Disable USB when built into kernel image */
@@ -998,6 +1021,164 @@ static void usb_debugfs_cleanup(void)
 /*
  * Init
  */
+
+
+#ifdef CONFIG_USB_LOGO_TEST
+static int usb_specific_test_set_show(struct seq_file *m, void *v)
+{
+	return 0;
+}
+
+static ssize_t usb_specific_test_set_write(struct file *file,
+				const char __user *buf, size_t count, loff_t *data)
+{
+	char verify_parameter[MAX_LENGTH];
+
+	if (count > MAX_LENGTH)
+		count = MAX_LENGTH;
+
+	printk(KERN_DEBUG "USB verify parameters set\n");
+
+	memset(verify_parameter, 0, MAX_LENGTH);
+	if (copy_from_user(verify_parameter, buf, count))
+		return -EFAULT;
+
+	if (strncmp(verify_parameter, "ORI", COMPARE_CHAR_NUMBER) == 0) {
+		printk(KERN_DEBUG "recover to origin set\n");
+		tid_test_flag = false;
+	} else if (strncmp(verify_parameter, "TID", COMPARE_CHAR_NUMBER) == 0) {
+		printk(KERN_DEBUG "comfs to comhs test set\n");
+		tid_test_flag = true;
+	} else if (strncmp(verify_parameter, "MFI", COMPARE_CHAR_NUMBER) == 0) {
+		printk(KERN_DEBUG "comfs to comhs test set\n");
+		tid_test_flag = true;
+	} else {
+		printk(KERN_DEBUG "now, not support value:%s\n",verify_parameter);
+	}
+
+	return count;
+}
+
+static int usb_specific_test_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, usb_specific_test_set_show, NULL);
+}
+
+#if 0
+static const struct file_operations usb_specific_test_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= usb_specific_test_proc_open,
+	.read		= seq_read,
+	.write		= usb_specific_test_set_write,
+	.release	= single_release,
+};
+#else
+static const struct proc_ops usb_specific_test_proc_fops = {
+	.proc_open	= usb_specific_test_proc_open,
+	.proc_read	= seq_read,
+	.proc_write	= usb_specific_test_set_write,
+	.proc_release	= single_release,
+};
+#endif
+
+static int usb_hub_level_set_show(struct seq_file *m, void *v)
+{
+	int len;
+	char verify_parameter[MAX_LENGTH];
+
+	printk(KERN_DEBUG "+%s\n", __FUNCTION__);
+
+	memset(verify_parameter, 0, sizeof(verify_parameter));
+	len = num_to_str(verify_parameter, MAX_LENGTH, max_topo_level, 0);
+	if (!len)
+		printk(KERN_NOTICE "num_to_str error\n");
+	else
+		seq_printf(m, "%s\n", verify_parameter);
+
+	return 0;
+}
+
+static ssize_t usb_hub_level_set_write(struct file *file,
+				const char __user *buf, size_t count, loff_t *data)
+{
+	u64 value;
+	char verify_parameter[MAX_LENGTH];
+
+	if (count > MAX_LENGTH)
+		count = MAX_LENGTH;
+
+	printk(KERN_DEBUG "+%s\n", __FUNCTION__);
+
+	memset(verify_parameter, 0, MAX_LENGTH);
+	if (copy_from_user(verify_parameter, buf, count))
+		return -EFAULT;
+
+	value = simple_strtoull(verify_parameter, NULL, BASIC_VALUE);
+	max_topo_level = value;
+	printk(KERN_DEBUG "USB verify max hub level value:%d\n", max_topo_level);
+
+	return count;
+}
+
+static int usb_hub_level_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, usb_hub_level_set_show, NULL);
+}
+
+#if 0
+static const struct file_operations hub_level_proc_fops = {
+	.owner		= THIS_MODULE,
+	.open		= usb_hub_level_proc_open,
+	.read		= seq_read,
+	.write		= usb_hub_level_set_write,
+	.release	= single_release,
+};
+#else
+static const struct proc_ops hub_level_proc_fops = {
+	.proc_open	= usb_hub_level_proc_open,
+	.proc_read	= seq_read,
+	.proc_write	= usb_hub_level_set_write,
+	.proc_release	= single_release,
+};
+#endif
+
+static int proc_entry_add(void)
+{
+	dir_entry = proc_mkdir(DIRECTIORY_NAME, NULL);
+	if (!dir_entry) {
+		printk(KERN_NOTICE "can't create /proc/usb_verify_test\n");
+		return -ENOMEM;
+	}
+
+	test_flag_entry = proc_create(TESET_FLAG_FILE_NAME, LIMITS_OF_AUTHORITY,
+				      dir_entry, &usb_specific_test_proc_fops);
+	if (!test_flag_entry) {
+		printk(KERN_NOTICE
+		       "can't create /proc/usb_verify_test/specific_test_set\n");
+		remove_proc_entry(TESET_FLAG_FILE_NAME, dir_entry);
+		return -ENOMEM;
+	}
+
+	hub_level_entry = proc_create(HUB_LEVLE_FILE_NAME, LIMITS_OF_AUTHORITY,
+				      dir_entry, &hub_level_proc_fops);
+	if (!hub_level_entry) {
+		printk(KERN_NOTICE
+		       "can't create /proc/usb_verify_test/hub_level_set\n");
+		remove_proc_entry(HUB_LEVLE_FILE_NAME, dir_entry);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+static void proc_entry_remove(void)
+{
+	remove_proc_entry(TESET_FLAG_FILE_NAME, dir_entry);
+	remove_proc_entry(HUB_LEVLE_FILE_NAME, dir_entry);
+	remove_proc_entry(DIRECTIORY_NAME, NULL);
+}
+#endif
+
 static int __init usb_init(void)
 {
 	int retval;
@@ -1006,6 +1187,12 @@ static int __init usb_init(void)
 		return 0;
 	}
 	usb_init_pool_max();
+
+#ifdef CONFIG_USB_LOGO_TEST
+	retval = proc_entry_add();
+	if (retval)
+		goto out;
+#endif
 
 	usb_debugfs_init();
 
@@ -1058,6 +1245,10 @@ static void __exit usb_exit(void)
 	/* This will matter if shutdown/reboot does exitcalls. */
 	if (usb_disabled())
 		return;
+
+#ifdef CONFIG_USB_LOGO_TEST
+	proc_entry_remove();
+#endif
 
 	usb_release_quirk_list();
 	usb_deregister_device_driver(&usb_generic_driver);

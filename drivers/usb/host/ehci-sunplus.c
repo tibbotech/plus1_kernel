@@ -91,6 +91,13 @@ static const struct hc_driver ehci_platform_hc_driver = {
 	.stop = ehci_stop,
 	.shutdown = ehci_shutdown,
 
+#ifdef CONFIG_USB_LOGO_TEST
+	/*
+	 * usb logo test support
+	 */
+	.usb_logo_test = ehci_usb_logo_test,
+#endif
+
 	.urb_enqueue = ehci_urb_enqueue,
 	.urb_dequeue = ehci_urb_dequeue,
 	.endpoint_disable = ehci_endpoint_disable,
@@ -109,6 +116,10 @@ static const struct hc_driver ehci_platform_hc_driver = {
 
 	.clear_tt_buffer_complete = ehci_clear_tt_buffer_complete,
 };
+
+#ifdef CONFIG_USB_LOGO_TEST
+extern u32 usb_logo_test_start;
+#endif
 
 #ifdef CONFIG_SWITCH_USB_ROLE
 #define USB_UPHY_REG				(3)

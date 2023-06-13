@@ -73,6 +73,9 @@ struct usb_hub {
 	spinlock_t		irq_urb_lock;
 	struct timer_list	irq_urb_retry;
 	struct usb_port		**ports;
+#ifdef	CONFIG_USB_LOGO_TEST
+	struct task_struct	*usb_logo_thread;
+#endif
 };
 
 /**
