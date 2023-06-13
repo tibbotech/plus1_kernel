@@ -23,7 +23,7 @@
 #include "sppctl_gpio_ops.h"
 
 #define SPPCTL_GPIO_OFF_GFR     0x00
-#ifdef CONFIG_PINCTRL_SPPCTL_Q645
+#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
 #define SPPCTL_GPIO_OFF_CTL     0x00
 #define SPPCTL_GPIO_OFF_OE      0x34
 #define SPPCTL_GPIO_OFF_OUT     0x68
