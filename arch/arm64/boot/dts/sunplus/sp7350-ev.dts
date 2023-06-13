@@ -883,7 +883,7 @@
 		resets = <&rstc RST_SPIFL>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nor_pins>;
-		spi-max-frequency = <50000000>;
+		spi-max-frequency = <45000000>;
 		spi-chip-selection = <0>;
 		read-timing-selection = <0>;
 		write-timing-selection = <0>;
@@ -898,7 +898,7 @@
 		resets = <&rstc RST_SPIND>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nand_pins>;
-		spi-max-frequency = <75000000>;
+		spi-max-frequency = <45000000>;
 	};
 
 	bch0: bch@f8101000 {
