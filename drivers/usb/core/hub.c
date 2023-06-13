@@ -4635,7 +4635,7 @@ static int usb_logo_thread(void *arg)
 	idProduct = udev->descriptor.idProduct;
 
 	if (udev->speed == USB_SPEED_LOW) {
-	#if 0
+	#if defined(CONFIG_SOC_SP7021)
 #include <mach/io_map.h>
 		void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
 
@@ -4643,7 +4643,7 @@ static int usb_logo_thread(void *arg)
 		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY0_CTL1_OFFSET);
 		writel(RF_MASK_V(0xffff, 0x0004), regs + UPHY1_CTL0_OFFSET);
 		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY1_CTL1_OFFSET);
-	#else
+	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		// uphy0
 		writel(0x80000002, uphy0_regs + GLO_CTRL0_OFFSET);
 

@@ -1714,9 +1714,11 @@ static int ehci_usb_logo_test(struct usb_hcd *hcd, int idProduct)
 		printk("test packet\n");
 		port_status |= TEST_Packet;
 		printk("port_status = 0x%08x\n", port_status);
-
-		//reg_addr = (hcd->self.busnum - 1) ? uphy1_base_addr : uphy0_base_addr;
+	#if defined(CONFIG_SOC_SP7021)
+		reg_addr = (hcd->self.busnum - 1) ? uphy1_base_addr : uphy0_base_addr;
+	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 		reg_addr = uphy0_regs;
+	#endif
 		writel(0xa1, reg_addr + BIT_TEST_OFFSET);
 		//ehci_writel(ehci, port_status, &ehci->regs->port_status[0]);
 		break;
