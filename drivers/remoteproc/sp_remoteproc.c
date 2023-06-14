@@ -249,7 +249,6 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 			local->bootaddr = rmem->base;
 			if (!mem->va)
 				return -ENOMEM;
-
 			rproc_add_carveout(rproc, mem);
 #endif
 		} else {
@@ -310,6 +309,7 @@ static int sp_rproc_load(struct rproc *rproc, const struct firmware *fw)
 	ehdr = (struct elf32_hdr *)elf_data;
 	phdr = (struct elf32_phdr *)(elf_data + ehdr->e_phoff);
 	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		u32 da = phdr->p_paddr;
 		u32 memsz = phdr->p_memsz;
 		u32 filesz = phdr->p_filesz;
 		u32 offset = phdr->p_offset;
@@ -332,7 +332,10 @@ static int sp_rproc_load(struct rproc *rproc, const struct firmware *fw)
 		}
 
 		/* grab the kernel address for this device address */
-		ptr = rproc_da_to_va(rproc, local->bootaddr, memsz);
+		if(da > local->bootaddr)
+			ptr = rproc_da_to_va(rproc, da, memsz);
+		else
+			ptr = rproc_da_to_va(rproc, local->bootaddr + (da & 0xFFFFF), memsz);
 		if (!ptr) {
 			dev_err(dev, "bad phdr da 0x%llx mem 0x%x\n", local->bootaddr,memsz);
 			ret = -EINVAL;

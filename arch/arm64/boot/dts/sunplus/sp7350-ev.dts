@@ -97,7 +97,7 @@
 		};
 		rproc0runaddr: cm4runaddr@fa240000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0xfa240000 0x0 0x40000>;
+			reg = <0x0 0xfa240000 0x0 0x60000>;
 			no-map;
 		};
 		/* remoteproc reserve memory: 77800000-0x77907fff, total 1M+32K */
