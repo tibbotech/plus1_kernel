@@ -71,5 +71,9 @@
 #define GROP_INT5		57
 #define GROP_INT6		58
 #define GROP_INT7		59
+#define GROP_GPIO_AO_INT0	60
+#define GROP_GPIO_AO_INT1	61
+#define GROP_GPIO_AO_INT2	62
+#define GROP_GPIO_AO_INT3	63
 
 #endif
