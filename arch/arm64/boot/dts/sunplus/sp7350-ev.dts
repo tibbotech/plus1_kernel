@@ -425,11 +425,41 @@
 	thermal: thermal@f88002b4 {
 		compatible = "sunplus,sp7350-thermal";
 		reg =<0x0 0xf88002b4 0x0 0x18>;
+		clocks = <&clkc THERMAL>;
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
 		status = "disabled";
 	};
+
+#if(0)
+{
+    thermal-zones {
+        cpu_thermal_zone: cpu-thermal {
+            polling-delay-passive = <5000>;
+            polling-delay = <1000>;
+            passive = <80>;
+            trips {
+                cpu_trip0: cpu0 {
+                    temperature = <70000>;
+                    hysteresis = <2000>;
+                    type = "passive";
+                };
+                cpu_trip1: cpu1 {
+                    temperature = <80000>;
+                    hysteresis = <2000>;
+                    type = "active";
+                };
+            };
+        };
+    };
+
+   // poweroff {
+        //compatible = "system-shutdown";
+   // };
+};
+
+#endif
 
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spi";
@@ -1003,6 +1033,7 @@
 		disable-wp;
 		cap-sd-highspeed;
 		cap-sdio-irq;
+		keep-power-in-suspend;
 		no-sd;
 		no-mmc;
 		#address-cells = <1>;
@@ -1010,6 +1041,16 @@
 		status = "disabled";
 	};
 
+#if 0
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_int0_pins>;
+		gpio_wl_reg_on = <&pctl 56 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
 	sp_uphy0: uphy@f8004a80 {
 		compatible = "sunplus,sp7350-usb2-phy";
 		clocks = <&clkc UPHY0>;
