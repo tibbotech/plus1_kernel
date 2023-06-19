@@ -2985,6 +2985,14 @@ static int sp_udc_remove(struct platform_device *pdev)
 	device_remove_file(&pdev->dev, &dev_attr_udc_ctrl);
 	device_remove_file(&pdev->dev, &dev_attr_debug);
 
+	if (udc->driver)
+		device_run_stop_ctrl(0);
+
+	clk_disable_unprepare(udc->clock);
+
+	phy_power_off(uphy[udc->port_num]);
+	phy_exit(uphy[udc->port_num]);
+
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver) {
 		UDC_LOGE("+%s.%d\n", __func__, __LINE__);

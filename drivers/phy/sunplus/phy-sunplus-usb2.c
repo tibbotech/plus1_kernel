@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 /*
- * Sunplus SP7021 USB 2.0 phy driver
+ * Sunplus USB 2.0 phy driver
  *
  * Copyright (C) 2022 Sunplus Technology Inc., All rights reserved.
- *
- * Note 1 : non-posted write command for the registers accesses of
- * Sunplus SP7021.
  *
  */
 
@@ -261,8 +258,8 @@ static int sp_uphy_power_on(struct phy *phy)
 	writel(pll_pwr_on, usbphy->phy_regs + GLO_CTRL2_OFFSET);
 
 	/* USB clock = 120MHz */
-	writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) & ~CLK120_27_SEL,
-							uphy0_regs + GLO_CTRL1_OFFSET);
+	writel(readl(usbphy->phy_regs + GLO_CTRL1_OFFSET) & ~CLK120_27_SEL,
+							usbphy->phy_regs + GLO_CTRL1_OFFSET);
 
 	return 0;
 
@@ -285,8 +282,8 @@ static int sp_uphy_power_off(struct phy *phy)
 	writel(temp, usbphy->phy_regs + GLO_CTRL2_OFFSET);
 
 	/* USB clock = 27MHz */
-	writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) | CLK120_27_SEL,
-							uphy0_regs + GLO_CTRL1_OFFSET);
+	writel(readl(usbphy->phy_regs + GLO_CTRL1_OFFSET) | CLK120_27_SEL,
+							usbphy->phy_regs + GLO_CTRL1_OFFSET);
 
 	return 0;
 }
@@ -332,9 +329,7 @@ static int sp_usb_phy_probe(struct platform_device *pdev)
 	if (IS_ERR(usbphy->phy_regs))
 		return PTR_ERR(usbphy->phy_regs);
 
-#ifdef CONFIG_USB_SP_UDC2
 	uphy0_regs = usbphy->phy_regs;
-#endif
 
 #ifdef CONFIG_SOC_Q645
 	usbphy->moon3_res_mem = platform_get_resource_byname(pdev, IORESOURCE_MEM, "moon3");
