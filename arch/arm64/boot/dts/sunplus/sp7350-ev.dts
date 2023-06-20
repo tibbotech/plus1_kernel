@@ -19,6 +19,14 @@
 //#define ENABLE_DMATX7
 
 //#define MIPI_CSI_4VC
+//#define IMX219_IN0
+//#define IMX219_IN1
+//#define IMX219_IN2
+//#define IMX219_IN3
+//#define IMX219_IN4
+//#define IMX219_IN5
+//#define TP2815_IN2	/* MIPI-CSI_4VC needs to be enabled */
+//#define TP2815_IN5
 //#define LT8912B_HDMI
 
 / {
@@ -134,6 +142,70 @@
 			no-map;
 		};
 	};
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
+	imx219_0_clk: camera0-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
+	imx219_1_clk: camera1-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
+	imx219_2_clk: camera2-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
+	imx219_3_clk: camera3-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
+	imx219_4_clk: camera4-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
+	imx219_5_clk: camera5-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
+	tp2815_2_clk: camera2-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+	tp2815_5_clk: camera5-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
 
 	firmware {
 		optee {
@@ -626,6 +698,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_0_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_0_pins>;
+			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c1: i2c@f8829000 {
@@ -639,6 +735,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_1: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_1_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_1_pins>;
+			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_1: endpoint {
+					remote-endpoint = <&csi2_1>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c2: i2c@f882a000 {
@@ -652,6 +772,54 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo2_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_2_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_2_pins>;
+			//power-gpios = <&pctl 75 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 76 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_2_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_2_pins>;
+			//power-gpios = <&pctl 75 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 76 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+					data-lanes = <1 2 3 4>;
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c3: i2c@f882b000 {
@@ -665,6 +833,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo3_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_3: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_3_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_3_pins>;
+			//power-gpios = <&pctl 77 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 78 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_3: endpoint {
+					remote-endpoint = <&csi2_3>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c4: i2c@f882c000 {
@@ -678,6 +870,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo4_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_4: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_4_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_4_pins>;
+			//power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 80 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_4: endpoint {
+					remote-endpoint = <&csi2_4>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c5: i2c@f882d000 {
@@ -691,6 +907,54 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo5_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_5: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_5_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_5_pins>;
+			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_5: endpoint {
+					remote-endpoint = <&csi2_5>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_5: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_5_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_5_pins>;
+			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_5: endpoint {
+					remote-endpoint = <&csi2_5>;
+					data-lanes = <1 2 3 4>;
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c6: i2c@f882e000 {
@@ -1195,26 +1459,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN0
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi0_in: endpoint {
+				csi2_0: endpoint {
 					remote-endpoint = <&imx219_0>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1317,26 +1585,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN1
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi1_in: endpoint {
+				csi2_1: endpoint {
 					remote-endpoint = <&imx219_1>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1440,9 +1712,17 @@
 		/* Virtual channel related properties */
 		max_channels = <4>;
 #ifdef MIPI_CSI_4VC
+	#ifdef TP2815_IN2
+		num_channels = <1>;
+	#else
 		num_channels = <4>;
+	#endif
 #else
+	#ifdef IMX219_IN2
+		num_channels = <1>;
+	#else
 		num_channels = <2>;
+	#endif
 #endif
 
 		ports {
@@ -1450,19 +1730,33 @@
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi2_in: endpoint {
+				csi2_2: endpoint {
 					remote-endpoint = <&imx219_2>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_2: endpoint {
+					remote-endpoint = <&tp2815_2>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+				};
+			};
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1578,26 +1872,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN3
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi3_in: endpoint {
+				csi2_3: endpoint {
 					remote-endpoint = <&imx219_3>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1715,26 +2013,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN4
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi4_in: endpoint {
+				csi2_4: endpoint {
 					remote-endpoint = <&imx219_4>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1837,26 +2139,46 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#if defined(IMX219_IN5)
+		num_channels = <1>;
+#elif defined(TP2815_IN5)
+		num_channels = <1>;
+#else
 		num_channels = <4>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi5_in: endpoint {
+				csi2_5: endpoint {
 					remote-endpoint = <&imx219_5>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_5: endpoint {
+					remote-endpoint = <&tp2815_5>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {

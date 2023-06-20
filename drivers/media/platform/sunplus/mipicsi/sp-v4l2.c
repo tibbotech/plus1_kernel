@@ -28,13 +28,33 @@
  */
 
 static const struct vin_video_format vin_formats[] = {
-#if 1
+	/* YUY2 */
+	{
+		.fourcc			= V4L2_PIX_FMT_YUYV,
+		.mbus_code		= MEDIA_BUS_FMT_YUYV8_2X8,
+		.bpp			= 16,
+		.bpc			= 8,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_YVYU,
+		.mbus_code		= MEDIA_BUS_FMT_YVYU8_2X8,
+		.bpp			= 16,
+		.bpc 			= 8,
+	},
 	{
 		.fourcc 		= V4L2_PIX_FMT_UYVY,
 		.mbus_code		= MEDIA_BUS_FMT_UYVY8_2X8,
 		.bpp			= 16,
-		.bpc			= 8,
+		.bpc 			= 8,
 	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_VYUY,
+		.mbus_code		= MEDIA_BUS_FMT_VYUY8_2X8,
+		.bpp			= 16,
+		.bpc 			= 8,
+	},
+
+	/* RAW8 */
 	{
 		.fourcc			= V4L2_PIX_FMT_SBGGR8,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR8_1X8,
@@ -42,11 +62,51 @@ static const struct vin_video_format vin_formats[] = {
 		.bpc 			= 8,
 	},
 	{
+		.fourcc			= V4L2_PIX_FMT_SGBRG8,
+		.mbus_code		= MEDIA_BUS_FMT_SGBRG8_1X8,
+		.bpp			= 8,
+		.bpc 			= 8,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_SGRBG8,
+		.mbus_code		= MEDIA_BUS_FMT_SGRBG8_1X8,
+		.bpp			= 8,
+		.bpc 			= 8,
+	},
+	{
+		.fourcc			= V4L2_PIX_FMT_SRGGB8,
+		.mbus_code		= MEDIA_BUS_FMT_SRGGB8_1X8,
+		.bpp			= 8,
+		.bpc 			= 8,
+	},
+
+	/* RAW10 */
+	{
 		.fourcc 		= V4L2_PIX_FMT_SBGGR10,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR10_1X10,
 		.bpp			= 16,
 		.bpc			= 10,
 	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SGBRG10,
+		.mbus_code		= MEDIA_BUS_FMT_SGBRG10_1X10,
+		.bpp			= 16,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SGRBG10,
+		.mbus_code		= MEDIA_BUS_FMT_SGRBG10_1X10,
+		.bpp			= 16,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SRGGB10,
+		.mbus_code		= MEDIA_BUS_FMT_SRGGB10_1X10,
+		.bpp			= 16,
+		.bpc			= 10,
+	},
+
+	/* RAW10 packed mode */
 	{
 		.fourcc 		= V4L2_PIX_FMT_SBGGR10P,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR10_1X10,
@@ -54,67 +114,75 @@ static const struct vin_video_format vin_formats[] = {
 		.bpc			= 10,
 	},
 	{
+		.fourcc 		= V4L2_PIX_FMT_SGBRG10P,
+		.mbus_code		= MEDIA_BUS_FMT_SGBRG10_1X10,
+		.bpp			= 10,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SGRBG10P,
+		.mbus_code		= MEDIA_BUS_FMT_SGRBG10_1X10,
+		.bpp			= 10,
+		.bpc			= 10,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SRGGB10P,
+		.mbus_code		= MEDIA_BUS_FMT_SRGGB10_1X10,
+		.bpp			= 10,
+		.bpc			= 10,
+	},
+
+	/* RAW12 */
+	{
 		.fourcc 		= V4L2_PIX_FMT_SBGGR12,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR12_1X12,
 		.bpp			= 16,
 		.bpc			= 12,
 	},
 	{
+		.fourcc 		= V4L2_PIX_FMT_SGBRG12,
+		.mbus_code		= MEDIA_BUS_FMT_SGBRG12_1X12,
+		.bpp			= 16,
+		.bpc			= 12,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SGRBG12,
+		.mbus_code		= MEDIA_BUS_FMT_SGRBG12_1X12,
+		.bpp			= 16,
+		.bpc			= 12,
+	},
+	{
+		.fourcc 		= V4L2_PIX_FMT_SRGGB12,
+		.mbus_code		= MEDIA_BUS_FMT_SRGGB12_1X12,
+		.bpp			= 16,
+		.bpc			= 12,
+	},
+
+	/* RAW12 packed mode */
+	{
 		.fourcc 		= V4L2_PIX_FMT_SBGGR12P,
 		.mbus_code		= MEDIA_BUS_FMT_SBGGR12_1X12,
 		.bpp			= 12,
 		.bpc			= 12,
 	},
-#else
 	{
-		.fourcc			= V4L2_PIX_FMT_YUYV,
-		.mbus_code		= MEDIA_BUS_FMT_YUYV8_2X8,
-		.bpp			= 16,
-		.bpc		= 8,
+		.fourcc 		= V4L2_PIX_FMT_SGBRG12P,
+		.mbus_code		= MEDIA_BUS_FMT_SGBRG12_1X12,
+		.bpp			= 12,
+		.bpc			= 12,
 	},
 	{
-		.fourcc			= V4L2_PIX_FMT_YVYU,
-		.mbus_code		= MEDIA_BUS_FMT_YVYU8_2X8,
-		.bpp			= 16,
-		.bpc 		= 8,
+		.fourcc 		= V4L2_PIX_FMT_SGRBG12P,
+		.mbus_code		= MEDIA_BUS_FMT_SGRBG12_1X12,
+		.bpp			= 12,
+		.bpc			= 12,
 	},
 	{
-		.fourcc 		= V4L2_PIX_FMT_UYVY,
-		.mbus_code		= MEDIA_BUS_FMT_UYVY8_2X8,
-		.bpp			= 16,
-		.bpc 		= 8,
+		.fourcc 		= V4L2_PIX_FMT_SRGGB12P,
+		.mbus_code		= MEDIA_BUS_FMT_SRGGB12_1X12,
+		.bpp			= 12,
+		.bpc			= 12,
 	},
-	{
-		.fourcc 		= V4L2_PIX_FMT_VYUY,
-		.mbus_code		= MEDIA_BUS_FMT_VYUY8_2X8,
-		.bpp			= 16,
-		.bpc 		= 8,
-	},
-	{
-		.fourcc			= V4L2_PIX_FMT_SBGGR8,
-		.mbus_code		= MEDIA_BUS_FMT_SBGGR8_1X8,
-		.bpp			= 8,
-		.bpc 		= 8,
-	},
-	{
-		.fourcc			= V4L2_PIX_FMT_SGBRG8,
-		.mbus_code		= MEDIA_BUS_FMT_SGBRG8_1X8,
-		.bpp			= 8,
-		.bpc 		= 8,
-	},
-	{
-		.fourcc			= V4L2_PIX_FMT_SGRBG8,
-		.mbus_code		= MEDIA_BUS_FMT_SGRBG8_1X8,
-		.bpp			= 8,
-		.bpc 		= 8,
-	},
-	{
-		.fourcc			= V4L2_PIX_FMT_SRGGB8,
-		.mbus_code		= MEDIA_BUS_FMT_SRGGB8_1X8,
-		.bpp			= 8,
-		.bpc 		= 8,
-	},
-#endif
 };
 
 /*  Print Four-character-code (FOURCC) */
