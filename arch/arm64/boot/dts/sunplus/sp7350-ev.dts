@@ -21,11 +21,8 @@
 //#define MIPI_CSI_4VC
 //#define IMX219_IN0
 //#define IMX219_IN1
-//#define IMX219_IN2
-//#define IMX219_IN3
 //#define IMX219_IN4
 //#define IMX219_IN5
-//#define TP2815_IN2	/* MIPI-CSI_4VC needs to be enabled */
 //#define TP2815_IN5
 //#define LT8912B_HDMI
 
@@ -159,22 +156,6 @@
 	};
 #endif
 
-#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
-	imx219_2_clk: camera2-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
-	imx219_3_clk: camera3-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
 #ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
 	imx219_4_clk: camera4-clk {
 		compatible = "fixed-clock";
@@ -185,14 +166,6 @@
 
 #ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
 	imx219_5_clk: camera5-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
-	tp2815_2_clk: camera2-clk {
 		compatible = "fixed-clock";
 		#clock-cells = <0>;
 		clock-frequency = <24000000>;
@@ -773,105 +746,7 @@
 		pinctrl-0 = <&i2c_combo2_pins>;
 		status = "disabled";
 
-#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		camera_2: sensor@10 {
-			compatible = "sony,imx219";
-			reg = <0x10>;
-			clocks = <&imx219_2_clk>;
-			//pinctrl-names = "default";
-			//pinctrl-0 = <&camera_2_pins>;
-			//power-gpios = <&pctl 75 GPIO_ACTIVE_HIGH>;
-			//reset-gpios = <&pctl 76 GPIO_ACTIVE_HIGH>;
-
-			port {
-				imx219_2: endpoint {
-					remote-endpoint = <&csi2_2>;
-					data-lanes = <1 2>;
-					clock-noncontinuous;
-					link-frequencies = /bits/ 64 <456000000>;
-				};
-			};
-		};
-#endif
-
-#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		camera_2: sensor@44 {
-			compatible = "Techpoint,tp2815";
-			reg = <0x44>;
-			clocks = <&tp2815_2_clk>;
-			//pinctrl-names = "default";
-			//pinctrl-0 = <&camera_2_pins>;
-			//power-gpios = <&pctl 75 GPIO_ACTIVE_HIGH>;
-			//reset-gpios = <&pctl 76 GPIO_ACTIVE_HIGH>;
-
-			port {
-				tp2815_2: endpoint {
-					remote-endpoint = <&csi2_2>;
-					data-lanes = <1 2 3 4>;
-					clock-continuous;
-					link-frequencies = /bits/ 64 <456000000>;
-				};
-			};
-		};
-#endif
-	};
-
-	i2c3: i2c@f882b000 {
-		compatible = "snps,designware-i2c";
-		reg =<0x0 0xf882b000 0x0 0x100>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc I2CM3>;
-		resets = <&rstc RST_I2CM3>;
-		clock-frequency = <400000>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_combo3_pins>;
-		status = "disabled";
-
-#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
-		#address-cells = <1>;
-		#size-cells = <0>;
-
-		camera_3: sensor@10 {
-			compatible = "sony,imx219";
-			reg = <0x10>;
-			clocks = <&imx219_3_clk>;
-			//pinctrl-names = "default";
-			//pinctrl-0 = <&camera_3_pins>;
-			//power-gpios = <&pctl 77 GPIO_ACTIVE_HIGH>;
-			//reset-gpios = <&pctl 78 GPIO_ACTIVE_HIGH>;
-
-			port {
-				imx219_3: endpoint {
-					remote-endpoint = <&csi2_3>;
-					data-lanes = <1 2>;
-					clock-noncontinuous;
-					link-frequencies = /bits/ 64 <456000000>;
-				};
-			};
-		};
-#endif
-	};
-
-	i2c4: i2c@f882c000 {
-		compatible = "snps,designware-i2c";
-		reg =<0x0 0xf882c000 0x0 0x100>;
-		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc I2CM4>;
-		resets = <&rstc RST_I2CM4>;
-		clock-frequency = <400000>;
-		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_combo4_pins>;
-		status = "disabled";
-
-#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c2 */
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -896,19 +771,19 @@
 #endif
 	};
 
-	i2c5: i2c@f882d000 {
+	i2c3: i2c@f882b000 {
 		compatible = "snps,designware-i2c";
-		reg =<0x0 0xf882d000 0x0 0x100>;
+		reg =<0x0 0xf882b000 0x0 0x100>;
 		interrupt-parent = <&gic>;
-		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc I2CM5>;
-		resets = <&rstc RST_I2CM5>;
+		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM3>;
+		resets = <&rstc RST_I2CM3>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&i2c_combo5_pins>;
+		pinctrl-0 = <&i2c_combo3_pins>;
 		status = "disabled";
 
-#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c3 */
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -932,7 +807,7 @@
 		};
 #endif
 
-#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -955,6 +830,32 @@
 			};
 		};
 #endif
+	};
+
+	i2c4: i2c@f882c000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882c000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM4>;
+		resets = <&rstc RST_I2CM4>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c_combo4_pins>;
+		status = "disabled";
+	};
+
+	i2c5: i2c@f882d000 {
+		compatible = "snps,designware-i2c";
+		reg =<0x0 0xf882d000 0x0 0x100>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clkc I2CM5>;
+		resets = <&rstc RST_I2CM5>;
+		clock-frequency = <400000>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&i2c_combo5_pins>;
+		status = "disabled";
 	};
 
 	i2c6: i2c@f882e000 {
@@ -2024,7 +1925,7 @@
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c2 */
 			port@0 {
 				reg = <0>;
 
@@ -2152,7 +2053,7 @@
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
 
@@ -2166,7 +2067,7 @@
 			};
 #endif
 
-#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
 
