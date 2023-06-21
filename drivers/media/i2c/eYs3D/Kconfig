@@ -1,10 +1,10 @@
-config VIDEO_ESP876
-	tristate "eYs3D eSP876 camera support"
+config VIDEO_EYS3D
+	tristate "eYs3D Camera Sensor Driver Support"
 	depends on VIDEO_V4L2 && I2C
 	select MEDIA_CONTROLLER
 	select VIDEO_V4L2_SUBDEV_API
 	help
-	  Support for the eYs3D eSP876 camera.
+	  Support for the eYs3D Camera Sensor Driver.
 
 	  To compile this driver as a module, choose M here: the
-	  module will be called esp876
+	  module will be called eys3d

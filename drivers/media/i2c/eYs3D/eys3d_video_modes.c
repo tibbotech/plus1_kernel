@@ -1,22 +1,25 @@
 #define SUPPORTED_VIDEO_MODE(pid, supported_video_modes, num) do {\
-        if (pid == ESP876_API_CAMERA_PID_SANDRA) { \
+        if (pid == EYS3D_API_CAMERA_PID_SANDRA) { \
             supported_video_modes = &video_modes_v1[0]; \
-            *num = sizeof(video_modes_v1) / sizeof(struct esp876_video_mode); \
-        } else if (pid == ESP876_API_CAMERA_PID_NORA) { \
+            *num = sizeof(video_modes_v1) / sizeof(struct eys3d_video_mode); \
+        } else if (pid == EYS3D_API_CAMERA_PID_NORA) { \
             supported_video_modes = &video_modes_v2[0]; \
-            *num = sizeof(video_modes_v2) / sizeof(struct esp876_video_mode); \
-        } else if (pid == ESP876_API_CAMERA_PID_EX8036) { \
+            *num = sizeof(video_modes_v2) / sizeof(struct eys3d_video_mode); \
+        } else if (pid == EYS3D_API_CAMERA_PID_EX8036) { \
             supported_video_modes = &video_modes_v3[0]; \
-            *num = sizeof(video_modes_v3) / sizeof(struct esp876_video_mode); \
-        }  else if (pid == ESP876_API_CAMERA_PID_HELEN) { \
+            *num = sizeof(video_modes_v3) / sizeof(struct eys3d_video_mode); \
+        }  else if (pid == EYS3D_API_CAMERA_PID_HELEN) { \
             supported_video_modes = &video_modes_v4[0]; \
-            *num = sizeof(video_modes_v4) / sizeof(struct esp876_video_mode); \
+            *num = sizeof(video_modes_v4) / sizeof(struct eys3d_video_mode); \
+        } else if (pid == EYS3D_API_CAMERA_PID_GRAPE) { \
+            supported_video_modes = &video_modes_v5[0]; \
+            *num = sizeof(video_modes_v5) / sizeof(struct eys3d_video_mode); \
         } else { \
             \
         }\
 } while(0)
 
-static const struct esp876_video_mode video_modes_v1[] = {
+static const struct eys3d_video_mode video_modes_v1[] = {
     //mode #0
     {
         .mode_index = 0,
@@ -188,7 +191,7 @@ static const struct esp876_video_mode video_modes_v1[] = {
 };
 
 //NOTE:The video modes is for NORA-FAN21-B01-000-BETA04-SLAVE and later.
-static const struct esp876_video_mode video_modes_v2[] = {
+static const struct eys3d_video_mode video_modes_v2[] = {
     //VM1/11 bits
     {
         .mode_index = 0,
@@ -1032,92 +1035,7 @@ static const struct esp876_video_mode video_modes_v2[] = {
     },
 };
 
-static const struct esp876_video_mode video_modes_v3[] = {
-/*
-    {
-        .mode_index = 0,
-        .width = 2560,
-        .height = 720,
-        .fps = 30,
-        .depth_bits = 11,
-        .color_bits = 16,
-        .is_rectify = true,
-        .is_interleave_mode = false,
-        .pixelcode = MEDIA_BUS_FMT_YUYV8_1X16,
-        .param = {
-            .cmdOpt_02 = 0x01,
-            .cmdOpt_03 = 0x03,
-            .cmdOpt_04 = 0x0E,
-            .cmdOpt_05 = 0x01,
-        },
-        .support_fps = {60, 30, 15},
-        .support_fps_num = 3,
-        .is_scale_down = false
-    },
-
-    {
-        .mode_index = 1,
-        .width = 1280,
-        .height = 720,
-        .fps = 60,
-        .depth_bits = 0,
-        .color_bits = 16,
-        .is_rectify = false,
-        .is_interleave_mode = false,
-        .pixelcode = MEDIA_BUS_FMT_YUYV8_1X16,
-        .param = {
-            .cmdOpt_02 = 0x01,
-            .cmdOpt_03 = 0x01,
-            .cmdOpt_04 = 0x01,
-            .cmdOpt_05 = 0x01,
-        },
-        .support_fps = {60, 30, 15},
-        .support_fps_num = 3,
-        .is_scale_down = false
-    },
-    // testing video mode for only color
-    {
-        .mode_index = 2,
-        .width = 2560,
-        .height = 720,
-        .fps = 30,
-        .depth_bits = 0,
-        .color_bits = 16,
-        .is_rectify = false,
-        .is_interleave_mode = false,
-        .pixelcode = MEDIA_BUS_FMT_YUYV8_1X16,
-        .param = {
-            .cmdOpt_02 = 0x01,
-            .cmdOpt_03 = 0x03,
-            .cmdOpt_04 = 0x01,
-            .cmdOpt_05 = 0x01,
-        },
-        .support_fps = {60, 30, 15},
-        .support_fps_num = 3,
-        .is_scale_down = false
-    },
-    // testing video mode for only depth
-    {
-        .mode_index = 3,
-        .width = 2560,
-        .height = 720,
-        .fps = 30,
-        .depth_bits = 11,
-        .color_bits = 0,
-        .is_rectify = true,
-        .is_interleave_mode = false,
-        .pixelcode = MEDIA_BUS_FMT_YUYV8_1X16,
-        .param = {
-            .cmdOpt_02 = 0x01,
-            .cmdOpt_03 = 0x03,
-            .cmdOpt_04 = 0x0E,
-            .cmdOpt_05 = 0x01,
-        },
-        .support_fps = {60, 30, 15},
-        .support_fps_num = 3,
-        .is_scale_down = false
-    },
-*/
+static const struct eys3d_video_mode video_modes_v3[] = {
     {
         .mode_index = 0,
         .width = 1280,
@@ -1501,7 +1419,7 @@ static const struct esp876_video_mode video_modes_v3[] = {
 };
 
 //About MEDIA_BUS_FMT_SBGGR10_1X10, please check: https://www.linuxtv.org/downloads/v4l-dvb-apis-old/pixfmt-srggb10.html
-static const struct esp876_video_mode video_modes_v4[] = {
+static const struct eys3d_video_mode video_modes_v4[] = {
     {
         .mode_index = 0,
         .width = 800,
@@ -1580,6 +1498,29 @@ static const struct esp876_video_mode video_modes_v4[] = {
         },
         .support_fps = {60, 50},
         .support_fps_num = 2,
+        .is_scale_down = false
+    },
+};
+
+static const struct eys3d_video_mode video_modes_v5[] = {
+    {
+        .mode_index = 0,
+        .width = 640,
+        .height = 480,
+        .fps = 15,
+        .depth_bits = 0,
+        .color_bits = 16,
+        .is_rectify = false,
+        .is_interleave_mode = false,
+        .pixelcode = MEDIA_BUS_FMT_YUYV8_1X16,
+        .param = {
+            .cmdOpt_02 = 0x01,
+            .cmdOpt_03 = 0x01,
+            .cmdOpt_04 = 0x01,
+            .cmdOpt_05 = 0x01,
+        },
+        .support_fps = {15},
+        .support_fps_num = 1,
         .is_scale_down = false
     },
 };
