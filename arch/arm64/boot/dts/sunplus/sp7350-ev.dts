@@ -2004,7 +2004,7 @@
 		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005480 0x0 0x80>;
 		reg-names = "mipicsi";
-		clocks = <&clkc MIPICSI2>;
+		clocks = <&clkc MIPICSI4>;
 		clock-names = "clk_mipicsi";
 		resets = <&rstc RST_MIPICSI4>;
 		reset-names = "rstc_mipicsi";
@@ -2130,7 +2130,7 @@
 		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi";
-		clocks = <&clkc MIPICSI3>;
+		clocks = <&clkc MIPICSI5>;
 		clock-names = "clk_mipicsi";
 		resets = <&rstc RST_MIPICSI5>;
 		reset-names = "rstc_mipicsi";
