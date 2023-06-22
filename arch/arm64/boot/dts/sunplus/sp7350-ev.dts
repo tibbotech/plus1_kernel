@@ -1228,7 +1228,6 @@
 		nvmem-cells = <&disc_vol>;
 		#phy-cells = <0>;
 		sunplus,disc-vol-addr-off = <0>;
-		status = "disabled";
 	};
 
 	ehci0: usb@f8102100 {
@@ -1240,7 +1239,6 @@
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
 		phys = <&sp_uphy0>;
 		phy-names = "uphy";
-		status = "disabled";
 	};
 
 	ohci0: usb@f8102080 {
@@ -1252,7 +1250,6 @@
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
 		phys = <&sp_uphy0>;
 		phy-names = "uphy";
-		status = "disabled";
 	};
 
 	udc0: usb@f8102800 {
