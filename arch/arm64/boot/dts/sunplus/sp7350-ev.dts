@@ -1304,7 +1304,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dwc3id_pins>;
 		id-gpio = <&pctl 99 GPIO_ACTIVE_HIGH>;
-		status = "disabled";
 	};
 
 	usb3drd0: usb3drd0{
@@ -1315,7 +1314,6 @@
 		clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
 		clock-names = "ref","bus_early","suspend";
 		resets = <&rstc RST_USB30C0>;
-		status = "disabled";
 
 		usbdrd_dwc3_0: dwc3@f80a1000 {
 			compatible = "synopsys,dwc3";
@@ -1328,7 +1326,6 @@
 			phy_type = "utmi_wide";
 			usb-role-switch;
 			extcon = <&extcon_dwc3drd>;
-			status = "disabled";
 		};
 	};
 
@@ -1344,7 +1341,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&typec_pins>;
 		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
-		status = "disabled";
 	};
 
 	mipicsirx0: csirx@f8005280 {
