@@ -1319,7 +1319,7 @@
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
-			dr_mode = "host";
+			dr_mode = "otg";
 			snps,dis_u2_susphy_quirk;
 			phy_type = "utmi_wide";
 			usb-role-switch;
