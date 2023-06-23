@@ -1293,7 +1293,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins>;
+		pinctrl-0 = <&aud_au_adc_data0_pins>, <&aud_dac_xck_pins>;
 		status = "disabled";
 	};
 
