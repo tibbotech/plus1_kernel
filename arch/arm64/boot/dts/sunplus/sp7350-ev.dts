@@ -1056,14 +1056,14 @@
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
 		phy-handle = <&phy0>;
-		status = "disabled";
+		//status = "disabled";
 		mdio0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "snps,dwmac-mdio";
 			phy0: ethernet-phy@0 {
 				compatible = "ethernet-phy-id001c.c916", "ethernet-phy-ieee802.3-c22";
-				reg = <0>;
+				reg = <1>;
 				reset-assert-us = <1000>;
     			reset-deassert-us = <2000>;
 			};
