@@ -90,10 +90,12 @@
 #define TRANSFER_RING_COUNT		(TR_COUNT)
 
 /* sw desc define  */
-#define AUTO_RESPONSE			0xff
+#define NOT_AUTO_SETINT			0x0
 #define AUTO_SET_CONF			0x1			/* setConfiguration auto response */
 #define AUTO_SET_INF			0x2			/* set interface auto response */
-#define NOT_AUTO_SETINT			0x0
+#define AUTO_SET_ADDR			0x4			/* set address auto response */
+#define AUTO_REQ_ERR			0x8			/* request error auto response */
+#define AUTO_RESPONSE			0xff
 
 #define FRAME_TRANSFER_NUM_0		0x0			/* number of  ISO/INT that can transferred 1 micro frame */
 #define FRAME_TRANSFER_NUM_1		0x1
