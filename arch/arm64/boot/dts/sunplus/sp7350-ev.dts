@@ -2402,6 +2402,16 @@
 	};
 #endif
 
+#if 0
+	dummymaster: dm@f8000700 {
+		compatible = "sunplus,sp7350-dm-test";
+		reg = <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8000700 0x0 0x80>,
+			<0x0 0xf800a880 0x0 0x80>; /* G14 G337 */
+		clocks = <&clkc DUMMY_MASTER0>, <&clkc DUMMY_MASTER1>;
+		resets = <&rstc DUMMY_MASTER0>, <&rstc DUMMY_MASTER1>;
+	};
+#endif
+
 	watchdog: watchdog@f800061c {
 		compatible = "sunplus,sp7350-wdt";
 		reg = <0x00 0xf800061c 0x00 0x08>, <0x00 0xf800066c 0x00 0x08>,
