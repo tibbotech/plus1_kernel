@@ -1337,7 +1337,11 @@ static void hal_udc_fill_ep_desc(struct sp_udc *udc, struct udc_endpoint *ep)
 		tmp_ep0_desc->cfgs = AUTO_RESPONSE;					/* auto response configure setting */
 		tmp_ep0_desc->cfgm = AUTO_RESPONSE;					/* auto response configure setting */
 		tmp_ep0_desc->speed = udc->def_run_full_speed ? UDC_FULL_SPEED : UDC_HIGH_SPEED; /* high speed */
+#ifdef CONFIG_SOC_Q645
+		tmp_ep0_desc->aset = AUTO_SET_CONF | AUTO_SET_INF;			/* auto setting config & interface */
+#elif defined(CONFIG_SOC_SP7350)
 		tmp_ep0_desc->aset = AUTO_SET_CONF | AUTO_SET_INF | AUTO_SET_ADDR;	/* auto setting config & interface & address */
+#endif
 		tmp_ep0_desc->dcs = udc->event_ccs;					/* set cycle bit 1 */
 		tmp_ep0_desc->sofic = 0;
 		tmp_ep0_desc->dptr = SHIFT_LEFT_BIT4(ep->ep_transfer_ring.trb_pa);
