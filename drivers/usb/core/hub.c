@@ -37,6 +37,10 @@
 #include "hub.h"
 #include "otg_productlist.h"
 
+#ifdef CONFIG_USB_LOGO_TEST
+#include <linux/usb/sp_usb.h>
+#endif
+
 #define USB_VENDOR_GENESYS_LOGIC		0x05e3
 #define USB_VENDOR_SMSC				0x0424
 #define USB_PRODUCT_USB5534B			0x5534
@@ -111,6 +115,20 @@ EXPORT_SYMBOL_GPL(ehci_cf_port_reset_rwsem);
 #define HUB_DEBOUNCE_TIMEOUT	2000
 #define HUB_DEBOUNCE_STEP	  25
 #define HUB_DEBOUNCE_STABLE	 100
+
+#ifdef CONFIG_USB_LOGO_TEST
+extern void __iomem *uphy0_regs;
+
+unsigned short usb_idVendor = 0;
+unsigned short usb_idProduct = 0;
+unsigned int user_id = 0;
+module_param_named(id_enable, user_id, uint, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(id_enable, "Use user id");
+module_param_named(idVendor, usb_idVendor, ushort, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(idVendor, "User idVendor");
+module_param_named(idProduct, usb_idProduct, ushort, S_IRUGO | S_IWUSR);
+MODULE_PARM_DESC(idProduct, "User idProduct");
+#endif
 
 static void hub_release(struct kref *kref);
 static int usb_reset_and_verify_device(struct usb_device *udev);
@@ -4589,6 +4607,114 @@ static int hub_enable_device(struct usb_device *udev)
 	return hcd->driver->enable_device(hcd, udev);
 }
 
+#ifdef CONFIG_USB_LOGO_TEST
+u32 usb_logo_test_start = 0;	/* ns (0 for disable) */
+module_param(usb_logo_test_start, uint, 0644);
+EXPORT_SYMBOL_GPL(usb_logo_test_start);
+
+/* Note that hdev or one of its children must be locked! */
+static struct usb_hub *hdev_to_hub(struct usb_device *hdev)
+{
+	if (!hdev || !hdev->actconfig)
+		return NULL;
+
+	return usb_get_intfdata(hdev->actconfig->interface[0]);
+}
+
+static int usb_logo_thread(void *arg)
+{
+	struct usb_device *udev = (struct usb_device *)arg;
+	struct usb_hcd *hcd = bus_to_hcd(udev->bus);
+	struct usb_hub *hub = hdev_to_hub(udev->parent);
+	struct usb_device_descriptor *buf = NULL;
+	int retval = 0;
+	u16 idVendor;
+	u16 idProduct;
+
+	idVendor  = udev->descriptor.idVendor;
+	idProduct = udev->descriptor.idProduct;
+
+	if (udev->speed == USB_SPEED_LOW) {
+	#if defined(CONFIG_SOC_SP7021)
+#include <mach/io_map.h>
+		void __iomem *regs = (void __iomem *)B_SYSTEM_BASE;
+
+		writel(RF_MASK_V(0xffff, 0x0002), regs + UPHY0_CTL0_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY0_CTL1_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x0004), regs + UPHY1_CTL0_OFFSET);
+		writel(RF_MASK_V(0xffff, 0x8000), regs + UPHY1_CTL1_OFFSET);
+	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+		// uphy0
+		writel(0x80000002, uphy0_regs + GLO_CTRL0_OFFSET);
+
+		// uphy1
+		//writel(0x80000004, uphy1_regs + GLO_CTRL0_OFFSET);
+	#endif
+	}
+
+	while (usb_logo_test_start == 0)
+		msleep(500);
+
+	if (hub) {
+		retval = hub_port_reset(hub, udev->portnum,
+					udev, HUB_SHORT_RESET_TIME, false);
+		if (retval < 0)
+			goto fail;
+	}
+
+	if (udev->speed != USB_SPEED_HIGH) {
+		retval = -1;
+		printk("usb test mode,not high speed device\n");
+		goto fail;
+	}
+
+	switch (idProduct) {
+	case 0x0107:
+		printk("Test_DESC_EHCI\n");
+
+		buf = kmalloc(64, GFP_KERNEL);
+		if (!buf) {
+			retval = -ENOMEM;
+			goto fail;
+		}
+
+		do {
+			msleep(15000);
+			retval = usb_control_msg(udev,
+						 usb_rcvaddr0pipe(),
+						 USB_REQ_GET_DESCRIPTOR,
+						 USB_DIR_IN,
+						 USB_DT_DEVICE << 8, 0,
+						 buf, 64,
+						 initial_descriptor_timeout);
+			if (retval < 0) {
+				printk(KERN_NOTICE
+				       "usb_control_msg fail[%d]\n",retval);
+				goto fail;
+			}
+		} while (!kthread_should_stop());
+		break;
+	case 0x0101:
+	case 0x0102:
+	case 0x0103:
+	case 0x0104:
+	case 0x0106:
+	case 0x0108:
+		hcd->driver->usb_logo_test(hcd, idProduct);
+		break;
+	}
+
+fail:
+#if 0
+	if (buf) {
+		kfree(buf);
+		buf = NULL;
+	}
+#endif
+	return retval;
+}
+#endif	/* CONFIG_USB_LOGO_TEST */
+
 /* Reset device, (re)assign address, get device descriptor.
  * Device connection must be stable, no more debouncing needed.
  * Returns device in USB_STATE_ADDRESS, except on error.
@@ -5115,6 +5241,10 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 	struct usb_port *port_dev = hub->ports[port1 - 1];
 	struct usb_device *udev = port_dev->child;
 	static int unreliable_port = -1;
+#ifdef CONFIG_USB_LOGO_TEST
+	u16 idVendor;
+	u16 idProduct;
+#endif
 
 	/* Disconnect any existing devices under this port */
 	if (udev) {
@@ -5289,6 +5419,38 @@ static void hub_port_connect(struct usb_hub *hub, int port1, u16 portstatus,
 		status = hub_power_remaining(hub);
 		if (status)
 			dev_dbg(hub->intfdev, "%dmA power budget left\n", status);
+
+#ifdef CONFIG_USB_LOGO_TEST
+		if (user_id == 0) {
+			idVendor  = udev->descriptor.idVendor;
+			idProduct = udev->descriptor.idProduct;
+		} else {
+			idVendor  = 0x1A0A;
+			idProduct = usb_idProduct;
+
+			udev->descriptor.idVendor = 0x1A0A;
+			udev->descriptor.idProduct = usb_idProduct;
+
+			user_id = 0;
+			/* udev->descriptor.bDeviceClass = 0x1F; */
+		}
+
+		if ((idVendor == 0x1A0A)
+		    && (idProduct == 0x0101
+			|| idProduct == 0x0102
+			|| idProduct == 0x0103
+			|| idProduct == 0x0104
+			|| idProduct == 0x0106
+			|| idProduct == 0x0107
+			|| idProduct == 0x0108)) {
+			hub->usb_logo_thread = kthread_create(usb_logo_thread,
+							      udev,
+							      "usb_logo_test");
+			wake_up_process(hub->usb_logo_thread);
+			printk(KERN_NOTICE "@@@idVendor = 0x%x idProduct= 0x%x\n",
+			       udev->descriptor.idVendor, udev->descriptor.idProduct);
+		}
+#endif
 
 		return;
 

@@ -864,7 +864,7 @@ int sp_otg_probe(struct platform_device *dev)
 		goto release_mem;
 	}
 
-	otg_host->regs_otg = (struct sp_regs_otg *)devm_ioremap_resource(&dev->dev, res_mem);
+	otg_host->regs_otg = (struct sp_regs_otg *)ioremap(res_mem->start, resource_size(res_mem));
 	if (!otg_host->regs_otg) {
 		ret = -EBUSY;
 		goto err_release_region;

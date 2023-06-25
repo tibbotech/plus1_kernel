@@ -45,20 +45,20 @@ enum model_id {
 };
 
 enum vin_csi_id {
-	VIN_CSI0,		/* VI0_CSIIW0 */
-	VIN_CSI1,		/* VI0_CSIIW1 */
-	VIN_CSI2,		/* VI1_CSIIW0 */
-	VIN_CSI3,		/* VI1_CSIIW1 */
-	VIN_CSI4,		/* VI23_CSIIW0 */
-	VIN_CSI5,		/* VI23_CSIIW1 */
-	VIN_CSI6,		/* VI23_CSIIW2 */
-	VIN_CSI7,		/* VI23_CSIIW3 */
-	VIN_CSI8,		/* VI4_CSIIW0 */
-	VIN_CSI9,		/* VI4_CSIIW1 */
-	VIN_CSI10,		/* VI5_CSIIW0 */
-	VIN_CSI11,		/* VI5_CSIIW1 */
-	VIN_CSI12,		/* VI5_CSIIW2 */
-	VIN_CSI13,		/* VI5_CSIIW3 */
+	VIN_CSI0,		/* CSIRX0_CSIIW0 */
+	VIN_CSI1,		/* CSIRX0_CSIIW1 */
+	VIN_CSI2,		/* CSIRX1_CSIIW0 */
+	VIN_CSI3,		/* CSIRX1_CSIIW1 */
+	VIN_CSI4,		/* CSIRX23_CSIIW0 */
+	VIN_CSI5,		/* CSIRX23_CSIIW1 */
+	VIN_CSI6,		/* CSIRX23_CSIIW2 */
+	VIN_CSI7,		/* CSIRX23_CSIIW3 */
+	VIN_CSI8,		/* CSIRX4_CSIIW0 */
+	VIN_CSI9,		/* CSIRX4_CSIIW1 */
+	VIN_CSI10,		/* CSIRX5_CSIIW0 */
+	VIN_CSI11,		/* CSIRX5_CSIIW1 */
+	VIN_CSI12,		/* CSIRX5_CSIIW2 */
+	VIN_CSI13,		/* CSIRX5_CSIIW3 */
 	VIN_CSI_MAX,
 };
 
@@ -103,6 +103,11 @@ struct vin_video_format {
 	u32 mbus_code;
 	u8 bpp;			/* Bits per pixel */
 	u8 bpc;			/* Bits per color channel */
+};
+
+struct vin_video_framesize {
+	u32 width;
+	u32 height;
 };
 
 /**
@@ -224,7 +229,15 @@ struct vin_dev {
 	unsigned int sequence;
 	enum vin_dma_state state;
 
+	const struct vin_video_format **sd_formats;
+	unsigned int num_of_sd_formats;
+	const struct vin_video_format *sd_format;
+	struct vin_video_framesize *sd_framesizes;
+	unsigned int num_of_sd_framesizes;
+	struct vin_video_framesize sd_framesize;
+
 	u32 mbus_code;
+	struct v4l2_format fmt;
 	struct v4l2_pix_format format;
 	const struct vin_video_format *vin_fmt;
 
@@ -273,6 +286,8 @@ struct vin_group {
 int vin_dma_register(struct vin_dev *vin, int fs_irq, int fe_irq);
 void vin_dma_unregister(struct vin_dev *vin);
 
+int vin_v4l2_formats_init(struct vin_dev *vin);
+int vin_v4l2_framesizes_init(struct vin_dev *vin);
 int vin_v4l2_set_default_fmt(struct vin_dev *vin);
 int vin_v4l2_register(struct vin_dev *vin);
 void vin_v4l2_unregister(struct vin_dev *vin);

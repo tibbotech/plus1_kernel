@@ -22,6 +22,14 @@
 //#define PIO_MODE
 
 #define CACHE_LINE_SIZE 		64
+#define USB_PORT_NUM			3
+
+/* uphy0 */
+#define GLO_CTRL1_OFFSET		0x74
+#define CLK120_27_SEL			(1 << 19)
+#define GLO_CTRL2_OFFSET		0x78
+#define PLL_PD_SEL			(1 << 7)
+#define PLL_PD				(1 << 3)
 
 /* moon3 */
 #define M3_SCFG_22			0x58
@@ -29,10 +37,14 @@
 /* moon4 */
 #define M4_SCFG_10			0x28
 
-#define USB_MODE_MASK			0x3
-#define USB_HOST_MODE			0x3
-#define USB_DEVICE_MODE			0x1
-#define USB_HW_CTRL			0x0
+#define MO1_USBC0_USB0_TYPE		BIT(2)
+#define MASK_MO1_USBC0_USB0_TYPE	BIT(2 + 16)
+#define MO1_USBC0_USB0_SEL		BIT(1)
+#define MASK_MO1_USBC0_USB0_SEL		BIT(1 + 16)
+#define MO1_USBC0_USB0_CTRL		BIT(0)
+#define MASK_MO1_USBC0_USB0_CTRL	BIT(0 + 16)
+#define USB_HOST_MODE			(MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)
+#define USB_DEVICE_MODE			(~MO1_USBC0_USB0_SEL & MO1_USBC0_USB0_CTRL)
 
 /* run speeed & max ep condig config */
 #define UDC_FULL_SPEED			0x1
@@ -426,6 +438,8 @@ struct udc_endpoint {
 	struct list_head	 queue;
 };
 
+struct phy *uphy[USB_PORT_NUM];
+extern void __iomem 	*uphy0_regs;
 void __iomem 		*moon3_reg;
 void __iomem 		*moon4_reg;
 

@@ -19,6 +19,11 @@
 //#define ENABLE_DMATX7
 
 //#define MIPI_CSI_4VC
+//#define IMX219_IN0
+//#define IMX219_IN1
+//#define IMX219_IN4
+//#define IMX219_IN5
+//#define TP2815_IN5
 //#define LT8912B_HDMI
 
 / {
@@ -61,17 +66,18 @@
 
 		spi0 = &sp_spinor0;
 
-		usb-device0 = &udc;
+		usb-device0 = &udc0;
 	};
 
 	chosen {
-		bootargs = "console=ttyS0,921600 earlycon loglevel=8 no_console_suspend ";
-		stdout-path = "serial0:921600n8";
+		bootargs = "console=ttyS0,115200 earlycon loglevel=8 no_console_suspend ";
+		stdout-path = "serial0:115200n8";
 	};
 
 	memory@0 {
 		device_type = "memory";
-		reg = <0x0 0x0 0x0 0x80000000>;
+		reg = <0x0 0x0        0x0 0xf0000000>,
+		      <0x1 0x00000000 0x0 0x10000000>;
 	};
 
 	reserved-memory {
@@ -97,7 +103,7 @@
 		};
 		rproc0runaddr: cm4runaddr@fa240000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0xfa240000 0x0 0x40000>;
+			reg = <0x0 0xfa240000 0x0 0x60000>;
 			no-map;
 		};
 		/* remoteproc reserve memory: 77800000-0x77907fff, total 1M+32K */
@@ -134,6 +140,46 @@
 			no-map;
 		};
 	};
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
+	imx219_0_clk: camera0-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
+	imx219_1_clk: camera1-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
+	imx219_4_clk: camera4-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
+	imx219_5_clk: camera5-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
+	tp2815_5_clk: camera5-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+#endif
 
 	firmware {
 		optee {
@@ -425,11 +471,41 @@
 	thermal: thermal@f88002b4 {
 		compatible = "sunplus,sp7350-thermal";
 		reg =<0x0 0xf88002b4 0x0 0x18>;
+		clocks = <&clkc THERMAL>;
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
 		status = "disabled";
 	};
+
+#if(0)
+{
+    thermal-zones {
+        cpu_thermal_zone: cpu-thermal {
+            polling-delay-passive = <5000>;
+            polling-delay = <1000>;
+            passive = <80>;
+            trips {
+                cpu_trip0: cpu0 {
+                    temperature = <70000>;
+                    hysteresis = <2000>;
+                    type = "passive";
+                };
+                cpu_trip1: cpu1 {
+                    temperature = <80000>;
+                    hysteresis = <2000>;
+                    type = "active";
+                };
+            };
+        };
+    };
+
+   // poweroff {
+        //compatible = "system-shutdown";
+   // };
+};
+
+#endif
 
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spi";
@@ -596,6 +672,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_0_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_0_pins>;
+			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c1: i2c@f8829000 {
@@ -609,6 +709,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_1: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_1_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_1_pins>;
+			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_1: endpoint {
+					remote-endpoint = <&csi2_1>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c2: i2c@f882a000 {
@@ -622,6 +746,30 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo2_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_4: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_4_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_4_pins>;
+			//power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 80 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_4: endpoint {
+					remote-endpoint = <&csi2_4>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c3: i2c@f882b000 {
@@ -635,6 +783,54 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo3_pins>;
 		status = "disabled";
+
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c3 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_5: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_5_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_5_pins>;
+			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_5: endpoint {
+					remote-endpoint = <&csi2_5>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_5: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_5_clk>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_5_pins>;
+			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_5: endpoint {
+					remote-endpoint = <&csi2_5>;
+					data-lanes = <1 2 3 4>;
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c4: i2c@f882c000 {
@@ -860,14 +1056,14 @@
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
 		phy-handle = <&phy0>;
-		status = "disabled";
+		//status = "disabled";
 		mdio0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
 			compatible = "snps,dwmac-mdio";
 			phy0: ethernet-phy@0 {
 				compatible = "ethernet-phy-id001c.c916", "ethernet-phy-ieee802.3-c22";
-				reg = <0>;
+				reg = <1>;
 				reset-assert-us = <1000>;
     			reset-deassert-us = <2000>;
 			};
@@ -883,7 +1079,7 @@
 		resets = <&rstc RST_SPIFL>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nor_pins>;
-		spi-max-frequency = <50000000>;
+		spi-max-frequency = <45000000>;
 		spi-chip-selection = <0>;
 		read-timing-selection = <0>;
 		write-timing-selection = <0>;
@@ -898,7 +1094,7 @@
 		resets = <&rstc RST_SPIND>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nand_pins>;
-		spi-max-frequency = <75000000>;
+		spi-max-frequency = <45000000>;
 	};
 
 	bch0: bch@f8101000 {
@@ -979,7 +1175,7 @@
 		resets = <&rstc RST_CARD_CTL1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
-		cd-gpios = <&pctl 62 GPIO_ACTIVE_LOW>;
+		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
 		max-frequency = <52000000>;
 		disable-wp;
@@ -1003,6 +1199,7 @@
 		disable-wp;
 		cap-sd-highspeed;
 		cap-sdio-irq;
+		keep-power-in-suspend;
 		no-sd;
 		no-mmc;
 		#address-cells = <1>;
@@ -1010,45 +1207,59 @@
 		status = "disabled";
 	};
 
+#if 0
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_int0_pins>;
+		gpio_wl_reg_on = <&pctl 56 GPIO_ACTIVE_LOW>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 0 IRQ_TYPE_LEVEL_HIGH>;
+	};
+#endif
 	sp_uphy0: uphy@f8004a80 {
-		compatible = "sunplus,sp7350-usb-phy0";
+		compatible = "sunplus,sp7350-usb2-phy";
 		clocks = <&clkc UPHY0>;
 		resets = <&rstc RST_UPHY0>;
-		reg = <0x0 0xf8004a80 0x0 0x80>, <0x0 0xf8800000 0x0 0x80>,
-						<0x0 0xf8800200 0x0 0x80>, <0x0 0xf8102000 0x0 0x80>;
+		reg = <0x0 0xf8004a80 0x0 0x80>, <0x0 0xf8800200 0x0 0x80>;
+		reg-names = "phy", "moon4";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 148 IRQ_TYPE_LEVEL_HIGH>;
 		nvmem-cell-names = "disc_vol";
 		nvmem-cells = <&disc_vol>;
+		#phy-cells = <0>;
+		sunplus,disc-vol-addr-off = <0>;
 	};
 
 	ehci0: usb@f8102100 {
-		compatible = "sunplus,sp7350-usb-ehci0";
+		compatible = "sunplus,sp7350-usb-ehci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102100 0x00 0x68>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 183 IRQ_TYPE_LEVEL_HIGH>;
-		status = "disabled";
+		phys = <&sp_uphy0>;
+		phy-names = "uphy";
 	};
 
 	ohci0: usb@f8102080 {
-		compatible = "sunplus,sp7350-usb-ohci0";
+		compatible = "sunplus,sp7350-usb-ohci";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x00 0xf8102080 0x00 0x68>, <0x00 0xf8800000 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
-		status = "disabled";
+		phys = <&sp_uphy0>;
+		phy-names = "uphy";
 	};
 
-	udc: usb@f8102800 {
+	udc0: usb@f8102800 {
 		compatible = "sunplus,sp7350-usb-udc";
 		clocks = <&clkc USBC0>;
 		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102800 0x0 0x288>, <0x0 0xf8800200 0x0 0x80>, <0x0 0xf8800000 0x0 0x80>,
-		      <0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
-		      <0x0 0xf8802380 0x0 0x80>;
+		      	<0x0 0xf8800080 0x0 0x80>, <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8804a80 0x0 0x80>,
+		      		<0x0 0xf8802380 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 182 IRQ_TYPE_LEVEL_HIGH>;
 		status = "disabled";
@@ -1082,7 +1293,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins>;
+		pinctrl-0 = <&aud_au_adc_data0_pins>, <&aud_dac_xck_pins>;
 		status = "disabled";
 	};
 
@@ -1091,7 +1302,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&dwc3id_pins>;
 		id-gpio = <&pctl 99 GPIO_ACTIVE_HIGH>;
-		status = "disabled";
 	};
 
 	usb3drd0: usb3drd0{
@@ -1102,7 +1312,6 @@
 		clocks = <&clkc USB30C0>, <&clkc USB30C0>, <&clkc USB30C0>;
 		clock-names = "ref","bus_early","suspend";
 		resets = <&rstc RST_USB30C0>;
-		status = "disabled";
 
 		usbdrd_dwc3_0: dwc3@f80a1000 {
 			compatible = "synopsys,dwc3";
@@ -1110,12 +1319,11 @@
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SPI 179 IRQ_TYPE_LEVEL_HIGH>;
 			maximum-speed = "super-speed";
-			dr_mode = "host";
+			dr_mode = "otg";
 			snps,dis_u2_susphy_quirk;
 			phy_type = "utmi_wide";
 			usb-role-switch;
 			extcon = <&extcon_dwc3drd>;
-			status = "disabled";
 		};
 	};
 
@@ -1131,7 +1339,6 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&typec_pins>;
 		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
-		status = "disabled";
 	};
 
 	mipicsirx0: csirx@f8005280 {
@@ -1147,26 +1354,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN0
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi0_in: endpoint {
+				csi2_0: endpoint {
 					remote-endpoint = <&imx219_0>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1269,26 +1480,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN1
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi1_in: endpoint {
+				csi2_1: endpoint {
 					remote-endpoint = <&imx219_1>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1392,9 +1607,17 @@
 		/* Virtual channel related properties */
 		max_channels = <4>;
 #ifdef MIPI_CSI_4VC
+	#ifdef TP2815_IN2
+		num_channels = <1>;
+	#else
 		num_channels = <4>;
+	#endif
 #else
+	#ifdef IMX219_IN2
+		num_channels = <1>;
+	#else
 		num_channels = <2>;
+	#endif
 #endif
 
 		ports {
@@ -1402,19 +1625,33 @@
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2c2 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi2_in: endpoint {
+				csi2_2: endpoint {
 					remote-endpoint = <&imx219_2>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
+
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_2: endpoint {
+					remote-endpoint = <&tp2815_2>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2 3 4>;
+				};
+			};
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1530,26 +1767,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN3
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi3_in: endpoint {
+				csi2_3: endpoint {
 					remote-endpoint = <&imx219_3>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1658,7 +1899,7 @@
 		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005480 0x0 0x80>;
 		reg-names = "mipicsi";
-		clocks = <&clkc MIPICSI2>;
+		clocks = <&clkc MIPICSI4>;
 		clock-names = "clk_mipicsi";
 		resets = <&rstc RST_MIPICSI4>;
 		reset-names = "rstc_mipicsi";
@@ -1667,26 +1908,30 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#ifdef IMX219_IN4
+		num_channels = <1>;
+#else
 		num_channels = <2>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN4 /* Add imx219 subnode in i2c2 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi4_in: endpoint {
+				csi2_4: endpoint {
 					remote-endpoint = <&imx219_4>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -1780,7 +2025,7 @@
 		compatible = "sunplus,sp7350-mipicsi-rx";
 		reg = <0x0 0xf8005500 0x0 0x80>;
 		reg-names = "mipicsi";
-		clocks = <&clkc MIPICSI3>;
+		clocks = <&clkc MIPICSI5>;
 		clock-names = "clk_mipicsi";
 		resets = <&rstc RST_MIPICSI5>;
 		reset-names = "rstc_mipicsi";
@@ -1789,26 +2034,46 @@
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
+#if defined(IMX219_IN5)
+		num_channels = <1>;
+#elif defined(TP2815_IN5)
+		num_channels = <1>;
+#else
 		num_channels = <4>;
+#endif
 
 		ports {
 			#address-cells = <1>;
 			#size-cells = <0>;
 
 			/* Input port node, sigle endpoint, connected to the CSI-2 transmitter */
-	#if 0
+#ifdef IMX219_IN5 /* Add imx219 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
 
 				/* MIPI CSI-2 bus endpoint */
-				csi5_in: endpoint {
+				csi2_5: endpoint {
 					remote-endpoint = <&imx219_5>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+					data-lanes = <1 2>;
+				};
+			};
+#endif
+
+#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_5: endpoint {
+					remote-endpoint = <&tp2815_5>;
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2 3 4>;
 				};
 			};
-	#endif
+#endif
 
 			/* Output port node, multiple endpoints, connected to VIN modules */
 			port@1 {
@@ -2178,10 +2443,14 @@
 		compatible = "sunplus,sp7350-pctl";
 		reg = <0x0 0xf8800080 0x0 0x2c>,
 		      <0x0 0xf88032e4 0x0 0x1c>,
-		      <0x0 0xf8803380 0x0 0x180>;
-		reg-names = "moon1", "first", "gpioxt";
+		      <0x0 0xf8803380 0x0 0x180>,
+		      <0x0 0xf8802f80 0x0 0x1c>;
+		reg-names = "moon1", "first", "gpioxt", "gpio_ao_int";
 		gpio-controller;
 		#gpio-cells = <2>;
+
+		sunplus,ao-pin-prescale = <2500>;
+		sunplus,ao-pin-debounce = <10>;
 
 		emmc_pins: pinmux_emmc-pins {
 			function = "EMMC";
@@ -2445,6 +2714,33 @@
 		gpio_int7_pins: pinmux_gpio_int7-pins {
 			function = "INT7";
 			groups = "INT7_X1";
+		};
+
+		gpio_ao_int0_pins: pinmux_gpio_ao_int0-pins {
+			function = "GPIO_AO_INT0";
+			groups = "GPIO_AO_INT0_X1";
+			sunplus,ao-pins = <
+				SPPCTL_AOIOPAD(0, SPPCTL_AOPIN_OUT0)
+				SPPCTL_AOIOPAD(1, SPPCTL_AOPIN_OUT1)
+			>;
+		};
+		gpio_ao_int1_pins: pinmux_gpio_ao_int1-pins {
+			function = "GPIO_AO_INT1";
+			groups = "GPIO_AO_INT1_X1";
+			sunplus,ao-pins = <
+				SPPCTL_AOIOPAD(8, 0)
+				SPPCTL_AOIOPAD(15, SPPCTL_AOPIN_DEB)
+			>;
+		};
+		gpio_ao_int2_pins: pinmux_gpio_ao_int2-pins {
+			function = "GPIO_AO_INT2";
+			groups = "GPIO_AO_INT2_X1";
+			sunplus,ao-pins = < SPPCTL_AOIOPAD(16, 0) >;
+		};
+		gpio_ao_int3_pins: pinmux_gpio_ao_int3-pins {
+			function = "GPIO_AO_INT3";
+			groups = "GPIO_AO_INT3_X1";
+			sunplus,ao-pins = < SPPCTL_AOIOPAD(31, 0) >;
 		};
 	};
 };

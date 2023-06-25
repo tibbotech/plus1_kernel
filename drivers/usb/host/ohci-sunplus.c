@@ -78,6 +78,10 @@ s32 get_td_retry_time = 24;
 
 static struct clk *ohci_clk[USB_PORT_NUM];
 
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+static struct phy *uphy[USB_PORT_NUM];
+#endif
+
 static int ohci_platform_reset(struct usb_hcd *hcd)
 {
 	struct platform_device *pdev = to_platform_device(hcd->self.controller);
@@ -351,6 +355,7 @@ static ssize_t get_td_retry_time_store(struct device *dev,
 				       const char *buf, size_t count)
 {
 	pr_debug("set get_td_retry_time\n");
+
 	if (kstrtouint(buf, 0, &get_td_retry_time) == 0)
 		pr_debug("%d\n", get_td_retry_time);
 	else
@@ -361,11 +366,48 @@ static ssize_t get_td_retry_time_store(struct device *dev,
 
 static DEVICE_ATTR_RW(get_td_retry_time);
 
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+static int sp_ohci_platform_power_on(struct platform_device *pdev)
+{
+	int ret;
+
+	ret = phy_power_on(uphy[pdev->id - 1]);
+	if (ret)
+		return ret;
+
+	ret = phy_init(uphy[pdev->id - 1]);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(ohci_clk[pdev->id - 1]);
+	if (ret)
+		clk_disable_unprepare(ohci_clk[pdev->id - 1]);
+
+	return ret;
+}
+
+static void sp_ohci_platform_power_off(struct platform_device *pdev)
+{
+	clk_disable_unprepare(ohci_clk[pdev->id - 1]);
+
+	phy_power_off(uphy[pdev->id - 1]);
+	phy_exit(uphy[pdev->id - 1]);
+}
+#endif
+
 static struct usb_ohci_pdata usb_ohci_pdata = {
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	.power_on = sp_ohci_platform_power_on,
+	.power_suspend = sp_ohci_platform_power_off,
+	.power_off = sp_ohci_platform_power_off,
+#endif
 };
 
 int ohci_sunplus_probe(struct platform_device *dev)
 {
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	struct usb_ohci_pdata *pdata = &usb_ohci_pdata;
+#endif
 	struct usb_hcd *hcd;
 	struct resource *res_mem;
 	int irq;
@@ -380,6 +422,7 @@ int ohci_sunplus_probe(struct platform_device *dev)
 
 	dev->dev.platform_data = &usb_ohci_pdata;
 
+#ifdef CONFIG_SOC_SP7021
 	/* enable usb controller clock */
 	ohci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
 	if (IS_ERR(ohci_clk[dev->id - 1])) {
@@ -388,6 +431,35 @@ int ohci_sunplus_probe(struct platform_device *dev)
 	}
 	clk_prepare(ohci_clk[dev->id - 1]);
 	clk_enable(ohci_clk[dev->id - 1]);
+#elif defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	/* phy */
+	if ((dev->id - 1) == USB_PORT0_ID) {
+		uphy[dev->id - 1] = devm_phy_get(&dev->dev, "uphy");
+		if (IS_ERR(uphy[dev->id - 1])) {
+			dev_err(&dev->dev, "no USB phy0 configured\n");
+			return PTR_ERR(uphy[dev->id - 1]);
+		}
+	} else if ((dev->id - 1) == USB_PORT1_ID) {
+		uphy[dev->id - 1] = devm_phy_get(&dev->dev, "uphy");
+		if (IS_ERR(uphy[dev->id - 1])) {
+			dev_err(&dev->dev, "no USB phy1 configured\n");
+			return PTR_ERR(uphy[dev->id - 1]);
+		}
+	}
+
+	/* enable usb controller clock */
+	ohci_clk[dev->id - 1] = devm_clk_get(&dev->dev, NULL);
+	if (IS_ERR(ohci_clk[dev->id - 1])) {
+		pr_err("not found clk source\n");
+		return PTR_ERR(ohci_clk[dev->id - 1]);
+	}
+
+	if (pdata->power_on) {
+		err = pdata->power_on(dev);
+		if (err)
+			return err;
+	}
+#endif
 
 	irq = platform_get_irq(dev, 0);
 	if (irq < 0) {
@@ -483,7 +555,9 @@ EXPORT_SYMBOL_GPL(ohci_sunplus_probe);
 int ohci_sunplus_remove(struct platform_device *dev)
 {
 	struct usb_hcd *hcd = platform_get_drvdata(dev);
-
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	struct usb_ohci_pdata *pdata = dev->dev.platform_data;
+#endif
 #if defined(CONFIG_USB_HOST_RESET) || defined(CONFIG_USB_SP_UDC_HOST)
 	struct ohci_hcd_sp *ohci_sp = (struct ohci_hcd_sp *)hcd_to_ohci(hcd);
 #endif
@@ -508,8 +582,13 @@ int ohci_sunplus_remove(struct platform_device *dev)
 	usb_put_hcd(hcd);
 	platform_set_drvdata(dev, NULL);
 
+#ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ohci_clk[dev->id - 1]);
+	clk_disable_unprepare(ohci_clk[dev->id - 1]);
+#elif defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	if (pdata->power_off)
+		pdata->power_off(dev);
+#endif
 
 	return 0;
 }
@@ -519,6 +598,9 @@ EXPORT_SYMBOL_GPL(ohci_sunplus_remove);
 static int ohci_sunplus_drv_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	struct usb_ohci_pdata *pdata = pdev->dev.platform_data;
+#endif
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
 	bool do_wakeup = device_may_wakeup(dev);
 	int rc;
@@ -529,19 +611,13 @@ static int ohci_sunplus_drv_suspend(struct device *dev)
 	if (rc)
 		return rc;
 
-	#ifndef CONFIG_SOC_SP7021
-	/* UPHY suspend enable */
-	if ((pdev->id - 1) == USB_PORT0_ID) {
-		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
-								uhost0_base_addr + UHPOWERCS_PORT);
-	} else if ((pdev->id - 1) == USB_PORT1_ID) {
-		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) | UPHY_SUSP_CTRL | UPHY_SUSP_EN,
-								uhost1_base_addr + UHPOWERCS_PORT);
-	}
-	#endif
-
+	#ifdef CONFIG_SOC_SP7021
 	/* disable usb controller clock */
-	clk_disable(ohci_clk[pdev->id - 1]);
+	clk_disable_unprepare(ohci_clk[pdev->id - 1]);
+	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	if (pdata->power_suspend)
+		pdata->power_suspend(pdev);
+	#endif
 
 	return 0;
 }
@@ -550,21 +626,22 @@ static int ohci_sunplus_drv_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct usb_hcd *hcd = dev_get_drvdata(dev);
+#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+	struct usb_ohci_pdata *pdata = pdev->dev.platform_data;
+	int err;
+#endif
 
 	pr_debug("%s.%d\n", __func__, __LINE__);
 
+	#ifdef CONFIG_SOC_SP7021
 	/* enable usb controller clock */
 	clk_prepare(ohci_clk[pdev->id - 1]);
 	clk_enable(ohci_clk[pdev->id - 1]);
-
-	#ifndef CONFIG_SOC_SP7021
-	/* UPHY suspend disable */
-	if ((pdev->id - 1) == USB_PORT0_ID) {
-		writel(readl(uhost0_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
-								uhost0_base_addr + UHPOWERCS_PORT);
-	} else if ((pdev->id - 1) == USB_PORT1_ID) {
-		writel(readl(uhost1_base_addr + UHPOWERCS_PORT) & ~(UPHY_SUSP_CTRL | UPHY_SUSP_EN),
-								uhost1_base_addr + UHPOWERCS_PORT);
+	#elif defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	if (pdata->power_on) {
+		err = pdata->power_on(pdev);
+		if (err)
+			return err;
 	}
 	#endif
 

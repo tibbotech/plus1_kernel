@@ -488,9 +488,23 @@ static int vin_notify_complete(struct v4l2_async_notifier *notifier)
 	/* Configure all pipeline with default format. */
 	for (i = 0; i < VIN_MAX_NUM; i++) {
 		if (vin->group->vin[i]) {
-			ret = vin_v4l2_set_default_fmt(vin->group->vin[i]);
-			if (ret)
+			ret = vin_v4l2_formats_init(vin->group->vin[i]);
+			if (ret) {
+				dev_err(vin->dev, "No supported mediabus format found\n");
 				return ret;
+			}
+
+			ret = vin_v4l2_framesizes_init(vin->group->vin[i]);
+			if (ret) {
+				dev_err(vin->dev, "Could not initialize framesizes\n");
+				return ret;
+			}
+
+			ret = vin_v4l2_set_default_fmt(vin->group->vin[i]);
+			if (ret) {
+				dev_err(vin->dev, "Could not set default format\n");
+				return ret;
+			}
 		}
 	}
 

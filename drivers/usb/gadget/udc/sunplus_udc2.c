@@ -121,6 +121,10 @@ static int sp_udc_set_halt(struct usb_ep *_ep, int value);
 static int sp_udc_probe(struct platform_device *pdev);
 static int sp_udc_remove(struct platform_device *pdev);
 static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl);
+#ifdef CONFIG_PM
+static int udc_sunplus_drv_suspend(struct device *dev);
+static int udc_sunplus_drv_resume(struct device *dev);
+#endif
 
 static const struct usb_gadget_ops sp_ops = {
 	.get_frame			= sp_udc_get_frame,
@@ -157,10 +161,20 @@ static const struct of_device_id sunplus_udc_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, sunplus_udc_ids);
 
+#ifdef CONFIG_PM
+struct dev_pm_ops const udc_sunplus_pm_ops = {
+	.suspend = udc_sunplus_drv_suspend,
+	.resume = udc_sunplus_drv_resume,
+};
+#endif
+
 static struct platform_driver sp_udc_driver = {
 	.driver		= {
 		.name	= DRIVER_NAME,
 		.of_match_table = sunplus_udc_ids,
+#ifdef CONFIG_PM
+		.pm = &udc_sunplus_pm_ops,
+#endif
 	},
 	.probe		= sp_udc_probe,
 	.remove		= sp_udc_remove,
@@ -168,7 +182,33 @@ static struct platform_driver sp_udc_driver = {
 
 void udc_print_block(u8 *pBuffStar, u32 uiBuffLen)
 {
-	print_hex_dump(KERN_NOTICE, "usb", DUMP_PREFIX_ADDRESS, 16, 4, pBuffStar, uiBuffLen, false);
+	print_hex_dump(KERN_NOTICE, "usb", DUMP_PREFIX_ADDRESS, 16, 4, pBuffStar,
+									uiBuffLen, false);
+}
+
+static void pwr_uphy_pll(int enable)
+{
+	u32 temp;
+
+	temp = readl(uphy0_regs + GLO_CTRL2_OFFSET);
+
+	if (enable) {
+		temp &= (~PLL_PD_SEL & ~PLL_PD);
+		writel(temp, uphy0_regs + GLO_CTRL2_OFFSET);
+
+		writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) & ~CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
+
+		UDC_LOGD("uphy pll power-up\n");
+	} else {
+		temp |= (PLL_PD_SEL | PLL_PD);
+		writel(temp, uphy0_regs + GLO_CTRL2_OFFSET);
+
+		writel(readl(uphy0_regs + GLO_CTRL1_OFFSET) | CLK120_27_SEL,
+							uphy0_regs + GLO_CTRL1_OFFSET);
+
+		UDC_LOGD("uphy pll power-down\n");
+	}
 }
 
 static void *udc_malloc_align(struct sp_udc *udc, dma_addr_t *pa,
@@ -880,6 +920,10 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 
 		switch (ret) {
 		case UDC_RESET:
+			UDC_LOGL("bus reset\n");
+
+			pwr_uphy_pll(1);
+
 			USBx->EP0_CS &= ~EP_EN;		/* dislabe ep0 */
 			if (udc->driver->reset)
 				udc->driver->reset(&udc->gadget);
@@ -889,13 +933,18 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 				mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
 #endif
 
-			UDC_LOGL("bus reset\n");
 			break;
 		case UDC_SUSPEND:
 			UDC_LOGL("udc suspend\n");
+
+			pwr_uphy_pll(0);
+
 			break;
 		case UDC_RESUME:
 			UDC_LOGL("udc resume\n");
+
+			pwr_uphy_pll(1);
+
 			break;
 		case UDC_STOPED:
 			UDC_LOGL("udc stopped\n");
@@ -911,9 +960,11 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			UDC_LOGE("not support:ret = %d\n", ret);
 			return;
 		}
+
 		break;
 	case SOF_EVENT_TRB:
 		UDC_LOGL("sof event trb\n");
+
 		break;
 	}
 }
@@ -1058,6 +1109,7 @@ static void handle_event(struct sp_udc *udc)
 		} else {
 			UDC_LOGD("------ event %d -------\n", valid_event_count);
 			hal_udc_analysis_event_trb(event_ring_dq, udc);
+
 			if (end_trb == event_ring_dq) {
 				if (udc->current_event_ring_seg == (udc->event_ring_seg_total - 1)) {
 					udc->current_event_ring_seg = 0;
@@ -1085,6 +1137,7 @@ static void handle_event(struct sp_udc *udc)
 	UDC_LOGD("ERDP_reg %x, %px\n", USBx->DEVC_ERDP, event_ring_dq);
 
 	USBx->DEVC_ERDP |= EHB;
+
 	spin_unlock_irqrestore(&udc->lock, flags);
 }
 
@@ -2666,23 +2719,33 @@ EXPORT_SYMBOL(device_run_stop_ctrl);
 void usb_switch(int device)
 {
 #if defined (CONFIG_USB_SUNPLUS_SP7350_OTG) && defined (CONFIG_SOC_SP7350)
-	writel((USB_MODE_MASK << 16) | USB_HW_CTRL, moon4_reg + M4_SCFG_10);
+	writel(MASK_MO1_USBC0_USB0_CTRL, moon4_reg + M4_SCFG_10);
 #else
 	if (device) {
-		#ifdef CONFIG_SOC_Q645
-		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon3_reg + M3_SCFG_22);
-		#elif defined (CONFIG_SOC_SP7350)
-		writel((USB_MODE_MASK << 16) | USB_DEVICE_MODE, moon4_reg + M4_SCFG_10);
-		#endif
+	#ifdef CONFIG_SOC_Q645
+		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL |
+					MASK_MO1_USBC0_USB0_CTRL | MO1_USBC0_USB0_CTRL,
+							moon3_reg + M3_SCFG_22);
+	#elif defined (CONFIG_SOC_SP7350)
+		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL |
+					MASK_MO1_USBC0_USB0_CTRL | MO1_USBC0_USB0_CTRL,
+							moon4_reg + M4_SCFG_10);
+	#endif
 
+		pwr_uphy_pll(0);
 		device_run_stop_ctrl(1);
 	} else {
-		#ifdef CONFIG_SOC_Q645
-		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon3_reg + M3_SCFG_22);
-		#elif defined (CONFIG_SOC_SP7350)
-		writel((USB_MODE_MASK << 16) | USB_HOST_MODE, moon4_reg + M4_SCFG_10);
-		#endif
+	#ifdef CONFIG_SOC_Q645
+		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
+					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
+							moon3_reg + M3_SCFG_22);
+	#elif defined (CONFIG_SOC_SP7350)
+		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
+					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
+							moon4_reg + M4_SCFG_10);
+	#endif
 
+		pwr_uphy_pll(1);
 		device_run_stop_ctrl(0);
 	}
 #endif
@@ -2726,6 +2789,16 @@ static int sp_udc_probe(struct platform_device *pdev)
 #if 0
 	udc->irq_num = irq_of_parse_and_map(pdev->dev.of_node, 0);
 #else
+	udc->port_num = of_alias_get_id(pdev->dev.of_node, "usb-device");
+	pr_info("%s start, port_num:%d, %px\n", __func__, udc->port_num, udc);
+
+	/* phy */
+	uphy[udc->port_num] = devm_phy_get(&pdev->dev, "uphy");
+	if (IS_ERR(uphy[udc->port_num])) {
+		dev_err(&pdev->dev, "no USB phy%d configured\n", udc->port_num);
+		return PTR_ERR(uphy[udc->port_num]);
+	}
+
 	udc->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(udc->clock)) {
 		UDC_LOGE("not found clk source\n");
@@ -2733,10 +2806,18 @@ static int sp_udc_probe(struct platform_device *pdev)
 		return PTR_ERR(udc->clock);
 	}
 
-	clk_prepare_enable(udc->clock);
+	retval = phy_power_on(uphy[udc->port_num]);
+	if (retval)
+		return retval;
 
-	udc->port_num = of_alias_get_id(pdev->dev.of_node, "usb-device");
-	pr_info("%s start,port_num:%d,%px\n", __func__, udc->port_num, udc);
+	retval = phy_init(uphy[udc->port_num]);
+	if (retval)
+		return retval;
+
+	retval = clk_prepare_enable(udc->clock);
+	if (retval)
+		goto err_clk;
+
 	udc->irq_num = platform_get_irq(pdev, 0);
 #endif
 
@@ -2746,7 +2827,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 		if (udc)
 			kfree(udc);
 
-		return -ENXIO;
+		retval = -ENXIO;
+		goto err_clk;
 	}
 
 	rsrc_start = res_mem->start;
@@ -2757,7 +2839,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 		if (udc)
 			kfree(udc);
 
-		return -ENOMEM;
+		retval = -ENOMEM;
+		goto err_clk;
 	}
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 1);
@@ -2770,7 +2853,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 		if (IS_ERR(moon4_reg)) {
 #endif
 			retval = -ENOMEM;
-			goto err_map;
+			goto err_map1;
 		}
 	}
 
@@ -2792,7 +2875,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	if (retval != 0) {
 		UDC_LOGE("cannot request_irq %i, err %d\n", udc->irq_num, retval);
 		retval = -EBUSY;
-		goto err_map;
+		goto err_map2;
 	}
 
 	spin_lock_init (&udc->lock);
@@ -2819,13 +2902,17 @@ static int sp_udc_probe(struct platform_device *pdev)
 	otg_phy = usb_get_transceiver_sp(udc->port_num);
 	retval = otg_set_peripheral(otg_phy->otg, &udc->gadget);
 	if (retval < 0)
-		goto err_phy_init;
+		goto err_int;
 #endif
 
 	retval = usb_add_gadget_udc(&pdev->dev, &udc->gadget);
 	if (retval) {
 		UDC_LOGE("%s.%d,usb_add_gadget_udc fail\n", __func__, __LINE__);
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+		goto err_phy_init;
+#else
 		goto err_int;
+#endif
 	}
 
 #if 0
@@ -2861,23 +2948,27 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	sp_udc_arry[udc->port_num] = udc;
 
-	pr_info("udc%d probed successfully\n", udc->port_num);
-
 	return 0;
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 err_phy_init:
 	usb_put_phy(otg_phy);
 #endif
-
 err_int:
 	free_irq(udc->irq_num, udc);
 	udc->usb_phy = NULL;
-
-err_map:
+err_map2:
+#if defined (CONFIG_SOC_Q645)
+	iounmap(moon3_reg);
+#elif defined (CONFIG_SOC_SP7350)
+	iounmap(moon4_reg);
+#endif
+err_map1:
 	iounmap(udc->reg);
 	if (udc)
 		kfree(udc);
+err_clk:
+	clk_disable_unprepare(udc->clock);
 
 	return retval;
 }
@@ -2885,12 +2976,22 @@ err_map:
 static int sp_udc_remove(struct platform_device *pdev)
 {
 	struct sp_udc *udc = platform_get_drvdata(pdev);
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	struct usb_phy *phy = NULL;
+#endif
 
 	UDC_LOGD("%s start\n", __func__);
 
 	device_remove_file(&pdev->dev, &dev_attr_udc_ctrl);
 	device_remove_file(&pdev->dev, &dev_attr_debug);
+
+	if (udc->driver)
+		device_run_stop_ctrl(0);
+
+	clk_disable_unprepare(udc->clock);
+
+	phy_power_off(uphy[udc->port_num]);
+	phy_exit(uphy[udc->port_num]);
 
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver) {
@@ -2898,6 +2999,7 @@ static int sp_udc_remove(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	if (udc->usb_phy) {
 		phy = udc->usb_phy;
 		otg_set_peripheral(phy->otg, NULL);
@@ -2905,6 +3007,7 @@ static int sp_udc_remove(struct platform_device *pdev)
 		usb_put_phy(phy);
 		udc->usb_phy = NULL;
 	}
+#endif
 
 	free_irq(udc->irq_num, udc);
 	iounmap(udc->reg);
@@ -2931,6 +3034,59 @@ void detech_start(void)
 	UDC_LOGD("%s...", __func__);
 }
 EXPORT_SYMBOL(detech_start);
+#endif
+
+#ifdef CONFIG_PM
+static int udc_sunplus_drv_suspend(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct sp_udc *udc = platform_get_drvdata(pdev);
+
+	if (udc->driver)
+		device_run_stop_ctrl(0);
+
+	clk_disable_unprepare(udc->clock);
+
+	phy_power_off(uphy[udc->port_num]);
+	phy_exit(uphy[udc->port_num]);
+
+	return 0;
+}
+
+static int udc_sunplus_drv_resume(struct device *dev)
+{
+	struct platform_device *pdev = to_platform_device(dev);
+	struct sp_udc *udc = platform_get_drvdata(pdev);
+	int ret;
+
+	ret = phy_power_on(uphy[udc->port_num]);
+	if (ret)
+		return ret;
+
+	ret = phy_init(uphy[udc->port_num]);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(udc->clock);
+	if (ret)
+		clk_disable_unprepare(udc->clock);
+
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	if (otg_id_pin == 1)
+#else
+	#ifdef CONFIG_SOC_Q645
+	if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+	#elif defined(CONFIG_SOC_SP7350)
+	if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+	#endif
+	{
+		if (udc->driver)
+			device_run_stop_ctrl(1);
+	}
+#endif
+
+	return ret;
+}
 #endif
 
 static int __init udc_init(void)

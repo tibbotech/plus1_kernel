@@ -87,13 +87,19 @@
 struct sppctlgpio_chip_t {
 	spinlock_t lock;
 	struct gpio_chip chip;
-	void __iomem *base0;   // MASTER , OE , OUT , IN
+	void __iomem *base0;   // MASTER, OE, OUT, IN (, I_INV, O_INV, OD)
 #ifdef CONFIG_PINCTRL_SPPCTL
-	void __iomem *base1;   // I_INV , O_INV , OD
+	void __iomem *base1;   // I_INV, O_INV, OD
 #endif
 	void __iomem *base2;   // GPIO_FIRST
 	int irq[SPPCTL_GPIO_IRQS];
 	int irq_pin[SPPCTL_GPIO_IRQS];
+#if defined(SUPPORT_GPIO_AO_INT)
+	void __iomem *baseA;   // GPIO_AO_INT
+	uint32_t gpio_ao_int_prescale;
+	uint32_t gpio_ao_int_debounce;
+	int gpio_ao_int_pins[32];
+#endif
 };
 
 extern const char * const sppctlgpio_list_s[];

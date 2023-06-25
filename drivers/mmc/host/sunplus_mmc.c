@@ -321,9 +321,6 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	unsigned int clkdiv;
 	int f_min = host->mmc->f_min;
 	int f_max = host->mmc->f_max;
-	#ifdef CONFIG_SOC_SP7350 //for zebu test , temp
-	int soc_clk = clk_get_rate(host->clk);
-	#endif
 	u32 value = readl(&host->base->sd_config0);
 
 	if (clk < f_min)
@@ -345,10 +342,6 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 		clkdiv = clk_get_rate(host->clk)/clk-1;
 	#endif
 
-	#ifdef CONFIG_SOC_SP7350 //for zebu test, temp
-	if(soc_clk != SPMMC_SYS_CLK)
-		clkdiv = (SPMMC_SYS_CLK+clk)/clk-1;
-	#endif
 	spmmc_pr(INFO, "clkdiv= %d\n", clkdiv);
 	//spmmc_pr(INFO, "bus clock = %d / %d\n", clk_get_rate(host->clk), (clkdiv + 1));
 	if (clkdiv > 0xfff) {

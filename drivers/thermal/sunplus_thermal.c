@@ -52,6 +52,7 @@ struct sunplus_thermal_compatible {
 struct sp_thermal_data {
 	struct thermal_zone_device *pcb_tz;
 	struct platform_device *pdev;
+	struct clk *clk;
 	const struct sunplus_thermal_compatible *dev_comp;
 	enum thermal_device_mode mode;
 	void __iomem *regs;
@@ -66,8 +67,10 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	char *otp_v;
 
 	cell = nvmem_cell_get(dev, "calib");
-	if (IS_ERR(cell))
-		return (int) cell;
+	if (IS_ERR(cell)){
+		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
+    		return -ENOMEM;
+	}
 
 	otp_v = nvmem_cell_read(cell, &otp_l);
 	nvmem_cell_put(cell);
@@ -142,6 +145,15 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 
 
 	if (sp_data->dev_comp->ver > 1) {
+		#if(0)
+		sp_data->clk = devm_clk_get(&pdev->dev, NULL);
+		if (IS_ERR(sp_data->clk))
+			return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->clk), "clk get fail\n");
+
+		ret = clk_prepare_enable(sp_data->clk);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret, "failed to enable clk\n");
+		#endif
 		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
 	} else {
 		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
