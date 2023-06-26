@@ -696,11 +696,10 @@ static int vin_mc_validate_format(struct vin_dev *vin, struct v4l2_subdev *sd,
 		__func__, fmt.format.code, fmt.format.field);
 
 	switch (fmt.format.code) {
-	case MEDIA_BUS_FMT_YUYV8_1X16:
-	case MEDIA_BUS_FMT_UYVY8_1X16:
 	case MEDIA_BUS_FMT_UYVY8_2X8:
-	case MEDIA_BUS_FMT_UYVY10_2X10:
-	case MEDIA_BUS_FMT_RGB888_1X24:
+	case MEDIA_BUS_FMT_VYUY8_2X8:
+	case MEDIA_BUS_FMT_YUYV8_2X8:
+	case MEDIA_BUS_FMT_YVYU8_2X8:
 	case MEDIA_BUS_FMT_SBGGR10_1X10:
 	case MEDIA_BUS_FMT_SGBRG10_1X10:
 	case MEDIA_BUS_FMT_SGRBG10_1X10:
