@@ -145,7 +145,7 @@ static void dump_sglist(struct scatterlist *sglist, int count)
 
 	pr_info("sglist: %px\n", sglist);
 	for_each_sg(sglist, sg, count, i) {
-		pr_info("\t%08x (%08x)\n", sg_dma_address(sg), sg_dma_len(sg));
+		pr_info("\t %px (%08x)\n", (void *)sg_dma_address(sg), sg_dma_len(sg));
 	}
 #endif
 }
@@ -224,20 +224,28 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 	src_cnt = sg_nents(src);
 	dst_cnt = sg_nents(dst);
 
-	//dump_sglist(src, src_cnt);
-	if (unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
-		SP_CRYPTO_ERR("sp aes map src sg  fail\n");
-		return -EINVAL;
-	}
-	dump_sglist(src, src_cnt);
+	if (src != dst) {
+		//dump_sglist(src, src_cnt);
+		if (unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE) <= 0)) {
+			SP_CRYPTO_ERR("sp aes map src sg  fail\n");
+			return -EINVAL;
+		}
+		dump_sglist(src, src_cnt);
 
-	//dump_sglist(dst, dst_cnt);
-	if (unlikely(dma_map_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
-		SP_CRYPTO_ERR("sp aes map dst sg  fail\n");
-		dma_unmap_sg(SP_CRYPTO_DEV, src,  src_cnt, DMA_TO_DEVICE);
-		return -EINVAL;
+		//dump_sglist(dst, dst_cnt);
+		if (unlikely(dma_map_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE) <= 0)) {
+			SP_CRYPTO_ERR("sp aes map dst sg  fail\n");
+			dma_unmap_sg(SP_CRYPTO_DEV, src,  src_cnt, DMA_TO_DEVICE);
+			return -EINVAL;
+		}
+		dump_sglist(dst, dst_cnt);
+	} else {
+		if (unlikely(dma_map_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_BIDIRECTIONAL) <= 0)) {
+			SP_CRYPTO_ERR("sp aes map src & dst sg  fail\n");
+			return -EINVAL;
+		}
+		dump_sglist(src, src_cnt);
 	}
-	dump_sglist(dst, dst_cnt);
 
 	if (mutex_lock_interruptible(&ring->lock)) {
 		dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE);
@@ -347,8 +355,12 @@ static int sp_blk_aes_crypt(struct skcipher_request *req, u32 enc)
 
 out:
 	mutex_unlock(&ring->lock);
-	dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE);
-	dma_unmap_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE);
+	if (src != dst) {
+		dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_TO_DEVICE);
+		dma_unmap_sg(SP_CRYPTO_DEV, dst, dst_cnt, DMA_FROM_DEVICE);
+	} else {
+		dma_unmap_sg(SP_CRYPTO_DEV, src, src_cnt, DMA_BIDIRECTIONAL);
+	}
 
 	if (tmp_phy) {
 		//dump_buf(ctx->va, ctx->bsize);
