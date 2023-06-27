@@ -226,14 +226,49 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp-1 {
-			opp-hz = /bits/ 64 <135475200>;
+		opp-5 {
+			opp-hz = /bits/ 64 <500000000>;
 			opp-microvolt = <700000>;
 		};
 
-		opp-2 {
-			opp-hz = /bits/ 64 <147456000>;
+		opp-10 {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-15 {
+			opp-hz = /bits/ 64 <1500000000>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-16 {
+			opp-hz = /bits/ 64 <1600000000>;
 			opp-microvolt = <800000>;
+		};
+
+		opp-17 {
+			opp-hz = /bits/ 64 <1700000000>;
+			opp-microvolt = <800000>;
+		};
+
+		opp-18 {
+			opp-hz = /bits/ 64 <1800000000>;
+			opp-microvolt = <800000>;
+		};
+
+		opp-19 {
+			opp-hz = /bits/ 64 <1900000000>;
+			opp-microvolt = <1000000>;
+		};
+
+		opp-20 {
+			opp-hz = /bits/ 64 <2000000000>;
+			opp-microvolt = <1000000>;
+		};
+
+		opp-21 {
+			opp-hz = /bits/ 64 <2100000000>;
+			opp-microvolt = <1000000>;
 		};
 	};
 
@@ -246,7 +281,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "psci";
-			clocks = <&clkc PLLA>;
+			clocks = <&clkc PLLC>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_0>;
@@ -257,7 +292,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "psci";
-			clocks = <&clkc PLLA>;
+			clocks = <&clkc PLLC>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_1>;
@@ -268,7 +303,7 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "psci";
-			clocks = <&clkc PLLA>;
+			clocks = <&clkc PLLC>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_2>;
@@ -949,7 +984,7 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo7_pins>;
-		status = "disabled";
+		//status = "disabled";
 		#address-cells = <1>;
 		#size-cells = <0>;
 
@@ -959,7 +994,7 @@
 			regulator-name = "rt5759-buck";
 			regulator-min-microvolt = <700000>;
 			regulator-max-microvolt = <1000000>;
-			regulator-boot-on;
+			regulator-always-on;
 		};
 	};
 
