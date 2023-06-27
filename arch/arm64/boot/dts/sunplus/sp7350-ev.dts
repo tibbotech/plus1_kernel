@@ -134,7 +134,7 @@
 			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
-		
+
 		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
 		npu_reserve: npu_reserve@68000000 {
 			reg = <0x0 0x68000000 0x0 0x8000000>;
@@ -222,15 +222,33 @@
 		};
 	};
 
+	cpu_opp_table: opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp-1 {
+			opp-hz = /bits/ 64 <135475200>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-2 {
+			opp-hz = /bits/ 64 <147456000>;
+			opp-microvolt = <800000>;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
+		enable-method = "psci";
 
 		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
-			enable-method = "psci";
+			clocks = <&clkc PLLA>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_0>;
 		};
 
@@ -238,7 +256,9 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
-			enable-method = "psci";
+			clocks = <&clkc PLLA>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_1>;
 		};
 
@@ -246,7 +266,9 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
-			enable-method = "psci";
+			clocks = <&clkc PLLA>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_2>;
 		};
 
@@ -254,7 +276,9 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
-			enable-method = "psci";
+			clocks = <&clkc PLLA>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_3>;
 		};
 
@@ -923,6 +947,17 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo7_pins>;
 		status = "disabled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rt5759_vproc_reg: regulator@62 {
+			compatible = "richtek,rt5759";
+			reg = <0x62>;
+			regulator-name = "rt5759-buck";
+			regulator-min-microvolt = <700000>;
+			regulator-max-microvolt = <1000000>;
+			regulator-boot-on;
+		};
 	};
 
 	i2c8: i2c@f8830000 {
