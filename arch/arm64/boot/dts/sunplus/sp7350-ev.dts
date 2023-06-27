@@ -240,12 +240,12 @@
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		enable-method = "psci";
 
 		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
+			enable-method = "psci";
 			clocks = <&clkc PLLA>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
@@ -256,6 +256,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
+			enable-method = "psci";
 			clocks = <&clkc PLLA>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
@@ -266,6 +267,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
+			enable-method = "psci";
 			clocks = <&clkc PLLA>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
@@ -276,6 +278,7 @@
 			device_type = "cpu";
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
+			enable-method = "psci";
 			clocks = <&clkc PLLA>;
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
