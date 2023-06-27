@@ -29,7 +29,9 @@
 
 #define SP_ADC_EN			BIT(1)
 #define SP_ADC_SRFS			BIT(2)
+#define SP_ADC_BYPASS			BIT(5)
 #define SP_ADC_DATA_READY		BIT(15)  
+#define SP_ADC_CHAN_SEL			GENMASK(5, 3)
 #define SP_ADC_CHAN0_SEL		GENMASK(2, 0)
 #define SP_ADC_CHAN1_SEL		GENMASK(5, 3)
 #define SP_ADC_CHAN2_SEL		GENMASK(8, 6)
@@ -78,11 +80,6 @@ static int sp_adc_ini(struct sp_adc_chip *sp_adc)
 	reg_temp |= FIELD_PREP(SP_ADC_CLK_DIV_MASK, 0);
 	writel(reg_temp, sp_adc->regs + SP_ADC_CFG02);	// set adc clk 
 
-	reg_temp = 0x00;
-	reg_temp = FIELD_PREP(SP_ADC_CHAN0_SEL, SP_ADC_CHAN0) | FIELD_PREP(SP_ADC_CHAN1_SEL, SP_ADC_CHAN1)
-		| FIELD_PREP(SP_ADC_CHAN2_SEL, SP_ADC_CHAN2) | FIELD_PREP(SP_ADC_CHAN3_SEL, SP_ADC_CHAN3);
-	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0E);	// set adc chan
-
 	return 0;
 }
 
@@ -92,31 +89,41 @@ static int sp_adc_read_channel(struct sp_adc_chip *sp_adc, int *val,
 	int mask = GENMASK(sp_adc->resolution - 1, 0);
 	u32 data,reg_temp;
 
-
 	reg_temp = readl(sp_adc->regs + SP_ADC_CFG0B);
+	reg_temp &= ~SP_ADC_CHAN_SEL;
+
+	switch (channel) {
+		case SP_ADC_CHAN0:
+			reg_temp |= FIELD_PREP(SP_ADC_CHAN_SEL, SP_ADC_CHAN0);
+		break;
+		case SP_ADC_CHAN1:
+			reg_temp |= FIELD_PREP(SP_ADC_CHAN_SEL, SP_ADC_CHAN1);
+		break;
+		case SP_ADC_CHAN2:
+			reg_temp |= FIELD_PREP(SP_ADC_CHAN_SEL, SP_ADC_CHAN2);
+		break;
+		case SP_ADC_CHAN3:
+			reg_temp |= FIELD_PREP(SP_ADC_CHAN_SEL, SP_ADC_CHAN3);
+		break;
+	}
+
+	reg_temp &= ~SP_ADC_SRFS;
+	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0B);	// adc reset
 	reg_temp |= SP_ADC_SRFS;
-	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0B);	// adc enable
+	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0B);	// adc reset SRFS low-> high
+	mdelay(1);
+	
+	reg_temp = readl(sp_adc->regs + SP_ADC_CFG02);
+	reg_temp |=  SP_ADC_BYPASS;
+	writel(reg_temp, sp_adc->regs + SP_ADC_CFG02);
 
 	reg_temp = readl(sp_adc->regs + SP_ADC_CFG0D);
-	while(reg_temp & SP_ADC_DATA_READY)
+	while(!(reg_temp & SP_ADC_DATA_READY))
 	{
 		reg_temp = readl(sp_adc->regs + SP_ADC_CFG0D);
 	}
 
-	switch (channel) {
-		case SP_ADC_CHAN0:
-			data = readl(sp_adc->regs + SP_ADC_CFG11);
-		break;
-		case SP_ADC_CHAN1:
-			data = readl(sp_adc->regs + SP_ADC_CFG12);
-		break;
-		case SP_ADC_CHAN2:
-			data = readl(sp_adc->regs + SP_ADC_CFG13);
-		break;
-		case SP_ADC_CHAN3:
-			data = readl(sp_adc->regs + SP_ADC_CFG14);
-		break;
-	}
+	data = readl(sp_adc->regs + SP_ADC_CFG0D);
 
 	*val = data & mask;
 	return 0;
