@@ -190,7 +190,6 @@ static int sp7350_cpufreq_init(struct cpufreq_policy *policy)
 	struct cpufreq_frequency_table *freq_table;
 	int ret;
 
-TRACE;
 	info = sp7350_cpu_dvfs_info_lookup(policy->cpu);
 	if (!info) {
 		pr_err("dvfs info for cpu%d is not initialized.\n",
@@ -211,7 +210,7 @@ TRACE;
 	policy->clk = info->cpu_clk;
 
 	dev_pm_opp_of_register_em(info->cpu_dev, policy->cpus);
-TRACE;
+
 	return 0;
 }
 
@@ -220,7 +219,7 @@ static int sp7350_cpufreq_exit(struct cpufreq_policy *policy)
 	struct sp7350_cpu_dvfs_info *info = policy->driver_data;
 
 	dev_pm_opp_free_cpufreq_table(info->cpu_dev, &policy->freq_table);
-TRACE;
+
 	return 0;
 }
 
@@ -241,7 +240,7 @@ static int sp7350_cpufreq_probe(struct platform_device *pdev)
 {
 	struct sp7350_cpu_dvfs_info *info, *tmp;
 	int cpu, ret;
-TRACE;
+
 	for_each_possible_cpu(cpu) {
 		info = sp7350_cpu_dvfs_info_lookup(cpu);
 		if (info)
@@ -266,10 +265,10 @@ TRACE;
 
 	ret = cpufreq_register_driver(&sp7350_cpufreq_driver);
 	if (ret) {
-		dev_err(&pdev->dev, "failed to register mtk cpufreq driver\n");
+		dev_err(&pdev->dev, "failed to register sp7350 cpufreq driver\n");
 		goto release_dvfs_info_list;
 	}
-TRACE;
+
 	return 0;
 
 release_dvfs_info_list:
@@ -302,7 +301,6 @@ static int __init sp7350_cpufreq_driver_init(void)
 	struct platform_device *pdev;
 	int err;
 
-TRACE;
 	np = of_find_node_by_path("/");
 	if (!np)
 		return -ENODEV;
@@ -329,7 +327,7 @@ TRACE;
 		pr_err("failed to register sp7350-cpufreq platform device\n");
 		return PTR_ERR(pdev);
 	}
-TRACE;
+
 	return 0;
 }
 device_initcall(sp7350_cpufreq_driver_init);
