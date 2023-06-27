@@ -292,6 +292,14 @@ static struct sp_clk sp_clks[] = {
 	_(QCTRL),
 };
 
+#define ca55_memctl	(clk_regs + (31 + 32 + 14) * 4)	/* G4.14 */
+
+void sp_clkc_ca55_memctl(u32 val)
+{
+	writel(0x03ff | val, ca55_memctl);
+}
+EXPORT_SYMBOL(sp_clkc_ca55_memctl);
+
 /************************************************* PLL_A *************************************************/
 
 /* from PLLA_Q654_REG_setting_220701.xlsx with LKDTOUT & TEST bits set to 0 */

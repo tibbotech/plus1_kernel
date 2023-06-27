@@ -31,6 +31,13 @@ struct sp7350_cpu_dvfs_info {
 	struct list_head list_head;
 };
 
+/* refer 20221201-CA55_DVFS_Flow_guide(p5) */
+#define MEMCTL_FAST	0x287
+#define MEMCTL_DEFAULT	0x285
+#define MEMCTL_VDDMIN	0x321
+#define VDEFAULT	800000
+extern void sp_clkc_ca55_memctl(u32 val);
+
 static LIST_HEAD(dvfs_info_list);
 
 static struct sp7350_cpu_dvfs_info *sp7350_cpu_dvfs_info_lookup(int cpu)
@@ -85,6 +92,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 				policy->cpu);
 				return ret;
 			}
+			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_FAST);
 		}
 	}
 
@@ -97,6 +105,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 		* scale down to the new voltage.
 		*/
 		if (vproc < old_vproc) {
+			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_VDDMIN);
 			ret = regulator_set_voltage(info->proc_reg, vproc, vproc + VOLT_TOL);
 			if (ret) {
 				pr_err("cpu%d: failed to scale down voltage!\n",
