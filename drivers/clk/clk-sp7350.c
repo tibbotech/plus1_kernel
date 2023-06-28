@@ -292,11 +292,12 @@ static struct sp_clk sp_clks[] = {
 	_(QCTRL),
 };
 
+#define MEMCTL_HWM	(0x03ff0000)
 #define ca55_memctl	(clk_regs + (31 + 32 + 14) * 4)	/* G4.14 */
 
 void sp_clkc_ca55_memctl(u32 val)
 {
-	writel(0x03ff | val, ca55_memctl);
+	writel(MEMCTL_HWM | val, ca55_memctl);
 }
 EXPORT_SYMBOL(sp_clkc_ca55_memctl);
 
