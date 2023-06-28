@@ -69,14 +69,19 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	cell = nvmem_cell_get(dev, "calib");
 	if (IS_ERR(cell)){
 		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
-    		return -ENOMEM;
+		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
+    		return 0;
 	}
 
 	otp_v = nvmem_cell_read(cell, &otp_l);
 	nvmem_cell_put(cell);
 
-	if (otp_l < 3)
-		return -EINVAL;
+	if (otp_l < 3){
+		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
+		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
+    		return 0;
+	}
+
 	sp_data->otp_temp0 = FIELD_PREP(SP_TCODE_LOW_MASK, otp_v[0]) |
 			     FIELD_PREP(SP_TCODE_HIGH_MASK, otp_v[1]);
 
@@ -145,7 +150,7 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 
 
 	if (sp_data->dev_comp->ver > 1) {
-		#if(0)
+		#if(1)
 		sp_data->clk = devm_clk_get(&pdev->dev, NULL);
 		if (IS_ERR(sp_data->clk))
 			return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->clk), "clk get fail\n");
@@ -174,8 +179,8 @@ static int sp7021_thermal_remove(struct platform_device *pdev)
 static const struct sunplus_thermal_compatible sp7350_compat = {
 	.ver = 2,
 	.temp_base = 2500,
-	.temp_otp_base = 1534,
-	.temp_rate = 590,
+	.temp_otp_base = 1180,
+	.temp_rate = 295,
 };
 
 static const struct sunplus_thermal_compatible sp7021_compat = {
