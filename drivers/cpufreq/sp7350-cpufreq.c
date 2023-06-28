@@ -34,6 +34,7 @@ struct sp7350_cpu_dvfs_info {
 /* refer 20221201-CA55_DVFS_Flow_guide(p5) */
 #define MEMCTL_FAST	0x287
 #define MEMCTL_DEFAULT	0x285
+#define MEMCTL_SLOW	0x303
 #define MEMCTL_VDDMIN	0x321
 #define VDEFAULT	800000
 extern void sp_clkc_ca55_memctl(u32 val);
@@ -60,11 +61,11 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	struct sp7350_cpu_dvfs_info *info = policy->driver_data;
 	struct device *cpu_dev = info->cpu_dev;
 	struct dev_pm_opp *opp;
-	long freq_hz;
+	unsigned long freq_hz;
 	int vproc, old_vproc, ret;
 
 	freq_hz = freq_table[index].frequency * 1000;
-
+	//pr_debug("\n>>> %s: %lu -> %lu\n", __FUNCTION__, clk_get_rate(cpu_clk), freq_hz);
 	opp = dev_pm_opp_find_freq_ceil(cpu_dev, &freq_hz);
 	if (IS_ERR(opp)) {
 		pr_err("cpu%d: failed to find OPP for %ld\n",
@@ -86,6 +87,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 		* scale up voltage first.
 		*/
 		if (old_vproc < vproc) {
+			//pr_debug(">>> scale up voltage from %d to %d\n", old_vproc, vproc);
 			ret = regulator_set_voltage(info->proc_reg, vproc, vproc + VOLT_TOL);
 			if (ret) {
 				pr_err("cpu%d: failed to scale up voltage!\n",
@@ -97,6 +99,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	}
 
 	/* Set the cpu_clk to target rate. */
+	//pr_debug(">>> cpu_clk set_rate to %lu\n", freq_hz);
 	ret = clk_set_rate(cpu_clk, freq_hz);
 
 	if (info->proc_reg) {
@@ -105,7 +108,8 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 		* scale down to the new voltage.
 		*/
 		if (vproc < old_vproc) {
-			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_VDDMIN);
+			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_SLOW);
+			//pr_debug(">>> scale down voltage from %d to %d\n", old_vproc, vproc);
 			ret = regulator_set_voltage(info->proc_reg, vproc, vproc + VOLT_TOL);
 			if (ret) {
 				pr_err("cpu%d: failed to scale down voltage!\n",
