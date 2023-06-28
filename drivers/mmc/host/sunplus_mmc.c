@@ -327,15 +327,17 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
+
+	spmmc_pr(INFO, "clk_get_rate(host->clk) %d\n", clk_get_rate(host->clk));
 	spmmc_pr(INFO, "set bus clock to %d\n", clk);
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
 	#endif
-	#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_SP7350)
+	#if defined(CONFIG_SOC_SP7021)
 	clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	#endif
 
-	#ifdef CONFIG_SOC_Q645
+	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if(clk_get_rate(host->clk) < SPMMC_SYS_CLK)
 		clkdiv = (clk_get_rate(host->clk)+clk)/clk-1;
 	else
