@@ -879,6 +879,8 @@
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
 			clocks = <&tp2815_5_clk>;
+			input-channel = <1>;
+			input-standard = <0>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_5_pins>;
 			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
