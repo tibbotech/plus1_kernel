@@ -340,3 +340,12 @@ config ARM_PXA2xx_CPUFREQ
 	  This add the CPUFreq driver support for Intel PXA2xx SOCs.
 
 	  If in doubt, say N.
+
+config ARM_SP7350_CPUFREQ
+	tristate "Sunplus SP7350 CPUFreq support"
+	depends on SOC_SP7350
+	select PM_OPP
+	select REGULATOR
+	default y
+	help
+	  This adds CPU frequency driver support for Sunplus SP7350 SOCs.

@@ -13,7 +13,8 @@
 **********************************************************/
 /* Frequency Setting (unit: HZ) */
 #define XT_DEBUG
-#define CONFIG_SP_HCLK				200000000
+#define NAME_DEFINE_IN_UBOOT		"sp_paranand.0"
+#define CONFIG_SP_HCLK			400000000
 
 /* Reserved BI byte (bad block information) from spare location, BI_byte = 1~6 */
 #define CONFIG_BI_BYTE		0
@@ -219,6 +220,17 @@
 #define FREQ_SETTING				CONFIG_SP_HCLK
 
 //select one chip
+/* ZEBU */
+#undef CONFIG_PNANDC_SAMSUNG_K9F2G08U0A
+/* 2K SLC*/
+#define CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI
+/* 4K SLC*/
+#undef CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI
+/* 8K MLC */
+#undef CONFIG_PNANDC_SAMSUNG_K9GBG08U0B
+
+#if 0
+//select one chip
 /* ONFI 2.0 4K MLC */
 #undef CONFIG_SP_MICRON_29F32G08CBABB
 /* ONFI 3.2 16K MLC, @20180123 add */
@@ -252,7 +264,7 @@
 #undef CONFIG_SP_SAMSUNG_K9ABGD8U0B
 /* Winbond */
 #undef CONFIG_SP_WINBOND_W29N01GV
-
+#endif
 /*
 #if defined(CONFIG_SP_TOSHIBA_TC58NVG6DCJTA00) ||\
 	defined(CONFIG_SP_TOSHIBA_TH58TEG7DCJBA4C) ||\

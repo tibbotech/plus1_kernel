@@ -44,37 +44,14 @@ static struct sp_pnandchip_attr nand_attr[] = {
 	 * Manufacturer ID, spare size, ECC bits, ECC base shift,
 	 * ECC for spare, Block Boundary, Protect Spare, legacy flash
 	 * */
-	{"Micron 29F16G08MAA",
-		218, 8, 9, 4, 128, 1, LEGACY_FLASH},	/* 4K MLC */
 	{"Samsung K9F4G08U0A",
 		64, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 2K SLC */
-	{"Hynix HY27US08561A",
-		16, 3, 9, 1, 32, 1, LEGACY_FLASH},	/* 512B SLC */
-	{"Toshiba TH58NVG5D2ETA20",
-		376, 24, 10, 4, 128, 1, LEGACY_FLASH},	/* 8K MLC */
-	{"Toshiba TH58NVG7D2GTA20",
-		640, 40, 10, 4, 256, 1, LEGACY_FLASH},	/* 8K MLC */
-	{"Samsung K9HDGD8X5M",
-		512, 24, 10, 4, 128, 1, TOGGLE1},	/* 8K TOGGLE MLC */
-	{"Micron 29F32G08CBABB",
-		224, 8, 9, 4, 256, 1, ONFI2},		/* 4K ONFI MLC */
-	{"Samsung K9LBG08U0M",
-		128, 4, 9, 4, 128, 1, LEGACY_FLASH},	/* 4K MLC */
-	{"Toshiba TC58NVG4T2ETA00",
-		376, 24, 10, 4, 256, 1, LEGACY_FLASH},	/* 8K TLC */
-	{"Toshiba TC58NVG6DCJTA00",
-		1280, 40, 10, 40, 256, 1, LEGACY_FLASH},/* 16K MLC */
-	{"Samsung K9GCGY8S0A",
-		640, 40, 10, 24, 128, 1, TOGGLE2},	/* 16K MLC */
-	{"Toshiba TH58TEG7DCJBA4C",
-		1280, 40, 10, 40, 256, 1, TOGGLE2},	/* 16K MLC */
-	{"Samsung K9ABGD8U0B",
-		1024, 60, 10, 60, 256, 1, TOGGLE1},	/* 8K TLC */
-	{"Winbond W29N01GV", 64, 3, 9, 3, 64, 1, LEGACY_FLASH},
-	{"Toshiba TH58TFT0DDLBA8H",
-		1280, 40, 10, 40, 256, 1, TOGGLE2},	/* 16K Toggle2 */
-	{"Micron 29F128G08CBECB",
-		1872, 60, 10, 60, 512, 1, ONFI3},	/* 16K ONFI-3.2 MLC */
+	{"GigaDevice 9AU4G8F3AMGI",
+		64, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 2K SLC */
+	{"GigaDevice 9FU4G8F4BMGI",
+		256, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 4K SLC */
+	{"Samsung K9GBG08U0B",
+		1024, 2, 9, 4, 128, 1, LEGACY_FLASH},	/* 4K SLC */
 };
 
 /* Note: The unit of tWPST/tRPST/tWPRE/tRPRE field of sp_pnand_chip_timing is ns.
@@ -92,8 +69,30 @@ static struct sp_pnand_chip_timing chip_timing = {
 	70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#endif
+#elif defined (CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI)
+	static struct sp_pnand_chip_timing chip_timing = {
+		7, 5, 5, 5, 0, 12, 7, 0, 0, 0,
+		18, 10, 100, 0, 80, 0, 100, 20, 10, 20,
+		100, 100, 0, 15, 0, 12, 10, 10, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+#elif defined (CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI)
+	static struct sp_pnand_chip_timing chip_timing = {
+		10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
+		20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
+		70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+#elif defined (CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
+	static struct sp_pnand_chip_timing chip_timing = {
+		10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
+		20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
+		70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+#endif
+#if 0
 static struct mtd_partition sp_pnand_partition_info[] = {
 	{
 		.name = "Header",
@@ -146,7 +145,7 @@ static struct mtd_partition sp_pnand_partition_info[] = {
 		.size = 222 * SZ_1M,
 	},
 };
-
+#endif
 static int sp_pnand_ooblayout_ecc(struct mtd_info *mtd, int section,
 				struct mtd_oob_region *oobregion)
 {
@@ -1391,17 +1390,6 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	int i, sel, type;
 	u32 val;
 	struct resource *r;
-	static const char * const part_types[] = {
-	//#ifdef CONFIG_MTD_CMDLINE_PARTS
-		"cmdlinepart",
-	//#else
-		//"sunplus_part",
-	//#endif
-		NULL,
-	};
-
-	struct mtd_partition *partitions = NULL;
-	int num_partitions = 0;
 
 	sp_pnand_dbg("Entry Nand Probe\n");
 
@@ -1439,7 +1427,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	}
 
 	data->dmac = NULL;
-
+#if 0//turn off the DMA mode
 	/* request dma channel */
 	data->dmac = dma_request_chan(dev, "rxtx");
 	if (IS_ERR(data->dmac)) {
@@ -1462,7 +1450,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 			data->dmac = NULL;
 		}
 	}
-
+#endif
 	nand_controller_init(&data->controller);
 	data->controller.ops = &sp_pnand_controller_ops;
 
@@ -1472,9 +1460,10 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	writel(1, data->io_base + GLOBAL_RESET);
 	while (readl(data->io_base + GLOBAL_RESET)) ;
 
-#if defined(CONFIG_SP_HYNIX_HY27US08561A) ||\
-	defined(CONFIG_SP_SAMSUNG_K9F4G08U0A)||\
-	defined(CONFIG_SP_SAMSUNG_K9F2G08U0A)
+#if defined(CONFIG_SP_SAMSUNG_K9F2G08U0A) ||\
+	defined(CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI) ||\
+	defined(CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI) ||\
+	defined(CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
 	/* We disable scramble function on SLC because SLC
 	 * usually needs fewer ecc correction capability.
 	 * The fewer ecc correction capability, the more
@@ -1528,40 +1517,11 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	val |= AHB_PRERETCH_LEN(128);
 	writel(val, data->io_base + AHB_SLAVEPORT_SIZE);
 
-#if defined (CONFIG_SP_MICRON_29F16G08MAA)
+
+#if defined (CONFIG_SP_SAMSUNG_K9F2G08U0A)
 	sel = 0;
-#elif defined (CONFIG_SP_SAMSUNG_K9F4G08U0A) || defined (CONFIG_SP_SAMSUNG_K9F2G08U0A)
+#elif defined (CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI)
 	sel = 1;
-#elif defined (CONFIG_SP_HYNIX_HY27US08561A)
-	sel = 2;
-#elif defined (CONFIG_SP_TOSHIBA_TH58NVG5D2ETA20)
-	sel = 3;
-#elif defined (CONFIG_SP_TOSHIBA_TH58NVG7D2GTA20)
-	sel = 4;
-#elif defined (CONFIG_SP_SAMSUNG_K9HDGD8X5M)
-	sel = 5;
-#elif defined (CONFIG_SP_MICRON_29F32G08CBABB)
-	sel = 6;
-#elif defined (CONFIG_SP_SAMSUNG_K9LBG08U0M)
-	sel = 7;
-#elif defined (CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00)
-	sel = 8;
-#elif defined (CONFIG_SP_TOSHIBA_TC58NVG6DCJTA00)
-	sel = 9;
-#elif defined (CONFIG_SP_SAMSUNG_K9GCGY8S0A)
-	sel = 10;
-#elif defined (CONFIG_SP_TOSHIBA_TH58TEG7DCJBA4C)
-	sel = 11;
-#elif defined (CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	sel = 12;
-#elif defined (CONFIG_SP_WINBOND_W29N01GV)
-	sel = 13;
-#elif defined (CONFIG_SP_TOSHIBA_TH58TFT0DDLBA8H)
-	sel = 14;
-#elif defined (CONFIG_SP_MICRON_29F128G08CBECB)
-	sel = 15;
-#else
-	sel = -1;
 #endif
 
 	if (sel != -1) {
@@ -1580,7 +1540,9 @@ static int sp_pnand_probe(struct platform_device *pdev)
 
 	nand_set_controller_data(&data->chip, data);
 	mtd = nand_to_mtd(&data->chip);
+	mtd->owner = THIS_MODULE;
 	mtd->dev.parent = &pdev->dev;
+	mtd->name = "sp_paranand.0";//NAME_DEFINE_IN_UBOOT;
 	data->dev = &pdev->dev;
 	chip->legacy.IO_ADDR_W = chip->legacy.IO_ADDR_R;
 	chip->legacy.select_chip = sp_pnand_select_chip;
@@ -1686,23 +1648,15 @@ static int sp_pnand_probe(struct platform_device *pdev)
 #endif
 	}
 
-#if 1
-	if (num_partitions <= 0) {
-		partitions = sp_pnand_partition_info;
-		num_partitions = ARRAY_SIZE(sp_pnand_partition_info);
-	}
-	ret = mtd_device_register(mtd, partitions, num_partitions);
-	if (!ret)
-		return ret;
-#else
-	ret = mtd_device_parse_register(mtd, part_types, NULL, NULL, 0);//xtmark
+	ret = mtd_device_register(mtd, NULL, 0);
 	if (ret) {
-		printk(KERN_INFO "mtd_device_parse_register fail!\n");
-		ret = -ENXIO;
-		goto out;
+		dev_err(dev, "mtd parse partition error\n");
+		goto out_clean_info;
 	}
-#endif
 
+	return 0;
+
+out_clean_info:
 	nand_cleanup(chip);
 out_unset_drv:
 	platform_set_drvdata(pdev, NULL);
@@ -1745,6 +1699,7 @@ static struct platform_driver sp_pnand_driver __refdata = {
 	.remove	= sp_pnand_remove,
 	.driver	= {
 		.name = "sp7350-para-nand",
+		.owner = THIS_MODULE,
 		.of_match_table = of_match_ptr(sp_pnand_dt_ids),
 	},
 };

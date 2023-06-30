@@ -292,6 +292,17 @@ static struct sp_clk sp_clks[] = {
 	_(QCTRL),
 };
 
+#define MEMCTL_HWM	0x03ff0000
+#define ca55_memctl	(clk_regs + (31 + 32 + 14) * 4)	/* G4.14 */
+
+void sp_clkc_ca55_memctl(u32 val)
+{
+	val |= MEMCTL_HWM;
+	//pr_debug(">>> write ca55_memctl(MOON4.14) to %08x", val);
+	writel(val, ca55_memctl);
+}
+EXPORT_SYMBOL(sp_clkc_ca55_memctl);
+
 /************************************************* PLL_A *************************************************/
 
 /* from PLLA_Q654_REG_setting_220701.xlsx with LKDTOUT & TEST bits set to 0 */
@@ -524,10 +535,10 @@ static int sp_pll_set_rate(struct clk_hw *hw, ulong rate,
 		writel(reg, pll->reg);
 
 		if (IS_PLLC() || IS_PLLL3()) {
-#if 0 // FIXME: clock ready signal always 0 @ ZEBU
+#if 1 // FIXME: clock ready signal always 0 @ ZEBU
 			do {
 				reg = readl(pll->reg + 8) & 0x100;
-				pr_info("%u", reg);
+				//pr_debug("%u", reg);
 			} while (!reg); // wait clock ready
 #endif
 			if (IS_PLLC())

@@ -298,6 +298,9 @@ static int rt5759_regulator_register(struct rt5759_priv *priv)
 	reg_cfg.of_node = np;
 	reg_cfg.init_data = of_get_regulator_init_data(priv->dev, np, reg_desc);
 	reg_cfg.regmap = priv->regmap;
+#ifdef CONFIG_SOC_SP7350
+	reg_cfg.ena_gpiod = false;
+#endif
 
 	rdev = devm_regulator_register(priv->dev, reg_desc, &reg_cfg);
 	if (IS_ERR(rdev)) {

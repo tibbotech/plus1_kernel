@@ -134,6 +134,7 @@
 			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
+
 		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
 		npu_reserve: npu_reserve@68000000 {
 			reg = <0x0 0x68000000 0x0 0x8000000>;
@@ -221,6 +222,56 @@
 		};
 	};
 
+	cpu_opp_table: opp-table {
+		compatible = "operating-points-v2";
+		opp-shared;
+
+		opp-5 {
+			opp-hz = /bits/ 64 <500000000>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-10 {
+			opp-hz = /bits/ 64 <1000000000>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-15 {
+			opp-hz = /bits/ 64 <1500000000>;
+			opp-microvolt = <700000>;
+		};
+
+		opp-16 {
+			opp-hz = /bits/ 64 <1600000000>;
+			opp-microvolt = <800000>;
+		};
+
+		opp-17 {
+			opp-hz = /bits/ 64 <1700000000>;
+			opp-microvolt = <800000>;
+		};
+
+		opp-18 {
+			opp-hz = /bits/ 64 <1800000000>;
+			opp-microvolt = <800000>;
+		};
+
+		opp-19 {
+			opp-hz = /bits/ 64 <1900000000>;
+			opp-microvolt = <1000000>;
+		};
+
+		opp-20 {
+			opp-hz = /bits/ 64 <2000000000>;
+			opp-microvolt = <1000000>;
+		};
+
+		opp-21 {
+			opp-hz = /bits/ 64 <2100000000>;
+			opp-microvolt = <1000000>;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -230,6 +281,9 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "psci";
+			clocks = <&clkc PLLC>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_0>;
 		};
 
@@ -238,6 +292,9 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "psci";
+			clocks = <&clkc PLLC>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_1>;
 		};
 
@@ -246,6 +303,9 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "psci";
+			clocks = <&clkc PLLC>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_2>;
 		};
 
@@ -254,6 +314,9 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
 			enable-method = "psci";
+			clocks = <&clkc PLLA>;
+			proc-supply = <&rt5759_vproc_reg>;
+			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_3>;
 		};
 
@@ -478,34 +541,34 @@
 		status = "disabled";
 	};
 
-#if(0)
-{
-    thermal-zones {
-        cpu_thermal_zone: cpu-thermal {
-            polling-delay-passive = <5000>;
-            polling-delay = <1000>;
-            passive = <80>;
-            trips {
-                cpu_trip0: cpu0 {
-                    temperature = <70000>;
-                    hysteresis = <2000>;
-                    type = "passive";
-                };
-                cpu_trip1: cpu1 {
-                    temperature = <80000>;
-                    hysteresis = <2000>;
-                    type = "active";
-                };
-            };
-        };
-    };
+	thermal-zones {
+		cpu_thermal_zone: cpu-thermal {
+			     polling-delay-passive = <5000>;
+			     polling-delay = <1000>;
+
+			     thermal-sensors = <&thermal 0>;
+			     sustainable-power = <100000>;
+
+			     passive = <80>;
+		trips {
+			     cpu_trip0: cpu0 {
+			     temperature = <70000>;
+			     hysteresis = <2000>;
+			     type = "passive";
+			     };
+			     cpu_trip1: cpu1 {
+			     temperature = <80000>;
+			     hysteresis = <2000>;
+			     type = "active";
+			     };
+		};
+		};
+	};
 
    // poweroff {
         //compatible = "system-shutdown";
    // };
-};
 
-#endif
 
 	ahbdma1: dma@f8821000 {
 		compatible = "snps,dma-spi";
@@ -921,7 +984,18 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo7_pins>;
-		status = "disabled";
+		//status = "disabled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		rt5759_vproc_reg: regulator@62 {
+			compatible = "richtek,rt5759";
+			reg = <0x62>;
+			regulator-name = "rt5759-buck";
+			regulator-min-microvolt = <700000>;
+			regulator-max-microvolt = <1000000>;
+			regulator-always-on;
+		};
 	};
 
 	i2c8: i2c@f8830000 {
@@ -1166,6 +1240,34 @@
 		no-sd;
 	};
 
+	axi: axi@f8012b80 {
+		compatible = "sunplus,sp7350-axi";
+		reg = <0x0 0xf8012b80 0x0 0x80>, <0x0 0xf8012c00 0x0 0x80>, <0x0 0xf8012c80 0x0 0x80>,
+		      <0x0 0xf8012d00 0x0 0x80>, <0x0 0xf8012d80 0x0 0x80>, <0x0 0xf8012e00 0x0 0x80>,
+			  <0x0 0xf8012e80 0x0 0x80>, <0x0 0xf8012f00 0x0 0x80>, <0x0 0xf8012f80 0x0 0x80>,
+			  <0x0 0xf8013000 0x0 0x80>, <0x0 0xf8013080 0x0 0x80>, <0x0 0xf8013100 0x0 0x80>,
+			  <0x0 0xf8013180 0x0 0x80>, <0x0 0xf8013200 0x0 0x80>, <0x0 0xf8013280 0x0 0x80>,
+			  <0x0 0xf8013300 0x0 0x80>, <0x0 0xf8013380 0x0 0x80>, <0x0 0xf8013400 0x0 0x80>,
+			  <0x0 0xf8013480 0x0 0x80>, <0x0 0xf8013500 0x0 0x80>, <0x0 0xf8013580 0x0 0x80>,
+			  <0x0 0xf8013600 0x0 0x80>, <0x0 0xf8013680 0x0 0x80>, <0x0 0xf8013700 0x0 0x80>,
+			  <0x0 0xf8013780 0x0 0x80>, <0x0 0xf8013800 0x0 0x80>, <0x0 0xf8013880 0x0 0x80>,
+			  <0x0 0xf8013900 0x0 0x80>, <0x0 0xf8013a00 0x0 0x80>, <0x0 0xf8013a80 0x0 0x80>,
+			  <0x0 0xf8013b00 0x0 0x80>, <0x0 0xf8013b80 0x0 0x80>;
+		reg-names = "axi_mon", "axi_0", "axi_1",
+			    "axi_2", "axi_3", "axi_4",
+				"axi_5", "axi_6", "axi_7",
+				"axi_8", "axi_9", "axi_10",
+				"axi_11", "axi_12", "axi_13",
+				"axi_14", "axi_15", "axi_16",
+				"axi_17", "axi_18", "axi_19",
+				"axi_20", "axi_21", "axi_22",
+				"axi_23", "axi_24", "axi_25",
+				"axi_26", "axi_28", "axi_29",
+				"axi_30", "axi_31";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH>;
+	};
+
 	mmc1: mmc@f8003e80 {
 		compatible = "sunplus,sp7350-card";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
@@ -1294,7 +1396,7 @@
 		clock-names = "aud", "pll_a";
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
-		pinctrl-0 = <&aud_au_adc_data0_pins>, <&aud_dac_xck_pins>;
+		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>, <&aud_adc1_data0_pins &aud_au1_ck_pins>, <&aud_adc2_data0_pins &aud_au2_ck_pins>;
 		status = "disabled";
 	};
 
@@ -2402,6 +2504,16 @@
 	};
 #endif
 
+#if 0
+	dummymaster: dm@f8000700 {
+		compatible = "sunplus,sp7350-dm-test";
+		reg = <0x0 0xf8800100 0x0 0x80>, <0x0 0xf8000700 0x0 0x80>,
+			<0x0 0xf800a880 0x0 0x80>; /* G14 G337 */
+		clocks = <&clkc DUMMY_MASTER0>, <&clkc DUMMY_MASTER1>;
+		resets = <&rstc DUMMY_MASTER0>, <&rstc DUMMY_MASTER1>;
+	};
+#endif
+
 	watchdog: watchdog@f800061c {
 		compatible = "sunplus,sp7350-wdt";
 		reg = <0x00 0xf800061c 0x00 0x08>, <0x00 0xf800066c 0x00 0x08>,
@@ -2426,7 +2538,7 @@
 			<GIC_SPI 25 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT4 */
 			<GIC_SPI 26 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT5 */
 			<GIC_SPI 78 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT6 */
-			<GIC_SPI 79 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT7 */
+			/*<GIC_SPI 79 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CM4 CPU2_DIRECT_INT7 */
 			<GIC_SPI 118 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT0 */
 			<GIC_SPI 119 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT1 */
 			<GIC_SPI 120 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_DIRECT_INT2 */

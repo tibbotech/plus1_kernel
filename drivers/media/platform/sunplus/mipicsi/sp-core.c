@@ -454,8 +454,8 @@ static int vin_notify_complete(struct v4l2_async_notifier *notifier)
 			continue;
 
 		/* Check that VIN' master is part of the group. */
-		if (!vin->group->vin[vin_group_id_to_master(route->vin)])
-			continue;
+		//if (!vin->group->vin[vin_group_id_to_master(route->vin)])
+		//	continue;
 
 		/* Check that CSI-2 is part of the group. */
 		if (!vin->group->csi[route->csi].subdev)
@@ -756,8 +756,8 @@ static int vin_group_notify_complete(struct v4l2_async_notifier *notifier)
 			continue;
 
 		/* Check that VIN' master is part of the group. */
-		if (!vin->group->vin[vin_group_id_to_master(route->vin)])
-			continue;
+		//if (!vin->group->vin[vin_group_id_to_master(route->vin)])
+		//	continue;
 
 		/* Check that CSI-2 is part of the group. */
 		if (!vin->group->csi[route->csi].subdev)
