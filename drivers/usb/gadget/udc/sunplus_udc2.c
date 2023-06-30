@@ -18,6 +18,10 @@
 
 
 extern void sp_accept_b_hnp_en_feature(struct usb_otg *);
+
+char hnp_process;
+EXPORT_SYMBOL(hnp_process);
+
 extern u32 otg_id_pin;
 static char *otg_status_buf;
 static char *otg_status_buf_ptr_addr;
@@ -799,7 +803,11 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 									struct usb_request, buf);
 		struct sp_request *req = container_of(_req, struct sp_request, req);
 
-		dev_otg_status = 0;
+		if (dev_otg_status == 1) {
+			hnp_process = true;
+			dev_otg_status = 0;
+		}
+
 		otg_status_buf = NULL;
 		otg_status_buf_ptr_addr = NULL;
 
@@ -937,7 +945,12 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 		case UDC_SUSPEND:
 			UDC_LOGL("udc suspend\n");
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+			if (hnp_process == false)
+				pwr_uphy_pll(0);
+#else
 			pwr_uphy_pll(0);
+#endif
 
 			break;
 		case UDC_RESUME:
@@ -2903,6 +2916,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_debug);
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	hnp_process = false;
+
 	otg_phy = usb_get_transceiver_sp(udc->port_num);
 	retval = otg_set_peripheral(otg_phy->otg, &udc->gadget);
 	if (retval < 0)
@@ -3075,19 +3090,19 @@ static int udc_sunplus_drv_resume(struct device *dev)
 	if (ret)
 		clk_disable_unprepare(udc->clock);
 
-#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	if (otg_id_pin == 1)
-#else
-	#ifdef CONFIG_SOC_Q645
+	#else
+		#ifdef CONFIG_SOC_Q645
 	if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
-	#elif defined(CONFIG_SOC_SP7350)
+		#elif defined(CONFIG_SOC_SP7350)
 	if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+		#endif
 	#endif
 	{
 		if (udc->driver)
 			device_run_stop_ctrl(1);
 	}
-#endif
 
 	return ret;
 }

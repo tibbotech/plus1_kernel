@@ -40,7 +40,11 @@ static int __init usb_otg0_sunplus_init(void)
 
 	return 0;
 }
+#ifdef CONFIG_SOC_SP7021
 fs_initcall(usb_otg0_sunplus_init);
+#elif defined (CONFIG_SOC_SP7350)
+module_init(usb_otg0_sunplus_init);
+#endif
 
 static void __exit usb_otg0_sunplus_exit(void)
 {
