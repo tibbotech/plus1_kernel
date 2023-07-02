@@ -1225,7 +1225,7 @@
 
 	mmc0: mmc@f8003b00 {
 		compatible = "sunplus,sp7350-emmc";
-		reg = <0x0 0xf8003b00 0x0 0x180>;
+		reg = <0x0 0xf8003b00 0x0 0x180>, <0x0 0xf8003280 0x0 0x80>, <0x0 0xf8003300 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL0>;
@@ -1238,6 +1238,7 @@
 		disable-wp;
 		cap-mmc-highspeed;
 		mmc-ddr-1_8v;
+		#mmc-hs200-1_8v;
 		no-sdio;
 		no-sd;
 	};
