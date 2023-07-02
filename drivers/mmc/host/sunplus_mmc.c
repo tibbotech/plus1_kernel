@@ -331,7 +331,7 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	#ifdef CONFIG_SOC_SP7350
 	//clk_set_rate(host->clk, 800000000);
 	#endif
-	spmmc_pr(INFO, "clk_get_rate(host->clk) %d\n", clk_get_rate(host->clk));
+	//spmmc_pr(INFO, "clk_get_rate(host->clk) %d\n", clk_get_rate(host->clk));
 	spmmc_pr(INFO, "set bus clock to %d\n", clk);
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
