@@ -36,9 +36,9 @@
 #define WDT_CONMAX		0xDEAF
 
 #ifdef CONFIG_SOC_SP7350
-//#define STC_CLK		1000000
-#define ZEBU_TEMP		500//zebu 3200MHz ---> 1.5MHz
-#define STC_CLK			ZEBU_TEMP
+#define STC_CLK			1000000
+//#define ZEBU_TEMP		500//zebu 3200MHz ---> 1.5MHz
+//#define STC_CLK		ZEBU_TEMP
 /* HW_TIMEOUT_MAX = 0xffffffff/1MHz = 4294 */
 #define SP_WDT_MAX_TIMEOUT	4294U
 #define SP_WDT_DEFAULT_TIMEOUT	10
@@ -50,6 +50,8 @@
 #endif
 
 #define DEVICE_NAME		"sunplus-wdt"
+
+static int irqflag = 0;
 
 static unsigned int timeout;
 module_param(timeout, int, 0);
@@ -64,8 +66,9 @@ struct sp_wdt_priv {
 	struct watchdog_device wdev;
 	void __iomem *base;
 #ifdef CONFIG_SOC_SP7350
-	void __iomem *mode_sel;
-	void __iomem *base_rst;
+	void __iomem *base_pt;
+	void __iomem *rst_en;
+	void __iomem *prescaler;
 	int irqn;
 #endif
 	struct clk *clk;
@@ -79,13 +82,13 @@ static int sp_wdt_restart(struct watchdog_device *wdev,
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
 #ifdef CONFIG_SOC_SP7350
-	void __iomem *base_rst = priv->base_rst;
+	void __iomem *base_pt = priv->base_pt;
 #endif
 	writel(WDT_STOP, base + WDT_CTRL);
 	writel(WDT_UNLOCK, base + WDT_CTRL);
 	writel(0x1, base + WDT_CNT);
 #ifdef CONFIG_SOC_SP7350
-	writel(0x1, base_rst + WDT_CNT);
+	writel(0x1, base_pt + WDT_CNT);
 #endif
 	writel(WDT_LOCK, base + WDT_CTRL);
 	writel(WDT_RESUME, base + WDT_CTRL);
@@ -98,7 +101,7 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
 #ifdef CONFIG_SOC_SP7350
-	void __iomem *base_rst = priv->base_rst;
+	void __iomem *base_pt = priv->base_pt;
 	u32 count_f;
 	u32 count_b;
 	u32 time_f;
@@ -120,7 +123,7 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 		writel(WDT_UNLOCK, base + WDT_CTRL);
 #ifdef CONFIG_SOC_SP7350
 		writel(count_f, base + WDT_CNT);
-		writel(count_b, base_rst + WDT_CNT);
+		writel(count_b, base_pt + WDT_CNT);
 #else
 
 		/*
@@ -134,6 +137,12 @@ static int sp_wdt_ping(struct watchdog_device *wdev)
 		writel(WDT_LOCK, base + WDT_CTRL);
 	}
 #ifdef CONFIG_SOC_SP7350
+	/* Solution for WARNING unbalanced enable irq */
+	if(!irqflag)
+		disable_irq(irqn);
+	else
+		irqflag--;
+
 	/*
 	 * Workaround for pretimeout counter. See the function sp_wdt_isr()
 	 * for details .
@@ -169,9 +178,23 @@ static unsigned int sp_wdt_get_timeleft(struct watchdog_device *wdev)
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
 	u32 val;
+#ifdef CONFIG_SOC_SP7350
+	void __iomem *base_pt = priv->base_pt;
+	u32 count_f;
+	u32 count_b;
+	u32 time_f;
 
+	count_f = readl(base + WDT_CNT);
+	count_b = readl(base_pt + WDT_CNT);
+
+	/* count_f is always running, to 0 and recycle */
+	time_f = wdev->timeout - wdev->pretimeout;
+	if(count_f < time_f * STC_CLK)
+		val = count_f + count_b;
+	else
+		val = count_b;
+#else
 	val = readl(base + WDT_CNT);
-#ifndef CONFIG_SOC_SP7350
 	val &= 0xffff;
 	val = val << 4;
 #endif
@@ -182,10 +205,10 @@ static unsigned int sp_wdt_get_timeleft(struct watchdog_device *wdev)
 static int sp_wdt_set_mode(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
-	void __iomem *mode_sel = priv->mode_sel;
+	void __iomem *base_pt = priv->base_pt;
 	u32 val = priv->mode;
 
-	writel(val, mode_sel);
+	writel(val, base_pt);
 
 	return 0;
 }
@@ -194,15 +217,23 @@ static int sp_wdt_hw_init(struct watchdog_device *wdev)
 {
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
 	void __iomem *base = priv->base;
-	void __iomem *base_rst = priv->base_rst;
+	void __iomem *rst_en = priv->rst_en;
+	void __iomem *prescaler = priv->prescaler;
 	u32 val;
 
-	writel(WDT_CLRIRQ, base + WDT_CTRL);
-	val = readl(base_rst);
-	val |= MASK_SET(STC_WDT_RST);
-	writel(val, base_rst);
+	/* Set watchdog prescaler */
+	val = 500000000 / STC_CLK - 1;
+	writel(val, prescaler);
 
-	sp_wdt_stop(wdev);
+	writel(WDT_CLRIRQ, base + WDT_CTRL);
+	/* Enable watchdog reset bus */
+	val = readl(rst_en);
+	val |= MASK_SET(STC_WDT_RST);
+	writel(val, rst_en);
+
+	/* Stop counter and maximize the val */
+	writel(WDT_STOP, base + WDT_CTRL);
+	writel(WDT_CONMAX, base + WDT_CTRL);
 
 	return 0;
 }
@@ -211,11 +242,10 @@ static irqreturn_t sp_wdt_isr(int irq, void *arg)
 {
 	struct watchdog_device *wdev = arg;
 	struct sp_wdt_priv *priv = watchdog_get_drvdata(wdev);
-	void __iomem *base = priv->base;
+	//void __iomem *base = priv->base;
 	int irqn = priv->irqn;
 
-	//writel(WDT_CLRIRQ, base + WDT_CTRL);
-
+	//printk(">>> entry the isr \n");
 	watchdog_notify_pretimeout(wdev);
 
 	/*
@@ -226,6 +256,7 @@ static irqreturn_t sp_wdt_isr(int irq, void *arg)
 	 * the flag and enable the irq before reloading the counters.
 	 */
 	disable_irq_nosync(irqn);
+	irqflag++;
 
 	return IRQ_HANDLED;
 }
@@ -268,6 +299,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct sp_wdt_priv *priv;
+	struct watchdog_device *wdd;
 	int ret;
 #ifdef CONFIG_SOC_SP7350
 	int irq;
@@ -276,6 +308,7 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	if (!priv)
 		return -ENOMEM;
 
+	wdd = &priv->wdev;
 	priv->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(priv->clk))
 		return dev_err_probe(dev, PTR_ERR(priv->clk), "Failed to get clock\n");
@@ -304,17 +337,21 @@ static int sp_wdt_probe(struct platform_device *pdev)
 		return PTR_ERR(priv->base);
 
 #ifdef CONFIG_SOC_SP7350
-		priv->mode_sel = devm_platform_ioremap_resource(pdev, 1);
-	if (IS_ERR(priv->mode_sel))
-		return PTR_ERR(priv->mode_sel);
+	priv->base_pt = devm_platform_ioremap_resource(pdev, 1);
+	if (IS_ERR(priv->base_pt))
+		return PTR_ERR(priv->base_pt);
 
-	priv->base_rst = devm_platform_ioremap_resource(pdev, 2);
-	if (IS_ERR(priv->base_rst))
-		return PTR_ERR(priv->base_rst);
+	priv->rst_en = devm_platform_ioremap_resource(pdev, 2);
+	if (IS_ERR(priv->rst_en))
+		return PTR_ERR(priv->rst_en);
+
+	priv->prescaler = devm_platform_ioremap_resource(pdev, 3);
+	if (IS_ERR(priv->prescaler))
+		return PTR_ERR(priv->prescaler);
 
 	irq = platform_get_irq_optional(pdev, 0);
 	if (irq > 0) {
-		ret = devm_request_irq(&pdev->dev, irq, sp_wdt_isr, 0, "wdt_bark",
+		ret = devm_request_irq(&pdev->dev, irq, sp_wdt_isr, 0, "sp_wdg",
 				       &priv->wdev);
 		if (ret)
 			return ret;
