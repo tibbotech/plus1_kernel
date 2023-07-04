@@ -2579,7 +2579,6 @@
 		sdcard_pins: pinmux_sdcard-pins {
 			function = "SD_CARD";
 			groups = "SD_CARD";
-			sunplus,pins = < SPPCTL_IOPAD(62, SPPCTL_PCTL_G_GPIO, 0, 0) >;
 		};
 
 		typec_pins: pinmux_typec-pins {
