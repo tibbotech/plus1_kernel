@@ -1094,6 +1094,10 @@
 	dmac: dma-controller@f80fc000 {
 		compatible = "snps,axi-dma-1.01a";
 		reg = <0x00 0xf80fc000 0x00 0x10a0>;
+		clocks = <&clkc AXI_DMA>;
+		clock-names = "core-clk";
+		resets = <&rstc RST_AXI_DMA>;
+		reset-names = "core-rstc";
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 20 IRQ_TYPE_LEVEL_HIGH>;
 		#dma-cells = <1>;
