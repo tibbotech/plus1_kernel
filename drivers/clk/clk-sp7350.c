@@ -17,7 +17,7 @@
 #include <dt-bindings/clock/sp-sp7350.h>
 #include <linux/nvmem-consumer.h>
 
-//#define TRACE	pr_info("### %s:%d (%d)\n", __FUNCTION__, __LINE__, (clk->reg - REG(4, 0)) / 4)
+//#define TRACE	pr_info("### %s (%s): %d\n", __FUNCTION__, clk_hw_get_name(hw), __LINE__)
 #define TRACE
 
 #define EXT_CLK "extclk"
@@ -78,6 +78,7 @@ static u32 mux_table_fl[] = { 0x00, 0x01, 0x02, 0x03, 0x06, 0x07 };
 static struct clk *clks[CLK_MAX + PLL_MAX];
 static struct clk_onecell_data clk_data;
 static void __iomem *clk_regs;
+static void __iomem *qctl_regs;
 
 #define pll_regs	(clk_regs + 31 * 4)	/* G3.0  ~ PLL */
 
@@ -92,6 +93,71 @@ struct sp_clk {
 
 static const char * const default_parents[] = { EXT_CLK };
 
+// QCTL G30
+#define Q_CA55		0x0100
+#define Q_CSDBG		0x0200
+#define Q_CSETR		0x0300
+#define Q_RSV_1		0x0400
+#define Q_RSV_2		0x0500
+#define Q_AXI_DMA	0x0600
+#define Q_RSV_3		0x0700
+#define Q_CPIOR0	0x0800
+#define Q_SEC		0x0900
+#define Q_USB30C0	0x0a00
+#define Q_USBC0		0x0b00
+#define Q_CARD0		0x0c00
+#define Q_CARD1		0x0d00
+#define Q_CARD2		0x0e00
+#define Q_SPI_NOR	0x0f00
+#define Q_SPI_NOR_SL	0x1000
+#define Q_NBS		0x1100
+#define Q_SPI_ND	0x1200
+#define Q_RSV_4		0x1300
+#define Q_GMAC		0x1400
+#define Q_RSV_5		0x1500
+#define Q_VI23_CSII	0x1600
+#define Q_VCL		0x1700
+#define Q_VCE		0x1800
+#define Q_VCD		0x1900
+#define Q_IMGREAD0	0x1a00
+#define Q_OSD0		0x1b00
+#define Q_OSD1		0x1c00
+#define Q_OSD2		0x1d00
+#define Q_OSD3		0x1e00
+#define Q_VI0_CSII	0x1f00
+#define Q_VI1_CSII	0x2000
+#define Q_VI4_CSII	0x2100
+#define Q_VI5_CSII	0x2200
+#define Q_RSV_6		0x2300
+#define Q_CM4		0x2400
+#define Q_AUD		0x2500
+#define Q_AHB_DMA	0x2600
+#define Q_RSV_7		0x2700
+#define Q_CA55SCUL3	0x2800
+#define Q_CA55PDBG	0x2900
+#define Q_NPU		0x2a00
+#define Q_RSV_8		0x2b00
+#define Q_CPIOR1	0x2c00
+
+static void QREQ(u32 n, u32 s)
+{
+	u32 shift = (n & 1) ? 0 : 8;
+	void __iomem *r = qctl_regs + (n >> 1) * 4;
+	writel(((0x10000 | s) << 3) << shift, r);
+}
+
+static u32 QSTA(u32 n)
+{
+	u32 shift = (n & 1) ? 0 : 8;
+	void __iomem *r = qctl_regs + (n >> 1) * 4;
+
+	return (readl(r) >> shift) & 7;
+}
+
+#define QACCEPT(n)	(QSTA(n) & 1)
+#define QACTIVE(n)	(QSTA(n) & 2)
+#define QDENY(n)	(QSTA(n) & 4)
+
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
 static const char *gmac_parents_alt[] = {"PLLS_50", "PLLS_25", "PLLS_2P5"}; // for G5.19[0] == 1
@@ -104,28 +170,28 @@ static struct sp_clk sp_clks[] = {
 	_(CA55CORE3,	29,	9,	3, {"PLLC", "PLLC_D2", "PLLC_D3", "PLLC_D4"}),
 	_(CA55CUL3,	29,	12,	3, {"PLLL3", "PLLL3_D2", "PLLL3_D3", "PLLL3_D4"}),
 	_(CA55),
-	_(GMAC,		23,	10,	2, {"PLLS_125", "PLLS_25", "PLLS_2P5"}),
+	_(GMAC,		Q_GMAC|23,	10,	2, {"PLLS_125", "PLLS_25", "PLLS_2P5"}),
 	_(RBUS,		23,	6,	2, {"PLLS_400", "PLLS_100", "PLLS_200"}),
 	_(RBUS_BLOCKB),
 	_(SYSTOP),
 	_(THERMAL),
 	_(BR0),
-	_(CARD_CTL0,	23,	0,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
-	_(CARD_CTL1,	23,	4,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
-	_(CARD_CTL2,	23,	2,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
+	_(CARD_CTL0,	Q_CARD0|23,	0,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
+	_(CARD_CTL1,	Q_CARD1|23,	4,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
+	_(CARD_CTL2,	Q_CARD2|23,	2,	2, {"PLLS_400", "PLLH_358", "PLLS_800", "PLLH_716"}),
 	_(CBDMA0),
-	_(CPIOR),
+	_(CPIOR,	Q_CPIOR0),
 	_(DDRPHY,	0,	0,	0, {"PLLD"}),
 	_(TZC),
 	_(DDRCTL,	0,	0,	0, {"SYSAO"}),
 	_(DRAM,		0,	0,	0, {"PLLD"}),
-	_(VCL),
-	_(VCL0,		24,	2,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
-	_(VCL1,		24,	6,	3, {"PLLS_500", "PLLH_307", "PLLS_200", "PLLS_400"}),
-	_(VCL2,		24,	9,	3, {"PLLS_400", "PLLS_200", "PLLH_307", "PLLS_100"}),
-	_(VCL3,		24,	12,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
-	_(VCL4),
-	_(VCL5,		25,	0,	1, {"PLLS_400", "PLLS_200"}),
+	_(VCL,		Q_VCL),
+	_(VCL0,		Q_VCL|24,	2,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
+	_(VCL1,		Q_VCL|24,	6,	3, {"PLLS_500", "PLLH_307", "PLLS_200", "PLLS_400"}),
+	_(VCL2,		Q_VCL|24,	9,	3, {"PLLS_400", "PLLS_200", "PLLH_307", "PLLS_100"}),
+	_(VCL3,		Q_VCL|24,	12,	4, {"PLLH_614", "PLLS_400", "PLLH_307", "PLLS_200", "PLLS_500"}),
+	_(VCL4,		Q_VCL),
+	_(VCL5,		Q_VCL|25,	0,	1, {"PLLS_400", "PLLS_200"}),
 	_(DUMMY_MASTER0),
 	_(DUMMY_MASTER1),
 	_(DUMMY_MASTER2),
@@ -135,12 +201,12 @@ static struct sp_clk sp_clks[] = {
 	_(GPOST1),
 	_(GPOST2),
 	_(GPOST3),
-	_(IMGREAD0),
+	_(IMGREAD0,	Q_IMGREAD0),
 	_(MIPITX,	25,	7,	5, {"PLLH_MIPI", "PLLH_MIPI_D2", "PLLH_MIPI_D4", "PLLH_MIPI_D8", "PLLH_MIPI_D16", "PLLH"}),
-	_(OSD0),
-	_(OSD1),
-	_(OSD2),
-	_(OSD3),
+	_(OSD0,		Q_OSD0),
+	_(OSD1,		Q_OSD1),
+	_(OSD2,		Q_OSD2),
+	_(OSD3,		Q_OSD3),
 	_(TCON,		25,	7,	5, {"PLLH_MIPI", "PLLH_MIPI_D2", "PLLH_MIPI_D4", "PLLH_MIPI_D8", "PLLH_MIPI_D16", "PLLH"}),
 	_(TGEN),
 	_(VPOST0),
@@ -151,29 +217,29 @@ static struct sp_clk sp_clks[] = {
 	_(MIPICSI3),
 	_(MIPICSI4),
 	_(MIPICSI5),
-	_(VI0_CSIIW0),
-	_(VI0_CSIIW1),
-	_(VI1_CSIIW0),
-	_(VI1_CSIIW1),
-	_(VI2_CSIIW0),
-	_(VI2_CSIIW1),
-	_(VI3_CSIIW0),
-	_(VI3_CSIIW1),
-	_(VI3_CSIIW2),
-	_(VI3_CSIIW3),
-	_(VI4_CSIIW0),
-	_(VI4_CSIIW1),
-	_(VI4_CSIIW2),
-	_(VI4_CSIIW3),
-	_(VI5_CSIIW0),
-	_(VI5_CSIIW1),
-	_(VI5_CSIIW2),
-	_(VI5_CSIIW3),
+	_(VI0_CSIIW0,	Q_VI0_CSII),
+	_(VI0_CSIIW1,	Q_VI0_CSII),
+	_(VI1_CSIIW0,	Q_VI1_CSII),
+	_(VI1_CSIIW1,	Q_VI1_CSII),
+	_(VI2_CSIIW0,	Q_VI23_CSII),
+	_(VI2_CSIIW1,	Q_VI23_CSII),
+	_(VI3_CSIIW0,	Q_VI23_CSII),
+	_(VI3_CSIIW1,	Q_VI23_CSII),
+	_(VI3_CSIIW2,	Q_VI23_CSII),
+	_(VI3_CSIIW3,	Q_VI23_CSII),
+	_(VI4_CSIIW0,	Q_VI4_CSII),
+	_(VI4_CSIIW1,	Q_VI4_CSII),
+	_(VI4_CSIIW2,	Q_VI4_CSII),
+	_(VI4_CSIIW3,	Q_VI4_CSII),
+	_(VI5_CSIIW0,	Q_VI5_CSII),
+	_(VI5_CSIIW1,	Q_VI5_CSII),
+	_(VI5_CSIIW2,	Q_VI5_CSII),
+	_(VI5_CSIIW3,	Q_VI5_CSII),
 	_(MIPICSI23_SEL),
-	_(VI23_CSIIW1),
-	_(VI23_CSIIW2),
-	_(VI23_CSIIW3),
-	_(VI23_CSIIW0),
+	_(VI23_CSIIW1,	Q_VI23_CSII),
+	_(VI23_CSIIW2,	Q_VI23_CSII),
+	_(VI23_CSIIW3,	Q_VI23_CSII),
+	_(VI23_CSIIW0,	Q_VI23_CSII),
 	_(OTPRX),
 	_(PRNG),
 	_(SEMAPHORE),
@@ -181,7 +247,7 @@ static struct sp_clk sp_clks[] = {
 	//_(SPIFL,	25,	1,	3, {"PLLH_716", "PLLH_358", "PLLH_537", "PLLH_268", "PLLH_614", "PLLH_307"}),
 	_(SPIFL,	0,	0,	0, {"PLLS_500"}),
 	_(BCH),
-	_(SPIND,	25,	4,	3, {"PLLH_716", "PLLH_358", "PLLH_537", "PLLH_268", "PLLH_614", "PLLH_307"}),
+	_(SPIND,	Q_SPI_ND|25,	4,	3, {"PLLH_716", "PLLH_358", "PLLH_537", "PLLH_268", "PLLH_614", "PLLH_307"}),
 	_(UADMA01),
 	_(UADMA23),
 	_(UA0,		27,	10,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
@@ -191,16 +257,16 @@ static struct sp_clk sp_clks[] = {
 	_(UADBG,	23,	8,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
 	//_(UART2AXI,	23,	8,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
 	_(UPHY0),
-	_(USB30C0),
+	_(USB30C0,	Q_USB30C0),
 	_(U3PHY0,	25,	14,	2, {EXT_CLK, "PLLS_50", "PLLS_100"}),
-	_(USBC0),
-	_(VCD,		0,	0,	0, {"PLLH_358"}),
-	_(VCE,		0,	0,	0, {"PLLH_537"}),
+	_(USBC0,	Q_USBC0),
+	_(VCD,		Q_VCD,	0,	0, {"PLLH_358"}),
+	_(VCE,		Q_VCE,	0,	0, {"PLLH_537"}),
 	_(VIDEO_CODEC),
 	_(MAILBOX),
-	_(AXI_DMA),
+	_(AXI_DMA,	Q_AXI_DMA),
 	_(PNAND,	23,	13,	2, {"PLLS_400", "PLLS_100", "PLLS_200"}),
-	_(SEC),
+	_(SEC,		Q_SEC),
 	//_(rsv1),
 	_(STC_AV3),
 	_(STC_TIMESTAMP),
@@ -208,13 +274,13 @@ static struct sp_clk sp_clks[] = {
 	_(NICTOP),
 	_(NICPAII),
 	_(NICPAI),
-	_(NPU,		23,	15,	1, {"PLLN", "PLLN_D2"}),
+	_(NPU,		Q_NPU|23,	15,	1, {"PLLN", "PLLN_D2"}),
 	_(SECGRP_PAI),
 	_(SECGRP_PAII),
 	_(SECGRP_MAIN),
 	_(DPLL),
 	_(HBUS),
-	_(AUD),
+	_(AUD,		Q_AUD),
 	_(AXIM_TOP),
 	_(AXIM_PAI),
 	_(AXIM_PAII),
@@ -225,12 +291,12 @@ static struct sp_clk sp_clks[] = {
 	_(UA6,		28,	2,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
 	_(UA7,		28,	4,	2, {"PLLS_200", "PLLS_100", EXT_CLK}),
 	_(GDMAUA),
-	_(CM4,		27,	2,	3, {"PLLS_400", "PLLS_100", "PLLS_200", EXT_CLK}),
+	_(CM4,		Q_CM4|27,	2,	3, {"PLLS_400", "PLLS_100", "PLLS_200", EXT_CLK}),
 	_(STC0),
 	_(STC_AV0),
 	_(STC_AV1),
 	_(STC_AV2),
-	_(AHB_DMA),
+	_(AHB_DMA,	Q_AHB_DMA),
 	_(SAR12B,	0,	0,	0, {"PLLS_100"}),
 	_(DISP_PWM,	27,	5,	1, {EXT_CLK, "PLLS_200"}),
 	_(NICPIII),
@@ -251,6 +317,7 @@ static struct sp_clk sp_clks[] = {
 	_(SPICB3,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
 	_(SPICB4,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
 	_(SPICB5,	27,	8,	2, {"PLLS_400", "PLLS_200", "PLLS_100"}),
+#if 0 // these clocks belong QCTRL, always enabled, not used by user
 	_(PD_AXI_DMA),
 	_(PD_CA55),
 	_(PD_CARD0),
@@ -290,6 +357,7 @@ static struct sp_clk sp_clks[] = {
 	_(PD_CM4),
 	_(PD_HWUA_TX_GDMA),
 	_(QCTRL),
+#endif
 };
 
 #define MEMCTL_HWM	0x03ff0000
@@ -629,6 +697,49 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 	return clk;
 }
 
+static int sp_clk_gate_enable(struct clk_hw *hw)
+{
+	struct clk_gate *gate = to_clk_gate(hw);
+	u32 qctl = (&gate->flags)[1];
+
+	//pr_info("%02x %02x\n", gate->flags, qctl);
+	if (qctl) {
+		qctl--;
+		QREQ(qctl, 1);
+	}
+
+	return clk_gate_ops.enable(hw);
+}
+
+static void sp_clk_gate_disable(struct clk_hw *hw)
+{
+	struct clk_gate *gate = to_clk_gate(hw);
+	u32 qctl = (&gate->flags)[1];
+
+	//pr_info("%02x %02x\n", gate->flags, qctl);
+	if (qctl) {
+		qctl--;
+		// power down loop
+		while (1) {
+			QREQ(qctl, 0);
+			if (!QDENY(qctl)) {
+				while (QACCEPT(qctl)) mdelay(1); // wait Q_STOPPED state
+				break;
+			}
+			QREQ(qctl, 1);
+			while (QDENY(qctl)) mdelay(1); // wait Q_RUN state & retry
+		}
+	}
+
+	clk_gate_ops.disable(hw);
+}
+
+static const struct clk_ops sp_clk_gate_ops = {
+	.enable = sp_clk_gate_enable,
+	.disable = sp_clk_gate_disable,
+	.is_enabled = clk_gate_is_enabled,
+};
+
 static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 {
 	const char * const *parent_names = sp_clk->parent_names[0] ? sp_clk->parent_names : default_parents;
@@ -641,7 +752,7 @@ static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
 		if (!mux)
 			return ERR_PTR(-ENOMEM);
-		mux->reg = pll_regs + sp_clk->mux * 4;
+		mux->reg = pll_regs + (sp_clk->mux & 0xff) * 4;
 		mux->shift = sp_clk->shift;
 		mux->mask = BIT(sp_clk->width) - 1;
 		mux->table = mux_table;
@@ -673,12 +784,13 @@ static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 	gate->reg = clk_regs + (sp_clk->id >> 4 << 2);
 	gate->bit_idx = sp_clk->id & 0x0f;
 	gate->flags = CLK_GATE_HIWORD_MASK;
+	(&gate->flags)[1] = sp_clk->mux >> 8; // pass Q_XXXX
 
 	clk = clk_register_composite(NULL, sp_clk->name,
 				     parent_names, num_parents,
 				     mux ? &mux->hw : NULL, &clk_mux_ops,
 				     NULL, NULL,
-				     &gate->hw, &clk_gate_ops,
+				     &gate->hw, &sp_clk_gate_ops,
 				     CLK_IGNORE_UNUSED);
 	if (IS_ERR(clk)) {
 		kfree(mux);
@@ -702,8 +814,15 @@ static void __init sp_clkc_init(struct device_node *np)
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
-
 	pr_debug("sp-clkc: clk_regs = %llx", (u64)clk_regs);
+
+	qctl_regs = of_iomap(np, 1);
+	if (WARN_ON(!qctl_regs)) {
+		pr_warn("sp-clkc qctl regs missing.\n");
+		return; // -EIO
+	}
+	pr_debug("sp-clkc: qctl_regs = %llx", (u64)qctl_regs);
+
 	/* enable all clks */
 	for (i = 0; i < 12; i++)
 		writel(0xffffffff, clk_regs + i * 4);
