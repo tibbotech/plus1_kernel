@@ -280,7 +280,7 @@ static struct sp_clk sp_clks[] = {
 	_(SECGRP_MAIN),
 	_(DPLL),
 	_(HBUS),
-	_(AUD,		Q_AUD),
+	_(AUD,		Q_AUD,	0,	0, {"PLLA"}),
 	_(AXIM_TOP),
 	_(AXIM_PAI),
 	_(AXIM_PAII),
@@ -527,7 +527,7 @@ static long sp_pll_round_rate(struct clk_hw *hw, ulong rate,
 	struct sp_pll *pll = to_sp_pll(hw);
 	long ret;
 
-	TRACE;
+	//TRACE;
 	//pr_info("round_rate: %lu %lu\n", rate, *prate);
 
 	if (rate == *prate)
@@ -747,6 +747,10 @@ static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 	struct clk_gate *gate;
 	struct clk *clk;
 	int num_parents = sp_clk->width + 1;
+	unsigned long flags = CLK_IGNORE_UNUSED;
+
+	if (sp_clk->id == CA55CUL3 || sp_clk->id == AUD || sp_clk->id == NPU)
+		flags |= CLK_SET_RATE_PARENT;
 
 	if (sp_clk->width) {
 		mux = kzalloc(sizeof(*mux), GFP_KERNEL);
@@ -791,7 +795,7 @@ static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 				     mux ? &mux->hw : NULL, &clk_mux_ops,
 				     NULL, NULL,
 				     &gate->hw, &sp_clk_gate_ops,
-				     CLK_IGNORE_UNUSED);
+				     flags);
 	if (IS_ERR(clk)) {
 		kfree(mux);
 		kfree(gate);
@@ -882,6 +886,7 @@ static void __init sp_clkc_init(struct device_node *np)
 
 #if 0 // test
 	printk("TEST:\n");
+	#if 0
 	clk_set_rate(clks[UA2], 250);
 	pr_info("%-20s%lu\n", "UA2", clk_get_rate(clks[UA2]));
 	clk_set_rate(clks[UA3], 260000000);
@@ -894,8 +899,14 @@ static void __init sp_clkc_init(struct device_node *np)
 	pr_info("%-20s%lu\n", "CA55CORE1", clk_get_rate(clks[CA55CORE1]));
 	//clk_set_rate(clks[CA55CORE0], 250000000);
 	pr_info("%-20s%lu\n", "CA55CORE0", clk_get_rate(clks[CA55CORE0]));
-	//clk_set_rate(clks[PLLC], 800000000);
-	//pr_info("%-20s%lu\n", "PLLC", clk_get_rate(clks[PLLC]));
+	#endif
+	clk_set_rate(clks[NPU], 250000000);
+	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
+	clk_set_rate(clks[NPU], 900000000);
+	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
+	clk_set_rate(clks[PLLN], 900000000);
+	pr_info("%-20s%lu\n", "PLLN", clk_get_rate(clks[PLLN]));
+	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
 #endif
 
 	pr_debug("sp-clkc: of_clk_add_provider");
