@@ -111,8 +111,8 @@ static int sp_adc_read_channel(struct sp_adc_chip *sp_adc, int *val,
 	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0B);	// adc reset
 	reg_temp |= SP_ADC_SRFS;
 	writel(reg_temp, sp_adc->regs + SP_ADC_CFG0B);	// adc reset SRFS low-> high
-	mdelay(1);
-	
+	msleep(1);
+
 	reg_temp = readl(sp_adc->regs + SP_ADC_CFG02);
 	reg_temp |=  SP_ADC_BYPASS;
 	writel(reg_temp, sp_adc->regs + SP_ADC_CFG02);

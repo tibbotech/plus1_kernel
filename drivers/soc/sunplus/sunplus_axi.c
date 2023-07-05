@@ -315,7 +315,7 @@ static struct sp_axi_t *axi_monitor;
 
 #ifdef CONFIG_SOC_SP7350
 /*for AXI monitor*/
-#define AXI_MONITOR_REG_NAME      "axi_mon"
+#define AXI_MONITOR_TOP_REG_NAME  "axi_mon"
 #define AXI_IP_00_REG_NAME		  "axi_0"
 #define AXI_IP_01_REG_NAME		  "axi_1"
 #define AXI_IP_02_REG_NAME		  "axi_2"
@@ -343,6 +343,7 @@ static struct sp_axi_t *axi_monitor;
 #define AXI_IP_24_REG_NAME        "axi_24"
 #define AXI_IP_25_REG_NAME        "axi_25"
 #define AXI_IP_26_REG_NAME        "axi_26"
+#define AXI_MONITOR_PAI_REG_NAME  "axi_27"
 #define AXI_IP_28_REG_NAME        "axi_28"
 #define AXI_IP_29_REG_NAME        "axi_29"
 #define AXI_IP_30_REG_NAME        "axi_30"
@@ -421,6 +422,7 @@ struct sp_axi_t {
 	void __iomem *axi_id24_regs;
 	void __iomem *axi_id25_regs;
 	void __iomem *axi_id26_regs;
+	void __iomem *axi_id27_regs;
 	void __iomem *axi_id28_regs;
 	void __iomem *axi_id29_regs;
 	void __iomem *axi_id30_regs;
@@ -2072,8 +2074,7 @@ static int _sp_axi_get_resources(struct platform_device *pdev, struct sp_axi_t *
 
 #ifdef CONFIG_SOC_SP7350
 		/*for AXI monitor*/
-		ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_REG_NAME);
-
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_TOP_REG_NAME);
 		if (ret) {
 			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
 			return ret;
@@ -2263,6 +2264,13 @@ static int _sp_axi_get_resources(struct platform_device *pdev, struct sp_axi_t *
 		pstSpIOPInfo->axi_id25_regs = (void __iomem *)membase;
 
 		ret = _sp_axi_get_register_base(pdev, &membase, AXI_IP_26_REG_NAME);
+		if (ret) {
+			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
+			return ret;
+		}
+		pstSpIOPInfo->axi_id26_regs = (void __iomem *)membase;
+
+		ret = _sp_axi_get_register_base(pdev, &membase, AXI_MONITOR_PAI_REG_NAME);
 		if (ret) {
 			DBG_ERR("[AXI] %s (%d) ret = %d\n", __func__, __LINE__, ret);
 			return ret;

@@ -324,9 +324,9 @@ static struct trb_ring_s *trb_ring_new(struct device *dev, u32 size)
 	return ring;
 }
 
-static void trb_ring_free(struct trb_ring_s *ring)
+static void trb_ring_free(struct device *dev, struct trb_ring_s *ring)
 {
-	dma_free_coherent(NULL, PAGE_SIZE, ring->trb, ring->pa);
+	dma_free_coherent(dev, PAGE_SIZE, ring->trb, ring->pa);
 	kfree(ring);
 }
 
@@ -455,16 +455,17 @@ static int sp_crypto_probe(struct platform_device *pdev)
 
 	dev->irq = res_irq->start;
 
-	dev->clk = devm_clk_get(&pdev->dev, NULL);
-	ERR_OUT(dev->clk, goto out0, "get clk");
-	ret = clk_prepare_enable(dev->clk);
-	ERR_OUT(ret, goto out0, "enable clk");
-
 	/* reset */
 	dev->rstc = devm_reset_control_get(&pdev->dev, NULL);
-	ERR_OUT(dev->clk, goto out1, "get reset_control");
+	ERR_OUT(dev->clk, goto out0, "get reset_control");
 	ret = reset_control_deassert(dev->rstc);
-	ERR_OUT(dev->clk, goto out1, "deassert reset_control");
+	ERR_OUT(dev->clk, goto out0, "deassert reset_control");
+
+	/* clock */
+	dev->clk = devm_clk_get(&pdev->dev, NULL);
+	ERR_OUT(dev->clk, goto out1, "get clk");
+	ret = clk_prepare_enable(dev->clk);
+	ERR_OUT(ret, goto out1, "enable clk");
 
 	platform_set_drvdata(pdev, dev);
 	reg = dev->reg;
@@ -539,13 +540,13 @@ static int sp_crypto_probe(struct platform_device *pdev)
 	return 0;
 
 out4:
-	trb_ring_free(AES_RING(dev));
+	trb_ring_free(&pdev->dev, AES_RING(dev));
 out3:
-	trb_ring_free(HASH_RING(dev));
+	trb_ring_free(&pdev->dev, HASH_RING(dev));
 out2:
-	reset_control_assert(dev->rstc);
-out1:
 	clk_disable_unprepare(dev->clk);
+out1:
+	reset_control_assert(dev->rstc);
 out0:
 	return ret;
 }
@@ -564,14 +565,14 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	WR(HASHDMA_RCSR, &~AUTODMA_RCSR_EN);	// disable autodma
 	// AES
 	WR(AESDMA_RCSR, | AUTODMA_RCSR_ERF);	// clear event ring
-	WR(AESDMA_CRCR, | AUTODMA_CRCR_CS);		// stop running
-	WR(AESDMA_RCSR, &~AUTODMA_RCSR_EN);		// disable autodma
+	WR(AESDMA_CRCR, | AUTODMA_CRCR_CS);	// stop running
+	WR(AESDMA_RCSR, &~AUTODMA_RCSR_EN);	// disable autodma
 
 	/* free resource */
-	trb_ring_free(AES_RING(dev));
-	trb_ring_free(HASH_RING(dev));
-	reset_control_assert(dev->rstc);
+	trb_ring_free(&pdev->dev, AES_RING(dev));
+	trb_ring_free(&pdev->dev, HASH_RING(dev));
 	clk_disable_unprepare(dev->clk);
+	reset_control_assert(dev->rstc);
 
 	return 0;
 }

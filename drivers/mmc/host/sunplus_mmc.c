@@ -328,7 +328,10 @@ static void spmmc_set_bus_clk(struct spmmc_host *host, int clk)
 	if (clk > f_max)
 		clk = f_max;
 
-	spmmc_pr(INFO, "clk_get_rate(host->clk) %d\n", clk_get_rate(host->clk));
+	#ifdef CONFIG_SOC_SP7350
+	//clk_set_rate(host->clk, 800000000);
+	#endif
+	//spmmc_pr(INFO, "clk_get_rate(host->clk) %d\n", clk_get_rate(host->clk));
 	spmmc_pr(INFO, "set bus clock to %d\n", clk);
 	#ifdef CONFIG_SOC_I143
 	clkdiv = (SPMMC_SYS_CLK/clk)-1;
@@ -1435,8 +1438,15 @@ void spmmc_init_driving(struct spmmc_host *host, u8 level)
 			spmmc_set_pad_driving_strength(host, i, level);
 		break;
 	case SPMMC_MODE_EMMC:
+		#ifdef CONFIG_SOC_SP7350
+		spmmc_set_pad_driving_strength(host, 20, level);
+		for (i = 28; i <= 36; i++)
+			spmmc_set_pad_driving_strength(host, i, level);
+		#endif
+		#ifdef CONFIG_SOC_Q645
 		for (i = 12; i <= 21; i++)
 			spmmc_set_pad_driving_strength(host, i, level);
+		#endif
 		break;
 	case SPMMC_MODE_SD:
 	default:

@@ -1023,6 +1023,7 @@ config SUNPLUS_WATCHDOG
 	tristate "Sunplus watchdog support"
 	depends on SOC_SP7021 || SOC_Q645 || SOC_SP7350
 	select WATCHDOG_CORE
+	select WATCHDOG_NOWAYOUT
 	help
 	  Say Y here to include support for the watchdog timer
 	  in Sunplus SoCs.
