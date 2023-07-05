@@ -44,6 +44,7 @@
 #define IS_PLLL3()	(pll->reg == PLLL3_CTL)
 #define IS_PLLD()	(pll->reg == PLLD_CTL)
 #define IS_PLLH()	(pll->reg == PLLH_CTL)
+#define IS_PLLN()	(pll->reg == PLLN_CTL)
 #define IS_PLLS()	(pll->reg == PLLS_CTL)
 #define IS_PLLHS()	(IS_PLLH() || IS_PLLS())
 
@@ -55,7 +56,7 @@
 #define BNKSEL	0	/* Reg 1 */
 #define PD_N	2
 
-#define FBKDIV_WIDTH	8
+#define FBKDIV_WIDTH	6 /* bit[7:6] reserved */
 #define FBKDIV_MIN	64
 #define FBKDIV_MAX	(FBKDIV_MIN + BIT(FBKDIV_WIDTH) - 1)
 
@@ -66,7 +67,7 @@ struct sp_pll {
 
 	long	brate;
 	u32	idiv; // struct divs[] index
-	u32	fbkdiv; // 64~(64+255)
+	u32	fbkdiv; // 64~(64+63)
 };
 #define to_sp_pll(_hw)	container_of(_hw, struct sp_pll, hw)
 
@@ -445,16 +446,8 @@ struct sp_div {
 static const struct sp_div divs_0[] = {
 	DIV(1, 2, 1), // 1
 	DIV(1, 1, 1), // 2
-	DIV(3, 2, 1), // 3
 	DIV(2, 1, 1), // 4
-	DIV(3, 1, 1), // 6
-	DIV(4, 1, 1), // 8
-	DIV(3, 2, 3), // 9
-	DIV(2, 1, 3), // 12
-	DIV(2, 1, 4), // 16
-	DIV(3, 1, 3), // 18
-	DIV(3, 1, 4), // 24
-	DIV(4, 1, 4), // 32
+	DIV(2, 1, 2), // 8
 };
 
 #define DIVD(prediv, prescl, pstdiv) \
@@ -467,18 +460,12 @@ static const int pstdiv_d[] = {1, 3, 6, 12};
 static const struct sp_div divs_d[] = {
 	DIVD(1, 2, 0),	// 1
 	DIVD(1, 1, 0),	// 2
-	DIVD(3, 2, 0),	// 3
+	DIVD(1, 2, 1),	// 3
 	DIVD(2, 1, 0),	// 4
-	DIVD(3, 1, 0),	// 6
-	DIVD(4, 1, 0),	// 8
-	DIVD(3, 2, 1),	// 9
+	DIVD(1, 1, 1),	// 6
 	DIVD(2, 1, 1),	// 12
-	DIVD(3, 1, 1),	// 18
-	DIVD(4, 1, 1),	// 24
-	DIVD(3, 1, 2),	// 36
-	DIVD(4, 1, 2),	// 48
-	DIVD(3, 1, 3),	// 72
-	DIVD(4, 1, 3),	// 96
+	DIVD(2, 1, 2),	// 24
+	DIVD(2, 1, 3),	// 48
 };
 
 #define divs		(IS_PLLD() ? divs_d : divs_0)
@@ -488,13 +475,14 @@ static ulong sp_pll_calc_div(struct sp_pll *pll, ulong rate)
 {
 	ulong ret = 0, mr = 0;
 	int mi = 0, md = 0x7fffffff;
-	int i = IS_PLLHS() ? 6 : divs_size;
-	const struct sp_div *div = &divs[i - 1];
+	int i = 0;
+	/* PLLH/PLLS pstdiv == 1 */
+	int j = IS_PLLHS() ? 3 : divs_size;
 
 	//pr_info("calc_rate: %lu\n", rate);
 
-	while (i--) {
-		long br = pll->brate * 2 / div->div2;
+	while (i < j) {
+		long br = pll->brate * 2 / divs[i].div2;
 
 		ret = DIV_ROUND_CLOSEST(rate, br);
 		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
@@ -514,7 +502,7 @@ static ulong sp_pll_calc_div(struct sp_pll *pll, ulong rate)
 				md = d;
 			}
 		}
-		div--;
+		i++;
 	}
 
 	pll->idiv = mi;
@@ -570,6 +558,26 @@ static ulong sp_pll_recalc_rate(struct clk_hw *hw,
 	return ret;
 }
 
+static void sp_pll_set_bnksel(struct sp_pll *pll, u32 reg)
+{
+	/* bnksel */
+	u32 fbkdiv = MASK_GET(FBKDIV, FBKDIV_WIDTH, reg) + 64;
+	u32 prediv = MASK_GET(PREDIV, 2, reg) + 1;
+	u32 prescl = MASK_GET(PRESCL, 1, reg) + 1;
+	u32 bnksel;
+	long fvco = pll->brate / prediv * fbkdiv * prescl * (IS_PLLN() ? 2 : 1);
+	if (fvco < 1500000000)		// 1.5G
+		bnksel = 0;
+	else if (fvco < 2000000000)	// 2G
+		bnksel = 1;
+	else if (fvco < 2500000000)	// 2.5G
+		bnksel = 2;
+	else
+		bnksel = 3;
+	//pr_info("write: fvco=%ld bnksel=%d\n", fvco, bnksel);
+	writel(bnksel | 0x00030000, pll->reg + 4);
+}
+
 static int sp_pll_set_rate(struct clk_hw *hw, ulong rate,
 		ulong prate)
 {
@@ -601,6 +609,7 @@ static int sp_pll_set_rate(struct clk_hw *hw, ulong rate,
 			writel(0x80008000, pll_regs + 29 * 4);  // G3.29[15] = 1
 
 		writel(reg, pll->reg);
+		sp_pll_set_bnksel(pll, reg);
 
 		if (IS_PLLC() || IS_PLLL3()) {
 #if 1 // FIXME: clock ready signal always 0 @ ZEBU
@@ -663,6 +672,11 @@ static const struct clk_ops sp_pll_ops = {
 	.set_rate = sp_pll_set_rate,
 };
 
+void pr_clk(struct clk *clk)
+{
+	pr_info("%-20s%lu\n", __clk_get_name(clk), clk_get_rate(clk));
+}
+
 struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 {
 	struct sp_pll *pll;
@@ -683,14 +697,14 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 
 	pll->hw.init = &initd;
 	pll->reg = reg;
-	pll->brate = (reg == PLLN_CTL) ? (XTAL / 2) : XTAL;
+	pll->brate = IS_PLLN() ? (XTAL / 2) : XTAL;
 	spin_lock_init(&pll->lock);
 
 	clk = clk_register(NULL, &pll->hw);
 	if (WARN_ON(IS_ERR(clk))) {
 		kfree(pll);
 	} else {
-		pr_info("%-20s%lu\n", name, clk_get_rate(clk));
+		pr_clk(clk);
 		clk_register_clkdev(clk, NULL, name);
 	}
 
@@ -733,6 +747,38 @@ static void sp_clk_gate_disable(struct clk_hw *hw)
 
 	clk_gate_ops.disable(hw);
 }
+
+#if 0
+void sp_qctrl_test(struct clk *clk)
+{
+	struct clk_hw *hw = __clk_get_hw(clk);
+	struct clk_composite *composite = to_clk_composite(hw);
+	struct clk_gate *gate = to_clk_gate(composite->gate_hw);
+	u32 qctl = (&gate->flags)[1];
+
+TRACE;
+	pr_info("%02x %02x\n", gate->flags, qctl);
+	if (qctl) {
+		qctl--;
+		while (!QACTIVE(qctl)) mdelay(1); // wait QACTIVE high
+		// power down loop
+		while (1) {
+TRACE;
+			QREQ(qctl, 0);
+			if (!QDENY(qctl)) {
+TRACE;
+				while (QACCEPT(qctl)) mdelay(1); // wait Q_STOPPED state
+				break;
+			}
+TRACE;
+			QREQ(qctl, 1);
+			while (QDENY(qctl)) mdelay(1); // wait Q_RUN state & retry
+		}
+	}
+TRACE;
+}
+EXPORT_SYMBOL(sp_qctrl_test);
+#endif
 
 static const struct clk_ops sp_clk_gate_ops = {
 	.enable = sp_clk_gate_enable,
@@ -818,14 +864,14 @@ static void __init sp_clkc_init(struct device_node *np)
 		pr_warn("sp-clkc regs missing.\n");
 		return; // -EIO
 	}
-	pr_debug("sp-clkc: clk_regs = %llx", (u64)clk_regs);
+	pr_debug("sp-clkc: clk_regs = %px", clk_regs);
 
 	qctl_regs = of_iomap(np, 1);
 	if (WARN_ON(!qctl_regs)) {
 		pr_warn("sp-clkc qctl regs missing.\n");
 		return; // -EIO
 	}
-	pr_debug("sp-clkc: qctl_regs = %llx", (u64)qctl_regs);
+	pr_debug("sp-clkc: qctl_regs = %px", qctl_regs);
 
 	/* enable all clks */
 	for (i = 0; i < 12; i++)
@@ -886,27 +932,14 @@ static void __init sp_clkc_init(struct device_node *np)
 
 #if 0 // test
 	printk("TEST:\n");
-	#if 0
-	clk_set_rate(clks[UA2], 250);
-	pr_info("%-20s%lu\n", "UA2", clk_get_rate(clks[UA2]));
-	clk_set_rate(clks[UA3], 260000000);
-	pr_info("%-20s%lu\n", "UA3", clk_get_rate(clks[UA3]));
-	//clk_set_rate(clks[CA55CORE3], 250000000);
-	pr_info("%-20s%lu\n", "CA55CORE3", clk_get_rate(clks[CA55CORE3]));
-	//clk_set_rate(clks[CA55CORE2], 250000000);
-	pr_info("%-20s%lu\n", "CA55CORE2", clk_get_rate(clks[CA55CORE2]));
-	//clk_set_rate(clks[CA55CORE1], 250000000);
-	pr_info("%-20s%lu\n", "CA55CORE1", clk_get_rate(clks[CA55CORE1]));
-	//clk_set_rate(clks[CA55CORE0], 250000000);
-	pr_info("%-20s%lu\n", "CA55CORE0", clk_get_rate(clks[CA55CORE0]));
-	#endif
-	clk_set_rate(clks[NPU], 250000000);
-	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
 	clk_set_rate(clks[NPU], 900000000);
-	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
-	clk_set_rate(clks[PLLN], 900000000);
-	pr_info("%-20s%lu\n", "PLLN", clk_get_rate(clks[PLLN]));
-	pr_info("%-20s%lu\n", "NPU", clk_get_rate(clks[NPU]));
+	pr_clk(clks[NPU]);
+	pr_clk(clks[PLLN]);
+	pr_info("%04x %04x %04x\n", readl(PLLN_CTL), readl(PLLN_CTL+4), readl(PLLN_CTL+8));
+	clk_set_rate(clks[NPU], 500000000);
+	pr_clk(clks[NPU]);
+	pr_clk(clks[PLLN]);
+	pr_info("%04x %04x %04x\n", readl(PLLN_CTL), readl(PLLN_CTL+4), readl(PLLN_CTL+8));
 #endif
 
 	pr_debug("sp-clkc: of_clk_add_provider");
