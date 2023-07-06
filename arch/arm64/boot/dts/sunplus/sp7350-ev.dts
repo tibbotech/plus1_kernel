@@ -1072,6 +1072,8 @@
 		compatible = "sunplus,cb-cdma";
 		reg = <0x0 0xf8000d00 0x0 0x80>;
 		reg-names = "cb_dma";
+		clocks = <&clkc CBDMA0>;
+		resets = <&rstc RST_CBDMA0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		addrwidth = <0x20>;
