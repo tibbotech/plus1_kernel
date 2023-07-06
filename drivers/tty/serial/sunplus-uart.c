@@ -1218,7 +1218,7 @@ static void sunplus_uart_ops_set_termios(struct uart_port *port,
 		clk = port->uartclk;
 	}
 #else
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)//hugo
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	if (baud > 115200) {
 		clk_set_rate(sp_port->clk, CLK_HIGH_UART);
 	} else {
