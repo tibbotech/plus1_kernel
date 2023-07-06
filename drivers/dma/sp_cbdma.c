@@ -17,6 +17,7 @@
 #include <linux/of_dma.h>
 #include <linux/of_platform.h>
 #include <linux/of_irq.h>
+#include <linux/reset.h>
 #include <linux/slab.h>
 #include <linux/clk.h>
 #include <linux/io-64-nonatomic-lo-hi.h>
@@ -335,6 +336,8 @@ struct sp_cbdma_config {
  */
 struct sp_dma_device {
 	void __iomem *regs;
+	struct clk *clk;
+	struct reset_control *rstc;
 	struct device *dev;
 	struct dma_device common;
 	struct sp_dma_chan *chan[SP_DMA_MAX_CHANS_PER_DEVICE];
@@ -1156,6 +1159,12 @@ static int sp_cbdma_reset(struct sp_dma_chan *chan)
 	reg_val = 0x0000003F;
 	dma_write(chan, SP_DMA_INT_FLAG, reg_val);
 
+	/* Set accessible DRAM size for DMA access */
+#if defined(CONFIG_SOC_SP7350)
+	reg_val = 0xF0000000;		/* Accessible DRAM size is 3.75G */
+	dma_write(chan, SP_DMA_SDRAM_SIZE_CONFIG, reg_val);
+#endif
+
 	chan->err = false;
 
 	return 0;
@@ -1976,6 +1985,28 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 	if (IS_ERR(xdev->regs))
 		return PTR_ERR(xdev->regs);
 
+	/* Request and enable clock */
+	xdev->clk = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(xdev->clk)) {
+		dev_err(&pdev->dev, "devm_clk_get fail\n");
+		return PTR_ERR(xdev->clk);
+	}
+
+	err = clk_prepare_enable(xdev->clk);
+	if (err)
+		dev_err(&pdev->dev, "devm_clk_enable fail\n");
+
+	/* Request and deassert reset */
+	xdev->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(xdev->rstc)) {
+		dev_err(&pdev->dev, "devm_reset_control_get fail\n");
+		return PTR_ERR(xdev->rstc);
+	}
+
+	err = reset_control_deassert(xdev->rstc);
+	if (err)
+		dev_err(&pdev->dev, "reset deassert fail\n");
+
 	/* The SRAM buffer of CB-DMA */
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	xdev->sram_addr = 0xFA200000;
@@ -2064,7 +2095,7 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 		goto error;
 	}
 
-	dev_info(&pdev->dev, "Sunplus CBDMA Engine Driver Probed!!\n");
+	dev_info(&pdev->dev, "Sunplus CB DMA engine driver, %d channels\n", xdev->nr_channels);
 
 	return 0;
 
