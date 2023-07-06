@@ -2397,7 +2397,7 @@
 	};
 
 	galcore: galcore@f8140000 {
-		compatible = "vicore,galcore";
+		compatible = "suplus,galcore";
 		reg = <0x0 0xf8140000 0x0 0x20000>;
 		dev_name = "galcore";
 		memory-region = <&npu_reserve>;
