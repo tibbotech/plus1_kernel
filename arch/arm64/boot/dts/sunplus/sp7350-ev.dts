@@ -282,7 +282,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_0>;
@@ -293,7 +294,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_1>;
@@ -304,7 +306,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_2>;
@@ -315,7 +318,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
 			enable-method = "psci";
-			clocks = <&clkc PLLA>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_3>;

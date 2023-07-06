@@ -27,6 +27,7 @@ struct sp7350_cpu_dvfs_info {
 	struct cpumask cpus;
 	struct device *cpu_dev;
 	struct clk *cpu_clk;
+	struct clk *l3_clk;
 	struct regulator *proc_reg;
 	struct list_head list_head;
 };
@@ -101,6 +102,8 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	/* Set the cpu_clk to target rate. */
 	//pr_debug(">>> cpu_clk set_rate to %lu\n", freq_hz);
 	ret = clk_set_rate(cpu_clk, freq_hz);
+	/* Also set l3_clk */
+	ret = clk_set_rate(info->l3_clk, freq_hz * 4 / 5);
 
 	if (info->proc_reg) {
 		/*
@@ -129,6 +132,7 @@ static int sp7350_cpu_dvfs_info_init(struct sp7350_cpu_dvfs_info *info, int cpu)
 	struct device *cpu_dev;
 	struct regulator *proc_reg = ERR_PTR(-ENODEV);
 	struct clk *cpu_clk = ERR_PTR(-ENODEV);
+	struct clk *l3_clk = ERR_PTR(-ENODEV);
 	int ret;
 
 	cpu_dev = get_cpu_device(cpu);
@@ -145,6 +149,17 @@ static int sp7350_cpu_dvfs_info_init(struct sp7350_cpu_dvfs_info *info, int cpu)
 			pr_err("failed to get cpu clk for cpu%d\n", cpu);
 
 		ret = PTR_ERR(cpu_clk);
+		return ret;
+	}
+
+	l3_clk = clk_get(cpu_dev, "PLLL3");
+	if (IS_ERR(l3_clk)) {
+		if (PTR_ERR(l3_clk) == -EPROBE_DEFER)
+			pr_warn("l3 clk for cpu%d not ready, retry.\n", cpu);
+		else
+			pr_err("failed to get l3 clk for cpu%d\n", cpu);
+
+		ret = PTR_ERR(l3_clk);
 		return ret;
 	}
 
@@ -176,6 +191,7 @@ static int sp7350_cpu_dvfs_info_init(struct sp7350_cpu_dvfs_info *info, int cpu)
 	info->cpu_dev = cpu_dev;
 	info->proc_reg = proc_reg;
 	info->cpu_clk = cpu_clk;
+	info->l3_clk = l3_clk;
 
 	return 0;
 
@@ -184,6 +200,8 @@ out_free_resources:
 		regulator_put(proc_reg);
 	if (!IS_ERR(cpu_clk))
 		clk_put(cpu_clk);
+	if (!IS_ERR(l3_clk))
+		clk_put(l3_clk);
 
 	return ret;
 }
@@ -194,6 +212,8 @@ static void sp7350_cpu_dvfs_info_release(struct sp7350_cpu_dvfs_info *info)
 		regulator_put(info->proc_reg);
 	if (!IS_ERR(info->cpu_clk))
 		clk_put(info->cpu_clk);
+	if (!IS_ERR(info->l3_clk))
+		clk_put(info->l3_clk);
 	dev_pm_opp_of_cpumask_remove_table(&info->cpus);
 }
 
