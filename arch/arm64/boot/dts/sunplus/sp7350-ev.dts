@@ -1126,6 +1126,8 @@
 		interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
 		clocks = <&clkc GMAC>;
 		clock-names = "stmmaceth";
+		clock_in_out = "output";
+		clock-frequency = <125000000>;
 		resets = <&rstc RST_GMAC>, <&rstc RST_PD_GMAC>;
 		reset-names = "rstc_gmac", "rstc_pd_gmac";
 		//st,syscon = <&syscfg 0x4>;
@@ -1134,7 +1136,7 @@
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
 		/* Reset time is 20ms, 100ms for rtl8211f */
-		snps,reset-delays-us = <0 20000 100000>;
+		snps,reset-delays-us = <0 30000 150000>;
 		snps,en-tx-lpi-clockgating;
 		phy-mode = "rgmii";
 		mac-mode = "rgmii";
@@ -1142,6 +1144,8 @@
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
 		phy-handle = <&phy0>;
+		tx_delay = <0x25>;
+		rx_delay = <0x15>;
 		//status = "disabled";
 		mdio0 {
 			#address-cells = <1>;
@@ -2397,7 +2401,7 @@
 	};
 
 	galcore: galcore@f8140000 {
-		compatible = "suplus,galcore";
+		compatible = "galcore";
 		reg = <0x0 0xf8140000 0x0 0x20000>;
 		dev_name = "galcore";
 		memory-region = <&npu_reserve>;
