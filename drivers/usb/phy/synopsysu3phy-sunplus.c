@@ -95,7 +95,7 @@ static void typec_gpio(struct work_struct *work)
 
 static void synopsys_u3phy_init(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
+	//struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
 	struct u3phy_regs *dwc3phy_reg;
 	unsigned int result;
