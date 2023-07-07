@@ -161,7 +161,7 @@ static u32 QSTA(u32 n)
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
-static const char *gmac_parents_alt[] = {"PLLS_50", "PLLS_25", "PLLS_2P5"}; // for G5.19[0] == 1
+static const char *gmac_parents_alt[] = {"PLLS_50", "PLLS_25", "PLLS_2P5"}; // for MO_GMAC_PHYSEL G3.23[12] == 1
 
 static struct sp_clk sp_clks[] = {
 	_(SYSTEM,	24,	0,	2, {"PLLS_500", "PLLS_333", "PLLS_400"}),
@@ -819,7 +819,7 @@ static struct clk *clk_register_sp_clk(struct sp_clk *sp_clk)
 				num_parents = ARRAY_SIZE(mux_table_fl);
 				break;
 			case GMAC:
-				if (readl(pll_regs + (64 + 19) * 4) & 1) // G5.19[0]
+				if (readl(pll_regs + 23 * 4) & BIT(12)) // MO_GMAC_PHYSEL G3.23[12]
 					parent_names = gmac_parents_alt;
 				break;
 		}
