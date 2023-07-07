@@ -83,17 +83,7 @@ static void __iomem *qctl_regs;
 
 #define pll_regs	(clk_regs + 31 * 4)	/* G3.0  ~ PLL */
 
-struct sp_clk {
-	const char *name;
-	u32 id;		/* defined in sp-sp7350.h, also for gate (reg_idx<<4)|(shift) */
-	u32 mux;	/* mux reg_idx: based from G3.0 */
-	u32 shift;	/* mux shift */
-	u32 width;	/* mux width */
-	const char *parent_names[MAX_PARENTS];
-};
-
-static const char * const default_parents[] = { EXT_CLK };
-
+/************************************************* QCTL *************************************************/
 // QCTL G30
 #define Q_CA55		0x0100
 #define Q_CSDBG		0x0200
@@ -140,6 +130,10 @@ static const char * const default_parents[] = { EXT_CLK };
 #define Q_RSV_8		0x2b00
 #define Q_CPIOR1	0x2c00
 
+#define QACCEPT(s)	(s & 1)
+#define QACTIVE(s)	(s & 2)
+#define QDENY(s)	(s & 4)
+
 static void QREQ(u32 n, u32 s)
 {
 	u32 shift = (n & 1) ? 0 : 8;
@@ -155,9 +149,49 @@ static u32 QSTA(u32 n)
 	return (readl(r) >> shift) & 7;
 }
 
-#define QACCEPT(n)	(QSTA(n) & 1)
-#define QACTIVE(n)	(QSTA(n) & 2)
-#define QDENY(n)	(QSTA(n) & 4)
+static void sp_qctrl_power_up(u32 qctl)
+{
+	QREQ(qctl, 1);
+}
+
+static void sp_qctrl_power_down(u32 qctl)
+{
+	u32 s; // QCTL[2:0] status
+
+	while (1) {
+		QREQ(qctl, 0);
+		while (1) {
+			s = QSTA(qctl);
+			if (!QACCEPT(s) && !QDENY(s)) { // Q_STOPPED
+				return;
+			}
+			else if (QACCEPT(s) && QDENY(s)) { // Q_DENIED
+				break;
+			}
+		}
+
+		// re-enter Q_RUN
+		QREQ(qctl, 1);
+		while (1) {
+			s = QSTA(qctl);
+			if (QACCEPT(s) && !QDENY(s)) // Q_RUN
+				break;
+		}
+	}
+}
+
+/************************************************ SP_CLK ************************************************/
+
+struct sp_clk {
+	const char *name;
+	u32 id;		/* defined in sp-sp7350.h, also for gate (reg_idx<<4)|(shift) */
+	u32 mux;	/* mux reg_idx: based from G3.0 */
+	u32 shift;	/* mux shift */
+	u32 width;	/* mux width */
+	const char *parent_names[MAX_PARENTS];
+};
+
+static const char * const default_parents[] = { EXT_CLK };
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
@@ -711,16 +745,16 @@ struct clk *clk_register_sp_pll(const char *name, void __iomem *reg)
 	return clk;
 }
 
+/********************************************** SP_CLK_GATE **********************************************/
+
 static int sp_clk_gate_enable(struct clk_hw *hw)
 {
 	struct clk_gate *gate = to_clk_gate(hw);
-	u32 qctl = (&gate->flags)[1];
+	u32 qctl_flag = (&gate->flags)[1];
 
-	//pr_info("%02x %02x\n", gate->flags, qctl);
-	if (qctl) {
-		qctl--;
-		QREQ(qctl, 1);
-	}
+	//pr_info("%02x %02x\n", gate->flags, qctl_flag);
+	if (qctl_flag)
+		sp_qctrl_power_up(qctl_flag - 1);
 
 	return clk_gate_ops.enable(hw);
 }
@@ -728,57 +762,14 @@ static int sp_clk_gate_enable(struct clk_hw *hw)
 static void sp_clk_gate_disable(struct clk_hw *hw)
 {
 	struct clk_gate *gate = to_clk_gate(hw);
-	u32 qctl = (&gate->flags)[1];
+	u32 qctl_flag = (&gate->flags)[1];
 
-	//pr_info("%02x %02x\n", gate->flags, qctl);
-	if (qctl) {
-		qctl--;
-		// power down loop
-		while (1) {
-			QREQ(qctl, 0);
-			if (!QDENY(qctl)) {
-				while (QACCEPT(qctl)) mdelay(1); // wait Q_STOPPED state
-				break;
-			}
-			QREQ(qctl, 1);
-			while (QDENY(qctl)) mdelay(1); // wait Q_RUN state & retry
-		}
-	}
+	//pr_info("%02x %02x\n", gate->flags, qctl_flag);
+	if (qctl_flag)
+		sp_qctrl_power_down(qctl_flag - 1);
 
 	clk_gate_ops.disable(hw);
 }
-
-#if 0
-void sp_qctrl_test(struct clk *clk)
-{
-	struct clk_hw *hw = __clk_get_hw(clk);
-	struct clk_composite *composite = to_clk_composite(hw);
-	struct clk_gate *gate = to_clk_gate(composite->gate_hw);
-	u32 qctl = (&gate->flags)[1];
-
-TRACE;
-	pr_info("%02x %02x\n", gate->flags, qctl);
-	if (qctl) {
-		qctl--;
-		while (!QACTIVE(qctl)) mdelay(1); // wait QACTIVE high
-		// power down loop
-		while (1) {
-TRACE;
-			QREQ(qctl, 0);
-			if (!QDENY(qctl)) {
-TRACE;
-				while (QACCEPT(qctl)) mdelay(1); // wait Q_STOPPED state
-				break;
-			}
-TRACE;
-			QREQ(qctl, 1);
-			while (QDENY(qctl)) mdelay(1); // wait Q_RUN state & retry
-		}
-	}
-TRACE;
-}
-EXPORT_SYMBOL(sp_qctrl_test);
-#endif
 
 static const struct clk_ops sp_clk_gate_ops = {
 	.enable = sp_clk_gate_enable,
