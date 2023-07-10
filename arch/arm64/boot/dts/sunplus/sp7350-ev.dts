@@ -2561,10 +2561,10 @@
 		resets = <&rstc RST_STC_AV3>;
 		timeout-sec = <10>;
 	};
-#if 0
+
 	ipc_test: ipc_test@f8008100 {
 		compatible = "sunplus,sp7350-ipc-test";
-		reg = <0x0 0xf8008100 0x0 0x7C>, <0x0 0xf8008180 0x0 0x80>; /* G258 ~ G259 */
+		reg = <0x0 0xf8008100 0x0 0x7C>, <0x0 0xf8008180 0x0 0x7C>; /* G258 ~ G259 */
 		reg-names = "cpu0_to_cpu2", "cpu2_to_cpu0";
 		interrupt-parent = <&gic>;
 		interrupts =
@@ -2587,7 +2587,6 @@
 			<GIC_SPI 126 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_INT */
 			<GIC_SPI 127 IRQ_TYPE_EDGE_RISING>; /* MAILBOX_to_CM4 CPU1_INT */
 	};
-#endif
 
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";
