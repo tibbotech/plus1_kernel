@@ -562,15 +562,25 @@
 
 			passive = <80>;
 			trips {
-				cpu_trip0: cpu0 {
-					temperature = <70000>;
-			 		hysteresis = <2000>;
-					type = "passive";
-				};
-				cpu_trip1: cpu1 {
-					temperature = <80000>;
-					hysteresis = <2000>;
-					type = "active";
+					cpu_hott: cpu-hott {
+						temperature = <120000>;
+						hysteresis  = <1000>;
+						type = "hot";
+					};
+					cpu_crit: cpu-crit {
+						temperature = <125000>;
+						hysteresis  = <0>;
+						type = "critical";
+					};
+					cpu_trip0: cpu0 {
+						temperature = <70000>;
+			 			hysteresis = <2000>;
+						type = "passive";
+					};
+					cpu_trip1: cpu1 {
+						temperature = <80000>;
+						hysteresis = <2000>;
+						type = "active";
 				};
 			};
 		};
@@ -1039,7 +1049,7 @@
 	adc: adc@f8802f00 {
 		compatible = "sunplus,sp7350-adc";
 		reg = <0x0 0xf8802f00 0x0 0x80>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	pwm: pwm@f8800d80 {
