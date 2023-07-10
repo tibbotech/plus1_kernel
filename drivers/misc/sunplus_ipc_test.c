@@ -36,12 +36,12 @@ struct sp_ipc_test_dev {
 	void __iomem *mailbox2_cpu2_to_cpu0;
 };
 
-#ifdef CONFIG_SOC_Q645
+#if defined(CONFIG_SOC_Q645)
 	#define NUM_IRQ 17
-#endif
-
-#ifdef CONFIG_SOC_SP7350
+#elif defined(CONFIG_SOC_SP7350)
 	#define NUM_IRQ 16
+#else
+	#define NUM_IRQ 18
 #endif
 
 #define IPC_TEST_FUNC_DEBUG
