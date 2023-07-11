@@ -73,17 +73,17 @@ static void typec_gpio(struct work_struct *work)
 		if (gpiod_get_value(u3phy->gpiodir)) {
 			writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-			if (!result)
-				dev_err(u3phy->dev, "reset failed 3\n");
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+			//if (!result)
+			//	dev_dbg(u3phy->dev, "reset failed 3\n");
 				//return -ETIME;
 			u3phy->dir = 1;
 		} else {
 			writel(result | 0x11, &dwc3phy_reg->cfg[5]);
 			u3phy->busy = 1;
-			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-			if (!result)
-				dev_err(u3phy->dev, "reset failed 4\n");
+			result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+			//if (!result)
+			//	dev_dbg(u3phy->dev, "reset failed 4\n");
 				//return -ETIME;
 			u3phy->dir = 0;
 		}
@@ -95,7 +95,7 @@ static void typec_gpio(struct work_struct *work)
 
 static void synopsys_u3phy_init(struct platform_device *pdev)
 {
-	struct device *dev = &pdev->dev;
+	//struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
 	struct u3phy_regs *dwc3phy_reg;
 	unsigned int result;
@@ -112,17 +112,17 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 	result = readl(&dwc3phy_reg->cfg[1]);
 	writel(result | 0x3, &dwc3phy_reg->cfg[1]);
 	u3phy->busy = 1;
-	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-	if (!result)
-		dev_err(dev, "reset failed 1\n");
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+	//if (!result)
+	//	dev_dbg(dev, "reset failed 1\n");
 		//return -ETIME;
 
 	result = readl(&dwc3phy_reg->cfg[5]) & 0xFFE0;
 	writel(result | 0x15, &dwc3phy_reg->cfg[5]);
 	u3phy->busy = 1;
-	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(50));
-	if (!result)
-		dev_err(dev, "reset failed 2\n");
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+	//if (!result)
+	//	dev_dbg(dev, "reset failed 2\n");
 		//return -ETIME;
 	u3phy->dir = 1;
 }
@@ -194,7 +194,7 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	INIT_DELAYED_WORK(&u3phy->typecdir, typec_gpio);
 	synopsys_u3phy_init(pdev);
 	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
-	dev_info(dev, "%s end\n", __func__);
+	//dev_info(dev, "%s end\n", __func__);
 	return 0;
 }
 

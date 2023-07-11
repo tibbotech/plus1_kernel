@@ -36,13 +36,15 @@ struct sp_ipc_test_dev {
 	void __iomem *mailbox2_cpu2_to_cpu0;
 };
 
-#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+#if defined(CONFIG_SOC_Q645)
 	#define NUM_IRQ 17
+#elif defined(CONFIG_SOC_SP7350)
+	#define NUM_IRQ 16
 #else
 	#define NUM_IRQ 18
 #endif
 
-//#define IPC_TEST_FUNC_DEBUG
+#define IPC_TEST_FUNC_DEBUG
 #ifdef IPC_TEST_FUNC_DEBUG
 #define DBG_INFO(fmt, args ...)	pr_info("K_IPC_TEST: " fmt, ## args)
 #else
@@ -56,7 +58,7 @@ static irqreturn_t sp_ipc_test_isr(int irq, void *dev_id)
 	int value;
 
 	DBG_INFO("!!!%d@CPU%d!!!\n", irq, smp_processor_id());
-	value = readl(sp_ipc_test->mailbox2_cpu0_to_cpu2+DIRECT_CPU0_TO_CPU2_7);
+	value = readl(sp_ipc_test->mailbox2_cpu2_to_cpu0+0x10); //normal_trans[0]
 	DBG_INFO("%08x\n", value);
 	return IRQ_HANDLED;
 }
@@ -86,8 +88,19 @@ static int test_set(const char *val, const struct kernel_param *kp)
 		DBG_INFO("%08x\n", readl(sp_ipc_test->mailbox2_cpu0_to_cpu2+DIRECT_CPU0_TO_CPU2_0));
 		break;
 	case 2:
-		writel(value, sp_ipc_test->mailbox2_cpu0_to_cpu2+(4*i));
-		break;
+		if(value == 1) {
+			writel(0x77, sp_ipc_test->mailbox2_cpu0_to_cpu2+(4*4)); //normal_trans[0]
+			writel(0x10, sp_ipc_test->mailbox2_cpu0_to_cpu2+(4*1)); //write lock
+			writel(value, sp_ipc_test->mailbox2_cpu0_to_cpu2+(4*i)); //trigger int
+		}
+		if(value == 2) {
+			value = readl(sp_ipc_test->mailbox2_cpu2_to_cpu0+0x10); //normal_trans[0]
+			if(value == 0x99)
+				DBG_INFO("PASS\n");
+			else
+				DBG_INFO("FAILED\n");
+		}
+	break;
 	}
 	return 0;
 }
@@ -144,13 +157,13 @@ static int sp_ipc_test_probe(struct platform_device *pdev)
 			return -ENODEV;
 		}
 		irq_number = platform_get_irq(pdev, i);
-		DBG_INFO("irq_number=%d\n", irq_number);
+		//DBG_INFO("irq_number=%d\n", irq_number);
 		ret = devm_request_irq(&pdev->dev, irq_number, sp_ipc_test_isr, 0, "sp_ipc_test", dev);
 		if (ret) {
 			DBG_INFO("%s:%d\n", __func__, __LINE__);
 			return -ENODEV;
 		}
-		DBG_INFO("%s:%d %d\n", __func__, __LINE__, ret);
+		//DBG_INFO("%s:%d %d\n", __func__, __LINE__, ret);
 	}
 	return ret;
 

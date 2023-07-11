@@ -129,9 +129,15 @@
 			no-map;
 		};
 
-		/* Video codec reserve memory: 0x780000000 ~ 0x7fffffff, total 128M */
-		video_codec_reserve: vcodec@78000000 {
-			reg = <0x0 0x78000000 0x0 0x8000000>;
+		/* video encoder reserve memory: 0x78000000~0x8bffffff, total 320M */
+		video_codec_encode: vcodec@78000000 {
+			reg = <0x0 0x78000000 0x0 0x14000000>;
+			no-map;
+		};
+
+		/* video decoder reserve memory: 0x8c000000~0x8fffffff, total 64M */
+		video_codec_decode: vcodec@8c000000 {
+			reg = <0x0 0x8c000000 0x0 0x04000000>;
 			no-map;
 		};
 
@@ -282,7 +288,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0000>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_0>;
@@ -293,7 +300,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0100>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_1>;
@@ -304,7 +312,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0200>;
 			enable-method = "psci";
-			clocks = <&clkc PLLC>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_2>;
@@ -315,7 +324,8 @@
 			compatible = "arm,cortex-a55";
 			reg = <0x0300>;
 			enable-method = "psci";
-			clocks = <&clkc PLLA>;
+			clocks = <&clkc PLLC>, <&clkc PLLL3>;
+			clock-names = "PLLC", "PLLL3";
 			proc-supply = <&rt5759_vproc_reg>;
 			operating-points-v2 = <&cpu_opp_table>;
 			next-level-cache = <&L2_3>;
@@ -539,7 +549,7 @@
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	thermal-zones {
@@ -552,15 +562,25 @@
 
 			passive = <80>;
 			trips {
-				cpu_trip0: cpu0 {
-					temperature = <70000>;
-			 		hysteresis = <2000>;
-					type = "passive";
-				};
-				cpu_trip1: cpu1 {
-					temperature = <80000>;
-					hysteresis = <2000>;
-					type = "active";
+					cpu_hott: cpu-hott {
+						temperature = <120000>;
+						hysteresis  = <1000>;
+						type = "hot";
+					};
+					cpu_crit: cpu-crit {
+						temperature = <125000>;
+						hysteresis  = <0>;
+						type = "critical";
+					};
+					cpu_trip0: cpu0 {
+						temperature = <70000>;
+			 			hysteresis = <2000>;
+						type = "passive";
+					};
+					cpu_trip1: cpu1 {
+						temperature = <80000>;
+						hysteresis = <2000>;
+						type = "active";
 				};
 			};
 		};
@@ -1029,7 +1049,7 @@
 	adc: adc@f8802f00 {
 		compatible = "sunplus,sp7350-adc";
 		reg = <0x0 0xf8802f00 0x0 0x80>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	pwm: pwm@f8800d80 {
@@ -1072,6 +1092,8 @@
 		compatible = "sunplus,cb-cdma";
 		reg = <0x0 0xf8000d00 0x0 0x80>;
 		reg-names = "cb_dma";
+		clocks = <&clkc CBDMA0>;
+		resets = <&rstc RST_CBDMA0>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		addrwidth = <0x20>;
@@ -1120,6 +1142,8 @@
 		interrupt-names = "macirq", "eth_wake_irq", "eth_lpi";
 		clocks = <&clkc GMAC>;
 		clock-names = "stmmaceth";
+		clock_in_out = "output";
+		clock-frequency = <125000000>;
 		resets = <&rstc RST_GMAC>, <&rstc RST_PD_GMAC>;
 		reset-names = "rstc_gmac", "rstc_pd_gmac";
 		//st,syscon = <&syscfg 0x4>;
@@ -1128,7 +1152,7 @@
 		snps,mixed-burst;
 		snps,ps-speed = <1000>;
 		/* Reset time is 20ms, 100ms for rtl8211f */
-		snps,reset-delays-us = <0 20000 100000>;
+		snps,reset-delays-us = <0 30000 150000>;
 		snps,en-tx-lpi-clockgating;
 		phy-mode = "rgmii";
 		mac-mode = "rgmii";
@@ -1136,6 +1160,8 @@
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
 		phy-handle = <&phy0>;
+		tx_delay = <0x25>;
+		rx_delay = <0x15>;
 		//status = "disabled";
 		mdio0 {
 			#address-cells = <1>;
@@ -1286,9 +1312,14 @@
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <160000000>;
 		disable-wp;
 		cap-sd-highspeed;
+		sd-uhs-sdr12;
+		sd-uhs-sdr25;
+		sd-uhs-sdr50;
+		sd-uhs-sdr104;
+		sd-uhs-ddr50;
 		no-sdio;
 		no-mmc;
 	};
@@ -1303,17 +1334,22 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <160000000>;
 		non-removable;
 		disable-wp;
 		cap-sd-highspeed;
+		sd-uhs-sdr12;
+		sd-uhs-sdr25;
+		sd-uhs-sdr50;
+		sd-uhs-sdr104;
+		sd-uhs-ddr50;
 		cap-sdio-irq;
 		keep-power-in-suspend;
 		no-sd;
 		no-mmc;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 #if 0
@@ -2382,21 +2418,26 @@
 
 	video_codec_emem {
 		compatible = "sunplus,sp7350-hantro-emem";
-		memory-region = <&video_codec_reserve>;
+		memory-region = <&video_codec_encode>;
 	};
 
 	video_codec_dmem {
 		compatible = "sunplus,sp7350-hantro-dmem";
-		memory-region = <&video_codec_reserve>;
+		memory-region = <&video_codec_decode>;
 	};
 
 	galcore: galcore@f8140000 {
-		compatible = "vicore,galcore";
+		compatible = "galcore";
+		reg = <0x0 0xf8140000 0x0 0x20000>;
 		dev_name = "galcore";
 		memory-region = <&npu_reserve>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 165 IRQ_TYPE_LEVEL_HIGH>;
-		reg = <0x0 0xf8140000 0x0 0x20000>;
+		clocks = <&clkc NPU>;
+		clock-names = "clk_vip9000";
+		clock-frequency = <900000000>;
+		resets = <&rstc RST_NPU>;
+		reset-names = "rstc_vip9000";
 		status = "okay";
 	};
 
@@ -2530,10 +2571,10 @@
 		resets = <&rstc RST_STC_AV3>;
 		timeout-sec = <10>;
 	};
-#if 0
+
 	ipc_test: ipc_test@f8008100 {
 		compatible = "sunplus,sp7350-ipc-test";
-		reg = <0x0 0xf8008100 0x0 0x7C>, <0x0 0xf8008180 0x0 0x80>; /* G258 ~ G259 */
+		reg = <0x0 0xf8008100 0x0 0x7C>, <0x0 0xf8008180 0x0 0x7C>; /* G258 ~ G259 */
 		reg-names = "cpu0_to_cpu2", "cpu2_to_cpu0";
 		interrupt-parent = <&gic>;
 		interrupts =
@@ -2556,7 +2597,6 @@
 			<GIC_SPI 126 IRQ_TYPE_EDGE_RISING>, /* MAILBOX_to_CA55 CPU0_INT */
 			<GIC_SPI 127 IRQ_TYPE_EDGE_RISING>; /* MAILBOX_to_CM4 CPU1_INT */
 	};
-#endif
 
 	pctl: pinctrl@f8800080 {
 		compatible = "sunplus,sp7350-pctl";

@@ -13,9 +13,6 @@
  *	2.Get the device parameter from sp_paranand_ids.c rather
  * 	than nand_attr[].
  *
- * FIXME:
- *	1.Expect bad block management properly work after removing
- *	the option NAND_SKIP_BBTSCAN | NAND_NO_BBM_QUIRK.
  */
 #include <linux/io.h>
 #include <linux/module.h>
@@ -39,6 +36,8 @@
 static int startchn = 0;
 module_param(startchn, int, 0644);
 
+extern const struct nand_flash_dev sp_pnand_ids[];
+
 static struct sp_pnandchip_attr nand_attr[] = {
 	/*
 	 * Manufacturer ID, spare size, ECC bits, ECC base shift,
@@ -51,7 +50,7 @@ static struct sp_pnandchip_attr nand_attr[] = {
 	{"GigaDevice 9FU4G8F4BMGI",
 		256, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 4K SLC */
 	{"Samsung K9GBG08U0B",
-		1024, 2, 9, 4, 128, 1, LEGACY_FLASH},	/* 4K SLC */
+		1024, 2, 9, 4, 128, 1, LEGACY_FLASH},	/* 8K MLC */
 };
 
 /* Note: The unit of tWPST/tRPST/tWPRE/tRPRE field of sp_pnand_chip_timing is ns.
@@ -1359,11 +1358,11 @@ static int sp_pnand_attach_chip(struct nand_chip *chip)
 	if (data->dmac) {
 		ecc->read_page = sp_pnand_read_page_by_dma;
 		ecc->write_page = sp_pnand_write_page_by_dma;
-		printk("Transfer: DMA\n");
+		DBGLEVEL1(sp_pnand_dbg("Transfer: DMA\n"));
 	} else {
 		ecc->read_page = sp_pnand_read_page;
 		ecc->write_page = sp_pnand_write_page;
-		printk("Transfer: PIO\n");
+		DBGLEVEL1(sp_pnand_dbg("Transfer: PIO\n"));
 	}
 
 	mtd_set_ooblayout(mtd, &sp_pnand_ooblayout_ops);
@@ -1522,6 +1521,12 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	sel = 0;
 #elif defined (CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI)
 	sel = 1;
+#elif defined (CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI)
+	sel = 2;
+#elif defined (CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
+	sel = 3;
+else
+	sel = -1;
 #endif
 
 	if (sel != -1) {
@@ -1595,7 +1600,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	for (i = startchn; i < MAX_CHANNEL; i++) {
 		printk(KERN_INFO "Scan Channel %d...\n", i);
 		data->cur_chan = i;
-		if (!nand_scan(chip, MAX_CE)) {
+		if (!nand_scan_with_ids(chip, MAX_CE, (struct nand_flash_dev *)sp_pnand_ids)) {
 			if (((max_sz - size) > mtd->size)
 			    && ((chipnum + nanddev_ntargets(&chip->base)) <= NAND_MAX_CHIPS)) {
 				data->valid_chip[i] = nanddev_ntargets(&chip->base);
