@@ -240,6 +240,9 @@ static int hnp_polling_watchdog(void *arg)
 		if (val == SP_OTG_STATE_A_HOST) {
 			otg_host->otg.otg->host->is_b_host = 0;
 
+			if (hnp_process == true)
+				hnp_process = false;
+
  			if (find_child == false) {
 				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
 				if (!udev) {
@@ -253,8 +256,10 @@ static int hnp_polling_watchdog(void *arg)
 					continue;
 				}
 
-				if (udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
-										USB_CLASS_MASS_STORAGE) {
+				if ((udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
+										USB_CLASS_MASS_STORAGE) ||
+					(udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
+										USB_CLASS_VIDEO)) {
 					msleep(30);
 					continue;
 				}
@@ -328,6 +333,7 @@ static int hnp_polling_watchdog(void *arg)
 						}
 
 						otg_start_hnp(otg_phy->otg);
+						hnp_process = true;
 						msleep(30);
 					} else {
 					  	msleep(1000);
@@ -335,6 +341,11 @@ static int hnp_polling_watchdog(void *arg)
 				}
 			}
 		} else if (val == SP_OTG_STATE_B_IDLE) {
+			if (hnp_process == true)
+				hnp_process = false;
+
+			find_child = false;
+
 			if (start_srp == false) {
 				val = readl(&otg_host->regs_otg->otg_device_ctrl);
 				val &= ~B_VBUS_REQ;
@@ -346,12 +357,6 @@ static int hnp_polling_watchdog(void *arg)
 		} else if (val == SP_OTG_STATE_B_PERIPHERAL) {
 			otg_host->otg.otg->host->is_b_host = 1;
 			start_srp = false;
-			find_child = false;
-			msleep(30);
-		} else if (val == SP_OTG_STATE_B_HOST) {
-			if (hnp_process == true)
-				hnp_process = false;
-
 			find_child = false;
 			msleep(30);
 		} else {
