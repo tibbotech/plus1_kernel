@@ -549,7 +549,7 @@
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	thermal-zones {
@@ -1312,9 +1312,14 @@
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <160000000>;
 		disable-wp;
 		cap-sd-highspeed;
+		sd-uhs-sdr12;
+		sd-uhs-sdr25;
+		sd-uhs-sdr50;
+		sd-uhs-sdr104;
+		sd-uhs-ddr50;
 		no-sdio;
 		no-mmc;
 	};
@@ -1329,17 +1334,22 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;
 		bus-width = <4>;
-		max-frequency = <52000000>;
+		max-frequency = <160000000>;
 		non-removable;
 		disable-wp;
 		cap-sd-highspeed;
+		sd-uhs-sdr12;
+		sd-uhs-sdr25;
+		sd-uhs-sdr50;
+		sd-uhs-sdr104;
+		sd-uhs-ddr50;
 		cap-sdio-irq;
 		keep-power-in-suspend;
 		no-sd;
 		no-mmc;
 		#address-cells = <1>;
 		#size-cells = <0>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 #if 0

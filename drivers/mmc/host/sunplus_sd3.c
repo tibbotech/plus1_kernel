@@ -214,12 +214,13 @@ static void spsdc_set_bus_clk(struct spsdc_host *host, int clk)
 		clk = f_min;
 	if (clk > f_max)
 		clk = f_max;
-	if (host->soc_clk != soc_clk)
-		spsdc_pr(host->mode, ERROR, "CCF clock error CCF_clk : %d source_clk : %d", soc_clk, host->soc_clk);
+	if (host->soc_clk != soc_clk){
+		clk_set_rate(host->clk, host->soc_clk);
+		soc_clk  = clk_get_rate(host->clk);
+	}
 
 	clkdiv = (soc_clk/clk)-1;
-
-	if ((clk_get_rate(host->clk) % clk) > (clk/10)) {
+	if ((soc_clk % clk) > (clk/10)) {
 		clkdiv++;
 	} 
 	spsdc_pr(host->mode, INFO, "clk to %d,SYS_CLK %d,clkdiv %d real_clk %d\n", clk,
@@ -1203,35 +1204,35 @@ static const struct spsdc_compatible sp_sdio_1v8_645_compat = {
 
 static const struct spsdc_compatible sp_sd_654_compat = {
 	.mode = SPSDC_MODE_SD,
+	.source_clk = SPSDC_CLK_800M,
+	.vol_mode = SPSDC_SWITCH_MODE,
+
+};
+
+static const struct spsdc_compatible sp_sd_654_loscr_compat = {
+	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
 	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 static const struct spsdc_compatible sp_sdio_654_compat = {
 	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_360M,
+	.source_clk = SPSDC_CLK_800M,
 	.vol_mode = SPSDC_SWITCH_MODE,
 
+};
+
+static const struct spsdc_compatible sp_sdio_654_loscr_compat = {
+	.mode = SPSDC_MODE_SDIO,
+	.source_clk = SPSDC_CLK_360M,
+	.vol_mode = SPSDC_SWITCH_MODE,
 };
 
 static const struct spsdc_compatible sp_sdio_1v8_654_compat = {
 	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_360M,
+	.source_clk = SPSDC_CLK_800M,
 	.vol_mode = SPSDC_1V8_MODE,
 };
-
-static const struct spsdc_compatible sp_sd_143_compat = {
-	.mode = SPSDC_MODE_SD,
-	.source_clk = SPSDC_CLK_220M,
-	.vol_mode = SPSDC_SWITCH_MODE,
-};
-
-static const struct spsdc_compatible sp_sdio_143_compat = {
-	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_220M,
-	.vol_mode = SPSDC_SWITCH_MODE,
-};
-
 
 static const struct of_device_id spsdc_of_table[] = {
 	{
@@ -1251,8 +1252,16 @@ static const struct of_device_id spsdc_of_table[] = {
 		.data = &sp_sd_654_compat,
 	},
 	{
+		.compatible = "sunplus,sp7350-loscr-card",
+		.data = &sp_sd_654_loscr_compat,
+	},
+	{
 		.compatible = "sunplus,sp7350-sdio",
 		.data = &sp_sdio_654_compat,
+	},
+	{
+		.compatible = "sunplus,sp7350-loscr-sdio",
+		.data = &sp_sdio_654_loscr_compat,
 	},
 	{
 		.compatible = "sunplus,sp7350-1v8-sdio",
@@ -1374,28 +1383,17 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	spin_lock_init(&host->lock);
 	mutex_init(&host->mrq_lock);
 	tasklet_init(&host->tsklet_finish_req, tsklet_func_finish_req, (unsigned long)host);
-	mmc->ops = &spsdc_ops;
-	mmc->f_min = SPSDC_MIN_CLK;
-	if (mmc->f_max > SPSDC_MAX_CLK) {
-		spsdc_pr(host->mode, DEBUG, "max-frequency is too high, set it to %d\n", SPSDC_MAX_CLK);
-		mmc->f_max = SPSDC_MAX_CLK;
-	}
-	//mmc->ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34;
-	mmc->ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
-
-
 	dev_mode = of_device_get_match_data(&pdev->dev);
 	host->vol_mode = dev_mode->vol_mode;
 	host->mode = dev_mode->mode;
 	spsdc_select_mode(host);
 	host->soc_clk = dev_mode->source_clk;
-
-	mmc->caps |= MMC_CAP_4_BIT_DATA  | MMC_CAP_SD_HIGHSPEED
-		    | MMC_CAP_UHS_SDR12 | MMC_CAP_UHS_SDR25
-		    | MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50;
-			//| MMC_CAP_UHS_SDR104 | MMC_CAP_UHS_SDR50 | MMC_CAP_UHS_DDR50 ;
+	clk_set_rate(host->clk, host->soc_clk);
 
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
+	mmc->ops = &spsdc_ops;
+	mmc->f_min = SPSDC_MIN_CLK;
+	mmc->ocr_avail |= MMC_VDD_32_33 | MMC_VDD_33_34 | MMC_VDD_165_195;
 	/* Host controller supports up to "SPSDC_MAX_DMA_MEMORY_SECTORS",
 	 * a.k.a. max scattered memory segments per request
 	 */
