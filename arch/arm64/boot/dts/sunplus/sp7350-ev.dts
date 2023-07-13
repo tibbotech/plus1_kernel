@@ -1422,12 +1422,12 @@
 
 	spsoc-pcm-driver {
 		compatible = "sunplus,audio-pcm";
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	aud-codec {
 		compatible = "sunplus,audio-codec";
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	audio: audio@f8800480 {
@@ -1439,7 +1439,7 @@
 		resets = <&rstc RST_AUD>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&aud_au_adc_data0_pins &aud_dac_xck_pins>, <&aud_adc1_data0_pins &aud_au1_ck_pins>, <&aud_adc2_data0_pins &aud_au2_ck_pins>;
-		status = "disabled";
+		//status = "disabled";
 	};
 
 	extcon_dwc3drd: extcon_usb3 {
