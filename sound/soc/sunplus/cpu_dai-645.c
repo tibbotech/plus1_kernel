@@ -256,8 +256,7 @@ void sp_i2s_spdif_tx_dma_en(int	dev_no,	bool on)
 		pr_err("no support channel\n");
 	}
 
-	pr_info("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
-	pr_info("aud_enable 0x%x\n", regs0->aud_enable);
+	pr_info("tx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
 }
 
 void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
@@ -321,13 +320,12 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 			regs0->aud_enable	&= (~aud_enable_spdif_c);
 		}
 	}
-	pr_info("aud_fifo_enable 0x%x\n", regs0->aud_fifo_enable);
-	pr_info("aud_enable 0x%x\n", regs0->aud_enable);
+	pr_info("rx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
 }
 
 static int aud_cpudai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
 {
-	dev_info(dai->dev, "%s IN\n", __func__);
+	dev_dbg(dai->dev, "%s IN\n", __func__);
 	return 0;
 }
 
@@ -431,7 +429,7 @@ static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_
 {
 	int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 
-	dev_info(dai->dev, "%s IN\n", __func__);
+	dev_dbg(dai->dev, "%s IN\n", __func__);
 	if (capture)
 		sp_i2s_spdif_rx_dma_en(substream->pcm->device, false);
 	else

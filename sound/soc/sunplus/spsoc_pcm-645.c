@@ -450,7 +450,7 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 	struct spsoc_runtime_data *prtd;
 	int ret = 0;
 
-	pr_info("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
+	pr_debug("%s IN, stream device num: %d\n", __func__, substream->pcm->device);
 #if IS_ENABLED(CONFIG_SND_SOC_AUD645)
 	if ((substream->pcm->device == 4) && (substream->stream == 1))
 		hw_test();
@@ -482,7 +482,7 @@ static int spsoc_pcm_open(struct snd_soc_component *component, struct snd_pcm_su
 	hrtimer_init(&prtd->hrt, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	prtd->hrt.function = snd_hrtimer_callback;
 	tasklet_init(&prtd->tasklet, hrtimer_pcm_tasklet, (unsigned long)prtd);
-	pr_info("%s OUT\n", __func__);
+	pr_debug("%s OUT\n", __func__);
 out:
 	return ret;
 }
@@ -491,7 +491,7 @@ static int spsoc_pcm_close(struct snd_soc_component *component, struct snd_pcm_s
 {
 	struct spsoc_runtime_data *prtd = substream->runtime->private_data;
 
-	dev_info(component->dev, "%s IN\n", __func__);
+	dev_dbg(component->dev, "%s IN\n", __func__);
 	hrtimer_cancel(&prtd->hrt);
 	kfree(prtd);
 	return 0;
