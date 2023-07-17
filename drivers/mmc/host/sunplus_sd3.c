@@ -281,7 +281,7 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		break;
 	case MMC_TIMING_UHS_SDR104:
 		if(host->mode == SPSDC_MODE_SDIO)
-			reg_timing.val = 0x666330;
+			reg_timing.val = 0x777110;	// 160M : 0x666330;
 		else
 			reg_timing.val = 0x666330;
 		timing_name = "sd uhs SDR104";
@@ -685,14 +685,8 @@ done:
 static void spsdc_controller_init(struct spsdc_host *host)
 {
 	u32 value;
-	int ret = reset_control_assert(host->rstc);
 
-	if (!ret) {
-		msleep(1);
-		ret = reset_control_deassert(host->rstc);
-	}
-	if (ret)
-		spsdc_pr(host->mode, WARNING, "Failed to reset SD controller!\n");
+	spsdc_sw_reset(host);
 	value = readl(&host->base->card_mediatype_srcdst);
 	value = bitfield_replace(value, SPSDC_MediaType_w03, 3, SPSDC_MEDIA_SD);
 	writel(value, &host->base->card_mediatype_srcdst);
@@ -1372,11 +1366,11 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	if (ret)
 		goto probe_free_host;
 
-	ret = clk_prepare(host->clk);
-
+	ret = reset_control_deassert(host->rstc);
 	if (ret)
 		goto probe_free_host;
-	ret = clk_enable(host->clk);
+
+	ret = clk_prepare_enable(host->clk);
 	if (ret)
 		goto probe_clk_unprepare;
 
@@ -1427,8 +1421,8 @@ static int spsdc_drv_remove(struct platform_device *dev)
 
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	mmc_remove_host(host->mmc);
-	clk_disable(host->clk);
-	clk_unprepare(host->clk);
+	clk_disable_unprepare(host->clk);
+	reset_control_assert(host->rstc);
 	pm_runtime_disable(&dev->dev);
 	platform_set_drvdata(dev, NULL);
 	mmc_free_host(host->mmc);
@@ -1445,7 +1439,7 @@ static int spsdc_drv_suspend(struct platform_device *dev, pm_message_t state)
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	mutex_lock(&host->mrq_lock); /* Make sure that no one is holding the controller */
 	mutex_unlock(&host->mrq_lock);
-	clk_disable(host->clk);
+	clk_disable_unprepare(host->clk);
 	return 0;
 }
 
@@ -1454,7 +1448,7 @@ static int spsdc_drv_resume(struct platform_device *dev)
 	struct spsdc_host *host;
 
 	host = platform_get_drvdata(dev);
-	return clk_enable(host->clk);
+	return clk_prepare_enable(host->clk);
 }
 
 #ifdef CONFIG_PM
@@ -1466,7 +1460,7 @@ static int spsdc_pm_suspend(struct device *dev)
 	host = dev_get_drvdata(dev);
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	pm_runtime_force_suspend(dev);
-	clk_disable(host->clk);	
+	clk_disable_unprepare(host->clk);	
 	return 0;
 }
 
@@ -1477,7 +1471,7 @@ static int spsdc_pm_resume(struct device *dev)
 	
 	host = dev_get_drvdata(dev);
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);	
-	ret = clk_enable(host->clk);
+	ret = clk_prepare_enable(host->clk);
 	if (ret)
 		return ret;
 	spsdc_controller_init(host);
@@ -1494,7 +1488,7 @@ static int spsdc_pm_runtime_suspend(struct device *dev)
 	host = dev_get_drvdata(dev);
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	if (__clk_is_enabled(host->clk))
-		clk_disable(host->clk);
+		clk_disable_unprepare(host->clk);
 	return 0;
 }
 
@@ -1515,7 +1509,7 @@ static int spsdc_pm_runtime_resume(struct device *dev)
 			return 0;
 		}
 	}
-	return clk_enable(host->clk);
+	return clk_prepare_enable(host->clk);
 }
 #endif /* ifdef CONFIG_PM_RUNTIME_SD */
 
