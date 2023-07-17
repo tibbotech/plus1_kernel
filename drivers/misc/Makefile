@@ -3,9 +3,10 @@
 # Makefile for misc devices that really don't fit anywhere else.
 #
 
-obj-y += sunplus_ipc_test.o
+#obj-y += sunplus_ipc_test.o
 #obj-y += sunplus_ipc_ev71_test.o
 #obj-y += sunplus_dm_test.o
+#obj-y += sunplus_timer_test.o
 obj-$(CONFIG_IBM_ASM)		+= ibmasm/
 obj-$(CONFIG_IBMVMC)		+= ibmvmc.o
 obj-$(CONFIG_AD525X_DPOT)	+= ad525x_dpot.o

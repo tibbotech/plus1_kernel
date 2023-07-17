@@ -18,7 +18,7 @@ void __iomem *codecaudio_base;
 //================================================================
 static int aud_dai_startup(struct snd_pcm_substream *substream,	struct snd_soc_dai *dai)
 {
-	dev_info(dai->dev, "%s IN\n", __func__);
+	dev_dbg(dai->dev, "%s IN\n", __func__);
 	return 0;
 }
 
