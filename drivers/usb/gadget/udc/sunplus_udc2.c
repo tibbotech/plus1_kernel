@@ -70,7 +70,7 @@ static const struct {
 
 static struct sp_udc *sp_udc_arry[2] = {NULL, NULL};
 
-/* test mode, When test mode is enabled, sof is not detected */
+/* test mode, When test mode is enabled for USB IF Test, sof is not detected */
 static uint test_mode;
 module_param(test_mode, uint, 0644);
 
@@ -563,7 +563,6 @@ static void sp_udc_nuke(struct sp_udc *udc, struct udc_endpoint *ep, int status)
 	spin_unlock_irqrestore(&ep->lock, flags);
 }
 
-#if 0
 static void udc_sof_polling(struct timer_list *t)
 {
 	uint32_t new_frame_num = 0;
@@ -607,7 +606,6 @@ static void udc_before_sof_polling(struct timer_list *t)
 	udc->frame_num = new_frame_num;
 	mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
 }
-#endif
 
 static uint32_t check_trb_status(struct trb_data *t_trb)
 {
@@ -936,10 +934,8 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			if (udc->driver->reset)
 				udc->driver->reset(&udc->gadget);
 
-#if 0
 			if (!test_mode)
 				mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
-#endif
 
 			break;
 		case UDC_SUSPEND:
@@ -2900,13 +2896,11 @@ static int sp_udc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, udc);
 	tasklet_init(&udc->event_task, (pfunc) handle_event, (unsigned long)udc);
 
-#if 0
 	timer_setup(&udc->sof_polling_timer, udc_sof_polling, 0);
 	udc->sof_polling_timer.expires = jiffies + HZ / 20;
 
 	timer_setup(&udc->before_sof_polling_timer, udc_before_sof_polling, 0);
 	udc->before_sof_polling_timer.expires = jiffies + 1 * HZ;
-#endif
 
 	udc->bus_reset_finish = false;
 	udc->frame_num = 0;
@@ -3033,10 +3027,8 @@ static int sp_udc_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	sp_udc_arry[udc->port_num] = NULL;
 
-#if 0
 	del_timer(&udc->before_sof_polling_timer);
 	del_timer(&udc->sof_polling_timer);
-#endif
 
 	kfree(udc);
 
