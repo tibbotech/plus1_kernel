@@ -2881,6 +2881,24 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->def_run_full_speed = true;
 #endif
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	udc->otg_caps = kzalloc(sizeof(struct usb_otg_caps), GFP_KERNEL);
+	if (!udc->otg_caps) {
+		UDC_LOGE("%s.%d,malloc otg_caps fail\n", __func__, __LINE__);
+		return -ENOMEM;
+	}
+
+	udc->otg_caps->otg_rev = 0x0130;	/* OTG 1.3 */
+	udc->otg_caps->hnp_support = true;
+	udc->otg_caps->srp_support = true;
+	udc->otg_caps->adp_support = false;
+	udc->gadget.otg_caps = udc->otg_caps;
+
+	#ifdef CONFIG_USB_OTG
+	udc->gadget.is_otg = true;
+	#endif
+#endif
+
 	sp_udc_ep_init(udc);
 
 	retval = request_irq(udc->irq_num, sp_udc_irq,

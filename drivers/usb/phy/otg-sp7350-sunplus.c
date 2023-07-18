@@ -219,6 +219,9 @@ struct usb_phy_io_ops sp_phy_ios = {
 static int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
+#ifdef	CONFIG_USB_OTG
+	struct usb_otg_descriptor *desc = NULL;
+#endif
 	struct usb_device *udev = NULL;
 	struct usb_hcd *hcd = NULL;
 	struct usb_phy *otg_phy = NULL;
@@ -256,13 +259,19 @@ static int hnp_polling_watchdog(void *arg)
 					continue;
 				}
 
-				if ((udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
-										USB_CLASS_MASS_STORAGE) ||
-					(udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
-										USB_CLASS_VIDEO)) {
+#ifdef	CONFIG_USB_OTG
+				ret = __usb_get_extra_descriptor(udev->rawdescriptors[0],
+								 le16_to_cpu(udev->config[0].desc.wTotalLength),
+								 USB_DT_OTG, (void **) &desc, sizeof(*desc));
+
+				if (ret || !(desc->bmAttributes & USB_OTG_HNP)) {
 					msleep(30);
 					continue;
 				}
+#else
+				msleep(30);
+				continue;
+#endif
 
 				targeted = is_targeted(udev);
 				hcd = bus_to_hcd(udev->bus);
