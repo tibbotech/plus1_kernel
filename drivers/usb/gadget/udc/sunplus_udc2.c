@@ -2799,6 +2799,15 @@ static int sp_udc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	udc->otg_caps = kzalloc(sizeof(struct usb_otg_caps), GFP_KERNEL);
+	if (!udc->otg_caps) {
+		UDC_LOGE("%s.%d,malloc otg_caps fail\n", __func__, __LINE__);
+		retval = -ENOMEM;
+		goto err_free1;
+	}
+#endif
+
 #if 0
 	udc->irq_num = irq_of_parse_and_map(pdev->dev.of_node, 0);
 #else
@@ -2809,23 +2818,24 @@ static int sp_udc_probe(struct platform_device *pdev)
 	uphy[udc->port_num] = devm_phy_get(&pdev->dev, "uphy");
 	if (IS_ERR(uphy[udc->port_num])) {
 		dev_err(&pdev->dev, "no USB phy%d configured\n", udc->port_num);
-		return PTR_ERR(uphy[udc->port_num]);
+		retval = PTR_ERR(uphy[udc->port_num]);
+		goto err_free2;
 	}
 
 	udc->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(udc->clock)) {
 		UDC_LOGE("not found clk source\n");
-
-		return PTR_ERR(udc->clock);
+		retval = PTR_ERR(udc->clock);
+		goto err_free2;
 	}
 
 	retval = phy_power_on(uphy[udc->port_num]);
 	if (retval)
-		return retval;
+		goto err_free2;
 
 	retval = phy_init(uphy[udc->port_num]);
 	if (retval)
-		return retval;
+		goto err_free2;
 
 	retval = clk_prepare_enable(udc->clock);
 	if (retval)
@@ -2882,12 +2892,6 @@ static int sp_udc_probe(struct platform_device *pdev)
 #endif
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
-	udc->otg_caps = kzalloc(sizeof(struct usb_otg_caps), GFP_KERNEL);
-	if (!udc->otg_caps) {
-		UDC_LOGE("%s.%d,malloc otg_caps fail\n", __func__, __LINE__);
-		return -ENOMEM;
-	}
-
 	udc->otg_caps->otg_rev = 0x0130;	/* OTG 1.3 */
 	udc->otg_caps->hnp_support = true;
 	udc->otg_caps->srp_support = true;
@@ -2996,10 +3000,14 @@ err_map2:
 #endif
 err_map1:
 	iounmap(udc->reg);
-	if (udc)
-		kfree(udc);
 err_clk:
 	clk_disable_unprepare(udc->clock);
+err_free2:
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	kfree(udc->otg_caps);
+err_free1:
+#endif
+	kfree(udc);
 
 	return retval;
 }
@@ -3047,6 +3055,10 @@ static int sp_udc_remove(struct platform_device *pdev)
 
 	del_timer(&udc->before_sof_polling_timer);
 	del_timer(&udc->sof_polling_timer);
+
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	kfree(udc->otg_caps);
+#endif
 
 	kfree(udc);
 
