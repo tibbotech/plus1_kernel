@@ -477,6 +477,7 @@ struct sp_udc {
 	dma_addr_t		 event_ring_pa;			/* event ring pointer phy address */
 	struct trb_data		 *event_ring_dq;		/* event ring dequeue */
 	struct udc_endpoint 	 ep_data[UDC_MAX_ENDPOINT_NUM]; /* endpoint data struct */
+	struct usb_otg_caps      *otg_caps;
 };
 
 int32_t hal_udc_init(struct sp_udc *udc);

@@ -70,7 +70,7 @@ static const struct {
 
 static struct sp_udc *sp_udc_arry[2] = {NULL, NULL};
 
-/* test mode, When test mode is enabled, sof is not detected */
+/* test mode, When test mode is enabled for USB IF Test, sof is not detected */
 static uint test_mode;
 module_param(test_mode, uint, 0644);
 
@@ -563,7 +563,6 @@ static void sp_udc_nuke(struct sp_udc *udc, struct udc_endpoint *ep, int status)
 	spin_unlock_irqrestore(&ep->lock, flags);
 }
 
-#if 0
 static void udc_sof_polling(struct timer_list *t)
 {
 	uint32_t new_frame_num = 0;
@@ -607,7 +606,6 @@ static void udc_before_sof_polling(struct timer_list *t)
 	udc->frame_num = new_frame_num;
 	mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
 }
-#endif
 
 static uint32_t check_trb_status(struct trb_data *t_trb)
 {
@@ -936,10 +934,8 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			if (udc->driver->reset)
 				udc->driver->reset(&udc->gadget);
 
-#if 0
 			if (!test_mode)
 				mod_timer(&udc->before_sof_polling_timer, jiffies + 1 * HZ);
-#endif
 
 			break;
 		case UDC_SUSPEND:
@@ -2803,6 +2799,15 @@ static int sp_udc_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	udc->otg_caps = kzalloc(sizeof(struct usb_otg_caps), GFP_KERNEL);
+	if (!udc->otg_caps) {
+		UDC_LOGE("%s.%d,malloc otg_caps fail\n", __func__, __LINE__);
+		retval = -ENOMEM;
+		goto err_free1;
+	}
+#endif
+
 #if 0
 	udc->irq_num = irq_of_parse_and_map(pdev->dev.of_node, 0);
 #else
@@ -2813,23 +2818,24 @@ static int sp_udc_probe(struct platform_device *pdev)
 	uphy[udc->port_num] = devm_phy_get(&pdev->dev, "uphy");
 	if (IS_ERR(uphy[udc->port_num])) {
 		dev_err(&pdev->dev, "no USB phy%d configured\n", udc->port_num);
-		return PTR_ERR(uphy[udc->port_num]);
+		retval = PTR_ERR(uphy[udc->port_num]);
+		goto err_free2;
 	}
 
 	udc->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(udc->clock)) {
 		UDC_LOGE("not found clk source\n");
-
-		return PTR_ERR(udc->clock);
+		retval = PTR_ERR(udc->clock);
+		goto err_free2;
 	}
 
 	retval = phy_power_on(uphy[udc->port_num]);
 	if (retval)
-		return retval;
+		goto err_free2;
 
 	retval = phy_init(uphy[udc->port_num]);
 	if (retval)
-		return retval;
+		goto err_free2;
 
 	retval = clk_prepare_enable(udc->clock);
 	if (retval)
@@ -2885,6 +2891,18 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->def_run_full_speed = true;
 #endif
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	udc->otg_caps->otg_rev = 0x0130;	/* OTG 1.3 */
+	udc->otg_caps->hnp_support = true;
+	udc->otg_caps->srp_support = true;
+	udc->otg_caps->adp_support = false;
+	udc->gadget.otg_caps = udc->otg_caps;
+
+	#ifdef CONFIG_USB_OTG
+	udc->gadget.is_otg = true;
+	#endif
+#endif
+
 	sp_udc_ep_init(udc);
 
 	retval = request_irq(udc->irq_num, sp_udc_irq,
@@ -2900,13 +2918,11 @@ static int sp_udc_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, udc);
 	tasklet_init(&udc->event_task, (pfunc) handle_event, (unsigned long)udc);
 
-#if 0
 	timer_setup(&udc->sof_polling_timer, udc_sof_polling, 0);
 	udc->sof_polling_timer.expires = jiffies + HZ / 20;
 
 	timer_setup(&udc->before_sof_polling_timer, udc_before_sof_polling, 0);
 	udc->before_sof_polling_timer.expires = jiffies + 1 * HZ;
-#endif
 
 	udc->bus_reset_finish = false;
 	udc->frame_num = 0;
@@ -2984,10 +3000,14 @@ err_map2:
 #endif
 err_map1:
 	iounmap(udc->reg);
-	if (udc)
-		kfree(udc);
 err_clk:
 	clk_disable_unprepare(udc->clock);
+err_free2:
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	kfree(udc->otg_caps);
+err_free1:
+#endif
+	kfree(udc);
 
 	return retval;
 }
@@ -3033,9 +3053,11 @@ static int sp_udc_remove(struct platform_device *pdev)
 	platform_set_drvdata(pdev, NULL);
 	sp_udc_arry[udc->port_num] = NULL;
 
-#if 0
 	del_timer(&udc->before_sof_polling_timer);
 	del_timer(&udc->sof_polling_timer);
+
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	kfree(udc->otg_caps);
 #endif
 
 	kfree(udc);

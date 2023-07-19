@@ -219,6 +219,9 @@ struct usb_phy_io_ops sp_phy_ios = {
 static int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
+#ifdef	CONFIG_USB_OTG
+	struct usb_otg_descriptor *desc = NULL;
+#endif
 	struct usb_device *udev = NULL;
 	struct usb_hcd *hcd = NULL;
 	struct usb_phy *otg_phy = NULL;
@@ -240,6 +243,9 @@ static int hnp_polling_watchdog(void *arg)
 		if (val == SP_OTG_STATE_A_HOST) {
 			otg_host->otg.otg->host->is_b_host = 0;
 
+			if (hnp_process == true)
+				hnp_process = false;
+
  			if (find_child == false) {
 				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
 				if (!udev) {
@@ -253,11 +259,19 @@ static int hnp_polling_watchdog(void *arg)
 					continue;
 				}
 
-				if (udev->config->interface[0]->altsetting->desc.bInterfaceClass ==
-										USB_CLASS_MASS_STORAGE) {
+#ifdef	CONFIG_USB_OTG
+				ret = __usb_get_extra_descriptor(udev->rawdescriptors[0],
+								 le16_to_cpu(udev->config[0].desc.wTotalLength),
+								 USB_DT_OTG, (void **) &desc, sizeof(*desc));
+
+				if (ret || !(desc->bmAttributes & USB_OTG_HNP)) {
 					msleep(30);
 					continue;
 				}
+#else
+				msleep(30);
+				continue;
+#endif
 
 				targeted = is_targeted(udev);
 				hcd = bus_to_hcd(udev->bus);
@@ -328,6 +342,7 @@ static int hnp_polling_watchdog(void *arg)
 						}
 
 						otg_start_hnp(otg_phy->otg);
+						hnp_process = true;
 						msleep(30);
 					} else {
 					  	msleep(1000);
@@ -335,6 +350,11 @@ static int hnp_polling_watchdog(void *arg)
 				}
 			}
 		} else if (val == SP_OTG_STATE_B_IDLE) {
+			if (hnp_process == true)
+				hnp_process = false;
+
+			find_child = false;
+
 			if (start_srp == false) {
 				val = readl(&otg_host->regs_otg->otg_device_ctrl);
 				val &= ~B_VBUS_REQ;
@@ -346,12 +366,6 @@ static int hnp_polling_watchdog(void *arg)
 		} else if (val == SP_OTG_STATE_B_PERIPHERAL) {
 			otg_host->otg.otg->host->is_b_host = 1;
 			start_srp = false;
-			find_child = false;
-			msleep(30);
-		} else if (val == SP_OTG_STATE_B_HOST) {
-			if (hnp_process == true)
-				hnp_process = false;
-
 			find_child = false;
 			msleep(30);
 		} else {
