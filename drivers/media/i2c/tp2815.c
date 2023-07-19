@@ -783,35 +783,19 @@ static u32 imx219_get_format_code(struct imx219 *imx219, u32 code)
 	return codes[i];
 }
 
-void tp2815_decoder_init(struct imx219 *imx219)
+void tp2815_decoder_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
 {
 	const unsigned char SYS_MODE[5] = { 0x01, 0x02, 0x04, 0x08, 0x0f };
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
-	u32 fmt, ch, std, tmp;
+	u32 tmp;
 
-	ch = imx219->input_ch - 1;
-	std = imx219->input_std;
-
-	dev_dbg(&client->dev, "%s, %d, ch: %u, std: %u\n", __func__, __LINE__, ch, std); // CCHo addied for debugging
-
-	/* Select output format according to V4L2 MBUS frame format */
-	if (imx219->fmt.height == 720) {
-		fmt = HD30;
-	} else if (imx219->fmt.height == 1080) {
-		fmt = FHD30;
-	} else {
-		fmt = HD30;
-		dev_warn(&client->dev, "Use default format. (fmt: %u)\n", fmt);
-	}
-	dev_dbg(&client->dev, "%s, %d, fmt: %u\n", __func__, __LINE__, fmt); // CCHo addied for debugging
+	dev_dbg(&client->dev, "%s, %d, ch: %u, fmt: %u, std: %u\n", __func__, __LINE__, ch, fmt, std); // CCHo addied for debugging
 
 	// 13 B
 	imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, ch);
 	imx219_write_reg(imx219, 0x45, IMX219_REG_VALUE_08BIT, 0x01);
 	// default value
 	imx219_write_reg(imx219, 0x06, IMX219_REG_VALUE_08BIT, 0x12);
-
-	imx219_read_reg(imx219, 0xf5, IMX219_REG_VALUE_08BIT, &tmp);
 	// EQ2 Control
 	imx219_write_reg(imx219, 0x07, IMX219_REG_VALUE_08BIT, 0xc0);
 	// EQ2 Control
@@ -830,6 +814,23 @@ void tp2815_decoder_init(struct imx219 *imx219)
 	imx219_write_reg(imx219, 0x2c, IMX219_REG_VALUE_08BIT, 0x0a);
 	// Color GainReferenc
 	imx219_write_reg(imx219, 0x2e, IMX219_REG_VALUE_08BIT, 0x70);
+
+	// 0xF5 - System Clocl Control
+	// b3 SYSCLK4MD
+	//   0 = VIN4 HDTV Decoder system clock is 148.5MHz
+	//   1 = VIN4 HDTV Decoder system clock is 74.25MHz
+	// b2 SYSCLK3MD
+	//   0 = VIN3 HDTV Decoder system clock is 148.5MHz
+	//   1 = VIN3 HDTV Decoder system clock is 74.25MHz
+	// b1 SYSCLK2MD
+	//   0 = VIN2 HDTV Decoder system clock is 148.5MHz
+	//   1 = VIN2 HDTV Decoder system clock is 74.25MHz
+	// b0 SYSCLK1MD
+	//   0 = VIN1 HDTV Decoder system clock is 148.5MHz
+	//   1 = VIN1 HDTV Decoder system clock is 74.25MHz
+	imx219_read_reg(imx219, 0xf5, IMX219_REG_VALUE_08BIT, &tmp);
+
+	dev_dbg(&client->dev, "%s, %d, tmp: 0x%02X\n", __func__, __LINE__, tmp); // CCHo addied for debugging
 
 	// 20 B
 	if (fmt == HD25) {
@@ -1212,7 +1213,44 @@ void tp2815_decoder_init(struct imx219 *imx219)
 	} else {
 		printk(KERN_WARNING " %s : invalid  video format\n", __func__);
 	}
+
+	dev_dbg(&client->dev, "%s, %d, tmp: 0x%02X\n", __func__, __LINE__, tmp); // CCHo addied for debugging
+
 	return;
+}
+
+void tp2815_decoder_init(struct imx219 *imx219)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
+	u32 fmt, ch, std;
+	u32 i;
+
+	ch = imx219->input_ch;
+	std = imx219->input_std;
+	dev_dbg(&client->dev, "%s, %d, ch: %u, std: %u\n", __func__, __LINE__, ch, std); // CCHo addied for debugging
+
+	/* Select output format according to V4L2 MBUS frame format */
+	if (imx219->fmt.height == 720) {
+		fmt = HD30;
+	} else if (imx219->fmt.height == 1080) {
+		fmt = FHD30;
+	} else {
+		fmt = HD30;
+		dev_warn(&client->dev, "Use default format. (fmt: %u)\n", fmt);
+	}
+	dev_dbg(&client->dev, "%s, %d, fmt: %u\n", __func__, __LINE__, fmt); // CCHo addied for debugging
+
+#if 0 //CCHo: Enable 2 inputs for debugging
+	for (i = 0; i < 2; i++)
+		tp2815_decoder_cfg(imx219, i, fmt, std);
+#else
+	if (ch < 4) {
+		for (i = 0; i < ch; i++)
+			tp2815_decoder_cfg(imx219, i, fmt, std);
+	} else {
+		tp2815_decoder_cfg(imx219, CH_ALL, fmt, std);
+	}
+#endif
 }
 
 void tp2815_mipi_init(struct imx219 *imx219)
@@ -1232,7 +1270,7 @@ void tp2815_mipi_init(struct imx219 *imx219)
 			output = MIPI_4CH4LANE_594M;
 			break;
 
-		default:			
+		default:
 			output = MIPI_4CH4LANE_594M;
 			dev_warn(&client->dev, "Use default output format. (output: %u)\n", output);
 			break;
@@ -1449,7 +1487,7 @@ static int imx219_set_ctrl(struct v4l2_ctrl *ctrl)
 		if (imx219->input_ch == 1)
 			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, imx219->input_ch-1);
 		else
-			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, (imx219->input_ch-1)|0x04);
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, CH_ALL);
 
 		/* FCS(0x2A[3]) - Fource free run mode
 		 * 0 = Disabled
@@ -1523,7 +1561,7 @@ static int imx219_set_ctrl(struct v4l2_ctrl *ctrl)
 		if (imx219->input_ch == 1)
 			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, imx219->input_ch-1);
 		else
-			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, (imx219->input_ch-1)|0x04);
+			imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, CH_ALL);
 
 		/* LCS(0x2A[2]) - Fource free run mode color control
 		 * 0 = Normal input video data
@@ -2404,7 +2442,7 @@ static int imx219_probe(struct i2c_client *client)
 	pm_runtime_enable(dev);
 	pm_runtime_idle(dev);
 
-	dev_info(dev, "Techpoint TP2815 driver probed!\n");
+	dev_info(dev, "Techpoint TP2815 driver, %d input channels\n", imx219->input_ch);
 
 	return 0;
 
