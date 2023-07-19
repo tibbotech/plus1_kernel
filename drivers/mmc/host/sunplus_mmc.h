@@ -149,9 +149,6 @@ struct spmmc_regs {
 	u32 sd_cmdbuf4;
 	u32 sd_rspbuf0_3;
 	u32 sd_rspbuf4_5;
-	#ifdef HS400
-	u32 softpad_cfg0;
-	#endif
 	u32 __rsvd_regs(32);
 };
 
