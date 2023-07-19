@@ -67,7 +67,7 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	ssize_t otp_l;
 	char *otp_v;
 
-	cell = nvmem_cell_get(dev, "calib");
+	cell = nvmem_cell_get(dev, "therm_calib");
 	if (IS_ERR(cell)){
 		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
 		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
@@ -78,7 +78,7 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	nvmem_cell_put(cell);
 
 	if (otp_l < 3){
-		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
+		printk(KERN_ERR "Failed to read NVMEM cell: %ld\n", PTR_ERR(cell));
 		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
     		return 0;
 	}
