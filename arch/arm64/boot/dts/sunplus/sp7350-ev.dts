@@ -1231,7 +1231,7 @@
 
 	paranand0: paranand@f8120000 {
 		compatible = "sunplus,sp7350-para-nand";
-		reg = <0x0 0xf8120000 0x0 0xc0000>, <0x0 0xfb000000 0x0 0x4000000>;
+		reg = <0x0 0xf8120000 0x0 0x3000>, <0x0 0xfb000000 0x0 0x4000000>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc PNAND>;
