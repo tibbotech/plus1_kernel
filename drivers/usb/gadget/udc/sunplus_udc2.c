@@ -2973,6 +2973,22 @@ static int sp_udc_probe(struct platform_device *pdev)
 
 	sp_udc_arry[udc->port_num] = udc;
 
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+	if (sp_otg0_host) {
+		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog,
+								sp_otg0_host, "hnp_polling");
+		wake_up_process(sp_otg0_host->hnp_polling_timer);
+	}
+	#else
+	if (sp_otg1_host) {
+		sp_otg1_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog,
+								sp_otg1_host, "hnp_polling");
+		wake_up_process(sp_otg1_host->hnp_polling_timer);
+	}
+	#endif
+#endif
+
 	return 0;
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG

@@ -216,7 +216,7 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.write = sp_phy_write,
 };
 
-static int hnp_polling_watchdog(void *arg)
+int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
 #ifdef	CONFIG_USB_OTG
@@ -246,13 +246,13 @@ static int hnp_polling_watchdog(void *arg)
  			if (find_child == false) {
 				udev = usb_hub_find_child(otg_host->otg.otg->host->root_hub, 1);
 				if (!udev) {
-				    	msleep(30);
+				    	msleep(1);
 					continue;
 				}
 
 				if (!udev->config || !udev->config->interface[0] ||
 							!udev->config->interface[0]->altsetting) {
-					msleep(30);
+					msleep(1);
 					continue;
 				}
 
@@ -262,11 +262,11 @@ static int hnp_polling_watchdog(void *arg)
 								 USB_DT_OTG, (void **) &desc, sizeof(*desc));
 
 				if (ret || !(desc->bmAttributes & USB_OTG_HNP)) {
-					msleep(30);
+					msleep(1);
 					continue;
 				}
 #else
-				msleep(30);
+				msleep(1);
 				continue;
 #endif
 
@@ -274,7 +274,7 @@ static int hnp_polling_watchdog(void *arg)
 				hcd = bus_to_hcd(udev->bus);
 
 				if (!hcd) {
-					msleep(30);
+					msleep(1);
 					continue;
 				}
 
@@ -303,8 +303,7 @@ static int hnp_polling_watchdog(void *arg)
 							USB_CTRL_GET_TIMEOUT);
 				if (ret < 0) {
 					otg_debug("polling otg status fail,ret:%d\n", ret);
-
-					msleep(30);
+					msleep(1);
 					continue;
 				} else {
 					host_req_flag = *otg_status & 0x1;
@@ -319,7 +318,7 @@ static int hnp_polling_watchdog(void *arg)
 							otg_debug("Get otg control fail(busnum:%d)!\n",
 											udev->bus->busnum);
 
-							msleep(30);
+							msleep(1);
 							continue;
 						}
 
@@ -339,15 +338,13 @@ static int hnp_polling_watchdog(void *arg)
 						}
 
 						otg_start_hnp(otg_phy->otg);
-						msleep(30);
+						msleep(1);
 					} else {
 					  	msleep(1000);
 					}
 				}
 			}
 		} else if (val == SP_OTG_STATE_B_IDLE) {
-			find_child = false;
-
 			if (start_srp == false) {
 				val = readl(&otg_host->regs_otg->otg_device_ctrl);
 				val &= ~B_VBUS_REQ;
@@ -355,15 +352,15 @@ static int hnp_polling_watchdog(void *arg)
 			}
 
 			find_child = false;
-			msleep(30);
+			msleep(1);
 		} else if (val == SP_OTG_STATE_B_PERIPHERAL) {
 			otg_host->otg.otg->host->is_b_host = 1;
 			start_srp = false;
 			find_child = false;
-			msleep(30);
+			msleep(1);
 		} else {
 			find_child = false;
-			msleep(30);
+			msleep(1);
 		}
 	}
 
@@ -894,20 +891,6 @@ int sp_otg_probe(struct platform_device *dev)
 		printk(KERN_NOTICE "OTG: Request irq fail\n");
 		goto err_ioumap;
 	}
-
-#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
- 	if (otg_host->id == 1) {
-		sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog,
-								sp_otg0_host, "hnp_polling");
-		wake_up_process(sp_otg0_host->hnp_polling_timer);
- 	}
-#else
- 	if (otg_host->id == 2) {
-		sp_otg1_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog,
-								sp_otg1_host, "hnp_polling");
-		wake_up_process(sp_otg1_host->hnp_polling_timer);
- 	}
-#endif
 
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
 
