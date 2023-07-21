@@ -563,6 +563,7 @@
 		compatible = "sunplus,sp7350-thermal";
 		reg =<0x0 0xf88002b4 0x0 0x18>;
 		clocks = <&clkc THERMAL>;
+		resets = <&rstc RST_THERMAL>;
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
