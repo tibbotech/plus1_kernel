@@ -29,6 +29,7 @@
 #include <linux/scatterlist.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 #include <linux/mtd/bbm.h>
 
 #include "sp_paranand.h"
@@ -38,21 +39,6 @@ module_param(startchn, int, 0644);
 
 extern const struct nand_flash_dev sp_pnand_ids[];
 
-static struct sp_pnandchip_attr nand_attr[] = {
-	/*
-	 * Manufacturer ID, spare size, ECC bits, ECC base shift,
-	 * ECC for spare, Block Boundary, Protect Spare, legacy flash
-	 * */
-	{"Samsung K9F4G08U0A",
-		64, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 2K SLC */
-	{"GigaDevice 9AU4G8F3AMGI",
-		64, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 2K SLC */
-	{"GigaDevice 9FU4G8F4BMGI",
-		256, 2, 9, 4, 64, 1, LEGACY_FLASH},	/* 4K SLC */
-	{"Samsung K9GBG08U0B",
-		1024, 2, 9, 4, 128, 1, LEGACY_FLASH},	/* 8K MLC */
-};
-
 /* Note: The unit of tWPST/tRPST/tWPRE/tRPRE field of sp_pnand_chip_timing is ns.
  *
  * tWH, tCH, tCLH, tALH, tCALH, tWP, tREH, tCR, tRSTO, tREAID,
@@ -61,90 +47,33 @@ static struct sp_pnandchip_attr nand_attr[] = {
  * tRPRE, tWPST, tRPST, tWPSTH, tRPSTH, tDQSHZ, tDQSCK, tCAD, tDSL
  * tDSH, tDQSL, tDQSH, tDQSD, tCKWR, tWRCK, tCK, tCALS2, tDQSRE, tWPRE2, tRPRE2, tCEH
  */
-#if defined (CONFIG_SP_SAMSUNG_K9F2G08U0A)
-static struct sp_pnand_chip_timing chip_timing = {
+static struct sp_pnand_chip_timing chip_timing[] = {
+	{ //SAMSUNG_K9F2G08U0A_ZEBU
 	10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
 	20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
 	70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI)
-	static struct sp_pnand_chip_timing chip_timing = {
-		7, 5, 5, 5, 0, 12, 7, 0, 0, 0,
-		18, 10, 100, 0, 80, 0, 100, 20, 10, 20,
-		100, 100, 0, 15, 0, 12, 10, 10, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI)
-	static struct sp_pnand_chip_timing chip_timing = {
-		10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
-		20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
-		70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-#elif defined (CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
-	static struct sp_pnand_chip_timing chip_timing = {
-		10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
-		20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
-		70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0,
-		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-
-#endif
-#if 0
-static struct mtd_partition sp_pnand_partition_info[] = {
-	{
-		.name = "Header",
-		.offset = 0,
-		.size = 1 * SZ_128K,
-	},
-	{
-		.name = "Xboot1",
-		.offset = MTDPART_OFS_APPEND,
-		.size = 3 * SZ_128K,
-	},
-	{
-		.name = "Uboot1",
-		.offset = MTDPART_OFS_APPEND,
-		.size = 12 * SZ_128K,
-	},
-	{
-		.name = "Uboot2",
-		.offset = MTDPART_OFS_APPEND,
-		.size = SZ_2M,
-	},
-	{
-		.name = "Fip",
-		.offset = MTDPART_OFS_APPEND,
-		.size = SZ_2M,
-	},
-	{
-		.name = "Env",
-		.offset = MTDPART_OFS_APPEND,
-		.size = SZ_512K,
-	},
-	{
-		.name = "Env_redund",
-		.offset = MTDPART_OFS_APPEND,
-		.size = SZ_512K,
-	},
-	{
-		.name = "Dtb",
-		.offset = MTDPART_OFS_APPEND,
-		.size = SZ_256K,
-	},
-	{
-		.name = "Kernel",
-		.offset = MTDPART_OFS_APPEND,
-		.size = 200 * SZ_128K,
-	},
-	{
-		.name = "Rootfs",
-		.offset = MTDPART_OFS_APPEND,
-		.size = 222 * SZ_1M,
-	},
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+	{ //GIGADEVICE_9AU4G8F3AMGI
+	7, 5, 5, 5, 0, 12, 7, 0, 0, 0,
+	18, 10, 100, 0, 80, 0, 100, 20, 10, 20,
+	100, 100, 0, 15, 0, 12, 10, 10, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{ //GIGADEVICE_9FU4G8F4BMGI
+	10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
+	20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
+	150, 100, 0, 15, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{ //SAMSUNG_K9GBG08U0B
+	11, 5, 5, 5, 0, 11, 11, 0, 0, 0,
+	20, 11, 100, 0, 120, 300, 100, 20, 10, 25,
+	300, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
-#endif
+
 static int sp_pnand_ooblayout_ecc(struct mtd_info *mtd, int section,
 				struct mtd_oob_region *oobregion)
 {
@@ -190,6 +119,23 @@ static void sp_pnand_set_warmup_cycle(struct nand_chip *chip,
 	writel(val, data->io_base + MEM_ATTR_SET2);
 }
 
+static struct sp_pnand_chip_timing *sp_pnand_scan_timing(struct nand_chip *chip)
+{
+	//struct mtd_info *mtd = nand_to_mtd(chip);
+
+	DBGLEVEL2(sp_pnand_dbg("chip->parameters.model %s\n", chip->parameters.model));
+	if(strcmp(chip->parameters.model, "K9F2G08XXX 256MiB ZEBU 8-bit") == 0)
+		return &chip_timing[0];
+	else if(strcmp(chip->parameters.model, "9AU4G8F3AMGI 512MiB 3.3V 8-bit") == 0)
+		return &chip_timing[1];
+	else if(strcmp(chip->parameters.model, "9FU4G8F4BMGI 512MiB 3.3V 8-bit") == 0)
+		return &chip_timing[2];
+	else if(strcmp(chip->parameters.model, "K9GBG08U0B 4G 3.3V 8-bit") == 0)
+		return &chip_timing[3];
+	else
+		return NULL;
+}
+
 /* The unit of Hclk is MHz, and the unit of Time is ns.
  * We desire to calculate N to satisfy N*(1/Hclk) > Time given Hclk and Time
  * ==> N > Time * Hclk
@@ -208,24 +154,16 @@ static void sp_pnand_calc_timing(struct nand_chip *chip)
 	struct sp_pnand_chip_timing *p;
 	u32 CLK, FtCK, timing[4];
 
-	CLK = FREQ_SETTING / 1000000;
+	CLK = data->clkfreq / 1000000;
 
 	tWH = tWP = tREH = tRES =  0;
 	tRLAT = tBSY = t1 = 0;
 	tBUF4 = tBUF3 = tBUF2 = tBUF1 = 0;
 	tPRE = tPST = tPSTH = tWRCK = 0;
-#if defined (CONFIG_SP_MICRON_29F32G08CBABB)
-	if (data->flash_type == ONFI2)
-		p = &sync_timing;
-	else
-#elif defined (CONFIG_SP_MICRON_29F128G08CBECB)
-	if (data->flash_type == ONFI3)
-		p = &ddr2_timing;
-	else if (data->flash_type == ONFI2)
-		p = &sync_timing;
-	else
-#endif
-		p = &chip_timing;
+
+	p = sp_pnand_scan_timing(chip);
+	if(!p)
+		DBGLEVEL1(sp_pnand_dbg("Failed to get AC timing!\n"));
 
 	if(data->flash_type == LEGACY_FLASH) {
 		// tWH = max(tWH, tCH, tCLH, tALH)
@@ -593,23 +531,8 @@ static void sp_pnand_read_raw_id(struct nand_chip *chip)
 	struct cmd_feature cmd_f;
 	u8 id_size = 5;
 
-#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00)
-	data->cur_chan = 1;
-	data->sel_chip = 0;
-#elif defined(CONFIG_SP_TOSHIBA_TC58NVG6DCJTA00)
-	data->cur_chan = 0;
-	data->sel_chip = 3;
-#elif defined(CONFIG_SP_TOSHIBA_TH58TEG7DCJBA4C) ||\
-	defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	data->cur_chan = 0;
-	data->sel_chip = 1;
-#elif defined (CONFIG_SP_WINBOND_W29N01GV)
-	data->cur_chan = 0;
-	data->sel_chip = 2;
-#else
 	data->cur_chan = 0;
 	data->sel_chip = 0;
-#endif
 
 	// Set the flash to Legacy mode, in advance.
 	if(data->flash_type == ONFI2 || data->flash_type == ONFI3) {
@@ -626,7 +549,6 @@ static void sp_pnand_read_raw_id(struct nand_chip *chip)
 	sp_pnand_issue_cmd(chip, &cmd_f);
 
 	sp_pnand_wait(chip);
-
 
 	// Issue the READID cmd
 	cmd_f.row_cycle = ROW_ADDR_1CYCLE;
@@ -949,7 +871,6 @@ static int sp_pnand_available_oob(struct mtd_info *mtd)
 	int ret = 0;
 	int consume_byte, eccbyte, eccbyte_spare;
 	int available_spare;
-	int sector_num = (mtd->writesize >> data->eccbasft);
 
 	if (data->useecc < 0)
 		goto out;
@@ -962,7 +883,7 @@ static int sp_pnand_available_oob(struct mtd_info *mtd)
 	if (((data->useecc * 14) % 8) != 0)
 		eccbyte++;
 
-	consume_byte = (eccbyte * sector_num);
+	consume_byte = (eccbyte * data->sector_per_page);
 	if (data->protect_spare == 1) {
 
 		eccbyte_spare = (data->useecc_spare * 14) / 8;
@@ -974,8 +895,7 @@ static int sp_pnand_available_oob(struct mtd_info *mtd)
 	available_spare = data->spare - consume_byte;
 
 	DBGLEVEL2(sp_pnand_dbg(
-		"mtd->erasesize:%d, mtd->writesize:%d, data->block_boundary:%d\n",
-		mtd->erasesize, mtd->writesize, data->block_boundary));
+		"mtd->erasesize:%d, mtd->writesize:%d\n", mtd->erasesize, mtd->writesize));
 	DBGLEVEL2(sp_pnand_dbg(
 		"page num:%d, data->eccbasft:%d, protect_spare:%d, spare:%d Byte\n",
 		mtd->erasesize/mtd->writesize,data->eccbasft, data->protect_spare,
@@ -1052,11 +972,6 @@ static void sp_pnand_cmdfunc(struct nand_chip *chip, unsigned command,
 	int real_pg, cmd_sts;
 	u8 id_size = 5;
 
-	#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-		defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	int real_blk_nm, real_off;
-	#endif
-
 	cmd_f.cq4 = CMD_COMPLETE_EN | CMD_FLASH_TYPE(data->flash_type);
 	data->cur_cmd = command;
 	if (page_addr != -1)
@@ -1124,14 +1039,7 @@ static void sp_pnand_cmdfunc(struct nand_chip *chip, unsigned command,
 
 		break;
 	case NAND_CMD_ERASE1:
-		#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-			defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-		real_blk_nm = data->page_addr / (mtd->erasesize/mtd->writesize);
-		real_off = data->page_addr % (mtd->erasesize/mtd->writesize);
-		real_pg = (real_blk_nm * data->block_boundary) + real_off;
-		#else
 		real_pg = data->page_addr;
-		#endif
 		DBGLEVEL2(sp_pnand_dbg(
 			"Erase Page: 0x%x, Real:0x%x\n", data->page_addr, real_pg));
 
@@ -1173,134 +1081,16 @@ static void sp_pnand_cmdfunc(struct nand_chip *chip, unsigned command,
 void sp_pnand_select_chip(struct nand_chip *chip, int cs)
 {
 	struct sp_pnand_data *data = nand_get_controller_data(chip);
-	//int chn = 0;
 
 	data->cur_chan = 0;
 	data->sel_chip = 0;
-#if 0
-	if (data->scan_state != 1) {
-		while (cs != -1) {
-			if (cs < data->valid_chip[chn]) {
-				break;
-			} else {
-				cs = cs - data->valid_chip[chn];
-				chn++;
-			}
-		}
-		data->cur_chan = chn;
-	}
-#if defined(CONFIG_SP_HYNIX_HY27US08561A) ||\
-	defined(CONFIG_SP_SAMSUNG_K9F4G08U0A)
-	data->cur_chan = 0;
-	data->sel_chip = 2;
-#elif defined(CONFIG_SP_TOSHIBA_TH58NVG7D2GTA20) ||\
-	defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00)
-	data->cur_chan = 1;
-	data->sel_chip = 0;
-#elif defined(CONFIG_SP_TOSHIBA_TC58NVG6DCJTA00)
-	data->cur_chan = 0;
-	data->sel_chip = 3;
-#elif defined(CONFIG_SP_SAMSUNG_K9GCGY8S0A) ||\
-	defined(CONFIG_SP_TOSHIBA_TH58TFT0DDLBA8H) ||\
-	defined(CONFIG_SP_MICRON_29F128G08CBECB)
-	data->cur_chan = 0;
-	data->sel_chip = 0;
-#elif defined(CONFIG_SP_TOSHIBA_TH58TEG7DCJBA4C) ||\
-	defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	data->cur_chan = 0;
-	data->sel_chip = 1;
-#elif defined (CONFIG_SP_WINBOND_W29N01GV)
-	data->cur_chan = 0;
-	data->sel_chip = 2;
-#else
-	data->sel_chip = cs;
-#endif
-#endif
-	//DBGLEVEL2(sp_pnand_dbg("==>chan = %d, ce = %d\n", data->cur_chan, data->sel_chip));
+	DBGLEVEL2(sp_pnand_dbg("==>chan = %d, ce = %d\n", data->cur_chan, data->sel_chip));
 }
 
-static int sp_pnand_attach_chip(struct nand_chip *chip)
+static void sp_nand_set_ecc(struct nand_chip *chip)
 {
-	struct mtd_info *mtd = nand_to_mtd(chip);
-	struct sp_pnand_data *data = nand_get_controller_data(chip);
-	struct nand_ecc_ctrl *ecc = &chip->ecc;
-	struct nand_memory_organization *memorg;
 	u32 val;
-	int i;
-
-	memorg = nanddev_get_memorg(&chip->base);
-
-	//usually, spare size is 1/32 page size
-	if (data->spare < (mtd->writesize >> 5))
-		data->spare = (mtd->writesize >> 5);
-
-	val = readl(data->io_base + MEM_ATTR_SET);
-	val &= ~(0x7 << 16);
-	switch (mtd->writesize) {
-	case 512:
-		val |= PG_SZ_512;
-		data->large_page = 0;
-		break;
-	case 2048:
-		val |= PG_SZ_2K;
-		data->large_page = 1;
-		break;
-	case 4096:
-		val |= PG_SZ_4K;
-		data->large_page = 1;
-		break;
-	case 8192:
-		val |= PG_SZ_8K;
-		data->large_page = 1;
-		break;
-	case 16384:
-		val |= PG_SZ_16K;
-		data->large_page = 1;
-		break;
-	}
-	val &= ~(0x3FF << 2);
-	val |= ((data->block_boundary - 1) << 2);
-//lichun@add, For BI_byte test
-	val &= ~BI_BYTE_MASK;
-	val |= (CONFIG_BI_BYTE << 19);
-//~lichun
-	writel(val, data->io_base + MEM_ATTR_SET);
-
-	val = readl(data->io_base + MEM_ATTR_SET2);
-	val &= ~(0x3FF << 16);
-	val |=  VALID_PAGE((mtd->erasesize / mtd->writesize - 1));
-	writel(val, data->io_base + MEM_ATTR_SET2);
-
-	i = sp_pnand_available_oob(mtd);
-	if (likely(i >= 4)) {
-		if (i > data->max_spare)
-			memorg->oobsize = data->max_spare;
-		else
-			memorg->oobsize = i;
-	} else
-		return -ENXIO;
-
-	DBGLEVEL1(sp_pnand_dbg("total oobsize: %d\n", memorg->oobsize));
-
-	switch(memorg->oobsize){
-	case 4:
-	case 8:
-	case 16:
-	case 32:
-	case 64:
-	case 128:
-		data->spare = memorg->oobsize;
-		DBGLEVEL1(sp_pnand_dbg("oobsize(page mode): %02d\n", memorg->oobsize));
-		break;
-	default:
-		memorg->oobsize = 4;
-		data->spare = memorg->oobsize;
-		DBGLEVEL1(
-			sp_pnand_dbg("Warning: Unknown spare setting %d, use default oobsize(page mode): 4\n"
-			, memorg->oobsize));
-		break;
-	}
-	mtd->oobsize = memorg->oobsize;
+	struct sp_pnand_data *data = nand_get_controller_data(chip);
 
 	if (data->useecc > 0) {
 		DBGLEVEL1(sp_pnand_dbg("ECC correction bits: %d\n", data->useecc));
@@ -1345,11 +1135,113 @@ static int sp_pnand_attach_chip(struct nand_chip *chip)
 		((data->useecc_spare-1) << 16) | ((data->useecc_spare-1) << 24);
 	writel(val, data->io_base + ECC_CORRECT_BIT_FOR_SPARE_REG1);
 	writel(val, data->io_base + ECC_CORRECT_BIT_FOR_SPARE_REG2);
+}
+
+void sp_pnand_set_actiming(struct nand_chip *chip)
+{
+	/* TODO: calibrate the DQS delay for Sync */
+	flashtype type = LEGACY_FLASH;
+	struct sp_pnand_data *data = nand_get_controller_data(chip);
+
+	/*----------------------------------------------------------
+	 * ONFI synch mode means High Speed. If fails to change to
+	 * Synch mode, then use flash as Async mode(Normal speed) and
+	 * use LEGACY_LARGE fix flow.
+	 */
+	if (type == ONFI2 || type == ONFI3) {
+		data->flash_type = type;
+		if (sp_pnand_onfi_sync(chip) == 0) {
+			sp_pnand_calc_timing(chip);
+			sp_pnand_calibrate_dqs_delay(chip);
+		}
+		else{
+			data->flash_type = LEGACY_FLASH;
+		}
+	}
+
+	// Toggle & ONFI flash has set the proper timing before READ ID.
+	// We don't do that twice.
+	if(data->flash_type == LEGACY_FLASH) {
+		sp_pnand_calc_timing(chip);
+		sp_pnand_calibrate_rlat(chip);
+	}
+	else if(data->flash_type == TOGGLE2) {
+#if defined(CONFIG_PNANDC_SAMSUNG_K9GCGY8S0A)
+		sp_pnand_t2_sync(chip, 0, 2);
+#elif defined(CONFIG_PNANDC_TOSHIBA_TH58TEG7DCJBA4C) ||\
+	defined(CONFIG_PNANDC_TOSHIBA_TH58TFT0DDLBA8H)
+		sp_pnand_t2_sync(chip, 3, 3);
+#endif
+	}
+}
+
+
+static int sp_pnand_attach_chip(struct nand_chip *chip)
+{
+	struct nand_memory_organization *memorg;
+	struct mtd_info *mtd = nand_to_mtd(chip);
+	struct sp_pnand_data *data = nand_get_controller_data(chip);
+	struct nand_ecc_ctrl *ecc = &chip->ecc;
+	struct nand_device *base = &chip->base;
+	const struct nand_ecc_props *requirements = nanddev_get_ecc_requirements(base);
+	u32 val;
+	int i;
+
+	data->eccbasft = fls(requirements->step_size) - 1;
+	data->useecc = requirements->strength;
+	data->protect_spare = 1;
+	data->useecc_spare = 4;
+	data->sector_per_page = mtd->writesize >> data->eccbasft;
+	data->spare = mtd->oobsize;
+
+	memorg = nanddev_get_memorg(&chip->base);
+
+	//usually, spare size is 1/32 page size
+	if (data->spare < (mtd->writesize >> 5))
+		data->spare = (mtd->writesize >> 5);
+
+	val = readl(data->io_base + MEM_ATTR_SET);
+	val &= ~(0x7 << 16);
+
+	if(mtd->writesize > 512) {
+		data->large_page = 1;
+		val |= ((fls(mtd->writesize) - 11) << 16); //bit[18:16] 1/2/3/4 -> PageSize=2k/4k/8k/16k
+	} else {
+		data->large_page = 0;
+		val |= PG_SZ_512;
+	}
+
+	val &= ~(0x3FF << 2);
+	val |= ((mtd->erasesize / mtd->writesize - 1) << 2);
+//lichun@add, For BI_byte test
+	val &= ~BI_BYTE_MASK;
+	val |= (CONFIG_BI_BYTE << 19);
+//~lichun
+	writel(val, data->io_base + MEM_ATTR_SET);
+
+	val = readl(data->io_base + MEM_ATTR_SET2);
+	val &= ~(0x3FF << 16);
+	val |=  VALID_PAGE((mtd->erasesize / mtd->writesize - 1));
+	writel(val, data->io_base + MEM_ATTR_SET2);
+
+	i = sp_pnand_available_oob(mtd);
+	if (likely(i >= 4)) {
+		if (i > data->max_spare)
+			memorg->oobsize = data->max_spare;
+		else
+			memorg->oobsize = i;
+		data->spare = memorg->oobsize;
+	} else
+		return -ENXIO;
+
+	DBGLEVEL1(sp_pnand_dbg("total oobsize: %d\n", memorg->oobsize));
+
+	sp_nand_set_ecc(chip);
 
 	ecc->engine_type = NAND_ECC_ENGINE_TYPE_ON_HOST;
-	ecc->size = (1 << data->eccbasft);
-	ecc->bytes = 0;
-	ecc->strength = 1;
+	ecc->size = requirements->step_size;
+	ecc->bytes = (data->useecc * 14) / 8;//why is 0
+	ecc->strength = requirements->strength;
 
 	ecc->read_oob = sp_pnand_read_oob;
 	ecc->write_oob = sp_pnand_write_oob;
@@ -1367,6 +1259,15 @@ static int sp_pnand_attach_chip(struct nand_chip *chip)
 
 	mtd_set_ooblayout(mtd, &sp_pnand_ooblayout_ops);
 
+	sp_pnand_dbg("Use nand flash %s\n", mtd->name);
+	sp_pnand_dbg("data->eccbasft: %d\n", data->eccbasft);
+	sp_pnand_dbg("data->useecc: %d\n", data->useecc);
+	sp_pnand_dbg("data->protect_spare: %d\n", data->protect_spare);
+	sp_pnand_dbg("data->useecc_spare: %d\n", data->useecc_spare);
+	sp_pnand_dbg("data->spare: %d\n", data->spare);
+	sp_pnand_dbg("data->flash_type: %d\n", data->flash_type);
+	sp_pnand_dbg("data->sector_per_page: %d\n", data->sector_per_page);
+
 	return 0;
 }
 
@@ -1374,23 +1275,29 @@ static const struct nand_controller_ops sp_pnand_controller_ops = {
 	.attach_chip = sp_pnand_attach_chip,
 };
 
-/*
- * Probe for the NAND device.
- */
+static void sp_clk_disable_unprepare(void *data)
+{
+	clk_disable_unprepare(data);
+}
+
+static void sp_reset_control_assert(void *data)
+{
+	reset_control_assert(data);
+}
+
 static int sp_pnand_probe(struct platform_device *pdev)
 {
-	//struct clk *clk;
 	struct device *dev = &pdev->dev;
 	struct sp_pnand_data *data;
 	struct mtd_info *mtd;
 	struct nand_chip *chip;
+	struct clk *clk;
+	struct reset_control *rstc;
+	struct resource *r;
 	int ret, chipnum;
 	uint64_t size, max_sz = -1;
-	int i, sel, type;
+	int i, type;
 	u32 val;
-	struct resource *r;
-
-	sp_pnand_dbg("Entry Nand Probe\n");
 
 	ret = chipnum = size = type = 0;
 	/* Allocate memory for the device structure (and zero it) */
@@ -1398,21 +1305,41 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	/*
 	 * Initialize the parameter
 	 */
-	data = kzalloc(sizeof(struct sp_pnand_data), GFP_KERNEL);
+	data = devm_kzalloc(dev, sizeof(struct sp_pnand_data), GFP_KERNEL);
 	if (!data) {
 		dev_err(dev, "failed to allocate device structure.\n");
 		ret = -ENOMEM;
-		goto out;
 	}
 
 	chip = &data->chip;
 	chip->controller = &data->controller;
 
+	clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(clk))
+		return dev_err_probe(dev, PTR_ERR(clk), "Failed to get clock\n");
+
+	ret = clk_prepare_enable(clk);
+	if (ret)
+		return dev_err_probe(dev, ret, "Failed to enable clock\n");
+
+	ret = devm_add_action_or_reset(dev, sp_clk_disable_unprepare, clk);
+	if (ret)
+		return ret;
+
+	rstc = devm_reset_control_get(dev, NULL);
+	if (IS_ERR(rstc))
+		return dev_err_probe(dev, PTR_ERR(rstc), "Failed to get reset\n");
+
+	reset_control_deassert(rstc);
+
+	ret = devm_add_action_or_reset(dev, sp_reset_control_assert, rstc);
+	if (ret)
+		return ret;
+
 	data->io_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(data->io_base)) {
-		dev_err(dev, "ioremap failed for register.\n");
-		ret = PTR_ERR(data->io_base);
-		goto out_free_data;
+		dev_err(dev, "Failed to ioremap for register.\n");
+		return PTR_ERR(data->io_base);
 	}
 
 	DBGLEVEL2(sp_pnand_dbg("data->io_base:0x%08lx", (unsigned long)data->io_base));
@@ -1420,10 +1347,21 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	r = platform_get_resource(pdev, IORESOURCE_MEM, 1);
 	chip->legacy.IO_ADDR_R = devm_ioremap_resource(dev, r);
 	if (IS_ERR(chip->legacy.IO_ADDR_R)) {
-		dev_err(dev, "ioremap failed for data port.\n");
-		ret = PTR_ERR(chip->legacy.IO_ADDR_R);
-		goto out_free_data;
+		dev_err(dev, "Failed to ioremap for data port.\n");
+		return PTR_ERR(chip->legacy.IO_ADDR_R);
 	}
+
+	if (!of_property_read_u32(pdev->dev.of_node, "clock-frequency", &data->clkfreq))
+		data->clkfreq = CONFIG_SP_CLK_100M;
+
+	ret = clk_set_rate(clk, data->clkfreq);
+	if (ret) {
+		dev_err(dev, "Failed to set clk rate\n");
+		return ret;
+	}
+
+	data->clkfreq = clk_get_rate(clk);
+	DBGLEVEL1(sp_pnand_dbg("data->clkfreq %d\n", data->clkfreq));
 
 	data->dmac = NULL;
 #if 0//turn off the DMA mode
@@ -1453,101 +1391,50 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	nand_controller_init(&data->controller);
 	data->controller.ops = &sp_pnand_controller_ops;
 
+	data->inverse = 0;		/* disable */
+	data->scramble = 0;		/* disable */
+	data->seed_val = 0;
+	data->max_spare = 128;
+	data->spare_ch_offset = 7;	/* shift 7 means 0x80*/
+	data->flash_type = LEGACY_FLASH;
 	// Reset the HW
 	// Note: We can't use the function of sp_pnand_soft_reset to reset the hw
 	//       because the private data field of sp_pnand_data is null.
 	writel(1, data->io_base + GLOBAL_RESET);
 	while (readl(data->io_base + GLOBAL_RESET)) ;
 
-#if defined(CONFIG_SP_SAMSUNG_K9F2G08U0A) ||\
-	defined(CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI) ||\
-	defined(CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI) ||\
-	defined(CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
-	/* We disable scramble function on SLC because SLC
-	 * usually needs fewer ecc correction capability.
-	 * The fewer ecc correction capability, the more
-	 * probability of ecc misjudgement especially for
-	 * paged pattern(0xff)
-	 */
-	// which is randomized by scrambler.
-	#ifdef CONFIG_SP_USE_DATA_INVERSE
-	writel(BUSY_RDY_LOC(6) | CMD_STS_LOC(0) | CE_NUM(2) | DATA_INVERSE, data->io_base + GENERAL_SETTING);
-	#else
-	writel(BUSY_RDY_LOC(6) | CMD_STS_LOC(0) | CE_NUM(2), data->io_base + GENERAL_SETTING);
-	#endif
-#else
-	#ifdef CONFIG_SP_USE_DATA_INVERSE
-	writel(BUSY_RDY_LOC(6) | CMD_STS_LOC(0) | CE_NUM(2) | DATA_INVERSE | DATA_SCRAMBLER, data->io_base + GENERAL_SETTING);
-	#else
-	writel(BUSY_RDY_LOC(6) | CMD_STS_LOC(0) | CE_NUM(2) | DATA_SCRAMBLER, data->io_base + GENERAL_SETTING);
-	#endif
-#endif
+	val = BUSY_RDY_LOC(6) | CMD_STS_LOC(0) | CE_NUM(2);
+	if (data->inverse)
+		val |= DATA_INVERSE;
+	if (data->scramble)
+		val |= DATA_SCRAMBLER;
 
-	//for SP v2.4
-	data->max_spare = 32;
-	data->spare_ch_offset = 5; //shift 5 means 0x20
-	data->seed_val = 0;
-#if 0 //enable at next version (v2.5)
-	if (readl(data->io_base + REVISION_NUM) >= 0x020400) {
-		printk(KERN_INFO "SP >= v2.4\n");
+	writel(val, data->io_base + GENERAL_SETTING);
 
-		//Check if the SP support up to 128 bytes spare number
-		val = readl(data->io_base + FEATURE_1);
-		if (val & MAX_SPARE_DATA_128BYTE) {
-			data->max_spare = 128;
-			data->spare_ch_offset = 7; //shift 7 means 0x80
-		}
-
-		//Support FW to program scramble seed
-/*		val = readl(data->io_base + NANDC_EXT_CTRL);
+	if (data->scramble) {
+		/* Support FW to program scramble seed */
+		val = readl(data->io_base + NANDC_EXT_CTRL);
 		for(i = 0; i < MAX_CHANNEL; i++)
 			val |= SEED_SEL(i);
 		writel(val, data->io_base + NANDC_EXT_CTRL);
-		data->seed_val = 0x2fa5; //random set, b[13:0]
-*/
+		/* random set, b[13:0] */
+		data->seed_val = 0x2fa5;
 	}
-#endif
 
 	val = readl(data->io_base + AHB_SLAVEPORT_SIZE);
 	val &= ~0xFFF0FF;
-	val |= AHB_SLAVE_SPACE_64KB;
+	val |= AHB_SLAVE_SPACE_32KB;//64K?
 	for(i = 0; i < MAX_CHANNEL; i++)
 		val |= AHB_PREFETCH(i);
 	val |= AHB_PRERETCH_LEN(128);
 	writel(val, data->io_base + AHB_SLAVEPORT_SIZE);
 
-
-#if defined (CONFIG_SP_SAMSUNG_K9F2G08U0A)
-	sel = 0;
-#elif defined (CONFIG_PNANDC_GIGADEVICE_9AU4G8F3AMGI)
-	sel = 1;
-#elif defined (CONFIG_PNANDC_GIGADEVICE_9FU4G8F4BMGI)
-	sel = 2;
-#elif defined (CONFIG_PNANDC_SAMSUNG_K9GBG08U0B)
-	sel = 3;
-else
-	sel = -1;
-#endif
-
-	if (sel != -1) {
-		printk(KERN_INFO "Use %s NAND chip...\n", nand_attr[sel].name);
-		data->spare = nand_attr[sel].sparesize;
-		data->useecc = nand_attr[sel].ecc;
-		data->useecc_spare = nand_attr[sel].ecc_spare;
-		data->eccbasft = nand_attr[sel].eccbaseshift;
-		data->protect_spare = nand_attr[sel].crc;
-		data->flash_type = nand_attr[sel].flash_type;
-
-	} else {
-		printk(KERN_INFO "Use Unknown type NAND chip...\n");
-		goto out_free_data;
-	}
-
 	nand_set_controller_data(&data->chip, data);
 	mtd = nand_to_mtd(&data->chip);
 	mtd->owner = THIS_MODULE;
 	mtd->dev.parent = &pdev->dev;
-	mtd->name = "sp_paranand.0";//NAME_DEFINE_IN_UBOOT;
+	/* Set the name same as uboot cmdline */
+	mtd->name = "sp_paranand.0";
 	data->dev = &pdev->dev;
 	chip->legacy.IO_ADDR_W = chip->legacy.IO_ADDR_R;
 	chip->legacy.select_chip = sp_pnand_select_chip;
@@ -1562,7 +1449,6 @@ else
 #endif
 	chip->options |= NAND_USES_DMA;
 	chip->bbt_options = NAND_BBT_USE_FLASH | NAND_BBT_NO_OOB;
-	data->block_boundary = nand_attr[sel].block_boundary;
 	platform_set_drvdata(pdev, data);
 
 	// Set the default AC timing/Warmup cyc for sp_pnand.
@@ -1570,7 +1456,7 @@ else
 	// set before although the Global Reset is set.
 	sp_pnand_set_default_timing(chip);
 	sp_pnand_set_warmup_cycle(chip, 0, 0);
-
+#if 0
 	// Disable the scan state for sp_pnand_select_chip
 	data->scan_state = 0;
 
@@ -1595,7 +1481,7 @@ else
 	// Reset the flash delay set before.
 	if(data->flash_type == TOGGLE2)
 		sp_pnand_t2_sync(chip, 0, 0);
-
+#endif
 	/* Scan to find existance of the device */
 	for (i = startchn; i < MAX_CHANNEL; i++) {
 		printk(KERN_INFO "Scan Channel %d...\n", i);
@@ -1613,62 +1499,24 @@ else
 		}
 	}
 	// Disable the scan-state for sp_pnand_select_chip
-	data->scan_state = 0;
+	//data->scan_state = 0;
 
 	if (chipnum == 0) {
-		ret = -ENXIO;
-		goto out_unset_drv;
+		return -ENXIO;
 	}
 
 	mtd->size = size;
 
-	/*----------------------------------------------------------
-	 * ONFI synch mode means High Speed. If fails to change to
-	 * Synch mode, then use flash as Async mode(Normal speed) and
-	 * use LEGACY_LARGE fix flow.
-	 */
-	if (type == ONFI2 || type == ONFI3) {
-		data->flash_type = type;
-		if (sp_pnand_onfi_sync(chip) == 0) {
-			sp_pnand_calc_timing(chip);
-			sp_pnand_calibrate_dqs_delay(chip);
-		}
-		else{
-			data->flash_type = LEGACY_FLASH;
-		}
-	}
-
-	// Toggle & ONFI flash has set the proper timing before READ ID.
-	// We don't do that twice.
-	if(data->flash_type == LEGACY_FLASH) {
-		sp_pnand_calc_timing(chip);
-		sp_pnand_calibrate_rlat(chip);
-	}
-	else if(data->flash_type == TOGGLE2) {
-#if defined(CONFIG_SP_SAMSUNG_K9GCGY8S0A)
-		sp_pnand_t2_sync(chip, 0, 2);
-#elif defined(CONFIG_SP_TOSHIBA_TH58TEG7DCJBA4C) ||\
-	defined(CONFIG_SP_TOSHIBA_TH58TFT0DDLBA8H)
-		sp_pnand_t2_sync(chip, 3, 3);
-#endif
-	}
+	sp_pnand_set_actiming(chip);
 
 	ret = mtd_device_register(mtd, NULL, 0);
 	if (ret) {
-		dev_err(dev, "mtd parse partition error\n");
-		goto out_clean_info;
+		dev_err(dev, "Failed to register mtd device\n");
+		nand_cleanup(chip);
+		return ret;
 	}
 
 	return 0;
-
-out_clean_info:
-	nand_cleanup(chip);
-out_unset_drv:
-	platform_set_drvdata(pdev, NULL);
-out_free_data:
-	kfree(data);
-out:
-	return ret;
 }
 
 /*
