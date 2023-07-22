@@ -54,22 +54,34 @@ static struct sp_pnand_chip_timing chip_timing[] = {
 	70, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
-	{ //GIGADEVICE_9AU4G8F3AMGI
+	{ //GD9FS2G8F2A 256MiB 1.8V 8-bit
+	10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
+	20, 12, 100, 0, 60, 0, 100, 20, 10, 25,
+	300, 100, 0, 15, 0, 12, 10, 10, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{ //GD9AU4G8F3A 512MiB 3.3V 8-bit
 	7, 5, 5, 5, 0, 12, 7, 0, 0, 0,
 	18, 10, 100, 0, 80, 0, 100, 20, 10, 20,
 	100, 100, 0, 15, 0, 12, 10, 10, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{ //GIGADEVICE_9FU4G8F4BMGI
+	{ //GD9FU4G8F4B 512MiB 3.3V 8-bit
 	10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
 	20, 12, 100, 0, 60, 0, 100, 20, 10, 0,
 	150, 100, 0, 15, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	{ //SAMSUNG_K9GBG08U0B
+	{ //W29N08GZSIBA 1GMiB 1.8V 8-bit
+	10, 5, 5, 5, 0, 12, 10, 0, 0, 0,
+	25, 12, 100, 0, 80, 0, 100, 20, 10, 0,
+	150, 100, 0, 15, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	{ //K9GBG08U0B 4GiB 3.3V 8-bit
 	11, 5, 5, 5, 0, 11, 11, 0, 0, 0,
 	20, 11, 100, 0, 120, 300, 100, 20, 10, 25,
-	300, 100, 0, 20, 0, 12, 10, 12, 0, 0, 0, 0, 0, 0, 0,
+	70, 100, 0, 20, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -126,12 +138,16 @@ static struct sp_pnand_chip_timing *sp_pnand_scan_timing(struct nand_chip *chip)
 	DBGLEVEL2(sp_pnand_dbg("chip->parameters.model %s\n", chip->parameters.model));
 	if(strcmp(chip->parameters.model, "K9F2G08XXX 256MiB ZEBU 8-bit") == 0)
 		return &chip_timing[0];
-	else if(strcmp(chip->parameters.model, "9AU4G8F3AMGI 512MiB 3.3V 8-bit") == 0)
+	else if(strcmp(chip->parameters.model, "9FS2G8F2A 256MiB 1.8V 8-bit") == 0)
 		return &chip_timing[1];
-	else if(strcmp(chip->parameters.model, "9FU4G8F4BMGI 512MiB 3.3V 8-bit") == 0)
+	else if(strcmp(chip->parameters.model, "9AU4G8F3A 512MiB 3.3V 8-bit") == 0)
 		return &chip_timing[2];
-	else if(strcmp(chip->parameters.model, "K9GBG08U0B 4G 3.3V 8-bit") == 0)
+	else if(strcmp(chip->parameters.model, "9FU4G8F4B 512MiB 3.3V 8-bit") == 0)
 		return &chip_timing[3];
+	else if(strcmp(chip->parameters.model, "W29N08GZSIBA 1GiB 1.8V 8-bit") == 0)
+		return &chip_timing[4];
+	else if(strcmp(chip->parameters.model, "K9GBG08U0B 4GiB 3.3V 8-bit") == 0)
+		return &chip_timing[5];
 	else
 		return NULL;
 }
@@ -1259,14 +1275,14 @@ static int sp_pnand_attach_chip(struct nand_chip *chip)
 
 	mtd_set_ooblayout(mtd, &sp_pnand_ooblayout_ops);
 
-	sp_pnand_dbg("Use nand flash %s\n", mtd->name);
-	sp_pnand_dbg("data->eccbasft: %d\n", data->eccbasft);
-	sp_pnand_dbg("data->useecc: %d\n", data->useecc);
-	sp_pnand_dbg("data->protect_spare: %d\n", data->protect_spare);
-	sp_pnand_dbg("data->useecc_spare: %d\n", data->useecc_spare);
-	sp_pnand_dbg("data->spare: %d\n", data->spare);
-	sp_pnand_dbg("data->flash_type: %d\n", data->flash_type);
-	sp_pnand_dbg("data->sector_per_page: %d\n", data->sector_per_page);
+	DBGLEVEL2(sp_pnand_dbg("Use nand flash %s\n", mtd->name));
+	DBGLEVEL2(sp_pnand_dbg("data->eccbasft: %d\n", data->eccbasft));
+	DBGLEVEL2(sp_pnand_dbg("data->useecc: %d\n", data->useecc));
+	DBGLEVEL2(sp_pnand_dbg("data->protect_spare: %d\n", data->protect_spare));
+	DBGLEVEL2(sp_pnand_dbg("data->useecc_spare: %d\n", data->useecc_spare));
+	DBGLEVEL2(sp_pnand_dbg("data->spare: %d\n", data->spare));
+	DBGLEVEL2(sp_pnand_dbg("data->flash_type: %d\n", data->flash_type));
+	DBGLEVEL2(sp_pnand_dbg("data->sector_per_page: %d\n", data->sector_per_page));
 
 	return 0;
 }
@@ -1351,7 +1367,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 		return PTR_ERR(chip->legacy.IO_ADDR_R);
 	}
 
-	if (!of_property_read_u32(pdev->dev.of_node, "clock-frequency", &data->clkfreq))
+	if (of_property_read_u32(pdev->dev.of_node, "clock-frequency", &data->clkfreq))
 		data->clkfreq = CONFIG_SP_CLK_100M;
 
 	ret = clk_set_rate(clk, data->clkfreq);
@@ -1434,7 +1450,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	mtd->owner = THIS_MODULE;
 	mtd->dev.parent = &pdev->dev;
 	/* Set the name same as uboot cmdline */
-	mtd->name = "sp_paranand.0";
+	mtd->name = NAME_DEFINE_IN_UBOOT;
 	data->dev = &pdev->dev;
 	chip->legacy.IO_ADDR_W = chip->legacy.IO_ADDR_R;
 	chip->legacy.select_chip = sp_pnand_select_chip;

@@ -11,10 +11,9 @@
 /**********************************************************
 *	Platform(user) specific
 **********************************************************/
-/* Frequency Setting (unit: HZ) */
-#define XT_DEBUG
 #define NAME_DEFINE_IN_UBOOT		"sp_paranand.0"
 
+/* Frequency Setting (unit: HZ) */
 #define CONFIG_SP_CLK_100M		100000000
 #define CONFIG_SP_CLK_200M		200000000
 #define CONFIG_SP_CLK_400M		400000000
@@ -116,27 +115,6 @@
 #define SCR_SEED_VAL1(x)		((x & 0xff) << 24)
 #define SCR_SEED_VAL2(x)		(((x & 0x3fff) >> 8) << 26)
 
-/*#define 	SPARE_SIZE_1BYTE	0
-#define 	SPARE_SIZE_2BYTE	1
-#define 	SPARE_SIZE_3BYTE	2
-#define 	SPARE_SIZE_4BYTE	3
-#define 	SPARE_SIZE_5BYTE	4
-#define 	SPARE_SIZE_6BYTE	5
-#define 	SPARE_SIZE_7BYTE	6
-#define 	SPARE_SIZE_8BYTE	7
-#define 	SPARE_SIZE_9BYTE	8
-#define 	SPARE_SIZE_10BYTE	9
-#define 	SPARE_SIZE_11BYTE	10
-#define 	SPARE_SIZE_12BYTE	11
-#define 	SPARE_SIZE_13BYTE	12
-#define 	SPARE_SIZE_14BYTE	13
-#define 	SPARE_SIZE_15BYTE	14
-#define 	SPARE_SIZE_16BYTE	15
-#define 	SPARE_SIZE_PAGE_M_4BYTE	 0
-#define 	SPARE_SIZE_PAGE_M_8BYTE	 1
-#define 	SPARE_SIZE_PAGE_M_16BYTE 3
-#define 	SPARE_SIZE_PAGE_M_32BYTE 7
-#define 	SPARE_SIZE_PAGE_M_64BYTE 15*/
 #define CMD_BYTE_MODE			(1 << 28)
 #define CMD_START_CE(x)			((x & 0x7) << 29)
 
@@ -218,11 +196,9 @@
 #define CONFIG_PAGE_MODE
 //#define CONFIG_SECTOR_MODE
 
-/* Frequency Setting (unit: HZ) */
-#define FREQ_SETTING				CONFIG_SP_HCLK
-
 #if CONFIG_SP_DEBUG > 0
-	#define sp_pnand_dbg(fmt, ...) printk(KERN_INFO fmt, ##__VA_ARGS__);
+	#define TAG "Parallel Nand: "
+	#define sp_pnand_dbg(fmt, ...) printk(KERN_INFO TAG fmt, ##__VA_ARGS__);
 #else
 	#define sp_pnand_dbg(fmt, ...) do {} while (0)
 #endif
