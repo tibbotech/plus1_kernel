@@ -12,15 +12,22 @@
 #include <linux/usb/otg.h>
 
 #include "otg-sunplus.h"
+#ifdef CONFIG_USB_SP_UDC2
 #include "../core/otg_productlist.h"
+#endif
 
 #define DRIVER_NAME	"sp-otg"
 
+#ifdef CONFIG_USB_SP_UDC2
 extern void detech_start(void);
 extern void device_run_stop_ctrl(int);
+
 u32 otg_id_pin;
 EXPORT_SYMBOL(otg_id_pin);
+
 static u32 start_srp = false;
+#endif
+
 extern u8 otg0_vbus_off;
 extern u8 otg1_vbus_off;
 
@@ -85,20 +92,6 @@ const char *otg_state_string(enum usb_otg_state state)
 }
 EXPORT_SYMBOL(otg_state_string);
 
-static int sp_start_srp(struct usb_otg *otg)
-{
-	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->usb_phy, struct sp_otg, otg);
-	u32 val;
-
-	start_srp = true;
-
-	val = readl(&otg_host->regs_otg->otg_device_ctrl);
-	val |= B_VBUS_REQ;
-	writel(val, &otg_host->regs_otg->otg_device_ctrl);
-
-	return 0;
-}
-
 void dump_debug_register(struct usb_otg *otg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->usb_phy, struct sp_otg, otg);
@@ -109,6 +102,7 @@ void dump_debug_register(struct usb_otg *otg)
 }
 EXPORT_SYMBOL(dump_debug_register);
 
+#ifdef CONFIG_USB_SP_UDC2
 void sp_accept_b_hnp_en_feature(struct usb_otg *otg)
 {
 	u32 val;
@@ -147,6 +141,21 @@ static int sp_start_hnp(struct usb_otg *otg)
 
 	return 0;
 }
+
+static int sp_start_srp(struct usb_otg *otg)
+{
+	struct sp_otg *otg_host = (struct sp_otg *)container_of(otg->usb_phy, struct sp_otg, otg);
+	u32 val;
+
+	start_srp = true;
+
+	val = readl(&otg_host->regs_otg->otg_device_ctrl);
+	val |= B_VBUS_REQ;
+	writel(val, &otg_host->regs_otg->otg_device_ctrl);
+
+	return 0;
+}
+#endif
 
 static int sp_set_vbus(struct usb_otg *otg, bool enabled)
 {
@@ -192,12 +201,14 @@ int sp_set_host(struct usb_otg *otg, struct usb_bus *host)
 	return 0;
 }
 
+#ifdef CONFIG_USB_SP_UDC2
 int sp_set_peripheral(struct usb_otg *otg, struct usb_gadget *gadget)
 {
 	otg->gadget = gadget;
 
 	return 0;
 }
+#endif
 
 int sp_phy_read(struct usb_phy *x, u32 reg)
 {
@@ -216,12 +227,13 @@ struct usb_phy_io_ops sp_phy_ios = {
 	.write = sp_phy_write,
 };
 
+#ifdef CONFIG_USB_SP_UDC2
 int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
-#ifdef	CONFIG_USB_OTG
+	#ifdef	CONFIG_USB_OTG
 	struct usb_otg_descriptor *desc = NULL;
-#endif
+	#endif
 	struct usb_device *udev = NULL;
 	struct usb_hcd *hcd = NULL;
 	struct usb_phy *otg_phy = NULL;
@@ -256,7 +268,7 @@ int hnp_polling_watchdog(void *arg)
 					continue;
 				}
 
-#ifdef	CONFIG_USB_OTG
+	#ifdef	CONFIG_USB_OTG
 				ret = __usb_get_extra_descriptor(udev->rawdescriptors[0],
 								 le16_to_cpu(udev->config[0].desc.wTotalLength),
 								 USB_DT_OTG, (void **) &desc, sizeof(*desc));
@@ -265,10 +277,10 @@ int hnp_polling_watchdog(void *arg)
 					msleep(1);
 					continue;
 				}
-#else
+	#else
 				msleep(1);
 				continue;
-#endif
+	#endif
 
 				targeted = is_targeted(udev);
 				hcd = bus_to_hcd(udev->bus);
@@ -308,11 +320,11 @@ int hnp_polling_watchdog(void *arg)
 				} else {
 					host_req_flag = *otg_status & 0x1;
 					if(host_req_flag) {
-#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
 						otg_phy = usb_get_transceiver_sp(0);
-#else
+	#else
 						otg_phy = usb_get_transceiver_sp(1);
-#endif
+	#endif
 
 						if(!otg_phy){
 							otg_debug("Get otg control fail(busnum:%d)!\n",
@@ -368,6 +380,7 @@ int hnp_polling_watchdog(void *arg)
 
 	return 0;
 }
+#endif
 
 static void sp_otg_work(struct work_struct *work)
 {
@@ -462,7 +475,7 @@ static void otg_hw_init(struct sp_otg *otg_host)
 	/* Enbale ADP & SRP  */
 	val = readl(&otg_host->regs_otg->otg_int_st);
 
-#ifdef CONFIG_SOC_SP7350
+#if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
 	if (val & ID_PIN)
 		otg_id_pin = 1;
 	else
@@ -682,7 +695,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 		val |= A_BUS_DROP_BIT;
 		writel(val, &otg_host->regs_otg->otg_device_ctrl);
 
-#ifdef CONFIG_SOC_SP7350
+#if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
 		device_run_stop_ctrl(0);
 #endif
 
@@ -739,14 +752,14 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 				  ADP_TIMER_FREQ + jiffies);
 #endif
 
-#ifdef CONFIG_SOC_SP7350
+#if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
 			otg_id_pin = 0;
 			device_run_stop_ctrl(0);
 #endif
 		} else {
 			writel(~OTG_SIM & (OTG_SRP | OTG_20),
 				  &otg_host->regs_otg->mode_select);
-#ifdef  CONFIG_SOC_SP7350
+#if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
 			otg_id_pin = 1;
 			device_run_stop_ctrl(1);
 #endif
@@ -767,7 +780,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 
 		//otg_debug("oct in %09ld.%09ld\n", t0.tv_sec, t0.tv_nsec);
 
-#if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
+#if defined(CONFIG_ADP_TIMER) && !defined(CONFIG_SOC_SP7350)
 		mod_timer(&otg_host->adp_timer, (HZ/10) + jiffies);
 #endif
 
@@ -867,9 +880,11 @@ int sp_otg_probe(struct platform_device *dev)
 
 	otg_host->otg.otg->set_host = sp_set_host;
 	otg_host->otg.otg->set_vbus = sp_set_vbus;
+#ifdef CONFIG_USB_SP_UDC2
 	otg_host->otg.otg->set_peripheral = sp_set_peripheral;
 	otg_host->otg.otg->start_hnp = sp_start_hnp;
 	otg_host->otg.otg->start_srp = sp_start_srp;
+#endif
 	otg_host->otg.otg->usb_phy = &otg_host->otg;
 
 	otg_host->otg.io_priv = otg_host->regs_otg;
