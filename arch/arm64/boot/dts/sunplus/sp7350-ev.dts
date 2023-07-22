@@ -1237,6 +1237,7 @@
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc PNAND>;
 		resets = <&rstc RST_PNAND>;
+		clock-frequency = <400000000>;
 		dmas = <&dmac 2>;
 		dma-names = "rxtx";
 		pinctrl-names = "default";

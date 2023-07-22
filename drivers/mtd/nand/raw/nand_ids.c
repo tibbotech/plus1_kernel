@@ -173,6 +173,7 @@ static const struct nand_manufacturer_desc nand_manufacturer_descs[] = {
 	{NAND_MFR_ATO, "ATO"},
 	{NAND_MFR_EON, "Eon"},
 	{NAND_MFR_ESMT, "ESMT", &esmt_nand_manuf_ops},
+	{NAND_MFR_GD, "GigaDevice"},
 	{NAND_MFR_FUJITSU, "Fujitsu"},
 	{NAND_MFR_HYNIX, "Hynix", &hynix_nand_manuf_ops},
 	{NAND_MFR_INTEL, "Intel"},

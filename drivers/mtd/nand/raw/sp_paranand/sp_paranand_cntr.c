@@ -739,16 +739,7 @@ int sp_pnand_read_page(struct nand_chip *chip,
 	u32 *lbuf;
 
 	data->page_addr = page;
-
-#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-		defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	int real_blk_nm, real_off;
-	real_blk_nm = data->page_addr / (mtd->erasesize/mtd->writesize);
-	real_off = data->page_addr % (mtd->erasesize/mtd->writesize);
-	real_pg = (real_blk_nm * data->block_boundary) + real_off;
-#else
 	real_pg = data->page_addr;
-#endif
 
 	DBGLEVEL2(sp_pnand_dbg
 		("r: ch = %d, ce = %d, page = 0x%x, real = 0x%x, size = %d, data->column = %d\n",
@@ -865,16 +856,7 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 	int i, status = 0;
 
 	data->page_addr = page;
-
-#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-		defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	int real_blk_nm, real_off;
-	real_blk_nm = data->page_addr / (mtd->erasesize/mtd->writesize);
-	real_off = data->page_addr % (mtd->erasesize/mtd->writesize);
-	real_pg = (real_blk_nm * data->block_boundary) + real_off;
-#else
 	real_pg = data->page_addr;
-#endif
 
 	DBGLEVEL2(sp_pnand_dbg (
 		"w: ch = %d, ce = %d, page = 0x%x, real page:0x%x size = %d, data->column = %d\n",
@@ -932,16 +914,7 @@ int sp_pnand_read_oob(struct nand_chip *chip, int page)
 	u8 *buf = chip->oob_poi;
 
 	data->page_addr = page;
-
-#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-		defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	int real_blk_nm, real_off;
-	real_blk_nm = data->page_addr / (mtd->erasesize/mtd->writesize);
-	real_off = data->page_addr % (mtd->erasesize/mtd->writesize);
-	real_pg = (real_blk_nm * data->block_boundary) + real_off;
-#else
 	real_pg = data->page_addr;
-#endif
 
 	DBGLEVEL2(sp_pnand_dbg(
 		"read_oob: ch = %d, ce = %d, page = 0x%x, real: 0x%x, size = %d\n",
@@ -997,16 +970,7 @@ int sp_pnand_write_oob(struct nand_chip *chip, int page)
 	u8 *buf = chip->oob_poi;
 
 	data->page_addr = page;
-
-#if defined(CONFIG_SP_TOSHIBA_TC58NVG4T2ETA00) ||\
-		defined(CONFIG_SP_SAMSUNG_K9ABGD8U0B)
-	int real_blk_nm, real_off;
-	real_blk_nm = data->page_addr / (mtd->erasesize/mtd->writesize);
-	real_off = data->page_addr % (mtd->erasesize/mtd->writesize);
-	real_pg = (real_blk_nm * data->block_boundary) + real_off;
-#else
 	real_pg = data->page_addr;
-#endif
 
 	DBGLEVEL2(sp_pnand_dbg(
 		"write_oob: ch = %d, ce = %d, page = 0x%x, real page:0x%x, sz = %d, oobsz = %d\n",
