@@ -63,7 +63,18 @@ struct sp_thermal_data {
 	u32 id;
 };
 
-static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
+static int sp_thermal_init(struct sp_thermal_data *sp_data)
+{
+	if (sp_data->dev_comp->ver > 1)
+		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
+	else
+		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
+
+	msleep(1);
+	return 0;
+}
+
+static int sp_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
 {
 	struct nvmem_cell *cell;
 	ssize_t otp_l;
@@ -177,13 +188,11 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 		ret = clk_prepare_enable(sp_data->clk);
 		if (ret)
 			return dev_err_probe(&pdev->dev, ret, "failed to enable clk\n");
-		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
-	} else {
-		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
 	}
 
 	platform_set_drvdata(pdev, sp_data);
-	ret = sp7021_get_otp_temp_coef(sp_data, &pdev->dev);
+	ret = sp_thermal_init(sp_data);
+	ret = sp_get_otp_temp_coef(sp_data, &pdev->dev);
 	ret = sp_thermal_register_sensor(pdev, sp_data, 0);
 	sp_data->wraning_cnt = 0;
 
@@ -220,7 +229,7 @@ static int __maybe_unused sp_thermal_resume(struct device *dev)
 		reset_control_deassert(sp_data->rstc);
 		clk_prepare_enable(sp_data->clk);
 	}
-	return 0;
+	return sp_thermal_init(sp_data);
 }
 
 static int sp_thermal_runtime_suspend(struct device *dev)
@@ -243,7 +252,7 @@ static int sp_thermal_runtime_resume(struct device *dev)
 		reset_control_deassert(sp_data->rstc);   //release reset
 		clk_prepare_enable(sp_data->clk);        //enable clken and disable gclken
 	}
-	return 0;
+	return sp_thermal_init(sp_data);
 }
 
 static const struct dev_pm_ops sp_thermal_pm_ops = {
