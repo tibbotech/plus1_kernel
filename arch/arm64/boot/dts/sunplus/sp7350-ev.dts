@@ -1373,7 +1373,7 @@
 		//status = "disabled";
 	};
 
-#if 0
+#if 1
 	bcmdhd_wlan {
 		compatible = "android,bcmdhd_wlan";
 		pinctrl-names = "default";

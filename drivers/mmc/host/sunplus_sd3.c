@@ -1344,7 +1344,7 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	ret = reset_control_assert(host->rstc);
 	if (ret)
 		goto probe_free_host;
-	mdsleep(1);
+	msleep(1);
 	ret = reset_control_deassert(host->rstc);
 
 	ret = clk_prepare_enable(host->clk);
