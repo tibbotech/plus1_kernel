@@ -1321,7 +1321,7 @@
 	};
 
 	mmc1: mmc@f8003e80 {
-		compatible = "sunplus,sp7350-card";
+		compatible = "sunplus,sp7350-sd";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
@@ -1330,6 +1330,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
+		delay-val = <0x666330>;
 		bus-width = <4>;
 		max-frequency = <160000000>;
 		disable-wp;
@@ -1344,7 +1345,7 @@
 	};
 
 	sdio: sdio@f8008400 {
-		compatible = "sunplus,sp7350-sdio";
+		compatible = "sunplus,sp7350-sd";
 		reg = < 0x0 0xf8008400 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
@@ -1352,6 +1353,7 @@
 		resets = <&rstc RST_CARD_CTL2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;
+		delay-val = <0x777110>;
 		bus-width = <4>;
 		max-frequency = <160000000>;
 		non-removable;
