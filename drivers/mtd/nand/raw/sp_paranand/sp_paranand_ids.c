@@ -23,7 +23,7 @@ const struct nand_flash_dev sp_pnand_ids[] = {
 	{"9FU4G8F4B 512MiB 3.3V 8-bit",
 		{ .id = {0xc8, 0xdc, 0x90, 0xa6, 0x57} },
 		  SZ_4K, SZ_512, SZ_256K, 0, 5, 256, NAND_ECC_INFO(8, SZ_512), },
-	{"W29N08GZSIBA 1GMiB 1.8V 8-bit",
+	{"W29N08GZSIBA 1GiB 1.8V 8-bit",
 		{ .id = {0xef, 0xa3, 0x91, 0x15, 0x58} },
 		  SZ_2K, SZ_1K, SZ_128K, 0, 5, 64, NAND_ECC_INFO(2, SZ_512), },
 	{"K9GBG08U0B 4GiB 3.3V 8-bit",
