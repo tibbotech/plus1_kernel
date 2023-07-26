@@ -85,15 +85,15 @@
 		#size-cells = <2>;
 		ranges;
 
-                tfa_reserve@200000 {
-                        reg = <0x0 0x200000 0x0 0x100000>;
-                        no-map;
-                };
+		tfa_reserve@200000 {
+			reg = <0x0 0x200000 0x0 0x100000>;
+			no-map;
+		};
 
-                optee_reserve@300000 {
-                        reg = <0x0 0x300000 0x0 0x200000>;
-                        no-map;
-                };
+		optee_reserve@300000 {
+			reg = <0x0 0x300000 0x0 0x200000>;
+			no-map;
+		};
 
 		/* warmboot reserve, run address 0x100000+8k, load firmware in rproc */
 		rproc_0_reserved: rproc0@100000 {
@@ -592,7 +592,7 @@
 					};
 					cpu_trip0: cpu0 {
 						temperature = <70000>;
-			 			hysteresis = <2000>;
+						hysteresis = <2000>;
 						type = "passive";
 					};
 					cpu_trip1: cpu1 {
@@ -1150,6 +1150,41 @@
 		snps,axi-max-burst-len = <16>;
 	};
 
+	stmmac_axi_setup: stmmac-axi-config {
+		snps,wr_osr_lmt = <0xf>;
+		snps,rd_osr_lmt = <0xf>;
+		snps,blen = <256 128 64 32 0 0 0>;
+	};
+
+	mtl_rx_setup: rx-queues-config {
+		snps,rx-queues-to-use = <1>;
+		snps,rx-sched-sp;
+		queue0 {
+			snps,dcb-algorithm;
+			snps,map-to-dma-channel = <0x0>;
+			snps,priority = <0x0>;
+		};
+	};
+
+	mtl_tx_setup: tx-queues-config {
+		snps,tx-queues-to-use = <2>;
+		snps,tx-sched-wrr;
+		queue0 {
+			snps,weight = <0x10>;
+			snps,dcb-algorithm;
+			snps,priority = <0x0>;
+		};
+
+		queue1 {
+			snps,avb-algorithm;
+			snps,send_slope = <0x1000>;
+			snps,idle_slope = <0x2000>;
+			snps,high_credit = <0x3e800>;
+			snps,low_credit = <0xffc18000>;
+			snps,priority = <0x2>;
+		};
+	};
+
 	ethernet: stmmac@f8103000 {
 		compatible = "snps,dwmac-3.70a";
 		reg = <0x00 0xf8103000 0x00 0x2000>;
@@ -1180,7 +1215,11 @@
 		phy-handle = <&phy0>;
 		tx_delay = <0x25>;
 		rx_delay = <0x15>;
+		//snps,axi-config = <&stmmac_axi_setup>;
+		//snps,mtl-rx-config = <&mtl_rx_setup>;
+		//snps,mtl-tx-config = <&mtl_tx_setup>;
 		//status = "disabled";
+
 		mdio0 {
 			#address-cells = <1>;
 			#size-cells = <0>;
