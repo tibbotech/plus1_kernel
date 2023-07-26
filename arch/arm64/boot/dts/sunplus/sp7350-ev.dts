@@ -563,6 +563,7 @@
 		compatible = "sunplus,sp7350-thermal";
 		reg =<0x0 0xf88002b4 0x0 0x18>;
 		clocks = <&clkc THERMAL>;
+		resets = <&rstc RST_THERMAL>;
 		#thermal-sensor-cells = <0>;
 		nvmem-cell-names = "therm_calib";
 		nvmem-cells = <&therm_calib>;
@@ -1231,11 +1232,12 @@
 
 	paranand0: paranand@f8120000 {
 		compatible = "sunplus,sp7350-para-nand";
-		reg = <0x0 0xf8120000 0x0 0xc0000>, <0x0 0xfb000000 0x0 0x4000000>;
+		reg = <0x0 0xf8120000 0x0 0x3000>, <0x0 0xfb000000 0x0 0x4000000>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 71 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc PNAND>;
 		resets = <&rstc RST_PNAND>;
+		clock-frequency = <400000000>;
 		dmas = <&dmac 2>;
 		dma-names = "rxtx";
 		pinctrl-names = "default";
@@ -1272,7 +1274,7 @@
 
 	mmc0: mmc@f8003b00 {
 		compatible = "sunplus,sp7350-emmc";
-		reg = <0x0 0xf8003b00 0x0 0x180>, <0x0 0xf8003280 0x0 0x80>, <0x0 0xf8003300 0x0 0x80>;
+		reg = <0x0 0xf8003b00 0x0 0x180>, <0x0 0xf8803280 0x0 0x80>, <0x0 0xf8803300 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc CARD_CTL0>;
@@ -1319,7 +1321,7 @@
 	};
 
 	mmc1: mmc@f8003e80 {
-		compatible = "sunplus,sp7350-card";
+		compatible = "sunplus,sp7350-sd";
 		reg = <0x0 0xf8003e80 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 16 IRQ_TYPE_LEVEL_HIGH>;
@@ -1328,6 +1330,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
+		delay-val = <0x666330>;
 		bus-width = <4>;
 		max-frequency = <160000000>;
 		disable-wp;
@@ -1342,7 +1345,7 @@
 	};
 
 	sdio: sdio@f8008400 {
-		compatible = "sunplus,sp7350-sdio";
+		compatible = "sunplus,sp7350-sd";
 		reg = < 0x0 0xf8008400 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;
@@ -1350,6 +1353,7 @@
 		resets = <&rstc RST_CARD_CTL2>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdio_pins>;
+		delay-val = <0x777110>;
 		bus-width = <4>;
 		max-frequency = <160000000>;
 		non-removable;
@@ -1369,7 +1373,7 @@
 		//status = "disabled";
 	};
 
-#if 0
+#if 1
 	bcmdhd_wlan {
 		compatible = "android,bcmdhd_wlan";
 		pinctrl-names = "default";

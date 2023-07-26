@@ -52,7 +52,9 @@ struct sunplus_thermal_compatible {
 struct sp_thermal_data {
 	struct thermal_zone_device *pcb_tz;
 	struct platform_device *pdev;
+	struct resource *res;
 	struct clk *clk;
+	struct reset_control *rstc;
 	const struct sunplus_thermal_compatible *dev_comp;
 	enum thermal_device_mode mode;
 	void __iomem *regs;
@@ -61,13 +63,24 @@ struct sp_thermal_data {
 	u32 id;
 };
 
-static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
+static int sp_thermal_init(struct sp_thermal_data *sp_data)
+{
+	if (sp_data->dev_comp->ver > 1)
+		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
+	else
+		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
+
+	msleep(1);
+	return 0;
+}
+
+static int sp_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *dev)
 {
 	struct nvmem_cell *cell;
 	ssize_t otp_l;
 	char *otp_v;
 
-	cell = nvmem_cell_get(dev, "calib");
+	cell = nvmem_cell_get(dev, "therm_calib");
 	if (IS_ERR(cell)){
 		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
 		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
@@ -78,7 +91,7 @@ static int sp7021_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct devi
 	nvmem_cell_put(cell);
 
 	if (otp_l < 3){
-		printk(KERN_ERR "Failed to get NVMEM cell: %ld\n", PTR_ERR(cell));
+		printk(KERN_ERR "Failed to read NVMEM cell: %ld\n", PTR_ERR(cell));
 		sp_data->otp_temp0 = sp_data->dev_comp->temp_otp_base;
     		return 0;
 	}
@@ -110,7 +123,7 @@ static int sp_thermal_get_sensor_temp(void *data, int *temp)
 	*temp = ((sp_data->otp_temp0 - t_code) * 10000 / sp_data->dev_comp->temp_rate) + sp_data->dev_comp->temp_base;
 	*temp *= 10;
 
-	if(*temp >= 122000){
+	if(*temp >= 124000){
 		if(sp_data->wraning_cnt == 0){
 			sp_data->wraning_cnt = 30;
 			pr_info("hi_temp wraning %d", *temp);
@@ -156,24 +169,30 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 	if (IS_ERR(sp_data->regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->regs), "mas_base get fail\n");
 
+	sp_data->res = res;
+	sp_data->pdev = pdev;
 
 	if (sp_data->dev_comp->ver > 1) {
-		#if(1)
 		sp_data->clk = devm_clk_get(&pdev->dev, NULL);
 		if (IS_ERR(sp_data->clk))
 			return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->clk), "clk get fail\n");
 
+		sp_data->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
+		if (IS_ERR(sp_data->rstc))
+			return dev_err_probe(&pdev->dev, PTR_ERR(sp_data->rstc), "err get reset\n");
+
+		ret = reset_control_deassert(sp_data->rstc);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret, "failed to deassert reset\n");
+
 		ret = clk_prepare_enable(sp_data->clk);
 		if (ret)
 			return dev_err_probe(&pdev->dev, ret, "failed to enable clk\n");
-		#endif
-		writel(ENABLE_THERMAL_V2, sp_data->regs + SP_THERMAL_CTL0_REG);
-	} else {
-		writel(ENABLE_THERMAL, sp_data->regs + SP_THERMAL_CTL0_REG);
 	}
 
 	platform_set_drvdata(pdev, sp_data);
-	ret = sp7021_get_otp_temp_coef(sp_data, &pdev->dev);
+	ret = sp_thermal_init(sp_data);
+	ret = sp_get_otp_temp_coef(sp_data, &pdev->dev);
 	ret = sp_thermal_register_sensor(pdev, sp_data, 0);
 	sp_data->wraning_cnt = 0;
 
@@ -182,8 +201,68 @@ static int sp7021_thermal_probe(struct platform_device *pdev)
 
 static int sp7021_thermal_remove(struct platform_device *pdev)
 {
+	struct sp_thermal_data *sp_data = platform_get_drvdata(pdev);
+
+	if (sp_data->dev_comp->ver > 1) {
+		clk_disable_unprepare(sp_data->clk);
+		reset_control_assert(sp_data->rstc);
+	}
 	return 0;
 }
+
+static int __maybe_unused sp_thermal_suspend(struct device *dev)
+{
+	struct sp_thermal_data *sp_data = dev_get_drvdata(dev);
+
+	if (sp_data->dev_comp->ver > 1) {
+		clk_disable_unprepare(sp_data->clk);        //enable clken and disable gclken
+		reset_control_assert(sp_data->rstc);
+	}
+	return 0;
+}
+
+static int __maybe_unused sp_thermal_resume(struct device *dev)
+{
+	struct sp_thermal_data *sp_data = dev_get_drvdata(dev);
+
+	if (sp_data->dev_comp->ver > 1) {
+		reset_control_deassert(sp_data->rstc);
+		clk_prepare_enable(sp_data->clk);
+	}
+	return sp_thermal_init(sp_data);
+}
+
+static int sp_thermal_runtime_suspend(struct device *dev)
+{
+	struct sp_thermal_data *sp_data = dev_get_drvdata(dev);
+
+	if (sp_data->dev_comp->ver > 1) {
+		clk_disable_unprepare(sp_data->clk);        //enable clken and disable gclken
+		reset_control_assert(sp_data->rstc);
+	}
+	return 0;
+
+}
+
+static int sp_thermal_runtime_resume(struct device *dev)
+{
+	struct sp_thermal_data *sp_data = dev_get_drvdata(dev);
+
+	if (sp_data->dev_comp->ver > 1) {
+		reset_control_deassert(sp_data->rstc);   //release reset
+		clk_prepare_enable(sp_data->clk);        //enable clken and disable gclken
+	}
+	return sp_thermal_init(sp_data);
+}
+
+static const struct dev_pm_ops sp_thermal_pm_ops = {
+	SET_RUNTIME_PM_OPS(sp_thermal_runtime_suspend,
+			   sp_thermal_runtime_resume, NULL)
+	SET_SYSTEM_SLEEP_PM_OPS(sp_thermal_suspend, sp_thermal_resume)
+
+};
+
+#define sp_pm_ops  (&sp_thermal_pm_ops)
 
 static const struct sunplus_thermal_compatible sp7350_compat = {
 	.ver = 2,
@@ -213,6 +292,7 @@ static struct platform_driver sp7021_thermal_driver = {
 	.driver	= {
 		.name	= "sp7021-thermal",
 		.of_match_table = of_match_ptr(of_sp7021_thermal_ids),
+		.pm     = sp_pm_ops,
 		},
 };
 module_platform_driver(sp7021_thermal_driver);

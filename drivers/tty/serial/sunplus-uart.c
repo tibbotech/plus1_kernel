@@ -1990,7 +1990,7 @@ static int sunplus_uart_platform_driver_probe_of(struct platform_device *pdev)
 	if (port->rs485.flags & SER_RS485_ENABLED)
 		sunplus_uart_rs485_onn(port, &(sunplus_uart_ports[pdev->id]));
 
-	DBG_INFO("Enable UART clock(s)\n");//hugo
+	DBG_INFO("Enable UART clock(s)\n");
 	sunplus_uart_ports[pdev->id].clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(sunplus_uart_ports[pdev->id].clk)) {
 		DBG_ERR("Can't find clock source\n");

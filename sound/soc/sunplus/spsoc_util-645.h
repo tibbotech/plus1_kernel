@@ -30,7 +30,7 @@ extern void __iomem *audio_base;
 /**********************************************************
  *
  **********************************************************/
-#define AUD_RATES	(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000|SNDRV_PCM_RATE_64000|\
+#define AUD_RATES	(SNDRV_PCM_RATE_8000|SNDRV_PCM_RATE_16000|SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000|SNDRV_PCM_RATE_64000|\
 	                 SNDRV_PCM_RATE_96000|SNDRV_PCM_RATE_192000)
 
 #define AUD_RATES_C	(SNDRV_PCM_RATE_32000|SNDRV_PCM_RATE_44100|SNDRV_PCM_RATE_48000)

@@ -989,10 +989,14 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 
 	priv->speed = speed;
 
-	if (clk_for_link_now){
-		clk_set_rate(priv->plat->stmmac_clk, clk_for_link_now);
+	if (clk_for_link_now) {
 		clk_rate = clk_get_rate(priv->plat->stmmac_clk);
-		netdev_info(priv->dev, "GMAC clock switch to %d \n",clk_rate);
+		//netdev_info(priv->dev, "GMAC clock current = %d \n",clk_rate);
+		if (clk_for_link_now != clk_rate) {
+			clk_set_rate(priv->plat->stmmac_clk, clk_for_link_now);
+			//clk_rate = clk_get_rate(priv->plat->stmmac_clk);
+			//netdev_info(priv->dev, "GMAC clock switch to %d \n",clk_rate);
+		}
 	}
 
 	if (priv->plat->fix_mac_speed)
@@ -2334,6 +2338,7 @@ static int stmmac_init_dma_engine(struct stmmac_priv *priv)
 			}
 			else {
 				dev_info(priv->device, "Retry to reset the dma\n");
+				msleep(300);
 			}
 		}
 	}

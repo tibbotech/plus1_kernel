@@ -414,21 +414,9 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 		timing_name = "mmc HS400";
 		#ifdef HS400
 		x = readl(&host->base->sd_config0);
-		x = bitfield_replace(x, 20, 12, 1);//sdfqset
-		writel(x, &host->base->sd_config0);
-		//spmmc_pr(INFO, "sdfqset=1\n");
-		x = readl(&host->base->sd_config0);
 		x = bitfield_replace(x, 19, 1, 1);//sdhs400mode
 		writel(x, &host->base->sd_config0);
 		//spmmc_pr(INFO, "sdhs400mode=1\n");
-		x = readl(&host->base->softpad_cfg0);
-		x = bitfield_replace(x, 2, 1, 1);//RG_RX_EDGEA=1
-		writel(x, &host->base->softpad_cfg0);
-		//spmmc_pr(INFO, "RG_RX_EDGEA=1\n");
-		x = readl(&host->base->softpad_cfg0);
-		x = bitfield_replace(x, 7, 1, 1);//RG_RSP_EDGEA=1
-		writel(x, &host->base->softpad_cfg0);
-		//spmmc_pr(INFO, "RG_RSP_EDGEA=1\n");
 		x = readl(&host->base->card_mediatype_srcdst);
 		x = bitfield_replace(x, 11, 1, 0);//enhanced_strobe=0:RSP don't use data strobe
 		writel(x, &host->base->card_mediatype_srcdst);

@@ -213,10 +213,10 @@ struct sp_regs_moon4 {
 	u32 otp_sp;
 };
 
+extern int hnp_polling_watchdog(void *);
+
 extern struct sp_otg *sp_otg0_host;
 extern struct sp_otg *sp_otg1_host;
-
-extern char hnp_process;
 
 /**************************************************************************************************/
 /* usb_get_dr_mode - Get dual role mode for given device					  */

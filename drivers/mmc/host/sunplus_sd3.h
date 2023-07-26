@@ -298,9 +298,9 @@ enum SPSDC_MODE {
 };
 
 struct spsdc_compatible {
-	int mode; /* SD/SDIO/eMMC */
 	int source_clk;
 	int vol_mode;
+	u32 delay_val;
 };
 
 struct pad_ctl_regs {
@@ -352,6 +352,7 @@ struct spsdc_host {
 	struct pad_soft_regs *soft_base;
 	struct spsdc_tuning_info tuning_info;
 	u32 driving;
+	u32 val;
 	struct clk *clk;
 	struct reset_control *rstc;
 	int mode; /* SD/SDIO/eMMC */

@@ -23,7 +23,9 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,	struct snd_pcm_h
 	pr_info("buffer_size 0x%x buffer_bytes 0x%x\n",	params_buffer_size(params), params_buffer_bytes(params));
 
 	ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
-	switch (pll_out)	{
+	switch (pll_out)
+	case 8000:
+	case 16000:	{
 	case 32000:
 	case 44100:
 	case 48000:

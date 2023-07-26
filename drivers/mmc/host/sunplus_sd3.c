@@ -274,16 +274,16 @@ static void spsdc_set_bus_timing(struct spsdc_host *host, unsigned int timing)
 		break;
 	case MMC_TIMING_UHS_SDR50:
 		if(host->mode == SPSDC_MODE_SDIO)
-			reg_timing.val = 0x666550;
+			reg_timing.val = host->val;
 		else
-			reg_timing.val = 0x333110;
+			reg_timing.val = host->val;
 		timing_name = "sd uhs SDR50";
 		break;
 	case MMC_TIMING_UHS_SDR104:
 		if(host->mode == SPSDC_MODE_SDIO)
-			reg_timing.val = 0x777110;	// 160M : 0x666330;
+			reg_timing.val = host->val;	// 160M : 0x666330;
 		else
-			reg_timing.val = 0x666330;
+			reg_timing.val = host->val;
 		timing_name = "sd uhs SDR104";
 		break;
 	case MMC_TIMING_UHS_DDR50:
@@ -1149,8 +1149,6 @@ static int spsdc_execute_tuning(struct mmc_host *mmc, u32 opcode)
 
 	return 0;
 }
-
-
 #endif
 
 static void spsdc_enable_sdio_irq(struct mmc_host *mmc, int enable)
@@ -1179,53 +1177,34 @@ static int spmmc_select_drive_strength(
 }
 
 static const struct spsdc_compatible sp_sd_645_compat = {
-	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
 	.vol_mode = SPSDC_SWITCH_MODE,
+	.delay_val = 0x666330,
 };
-
 static const struct spsdc_compatible sp_sdio_645_compat = {
-	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_360M,
 	.vol_mode = SPSDC_SWITCH_MODE,
+	.delay_val = 0x666330,
 };
-
 static const struct spsdc_compatible sp_sdio_1v8_645_compat = {
-	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_360M,
 	.vol_mode = SPSDC_1V8_MODE,
+	.delay_val = 0x666330,
 };
-
 static const struct spsdc_compatible sp_sd_654_compat = {
-	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_800M,
 	.vol_mode = SPSDC_SWITCH_MODE,
-
+	.delay_val = 0x777110,
 };
-
 static const struct spsdc_compatible sp_sd_654_loscr_compat = {
-	.mode = SPSDC_MODE_SD,
 	.source_clk = SPSDC_CLK_360M,
 	.vol_mode = SPSDC_SWITCH_MODE,
+	.delay_val = 0x666330,
 };
-
-static const struct spsdc_compatible sp_sdio_654_compat = {
-	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_800M,
-	.vol_mode = SPSDC_SWITCH_MODE,
-
-};
-
-static const struct spsdc_compatible sp_sdio_654_loscr_compat = {
-	.mode = SPSDC_MODE_SDIO,
-	.source_clk = SPSDC_CLK_360M,
-	.vol_mode = SPSDC_SWITCH_MODE,
-};
-
 static const struct spsdc_compatible sp_sdio_1v8_654_compat = {
-	.mode = SPSDC_MODE_SDIO,
 	.source_clk = SPSDC_CLK_800M,
 	.vol_mode = SPSDC_1V8_MODE,
+	.delay_val = 0x777110,
 };
 
 static const struct of_device_id spsdc_of_table[] = {
@@ -1242,20 +1221,12 @@ static const struct of_device_id spsdc_of_table[] = {
 		.data = &sp_sdio_1v8_645_compat,
 	},
 	{
-		.compatible = "sunplus,sp7350-card",
+		.compatible = "sunplus,sp7350-sd",
 		.data = &sp_sd_654_compat,
 	},
 	{
-		.compatible = "sunplus,sp7350-loscr-card",
+		.compatible = "sunplus,sp7350-loscr-sd",
 		.data = &sp_sd_654_loscr_compat,
-	},
-	{
-		.compatible = "sunplus,sp7350-sdio",
-		.data = &sp_sdio_654_compat,
-	},
-	{
-		.compatible = "sunplus,sp7350-loscr-sdio",
-		.data = &sp_sdio_654_loscr_compat,
 	},
 	{
 		.compatible = "sunplus,sp7350-1v8-sdio",
@@ -1314,6 +1285,14 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	host->dma_int_threshold = 1024;
 	host->dmapio_mode = SPSDC_DMA_MODE;
 	//host->dmapio_mode = SPSDC_PIO_MODE;
+	ret = mmc_of_parse(mmc);
+	if (ret)
+		goto probe_free_host;
+
+	if (mmc->caps2 | MMC_CAP2_NO_SDIO)
+		host->mode = SPSDC_MODE_SDIO;
+	else
+		host->mode = SPSDC_MODE_SD;
 
 	host->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(host->clk)) {
@@ -1362,13 +1341,11 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	}
 	spsdc_pr(host->mode, INFO, "spsdc driver probe, reg base:0x%08x, irq:%d\n", (unsigned int)(long)host->base, host->irq);
 
-	ret = mmc_of_parse(mmc);
+	ret = reset_control_assert(host->rstc);
 	if (ret)
 		goto probe_free_host;
-
+	msleep(1);
 	ret = reset_control_deassert(host->rstc);
-	if (ret)
-		goto probe_free_host;
 
 	ret = clk_prepare_enable(host->clk);
 	if (ret)
@@ -1379,10 +1356,13 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	tasklet_init(&host->tsklet_finish_req, tsklet_func_finish_req, (unsigned long)host);
 	dev_mode = of_device_get_match_data(&pdev->dev);
 	host->vol_mode = dev_mode->vol_mode;
-	host->mode = dev_mode->mode;
 	spsdc_select_mode(host);
 	host->soc_clk = dev_mode->source_clk;
 	clk_set_rate(host->clk, host->soc_clk);
+	if (!of_property_read_u32(pdev->dev.of_node, "delay-val", &host->val))
+		host->val = host->val;
+	else
+		host->val = dev_mode->delay_val;
 
 	mmc->max_seg_size = SPSDC_MAX_BLK_COUNT * 512;
 	mmc->ops = &spsdc_ops;
