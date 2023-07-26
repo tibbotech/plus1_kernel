@@ -918,7 +918,6 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 {
 	struct stmmac_priv *priv = netdev_priv(to_net_dev(config->dev));
 	u32 ctrl;
-	u32 clk_rate, clk_for_link_now = 0;
 
 	stmmac_xpcs_link_up(priv, &priv->hw->xpcs_args, speed, interface);
 
@@ -972,15 +971,12 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 			break;
 		case SPEED_1000:
 			ctrl |= priv->hw->link.speed1000;
-			clk_for_link_now = 125000000;
 			break;
 		case SPEED_100:
 			ctrl |= priv->hw->link.speed100;
-			clk_for_link_now = 25000000;
 			break;
 		case SPEED_10:
 			ctrl |= priv->hw->link.speed10;
-			clk_for_link_now = 2500000;
 			break;
 		default:
 			return;
@@ -989,18 +985,8 @@ static void stmmac_mac_link_up(struct phylink_config *config,
 
 	priv->speed = speed;
 
-	if (clk_for_link_now) {
-		clk_rate = clk_get_rate(priv->plat->stmmac_clk);
-		//netdev_info(priv->dev, "GMAC clock current = %d \n",clk_rate);
-		if (clk_for_link_now != clk_rate) {
-			clk_set_rate(priv->plat->stmmac_clk, clk_for_link_now);
-			//clk_rate = clk_get_rate(priv->plat->stmmac_clk);
-			//netdev_info(priv->dev, "GMAC clock switch to %d \n",clk_rate);
-		}
-	}
-
 	if (priv->plat->fix_mac_speed)
-		priv->plat->fix_mac_speed(priv->plat->bsp_priv, speed);
+		priv->plat->fix_mac_speed(priv, speed);
 
 	if (!duplex)
 		ctrl &= ~priv->hw->link.duplex;

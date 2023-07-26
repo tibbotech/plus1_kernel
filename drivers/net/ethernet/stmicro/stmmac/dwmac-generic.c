@@ -16,6 +16,36 @@
 #include "stmmac.h"
 #include "stmmac_platform.h"
 
+static void sunplus_fix_mac_speed(void *priv, unsigned int speed)
+{
+	struct stmmac_priv *stmmac = (struct stmmac_priv*)priv;
+	unsigned long rate;
+	int ret;
+
+	clk_disable(stmmac->plat->stmmac_clk);
+	clk_unprepare(stmmac->plat->stmmac_clk);
+
+	switch (speed) {
+	case SPEED_1000:
+		rate = 125000000;
+		break;
+	case SPEED_100:
+		rate = 25000000;
+		break;
+	case SPEED_10:
+		rate = 2500000;
+		break;
+	default:
+		dev_err(stmmac->device, "Invalid speed!\n");
+		break;
+	}
+
+	ret = clk_set_rate(stmmac->plat->stmmac_clk, rate);
+	if (ret)
+		dev_err(stmmac->device, "Failed to configure stmmac clock rate!\n");
+	clk_prepare_enable(stmmac->plat->stmmac_clk);
+}
+
 static int dwmac_generic_probe(struct platform_device *pdev)
 {
 	struct plat_stmmacenet_data *plat_dat;
@@ -45,6 +75,8 @@ static int dwmac_generic_probe(struct platform_device *pdev)
 		/* Set default value for unicast filter entries */
 		plat_dat->unicast_filter_entries = 1;
 	}
+
+	plat_dat->fix_mac_speed = sunplus_fix_mac_speed;
 
 	/* Custom initialisation (if needed) */
 	if (plat_dat->init) {
