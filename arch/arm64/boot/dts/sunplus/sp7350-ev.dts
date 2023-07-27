@@ -76,8 +76,7 @@
 
 	memory@0 {
 		device_type = "memory";
-		reg = <0x0 0x0        0x0 0xf0000000>,
-		      <0x1 0x00000000 0x0 0x10000000>;
+		reg = <0x0 0x0        0x0 0xf0000000>;
 	};
 
 	reserved-memory {
@@ -1160,7 +1159,7 @@
 	stmmac_axi_setup: stmmac-axi-config {
 		/*LPI switch*/
 		snps,lpi_en;
-		snps,xit_frm;		
+		snps,xit_frm;
 		snps,wr_osr_lmt = <0xf>;
 		snps,rd_osr_lmt = <0xf>;
 		snps,blen = <256 128 64 32 0 0 0>;
@@ -1233,16 +1232,16 @@
 		snps,force_sf_dma_mode;
 		/*LPI switch*/
 		snps,en-tx-lpi-clockgating;
-        snps,multicast-filter-bins = <256>;
-        snps,perfect-filter-entries = <128>;
-		snps,ps-speed = <1000>;	
+		snps,multicast-filter-bins = <256>;
+		snps,perfect-filter-entries = <128>;
+		snps,ps-speed = <1000>;
 		//snps,pbl = <16>;
 		//snps,txpbl = <16>;
 		//snps,rxpbl = <16>;
 		//snps,no-pbl-x8;
 		//snps,tso;
-        rx-fifo-depth = <16384>;
-        tx-fifo-depth = <16384>;
+		rx-fifo-depth = <16384>;
+		tx-fifo-depth = <16384>;
 		snps,axi-config = <&stmmac_axi_setup>;
 		snps,mtl-rx-config = <&mtl_rx_setup>;
 		snps,mtl-tx-config = <&mtl_tx_setup>;
