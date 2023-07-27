@@ -1158,38 +1158,51 @@
 	};
 
 	stmmac_axi_setup: stmmac-axi-config {
+		/*LPI switch*/
+		snps,lpi_en;
+		snps,xit_frm;		
 		snps,wr_osr_lmt = <0xf>;
 		snps,rd_osr_lmt = <0xf>;
 		snps,blen = <256 128 64 32 0 0 0>;
+		//snps,axi_fb;
+		snps,axi_mb;
 	};
 
 	mtl_rx_setup: rx-queues-config {
 		snps,rx-queues-to-use = <1>;
 		snps,rx-sched-sp;
+		//snps,rx-sched-wsp;
 		queue0 {
 			snps,dcb-algorithm;
+			//snps,avb-algorithm;
 			snps,map-to-dma-channel = <0x0>;
 			snps,priority = <0x0>;
 		};
 	};
 
 	mtl_tx_setup: tx-queues-config {
-		snps,tx-queues-to-use = <2>;
-		snps,tx-sched-wrr;
+		snps,tx-queues-to-use = <1>;
+		/*use will cause dev_watchdog() function panic*/
+		//snps,tx-sched-wrr;
+		//snps,tx-sched-wfq;
+		//snps,tx-sched-dwrr;
+		snps,tx-sched-sp;
 		queue0 {
-			snps,weight = <0x10>;
+			/*use will cause dev_watchdog() function panic*/
+			//snps,weight = <0x10>;
 			snps,dcb-algorithm;
+			snps,map-to-dma-channel = <0x0>;
 			snps,priority = <0x0>;
 		};
-
-		queue1 {
-			snps,avb-algorithm;
-			snps,send_slope = <0x1000>;
-			snps,idle_slope = <0x2000>;
-			snps,high_credit = <0x3e800>;
-			snps,low_credit = <0xffc18000>;
-			snps,priority = <0x2>;
-		};
+		/*use will cause dev_watchdog() function panic*/
+		//queue1 {
+		//	snps,avb-algorithm;
+		//	snps,send_slope = <0x1000>;
+		//	snps,idle_slope = <0x2000>;
+		//	snps,high_credit = <0x3e800>;
+		//	snps,low_credit = <0xffc18000>;
+		//	snps,priority = <0x2>;
+		//};
 	};
 
 	ethernet: stmmac@f8103000 {
@@ -1206,25 +1219,44 @@
 		clock-frequency = <125000000>;
 		resets = <&rstc RST_GMAC>, <&rstc RST_PD_GMAC>;
 		reset-names = "rstc_gmac", "rstc_pd_gmac";
-		//st,syscon = <&syscfg 0x4>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&gmac_pins>;
-		snps,mixed-burst;
-		snps,ps-speed = <1000>;
+		mac-mode = "rgmii";
 		/* Reset time is 20ms, 100ms for rtl8211f */
 		snps,reset-delays-us = <0 30000 150000>;
+		/* fixed-burst-->speed little high*/
+		snps,mixed-burst;
+		//snps,fixed-burst;
+		/* default threshold=64, real use 128 */
+		//snps,force_thresh_dma_mode;
+		/* default */
+		snps,force_sf_dma_mode;
+		/*LPI switch*/
 		snps,en-tx-lpi-clockgating;
-		phy-mode = "rgmii";
-		mac-mode = "rgmii";
-		max-speed = <1000>;
+        snps,multicast-filter-bins = <256>;
+        snps,perfect-filter-entries = <128>;
+		snps,ps-speed = <1000>;	
+		//snps,pbl = <16>;
+		//snps,txpbl = <16>;
+		//snps,rxpbl = <16>;
+		//snps,no-pbl-x8;
+		//snps,tso;
+        rx-fifo-depth = <16384>;
+        tx-fifo-depth = <16384>;
+		snps,axi-config = <&stmmac_axi_setup>;
+		snps,mtl-rx-config = <&mtl_rx_setup>;
+		snps,mtl-tx-config = <&mtl_tx_setup>;
+		//max-speed = <1000>;
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
+		phy-mode = "rgmii";
 		phy-handle = <&phy0>;
-		tx_delay = <0x25>;
-		rx_delay = <0x15>;
-		//snps,axi-config = <&stmmac_axi_setup>;
-		//snps,mtl-rx-config = <&mtl_rx_setup>;
-		//snps,mtl-tx-config = <&mtl_tx_setup>;
+		/*id-->use phy hardway tx/rx delay 2ns, txid-->use phy hardway tx delay 2ns, rxid-->use phy hardway rx delay 2ns*/
+		//phy-mode = "rgmii-id";
+		//phy-mode = "rgmii-txid";
+		//phy-mode = "rgmii-rxid";
+		//tx_delay = <0x25>;
+		//rx_delay = <0x15>;
 		//status = "disabled";
 
 		mdio0 {
