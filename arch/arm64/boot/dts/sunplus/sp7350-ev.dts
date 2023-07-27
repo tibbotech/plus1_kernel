@@ -95,7 +95,7 @@
 			no-map;
 		};
 
-		/* warmboot reserve, run address 0x100000+8k, load firmware in rproc */
+		/* warmboot reserve memory: 0x100000-0x200000, total 1M, load firmware in rproc */
 		rproc_0_reserved: rproc0@100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x100000 0x0 0x100000>;
@@ -106,44 +106,51 @@
 			reg = <0x0 0xfa240000 0x0 0x60000>;
 			no-map;
 		};
-		/* remoteproc reserve memory: 77800000-0x77907fff, total 1M+32K */
-		vdev0buffer: vdev0buffer@77800000 {
+		/* remoteproc reserve memory: 5fa00000-0x5fb07fff, total 2M */
+		vdev0buffer: vdev0buffer@5fa00000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x77800000 0x0 0x100000>;
+			reg = <0x0 0x5fa00000 0x0 0x100000>;
 			no-map;
 		};
-		vdev0vring0: vdev0vring0@77900000 {
+		vdev0vring0: vdev0vring0@5fb00000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x77900000 0x0 0x4000>;
+			reg = <0x0 0x5fb00000 0x0 0x4000>;
 			no-map;
 		};
-		vdev0vring1: vdev0vring1@77904000 {
+		vdev0vring1: vdev0vring1@5fb04000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x77904000 0x0 0x4000>;
+			reg = <0x0 0x5fb04000 0x0 0x4000>;
 			no-map;
 		};
 
-		/* simple frame-buffer reserve memory: 0x77c00000 ~ 0x77ffffff, total 4M */
-		fb_reserve: fb@77c00000 {
-			reg = <0x0 0x77c00000 0x0 0x400000>;
+		/* reserve memory(reserve for fill the memory): 0x5fb08000 ~ 0x5fbfffff, total 1M-32K */
+		reserve_reserve: reserve_reserve@5fb08000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x5fb08000 0x0 0xf8000>;
 			no-map;
 		};
 
-		/* video encoder reserve memory: 0x78000000~0x8bffffff, total 320M */
-		video_codec_encode: vcodec@78000000 {
-			reg = <0x0 0x78000000 0x0 0x14000000>;
+		/* simple frame-buffer reserve memory: 0x5fc00000 ~ 0x5fffffff, total 4M */
+		fb_reserve: fb@5fc00000 {
+			reg = <0x0 0x5fc00000 0x0 0x400000>;
 			no-map;
 		};
 
-		/* video decoder reserve memory: 0x8c000000~0x8fffffff, total 64M */
-		video_codec_decode: vcodec@8c000000 {
-			reg = <0x0 0x8c000000 0x0 0x04000000>;
+		/* video encoder reserve memory: 0x60000000~0x73ffffff, total 320M */
+		video_codec_encode: vcodec@60000000 {
+			reg = <0x0 0x60000000 0x0 0x14000000>;
 			no-map;
 		};
 
-		/* NPU reserve memory: 0x680000000 ~ 0x6fffffff, total 128M */
-		npu_reserve: npu_reserve@68000000 {
-			reg = <0x0 0x68000000 0x0 0x8000000>;
+		/* video decoder reserve memory: 0x74000000~0x77ffffff, total 64M */
+		video_codec_decode: vcodec@74000000 {
+			reg = <0x0 0x74000000 0x0 0x04000000>;
+			no-map;
+		};
+
+		/* NPU reserve memory: 0x780000000 ~ 0x7fffffff, total 128M */
+		npu_reserve: npu_reserve@78000000 {
+			reg = <0x0 0x78000000 0x0 0x8000000>;
 			no-map;
 		};
 	};
