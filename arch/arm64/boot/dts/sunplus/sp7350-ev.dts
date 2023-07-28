@@ -241,7 +241,7 @@
 			opp-microvolt = <800000>;
 		};
 
-		opp-19 {
+		/*opp-19 {
 			opp-hz = /bits/ 64 <1900000000>;
 			opp-microvolt = <1000000>;
 		};
@@ -254,7 +254,7 @@
 		opp-21 {
 			opp-hz = /bits/ 64 <2100000000>;
 			opp-microvolt = <1000000>;
-		};
+		};*/
 	};
 
 	cpus {
