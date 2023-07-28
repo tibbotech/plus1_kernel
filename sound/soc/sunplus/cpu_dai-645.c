@@ -304,7 +304,7 @@ void sp_i2s_spdif_tx_dma_en(int	dev_no,	bool on)
 		pr_err("no support channel\n");
 	}
 
-	pr_info("tx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
+	pr_debug("tx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
 }
 
 void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
@@ -368,7 +368,7 @@ void sp_i2s_spdif_rx_dma_en(int	dev_no,	bool on)
 			regs0->aud_enable	&= (~aud_enable_spdif_c);
 		}
 	}
-	pr_info("rx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
+	pr_debug("rx: aud_fifo_enable 0x%x aud_enable 0x%x\n", regs0->aud_fifo_enable, regs0->aud_enable);
 }
 
 static int aud_cpudai_startup(struct snd_pcm_substream *substream, struct snd_soc_dai *dai)
@@ -383,7 +383,7 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
 
-	pr_info("%s, params = %x\n", __func__, params_format(params));
+	pr_debug("%s, params = %x\n", __func__, params_format(params));
 
 	if (substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
 		if (substream->pcm->device == SP_I2S_0)	{
@@ -393,7 +393,7 @@ static int aud_cpudai_hw_params(struct snd_pcm_substream *substream,
 	} else
 		sp_i2s_spdif_tx_dma_en(substream->pcm->device, true);
 
-	pr_info("%s IN!	G063_reserved_7	0x%x\n", __func__, regs0->G063_reserved_7);
+	pr_debug("%s IN! G063_reserved_7 0x%x\n", __func__, regs0->G063_reserved_7);
 	return 0;
 }
 
@@ -403,7 +403,7 @@ static int aud_cpudai_trigger(struct snd_pcm_substream *substream, int cmd,
 	int capture = (substream->stream == SNDRV_PCM_STREAM_CAPTURE);
 	int ret	= 0;
 
-	pr_info("%s IN,	cmd=%d,	capture=%d\n", __func__, cmd, capture);
+	pr_debug("%s IN, cmd=%d, capture=%d\n", __func__, cmd, capture);
 
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
@@ -443,7 +443,7 @@ static int spsoc_cpu_set_fmt(struct snd_soc_dai	*codec_dai, unsigned int fmt)
 {
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) i2saudio_base;
 
-	pr_info("%s IN\n", __func__);
+	pr_debug("%s IN\n", __func__);
 	switch (fmt) {
 	case SNDRV_PCM_FORMAT_S24_3LE: //0x20
 	//case SNDRV_PCM_FORMAT_S24_LE:	//6
@@ -489,7 +489,7 @@ static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_
 
 static int spsoc_cpu_set_pll(struct snd_soc_dai	*dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
 {
-	dev_info(dai->dev, "%s IN %d %d\n", __func__, freq_out,	pll_id);
+	dev_dbg(dai->dev, "%s IN %d %d\n", __func__, freq_out,	pll_id);
 	aud_clk_cfg(pll_id, freq_in, freq_out);
 	return 0;
 }
@@ -579,7 +579,7 @@ int sunplus_i2s_register(struct	device *dev)
 	int ret	= 0;
 	struct sunplus_audio_base *spauddata = dev_get_drvdata(dev);
 
-	dev_info(dev, "%s IN\n", __func__);
+	dev_info(dev, "%s \n", __func__);
 	i2saudio_base =	spauddata->audio_base;
 	cpudai_plla = spauddata->plla_clocken;
 
@@ -587,7 +587,7 @@ int sunplus_i2s_register(struct	device *dev)
 	AUDHW_Mixer_Setting(spauddata);
 	AUDHW_SystemInit(spauddata);
 	snd_aud_config(spauddata);
-	pr_info("Q645 aud set done\n");
+	pr_debug("Q645/Q654 aud set done\n");
 
 	ret = devm_snd_soc_register_component(dev, &sunplus_cpu_component, aud_cpu_dai,	ARRAY_SIZE(aud_cpu_dai));
 	return ret;

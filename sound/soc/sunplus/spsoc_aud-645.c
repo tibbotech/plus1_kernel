@@ -19,8 +19,8 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,	struct snd_pcm_h
 
 	pll_out	= params_rate(params);
 	fmt = params_format(params);
-	pr_info("%s IN,	pull_out %d fmt	%d channels %d\n", __func__, pll_out, fmt, params_channels(params));
-	pr_info("buffer_size 0x%x buffer_bytes 0x%x\n",	params_buffer_size(params), params_buffer_bytes(params));
+	pr_debug("%s IN,	pull_out %d fmt	%d channels %d\n", __func__, pll_out, fmt, params_channels(params));
+	pr_debug("buffer_size 0x%x buffer_bytes 0x%x\n",	params_buffer_size(params), params_buffer_bytes(params));
 
 	ret = snd_soc_dai_set_fmt(cpu_dai, fmt);
 	switch (pll_out)
@@ -50,7 +50,7 @@ static int spsoc_hw_params(struct snd_pcm_substream *substream,	struct snd_pcm_h
 	//if( substream->stream	== SNDRV_PCM_STREAM_CAPTURE)
 	//	ret = snd_soc_dai_set_fmt(cpu_dai, SND_SOC_DAIFMT_CBM_CFM);
 
-	pr_info("%s OUT\n", __func__);
+	pr_debug("%s OUT\n", __func__);
 	if (ret	< 0)
 		return ret;
 	return 0;
@@ -119,7 +119,7 @@ static struct snd_soc_dai_link spsoc_aud_dai[] = {
 };
 static struct snd_soc_card spsoc_smdk =	{
 	.name		= "sp-aud",		// card	name
-	.long_name	= "Q645, Sunplus Technology Inc.",
+	.long_name	= "Q645/Q654, Sunplus Technology Inc.",
 	.owner		= THIS_MODULE,
 	.dai_link	= spsoc_aud_dai,
 	.num_links	= ARRAY_SIZE(spsoc_aud_dai),
@@ -135,8 +135,7 @@ static int __init snd_spsoc_audio_init(void)
 	if (!spsoc_snd_device)
 		return -ENOMEM;
 
-	pr_info("%s IN,	create soc_card\n", __func__);
-
+	pr_info("%s , create soc_card\n", __func__);
 	platform_set_drvdata(spsoc_snd_device, &spsoc_smdk);
 
 	ret = platform_device_add(spsoc_snd_device);

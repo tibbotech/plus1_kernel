@@ -67,7 +67,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 	struct sunplus_audio_base *spauddata;
 	int err	= 0;
 
-	dev_info(&pdev->dev, "%s IN", __func__);
+	dev_info(&pdev->dev, "%s ", __func__);
 	spauddata = devm_kzalloc(&pdev->dev, sizeof(*spauddata), GFP_KERNEL);
 	if (!spauddata)
 		return -ENOMEM;
@@ -94,7 +94,7 @@ static int sunplus_audio_probe(struct platform_device *pdev)
 		return PTR_ERR(spauddata->audio_base);
 	}
 	//pr_info("start=%zx end=%zx\n", res->start, res->end);
-	dev_info(&pdev->dev, "audio_base=%p\n", spauddata->audio_base);
+	dev_dbg(&pdev->dev, "audio_base=%p\n", spauddata->audio_base);
 	//clock	enable
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
 	spauddata->peri0_clocken = devm_clk_get(&pdev->dev, "peri0");

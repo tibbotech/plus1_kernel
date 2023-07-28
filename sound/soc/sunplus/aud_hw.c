@@ -147,11 +147,11 @@ void AUDHW_SystemInit(void *auddrvdata)
 	struct sunplus_audio_base *pauddrvdata = auddrvdata;
 	volatile RegisterFile_Audio *regs0 = (volatile RegisterFile_Audio *) pauddrvdata->audio_base;
 
-	pr_info("!!!audio_base 0x%p\n", regs0);
-	pr_info("!!!aud_fifo_reset 0x%p\n", &(regs0->aud_fifo_reset));
+	pr_debug("!!!audio_base 0x%p\n", regs0);
+	pr_debug("!!!aud_fifo_reset 0x%p\n", &(regs0->aud_fifo_reset));
 	//reset	aud fifo
 	regs0->audif_ctrl	= 0x1;	   //aud_ctrl=1
-	pr_info("aud_fifo_reset	0x%x\n", regs0->aud_fifo_reset);
+	pr_debug("aud_fifo_reset	0x%x\n", regs0->aud_fifo_reset);
 	regs0->audif_ctrl	= 0x0;	   //aud_ctrl=0
 	while (regs0->aud_fifo_reset)
 		;
@@ -211,7 +211,7 @@ void AUDHW_SystemInit(void *auddrvdata)
 	regs0->aud_fifo_mode	= 0x20001;
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
-	pr_info("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
+	pr_debug("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
 	//regs0->aud_misc_ctrl |= 0x2;
 }
 EXPORT_SYMBOL_GPL(AUDHW_SystemInit);

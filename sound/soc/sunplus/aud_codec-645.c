@@ -27,7 +27,7 @@ static int aud_dai_hw_params(struct snd_pcm_substream *substream,
 {
 	int rate = params_rate(params);
 
-	dev_info(dai->dev, "%s IN, rate	%d\n", __func__, rate);
+	dev_dbg(dai->dev, "%s IN, rate	%d\n", __func__, rate);
 	return 0;
 }
 
@@ -312,7 +312,7 @@ static int aud_codec_probe(struct platform_device *pdev)
 	int ret	= 0;
 
 	codecaudio_base	= codec_get_spaud_data();
-	dev_info(&pdev->dev, "%s IN %s\n", __func__, dev_name(&pdev->dev));
+	dev_info(&pdev->dev, "%s \n", __func__);
 	ret = devm_snd_soc_register_component(&pdev->dev, &soc_codec_dev_aud, audcodec_dai, ARRAY_SIZE(audcodec_dai));
 
 	return ret;
