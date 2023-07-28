@@ -154,46 +154,6 @@
 		};
 	};
 
-#ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
-	imx219_0_clk: camera0-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
-	imx219_1_clk: camera1-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef IMX219_IN4 /* Add imx219 subnode in i2c4 */
-	imx219_4_clk: camera4-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef IMX219_IN5 /* Add imx219 subnode in i2c5 */
-	imx219_5_clk: camera5-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
-#ifdef TP2815_IN5 /* Add tp2815 subnode in i2c5 */
-	tp2815_5_clk: camera5-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
-#endif
-
 	firmware {
 		optee {
 			compatible = "linaro,optee-tz";
@@ -233,6 +193,18 @@
 			reg = <0x00 0xf8800104 0x00 0x1fc>,  // MOON G2.1~G6
 			      <0x00 0xf8000f00 0x00 0x080>;  // G30 QCTL
 		};
+	};
+
+	imx219_clk: camera-imx219-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <24000000>;
+	};
+
+	tp2815_clk: camera-tp2815-clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <27000000>;
 	};
 
 	cpu_opp_table: opp-table {
@@ -787,7 +759,7 @@
 		camera_0: sensor@10 {
 			compatible = "sony,imx219";
 			reg = <0x10>;
-			clocks = <&imx219_0_clk>;
+			clocks = <&imx219_clk>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_0_pins>;
 			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
@@ -824,7 +796,7 @@
 		camera_1: sensor@10 {
 			compatible = "sony,imx219";
 			reg = <0x10>;
-			clocks = <&imx219_1_clk>;
+			clocks = <&imx219_clk>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_1_pins>;
 			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
@@ -861,7 +833,7 @@
 		camera_4: sensor@10 {
 			compatible = "sony,imx219";
 			reg = <0x10>;
-			clocks = <&imx219_4_clk>;
+			clocks = <&imx219_clk>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_4_pins>;
 			//power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
@@ -898,7 +870,7 @@
 		camera_5: sensor@10 {
 			compatible = "sony,imx219";
 			reg = <0x10>;
-			clocks = <&imx219_5_clk>;
+			clocks = <&imx219_clk>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_5_pins>;
 			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
@@ -922,7 +894,7 @@
 		camera_5: sensor@44 {
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
-			clocks = <&tp2815_5_clk>;
+			clocks = <&tp2815_clk>;
 			input-channel = <1>;
 			input-standard = <0>;
 			//pinctrl-names = "default";
