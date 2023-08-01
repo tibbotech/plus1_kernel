@@ -140,6 +140,7 @@ static void spmmc_dump_regs(struct spmmc_host *host, int start_group, int start_
 #endif /* ifdef SPMMC_DEBUG */
 
 #ifdef SPMMC_SOFTPAD
+#ifdef CONFIG_SOC_Q645
 static inline void spmmc_softpad_get(
 	struct spmmc_host *host,
 	union spmmc_softpad_config *config)
@@ -246,6 +247,125 @@ static inline void spmmc_softpad_en(struct spmmc_host *host, u8 en)
 	}
 
 }
+#endif
+#ifdef CONFIG_SOC_SP7350
+static inline void spmmc_softpad_gpio_bypass_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	if (en) {
+		value = bitfield_replace(value, 31, 1, 1);
+	} else {
+		value = bitfield_replace(value, 31, 1, 0);
+	}
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	spmmc_pr(DEBUG, "%s en: 0x%08x\n", __func__, en);
+}
+
+static inline void spmmc_softpad_clock_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	if (en) {
+		value = bitfield_replace(value, 20, 1, 1);
+	} else {
+		value = bitfield_replace(value, 20, 1, 0);
+	}
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, value);
+}
+
+static inline void spmmc_softpad_clock_get(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	config->bits.clk_level = bitfield_extract(value, 1, 4);
+	spmmc_pr(DEBUG, "%s en: 0x%08x\n", __func__, config->bits.clk_level);
+}
+
+static inline void spmmc_softpad_clock_set(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_replace(value, 1, 4, config->bits.clk_level);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, config->bits.clk_level);
+}
+
+static inline void spmmc_softpad_data_out_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	if (en) {
+		value = bitfield_replace(value, 22, 8, 0xFF);
+	} else {
+		value = bitfield_replace(value, 22, 8, 0);
+	}
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, value);
+}
+
+static inline void spmmc_softpad_cmd_out_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	if (en) {
+		value = bitfield_replace(value, 21, 1, 1);
+	} else {
+		value = bitfield_replace(value, 21, 1, 0);
+	}
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, value);
+}
+
+static inline void spmmc_softpad_data_in_en(struct spmmc_host *host, u8 en)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	if (en) {
+		value = bitfield_replace(value, 0, 9, 0x1FF);
+	} else {
+		value = bitfield_replace(value, 0, 9, 0);
+	}
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, value);
+}
+
+static inline void spmmc_softpad_data_in_get(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	value = bitfield_extract(value, 0, 18);
+	spmmc_pr(DEBUG, "%s en: 0x%08x\n", __func__, value);
+}
+
+static inline void spmmc_softpad_data_in_set(
+	struct spmmc_host *host,
+	union spmmc_softpad_config *config)
+{
+	u32 value, i;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	for (i = 0; i < 9; i++)
+		value = bitfield_replace(value, 2 * i, 2, config->bits.data_level);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	spmmc_pr(DEBUG, "%s : 0x%08x\n", __func__, value);
+}
+#endif
 #endif
 
 /**
@@ -450,6 +570,7 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 	}
 
 #ifdef SPMMC_SOFTPAD
+#ifdef CONFIG_SOC_Q645
 	/* Softpad setting */
 	if (hs_en) {
 		host->tuning_info.softpad_tuning = 1;
@@ -460,6 +581,7 @@ static void spmmc_set_bus_timing(struct spmmc_host *host, unsigned int timing)
 		host->tuning_info.softpad_tuning = 0;
 		spmmc_softpad_en(host, 0);
 	}
+#endif
 #endif
 
 	spmmc_pr(INFO, "set bus timing to %s\n", timing_name);
@@ -1742,6 +1864,137 @@ static int config_timing_param_store(struct spmmc_host *host, const char *arg)
 	writel(timing.val, &host->base->sd_timing_config0);
 	return SPMMC_CFG_SUCCESS;
 }
+
+#ifdef CONFIG_SOC_SP7350
+static int config_gpio_bypass_en_show(struct spmmc_host *host, char *buf)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	value = bitfield_extract(value, 31, 1);
+	return sprintf(buf, "*gpio_bypass_en=%d\n", value);
+}
+
+static int config_gpio_bypass_en_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	u32 value;
+
+	if (kstrtoul(arg, 0, &val) || val > 1)
+		return SPMMC_CFG_FAIL;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	value = bitfield_replace(value, 31, 1, val);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_softpad_clock_show(struct spmmc_host *host, char *buf)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_extract(value, 1, 4);
+	return sprintf(buf, "*softpad_clock=%d\n", value);
+}
+
+static int config_softpad_clock_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	u32 value;
+
+	if (kstrtoul(arg, 0, &val) || val > 16)
+		return SPMMC_CFG_FAIL;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_replace(value, 20, 1, 1);//CLK PAD DFF Enable
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_replace(value, 1, 4, val);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_softpad_data_out_en_show(struct spmmc_host *host, char *buf)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_extract(value, 22, 8);
+	return sprintf(buf, "*softpad_data_out_en=%d\n", value);
+}
+
+static int config_softpad_data_out_en_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	u32 value;
+
+	if (kstrtoul(arg, 0, &val) || val > 1)
+		return SPMMC_CFG_FAIL;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	if(val == 0)
+		value = bitfield_replace(value, 22, 8, 0);
+	else
+		value = bitfield_replace(value, 22, 8, 0xFF);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_softpad_cmd_out_en_show(struct spmmc_host *host, char *buf)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	value = bitfield_extract(value, 21, 1);
+	return sprintf(buf, "*softpad_cmd_out_en=%d\n", value);
+}
+
+static int config_softpad_cmd_out_en_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	u32 value;
+
+	if (kstrtoul(arg, 0, &val) || val > 1)
+		return SPMMC_CFG_FAIL;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	if(val == 0)
+		value = bitfield_replace(value, 21, 1, 0);
+	else
+		value = bitfield_replace(value, 21, 1, 1);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[0]);
+	return SPMMC_CFG_SUCCESS;
+}
+
+static int config_softpad_data_in_show(struct spmmc_host *host, char *buf)
+{
+	u32 value;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	value = bitfield_extract(value, 0, 18);
+	return sprintf(buf, "*softpad_data_in=%x\n", value);
+}
+
+static int config_softpad_data_in_store(struct spmmc_host *host, const char *arg)
+{
+	unsigned long val = 0;
+	u32 value, i;
+
+	if (kstrtoul(arg, 0, &val) || val > 3)
+		return SPMMC_CFG_FAIL;
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+	value = bitfield_replace(value, 0, 9, 0x1FF);//Enable
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[2]);
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	for (i = 0; i < 9; i++)
+		value = bitfield_replace(value, 2 * i, 2, val);
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	return SPMMC_CFG_SUCCESS;
+}
+#endif
 #endif
 
 static struct spmmc_config spmmc_configs[] = {
@@ -1815,6 +2068,34 @@ static struct spmmc_config spmmc_configs[] = {
 		.show = config_timing_param_show,
 		.store = config_timing_param_store
 	},
+
+#ifdef CONFIG_SOC_SP7350
+	{
+		.name = "gpio_bypass_en",
+		.show = config_gpio_bypass_en_show,
+		.store = config_gpio_bypass_en_store
+	},
+	{
+		.name = "softpad_clock",
+		.show = config_softpad_clock_show,
+		.store = config_softpad_clock_store
+	},
+	{
+		.name = "softpad_data_out_en",
+		.show = config_softpad_data_out_en_show,
+		.store = config_softpad_data_out_en_store
+	},
+	{
+		.name = "softpad_cmd_out_en",
+		.show = config_softpad_cmd_out_en_show,
+		.store = config_softpad_cmd_out_en_store
+	},
+	{
+		.name = "softpad_data_in",
+		.show = config_softpad_data_in_show,
+		.store = config_softpad_data_in_store
+	},
+#endif
 #endif
 	{} /* sentinel */
 };
@@ -1960,11 +2241,14 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	struct resource *resource;
 	#ifdef MEASUREMENT_SIGNAL
 	struct resource *res_driving;
+	#ifdef CONFIG_SOC_Q645
 	struct resource *res_soft;
 	#endif
-	#ifdef PAD_MS
+	#ifdef CONFIG_SOC_SP7350
 	struct resource *res_pad_ctl2;
 	#endif
+	#endif
+
 	struct spmmc_host *host;
 	unsigned int mode;
 	#ifdef HS400
@@ -2017,7 +2301,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		ret = PTR_ERR(res_driving);
 		goto probe_free_host;
 	}
-
+#ifdef CONFIG_SOC_Q645
 	res_soft = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (IS_ERR(res_soft)) {
 		spmmc_pr(ERROR, "get sd register res_soft fail\n");
@@ -2025,13 +2309,14 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 #endif
-#ifdef PAD_MS
-	res_pad_ctl2 = platform_get_resource(pdev, IORESOURCE_MEM, 1);
+#ifdef CONFIG_SOC_SP7350
+	res_pad_ctl2 = platform_get_resource(pdev, IORESOURCE_MEM, 2);
 	if (IS_ERR(res_pad_ctl2)) {
 		spmmc_pr(ERROR, "get sd register res_driving fail\n");
 		ret = PTR_ERR(res_pad_ctl2);
 		goto probe_free_host;
 	}
+#endif
 #endif
 
 	if ((resource->end - resource->start + 1) < sizeof(*host->base)) {
@@ -2055,6 +2340,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 		goto probe_free_host;
 	}
 
+#ifdef CONFIG_SOC_Q645
 	host->soft_base = devm_ioremap(&pdev->dev, res_soft->start, resource_size(res_soft));
 	if (IS_ERR((void *)host->soft_base)) {
 		spmmc_pr(ERROR, "devm_ioremap_resource soft fail\n");
@@ -2065,8 +2351,7 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	//spmmc_pr(INFO, "SPMMC [host->pad_base] 0x%x  resource 0x%x" , host->pad_base, (unsigned int)res_driving->start);
 	//spmmc_pr(INFO, "SPMMC [host->soft_base] 0x%x  resource 0x%x" , host->soft_base, (unsigned int)res_soft->start);
 #endif
-
-#ifdef PAD_MS
+#ifdef CONFIG_SOC_SP7350
 	host->pad_ctl2_base = devm_ioremap(&pdev->dev, res_pad_ctl2->start, resource_size(res_pad_ctl2));
 	if (IS_ERR((void *)host->pad_ctl2_base)) {
 		spmmc_pr(ERROR, "devm_ioremap_resource pad fail\n");
@@ -2075,6 +2360,8 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	}
 	//spmmc_pr(INFO, "SPMMC [host->pad_ctl2_base] 0x%x  resource 0x%x" , host->pad_ctl2_base, (unsigned int)res_pad_ctl2->start);
 #endif
+#endif
+
 	host->irq = platform_get_irq(pdev, 0);
 	if (host->irq <= 0) {
 		spmmc_pr(ERROR, "get sd irq resource fail\n");
@@ -2136,21 +2423,6 @@ static int spmmc_drv_probe(struct platform_device *pdev)
 	mmc->caps |= MMC_CAP_CMD23;
 	#endif
 
-	#ifdef PAD_MS
-	//spmmc_pr(DEBUG, "mmc->caps = %x\n", mmc->caps);
-	//spmmc_pr(DEBUG, "mmc->caps2 = %x\n", mmc->caps2);
-	if (mmc->caps&MMC_CAP_3_3V_DDR) {
-		spmmc_pr(DEBUG, "power 3.3V\n");
-		x = readl(&host->pad_ctl2_base->pad_ms[0]);
-		x = bitfield_replace(x, 1, 1, 0);
-		writel(x, &host->pad_ctl2_base->pad_ms[0]);
-	} else if ((mmc->caps&MMC_CAP_1_8V_DDR) || (mmc->caps2&MMC_CAP2_HSX00_1_8V)) {
-		spmmc_pr(DEBUG, "power 1.8V\n");
-		x = readl(&host->pad_ctl2_base->pad_ms[0]);
-		x = bitfield_replace(x, 1, 1, 1);
-		writel(x, &host->pad_ctl2_base->pad_ms[0]);
-	}
-	#endif
 	return 0;
 
 probe_clk_unprepare:
