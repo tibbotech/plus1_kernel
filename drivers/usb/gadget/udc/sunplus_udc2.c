@@ -548,7 +548,7 @@ static void sp_udc_nuke(struct sp_udc *udc, struct udc_endpoint *ep, int status)
 	while (!list_empty (&ep->queue)) {
 		req = list_entry (ep->queue.next, struct sp_request, queue);
 
-#ifndef PIO_MODE
+#if (TRANS_MODE == DMA_MAP)
 		usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep->bEndpointAddress));
 #endif
 
@@ -718,9 +718,9 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 	uint32_t len_zh, len_yu;
 	struct sp_request *req;
 	uint32_t trans_len = 0;
-#ifdef PIO_MODE
+#if (TRANS_MODE == DMA_MODE)
 	uint8_t *data_buf;
-#else
+#elif (TRANS_MODE == DMA_MAP)
 	uint32_t *data_buf;
 #endif
 	struct udc_endpoint *ep = NULL;
@@ -742,9 +742,9 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 	ep_trb = (struct normal_trb *)(ep->ep_transfer_ring.trb_va +
 		((transfer_evnet->trbp - ep->ep_transfer_ring.trb_pa) / sizeof(struct trb_data)));
 
-#ifdef PIO_MODE
+#if (TRANS_MODE == DMA_MODE)
 	data_buf = (uint8_t *)phys_to_virt(ep_trb->ptr);
-#else
+#elif (TRANS_MODE == DMA_MAP)
 	data_buf = (uint32_t *)phys_to_virt(ep_trb->ptr);
 #endif
 
@@ -760,22 +760,6 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 		return;
 	}
 
-#ifdef PIO_MODE
-	if (trans_len) {
-		len_zh = trans_len / CACHE_LINE_SIZE;
-		len_yu = trans_len % CACHE_LINE_SIZE;
-		if (len_yu)
-			len_zh = (len_zh + 1) * CACHE_LINE_SIZE;
-		else
-			len_zh = len_zh * CACHE_LINE_SIZE;
-
-		if ((ep->is_in && (ep_num == EP0)) || (!ep->is_in && (ep_num != EP0))) {
-			req = list_entry (ep->queue.next, struct sp_request, queue);
-			memcpy((uint8_t *)req->req.buf, data_buf, len_zh);
-			dma_sync_single_for_cpu(udc->dev, ep_trb->ptr, len_zh, DMA_FROM_DEVICE);
-		}
-	}
-#else
 	if (!ep->is_in && trans_len) {
 		len_zh = trans_len / CACHE_LINE_SIZE;
 		len_yu = trans_len % CACHE_LINE_SIZE;
@@ -786,12 +770,11 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 
 		dma_sync_single_for_cpu(udc->dev, ep_trb->ptr, len_zh, DMA_FROM_DEVICE);
 	}
-#endif
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
-	#ifdef PIO_MODE
+	#if (TRANS_MODE == DMA_MODE)
 	if (data_buf == (uint8_t *)otg_status_buf) {
-	#else
+	#elif (TRANS_MODE == DMA_MAP)
 	if (data_buf == (uint32_t *)otg_status_buf) {
 	#endif
 		struct usb_request *_req = container_of((void *)otg_status_buf_ptr_addr,
@@ -804,16 +787,12 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 		otg_status_buf = NULL;
 		otg_status_buf_ptr_addr = NULL;
 
-	#ifdef PIO_MODE
-		kfree(req->buffer);
-		req->buffer = NULL;
-	#else
+	#if (TRANS_MODE == DMA_MAP)
 		usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep->bEndpointAddress));
 	#endif
 
 		kfree(req->req.buf);
 		kfree(req);
-
 		spin_unlock_irqrestore(&ep->lock, flags);
 
 		return;
@@ -830,16 +809,11 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 			req->req.actual = trans_len - transfer_evnet->len;
 			req->transfer_trb = NULL;
 
-#ifndef PIO_MODE
+#if (TRANS_MODE == DMA_MAP)
 			usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep->bEndpointAddress));
 #endif
 
 			list_del(&req->queue);
-
-#ifdef PIO_MODE
-			kfree(req->buffer);
-			req->buffer = NULL;
-#endif
 
 			spin_unlock_irqrestore(&ep->lock, flags);
 			sp_udc_done(ep, req, 0);
@@ -1289,12 +1263,7 @@ static void hal_udc_fill_transfer_trb(struct trb_data *t_trb, struct udc_endpoin
 		len_zh = len_zh * CACHE_LINE_SIZE;
 
 	tmp_trb->tlen = ep->transfer_len;
-
-#ifdef PIO_MODE
-	tmp_trb->ptr = virt_to_phys(ep->transfer_buff);
-#else
 	tmp_trb->ptr = (uint32_t)ep->transfer_buff_pa;
-#endif
 
 	/* TRB function setting */
 	if (!ep->is_in) {
@@ -1457,7 +1426,7 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 					uint8_t *data, dma_addr_t data_pa, uint32_t length, uint32_t zero)
 {
 	struct udc_endpoint *ep;
-#ifdef PIO_MODE
+#if (TRANS_MODE == DMA_MODE)
 	int len_zh = 0;
 	int len_yu = 0;
 #endif
@@ -1481,13 +1450,8 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 	ep->is_in = EP_DIR(ep_addr);
 	ep->transfer_len = length;
 
-#ifdef PIO_MODE
+#if (TRANS_MODE == DMA_MODE)
 	if (length != 0) {
-		if (EP_NUM(ep_addr) == EP0)
-			req->buffer = (uint8_t *)kmalloc(USB_COMP_EP0_BUFSIZ, GFP_DMA);
-		else
-			req->buffer = (uint8_t *)kmalloc(length, GFP_DMA);
-
 		len_zh = length / CACHE_LINE_SIZE;
 		len_yu = length % CACHE_LINE_SIZE;
 
@@ -1496,22 +1460,16 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 		else
 			len_zh = len_zh * CACHE_LINE_SIZE;
 
-		if (ep->is_in) {
-			dma_sync_single_for_device(udc->dev, virt_to_phys(req->buffer), len_zh, DMA_TO_DEVICE);
+		if (ep->is_in)
+			dma_sync_single_for_device(udc->dev, virt_to_phys(data), len_zh, DMA_TO_DEVICE);
 
-			if (EP_NUM(ep_addr) == EP0)
-				memcpy(req->buffer, (uint8_t *)data, USB_COMP_EP0_BUFSIZ);
-			else
-				memcpy(req->buffer, (uint8_t *)data, length);
-		}
-
-		ep->transfer_buff = req->buffer;
-		ep->transfer_buff_pa = 0;
+		ep->transfer_buff = data;
+		ep->transfer_buff_pa = virt_to_phys(data);
 	} else {
 		ep->transfer_buff = NULL;
 		ep->transfer_buff_pa = 0;
 	}
-#else
+#elif (TRANS_MODE == DMA_MAP)
 	if (length != 0) {
 		ep->transfer_buff = data;
 		ep->transfer_buff_pa = data_pa;
@@ -1528,10 +1486,7 @@ int32_t hal_udc_endpoint_transfer(struct sp_udc	*udc, struct sp_request *req, ui
 		udc->aset_flag = false;
 		req->transfer_trb = NULL;
 
-#ifdef PIO_MODE
-		kfree(req->buffer);
-		req->buffer = NULL;
-#else
+#if (TRANS_MODE == DMA_MAP)
 		usb_gadget_unmap_request(&udc->gadget, &req->req, ep->is_in);
 #endif
 
@@ -2096,7 +2051,7 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 			req->req.num_sgs = 0;
 			req->req.dma = DMA_ADDR_INVALID;
 
-	#ifndef PIO_MODE
+	#if (TRANS_MODE == DMA_MAP)
 			ret = usb_gadget_map_request(&udc->gadget, &req->req, EP_DIR(ep_0->bEndpointAddress));
 			if (ret) {
 				kfree(req->req.buf);
@@ -2108,16 +2063,13 @@ static int hal_udc_setup(struct sp_udc *udc, const struct usb_ctrlrequest *ctrl)
 
 			ret = hal_udc_endpoint_transfer(udc, req, ep_0->bEndpointAddress, req->req.buf,
 								req->req.dma, req->req.length, req->req.zero);
+
 			UDC_LOGD("%s: ep:%x len %d, req:%px,trb:%px\n", __func__, ep_0->bEndpointAddress,
 								req->req.length, req, req->transfer_trb);
 
 			if (ret) {
 				UDC_LOGE("%s: transfer err\n", __func__);
-
-	#ifdef PIO_MODE
-				kfree(req->buffer);
-				req->buffer = NULL;
-	#else
+	#if (TRANS_MODE == DMA_MAP)
 				usb_gadget_unmap_request(&udc->gadget, &req->req, EP_DIR(ep_0->bEndpointAddress));
 	#endif
 
@@ -2434,12 +2386,6 @@ static void sp_udc_free_request(struct usb_ep *_ep, struct usb_request *_req)
 	}
 
 	req = to_sp_req(_req);
-
-#ifdef PIO_MODE
-	kfree(req->buffer);
-	req->buffer = NULL;
-#endif
-
 	kfree(req);
 }
 
@@ -2491,7 +2437,7 @@ static int sp_udc_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_
 		return -EINVAL;
 	}
 
-#ifndef PIO_MODE
+#if (TRANS_MODE == DMA_MAP)
 	ret = usb_gadget_map_request(&udc->gadget, _req, EP_DIR(ep->bEndpointAddress));
 	if (ret)
 		return ret;
@@ -2506,10 +2452,7 @@ static int sp_udc_queue(struct usb_ep *_ep, struct usb_request *_req, gfp_t gfp_
 	if (ret) {
 		UDC_LOGE("%s: transfer err\n", __func__);
 
-#ifdef PIO_MODE
-		kfree(req->buffer);
-		req->buffer = NULL;
-#else
+#if (TRANS_MODE == DMA_MAP)
 		usb_gadget_unmap_request(&udc->gadget, _req, EP_DIR(ep->bEndpointAddress));
 #endif
 
@@ -2550,7 +2493,7 @@ static int sp_udc_dequeue(struct usb_ep *_ep, struct usb_request *_req)
 		UDC_LOGD("dequeued req %px from %s, len %d buf %px,sp_req %px,%px\n",
 					req, _ep->name, _req->length, _req->buf, req, req->transfer_trb);
 
-#ifndef PIO_MODE
+#if (TRANS_MODE == DMA_MAP)
 		usb_gadget_unmap_request(&udc->gadget, _req, ep->is_in);
 #endif
 

@@ -19,7 +19,9 @@
 
 //#define CONFIG_BOOT_ON_ZEBU
 
-//#define PIO_MODE
+#define TRANS_MODE			DMA_MODE
+#define DMA_MODE			0			/* if DRAM locates within 4GB */
+#define DMA_MAP				1
 
 #define CACHE_LINE_SIZE 		64
 #define USB_PORT_NUM			3
@@ -412,7 +414,6 @@ struct sp_request {
 	struct list_head	queue;			/* ep's requests */
 	struct usb_request	req;
 	struct trb_data		*transfer_trb;		/* pointer transfer trb*/
-	uint8_t			*buffer;
 };
 
 /* USB Device endpoint struct */
