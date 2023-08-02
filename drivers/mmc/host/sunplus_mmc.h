@@ -17,9 +17,8 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-//#define MEASUREMENT_SIGNAL //for Q645 AC timing measurement
-//#define SPMMC_SOFTPAD //for Q645 AC timing measurement
-//#define PAD_MS //for SP7350 TOP domain MS
+#define MEASUREMENT_SIGNAL //timing measurement
+//#define SPMMC_SOFTPAD
 
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 #define SPMMC_SUPPORT_VOLTAGE_1V8
@@ -198,6 +197,7 @@ union spmmc_reg_config0 {
 	} bits;
 };
 
+#ifdef CONFIG_SOC_Q645
 union spmmc_softpad_config {
 	u32 val;
 #define SPMMC_MAX_SOFTPAD_LEVEL 5
@@ -208,6 +208,21 @@ union spmmc_softpad_config {
 		u32 resv2		: 2;
 	} bits;
 };
+#endif
+#ifdef CONFIG_SOC_SP7350
+union spmmc_softpad_config {
+	u32 val;
+	struct {
+		u32 clk_level	: 4;
+		u32 data_level	: 2;
+		u32 resv1		: 2;
+		u32 resv2	: 2;
+		u32 resv3		: 2;
+	} bits;
+};
+#endif
+
+
 struct spmmc_tuning_info {
 	int enable_tuning;
 	int need_tuning;
@@ -239,6 +254,7 @@ struct pad_ctl_regs {
 	unsigned int reserved_29[3];       // 101.29 - 101.31
 };
 
+#ifdef CONFIG_SOC_Q645
 struct pad_soft_regs {
 	unsigned int emmc_sftpad_ctl[3];  // 102.0 - 102.2
 	unsigned int sdind_sftpad_ctl[2]; // 102.3 - 102.4
@@ -246,6 +262,14 @@ struct pad_soft_regs {
 	unsigned int sdio_sftpad_ctl[2]; // 102.7 - 102.8
 	unsigned int reserved_29[23];       // 102.9 - 102.31
 };
+#endif
+
+#ifdef CONFIG_SOC_SP7350
+struct pad_ctl2_regs {
+	unsigned int emmc_sftpad_ctl[3];	// 102.21 - 102.23
+};
+#endif
+
 #else
 struct spmmc_tuning_info {
 	int enable_tuning;
@@ -261,35 +285,18 @@ struct spmmc_tuning_info {
 };
 #endif
 
-#ifdef PAD_MS
-struct pad_ctl2_regs {
-	unsigned int pad_sl[2];  // 102.0 - 102.1
-	unsigned int pad_pe[2]; // 102.2 - 102.3
-	unsigned int pad_ps[2]; // 102.4 - 102.5
-	unsigned int pad_spu[2]; // 102.6 - 102.7
-	unsigned int pad_pu[2]; // 102.8 - 102.9
-	unsigned int pad_pd[2];	// 102.10 - 102.11
-	unsigned int pad_ms[1];	// 102.12
-	unsigned int sdio_pad_power_down[1];	// 102.13
-	unsigned int reserved_14[6];	// 102.14 - 102.19
-	unsigned int pnand_softpad[1];	// 102.20
-	unsigned int emmc_softpad[3];	// 102.21 - 102.23
-	unsigned int spi_softpad[3];	// 102.24 - 102.25
-	unsigned int sd_softpad[2];	// 102.26 - 102.27
-	unsigned int sdio_softpad[2];	// 102.28 - 102.29
-	unsigned int gmac_softpad[2];	// 102.30 - 102.31
-};
-#endif
-
 struct spmmc_host {
 	struct spmmc_regs *base;
 #ifdef MEASUREMENT_SIGNAL
 	struct pad_ctl_regs *pad_base;
+#ifdef CONFIG_SOC_Q645
 	struct pad_soft_regs *soft_base;
 #endif
-#ifdef PAD_MS
+#ifdef CONFIG_SOC_SP7350
 	struct pad_ctl2_regs *pad_ctl2_base;
 #endif
+#endif
+
 	struct clk *clk;
 	struct reset_control *rstc;
 	int mode; /* SD/SDIO/eMMC */
