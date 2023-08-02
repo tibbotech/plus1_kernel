@@ -1420,6 +1420,7 @@ static int spsdc_drv_suspend(struct platform_device *dev, pm_message_t state)
 	mutex_lock(&host->mrq_lock); /* Make sure that no one is holding the controller */
 	mutex_unlock(&host->mrq_lock);
 	clk_disable_unprepare(host->clk);
+	reset_control_assert(host->rstc);
 	return 0;
 }
 
@@ -1428,7 +1429,9 @@ static int spsdc_drv_resume(struct platform_device *dev)
 	struct spsdc_host *host;
 
 	host = platform_get_drvdata(dev);
-	return clk_prepare_enable(host->clk);
+	reset_control_deassert(host->rstc);
+	clk_prepare_enable(host->clk);
+	return 0;
 }
 
 #ifdef CONFIG_PM
@@ -1441,6 +1444,7 @@ static int spsdc_pm_suspend(struct device *dev)
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);
 	pm_runtime_force_suspend(dev);
 	clk_disable_unprepare(host->clk);	
+	reset_control_assert(host->rstc);	
 	return 0;
 }
 
@@ -1451,6 +1455,7 @@ static int spsdc_pm_resume(struct device *dev)
 	
 	host = dev_get_drvdata(dev);
 	spsdc_pr(host->mode, INFO, "%s\n", __func__);	
+	reset_control_deassert(host->rstc);
 	ret = clk_prepare_enable(host->clk);
 	if (ret)
 		return ret;

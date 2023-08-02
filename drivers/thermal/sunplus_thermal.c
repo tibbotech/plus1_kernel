@@ -21,7 +21,8 @@
 #define ENABLE_THERMAL		BIT(31)
 
 #define DISABLE_THERMAL_V2	(BIT(20) | BIT(4))
-#define ENABLE_THERMAL_V2	BIT(20)
+//#define ENABLE_THERMAL_V2	BIT(20)
+#define ENABLE_THERMAL_V2	(BIT(20) | BIT(21))
 
 
 #define SP_THERMAL_MASK		GENMASK(10, 0)
@@ -229,6 +230,7 @@ static int __maybe_unused sp_thermal_resume(struct device *dev)
 		reset_control_deassert(sp_data->rstc);
 		clk_prepare_enable(sp_data->clk);
 	}
+	msleep(1);
 	return sp_thermal_init(sp_data);
 }
 
@@ -252,6 +254,7 @@ static int sp_thermal_runtime_resume(struct device *dev)
 		reset_control_deassert(sp_data->rstc);   //release reset
 		clk_prepare_enable(sp_data->clk);        //enable clken and disable gclken
 	}
+	msleep(1);
 	return sp_thermal_init(sp_data);
 }
 
