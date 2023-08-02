@@ -19,7 +19,7 @@
 
 //#define CONFIG_BOOT_ON_ZEBU
 
-#define TRANS_MODE			DMA_MODE
+#define TRANS_MODE			DMA_MAP
 #define DMA_MODE			0			/* if DRAM locates within 4GB */
 #define DMA_MAP				1
 
