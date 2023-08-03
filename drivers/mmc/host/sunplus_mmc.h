@@ -17,7 +17,7 @@
 #include <linux/mmc/core.h>
 #include <linux/mmc/host.h>
 
-#define MEASUREMENT_SIGNAL //timing measurement
+//#define MEASUREMENT_SIGNAL //timing measurement
 //#define SPMMC_SOFTPAD
 
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
