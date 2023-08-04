@@ -195,7 +195,7 @@ static const char * const default_parents[] = { EXT_CLK };
 
 #define _(id, ...)	{ #id, id, ##__VA_ARGS__ }
 
-static const char *gmac_parents_alt[] = {"PLLS_50", "PLLS_25", "PLLS_2P5"}; // for MO_GMAC_PHYSEL G3.23[12] == 1
+static const char *gmac_parents_alt[] = {"PLLS_500", "PLLS_50", "PLLS_2P5"}; // for MO_GMAC_PHYSEL G3.23[12] == 1
 
 static struct sp_clk sp_clks[] = {
 	_(SYSTEM,	24,	0,	2, {"PLLS_500", "PLLS_333", "PLLS_400"}),
