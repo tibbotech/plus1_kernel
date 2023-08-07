@@ -20,7 +20,7 @@
 //#define CONFIG_BOOT_ON_ZEBU
 
 #define TRANS_MODE			DMA_MAP
-#define DMA_MODE			0			/* if DRAM locates within 4GB */
+#define DMA_MODE			0			/* if all DRAMs locate within 4GB */
 #define DMA_MAP				1
 
 #define CACHE_LINE_SIZE 		64

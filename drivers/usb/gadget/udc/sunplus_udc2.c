@@ -773,10 +773,11 @@ static void hal_udc_transfer_event_handle(struct transfer_event_trb *transfer_ev
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	#if (TRANS_MODE == DMA_MODE)
-	if (data_buf == (uint8_t *)otg_status_buf) {
+	if (data_buf == (uint8_t *)otg_status_buf)
 	#elif (TRANS_MODE == DMA_MAP)
-	if (data_buf == (uint32_t *)otg_status_buf) {
+	if (data_buf == (uint32_t *)otg_status_buf)
 	#endif
+	{
 		struct usb_request *_req = container_of((void *)otg_status_buf_ptr_addr,
 									struct usb_request, buf);
 		struct sp_request *req = container_of(_req, struct sp_request, req);
@@ -875,10 +876,10 @@ static void hal_udc_analysis_event_trb(struct trb_data *event_trb, struct sp_udc
 			writel(bitfield_replace(readl(&USBx->GL_CS), 9, 1, 1), &USBx->GL_CS);
 
 		udc->bus_reset_finish = true;
-		memcpy(&crq, event_trb, 8);
 
-		UDC_LOGD("s:%x,%x,%x,%x,%x\n", crq.bRequestType, crq.bRequest, crq.wValue, crq.wIndex,
-												crq.wLength);
+		memcpy(&crq, event_trb, 8);
+		UDC_LOGD("bRequestType=0x%02x,bRequest=0x%02x,wValue=0x%04x,wIndex=0x%04x,wLength=0x%04x\n",
+						crq.bRequestType, crq.bRequest, crq.wValue, crq.wIndex, crq.wLength);
 
 		hal_udc_setup(udc, &crq);
 		break;
@@ -2820,11 +2821,8 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->gadget.ep0 = &(udc->ep_data[0].ep);
 	udc->gadget.name = DRIVER_NAME;
 	udc->gadget.max_speed = USB_SPEED_HIGH;
-#if 1	/* High Speed */
-	udc->def_run_full_speed = false;
-#else	/* Full Speed */
-	udc->def_run_full_speed = true;
-#endif
+	udc->def_run_full_speed = false;	/* High Speed */
+
 
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	udc->otg_caps->otg_rev = 0x0130;	/* OTG 1.3 */
@@ -3032,6 +3030,8 @@ static int udc_sunplus_drv_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 
+	hal_udc_sw_stop_handle(udc);
+
 	if (udc->driver)
 		device_run_stop_ctrl(0);
 
@@ -3060,6 +3060,8 @@ static int udc_sunplus_drv_resume(struct device *dev)
 	ret = clk_prepare_enable(udc->clock);
 	if (ret)
 		clk_disable_unprepare(udc->clock);
+
+	hal_udc_device_connect(udc);
 
 	#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	if (otg_id_pin == 1)
