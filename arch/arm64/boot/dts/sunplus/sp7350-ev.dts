@@ -1221,6 +1221,7 @@
 		//max-speed = <1000>;
 		nvmem-cell-names = "mac-address";
 		nvmem-cells = <&mac_addr>;
+		clk_csr = <4>;
 		phy-mode = "rgmii";
 		phy-handle = <&phy0>;
 		/*id-->use phy hardway tx/rx delay 2ns, txid-->use phy hardway tx delay 2ns, rxid-->use phy hardway rx delay 2ns*/
@@ -1237,6 +1238,7 @@
 			compatible = "snps,dwmac-mdio";
 			phy0: ethernet-phy@0 {
 				compatible = "ethernet-phy-id001c.c916", "ethernet-phy-ieee802.3-c22";
+				//compatible = "ethernet-phy-id001c.c816", "ethernet-phy-ieee802.3-c22";
 				reg = <1>;
 				reset-assert-us = <1000>;
 				reset-deassert-us = <2000>;

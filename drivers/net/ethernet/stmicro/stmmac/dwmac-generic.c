@@ -25,19 +25,33 @@ static void sunplus_fix_mac_speed(void *priv, unsigned int speed)
 	clk_disable(stmmac->plat->stmmac_clk);
 	clk_unprepare(stmmac->plat->stmmac_clk);
 
-	switch (speed) {
-	case SPEED_1000:
-		rate = 125000000;
-		break;
-	case SPEED_100:
-		rate = 25000000;
-		break;
-	case SPEED_10:
-		rate = 2500000;
-		break;
-	default:
-		dev_err(stmmac->device, "Invalid speed!\n");
-		break;
+	if (stmmac->plat->phy_interface == PHY_INTERFACE_MODE_RMII) {
+		switch (speed) {
+		case SPEED_100:
+			rate = 50000000;
+			break;
+		case SPEED_10:
+			rate = 5000000;
+			break;
+		default:
+			dev_err(stmmac->device, "Invalid speed!\n");
+			break;
+		}
+	} else {
+		switch (speed) {
+		case SPEED_1000:
+			rate = 125000000;
+			break;
+		case SPEED_100:
+			rate = 25000000;
+			break;
+		case SPEED_10:
+			rate = 2500000;
+			break;
+		default:
+			dev_err(stmmac->device, "Invalid speed!\n");
+			break;
+		}
 	}
 
 	ret = clk_set_rate(stmmac->plat->stmmac_clk, rate);
