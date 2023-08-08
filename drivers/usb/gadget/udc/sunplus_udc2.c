@@ -3030,12 +3030,10 @@ static int udc_sunplus_drv_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 
-	hal_udc_sw_stop_handle(udc);
-
-	if (udc->driver)
+	if (udc->driver) {
+		hal_udc_sw_stop_handle(udc);
 		device_run_stop_ctrl(0);
-
-	clk_disable_unprepare(udc->clock);
+	}
 
 	phy_power_off(uphy[udc->port_num]);
 	phy_exit(uphy[udc->port_num]);
@@ -3057,24 +3055,21 @@ static int udc_sunplus_drv_resume(struct device *dev)
 	if (ret)
 		return ret;
 
-	ret = clk_prepare_enable(udc->clock);
-	if (ret)
-		clk_disable_unprepare(udc->clock);
-
-	hal_udc_device_connect(udc);
+	if (udc->driver) {
+		hal_udc_device_connect(udc);
 
 	#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
-	if (otg_id_pin == 1)
+		if (otg_id_pin == 1)
 	#else
 		#ifdef CONFIG_SOC_Q645
-	if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+		if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
 		#elif defined(CONFIG_SOC_SP7350)
-	if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+		if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
 		#endif
 	#endif
-	{
-		if (udc->driver)
+		{
 			device_run_stop_ctrl(1);
+		}
 	}
 
 	return ret;
