@@ -752,7 +752,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
 		status = "disabled";
-
+#if 0
+		#address-cells = <1>;
+		#size-cells = <0>;
+		slave@0 {
+			reg = <0x40000000>;
+		};
+#endif
 #ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -2822,7 +2828,7 @@
 		};
 		spi_master3_pins: pinmux_spi_master3-pins {
 			function = "SPI_MASTER3";
-			groups = "SPI_MASTER3_X1";
+			groups = "SPI_MASTER3_X2";
 		};
 		spi_master4_pins: pinmux_spi_master4-pins {
 			function = "SPI_MASTER4";
