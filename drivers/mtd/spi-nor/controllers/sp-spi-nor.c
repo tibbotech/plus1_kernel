@@ -3,18 +3,12 @@
  *       All rights reserved.
  */
 
-#include <linux/kernel.h>
 #include <linux/module.h>
-#include <linux/interrupt.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
-#include <linux/mtd/mtd.h>
 #include <linux/mtd/spi-nor.h>
-#include <linux/mutex.h>
 #include <linux/dma-mapping.h>
-#include <linux/wait.h>
 #include <linux/reset.h>
-#include <linux/of.h>
 
 #define SP_SPINOR_DMA           1
 #define CFG_BUFF_MAX            (18 << 10)
@@ -221,7 +215,6 @@ struct sp_spi_nor {
 	struct device *dev;
 	void __iomem *io_base;
 	struct clk *ctrl_clk;
-	struct clk *nor_clk;
 	u32 clk_rate;
 	struct reset_control *clk_rst;
 	u32 rw_timing_sel;
@@ -266,7 +259,6 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 	u32 value = 0;
 
 	dev_dbg(pspi->dev, "chip 0x%x freq %d", pspi->chipsel, pspi->clk_rate);
-
 	if (pspi->chipsel == 0)
 		value = A_CHIP;
 	else
@@ -1169,25 +1161,55 @@ static int sp_spi_nor_remove(struct platform_device *pdev)
 {
 	struct sp_spi_nor *pspi = platform_get_drvdata(pdev);
 
+	clk_disable_unprepare(pspi->ctrl_clk);
+	reset_control_put(pspi->clk_rst);
 	mtd_device_unregister(&pspi->nor.mtd);
-
+#if (SP_SPINOR_DMA)
+	dma_free_coherent(&pdev->dev, PAGE_ALIGN(pspi->buff.size), pspi->buff.virt, pspi->buff.phys);
+#endif
 	mutex_destroy(&pspi->lock);
 
-	//clk_disable_unprepare(pspi->ctrl_clk);
-	//clk_disable_unprepare(pspi->nor_clk);
-
+	//pm_runtime_disable(&pdev->dev);
+	//pm_runtime_put_noidle(&pdev->dev);
+	//pm_runtime_set_suspended(&pdev->dev);
 	return 0;
 }
 
-static int sp_spi_nor_suspend(struct platform_device *pdev, pm_message_t state)
+static int __maybe_unused sp_spi_nor_suspend(struct device *dev)
+{
+	struct sp_spi_nor *pspi = dev_get_drvdata(dev);
+
+	clk_disable_unprepare(pspi->ctrl_clk);
+	return 0;
+}
+
+static int __maybe_unused sp_spi_nor_resume(struct device *dev)
+{
+	struct sp_spi_nor *pspi = dev_get_drvdata(dev);
+	int ret;
+
+	ret = clk_prepare_enable(pspi->ctrl_clk);
+	if (ret)
+		dev_err(dev, "devm_clk_enable fail\n");
+	sp_spi_nor_init(pspi);
+	return 0;
+}
+
+static int __maybe_unused sp_spi_nor_runtime_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int sp_spi_nor_resume(struct platform_device *pdev)
+static int __maybe_unused sp_spi_nor_runtime_resume(struct device *dev)
 {
 	return 0;
 }
+
+static const struct dev_pm_ops sp_spi_nor_dev_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sp_spi_nor_suspend, sp_spi_nor_resume)
+	SET_RUNTIME_PM_OPS(sp_spi_nor_runtime_suspend,
+			sp_spi_nor_runtime_resume, NULL)
+};
 
 static const struct of_device_id sp_spi_nor_ids[] = {
 	{.compatible = "sunplus,sp-spi-nor"},
@@ -1200,11 +1222,12 @@ MODULE_DEVICE_TABLE(of, sp_spi_nor_ids);
 static struct platform_driver sp_spi_nor_driver = {
 	.probe  = sp_spi_nor_probe,
 	.remove = sp_spi_nor_remove,
-	.suspend = sp_spi_nor_suspend,
-	.resume = sp_spi_nor_resume,
+	//.suspend = sp_spi_nor_suspend,
+	//.resume = sp_spi_nor_resume,
 	.driver = {
 		.name = "sp-spi-nor",
 		.of_match_table = sp_spi_nor_ids,
+		.pm	= &sp_spi_nor_dev_pm_ops,
 	},
 };
 module_platform_driver(sp_spi_nor_driver);
