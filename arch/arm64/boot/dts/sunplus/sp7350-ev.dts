@@ -168,44 +168,44 @@
 		ranges;
 
 		extclk: osc0 {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <XTAL>;
 			clock-output-names = "extclk";
 		};
 
 		rtcclk: rtcclk {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <32000>;
 			clock-output-names = "f_32k";
 		};
 
 		mipiclk: mipiclk {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <320000000>;
 			clock-output-names = "f_320m";
 		};
 
 		clkc: clkc@f8800104 {
-			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
 			reg = <0x00 0xf8800104 0x00 0x1fc>,  // MOON G2.1~G6
 			      <0x00 0xf8000f00 0x00 0x080>;  // G30 QCTL
+			#clock-cells = <1>;
 		};
-	};
 
-	imx219_clk: camera-imx219-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
+		imx219_clk: camera-imx219-clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
 
-	tp2815_clk: camera-tp2815-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <27000000>;
+		tp2815_clk: camera-tp2815-clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <27000000>;
+		};
 	};
 
 	cpu_opp_table: opp-table {
