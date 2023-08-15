@@ -1,21 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0
 
-#include <linux/kernel.h>
-#include <linux/export.h>
-#include <linux/err.h>
-#include <linux/device.h>
-#include <linux/module.h>
-#include <linux/slab.h>
-#include <linux/of.h>
 #include <linux/clk.h>
 #include <linux/platform_device.h>
-#include <linux/usb/phy.h>
 #include <linux/usb/sp_usb.h>
-#include <linux/nvmem-consumer.h>
 #include <linux/reset.h>
-#include <linux/interrupt.h>
-#include <linux/delay.h>
-#include <linux/wait.h>
 
 struct u3phy_regs {
 	unsigned int cfg[32];		       // 189.0
@@ -92,10 +80,9 @@ static void typec_gpio(struct work_struct *work)
 	}
 	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(10));
 }
-
+#if 0
 static void synopsys_u3phy_init(struct platform_device *pdev)
 {
-	//struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy = platform_get_drvdata(pdev);
 	struct u3phy_regs *dwc3phy_reg;
 	unsigned int result;
@@ -126,6 +113,73 @@ static void synopsys_u3phy_init(struct platform_device *pdev)
 		//return -ETIME;
 	u3phy->dir = 1;
 }
+#endif
+static int sp_u3phy_init(struct phy *phy)
+{
+	struct usb3_phy *u3phy = phy_get_drvdata(phy);
+
+	INIT_DELAYED_WORK(&u3phy->typecdir, typec_gpio);
+	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
+	return 0;
+}
+
+static int sp_u3phy_power_on(struct phy *phy)
+{
+	struct usb3_phy *u3phy = phy_get_drvdata(phy);
+	struct u3phy_regs *dwc3phy_reg;
+	unsigned int result;
+
+	clk_prepare_enable(u3phy->u3_clk);
+	clk_prepare_enable(u3phy->u3phy_clk);
+
+	reset_control_assert(u3phy->u3phy_rst);
+	mdelay(1);
+	reset_control_deassert(u3phy->u3phy_rst);
+
+	dwc3phy_reg = (struct u3phy_regs *) u3phy->u3phy_base_addr;
+
+	result = readl(&dwc3phy_reg->cfg[1]);
+	writel(result | 0x3, &dwc3phy_reg->cfg[1]);
+	u3phy->busy = 1;
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+	//if (!result)
+	//	dev_dbg(dev, "reset failed 1\n");
+		//return -ETIME;
+
+	result = readl(&dwc3phy_reg->cfg[5]) & 0xFFE0;
+	writel(result | 0x15, &dwc3phy_reg->cfg[5]);
+	u3phy->busy = 1;
+	result = wait_event_timeout(u3phy->wq, !u3phy->busy, msecs_to_jiffies(100));
+	//if (!result)
+	//	dev_dbg(dev, "reset failed 2\n");
+		//return -ETIME;
+	u3phy->dir = 1;
+
+	return 0;
+}
+
+static int sp_u3phy_power_off(struct phy *phy)
+{
+	struct usb3_phy *u3phy = phy_get_drvdata(phy);
+
+	clk_disable_unprepare(u3phy->u3phy_clk);
+	return 0;
+}
+
+static int sp_u3phy_exit(struct phy *phy)
+{
+	struct usb3_phy *u3phy = phy_get_drvdata(phy);
+
+	cancel_delayed_work_sync(&u3phy->typecdir);
+	return 0;
+}
+
+static const struct phy_ops sp_u3phy_ops = {
+	.init		= sp_u3phy_init,
+	.power_on	= sp_u3phy_power_on,
+	.power_off	= sp_u3phy_power_off,
+	.exit		= sp_u3phy_exit,
+};
 
 static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 {
@@ -133,6 +187,8 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 	struct resource *u3phy_res_mem;
 	struct device *dev = &pdev->dev;
 	struct usb3_phy *u3phy;
+	struct phy_provider *phy_provider;
+	struct phy *phy;
 
 	dev_info(dev, "%s\n", __func__);
 	u3phy = devm_kzalloc(dev, sizeof(*u3phy), GFP_KERNEL);
@@ -191,11 +247,19 @@ static int sunplus_usb_synopsys_u3phy_probe(struct platform_device *pdev)
 		return PTR_ERR(u3phy->gpiodir);
 	}
 
-	INIT_DELAYED_WORK(&u3phy->typecdir, typec_gpio);
-	synopsys_u3phy_init(pdev);
-	schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
-	//dev_info(dev, "%s end\n", __func__);
-	return 0;
+	//INIT_DELAYED_WORK(&u3phy->typecdir, typec_gpio);
+	//synopsys_u3phy_init(pdev);
+	//schedule_delayed_work(&u3phy->typecdir, msecs_to_jiffies(100));
+	phy = devm_phy_create(&pdev->dev, NULL, &sp_u3phy_ops);
+	if (IS_ERR(phy)) {
+		ret = -PTR_ERR(phy);
+		return ret;
+	}
+
+	phy_set_drvdata(phy, u3phy);
+	phy_provider = devm_of_phy_provider_register(&pdev->dev, of_phy_simple_xlate);
+
+	return PTR_ERR_OR_ZERO(phy_provider);
 }
 
 static int sunplus_usb_synopsys_u3phy_remove(struct platform_device *pdev)
@@ -212,7 +276,6 @@ static int sunplus_usb_synopsys_u3phy_remove(struct platform_device *pdev)
 
 	return 0;
 }
-
 static const struct of_device_id synopsys_u3phy_sunplus_dt_ids[] = {
 	{ .compatible = "sunplus,usb3-phy" },
 	{ }

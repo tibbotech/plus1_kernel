@@ -1552,6 +1552,8 @@
 			phy_type = "utmi_wide";
 			usb-role-switch;
 			extcon = <&extcon_dwc3drd>;
+			phys = <&u3phy0>, <&u3phy0>;
+			phy-names = "usb3-phy", "usb2-phy";
 		};
 	};
 
@@ -1567,6 +1569,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&typec_pins>;
 		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
+		#phy-cells = <0>;
 	};
 
 	mipicsirx0: csirx@f8005280 {
