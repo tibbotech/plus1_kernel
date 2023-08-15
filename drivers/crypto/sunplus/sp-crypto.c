@@ -432,12 +432,61 @@ void sp_crypto_free_dev(struct sp_crypto_dev *dev, u32 type)
 #endif
 }
 
+static void sp_crypto_hw_init(struct sp_crypto_dev *dev)
+{
+	struct sp_crypto_reg *reg = dev->reg;
+	struct trb_ring_s *ring;
+	dma_addr_t phy_addr;
+
+	SP_CRYPTO_TRACE();
+	ring = HASH_RING(dev);
+	phy_addr = ring->pa;
+	W(HASHDMA_CRCR, phy_addr | AUTODMA_CRCR_FLAGS);
+	W(HASHDMA_ERBAR, phy_addr);
+#ifdef USE_ERF
+	W(HASHDMA_ERDPR, phy_addr + (HASH_EVENT_RING_SIZE - 1) * TRB_SIZE);
+#else
+	W(HASHDMA_ERDPR, phy_addr + HASH_EVENT_RING_SIZE * TRB_SIZE);
+#endif
+	W(HASHDMA_RCSR, HASH_EVENT_RING_SIZE - 1);
+	WR(HASHDMA_RCSR, | AUTODMA_RCSR_ERF);
+	WR(HASHDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: HW issue, autodma enable must be alone
+	SP_CRYPTO_INF("HASH_RING === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
+	SP_CRYPTO_INF("HASH_RCSR: %08x\n", R(HASHDMA_RCSR));
+	SP_CRYPTO_INF("HASH_RING: %px %d\n", (void *)phy_addr, ring->trb_sem.count);
+	SP_CRYPTO_INF("HASH_CR  : %08x\n", R(HASH_CR));
+	SP_CRYPTO_INF("HASH_ER  : %08x\n", R(HASH_ER));
+
+	ring = AES_RING(dev);
+	phy_addr = ring->pa;
+	W(AESDMA_CRCR, phy_addr | AUTODMA_CRCR_FLAGS);
+	W(AESDMA_ERBAR, phy_addr);
+#ifdef USE_ERF
+	W(AESDMA_ERDPR, phy_addr + (AES_EVENT_RING_SIZE - 1) * TRB_SIZE);
+#else
+	W(AESDMA_ERDPR, phy_addr + AES_EVENT_RING_SIZE * TRB_SIZE);
+#endif
+	W(AESDMA_RCSR, AES_EVENT_RING_SIZE - 1);
+	WR(AESDMA_RCSR, | AUTODMA_RCSR_ERF);
+	WR(AESDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: same as above
+	SP_CRYPTO_INF("AES_RING  === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
+	SP_CRYPTO_INF("AES_RCSR : %08x\n", R(AESDMA_RCSR));
+	SP_CRYPTO_INF("AES_RING : %px %d\n", (void *)phy_addr, ring->trb_sem.count);
+	SP_CRYPTO_INF("AES_CR   : %08x\n", R(AES_CR));
+	SP_CRYPTO_INF("AES_ER   : %08x\n", R(AES_ER));
+
+#ifdef USE_ERF
+	W(SECIE, RSA_DMA_IE | AES_TRB_IE | HASH_TRB_IE | AES_ERF_IE | HASH_ERF_IE);
+#else
+	W(SECIE, RSA_DMA_IE | AES_TRB_IE | HASH_TRB_IE);
+#endif
+	SP_CRYPTO_INF("SECIE: %08x\n", R(SECIE));
+}
+
 static int sp_crypto_probe(struct platform_device *pdev)
 {
 	struct sp_crypto_reg *reg;
 	struct resource *res_irq;
-	struct trb_ring_s *ring;
-	dma_addr_t phy_addr;
 	struct sp_crypto_dev *dev = sp_dd_tb;//platform_get_drvdata(pdev);
 	int ret = 0;
 
@@ -484,57 +533,17 @@ static int sp_crypto_probe(struct platform_device *pdev)
 #endif
 
 	SP_CRYPTO_TRACE();
-	HASH_RING(dev) = ring = trb_ring_new(&pdev->dev, HASH_CMD_RING_SIZE);
-	ERR_OUT(ring, goto out2, "new hash_cmd_ring");
-
-	phy_addr = ring->pa;
-	W(HASHDMA_CRCR, phy_addr | AUTODMA_CRCR_FLAGS);
-	W(HASHDMA_ERBAR, phy_addr);
-#ifdef USE_ERF
-	W(HASHDMA_ERDPR, phy_addr + (HASH_EVENT_RING_SIZE - 1) * TRB_SIZE);
-#else
-	W(HASHDMA_ERDPR, phy_addr + HASH_EVENT_RING_SIZE * TRB_SIZE);
-#endif
-	W(HASHDMA_RCSR, HASH_EVENT_RING_SIZE - 1);
-	WR(HASHDMA_RCSR, | AUTODMA_RCSR_ERF);
-	WR(HASHDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: HW issue, autodma enable must be alone
-	SP_CRYPTO_INF("HASH_RING === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
-	SP_CRYPTO_INF("HASH_RCSR: %08x\n", R(HASHDMA_RCSR));
-	SP_CRYPTO_INF("HASH_RING: %px %d\n", (void *)phy_addr, ring->trb_sem.count);
-	SP_CRYPTO_INF("HASH_CR  : %08x\n", R(HASH_CR));
-	SP_CRYPTO_INF("HASH_ER  : %08x\n", R(HASH_ER));
+	HASH_RING(dev) = trb_ring_new(&pdev->dev, HASH_CMD_RING_SIZE);
+	ERR_OUT(HASH_RING(dev), goto out2, "new hash_cmd_ring");
 
 	SP_CRYPTO_TRACE();
-	AES_RING(dev) = ring = trb_ring_new(&pdev->dev, AES_CMD_RING_SIZE);
-	ERR_OUT(ring, goto out3, "new hash_cmd_ring");
-
-	phy_addr = ring->pa;
-	W(AESDMA_CRCR, phy_addr | AUTODMA_CRCR_FLAGS);
-	W(AESDMA_ERBAR, phy_addr);
-#ifdef USE_ERF
-	W(AESDMA_ERDPR, phy_addr + (AES_EVENT_RING_SIZE - 1) * TRB_SIZE);
-#else
-	W(AESDMA_ERDPR, phy_addr + AES_EVENT_RING_SIZE * TRB_SIZE);
-#endif
-	W(AESDMA_RCSR, AES_EVENT_RING_SIZE - 1);
-	WR(AESDMA_RCSR, | AUTODMA_RCSR_ERF);
-	WR(AESDMA_RCSR, | AUTODMA_RCSR_EN); // TODO: same as above
-	SP_CRYPTO_INF("AES_RING  === VA:%px PA:%px\n", ring->trb, (void *)phy_addr);
-	SP_CRYPTO_INF("AES_RCSR : %08x\n", R(AESDMA_RCSR));
-	SP_CRYPTO_INF("AES_RING : %px %d\n", (void *)phy_addr, ring->trb_sem.count);
-	SP_CRYPTO_INF("AES_CR   : %08x\n", R(AES_CR));
-	SP_CRYPTO_INF("AES_ER   : %08x\n", R(AES_ER));
+	AES_RING(dev) = trb_ring_new(&pdev->dev, AES_CMD_RING_SIZE);
+	ERR_OUT(AES_RING(dev), goto out3, "new hash_cmd_ring");
 
 	ret = devm_request_irq(&pdev->dev, dev->irq, sp_crypto_irq, IRQF_TRIGGER_HIGH, "sp_crypto", dev);
 	ERR_OUT(ret, goto out4, "request_irq(%d)", dev->irq);
 
-	SP_CRYPTO_TRACE();
-#ifdef USE_ERF
-	W(SECIE, RSA_DMA_IE | AES_TRB_IE | HASH_TRB_IE | AES_ERF_IE | HASH_ERF_IE);
-#else
-	W(SECIE, RSA_DMA_IE | AES_TRB_IE | HASH_TRB_IE);
-#endif
-	SP_CRYPTO_INF("SECIE: %08x\n", R(SECIE));
+	sp_crypto_hw_init(dev);
 	//BUG_ON(1);
 
 	return 0;
@@ -577,6 +586,44 @@ static int sp_crypto_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM
+#define REGS	35	// G123.0 ~ G124.2
+static u32 regs[REGS];
+static int sp_crypto_suspend(struct platform_device *pdev,
+	pm_message_t state)
+{
+	struct sp_crypto_dev *dev = platform_get_drvdata(pdev);
+	void __iomem *reg = dev->reg;
+	int i;
+
+	SP_CRYPTO_TRACE();
+	for (i = 0; i < REGS; i++) // save hw regs
+		regs[i] = readl_relaxed(reg + i * 4);
+	clk_disable_unprepare(dev->clk);
+	reset_control_assert(dev->rstc);
+
+	return 0;
+}
+
+static int sp_crypto_resume(struct platform_device *pdev)
+{
+	struct sp_crypto_dev *dev = platform_get_drvdata(pdev);
+	void __iomem *reg = dev->reg;
+	int i;
+
+	SP_CRYPTO_TRACE();
+	reset_control_deassert(dev->rstc);
+	clk_prepare_enable(dev->clk);
+	sp_crypto_hw_init(dev);
+	for (i = 0; i < REGS; i++) // restore hw regs
+		writel_relaxed(regs[i], reg + i * 4);
+	trb_ring_reset(AES_RING(dev));
+	trb_ring_reset(HASH_RING(dev));
+
+	return 0;
+}
+#endif
+
 static const struct of_device_id sp_crypto_of_match[] = {
 	{ .compatible = "sunplus,sp7021-crypto" },
 	{ .compatible = "sunplus,sp7350-crypto" },
@@ -587,6 +634,10 @@ MODULE_DEVICE_TABLE(of, sp_crypto_of_match);
 static struct platform_driver sp_crtpto_driver = {
 	.probe		= sp_crypto_probe,
 	.remove		= sp_crypto_remove,
+#ifdef CONFIG_PM
+	.suspend	= sp_crypto_suspend,
+	.resume		= sp_crypto_resume,
+#endif
 	.driver		= {
 		.name	= "sp_crypto",
 		.owner	= THIS_MODULE,
