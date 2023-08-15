@@ -1052,6 +1052,7 @@
 	adc: adc@f8802f00 {
 		compatible = "sunplus,sp7350-adc";
 		reg = <0x0 0xf8802f00 0x0 0x80>;
+		hwlocks = <&hwlock 1>;
 		//status = "disabled";
 	};
 
@@ -1083,7 +1084,7 @@
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
 	};
 
-	hwspinlock@f800f880 {
+	hwlock: hwspinlock@f800f880 {
 		compatible = "sp,sunplus-hwspinlock";
 		#hwlock-cells = <1>;
 		reg = <0 0xf800f880 0 0x80>;

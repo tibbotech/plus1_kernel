@@ -2,6 +2,7 @@
 /* sp-adc.c - Analog Devices ADC driver 12 bits 4 channels
  */
 
+#include <linux/hwspinlock.h>
 #include <linux/delay.h>
 #include <linux/iio/iio.h>
 #include <linux/module.h>
@@ -37,6 +38,9 @@
 #define SP_ADC_CHAN2_SEL		GENMASK(8, 6)
 #define SP_ADC_CHAN3_SEL		GENMASK(11, 9)
 
+/* Timeout (ms) for the trylock of hardware spinlocks */
+#define SP_ADC_HWLOCK_TIMEOUT	5000
+
 enum {
 	SP_ADC_CHAN0 = 0,
 	SP_ADC_CHAN1 = 1,
@@ -62,6 +66,8 @@ static const struct sp_adc_spec sp_adc_spec = {
  * @buffer: buffer to send / receive data to / from device
  */
 struct sp_adc_chip {
+	struct device *dev;
+	struct hwspinlock *hwlock;
 	struct mutex lock;
 	struct iio_dev	*indio_dev;
 	void __iomem	*regs;
@@ -86,8 +92,17 @@ static int sp_adc_ini(struct sp_adc_chip *sp_adc)
 static int sp_adc_read_channel(struct sp_adc_chip *sp_adc, int *val,
 				   unsigned int channel)
 {
+	int ret;
 	int mask = GENMASK(sp_adc->resolution - 1, 0);
 	u32 data,reg_temp;
+
+	if (sp_adc->hwlock) {
+		ret = hwspin_lock_timeout_raw(sp_adc->hwlock, SP_ADC_HWLOCK_TIMEOUT);
+		if (ret) {
+			dev_err(sp_adc->dev, "timeout to get the hwspinlock\n");
+			return ret;
+		}
+	}
 
 	reg_temp = readl(sp_adc->regs + SP_ADC_CFG0B);
 	reg_temp &= ~SP_ADC_CHAN_SEL;
@@ -126,6 +141,10 @@ static int sp_adc_read_channel(struct sp_adc_chip *sp_adc, int *val,
 	data = readl(sp_adc->regs + SP_ADC_CFG0D);
 
 	*val = data & mask;
+
+	if(sp_adc->hwlock)
+		hwspin_unlock_raw(sp_adc->hwlock);
+
 	return 0;
 }
 
@@ -176,6 +195,7 @@ static const struct iio_info sp_info = {
 static int sp_adc_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
+	struct device_node *np = dev->of_node;
 	const struct sp_adc_spec *spec;
 	struct sp_adc_chip *sp_adc;
 	struct iio_dev *indio_dev;
@@ -203,6 +223,19 @@ static int sp_adc_probe(struct platform_device *pdev)
 	if (IS_ERR(sp_adc->regs))
 		return dev_err_probe(&pdev->dev, PTR_ERR(sp_adc->regs), "mas_base get fail\n");
 
+	ret = of_hwspin_lock_get_id(np, 0);
+	if (ret < 0) {
+		dev_err(dev, "failed to get hwspinlock id\n");
+		return ret;
+	}
+
+	sp_adc->hwlock = devm_hwspin_lock_request_specific(dev, ret);
+	if (!sp_adc->hwlock) {
+		dev_err(dev, "failed to request hwspinlock\n");
+		return -ENXIO;
+	}
+
+	sp_adc->dev = dev;
 	sp_adc->indio_dev = indio_dev;
 	spec = &sp_adc_spec;
 	indio_dev->num_channels = spec->num_channels;
