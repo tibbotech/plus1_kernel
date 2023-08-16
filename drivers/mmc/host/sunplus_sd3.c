@@ -763,9 +763,9 @@ static void spsdc_finish_request(struct spsdc_host *host, struct mmc_request *mr
 	}
 	host->mrq = NULL;
 	mutex_unlock(&host->mrq_lock);
-		//if((cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
+	//	if(((host->mode == SPSDC_MODE_SD) && (cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)) && (cmd->opcode != 52) && (cmd->opcode != 53)){
 	spsdc_pr(host->mode, VERBOSE, "request done > error:%d, cmd:%d, resp:0x%08x\n", cmd->error, cmd->opcode, cmd->resp[0]);
-		//	}
+	//		}
 	mmc_request_done(host->mmc, mrq);
 }
 
@@ -815,10 +815,10 @@ static void spsdc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 	data = mrq->data;
 	cmd = mrq->cmd;
 
-//	if((host->mode == SPSDC_MODE_SD) && (cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)){
+	//if(((host->mode == SPSDC_MODE_SD) && (cmd->opcode != 13) && (cmd->opcode != 18) && (cmd->opcode != 25)) && (cmd->opcode != 52) && (cmd->opcode != 53)){
 	spsdc_pr(host->mode, VERBOSE, "%s > cmd:%d, arg:0x%08x, data len:%d\n", __func__,
 		cmd->opcode, cmd->arg, data ? (data->blocks*data->blksz) : 0);
-//}
+	//}
 
 #ifdef HW_VOLTAGE_1V8
 	u32 value;
@@ -920,6 +920,7 @@ static int spmmc_card_busy(struct mmc_host *mmc)
 {
 	struct spsdc_host *host = mmc_priv(mmc);
 
+	if(host->mode == SPSDC_MODE_SD)
 	spsdc_pr(host->mode, INFO, "card_busy! %d\n", !(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS));
 	return !(readl(&host->base->sd_status) & SPSDC_SDSTATUS_DAT0_PIN_STATUS);
 }
@@ -1289,10 +1290,10 @@ static int spsdc_drv_probe(struct platform_device *pdev)
 	if (ret)
 		goto probe_free_host;
 
-	if (mmc->caps2 | MMC_CAP2_NO_SDIO)
-		host->mode = SPSDC_MODE_SDIO;
-	else
+	if (mmc->caps2 & MMC_CAP2_NO_SDIO)
 		host->mode = SPSDC_MODE_SD;
+	else
+		host->mode = SPSDC_MODE_SDIO;
 
 	host->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(host->clk)) {

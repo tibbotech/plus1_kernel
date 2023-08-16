@@ -168,44 +168,44 @@
 		ranges;
 
 		extclk: osc0 {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <XTAL>;
 			clock-output-names = "extclk";
 		};
 
 		rtcclk: rtcclk {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <32000>;
 			clock-output-names = "f_32k";
 		};
 
 		mipiclk: mipiclk {
-			#clock-cells = <0>;
 			compatible = "fixed-clock";
+			#clock-cells = <0>;
 			clock-frequency = <320000000>;
 			clock-output-names = "f_320m";
 		};
 
 		clkc: clkc@f8800104 {
-			#clock-cells = <1>;
 			compatible = "sunplus,sp7350-clkc";
 			reg = <0x00 0xf8800104 0x00 0x1fc>,  // MOON G2.1~G6
 			      <0x00 0xf8000f00 0x00 0x080>;  // G30 QCTL
+			#clock-cells = <1>;
 		};
-	};
 
-	imx219_clk: camera-imx219-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <24000000>;
-	};
+		imx219_clk: camera-imx219-clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <24000000>;
+		};
 
-	tp2815_clk: camera-tp2815-clk {
-		compatible = "fixed-clock";
-		#clock-cells = <0>;
-		clock-frequency = <27000000>;
+		tp2815_clk: camera-tp2815-clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <27000000>;
+		};
 	};
 
 	cpu_opp_table: opp-table {
@@ -752,7 +752,13 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
 		status = "disabled";
-
+#if 0
+		#address-cells = <1>;
+		#size-cells = <0>;
+		slave@0 {
+			reg = <0x40000000>;
+		};
+#endif
 #ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1046,6 +1052,7 @@
 	adc: adc@f8802f00 {
 		compatible = "sunplus,sp7350-adc";
 		reg = <0x0 0xf8802f00 0x0 0x80>;
+		hwlocks = <&hwlock 1>;
 		//status = "disabled";
 	};
 
@@ -1077,7 +1084,7 @@
 		interrupts = <GIC_SPI 141 IRQ_TYPE_EDGE_RISING>;
 	};
 
-	hwspinlock@f800f880 {
+	hwlock: hwspinlock@f800f880 {
 		compatible = "sp,sunplus-hwspinlock";
 		#hwlock-cells = <1>;
 		reg = <0 0xf800f880 0 0x80>;
@@ -1546,6 +1553,8 @@
 			phy_type = "utmi_wide";
 			usb-role-switch;
 			extcon = <&extcon_dwc3drd>;
+			phys = <&u3phy0>, <&u3phy0>;
+			phy-names = "usb3-phy", "usb2-phy";
 		};
 	};
 
@@ -1561,6 +1570,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&typec_pins>;
 		typec-gpios = <&pctl 98 GPIO_ACTIVE_HIGH>;
+		#phy-cells = <0>;
 	};
 
 	mipicsirx0: csirx@f8005280 {
@@ -2822,7 +2832,7 @@
 		};
 		spi_master3_pins: pinmux_spi_master3-pins {
 			function = "SPI_MASTER3";
-			groups = "SPI_MASTER3_X1";
+			groups = "SPI_MASTER3_X2";
 		};
 		spi_master4_pins: pinmux_spi_master4-pins {
 			function = "SPI_MASTER4";
