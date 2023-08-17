@@ -5213,6 +5213,13 @@ int stmmac_suspend(struct device *dev)
 
 	/* Enable Power down mode by programming the PMT regs */
 	if (device_may_wakeup(priv->device) && priv->plat->pmt) {
+		/*This is used to fix phy status issue after suspend->resume with WOL enable*/
+		mutex_unlock(&priv->lock);
+		rtnl_lock();
+		phylink_speed_down(priv->phylink, false);
+		rtnl_unlock();
+		mutex_lock(&priv->lock);
+
 		stmmac_pmt(priv, priv->hw, priv->wolopts);
 		priv->irq_wake = 1;
 	} else {
@@ -5230,6 +5237,7 @@ int stmmac_suspend(struct device *dev)
 		clk_disable_unprepare(priv->plat->clk_ptp_ref);
 		clk_disable_unprepare(priv->plat->pclk);
 		clk_disable_unprepare(priv->plat->stmmac_clk);
+		reset_control_assert(priv->plat->stmmac_rst);
 	}
 	mutex_unlock(&priv->lock);
 
@@ -5291,8 +5299,14 @@ int stmmac_resume(struct device *dev)
 		mutex_lock(&priv->lock);
 		stmmac_pmt(priv, priv->hw, 0);
 		mutex_unlock(&priv->lock);
+		/*This is used to fix phy status issue after suspend->resume with WOL enable*/
+		rtnl_lock();
+		phylink_speed_up(priv->phylink);
+		rtnl_unlock();
+
 		priv->irq_wake = 0;
 	} else {
+		reset_control_deassert(priv->plat->stmmac_rst);
 		pinctrl_pm_select_default_state(priv->device);
 		/* enable the clk previously disabled */
 		clk_prepare_enable(priv->plat->stmmac_clk);
