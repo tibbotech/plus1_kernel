@@ -822,13 +822,13 @@ free_mem:
 }
 EXPORT_SYMBOL_GPL(sp_otg_remove);
 
-int sp_otg_suspend(struct platform_device *dev, pm_message_t state)
+int sp_otg_suspend(struct device *dev)
 {
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sp_otg_suspend);
 
-int sp_otg_resume(struct platform_device *dev)
+int sp_otg_resume(struct device *dev)
 {
 	return 0;
 }

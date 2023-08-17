@@ -229,8 +229,8 @@ extern enum usb_dr_mode usb_get_dr_mode(struct device *dev);
 
 extern int sp_otg_probe(struct platform_device *dev);
 extern int sp_otg_remove(struct platform_device *dev);
-extern int sp_otg_suspend(struct platform_device *dev, pm_message_t state);
-extern int sp_otg_resume(struct platform_device *dev);
+extern int sp_otg_suspend(struct device *dev);
+extern int sp_otg_resume(struct device *dev);
 
 void sp_otg_update_transceiver(struct sp_otg *otg_host);
 extern struct usb_phy *usb_get_transceiver_sp(int bus_num);

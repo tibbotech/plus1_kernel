@@ -22,11 +22,11 @@
 extern void detech_start(void);
 extern void device_run_stop_ctrl(int);
 
-u32 otg_id_pin;
-EXPORT_SYMBOL(otg_id_pin);
-
 static u32 start_srp = false;
 #endif
+
+u32 otg_id_pin;
+EXPORT_SYMBOL(otg_id_pin);
 
 extern u8 otg0_vbus_off;
 extern u8 otg1_vbus_off;
@@ -292,6 +292,10 @@ int hnp_polling_watchdog(void *arg)
 
 				find_child = true;
 
+	#ifdef CONFIG_PM
+				mdelay(300);
+	#endif
+
 				if ((IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted) ||
 			    	    (!IS_ENABLED(CONFIG_USB_OTG_WHITELIST) || !hcd->tpl_support)) {
 			    	    	if (IS_ENABLED(CONFIG_USB_OTG_WHITELIST) && hcd->tpl_support && targeted)
@@ -457,11 +461,13 @@ static void otg_hw_init(struct sp_otg *otg_host)
 {
 	u32 val;
 
+#ifndef CONFIG_SOC_SP7350
 	/* Set adp charge precision */
 	writel(0x3f, &otg_host->regs_otg->adp_chng_precision);
 
 	/* Set adp dis-charge time */
 	writel(0xfff, &otg_host->regs_otg->adp_chrg_time);
+#endif
 
 	/* Set wait power rise timer */
 	writel(0x1ffff, &otg_host->regs_otg->a_wait_vrise_tmr);
@@ -475,7 +481,7 @@ static void otg_hw_init(struct sp_otg *otg_host)
 	/* Enbale ADP & SRP  */
 	val = readl(&otg_host->regs_otg->otg_int_st);
 
-#if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
+#if defined(CONFIG_SOC_SP7350)
 	if (val & ID_PIN)
 		otg_id_pin = 1;
 	else
@@ -758,7 +764,7 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 #endif
 		} else {
 			writel(~OTG_SIM & (OTG_SRP | OTG_20),
-				  &otg_host->regs_otg->mode_select);
+				  			&otg_host->regs_otg->mode_select);
 #if defined(CONFIG_SOC_SP7350) && defined(CONFIG_USB_SP_UDC2)
 			otg_id_pin = 1;
 			device_run_stop_ctrl(1);
@@ -800,17 +806,17 @@ static irqreturn_t otg_irq(int irq, void *dev_priv)
 	return IRQ_HANDLED;
 }
 
-int sp_otg_probe(struct platform_device *dev)
+int sp_otg_probe(struct platform_device *pdev)
 {
 	struct sp_otg *otg_host;
 	struct resource *res_mem;
 	int ret;
 
 	if ((sp_port0_enabled & PORT0_ENABLED) && (sp_otg0_host == NULL))
-		dev->id = 1;
+		pdev->id = 1;
 #ifndef CONFIG_SOC_SP7350
 	else if ((sp_port1_enabled & PORT1_ENABLED) && (sp_otg1_host == NULL))
-		dev->id = 2;
+		pdev->id = 2;
 #endif
 
 	otg_host = kzalloc(sizeof(struct sp_otg), GFP_KERNEL);
@@ -819,12 +825,12 @@ int sp_otg_probe(struct platform_device *dev)
 		return -ENOMEM;
 	}
 
-	if (dev->id == 1) {
+	if (pdev->id == 1) {
 		sp_otg0_host = otg_host;
 		otg_host->id = 1;
 	}
 #ifndef CONFIG_SOC_SP7350
-	else if (dev->id == 2) {
+	else if (pdev->id == 2) {
 		sp_otg1_host = otg_host;
 		otg_host->id = 2;
 	}
@@ -837,14 +843,14 @@ int sp_otg_probe(struct platform_device *dev)
 		return -ENOMEM;
 	}
 
-	otg_host->irq = platform_get_irq(dev, 0);
+	otg_host->irq = platform_get_irq(pdev, 0);
 	if (otg_host->irq < 0) {
 		pr_err("otg no irq provieded\n");
 		ret = otg_host->irq;
 		goto release_mem;
 	}
 
-	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
 		pr_err("otg no memory recourse provieded\n");
 		ret = -ENXIO;
@@ -869,7 +875,7 @@ int sp_otg_probe(struct platform_device *dev)
 
 	otg_host->qwork = create_singlethread_workqueue(DRIVER_NAME);
 	if (!otg_host->qwork) {
-		dev_dbg(&dev->dev, "cannot create workqueue %s\n", DRIVER_NAME);
+		dev_dbg(&pdev->dev, "cannot create workqueue %s\n", DRIVER_NAME);
 		ret = -ENOMEM;
 		goto err_ioumap;
 	}
@@ -891,13 +897,13 @@ int sp_otg_probe(struct platform_device *dev)
 	otg_host->otg.io_ops = &sp_phy_ios;
 
 #if defined (CONFIG_ADP_TIMER) && !defined (CONFIG_SOC_SP7350)
-	if (dev->id == 1)
+	if (pdev->id == 1)
 		timer_setup(&otg_host->adp_timer, adp_watchdog0, 0);
-	else if (dev->id == 2)
+	else if (pdev->id == 2)
 		timer_setup(&otg_host->adp_timer, adp_watchdog1, 0);
 #endif
 
-	usb_set_transceiver_sp(&otg_host->otg, dev->id - 1);
+	usb_set_transceiver_sp(&otg_host->otg, pdev->id - 1);
 
 	otg_hw_init(otg_host);
 	otg_hsm_init(otg_host);
@@ -909,7 +915,7 @@ int sp_otg_probe(struct platform_device *dev)
 
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
 
-	platform_set_drvdata(dev, otg_host);
+	platform_set_drvdata(pdev, otg_host);
 
 	if (otg_host->fsm.id == 0)
 		sp_otg_update_transceiver(otg_host);
@@ -927,11 +933,10 @@ release_mem:
 }
 EXPORT_SYMBOL_GPL(sp_otg_probe);
 
-int sp_otg_remove(struct platform_device *dev)
+int sp_otg_remove(struct platform_device *pdev)
 {
 	struct resource *res_mem;
-	struct sp_otg *otg_host = platform_get_drvdata(dev);
-	int err = 0;
+	struct sp_otg *otg_host = platform_get_drvdata(pdev);
 
 	if (otg_host->qwork) {
 		flush_workqueue(otg_host->qwork);
@@ -941,30 +946,12 @@ int sp_otg_remove(struct platform_device *dev)
 	del_timer_sync(&otg_host->adp_timer);
 #endif
 
-#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
-	if (sp_otg0_host->hnp_polling_timer) {
-		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
-		if (err)
-			otg_debug("kthread_stop failed: %d\n", err);
-		else
-			sp_otg0_host->hnp_polling_timer = NULL;
-	}
-#else
-	if (sp_otg1_host->hnp_polling_timer) {
-		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
-		if (err)
-			otg_debug("kthread_stop failed: %d\n", err);
-		else
-			sp_otg1_host->hnp_polling_timer = NULL;
-	}
-#endif
-
 	free_irq(otg_host->irq, otg_host);
 	iounmap(otg_host->regs_otg);
 
-	res_mem = platform_get_resource(dev, IORESOURCE_MEM, 0);
+	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
-		pr_err("otg  release get recourse fail\n");
+		pr_err("otg release get recourse fail\n");
 		goto free_mem;
 	}
 
@@ -978,14 +965,48 @@ free_mem:
 }
 EXPORT_SYMBOL_GPL(sp_otg_remove);
 
-int sp_otg_suspend(struct platform_device *dev, pm_message_t state)
+int sp_otg_suspend(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct sp_otg *otg_host = platform_get_drvdata(pdev);
+
+	if (otg_host->qwork) {
+		flush_workqueue(otg_host->qwork);
+		destroy_workqueue(otg_host->qwork);
+	}
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sp_otg_suspend);
 
-int sp_otg_resume(struct platform_device *dev)
+int sp_otg_resume(struct device *dev)
 {
+	struct platform_device *pdev = to_platform_device(dev);
+	struct sp_otg *otg_host = platform_get_drvdata(pdev);
+	struct resource *res_mem;
+
+	otg_host->qwork = create_singlethread_workqueue(DRIVER_NAME);
+	if (!otg_host->qwork) {
+		dev_dbg(dev, "cannot create workqueue %s\n", DRIVER_NAME);
+
+		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
+		if (!res_mem)
+			pr_err("otg release get recourse fail\n");
+		else
+			release_mem_region(res_mem->start, resource_size(res_mem));
+
+		kfree(otg_host->otg.otg);
+		kfree(otg_host);
+
+		return -ENOMEM;
+	}
+	INIT_WORK(&otg_host->work, sp_otg_work);
+
+	otg_hw_init(otg_host);
+	otg_hsm_init(otg_host);
+
+	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sp_otg_resume);

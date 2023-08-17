@@ -1084,6 +1084,7 @@ static void handle_event(struct sp_udc *udc)
 			break;
 		} else {
 			UDC_LOGD("------ event %d -------\n", valid_event_count);
+
 			hal_udc_analysis_event_trb(event_ring_dq, udc);
 
 			if (end_trb == event_ring_dq) {
@@ -2652,7 +2653,8 @@ void device_run_stop_ctrl(int enable)
 	struct sp_udc *udc = sp_udc_arry[0];
 	volatile struct udc_reg *USBx = udc->reg;
 
-	if (!udc)
+	/* driver unprobed or in suspend */
+	if (!udc || (USBx->DEVC_ERSTSZ == 0x0))
 		return;
 
 	if (enable) {
@@ -2667,7 +2669,7 @@ EXPORT_SYMBOL(device_run_stop_ctrl);
 
 void usb_switch(int device)
 {
-#if defined (CONFIG_USB_SUNPLUS_SP7350_OTG) && defined (CONFIG_SOC_SP7350)
+#if defined(CONFIG_USB_SUNPLUS_SP7350_OTG) && defined(CONFIG_SOC_SP7350)
 	writel(MASK_MO1_USBC0_USB0_CTRL, moon4_reg + M4_SCFG_10);
 #else
 	if (device) {
@@ -2688,7 +2690,7 @@ void usb_switch(int device)
 		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
 					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
 							moon3_reg + M3_SCFG_22);
-	#elif defined (CONFIG_SOC_SP7350)
+	#elif defined(CONFIG_SOC_SP7350)
 		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
 					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
 							moon4_reg + M4_SCFG_10);
@@ -2964,12 +2966,33 @@ static int sp_udc_remove(struct platform_device *pdev)
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	struct usb_phy *phy = NULL;
+	int err;
 #endif
 
 	UDC_LOGD("%s start\n", __func__);
 
 	device_remove_file(&pdev->dev, &dev_attr_udc_ctrl);
 	device_remove_file(&pdev->dev, &dev_attr_debug);
+
+#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+	if (sp_otg0_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
+		if (err)
+			UDC_LOGW("kthread_stop failed: %d\n", err);
+		else
+			sp_otg0_host->hnp_polling_timer = NULL;
+	}
+	#else
+	if (sp_otg1_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
+		if (err)
+			UDC_LOGW("kthread_stop failed: %d\n", err);
+		else
+			sp_otg1_host->hnp_polling_timer = NULL;
+	}
+	#endif
+#endif
 
 	if (udc->driver)
 		device_run_stop_ctrl(0);
@@ -3029,6 +3052,27 @@ static int udc_sunplus_drv_suspend(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_udc *udc = platform_get_drvdata(pdev);
+	#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	int err = 0;
+
+		#ifdef CONFIG_USB_GADGET_PORT0_ENABLED
+	if (sp_otg0_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg0_host->hnp_polling_timer);
+		if (err)
+			UDC_LOGW("kthread_stop failed: %d\n", err);
+		else
+			sp_otg0_host->hnp_polling_timer = NULL;
+	}
+		#else
+	if (sp_otg1_host->hnp_polling_timer) {
+		err = kthread_stop(sp_otg1_host->hnp_polling_timer);
+		if (err)
+			UDC_LOGW("kthread_stop failed: %d\n", err);
+		else
+			sp_otg1_host->hnp_polling_timer = NULL;
+	}
+		#endif
+	#endif
 
 	if (udc->driver) {
 		hal_udc_sw_stop_handle(udc);
@@ -3062,9 +3106,11 @@ static int udc_sunplus_drv_resume(struct device *dev)
 		if (otg_id_pin == 1)
 	#else
 		#ifdef CONFIG_SOC_Q645
-		if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+		if ((readl(moon3_reg + M3_SCFG_22) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL))
+										== USB_DEVICE_MODE)
 		#elif defined(CONFIG_SOC_SP7350)
-		if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)) == USB_DEVICE_MODE)
+		if ((readl(moon4_reg + M4_SCFG_10) & (MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL))
+										== USB_DEVICE_MODE)
 		#endif
 	#endif
 		{
@@ -3072,7 +3118,13 @@ static int udc_sunplus_drv_resume(struct device *dev)
 		}
 	}
 
-	return ret;
+	#ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
+	sp_otg0_host->hnp_polling_timer = kthread_create(hnp_polling_watchdog,
+								sp_otg0_host, "hnp_polling");
+	wake_up_process(sp_otg0_host->hnp_polling_timer);
+	#endif
+
+	return 0;
 }
 #endif
 

@@ -16,14 +16,22 @@ static const struct of_device_id otg1_sunplus_dt_ids[] = {
 };
 MODULE_DEVICE_TABLE(of, otg1_sunplus_dt_ids);
 
+#ifdef CONFIG_PM
+struct dev_pm_ops const otg1_sunplus_pm_ops = {
+	.suspend	= sp_otg_suspend,
+	.resume		= sp_otg_resume,
+};
+#endif
+
 static struct platform_driver sunplus_usb_otg1_driver = {
 	.probe		= sp_otg_probe,
 	.remove		= sp_otg_remove,
-	.suspend	= sp_otg_suspend,
-	.resume		= sp_otg_resume,
 	.driver		= {
 		.name	= "sunplus-usb-otg1",
 		.of_match_table = otg1_sunplus_dt_ids,
+#ifdef CONFIG_PM
+		.pm = &otg1_sunplus_pm_ops,
+#endif
 	},
 };
 
