@@ -188,8 +188,8 @@ static int rtl8211f_config_init(struct phy_device *phydev)
 	val = RTL8211F_ALDPS_ENABLE | RTL8211F_ALDPS_PLL_OFF | RTL8211F_ALDPS_XTAL_OFF;
 	phy_modify_paged_changed(phydev, 0xa43, RTL8211F_PHYCR1, val, val);
 
-	/* Set green LED for Link, yellow LED for Active -->follow up Uboot driver setting*/
-	phy_modify_paged_changed(phydev, 0xd04, 0x10, 0xFFFF, 0x617F);
+	/* Set LED2 for 1000M, LED1 for 100M, LED0 for 10M -->follow up Uboot driver setting*/
+	phy_modify_paged_changed(phydev, 0xd04, 0x10, 0xFFFF, 0x6251);
 
 	switch (phydev->interface) {
 	case PHY_INTERFACE_MODE_RGMII:
