@@ -1269,12 +1269,56 @@ static int axi_dma_resume(struct axi_dma_chip *chip)
 	if (ret < 0)
 		return ret;
 
+#ifdef SUPPORT_PM_OPS
+	/* When the system resumes, a delay is required before registers are
+	 * accessed. If not, the system will hang.
+	 */
+	usleep_range(10, 20);
+#endif
+
 	axi_dma_enable(chip);
 	axi_dma_irq_enable(chip);
 
 	return 0;
 }
 
+#ifdef SUPPORT_PM_OPS
+static int __maybe_unused dw_pm_suspend(struct device *dev)
+{
+	struct axi_dma_chip *chip = dev_get_drvdata(dev);
+	u32 val;
+
+	val = axi_dma_ioread32(chip, DMAC_CHEN);
+	if (val) {
+		dev_warn(chip->dev, "Suspend is prevented by Chan %li. (DMAC_CHEN: 0x%08X)\n", __ffs(val), val);
+		return -EBUSY;
+	}
+
+	return axi_dma_suspend(chip);
+}
+
+static int __maybe_unused dw_pm_resume(struct device *dev)
+{
+	struct axi_dma_chip *chip = dev_get_drvdata(dev);
+
+	return axi_dma_resume(chip);
+}
+
+static int __maybe_unused dw_pm_runtime_suspend(struct device *dev)
+{
+	struct axi_dma_chip *chip = dev_get_drvdata(dev);
+
+	return axi_dma_suspend(chip);
+}
+
+static int __maybe_unused dw_pm_runtime_resume(struct device *dev)
+{
+	struct axi_dma_chip *chip = dev_get_drvdata(dev);
+
+	return axi_dma_resume(chip);
+}
+
+#else
 static int __maybe_unused axi_dma_runtime_suspend(struct device *dev)
 {
 	struct axi_dma_chip *chip = dev_get_drvdata(dev);
@@ -1288,6 +1332,7 @@ static int __maybe_unused axi_dma_runtime_resume(struct device *dev)
 
 	return axi_dma_resume(chip);
 }
+#endif
 
 static struct dma_chan *dw_axi_dma_of_xlate(struct of_phandle_args *dma_spec,
 					    struct of_dma *ofdma)
@@ -1576,7 +1621,13 @@ static int dw_remove(struct platform_device *pdev)
 }
 
 static const struct dev_pm_ops dw_axi_dma_pm_ops = {
+#ifdef SUPPORT_PM_OPS
+	.suspend	= dw_pm_suspend,
+	.resume 	= dw_pm_resume,
+	SET_RUNTIME_PM_OPS(dw_pm_runtime_suspend, dw_pm_runtime_resume, NULL)
+#else
 	SET_RUNTIME_PM_OPS(axi_dma_runtime_suspend, axi_dma_runtime_resume, NULL)
+#endif
 };
 
 static const struct of_device_id dw_dma_of_id_table[] = {
