@@ -954,6 +954,7 @@
 		interrupts = <GIC_SPI 22 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM6>;
 		resets = <&rstc RST_I2CM6>;
+		i2c-sda-hold-time-ns = <1000>;
 #ifdef LT8912B_HDMI /* Add lt8912b subnode in i2c6 */
 		clock-frequency = <100000>;
 #else
