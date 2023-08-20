@@ -88,7 +88,7 @@ static const struct sppctlgrp_t sp7350grps_usb_otg[] = {
 	EGRP("USB_OTG", 1, pins_usb_otg),
 };
 
-static const unsigned int pins_gmac[] = { 0, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+static const unsigned int pins_gmac[] = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
 static const struct sppctlgrp_t sp7350grps_gmac[] = {
 	EGRP("GMAC", 1, pins_gmac),
 };
