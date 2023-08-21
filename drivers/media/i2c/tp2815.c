@@ -40,8 +40,8 @@
 #define IMX219_REG_CHIP_ID_L	0xff
 #define IMX219_CHIP_ID			0x2855
 
-/* External clock frequency is 24.0M */
-#define IMX219_XCLK_FREQ		24000000
+/* External clock frequency is 27.0M */
+#define IMX219_XCLK_FREQ		27000000
 
 /* Pixel rate is fixed at 182.4M for all the modes */
 #define IMX219_PIXEL_RATE		182400000
