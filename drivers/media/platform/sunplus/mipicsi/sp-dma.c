@@ -974,7 +974,7 @@ int vin_dma_register(struct vin_dev *vin, int fs_irq, int fe_irq)
 	q->ops = &vin_qops;
 	q->mem_ops = &vb2_dma_contig_memops;
 	q->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_MONOTONIC;
-	q->min_buffers_needed = 4;
+	q->min_buffers_needed = 2;
 	q->dev = vin->dev;
 
 	ret = vb2_queue_init(q);
