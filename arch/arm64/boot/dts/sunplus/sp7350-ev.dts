@@ -2887,7 +2887,7 @@
 
 		gmac_pins: pinmux_gmac-pins {
 			function = "GMAC";
-			groups = "GMAC";
+			groups = "GMAC_RGMII";
 		};
 
 		otg_pins: pinmux_otg_pins {
