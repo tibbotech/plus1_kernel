@@ -263,7 +263,7 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 		value = A_CHIP;
 	else
 		value = B_CHIP;
-#if defined (CONFIG_SOC_Q645) || defined (CONFIG_SOC_SP7350)
+#if defined (CONFIG_SOC_SP7350)
 	if (pspi->clk_rate >= 100000000) {
 		if (pre_pllh != 614285714) {
 			clk_set_rate(pspi->ctrl_clk, 614285714);
@@ -276,7 +276,7 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 			pre_pllh = clk_get_rate(pspi->ctrl_clk);
 		}
 
-		if (pspi->clk_rate >= 90000000) // SPI-NOR source clock = 360.0 MHz
+		if (pspi->clk_rate >= 90000000)
 			value |= SPI_CLK_D_4;
 		else if (pspi->clk_rate >= 60000000)
 			value |= SPI_CLK_D_6;
@@ -289,6 +289,20 @@ static int sp_spi_nor_init(struct sp_spi_nor *pspi)
 		else
 			value |= SPI_CLK_D_32;
 	}
+#elif defined (CONFIG_SOC_Q645)
+	// SPI-NOR source clock = 360.0 MHz
+	if (pspi->clk_rate >= 90000000)
+		value |= SPI_CLK_D_4;
+	else if (pspi->clk_rate >= 60000000)
+		value |= SPI_CLK_D_6;
+	else if (pspi->clk_rate >= 45000000)
+		value |= SPI_CLK_D_8;
+	else if (pspi->clk_rate >= 22000000)
+		value |= SPI_CLK_D_16;
+	else if (pspi->clk_rate >= 15000000)
+		value |= SPI_CLK_D_24;
+	else
+		value |= SPI_CLK_D_32;
 #else
 	// SPI-NOR source clock = 202.3 MHz
 	if (pspi->clk_rate >= 100000000)
