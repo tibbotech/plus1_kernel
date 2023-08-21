@@ -748,6 +748,7 @@
 		interrupts = <GIC_SPI 8 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM0>;
 		resets = <&rstc RST_I2CM0>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
@@ -791,6 +792,7 @@
 		interrupts = <GIC_SPI 94 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM1>;
 		resets = <&rstc RST_I2CM1>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
@@ -828,6 +830,7 @@
 		interrupts = <GIC_SPI 95 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM2>;
 		resets = <&rstc RST_I2CM2>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo2_pins>;
@@ -865,6 +868,7 @@
 		interrupts = <GIC_SPI 96 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM3>;
 		resets = <&rstc RST_I2CM3>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo3_pins>;
@@ -928,6 +932,7 @@
 		interrupts = <GIC_SPI 97 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM4>;
 		resets = <&rstc RST_I2CM4>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo4_pins>;
@@ -941,6 +946,7 @@
 		interrupts = <GIC_SPI 98 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM5>;
 		resets = <&rstc RST_I2CM5>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo5_pins>;
@@ -1007,6 +1013,7 @@
 		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM7>;
 		resets = <&rstc RST_I2CM7>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo7_pins>;
@@ -1031,6 +1038,7 @@
 		interrupts = <GIC_SPI 111 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM8>;
 		resets = <&rstc RST_I2CM8>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo8_pins>;
@@ -1044,6 +1052,7 @@
 		interrupts = <GIC_SPI 169 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&clkc I2CM9>;
 		resets = <&rstc RST_I2CM9>;
+		i2c-sda-hold-time-ns = <1000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo9_pins>;
