@@ -1,16 +1,17 @@
+#include <linux/clk.h>
 #include <linux/init.h>
-#include <linux/module.h>
-#include <linux/io.h>
-#include <linux/slab.h>
 #include <linux/interrupt.h>
-#include <linux/usb.h>
+#include <linux/io.h>
 #include <linux/kthread.h>
-#include <linux/usb/hcd.h>
-
+#include <linux/module.h>
 #include <linux/platform_device.h>
-#include <linux/usb/sp_usb.h>
+#include <linux/reset.h>
+#include <linux/slab.h>
+#include <linux/usb.h>
+#include <linux/usb/hcd.h>
 #include <linux/usb/otg.h>
 
+#include <linux/usb/sp_usb.h>
 #include "otg-sunplus.h"
 #ifdef CONFIG_USB_SP_UDC2
 #include "../core/otg_productlist.h"
@@ -836,31 +837,58 @@ int sp_otg_probe(struct platform_device *pdev)
 	}
 #endif
 
+	/* reset */
+	otg_host->rstc = devm_reset_control_get_shared(&pdev->dev, NULL);
+	if (IS_ERR(otg_host->rstc)) {
+		ret = PTR_ERR(otg_host->rstc);
+		pr_err("OTG failed to retrieve reset controller: %d\n", ret);
+
+		goto release_mem1;
+	}
+
+	ret= reset_control_deassert(otg_host->rstc);
+	if (ret)
+		goto release_mem1;
+
+
+	/* clock */
+	otg_host->clock = devm_clk_get(&pdev->dev, NULL);
+	if (IS_ERR(otg_host->clock)) {
+		pr_err("not found clk source\n");
+		ret = PTR_ERR(otg_host->clock);
+
+		goto err_rst;
+	}
+
+	ret = clk_prepare_enable(otg_host->clock);
+	if (ret)
+		goto err_rst;
+
 	otg_host->otg.otg = kzalloc(sizeof(struct usb_otg), GFP_KERNEL);
 	if (!otg_host->otg.otg) {
-		kfree(otg_host);
-		printk(KERN_NOTICE "Alloc mem for otg fail\n");
-		return -ENOMEM;
+		pr_err("Alloc mem for otg fail\n");
+		ret = -ENOMEM;
+		goto err_clk;
 	}
 
 	otg_host->irq = platform_get_irq(pdev, 0);
 	if (otg_host->irq < 0) {
 		pr_err("otg no irq provieded\n");
 		ret = otg_host->irq;
-		goto release_mem;
+		goto release_mem2;
 	}
 
 	res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res_mem) {
 		pr_err("otg no memory recourse provieded\n");
 		ret = -ENXIO;
-		goto release_mem;
+		goto release_mem2;
 	}
 
 	if (!request_mem_region(res_mem->start, resource_size(res_mem), DRIVER_NAME)) {
 		pr_err("Otg controller already in use\n");
 		ret = -EBUSY;
-		goto release_mem;
+		goto release_mem2;
 	}
 
 	otg_host->regs_otg = (struct sp_regs_otg *)ioremap(res_mem->start, resource_size(res_mem));
@@ -926,7 +954,13 @@ err_ioumap:
 	iounmap(otg_host->regs_otg);
 err_release_region:
 	release_mem_region(res_mem->start, resource_size(res_mem));
-release_mem:
+release_mem2:
+	kfree(otg_host->otg.otg);
+err_clk:
+	clk_disable_unprepare(otg_host->clock);
+err_rst:
+	reset_control_assert(otg_host->rstc);
+release_mem1:
 	kfree(otg_host);
 
 	return ret;
@@ -956,6 +990,8 @@ int sp_otg_remove(struct platform_device *pdev)
 	}
 
 	release_mem_region(res_mem->start, resource_size(res_mem));
+	clk_disable_unprepare(otg_host->clock);
+	reset_control_assert(otg_host->rstc);
 
 free_mem:
 	kfree(otg_host->otg.otg);
@@ -970,10 +1006,8 @@ int sp_otg_suspend(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_otg *otg_host = platform_get_drvdata(pdev);
 
-	if (otg_host->qwork) {
-		flush_workqueue(otg_host->qwork);
-		destroy_workqueue(otg_host->qwork);
-	}
+	clk_disable_unprepare(otg_host->clock);
+	reset_control_assert(otg_host->rstc);
 
 	return 0;
 }
@@ -983,24 +1017,15 @@ int sp_otg_resume(struct device *dev)
 {
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_otg *otg_host = platform_get_drvdata(pdev);
-	struct resource *res_mem;
+	int ret;
 
-	otg_host->qwork = create_singlethread_workqueue(DRIVER_NAME);
-	if (!otg_host->qwork) {
-		dev_dbg(dev, "cannot create workqueue %s\n", DRIVER_NAME);
+	ret = reset_control_deassert(otg_host->rstc);
+	if (ret)
+		return ret;
 
-		res_mem = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-		if (!res_mem)
-			pr_err("otg release get recourse fail\n");
-		else
-			release_mem_region(res_mem->start, resource_size(res_mem));
-
-		kfree(otg_host->otg.otg);
-		kfree(otg_host);
-
-		return -ENOMEM;
-	}
-	INIT_WORK(&otg_host->work, sp_otg_work);
+	ret = clk_prepare_enable(otg_host->clock);
+	if (ret)
+		return ret;
 
 	otg_hw_init(otg_host);
 	otg_hsm_init(otg_host);

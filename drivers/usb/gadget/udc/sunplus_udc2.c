@@ -4,6 +4,7 @@
 #include <linux/delay.h>
 #include <linux/clk.h>
 #include <linux/of_irq.h>
+#include <linux/reset.h>
 #include <linux/platform_device.h>
 #include <linux/dma-mapping.h>
 #include <linux/usb/composite.h>
@@ -2760,24 +2761,37 @@ static int sp_udc_probe(struct platform_device *pdev)
 		goto err_free2;
 	}
 
+	/* reset */
+	udc->rstc = devm_reset_control_get_shared(&pdev->dev, NULL);
+	if (IS_ERR(udc->rstc)) {
+		retval = PTR_ERR(udc->rstc);
+		pr_err("UDC failed to retrieve reset controller: %d\n", retval);
+		goto err_free2;
+	}
+
+	retval = reset_control_deassert(udc->rstc);
+	if (retval)
+		goto err_free2;
+
+	/* clock */
 	udc->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(udc->clock)) {
 		UDC_LOGE("not found clk source\n");
 		retval = PTR_ERR(udc->clock);
-		goto err_free2;
+		goto err_rst;
 	}
 
 	retval = phy_power_on(uphy[udc->port_num]);
 	if (retval)
-		goto err_free2;
+		goto err_rst;
 
 	retval = phy_init(uphy[udc->port_num]);
 	if (retval)
-		goto err_free2;
+		goto err_rst;
 
 	retval = clk_prepare_enable(udc->clock);
 	if (retval)
-		goto err_clk;
+		goto err_rst;
 
 	udc->irq_num = platform_get_irq(pdev, 0);
 #endif
@@ -2951,6 +2965,8 @@ err_map1:
 	iounmap(udc->reg);
 err_clk:
 	clk_disable_unprepare(udc->clock);
+err_rst:
+	reset_control_assert(udc->rstc);
 err_free2:
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
 	kfree(udc->otg_caps);
@@ -2998,6 +3014,7 @@ static int sp_udc_remove(struct platform_device *pdev)
 		device_run_stop_ctrl(0);
 
 	clk_disable_unprepare(udc->clock);
+	reset_control_assert(udc->rstc);
 
 	phy_power_off(uphy[udc->port_num]);
 	phy_exit(uphy[udc->port_num]);
@@ -3079,6 +3096,9 @@ static int udc_sunplus_drv_suspend(struct device *dev)
 		device_run_stop_ctrl(0);
 	}
 
+	clk_disable_unprepare(udc->clock);
+	reset_control_assert(udc->rstc);
+
 	phy_power_off(uphy[udc->port_num]);
 	phy_exit(uphy[udc->port_num]);
 
@@ -3096,6 +3116,14 @@ static int udc_sunplus_drv_resume(struct device *dev)
 		return ret;
 
 	ret = phy_init(uphy[udc->port_num]);
+	if (ret)
+		return ret;
+
+	ret = reset_control_deassert(udc->rstc);
+	if (ret)
+		return ret;
+
+	ret = clk_prepare_enable(udc->clock);
 	if (ret)
 		return ret;
 

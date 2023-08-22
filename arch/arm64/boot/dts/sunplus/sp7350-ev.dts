@@ -1505,6 +1505,8 @@
 
 	otg: usb@f8102400 {
 		compatible = "sunplus,sp7350-usb-otg";
+		clocks = <&clkc USBC0>;
+		resets = <&rstc RST_USBC0>;
 		reg = <0x0 0xf8102400 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 181 IRQ_TYPE_LEVEL_HIGH>;

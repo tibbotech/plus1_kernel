@@ -81,68 +81,71 @@ enum sp_otg_state {
 /* OTG state machine according to the OTG spec */
 struct otg_fsm {
 	/* Input */
-	int a_bus_resume;
-	int a_bus_suspend;
-	int a_conn;
-	int a_sess_vld;
-	int a_srp_det;
-	int a_vbus_vld;
-	int b_bus_resume;
-	int b_bus_suspend;
-	int b_conn;
-	int b_se0_srp;
-	int b_sess_end;
-	int b_sess_vld;
-	int id;
-	int adp_change;
+	int			a_bus_resume;
+	int			a_bus_suspend;
+	int			a_conn;
+	int			a_sess_vld;
+	int			a_srp_det;
+	int			a_vbus_vld;
+	int			b_bus_resume;
+	int			b_bus_suspend;
+	int			b_conn;
+	int			b_se0_srp;
+	int			b_sess_end;
+	int			b_sess_vld;
+	int			id;
+	int			adp_change;
 
 	/* Internal variables */
-	int a_set_b_hnp_en;
-	int b_srp_done;
-	int b_hnp_enable;
+	int			a_set_b_hnp_en;
+	int			b_srp_done;
+	int			b_hnp_enable;
 
 	/* Timeout indicator for timers */
-	int a_wait_vrise_tmout;
-	int a_wait_bcon_tmout;
-	int a_aidl_bdis_tmout;
-	int b_ase0_brst_tmout;
+	int			a_wait_vrise_tmout;
+	int			a_wait_bcon_tmout;
+	int			a_aidl_bdis_tmout;
+	int			b_ase0_brst_tmout;
 
 	/* Informative variables */
-	int a_bus_drop;
-	int a_bus_req;
-	int a_clr_err;
-	int a_suspend_req;
-	int b_bus_req;
+	int			a_bus_drop;
+	int			a_bus_req;
+	int			a_clr_err;
+	int			a_suspend_req;
+	int			b_bus_req;
 
 	/* Output */
-	int drv_vbus;
-	int loc_conn;
-	int loc_sof;
+	int			drv_vbus;
+	int			loc_conn;
+	int			loc_sof;
 
-	struct otg_fsm_ops *ops;
-	struct usb_otg *otg;
+	struct otg_fsm_ops	*ops;
+	struct usb_otg		*otg;
 
 	/* Current usb protocol used: 0:undefine; 1:host; 2:client */
-	int protocol;
-	spinlock_t lock;
+	int			protocol;
+	spinlock_t		lock;
 };
 
 struct sp_otg {
-	struct usb_phy otg;
+	struct usb_phy			otg;
 
-	struct sp_regs_otg __iomem *regs_otg;
-	struct sp_regs_moon4 __iomem *regs_moon4;
+	struct reset_control		*rstc;
+	struct clk			*clock;
 
-	int irq;
-	int id;
+	struct sp_regs_otg __iomem	*regs_otg;
+	struct sp_regs_moon4 __iomem	*regs_moon4;
 
-	struct work_struct work;
-	struct workqueue_struct *qwork;
+	int				irq;
+	int				id;
 
-	struct notifier_block notifier;
-	struct otg_fsm fsm;
-	struct task_struct *hnp_polling_timer;
-	struct timer_list adp_timer;
+	struct work_struct		work;
+	struct workqueue_struct		*qwork;
+
+	struct notifier_block		notifier;
+	struct otg_fsm			fsm;
+	struct task_struct		*hnp_polling_timer;
+	struct timer_list		adp_timer;
 };
 
 struct sp_regs_otg {
