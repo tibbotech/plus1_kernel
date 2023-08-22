@@ -28,6 +28,9 @@
 #include <media/v4l2-mediabus.h>
 #include <asm/unaligned.h>
 
+/* Compiler switch */
+//#define TEST_PATTERN_LOW_PIXEL_RATE
+
 #define IMX219_REG_VALUE_08BIT		1
 #define IMX219_REG_VALUE_16BIT		2
 
@@ -143,12 +146,15 @@ enum {
 	FHD60,	// 1080p60
 	HD50,	// 720p50
 	HD60,	// 720p60
+	HHD30,	// half 720p60
 };
 // video_output
 enum {
+	MIPI_4CH4LANE_148M,
 	MIPI_4CH4LANE_297M,	// up to 4x720p25/30
 	MIPI_4CH4LANE_594M,	// up to 4x1080p25/30
 	MIPI_4CH2LANE_594M,	// up to 4x720pp25/30
+	MIPI_1CH4LANE_148M,
 	MIPI_1CH4LANE_297M,	// up to 1x720p25/30
 	MIPI_1CH4LANE_594M,	// up to 1x1080p25/30
 };
@@ -569,6 +575,26 @@ static const struct imx219_mode supported_modes[] = {
 			.regs = mode_640_480_regs,
 		},
 	},
+	#if defined(TEST_PATTERN_LOW_PIXEL_RATE)
+	{
+		/* Half 720P 60fps mode, 148MHz.
+		 * This only for test pattern output.
+		 */
+		.width = 640,
+		.height = 720,
+		.crop = {
+			.left = 0,
+			.top = 0,
+			.width = 640,
+			.height = 720
+		},
+		.vts_def = IMX219_VTS_30FPS_640x480,
+		.reg_list = {
+			.num_of_regs = ARRAY_SIZE(mode_640_480_regs),
+			.regs = mode_640_480_regs,
+		},
+	},
+	#endif
 };
 #else
 static const struct imx219_mode supported_modes[] = {
@@ -783,7 +809,7 @@ static u32 imx219_get_format_code(struct imx219 *imx219, u32 code)
 	return codes[i];
 }
 
-void tp2815_decoder_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
+void tp2815_decoder_reg_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
 {
 	const unsigned char SYS_MODE[5] = { 0x01, 0x02, 0x04, 0x08, 0x0f };
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
@@ -1210,6 +1236,32 @@ void tp2815_decoder_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
 		imx219_write_reg(imx219, 0x35, IMX219_REG_VALUE_08BIT, 0x05);
 		imx219_write_reg(imx219, 0x38, IMX219_REG_VALUE_08BIT, 0x00);
 		imx219_write_reg(imx219, 0x39, IMX219_REG_VALUE_08BIT, 0x1c);
+	} else if (fmt == HHD30) {
+		/* Frame size is 640x720 */
+		tmp &= ~SYS_MODE[ch];
+		imx219_write_reg(imx219, 0xf5, IMX219_REG_VALUE_08BIT, tmp);
+
+		//imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, 0x04);
+		//imx219_write_reg(imx219, 0x45, IMX219_REG_VALUE_08BIT, 0x01);
+		//imx219_write_reg(imx219, 0x06, IMX219_REG_VALUE_08BIT, 0x12); //default value
+		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x2d); //default value
+
+		//imx219_write_reg(imx219, 0xf5, IMX219_REG_VALUE_08BIT, 0xff);
+
+
+		imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x42);
+
+
+		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x13);
+		imx219_write_reg(imx219, 0x16, IMX219_REG_VALUE_08BIT, 0x15);
+		imx219_write_reg(imx219, 0x17, IMX219_REG_VALUE_08BIT, 0x00);
+		imx219_write_reg(imx219, 0x18, IMX219_REG_VALUE_08BIT, 0x19);
+		imx219_write_reg(imx219, 0x19, IMX219_REG_VALUE_08BIT, 0xd0);
+		imx219_write_reg(imx219, 0x1a, IMX219_REG_VALUE_08BIT, 0x25);
+		imx219_write_reg(imx219, 0x1c, IMX219_REG_VALUE_08BIT, 0x06);  //1280*720, 30fps
+		imx219_write_reg(imx219, 0x1d, IMX219_REG_VALUE_08BIT, 0x72);  //1280*720, 30fps
+
+		imx219_write_reg(imx219, 0x35, IMX219_REG_VALUE_08BIT, 0x65);
 	} else {
 		printk(KERN_WARNING " %s : invalid  video format\n", __func__);
 	}
@@ -1219,7 +1271,7 @@ void tp2815_decoder_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
 	return;
 }
 
-void tp2815_decoder_init(struct imx219 *imx219)
+void tp2815_decoder_cfg(struct imx219 *imx219)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
 	u32 fmt, ch, std;
@@ -1231,7 +1283,10 @@ void tp2815_decoder_init(struct imx219 *imx219)
 
 	/* Select output format according to V4L2 MBUS frame format */
 	if (imx219->fmt.height == 720) {
-		fmt = HD30;
+		if (imx219->fmt.width == 1280)
+			fmt = HD30;
+		else
+			fmt = HHD30;
 	} else if (imx219->fmt.height == 1080) {
 		fmt = FHD30;
 	} else {
@@ -1242,18 +1297,18 @@ void tp2815_decoder_init(struct imx219 *imx219)
 
 #if 0 //CCHo: Enable 2 inputs for debugging
 	for (i = 0; i < 2; i++)
-		tp2815_decoder_cfg(imx219, i, fmt, std);
+		tp2815_decoder_reg_cfg(imx219, i, fmt, std);
 #else
 	if (ch < 4) {
 		for (i = 0; i < ch; i++)
-			tp2815_decoder_cfg(imx219, i, fmt, std);
+			tp2815_decoder_reg_cfg(imx219, i, fmt, std);
 	} else {
-		tp2815_decoder_cfg(imx219, CH_ALL, fmt, std);
+		tp2815_decoder_reg_cfg(imx219, CH_ALL, fmt, std);
 	}
 #endif
 }
 
-void tp2815_mipi_init(struct imx219 *imx219)
+void tp2815_mipi_cfg(struct imx219 *imx219)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
 	u32 output, val;
@@ -1263,11 +1318,17 @@ void tp2815_mipi_init(struct imx219 *imx219)
 	/* The number of video inputs is the same as the number of virtual channels. */
 	switch(imx219->input_ch) {
 		case 1:		// 1 virtual channel
-			output = MIPI_1CH4LANE_297M;
+			if (imx219->fmt.width == 1280)
+				output = MIPI_1CH4LANE_297M;
+			else
+				output = MIPI_1CH4LANE_148M;
 			break;
 
 		case 4: 	// 4 virtual channels
-			output = MIPI_4CH4LANE_594M;
+			if (imx219->fmt.width == 1280)
+				output = MIPI_4CH4LANE_594M;
+			else
+				output = MIPI_4CH4LANE_148M;
 			break;
 
 		default:
@@ -1325,6 +1386,22 @@ void tp2815_mipi_init(struct imx219 *imx219)
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xc4); // B7: RST_CLK_GEN
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x44); // DIV_CSI_CLK = 1/16, DIV_PHY_CLK = 1/16
 	}
+	else if ((output == MIPI_4CH4LANE_148M) | (output == MIPI_1CH4LANE_148M)) {
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44); // 4 CH, 4 Lanes
+		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4); //
+		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0e);
+		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x02);
+		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x02);
+		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x04);
+		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x01);
+
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07);
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
+
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x55);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xd5);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x55);
+	}
 	else if (output == MIPI_4CH2LANE_594M) {
 		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x42); // 4 CH, 2 Lanes
 		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
@@ -1355,14 +1432,14 @@ void tp2815_mipi_init(struct imx219 *imx219)
 	return;
 }
 
-void tp2815_common_init(struct imx219 *imx219)
+void tp2815_common_cfg(struct imx219 *imx219)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
 
 	dev_dbg(&client->dev, "%s, %d\n", __func__, __LINE__); // CCHo addied for debugging
 
-	tp2815_decoder_init(imx219);
-	tp2815_mipi_init(imx219);
+	tp2815_decoder_cfg(imx219);
+	tp2815_mipi_cfg(imx219);
 }
 
 static void imx219_set_default_format(struct imx219 *imx219)
@@ -1851,6 +1928,7 @@ static int imx219_start_streaming(struct imx219 *imx219)
 	/* Apply default values of current mode */
 	reg_list = &imx219->mode->reg_list;
 #if 1 /* CCHo */
+	tp2815_common_cfg(imx219);
 	ret = 0;
 #else
 	ret = imx219_write_regs(imx219, reg_list->regs, reg_list->num_of_regs);
@@ -2435,7 +2513,7 @@ static int imx219_probe(struct i2c_client *client)
 	}
 
 	/* Initialize TP2815 chip */
-	tp2815_common_init(imx219);
+	//tp2815_common_cfg(imx219);
 
 	/* Enable runtime PM and turn off the device */
 	pm_runtime_set_active(dev);
