@@ -69,9 +69,15 @@ static void sp7350_device_info(struct fb_info *fbinfo)
 		fbdev->buf_size_page,
 		fbdev->buf_num,
 		fbdev->buf_size_total);
+	#ifdef SP7350_FB_RESERVED_MEM
+	pr_info("  fbdev buf %px(%lx)\n",
+		fbdev->buf_mem_total,
+		fbinfo->fix.smem_start); //memory-region
+	#else
 	pr_info("  fbdev buf %px(%llx)\n",
 		fbdev->buf_mem_total,
-		virt_to_phys(fbdev->buf_mem_total));
+		virt_to_phys(fbdev->buf_mem_total)); //normal
+	#endif
 	pr_info("  fbdev pal %px(%llx)\n",
 		fbdev->pal,
 		virt_to_phys(fbdev->pal));

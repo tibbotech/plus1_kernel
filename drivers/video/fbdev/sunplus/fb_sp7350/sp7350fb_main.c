@@ -13,6 +13,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/of_address.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
 
 #include <media/sunplus/disp/sp7350/sp7350_disp_osd.h>
@@ -189,6 +190,18 @@ static int sp7350fb_create_device(struct platform_device *pdev,
 	u64 htotal, vtotal, fps;
 	u32 tmp_value;
 	dma_addr_t fb_phymem;
+	#ifdef SP7350_FB_RESERVED_MEM
+	int ret;
+
+	ret = of_reserved_mem_device_init(dev);
+	if (ret && ret != -ENODEV)
+		return ret;
+
+	ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(32));
+	if (ret)
+		goto err_fb_init;
+
+	#endif
 
 	info = framebuffer_alloc(sizeof(*fbdev), dev);
 	if (!info)
@@ -224,8 +237,8 @@ static int sp7350fb_create_device(struct platform_device *pdev,
 			* fbdev->height
 			* (sp_fbinfo->cmod.bits_per_pixel >> 3)),
 			sp_fbinfo->buf_align);
-	pr_info("buf_size %d align %d to %d\n",
-		tmp_value, sp_fbinfo->buf_align, fbdev->buf_size_page);
+	//pr_info("fbdev: buf_size %d align %d to %d\n",
+	//	tmp_value, sp_fbinfo->buf_align, fbdev->buf_size_page);
 	fbdev->buf_num = sp_fbinfo->buf_num; //fix 2
 	fbdev->buf_size_total = fbdev->buf_size_page * fbdev->buf_num;
 
@@ -341,15 +354,15 @@ static int sp7350fb_create_device(struct platform_device *pdev,
 	sp_fbinfo->buf_addr_pal = info->pseudo_palette;
 	sp_fbinfo->buf_size = fbdev->buf_size_total;
 
-	//pr_info("  fb  buf VA 0x%px(PA 0x%llx) len %d\n",
+	//pr_info("fbdev: fb buf VA 0x%px(PA 0x%llx) len %d\n",
 	//	(void __iomem *)fbdev->buf_mem_total,
 	//	sp_fbinfo->buf_addr,
 	//	fbdev->buf_size_total);
-	//pr_info("  fb  pal VA 0x%px(PA 0x%llx) len %d\n",
+	//pr_info("fbdev: fb pal VA 0x%px(PA 0x%llx) len %d\n",
 	//	(void __iomem *)fbdev->pal,
 	//	__pa(fbdev->pal),
 	//	SP7350_FB_PALETTE_LEN);
-	pr_info("  fb  res %dx%d, size %d + %d\n",
+	pr_info("fbdev: fb res %dx%d, size %d + %d\n",
 		fbdev->width,
 		fbdev->height,
 		fbdev->buf_size_total,
@@ -366,11 +379,16 @@ err_fb_init:
 	if (fbdev->pal)
 		kfree(fbdev->pal);
 
+	#ifdef SP7350_FB_RESERVED_MEM
+	if (fbdev->buf_mem_total)
+		of_reserved_mem_device_release(dev);
+	#else
 	if (fbdev->buf_mem_total)
 		dma_free_coherent(&pdev->dev,
 			fbdev->buf_size_total,
 			fbdev->buf_mem_total,
 			fb_phymem);
+	#endif
 
 	if (info)
 		framebuffer_release(info);
@@ -401,7 +419,7 @@ static int sp7350fb_probe(struct platform_device *pdev)
 	ret = sp7350_osd_get_fbinfo(sp_fbinfo);
 	if (ret) {
 		kfree(sp_fbinfo);
-		pr_info("get sp_fbinfo fails");
+		pr_err("fbdev: sp_fbinfo not present");
 		return -EPROBE_DEFER;
 	}
 
@@ -411,7 +429,8 @@ static int sp7350fb_probe(struct platform_device *pdev)
 		goto err_fb_probe;
 	}
 
-	pr_info("create fb dev %dx%d, cmod %d(%s)\n",
+	//pr_info("create fbdev %dx%d, cmod %d(%s)\n",
+	pr_info("fbdev: fb create %dx%d, cmod %d(%s)\n",
 		sp_fbinfo->width,
 		sp_fbinfo->height,
 		sp_fbinfo->color_mode,
@@ -456,17 +475,17 @@ static int sp7350fb_remove(struct platform_device *pdev)
 {
 	struct sp7350fb_device *fbdev = platform_get_drvdata(pdev);
 
-	pr_info("%s\n", __func__);
+	//pr_info("%s\n", __func__);
 
 	if (gsp_fbinfo) {
-		pr_info("fb unreg and release\n");
+		//pr_info("fb unreg and release\n");
 		unregister_framebuffer(fbdev->fb);
 		framebuffer_release(fbdev->fb);	
 		gsp_fbinfo = NULL;
 	}
 	sp7350_osd_region_irq_disable();
 	sp7350_osd_region_release();
-	pr_info("%s done\n", __func__);
+	//pr_info("%s done\n", __func__);
 
 	return 0;
 }

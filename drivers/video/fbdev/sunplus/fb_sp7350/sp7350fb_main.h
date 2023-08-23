@@ -10,6 +10,8 @@
 #ifndef __FB_SP7350_H__
 #define __FB_SP7350_H__
 
+#define SP7350_FB_RESERVED_MEM
+
 #define SP7350_FB_PALETTE_LEN	1024
 
 #define SP7350_DISP_ALIGN(x, n)	(((x) + ((n) - 1)) & ~((n) - 1))
@@ -26,7 +28,7 @@ struct sp7350fb_device {
 	int		width;
 	int		height;
 	int		color_mode;
-	char		color_mode_name[24];
+	char	color_mode_name[24];
 	/*
 	 * buf_size_total = buf_num * buf_size_page
 	 */
