@@ -88,7 +88,7 @@ static void __iomem *qctl_regs;
 #define Q_CA55		0x0100
 #define Q_CSDBG		0x0200
 #define Q_CSETR		0x0300
-#define Q_RSV_1		0x0400
+#define Q_NPU		0x0400
 #define Q_RSV_2		0x0500
 #define Q_AXI_DMA	0x0600
 #define Q_RSV_3		0x0700
@@ -126,7 +126,7 @@ static void __iomem *qctl_regs;
 #define Q_RSV_7		0x2700
 #define Q_CA55SCUL3	0x2800
 #define Q_CA55PDBG	0x2900
-#define Q_NPU		0x2a00
+#define Q_NPU_INTER	0x2a00
 #define Q_RSV_8		0x2b00
 #define Q_CPIOR1	0x2c00
 
