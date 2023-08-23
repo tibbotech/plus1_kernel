@@ -232,7 +232,7 @@ struct usb_phy_io_ops sp_phy_ios = {
 int hnp_polling_watchdog(void *arg)
 {
 	struct sp_otg *otg_host = (struct sp_otg *)arg;
-	#ifdef	CONFIG_USB_OTG
+	#ifndef	CONFIG_USB_OTG
 	struct usb_otg_descriptor *desc = NULL;
 	#endif
 	struct usb_device *udev = NULL;
@@ -269,7 +269,7 @@ int hnp_polling_watchdog(void *arg)
 					continue;
 				}
 
-	#ifdef	CONFIG_USB_OTG
+	#ifndef	CONFIG_USB_OTG
 				ret = __usb_get_extra_descriptor(udev->rawdescriptors[0],
 								 le16_to_cpu(udev->config[0].desc.wTotalLength),
 								 USB_DT_OTG, (void **) &desc, sizeof(*desc));
@@ -850,7 +850,6 @@ int sp_otg_probe(struct platform_device *pdev)
 	if (ret)
 		goto release_mem1;
 
-
 	/* clock */
 	otg_host->clock = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(otg_host->clock)) {
@@ -1027,10 +1026,14 @@ int sp_otg_resume(struct device *dev)
 	if (ret)
 		return ret;
 
+	msleep(1);
+
 	otg_hw_init(otg_host);
 	otg_hsm_init(otg_host);
+	msleep(1);
 
 	ENABLE_OTG_INT(&otg_host->regs_otg->otg_init_en);
+	msleep(1);
 
 	return 0;
 }

@@ -2848,6 +2848,7 @@ static int sp_udc_probe(struct platform_device *pdev)
 	udc->gadget.otg_caps = udc->otg_caps;
 
 	#ifdef CONFIG_USB_OTG
+	/* configure OTG descriptor type and attributes */
 	udc->gadget.is_otg = true;
 	#endif
 #endif
