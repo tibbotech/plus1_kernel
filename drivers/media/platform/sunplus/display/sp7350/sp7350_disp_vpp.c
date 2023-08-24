@@ -21,44 +21,6 @@ void sp7350_vpp_init(void)
 
 }
 
-void sp7350_vpp_reg_info(void)
-{
-	struct sp_disp_device *disp_dev = gdisp_dev;
-	int i;
-
-	pr_info("VPP Path Dump info\n");
-	pr_info("IMGREAD G185 info\n");
-	for (i = 0; i < 8; i++)
-		pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-				readl(disp_dev->base + IMGREAD_VERSION + (i * 4 + 0) * 4),
-				readl(disp_dev->base + IMGREAD_VERSION + (i * 4 + 1) * 4),
-				readl(disp_dev->base + IMGREAD_VERSION + (i * 4 + 2) * 4),
-				readl(disp_dev->base + IMGREAD_VERSION + (i * 4 + 3) * 4));
-	pr_info("VSCL G186 info\n");
-	for (i = 0; i < 8; i++)
-		pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-				readl(disp_dev->base + VSCL_CONFIG + (i * 4 + 0) * 4),
-				readl(disp_dev->base + VSCL_CONFIG + (i * 4 + 1) * 4),
-				readl(disp_dev->base + VSCL_CONFIG + (i * 4 + 2) * 4),
-				readl(disp_dev->base + VSCL_CONFIG + (i * 4 + 3) * 4));
-	pr_info("VSCL G187 info\n");
-	for (i = 0; i < 8; i++)
-		pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-				readl(disp_dev->base + VSCL_VINT_CTRL + (i * 4 + 0) * 4),
-				readl(disp_dev->base + VSCL_VINT_CTRL + (i * 4 + 1) * 4),
-				readl(disp_dev->base + VSCL_VINT_CTRL + (i * 4 + 2) * 4),
-				readl(disp_dev->base + VSCL_VINT_CTRL + (i * 4 + 3) * 4));
-	pr_info("VPOST G188 info\n");
-	for (i = 0; i < 8; i++)
-		pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-				readl(disp_dev->base + VPOST_CONFIG + (i * 4 + 0) * 4),
-				readl(disp_dev->base + VPOST_CONFIG + (i * 4 + 1) * 4),
-				readl(disp_dev->base + VPOST_CONFIG + (i * 4 + 2) * 4),
-				readl(disp_dev->base + VPOST_CONFIG + (i * 4 + 3) * 4));
-
-}
-EXPORT_SYMBOL(sp7350_vpp_reg_info);
-
 void sp7350_vpp_decrypt_info(void)
 {
 	pr_info("VPP G185-G188 reg decryption\n");
@@ -318,7 +280,7 @@ EXPORT_SYMBOL(sp7350_vpp_bist_set);
  */
 #define SP7350_VPP_FACTOR_METHOD	0
 
-int sp7350_vpp_imgread_set(int data_addr1, int x, int y, int w, int h, int yuv_fmt)
+int sp7350_vpp_imgread_set(u32 data_addr1, int x, int y, int w, int h, int yuv_fmt)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
 	u32 value;
@@ -328,7 +290,8 @@ int sp7350_vpp_imgread_set(int data_addr1, int x, int y, int w, int h, int yuv_f
 	writel(value, disp_dev->base + IMGREAD_GLOBAL_CONTROL);
 
 	value = readl(disp_dev->base + IMGREAD_CONFIG);
-	value &= ~(SP7350_VPP_IMGREAD_DATA_FMT);
+	value &= ~(SP7350_VPP_IMGREAD_DATA_FMT |
+		SP7350_VPP_IMGREAD_YC_SWAP | SP7350_VPP_IMGREAD_UV_SWAP);
 	if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_YUY2)
 		value |= SP7350_VPP_IMGREAD_DATA_FMT_SEL(SP7350_VPP_IMGREAD_DATA_FMT_YUY2);
 	else if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_NV12)
@@ -337,11 +300,19 @@ int sp7350_vpp_imgread_set(int data_addr1, int x, int y, int w, int h, int yuv_f
 		value |= SP7350_VPP_IMGREAD_DATA_FMT_SEL(SP7350_VPP_IMGREAD_DATA_FMT_NV16);
 	else if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_NV24)
 		value |= SP7350_VPP_IMGREAD_DATA_FMT_SEL(SP7350_VPP_IMGREAD_DATA_FMT_NV24);
-	else
+	else if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_UYVY)
 		value |= SP7350_VPP_IMGREAD_DATA_FMT_SEL(SP7350_VPP_IMGREAD_DATA_FMT_YUY2) |
 			SP7350_VPP_IMGREAD_YC_SWAP;
+	else
+		value |= SP7350_VPP_IMGREAD_DATA_FMT_SEL(SP7350_VPP_IMGREAD_DATA_FMT_YUY2);
 
 	value |= SP7350_VPP_IMGREAD_FM_MODE;
+
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI)
+		;//TBD
+	else
+		value |= SP7350_VPP_IMGREAD_UV_SWAP; //for CSI YUY2 test only
+
 	writel(value, disp_dev->base + IMGREAD_CONFIG);
 
 	value = 0;
@@ -355,7 +326,8 @@ int sp7350_vpp_imgread_set(int data_addr1, int x, int y, int w, int h, int yuv_f
 	writel(value, disp_dev->base + IMGREAD_FRAME_SIZE);
 
 	value = 0;
-	if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_YUY2)
+	if ((yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_YUY2) ||
+		 (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_UYVY))
 		value |= (0 << 16) | (w * 2);
 	else if (yuv_fmt == SP7350_VPP_IMGREAD_DATA_FMT_NV12)
 		//value |= ((w / 2) << 16) | (w);
@@ -571,8 +543,6 @@ EXPORT_SYMBOL(sp7350_vpp_vpost_set);
 
 int sp7350_vpp_resolution_init(struct sp_disp_device *disp_dev)
 {
-	//pr_info("vpp resolution init\n");
-
 	/*
 	 * enable vpp layer
 	 */
@@ -598,3 +568,26 @@ int sp7350_vpp_resolution_init(struct sp_disp_device *disp_dev)
 	return 0;
 }
 EXPORT_SYMBOL(sp7350_vpp_resolution_init);
+
+int sp7350_vpp_restore(struct sp_disp_device *disp_dev)
+{
+	/*
+	 * set vpp layer for imgread block
+	 */
+	sp7350_vpp_imgread_set((u32)virt_to_phys(&vpp0_data_array),
+			disp_dev->vpp_res[0].x_ofs,
+			disp_dev->vpp_res[0].y_ofs,
+			disp_dev->vpp_res[0].width,
+			disp_dev->vpp_res[0].height,
+			disp_dev->vpp_res[0].color_mode);
+	/*
+	 * set vpp layer for vscl block
+	 */
+	sp7350_vpp_vscl_set(disp_dev->vpp_res[0].x_ofs, disp_dev->vpp_res[0].y_ofs,
+			disp_dev->vpp_res[0].crop_w, disp_dev->vpp_res[0].crop_h,
+			disp_dev->vpp_res[0].width, disp_dev->vpp_res[0].height,
+			disp_dev->out_res.width, disp_dev->out_res.height);
+
+	return 0;
+}
+EXPORT_SYMBOL(sp7350_vpp_restore);

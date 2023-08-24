@@ -19,14 +19,8 @@ EXPORT_SYMBOL(sp7350_disp_state);
 
 static struct sp7350_osd_region *sp_osd_region_vir;
 static dma_addr_t sp_osd_region_phy;
-//static u8 *sp_osd_header_vir;
 static void *sp_osd_header_vir;
 static dma_addr_t sp_osd_header_phy;
-
-#define OSD0_DATA_ADDR 0x12000000
-#define OSD1_DATA_ADDR 0x13000000
-#define OSD2_DATA_ADDR 0x14000000
-#define OSD3_DATA_ADDR 0x15000000
 
 extern unsigned char osd0_data_array;
 extern unsigned char osd1_data_array;
@@ -42,35 +36,6 @@ void sp7350_osd_init(void)
 	spin_lock_init(&disp_dev->osd_lock);
 
 }
-
-void sp7350_osd_reg_info(void)
-{
-	struct sp_disp_device *disp_dev = gdisp_dev;
-	int i, j;
-
-	for (j = 0; j < 4; j++) {
-		pr_info("OSD%d G%d Dump info\n", j, j+189);
-		for (i = 0; i < 8; i++) {
-			pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-					readl(disp_dev->base + (j << 7) + OSD_CTRL + (i * 4 + 0) * 4),
-					readl(disp_dev->base + (j << 7) + OSD_CTRL + (i * 4 + 1) * 4),
-					readl(disp_dev->base + (j << 7) + OSD_CTRL + (i * 4 + 2) * 4),
-					readl(disp_dev->base + (j << 7) + OSD_CTRL + (i * 4 + 3) * 4));
-		}
-	}
-	for (j = 0; j < 4; j++) {
-		pr_info("GPOST%d G%d Dump info\n", j, j+193);
-		for (i = 0; i < 8; i++) {
-			pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-					readl(disp_dev->base + (j << 7) + GPOST_CONFIG + (i * 4 + 0) * 4),
-					readl(disp_dev->base + (j << 7) + GPOST_CONFIG + (i * 4 + 1) * 4),
-					readl(disp_dev->base + (j << 7) + GPOST_CONFIG + (i * 4 + 2) * 4),
-					readl(disp_dev->base + (j << 7) + GPOST_CONFIG + (i * 4 + 3) * 4));
-		}
-	}
-
-}
-EXPORT_SYMBOL(sp7350_osd_reg_info);
 
 void sp7350_osd_decrypt_info(void)
 {
@@ -336,8 +301,6 @@ void sp7350_osd_header_init(void)
 	struct sp_disp_device *disp_dev = gdisp_dev;
 	int i;
 
-	//pr_info("%s\n", __func__);
-
 	for (i = 0; i < SP_DISP_MAX_OSD_LAYER; i++) {
 		disp_dev->osd_hdr[i] = dma_alloc_coherent(disp_dev->pdev,
 				sizeof(struct sp7350_osd_header) + 1024,
@@ -355,6 +318,7 @@ void sp7350_osd_header_init(void)
 			return;
 		}
 	}
+	
 }
 EXPORT_SYMBOL(sp7350_osd_header_init);
 
@@ -362,29 +326,169 @@ void sp7350_osd_header_clear(int osd_layer_sel)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
 	u32 *osd_header;
-	int i;
-
-	pr_info("%s for osd%d\n", __func__, osd_layer_sel);
+	//int i;
 
 	if (!disp_dev->osd_hdr[osd_layer_sel])
 		return;
 
 	osd_header = (u32 *)disp_dev->osd_hdr[osd_layer_sel];
-	pr_info("  osd%d hdr VA 0x%px(PA 0x%llx)\n",
-		osd_layer_sel,
-		disp_dev->osd_hdr[osd_layer_sel],
-		disp_dev->osd_hdr_phy[osd_layer_sel]);
 
 	/*
 	 * only clear osd header first 32 bytes data
 	 */
-	for (i = 0; i < 8; i++)
-		osd_header[i] = 0;
+	//for (i = 0; i < 8; i++)
+	//	osd_header[i] = 0;
 
 }
 EXPORT_SYMBOL(sp7350_osd_header_clear);
 
-//void sp7350_osd_layer_set(int osd_layer_sel)
+void sp7350_osd_header_show(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 *osd0_header, *osd1_header, *osd2_header, *osd3_header;
+	int i;
+
+	pr_info("  --- osd base addr ---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		readl(disp_dev->base + (0 << 7) + OSD_BASE_ADDR),
+		readl(disp_dev->base + (1 << 7) + OSD_BASE_ADDR),
+		readl(disp_dev->base + (2 << 7) + OSD_BASE_ADDR),
+		readl(disp_dev->base + (3 << 7) + OSD_BASE_ADDR));
+
+	osd0_header = (u32 *)disp_dev->osd_hdr[0];
+	osd1_header = (u32 *)disp_dev->osd_hdr[1];
+	osd2_header = (u32 *)disp_dev->osd_hdr[2];
+	osd3_header = (u32 *)disp_dev->osd_hdr[3];
+	pr_info("  --- osd header ---\n");
+	for (i = 0; i < 8; i++)
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		SWAP32(osd0_header[i]), SWAP32(osd1_header[i]), SWAP32(osd2_header[i]), SWAP32(osd3_header[i]));		
+
+	pr_info("  --- osd width ofs ---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		readl(disp_dev->base + (0 << 7) + OSD_HVLD_OFFSET),
+		readl(disp_dev->base + (1 << 7) + OSD_HVLD_OFFSET),
+		readl(disp_dev->base + (2 << 7) + OSD_HVLD_OFFSET),
+		readl(disp_dev->base + (3 << 7) + OSD_HVLD_OFFSET));
+	pr_info("  --- osd width ---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		readl(disp_dev->base + (0 << 7) + OSD_HVLD_WIDTH),
+		readl(disp_dev->base + (1 << 7) + OSD_HVLD_WIDTH),
+		readl(disp_dev->base + (2 << 7) + OSD_HVLD_WIDTH),
+		readl(disp_dev->base + (3 << 7) + OSD_HVLD_WIDTH));
+	pr_info("  --- osd height ofs ---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		readl(disp_dev->base + (0 << 7) + OSD_VVLD_OFFSET),
+		readl(disp_dev->base + (1 << 7) + OSD_VVLD_OFFSET),
+		readl(disp_dev->base + (2 << 7) + OSD_VVLD_OFFSET),
+		readl(disp_dev->base + (3 << 7) + OSD_VVLD_OFFSET));
+	pr_info("  --- osd height ---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		readl(disp_dev->base + (0 << 7) + OSD_VVLD_HEIGHT),
+		readl(disp_dev->base + (1 << 7) + OSD_VVLD_HEIGHT),
+		readl(disp_dev->base + (2 << 7) + OSD_VVLD_HEIGHT),
+		readl(disp_dev->base + (3 << 7) + OSD_VVLD_HEIGHT));
+
+}
+EXPORT_SYMBOL(sp7350_osd_header_show);
+
+u32 osd_base_addr_backup[SP_DISP_MAX_OSD_LAYER] = {0x00};
+u32 osd_base_addr_backup1[SP_DISP_MAX_OSD_LAYER] = {0x00};
+u32 osd0_header_bakup[32+256] __attribute__((aligned(1024))) = {0x00};
+u32 osd1_header_bakup[32+256] __attribute__((aligned(1024))) = {0x00};
+u32 osd2_header_bakup[32+256] __attribute__((aligned(1024))) = {0x00};
+u32 osd3_header_bakup[32+256] __attribute__((aligned(1024))) = {0x00};
+u32 osd_width_ofs_backup[SP_DISP_MAX_OSD_LAYER] = {0x00};
+u32 osd_width_backup[SP_DISP_MAX_OSD_LAYER] = {0x00};
+u32 osd_height_ofs_backup[SP_DISP_MAX_OSD_LAYER] = {0x00};
+u32 osd_height_backup[SP_DISP_MAX_OSD_LAYER] = {0x00};
+
+void sp7350_osd_header_save(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 *osd_header;
+	int i, layer, value;
+
+	for (layer = 0; layer < SP_DISP_MAX_OSD_LAYER; layer++) {
+		value = readl(disp_dev->base + (layer << 7) + OSD_BASE_ADDR);
+		osd_base_addr_backup[layer] = value;
+
+		osd_header = (u32 *)disp_dev->osd_hdr[layer];
+		for (i = 0; i < 8; i++) {
+			if (layer == 0)
+				osd0_header_bakup[i] = osd_header[i];
+			else if (layer == 1)
+				osd1_header_bakup[i] = osd_header[i];
+			else if (layer == 2)
+				osd2_header_bakup[i] = osd_header[i];
+			else if (layer == 3)
+				osd3_header_bakup[i] = osd_header[i];
+		}
+
+		osd_width_ofs_backup[layer] = readl(disp_dev->base + (layer << 7) + OSD_HVLD_OFFSET);
+		osd_width_backup[layer] = readl(disp_dev->base + (layer << 7) + OSD_HVLD_WIDTH);
+		osd_height_ofs_backup[layer] = readl(disp_dev->base + (layer << 7) + OSD_VVLD_OFFSET);
+		osd_height_backup[layer] = readl(disp_dev->base + (layer << 7) + OSD_VVLD_HEIGHT);
+	}
+	#if 0
+	pr_info("  --- osd base addr backup---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		osd_base_addr_backup[0], osd_base_addr_backup[1], osd_base_addr_backup[2], osd_base_addr_backup[3]);
+	pr_info("  --- osd header backup---\n");
+	for (i = 0; i < 8; i++)
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		SWAP32(osd0_header_bakup[i]), SWAP32(osd1_header_bakup[i]), SWAP32(osd2_header_bakup[i]), SWAP32(osd3_header_bakup[i]));
+
+	pr_info("  --- osd width ofs backup---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		osd_width_ofs_backup[0], osd_width_ofs_backup[1], osd_width_ofs_backup[2], osd_width_ofs_backup[3]);
+	pr_info("  --- osd width backup---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		osd_width_backup[0], osd_width_backup[1], osd_width_backup[2], osd_width_backup[3]);
+	pr_info("  --- osd height ofs backup---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		osd_height_ofs_backup[0], osd_height_ofs_backup[1], osd_height_ofs_backup[2], osd_height_ofs_backup[3]);
+	pr_info("  --- osd height backup---\n");
+	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+		osd_height_backup[0], osd_height_backup[1], osd_height_backup[2], osd_height_backup[3]);
+	#endif
+}
+EXPORT_SYMBOL(sp7350_osd_header_save);
+
+void sp7350_osd_header_restore(int osd_layer_sel)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	if (!disp_dev->osd_hdr[osd_layer_sel])
+		return;
+
+	if (osd_base_addr_backup1[osd_layer_sel] != 0)
+		writel(osd_base_addr_backup1[osd_layer_sel],
+			disp_dev->base + (osd_layer_sel << 7) + OSD_BASE_ADDR);
+	else if (osd_base_addr_backup[osd_layer_sel] != 0)
+		writel(osd_base_addr_backup[osd_layer_sel],
+			disp_dev->base + (osd_layer_sel << 7) + OSD_BASE_ADDR);
+	else
+		;//TBD
+
+}
+EXPORT_SYMBOL(sp7350_osd_header_restore);
+
+void sp7350_osd_header_update(struct sp7350fb_info *info, int osd_layer_sel)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 *osd_header;
+
+	if (!disp_dev->osd_hdr[osd_layer_sel])
+		return;
+
+	osd_header = (u32 *)disp_dev->osd_hdr[osd_layer_sel];
+
+	osd_header[7] = SWAP32((u32)info->buf_addr_phy);
+
+}
+EXPORT_SYMBOL(sp7350_osd_header_update);
+
 void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
@@ -394,7 +498,6 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 	int i;
 
 	//pr_info("%s for osd%d\n", __func__, osd_layer_sel);
-
 	if (!disp_dev->osd_hdr[osd_layer_sel])
 		return;
 
@@ -404,21 +507,12 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 	/*
 	 * Fill OSD Layer Header info
 	 */
-	#if 0
-	tmp_color_mode = disp_dev->osd_res[osd_layer_sel].color_mode;
-	#else
 	tmp_color_mode = info->color_mode;
-	#endif
 	//tmp_alpha = SP7350_OSD_HDR_BL | SP7350_OSD_HDR_ALPHA;
 	value |= (tmp_color_mode << 24) | SP7350_OSD_HDR_BS | tmp_alpha;
 
-	#if 0
-	if (disp_dev->osd_res[osd_layer_sel].color_mode == SP7350_OSD_COLOR_MODE_8BPP)
-		value |= SP7350_OSD_HDR_CULT;
-	#else
 	if (info->color_mode == SP7350_OSD_COLOR_MODE_8BPP)
 		value |= SP7350_OSD_HDR_CULT;
-	#endif
 
 	osd_header[0] = SWAP32(value);
 
@@ -427,13 +521,8 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 	//else
 	//	osd_header[0] = SWAP32(0x00001000 | tmp_color_mode << 24 | tmp_alpha);
 
-	#if 0
-	tmp_width = disp_dev->osd_res[osd_layer_sel].width;
-	tmp_height = disp_dev->osd_res[osd_layer_sel].height;
-	#else
 	tmp_width = info->width;
 	tmp_height = info->height;
-	#endif
 	osd_header[1] = SWAP32(tmp_height << 16 | tmp_width << 0);
 
 	osd_header[2] = 0;
@@ -442,40 +531,18 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 
 	value = 0;
 	value |= tmp_width;
-	#if 0
-	if (disp_dev->osd_res[osd_layer_sel].color_mode == SP7350_OSD_COLOR_MODE_YUY2)
-		value |= SP7350_OSD_HDR_CSM_SET(SP7350_OSD_CSM_BYPASS);
-	else
-		value |= SP7350_OSD_HDR_CSM_SET(SP7350_OSD_CSM_RGB_BT601);
-	#else
+
 	if (info->color_mode == SP7350_OSD_COLOR_MODE_YUY2)
 		value |= SP7350_OSD_HDR_CSM_SET(SP7350_OSD_CSM_BYPASS);
 	else
 		value |= SP7350_OSD_HDR_CSM_SET(SP7350_OSD_CSM_RGB_BT601);
-	#endif
 
 	osd_header[5] = SWAP32(value);
 
-	//if (disp_dev->osd_res[osd_layer_sel].color_mode == SP7350_OSD_COLOR_MODE_YUY2)
-	//	osd_header[5] = SWAP32(0x00040000 | tmp_width);
-	//else
-	//	osd_header[5] = SWAP32(0x00010000 | tmp_width);
 	osd_header[6] = SWAP32(0xFFFFFFE0);
 
-	//TBD
 	/* OSD buffer data address */
-	#if 0
-	if (osd_layer_sel == 0)
-		osd_header[7] = SWAP32(virt_to_phys(&osd0_data_array));
-	else if (osd_layer_sel == 1)
-		osd_header[7] = SWAP32(virt_to_phys(&osd1_data_array));
-	else if (osd_layer_sel == 2)
-		osd_header[7] = SWAP32(virt_to_phys(&osd2_data_array));
-	else if (osd_layer_sel == 3)
-		osd_header[7] = SWAP32(virt_to_phys(&osd3_data_array));
-	#else
-	osd_header[7] = SWAP32((u32)virt_to_phys((dma_addr_t *)info->buf_addr));
-	#endif
+	osd_header[7] = SWAP32((u32)info->buf_addr_phy);
 
 	/*
 	 * update sp7350 osd layer register
@@ -490,21 +557,17 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 
 	writel(disp_dev->osd_hdr_phy[osd_layer_sel],
 		disp_dev->base + (osd_layer_sel << 7) + OSD_BASE_ADDR);
+
 	writel(disp_dev->osd_res[osd_layer_sel].x_ofs,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_OFFSET);
 	writel(disp_dev->osd_res[osd_layer_sel].y_ofs,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_OFFSET);
-	#if 0
+
 	writel(disp_dev->osd_res[osd_layer_sel].width,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_WIDTH);
 	writel(disp_dev->osd_res[osd_layer_sel].height,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_HEIGHT);
-	#else
-	writel(disp_dev->out_res.width,
-		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_WIDTH);
-	writel(disp_dev->out_res.height,
-		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_HEIGHT);
-	#endif
+
 	writel(0, disp_dev->base + (osd_layer_sel << 7) + OSD_BIST_CTRL);
 	writel(0, disp_dev->base + (osd_layer_sel << 7) + OSD_3D_H_OFFSET);
 	writel(0, disp_dev->base + (osd_layer_sel << 7) + OSD_SRC_DECIMATION_SEL);
@@ -522,31 +585,20 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 	/*
 	 * in case of color_mode 8bpp, load grey or color palette
 	 */
-	#if 0
 	if ((disp_dev->dev[osd_layer_sel]) &&
-		(disp_dev->osd_res[osd_layer_sel].color_mode == SP7350_OSD_COLOR_MODE_8BPP)) {
+		(info->color_mode == SP7350_OSD_COLOR_MODE_8BPP)) {
 		if (disp_dev->dev[osd_layer_sel]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
-			pr_info("osd%d palette with grey scale\n", osd_layer_sel);
-			for (i = 0; i < 256; i++) {
+			
+			for (i = 0; i < 256; i++)
 				osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
-				//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
-			}
+
 		} else if (disp_dev->dev[osd_layer_sel]->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
-			pr_info("osd%d palette with 256 color\n", osd_layer_sel);
-			for (i = 0; i < 256; i++) {
-				//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
+
+			for (i = 0; i < 256; i++)
 				osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
-			}
+
 		}
 	}
-	#else
-	//pr_info("osd%d palette with grey scale\n", osd_layer_sel);
-	//pr_info("osd%d palette with 256 color\n", osd_layer_sel);
-	for (i = 0; i < 256; i++) {
-		osd_palette[i] = SWAP32(disp_osd_8bpp_pal_grey[i]); //8bpp grey scale table (argb)
-		//osd_palette[i] = SWAP32(disp_osd_8bpp_pal_color[i]); //8bpp 256 color table (argb)
-	}
-	#endif
 
 	#if 0
 	pr_info("  --- osd%d header ---\n", osd_layer_sel);
@@ -557,15 +609,15 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 	//for (i = 0; i < 8; i++)
 	//	pr_info("osd_header[%d] 0x%08x\n", i, SWAP32(osd_header[i]));
 
-	pr_info("  --- osd%d palette ---\n", osd_layer_sel);
-	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
-		SWAP32(osd_palette[0]), SWAP32(osd_palette[1]), SWAP32(osd_palette[2]), SWAP32(osd_palette[3]));
-	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
-		SWAP32(osd_palette[4]), SWAP32(osd_palette[5]), SWAP32(osd_palette[6]), SWAP32(osd_palette[7]));
-	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
-		SWAP32(osd_palette[8]), SWAP32(osd_palette[9]), SWAP32(osd_palette[10]), SWAP32(osd_palette[11]));
-	pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
-		SWAP32(osd_palette[12]), SWAP32(osd_palette[13]), SWAP32(osd_palette[14]), SWAP32(osd_palette[15]));
+	//pr_info("  --- osd%d palette ---\n", osd_layer_sel);
+	//pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+	//	SWAP32(osd_palette[0]), SWAP32(osd_palette[1]), SWAP32(osd_palette[2]), SWAP32(osd_palette[3]));
+	//pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+	//	SWAP32(osd_palette[4]), SWAP32(osd_palette[5]), SWAP32(osd_palette[6]), SWAP32(osd_palette[7]));
+	//pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+	//	SWAP32(osd_palette[8]), SWAP32(osd_palette[9]), SWAP32(osd_palette[10]), SWAP32(osd_palette[11]));
+	//pr_info("  0x%08x 0x%08x 0x%08x 0x%08x\n",
+	//	SWAP32(osd_palette[12]), SWAP32(osd_palette[13]), SWAP32(osd_palette[14]), SWAP32(osd_palette[15]));
 	//for (i = 0; i < 256; i++)
 	//for (i = 0; i < 8; i++)
 	//	if (i%32 == 0)
@@ -579,25 +631,35 @@ int sp7350_osd_resolution_init(struct sp_disp_device *disp_dev)
 	struct sp7350fb_info info;
 	int i;
 
-	//pr_info("osd resolution setting\n");
-
 	sp7350_osd_header_init();
+
+	//pr_info("  osd0_data_array VA 0x%px(PA 0x%llx)\n",
+	//	&osd0_data_array, virt_to_phys(&osd0_data_array));
+	//pr_info("  osd1_data_array VA 0x%px(PA 0x%llx)\n",
+	//	&osd1_data_array, virt_to_phys(&osd1_data_array));
+	//pr_info("  osd2_data_array VA 0x%px(PA 0x%llx)\n",
+	//	&osd2_data_array, virt_to_phys(&osd2_data_array));
+	//pr_info("  osd3_data_array VA 0x%px(PA 0x%llx)\n",
+	//	&osd3_data_array, virt_to_phys(&osd3_data_array));
 
 	for (i = 0; i < SP_DISP_MAX_OSD_LAYER; i++) {
 		info.width = disp_dev->osd_res[i].width;
 		info.height = disp_dev->osd_res[i].height;
 		info.color_mode = disp_dev->osd_res[i].color_mode;
+
 		if (i == 0)
-			info.buf_addr = (dma_addr_t)&osd0_data_array;
+			info.buf_addr_phy = (u32)virt_to_phys(&osd0_data_array);
 		else if (i == 1)
-			info.buf_addr = (dma_addr_t)&osd1_data_array;
+			info.buf_addr_phy = (u32)virt_to_phys(&osd1_data_array);
 		else if (i == 2)
-			info.buf_addr = (dma_addr_t)&osd2_data_array;
+			info.buf_addr_phy = (u32)virt_to_phys(&osd2_data_array);
 		else if (i == 3)
-			info.buf_addr = (dma_addr_t)&osd3_data_array;
+			info.buf_addr_phy = (u32)virt_to_phys(&osd3_data_array);
 		
 		sp7350_osd_layer_set(&info, i);
 	}
+
+	sp7350_osd_header_save();
 
 	return 0;
 }

@@ -15,6 +15,7 @@
 #define SP7350_VPP_IMGREAD_CRMA_REPEAT          BIT(20)
 #define SP7350_VPP_IMGREAD_DATA_FMT             GENMASK(18, 16)
 #define SP7350_VPP_IMGREAD_DATA_FMT_SEL(fmt)    FIELD_PREP(GENMASK(18, 16), fmt)
+#define SP7350_VPP_IMGREAD_DATA_FMT_UYVY        0x1
 #define SP7350_VPP_IMGREAD_DATA_FMT_YUY2        0x2
 #define SP7350_VPP_IMGREAD_DATA_FMT_NV16	0x3
 #define SP7350_VPP_IMGREAD_DATA_FMT_NV24	0x6
@@ -112,7 +113,6 @@ void sp7350_vpp_init(void);
 /*
  * Show SP7350 VPP Info
  */
-void sp7350_vpp_reg_info(void);
 void sp7350_vpp_decrypt_info(void);
 void sp7350_vpp_imgread_resolution_chk(void);
 void sp7350_vpp_vscl_resolution_chk(void);
@@ -127,7 +127,7 @@ void sp7350_vpp_bist_set(int img_vscl_sel, int bist_en, int vpp_bist_type);
  * SP7350 VPP Layer Settings
  */
 void sp7350_vpp_layer_onoff(int onoff);
-int sp7350_vpp_imgread_set(int data_addr1, int x, int y, int w, int h, int yuv_fmt);
+int sp7350_vpp_imgread_set(u32 data_addr1, int x, int y, int w, int h, int yuv_fmt);
 int sp7350_vpp_vscl_set(int x, int y, int xlen, int ylen, int input_w, int input_h, int output_w, int output_h);
 int sp7350_vpp_vpost_set(int x, int y, int input_w, int input_h, int output_w, int output_h);
 

@@ -80,6 +80,8 @@
 #define SP7350_MIPITX_BLANK_POWER_BLLP		BIT(0)
 
 /*MIPITX_OP_CTRL*/
+#define SP7350_MIPITX_LP_MODE	0
+#define SP7350_MIPITX_HS_MODE	1
 #define SP7350_MIPITX_OP_CTRL_TXLDPT		BIT(20)
 
 /*MIPITX_CORE_CTRL*/
@@ -101,6 +103,9 @@
 #define SP7350_MIPITX_WORD_CNT_MASK		GENMASK(15, 0)
 #define SP7350_MIPITX_WORD_CNT_SET(val)	        FIELD_PREP(GENMASK(15, 0), val)
 
+/*MIPITX_INFO_STATUS*/
+
+
 /*MIPITX_ULPS_DELAY*/
 #define SP7350_MIPITX_ULPS_DELAY_MASK		GENMASK(15, 0)
 #define SP7350_MIPITX_ULPS_DELAY_SET(val)	FIELD_PREP(GENMASK(15, 0), val)
@@ -113,10 +118,10 @@
 #define SP7350_MIPITX_MIPI_CSI_FE_SET(val)	FIELD_PREP(GENMASK(19, 12), val)
 #define SP7350_MIPITX_MIPI_CSI_DT_MASK	        GENMASK(9, 4)
 #define SP7350_MIPITX_MIPI_CSI_DT_SET(val)	FIELD_PREP(GENMASK(9, 4), val)
-#define SP7350_MIPITX_MIPI_CSI_DT_YUV422	0x1E
-#define SP7350_MIPITX_MIPI_CSI_DT_RGB565	0x22
-#define SP7350_MIPITX_MIPI_CSI_DT_RGB666	0x23
-#define SP7350_MIPITX_MIPI_CSI_DT_RGB888	0x24
+#define SP7350_MIPITX_MIPI_CSI_DT_YUV422_8bit	0x1E
+#define SP7350_MIPITX_MIPI_CSI_DT_YUV422_10bit	0x1F
+#define SP7350_MIPITX_MIPI_CSI_DT_RGB565	    0x22
+#define SP7350_MIPITX_MIPI_CSI_DT_RGB888	    0x24
 #define SP7350_MIPITX_MIPI_CSI_MODE_EN          BIT(0)
 
 /*MIPITX_ANALOG_CTRL1*/
@@ -193,8 +198,8 @@
 #define SP7350_MIPITX_FALLING                   0x1
 #define SP7350_MIPITX_MIPI_PHY_RESET_MASK	GENMASK(0, 0)
 #define SP7350_MIPITX_MIPI_PHY_RESET(val)	FIELD_PREP(GENMASK(0, 0), val)
-#define SP7350_MIPITX_NORMAL                    0x0
-#define SP7350_MIPITX_RESET                     0x1
+#define SP7350_MIPITX_RESET                     0x0
+#define SP7350_MIPITX_NORMAL                    0x1
 /*MIPITX_ANALOG_CTRL3*/
 /*MIPITX_ANALOG_CTRL4*/
 #define SP7350_MIPITX_MIPI_PHY_EN500P_MASK	GENMASK(5, 5)
@@ -337,7 +342,6 @@ void sp7350_mipitx_init(void);
 /*
  * Show SP7350 MIPITX Info
  */
-void sp7350_mipitx_reg_info(void);
 void sp7350_mipitx_decrypt_info(void);
 void sp7350_mipitx_resolution_chk(void);
 
@@ -348,9 +352,33 @@ void sp7350_mipitx_timing_set(void);
 void sp7350_mipitx_timing_get(void);
 
 /*
+ * SP7350 MIPITX PLL CLK Control Settings
+ */
+void sp7350_mipitx_pllclk_init(void);
+void sp7350_mipitx_pllclk_set(int mode, int width, int height);
+void sp7350_mipitx_pllclk_get(void);
+void sp7350_mipitx_txpll_get(void);
+
+/*
+ * SP7350 MIPITX Panel Control Settings
+ */
+void check_cmd_fifo_full(void);
+void check_cmd_fifo_empty(void);
+void check_data_fifo_full(void);
+void check_data_fifo_empty(void);
+void sp7350_mipitx_panel_init(int mipitx_dev_id, int width, int height);
+
+/*
  * SP7350 MIPITX PHY Control Settings
  */
-void sp7350_mipitx_phy_set(void);
+void sp7350_mipitx_phy_init(void);
+void sp7350_mipitx_lane_control_set(void);
+void sp7350_mipitx_cmd_mode_start(void);
+void sp7350_mipitx_video_mode_setting(void);
+void sp7350_mipitx_csi_setting(void);
+void sp7350_mipitx_video_mode_on(void);
+void sp7350_mipitx_phy_init_dsi(void);
+void sp7350_mipitx_phy_init_csi(void);
 void sp7350_mipitx_phy_get(void);
 
 #endif	//__SP7350_DISP_MIPITX_H__

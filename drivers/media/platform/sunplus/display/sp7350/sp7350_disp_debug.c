@@ -145,17 +145,7 @@ static void sunplus_debug_cmd(char *tmpbuf)
 
 	pr_info("run disp debug cmd\n");
 
-	if (!strncasecmp(tmpbuf, "reso", 4)) {
-		tmpbuf = spmon_skipspace(tmpbuf + 4);
-		pr_info("resolution chk\n");
-		sp7350_vpp_imgread_resolution_chk();
-		sp7350_vpp_vscl_resolution_chk();
-		sp7350_osd_resolution_chk();
-		sp7350_tgen_resolution_chk();
-		sp7350_tcon_resolution_chk();
-		sp7350_mipitx_resolution_chk();
-
-	} else if (!strncasecmp(tmpbuf, "bist", 4)) {
+	if (!strncasecmp(tmpbuf, "bist", 4)) {
 		tmpbuf = spmon_skipspace(tmpbuf + 4);
 		pr_info("bist all info\n");
 		if (!strncasecmp(tmpbuf, "info", 4)) {
@@ -476,7 +466,6 @@ static void sunplus_debug_cmd(char *tmpbuf)
 		}
 	} else if (!strncasecmp(tmpbuf, "layer", 5)) {
 		tmpbuf = spmon_skipspace(tmpbuf + 5);
-		pr_info("dmix layer set\n");
 
 		if (!strncasecmp(tmpbuf, "info", 4)) {
 			pr_info("layer info cmd\n");
@@ -550,6 +539,9 @@ static void sunplus_debug_cmd(char *tmpbuf)
 		if (!strncasecmp(tmpbuf, "vpp", 3)) {
 			pr_info("dump vpp path info\n");
 			sp7350_vpp_decrypt_info();
+		} else if (!strncasecmp(tmpbuf, "osdh", 4)) {
+			pr_info("dump osd header info\n");
+			sp7350_osd_header_show();
 		} else if (!strncasecmp(tmpbuf, "osd", 3)) {
 			pr_info("dump osd path info\n");
 			sp7350_osd_decrypt_info();
@@ -565,15 +557,37 @@ static void sunplus_debug_cmd(char *tmpbuf)
 		} else if (!strncasecmp(tmpbuf, "mipitx", 6)) {
 			pr_info("dump mipitx info\n");
 			sp7350_mipitx_decrypt_info();
+			sp7350_mipitx_pllclk_get();
+			sp7350_mipitx_txpll_get();
 		} else if (!strncasecmp(tmpbuf, "all", 3)) {
 			pr_info("dump all info\n");
-			sp7350_vpp_reg_info();
-			sp7350_osd_reg_info();
-			sp7350_tgen_reg_info();
-			sp7350_dmix_reg_info();
-			sp7350_tcon_reg_info();
-			sp7350_mipitx_reg_info();
+			sp7350_vpp_decrypt_info();
+			sp7350_osd_decrypt_info();
+			sp7350_tgen_decrypt_info();
+			sp7350_dmix_decrypt_info();
+			sp7350_tcon_decrypt_info();
+			sp7350_mipitx_decrypt_info();
+			sp7350_mipitx_pllclk_get();
+			sp7350_mipitx_txpll_get();
+		} else if (!strncasecmp(tmpbuf, "reso", 4)) {
+			pr_info("dump resolution\n");
+			sp7350_vpp_imgread_resolution_chk();
+			sp7350_vpp_vscl_resolution_chk();
+			sp7350_osd_resolution_chk();
+			sp7350_tgen_resolution_chk();
+			sp7350_tcon_resolution_chk();
+			sp7350_mipitx_resolution_chk();
+			sp7350_mipitx_pllclk_get();
+			sp7350_mipitx_txpll_get();
+		} else if (!strncasecmp(tmpbuf, "timing", 6)) {
+			pr_info("dump timing\n");
+			sp7350_tgen_timing_get();
+			sp7350_tcon_timing_get();
+			sp7350_mipitx_timing_get();
+			sp7350_mipitx_pllclk_get();
+			sp7350_mipitx_txpll_get();
 		}
+
 	} else
 		pr_err("unknown command:%s\n", tmpbuf);
 
@@ -582,8 +596,8 @@ static void sunplus_debug_cmd(char *tmpbuf)
 
 int sunplus_proc_open_show(struct seq_file *m, void *v)
 {
-	pr_info("%s\n", __func__);
-	pr_info("SP7350 DISPLAY DEBUG TEST\n");
+	//pr_info("%s\n", __func__);
+	//pr_info("SP7350 DISPLAY DEBUG TEST\n");
 
 	return 0;
 }
@@ -642,15 +656,6 @@ static struct kernel_param_ops debug_param_ops = {
 module_param_cb(debug, &debug_param_ops, NULL, 0644);
 MODULE_PARM_DESC(debug, "SP7350 display debug test");
 
-int sp7350_debug_info(void)
-{
-	printk("hammer test\n");
-
-	return 0;
-}
-//EXPORT_SYMBOL(sp7350_debug_info);
-
-
 /*
  * sp7350 debug fs reference
  *
@@ -662,14 +667,7 @@ int sp7350_debug_info(void)
 static int sp7350_debug_dump_regs(struct sp_disp_device *disp_dev,
 				  struct seq_file *m)
 {
-	pr_info("%s test\n", __func__);
-
-	sp7350_vpp_reg_info();
-	sp7350_osd_reg_info();
-	sp7350_tgen_reg_info();
-	sp7350_dmix_reg_info();
-	sp7350_tcon_reg_info();
-	sp7350_mipitx_reg_info();
+	//pr_info("%s test\n", __func__);
 
 	return 0;
 }
@@ -685,9 +683,7 @@ DEFINE_SHOW_ATTRIBUTE(sp7350_dump_regs);
 static int sp7350_debug_dump_vpp_regs(struct sp_disp_device *disp_dev,
 				  struct seq_file *m)
 {
-	pr_info("%s test\n", __func__);
-
-	sp7350_vpp_reg_info();
+	//pr_info("%s test\n", __func__);
 
 	return 0;
 }

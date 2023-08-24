@@ -121,7 +121,6 @@ void sp7350_tcon_init(void);
 /*
  * Show SP7350 TCON Info
  */
-void sp7350_tcon_reg_info(void);
 void sp7350_tcon_decrypt_info(void);
 void sp7350_tcon_resolution_chk(void);
 
@@ -134,7 +133,8 @@ void sp7350_tcon_bist_set(int bist_mode, int tcon_bist_pat);
 /*
  * SP7350 TCON Timing Control Settings
  */
-void sp7350_tcon_timing_set(void);
+void sp7350_tcon_timing_set_dsi(void);
+void sp7350_tcon_timing_set_csi(void);
 void sp7350_tcon_timing_get(void);
 
 #endif	//__SP7350_DISP_TCON_H__

@@ -57,25 +57,27 @@ extern int sp7350_v4l2_reg_multi_layer(int i, struct platform_device *pdev,
 		struct sp_disp_device *disp_dev);
 #endif
 
-unsigned char vpp0_data_array[720*480*4] __attribute__((aligned(1024))) = {
+/*
+ * VPP / OSD data fetch test
+ */
+unsigned char vpp0_data_array[720*480*2] __attribute__((aligned(1024))) = {
 	#include "test_pattern/yuv422_YUY2_720x480_vpp.h"
 };
-unsigned char osd0_data_array[320*240*4] __attribute__((aligned(1024))) = {
-	#include "test_pattern/ARGB8888_320x240.h"
+unsigned char osd0_data_array[200*200*4] __attribute__((aligned(1024))) = {
+	#include "test_pattern/ARGB8888_200x200_osd0.h"
 };
-unsigned char osd1_data_array[320*240*4] __attribute__((aligned(1024))) = {
-	#include "test_pattern/ARGB8888_320x240.h"
+unsigned char osd1_data_array[200*200*4] __attribute__((aligned(1024))) = {
+	#include "test_pattern/ARGB8888_200x200_osd1.h"
 };
-unsigned char osd2_data_array[320*240*4] __attribute__((aligned(1024))) = {
-	#include "test_pattern/ARGB8888_320x240.h"
+unsigned char osd2_data_array[200*200*4] __attribute__((aligned(1024))) = {
+	#include "test_pattern/ARGB8888_200x200_osd2.h"
 };
-unsigned char osd3_data_array[320*240*4] __attribute__((aligned(1024))) = {
-	#include "test_pattern/ARGB8888_320x240.h"
+unsigned char osd3_data_array[200*200*4] __attribute__((aligned(1024))) = {
+	#include "test_pattern/ARGB8888_200x200_osd3.h"
 };
 
 static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 {
-	//pr_info("%s\n", __func__);
 	#ifdef V4L2_TEST_DQBUF
 	struct sp_disp_device *disp_dev = platform_get_drvdata(param);
 	struct sp_disp_buffer *next_frm;
@@ -87,12 +89,16 @@ static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 	if (!param)
 		return IRQ_HANDLED;
 
+	if ((!disp_dev->dev[0]) && (!disp_dev->dev[1]) && (!disp_dev->dev[2]) &&
+			(!disp_dev->dev[3]) && (!disp_dev->dev[4]))
+		return IRQ_HANDLED;
+
 	for (i = 0; i < SP_DISP_MAX_DEVICES; i++) {
 		layer = disp_dev->dev[i];
 
 		if (!disp_dev->dev[i])
 			continue;
-
+		
 		if (layer->skip_first_int) {
 			layer->skip_first_int = 0;
 			continue;
@@ -100,12 +106,12 @@ static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 
 		if (layer->streaming) {
 			spin_lock(&disp_dev->dma_queue_lock);
+
 			if (!list_empty(&layer->dma_queue)) {
 				next_frm = list_entry(layer->dma_queue.next,
 						struct  sp_disp_buffer, list);
 				/* Remove that from the buffer queue */
 				list_del_init(&next_frm->list);
-
 				/* Mark state of the frame to active */
 				next_frm->vb.vb2_buf.state = VB2_BUF_STATE_ACTIVE;
 
@@ -133,7 +139,7 @@ static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 
 					info.width = layer->fmt.fmt.pix.width;
 					info.height = layer->fmt.fmt.pix.height;
-					info.buf_addr = addr;
+					info.buf_addr_phy = (u32)addr;
 
 					sp7350_osd_layer_set(&info, i);
 
@@ -146,10 +152,14 @@ static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 						yuv_fmt = 0x6;
 					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 						yuv_fmt = 0x2;
+					else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)
+						yuv_fmt = 0x1;
+					else
+						yuv_fmt = 0x2;
 					/*
 					 * set vpp layer for imgread block
 					 */
-					sp7350_vpp_imgread_set((u32)virt_to_phys((unsigned long *)addr),
+					sp7350_vpp_imgread_set((u32)addr,
 							disp_dev->vpp_res[0].x_ofs,
 							disp_dev->vpp_res[0].y_ofs,
 							layer->fmt.fmt.pix.width,
@@ -182,7 +192,6 @@ static irqreturn_t sp7350_display_irq_fs(int irq, void *param)
 
 static irqreturn_t sp7350_display_irq_fe(int irq, void *param)
 {
-	//pr_info("%s\n", __func__);
 	if (sp7350_disp_state == 0) {
 		sp7350_osd_region_update();
 	}
@@ -192,31 +201,51 @@ static irqreturn_t sp7350_display_irq_fe(int irq, void *param)
 
 static irqreturn_t sp7350_display_irq_int1(int irq, void *param)
 {
-	//pr_info("%s\n", __func__);
-
 	return IRQ_HANDLED;
 }
 
 static irqreturn_t sp7350_display_irq_int2(int irq, void *param)
 {
-	//pr_info("%s\n", __func__);
-
 	return IRQ_HANDLED;
 }
 
-static const char * const mipitx_format_str[] = {
-	"DSI-RGB565/CSI-16bits", "DSI-RGB666-18bits", "DSI-RGB666-24bits",
-	"DSI-RGB888/CSI-24bits", "CSI-YUV422-20bits", "none", "none", "none"};
+static const char * const mipitx_format_str_dsi[] = {
+	"DSI-RGB565-16bits", "DSI-RGB666-18bits", "DSI-RGB666-24bits",
+	"DSI-RGB888-24bits", "none", "none", "none", "none"};
+
+static const char * const mipitx_format_str_csi[] = {
+	"CSI-RGB565-16bits", "CSI-YUV422-16bits", "CSI-YUV422-20bits",
+	"CSI-RGB888-24bits", "none", "none", "none", "none"};
 
 static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 {
 	u32 osd0_res[5], osd1_res[5], osd2_res[5], osd3_res[5];
 	u32 vpp0_res[7];
 	u32 out_res[3];
-	u32 mipitx_lane;
-	u32 mipitx_format;
+	u32 mipitx_lane, mipitx_clk_edge;
+	u32 mipitx_sync_timing, mipitx_format;
+	//int ret, i;
 	int ret;
+	const char *connect_dev_name = "null_dev";
 
+	/*
+	 * get connect_dev_name
+	 */
+	ret = of_property_read_string_index(disp_dev->pdev->of_node, "sp7350,dev_name", 0, &connect_dev_name);
+	if(!strcmp("null_dev", connect_dev_name)) {
+		disp_dev->mipitx_dev_id = 0x88888888;
+		pr_err("video out not set\n");
+	}
+	if(!strcmp("HXM0686TFT-001", connect_dev_name))
+		disp_dev->mipitx_dev_id = 0x00001000;
+	else
+		disp_dev->mipitx_dev_id = 0x00000000;
+	
+	pr_info("connect_dev_name %s\n", connect_dev_name);
+
+	/*
+	 * set osd0_layer (offset & resolution & format)
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 			"sp7350,osd0_layer", osd0_res, 5);
 	if (ret) {
@@ -230,15 +259,12 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->osd_res[0].y_ofs = osd0_res[1];
 		disp_dev->osd_res[0].width = osd0_res[2];
 		disp_dev->osd_res[0].height = osd0_res[3];
-		disp_dev->osd_res[0].color_mode = osd0_res[4];
+		disp_dev->osd_res[0].color_mode = osd0_res[4];	
 	}
-	//pr_info("  osd0 width/height/cmod = (%d %d) %d %d %d\n",
-	//	disp_dev->osd_res[0].x_ofs,
-	//	disp_dev->osd_res[0].y_ofs,
-	//	disp_dev->osd_res[0].width,
-	//	disp_dev->osd_res[0].height,
-	//	disp_dev->osd_res[0].color_mode);
 
+	/*
+	 * set osd1_layer (offset & resolution & format)
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 		"sp7350,osd1_layer", osd1_res, 5);
 	if (ret) {
@@ -254,13 +280,10 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->osd_res[1].height = osd1_res[3];
 		disp_dev->osd_res[1].color_mode = osd1_res[4];
 	}
-	//pr_info("  osd1 width/height/cmod = (%d %d) %d %d %d\n",
-	//	disp_dev->osd_res[1].x_ofs,
-	//	disp_dev->osd_res[1].y_ofs,
-	//	disp_dev->osd_res[1].width,
-	//	disp_dev->osd_res[1].height,
-	//	disp_dev->osd_res[1].color_mode);
 
+	/*
+	 * set osd2_layer (offset & resolution & format)
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 		"sp7350,osd2_layer", osd2_res, 5);
 	if (ret) {
@@ -276,13 +299,10 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->osd_res[2].height = osd2_res[3];
 		disp_dev->osd_res[2].color_mode = osd2_res[4];
 	}
-	//pr_info("  osd2 width/height/cmod = (%d %d) %d %d %d\n",
-	//	disp_dev->osd_res[2].x_ofs,
-	//	disp_dev->osd_res[2].y_ofs,
-	//	disp_dev->osd_res[2].width,
-	//	disp_dev->osd_res[2].height,
-	//	disp_dev->osd_res[2].color_mode);
 
+	/*
+	 * set osd3_layer (offset & resolution & format)
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 		"sp7350,osd3_layer", osd3_res, 5);
 	if (ret) {
@@ -298,13 +318,22 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->osd_res[3].height = osd3_res[3];
 		disp_dev->osd_res[3].color_mode = osd3_res[4];
 	}
-	//pr_info("  osd3 width/height/cmod = (%d %d) %d %d %d\n",
-	//	disp_dev->osd_res[3].x_ofs,
-	//	disp_dev->osd_res[3].y_ofs,
-	//	disp_dev->osd_res[3].width,
-	//	disp_dev->osd_res[3].height,
-	//	disp_dev->osd_res[3].color_mode);
 
+	#if 0
+	for (i = 0; i < SP_DISP_MAX_OSD_LAYER; i++) {
+		pr_info("  osd%d width/height/cmod = (%d %d) %d %d %d\n",
+			i,
+			disp_dev->osd_res[i].x_ofs,
+			disp_dev->osd_res[i].y_ofs,
+			disp_dev->osd_res[i].width,
+			disp_dev->osd_res[i].height,
+			disp_dev->osd_res[i].color_mode);
+	}
+	#endif
+
+	/*
+	 * set vpp0_layer (offset & resolution & format)
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 		"sp7350,vpp0_layer", vpp0_res, 7);
 	if (ret) {
@@ -329,16 +358,21 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		if ((vpp0_res[1] + vpp0_res[3]) > vpp0_res[5])
 			pr_info("  warning (y_ofs + crop_h) > input_h!\n");
 	}
-	//pr_info("  vpp0 (x,y) (xlen,ylen) = (%d %d)(%d %d)\n",
-	//	disp_dev->vpp_res[0].x_ofs,
-	//	disp_dev->vpp_res[0].y_ofs,
-	//	disp_dev->vpp_res[0].crop_w,
-	//	disp_dev->vpp_res[0].crop_h);
-	//pr_info("  vpp0 width/height/cmod = %d %d %d\n",
-	//	disp_dev->vpp_res[0].width,
-	//	disp_dev->vpp_res[0].height,
-	//	disp_dev->vpp_res[0].color_mode);
+	#if 0
+	pr_info("  vpp0 (x,y) (xlen,ylen) = (%d %d)(%d %d)\n",
+		disp_dev->vpp_res[0].x_ofs,
+		disp_dev->vpp_res[0].y_ofs,
+		disp_dev->vpp_res[0].crop_w,
+		disp_dev->vpp_res[0].crop_h);
+	pr_info("  vpp0 width/height/cmod = %d %d %d\n",
+		disp_dev->vpp_res[0].width,
+		disp_dev->vpp_res[0].height,
+		disp_dev->vpp_res[0].color_mode);
+	#endif
 
+	/*
+	 * set mipitx output type & resolution
+	 */
 	ret = of_property_read_u32_array(disp_dev->pdev->of_node,
 		"sp7350,disp_output", out_res, 3);
 	if (ret) {
@@ -350,11 +384,16 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->out_res.height = out_res[1];
 		disp_dev->out_res.mipitx_mode = out_res[2];
 	}
+	#if 0
 	pr_info("  mipitx width/height/mod = %d %d MIPITX %s\n",
 		disp_dev->out_res.width,
 		disp_dev->out_res.height,
 		disp_dev->out_res.mipitx_mode?"CSI":"DSI");
+	#endif
 
+	/*
+	 * set mipitx_lane
+	 */
 	ret = of_property_read_u32(disp_dev->pdev->of_node,
 		"sp7350,disp_mipitx_lane", &mipitx_lane);
 	if (ret)
@@ -365,6 +404,32 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 	if ((mipitx_lane != 0x1) && (mipitx_lane != 0x2) && (mipitx_lane != 0x4))
 		disp_dev->mipitx_lane = 4;//4 lane;
 
+	/*
+	 * set mipitx_clk_edge
+	 */
+	ret = of_property_read_u32(disp_dev->pdev->of_node,
+		"sp7350,disp_mipitx_clk_edge", &mipitx_clk_edge);
+	if (ret)
+		disp_dev->mipitx_clk_edge = 0; //Raising Edge
+	else
+		disp_dev->mipitx_clk_edge = mipitx_clk_edge;
+
+	/*
+	 * set mipitx_sync_timing
+	 */
+	ret = of_property_read_u32(disp_dev->pdev->of_node,
+		"sp7350,disp_mipitx_sync_timing", &mipitx_sync_timing);
+	if (ret)
+		disp_dev->mipitx_sync_timing = 0; //Sync Pulse
+	else
+		disp_dev->mipitx_sync_timing = mipitx_sync_timing;
+
+	if (mipitx_sync_timing >= 0x2)
+		disp_dev->mipitx_sync_timing = 1; //Sync event
+
+	/*
+	 * set mipitx_format
+	 */
 	ret = of_property_read_u32(disp_dev->pdev->of_node,
 		"sp7350,disp_mipitx_format", &mipitx_format);
 	if (ret)
@@ -372,29 +437,52 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 	else
 		disp_dev->mipitx_format = mipitx_format;
 
-	if (mipitx_format >= 0x5)
+	if (mipitx_format >= 0x4)
 		disp_dev->mipitx_format = 3;//DSI RGB888 or CSI_24BITS
 
 	/*
 	 * decide mipitx_data_bit based on mipitx_format
 	 */
-	if (disp_dev->mipitx_format == 0x0)
-		disp_dev->mipitx_data_bit = 16;
-	else if (disp_dev->mipitx_format == 0x1)
-		disp_dev->mipitx_data_bit = 18;
-	else if (disp_dev->mipitx_format == 0x2)
-		disp_dev->mipitx_data_bit = 24;
-	else if (disp_dev->mipitx_format == 0x3)
-		disp_dev->mipitx_data_bit = 24;
-	else if (disp_dev->mipitx_format == 0x4)
-		disp_dev->mipitx_data_bit = 20;
-	else
-		disp_dev->mipitx_data_bit = 24;
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI) {
+		if (disp_dev->mipitx_format == 0x0)
+			disp_dev->mipitx_data_bit = 16;
+		else if (disp_dev->mipitx_format == 0x1)
+			disp_dev->mipitx_data_bit = 18;
+		else if (disp_dev->mipitx_format == 0x2)
+			disp_dev->mipitx_data_bit = 24;
+		else if (disp_dev->mipitx_format == 0x3)
+			disp_dev->mipitx_data_bit = 24;
+		else
+			disp_dev->mipitx_data_bit = 24;
+	} else if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_CSI) {
+		if (disp_dev->mipitx_format == 0x0)
+			disp_dev->mipitx_data_bit = 16;
+		else if (disp_dev->mipitx_format == 0x1)
+			disp_dev->mipitx_data_bit = 16;
+		else if (disp_dev->mipitx_format == 0x2)
+			disp_dev->mipitx_data_bit = 20;
+		else if (disp_dev->mipitx_format == 0x3)
+			disp_dev->mipitx_data_bit = 24;
+		else
+			disp_dev->mipitx_data_bit = 24;
+	}
 
-	pr_info("  mipitx %d lane %s data_bits %d\n",
-		disp_dev->mipitx_lane,
-		mipitx_format_str[disp_dev->mipitx_format],
-		disp_dev->mipitx_data_bit);
+	#if 0
+	pr_info("  mipitx set (%s)&(%s)\n",
+		disp_dev->mipitx_clk_edge?"Falling Edge":"Raising Edge",
+		disp_dev->mipitx_sync_timing?"Sync Event":"Sync Pulse");
+
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI)
+		pr_info("  mipitx %d lane %s data_bits %d\n",
+			disp_dev->mipitx_lane,
+			mipitx_format_str_dsi[disp_dev->mipitx_format],
+			disp_dev->mipitx_data_bit);
+	else if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_CSI)
+		pr_info("  mipitx %d lane %s data_bits %d\n",
+			disp_dev->mipitx_lane,
+			mipitx_format_str_csi[disp_dev->mipitx_format],
+			disp_dev->mipitx_data_bit);
+	#endif
 
 	return ret;
 }
@@ -415,6 +503,9 @@ static int sp7350_display_probe(struct platform_device *pdev)
 
 	disp_dev->pdev = dev;
 	gdisp_dev = disp_dev;
+
+	// Set the driver data in platform device.
+	platform_set_drvdata(pdev, disp_dev);
 
 	/*
 	 * request irq
@@ -457,22 +548,26 @@ static int sp7350_display_probe(struct platform_device *pdev)
 		pr_err("request_irq fail\n");
 
 	/*
+	 * get reset gpio for MIPITX DSI (optional)
+	 */
+	disp_dev->reset_gpio = devm_gpiod_get(&pdev->dev, "reset", GPIOD_OUT_HIGH);
+	//if (IS_ERR(disp_dev->reset_gpio))
+	//	pr_err("reset_gpio not found\n");
+
+	/*
 	 * get reg base resource
 	 */
-	//pr_info("%s: disp probe reg base\n", __func__);
-	//disp_dev->base = devm_platform_ioremap_resource(pdev, 0);
-	//if (IS_ERR(disp_dev->base))
-	//	return PTR_ERR(disp_dev->base);
-
 	disp_dev->base = devm_platform_get_and_ioremap_resource(pdev, 0, &res);
 	if (IS_ERR(disp_dev->base))
 		return dev_err_probe(&pdev->dev, PTR_ERR(disp_dev->base), "reg base not found\n");
 
+	disp_dev->ao_moon3 = devm_platform_get_and_ioremap_resource(pdev, 1, &res);
+	if (IS_ERR(disp_dev->ao_moon3))
+		return dev_err_probe(&pdev->dev, PTR_ERR(disp_dev->ao_moon3), "reg ao_moon3 not found\n");
+
 	/*
 	 * init clk
 	 */
-	//pr_info("%s: disp probe clk\n", __func__);
-
 	for (i = 0; i < 16; i++) {
 		disp_dev->disp_clk[i] = devm_clk_get(&pdev->dev, NULL);
 		//pr_info("default clk[%d] %ld\n", i, clk_get_rate(disp_dev->disp_clk[i]));
@@ -491,40 +586,43 @@ static int sp7350_display_probe(struct platform_device *pdev)
 
 	/*
 	 * get all necessary resolution from dts
-	 *
 	 */
 	sp7350_resolution_get(disp_dev);
 
 	//dmix must first init
-	//pr_info("%s: init dmix ...\n", __func__);
 	sp7350_dmix_init();
-	//pr_info("%s: init tgen ...\n", __func__);
+
 	sp7350_tgen_init();
-	//pr_info("%s: init tcon ...\n", __func__);
+	
 	sp7350_tcon_init();
-	//pr_info("%s: init mipitx ...\n", __func__);
-	sp7350_mipitx_init();
-	//pr_info("%s: init osd ...\n", __func__);
+
 	sp7350_osd_init();
-	//pr_info("%s: init vpp ...\n", __func__);
+
 	sp7350_vpp_init();
 
-	//pr_info("%s: init dmix layer ...\n", __func__);
 	/* dmix setting
 	 * L6   L5   L4   L3   L2   L1   BG
 	 * OSD0 OSD1 OSD2 OSD3 ---- VPP0 PTG
 	 */
-	sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_BLENDING);
-	sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_BLENDING);
-	sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_BLENDING);
-	sp7350_dmix_layer_init(SP7350_DMIX_L3, SP7350_DMIX_OSD3, SP7350_DMIX_BLENDING);
-	sp7350_dmix_layer_init(SP7350_DMIX_L1, SP7350_DMIX_VPP0, SP7350_DMIX_BLENDING);
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI) {
+		sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_BLENDING);
+		sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_BLENDING);
+		sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_BLENDING);
+		sp7350_dmix_layer_init(SP7350_DMIX_L3, SP7350_DMIX_OSD3, SP7350_DMIX_BLENDING);
+		sp7350_dmix_layer_init(SP7350_DMIX_L1, SP7350_DMIX_VPP0, SP7350_DMIX_BLENDING);
+	} else {
+		sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L3, SP7350_DMIX_OSD3, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L1, SP7350_DMIX_VPP0, SP7350_DMIX_BLENDING);
+	}
+	//sp7350_dmix_all_layer_info();
+	sp7350_dmix_layer_cfg_store();
 
 	/*
 	 * v4l2 init for osd/vpp layers
-	 *
 	 */
-	//pr_info("%s: register v4l2 ...\n", __func__);
 	#ifdef SP_DISP_V4L2_SUPPORT
 	ret = sp7350_v4l2_initialize(&pdev->dev, disp_dev);
 	if (ret)
@@ -542,31 +640,78 @@ static int sp7350_display_probe(struct platform_device *pdev)
 	}
 	#endif
 
-	//pr_info("%s: set osd layer ...\n", __func__);
-	//TBD , osd_res[x] != out_res is acceptable
-	//disp_dev->out_res.width = disp_dev->osd_res[0].width;
-	//disp_dev->out_res.height = disp_dev->osd_res[0].height;
+	/*
+	 * init resolution setting for osd layers
+	 */
 	sp7350_osd_resolution_init(disp_dev);
 
-	//pr_info("%s: set vpp layer ...\n", __func__);
+	/*
+	 * init resolution setting for vpp layers
+	 */
 	sp7350_vpp_resolution_init(disp_dev);
 
-	//pr_info("%s: set mipitx ...\n", __func__);
-	sp7350_tgen_timing_set();
-	//sp7350_tgen_timing_get();
+	#ifdef SP_DISP_V4L2_SUPPORT
+	/*
+	 * init layer setting for v4l2
+	 */
+	for (i = 0; i < SP_DISP_MAX_DEVICES; i++) {
+		if (i == 4) {
+			/* for vpp layer */
+			disp_dev->dev[i]->fmt.fmt.pix.width = disp_dev->vpp_res[0].width;
+			disp_dev->dev[i]->fmt.fmt.pix.height = disp_dev->vpp_res[0].height;
 
-	//sp7350_tcon_timing_get();
-	sp7350_tcon_timing_set();
-	//sp7350_tcon_timing_get();
+			if (disp_dev->vpp_res[0].color_mode == SP7350_VPP_IMGREAD_DATA_FMT_UYVY)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_UYVY;
+			else if (disp_dev->vpp_res[0].color_mode == SP7350_VPP_IMGREAD_DATA_FMT_YUY2)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+			else if (disp_dev->vpp_res[0].color_mode == SP7350_VPP_IMGREAD_DATA_FMT_NV16)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV16;
+			else if (disp_dev->vpp_res[0].color_mode == SP7350_VPP_IMGREAD_DATA_FMT_NV24)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV24;
+			else if (disp_dev->vpp_res[0].color_mode == SP7350_VPP_IMGREAD_DATA_FMT_NV12)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_NV12;
+			else
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+		} else {
+			/* for osd layers */
+			disp_dev->dev[i]->fmt.fmt.pix.width = disp_dev->osd_res[i].width;
+			disp_dev->dev[i]->fmt.fmt.pix.height = disp_dev->osd_res[i].height;
 
-	sp7350_mipitx_timing_set();
-	//sp7350_mipitx_timing_get();
+			if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_8BPP)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_GREY;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_YUY2)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_RGB565)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB565;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_ARGB1555)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB555;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_RGBA4444)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB444;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_ARGB4444)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB444;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_RGBA8888)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ABGR32;
+			else if (disp_dev->osd_res[i].color_mode == SP7350_OSD_COLOR_MODE_ARGB8888)
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
+			else
+				disp_dev->dev[i]->fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_ARGB32;
+		}
+		disp_dev->dev[i]->fmt.type = V4L2_BUF_TYPE_VIDEO_OUTPUT;
+		disp_dev->dev[i]->fmt.fmt.pix.field = V4L2_FIELD_NONE;
+		disp_dev->dev[i]->fmt.fmt.pix.colorspace = V4L2_COLORSPACE_JPEG;
+		disp_dev->dev[i]->fmt.fmt.pix.priv = 0;
+	}
+	#endif
 
-	sp7350_mipitx_phy_set();
-	//sp7350_mipitx_phy_get();
+	/*
+	 * init MIPITX DSI or CSI output setting
+	 */
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI)
+		sp7350_mipitx_phy_init_dsi();
+	else
+		sp7350_mipitx_phy_init_csi();
 
-	platform_set_drvdata(pdev, disp_dev);
-
+	
 #if defined(CONFIG_VIDEO_SP7350_DISP_DEBUG)
 	/*
 	 * init debug fs

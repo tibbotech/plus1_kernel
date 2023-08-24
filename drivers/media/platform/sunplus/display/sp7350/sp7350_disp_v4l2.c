@@ -21,7 +21,7 @@
 #include "sp7350_disp_regs.h"
 #include "sp7350_display.h"
 
-extern int sp7350_vpp_resolution_init(struct sp_disp_device *disp_dev);
+extern int sp7350_vpp_restore(struct sp_disp_device *disp_dev);
 
 static unsigned int allocator;
 module_param(allocator, uint, 0444);
@@ -35,7 +35,8 @@ MODULE_PARM_DESC(allocator, " memory allocator selection, default is 0.\n"
 #define DISP_OSD3_NAME	"sp_disp_osd3"
 #define DISP_VPP0_NAME	"sp_disp_vpp0"
 
-static void sp_print_list(struct list_head *head)
+//static void sp_print_list(struct list_head *head)
+void sp_print_list(struct list_head *head)
 {
 	struct list_head *listptr;
 	struct videobuf_buffer *entry;
@@ -44,8 +45,8 @@ static void sp_print_list(struct list_head *head)
 	//pr_info("(HEAD addr =  %px, next = %px, prev = %px)\n", head, head->next, head->prev);
 	list_for_each(listptr, head) {
 		entry = list_entry(listptr, struct videobuf_buffer, stream);
-		pr_info("list addr = %px | next = %px | prev = %px\n", &entry->stream, entry->stream.next,
-			 entry->stream.prev);
+		//pr_info("list addr = %px | next = %px | prev = %px\n", &entry->stream, entry->stream.next,
+		//	 entry->stream.prev);
 	}
 	//pr_info("********************************************************\n");
 }
@@ -53,37 +54,23 @@ static void sp_print_list(struct list_head *head)
 static int sp_disp_open(struct file *file)
 {
 	struct sp_disp_device *disp_dev = video_drvdata(file);
-	struct video_device *vdev = video_devdata(file);
-	struct sp_disp_fh *fh;
-
-	pr_info("%s\n", __func__);
-
-	/* Allocate memory for the file handle object */
-	fh = kmalloc(sizeof(struct sp_disp_device), GFP_KERNEL);
-	if (!fh)
-		return -ENOMEM;
-
-	/* store pointer to fh in private_data member of file */
-	file->private_data = fh;
-	fh->disp_dev = disp_dev;
-	v4l2_fh_init(&fh->fh, vdev);
+	int ret;
 
 	mutex_lock(&disp_dev->lock);
-	/* Set io_allowed member to false */
-	fh->io_allowed = 0;
-	v4l2_fh_add(&fh->fh);
+
+	ret = v4l2_fh_open(file);
+	if (ret)
+		pr_err("v4l2_fh_open failed!\n");
+	
 	mutex_unlock(&disp_dev->lock);
 
-	return 0;
-
+	return ret;
 }
 
 static int sp_disp_release(struct file *file)
 {
 	struct sp_disp_device *disp_dev = video_drvdata(file);
 	int ret;
-
-	pr_info("%s\n", __func__);
 
 	mutex_lock(&disp_dev->lock);
 
@@ -140,8 +127,6 @@ static int sp_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers,
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 	unsigned int size = 0;
 
-	pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__, layer->video_dev.name);
-
 	dev_id = sp_get_device_id(vq);
 
 	if (disp_dev->dev[dev_id])
@@ -161,8 +146,6 @@ static int sp_queue_setup(struct vb2_queue *vq, unsigned int *nbuffers,
 	if ((vq->num_buffers + *nbuffers) < MIN_BUFFERS)
 		*nbuffers = MIN_BUFFERS - vq->num_buffers;
 
-	pr_info("[%s:%d] count = %u, size = %u\n", __func__, __LINE__, *nbuffers, sizes[0]);
-
 	return 0;
 }
 
@@ -173,8 +156,6 @@ static int sp_buf_prepare(struct vb2_buffer *vb)
 	struct sp_disp_layer *layer = vb2_get_drv_priv(q);
 	unsigned long size = layer->fmt.fmt.pix.sizeimage;
 	unsigned long addr;
-
-	pr_info("[%s:%d] buf size = %ld\n", __func__, __LINE__, size);
 
 	vb2_set_plane_payload(vb, 0, layer->fmt.fmt.pix.sizeimage);
 
@@ -198,8 +179,6 @@ static void sp_buf_queue(struct vb2_buffer *vb)
 	struct sp_disp_device *disp = layer->disp_dev;
 	struct sp_disp_buffer *buf = container_of(vbuf, struct sp_disp_buffer, vb);
 	unsigned long flags = 0;
-
-	pr_info("[%s:%d] buf queue\n", __func__, __LINE__);
 
 	// Add the buffer to the DMA queue.
 	spin_lock_irqsave(&disp->dma_queue_lock, flags);
@@ -228,8 +207,6 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	dev_id = sp_get_device_id(vq);
 
-	pr_info("[%s:%d] Layer name = %s , count = %d\n", __func__, __LINE__, layer->video_dev.name, count);
-
 	spin_lock_irqsave(&disp_dev->dma_queue_lock, flags);
 
 	/* Get the next frame from the buffer queue */
@@ -243,68 +220,55 @@ static int sp_start_streaming(struct vb2_queue *vq, unsigned int count)
 
 	spin_unlock_irqrestore(&disp_dev->dma_queue_lock, flags);
 
+	if ((dev_id >= SP_DISP_DEVICE_0) && (dev_id <= SP_DISP_DEVICE_4))
+		sp7350_dmix_layer_cfg_set(dev_id);
+
 	if ((dev_id >= SP_DISP_DEVICE_0) && (dev_id <= SP_DISP_DEVICE_3)) {
-		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32) {
-			pr_info("set fmt = V4L2_PIX_FMT_ARGB32\n");
+		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB32)
 			info.color_mode = 0xe;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32) {
-			pr_info("set fmt = V4L2_PIX_FMT_ABGR32\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ABGR32)
 			info.color_mode = 0xd;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444) {
-			pr_info("set fmt = V4L2_PIX_FMT_ARGB444\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB444)
 			info.color_mode = 0xb;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444) {
-			pr_info("set fmt = V4L2_PIX_FMT_RGB444\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB444)
 			info.color_mode = 0xa;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555) {
-			pr_info("set fmt = V4L2_PIX_FMT_ARGB555\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_ARGB555)
 			info.color_mode = 0x9;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565) {
-			pr_info("set fmt = V4L2_PIX_FMT_RGB565\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_RGB565)
 			info.color_mode = 0x8;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
-			pr_info("set fmt = V4L2_PIX_FMT_YUYV\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 			info.color_mode = 0x4;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8) {
-			pr_info("set fmt = V4L2_PIX_FMT_PAL8\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_PAL8)
 			info.color_mode = 0x2;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY) {
-			pr_info("set fmt = V4L2_PIX_FMT_GREY\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_GREY)
 			info.color_mode = 0x2;
-		}
+		else
+			info.color_mode = 0xe;
 
 		info.width = layer->fmt.fmt.pix.width;
 		info.height = layer->fmt.fmt.pix.height;
-		info.buf_addr = addr;
-
-		pr_info("[%s:%d] width = %d , height = %d\n", __func__, __LINE__,
-			info.width, info.height);
-		pr_info("[%s:%d] addr = 0x%08lx\n", __func__, __LINE__, addr);
+		info.buf_addr_phy = (u32)addr;
 
 		sp7350_osd_layer_set(&info, dev_id);
 
 	} else if (dev_id == SP_DISP_DEVICE_4) {
-		pr_info("[%s:%d] width = %d , height = %d\n", __func__, __LINE__,
-			layer->fmt.fmt.pix.width, layer->fmt.fmt.pix.height);
-		pr_info("[%s:%d] addr = 0x%08lx\n", __func__, __LINE__, addr);
-
-		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12) {
-			pr_info("set fmt = V4L2_PIX_FMT_NV12\n");
+		if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV12)
 			yuv_fmt = 0x7;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16) {
-			pr_info("set fmt = V4L2_PIX_FMT_NV16\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV16)
 			yuv_fmt = 0x3;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV24) {
-			pr_info("set fmt = V4L2_PIX_FMT_NV24\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_NV24)
 			yuv_fmt = 0x6;
-		} else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV) {
-			pr_info("set fmt = V4L2_PIX_FMT_YUYV\n");
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_YUYV)
 			yuv_fmt = 0x2;
-		}
+		else if (layer->fmt.fmt.pix.pixelformat == V4L2_PIX_FMT_UYVY)
+			yuv_fmt = 0x1;			
+		else
+			yuv_fmt = 0x2;
+
 		/*
 		 * set vpp layer for imgread block
 		 */
-		sp7350_vpp_imgread_set((u32)virt_to_phys((unsigned long *)addr),
+		sp7350_vpp_imgread_set((u32)addr,
 				disp_dev->vpp_res[0].x_ofs,
 				disp_dev->vpp_res[0].y_ofs,
 				layer->fmt.fmt.pix.width,
@@ -333,9 +297,6 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 	struct sp_disp_buffer *buf;
 	unsigned long flags;
 
-	pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-		layer->video_dev.name);
-
 	if (!layer->streaming) {
 		pr_info("Device has stopped already!\n");
 		return;
@@ -343,10 +304,13 @@ static void sp_stop_streaming(struct vb2_queue *vq)
 
 	dev_id = sp_get_device_id(vq);
 
+	if ((dev_id >= SP_DISP_DEVICE_0) && (dev_id <= SP_DISP_DEVICE_4))
+		sp7350_dmix_layer_cfg_restore();
+
 	if (dev_id <= SP_DISP_DEVICE_3)
 		sp7350_osd_header_clear(dev_id);
 
-	sp7350_vpp_resolution_init(disp_dev);
+	sp7350_vpp_restore(disp_dev);
 
 	layer->streaming = 0;
 
@@ -406,9 +370,6 @@ static int sp_vidioc_querycap(struct file *file, void *priv,
 	dev_id = sp_get_dev_id(fh);
 
 	if (disp_dev->dev[dev_id]) {
-		pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-			disp_dev->dev[dev_id]->video_dev.name);
-
 		strlcpy(vcap->driver, "SP Video Driver", sizeof(vcap->driver));
 		strlcpy(vcap->card, "SP DISPLAY Card", sizeof(vcap->card));
 		vcap->device_caps = V4L2_CAP_VIDEO_OUTPUT | V4L2_CAP_STREAMING;
@@ -436,10 +397,6 @@ static int sp_display_g_fmt(struct file *file, void *priv,
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 	struct v4l2_format *fmt1 = NULL;
 
-	char fmtstr[8];
-
-	memset(fmtstr, 0, 8);
-
 	/* If buffer type is video output */
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
 		pr_err("[%s:%d] invalid type\n", __func__, __LINE__);
@@ -450,11 +407,6 @@ static int sp_display_g_fmt(struct file *file, void *priv,
 
 	if (disp_dev->dev[dev_id]) {
 		fmt1 = &disp_dev->dev[dev_id]->fmt;
-		pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-			disp_dev->dev[dev_id]->video_dev.name);
-
-		memcpy(fmtstr, &disp_dev->dev[dev_id]->fmt.fmt.pix.pixelformat, 4);
-		pr_info("[%s:%d] cur fmt = %s\n", __func__, __LINE__, fmtstr);
 
 		/* Fill in the information about format */
 		fmt->fmt.pix = fmt1->fmt.pix;
@@ -552,7 +504,7 @@ static struct sp_fmt vpp_formats[] = {
 		.fourcc   = V4L2_PIX_FMT_NV12,
 		.width    = 720,
 		.height   = 480,
-		.depth    = 16,
+		.depth    = 12,
 		.walign   = 1,
 		.halign   = 1,
 	},
@@ -577,6 +529,15 @@ static struct sp_fmt vpp_formats[] = {
 	{
 		.name     = "YUYV", /* vpp_format = YUY2 */
 		.fourcc   = V4L2_PIX_FMT_YUYV,
+		.width    = 720,
+		.height   = 480,
+		.depth    = 16,
+		.walign   = 1,
+		.halign   = 1,
+	},
+	{
+		.name     = "UYVY", /* vpp0_format = UYVY */
+		.fourcc   = V4L2_PIX_FMT_UYVY,
 		.width    = 720,
 		.height   = 480,
 		.depth    = 16,
@@ -623,90 +584,44 @@ static int sp_display_enum_fmt(struct file *file, void  *priv,
 
 	dev_id = sp_get_dev_id(fh);
 
-	//pr_info("[%s:%d] sp_display_enum_fmt , name = %s\n", __func__, __LINE__,
-	//	disp_dev->dev[dev_id]->video_dev.name);
-
 	if (disp_dev->dev[dev_id]) {
 		if (!(strcmp(DISP_OSD0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
-			if (fmtdesc->index == 0) {
-				pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-					disp_dev->dev[dev_id]->video_dev.name);
-				pr_info("[%s:%d] Support-formats = %ld\n", __func__, __LINE__,
-					ARRAY_SIZE(osd_formats));
-			}
-
-			if (fmtdesc->index >= ARRAY_SIZE(osd_formats)) {
-				//pr_err("[%s:%d] stop\n", __func__, __LINE__);
+			if (fmtdesc->index >= ARRAY_SIZE(osd_formats))
 				return -EINVAL;
-			}
+
 			fmt = &osd_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
 		} else if (!(strcmp(DISP_OSD1_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
-			if (fmtdesc->index == 0) {
-				pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-					disp_dev->dev[dev_id]->video_dev.name);
-				pr_info("[%s:%d] Support-formats = %ld\n", __func__, __LINE__,
-					ARRAY_SIZE(osd_formats));
-			}
-
-			if (fmtdesc->index >= ARRAY_SIZE(osd_formats)) {
-				//sp_disp_err("[%s:%d] stop\n", __func__, __LINE__);
+			if (fmtdesc->index >= ARRAY_SIZE(osd_formats))
 				return -EINVAL;
-			}
+
 			fmt = &osd_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
 		} else if (!(strcmp(DISP_OSD2_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
-			if (fmtdesc->index == 0) {
-				pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-					disp_dev->dev[dev_id]->video_dev.name);
-				pr_info("[%s:%d] Support-formats = %ld\n", __func__, __LINE__,
-					ARRAY_SIZE(osd_formats));
-			}
-
-			if (fmtdesc->index >= ARRAY_SIZE(osd_formats)) {
-				//pr_err("[%s:%d] stop\n", __func__, __LINE__);
+			if (fmtdesc->index >= ARRAY_SIZE(osd_formats))
 				return -EINVAL;
-			}
+
 			fmt = &osd_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
 		} else if (!(strcmp(DISP_OSD3_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
-			if (fmtdesc->index == 0) {
-				pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-					disp_dev->dev[dev_id]->video_dev.name);
-				pr_info("[%s:%d] Support-formats = %ld\n", __func__, __LINE__,
-					ARRAY_SIZE(osd_formats));
-			}
-
-			if (fmtdesc->index >= ARRAY_SIZE(osd_formats)) {
-				//pr_err("[%s:%d] stop\n", __func__, __LINE__);
+			if (fmtdesc->index >= ARRAY_SIZE(osd_formats))
 				return -EINVAL;
-			}
+
 			fmt = &osd_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
 		} else if (!(strcmp(DISP_VPP0_NAME, disp_dev->dev[dev_id]->video_dev.name))) {
-			if (fmtdesc->index == 0) {
-				pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__,
-					disp_dev->dev[dev_id]->video_dev.name);
-				pr_info("[%s:%d] Support-formats = %ld\n", __func__, __LINE__,
-					ARRAY_SIZE(vpp_formats));
-			}
-
-			if (fmtdesc->index >= ARRAY_SIZE(vpp_formats)) {
-				//sp_disp_err("[%s:%d] stop\n", __func__, __LINE__);
+			if (fmtdesc->index >= ARRAY_SIZE(vpp_formats))
 				return -EINVAL;
-			}
+
 			fmt = &vpp_formats[fmtdesc->index];
 			strlcpy(fmtdesc->description, fmt->name, sizeof(fmtdesc->description));
 			fmtdesc->pixelformat = fmt->fourcc;
 		} else
 			pr_info("[%s:%d] unknown layer !!\n", __func__, __LINE__);
-
-	} else {
-		pr_info("[%s:%d] disp_dev->dev[%d] empty\n", __func__, __LINE__, dev_id);
 	}
 
 	return 0;
@@ -732,12 +647,10 @@ static int sp_try_format(struct sp_disp_device *disp_dev,
 
 		if (pixfmt->pixelformat == pixfmt1->fourcc) {
 			match = 1;
-			pr_info("[%s:%d] found match\n", __func__, __LINE__);
 			break;
 		}
 	}
 	if (!match) {
-		pr_info("[%s:%d] not found match\n", __func__, __LINE__);
 		return -EINVAL;
 	}
 
@@ -752,8 +665,6 @@ static int sp_display_try_fmt(struct file *file, void *priv,
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
 	int ret;
-
-	pr_info("[%s:%d]\n", __func__, __LINE__);
 
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
 		pr_err("[%s:%d] Invalid V4L2 buffer type!\n", __func__, __LINE__);
@@ -778,11 +689,6 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 	enum sp_disp_device_id dev_id = SP_DISP_DEVICE_0;
 	struct v4l2_pix_format *pixfmt = &fmt->fmt.pix;
 	int ret;
-	char fmtstr[8];
-
-	pr_info("[%s:%d]\n", __func__, __LINE__);
-
-	memset(fmtstr, 0, 8);
 
 	if (fmt->type != V4L2_BUF_TYPE_VIDEO_OUTPUT) {
 		pr_err("[%s:%d] invalid type\n", __func__, __LINE__);
@@ -797,11 +703,6 @@ static int sp_display_s_fmt(struct file *file, void *priv,
 		return ret;
 
 	if (disp_dev->dev[dev_id]) {
-		pr_info("[%s:%d] Layer name = %s\n", __func__, __LINE__, disp_dev->dev[dev_id]->video_dev.name);
-		pr_info("[%s:%d] width  = %d , height = %d\n", __func__, __LINE__, pixfmt->width, pixfmt->height);
-		memcpy(fmtstr, &pixfmt->pixelformat, 4);
-		pr_info("[%s:%d] set fmt = %s\n", __func__, __LINE__, fmtstr);
-
 		disp_dev->dev[dev_id]->fmt.type                 = fmt->type;
 		disp_dev->dev[dev_id]->fmt.fmt.pix.width        = pixfmt->width;
 		disp_dev->dev[dev_id]->fmt.fmt.pix.height       = pixfmt->height;
@@ -839,8 +740,6 @@ int sp7350_v4l2_initialize(struct device *dev,
 {
 	int ret;
 
-	//pr_info("[%s:%d]\n", __func__, __LINE__);
-
 	if (!disp_dev || !dev) {
 		pr_err("Null device pointers.\n");
 		return -ENODEV;
@@ -873,7 +772,6 @@ int sp7350_v4l2_init_multi_layer(int i, struct platform_device *pdev,
 	struct sp_disp_layer *disp_layer = NULL;
 	struct video_device *vbd = NULL;
 
-	//pr_info("init layer for dev[%d]\n", i);
 	/* Allocate memory for four plane display objects */
 
 	disp_dev->dev[i] =
@@ -912,7 +810,6 @@ int sp7350_v4l2_init_multi_layer(int i, struct platform_device *pdev,
 		strlcpy(vbd->name, DISP_VPP0_NAME, sizeof(vbd->name));
 
 	disp_layer->device_id = i;
-	//pr_info("init dev[%d] Layer name = %s\n", i, vbd->name);
 
 	return 0;
 }
@@ -925,7 +822,6 @@ int sp7350_v4l2_reg_multi_layer(int i, struct platform_device *pdev,
 	int ret;
 	int vid_num = 10;
 
-	//pr_info("[%s:%d] sp7350_v4l2_reg_multi_layer\n", __func__, __LINE__);
 	/* Allocate memory for four plane display objects */
 
 	/* initialize vb2 queue */
@@ -961,7 +857,7 @@ int sp7350_v4l2_reg_multi_layer(int i, struct platform_device *pdev,
 		goto err_video_register;
 	}
 
-	//pr_info("reg  dev[%d] to /dev/video%d\n", i, (vid_num + i));
+	//vb2_dma_contig_set_max_seg_size(disp_dev->pdev, DMA_BIT_MASK(32));
 
 	disp_dev->dev[i]->disp_dev = disp_dev;
 	/* set driver private data */

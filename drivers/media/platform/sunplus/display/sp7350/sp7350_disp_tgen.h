@@ -78,7 +78,6 @@ void sp7350_tgen_init(void);
 /*
  * Show SP7350 TGEN Info
  */
-void sp7350_tgen_reg_info(void);
 void sp7350_tgen_decrypt_info(void);
 void sp7350_tgen_resolution_chk(void);
 
@@ -90,7 +89,8 @@ void sp7350_tgen_set_user_int1(u32 count);
 void sp7350_tgen_set_user_int2(u32 count);
 u32 sp7350_tgen_get_current_line_count(void);
 
-void sp7350_tgen_timing_set(void);
+void sp7350_tgen_timing_set_dsi(void);
+void sp7350_tgen_timing_set_csi(void);
 void sp7350_tgen_timing_get(void);
 
 /*

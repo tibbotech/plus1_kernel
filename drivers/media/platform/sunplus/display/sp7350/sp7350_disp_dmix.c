@@ -33,7 +33,6 @@ void sp7350_dmix_init(void)
 	struct sp_disp_device *disp_dev = gdisp_dev;
 	u32 value;
 
-	//pr_info("%s\n", __func__);
 	/* DMIX setting FG_SEL
 	 * L6   L5   L4   L3   L2   L1   BG
 	 * OSD0 OSD1 OSD2 OSD3 ---- VPP0 PTG
@@ -69,7 +68,7 @@ void sp7350_dmix_init(void)
 	 */
 	value = 0;
 	value |= SP7350_DMIX_PTG_BORDER_PATTERN(SP7350_DMIX_PTG_BORDER) |
-		SP7350_DMIX_PTG_BORDER_PIX(SP7350_DMIX_PTG_BORDER_PIX_07);
+		SP7350_DMIX_PTG_BORDER_PIX(SP7350_DMIX_PTG_BORDER_PIX_00);
 	writel(value, disp_dev->base + DMIX_PTG_CONFIG_0); //BackGround only
 	//writel(0x00002000, disp_dev->base + DMIX_PTG_CONFIG_0); //BackGround only
 	//writel(0x00002001, disp_dev->base + DMIX_PTG_CONFIG_0); //BackGround + Border pix = 1
@@ -78,7 +77,7 @@ void sp7350_dmix_init(void)
 	/* DMIX PTG(BackGround Color Setting)
 	 */
 	value =0;
-	value |= SP7350_DMIX_PTG_BLUE;
+	value |= SP7350_DMIX_PTG_BLACK;
 	writel(value, disp_dev->base + DMIX_PTG_CONFIG_2); //red for BackGround
 	//writel(0x004040f0, disp_dev->base + DMIX_PTG_CONFIG_2); //red for BackGround
 	//writel(0x00101010, disp_dev->base + DMIX_PTG_CONFIG_2); //green for BackGround
@@ -92,24 +91,7 @@ void sp7350_dmix_init(void)
 	writel(value, disp_dev->base + DMIX_SOURCE_SEL);
 	//writel(0x00000002, disp_dev->base + DMIX_SOURCE_SEL); //PIXEL_EN_SEL=TCON0(don't change)
 
-	//sp7350_dmix_decrypt_info();
-
 }
-
-void sp7350_dmix_reg_info(void)
-{
-	struct sp_disp_device *disp_dev = gdisp_dev;
-	int i;
-
-	pr_info("DMIX G198 Dump info\n");
-	for (i = 0; i < 8; i++)
-		pr_info("0x%08x 0x%08x 0x%08x 0x%08x\n",
-			readl(disp_dev->base + DMIX_LAYER_CONFIG_0 + (i * 4 + 0) * 4),
-			readl(disp_dev->base + DMIX_LAYER_CONFIG_0 + (i * 4 + 1) * 4),
-			readl(disp_dev->base + DMIX_LAYER_CONFIG_0 + (i * 4 + 2) * 4),
-			readl(disp_dev->base + DMIX_LAYER_CONFIG_0 + (i * 4 + 3) * 4));
-}
-EXPORT_SYMBOL(sp7350_dmix_reg_info);
 
 void sp7350_dmix_decrypt_info(void)
 {
@@ -451,8 +433,8 @@ void sp7350_dmix_layer_set(int fg_sel, int layer_mode)
 			break;
 		}
 	}
-	pr_info("Set layer %s (%s) to %s\n",
-		dmix_layer_name[layer], dmix_fg_sel[fg_sel], dmix_layer_mode[layer_mode]);
+	//pr_info("Set layer %s (%s) to %s\n",
+	//	dmix_layer_name[layer], dmix_fg_sel[fg_sel], dmix_layer_mode[layer_mode]);
 
 	/* Set layer mode */
 	value1 = readl(disp_dev->base + DMIX_LAYER_CONFIG_1);
@@ -461,6 +443,63 @@ void sp7350_dmix_layer_set(int fg_sel, int layer_mode)
 		value1 |= (layer_mode << ((layer - 1) << 1));
 	}
 	writel(value1, disp_dev->base + DMIX_LAYER_CONFIG_1);
+
+}
+
+void sp7350_dmix_layer_cfg_set(int layer_id)
+{
+	/* this is for V4L2 one output test only
+	 * don't use it in case of open over one output
+	 */
+	if (layer_id == 0) {
+		;//TBD
+	} else if (layer_id == 1) {
+		;//TBD
+		//sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_TRANSPARENT);
+	} else if (layer_id == 2) {
+		;//TBD
+		//sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_TRANSPARENT);
+		//sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_TRANSPARENT);
+	} else if (layer_id == 3) {
+		;//TBD
+		//sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_TRANSPARENT);
+		//sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_TRANSPARENT);
+		//sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_TRANSPARENT);
+	} else if (layer_id == 4) {
+		sp7350_dmix_layer_init(SP7350_DMIX_L6, SP7350_DMIX_OSD0, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L5, SP7350_DMIX_OSD1, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L4, SP7350_DMIX_OSD2, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L3, SP7350_DMIX_OSD3, SP7350_DMIX_TRANSPARENT);
+		sp7350_dmix_layer_init(SP7350_DMIX_L1, SP7350_DMIX_VPP0, SP7350_DMIX_BLENDING);
+	} else
+		pr_info("undefined layer\n");
+
+}
+
+void sp7350_dmix_layer_cfg_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value;
+
+	value = readl(disp_dev->base + DMIX_LAYER_CONFIG_0);
+	disp_dev->tmp_dmix.reg[0] = value;
+	value = readl(disp_dev->base + DMIX_LAYER_CONFIG_1);
+	disp_dev->tmp_dmix.reg[1] = value;
+	value = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_0);
+	disp_dev->tmp_dmix.reg[2] = value;
+	value = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_1);
+	disp_dev->tmp_dmix.reg[3] = value;
+
+}
+
+void sp7350_dmix_layer_cfg_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	writel(disp_dev->tmp_dmix.reg[0], disp_dev->base + DMIX_LAYER_CONFIG_0);
+	writel(disp_dev->tmp_dmix.reg[1], disp_dev->base + DMIX_LAYER_CONFIG_1);
+	writel(disp_dev->tmp_dmix.reg[2], disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_0);
+	writel(disp_dev->tmp_dmix.reg[3], disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_1);
 
 }
 
@@ -517,8 +556,8 @@ void sp7350_dmix_plane_alpha_config(struct sp7350_dmix_plane_alpha *plane)
 	struct sp_disp_device *disp_dev = gdisp_dev;
 	u32 value1, value2;
 
-	pr_info("layer%d: En%d, Fix%d, 0x%x\n",
-		plane->layer, plane->enable, plane->fix_alpha, plane->alpha_value);
+	//pr_info("layer%d: En%d, Fix%d, 0x%x\n",
+	//	plane->layer, plane->enable, plane->fix_alpha, plane->alpha_value);
 
 	value1 = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_0);
 	value2 = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_1);

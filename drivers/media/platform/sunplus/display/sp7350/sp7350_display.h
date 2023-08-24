@@ -14,6 +14,7 @@
 extern struct proc_dir_entry *entry;
 extern const struct proc_ops sp_disp_proc_ops;
 #endif
+#include <linux/delay.h>
 
 #include <linux/types.h>
 #include "sp7350_disp_dmix.h"
@@ -25,7 +26,7 @@ extern const struct proc_ops sp_disp_proc_ops;
 
 #define SP_DISP_V4L2_SUPPORT
 //#define SP_DISP_OSD_PARM
-//#define V4L2_TEST_DQBUF
+#define V4L2_TEST_DQBUF
 
 #ifdef SP_DISP_V4L2_SUPPORT
 #include <linux/mutex.h>
@@ -157,6 +158,10 @@ struct sp_disp_out_res {
 	unsigned int mipitx_mode;
 };
 
+struct sp_disp_reg_store {
+	unsigned int reg[32];
+};
+
 /*
  * define for sp7350 display driver debug
  */
@@ -170,6 +175,7 @@ struct sp_disp_device {
 	 * define for read/write register
 	 */
 	void __iomem *base;
+	void __iomem *ao_moon3;
 
 	/* clock */
 	struct clk		*disp_clk[16];
@@ -189,6 +195,14 @@ struct sp_disp_device {
 	u32 mipitx_lane;
 	u32 mipitx_format;
 	u32 mipitx_data_bit;
+	u32 mipitx_clk_edge;
+	u32 mipitx_sync_timing;
+	u32 mipitx_dev_id;
+
+	/*
+	 * define for MIPITX DSI panel reset-gpios
+	 */
+	struct gpio_desc *reset_gpio;
 
 	/*
 	 * define for OSD0 layer connect to sp7350fb driver
@@ -208,6 +222,13 @@ struct sp_disp_device {
 
 	struct sp_disp_layer	*dev[SP_DISP_MAX_DEVICES];
 #endif
+
+	struct sp_disp_reg_store tmp_dmix;
+	struct sp_disp_reg_store tmp_osd0;
+	struct sp_disp_reg_store tmp_osd1;
+	struct sp_disp_reg_store tmp_osd2;
+	struct sp_disp_reg_store tmp_osd3;
+	struct sp_disp_reg_store tmp_vpp0;
 
 #if defined(CONFIG_VIDEO_SP7350_DISP_DEBUG)
 	struct sp7350_debug debug;

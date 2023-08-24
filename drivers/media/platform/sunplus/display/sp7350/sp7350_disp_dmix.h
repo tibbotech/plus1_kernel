@@ -137,9 +137,11 @@ void sp7350_dmix_init(void);
 /*
  * Show SP7350 DMIX Info
  */
-void sp7350_dmix_reg_info(void);
 void sp7350_dmix_decrypt_info(void);
 void sp7350_dmix_all_layer_info(void);
+void sp7350_dmix_layer_cfg_set(int layer_id);
+void sp7350_dmix_layer_cfg_store(void);
+void sp7350_dmix_layer_cfg_restore(void);
 
 /*
  * SP7350 DMIX PTG Settings
