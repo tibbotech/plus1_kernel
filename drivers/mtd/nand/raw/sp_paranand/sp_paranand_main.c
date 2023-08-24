@@ -83,6 +83,12 @@ static struct sp_pnand_chip_timing chip_timing[] = {
 	20, 11, 100, 0, 120, 300, 100, 20, 10, 25,
 	70, 100, 0, 20, 0, 10, 10, 10, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+	{ //MT29F32G08ABAAA 4GiB 3.3V 8-bit
+	30, 20, 20, 20, 0, 50, 30, 0, 0, 0,
+	40, 50, 200, 0, 120, 0, 200, 40, 25, 100,
+	200, 200, 0, 70, 0, 20, 50, 20, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 };
 
@@ -148,6 +154,8 @@ static struct sp_pnand_chip_timing *sp_pnand_scan_timing(struct nand_chip *chip)
 		return &chip_timing[4];
 	else if(strcmp(chip->parameters.model, "K9GBG08U0B 4GiB 3.3V 8-bit") == 0)
 		return &chip_timing[5];
+	else if(strcmp(chip->parameters.model, "MT29F32G08ABAAA 4GiB 3.3V 8-bit") == 0)
+		return &chip_timing[6];
 	else
 		return NULL;
 }
@@ -1386,7 +1394,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	if (IS_ERR(data->dmac)) {
 		ret = PTR_ERR(data->dmac);
 		data->dmac = NULL;
-		return dev_err_probe(dev, ret, "DMA channel request failed\n");
+		return dev_err_probe(dev, ret, "Failed to request DMA channel\n");
 	} else {
 		struct dma_slave_config dmac_cfg = {};
 
@@ -1396,7 +1404,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 		dmac_cfg.dst_addr_width = dmac_cfg.src_addr_width;
 		dmac_cfg.src_maxburst = 16;
 		dmac_cfg.dst_maxburst = 16;
-		dmaengine_slave_config(data->dmac, &dmac_cfg);
+		ret = dmaengine_slave_config(data->dmac, &dmac_cfg);
 		if (ret < 0) {
 			dev_err(dev, "Failed to configure DMA channel\n");
 			dma_release_channel(data->dmac);

@@ -733,7 +733,7 @@ int sp_pnand_read_page(struct nand_chip *chip,
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_pnand_data *data = nand_get_controller_data(chip);
 	int status = 0, chk_data_0xFF, chk_spare_0xFF;
-	int i, ecc_original_setting, generic_original_setting, val;
+	int i, ecc_original_setting, generic_original_setting, val, ret;
 	int real_pg;
 	u8  data_empty, spare_empty;
 	u32 *lbuf;
@@ -750,96 +750,100 @@ int sp_pnand_read_page(struct nand_chip *chip,
 	chk_data_0xFF = chk_spare_0xFF = 0;
 	data_empty = spare_empty = 0;
 
-	if(!rd_pg_w_oob(chip, real_pg, buf, chip->oob_poi)) {
+	if(oob_required)
+		ret = rd_pg_w_oob(chip, real_pg, buf, chip->oob_poi);
+	else
+		ret = rd_pg(chip, real_pg, buf);
+	if(ret)
+		goto out;
 
-		if (data->cmd_status &
-			(CMD_ECC_FAIL_ON_DATA | CMD_ECC_FAIL_ON_SPARE)) {
-			// Store the original setting
-			ecc_original_setting = readl(data->io_base + ECC_CONTROL);
-			generic_original_setting = readl(data->io_base + GENERAL_SETTING);
-			// Disable the ECC engine & HW-Scramble, temporarily.
-			val = readl(data->io_base + ECC_CONTROL);
-			val = val & ~(ECC_EN(0xFF));
-			writel(val, data->io_base + ECC_CONTROL);
-			val = readl(data->io_base + GENERAL_SETTING);
-			val &= ~DATA_SCRAMBLER;
-			writel(val, data->io_base + GENERAL_SETTING);
+	if (data->cmd_status &
+		(CMD_ECC_FAIL_ON_DATA | CMD_ECC_FAIL_ON_SPARE)) {
+		// Store the original setting
+		ecc_original_setting = readl(data->io_base + ECC_CONTROL);
+		generic_original_setting = readl(data->io_base + GENERAL_SETTING);
+		// Disable the ECC engine & HW-Scramble, temporarily.
+		val = readl(data->io_base + ECC_CONTROL);
+		val = val & ~(ECC_EN(0xFF));
+		writel(val, data->io_base + ECC_CONTROL);
+		val = readl(data->io_base + GENERAL_SETTING);
+		val &= ~DATA_SCRAMBLER;
+		writel(val, data->io_base + GENERAL_SETTING);
 
-			if(data->cmd_status==(CMD_ECC_FAIL_ON_DATA|CMD_ECC_FAIL_ON_SPARE))
-			{
-				if(!rd_pg_w_oob(chip, real_pg, buf, chip->oob_poi)) {
-					chk_data_0xFF = chk_spare_0xFF = 1;
-					data_empty = spare_empty = 1;
+		if(data->cmd_status==(CMD_ECC_FAIL_ON_DATA|CMD_ECC_FAIL_ON_SPARE))
+		{
+			if(!rd_pg_w_oob(chip, real_pg, buf, chip->oob_poi)) {
+				chk_data_0xFF = chk_spare_0xFF = 1;
+				data_empty = spare_empty = 1;
+			}
+		}
+		else if(data->cmd_status == CMD_ECC_FAIL_ON_DATA) {
+			if(!rd_pg(chip, real_pg, buf)) {
+				chk_data_0xFF = 1;
+				data_empty = 1;
+			}
+		}
+		else if(data->cmd_status == CMD_ECC_FAIL_ON_SPARE) {
+			if(!rd_oob(chip, real_pg, chip->oob_poi)) {
+				chk_spare_0xFF = 1;
+				spare_empty = 1;
+			}
+		}
+
+		// Restore the ecc original setting & generic original setting.
+		writel(ecc_original_setting, data->io_base + ECC_CONTROL);
+		writel(generic_original_setting, data->io_base + GENERAL_SETTING);
+
+		if(chk_data_0xFF == 1) {
+
+			lbuf = (int *)buf;
+			for (i = 0; i < (mtd->writesize >> 2); i++) {
+				if (*(lbuf + i) != 0xFFFFFFFF) {
+					printk(KERN_ERR "ECC err @ page0x%x real:0x%x\n",
+						data->page_addr, real_pg);
+					data_empty = 0;
+					break;
 				}
 			}
-			else if(data->cmd_status == CMD_ECC_FAIL_ON_DATA) {
-				if(!rd_pg(chip, real_pg, buf)) {
-					chk_data_0xFF = 1;
-					data_empty = 1;
-				}
-			}
-			else if(data->cmd_status == CMD_ECC_FAIL_ON_SPARE) {
-				if(!rd_oob(chip, real_pg, chip->oob_poi)) {
-					chk_spare_0xFF = 1;
-					spare_empty = 1;
-				}
-			}
+			if(data_empty == 1)
+				DBGLEVEL2(sp_pnand_dbg("Data Real 0xFF\n"));
+		}
 
-			// Restore the ecc original setting & generic original setting.
-			writel(ecc_original_setting, data->io_base + ECC_CONTROL);
-			writel(generic_original_setting, data->io_base + GENERAL_SETTING);
-
-			if(chk_data_0xFF == 1) {
-
-				lbuf = (int *)buf;
-				for (i = 0; i < (mtd->writesize >> 2); i++) {
-					if (*(lbuf + i) != 0xFFFFFFFF) {
-						printk(KERN_ERR "ECC err @ page0x%x real:0x%x\n",
-							data->page_addr, real_pg);
-						data_empty = 0;
-						break;
-					}
-				}
-				if(data_empty == 1)
-					DBGLEVEL2(sp_pnand_dbg("Data Real 0xFF\n"));
-			}
-
-			if(chk_spare_0xFF == 1) {
-				//lichun@add, If BI_byte test
-				if (readl(data->io_base + MEM_ATTR_SET) & BI_BYTE_MASK) {
-					for (i = 0; i < mtd->oobsize; i++) {
-						if (*(chip->oob_poi + i) != 0xFF) {
-							printk(KERN_ERR "ECC err for spare(Read page) @");
-							printk(KERN_ERR	"ch:%d ce:%d page0x%x real:0x%x\n",
-								data->cur_chan, data->sel_chip, data->page_addr, real_pg);
-							spare_empty = 0;
-							break;
-						}
-					}
-				}
-				else {
-				//~lichun
-					if(sp_pnand_check_bad_spare(chip, data->page_addr)) {
+		if(chk_spare_0xFF == 1) {
+			//lichun@add, If BI_byte test
+			if (readl(data->io_base + MEM_ATTR_SET) & BI_BYTE_MASK) {
+				for (i = 0; i < mtd->oobsize; i++) {
+					if (*(chip->oob_poi + i) != 0xFF) {
 						printk(KERN_ERR "ECC err for spare(Read page) @");
 						printk(KERN_ERR	"ch:%d ce:%d page0x%x real:0x%x\n",
 							data->cur_chan, data->sel_chip, data->page_addr, real_pg);
 						spare_empty = 0;
+						break;
 					}
 				}
-
-				if(spare_empty == 1)
-					DBGLEVEL2(sp_pnand_dbg("Spare Real 0xFF\n"));
+			}
+			else {
+			//~lichun
+				if(sp_pnand_check_bad_spare(chip, data->page_addr)) {
+					printk(KERN_ERR "ECC err for spare(Read page) @");
+					printk(KERN_ERR	"ch:%d ce:%d page0x%x real:0x%x\n",
+						data->cur_chan, data->sel_chip, data->page_addr, real_pg);
+					spare_empty = 0;
+				}
 			}
 
-			if( (chk_data_0xFF == 1 && data_empty == 0) ||
-				(chk_spare_0xFF == 1 && spare_empty == 0) ) {
-				mtd->ecc_stats.failed++;
-				status = -1;
-			}
+			if(spare_empty == 1)
+				DBGLEVEL2(sp_pnand_dbg("Spare Real 0xFF\n"));
+		}
+
+		if( (chk_data_0xFF == 1 && data_empty == 0) ||
+			(chk_spare_0xFF == 1 && spare_empty == 0) ) {
+			mtd->ecc_stats.failed++;
+			status = -1;
 		}
 	}
+out:
 	data->read_state = 0;
-
 	// Returning the any value isn't allowed, except 0, -EBADMSG, or -EUCLEAN
 	return 0;
 }
@@ -850,7 +854,7 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 	struct mtd_info *mtd = nand_to_mtd(chip);
 	struct sp_pnand_data *data = nand_get_controller_data(chip);
 	struct cmd_feature cmd_f;
-	u8 *p, w_wo_spare = 1;
+	u8 *p;
 	u32 *lbuf;
 	int real_pg;
 	int i, status = 0;
@@ -861,15 +865,7 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 	DBGLEVEL2(sp_pnand_dbg (
 		"w: ch = %d, ce = %d, page = 0x%x, real page:0x%x size = %d, data->column = %d\n",
 		data->cur_chan, data->sel_chip,  data->page_addr, real_pg, mtd->writesize, data->column));
-
 	p = chip->oob_poi;
-	for(i = 0; i < mtd->oobsize; i++) {
-		if( *( p + i) != 0xFF) {
-			w_wo_spare = 0;
-			break;
-		}
-	}
-
 	cmd_f.row_cycle = ROW_ADDR_3CYCLE;
 	cmd_f.col_cycle = COL_ADDR_2CYCLE;
 	cmd_f.cq1 = real_pg | SCR_SEED_VAL1(data->seed_val);
@@ -879,7 +875,7 @@ int sp_pnand_write_page(struct nand_chip *chip, const uint8_t *buf,
 	cmd_f.cq4 = CMD_COMPLETE_EN | CMD_FLASH_TYPE(data->flash_type) | \
 			CMD_START_CE(data->sel_chip) | CMD_SPARE_NUM(data->spare);
 
-	if(w_wo_spare == 0) {
+	if(oob_required) {
 		for(i = 0; i < mtd->oobsize; i += 4) {
 			memcpy(data->io_base + SPARE_SRAM + i, p + i, 4);
 		}
