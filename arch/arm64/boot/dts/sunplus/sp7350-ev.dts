@@ -124,10 +124,10 @@
 			no-map;
 		};
 
-		/* display fb reserve memory: 0x5f600000 ~ 0x5f9fffff, total 64M */
-		fb_disp_reserve: fb@5f600000 {
+		/* display fb reserve memory: 0x5ba00000 ~ 0x5f9fffff, total 64M */
+		fb_disp_reserve: fb@5ba00000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x5f600000 0x0 0x4000000>;
+			reg = <0x0 0x5ba00000 0x0 0x4000000>;
 			no-map;
 		};
 
@@ -2716,11 +2716,11 @@
 			 * 0x4 = 4 lane
 			 */
 		sp7350,disp_mipitx_clk_edge = <0x1>; /* 0x1:Falling Edge */
-			/* 0x0:Raising Edge 
+			/* 0x0:Raising Edge
 			 * 0x1:Falling Edge
 			 */
 		sp7350,disp_mipitx_sync_timing = <0x1>; /* 0x1:Sync Event */
-			/* 0x0:Sync Pulse 
+			/* 0x0:Sync Pulse
 			 * 0x1:Sync Event
 			 */
 		sp7350,disp_mipitx_format = <0x3>; /* 0x3:MIPITX DSI RGB888 */
