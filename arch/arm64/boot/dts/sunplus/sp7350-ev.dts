@@ -24,6 +24,7 @@
 //#define IMX219_IN4
 //#define IMX219_IN5
 //#define TP2815_IN5
+//#define TP2815_TEST_4VC
 //#define AP6256_WIFI
 
 //#define DISP_MIPITX_CSI
@@ -931,7 +932,11 @@
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
 			clocks = <&tp2815_clk>;
+	#ifdef TP2815_TEST_4VC
+			input-channel = <4>;
+	#else
 			input-channel = <1>;
+	#endif
 			input-standard = <0>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_5_pins>;
@@ -2314,7 +2319,11 @@
 #if defined(IMX219_IN5)
 		num_channels = <1>;
 #elif defined(TP2815_IN5)
+	#ifdef TP2815_TEST_4VC
+		num_channels = <4>;
+	#else
 		num_channels = <1>;
+	#endif
 #else
 		num_channels = <4>;
 #endif

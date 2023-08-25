@@ -32,6 +32,7 @@ struct csi2_dev;
 /* Compliler switch */
 //#define MIPI_CSI_BIST		/* Enable MIPI-CSI BIST function */
 //#define MIPI_CSI_XTOR		/* Import RAW10 pattern from MIPI XTOR */
+//#define MIPI_CSI_VC_TEST	/* Set VC in DI with sysfs for testing */
 
 /* Max number on CSI instances that can be in a system */
 #define CSI_MAX_NUM 6
@@ -74,11 +75,17 @@ module_param(bist_mode, uint, 0444);
 MODULE_PARM_DESC(bist_mode, " Internal pattern format selection, default is 0.\n"
 				"\t    0 == Color bar for YUY2 format\n"
 				"\t    1 == Border for YUY2 format\n"
-				"\t    1 == Gray bar for RAW12 format\n");
+				"\t    2 == Gray bar for RAW12 format\n");
 
 static unsigned int bist_ch = 0;
 module_param(bist_ch, uint, 0444);
 MODULE_PARM_DESC(bist_ch, " Internal pattern output channel, default is 0.");
+#endif
+
+#ifdef MIPI_CSI_VC_TEST
+static unsigned int vc = 0;
+module_param(vc, uint, 0444);
+MODULE_PARM_DESC(vc, " Internal pattern output channel, default is 0.");
 #endif
 
 struct csi2_format {
@@ -403,6 +410,19 @@ static void csi2_vc_config(struct csi2_dev *priv)
 	 * CH0_SOL_SYNCWORD, Bit[7:0]
 	 */
 	for (i = 0; i < priv->max_channels; i++) {
+#ifdef MIPI_CSI_VC_TEST
+		if (vc < 4) {
+			/* Set 0 to the VC field of the DI byte to disable Virtual Channel x */
+			set_field(&sof_syncword, (vc<<6|0x00), 0xff<<(i*8)); 	/* Set CHx_SOF_SYNCWORD field */
+			set_field(&eof_syncword, (vc<<6|0x01), 0xff<<(i*8)); 	/* Set CHx_EOF_SYNCWORD field */
+			set_field(&sol_syncword, (vc)		, 0xc0<<(i*8)); 	/* Set CHx_SOL_SYNCWORD field */
+		} else {
+			/* Set VCx to the VC field of the DI byte to enable Virtua Channel x */
+			set_field(&sof_syncword, (i<<6|0x00), 0xff<<(i*8));		/* Set CHx_SOF_SYNCWORD field */
+			set_field(&eof_syncword, (i<<6|0x01), 0xff<<(i*8));		/* Set CHx_EOF_SYNCWORD field */
+			set_field(&sol_syncword, (i)        , 0xc0<<(i*8));		/* Set CHx_SOL_SYNCWORD field */
+		}
+#else
 		if (i < priv->num_channels) {
 			/* Set VCx to the VC field of the DI byte to enable Virtua Channel x */
 			set_field(&sof_syncword, (i<<6|0x00), 0xff<<(i*8));		/* Set CHx_SOF_SYNCWORD field */
@@ -414,6 +434,7 @@ static void csi2_vc_config(struct csi2_dev *priv)
 			set_field(&eof_syncword, (0<<6|0x01), 0xff<<(i*8));		/* Set CHx_EOF_SYNCWORD field */
 			set_field(&sol_syncword, (0)        , 0xc0<<(i*8));		/* Set CHx_SOL_SYNCWORD field */
 		}
+#endif
 	}
 
 	dev_dbg(priv->dev, "sof_syncword: %08x, eof_syncword: %08x, sol_syncword: %08x\n",
@@ -1176,7 +1197,30 @@ static struct attribute *csi2_attributes[] = {
 	&dev_attr_bist_ch.attr,
 	NULL,
 };
+#endif
 
+#ifdef MIPI_CSI_VC_TEST
+static ssize_t csi2_vc_show (struct device *dev, struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", vc);
+}
+
+static ssize_t csi2_vc_store (struct device *dev, struct device_attribute *attr, const char *buf, size_t count)
+{
+	vc = simple_strtoul(buf, NULL, 16);
+
+	return count;
+}
+
+static DEVICE_ATTR(vc, S_IWUSR|S_IRUGO, csi2_vc_show, csi2_vc_store);
+
+static struct attribute *csi2_attributes[] = {
+	&dev_attr_vc.attr,
+	NULL,
+};
+#endif
+
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_VC_TEST)
 static struct attribute_group csi2_attribute_group = {
 	.attrs = csi2_attributes,
 };
@@ -1309,7 +1353,7 @@ static int sp_csi2_probe(struct platform_device *pdev)
 
 	csi2_init(priv);
 
-#ifdef MIPI_CSI_BIST
+#if defined(MIPI_CSI_BIST) || defined(MIPI_CSI_VC_TEST)
 	/* Add the device attribute group into sysfs */
 	ret = sysfs_create_group(&pdev->dev.kobj, &csi2_attribute_group);
 	if (ret != 0) {

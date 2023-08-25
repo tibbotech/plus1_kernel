@@ -28,8 +28,13 @@
 #include <media/v4l2-mediabus.h>
 #include <asm/unaligned.h>
 
-/* Compiler switch */
-//#define TEST_PATTERN_LOW_PIXEL_RATE
+/* Compiler switches for TP2815 chip */
+//#define TP2815_STREAM_ALWAYS_ON
+//#define TP2815_TEST_PATTERN_LOW_PIXEL_RATE
+
+/* Constants for TP2815 chip */
+#define TP2815_MIPI_CSI_HS_CLOCK_RATE_MHZ	74
+
 
 #define IMX219_REG_VALUE_08BIT		1
 #define IMX219_REG_VALUE_16BIT		2
@@ -150,10 +155,12 @@ enum {
 };
 // video_output
 enum {
+	MIPI_4CH4LANE_74M,
 	MIPI_4CH4LANE_148M,
 	MIPI_4CH4LANE_297M,	// up to 4x720p25/30
 	MIPI_4CH4LANE_594M,	// up to 4x1080p25/30
 	MIPI_4CH2LANE_594M,	// up to 4x720pp25/30
+	MIPI_1CH4LANE_74M,
 	MIPI_1CH4LANE_148M,
 	MIPI_1CH4LANE_297M,	// up to 1x720p25/30
 	MIPI_1CH4LANE_594M,	// up to 1x1080p25/30
@@ -575,7 +582,7 @@ static const struct imx219_mode supported_modes[] = {
 			.regs = mode_640_480_regs,
 		},
 	},
-	#if defined(TEST_PATTERN_LOW_PIXEL_RATE)
+	#if defined(TP2815_TEST_PATTERN_LOW_PIXEL_RATE)
 	{
 		/* Half 720P 60fps mode, 148MHz.
 		 * This only for test pattern output.
@@ -1238,7 +1245,7 @@ void tp2815_decoder_reg_cfg(struct imx219 *imx219, u32 ch, u32 fmt, u32 std)
 		imx219_write_reg(imx219, 0x39, IMX219_REG_VALUE_08BIT, 0x1c);
 	} else if (fmt == HHD30) {
 		/* Frame size is 640x720 */
-		tmp &= ~SYS_MODE[ch];
+		tmp |= SYS_MODE[ch];
 		imx219_write_reg(imx219, 0xf5, IMX219_REG_VALUE_08BIT, tmp);
 
 		//imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, 0x04);
@@ -1321,14 +1328,16 @@ void tp2815_mipi_cfg(struct imx219 *imx219)
 			if (imx219->fmt.width == 1280)
 				output = MIPI_1CH4LANE_297M;
 			else
-				output = MIPI_1CH4LANE_148M;
+				output = (TP2815_MIPI_CSI_HS_CLOCK_RATE_MHZ == 148)?
+							MIPI_1CH4LANE_148M : MIPI_1CH4LANE_74M;
 			break;
 
 		case 4: 	// 4 virtual channels
 			if (imx219->fmt.width == 1280)
 				output = MIPI_4CH4LANE_594M;
 			else
-				output = MIPI_4CH4LANE_148M;
+				output = (TP2815_MIPI_CSI_HS_CLOCK_RATE_MHZ == 148)?
+							MIPI_4CH4LANE_148M : MIPI_4CH4LANE_74M;
 			break;
 
 		default:
@@ -1341,8 +1350,10 @@ void tp2815_mipi_cfg(struct imx219 *imx219)
 	/* Enable MIPI page register access */
 	imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);
 	imx219_write_reg(imx219, 0x01, IMX219_REG_VALUE_08BIT, 0xf0);
-	//imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x01);
-	//imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x0f);
+#ifdef TP2815_STREAM_ALWAYS_ON
+	imx219_write_reg(imx219, 0x02, IMX219_REG_VALUE_08BIT, 0x01);			// MIPICKEN(b0) = 1(Enable MIPI clock output)
+	imx219_write_reg(imx219, 0x08, IMX219_REG_VALUE_08BIT, 0x0f);			// MIPIEN0/1/2/3(b3:0) = 0x0f(Enable MIPI data output)
+#endif
 
 	/* MIPI NUM_LANES(0x20)
 	 * 0x20[6:4] - NUM_CHANNELS - Number of video channels to be processed
@@ -1402,6 +1413,23 @@ void tp2815_mipi_cfg(struct imx219 *imx219)
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xd5);
 		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x55);
 	}
+	else if ((output == MIPI_4CH4LANE_74M) | (output == MIPI_1CH4LANE_74M)) {
+		imx219_write_reg(imx219, 0x12, IMX219_REG_VALUE_08BIT, 0x49); // PLL Control3 (FB Divider)
+		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x44); // 4 CH, 4 Lanes
+		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4); //
+		imx219_write_reg(imx219, 0x15, IMX219_REG_VALUE_08BIT, 0x0e);
+		imx219_write_reg(imx219, 0x25, IMX219_REG_VALUE_08BIT, 0x01);
+		imx219_write_reg(imx219, 0x26, IMX219_REG_VALUE_08BIT, 0x01);
+		imx219_write_reg(imx219, 0x27, IMX219_REG_VALUE_08BIT, 0x02);
+		imx219_write_reg(imx219, 0x29, IMX219_REG_VALUE_08BIT, 0x01);
+
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x07);
+		imx219_write_reg(imx219, 0x33, IMX219_REG_VALUE_08BIT, 0x00);
+
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x55);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0xd5);
+		imx219_write_reg(imx219, 0x14, IMX219_REG_VALUE_08BIT, 0x55);
+	}
 	else if (output == MIPI_4CH2LANE_594M) {
 		//imx219_write_reg(imx219, 0x20, IMX219_REG_VALUE_08BIT, 0x42); // 4 CH, 2 Lanes
 		imx219_write_reg(imx219, 0x34, IMX219_REG_VALUE_08BIT, 0xe4);
@@ -1421,13 +1449,13 @@ void tp2815_mipi_cfg(struct imx219 *imx219)
 		printk(KERN_WARNING " %s : invalid  output format\n", __func__);
 	}
 
-#if 1
+#ifdef TP2815_STREAM_ALWAYS_ON
+	/* Enable MIPI CSI2 output */
+	imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);
+	imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);
+#else
 	/* Disable MIPI CSI2 output */
 	imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);
-#else
-	/* Enable MIPI CSI2 output */
-	//imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);
-	//imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);
 #endif
 	return;
 }
@@ -1957,6 +1985,7 @@ static int imx219_start_streaming(struct imx219 *imx219)
 
 	/* set stream on register */
 #if 1 /* CCHo */
+	#ifndef TP2815_STREAM_ALWAYS_ON
 	ret = imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);	// Switch to MIPI register page
 
 	if (!ret) {
@@ -1966,6 +1995,7 @@ static int imx219_start_streaming(struct imx219 *imx219)
 		/* Set STOPCLK(reg0x23.b1) to 0. DPHY clock lane is normal operation. */
 		ret = imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x00);		// STOPCLK(b1) = 0(DPHY clock lane is normal operation)
 	}
+	#endif
 #else
 	ret = imx219_write_reg(imx219, IMX219_REG_MODE_SELECT,
 			       IMX219_REG_VALUE_08BIT, IMX219_MODE_STREAMING);
@@ -1994,6 +2024,7 @@ static void imx219_stop_streaming(struct imx219 *imx219)
 
 	/* set stream off register */
 #if 1 /* CCHo */
+	#ifndef TP2815_STREAM_ALWAYS_ON
 	ret = imx219_write_reg(imx219, 0x40, IMX219_REG_VALUE_08BIT, MIPI_PAGE);	// Switch to MIPI register page
 
 	if (!ret) {
@@ -2003,6 +2034,9 @@ static void imx219_stop_streaming(struct imx219 *imx219)
 		/* Set STOPCLK(reg0x23.b1) to 1. Force DPHY clock lane into STOP state. */
 		ret = imx219_write_reg(imx219, 0x23, IMX219_REG_VALUE_08BIT, 0x02);		// STOPCLK(b1) = 1(Force DPHY clock lane into STOP state)
 	}
+	#else
+	ret = 0;
+	#endif
 #else
 	ret = imx219_write_reg(imx219, IMX219_REG_MODE_SELECT,
 			       IMX219_REG_VALUE_08BIT, IMX219_MODE_STANDBY);
