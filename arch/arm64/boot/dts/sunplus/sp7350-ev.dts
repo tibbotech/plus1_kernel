@@ -124,40 +124,32 @@
 			no-map;
 		};
 
-		/* display fb reserve memory: 0x5ba00000 ~ 0x5f9fffff, total 64M */
-		fb_disp_reserve: fb@5ba00000 {
+		/* remoteproc reserve memory: 0x5be00000-0x5bffffff, total 2M */
+		vdev0buffer: vdev0buffer@5be00000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x5ba00000 0x0 0x4000000>;
+			reg = <0x0 0x5be00000 0x0 0x100000>;
+			no-map;
+		};
+		vdev0vring0: vdev0vring0@5bf00000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x5bf00000 0x0 0x4000>;
+			no-map;
+		};
+		vdev0vring1: vdev0vring1@5bf04000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x5bf04000 0x0 0x4000>;
+			no-map;
+		};
+		vdev0_reserve: vdev0_reserve@5bf08000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x5bf08000 0x0 0xf8000>;
 			no-map;
 		};
 
-		/* remoteproc reserve memory: 5fa00000-0x5fb07fff, total 2M */
-		vdev0buffer: vdev0buffer@5fa00000 {
+		/* display fb reserve memory: 0x5c000000 ~ 0x5fffffff, total 64M */
+		fb_disp_reserve: fb@5c000000 {
 			compatible = "shared-dma-pool";
-			reg = <0x0 0x5fa00000 0x0 0x100000>;
-			no-map;
-		};
-		vdev0vring0: vdev0vring0@5fb00000 {
-			compatible = "shared-dma-pool";
-			reg = <0x0 0x5fb00000 0x0 0x4000>;
-			no-map;
-		};
-		vdev0vring1: vdev0vring1@5fb04000 {
-			compatible = "shared-dma-pool";
-			reg = <0x0 0x5fb04000 0x0 0x4000>;
-			no-map;
-		};
-
-		/* reserve memory(reserve for fill the memory): 0x5fb08000 ~ 0x5fbfffff, total 1M-32K */
-		reserve_reserve: reserve_reserve@5fb08000 {
-			compatible = "shared-dma-pool";
-			reg = <0x0 0x5fb08000 0x0 0xf8000>;
-			no-map;
-		};
-
-		/* simple frame-buffer reserve memory: 0x5fc00000 ~ 0x5fffffff, total 4M */
-		fb_reserve: fb@5fc00000 {
-			reg = <0x0 0x5fc00000 0x0 0x400000>;
+			reg = <0x0 0x5c000000 0x0 0x4000000>;
 			no-map;
 		};
 
@@ -1368,15 +1360,6 @@
 		disc_vol: disc_vol@2d {
 			reg = <0x2d 0x1>;
 		};
-	};
-
-	fb_device {
-		compatible = "simple-framebuffer";
-		memory-region = <&fb_reserve>;
-		width = <320>;      /*1280*/
-		height = <240>;     /*768*/
-		stride = <(320*2)>; /*1280*2*/
-		format = "r5g6b5";
 	};
 
 	mmc0: mmc@f8003b00 {
