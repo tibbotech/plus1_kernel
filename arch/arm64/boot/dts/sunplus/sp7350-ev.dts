@@ -102,11 +102,13 @@
 		#size-cells = <2>;
 		ranges;
 
+		/* TF-A reserve memory: 0x200000-0x2fffff, total 1M */
 		tfa_reserve@200000 {
 			reg = <0x0 0x200000 0x0 0x100000>;
 			no-map;
 		};
 
+		/*OP-TEE reserve memory: 0x300000-0x4fffff, total 2M */
 		optee_reserve@300000 {
 			reg = <0x0 0x300000 0x0 0x200000>;
 			no-map;
@@ -116,11 +118,6 @@
 		rproc_0_reserved: rproc0@100000 {
 			compatible = "shared-dma-pool";
 			reg = <0x0 0x100000 0x0 0x100000>;
-			no-map;
-		};
-		rproc0runaddr: cm4runaddr@fa240000 {
-			compatible = "shared-dma-pool";
-			reg = <0x0 0xfa240000 0x0 0x60000>;
 			no-map;
 		};
 
@@ -171,6 +168,12 @@
 			no-map;
 		};
 
+		/* CM4 reserve memory: 0xfa240000 ~ 0xfa29ffff, total 384K */
+		rproc0runaddr: cm4runaddr@fa240000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0xfa240000 0x0 0x60000>;
+			no-map;
+		};
 	};
 
 	firmware {
