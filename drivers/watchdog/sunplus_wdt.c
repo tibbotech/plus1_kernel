@@ -308,6 +308,8 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	if (!priv)
 		return -ENOMEM;
 
+	platform_set_drvdata(pdev, priv);
+
 	wdd = &priv->wdev;
 	priv->clk = devm_clk_get(dev, NULL);
 	if (IS_ERR(priv->clk))
@@ -389,6 +391,61 @@ static int sp_wdt_probe(struct platform_device *pdev)
 	return devm_watchdog_register_device(dev, &priv->wdev);
 }
 
+#ifdef CONFIG_PM_SLEEP
+static u32 regs[5];
+static int sp_wdt_suspend(struct device *dev)
+{
+	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
+	void __iomem *base = priv->base;
+	void __iomem *base_pt = priv->base_pt;
+	void __iomem *prescaler = priv->prescaler;
+
+	//printk(">>>>>> [DEBUG] WDT suspend <<<<<<\n");
+
+	if (watchdog_active(&priv->wdev))
+		sp_wdt_stop(&priv->wdev);
+
+	/* Save the reg val */
+	regs[0] = readl(base + WDT_CTRL);
+	regs[1] = readl(base + WDT_CNT);
+	regs[2] = readl(base_pt + WDT_CTRL);
+	regs[3] = readl(base_pt + WDT_CNT);
+	regs[4] = readl(prescaler);
+
+	clk_disable_unprepare(priv->clk);
+	reset_control_assert(priv->rstc);
+
+	return 0;
+}
+
+static int sp_wdt_resume(struct device *dev)
+{
+	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
+	void __iomem *base = priv->base;
+	void __iomem *base_pt = priv->base_pt;
+	void __iomem *prescaler = priv->prescaler;
+
+	//printk(">>>>>> [DEBUG] WDT resume <<<<<<\n");
+
+	reset_control_deassert(priv->rstc);
+	clk_prepare_enable(priv->clk);
+
+	/* Restore the reg val */
+	writel(regs[0], base + WDT_CTRL);
+	writel(regs[1], base + WDT_CNT);
+	writel(regs[2], base_pt + WDT_CTRL);
+	writel(regs[3], base_pt + WDT_CNT);
+	writel(regs[4], prescaler);
+
+	if (watchdog_active(&priv->wdev)) {
+		sp_wdt_start(&priv->wdev);
+		sp_wdt_ping(&priv->wdev);
+	}
+
+	return 0;
+}
+#endif
+
 static const struct of_device_id sp_wdt_of_match[] = {
 	{.compatible = "sunplus,sp7021-wdt", },
 	{.compatible = "sunplus,q645-wdt", },
@@ -397,11 +454,17 @@ static const struct of_device_id sp_wdt_of_match[] = {
 };
 MODULE_DEVICE_TABLE(of, sp_wdt_of_match);
 
+static const struct dev_pm_ops sp_wdt_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sp_wdt_suspend,
+				sp_wdt_resume)
+};
+
 static struct platform_driver sp_wdt_driver = {
 	.probe = sp_wdt_probe,
 	.driver = {
-		   .name = DEVICE_NAME,
-		   .of_match_table = sp_wdt_of_match,
+		.name		= DEVICE_NAME,
+		.pm		= &sp_wdt_pm_ops,
+		.of_match_table	= sp_wdt_of_match,
 	},
 };
 
