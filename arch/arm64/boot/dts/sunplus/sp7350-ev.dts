@@ -1423,7 +1423,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&sdcard_pins>;
 		cd-gpios = <&pctl 17 GPIO_ACTIVE_LOW>;
-		delay-val = <0x666330>;
+		delay-val = <0x777110>;
 		bus-width = <4>;
 		max-frequency = <160000000>;
 		disable-wp;
