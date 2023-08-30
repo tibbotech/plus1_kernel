@@ -23,8 +23,12 @@
 //#define IMX219_IN1
 //#define IMX219_IN4
 //#define IMX219_IN5
+//#define TP2815_IN0
+//#define TP2815_IN0_1LANE
+//#define TP2815_IN0_2VC
 //#define TP2815_IN5
-//#define TP2815_TEST_4VC
+//#define TP2815_IN5_2LANES
+//#define TP2815_IN5_4VC
 //#define AP6256_WIFI
 
 //#define DISP_MIPITX_CSI
@@ -804,6 +808,39 @@
 			};
 		};
 #endif
+#ifdef TP2815_IN0 /* Add tp2815 subnode in i2c0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_0: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_clk>;
+	#ifdef TP2815_IN0_2VC
+			input-channel = <2>;
+	#else
+			input-channel = <1>;
+	#endif
+			input-standard = <0>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_5_pins>;
+			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_0: endpoint {
+					remote-endpoint = <&csi2_0>;
+	#ifdef TP2815_IN0_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c1: i2c@f8829000 {
@@ -918,7 +955,6 @@
 			};
 		};
 #endif
-
 #ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -927,7 +963,7 @@
 			compatible = "Techpoint,tp2815";
 			reg = <0x44>;
 			clocks = <&tp2815_clk>;
-	#ifdef TP2815_TEST_4VC
+	#ifdef TP2815_IN5_4VC
 			input-channel = <4>;
 	#else
 			input-channel = <1>;
@@ -941,7 +977,11 @@
 			port {
 				tp2815_5: endpoint {
 					remote-endpoint = <&csi2_5>;
+	#ifdef TP2815_IN5_2LANES
+					data-lanes = <1 2>;
+	#else
 					data-lanes = <1 2 3 4>;
+	#endif
 					clock-continuous;
 					link-frequencies = /bits/ 64 <456000000>;
 				};
@@ -1624,6 +1664,12 @@
 		max_channels = <4>;
 #ifdef IMX219_IN0
 		num_channels = <1>;
+#elif defined(TP2815_IN0)
+	#ifdef TP2815_IN0_2VC
+		num_channels = <2>;
+	#else
+		num_channels = <1>;
+	#endif
 #else
 		num_channels = <2>;
 #endif
@@ -1643,6 +1689,23 @@
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
+				};
+			};
+#endif
+#ifdef TP2815_IN0 /* Add tp2815 subnode in i2c0 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_0: endpoint {
+					remote-endpoint = <&tp2815_0>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+	#ifdef TP2815_IN0_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
 				};
 			};
 #endif
@@ -1906,7 +1969,6 @@
 				};
 			};
 #endif
-
 #ifdef TP2815_IN2 /* Add tp2815 subnode in i2c2 */
 			port@0 {
 				reg = <0>;
@@ -2305,7 +2367,7 @@
 #if defined(IMX219_IN5)
 		num_channels = <1>;
 #elif defined(TP2815_IN5)
-	#ifdef TP2815_TEST_4VC
+	#ifdef TP2815_IN5_4VC
 		num_channels = <4>;
 	#else
 		num_channels = <1>;
@@ -2332,7 +2394,6 @@
 				};
 			};
 #endif
-
 #ifdef TP2815_IN5 /* Add tp2815 subnode in i2c3 */
 			port@0 {
 				reg = <0>;
@@ -2342,7 +2403,11 @@
 					remote-endpoint = <&tp2815_5>;
 					bus-type = <4>;
 					clock-lanes = <0>;
+	#ifdef TP2815_IN5_2LANES
+					data-lanes = <1 2>;
+	#else
 					data-lanes = <1 2 3 4>;
+	#endif
 				};
 			};
 #endif
