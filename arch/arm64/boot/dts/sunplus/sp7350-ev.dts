@@ -259,12 +259,12 @@
 
 		opp-17 {
 			opp-hz = /bits/ 64 <1700000000>;
-			opp-microvolt = <800000>;
+			opp-microvolt = <810000>;
 		};
 
 		opp-18 {
 			opp-hz = /bits/ 64 <1800000000>;
-			opp-microvolt = <800000>;
+			opp-microvolt = <820000>;
 		};
 
 		/*opp-19 {
