@@ -837,6 +837,22 @@ int sp_otg_probe(struct platform_device *pdev)
 	}
 #endif
 
+	/* phy */
+	otg_host->uphy[pdev->id-1] = devm_phy_get(&pdev->dev, "uphy");
+	if (IS_ERR(otg_host->uphy[pdev->id-1])) {
+		dev_err(&pdev->dev, "no USB phy%d configured\n", pdev->id-1);
+		ret = PTR_ERR(otg_host->uphy[pdev->id-1]);
+		goto release_mem1;
+	}
+
+	ret = phy_power_on(otg_host->uphy[pdev->id-1]);
+	if (ret)
+		goto release_mem1;
+
+	ret = phy_init(otg_host->uphy[pdev->id-1]);
+	if (ret)
+		goto release_mem1;
+
 	/* reset */
 	otg_host->rstc = devm_reset_control_get_shared(&pdev->dev, NULL);
 	if (IS_ERR(otg_host->rstc)) {
@@ -992,6 +1008,9 @@ int sp_otg_remove(struct platform_device *pdev)
 	clk_disable_unprepare(otg_host->clock);
 	reset_control_assert(otg_host->rstc);
 
+	phy_power_off(otg_host->uphy[pdev->id-1]);
+	phy_exit(otg_host->uphy[pdev->id-1]);
+
 free_mem:
 	kfree(otg_host->otg.otg);
 	kfree(otg_host);
@@ -1008,6 +1027,9 @@ int sp_otg_suspend(struct device *dev)
 	clk_disable_unprepare(otg_host->clock);
 	reset_control_assert(otg_host->rstc);
 
+	phy_power_off(otg_host->uphy[pdev->id-1]);
+	phy_exit(otg_host->uphy[pdev->id-1]);
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(sp_otg_suspend);
@@ -1017,6 +1039,14 @@ int sp_otg_resume(struct device *dev)
 	struct platform_device *pdev = to_platform_device(dev);
 	struct sp_otg *otg_host = platform_get_drvdata(pdev);
 	int ret;
+
+	ret = phy_power_on(otg_host->uphy[pdev->id-1]);
+	if (ret)
+		return ret;
+
+	ret = phy_init(otg_host->uphy[pdev->id-1]);
+	if (ret)
+		return ret;
 
 	ret = reset_control_deassert(otg_host->rstc);
 	if (ret)

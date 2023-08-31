@@ -441,13 +441,13 @@ struct udc_endpoint {
 	struct list_head	 queue;
 };
 
-struct phy *uphy[USB_PORT_NUM];
 extern void __iomem 	*uphy0_regs;
 void __iomem 		*moon3_reg;
 void __iomem 		*moon4_reg;
 
 struct sp_udc {
 	bool 			 aset_flag; 			/* auto set flag, If this flag is true, zero packet will not be sent */
+	struct phy		*uphy[USB_PORT_NUM];
 	struct reset_control 	*rstc;
 	struct clk		*clock;
 	int 			 irq_num;

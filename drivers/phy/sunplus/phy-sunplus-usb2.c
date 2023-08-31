@@ -225,16 +225,16 @@ static int sp_uphy_power_on(struct phy *phy)
 	u32 pll_pwr_on, pll_pwr_off;
 	int ret;
 
+	/* reset UPHY0 */
+	ret = reset_control_deassert(usbphy->rstc);
+	if (ret) {
+		return ret;
+	}
+
 	/* enable clock */
 	ret = clk_prepare_enable(usbphy->phy_clk);
 	if (ret) {
 		goto err_clk;
-	}
-
-	/* reset UPHY0 */
-	ret = reset_control_deassert(usbphy->rstc);
-	if (ret) {
-		goto err_reset;
 	}
 
 	/* PLL power off/on twice */
@@ -263,10 +263,8 @@ static int sp_uphy_power_on(struct phy *phy)
 
 	return 0;
 
-err_reset:
-	reset_control_assert(usbphy->rstc);
 err_clk:
-	clk_disable_unprepare(usbphy->phy_clk);
+	reset_control_assert(usbphy->rstc);
 
 	return ret;
 }
@@ -293,6 +291,7 @@ static int sp_uphy_exit(struct phy *phy)
 	struct sp_usbphy *usbphy = phy_get_drvdata(phy);
 
 	clk_disable_unprepare(usbphy->phy_clk);
+	reset_control_assert(usbphy->rstc);
 
 	return 0;
 }
@@ -350,14 +349,13 @@ static int sp_usb_phy_probe(struct platform_device *pdev)
 	if (!usbphy->moon4_regs)
 		return -ENOMEM;
 #endif
+	usbphy->rstc = devm_reset_control_get(&pdev->dev, NULL);
+	if (IS_ERR(usbphy->rstc))
+		return PTR_ERR(usbphy->rstc);
 
 	usbphy->phy_clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(usbphy->phy_clk))
 		return PTR_ERR(usbphy->phy_clk);
-
-	usbphy->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
-	if (IS_ERR(usbphy->rstc))
-		return PTR_ERR(usbphy->rstc);
 
 #ifdef CONFIG_USB_PORT0
 	if (usbphy->port_num == USB_PORT0_ID) {

@@ -2754,10 +2754,10 @@ static int sp_udc_probe(struct platform_device *pdev)
 	pr_info("%s start, port_num:%d, %px\n", __func__, udc->port_num, udc);
 
 	/* phy */
-	uphy[udc->port_num] = devm_phy_get(&pdev->dev, "uphy");
-	if (IS_ERR(uphy[udc->port_num])) {
+	udc->uphy[udc->port_num] = devm_phy_get(&pdev->dev, "uphy");
+	if (IS_ERR(udc->uphy[udc->port_num])) {
 		dev_err(&pdev->dev, "no USB phy%d configured\n", udc->port_num);
-		retval = PTR_ERR(uphy[udc->port_num]);
+		retval = PTR_ERR(udc->uphy[udc->port_num]);
 		goto err_free2;
 	}
 
@@ -2781,11 +2781,11 @@ static int sp_udc_probe(struct platform_device *pdev)
 		goto err_rst;
 	}
 
-	retval = phy_power_on(uphy[udc->port_num]);
+	retval = phy_power_on(udc->uphy[udc->port_num]);
 	if (retval)
 		goto err_rst;
 
-	retval = phy_init(uphy[udc->port_num]);
+	retval = phy_init(udc->uphy[udc->port_num]);
 	if (retval)
 		goto err_rst;
 
@@ -3017,8 +3017,8 @@ static int sp_udc_remove(struct platform_device *pdev)
 	clk_disable_unprepare(udc->clock);
 	reset_control_assert(udc->rstc);
 
-	phy_power_off(uphy[udc->port_num]);
-	phy_exit(uphy[udc->port_num]);
+	phy_power_off(udc->uphy[udc->port_num]);
+	phy_exit(udc->uphy[udc->port_num]);
 
 	usb_del_gadget_udc(&udc->gadget);
 	if (udc->driver) {
@@ -3100,8 +3100,8 @@ static int udc_sunplus_drv_suspend(struct device *dev)
 	clk_disable_unprepare(udc->clock);
 	reset_control_assert(udc->rstc);
 
-	phy_power_off(uphy[udc->port_num]);
-	phy_exit(uphy[udc->port_num]);
+	phy_power_off(udc->uphy[udc->port_num]);
+	phy_exit(udc->uphy[udc->port_num]);
 
 	return 0;
 }
@@ -3112,11 +3112,11 @@ static int udc_sunplus_drv_resume(struct device *dev)
 	struct sp_udc *udc = platform_get_drvdata(pdev);
 	int ret;
 
-	ret = phy_power_on(uphy[udc->port_num]);
+	ret = phy_power_on(udc->uphy[udc->port_num]);
 	if (ret)
 		return ret;
 
-	ret = phy_init(uphy[udc->port_num]);
+	ret = phy_init(udc->uphy[udc->port_num]);
 	if (ret)
 		return ret;
 

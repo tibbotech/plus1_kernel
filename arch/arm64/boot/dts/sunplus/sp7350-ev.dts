@@ -1612,6 +1612,8 @@
 		reg = <0x0 0xf8102400 0x0 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 181 IRQ_TYPE_LEVEL_HIGH>;
+		phys = <&sp_uphy0>;
+		phy-names = "uphy";
 	};
 
 	spsoc-pcm-driver {

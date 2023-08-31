@@ -12,6 +12,8 @@
 //#define OTG_TEST
 #define CONFIG_ADP_TIMER
 
+#define USB_PORT_NUM			3
+
 #define	ADP_TIMER_FREQ			(5*HZ)
 
 #define	WORD_MODE_MASK			(0x03)
@@ -130,6 +132,7 @@ struct otg_fsm {
 struct sp_otg {
 	struct usb_phy			otg;
 
+	struct phy			*uphy[USB_PORT_NUM];
 	struct reset_control		*rstc;
 	struct clk			*clock;
 
