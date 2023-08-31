@@ -32,6 +32,7 @@
 //#define TP2815_STREAM_ALWAYS_ON				// Streaming is always on after running
 //#define TP2815_TEST_PATTERN_LOW_PIXEL_RATE	// Output test pattern at low pixel rate 
 //#define TP2815_VC_SEQUENCE_0123					// VC sequence is VC0, VC1, VC2, VC3
+//#define TP2815_REGULATOR_CONTROL				// Original requlator control
 
 /* Constants for TP2815 chip */
 #define TP2815_MIPI_CSI_HS_CLOCK_RATE_MHZ	74
@@ -2167,6 +2168,7 @@ static int imx219_power_on(struct device *dev)
 	struct imx219 *imx219 = to_imx219(sd);
 	int ret;
 
+#ifdef TP2815_REGULATOR_CONTROL
 	ret = regulator_bulk_enable(IMX219_NUM_SUPPLIES,
 				    imx219->supplies);
 	if (ret) {
@@ -2174,6 +2176,7 @@ static int imx219_power_on(struct device *dev)
 			__func__);
 		return ret;
 	}
+#endif
 
 	ret = clk_prepare_enable(imx219->xclk);
 	if (ret) {
@@ -2189,7 +2192,9 @@ static int imx219_power_on(struct device *dev)
 	return 0;
 
 reg_off:
+#ifdef TP2815_REGULATOR_CONTROL
 	regulator_bulk_disable(IMX219_NUM_SUPPLIES, imx219->supplies);
+#endif
 
 	return ret;
 }
@@ -2201,7 +2206,9 @@ static int imx219_power_off(struct device *dev)
 	struct imx219 *imx219 = to_imx219(sd);
 
 	gpiod_set_value_cansleep(imx219->reset_gpio, 0);
+#ifdef TP2815_REGULATOR_CONTROL
 	regulator_bulk_disable(IMX219_NUM_SUPPLIES, imx219->supplies);
+#endif
 	clk_disable_unprepare(imx219->xclk);
 
 	return 0;
@@ -2241,6 +2248,7 @@ error:
 	return ret;
 }
 
+#ifdef TP2815_REGULATOR_CONTROL
 static int imx219_get_regulators(struct imx219 *imx219)
 {
 	struct i2c_client *client = v4l2_get_subdevdata(&imx219->sd);
@@ -2253,6 +2261,7 @@ static int imx219_get_regulators(struct imx219 *imx219)
 				       IMX219_NUM_SUPPLIES,
 				       imx219->supplies);
 }
+#endif
 
 /* Verify chip ID */
 static int imx219_identify_module(struct imx219 *imx219)
@@ -2523,11 +2532,13 @@ static int imx219_probe(struct i2c_client *client)
 		return -EINVAL;
 	}
 
+#ifdef TP2815_REGULATOR_CONTROL
 	ret = imx219_get_regulators(imx219);
 	if (ret) {
 		dev_err(dev, "failed to get regulators\n");
 		return ret;
 	}
+#endif
 
 	/* Request optional enable pin */
 	imx219->reset_gpio = devm_gpiod_get_optional(dev, "reset",
