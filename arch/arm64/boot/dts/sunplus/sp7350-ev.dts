@@ -37,15 +37,15 @@
 //#define DISP_MIPITX_CSI_1080P
 //#define DISP_MIPITX_CSI_3840
 
-#define DISP_MIPITX_DSI_PANEL_480X1280
-#define DISP_MIPITX_DSI_VPP_SRC_480P
+//#define DISP_MIPITX_DSI_PANEL_480X1280
+//#define DISP_MIPITX_DSI_VPP_SRC_480P
 //#define DISP_MIPITX_DSI_VPP_SRC_720P
 //#define DISP_MIPITX_DSI_VPP_SRC_1080P
 //#define DISP_MIPITX_DSI_VPP_SRC_3840
 
-//#define LT8912B_HDMI_ENABLE
+#define LT8912B_HDMI_ENABLE
 //#define LT8912B_HDMI_480P
-//#define LT8912B_HDMI_720P
+#define LT8912B_HDMI_720P
 //#define LT8912B_HDMI_1080P
 
 / {
@@ -1069,7 +1069,7 @@
 #endif
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo6_pins>;
-		status = "disabled";
+		status = "okay";
 #ifdef LT8912B_HDMI_ENABLE /* Add lt8912b subnode in i2c6 */
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1092,7 +1092,7 @@
 			 * 0x2: 1280x720
 			 * 0x3: 1920x1080
 			 */
-			status = "disabled";
+			status = "okay";
 			ports {
 				#address-cells = <1>;
 				#size-cells = <0>;
@@ -2680,7 +2680,7 @@
 	fb_disp_device {
 		compatible = "sunplus,sp7350-fb";
 		memory-region = <&fb_disp_reserve>;
-		status = "disabled";
+		status = "okay";
 	};
 
 	display: display@f8005c80 {
@@ -2724,7 +2724,7 @@
 			<&rstc TGEN>,
 			<&rstc VPOST0>,
 			<&rstc VSCL0>;
-		status = "disabled";
+		status = "okay";
 #if defined(DISP_MIPITX_CSI)
 	#if defined(DISP_MIPITX_CSI_480P)
 		sp7350,dev_name = "MIPITX-CSI-TEST_480P";
