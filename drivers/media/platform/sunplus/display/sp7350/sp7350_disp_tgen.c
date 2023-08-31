@@ -36,17 +36,26 @@ static const u32 sp7350_pllh_mipitx_sel_int[] = {
 void sp7350_tgen_init(void)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
-	//u32 value;
+	u32 value, dtg_fmt, set_width, set_height;
 
 	writel(0x00000000, disp_dev->base + TGEN_CONFIG);
 	writel(0x0000000a, disp_dev->base + TGEN_USER_INT1_CONFIG);
 	writel(0x0000000a, disp_dev->base + TGEN_USER_INT2_CONFIG);
 
-#if 0
-	value = readl(disp_dev->base + MIPITX_INFO_STATUS); //G204.28
-	if ((FIELD_GET(GENMASK(24,24), value) == 1) && (FIELD_GET(GENMASK(0,0), value) == 0)) {
-		pr_info("  MIPITX working, skip tgen setting\n");
-		return;
+#if 1
+	value = readl(disp_dev->base + TGEN_DTG_CONFIG);
+	dtg_fmt = FIELD_GET(GENMASK(10,8), value);
+	set_width = disp_dev->out_res.width;
+	set_height = disp_dev->out_res.height;
+	if (((dtg_fmt == 0x00) && (set_width == 720) && (set_height == 480)) ||
+		((dtg_fmt == 0x01) && (set_width == 720) && (set_height == 576)) ||
+		((dtg_fmt == 0x02) && (set_width == 1280) && (set_height == 720)) ||
+		((dtg_fmt == 0x03) && (set_width == 1920) && (set_height == 1080))) {
+		value = readl(disp_dev->base + MIPITX_INFO_STATUS); //G204.28
+		if ((FIELD_GET(GENMASK(24,24), value) == 1) && (FIELD_GET(GENMASK(0,0), value) == 0)) {
+			//pr_info("  MIPITX working, skip tgen setting\n");
+			return;
+		}
 	}
 #endif
 

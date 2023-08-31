@@ -106,13 +106,10 @@ void sp7350_tcon_init(void)
 	writel(value, disp_dev->base + TCON_TCON5); //don't care
 	#endif
 
-#if 0
+#if 1
 	value = readl(disp_dev->base + MIPITX_INFO_STATUS); //G204.28
-	//pr_info("  MIPITX_INFO_STATUS MIPITX %s (TX_PHY %s)\n",
-	//	FIELD_GET(GENMASK(24,24), value)?"ON":"OFF",
-	//	FIELD_GET(GENMASK(0,0), value)?"X":"O");
 	if ((FIELD_GET(GENMASK(24,24), value) == 1) && (FIELD_GET(GENMASK(0,0), value) == 0)) {
-		pr_info("  MIPITX working, skip tcon setting\n");
+		//pr_info("  MIPITX working, skip tcon setting\n");
 		return;
 	}
 #endif
