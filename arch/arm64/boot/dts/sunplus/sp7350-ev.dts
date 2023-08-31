@@ -435,6 +435,30 @@
 		memory-region = <&rproc_0_reserved>, <&rproc0runaddr>,<&vdev0buffer>, <&vdev0vring0>, <&vdev0vring1>;
 	};
 
+	imx219_vana_2v8: 2p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vana";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		regulator-always-on;
+	};
+
+	imx219_vdig_1v8: 1p8v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vdig";
+		regulator-min-microvolt = <1500000>;
+		regulator-max-microvolt = <1500000>;
+		regulator-always-on;
+	};
+
+	imx219_vddl_1v2: 1p2v {
+		compatible = "regulator-fixed";
+		regulator-name = "camera_vddl";
+		regulator-min-microvolt = <1200000>;
+		regulator-max-microvolt = <1200000>;
+		regulator-always-on;
+	};
+
 #ifdef ENABLE_DMATX1
 	uartdmatx1: serial@sp_uartdmatx1 {
 		compatible = "sunplus,sp7350-uart";
@@ -793,6 +817,9 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_0_pins>;
 			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
@@ -864,6 +891,9 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_1_pins>;
 			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
@@ -902,6 +932,9 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_4_pins>;
 			//power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
@@ -940,6 +973,9 @@
 			compatible = "sony,imx219";
 			reg = <0x10>;
 			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
 			//pinctrl-names = "default";
 			//pinctrl-0 = <&camera_5_pins>;
 			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
