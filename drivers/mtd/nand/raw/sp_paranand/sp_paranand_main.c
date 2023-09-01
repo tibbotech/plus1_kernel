@@ -1388,7 +1388,7 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	DBGLEVEL1(sp_pnand_dbg("data->clkfreq %d\n", data->clkfreq));
 
 	data->dmac = NULL;
-#if 0//turn off the DMA mode
+#if 1//turn off the DMA mode
 	/* request dma channel */
 	data->dmac = dma_request_chan(dev, "rxtx");
 	if (IS_ERR(data->dmac)) {
