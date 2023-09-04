@@ -78,8 +78,11 @@
 #define MASK_MO1_USBC0_USB0_SEL			BIT(1 + 16)
 #define MO1_USBC0_USB0_CTRL			BIT(0)
 #define MASK_MO1_USBC0_USB0_CTRL		BIT(0 + 16)
-#define USB_HOST_MODE				(MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL)
-#define USB_DEVICE_MODE				(~MO1_USBC0_USB0_SEL & MO1_USBC0_USB0_CTRL)
+#define USB_HOST_MODE				(MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | \
+										MO1_USBC0_USB0_CTRL)
+#define USB_DEVICE_MODE				MO1_USBC0_USB0_CTRL
+#define MASK_USB_HOST_DEVICE_MODE		(MASK_MO1_USBC0_USB0_TYPE| MASK_MO1_USBC0_USB0_SEL | \
+										MASK_MO1_USBC0_USB0_CTRL)
 
 #ifdef CONFIG_USB_PORT0
 void __iomem *uphy0_regs;
@@ -196,22 +199,33 @@ static int sp_uphy_init(struct phy *phy)
 	/* enable vbus if host (sw control) */
 #ifdef CONFIG_SOC_Q645
 	val = readl(usbphy->moon3_regs + M3_SCFG_22);
-	if ((val & USB_HOST_MODE) == USB_HOST_MODE) {
-		writel(val | MASK_MO1_USBC0_USB0_TYPE| MO1_USBC0_USB0_TYPE,
+
+	#if defined(CONFIG_USB_EHCI_SUNPLUS) || defined(CONFIG_USB_OHCI_SUNPLUS)
+	writel(val | USB_HOST_MODE | MASK_USB_HOST_DEVICE_MODE,
 							usbphy->moon3_regs + M3_SCFG_22);
-	}
+	#else
+	writel((val & (~MO1_USBC0_USB0_TYPE) & (~MO1_USBC0_USB0_SEL))
+						| USB_DEVICE_MODE | MASK_USB_HOST_DEVICE_MODE,
+							usbphy->moon3_regs + M3_SCFG_22);
+	#endif
 #elif defined(CONFIG_SOC_SP7350)
 	val = readl(usbphy->moon4_regs + M4_SCFG_10);
-	if ((val & USB_HOST_MODE) == USB_HOST_MODE) {
-		writel(val | MASK_MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_TYPE,
+
+	#if defined(CONFIG_USB_EHCI_SUNPLUS) || defined(CONFIG_USB_OHCI_SUNPLUS)
+	writel(val | USB_HOST_MODE | MASK_USB_HOST_DEVICE_MODE,
 							usbphy->moon4_regs + M4_SCFG_10);
-	}
+	#else
+	writel((val & (~MO1_USBC0_USB0_TYPE) & (~MO1_USBC0_USB0_SEL))
+						| USB_DEVICE_MODE | MASK_USB_HOST_DEVICE_MODE,
+							usbphy->moon4_regs + M4_SCFG_10);
+	#endif
 #endif
 
 	/* OTG control host and device */
 #ifdef CONFIG_USB_SUNPLUS_SP7350_OTG
-	val = MASK_MO1_USBC0_USB0_CTRL;
-	writel(val, usbphy->moon4_regs + M4_SCFG_10);
+	val = readl(usbphy->moon4_regs + M4_SCFG_10);
+	writel((val & (~MO1_USBC0_USB0_CTRL)) | MASK_MO1_USBC0_USB0_CTRL,
+							usbphy->moon4_regs + M4_SCFG_10);
 #endif
 
 	mdelay(1);
