@@ -30,6 +30,7 @@
 //#define TP2815_IN5_2LANES
 //#define TP2815_IN5_4VC
 //#define AP6256_WIFI
+//#define AP6256_BT
 
 //#define DISP_MIPITX_CSI
 //#define DISP_MIPITX_CSI_480P
@@ -524,7 +525,11 @@
 		resets = <&rstc RST_UA1>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&uart1_pins &uart1_fc_pins>;
+#ifndef AP6256_WIFI
+	#ifndef AP6256_BT
 		status = "disabled";
+	#endif
+#endif
 	};
 
 	uart2: serial@f8801b80 {
