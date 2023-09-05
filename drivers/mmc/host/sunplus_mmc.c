@@ -1878,10 +1878,16 @@ static int config_gpio_bypass_en_show(struct spmmc_host *host, char *buf)
 static int config_gpio_bypass_en_store(struct spmmc_host *host, const char *arg)
 {
 	unsigned long val = 0;
-	u32 value;
+	u32 value, i;
 
 	if (kstrtoul(arg, 0, &val) || val > 1)
 		return SPMMC_CFG_FAIL;
+
+	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[1]);
+	value = bitfield_replace(value, 20, 1, 0);//DI FF BYPASS TM:Don not bypass IP input data
+	for (i = 0; i < 9; i++)
+		value = bitfield_replace(value, 21 + i, 1, 1);//DO FF BYPASS TM:Don not bypass IP input data
+	writel(value, &host->pad_ctl2_base->emmc_sftpad_ctl[1]);
 
 	value = readl(&host->pad_ctl2_base->emmc_sftpad_ctl[2]);
 	value = bitfield_replace(value, 31, 1, val);
