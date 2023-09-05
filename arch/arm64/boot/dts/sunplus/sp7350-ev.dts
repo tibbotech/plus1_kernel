@@ -798,6 +798,9 @@
 		clocks = <&clkc I2CM0>;
 		resets = <&rstc RST_I2CM0>;
 		i2c-sda-hold-time-ns = <1000>;
+		//i2c-sda-falling-time-ns = <1>;
+		//i2c-scl-falling-time-ns = <1>;
+		//clock-frequency = <3400000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
@@ -805,8 +808,9 @@
 #if 0
 		#address-cells = <1>;
 		#size-cells = <0>;
-		slave@0 {
-			reg = <0x40000000>;
+		slave@50 {
+			compatible = "linux,slave-24c02";
+			reg = <0x40000050>;
 		};
 #endif
 #ifdef IMX219_IN0 /* Add imx219 subnode in i2c0 */
@@ -878,6 +882,9 @@
 		clocks = <&clkc I2CM1>;
 		resets = <&rstc RST_I2CM1>;
 		i2c-sda-hold-time-ns = <1000>;
+		//i2c-sda-falling-time-ns = <1>;
+		//i2c-scl-falling-time-ns = <1>;
+		//clock-frequency = <3400000>;
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
