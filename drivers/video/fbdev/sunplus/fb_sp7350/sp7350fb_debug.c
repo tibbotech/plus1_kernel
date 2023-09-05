@@ -610,6 +610,9 @@ static char *spmon_readint(char *p, int *x)
  *     only support 24bit/32bit bmp file.
  *
  * Load font
+ *   echo "font color 0xffff0000 0xff000000" > /sys/module/sp7350fb/parameter/debug
+ *      font_color, font_color_bg
+ *		setting value : 0xaa-rr-gg-bb (aa=alpha, rr=RED, gg=Green, bb=BLUE)
  *   echo "font size 8 16" > /sys/module/sp7350fb/parameter/debug
  *      font_width, font_height, support 8x8 8x16 16x32 ascii code
  *
@@ -801,7 +804,21 @@ static void sp7350_fb_dbg_cmd(char *str, struct fb_info *fbinfo)
 	} else if (!strncasecmp(str, "font", 4)) {
 		str = spmon_skipspace(str + 4);
 
-		if (!strncasecmp(str, "size", 4)) {
+		if (!strncasecmp(str, "color", 5)) {
+			int fg, bg;
+			str = spmon_readint(str + 5, &fg);
+			str = spmon_readint(str, &bg);
+
+			pr_info("  cur font color (fg,bg)(0x%08x,0x%08x)\n",
+				sp_font_color, sp_font_color_bg);
+
+			sp_font_color = fg;
+			sp_font_color_bg = bg;
+
+			pr_info("  new font color (fg,bg)(0x%08x,0x%08x)\n",
+				sp_font_color, sp_font_color_bg);
+
+		} else if (!strncasecmp(str, "size", 4)) {
 			pr_info("  cur font size (w,h)(%dx%d)\n",
 				sp_font_width, sp_font_height);
 			str = spmon_readint(str + 4, &sp_font_width);

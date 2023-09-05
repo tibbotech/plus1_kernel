@@ -2670,31 +2670,35 @@ EXPORT_SYMBOL(device_run_stop_ctrl);
 
 void usb_switch(int device)
 {
+	u32 val;
+
 #if defined(CONFIG_USB_SUNPLUS_SP7350_OTG) && defined(CONFIG_SOC_SP7350)
-	writel(MASK_MO1_USBC0_USB0_CTRL, moon4_reg + M4_SCFG_10);
+	val = readl(moon4_reg + M4_SCFG_10);
+	writel((val & (~MO1_USBC0_USB0_CTRL)) | MASK_MO1_USBC0_USB0_CTRL,
+							moon4_reg + M4_SCFG_10);
 #else
 	if (device) {
 	#ifdef CONFIG_SOC_Q645
-		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL |
-					MASK_MO1_USBC0_USB0_CTRL | MO1_USBC0_USB0_CTRL,
-							moon3_reg + M3_SCFG_22);
+		val = readl(moon3_reg + M3_SCFG_22);
+		writel((val & (~MO1_USBC0_USB0_TYPE) & (~MO1_USBC0_USB0_SEL))
+							| USB_DEVICE_MODE | MASK_USB_HOST_DEVICE_MODE,
+									moon3_reg + M3_SCFG_22);
 	#elif defined (CONFIG_SOC_SP7350)
-		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL |
-					MASK_MO1_USBC0_USB0_CTRL | MO1_USBC0_USB0_CTRL,
-							moon4_reg + M4_SCFG_10);
+		val = readl(moon4_reg + M4_SCFG_10);
+		writel((val & (~MO1_USBC0_USB0_TYPE) & (~MO1_USBC0_USB0_SEL))
+							| USB_DEVICE_MODE | MASK_USB_HOST_DEVICE_MODE,
+									moon4_reg + M4_SCFG_10);
 	#endif
 
 		pwr_uphy_pll(0);
 		device_run_stop_ctrl(1);
 	} else {
 	#ifdef CONFIG_SOC_Q645
-		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
-					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
-							moon3_reg + M3_SCFG_22);
+		val = readl(moon3_reg + M3_SCFG_22);
+		writel(val | USB_HOST_MODE | MASK_USB_HOST_DEVICE_MODE, moon3_reg + M3_SCFG_22);
 	#elif defined(CONFIG_SOC_SP7350)
-		writel(MASK_MO1_USBC0_USB0_TYPE | MASK_MO1_USBC0_USB0_SEL | MASK_MO1_USBC0_USB0_CTRL |
-					MO1_USBC0_USB0_TYPE | MO1_USBC0_USB0_SEL | MO1_USBC0_USB0_CTRL,
-							moon4_reg + M4_SCFG_10);
+		val = readl(moon4_reg + M4_SCFG_10);
+		writel(val | USB_HOST_MODE | MASK_USB_HOST_DEVICE_MODE, moon4_reg + M4_SCFG_10);
 	#endif
 
 		pwr_uphy_pll(1);
