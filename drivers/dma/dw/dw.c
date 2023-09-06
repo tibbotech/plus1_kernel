@@ -40,36 +40,36 @@ static void dw_spi_dma_initialize_chan(struct dw_dma_chan *dwc)
 	//pr_info("slave_ID %d ",dwc->dma_sconfig.slave_id);
 	switch (dwc->chan.chan_id) {
 	case 0:
-		cfglo = 0x800;		//SPI0 Tx
-		cfghi = 0x2800;
-		break;
-	case 1:
-		cfglo = 0x800;		//SPI0 Rx
+		cfglo = 0x800;		//SPI0 Tx  4
 		cfghi = 0x2000;
 		break;
-	case 2:
-		cfglo = 0x800;		//SPI1 Tx
-		cfghi = 0x3800;
+	case 1:
+		cfglo = 0x400;		//SPI0 Rx  5
+		cfghi = 0x280;
 		break;
-	case 3:
-		cfglo = 0x800;		//SPI1 Rx
+	case 2:
+		cfglo = 0x800;		//SPI1 Tx  6
 		cfghi = 0x3000;
 		break;
-	case 4:
-		cfglo = 0x800;		//SPI2 Tx
-		cfghi = 0x4800;
+	case 3:
+		cfglo = 0x400;		//SPI1 Rx  7
+		cfghi = 0x380;
 		break;
-	case 5:
-		cfglo = 0x800;		//SPI2 Rx
+	case 4:
+		cfglo = 0x800;		//SPI2 Tx  8
 		cfghi = 0x4000;
 		break;
+	case 5:
+		cfglo = 0x400;		//SPI2 Rx  9
+		cfghi = 0x480;
+		break;
 	case 6:
-		cfglo = 0x800;		//SPI3 Tx
-		cfghi = 0x5800;
+		cfglo = 0x800;		//SPI3 Tx  10
+		cfghi = 0x5000;
 		break;
 	case 7:
-		cfglo = 0x800;		//SPI2 Rx
-		cfghi = 0x5000;
+		cfglo = 0x400;		//SPI3 Rx  11
+		cfghi = 0x580;
 		break;
 
 	}
