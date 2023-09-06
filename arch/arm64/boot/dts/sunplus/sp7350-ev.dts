@@ -26,8 +26,16 @@
 //#define TP2815_IN0
 //#define TP2815_IN0_1LANE
 //#define TP2815_IN0_2VC
+//#define TP2815_IN1
+//#define TP2815_IN1_1LANE
+//#define TP2815_IN1_2VC
+//#define TP2815_IN4
+//#define TP2815_IN4_1LANE
+//#define TP2815_IN4_2VC
 //#define TP2815_IN5
+//#define TP2815_IN5_1LANE
 //#define TP2815_IN5_2LANES
+//#define TP2815_IN5_2VC
 //#define TP2815_IN5_4VC
 //#define AP6256_WIFI
 //#define AP6256_BT
@@ -809,7 +817,11 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
+#if defined(IMX219_IN0) || defined(TP2815_IN0)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 #if 0
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -859,9 +871,9 @@
 	#endif
 			input-standard = <0>;
 			//pinctrl-names = "default";
-			//pinctrl-0 = <&camera_5_pins>;
-			//power-gpios = <&pctl 81 GPIO_ACTIVE_HIGH>;
-			//reset-gpios = <&pctl 82 GPIO_ACTIVE_HIGH>;
+			//pinctrl-0 = <&camera_0_pins>;
+			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
 
 			port {
 				tp2815_0: endpoint {
@@ -893,7 +905,11 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
+#if defined(IMX219_IN1) || defined(TP2815_IN1)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 #ifdef IMX219_IN1 /* Add imx219 subnode in i2c1 */
 		#address-cells = <1>;
@@ -921,6 +937,39 @@
 			};
 		};
 #endif
+#ifdef TP2815_IN1 /* Add tp2815 subnode in i2c1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_1: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_clk>;
+	#ifdef TP2815_IN1_2VC
+			input-channel = <2>;
+	#else
+			input-channel = <1>;
+	#endif
+			input-standard = <0>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_1_pins>;
+			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_1: endpoint {
+					remote-endpoint = <&csi2_1>;
+	#ifdef TP2815_IN1_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c2: i2c@f882a000 {
@@ -934,7 +983,11 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo2_pins>;
+#if defined(IMX219_IN4) || defined(TP2815_IN4)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 #ifdef IMX219_IN4 /* Add imx219 subnode in i2c2 */
 		#address-cells = <1>;
@@ -962,6 +1015,39 @@
 			};
 		};
 #endif
+#ifdef TP2815_IN4 /* Add tp2815 subnode in i2c2 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_4: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_clk>;
+	#ifdef TP2815_IN4_2VC
+			input-channel = <2>;
+	#else
+			input-channel = <1>;
+	#endif
+			input-standard = <0>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_4_pins>;
+			//power-gpios = <&pctl 79 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 80 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_4: endpoint {
+					remote-endpoint = <&csi2_4>;
+	#ifdef TP2815_IN4_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c3: i2c@f882b000 {
@@ -975,7 +1061,11 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo3_pins>;
+#if defined(IMX219_IN5) || defined(TP2815_IN5)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 #ifdef IMX219_IN5 /* Add imx219 subnode in i2c3 */
 		#address-cells = <1>;
@@ -1013,6 +1103,8 @@
 			clocks = <&tp2815_clk>;
 	#ifdef TP2815_IN5_4VC
 			input-channel = <4>;
+	#elif defined(TP2815_IN5_2VC)
+			input-channel = <2>;
 	#else
 			input-channel = <1>;
 	#endif
@@ -1710,7 +1802,11 @@
 		resets = <&rstc RST_MIPICSI0>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <0>;
+#if defined(IMX219_IN0) || defined(TP2815_IN0)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -1795,7 +1891,11 @@
 		resets = <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <0>;
+#if defined(IMX219_IN0) || defined(TP2815_IN0)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -1829,7 +1929,11 @@
 		resets = <&rstc RST_VI0_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <1>;
+#if defined(TP2815_IN0) && defined(TP2815_IN0_2VC)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -1859,12 +1963,22 @@
 		resets = <&rstc RST_MIPICSI1>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <1>;
+#if defined(IMX219_IN1) || defined(TP2815_IN1)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
 #ifdef IMX219_IN1
 		num_channels = <1>;
+#elif defined(TP2815_IN1)
+	#ifdef TP2815_IN1_2VC
+		num_channels = <2>;
+	#else
+		num_channels = <1>;
+	#endif
 #else
 		num_channels = <2>;
 #endif
@@ -1884,6 +1998,23 @@
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
+				};
+			};
+#endif
+#ifdef TP2815_IN1 /* Add tp2815 subnode in i2c1 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_1: endpoint {
+					remote-endpoint = <&tp2815_1>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+	#ifdef TP2815_IN1_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
 				};
 			};
 #endif
@@ -1921,7 +2052,11 @@
 		resets = <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <2>;
+#if defined(IMX219_IN1) || defined(TP2815_IN1)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -1955,7 +2090,11 @@
 		resets = <&rstc RST_VI1_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <3>;
+#if defined(TP2815_IN1) && defined(TP2815_IN1_2VC)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2286,12 +2425,22 @@
 		resets = <&rstc RST_MIPICSI4>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <4>;
+#if defined(IMX219_IN4) || defined(TP2815_IN4)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
 #ifdef IMX219_IN4
 		num_channels = <1>;
+#elif defined(TP2815_IN4)
+	#ifdef TP2815_IN4_2VC
+		num_channels = <2>;
+	#else
+		num_channels = <1>;
+	#endif
 #else
 		num_channels = <2>;
 #endif
@@ -2311,6 +2460,23 @@
 					bus-type = <4>;
 					clock-lanes = <0>;
 					data-lanes = <1 2>;
+				};
+			};
+#endif
+#ifdef TP2815_IN4 /* Add tp2815 subnode in i2c2 */
+			port@0 {
+				reg = <0>;
+
+				/* MIPI CSI-2 bus endpoint */
+				csi2_4: endpoint {
+					remote-endpoint = <&tp2815_4>;
+					bus-type = <4>;
+					clock-lanes = <0>;
+	#ifdef TP2815_IN4_1LANE
+					data-lanes = <1>;
+	#else
+					data-lanes = <1 2>;
+	#endif
 				};
 			};
 #endif
@@ -2348,7 +2514,11 @@
 		resets = <&rstc RST_VI4_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <8>;
+#if defined(IMX219_IN4) || defined(TP2815_IN4)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2382,7 +2552,11 @@
 		resets = <&rstc RST_VI4_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <9>;
+#if defined(TP2815_IN4) && defined(TP2815_IN4_2VC)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2412,7 +2586,11 @@
 		resets = <&rstc RST_MIPICSI5>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <5>;
+#if defined(IMX219_IN5) || defined(TP2815_IN5)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -2421,6 +2599,8 @@
 #elif defined(TP2815_IN5)
 	#ifdef TP2815_IN5_4VC
 		num_channels = <4>;
+	#elif defined(TP2815_IN5_2VC)
+		num_channels = <2>;
 	#else
 		num_channels = <1>;
 	#endif
@@ -2455,7 +2635,9 @@
 					remote-endpoint = <&tp2815_5>;
 					bus-type = <4>;
 					clock-lanes = <0>;
-	#ifdef TP2815_IN5_2LANES
+	#ifdef TP2815_IN5_1LANE
+					data-lanes = <1>;
+	#elif defined(TP2815_IN5_2LANES)
 					data-lanes = <1 2>;
 	#else
 					data-lanes = <1 2 3 4>;
@@ -2507,7 +2689,11 @@
 		resets = <&rstc RST_VI5_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <10>;
+#if defined(IMX219_IN5) || defined(TP2815_IN5)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2541,7 +2727,11 @@
 		resets = <&rstc RST_VI5_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <11>;
+#if defined(TP2815_IN5) && defined(TP2815_IN5_2VC)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
