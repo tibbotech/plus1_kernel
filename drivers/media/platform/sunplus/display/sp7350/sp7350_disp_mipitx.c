@@ -529,6 +529,41 @@ void sp7350_mipitx_pllclk_set(int mode, int width, int height)
 			}
 		}
 
+		#if 1
+		if ((disp_dev->out_res.width == 720) && (disp_dev->out_res.height == 480)) {
+			value = 0;
+			value |= 0x00780050;
+			value |= (0x7f800000 | (0xe << 7));
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_14); //AO_G3.14
+
+			value = 0x07800380; //PLLH MIPITX CLK = 27.08MHz
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_25); //AO_G3.25
+		} else if ((disp_dev->out_res.width == 1280) && (disp_dev->out_res.height == 720)) {
+			value = 0;
+			value |= 0x00780038;
+			value |= (0x7f800000 | (0x13 << 7));
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_14); //AO_G3.14
+
+			value = 0x07800180; //PLLH MIPITX CLK = 74MHz
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_25); //AO_G3.25
+		} else if ((disp_dev->out_res.width == 1920) && (disp_dev->out_res.height == 1080)) {
+			value = 0;
+			value |= 0x00780038;
+			value |= (0x7f800000 | (0x13 << 7));
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_14); //AO_G3.14
+
+			value = 0x07800080; //PLLH MIPITX CLK = 148MHz
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_25); //AO_G3.25
+		} else {
+			value = 0;
+			value |= (0x00780000 | (sp_mipitx_phy_pllclk_dsi[time_cnt][8] << 3));
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_14); //AO_G3.14
+
+			value = 0;
+			value |= (0x07800000 | (sp_mipitx_phy_pllclk_dsi[time_cnt][9] << 7));
+			writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_25); //AO_G3.25
+		}
+		#else
 		value = 0;
 		value |= (0x00780000 | (sp_mipitx_phy_pllclk_dsi[time_cnt][8] << 3));
 		writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_14); //AO_G3.14
@@ -536,6 +571,7 @@ void sp7350_mipitx_pllclk_set(int mode, int width, int height)
 		value = 0;
 		value |= (0x07800000 | (sp_mipitx_phy_pllclk_dsi[time_cnt][9] << 7));
 		writel(value, disp_dev->ao_moon3 + MIPITX_AO_MOON3_25); //AO_G3.25
+		#endif
 
 		value = 0x00000000;
 		value |= (SP7350_MIPITX_MIPI_PHY_EN_DIV5(sp_mipitx_phy_pllclk_dsi[time_cnt][6]) |
