@@ -51,6 +51,7 @@
 struct sunplus_rtc {
 	struct clk *rtcclk;
 	struct reset_control *rstc;
+	int rtc_irq;
 	unsigned long set_alarm_again;
 #ifdef CONFIG_SOC_SP7021
 	u32 charging_mode;
@@ -186,10 +187,18 @@ EXPORT_SYMBOL(sp_rtc_get_time);
 static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
-
 	// Keep RTC from system reset
-	writel((1 << (16+4)) | (1 << 4), &rtc_reg_ptr->rtc_ctrl);
-
+	if(sp_rtc.rtc_irq > 0 )
+	{
+		if (device_may_wakeup(&pdev->dev))
+		{
+			enable_irq_wake(sp_rtc.rtc_irq);
+		}
+		else
+		{
+			disable_irq_wake(sp_rtc.rtc_irq);
+		}
+	}
 	return 0;
 }
 
@@ -200,9 +209,12 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	/* there is nothing to do here.			*/
 	/*						*/
 	FUNC_DEBUG();
-
-	// Keep RTC from system reset
-	writel((1 << (16+4)) | (1 << 4), &rtc_reg_ptr->rtc_ctrl);
+	if(sp_rtc.rtc_irq > 0 )
+	{
+		if (device_may_wakeup(&pdev->dev)){
+			disable_irq_wake(sp_rtc.rtc_irq);
+		}
+	}
 
 	return 0;
 }
@@ -290,6 +302,7 @@ static int sp_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alrm)
 	wmb();			// make sure settings are effective.
 
 	// enable alarm here after enabling update IRQ
+	//writel(0x13, &rtc_reg_ptr->rtc_ctrl);
 	if (rtc->uie_rtctimer.enabled)
 		writel(0x13, &rtc_reg_ptr->rtc_ctrl);
 	else if (!rtc->aie_timer.enabled)
@@ -459,6 +472,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 #endif
 
 	device_init_wakeup(&plat_dev->dev, 1);
+	sp_rtc.rtc_irq = irq;
 
 #if defined(CONFIG_SOC_SP7021)
 	rtc = devm_rtc_device_register(&plat_dev->dev, "sp7021-rtc", &sp_rtc_ops, THIS_MODULE);
