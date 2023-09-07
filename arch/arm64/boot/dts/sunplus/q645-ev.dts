@@ -1105,6 +1105,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&spi_nand_pins>;
 		spi-max-frequency = <75000000>;
+		read-timing-selection = <2>;
 	};
 
 	bch0: bch@f8101000 {

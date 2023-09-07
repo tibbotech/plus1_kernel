@@ -362,6 +362,7 @@ struct sp_spinand_info {
 	u8 raw_trs_mode;        /* used in raw data access,refer to SPINAND_TRSMODE */
 	u8 dev_protection;      /* protection value by reading feature(0xA0) */
 	u8 bch_dec_src;         /* BCH decode data source. 0:spi-nand controller, 1:system memory */
+	u8 rts;                 /* Read timing selection */
 };
 
 /**************************************************************************

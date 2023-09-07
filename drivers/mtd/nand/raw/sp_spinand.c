@@ -309,7 +309,11 @@ int spi_nand_reset(struct sp_spinand_info *info)
 	writel(value, &regs->spi_ctrl);
 
 	value = SPINAND_CS_DISACTIVE_CYC(CONFIG_SPINAND_CS_DISACTIVE_CYC)
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+		| SPINAND_READ_TIMING(info->rts);
+#else
 		| SPINAND_READ_TIMING(CONFIG_SPINAND_READ_TIMING_SEL);
+#endif
 	writel(value, &regs->spi_timing);
 
 	value = SPINAND_LITTLE_ENDIAN
@@ -1114,6 +1118,9 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	int i;
 	u32 value;
 	u32 id;
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	u32 rts;
+#endif
 	u32 clk_freq, max_freq;
 	struct device *dev = &pdev->dev;
 	struct device_node *node = pdev->dev.of_node;
@@ -1216,6 +1223,20 @@ static int sp_spinand_probe(struct platform_device *pdev)
 		SPINAND_LOGW("default SPI max frequency: %d Hz\n", max_freq);
 	}
 
+#if defined(CONFIG_SOC_SP7350)
+	if (max_freq > 100000000) {
+		clk_set_rate(info->clk, 614000000);
+
+		clk_freq = clk_get_rate(clk);
+		if (!clk_freq) {
+			SPINAND_LOGE("Failed to get clock rate\n");
+			ret = -ENXIO;
+			goto err1;
+		}
+		SPINAND_LOGI("source clock frequency: %d Hz\n", clk_freq);
+	}
+#endif
+
     // Calculate SPI interface clock frequency
 	// SCK_MODE : 1    2    3    4    5     6     7
 	// Freq Div : 1/2  1/4  1/6  1/8  1/16  1/24  1/32
@@ -1235,6 +1256,16 @@ static int sp_spinand_probe(struct platform_device *pdev)
 	}
 	info->spi_clk_div = i;
 	SPINAND_LOGI("SPI clock frequency: %d Hz\n", (clk_freq/value));
+
+#if defined(CONFIG_SOC_Q654) || defined(CONFIG_SOC_SP7350)
+	ret = of_property_read_u32(node, "read-timing-selection", &rts);
+	if (ret < 0) {
+		rts = CONFIG_SPINAND_READ_TIMING_SEL;
+		SPINAND_LOGW("default read timing sel: %d\n", max_freq);
+	}
+	info->rts = (u8)rts;
+	SPINAND_LOGI("read timing selection: %d\n", info->rts);
+#endif
 
 	if (spi_nand_reset(info) < 0) {
 		SPINAND_LOGE("reset device fail\n");
