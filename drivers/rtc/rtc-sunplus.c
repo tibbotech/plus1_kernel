@@ -505,7 +505,9 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 #endif
 
 	device_init_wakeup(&plat_dev->dev, 1);
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	sp_rtc.rtc_irq = irq;
+#endif
 
 #if defined(CONFIG_SOC_SP7021)
 	rtc = devm_rtc_device_register(&plat_dev->dev, "sp7021-rtc", &sp_rtc_ops, THIS_MODULE);
