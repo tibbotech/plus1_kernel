@@ -1319,8 +1319,9 @@
 
 	rtc: rtc@f8801180 {
 		compatible = "sunplus,sp7350-rtc";
-		reg = <0x0 0xf8801180 0x0 0x30>;
-		reg-names = "rtc_reg";
+		reg = <0x0 0xf8801180 0x0 0x30>,
+			  <0x0 0xf8008178 0x0 0x04>; /* mbox G258.30, cpu0 to cpu2 direct reg06 */
+		reg-names = "rtc_reg","mbox_reg";
 		clocks = <&clkc RTC>;
 		resets = <&rstc RST_RTC>;
 		interrupt-parent = <&gic>;

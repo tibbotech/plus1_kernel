@@ -51,16 +51,25 @@
 struct sunplus_rtc {
 	struct clk *rtcclk;
 	struct reset_control *rstc;
-	int rtc_irq;
 	unsigned long set_alarm_again;
 #ifdef CONFIG_SOC_SP7021
 	u32 charging_mode;
+#endif
+
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	u32 __iomem * mbox_base;
+	u32 rtc_irq;
+	u32 rtc_back_ctrl;
+	u32 rtc_back_ontime_set;
 #endif
 };
 
 struct sunplus_rtc sp_rtc;
 
 #define RTC_REG_NAME		"rtc_reg"
+#define MBOX_REG_NAME		"mbox_reg"
+#define MBOX_RTC_SUSPEND_IN      (0x11225566)
+#define MBOX_RTC_SUSPEND_OUT     (0x33447788)
 
 #if defined(CONFIG_SOC_SP7021)
 struct sp_rtc_reg {
@@ -183,11 +192,17 @@ int sp_rtc_get_time(struct rtc_time *tm)
 	return 0;
 }
 EXPORT_SYMBOL(sp_rtc_get_time);
-
 static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	FUNC_DEBUG();
 	// Keep RTC from system reset
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	writel(MBOX_RTC_SUSPEND_IN, sp_rtc.mbox_base); // tell CM4 in suspend by mailbox
+	//backup rtc value, maybe clear by cm4 rtc wakeup
+	sp_rtc.rtc_back_ctrl = readl(&rtc_reg_ptr->rtc_ctrl);
+	sp_rtc.rtc_back_ontime_set = readl(&rtc_reg_ptr->rtc_ontime_set);
+
+	writel(0x13, &rtc_reg_ptr->rtc_ctrl);//enable rtc interrupt
 	if(sp_rtc.rtc_irq > 0 )
 	{
 		if (device_may_wakeup(&pdev->dev))
@@ -199,6 +214,7 @@ static int sp_rtc_suspend(struct platform_device *pdev, pm_message_t state)
 			disable_irq_wake(sp_rtc.rtc_irq);
 		}
 	}
+#endif
 	return 0;
 }
 
@@ -209,13 +225,18 @@ static int sp_rtc_resume(struct platform_device *pdev)
 	/* there is nothing to do here.			*/
 	/*						*/
 	FUNC_DEBUG();
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	writel(MBOX_RTC_SUSPEND_OUT, sp_rtc.mbox_base); // tell CM4 out suspend by mailbox
+
+	writel(sp_rtc.rtc_back_ctrl,&rtc_reg_ptr->rtc_ctrl);
+	writel(sp_rtc.rtc_back_ontime_set,&rtc_reg_ptr->rtc_ontime_set);
 	if(sp_rtc.rtc_irq > 0 )
 	{
 		if (device_may_wakeup(&pdev->dev)){
 			disable_irq_wake(sp_rtc.rtc_irq);
 		}
 	}
-
+#endif
 	return 0;
 }
 
@@ -421,6 +442,18 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 			RTC_ERR("%s devm_ioremap_resource fail\n", RTC_REG_NAME);
 	}
 	RTC_DEBUG("reg_base = 0x%lx\n", (unsigned long)reg_base);
+
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MBOX_REG_NAME);
+	RTC_DEBUG("res = 0x%x\n", res->start);
+
+	if (res) {
+		sp_rtc.mbox_base = devm_ioremap_resource(&plat_dev->dev, res);
+		if (IS_ERR(sp_rtc.mbox_base))
+			RTC_ERR("%s devm_ioremap_resource fail\n", MBOX_REG_NAME);
+	}
+	RTC_DEBUG("mailbox_base = 0x%lx\n", (unsigned long)sp_rtc.mbox_base);
+#endif
 
 	// clk
 	sp_rtc.rtcclk = devm_clk_get(&plat_dev->dev, NULL);
