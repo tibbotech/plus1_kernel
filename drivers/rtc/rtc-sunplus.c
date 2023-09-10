@@ -445,7 +445,7 @@ static int sp_rtc_probe(struct platform_device *plat_dev)
 
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
 	res = platform_get_resource_byname(plat_dev, IORESOURCE_MEM, MBOX_REG_NAME);
-	RTC_DEBUG("res = 0x%x\n", res->start);
+	RTC_DEBUG("res = 0x%llx\n", res->start);
 
 	if (res) {
 		sp_rtc.mbox_base = devm_ioremap_resource(&plat_dev->dev, res);
