@@ -21,6 +21,8 @@
 //#define MIPI_CSI_4VC
 //#define IMX219_IN0
 //#define IMX219_IN1
+//#define IMX219_IN2
+//#define IMX219_IN3
 //#define IMX219_IN4
 //#define IMX219_IN5
 //#define TP2815_IN0
@@ -29,6 +31,10 @@
 //#define TP2815_IN1
 //#define TP2815_IN1_1LANE
 //#define TP2815_IN1_2VC
+//#define TP2815_IN2
+//#define TP2815_IN2_1LANE
+//#define TP2815_IN2_2LANES
+//#define TP2815_IN2_2VC
 //#define TP2815_IN4
 //#define TP2815_IN4_1LANE
 //#define TP2815_IN4_2VC
@@ -37,6 +43,7 @@
 //#define TP2815_IN5_2LANES
 //#define TP2815_IN5_2VC
 //#define TP2815_IN5_4VC
+
 //#define AP6256_WIFI
 //#define AP6256_BT
 
@@ -835,7 +842,7 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo0_pins>;
-#if defined(IMX219_IN0) || defined(TP2815_IN0)
+#if defined(IMX219_IN0) || defined(IMX219_IN2) || defined(TP2815_IN0) || defined(TP2815_IN2)
 		status = "okay";
 #else
 		status = "disabled";
@@ -867,6 +874,32 @@
 			port {
 				imx219_0: endpoint {
 					remote-endpoint = <&csi2_0>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+#ifdef IMX219_IN2 /* Add imx219 subnode in i2c0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_0_pins>;
+			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_2: endpoint {
+					remote-endpoint = <&csi2_2>;
 					data-lanes = <1 2>;
 					clock-noncontinuous;
 					link-frequencies = /bits/ 64 <456000000>;
@@ -907,6 +940,42 @@
 			};
 		};
 #endif
+#ifdef TP2815_IN2 /* Add tp2815 subnode in i2c0 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_2: sensor@44 {
+			compatible = "Techpoint,tp2815";
+			reg = <0x44>;
+			clocks = <&tp2815_clk>;
+	#ifdef TP2815_IN2_2VC
+			input-channel = <2>;
+	#else
+			input-channel = <1>;
+	#endif
+			input-standard = <0>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_0_pins>;
+			//power-gpios = <&pctl 71 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 72 GPIO_ACTIVE_HIGH>;
+
+			port {
+				tp2815_2: endpoint {
+					remote-endpoint = <&csi2_2>;
+	#ifdef TP2815_IN2_1LANE
+					data-lanes = <1>;
+	#elif defined(TP2815_IN2_2LANES)
+					data-lanes = <1 2>;
+	#else
+					data-lanes = <1 2 3 4>;
+	#endif
+
+					clock-continuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
 	};
 
 	i2c1: i2c@f8829000 {
@@ -923,7 +992,7 @@
 		clock-frequency = <400000>;
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo1_pins>;
-#if defined(IMX219_IN1) || defined(TP2815_IN1)
+#if defined(IMX219_IN1) || defined(IMX219_IN3) || defined(TP2815_IN1)
 		status = "okay";
 #else
 		status = "disabled";
@@ -948,6 +1017,32 @@
 			port {
 				imx219_1: endpoint {
 					remote-endpoint = <&csi2_1>;
+					data-lanes = <1 2>;
+					clock-noncontinuous;
+					link-frequencies = /bits/ 64 <456000000>;
+				};
+			};
+		};
+#endif
+#ifdef IMX219_IN3 /* Add imx219 subnode in i2c1 */
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		camera_3: sensor@10 {
+			compatible = "sony,imx219";
+			reg = <0x10>;
+			clocks = <&imx219_clk>;
+			VANA-supply = <&imx219_vana_2v8>;
+			VDIG-supply = <&imx219_vdig_1v8>;
+			VDDL-supply = <&imx219_vddl_1v2>;
+			//pinctrl-names = "default";
+			//pinctrl-0 = <&camera_1_pins>;
+			//power-gpios = <&pctl 73 GPIO_ACTIVE_HIGH>;
+			//reset-gpios = <&pctl 74 GPIO_ACTIVE_HIGH>;
+
+			port {
+				imx219_3: endpoint {
+					remote-endpoint = <&csi2_3>;
 					data-lanes = <1 2>;
 					clock-noncontinuous;
 					link-frequencies = /bits/ 64 <456000000>;
@@ -2144,7 +2239,11 @@
 		resets = <&rstc RST_MIPICSI2>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <2>;
+#if defined(IMX219_IN2) || defined(TP2815_IN2)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -2157,6 +2256,12 @@
 #else
 	#ifdef IMX219_IN2
 		num_channels = <1>;
+	#elif defined(TP2815_IN2)
+		#ifdef TP2815_IN2_2VC
+		num_channels = <2>;
+		#else
+		num_channels = <1>;
+		#endif
 	#else
 		num_channels = <2>;
 	#endif
@@ -2189,7 +2294,13 @@
 					remote-endpoint = <&tp2815_2>;
 					bus-type = <4>;
 					clock-lanes = <0>;
+	#ifdef TP2815_IN2_1LANE
+					data-lanes = <1>;
+	#elif defined(TP2815_IN2_2LANES)
+					data-lanes = <1 2>;
+	#else
 					data-lanes = <1 2 3 4>;
+	#endif
 				};
 			};
 #endif
@@ -2239,7 +2350,11 @@
 		resets = <&rstc RST_VI23_CSIIW0>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <4>;
+#if defined(IMX219_IN2) || defined(TP2815_IN2)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2273,7 +2388,11 @@
 		resets = <&rstc RST_VI23_CSIIW1>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <5>;
+#if defined(TP2815_IN2) && defined(TP2815_IN2_2VC)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
@@ -2304,7 +2423,11 @@
 		resets = <&rstc RST_MIPICSI3>;
 		reset-names = "rstc_mipicsi";
 		sunplus,id = <3>;
+#if defined(IMX219_IN3)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		/* Virtual channel related properties */
 		max_channels = <4>;
@@ -2367,7 +2490,11 @@
 		resets = <&rstc RST_VI23_CSIIW2>;
 		reset-names = "rstc_csiiw";
 		sunplus,id = <6>;
+#if defined(IMX219_IN3)
+		status = "okay";
+#else
 		status = "disabled";
+#endif
 
 		ports {
 			#address-cells = <1>;
