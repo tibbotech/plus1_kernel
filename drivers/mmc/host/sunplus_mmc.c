@@ -36,7 +36,9 @@ enum loglevel {
 	SPMMC_LOG_MAX
 };
 static int loglevel = SPMMC_LOG_WARNING;
-
+#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+static int CMD23_RECEIVED = 0;
+#endif
 /**
  * we do not need `SPMMC_LOG_' prefix here, when specify @level.
  */
@@ -881,12 +883,27 @@ static int spmmc_check_error(struct spmmc_host *host, struct mmc_request *mrq)
 		data->bytes_xfered = data->blocks * data->blksz;
 	}
 	host->tuning_info.need_tuning = ret;
-    /* controller will not send cmd 12 automatically if error occured */
+
+	#if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
+	if ((cmd->opcode == MMC_READ_MULTIPLE_BLOCK)
+		|| (cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK)) {
+		if(CMD23_RECEIVED == 0){
+			spmmc_pr(DEBUG, "CMD23_RECEIVED == 0\n");
+			__send_stop_cmd(host);
+			spmmc_sw_reset(host);
+		}
+		else {
+			spmmc_pr(DEBUG, "CMD23_RECEIVED == 1\n");
+			CMD23_RECEIVED = 0;
+		}
+	}
+	#else
 	if (cmd->opcode == MMC_READ_MULTIPLE_BLOCK ||
 	    cmd->opcode == MMC_WRITE_MULTIPLE_BLOCK) {
 		__send_stop_cmd(host);
 		spmmc_sw_reset(host);
 	}
+	#endif
 	return ret;
 }
 
@@ -1102,6 +1119,7 @@ static void spmmc_request(struct mmc_host *mmc, struct mmc_request *mrq)
 		spmmc_pr(VERBOSE, "request done > error:%d, cmd:%d, resp:%08x %08x %08x %08x\n",
 			 cmd->error, cmd->opcode, cmd->resp[0], cmd->resp[1], cmd->resp[2], cmd->resp[3]);
 		mrq->sbc = NULL;
+		CMD23_RECEIVED = 1;
 	}
 	#endif
 
