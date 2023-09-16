@@ -14,6 +14,7 @@
 #include <linux/platform_device.h>
 #include <linux/pwm.h>
 #include <linux/clk.h>
+#include <linux/reset.h>
 #include <linux/pm_runtime.h>
 
 #define SUNPLUS_PWM_NUM		ePWM_MAX
@@ -74,6 +75,7 @@ struct sunplus_pwm {
 	struct pwm_chip chip;
 	void __iomem *regs;
 	struct clk *clk;
+	struct reset_control *rstc;
 };
 
 static inline struct sunplus_pwm *to_sunplus_pwm(struct pwm_chip *chip)
@@ -426,6 +428,8 @@ static int sunplus_pwm_probe(struct platform_device *pdev)
 	struct device_node *np = pdev->dev.of_node;
 	int ret;
 
+	pr_info("%s\n", __func__);
+
 	if (!np) {
 		dev_err(&pdev->dev, "invalid devicetree node\n");
 		return -EINVAL;
@@ -456,6 +460,14 @@ static int sunplus_pwm_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "not found clk source.\n");
 		return PTR_ERR(pdata->clk);
 	}
+	pdata->rstc = devm_reset_control_get_exclusive(&pdev->dev, NULL);
+	if (IS_ERR(pdata->rstc))
+		return dev_err_probe(&pdev->dev, PTR_ERR(pdata->rstc), "err get reset\n");
+
+	ret = reset_control_deassert(pdata->rstc);
+	if (ret)
+		return dev_err_probe(&pdev->dev, ret, "failed to deassert reset\n");
+
 	ret = clk_prepare_enable(pdata->clk);
 	if (ret) {
 		dev_err(&pdev->dev, "failed to enable clk source.\n");
@@ -479,10 +491,10 @@ static int sunplus_pwm_probe(struct platform_device *pdev)
 		clk_disable_unprepare(pdata->clk);
 		return ret;
 	}
-	pm_runtime_set_active(&pdev->dev);
-	pm_runtime_enable(&pdev->dev);
-	pm_runtime_get_sync(&pdev->dev);
-	pm_runtime_put(&pdev->dev);
+	//pm_runtime_set_active(&pdev->dev);
+	//pm_runtime_enable(&pdev->dev);
+	//pm_runtime_get_sync(&pdev->dev);
+	//pm_runtime_put(&pdev->dev);
 
 	return 0;
 }
@@ -502,6 +514,7 @@ static int sunplus_pwm_remove(struct platform_device *pdev)
 
 #ifndef CONFIG_PM
 	clk_disable_unprepare(pdata->clk);
+	reset_control_assert(sp_data->rstc);
 #endif
 	return ret;
 }
@@ -517,23 +530,36 @@ MODULE_DEVICE_TABLE(of, sunplus_pwm_dt_ids);
 #ifdef CONFIG_PM
 static int __maybe_unused sunplus_pwm_suspend(struct device *dev)
 {
+	//pr_info("%s\n", __func__);
 	return pm_runtime_force_suspend(dev);
 }
 
 static int __maybe_unused sunplus_pwm_resume(struct device *dev)
 {
+	//pr_info("%s\n", __func__);
 	return pm_runtime_force_resume(dev);
 }
 
 static int __maybe_unused sunplus_pwm_runtime_suspend(struct device *dev)
 {
-	clk_disable(devm_clk_get(dev, NULL));
+	struct sunplus_pwm *pdata = dev_get_drvdata(dev);
+
+	//pr_info("%s\n", __func__);
+	clk_disable_unprepare(pdata->clk); 
+	reset_control_assert(pdata->rstc);
+
 	return 0;
 }
 
 static int __maybe_unused sunplus_pwm_runtime_resume(struct device *dev)
 {
-	return clk_enable(devm_clk_get(dev, NULL));
+	struct sunplus_pwm *pdata = dev_get_drvdata(dev);
+
+	//pr_info("%s\n", __func__);
+	reset_control_deassert(pdata->rstc);
+	clk_prepare_enable(pdata->clk);
+
+	return 0;
 }
 #endif
 
