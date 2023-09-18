@@ -2114,8 +2114,12 @@ static int sunplus_uart_platform_driver_suspend(struct platform_device *pdev,
 	pm_message_t state)
 {
 	/* Don't suspend uart0 for cmd line usage */
-	if ((pdev->id < NUM_UART) && (pdev->id > 0))
+	if ((pdev->id < NUM_UART) && (pdev->id > 0)) {
+	#if defined(CONFIG_SOC_SP7350)
+		clk_disable_unprepare(sunplus_uart_ports[pdev->id].clk);
+	#endif
 		reset_control_assert(sunplus_uart_ports[pdev->id].rstc);
+	}
 
 	return 0;
 }
@@ -2143,8 +2147,12 @@ static int sunplus_uart_runtime_suspend(struct device *dev)
 	struct platform_device *uartpdev = to_platform_device(dev);
 
 	/* Don't suspend uart0 for cmd line usage */
-	if ((uartpdev->id < NUM_UART) && (uartpdev->id > 0))
+	if ((uartpdev->id < NUM_UART) && (uartpdev->id > 0)) {
+	#if defined(CONFIG_SOC_SP7350)
+		clk_disable_unprepare(sunplus_uart_ports[uartpdev->id].clk);
+	#endif
 		reset_control_assert(sunplus_uart_ports[uartpdev->id].rstc);
+	}
 
 	return 0;
 }
