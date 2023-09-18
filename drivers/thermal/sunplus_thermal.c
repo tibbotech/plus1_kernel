@@ -21,24 +21,20 @@
 #define ENABLE_THERMAL		BIT(31)
 
 #define DISABLE_THERMAL_V2	(BIT(20) | BIT(4))
-//#define ENABLE_THERMAL_V2	BIT(20)
-#define ENABLE_THERMAL_V2	(BIT(20) | BIT(21))
-
+//#define ENABLE_THERMAL_V2	(BIT(20) | BIT(21))
+#define ENABLE_THERMAL_V2	(BIT(20) | BIT(21) | BIT(17) | BIT(1))
 
 #define SP_THERMAL_MASK		GENMASK(10, 0)
-#define SP_TCODE_HIGH_MASK	GENMASK(10, 8)
+#define SP_TCODE_HIGH_MASK	GENMASK(15, 8)
 #define SP_TCODE_LOW_MASK	GENMASK(7, 0)
-
-#define TEMP_RATE		608
-#define TEMP_BASE		3500
-#define TEMP_OTP_BASE		1518
-
-#define TEMP_RATE_V2		590
-#define TEMP_BASE_V2		2500
-#define TEMP_OTP_BASE_V2	1534
 
 #define SP_THERMAL_CTL0_REG	0x0000
 #define SP_THERMAL_STS0_REG	0x0030
+
+#define SP_THERMAL_CTL1_REG	0x0004		//F8800288
+#define SP_THERMAL_CTL2_REG	0x000C		//F88002C0
+#define SP_THERMAL_CTL3_REG	0x0010		//F88002C4
+
 
 #define SP_THERMAL_STS0_V2_REG	0x0018
 
@@ -47,6 +43,7 @@ struct sunplus_thermal_compatible {
 	int temp_base;
 	int temp_otp_base;
 	int temp_rate;
+	int temp_otp_shift;
 };
 
 /* common data structures */
@@ -100,6 +97,11 @@ static int sp_get_otp_temp_coef(struct sp_thermal_data *sp_data, struct device *
 	sp_data->otp_temp0 = FIELD_PREP(SP_TCODE_LOW_MASK, otp_v[0]) |
 			     FIELD_PREP(SP_TCODE_HIGH_MASK, otp_v[1]);
 
+	if (sp_data->dev_comp->ver > 1)
+		sp_data->otp_temp0 = sp_data->otp_temp0 >> sp_data->dev_comp->temp_otp_shift;
+
+	sp_data->otp_temp0 = FIELD_GET(SP_THERMAL_MASK, sp_data->otp_temp0);
+
 	if (!IS_ERR(otp_v))
 		kfree(otp_v);
 
@@ -114,11 +116,15 @@ static int sp_thermal_get_sensor_temp(void *data, int *temp)
 	struct sp_thermal_data *sp_data = data;
 	int t_code;
 
-	if (sp_data->dev_comp->ver > 1)
+	if (sp_data->dev_comp->ver > 1){
+		writel(0xFFFF0800, sp_data->regs +  SP_THERMAL_CTL1_REG);
+		writel(0xFFFF9530, sp_data->regs +  SP_THERMAL_CTL2_REG);
+		writel(0x00030003, sp_data->regs +  SP_THERMAL_CTL3_REG);
 		t_code = readl(sp_data->regs + SP_THERMAL_STS0_V2_REG);
+	}
 	else
 		t_code = readl(sp_data->regs + SP_THERMAL_STS0_REG);
-	
+
 	t_code = FIELD_GET(SP_THERMAL_MASK, t_code);
 
 	*temp = ((sp_data->otp_temp0 - t_code) * 10000 / sp_data->dev_comp->temp_rate) + sp_data->dev_comp->temp_base;
@@ -269,9 +275,10 @@ static const struct dev_pm_ops sp_thermal_pm_ops = {
 
 static const struct sunplus_thermal_compatible sp7350_compat = {
 	.ver = 2,
-	.temp_base = 2500,
-	.temp_otp_base = 1180,
-	.temp_rate = 295,
+	.temp_base = 3500,
+	.temp_otp_base = 1496,
+	.temp_rate = 585,
+	.temp_otp_shift = 2,
 };
 
 static const struct sunplus_thermal_compatible sp7021_compat = {
@@ -279,6 +286,7 @@ static const struct sunplus_thermal_compatible sp7021_compat = {
 	.temp_base = 3500,
 	.temp_otp_base = 1518,
 	.temp_rate =608,
+	.temp_otp_shift = 0,
 
 };
 
