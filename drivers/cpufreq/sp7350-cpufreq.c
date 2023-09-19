@@ -111,7 +111,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 		* scale down to the new voltage.
 		*/
 		if (vproc < old_vproc) {
-			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_SLOW);
+			sp_clkc_ca55_memctl(MEMCTL_DEFAULT);
 			//pr_debug(">>> scale down voltage from %d to %d\n", old_vproc, vproc);
 			ret = regulator_set_voltage(info->proc_reg, vproc, vproc + VOLT_TOL);
 			if (ret) {
