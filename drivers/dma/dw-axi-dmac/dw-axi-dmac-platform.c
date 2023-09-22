@@ -1252,12 +1252,23 @@ static int axi_dma_suspend(struct axi_dma_chip *chip)
 	clk_disable_unprepare(chip->cfgr_clk);
 #endif
 
+#ifdef SUPPORT_RESET_CONTROL
+	if (reset_control_assert(chip->core_rstc))
+		dev_err(chip->dev, "reset assert fail\n");
+#endif
+
 	return 0;
 }
 
 static int axi_dma_resume(struct axi_dma_chip *chip)
 {
 	int ret;
+
+#ifdef SUPPORT_RESET_CONTROL
+	ret = reset_control_deassert(chip->core_rstc);
+	if (ret)
+		dev_err(chip->dev, "reset deassert fail\n");
+#endif
 
 #ifdef SUPPORT_CFGR_CLK
 	ret = clk_prepare_enable(chip->cfgr_clk);
@@ -1273,7 +1284,7 @@ static int axi_dma_resume(struct axi_dma_chip *chip)
 	/* When the system resumes, a delay is required before registers are
 	 * accessed. If not, the system will hang.
 	 */
-	usleep_range(10, 20);
+	usleep_range(500, 600);
 #endif
 
 	axi_dma_enable(chip);
@@ -1475,10 +1486,6 @@ static int dw_probe(struct platform_device *pdev)
 	chip->core_rstc = devm_reset_control_get(chip->dev, "core-rstc");
 	if (IS_ERR(chip->core_rstc))
 		return PTR_ERR(chip->core_rstc);
-
-	ret = reset_control_deassert(chip->core_rstc);
-	if (ret)
-		dev_err(chip->dev, "reset deassert fail\n");
 #endif
 
 	ret = parse_device_properties(chip);
