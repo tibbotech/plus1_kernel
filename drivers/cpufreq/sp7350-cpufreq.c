@@ -62,7 +62,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	struct sp7350_cpu_dvfs_info *info = policy->driver_data;
 	struct device *cpu_dev = info->cpu_dev;
 	struct dev_pm_opp *opp;
-	unsigned long freq_hz;
+	unsigned long freq_hz, old_freq = clk_get_rate(cpu_clk);
 	int vproc, old_vproc, ret;
 
 	freq_hz = freq_table[index].frequency * 1000;
@@ -95,9 +95,11 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 				policy->cpu);
 				return ret;
 			}
-			sp_clkc_ca55_memctl((vproc == VDEFAULT) ? MEMCTL_DEFAULT : MEMCTL_FAST);
 		}
 	}
+	if (old_freq < freq_hz)
+		sp_clkc_ca55_memctl((freq_hz < 1200000000) ? MEMCTL_SLOW :
+				   ((freq_hz < 1900000000) ? MEMCTL_DEFAULT : MEMCTL_FAST));
 
 	/* Set the cpu_clk to target rate. */
 	//pr_debug(">>> cpu_clk set_rate to %lu\n", freq_hz);
@@ -105,13 +107,15 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	/* Also set l3_clk */
 	ret = clk_set_rate(info->l3_clk, freq_hz * 4 / 5);
 
+	if (freq_hz < old_freq)
+		sp_clkc_ca55_memctl((freq_hz < 1200000000) ? MEMCTL_SLOW :
+				   ((freq_hz < 1900000000) ? MEMCTL_DEFAULT : MEMCTL_FAST));
 	if (info->proc_reg) {
 		/*
 		* If the new voltage is lower than the current voltage,
 		* scale down to the new voltage.
 		*/
 		if (vproc < old_vproc) {
-			sp_clkc_ca55_memctl(MEMCTL_DEFAULT);
 			//pr_debug(">>> scale down voltage from %d to %d\n", old_vproc, vproc);
 			ret = regulator_set_voltage(info->proc_reg, vproc, vproc + VOLT_TOL);
 			if (ret) {
