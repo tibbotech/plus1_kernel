@@ -1351,8 +1351,8 @@
 			compatible = "richtek,rt5759";
 			reg = <0x62>;
 			regulator-name = "rt5759-buck";
-			regulator-min-microvolt = <700000>;
-			regulator-max-microvolt = <1000000>;
+			regulator-min-microvolt = <600000>;
+			regulator-max-microvolt = <1500000>;
 			regulator-allowed-modes = <0 1>;	// 0: auto mode (PSKIP), 1: force pwm mode
 			regulator-initial-mode = <1>;
 			regulator-always-on;
