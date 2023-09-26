@@ -1402,23 +1402,44 @@ static int sp_csi2_remove(struct platform_device *pdev)
 	return 0;
 }
 
-static int sp_csi2_suspend(struct platform_device *pdev, pm_message_t state)
+static int sp_csi2_suspend(struct device *dev)
 {
-	struct csi2_dev *priv = platform_get_drvdata(pdev);
+	struct csi2_dev *priv = dev_get_drvdata(dev);
+	int ret;
 
-	clk_disable(priv->clk);
+	dev_dbg(dev, "%s, %d\n", __func__, __LINE__);
+
+	clk_disable_unprepare(priv->clk);
+
+	ret = reset_control_assert(priv->rstc);
+	if (ret) {
+		dev_err(priv->dev, "Failed to deassert reset controller!\n");
+		return ret;
+	}
 
 	return 0;
 }
 
-static int sp_csi2_resume(struct platform_device *pdev)
+static int sp_csi2_resume(struct device *dev)
 {
-	struct csi2_dev *priv = platform_get_drvdata(pdev);
+	struct csi2_dev *priv = dev_get_drvdata(dev);
 	int ret;
 
+	dev_dbg(dev, "%s, %d\n", __func__, __LINE__);
+
+	ret = reset_control_deassert(priv->rstc);
+	if (ret) {
+		dev_err(priv->dev, "Failed to deassert reset controller!\n");
+		return ret;
+	}
+
 	ret = clk_prepare_enable(priv->clk);
-	if (ret)
+	if (ret) {
 		dev_err(priv->dev, "Failed to enable clock!\n");
+		return ret;
+	}
+
+	csi2_init(priv);
 
 	return 0;
 }
@@ -1428,7 +1449,7 @@ static int sp_csi2_runtime_suspend(struct device *dev)
 {
 	struct csi2_dev *priv = dev_get_drvdata(dev);
 
-	clk_disable(priv->clk);
+	clk_disable_unprepare(priv->clk);
 
 	return 0;
 }
@@ -1439,17 +1460,25 @@ static int sp_csi2_runtime_resume(struct device *dev)
 	int ret;
 
 	ret = clk_prepare_enable(priv->clk);
-	if (ret)
+	if (ret) {
 		dev_err(priv->dev, "Failed to enable clock!\n");
+		return ret;
+	}
+
+	csi2_init(priv);
 
 	return 0;
 }
+#endif
 
 static const struct dev_pm_ops sp_csi2_pm_ops = {
+	.suspend = sp_csi2_suspend,
+	.resume = sp_csi2_resume,
+#ifdef CONFIG_PM_RUNTIME_MIPICSI
 	.runtime_suspend = sp_csi2_runtime_suspend,
 	.runtime_resume = sp_csi2_runtime_resume,
-};
 #endif
+};
 
 static struct platform_driver sp_csi2_pdrv = {
 	.remove	= sp_csi2_remove,
@@ -1457,12 +1486,8 @@ static struct platform_driver sp_csi2_pdrv = {
 	.driver	= {
 		.name	= "sp-csi2",
 		.of_match_table	= sp_csi2_of_table,
-#ifdef CONFIG_PM_RUNTIME_MIPICSI
 		.pm = &sp_csi2_pm_ops,
-#endif
 	},
-	.suspend = sp_csi2_suspend,
-	.resume = sp_csi2_resume,
 };
 
 module_platform_driver(sp_csi2_pdrv);

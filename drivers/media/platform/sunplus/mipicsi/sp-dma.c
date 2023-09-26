@@ -934,6 +934,11 @@ static const struct vb2_ops vin_qops = {
 	.wait_finish		= vb2_ops_wait_finish,
 };
 
+void vin_dma_init(struct vin_dev *vin)
+{
+	csiiw_init(vin);
+}
+
 void vin_dma_unregister(struct vin_dev *vin)
 {
 	dev_dbg(vin->dev, "%s, %d\n", __func__, __LINE__);

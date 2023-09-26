@@ -283,6 +283,7 @@ struct vin_group {
 	} csi[VIN_CSI_MAX];
 };
 
+void vin_dma_init(struct vin_dev *vin);
 int vin_dma_register(struct vin_dev *vin, int fs_irq, int fe_irq);
 void vin_dma_unregister(struct vin_dev *vin);
 
