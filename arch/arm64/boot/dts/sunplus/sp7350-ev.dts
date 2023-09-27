@@ -255,7 +255,7 @@
 
 		opp-5 {
 			opp-hz = /bits/ 64 <500000000>;
-			opp-microvolt = <700000>;
+			opp-microvolt = <670000>;
 		};
 
 		opp-10 {
@@ -265,22 +265,22 @@
 
 		opp-15 {
 			opp-hz = /bits/ 64 <1500000000>;
-			opp-microvolt = <700000>;
+			opp-microvolt = <750000>;
 		};
 
 		opp-16 {
 			opp-hz = /bits/ 64 <1600000000>;
-			opp-microvolt = <800000>;
+			opp-microvolt = <770000>;
 		};
 
 		opp-17 {
 			opp-hz = /bits/ 64 <1700000000>;
-			opp-microvolt = <810000>;
+			opp-microvolt = <800000>;
 		};
 
 		opp-18 {
 			opp-hz = /bits/ 64 <1800000000>;
-			opp-microvolt = <820000>;
+			opp-microvolt = <840000>;
 		};
 
 		/*opp-19 {
@@ -847,6 +847,7 @@
 #else
 		status = "disabled";
 #endif
+
 #if 0
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1287,6 +1288,7 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo6_pins>;
 		status = "okay";
+
 #ifdef LT8912B_HDMI_ENABLE /* Add lt8912b subnode in i2c6 */
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -1344,15 +1346,15 @@
 		pinctrl-names = "default";
 		pinctrl-0 = <&i2c_combo7_pins>;
 		//status = "disabled";
+
 		#address-cells = <1>;
 		#size-cells = <0>;
-
 		rt5759_vproc_reg: regulator@62 {
 			compatible = "richtek,rt5759";
 			reg = <0x62>;
 			regulator-name = "rt5759-buck";
-			regulator-min-microvolt = <600000>;
-			regulator-max-microvolt = <1500000>;
+			regulator-min-microvolt = <630000>;
+			regulator-max-microvolt = <1100000>;
 			regulator-allowed-modes = <0 1>;	// 0: auto mode (PSKIP), 1: force pwm mode
 			regulator-initial-mode = <1>;
 			regulator-always-on;
