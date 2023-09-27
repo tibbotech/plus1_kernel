@@ -25,7 +25,7 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 			err = clk_set_rate(cpudai_plla,	135475200);
 			pre_plla = 135475200;
 		}
-	} else if (SAMPLE_RATE != 0) {
+	} else {
 		if (pre_plla !=	147456000) {
 			err = clk_set_rate(cpudai_plla,	147456000);
 			pre_plla = 147456000;
@@ -46,8 +46,8 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 		} // else {}
 	} else { //SNDRV_PCM_FORMAT_S16_LE
 		if (pll_id == SP_I2S_0)	{
-			regs0->pcm_cfg			= 0x71;	//tx0
-			regs0->ext_adc_cfg		= 0x71;	//rx0
+			regs0->pcm_cfg			= 0x71; //tx0
+			regs0->ext_adc_cfg		= 0x71; //rx0
 		} else if (pll_id == SP_I2S_1)
 			regs0->int_adc_dac_cfg		= 0x00710071;
 		else if	(pll_id	== SP_I2S_2) {
@@ -225,17 +225,21 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 			regs0->aud_iec0_bclk_cfg		= 0x6003;
 		}
 	} else {
-		regs0->aud_hdmi_tx_mclk_cfg			= 0;
-		regs0->aud_ext_adc_xck_cfg			= 0;
-		regs0->aud_ext_dac_xck_cfg			= 0;
-		regs0->aud_int_dac_xck_cfg			= 0;
+		if (pll_id == SP_I2S_0)	{
+			regs0->aud_ext_dac_bck_cfg		= 0;
+		} else if (pll_id == SP_I2S_1) {
+			regs0->aud_int_dac_xck_cfg		= 0;
+			regs0->aud_int_dac_bck_cfg		= 0;
+		} else if (pll_id == SP_I2S_2) {
+			regs0->aud_hdmi_tx_mclk_cfg		= 0;
+			regs0->aud_hdmi_tx_bck_cfg		= 0;
+		} else {
+			regs0->aud_ext_dac_xck_cfg		= 0;
+			regs0->aud_iec0_bclk_cfg		= 0;
+		}
+		//regs0->aud_ext_adc_xck_cfg			= 0;
 		regs0->aud_int_adc_xck_cfg			= 0;
-
-		regs0->aud_hdmi_tx_bck_cfg			= 0;
-		regs0->aud_ext_dac_bck_cfg			= 0;
-		regs0->aud_int_dac_bck_cfg			= 0;
 		regs0->aud_ext_adc_bck_cfg			= 0;
-		regs0->aud_iec0_bclk_cfg			= 0;
 		regs0->aud_iec1_bclk_cfg			= 0;
 	}
 }
@@ -483,8 +487,8 @@ static void aud_cpudai_shutdown(struct snd_pcm_substream *substream, struct snd_
 	else
 		sp_i2s_spdif_tx_dma_en(substream->pcm->device, false);
 
-	//if (substream->pcm->device ==	0)
-	aud_clk_cfg(0, 0, 0);
+	if (substream->pcm->device != 0)
+		aud_clk_cfg(substream->pcm->device, 0, 0);
 }
 
 static int spsoc_cpu_set_pll(struct snd_soc_dai	*dai, int pll_id, int source, unsigned int freq_in, unsigned int freq_out)
