@@ -98,7 +98,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 		}
 	}
 	if (old_freq < freq_hz)
-		sp_clkc_ca55_memctl((freq_hz < 1200000000) ? MEMCTL_SLOW :
+		sp_clkc_ca55_memctl((freq_hz < 1000000000) ? MEMCTL_SLOW :
 				   ((freq_hz < 1900000000) ? MEMCTL_DEFAULT : MEMCTL_FAST));
 
 	/* Set the cpu_clk to target rate. */
@@ -108,7 +108,7 @@ static int sp7350_cpufreq_set_target(struct cpufreq_policy *policy,
 	ret = clk_set_rate(info->l3_clk, freq_hz * 4 / 5);
 
 	if (freq_hz < old_freq)
-		sp_clkc_ca55_memctl((freq_hz < 1200000000) ? MEMCTL_SLOW :
+		sp_clkc_ca55_memctl((freq_hz < 1000000000) ? MEMCTL_SLOW :
 				   ((freq_hz < 1900000000) ? MEMCTL_DEFAULT : MEMCTL_FAST));
 	if (info->proc_reg) {
 		/*
