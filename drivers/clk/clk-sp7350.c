@@ -47,6 +47,7 @@
 #define IS_PLLN()	(pll->reg == PLLN_CTL)
 #define IS_PLLS()	(pll->reg == PLLS_CTL)
 #define IS_PLLHS()	(IS_PLLH() || IS_PLLS())
+#define NO_PSTDIV()	(IS_PLLHS() || IS_PLLC() || IS_PLLL3())
 
 #define BP	0	/* Reg 0 */
 #define PREDIV	1
@@ -508,34 +509,34 @@ static ulong sp_pll_calc_div(struct sp_pll *pll, ulong rate)
 {
 	ulong ret = 0, mr = 0;
 	int mi = 0, md = 0x7fffffff;
-	int i = 0;
-	/* PLLH/PLLS pstdiv == 1 */
-	int j = IS_PLLHS() ? 3 : divs_size;
+	/* PLLH/PLLS/PLLC/PLLL3 ignore pstdiv (pstdiv == 1) */
+	int i = NO_PSTDIV() ? 3 : divs_size;
 
-	//pr_info("calc_rate: %lu\n", rate);
+	//pr_info("[%s] calc_rate: %lu\n", clk_hw_get_name(&pll->hw), rate);
 
-	while (i < j) {
+	while (i--) {
 		long br = pll->brate * 2 / divs[i].div2;
+		long d, rr;
 
 		ret = DIV_ROUND_CLOSEST(rate, br);
-		if (ret >= FBKDIV_MIN && ret <= FBKDIV_MAX) {
-                        long d, rr;
+		if (ret < FBKDIV_MIN)
+			ret = FBKDIV_MIN;
+		else if (ret > FBKDIV_MAX)
+			ret = FBKDIV_MAX;
 
-			rr = br * ret;
-			if (rr <= rate)
-				d = rate - rr;
-			else if (rr > rate)
-				d = rr - rate;
-			//pr_info(">>>%u>>> %ld * %ld = %ld - %lu = %ld\n", div->div2, br, ret, br * ret, rate, d);
+		rr = br * ret;
+		if (rr <= rate)
+			d = rate - rr;
+		else if (rr > rate)
+			d = rr - rate;
+		//pr_info(">>>%u>>> %ld * %ld = %ld - %lu = %ld\n", div->div2, br, ret, br * ret, rate, d);
 
-			if (d < md) {
-				mi = i;
-				mr = ret;
-                                if (!d) break;
-				md = d;
-			}
+		if (d < md) {
+			mi = i;
+			mr = ret;
+			if (!d) break;
+			md = d;
 		}
-		i++;
 	}
 
 	pll->idiv = mi;
@@ -583,10 +584,10 @@ static ulong sp_pll_recalc_rate(struct clk_hw *hw,
 		u32 pstdiv = MASK_GET(PSTDIV, 2, reg) + 1;
 
 		ret = pll->brate / prediv * fbkdiv * prescl;
-		if (!IS_PLLHS())
+		if (!NO_PSTDIV())
 			ret /= IS_PLLD() ? pstdiv_d[pstdiv - 1] : pstdiv;
 	}
-	//pr_info("recalc_rate: %lu %lu -> %lu\n", pll->brate, prate, ret);
+	//pr_info("[%s] recalc_rate: %lu %lu -> %lu\n", clk_hw_get_name(&pll->hw), pll->brate, prate, ret);
 
 	return ret;
 }
