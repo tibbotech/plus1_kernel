@@ -253,8 +253,8 @@
 		compatible = "operating-points-v2";
 		opp-shared;
 
-		opp-8 {
-			opp-hz = /bits/ 64 <800000000>;
+		opp-5 {
+			opp-hz = /bits/ 64 <500000000>;
 			opp-microvolt = <670000>;
 		};
 
