@@ -449,3 +449,39 @@ void sp7350_tgen_input_adjust(int tgen_input_adj, u32 adj_value)
 			break;
 	}
 }
+
+void sp7350_tgen_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value, i;
+
+	for(i = 0; i < 32 ; i++) {
+		value = readl(disp_dev->base + DISP_TGEN_REG + i * 4);
+		disp_dev->tmp_tgen.reg[i] = value;
+	}
+
+}
+
+void sp7350_tgen_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	writel(disp_dev->tmp_tgen.reg[0], disp_dev->base + TGEN_CONFIG);
+	writel(disp_dev->tmp_tgen.reg[2], disp_dev->base + TGEN_USER_INT1_CONFIG);
+	writel(disp_dev->tmp_tgen.reg[3], disp_dev->base + TGEN_USER_INT2_CONFIG);
+
+	writel(disp_dev->tmp_tgen.reg[4], disp_dev->base + TGEN_DTG_CONFIG);
+	writel(disp_dev->tmp_tgen.reg[8], disp_dev->base + TGEN_DTG_TOTAL_PIXEL);
+	writel(disp_dev->tmp_tgen.reg[9], disp_dev->base + TGEN_DTG_DS_LINE_START_CD_POINT);
+	writel(disp_dev->tmp_tgen.reg[10], disp_dev->base + TGEN_DTG_TOTAL_LINE);
+	writel(disp_dev->tmp_tgen.reg[11], disp_dev->base + TGEN_DTG_FIELD_END_LINE);
+	writel(disp_dev->tmp_tgen.reg[12], disp_dev->base + TGEN_DTG_START_LINE);
+
+	writel(disp_dev->tmp_tgen.reg[23], disp_dev->base + TGEN_DTG_ADJUST1);
+	writel(disp_dev->tmp_tgen.reg[29], disp_dev->base + TGEN_SOURCE_SEL);
+
+	/* Write 1 to reset DTG timing bit
+	 */
+	sp7350_tgen_reset();
+
+}

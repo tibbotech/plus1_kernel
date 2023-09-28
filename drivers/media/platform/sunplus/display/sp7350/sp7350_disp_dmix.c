@@ -479,16 +479,12 @@ void sp7350_dmix_layer_cfg_set(int layer_id)
 void sp7350_dmix_layer_cfg_store(void)
 {
 	struct sp_disp_device *disp_dev = gdisp_dev;
-	u32 value;
+	u32 value, i;
 
-	value = readl(disp_dev->base + DMIX_LAYER_CONFIG_0);
-	disp_dev->tmp_dmix.reg[0] = value;
-	value = readl(disp_dev->base + DMIX_LAYER_CONFIG_1);
-	disp_dev->tmp_dmix.reg[1] = value;
-	value = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_0);
-	disp_dev->tmp_dmix.reg[2] = value;
-	value = readl(disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_1);
-	disp_dev->tmp_dmix.reg[3] = value;
+	for(i = 0; i < 32 ; i++) {
+		value = readl(disp_dev->base + DISP_DMIX_REG + i * 4);
+		disp_dev->tmp_dmix.reg[i] = value;
+	}
 
 }
 
@@ -500,6 +496,9 @@ void sp7350_dmix_layer_cfg_restore(void)
 	writel(disp_dev->tmp_dmix.reg[1], disp_dev->base + DMIX_LAYER_CONFIG_1);
 	writel(disp_dev->tmp_dmix.reg[2], disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_0);
 	writel(disp_dev->tmp_dmix.reg[3], disp_dev->base + DMIX_PLANE_ALPHA_CONFIG_1);
+
+	/* Add for PM function */
+	writel(disp_dev->tmp_dmix.reg[20], disp_dev->base + DMIX_SOURCE_SEL);
 
 }
 

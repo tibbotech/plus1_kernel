@@ -678,3 +678,60 @@ void sp7350_tcon_timing_get(void)
 	pr_info("  [TPG_DET] HACT %d(0x%04x)\n",
 		value1, value1);
 }
+
+void sp7350_tcon_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value, i;
+
+	for(i = 0; i < 32 ; i++) {
+		value = readl(disp_dev->base + DISP_TCON_G199_REG + i * 4);
+		disp_dev->tmp_tcon0.reg[i] = value;
+		value = readl(disp_dev->base + DISP_TCON_G200_REG + i * 4);
+		disp_dev->tmp_tcon1.reg[i] = value;
+	}
+
+}
+
+void sp7350_tcon_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	writel(disp_dev->tmp_tcon0.reg[0], disp_dev->base + TCON_TCON0);
+	writel(disp_dev->tmp_tcon0.reg[1], disp_dev->base + TCON_TCON1);
+	writel(disp_dev->tmp_tcon0.reg[2], disp_dev->base + TCON_TCON2); //don't care
+	writel(disp_dev->tmp_tcon0.reg[3], disp_dev->base + TCON_TCON3); //don't care
+	writel(disp_dev->tmp_tcon1.reg[15], disp_dev->base + TCON_TCON4); //fixed , don't change it
+	writel(disp_dev->tmp_tcon1.reg[26], disp_dev->base + TCON_TCON5); //don't care
+
+	/*
+	 * TCON H&V timing parameter
+	 */
+	writel(disp_dev->tmp_tcon0.reg[25], disp_dev->base + TCON_DE_HSTART); //DE_HSTART
+	writel(disp_dev->tmp_tcon0.reg[26], disp_dev->base + TCON_DE_HEND); //DE_HEND
+
+	writel(disp_dev->tmp_tcon0.reg[12], disp_dev->base + TCON_OEV_START); //TC_VSYNC_HSTART
+	writel(disp_dev->tmp_tcon0.reg[13], disp_dev->base + TCON_OEV_END); //TC_VSYNC_HEND
+
+	writel(disp_dev->tmp_tcon0.reg[23], disp_dev->base + TCON_HSYNC_START); //HSYNC_START
+	writel(disp_dev->tmp_tcon0.reg[24], disp_dev->base + TCON_HSYNC_END); //HSYNC_END
+
+	writel(disp_dev->tmp_tcon0.reg[27], disp_dev->base + TCON_DE_VSTART); //DE_VSTART
+	writel(disp_dev->tmp_tcon0.reg[28], disp_dev->base + TCON_DE_VEND); //DE_VEND
+
+	writel(disp_dev->tmp_tcon0.reg[20], disp_dev->base + TCON_STVU_START); //VTOP_VSTART
+	writel(disp_dev->tmp_tcon0.reg[21], disp_dev->base + TCON_STVU_END); //VTOP_VEND
+
+	/*
+	 * TPG(Test Pattern Gen) parameter
+	 */
+	writel(disp_dev->tmp_tcon1.reg[6], disp_dev->base + TCON_TPG_CTRL);
+	writel(disp_dev->tmp_tcon1.reg[7], disp_dev->base + TCON_TPG_HCOUNT);
+	writel(disp_dev->tmp_tcon1.reg[8], disp_dev->base + TCON_TPG_VCOUNT);
+	writel(disp_dev->tmp_tcon1.reg[9], disp_dev->base + TCON_TPG_HACT_COUNT);
+	writel(disp_dev->tmp_tcon1.reg[10], disp_dev->base + TCON_TPG_VACT_COUNT);
+
+	writel(disp_dev->tmp_tcon1.reg[21], disp_dev->base + TCON_TPG_ALINE_START);
+	//writel(disp_dev->tmp_tcon1.reg[22], disp_dev->base + TCON_DITHER_TVOUT);
+
+}

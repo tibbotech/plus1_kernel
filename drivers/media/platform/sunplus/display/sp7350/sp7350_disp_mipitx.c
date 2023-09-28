@@ -777,7 +777,7 @@ static void sp7350_dcs_write_buf(const void *data, size_t len)
 
 #define sp7350_dcs_write_seq(seq...)			\
 ({							\
-	static const u8 d[] = { seq };			\
+	const u8 d[] = { seq };			\
 	sp7350_dcs_write_buf(d, ARRAY_SIZE(d));	\
 })
 
@@ -1410,4 +1410,57 @@ void sp7350_mipitx_phy_get(void)
 	//	FIELD_GET(GENMASK(31,31), value),
 	//	FIELD_GET(GENMASK(29,29), value),
 	//	FIELD_GET(GENMASK(28,28), value));
+}
+
+void sp7350_mipitx_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value, i;
+
+	for(i = 0; i < 32 ; i++) {
+		value = readl(disp_dev->base + DISP_MIPITX_G204_REG + i * 4);
+		disp_dev->tmp_mipitx0.reg[i] = value;
+		value = readl(disp_dev->base + DISP_MIPITX_G205_REG + i * 4);
+		disp_dev->tmp_mipitx1.reg[i] = value;
+	}
+}
+
+void sp7350_mipitx_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	writel(disp_dev->tmp_mipitx0.reg[0], disp_dev->base + MIPITX_VM_HT_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[1], disp_dev->base + MIPITX_VM_VT0_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[2], disp_dev->base + MIPITX_VM_VT1_CTRL);
+
+	writel(disp_dev->tmp_mipitx0.reg[4], disp_dev->base + MIPITX_LP_CK);
+
+	writel(disp_dev->tmp_mipitx0.reg[5], disp_dev->base + MIPITX_LANE_TIME_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[6], disp_dev->base + MIPITX_CLK_TIME_CTRL0);
+	writel(disp_dev->tmp_mipitx0.reg[7], disp_dev->base + MIPITX_CLK_TIME_CTRL1);
+	writel(disp_dev->tmp_mipitx0.reg[8], disp_dev->base + MIPITX_DATA_TIME_CTRL0);
+
+	writel(disp_dev->tmp_mipitx0.reg[12], disp_dev->base + MIPITX_FORMAT_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[13], disp_dev->base + MIPITX_BLANK_POWER_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[14], disp_dev->base + MIPITX_OP_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[15], disp_dev->base + MIPITX_CORE_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[17], disp_dev->base + MIPITX_BTA_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[18], disp_dev->base + MIPITX_LANE_CTRL);
+	writel(disp_dev->tmp_mipitx0.reg[19], disp_dev->base + MIPITX_WORD_CNT);
+
+	writel(disp_dev->tmp_mipitx0.reg[29], disp_dev->base + MIPITX_ULPS_DELAY);
+	writel(disp_dev->tmp_mipitx0.reg[30], disp_dev->base + MIPITX_CLK_CTRL);
+
+
+	writel(disp_dev->tmp_mipitx1.reg[4], disp_dev->base + MIPITX_ANALOG_CTRL1);
+	writel(disp_dev->tmp_mipitx1.reg[6], disp_dev->base + MIPITX_ANALOG_CTRL2);
+	writel(disp_dev->tmp_mipitx1.reg[7], disp_dev->base + MIPITX_ANALOG_CTRL3);
+	writel(disp_dev->tmp_mipitx1.reg[9], disp_dev->base + MIPITX_ANALOG_CTRL4);
+	writel(disp_dev->tmp_mipitx1.reg[10], disp_dev->base + MIPITX_ANALOG_CTRL5);
+	writel(disp_dev->tmp_mipitx1.reg[11], disp_dev->base + MIPITX_ANALOG_CTRL6);
+	writel(disp_dev->tmp_mipitx1.reg[12], disp_dev->base + MIPITX_ANALOG_CTRL7);
+	writel(disp_dev->tmp_mipitx1.reg[13], disp_dev->base + MIPITX_ANALOG_CTRL8);
+
+	writel(disp_dev->tmp_mipitx1.reg[8], disp_dev->base + MIPITX_CTRL);
+
 }

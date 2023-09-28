@@ -81,6 +81,7 @@ void sp7350_tgen_init(void);
 void sp7350_tgen_decrypt_info(void);
 void sp7350_tgen_resolution_chk(void);
 
+
 /*
  * SP7350 TGEN Timing Generator Settings
  */
@@ -97,6 +98,12 @@ void sp7350_tgen_timing_get(void);
  * SP7350 TGEN Timing Adjust Settings
  */
 void sp7350_tgen_input_adjust(int tgen_input_adj, u32 adj_value);
+
+/*
+ * SP7350 TGEN register store/restore
+ */
+void sp7350_tgen_store(void);
+void sp7350_tgen_restore(void);
 
 #endif	//__SP7350_DISP_TGEN_H__
 

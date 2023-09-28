@@ -180,7 +180,8 @@ struct sp_disp_device {
 	/* clock */
 	struct clk		*disp_clk[16];
 	/* reset */
-	struct reset_control	*rstc;
+	//struct reset_control	*rstc;
+	struct reset_control	*disp_rstc[16];
 
 	struct device *pdev;	/* parent device */
 
@@ -223,12 +224,21 @@ struct sp_disp_device {
 	struct sp_disp_layer	*dev[SP_DISP_MAX_DEVICES];
 #endif
 
+	/*
+	 * for Power Manager function store display reg values
+	 */
+	struct sp_disp_reg_store tmp_osd[4];
+	struct sp_disp_reg_store tmp_gpost[4];
+	struct sp_disp_reg_store tmp_imgread;
+	struct sp_disp_reg_store tmp_vscl0;
+	struct sp_disp_reg_store tmp_vscl1;
+	struct sp_disp_reg_store tmp_vpost;
 	struct sp_disp_reg_store tmp_dmix;
-	struct sp_disp_reg_store tmp_osd0;
-	struct sp_disp_reg_store tmp_osd1;
-	struct sp_disp_reg_store tmp_osd2;
-	struct sp_disp_reg_store tmp_osd3;
-	struct sp_disp_reg_store tmp_vpp0;
+	struct sp_disp_reg_store tmp_tgen;
+	struct sp_disp_reg_store tmp_tcon0;
+	struct sp_disp_reg_store tmp_tcon1;
+	struct sp_disp_reg_store tmp_mipitx0;
+	struct sp_disp_reg_store tmp_mipitx1;
 
 #if defined(CONFIG_VIDEO_SP7350_DISP_DEBUG)
 	struct sp7350_debug debug;

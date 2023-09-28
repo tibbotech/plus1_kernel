@@ -591,3 +591,64 @@ int sp7350_vpp_restore(struct sp_disp_device *disp_dev)
 	return 0;
 }
 EXPORT_SYMBOL(sp7350_vpp_restore);
+
+void sp7350_vpp0_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 value, i;
+
+	for(i = 0; i < 32 ; i++) {
+		value = readl(disp_dev->base + DISP_IMGREAD_G185_REG + i * 4);
+		disp_dev->tmp_imgread.reg[i] = value;
+		value = readl(disp_dev->base + DISP_VSCL_G186_REG + i * 4);
+		disp_dev->tmp_vscl0.reg[i] = value;
+		value = readl(disp_dev->base + DISP_VSCL_G187_REG + i * 4);
+		disp_dev->tmp_vscl1.reg[i] = value;
+		value = readl(disp_dev->base + DISP_VPOST_G188_REG + i * 4);
+		disp_dev->tmp_vpost.reg[i] = value;
+	}
+}
+
+void sp7350_vpp0_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+
+	writel(disp_dev->tmp_imgread.reg[1], disp_dev->base + IMGREAD_GLOBAL_CONTROL);
+	writel(disp_dev->tmp_imgread.reg[2], disp_dev->base + IMGREAD_CONFIG);
+	writel(disp_dev->tmp_imgread.reg[3], disp_dev->base + IMGREAD_FRAME_SIZE);
+	writel(disp_dev->tmp_imgread.reg[4], disp_dev->base + IMGREAD_CROP_START);
+	writel(disp_dev->tmp_imgread.reg[5], disp_dev->base + IMGREAD_LINE_STRIDE_SIZE);
+	writel(disp_dev->tmp_imgread.reg[6], disp_dev->base + IMGREAD_DATA_ADDRESS_1);
+	writel(disp_dev->tmp_imgread.reg[7], disp_dev->base + IMGREAD_DATA_ADDRESS_2);
+
+	writel(disp_dev->tmp_vscl0.reg[0], disp_dev->base + VSCL_CONFIG);
+	writel(disp_dev->tmp_vscl0.reg[1], disp_dev->base + VSCL_CONFIG2);
+
+	writel(disp_dev->tmp_vscl0.reg[3], disp_dev->base + VSCL_ACTRL_I_XLEN);
+	writel(disp_dev->tmp_vscl0.reg[4], disp_dev->base + VSCL_ACTRL_I_YLEN);
+	writel(disp_dev->tmp_vscl0.reg[5], disp_dev->base + VSCL_ACTRL_S_XSTART);
+	writel(disp_dev->tmp_vscl0.reg[6], disp_dev->base + VSCL_ACTRL_S_YSTART);
+	writel(disp_dev->tmp_vscl0.reg[7], disp_dev->base + VSCL_ACTRL_S_XLEN);
+	writel(disp_dev->tmp_vscl0.reg[8], disp_dev->base + VSCL_ACTRL_S_YLEN);
+	writel(disp_dev->tmp_vscl0.reg[9], disp_dev->base + VSCL_DCTRL_O_XLEN);
+	writel(disp_dev->tmp_vscl0.reg[10], disp_dev->base + VSCL_DCTRL_O_YLEN);
+	writel(disp_dev->tmp_vscl0.reg[11], disp_dev->base + VSCL_DCTRL_D_XSTART);
+	writel(disp_dev->tmp_vscl0.reg[12], disp_dev->base + VSCL_DCTRL_D_YSTART);
+	writel(disp_dev->tmp_vscl0.reg[13], disp_dev->base + VSCL_DCTRL_D_XLEN);
+	writel(disp_dev->tmp_vscl0.reg[14], disp_dev->base + VSCL_DCTRL_D_YLEN);
+	writel(disp_dev->tmp_vscl0.reg[15], disp_dev->base + VSCL_DCTRL_BGC_C);
+	writel(disp_dev->tmp_vscl0.reg[16], disp_dev->base + VSCL_DCTRL_BGC_Y);
+
+	writel(disp_dev->tmp_vscl0.reg[18], disp_dev->base + VSCL_HINT_CTRL);
+	writel(disp_dev->tmp_vscl0.reg[19], disp_dev->base + VSCL_HINT_HFACTOR_LOW);
+	writel(disp_dev->tmp_vscl0.reg[20], disp_dev->base + VSCL_HINT_HFACTOR_HIGH);
+	writel(disp_dev->tmp_vscl0.reg[21], disp_dev->base + VSCL_HINT_INITF_LOW);
+	writel(disp_dev->tmp_vscl0.reg[22], disp_dev->base + VSCL_HINT_INITF_HIGH);
+
+	writel(disp_dev->tmp_vscl1.reg[0], disp_dev->base + VSCL_VINT_CTRL);
+	writel(disp_dev->tmp_vscl1.reg[1], disp_dev->base + VSCL_VINT_VFACTOR_LOW);
+	writel(disp_dev->tmp_vscl1.reg[2], disp_dev->base + VSCL_VINT_VFACTOR_HIGH);
+	writel(disp_dev->tmp_vscl1.reg[3], disp_dev->base + VSCL_VINT_INITF_LOW);
+	writel(disp_dev->tmp_vscl1.reg[4], disp_dev->base + VSCL_VINT_INITF_HIGH);
+
+}

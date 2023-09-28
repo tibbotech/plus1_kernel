@@ -137,4 +137,10 @@ void sp7350_tcon_timing_set_dsi(void);
 void sp7350_tcon_timing_set_csi(void);
 void sp7350_tcon_timing_get(void);
 
+/*
+ * SP7350 TCON register store/restore
+ */
+void sp7350_tcon_store(void);
+void sp7350_tcon_restore(void);
+
 #endif	//__SP7350_DISP_TCON_H__

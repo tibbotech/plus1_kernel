@@ -487,6 +487,20 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 	return ret;
 }
 
+static const char * const sp7350_disp_clkc[] = {
+	"clkc_dispsys", "clkc_dmix", "clkc_gpost0", "clkc_gpost1",
+	"clkc_gpost2", "clkc_gpost3", "clkc_imgread0", "clkc_mipitx",
+	"clkc_osd0", "clkc_osd1", "clkc_osd2", "clkc_osd3",
+	"clkc_tcon", "clkc_tgen", "clkc_vpost0", "clkc_vscl0"
+};
+
+static const char * const sp7350_disp_rtsc[] = {
+	"rstc_dispsys", "rstc_dmix", "rstc_gpost0", "rstc_gpost1",
+	"rstc_gpost2", "rstc_gpost3", "rstc_imgread0", "rstc_mipitx",
+	"rstc_osd0", "rstc_osd1", "rstc_osd2", "rstc_osd3",
+	"rstc_tcon", "rstc_tgen", "rstc_vpost0", "rstc_vscl0"
+};
+
 static int sp7350_display_probe(struct platform_device *pdev)
 {
 	int num_irq = of_irq_count(pdev->dev.of_node);
@@ -566,13 +580,21 @@ static int sp7350_display_probe(struct platform_device *pdev)
 		return dev_err_probe(&pdev->dev, PTR_ERR(disp_dev->ao_moon3), "reg ao_moon3 not found\n");
 
 	/*
-	 * init clk
+	 * init clk & reset
 	 */
 	for (i = 0; i < 16; i++) {
-		disp_dev->disp_clk[i] = devm_clk_get(&pdev->dev, NULL);
+		disp_dev->disp_clk[i] = devm_clk_get(&pdev->dev, sp7350_disp_clkc[i]);
 		//pr_info("default clk[%d] %ld\n", i, clk_get_rate(disp_dev->disp_clk[i]));
 		if (IS_ERR(disp_dev->disp_clk[i]))
 			return PTR_ERR(disp_dev->disp_clk[i]);
+
+		disp_dev->disp_rstc[i] = devm_reset_control_get_exclusive(&pdev->dev, sp7350_disp_rtsc[i]);
+		if (IS_ERR(disp_dev->disp_rstc[i]))
+			return dev_err_probe(&pdev->dev, PTR_ERR(disp_dev->disp_rstc[i]), "err get reset\n");
+
+		ret = reset_control_deassert(disp_dev->disp_rstc[i]);
+		if (ret)
+			return dev_err_probe(&pdev->dev, ret, "failed to deassert reset\n");
 
 		ret = clk_prepare_enable(disp_dev->disp_clk[i]);
 		if (ret)
@@ -747,10 +769,12 @@ static int sp7350_display_remove(struct platform_device *pdev)
 	}
 
 	/*
-	 * disable clk
+	 * disable clk & enable reset
 	 */
-	for (i = 0; i < 16; i++)
+	for (i = 0; i < 16; i++) {
 		clk_disable_unprepare(disp_dev->disp_clk[i]);
+		reset_control_assert(disp_dev->disp_rstc[i]);
+	}
 
 #ifdef SP_DISP_V4L2_SUPPORT
 	/*
@@ -789,9 +813,28 @@ static int sp7350_display_remove(struct platform_device *pdev)
 static int sp7350_display_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	struct sp_disp_device *disp_dev = platform_get_drvdata(pdev);
+	int i;
 
 	pr_info("%s\n", __func__);
-	reset_control_assert(disp_dev->rstc);
+	/*
+	 * store display settings
+	 */
+	sp7350_dmix_layer_cfg_store();
+	sp7350_tgen_store();
+	sp7350_tcon_store();
+	sp7350_mipitx_store();
+	sp7350_osd_store();
+	sp7350_osd_header_save();
+	sp7350_vpp0_store();
+
+	/*
+	 * disable clk & enable reset
+	 */
+	for (i = 0; i < 16; i++) {
+		if (i == 7) continue; //skip set mipitx module
+		clk_disable_unprepare(disp_dev->disp_clk[i]);
+		reset_control_assert(disp_dev->disp_rstc[i]);
+	}
 
 	return 0;
 }
@@ -799,9 +842,34 @@ static int sp7350_display_suspend(struct platform_device *pdev, pm_message_t sta
 static int sp7350_display_resume(struct platform_device *pdev)
 {
 	struct sp_disp_device *disp_dev = platform_get_drvdata(pdev);
+	int i;
 
 	pr_info("%s\n", __func__);
-	reset_control_deassert(disp_dev->rstc);
+	/*
+	 * disable reset & enable clk
+	 */
+	for (i = 0; i < 16; i++) {
+		if (i == 7) continue; //skip set mipitx module
+		reset_control_deassert(disp_dev->disp_rstc[i]);
+		clk_prepare_enable(disp_dev->disp_clk[i]);
+	}
+
+	/*
+	 * restore display settings
+	 */
+	sp7350_dmix_layer_cfg_restore();
+	sp7350_tgen_restore();
+	sp7350_tcon_restore();
+	sp7350_mipitx_restore();
+	sp7350_osd_restore();
+	for (i = 0; i < SP_DISP_MAX_OSD_LAYER; i++)
+		sp7350_osd_header_restore(i);
+
+	sp7350_vpp0_restore();
+	if (disp_dev->out_res.mipitx_mode == SP7350_MIPITX_DSI)
+		sp7350_mipitx_phy_init_dsi();
+	else
+		sp7350_mipitx_phy_init_csi();
 
 	return 0;
 }

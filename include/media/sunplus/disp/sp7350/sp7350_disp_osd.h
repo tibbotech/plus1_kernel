@@ -194,4 +194,10 @@ void sp7350_osd_region_wait_sync(void);
 void sp7350_osd_region_irq_disable(void);
 void sp7350_osd_region_irq_enable(void);
 
+/*
+ * SP7350 OSD register store/restore
+ */
+void sp7350_osd_store(void);
+void sp7350_osd_restore(void);
+
 #endif	//__SP7350_DISP_OSD_H__

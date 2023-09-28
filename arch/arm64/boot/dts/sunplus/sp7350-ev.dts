@@ -3042,42 +3042,28 @@
 		reg = <0x00 0xf8005c80 0x00 0xa80>, <0x00 0xf8800180 0x00 0x80>;
 		interrupt-parent = <&gic>;
 		interrupts =
-			<GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>,
-			<GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
-		clocks = <&clkc DISPSYS>,
-			<&clkc DMIX>,
-			<&clkc GPOST0>,
-			<&clkc GPOST1>,
-			<&clkc GPOST2>,
-			<&clkc GPOST3>,
-			<&clkc IMGREAD0>,
-			<&clkc MIPITX>,
-			<&clkc OSD0>,
-			<&clkc OSD1>,
-			<&clkc OSD2>,
-			<&clkc OSD3>,
-			<&clkc TCON>,
-			<&clkc TGEN>,
-			<&clkc VPOST0>,
-			<&clkc VSCL0>;
-		resets = <&rstc DISPSYS>,
-			<&rstc DMIX>,
-			<&rstc GPOST0>,
-			<&rstc GPOST1>,
-			<&rstc GPOST2>,
-			<&rstc GPOST3>,
-			<&rstc IMGREAD0>,
-			<&rstc MIPITX>,
-			<&rstc OSD0>,
-			<&rstc OSD1>,
-			<&rstc OSD2>,
-			<&rstc OSD3>,
-			<&rstc TCON>,
-			<&rstc TGEN>,
-			<&rstc VPOST0>,
-			<&rstc VSCL0>;
+			<GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 105 IRQ_TYPE_LEVEL_HIGH>,
+			<GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>, <GIC_SPI 107 IRQ_TYPE_LEVEL_HIGH>;
+		clocks =
+			<&clkc DISPSYS>, <&clkc DMIX>, <&clkc GPOST0>, <&clkc GPOST1>,
+			<&clkc GPOST2>, <&clkc GPOST3>, <&clkc IMGREAD0>, <&clkc MIPITX>,
+			<&clkc OSD0>, <&clkc OSD1>, <&clkc OSD2>, <&clkc OSD3>,
+			<&clkc TCON>, <&clkc TGEN>, <&clkc VPOST0>, <&clkc VSCL0>;
+		clock-names =
+			"clkc_dispsys", "clkc_dmix", "clkc_gpost0", "clkc_gpost1",
+			"clkc_gpost2", "clkc_gpost3", "clkc_imgread0", "clkc_mipitx",
+			"clkc_osd0", "clkc_osd1", "clkc_osd2", "clkc_osd3",
+			"clkc_tcon", "clkc_tgen", "clkc_vpost0", "clkc_vscl0";
+		resets =
+			<&rstc RST_DISPSYS>, <&rstc RST_DMIX>, <&rstc RST_GPOST0>, <&rstc RST_GPOST1>,
+			<&rstc RST_GPOST2>, <&rstc RST_GPOST3>, <&rstc RST_IMGREAD0>, <&rstc RST_MIPITX>,
+			<&rstc RST_OSD0>, <&rstc RST_OSD1>, <&rstc RST_OSD2>, <&rstc RST_OSD3>,
+			<&rstc RST_TCON>, <&rstc RST_TGEN>, <&rstc RST_VPOST0>, <&rstc RST_VSCL0>;
+		reset-names =
+			"rstc_dispsys", "rstc_dmix", "rstc_gpost0", "rstc_gpost1",
+			"rstc_gpost2", "rstc_gpost3", "rstc_imgread0", "rstc_mipitx",
+			"rstc_osd0", "rstc_osd1", "rstc_osd2", "rstc_osd3",
+			"rstc_tcon", "rstc_tgen", "rstc_vpost0", "rstc_vscl0";
 		status = "okay";
 #if defined(DISP_MIPITX_CSI)
 	#if defined(DISP_MIPITX_CSI_480P)

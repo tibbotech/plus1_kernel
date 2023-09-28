@@ -381,5 +381,11 @@ void sp7350_mipitx_phy_init_dsi(void);
 void sp7350_mipitx_phy_init_csi(void);
 void sp7350_mipitx_phy_get(void);
 
+/*
+ * SP7350 MIPITX register store/restore
+ */
+void sp7350_mipitx_store(void);
+void sp7350_mipitx_restore(void);
+
 #endif	//__SP7350_DISP_MIPITX_H__
 

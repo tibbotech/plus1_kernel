@@ -969,3 +969,42 @@ void sp7350_osd_region_irq_enable(void)
 
 }
 EXPORT_SYMBOL(sp7350_osd_region_irq_enable);
+
+void sp7350_osd_store(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 i, j;
+
+	for(j = 0; j < 32 ; j++) {
+		for(i = 0; i < SP_DISP_MAX_OSD_LAYER ; i++) {
+			disp_dev->tmp_osd[i].reg[j] =
+				readl(disp_dev->base + DISP_OSD_REG + (i << 7) + j * 4);
+			disp_dev->tmp_gpost[i].reg[j] =
+				readl(disp_dev->base + DISP_GPOST_REG + (i << 7) + j * 4);
+		}
+	}
+}
+
+void sp7350_osd_restore(void)
+{
+	struct sp_disp_device *disp_dev = gdisp_dev;
+	u32 i;
+
+	for(i = 0; i < SP_DISP_MAX_OSD_LAYER ; i++) {
+		writel(disp_dev->tmp_gpost[i].reg[0], disp_dev->base + (i << 7) + GPOST_CONFIG);
+		writel(disp_dev->tmp_gpost[i].reg[18], disp_dev->base + (i << 7) + GPOST_MASTER_EN);
+		writel(disp_dev->tmp_gpost[i].reg[5], disp_dev->base + (i << 7) + GPOST_BG1);
+		writel(disp_dev->tmp_gpost[i].reg[6], disp_dev->base + (i << 7) + GPOST_BG2);
+		writel(disp_dev->tmp_gpost[i].reg[7], disp_dev->base + (i << 7) + GPOST_CONTRAST_CONFIG);
+
+		writel(disp_dev->tmp_osd[i].reg[0], disp_dev->base + (i << 7) + OSD_CTRL);
+		writel(disp_dev->tmp_osd[i].reg[2], disp_dev->base + (i << 7) + OSD_BASE_ADDR);
+		writel(disp_dev->tmp_osd[i].reg[16], disp_dev->base + (i << 7) + OSD_HVLD_OFFSET);
+		writel(disp_dev->tmp_osd[i].reg[17], disp_dev->base + (i << 7) + OSD_HVLD_WIDTH);
+		writel(disp_dev->tmp_osd[i].reg[18], disp_dev->base + (i << 7) + OSD_VVLD_OFFSET);
+		writel(disp_dev->tmp_osd[i].reg[19], disp_dev->base + (i << 7) + OSD_VVLD_HEIGHT);
+		writel(disp_dev->tmp_osd[i].reg[21], disp_dev->base + (i << 7) + OSD_BIST_CTRL);
+		writel(disp_dev->tmp_osd[i].reg[1], disp_dev->base + (i << 7) + OSD_EN);
+	}
+
+}
