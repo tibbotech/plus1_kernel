@@ -1155,7 +1155,6 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 	int cur_length = req->req.length;
 	int actual_length = 0;
 	int dma_xferlen;
-	int ret = 0;
 	unsigned long t;
 	u8 *buf;
 
@@ -1167,9 +1166,9 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 
 	if (req->req.dma == DMA_ADDR_INVALID) {
 		req->req.dma = dma_map_single(ep->udc->gadget.dev.parent,
-							(u8 *)req->req.buf,
-							req->req.actual + udc->dma_xferlen_ep11,
-							DMA_FROM_DEVICE);
+						(u8 *)req->req.buf,
+						req->req.actual + udc->dma_xferlen_ep11,
+						DMA_FROM_DEVICE);
 		if (dma_mapping_error(ep->udc->gadget.dev.parent, req->req.dma)) {
 			DEBUG_DBG("dma_mapping_error");
 			return 1;
@@ -1181,7 +1180,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 		dma_xferlen = udc->dma_xferlen_ep11;
 
 		if ((udc->reg_read(UDEPBFS) & 0x06) == 0x06)
-				udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
+			udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
 
 		udc->reg_write((u32) buf, UDEPBDMADA);
 		udc->reg_write((udc->reg_read(UDEPBDMACS) & (~DMA_COUNT_MASK)) |
@@ -1217,21 +1216,21 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 
 	if (req->req.dma != DMA_ADDR_INVALID) {
 		dma_unmap_single(ep->udc->gadget.dev.parent, req->req.dma,
-					req->req.length, DMA_FROM_DEVICE);
+					req->req.actual + udc->dma_xferlen_ep11, DMA_FROM_DEVICE);
 
 		req->req.dma = DMA_ADDR_INVALID;
 	}
 
+	if ((udc->reg_read(UDEPBFS) & 0x06) == 0x06)
+			udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
+
+	udc->reg_write(udc->reg_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
 	udc->reg_write(udc->reg_read(UDNBIE) | EP11O_IF, UDNBIE);
 
 	DEBUG_DBG("UDEPBDMACS = %x", udc->reg_read(UDEPBDMACS));
 	DEBUG_DBG("<<< %s...", __func__);
 
 	return 1;
-
-	DEBUG_DBG("<<< %s...", __func__);
-
-	return ret;
 }
 #endif
 
@@ -1250,7 +1249,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	int is_last;
 #ifdef USE_DMA
 	u32 block_len;
-	u32 residule = 0;
+	u32 residule;
 #endif
 	u32 count;
 	u32 avail;
@@ -1261,16 +1260,16 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 #endif
 
 	DEBUG_DBG(">>> %s UDEPBFS = %xh", __func__, udc->reg_read(UDEPBFS));
+	DEBUG_DBG("1.req.length=%d req.actual=%d req->req.dma = %xh UDEPBFS = %xh",
+			req->req.length, req->req.actual, req->req.dma, udc->reg_read(UDEPBFS));
 
 	if (down_trylock(&ep->wsem))
 		return 0;
 
-	DEBUG_DBG("1.req.length=%d req.actual=%d req->req.dma = %xh UDEPBFS = %xh",
-			req->req.length, req->req.actual, req->req.dma, udc->reg_read(UDEPBFS));
-
 #ifdef USE_DMA
 	state = 0;
 	check_len = false;
+	residule = 0;
 #endif
 
 	is_last = 0;
@@ -1282,20 +1281,20 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 		if (check_len == true) {
 			check_len = false;
 
-			/* dma transfer len must be multiple of 0x200 */
-			/* but not be multiple of 0x400               */
+			/* use DMA mode when transfer len >= 0x200 */
 			if (residule >= 0x200) {
 				udc->dma_xferlen_ep11 = residule;
 				residule = udc->dma_xferlen_ep11 & 0x1ff;
 				udc->dma_xferlen_ep11 = udc->dma_xferlen_ep11 & ~0x1ff;
 
+				/* dma transfer len must be multiple of 0x200 */
+				/* but not be multiple of 0x400               */
 				if ((udc->dma_xferlen_ep11 % 0x400) == 0) {
 					udc->dma_xferlen_ep11 -= 0x200;
 					residule += 0x200;
 				}
 
 				state = 1;
-				continue;
 			} else {
 				is_pingbuf = (udc->reg_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
 				state = 0;
@@ -1321,6 +1320,13 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 #ifdef USE_DMA
 		switch (state) {
 		case 0:	/* PIO mode */
+			if (residule) {
+				if (residule <= count)
+					avail = residule;
+				else
+					residule = residule - avail;
+			}
+
 			sp_udc_bulkout_pio(udc, buf, avail);
 
 			/* NCM signature in the header */
@@ -1329,12 +1335,13 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 				block_len = (((u32)*(buf + 9)) << 8) | ((u32)*(buf + 8));
 				udc->dma_xferlen_ep11 = block_len - avail - req->req.actual;
 
-				/* dma transfer len must be multiple of 0x200 */
-				/* but not be multiple of 0x400               */
+				/* use DMA mode when transfer len >= 0x200 */
 				if (udc->dma_xferlen_ep11 >= 0x200) {
 					residule = udc->dma_xferlen_ep11 & 0x1ff;
 					udc->dma_xferlen_ep11 = udc->dma_xferlen_ep11 & ~0x1ff;
 
+					/* dma transfer len must be multiple of 0x200 */
+					/* but not be multiple of 0x400               */
 					if ((udc->dma_xferlen_ep11 % 0x400) == 0) {
 						udc->dma_xferlen_ep11 -= 0x200;
 						residule += 0x200;
@@ -1347,7 +1354,6 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 			break;
 		case 1:	/* DMA mode */
 			sp_udc_ep11_bulkout_dma(ep, req);
-			udc->reg_write(udc->reg_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
 
 			avail = udc->dma_xferlen_ep11;
 			check_len = true;
@@ -1360,8 +1366,13 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 
 		req->req.actual += avail;
 
+#ifdef USE_DMA
+		if (block_len <= req->req.actual)
+			is_last = 1;
+#else
 		if (count < ep->ep.maxpacket || req->req.length <= req->req.actual)
 			is_last = 1;
+#endif
 
 		DEBUG_DBG("2.req.length = %d req.actual = %d UDEPBFS = %xh UDEPBPPC = %xh\t"
 				"\b\b\b\b\bUDEPBPOC = %xh UDEPBPIC = %xh avail = %d is_last = %d",
@@ -1662,9 +1673,7 @@ static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 		switch (idx) {
 		case EP1:
 			if ((udc->reg_read(UDEP12FS) & 0x1) == 0)
-			{
 				ret = sp_udc_ep1_bulkin(ep, req);
-			}
 
 			break;
 		case EP3:
@@ -1675,9 +1684,7 @@ static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 			break;
 		case EP11:
 			if (udc->reg_read(UDEPBFS) & 0x22)
-			{
 				ret = sp_udc_ep11_bulkout(ep, req);
-			}
 
 			break;
 		}
@@ -1887,8 +1894,8 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 	if (udc->reg_read(UDNBIF) & EP11O_IF) {
 		udc->reg_write(EP11O_IF, UDNBIF);
 		udc->reg_write(udc->reg_read(UDNBIE) & (~EP11O_IF), UDNBIE);
-		DEBUG_DBG("IRQ:ep11 out %xh %xh state=%d", udc->reg_read(UDNBIE), udc->reg_read(UDEPBFS),
-									udc->gadget.state);
+		DEBUG_DBG("IRQ:ep11 out %xh %xh state=%d", udc->reg_read(UDNBIE),
+						udc->reg_read(UDEPBFS), udc->gadget.state);
 		sp_sendto_workqueue(udc, 11);
 	}
 
