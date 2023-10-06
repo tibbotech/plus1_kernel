@@ -10,7 +10,6 @@
 #include <linux/io.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
-#include <linux/delay.h>
 #include <linux/kthread.h>
 #include <linux/interrupt.h>
 #include <linux/usb/gadget.h>
@@ -1222,7 +1221,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 	}
 
 	if ((udc->reg_read(UDEPBFS) & 0x06) == 0x06)
-			udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
+		udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
 
 	udc->reg_write(udc->reg_read(UDCIE) & (~EPB_DMA_IF), UDCIE);
 	udc->reg_write(udc->reg_read(UDNBIE) | EP11O_IF, UDNBIE);
@@ -1247,14 +1246,14 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	int is_pingbuf;
 	int delay_count;
 	int is_last;
-#ifdef USE_DMA
-	u32 block_len;
-	u32 residule;
-#endif
 	u32 count;
 	u32 avail;
 	u8 *buf;
 #ifdef USE_DMA
+	char signature[4];
+	int i;
+	u32 block_len;
+	u32 residule;
 	u8 check_len;
 	u8 state;
 #endif
@@ -1320,19 +1319,18 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 #ifdef USE_DMA
 		switch (state) {
 		case 0:	/* PIO mode */
-			if (residule) {
-				if (residule <= count)
-					avail = residule;
-				else
-					residule = residule - avail;
-			}
-
 			sp_udc_bulkout_pio(udc, buf, avail);
 
-			/* NCM signature in the header */
-			if ((*(buf + 0) == 0x4e) && (*(buf + 1) == 0x43) && (*(buf + 2) == 0x4d) &&
-										(*(buf + 3) == 0x48)) {
-				block_len = (((u32)*(buf + 9)) << 8) | ((u32)*(buf + 8));
+			for (i = 0; i < 4; i++)
+				signature[i] = *(buf + i);
+
+			if (!strncmp(signature, "NCMH", 4) || !strncmp(signature, "ncmh", 4)) {
+				if (!strncmp(signature, "NCMH", 4))
+					block_len = (((u32)(*(buf + 9))) << 8) | ((u32)(*(buf + 8)));
+				else if (!strncmp(signature, "ncmh", 4))
+					block_len = (((u32)(*(buf + 11))) << 24) | (((u32)(*(buf + 10))) << 16) |
+									(((u32)(*(buf + 9))) << 8) | ((u32)(*(buf + 8)));
+
 				udc->dma_xferlen_ep11 = block_len - avail - req->req.actual;
 
 				/* use DMA mode when transfer len >= 0x200 */
@@ -2191,25 +2189,25 @@ static struct usb_ep *sp_match_ep(struct usb_gadget *_gadget,
 }
 
 static const struct usb_gadget_ops sp_ops = {
-	.get_frame		 = sp_udc_get_frame,
-	.wakeup			 = sp_udc_wakeup,
-	.set_selfpowered = sp_udc_set_selfpowered,
-	.pullup			 = sp_udc_pullup,
-	.vbus_session	 = sp_udc_vbus_session,
-	.vbus_draw		 = sp_vbus_draw,
-	.udc_start		 = sp_udc_start,
-	.udc_stop		 = sp_udc_stop,
+	.get_frame		= sp_udc_get_frame,
+	.wakeup			= sp_udc_wakeup,
+	.set_selfpowered 	= sp_udc_set_selfpowered,
+	.pullup			= sp_udc_pullup,
+	.vbus_session		 = sp_udc_vbus_session,
+	.vbus_draw		= sp_vbus_draw,
+	.udc_start		= sp_udc_start,
+	.udc_stop		= sp_udc_stop,
 	.match_ep		= sp_match_ep,
 };
 
 static const struct usb_ep_ops sp_ep_ops = {
-	.enable			 = sp_udc_ep_enable,
-	.disable		 = sp_udc_ep_disable,
-	.alloc_request	 = sp_udc_alloc_request,
-	.free_request	 = sp_udc_free_request,
-	.queue			 = sp_udc_queue,
-	.dequeue		 = sp_udc_dequeue,
-	.set_halt		 = sp_udc_set_halt,
+	.enable			= sp_udc_ep_enable,
+	.disable		= sp_udc_ep_disable,
+	.alloc_request	 	= sp_udc_alloc_request,
+	.free_request	 	= sp_udc_free_request,
+	.queue			= sp_udc_queue,
+	.dequeue		= sp_udc_dequeue,
+	.set_halt		= sp_udc_set_halt,
 };
 
 static void sp_udc_reinit(struct sp_udc *udc)
