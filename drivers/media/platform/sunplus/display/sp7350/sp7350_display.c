@@ -236,11 +236,13 @@ static int sp7350_resolution_get(struct sp_disp_device *disp_dev)
 		disp_dev->mipitx_dev_id = 0x88888888;
 		pr_err("video out not set\n");
 	}
-	if(!strcmp("HXM0686TFT-001", connect_dev_name))
+	if(!strcmp("HXM0686TFT-001", connect_dev_name)) /* 480x1280 */
 		disp_dev->mipitx_dev_id = 0x00001000;
+	else if(!strcmp("TCXD024IBLON-2", connect_dev_name)) /* 240x320 */
+		disp_dev->mipitx_dev_id = 0x00001001;
 	else
 		disp_dev->mipitx_dev_id = 0x00000000;
-	
+
 	pr_info("connect_dev_name %s\n", connect_dev_name);
 
 	/*

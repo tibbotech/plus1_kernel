@@ -53,6 +53,8 @@
 //#define DISP_MIPITX_CSI_1080P
 //#define DISP_MIPITX_CSI_3840
 
+//#define DISP_MIPITX_DSI_PANEL_240X320
+
 //#define DISP_MIPITX_DSI_PANEL_480X1280
 //#define DISP_MIPITX_DSI_VPP_SRC_480P
 //#define DISP_MIPITX_DSI_VPP_SRC_720P
@@ -3118,6 +3120,20 @@
 		sp7350,disp_mipitx_sync_timing = <0x1>; /* 0x1:Sync Event */
 		sp7350,disp_mipitx_format = <0x1>; /* 0x1:MIPITX format CSI_16BITS YUY2 */
 
+#elif defined(DISP_MIPITX_DSI_PANEL_240X320)
+		sp7350,dev_name = "TCXD024IBLON-2";
+
+		sp7350,osd0_layer = <0 0 240 320 0xe>; /* 0xe = ARGB8888 */
+		//sp7350,osd1_layer = <0 0 240 320 0xe>; /* 0xe = ARGB8888 */
+		//sp7350,osd2_layer = <0 0 240 320 0xe>; /* 0xe = ARGB8888 */
+		//sp7350,osd3_layer = <0 0 240 320 0xe>; /* 0xe = ARGB8888 */
+		sp7350,vpp0_layer = <0 0 720 480 720 480 0x2>; /* 0x2 = YUY2 */
+
+		sp7350,disp_output = <240 320 0x0>; /* 0x0:MIPITX DSI */
+		sp7350,disp_mipitx_lane = <0x1>; /* 0x0:MIPITX lane */
+		sp7350,disp_mipitx_clk_edge = <0x1>; /* 0x1:Falling Edge */
+		sp7350,disp_mipitx_sync_timing = <0x0>; /* 0x1:Sync Pulse */
+		sp7350,disp_mipitx_format = <0x3>; /* 0x3:MIPITX DSI RGB888 */
 #elif defined(DISP_MIPITX_DSI_PANEL_480X1280)
 		//reset-gpios = <&pctl 56 GPIO_ACTIVE_HIGH>;
 		sp7350,dev_name = "HXM0686TFT-001";

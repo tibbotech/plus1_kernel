@@ -631,6 +631,12 @@ int sp7350_osd_resolution_init(struct sp_disp_device *disp_dev)
 	struct sp7350fb_info info;
 	int i;
 
+	if (((disp_dev->osd_res[0].width == 240) && (disp_dev->osd_res[0].height == 320)) ||
+		((disp_dev->osd_res[1].width == 240) && (disp_dev->osd_res[1].height == 320)) ||
+		((disp_dev->osd_res[2].width == 240) && (disp_dev->osd_res[2].height == 320)) ||
+		((disp_dev->osd_res[3].width == 240) && (disp_dev->osd_res[3].height == 320)))
+			return 0;
+
 	sp7350_osd_header_init();
 
 	//pr_info("  osd0_data_array VA 0x%px(PA 0x%llx)\n",
@@ -655,7 +661,7 @@ int sp7350_osd_resolution_init(struct sp_disp_device *disp_dev)
 			info.buf_addr_phy = (u32)virt_to_phys(&osd2_data_array);
 		else if (i == 3)
 			info.buf_addr_phy = (u32)virt_to_phys(&osd3_data_array);
-		
+
 		sp7350_osd_layer_set(&info, i);
 	}
 
