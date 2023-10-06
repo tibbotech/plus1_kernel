@@ -13,6 +13,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/of_graph.h>
+#include <linux/of_reserved_mem.h>
 #include <linux/platform_device.h>
 #include <linux/pm_runtime.h>
 #include <linux/reset.h>
@@ -353,6 +354,20 @@ static int vin_group_get(struct vin_dev *vin)
 	vin->v4l2_dev.mdev = &group->mdev;
 
 	mutex_unlock(&group->lock);
+
+	/* Reserved memory initialization */
+	ret = of_reserved_mem_device_init(vin->dev);
+	if (ret) {
+		dev_err(vin->dev, "Could not get reserved memory!\n");
+		goto err_group;
+	}
+
+	ret = dma_set_coherent_mask(vin->dev, DMA_BIT_MASK(32));
+	if (ret) {
+		dev_warn(vin->dev, "32-bit consistent DMA enable failed\n");
+	}
+
+	dev_dbg(vin->dev, "Reserved memory initialization done\n");
 
 	return 0;
 err_group:

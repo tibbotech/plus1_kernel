@@ -188,6 +188,13 @@
 			no-map;
 		};
 
+		/* mipi-csi rx reserve memory: 0x80000000~0x8c7fffff, total 200M */
+		mipicsirx_reserve: mipicsirx@80000000 {
+			compatible = "shared-dma-pool";
+			reg = <0x0 0x80000000 0x0 0x0c800000>;
+			no-map;
+		};
+
 		/* CM4 reserve memory: 0xfa240000 ~ 0xfa29ffff, total 384K */
 		rproc0runaddr: cm4runaddr@fa240000 {
 			compatible = "shared-dma-pool";
@@ -2007,6 +2014,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI0_CSIIW0>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <0>;
 #if defined(IMX219_IN0) || defined(TP2815_IN0)
 		status = "okay";
@@ -2045,6 +2053,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI0_CSIIW1>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <1>;
 #if defined(TP2815_IN0) && defined(TP2815_IN0_2VC)
 		status = "okay";
@@ -2168,6 +2177,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI1_CSIIW0>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <2>;
 #if defined(IMX219_IN1) || defined(TP2815_IN1)
 		status = "okay";
@@ -2206,6 +2216,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI1_CSIIW1>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <3>;
 #if defined(TP2815_IN1) && defined(TP2815_IN1_2VC)
 		status = "okay";
@@ -2351,6 +2362,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW0>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <4>;
 #if defined(IMX219_IN2) || defined(TP2815_IN2)
 		status = "okay";
@@ -2389,6 +2401,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW1>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <5>;
 #if defined(TP2815_IN2) && defined(TP2815_IN2_2VC)
 		status = "okay";
@@ -2491,6 +2504,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW2>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <6>;
 #if defined(IMX219_IN3)
 		status = "okay";
@@ -2536,6 +2550,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI23_CSIIW3>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <7>;
 		status = "disabled";
 
@@ -2662,6 +2677,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI4_CSIIW0>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <8>;
 #if defined(IMX219_IN4) || defined(TP2815_IN4)
 		status = "okay";
@@ -2700,6 +2716,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI4_CSIIW1>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <9>;
 #if defined(TP2815_IN4) && defined(TP2815_IN4_2VC)
 		status = "okay";
@@ -2837,6 +2854,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW0>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <10>;
 #if defined(IMX219_IN5) || defined(TP2815_IN5)
 		status = "okay";
@@ -2875,6 +2893,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW1>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <11>;
 #if defined(TP2815_IN5) && defined(TP2815_IN5_2VC)
 		status = "okay";
@@ -2913,6 +2932,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW2>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <12>;
 		status = "disabled";
 
@@ -2947,6 +2967,7 @@
 		clock-names = "clk_csiiw";
 		resets = <&rstc RST_VI5_CSIIW3>;
 		reset-names = "rstc_csiiw";
+		memory-region = <&mipicsirx_reserve>;
 		sunplus,id = <13>;
 		status = "disabled";
 
