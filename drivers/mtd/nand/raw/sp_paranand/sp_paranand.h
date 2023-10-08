@@ -308,6 +308,8 @@ struct sp_pnand_data {
 	struct nand_chip chip;
 	struct nand_controller controller;
 	void __iomem *io_base;
+	struct clk *clk;
+	struct reset_control *rstc;
 	int sel_chip;
 	int cur_cmd;
 	int page_addr;
@@ -341,6 +343,8 @@ struct sp_pnand_data {
 };
 
 void sp_pnand_select_chip(struct nand_chip *chip, int cs);
+void sp_pnand_abort(struct nand_chip *chip);
+void sp_pnand_regdump(struct nand_chip *chip);
 
 extern int sp_pnand_issue_cmd(struct nand_chip *, struct cmd_feature *);
 extern void sp_pnand_set_default_timing(struct nand_chip *);

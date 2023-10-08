@@ -1315,8 +1315,6 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	struct sp_pnand_data *data;
 	struct mtd_info *mtd;
 	struct nand_chip *chip;
-	struct clk *clk;
-	struct reset_control *rstc;
 	struct resource *r;
 	int ret, chipnum;
 	uint64_t size, max_sz = -1;
@@ -1338,27 +1336,31 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	chip = &data->chip;
 	chip->controller = &data->controller;
 
-	clk = devm_clk_get(dev, NULL);
-	if (IS_ERR(clk))
-		return dev_err_probe(dev, PTR_ERR(clk), "Failed to get clock\n");
+	/*reset*/
+	data->rstc = devm_reset_control_get(dev, NULL);
+	if (IS_ERR(data->rstc))
+		return dev_err_probe(dev, PTR_ERR(data->rstc), "Failed to get reset\n");
 
-	ret = clk_prepare_enable(clk);
+	reset_control_deassert(data->rstc);
+
+	ret = devm_add_action_or_reset(dev, sp_reset_control_assert, data->rstc);
+	if (ret)
+		return ret;
+
+	/* clk */
+	data->clk = devm_clk_get(dev, NULL);
+	if (IS_ERR(data->clk))
+		return dev_err_probe(dev, PTR_ERR(data->clk), "Failed to get clock\n");
+	printk("core_clk 0x%x 0x%x\n", (u32)data->clk, *(u32 *)data->clk);
+
+	ret = clk_prepare_enable(data->clk);
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to enable clock\n");
 
-	ret = devm_add_action_or_reset(dev, sp_clk_disable_unprepare, clk);
+	ret = devm_add_action_or_reset(dev, sp_clk_disable_unprepare, data->clk);
 	if (ret)
 		return ret;
 
-	rstc = devm_reset_control_get(dev, NULL);
-	if (IS_ERR(rstc))
-		return dev_err_probe(dev, PTR_ERR(rstc), "Failed to get reset\n");
-
-	reset_control_deassert(rstc);
-
-	ret = devm_add_action_or_reset(dev, sp_reset_control_assert, rstc);
-	if (ret)
-		return ret;
 
 	data->io_base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(data->io_base)) {
@@ -1378,13 +1380,13 @@ static int sp_pnand_probe(struct platform_device *pdev)
 	if (of_property_read_u32(pdev->dev.of_node, "clock-frequency", &data->clkfreq))
 		data->clkfreq = CONFIG_SP_CLK_100M;
 
-	ret = clk_set_rate(clk, data->clkfreq);
+	ret = clk_set_rate(data->clk, data->clkfreq);
 	if (ret) {
 		dev_err(dev, "Failed to set clk rate\n");
 		return ret;
 	}
 
-	data->clkfreq = clk_get_rate(clk);
+	data->clkfreq = clk_get_rate(data->clk);
 	DBGLEVEL1(sp_pnand_dbg("data->clkfreq %d\n", data->clkfreq));
 
 	data->dmac = NULL;
@@ -1564,6 +1566,67 @@ static int sp_pnand_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_SLEEP
+static u32 regs[124];// 7 + 55 + 60 + 1 + 1
+static int sp_pnand_suspend(struct device *dev)
+{
+	struct sp_pnand_data *data = dev_get_drvdata(dev);
+	struct nand_chip *chip = &data->chip;
+	void __iomem *base = data->io_base;
+	u32 i, index;
+
+	//printk(">>>>>> [DEBUG] PNAND suspend <<<<<<\n");
+
+	/* Save the reg val */
+	for (i = 0x8; i < 0x24; i += 4) {
+		index = (i - 0x8) / 4;
+		regs[index] = readl(data->io_base + i);
+	}
+	for (i = 0x104; i < 0x1E4; i += 4) {
+		index = (i - 0x104) / 4;
+		regs[7 + index] = readl(data->io_base + i);
+	}
+	for (i = 0x300; i < 0x3F0; i += 4) {
+		index = (i - 0x300) / 4;
+		regs[62 + index] = readl(data->io_base + i);
+	}
+	regs[122] = readl(data->io_base + 0x42C);
+	regs[123] = readl(data->io_base + 0x508);
+
+	return 0;
+}
+
+static int sp_pnand_resume(struct device *dev)
+{
+	struct sp_pnand_data *data = dev_get_drvdata(dev);
+	struct nand_chip *chip = &data->chip;
+	void __iomem *base = data->io_base;
+	u32 i, index;
+
+	//printk(">>>>>> [DEBUG] PNAND resume <<<<<<\n");
+
+	/* Restore the reg val */
+	for (i = 0x8; i < 0x24; i += 4) {
+		index = (i - 0x8) / 4;
+		writel(regs[index], data->io_base + i);
+	}
+	for (i = 0x104; i < 0x1E4; i += 4) {
+		index = (i - 0x104) / 4;
+		writel(regs[7 + index], data->io_base + i);
+	}
+	for (i = 0x300; i < 0x3F0; i += 4) {
+		index = (i - 0x300) / 4;
+		writel(regs[62 + index], data->io_base + i);
+	}
+	writel_relaxed(regs[122], data->io_base + 0x42C);
+	writel_relaxed(regs[123], data->io_base + 0x508);
+
+	sp_pnand_abort(chip);
+
+	return 0;
+}
+#endif
+
 static const struct of_device_id sp_pnand_dt_ids[] = {
 	{ .compatible = "sunplus,sp7350-para-nand" },
 	{ }
@@ -1571,12 +1634,18 @@ static const struct of_device_id sp_pnand_dt_ids[] = {
 
 MODULE_DEVICE_TABLE(of, sp_pnand_dt_ids);
 
+static const struct dev_pm_ops sp_pnand_pm_ops = {
+	SET_SYSTEM_SLEEP_PM_OPS(sp_pnand_suspend,
+				sp_pnand_resume)
+};
+
 static struct platform_driver sp_pnand_driver __refdata = {
 	.probe	= sp_pnand_probe,
 	.remove	= sp_pnand_remove,
 	.driver	= {
 		.name = "sp7350-para-nand",
 		.owner = THIS_MODULE,
+		.pm		= &sp_pnand_pm_ops,
 		.of_match_table = of_match_ptr(sp_pnand_dt_ids),
 	},
 };
