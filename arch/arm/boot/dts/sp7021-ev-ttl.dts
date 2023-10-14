@@ -13,6 +13,7 @@
 #define ENABLE_HDMITX_720X480
 //#define ENABLE_HDMITX_720X576
 //#define ENABLE_HDMITX_1280X720
+//#define ENABLE_HDMITX_480X272
 //#define ENABLE_HDMITX_800X480
 //#define ENABLE_HDMITX_1024X600
 
@@ -88,6 +89,41 @@
 	ttl-out-enable = <0>;
 	set-user-mode = <0>;
 	ttl-vpp-layer = <2>;
+	#endif
+
+	#ifdef ENABLE_HDMITX_480X272
+	ui_width = <480>;
+	ui_height = <272>;
+	ui_format = <0xe>;
+		/* 0x2 = 8bpp (ARGB)
+		 * 0x4 = YUY2
+		 * 0x8 = RGB565
+		 * 0x9 = ARGB1555
+		 * 0xa = RGBA4444
+		 * 0xb = ARGB4444
+		 * 0xd = RGBA8888
+		 * 0xe = ARGB8888 */
+
+	ttl-name = "undefined,rgb,480X272";
+	ttl-clock-freq = <9000000>;
+	ttl-clock-divm =<26>;
+	ttl-clock-divn =<8>;
+	ttl-clock-divr = <0>;
+	hactive = <480>;
+	hback-porch = <20>;
+	hfront-porch =<10>;
+	hsync-len = <15>;
+	vactive = <272>;
+	vback-porch = <10>;
+	vfront-porch =<4>;
+	vsync-len = <2>;
+	ttl-out-enable = <0>;
+	ttl-rgb-swap = <0>;
+	ttl-clock-pol = <0>;
+	set-user-mode = <1>;
+	ttl-vpp-layer = <1>;
+	ttl-vpp-adj = <21>;
+	ttl-osd-adj = <0>;
 	#endif
 
 	#ifdef ENABLE_HDMITX_800X480
