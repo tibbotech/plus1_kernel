@@ -2328,7 +2328,7 @@ static int sp_udc_ep_enable(struct usb_ep *_ep, const struct usb_endpoint_descri
 	}
 
 	max = usb_endpoint_maxp(desc) & 0x1fff;
-	hal_udc_endpoint_configure(udc, desc->bEndpointAddress, desc->bmAttributes, max & 0x7ff);
+	hal_udc_endpoint_configure(udc, desc->bEndpointAddress, usb_endpoint_type(desc), max & 0x7ff);
 
 	return 0;
 }
