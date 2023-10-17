@@ -63,8 +63,8 @@
 
 #define LT8912B_HDMI_ENABLE
 //#define LT8912B_HDMI_480P
-#define LT8912B_HDMI_720P
-//#define LT8912B_HDMI_1080P
+//#define LT8912B_HDMI_720P
+#define LT8912B_HDMI_1080P
 
 / {
 	model = "Sunplus SP7350";
