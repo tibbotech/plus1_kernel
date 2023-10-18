@@ -562,11 +562,17 @@ void sp7350_osd_layer_set(struct sp7350fb_info *info, int osd_layer_sel)
 		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_OFFSET);
 	writel(disp_dev->osd_res[osd_layer_sel].y_ofs,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_OFFSET);
-
+#if 0
 	writel(disp_dev->osd_res[osd_layer_sel].width,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_WIDTH);
 	writel(disp_dev->osd_res[osd_layer_sel].height,
 		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_HEIGHT);
+#else
+	writel(disp_dev->out_res.width,
+		disp_dev->base + (osd_layer_sel << 7) + OSD_HVLD_WIDTH);
+	writel(disp_dev->out_res.height,
+		disp_dev->base + (osd_layer_sel << 7) + OSD_VVLD_HEIGHT);
+#endif
 
 	writel(0, disp_dev->base + (osd_layer_sel << 7) + OSD_BIST_CTRL);
 	writel(0, disp_dev->base + (osd_layer_sel << 7) + OSD_3D_H_OFFSET);
