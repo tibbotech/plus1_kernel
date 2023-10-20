@@ -29,6 +29,7 @@
 #include <linux/firmware.h>
 #include <linux/elf.h>
 #include <linux/suspend.h>
+#include <linux/workqueue.h>
 
 #include "remoteproc_internal.h"
 #include "remoteproc_elf_helpers.h"
@@ -71,6 +72,7 @@ struct sp_rproc_pdata {
 	u64 bootaddr;
 	u32 __iomem *mbox2to0; // read to clear intr
 	struct reset_control *rstc; // FIXME: RST_A926 not worked
+	struct work_struct suspend_work;
 #endif
 };
 
@@ -79,6 +81,84 @@ static bool autoboot __read_mostly;
 /* Store rproc for IPI handler */
 static struct rproc *rproc;
 static struct work_struct workqueue;
+
+
+#ifdef CONFIG_SOC_SP7350
+void suspend_work_func(struct work_struct *work)
+{
+	pm_suspend(PM_SUSPEND_MEM);
+}
+
+static void sp7350_request_firmware_callback(const struct firmware *fw, void *context)
+{
+	struct rproc *rproc = context;
+	rproc_elf_load_segments(rproc,fw);
+	release_firmware(fw);
+}
+static int sp7350_load_warmboot_firmware(struct rproc *rproc)
+{
+	int ret;
+
+	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
+				      FIRMWARE_WARMBOOT_NAME, &rproc->dev, GFP_KERNEL,
+				      rproc, sp7350_request_firmware_callback);
+	if (ret < 0)
+		dev_err(&rproc->dev, "request_firmware_nowait err: %d\n", ret);
+	return ret;
+}
+static int sp_rproc_load(struct rproc *rproc, const struct firmware *fw)
+{
+	struct device *dev = &rproc->dev;
+	struct sp_rproc_pdata *local = rproc->priv;
+	struct elf32_hdr *ehdr;
+	struct elf32_phdr *phdr;
+	int i, ret = 0;
+	const u8 *elf_data = fw->data;
+
+	ehdr = (struct elf32_hdr *)elf_data;
+	phdr = (struct elf32_phdr *)(elf_data + ehdr->e_phoff);
+	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
+		u32 da = phdr->p_paddr;
+		u32 memsz = phdr->p_memsz;
+		u32 filesz = phdr->p_filesz;
+		u32 offset = phdr->p_offset;
+		void *ptr;
+		if (phdr->p_type != PT_LOAD)
+			continue;
+		dev_dbg(dev, "phdr: type %d memsz 0x%x filesz 0x%x\n",
+			phdr->p_type, memsz, filesz);
+		if (filesz > memsz) {
+			dev_err(dev, "bad phdr filesz 0x%x memsz 0x%x\n",
+				filesz, memsz);
+			ret = -EINVAL;
+			break;
+		}
+		if (offset + filesz > fw->size) {
+			dev_err(dev, "truncated fw: need 0x%x avail 0x%zx\n",
+				offset + filesz, fw->size);
+			ret = -EINVAL;
+			break;
+		}
+
+		/* grab the kernel address for this device address */
+		if(da > local->bootaddr)
+			ptr = rproc_da_to_va(rproc, da, memsz);
+		else
+			ptr = rproc_da_to_va(rproc, local->bootaddr + (da & 0xFFFFF), memsz);
+		if (!ptr) {
+			dev_err(dev, "bad phdr da 0x%llx mem 0x%x\n", local->bootaddr,memsz);
+			ret = -EINVAL;
+			break;
+		}
+
+		/* put the segment where the remote processor expects it */
+		if (phdr->p_filesz)
+			memcpy(ptr, elf_data + offset, phdr->p_filesz);
+	}
+	return ret;
+}
+
+#endif
 
 static void handle_event(struct work_struct *work)
 {
@@ -132,6 +212,9 @@ static int sp_rproc_start(struct rproc *rproc)
 #elif defined (CONFIG_SOC_SP7350)
 	writel(0xFFFF0000|(local->bootaddr >> 16), local->boot);
 	reset_control_deassert(local->rstc);
+	/* for (echo mem) into deepsleep. load warmboot firmware to dram first. */
+	sp7350_load_warmboot_firmware(rproc);
+	INIT_WORK(&local->suspend_work,suspend_work_func);
 #else
 	writel(rproc->bootaddr, local->boot);
 #endif
@@ -274,83 +357,6 @@ static int sp_parse_fw(struct rproc *rproc, const struct firmware *fw)
 	return ret;
 }
 
-#ifdef CONFIG_SOC_SP7350
-
-static void sp7350_request_firmware_callback(const struct firmware *fw, void *context)
-{
-	struct rproc *rproc = context;
-	rproc_elf_load_segments(rproc,fw);
-	release_firmware(fw);
-
-	dev_info(&rproc->dev, "Ca55 in suspend start \n");
-	pm_suspend(PM_SUSPEND_MEM);
-}
-static int sp7350_load_warmboot_firmware(struct rproc *rproc)
-{
-	int ret;
-
-	ret = request_firmware_nowait(THIS_MODULE, FW_ACTION_HOTPLUG,
-				      FIRMWARE_WARMBOOT_NAME, &rproc->dev, GFP_KERNEL,
-				      rproc, sp7350_request_firmware_callback);
-	if (ret < 0)
-		dev_err(&rproc->dev, "request_firmware_nowait err: %d\n", ret);
-
-	return ret;
-}
-static int sp_rproc_load(struct rproc *rproc, const struct firmware *fw)
-{
-	struct device *dev = &rproc->dev;
-	struct sp_rproc_pdata *local = rproc->priv;
-	struct elf32_hdr *ehdr;
-	struct elf32_phdr *phdr;
-	int i, ret = 0;
-	const u8 *elf_data = fw->data;
-
-	ehdr = (struct elf32_hdr *)elf_data;
-	phdr = (struct elf32_phdr *)(elf_data + ehdr->e_phoff);
-	for (i = 0; i < ehdr->e_phnum; i++, phdr++) {
-		u32 da = phdr->p_paddr;
-		u32 memsz = phdr->p_memsz;
-		u32 filesz = phdr->p_filesz;
-		u32 offset = phdr->p_offset;
-		void *ptr;
-		if (phdr->p_type != PT_LOAD)
-			continue;
-		dev_dbg(dev, "phdr: type %d memsz 0x%x filesz 0x%x\n",
-			phdr->p_type, memsz, filesz);
-		if (filesz > memsz) {
-			dev_err(dev, "bad phdr filesz 0x%x memsz 0x%x\n",
-				filesz, memsz);
-			ret = -EINVAL;
-			break;
-		}
-		if (offset + filesz > fw->size) {
-			dev_err(dev, "truncated fw: need 0x%x avail 0x%zx\n",
-				offset + filesz, fw->size);
-			ret = -EINVAL;
-			break;
-		}
-
-		/* grab the kernel address for this device address */
-		if(da > local->bootaddr)
-			ptr = rproc_da_to_va(rproc, da, memsz);
-		else
-			ptr = rproc_da_to_va(rproc, local->bootaddr + (da & 0xFFFFF), memsz);
-		if (!ptr) {
-			dev_err(dev, "bad phdr da 0x%llx mem 0x%x\n", local->bootaddr,memsz);
-			ret = -EINVAL;
-			break;
-		}
-
-		/* put the segment where the remote processor expects it */
-		if (phdr->p_filesz)
-			memcpy(ptr, elf_data + offset, phdr->p_filesz);
-	}
-	return ret;
-}
-
-
-#endif
 static struct rproc_ops sp_rproc_ops = {
 	.start		= sp_rproc_start,
 	.stop		= sp_rproc_stop,
@@ -376,8 +382,8 @@ static irqreturn_t sp_remoteproc_interrupt(int irq, void *dev_id)
 
 	if(readl(local->mbox2to0) == MAILBOX_CM4_TO_CA55_SUSPEND)  // read to clear intr
 	{
-
-		sp7350_load_warmboot_firmware(rproc);
+		dev_info(&rproc->dev, "Ca55 in suspend start \n");
+		schedule_work(&local->suspend_work);
 	}
 	else
 #endif
@@ -461,7 +467,6 @@ static int sp_remoteproc_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "rproc registration failed: %d\n", ret);
 		goto probe_failed;
 	}
-
 	return 0;
 
 probe_failed:
