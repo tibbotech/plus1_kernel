@@ -1614,7 +1614,7 @@
 		pinctrl-0 = <&spi_nor_pins>;
 		spi-max-frequency = <45000000>;
 		spi-chip-selection = <0>;
-		read-timing-selection = <0>;
+		read-timing-selection = <3>;
 		write-timing-selection = <0>;
 	};
 
