@@ -1101,7 +1101,9 @@ static int sp_spi_nor_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "SPI failed to retrieve reset controller: %d\n", ret);
 		return PTR_ERR(pspi->clk_rst);
 	}
-
+	ret = reset_control_assert(pspi->clk_rst);
+	if (ret)
+		dev_err(&pdev->dev, "reset assert fail\n");
 	ret = reset_control_deassert(pspi->clk_rst);
 	if (ret)
 		dev_err(&pdev->dev, "reset deassert fail\n");
