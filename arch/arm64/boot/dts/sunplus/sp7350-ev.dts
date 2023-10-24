@@ -1746,7 +1746,7 @@
 	};
 
 	sdio: sdio@f8008400 {
-		compatible = "sunplus,sp7350-sd";
+		compatible = "sunplus,sp7350-1v8-sdio";
 		reg = < 0x0 0xf8008400 0x0 0x180>;
 		interrupt-parent = <&gic>;
 		interrupts = <GIC_SPI 15 IRQ_TYPE_LEVEL_HIGH>;

@@ -1461,6 +1461,10 @@ static int spsdc_pm_resume(struct device *dev)
 	if (ret)
 		return ret;
 	spsdc_controller_init(host);
+	if (host->mmc->pm_flags & MMC_PM_KEEP_POWER){
+		spsdc_set_ios(host->mmc, &host->mmc->ios);
+		spmmc_start_signal_voltage_switch(host->mmc, &host->mmc->ios);
+	}
 	pm_runtime_force_resume(dev);
 	return ret;
 }
