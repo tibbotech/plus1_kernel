@@ -48,7 +48,7 @@ extern void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 #include "sunplus_udc_regs.h"
 
 /* DMA mode only supports NCMH and ncmh */
-//#define USE_DMA
+// #define USE_DMA
 
 #define IRQ_USB_DEV_PORT0			45
 #define IRQ_USB_DEV_PORT1			48
@@ -1229,7 +1229,6 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 		DEBUG_DBG("UDCIF = %xh", udc->reg_read(UDCIF));
 
 		actual_length += dma_xferlen;
-
 		fsleep(50);
 	}
 
@@ -1434,6 +1433,7 @@ out_fifo_controllable:
 	return is_last;
 }
 
+#ifdef USE_DMA
 static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 {
 	struct sp_udc *udc = ep->udc;
@@ -1447,16 +1447,17 @@ static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 
 	if (req->req.dma == DMA_ADDR_INVALID) {
 		req->req.dma = dma_map_single(ep->udc->gadget.dev.parent, req->req.buf+req->req.actual, dma_xferlen,
-			(ep->bEndpointAddress & USB_DIR_IN) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+						(ep->bEndpointAddress & USB_DIR_IN) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
 	}
-	
+
 	udc->reg_write(dma_xferlen | DMA_COUNT_ALIGN, UEP12DMACS);
 	udc->reg_write((u32) req->req.dma, UEP12DMADA);
 	udc->reg_write(udc->reg_read(UEP12DMACS) | DMA_EN, UEP12DMACS);
-	
+
 	while (udc->reg_read(UEP12DMACS) & DMA_EN) {
 		// udc->reg_write(udc->reg_read(UDLIE) | EP1_DMA_IF, UDLIE);
 		udelay(20);
+
 		if (dma_delay++ > 50) return 0;
 	}
 
@@ -1478,6 +1479,7 @@ static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 
 	return 1;
 }
+#endif
 
 static int sp_udc_int_in(struct sp_ep *ep, struct sp_request *req)
 {
@@ -1529,7 +1531,10 @@ static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 		pre_is_pingbuf = is_pingbuf;
 		w_count = ep->ep.maxpacket;
 
-		if (!sp_ep1_bulkin_dma(ep, req)) {
+#ifdef USE_DMA
+		if (!sp_ep1_bulkin_dma(ep, req))
+#endif
+		{
 			w_count = sp_udc_write_packet(udc, UDEP12FDP, req, ep->ep.maxpacket, UDEP12VB);
 			udc->reg_write(udc->reg_read(UDEP12C) | SET_EP_IVLD, UDEP12C);
 			count = sp_udc_get_ep_fifo_count(ep->udc, is_pingbuf, UDEP12PIC);
