@@ -47,8 +47,10 @@ extern void sp_accept_b_hnp_en_feature(struct usb_otg *otg);
 #include "sunplus_udc.h"
 #include "sunplus_udc_regs.h"
 
-/* DMA mode only supports NCMH and ncmh */
-// #define USE_DMA
+#define TRANS_MODE				PIO_MODE
+#define PIO_MODE				0
+#define DMA_MODE				1
+#define DMA_MODE_FOR_NCHM			2
 
 #define IRQ_USB_DEV_PORT0			45
 #define IRQ_USB_DEV_PORT1			48
@@ -1163,7 +1165,7 @@ static void sp_udc_handle_ep0(struct sp_udc *udc)
 	DEBUG_DBG("<<< %s ... ", __func__);
 }
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE) || (TRANS_MODE == DMA_MODE_FOR_NCHM)
 static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req);
 
 static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
@@ -1269,13 +1271,13 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	u32 count;
 	u32 avail;
 	u8 *buf;
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE_FOR_NCHM)
 	char signature[4];
-	int i;
 	u32 block_len;
 	u32 residule;
 	u8 check_len;
 	u8 state;
+	int i;
 #endif
 
 	DEBUG_DBG(">>> %s UDEPBFS = %xh", __func__, udc->reg_read(UDEPBFS));
@@ -1285,7 +1287,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	if (down_trylock(&ep->wsem))
 		return 0;
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE_FOR_NCHM)
 	state = 0;
 	check_len = false;
 	residule = 0;
@@ -1296,7 +1298,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	is_pingbuf = (udc->reg_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
 
 	do {
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE_FOR_NCHM)
 		if (check_len == true) {
 			check_len = false;
 
@@ -1336,7 +1338,16 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 		else
 			avail = count;
 
-#ifdef USE_DMA
+#if (TRANS_MODE == PIO_MODE)
+		sp_udc_bulkout_pio(udc, buf, avail);
+#elif (TRANS_MODE == DMA_MODE)
+		if (avail >= 512) {
+			udc->dma_xferlen_ep11 = avail;
+			sp_udc_ep11_bulkout_dma(ep, req);
+		} else {
+			sp_udc_bulkout_pio(udc, buf, avail);
+		}
+#elif (TRANS_MODE == DMA_MODE_FOR_NCHM)
 		switch (state) {
 		case 0: /* PIO mode */
 			sp_udc_bulkout_pio(udc, buf, avail);
@@ -1378,17 +1389,15 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 
 			break;
 		}
-#else
-		sp_udc_bulkout_pio(udc, buf, avail);
 #endif
 
 		req->req.actual += avail;
 
-#ifdef USE_DMA
-		if (block_len <= req->req.actual)
-			is_last = 1;
-#else
+#if (TRANS_MODE == PIO_MODE) || (TRANS_MODE == DMA_MODE)
 		if (count < ep->ep.maxpacket || req->req.length <= req->req.actual)
+			is_last = 1;
+#elif (TRANS_MODE == DMA_MODE_FOR_NCHM)
+		if (block_len <= req->req.actual)
 			is_last = 1;
 #endif
 
@@ -1433,7 +1442,7 @@ out_fifo_controllable:
 	return is_last;
 }
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE) || (TRANS_MODE == DMA_MODE_FOR_NCHM)
 static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 {
 	struct sp_udc *udc = ep->udc;
@@ -1450,15 +1459,26 @@ static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 						(ep->bEndpointAddress & USB_DIR_IN) ? DMA_TO_DEVICE : DMA_FROM_DEVICE);
 	}
 
+	udelay(25);
 	udc->reg_write(dma_xferlen | DMA_COUNT_ALIGN, UEP12DMACS);
 	udc->reg_write((u32) req->req.dma, UEP12DMADA);
 	udc->reg_write(udc->reg_read(UEP12DMACS) | DMA_EN, UEP12DMACS);
 
 	while (udc->reg_read(UEP12DMACS) & DMA_EN) {
 		// udc->reg_write(udc->reg_read(UDLIE) | EP1_DMA_IF, UDLIE);
-		udelay(20);
 
-		if (dma_delay++ > 50) return 0;
+		if (dma_delay++ > 50) {
+			if (req->req.dma != DMA_ADDR_INVALID) {
+				dma_unmap_single(ep->udc->gadget.dev.parent, req->req.dma, dma_xferlen,
+								(ep->bEndpointAddress & USB_DIR_IN)
+								? DMA_TO_DEVICE : DMA_FROM_DEVICE);
+				req->req.dma = DMA_ADDR_INVALID;
+			}
+
+			DEBUG_DBG("dma error: UEP12DMACS = %xh", udc->reg_read(UEP12DMACS));
+
+			return 0;
+		}
 	}
 
 	udc->reg_write(EP1_DMA_IF, UDLIF);
@@ -1531,7 +1551,7 @@ static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 		pre_is_pingbuf = is_pingbuf;
 		w_count = ep->ep.maxpacket;
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE) || (TRANS_MODE == DMA_MODE_FOR_NCHM)
 		if (!sp_ep1_bulkin_dma(ep, req))
 #endif
 		{
@@ -1737,7 +1757,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 			sp_udc_handle_ep0(udc);
 	}
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE) || (TRANS_MODE == DMA_MODE_FOR_NCHM)
 	/* dma finish */
 	if (irq_en2_flags & EP1_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep1 DMA");
@@ -1758,7 +1778,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 		sp_udc_handle_ep(&udc->ep[3], NULL);
 	}
 
-#ifdef USE_DMA
+#if (TRANS_MODE == DMA_MODE) || (TRANS_MODE == DMA_MODE_FOR_NCHM)
 	if (irq_en1_flags & EPB_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep11 DMA");
 
