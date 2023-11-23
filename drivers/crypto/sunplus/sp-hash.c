@@ -479,7 +479,7 @@ EXPORT_SYMBOL(sp_hash_init);
 void sp_hash_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
-	struct sp_crypto_reg *reg = dev->reg;
+	struct sp_crypto_reg __maybe_unused *reg = dev->reg;
 	struct trb_ring_s *ring = HASH_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER

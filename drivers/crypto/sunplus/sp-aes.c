@@ -22,9 +22,7 @@
 #include <linux/crypto.h>
 #include <linux/delay.h>
 #include <crypto/aes.h>
-#ifdef CONFIG_SOC_SP7350
 #include <crypto/chacha.h>
-#endif
 #include "sp-crypto.h"
 
 // max supported keysize == AES_KEYSIZE_256 (32 bytes)
@@ -371,14 +369,17 @@ out:
 	if (mode == M_AES_CBC && enc == M_ENC) {
 		scatterwalk_map_and_copy(req->iv, dst,
 			nbytes - ctx->ivlen, ctx->ivlen, 0);
-	} else if (mode == M_AES_CTR) {
+	} else
 #ifdef CONFIG_SOC_SP7350
+	if (mode != M_CHACHA20) {
 		memcpy(req->iv, ctx->iv, ctx->ivlen);
+	}
 #else
+	if (mode == M_AES_CTR) {
 		ctr_inc(ctx->iv, ctx->ivlen, nbytes / ctx->bsize);
 		reverse_iv(req->iv, ctx->iv);
-#endif
 	}
+#endif
 
 	return ret;
 }
@@ -493,7 +494,7 @@ EXPORT_SYMBOL(sp_aes_init);
 void sp_aes_irq(void *devid, u32 flag)
 {
 	struct sp_crypto_dev *dev = devid;
-	struct sp_crypto_reg *reg = dev->reg;
+	struct sp_crypto_reg __maybe_unused *reg = dev->reg;
 	struct trb_ring_s *ring = AES_RING(dev);
 
 #ifdef TRACE_WAIT_ORDER
