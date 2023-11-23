@@ -368,18 +368,16 @@ out:
 	}
 
 	// update iv for return
-#ifdef CONFIG_SOC_SP7021
-	if (mode == M_AES_CTR) {
-		ctr_inc(ctx->iv, ctx->ivlen, nbytes / ctx->bsize);
-		reverse_iv(req->iv, ctx->iv);
-	} else
-#endif
 	if (mode == M_AES_CBC && enc == M_ENC) {
 		scatterwalk_map_and_copy(req->iv, dst,
 			nbytes - ctx->ivlen, ctx->ivlen, 0);
-	} else
-	if (mode != M_CHACHA20) {
+	} else if (mode == M_AES_CTR) {
+#ifdef CONFIG_SOC_SP7350
 		memcpy(req->iv, ctx->iv, ctx->ivlen);
+#else
+		ctr_inc(ctx->iv, ctx->ivlen, nbytes / ctx->bsize);
+		reverse_iv(req->iv, ctx->iv);
+#endif
 	}
 
 	return ret;
