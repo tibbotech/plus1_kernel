@@ -45,15 +45,9 @@ static ssize_t field##_show(struct device *dev,				\
 	usb_actconfig_show(field, format_string)		\
 	static DEVICE_ATTR_RO(field)
 
-#ifndef CONFIG_USB_LOGO_TEST
 usb_actconfig_attr(bNumInterfaces, "%2d\n");
-#else
-usb_actconfig_attr(bNumInterfaces, "%d\n");
-#endif
-
 usb_actconfig_attr(bmAttributes, "%2x\n");
 
-#ifndef CONFIG_USB_LOGO_TEST
 static ssize_t bMaxPower_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -72,31 +66,6 @@ static ssize_t bMaxPower_show(struct device *dev,
 	return rc;
 }
 static DEVICE_ATTR_RO(bMaxPower);
-#else
-static ssize_t show_bMaxPower(struct device *dev, struct device_attribute *attr, char *buf)
-{
-	struct usb_device *udev;
-	struct usb_host_config *actconfig;
-
-	udev = to_usb_device(dev);
-	actconfig = udev->actconfig;
-	if (actconfig)
-		return sprintf(buf, "%3dmA\n", actconfig->desc.bMaxPower * 2);
-	else {
-		__u8 maxp = 0;
-		int i;
-
-		for (i = 0; i < udev->descriptor.bNumConfigurations; i++)
-			maxp = maxp > udev->config[i].desc.bMaxPower
-			       ? maxp
-			       : udev->config[i].desc.bMaxPower;
-
-		return sprintf(buf, "%3dmA\n", maxp * 2);
-	}
-}
-
-static DEVICE_ATTR(bMaxPower, S_IRUGO, show_bMaxPower, NULL);
-#endif
 
 static ssize_t configuration_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -920,11 +889,7 @@ read_descriptors(struct file *filp, struct kobject *kobj,
 	size_t srclen, n;
 	int cfgno;
 	void *src;
-	int retval;
 
-	retval = usb_lock_device_interruptible(udev);
-	if (retval < 0)
-		return -EINTR;
 	/* The binary attribute begins with the device descriptor.
 	 * Following that are the raw descriptor entries for all the
 	 * configurations (config plus subsidiary descriptors).
@@ -949,7 +914,6 @@ read_descriptors(struct file *filp, struct kobject *kobj,
 			off -= srclen;
 		}
 	}
-	usb_unlock_device(udev);
 	return count - nleft;
 }
 

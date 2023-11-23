@@ -29,55 +29,6 @@ static void dw_dma_initialize_chan(struct dw_dma_chan *dwc)
 	channel_writel(dwc, CFG_HI, cfghi);
 }
 
-#if defined(CONFIG_SOC_SP7350)
-static void dw_spi_dma_initialize_chan(struct dw_dma_chan *dwc)
-{
-	u32 cfghi = 0;
-	u32 cfglo = 0;
-
-	//pr_info("CHAN_ID %d name %s",dwc->chan.chan_id,dwc->chan.name);
-	//pr_info("slave_ID %d dev_id %d",dwc->dma_sconfig.slave_id,dwc->chan->dev.dev_id);
-	//pr_info("slave_ID %d ",dwc->dma_sconfig.slave_id);
-	switch (dwc->chan.chan_id) {
-	case 0:
-		cfglo = 0x800;		//SPI0 Tx  4
-		cfghi = 0x2000;
-		break;
-	case 1:
-		cfglo = 0x400;		//SPI0 Rx  5
-		cfghi = 0x280;
-		break;
-	case 2:
-		cfglo = 0x800;		//SPI1 Tx  6
-		cfghi = 0x3000;
-		break;
-	case 3:
-		cfglo = 0x400;		//SPI1 Rx  7
-		cfghi = 0x380;
-		break;
-	case 4:
-		cfglo = 0x800;		//SPI2 Tx  8
-		cfghi = 0x4000;
-		break;
-	case 5:
-		cfglo = 0x400;		//SPI2 Rx  9
-		cfghi = 0x480;
-		break;
-	case 6:
-		cfglo = 0x800;		//SPI3 Tx  10
-		cfghi = 0x5000;
-		break;
-	case 7:
-		cfglo = 0x400;		//SPI3 Rx  11
-		cfghi = 0x580;
-		break;
-
-	}
-	channel_writel(dwc, CFG_LO, cfglo);
-	channel_writel(dwc, CFG_HI, cfghi);
-}
-#endif
-
 static void dw_dma_suspend_chan(struct dw_dma_chan *dwc, bool drain)
 {
 	u32 cfglo = channel_readl(dwc, CFG_LO);
@@ -161,11 +112,6 @@ int dw_dma_probe(struct dw_dma_chip *chip)
 		return -ENOMEM;
 
 	/* Channel operations */
-#if defined(CONFIG_SOC_SP7350)
-	if(chip->chan_mode == DW_SPI_MODE)
-		dw->initialize_chan = dw_spi_dma_initialize_chan;
-	else
-#endif
 	dw->initialize_chan = dw_dma_initialize_chan;
 	dw->suspend_chan = dw_dma_suspend_chan;
 	dw->resume_chan = dw_dma_resume_chan;

@@ -299,11 +299,10 @@ static int amba_remove(struct device *dev)
 {
 	struct amba_device *pcdev = to_amba_device(dev);
 	struct amba_driver *drv = to_amba_driver(dev->driver);
-	int ret = 0;
 
 	pm_runtime_get_sync(dev);
 	if (drv->remove)
-		ret = drv->remove(pcdev);
+		drv->remove(pcdev);
 	pm_runtime_put_noidle(dev);
 
 	/* Undo the runtime PM settings in amba_probe() */
@@ -314,7 +313,7 @@ static int amba_remove(struct device *dev)
 	amba_put_disable_pclk(pcdev);
 	dev_pm_domain_detach(dev, true);
 
-	return ret;
+	return 0;
 }
 
 static void amba_shutdown(struct device *dev)
@@ -364,6 +363,7 @@ static void amba_device_release(struct device *dev)
 {
 	struct amba_device *d = to_amba_device(dev);
 
+	of_node_put(d->dev.of_node);
 	if (d->res.parent)
 		release_resource(&d->res);
 	kfree(d);
@@ -374,9 +374,6 @@ static int amba_device_try_add(struct amba_device *dev, struct resource *parent)
 	u32 size;
 	void __iomem *tmp;
 	int i, ret;
-
-	WARN_ON(dev->irq[0] == (unsigned int)-1);
-	WARN_ON(dev->irq[1] == (unsigned int)-1);
 
 	ret = request_resource(parent, &dev->res);
 	if (ret)

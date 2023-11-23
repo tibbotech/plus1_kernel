@@ -3001,7 +3001,7 @@ F:	drivers/net/ieee802154/atusb.h
 AUDIT SUBSYSTEM
 M:	Paul Moore <paul@paul-moore.com>
 M:	Eric Paris <eparis@redhat.com>
-L:	linux-audit@redhat.com (moderated for non-subscribers)
+L:	audit@vger.kernel.org
 S:	Supported
 W:	https://github.com/linux-audit
 T:	git git://git.kernel.org/pub/scm/linux/kernel/git/pcmoore/audit.git
@@ -3419,7 +3419,7 @@ N:	kona
 
 BROADCOM BCM47XX MIPS ARCHITECTURE
 M:	Hauke Mehrtens <hauke@hauke-m.de>
-M:	Rafa? Mi?ecki <zajec5@gmail.com>
+M:	Rafał Miłecki <zajec5@gmail.com>
 L:	linux-mips@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/mips/brcm/
@@ -3428,7 +3428,7 @@ F:	arch/mips/include/asm/mach-bcm47xx/*
 
 BROADCOM BCM5301X ARM ARCHITECTURE
 M:	Hauke Mehrtens <hauke@hauke-m.de>
-M:	Rafa? Mi?ecki <zajec5@gmail.com>
+M:	Rafał Miłecki <zajec5@gmail.com>
 M:	bcm-kernel-feedback-list@broadcom.com
 L:	linux-arm-kernel@lists.infradead.org
 S:	Maintained
@@ -3438,7 +3438,7 @@ F:	arch/arm/boot/dts/bcm953012*
 F:	arch/arm/mach-bcm/bcm_5301x.c
 
 BROADCOM BCM53573 ARM ARCHITECTURE
-M:	Rafa? Mi?ecki <rafal@milecki.pl>
+M:	Rafał Miłecki <rafal@milecki.pl>
 L:	bcm-kernel-feedback-list@broadcom.com
 L:	linux-arm-kernel@lists.infradead.org
 S:	Maintained
@@ -3659,13 +3659,13 @@ F:	drivers/infiniband/hw/bnxt_re/
 F:	include/uapi/rdma/bnxt_re-abi.h
 
 BROADCOM NVRAM DRIVER
-M:	Rafa? Mi?ecki <zajec5@gmail.com>
+M:	Rafał Miłecki <zajec5@gmail.com>
 L:	linux-mips@vger.kernel.org
 S:	Maintained
 F:	drivers/firmware/broadcom/*
 
 BROADCOM SPECIFIC AMBA DRIVER (BCMA)
-M:	Rafa? Mi?ecki <zajec5@gmail.com>
+M:	Rafał Miłecki <zajec5@gmail.com>
 L:	linux-wireless@vger.kernel.org
 S:	Maintained
 F:	drivers/bcma/
@@ -4904,13 +4904,6 @@ F:	include/linux/dccp.h
 F:	include/linux/tfrc.h
 F:	include/uapi/linux/dccp.h
 F:	net/dccp/
-
-DECnet NETWORK LAYER
-L:	linux-decnet-user@lists.sourceforge.net
-S:	Orphan
-W:	http://linux-decnet.sourceforge.net
-F:	Documentation/networking/decnet.rst
-F:	net/decnet/
 
 DECSTATION PLATFORM SUPPORT
 M:	"Maciej W. Rozycki" <macro@linux-mips.org>
@@ -6518,7 +6511,7 @@ W:	http://www.broadcom.com
 F:	drivers/scsi/lpfc/
 
 ENE CB710 FLASH CARD READER DRIVER
-M:	Micha? Miros?aw <mirq-linux@rere.qmqm.pl>
+M:	Michał Mirosław <mirq-linux@rere.qmqm.pl>
 S:	Maintained
 F:	drivers/misc/cb710/
 F:	drivers/mmc/host/cb710-mmc.*
@@ -6939,7 +6932,7 @@ F:	include/uapi/video/
 F:	include/video/
 
 FREESCALE CAAM (Cryptographic Acceleration and Assurance Module) DRIVER
-M:	Horia Geant? <horia.geanta@nxp.com>
+M:	Horia Geantă <horia.geanta@nxp.com>
 M:	Aymen Sghaier <aymen.sghaier@nxp.com>
 L:	linux-crypto@vger.kernel.org
 S:	Maintained
@@ -7280,7 +7273,7 @@ F:	Documentation/locking/*futex*
 F:	include/asm-generic/futex.h
 F:	include/linux/futex.h
 F:	include/uapi/linux/futex.h
-F:	kernel/futex.c
+F:	kernel/futex/*
 F:	tools/perf/bench/futex*
 F:	tools/testing/selftests/futex/
 
@@ -7310,7 +7303,6 @@ L:	linux-hardening@vger.kernel.org
 S:	Maintained
 F:	Documentation/kbuild/gcc-plugins.rst
 F:	scripts/Makefile.gcc-plugins
-F:	scripts/gcc-plugin.sh
 F:	scripts/gcc-plugins/
 
 GCOV BASED KERNEL PROFILING
@@ -8330,7 +8322,7 @@ S:	Maintained
 F:	drivers/i2c/i2c-stub.c
 
 I3C DRIVER FOR CADENCE I3C MASTER IP
-M:	Przemys?aw Gaj <pgaj@cadence.com>
+M:	Przemysław Gaj <pgaj@cadence.com>
 S:	Maintained
 F:	Documentation/devicetree/bindings/i3c/cdns,i3c-master.txt
 F:	drivers/i3c/master/i3c-master-cdns.c
@@ -14672,6 +14664,8 @@ F:	arch/mips/generic/board-ranchu.c
 
 RANDOM NUMBER DRIVER
 M:	"Theodore Ts'o" <tytso@mit.edu>
+M:	Jason A. Donenfeld <Jason@zx2c4.com>
+T:	git https://git.kernel.org/pub/scm/linux/kernel/git/crng/random.git
 S:	Maintained
 F:	drivers/char/random.c
 
@@ -15383,7 +15377,7 @@ F:	Documentation/devicetree/bindings/rng/samsung,exynos4-rng.yaml
 F:	drivers/crypto/exynos-rng.c
 
 SAMSUNG EXYNOS TRUE RANDOM NUMBER GENERATOR (TRNG) DRIVER
-M:	?ukasz Stelmach <l.stelmach@samsung.com>
+M:	Łukasz Stelmach <l.stelmach@samsung.com>
 L:	linux-samsung-soc@vger.kernel.org
 S:	Maintained
 F:	Documentation/devicetree/bindings/rng/samsung,exynos5250-trng.txt
@@ -16749,34 +16743,6 @@ M:	Denis Kirjanov <kda@linux-powerpc.org>
 L:	netdev@vger.kernel.org
 S:	Maintained
 F:	drivers/net/ethernet/dlink/sundance.c
-
-SUNPLUS I2C CONTROLLER INTERFACE DRIVER
-M:	Li-hao Kuo <lhjeff911@gmail.com>
-L:	linux-i2c@vger.kernel.org
-S:	Maintained
-F:	Documentation/devicetree/bindings/i2c/i2c-sunplus.yaml
-F:	drivers/i2c/busses/i2c-sunplus.c
-
-SUNPLUS SD/SDIO HOST CONTROLLER INTERFACE DRIVER
-M:	Li-hao Kuo <lhjeff911@gmail.com>
-L:	linux-mmc@vger.kernel.org
-S:	Maintained
-F:	Documentation/devicetree/bindings/mmc/sunplus-sd2.yaml
-F:	drivers/mmc/host/sunplus_sd2.c
-
-SUNPLUS SPI CONTROLLER INTERFACE DRIVER
-M:	Li-hao Kuo <lhjeff911@gmail.com>
-L:	linux-spi@vger.kernel.org
-S:	Maintained
-F:	Documentation/devicetree/bindings/spi/spi-sunplus-sp7021.yaml
-F:	drivers/spi/spi-sunplus-sp7021.c
-
-SUNPLUS THERMAL DRIVER
-M:	Li-hao Kuo <lhjeff911@gmail.com>
-L:	linux-pm@vger.kernel.org
-S:	Maintained
-F:	Documentation/devicetree/bindings/thermal/sunplus_thermal.yaml
-F:	drivers/thermal/sunplus_thermal.c
 
 SUPERH
 M:	Yoshinori Sato <ysato@users.sourceforge.jp>
@@ -19273,7 +19239,8 @@ F:	arch/x86/xen/*swiotlb*
 F:	drivers/xen/*swiotlb*
 
 XFS FILESYSTEM
-M:	Darrick J. Wong <darrick.wong@oracle.com>
+M:	Amir Goldstein <amir73il@gmail.com>
+M:	Darrick J. Wong <djwong@kernel.org>
 M:	linux-xfs@vger.kernel.org
 L:	linux-xfs@vger.kernel.org
 S:	Supported

@@ -1183,7 +1183,6 @@ config VIDEO_NOON010PC30
 	  This driver supports NOON010PC30 CIF camera from Siliconfile
 
 source "drivers/media/i2c/m5mols/Kconfig"
-source "drivers/media/i2c/eYs3D/Kconfig"
 
 config VIDEO_RDACM20
 	tristate "IMI RDACM20 camera support"

@@ -30,9 +30,6 @@ static int dw_probe(struct platform_device *pdev)
 	struct dw_dma_chip *chip;
 	struct device *dev = &pdev->dev;
 	int err;
-#if defined(CONFIG_SOC_SP7350)
-	int i;
-#endif
 
 	match = device_get_match_data(dev);
 	if (!match)
@@ -46,17 +43,9 @@ static int dw_probe(struct platform_device *pdev)
 	if (!chip)
 		return -ENOMEM;
 
-#if defined(CONFIG_SOC_SP7350)
-        for(i=0; i<8; i++){
-	    chip->irq[i] = platform_get_irq(pdev, i);
-	    if (chip->irq[i] < 0)
-		 return chip->irq[0];
-        }
-#else
 	chip->irq = platform_get_irq(pdev, 0);
 	if (chip->irq < 0)
 		return chip->irq;
-#endif
 
 	chip->regs = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(chip->regs))
@@ -70,12 +59,7 @@ static int dw_probe(struct platform_device *pdev)
 		data->pdata = dev_get_platdata(dev);
 	if (!data->pdata)
 		data->pdata = dw_dma_parse_dt(pdev);
-#if defined(CONFIG_SOC_SP7350)
-	if (!data->chan_mode)
-		data->chan_mode = DW_NORMAL_MODE;
 
-	chip->chan_mode = data->chan_mode;
-#endif
 	chip->dev = dev;
 	chip->id = pdev->id;
 	chip->pdata = data->pdata;
@@ -153,9 +137,6 @@ static void dw_shutdown(struct platform_device *pdev)
 #ifdef CONFIG_OF
 static const struct of_device_id dw_dma_of_id_table[] = {
 	{ .compatible = "snps,dma-spear1340", .data = &dw_dma_chip_pdata },
-#if defined(CONFIG_SOC_SP7350)
-	{ .compatible = "snps,dma-spi", .data = &dw_spi_dma_chip_pdata },
-#endif
 	{}
 };
 MODULE_DEVICE_TABLE(of, dw_dma_of_id_table);

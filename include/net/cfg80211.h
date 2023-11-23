@@ -513,6 +513,9 @@ ieee80211_get_sband_iftype_data(const struct ieee80211_supported_band *sband,
 	if (WARN_ON(iftype >= NL80211_IFTYPE_MAX))
 		return NULL;
 
+	if (iftype == NL80211_IFTYPE_AP_VLAN)
+		iftype = NL80211_IFTYPE_AP;
+
 	for (i = 0; i < sband->n_iftype_data; i++)  {
 		const struct ieee80211_sband_iftype_data *data =
 			&sband->iftype_data[i];
@@ -5202,7 +5205,6 @@ struct cfg80211_cqm_config;
  *	netdev and may otherwise be used by driver read-only, will be update
  *	by cfg80211 on change_interface
  * @mgmt_registrations: list of registrations for management frames
- * @mgmt_registrations_lock: lock for the list
  * @mgmt_registrations_need_update: mgmt registrations were updated,
  *	need to propagate the update to the driver
  * @mtx: mutex used to lock data in this struct, may be used by drivers
@@ -5249,7 +5251,6 @@ struct wireless_dev {
 	u32 identifier;
 
 	struct list_head mgmt_registrations;
-	spinlock_t mgmt_registrations_lock;
 	u8 mgmt_registrations_need_update:1;
 
 	struct mutex mtx;

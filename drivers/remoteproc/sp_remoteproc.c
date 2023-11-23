@@ -373,13 +373,12 @@ static struct rproc_ops sp_rproc_ops = {
 
 static irqreturn_t sp_remoteproc_interrupt(int irq, void *dev_id)
 {
-	struct sp_rproc_pdata *local = rproc->priv;
-
 #if defined(CONFIG_SOC_Q645)
+	struct sp_rproc_pdata *local = rproc->priv;
 	readl(local->mbox2to0); // read to clear intr
 
 #elif defined(CONFIG_SOC_SP7350)
-
+	struct sp_rproc_pdata *local = rproc->priv;
 	if(readl(local->mbox2to0) == MAILBOX_CM4_TO_CA55_SUSPEND)  // read to clear intr
 	{
 		dev_info(&rproc->dev, "Ca55 in suspend start \n");

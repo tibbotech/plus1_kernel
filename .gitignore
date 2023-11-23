@@ -15,9 +15,7 @@
 *.asn1.[ch]
 *.bin
 *.bz2
-*.bak
 *.c.[012]*.*
-*.c.bak
 *.dt.yaml
 *.dtb
 *.dtb.S
@@ -50,7 +48,6 @@
 Module.symvers
 modules.builtin
 modules.order
-uImage
 
 #
 # Top-level generic files
@@ -68,7 +65,6 @@ uImage
 /Module.markers
 /modules.builtin.modinfo
 /modules.nsdeps
-/dtb
 
 #
 # RPM spec file (make rpm-pkg)
@@ -160,4 +156,3 @@ x509.genkey
 
 # Documentation toolchain
 sphinx_*/
-

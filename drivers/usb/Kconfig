@@ -3,21 +3,6 @@
 # USB device configuration
 #
 
-config GEMINI_USB
-	bool "Support Gemini USB"
-	select SCSI
-	select USB
-	select USB_SUPPORT
-	select USB_ARCH_HAS_EHCI
-	select USB_ARCH_HAS_OHCI
-#	select USB_EHCI_HCD_PLATFORM
-#	select USB_OHCI_HCD_PLATFORM
-#	select USB_EHCI_HCD
-#	select USB_OHCI_HCD
-	select USB_STORAGE
-	help
-	  Sunplus Gemini platform USB support
-
 config USB_OHCI_BIG_ENDIAN_DESC
 	bool
 
@@ -52,24 +37,6 @@ menuconfig USB_SUPPORT
 if USB_SUPPORT
 
 source "drivers/usb/common/Kconfig"
-
-# usb ports freely determine enable/disable
-config USB_PORT0
-	bool "Sunplus Gemini USB2.0 PORT 0"
-	default y
-
-config USB_PORT1
-	bool "Sunplus Gemini USB2.0 PORT 1"
-	depends on SOC_SP7021
-	default y
-
-config USB_GADGET_ENABLED
-	bool
-	default y if (USB_PORT0 || USB_PORT1)
-
-config USB_GADGET_PORT0_ENABLED
-	bool "Sunplus Gemini USB2.0 gadget port 0"
-	default y
 
 config USB_ARCH_HAS_HCD
 	def_bool y

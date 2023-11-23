@@ -951,7 +951,7 @@ static void invalidate_sub(struct fsg_lun *curlun)
 {
 	struct file	*filp = curlun->filp;
 	struct inode	*inode = file_inode(filp);
-	unsigned long	rc;
+	unsigned long __maybe_unused	rc;
 
 	rc = invalidate_mapping_pages(inode->i_mapping, 0, -1);
 	VLDBG(curlun, "invalidate_mapping_pages -> %ld\n", rc);
@@ -1060,59 +1060,32 @@ static int do_verify(struct fsg_common *common)
 
 static int do_inquiry(struct fsg_common *common, struct fsg_buffhd *bh)
 {
-#ifdef CONFIG_SOC_SP7021
-	char *PID = "sunplus";
-	char *VID = "SP7021";
-#endif
 	struct fsg_lun *curlun = common->curlun;
 	u8	*buf = (u8 *) bh->buf;
 
-#ifdef CONFIG_SOC_SP7021
-	// windows needs reply length 255
-	memset(buf, 0, 255);
-#endif
-
 	if (!curlun) {		/* Unsupported LUNs are okay */
 		common->bad_lun_okay = 1;
-#ifndef CONFIG_SOC_SP7021
 		memset(buf, 0, 36);
-#endif
 		buf[0] = TYPE_NO_LUN;	/* Unsupported, no device-type */
-#ifdef CONFIG_SOC_SP7021
-		buf[4] = 250;		/* Additional length */
-		return 255;
-#else
 		buf[4] = 31;		/* Additional length */
 		return 36;
-#endif
 	}
 
 	buf[0] = curlun->cdrom ? TYPE_ROM : TYPE_DISK;
 	buf[1] = curlun->removable ? 0x80 : 0;
 	buf[2] = 2;		/* ANSI SCSI level 2 */
 	buf[3] = 2;		/* SCSI-2 INQUIRY data format */
-#ifdef CONFIG_SOC_SP7021
-	buf[4] = 250;		/* Additional length */
-	memcpy(&buf[8], VID, strlen(VID));
-	memcpy(&buf[16], PID, strlen(PID));
-#else
 	buf[4] = 31;		/* Additional length */
 	buf[5] = 0;		/* No special options */
 	buf[6] = 0;
 	buf[7] = 0;
-#endif
-
 	if (curlun->inquiry_string[0])
 		memcpy(buf + 8, curlun->inquiry_string,
 		       sizeof(curlun->inquiry_string));
-#ifndef CONFIG_SOC_SP7021
 	else
 		memcpy(buf + 8, common->inquiry_string,
 		       sizeof(common->inquiry_string));
 	return 36;
-#else
-	return 255;
-#endif
 }
 
 static int do_request_sense(struct fsg_common *common, struct fsg_buffhd *bh)
@@ -2092,15 +2065,6 @@ unknown_cmnd:
 		bh->inreq->length = reply;
 		bh->state = BUF_STATE_FULL;
 		common->residue -= reply;
-
-#ifdef CONFIG_SOC_SP7021
-		// make compatible with windows
-		if ((common->cmnd[0] == MODE_SENSE) ||
-		    (common->cmnd[0] == READ_FORMAT_CAPACITIES)||
-		    (common->cmnd[0] == INQUIRY) ||
-		    (common->cmnd[0] == READ_CAPACITY))
-			common->residue = 0;
-#endif
 	}				/* Otherwise it's already set */
 
 	return 0;

@@ -1841,28 +1841,12 @@ static bool itd_complete(struct ehci_hcd *ehci, struct ehci_itd *itd)
 
 			/* HC need not update length with this error */
 			if (!(t & EHCI_ISOC_BABBLE)) {
-				/* Refer to Mantis #10310 for this bug. */
-#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
-				if (itd->hw_bufp[1] & 0x800)	/* iso in */
-					desc->actual_length = EHCI_ITD_LENGTH(t);
-				else				/* iso out */
-					desc->actual_length = urb->iso_frame_desc[urb_index].length;
-#else
 				desc->actual_length = EHCI_ITD_LENGTH(t);
-#endif
 				urb->actual_length += desc->actual_length;
 			}
 		} else if (likely((t & EHCI_ISOC_ACTIVE) == 0)) {
 			desc->status = 0;
-			/* Refer to Mantis #10310 for this bug. */
-#if defined(CONFIG_SOC_SP7021) || defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
-			if (itd->hw_bufp[1] & 0x800)	/* iso in */
-				desc->actual_length = EHCI_ITD_LENGTH(t);
-			else				/* iso out */
-				desc->actual_length = urb->iso_frame_desc[urb_index].length;
-#else
 			desc->actual_length = EHCI_ITD_LENGTH(t);
-#endif
 			urb->actual_length += desc->actual_length;
 		} else {
 			/* URB was too late */
