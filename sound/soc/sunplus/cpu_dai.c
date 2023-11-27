@@ -149,7 +149,7 @@ void aud_clk_cfg(int pll_id, int source, unsigned int SAMPLE_RATE)
 				regs0->aud_ext_dac_bck_cfg		= 0x6001; //64FS
 			else if (pll_id == SP_SPDIF)
 				regs0->aud_iec0_bclk_cfg		= 0x6000; //128FS
-			} else {
+			else {
 				regs0->aud_hdmi_tx_mclk_cfg		= 0x6980;
 				if (pll_id == SP_I2SHDMI) {
 					regs0->aud_ext_dac_bck_cfg	= 0x6001; //64FS. 48kHz = 147Mhz/3/4/4/(64)
