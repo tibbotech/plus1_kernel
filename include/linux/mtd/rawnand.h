@@ -26,6 +26,19 @@
 
 struct nand_chip;
 
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+struct nand_flash_dev;
+
+/*
+ * Separate phases of nand_scan(), allowing board driver to intervene
+ * and override command or ECC setup according to flash type.
+ */
+int nand_scan_ident(struct nand_chip *chip, unsigned int maxchips,
+			   struct nand_flash_dev *table);
+
+int nand_scan_tail(struct nand_chip *chip);
+#endif
+
 /* The maximum number of NAND chips in an array */
 #define NAND_MAX_CHIPS		8
 
@@ -1265,6 +1278,9 @@ struct nand_chip {
 	struct nand_controller *controller;
 	struct nand_ecc_ctrl ecc;
 	void *priv;
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+	unsigned int drv_options; // Sunplus additional variable
+#endif
 };
 
 static inline struct nand_chip *mtd_to_nand(struct mtd_info *mtd)
@@ -1392,6 +1408,9 @@ struct nand_flash_dev {
 		uint16_t strength_ds;
 		uint16_t step_ds;
 	} ecc;
+#if defined (CONFIG_MTD_NAND_SUNPLUS) || defined (CONFIG_MTD_NAND_SUNPLUS_Q645)
+	unsigned int drv_options; // Sunplus additional variable
+#endif
 };
 
 int nand_create_bbt(struct nand_chip *chip);
