@@ -207,8 +207,11 @@ void AUDHW_SystemInit(void *auddrvdata)
 	regs0->int_adc_ctrl1	= 0x20;
 	regs0->int_adc_ctrl	&= 0x7fffffff;
 	regs0->int_adc_ctrl	|= (1<<31);
-
+#if IS_ENABLED(CONFIG_SND_SOC_AUD628)
+	regs0->aud_fifo_mode	= 0x20000;
+#else
 	regs0->aud_fifo_mode	= 0x20001;
+#endif
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
 	pr_debug("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);
