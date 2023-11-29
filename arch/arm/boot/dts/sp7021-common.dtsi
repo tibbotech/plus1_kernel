@@ -929,12 +929,19 @@
 			non-removable;
 			disable-wp;
 			cap-sd-highspeed;
-			cap-sdio-irq;
+			//cap-sdio-irq;
 			no-sd;
 			no-mmc;
 			#address-cells = <1>;
 			#size-cells = <0>;
 		};
+
+#if 0 // AP6256 WiFi
+	bcmdhd_wlan {
+		compatible = "android,bcmdhd_wlan";
+		gpio_wl_reg_on = <&pctl 12 GPIO_ACTIVE_LOW>;
+	};
+#endif
 
 		spi_controller0: spi@9c002d80 {
 			compatible = "sunplus,sp7021-spi";
