@@ -9,7 +9,7 @@
 #if IS_ENABLED(CONFIG_SND_SOC_AUD628)
 #include "spsoc_pcm.h"
 #include "spsoc_util.h"
-#elif IS_ENABLED(CONFIG_SND_SOC_AUD645)
+#else
 #include "spsoc_pcm-645.h"
 #include "spsoc_util-645.h"
 #endif
@@ -160,9 +160,7 @@ void AUDHW_SystemInit(void *auddrvdata)
 	regs0->pdm_rx_cfg1	= 0x76543210;
 	regs0->pdm_rx_cfg0	= 0x110004;
 	regs0->pdm_rx_cfg0	= 0x10004;
-#endif
 
-#if IS_ENABLED(CONFIG_SND_SOC_AUD628)
 	regs0->pcm_cfg		= 0x4d;	//q645 tx0
 	regs0->hdmi_tx_i2s_cfg	= 0x4d;	//q645 tx2 if tx2(slave) -> rx0	-> tx1/tx0  0x24d
 	regs0->hdmi_rx_i2s_cfg	= 0x24d; // 0x14d for extenal i2s-in and	CLKGENA	to be master mode, 0x1c	for int-adc
@@ -188,11 +186,11 @@ void AUDHW_SystemInit(void *auddrvdata)
 	// config playback timer //
 	regs0->aud_apt_mode	= 1;		// aud_apt_mode, reset mode
 	regs0->aud_apt_data	= 0x00f0001e;	// aud_apt_parameter, parameter	for 48khz
-#if IS_ENABLED(CONFIG_SND_SOC_AUD645)
+#if IS_ENABLED(CONFIG_SND_SOC_AUD628)
+	regs0->adcp_ch_enable	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1
+#else
 	regs0->adcp_ch_enable	= 0xf;		//adcp_ch_enable, Only enable ADCP ch2&3
 	regs0->G067_reserved_30	|= 0x03;
-#else
-	regs0->adcp_ch_enable	= 0x3;		//adcp_ch_enable, Only enable ADCP ch0&1
 #endif
 	regs0->aud_apt_mode	= 0;		//clear	reset of PTimer	before enable FIFO
 
@@ -207,8 +205,11 @@ void AUDHW_SystemInit(void *auddrvdata)
 	regs0->int_adc_ctrl1	= 0x20;
 	regs0->int_adc_ctrl	&= 0x7fffffff;
 	regs0->int_adc_ctrl	|= (1<<31);
-
+#if IS_ENABLED(CONFIG_SND_SOC_AUD628)
+	regs0->aud_fifo_mode	= 0x20000;
+#else
 	regs0->aud_fifo_mode	= 0x20001;
+#endif
 	//regs0->G063_reserved_7 = 0x4B0; //[7:4] if0  [11:8] if1
 	//regs0->G063_reserved_7 = regs0->G063_reserved_7|0x1; // enable
 	pr_debug("!!!aud_misc_ctrl 0x%x\n", regs0->aud_misc_ctrl);

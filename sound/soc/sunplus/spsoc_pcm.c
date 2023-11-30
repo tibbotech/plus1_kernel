@@ -390,7 +390,7 @@ static int spsoc_pcm_hw_free(struct snd_soc_component *component, struct snd_pcm
 			regs0->aud_a4_base	= dma_initial;
 			if (substream->pcm->device == SP_TDM)
 				regs0->aud_a20_base = dma_initial;
-			}
+
 			regs0->aud_a0_length	= 0;
 			regs0->aud_a1_length	= 0;
 			regs0->aud_a2_length	= 0;
@@ -872,7 +872,7 @@ static int preallocate_dma_buffer(struct platform_device *pdev)
 
 	aud_param.fifoInfo.mic_virtAddrBase = aud_param.fifoInfo.pcmtx_virtAddrBase + DRAM_PCM_BUF_LENGTH*NUM_FIFO_TX;
 	aud_param.fifoInfo.mic_physAddrBase = aud_param.fifoInfo.pcmtx_physAddrBase + DRAM_PCM_BUF_LENGTH*NUM_FIFO_TX;
-//#if 0
+#if 0
 //	size = DRAM_PCM_BUF_LENGTH * NUM_FIFO_RX;
 //	aud_param.fifoInfo.RxBuf_TotalLen = size;
 //#ifdef USE_KELNEL_MALLOC
@@ -902,7 +902,7 @@ static void dma_free_dma_buffers(struct	platform_device	*pdev)
 #else
 	//gp_chunk_free( (void *)aud_param.fifoInfo.pcmtx_virtAddrBase);
 #endif
-//#if 0
+#if 0
 //	size = DRAM_PCM_BUF_LENGTH*NUM_FIFO_RX;
 //#ifdef USE_KELNEL_MALLOC
 //	dma_free_coherent(NULL,	size,
