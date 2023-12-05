@@ -217,16 +217,20 @@ config MTK_CMDQ_MBOX
 	  critical time limitation, such as updating display configuration
 	  during the vblank.
 
-config SP_IPC
-	tristate "Sunplus Mailbox (IPC) driver"
-	#depends on ARCH_RV64I
+config SUNPLUS_MBOX
+	tristate "Sunplus Mailbox"
 	default n
-
-config SP_IPC_TEST
-	bool "Sunplus Mailbox (IPC) test"
-	depends on SP_IPC
 	help
-	  echo 0 > /sys/module/sp_ipc/parameters/test
+	  An implementation of the Sunplus mailbox. It is used to send message
+	  between application processors and other processors/MCU/DSP. Select
+	  Y here if you want to use Sunplus mailbox controller.
+
+config SUNPLUS_MBOX_TEST
+	bool "Sunplus Mailbox Test"
+	depends on SUNPLUS_MBOX
+	help
+	  Test code @ sunplus remoteproc stopping for testing sunplus
+	  mailbox driver.
 
 config ZYNQMP_IPI_MBOX
 	bool "Xilinx ZynqMP IPI Mailbox"
