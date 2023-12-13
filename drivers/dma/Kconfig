@@ -713,7 +713,7 @@ config ZX_DMA
 	  Support the DMA engine for ZTE ZX family platform devices.
 
 config SUNPLUS_CBDMA
-	tristate "Sunplus CBDMA driver support"
+	tristate "Sunplus CBDMA support"
 	depends on SOC_SP7021 || SOC_Q645 || SOC_SP7350
 	help
 	  Enable support for the Sunplus CB-DMA (CBUS DMA) controller.

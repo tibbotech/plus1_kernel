@@ -1988,24 +1988,28 @@ static int sp_cbdma_probe(struct platform_device *pdev)
 	/* Request and enable clock */
 	xdev->clk = devm_clk_get(&pdev->dev, NULL);
 	if (IS_ERR(xdev->clk)) {
-		dev_err(&pdev->dev, "devm_clk_get fail\n");
+		dev_err(&pdev->dev, "devm_clk_get failed\n");
 		return PTR_ERR(xdev->clk);
 	}
 
 	err = clk_prepare_enable(xdev->clk);
-	if (err)
-		dev_err(&pdev->dev, "devm_clk_enable fail\n");
+	if (err) {
+		dev_err(&pdev->dev, "clk_prepare_enable failed\n");
+		return err;
+	}
 
 	/* Request and deassert reset */
 	xdev->rstc = devm_reset_control_get(&pdev->dev, NULL);
 	if (IS_ERR(xdev->rstc)) {
-		dev_err(&pdev->dev, "devm_reset_control_get fail\n");
+		dev_err(&pdev->dev, "devm_reset_control_get failed\n");
 		return PTR_ERR(xdev->rstc);
 	}
 
 	err = reset_control_deassert(xdev->rstc);
-	if (err)
-		dev_err(&pdev->dev, "reset deassert fail\n");
+	if (err) {
+		dev_err(&pdev->dev, "reset_control_deassert failed\n");
+		return err;
+	}
 
 	/* The SRAM buffer of CB-DMA */
 #if defined(CONFIG_SOC_Q645) || defined(CONFIG_SOC_SP7350)
@@ -2135,10 +2139,67 @@ static int sp_cbdma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static int sp_cbdma_pm_suspend(struct device *dev)
+{
+	struct sp_dma_device *xdev = dev_get_drvdata(dev);
+	//int err;
+
+	/*
+	 * These codes cause system to hang.
+	 */
+	//clk_disable_unprepare(xdev->clk);
+
+	//err = reset_control_assert(xdev->rstc);
+	//if (err) {
+	//	dev_err(xdev->dev, "reset_control_assert failed\n");
+	//	return err;
+	//}
+
+	return 0;
+}
+
+static int sp_cbdma_pm_resume(struct device *dev)
+{
+	struct sp_dma_device *xdev = dev_get_drvdata(dev);
+	struct sp_dma_chan *chan;
+	int i, err;
+
+	err = reset_control_deassert(xdev->rstc);
+	if (err) {
+		dev_err(xdev->dev, "reset_control_deassert failed\n");
+		return err;
+	}
+
+	err = clk_prepare_enable(xdev->clk);
+	if (err) {
+		dev_err(xdev->dev, "clock_prepare_enable failed\n");
+		return err;
+	}
+
+	for (i = 0; i < xdev->nr_channels; i++) {
+		chan = xdev->chan[i];
+
+		/* Reset the channel */
+		err = sp_cbdma_chan_reset(chan);
+		if (err < 0) {
+			dev_err(xdev->dev, "Reset channel failed\n");
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+static const struct dev_pm_ops sp_cbdma_pm_ops = {
+	.suspend	= sp_cbdma_pm_suspend,
+	.resume		= sp_cbdma_pm_resume,
+};
+
 static struct platform_driver sp_cbdma_driver = {
 	.driver = {
 		.name	= "sunplus,cbdma",
 		.of_match_table = sp_cbdma_of_ids,
+		.pm = &sp_cbdma_pm_ops,
 	},
 		.probe = sp_cbdma_probe,
 		.remove = sp_cbdma_remove,
