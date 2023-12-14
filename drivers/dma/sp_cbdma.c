@@ -2139,6 +2139,7 @@ static int sp_cbdma_remove(struct platform_device *pdev)
 	return 0;
 }
 
+#ifdef CONFIG_PM_CBDMA
 static int sp_cbdma_pm_suspend(struct device *dev)
 {
 	//struct sp_dma_device *xdev = dev_get_drvdata(dev);
@@ -2194,12 +2195,15 @@ static const struct dev_pm_ops sp_cbdma_pm_ops = {
 	.suspend	= sp_cbdma_pm_suspend,
 	.resume		= sp_cbdma_pm_resume,
 };
+#endif
 
 static struct platform_driver sp_cbdma_driver = {
 	.driver = {
 		.name	= "sunplus,cbdma",
 		.of_match_table = sp_cbdma_of_ids,
+#ifdef CONFIG_PM_CBDMA
 		.pm = &sp_cbdma_pm_ops,
+#endif
 	},
 		.probe = sp_cbdma_probe,
 		.remove = sp_cbdma_remove,
