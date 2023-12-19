@@ -51,7 +51,9 @@
 
 #define DEVICE_NAME		"sunplus-wdt"
 
+#ifdef CONFIG_SOC_SP7350
 static int irqflag = 0;
+#endif
 
 static unsigned int timeout;
 module_param(timeout, int, 0);
@@ -397,9 +399,10 @@ static int sp_wdt_suspend(struct device *dev)
 {
 	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
 	void __iomem *base = priv->base;
+#ifdef CONFIG_SOC_SP7350
 	void __iomem *base_pt = priv->base_pt;
 	void __iomem *prescaler = priv->prescaler;
-
+#endif
 	//printk(">>>>>> [DEBUG] WDT suspend <<<<<<\n");
 
 	if (watchdog_active(&priv->wdev))
@@ -408,10 +411,11 @@ static int sp_wdt_suspend(struct device *dev)
 	/* Save the reg val */
 	regs[0] = readl(base + WDT_CTRL);
 	regs[1] = readl(base + WDT_CNT);
+#ifdef CONFIG_SOC_SP7350
 	regs[2] = readl(base_pt + WDT_CTRL);
 	regs[3] = readl(base_pt + WDT_CNT);
 	regs[4] = readl(prescaler);
-
+#endif
 	clk_disable_unprepare(priv->clk);
 	reset_control_assert(priv->rstc);
 
@@ -422,9 +426,10 @@ static int sp_wdt_resume(struct device *dev)
 {
 	struct sp_wdt_priv *priv = dev_get_drvdata(dev);
 	void __iomem *base = priv->base;
+#ifdef CONFIG_SOC_SP7350
 	void __iomem *base_pt = priv->base_pt;
 	void __iomem *prescaler = priv->prescaler;
-
+#endif
 	//printk(">>>>>> [DEBUG] WDT resume <<<<<<\n");
 
 	reset_control_deassert(priv->rstc);
@@ -433,10 +438,11 @@ static int sp_wdt_resume(struct device *dev)
 	/* Restore the reg val */
 	writel(regs[0], base + WDT_CTRL);
 	writel(regs[1], base + WDT_CNT);
+#ifdef CONFIG_SOC_SP7350
 	writel(regs[2], base_pt + WDT_CTRL);
 	writel(regs[3], base_pt + WDT_CNT);
 	writel(regs[4], prescaler);
-
+#endif
 	if (watchdog_active(&priv->wdev)) {
 		sp_wdt_start(&priv->wdev);
 		sp_wdt_ping(&priv->wdev);
