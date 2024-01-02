@@ -17,6 +17,9 @@
 #include <linux/thermal.h>
 #include <linux/slab.h>
 
+#include "thermal_hwmon.h"
+
+
 #define DISABLE_THERMAL		(BIT(31) | BIT(15))
 #define ENABLE_THERMAL		BIT(31)
 
@@ -153,6 +156,10 @@ static int sp_thermal_register_sensor(struct platform_device *pdev,
 							    data, &sp_of_thermal_ops);
 	if (IS_ERR_OR_NULL(data->pcb_tz))
 		return PTR_ERR(data->pcb_tz);
+
+	if (devm_thermal_add_hwmon_sysfs(data->pcb_tz))
+		dev_warn(&pdev->dev, "failed to add hwmon sysfs attributes\n");
+
 	return 0;
 }
 
