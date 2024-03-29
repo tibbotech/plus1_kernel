@@ -54,7 +54,6 @@ int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_p
 		return PTR_ERR(_pc->base0);
 	}
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 	// res1
 	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
 	if (IS_ERR(rp)) {
@@ -88,24 +87,6 @@ int sppctl_gpio_resmap(struct platform_device *_pd, struct sppctlgpio_chip_t *_p
 		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
 		return PTR_ERR(_pc->base2);
 	}
-#else
-	// res2
-	rp = platform_get_resource(_pd, IORESOURCE_MEM, 2);
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#2 ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #2:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->base2 = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->base2)) {
-		KERR(&(_pd->dev), "%s map res#2 ERR\n", __func__);
-		return PTR_ERR(_pc->base2);
-	}
-#endif
 
 	return 0;
 }
@@ -156,33 +137,13 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 
 #ifdef SPPCTL_H
 	pc->base0 = _pctrlp->base0;
-#ifdef CONFIG_PINCTRL_SPPCTL
 	pc->base1 = _pctrlp->base1;
-#endif
 	pc->base2 = _pctrlp->base2;
-#if defined(SUPPORT_GPIO_AO_INT)
-	pc->baseA = _pctrlp->baseA;
-#endif
 	_pctrlp->gpiod = pc;
 #else
 	err = sppctl_gpio_resmap(_pd, pc);
 	if (err != 0)
 		return err;
-#endif
-
-#if defined(SUPPORT_GPIO_AO_INT)
-	if (of_property_read_u32(np, "sunplus,ao-pin-prescale",
-	    &pc->gpio_ao_int_prescale) == 0) {
-		writel(pc->gpio_ao_int_prescale & 0xfffff, pc->baseA); // PRESCALE
-	}
-
-	if (of_property_read_u32(np, "sunplus,ao-pin-debounce",
-	    &pc->gpio_ao_int_debounce) == 0) {
-		writel(pc->gpio_ao_int_prescale & 0xff, pc->baseA + 4);// DEB_TIME
-	}
-
-	for (i = 0; i < 32; i++)
-		pc->gpio_ao_int_pins[i] = -1;
 #endif
 
 	gchip->label =             MNAME;
@@ -208,9 +169,7 @@ int sppctl_gpio_new(struct platform_device *_pd, void *_datap)
 	gchip->can_sleep =         0;
 #if defined(CONFIG_OF_GPIO)
 	gchip->of_node =           np;
-#ifdef CONFIG_PINCTRL_SPPCTL
 	gchip->of_gpio_n_cells =   2;
-#endif
 #endif
 	gchip->to_irq =            sppctlgpio_i_map;
 
@@ -261,13 +220,7 @@ int sppctl_gpio_del(struct platform_device *_pd, void *_datap)
 
 #ifndef SPPCTL_H
 static const struct of_device_id sppctl_gpio_of_match[] = {
-#if defined(CONFIG_PINCTRL_SPPCTL)
 	{ .compatible = "sunplus,sp7021-gpio" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-	{ .compatible = "sunplus,q645-gpio" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-	{ .compatible = "sunplus,sp7350-gpio" },
-#endif
 	{ /* null */ }
 };
 

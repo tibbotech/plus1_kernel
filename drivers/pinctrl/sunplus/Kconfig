@@ -23,49 +23,9 @@ config PINCTRL_SPPCTL
 	  This driver requires the pinctrl framework.
 	  GPIO is provided by the same driver.
 
-config PINCTRL_SPPCTL_Q645
-	bool "Sunplus Q645 pin control and GPIO driver"
-	depends on SOC_Q645
-	depends on OF && HAS_IOMEM
-	select PINMUX
-	select GENERIC_PINCTRL_GROUPS
-	select GENERIC_PINMUX_FUNCTIONS
-	select PINCONF
-	select GENERIC_PINCONF
-	select OF_GPIO
-	select GPIOLIB
-	select GPIO_SYSFS
-	select GENERIC_IRQ_CHIP
-	select GPIOLIB_IRQCHIP
-	help
-	  Say Y here to support Sunplus Q645 pin controller.
-	  The driver is selected automatically by platform.
-	  This driver requires the pinctrl framework.
-	  GPIO is provided by the same driver.
-
-config PINCTRL_SPPCTL_SP7350
-	bool "Sunplus SP7350 pin control and GPIO driver"
-	depends on SOC_SP7350
-	depends on OF && HAS_IOMEM
-	select PINMUX
-	select GENERIC_PINCTRL_GROUPS
-	select GENERIC_PINMUX_FUNCTIONS
-	select PINCONF
-	select GENERIC_PINCONF
-	select OF_GPIO
-	select GPIOLIB
-	select GPIO_SYSFS
-	select GENERIC_IRQ_CHIP
-	select GPIOLIB_IRQCHIP
-	help
-	  Say Y here to support Sunplus SP7350 pin controller.
-	  The driver is selected automatically by platform.
-	  This driver requires the pinctrl framework.
-	  GPIO is provided by the same driver.
-
 config PINCTRL_SPPCTL_DEBUG
 	bool "Sunplus pin control specific debug"
-	depends on (SOC_SP7021 || SOC_Q645 || SOC_SP7350) && DEBUG_PINCTRL
+	depends on SOC_SP7021 && DEBUG_PINCTRL
 	help
 	  Say Y if you need to debug Sunplus pinmux driver in-depth.
 	  Pin control driver will output more messages if you enable

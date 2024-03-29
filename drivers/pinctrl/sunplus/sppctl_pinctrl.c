@@ -307,11 +307,6 @@ const char *stpctl_o_g_nam(struct pinctrl_dev *_pd, unsigned int _gid)
 int stpctl_o_g_pins(struct pinctrl_dev *_pd, unsigned int _gid, const unsigned int **pins,
 		    unsigned int *num_pins)
 {
-#if defined(SUPPORT_GPIO_AO_INT)
-	struct sppctl_pdata_t *pctrl = pinctrl_dev_get_drvdata(_pd);
-	struct sppctlgpio_chip_t *pc = pctrl->gpiod;
-	int i;
-#endif
 	struct grp2fp_map_t g2fpm = g2fp_maps[_gid];
 	struct func_t *f = &(list_funcs[g2fpm.f_idx]);
 
@@ -333,25 +328,6 @@ int stpctl_o_g_pins(struct pinctrl_dev *_pd, unsigned int _gid, const unsigned i
 		return 0;
 	*num_pins = f->grps[g2fpm.g_idx].pnum;
 	*pins = f->grps[g2fpm.g_idx].pins;
-
-#if defined(SUPPORT_GPIO_AO_INT)
-	if ((_gid == 265) || (_gid == 266)) { // GPIO_AO_INT0
-		for (i = 0; i < *num_pins; i++)
-			pc->gpio_ao_int_pins[i] = (*pins)[i];
-	}
-	if ((_gid == 267) || (_gid == 268)) { // GPIO_AO_INT1
-		for (i = 0; i < *num_pins; i++)
-			pc->gpio_ao_int_pins[i+8] = (*pins)[i];
-	}
-	if ((_gid == 269) || (_gid == 270)) { // GPIO_AO_INT2
-		for (i = 0; i < *num_pins; i++)
-			pc->gpio_ao_int_pins[i+16] = (*pins)[i];
-	}
-	if ((_gid == 271) || (_gid == 272)) { // GPIO_AO_INT3
-		for (i = 0; i < *num_pins; i++)
-			pc->gpio_ao_int_pins[i+24] = (*pins)[i];
-	}
-#endif
 
 	return 0;
 }
@@ -391,13 +367,6 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 	unsigned long *configs;
 	int i, size = 0;
 	const __be32 *list = of_get_property(_dn, "sunplus,pins", &size);
-#if defined(SUPPORT_GPIO_AO_INT)
-	struct sppctlgpio_chip_t *pc = pctrl->gpiod;
-	int mask, reg1, reg2;
-	int ao_size = 0;
-	const __be32 *ao_list = of_get_property(_dn, "sunplus,ao-pins", &ao_size);
-	int ao_nm = ao_size/sizeof(*ao_list);
-#endif
 	struct property *prop;
 	const char *s_f, *s_g;
 	int nmG = of_property_count_strings(_dn, "groups");
@@ -424,17 +393,6 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 			return -EINVAL;
 		}
 	}
-
-#if defined(SUPPORT_GPIO_AO_INT)
-	// Check if out of range?
-	for (i = 0; i < ao_nm; i++) {
-		dt_pin = be32_to_cpu(ao_list[i]);
-		if (SPPCTL_AOPIN_PIN(dt_pin) >= 32) {
-			KDBG(_pd->dev, "Invalid \'sunplus,ao_pins\' property at index %d (0x%08x)\n", i, dt_pin);
-			return -EINVAL;
-		}
-	}
-#endif
 
 	*_map = kcalloc(*_nm + nmG, sizeof(**_map), GFP_KERNEL);
 	if (!(*_map)) return -ENOMEM;
@@ -482,37 +440,6 @@ int stpctl_o_n2map(struct pinctrl_dev *_pd, struct device_node *_dn, struct pinc
 			     p_f, (*_map)[i].data.mux.group, p_p);
 		}
 	}
-
-#if defined(SUPPORT_GPIO_AO_INT)
-	for (i = 0; i < ao_nm; i++) {
-		dt_pin = be32_to_cpu(ao_list[i]);
-		p_p = SPPCTL_AOPIN_PIN(dt_pin);
-		p_l = SPPCTL_AOPIN_FLG(dt_pin);
-
-		mask = 1 << p_p;
-		reg1 = readl(pc->baseA + 0x18);	// GPIO_OE
-		if (p_l & (SPPCTL_AOPIN_OUT0 | SPPCTL_AOPIN_OUT1)) {
-			reg2 = readl(pc->baseA + 0x14);	// GPIO_O
-			if (p_l & SPPCTL_AOPIN_OUT1)
-				reg2 |= mask;
-			else
-				reg2 &= ~mask;
-			writel(reg2, pc->baseA + 0x14);	// GPIO_O
-
-			reg1 |= mask;
-		} else {
-			reg1 &= ~mask;
-		}
-		writel(reg1, pc->baseA + 0x18);	// GPIO_OE
-
-		reg1 = readl(pc->baseA + 0x08);	// DEB_EN
-		if (p_l & SPPCTL_AOPIN_DEB)
-			reg1 |= mask;
-		else
-			reg1 &= ~mask;
-		writel(reg1, pc->baseA + 0x08);	// DEB_EN
-	}
-#endif
 
 	// handle pin-group function
 	if (nmG > 0 && of_property_read_string(_dn, "function", &s_f) == 0) {

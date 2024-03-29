@@ -22,13 +22,7 @@
 #define M_LIC "GPL v2"
 #define M_AUT1 "Dvorkin Dmitry <dvorkin@tibbo.com>"
 #define M_AUT2 "Wells Lu <wells.lu@sunplus.com>"
-#ifdef CONFIG_PINCTRL_SPPCTL
 #define M_NAM "SP7021 PinCtl"
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-#define M_NAM "Q645 PinCtl"
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-#define M_NAM "SP7350 PinCtl"
-#endif
 #define M_ORG "Sunplus/Tibbo Tech."
 #define M_CPR "(C) 2020"
 
@@ -53,21 +47,9 @@
 #include <linux/pinctrl/pinconf.h>
 #include <linux/pinctrl/pinmux.h>
 #include <linux/pinctrl/pinconf-generic.h>
-#ifdef CONFIG_PINCTRL_SPPCTL
 #include <dt-bindings/pinctrl/sppctl-sp7021.h>
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-#include <dt-bindings/pinctrl/sppctl-q645.h>
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-#include <dt-bindings/pinctrl/sppctl-sp7350.h>
-#endif
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 #define SUPPORT_PINMUX
-#endif
-
-#if 0 //defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-#define SUPPORT_GPIO_AO_INT
-#endif
 
 #define SPPCTL_MAX_NAM 64
 #define SPPCTL_MAX_BUF PAGE_SIZE
@@ -112,14 +94,10 @@ struct sppctl_pdata_t {
 	void __iomem *baseF;    // functions
 #endif
 	void __iomem *base0;    // MASTER , OE , OUT , IN
-#ifdef CONFIG_PINCTRL_SPPCTL
 	void __iomem *base1;    // I_INV , O_INV , OD
-#endif
 	void __iomem *base2;    // GPIO_FIRST
 	void __iomem *baseI;    // PIN-GROUP
-#if defined(SUPPORT_GPIO_AO_INT)
-	void __iomem *baseA;    // GPIO_AO_INT
-#endif
+
 	// pinctrl-related
 	struct pinctrl_desc pdesc;
 	struct pinctrl_dev *pcdp;
@@ -172,13 +150,7 @@ struct func_t {
 	const uint8_t blen;         // number of bits
 	const struct sppctlgrp_t * const grps; // list of groups
 	const unsigned int gnum;    // number of groups
-#ifdef CONFIG_PINCTRL_SPPCTL
 	const char *grps_sa[5];     // array of pointers to func's grps names
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-	const char *grps_sa[8];     // array of pointers to func's grps names
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-	const char *grps_sa[12];     // array of pointers to func's grps names
-#endif
 };
 
 #define FNCE(n, r, o, bo, bl, g) { \

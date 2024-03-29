@@ -213,7 +213,6 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		return PTR_ERR(_pc->base0);
 	}
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 	// res1
 	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "gpioxt2");
 	if (IS_ERR(rp)) {
@@ -230,7 +229,6 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#1 ERR\n", __func__);
 		return PTR_ERR(_pc->base1);
 	}
-#endif
 
 	// res2
 	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "first");
@@ -265,24 +263,6 @@ int sppctl_pctl_resmap(struct platform_device *_pd, struct sppctl_pdata_t *_pc)
 		KERR(&(_pd->dev), "%s map res#I ERR\n", __func__);
 		return PTR_ERR(_pc->baseI);
 	}
-
-#if defined(SUPPORT_GPIO_AO_INT)
-	rp = platform_get_resource_byname(_pd, IORESOURCE_MEM, "gpio_ao_int");
-	if (IS_ERR(rp)) {
-		KERR(&(_pd->dev), "%s get res#A ERR\n", __func__);
-		return PTR_ERR(rp);
-	}
-	KDBG(&(_pd->dev), "mres #A:%p\n", rp);
-	if (!rp)
-		return -EFAULT;
-	KDBG(&(_pd->dev), "mapping [%pa-%pa]\n", &rp->start, &rp->end);
-
-	_pc->baseA = devm_ioremap_resource(&(_pd->dev), rp);
-	if (IS_ERR(_pc->baseA)) {
-		KERR(&(_pd->dev), "%s map res#A ERR\n", __func__);
-		return PTR_ERR(_pc->baseA);
-	}
-#endif
 
 	return 0;
 }
@@ -352,13 +332,7 @@ static int sppctl_ddel(struct platform_device *_pd)
 }
 
 static const struct of_device_id sppctl_dt_ids[] = {
-#if defined(CONFIG_PINCTRL_SPPCTL)
 	{ .compatible = "sunplus,sp7021-pctl" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-	{ .compatible = "sunplus,q645-pctl" },
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-	{ .compatible = "sunplus,sp7350-pctl" },
-#endif
 	{ /* zero */ }
 };
 

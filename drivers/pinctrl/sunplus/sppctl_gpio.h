@@ -39,16 +39,8 @@
 
 #ifndef SPPCTL_H
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 #define MNAME "sp7021_gpio"
 #define M_NAM "SP7021 GPIO"
-#elif defined(CONFIG_PINCTRL_SPPCTL_Q645)
-#define MNAME "q645_gpio"
-#define M_NAM "Q645 GPIO"
-#elif defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-#define MNAME "sp7350_gpio"
-#define M_NAM "SP7350 GPIO"
-#endif
 #define M_LIC "GPL v2"
 #define M_AUT1 "Dvorkin Dmitry <dvorkin@tibbo.com>"
 #define M_AUT2 "Wells Lu <wells.lu@sunplus.com>"
@@ -88,18 +80,10 @@ struct sppctlgpio_chip_t {
 	spinlock_t lock;
 	struct gpio_chip chip;
 	void __iomem *base0;   // MASTER, OE, OUT, IN (, I_INV, O_INV, OD)
-#ifdef CONFIG_PINCTRL_SPPCTL
 	void __iomem *base1;   // I_INV, O_INV, OD
-#endif
 	void __iomem *base2;   // GPIO_FIRST
 	int irq[SPPCTL_GPIO_IRQS];
 	int irq_pin[SPPCTL_GPIO_IRQS];
-#if defined(SUPPORT_GPIO_AO_INT)
-	void __iomem *baseA;   // GPIO_AO_INT
-	uint32_t gpio_ao_int_prescale;
-	uint32_t gpio_ao_int_debounce;
-	int gpio_ao_int_pins[32];
-#endif
 };
 
 extern const char * const sppctlgpio_list_s[];
@@ -108,11 +92,8 @@ extern const size_t GPIS_listSZ;
 int sppctl_gpio_new(struct platform_device *_pd, void *_datap);
 int sppctl_gpio_del(struct platform_device *_pd, void *_datap);
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 #define D_PIS(x, y) "P" __stringify(x) "_0" __stringify(y)
-#else
-#define D_PIS(x) "GPIO" __stringify(x)
-#endif
+
 
 // FIRST: MUX=0, GPIO=1
 enum muxF_MG_t {

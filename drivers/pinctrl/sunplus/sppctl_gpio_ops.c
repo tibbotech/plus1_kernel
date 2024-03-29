@@ -23,15 +23,6 @@
 #include "sppctl_gpio_ops.h"
 
 #define SPPCTL_GPIO_OFF_GFR     0x00
-#if defined(CONFIG_PINCTRL_SPPCTL_Q645) || defined(CONFIG_PINCTRL_SPPCTL_SP7350)
-#define SPPCTL_GPIO_OFF_CTL     0x00
-#define SPPCTL_GPIO_OFF_OE      0x34
-#define SPPCTL_GPIO_OFF_OUT     0x68
-#define SPPCTL_GPIO_OFF_IN      0x9c
-#define SPPCTL_GPIO_OFF_IINV    0xbc
-#define SPPCTL_GPIO_OFF_OINV    0xf0
-#define SPPCTL_GPIO_OFF_OD      0x124
-#else
 #define SPPCTL_GPIO_OFF_CTL     0x00
 #define SPPCTL_GPIO_OFF_OE      0x20
 #define SPPCTL_GPIO_OFF_OUT     0x40
@@ -39,7 +30,6 @@
 #define SPPCTL_GPIO_OFF_IINV    0x00
 #define SPPCTL_GPIO_OFF_OINV    0x20
 #define SPPCTL_GPIO_OFF_OD      0x40
-#endif
 
 // (/16)*4
 #define R16_ROF(r)              (((r)>>4)<<2)
@@ -119,12 +109,7 @@ int sppctlgpio_u_isinv(struct gpio_chip *_c, unsigned int _n)
 	if (sppctlgpio_f_gdi(_c, _n) == 0)
 		inv_off = SPPCTL_GPIO_OFF_OINV;
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 	r = readl(pc->base1 + inv_off + R16_ROF(_n));
-#else
-	r = readl(pc->base0 + inv_off + R16_ROF(_n));
-#endif
-
 	return R32_VAL(r, R16_BOF(_n));
 }
 
@@ -135,11 +120,7 @@ void sppctlgpio_u_siinv(struct gpio_chip *_c, unsigned int _n)
 	u16 inv_off = SPPCTL_GPIO_OFF_IINV;
 
 	r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
-#ifdef CONFIG_PINCTRL_SPPCTL
 	writel(r, pc->base1 + inv_off + R16_ROF(_n));
-#else
-	writel(r, pc->base0 + inv_off + R16_ROF(_n));
-#endif
 }
 
 void sppctlgpio_u_soinv(struct gpio_chip *_c, unsigned int _n)
@@ -149,11 +130,7 @@ void sppctlgpio_u_soinv(struct gpio_chip *_c, unsigned int _n)
 	u16 inv_off = SPPCTL_GPIO_OFF_OINV;
 
 	r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
-#ifdef CONFIG_PINCTRL_SPPCTL
 	writel(r, pc->base1 + inv_off + R16_ROF(_n));
-#else
-	writel(r, pc->base0 + inv_off + R16_ROF(_n));
-#endif
 }
 
 // is open-drain: YES(1) | NON(0)
@@ -162,12 +139,7 @@ int sppctlgpio_u_isodr(struct gpio_chip *_c, unsigned int _n)
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
 
-#ifdef CONFIG_PINCTRL_SPPCTL
 	r = readl(pc->base1 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#else
-	r = readl(pc->base0 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#endif
-
 	return R32_VAL(r, R16_BOF(_n));
 }
 
@@ -177,11 +149,7 @@ void sppctlgpio_u_seodr(struct gpio_chip *_c, unsigned int _n, unsigned int _v)
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
 
 	r = (BIT(R16_BOF(_n))<<16) | ((_v & BIT(0)) << R16_BOF(_n));
-#ifdef CONFIG_PINCTRL_SPPCTL
 	writel(r, pc->base1 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#else
-	writel(r, pc->base0 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#endif
 }
 
 #ifdef SPPCTL_H
@@ -237,35 +205,12 @@ void sppctlgpio_f_fre(struct gpio_chip *_c, unsigned int _n)
 }
 #endif // SPPCTL_H
 
-#if defined(SUPPORT_GPIO_AO_INT)
-int find_gpio_ao_int(struct sppctlgpio_chip_t *pc, int pin)
-{
-	int i;
-
-	for (i = 0; i < 32; i++)
-		if (pin == pc->gpio_ao_int_pins[i])
-			return i;
-	return -1;
-}
-#endif
-
 // get dir: 0=out, 1=in, -E =err (-EINVAL for ex): OE inverted on ret
 int sppctlgpio_f_gdi(struct gpio_chip *_c, unsigned int _n)
 {
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin, mask;
 
-	ao_pin = find_gpio_ao_int(pc, _n);
-	if (ao_pin >= 0) {
-		mask = 1 << ao_pin;
-		if (readl(pc->baseA + 0x18) & mask)	// GPIO_OE
-			return 0;
-		else
-			return 1;
-	}
-#endif
 	r = readl(pc->base0 + SPPCTL_GPIO_OFF_OE + R16_ROF(_n));
 
 	return R32_VAL(r, R16_BOF(_n)) ^ BIT(0);
@@ -276,18 +221,7 @@ int sppctlgpio_f_sin(struct gpio_chip *_c, unsigned int _n)
 {
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin, mask;
 
-	ao_pin = find_gpio_ao_int(pc, _n);
-	if (ao_pin >= 0) {
-		mask = 1 << ao_pin;
-		r = readl(pc->baseA + 0x18);	// GPIO_OE
-		r &= ~mask;
-		writel(r, pc->baseA + 0x18);	// GPIO_OE
-		return 0;
-	}
-#endif
 	r = (BIT(R16_BOF(_n))<<16);
 	writel(r, pc->base0 + SPPCTL_GPIO_OFF_OE + R16_ROF(_n));
 
@@ -299,29 +233,7 @@ int sppctlgpio_f_sou(struct gpio_chip *_c, unsigned int _n, int _v)
 {
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin, mask;
 
-	ao_pin = find_gpio_ao_int(pc, _n);
-	if (ao_pin >= 0) {
-		mask = 1 << ao_pin;
-
-		r = readl(pc->baseA + 0x18);	// GPIO_OE
-		r |= mask;
-		writel(r, pc->baseA + 0x18);	// GPIO_OE
-
-		if (_v < 0)
-			return 0;
-
-		r = readl(pc->baseA + 0x14);	// GPIO_O
-		if (_v)
-			r |= mask;
-		else
-			r &= ~mask;
-		writel(r, pc->baseA + 0x14);	// GPIO_O
-		return 0;
-	}
-#endif
 	r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
 	writel(r, pc->base0 + SPPCTL_GPIO_OFF_OE + R16_ROF(_n));
 
@@ -340,22 +252,7 @@ int sppctlgpio_f_get(struct gpio_chip *_c, unsigned int _n)
 {
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin, mask;
 
-	ao_pin = find_gpio_ao_int(pc, _n);
-	if (ao_pin >= 0) {
-		mask = 1 << ao_pin;
-		if (readl(pc->baseA + 0x08) & mask)	// GPIO_DEB_EN
-			r = readl(pc->baseA + 0x10);	// GPIO_DEB_I
-		else
-			r = readl(pc->baseA + 0x0c);	// GPIO_I
-		if (r & mask)
-			return 1;
-		else
-			return 0;
-	}
-#endif
 	r = readl(pc->base0 + SPPCTL_GPIO_OFF_IN + R32_ROF(_n));
 
 	return R32_VAL(r, R32_BOF(_n));
@@ -366,21 +263,7 @@ void sppctlgpio_f_set(struct gpio_chip *_c, unsigned int _n, int _v)
 {
 	u32 r;
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin, mask;
 
-	ao_pin = find_gpio_ao_int(pc, _n);
-	if (ao_pin >= 0) {
-		mask = 1 << ao_pin;
-		r = readl(pc->baseA + 0x14);	// GPIO_O
-		if (_v)
-			r |= mask;
-		else
-			r &= ~mask;
-		writel(r, pc->baseA + 0x14);	// GPIO_O
-		return;
-	}
-#endif
 	r = (BIT(R16_BOF(_n))<<16) | (_v & 0x0001) << R16_BOF(_n);
 	writel(r, pc->base0 + SPPCTL_GPIO_OFF_OUT + R16_ROF(_n));
 }
@@ -393,23 +276,12 @@ int sppctlgpio_f_scf(struct gpio_chip *_c, unsigned int _n, unsigned long _conf)
 	enum pin_config_param cp = pinconf_to_config_param(_conf);
 	u16 ca = pinconf_to_config_argument(_conf);
 	struct sppctlgpio_chip_t *pc = (struct sppctlgpio_chip_t *)gpiochip_get_data(_c);
-#if defined(SUPPORT_GPIO_AO_INT)
-	int ao_pin = find_gpio_ao_int(pc, _n);
-#endif
 
 	KDBG(_c->parent, "f_scf(%03d,%lX) p:%d a:%d\n", _n, _conf, cp, ca);
 	switch (cp) {
 	case PIN_CONFIG_DRIVE_OPEN_DRAIN:
-#if defined(SUPPORT_GPIO_AO_INT)
-		if (ao_pin >= 0)
-			return -ENOTSUPP;
-#endif
 		r = (BIT(R16_BOF(_n))<<16) | BIT(R16_BOF(_n));
-#ifdef CONFIG_PINCTRL_SPPCTL
 		writel(r, pc->base1 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#else
-		writel(r, pc->base0 + SPPCTL_GPIO_OFF_OD + R16_ROF(_n));
-#endif
 		break;
 
 	case PIN_CONFIG_INPUT_ENABLE:
