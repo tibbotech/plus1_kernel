@@ -14,7 +14,6 @@ properties:
   compatible:
     enum:
       - sunplus,sp7021-spinand
-      - sunplus,q645-spi-nand
 
   reg:
     maxItems: 1

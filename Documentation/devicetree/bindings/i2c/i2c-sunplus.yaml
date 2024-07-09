@@ -17,7 +17,6 @@ properties:
   compatible:
     enum:
       - sunplus,sp7021-i2cm
-      - sunplus,q645-i2cm
 
   reg:
     items:

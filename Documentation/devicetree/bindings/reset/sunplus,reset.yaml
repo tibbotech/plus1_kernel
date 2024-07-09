@@ -14,7 +14,6 @@ properties:
   compatible:
     enum:
       - sunplus,sp7021-reset # Reset Controller on SP7021 and compatible SoCs
-      - sunplus,q645-reset # Reset Controller on Q645 and compatible SoCs
 
   "#reset-cells":
     const: 1
