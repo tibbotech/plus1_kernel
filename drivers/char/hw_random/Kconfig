@@ -384,19 +384,6 @@ config HW_RANDOM_XGENE
 
 	  If unsure, say Y.
 
-config HW_RANDOM_SP7350
-	tristate "Sunplus SP7350 HW Random Number Generator support"
-	depends on SOC_SP7350
-	default HW_RANDOM
-	help
-	  This driver provides kernel-side support for the Random Number
-	  Generator hardware found on Sunplus SP7350 SoCs.
-
-	  To compile this driver as a module, choose M here: the
-	  module will be called pasemi-rng.
-
-	  If unsure, say Y.
-
 config HW_RANDOM_STM32
 	tristate "STMicroelectronics STM32 random number generator"
 	depends on HW_RANDOM && (ARCH_STM32 || COMPILE_TEST)
