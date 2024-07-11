@@ -328,22 +328,6 @@ config COMMON_CLK_SP7021
 	  Not all features of the PLL are currently supported
 	  by the driver.
 
-config COMMON_CLK_Q645
-	def_bool OF && COMMON_CLK && SOC_Q645
-	help
-	  This driver supports the Sunplus Q645 SoC clocks,
-	  It implemented Q645 PLL/mux/gate.
-	  Not all features of the PLL are currently supported
-	  by the driver.
-
-config COMMON_CLK_SP7350
-	def_bool OF && COMMON_CLK && SOC_SP7350
-	help
-	  This driver supports the Sunplus SP7350 SoC clocks,
-	  It implemented SP7350 PLL/mux/gate.
-	  Not all features of the PLL are currently supported
-	  by the driver.
-
 config COMMON_CLK_STM32MP157
 	def_bool COMMON_CLK && MACH_STM32MP157
 	help
