@@ -5,8 +5,6 @@
 
 obj-$(CONFIG_SUNPLUS_USB_PHY)			+= phy0-sunplus.o phy1-sunplus.o
 obj-$(CONFIG_USB_SUNPLUS_OTG)			+= otg-sunplus.o otg0-sunplus.o otg1-sunplus.o
-obj-$(CONFIG_USB_SUNPLUS_SP7350_OTG)			+= otg-sp7350-sunplus.o otg0-sunplus.o
-obj-$(CONFIG_SUNPLUS_SYNOPSYS_USB3_PHY)         += synopsysu3phy-sunplus.o
 
 obj-$(CONFIG_USB_PHY)			+= phy.o
 obj-$(CONFIG_OF)			+= of.o

@@ -19,13 +19,6 @@ config USB_SUNPLUS_OTG
 	help
 	  Support Sunplus OTG driver.
 
-config SUNPLUS_SYNOPSYS_USB3_PHY
-	bool "Sunplus Synopsys USB3 PHY"
-	help
-	  Enable this to support Sunplus USB3 phy. This driver provides
-	  interface to interact with USB 3.0 PHY of Synopsys that is part
-	  of Sunplus SOC.
-
 config USB_PHY
 	select EXTCON
 	def_bool n
@@ -213,15 +206,5 @@ config JZ4770_PHY
 	help
 	  This driver provides PHY support for the USB controller found
 	  on the JZ-series and X-series SoCs from Ingenic.
-
-config USB_SUNPLUS_SP7350_OTG
-	bool "Sunplus USB OTG Transceive driver"
-#	depends on USB_GADGET_SUNPLUS && GEMINI_USB
-	depends on USB_EHCI_HCD || USB_GADGET_SUNPLUS
-	depends on SOC_SP7350
-#	select USB_OTG
-	select USB_OTG_UTILS
-	help
-	  Support Sunplus USB OTG Transceive driver.
 
 endmenu
