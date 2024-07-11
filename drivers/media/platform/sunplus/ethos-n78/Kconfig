@@ -1,5 +1,0 @@
-config ETHOS_N78_NPU
-	tristate "ML Inference Processor ETHOS-N78-NPU driver"
-	default n
-	help
-		 Support for the ML Inference Processor ETHOS-N78-NPU driver

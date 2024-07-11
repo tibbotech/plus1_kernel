@@ -85,5 +85,4 @@ obj-$(CONFIG_VIDEO_SP7021_DISP)		+= sunplus/display/sp7021/
 obj-$(CONFIG_VIDEO_SP_HDMITX)		+= sunplus/hdmitx/
 obj-y					+= sunplus/video/
 obj-y					+= sunplus/mipicsi/
-obj-$(CONFIG_ETHOS_N_NPU_DRIVERS)	+= sunplus/ethos-n78/
 
