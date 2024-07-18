@@ -1161,11 +1161,7 @@ static const struct v4l2_file_operations sp_mipi_fops = {
 
 //===================================================================================
 static const struct vb2_mem_ops *const sp_mem_ops[2] = {
-#ifdef CONFIG_MIPICSI_RX_SUNPLUS_SP7021
-	&sp_vb2_dma_contig_memops,
-#else
 	&vb2_dma_contig_memops,
-#endif
 	&vb2_vmalloc_memops,
 };
 
