@@ -345,7 +345,7 @@
 			     &pctl 4 GPIO_ACTIVE_HIGH
 		    >;
 		};
-		buzzer0 {
+		buzzer0: buzzer0 {
 		    compatible = "pwm-beeper";
 		    pinctrl-names = "default";
 		    pinctrl-0 = <&buzzer0_pins>;
