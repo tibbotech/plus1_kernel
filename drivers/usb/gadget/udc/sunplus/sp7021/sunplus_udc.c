@@ -1125,7 +1125,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep,
 
 			DEBUG_INFO("cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDEPBFS = %xh UDCIF = %xh\n", cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDEPBFS), udc_read(UDCIF));
 
-			t = jiffies;
+			t = jiffies + msecs_to_jiffies( 10);
 
 			// if (((udc_read(UDEPBDMACS) & DMA_EN)
 			// 	       || (!(udc_read(UDCIF) & EPB_DMA_IF))
@@ -1139,7 +1139,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep,
 				DEBUG_INFO(">>cur_len=%d actual_len=%d req.dma=%xh dma_len=%d UDEPBDMACS = %xh UDCIE = %xh UDCIF = %xh\n",
 						cur_length, actual_length, req->req.dma, dma_xferlen, udc_read(UDEPBDMACS), udc_read(UDCIE), udc_read(UDCIF));
 
-				if (time_after(jiffies, t + 10 * HZ)) {
+				if (time_after(jiffies, t)) {
 					DEBUG_INFO("dma error: UDEPBDMACS = %xh\n", udc_read(UDEPBDMACS));
 					break;
 				}
