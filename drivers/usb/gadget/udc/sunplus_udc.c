@@ -1212,7 +1212,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 				cur_length, actual_length, req->req.dma, dma_xferlen,
 				udc->reg_read(UDEPBDMACS), udc->reg_read(UDEPBFS), udc->reg_read(UDCIF));
 
-		t = jiffies;
+		t = jiffies + msecs_to_jiffies( 10);
 		udc->reg_write(udc->reg_read(UDCIE) | EPB_DMA_IF, UDCIE);
 
 		while ((udc->reg_read(UDEPBDMACS) & DMA_EN) != 0) {
@@ -1222,7 +1222,7 @@ static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
 					dma_xferlen, udc->reg_read(UDEPBDMACS), udc->reg_read(UDCIE),
 					udc->reg_read(UDCIF));
 
-			if (time_after(jiffies, t + 10 * HZ)) {
+			if (time_after(jiffies, t)) {
 				DEBUG_DBG("dma error: UDEPBDMACS = %xh",
 							udc->reg_read(UDEPBDMACS));
 				break;
