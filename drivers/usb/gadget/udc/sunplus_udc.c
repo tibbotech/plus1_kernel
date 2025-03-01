@@ -43,8 +43,9 @@
 #define TRANS_MODE				PIO_MODE
 #define PIO_MODE				0
 #define DMA_MODE_FOR_NCMH			1
+#define DMA_MODE_FOR_ADB			2
 
-//#define BULKIN_ENHANCED
+#define BULKIN_ENHANCED
 
 #define IRQ_USB_DEV_PORT0			45
 #define IRQ_USB_DEV_PORT1			48
@@ -1166,7 +1167,7 @@ static void sp_udc_handle_ep0(struct sp_udc *udc)
 	DEBUG_DBG("<<< %s ... ", __func__);
 }
 
-#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req);
 
 static int sp_udc_ep11_bulkout_dma(struct sp_ep *ep, struct sp_request *req)
@@ -1279,6 +1280,11 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	u8 check_len;
 	u8 state;
 	int i;
+#elif (TRANS_MODE == DMA_MODE_FOR_ADB)
+	u32 block_len;
+	u32 residule;
+	u8 check_len;
+	u8 state;
 #endif
 
 	DEBUG_DBG(">>> %s UDEPBFS = %xh", __func__, udc->reg_read(UDEPBFS));
@@ -1288,7 +1294,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	if (down_trylock(&ep->wsem))
 		return 0;
 
-#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 	state = 0;
 	check_len = false;
 	residule = 0;
@@ -1299,7 +1305,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 	is_pingbuf = (udc->reg_read(UDEPBPPC) & CURR_BUFF) ? 1 : 0;
 
 	do {
-#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 		if (check_len == true) {
 			check_len = false;
 
@@ -1326,6 +1332,16 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 
 		pre_is_pingbuf = is_pingbuf;
 		count = sp_udc_get_ep_fifo_count(ep->udc, is_pingbuf, UDEPBPIC);
+
+#if (TRANS_MODE == DMA_MODE_FOR_ADB)
+		if ((count == 0) && (req->req.length != 0)) {
+			if ((udc->reg_read(UDEPBFS) & 0x06) == 0x06)
+				udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
+
+			count = sp_udc_get_ep_fifo_count(ep->udc, is_pingbuf, UDEPBPIC);
+		}
+#endif
+
 		if (!count) {
 			up(&ep->wsem);
 
@@ -1382,6 +1398,40 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 
 			break;
 		}
+#elif (TRANS_MODE == DMA_MODE_FOR_ADB)
+		/* 1st transfer for the request */
+		if (req->req.actual == 0) {
+			block_len = (u32)req->req.length;
+			udc->dma_xferlen_ep11 = block_len;
+
+			/* use DMA mode when transfer len >= 0x200 */
+			if (udc->dma_xferlen_ep11 >= 0x200) {
+				residule = udc->dma_xferlen_ep11 & 0x1ff;
+				udc->dma_xferlen_ep11 = udc->dma_xferlen_ep11 & ~0x1ff;
+
+				/* dma transfer len must be multiple of 0x200 */
+				/* but not be multiple of 0x400 	      */
+				if ((udc->dma_xferlen_ep11 % 0x400) == 0) {
+					udc->dma_xferlen_ep11 -= 0x200;
+					residule += 0x200;
+				}
+
+				state = 1;
+			} 
+		}
+
+		switch (state) {
+		case 0: /* PIO mode */
+			sp_udc_bulkout_pio(udc, buf, avail);
+			break;
+		case 1: /* DMA mode */
+			sp_udc_ep11_bulkout_dma(ep, req);
+
+			avail = udc->dma_xferlen_ep11;
+			check_len = true;
+
+			break;
+		}
 #endif
 
 		req->req.actual += avail;
@@ -1389,7 +1439,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 #if (TRANS_MODE == PIO_MODE)
 		if (count < ep->ep.maxpacket || req->req.length <= req->req.actual)
 			is_last = 1;
-#elif (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#elif (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 		if (block_len <= req->req.actual)
 			is_last = 1;
 #endif
@@ -1436,7 +1486,7 @@ out_fifo_controllable:
 }
 
 #ifndef BULKIN_ENHANCED
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 {
 	struct sp_udc *udc = ep->udc;
@@ -1594,7 +1644,7 @@ in_fifo_controllable:
 	return is_last;
 }
 
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 static int sp_ep1_bulkin_dma(struct sp_ep *ep, struct sp_request *req)
 {
 	struct sp_udc *udc = ep->udc;
@@ -1712,12 +1762,12 @@ done_dma:
 
 static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 {
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 	struct sp_udc *udc = ep->udc;
 	#endif
 	int ret;
 
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 	if (udc->dma_len_ep1 == 0)
 		ret = sp_udc_ep1_bulkin_dma(ep, req);
 	#else
@@ -1753,7 +1803,7 @@ static int sp_udc_ep1_bulkin(struct sp_ep *ep, struct sp_request *req)
 		pre_is_pingbuf = is_pingbuf;
 		w_count = ep->ep.maxpacket;
 
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 		if (!sp_ep1_bulkin_dma(ep, req))
 	#endif
 		{
@@ -1857,7 +1907,7 @@ static int sp_udc_handle_ep(struct sp_ep *ep, struct sp_request *req)
 }
 
 #ifdef BULKIN_ENHANCED
-	#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+	#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 static void ep1_dma_handle(struct sp_udc *dev)
 {
 	struct sp_ep *ep = &dev->ep[1];
@@ -2026,7 +2076,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 			sp_udc_handle_ep0(udc);
 	}
 
-#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 	/* dma finish */
 	if (irq_en2_flags & EP1_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep1 DMA");
@@ -2053,7 +2103,7 @@ static irqreturn_t sp_udc_irq(int irq, void *_dev)
 		sp_udc_handle_ep(&udc->ep[3], NULL);
 	}
 
-#if (TRANS_MODE == DMA_MODE_FOR_NCMH)
+#if (TRANS_MODE == DMA_MODE_FOR_NCMH) || (TRANS_MODE == DMA_MODE_FOR_ADB)
 	if (irq_en1_flags & EPB_DMA_IF) {
 		DEBUG_DBG("IRQ:UDC ep11 DMA");
 
