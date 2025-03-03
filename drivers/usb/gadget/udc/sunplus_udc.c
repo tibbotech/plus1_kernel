@@ -1333,7 +1333,7 @@ static int sp_udc_ep11_bulkout_pio(struct sp_ep *ep, struct sp_request *req)
 		pre_is_pingbuf = is_pingbuf;
 		count = sp_udc_get_ep_fifo_count(ep->udc, is_pingbuf, UDEPBPIC);
 
-#if (TRANS_MODE == DMA_MODE_FOR_ADB)
+#if (TRANS_MODE != DMA_MODE_FOR_NCMH)
 		if ((count == 0) && (req->req.length != 0)) {
 			if ((udc->reg_read(UDEPBFS) & 0x06) == 0x06)
 				udc->reg_write(udc->reg_read(UDEPABC) | CLR_EP_OVLD, UDEPABC);
